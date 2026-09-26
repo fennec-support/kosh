@@ -1401,6 +1401,23 @@ private:
   BumpArena *m_function_arena{nullptr};
 };
 
+class SubshellStore
+{
+public:
+  fn coprocess_read_fd() wontthrow -> i32 & { return m_coprocess_read_fd; }
+  fn coprocess_write_fd() wontthrow -> i32 & { return m_coprocess_write_fd; }
+  fn saved_descriptors() wontthrow
+      -> ArrayList<subshell_saved_descriptor> &
+  {
+    return m_saved_descriptors;
+  }
+
+private:
+  i32 m_coprocess_read_fd{-1};
+  i32 m_coprocess_write_fd{-1};
+  ArrayList<subshell_saved_descriptor> m_saved_descriptors{heap_allocator()};
+};
+
 class EvalContext
 {
 public:
@@ -1436,6 +1453,11 @@ public:
   pure fn arena_store() const wontthrow -> const ArenaStore &
   {
     return m_arena_store;
+  }
+  fn subshell_store() wontthrow -> SubshellStore & { return m_subshell_store; }
+  pure fn subshell_store() const wontthrow -> const SubshellStore &
+  {
+    return m_subshell_store;
   }
   fn trap_store() wontthrow -> TrapStore & { return m_trap_store; }
   pure fn trap_store() const wontthrow -> const TrapStore &
@@ -3277,12 +3299,9 @@ protected:
   /* The shell descriptors the live coprocess is reached through, -1 when no
      coprocess runs. Only one coprocess is live at a time, the way bash counts
      them. */
-  i32 m_coprocess_read_fd{-1};
-  i32 m_coprocess_write_fd{-1};
-  /* The descriptors bare execs moved inside live in-process subshells, kept
-     as a stack so leave_subshell unwinds its own depth's entries in reverse. */
-  ArrayList<subshell_saved_descriptor> m_subshell_saved_descriptors{
-      heap_allocator()};
+  /* Coprocess descriptors and bare-exec backups are owned by the subshell
+     store; the context only coordinates their lifecycle with snapshots. */
+  SubshellStore m_subshell_store{};
 
   /* The prior values of process-environment names written while a subshell ran,
      rewound by restore_state on the subshell's exit. The log is appended to

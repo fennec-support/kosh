@@ -82,15 +82,15 @@ fn EvalContext::leave_subshell() wontthrow -> void
   ASSERT(execution_store().subshell_depth() > 0);
   /* Stacked exec moves unwind newest first so the descriptors land back in
      order. */
-  while (!m_subshell_saved_descriptors.is_empty() &&
-         m_subshell_saved_descriptors.back().depth ==
+  while (!subshell_store().saved_descriptors().is_empty() &&
+         subshell_store().saved_descriptors().back().depth ==
              execution_store().subshell_depth())
   {
     LOG(Debug, "restoring descriptor %d a subshell exec moved at depth %zu",
-        m_subshell_saved_descriptors.back().saved.shell_fd,
+        subshell_store().saved_descriptors().back().saved.shell_fd,
         execution_store().subshell_depth());
-    os::restore_descriptor(m_subshell_saved_descriptors.back().saved);
-    m_subshell_saved_descriptors.remove(m_subshell_saved_descriptors.count() -
+    os::restore_descriptor(subshell_store().saved_descriptors().back().saved);
+    subshell_store().saved_descriptors().remove(subshell_store().saved_descriptors().count() -
                                         1);
   }
   execution_store().subshell_depth()--;
@@ -102,7 +102,7 @@ fn EvalContext::leave_subshell() wontthrow -> void
 fn EvalContext::snapshot_subshell_descriptor(i32 shell_fd) throws -> void
 {
   if (execution_store().subshell_depth() == 0) return;
-  for (let const &entry : m_subshell_saved_descriptors) {
+  for (let const &entry : subshell_store().saved_descriptors()) {
     if (entry.depth == execution_store().subshell_depth() &&
         entry.saved.shell_fd == shell_fd)
     {
@@ -112,7 +112,7 @@ fn EvalContext::snapshot_subshell_descriptor(i32 shell_fd) throws -> void
   LOG(Debug,
       "backing up descriptor %d before a subshell exec moves it at depth %zu",
       shell_fd, execution_store().subshell_depth());
-  m_subshell_saved_descriptors.push(
+  subshell_store().saved_descriptors().push(
       subshell_saved_descriptor{execution_store().subshell_depth(),
                                 os::save_descriptor_out_of_reach(shell_fd)});
 }
@@ -122,13 +122,13 @@ fn EvalContext::set_coprocess_descriptors(i32 read_fd, i32 write_fd) wontthrow
 {
   LOG(Debug, "the live coprocess is read on %d and written on %d", read_fd,
       write_fd);
-  m_coprocess_read_fd = read_fd;
-  m_coprocess_write_fd = write_fd;
+  subshell_store().coprocess_read_fd() = read_fd;
+  subshell_store().coprocess_write_fd() = write_fd;
 }
 
 fn EvalContext::hide_coprocess_descriptors() throws -> void
 {
-  if (m_coprocess_read_fd < 0 && m_coprocess_write_fd < 0) return;
+  if (subshell_store().coprocess_read_fd() < 0 && subshell_store().coprocess_write_fd() < 0) return;
 
   LOG(Debug, "taking the coprocess descriptors away at subshell depth %zu",
       execution_store().subshell_depth());
@@ -136,16 +136,16 @@ fn EvalContext::hide_coprocess_descriptors() throws -> void
   /* The backup is what leave_subshell hands back. An in-process subshell
      returns the descriptors to the shell that owns them. Both backups are
      taken before either close. Each one then lands on a number of its own. */
-  for (let const shell_fd : {m_coprocess_read_fd, m_coprocess_write_fd}) {
+  for (let const shell_fd : {subshell_store().coprocess_read_fd(), subshell_store().coprocess_write_fd()}) {
     if (shell_fd >= 0) snapshot_subshell_descriptor(shell_fd);
   }
 
-  for (let const shell_fd : {m_coprocess_read_fd, m_coprocess_write_fd}) {
+  for (let const shell_fd : {subshell_store().coprocess_read_fd(), subshell_store().coprocess_write_fd()}) {
     if (shell_fd >= 0) unused(os::close_shell_fd(shell_fd));
   }
 
-  m_coprocess_read_fd = -1;
-  m_coprocess_write_fd = -1;
+  subshell_store().coprocess_read_fd() = -1;
+  subshell_store().coprocess_write_fd() = -1;
 }
 
 pure fn EvalContext::in_subshell() const wontthrow -> bool
@@ -817,8 +817,8 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
       expansion_store().getopts_char_index(),
       expansion_store().getopts_last_optind(),
       execution_store().terminal_exec_allowed(),
-      m_coprocess_read_fd,
-      m_coprocess_write_fd};
+      subshell_store().coprocess_read_fd(),
+      subshell_store().coprocess_write_fd()};
   return snapshot;
 }
 
@@ -882,8 +882,8 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
   expansion_store().set_getopts_char_index(snapshot.getopts_char_index);
   expansion_store().set_getopts_last_optind(snapshot.getopts_last_optind);
   execution_store().terminal_exec_allowed() = snapshot.terminal_exec_allowed;
-  m_coprocess_read_fd = snapshot.coprocess_read_fd;
-  m_coprocess_write_fd = snapshot.coprocess_write_fd;
+  subshell_store().coprocess_read_fd() = snapshot.coprocess_read_fd;
+  subshell_store().coprocess_write_fd() = snapshot.coprocess_write_fd;
 
   variable_attributes() = steal(snapshot.variable_attributes);
   exported_names() = steal(snapshot.exported_names);
