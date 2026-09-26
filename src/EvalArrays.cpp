@@ -86,12 +86,21 @@ struct sparse_array_entry
   String value;
 };
 
+struct sparse_array_entry_comparator
+{
+  pure fn operator()(const sparse_array_entry &left,
+                     const sparse_array_entry &right) const wontthrow -> bool
+  {
+    return left.index < right.index;
+  }
+};
+
 /* The entries come back sorted by ascending index, always beyond the dense
    run. */
 static fn collect_sparse_array_entries(const StringMap<String> &sparse,
                                        StringView name,
                                        Allocator allocator) throws
-    -> ArrayList<sparse_array_entry>
+    -> SortedArrayList<sparse_array_entry, sparse_array_entry_comparator>
 {
   let out = ArrayList<sparse_array_entry>{allocator};
   for_each_sparse_index(sparse, name, allocator,
@@ -100,10 +109,7 @@ static fn collect_sparse_array_entries(const StringMap<String> &sparse,
                               index, String{allocator, value.view()}
                           });
                         });
-  out.sort([](const sparse_array_entry &left, const sparse_array_entry &right) {
-    return left.index < right.index;
-  });
-  return out;
+  return steal(out).make_sorted(sparse_array_entry_comparator{});
 }
 
 fn EvalContext::clear_sparse_array(StringView name) throws -> void
