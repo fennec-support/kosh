@@ -443,17 +443,19 @@ fn Du::execute(const ExecContext &ec, EvalContext &cxt,
                         allocator);
   }
 
-  let output_order = ArrayList<usize>{allocator};
-  output_order.reserve(output_rows.count());
+  let collected_output_order = ArrayList<usize>{allocator};
+  collected_output_order.reserve(output_rows.count());
   for (usize index = 0; index < output_rows.count(); index++)
-    output_order.push(index);
-  output_order.sort([&](usize left_index, usize right_index) {
-    let const &left = output_rows[left_index];
-    let const &right = output_rows[right_index];
-    if (left.size_bytes != right.size_bytes)
-      return left.size_bytes > right.size_bytes;
-    return left.path.view() < right.path.view();
-  });
+    collected_output_order.push(index);
+  let const output_order =
+      steal(collected_output_order)
+          .make_sorted([&](usize left_index, usize right_index) {
+            let const &left = output_rows[left_index];
+            let const &right = output_rows[right_index];
+            if (left.size_bytes != right.size_bytes)
+              return left.size_bytes > right.size_bytes;
+            return left.path.view() < right.path.view();
+          });
 
   let rendered_sizes = ArrayList<String>{allocator};
   rendered_sizes.reserve(output_order.count());
