@@ -565,27 +565,17 @@ fn apply_or_reject_option(EvalContext &cxt, const set_option_descriptor &option,
   }
 }
 
-fn list_options(const EvalContext &cxt,
-                bool should_prepare_for_reuse = false) throws -> String
+fn list_options(const EvalContext &cxt) throws -> String
 {
   let out = String{heap_allocator()};
   for (let const &option : SET_OPTIONS) {
     if (!option.is_listed || !option_is_available(cxt, option)) {
       continue;
     }
-    if (should_prepare_for_reuse &&
-        (option.id == shell_option_id::Xtrace ||
-         option.behavior == set_option_behavior::Posix))
-    {
-      continue;
-    }
     out += option_is_on(cxt, option) ? "set -o " : "set +o ";
     out += option.name;
     out += '\n';
   }
-  if (should_prepare_for_reuse)
-    out += cxt.shell_option_state(shell_option_id::Xtrace) ? "set -o xtrace\n"
-                                                           : "set +o xtrace\n";
   return out;
 }
 
