@@ -216,16 +216,22 @@ struct control_flow
 
 static constexpr u64 EXTERNAL_SOURCE_GENERATION = UINT64_MAX;
 
+enum class source_frame_kind : u8
+{
+  Ordinary,
+  CliRoot,
+  SoleCliRoot,
+};
+
 struct source_frame
 {
   source_frame(String origin, SourceLocation call_site,
                const String *parent_source, u64 parent_source_generation,
-               String source_path, bool is_cli_root, bool is_only_root_source)
+               String source_path, source_frame_kind kind)
       : origin(steal(origin)), call_site(steal(call_site)),
         parent_source(parent_source),
         parent_source_generation(parent_source_generation),
-        source_path(steal(source_path)), is_cli_root(is_cli_root),
-        is_only_root_source(is_only_root_source)
+        source_path(steal(source_path)), kind(kind)
   {}
 
   String origin;
@@ -234,8 +240,7 @@ struct source_frame
   u64 parent_source_generation;
   String source_path;
   usize function_call_depth{0};
-  bool is_cli_root;
-  bool is_only_root_source;
+  source_frame_kind kind;
   bool was_printed{false};
   bool should_defer_trace{false};
   bool has_deferred_trace{false};

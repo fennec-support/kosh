@@ -1444,8 +1444,11 @@ fn kosh_main(int argc, char **argv) -> int
 
     if (root_frame_call_site.has_value() && !should_suppress_root_source_trace)
     {
+      let const root_frame_kind = FLAG_COMMAND.count() <= 1
+                                      ? koshka::source_frame_kind::SoleCliRoot
+                                      : koshka::source_frame_kind::CliRoot;
       context.push_root_source_frame(&cli_invocation, *root_frame_call_site,
-                                     FLAG_COMMAND.count() <= 1);
+                                     root_frame_kind);
     }
     defer
     {

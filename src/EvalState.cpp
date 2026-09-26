@@ -261,14 +261,16 @@ pure fn EvalContext::current_history_event_number() const wontthrow
 
 fn EvalContext::push_root_source_frame(const String *parent_source,
                                        SourceLocation call_site,
-                                       bool is_only_root_source) throws -> void
+                                       source_frame_kind kind) throws -> void
 {
+  ASSERT(kind != source_frame_kind::Ordinary);
+
   source_store().m_source_frames.push(source_frame{
       String{heap_allocator(), StringView{"the command line"}},
       call_site,
       parent_source, source_generation_for(parent_source),
       String{heap_allocator()},
-      true, is_only_root_source
+      kind
   });
 }
 
@@ -315,7 +317,7 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
     let const *left_source = borrowed_frame_source(left);
     let const *right_source = borrowed_frame_source(right);
 
-    return left.is_cli_root == right.is_cli_root &&
+    return left.kind == right.kind &&
            do_location_match(left.call_site, right.call_site) &&
            left.origin == right.origin &&
            left.source_path == right.source_path &&
@@ -331,7 +333,7 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
   let has_traceable_source_frame = false;
   for (let const &frame : source_store().m_source_frames)
     if (borrowed_frame_source(frame) != nullptr &&
-        (!frame.is_cli_root || !frame.is_only_root_source))
+        frame.kind != source_frame_kind::SoleCliRoot)
     {
       has_traceable_source_frame = true;
       break;

@@ -433,8 +433,7 @@ fn EvalContext::push_substitution_source_frame(const SourceLocation &location,
       String{heap_allocator(), origin},
       location, current_source(),
       source_generation_for(current_source()), String{heap_allocator()},
-      false,
-      false
+      source_frame_kind::Ordinary
   });
   return true;
 }

@@ -2286,7 +2286,7 @@ public:
   }
   fn push_root_source_frame(const String *parent_source,
                             SourceLocation call_site,
-                            bool is_only_root_source) throws -> void;
+                            source_frame_kind kind) throws -> void;
   fn pop_root_source_frame() wontthrow -> void;
   pure fn get_retained_source_generation() const wontthrow -> u64;
   pure fn scan_source_generation(const String *source) const wontthrow -> u64;

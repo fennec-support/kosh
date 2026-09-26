@@ -116,10 +116,10 @@ fn EvalContext::run_program_fallback(ExecContext &ec, mimic_mood mode,
   fallback_context.source_store().m_source_frames.reserve(
       source_store().m_source_frames.count());
   for (let const &frame : source_store().m_source_frames) {
-    fallback_context.source_store().m_source_frames.push(source_frame{
-        String{frame.origin.view()}, frame.call_site, frame.parent_source,
-        frame.parent_source_generation, String{frame.source_path.view()},
-        frame.is_cli_root, frame.is_only_root_source});
+    fallback_context.source_store().m_source_frames.push(
+        source_frame{String{frame.origin.view()}, frame.call_site,
+                     frame.parent_source, frame.parent_source_generation,
+                     String{frame.source_path.view()}, frame.kind});
     fallback_context.source_store().m_source_frames.back().function_call_depth =
         frame.function_call_depth;
     fallback_context.source_store().m_source_frames.back().was_printed =
@@ -272,7 +272,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
   source_store().m_source_frames.push(
       source_frame{String{ec.program().view()}, ec.source_location(),
                    current_source(), source_generation_for(current_source()),
-                   String{script_filename}, false, false});
+                   String{script_filename}, source_frame_kind::Ordinary});
   source_store().m_source_frames.back().should_defer_trace = true;
   source_store().m_source_frames.back().function_call_depth =
       function_store().call_names().count();
@@ -542,7 +542,7 @@ fn EvalContext::run_source(StringView source, StringView origin,
       parent_source, source_generation_for(parent_source),
       filename.has_value() ? String{*filename}
       : String{heap_allocator()},
-      false, false
+      source_frame_kind::Ordinary
   });
   source_store().m_source_frames.back().should_defer_trace =
       frame_is_sourced_file;
