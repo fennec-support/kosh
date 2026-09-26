@@ -54,6 +54,19 @@ struct dump_entry
   i64 modification_time{0};
 };
 
+struct newest_named_entry_comparator
+{
+  template <class Entry>
+  pure fn operator()(const Entry &left, const Entry &right) const wontthrow
+      -> bool
+  {
+    if (left.modification_time != right.modification_time)
+      return left.modification_time > right.modification_time;
+
+    return left.name.view() < right.name.view();
+  }
+};
+
 fn trimmed_line(StringView text) wontthrow -> StringView
 {
   usize length = text.length;
@@ -164,11 +177,12 @@ fn program_of_dump(StringView name, Allocator allocator) throws -> String
 }
 
 fn collect_dumps(StringView directory, Allocator allocator) throws
-    -> ArrayList<dump_entry>
+    -> SortedArrayList<dump_entry, newest_named_entry_comparator>
 {
   let dumps = ArrayList<dump_entry>{allocator};
   let const children = os::list_directory_status(directory, allocator);
-  if (!children.has_value()) return dumps;
+  if (!children.has_value())
+    return steal(dumps).make_sorted(newest_named_entry_comparator{});
 
   dumps.reserve(children->count());
   for (usize index = 0; index < children->count(); index++) {
@@ -188,15 +202,7 @@ fn collect_dumps(StringView directory, Allocator allocator) throws
     dumps.push(steal(dump));
   }
 
-  dumps.sort([](const dump_entry &left, const dump_entry &right) {
-    if (left.modification_time != right.modification_time) {
-      return left.modification_time > right.modification_time;
-    }
-
-    return left.name.view() < right.name.view();
-  });
-
-  return dumps;
+  return steal(dumps).make_sorted(newest_named_entry_comparator{});
 }
 
 fn append_kernel_settings(String &output, bool should_color) throws -> void
@@ -381,11 +387,12 @@ struct format_probe
 };
 
 fn collect_log_entries(StringView directory, Allocator allocator) throws
-    -> ArrayList<log_entry>
+    -> SortedArrayList<log_entry, newest_named_entry_comparator>
 {
   let entries = ArrayList<log_entry>{allocator};
   let const children = os::list_directory_status(directory, allocator);
-  if (!children.has_value()) return entries;
+  if (!children.has_value())
+    return steal(entries).make_sorted(newest_named_entry_comparator{});
 
   entries.reserve(children->count());
   format_probe probes[FORMAT_BATCH_COUNT]{};
@@ -442,15 +449,7 @@ fn collect_log_entries(StringView directory, Allocator allocator) throws
   }
   if (probe_count != 0) do_flush_probes();
 
-  entries.sort([](const log_entry &left, const log_entry &right) {
-    if (left.modification_time != right.modification_time) {
-      return left.modification_time > right.modification_time;
-    }
-
-    return left.name.view() < right.name.view();
-  });
-
-  return entries;
+  return steal(entries).make_sorted(newest_named_entry_comparator{});
 }
 
 fn append_log_report(String &output, Allocator allocator,
