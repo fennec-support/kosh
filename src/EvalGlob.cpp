@@ -646,7 +646,7 @@ fn EvalContext::expand_colon_tildes(WordSegment &segment,
 
 hot fn EvalContext::expand_path(glob_field field,
                                 const SourceLocation &location) throws
-    -> ArrayList<String>
+    -> SortedArrayList<String, order_comparator<String>>
 {
   let const scratch = scratch_allocator();
 
@@ -659,7 +659,7 @@ hot fn EvalContext::expand_path(glob_field field,
   if (!has_glob) {
     let single_result = ArrayList<String>{scratch};
     single_result.push(steal(field.text));
-    return single_result;
+    return steal(single_result).make_sorted(sort_order::ascending);
   }
 
   /* The pattern is kept so a glob that matches None falls back to it. */
@@ -674,8 +674,6 @@ hot fn EvalContext::expand_path(glob_field field,
   values.reserve(fields.count());
   for (let &f : fields)
     values.push(steal(f.text));
-
-  values.sort();
 
   LOG(All, "the glob pattern '%s' matched %zu paths", pattern.c_str(),
       values.count());
@@ -701,7 +699,7 @@ hot fn EvalContext::expand_path(glob_field field,
     }
   }
 
-  return values;
+  return steal(values).make_sorted(sort_order::ascending);
 }
 
 /* The compgen -G probe, a glob expansion that never trips failglob. */

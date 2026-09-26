@@ -3431,7 +3431,7 @@ protected:
   fn expand_path_recurse(ArrayList<glob_field> fields) throws
       -> ArrayList<glob_field>;
   fn expand_path(glob_field field, const SourceLocation &location) throws
-      -> ArrayList<String>;
+      -> SortedArrayList<String, order_comparator<String>>;
 
   fn expand_tilde(WordSegment &leading_segment, bool word_continues,
                   bool stop_at_colon) const throws -> void;
