@@ -41,10 +41,16 @@ namespace koshka::koshkit {
 
 namespace {
 
-fn print_progress(const ExecContext &ec, bool should_show,
-                  StringView message) throws -> void
+enum class goodcore_progress_mode : u8
 {
-  if (!should_show) return;
+  Hidden,
+  Visible,
+};
+
+fn print_progress(const ExecContext &ec, StringView message,
+                  goodcore_progress_mode mode) throws -> void
+{
+  if (mode == goodcore_progress_mode::Hidden) return;
   let const is_terminal = colors::stderr_is_a_terminal();
   let const should_color = colors::stderr_wants_color();
   let output = String{heap_allocator()};
@@ -246,10 +252,13 @@ fn GoodCore::execute(
 
   let const allocator = cxt.scratch_allocator();
   let const has_pid = FLAG_GOODCORE_PID.is_set();
-  let const should_show_progress = !FLAG_GOODCORE_QUIET.is_enabled();
+  let const progress_mode = FLAG_GOODCORE_QUIET.is_enabled()
+                                 ? goodcore_progress_mode::Hidden
+                                 : goodcore_progress_mode::Visible;
   defer
   {
-    if (should_show_progress && colors::stderr_is_a_terminal())
+    if (progress_mode == goodcore_progress_mode::Visible &&
+        colors::stderr_is_a_terminal())
       ec.print_to_stderr("\r\x1b[2K\n");
   };
   if (!has_pid && operands.is_empty()) {
@@ -349,7 +358,7 @@ fn GoodCore::execute(
   let core = dump_directory.clone();
   core.append("core");
   if (has_pid) {
-    print_progress(ec, should_show_progress, "capturing process core");
+    print_progress(ec, "capturing process core", progress_mode);
     let const platform_tools = os::goodcore_tools();
     let debugger = Maybe<Path>{};
     if (!platform_tools.debugger_program.is_empty())
@@ -390,7 +399,7 @@ fn GoodCore::execute(
       }
     }
   } else {
-    print_progress(ec, should_show_progress, "copying existing core");
+    print_progress(ec, "copying existing core", progress_mode);
     let const source = Path{operands[0].view()}.to_absolute();
     if (!source.is_regular_file()) {
       report_soft_koshkit_error(ec, cxt, "core file not found",
@@ -417,17 +426,17 @@ fn GoodCore::execute(
     return 1;
   }
 
-  print_progress(ec, should_show_progress,
-                 "collecting executable and libraries");
+  print_progress(ec, "collecting executable and libraries", progress_mode);
   collect_core_libraries(cxt, core.view(), binary->view(), paths, allocator);
-  print_progress(ec, should_show_progress,
+  print_progress(ec,
                  String{"collected "} + String::from(paths.count(), allocator) +
-                     " candidate files");
+                     " candidate files",
+                 progress_mode);
 
   append_unique_path(paths, binary->view(), allocator);
   usize copied_path_count = 0;
   for (let const &path : paths) {
-    print_progress(ec, should_show_progress, String{"copying "} + path.view());
+    print_progress(ec, String{"copying "} + path.view(), progress_mode);
     if (!copy_into_root(stage, path.view())) {
       report_soft_koshkit_error(ec, cxt, "cannot copy required file",
                                 path.view());
@@ -508,12 +517,12 @@ fn GoodCore::execute(
   archive_arguments.push(String{"."});
   bool did_archive = false;
   if (FLAG_GOODCORE_NO_COMPRESS.is_enabled()) {
-    print_progress(ec, should_show_progress, "creating tar archive");
+    print_progress(ec, "creating tar archive", progress_mode);
     did_archive =
         run_tool(*tar, steal(archive_arguments), os::measured_output::Suppress);
   } else if (zstd.has_value()) {
-    print_progress(ec, should_show_progress,
-                   "creating tar archive and compressing with zstd");
+    print_progress(ec, "creating tar archive and compressing with zstd",
+                   progress_mode);
     let const temporary_tar = os::write_to_named_temp_file(
         output.parent(), ".goodcore-tar", StringView{});
     if (!temporary_tar.has_value()) {
@@ -537,8 +546,8 @@ fn GoodCore::execute(
                              os::measured_output::Suppress);
     }
   } else {
-    print_progress(ec, should_show_progress,
-                   "creating tar archive and compressing with gzip");
+    print_progress(ec, "creating tar archive and compressing with gzip",
+                   progress_mode);
     archive_arguments[0] = String{"-czf"};
     did_archive =
         run_tool(*tar, steal(archive_arguments), os::measured_output::Suppress);
