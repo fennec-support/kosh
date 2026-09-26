@@ -795,7 +795,7 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
       trap_store().m_did_reset_inherited_signal_traps,
       variable_attributes(),
       exported_names(),
-      m_environment_undo_log.count(),
+      environment_store().environment_undo_log().count(),
       RuntimeState::capture(*this),
       m_program_resolver,
       runtime_control_store().init_moods_sourcing_mask(),
@@ -917,15 +917,15 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
   /* The logged environment writes revert newest first, before the PATH re-point
      below so an exported PATH reads its restored value. */
   LOG(Debug, "rewinding %zu environment writes made inside the subshell",
-      m_environment_undo_log.count() - snapshot.environment_undo_mark);
-  while (m_environment_undo_log.count() > snapshot.environment_undo_mark) {
-    let const &entry = m_environment_undo_log.back();
+      environment_store().environment_undo_log().count() - snapshot.environment_undo_mark);
+  while (environment_store().environment_undo_log().count() > snapshot.environment_undo_mark) {
+    let const &entry = environment_store().environment_undo_log().back();
     if (entry.previous_value)
       os::set_environment_variable(entry.name.view(),
                                    entry.previous_value->view());
     else
       os::unset_environment_variable(entry.name.view());
-    m_environment_undo_log.pop_back();
+    environment_store().environment_undo_log().pop_back();
   }
 
   if (let const ifs =

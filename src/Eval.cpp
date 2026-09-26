@@ -177,13 +177,13 @@ hot fn EvalContext::assign_variable(StringView name, StringView value) throws
   default: break;
   }
 
-  if (m_confined_write_depth > 0) [[unlikely]] {
+  if (environment_store().m_confined_write_depth > 0) [[unlikely]] {
     let const previous = lookup_shell_variable(name);
     let saved = Maybe<String>{};
     if (previous.has_value()) saved = String{previous->view()};
     let const saved_definition = special_variable_definition_location(name);
 
-    m_confined_write_log.push(
+    environment_store().confined_write_log().push(
         environment_undo_entry{String{name}, steal(saved), saved_definition});
   }
 
@@ -201,7 +201,7 @@ hot fn EvalContext::assign_variable(StringView name, StringView value) throws
         name, source_store().m_current_location);
   if (is_exported(name)) {
     if (execution_store().subshell_depth() > 0)
-      m_environment_undo_log.push(environment_undo_entry{
+      environment_store().environment_undo_log().push(environment_undo_entry{
           String{name}, os::get_environment_variable(name), None});
     os::set_environment_variable(name, value);
   }
@@ -227,29 +227,29 @@ fn EvalContext::restore_temporary_shell_variable(
 fn EvalContext::begin_confined_variable_writes() wontthrow -> usize
 {
   LOG(Debug, "confining variable writes above mark %zu",
-      m_confined_write_log.count());
+      environment_store().confined_write_log().count());
 
-  if (m_confined_write_depth == 0) {
-    m_confined_seconds_base = m_seconds_base;
-    m_confined_random_state = m_random_state;
-    m_was_confined_ignoreeof_enabled =
+  if (environment_store().m_confined_write_depth == 0) {
+    environment_store().m_confined_seconds_base = m_seconds_base;
+    environment_store().m_confined_random_state = m_random_state;
+    environment_store().m_was_confined_ignoreeof_enabled =
         m_runtime.option_is_enabled(shell_option_id::Ignoreeof);
   }
 
-  m_confined_write_depth++;
-  return m_confined_write_log.count();
+  environment_store().m_confined_write_depth++;
+  return environment_store().confined_write_log().count();
 }
 
 fn EvalContext::rollback_confined_variable_writes(usize mark) wontthrow -> void
 {
-  ASSERT(m_confined_write_depth > 0);
-  m_confined_write_depth--;
+  ASSERT(environment_store().m_confined_write_depth > 0);
+  environment_store().m_confined_write_depth--;
   LOG(Debug, "rewinding %zu confined variable writes",
-      m_confined_write_log.count() - mark);
+      environment_store().confined_write_log().count() - mark);
 
-  while (m_confined_write_log.count() > mark) {
+  while (environment_store().confined_write_log().count() > mark) {
     try {
-      let const &entry = m_confined_write_log.back();
+      let const &entry = environment_store().confined_write_log().back();
       let const name = entry.name.view();
       restore_temporary_shell_variable(
           name, entry.previous_value,
@@ -271,14 +271,14 @@ fn EvalContext::rollback_confined_variable_writes(usize mark) wontthrow -> void
       LOG(Info, "a confined variable write could not be rewound");
     }
 
-    m_confined_write_log.pop_back();
+    environment_store().confined_write_log().pop_back();
   }
 
-  if (m_confined_write_depth == 0) {
-    m_seconds_base = m_confined_seconds_base;
-    m_random_state = m_confined_random_state;
+  if (environment_store().m_confined_write_depth == 0) {
+    m_seconds_base = environment_store().m_confined_seconds_base;
+    m_random_state = environment_store().m_confined_random_state;
     m_runtime.set_option(shell_option_id::Ignoreeof,
-                         m_was_confined_ignoreeof_enabled);
+                         environment_store().m_was_confined_ignoreeof_enabled);
   }
 }
 
@@ -852,7 +852,7 @@ pure fn EvalContext::special_variable_definition_location(
 fn EvalContext::record_environment_change(StringView name) throws -> void
 {
   if (execution_store().subshell_depth() == 0) return;
-  m_environment_undo_log.push(environment_undo_entry{
+  environment_store().environment_undo_log().push(environment_undo_entry{
       String{name}, os::get_environment_variable(name), None});
 }
 

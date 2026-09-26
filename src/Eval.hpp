@@ -1418,6 +1418,27 @@ private:
   ArrayList<subshell_saved_descriptor> m_saved_descriptors{heap_allocator()};
 };
 
+class EnvironmentStore
+{
+public:
+  fn environment_undo_log() wontthrow -> ArrayList<environment_undo_entry> &
+  {
+    return m_environment_undo_log;
+  }
+  fn confined_write_log() wontthrow -> ArrayList<environment_undo_entry> &
+  {
+    return m_confined_write_log;
+  }
+  usize m_confined_write_depth{0};
+  i64 m_confined_seconds_base{0};
+  u64 m_confined_random_state{0};
+  bool m_was_confined_ignoreeof_enabled{false};
+
+private:
+  ArrayList<environment_undo_entry> m_environment_undo_log{heap_allocator()};
+  ArrayList<environment_undo_entry> m_confined_write_log{heap_allocator()};
+};
+
 class EvalContext
 {
 public:
@@ -1458,6 +1479,14 @@ public:
   pure fn subshell_store() const wontthrow -> const SubshellStore &
   {
     return m_subshell_store;
+  }
+  fn environment_store() wontthrow -> EnvironmentStore &
+  {
+    return m_environment_store;
+  }
+  pure fn environment_store() const wontthrow -> const EnvironmentStore &
+  {
+    return m_environment_store;
   }
   fn trap_store() wontthrow -> TrapStore & { return m_trap_store; }
   pure fn trap_store() const wontthrow -> const TrapStore &
@@ -3303,18 +3332,7 @@ protected:
      store; the context only coordinates their lifecycle with snapshots. */
   SubshellStore m_subshell_store{};
 
-  /* The prior values of process-environment names written while a subshell ran,
-     rewound by restore_state on the subshell's exit. The log is appended to
-     only while m_subshell_depth is above zero, so a top-level export pays
-     nothing. */
-  ArrayList<environment_undo_entry> m_environment_undo_log{heap_allocator()};
-  ArrayList<environment_undo_entry> m_confined_write_log{heap_allocator()};
-  usize m_confined_write_depth{0};
-  /* The dynamic state a stage can write without leaving an undo entry, saved
-     when the outermost confined window opens. */
-  i64 m_confined_seconds_base{0};
-  u64 m_confined_random_state{0};
-  bool m_was_confined_ignoreeof_enabled{false};
+  EnvironmentStore m_environment_store{};
   /* The names currently in the process environment, kept in step with every
      environment write. An assignment tests membership in O(1). A key is the
      ASCII lowercase form of the name where the environment ignores case. */
