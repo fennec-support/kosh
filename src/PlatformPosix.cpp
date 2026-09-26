@@ -1279,13 +1279,6 @@ fn network_sockets(network_socket_process_mode process_mode) throws
   unused(process_mode);
 #endif
 
-  result.sort(
-      [](const network_socket_entry &left, const network_socket_entry &right) {
-        if (left.identity != right.identity)
-          return left.identity < right.identity;
-        return left.process_id < right.process_id;
-      });
-
   return result;
 }
 
