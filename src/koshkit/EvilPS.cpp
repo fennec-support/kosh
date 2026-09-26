@@ -269,14 +269,23 @@ fn compare_nodes(const tree_node &left, const tree_node &right,
   return left.pid < right.pid;
 }
 
-fn sort_nodes(ArrayList<tree_node> &nodes, Maybe<evilps_sort_key> sort_key,
-              report_sampling_mode sampling) throws -> void
+struct tree_node_comparator
 {
-  let const do_compare = [sort_key, sampling](const tree_node &left,
-                                              const tree_node &right) {
+  Maybe<evilps_sort_key> sort_key;
+  report_sampling_mode sampling;
+
+  pure fn operator()(const tree_node &left,
+                     const tree_node &right) const wontthrow->bool
+  {
     return compare_nodes(left, right, sort_key, sampling);
-  };
-  nodes.sort(do_compare);
+  }
+};
+
+fn sort_nodes(ArrayList<tree_node> nodes, Maybe<evilps_sort_key> sort_key,
+              report_sampling_mode sampling) throws
+    -> SortedArrayList<tree_node, tree_node_comparator>
+{
+  return steal(nodes).make_sorted(tree_node_comparator{sort_key, sampling});
 }
 
 fn append_cpu_value(String &output, const tree_node &node, Allocator allocator,
@@ -548,7 +557,7 @@ fn mark_search_visibility(ArrayList<tree_node> &nodes, StringView search) throws
 
 fn render_process_snapshot(const ExecContext &ec, EvalContext &cxt,
                            Allocator allocator, String &output,
-                           ArrayList<tree_node> &nodes,
+                           ArrayList<tree_node> &unordered_nodes,
                            const ArrayList<String> &operands,
                            const ArrayList<SourceLocation> &operand_locations,
                            usize output_limit, u32 viewport_rows,
@@ -558,13 +567,14 @@ fn render_process_snapshot(const ExecContext &ec, EvalContext &cxt,
                            report_sampling_mode sampling,
                            evilps_color_mode color_mode) throws -> i32
 {
-  if (nodes.is_empty()) {
+  if (unordered_nodes.is_empty()) {
     report_soft_koshkit_error(ec, cxt, "the process listing is unavailable",
                               "this platform exposes no process table");
     return 1;
   }
 
-  sort_nodes(nodes, sort_key, sampling);
+  let nodes = sort_nodes(steal(unordered_nodes), sort_key, sampling);
+  defer { unordered_nodes = steal(nodes).into_array_list(); };
   mark_search_visibility(nodes, search);
 
   i64 root_pid = 1;
