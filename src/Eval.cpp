@@ -1523,7 +1523,8 @@ fn EvalContext::get_alias(StringView name) const throws -> Maybe<String>
   return None;
 }
 
-fn EvalContext::alias_definitions() const throws -> ArrayList<String>
+fn EvalContext::alias_definitions() const throws
+    -> SortedArrayList<String, order_comparator<String>>
 {
   let out = ArrayList<String>{heap_allocator()};
   scope_store().aliases().for_each([&out](StringView key, const String &value) {
@@ -1532,8 +1533,7 @@ fn EvalContext::alias_definitions() const throws -> ArrayList<String>
     append_shell_quoted_arg(definition, value.view());
     out.push(steal(definition));
   });
-  out.sort();
-  return out;
+  return steal(out).make_sorted(sort_order::ascending);
 }
 
 fn EvalContext::alias_names() const throws -> HashSet

@@ -2310,7 +2310,8 @@ public:
   fn set_alias(StringView name, StringView value) throws -> void;
   fn remove_alias(StringView name) throws -> bool;
   fn get_alias(StringView name) const throws -> Maybe<String>;
-  fn alias_definitions() const throws -> ArrayList<String>;
+  fn alias_definitions() const throws
+      -> SortedArrayList<String, order_comparator<String>>;
   fn alias_names() const throws -> HashSet;
   template <typename Callback>
   fn for_each_alias_name(Callback callback) const throws -> void
