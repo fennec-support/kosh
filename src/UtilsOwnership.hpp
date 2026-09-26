@@ -26,15 +26,21 @@ enum class ownership_traversal_mode : u8
   Recursive,
 };
 
+enum class ownership_symlink_mode : u8
+{
+  Follow,
+  NoFollow,
+};
+
 fn resolve_user_id(StringView text) throws -> Maybe<u32>;
 fn resolve_group_id(StringView text) throws -> Maybe<u32>;
 fn change_path_ownership(const ExecContext &ec, EvalContext &cxt,
                          StringView utility_name, const Path &path,
                          i64 owner_id, i64 group_id,
-                         ownership_traversal_mode traversal_mode,
-                         bool should_not_dereference,
                          usize command_line_follow_position,
-                         usize follow_position, usize physical_position) throws
+                         usize follow_position, usize physical_position,
+                         ownership_traversal_mode traversal_mode,
+                         ownership_symlink_mode argument_symlink_mode) throws
     -> bool;
 
 } /* namespace utils */

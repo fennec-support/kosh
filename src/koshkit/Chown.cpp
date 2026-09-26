@@ -104,12 +104,14 @@ fn Chown::execute(const ExecContext &ec, EvalContext &cxt,
             ec, cxt, "chown",
             Path{operands[index].view(), cxt.scratch_allocator()}, owner_id,
             group_id,
+            FLAG_CHOWN_COMMAND_LINE_FOLLOW.position(),
+            FLAG_CHOWN_FOLLOW.position(), FLAG_CHOWN_PHYSICAL.position(),
             FLAG_CHOWN_RECURSIVE.is_enabled()
                 ? utils::ownership_traversal_mode::Recursive
                 : utils::ownership_traversal_mode::SinglePath,
-            FLAG_CHOWN_NO_DEREFERENCE.is_enabled(),
-            FLAG_CHOWN_COMMAND_LINE_FOLLOW.position(),
-            FLAG_CHOWN_FOLLOW.position(), FLAG_CHOWN_PHYSICAL.position()))
+            FLAG_CHOWN_NO_DEREFERENCE.is_enabled()
+                ? utils::ownership_symlink_mode::NoFollow
+                : utils::ownership_symlink_mode::Follow))
       status = 1;
     if (os::INTERRUPT_REQUESTED) return 130;
   }

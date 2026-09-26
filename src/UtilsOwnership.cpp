@@ -39,15 +39,22 @@ static fn parse_numeric_id(StringView text) wontthrow -> Maybe<u32>
 static fn change_path_ownership_recursive(
     const ExecContext &ec, EvalContext &cxt, StringView utility_name,
     const Path &path, i64 owner_id, i64 group_id,
-    ownership_traversal_mode traversal_mode,
-    bool should_follow_symlink, bool should_follow_nested_symlinks,
     ArrayList<ownership_directory_identity> &active_directories,
     const os::file_status *known_path_status = nullptr,
     const os::file_status *known_followed_status = nullptr,
-    bool was_followed_status_queried = false) throws -> bool
+    bool was_followed_status_queried = false,
+    ownership_traversal_mode traversal_mode =
+        ownership_traversal_mode::Recursive,
+    ownership_symlink_mode symlink_mode = ownership_symlink_mode::Follow,
+    ownership_symlink_mode nested_symlink_mode =
+        ownership_symlink_mode::Follow) throws -> bool
 {
   let const is_recursive =
       traversal_mode == ownership_traversal_mode::Recursive;
+  let const should_follow_symlink =
+      symlink_mode == ownership_symlink_mode::Follow;
+  let const should_follow_nested_symlinks =
+      nested_symlink_mode == ownership_symlink_mode::Follow;
   os::file_status path_status{};
   if (known_path_status != nullptr) {
     path_status = *known_path_status;
@@ -179,10 +186,14 @@ static fn change_path_ownership_recursive(
 
     if (!change_path_ownership_recursive(
             ec, cxt, utility_name, child_paths[child_position], owner_id,
-            group_id, ownership_traversal_mode::Recursive,
-            should_follow_nested_symlinks,
-            should_follow_nested_symlinks, active_directories, child_status,
-            known_child_followed_status, was_child_followed_status_queried))
+            group_id, active_directories, child_status,
+            known_child_followed_status,
+            was_child_followed_status_queried,
+            ownership_traversal_mode::Recursive,
+            should_follow_nested_symlinks ? ownership_symlink_mode::Follow
+                                          : ownership_symlink_mode::NoFollow,
+            should_follow_nested_symlinks ? ownership_symlink_mode::Follow
+                                          : ownership_symlink_mode::NoFollow))
       did_succeed = false;
   }
 
@@ -208,10 +219,10 @@ fn resolve_group_id(StringView text) throws -> Maybe<u32>
 fn change_path_ownership(const ExecContext &ec, EvalContext &cxt,
                          StringView utility_name, const Path &path,
                          i64 owner_id, i64 group_id,
-                         ownership_traversal_mode traversal_mode,
-                         bool should_not_dereference,
                          usize command_line_follow_position,
-                         usize follow_position, usize physical_position) throws
+                         usize follow_position, usize physical_position,
+                         ownership_traversal_mode traversal_mode,
+                         ownership_symlink_mode argument_symlink_mode) throws
     -> bool
 {
   let const is_recursive =
@@ -229,14 +240,18 @@ fn change_path_ownership(const ExecContext &ec, EvalContext &cxt,
       (command_line_follow_position == traversal_position &&
        traversal_position != 0);
   let const should_follow_argument =
-      !should_not_dereference &&
+      argument_symlink_mode == ownership_symlink_mode::Follow &&
       (!is_recursive || should_follow_command_line);
   let active_directories =
       ArrayList<ownership_directory_identity>{heap_allocator()};
 
   return change_path_ownership_recursive(
-      ec, cxt, utility_name, path, owner_id, group_id, traversal_mode,
-      should_follow_argument, should_follow_nested, active_directories);
+      ec, cxt, utility_name, path, owner_id, group_id, active_directories,
+      nullptr, nullptr, false, traversal_mode,
+      should_follow_argument ? ownership_symlink_mode::Follow
+                             : ownership_symlink_mode::NoFollow,
+      should_follow_nested ? ownership_symlink_mode::Follow
+                           : ownership_symlink_mode::NoFollow);
 }
 
 } /* namespace koshka::utils */
