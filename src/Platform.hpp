@@ -998,8 +998,15 @@ pure constexpr fn file_status_matches(const file_status &expected,
 
 fn stat_path(StringView path, file_status &status) wontthrow -> bool;
 fn stat_path_following(StringView path, file_status &status) wontthrow -> bool;
+
+enum class process_file_match_scope : u8
+{
+  File,
+  Filesystem,
+};
+
 fn process_file_query_is_supported(const file_status &status,
-                                   bool should_match_filesystem) wontthrow
+                                   process_file_match_scope scope) wontthrow
     -> bool;
 
 fn format_mode_string(u32 mode) throws -> String;

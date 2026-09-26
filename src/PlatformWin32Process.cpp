@@ -2581,10 +2581,11 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
 }
 
 fn process_file_query_is_supported(const file_status &status,
-                                   bool should_match_filesystem) wontthrow
+                                   process_file_match_scope scope) wontthrow
     -> bool
 {
-  return !should_match_filesystem && file_type_letter(status.mode) != 'd';
+  return scope == process_file_match_scope::File &&
+         file_type_letter(status.mode) != 'd';
 }
 
 fn process_owner_name(u32 pid, u32 owner_id, Allocator allocator) throws

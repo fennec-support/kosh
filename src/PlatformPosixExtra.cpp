@@ -1082,11 +1082,11 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
 }
 
 fn process_file_query_is_supported(const file_status &status,
-                                   bool should_match_filesystem) wontthrow
+                                   process_file_match_scope scope) wontthrow
     -> bool
 {
   unused(status);
-  unused(should_match_filesystem);
+  unused(scope);
   return true;
 }
 

@@ -90,6 +90,9 @@ fn Fuser::execute(const ExecContext &ec, EvalContext &cxt,
   let const results = batch.execute();
 
   let queries = ArrayList<os::process_file_query>{allocator};
+  let const match_scope = FLAG_FUSER_FILESYSTEM.is_enabled()
+                               ? os::process_file_match_scope::Filesystem
+                               : os::process_file_match_scope::File;
   i32 status = 0;
   for (usize operand_position = 0; operand_position < operands.count();
        operand_position++)
@@ -105,8 +108,7 @@ fn Fuser::execute(const ExecContext &ec, EvalContext &cxt,
     }
 
     let const &file_status = file_statuses[operand_position];
-    if (!os::process_file_query_is_supported(
-            file_status, FLAG_FUSER_FILESYSTEM.is_enabled()))
+    if (!os::process_file_query_is_supported(file_status, match_scope))
     {
       report_soft_koshkit_util_error(
           ec, cxt, operand_locations[operand_position], args[0].view(),
