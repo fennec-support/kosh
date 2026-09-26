@@ -260,15 +260,15 @@ fn write_system_log(const system_log_options &options) wontthrow -> bool
   }
   event_type = *event_type_value;
 
-  let const source_name =
-      String{heap_allocator(), tag.is_empty() ? "kosh" : tag};
+  let const source_name = String{heap_allocator(),
+                                 options.tag.is_empty() ? "kosh" : options.tag};
   let const event_source = RegisterEventSourceA(nullptr, source_name.c_str());
   if (event_source == nullptr) return false;
   defer { DeregisterEventSource(event_source); };
   const char *event_strings[] = {output.c_str()};
   let const was_reported = ReportEventA(event_source, event_type, 0, 0, nullptr,
                                         1, 0, event_strings, nullptr) != FALSE;
-  if (should_copy_to_stderr) {
+  if (options.should_copy_to_stderr) {
     unused(write_fd(KOSH_STDERR, output.view().data, output.length()));
   }
 

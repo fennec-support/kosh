@@ -141,8 +141,8 @@ fn run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
     nohup_output = CreateFileW(L"nohup.out", FILE_APPEND_DATA,
                                FILE_SHARE_READ | FILE_SHARE_WRITE, &inheritable,
                                OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (nohup_output == INVALID_HANDLE_VALUE && !home.is_empty()) {
-      let home_output = String{heap_allocator(), home};
+    if (nohup_output == INVALID_HANDLE_VALUE && !options.home.is_empty()) {
+      let home_output = String{heap_allocator(), options.home};
       if (home_output.back() != '/' && home_output.back() != '\\') {
         home_output += '/';
       }
@@ -159,13 +159,13 @@ fn run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
     child_output = nohup_output;
   }
   if (is_fd_a_tty(child_error)) child_error = child_output;
-  windows_measured_launch_options options{};
-  options.creation_flags = CREATE_NEW_PROCESS_GROUP;
-  options.input = child_input;
-  options.output = child_output;
-  options.error = child_error;
+  windows_measured_launch_options launch_options{};
+  launch_options.creation_flags = CREATE_NEW_PROCESS_GROUP;
+  launch_options.input = child_input;
+  launch_options.output = child_output;
+  launch_options.error = child_error;
   let const result =
-      run_measured_with_options(argv, measured_output::Inherit, options);
+      run_measured_with_options(argv, measured_output::Inherit, launch_options);
   if (!result.has_value()) return None;
   return static_cast<i32>(result->exit_status);
 }
