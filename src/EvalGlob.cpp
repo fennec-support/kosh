@@ -704,7 +704,7 @@ hot fn EvalContext::expand_path(glob_field field,
 
 /* The compgen -G probe, a glob expansion that never trips failglob. */
 fn EvalContext::expand_glob_lenient(StringView pattern) throws
-    -> ArrayList<String>
+    -> SortedArrayList<String, order_comparator<String>>
 {
   let const scratch = scratch_allocator();
   let values = ArrayList<String>{scratch};
@@ -722,16 +722,15 @@ fn EvalContext::expand_glob_lenient(StringView pattern) throws
     LOG(Debug, "compgen -G probe of '%.*s' has no glob, checking existence",
         static_cast<int>(pattern.length), pattern.data);
     if (Path{pattern}.exists()) values.push(String{scratch, pattern});
-    return values;
+    return steal(values).make_sorted(sort_order::ascending);
   }
 
   let input = ArrayList<glob_field>{scratch};
   input.push(steal(field));
   for (let &f : expand_path_recurse(steal(input)))
     values.push(steal(f.text));
-  values.sort();
   LOG(Debug, "compgen -G probe matched %zu paths", values.count());
-  return values;
+  return steal(values).make_sorted(sort_order::ascending);
 }
 
 } /* namespace koshka */

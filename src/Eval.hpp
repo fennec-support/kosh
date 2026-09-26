@@ -2554,7 +2554,8 @@ public:
   }
   /* The compgen -G probe, glob matches with failglob suppressed and a plain
      name reported only when the file exists. */
-  fn expand_glob_lenient(StringView pattern) throws -> ArrayList<String>;
+  fn expand_glob_lenient(StringView pattern) throws
+      -> SortedArrayList<String, order_comparator<String>>;
 
   pure fn is_bash_compatible() const wontthrow -> bool
   {
