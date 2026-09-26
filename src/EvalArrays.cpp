@@ -1030,7 +1030,7 @@ fn EvalContext::array_element_is_set(StringView name,
 }
 
 fn EvalContext::matching_prefix_names(StringView prefix) const throws
-    -> ArrayList<String>
+    -> SortedArrayList<String, order_comparator<String>>
 {
   LOG(All, "listing variable names with the prefix '%.*s'",
       static_cast<int>(prefix.length), prefix.data);
@@ -1049,8 +1049,7 @@ fn EvalContext::matching_prefix_names(StringView prefix) const throws
   append_dynamic_variable_names(dynamic_names);
   for (let const dynamic_name : dynamic_names)
     do_consider(dynamic_name);
-  names.sort();
-  return names;
+  return steal(names).make_sorted(sort_order::ascending);
 }
 
 fn EvalContext::collect_array_subscripts(StringView name) const throws

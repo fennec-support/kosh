@@ -2975,7 +2975,8 @@ public:
 
   pure fn terminal_exec_allowed() const wontthrow -> bool;
 
-  fn sorted_variable_assignments() const throws -> ArrayList<String>;
+  fn sorted_variable_assignments() const throws
+      -> SortedArrayList<String, order_comparator<String>>;
 
   fn expand_word_for_assignment(const Word &word) throws -> String;
 
@@ -3418,7 +3419,8 @@ protected:
 
   fn apply_indirect_or_name_listing(StringView body) throws -> String;
 
-  fn matching_prefix_names(StringView prefix) const throws -> ArrayList<String>;
+  fn matching_prefix_names(StringView prefix) const throws
+      -> SortedArrayList<String, order_comparator<String>>;
 
   fn expand_word(const Word &word) throws -> ArrayList<glob_field>;
 

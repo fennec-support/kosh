@@ -732,7 +732,8 @@ fn EvalContext::suggest_similar_variable_name(StringView name) const throws
   return suggestion.take_suggestion();
 }
 
-fn EvalContext::sorted_variable_assignments() const throws -> ArrayList<String>
+fn EvalContext::sorted_variable_assignments() const throws
+    -> SortedArrayList<String, order_comparator<String>>
 {
   let assignments = ArrayList<String>{heap_allocator()};
   assignments.reserve(m_variable_store.shell_variables().count());
@@ -743,8 +744,7 @@ fn EvalContext::sorted_variable_assignments() const throws -> ArrayList<String>
         entry.append(value);
         assignments.push(steal(entry));
       });
-  assignments.sort();
-  return assignments;
+  return steal(assignments).make_sorted(sort_order::ascending);
 }
 
 fn EvalContext::clear_functions() wontthrow -> void
@@ -1133,9 +1133,11 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
 {
   let bootstrap = os::subshell_bootstrap{};
   String &source = bootstrap.payload;
-  let names = ArrayList<String>{heap_allocator()};
-  variable_names().for_each([&](StringView name) { names.push_managed(name); });
-  names.sort();
+  let collected_names = ArrayList<String>{heap_allocator()};
+  variable_names().for_each(
+      [&](StringView name) { collected_names.push_managed(name); });
+  let const names =
+      steal(collected_names).make_sorted(sort_order::ascending);
 
   let const do_append_assignment = [&](StringView name, StringView subscript,
                                        StringView value) throws {
@@ -1307,12 +1309,13 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
   for (let const &name : function_store().call_names())
     append_subshell_bootstrap_text(body, name.view());
 
-  let completion_names = ArrayList<String>{heap_allocator()};
+  let collected_completion_names = ArrayList<String>{heap_allocator()};
   completion_store().specs().for_each(
       [&](StringView command, const completion_spec &) {
-        completion_names.push_managed(command);
+        collected_completion_names.push_managed(command);
       });
-  completion_names.sort();
+  let const completion_names =
+      steal(collected_completion_names).make_sorted(sort_order::ascending);
   append_subshell_bootstrap_u32(body,
                                 static_cast<u32>(completion_names.count()));
 
