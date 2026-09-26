@@ -32,10 +32,17 @@ Help::Help() = default;
 
 pure fn Help::kind() const wontthrow -> Builtin::Kind { return Kind::Help; }
 
+enum class help_synopsis_layout : u8
+{
+  Manpage,
+  Summary,
+};
+
 static fn append_help_synopsis(String &out, StringView name,
                                const SynopsisList &synopsis,
-                               bool should_prefix_name) throws -> void
+                               help_synopsis_layout layout) throws -> void
 {
+  let const should_prefix_name = layout == help_synopsis_layout::Summary;
   if (should_prefix_name) {
     out.append(name);
     out += ": ";
@@ -101,7 +108,8 @@ fn Help::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       out += " - ";
       out.append(description);
       out += "\n\nSYNOPSIS\n    ";
-      append_help_synopsis(out, name.view(), *synopsis, false);
+      append_help_synopsis(out, name.view(), *synopsis,
+                           help_synopsis_layout::Manpage);
       out += "\nDESCRIPTION\n";
       out += wrap_text(description, HELP_INDENT, HELP_WRAP_WIDTH);
       out += "\n\n";
@@ -112,7 +120,8 @@ fn Help::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
     if (FLAG_SUMMARY.is_enabled() && synopsis != nullptr) {
       let out = String{cxt.scratch_allocator()};
-      append_help_synopsis(out, name.view(), *synopsis, true);
+      append_help_synopsis(out, name.view(), *synopsis,
+                           help_synopsis_layout::Summary);
       ec.print_to_stdout(out);
       continue;
     }
