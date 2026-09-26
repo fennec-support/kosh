@@ -35,6 +35,12 @@ namespace koshka {
 
 namespace {
 
+enum class jobs_color_mode : u8
+{
+  Plain,
+  Colored,
+};
+
 pure fn state_word(job::State state) wontthrow -> const char *
 {
   switch (state) {
@@ -53,9 +59,9 @@ pure fn job_marker(const ArrayList<job> &jobs, usize index) wontthrow -> char
   return ' ';
 }
 
-fn state_color(job::State state, bool should_color) throws -> StringView
+fn state_color(job::State state, jobs_color_mode color_mode) throws -> StringView
 {
-  if (!should_color) return StringView{};
+  if (color_mode == jobs_color_mode::Plain) return StringView{};
   switch (state) {
   case job::State::Running: return colors::ansi::BOLD_GREEN;
   case job::State::Stopped: return colors::ansi::BOLD_YELLOW;
@@ -83,7 +89,8 @@ fn Jobs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   cxt.update_jobs();
 
-  let const should_color = should_color_jobs(cxt);
+  let const color_mode = should_color_jobs(cxt) ? jobs_color_mode::Colored
+                                                : jobs_color_mode::Plain;
   let &jobs = cxt.jobs();
 
   LOG(Debug, "jobs listing %zu registered jobs", jobs.count());
@@ -139,11 +146,11 @@ fn Jobs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       out += " ";
     }
 
-    out.append(state_color(job.state, should_color));
+    out.append(state_color(job.state, color_mode));
     let state = StringView{state_word(job.state)};
     out.append(state);
     out.append_repeated(' ', state.length < 7 ? 7 - state.length : 0);
-    if (should_color) out += colors::ansi::RESET;
+    if (color_mode == jobs_color_mode::Colored) out += colors::ansi::RESET;
 
     out += "  ";
     out += job.command.c_str();
