@@ -222,7 +222,7 @@ fn append_namespace_report(String &output, bool should_color,
     }
   }
 
-  relations.sort(
+  let const sorted_relations = steal(relations).make_sorted(
       [](const namespace_relation &left, const namespace_relation &right) {
         if (left.type_index != right.type_index)
           return left.type_index < right.type_index;
@@ -259,7 +259,7 @@ fn append_namespace_report(String &output, bool should_color,
   let cells = ArrayList<report_table_cell_view>{allocator};
   cells.reserve(5);
   if (detail == eviliso_detail_mode::All) {
-    for (let const &relation : relations) {
+    for (let const &relation : sorted_relations) {
       if (!relation.is_available) continue;
       let process_id = String::from(relation.process_id, allocator);
       cells.clear();
@@ -272,15 +272,15 @@ fn append_namespace_report(String &output, bool should_color,
     }
   } else {
     usize relation_index = 0;
-    while (relation_index < relations.count()) {
-      let const &first = relations[relation_index];
+    while (relation_index < sorted_relations.count()) {
+      let const &first = sorted_relations[relation_index];
       if (!first.is_available) {
         relation_index++;
         continue;
       }
       usize group_end = relation_index + 1;
-      while (group_end < relations.count()) {
-        let const &candidate = relations[group_end];
+      while (group_end < sorted_relations.count()) {
+        let const &candidate = sorted_relations[group_end];
         if (!candidate.is_available || candidate.type != first.type ||
             candidate.identifier != first.identifier)
           break;
@@ -317,7 +317,7 @@ fn append_namespace_report(String &output, bool should_color,
                            colors::ansi::BOLD_CYAN);
   bool has_failure = false;
   if (detail == eviliso_detail_mode::All) {
-    for (let const &relation : relations) {
+    for (let const &relation : sorted_relations) {
       if (relation.is_available) continue;
       has_failure = true;
       let const process_id = String::from(relation.process_id, allocator);
@@ -334,8 +334,8 @@ fn append_namespace_report(String &output, bool should_color,
     }
   } else {
     usize relation_index = 0;
-    while (relation_index < relations.count()) {
-      let const &first = relations[relation_index];
+    while (relation_index < sorted_relations.count()) {
+      let const &first = sorted_relations[relation_index];
       if (first.is_available) {
         relation_index++;
         continue;
@@ -343,8 +343,8 @@ fn append_namespace_report(String &output, bool should_color,
       let const reason = first.reason.is_empty() ? StringView{"unknown error"}
                                                  : first.reason.view();
       usize group_end = relation_index + 1;
-      while (group_end < relations.count()) {
-        let const &candidate = relations[group_end];
+      while (group_end < sorted_relations.count()) {
+        let const &candidate = sorted_relations[group_end];
         let const candidate_reason = candidate.reason.is_empty()
                                          ? StringView{"unknown error"}
                                          : candidate.reason.view();
@@ -711,8 +711,9 @@ fn collect_process_cgroup_snapshot(Allocator allocator,
     snapshot.push(steal(record));
   }
 
-  let current = os::enumerate_processes(os::process_detail::ResourceStats);
-  current.sort(
+  let current_unsorted =
+      os::enumerate_processes(os::process_detail::ResourceStats);
+  let const current = steal(current_unsorted).make_sorted(
       [](const os::process_entry &left, const os::process_entry &right) {
         return left.pid < right.pid;
       });
@@ -892,14 +893,15 @@ fn append_cgroup_report(String &output, bool should_color,
     }
   }
 
-  rows.sort([](const cgroup_report_row &left, const cgroup_report_row &right) {
-    if (left.hierarchy_value != right.hierarchy_value)
-      return left.hierarchy_value < right.hierarchy_value;
-    if (left.controller != right.controller)
-      return left.controller < right.controller;
-    if (left.path != right.path) return left.path < right.path;
-    return left.process_id_value < right.process_id_value;
-  });
+  let const sorted_rows = steal(rows).make_sorted(
+      [](const cgroup_report_row &left, const cgroup_report_row &right) {
+        if (left.hierarchy_value != right.hierarchy_value)
+          return left.hierarchy_value < right.hierarchy_value;
+        if (left.controller != right.controller)
+          return left.controller < right.controller;
+        if (left.path != right.path) return left.path < right.path;
+        return left.process_id_value < right.process_id_value;
+      });
 
   let report = ReportTable{allocator};
   report.add_column("HIERARCHY", report_table_alignment::Right,
@@ -919,7 +921,7 @@ fn append_cgroup_report(String &output, bool should_color,
                       colors::ansi::BOLD_CYAN);
   let cells = ArrayList<report_table_cell_view>{allocator};
   cells.reserve(7);
-  for (let const &row : rows) {
+  for (let const &row : sorted_rows) {
     cells.clear();
     cells.push({row.hierarchy.view(), colors::ansi::BOLD_GREEN});
     cells.push({row.controller.view(), colors::ansi::RESET});
@@ -985,7 +987,7 @@ fn append_session_report(String &output, bool should_color, Allocator allocator,
                          eviliso_detail_mode detail) throws -> void
 {
   let sessions = eviliso_sessions();
-  sessions.sort(
+  let const sorted_sessions = steal(sessions).make_sorted(
       [](const os::user_session &left, const os::user_session &right) {
         if (left.user != right.user) return left.user < right.user;
         if (left.terminal != right.terminal)
@@ -994,7 +996,7 @@ fn append_session_report(String &output, bool should_color, Allocator allocator,
       });
 
   let rows = ArrayList<session_report_row>{allocator};
-  for (let const &session : sessions) {
+  for (let const &session : sorted_sessions) {
     let login_time = String{allocator};
     if (detail == eviliso_detail_mode::All) {
       login_time =
@@ -1137,31 +1139,34 @@ fn append_remote_report(String &output, bool should_color,
       detail == eviliso_detail_mode::All
           ? os::network_socket_process_mode::WithProcesses
           : os::network_socket_process_mode::WithoutProcesses);
-  sockets.sort([](const os::network_socket_entry &left,
-                  const os::network_socket_entry &right) {
-    if (left.peer_address != right.peer_address) {
-      return left.peer_address < right.peer_address;
-    }
-    if (left.peer_port != right.peer_port) {
-      return left.peer_port < right.peer_port;
-    }
-    if (left.local_address != right.local_address) {
-      return left.local_address < right.local_address;
-    }
-    if (left.local_port != right.local_port) {
-      return left.local_port < right.local_port;
-    }
-    if (left.protocol != right.protocol) return left.protocol < right.protocol;
-    if (left.state != right.state) return left.state < right.state;
-    if (left.identity != right.identity) return left.identity < right.identity;
-    return left.process_id < right.process_id;
-  });
+  let const sorted_sockets = steal(sockets).make_sorted(
+      [](const os::network_socket_entry &left,
+         const os::network_socket_entry &right) {
+        if (left.peer_address != right.peer_address) {
+          return left.peer_address < right.peer_address;
+        }
+        if (left.peer_port != right.peer_port) {
+          return left.peer_port < right.peer_port;
+        }
+        if (left.local_address != right.local_address) {
+          return left.local_address < right.local_address;
+        }
+        if (left.local_port != right.local_port) {
+          return left.local_port < right.local_port;
+        }
+        if (left.protocol != right.protocol)
+          return left.protocol < right.protocol;
+        if (left.state != right.state) return left.state < right.state;
+        if (left.identity != right.identity)
+          return left.identity < right.identity;
+        return left.process_id < right.process_id;
+      });
 
   let socket_identities_unsorted = ArrayList<u64>{allocator};
   let remote_identities_unsorted = ArrayList<u64>{allocator};
   usize zero_identity_count = 0;
   usize remote_zero_identity_count = 0;
-  for (let const &socket : sockets) {
+  for (let const &socket : sorted_sockets) {
     let const is_remote = is_remote_socket(socket);
     if (socket.identity == 0) {
       zero_identity_count++;
@@ -1293,7 +1298,7 @@ fn append_remote_report(String &output, bool should_color,
   u64 previous_identity = 0;
   u32 previous_process_id = 0;
   bool has_previous_owner = false;
-  for (let const &socket : sockets) {
+  for (let const &socket : sorted_sockets) {
     if (!is_remote_socket(socket)) continue;
     if (socket.identity != 0 && has_previous_owner &&
         socket.identity == previous_identity &&
@@ -1582,7 +1587,7 @@ fn append_runtime_evidence_report(
     rows.push(steal(row));
   }
 
-  rows.sort(
+  let const sorted_rows = steal(rows).make_sorted(
       [](const runtime_report_row &left, const runtime_report_row &right) {
         if (left.runtime != right.runtime) return left.runtime < right.runtime;
         if (left.source != right.source) return left.source < right.source;
@@ -1606,7 +1611,7 @@ fn append_runtime_evidence_report(
   }
   table.add_column("EVIDENCE", report_table_alignment::Left,
                    colors::ansi::BOLD_CYAN);
-  for (let const &row : rows) {
+  for (let const &row : sorted_rows) {
     let cells = ArrayList<report_table_cell_view>{allocator};
     cells.push({row.runtime.view(), colors::ansi::BOLD_GREEN});
     cells.push({row.source.view(), colors::ansi::RESET});
@@ -1712,30 +1717,22 @@ fn append_container_report(String &output, bool should_color,
       detail_rows.push(steal(row));
     }
   }
-  summary_rows.sort([](const container_summary_row &left,
-                       const container_summary_row &right) {
-    if (left.runtime != right.runtime) return left.runtime < right.runtime;
-    return left.identifier < right.identifier;
-  });
-  detail_rows.sort(
-      [](const container_detail_row &left, const container_detail_row &right) {
-        if (left.runtime != right.runtime) return left.runtime < right.runtime;
-        if (left.identifier != right.identifier)
-          return left.identifier < right.identifier;
-        if (left.process_id_value != right.process_id_value)
-          return left.process_id_value < right.process_id_value;
-        return left.cgroup < right.cgroup;
-      });
-
   let table = ReportTable{allocator};
   table.add_column("RUNTIME", report_table_alignment::Left,
                    colors::ansi::BOLD_CYAN);
   table.add_column("CONTAINER", report_table_alignment::Left,
                    colors::ansi::BOLD_CYAN);
   if (detail != eviliso_detail_mode::All) {
+    let const sorted_summary_rows = steal(summary_rows).make_sorted(
+        [](const container_summary_row &left,
+           const container_summary_row &right) {
+          if (left.runtime != right.runtime)
+            return left.runtime < right.runtime;
+          return left.identifier < right.identifier;
+        });
     table.add_column("PROCESSES", report_table_alignment::Right,
                      colors::ansi::BOLD_CYAN);
-    for (let const &row : summary_rows) {
+    for (let const &row : sorted_summary_rows) {
       let count = String::from(row.process_count, allocator);
       let cells = ArrayList<report_table_cell_view>{allocator};
       cells.push({row.runtime.view(), colors::ansi::BOLD_GREEN});
@@ -1744,6 +1741,17 @@ fn append_container_report(String &output, bool should_color,
       table.add_row(cells);
     }
   } else {
+    let const sorted_detail_rows = steal(detail_rows).make_sorted(
+        [](const container_detail_row &left,
+           const container_detail_row &right) {
+          if (left.runtime != right.runtime)
+            return left.runtime < right.runtime;
+          if (left.identifier != right.identifier)
+            return left.identifier < right.identifier;
+          if (left.process_id_value != right.process_id_value)
+            return left.process_id_value < right.process_id_value;
+          return left.cgroup < right.cgroup;
+        });
     table.add_column("PID", report_table_alignment::Right,
                      colors::ansi::BOLD_CYAN);
     table.add_column("NAME", report_table_alignment::Left,
@@ -1752,7 +1760,7 @@ fn append_container_report(String &output, bool should_color,
                      colors::ansi::BOLD_CYAN);
     table.add_column("CGROUP", report_table_alignment::Left,
                      colors::ansi::BOLD_CYAN);
-    for (let const &row : detail_rows) {
+    for (let const &row : sorted_detail_rows) {
       let cells = ArrayList<report_table_cell_view>{allocator};
       cells.push({row.runtime.view(), colors::ansi::BOLD_GREEN});
       cells.push({row.identifier.view(), colors::ansi::CYAN});
@@ -1909,12 +1917,6 @@ fn append_kubernetes_report(String &output, bool should_color,
       }
     }
   }
-  rows.sort([](const kubernetes_row &left, const kubernetes_row &right) {
-    if (left.pod_uid != right.pod_uid) return left.pod_uid < right.pod_uid;
-    if (left.qos != right.qos) return left.qos < right.qos;
-    if (left.runtime != right.runtime) return left.runtime < right.runtime;
-    return left.container_id < right.container_id;
-  });
   let workload_table = ReportTable{allocator};
   workload_table.add_column("SOURCE", report_table_alignment::Left,
                             colors::ansi::BOLD_CYAN);
@@ -1927,9 +1929,18 @@ fn append_kubernetes_report(String &output, bool should_color,
   workload_table.add_column("CONTAINER", report_table_alignment::Left,
                             colors::ansi::BOLD_CYAN);
   if (detail != eviliso_detail_mode::All) {
+    let const sorted_rows = steal(rows).make_sorted(
+        [](const kubernetes_row &left, const kubernetes_row &right) {
+          if (left.pod_uid != right.pod_uid)
+            return left.pod_uid < right.pod_uid;
+          if (left.qos != right.qos) return left.qos < right.qos;
+          if (left.runtime != right.runtime)
+            return left.runtime < right.runtime;
+          return left.container_id < right.container_id;
+        });
     workload_table.add_column("PROCESSES", report_table_alignment::Right,
                               colors::ansi::BOLD_CYAN);
-    for (let const &row : rows) {
+    for (let const &row : sorted_rows) {
       let count = String::from(row.process_count, allocator);
       let cells = ArrayList<report_table_cell_view>{allocator};
       cells.push({"cgroup", colors::ansi::RESET});
