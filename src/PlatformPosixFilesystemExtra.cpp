@@ -590,10 +590,17 @@ static fn decode_udev_filename(StringView filename, Allocator allocator) throws
   return decoded;
 }
 
+enum class volume_identity_kind : u8
+{
+  Label,
+  Uuid,
+};
+
 static fn
 populate_linux_volume_identity(ArrayList<mounted_filesystem> &filesystems,
                                const ArrayList<Path> &canonical_sources,
-                               StringView directory, bool is_uuid) throws
+                               StringView directory,
+                               volume_identity_kind kind) throws
     -> void
 {
   let const allocator = heap_allocator();
@@ -614,12 +621,17 @@ populate_linux_volume_identity(ArrayList<mounted_filesystem> &filesystems,
         continue;
       }
 
-      if (is_uuid) {
+      switch (kind) {
+      case volume_identity_kind::Uuid:
         if (filesystems[index].volume_uuid.is_empty())
           filesystems[index].volume_uuid = entry.clone();
-      } else if (filesystems[index].volume_name.is_empty()) {
-        filesystems[index].volume_name =
-            decode_udev_filename(entry.view(), allocator);
+        break;
+      case volume_identity_kind::Label:
+        if (filesystems[index].volume_name.is_empty()) {
+          filesystems[index].volume_name =
+              decode_udev_filename(entry.view(), allocator);
+        }
+        break;
       }
     }
   }
@@ -658,9 +670,10 @@ append_mounted_filesystems(ArrayList<mounted_filesystem> &result) throws -> void
         canonical_source.has_value() ? steal(*canonical_source) : Path{});
   }
   populate_linux_volume_identity(result, canonical_sources,
-                                 "/dev/disk/by-label", false);
+                                 "/dev/disk/by-label",
+                                 volume_identity_kind::Label);
   populate_linux_volume_identity(result, canonical_sources, "/dev/disk/by-uuid",
-                                 true);
+                                 volume_identity_kind::Uuid);
 #elif defined __APPLE__ || defined BSD
   struct statfs *entries = nullptr;
   let const entry_count = getmntinfo(&entries, MNT_NOWAIT);
