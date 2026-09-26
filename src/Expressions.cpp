@@ -1602,7 +1602,7 @@ fn expressions::internal::analyze_followed_source(
   let const literal_path = static_command_name(args[path_index]);
   if (!literal_path.has_value()) return do_give_up_on_source();
 
-  bool should_expand_tilde = false;
+  let tilde_expansion = source_tilde_expansion::Disabled;
   if (args[path_index]->kind() == Token::Kind::Word) {
     let const &word =
         static_cast<const tokens::WordToken *>(args[path_index])->word();
@@ -1611,14 +1611,18 @@ fn expressions::internal::analyze_followed_source(
         !word.segments.front().text.is_empty() &&
         word.segments.front().text.first_character() == '~')
     {
-      should_expand_tilde = true;
+      tilde_expansion = source_tilde_expansion::Enabled;
     }
   }
-  if (should_expand_tilde && actx.has_unknown_working_directory) {
+  if (tilde_expansion == source_tilde_expansion::Enabled &&
+      actx.has_unknown_working_directory)
+  {
     return false;
   }
   let const source_path = Path{*literal_path};
-  if (!should_expand_tilde && !source_path.is_absolute()) {
+  if (tilde_expansion == source_tilde_expansion::Disabled &&
+      !source_path.is_absolute())
+  {
     if (os::has_directory_separator(*literal_path)) {
       if (actx.has_unknown_working_directory) return false;
     } else if (actx.has_unknown_path || actx.has_unknown_working_directory) {
@@ -1626,7 +1630,7 @@ fn expressions::internal::analyze_followed_source(
     }
   }
   let resolved_path = actx.eval_context->resolve_source_path(
-      *literal_path, should_expand_tilde);
+      *literal_path, tilde_expansion);
   if (!resolved_path.has_value()) return do_give_up_on_source();
 
   let canonical_path = os::canonical_path(*resolved_path);

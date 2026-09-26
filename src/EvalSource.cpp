@@ -661,12 +661,14 @@ fn EvalContext::run_source(StringView source, StringView origin,
   }
 }
 
-fn EvalContext::resolve_source_path(StringView path,
-                                    bool should_expand_tilde) throws
+fn EvalContext::resolve_source_path(
+    StringView path, source_tilde_expansion tilde_expansion) throws
     -> Maybe<Path>
 {
   let expanded_path = String{heap_allocator(), path};
-  if (should_expand_tilde && path.starts_with("~")) {
+  if (tilde_expansion == source_tilde_expansion::Enabled &&
+      path.starts_with("~"))
+  {
     let const slash = path.find_character('/');
     let const prefix_end = slash.value_or(path.length);
     let const prefix = path.substring_of_length(1, prefix_end - 1);

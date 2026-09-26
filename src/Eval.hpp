@@ -3095,7 +3095,8 @@ public:
                 history_recording history = history_recording::Disabled) throws
       -> i32;
   fn resolve_source_path(StringView path,
-                         bool should_expand_tilde = false) throws
+                         source_tilde_expansion tilde_expansion =
+                             source_tilde_expansion::Disabled) throws
       -> Maybe<Path>;
 
   /* Each throws a located error past the recursion cap. */

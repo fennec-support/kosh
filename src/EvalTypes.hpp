@@ -73,6 +73,12 @@ enum class history_recording : u8
   Enabled,
 };
 
+enum class source_tilde_expansion : u8
+{
+  Disabled,
+  Enabled,
+};
+
 enum class status_flag : u32
 {
   ErrResolved = 1U << 0,
