@@ -1741,15 +1741,24 @@ submit_positioned_file_operation(const batched_syscall &operation,
   request.is_submitted = true;
 }
 
+enum class overlapped_wait_mode : u8
+{
+  DoNotWait,
+  Wait,
+};
+
 static fn finish_positioned_file_operation(const batched_syscall &operation,
                                            batched_syscall_result &result,
                                            win32_batch_request &request,
-                                           bool should_wait) wontthrow -> void
+                                           overlapped_wait_mode wait_mode)
+    wontthrow -> void
 {
   DWORD transferred_byte_count = 0;
+  let const should_wait =
+      wait_mode == overlapped_wait_mode::Wait ? TRUE : FALSE;
   if (GetOverlappedResult(request.positioned_handle, &request.control,
-                          &transferred_byte_count,
-                          should_wait ? TRUE : FALSE) == FALSE)
+                          &transferred_byte_count, should_wait) ==
+      FALSE)
   {
     let const error_number = GetLastError();
     if (batch_operation_access::get_kind(operation) ==
@@ -1953,7 +1962,8 @@ fn execute_batch_operations(const batched_syscall *operations,
       let const operation_index = operation_start + chunk_index;
       finish_positioned_file_operation(operations[operation_index],
                                        results[operation_index],
-                                       requests[chunk_index], false);
+                                       requests[chunk_index],
+                                       overlapped_wait_mode::DoNotWait);
       if (was_interrupted) {
         results[operation_index] = {operations[operation_index].request_id, 0,
                                     ERROR_OPERATION_ABORTED};
@@ -1968,7 +1978,7 @@ fn execute_batch_operations(const batched_syscall *operations,
         let const operation_index = operation_start + chunk_index;
         finish_positioned_file_operation(operations[operation_index],
                                          results[operation_index], request,
-                                         true);
+                                         overlapped_wait_mode::Wait);
         results[operation_index].error_number = wait_error_number;
         results[operation_index].transferred_byte_count = 0;
       }
