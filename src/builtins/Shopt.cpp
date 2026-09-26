@@ -127,11 +127,17 @@ fn format_option_names_help(Allocator allocator) throws -> String
 /* The bash -p line is a command the shell replays to restore the state, so it
    must execute when a completion script captures it through $(shopt -p name).
  */
-fn shopt_reusable_line(StringView name, bool on, bool as_set_option,
-                       Allocator allocator) throws -> String
+enum class shopt_reusable_form : u8
+{
+  Shopt,
+  SetOption,
+};
+
+fn shopt_reusable_line(StringView name, bool on, Allocator allocator,
+                       shopt_reusable_form form) throws -> String
 {
   let line = String{allocator};
-  if (as_set_option)
+  if (form == shopt_reusable_form::SetOption)
     line += on ? "set -o " : "set +o ";
   else
     line += on ? "shopt -s " : "shopt -u ";
@@ -212,6 +218,9 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const should_disable = FLAG_SHOPT_UNSET.is_enabled();
   let const is_quiet = FLAG_SHOPT_QUIET.is_enabled();
   let const should_operate_on_set_options = FLAG_SHOPT_SET_OPTIONS.is_enabled();
+  let const reusable_form = should_operate_on_set_options
+                                 ? shopt_reusable_form::SetOption
+                                 : shopt_reusable_form::Shopt;
   let const should_print_reusable = FLAG_SHOPT_PRINT.is_enabled();
   let names = ArrayList<StringView>{cxt.scratch_allocator()};
   let name_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
@@ -222,8 +231,8 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const do_format_status_line = [&](StringView name, bool on) throws {
     return should_print_reusable
-               ? shopt_reusable_line(name, on, should_operate_on_set_options,
-                                     cxt.scratch_allocator())
+               ? shopt_reusable_line(name, on, cxt.scratch_allocator(),
+                                     reusable_form)
                : shopt_status_line(name, on, cxt.scratch_allocator());
   };
 
