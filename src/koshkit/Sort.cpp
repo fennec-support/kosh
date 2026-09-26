@@ -51,7 +51,7 @@ fn Sort::execute(const ExecContext &ec, EvalContext &cxt,
      stops a grow from dangling a view into a String's inline buffer. */
   ArrayList<String> contents{cxt.scratch_allocator()};
   contents.reserve(sources.count());
-  ArrayList<StringView> lines{cxt.scratch_allocator()};
+  let collected_lines = ArrayList<StringView>{cxt.scratch_allocator()};
   i32 status = 0;
   let source_results =
       read_named_or_stdin_batch(ec, sources, cxt.scratch_allocator());
@@ -74,11 +74,12 @@ fn Sort::execute(const ExecContext &ec, EvalContext &cxt,
     for (let const &line : utils::split_lines(contents.back().view(),
                                               cxt.scratch_allocator(), true))
     {
-      lines.push(line.without_trailing_newline());
+      collected_lines.push(line.without_trailing_newline());
     }
   }
 
-  lines.sort();
+  let const lines =
+      steal(collected_lines).make_sorted(sort_order::ascending);
 
   let output = String{cxt.scratch_allocator()};
   if (FLAG_SORT_REVERSE.is_enabled())
