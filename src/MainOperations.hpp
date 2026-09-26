@@ -619,6 +619,9 @@ static fn run_script_contents(
       {
         context.set_diagnostic_highlight_cache(previous_highlight_cache);
       };
+      let const shebang_policy = should_require_shebang && filename.has_value()
+                                       ? missing_shebang_policy::Report
+                                       : missing_shebang_policy::Suppress;
       let const do_analyze = [&](AnalysisUnitStream *units) throws -> bool {
         return analyze_ast(
             ast, script_contents, context.function_names(),
@@ -629,10 +632,10 @@ static fn run_script_contents(
             context.annoying_diagnostics_enabled(), shellcheck_suppressions,
             analysis_scope_definitions, shellcheck_directive_spans,
             heredoc_terminator_misses,
-            should_require_shebang && filename.has_value(),
             FLAG_OPTIMIZER_DIAGNOSTICS.is_enabled(), &followed_source_paths,
             &source_effects_cache, nullptr, diagnostic_totals, true, true,
-            nullptr, diagnostic_sink, nullptr, nullptr, units);
+            nullptr, diagnostic_sink, nullptr, nullptr, units, nullptr,
+            shebang_policy);
       };
 
       if (should_stream_units) {

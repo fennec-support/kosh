@@ -672,7 +672,7 @@ pure fn header_holds_shebang(StringView source, usize first_line_end) wontthrow
 } /* namespace */
 
 fn check_shebang(AnalysisContext &actx, StringView source,
-                 bool is_named_script_file) throws -> void
+                 missing_shebang_policy shebang_policy) throws -> void
 {
   usize line_end = 0;
   while (line_end < source.length && source[line_end] != '\n')
@@ -728,7 +728,8 @@ fn check_shebang(AnalysisContext &actx, StringView source,
 
     /* A script without a shebang runs correctly, so the missing interpreter is
        reported only when diagnostics were asked for. */
-    if (is_named_script_file && actx.warning_level != 0)
+    if (shebang_policy == missing_shebang_policy::Report &&
+        actx.warning_level != 0)
       actx.report_diagnostic(diagnostic_id::sc2148, SourceLocation{0, 1});
 
     return;

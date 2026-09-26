@@ -658,6 +658,12 @@ private:
           StringView related_message) throws -> void;
 };
 
+enum class missing_shebang_policy : u8
+{
+  Suppress,
+  Report,
+};
+
 fn analyze_ast(
     const Expression *root, StringView source, const HashSet &known_functions,
     const HashSet &known_aliases, EvalContext *eval_context, u8 warning_level,
@@ -667,7 +673,7 @@ fn analyze_ast(
     const ArrayList<analysis_scope_definition> &scope_definitions,
     const ArrayList<shellcheck_directive_span> &directive_spans,
     const ArrayList<heredoc_terminator_miss> &heredoc_misses,
-    bool is_named_script_file, bool should_report_optimizer_diagnostics = false,
+    bool should_report_optimizer_diagnostics = false,
     HashSet *followed_source_paths = nullptr,
     StringMap<followed_source_effects> *source_effects_cache = nullptr,
     AnalysisContext *parent_analysis_context = nullptr,
@@ -679,7 +685,9 @@ fn analyze_ast(
     AnalysisSourceProvider *source_provider = nullptr,
     analysis_symbol_records *symbol_records = nullptr,
     AnalysisUnitStream *unit_stream = nullptr,
-    const parsed_format_document *format_document = nullptr) throws -> bool;
+    const parsed_format_document *format_document = nullptr,
+    missing_shebang_policy shebang_policy =
+        missing_shebang_policy::Suppress) throws -> bool;
 
 mustuse pure fn is_source_location_variable(StringView name) wontthrow -> bool;
 

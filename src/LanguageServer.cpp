@@ -545,14 +545,17 @@ fn Server::publish_diagnostics(Document &document) throws -> bool
         parser_format_should_silence_unresolved_commands(document.format.kind);
     let const *format_document =
         is_mixed_command_context ? &document.format : nullptr;
+    let const shebang_policy =
+        document.path.has_value() && !document.format.is_host_format
+            ? missing_shebang_policy::Report
+            : missing_shebang_policy::Suppress;
     analyze_ast(ast, document.shell_source(), functions, aliases, &m_context, 3,
                 should_silence_unresolved_commands,
                 m_context.mood() == mimic_mood::Default, true, suppressions,
-                scopes, directives, heredoc_misses,
-                document.path.has_value() && !document.format.is_host_format,
-                false, &followed_paths, &source_effects, nullptr, nullptr, true,
+                scopes, directives, heredoc_misses, false, &followed_paths,
+                &source_effects, nullptr, nullptr, true,
                 true, nullptr, &diagnostics, this, &symbol_records, nullptr,
-                format_document);
+                format_document, shebang_policy);
     symbol_records.variable_occurrences.sort(
         [](const variable_occurrence_record &left,
            const variable_occurrence_record &right) {

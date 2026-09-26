@@ -1706,7 +1706,7 @@ fn expressions::internal::analyze_followed_source(
       actx.eval_context, actx.warning_level,
       actx.should_silence_unresolved_commands, actx.is_default_mood,
       actx.should_emit_annoying_diagnostics, shellcheck_suppressions,
-      scope_definitions, directive_spans, heredoc_misses, false,
+      scope_definitions, directive_spans, heredoc_misses,
       actx.should_report_optimizer_diagnostics, actx.followed_source_paths,
       actx.followed_source_effects_cache, &actx, nullptr,
       should_merge_parent_state, should_merge_parent_uncertainty, &effects,
@@ -1840,7 +1840,7 @@ fn analyze_ast(
     const ArrayList<analysis_scope_definition> &scope_definitions,
     const ArrayList<shellcheck_directive_span> &directive_spans,
     const ArrayList<heredoc_terminator_miss> &heredoc_misses,
-    bool is_named_script_file, bool should_report_optimizer_diagnostics,
+    bool should_report_optimizer_diagnostics,
     HashSet *followed_source_paths,
     StringMap<followed_source_effects> *source_effects_cache,
     AnalysisContext *parent_analysis_context,
@@ -1850,7 +1850,8 @@ fn analyze_ast(
     ArrayList<source_diagnostic> *diagnostic_sink,
     AnalysisSourceProvider *source_provider,
     analysis_symbol_records *symbol_records, AnalysisUnitStream *unit_stream,
-    const parsed_format_document *format_document) throws -> bool
+    const parsed_format_document *format_document,
+    missing_shebang_policy shebang_policy) throws -> bool
 {
   ASSERT(root != nullptr || unit_stream != nullptr);
 
@@ -1907,7 +1908,7 @@ fn analyze_ast(
   if (parent_analysis_context != nullptr) {
     actx.is_posix_sh_shebang = parent_analysis_context->is_posix_sh_shebang;
   } else {
-    expressions::internal::check_shebang(actx, source, is_named_script_file);
+    expressions::internal::check_shebang(actx, source, shebang_policy);
   }
 
   expressions::internal::check_shellcheck_directives(actx, source,

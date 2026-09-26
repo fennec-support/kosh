@@ -236,7 +236,7 @@ fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void;
 /* The shebang findings and the POSIX gate, read from one walk of the first
    line. */
 fn check_shebang(AnalysisContext &actx, StringView source,
-                 bool is_named_script_file) throws -> void;
+                 missing_shebang_policy shebang_policy) throws -> void;
 
 /* The placement and spelling findings for the directive comments the lexer
    recorded. A directive comment is rare, so this walk touches almost no
