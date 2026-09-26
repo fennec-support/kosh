@@ -48,9 +48,15 @@ static pure fn unc_share_end(StringView path, usize position,
 
 fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
 {
+  let const text = path.view();
+  if (text.is_empty()) return koshka::None;
+  let const has_extended_prefix =
+      text.length >= 4 && is_directory_separator(text[0]) &&
+      is_directory_separator(text[1]) && text[2] == '?' &&
+      is_directory_separator(text[3]);
+
   let const do_resolve_direct =
-      [](const Path &candidate, bool should_preserve_extended_prefix)
-          wontthrow -> Maybe<Path> {
+      [has_extended_prefix](const Path &candidate) wontthrow -> Maybe<Path> {
     let const wide_candidate = utf8_to_wide(candidate.view(), heap_allocator());
     if (!wide_candidate.has_value()) return koshka::None;
     let const handle = CreateFileW(
@@ -79,7 +85,7 @@ fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
     if (!resolved_text.has_value()) return koshka::None;
 
     let const resolved = resolved_text->view();
-    if (should_preserve_extended_prefix) return Path{resolved};
+    if (has_extended_prefix) return Path{resolved};
     if (resolved.starts_with(StringView{"\\\\?\\UNC\\"})) {
       let unc_path = String{"\\\\"};
       unc_path += resolved.substring(8);
@@ -89,13 +95,6 @@ fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
       return Path{resolved.substring(4)};
     return Path{resolved};
   };
-
-  let const text = path.view();
-  if (text.is_empty()) return koshka::None;
-  let const has_extended_prefix =
-      text.length >= 4 && is_directory_separator(text[0]) &&
-      is_directory_separator(text[1]) && text[2] == '?' &&
-      is_directory_separator(text[3]);
 
   let has_dot_component = false;
   usize scan_position = 0;
@@ -116,7 +115,7 @@ fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
       break;
     }
   }
-  if (!has_dot_component) return do_resolve_direct(path, has_extended_prefix);
+  if (!has_dot_component) return do_resolve_direct(path);
 
   usize position = 0;
   let resolved = Path{};
@@ -184,7 +183,7 @@ fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
     resolved = Path{initial_text->view()};
   }
 
-  let initial_resolved = do_resolve_direct(resolved, has_extended_prefix);
+  let initial_resolved = do_resolve_direct(resolved);
   if (!initial_resolved.has_value()) return koshka::None;
   resolved = initial_resolved.take();
 
@@ -200,7 +199,7 @@ fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
     let candidate = resolved.clone();
     candidate.push_component(
         text.substring_of_length(component_start, position - component_start));
-    let component_resolved = do_resolve_direct(candidate, has_extended_prefix);
+    let component_resolved = do_resolve_direct(candidate);
     if (!component_resolved.has_value()) return koshka::None;
     resolved = component_resolved.take();
   }
