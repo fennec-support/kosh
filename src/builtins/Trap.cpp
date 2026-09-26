@@ -84,6 +84,15 @@ struct listed_trap
   StringView action;
 };
 
+struct listed_trap_comparator
+{
+  pure fn operator()(const listed_trap &left,
+                     const listed_trap &right) const wontthrow -> bool
+  {
+    return left.order < right.order;
+  }
+};
+
 /* Bash walks EXIT, then every real signal in ascending number order, then
    DEBUG, ERR, and RETURN. No signal number reaches the special base. */
 fn trap_listing_order(StringView condition) throws -> i64
@@ -246,9 +255,9 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       return has_invalid_operand ? 1 : 0;
     }
 
-    let listed = ArrayList<listed_trap>{cxt.scratch_allocator()};
+    let collected = ArrayList<listed_trap>{cxt.scratch_allocator()};
     cxt.traps().for_each([&](StringView condition, const String &action) {
-      listed.push(
+      collected.push(
           listed_trap{trap_listing_order(condition), condition, action.view()});
     });
 
@@ -265,14 +274,13 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         if (cxt.traps().find(name->view()).has_value()) continue;
 
         ignored_names.push(String{cxt.scratch_allocator(), name->view()});
-        listed.push(listed_trap{static_cast<i64>(number),
-                                ignored_names.back().view(), ""});
+        collected.push(listed_trap{static_cast<i64>(number),
+                                   ignored_names.back().view(), ""});
       }
     }
 
-    listed.sort([](const listed_trap &left, const listed_trap &right) {
-      return left.order < right.order;
-    });
+    let const listed =
+        steal(collected).make_sorted(listed_trap_comparator{});
 
     for (usize i = 0; i < listed.count(); i++)
       do_append_listing(listed[i].condition, listed[i].action);
