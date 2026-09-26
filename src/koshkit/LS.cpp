@@ -100,6 +100,38 @@ struct listing_entry
   bool has_status{false};
 };
 
+struct listing_entry_comparator
+{
+  sort_key key;
+  sort_order order;
+
+  pure fn is_less(const listing_entry &left,
+                  const listing_entry &right) const wontthrow->bool
+  {
+    switch (key) {
+    case sort_key::Time:
+      if (left.status.modification_time != right.status.modification_time) {
+        return left.status.modification_time > right.status.modification_time;
+      }
+      break;
+    case sort_key::Size:
+      if (left.status.size != right.status.size)
+        return left.status.size > right.status.size;
+      break;
+    case sort_key::Name: break;
+    }
+
+    return left.name.view() < right.name.view();
+  }
+
+  pure fn operator()(const listing_entry &left,
+                     const listing_entry &right) const wontthrow->bool
+  {
+    return order == sort_order::ascending ? is_less(left, right)
+                                          : is_less(right, left);
+  }
+};
+
 /* The blocks ride along so the total line sums them without a second stat. */
 struct long_entry
 {
@@ -289,10 +321,11 @@ make_entry(const Path &path, StringView name, const listing_options &options,
   return entry;
 }
 
-static fn prepare_entries(ArrayList<listing_entry> &entries,
+static fn prepare_entries(ArrayList<listing_entry> entries,
                           const listing_options &options, StringView directory,
                           bool is_name_path, Allocator allocator,
-                          bool are_symlink_targets_known = false) throws -> void
+                          bool are_symlink_targets_known = false) throws
+    -> SortedArrayList<listing_entry, listing_entry_comparator>
 {
   if (options.should_color && !are_symlink_targets_known) {
     let symlink_paths = ArrayList<Path>{allocator};
@@ -331,45 +364,24 @@ static fn prepare_entries(ArrayList<listing_entry> &entries,
     }
   }
 
-  let const do_compare = [&options](const listing_entry &a,
-                                    const listing_entry &b) wontthrow -> bool {
-    switch (options.key) {
-    case sort_key::Time:
-      if (a.status.modification_time != b.status.modification_time) {
-        return a.status.modification_time > b.status.modification_time;
-      }
-      break;
-
-    case sort_key::Size:
-      if (a.status.size != b.status.size) return a.status.size > b.status.size;
-      break;
-
-    case sort_key::Name: break;
-    }
-
-    return a.name.view() < b.name.view();
-  };
-
-  if (options.is_reversed) {
-    entries.sort([&do_compare](const listing_entry &a, const listing_entry &b)
-                     wontthrow -> bool { return do_compare(b, a); });
-    return;
-  }
-
-  entries.sort(do_compare);
+  return steal(entries).make_sorted(listing_entry_comparator{
+      options.key, options.is_reversed ? sort_order::descending
+                                       : sort_order::ascending});
 }
 
 static fn collect_directory(const Path &directory,
-                            const listing_options &options, Allocator allocator,
-                            ArrayList<listing_entry> &entries) throws -> bool
+                            const listing_options &options,
+                            Allocator allocator) throws
+    -> Maybe<SortedArrayList<listing_entry, listing_entry_comparator>>
 {
+  let entries = ArrayList<listing_entry>{allocator};
   let const directory_text = directory.view();
   let const should_collect_status =
       options.needs_full_status ||
       (options.needs_type && (options.should_color || options.should_classify));
   if (should_collect_status) {
     let const children = os::list_directory_status(directory_text, allocator);
-    if (!children.has_value()) return false;
+    if (!children.has_value()) return None;
 
     entries.reserve(children->count() + 2);
     if (options.is_listing_dot_and_dotdot) {
@@ -390,12 +402,12 @@ static fn collect_directory(const Path &directory,
                               child.child.kind, allocator, &child));
     }
 
-    prepare_entries(entries, options, directory_text, false, allocator);
-    return true;
+    return prepare_entries(steal(entries), options, directory_text, false,
+                           allocator);
   }
 
   let const children = Path::read_directory_typed(directory, allocator);
-  if (!children.has_value()) return false;
+  if (!children.has_value()) return None;
 
   entries.reserve(children->count() + 2);
 
@@ -424,8 +436,8 @@ static fn collect_directory(const Path &directory,
     }
   }
 
-  prepare_entries(entries, options, directory_text, false, allocator);
-  return true;
+  return prepare_entries(steal(entries), options, directory_text, false,
+                         allocator);
 }
 
 /* A path that cannot be stat'd renders a sparse row so the listing still names
@@ -638,15 +650,14 @@ static fn render_tree_level(StringView directory,
                             Allocator allocator) throws -> void
 {
   if (os::INTERRUPT_REQUESTED) return;
-  ArrayList<listing_entry> entries{allocator};
-  if (!collect_directory(Path{directory, allocator}, options, allocator,
-                         entries))
-    return;
+  let const entries =
+      collect_directory(Path{directory, allocator}, options, allocator);
+  if (!entries.has_value()) return;
 
-  for (usize index = 0; index < entries.count(); index++) {
+  for (usize index = 0; index < entries->count(); index++) {
     if (os::INTERRUPT_REQUESTED) return;
-    const listing_entry &entry = entries[index];
-    let const is_last = index + 1 == entries.count();
+    let const &entry = (*entries)[index];
+    let const is_last = index + 1 == entries->count();
     let const connector = get_tree_connector(is_last);
 
     output += prefix.view();
@@ -677,9 +688,9 @@ static fn render_directory_block(
     Allocator allocator) throws -> void
 {
   if (os::INTERRUPT_REQUESTED) return;
-  ArrayList<listing_entry> entries{allocator};
-  if (!collect_directory(Path{directory, allocator}, options, allocator,
-                         entries))
+  let const entries =
+      collect_directory(Path{directory, allocator}, options, allocator);
+  if (!entries.has_value())
   {
     report_soft_koshkit_util_error(ec, cxt, "ls",
                                    "cannot open directory '" +
@@ -695,14 +706,14 @@ static fn render_directory_block(
   }
   has_printed_block = true;
 
-  render_entries(entries, options, true, uid_cache, gid_cache, output,
+  render_entries(*entries, options, true, uid_cache, gid_cache, output,
                  allocator);
 
   if (!options.is_recursive) return;
 
   if (options.has_depth_limit && depth + 1 >= options.max_depth) return;
 
-  for (let const &entry : entries) {
+  for (let const &entry : *entries) {
     if (os::INTERRUPT_REQUESTED) return;
     if (entry.type != entry_type::Directory) continue;
 
@@ -901,13 +912,15 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
       options.is_recursive || options.is_tree ||
       file_entries.count() + sorted_dir_targets.count() > 1;
 
+  bool has_printed_block = false;
   if (!file_entries.is_empty()) {
-    prepare_entries(file_entries, options, StringView{}, true, allocator, true);
-    render_entries(file_entries, options, false, uid_cache, gid_cache, output,
-                   allocator);
+    let const sorted_file_entries = prepare_entries(
+        steal(file_entries), options, StringView{}, true, allocator, true);
+    render_entries(sorted_file_entries, options, false, uid_cache, gid_cache,
+                   output, allocator);
+    has_printed_block = true;
   }
 
-  bool has_printed_block = !file_entries.is_empty();
   for (let const &target : sorted_dir_targets) {
     if (os::INTERRUPT_REQUESTED) break;
     if (!options.is_tree) {
