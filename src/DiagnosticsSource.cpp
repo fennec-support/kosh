@@ -1186,14 +1186,19 @@ fn check_unassigned_variable_reads(AnalysisContext &actx) throws -> void
     return;
   }
 
-  let reads = ArrayList<unassigned_read>{heap_allocator()};
+  let collected_reads = ArrayList<unassigned_read>{heap_allocator()};
   actx.reads_before_assignment.for_each(
-      [&reads](StringView name, const SourceLocation &location)
-          throws -> void { reads.push(unassigned_read{name, location}); });
+      [&collected_reads](StringView name, const SourceLocation &location)
+          throws -> void {
+        collected_reads.push(unassigned_read{name, location});
+      });
 
-  reads.sort([](const unassigned_read &left, const unassigned_read &right) {
-    return left.location.position < right.location.position;
-  });
+  let const reads =
+      steal(collected_reads)
+          .make_sorted([](const unassigned_read &left,
+                          const unassigned_read &right) {
+            return left.location.position < right.location.position;
+          });
 
   let shell_maintained_variable_names = HashSet{heap_allocator()};
   collect_shell_provided_variable_names(actx, shell_maintained_variable_names);

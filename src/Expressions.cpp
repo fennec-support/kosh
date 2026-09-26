@@ -625,18 +625,19 @@ fn AnalysisContext::flush_warnings() throws -> void
   if (pending_warnings.is_empty()) return;
 
   if (eval_context != nullptr && colors::stderr_wants_color()) {
-    let positions = ArrayList<usize>{heap_allocator()};
-    positions.reserve(pending_warnings.count() * 2);
+    let collected_positions = ArrayList<usize>{heap_allocator()};
+    collected_positions.reserve(pending_warnings.count() * 2);
     for (let const &warning : pending_warnings) {
       if (warning.location.position <= source.length)
-        positions.push(warning.location.position);
+        collected_positions.push(warning.location.position);
       if (warning.related_location.has_value() &&
           warning.related_location->position <= source.length)
       {
-        positions.push(warning.related_location->position);
+        collected_positions.push(warning.related_location->position);
       }
     }
-    positions.sort();
+    let const positions =
+        steal(collected_positions).make_sorted(sort_order::ascending);
 
     let *cache = eval_context->get_or_create_diagnostic_highlight_cache();
     Maybe<usize> previous_line_start;
