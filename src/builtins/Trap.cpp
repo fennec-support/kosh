@@ -93,6 +93,12 @@ struct listed_trap_comparator
   }
 };
 
+enum class trap_condition_format : u8
+{
+  Plain,
+  SignalPrefixed,
+};
+
 /* Bash walks EXIT, then every real signal in ascending number order, then
    DEBUG, ERR, and RETURN. No signal number reaches the special base. */
 fn trap_listing_order(StringView condition) throws -> i64
@@ -110,11 +116,10 @@ fn trap_listing_order(StringView condition) throws -> i64
   return SPECIAL_CONDITION_BASE + 3;
 }
 
-fn format_listed_condition(StringView condition,
-                           bool should_include_signal_prefix,
-                           Allocator allocator) throws -> String
+fn format_listed_condition(StringView condition, Allocator allocator,
+                           trap_condition_format format) throws -> String
 {
-  if (should_include_signal_prefix &&
+  if (format == trap_condition_format::SignalPrefixed &&
       os::signal_number_from_name(condition).has_value())
   {
     let prefixed = String{allocator, "SIG"};
@@ -210,7 +215,9 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const has_filter = should_print_listing && operand_index < args.count();
   if (operand_index >= args.count() || has_filter) {
-    let const should_include_signal_prefix = cxt.is_bash_compatible();
+    let const condition_format =
+        cxt.is_bash_compatible() ? trap_condition_format::SignalPrefixed
+                                 : trap_condition_format::Plain;
 
     let out = String{cxt.scratch_allocator()};
     let const do_append_listing = [&](StringView condition, StringView action)
@@ -220,8 +227,8 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
          character that needs them is wrapped as well. */
       append_shell_quoted_arg(out, action, true);
       out += ' ';
-      out += format_listed_condition(condition, should_include_signal_prefix,
-                                     cxt.scratch_allocator());
+      out += format_listed_condition(condition, cxt.scratch_allocator(),
+                                     condition_format);
       out += '\n';
     };
 
