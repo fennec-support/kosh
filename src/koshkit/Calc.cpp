@@ -131,11 +131,18 @@ fn try_define(EvalContext &cxt, StringView line) throws -> bool
   return true;
 }
 
+enum class calc_repl_input_mode : u8
+{
+  DetectTerminal,
+  Pipe,
+};
+
 fn run_repl(const ExecContext &ec, EvalContext &cxt,
-            bool should_force_pipe) throws -> i32
+            calc_repl_input_mode input_mode) throws -> i32
 {
   let const input_fd = ec.in_fd.value_or(KOSH_STDIN);
-  let const is_terminal = !should_force_pipe && os::is_fd_a_tty(input_fd);
+  let const is_terminal = input_mode == calc_repl_input_mode::DetectTerminal &&
+                          os::is_fd_a_tty(input_fd);
 
   /* When the host shell ran calc off a -c command, it never entered the
      interactive loop, so toiletline was never initialized. Bring it up here so
@@ -291,7 +298,9 @@ fn Calc::execute(const ExecContext &ec, EvalContext &cxt,
       (FLAG_CALC_INTERACTIVE.is_enabled() ||
        (!has_expression && os::is_stdin_a_tty() && os::is_stdout_a_tty()));
   if (should_pipe || is_interactive) {
-    return run_repl(ec, cxt, should_pipe);
+    let const input_mode = should_pipe ? calc_repl_input_mode::Pipe
+                                       : calc_repl_input_mode::DetectTerminal;
+    return run_repl(ec, cxt, input_mode);
   }
 
   if (!has_expression) {
