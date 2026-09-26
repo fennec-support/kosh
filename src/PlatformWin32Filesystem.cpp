@@ -23,13 +23,21 @@ namespace koshka {
 
 namespace os {
 
+enum class unc_trailing_separator_mode : u8
+{
+  Exclude,
+  Include,
+};
+
 static pure fn unc_share_end(StringView path, usize position,
-                             bool should_include_trailing_separator) wontthrow
+                             unc_trailing_separator_mode separator_mode)
+    wontthrow
     -> usize
 {
   unused(Path::next_component(path, position));
   unused(Path::next_component(path, position));
-  if (should_include_trailing_separator && position < path.length &&
+  if (separator_mode == unc_trailing_separator_mode::Include &&
+      position < path.length &&
       is_directory_separator(path[position]))
   {
     position++;
@@ -127,12 +135,14 @@ fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
              utils::ascii_to_lower(text[6]) == 'c' &&
              is_directory_separator(text[7]))
   {
-    position = unc_share_end(text, 8, false);
+    position =
+        unc_share_end(text, 8, unc_trailing_separator_mode::Exclude);
     resolved = Path{text.substring_of_length(0, position)};
   } else if (text.length >= 2 && is_directory_separator(text[0]) &&
              is_directory_separator(text[1]))
   {
-    position = unc_share_end(text, 2, false);
+    position =
+        unc_share_end(text, 2, unc_trailing_separator_mode::Exclude);
     resolved = Path{text.substring_of_length(0, position)};
   } else if (text.length >= 3 && text[1] == ':' &&
              is_directory_separator(text[2]))
@@ -307,12 +317,12 @@ pure fn path_root_length(StringView path) wontthrow -> usize
       utils::ascii_to_lower(path[5]) == 'n' &&
       utils::ascii_to_lower(path[6]) == 'c' && is_directory_separator(path[7]))
   {
-    return unc_share_end(path, 8, true);
+    return unc_share_end(path, 8, unc_trailing_separator_mode::Include);
   }
   if (path.length >= 2 && is_directory_separator(path[0]) &&
       is_directory_separator(path[1]))
   {
-    return unc_share_end(path, 2, true);
+    return unc_share_end(path, 2, unc_trailing_separator_mode::Include);
   }
   if (path.length >= 3 && path[1] == ':' && is_directory_separator(path[2])) {
     return 3;
