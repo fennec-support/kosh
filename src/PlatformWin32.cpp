@@ -109,8 +109,14 @@ static constexpr i32 TRACKED_SHELL_FDS_PER_WORD = 64;
 static u64 CLOSE_ON_EXEC_SHELL_FDS[TRACKED_SHELL_FD_COUNT /
                                    TRACKED_SHELL_FDS_PER_WORD];
 
+enum class close_on_exec_mode : u8
+{
+  Disabled,
+  Enabled,
+};
+
 static fn set_shell_fd_close_on_exec(i32 shell_fd,
-                                     bool is_close_on_exec) wontthrow -> void
+                                     close_on_exec_mode mode) wontthrow -> void
 {
   if (shell_fd < 0 || shell_fd >= TRACKED_SHELL_FD_COUNT) return;
 
@@ -118,10 +124,10 @@ static fn set_shell_fd_close_on_exec(i32 shell_fd,
       u64{1} << static_cast<u32>(shell_fd % TRACKED_SHELL_FDS_PER_WORD);
   let &word = CLOSE_ON_EXEC_SHELL_FDS[shell_fd / TRACKED_SHELL_FDS_PER_WORD];
 
-  if (is_close_on_exec)
-    word |= mask;
-  else
-    word &= ~mask;
+  switch (mode) {
+  case close_on_exec_mode::Disabled: word &= ~mask; break;
+  case close_on_exec_mode::Enabled: word |= mask; break;
+  }
 }
 
 static fn is_shell_fd_close_on_exec(i32 shell_fd) wontthrow -> bool
@@ -148,14 +154,14 @@ static fn scan_inherited_shell_fds() wontthrow -> void
 
 static fn note_shell_fd_opened(i32 shell_fd) wontthrow -> void
 {
-  set_shell_fd_close_on_exec(shell_fd, false);
+  set_shell_fd_close_on_exec(shell_fd, close_on_exec_mode::Disabled);
 
   if (shell_fd > HIGHEST_OPEN_SHELL_FD) HIGHEST_OPEN_SHELL_FD = shell_fd;
 }
 
 static fn note_shell_fd_closed(i32 shell_fd) wontthrow -> void
 {
-  set_shell_fd_close_on_exec(shell_fd, false);
+  set_shell_fd_close_on_exec(shell_fd, close_on_exec_mode::Disabled);
 
   if (shell_fd != HIGHEST_OPEN_SHELL_FD) return;
   while (HIGHEST_OPEN_SHELL_FD > 2 &&
@@ -708,7 +714,7 @@ fn move_descriptor_to_free_shell_fd(os::descriptor source,
 
   /* The POSIX peer places the descriptor with F_DUPFD_CLOEXEC. The mark keeps
      the spawn path from handing this number to a child. */
-  set_shell_fd_close_on_exec(shell_fd, true);
+  set_shell_fd_close_on_exec(shell_fd, close_on_exec_mode::Enabled);
 
   close_fd(source);
 
