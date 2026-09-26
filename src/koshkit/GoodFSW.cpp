@@ -95,6 +95,15 @@ struct watched_entry
   u32 group_id{0};
 };
 
+struct watched_entry_comparator
+{
+  pure fn operator()(const watched_entry &left,
+                     const watched_entry &right) const wontthrow -> bool
+  {
+    return left.path.view() < right.path.view();
+  }
+};
+
 pure fn is_same_content(const watched_entry &previous,
                         const watched_entry &current) wontthrow -> bool
 {
@@ -287,13 +296,6 @@ fn scan_path(StringView path, ArrayList<watched_entry> &entries, usize depth,
   }
 }
 
-fn sort_entries(ArrayList<watched_entry> &entries) throws -> void
-{
-  entries.sort([](const watched_entry &left, const watched_entry &right) {
-    return left.path.view() < right.path.view();
-  });
-}
-
 } // namespace
 
 GoodFSW::GoodFSW() = default;
@@ -382,16 +384,19 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
     }
   }
 
-  ArrayList<watched_entry> previous{watch_allocator};
+  let collected_previous = ArrayList<watched_entry>{watch_allocator};
   for (usize index = 0; index < operands.count(); index++)
-    scan_path(operands[index].view(), previous, 0, watch_allocator,
+    scan_path(operands[index].view(), collected_previous, 0, watch_allocator,
               operand_statuses[index].device_id, &operand_statuses[index],
               traversal);
   if (os::INTERRUPT_REQUESTED != 0) {
     os::INTERRUPT_REQUESTED = 0;
     return 130;
   }
-  sort_entries(previous);
+  let previous =
+      steal(collected_previous).make_sorted(watched_entry_comparator{});
+  let recycled_entries = ArrayList<watched_entry>{watch_allocator};
+  let output = String{watch_allocator};
 
   let const color_mode = koshkit_should_color()
                              ? goodfsw_color_mode::Colored
@@ -407,26 +412,27 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
       break;
     }
 
-    ArrayList<watched_entry> current{watch_allocator};
+    recycled_entries.clear();
     for (usize index = 0; index < operands.count(); index++) {
       if (os::INTERRUPT_REQUESTED) {
         was_interrupted = true;
         break;
       }
-      scan_path(operands[index].view(), current, 0, watch_allocator,
+      scan_path(operands[index].view(), recycled_entries, 0, watch_allocator,
                 operand_statuses[index].device_id, nullptr, traversal);
     }
     if (was_interrupted) {
       os::INTERRUPT_REQUESTED = 0;
       break;
     }
-    sort_entries(current);
+    let current =
+        steal(recycled_entries).make_sorted(watched_entry_comparator{});
 
     let const scan_microseconds = os::realtime_microseconds();
     let const scan_time = static_cast<i64>(scan_microseconds / 1000000u);
     let const scan_nanoseconds =
         static_cast<u32>((scan_microseconds % 1000000u) * 1000u);
-    let output = String{watch_allocator};
+    output.clear();
 
     usize previous_position = 0;
     usize current_position = 0;
@@ -485,6 +491,7 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
       current_position++;
     }
 
+    recycled_entries = steal(previous).into_array_list();
     previous = steal(current);
 
     if (output.is_empty()) continue;
