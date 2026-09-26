@@ -1696,30 +1696,34 @@ fn clipped_line_span(StringView text, usize line_limit,
   return text.substring_of_length(0, position);
 }
 
+struct reaching_assignment_comparator
+{
+  pure fn operator()(const variable_assignment_record *left,
+                     const variable_assignment_record *right) const
+      wontthrow->bool
+  {
+    return left->position > right->position;
+  }
+};
+
 fn assignments_reaching(const Document &document,
                         const document_symbol &symbol) throws
-    -> ArrayList<const variable_assignment_record *>
+    -> SortedArrayList<const variable_assignment_record *,
+                       reaching_assignment_comparator>
 {
   let reaching =
       ArrayList<const variable_assignment_record *>{heap_allocator()};
   let const name = variable_name_of(symbol.text.view());
-  if (name.is_empty()) return reaching;
+  if (!name.is_empty()) {
+    for (let const &record : document.symbol_records.assignments) {
+      if (record.position > symbol.start) continue;
+      if (record.name.view() != name) continue;
 
-  for (let const &record : document.symbol_records.assignments) {
-    if (record.position > symbol.start) continue;
-    if (record.name.view() != name) continue;
-
-    reaching.push(&record);
+      reaching.push(&record);
+    }
   }
 
-  /* The walk is in source order today, and the sort keeps that out of the
-     contract. */
-  reaching.sort([](const variable_assignment_record *left,
-                   const variable_assignment_record *right) {
-    return left->position > right->position;
-  });
-
-  return reaching;
+  return steal(reaching).make_sorted(reaching_assignment_comparator{});
 }
 
 pure fn function_body_for(const Document &document,
