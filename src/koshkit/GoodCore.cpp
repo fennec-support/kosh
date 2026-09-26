@@ -131,7 +131,8 @@ fn append_unique_path(ArrayList<String> &paths, StringView path,
 fn collect_paths_from_output(StringView output, ArrayList<String> &paths,
                              Allocator allocator) throws -> void
 {
-  for (let view : utils::split_lines(output, allocator, false)) {
+  for (let view : utils::split_lines(
+           output, allocator, utils::line_terminator_mode::Discard)) {
     view = view.trim_blanks();
     let const start = view.find_character('/');
     if (!start.has_value()) continue;

@@ -203,7 +203,8 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
     usize row_count = 0;
     for (let &content : contents) {
       let lines =
-          utils::split_lines(content.view(), cxt.scratch_allocator(), true);
+          utils::split_lines(content.view(), cxt.scratch_allocator(),
+                             utils::line_terminator_mode::Preserve);
       for (let &line : lines)
         line = line.without_trailing_newline();
       if (lines.count() > row_count) row_count = lines.count();
@@ -249,7 +250,8 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
 
   let const do_append_source = [&](StringView source, StringView content)
                                    throws -> void {
-    let lines = utils::split_lines(content, cxt.scratch_allocator(), true);
+    let lines = utils::split_lines(content, cxt.scratch_allocator(),
+                                   utils::line_terminator_mode::Preserve);
     for (let &line : lines)
       line = line.without_trailing_newline();
     usize line_index = 0;

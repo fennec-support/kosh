@@ -1837,7 +1837,8 @@ static fn join_continuations(StringView source, u32 source_name_index,
                              Allocator allocator) throws
     -> ArrayList<make_logical_line>
 {
-  let const physical = utils::split_lines(source, allocator, true);
+  let const physical = utils::split_lines(
+      source, allocator, utils::line_terminator_mode::Preserve);
   ArrayList<make_logical_line> logical{allocator};
   usize i = 0;
   while (i < physical.count()) {

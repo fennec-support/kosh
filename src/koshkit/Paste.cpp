@@ -110,7 +110,8 @@ fn Paste::execute(const ExecContext &ec, EvalContext &cxt,
 
     contents.push(source_result.content.take());
     let source_lines = utils::split_lines(contents.back().view(),
-                                          cxt.scratch_allocator(), true);
+                                          cxt.scratch_allocator(),
+                                          utils::line_terminator_mode::Preserve);
     for (let &line : source_lines)
       line = line.without_trailing_newline();
     lines.push(steal(source_lines));

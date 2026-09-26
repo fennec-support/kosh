@@ -888,9 +888,11 @@ fn append_utf8(String &output, u32 codepoint) throws -> void
 }
 
 fn split_lines(StringView text, Allocator allocator,
-               bool should_keep_newlines) throws -> ArrayList<StringView>
+               line_terminator_mode terminators) throws -> ArrayList<StringView>
 {
   let lines = ArrayList<StringView>{allocator};
+  let const should_keep_newlines =
+      terminators == line_terminator_mode::Preserve;
   usize position = 0;
   while (position < text.length) {
     let const line_start = position;

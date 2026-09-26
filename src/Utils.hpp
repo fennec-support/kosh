@@ -241,8 +241,15 @@ pure fn decode_utf8(StringView source, usize position,
                     u32 invalid_codepoint) wontthrow -> decoded_codepoint;
 fn append_utf8(String &output, u32 codepoint) throws -> void;
 
+enum class line_terminator_mode : u8
+{
+  Discard,
+  Preserve,
+};
+
 fn split_lines(StringView text, Allocator allocator = heap_allocator(),
-               bool should_keep_newlines = false) throws
+               line_terminator_mode terminators =
+                   line_terminator_mode::Discard) throws
     -> ArrayList<StringView>;
 
 fn format_unix_timestamp(i64 unix_time, const char *format) throws -> String;

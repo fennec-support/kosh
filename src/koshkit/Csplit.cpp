@@ -197,7 +197,8 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
     return 1;
   }
   let lines =
-      utils::split_lines(content->view(), cxt.scratch_allocator(), true);
+      utils::split_lines(content->view(), cxt.scratch_allocator(),
+                         utils::line_terminator_mode::Preserve);
   usize current_line = 0;
   u64 output_index = 0;
   let output_paths = ArrayList<String>{cxt.scratch_allocator()};
