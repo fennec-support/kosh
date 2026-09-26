@@ -107,7 +107,8 @@ fn EvalContext::run_program_fallback(ExecContext &ec, mimic_mood mode,
       source_store().mimicry_depth());
   fallback_context.source_store().m_retained_source_generation =
       source_store().m_retained_source_generation;
-  fallback_context.set_shell_executable_path(String{shell_executable_path()});
+  fallback_context.execution_store().set_shell_executable_path(
+      String{execution_store().get_shell_executable_path()});
   fallback_context.set_koshkit(koshkit());
   fallback_context.set_mimicry(mimicry());
   fallback_context.set_warning_level(warning_level());

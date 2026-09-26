@@ -805,8 +805,8 @@ fn kosh_main(int argc, char **argv) -> int
 
   /* BASH names the path used to invoke this shell, the symlink spelling such as
      /usr/local/bin/bash when kosh is symlinked to bash. */
-  context.set_shell_executable_path(steal(executable_path));
-  let const shell_executable_path = context.shell_executable_path();
+  context.execution_store().set_shell_executable_path(steal(executable_path));
+  let const shell_executable_path = context.execution_store().get_shell_executable_path();
   context.mark_exported("KOSH_IDENTITY");
   context.mark_readonly("KOSH_IDENTITY");
   /* SHELL is owned by login, getty, or the display manager, so an inherited

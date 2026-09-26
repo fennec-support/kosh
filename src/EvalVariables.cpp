@@ -385,7 +385,7 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
     case '-': return option_flags_string();
     case '#':
       return String::from(positional_params().count(), heap_allocator());
-    case '0': return String{heap_allocator(), shell_name()};
+    case '0': return String{heap_allocator(), execution_store().get_shell_name()};
     case '_':
       return String{heap_allocator(), execution_store().get_last_argument().view()};
 
@@ -578,7 +578,7 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
                                               heap_allocator());
           break;
         case dynamic_var::BASH_ARGV0:
-          return String{heap_allocator(), shell_name()};
+          return String{heap_allocator(), execution_store().get_shell_name()};
         case dynamic_var::BASH_EXECUTION_STRING:
           if (execution_store().has_execution_string())
             return String{heap_allocator(), execution_store().get_execution_string()};

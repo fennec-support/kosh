@@ -1787,14 +1787,6 @@ public:
   fn seed_shell_identity_variables(shell_identity_mode identity_mode) throws
       -> void;
 
-  fn set_shell_executable_path(String path) wontthrow -> void
-  {
-    execution_store().set_shell_executable_path(steal(path));
-  }
-  pure fn shell_executable_path() const wontthrow -> StringView
-  {
-    return execution_store().get_shell_executable_path();
-  }
   fn materialize_kosh_identity() const throws -> Maybe<String>;
   fn next_random_u32() const wontthrow -> u32;
 
@@ -2034,11 +2026,6 @@ public:
     return m_variable_store.positional_params();
   }
   fn set_positional_params(ArrayList<String> params) wontthrow -> void;
-  pure fn shell_name() const wontthrow -> StringView
-  {
-    return execution_store().get_shell_name();
-  }
-
   fn directory_stack() wontthrow -> ArrayList<String> &
   {
     return m_variable_store.directory_stack();
@@ -2859,31 +2846,9 @@ public:
   {
     execution_store().set_execution_string(String{heap_allocator(), text});
   }
-  pure fn has_execution_string() const wontthrow -> bool
-  {
-    return execution_store().has_execution_string();
-  }
-
-  fn set_current_command(String text) throws -> void
-  {
-    execution_store().set_current_command(steal(text));
-  }
-  pure fn get_current_command() const wontthrow -> StringView
-  {
-    return execution_store().get_current_command();
-  }
-
   /* While listing makefile targets for completion, the bundled make parser
      leaves $(shell ...) unrun, so a tab never forks the makefile's commands and
      never blocks on a slow one. */
-  fn set_make_shell_suppressed(bool suppressed) wontthrow -> void
-  {
-    execution_store().set_make_shell_suppressed(suppressed);
-  }
-  pure fn make_shell_suppressed() const wontthrow -> bool
-  {
-    return execution_store().make_shell_suppressed();
-  }
 
   fn apply_strictness_for_mood() wontthrow -> void
   {

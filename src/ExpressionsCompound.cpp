@@ -648,7 +648,7 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
               stage_source != nullptr ? stage_source->view() : StringView{},
           .process_group_id = process_group_id,
           .bootstrap = should_launch_fresh_evaluator ? &bootstrap : nullptr,
-          .shell_name = cxt.shell_name(),
+          .shell_name = cxt.execution_store().get_shell_name(),
           .previous_exit_status = cxt.execution_store().last_exit_status(),
           .shell_process_id = os::get_shell_process_id(),
           .subshell_depth = cxt.get_subshell_depth() + 1,

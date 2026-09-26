@@ -379,7 +379,7 @@ fn EvalContext::seed_shell_identity_variables(shell_identity_mode identity_mode)
     versinfo.push(String{"release"});
     versinfo.push(String{KOSH_OS_INFO});
     set_indexed_array("BASH_VERSINFO", steal(versinfo));
-    set_shell_variable("BASH", shell_executable_path());
+    set_shell_variable("BASH", execution_store().get_shell_executable_path());
     /* A missing COMP_WORDBREAKS collapses every word into one and kills
        bash-completion. */
     if (!get_variable_value("COMP_WORDBREAKS").has_value())
@@ -403,7 +403,7 @@ fn EvalContext::seed_shell_identity_variables(shell_identity_mode identity_mode)
 
 fn EvalContext::materialize_kosh_identity() const throws -> Maybe<String>
 {
-  let const identity = utils::kosh_identity(shell_executable_path());
+  let const identity = utils::kosh_identity(execution_store().get_shell_executable_path());
   if (identity.has_value()) return String{heap_allocator(), *identity};
   return None;
 }
@@ -1235,7 +1235,7 @@ pure fn EvalContext::script_source_frame_index() const wontthrow -> Maybe<usize>
     let const &path = source_store().m_source_frames[i].source_path;
     if (path.is_empty()) continue;
 
-    if (path.view() == shell_name()) return i;
+    if (path.view() == execution_store().get_shell_name()) return i;
 
     return None;
   }
@@ -1388,7 +1388,7 @@ pure fn EvalContext::bash_source_frame_at(usize index) const wontthrow
       }
     }
 
-    return shell_name();
+    return execution_store().get_shell_name();
   }
   case MergedFrame::Kind::Source:
     return source_store()
@@ -1397,7 +1397,7 @@ pure fn EvalContext::bash_source_frame_at(usize index) const wontthrow
   case MergedFrame::Kind::Main: break;
   }
 
-  return shell_name();
+  return execution_store().get_shell_name();
 }
 
 pure fn EvalContext::bash_source_frame_count(

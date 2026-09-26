@@ -226,7 +226,7 @@ fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
           .source = substitution_source.view(),
           .source_traces_enabled = should_print_source_traces(),
           .bootstrap = should_launch_fresh_evaluator ? &bootstrap : nullptr,
-          .shell_name = shell_name(),
+          .shell_name = execution_store().get_shell_name(),
           .previous_exit_status = execution_store().last_exit_status(),
           .shell_process_id = os::get_shell_process_id(),
           .subshell_depth = get_subshell_depth() + 1,

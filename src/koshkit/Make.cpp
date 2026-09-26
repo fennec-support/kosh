@@ -787,7 +787,7 @@ static fn lookup_make_variable(EvalContext &cxt, const makefile &mk,
       do_use_stored(*variable);
       return lookup;
     }
-    lookup.set_borrowed_value(cxt.shell_executable_path());
+    lookup.set_borrowed_value(cxt.execution_store().get_shell_executable_path());
     lookup.origin = make_variable_origin::Default;
     lookup.flavor = make_variable_flavor::Recursive;
     return lookup;
@@ -1576,7 +1576,7 @@ evaluate_make_function(EvalContext &cxt, makefile &mk, StringView function_name,
     return result;
   }
   case make_function_kind::Shell: {
-    if (cxt.make_shell_suppressed()) return String{allocator};
+    if (cxt.execution_store().make_shell_suppressed()) return String{allocator};
     let const command = do_expand(0);
     return run_make_shell_function(cxt, mk, command.view());
   }
@@ -3762,9 +3762,9 @@ fn collect_makefile_targets(EvalContext &cxt, const Path &makefile) throws
   if (!source.has_value()) return targets;
 
   /* Completion leaves the makefile's $(shell ...) functions unrun. */
-  let const saved_suppressed = cxt.make_shell_suppressed();
-  cxt.set_make_shell_suppressed(true);
-  defer { cxt.set_make_shell_suppressed(saved_suppressed); };
+  let const saved_suppressed = cxt.execution_store().make_shell_suppressed();
+  cxt.execution_store().set_make_shell_suppressed(true);
+  defer { cxt.execution_store().set_make_shell_suppressed(saved_suppressed); };
 
   let const command_assignments = ArrayList<String>{cxt.scratch_allocator()};
   let sources = ArrayList<make_source_document>{cxt.scratch_allocator()};

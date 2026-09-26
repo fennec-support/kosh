@@ -399,7 +399,7 @@ fn publish_command_and_run_debug_trap(
       cxt.was_stage_boundary_published();
 
   if (command_text_is_observed(cxt) && !was_text_published)
-    cxt.set_current_command(do_build_command_text());
+    cxt.execution_store().set_current_command(do_build_command_text());
 
   if (mode == root_evaluation_mode::Normal && cxt.should_run_debug_trap()) {
     let const was_control_flow_pending = cxt.control_flow_store().has_pending();

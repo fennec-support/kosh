@@ -1143,7 +1143,7 @@ fn Subshell::evaluate_impl(EvalContext &cxt) const throws -> i64
 
     let text =
         internal::subshell_command_text(cxt, source_location(), end_position);
-    if (!text.is_empty()) cxt.set_current_command(steal(text));
+    if (!text.is_empty()) cxt.execution_store().set_current_command(steal(text));
   };
 
   koshka::flush();

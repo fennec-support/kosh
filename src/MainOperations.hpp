@@ -714,7 +714,7 @@ static fn run_script_contents(
           evaluation_mode = root_evaluation_mode::Normal;
           if (context.control_flow_store().has_pending() ||
               (context.shell_option_state(shell_option_id::Onecmd) &&
-               !context.has_execution_string()))
+               !context.execution_store().has_execution_string()))
           {
             break;
           }

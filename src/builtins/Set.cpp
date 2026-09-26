@@ -755,7 +755,7 @@ fn enabled_shell_option_letters(const EvalContext &cxt) throws -> String
     }
     letters.push(option.letter);
   }
-  if (cxt.has_execution_string()) letters.push('c');
+  if (cxt.execution_store().has_execution_string()) letters.push('c');
   return letters;
 }
 
