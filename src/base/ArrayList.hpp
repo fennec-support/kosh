@@ -199,7 +199,7 @@ public:
                   sizeof(value_type) == sizeof(u64))
     {
       using scalar_type = typename array_list_find_scalar<value_type>::type;
-      using vector_type = scalar_type __attribute__((vector_size(16)));
+      typedef scalar_type vector_type __attribute__((vector_size(16)));
       let const scalar_wanted = static_cast<scalar_type>(wanted);
       vector_type needles = {scalar_wanted, scalar_wanted};
       usize element_index = 0;
