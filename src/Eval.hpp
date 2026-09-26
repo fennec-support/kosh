@@ -1539,7 +1539,8 @@ public:
     return m_program_resolver;
   }
 
-  fn seed_shell_identity_variables(bool bash_identity) throws -> void;
+  fn seed_shell_identity_variables(shell_identity_mode identity_mode) throws
+      -> void;
 
   fn set_shell_executable_path(String path) wontthrow -> void
   {

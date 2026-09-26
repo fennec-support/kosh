@@ -415,7 +415,9 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
      runs against the current state with no snapshot. */
   if (!isolated) {
     set_positional_params(steal(params));
-    seed_shell_identity_variables(mode == mimic_mood::Bash);
+    seed_shell_identity_variables(mode == mimic_mood::Bash
+                                      ? shell_identity_mode::Bash
+                                      : shell_identity_mode::Native);
     std::exception_ptr error;
     try {
       do_evaluate_script();
@@ -436,7 +438,9 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
   }
 
   set_positional_params(steal(params));
-  seed_shell_identity_variables(mode == mimic_mood::Bash);
+  seed_shell_identity_variables(mode == mimic_mood::Bash
+                                    ? shell_identity_mode::Bash
+                                    : shell_identity_mode::Native);
   enter_subshell();
   clear_inherited_exit_trap();
   std::exception_ptr error;

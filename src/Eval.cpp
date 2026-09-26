@@ -360,10 +360,12 @@ hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
   assign_variable(name, value);
 }
 
-fn EvalContext::seed_shell_identity_variables(bool is_bash_identity) throws
+fn EvalContext::seed_shell_identity_variables(shell_identity_mode identity_mode)
+    throws
     -> void
 {
-  if (is_bash_identity) {
+  switch (identity_mode) {
+  case shell_identity_mode::Bash: {
     LOG(Info, "seeding the bash identity variables");
     set_shell_variable("BASH_VERSION", "5.3.0(1)-kosh");
     let versinfo = ArrayList<String>{heap_allocator()};
@@ -380,6 +382,8 @@ fn EvalContext::seed_shell_identity_variables(bool is_bash_identity) throws
     if (!get_variable_value("COMP_WORDBREAKS").has_value())
       set_shell_variable("COMP_WORDBREAKS", StringView{" \t\n\"'><=;|&(:"});
     return;
+  }
+  case shell_identity_mode::Native: break;
   }
   LOG(Info, "clearing the bash identity variables for a non-bash mood");
   if (lookup_shell_variable("BASH_VERSION").has_value() ||

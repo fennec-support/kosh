@@ -834,14 +834,17 @@ fn kosh_main(int argc, char **argv) -> int
 
   /* A bash session, a bash-posix session, or a bash flavor in the init list
      advertises BASH_VERSION so a bash rc detects it. */
-  bool should_seed_bash_identity =
-      session_mood == koshka::mimic_mood::Bash ||
-      session_mood == koshka::mimic_mood::BashPosix;
+  let identity_mode = koshka::shell_identity_mode::Native;
+  if (session_mood == koshka::mimic_mood::Bash ||
+      session_mood == koshka::mimic_mood::BashPosix)
+  {
+    identity_mode = koshka::shell_identity_mode::Bash;
+  }
   for (let listed : init_moods)
     if (listed == koshka::mimic_mood::Bash ||
         listed == koshka::mimic_mood::BashPosix)
-      should_seed_bash_identity = true;
-  context.seed_shell_identity_variables(should_seed_bash_identity);
+      identity_mode = koshka::shell_identity_mode::Bash;
+  context.seed_shell_identity_variables(identity_mode);
 
   /* SHLVL counts shell nesting, incremented and exported so a child shell
      continues the count. */

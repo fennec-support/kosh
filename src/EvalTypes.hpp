@@ -60,6 +60,12 @@ enum class script_isolation : u8
   Isolated,
 };
 
+enum class shell_identity_mode : u8
+{
+  Native,
+  Bash,
+};
+
 enum class return_handling : u8
 {
   Propagate,
