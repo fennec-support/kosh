@@ -98,8 +98,8 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (args.count() == 1 && !ec.has_stripped_array_operands) {
     let const is_declare_form = cxt.is_bash_compatible();
-    let names = os::environment_names();
-    names.sort();
+    let const names =
+        os::environment_names().make_sorted(sort_order::ascending);
 
     let out = String{cxt.scratch_allocator()};
     for (let const &name : names) {
