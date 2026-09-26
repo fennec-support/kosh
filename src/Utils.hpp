@@ -185,10 +185,13 @@ struct text_position_range
 };
 
 fn parse_text_position_ranges(StringView text, Allocator allocator) throws
-    -> Maybe<ArrayList<text_position_range>>;
+    -> Maybe<SortedArrayList<text_position_range,
+                             order_comparator<text_position_range>>>;
 pure fn text_position_is_selected(
     usize one_based_position,
-    const ArrayList<text_position_range> &ranges) wontthrow -> bool;
+    const SortedArrayList<text_position_range,
+                          order_comparator<text_position_range>> &ranges)
+    wontthrow -> bool;
 
 fn parse_tab_stop_list(StringView text, Allocator allocator) throws
     -> Maybe<ArrayList<usize>>;

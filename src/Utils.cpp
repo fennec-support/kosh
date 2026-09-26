@@ -70,11 +70,12 @@ static fn parse_positive_position(StringView text, usize &position) wontthrow
 }
 
 fn parse_text_position_ranges(StringView text, Allocator allocator) throws
-    -> Maybe<ArrayList<text_position_range>>
+    -> Maybe<SortedArrayList<text_position_range,
+                             order_comparator<text_position_range>>>
 {
   if (text.is_empty()) return None;
 
-  let ranges = ArrayList<text_position_range>{allocator};
+  let parsed_ranges = ArrayList<text_position_range>{allocator};
   usize position = 0;
 
   while (position < text.length &&
@@ -107,7 +108,7 @@ fn parse_text_position_ranges(StringView text, Allocator allocator) throws
       }
     }
 
-    ranges.push({first, last});
+    parsed_ranges.push({first, last});
     if (position == text.length) break;
     if (text[position] == ',') {
       position++;
@@ -121,7 +122,7 @@ fn parse_text_position_ranges(StringView text, Allocator allocator) throws
     if (text[position] == ',') return None;
   }
 
-  ranges.sort();
+  let ranges = steal(parsed_ranges).make_sorted(sort_order::ascending);
   usize output_count = 0;
   for (let const range : ranges) {
     if (output_count != 0 && (ranges[output_count - 1].last == SIZE_MAX ||
@@ -137,12 +138,14 @@ fn parse_text_position_ranges(StringView text, Allocator allocator) throws
   while (ranges.count() > output_count)
     ranges.pop_back();
 
-  return ranges;
+  return steal(ranges);
 }
 
 pure fn text_position_is_selected(
     usize one_based_position,
-    const ArrayList<text_position_range> &ranges) wontthrow -> bool
+    const SortedArrayList<text_position_range,
+                          order_comparator<text_position_range>> &ranges)
+    wontthrow -> bool
 {
   for (let const range : ranges) {
     if (one_based_position < range.first) return false;
