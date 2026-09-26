@@ -103,10 +103,17 @@ pure fn dump_suffix(StringView name) wontthrow -> StringView
   return {};
 }
 
+enum class dump_entry_kind : u8
+{
+  File,
+  Directory,
+};
+
 pure fn is_dump_entry(StringView directory, StringView name,
-                      bool is_directory) wontthrow -> bool
+                      dump_entry_kind kind) wontthrow -> bool
 {
   if (name.is_empty()) return false;
+  let const is_directory = kind == dump_entry_kind::Directory;
 
   constexpr PackedStringKey SUFFIX_KEYS[] = {
       SSK(".DMP"), SSK(".IPS"), SSK(".crash"), SSK(".diag"),
@@ -191,8 +198,10 @@ fn collect_dumps(StringView directory, Allocator allocator) throws
 
     let const &child = child_entry.child;
     let const &status = child_entry.status;
-    let const is_directory = os::file_type_letter(status.mode) == 'd';
-    if (!is_dump_entry(directory, child.name.view(), is_directory)) continue;
+    let const kind = os::file_type_letter(status.mode) == 'd'
+                         ? dump_entry_kind::Directory
+                         : dump_entry_kind::File;
+    if (!is_dump_entry(directory, child.name.view(), kind)) continue;
 
     let dump = dump_entry{};
     dump.name = String{allocator, child.name.view()};
