@@ -1300,13 +1300,13 @@ fn AnalysisContext::note_variable_read(StringView name,
 }
 
 cold fn expressions::internal::report_command_resolution_error(
-    EvalContext &cxt, const CommandResolutionErrorWithLocation &e,
-    bool should_defer_for_source_file) throws -> void
+    EvalContext &cxt, const CommandResolutionErrorWithLocation &e) throws
+    -> void
 {
   const String *source = cxt.current_source();
   show_message(
       e.to_string(source != nullptr ? source->view() : StringView{}, &cxt));
-  cxt.print_source_backtrace(e.location(), should_defer_for_source_file);
+  cxt.print_source_backtrace(e.location());
 }
 
 fn expressions::internal::window_function_body_error(
