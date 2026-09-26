@@ -192,10 +192,22 @@ pure fn process_sort_value(const io_row &row, evilio_sort_key key) wontthrow
   }
 }
 
-fn sort_process_rows(ArrayList<io_row> &rows,
-                     Maybe<evilio_sort_key> sort_key) throws -> void
+struct process_pid_comparator
 {
-  let const do_compare = [sort_key](const io_row &left, const io_row &right) {
+  pure fn operator()(const io_row &left, const io_row &right) const
+      wontthrow->bool
+  {
+    return left.pid < right.pid;
+  }
+};
+
+struct process_row_comparator
+{
+  Maybe<evilio_sort_key> sort_key;
+
+  pure fn operator()(const io_row &left, const io_row &right) const throws
+      -> bool
+  {
     if (!sort_key.has_value()) {
       let const left_total =
           saturated_sum(left.status.read_bytes, left.status.written_bytes);
@@ -214,8 +226,14 @@ fn sort_process_rows(ArrayList<io_row> &rows,
       return *left_value > *right_value;
     }
     return left.pid < right.pid;
-  };
-  rows.sort(do_compare);
+  }
+};
+
+fn sort_process_rows(ArrayList<io_row> rows,
+                     Maybe<evilio_sort_key> sort_key) throws
+    -> SortedArrayList<io_row, process_row_comparator>
+{
+  return steal(rows).make_sorted(process_row_comparator{sort_key});
 }
 
 pure fn counter_delta(u64 before, u64 after) wontthrow -> Maybe<u64>
@@ -255,7 +273,8 @@ pure fn is_idle_process_io(const os::process_io_status &status) wontthrow
 }
 
 fn read_process_io_rows(Allocator allocator, Maybe<i64> selected_pid,
-                        evilio_idle_mode idle_mode) throws -> ArrayList<io_row>
+                        evilio_idle_mode idle_mode) throws
+    -> SortedArrayList<io_row, process_pid_comparator>
 {
   let rows = ArrayList<io_row>{allocator};
   let const processes = os::enumerate_processes();
@@ -295,18 +314,14 @@ fn read_process_io_rows(Allocator allocator, Maybe<i64> selected_pid,
     });
   }
 
-  rows.sort([](const io_row &left, const io_row &right) {
-    return left.pid < right.pid;
-  });
-
-  return rows;
+  return steal(rows).make_sorted(process_pid_comparator{});
 }
 
 fn sample_process_io_rows(const ArrayList<io_row> &before_rows,
                           const ArrayList<io_row> &after_rows,
                           u64 elapsed_nanoseconds, Allocator allocator,
                           Maybe<evilio_sort_key> sort_key) throws
-    -> ArrayList<io_row>
+    -> SortedArrayList<io_row, process_row_comparator>
 {
   unused(elapsed_nanoseconds);
   let sampled_rows = ArrayList<io_row>{allocator};
@@ -356,9 +371,7 @@ fn sample_process_io_rows(const ArrayList<io_row> &before_rows,
     });
   }
 
-  sort_process_rows(sampled_rows, sort_key);
-
-  return sampled_rows;
+  return sort_process_rows(steal(sampled_rows), sort_key);
 }
 
 struct live_process_row
@@ -728,10 +741,11 @@ pure fn disk_io_counter_reset(const os::disk_io_status &before,
          after.write_retry_count < before.write_retry_count;
 }
 
-fn sort_disk_rows(ArrayList<disk_io_row> &rows,
-                  Maybe<evilio_sort_key> sort_key) throws -> void
+fn sort_disk_rows(ArrayList<disk_io_row> rows,
+                  Maybe<evilio_sort_key> sort_key) throws
+    -> ArrayList<disk_io_row>
 {
-  if (!sort_key.has_value()) return;
+  if (!sort_key.has_value()) return rows;
   let const do_compare = [sort_key](const disk_io_row &left,
                                     const disk_io_row &right) {
     let const left_value = disk_sort_value(left, *sort_key);
@@ -743,7 +757,8 @@ fn sort_disk_rows(ArrayList<disk_io_row> &rows,
     }
     return left.name.view() < right.name.view();
   };
-  rows.sort(do_compare);
+  let sorted_rows = steal(rows).make_sorted(do_compare);
+  return steal(sorted_rows).into_array_list();
 }
 
 pure fn sort_key_needs_sample(evilio_sort_key key) wontthrow -> bool
@@ -1018,14 +1033,14 @@ fn run_live_process_io(const ExecContext &ec, Maybe<i64> selected_pid,
           get_process_window_status(row, window_start)
       });
     }
-    sort_process_rows(rows, sort_key);
+    let const sorted_rows = sort_process_rows(steal(rows), sort_key);
     let output = String{frame_allocator};
     if (is_terminal) output += "\x1b[H\x1b[2J";
     append_live_controls_bar(output, sample_label.view(), refresh_label.view(),
                              color_mode == evilio_color_mode::Colored);
-    append_process_io_rate_report(output, rows, row_limit, frame_allocator,
-                                  sample_duration_label, nullptr,
-                                  color_mode);
+    append_process_io_rate_report(output, sorted_rows, row_limit,
+                                  frame_allocator, sample_duration_label,
+                                  nullptr, color_mode);
     ec.print_to_stdout(output);
   }
 }
@@ -1203,7 +1218,7 @@ fn run_live_disk_io(const ExecContext &ec, f64 window_seconds,
     rows.reserve(retained.count());
     for (let const &row : retained)
       rows.push(make_disk_window_row(row, window_start, frame_allocator));
-    sort_disk_rows(rows, sort_key);
+    rows = sort_disk_rows(steal(rows), sort_key);
 
     let output = String{frame_allocator};
     if (is_terminal) output += "\x1b[H\x1b[2J";
@@ -1607,17 +1622,17 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
         has_operation_counts = true;
       }
     }
-    sort_process_rows(rows, sort_key);
+    let const sorted_rows = sort_process_rows(steal(rows), sort_key);
 
     let output = String{allocator};
-    append_process_io_report(output, rows, row_limit, total_read_bytes,
+    append_process_io_report(output, sorted_rows, row_limit, total_read_bytes,
                              total_written_bytes, total_read_operation_count,
                              total_write_operation_count, has_operation_counts,
                              allocator,
                              should_color ? evilio_color_mode::Colored
                                            : evilio_color_mode::Plain);
     ec.print_to_stdout(output);
-    return selected_pid.has_value() && rows.is_empty() ? 1 : 0;
+    return selected_pid.has_value() && sorted_rows.is_empty() ? 1 : 0;
   }
 
   os::system_activity_status activity_before{};
@@ -1995,7 +2010,7 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
         (FLAG_EVILIO_ALL.is_enabled() || FLAG_EVILIO_CUMULATIVE.is_enabled())
             ? report_sampling_mode::Rolling
             : report_sampling_mode::Instant);
-    sort_disk_rows(disk_rows, sort_key);
+    disk_rows = sort_disk_rows(steal(disk_rows), sort_key);
     append_disk_io_report(
         output, disk_rows, allocator, sample_duration_label.view(),
         (FLAG_EVILIO_ALL.is_enabled() || FLAG_EVILIO_CUMULATIVE.is_enabled())
