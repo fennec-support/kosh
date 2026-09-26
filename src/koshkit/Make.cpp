@@ -3141,7 +3141,8 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
 } /* namespace */
 
 fn parse_makefile_shell_sources(StringView source, Allocator allocator) throws
-    -> ArrayList<make_shell_source_range>
+    -> SortedArrayList<make_shell_source_range,
+                       order_comparator<make_shell_source_range>>
 {
   let ranges = ArrayList<make_shell_source_range>{allocator};
   let const logical_lines = join_continuations(source, 0, allocator);
@@ -3306,12 +3307,7 @@ fn parse_makefile_shell_sources(StringView source, Allocator allocator) throws
     position += 2;
   }
 
-  ranges.sort([](const make_shell_source_range &left,
-                 const make_shell_source_range &right) {
-    return left.start_position < right.start_position;
-  });
-
-  return ranges;
+  return steal(ranges).make_sorted(sort_order::ascending);
 }
 
 fn makefile_shell_analysis_source(StringView source,

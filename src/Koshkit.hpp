@@ -314,10 +314,16 @@ struct make_shell_source_range
   usize start_position;
   usize end_position;
   make_shell_source_kind kind;
+
+  pure fn operator<(const make_shell_source_range &other) const wontthrow->bool
+  {
+    return start_position < other.start_position;
+  }
 };
 
 fn parse_makefile_shell_sources(StringView source, Allocator allocator) throws
-    -> ArrayList<make_shell_source_range>;
+    -> SortedArrayList<make_shell_source_range,
+                       order_comparator<make_shell_source_range>>;
 fn makefile_shell_analysis_source(StringView source,
                                   const make_shell_source_range &range) throws
     -> String;
