@@ -1403,21 +1403,25 @@ fn complete(StringView line, usize cursor, EvalContext &context,
     longest_common_prefix = steal(ghost_prefix);
   } else if (!candidates.is_empty()) {
     if (for_listing) {
-      candidates.sort();
+      let sorted_candidates =
+          steal(candidates).make_sorted(sort_order::ascending);
 
       usize kept_count = 0;
-      for (usize i = 0; i < candidates.count(); i++) {
+      for (usize i = 0; i < sorted_candidates.count(); i++) {
         if (kept_count > 0 &&
-            candidates[kept_count - 1].view() == candidates[i].view())
+            sorted_candidates[kept_count - 1].view() ==
+                sorted_candidates[i].view())
         {
           continue;
         }
 
-        if (kept_count != i) candidates[kept_count] = steal(candidates[i]);
+        if (kept_count != i)
+          sorted_candidates[kept_count] = steal(sorted_candidates[i]);
 
         kept_count++;
       }
-      candidates.truncate(kept_count);
+      sorted_candidates.truncate(kept_count);
+      candidates = steal(sorted_candidates).into_array_list();
 
       if (extension_hint.has_value() && stage_token.is_empty()) {
         candidates = keep_hinted_extension(steal(candidates), *extension_hint);
