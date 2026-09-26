@@ -1871,10 +1871,16 @@ extern volatile sig_atomic_t SIGNAL_PENDING;
    leaves a signal that is already queued for the next boundary of its own. */
 extern volatile sig_atomic_t CHILD_TRAP_ARMED;
 
+enum class child_trap_arming : u8
+{
+  Disarmed,
+  Armed,
+};
+
 /* Arm or disarm the child wake from the trap table. The evaluator calls this
    whenever the table changes, because a platform whose signal table has no
    CHLD entry never reaches set_trap_handler for it. */
-fn set_child_trap_armed(bool is_armed) wontthrow -> void;
+fn set_child_trap_armed(child_trap_arming arming) wontthrow -> void;
 
 /* A signal the startup blocked is unblocked here, after its disposition is in
    place. */

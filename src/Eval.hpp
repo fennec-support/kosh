@@ -2013,8 +2013,11 @@ public:
         trap_store().actions().find(StringView{"ERR", 3}).has_value();
 
     let const child_action = trap_store().actions().find(StringView{"CHLD", 4});
-    os::set_child_trap_armed(child_action.has_value() &&
-                             child_action->count() > 0);
+    let const arming =
+        child_action.has_value() && child_action->count() > 0
+            ? os::child_trap_arming::Armed
+            : os::child_trap_arming::Disarmed;
+    os::set_child_trap_armed(arming);
   }
   /* A trap a frame installs for itself traces that frame without errtrace. An
      inherited trap needs errtrace to reach the frame. The subshell bootstrap
