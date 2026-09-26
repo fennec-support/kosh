@@ -255,6 +255,12 @@ struct history_append_state
   usize event_number{0};
 };
 
+enum class history_file_write_mode : u8
+{
+  Replace,
+  Append,
+};
+
 static fn get_history_append_state() -> history_append_state &
 {
   static history_append_state state;
@@ -262,7 +268,8 @@ static fn get_history_append_state() -> history_append_state &
 }
 
 static fn write_history_to_file(EvalContext &cxt, const Path &target,
-                                bool should_append) throws -> ErrorOr<Ok>
+                                history_file_write_mode write_mode) throws
+    -> ErrorOr<Ok>
 {
   let const target_identity = get_history_file_identity(target);
   let const lock_target = Path{target_identity.resolved_path.view()};
@@ -286,7 +293,8 @@ static fn write_history_to_file(EvalContext &cxt, const Path &target,
   if (append_state.event_number > newest_number) append_state.event_number = 0;
 
   let const source_path = toiletline::get_history_path();
-  if (should_append && source_path.has_value() && source_path->exists() &&
+  if (write_mode == history_file_write_mode::Append &&
+      source_path.has_value() && source_path->exists() &&
       target.exists() && source_path->is_same_file_as(target))
   {
     append_state.identity = get_history_file_identity(target);
@@ -295,7 +303,8 @@ static fn write_history_to_file(EvalContext &cxt, const Path &target,
   }
 
   Maybe<usize> written_above{None};
-  if (should_append) written_above = append_state.event_number;
+  if (write_mode == history_file_write_mode::Append)
+    written_above = append_state.event_number;
 
   let const read_events = TRY(
       toiletline::get_history_events(cxt.scratch_allocator(), written_above));
@@ -304,7 +313,7 @@ static fn write_history_to_file(EvalContext &cxt, const Path &target,
   for (let const &event : read_events)
     toiletline::encode_history_record(payload, event.command.view());
 
-  if (!should_append) {
+  if (write_mode == history_file_write_mode::Replace) {
     let const opened =
         os::open_file_descriptor(target.view(), os::file_open_mode::Truncate);
     if (!opened.has_value()) return Error{os::last_system_error_message()};
@@ -519,8 +528,11 @@ fn History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       cxt.guard_restricted_path(args[1].view(), ec.arg_location_at(1),
                                 restricted_path_use::History);
       let const target = Path{args[1].view()};
+      let const write_mode = FLAG_HISTORY_APPEND.is_enabled()
+                                  ? history_file_write_mode::Append
+                                  : history_file_write_mode::Replace;
       if (let const result = write_history_to_file(
-              cxt, target, FLAG_HISTORY_APPEND.is_enabled());
+              cxt, target, write_mode);
           result.is_error())
       {
         report_soft_builtin_error(
