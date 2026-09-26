@@ -128,9 +128,9 @@ hot fn CompoundList::evaluate_root_status_impl(
 
   /* Only the last node yields the list's status, so a terminal exec rides into
      that node alone. */
-  let const was_terminal_exec_allowed = cxt.terminal_exec_allowed();
-  cxt.set_terminal_exec_allowed(false);
-  defer { cxt.set_terminal_exec_allowed(was_terminal_exec_allowed); };
+  let const was_terminal_exec_allowed = cxt.execution_store().terminal_exec_allowed();
+  cxt.execution_store().terminal_exec_allowed() = false;
+  defer { cxt.execution_store().terminal_exec_allowed() = was_terminal_exec_allowed; };
 
   for (usize index = 0; index < m_nodes.count(); index++) {
     if (cxt.no_exec()) break;
@@ -174,7 +174,7 @@ hot fn CompoundList::evaluate_root_status_impl(
     }
 
     let const is_last_node = index + 1 >= m_nodes.count();
-    cxt.set_terminal_exec_allowed(was_terminal_exec_allowed && is_last_node);
+    cxt.execution_store().terminal_exec_allowed() = was_terminal_exec_allowed && is_last_node;
 
     /* set -e keys off the command that actually produced the status, not one
        carried over from a short-circuited sibling. */
@@ -410,7 +410,7 @@ hot fn CompoundListCondition::evaluate_root_status_impl(
      or the report applies after the command returns, which an exec would
      skip. */
   if (m_cmd->is_negated() || m_cmd->is_timed()) {
-    cxt.set_terminal_exec_allowed(false);
+    cxt.execution_store().terminal_exec_allowed() = false;
   }
 
   double user_before = 0.0;
@@ -790,7 +790,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
 {
   ASSERT(m_commands.count() > 1);
 
-  cxt.set_terminal_exec_allowed(false);
+  cxt.execution_store().terminal_exec_allowed() = false;
 
   /* A pipeline of only simple commands keeps the fast path. A compound stage
      takes the fork-per-stage path. A simple stage carrying a prefix assignment

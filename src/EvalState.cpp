@@ -635,16 +635,6 @@ fn EvalContext::set_loop_depth(usize depth) wontthrow -> void
   execution_store().loop_depth() = depth;
 }
 
-fn EvalContext::set_terminal_exec_allowed(bool enabled) wontthrow -> void
-{
-  execution_store().terminal_exec_allowed() = enabled;
-}
-
-pure fn EvalContext::terminal_exec_allowed() const wontthrow -> bool
-{
-  return execution_store().terminal_exec_allowed();
-}
-
 pure fn EvalContext::getopts_char_index() const wontthrow -> usize
 {
   return expansion_store().getopts_char_index();

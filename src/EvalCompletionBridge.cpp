@@ -71,8 +71,8 @@ fn EvalContext::run_completion_function(StringView function_name,
       static_cast<int>(function_name.length), function_name.data, words.count(),
       cword);
 
-  set_completion_function_running(true);
-  defer { set_completion_function_running(false); };
+  execution_store().completion_function_running() = true;
+  defer { execution_store().completion_function_running() = false; };
 
   let defining_runtime = RuntimeState::capture(*this);
   if (let const *definition_info = body_storage.get_definition_info();
@@ -152,9 +152,9 @@ fn EvalContext::run_completion_function(StringView function_name,
     pop_function_call_name();
     leave_function_scope();
   };
-  let const saved_terminal_exec = terminal_exec_allowed();
-  set_terminal_exec_allowed(false);
-  defer { set_terminal_exec_allowed(saved_terminal_exec); };
+  let const saved_terminal_exec = execution_store().terminal_exec_allowed();
+  execution_store().terminal_exec_allowed() = false;
+  defer { execution_store().terminal_exec_allowed() = saved_terminal_exec; };
 
   /* A completion function that errors must not abort the prompt, so any error
      is swallowed and a stray break or return is consumed. */

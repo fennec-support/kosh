@@ -227,7 +227,7 @@ hot fn IfClause::evaluate_impl(EvalContext &cxt) const throws -> i64
 hot fn IfClause::evaluate_status_impl(EvalContext &cxt) const throws
     -> status_result
 {
-  cxt.set_terminal_exec_allowed(false);
+  cxt.execution_store().terminal_exec_allowed() = false;
   let const should_skip_condition_commands = !folded_commands_are_observed(cxt);
 
   if (is_fully_eliminated() && should_skip_condition_commands) {
@@ -468,7 +468,7 @@ hot fn WhileLoop::evaluate_status_impl(EvalContext &cxt) const throws
   ASSERT(m_condition != nullptr);
   ASSERT(m_body != nullptr);
 
-  cxt.set_terminal_exec_allowed(false);
+  cxt.execution_store().terminal_exec_allowed() = false;
 
   let const is_until_loop = is_until();
   let const is_folded_to_skip = this->is_folded_to_skip();
@@ -657,7 +657,7 @@ fn SelectLoop::evaluate_status_impl(EvalContext &cxt) const throws
 {
   ASSERT(m_body != nullptr);
 
-  cxt.set_terminal_exec_allowed(false);
+  cxt.execution_store().terminal_exec_allowed() = false;
   cxt.set_current_location(source_location());
 
   let const values =
@@ -789,7 +789,7 @@ hot fn ForLoop::evaluate_status_impl(EvalContext &cxt) const throws
 {
   ASSERT(m_body != nullptr);
 
-  cxt.set_terminal_exec_allowed(false);
+  cxt.execution_store().terminal_exec_allowed() = false;
 
   if (is_fully_eliminated()) {
     cxt.publish_single_pipe_status(0);
@@ -1071,7 +1071,7 @@ fn CaseClause::evaluate_status_impl(EvalContext &cxt) const throws
 {
   ASSERT(m_word != nullptr);
 
-  cxt.set_terminal_exec_allowed(false);
+  cxt.execution_store().terminal_exec_allowed() = false;
   cxt.set_current_location(source_location());
 
   let const should_run_case = publish_command_and_run_debug_trap(cxt, [&] {
@@ -1423,7 +1423,7 @@ fn BraceGroup::evaluate_status_impl(EvalContext &cxt) const throws
 {
   ASSERT(m_body != nullptr);
 
-  cxt.set_terminal_exec_allowed(false);
+  cxt.execution_store().terminal_exec_allowed() = false;
 
   if (is_fully_eliminated()) {
     cxt.publish_single_pipe_status(0);

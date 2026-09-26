@@ -364,9 +364,12 @@ fn EvalContext::run_named_trap(StringView condition,
   trap_store().m_trap_action_depth += 1;
   defer { trap_store().m_trap_action_depth -= 1; };
 
-  let const was_terminal_exec_allowed = terminal_exec_allowed();
-  set_terminal_exec_allowed(false);
-  defer { set_terminal_exec_allowed(was_terminal_exec_allowed); };
+  let const was_terminal_exec_allowed =
+      execution_store().terminal_exec_allowed();
+  execution_store().terminal_exec_allowed() = false;
+  defer {
+    execution_store().terminal_exec_allowed() = was_terminal_exec_allowed;
+  };
 
   /* The line is resolved here, while the triggering command is still current.
      The action below replaces the current source. The location alone cannot be
@@ -662,9 +665,12 @@ fn EvalContext::run_pending_traps() throws -> void
   trap_store().m_trap_action_depth += 1;
   defer { trap_store().m_trap_action_depth -= 1; };
 
-  let const was_terminal_exec_allowed = terminal_exec_allowed();
-  set_terminal_exec_allowed(false);
-  defer { set_terminal_exec_allowed(was_terminal_exec_allowed); };
+  let const was_terminal_exec_allowed =
+      execution_store().terminal_exec_allowed();
+  execution_store().terminal_exec_allowed() = false;
+  defer {
+    execution_store().terminal_exec_allowed() = was_terminal_exec_allowed;
+  };
 
   /* The fast flag is cleared before the per-signal flags are consumed, so a
      signal that arrives during the drain re-sets it and the next boundary

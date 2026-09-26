@@ -809,9 +809,9 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
 
     /* A command at the tail of the body must not exec the shell in place, since
        the call's cleanup has to run after the body. */
-    let const saved_terminal_exec = cxt.terminal_exec_allowed();
-    cxt.set_terminal_exec_allowed(false);
-    defer { cxt.set_terminal_exec_allowed(saved_terminal_exec); };
+    let const saved_terminal_exec = cxt.execution_store().terminal_exec_allowed();
+    cxt.execution_store().terminal_exec_allowed() = false;
+    defer { cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec; };
 
     /* The body runs in the mood and diagnostics state the function was defined
        in, so a function defined in bash mood runs bash even after a later set

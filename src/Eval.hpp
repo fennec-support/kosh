@@ -2889,10 +2889,12 @@ public:
   {
     let const strict = m_runtime.mood == mimic_mood::Default;
     if (!m_runtime.was_error_unset_set_explicitly())
-      set_error_unset(strict && !is_completion_function_running());
+      set_error_unset(strict &&
+                      !execution_store().completion_function_running());
     if (!m_runtime.was_pipefail_set_explicitly()) set_pipefail(strict);
     if (!m_runtime.was_failglob_set_explicitly())
-      set_failglob(strict && !is_completion_function_running());
+      set_failglob(strict &&
+                   !execution_store().completion_function_running());
     if (!m_runtime.was_extended_arithmetic_set_explicitly())
       set_extended_arithmetic(strict);
   }
@@ -3119,24 +3121,7 @@ public:
   /* The run loop sets this before the final chunk when the shell will exit with
      that chunk's status and no EXIT trap is pending, so a terminal external
      command replaces the shell process instead of fork and wait. */
-  fn set_terminal_exec_allowed(bool enabled) wontthrow -> void;
 
-  fn set_completion_function_running(bool running) wontthrow -> void
-  {
-    execution_store().completion_function_running() = running;
-  }
-  pure fn is_completion_function_running() const wontthrow -> bool
-  {
-    return execution_store().completion_function_running();
-  }
-  fn set_prompt_command_running(bool running) wontthrow -> void
-  {
-    execution_store().prompt_command_running() = running;
-  }
-  pure fn is_prompt_command_running() const wontthrow -> bool
-  {
-    return execution_store().prompt_command_running();
-  }
   fn get_prompt_command_arena() wontthrow -> BumpArena &
   {
     return prompt_command_store().get_arena();
@@ -3212,8 +3197,6 @@ public:
 
     return should_elide;
   }
-
-  pure fn terminal_exec_allowed() const wontthrow -> bool;
 
   fn sorted_variable_assignments() const throws
       -> SortedArrayList<String, order_comparator<String>>;

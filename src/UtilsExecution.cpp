@@ -33,7 +33,7 @@ fn set_foreground_program_title(const ArrayList<String> &arguments,
   if (arguments.is_empty()) return;
 
   if (!cxt.shell_is_interactive() || !cxt.startup_finished() ||
-      cxt.is_completion_function_running() || cxt.is_prompt_command_running())
+      cxt.execution_store().completion_function_running() || cxt.execution_store().prompt_command_running())
   {
     return;
   }
@@ -62,7 +62,7 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
     return execute_builtin(steal(ec), cxt);
   }
 
-  let const can_replace_shell = cxt.terminal_exec_allowed() &&
+  let const can_replace_shell = cxt.execution_store().terminal_exec_allowed() &&
                                 !cxt.in_subshell() && !cxt.has_exit_trap() &&
                                 !cxt.show_exit_code() && !cxt.stats_enabled() &&
                                 !cxt.memory_stats_enabled();
@@ -252,7 +252,7 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
      offer it as if nothing had happened. The interrupt is therefore raised
      here, which unwinds the spec and turns the key into a cancelled
      completion. */
-  if (foreground_status == 130 && cxt.is_completion_function_running())
+  if (foreground_status == 130 && cxt.execution_store().completion_function_running())
     os::INTERRUPT_REQUESTED = 1;
   return foreground_status;
 }
@@ -318,7 +318,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
   ASSERT(!ecs.is_empty());
 
   if (!is_async && cxt.shell_is_interactive() && cxt.startup_finished() &&
-      !cxt.is_completion_function_running() && !cxt.is_prompt_command_running())
+      !cxt.execution_store().completion_function_running() && !cxt.execution_store().prompt_command_running())
   {
     let command = String{cxt.scratch_allocator()};
     for (usize stage = 0; stage < ecs.count(); stage++) {

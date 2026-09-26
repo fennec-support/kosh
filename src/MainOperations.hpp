@@ -688,8 +688,8 @@ static fn run_script_contents(
         let execution_parser = Parser{
             Lexer{script_contents.view(), ast_arena, filename, context.mood()}
         };
-        let const was_terminal_exec_allowed = context.terminal_exec_allowed();
-        defer { context.set_terminal_exec_allowed(was_terminal_exec_allowed); };
+        let const was_terminal_exec_allowed = context.execution_store().terminal_exec_allowed();
+        defer { context.execution_store().terminal_exec_allowed() = was_terminal_exec_allowed; };
 
         loop
         {
@@ -707,8 +707,8 @@ static fn run_script_contents(
             ast_arena.release(unit_mark);
           };
 
-          context.set_terminal_exec_allowed(was_terminal_exec_allowed &&
-                                            execution_parser.is_at_end());
+          context.execution_store().terminal_exec_allowed() =
+              was_terminal_exec_allowed && execution_parser.is_at_end();
           exit_code =
               static_cast<int>(unit->evaluate_root(context, evaluation_mode));
           evaluation_mode = root_evaluation_mode::Normal;
@@ -875,8 +875,8 @@ static fn run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
   let const saved_exit_status = context.execution_store().last_exit_status();
   let const saved_command_duration_nanos =
       context.execution_store().last_command_duration_nanos();
-  context.set_prompt_command_running(true);
-  defer { context.set_prompt_command_running(false); };
+  context.execution_store().prompt_command_running() = true;
+  defer { context.execution_store().prompt_command_running() = false; };
 
   let &cached_text = context.get_prompt_command_cached_text();
   let cached_ast = context.get_prompt_command_cached_ast();

@@ -751,7 +751,7 @@ fn CStyleForLoop::evaluate_status_impl(EvalContext &cxt) const throws
 {
   ASSERT(m_body != nullptr);
 
-  cxt.set_terminal_exec_allowed(false);
+  cxt.execution_store().terminal_exec_allowed() = false;
 
   let const should_skip_condition_commands = !folded_commands_are_observed(cxt);
   if (is_fully_eliminated() && should_skip_condition_commands) {
@@ -1046,7 +1046,7 @@ static fn evaluate_subshell_in_process(const Expression *body,
   bool did_enter_subshell = false;
   i64 ret = 0;
   try {
-    cxt.set_terminal_exec_allowed(false);
+    cxt.execution_store().terminal_exec_allowed() = false;
     cxt.enter_subshell();
     did_enter_subshell = true;
     cxt.hide_coprocess_descriptors();
@@ -1594,7 +1594,7 @@ fn RedirectedCommand::evaluate_status_impl(EvalContext &cxt) const throws
   let const substitution_mark = cxt.mark_process_substitutions();
   defer { cxt.cleanup_process_substitutions(substitution_mark); };
 
-  cxt.set_terminal_exec_allowed(false);
+  cxt.execution_store().terminal_exec_allowed() = false;
 
   /* The backups restore in reverse on every exit path, a normal return, a
      thrown diagnostic, or a pending break, continue, return, or exit. */

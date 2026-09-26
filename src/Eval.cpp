@@ -791,7 +791,7 @@ fn EvalContext::report_unset_reference(StringView name) throws -> void
     error.set_script_fatal();
     throw steal(error);
   }
-  if (is_completion_function_running()) return;
+  if (execution_store().completion_function_running()) return;
   if (is_warning_suppressed(suppressible_warning::UnsetTestOperand)) return;
 
   if (error_unset() || should_demote) {
@@ -812,7 +812,7 @@ fn EvalContext::warn_or_throw(bool fatal, bool explicitly_requested,
     if (note.is_empty()) throw ErrorWithLocation{location, message};
     throw ErrorWithLocationAndDetails{location, message, note};
   }
-  if (is_completion_function_running()) return;
+  if (execution_store().completion_function_running()) return;
   if ((fatal || should_demote) && !diagnostics_disabled() &&
       source_store().m_current_source != nullptr)
   {

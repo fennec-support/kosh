@@ -348,9 +348,9 @@ static fn edit_fc_commands(const ExecContext &ec, EvalContext &cxt,
 
   i32 editor_status = 1;
   {
-    let const saved_terminal_exec = cxt.terminal_exec_allowed();
-    cxt.set_terminal_exec_allowed(false);
-    defer { cxt.set_terminal_exec_allowed(saved_terminal_exec); };
+    let const saved_terminal_exec = cxt.execution_store().terminal_exec_allowed();
+    cxt.execution_store().terminal_exec_allowed() = false;
+    defer { cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec; };
     editor_status = cxt.run_source(
         editor_command.view(), "fc editor", ec.source_location(),
         StringView{"fc"}, nullptr, nullptr, return_handling::Propagate);

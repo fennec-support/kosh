@@ -1430,9 +1430,9 @@ fn kosh_main(int argc, char **argv) -> int
        trailer keeps the fork to regain control. */
     const bool should_print_post_run_trailer =
         context.show_exit_code() || context.stats_enabled();
-    context.set_terminal_exec_allowed(
+    context.execution_store().terminal_exec_allowed() =
         should_quit && !context.shell_is_interactive() &&
-        !context.has_exit_trap() && !should_print_post_run_trailer);
+        !context.has_exit_trap() && !should_print_post_run_trailer;
 
     if (context.shell_is_interactive() && !script_contents.is_empty()) {
       koshka::String ps0 = toiletline::render_ps0(context);

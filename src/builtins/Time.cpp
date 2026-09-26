@@ -59,9 +59,9 @@ cold fn Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   /* The tail-exec optimization would replace the shell process on the final
      command, so the report would never print. The flag is cleared around the
      run and restored after. */
-  let const saved_terminal_exec = cxt.terminal_exec_allowed();
-  cxt.set_terminal_exec_allowed(false);
-  defer { cxt.set_terminal_exec_allowed(saved_terminal_exec); };
+  let const saved_terminal_exec = cxt.execution_store().terminal_exec_allowed();
+  cxt.execution_store().terminal_exec_allowed() = false;
+  defer { cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec; };
 
   let const start_nanos = os::monotonic_nanos();
 
