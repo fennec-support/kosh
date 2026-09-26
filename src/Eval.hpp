@@ -560,6 +560,10 @@ public:
   }
 
   fn last_exit_status() wontthrow -> i32 & { return m_last_exit_status; }
+  fn set_last_exit_status(i32 status) wontthrow
+  {
+    m_last_exit_status = status;
+  }
   pure fn last_exit_status() const wontthrow -> i32
   {
     return m_last_exit_status;
@@ -567,6 +571,10 @@ public:
   fn last_command_duration_nanos() wontthrow -> u64 &
   {
     return m_last_command_duration_nanos;
+  }
+  fn set_last_command_duration_nanos(u64 nanos) wontthrow
+  {
+    m_last_command_duration_nanos = nanos;
   }
   pure fn last_command_duration_nanos() const wontthrow -> u64
   {
@@ -2044,16 +2052,10 @@ public:
      without a deep copy and restores them by moving the saved list back. */
   fn take_positional_params() wontthrow -> ArrayList<String>;
 
-  fn set_last_exit_status(i32 status) wontthrow -> void;
-  pure fn last_exit_status() const wontthrow -> i32;
-
   fn set_last_argument(StringView value) throws -> void
   {
     execution_store().set_last_argument(String{value});
   }
-
-  fn set_last_command_duration_nanos(u64 nanos) wontthrow -> void;
-  pure fn last_command_duration_nanos() const wontthrow -> u64;
 
   fn set_last_background_pid(i64 pid) wontthrow -> void;
 

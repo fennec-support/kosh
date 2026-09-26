@@ -93,7 +93,7 @@ fn CompoundCommand::evaluate_async(EvalContext &cxt) const throws -> i64
       .diagnostic_source = source != nullptr ? source->view() : StringView{},
       .bootstrap = should_launch_fresh_evaluator ? &bootstrap : nullptr,
       .shell_name = cxt.shell_name(),
-      .previous_exit_status = cxt.last_exit_status(),
+      .previous_exit_status = cxt.execution_store().last_exit_status(),
       .shell_process_id = os::get_shell_process_id(),
       .subshell_depth = cxt.get_subshell_depth() + 1,
       .mood = cxt.mood(),
@@ -514,11 +514,11 @@ hot fn WhileLoop::evaluate_status_impl(EvalContext &cxt) const throws
   }
 
   if (cxt.control_flow_store().has_pending()) {
-    result.status = cxt.last_exit_status();
+    result.status = cxt.execution_store().last_exit_status();
     return result;
   }
 
-  cxt.set_last_exit_status(result.status);
+  cxt.execution_store().set_last_exit_status(result.status);
   return result;
 }
 
@@ -670,7 +670,7 @@ fn SelectLoop::evaluate_status_impl(EvalContext &cxt) const throws
                           m_has_in_clause, m_words);
   let const should_run_select = publish_command_and_run_debug_trap(
       cxt, [&] { return String{heap_allocator(), select_trace.view()}; });
-  if (!should_run_select) return {cxt.last_exit_status()};
+  if (!should_run_select) return {cxt.execution_store().last_exit_status()};
 
   cxt.write_xtrace(select_trace.view());
 
@@ -740,11 +740,11 @@ fn SelectLoop::evaluate_status_impl(EvalContext &cxt) const throws
   }
 
   if (cxt.control_flow_store().has_pending()) {
-    result.status = cxt.last_exit_status();
+    result.status = cxt.execution_store().last_exit_status();
     return result;
   }
 
-  cxt.set_last_exit_status(result.status);
+  cxt.execution_store().set_last_exit_status(result.status);
   return result;
 }
 
@@ -858,11 +858,11 @@ hot fn ForLoop::evaluate_status_impl(EvalContext &cxt) const throws
   /* An exit, a return, or an abandoned publish carries its own status, and the
      loop reports that status. */
   if (cxt.control_flow_store().has_pending()) {
-    result.status = cxt.last_exit_status();
+    result.status = cxt.execution_store().last_exit_status();
     return result;
   }
 
-  cxt.set_last_exit_status(result.status);
+  cxt.execution_store().set_last_exit_status(result.status);
   return result;
 }
 
@@ -1080,7 +1080,7 @@ fn CaseClause::evaluate_status_impl(EvalContext &cxt) const throws
     header_text += " in ";
     return header_text;
   });
-  if (!should_run_case) return {cxt.last_exit_status()};
+  if (!should_run_case) return {cxt.execution_store().last_exit_status()};
 
   /* A case word and its patterns expand with variables and tilde but no field
      splitting and no globbing, so a pattern keeps its metacharacters. */
@@ -1160,7 +1160,7 @@ fn CaseClause::evaluate_status_impl(EvalContext &cxt) const throws
     {
       ASSERT(m_items[i].body != nullptr);
       result = m_items[i].body->evaluate_status(cxt);
-      cxt.set_last_exit_status(result.status);
+      cxt.execution_store().set_last_exit_status(result.status);
       did_run_a_body = true;
       if (cxt.control_flow_store().has_pending()) return result;
 
@@ -1182,7 +1182,7 @@ fn CaseClause::evaluate_status_impl(EvalContext &cxt) const throws
 
   if (!did_run_a_body) {
     LOG(Debug, "no case arm matched the subject");
-    cxt.set_last_exit_status(0);
+    cxt.execution_store().set_last_exit_status(0);
   }
   return result;
 }
@@ -1524,7 +1524,7 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
       .diagnostic_source = source != nullptr ? source->view() : StringView{},
       .bootstrap = should_launch_fresh_evaluator ? &bootstrap : nullptr,
       .shell_name = cxt.shell_name(),
-      .previous_exit_status = cxt.last_exit_status(),
+      .previous_exit_status = cxt.execution_store().last_exit_status(),
       .shell_process_id = os::get_shell_process_id(),
       .subshell_depth = cxt.get_subshell_depth() + 1,
       .mood = cxt.mood(),

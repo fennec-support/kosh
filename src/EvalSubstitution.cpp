@@ -227,7 +227,7 @@ fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
           .source_traces_enabled = should_print_source_traces(),
           .bootstrap = should_launch_fresh_evaluator ? &bootstrap : nullptr,
           .shell_name = shell_name(),
-          .previous_exit_status = last_exit_status(),
+          .previous_exit_status = execution_store().last_exit_status(),
           .shell_process_id = os::get_shell_process_id(),
           .subshell_depth = get_subshell_depth() + 1,
           .direction = command_writes_the_pipe
@@ -268,7 +268,7 @@ fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
     };
     try {
       ast->evaluate(*this);
-      status = last_exit_status();
+      status = execution_store().last_exit_status();
     } catch (...) {
       LOG(Debug,
           "the process substitution child swallowed an error, exiting with "
@@ -531,7 +531,7 @@ fn EvalContext::run_captured_substitution(const Expression *ast,
         }
         if (control_flow_store().has_pending()) {
           if (control_flow_store().pending().kind == control_flow::Kind::Exit)
-            set_last_exit_status(
+            execution_store().set_last_exit_status(
                 static_cast<i32>(control_flow_store().pending().value));
           control_flow_store().clear();
         }
@@ -546,10 +546,10 @@ fn EvalContext::run_captured_substitution(const Expression *ast,
         }
         if (error) {
           render_contained_substitution_error(error, source.view());
-          set_last_exit_status(1);
+          execution_store().set_last_exit_status(1);
         }
         koshka::flush();
-        os::exit_process_immediately(last_exit_status());
+        os::exit_process_immediately(execution_store().last_exit_status());
       }
 
       os::close_fd(pipe->out);
@@ -585,7 +585,7 @@ fn EvalContext::run_captured_substitution(const Expression *ast,
         os::INTERRUPT_REQUESTED = 0;
         throw InterruptErrorWithLocation{previous_location};
       }
-      set_last_exit_status(status);
+      execution_store().set_last_exit_status(status);
       if (!captured.has_value())
         throw ErrorWithLocation{previous_location,
                                 "Could not read command substitution output"};
@@ -687,7 +687,7 @@ fn EvalContext::run_captured_substitution(const Expression *ast,
     }
     if (control_flow_store().has_pending()) {
       if (control_flow_store().pending().kind == control_flow::Kind::Exit)
-        set_last_exit_status(static_cast<i32>(control_flow_store().pending().value));
+        execution_store().set_last_exit_status(static_cast<i32>(control_flow_store().pending().value));
       control_flow_store().clear();
     }
     /* The substitution's own EXIT action runs while stdout still points at the
@@ -719,7 +719,7 @@ fn EvalContext::run_captured_substitution(const Expression *ast,
       LOG(Debug, "the command substitution failed, containing the error with "
                  "status 1");
       render_contained_substitution_error(error, source.view());
-      set_last_exit_status(1);
+      execution_store().set_last_exit_status(1);
     }
 
     captured.strip_trailing_newlines();
@@ -854,7 +854,7 @@ fn EvalContext::capture_function_substitution(const WordSegment &segment) throws
     LOG(Debug,
         "the function substitution failed, containing the error with status 1");
     render_contained_substitution_error(error, source.view());
-    set_last_exit_status(1);
+    execution_store().set_last_exit_status(1);
   }
 
   captured.strip_trailing_newlines();

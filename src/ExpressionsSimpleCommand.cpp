@@ -270,7 +270,7 @@ hot fn AssignCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
                             m_assignment->raw_string().view()};
             });
       });
-  if (!should_run_assignment) return cxt.last_exit_status();
+  if (!should_run_assignment) return cxt.execution_store().last_exit_status();
 
   /* A command substitution in the value leaves the status of the last one, so
      the reset to 0 waits until after the expansion and a $? in the value reads
@@ -299,9 +299,9 @@ hot fn AssignCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
           *bracket + 1, key_view.length - *bracket - 2);
       cxt.assign_array_element(array_name, subscript, value.view(),
                                m_assignment->get_update_mode());
-      if (!value_ran_substitution) cxt.set_last_exit_status(0);
-      cxt.publish_single_pipe_status(cxt.last_exit_status());
-      return cxt.last_exit_status();
+      if (!value_ran_substitution) cxt.execution_store().set_last_exit_status(0);
+      cxt.publish_single_pipe_status(cxt.execution_store().last_exit_status());
+      return cxt.execution_store().last_exit_status();
     }
 
     /* NAME+=VALUE prepends the current value of NAME, empty when unset. An
@@ -323,9 +323,9 @@ hot fn AssignCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
       os::set_environment_variable(key, value);
       cxt.mark_exported(key);
     }
-    if (!value_ran_substitution) cxt.set_last_exit_status(0);
-    cxt.publish_single_pipe_status(cxt.last_exit_status());
-    return cxt.last_exit_status();
+    if (!value_ran_substitution) cxt.execution_store().set_last_exit_status(0);
+    cxt.publish_single_pipe_status(cxt.execution_store().last_exit_status());
+    return cxt.execution_store().last_exit_status();
   } catch (const ErrorWithLocation &) {
     throw;
   } catch (const Error &e) {

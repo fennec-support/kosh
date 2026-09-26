@@ -165,7 +165,7 @@ fn Watch::execute(const ExecContext &ec, EvalContext &cxt,
 
     let const body =
         cxt.capture_command_substitution(command, StringView{"watch"});
-    let const command_status = cxt.last_exit_status();
+    let const command_status = cxt.execution_store().last_exit_status();
 
     let screen = String{allocator};
     if (is_terminal) screen += "\x1b[H\x1b[2J";

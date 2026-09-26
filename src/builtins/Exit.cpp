@@ -35,7 +35,7 @@ fn Exit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     SHOW_BUILTIN_HELP_AND_RETURN(ec);
   }
 
-  let status = static_cast<i64>(cxt.last_exit_status());
+  let status = static_cast<i64>(cxt.execution_store().last_exit_status());
 
   /* Bash keeps the status the shell had reached when a trap action began. An
      exit with no operand inside that action reports it, and the commands of the

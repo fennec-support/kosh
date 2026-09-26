@@ -998,7 +998,7 @@ fn kosh_main(int argc, char **argv) -> int
     }
   }
   if (inherited_exit_status.has_value())
-    context.set_last_exit_status(*inherited_exit_status);
+    context.execution_store().set_last_exit_status(*inherited_exit_status);
   if (inherited_subshell_depth.has_value())
     context.set_subshell_depth(*inherited_subshell_depth);
 

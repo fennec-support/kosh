@@ -512,7 +512,7 @@ static fn run_script_contents(
       if (diagnostic_sink == nullptr)
         for (let const &e : parse_errors)
           show_message(e);
-      context.set_last_exit_status(EXIT_FAILURE);
+      context.execution_store().set_last_exit_status(EXIT_FAILURE);
 
       return true;
     };
@@ -723,7 +723,7 @@ static fn run_script_contents(
         exit_code =
             static_cast<int>(ast->evaluate_root(context, evaluation_mode));
       }
-      context.set_last_command_duration_nanos(koshka::os::monotonic_nanos() -
+      context.execution_store().set_last_command_duration_nanos(koshka::os::monotonic_nanos() -
                                               command_start_nanos);
       LOG(Debug, "the chunk finished with exit code %d", exit_code);
       /* A signal trapped during the last command has no following node to
@@ -733,7 +733,7 @@ static fn run_script_contents(
       /* script_contents is local, so the frame is dropped before it dangles. */
       context.set_current_source(nullptr, "");
     }
-    context.set_last_exit_status(static_cast<i32>(exit_code));
+    context.execution_store().set_last_exit_status(static_cast<i32>(exit_code));
 
     if (context.stats_enabled()) {
       print(context.make_stats_string());
@@ -872,9 +872,9 @@ static fn run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
 
   LOG(Info, "running the PROMPT_COMMAND hook, %zu bytes", command->count());
 
-  let const saved_exit_status = context.last_exit_status();
+  let const saved_exit_status = context.execution_store().last_exit_status();
   let const saved_command_duration_nanos =
-      context.last_command_duration_nanos();
+      context.execution_store().last_command_duration_nanos();
   context.set_prompt_command_running(true);
   defer { context.set_prompt_command_running(false); };
 
@@ -903,8 +903,8 @@ static fn run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
         definition.has_value())
       context.print_source_backtrace(definition);
 
-  context.set_last_exit_status(saved_exit_status);
-  context.set_last_command_duration_nanos(saved_command_duration_nanos);
+  context.execution_store().set_last_exit_status(saved_exit_status);
+  context.execution_store().set_last_command_duration_nanos(saved_command_duration_nanos);
 }
 
 static fn history_control_operator_byte_length(StringView source,

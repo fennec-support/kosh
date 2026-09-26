@@ -2291,7 +2291,7 @@ static fn expand_prompt_escapes(StringView prompt, StringView user,
         out += *version;
       break;
     case '?': {
-      const i32 status = context.last_exit_status();
+      const i32 status = context.execution_store().last_exit_status();
       let const should_use_color = colors::stdout_wants_color();
       if (should_use_color)
         out += status == 0 ? colors::ansi::GREEN : colors::ansi::RED;
@@ -2299,7 +2299,7 @@ static fn expand_prompt_escapes(StringView prompt, StringView user,
       if (should_use_color) out += colors::ansi::RESET;
     } break;
     case '.': {
-      const i32 status = context.last_exit_status();
+      const i32 status = context.execution_store().last_exit_status();
       let const should_use_color = colors::stdout_wants_color();
       if (should_use_color && status != 0) out += colors::ansi::BOLD_BRIGHT_RED;
       out += "•";
@@ -2310,7 +2310,7 @@ static fn expand_prompt_escapes(StringView prompt, StringView user,
                           koshka::heap_allocator());
       break;
     case 'D':
-      out += format_prompt_duration(context.last_command_duration_nanos());
+      out += format_prompt_duration(context.execution_store().last_command_duration_nanos());
       break;
     /* \! and \# are untracked here, so they expand to nothing. */
     case '!': break;
@@ -2570,7 +2570,7 @@ fn build_prompt(EvalContext &context) -> String
     }
   }
 
-  const i32 saved_status = context.last_exit_status();
+  const i32 saved_status = context.execution_store().last_exit_status();
   String guarded = guard_prompt_backslashes(ps1_template.view());
   String expanded{koshka::heap_allocator()};
   try {
@@ -2589,7 +2589,7 @@ fn build_prompt(EvalContext &context) -> String
       context.print_source_backtrace(definition);
     expanded = ps1_template;
   }
-  context.set_last_exit_status(saved_status);
+  context.execution_store().set_last_exit_status(saved_status);
 
   String rendered = expand_prompt_escapes(expanded.view(), CACHED_USER.view(),
                                           full_pwd.view(), context);
@@ -2615,7 +2615,7 @@ fn render_ps0(EvalContext &context) -> String
     return String{koshka::heap_allocator()};
   }
 
-  const i32 saved_status = context.last_exit_status();
+  const i32 saved_status = context.execution_store().last_exit_status();
   String guarded = guard_prompt_backslashes(ps0->view());
   String expanded{koshka::heap_allocator()};
   try {
@@ -2630,10 +2630,10 @@ fn render_ps0(EvalContext &context) -> String
             context.special_variable_definition_location("PS0");
         definition.has_value())
       context.print_source_backtrace(definition);
-    context.set_last_exit_status(saved_status);
+    context.execution_store().set_last_exit_status(saved_status);
     return String{koshka::heap_allocator()};
   }
-  context.set_last_exit_status(saved_status);
+  context.execution_store().set_last_exit_status(saved_status);
 
   let const working_directory = Path::current_directory().text();
   let const user = os::get_current_user().value_or(String{"???"});

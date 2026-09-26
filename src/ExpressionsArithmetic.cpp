@@ -511,7 +511,7 @@ fn ConditionalCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
             cxt, source_location(), source_end_position(),
             [&] { return conditional_command_text(m_elements); });
       });
-  if (!should_run_conditional) return cxt.last_exit_status();
+  if (!should_run_conditional) return cxt.execution_store().last_exit_status();
 
   i64 status;
   try {
@@ -604,7 +604,7 @@ fn ArithmeticCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
 
   let const should_run_clause = publish_command_and_run_debug_trap(
       cxt, [&] { return arithmetic_clause_command_text(m_expression); });
-  if (!should_run_clause) return cxt.last_exit_status();
+  if (!should_run_clause) return cxt.execution_store().last_exit_status();
 
   if (is_blank_clause(m_expression)) {
     cxt.publish_single_pipe_status(1);
@@ -784,13 +784,13 @@ fn CStyleForLoop::evaluate_status_impl(EvalContext &cxt) const throws
   defer { cxt.leave_loop(); };
 
   if (is_blank_clause(m_init)) {
-    if (!do_publish_implied_clause()) return {cxt.last_exit_status()};
+    if (!do_publish_implied_clause()) return {cxt.execution_store().last_exit_status()};
   } else {
     let const should_run_init = publish_command_and_run_debug_trap(cxt, [&] {
       return arithmetic_clause_command_text(
           clause_without_leading_blanks(m_init));
     });
-    if (!should_run_init) return {cxt.last_exit_status()};
+    if (!should_run_init) return {cxt.execution_store().last_exit_status()};
 
     cxt.evaluate_arithmetic_nonzero(m_init);
   }
@@ -854,11 +854,11 @@ fn CStyleForLoop::evaluate_status_impl(EvalContext &cxt) const throws
   }
 
   if (cxt.control_flow_store().has_pending()) {
-    result.status = cxt.last_exit_status();
+    result.status = cxt.execution_store().last_exit_status();
     return result;
   }
 
-  cxt.set_last_exit_status(result.status);
+  cxt.execution_store().set_last_exit_status(result.status);
   return result;
 }
 
@@ -1069,7 +1069,7 @@ static fn evaluate_subshell_in_process(const Expression *body,
       show_message(error.to_string(
           source != nullptr ? source->view() : StringView{}, &cxt));
       ret = cxt.is_bash_compatible() ? 1 : 2;
-      cxt.set_last_exit_status(static_cast<i32>(ret));
+      cxt.execution_store().set_last_exit_status(static_cast<i32>(ret));
       cxt.control_flow_store().clear();
     }
 

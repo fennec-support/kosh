@@ -43,7 +43,7 @@ fn Logout::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 1;
   }
 
-  let status = static_cast<i64>(cxt.last_exit_status());
+  let status = static_cast<i64>(cxt.execution_store().last_exit_status());
 
   if (ec.args().count() > 1) {
     let const parsed_status = ec.args()[1].to<i64>();

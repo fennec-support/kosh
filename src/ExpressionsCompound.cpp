@@ -301,7 +301,7 @@ hot fn CompoundList::evaluate_root_status_impl(
     if (has_pending_control_flow) break;
 
     if (was_command_failure_uncaught && !cxt.is_posix_mode()) {
-      cxt.set_last_exit_status(ret.status);
+      cxt.execution_store().set_last_exit_status(ret.status);
       if (was_err_trapped && cxt.should_run_err_trap()) {
         let const failed_location = n->command()->error_report_location();
         cxt.run_named_trap(StringView{"ERR", 3}, &failed_location);
@@ -319,7 +319,7 @@ hot fn CompoundList::evaluate_root_status_impl(
     /* The action can turn errexit off or on, and the option decides the exit
        only as it stands once the action has returned. */
     if (was_command_failure_uncaught && cxt.error_exit()) {
-      cxt.set_last_exit_status(ret.status);
+      cxt.execution_store().set_last_exit_status(ret.status);
       if (cxt.in_subshell()) {
         cxt.request_exit(ret.status, source_location());
         break;
@@ -460,7 +460,7 @@ hot fn CompoundListCondition::evaluate_root_status_impl(
   /* A pipeline prefixed with ! reports the inverse of its status. */
   if (m_cmd->is_negated()) {
     result.status = (result.status == 0) ? 1 : 0;
-    cxt.set_last_exit_status(result.status);
+    cxt.execution_store().set_last_exit_status(result.status);
   }
 
   return result;
@@ -649,7 +649,7 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
           .process_group_id = process_group_id,
           .bootstrap = should_launch_fresh_evaluator ? &bootstrap : nullptr,
           .shell_name = cxt.shell_name(),
-          .previous_exit_status = cxt.last_exit_status(),
+          .previous_exit_status = cxt.execution_store().last_exit_status(),
           .shell_process_id = os::get_shell_process_id(),
           .subshell_depth = cxt.get_subshell_depth() + 1,
           .mood = cxt.mood(),
@@ -724,7 +724,7 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
     if (last_stdin != KOSH_INVALID_FD) os::close_fd(last_stdin);
     utils::terminate_and_reap_processes(children);
 
-    return cxt.last_exit_status();
+    return cxt.execution_store().last_exit_status();
   }
 
   if (is_async()) {
@@ -862,7 +862,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
        words carets the stage that read the variable. */
     cxt.set_current_location(e->source_location());
     let const should_run_stage = publish_simple_command(cxt, *e);
-    if (!should_run_stage) return cxt.last_exit_status();
+    if (!should_run_stage) return cxt.execution_store().last_exit_status();
 
     let const stage_write_mark = cxt.begin_confined_variable_writes();
     defer { cxt.rollback_confined_variable_writes(stage_write_mark); };

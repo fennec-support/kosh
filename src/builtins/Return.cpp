@@ -45,7 +45,7 @@ fn Return::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 2;
   }
 
-  i64 status = cxt.last_exit_status();
+  i64 status = cxt.execution_store().last_exit_status();
 
   if (ec.args().count() > 1) {
     let const parsed_value = ec.args()[1].to<i64>();

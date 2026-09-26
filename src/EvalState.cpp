@@ -1690,26 +1690,6 @@ fn EvalContext::option_flags_string() const throws -> String
   return enabled_shell_option_letters(*this);
 }
 
-fn EvalContext::set_last_exit_status(i32 status) wontthrow -> void
-{
-  execution_store().last_exit_status() = status;
-}
-
-fn EvalContext::set_last_command_duration_nanos(u64 nanos) wontthrow -> void
-{
-  execution_store().last_command_duration_nanos() = nanos;
-}
-
-pure fn EvalContext::last_command_duration_nanos() const wontthrow -> u64
-{
-  return execution_store().last_command_duration_nanos();
-}
-
-pure fn EvalContext::last_exit_status() const wontthrow -> i32
-{
-  return execution_store().last_exit_status();
-}
-
 fn EvalContext::apply_indirect_or_name_listing(StringView body) throws -> String
 {
   LOG(All, "applying the indirect expansion '${!%.*s}'",
@@ -1802,7 +1782,7 @@ cold fn EvalContext::make_stats_string() const throws -> String
   append_count_line("Commands evaluated",
                     evaluation_metrics_store().commands_evaluated() + 1);
   append_line("Last command duration",
-              utils::format_duration_nanoseconds(last_command_duration_nanos(),
+              utils::format_duration_nanoseconds(execution_store().last_command_duration_nanos(),
                                                  allocator)
                   .view());
   append_count_line("Expansions", last_expansion_count());

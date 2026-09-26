@@ -341,13 +341,13 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
                                     script_exit_context exit_context) throws
       -> bool {
     let is_interrupt = mimicked_error_is_interrupt(error);
-    i32 final_status = last_exit_status();
+    i32 final_status = execution_store().last_exit_status();
     bool was_error_rendered = false;
     if (error && !is_interrupt) {
       final_status = mimicked_error_status(
           error, is_posix_mode() ? mimicked_error_status_mode::Posix
                                  : mimicked_error_status_mode::Default);
-      set_last_exit_status(final_status);
+      execution_store().set_last_exit_status(final_status);
       do_render_error(error);
       was_error_rendered = true;
     }
@@ -377,7 +377,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
     if (error && !is_interrupt && !was_error_rendered) {
       do_render_error(error);
     }
-    set_last_exit_status(final_status);
+    execution_store().set_last_exit_status(final_status);
     return is_interrupt;
   };
 
@@ -432,9 +432,9 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
     if (error) {
       if (is_interrupt) throw InterruptErrorWithLocation{previous_location};
 
-      return last_exit_status();
+      return execution_store().last_exit_status();
     }
-    return last_exit_status();
+    return execution_store().last_exit_status();
   }
 
   set_positional_params(steal(params));
@@ -451,7 +451,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
   }
   if (control_flow_store().has_pending()) {
     if (control_flow_store().pending().kind == control_flow::Kind::Exit)
-      set_last_exit_status(static_cast<i32>(control_flow_store().pending().value));
+      execution_store().set_last_exit_status(static_cast<i32>(control_flow_store().pending().value));
     control_flow_store().clear();
   }
   let const is_interrupt =
@@ -461,7 +461,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
   should_leave_mimicry = false;
   do_restore_fds();
 
-  let const status = last_exit_status();
+  let const status = execution_store().last_exit_status();
   should_restore_isolated_state = false;
   restore_state(steal(*isolated_snapshot));
   do_restore_auxiliary_state();
@@ -641,10 +641,10 @@ fn EvalContext::run_source(StringView source, StringView origin,
         *status_before_return = trap_store().m_status_before_return;
 
       control_flow_store().clear();
-      set_last_exit_status(source_status);
+      execution_store().set_last_exit_status(source_status);
       return source_status;
     }
-    return last_exit_status();
+    return execution_store().last_exit_status();
   } catch (const InterruptErrorWithLocation &) {
     /* An interrupt ends the whole shell command. It passes through the sourced
        file, the eval, and the trap action that was running. */

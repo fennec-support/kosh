@@ -275,7 +275,7 @@ fn check_prefix_assignment_reads(AnalysisContext &actx,
 alwaysinline fn set_and_return_exit_status(EvalContext &cxt,
                                            i64 status) wontthrow -> i64
 {
-  cxt.set_last_exit_status(static_cast<i32>(status));
+  cxt.execution_store().set_last_exit_status(static_cast<i32>(status));
   return status;
 }
 
@@ -418,7 +418,7 @@ fn publish_command_and_run_debug_trap(
     if (cxt.is_shopt_enabled(shopt_option_id::Extdebug) &&
         cxt.get_last_trap_action_status() != 0)
     {
-      cxt.set_last_exit_status(0);
+      cxt.execution_store().set_last_exit_status(0);
       return false;
     }
   }

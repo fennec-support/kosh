@@ -144,7 +144,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   cxt.set_current_location(source_location());
 
   let const should_run_command = publish_simple_command(cxt, *this, mode);
-  if (!should_run_command) return cxt.last_exit_status();
+  if (!should_run_command) return cxt.execution_store().last_exit_status();
 
   /* The check reads the typed command word before its expansion, so a pattern
      that happens to match a single file is still caught. */
@@ -494,7 +494,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         source != nullptr ? source->view() : StringView{}, &cxt));
     /* bash reports a redirection failure with status 1 and dash with 2. */
     let const redirection_status = cxt.is_bash_compatible() ? 1 : 2;
-    cxt.set_last_exit_status(redirection_status);
+    cxt.execution_store().set_last_exit_status(redirection_status);
     cxt.publish_single_pipe_status(redirection_status);
     return redirection_status;
   }
@@ -595,9 +595,9 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     for (let const &assignment : m_array_args)
       for (let const token : assignment.elements)
         ran_substitution = ran_substitution || do_token_ran_substitution(token);
-    if (!ran_substitution) cxt.set_last_exit_status(0);
-    cxt.publish_single_pipe_status(cxt.last_exit_status());
-    return cxt.last_exit_status();
+    if (!ran_substitution) cxt.execution_store().set_last_exit_status(0);
+    cxt.publish_single_pipe_status(cxt.execution_store().last_exit_status());
+    return cxt.execution_store().last_exit_status();
   }
 
   /* A prefix assignment before a special builtin persists after the command as
@@ -859,7 +859,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       /* An action that leaves an exit, a return, a break, or a continue
          abandons the body the entry traced. */
       if (!was_control_flow_pending && cxt.control_flow_store().has_pending()) {
-        return cxt.last_exit_status();
+        return cxt.execution_store().last_exit_status();
       }
     }
 
@@ -874,7 +874,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         if (pending_kind != control_flow::Kind::Exit) {
           cxt.run_return_trap(pending_kind == control_flow::Kind::Return
                                   ? cxt.status_before_return()
-                                  : cxt.last_exit_status());
+                                  : cxt.execution_store().last_exit_status());
         }
       }
     } catch (ErrorWithLocationAndDetails &error) {
@@ -929,7 +929,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   } catch (const CommandResolutionErrorWithLocation &e) {
     report_command_resolution_error(cxt, e);
     let const status = e.command_status();
-    cxt.set_last_exit_status(static_cast<i32>(status));
+    cxt.execution_store().set_last_exit_status(static_cast<i32>(status));
     cxt.publish_single_pipe_status(static_cast<i32>(status));
     return status;
   }
@@ -1104,7 +1104,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     }
   }
 
-  cxt.set_last_exit_status(static_cast<i32>(ret));
+  cxt.execution_store().set_last_exit_status(static_cast<i32>(ret));
   cxt.publish_single_pipe_status(static_cast<i32>(ret));
   return ret;
 }

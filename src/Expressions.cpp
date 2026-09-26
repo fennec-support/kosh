@@ -508,7 +508,7 @@ hot flatten fn Expression::evaluate_root(EvalContext &cxt,
     /* A jump the action requested takes the place of this command. The
        enclosing list never reaches this command. */
     if (!was_control_flow_pending && cxt.control_flow_store().has_pending())
-      return cxt.last_exit_status();
+      return cxt.execution_store().last_exit_status();
   }
 
   cxt.add_evaluated_expression();
@@ -552,7 +552,7 @@ hot flatten fn Expression::evaluate_root_status(
     /* A jump the action requested takes the place of this command. The
        enclosing list never reaches this command. */
     if (!was_control_flow_pending && cxt.control_flow_store().has_pending())
-      return {cxt.last_exit_status(), 0};
+      return {cxt.execution_store().last_exit_status(), 0};
   }
 
   cxt.add_evaluated_expression();
