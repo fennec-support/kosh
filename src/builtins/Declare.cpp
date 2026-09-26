@@ -253,9 +253,10 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       names.add(environment_name.view());
     cxt.append_attributed_names(names);
 
-    let sorted_names = ArrayList<String>{cxt.scratch_allocator()};
-    names.for_each([&](StringView name) { sorted_names.push_managed(name); });
-    sorted_names.sort();
+    let collected_names = ArrayList<String>{cxt.scratch_allocator()};
+    names.for_each([&](StringView name) { collected_names.push_managed(name); });
+    let const sorted_names =
+        steal(collected_names).make_sorted(sort_order::ascending);
 
     for (let const &name : sorted_names) {
       if (do_matches_attribute_filter(name.view()))
