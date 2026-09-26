@@ -862,24 +862,31 @@ fn source_list_from_operands(const ArrayList<String> &operands,
   return sources;
 }
 
+struct signal_number_comparator
+{
+  pure fn operator()(const utils::signal_pair &left,
+                     const utils::signal_pair &right) const wontthrow -> bool
+  {
+    return left.number < right.number;
+  }
+};
+
 fn format_signal_list() throws -> String
 {
   static const usize COLUMN_COUNT = 5;
   static const usize NUMBER_WIDTH = 2;
 
-  let numbered = ArrayList<utils::signal_pair>{heap_allocator()};
+  let collected = ArrayList<utils::signal_pair>{heap_allocator()};
   for (let const name : os::signal_names()) {
     if (let const number = os::signal_number_from_name(name);
         number.has_value())
     {
-      numbered.push(utils::signal_pair{*number, name});
+      collected.push(utils::signal_pair{*number, name});
     }
   }
 
-  numbered.sort(
-      [](const utils::signal_pair &left, const utils::signal_pair &right) {
-        return left.number < right.number;
-      });
+  let const numbered =
+      steal(collected).make_sorted(signal_number_comparator{});
 
   let out = String{heap_allocator()};
   for (usize index = 0; index < numbered.count(); index++) {
