@@ -299,7 +299,7 @@ fn EvalContext::variable_names(Allocator result_allocator) const throws
   if (is_bash_directory_stack_special(DIRSTACK_VARIABLE))
     names.add(DIRSTACK_VARIABLE);
 #if !defined NDEBUG
-  m_debug_variable_name_enumeration_count += names.count();
+  dynamic_runtime_store().debug_variable_name_enumeration_count() += names.count();
 #endif
   return names;
 }

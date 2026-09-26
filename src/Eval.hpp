@@ -1522,6 +1522,36 @@ private:
   ProgramResolver m_resolver{};
 };
 
+class DynamicRuntimeStore
+{
+public:
+  fn shell_start_time() wontthrow -> i64 & { return m_shell_start_time; }
+  pure fn shell_start_time() const wontthrow -> const i64 &
+  {
+    return m_shell_start_time;
+  }
+  fn seconds_base() wontthrow -> i64 & { return m_seconds_base; }
+  pure fn seconds_base() const wontthrow -> const i64 &
+  {
+    return m_seconds_base;
+  }
+  fn random_state() const wontthrow -> u64 & { return m_random_state; }
+#if !defined NDEBUG
+  fn debug_variable_name_enumeration_count() const wontthrow -> usize &
+  {
+    return m_debug_variable_name_enumeration_count;
+  }
+#endif
+
+private:
+  i64 m_shell_start_time{0};
+  i64 m_seconds_base{0};
+  mutable u64 m_random_state{0};
+#if !defined NDEBUG
+  mutable usize m_debug_variable_name_enumeration_count{0};
+#endif
+};
+
 class EvalContext
 {
 public:
@@ -1591,6 +1621,15 @@ public:
   pure fn resolution_store() const wontthrow -> const ResolutionStore &
   {
     return m_resolution_store;
+  }
+  fn dynamic_runtime_store() wontthrow -> DynamicRuntimeStore &
+  {
+    return m_dynamic_runtime_store;
+  }
+  pure fn dynamic_runtime_store() const wontthrow
+      -> const DynamicRuntimeStore &
+  {
+    return m_dynamic_runtime_store;
   }
   fn trap_store() wontthrow -> TrapStore & { return m_trap_store; }
   pure fn trap_store() const wontthrow -> const TrapStore &
@@ -2140,7 +2179,7 @@ public:
 #if !defined NDEBUG
   pure fn debug_variable_name_enumeration_count() const wontthrow -> usize
   {
-    return m_debug_variable_name_enumeration_count;
+    return dynamic_runtime_store().debug_variable_name_enumeration_count();
   }
 #endif
 
@@ -3438,9 +3477,7 @@ protected:
   /* The names currently in the process environment, kept in step with every
      environment write. An assignment tests membership in O(1). A key is the
      ASCII lowercase form of the name where the environment ignores case. */
-#if !defined NDEBUG
-  mutable usize m_debug_variable_name_enumeration_count{0};
-#endif
+  DynamicRuntimeStore m_dynamic_runtime_store{};
 
   /* The nesting depth of dot-source and eval runs, and of function calls, each
      bounded so a runaway recursion errors with a located message rather than
@@ -3465,11 +3502,6 @@ protected:
   /* Each bit names a suppressible_warning value. */
   /* The nesting of mimicked scripts, bounded so a script that mimics another
      cannot recurse without limit. */
-  /* This is the base $SECONDS counts from. */
-  i64 m_shell_start_time{0};
-  /* The offset an assignment to SECONDS puts on the elapsed count. */
-  i64 m_seconds_base{0};
-  mutable u64 m_random_state{0};
   TrapStore m_trap_store{};
   /* The deepest frame the DEBUG action still reaches without functrace. An
      install records the frame it ran in, and a command deeper than that frame

@@ -807,9 +807,9 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
       runtime_control_store().warning_mutation_revision(),
       runtime_control_store().diagnostics_mutation_revision(),
       runtime_control_store().annoying_diagnostics_mutation_revision(),
-      m_random_state,
-      m_shell_start_time,
-      m_seconds_base,
+      dynamic_runtime_store().random_state(),
+      dynamic_runtime_store().shell_start_time(),
+      dynamic_runtime_store().seconds_base(),
       runtime_control_store().option_mutations(),
       scope_store().local_scopes(),
       scope_store().local_scope_depth(),
@@ -873,9 +873,9 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
       snapshot.diagnostics_mutation_revision,
       snapshot.annoying_diagnostics_mutation_revision,
       snapshot.option_mutations);
-  m_random_state = snapshot.random_state;
-  m_shell_start_time = snapshot.shell_start_time;
-  m_seconds_base = snapshot.seconds_base;
+  dynamic_runtime_store().random_state() = snapshot.random_state;
+  dynamic_runtime_store().shell_start_time() = snapshot.shell_start_time;
+  dynamic_runtime_store().seconds_base() = snapshot.seconds_base;
   scope_store().local_scopes() = steal(snapshot.local_scopes);
   scope_store().local_scope_depth() = snapshot.local_scope_depth;
   m_job_table.restore_snapshot(steal(snapshot.job_state));
@@ -1275,9 +1275,9 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
   body.push(static_cast<char>(m_job_table.m_last_background_pid.has_value()));
   if (m_job_table.m_last_background_pid.has_value())
     append_subshell_bootstrap_i64(body, *m_job_table.m_last_background_pid);
-  append_subshell_bootstrap_u64(body, m_random_state);
-  append_subshell_bootstrap_i64(body, m_shell_start_time);
-  append_subshell_bootstrap_i64(body, m_seconds_base);
+  append_subshell_bootstrap_u64(body, dynamic_runtime_store().random_state());
+  append_subshell_bootstrap_i64(body, dynamic_runtime_store().shell_start_time());
+  append_subshell_bootstrap_i64(body, dynamic_runtime_store().seconds_base());
   append_subshell_bootstrap_u64(
       body, static_cast<u64>(expansion_store().getopts_char_index()));
   append_subshell_bootstrap_i64(body, expansion_store().getopts_last_optind());
@@ -1689,9 +1689,9 @@ fn EvalContext::apply_subshell_bootstrap(
                                              steal(execution_string));
   execution_store().set_last_argument(steal(last_argument));
   m_job_table.m_last_background_pid = last_background_pid;
-  m_random_state = random_state;
-  m_shell_start_time = shell_start_time;
-  m_seconds_base = seconds_base;
+  dynamic_runtime_store().random_state() = random_state;
+  dynamic_runtime_store().shell_start_time() = shell_start_time;
+  dynamic_runtime_store().seconds_base() = seconds_base;
   trap_store().m_startup_ignored_signals = startup_ignored_signals;
   expansion_store().set_getopts_char_index(getopts_char_index);
   expansion_store().set_getopts_last_optind(getopts_last_optind);

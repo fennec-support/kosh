@@ -54,7 +54,7 @@ EvalContext::EvalContext(bool should_disable_path_expansion, bool should_echo,
   set_shell_option_state(shell_option_id::Histexpand, shell_is_interactive);
   set_field_separators(field_separators());
 
-  m_shell_start_time = static_cast<i64>(std::time(nullptr));
+  dynamic_runtime_store().shell_start_time() = static_cast<i64>(std::time(nullptr));
   trap_store().m_startup_ignored_signals = os::get_entry_ignored_signals();
 
   os::for_each_environment_name(this, [](opaque *context, StringView name) {
@@ -233,8 +233,8 @@ fn EvalContext::begin_confined_variable_writes() wontthrow -> usize
       environment_store().confined_write_log().count());
 
   if (environment_store().m_confined_write_depth == 0) {
-    environment_store().m_confined_seconds_base = m_seconds_base;
-    environment_store().m_confined_random_state = m_random_state;
+    environment_store().m_confined_seconds_base = dynamic_runtime_store().seconds_base();
+    environment_store().m_confined_random_state = dynamic_runtime_store().random_state();
     environment_store().m_was_confined_ignoreeof_enabled =
         m_runtime.option_is_enabled(shell_option_id::Ignoreeof);
   }
@@ -278,8 +278,8 @@ fn EvalContext::rollback_confined_variable_writes(usize mark) wontthrow -> void
   }
 
   if (environment_store().m_confined_write_depth == 0) {
-    m_seconds_base = environment_store().m_confined_seconds_base;
-    m_random_state = environment_store().m_confined_random_state;
+    dynamic_runtime_store().seconds_base() = environment_store().m_confined_seconds_base;
+    dynamic_runtime_store().random_state() = environment_store().m_confined_random_state;
     m_runtime.set_option(shell_option_id::Ignoreeof,
                          environment_store().m_was_confined_ignoreeof_enabled);
   }

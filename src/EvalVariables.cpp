@@ -32,17 +32,17 @@ namespace koshka {
 
 fn EvalContext::next_random_u32() const wontthrow -> u32
 {
-  if (m_random_state == 0) {
-    m_random_state = os::realtime_microseconds() ^
+  if (dynamic_runtime_store().random_state() == 0) {
+    dynamic_runtime_store().random_state() = os::realtime_microseconds() ^
                      (static_cast<u64>(os::get_shell_process_id()) << 32) ^
-                     static_cast<u64>(m_shell_start_time);
-    if (m_random_state == 0) m_random_state = 0x9e3779b97f4a7c15ULL;
+                     static_cast<u64>(dynamic_runtime_store().shell_start_time());
+    if (dynamic_runtime_store().random_state() == 0) dynamic_runtime_store().random_state() = 0x9e3779b97f4a7c15ULL;
   }
 
-  m_random_state ^= m_random_state >> 12;
-  m_random_state ^= m_random_state << 25;
-  m_random_state ^= m_random_state >> 27;
-  return static_cast<u32>((m_random_state * 0x2545f4914f6cdd1dULL) >> 32);
+  dynamic_runtime_store().random_state() ^= dynamic_runtime_store().random_state() >> 12;
+  dynamic_runtime_store().random_state() ^= dynamic_runtime_store().random_state() << 25;
+  dynamic_runtime_store().random_state() ^= dynamic_runtime_store().random_state() >> 27;
+  return static_cast<u32>((dynamic_runtime_store().random_state() * 0x2545f4914f6cdd1dULL) >> 32);
 }
 
 struct ansi_color_variable
@@ -349,19 +349,19 @@ hot fn EvalContext::write_dynamic_variable(StringView name,
   if (*id == dynamic_reader_id::Random) {
     LOG(Debug, "seeding $RANDOM from '%.*s'", static_cast<int>(value.length),
         value.data);
-    m_random_state = (static_cast<u64>(assigned) + 0x9e3779b97f4a7c15ULL) *
+    dynamic_runtime_store().random_state() = (static_cast<u64>(assigned) + 0x9e3779b97f4a7c15ULL) *
                      0x2545f4914f6cdd1dULL;
     /* A zero state reads as unseeded and would draw a fresh seed from the
        clock. */
-    if (m_random_state == 0) m_random_state = 0x9e3779b97f4a7c15ULL;
+    if (dynamic_runtime_store().random_state() == 0) dynamic_runtime_store().random_state() = 0x9e3779b97f4a7c15ULL;
 
     return true;
   }
 
   LOG(Debug, "moving the $SECONDS base to '%.*s'",
       static_cast<int>(value.length), value.data);
-  m_seconds_base =
-      assigned - (static_cast<i64>(std::time(nullptr)) - m_shell_start_time);
+  dynamic_runtime_store().seconds_base() =
+      assigned - (static_cast<i64>(std::time(nullptr)) - dynamic_runtime_store().shell_start_time());
 
   return true;
 }
@@ -536,7 +536,7 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
                               heap_allocator());
         case dynamic_var::SECONDS:
           return String::from(static_cast<i64>(std::time(nullptr)) -
-                                  m_shell_start_time + m_seconds_base,
+                                  dynamic_runtime_store().shell_start_time() + dynamic_runtime_store().seconds_base(),
                               heap_allocator());
         case dynamic_var::BASHOPTS: return enabled_shopt_option_names(*this);
         case dynamic_var::SHELLOPTS: {
