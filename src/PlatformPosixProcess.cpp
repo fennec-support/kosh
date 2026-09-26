@@ -1226,13 +1226,21 @@ struct measured_child
   int start_descriptor;
 };
 
-fn transfer_barrier_byte(int descriptor, bool should_write) wontthrow -> bool
+enum class barrier_transfer_direction : u8
+{
+  Read,
+  Write,
+};
+
+fn transfer_barrier_byte(int descriptor,
+                         barrier_transfer_direction direction) wontthrow -> bool
 {
   char byte = 1;
   ssize_t transfer_count;
   do {
-    transfer_count =
-        should_write ? write(descriptor, &byte, 1) : read(descriptor, &byte, 1);
+    transfer_count = direction == barrier_transfer_direction::Write
+                         ? write(descriptor, &byte, 1)
+                         : read(descriptor, &byte, 1);
   } while (transfer_count == -1 && errno == EINTR);
 
   return transfer_count == 1;
@@ -1277,9 +1285,11 @@ fn spawn_measured_child(const ArrayList<String> &argv, measured_output output,
       }
     }
 
-    let const is_ready = transfer_barrier_byte(ready_descriptors[1], true);
+    let const is_ready = transfer_barrier_byte(
+        ready_descriptors[1], barrier_transfer_direction::Write);
     close(ready_descriptors[1]);
-    let const should_start = transfer_barrier_byte(start_descriptors[0], false);
+    let const should_start = transfer_barrier_byte(
+        start_descriptors[0], barrier_transfer_direction::Read);
     close(start_descriptors[0]);
     if (!is_ready || !should_start) _exit(127);
 
@@ -1289,7 +1299,8 @@ fn spawn_measured_child(const ArrayList<String> &argv, measured_output output,
 
   close(ready_descriptors[1]);
   close(start_descriptors[0]);
-  let const is_ready = transfer_barrier_byte(ready_descriptors[0], false);
+  let const is_ready = transfer_barrier_byte(
+      ready_descriptors[0], barrier_transfer_direction::Read);
   close(ready_descriptors[0]);
   if (!is_ready) {
     close(start_descriptors[1]);
@@ -1355,7 +1366,8 @@ fn run_measured(const ArrayList<String> &argv, const Maybe<descriptor> &,
   if (!has_perf) perf_session.cancel();
 
   const u64 start_nanos = monotonic_nanos();
-  let const did_release = transfer_barrier_byte(child.start_descriptor, true);
+  let const did_release = transfer_barrier_byte(
+      child.start_descriptor, barrier_transfer_direction::Write);
   close(child.start_descriptor);
   if (!did_release) {
     kill(child.pid, SIGKILL);
