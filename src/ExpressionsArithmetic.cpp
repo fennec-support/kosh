@@ -853,7 +853,7 @@ fn CStyleForLoop::evaluate_status_impl(EvalContext &cxt) const throws
     }
   }
 
-  if (cxt.has_pending_control_flow()) {
+  if (cxt.control_flow_store().has_pending()) {
     result.status = cxt.last_exit_status();
     return result;
   }
@@ -1070,22 +1070,22 @@ static fn evaluate_subshell_in_process(const Expression *body,
           source != nullptr ? source->view() : StringView{}, &cxt));
       ret = cxt.is_bash_compatible() ? 1 : 2;
       cxt.set_last_exit_status(static_cast<i32>(ret));
-      cxt.clear_control_flow();
+      cxt.control_flow_store().clear();
     }
 
     /* Exit and return end only the subshell. A break or continue is scoped to a
        loop inside it and is consumed here. */
-    if (cxt.has_pending_control_flow()) {
-      let const kind = cxt.pending_control_flow().kind;
+    if (cxt.control_flow_store().has_pending()) {
+      let const kind = cxt.control_flow_store().pending().kind;
       if (kind == control_flow::Kind::Exit ||
           kind == control_flow::Kind::Return)
       {
-        ret = cxt.pending_control_flow().value;
-        cxt.clear_control_flow();
+        ret = cxt.control_flow_store().pending().value;
+        cxt.control_flow_store().clear();
       } else if (kind == control_flow::Kind::Break ||
                  kind == control_flow::Kind::Continue)
       {
-        cxt.clear_control_flow();
+        cxt.control_flow_store().clear();
       }
     }
 

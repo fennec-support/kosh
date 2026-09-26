@@ -118,8 +118,8 @@ fn Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   cxt.set_current_command(steal(saved_current_command));
 
   let const is_exit_pending =
-      cxt.has_pending_control_flow() &&
-      cxt.pending_control_flow().kind == control_flow::Kind::Exit;
+      cxt.control_flow_store().has_pending() &&
+      cxt.control_flow_store().pending().kind == control_flow::Kind::Exit;
 
   if (!cxt.is_posix_mode() && !is_exit_pending) {
     if (status_before_return.has_value())

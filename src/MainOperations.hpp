@@ -378,9 +378,9 @@ static fn print_help_or_version_status(const String &program_path) -> Maybe<int>
 static fn report_escaped_control_flow(EvalContext &context,
                                       const String &fallback_source) -> void
 {
-  if (!context.has_pending_control_flow()) return;
+  if (!context.control_flow_store().has_pending()) return;
 
-  const control_flow &control = context.pending_control_flow();
+  const control_flow &control = context.control_flow_store().pending();
   let what = String{heap_allocator()};
   switch (control.kind) {
   case control_flow::Kind::Break:
@@ -394,7 +394,7 @@ static fn report_escaped_control_flow(EvalContext &context,
        status, the way dash treats a top-level return. */
     if (!context.shell_is_interactive()) {
       i32 return_status = static_cast<i32>(control.value);
-      context.clear_control_flow();
+      context.control_flow_store().clear();
       context.run_exit_trap();
       utils::quit(return_status, utils::farewell_policy::Goodbye);
     }
@@ -402,7 +402,7 @@ static fn report_escaped_control_flow(EvalContext &context,
     break;
   }
   case control_flow::Kind::Exit:
-  case control_flow::Kind::Normal: context.clear_control_flow(); return;
+  case control_flow::Kind::Normal: context.control_flow_store().clear(); return;
   }
 
   const String *source =
@@ -410,7 +410,7 @@ static fn report_escaped_control_flow(EvalContext &context,
   let const located = ErrorWithLocation{control.location, what};
   show_message(located.to_string(*source, &context));
 
-  context.clear_control_flow();
+  context.control_flow_store().clear();
 }
 
 /* One top-level command at a time for the paths that only lint. The arena is
@@ -712,7 +712,7 @@ static fn run_script_contents(
           exit_code =
               static_cast<int>(unit->evaluate_root(context, evaluation_mode));
           evaluation_mode = root_evaluation_mode::Normal;
-          if (context.has_pending_control_flow() ||
+          if (context.control_flow_store().has_pending() ||
               (context.shell_option_state(shell_option_id::Onecmd) &&
                !context.has_execution_string()))
           {

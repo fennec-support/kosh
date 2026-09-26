@@ -178,7 +178,7 @@ fn EvalContext::run_completion_function(StringView function_name,
   /* The return status is read before the control flow is cleared, so a dynamic
      loader that returns 124 to request a retry is seen by the caller. */
   if (out_exit_status != nullptr) *out_exit_status = last_exit_status();
-  if (has_pending_control_flow()) clear_control_flow();
+  if (control_flow_store().has_pending()) control_flow_store().clear();
 
   let result = ArrayList<String>{heap_allocator()};
   if (let reply = indexed_arrays().find("COMPREPLY");

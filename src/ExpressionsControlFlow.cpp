@@ -106,10 +106,10 @@ fn CompoundCommand::evaluate_async(EvalContext &cxt) const throws -> i64
       cxt.enter_subshell();
       cxt.hide_coprocess_descriptors();
       status = static_cast<i32>(evaluate_impl(cxt));
-      if (cxt.has_pending_control_flow() &&
-          cxt.pending_control_flow().kind == control_flow::Kind::Exit)
+      if (cxt.control_flow_store().has_pending() &&
+          cxt.control_flow_store().pending().kind == control_flow::Kind::Exit)
       {
-        status = static_cast<i32>(cxt.pending_control_flow().value);
+        status = static_cast<i32>(cxt.control_flow_store().pending().value);
       }
     } catch (const BrokenPipeExit &) {
       status = KOSH_BROKEN_PIPE_EXIT_STATUS;
@@ -260,7 +260,7 @@ hot fn IfClause::evaluate_status_impl(EvalContext &cxt) const throws
       condition_status = condition->evaluate(cxt);
     }
 
-    if (cxt.has_pending_control_flow())
+    if (cxt.control_flow_store().has_pending())
       return {static_cast<i32>(condition_status), 0};
     if (condition_status == 0) return body->evaluate_status(cxt);
   }
@@ -431,9 +431,9 @@ cold fn WhileLoop::to_ast_string(usize layer) const throws -> String
 hot fn internal::resolve_loop_control(EvalContext &cxt) throws
     -> loop_disposition
 {
-  if (!cxt.has_pending_control_flow()) return loop_disposition::RunNext;
+  if (!cxt.control_flow_store().has_pending()) return loop_disposition::RunNext;
 
-  let &control = cxt.pending_control_flow();
+  let &control = cxt.control_flow_store().pending();
   if (control.kind != control_flow::Kind::Break &&
       control.kind != control_flow::Kind::Continue)
   {
@@ -451,7 +451,7 @@ hot fn internal::resolve_loop_control(EvalContext &cxt) throws
 
   /* The jump targets this loop and is consumed here. */
   let const is_break = control.kind == control_flow::Kind::Break;
-  cxt.clear_control_flow();
+  cxt.control_flow_store().clear();
   LOG(All, "consuming the %s aimed at this loop",
       is_break ? "break" : "continue");
   return is_break ? loop_disposition::StopLoop : loop_disposition::RunNext;
@@ -499,7 +499,7 @@ hot fn WhileLoop::evaluate_status_impl(EvalContext &cxt) const throws
       condition_status = m_condition->evaluate(cxt);
     }
     if (cxt.no_exec()) break;
-    if (cxt.has_pending_control_flow()) {
+    if (cxt.control_flow_store().has_pending()) {
       if (resolve_loop_control(cxt) == loop_disposition::StopLoop) break;
       continue;
     }
@@ -513,7 +513,7 @@ hot fn WhileLoop::evaluate_status_impl(EvalContext &cxt) const throws
     if (resolve_loop_control(cxt) == loop_disposition::StopLoop) break;
   }
 
-  if (cxt.has_pending_control_flow()) {
+  if (cxt.control_flow_store().has_pending()) {
     result.status = cxt.last_exit_status();
     return result;
   }
@@ -739,7 +739,7 @@ fn SelectLoop::evaluate_status_impl(EvalContext &cxt) const throws
     if (resolve_loop_control(cxt) == loop_disposition::StopLoop) break;
   }
 
-  if (cxt.has_pending_control_flow()) {
+  if (cxt.control_flow_store().has_pending()) {
     result.status = cxt.last_exit_status();
     return result;
   }
@@ -842,7 +842,7 @@ hot fn ForLoop::evaluate_status_impl(EvalContext &cxt) const throws
     if (!should_run_iteration) {
       /* An exit or a return leaves the whole loop. An extdebug refusal skips
          only this iteration and keeps the status its action reported. */
-      if (cxt.has_pending_control_flow()) break;
+      if (cxt.control_flow_store().has_pending()) break;
 
       result.status = cxt.get_last_trap_action_status();
       continue;
@@ -857,7 +857,7 @@ hot fn ForLoop::evaluate_status_impl(EvalContext &cxt) const throws
 
   /* An exit, a return, or an abandoned publish carries its own status, and the
      loop reports that status. */
-  if (cxt.has_pending_control_flow()) {
+  if (cxt.control_flow_store().has_pending()) {
     result.status = cxt.last_exit_status();
     return result;
   }
@@ -1162,7 +1162,7 @@ fn CaseClause::evaluate_status_impl(EvalContext &cxt) const throws
       result = m_items[i].body->evaluate_status(cxt);
       cxt.set_last_exit_status(result.status);
       did_run_a_body = true;
-      if (cxt.has_pending_control_flow()) return result;
+      if (cxt.control_flow_store().has_pending()) return result;
 
       let const terminator = m_items[i].terminator;
       if (terminator == case_terminator::FallThrough && i + 1 < m_items.count())
@@ -1541,10 +1541,10 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
     try {
       cxt.enter_subshell();
       status = static_cast<i32>(m_body->evaluate(cxt));
-      if (cxt.has_pending_control_flow() &&
-          cxt.pending_control_flow().kind == control_flow::Kind::Exit)
+      if (cxt.control_flow_store().has_pending() &&
+          cxt.control_flow_store().pending().kind == control_flow::Kind::Exit)
       {
-        status = static_cast<i32>(cxt.pending_control_flow().value);
+        status = static_cast<i32>(cxt.control_flow_store().pending().value);
       }
     } catch (const BrokenPipeExit &) {
       status = KOSH_BROKEN_PIPE_EXIT_STATUS;

@@ -850,7 +850,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
        the body opens on, and the call site is already behind the frame. */
     if (cxt.should_run_debug_trap()) {
       let const saved_call_location = cxt.get_current_location();
-      let const was_control_flow_pending = cxt.has_pending_control_flow();
+      let const was_control_flow_pending = cxt.control_flow_store().has_pending();
 
       cxt.set_current_location(function_body->source_location());
       cxt.run_named_trap(StringView{"DEBUG", 5});
@@ -858,7 +858,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
 
       /* An action that leaves an exit, a return, a break, or a continue
          abandons the body the entry traced. */
-      if (!was_control_flow_pending && cxt.has_pending_control_flow()) {
+      if (!was_control_flow_pending && cxt.control_flow_store().has_pending()) {
         return cxt.last_exit_status();
       }
     }
@@ -867,8 +867,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     try {
       function_ret = function_body->evaluate(cxt);
       if (cxt.should_run_return_trap()) {
-        let const pending_kind = cxt.has_pending_control_flow()
-                                     ? cxt.pending_control_flow().kind
+        let const pending_kind = cxt.control_flow_store().has_pending()
+                                     ? cxt.control_flow_store().pending().kind
                                      : control_flow::Kind::Normal;
 
         if (pending_kind != control_flow::Kind::Exit) {
@@ -901,15 +901,15 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     /* A return supplies the status. A break or continue is scoped to a loop
        inside this function and is consumed here. An exit stays pending for the
        shell. */
-    if (cxt.has_pending_control_flow()) {
-      let const kind = cxt.pending_control_flow().kind;
+    if (cxt.control_flow_store().has_pending()) {
+      let const kind = cxt.control_flow_store().pending().kind;
       if (kind == control_flow::Kind::Return) {
-        function_ret = cxt.pending_control_flow().value;
-        cxt.clear_control_flow();
+        function_ret = cxt.control_flow_store().pending().value;
+        cxt.control_flow_store().clear();
       } else if (kind == control_flow::Kind::Break ||
                  kind == control_flow::Kind::Continue)
       {
-        cxt.clear_control_flow();
+        cxt.control_flow_store().clear();
       }
     }
 

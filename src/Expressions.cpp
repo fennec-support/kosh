@@ -502,12 +502,12 @@ hot flatten fn Expression::evaluate_root(EvalContext &cxt,
     throw InterruptErrorWithLocation{source_location()};
   }
   if (os::SIGNAL_PENDING) {
-    let const was_control_flow_pending = cxt.has_pending_control_flow();
+    let const was_control_flow_pending = cxt.control_flow_store().has_pending();
     cxt.run_pending_traps();
 
     /* A jump the action requested takes the place of this command. The
        enclosing list never reaches this command. */
-    if (!was_control_flow_pending && cxt.has_pending_control_flow())
+    if (!was_control_flow_pending && cxt.control_flow_store().has_pending())
       return cxt.last_exit_status();
   }
 
@@ -546,12 +546,12 @@ hot flatten fn Expression::evaluate_root_status(
   }
   /* A trapped signal runs its action here at the command boundary. */
   if (os::SIGNAL_PENDING) {
-    let const was_control_flow_pending = cxt.has_pending_control_flow();
+    let const was_control_flow_pending = cxt.control_flow_store().has_pending();
     cxt.run_pending_traps();
 
     /* A jump the action requested takes the place of this command. The
        enclosing list never reaches this command. */
-    if (!was_control_flow_pending && cxt.has_pending_control_flow())
+    if (!was_control_flow_pending && cxt.control_flow_store().has_pending())
       return {cxt.last_exit_status(), 0};
   }
 
@@ -2126,7 +2126,7 @@ hot fn IfStatement::evaluate_impl(EvalContext &cxt) const throws -> i64
   ASSERT(m_then != nullptr);
 
   let const condition = m_condition->evaluate(cxt);
-  if (cxt.has_pending_control_flow()) return condition;
+  if (cxt.control_flow_store().has_pending()) return condition;
 
   LOG(Debug, "the if condition yielded %lld, running the %s branch",
       static_cast<long long>(condition),

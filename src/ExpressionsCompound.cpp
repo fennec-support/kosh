@@ -137,7 +137,7 @@ hot fn CompoundList::evaluate_root_status_impl(
 
     /* A break or a continue a trap action requested before this list was
        entered runs nothing here and stays pending for the enclosing loop. */
-    if (cxt.has_pending_loop_jump()) break;
+    if (cxt.control_flow_store().has_pending_loop_jump()) break;
 
     const CompoundListCondition *n = m_nodes[index];
     ASSERT(n != nullptr);
@@ -267,7 +267,7 @@ hot fn CompoundList::evaluate_root_status_impl(
     /* POSIX exempts set -e for a command that is an operand of && or || and not
        the last of the and-or list, and for a command the ! reserved word
        negates. */
-    const bool has_pending_control_flow = cxt.has_pending_control_flow();
+    const bool has_pending_control_flow = cxt.control_flow_store().has_pending();
     const bool was_command_failure_uncaught =
         !has_pending_control_flow && !cxt.in_condition() && did_execute &&
         !n->is_negated() && is_end_of_and_or_chain && ret.status != 0 &&
@@ -310,7 +310,7 @@ hot fn CompoundList::evaluate_root_status_impl(
       /* The action can request an exit, a return, or a loop jump of its own.
          Such a request stops the rest of this list the same way a node
          would. */
-      if (cxt.has_pending_control_flow()) {
+      if (cxt.control_flow_store().has_pending()) {
         ret.set(status_flag::ErrResolved);
         break;
       }
@@ -673,10 +673,10 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
           cxt.reset_inherited_signal_traps();
           stage_status =
               static_cast<i32>(stage->evaluate_root(cxt, stage_mode));
-          if (cxt.has_pending_control_flow() &&
-              cxt.pending_control_flow().kind == control_flow::Kind::Exit)
+          if (cxt.control_flow_store().has_pending() &&
+              cxt.control_flow_store().pending().kind == control_flow::Kind::Exit)
           {
-            stage_status = static_cast<i32>(cxt.pending_control_flow().value);
+            stage_status = static_cast<i32>(cxt.control_flow_store().pending().value);
           }
         } catch (const BrokenPipeExit &) {
           stage_status = KOSH_BROKEN_PIPE_EXIT_STATUS;

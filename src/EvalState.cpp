@@ -196,35 +196,6 @@ fn EvalContext::request_exit(i64 status, SourceLocation location) throws -> void
       source_store().m_current_origin);
 }
 
-pure fn EvalContext::has_pending_control_flow() const wontthrow -> bool
-{
-  return control_flow_store().has_pending();
-}
-
-/* A break or a continue stops every later command until a loop consumes it. A
-   return and an exit unwind through their own boundaries, and a trap action
-   runs under a pending one. Neither of them answers here. */
-pure fn EvalContext::has_pending_loop_jump() const wontthrow -> bool
-{
-  return control_flow_store().has_pending_loop_jump();
-}
-
-fn EvalContext::pending_control_flow() wontthrow -> control_flow &
-{
-  return control_flow_store().pending();
-}
-
-pure fn EvalContext::pending_control_flow() const wontthrow
-    -> const control_flow &
-{
-  return control_flow_store().pending();
-}
-
-fn EvalContext::clear_control_flow() wontthrow -> void
-{
-  control_flow_store().clear();
-}
-
 fn EvalContext::set_current_source(const String *source,
                                    String origin) wontthrow -> void
 {

@@ -402,13 +402,13 @@ fn publish_command_and_run_debug_trap(
     cxt.set_current_command(do_build_command_text());
 
   if (mode == root_evaluation_mode::Normal && cxt.should_run_debug_trap()) {
-    let const was_control_flow_pending = cxt.has_pending_control_flow();
+    let const was_control_flow_pending = cxt.control_flow_store().has_pending();
     cxt.run_named_trap(StringView{"DEBUG", 5});
 
     if (was_control_flow_pending) return true;
 
-    if (cxt.has_pending_control_flow()) {
-      let const &control = cxt.pending_control_flow();
+    if (cxt.control_flow_store().has_pending()) {
+      let const &control = cxt.control_flow_store().pending();
       return control.kind == control_flow::Kind::Break ||
              control.kind == control_flow::Kind::Continue;
     }

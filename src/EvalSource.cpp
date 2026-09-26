@@ -407,7 +407,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
       set_terminal_exec_allowed(was_terminal_exec_allowed &&
                                 parser.is_at_end());
       ast->evaluate(*this);
-      if (has_pending_control_flow()) break;
+      if (control_flow_store().has_pending()) break;
     }
   };
 
@@ -449,10 +449,10 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
   } catch (...) {
     error = std::current_exception();
   }
-  if (has_pending_control_flow()) {
-    if (pending_control_flow().kind == control_flow::Kind::Exit)
-      set_last_exit_status(static_cast<i32>(pending_control_flow().value));
-    clear_control_flow();
+  if (control_flow_store().has_pending()) {
+    if (control_flow_store().pending().kind == control_flow::Kind::Exit)
+      set_last_exit_status(static_cast<i32>(control_flow_store().pending().value));
+    control_flow_store().clear();
   }
   let const is_interrupt =
       do_finish_script(error, script_exit_context::Subshell);
@@ -633,14 +633,14 @@ fn EvalContext::run_source(StringView source, StringView origin,
     ast->evaluate(*this);
     /* A return at the top of a sourced file or an eval returns from that source
        with its status. Break, continue, and exit keep propagating. */
-    if (consume_return && has_pending_control_flow() &&
-        pending_control_flow().kind == control_flow::Kind::Return)
+    if (consume_return && control_flow_store().has_pending() &&
+        control_flow_store().pending().kind == control_flow::Kind::Return)
     {
-      let const source_status = static_cast<i32>(pending_control_flow().value);
+      let const source_status = static_cast<i32>(control_flow_store().pending().value);
       if (status_before_return != nullptr)
         *status_before_return = trap_store().m_status_before_return;
 
-      clear_control_flow();
+      control_flow_store().clear();
       set_last_exit_status(source_status);
       return source_status;
     }
@@ -727,9 +727,9 @@ fn EvalContext::clear_retained_sources() wontthrow -> void
     sub.location = SourceLocation{};
   }
 
-  if (has_pending_control_flow()) {
-    pending_control_flow().source = nullptr;
-    pending_control_flow().location = SourceLocation{};
+  if (control_flow_store().has_pending()) {
+    control_flow_store().pending().source = nullptr;
+    control_flow_store().pending().location = SourceLocation{};
   }
 
   for (String *source : source_store().m_retained_sources) {

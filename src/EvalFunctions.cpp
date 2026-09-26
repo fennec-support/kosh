@@ -468,13 +468,13 @@ fn EvalContext::run_return_trap(i32 status_before_return) throws -> void
   defer { execution_store().last_exit_status() = saved_exit_status; };
 
   let frame_control_flow = steal(control_flow_store().pending());
-  clear_control_flow();
+  control_flow_store().clear();
 
   let action_control_flow = control_flow{};
   let did_action_return = false;
   while (true) {
     run_named_trap(StringView{"RETURN", 6});
-    if (!has_pending_control_flow()) break;
+    if (!control_flow_store().has_pending()) break;
 
     if (control_flow_store().pending().kind != control_flow::Kind::Return)
       return;
@@ -482,7 +482,7 @@ fn EvalContext::run_return_trap(i32 status_before_return) throws -> void
     LOG(Info, "the RETURN action returned with status %lld, firing again",
         (long long) control_flow_store().pending().value);
     action_control_flow = steal(control_flow_store().pending());
-    clear_control_flow();
+    control_flow_store().clear();
     did_action_return = true;
   }
 
@@ -730,7 +730,7 @@ fn EvalContext::run_pending_traps() throws -> void
 
     /* A return, a break, or an exit the action requested leaves the remaining
        arrivals for the next boundary. */
-    if (has_pending_control_flow()) break;
+    if (control_flow_store().has_pending()) break;
   }
 
   let const child_bit = running_trap_bit(child_condition);
@@ -767,7 +767,7 @@ fn EvalContext::run_pending_traps() throws -> void
       };
 
       for (; fired_count < fire_count; fired_count++) {
-        if (has_pending_control_flow()) break;
+        if (control_flow_store().has_pending()) break;
 
         LOG(Info, "running the trap action for signal 'CHLD'");
         run_source(action.view(), "the CHLD trap",
@@ -894,11 +894,11 @@ cold fn EvalContext::run_subshell_exit_trap() throws -> Maybe<i32>
       run_source(action->view(), "the EXIT trap", None, None, nullptr, nullptr,
                  return_handling::Reject);
 
-      if (has_pending_control_flow() &&
-          pending_control_flow().kind == control_flow::Kind::Exit)
+      if (control_flow_store().has_pending() &&
+          control_flow_store().pending().kind == control_flow::Kind::Exit)
       {
-        requested_status = static_cast<i32>(pending_control_flow().value);
-        clear_control_flow();
+        requested_status = static_cast<i32>(control_flow_store().pending().value);
+        control_flow_store().clear();
       }
     }
 

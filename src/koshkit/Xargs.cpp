@@ -340,9 +340,9 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
       cxt.restore_state(steal(snapshot));
       throw;
     }
-    if (cxt.has_pending_control_flow()) {
-      command_status = static_cast<i32>(cxt.pending_control_flow().value);
-      cxt.clear_control_flow();
+    if (cxt.control_flow_store().has_pending()) {
+      command_status = static_cast<i32>(cxt.control_flow_store().pending().value);
+      cxt.control_flow_store().clear();
     }
     cxt.leave_subshell();
     cxt.restore_state(steal(snapshot));

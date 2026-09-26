@@ -529,11 +529,11 @@ fn EvalContext::run_captured_substitution(const Expression *ast,
         } catch (...) {
           error = std::current_exception();
         }
-        if (has_pending_control_flow()) {
-          if (pending_control_flow().kind == control_flow::Kind::Exit)
+        if (control_flow_store().has_pending()) {
+          if (control_flow_store().pending().kind == control_flow::Kind::Exit)
             set_last_exit_status(
-                static_cast<i32>(pending_control_flow().value));
-          clear_control_flow();
+                static_cast<i32>(control_flow_store().pending().value));
+          control_flow_store().clear();
         }
         if (!error) {
           try {
@@ -685,10 +685,10 @@ fn EvalContext::run_captured_substitution(const Expression *ast,
     } catch (...) {
       error = std::current_exception();
     }
-    if (has_pending_control_flow()) {
-      if (pending_control_flow().kind == control_flow::Kind::Exit)
-        set_last_exit_status(static_cast<i32>(pending_control_flow().value));
-      clear_control_flow();
+    if (control_flow_store().has_pending()) {
+      if (control_flow_store().pending().kind == control_flow::Kind::Exit)
+        set_last_exit_status(static_cast<i32>(control_flow_store().pending().value));
+      control_flow_store().clear();
     }
     /* The substitution's own EXIT action runs while stdout still points at the
        pipe. Its output joins the captured value. A status the action exits
@@ -830,10 +830,10 @@ fn EvalContext::capture_function_substitution(const WordSegment &segment) throws
   /* A break, continue, or return acts only within the body and is consumed
      here. An exit stays pending, so the shell ends after the surrounding
      command finishes, the way bash exits from a funsub. */
-  if (has_pending_control_flow() &&
-      pending_control_flow().kind != control_flow::Kind::Exit)
+  if (control_flow_store().has_pending() &&
+      control_flow_store().pending().kind != control_flow::Kind::Exit)
   {
-    clear_control_flow();
+    control_flow_store().clear();
   }
 
   execution_store().set_shell_is_interactive(was_interactive);
