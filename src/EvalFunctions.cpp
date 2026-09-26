@@ -189,7 +189,8 @@ fn EvalContext::find_function_source(StringView name) const wontthrow
   return storage.has_value() ? storage->get_source() : nullptr;
 }
 
-fn EvalContext::sorted_function_names() const throws -> ArrayList<String>
+fn EvalContext::sorted_function_names() const throws
+    -> SortedArrayList<String, order_comparator<String>>
 {
   let out = ArrayList<String>{heap_allocator()};
   out.reserve(function_store().definitions().count());
@@ -197,8 +198,7 @@ fn EvalContext::sorted_function_names() const throws -> ArrayList<String>
       [&](StringView name, const FunctionBodyHandle &) {
         out.push_managed(name);
       });
-  out.sort();
-  return out;
+  return steal(out).make_sorted(sort_order::ascending);
 }
 
 fn EvalContext::find_function(StringView name) const wontthrow
@@ -252,16 +252,14 @@ pure fn EvalContext::is_function_readonly(StringView name) const wontthrow
 }
 
 fn EvalContext::sorted_readonly_function_names() const throws
-    -> ArrayList<String>
+    -> SortedArrayList<String, order_comparator<String>>
 {
   let out = ArrayList<String>{heap_allocator()};
   out.reserve(function_store().readonly().count());
   function_store().readonly().for_each([&](StringView name) {
     if (find_function(name).has_value()) out.push_managed(name);
   });
-  out.sort();
-
-  return out;
+  return steal(out).make_sorted(sort_order::ascending);
 }
 
 fn EvalContext::function_names() const throws -> HashSet
@@ -938,7 +936,8 @@ fn EvalContext::is_readonly(StringView name) const wontthrow -> bool
           static_cast<u8>(variable_attribute::Readonly)) != 0;
 }
 
-fn EvalContext::readonly_names() const throws -> ArrayList<String>
+fn EvalContext::readonly_names() const throws
+    -> SortedArrayList<String, order_comparator<String>>
 {
   let out = ArrayList<String>{heap_allocator()};
   out.reserve(variable_attributes().count() +
@@ -964,8 +963,7 @@ fn EvalContext::readonly_names() const throws -> ArrayList<String>
     for (let const &key : RESTRICTED_READONLY_KEYS)
       do_push_implicit(key);
 
-  out.sort();
-  return out;
+  return steal(out).make_sorted(sort_order::ascending);
 }
 
 fn EvalContext::mark_declared(StringView name) throws -> void

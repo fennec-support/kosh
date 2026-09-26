@@ -1901,7 +1901,8 @@ public:
       -> resolved_render_source;
   pure fn source_text_in_span(const SourceLocation &location,
                               usize end_position) const wontthrow -> StringView;
-  mustuse fn sorted_function_names() const throws -> ArrayList<String>;
+  mustuse fn sorted_function_names() const throws
+      -> SortedArrayList<String, order_comparator<String>>;
   fn find_function(StringView name) const wontthrow
       -> Maybe<const Expression *>;
   pure fn find_function_storage(StringView name) const wontthrow
@@ -1913,7 +1914,8 @@ public:
   fn clear_functions() wontthrow -> void;
   fn mark_function_readonly(StringView name) throws -> void;
   pure fn is_function_readonly(StringView name) const wontthrow -> bool;
-  mustuse fn sorted_readonly_function_names() const throws -> ArrayList<String>;
+  mustuse fn sorted_readonly_function_names() const throws
+      -> SortedArrayList<String, order_comparator<String>>;
 
   fn function_names() const throws -> HashSet;
   template <typename Callback>
@@ -2177,7 +2179,8 @@ public:
   fn mark_readonly(StringView name) throws -> void;
   fn unmark_readonly(StringView name) throws -> void;
   fn is_readonly(StringView name) const wontthrow -> bool;
-  fn readonly_names() const throws -> ArrayList<String>;
+  fn readonly_names() const throws
+      -> SortedArrayList<String, order_comparator<String>>;
 
   fn mark_declared(StringView name) throws -> void;
   fn is_declared(StringView name) const wontthrow -> bool;
