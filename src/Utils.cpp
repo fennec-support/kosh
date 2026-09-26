@@ -297,12 +297,14 @@ static fn shell_word_expansion_end(StringView word,
 }
 
 hot fn decode_shell_word(StringView word, Allocator allocator,
-                         bool should_map_source) throws -> decoded_shell_word
+                         shell_word_source_mapping mapping) throws
+    -> decoded_shell_word
 {
   let decoded = decoded_shell_word{allocator};
   decoded.text.reserve(word.length);
   decoded.glob_active.reserve(word.length);
 
+  let const should_map_source = mapping == shell_word_source_mapping::Record;
   if (should_map_source) {
     decoded.raw_positions.reserve(word.length + 1);
     decoded.raw_positions.push(0);
@@ -641,7 +643,8 @@ fn locate_first_unavailable_path_component(const Path &target,
   let const unavailable = target.first_unavailable_component();
   if (!unavailable.has_value()) return None;
 
-  let const decoded = decode_shell_word(raw_operand, allocator, true);
+  let const decoded = decode_shell_word(
+      raw_operand, allocator, shell_word_source_mapping::Record);
   let const raw_components =
       split_path_source_components(decoded.text.view(), &decoded, allocator);
   let const expanded_components =

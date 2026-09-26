@@ -1963,7 +1963,8 @@ fn Server::hover(const JsonValue *id, const JsonValue *params) throws -> bool
   let information = command_information(symbol->text.view());
   if (!information.has_value()) {
     let const decoded =
-        utils::decode_shell_word(symbol->text.view(), heap_allocator(), true);
+        utils::decode_shell_word(symbol->text.view(), heap_allocator(),
+                                 utils::shell_word_source_mapping::Record);
     if (!decoded.opaque_ranges.is_empty()) return send_result(id, "null");
     information = command_information(decoded.text.view());
   }

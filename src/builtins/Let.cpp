@@ -54,7 +54,8 @@ fn Let::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           expression_base.get_source_text(source->view());
       if (raw_expression.has_value()) {
         let const decoded_expression = utils::decode_shell_word(
-            *raw_expression, cxt.scratch_allocator(), true);
+            *raw_expression, cxt.scratch_allocator(),
+            utils::shell_word_source_mapping::Record);
         if (decoded_expression.text == ec.args()[i] &&
             !decoded_expression.raw_positions.is_empty())
         {

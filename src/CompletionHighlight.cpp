@@ -1362,7 +1362,9 @@ fn internal::scan_highlight_range(
       }
 
       let const decoded =
-          utils::decode_shell_word(word, bump_allocator(HIGHLIGHT_ARENA), true);
+          utils::decode_shell_word(
+              word, bump_allocator(HIGHLIGHT_ARENA),
+              utils::shell_word_source_mapping::Record);
       if (word_spans.is_empty() && word_has_erased_directory_separator(word) &&
           !os::has_directory_separator(decoded.text.view()))
       {

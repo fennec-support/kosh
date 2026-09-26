@@ -57,8 +57,15 @@ struct decoded_shell_word
   {}
 };
 
+enum class shell_word_source_mapping : u8
+{
+  Omit,
+  Record,
+};
+
 fn decode_shell_word(StringView word, Allocator allocator,
-                     bool should_map_source = false) throws
+                     shell_word_source_mapping mapping =
+                         shell_word_source_mapping::Omit) throws
     -> decoded_shell_word;
 
 struct unavailable_path_source_component
