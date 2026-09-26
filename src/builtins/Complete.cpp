@@ -84,12 +84,13 @@ static fn completion_specification_reusable_lines(const EvalContext &cxt) throws
     -> String
 {
   let lines = String{heap_allocator()};
-  let names = ArrayList<String>{heap_allocator()};
+  let collected_names = ArrayList<String>{heap_allocator()};
   cxt.completion_specs().for_each(
       [&](StringView command, const completion_spec &) -> void {
-        names.push_managed(command);
+        collected_names.push_managed(command);
       });
-  names.sort();
+  let const names =
+      steal(collected_names).make_sorted(sort_order::ascending);
 
   for (let const &name : names) {
     let const *spec = cxt.lookup_completion_spec(name.view());
