@@ -833,8 +833,9 @@ static fn stderr_to_stdout_dup() wontthrow -> expressions::Redirection
 fn Parser::build_file_or_dup_redirection(
     i32 fd, Token::Kind op_kind, const SourceLocation &op_location,
     Maybe<SourceLocation> &first_location,
-    ArrayList<expressions::Redirection> &out, bool fd_was_explicit,
-    const Token *fd_allocation_name_token) throws -> void
+    ArrayList<expressions::Redirection> &out,
+    const Token *fd_allocation_name_token,
+    redirection_descriptor_spelling descriptor_spelling) throws -> void
 {
   if (!first_location) first_location = op_location;
 
@@ -890,9 +891,10 @@ fn Parser::build_file_or_dup_redirection(
          spelling, cmd >&/dev/null, decided after the expansion. An explicit
          descriptor as in 2>&word keeps the strict error. */
       redir.target = from;
-      redir.is_dup_filename_allowed = op_kind == Token::Kind::Greater &&
-                                      !fd_was_explicit &&
-                                      !m_lexer.is_posix_mode();
+      redir.is_dup_filename_allowed =
+          op_kind == Token::Kind::Greater &&
+          descriptor_spelling == redirection_descriptor_spelling::Implicit &&
+          !m_lexer.is_posix_mode();
       out.push(redir);
       return;
     }
@@ -972,7 +974,8 @@ fn Parser::build_both_streams_redirection(
       1,
       update_mode == assignment_update_mode::Append ? Token::Kind::DoubleGreater
                                                     : Token::Kind::Greater,
-      op_location, first_location, out, /*fd_was_explicit=*/true);
+      op_location, first_location, out, nullptr,
+      redirection_descriptor_spelling::Explicit);
   out.back().is_both_streams_spelling = true;
   out.push(stderr_to_stdout_dup());
 }
@@ -1112,7 +1115,8 @@ mustuse fn Parser::try_parse_descriptor_prefixed_redirection(
                                 "A heredoc descriptor cannot be allocated"};
       }
       build_file_or_dup_redirection(-1, nk, op_location, first_location, out,
-                                    /*fd_was_explicit=*/true, word_token);
+                                    word_token,
+                                    redirection_descriptor_spelling::Explicit);
       return true;
     }
 
@@ -1127,7 +1131,8 @@ mustuse fn Parser::try_parse_descriptor_prefixed_redirection(
       build_heredoc_redirection(fd, op_location, first_location, out);
     } else {
       build_file_or_dup_redirection(fd, nk, op_location, first_location, out,
-                                    /*fd_was_explicit=*/true);
+                                    nullptr,
+                                    redirection_descriptor_spelling::Explicit);
     }
     return true;
   }
@@ -1153,7 +1158,8 @@ mustuse fn Parser::try_parse_trailing_redirection(
     m_lexer.advance_past_last_peek();
     build_file_or_dup_redirection((op_kind == Token::Kind::Less) ? 0 : 1,
                                   op_kind, op_location, ignored_first_location,
-                                  out, /*fd_was_explicit=*/false);
+                                  out, nullptr,
+                                  redirection_descriptor_spelling::Implicit);
     return true;
   }
 
@@ -1280,10 +1286,10 @@ hot fn Parser::parse_simple_command(const Token *leading_token) throws
   };
 
   let const do_add_redirection = [&](i32 fd, Token::Kind op_kind,
-                                     const SourceLocation &op_location,
-                                     bool fd_was_explicit) {
+                                     const SourceLocation &op_location) {
     build_file_or_dup_redirection(fd, op_kind, op_location, source_location,
-                                  redirections, fd_was_explicit);
+                                  redirections, nullptr,
+                                  redirection_descriptor_spelling::Implicit);
   };
 
   loop
@@ -1509,7 +1515,7 @@ hot fn Parser::parse_simple_command(const Token *leading_token) throws
       let const op_location = token->source_location();
       m_lexer.advance_past_last_peek();
       do_add_redirection((op_kind == Token::Kind::Less) ? 0 : 1, op_kind,
-                         op_location, /*fd_was_explicit=*/false);
+                         op_location);
     } break;
 
     case Token::Kind::AmpersandGreater:

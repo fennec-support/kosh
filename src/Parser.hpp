@@ -22,6 +22,12 @@ struct parsed_loop_body
   SourceLocation done_location;
 };
 
+enum class redirection_descriptor_spelling : u8
+{
+  Implicit,
+  Explicit,
+};
+
 using namespace expressions;
 
 class Parser
@@ -129,15 +135,16 @@ private:
 
   /* Build one file or descriptor-duplication redirection for descriptor fd. The
      operator is already consumed and op_location is its position. Shared by the
-     simple command parser and the trailing redirect parser. fd_was_explicit
-     records whether the source spelled the descriptor, since a bare >&word
-     with a literal non-numeric word is the csh both-streams spelling while
-     2>&word keeps the descriptor reading. */
+     simple command parser and the trailing redirect parser. The spelling mode
+     records whether the source spelled the descriptor, since a bare >&word with
+     a literal non-numeric word is the csh both-streams spelling while 2>&word
+     keeps the descriptor reading. */
   fn build_file_or_dup_redirection(
       i32 fd, Token::Kind op_kind, const SourceLocation &op_location,
       Maybe<SourceLocation> &first_location,
-      ArrayList<expressions::Redirection> &out, bool fd_was_explicit,
-      const Token *fd_allocation_name_token = nullptr) throws -> void;
+      ArrayList<expressions::Redirection> &out,
+      const Token *fd_allocation_name_token,
+      redirection_descriptor_spelling descriptor_spelling) throws -> void;
 
   fn build_both_streams_redirection(const SourceLocation &op_location,
                                     Maybe<SourceLocation> &first_location,
