@@ -106,9 +106,16 @@ struct file_subject
   bool has_mount_point{false};
 };
 
-fn append_padded(String &output, StringView text, const directive_spec &spec,
-                 bool is_numeric) throws -> void
+enum class stat_value_kind : u8
 {
+  Text,
+  Numeric,
+};
+
+fn append_padded(String &output, StringView text, const directive_spec &spec,
+                 stat_value_kind value_kind) throws -> void
+{
+  let const is_numeric = value_kind == stat_value_kind::Numeric;
   StringView body = text;
   String padded_body{output.allocator()};
   if (spec.has_precision && !is_numeric && body.length > spec.precision) {
@@ -234,29 +241,33 @@ fn render_file_directive(String &output, const directive_spec &spec,
                  spec.is_alternate ? octal_prefix_mode::Alternate
                                    : octal_prefix_mode::Bare)
             .view(),
-        spec, true);
+        spec, stat_value_kind::Numeric);
     return;
 
   case 'A':
     append_padded(output, os::format_mode_string(status.mode).view(), spec,
-                  false);
+                  stat_value_kind::Text);
     return;
 
   case 'b':
     append_padded(output, decimal_of(status.blocks, allocator).view(), spec,
-                  true);
+                  stat_value_kind::Numeric);
     return;
 
-  case 'B': append_padded(output, "512", spec, true); return;
+  case 'B':
+    append_padded(output, "512", spec, stat_value_kind::Numeric);
+    return;
 
-  case 'C': append_padded(output, "?", spec, false); return;
+  case 'C':
+    append_padded(output, "?", spec, stat_value_kind::Text);
+    return;
 
   case 'd':
     if (spec.sub_field == 'H') {
       append_padded(
           output,
           decimal_of(os::device_major(status.device_id), allocator).view(),
-          spec, true);
+          spec, stat_value_kind::Numeric);
       return;
     }
 
@@ -264,28 +275,31 @@ fn render_file_directive(String &output, const directive_spec &spec,
       append_padded(
           output,
           decimal_of(os::device_minor(status.device_id), allocator).view(),
-          spec, true);
+          spec, stat_value_kind::Numeric);
       return;
     }
 
     append_padded(output, decimal_of(status.device_id, allocator).view(), spec,
-                  true);
+                  stat_value_kind::Numeric);
     return;
 
   case 'D':
     append_padded(output, hex_of(status.device_id, allocator).view(), spec,
-                  true);
+                  stat_value_kind::Numeric);
     return;
 
   case 'f':
-    append_padded(output, hex_of(status.mode, allocator).view(), spec, true);
+    append_padded(output, hex_of(status.mode, allocator).view(), spec,
+                  stat_value_kind::Numeric);
     return;
 
-  case 'F': append_padded(output, file_type_name(status), spec, false); return;
+  case 'F':
+    append_padded(output, file_type_name(status), spec, stat_value_kind::Text);
+    return;
 
   case 'g':
     append_padded(output, decimal_of(status.group_id, allocator).view(), spec,
-                  true);
+                  stat_value_kind::Numeric);
     return;
 
   case 'G': {
@@ -294,18 +308,18 @@ fn render_file_directive(String &output, const directive_spec &spec,
                   name.has_value()
                       ? name->view()
                       : decimal_of(status.group_id, allocator).view(),
-                  spec, false);
+                  spec, stat_value_kind::Text);
     return;
   }
 
   case 'h':
     append_padded(output, decimal_of(status.link_count, allocator).view(), spec,
-                  true);
+                  stat_value_kind::Numeric);
     return;
 
   case 'i':
     append_padded(output, decimal_of(status.file_id, allocator).view(), spec,
-                  true);
+                  stat_value_kind::Numeric);
     return;
 
   case 'm':
@@ -314,17 +328,21 @@ fn render_file_directive(String &output, const directive_spec &spec,
       subject.has_mount_point = true;
     }
 
-    append_padded(output, subject.mount_point.view(), spec, false);
+    append_padded(output, subject.mount_point.view(), spec,
+                  stat_value_kind::Text);
     return;
 
-  case 'n': append_padded(output, subject.display_name, spec, false); return;
+  case 'n':
+    append_padded(output, subject.display_name, spec, stat_value_kind::Text);
+    return;
 
   case 'N':
     if (subject.quoted_name.is_empty()) {
       subject.quoted_name = quote_name(subject.display_name, status, allocator);
     }
 
-    append_padded(output, subject.quoted_name.view(), spec, false);
+    append_padded(output, subject.quoted_name.view(), spec,
+                  stat_value_kind::Text);
     return;
 
   case 'o':
@@ -339,7 +357,7 @@ fn render_file_directive(String &output, const directive_spec &spec,
 
     append_padded(output,
                   decimal_of(subject.optimal_block_size, allocator).view(),
-                  spec, true);
+                  spec, stat_value_kind::Numeric);
     return;
 
   case 'r':
@@ -348,7 +366,7 @@ fn render_file_directive(String &output, const directive_spec &spec,
           output,
           decimal_of(os::device_major(status.special_device_id), allocator)
               .view(),
-          spec, true);
+          spec, stat_value_kind::Numeric);
       return;
     }
 
@@ -357,42 +375,42 @@ fn render_file_directive(String &output, const directive_spec &spec,
           output,
           decimal_of(os::device_minor(status.special_device_id), allocator)
               .view(),
-          spec, true);
+          spec, stat_value_kind::Numeric);
       return;
     }
 
     append_padded(output,
                   decimal_of(status.special_device_id, allocator).view(), spec,
-                  true);
+                  stat_value_kind::Numeric);
     return;
 
   case 'R':
     append_padded(output, hex_of(status.special_device_id, allocator).view(),
-                  spec, true);
+                  spec, stat_value_kind::Numeric);
     return;
 
   case 's':
     append_padded(output, decimal_of(status.size, allocator).view(), spec,
-                  true);
+                  stat_value_kind::Numeric);
     return;
 
   case 't':
     append_padded(
         output,
         hex_of(os::device_major(status.special_device_id), allocator).view(),
-        spec, true);
+        spec, stat_value_kind::Numeric);
     return;
 
   case 'T':
     append_padded(
         output,
         hex_of(os::device_minor(status.special_device_id), allocator).view(),
-        spec, true);
+        spec, stat_value_kind::Numeric);
     return;
 
   case 'u':
     append_padded(output, decimal_of(status.owner_id, allocator).view(), spec,
-                  true);
+                  stat_value_kind::Numeric);
     return;
 
   case 'U': {
@@ -401,27 +419,31 @@ fn render_file_directive(String &output, const directive_spec &spec,
                   name.has_value()
                       ? name->view()
                       : decimal_of(status.owner_id, allocator).view(),
-                  spec, false);
+                  spec, stat_value_kind::Text);
     return;
   }
 
-  case 'w': append_padded(output, "-", spec, false); return;
+  case 'w':
+    append_padded(output, "-", spec, stat_value_kind::Text);
+    return;
 
-  case 'W': append_padded(output, "0", spec, true); return;
+  case 'W':
+    append_padded(output, "0", spec, stat_value_kind::Numeric);
+    return;
 
   case 'x':
     append_padded(output,
                   format_file_timestamp(status.access_time,
                                         status.access_nanoseconds, allocator)
                       .view(),
-                  spec, false);
+                  spec, stat_value_kind::Text);
     return;
 
   case 'X':
     append_padded(
         output,
         decimal_of(static_cast<u64>(status.access_time), allocator).view(),
-        spec, true);
+        spec, stat_value_kind::Numeric);
     return;
 
   case 'y':
@@ -430,7 +452,7 @@ fn render_file_directive(String &output, const directive_spec &spec,
                                         status.modification_nanoseconds,
                                         allocator)
                       .view(),
-                  spec, false);
+                  spec, stat_value_kind::Text);
     return;
 
   case 'Y':
@@ -438,7 +460,7 @@ fn render_file_directive(String &output, const directive_spec &spec,
         output,
         decimal_of(static_cast<u64>(status.modification_time), allocator)
             .view(),
-        spec, true);
+        spec, stat_value_kind::Numeric);
     return;
 
   case 'z':
@@ -446,14 +468,14 @@ fn render_file_directive(String &output, const directive_spec &spec,
                   format_file_timestamp(status.change_time,
                                         status.change_nanoseconds, allocator)
                       .view(),
-                  spec, false);
+                  spec, stat_value_kind::Text);
     return;
 
   case 'Z':
     append_padded(
         output,
         decimal_of(static_cast<u64>(status.change_time), allocator).view(),
-        spec, true);
+        spec, stat_value_kind::Numeric);
     return;
 
   default: break;
@@ -473,68 +495,70 @@ fn render_filesystem_directive(String &output, const directive_spec &spec,
   case 'a':
     append_padded(output,
                   decimal_of(filesystem.available_blocks, allocator).view(),
-                  spec, true);
+                  spec, stat_value_kind::Numeric);
     return;
 
   case 'b':
     append_padded(output, decimal_of(filesystem.total_blocks, allocator).view(),
-                  spec, true);
+                  spec, stat_value_kind::Numeric);
     return;
 
   case 'c':
     append_padded(output, decimal_of(filesystem.total_files, allocator).view(),
-                  spec, true);
+                  spec, stat_value_kind::Numeric);
     return;
 
   case 'd':
     append_padded(output, decimal_of(filesystem.free_files, allocator).view(),
-                  spec, true);
+                  spec, stat_value_kind::Numeric);
     return;
 
   case 'f':
     append_padded(output, decimal_of(filesystem.free_blocks, allocator).view(),
-                  spec, true);
+                  spec, stat_value_kind::Numeric);
     return;
 
   case 'i':
     append_padded(output, hex_of(filesystem.filesystem_id, allocator).view(),
-                  spec, true);
+                  spec, stat_value_kind::Numeric);
     return;
 
   case 'l':
     append_padded(output, decimal_of(filesystem.name_max, allocator).view(),
-                  spec, true);
+                  spec, stat_value_kind::Numeric);
     return;
 
-  case 'n': append_padded(output, display_name, spec, false); return;
+  case 'n':
+    append_padded(output, display_name, spec, stat_value_kind::Text);
+    return;
 
   case 's':
     append_padded(output, decimal_of(filesystem.block_size, allocator).view(),
-                  spec, true);
+                  spec, stat_value_kind::Numeric);
     return;
 
   case 'S':
     append_padded(
         output, decimal_of(filesystem.fundamental_block_size, allocator).view(),
-        spec, true);
+        spec, stat_value_kind::Numeric);
     return;
 
   case 't':
     append_padded(output, hex_of(filesystem.type_id, allocator).view(), spec,
-                  true);
+                  stat_value_kind::Numeric);
     return;
 
   case 'T': {
     let const name = StringView{filesystem.type_name};
     if (!name.is_empty()) {
-      append_padded(output, name, spec, false);
+      append_padded(output, name, spec, stat_value_kind::Text);
       return;
     }
 
     let unknown = String{allocator, "UNKNOWN (0x"};
     unknown += hex_of(filesystem.type_id, allocator).view();
     unknown += ")";
-    append_padded(output, unknown.view(), spec, false);
+    append_padded(output, unknown.view(), spec, stat_value_kind::Text);
     return;
   }
 
