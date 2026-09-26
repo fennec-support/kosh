@@ -33,6 +33,12 @@ enum class mimicked_error_status_mode : u8
   Posix,
 };
 
+enum class script_exit_context : u8
+{
+  Shell,
+  Subshell,
+};
+
 static fn mimicked_error_is_interrupt(const std::exception_ptr &error) throws
     -> bool
 {
@@ -331,8 +337,9 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
       print_source_backtrace();
     }
   };
-  let const do_finish_script = [&](std::exception_ptr &error, bool is_subshell)
-                                   throws -> bool {
+  let const do_finish_script = [&](std::exception_ptr &error,
+                                    script_exit_context exit_context) throws
+      -> bool {
     let is_interrupt = mimicked_error_is_interrupt(error);
     i32 final_status = last_exit_status();
     bool was_error_rendered = false;
@@ -346,14 +353,15 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
     }
     if (!is_interrupt) {
       try {
-        if (is_subshell) {
+        switch (exit_context) {
+        case script_exit_context::Shell: run_exit_trap(); break;
+        case script_exit_context::Subshell:
           if (let const requested_status = run_subshell_exit_trap();
               requested_status.has_value())
           {
             final_status = *requested_status;
           }
-        } else {
-          run_exit_trap();
+          break;
         }
       } catch (...) {
         if (!error) {
@@ -414,7 +422,8 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
     } catch (...) {
       error = std::current_exception();
     }
-    let const is_interrupt = do_finish_script(error, false);
+    let const is_interrupt =
+        do_finish_script(error, script_exit_context::Shell);
     source_store().mimicry_depth()--;
     should_leave_mimicry = false;
     do_restore_fds();
@@ -441,7 +450,8 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
       set_last_exit_status(static_cast<i32>(pending_control_flow().value));
     clear_control_flow();
   }
-  let const is_interrupt = do_finish_script(error, true);
+  let const is_interrupt =
+      do_finish_script(error, script_exit_context::Subshell);
   leave_subshell();
   source_store().mimicry_depth()--;
   should_leave_mimicry = false;
