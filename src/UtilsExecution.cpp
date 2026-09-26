@@ -38,7 +38,7 @@ fn set_foreground_program_title(const ArrayList<String> &arguments,
     return;
   }
 
-  let &command_title = cxt.get_foreground_program_title_buffer();
+  let &command_title = cxt.job_table_store().foreground_program_title_buffer();
   command_title.clear();
   for (usize index = 0; index < arguments.count(); index++) {
     if (index > 0) command_title.push(' ');
@@ -611,8 +611,8 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
         stage_status[stage_index] = *preflight_status;
         ec.close_fds();
       } else if (!forked_child.has_value()) {
-        cxt.set_in_pipeline_stage(true);
-        defer { cxt.set_in_pipeline_stage(false); };
+        cxt.job_table_store().set_in_pipeline_stage(true);
+        defer { cxt.job_table_store().set_in_pipeline_stage(false); };
         ret = execute_builtin(steal(ec), cxt);
         stage_status[stage_index] = ret;
       } else {
@@ -629,7 +629,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
           for (let const unresolved_index : unresolved_stages)
             ecs[unresolved_index].close_fds();
 
-          cxt.set_in_pipeline_stage(true);
+          cxt.job_table_store().set_in_pipeline_stage(true);
           cxt.enter_subshell();
           cxt.hide_coprocess_descriptors();
           i32 child_status = 0;
@@ -663,8 +663,8 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
     } else {
       /* The last builtin stage runs in this process so a cd affects the shell.
          The flag makes exec spawn a child rather than replace the shell. */
-      cxt.set_in_pipeline_stage(true);
-      defer { cxt.set_in_pipeline_stage(false); };
+      cxt.job_table_store().set_in_pipeline_stage(true);
+      defer { cxt.job_table_store().set_in_pipeline_stage(false); };
       ret = execute_builtin(steal(ec), cxt);
       stage_status[stage_index] = ret;
     }

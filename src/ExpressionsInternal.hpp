@@ -396,7 +396,7 @@ fn publish_command_and_run_debug_trap(
 {
   let const was_text_published =
       mode == root_evaluation_mode::PreparedPipelineStage &&
-      cxt.was_stage_boundary_published();
+      cxt.job_table_store().was_stage_boundary_published();
 
   if (command_text_is_observed(cxt) && !was_text_published)
     cxt.execution_store().set_current_command(do_build_command_text());

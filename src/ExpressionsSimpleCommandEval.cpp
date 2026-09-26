@@ -207,7 +207,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   defer { cxt.cleanup_process_substitutions(substitution_mark); };
   expand_command_aliases(cxt, program_args, program_arg_locations);
 
-  if (!is_async() && !cxt.is_in_pipeline_stage()) {
+  if (!is_async() && !cxt.job_table_store().is_in_pipeline_stage()) {
     utils::set_foreground_program_title(program_args, cxt);
   }
 

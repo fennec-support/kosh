@@ -3103,34 +3103,10 @@ public:
   {
     prompt_command_store().set_cached_ast(ast);
   }
-  fn get_foreground_program_title_buffer() wontthrow -> String &
+  fn job_table_store() wontthrow -> JobTable & { return m_job_table; }
+  pure fn job_table_store() const wontthrow -> const JobTable &
   {
-    return m_job_table.foreground_program_title_buffer();
-  }
-
-  /* Whether a builtin is running as a stage of a multi-stage pipeline. exec
-     reads it so exec in a pipeline stage spawns a child rather than replacing
-     the whole shell. */
-  fn set_in_pipeline_stage(bool in_stage) wontthrow -> void
-  {
-    m_job_table.set_in_pipeline_stage(in_stage);
-  }
-  pure fn is_in_pipeline_stage() const wontthrow -> bool
-  {
-    return m_job_table.is_in_pipeline_stage();
-  }
-
-  /* Whether this process already built the command text of the stage it is
-     about to evaluate. A pipeline publishes the boundary before it forks. The
-     parent and the child it forked both carry the text and neither has to
-     build it again. A fresh evaluator starts without it and builds its own. */
-  fn set_stage_boundary_published(bool was_published) wontthrow -> void
-  {
-    m_job_table.set_stage_boundary_published(was_published);
-  }
-  pure fn was_stage_boundary_published() const wontthrow -> bool
-  {
-    return m_job_table.was_stage_boundary_published();
+    return m_job_table;
   }
 
   /* The end of the source span a redirected wrapper holds for the subshell it

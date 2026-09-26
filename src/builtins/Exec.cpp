@@ -49,7 +49,7 @@ static fn report_exec_resolution_error(ExecContext &ec, EvalContext &cxt,
   show_message(
       error.to_string(source != nullptr ? source->view() : StringView{}, &cxt));
 
-  if (cxt.in_subshell() || cxt.is_in_pipeline_stage()) {
+  if (cxt.in_subshell() || cxt.job_table_store().is_in_pipeline_stage()) {
     if (cxt.in_subshell())
       cxt.request_exit(command_status, ec.source_location());
     return command_status;
@@ -241,7 +241,7 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
      shell, so $(exec cat) and true | exec cat must not kill the session. The
      program runs as a spawned child and its status ends the scope, the way
      bash's forked subshell or stage dies into its exec. */
-  if (cxt.in_subshell() || cxt.is_in_pipeline_stage()) {
+  if (cxt.in_subshell() || cxt.job_table_store().is_in_pipeline_stage()) {
     LOG(Info, "exec runs '%s' as a child rather than replacing the shell",
         command_name.c_str());
     let const status =

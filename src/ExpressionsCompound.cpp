@@ -567,10 +567,10 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
           break;
         }
 
-        cxt.set_stage_boundary_published(true);
+        cxt.job_table_store().set_stage_boundary_published(true);
       }
 
-      defer { cxt.set_stage_boundary_published(false); };
+      defer { cxt.job_table_store().set_stage_boundary_published(false); };
 
       /* The stage boundary was published above for a simple stage. The stage
          itself must not publish a second one. */
@@ -608,8 +608,8 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
         {
           if (stage_in.has_value()) os::restore_descriptor(saved_stdin);
         };
-        cxt.set_in_pipeline_stage(true);
-        defer { cxt.set_in_pipeline_stage(false); };
+        cxt.job_table_store().set_in_pipeline_stage(true);
+        defer { cxt.job_table_store().set_in_pipeline_stage(false); };
         parent_stage_status =
             static_cast<i32>(stage->evaluate_root(cxt, stage_mode));
         continue;
