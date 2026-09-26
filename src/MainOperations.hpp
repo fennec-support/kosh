@@ -2077,16 +2077,18 @@ static fn append_applied_fix_label(String &label, diagnostic_id id) throws
 }
 
 cold static fn
-print_applied_fix_summary(ArrayList<applied_fix_tally> &tallies) throws -> void
+print_applied_fix_summary(ArrayList<applied_fix_tally> &&collected_tallies)
+    throws -> void
 {
-  if (tallies.is_empty()) return;
+  if (collected_tallies.is_empty()) return;
 
-  tallies.sort([](const applied_fix_tally &left, const applied_fix_tally &right)
-                   wontthrow -> bool {
-                     if (left.count != right.count)
-                       return left.count > right.count;
-                     return ENUM(left.id) < ENUM(right.id);
-                   });
+  let const tallies =
+      steal(collected_tallies)
+          .make_sorted([](const applied_fix_tally &left,
+                          const applied_fix_tally &right) wontthrow -> bool {
+            if (left.count != right.count) return left.count > right.count;
+            return ENUM(left.id) < ENUM(right.id);
+          });
 
   usize warning_count = 0;
   usize error_count = 0;
@@ -2386,7 +2388,7 @@ static fn run_lint_apply_operation(const ArrayList<String> &file_names,
         analyzed_source, context, ast_arena, file_name.view(), &final_totals);
     if (final_status != EXIT_SUCCESS) did_fail = true;
   }
-  print_applied_fix_summary(applied_tallies);
+  print_applied_fix_summary(steal(applied_tallies));
   print_analysis_diagnostic_summary(final_totals);
 
   return did_fail ? EXIT_FAILURE : EXIT_SUCCESS;
