@@ -1079,13 +1079,14 @@ fn EvalContext::collect_array_subscripts(StringView name) const throws
     for (usize i = 0; i < array->count(); i++)
       out.push(String::from(i, heap_allocator()));
     if (sparse_array_names().contains(name)) {
-      let sparse_indices = ArrayList<usize>{scratch_allocator()};
+      let collected_sparse_indices = ArrayList<usize>{scratch_allocator()};
       for_each_sparse_index(sparse_array_values(), name, scratch_allocator(),
                             [&](usize index, const String &value) throws {
                               unused(value);
-                              sparse_indices.push(index);
+                              collected_sparse_indices.push(index);
                             });
-      sparse_indices.sort();
+      let const sparse_indices = steal(collected_sparse_indices)
+                                     .make_sorted(sort_order::ascending);
       for (let const index : sparse_indices)
         out.push(String::from(index, heap_allocator()));
     }
