@@ -1379,6 +1379,13 @@ struct outline_entry
   usize end;
   usize selection_start;
   usize selection_end;
+
+  pure fn operator<(const outline_entry &other) const wontthrow->bool
+  {
+    if (start != other.start) return start < other.start;
+
+    return end > other.end;
+  }
 };
 
 struct outline_scope
@@ -1388,7 +1395,8 @@ struct outline_scope
   HashSet assigned_names;
 };
 
-fn document_outline(const Document &document) throws -> ArrayList<outline_entry>
+fn document_outline(const Document &document) throws
+    -> SortedArrayList<outline_entry, order_comparator<outline_entry>>
 {
   let entries = ArrayList<outline_entry>{heap_allocator()};
   let const source_length = document.normalized_source.count();
@@ -1425,15 +1433,7 @@ fn document_outline(const Document &document) throws -> ArrayList<outline_entry>
                                is_name_verbatim ? name_end : end});
   }
 
-  /* A container has to precede what it holds, so a wider span sorts first when
-     two entries open together. */
-  entries.sort([](const outline_entry &left, const outline_entry &right) {
-    if (left.start != right.start) return left.start < right.start;
-
-    return left.end > right.end;
-  });
-
-  return entries;
+  return steal(entries).make_sorted(sort_order::ascending);
 }
 
 fn Server::document_symbols(const JsonValue *id, const JsonValue *params) throws
