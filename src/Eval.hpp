@@ -1376,6 +1376,31 @@ public:
   usize m_mimicry_depth{0};
 };
 
+class ArenaStore
+{
+public:
+  fn set_parse_arena(BumpArena *arena) wontthrow -> void
+  {
+    m_parse_arena = arena;
+  }
+  pure fn parse_arena() const wontthrow -> BumpArena *
+  {
+    return m_parse_arena;
+  }
+  fn set_function_arena(BumpArena *arena) wontthrow -> void
+  {
+    m_function_arena = arena;
+  }
+  pure fn function_arena() const wontthrow -> BumpArena *
+  {
+    return m_function_arena;
+  }
+
+private:
+  BumpArena *m_parse_arena{nullptr};
+  BumpArena *m_function_arena{nullptr};
+};
+
 class EvalContext
 {
 public:
@@ -1407,15 +1432,10 @@ public:
   {
     return expansion_store().scratch_allocator();
   }
-  fn set_parse_arena(BumpArena *arena) wontthrow { m_parse_arena = arena; }
-  pure fn parse_arena() const wontthrow -> BumpArena * { return m_parse_arena; }
-  fn set_function_arena(BumpArena *arena) wontthrow
+  fn arena_store() wontthrow -> ArenaStore & { return m_arena_store; }
+  pure fn arena_store() const wontthrow -> const ArenaStore &
   {
-    m_function_arena = arena;
-  }
-  pure fn function_arena() const wontthrow -> BumpArena *
-  {
-    return m_function_arena;
+    return m_arena_store;
   }
   fn trap_store() wontthrow -> TrapStore & { return m_trap_store; }
   pure fn trap_store() const wontthrow -> const TrapStore &
@@ -3233,8 +3253,7 @@ protected:
   bool m_is_restricted_shell{false};
   EvaluationMetricsStore m_evaluation_metrics_store{};
 
-  BumpArena *m_parse_arena{nullptr};
-  BumpArena *m_function_arena{nullptr};
+  ArenaStore m_arena_store{};
   CompletionStore m_completion_store{};
   /* An indexed array element whose subscript is past the dense limit, held by
      its name and decimal index so a sparse far subscript does not pad a huge

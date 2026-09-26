@@ -98,11 +98,11 @@ fn EvalContext::read_redirect_substitution(StringView source) throws
   }
   i++;
 
-  if (parse_arena() == nullptr) return None;
-  let const ast_mark = parse_arena()->mark();
-  defer { parse_arena()->release(ast_mark); };
+  if (arena_store().parse_arena() == nullptr) return None;
+  let const ast_mark = arena_store().parse_arena()->mark();
+  defer { arena_store().parse_arena()->release(ast_mark); };
   let lexer = Lexer{source.substring_of_length(i, source.length - i),
-                    *parse_arena(), None, mood()};
+                    *arena_store().parse_arena(), None, mood()};
   Token *name = lexer.next_shell_token();
   if (name == nullptr || name->kind() != Token::Kind::Word) {
     return None;
@@ -140,10 +140,10 @@ fn EvalContext::capture_command_substitution(
 
   /* A caller such as the make $(shell) names a filename, so an error inside the
      command carets that source rather than a bare unnamed line. */
-  if (parse_arena() == nullptr)
+  if (arena_store().parse_arena() == nullptr)
     throw Error{"Command substitution outside of a parse"};
-  let const ast_mark = parse_arena()->mark();
-  defer { parse_arena()->release(ast_mark); };
+  let const ast_mark = arena_store().parse_arena()->mark();
+  defer { arena_store().parse_arena()->release(ast_mark); };
 
   enter_substitution();
   defer { leave_substitution(); };
@@ -161,7 +161,7 @@ fn EvalContext::capture_command_substitution(
   };
 
   let parser = Parser{
-      Lexer{normalized_source.view(), *parse_arena(), steal(filename), mood()}
+      Lexer{normalized_source.view(), *arena_store().parse_arena(), steal(filename), mood()}
   };
   const Expression *ast;
   try {
@@ -184,7 +184,7 @@ fn EvalContext::capture_command_substitution(
 fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
     -> String
 {
-  if (parse_arena() == nullptr)
+  if (arena_store().parse_arena() == nullptr)
     throw Error{"Process substitution outside of a parse"};
   let const text = segment.text.view();
   ASSERT(!text.is_empty());
@@ -195,8 +195,8 @@ fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
   LOG(Debug, "setting up a process substitution where the command %s the pipe",
       command_writes_the_pipe ? "writes" : "reads");
 
-  let const ast_mark = parse_arena()->mark();
-  defer { parse_arena()->release(ast_mark); };
+  let const ast_mark = arena_store().parse_arena()->mark();
+  defer { arena_store().parse_arena()->release(ast_mark); };
   let const substitution_source = String{heap_allocator(), text.substring(1)};
   let const did_push_source_frame = push_substitution_source_frame(
       segment, StringView{"process substitution"});
@@ -205,7 +205,7 @@ fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
     if (did_push_source_frame) source_store().m_source_frames.pop_back();
   };
   let parser = Parser{
-      Lexer{substitution_source.view(), *parse_arena(), None, mood()}
+      Lexer{substitution_source.view(), *arena_store().parse_arena(), None, mood()}
   };
   const Expression *ast;
   try {
@@ -364,15 +364,15 @@ fn EvalContext::capture_command_substitution(const WordSegment &segment) throws
       file.has_value())
     return steal(*file);
 
-  if (parse_arena() == nullptr)
+  if (arena_store().parse_arena() == nullptr)
     throw Error{"Command substitution outside of a parse"};
 
   enter_substitution();
   defer { leave_substitution(); };
 
   let cache_arena = segment.is_substitution_cache_in_function_arena
-                        ? function_arena()
-                        : parse_arena();
+                        ? arena_store().function_arena()
+                        : arena_store().parse_arena();
   ASSERT(cache_arena != nullptr);
   let const did_push_source_frame = push_substitution_source_frame(
       segment, StringView{"command substitution"});
@@ -745,12 +745,12 @@ fn EvalContext::run_captured_substitution(const Expression *ast,
 fn EvalContext::capture_function_substitution(const WordSegment &segment) throws
     -> String
 {
-  if (parse_arena() == nullptr)
+  if (arena_store().parse_arena() == nullptr)
     throw Error{"Function substitution outside of a parse"};
 
   let cache_arena = segment.is_substitution_cache_in_function_arena
-                        ? function_arena()
-                        : parse_arena();
+                        ? arena_store().function_arena()
+                        : arena_store().parse_arena();
   ASSERT(cache_arena != nullptr);
   let const did_push_source_frame = push_substitution_source_frame(
       segment, StringView{"function substitution"});

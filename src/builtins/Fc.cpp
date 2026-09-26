@@ -374,16 +374,16 @@ static fn edit_fc_commands(const ExecContext &ec, EvalContext &cxt,
   if (edited->is_empty()) return 0;
 
   edited->normalize_crlf_line_endings();
-  let const ast_mark = cxt.parse_arena()->mark();
-  let const function_mark = cxt.function_arena()->mark();
+  let const ast_mark = cxt.arena_store().parse_arena()->mark();
+  let const function_mark = cxt.arena_store().function_arena()->mark();
   {
     defer
     {
-      cxt.function_arena()->release(function_mark);
-      cxt.parse_arena()->release(ast_mark);
+      cxt.arena_store().function_arena()->release(function_mark);
+      cxt.arena_store().parse_arena()->release(ast_mark);
     };
     let parser = Parser{
-        Lexer{edited->view(), *cxt.parse_arena(), None, cxt.mood()}
+        Lexer{edited->view(), *cxt.arena_store().parse_arena(), None, cxt.mood()}
     };
     unused(parser.construct_ast());
   }

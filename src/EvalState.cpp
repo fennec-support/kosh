@@ -1824,7 +1824,7 @@ cold fn EvalContext::make_stats_string() const throws -> String
   /* Stats print before end_command runs the rollup, so the live arena is
      sampled here. */
   const usize live_ast_arena_bytes =
-      parse_arena() != nullptr ? parse_arena()->bytes_used() : 0;
+      arena_store().parse_arena() != nullptr ? arena_store().parse_arena()->bytes_used() : 0;
   usize peak_ast_arena_bytes =
       evaluation_metrics_store().peak_ast_arena_bytes();
   if (live_ast_arena_bytes > peak_ast_arena_bytes)
@@ -1844,8 +1844,8 @@ cold fn EvalContext::make_stats_string() const throws -> String
   append_count_line("Total nodes evaluated", total_expressions_executed());
   append_size_line("AST arena used", live_ast_arena_bytes);
   append_size_line("AST arena peak", peak_ast_arena_bytes);
-  if (parse_arena() != nullptr)
-    append_size_line("AST arena capacity", parse_arena()->bytes_capacity());
+  if (arena_store().parse_arena() != nullptr)
+    append_size_line("AST arena capacity", arena_store().parse_arena()->bytes_capacity());
 
   let const function_stats = function_storage_stats();
   append_size_line("Function arenas used", function_stats.bytes_used);

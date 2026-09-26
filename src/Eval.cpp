@@ -120,7 +120,7 @@ fn EvalContext::add_expansion() wontthrow -> void
 
 fn EvalContext::end_command() wontthrow -> void
 {
-  let const used = parse_arena() != nullptr ? parse_arena()->bytes_used() : 0;
+  let const used = arena_store().parse_arena() != nullptr ? arena_store().parse_arena()->bytes_used() : 0;
   evaluation_metrics_store().end_command(used);
 }
 

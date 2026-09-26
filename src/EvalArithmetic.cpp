@@ -2217,8 +2217,8 @@ fn EvalContext::evaluate_arithmetic_cached_text(
   let const source_location = segment.get_source_location(
       source_store().m_current_location.source_name_index);
   let cache_arena = segment.is_substitution_cache_in_function_arena
-                        ? function_arena()
-                        : parse_arena();
+                        ? arena_store().function_arena()
+                        : arena_store().parse_arena();
   if (cache_arena == nullptr)
     return evaluate_arithmetic_text(
         segment.text.view(),
@@ -2274,8 +2274,8 @@ fn EvalContext::evaluate_arithmetic_cached(const WordSegment &segment) throws
       source_store().m_current_location.source_name_index);
 
   let cache_arena = segment.is_substitution_cache_in_function_arena
-                        ? function_arena()
-                        : parse_arena();
+                        ? arena_store().function_arena()
+                        : arena_store().parse_arena();
   if (cache_arena == nullptr) {
     return evaluate_arithmetic(segment.text.view(), source_location.has_value()
                                                         ? &*source_location

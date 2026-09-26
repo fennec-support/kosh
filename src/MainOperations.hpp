@@ -2245,7 +2245,7 @@ static fn run_format_operation(const ArrayList<String> &file_names,
     let formatted =
         format_document_source(source.view(), source_name, ast_arena, errors,
                                context.show_ast() ? &ast_output : nullptr,
-                               context.function_arena(), mood);
+                               context.arena_store().function_arena(), mood);
     if (!formatted.has_value()) {
       for (let const &error : errors)
         show_message(error.view());
@@ -2341,7 +2341,7 @@ static fn run_lint_apply_operation(const ArrayList<String> &file_names,
       let errors = ArrayList<String>{heap_allocator()};
       let formatted = format_document_source(
           final_source.view(), file_name.view(), ast_arena, errors, nullptr,
-          context.function_arena(), context.mood());
+          context.arena_store().function_arena(), context.mood());
       if (!formatted.has_value()) {
         for (let const &error : errors)
           show_message(error.view());

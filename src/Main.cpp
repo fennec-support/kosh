@@ -224,8 +224,8 @@ fn kosh_main(int argc, char **argv) -> int
 
       let context = koshka::EvalContext{
           false, false, false, false, false, koshka::String{invocation}};
-      context.set_parse_arena(&ast_arena);
-      context.set_function_arena(&function_arena);
+      context.arena_store().set_parse_arena(&ast_arena);
+      context.arena_store().set_function_arena(&function_arena);
 
       koshka::ArrayList<koshka::String> operands{koshka::heap_allocator()};
       operands.reserve(static_cast<usize>(argc - 1));
@@ -922,8 +922,8 @@ fn kosh_main(int argc, char **argv) -> int
   /* Function bodies outlive the command that defined them, so the function
      arena is never reset during the run. */
   let function_arena = koshka::BumpArena{};
-  context.set_parse_arena(&ast_arena);
-  context.set_function_arena(&function_arena);
+  context.arena_store().set_parse_arena(&ast_arena);
+  context.arena_store().set_function_arena(&function_arena);
 
   if (is_language_server)
     return koshka::language_server::run(context, ast_arena);
