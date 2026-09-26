@@ -193,7 +193,7 @@ hot fn EvalContext::assign_variable(StringView name, StringView value) throws
   if (is_field_separator_name) set_field_separators(value);
   if (write_dynamic_variable(name, value)) return;
 
-  if (is_path_name) m_program_resolver.assign_path(String{value});
+  if (is_path_name) resolution_store().resolver().assign_path(String{value});
   if (is_ignoreeof_name) {
     m_runtime.set_option(shell_option_id::Ignoreeof, true);
   }
@@ -263,7 +263,7 @@ fn EvalContext::rollback_confined_variable_writes(usize mark) wontthrow -> void
 
       if (name == "IFS") set_field_separators(restored);
       if (utils::environment_name_is_path(name))
-        m_program_resolver.assign_path(String{restored});
+        resolution_store().resolver().assign_path(String{restored});
       if (is_exported(name)) {
         if (entry.previous_value.has_value())
           os::set_environment_variable(name, restored);
@@ -838,7 +838,7 @@ fn EvalContext::force_unset_shell_variable(StringView name) throws -> void
   unmark_exported(name);
   if (name == "IFS") set_field_separators(" \t\n");
   if (utils::environment_name_is_path(name))
-    m_program_resolver.assign_path(os::get_environment_variable("PATH"));
+    resolution_store().resolver().assign_path(os::get_environment_variable("PATH"));
   if (name == "IGNOREEOF")
     m_runtime.set_option(shell_option_id::Ignoreeof, false);
 }

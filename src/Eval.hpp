@@ -1509,6 +1509,19 @@ private:
       nullptr};
 };
 
+class ResolutionStore
+{
+public:
+  fn resolver() wontthrow -> ProgramResolver & { return m_resolver; }
+  pure fn resolver() const wontthrow -> const ProgramResolver &
+  {
+    return m_resolver;
+  }
+
+private:
+  ProgramResolver m_resolver{};
+};
+
 class EvalContext
 {
 public:
@@ -1570,6 +1583,14 @@ public:
   pure fn diagnostics_store() const wontthrow -> const DiagnosticsStore &
   {
     return m_diagnostics_store;
+  }
+  fn resolution_store() wontthrow -> ResolutionStore &
+  {
+    return m_resolution_store;
+  }
+  pure fn resolution_store() const wontthrow -> const ResolutionStore &
+  {
+    return m_resolution_store;
   }
   fn trap_store() wontthrow -> TrapStore & { return m_trap_store; }
   pure fn trap_store() const wontthrow -> const TrapStore &
@@ -1686,11 +1707,11 @@ public:
   fn rollback_confined_variable_writes(usize mark) wontthrow -> void;
   fn get_program_resolver() wontthrow -> ProgramResolver &
   {
-    return m_program_resolver;
+    return resolution_store().resolver();
   }
   pure fn get_program_resolver() const wontthrow -> const ProgramResolver &
   {
-    return m_program_resolver;
+    return resolution_store().resolver();
   }
 
   fn seed_shell_identity_variables(shell_identity_mode identity_mode) throws
@@ -3438,7 +3459,7 @@ protected:
      RuntimeState copy. failglob defaults on, the other toggles default off. */
   RuntimeState m_runtime{};
   RuntimeControlStore m_runtime_control_store{};
-  ProgramResolver m_program_resolver{};
+  ResolutionStore m_resolution_store{};
   /* Each bit names a dynamic_reader_id whose reader an unset has taken
      away. */
   /* Each bit names a suppressible_warning value. */
