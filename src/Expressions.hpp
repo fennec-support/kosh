@@ -552,10 +552,13 @@ public:
   fn apply_scope_definitions(const Definitions &definitions) throws -> void
   {
     for (let const &definition : definitions) {
-      if (definition.is_alias) {
-        add_known_alias(definition.name.view());
-      } else {
+      switch (definition.kind) {
+      case analysis_scope_definition_kind::Function:
         add_defined_function(definition.name.view());
+        break;
+      case analysis_scope_definition_kind::Alias:
+        add_known_alias(definition.name.view());
+        break;
       }
     }
   }

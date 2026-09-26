@@ -67,14 +67,15 @@ fn Parser::take_analysis_scope_definitions() throws
 }
 
 fn Parser::record_analysis_scope_definition(StringView name,
-                                            bool is_alias) throws -> void
+                                            analysis_scope_definition_kind kind)
+    throws -> void
 {
   if (m_analysis_scope_collection_mode !=
       analysis_metadata_collection_mode::Enabled)
     return;
 
   m_analysis_scope_definitions.push(
-      analysis_scope_definition{String{name}, is_alias});
+      analysis_scope_definition{String{name}, kind});
 }
 
 fn Parser::record_analysis_alias_definitions(
@@ -96,7 +97,8 @@ fn Parser::record_analysis_alias_definitions(
     let const equals_position = text.find_character('=');
     if (equals_position.has_value() && *equals_position > 0)
       record_analysis_scope_definition(
-          StringView{text.data(), *equals_position}, true);
+          StringView{text.data(), *equals_position},
+          analysis_scope_definition_kind::Alias);
   }
 }
 
@@ -1548,7 +1550,8 @@ fn Parser::finish_function_body(const SourceLocation &location,
 {
   skip_newlines_after_pipe();
 
-  record_analysis_scope_definition(name, false);
+  record_analysis_scope_definition(name,
+                                   analysis_scope_definition_kind::Function);
   let const scope_mark = open_analysis_scope();
 
   let body_storage = FunctionBodyHandle::create();

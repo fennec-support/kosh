@@ -100,8 +100,8 @@ private:
   ArrayList<analysis_scope_definition> m_analysis_scope_definitions{
       heap_allocator()};
 
-  fn record_analysis_scope_definition(StringView name, bool is_alias) throws
-      -> void;
+  fn record_analysis_scope_definition(
+      StringView name, analysis_scope_definition_kind kind) throws -> void;
   fn record_analysis_alias_definitions(
       const ArrayList<const Token *> &args) throws -> void;
   mustuse fn open_analysis_scope() const wontthrow -> usize;

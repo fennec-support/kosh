@@ -429,10 +429,16 @@ struct shellcheck_suppression
 
 /* The name is owned because the parser releases its source copy before
    analysis runs. */
+enum class analysis_scope_definition_kind : u8
+{
+  Function,
+  Alias,
+};
+
 struct analysis_scope_definition
 {
   String name;
-  bool is_alias;
+  analysis_scope_definition_kind kind;
 };
 
 extern const diagnostic_definition DIAGNOSTIC_DEFINITIONS[];
