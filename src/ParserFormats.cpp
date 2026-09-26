@@ -863,13 +863,15 @@ fn parser_format_apply_replacements(
     StringView source, ArrayList<parser_format_replacement> replacements) throws
     -> Maybe<String>
 {
-  replacements.sort([](const parser_format_replacement &left,
-                       const parser_format_replacement &right) {
-    return left.start_position < right.start_position;
-  });
+  let const sorted_replacements =
+      steal(replacements)
+          .make_sorted([](const parser_format_replacement &left,
+                          const parser_format_replacement &right) {
+            return left.start_position < right.start_position;
+          });
   let result = String{heap_allocator()};
   usize position = 0;
-  for (let const &replacement : replacements) {
+  for (let const &replacement : sorted_replacements) {
     if (replacement.start_position < position ||
         replacement.end_position < replacement.start_position ||
         replacement.end_position > source.length)

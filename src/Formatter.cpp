@@ -1795,18 +1795,20 @@ fn select_nonconflicting_source_edits(
     ArrayList<const source_edit *> &&candidates) throws
     -> ArrayList<const source_edit *>
 {
-  candidates.sort([](const source_edit *left, const source_edit *right) {
-    if (left->start_position != right->start_position)
-      return left->start_position < right->start_position;
-    if (left->end_position != right->end_position)
-      return left->end_position < right->end_position;
-    if (left->expected != right->expected)
-      return left->expected < right->expected;
-    return left->replacement < right->replacement;
-  });
+  let const sorted_candidates =
+      steal(candidates)
+          .make_sorted([](const source_edit *left, const source_edit *right) {
+            if (left->start_position != right->start_position)
+              return left->start_position < right->start_position;
+            if (left->end_position != right->end_position)
+              return left->end_position < right->end_position;
+            if (left->expected != right->expected)
+              return left->expected < right->expected;
+            return left->replacement < right->replacement;
+          });
 
   let unique = ArrayList<const source_edit *>{heap_allocator()};
-  for (let const *candidate : candidates) {
+  for (let const *candidate : sorted_candidates) {
     if (!unique.is_empty()) {
       let const *previous = unique.back();
       if (previous->start_position == candidate->start_position &&
