@@ -1262,20 +1262,23 @@ execute_getattrlistbulk_batch(const batched_syscall *operations,
 
   try {
     let parent_paths = ArrayList<Path>{heap_allocator()};
-    let operation_positions = ArrayList<usize>{heap_allocator()};
+    let collected_operation_positions = ArrayList<usize>{heap_allocator()};
     parent_paths.reserve(operation_count);
-    operation_positions.reserve(operation_count);
+    collected_operation_positions.reserve(operation_count);
     for (usize index = 0; index < operation_count; index++) {
       parent_paths.push(batch_operation_access::get_path(operations[index])
                             ->parent_or_current());
-      operation_positions.push(index);
+      collected_operation_positions.push(index);
     }
-    operation_positions.sort([&](usize left, usize right) {
-      let const left_parent = parent_paths[left].view();
-      let const right_parent = parent_paths[right].view();
-      if (left_parent != right_parent) return left_parent < right_parent;
-      return left < right;
-    });
+    let const operation_positions =
+        steal(collected_operation_positions)
+            .make_sorted([&](usize left, usize right) {
+              let const left_parent = parent_paths[left].view();
+              let const right_parent = parent_paths[right].view();
+              if (left_parent != right_parent)
+                return left_parent < right_parent;
+              return left < right;
+            });
 
     usize group_start = 0;
     while (group_start < operation_count) {
