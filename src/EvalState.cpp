@@ -284,7 +284,7 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
                                        bool should_defer_for_source_file) throws
     -> void
 {
-  if (!m_should_print_source_traces) return;
+  if (!diagnostics_store().source_traces_enabled()) return;
 
   if (should_defer_for_source_file) {
     for (usize i = source_store().m_source_frames.count(); i > 0; i--) {
@@ -1287,7 +1287,7 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
   append_subshell_bootstrap_u64(body, m_runtime.shopt_option_values);
   body.push(static_cast<char>(variable_store().disabled_bash_special_arrays()));
   body.push(static_cast<char>(variable_store().unset_dynamic_readers()));
-  body.push(static_cast<char>(m_is_restricted_shell));
+  body.push(static_cast<char>(startup_store().is_restricted_shell()));
   body.push(static_cast<char>(bash_argument_arrays() != nullptr));
   if (bash_argument_arrays() != nullptr) {
     append_subshell_bootstrap_u32(
@@ -1958,22 +1958,22 @@ pure fn EvalContext::annoying_diagnostics_enabled() const wontthrow -> bool
 
 fn EvalContext::set_login_shell(bool enabled) wontthrow -> void
 {
-  m_is_login_shell = enabled;
+  startup_store().set_login_shell(enabled);
 }
 
 pure fn EvalContext::is_login_shell() const wontthrow -> bool
 {
-  return m_is_login_shell;
+  return startup_store().is_login_shell();
 }
 
 fn EvalContext::set_custom_rcfile(bool enabled) wontthrow -> void
 {
-  m_has_custom_rcfile = enabled;
+  startup_store().set_custom_rcfile(enabled);
 }
 
 pure fn EvalContext::has_custom_rcfile() const wontthrow -> bool
 {
-  return m_has_custom_rcfile;
+  return startup_store().has_custom_rcfile();
 }
 
 pure fn EvalContext::last_expressions_executed() const wontthrow -> usize

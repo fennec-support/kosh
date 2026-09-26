@@ -223,7 +223,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
   contents->normalize_crlf_line_endings();
 
   let const previous_runtime = m_runtime;
-  let const was_restricted_shell = m_is_restricted_shell;
+  let const was_restricted_shell = startup_store().is_restricted_shell();
   let const previous_script_run = source_store().is_script_run();
   let previous_shell_name = String{execution_store().get_shell_name()};
   let const previous_source = source_store().m_current_source;
@@ -237,7 +237,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
     set_current_source(previous_source, previous_origin);
     source_store().m_current_location = previous_location;
     previous_runtime.restore(*this);
-    m_is_restricted_shell = was_restricted_shell;
+    startup_store().set_restricted_shell(was_restricted_shell);
     source_store().set_script_run(previous_script_run);
     execution_store().set_shell_name(steal(previous_shell_name));
   };

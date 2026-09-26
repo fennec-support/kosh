@@ -1439,6 +1439,76 @@ private:
   ArrayList<environment_undo_entry> m_confined_write_log{heap_allocator()};
 };
 
+class StartupStore
+{
+public:
+  pure fn is_login_shell() const wontthrow -> bool { return m_is_login_shell; }
+  fn set_login_shell(bool enabled) wontthrow -> void
+  {
+    m_is_login_shell = enabled;
+  }
+  pure fn has_custom_rcfile() const wontthrow -> bool
+  {
+    return m_has_custom_rcfile;
+  }
+  fn set_custom_rcfile(bool enabled) wontthrow -> void
+  {
+    m_has_custom_rcfile = enabled;
+  }
+  pure fn startup_finished() const wontthrow -> bool
+  {
+    return m_startup_finished;
+  }
+  fn mark_startup_finished() wontthrow -> void { m_startup_finished = true; }
+  pure fn is_restricted_shell() const wontthrow -> bool
+  {
+    return m_is_restricted_shell;
+  }
+  fn request_restricted_shell() wontthrow -> void
+  {
+    m_is_restricted_shell = true;
+  }
+  fn set_restricted_shell(bool enabled) wontthrow -> void
+  {
+    m_is_restricted_shell = enabled;
+  }
+
+private:
+  bool m_is_login_shell{false};
+  bool m_has_custom_rcfile{false};
+  bool m_is_restricted_shell{false};
+  bool m_startup_finished{false};
+};
+
+class DiagnosticsStore
+{
+public:
+  fn source_traces_enabled() const wontthrow -> bool
+  {
+    return m_source_traces_enabled;
+  }
+  fn set_source_traces_enabled(bool enabled) wontthrow -> void
+  {
+    m_source_traces_enabled = enabled;
+  }
+  fn diagnostic_highlight_cache() wontthrow
+      -> completion::shell_highlight_cache *&
+  {
+    return m_diagnostic_highlight_cache;
+  }
+  fn runtime_diagnostic_highlight_cache() wontthrow
+      -> completion::shell_highlight_cache *&
+  {
+    return m_runtime_diagnostic_highlight_cache;
+  }
+
+private:
+  bool m_source_traces_enabled{true};
+  completion::shell_highlight_cache *m_diagnostic_highlight_cache{nullptr};
+  completion::shell_highlight_cache *m_runtime_diagnostic_highlight_cache{
+      nullptr};
+};
+
 class EvalContext
 {
 public:
@@ -1487,6 +1557,19 @@ public:
   pure fn environment_store() const wontthrow -> const EnvironmentStore &
   {
     return m_environment_store;
+  }
+  fn startup_store() wontthrow -> StartupStore & { return m_startup_store; }
+  pure fn startup_store() const wontthrow -> const StartupStore &
+  {
+    return m_startup_store;
+  }
+  fn diagnostics_store() wontthrow -> DiagnosticsStore &
+  {
+    return m_diagnostics_store;
+  }
+  pure fn diagnostics_store() const wontthrow -> const DiagnosticsStore &
+  {
+    return m_diagnostics_store;
   }
   fn trap_store() wontthrow -> TrapStore & { return m_trap_store; }
   pure fn trap_store() const wontthrow -> const TrapStore &
@@ -2455,18 +2538,18 @@ public:
       -> void;
   fn set_source_traces_enabled(bool enabled) wontthrow -> void
   {
-    m_should_print_source_traces = enabled;
+    diagnostics_store().set_source_traces_enabled(enabled);
   }
   pure fn should_print_source_traces() const wontthrow -> bool
   {
-    return m_should_print_source_traces;
+    return diagnostics_store().source_traces_enabled();
   }
 
   fn set_diagnostic_highlight_cache(completion::shell_highlight_cache *cache)
       wontthrow -> completion::shell_highlight_cache *
   {
-    let *previous = m_diagnostic_highlight_cache;
-    m_diagnostic_highlight_cache = cache;
+    let *previous = diagnostics_store().diagnostic_highlight_cache();
+    diagnostics_store().diagnostic_highlight_cache() = cache;
     return previous;
   }
 
@@ -3231,20 +3314,20 @@ public:
 
   pure fn startup_finished() const wontthrow -> bool
   {
-    return m_startup_finished;
+    return startup_store().startup_finished();
   }
   fn set_startup_finished() wontthrow -> void
   {
-    m_startup_finished = true;
-    if (m_is_restricted_shell) activate_restricted_mode();
+    startup_store().mark_startup_finished();
+    if (startup_store().is_restricted_shell()) activate_restricted_mode();
   }
   fn request_restricted_shell() wontthrow -> void
   {
-    m_is_restricted_shell = true;
+    startup_store().request_restricted_shell();
   }
   pure fn is_restricted_shell() const wontthrow -> bool
   {
-    return m_is_restricted_shell;
+    return startup_store().is_restricted_shell();
   }
   fn activate_restricted_mode() wontthrow -> void
   {
@@ -3299,9 +3382,7 @@ public:
   pure fn peak_ast_arena_bytes() const wontthrow -> usize;
 
 protected:
-  bool m_is_login_shell{false};
-  bool m_has_custom_rcfile{false};
-  bool m_is_restricted_shell{false};
+  StartupStore m_startup_store{};
   EvaluationMetricsStore m_evaluation_metrics_store{};
 
   ArenaStore m_arena_store{};
@@ -3346,16 +3427,10 @@ protected:
 
   /* Set once the startup files finish, so the per-command title is quiet while
      they run. */
-  bool m_startup_finished{false};
+  DiagnosticsStore m_diagnostics_store{};
 
   /* The pending non-local jump, Normal when none is pending. */
   ControlFlowStore m_control_flow_store{};
-  /* The source and name of the text being evaluated, for caret formatting. */
-  bool m_should_print_source_traces{true};
-  completion::shell_highlight_cache *m_diagnostic_highlight_cache{nullptr};
-  completion::shell_highlight_cache *m_runtime_diagnostic_highlight_cache{
-      nullptr};
-
   SourceStore m_source_store{};
 
   /* The mood and the diagnostic and strictness toggles, grouped as one runtime

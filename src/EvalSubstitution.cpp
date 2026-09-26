@@ -423,7 +423,8 @@ fn EvalContext::push_substitution_source_frame(const WordSegment &segment,
 fn EvalContext::push_substitution_source_frame(const SourceLocation &location,
                                                StringView origin) throws -> bool
 {
-  if (!m_should_print_source_traces || current_source() == nullptr ||
+  if (!diagnostics_store().source_traces_enabled() ||
+      current_source() == nullptr ||
       location.length == 0)
   {
     return false;

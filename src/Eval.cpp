@@ -71,15 +71,15 @@ EvalContext::~EvalContext()
 fn EvalContext::get_or_create_diagnostic_highlight_cache() throws
     -> completion::shell_highlight_cache *
 {
-  if (m_diagnostic_highlight_cache != nullptr)
-    return m_diagnostic_highlight_cache;
+  if (diagnostics_store().diagnostic_highlight_cache() != nullptr)
+    return diagnostics_store().diagnostic_highlight_cache();
 
-  if (m_runtime_diagnostic_highlight_cache == nullptr) {
+  if (diagnostics_store().runtime_diagnostic_highlight_cache() == nullptr) {
     let const cache =
         heap_allocator().alloc_array<completion::shell_highlight_cache>(1);
     if (cache == nullptr) throw std::bad_alloc{};
     try {
-      m_runtime_diagnostic_highlight_cache =
+      diagnostics_store().runtime_diagnostic_highlight_cache() =
           new (cache) completion::shell_highlight_cache{};
     } catch (...) {
       heap_allocator().free_array(cache, 1);
@@ -87,15 +87,18 @@ fn EvalContext::get_or_create_diagnostic_highlight_cache() throws
     }
   }
 
-  return m_runtime_diagnostic_highlight_cache;
+  return diagnostics_store().runtime_diagnostic_highlight_cache();
 }
 
 fn EvalContext::reset_runtime_diagnostic_highlight_cache() wontthrow -> void
 {
-  if (m_runtime_diagnostic_highlight_cache == nullptr) return;
-  m_runtime_diagnostic_highlight_cache->~shell_highlight_cache();
-  heap_allocator().free_array(m_runtime_diagnostic_highlight_cache, 1);
-  m_runtime_diagnostic_highlight_cache = nullptr;
+  if (diagnostics_store().runtime_diagnostic_highlight_cache() == nullptr)
+    return;
+  diagnostics_store().runtime_diagnostic_highlight_cache()
+      ->~shell_highlight_cache();
+  heap_allocator().free_array(
+      diagnostics_store().runtime_diagnostic_highlight_cache(), 1);
+  diagnostics_store().runtime_diagnostic_highlight_cache() = nullptr;
 }
 
 fn RuntimeState::capture(const EvalContext &context) wontthrow -> RuntimeState
