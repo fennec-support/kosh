@@ -758,6 +758,29 @@ private:
 class ControlFlowStore
 {
 public:
+  fn request_loop_control(control_flow::Kind kind, i64 level,
+                          usize loop_depth, SourceLocation location,
+                          const String *source, StringView origin) throws
+      -> void
+  {
+    if (loop_depth == 0) return;
+    if (static_cast<usize>(level) > loop_depth)
+      level = static_cast<i64>(loop_depth);
+    if (level < 1) level = 1;
+    set(control_flow{kind, level, location, source, String{origin}});
+  }
+  fn request_return(i64 status, SourceLocation location, const String *source,
+                    StringView origin) throws -> void
+  {
+    set(control_flow{control_flow::Kind::Return, status, location, source,
+                     String{origin}});
+  }
+  fn request_exit(i64 status, SourceLocation location, const String *source,
+                  StringView origin) throws -> void
+  {
+    set(control_flow{control_flow::Kind::Exit, status, location, source,
+                     String{origin}});
+  }
   fn set(control_flow value) throws -> void { m_pending = steal(value); }
   fn pending() wontthrow -> control_flow & { return m_pending; }
   pure fn pending() const wontthrow -> const control_flow &

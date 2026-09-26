@@ -160,13 +160,11 @@ fn EvalContext::request_loop_control(control_flow::Kind kind, i64 level,
     LOG(Debug, "loop control requested outside a loop, ignored");
     return;
   }
-  if (static_cast<usize>(level) > execution_store().loop_depth())
-    level = static_cast<i64>(execution_store().loop_depth());
   LOG(All, "loop control requested, level %lld of depth %zu", (long long) level,
       execution_store().loop_depth());
-  control_flow_store().set(
-      control_flow{kind, level, location, source_store().m_current_source,
-                   String{source_store().m_current_origin}});
+  control_flow_store().request_loop_control(
+      kind, level, execution_store().loop_depth(), location,
+      source_store().m_current_source, source_store().m_current_origin);
 }
 
 fn EvalContext::request_break(i64 level, SourceLocation location) throws -> void
@@ -185,19 +183,17 @@ fn EvalContext::request_return(i64 status, SourceLocation location) throws
 {
   LOG(Debug, "return requested, status %lld", (long long) status);
   trap_store().m_status_before_return = execution_store().last_exit_status();
-  control_flow_store().set(
-      control_flow{control_flow::Kind::Return, status, location,
-                   source_store().m_current_source,
-                   String{source_store().m_current_origin}});
+  control_flow_store().request_return(
+      status, location, source_store().m_current_source,
+      source_store().m_current_origin);
 }
 
 fn EvalContext::request_exit(i64 status, SourceLocation location) throws -> void
 {
   LOG(Debug, "exit requested, status %lld", (long long) status);
-  control_flow_store().set(
-      control_flow{control_flow::Kind::Exit, status, location,
-                   source_store().m_current_source,
-                   String{source_store().m_current_origin}});
+  control_flow_store().request_exit(
+      status, location, source_store().m_current_source,
+      source_store().m_current_origin);
 }
 
 pure fn EvalContext::has_pending_control_flow() const wontthrow -> bool
