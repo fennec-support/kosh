@@ -558,7 +558,7 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
       let const is_last = (stage_index + 1 == m_commands.count());
       let const should_run_in_parent =
           is_last && !is_async() && cxt.runtime_state().is_bash_compatible() &&
-          cxt.is_shopt_enabled(shopt_option_id::Lastpipe) &&
+          cxt.runtime_state().is_shopt_enabled(shopt_option_id::Lastpipe) &&
           !cxt.shell_option_state(shell_option_id::Monitor);
 
       let const *simple = stage->as_simple_command();
@@ -893,7 +893,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
           e->source_location(),
           source != nullptr ? source->view() : StringView{}, steal(stage_args),
           cxt.koshkit_utilities_are_reachable(),
-          cxt.is_shopt_enabled(shopt_option_id::Checkhash),
+          cxt.runtime_state().is_shopt_enabled(shopt_option_id::Checkhash),
           cxt.get_program_resolver(), steal(stage_arg_locations), cxt.runtime_state().get_mood());
     } catch (const CommandResolutionErrorWithLocation &resolution_error) {
       /* The stage still applies its own redirections. A > onto its stdout takes

@@ -362,7 +362,7 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (!should_be_global)
       cxt.declare_local(
           name, !cxt.runtime_state().is_bash_compatible() ||
-                    cxt.is_shopt_enabled(shopt_option_id::LocalvarInherit));
+                    cxt.runtime_state().is_shopt_enabled(shopt_option_id::LocalvarInherit));
 
     /* The attribute applies before the assignment, so declare -i x+=3 already
        adds on this command the way bash applies the integer mark first. */

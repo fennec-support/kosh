@@ -34,13 +34,8 @@ fn EvalContext::set_shopt_option(StringView name, bool is_enabled) throws
 {
   let const index = shopt_option_index(name);
   ASSERT(index.has_value(), "unknown shopt option");
-  let const mask = u64{1} << *index;
   let const was_enabled = is_shopt_enabled(name);
-  m_runtime.shopt_option_overrides |= mask;
-  if (is_enabled)
-    m_runtime.shopt_option_values |= mask;
-  else
-    m_runtime.shopt_option_values &= ~mask;
+  runtime_state().set_shopt_option(*index, is_enabled);
 
   if (name == EXTDEBUG_SHOPT_OPTION && is_enabled && !was_enabled &&
       bash_dynamic_variables_enabled())

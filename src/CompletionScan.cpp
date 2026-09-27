@@ -1083,7 +1083,7 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
                                 completion_mode mode) throws
     -> Maybe<ArrayList<String>>
 {
-  if (!context.is_shopt_enabled(shopt_option_id::Progcomp)) return None;
+  if (!context.runtime_state().is_shopt_enabled(shopt_option_id::Progcomp)) return None;
 
   let const for_listing = mode == completion_mode::Listing;
   let const command = command_word_of(line.substring_of_length(0, cursor));
@@ -1111,7 +1111,7 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
   const completion_spec *spec = context.completion_store().lookup_spec(command);
   String resolved_command{completion_allocator()};
   if (spec == nullptr &&
-      context.is_shopt_enabled(shopt_option_id::ProgcompAlias))
+      context.runtime_state().is_shopt_enabled(shopt_option_id::ProgcompAlias))
   {
     resolved_command = resolve_completion_command(command, context);
     if (resolved_command.view() != command)

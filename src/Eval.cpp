@@ -1078,7 +1078,7 @@ fn EvalContext::enter_bash_function_argument_frame(
   frame_context.flags = 0;
 
   if (bash_dynamic_variables_enabled() &&
-      is_shopt_enabled(shopt_option_id::Extdebug))
+      runtime_state().is_shopt_enabled(shopt_option_id::Extdebug))
   {
     initialize_bash_argument_arrays(true);
     append_bash_argument_frame(arguments);
@@ -1100,7 +1100,7 @@ fn EvalContext::enter_bash_source_argument_frame(
     frame_context.set_flag(BashArgumentFrameFlag::HasSourceArguments);
 
   if (bash_dynamic_variables_enabled()) {
-    if (is_shopt_enabled(shopt_option_id::Extdebug)) {
+    if (runtime_state().is_shopt_enabled(shopt_option_id::Extdebug)) {
       initialize_bash_argument_arrays(true);
       if (arguments != nullptr)
         append_bash_argument_frame(*arguments);

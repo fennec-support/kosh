@@ -926,7 +926,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     resolved_ec = ExecContext::make_from(
         source_location(), source != nullptr ? source->view() : StringView{},
         steal(program_args), cxt.koshkit_utilities_are_reachable(),
-        cxt.is_shopt_enabled(shopt_option_id::Checkhash),
+        cxt.runtime_state().is_shopt_enabled(shopt_option_id::Checkhash),
         cxt.get_program_resolver(), steal(program_arg_locations), cxt.runtime_state().get_mood());
   } catch (const CommandResolutionErrorWithLocation &e) {
     report_command_resolution_error(cxt, e);

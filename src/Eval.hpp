@@ -113,6 +113,8 @@ enum class shell_option_id : u8
   Count,
 };
 
+enum class shopt_option_id : u8;
+
 enum class bash_special_array_id : u8
 {
   Aliases,
@@ -244,6 +246,28 @@ public:
     else
       shell_options &= ~option_mask(option);
   }
+
+  fn set_shopt_option(u8 index, bool enabled) wontthrow -> void
+  {
+    let const mask = u64{1} << index;
+    shopt_option_overrides |= mask;
+    if (enabled)
+      shopt_option_values |= mask;
+    else
+      shopt_option_values &= ~mask;
+  }
+
+  pure fn is_shopt_option_overridden(u8 index) const wontthrow -> bool
+  {
+    return (shopt_option_overrides & (u64{1} << index)) != 0;
+  }
+
+  pure fn is_shopt_option_enabled(u8 index) const wontthrow -> bool
+  {
+    return (shopt_option_values & (u64{1} << index)) != 0;
+  }
+
+  pure fn is_shopt_enabled(shopt_option_id option) const wontthrow -> bool;
 
   fn set_error_exit(bool enabled) wontthrow -> void;
   pure fn error_exit() const wontthrow -> bool;
@@ -992,6 +1016,19 @@ enum class shopt_option_id : u8
 };
 inline constexpr StringView EXTDEBUG_SHOPT_OPTION{"extdebug"};
 pure fn shopt_option_index(shopt_option_id option) wontthrow -> u8;
+
+inline pure fn RuntimeState::is_shopt_enabled(shopt_option_id option) const
+    wontthrow -> bool
+{
+  let const index = shopt_option_index(option);
+  if (is_shopt_option_overridden(index))
+    return is_shopt_option_enabled(index);
+  switch (option) {
+  case shopt_option_id::Progcomp:
+  case shopt_option_id::Sourcepath: return true;
+  default: return false;
+  }
+}
 
 enum class BashArgumentFrameFlag : u8
 {
@@ -3059,24 +3096,12 @@ public:
     if (name == "restricted_shell") return is_restricted_shell();
     let const index = shopt_option_index(name);
     if (!index.has_value()) return false;
-    let const mask = u64{1} << *index;
-    if ((m_runtime.shopt_option_overrides & mask) != 0)
-      return (m_runtime.shopt_option_values & mask) != 0;
+    if (runtime_state().is_shopt_option_overridden(*index))
+      return runtime_state().is_shopt_option_enabled(*index);
     if (name == "extglob") return m_runtime.mood == mimic_mood::Default;
     if (name == "expand_aliases")
       return m_runtime.mood != mimic_mood::Bash || shell_is_interactive();
     return shopt_default_is_on(name);
-  }
-  pure fn is_shopt_enabled(shopt_option_id option) const wontthrow -> bool
-  {
-    let const mask = u64{1} << shopt_option_index(option);
-    if ((m_runtime.shopt_option_overrides & mask) != 0)
-      return (m_runtime.shopt_option_values & mask) != 0;
-    switch (option) {
-    case shopt_option_id::Progcomp:
-    case shopt_option_id::Sourcepath: return true;
-    default: return false;
-    }
   }
   /* Whether bash ships the named shopt option enabled, the miss fallback for
      is_shopt_enabled. */

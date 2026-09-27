@@ -416,7 +416,7 @@ fn publish_command_and_run_debug_trap(
 
     /* Under the extdebug option a nonzero action status skips the traced
        command. A skipped command reports success. */
-    if (cxt.is_shopt_enabled(shopt_option_id::Extdebug) &&
+    if (cxt.runtime_state().is_shopt_enabled(shopt_option_id::Extdebug) &&
         cxt.get_last_trap_action_status() != 0)
     {
       cxt.execution_store().set_last_exit_status(0);
