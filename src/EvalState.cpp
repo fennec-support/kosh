@@ -199,18 +199,6 @@ fn EvalContext::set_current_source(const String *source,
                                     scan_source_generation(source));
 }
 
-fn EvalContext::set_current_history_event_number(Maybe<usize> number) wontthrow
-    -> void
-{
-  source_store().set_current_history_event_number(steal(number));
-}
-
-pure fn EvalContext::current_history_event_number() const wontthrow
-    -> Maybe<usize>
-{
-  return source_store().get_current_history_event_number();
-}
-
 fn EvalContext::push_root_source_frame(const String *parent_source,
                                        SourceLocation call_site,
                                        source_frame_kind kind) throws -> void

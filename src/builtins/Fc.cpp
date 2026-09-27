@@ -184,7 +184,8 @@ static fn remember_fc_command(
   {
     return false;
   }
-  if (active_index.has_value()) cxt.set_current_history_event_number(None);
+  if (active_index.has_value())
+    cxt.source_store().set_current_history_event_number(None);
 
   return true;
 }
@@ -418,7 +419,7 @@ static fn edit_fc_commands(const ExecContext &ec, EvalContext &cxt,
                                 "Unable to replace the active history event");
       return 1;
     }
-    cxt.set_current_history_event_number(None);
+    cxt.source_store().set_current_history_event_number(None);
   }
 
   return status;
@@ -455,7 +456,8 @@ fn Fc::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const &events = read_events.value();
   let const active_index =
-      active_event_index(events, cxt.current_history_event_number());
+      active_event_index(events,
+                         cxt.source_store().get_current_history_event_number());
 
   if (options.should_execute)
     return execute_fc_command(ec, cxt, args, operand_locations, events,

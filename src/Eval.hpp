@@ -2807,8 +2807,6 @@ public:
   fn request_exit(i64 status, SourceLocation location) throws -> void;
 
   fn set_current_source(const String *source, String origin) wontthrow -> void;
-  fn set_current_history_event_number(Maybe<usize> number) wontthrow -> void;
-  pure fn current_history_event_number() const wontthrow -> Maybe<usize>;
   pure fn history_recording_source_for(const Expression *root) const wontthrow
       -> Maybe<StringView>
   {

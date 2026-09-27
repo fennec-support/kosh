@@ -586,11 +586,12 @@ static fn run_script_contents(
     } else {
       LOG(Debug, "evaluating the chunk");
       let previous_history_event_number =
-          context.current_history_event_number();
-      context.set_current_history_event_number(steal(history_event_number));
+          context.source_store().get_current_history_event_number();
+      context.source_store().set_current_history_event_number(
+          steal(history_event_number));
       defer
       {
-        context.set_current_history_event_number(
+        context.source_store().set_current_history_event_number(
             steal(previous_history_event_number));
       };
       context.set_current_source(&script_contents, "the script");
