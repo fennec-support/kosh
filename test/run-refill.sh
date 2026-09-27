@@ -42,12 +42,6 @@ if [ -n "${REFILL-}" ]; then
       fi
     fi
 
-    if [ -f "build/$TEST_NAME.sh" ]; then
-      DID_FIND_TEST=yes
-      refill_harness run-build-test.sh "$TEST_SHELL_COMMAND" \
-        "build/$TEST_NAME.sh"
-    fi
-
     if [ -f "completion/$TEST_NAME.sh" ]; then
       DID_FIND_TEST=yes
       refill_harness run-completion-test.sh "$TEST_SHELL_COMMAND" \
@@ -84,7 +78,6 @@ for TEST_FILE in cli/*.sh; do
   ACTIVE_CLI_INPUT="$ACTIVE_CLI_INPUT $TEST_FILE"
 done
 refill_harness run-cli-test.sh "$TEST_SHELL_COMMAND" $ACTIVE_CLI_INPUT
-refill_harness run-build-test.sh "$TEST_SHELL_COMMAND" build/*.sh
 refill_harness run-completion-test.sh "$TEST_SHELL_COMMAND" completion/*.sh
 refill_harness run-highlight-test.sh "$TEST_SHELL_COMMAND" highlight/*.sh
 

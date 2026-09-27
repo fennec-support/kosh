@@ -22,10 +22,6 @@ hash-second
 mode-first
 type-directory=1 command-directory=1 which-directory=1
 type-regular=0 command-regular=0
-analysis-shadowed-no-path-scan
-noninteractive-no-path-index
-path-directories-deduplicated
-duplicate-only-path-update-preserves-index
 shopt
 compfunc
 compalias

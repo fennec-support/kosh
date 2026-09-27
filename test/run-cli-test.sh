@@ -13,15 +13,6 @@ shift
 
 for TEST_FILE in "$@"; do
   TEST_NAME=$(basename "$TEST_FILE" .sh)
-  case $TEST_NAME in
-  arena_lifetime|command_substitution_strategy|fg_terminal_handoff|\
-    toiletline_allocation)
-    if [ "${IS_NONDEBUG_BUILD:-0}" = 1 ]; then
-      printf "\t%-64s skipped, release binary\n" "cli/$TEST_NAME.sh"
-      continue
-    fi
-    ;;
-  esac
   if [ "$REFILL_MODE" = yes ]; then
     OUTPUT="expected/.$TEST_NAME.out.tmp"
   else

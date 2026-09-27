@@ -75,25 +75,12 @@ OBJ_DIR ?= o/$(TARGET)/$(MODE)$(BUILD_VARIANT_SUFFIX)
 endif
 OBJECT_DIRECTORY := $(OBJ_DIR)
 
-BATCH_CONTRACT_SOURCE := ../test/native/BatchContract.cpp
-BATCH_CONTRACT_OBJECT := $(OBJECT_DIRECTORY)/tests/BatchContract.o
-BATCH_CONTRACT_BINARY := $(OBJECT_DIRECTORY)/batch-contract-test$(if \
-	$(filter Windows_NT,$(TARGET)),.exe,)
-REPORT_TABLE_SOURCE := ../test/native/ReportTable.cpp
-REPORT_TABLE_OBJECT := $(OBJECT_DIRECTORY)/tests/ReportTable.o
-REPORT_TABLE_PLATFORM_OBJECT := $(OBJECT_DIRECTORY)/PlatformReportTable.o
-REPORT_TABLE_BINARY := $(OBJECT_DIRECTORY)/report-table-test$(if \
-	$(filter Windows_NT,$(TARGET)),.exe,)
 EVILISO_LOOPBACK_SOURCE := ../test/native/EvilIsoLoopback.cpp
 EVILISO_LOOPBACK_OBJECT := $(OBJECT_DIRECTORY)/tests/EvilIsoLoopback.o
 EVILISO_LOOPBACK_BINARY := $(OBJECT_DIRECTORY)/eviliso-loop
 REGEX_OBJECTS := $(REGEX_SOURCES:%=$(OBJECT_DIRECTORY)/vendor/regex/%.o)
 OBJECTS := $(SOURCES:%.cpp=$(OBJECT_DIRECTORY)/%.o) $(REGEX_OBJECTS)
-REPORT_TABLE_LINK_OBJECTS := $(filter-out $(OBJECT_DIRECTORY)/Platform.o,$(OBJECTS)) \
-	$(REPORT_TABLE_PLATFORM_OBJECT)
-DEPENDENCY_FILES := $(OBJECTS:.o=.d) $(BATCH_CONTRACT_OBJECT:.o=.d) \
-	$(REPORT_TABLE_OBJECT:.o=.d) $(REPORT_TABLE_PLATFORM_OBJECT:.o=.d) \
-	$(EVILISO_LOOPBACK_OBJECT:.o=.d)
+DEPENDENCY_FILES := $(OBJECTS:.o=.d) $(EVILISO_LOOPBACK_OBJECT:.o=.d)
 
 MODE_SUFFIX := $(if $(filter rel,$(MODE)),,-$(MODE))
 ifeq ($(MODE), cosmo)
@@ -470,44 +457,6 @@ $(OBJECT_DIRECTORY)/vendor/regex/%.o: ../vendor/regex/%.c Makefile
 	printf "\tCompiling %-42s $@... %-12s\r" $< ' '
 	$(CXX) $(REGEX_COMPILER_FLAGS) -x c -MMD -MP -c $< -o $@
 
-$(BATCH_CONTRACT_OBJECT): $(BATCH_CONTRACT_SOURCE) Makefile | dirs
-	mkdir -p $(dir $@)
-	printf "\tCompiling %-42s $@... %-12s\r" $< ' '
-	$(CXX) $(CXXFLAGS) -I. -MMD -MP -c $< -o $@
-
-$(BATCH_CONTRACT_BINARY): $(BATCH_CONTRACT_OBJECT) \
-	$(OBJECT_DIRECTORY)/PlatformBatch.o
-	printf "\tLinking $(BATCH_CONTRACT_BINARY)... %-64s\r" ' '
-ifeq ($(TARGET), Windows_NT)
-	cd $(OBJECT_DIRECTORY) && $(CXX) $(CXXFLAGS) $(LINKER_SELECTION_FLAG) \
-		tests/BatchContract.o PlatformBatch.o $(LINK_LIBRARIES) -o $(abspath $@)
-else
-	$(CXX) $(CXXFLAGS) $(LINKER_SELECTION_FLAG) $^ $(LINK_LIBRARIES) -o $@
-endif
-
-batch_contract: $(BATCH_CONTRACT_BINARY)
-
-batch_contract_test: $(BATCH_CONTRACT_BINARY)
-	$(BATCH_CONTRACT_BINARY)
-
-$(REPORT_TABLE_OBJECT): $(REPORT_TABLE_SOURCE) Makefile | dirs
-	mkdir -p $(dir $@)
-	printf "\tCompiling %-42s $@... %-12s\r" $< ' '
-	$(CXX) $(CXXFLAGS) -I. -MMD -MP -c $< -o $@
-
-$(REPORT_TABLE_PLATFORM_OBJECT): Platform.cpp Makefile | dirs
-	printf "\tCompiling %-42s $@... %-12s\r" $< ' '
-	$(CXX) $(CXXFLAGS) -Dmain=report_table_hidden_main -MMD -MP -c $< -o $@
-
-$(REPORT_TABLE_BINARY): $(REPORT_TABLE_OBJECT) $(REPORT_TABLE_LINK_OBJECTS)
-	printf "\tLinking $(REPORT_TABLE_BINARY)... %-64s\r" ' '
-	$(CXX) $(CXXFLAGS) $(LINKER_SELECTION_FLAG) $^ $(LINK_LIBRARIES) -o $@
-
-report_table: $(REPORT_TABLE_BINARY)
-
-report_table_test: $(REPORT_TABLE_BINARY)
-	$(REPORT_TABLE_BINARY)
-
 ifeq ($(TARGET), Linux)
 $(EVILISO_LOOPBACK_OBJECT): $(EVILISO_LOOPBACK_SOURCE) Makefile | dirs
 	mkdir -p $(dir $@)
@@ -615,7 +564,7 @@ clean:
 	rm -rf ../zig-out
 	rm -rf ../*.profraw ../*.profdata ../coverage # Coverage
 
-.PHONY: dirs force_commit_hash force_commit_hash_objects batch_contract \
-	batch_contract_test eviliso_loopback kosh install uninstall tidy fmt clean
+.PHONY: dirs force_commit_hash force_commit_hash_objects eviliso_loopback \
+	kosh install uninstall tidy fmt clean
 
 -include $(DEPENDENCY_FILES)

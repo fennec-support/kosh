@@ -21,12 +21,6 @@ mkdir -p "$OUTPUT_DIRECTORY"
 TEST_STATUS=0
 
 for TEST_FILE in "$@"; do
-  if [ "$TEST_FILE" = interactive/long_warning_window.py ] && \
-    [ "${IS_NONDEBUG_BUILD:-0}" = 1 ]; then
-    printf "\t%-64s skipped, release binary\n" "$TEST_FILE"
-    continue
-  fi
-
   OUTPUT="$OUTPUT_DIRECTORY/$(basename "$TEST_FILE").out"
   if python3 "$TEST_FILE" "$BIN" > "$OUTPUT" 2>&1; then
     printf "\t%-64s ok\033[K\r" "$TEST_FILE"

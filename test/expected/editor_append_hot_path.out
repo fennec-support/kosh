@@ -1,16 +1,10 @@
-single-row typing uses incremental refresh
-PATH ghost completion stays bounded while typing
+interactive typing runs a command
 disabled highlighting defers PATH work until TAB
-TAB validation ends before the next key
-repeated warm TAB and absolute PATH perform no PATH work after cd
-rejected history prefixes scan once without walking PATH
 history ghost hides entries whose command no longer resolves
 history ghost suggests entries whose command resolves
-prompt PATH changes defer work while startup commands highlight
 completion menu keeps callback-owned strings alive
 timed out help completion stops after two attempts
 man subcommand indexing recovers after a timed out manpath command
 quoted replacement and smart-case TAB preserve the completed token
 Alt and Ctrl keys preserve word and line editing
-mixed PATH keeps stale absolute commands highlighted after cd
 clobbered PWD completion uses the actual directory

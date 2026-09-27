@@ -49,14 +49,6 @@ for TEST_FILE in cli/*.sh; do
   fi
 done
 
-ACTIVE_BUILD_INPUT=
-for TEST_FILE in build/*.sh; do
-  if word_is_listed "$TEST_FILE" "$SKIPPED_BUILD_INPUT"; then
-    continue
-  fi
-  ACTIVE_BUILD_INPUT="$ACTIVE_BUILD_INPUT $TEST_FILE"
-done
-
 SERIAL_COMPLETION_CANDIDATES=completion/editor_append_hot_path.sh
 PARALLEL_COMPLETION_INPUT=
 SERIAL_COMPLETION_INPUT=
@@ -133,9 +125,6 @@ run_harness_item()
   cli)
     "$TEST_SHELL" run-cli-test.sh "$TEST_SHELL" "$TEST_ITEM"
     ;;
-  build)
-    "$TEST_SHELL" run-build-test.sh "$TEST_SHELL" "$TEST_ITEM"
-    ;;
   completion)
     "$TEST_SHELL" run-completion-test.sh "$TEST_SHELL" "$TEST_ITEM"
     ;;
@@ -180,12 +169,6 @@ print_platform_skips()
     fi
     for TEST_FILE in $SKIPPED_CLI_INPUT; do
       printf "\t%-64s skipped, unsupported Windows backend feature\n" \
-        "$TEST_FILE"
-    done
-    ;;
-  build)
-    for TEST_FILE in $SKIPPED_BUILD_INPUT; do
-      printf "\t%-64s skipped, unsupported Windows build probe\n" \
         "$TEST_FILE"
     done
     ;;
@@ -246,9 +229,6 @@ run_named_suite()
     [ "$HARNESS_STATUS" -ne 0 ] || HARNESS_STATUS=$SERIAL_STATUS
 
     return "$HARNESS_STATUS"
-    ;;
-  build)
-    run_parallel_harness build "$ACTIVE_BUILD_INPUT"
     ;;
   completion)
     HARNESS_STATUS=0
@@ -322,7 +302,7 @@ run_named_suite cli || RUNNER_STATUS=$?
 
 (
   PARALLEL_STATUS=0
-  for HARNESS_NAME in kosh build highlight completion; do
+  for HARNESS_NAME in kosh highlight completion; do
     RUNNER_STATUS=0
     run_named_suite "$HARNESS_NAME" || RUNNER_STATUS=$?
     [ "$PARALLEL_STATUS" -ne 0 ] || PARALLEL_STATUS=$RUNNER_STATUS

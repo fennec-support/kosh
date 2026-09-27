@@ -7,7 +7,6 @@ import select
 import signal
 import struct
 import sys
-import tempfile
 import termios
 import time
 
@@ -27,8 +26,6 @@ warning_lines = [
     "ech",
 ]
 source = "\n" * 20000 + "\n".join(warning_lines)
-with tempfile.NamedTemporaryFile(delete=False) as log:
-    log_path = log.name
 
 pid, master = pty.fork()
 if pid == 0:
@@ -39,10 +36,6 @@ if pid == 0:
         binary,
         [
             binary,
-            "-X",
-            "all",
-            "--debug-logging-file",
-            log_path,
             "-M",
             "bash",
             "-WWW",
@@ -78,22 +71,11 @@ while time.monotonic() < reap_deadline:
 else:
     os.kill(pid, signal.SIGKILL)
     os.waitpid(pid, 0)
-with open(log_path, "r", encoding="utf-8") as log:
-    log_text = log.read()
-os.unlink(log_path)
 text = re.sub(r"\x1b\[[0-9;:]*m", "", output.decode(errors="replace")).replace("\r", "")
 lines = text.split("\n")
 content_index = next((index for index, line in enumerate(lines) if "$UNSET" in line), -1)
 content = lines[content_index] if content_index >= 0 else ""
 caret = next((line for line in lines[content_index + 1 :] if "^" in line), "")
-highlight_byte_match = re.search(
-    r"diagnostic highlighting consumed (\d+) source bytes", log_text
-)
-highlight_bytes = int(highlight_byte_match.group(1)) if highlight_byte_match else 0
-lexical_byte_match = re.search(
-    r"diagnostic lexical replay consumed (\d+) source bytes", log_text
-)
-lexical_bytes = int(lexical_byte_match.group(1)) if lexical_byte_match else 0
 content_width = len(content) + content.count(wide_character)
 
 within_width = bool(content) and content_width <= column_count
@@ -105,22 +87,16 @@ caret_aligned = (
     + content[: content.index("$")].count(wide_character)
     == caret.index("^")
 )
-highlight_scan_is_bounded = 0 < highlight_bytes <= len(source_line.encode()) * 2 + 16
-lexical_scan_is_bounded = 0 < lexical_bytes <= len(source.encode()) + 16
 passed = (
     child_exited_cleanly
     and within_width
     and has_both_ellipses
     and caret_aligned
-    and highlight_scan_is_bounded
-    and lexical_scan_is_bounded
 )
 
 print("CHILD_EXITED_CLEANLY:", child_exited_cleanly)
 print("WITHIN_WIDTH:", within_width)
 print("BOTH_ELLIPSES:", has_both_ellipses)
 print("CARET_ALIGNED:", caret_aligned)
-print("HIGHLIGHT_SCAN_BOUNDED:", highlight_scan_is_bounded)
-print("LEXICAL_SCAN_BOUNDED:", lexical_scan_is_bounded)
 print("RESULT:", "PASS" if passed else "FAIL")
 sys.exit(0 if passed else 1)

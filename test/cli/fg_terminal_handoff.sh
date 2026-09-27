@@ -53,20 +53,15 @@ send_input()
 
 if script -q -c true /dev/null >/dev/null 2>&1; then
     send_input | LOGNAME=kosh-title-user USER=kosh-title-user script -q -c \
-        "exec \"$BIN\" -i -I -X debug --debug-logging-file \"$d/log\" --mood bash --rcfile \"$d/rc\"" \
+        "exec \"$BIN\" -i -I --mood bash --rcfile \"$d/rc\"" \
         "$d/typescript" >"$d/live" 2>/dev/null
 elif script -q /dev/null /usr/bin/true >/dev/null 2>&1; then
     send_input | LOGNAME=kosh-title-user USER=kosh-title-user \
         script -q "$d/typescript" /bin/sh -c \
-        "exec \"$BIN\" -i -I -X debug --debug-logging-file \"$d/log\" --mood bash --rcfile \"$d/rc\"" \
+        "exec \"$BIN\" -i -I --mood bash --rcfile \"$d/rc\"" \
         >"$d/live" 2>/dev/null
 else
     exit 1
-fi
-
-ordering=failed
-if grep -q 'fg will give the terminal.*before it resumes job' "$d/log"; then
-    ordering=passed
 fi
 
 title_output=failed
@@ -97,18 +92,15 @@ if LC_ALL=C grep -aqF "$sanitized_title" "$d/titles" 2>/dev/null &&
     title_output=passed
 fi
 
-case "$ordering:$title_output" in
-    passed:passed)
-        if LC_ALL=C grep -aF 'FG_READ:terminal-value' "$d/typescript" \
-            >/dev/null 2>&1; then
-            echo passed
-            exit 0
-        fi
-        ;;
-esac
+if [ "$title_output" = passed ] && \
+    LC_ALL=C grep -aF 'FG_READ:terminal-value' "$d/typescript" \
+        >/dev/null 2>&1; then
+    echo passed
+    exit 0
+fi
 
-printf 'ordering=%s title_output=%s probe_count=%s probe_position=%s idle_position=%s hook_position=%s terminal_read=%s\n' \
-    "$ordering" "$title_output" "$probe_title_count" \
+printf 'title_output=%s probe_count=%s probe_position=%s idle_position=%s hook_position=%s terminal_read=%s\n' \
+    "$title_output" "$probe_title_count" \
     "${last_probe_position:-missing}" "${last_idle_position:-missing}" \
     "${last_hook_position:-missing}" \
     "$(LC_ALL=C grep -aFc 'FG_READ:terminal-value' "$d/typescript" 2>/dev/null)"

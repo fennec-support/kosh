@@ -1,15 +1,6 @@
 #!/bin/sh
 
-d=$(mktemp -d)
-cleanup()
-{
-    if [ -n "$d" ]; then
-        /bin/rm -rf "$d"
-    fi
-}
-trap cleanup EXIT
-
-"$BIN" --mood bash -X debug --debug-logging-file "$d/log" -c '
+"$BIN" --mood bash -c '
 fib()
 {
     local n=$1 a b
@@ -31,11 +22,6 @@ name=BASHPID
 indirect=$(printf %s "${!name}")
 echo "$value $external"
 '
-
-printf 'in-process=%s\n' \
-    "$(grep -c 'running the captured substitution in process' "$d/log")"
-printf 'child-process=%s\n' \
-    "$(grep -c 'running the captured substitution in a child process' "$d/log")"
 
 "$BIN" --mood bash -c '
 "$BIN" -c : &

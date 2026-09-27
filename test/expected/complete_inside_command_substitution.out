@@ -21,5 +21,3 @@ onlyfile
 alpha
 == an operator-adjacent comment ends at its newline:
 alpha
-== a short prefix does not scan a large suffix:
-bounded

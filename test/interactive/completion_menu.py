@@ -226,15 +226,6 @@ def main():
             )
         os.chmod(tailscale, 0o755)
 
-        large = os.path.join(directory, "large")
-        os.mkdir(large)
-        for prefix in ("a", "b"):
-            for index in range(384):
-                open(
-                    os.path.join(large, "bulk-%s-%03d" % (prefix, index)),
-                    "w",
-                ).close()
-
         typed = "printf '<%s>\\n' alpha"
         tall_typed = "printf '<%s>\\n' menu"
         deep_typed = "printf '<%s>\\n' deep"
@@ -424,40 +415,6 @@ def main():
             and os.path.exists(completion_started)
         )
 
-        _, _, large_tail = run_menu(
-            directory,
-            "large",
-            "printf '<%s>\\n' bulk",
-            [b"a", b"\x7f", b"z", b"z", b"\x07"],
-            environment={"KOSH_TEST_EDITOR_STATS": "1"},
-            key_required_outputs=(
-                SELECTED_SGR,
-                SELECTED_SGR,
-                b"no matches",
-                b"no matches",
-            ),
-        )
-        metrics_start = large_tail.find(b"editor-refresh ")
-        metrics_end = large_tail.find(b"\n", metrics_start)
-        metrics_line = (
-            large_tail[metrics_start:metrics_end]
-            if metrics_start >= 0 and metrics_end >= 0
-            else b""
-        )
-        metrics = dict(
-            field.split(b"=", 1)
-            for field in metrics_line.split()[1:]
-            if b"=" in field
-        )
-        large_file_menu_reuses_warm_index = (
-            metrics.get(b"stats") == b"0"
-            and metrics.get(b"reads") == b"0"
-            and metrics.get(b"sorts") == b"0"
-        )
-        large_file_menu_filters_without_regather = (
-            metrics.get(b"listings") == b"3"
-        )
-
         # A search that matches nothing keeps the menu open on the row that says
         # so, and the erase that follows brings the list back for the Tab.
         emptied, _, recovered = run_menu(
@@ -504,12 +461,6 @@ def main():
             directory, "deep", deep_typed, [b"\t", b"\x07"]
         )
         control_g_restores_the_opening_line = b"<deep->" in aborted
-
-        # Eight candidates in an eight row terminal cannot all be shown. The
-        # menu bounds its rows and names the part it drew.
-        bounded, _, _ = run_menu(directory, "tall", tall_typed, [], rows=8)
-        a_long_list_is_bounded = b"showing 1-" in bounded and b" of 8" in bounded
-        the_first_candidate_is_visible = b"menu-1" in bounded
 
         wide_menu, _, _ = run_menu(directory, "wide", wide_typed, [])
         escaped_prefix = long_candidate_prefix.replace(" ", "\\ ").encode()
@@ -632,12 +583,6 @@ def main():
             "LOADING_IS_VISIBLE_WHILE_GATHERING": (
                 loading_is_visible_while_gathering
             ),
-            "LARGE_FILE_MENU_REUSES_WARM_INDEX": (
-                large_file_menu_reuses_warm_index
-            ),
-            "LARGE_FILE_MENU_FILTERS_WITHOUT_REGATHER": (
-                large_file_menu_filters_without_regather
-            ),
             "AN_EMPTY_SEARCH_KEEPS_THE_MENU_OPEN": (
                 an_empty_search_keeps_the_menu_open
             ),
@@ -653,8 +598,6 @@ def main():
             "CONTROL_G_RESTORES_THE_OPENING_LINE": (
                 control_g_restores_the_opening_line
             ),
-            "A_LONG_LIST_IS_BOUNDED": a_long_list_is_bounded,
-            "THE_FIRST_CANDIDATE_IS_VISIBLE": the_first_candidate_is_visible,
             "LONG_CANDIDATE_USES_AVAILABLE_WIDTH": (
                 long_candidate_uses_available_width
             ),

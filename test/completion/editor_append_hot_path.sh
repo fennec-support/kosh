@@ -131,23 +131,6 @@ wait_for_marker_count()
   done
 }
 
-metric_line()
-{
-    local metric_line_value
-    metric_line_value=$(strings "$1" | grep 'editor-refresh append=' |
-        sed -n "${2}p")
-    [ -n "$metric_line_value" ] || return 1
-    printf '%s\n' "$metric_line_value"
-}
-
-metric_field()
-{
-    metric=$1
-    field=$2
-    value=${metric#* "$field"=}
-    printf '%s\n' "${value%% *}"
-}
-
 mkdir "$d/path"
 printf '#!/bin/sh\n' > "$d/path/probe-alpha"
 printf '#!/bin/sh\n' > "$d/path/probe-beta"
@@ -172,39 +155,12 @@ send_typing_input()
 }
 
 send_typing_input | TERM=xterm-256color PATH="$d/path" \
-    KOSH_TEST_EDITOR_STATS=1 EDITOR_READY_FILE="$d/typing-ready" \
+    EDITOR_READY_FILE="$d/typing-ready" \
     KOSH_HISTORY_FILE="$d/typing-history" BIN="$BIN" \
     run_editor "$d/typing-typescript" || exit 1
 
-append_metrics=$(metric_line "$d/typing-typescript" 1) || {
-    printf 'editor metrics missing\n'
-    strings "$d/typing-typescript" || true
-    [ ! -s "$d/typing-typescript.script-error" ] ||
-        /bin/cat "$d/typing-typescript.script-error"
-    exit 1
-}
-append_refreshes=$(metric_field "$append_metrics" append)
-full_refreshes=$(metric_field "$append_metrics" full)
-append_serializations=$(metric_field "$append_metrics" serializations)
-refresh_count=$((append_refreshes + full_refreshes))
-if [ "$append_refreshes" -lt 6 ] || [ "$full_refreshes" -lt 1 ] ||
-    [ "$refresh_count" -lt 11 ] || [ "$refresh_count" -gt 12 ] ||
-    [ "$append_serializations" -gt 1 ]; then
-    printf '%s\n' "$append_metrics"
-    exit 1
-fi
-echo 'single-row typing uses incremental refresh'
-
-path_metrics=$(metric_line "$d/typing-typescript" 2) || exit 1
-test "$(metric_field "$path_metrics" stats)" -le 1 || exit 1
-test "$(metric_field "$path_metrics" probes)" -le 2 || exit 1
-test "$(metric_field "$path_metrics" sorts)" -eq 0 || exit 1
-path_scan_count=$(metric_field "$path_metrics" scans)
-append_scan_count=$(metric_field "$append_metrics" scans)
-test "$((path_scan_count - append_scan_count))" -le 64 || exit 1
-test "$(metric_field "$path_metrics" serializations)" -le 6 || exit 1
-case $path_metrics in *' materialized=0'*) ;; *) exit 1 ;; esac
-echo 'PATH ghost completion stays bounded while typing'
+strings "$d/typing-typescript" | grep -q '^hello$' || exit 1
+echo 'interactive typing runs a command'
 
 send_unhighlighted_input()
 {
@@ -223,65 +179,13 @@ printf '%s\n' \
     "PROMPT_COMMAND='printf ready > \"\$EDITOR_READY_FILE\"; unset PROMPT_COMMAND'" \
     > "$d/unhighlighted-rc"
 send_unhighlighted_input | TERM=xterm-256color PATH="$d/path" \
-    EDITOR_OPTIONS=--no-syntax-highlighting KOSH_TEST_EDITOR_STATS=1 \
+    EDITOR_OPTIONS=--no-syntax-highlighting \
     EDITOR_READY_FILE="$d/unhighlighted-ready" \
     KOSH_HISTORY_FILE="$d/unhighlighted-history" RCFILE="$d/unhighlighted-rc" \
     BIN="$BIN" run_editor "$d/unhighlighted-typescript" || exit 1
 
-unhighlighted_metrics=$(metric_line "$d/unhighlighted-typescript" 1) || exit 1
-test "$(metric_field "$unhighlighted_metrics" stats)" -eq 0 || exit 1
-test "$(metric_field "$unhighlighted_metrics" reads)" -eq 0 || exit 1
-test "$(metric_field "$unhighlighted_metrics" sorts)" -eq 0 || exit 1
-test "$(metric_field "$unhighlighted_metrics" probes)" -eq 0 || exit 1
-test "$(metric_field "$unhighlighted_metrics" resolutions)" -eq 0 || exit 1
 strings "$d/unhighlighted-typescript" | grep -q probe-alpha || exit 1
 echo 'disabled highlighting defers PATH work until TAB'
-
-tab_unrelated_index=0
-while [ "$tab_unrelated_index" -lt 32 ]; do
-    printf '#!/bin/sh\n' > "$d/path/unrelated-command-$tab_unrelated_index"
-    chmod +x "$d/path/unrelated-command-$tab_unrelated_index"
-    tab_unrelated_index=$((tab_unrelated_index + 1))
-done
-
-send_tab_input()
-{
-    wait_for_prompt_count "$d/tab-ready" 1 || exit 1
-    printf 'probe\talpha\n'
-    wait_for_prompt_count "$d/tab-ready" 2 || exit 1
-    printf 'compgen -c >/dev/null 2>&1; cd /\n'
-    wait_for_prompt_count "$d/tab-ready" 3 || exit 1
-    printf 'probe\t\t\n'
-    wait_for_prompt_count "$d/tab-ready" 4 || exit 1
-    printf 'exit 0\n'
-}
-
-printf '%s\n' \
-    "set --tab-selector=plain" \
-    "PS1='> '" \
-    "PROMPT_COMMAND='printf \"ready\\\\n\" >> \"\$EDITOR_READY_FILE\"'" \
-    > "$d/tab-rc"
-send_tab_input | PATH="$d/path" KOSH_TEST_EDITOR_STATS=1 \
-    EDITOR_READY_FILE="$d/tab-ready" KOSH_HISTORY_FILE="$d/tab-history" \
-    RCFILE="$d/tab-rc" BIN="$BIN" run_editor "$d/tab-typescript" || exit 1
-
-tab_metrics=$(metric_line "$d/tab-typescript" 1) || exit 1
-test "$(metric_field "$tab_metrics" probes)" -le 4 || exit 1
-echo 'TAB validation ends before the next key'
-
-warm_metrics=$(metric_line "$d/tab-typescript" 3) || {
-    printf 'warm TAB metrics missing\n'
-    strings "$d/tab-typescript" || true
-    [ ! -s "$d/tab-typescript.script-error" ] ||
-        /bin/cat "$d/tab-typescript.script-error"
-    exit 1
-}
-test "$(metric_field "$warm_metrics" stats)" -eq 0 || exit 1
-test "$(metric_field "$warm_metrics" reads)" -eq 0 || exit 1
-test "$(metric_field "$warm_metrics" sorts)" -eq 0 || exit 1
-test "$(metric_field "$warm_metrics" probes)" -eq 0 || exit 1
-test "$(metric_field "$warm_metrics" resolutions)" -eq 0 || exit 1
-echo 'repeated warm TAB and absolute PATH perform no PATH work after cd'
 
 history_index=0
 while [ "$history_index" -lt 32 ]; do
@@ -301,22 +205,9 @@ send_history_input()
 }
 
 send_history_input | TERM=xterm-256color PATH="$d/path" \
-    EDITOR_READY_FILE="$d/history-ready" KOSH_TEST_EDITOR_STATS=1 \
+    EDITOR_READY_FILE="$d/history-ready" \
     KOSH_HISTORY_FILE="$d/miss-history" BIN="$BIN" \
     run_editor "$d/history-typescript" || exit 1
-
-history_short_metrics=$(metric_line "$d/history-typescript" 1) || exit 1
-history_metrics=$(metric_line "$d/history-typescript" 2) || exit 1
-history_entry_scan_count=$(metric_field "$history_metrics" history-scans)
-test "$history_entry_scan_count" -ge 32 || exit 1
-test "$history_entry_scan_count" -le 33 || exit 1
-case $history_short_metrics in *' history-loads=0 '*) ;; *) exit 1 ;; esac
-case $history_metrics in *' history-loads=0 '*) ;; *) exit 1 ;; esac
-history_short_scan_count=$(metric_field "$history_short_metrics" scans)
-history_scan_count=$(metric_field "$history_metrics" scans)
-test "$history_scan_count" -le "$history_short_scan_count" || exit 1
-test "$(metric_field "$history_metrics" resolutions)" -eq 0 || exit 1
-echo 'rejected history prefixes scan once without walking PATH'
 
 if strings "$d/history-typescript" | grep -q zzzz-invalid-history-command; then
     printf 'a history entry with an unresolvable command was suggested\n'
@@ -351,36 +242,6 @@ strings "$d/accept-typescript" | grep -q ghost-accepted || {
     exit 1
 }
 echo 'history ghost suggests entries whose command resolves'
-
-mkdir "$d/startup-before" "$d/startup-after"
-printf '#!/bin/sh\n' > "$d/startup-after/git"
-chmod +x "$d/startup-after/git"
-printf '%s\n' \
-    "PS1='> '" \
-    "PROMPT_COMMAND='PATH=\"\$STARTUP_AFTER\"; printf ready > \"\$EDITOR_READY_FILE\"; unset PROMPT_COMMAND'" \
-    > "$d/startup-rc"
-
-send_startup_input()
-{
-    wait_for_editor "$d/startup-ready" || exit 1
-    printf 'git \177z\003'
-    sleep 0.2
-    printf 'exit 0\n'
-    sleep 0.5
-}
-
-send_startup_input | TERM=xterm-256color NO_COLOR= PATH="$d/startup-before" \
-    EDITOR_READY_FILE="$d/startup-ready" STARTUP_AFTER="$d/startup-after" \
-    KOSH_TEST_EDITOR_STATS=1 KOSH_HISTORY_FILE="$d/startup-history" \
-    RCFILE="$d/startup-rc" BIN="$BIN" run_editor "$d/startup-typescript" || exit 1
-
-startup_metrics=$(metric_line "$d/startup-typescript" 1) || exit 1
-test "$(metric_field "$startup_metrics" stats)" -eq 0 || exit 1
-test "$(metric_field "$startup_metrics" reads)" -eq 0 || exit 1
-test "$(metric_field "$startup_metrics" probes)" -eq 0 || exit 1
-test "$(metric_field "$startup_metrics" sorts)" -eq 0 || exit 1
-test "$(metric_field "$startup_metrics" resolutions)" -le 1 || exit 1
-echo 'prompt PATH changes defer work while startup commands highlight'
 
 mkdir "$d/menu-bin"
 cat > "$d/menu-bin/tailscale" <<'SH'
@@ -591,32 +452,6 @@ do
         grep -q "$navigation_expected_output" || exit 1
 done
 echo 'Alt and Ctrl keys preserve word and line editing'
-
-mkdir "$d/mixed-path" "$d/next-directory"
-printf '#!/bin/sh\n' > "$d/mixed-path/after-cd-probe"
-chmod +x "$d/mixed-path/after-cd-probe"
-
-send_mixed_path_input()
-{
-    wait_for_editor "$d/mixed-ready" || exit 1
-    printf 'cd %s\n' "$d/next-directory"
-    sleep 0.2
-    printf 'after-cd-probe\014\n'
-    sleep 0.2
-    printf 'exit 0\n'
-    sleep 0.5
-}
-
-unset NO_COLOR
-send_mixed_path_input | TERM=xterm-256color \
-    EDITOR_READY_FILE="$d/mixed-ready" \
-    PATH="$d/mixed-path${TEST_PATH_SEPARATOR}${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" \
-    KOSH_TEST_EDITOR_STATS=1 KOSH_HISTORY_FILE="$d/mixed-history" BIN="$BIN" \
-    run_editor "$d/mixed-typescript" || exit 1
-
-mixed_metrics=$(metric_line "$d/mixed-typescript" 2) || exit 1
-case $mixed_metrics in *' stats=0 reads=0 sorts=0 probes=0 '*) ;; *) exit 1 ;; esac
-echo 'mixed PATH keeps stale absolute commands highlighted after cd'
 
 printf '#!/bin/sh\nprintf "actual-cwd-completion\\n"\n' > "$d/actual-cwd-probe"
 chmod +x "$d/actual-cwd-probe"

@@ -204,69 +204,6 @@ PATH="$dir/query-directory${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" "$BIN" -c '
     printf "command-regular=%s\n" "$?"
 '
 
-analysis_log="$dir/analysis.log"
-# shellcheck disable=SC2209
-analysis_command=uname
-analysis_path="$TEST_SYSTEM_PATH${TEST_PATH_SEPARATOR}$TEST_UNAME_DIRECTORY"
-if [ "${OS-}" = Windows_NT ]; then
-    mkdir "$dir/analysis"
-    "$BIN" -c 'koshkit cp "$1" "$2"' \
-        test-copy "$BIN" "$dir/analysis/analysis-probe.exe"
-    analysis_command='analysis-probe -c true'
-    analysis_path=$dir/analysis
-fi
-if "$BIN" -X all -c ':' >/dev/null 2>&1; then
-    if ! PATH="$analysis_path" \
-        "$BIN" --mood sh -WW -X all -c \
-        "known_function() { :; }; alias known_alias=:; known_function; known_alias; $analysis_command > \"\$TEST_NULL_OUTPUT\"" \
-        >/dev/null 2> "$analysis_log"
-    then
-        exit 1
-    fi
-    analysis_name=${analysis_command%% *}
-    if grep -F "scanning PATH for 'known_function'" "$analysis_log" >/dev/null || \
-        grep -F "scanning PATH for 'known_alias'" "$analysis_log" >/dev/null || \
-        ! grep -F "scanning PATH for '$analysis_name'" "$analysis_log" >/dev/null
-    then
-        exit 1
-    fi
-fi
-printf 'analysis-shadowed-no-path-scan\n'
-
-noninteractive_log="$dir/noninteractive.log"
-if "$BIN" -X all -c ':' >/dev/null 2>&1; then
-    PATH="$dir/one${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" \
-        "$BIN" -X all -c 'missing_command_xyz' \
-        >/dev/null 2>"$noninteractive_log"
-    if grep -F 'unique PATH directories to seed the program cache' \
-        "$noninteractive_log" >/dev/null; then
-        exit 1
-    fi
-fi
-printf 'noninteractive-no-path-index\n'
-
-path_update_log="$dir/path-update.log"
-if "$BIN" -X all -c ':' >/dev/null 2>&1; then
-    PATH="$dir/one${TEST_PATH_SEPARATOR}$dir/one${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH${TEST_PATH_SEPARATOR}$dir/one" "$BIN" -X info \
-        --debug-complete-at cacheprobe >/dev/null 2>"$path_update_log" ||
-        exit 1
-    grep -F 'scanning 2 unique PATH directories' "$path_update_log" \
-        >/dev/null || exit 1
-fi
-printf 'path-directories-deduplicated\n'
-
-if "$BIN" -X all -c ':' >/dev/null 2>&1; then
-    FIRST_DIRECTORY="$dir/one" \
-    PATH="$dir/one${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" "$BIN" -X info -c '
-        compgen -c >/dev/null
-        PATH="$PATH$TEST_PATH_SEPARATOR$FIRST_DIRECTORY"
-        compgen -c >/dev/null
-    ' >/dev/null 2>"$path_update_log" || exit 1
-    [ "$(grep -c 'unique PATH directories' "$path_update_log")" -eq 1 ] ||
-        exit 1
-fi
-printf 'duplicate-only-path-update-preserves-index\n'
-
 PATH="$TEST_SYSTEM_PATH" "$BIN" -c \
     'compfunc() { :; }; eval "alias compalias=:"; compgen -c shopt 2>/dev/null; compgen -c compfunc 2>/dev/null; compgen -c compalias 2>/dev/null'
 

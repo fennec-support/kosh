@@ -2,9 +2,11 @@
 
 ## Goal
 
-The test suite preserves behavior with the fewest source files and target
-process launches that can express the contract. A new regression normally
-extends an existing owner. A new test file is the last choice.
+The test suite preserves observable behavior with the fewest source files and
+target process launches that can express the contract. Every behavior test
+launches Kosh or a reference shell and asserts its output, status, diagnostics,
+side effects, or terminal interaction. A new regression normally extends an
+existing owner. A new test file is the last choice.
 
 The debug test step should finish within 180 seconds. It must finish within 300
 seconds. A change that adds measurable runtime should remove equivalent cost or
@@ -31,17 +33,23 @@ Place a test in the cheapest harness that can express its behavior.
   `expected/<name>.out` golden.
 - `interactive/` owns checks that require a controlling terminal or byte-level
   terminal inspection.
-- `build/` owns build and host-script behavior that does not test the shell
-  runtime.
 - `bench/` owns performance workloads. Behavioral regressions belong in another
   harness.
 - `data/` owns shared goldens. A golden is data and does not become a second
   behavior owner.
 
+Tests do not parse owned source files, inspect private member names or symbols,
+link production objects into a unit binary, or assert test-only counters and
+debug-log implementation details. Put source-layout checks in review evidence
+and put performance measurements in `bench/`. A helper executable or fixture
+under `test/native/` is allowed only when a process-level E2E case starts it to
+exercise a real process, socket, or platform boundary; the helper is not itself
+a behavior owner.
+
 Do not use `cli/` only because a shell driver is convenient. Runtime mood and
-option changes should occur inside one native test with `set --mood`, `set -o`,
-or a subshell. Keep a CLI process boundary only when the boundary is part of the
-contract.
+option changes should occur inside one `kosh/` fixture with `set --mood`,
+`set -o`, or a subshell. Keep a CLI process boundary only when the boundary is
+part of the contract.
 
 ## Keep harness logic in runners
 
@@ -73,7 +81,7 @@ utility name, diagnostic text, flag, syntax form, and expected output.
 
 A builtin or koshkit utility has one canonical behavior owner. Extend that file
 when the new case exercises the same component. Use names such as
-`<builtin>.kosh` and `koshkit_<utility>.kosh` for native owners. A legacy CLI
+`<builtin>.kosh` and `koshkit_<utility>.kosh` for `kosh/` owners. A legacy CLI
 owner may remain canonical when its behavior inherently needs process control.
 
 A compatibility, completion, highlighting, or terminal test may exercise the
@@ -125,8 +133,9 @@ Use `TEST_PATH_SEPARATOR`, `TEST_NULL_DEVICE`, `TEST_PATH_ENVIRONMENT_NAME`,
 Windows skip in `Makefile` only when the backend cannot express the contract.
 Do not hide a portable test behind a platform skip.
 
-Native tests run with `-AER`. Normalize mood, diagnostics, warnings, and shell
-options inside a moved or merged case when it relied on another initial state.
+`kosh/` fixtures run the built executable with `-AER`. Normalize mood,
+diagnostics, warnings, and shell options inside a moved or merged case when it
+relied on another initial state.
 
 ## Preserve coverage while merging
 
@@ -150,7 +159,7 @@ Every golden lives directly in `expected/`. Do not create a subdirectory below
 
 ## Validate the change
 
-Regenerate only the affected native and CLI goldens.
+Regenerate only the affected `kosh/` and CLI goldens.
 
 ```sh
 make -C test refill REFILL='name another_name'
@@ -159,16 +168,14 @@ make -C test refill REFILL='name another_name'
 Read every regenerated golden. Refill records output without deciding whether
 the output is correct.
 
-Run the focused owner through its existing Make target. Native targets use the
-test name. CLI, completion, highlight, and build targets use their directory
-prefix.
+Run the focused owner through its existing Make target. `kosh/` targets use the
+test name. CLI, completion, and highlight targets use their directory prefix.
 
 ```sh
 make -C test name
 make -C test cli_name
 make -C test completion_name
 make -C test highlight_name
-make -C test build_name
 ```
 
 Run full validation from the repository root.
@@ -185,7 +192,7 @@ run `git diff --check`, and confirm that README.md remains untouched.
 - The case extends the existing canonical owner when one exists.
 - The selected harness is the cheapest harness that preserves the contract.
 - A builtin or utility does not gain a second behavior owner.
-- Similar native, POSIX, and Bash cases were compared and deduplicated.
+- Similar `kosh/`, POSIX, and Bash cases were compared and deduplicated.
 - Each required process launch and timeout is part of the behavior under test.
 - The output is focused, deterministic, and free of literal help snapshots.
 - Temporary paths and platform behavior follow the shared test variables.

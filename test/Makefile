@@ -111,17 +111,9 @@ clean:
 	@rm -rf $(FAILED_LIST).d
 	@rm -rf "$(CURDIR)/.test-work"
 
-test: batch_contract_test report_table_test $(EVILISO_LOOPBACK_DEPENDENCY) $(BIN) \
+test: $(EVILISO_LOOPBACK_DEPENDENCY) $(BIN) \
 	$(WINDOWS_DIFF_BOOTSTRAP)
 	@$(SHELL) run-test-suite.sh all
-
-batch_contract_test:
-	@$(MAKE) -C ../src MODE='$(MODE)' TARGET='$(TARGET)' ARCH='$(ARCH)' \
-		NO_TOILETLINE='$(NO_TOILETLINE)' batch_contract_test
-
-report_table_test:
-	@$(MAKE) -C ../src MODE='$(MODE)' TARGET='$(TARGET)' ARCH='$(ARCH)' \
-		NO_TOILETLINE='$(NO_TOILETLINE)' report_table_test
 
 eviliso_loopback_helper:
 	@$(MAKE) -C ../src MODE='$(MODE)' TARGET='$(TARGET)' ARCH='$(ARCH)' \
@@ -170,13 +162,6 @@ $(NON_LINUX_SKIPPED_CLI_NAMES):
 		"cli/$(patsubst cli_%,%,$@).sh"
 endif
 
-build_%: expected/%.out $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
-	@rm -f '$(FAILED_LIST)' && rm -rf '$(FAILED_LIST).d'
-	@$(SHELL) run-build-test.sh '$(SHELL)' build/$*.sh
-
-build_tests: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
-	@$(SHELL) run-test-suite.sh build
-
 completion_%: expected/%.out $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
 	@rm -f '$(FAILED_LIST)' && rm -rf '$(FAILED_LIST).d'
 	@$(SHELL) run-completion-test.sh '$(SHELL)' completion/$*.sh
@@ -222,13 +207,6 @@ $(WINDOWS_SKIPPED_CLI_NAMES):
 	@printf "	%-64s skipped, unsupported Windows backend feature\n" \
 		"cli/$(patsubst cli_%,%,$@).sh"
 
-WINDOWS_SKIPPED_BUILD_NAMES := \
-	build_golden_runner_status
-
-$(WINDOWS_SKIPPED_BUILD_NAMES):
-	@printf "	%-64s skipped, needs POSIX process fixtures\n" \
-		"build/$(patsubst build_%,%,$@).sh"
-
 WINDOWS_SKIPPED_COMPLETION_NAMES := \
 	completion_ansi_c_quoted_word \
 	completion_complete_git_grouped_subcommands \
@@ -268,8 +246,6 @@ highlight_tests: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
 SKIPPED_TEST_NAMES := $(WINDOWS_SKIPPED_TEST_NAMES)
 SKIPPED_CLI_INPUT := $(patsubst cli_%,cli/%.sh,\
 	$(WINDOWS_SKIPPED_CLI_NAMES) $(NON_LINUX_SKIPPED_CLI_NAMES))
-SKIPPED_BUILD_INPUT := \
-	$(patsubst build_%,build/%.sh,$(WINDOWS_SKIPPED_BUILD_NAMES))
 SKIPPED_COMPLETION_INPUT := \
 	$(patsubst completion_%,completion/%.sh,$(WINDOWS_SKIPPED_COMPLETION_NAMES))
 UNREPRESENTABLE_COMPLETION_INPUT := \
@@ -278,7 +254,7 @@ ifeq ($(TARGET), Windows_NT)
 SKIP_CLI_ASSIMILATE := 1
 endif
 
-export SKIPPED_TEST_NAMES SKIPPED_CLI_INPUT SKIPPED_BUILD_INPUT
+export SKIPPED_TEST_NAMES SKIPPED_CLI_INPUT
 export SKIPPED_COMPLETION_INPUT UNREPRESENTABLE_COMPLETION_INPUT
 export SKIP_CLI_ASSIMILATE
 
@@ -337,7 +313,7 @@ bench: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
 		BASH_SPEEDUP_REQUIRED='$(BASH_SPEEDUP_REQUIRED)' \
 		$(SHELL) run-bench-test.sh
 
-.PHONY: test clean batch_contract_test eviliso_loopback_helper \
+.PHONY: test clean eviliso_loopback_helper \
 	verify_koshkit_diff kosh_tests refill \
-		compatdiff dashdiff bashdiff mimicrydiff bench build_tests completion_tests \
+		compatdiff dashdiff bashdiff mimicrydiff bench completion_tests \
 		diagnostic_tty_test cli_tests highlight_tests
