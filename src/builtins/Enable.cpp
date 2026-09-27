@@ -46,7 +46,7 @@ fn Enable::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   ASSERT(!args.is_empty());
 
-  if (cxt.restricted_enforcement_active() &&
+  if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted) &&
       (FLAG_LOAD_FILE.is_set() || FLAG_DELETE_FILE.is_enabled()))
   {
     throw ErrorWithLocation{

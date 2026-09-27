@@ -705,7 +705,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
         util_for_flags = koshkit::find_util(*second);
       }
     } else if (!completes_shell_binary &&
-               context.koshkit_utilities_are_reachable() &&
+               context.runtime_state().koshkit_utilities_are_reachable() &&
                context.resolution_store().resolver().get_status(command) ==
                    ProgramResolver::Status::Missing)
     {

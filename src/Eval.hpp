@@ -2777,15 +2777,6 @@ public:
   fn print_source_backtrace(Maybe<SourceLocation> error_location = None,
                             bool should_defer_for_source_file = true) throws
       -> void;
-  fn set_source_traces_enabled(bool enabled) wontthrow -> void
-  {
-    diagnostics_store().set_source_traces_enabled(enabled);
-  }
-  pure fn should_print_source_traces() const wontthrow -> bool
-  {
-    return diagnostics_store().source_traces_enabled();
-  }
-
   fn set_diagnostic_highlight_cache(completion::shell_highlight_cache *cache)
       wontthrow -> completion::shell_highlight_cache *
   {
@@ -2801,37 +2792,9 @@ public:
   fn render_contained_substitution_error(const std::exception_ptr &error,
                                          StringView source) throws -> void;
 
-  fn set_shell_option_state(shell_option_id option, bool enabled) wontthrow
-      -> void
-  {
-    runtime_state().set_option(option, enabled);
-  }
-  fn note_shell_option_mutation(shell_option_id option) wontthrow -> void
-  {
-    runtime_control_store().option_mutations().note(option);
-  }
-  pure fn shell_option_state(shell_option_id option) const wontthrow -> bool
-  {
-    return runtime_state().option_is_enabled(option);
-  }
-
   /* Marks the unset strictness as the script's own set -u rather than a mood
      seed, so the -W downgrade leaves it fatal. */
   /* Mark a warning suppressed or not for the span of a construct. */
-  fn set_warning_suppressed(suppressible_warning which, bool enabled) wontthrow
-      -> void
-  {
-    runtime_control_store().set_warning_suppressed(which, enabled);
-  }
-  pure fn is_warning_suppressed(suppressible_warning which) const wontthrow
-      -> bool
-  {
-    return runtime_control_store().is_warning_suppressed(which);
-  }
-  fn note_warning_option_mutation() wontthrow -> void
-  {
-    runtime_control_store().note_warning_option_mutation();
-  }
   pure fn strict_diagnostics_are_warnings() const wontthrow -> bool
   {
     if (runtime_state().get_mood() == mimic_mood::Default)
@@ -2862,21 +2825,9 @@ public:
 
   /* Marks the pipeline strictness as the script's own set -o pipefail rather
      than a mood seed, so a later mood switch leaves it in place. */
-  pure fn koshkit_utilities_are_reachable() const wontthrow -> bool
-  {
-    return runtime_state().koshkit_utilities_are_reachable();
-  }
   /* True while a test or [ command expands its arguments, so an unmatched glob
      there stays a silent literal and the probe answers false rather than
      tripping failglob. */
-  fn set_glob_exempt_for_test(bool enabled) wontthrow -> void
-  {
-    expansion_store().set_glob_exempt_for_test(enabled);
-  }
-  pure fn glob_exempt_for_test() const wontthrow -> bool
-  {
-    return expansion_store().glob_exempt_for_test();
-  }
   /* The compgen -G probe, glob matches with failglob suppressed and a plain
      name reported only when the file exists. */
   fn expand_glob_lenient(StringView pattern) throws

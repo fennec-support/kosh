@@ -624,7 +624,7 @@ fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
                                  bool allow_fd_memoization) throws
     -> resolved_redirection
 {
-  if (cxt.restricted_enforcement_active() &&
+  if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted) &&
       (redir.kind == Redirection::Kind::TruncateOutput ||
        redir.kind == Redirection::Kind::TruncateOutputOverride ||
        redir.kind == Redirection::Kind::AppendOutput ||
@@ -681,7 +681,7 @@ fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
   {
     let resolved_dup = resolve_duplication(redir, cxt);
     if (resolved_dup.both_streams_file.has_value()) {
-      if (cxt.restricted_enforcement_active()) {
+      if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted)) {
         reject_restricted_output_redirection(redir, fallback_location,
                                              open_or_stage_failed);
       }

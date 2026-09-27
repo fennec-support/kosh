@@ -76,7 +76,7 @@ static fn first_word_resolves(StringView word, EvalContext &context) throws
       static_cast<int>(word.length), word.data, resolves ? "yes" : "no");
   if (path_status != ProgramResolver::Status::Missing) return resolves;
 
-  return context.koshkit_utilities_are_reachable() &&
+  return context.runtime_state().koshkit_utilities_are_reachable() &&
          koshkit::find_util(word).has_value();
 }
 
@@ -107,7 +107,7 @@ static fn command_word_prefixes_any(StringView word,
 
   if (context.resolution_store().resolver().command_name_has_prefix(word)) return true;
 
-  if (context.koshkit_utilities_are_reachable()) {
+  if (context.runtime_state().koshkit_utilities_are_reachable()) {
     for (let const &util_name : koshkit::util_names())
       if (do_has_prefix(util_name.view())) return true;
   }

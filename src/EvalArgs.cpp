@@ -530,20 +530,23 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
      literal and the probe returns false rather than tripping failglob. A
      declaration command such as unset names a variable, so its operand stays
      literal too. */
-  let const previous_glob_exempt = glob_exempt_for_test();
-  set_glob_exempt_for_test(is_test_command || is_declaration_command);
-  defer { set_glob_exempt_for_test(previous_glob_exempt); };
+  let const previous_glob_exempt = expansion_store().glob_exempt_for_test();
+  expansion_store().set_glob_exempt_for_test(is_test_command || is_declaration_command);
+  defer { expansion_store().set_glob_exempt_for_test(previous_glob_exempt); };
 
   /* An unset variable in a test operand is the question the command asks, so
      the advisory warning is suppressed. An explicit set -u still aborts. */
   let const previous_suppress_test_warning =
-      is_warning_suppressed(suppressible_warning::UnsetTestOperand);
+      runtime_control_store().is_warning_suppressed(
+          suppressible_warning::UnsetTestOperand);
   if (is_test_command)
-    set_warning_suppressed(suppressible_warning::UnsetTestOperand, true);
+    runtime_control_store().set_warning_suppressed(
+        suppressible_warning::UnsetTestOperand, true);
   defer
   {
-    set_warning_suppressed(suppressible_warning::UnsetTestOperand,
-                           previous_suppress_test_warning);
+    runtime_control_store().set_warning_suppressed(
+        suppressible_warning::UnsetTestOperand,
+        previous_suppress_test_warning);
   };
 
   for (let const *token : args) {
@@ -777,7 +780,7 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
       };
 
       if (bash_additions_enabled() &&
-          shell_option_state(shell_option_id::Braceexpand) &&
+          runtime_state().option_is_enabled(shell_option_id::Braceexpand) &&
           word_has_brace_candidate(*word))
       {
         for (let const &brace_word : expand_braces(*word, scratch_allocator()))

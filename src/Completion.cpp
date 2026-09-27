@@ -393,7 +393,7 @@ collect_command_names(StringView token, EvalContext &context, Collector &collect
   for (let const &builtin_name : builtin_names())
     do_add(builtin_name.view());
 
-  if (context.koshkit_utilities_are_reachable()) {
+  if (context.runtime_state().koshkit_utilities_are_reachable()) {
     for (let const &util_name : koshkit::util_names()) {
       if (!token_is_glob && !collector.allows_fuzzy_fallback() &&
           !utils::smart_case_prefix_matches(util_name.view(), token,

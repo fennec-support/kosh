@@ -403,7 +403,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
         (!unresolved_stages.is_empty() ||
          (cxt.runtime_state().is_bash_compatible() &&
           (!cxt.is_shopt_enabled("lastpipe") ||
-           cxt.shell_option_state(shell_option_id::Monitor))));
+           cxt.runtime_state().option_is_enabled(shell_option_id::Monitor))));
 
     if (!is_last) {
       pipe = os::make_pipe();

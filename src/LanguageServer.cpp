@@ -733,7 +733,7 @@ fn Server::complete(const JsonValue *id, const JsonValue *params) throws -> bool
       } else if (search_builtin(candidate.view()).has_value() ||
                  m_context.find_function(candidate.view()).has_value() ||
                  document_function_names.find(candidate.view()).has_value() ||
-                 (m_context.koshkit_utilities_are_reachable() &&
+                 (m_context.runtime_state().koshkit_utilities_are_reachable() &&
                   koshkit::find_util(candidate.view()).has_value() &&
                   resolver.get_status(candidate.view()) !=
                       ProgramResolver::Status::Runnable))
@@ -1538,7 +1538,7 @@ fn Server::command_information(StringView command) throws -> Maybe<String>
   /* A PATH program is what an ordinary command word resolves to, so the
      bundled utility answers only for a name PATH does not hold. */
   if (paths.is_empty()) {
-    if (!m_context.koshkit_utilities_are_reachable()) return None;
+    if (!m_context.runtime_state().koshkit_utilities_are_reachable()) return None;
     if (!koshkit::find_util(command).has_value()) return None;
 
     let source = String{"koshkit "};

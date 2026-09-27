@@ -559,7 +559,7 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
       let const should_run_in_parent =
           is_last && !is_async() && cxt.runtime_state().is_bash_compatible() &&
           cxt.runtime_state().is_shopt_enabled(shopt_option_id::Lastpipe) &&
-          !cxt.shell_option_state(shell_option_id::Monitor);
+          !cxt.runtime_state().option_is_enabled(shell_option_id::Monitor);
 
       let const *simple = stage->as_simple_command();
       if (simple != nullptr) {
@@ -893,7 +893,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
       stage_ec = ExecContext::make_from(
           e->source_location(),
           source != nullptr ? source->view() : StringView{}, steal(stage_args),
-          cxt.koshkit_utilities_are_reachable(),
+          cxt.runtime_state().koshkit_utilities_are_reachable(),
           cxt.runtime_state().is_shopt_enabled(shopt_option_id::Checkhash),
           cxt.resolution_store().resolver(), steal(stage_arg_locations), cxt.runtime_state().get_mood());
     } catch (const CommandResolutionErrorWithLocation &resolution_error) {

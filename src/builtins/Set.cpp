@@ -471,7 +471,8 @@ fn option_is_on(const EvalContext &cxt,
 {
   if (!option_is_available(cxt, option)) return false;
   switch (option.behavior) {
-  case set_option_behavior::Stored: return cxt.shell_option_state(option.id);
+  case set_option_behavior::Stored:
+    return cxt.runtime_state().option_is_enabled(option.id);
   case set_option_behavior::InteractiveComments:
     return cxt.is_shopt_enabled("interactive_comments");
   case set_option_behavior::Posix: return cxt.runtime_state().is_posix_option_on();
@@ -527,8 +528,8 @@ fn apply_or_reject_option(EvalContext &cxt, const set_option_descriptor &option,
       else if (!enable && value.has_value())
         cxt.disable_ignoreeof();
     }
-    cxt.note_shell_option_mutation(option.id);
-    cxt.set_shell_option_state(option.id, enable);
+    cxt.runtime_control_store().option_mutations().note(option.id);
+    cxt.runtime_state().set_option(option.id, enable);
     break;
   case set_option_behavior::InteractiveComments:
     cxt.set_shopt_option("interactive_comments", enable);
@@ -537,7 +538,7 @@ fn apply_or_reject_option(EvalContext &cxt, const set_option_descriptor &option,
   case set_option_behavior::Vi: cxt.set_vi_mode(enable); break;
   case set_option_behavior::Emacs: cxt.set_emacs_mode(enable); break;
   case set_option_behavior::WarningLevel:
-    cxt.note_warning_option_mutation();
+    cxt.runtime_control_store().note_warning_option_mutation();
     if (should_step_warning_level)
       cxt.runtime_state().set_warnings_enabled(enable);
     else
@@ -746,7 +747,8 @@ fn enabled_shell_option_letters(const EvalContext &cxt) throws -> String
   for (let const &option : SET_OPTIONS) {
     if (option.letter == 'h') {
       if (option_is_on(cxt, option)) letters.push('h');
-      if (cxt.restricted_enforcement_active()) letters.push('r');
+      if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted))
+        letters.push('r');
       if (cxt.shell_is_interactive()) letters.push('i');
       continue;
     }
@@ -846,7 +848,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             String{cxt.scratch_allocator(), "Unknown --mood value '"} + *value +
                 "', expected 'kosh', 'bash', 'sh', or 'bash-posix'");
       cxt.runtime_state().set_mood(*parsed);
-      cxt.note_warning_option_mutation();
+      cxt.runtime_control_store().note_warning_option_mutation();
       cxt.runtime_state().set_warning_level(0);
       cxt.apply_strictness_for_mood();
       cxt.note_explicit_mood();
@@ -955,7 +957,8 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           break;
         }
         if (letter == 'r') {
-          if (!enable && cxt.restricted_enforcement_active()) {
+          if (!enable &&
+              cxt.runtime_state().option_is_enabled(shell_option_id::Restricted)) {
             throw make_error_for_arg(ec, i,
                                      "Restricted mode cannot be disabled");
           }

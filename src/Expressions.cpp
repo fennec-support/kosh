@@ -1861,7 +1861,8 @@ fn analyze_ast(
   actx.warning_level = warning_level;
   actx.is_default_mood = is_default_mood;
   actx.are_koshkit_utilities_reachable =
-      eval_context != nullptr ? eval_context->koshkit_utilities_are_reachable()
+      eval_context != nullptr
+          ? eval_context->runtime_state().koshkit_utilities_are_reachable()
                               : is_default_mood;
   actx.should_emit_annoying_diagnostics = should_emit_annoying_diagnostics;
   actx.shellcheck_suppressions = &shellcheck_suppressions;

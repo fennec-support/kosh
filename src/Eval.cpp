@@ -50,8 +50,8 @@ EvalContext::EvalContext(bool should_disable_path_expansion, bool should_echo,
   runtime_state().set_echo_expanded(should_echo_expanded);
   runtime_state().set_error_exit(should_error_exit);
   set_emacs_mode(shell_is_interactive);
-  set_shell_option_state(shell_option_id::History, shell_is_interactive);
-  set_shell_option_state(shell_option_id::Histexpand, shell_is_interactive);
+  runtime_state().set_option(shell_option_id::History, shell_is_interactive);
+  runtime_state().set_option(shell_option_id::Histexpand, shell_is_interactive);
   set_field_separators(field_separators());
 
   dynamic_runtime_store().shell_start_time() = static_cast<i64>(std::time(nullptr));
@@ -743,7 +743,9 @@ pure fn EvalContext::locate_variable_reference(StringView name) const wontthrow
 fn EvalContext::report_unset_reference(StringView name) throws -> void
 {
   /* bash does not nounset on the operand of [[ -v name ]]. */
-  if (is_warning_suppressed(suppressible_warning::UnsetReference)) return;
+  if (runtime_control_store().is_warning_suppressed(
+          suppressible_warning::UnsetReference))
+    return;
 
   let empty_expansion_note =
       "Replace it with ${" + String{name} + "-} if empty expansion is desired";
@@ -760,7 +762,8 @@ fn EvalContext::report_unset_reference(StringView name) throws -> void
   let const should_demote = strict_diagnostics_are_warnings();
   if (runtime_state().error_unset() &&
       (runtime_state().was_error_unset_set_explicitly() || !should_demote) &&
-      !is_warning_suppressed(suppressible_warning::UnsetTestOperand))
+      !runtime_control_store().is_warning_suppressed(
+          suppressible_warning::UnsetTestOperand))
   {
     let const message = "Unable to expand '" + String{name} +
                         "' because the parameter is not set";
@@ -778,7 +781,9 @@ fn EvalContext::report_unset_reference(StringView name) throws -> void
     throw steal(error);
   }
   if (execution_store().completion_function_running()) return;
-  if (is_warning_suppressed(suppressible_warning::UnsetTestOperand)) return;
+  if (runtime_control_store().is_warning_suppressed(
+          suppressible_warning::UnsetTestOperand))
+    return;
 
   if (runtime_state().error_unset() || should_demote) {
     show_runtime_warning_at(locate_variable_reference(name),

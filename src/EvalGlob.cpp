@@ -687,7 +687,7 @@ hot fn EvalContext::expand_path(glob_field field,
     let const failglob_is_explicit =
         runtime_state().was_failglob_set_explicitly() ||
         is_shopt_enabled("failglob");
-    if (!glob_exempt_for_test())
+    if (!expansion_store().glob_exempt_for_test())
       warn_or_throw(failglob_is_on, failglob_is_explicit, location,
                     "The glob pattern '" + pattern +
                         "' matched no file, it expands to its literal text, "
@@ -696,7 +696,7 @@ hot fn EvalContext::expand_path(glob_field field,
                         "' or relax with set +o failglob");
     /* nullglob drops a no-match glob entirely, while the default and a test
        probe keep its literal text. */
-    if (glob_exempt_for_test() || !is_shopt_enabled("nullglob")) {
+    if (expansion_store().glob_exempt_for_test() || !is_shopt_enabled("nullglob")) {
       values.push(steal(pattern));
     }
   }

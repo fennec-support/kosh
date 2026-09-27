@@ -400,18 +400,22 @@ struct conditional_evaluator
       let const is_existence_test =
           *selected_unary_operator == UnaryOperatorKind::VariableSet;
       let const saved_suppress_unset =
-          cxt.is_warning_suppressed(suppressible_warning::UnsetReference);
+          cxt.runtime_control_store().is_warning_suppressed(
+              suppressible_warning::UnsetReference);
       let const saved_suppress_test_operand =
-          cxt.is_warning_suppressed(suppressible_warning::UnsetTestOperand);
-      cxt.set_warning_suppressed(suppressible_warning::UnsetTestOperand, true);
+          cxt.runtime_control_store().is_warning_suppressed(
+              suppressible_warning::UnsetTestOperand);
+      cxt.runtime_control_store().set_warning_suppressed(
+          suppressible_warning::UnsetTestOperand, true);
       if (is_existence_test)
-        cxt.set_warning_suppressed(suppressible_warning::UnsetReference, true);
+        cxt.runtime_control_store().set_warning_suppressed(
+            suppressible_warning::UnsetReference, true);
       defer
       {
-        cxt.set_warning_suppressed(suppressible_warning::UnsetReference,
-                                   saved_suppress_unset);
-        cxt.set_warning_suppressed(suppressible_warning::UnsetTestOperand,
-                                   saved_suppress_test_operand);
+        cxt.runtime_control_store().set_warning_suppressed(
+            suppressible_warning::UnsetReference, saved_suppress_unset);
+        cxt.runtime_control_store().set_warning_suppressed(
+            suppressible_warning::UnsetTestOperand, saved_suppress_test_operand);
       };
       let const operand = operand_value(elements[pos - 1]);
       return eval_unary(*selected_unary_operator, operand.view());
@@ -459,14 +463,16 @@ struct conditional_evaluator
             return false;
           }();
           let const saved_suppress_test_operand =
-              cxt.is_warning_suppressed(suppressible_warning::UnsetTestOperand);
+              cxt.runtime_control_store().is_warning_suppressed(
+                  suppressible_warning::UnsetTestOperand);
           if (is_test_operand_op)
-            cxt.set_warning_suppressed(suppressible_warning::UnsetTestOperand,
-                                       true);
+            cxt.runtime_control_store().set_warning_suppressed(
+                suppressible_warning::UnsetTestOperand, true);
           defer
           {
-            cxt.set_warning_suppressed(suppressible_warning::UnsetTestOperand,
-                                       saved_suppress_test_operand);
+            cxt.runtime_control_store().set_warning_suppressed(
+                suppressible_warning::UnsetTestOperand,
+                saved_suppress_test_operand);
           };
 
           let const left = operand_value(elements[pos - 3]);

@@ -758,11 +758,12 @@ fn kosh_main(int argc, char **argv) -> int
   context.runtime_state().set_annoying_diagnostics_enabled(
       FLAG_LINT.is_enabled() ||
       !FLAG_SUPPRESS_ANNOYING_DIAGNOSTICS.is_enabled());
-  context.set_source_traces_enabled(!FLAG_NO_TRACES.is_enabled());
-  context.set_shell_option_state(koshka::shell_option_id::Privileged,
-                                 FLAG_PRIVILEGED.is_enabled());
-  context.set_shell_option_state(koshka::shell_option_id::Onecmd,
-                                 FLAG_ONE_COMMAND.is_enabled());
+  context.diagnostics_store().set_source_traces_enabled(
+      !FLAG_NO_TRACES.is_enabled());
+  context.runtime_state().set_option(koshka::shell_option_id::Privileged,
+                                     FLAG_PRIVILEGED.is_enabled());
+  context.runtime_state().set_option(koshka::shell_option_id::Onecmd,
+                                     FLAG_ONE_COMMAND.is_enabled());
   if (should_execute_commands)
     context.set_execution_string(FLAG_COMMAND.get(0));
   context.startup_store().set_login_shell(is_login_shell);
@@ -1289,8 +1290,9 @@ fn kosh_main(int argc, char **argv) -> int
                                       ? toiletline::edit_mode::Vi
                                       : toiletline::edit_mode::Emacs);
         toiletline::set_tab_selector(context.runtime_state().get_tab_selector());
-        toiletline::set_space_after_completion(context.shell_option_state(
-            koshka::shell_option_id::SpaceAfterCompletion));
+        toiletline::set_space_after_completion(
+            context.runtime_state().option_is_enabled(
+                koshka::shell_option_id::SpaceAfterCompletion));
         toiletline::set_history_limit(
             context.get_history_limit("KOSH_HISTORY_SIZE", 4096));
 
@@ -1310,7 +1312,7 @@ fn kosh_main(int argc, char **argv) -> int
                consecutive events. */
             if (input.is_empty()) {
               i64 ignored_eof_limit_count = 0;
-              if (context.shell_option_state(
+              if (context.runtime_state().option_is_enabled(
                       koshka::shell_option_id::Ignoreeof))
               {
                 ignored_eof_limit_count = 10;
@@ -1392,7 +1394,7 @@ fn kosh_main(int argc, char **argv) -> int
 
     bool should_execute_history_expansion = true;
     if (context.shell_is_interactive() &&
-        context.shell_option_state(koshka::shell_option_id::Histexpand) &&
+        context.runtime_state().option_is_enabled(koshka::shell_option_id::Histexpand) &&
         !script_contents.is_empty())
     {
       try {
@@ -1411,7 +1413,7 @@ fn kosh_main(int argc, char **argv) -> int
     }
 
     if (context.shell_is_interactive() &&
-        context.shell_option_state(koshka::shell_option_id::History) &&
+        context.runtime_state().option_is_enabled(koshka::shell_option_id::History) &&
         !script_contents.is_empty())
     {
       history_event_number =
@@ -1489,7 +1491,7 @@ fn kosh_main(int argc, char **argv) -> int
     /* A child process reaches here when its exec() failed and printed the error
        itself. */
     if (should_quit ||
-        context.shell_option_state(koshka::shell_option_id::Onecmd) ||
+        context.runtime_state().option_is_enabled(koshka::shell_option_id::Onecmd) ||
         koshka::os::is_child_process() ||
         (!FLAG_LINT.is_enabled() && FLAG_ERROR_EXIT.is_enabled() &&
          exit_code != 0))

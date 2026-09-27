@@ -627,7 +627,7 @@ static fn run_script_contents(
               static_cast<int>(unit->evaluate_root(context, evaluation_mode));
           evaluation_mode = root_evaluation_mode::Normal;
           if (context.control_flow_store().has_pending() ||
-              (context.shell_option_state(shell_option_id::Onecmd) &&
+              (context.runtime_state().option_is_enabled(shell_option_id::Onecmd) &&
                !context.execution_store().has_execution_string()))
           {
             break;
@@ -1778,7 +1778,7 @@ fn source_init_moods(EvalContext &context, BumpArena &ast_arena,
   for (let flavor : moods) {
     let const should_consider_bash_env =
         flavor == mimic_mood::Bash &&
-        !context.shell_option_state(shell_option_id::Privileged) &&
+        !context.runtime_state().option_is_enabled(shell_option_id::Privileged) &&
         !context.startup_finished() && !did_source_bash_env;
     if (!is_login_shell && !should_be_interactive && !should_consider_bash_env)
     {
@@ -1819,7 +1819,7 @@ fn source_init_moods(EvalContext &context, BumpArena &ast_arena,
     case mimic_mood::Posix:
       if (is_login_shell) source_posix_login_files(context, ast_arena);
       if (should_be_interactive &&
-          !context.shell_option_state(shell_option_id::Privileged))
+          !context.runtime_state().option_is_enabled(shell_option_id::Privileged))
       {
         if (Maybe<String> env = context.get_variable_value("ENV");
             env.has_value() && !env->is_empty())
@@ -1832,7 +1832,7 @@ fn source_init_moods(EvalContext &context, BumpArena &ast_arena,
          that. BashPosix falls through so --posix finds the bash integration. */
       if (is_login_shell) source_bash_login_files(context, ast_arena);
       if (flavor == mimic_mood::Bash &&
-          !context.shell_option_state(shell_option_id::Privileged) &&
+          !context.runtime_state().option_is_enabled(shell_option_id::Privileged) &&
           !should_be_interactive && !context.startup_finished() &&
           !did_source_bash_env)
       {

@@ -188,7 +188,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   const ArrayList<const Token *> *argument_tokens = &m_args;
   let filtered_argument_tokens =
       ArrayList<const Token *>{cxt.scratch_allocator()};
-  if (cxt.shell_option_state(shell_option_id::Keyword)) {
+  if (cxt.runtime_state().option_is_enabled(shell_option_id::Keyword)) {
     for (let const token : m_args)
       if (token->kind() == Token::Kind::Assignment)
         keyword_assignments.push(
@@ -642,8 +642,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       cxt.resolution_store().resolver() = steal(*saved_program_resolver);
     if (was_ifs_assigned) cxt.set_field_separators(saved_ifs_separators.view());
     if (previous_ignoreeof_state.has_value())
-      cxt.set_shell_option_state(shell_option_id::Ignoreeof,
-                                 *previous_ignoreeof_state);
+      cxt.runtime_state().set_option(shell_option_id::Ignoreeof,
+                                     *previous_ignoreeof_state);
   };
   /* The assignments apply left to right, each committed before the next is
      expanded, so a later value reads an earlier same-line one. */
@@ -707,7 +707,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
                 cxt.special_variable_definition_location(name);
             if (name == "IGNOREEOF" && !previous_ignoreeof_state.has_value()) {
               previous_ignoreeof_state =
-                  cxt.shell_option_state(shell_option_id::Ignoreeof);
+                  cxt.runtime_state().option_is_enabled(shell_option_id::Ignoreeof);
             }
             cxt.set_shell_variable(name, expanded_value.view());
           }
@@ -925,7 +925,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     let const *source = cxt.source_store().current_source();
     resolved_ec = ExecContext::make_from(
         source_location(), source != nullptr ? source->view() : StringView{},
-        steal(program_args), cxt.koshkit_utilities_are_reachable(),
+        steal(program_args), cxt.runtime_state().koshkit_utilities_are_reachable(),
         cxt.runtime_state().is_shopt_enabled(shopt_option_id::Checkhash),
         cxt.resolution_store().resolver(), steal(program_arg_locations), cxt.runtime_state().get_mood());
   } catch (const CommandResolutionErrorWithLocation &e) {
