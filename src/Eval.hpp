@@ -3050,7 +3050,8 @@ public:
   fn set_shopt_option(StringView name, bool is_enabled) throws -> void;
   pure fn is_shopt_enabled(StringView name) const wontthrow -> bool
   {
-    if (name == "restricted_shell") return is_restricted_shell();
+    if (name == "restricted_shell")
+      return startup_store().is_restricted_shell();
     let const index = shopt_option_index(name);
     if (!index.has_value()) return false;
     if (runtime_state().is_shopt_option_overridden(*index))
@@ -3288,30 +3289,14 @@ public:
   fn write_xtrace(const ArrayList<String> &args) throws -> void;
   pure fn shell_is_interactive() const wontthrow -> bool;
 
-  pure fn startup_finished() const wontthrow -> bool
-  {
-    return startup_store().startup_finished();
-  }
   fn set_startup_finished() wontthrow -> void
   {
     startup_store().mark_startup_finished();
     if (startup_store().is_restricted_shell()) activate_restricted_mode();
   }
-  fn request_restricted_shell() wontthrow -> void
-  {
-    startup_store().request_restricted_shell();
-  }
-  pure fn is_restricted_shell() const wontthrow -> bool
-  {
-    return startup_store().is_restricted_shell();
-  }
   fn activate_restricted_mode() wontthrow -> void
   {
     runtime_state().set_option(shell_option_id::Restricted, true);
-  }
-  pure fn restricted_enforcement_active() const wontthrow -> bool
-  {
-    return runtime_state().option_is_enabled(shell_option_id::Restricted);
   }
   fn guard_restricted_path(StringView path, const SourceLocation &location,
                            restricted_path_use use) const throws -> void;

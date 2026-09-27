@@ -32,7 +32,7 @@ fn set_foreground_program_title(const ArrayList<String> &arguments,
 {
   if (arguments.is_empty()) return;
 
-  if (!cxt.shell_is_interactive() || !cxt.startup_finished() ||
+  if (!cxt.shell_is_interactive() || !cxt.startup_store().startup_finished() ||
       cxt.execution_store().completion_function_running() || cxt.execution_store().prompt_command_running())
   {
     return;
@@ -319,7 +319,8 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
   let const is_async = mode == execution_mode::Background;
   ASSERT(!ecs.is_empty());
 
-  if (!is_async && cxt.shell_is_interactive() && cxt.startup_finished() &&
+  if (!is_async && cxt.shell_is_interactive() &&
+      cxt.startup_store().startup_finished() &&
       !cxt.execution_store().completion_function_running() && !cxt.execution_store().prompt_command_running())
   {
     let command = String{cxt.scratch_allocator()};

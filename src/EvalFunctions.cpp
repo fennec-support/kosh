@@ -933,7 +933,7 @@ fn EvalContext::is_readonly(StringView name) const wontthrow -> bool
     return true;
   }
 
-  if (restricted_enforcement_active()) {
+  if (runtime_state().option_is_enabled(shell_option_id::Restricted)) {
     if (utils::environment_name_is_path(name)) return true;
     if (RESTRICTED_READONLY_NAMES.contains(name)) return true;
   }
@@ -965,7 +965,7 @@ fn EvalContext::readonly_names() const throws
     for (let const &key : BASH_IMPLICIT_READONLY_KEYS)
       do_push_implicit(key);
 
-  if (restricted_enforcement_active())
+  if (runtime_state().option_is_enabled(shell_option_id::Restricted))
     for (let const &key : RESTRICTED_READONLY_KEYS)
       do_push_implicit(key);
 

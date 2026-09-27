@@ -768,7 +768,7 @@ fn kosh_main(int argc, char **argv) -> int
     context.set_execution_string(FLAG_COMMAND.get(0));
   context.startup_store().set_login_shell(is_login_shell);
   context.startup_store().set_custom_rcfile(koshka::selected_rcfile().has_value());
-  if (is_restricted_shell) context.request_restricted_shell();
+  if (is_restricted_shell) context.startup_store().request_restricted_shell();
   /* The startup files source with strictness off, since they read unset
      variables such as $BASH_VERSION on the /etc/profile path. The session
      strictness is applied at the seam below once the config has loaded. */

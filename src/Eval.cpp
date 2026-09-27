@@ -287,7 +287,8 @@ fn EvalContext::guard_restricted_path(StringView path,
                                       restricted_path_use use) const throws
     -> void
 {
-  if (!restricted_enforcement_active() || !os::has_directory_separator(path)) {
+  if (!runtime_state().option_is_enabled(shell_option_id::Restricted) ||
+      !os::has_directory_separator(path)) {
     return;
   }
 
@@ -472,7 +473,8 @@ fn EvalContext::restore_local_binding(local_binding &binding) throws -> void
                          steal(*binding.previous_indexed_array));
   else
     variable_store().indexed_arrays().erase(binding.name.view());
-  let const was_restricted = restricted_enforcement_active();
+  let const was_restricted =
+      runtime_state().option_is_enabled(shell_option_id::Restricted);
   runtime_state().set_option(shell_option_id::Restricted, false);
   variable_store().variable_attributes().erase(binding.name.view());
   defer

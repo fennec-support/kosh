@@ -1779,7 +1779,7 @@ fn source_init_moods(EvalContext &context, BumpArena &ast_arena,
     let const should_consider_bash_env =
         flavor == mimic_mood::Bash &&
         !context.runtime_state().option_is_enabled(shell_option_id::Privileged) &&
-        !context.startup_finished() && !did_source_bash_env;
+        !context.startup_store().startup_finished() && !did_source_bash_env;
     if (!is_login_shell && !should_be_interactive && !should_consider_bash_env)
     {
       continue;
@@ -1833,7 +1833,8 @@ fn source_init_moods(EvalContext &context, BumpArena &ast_arena,
       if (is_login_shell) source_bash_login_files(context, ast_arena);
       if (flavor == mimic_mood::Bash &&
           !context.runtime_state().option_is_enabled(shell_option_id::Privileged) &&
-          !should_be_interactive && !context.startup_finished() &&
+          !should_be_interactive &&
+          !context.startup_store().startup_finished() &&
           !did_source_bash_env)
       {
         source_environment_file("BASH_ENV", context, ast_arena);

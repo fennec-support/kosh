@@ -1636,7 +1636,8 @@ fn EvalContext::apply_subshell_bootstrap(
                    0, static_cast<usize>(bootstrap.source_length)),
                "inherited shell state");
   }
-  if (is_restricted_shell_identity) request_restricted_shell();
+  if (is_restricted_shell_identity)
+    startup_store().request_restricted_shell();
   runtime.restore(*this);
 
   execution_store().restore_execution_string(has_execution_string,
