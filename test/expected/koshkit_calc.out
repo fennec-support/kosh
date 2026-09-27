@@ -17,13 +17,13 @@
 === variable read ===
 42
 === obvious xor power hint ===
-1:17: warning: The `^` operator performs bitwise XOR in Bash arithmetic.
+1:17: Warning: The `^` operator performs bitwise XOR in Bash arithmetic.
      1 |  koshkit calc "2 ^ 8"
        |                  ^
 note: Use `**`, the Bash power operator, if you meant exponentiation.
 10
 10
-1:3: warning: The `^` operator performs bitwise XOR in Bash arithmetic.
+1:3: Warning: The `^` operator performs bitwise XOR in Bash arithmetic.
      1 |  2 ^ 8
        |    ^
 note: Use `**`, the Bash power operator, if you meant exponentiation.

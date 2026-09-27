@@ -1,8 +1,8 @@
-INNER:2:9: warning: The variable 'UNSET_CHAIN_FIRST' is not set, it expands to empty.
+INNER:2:9: Warning: The variable 'UNSET_CHAIN_FIRST' is not set, it expands to empty.
      2 |  [[ x = "$UNSET_CHAIN_FIRST" ]]
        |          ^~~~~~~~~~~~~~~~~~
 note: Replace it with ${UNSET_CHAIN_FIRST-} if empty expansion is desired.
-INNER:3:9: warning: The variable 'UNSET_CHAIN_SECOND' is not set, it expands to empty.
+INNER:3:9: Warning: The variable 'UNSET_CHAIN_SECOND' is not set, it expands to empty.
      3 |  [[ x = "$UNSET_CHAIN_SECOND" ]]
        |          ^~~~~~~~~~~~~~~~~~~
 note: Replace it with ${UNSET_CHAIN_SECOND-} if empty expansion is desired.
@@ -14,12 +14,12 @@ OUTER:2:3: trace:
        |    ^~~~
 1:0: trace:
      1 |  KOSH -WWW -c '. OUTER'
-INNER:1:7: warning: The variable 'MIMIC_CHAIN_FIRST' is not set, it expands to empty.
+INNER:1:7: Warning: The variable 'MIMIC_CHAIN_FIRST' is not set, it expands to empty.
      1 |  echo "$MIMIC_CHAIN_FIRST"
        |        ^~~~~~~~~~~~~~~~~~
 note: Replace it with ${MIMIC_CHAIN_FIRST-} if empty expansion is desired.
 
-INNER:2:7: warning: The variable 'MIMIC_CHAIN_SECOND' is not set, it expands to empty.
+INNER:2:7: Warning: The variable 'MIMIC_CHAIN_SECOND' is not set, it expands to empty.
      2 |  echo "$MIMIC_CHAIN_SECOND"
        |        ^~~~~~~~~~~~~~~~~~~
 note: Replace it with ${MIMIC_CHAIN_SECOND-} if empty expansion is desired.

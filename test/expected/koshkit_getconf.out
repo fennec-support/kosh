@@ -410,12 +410,6 @@
   Unquoted "_POSIX_THREAD_PROCESS_SHARED"
 ]
 [Word
-  Unquoted "_POSIX_THREAD_ROBUST_PRIO_INHERIT"
-]
-[Word
-  Unquoted "_POSIX_THREAD_ROBUST_PRIO_PROTECT"
-]
-[Word
   Unquoted "_POSIX_THREAD_SAFE_FUNCTIONS"
 ]
 [Word

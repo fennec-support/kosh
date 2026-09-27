@@ -5,7 +5,7 @@ unset KOSH_FLAGS
 echo "== kosh mood rejects a command-position glob (count):"
 "$BIN" -c '*.zzz_no_such' 2>&1 | grep -c "glob pattern in command position"
 echo "== bash mood warns once, not fatal (count):"
-"$BIN" -M bash -c '*.zzz_no_such_qqq' 2>&1 | grep -c "warning: A glob pattern in command position"
+"$BIN" -M bash -c '*.zzz_no_such_qqq' 2>&1 | grep -c "Warning: A glob pattern in command position"
 echo "== a plain command is unaffected:"
 "$BIN" -c 'echo plain-ok' 2>&1
 echo "== the [ test command is not flagged (count):"

@@ -14,7 +14,7 @@ status=$?
 printf 'uncompressed-status=%s\n' "$status"
 case $report in
   GOODCORE*|*"  Archive:"*) report_shape=wrong ;;
-  Archive:*Executable:*Files:*) report_shape=matched ;;
+  *FIELD*VALUE*Archive*Executable*Files*) report_shape=matched ;;
   *) report_shape=wrong ;;
 esac
 printf 'report-shape=%s\n' "$report_shape"

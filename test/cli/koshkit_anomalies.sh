@@ -2,7 +2,7 @@
 
 report=$($BIN -c 'koshkit --color never evil -a')
 case $report in
-  *'Page faults:'*'Runnable processes:'*'Memory stall microseconds:'*'Mixed libraries:'*'Confidence: high'*'Cost: process mappings'*)
+  *'Page faults:'*'Runnable processes:'*'Memory partial stall microseconds:'*'Mixed library ABIs:'*'Finding confidence: high'*'Cost: process mappings'*)
     anomaly_shape=matched
     ;;
   *) anomaly_shape=wrong ;;

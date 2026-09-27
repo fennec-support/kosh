@@ -24,4 +24,4 @@ rm -f "$home/.koshrc"
 printf 'set -WWW\n' > "$home/.profile"
 echo "== a startup warning level reaches the session:"
 HOME="$home" "$BIN" -l --no-init-diagnostics -c 'f() { echo "[${UNSET_AT_PROMPT}]"; }; f' 2>&1 | \
-  grep -c "^1:12: warning: The variable 'UNSET_AT_PROMPT' is not set"
+  grep -c "^1:12: Warning: The variable 'UNSET_AT_PROMPT' is not set"

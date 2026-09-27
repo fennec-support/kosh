@@ -280,7 +280,7 @@ if [ "$host_system" = Darwin ]; then
   evildisk_report=$(PATH="$evildisk_tools:$PATH" "$BIN" -c \
     'koshkit --color never evildisk -a /dev/null' 2>&1)
   case $evildisk_report in
-    *disk-test*Verified*temperature*"42 Celsius"*"used 7%"*"media errors 5,075"*warning:*"nonzero SMART counters"*)
+    *disk-test*Verified*temperature*"42 Celsius"*"used 7%"*"media errors 5,075"*Warning:*"nonzero SMART counters"*)
       evildisk_fallback=passed
       ;;
     *) evildisk_fallback=failed ;;
@@ -288,19 +288,23 @@ if [ "$host_system" = Darwin ]; then
 else
   evildisk_fallback=passed
 fi
-printf '%s\n' '#!/bin/sh' \
-  'printf "%s\n" "Device Model: Mock ATA" "Transport protocol: SATA" "SMART overall-health self-assessment test result: PASSED" "ID# ATTRIBUTE_NAME FLAG VALUE WORST THRESH TYPE UPDATED WHEN_FAILED RAW_VALUE" "5 Retired_Block_Count 0x0033 100 100 010 Pre-fail Always - 2" "188 Command_Timeouts 0x0032 100 100 000 Old_age Always - 0" "197 Pending_Sectors 0x0012 100 100 000 Old_age Always - 3" "198 Truncated_Row 0x0010" "199 CRC_Error_Count 0x003e 200 200 000 Old_age Always - 4"' \
-  > "$evildisk_tools/smartctl"
-chmod 755 "$evildisk_tools/smartctl"
-evildisk_ata_report=$(PATH="$evildisk_tools:$PATH" "$BIN" -c \
-  'koshkit --color never evildisk -a /dev/null' 2>&1)
-case $evildisk_ata_report in
-  *uncorrectable*) evildisk_ata=failed ;;
-  *"Mock ATA"*"reallocated 2"*"timeouts 0"*"pending 3"*"CRC errors 4"*Warning:*"nonzero SMART counters reallocated 2, pending 3, CRC errors 4"*)
-    evildisk_ata=passed
-    ;;
-  *) evildisk_ata=failed ;;
-esac
+if [ "$host_system" = Darwin ]; then
+  printf '%s\n' '#!/bin/sh' \
+    'printf "%s\n" "Device Model: Mock ATA" "Transport protocol: SATA" "SMART overall-health self-assessment test result: PASSED" "ID# ATTRIBUTE_NAME FLAG VALUE WORST THRESH TYPE UPDATED WHEN_FAILED RAW_VALUE" "5 Retired_Block_Count 0x0033 100 100 010 Pre-fail Always - 2" "188 Command_Timeouts 0x0032 100 100 000 Old_age Always - 0" "197 Pending_Sectors 0x0012 100 100 000 Old_age Always - 3" "198 Truncated_Row 0x0010" "199 CRC_Error_Count 0x003e 200 200 000 Old_age Always - 4"' \
+    > "$evildisk_tools/smartctl"
+  chmod 755 "$evildisk_tools/smartctl"
+  evildisk_ata_report=$(PATH="$evildisk_tools:$PATH" "$BIN" -c \
+    'koshkit --color never evildisk -a /dev/null' 2>&1)
+  case $evildisk_ata_report in
+    *uncorrectable*) evildisk_ata=failed ;;
+    *"Mock ATA"*"reallocated 2"*"timeouts 0"*"pending 3"*"CRC errors 4"*Warning:*"nonzero SMART counters reallocated 2, pending 3, CRC errors 4"*)
+      evildisk_ata=passed
+      ;;
+    *) evildisk_ata=failed ;;
+  esac
+else
+  evildisk_ata=skipped
+fi
 printf 'evildisk-smart-fallback=%s\n' "$evildisk_fallback"
 printf 'evildisk-smart-ata=%s\n' "$evildisk_ata"
 

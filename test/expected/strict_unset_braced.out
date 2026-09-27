@@ -24,7 +24,7 @@
   Unquoted "not-reached"
 ]
 before
-5:7: warning: The variable 'nope' is not set, it expands to empty.
+5:7: Warning: The variable 'nope' is not set, it expands to empty.
      5 |  echo "${nope}"
        |        ^~~~~~~
 note: Replace it with ${nope-} if empty expansion is desired.

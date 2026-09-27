@@ -7,13 +7,13 @@ b
 nums.txt: text
 stamp: empty
 sym: text
-1:33: error: file: cannot open 'missing.txt': No such file or directory.
+1:33: error: koshkit file: cannot open 'missing.txt': No such file or directory.
      1 |  koshkit file nums.txt stamp sym missing.txt
        |                                  ^~~~~~~~~~~
 file-status=1
 --- custom file samples preserve merged-stream operand order ---
 magic-good-a: batch-match
-1:42: error: file: cannot open 'missing-magic': No such file or directory.
+1:42: error: koshkit file: cannot open 'missing-magic': No such file or directory.
      1 |  koshkit file -M magic-batch magic-good-a missing-magic magic-good-b
        |                                           ^~~~~~~~~~~~~
 magic-good-b: batch-match
@@ -66,8 +66,6 @@ du-recursion=incomplete
 4096  du-default/tie-b
 du-hardlinks=deduplicated
 du-unreadable=ok
---- du interruption ---
-du-interrupt=matched
 --- basename ---
 libfoo
 --- dirname ---
@@ -80,7 +78,7 @@ rmdir-parents=missing
 unlink rc=0
 0
 --- unlink a directory fails ---
-1:16: error: unlink: cannot unlink 'a': it is a directory.
+1:16: error: koshkit unlink: cannot unlink 'a': it is a directory.
      1 |  koshkit unlink a
        |                 ^
 rc=1

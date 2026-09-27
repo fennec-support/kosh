@@ -32,7 +32,7 @@ rc=2
 --- pkill with no match ---
 rc=1
 --- killall with no match ---
-1:17: error: killall: no_such_process_xyz_123: no process found.
+1:17: error: koshkit killall: no_such_process_xyz_123: no process found.
      1 |  koshkit killall no_such_process_xyz_123
        |                  ^~~~~~~~~~~~~~~~~~~~~~~
 rc=1

@@ -83,7 +83,7 @@ last-17
 ==> TMPDIR/batch-18.txt <==
 last-18
 --- missing source preserves later output and status ---
-1:1: error: tail: cannot open 'missing.txt': No such file or directory.
+1:1: error: koshkit tail: cannot open 'missing.txt': No such file or directory.
      1 |  koshkit tail -n 1 missing.txt with-final.txt
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -98,4 +98,4 @@
   Unquoted "retry_once"
 ]
 retry-ok
-warning: retry attempt 1 of 2 failed with status 1.
+Warning: retry attempt 1 of 2 failed with status 1.

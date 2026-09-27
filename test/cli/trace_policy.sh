@@ -164,7 +164,7 @@ out=$("$BIN" -n -WW \
     -c : 2>&1)
 printf 'noexec-batch traces=%s warnings=%s\n' \
     "$(printf '%s\n' "$out" | grep -Ec 'trace:')" \
-    "$(printf '%s\n' "$out" | grep -c 'warning:')"
+    "$(printf '%s\n' "$out" | grep -c 'Warning:')"
 
 recursive='if ((depth)); then let depth-=1; eval "$recursive"; else no_such_recursive_xyz; fi'
 out=$("$BIN" -c 'recursive=$1; depth=5; eval "$recursive"' trace-driver "$recursive" 2>&1)
@@ -176,7 +176,7 @@ out=$("$BIN" --mood bash -c 'eval "$1"' root 'eval "$2"' '?????????' 2>&1)
 warning_block=$(printf '%s\n' "$out" | sed '/error:/,$d')
 printf 'runtime-repeat traces=%s warnings=%s\n' \
     "$(printf '%s\n' "$warning_block" | grep -Ec 'trace:')" \
-    "$(printf '%s\n' "$warning_block" | grep -c 'warning:')"
+    "$(printf '%s\n' "$warning_block" | grep -c 'Warning:')"
 
 printf '%s\n' 'current=$NEXT' 'NEXT=$AFTER' '. "$current"' > "$d/identity-a"
 printf '%s\n' 'current=$NEXT' 'NEXT=$AFTER' '. "$current"' > "$d/identity-b"
@@ -198,10 +198,10 @@ printf 'disabled-multi-root traces=%s errors=%s\n' \
     "$(printf '%s\n' "$out" | grep -c 'error:')"
 
 printf '[[ x = "$UNSET_TRACE_POLICY" ]]\n' > "$d/warning"
-out=$("$BIN" -W --no-traces -c '. "$1"' trace-driver "$d/warning" 2>&1)
+out=$("$BIN" -WWW --no-traces -c '. "$1"' trace-driver "$d/warning" 2>&1)
 printf 'disabled-warning traces=%s warnings=%s\n' \
     "$(printf '%s\n' "$out" | grep -Ec 'trace:')" \
-    "$(printf '%s\n' "$out" | grep -c 'warning:')"
+    "$(printf '%s\n' "$out" | grep -c 'Warning:')"
 
 out=$("$BIN" --no-traces -c "eval '{'" 2>&1)
 printf 'disabled-parse traces=%s errors=%s\n' \

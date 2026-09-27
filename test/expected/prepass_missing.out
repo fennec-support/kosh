@@ -61,59 +61,59 @@
 [Word
   Unquoted "after"
 ]
-2:1: warning: The command 'nosuchcmd_xyz' was not found.
+2:1: Warning: The command 'nosuchcmd_xyz' was not found.
      2 |  nosuchcmd_xyz
        |  ^~~~~~~~~~~~~
-3:1: warning: An assignment name must not start with a dollar sign. (SC2281)
+3:1: Warning: An assignment name must not start with a dollar sign. (SC2281)
      3 |  $name=value
        |  ^~~~~~~~~~~
 note: Remove the dollar sign from the assignment name.
-4:6: warning: An assignment with spaces around equals is read as a command and its arguments. (SC2283)
+4:6: Warning: An assignment with spaces around equals is read as a command and its arguments. (SC2283)
      4 |  name = value
        |       ^
 note: Write `NAME=value` without spaces.
-5:1: warning: The glob pattern has an unterminated `[`.
+5:1: Warning: The glob pattern has an unterminated `[`.
      5 |  [grep needle file]
        |  ^~~~~
-5:1: warning: The bracket and the operand next to it are read as one word. (SC1035)
+5:1: Warning: The bracket and the operand next to it are read as one word. (SC1035)
      5 |  [grep needle file]
        |  ^~~~~
 note: Add spaces after the opening bracket and before the close.
-5:1: warning: Test brackets do not run the command written inside them. (SC1014)
+5:1: Warning: Test brackets do not run the command written inside them. (SC1014)
      5 |  [grep needle file]
        |  ^~~~~
 note: Run the command directly as the `if` condition.
-6:1: warning: The bracket and the operand next to it are read as one word. (SC1035)
+6:1: Warning: The bracket and the operand next to it are read as one word. (SC1035)
      6 |  [[left=right]]
        |  ^~~~~~~~~~~~~~
 note: Add spaces after the opening bracket and before the close.
-6:1: warning: A conditional operator without surrounding spaces is read as part of one word. (SC2077)
+6:1: Warning: A conditional operator without surrounding spaces is read as part of one word. (SC2077)
      6 |  [[left=right]]
        |  ^~~~~~~~~~~~~~
 note: Place spaces around the comparison operator.
-7:1: warning: A subshell performs no file or string test. (SC2204)
+7:1: Warning: A subshell performs no file or string test. (SC2204)
      7 |  ( -f file )
        |  ^
 note: Use `[[ ... ]]` or `[ ... ]` for the condition.
-7:3: warning: An option-shaped word in command position is looked up as a command name. (SC2215)
+7:3: Warning: An option-shaped word in command position is looked up as a command name. (SC2215)
      7 |  ( -f file )
        |    ^~
 note: Place the option after its command.
-7:3: warning: The command '-f' was not found.
+7:3: Warning: The command '-f' was not found.
      7 |  ( -f file )
        |    ^~
-8:1: warning: An option-shaped word in command position is looked up as a command name. (SC2215)
+8:1: Warning: An option-shaped word in command position is looked up as a command name. (SC2215)
      8 |  -n
        |  ^~
 note: Place the option after its command.
-8:1: warning: The command '-n' was not found.
+8:1: Warning: The command '-n' was not found.
      8 |  -n
        |  ^~
 Encountered 13 warnings.
 2:1: error: The command 'nosuchcmd_xyz' was not found.
      2 |  nosuchcmd_xyz
        |  ^~~~~~~~~~~~~
-3:1: warning: The variable 'name' is not set, it expands to empty.
+3:1: Warning: The variable 'name' is not set, it expands to empty.
      3 |  $name=value
        |  ^~~~~
 note: Replace it with ${name-} if empty expansion is desired.

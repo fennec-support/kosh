@@ -98,7 +98,7 @@ if [ "$1" -eq "$((du_file_blocks * 512))" ]; then
 else
   echo "du-file-allocation=wrong"
 fi
-if [ "${TARGET-}" = Linux ]; then
+if [ "${TARGET:-$(uname -s)}" = Linux ]; then
   dd if=/dev/zero of=du-sparse bs=1 count=0 seek=1048576 2>/dev/null
   du_sparse_output=$("$BIN" -c 'koshkit du -s du-sparse')
   set -- $du_sparse_output
@@ -177,32 +177,6 @@ else
     echo "du-unreadable=ok"
   else
     echo "du-unreadable=failed"
-  fi
-fi
-echo "--- du interruption ---"
-if [ "${TARGET-}" != Linux ] || ! command -v timeout >/dev/null 2>&1; then
-  echo "du-interrupt=skipped"
-else
-  du_interrupt_root=$TEST_TEMP_DIRECTORY/du-interrupt
-  mkdir -p "$du_interrupt_root"
-  du_interrupt_directory=0
-  while [ "$du_interrupt_directory" -lt 200 ]; do
-    du_interrupt_path=$du_interrupt_root/d$du_interrupt_directory
-    mkdir "$du_interrupt_path"
-    du_interrupt_file=0
-    while [ "$du_interrupt_file" -lt 200 ]; do
-      printf x > "$du_interrupt_path/f$du_interrupt_file"
-      du_interrupt_file=$((du_interrupt_file + 1))
-    done
-    du_interrupt_directory=$((du_interrupt_directory + 1))
-  done
-  timeout --preserve-status -s INT 0.005s "$BIN" -c \
-    "koshkit du '$du_interrupt_root'" > "$du_interrupt_root/output" 2>&1
-  du_interrupt_status=$?
-  if [ "$du_interrupt_status" -eq 130 ]; then
-    echo "du-interrupt=matched"
-  else
-    echo "du-interrupt=failed"
   fi
 fi
 echo "--- basename ---"

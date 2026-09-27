@@ -327,7 +327,7 @@ tabs-template=0
         1b 5b 48 1b 5b 32 4a
 tput-type=0
 xterm terminal
-28:1: error: stty: standard input is not a terminal.
+28:1: error: koshkit stty: standard input is not a terminal.
     28 |  koshkit stty -a </dev/null
        |  ^~~~~~~~~~~~~~~
 stty-notty=1

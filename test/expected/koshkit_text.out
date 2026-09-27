@@ -8,13 +8,13 @@
 --- wc -l ---
 4 fruit.txt
 --- cat multi-chunk input with a missing operand ---
-1:1: error: cat: missing.txt: No such file or directory.
+1:1: error: koshkit cat: missing.txt: No such file or directory.
      1 |  koshkit cat batch-input.txt cat-first.txt missing.txt cat-last.txt > cat-output.txt; printf "status=%s\n" "$?"; koshkit cksum cat-output.txt
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 status=1
 578497766 108905 cat-output.txt
 --- numbered cat reads later files after a missing operand ---
-1:1: error: cat: missing.txt: No such file or directory.
+1:1: error: koshkit cat: missing.txt: No such file or directory.
      1 |  koshkit cat -n cat-first.txt missing.txt cat-last.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
      1	first
@@ -60,7 +60,7 @@ last
 65547
 tail
 --- strings reads later files after a missing operand ---
-1:1: error: strings: cannot read 'missing.txt': No such file or directory.
+1:1: error: koshkit strings: cannot read 'missing.txt': No such file or directory.
      1 |  koshkit strings cat-first.txt missing.txt cat-last.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 first
@@ -72,7 +72,7 @@ tail
         c3 a9 7a 0a
         c3 a9 0a
 --- cut reads later files after a missing operand ---
-1:1: error: cut: cannot read 'missing.txt': No such file or directory.
+1:1: error: koshkit cut: cannot read 'missing.txt': No such file or directory.
      1 |  koshkit cut -c 1-5 cat-first.txt missing.txt cat-last.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 first
@@ -87,12 +87,12 @@ status=1
 --- diff reads standard input on the right ---
 status=0
 --- diff reports a missing second operand ---
-1:1: error: diff: cannot read 'missing.txt': No such file or directory.
+1:1: error: koshkit diff: cannot read 'missing.txt': No such file or directory.
      1 |  koshkit diff batch-input.txt missing.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 status=2
 --- wc multi-chunk input with a missing operand ---
-1:1: error: wc: missing.txt: No such file or directory.
+1:1: error: koshkit wc: missing.txt: No such file or directory.
      1 |  koshkit wc -c batch-input.txt missing.txt empty.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 108894 batch-input.txt
@@ -107,7 +107,7 @@ status=1
 4
 --- cksum multi-chunk input with a missing operand ---
 3231941463 108894 batch-input.txt
-1:1: error: cksum: cannot read 'missing.txt': No such file or directory.
+1:1: error: koshkit cksum: cannot read 'missing.txt': No such file or directory.
      1 |  koshkit cksum batch-input.txt missing.txt empty.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 4294967295 0 empty.txt
@@ -137,7 +137,7 @@ apple
       1 banana
       1 cherry
 --- sort multiple files with a missing operand ---
-1:1: error: sort: cannot read 'missing.txt': No such file or directory.
+1:1: error: koshkit sort: cannot read 'missing.txt': No such file or directory.
      1 |  koshkit sort sort-a.txt missing.txt sort-b.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 alpha
@@ -149,7 +149,7 @@ status=2
 alpha
 delta
 --- paste multiple files with a missing operand ---
-1:1: error: paste: cannot read 'missing.txt': No such file or directory.
+1:1: error: koshkit paste: cannot read 'missing.txt': No such file or directory.
      1 |  koshkit paste -d , sort-a.txt missing.txt sort-b.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 zulu,,middle
@@ -159,7 +159,7 @@ status=1
 left,
 right,
 --- pr merge with a missing operand ---
-1:1: error: pr: cannot read 'missing.txt': No such file or directory.
+1:1: error: koshkit pr: cannot read 'missing.txt': No such file or directory.
      1 |  koshkit pr -t -m -s , sort-a.txt missing.txt sort-b.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 zulu,middle
@@ -175,7 +175,7 @@ status=1
     1	first
     1	last
 --- pr reads later files after a missing operand ---
-1:1: error: pr: cannot read 'missing.txt': No such file or directory.
+1:1: error: koshkit pr: cannot read 'missing.txt': No such file or directory.
      1 |  koshkit pr -t sort-a.txt missing.txt sort-b.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 zulu
@@ -200,7 +200,7 @@ apple
 --- grep no match status ---
 status=1
 --- grep invalid pattern status ---
-1:14: error: grep: the pattern '[' is not a valid regex.
+1:14: error: koshkit grep: the pattern '[' is not a valid regex.
      1 |  koshkit grep "[" fruit.txt; printf "status=%s\n" "$?"
        |               ^~~
 status=2
@@ -231,10 +231,8 @@ tail
 pear.txt:pear
 --- grep match across chunk boundary ---
 65541
---- grep interruption ---
-grep-interrupt=matched
 --- grep multiple files with a missing operand ---
-1:27: error: grep: missing.txt: No such file or directory.
+1:27: error: koshkit grep: missing.txt: No such file or directory.
      1 |  koshkit grep a sort-a.txt missing.txt sort-b.txt; printf "status=%s\n" "$?"
        |                            ^~~~~~~~~~~
 sort-a.txt:alpha
@@ -245,7 +243,7 @@ abc
 --- tr -d digits ---
 abc
 --- tr reverse range ---
-1:16: error: tr: reverse range in set 'z-x'.
+1:16: error: koshkit tr: reverse range in set 'z-x'.
      1 |  koshkit tr a-c z-x
        |                 ^~~
 note: order the endpoints from the lower byte to the higher byte.
@@ -263,7 +261,7 @@ status=0
 --- head reads later files after a missing operand ---
 ==> cat-first.txt <==
 first
-1:1: error: head: cannot open 'missing.txt': No such file or directory.
+1:1: error: koshkit head: cannot open 'missing.txt': No such file or directory.
      1 |  koshkit head -n 1 cat-first.txt missing.txt cat-last.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

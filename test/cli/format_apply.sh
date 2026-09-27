@@ -20,7 +20,7 @@ long_string_warning=$(printf '%s\n' \
   'echo "this is a deliberately very long quoted string that should trigger the formatter warning because it cannot be split safely"' |
   "$BIN" --format 2>&1 > "$TEST_NULL_DEVICE")
 case $long_string_warning in
-*'warning:'*'shorter or splitting it'*)
+*'Warning:'*'shorter or splitting it'*)
   printf 'long-string-warning=yes\n'
   ;;
 *) printf 'long-string-warning=no\n' ;;
@@ -29,7 +29,7 @@ long_token_warning=$(printf '%s\n' \
   'echo this_is_an_unbreakable_token_that_is_longer_than_the_formatter_limit_and_should_warn' |
   "$BIN" --format 2>&1 > "$TEST_NULL_DEVICE")
 case $long_token_warning in
-*'warning:'*'shorter or splitting it'*)
+*'Warning:'*'shorter or splitting it'*)
   printf 'long-token-warning=yes\n'
   ;;
 *) printf 'long-token-warning=no\n' ;;
@@ -70,8 +70,8 @@ openmpi_before_status=$?
 "$BIN" --lint --no-traces "$root/openmpi-formatted.sh" \
   > /dev/null 2> "$root/openmpi-after.err"
 openmpi_after_status=$?
-openmpi_before_warnings=$(grep -c ': warning:' "$root/openmpi-before.err" || :)
-openmpi_after_warnings=$(grep -c ': warning:' "$root/openmpi-after.err" || :)
+openmpi_before_warnings=$(grep -c ': Warning:' "$root/openmpi-before.err" || :)
+openmpi_after_warnings=$(grep -c ': Warning:' "$root/openmpi-after.err" || :)
 openmpi_before_errors=$(grep -c ': error:' "$root/openmpi-before.err" || :)
 openmpi_after_errors=$(grep -c ': error:' "$root/openmpi-after.err" || :)
 printf 'openmpi-format-diagnostics=%s,%s warnings=%s,%s errors=%s,%s\n' \

@@ -936,295 +936,295 @@
 [Word
   Unquoted ":"
 ]
-5:3: warning: The value of 'counter' is joined as text. (SC2099)
+5:3: Warning: The value of 'counter' is joined as text. (SC2099)
      5 |    counter=$counter+1
        |    ^~~~~~~~~~~~~~~~~~
 note: Write `counter=$(( ... ))` to evaluate the arithmetic.
-6:3: warning: The value of 'counter' is stored as text. (SC2100)
+6:3: Warning: The value of 'counter' is stored as text. (SC2100)
      6 |    counter=counter+1
        |    ^~~~~~~~~~~~~~~~~
 note: Write `counter=$(( ... ))` to evaluate the arithmetic.
-7:3: warning: This assignment replaces the command search path with '/opt/local/bin'. (SC2123)
+7:3: Warning: This assignment replaces the command search path with '/opt/local/bin'. (SC2123)
      7 |    PATH=/opt/local/bin
        |    ^~~~~~~~~~~~~~~~~~~
 note: Name the variable something else, or keep `$PATH` in the value.
-8:3: warning: The value of 'pattern' keeps the pattern as text. (SC2125)
+8:3: Warning: The value of 'pattern' keeps the pattern as text. (SC2125)
      8 |    pattern=*.txt
        |    ^~~~~~~~~~~~~
 note: Quote the value when the pattern is data, or use an array.
-8:3: warning: This assignment to 'pattern' in a function has no `local`.
+8:3: Warning: This assignment to 'pattern' in a function has no `local`.
      8 |    pattern=*.txt
        |    ^~~~~~~~~~~~~
 note: Declare it with `local` to keep it inside the function.
-9:3: warning: The value of 'braces' keeps the pattern as text. (SC2125)
+9:3: Warning: The value of 'braces' keeps the pattern as text. (SC2125)
      9 |    braces=file{a,b}.txt
        |    ^~~~~~~~~~~~~~~~~~~~
 note: Quote the value when the pattern is data, or use an array.
-9:3: warning: This assignment to 'braces' in a function has no `local`.
+9:3: Warning: This assignment to 'braces' in a function has no `local`.
      9 |    braces=file{a,b}.txt
        |    ^~~~~~~~~~~~~~~~~~~~
 note: Declare it with `local` to keep it inside the function.
-13:3: warning: The assignment to 'piped' runs as the first pipeline stage. (SC2036)
+13:3: Warning: The assignment to 'piped' runs as the first pipeline stage. (SC2036)
     13 |    piped=value | wc -l
        |    ^~~~~~~~~~~
 note: Write `piped=$(...)` around the complete pipeline.
-14:3: warning: The assignment to 'first' runs as the first pipeline stage. (SC2036)
+14:3: Warning: The assignment to 'first' runs as the first pipeline stage. (SC2036)
     14 |    first=one second=two | wc -l
        |    ^~~~~~~~~
 note: Write `first=$(...)` around the complete pipeline.
-15:3: warning: The command name is read as the value of 'swallowed', and 'x\n' becomes the command. (SC2037)
+15:3: Warning: The command name is read as the value of 'swallowed', and 'x\n' becomes the command. (SC2037)
     15 |    swallowed=printf 'x\n'
        |    ^~~~~~~~~~~~~~~~
 note: Write `swallowed=$(...)` to assign the command output.
-20:8: warning: The expansion of 'entries' without a subscript reads the first element alone. (SC2128)
+20:8: Warning: The expansion of 'entries' without a subscript reads the first element alone. (SC2128)
     20 |    echo "$entries"
        |         ^~~~~~~~~~
 note: Write `${entries[@]}` to expand every element.
-21:3: warning: This assignment replaces the array 'entries' with one string in the first element. (SC2178)
+21:3: Warning: This assignment replaces the array 'entries' with one string in the first element. (SC2178)
     21 |    entries=scalar
        |    ^~~~~~~~~~~~~~
 note: Write `entries=( ... )` to keep the array.
-21:3: warning: This assignment to 'entries' in a function has no `local`.
+21:3: Warning: This assignment to 'entries' in a function has no `local`.
     21 |    entries=scalar
        |    ^~~~~~~~~~~~~~
 note: Declare it with `local` to keep it inside the function.
-22:3: warning: A scalar append on the array 'entries' changes the first element. (SC2179)
+22:3: Warning: A scalar append on the array 'entries' changes the first element. (SC2179)
     22 |    entries+=tail
        |    ^~~~~~~~~~~~~
 note: Write `entries+=( ... )` to append an element.
-23:3: warning: The name 'grid[1][2]' carries several subscripts. (SC2180)
+23:3: Warning: The name 'grid[1][2]' carries several subscripts. (SC2180)
     23 |    grid[1][2]=corner
        |    ^~~~~~~~~~~~~~~~~
 note: Flatten the index, or use an associative array.
-24:11: warning: The expansion in this array element splits on whitespace and expands globs. (SC2206)
+24:11: Warning: The expansion in this array element splits on whitespace and expands globs. (SC2206)
     24 |    spread=($loose)
        |            ^~~~~~
 note: Quote the element, or split the value with `mapfile` or `read -a`.
-26:3: warning: This assignment replaces the array 'declared' with one string in the first element. (SC2178)
+26:3: Warning: This assignment replaces the array 'declared' with one string in the first element. (SC2178)
     26 |    declared=flat
        |    ^~~~~~~~~~~~~
 note: Write `declared=( ... )` to keep the array.
-28:8: warning: The expansion of 'filled' without a subscript reads the first element alone. (SC2128)
+28:8: Warning: The expansion of 'filled' without a subscript reads the first element alone. (SC2128)
     28 |    echo "$filled"
        |         ^~~~~~~~~
 note: Write `${filled[@]}` to expand every element.
-32:3: warning: This assignment to 'options' in a function has no `local`.
+32:3: Warning: This assignment to 'options' in a function has no `local`.
     32 |    options='-t "one two"'
        |    ^~~~~~~~~~~~~~~~~~~~~~
 note: Declare it with `local` to keep it inside the function.
-32:3: warning: The value of 'options' carries quote bytes. (SC2089)
+32:3: Warning: The value of 'options' carries quote bytes. (SC2089)
     32 |    options='-t "one two"'
        |    ^~~~~~~~~~~~~~~~~~~~~~
 note: Use an array, or set the positional parameters with `set --`.
-33:6: warning: The expansion of 'options' keeps its quote bytes. (SC2090)
+33:6: Warning: The expansion of 'options' keeps its quote bytes. (SC2090)
     33 |    wc $options
        |       ^~~~~~~~
 32:3: details:
     32 |    options='-t "one two"'
        |    ^~~~~~~~~~~~~~~~~~~~~~ 'options' is assigned here.
 note: Use an array, or set the positional parameters with `set --`.
-33:6: warning: An unquoted variable can split into words and expand globs. (SC2086)
+33:6: Warning: An unquoted variable can split into words and expand globs. (SC2086)
     33 |    wc $options
        |       ^~~~~~~~
 note: Quote the expansion to keep one argument.
-37:8: warning: The word closes a quote, leaves 'two' bare, and opens a quote again. (SC2140)
+37:8: Warning: The word closes a quote, leaves 'two' bare, and opens a quote again. (SC2140)
     37 |    echo "one"two"three"
        |         ^~~~~~~~~~~~~~~
 note: Quote the complete word, or escape the inner quotes.
-38:5: warning: The default value given to 'SANDWICH' is split into words and matched against the filenames. (SC2223)
+38:5: Warning: The default value given to 'SANDWICH' is split into words and matched against the filenames. (SC2223)
     38 |    : ${SANDWICH:=fallback}
        |      ^~~~~~~~~~~~~~~~~~~~~
 note: Quote the expansion to keep the default intact.
-38:5: warning: An unquoted variable can split into words and expand globs. (SC2086)
+38:5: Warning: An unquoted variable can split into words and expand globs. (SC2086)
     38 |    : ${SANDWICH:=fallback}
        |      ^~~~~~~~~~~~~~~~~~~~~
 note: Quote the expansion to keep one argument.
-39:3: warning: This assignment to 'same' in a function has no `local`.
+39:3: Warning: This assignment to 'same' in a function has no `local`.
     39 |    same=1
        |    ^~~~~~
 note: Declare it with `local` to keep it inside the function.
-40:3: warning: The value assigned to 'same' is the value 'same' already holds. (SC2269)
+40:3: Warning: The value assigned to 'same' is the value 'same' already holds. (SC2269)
     40 |    same=$same
        |    ^~~~~~~~~~
 note: Remove the assignment, or name the variable that the value comes from.
-40:3: warning: This assignment to 'same' in a function has no `local`.
+40:3: Warning: This assignment to 'same' in a function has no `local`.
     40 |    same=$same
        |    ^~~~~~~~~~
 note: Declare it with `local` to keep it inside the function.
-41:3: warning: The value of 'IFS' carries a backslash and a letter. (SC2141)
+41:3: Warning: The value of 'IFS' carries a backslash and a letter. (SC2141)
     41 |    IFS="\t"
        |    ^~~~~~~~
 note: Write `$'\t'` to place the control byte.
-42:3: warning: This assignment to 'pager' in a function has no `local`.
+42:3: Warning: This assignment to 'pager' in a function has no `local`.
     42 |    pager=cat
        |    ^~~~~~~~~
 note: Declare it with `local` to keep it inside the function.
-43:3: warning: A positional parameter cannot be assigned, and '$1=first' runs as a command. (SC2270)
+43:3: Warning: A positional parameter cannot be assigned, and '$1=first' runs as a command. (SC2270)
     43 |    $1=first
        |    ^~~~~~~~
 note: Assign to a named variable, or compare with `[ x = y ]`.
-44:3: warning: The `$0` parameter cannot be assigned, and '$0=zero' runs as a command. (SC2277)
+44:3: Warning: The `$0` parameter cannot be assigned, and '$0=zero' runs as a command. (SC2277)
     44 |    $0=zero
        |    ^~~~~~~
 note: Assign to `BASH_ARGV0`.
-45:3: warning: An assignment name cannot come from an expansion, and 'prefix$suffix=1' runs as a command. (SC2271)
+45:3: Warning: An assignment name cannot come from an expansion, and 'prefix$suffix=1' runs as a command. (SC2271)
     45 |    prefix$suffix=1
        |    ^~~~~~~~~~~~~~~
 note: Use an array, or assign through `read`.
-46:3: warning: The word 'odd.name==value' holds `==` and runs as a command name. (SC2272)
+46:3: Warning: The word 'odd.name==value' holds `==` and runs as a command name. (SC2272)
     46 |    odd.name==value
        |    ^~~~~~~~~~~~~~~
 note: Write `[ x = y ]` to compare the values.
-47:3: warning: The word '===' is a run of equals signs and runs as a command name. (SC2273)
+47:3: Warning: The word '===' is a run of equals signs and runs as a command name. (SC2273)
     47 |    ===
        |    ^~~
 note: Remove the separator line, or comment it out.
-48:3: warning: The word '===trail' starts with `===` and is neither an assignment nor a comparison. (SC2274)
+48:3: Warning: The word '===trail' starts with `===` and is neither an assignment nor a comparison. (SC2274)
     48 |    ===trail
        |    ^~~~~~~~
 note: Write `[ x = y ]` to compare the values.
-49:3: warning: An assignment needs a name before the equals sign, and '=lead' runs as a command. (SC2275)
+49:3: Warning: An assignment needs a name before the equals sign, and '=lead' runs as a command. (SC2275)
     49 |    =lead
        |    ^~~~~
 note: Add the variable name before the equals sign.
-50:3: warning: The quotes make '"$quoted"=42' one command name, and no assignment is performed. (SC2276)
+50:3: Warning: The quotes make '"$quoted"=42' one command name, and no assignment is performed. (SC2276)
     50 |    "$quoted"=42
        |    ^~~~~~~~~~~~
 note: Remove the quotes to assign, or write `[ x = y ]` to compare.
-51:3: warning: A variable name cannot start with a digit, and '9lives=cat' runs as a command. (SC2282)
+51:3: Warning: A variable name cannot start with a digit, and '9lives=cat' runs as a command. (SC2282)
     51 |    9lives=cat
        |    ^~~~~~~~~~
 note: Rename the variable to start with a letter or an underscore.
-52:10: warning: An append cannot contain spaces around `+=`, and 'spaced' runs as a command. (SC2285)
+52:10: Warning: An append cannot contain spaces around `+=`, and 'spaced' runs as a command. (SC2285)
     52 |    spaced += tail
        |           ^~
 note: Write `NAME+=value` without spaces.
-56:5: warning: The redirection is attached to no command. (SC2188)
+56:5: Warning: The redirection is attached to no command. (SC2188)
     56 |    > report.txt
        |      ^~~~~~~~~~
 note: Attach the redirection to its command, or write `: > file`.
-57:5: warning: The pipeline stage holds a redirection and no command. (SC2189)
+57:5: Warning: The pipeline stage holds a redirection and no command. (SC2189)
     57 |    < file.txt | grep foo
        |      ^~~~~~~~
 note: Attach the redirection to the command that reads it.
-58:14: warning: The redirect opens a file named 'tr', and the command never runs. (SC2238)
+58:14: Warning: The redirect opens a file named 'tr', and the command never runs. (SC2238)
     58 |    cat file > tr
        |               ^~
 note: Feed `tr` through a pipe, or quote the name to write the file.
-59:22: warning: The input redirection closes the pipe into 'grep'. (SC2259)
+59:22: Warning: The input redirection closes the pipe into 'grep'. (SC2259)
     59 |    gzcat a | grep x < today.log
        |                       ^~~~~~~~~
 note: Pass the file as an operand, or merge the inputs into one stream.
-60:9: warning: The output redirection closes the pipe out of 'env'. (SC2260)
+60:9: Warning: The output redirection closes the pipe out of 'env'. (SC2260)
     60 |    env > environment.txt | grep ANDROID
        |          ^~~~~~~~~~~~~~~
 note: Use `tee` to write the file and feed the pipe.
-61:20: warning: The redirect to 'in2' competes with an earlier redirect for the same descriptor. (SC2261)
+61:20: Warning: The redirect to 'in2' competes with an earlier redirect for the same descriptor. (SC2261)
     61 |    grep foo < in1 < in2 > out1 > out2
        |                     ^~~
 61:14: details:
     61 |    grep foo < in1 < in2 > out1 > out2
        |               ^~~ this earlier redirect claims the same descriptor.
 note: Pass the files as operands, or use `tee` for several outputs.
-61:33: warning: The redirect to 'out2' competes with an earlier redirect for the same descriptor. (SC2261)
+61:33: Warning: The redirect to 'out2' competes with an earlier redirect for the same descriptor. (SC2261)
     61 |    grep foo < in1 < in2 > out1 > out2
        |                                  ^~~~
 61:26: details:
     61 |    grep foo < in1 < in2 > out1 > out2
        |                           ^~~~ this earlier redirect claims the same descriptor.
 note: Pass the files as operands, or use `tee` for several outputs.
-62:3: warning: The here document body is expanded on this host before `ssh` sends it. (SC2087)
+62:3: Warning: The here document body is expanded on this host before `ssh` sends it. (SC2087)
     62 |    ssh host <<BARE
        |    ^~~
 note: Quote the delimiter to send the body unexpanded.
-71:11: warning: The division truncates before the multiplication. (SC2017)
+71:11: Warning: The division truncates before the multiplication. (SC2017)
     71 |    echo $((a / b * c))
        |            ^~~~~~~~~
 note: Write `a*c/b` to multiply first.
-74:11: warning: The literal '010' begins with a zero and is read in base eight. (SC2080)
+74:11: Warning: The literal '010' begins with a zero and is read in base eight. (SC2080)
     74 |    echo $((010 + 1))
        |            ^~~~~~~
 note: Drop the leading zero, or write `10#010` for base ten.
-76:13: warning: The `^` operator performs bitwise XOR in Bash arithmetic.
+76:13: Warning: The `^` operator performs bitwise XOR in Bash arithmetic.
     76 |    echo $((2 ^ 8))
        |              ^
 note: Use `**`, the Bash power operator, if you meant exponentiation.
-82:3: warning: The number produced by the expansion is run as a command. (SC2084)
+82:3: Warning: The number produced by the expansion is run as a command. (SC2084)
     82 |    $((count + 1))
        |    ^~~~~~~~~~~~~~
 note: Drop the `$` for `(( ))`, or write `_=$(( ))` to keep the value.
-83:3: warning: The division truncates before the multiplication. (SC2017)
+83:3: Warning: The division truncates before the multiplication. (SC2017)
     83 |    (( total / parts * scale ))
        |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~
 note: Write `a*c/b` to multiply first.
-87:19: warning: The word list is the one constant word 'single'. (SC2043)
+87:19: Warning: The word list is the one constant word 'single'. (SC2043)
     87 |    for one_word in single; do echo "$one_word"; done
        |                    ^~~~~~
 note: Loop over a glob, a variable, or a command substitution.
-88:16: warning: The expansion in '${directory}/*.txt' is unquoted. (SC2231)
+88:16: Warning: The expansion in '${directory}/*.txt' is unquoted. (SC2231)
     88 |    for entry in ${directory}/*.txt; do echo "$entry"; done
        |                 ^~~~~~~~~~~~~~~~~~
 note: Quote the expansion and leave the glob characters outside the quotes.
-90:29: warning: The `break` command leaves the pipeline subshell, and the loop keeps running. (SC2106)
+90:29: Warning: The `break` command leaves the pipeline subshell, and the loop keeps running. (SC2106)
     90 |      echo hi | grep -q bye | break
        |                              ^~~~~
 note: Write `||` in place of the pipe.
-95:8: warning: The `case` word 'constant' is constant. (SC2194)
+95:8: Warning: The `case` word 'constant' is constant. (SC2194)
     95 |    case constant in
        |         ^~~~~~~~
 note: Add the missing `$`, or drop the `case`.
-100:3: warning: The pattern 'nomatch' cannot match the `case` word '"$prefix suffix"'. (SC2195)
+100:3: Warning: The pattern 'nomatch' cannot match the `case` word '"$prefix suffix"'. (SC2195)
    100 |    nomatch) : ;;
        |    ^~~~~~~
-104:3: warning: The expansion in the pattern '$expanded' is matched as a glob. (SC2254)
+104:3: Warning: The expansion in the pattern '$expanded' is matched as a glob. (SC2254)
    104 |    $expanded) : ;;
        |    ^~~~~~~~~
 note: Quote the expansion so the pattern matches literally.
-110:5: warning: The optstring does not declare 'z'. (SC2214)
+110:5: Warning: The optstring does not declare 'z'. (SC2214)
    110 |      z) : ;;
        |      ^
 107:17: details:
    107 |    while getopts "ab:" chosen_option; do
        |                  ^~~~~ this optstring omits the option.
 note: Add the letter to the optstring, or remove the branch.
-108:10: warning: This `case` has no default `*)` branch. (SC2249)
+108:10: Warning: This `case` has no default `*)` branch. (SC2249)
    108 |      case $chosen_option in
        |           ^~~~~~~~~~~~~~
-108:10: warning: The optstring declares 'b', and no branch of this `case` handles it. (SC2213)
+108:10: Warning: The optstring declares 'b', and no branch of this `case` handles it. (SC2213)
    108 |      case $chosen_option in
        |           ^~~~~~~~~~~~~~
 107:17: details:
    107 |    while getopts "ab:" chosen_option; do
        |                  ^~~~~ this optstring declares the option.
 note: Add a `b)` branch, or drop the letter from the optstring.
-108:10: warning: `getopts` stores a question mark for an unknown option, and no branch handles it. (SC2220)
+108:10: Warning: `getopts` stores a question mark for an unknown option, and no branch handles it. (SC2220)
    108 |      case $chosen_option in
        |           ^~~~~~~~~~~~~~
 107:17: details:
    107 |    while getopts "ab:" chosen_option; do
        |                  ^~~~~ this loop reads the options.
 note: Add a `*)` branch that prints the usage and exits.
-116:3: warning: The `( )` group starts a subshell and costs a process on every run. (SC2235)
+116:3: Warning: The `( )` group starts a subshell and costs a process on every run. (SC2235)
    116 |    ( echo first || echo second ) && echo third
        |    ^
 note: Write `{ ...; }` to group the commands in the current shell.
-117:5: warning: The `!` inhibits errexit whether the command succeeds or fails, and nothing reads the status. (SC2251)
+117:5: Warning: The `!` inhibits errexit whether the command succeeds or fails, and nothing reads the status. (SC2251)
    117 |    ! false
        |      ^~~~~
 note: Write `|| exit 1` after it, or check `$?`.
-121:10: warning: The `break` command stands outside any loop. (SC2105)
+121:10: Warning: The `break` command stands outside any loop. (SC2105)
    121 |  false && break
        |           ^~~~~
 note: Remove it, or move it into the loop it belongs to.
-122:10: warning: The `continue` command stands outside any loop. (SC2105)
+122:10: Warning: The `continue` command stands outside any loop. (SC2105)
    122 |  false && continue
        |           ^~~~~~~~
 note: Remove it, or move it into the loop it belongs to.
-15:3: warning: The value of 'swallowed' is the command name 'printf'. (SC2209)
+15:3: Warning: The value of 'swallowed' is the command name 'printf'. (SC2209)
     15 |    swallowed=printf 'x\n'
        |    ^~~~~~~~~~~~~~~~
 note: Write `swallowed=$(printf)` to store its output, or quote the name.
-42:3: warning: The value of 'pager' is the command name 'cat'. (SC2209)
+42:3: Warning: The value of 'pager' is the command name 'cat'. (SC2209)
     42 |    pager=cat
        |    ^~~~~~~~~
 note: Write `pager=$(cat)` to store its output, or quote the name.

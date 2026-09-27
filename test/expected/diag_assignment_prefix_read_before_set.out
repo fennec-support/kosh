@@ -18,10 +18,10 @@
 [Word
   Unquoted "after"
 ]
-2:14: warning: The variable 'foo' is read before the assignment prefix takes effect.
+2:14: Warning: The variable 'foo' is read before the assignment prefix takes effect.
      2 |  foo=bar echo "$foo"
        |               ^~~~~~
-2:15: warning: The variable 'foo' is not set, it expands to empty.
+2:15: Warning: The variable 'foo' is not set, it expands to empty.
      2 |  foo=bar echo "$foo"
        |                ^~~~
 note: Replace it with ${foo-} if empty expansion is desired.

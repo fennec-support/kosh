@@ -1,35 +1,35 @@
 == an unset name near a set name names it:
-1:24: warning: The variable 'output_fil' is never assigned, and 'output_file' is assigned. (SC2153)
+1:24: Warning: The variable 'output_fil' is never assigned, and 'output_file' is assigned. (SC2153)
      1 |  output_file=out; echo "$output_fil"
        |                         ^~~~~~~~~~~
 1:1: details:
      1 |  output_file=out; echo "$output_fil"
        |  ^~~~~~~~~~~ The value is assigned here.
 note: Correct the spelling or assign 'output_fil'.
-1:24: warning: The variable 'output_fil' is not set, it expands to empty.
+1:24: Warning: The variable 'output_fil' is not set, it expands to empty.
      1 |  output_file=out; echo "$output_fil"
        |                         ^~~~~~~~~~~
 note: The variable 'output_file' is set, correct the spelling, or replace this with ${output_fil-} if empty expansion is desired.
 
 == a transposed pair names the set name:
-1:30: warning: The variable 'destinaton_path' is never assigned, and 'destination_path' is assigned. (SC2153)
+1:30: Warning: The variable 'destinaton_path' is never assigned, and 'destination_path' is assigned. (SC2153)
      1 |  destination_path=/tmp; echo "$destinaton_path"
        |                               ^~~~~~~~~~~~~~~~
 1:1: details:
      1 |  destination_path=/tmp; echo "$destinaton_path"
        |  ^~~~~~~~~~~~~~~~ The value is assigned here.
 note: Correct the spelling or assign 'destinaton_path'.
-1:30: warning: The variable 'destinaton_path' is not set, it expands to empty.
+1:30: Warning: The variable 'destinaton_path' is not set, it expands to empty.
      1 |  destination_path=/tmp; echo "$destinaton_path"
        |                               ^~~~~~~~~~~~~~~~
 note: The variable 'destination_path' is set, correct the spelling, or replace this with ${destinaton_path-} if empty expansion is desired.
 
 == a name far from every set name keeps the plain note:
-1:30: warning: The variable 'zzzzzzzzzzzzzz' is read before any assignment gives it a value. (SC2154)
+1:30: Warning: The variable 'zzzzzzzzzzzzzz' is read before any assignment gives it a value. (SC2154)
      1 |  destination_path=/tmp; echo "$zzzzzzzzzzzzzz"
        |                               ^~~~~~~~~~~~~~~
 note: Assign 'zzzzzzzzzzzzzz' before it is read, or set it in the environment.
-1:30: warning: The variable 'zzzzzzzzzzzzzz' is not set, it expands to empty.
+1:30: Warning: The variable 'zzzzzzzzzzzzzz' is not set, it expands to empty.
      1 |  destination_path=/tmp; echo "$zzzzzzzzzzzzzz"
        |                               ^~~~~~~~~~~~~~~
 note: Replace it with ${zzzzzzzzzzzzzz-} if empty expansion is desired.
@@ -44,11 +44,11 @@ note: Replace it with ${zzzzzzzzzzzzzz-} if empty expansion is desired.
 note: Correct the spelling or assign 'configuration_rot'.
 rc=1
 == an exported name is a candidate:
-1:7: warning: The variable 'KOSH_TEST_EXPORTE' is read before any assignment gives it a value. (SC2154)
+1:7: Warning: The variable 'KOSH_TEST_EXPORTE' is read before any assignment gives it a value. (SC2154)
      1 |  echo "$KOSH_TEST_EXPORTE"
        |        ^~~~~~~~~~~~~~~~~~
 note: Assign 'KOSH_TEST_EXPORTE' before it is read, or set it in the environment.
-1:7: warning: The variable 'KOSH_TEST_EXPORTE' is not set, it expands to empty.
+1:7: Warning: The variable 'KOSH_TEST_EXPORTE' is not set, it expands to empty.
      1 |  echo "$KOSH_TEST_EXPORTE"
        |        ^~~~~~~~~~~~~~~~~~
 note: The variable 'KOSH_TEST_EXPORTED' is set, correct the spelling, or replace this with ${KOSH_TEST_EXPORTE-} if empty expansion is desired.

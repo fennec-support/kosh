@@ -45,7 +45,7 @@
   DoubleQuoted "code="
   Variable "?"
 ]
-5:8: warning: The variable 'nope' is not set, it expands to empty.
+5:8: Warning: The variable 'nope' is not set, it expands to empty.
      5 |  echo "[$nope]"
        |         ^~~~~
 note: Replace it with ${nope-} if empty expansion is desired.

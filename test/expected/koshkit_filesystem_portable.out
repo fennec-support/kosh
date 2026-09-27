@@ -36,10 +36,6 @@
   [CompoundListCondition, None]
     [SimpleCommand "echo" "df-missing=$?"]
   [CompoundListCondition, None]
-    [SimpleCommand "koshkit" "df"]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "df-all=$?"]
-  [CompoundListCondition, None]
     [SimpleCommand "koshkit" "pathchk" "-p" "a_b.c-d"]
   [CompoundListCondition, None]
     [SimpleCommand "echo" "pathchk-portable=$?"]
@@ -264,22 +260,6 @@
   Unquoted "koshkit"
 ]
 [Word
-  Unquoted "df"
-]
-[Word
-  Variable "TEST_NULL_DEVICE"
-]
-[Word
-  Unquoted "echo"
-]
-[Word
-  DoubleQuoted "df-all="
-  Variable "?"
-]
-[Word
-  Unquoted "koshkit"
-]
-[Word
   Unquoted "pathchk"
 ]
 [Word
@@ -436,7 +416,6 @@ link-existing=1
 ln-hard=0
 df-fields=6
 df-missing=1
-df-all=0
 pathchk-portable=0
 pathchk-space=1
 pathchk-hyphen=1

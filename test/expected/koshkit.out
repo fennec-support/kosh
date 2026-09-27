@@ -92,7 +92,10 @@ mv
 == eviliso flags through koshkit:
 --all
 --cgroups
+--container
+--containers
 --help
+--kubernetes
 --namespaces
 --remote
 --runtime
@@ -180,6 +183,7 @@ mv
 --latency
 --machine-readable
 --one-event
+--one-file-system
 --precision
 --recursive
 --timestamp
@@ -196,6 +200,7 @@ mv
 --help
 --inode
 --root
+--verify
 -i
 -r
 == goodstat flags through koshkit:

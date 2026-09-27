@@ -1,11 +1,11 @@
 === constant arithmetic fold ===
-1:9: warning: The arithmetic expression `1 + 2 * 3` is constant and was folded to '7'.
+1:9: Warning: The arithmetic expression `1 + 2 * 3` is constant and was folded to '7'.
      1 |  echo $((1 + 2 * 3))
        |          ^~~~~~~~~
 Eliminated 1 statement.
 7
 === exact constant arithmetic fold ===
-1:9: warning: The arithmetic expression `2 ** 256` is constant and was folded to '115792089237316195423570985008687907853269984665640564039457584007913129639936'.
+1:9: Warning: The arithmetic expression `2 ** 256` is constant and was folded to '115792089237316195423570985008687907853269984665640564039457584007913129639936'.
      1 |  echo $((2 ** 256))
        |          ^~~~~~~~
 Eliminated 1 statement.
@@ -13,7 +13,7 @@ Eliminated 1 statement.
 === constant propagation into arithmetic ===
 [optimizer] recorded constant: x = 2
 [optimizer] recorded constant: y = 3
-1:19: warning: The arithmetic expression `x + y` is constant and was folded to '5'.
+1:19: Warning: The arithmetic expression `x + y` is constant and was folded to '5'.
      1 |  x=2; y=3; echo $((x + y))
        |                    ^~~~~
 Eliminated 3 statements.
@@ -23,25 +23,25 @@ Eliminated 3 statements.
 Eliminated 1 statement.
 10
 === dead branch, condition is true ===
-1:1: warning: Every condition of this `if` is statically decidable and branch '0' always runs.
+1:1: Warning: Every condition of this `if` is statically decidable and branch '0' always runs.
      1 |  if true; then echo a; else echo b; fi
        |  ^~
 Eliminated 1 statement.
 a
 === dead branch, all false folds to else ===
-1:1: warning: Every condition of this `if` is statically false and the `else` body always runs.
+1:1: Warning: Every condition of this `if` is statically false and the `else` body always runs.
      1 |  if false; then echo a; else echo b; fi
        |  ^~
 Eliminated 1 statement.
 b
 === while false is eliminated ===
-1:1: warning: This `while` loop condition never lets the body run.
+1:1: Warning: This `while` loop condition never lets the body run.
      1 |  while false; do echo never; done; echo after
        |  ^~~~~
 Eliminated 1 statement.
 after
 === until true is eliminated ===
-1:1: warning: This `until` loop condition never lets the body run.
+1:1: Warning: This `until` loop condition never lets the body run.
      1 |  until true; do echo never; done; echo after
        |  ^~~~~
 Eliminated 1 statement.
@@ -53,10 +53,10 @@ Eliminated 0 statements.
 Eliminated 0 statements.
 done
 === if with no reachable body is eliminated ===
-1:1: warning: Every condition of this `if` is statically false and the `else` body always runs.
+1:1: Warning: Every condition of this `if` is statically false and the `else` body always runs.
      1 |  if false; then echo a; fi; echo done
        |  ^~
-1:1: warning: Every condition of this `if` is statically false and it has no `else` body.
+1:1: Warning: Every condition of this `if` is statically false and it has no `else` body.
      1 |  if false; then echo a; fi; echo done
        |  ^~
 note: Remove the `if` or write a condition that can be true.
@@ -64,17 +64,17 @@ Encountered 2 warnings.
 Eliminated 2 statements.
 done
 === for over an empty list is eliminated ===
-1:1: warning: This `for` loop iterates over an empty list and never runs its body.
+1:1: Warning: This `for` loop iterates over an empty list and never runs its body.
      1 |  for x in; do echo a; done; echo done
        |  ^~~
 note: Remove the loop or give it words to iterate over.
 Eliminated 1 statement.
 done
 === c-style for with a blank init and a zero condition is eliminated ===
-1:1: warning: The arithmetic expression `0` is constant and was folded to '0'.
+1:1: Warning: The arithmetic expression `0` is constant and was folded to '0'.
      1 |  for ((; 0; i++)); do echo a; done; echo done
        |  ^~~
-1:1: warning: This C-style `for` loop has a zero condition and never runs its body.
+1:1: Warning: This C-style `for` loop has a zero condition and never runs its body.
      1 |  for ((; 0; i++)); do echo a; done; echo done
        |  ^~~
 note: Remove the loop or write a condition that can be true.
@@ -82,13 +82,13 @@ Encountered 2 warnings.
 Eliminated 2 statements.
 done
 === c-style for with a non-blank init folds but keeps the init ===
-1:1: warning: The arithmetic expression `0` is constant and was folded to '0'.
+1:1: Warning: The arithmetic expression `0` is constant and was folded to '0'.
      1 |  for ((i=5; 0; i++)); do echo a; done; echo done
        |  ^~~
 Eliminated 1 statement.
 done
 === while false is eliminated ===
-1:1: warning: This `while` loop condition never lets the body run.
+1:1: Warning: This `while` loop condition never lets the body run.
      1 |  while false; do echo a; done; echo done
        |  ^~~~~
 Eliminated 1 statement.

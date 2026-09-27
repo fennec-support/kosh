@@ -1100,7 +1100,9 @@ echo after-clear
 history
 after-clear
     1  echo after-clear
+
     2  history
+
 == multiline history ==
 	 echo first
 echo second

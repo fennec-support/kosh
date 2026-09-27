@@ -146,12 +146,6 @@ cli_koshkit_eviliso_loopback: $(EVILISO_LOOPBACK_DEPENDENCY)
 cli_tests: $(EVILISO_LOOPBACK_DEPENDENCY) $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
 	@$(SHELL) run-test-suite.sh cli
 
-ifeq ($(IS_NONDEBUG_BUILD),0)
-cli_koshkit_goodfsw_rss:
-	@printf "\t%-64s skipped, requires a non-debug allocator\n" \
-		"cli/koshkit_goodfsw_rss.sh"
-endif
-
 ifneq ($(TARGET), Linux)
 NON_LINUX_SKIPPED_CLI_NAMES := \
 	cli_koshkit_eviliso_loopback \
@@ -245,7 +239,8 @@ highlight_tests: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
 
 SKIPPED_TEST_NAMES := $(WINDOWS_SKIPPED_TEST_NAMES)
 SKIPPED_CLI_INPUT := $(patsubst cli_%,cli/%.sh,\
-	$(WINDOWS_SKIPPED_CLI_NAMES) $(NON_LINUX_SKIPPED_CLI_NAMES))
+	$(WINDOWS_SKIPPED_CLI_NAMES) $(NON_LINUX_SKIPPED_CLI_NAMES)) \
+	cli/koshkit_live_sanitizers.sh
 SKIPPED_COMPLETION_INPUT := \
 	$(patsubst completion_%,completion/%.sh,$(WINDOWS_SKIPPED_COMPLETION_NAMES))
 UNREPRESENTABLE_COMPLETION_INPUT := \
