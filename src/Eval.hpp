@@ -2139,36 +2139,6 @@ public:
   {
     return m_variable_store;
   }
-  fn bash_argument_arrays() wontthrow -> BashArgumentArrayStorage *
-  {
-    return m_variable_store.bash_argument_arrays();
-  }
-  pure fn bash_argument_arrays() const wontthrow -> BashArgumentArrayStorage *
-  {
-    return m_variable_store.bash_argument_arrays();
-  }
-  fn bash_argument_frame_context() wontthrow -> BashArgumentFrameContext *
-  {
-    return m_variable_store.bash_argument_frame_context();
-  }
-  pure fn bash_argument_frame_context() const wontthrow
-      -> BashArgumentFrameContext *
-  {
-    return m_variable_store.bash_argument_frame_context();
-  }
-  mustuse fn scratch_mark() const wontthrow -> BumpArena::Mark
-  {
-    return expansion_store().scratch_arena().mark();
-  }
-  fn scratch_release(BumpArena::Mark saved) const wontthrow -> void
-  {
-    expansion_store().scratch_arena().release(saved);
-  }
-  fn reset_scratch_arena() wontthrow -> void
-  {
-    expansion_store().scratch_arena().reset();
-  }
-
   fn set_shell_variable(StringView name, StringView value) throws -> void;
   pure fn special_variable_definition_location(StringView name) const wontthrow
       -> Maybe<SourceLocation>;
@@ -2178,15 +2148,6 @@ public:
       Maybe<SourceLocation> previous_definition_location) throws -> void;
   fn begin_confined_variable_writes() wontthrow -> usize;
   fn rollback_confined_variable_writes(usize mark) wontthrow -> void;
-  fn get_program_resolver() wontthrow -> ProgramResolver &
-  {
-    return resolution_store().resolver();
-  }
-  pure fn get_program_resolver() const wontthrow -> const ProgramResolver &
-  {
-    return resolution_store().resolver();
-  }
-
   fn seed_shell_identity_variables(shell_identity_mode identity_mode) throws
       -> void;
 
@@ -3169,22 +3130,6 @@ public:
      that chunk's status and no EXIT trap is pending, so a terminal external
      command replaces the shell process instead of fork and wait. */
 
-  fn get_prompt_command_arena() wontthrow -> BumpArena &
-  {
-    return prompt_command_store().get_arena();
-  }
-  fn get_prompt_command_cached_text() wontthrow -> String &
-  {
-    return prompt_command_store().get_cached_text();
-  }
-  pure fn get_prompt_command_cached_ast() const wontthrow -> Expression *
-  {
-    return prompt_command_store().get_cached_ast();
-  }
-  fn set_prompt_command_cached_ast(Expression *ast) wontthrow -> void
-  {
-    prompt_command_store().set_cached_ast(ast);
-  }
   fn job_table_store() wontthrow -> JobTable & { return m_job_table; }
   pure fn job_table_store() const wontthrow -> const JobTable &
   {

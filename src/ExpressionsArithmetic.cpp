@@ -1043,8 +1043,8 @@ static fn evaluate_subshell_in_process(const Expression *body,
   LOG(Debug, "entering the snapshot subshell");
 
   let snapshot = cxt.snapshot_state();
-  let const subshell_mark = cxt.scratch_mark();
-  defer { cxt.scratch_release(subshell_mark); };
+  let const subshell_mark = cxt.expansion_store().scratch_arena().mark();
+  defer { cxt.expansion_store().scratch_arena().release(subshell_mark); };
   bool did_enter_subshell = false;
   i64 ret = 0;
   try {

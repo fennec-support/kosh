@@ -564,10 +564,10 @@ fn Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       FLAG_TRACE.is_enabled() ? trace_output::Enabled : trace_output::Disabled;
   let const scp_command = parse_transport_command(
       FLAG_SCP_COMMAND.is_set() ? FLAG_SCP_COMMAND.value() : StringView{"scp"},
-      cxt.get_program_resolver(), allocator);
+      cxt.resolution_store().resolver(), allocator);
   let const ssh_command = parse_transport_command(
       FLAG_SSH_COMMAND.is_set() ? FLAG_SSH_COMMAND.value() : StringView{"ssh"},
-      cxt.get_program_resolver(), allocator);
+      cxt.resolution_store().resolver(), allocator);
   if (!scp_command.has_value() || !ssh_command.has_value()) {
     report_soft_builtin_error(ec, cxt, "Cannot find both scp and ssh in PATH");
     return 127;

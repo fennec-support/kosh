@@ -90,7 +90,7 @@ fn sorted_util_names() throws -> const ArrayList<String> &
 
 fn resolve_util_program(EvalContext &cxt, StringView name) throws -> Maybe<Path>
 {
-  let const matches = cxt.get_program_resolver().search(
+  let const matches = cxt.resolution_store().resolver().search(
       name, ProgramResolver::SearchMode::First,
       ProgramResolver::Requirement::Runnable,
       ProgramResolver::CachePolicy::Bypass);

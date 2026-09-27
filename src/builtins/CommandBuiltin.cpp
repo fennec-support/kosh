@@ -68,7 +68,7 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
   let default_resolver = ProgramResolver{String{"/usr/bin:/bin"}};
   let &resolver = FLAG_COMMAND_DEFAULT_PATH.is_enabled()
                       ? default_resolver
-                      : cxt.get_program_resolver();
+                      : cxt.resolution_store().resolver();
 
   if (FLAG_SHOW.is_enabled() || FLAG_SHOW_VERBOSE.is_enabled()) {
     let const is_verbose = FLAG_SHOW_VERBOSE.is_enabled();

@@ -80,7 +80,7 @@ fn Which::execute(const ExecContext &ec, EvalContext &cxt,
         if (os::is_stdout_a_tty()) output += ": Shell builtin";
         output += '\n';
       }
-    } else if (let const paths = cxt.get_program_resolver().search(
+    } else if (let const paths = cxt.resolution_store().resolver().search(
                    program_name,
                    FLAG_ALL.is_enabled() ? ProgramResolver::SearchMode::All
                                          : ProgramResolver::SearchMode::First,

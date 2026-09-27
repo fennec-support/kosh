@@ -56,7 +56,7 @@ fn kosh_binary_flag_list() wontthrow -> const FlagList & { return FLAG_LIST; }
 static fn run_debug_completion_driver(StringView driver_line,
                                       EvalContext &context) throws -> i32
 {
-  context.get_program_resolver().initialize_path_map();
+  context.resolution_store().resolver().initialize_path_map();
   usize driver_cursor = driver_line.length;
   if (let const cursor_text =
           os::get_environment_variable("KOSH_TEST_COMPLETE_CURSOR");
@@ -100,9 +100,9 @@ static fn run_debug_highlight_driver(StringView driver_line,
   let const variable_name_visit_count_before =
       context.debug_variable_name_enumeration_count();
   let const directory_read_count_before = utils::debug_directory_read_count();
-  context.get_program_resolver().begin_explicit_completion(
+  context.resolution_store().resolver().begin_explicit_completion(
       ProgramResolver::CompletionRefresh::Fresh);
-  defer { context.get_program_resolver().end_explicit_completion(); };
+  defer { context.resolution_store().resolver().end_explicit_completion(); };
   let const spans = completion::highlight_line(driver_line, context);
   let listing = String{heap_allocator()};
   for (let const &span : spans) {
@@ -130,7 +130,7 @@ static fn run_debug_ghost_driver(StringView driver_line,
 {
   let const directory_stat_count_before = utils::debug_directory_stat_count();
   let const directory_read_count_before = utils::debug_directory_read_count();
-  context.get_program_resolver().initialize_path_map();
+  context.resolution_store().resolver().initialize_path_map();
   let const result = completion::complete(
       driver_line, driver_line.length, context, Path::current_directory(),
       nullptr, false, completion::completion_mode::Ghost);
@@ -378,7 +378,7 @@ static fn run_script_contents(
        reset. */
     context.clear_retained_sources();
     ast_arena.reset();
-    context.reset_scratch_arena();
+    context.expansion_store().scratch_arena().reset();
 
     let shellcheck_suppressions =
         ArrayList<shellcheck_suppression>{heap_allocator()};
@@ -792,9 +792,10 @@ static fn run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
   context.execution_store().prompt_command_running() = true;
   defer { context.execution_store().prompt_command_running() = false; };
 
-  let &cached_text = context.get_prompt_command_cached_text();
-  let cached_ast = context.get_prompt_command_cached_ast();
-  let &prompt_arena = context.get_prompt_command_arena();
+  let &prompt_store = context.prompt_command_store();
+  let &cached_text = prompt_store.get_cached_text();
+  let cached_ast = prompt_store.get_cached_ast();
+  let &prompt_arena = prompt_store.get_arena();
   i32 status = EXIT_SUCCESS;
   if (cached_ast != nullptr && cached_text.view() == command->view()) {
     status = run_script_contents(cached_text, context, ast_arena,
@@ -802,13 +803,13 @@ static fn run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
                                  nullptr, None, nullptr, nullptr, false);
   } else {
     prompt_arena.reset();
-    context.set_prompt_command_cached_ast(nullptr);
+    prompt_store.set_cached_ast(nullptr);
     cached_text = String{command->view()};
     Expression *parsed_ast = nullptr;
     status = run_script_contents(cached_text, context, prompt_arena,
                                  StringView{"$PROMPT_COMMAND"}, nullptr,
                                  &parsed_ast, None, nullptr, nullptr, false);
-    context.set_prompt_command_cached_ast(parsed_ast);
+    prompt_store.set_cached_ast(parsed_ast);
   }
 
   if (status != EXIT_SUCCESS)
@@ -1343,8 +1344,10 @@ static fn expand_interactive_history(StringView source,
                                      EvalContext &context) throws
     -> Maybe<interactive_history_expansion>
 {
-  let const scratch_mark = context.scratch_mark();
-  defer { context.scratch_release(scratch_mark); };
+  let const scratch_mark = context.expansion_store().scratch_arena().mark();
+  defer {
+    context.expansion_store().scratch_arena().release(scratch_mark);
+  };
 
   bool is_single_quoted = false;
   bool is_double_quoted = false;

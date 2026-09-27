@@ -40,14 +40,15 @@ fn EvalContext::set_shopt_option(StringView name, bool is_enabled) throws
   if (name == EXTDEBUG_SHOPT_OPTION && is_enabled && !was_enabled &&
       bash_dynamic_variables_enabled())
   {
-    if (bash_argument_arrays() == nullptr &&
-        bash_argument_frame_context() != nullptr &&
-        !bash_argument_frame_context()->has_flag(
+    if (variable_store().bash_argument_arrays() == nullptr &&
+        variable_store().bash_argument_frame_context() != nullptr &&
+        !variable_store().bash_argument_frame_context()->has_flag(
             BashArgumentFrameFlag::DidEnter))
     {
       initialize_bash_argument_arrays(false);
       append_current_bash_argument_frame();
-      bash_argument_frame_context()->set_flag(BashArgumentFrameFlag::DidEnter);
+      variable_store().bash_argument_frame_context()->set_flag(
+          BashArgumentFrameFlag::DidEnter);
     } else {
       initialize_bash_argument_arrays(true);
     }
@@ -725,15 +726,15 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
       function_store().definitions(),
       scope_store().aliases(),
       variable_store().positional_params(),
-      bash_argument_arrays() != nullptr
-          ? static_cast<u32>(bash_argument_arrays()->values.count())
+      variable_store().bash_argument_arrays() != nullptr
+          ? static_cast<u32>(variable_store().bash_argument_arrays()->values.count())
           : u32{0},
-      bash_argument_arrays() != nullptr
-          ? static_cast<u32>(bash_argument_arrays()->frame_counts.count())
+      variable_store().bash_argument_arrays() != nullptr
+          ? static_cast<u32>(variable_store().bash_argument_arrays()->frame_counts.count())
           : u32{0},
-      bash_argument_arrays() != nullptr,
-      bash_argument_frame_context() != nullptr
-          ? bash_argument_frame_context()->flags
+      variable_store().bash_argument_arrays() != nullptr,
+      variable_store().bash_argument_frame_context() != nullptr
+          ? variable_store().bash_argument_frame_context()->flags
           : u8{0},
       execution_store().get_last_argument(),
       variable_store().directory_stack(),
@@ -793,20 +794,20 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
   if (!snapshot.had_bash_argument_arrays) {
     reset_bash_argument_arrays();
   } else {
-    ASSERT(bash_argument_arrays() != nullptr);
-    ASSERT(bash_argument_arrays()->values.count() >=
+    ASSERT(variable_store().bash_argument_arrays() != nullptr);
+    ASSERT(variable_store().bash_argument_arrays()->values.count() >=
            snapshot.bash_argument_value_count);
-    ASSERT(bash_argument_arrays()->frame_counts.count() >=
+    ASSERT(variable_store().bash_argument_arrays()->frame_counts.count() >=
            snapshot.bash_argument_frame_count);
-    while (bash_argument_arrays()->values.count() >
+    while (variable_store().bash_argument_arrays()->values.count() >
            snapshot.bash_argument_value_count)
-      bash_argument_arrays()->values.pop_back();
-    while (bash_argument_arrays()->frame_counts.count() >
+      variable_store().bash_argument_arrays()->values.pop_back();
+    while (variable_store().bash_argument_arrays()->frame_counts.count() >
            snapshot.bash_argument_frame_count)
-      bash_argument_arrays()->frame_counts.pop_back();
+      variable_store().bash_argument_arrays()->frame_counts.pop_back();
   }
-  if (bash_argument_frame_context() != nullptr)
-    bash_argument_frame_context()->flags =
+  if (variable_store().bash_argument_frame_context() != nullptr)
+    variable_store().bash_argument_frame_context()->flags =
         snapshot.bash_argument_frame_context_flags;
   execution_store().set_last_argument(steal(snapshot.last_argument));
   variable_store().directory_stack() = steal(snapshot.directory_stack);
@@ -1240,15 +1241,15 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
   body.push(static_cast<char>(variable_store().disabled_bash_special_arrays()));
   body.push(static_cast<char>(variable_store().unset_dynamic_readers()));
   body.push(static_cast<char>(startup_store().is_restricted_shell()));
-  body.push(static_cast<char>(bash_argument_arrays() != nullptr));
-  if (bash_argument_arrays() != nullptr) {
+  body.push(static_cast<char>(variable_store().bash_argument_arrays() != nullptr));
+  if (variable_store().bash_argument_arrays() != nullptr) {
     append_subshell_bootstrap_u32(
-        body, static_cast<u32>(bash_argument_arrays()->frame_counts.count()));
-    for (let const argument_count : bash_argument_arrays()->frame_counts)
+        body, static_cast<u32>(variable_store().bash_argument_arrays()->frame_counts.count()));
+    for (let const argument_count : variable_store().bash_argument_arrays()->frame_counts)
       append_subshell_bootstrap_u32(body, argument_count);
     append_subshell_bootstrap_u32(
-        body, static_cast<u32>(bash_argument_arrays()->values.count()));
-    for (let const &argument : bash_argument_arrays()->values)
+        body, static_cast<u32>(variable_store().bash_argument_arrays()->values.count()));
+    for (let const &argument : variable_store().bash_argument_arrays()->values)
       append_subshell_bootstrap_text(body, argument.view());
   } else {
     append_subshell_bootstrap_u32(body, 0);

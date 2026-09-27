@@ -698,7 +698,7 @@ fn Server::complete(const JsonValue *id, const JsonValue *params) throws -> bool
   for (let const &function : document->symbol_records.functions)
     document_function_names.push(function.name.view());
 
-  let &resolver = m_context.get_program_resolver();
+  let &resolver = m_context.resolution_store().resolver();
   resolver.begin_explicit_completion(ProgramResolver::CompletionRefresh::Fresh);
   defer { resolver.end_explicit_completion(); };
   let result = completion::complete(
@@ -1530,7 +1530,7 @@ fn Server::command_information(StringView command) throws -> Maybe<String>
     return information;
   }
 
-  let const paths = m_context.get_program_resolver().search(
+  let const paths = m_context.resolution_store().resolver().search(
       command, ProgramResolver::SearchMode::First,
       ProgramResolver::Requirement::Runnable,
       ProgramResolver::CachePolicy::Bypass);

@@ -175,8 +175,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     koshka::flush();
   }
 
-  let const args_mark = cxt.scratch_mark();
-  defer { cxt.scratch_release(args_mark); };
+  let const args_mark = cxt.expansion_store().scratch_arena().mark();
+  defer { cxt.expansion_store().scratch_arena().release(args_mark); };
   /* The mark is taken before the expansion so this command reaps only the
      process substitution it opens, leaving an enclosing command's for that
      command to reap. */
@@ -639,7 +639,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
                                       restore.previous_value.has_value());
     }
     if (saved_program_resolver.has_value())
-      cxt.get_program_resolver() = steal(*saved_program_resolver);
+      cxt.resolution_store().resolver() = steal(*saved_program_resolver);
     if (was_ifs_assigned) cxt.set_field_separators(saved_ifs_separators.view());
     if (previous_ignoreeof_state.has_value())
       cxt.set_shell_option_state(shell_option_id::Ignoreeof,
@@ -725,8 +725,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         if (utils::environment_name_is_path(name)) {
           if (!saved_program_resolver.has_value())
             saved_program_resolver =
-                Maybe<ProgramResolver>{cxt.get_program_resolver()};
-          cxt.get_program_resolver().assign_path(String{expanded_value.view()});
+                Maybe<ProgramResolver>{cxt.resolution_store().resolver()};
+          cxt.resolution_store().resolver().assign_path(String{expanded_value.view()});
         }
         if (name == "IFS") cxt.set_field_separators(expanded_value.view());
       };
@@ -798,8 +798,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
 
     /* Registered first so it runs last, after the scope pop restores the
        locals. */
-    let const call_mark = cxt.scratch_mark();
-    defer { cxt.scratch_release(call_mark); };
+    let const call_mark = cxt.expansion_store().scratch_arena().mark();
+    defer { cxt.expansion_store().scratch_arena().release(call_mark); };
 
     cxt.enter_function_scope();
     cxt.push_function_call_name(program_name.view(), command_function_storage);
@@ -927,7 +927,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         source_location(), source != nullptr ? source->view() : StringView{},
         steal(program_args), cxt.koshkit_utilities_are_reachable(),
         cxt.runtime_state().is_shopt_enabled(shopt_option_id::Checkhash),
-        cxt.get_program_resolver(), steal(program_arg_locations), cxt.runtime_state().get_mood());
+        cxt.resolution_store().resolver(), steal(program_arg_locations), cxt.runtime_state().get_mood());
   } catch (const CommandResolutionErrorWithLocation &e) {
     report_command_resolution_error(cxt, e);
     let const status = e.command_status();

@@ -190,8 +190,10 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
 
     let const did_destination_exist = Path{destination}.is_directory();
     os::make_directory(destination, 0700);
-    let const directory_scratch = cxt.scratch_mark();
-    defer { cxt.scratch_release(directory_scratch); };
+    let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
+    defer {
+      cxt.expansion_store().scratch_arena().release(directory_scratch);
+    };
     let names = os::list_directory_status(source, allocator);
     if (!names.has_value())
       throw Error{
@@ -203,8 +205,8 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
     bool did_succeed = true;
     for (let const &entry : *names) {
       if (os::INTERRUPT_REQUESTED) return false;
-      let const child_scratch = cxt.scratch_mark();
-      defer { cxt.scratch_release(child_scratch); };
+      let const child_scratch = cxt.expansion_store().scratch_arena().mark();
+      defer { cxt.expansion_store().scratch_arena().release(child_scratch); };
       let child_source = Path{source, allocator};
       child_source.append(entry.child.name.view());
       let child_destination = Path{destination, allocator};

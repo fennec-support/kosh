@@ -408,7 +408,7 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
   let const do_capture = [&](const ArrayList<String> &probe_argv)
                              throws -> String {
     if (probe_argv.is_empty()) return String{heap_allocator()};
-    let const resolved = context.get_program_resolver().search(
+    let const resolved = context.resolution_store().resolver().search(
         probe_argv[0].view(), ProgramResolver::SearchMode::First,
         ProgramResolver::Requirement::Runnable,
         ProgramResolver::CachePolicy::Bypass);
@@ -706,7 +706,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
       }
     } else if (!completes_shell_binary &&
                context.koshkit_utilities_are_reachable() &&
-               context.get_program_resolver().get_status(command) ==
+               context.resolution_store().resolver().get_status(command) ==
                    ProgramResolver::Status::Missing)
     {
       util_for_flags = koshkit::find_util(command);

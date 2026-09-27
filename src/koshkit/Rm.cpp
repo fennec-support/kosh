@@ -110,14 +110,16 @@ static fn remove_path_with_prompt(
   }
   if (is_recursive && is_directory && !is_symbolic_link) {
     bool did_succeed = true;
-    let const directory_scratch = cxt.scratch_mark();
-    defer { cxt.scratch_release(directory_scratch); };
+    let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
+    defer {
+      cxt.expansion_store().scratch_arena().release(directory_scratch);
+    };
     let names = os::list_directory_status(path, allocator);
     if (names.has_value()) {
       for (let const &entry : *names) {
         if (os::INTERRUPT_REQUESTED) return false;
-        let const child_scratch = cxt.scratch_mark();
-        defer { cxt.scratch_release(child_scratch); };
+        let const child_scratch = cxt.expansion_store().scratch_arena().mark();
+        defer { cxt.expansion_store().scratch_arena().release(child_scratch); };
         let child = Path{path, allocator};
         child.append(entry.child.name.view());
         if (!remove_path_with_prompt(ec, cxt, utility_name, child.view(),
@@ -175,15 +177,17 @@ static fn report_dry_run_removal(
   }
   bool did_succeed = true;
   if (is_recursive && is_directory && !is_symbolic_link) {
-    let const directory_scratch = cxt.scratch_mark();
-    defer { cxt.scratch_release(directory_scratch); };
+    let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
+    defer {
+      cxt.expansion_store().scratch_arena().release(directory_scratch);
+    };
     if (let names = os::list_directory_status(path, allocator);
         names.has_value())
     {
       for (let const &entry : *names) {
         if (os::INTERRUPT_REQUESTED) return false;
-        let const child_scratch = cxt.scratch_mark();
-        defer { cxt.scratch_release(child_scratch); };
+        let const child_scratch = cxt.expansion_store().scratch_arena().mark();
+        defer { cxt.expansion_store().scratch_arena().release(child_scratch); };
         let child = Path{path, allocator};
         child.append(entry.child.name.view());
         if (!report_dry_run_removal(ec, cxt, utility_name, child.view(),

@@ -845,13 +845,13 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
   /* The arena runs a destructor only for an object it created, and this list
      took plain storage, so a stage still holding open descriptors on an early
      exit is closed by the defer before the release. */
-  let const pipeline_mark = cxt.scratch_mark();
+  let const pipeline_mark = cxt.expansion_store().scratch_arena().mark();
   let ecs = ArrayList<ExecContext>{cxt.scratch_allocator()};
   defer
   {
     for (ExecContext &leftover : ecs)
       leftover.close_fds();
-    cxt.scratch_release(pipeline_mark);
+    cxt.expansion_store().scratch_arena().release(pipeline_mark);
   };
   ecs.reserve(m_commands.count());
 
@@ -895,7 +895,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
           source != nullptr ? source->view() : StringView{}, steal(stage_args),
           cxt.koshkit_utilities_are_reachable(),
           cxt.runtime_state().is_shopt_enabled(shopt_option_id::Checkhash),
-          cxt.get_program_resolver(), steal(stage_arg_locations), cxt.runtime_state().get_mood());
+          cxt.resolution_store().resolver(), steal(stage_arg_locations), cxt.runtime_state().get_mood());
     } catch (const CommandResolutionErrorWithLocation &resolution_error) {
       /* The stage still applies its own redirections. A > onto its stdout takes
          the slot ahead of the pipe. The next stage still sees EOF. The message

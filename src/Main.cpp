@@ -1238,7 +1238,7 @@ fn kosh_main(int argc, char **argv) -> int
             !FLAG_NO_COMPLETION.is_enabled() &&
             !FLAG_NO_SYNTAX_HIGHLIGHTING.is_enabled())
         {
-          context.get_program_resolver().initialize_path_map();
+          context.resolution_store().resolver().initialize_path_map();
           did_seed_interactive_path_map = true;
         }
 

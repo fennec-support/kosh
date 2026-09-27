@@ -125,8 +125,10 @@ static fn find_walk(const ExecContext &ec, EvalContext &cxt,
                     const os::file_status *known_status = nullptr,
                     char known_type_letter = 0) throws -> void
 {
-  let const directory_scratch = cxt.scratch_mark();
-  defer { cxt.scratch_release(directory_scratch); };
+  let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
+  defer {
+    cxt.expansion_store().scratch_arena().release(directory_scratch);
+  };
 
   /* The stat reads the symlink, not its target, and a failed stat yields the
      marker '\0' that matches no -type filter and is not descended. */
@@ -252,8 +254,8 @@ static fn find_walk(const ExecContext &ec, EvalContext &cxt,
   for (usize index = 0; index < children->count(); index++) {
     if (os::INTERRUPT_REQUESTED) return;
 
-    let const child_scratch = cxt.scratch_mark();
-    defer { cxt.scratch_release(child_scratch); };
+    let const child_scratch = cxt.expansion_store().scratch_arena().mark();
+    defer { cxt.expansion_store().scratch_arena().release(child_scratch); };
     let const &child_entry = (*children)[index];
     String child_display{allocator, display};
     let const child_name = child_entry.name.view();

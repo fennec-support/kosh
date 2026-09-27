@@ -145,7 +145,7 @@ static fn manpath_command_output(EvalContext &context) throws -> StringView
   static String cached{heap_allocator()};
   if (was_manpath_settled) return cached.view();
 
-  let &resolver = context.get_program_resolver();
+  let &resolver = context.resolution_store().resolver();
   let const man_paths =
       resolver.search("manpath", ProgramResolver::SearchMode::First,
                       ProgramResolver::Requirement::Runnable,
@@ -653,7 +653,7 @@ static fn manpage_options_for(StringView page_name, EvalContext &context) throws
   /* man forks only when it resolves into a trusted directory, so an alias or a
      planted man is never run. The resolved absolute path runs in place of the
      bare name so PATH cannot reresolve it. */
-  let const man_paths = context.get_program_resolver().search(
+  let const man_paths = context.resolution_store().resolver().search(
       "man", ProgramResolver::SearchMode::First,
       ProgramResolver::Requirement::Runnable,
       ProgramResolver::CachePolicy::Bypass);
@@ -696,7 +696,7 @@ fn internal::manpage_text_for(StringView page_name, EvalContext &context) throws
     return cached->view();
 
   let text = String{heap_allocator()};
-  let const man_paths = context.get_program_resolver().search(
+  let const man_paths = context.resolution_store().resolver().search(
       "man", ProgramResolver::SearchMode::First,
       ProgramResolver::Requirement::Runnable,
       ProgramResolver::CachePolicy::Bypass);
@@ -824,7 +824,7 @@ static fn help_text_for(EvalContext &context, StringView command,
                         StringView subcommand = {}) throws -> Maybe<String>
 {
   let help_argument = HELP_ALLOWLIST.find(command);
-  let const paths = context.get_program_resolver().search(
+  let const paths = context.resolution_store().resolver().search(
       command, ProgramResolver::SearchMode::First,
       ProgramResolver::Requirement::Runnable,
       ProgramResolver::CachePolicy::Bypass);

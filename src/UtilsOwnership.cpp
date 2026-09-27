@@ -115,8 +115,10 @@ static fn change_path_ownership_recursive(
     if (followed_status.has_file_identity) active_directories.pop_back();
   };
 
-  let const directory_scratch = cxt.scratch_mark();
-  defer { cxt.scratch_release(directory_scratch); };
+  let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
+  defer {
+    cxt.expansion_store().scratch_arena().release(directory_scratch);
+  };
   let children =
       os::list_directory_status(path.view(), cxt.scratch_allocator());
   if (!children.has_value()) {

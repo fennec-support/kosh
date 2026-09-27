@@ -69,8 +69,10 @@ static fn change_mode(const ExecContext &ec, EvalContext &cxt, const Path &path,
       os::file_type_letter(status.mode) != 'd')
     return did_succeed;
 
-  let const directory_scratch = cxt.scratch_mark();
-  defer { cxt.scratch_release(directory_scratch); };
+  let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
+  defer {
+    cxt.expansion_store().scratch_arena().release(directory_scratch);
+  };
   let children =
       os::list_directory_status(path.view(), cxt.scratch_allocator());
   if (!children.has_value()) {
@@ -82,8 +84,8 @@ static fn change_mode(const ExecContext &ec, EvalContext &cxt, const Path &path,
 
   for (let const &child_entry : *children) {
     if (os::INTERRUPT_REQUESTED) return did_succeed;
-    let const child_scratch = cxt.scratch_mark();
-    defer { cxt.scratch_release(child_scratch); };
+    let const child_scratch = cxt.expansion_store().scratch_arena().mark();
+    defer { cxt.expansion_store().scratch_arena().release(child_scratch); };
     let const is_child_symlink =
         child_entry.child.kind == Path::entry_kind::Symlink ||
         (child_entry.has_status &&

@@ -414,7 +414,7 @@ collect_command_names(StringView token, EvalContext &context, Collector &collect
   context.for_each_function_name(do_add);
   context.scope_store().for_each_alias_name(do_add);
 
-  let const &path_names = context.get_program_resolver().get_command_names(
+  let const &path_names = context.resolution_store().resolver().get_command_names(
       token_is_glob ? StringView{} : normalized_path_token.view(),
       token_is_glob || token.is_empty()
           ? ProgramResolver::ValidationScope::All
@@ -431,7 +431,7 @@ collect_command_names(StringView token, EvalContext &context, Collector &collect
 
   if (collector.allows_fuzzy_fallback() && !collector.has_prefix()) {
     let const &fallback_path_names =
-        context.get_program_resolver().get_command_names(
+        context.resolution_store().resolver().get_command_names(
             {}, ProgramResolver::ValidationScope::All);
     for (let const &entry : fallback_path_names)
       do_add_path(entry.view());

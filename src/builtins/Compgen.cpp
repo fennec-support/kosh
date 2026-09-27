@@ -344,9 +344,9 @@ static fn run_compgen_actions(EvalContext &cxt, u32 action_mask,
   }
 
   if (do_wants(compgen_action::Command)) {
-    cxt.get_program_resolver().begin_explicit_completion(
+    cxt.resolution_store().resolver().begin_explicit_completion(
         ProgramResolver::CompletionRefresh::Fresh);
-    defer { cxt.get_program_resolver().end_explicit_completion(); };
+    defer { cxt.resolution_store().resolver().end_explicit_completion(); };
     let const scratch = completion::ScopedCompletionScratch{};
 
     for (let const &candidate :
@@ -357,9 +357,9 @@ static fn run_compgen_actions(EvalContext &cxt, u32 action_mask,
   }
 
   if (do_wants(compgen_action::Directory) || do_wants(compgen_action::File)) {
-    cxt.get_program_resolver().begin_explicit_completion(
+    cxt.resolution_store().resolver().begin_explicit_completion(
         ProgramResolver::CompletionRefresh::Fresh);
-    defer { cxt.get_program_resolver().end_explicit_completion(); };
+    defer { cxt.resolution_store().resolver().end_explicit_completion(); };
 
     if (do_wants(compgen_action::Directory)) {
       let const scratch = completion::ScopedCompletionScratch{};
@@ -580,8 +580,8 @@ fn Compgen::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           : None;
   let const word = args.count() > 1 ? args[1].view() : StringView{};
 
-  let const scratch = cxt.scratch_mark();
-  defer { cxt.scratch_release(scratch); };
+  let const scratch = cxt.expansion_store().scratch_arena().mark();
+  defer { cxt.expansion_store().scratch_arena().release(scratch); };
 
   Maybe<compgen_filter> filter = None;
   if (filter_pattern.has_value()) {
