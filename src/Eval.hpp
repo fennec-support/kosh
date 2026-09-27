@@ -2743,14 +2743,6 @@ public:
   mustuse fn line_number_at_location(
       const SourceLocation &location,
       const String *fallback_source = nullptr) const throws -> usize;
-  fn set_script_run(bool is_script_run) wontthrow -> void
-  {
-    source_store().set_script_run(is_script_run);
-  }
-  pure fn is_script_run() const wontthrow -> bool
-  {
-    return source_store().is_script_run();
-  }
   pure fn in_function_scope() const wontthrow -> bool;
   pure fn is_sourcing() const wontthrow -> bool
   {

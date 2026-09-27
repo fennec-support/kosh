@@ -1160,7 +1160,7 @@ fn kosh_main(int argc, char **argv) -> int
               source_filename = file_name.view();
               /* A script-file run bottoms FUNCNAME out at "main", while -c and
                  stdin runs leave it off. */
-              context.set_script_run(true);
+              context.source_store().set_script_run(true);
               root_frame_call_site = operand_location;
 
               /* Mimicry reads the shebang of a script operand. `kosh -I
