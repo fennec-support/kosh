@@ -788,11 +788,6 @@ fn EvalContext::run_pending_traps() throws -> void
   was_pipe_status_restored = true;
 }
 
-pure fn EvalContext::traps() const wontthrow -> const StringMap<String> &
-{
-  return trap_store().actions();
-}
-
 cold fn EvalContext::run_exit_trap(Maybe<i32> final_status) throws -> void
 {
   if (trap_store().exit_trap_ran()) return;

@@ -1111,7 +1111,7 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
     source.append(definition.view());
     source.push('\n');
   }
-  traps().for_each([&](StringView condition, const String &action) throws {
+  trap_store().actions().for_each([&](StringView condition, const String &action) throws {
     if (condition == "EXIT") return;
     source += "trap -- ";
     append_shell_quoted_arg(source, action.view());

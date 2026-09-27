@@ -2381,16 +2381,6 @@ public:
       -> SortedArrayList<String, order_comparator<String>>;
 
   fn function_names() const throws -> HashSet;
-  template <typename Callback>
-  fn for_each_function_name(Callback callback) const throws -> void
-  {
-    function_store().definitions().for_each(
-        [&](StringView name, const FunctionBodyHandle &storage) throws {
-          unused(storage);
-          callback(name);
-        });
-  }
-
   fn completion_store() wontthrow -> CompletionStore &
   {
     return m_completion_store;
@@ -2424,7 +2414,6 @@ public:
   fn set_trap(StringView condition, StringView action) throws -> void;
   fn remove_trap(StringView condition) throws -> void;
   fn discard_inherited_signal_traps() throws -> void;
-  pure fn traps() const wontthrow -> const StringMap<String> &;
   fn run_exit_trap(Maybe<i32> final_status = None) throws -> void;
 
   /* The trigger location is the command that fired the trap. $LINENO reports

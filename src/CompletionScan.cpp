@@ -1024,11 +1024,13 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
 
     if (unsets_function) {
       let seen = HashSet{heap_allocator()};
-      context.for_each_function_name([&](StringView name) {
-        if (!name.starts_with(token)) return;
-        if (!seen.add(name)) return;
-        candidates.push(String{name});
-      });
+      context.function_store().definitions().for_each(
+          [&](StringView name, const FunctionBodyHandle &storage) throws {
+            unused(storage);
+            if (!name.starts_with(token)) return;
+            if (!seen.add(name)) return;
+            candidates.push(String{name});
+          });
     } else {
       push_variable_name_candidates(token, context, candidates);
     }
