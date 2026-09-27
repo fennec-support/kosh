@@ -369,7 +369,7 @@ cold fn Parser::record_detailed_parse_error(
                                    : Maybe<SourceLocation>{details_location};
 
   diagnostic_sink->push(source_diagnostic{
-      None, error_severity::Error, location, steal(source_name),
+      None, error_severity::error, location, steal(source_name),
       error.message().clone(), String{error.detail_message()}, related_location,
       steal(related_source_name), String{error.details_message()},
       ArrayList<source_fix>{heap_allocator()}});
@@ -391,7 +391,7 @@ cold fn Parser::record_parse_error(
     source_name = String{*name};
 
   diagnostic_sink->push(source_diagnostic{
-      None, error_severity::Error, location, steal(source_name),
+      None, error_severity::error, location, steal(source_name),
       error.message().clone(), String{error.detail_message()}, None,
       String{heap_allocator()}, String{heap_allocator()},
       ArrayList<source_fix>{heap_allocator()}});

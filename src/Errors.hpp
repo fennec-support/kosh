@@ -20,22 +20,22 @@ class EvalContext;
 
 enum class error_severity : u8
 {
-  Error,
-  Warning,
-  Note,
-  Details,
-  Trace,
+  error,
+  warning,
+  note,
+  details,
+  trace,
 };
 
 pure inline fn get_error_severity_word(error_severity severity) wontthrow
     -> StringView
 {
   switch (severity) {
-  case error_severity::Error: return "error";
-  case error_severity::Warning: return "warning";
-  case error_severity::Note: return "note";
-  case error_severity::Details: return "details";
-  case error_severity::Trace: return "trace";
+  case error_severity::error: return "error";
+  case error_severity::warning: return "warning";
+  case error_severity::note: return "note";
+  case error_severity::details: return "details";
+  case error_severity::trace: return "trace";
   }
   unreachable("invalid error severity %d", ENUM(severity));
 }

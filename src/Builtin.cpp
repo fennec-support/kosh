@@ -378,7 +378,7 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
 
     let element_count = elements.has_value() ? elements->count() : 0;
     if (is_directory_stack) {
-      element_count = cxt.bash_directory_stack_element_count();
+      element_count = cxt.variable_store().directory_stack().count() + 1;
     } else if (is_argument_array) {
       element_count = cxt.dynamic_array_element_count(
           name == BASH_ARGUMENT_COUNT_VARIABLE

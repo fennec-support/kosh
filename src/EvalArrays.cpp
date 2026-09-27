@@ -185,7 +185,7 @@ fn EvalContext::assign_indexed_array_elements(
   usize running_index = 0;
   if (is_bash_directory_stack_special(name)) {
     if (update_mode == assignment_update_mode::Append)
-      running_index = bash_directory_stack_element_count();
+      running_index = variable_store().directory_stack().count() + 1;
   } else if (update_mode == assignment_update_mode::Append) {
     if (let const array = variable_store().indexed_arrays().find(name);
         array.has_value())
@@ -292,7 +292,7 @@ fn EvalContext::set_array_element(StringView name, usize index,
 fn EvalContext::get_bash_directory_stack_element(
     usize index, Allocator allocator) const throws -> Maybe<String>
 {
-  if (index >= bash_directory_stack_element_count()) return None;
+  if (index >= variable_store().directory_stack().count() + 1) return None;
   if (index == 0) {
     let const current = logical_working_directory(*this);
     return String{allocator, current.text()};
@@ -306,7 +306,8 @@ fn EvalContext::set_bash_directory_stack_element(usize index,
                                                  StringView value) throws
     -> void
 {
-  if (index == 0 || index >= bash_directory_stack_element_count()) return;
+  if (index == 0 || index >= variable_store().directory_stack().count() + 1)
+    return;
 
   let &stack = variable_store().directory_stack();
   stack[stack.count() - index] = String{heap_allocator(), value};
@@ -719,7 +720,7 @@ fn EvalContext::array_negative_index_base(StringView name) const throws -> i64
   }
 
   if (is_bash_directory_stack_special(name))
-    return static_cast<i64>(bash_directory_stack_element_count());
+    return static_cast<i64>(variable_store().directory_stack().count() + 1);
 
   i64 base = 0;
   if (let const array = variable_store().indexed_arrays().find(name); array.has_value())
@@ -749,7 +750,7 @@ fn EvalContext::array_element_count(StringView name) const throws -> usize
 
   if (is_bash_aliases_special(name)) return scope_store().aliases().count();
   if (is_bash_directory_stack_special(name))
-    return bash_directory_stack_element_count();
+    return variable_store().directory_stack().count() + 1;
 
   if (is_associative_array(name)) {
     usize element_count = 0;
@@ -832,7 +833,7 @@ fn EvalContext::apply_array_subscript(
   }
 
   if (is_bash_directory_stack_special(name)) {
-    let const count = bash_directory_stack_element_count();
+    let const count = variable_store().directory_stack().count() + 1;
     if (subscript == "@" || subscript == "*") {
       let separator = ' ';
       let has_separator = true;
@@ -960,7 +961,7 @@ fn EvalContext::collect_array_elements(StringView name) const throws
 
   if (is_bash_directory_stack_special(name)) {
     let elements = ArrayList<String>{heap_allocator()};
-    let const count = bash_directory_stack_element_count();
+    let const count = variable_store().directory_stack().count() + 1;
     elements.reserve(count);
     for (usize index = 0; index < count; index++)
       elements.push(
@@ -1007,7 +1008,7 @@ fn EvalContext::array_element_is_set(StringView name,
   }
   if (is_bash_directory_stack_special(name)) {
     let index = evaluate_arithmetic(subscript);
-    let const count = static_cast<i64>(bash_directory_stack_element_count());
+    let const count = static_cast<i64>(variable_store().directory_stack().count() + 1);
     if (index < 0) index += count;
     return index >= 0 && index < count;
   }
@@ -1076,7 +1077,7 @@ fn EvalContext::collect_array_subscripts(StringView name) const throws
     }
   }
   if (is_bash_directory_stack_special(name)) {
-    let const count = bash_directory_stack_element_count();
+    let const count = variable_store().directory_stack().count() + 1;
     out.reserve(count);
     for (usize index = 0; index < count; index++)
       out.push(String::from(index, heap_allocator()));

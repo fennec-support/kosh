@@ -64,8 +64,8 @@ fn Which::execute(const ExecContext &ec, EvalContext &cxt,
         output += *alias;
         output += "'\n";
       }
-    } else if (cxt.has_functions() &&
-               cxt.find_function(program_name.view()).has_value())
+    } else if (cxt.function_store().has_functions() &&
+               cxt.function_store().find_function(program_name.view()).has_value())
     {
       if (!is_quiet) {
         output += program_name;

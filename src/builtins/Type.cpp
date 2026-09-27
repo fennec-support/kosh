@@ -124,7 +124,8 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     {
       word = "alias";
       alias_value = alias;
-    } else if (cxt.has_functions() && cxt.find_function(name).has_value()) {
+    } else if (cxt.function_store().has_functions() &&
+               cxt.function_store().find_function(name).has_value()) {
       word = "function";
     } else if (let const kind = search_builtin(name.view());
                kind.has_value() &&
@@ -179,7 +180,7 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       if (type_word == "function") {
         if (!should_print_verbose && !is_bash_function_report) return;
 
-        if (let const *source = cxt.find_function_source(name.view());
+        if (let const *source = cxt.function_store().find_source(name.view());
             source != nullptr && !source->is_empty())
         {
           if (is_bash_function_report)

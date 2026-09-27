@@ -50,8 +50,8 @@ fn Readonly::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (args.count() == 1) {
       let out = String{cxt.scratch_allocator()};
 
-      for (let const &name : cxt.sorted_readonly_function_names()) {
-        if (const String *source = cxt.find_function_source(name.view());
+      for (let const &name : cxt.function_store().sorted_readonly_names()) {
+        if (const String *source = cxt.function_store().find_source(name.view());
             source != nullptr && !source->is_empty())
         {
           out.append(source->view());
@@ -72,7 +72,7 @@ fn Readonly::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     for (usize i = 1; i < args.count(); i++) {
       let const name = args[i].view();
-      if (!cxt.find_function(name).has_value()) {
+      if (!cxt.function_store().find_function(name).has_value()) {
         let const loc = i < operand_locations.count() ? operand_locations[i]
                                                       : ec.source_location();
         report_soft_builtin_error(

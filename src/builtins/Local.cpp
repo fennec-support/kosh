@@ -57,7 +57,7 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     SHOW_BUILTIN_HELP_AND_RETURN(ec);
   }
 
-  if (!cxt.in_function_scope())
+  if (cxt.scope_store().local_scope_depth() == 0)
     throw ErrorWithDetails{
         "Unable to declare a local variable outside a function",
         "`local` only works inside a function body"};

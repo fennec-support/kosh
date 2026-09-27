@@ -425,7 +425,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
   /* The terminal command the shell exits with needs no isolation, so the script
      runs against the current state with no snapshot. */
   if (!isolated) {
-    set_positional_params(steal(params));
+    variable_store().positional_params() = steal(params);
     seed_shell_identity_variables(mode == mimic_mood::Bash
                                       ? shell_identity_mode::Bash
                                       : shell_identity_mode::Native);
@@ -448,7 +448,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
     return execution_store().last_exit_status();
   }
 
-  set_positional_params(steal(params));
+    variable_store().positional_params() = steal(params);
   seed_shell_identity_variables(mode == mimic_mood::Bash
                                     ? shell_identity_mode::Bash
                                     : shell_identity_mode::Native);

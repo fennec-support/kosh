@@ -227,8 +227,9 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   /* A bare exec, exec with no further argument, applies its redirections to the
      shell's own descriptors for good. A function named exec shadows it. */
   FunctionBodyHandle command_function_storage{};
-  if (!program_args.is_empty() && cxt.has_functions()) {
-    if (let const *storage = cxt.find_function_storage(program_args[0].view());
+  if (!program_args.is_empty() && cxt.function_store().has_functions()) {
+    if (let const *storage =
+            cxt.function_store().find_storage(program_args[0].view());
         storage != nullptr)
     {
       command_function_storage = *storage;
@@ -640,7 +641,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     }
     if (saved_program_resolver.has_value())
       cxt.resolution_store().resolver() = steal(*saved_program_resolver);
-    if (was_ifs_assigned) cxt.set_field_separators(saved_ifs_separators.view());
+    if (was_ifs_assigned)
+      cxt.variable_store().set_field_separators(saved_ifs_separators.view());
     if (previous_ignoreeof_state.has_value())
       cxt.runtime_state().set_option(shell_option_id::Ignoreeof,
                                      *previous_ignoreeof_state);
@@ -728,7 +730,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
                 Maybe<ProgramResolver>{cxt.resolution_store().resolver()};
           cxt.resolution_store().resolver().assign_path(String{expanded_value.view()});
         }
-        if (name == "IFS") cxt.set_field_separators(expanded_value.view());
+        if (name == "IFS")
+          cxt.variable_store().set_field_separators(expanded_value.view());
       };
   for (let const &var : m_local_vars)
     do_apply_environment_assignment(*var.token);
@@ -771,9 +774,9 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     cxt.enter_bash_function_argument_frame(bash_argument_frame_context,
                                            call_params);
     defer { cxt.leave_bash_argument_frame(bash_argument_frame_context); };
-    let saved_params = cxt.take_positional_params();
-    cxt.set_positional_params(steal(call_params));
-    defer { cxt.set_positional_params(steal(saved_params)); };
+    let saved_params = steal(cxt.variable_store().positional_params());
+    cxt.variable_store().positional_params() = steal(call_params);
+    defer { cxt.variable_store().positional_params() = steal(saved_params); };
 
     /* Registered before the frame is entered so the restore runs after the
        frame is left. Once the frame is left, the depth the caller installed
@@ -980,7 +983,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   if (!m_array_args.is_empty()) {
     let const is_local = array_command_kind == assignment_builtin::Local;
     let const is_declare = array_command_kind == assignment_builtin::Declare;
-    let const is_function_local = is_declare && cxt.in_function_scope();
+    let const is_function_local =
+        is_declare && cxt.scope_store().local_scope_depth() > 0;
     let const is_export = array_command_kind == assignment_builtin::Export;
     /* The -r flag sits in the builtin's arguments, so it is read off them. */
     let const is_readonly_kind =

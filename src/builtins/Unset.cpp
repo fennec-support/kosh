@@ -72,7 +72,7 @@ fn Unset::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                !cxt.variable_store().shell_variables().find(name.view()).has_value() &&
                !cxt.variable_store().indexed_arrays().find(name.view()).has_value() &&
                !cxt.is_associative_array(name.view()) &&
-               cxt.find_function(name.view()).has_value())
+               cxt.function_store().find_function(name.view()).has_value())
     {
       LOG(All, "unset removing function '%s' since no variable is set",
           name.c_str());

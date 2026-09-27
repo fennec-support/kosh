@@ -49,10 +49,12 @@ EvalContext::EvalContext(bool should_disable_path_expansion, bool should_echo,
   runtime_state().set_echo(should_echo);
   runtime_state().set_echo_expanded(should_echo_expanded);
   runtime_state().set_error_exit(should_error_exit);
-  set_emacs_mode(shell_is_interactive);
+  runtime_state().set_option(shell_option_id::Emacs, shell_is_interactive);
+  if (shell_is_interactive)
+    runtime_state().set_option(shell_option_id::Vi, false);
   runtime_state().set_option(shell_option_id::History, shell_is_interactive);
   runtime_state().set_option(shell_option_id::Histexpand, shell_is_interactive);
-  set_field_separators(variable_store().field_separators());
+  variable_store().set_field_separators(variable_store().field_separators());
 
   dynamic_runtime_store().shell_start_time() = static_cast<i64>(std::time(nullptr));
   trap_store().startup_ignored_signals() = os::get_entry_ignored_signals();
@@ -130,22 +132,6 @@ fn EvalContext::record_history_event(StringView command) throws -> bool
   return toiletline::append_history_event(command).has_value();
 }
 
-fn EvalContext::begin_history_transaction(ArrayList<String> &commands) throws
-    -> void
-{
-  source_store().begin_history_transaction(commands);
-}
-
-fn EvalContext::end_history_transaction() wontthrow -> void
-{
-  source_store().end_history_transaction();
-}
-
-pure fn EvalContext::has_history_transaction() const wontthrow -> bool
-{
-  return source_store().has_history_transaction();
-}
-
 hot fn EvalContext::assign_variable(StringView name, StringView value) throws
     -> void
 {
@@ -176,7 +162,7 @@ hot fn EvalContext::assign_variable(StringView name, StringView value) throws
         environment_undo_entry{String{name}, steal(saved), saved_definition});
   }
 
-  if (is_field_separator_name) set_field_separators(value);
+  if (is_field_separator_name) variable_store().set_field_separators(value);
   if (write_dynamic_variable(name, value)) return;
 
   if (is_path_name) resolution_store().resolver().assign_path(String{value});
@@ -247,7 +233,7 @@ fn EvalContext::rollback_confined_variable_writes(usize mark) wontthrow -> void
                                ? entry.previous_value->view()
                                : StringView{};
 
-      if (name == "IFS") set_field_separators(restored);
+      if (name == "IFS") variable_store().set_field_separators(restored);
       if (utils::environment_name_is_path(name))
         resolution_store().resolver().assign_path(String{restored});
       if (is_exported(name)) {
@@ -270,12 +256,6 @@ fn EvalContext::rollback_confined_variable_writes(usize mark) wontthrow -> void
         shell_option_id::Ignoreeof,
         environment_store().was_confined_ignoreeof_enabled());
   }
-}
-
-fn EvalContext::set_field_separators(StringView value) throws -> void
-{
-  LOG(Debug, "caching %zu field separator bytes", value.length);
-  variable_store().set_field_separators(value);
 }
 
 fn EvalContext::guard_restricted_path(StringView path,
@@ -825,7 +805,7 @@ fn EvalContext::force_unset_shell_variable(StringView name) throws -> void
   record_environment_change(name);
   os::unset_environment_variable(name);
   unmark_exported(name);
-  if (name == "IFS") set_field_separators(" \t\n");
+  if (name == "IFS") variable_store().set_field_separators(" \t\n");
   if (utils::environment_name_is_path(name))
     resolution_store().resolver().assign_path(os::get_environment_variable("PATH"));
   if (name == "IGNOREEOF")
@@ -952,17 +932,6 @@ fn EvalContext::sync_exported_after_restore(StringView name,
     mark_exported(name);
   else
     unmark_exported(name);
-}
-
-fn EvalContext::set_positional_params(ArrayList<String> params) wontthrow
-    -> void
-{
-  variable_store().positional_params() = steal(params);
-}
-
-fn EvalContext::take_positional_params() wontthrow -> ArrayList<String>
-{
-  return steal(variable_store().positional_params());
 }
 
 pure fn EvalContext::is_bash_argument_array(StringView name) const wontthrow
@@ -1466,11 +1435,6 @@ fn EvalContext::dynamic_array_element_text(
   }
 
   return String{result_allocator};
-}
-
-pure fn EvalContext::in_function_scope() const wontthrow -> bool
-{
-  return scope_store().local_scope_depth() != 0;
 }
 
 fn EvalContext::is_local_in_current_scope(StringView name) const wontthrow

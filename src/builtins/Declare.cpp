@@ -167,12 +167,13 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (should_restrict_to_functions) {
     i32 status = 0;
     if (i >= args.count()) {
-      for (let const &name : cxt.sorted_function_names()) {
+      for (let const &name : cxt.function_store().sorted_names()) {
         let line = String{cxt.scratch_allocator()};
         if (should_print_function_names_only) {
           line += "declare -f ";
           line.append(name.view());
-        } else if (const String *source = cxt.find_function_source(name.view());
+        } else if (const String *source =
+                       cxt.function_store().find_source(name.view());
                    source != nullptr)
         {
           line.append(format_bash_function_source(source->view()).view());
@@ -184,7 +185,7 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
     for (; i < args.count(); i++) {
       let const name = args[i].view();
-      if (!cxt.find_function(name).has_value()) {
+      if (!cxt.function_store().find_function(name).has_value()) {
         if (!should_print_function_names_only)
           report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
                                     StringView{"'"} + name +
@@ -196,7 +197,7 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         let line = String{cxt.scratch_allocator(), name};
         line += '\n';
         ec.print_to_stdout(line.view());
-      } else if (const String *source = cxt.find_function_source(name);
+      } else if (const String *source = cxt.function_store().find_source(name);
                  source != nullptr)
       {
         if (!source->is_empty()) {
@@ -318,7 +319,7 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       continue;
     }
 
-    if (!should_be_global && cxt.in_function_scope() &&
+    if (!should_be_global && cxt.scope_store().local_scope_depth() > 0 &&
         cxt.is_bash_argument_array(name))
     {
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),

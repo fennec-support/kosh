@@ -67,7 +67,7 @@ static fn first_word_resolves(StringView word, EvalContext &context) throws
   }
 
   if (search_builtin(word).has_value()) return true;
-  if (context.find_function(word).has_value()) return true;
+  if (context.function_store().find_function(word).has_value()) return true;
   if (context.scope_store().get_alias(word).has_value()) return true;
 
   let const path_status = context.resolution_store().resolver().get_status(word);

@@ -669,7 +669,7 @@ fn AnalysisContext::flush_warnings() throws -> void
         }
       }
       diagnostic_sink->push(source_diagnostic{
-          warning.id, error_severity::Warning, warning.location,
+          warning.id, error_severity::warning, warning.location,
           steal(source_name), warning.message.clone(),
           warning.suggestion.clone(), warning.related_location,
           steal(related_source_name), warning.related_message.clone(),
@@ -894,7 +894,7 @@ fn AnalysisContext::fail(diagnostic_id id, const SourceLocation &location,
       }
     }
     diagnostic_sink->push(source_diagnostic{
-        id, error_severity::Error, location, steal(source_name),
+        id, error_severity::error, location, steal(source_name),
         String{message}, String{suggestion}, related_location,
         steal(related_source_name), String{related_message},
         source_fixes_for_diagnostic(id, source, location)});

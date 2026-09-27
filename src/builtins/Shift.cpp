@@ -77,7 +77,7 @@ fn Shift::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   shifted.reserve(params.count() - static_cast<usize>(shift_count));
   for (usize i = static_cast<usize>(shift_count); i < params.count(); i++)
     shifted.push_managed(params[i]);
-  cxt.set_positional_params(steal(shifted));
+  cxt.variable_store().positional_params() = steal(shifted);
   return 0;
 }
 

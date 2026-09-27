@@ -270,7 +270,7 @@ static fn execute_fc_command(const ExecContext &ec, EvalContext &cxt,
 
   ec.print_to_stderr(command.view());
   ec.print_to_stderr("\n");
-  if (!cxt.has_history_transaction() &&
+  if (!cxt.source_store().has_history_transaction() &&
       !remember_fc_command(cxt, events, active_index, command.view()))
   {
     report_soft_builtin_error(ec, cxt, ec.source_location(),
@@ -394,19 +394,20 @@ static fn edit_fc_commands(const ExecContext &ec, EvalContext &cxt,
 
   let recorded_commands = ArrayList<String>{heap_allocator()};
   let const should_replace_active =
-      active_index.has_value() && !cxt.has_history_transaction();
+      active_index.has_value() && !cxt.source_store().has_history_transaction();
   let should_end_transaction = should_replace_active;
-  if (should_end_transaction) cxt.begin_history_transaction(recorded_commands);
+  if (should_end_transaction)
+    cxt.source_store().begin_history_transaction(recorded_commands);
   defer
   {
-    if (should_end_transaction) cxt.end_history_transaction();
+    if (should_end_transaction) cxt.source_store().end_history_transaction();
   };
 
   let const status = cxt.run_source(
       edited->view(), "fc", ec.source_location(), StringView{"fc"}, nullptr,
       nullptr, return_handling::Consume, history_recording::Enabled);
   if (should_end_transaction) {
-    cxt.end_history_transaction();
+    cxt.source_store().end_history_transaction();
     should_end_transaction = false;
   }
 

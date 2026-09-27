@@ -1317,6 +1317,58 @@ private:
 class FunctionStore
 {
 public:
+  fn find_source(StringView name) const wontthrow -> const String *
+  {
+    let const storage = m_definitions.find(name);
+    return storage.has_value() ? storage->get_source() : nullptr;
+  }
+  mustuse fn sorted_names() const throws
+      -> SortedArrayList<String, order_comparator<String>>
+  {
+    let out = ArrayList<String>{heap_allocator()};
+    out.reserve(m_definitions.count());
+    m_definitions.for_each([&](StringView name, const FunctionBodyHandle &) {
+      out.push_managed(name);
+    });
+    return steal(out).make_sorted(sort_order::ascending);
+  }
+  fn find_function(StringView name) const wontthrow
+      -> Maybe<const Expression *>
+  {
+    let const storage = m_definitions.find(name);
+    return storage.has_value() ? Maybe<const Expression *>{storage->get_body()}
+                               : None;
+  }
+  pure fn find_storage(StringView name) const wontthrow
+      -> const FunctionBodyHandle *
+  {
+    return m_definitions.find(name).value_or(nullptr);
+  }
+  pure fn has_functions() const wontthrow -> bool
+  {
+    return m_definitions.count() != 0;
+  }
+  pure fn is_readonly(StringView name) const wontthrow -> bool
+  {
+    return m_readonly.contains(name);
+  }
+  mustuse fn sorted_readonly_names() const throws
+      -> SortedArrayList<String, order_comparator<String>>
+  {
+    let out = ArrayList<String>{heap_allocator()};
+    out.reserve(m_readonly.count());
+    m_readonly.for_each([&](StringView name) {
+      if (find_function(name).has_value()) out.push_managed(name);
+    });
+    return steal(out).make_sorted(sort_order::ascending);
+  }
+  fn names() const throws -> HashSet
+  {
+    let names = HashSet{heap_allocator()};
+    m_definitions.for_each(
+        [&](StringView name, const FunctionBodyHandle &) { names.add(name); });
+    return names;
+  }
   fn definitions() wontthrow -> StringMap<FunctionBodyHandle> &
   {
     return m_definitions;
@@ -2115,6 +2167,14 @@ public:
   {
     return m_evaluation_metrics_store;
   }
+  fn completion_store() wontthrow -> CompletionStore &
+  {
+    return m_completion_store;
+  }
+  pure fn completion_store() const wontthrow -> const CompletionStore &
+  {
+    return m_completion_store;
+  }
   fn prompt_command_store() wontthrow -> PromptCommandStore &
   {
     return m_prompt_command_store;
@@ -2263,10 +2323,6 @@ public:
                bash_special_array_id::DirectoryStack) &&
            !is_local_in_current_scope(name);
   }
-  pure fn bash_directory_stack_element_count() const wontthrow -> usize
-  {
-    return m_variable_store.directory_stack().count() + 1;
-  }
   fn get_bash_directory_stack_element(usize index,
                                       Allocator allocator) const throws
       -> Maybe<String>;
@@ -2312,9 +2368,6 @@ public:
   fn sync_exported_after_restore(StringView name, bool has_value) throws
       -> void;
 
-  /* Set IFS and refresh the separator table together, so the table never drifts
-     from the cached value. */
-  fn set_field_separators(StringView value) throws -> void;
   fn get_variable_value(StringView name) const throws -> Maybe<String>;
   fn get_variable_value_checked(StringView name) const throws -> Maybe<String>;
   pure fn variable_requires_dynamic_lookup(StringView name) const wontthrow
@@ -2356,29 +2409,13 @@ public:
            variable_requires_dynamic_lookup(name);
   }
 
-  fn set_positional_params(ArrayList<String> params) wontthrow -> void;
-
   /* Move the positional parameters out, so a function call saves the caller's
      without a deep copy and restores them by moving the saved list back. */
-  fn take_positional_params() wontthrow -> ArrayList<String>;
-
   fn notify_done_jobs() throws -> void;
-
-  fn set_vi_mode(bool enabled) wontthrow -> void
-  {
-    runtime_state().set_option(shell_option_id::Vi, enabled);
-    if (enabled) runtime_state().set_option(shell_option_id::Emacs, false);
-  }
-  fn set_emacs_mode(bool enabled) wontthrow -> void
-  {
-    runtime_state().set_option(shell_option_id::Emacs, enabled);
-    if (enabled) runtime_state().set_option(shell_option_id::Vi, false);
-  }
 
   fn register_function(StringView name, const FunctionBodyHandle &body_storage,
                        StringView definition_text, usize body_start_position,
                        SourceLocation definition_location) throws -> void;
-  fn find_function_source(StringView name) const wontthrow -> const String *;
   fn function_definition_info_of(StringView name) const wontthrow
       -> const function_definition_info *;
   struct resolved_render_source
@@ -2403,30 +2440,10 @@ public:
       -> resolved_render_source;
   pure fn source_text_in_span(const SourceLocation &location,
                               usize end_position) const wontthrow -> StringView;
-  mustuse fn sorted_function_names() const throws
-      -> SortedArrayList<String, order_comparator<String>>;
-  fn find_function(StringView name) const wontthrow
-      -> Maybe<const Expression *>;
-  pure fn find_function_storage(StringView name) const wontthrow
-      -> const FunctionBodyHandle *;
-  pure fn has_functions() const wontthrow -> bool;
   pure fn function_storage_stats() const wontthrow -> function_arena_stats;
   fn unset_function(StringView name) throws -> void;
   fn clear_functions() wontthrow -> void;
   fn mark_function_readonly(StringView name) throws -> void;
-  pure fn is_function_readonly(StringView name) const wontthrow -> bool;
-  mustuse fn sorted_readonly_function_names() const throws
-      -> SortedArrayList<String, order_comparator<String>>;
-
-  fn function_names() const throws -> HashSet;
-  fn completion_store() wontthrow -> CompletionStore &
-  {
-    return m_completion_store;
-  }
-  pure fn completion_store() const wontthrow -> const CompletionStore &
-  {
-    return m_completion_store;
-  }
   /* out_exit_status receives the function's return status, so the engine sees
      the 124 a dynamic loader returns to request a retry. */
   fn run_completion_function(StringView function_name,
@@ -2693,12 +2710,6 @@ public:
   mustuse fn line_number_at_location(
       const SourceLocation &location,
       const String *fallback_source = nullptr) const throws -> usize;
-  pure fn in_function_scope() const wontthrow -> bool;
-  pure fn is_sourcing() const wontthrow -> bool
-  {
-    return source_store().source_depth() >
-           source_store().rejected_return_source_frames();
-  }
   fn push_root_source_frame(const String *parent_source,
                             SourceLocation call_site,
                             source_frame_kind kind) throws -> void;
@@ -2752,9 +2763,6 @@ public:
     return source_store().history_recording_source();
   }
   fn record_history_event(StringView command) throws -> bool;
-  fn begin_history_transaction(ArrayList<String> &commands) throws -> void;
-  fn end_history_transaction() wontthrow -> void;
-  pure fn has_history_transaction() const wontthrow -> bool;
   /* A frame at error_location is dropped. */
   fn print_source_backtrace(Maybe<SourceLocation> error_location = None,
                             bool should_defer_for_source_file = true) throws

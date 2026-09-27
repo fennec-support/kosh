@@ -25,8 +25,8 @@ fn EvalContext::run_completion_function(StringView function_name,
     -> ArrayList<String>
 {
   FunctionBodyHandle body_storage{};
-  if (has_functions()) {
-    if (let const *storage = find_function_storage(function_name);
+  if (function_store().has_functions()) {
+    if (let const *storage = function_store().find_storage(function_name);
         storage != nullptr)
     {
       body_storage = *storage;
@@ -106,9 +106,9 @@ fn EvalContext::run_completion_function(StringView function_name,
   let bash_argument_frame_context = BashArgumentFrameContext{};
   enter_bash_function_argument_frame(bash_argument_frame_context, call_params);
   defer { leave_bash_argument_frame(bash_argument_frame_context); };
-  let saved_params = take_positional_params();
-  set_positional_params(steal(call_params));
-  defer { set_positional_params(steal(saved_params)); };
+  let saved_params = steal(variable_store().positional_params());
+  variable_store().positional_params() = steal(call_params);
+  defer { variable_store().positional_params() = steal(saved_params); };
 
   enter_function_call(SourceLocation{});
   defer { leave_function_call(); };

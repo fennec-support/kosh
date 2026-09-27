@@ -821,7 +821,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
 
   bool has_compound_stage = *m_has_compound_stage;
 
-  if (!has_compound_stage && cxt.has_functions()) {
+  if (!has_compound_stage && cxt.function_store().has_functions()) {
     for (let const stage : m_commands) {
       let const *simple = static_cast<const SimpleCommand *>(stage);
       if (simple->args().is_empty()) continue;
@@ -829,7 +829,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
       if (first->kind() != Token::Kind::Word) continue;
       const Word &word = static_cast<const tokens::WordToken *>(first)->word();
       if (word.plain_literal_kind() == Word::PlainLiteral::NotPlain ||
-          cxt.find_function(word.constant_value()).has_value())
+          cxt.function_store().find_function(word.constant_value()).has_value())
       {
         has_compound_stage = true;
         break;

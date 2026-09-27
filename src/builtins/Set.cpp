@@ -537,8 +537,14 @@ fn apply_or_reject_option(EvalContext &cxt, const set_option_descriptor &option,
     cxt.set_shopt_option("interactive_comments", enable);
     break;
   case set_option_behavior::Posix: cxt.set_posix_mode_via_option(enable); break;
-  case set_option_behavior::Vi: cxt.set_vi_mode(enable); break;
-  case set_option_behavior::Emacs: cxt.set_emacs_mode(enable); break;
+  case set_option_behavior::Vi:
+    cxt.runtime_state().set_option(shell_option_id::Vi, enable);
+    if (enable) cxt.runtime_state().set_option(shell_option_id::Emacs, false);
+    break;
+  case set_option_behavior::Emacs:
+    cxt.runtime_state().set_option(shell_option_id::Emacs, enable);
+    if (enable) cxt.runtime_state().set_option(shell_option_id::Vi, false);
+    break;
   case set_option_behavior::WarningLevel:
     cxt.runtime_control_store().note_warning_option_mutation();
     if (should_step_warning_level)
@@ -997,7 +1003,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (should_rebind) {
     LOG(Debug, "set rebinding %zu positional parameters", operands.count());
-    cxt.set_positional_params(steal(operands));
+    cxt.variable_store().positional_params() = steal(operands);
   }
 
   return 0;

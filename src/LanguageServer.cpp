@@ -476,8 +476,8 @@ fn Server::append_diagnostic(String &output, const Document &document,
     output.push('}');
   };
 
-  let const severity = diagnostic.severity == error_severity::Error     ? 1
-                       : diagnostic.severity == error_severity::Warning ? 2
+  let const severity = diagnostic.severity == error_severity::error     ? 1
+                       : diagnostic.severity == error_severity::warning ? 2
                                                                         : 3;
   if (!diagnostic.message.is_empty())
     do_append_diagnostic(diagnostic.location, severity,
@@ -533,7 +533,7 @@ fn Server::publish_diagnostics(Document &document) throws -> bool
     let const scopes = parser.take_analysis_scope_definitions();
     let const directives = parser.take_shellcheck_directive_spans();
     let const heredoc_misses = parser.take_heredoc_terminator_misses();
-    let const functions = m_context.function_names();
+    let const functions = m_context.function_store().names();
     let const aliases = m_context.scope_store().alias_names();
     let source_effects = StringMap<followed_source_effects>{heap_allocator()};
     if (document.canonical_path.has_value())
@@ -731,7 +731,7 @@ fn Server::complete(const JsonValue *id, const JsonValue *params) throws -> bool
       if (KEYWORDS.find(candidate.view()).has_value()) {
         response.append(",\"kind\":14,\"data\":{\"command\":");
       } else if (search_builtin(candidate.view()).has_value() ||
-                 m_context.find_function(candidate.view()).has_value() ||
+                 m_context.function_store().find_function(candidate.view()).has_value() ||
                  document_function_names.find(candidate.view()).has_value() ||
                  (m_context.runtime_state().koshkit_utilities_are_reachable() &&
                   koshkit::find_util(candidate.view()).has_value() &&

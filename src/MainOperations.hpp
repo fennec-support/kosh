@@ -536,7 +536,7 @@ static fn run_script_contents(
                                        : missing_shebang_policy::Suppress;
       let const do_analyze = [&](AnalysisUnitStream *units) throws -> bool {
         return analyze_ast(
-            ast, script_contents, context.function_names(),
+            ast, script_contents, context.function_store().names(),
             context.scope_store().alias_names(), &context,
             context.runtime_state().get_warning_level(),
             should_silence_unresolved_commands ||
@@ -2019,7 +2019,7 @@ print_applied_fix_summary(ArrayList<applied_fix_tally> &&collected_tallies)
   usize label_width = 0;
   let labels = ArrayList<String>{heap_allocator()};
   for (let const &tally : tallies) {
-    if (tally.severity == error_severity::Warning)
+    if (tally.severity == error_severity::warning)
       warning_count += tally.count;
     else
       error_count += tally.count;
@@ -2059,7 +2059,7 @@ print_applied_fix_summary(ArrayList<applied_fix_tally> &&collected_tallies)
 
   for (usize tally_index = 0; tally_index < tallies.count(); tally_index++) {
     let const &tally = tallies[tally_index];
-    let const is_warning = tally.severity == error_severity::Warning;
+    let const is_warning = tally.severity == error_severity::warning;
 
     let line = String{"  "};
     line.append(labels[tally_index].view());

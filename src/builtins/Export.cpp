@@ -49,7 +49,7 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let has_error = false;
     for (usize i = 1; i < args.count(); i++) {
       let const name = String{cxt.scratch_allocator(), args[i].view()};
-      let const *source = cxt.find_function_source(name.view());
+      let const *source = cxt.function_store().find_source(name.view());
       if (source == nullptr) {
         let const loc = i < operand_locations.count() ? operand_locations[i]
                                                       : ec.source_location();

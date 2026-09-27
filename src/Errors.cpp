@@ -105,18 +105,18 @@ cold static fn diagnostic_colors_for(error_severity severity) throws
   if (!colors::stderr_wants_color()) return diagnostic_color{};
 
   switch (severity) {
-  case error_severity::Error:
+  case error_severity::error:
     return diagnostic_color{colors::ansi::BOLD_BRIGHT_RED, colors::ansi::BOLD,
                             colors::ansi::BOLD, colors::ansi::BOLD_BRIGHT_RED};
-  case error_severity::Warning:
+  case error_severity::warning:
     return diagnostic_color{colors::ansi::YELLOW, {}, {}, colors::ansi::YELLOW};
-  case error_severity::Note:
+  case error_severity::note:
     return diagnostic_color{
         colors::ansi::CYAN, {}, colors::ansi::CYAN, colors::ansi::CYAN};
-  case error_severity::Details:
+  case error_severity::details:
     return diagnostic_color{
         colors::ansi::BLUE, {}, colors::ansi::BLUE, colors::ansi::BLUE};
-  case error_severity::Trace:
+  case error_severity::trace:
     return diagnostic_color{
         colors::ansi::CYAN, {}, colors::ansi::CYAN, colors::ansi::CYAN};
   }
@@ -397,7 +397,7 @@ cold fn ErrorBase::trailing_details_to_string() const throws -> String
   let const note = detail_message();
   if (note.is_empty()) return String{heap_allocator()};
 
-  let const severity = error_severity::Note;
+  let const severity = error_severity::note;
   let const severity_word = get_error_severity_word(severity);
   let const color = diagnostic_colors_for(severity);
 
@@ -409,7 +409,7 @@ cold fn ErrorBase::trailing_details_to_string() const throws -> String
 
 cold fn ErrorBase::get_severity() const wontthrow -> error_severity
 {
-  return error_severity::Error;
+  return error_severity::error;
 }
 
 Error::Error(StringView message) : m_message(heap_allocator(), message)
@@ -461,14 +461,14 @@ InterruptErrorWithLocation::InterruptErrorWithLocation(SourceLocation location)
 
 cold fn Warning::get_severity() const wontthrow -> error_severity
 {
-  return error_severity::Warning;
+  return error_severity::warning;
 }
 
 Note::Note(StringView message) : Error(message) {}
 
 cold fn Note::get_severity() const wontthrow -> error_severity
 {
-  return error_severity::Note;
+  return error_severity::note;
 }
 
 BrokenPipeExit::BrokenPipeExit() : Error("Broken pipe") {}
@@ -583,7 +583,7 @@ WarningWithLocationAndDetails::WarningWithLocationAndDetails(
 
 cold fn WarningWithLocation::get_severity() const wontthrow -> error_severity
 {
-  return error_severity::Warning;
+  return error_severity::warning;
 }
 
 TraceWithLocation::TraceWithLocation(SourceLocation location)
@@ -592,7 +592,7 @@ TraceWithLocation::TraceWithLocation(SourceLocation location)
 
 cold fn TraceWithLocation::get_severity() const wontthrow -> error_severity
 {
-  return error_severity::Trace;
+  return error_severity::trace;
 }
 
 DetailsWithLocation::DetailsWithLocation(SourceLocation location,
@@ -602,7 +602,7 @@ DetailsWithLocation::DetailsWithLocation(SourceLocation location,
 
 cold fn DetailsWithLocation::get_severity() const wontthrow -> error_severity
 {
-  return error_severity::Details;
+  return error_severity::details;
 }
 
 ErrorWithLocationAndDetails::ErrorWithLocationAndDetails(

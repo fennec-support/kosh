@@ -182,44 +182,6 @@ pure fn EvalContext::source_text_in_span(const SourceLocation &location,
   return view.substring_of_length(start, stop - start);
 }
 
-fn EvalContext::find_function_source(StringView name) const wontthrow
-    -> const String *
-{
-  let const storage = function_store().definitions().find(name);
-  return storage.has_value() ? storage->get_source() : nullptr;
-}
-
-fn EvalContext::sorted_function_names() const throws
-    -> SortedArrayList<String, order_comparator<String>>
-{
-  let out = ArrayList<String>{heap_allocator()};
-  out.reserve(function_store().definitions().count());
-  function_store().definitions().for_each(
-      [&](StringView name, const FunctionBodyHandle &) {
-        out.push_managed(name);
-      });
-  return steal(out).make_sorted(sort_order::ascending);
-}
-
-fn EvalContext::find_function(StringView name) const wontthrow
-    -> Maybe<const Expression *>
-{
-  let const storage = function_store().definitions().find(name);
-  return storage.has_value() ? Maybe<const Expression *>{storage->get_body()}
-                             : None;
-}
-
-pure fn EvalContext::find_function_storage(StringView name) const wontthrow
-    -> const FunctionBodyHandle *
-{
-  return function_store().definitions().find(name).value_or(nullptr);
-}
-
-pure fn EvalContext::has_functions() const wontthrow -> bool
-{
-  return function_store().definitions().count() != 0;
-}
-
 pure fn EvalContext::function_storage_stats() const wontthrow
     -> function_arena_stats
 {
@@ -243,34 +205,6 @@ fn EvalContext::mark_function_readonly(StringView name) throws -> void
   LOG(Info, "marking function '%.*s' read only", static_cast<int>(name.length),
       name.data);
   function_store().readonly().add(name);
-}
-
-pure fn EvalContext::is_function_readonly(StringView name) const wontthrow
-    -> bool
-{
-  return function_store().readonly().contains(name);
-}
-
-fn EvalContext::sorted_readonly_function_names() const throws
-    -> SortedArrayList<String, order_comparator<String>>
-{
-  let out = ArrayList<String>{heap_allocator()};
-  out.reserve(function_store().readonly().count());
-  function_store().readonly().for_each([&](StringView name) {
-    if (find_function(name).has_value()) out.push_managed(name);
-  });
-  return steal(out).make_sorted(sort_order::ascending);
-}
-
-fn EvalContext::function_names() const throws -> HashSet
-{
-  let names = HashSet{heap_allocator()};
-  function_store().definitions().for_each(
-      [&](StringView name, const FunctionBodyHandle &storage) {
-        unused(storage);
-        names.add(name);
-      });
-  return names;
 }
 
 fn EvalContext::variable_names(Allocator result_allocator) const throws

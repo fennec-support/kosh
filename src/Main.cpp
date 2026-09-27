@@ -1290,7 +1290,7 @@ fn kosh_main(int argc, char **argv) -> int
         koshka::String prompt = toiletline::build_prompt(context);
 
       toiletline::set_edit_mode(
-          context.runtime_state().option_is_enabled(shell_option_id::Vi)
+          context.runtime_state().option_is_enabled(koshka::shell_option_id::Vi)
                                     ? toiletline::edit_mode::Vi
                                     : toiletline::edit_mode::Emacs);
         toiletline::set_tab_selector(context.runtime_state().get_tab_selector());

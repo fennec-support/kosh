@@ -826,9 +826,9 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
   if (let const ifs =
           variable_store().shell_variables().find(StringView{"IFS", 3});
       ifs.has_value())
-    set_field_separators(ifs->view());
+    variable_store().set_field_separators(ifs->view());
   else
-    set_field_separators(" \t\n");
+    variable_store().set_field_separators(" \t\n");
 
   /* The exit status is intentionally not restored, a subshell propagates its
      last command's status to the parent. */
@@ -1098,8 +1098,8 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
     }
   }
 
-  for (let const &name : sorted_function_names()) {
-    let const *function_source = find_function_source(name.view());
+  for (let const &name : function_store().sorted_names()) {
+    let const *function_source = function_store().find_source(name.view());
     if (function_source == nullptr || function_source->is_empty()) {
       continue;
     }
@@ -1605,7 +1605,7 @@ fn EvalContext::apply_subshell_bootstrap(
   for (usize scope = 0; scope < static_cast<usize>(local_scope_depth); scope++)
     enter_function_scope();
   for (let const &name : function_call_names) {
-    let const *storage = find_function_storage(name.view());
+    let const *storage = function_store().find_storage(name.view());
     if (storage == nullptr) invalid_subshell_bootstrap();
     push_function_call_name(name.view(), *storage);
   }

@@ -78,7 +78,8 @@ fn Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
   defer
   {
-    if (has_extra_args) cxt.set_positional_params(steal(saved_params));
+    if (has_extra_args)
+      cxt.variable_store().positional_params() = steal(saved_params);
   };
 
   /* The RETURN action of a sourced file belongs to the frame the file ran in.
@@ -102,8 +103,8 @@ fn Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     defer { cxt.leave_bash_argument_frame(bash_argument_frame_context); };
 
     if (has_extra_args) {
-      saved_params = cxt.take_positional_params();
-      cxt.set_positional_params(steal(params));
+      saved_params = steal(cxt.variable_store().positional_params());
+      cxt.variable_store().positional_params() = steal(params);
     }
 
     status = cxt.run_source(*contents, "the file '" + path + "'",

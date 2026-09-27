@@ -110,12 +110,14 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
         did_find_any = true;
         continue;
       }
-      if (cxt.has_functions() && cxt.find_function(name.view()).has_value()) {
+      if (cxt.function_store().has_functions() &&
+          cxt.function_store().find_function(name.view()).has_value()) {
         if (!is_verbose) {
           ec.print_to_stdout(name + "\n");
         } else {
           ec.print_to_stdout(name + " is a function\n");
-          let const *function_source = cxt.find_function_source(name.view());
+          let const *function_source =
+              cxt.function_store().find_source(name.view());
           if (function_source != nullptr && !function_source->is_empty()) {
             ec.print_to_stdout(function_source->view());
             if (function_source->back() != '\n') ec.print_to_stdout("\n");
