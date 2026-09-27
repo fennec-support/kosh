@@ -1289,15 +1289,16 @@ fn kosh_main(int argc, char **argv) -> int
 
         koshka::String prompt = toiletline::build_prompt(context);
 
-        toiletline::set_edit_mode(context.vi_mode()
-                                      ? toiletline::edit_mode::Vi
-                                      : toiletline::edit_mode::Emacs);
+      toiletline::set_edit_mode(
+          context.runtime_state().option_is_enabled(shell_option_id::Vi)
+                                    ? toiletline::edit_mode::Vi
+                                    : toiletline::edit_mode::Emacs);
         toiletline::set_tab_selector(context.runtime_state().get_tab_selector());
         toiletline::set_space_after_completion(
             context.runtime_state().option_is_enabled(
                 koshka::shell_option_id::SpaceAfterCompletion));
         toiletline::set_history_limit(
-            context.get_history_limit("KOSH_HISTORY_SIZE", 4096));
+            context.variable_store().history_limit("KOSH_HISTORY_SIZE", 4096));
 
         loop
         {

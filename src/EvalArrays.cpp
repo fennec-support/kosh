@@ -713,7 +713,7 @@ hot fn EvalContext::expand_variable(StringView name) const throws -> String
 
 fn EvalContext::array_negative_index_base(StringView name) const throws -> i64
 {
-  if (bash_dynamic_variables_enabled()) [[unlikely]] {
+  if (runtime_state().bash_dynamic_variables_enabled()) [[unlikely]] {
     if (let const which = DYNAMIC_ARRAYS.find(name); which.has_value())
       return static_cast<i64>(dynamic_array_element_count(*which));
   }
@@ -742,7 +742,7 @@ fn EvalContext::array_negative_index_base(StringView name) const throws -> i64
 
 fn EvalContext::array_element_count(StringView name) const throws -> usize
 {
-  if (bash_dynamic_variables_enabled()) [[unlikely]] {
+  if (runtime_state().bash_dynamic_variables_enabled()) [[unlikely]] {
     if (let const which = DYNAMIC_ARRAYS.find(name); which.has_value())
       return dynamic_array_element_count(*which);
   }
@@ -787,7 +787,7 @@ fn EvalContext::apply_array_subscript(
     StringView name, StringView subscript,
     const SourceLocation *source_location) throws -> String
 {
-  if (bash_dynamic_variables_enabled()) [[unlikely]] {
+  if (runtime_state().bash_dynamic_variables_enabled()) [[unlikely]] {
     if (let const which = DYNAMIC_ARRAYS.find(name); which.has_value()) {
       let const element_count = dynamic_array_element_count(*which);
 
@@ -943,7 +943,7 @@ fn EvalContext::apply_array_subscript(
 fn EvalContext::collect_array_elements(StringView name) const throws
     -> ArrayList<String>
 {
-  if (bash_dynamic_variables_enabled()) [[unlikely]] {
+  if (runtime_state().bash_dynamic_variables_enabled()) [[unlikely]] {
     if (let const which = DYNAMIC_ARRAYS.find(name); which.has_value()) {
       let const element_count = dynamic_array_element_count(*which);
 
@@ -996,7 +996,7 @@ fn EvalContext::array_element_is_set(StringView name,
   if (subscript == "@" || subscript == "*") {
     return array_element_count(name) != 0;
   }
-  if (bash_dynamic_variables_enabled()) [[unlikely]] {
+  if (runtime_state().bash_dynamic_variables_enabled()) [[unlikely]] {
     if (let const which = DYNAMIC_ARRAYS.find(name); which.has_value()) {
       let index = evaluate_arithmetic(subscript);
       let const element_count =
@@ -1066,7 +1066,7 @@ fn EvalContext::collect_array_subscripts(StringView name) const throws
   if (is_associative_array(name)) return associative_keys(name);
 
   let out = ArrayList<String>{heap_allocator()};
-  if (bash_dynamic_variables_enabled()) [[unlikely]] {
+  if (runtime_state().bash_dynamic_variables_enabled()) [[unlikely]] {
     if (let const which = DYNAMIC_ARRAYS.find(name); which.has_value()) {
       let const element_count = dynamic_array_element_count(*which);
       out.reserve(element_count);

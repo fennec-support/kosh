@@ -340,7 +340,7 @@ fn source_command_text(EvalContext &cxt, const SourceLocation &location,
   let const text = cxt.source_text_in_span(location, end_position);
   if (text.length == 0) return do_build_command_text();
 
-  return reprinted_command_text(text, cxt.bash_additions_enabled());
+  return reprinted_command_text(text, cxt.runtime_state().bash_additions_enabled());
 }
 
 /* The subshell the way bash reprints it, with one blank inside each
@@ -368,7 +368,7 @@ fn append_redirections_text(EvalContext &cxt, String &out,
    the bash mood, and a trap action keeps the command that triggered it. */
 inline fn command_text_is_observed(const EvalContext &cxt) wontthrow -> bool
 {
-  return cxt.bash_dynamic_variables_enabled() &&
+  return cxt.runtime_state().bash_dynamic_variables_enabled() &&
          cxt.trap_store().trap_action_depth() == 0;
 }
 

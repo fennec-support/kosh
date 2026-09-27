@@ -125,7 +125,8 @@ fn EvalContext::record_history_event(StringView command) throws -> bool
     return true;
   }
 
-  toiletline::set_history_limit(get_history_limit("KOSH_HISTORY_SIZE", 4096));
+  toiletline::set_history_limit(
+      variable_store().history_limit("KOSH_HISTORY_SIZE", 4096));
   return toiletline::append_history_event(command).has_value();
 }
 
@@ -967,7 +968,7 @@ fn EvalContext::take_positional_params() wontthrow -> ArrayList<String>
 pure fn EvalContext::is_bash_argument_array(StringView name) const wontthrow
     -> bool
 {
-  return bash_dynamic_variables_enabled() &&
+  return runtime_state().bash_dynamic_variables_enabled() &&
          (name == BASH_ARGUMENT_COUNT_VARIABLE ||
           name == BASH_ARGUMENT_VALUE_VARIABLE);
 }
@@ -1082,7 +1083,7 @@ fn EvalContext::enter_bash_function_argument_frame(
   frame_context.source_path = {};
   frame_context.flags = 0;
 
-  if (bash_dynamic_variables_enabled() &&
+  if (runtime_state().bash_dynamic_variables_enabled() &&
       runtime_state().is_shopt_enabled(shopt_option_id::Extdebug))
   {
     initialize_bash_argument_arrays(true);
@@ -1104,7 +1105,7 @@ fn EvalContext::enter_bash_source_argument_frame(
   if (arguments != nullptr)
     frame_context.set_flag(BashArgumentFrameFlag::HasSourceArguments);
 
-  if (bash_dynamic_variables_enabled()) {
+  if (runtime_state().bash_dynamic_variables_enabled()) {
     if (runtime_state().is_shopt_enabled(shopt_option_id::Extdebug)) {
       initialize_bash_argument_arrays(true);
       if (arguments != nullptr)

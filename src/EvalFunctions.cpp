@@ -290,7 +290,7 @@ fn EvalContext::variable_names(Allocator result_allocator) const throws
         names.add(name);
       });
   variable_store().associative_names().for_each([&](StringView name) { names.add(name); });
-  if (bash_dynamic_variables_enabled()) {
+  if (runtime_state().bash_dynamic_variables_enabled()) {
     names.add(BASH_ARGUMENT_COUNT_VARIABLE);
     names.add(BASH_ARGUMENT_VALUE_VARIABLE);
   }
@@ -537,7 +537,9 @@ fn EvalContext::discard_inherited_signal_traps() throws -> void
 pure fn EvalContext::is_signal_ignored_at_startup(
     StringView condition) const wontthrow -> bool
 {
-  let const ignored = get_startup_ignored_signals();
+  let const ignored = runtime_state().is_bash_compatible()
+                          ? trap_store().startup_ignored_signals()
+                          : 0;
   if (ignored == 0) return false;
 
   let const number = os::signal_number_from_name(condition);
@@ -922,7 +924,7 @@ fn EvalContext::unmark_readonly(StringView name) throws -> void
 
 fn EvalContext::is_readonly(StringView name) const wontthrow -> bool
 {
-  if (bash_dynamic_variables_enabled() &&
+  if (runtime_state().bash_dynamic_variables_enabled() &&
       BASH_IMPLICIT_READONLY_NAMES.contains(name))
   {
     return true;
@@ -958,7 +960,7 @@ fn EvalContext::readonly_names() const throws
       out.push(steal(name));
   };
 
-  if (bash_dynamic_variables_enabled())
+  if (runtime_state().bash_dynamic_variables_enabled())
     for (let const &key : BASH_IMPLICIT_READONLY_KEYS)
       do_push_implicit(key);
 
@@ -998,7 +1000,7 @@ fn EvalContext::unmark_integer(StringView name) throws -> void
 
 fn EvalContext::is_integer_variable(StringView name) const wontthrow -> bool
 {
-  if (bash_dynamic_variables_enabled() && !is_dynamic_reader_unset(name) &&
+  if (runtime_state().bash_dynamic_variables_enabled() && !is_dynamic_reader_unset(name) &&
       BASH_IMPLICIT_INTEGER_NAMES.contains(name))
   {
     return true;

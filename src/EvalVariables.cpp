@@ -257,7 +257,7 @@ pure fn EvalContext::variable_requires_dynamic_lookup(
   if (is_bash_aliases_special(name)) return true;
   if (is_bash_directory_stack_special(name)) return true;
 
-  return bash_dynamic_variables_enabled() && !is_dynamic_reader_unset(name) &&
+  return runtime_state().bash_dynamic_variables_enabled() && !is_dynamic_reader_unset(name) &&
          BASH_DYNAMIC.find(name).has_value();
 }
 
@@ -271,7 +271,7 @@ pure fn EvalContext::is_write_discarded_dynamic_variable(
   if (let const info = ALWAYS_DYNAMIC.find(name); info.has_value())
     return info->write == dynamic_write::Discarded;
 
-  if (!bash_dynamic_variables_enabled()) return false;
+  if (!runtime_state().bash_dynamic_variables_enabled()) return false;
 
   let const info = BASH_DYNAMIC.find(name);
   return info.has_value() && info->write == dynamic_write::Discarded;
@@ -321,7 +321,7 @@ fn EvalContext::unset_dynamic_reader(StringView name) wontthrow -> void
 pure fn EvalContext::is_dynamic_write_owner(StringView name) const wontthrow
     -> bool
 {
-  if (!bash_dynamic_variables_enabled()) return false;
+  if (!runtime_state().bash_dynamic_variables_enabled()) return false;
 
   let const id = dynamic_reader_of(name);
 
@@ -332,7 +332,7 @@ pure fn EvalContext::is_dynamic_write_owner(StringView name) const wontthrow
 hot fn EvalContext::write_dynamic_variable(StringView name,
                                            StringView value) throws -> bool
 {
-  if (!bash_dynamic_variables_enabled()) return false;
+  if (!runtime_state().bash_dynamic_variables_enabled()) return false;
 
   let const id = dynamic_reader_of(name);
   if (!id.has_value()) return false;
@@ -528,7 +528,7 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
       }
     }
 
-    if (bash_dynamic_variables_enabled() && !is_dynamic_reader_unset(name)) {
+    if (runtime_state().bash_dynamic_variables_enabled() && !is_dynamic_reader_unset(name)) {
       if (let const info = BASH_DYNAMIC.find(name); info.has_value()) {
         switch (info->kind) {
         case dynamic_var::RANDOM:
@@ -648,7 +648,7 @@ fn EvalContext::append_dynamic_variable_names(
   for (let const &color : KOSH_ANSI_COLOR_ENTRIES)
     out.push(color.value.name);
 
-  if (!bash_dynamic_variables_enabled()) return;
+  if (!runtime_state().bash_dynamic_variables_enabled()) return;
 
   for (let const &entry : BASH_DYNAMIC.entries) {
     if (is_dynamic_reader_unset(entry.value.name)) continue;

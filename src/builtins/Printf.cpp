@@ -412,7 +412,7 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
    */
   usize format_index = 1;
   Maybe<String> store_variable;
-  if (cxt.bash_additions_enabled() && ec.args()[1] == "-v" &&
+  if (cxt.runtime_state().bash_additions_enabled() && ec.args()[1] == "-v" &&
       ec.args().count() >= 3)
   {
     store_variable = ec.args()[2];
@@ -490,7 +490,7 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       /* bash %(datefmt)T formats a time. The format sits in parentheses where
          the conversion letter would be, followed by T, and the operand is the
          epoch seconds, -1 for now and -2 for the shell start. */
-      if (cxt.bash_additions_enabled() && i < fmt.length() && fmt[i] == '(') {
+      if (cxt.runtime_state().bash_additions_enabled() && i < fmt.length() && fmt[i] == '(') {
         usize close = i + 1;
         while (close < fmt.length() && fmt[close] != ')')
           close++;

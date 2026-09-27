@@ -779,7 +779,7 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
         }
       };
 
-      if (bash_additions_enabled() &&
+      if (runtime_state().bash_additions_enabled() &&
           runtime_state().option_is_enabled(shell_option_id::Braceexpand) &&
           word_has_brace_candidate(*word))
       {

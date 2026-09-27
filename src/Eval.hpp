@@ -212,6 +212,14 @@ public:
   {
     return mood == mimic_mood::Posix;
   }
+  pure fn bash_dynamic_variables_enabled() const wontthrow -> bool
+  {
+    return !is_posix_mode();
+  }
+  pure fn bash_additions_enabled() const wontthrow -> bool
+  {
+    return !is_posix_mode();
+  }
 
   pure fn is_posix_option_on() const wontthrow -> bool
   {
@@ -1103,6 +1111,14 @@ public:
   pure fn shell_variables() const wontthrow -> const StringMap<String> &
   {
     return m_shell_variables;
+  }
+  fn history_limit(StringView name, usize fallback) const wontthrow -> usize
+  {
+    let const value = m_shell_variables.find(name);
+    if (!value.has_value()) return fallback;
+    let const parsed = value->view().to<i64>();
+    if (parsed.is_error() || parsed.value() < 0) return fallback;
+    return static_cast<usize>(parsed.value());
   }
   fn special_variable_definition_locations() wontthrow
       -> StringMap<SourceLocation> &
@@ -2225,7 +2241,7 @@ public:
   pure fn is_bash_special_array_active(bash_special_array_id id) const wontthrow
       -> bool
   {
-    return bash_dynamic_variables_enabled() &&
+    return runtime_state().bash_dynamic_variables_enabled() &&
            (m_variable_store.disabled_bash_special_arrays() &
             bash_special_array_mask(id)) == 0;
   }
@@ -2331,15 +2347,6 @@ public:
   fn suggest_similar_variable_name(StringView name) const throws
       -> Maybe<String>;
 
-  fn get_history_limit(StringView name, usize fallback) const wontthrow -> usize
-  {
-    let const value = variable_store().shell_variables().find(name);
-    if (!value.has_value()) return fallback;
-    let const parsed = value->view().to<i64>();
-    if (parsed.is_error() || parsed.value() < 0) return fallback;
-    return static_cast<usize>(parsed.value());
-  }
-
   hot fn has_variable_name(StringView name) const throws -> bool
   {
     return m_variable_store.shell_variables().find(name).has_value() ||
@@ -2362,18 +2369,10 @@ public:
     runtime_state().set_option(shell_option_id::Vi, enabled);
     if (enabled) runtime_state().set_option(shell_option_id::Emacs, false);
   }
-  pure fn vi_mode() const wontthrow -> bool
-  {
-    return runtime_state().option_is_enabled(shell_option_id::Vi);
-  }
   fn set_emacs_mode(bool enabled) wontthrow -> void
   {
     runtime_state().set_option(shell_option_id::Emacs, enabled);
     if (enabled) runtime_state().set_option(shell_option_id::Vi, false);
-  }
-  pure fn emacs_mode() const wontthrow -> bool
-  {
-    return runtime_state().option_is_enabled(shell_option_id::Emacs);
   }
 
   fn register_function(StringView name, const FunctionBodyHandle &body_storage,
@@ -2596,12 +2595,6 @@ public:
   fn reset_inherited_signal_traps() wontthrow -> void;
   pure fn did_reset_inherited_signal_traps() const wontthrow -> bool;
 
-  pure fn get_startup_ignored_signals() const wontthrow -> u64
-  {
-    return runtime_state().is_bash_compatible()
-               ? trap_store().startup_ignored_signals()
-               : 0;
-  }
   fn set_startup_ignored_signals(u64 signals) wontthrow -> void
   {
     trap_store().startup_ignored_signals() = signals;
@@ -2972,16 +2965,6 @@ public:
     return !runtime_state().is_posix_mode() && is_shopt_enabled("extglob")
                ? extglob_mode::Enabled
                : extglob_mode::Disabled;
-  }
-
-  pure fn bash_dynamic_variables_enabled() const wontthrow -> bool
-  {
-    return !runtime_state().is_posix_mode();
-  }
-
-  pure fn bash_additions_enabled() const wontthrow -> bool
-  {
-    return !runtime_state().is_posix_mode();
   }
 
   fn set_shopt_option(StringView name, bool is_enabled) throws -> void;

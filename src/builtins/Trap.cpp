@@ -269,7 +269,10 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           listed_trap{trap_listing_order(condition), condition, action.view()});
         });
 
-    let const ignored_signals = cxt.get_startup_ignored_signals();
+    let const ignored_signals =
+        cxt.runtime_state().is_bash_compatible()
+            ? cxt.trap_store().startup_ignored_signals()
+            : 0;
     let ignored_names = ArrayList<String>{cxt.scratch_allocator()};
     if (ignored_signals != 0) {
       ignored_names.reserve(os::ENTRY_IGNORED_SIGNAL_LIMIT);

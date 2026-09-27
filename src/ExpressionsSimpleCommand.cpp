@@ -346,7 +346,7 @@ fn AssignCommand::can_evaluate_in_process_substitution(
   unused(active_functions);
   return !is_async() && !is_timed() &&
          word_is_safe_for_in_process_substitution(
-             m_assignment->value_word(), cxt.bash_dynamic_variables_enabled());
+             m_assignment->value_word(), cxt.runtime_state().bash_dynamic_variables_enabled());
 }
 
 SimpleCommand::SimpleCommand(SourceLocation location,
@@ -426,7 +426,7 @@ fn SimpleCommand::can_evaluate_in_process_substitution(
     if (argument->kind() != Token::Kind::Word) continue;
     let const &word = static_cast<const tokens::WordToken *>(argument)->word();
     if (!word_is_safe_for_in_process_substitution(
-            word, cxt.bash_dynamic_variables_enabled()))
+            word, cxt.runtime_state().bash_dynamic_variables_enabled()))
       return false;
   }
 
@@ -1394,7 +1394,7 @@ fn internal::subshell_command_text(EvalContext &cxt,
   let const body_end = lexer::scan_balanced_shell_region(source, 1, ')');
   if (!body_end.has_value()) return text;
 
-  let const are_bash_additions_enabled = cxt.bash_additions_enabled();
+  let const are_bash_additions_enabled = cxt.runtime_state().bash_additions_enabled();
 
   text.reserve(source.length + 2);
   append_reprinted_subshell(text, source.substring_of_length(0, *body_end),
@@ -1413,7 +1413,7 @@ fn internal::append_word_source_text(EvalContext &cxt, String &out,
 {
   let const text = cxt.source_text_in_span(word.source_location(), 0);
   if (text.length != 0) {
-    out += reprinted_command_text(text, cxt.bash_additions_enabled());
+    out += reprinted_command_text(text, cxt.runtime_state().bash_additions_enabled());
 
     return;
   }

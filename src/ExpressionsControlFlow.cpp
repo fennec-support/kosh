@@ -44,7 +44,7 @@ static fn append_word_loop_header(EvalContext &cxt, String &header,
     -> void
 {
   if (!cxt.runtime_state().should_echo_expanded() &&
-      !cxt.bash_dynamic_variables_enabled() &&
+      !cxt.runtime_state().bash_dynamic_variables_enabled() &&
       !cxt.trap_store().has_debug_trap())
   {
     return;

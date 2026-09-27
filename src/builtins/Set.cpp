@@ -476,8 +476,10 @@ fn option_is_on(const EvalContext &cxt,
   case set_option_behavior::InteractiveComments:
     return cxt.is_shopt_enabled("interactive_comments");
   case set_option_behavior::Posix: return cxt.runtime_state().is_posix_option_on();
-  case set_option_behavior::Vi: return cxt.vi_mode();
-  case set_option_behavior::Emacs: return cxt.emacs_mode();
+  case set_option_behavior::Vi:
+    return cxt.runtime_state().option_is_enabled(shell_option_id::Vi);
+  case set_option_behavior::Emacs:
+    return cxt.runtime_state().option_is_enabled(shell_option_id::Emacs);
   case set_option_behavior::WarningLevel: return cxt.runtime_state().get_warning_level() > 0;
   case set_option_behavior::AnnoyingDiagnostics:
     return cxt.runtime_state().is_annoying_diagnostics_enabled();

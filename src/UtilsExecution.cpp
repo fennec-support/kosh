@@ -789,7 +789,8 @@ cold fn print_memory_report() wontthrow -> void
       try {
         let const history_size_limit =
             QUIT_CONTEXT != nullptr
-                ? QUIT_CONTEXT->get_history_limit("KOSH_HISTORY_SIZE", 4096)
+                ? QUIT_CONTEXT->variable_store().history_limit(
+                      "KOSH_HISTORY_SIZE", 4096)
                 : 4096;
         toiletline::exit(history_size_limit);
       } catch (const Error &e) {
