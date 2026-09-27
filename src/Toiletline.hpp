@@ -147,6 +147,4 @@ void exit_raw_mode();
 
 void emit_newlines(StringView buffer);
 
-bool did_debug_allocation_fail();
-
 } /* namespace toiletline */

@@ -176,10 +176,6 @@ FLAG(DEBUG_HIGHLIGHT_AT, String, '\0', "debug-highlight-at", Debug,
      "test driver.");
 FLAG(DEBUG_GHOST_AT, String, '\0', "debug-ghost-at", Debug,
      "Print the ghost completion result and operation counts, then exit.");
-FLAG(DEBUG_ARENA_LIFETIMES, Bool, '\0', "debug-arena-lifetimes", Debug,
-     "Check arena lifetime identities across release and reset.");
-FLAG(DEBUG_TOILETLINE_ALLOCATION, Bool, '\0', "debug-toiletline-allocation",
-     Debug, "Check toiletline allocation failure handling.");
 #endif
 
 #include "MainOperations.hpp"
@@ -647,8 +643,7 @@ fn kosh_main(int argc, char **argv) -> int
   }
 #if !defined NDEBUG
   if (FLAG_DEBUG_COMPLETE_AT.is_set() || FLAG_DEBUG_HIGHLIGHT_AT.is_set() ||
-      FLAG_DEBUG_GHOST_AT.is_set() || FLAG_DEBUG_ARENA_LIFETIMES.is_enabled() ||
-      FLAG_DEBUG_TOILETLINE_ALLOCATION.is_enabled())
+      FLAG_DEBUG_GHOST_AT.is_set())
   {
     should_be_interactive = false;
     should_read_files = false;
@@ -1044,9 +1039,7 @@ fn kosh_main(int argc, char **argv) -> int
 #if !defined NDEBUG
         is_driver_run = FLAG_DEBUG_COMPLETE_AT.is_set() ||
                         FLAG_DEBUG_HIGHLIGHT_AT.is_set() ||
-                        FLAG_DEBUG_GHOST_AT.is_set() ||
-                        FLAG_DEBUG_ARENA_LIFETIMES.is_enabled() ||
-                        FLAG_DEBUG_TOILETLINE_ALLOCATION.is_enabled();
+                        FLAG_DEBUG_GHOST_AT.is_set();
 #endif
         if (!is_driver_run) {
           LOG(Info, "reading the whole standard input");
@@ -1514,16 +1507,6 @@ fn kosh_main(int argc, char **argv) -> int
       if (FLAG_DEBUG_GHOST_AT.is_set() && !koshka::os::is_child_process()) {
         exit_code = koshka::run_debug_ghost_driver(FLAG_DEBUG_GHOST_AT.value(),
                                                    context);
-      }
-      if (FLAG_DEBUG_ARENA_LIFETIMES.is_enabled() &&
-          !koshka::os::is_child_process())
-      {
-        exit_code = koshka::run_debug_arena_lifetime_driver();
-      }
-      if (FLAG_DEBUG_TOILETLINE_ALLOCATION.is_enabled() &&
-          !koshka::os::is_child_process())
-      {
-        exit_code = koshka::run_debug_toiletline_allocation_driver();
       }
 #endif
       LOG(Info, "exiting after the final chunk with code %d", exit_code);

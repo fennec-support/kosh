@@ -128,12 +128,6 @@ koshka::EvalContext *COMPLETION_CONTEXT = nullptr;
 const koshka::Path *COMPLETION_BASE_DIRECTORY = nullptr;
 bool HIGHLIGHT_COLOR_ENABLED = false;
 bool HIGHLIGHT_STYLED_UNDERLINES_ENABLED = false;
-#if !defined NDEBUG
-usize DEBUG_COMPLETION_CWD_CAPTURE_COUNT = 0;
-usize DEBUG_COMPLETION_SOURCE_SCAN_COUNT = 0;
-usize DEBUG_COMPLETION_MATERIALIZED_COUNT = 0;
-usize DEBUG_COMPLETION_LISTING_COUNT = 0;
-#endif
 
 koshka::ArrayList<const char *> COMPLETION_CANDIDATE_POINTERS{
     koshka::heap_allocator()};
@@ -528,9 +522,6 @@ fn kosh_completion_callback(const char *buffer, size_t cursor,
   try {
     let const is_explicit_completion = for_listing != 0;
     if (is_explicit_completion) {
-#if !defined NDEBUG
-      DEBUG_COMPLETION_LISTING_COUNT++;
-#endif
       COMPLETION_CONTEXT->get_program_resolver().begin_explicit_completion(
           koshka::ProgramResolver::CompletionRefresh::Cached);
     }
@@ -573,10 +564,6 @@ fn kosh_completion_callback(const char *buffer, size_t cursor,
         for_listing != 0 ? koshka::completion::completion_mode::Listing
                          : koshka::completion::completion_mode::Ghost);
     let const &result = *COMPLETION_RESULT;
-#if !defined NDEBUG
-    DEBUG_COMPLETION_SOURCE_SCAN_COUNT += result.source_candidate_scan_count;
-    DEBUG_COMPLETION_MATERIALIZED_COUNT += result.materialized_candidate_count;
-#endif
     koshka::arm_message_leading_newline(false);
 
     /* An abandoned completion offers nothing, so the key leaves the line as it
@@ -1948,9 +1935,6 @@ fn get_input(const String &prompt) -> input_result
   let completion_base_directory = koshka::Maybe<Path>{};
   let completion_storage =
       koshka::Maybe<koshka::completion::completion_result>{};
-#if !defined NDEBUG
-  let const cwd_capture_count_before = DEBUG_COMPLETION_CWD_CAPTURE_COUNT;
-#endif
   if (is_completion_enabled()) {
     HIGHLIGHT_COLOR_ENABLED = colors::stdout_wants_color();
     HIGHLIGHT_STYLED_UNDERLINES_ENABLED =
@@ -1968,30 +1952,7 @@ fn get_input(const String &prompt) -> input_result
         false};
     COMPLETION_BASE_DIRECTORY = &*completion_base_directory;
     COMPLETION_RESULT = &*completion_storage;
-#if !defined NDEBUG
-    DEBUG_COMPLETION_CWD_CAPTURE_COUNT++;
-#endif
   }
-#if !defined NDEBUG
-  let const append_refresh_count_before = ::itl_g_debug_append_refresh_count;
-  let const full_refresh_count_before = ::itl_g_debug_full_refresh_count;
-  let const metrics_scan_count_before = ::itl_g_debug_metrics_scan_count;
-  let const line_serialization_count_before =
-      ::itl_g_debug_line_serialization_count;
-  let const history_scan_count_before = ::itl_g_debug_ghost_history_scan_count;
-  let const history_buffer_load_count_before =
-      ::itl_g_debug_history_buffer_load_count;
-  let const source_scan_count_before = DEBUG_COMPLETION_SOURCE_SCAN_COUNT;
-  let const materialized_count_before = DEBUG_COMPLETION_MATERIALIZED_COUNT;
-  let const listing_count_before = DEBUG_COMPLETION_LISTING_COUNT;
-  let const directory_stat_count_before = utils::debug_directory_stat_count();
-  let const directory_read_count_before = utils::debug_directory_read_count();
-  let const directory_sort_count_before = utils::debug_directory_sort_count();
-  let const executable_probe_count_before =
-      utils::debug_executable_probe_count();
-  let const program_path_candidate_count_before =
-      utils::debug_program_path_candidate_count();
-#endif
   let const history_path = get_active_history_file_path();
   if (history_path.has_value())
     unused(ensure_history_loaded(*history_path, true));
@@ -2017,74 +1978,6 @@ fn get_input(const String &prompt) -> input_result
   }
   COMPLETION_BASE_DIRECTORY = nullptr;
   COMPLETION_RESULT = nullptr;
-#if !defined NDEBUG
-  if (koshka::os::get_environment_variable("KOSH_TEST_EDITOR_STATS")
-          .has_value())
-  {
-    koshka::print_error(
-        "editor-refresh append=" +
-        koshka::String::from(::itl_g_debug_append_refresh_count -
-                                 append_refresh_count_before,
-                             koshka::heap_allocator()) +
-        " full=" +
-        koshka::String::from(::itl_g_debug_full_refresh_count -
-                                 full_refresh_count_before,
-                             koshka::heap_allocator()) +
-        " metrics=" +
-        koshka::String::from(::itl_g_debug_metrics_scan_count -
-                                 metrics_scan_count_before,
-                             koshka::heap_allocator()) +
-        " serializations=" +
-        koshka::String::from(::itl_g_debug_line_serialization_count -
-                                 line_serialization_count_before,
-                             koshka::heap_allocator()) +
-        " history-scans=" +
-        koshka::String::from(::itl_g_debug_ghost_history_scan_count -
-                                 history_scan_count_before,
-                             koshka::heap_allocator()) +
-        " history-loads=" +
-        koshka::String::from(::itl_g_debug_history_buffer_load_count -
-                                 history_buffer_load_count_before,
-                             koshka::heap_allocator()) +
-        " cwd=" +
-        koshka::String::from(DEBUG_COMPLETION_CWD_CAPTURE_COUNT -
-                                 cwd_capture_count_before,
-                             koshka::heap_allocator()) +
-        " stats=" +
-        koshka::String::from(utils::debug_directory_stat_count() -
-                                 directory_stat_count_before,
-                             koshka::heap_allocator()) +
-        " reads=" +
-        koshka::String::from(utils::debug_directory_read_count() -
-                                 directory_read_count_before,
-                             koshka::heap_allocator()) +
-        " sorts=" +
-        koshka::String::from(utils::debug_directory_sort_count() -
-                                 directory_sort_count_before,
-                             koshka::heap_allocator()) +
-        " probes=" +
-        koshka::String::from(utils::debug_executable_probe_count() -
-                                 executable_probe_count_before,
-                             koshka::heap_allocator()) +
-        " resolutions=" +
-        koshka::String::from(utils::debug_program_path_candidate_count() -
-                                 program_path_candidate_count_before,
-                             koshka::heap_allocator()) +
-        " scans=" +
-        koshka::String::from(DEBUG_COMPLETION_SOURCE_SCAN_COUNT -
-                                 source_scan_count_before,
-                             koshka::heap_allocator()) +
-        " materialized=" +
-        koshka::String::from(DEBUG_COMPLETION_MATERIALIZED_COUNT -
-                                 materialized_count_before,
-                             koshka::heap_allocator()) +
-        " listings=" +
-        koshka::String::from(DEBUG_COMPLETION_LISTING_COUNT -
-                                 listing_count_before,
-                             koshka::heap_allocator()) +
-        "\n");
-  }
-#endif
   if (code == TL_ERROR) {
     throw koshka::ErrorWithDetails{
         "Toiletline: could not read the input: " +
@@ -2133,13 +2026,6 @@ fn emit_newlines(StringView buffer) -> void
   if (::tl_emit_newlines(buffer.data) != TL_SUCCESS)
     throw koshka::Error{"Toiletline: could not write to the terminal: " +
                         koshka::os::last_system_error_message()};
-}
-
-fn did_debug_allocation_fail() -> bool
-{
-  let const allocation = tl_arena_malloc(static_cast<usize>(-1));
-  if (allocation != NULL) return false;
-  return true;
 }
 
 static constexpr usize PROMPT_PWD_LENGTH = 24;

@@ -941,8 +941,6 @@ fn exit_raw_mode() -> void {}
 
 fn emit_newlines(StringView buffer) -> void { unused(buffer); }
 
-fn did_debug_allocation_fail() -> bool { return true; }
-
 fn get_default_prompt_template() -> String
 {
   let template_string = String{koshka::heap_allocator()};
