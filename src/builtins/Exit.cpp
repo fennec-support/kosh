@@ -61,7 +61,7 @@ fn Exit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                 "too many arguments",
                                 "exit takes at most one status, e.g. `exit 1`");
 
-      if (cxt.shell_is_interactive()) return 2;
+      if (cxt.execution_store().shell_is_interactive()) return 2;
 
       status = 1;
     } else {

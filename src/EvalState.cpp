@@ -1810,11 +1810,6 @@ cold fn EvalContext::make_stats_string() const throws -> String
   return stats_text;
 }
 
-pure fn EvalContext::shell_is_interactive() const wontthrow -> bool
-{
-  return execution_store().shell_is_interactive();
-}
-
 fn RuntimeState::set_show_ast(bool enabled) wontthrow -> void
 {
   set_option(shell_option_id::ShowAst, enabled);

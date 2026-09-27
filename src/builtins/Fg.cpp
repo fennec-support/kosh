@@ -70,10 +70,11 @@ fn Fg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     command = command.substring_of_length(0, command.count() - 2);
   }
   ec.print_to_stdout(command + "\n");
-  if (cxt.shell_is_interactive()) toiletline::set_title(command);
+  if (cxt.execution_store().shell_is_interactive()) toiletline::set_title(command);
 
   let const should_reclaim =
-      cxt.shell_is_interactive() && os::shell_has_controlling_terminal();
+      cxt.execution_store().shell_is_interactive() &&
+      os::shell_has_controlling_terminal();
   let const should_reclaim_after_wait =
       should_reclaim && job->process_group_id > 0;
   let const do_resume_job = [&]() throws {

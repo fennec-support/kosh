@@ -2331,11 +2331,6 @@ public:
      without a deep copy and restores them by moving the saved list back. */
   fn take_positional_params() wontthrow -> ArrayList<String>;
 
-  fn set_last_argument(StringView value) throws -> void
-  {
-    execution_store().set_last_argument(String{value});
-  }
-
   fn notify_done_jobs() throws -> void;
 
   fn set_vi_mode(bool enabled) wontthrow -> void
@@ -3060,7 +3055,7 @@ public:
       return runtime_state().get_mood() == mimic_mood::Default;
     if (name == "expand_aliases")
       return runtime_state().get_mood() != mimic_mood::Bash ||
-             shell_is_interactive();
+             execution_store().shell_is_interactive();
     return shopt_default_is_on(name);
   }
   /* Whether bash ships the named shopt option enabled, the miss fallback for
@@ -3287,8 +3282,6 @@ public:
 
   fn write_xtrace(StringView command) throws -> void;
   fn write_xtrace(const ArrayList<String> &args) throws -> void;
-  pure fn shell_is_interactive() const wontthrow -> bool;
-
   fn set_startup_finished() wontthrow -> void
   {
     startup_store().mark_startup_finished();

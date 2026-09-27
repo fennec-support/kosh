@@ -55,7 +55,7 @@ static fn report_exec_resolution_error(ExecContext &ec, EvalContext &cxt,
     return command_status;
   }
 
-  if (cxt.shell_is_interactive()) return command_status;
+  if (cxt.execution_store().shell_is_interactive()) return command_status;
 
   utils::quit(command_status, utils::farewell_policy::Goodbye);
 }

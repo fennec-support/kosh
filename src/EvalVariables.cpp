@@ -603,7 +603,7 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
           return String::from(os::get_real_user_id(), heap_allocator());
         case dynamic_var::HISTCMD: {
           usize event_number = 0;
-          if (shell_is_interactive()) {
+          if (execution_store().shell_is_interactive()) {
             if (let const newest =
                     toiletline::get_newest_history_event_number();
                 newest.has_value())

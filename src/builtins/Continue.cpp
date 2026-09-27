@@ -57,7 +57,7 @@ fn Continue::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                 "'" + ec.args()[1] +
                                     "' is not a valid loop count");
 
-      if (!cxt.shell_is_interactive()) {
+      if (!cxt.execution_store().shell_is_interactive()) {
         if (cxt.in_subshell()) {
           cxt.request_exit(2, ec.source_location());
           return 2;

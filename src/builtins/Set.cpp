@@ -749,7 +749,7 @@ fn enabled_shell_option_letters(const EvalContext &cxt) throws -> String
       if (option_is_on(cxt, option)) letters.push('h');
       if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted))
         letters.push('r');
-      if (cxt.shell_is_interactive()) letters.push('i');
+      if (cxt.execution_store().shell_is_interactive()) letters.push('i');
       continue;
     }
     if (option.behavior == set_option_behavior::WarningLevel) {
@@ -915,7 +915,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         throw Error{"Unable to source the init moods outside of a parse"};
       let const previous_mood = cxt.runtime_state().get_mood();
       source_init_moods(cxt, *cxt.arena_store().parse_arena(), moods, cxt.startup_store().is_login_shell(),
-                        cxt.shell_is_interactive());
+                        cxt.execution_store().shell_is_interactive());
       cxt.runtime_state().set_mood(previous_mood);
       cxt.apply_strictness_for_mood();
       continue;

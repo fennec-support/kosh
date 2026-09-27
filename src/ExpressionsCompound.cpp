@@ -741,7 +741,7 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
       let const id = cxt.job_table_store().register_pipeline_job(
           children, last_child, "pipeline", process_group_id);
       did_register_job = true;
-      if (cxt.shell_is_interactive())
+      if (cxt.execution_store().shell_is_interactive())
         koshka::print_error(
             "[" + String::from(id, heap_allocator()) + "] " +
             String::from(static_cast<u64>(os::process_id_of(last_child)),

@@ -32,7 +32,8 @@ fn set_foreground_program_title(const ArrayList<String> &arguments,
 {
   if (arguments.is_empty()) return;
 
-  if (!cxt.shell_is_interactive() || !cxt.startup_store().startup_finished() ||
+  if (!cxt.execution_store().shell_is_interactive() ||
+      !cxt.startup_store().startup_finished() ||
       cxt.execution_store().completion_function_running() || cxt.execution_store().prompt_command_running())
   {
     return;
@@ -76,7 +77,8 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
     {
       LOG(Debug, "execute_context mimicking the shell for '%s'",
           ec.program().c_str());
-      if (cxt.shell_is_interactive() && os::shell_has_controlling_terminal()) {
+      if (cxt.execution_store().shell_is_interactive() &&
+          os::shell_has_controlling_terminal()) {
         let command = String{heap_allocator()};
         for (usize index = 0; index < ec.args().count(); index++) {
           if (index > 0) command.push(' ');
@@ -188,7 +190,8 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
 
   /* An interactive foreground command runs in its own process group and holds
      the terminal, so it dies on its own Ctrl-C. */
-  let const is_foreground_job = !is_async && cxt.shell_is_interactive() &&
+  let const is_foreground_job =
+      !is_async && cxt.execution_store().shell_is_interactive() &&
                                 os::shell_has_controlling_terminal();
 
   let command = String{heap_allocator()};
@@ -224,7 +227,7 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
     let const process_group_id = os::process_id_of(p);
     const i32 id =
         cxt.job_table_store().register_job(p, command, process_group_id);
-    if (cxt.shell_is_interactive())
+    if (cxt.execution_store().shell_is_interactive())
       koshka::print_error("[" + String::from(id, heap_allocator()) + "] " +
                           String::from(static_cast<u64>(os::process_id_of(p)),
                                        heap_allocator()) +
@@ -319,7 +322,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
   let const is_async = mode == execution_mode::Background;
   ASSERT(!ecs.is_empty());
 
-  if (!is_async && cxt.shell_is_interactive() &&
+  if (!is_async && cxt.execution_store().shell_is_interactive() &&
       cxt.startup_store().startup_finished() &&
       !cxt.execution_store().completion_function_running() && !cxt.execution_store().prompt_command_running())
   {
@@ -688,7 +691,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
       const i32 id = cxt.job_table_store().register_pipeline_job(
           children, last_child, job_command.view(), process_group_id);
       should_reap_children_on_unwind = false;
-      if (cxt.shell_is_interactive())
+      if (cxt.execution_store().shell_is_interactive())
         koshka::print_error(
             "[" + String::from(id, heap_allocator()) + "] " +
             String::from(static_cast<u64>(os::process_id_of(last_child)),
@@ -795,7 +798,7 @@ cold fn print_memory_report() wontthrow -> void
     }
 
     if (should_goodbye && QUIT_CONTEXT != nullptr &&
-        QUIT_CONTEXT->shell_is_interactive())
+        QUIT_CONTEXT->execution_store().shell_is_interactive())
     {
       if (let const farewell =
               QUIT_CONTEXT->get_variable_value("KOSH_FAREWELL");

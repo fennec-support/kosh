@@ -915,7 +915,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       }
     }
 
-    cxt.set_last_argument(last_argument.view());
+    cxt.execution_store().set_last_argument(String{last_argument.view()});
     cxt.publish_single_pipe_status(static_cast<i32>(function_ret));
     SET_AND_RETURN_EXIT_STATUS(cxt, function_ret);
   }
@@ -971,7 +971,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
 
     throw;
   }
-  cxt.set_last_argument(last_argument.view());
+  cxt.execution_store().set_last_argument(String{last_argument.view()});
 
   /* An assignment builtin with NAME=(...) array arguments applies them after it
      runs, in the scope the builtin selects. The builtin ran first, so a local

@@ -72,7 +72,8 @@ fn state_color(job::State state, jobs_color_mode color_mode) throws -> StringVie
 
 fn should_color_jobs(EvalContext &cxt) throws -> bool
 {
-  return cxt.shell_is_interactive() && colors::stdout_wants_color();
+  return cxt.execution_store().shell_is_interactive() &&
+         colors::stdout_wants_color();
 }
 
 } /* namespace */

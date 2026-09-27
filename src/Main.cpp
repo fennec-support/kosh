@@ -1393,7 +1393,7 @@ fn kosh_main(int argc, char **argv) -> int
     }
 
     bool should_execute_history_expansion = true;
-    if (context.shell_is_interactive() &&
+    if (context.execution_store().shell_is_interactive() &&
         context.runtime_state().option_is_enabled(koshka::shell_option_id::Histexpand) &&
         !script_contents.is_empty())
     {
@@ -1412,7 +1412,7 @@ fn kosh_main(int argc, char **argv) -> int
       }
     }
 
-    if (context.shell_is_interactive() &&
+    if (context.execution_store().shell_is_interactive() &&
         context.runtime_state().option_is_enabled(koshka::shell_option_id::History) &&
         !script_contents.is_empty())
     {
@@ -1433,10 +1433,11 @@ fn kosh_main(int argc, char **argv) -> int
         context.runtime_state().show_exit_code() ||
         context.runtime_state().stats_enabled();
     context.execution_store().terminal_exec_allowed() =
-        should_quit && !context.shell_is_interactive() &&
+        should_quit && !context.execution_store().shell_is_interactive() &&
         !context.has_exit_trap() && !should_print_post_run_trailer;
 
-    if (context.shell_is_interactive() && !script_contents.is_empty()) {
+    if (context.execution_store().shell_is_interactive() &&
+        !script_contents.is_empty()) {
       koshka::String ps0 = toiletline::render_ps0(context);
       if (!ps0.is_empty()) {
         koshka::print(ps0);

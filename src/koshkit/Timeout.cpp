@@ -303,7 +303,8 @@ fn Timeout::execute(const ExecContext &ec, EvalContext &cxt,
       steal(command_args), steal(command_locations));
   let const source = cxt.source_store().current_source();
   let const has_controlling_terminal =
-      cxt.shell_is_interactive() && os::shell_has_controlling_terminal();
+      cxt.execution_store().shell_is_interactive() &&
+      os::shell_has_controlling_terminal();
   let const process_group_mode =
       os::get_environment_variable("KOSH_TEST_TIMEOUT_JOB_LIFETIME") ==
               StringView{"leader"}

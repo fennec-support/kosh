@@ -134,7 +134,7 @@ fn CompoundCommand::evaluate_async(EvalContext &cxt) const throws -> i64
   command += " &";
   let const id =
       cxt.job_table_store().register_job(child, command.view(), process_id);
-  if (cxt.shell_is_interactive()) {
+  if (cxt.execution_store().shell_is_interactive()) {
     koshka::print_error(
         "[" + String::from(id, heap_allocator()) + "] " +
         String::from(static_cast<u64>(process_id), heap_allocator()) + "\n");
@@ -1607,7 +1607,7 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
   command += " &";
   let const id =
       cxt.job_table_store().register_job(child, command.view(), process_id);
-  if (cxt.shell_is_interactive()) {
+  if (cxt.execution_store().shell_is_interactive()) {
     koshka::print_error(
         "[" + String::from(id, heap_allocator()) + "] " +
         String::from(static_cast<u64>(process_id), heap_allocator()) + "\n");

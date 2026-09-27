@@ -301,7 +301,7 @@ static fn report_escaped_control_flow(EvalContext &context,
   case control_flow::Kind::Return: {
     /* A return at the top of a non-interactive script ends the shell with its
        status, the way dash treats a top-level return. */
-    if (!context.shell_is_interactive()) {
+    if (!context.execution_store().shell_is_interactive()) {
       i32 return_status = static_cast<i32>(control.value);
       context.control_flow_store().clear();
       context.run_exit_trap();
@@ -540,7 +540,8 @@ static fn run_script_contents(
             context.scope_store().alias_names(), &context,
             context.runtime_state().get_warning_level(),
             should_silence_unresolved_commands ||
-                (context.runtime_state().get_warning_level() > 0 && context.shell_is_interactive()),
+                (context.runtime_state().get_warning_level() > 0 &&
+                 context.execution_store().shell_is_interactive()),
             context.runtime_state().get_mood() == mimic_mood::Default,
             context.runtime_state().is_annoying_diagnostics_enabled(), shellcheck_suppressions,
             analysis_scope_definitions, shellcheck_directive_spans,
