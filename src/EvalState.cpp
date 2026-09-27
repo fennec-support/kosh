@@ -159,7 +159,7 @@ fn EvalContext::request_loop_control(control_flow::Kind kind, i64 level,
       execution_store().loop_depth());
   control_flow_store().request_loop_control(
       kind, level, execution_store().loop_depth(), location,
-      source_store().m_current_source, source_store().m_current_origin);
+      source_store().current_source(), source_store().current_origin());
 }
 
 fn EvalContext::request_break(i64 level, SourceLocation location) throws -> void
@@ -179,16 +179,16 @@ fn EvalContext::request_return(i64 status, SourceLocation location) throws
   LOG(Debug, "return requested, status %lld", (long long) status);
   trap_store().status_before_return() = execution_store().last_exit_status();
   control_flow_store().request_return(
-      status, location, source_store().m_current_source,
-      source_store().m_current_origin);
+      status, location, source_store().current_source(),
+      source_store().current_origin());
 }
 
 fn EvalContext::request_exit(i64 status, SourceLocation location) throws -> void
 {
   LOG(Debug, "exit requested, status %lld", (long long) status);
   control_flow_store().request_exit(
-      status, location, source_store().m_current_source,
-      source_store().m_current_origin);
+      status, location, source_store().current_source(),
+      source_store().current_origin());
 }
 
 fn EvalContext::set_current_source(const String *source,
@@ -227,7 +227,7 @@ fn EvalContext::push_root_source_frame(const String *parent_source,
 {
   ASSERT(kind != source_frame_kind::Ordinary);
 
-  source_store().m_source_frames.push(source_frame{
+  source_store().source_frames().push(source_frame{
       String{heap_allocator(), StringView{"the command line"}},
       call_site,
       parent_source, source_generation_for(parent_source),
@@ -238,8 +238,8 @@ fn EvalContext::push_root_source_frame(const String *parent_source,
 
 fn EvalContext::pop_root_source_frame() wontthrow -> void
 {
-  if (!source_store().m_source_frames.is_empty())
-    source_store().m_source_frames.pop_back();
+  if (!source_store().source_frames().is_empty())
+    source_store().source_frames().pop_back();
 }
 
 fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
@@ -249,8 +249,8 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
   if (!diagnostics_store().source_traces_enabled()) return;
 
   if (should_defer_for_source_file) {
-    for (usize i = source_store().m_source_frames.count(); i > 0; i--) {
-      let &frame = source_store().m_source_frames[i - 1];
+    for (usize i = source_store().source_frames().count(); i > 0; i--) {
+      let &frame = source_store().source_frames()[i - 1];
       if (!frame.should_defer_trace) continue;
       if (error_location.has_value()) {
         let const error_source_name = error_location->get_filename();
@@ -293,7 +293,7 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
   };
 
   let has_traceable_source_frame = false;
-  for (let const &frame : source_store().m_source_frames)
+  for (let const &frame : source_store().source_frames())
     if (borrowed_frame_source(frame) != nullptr &&
         frame.kind != source_frame_kind::SoleCliRoot)
     {
@@ -302,17 +302,17 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
     }
   if (!has_traceable_source_frame) return;
 
-  for (usize i = source_store().m_source_frames.count(); i > 0; i--) {
-    let &frame = source_store().m_source_frames[i - 1];
+  for (usize i = source_store().source_frames().count(); i > 0; i--) {
+    let &frame = source_store().source_frames()[i - 1];
     if (!do_frame_render(frame) || frame.was_printed) {
       continue;
     }
 
     let is_repeated_frame = false;
-    for (usize other_index = source_store().m_source_frames.count();
+    for (usize other_index = source_store().source_frames().count();
          other_index > i; other_index--)
     {
-      let const &other = source_store().m_source_frames[other_index - 1];
+      let const &other = source_store().source_frames()[other_index - 1];
       if (!do_frame_render(other) || !do_frame_identity_match(frame, other)) {
         continue;
       }

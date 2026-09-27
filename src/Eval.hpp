@@ -1670,7 +1670,97 @@ public:
   {
     m_mimicry_depth = depth;
   }
-
+  fn current_source() wontthrow -> const String *& { return m_current_source; }
+  pure fn current_source() const wontthrow -> const String *
+  {
+    return m_current_source;
+  }
+  fn current_origin() wontthrow -> String & { return m_current_origin; }
+  pure fn current_origin() const wontthrow -> const String &
+  {
+    return m_current_origin;
+  }
+  fn current_history_event_number() wontthrow -> Maybe<usize> &
+  {
+    return m_current_history_event_number;
+  }
+  pure fn current_history_event_number() const wontthrow -> Maybe<usize>
+  {
+    return m_current_history_event_number;
+  }
+  fn history_recording_root() wontthrow -> const Expression *&
+  {
+    return m_history_recording_root;
+  }
+  pure fn history_recording_root() const wontthrow -> const Expression *
+  {
+    return m_history_recording_root;
+  }
+  fn history_recording_source() wontthrow -> StringView &
+  {
+    return m_history_recording_source;
+  }
+  pure fn history_recording_source() const wontthrow -> StringView
+  {
+    return m_history_recording_source;
+  }
+  fn history_transaction_stack() wontthrow
+      -> ArrayList<ArrayList<String> *> &
+  {
+    return m_history_transaction_stack;
+  }
+  pure fn history_transaction_stack() const wontthrow
+      -> const ArrayList<ArrayList<String> *> &
+  {
+    return m_history_transaction_stack;
+  }
+  fn current_location() wontthrow -> SourceLocation & { return m_current_location; }
+  pure fn current_location() const wontthrow -> const SourceLocation &
+  {
+    return m_current_location;
+  }
+  fn source_frames() wontthrow -> ArrayList<source_frame> &
+  {
+    return m_source_frames;
+  }
+  pure fn source_frames() const wontthrow -> const ArrayList<source_frame> &
+  {
+    return m_source_frames;
+  }
+  fn retained_source_asts() wontthrow -> ArrayList<Expression *> &
+  {
+    return m_retained_source_asts;
+  }
+  pure fn retained_source_asts() const wontthrow
+      -> const ArrayList<Expression *> &
+  {
+    return m_retained_source_asts;
+  }
+  fn retained_sources() wontthrow -> ArrayList<String *> &
+  {
+    return m_retained_sources;
+  }
+  pure fn retained_sources() const wontthrow -> const ArrayList<String *> &
+  {
+    return m_retained_sources;
+  }
+  fn retained_source_generation() wontthrow -> u64 &
+  {
+    return m_retained_source_generation;
+  }
+  pure fn retained_source_generation() const wontthrow -> u64
+  {
+    return m_retained_source_generation;
+  }
+  fn current_source_generation() wontthrow -> u64 &
+  {
+    return m_current_source_generation;
+  }
+  pure fn current_source_generation() const wontthrow -> u64
+  {
+    return m_current_source_generation;
+  }
+private:
   const String *m_current_source{nullptr};
   String m_current_origin{heap_allocator()};
   Maybe<usize> m_current_history_event_number{None};
@@ -2647,7 +2737,7 @@ public:
   pure fn trap_trigger_line_number() const wontthrow -> Maybe<usize>
   {
     if (trap_store().trap_action_depth() == 0) return None;
-    if (source_store().m_source_frames.count() !=
+    if (source_store().source_frames().count() !=
         trap_store().trap_action_source_frame_count())
       return None;
     if (function_store().call_depth() !=
@@ -2854,8 +2944,8 @@ public:
   pure fn history_recording_source_for(const Expression *root) const wontthrow
       -> Maybe<StringView>
   {
-    if (root != source_store().m_history_recording_root) return None;
-    return source_store().m_history_recording_source;
+    if (root != source_store().history_recording_root()) return None;
+    return source_store().history_recording_source();
   }
   fn record_history_event(StringView command) throws -> bool;
   fn begin_history_transaction(ArrayList<String> &commands) throws -> void;
@@ -2895,7 +2985,7 @@ public:
      publication puts the saved value back. */
   pure fn get_current_location() const wontthrow -> SourceLocation
   {
-    return source_store().m_current_location;
+    return source_store().current_location();
   }
 
   fn set_shell_option_state(shell_option_id option, bool enabled) wontthrow

@@ -119,8 +119,8 @@ fn EvalContext::end_command() wontthrow -> void
 
 fn EvalContext::record_history_event(StringView command) throws -> bool
 {
-  if (!source_store().m_history_transaction_stack.is_empty()) {
-    source_store().m_history_transaction_stack.back()->push(
+  if (!source_store().history_transaction_stack().is_empty()) {
+    source_store().history_transaction_stack().back()->push(
         String{heap_allocator(), command});
     return true;
   }
@@ -186,7 +186,7 @@ hot fn EvalContext::assign_variable(StringView name, StringView value) throws
   variable_store().shell_variables().set(name, value);
   if (is_prompt_special_variable(name))
     variable_store().special_variable_definition_locations().set(
-        name, source_store().m_current_location);
+        name, source_store().current_location());
   if (is_exported(name)) {
     if (execution_store().subshell_depth() > 0)
       environment_store().environment_undo_log().push(environment_undo_entry{
@@ -601,7 +601,7 @@ fn EvalContext::append_indexed_array(StringView name,
 
 cold fn EvalContext::show_runtime_warning(StringView message) wontthrow -> void
 {
-  show_runtime_warning_at(source_store().m_current_location, message);
+  show_runtime_warning_at(source_store().current_location(), message);
 }
 
 cold fn EvalContext::show_runtime_warning_at(
@@ -631,7 +631,7 @@ cold fn EvalContext::show_runtime_warning_at(
     let warning = WarningWithLocationAndDetails{location, message, note};
     warning.set_line_offset(line_offset);
     show_message(warning.to_string(resolved_source.text->view(), this));
-    if (!source_store().m_source_frames.is_empty())
+    if (!source_store().source_frames().is_empty())
       print_source_backtrace(trace_location);
   } catch (...) {
     LOG(Debug, "formatting a runtime warning failed, the error is swallowed");
@@ -660,7 +660,7 @@ cold fn EvalContext::show_runtime_error_at(SourceLocation location,
     let error = ErrorWithLocation{location, message};
     error.set_line_offset(line_offset);
     show_message(error.to_string(resolved_source.text->view(), this));
-    if (!source_store().m_source_frames.is_empty())
+    if (!source_store().source_frames().is_empty())
       print_source_backtrace(trace_location);
   } catch (...) {
     LOG(Debug, "formatting a runtime error failed, the error is swallowed");
@@ -670,7 +670,7 @@ cold fn EvalContext::show_runtime_error_at(SourceLocation location,
 pure fn EvalContext::locate_variable_reference(StringView name) const wontthrow
     -> SourceLocation
 {
-  let fallback = source_store().m_current_location;
+  let fallback = source_store().current_location();
   if (name.is_empty()) return fallback;
   let const resolved_source = resolve_render_source(fallback);
   if (resolved_source.text == nullptr) return fallback;
@@ -766,8 +766,8 @@ fn EvalContext::report_unset_reference(StringView name) throws -> void
                         "' because the parameter is not set";
 
     let const reference = locate_variable_reference(name);
-    if (reference.position == source_store().m_current_location.position &&
-        reference.length == source_store().m_current_location.length)
+    if (reference.position == source_store().current_location().position &&
+        reference.length == source_store().current_location().length)
     {
       throw_script_fatal(String{message}, empty_expansion_note.view());
     }
@@ -800,12 +800,12 @@ fn EvalContext::warn_or_throw(bool fatal, bool explicitly_requested,
   }
   if (execution_store().completion_function_running()) return;
   if ((fatal || should_demote) && !runtime_state().is_diagnostics_disabled() &&
-      source_store().m_current_source != nullptr)
+      source_store().current_source() != nullptr)
   {
     try {
       let warning = WarningWithLocationAndDetails{location, message, note};
       show_message(
-          warning.to_string(source_store().m_current_source->view(), this));
+          warning.to_string(source_store().current_source()->view(), this));
     } catch (...) {
       LOG(Debug, "showing a located warning failed, the error is swallowed");
     }
@@ -1195,8 +1195,8 @@ fn EvalContext::push_function_call_name(
       function_store().call_sources().count() + 1);
   function_store().call_names().push(steal(owned_name));
   function_store().call_storages().push(body_storage);
-  function_store().call_locations().push(source_store().m_current_location);
-  function_store().call_sources().push(source_store().m_current_source);
+  function_store().call_locations().push(source_store().current_location());
+  function_store().call_sources().push(source_store().current_source());
 }
 
 fn EvalContext::pop_function_call_name() wontthrow -> void
@@ -1217,8 +1217,8 @@ pure fn EvalContext::script_source_frame_index() const wontthrow -> Maybe<usize>
 {
   if (!source_store().is_script_run()) return None;
 
-  for (usize i = 0; i < source_store().m_source_frames.count(); i++) {
-    let const &path = source_store().m_source_frames[i].source_path;
+  for (usize i = 0; i < source_store().source_frames().count(); i++) {
+    let const &path = source_store().source_frames()[i].source_path;
     if (path.is_empty()) continue;
 
     if (path.view() == execution_store().get_shell_name()) return i;
@@ -1249,19 +1249,19 @@ pure fn EvalContext::merged_frame_at(
 
   loop
   {
-    while (source_index < source_store().m_source_frames.count() &&
-           source_store().m_source_frames[source_index].source_path.is_empty())
+    while (source_index < source_store().source_frames().count() &&
+           source_store().source_frames()[source_index].source_path.is_empty())
     {
       source_index++;
     }
 
     let const has_source =
-        source_index < source_store().m_source_frames.count();
+        source_index < source_store().source_frames().count();
     let const has_function = function_index < function_count;
     if (!has_source && !has_function) break;
 
     if (has_source &&
-        source_store().m_source_frames[source_index].function_call_depth <=
+        source_store().source_frames()[source_index].function_call_depth <=
             function_index)
     {
       if (emitted_count == target) {
@@ -1343,7 +1343,7 @@ fn EvalContext::funcname_line_at(usize index) const throws -> usize
         function_store().call_locations()[frame.storage_index],
         function_store().call_sources()[frame.storage_index]);
   case MergedFrame::Kind::Source: {
-    let const &source = source_store().m_source_frames[frame.storage_index];
+    let const &source = source_store().source_frames()[frame.storage_index];
     return line_number_at_location(source.call_site,
                                    borrowed_frame_source(source));
   }
@@ -1378,7 +1378,7 @@ pure fn EvalContext::bash_source_frame_at(usize index) const wontthrow
   }
   case MergedFrame::Kind::Source:
     return source_store()
-        .m_source_frames[frame.storage_index]
+        .source_frames()[frame.storage_index]
         .source_path.view();
   case MergedFrame::Kind::Main: break;
   }
@@ -1391,8 +1391,8 @@ pure fn EvalContext::bash_source_frame_count(
 {
   usize frame_count = function_store().call_names().count();
 
-  for (usize i = 0; i < source_store().m_source_frames.count(); i++) {
-    if (!source_store().m_source_frames[i].source_path.is_empty())
+  for (usize i = 0; i < source_store().source_frames().count(); i++) {
+    if (!source_store().source_frames()[i].source_path.is_empty())
       frame_count++;
   }
 

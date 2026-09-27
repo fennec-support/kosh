@@ -738,7 +738,7 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
                     break;
                   }
                 let const source_location = segment.get_source_location(
-                    source_store().m_current_location.source_name_index);
+                    source_store().current_location().source_name_index);
                 value += apply_parameter_expansion(
                     spec,
                     source_location.has_value() ? &*source_location : nullptr);

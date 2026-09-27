@@ -469,7 +469,7 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
         }
 
         return String::from(
-            line_number_at_location(source_store().m_current_location),
+            line_number_at_location(source_store().current_location()),
             heap_allocator());
       }
       case dynamic_var::KOSH_GIT_BRANCH: {

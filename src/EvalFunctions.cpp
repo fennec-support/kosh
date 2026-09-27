@@ -86,21 +86,21 @@ fn EvalContext::register_function(StringView name,
   let info = function_definition_info{};
   info.body_start_position = body_start_position;
   info.header_length = name.length + StringView{" () \n"}.length;
-  if (source_store().m_current_source != nullptr && !definition_text.is_empty())
+  if (source_store().current_source() != nullptr && !definition_text.is_empty())
   {
     /* The body opens on the copy's second line, because the synthesized header
        occupies the first one. A body that opens on the defining file's first
        line therefore shifts back by one. */
     let const body_line = static_cast<isize>(utils::line_number_at(
-        source_store().m_current_source->view(), body_start_position));
+        source_store().current_source()->view(), body_start_position));
     info.line_offset = body_line - 2;
   }
 
-  if (source_store().m_current_source != nullptr &&
-      definition_location.position < source_store().m_current_source->count())
+  if (source_store().current_source() != nullptr &&
+      definition_location.position < source_store().current_source()->count())
   {
     info.definition_line = utils::line_number_at(
-        source_store().m_current_source->view(), definition_location.position);
+        source_store().current_source()->view(), definition_location.position);
   }
 
   info.source_name_index = definition_location.source_name_index;
@@ -126,7 +126,7 @@ pure fn EvalContext::resolve_render_source(
   let resolved_source = resolved_render_source{};
   resolved_source.text = fallback_source != nullptr
                              ? fallback_source
-                             : source_store().m_current_source;
+                             : source_store().current_source();
 
   if (function_store().call_names().is_empty()) return resolved_source;
 
@@ -382,11 +382,11 @@ fn EvalContext::run_named_trap(StringView condition,
       trap_store().trap_action_function_depth();
   let const trigger_site = trigger_location != nullptr
                                ? *trigger_location
-                               : source_store().m_current_location;
+                               : source_store().current_location();
   trap_store().trap_trigger_line_number() =
       line_number_at_location(trigger_site);
   trap_store().trap_action_source_frame_count() =
-      source_store().m_source_frames.count() + 1;
+      source_store().source_frames().count() + 1;
   trap_store().trap_action_function_depth() = function_store().call_depth();
   defer
   {
@@ -729,7 +729,7 @@ fn EvalContext::run_pending_traps() throws -> void
             cached_trap_body(name->view(), action->view());
 
         run_source(action->view(), "the " + *name + " trap",
-                   source_store().m_current_location, None, nullptr,
+                   source_store().current_location(), None, nullptr,
                    cached_action.has_value() ? &cached_action : nullptr,
                    return_handling::Reject);
       }
@@ -777,7 +777,7 @@ fn EvalContext::run_pending_traps() throws -> void
 
         LOG(Info, "running the trap action for signal 'CHLD'");
         run_source(action.view(), "the CHLD trap",
-                   source_store().m_current_location, None, nullptr,
+                   source_store().current_location(), None, nullptr,
                    cached_child_body, return_handling::Reject);
       }
     }
