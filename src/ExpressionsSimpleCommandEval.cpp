@@ -825,11 +825,11 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         definition_info != nullptr &&
         (definition_info->defining_runtime.mood != cxt.runtime_state().get_mood() ||
          definition_info->defining_runtime.warning_level !=
-             cxt.warning_level() ||
+             cxt.runtime_state().get_warning_level() ||
          definition_info->defining_runtime.is_diagnostics_disabled() !=
-             cxt.diagnostics_disabled() ||
+             cxt.runtime_state().is_diagnostics_disabled() ||
          definition_info->defining_runtime.is_annoying_diagnostics_enabled() !=
-             cxt.annoying_diagnostics_enabled());
+             cxt.runtime_state().is_annoying_diagnostics_enabled());
     Maybe<function_runtime_state> saved_runtime_state = None;
     if (needs_state_swap) {
       saved_runtime_state =

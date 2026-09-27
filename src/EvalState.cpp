@@ -1888,46 +1888,6 @@ pure fn RuntimeState::memory_stats_enabled() const wontthrow -> bool
   return option_is_enabled(shell_option_id::ShowMemory);
 }
 
-fn EvalContext::set_diagnostics_disabled(bool disabled) wontthrow -> void
-{
-  m_runtime.set_diagnostics_disabled(disabled);
-}
-
-pure fn EvalContext::diagnostics_disabled() const wontthrow -> bool
-{
-  return m_runtime.is_diagnostics_disabled();
-}
-
-fn EvalContext::set_annoying_diagnostics_enabled(bool enabled) wontthrow -> void
-{
-  m_runtime.set_annoying_diagnostics_enabled(enabled);
-}
-
-pure fn EvalContext::annoying_diagnostics_enabled() const wontthrow -> bool
-{
-  return m_runtime.is_annoying_diagnostics_enabled();
-}
-
-fn EvalContext::set_login_shell(bool enabled) wontthrow -> void
-{
-  startup_store().set_login_shell(enabled);
-}
-
-pure fn EvalContext::is_login_shell() const wontthrow -> bool
-{
-  return startup_store().is_login_shell();
-}
-
-fn EvalContext::set_custom_rcfile(bool enabled) wontthrow -> void
-{
-  startup_store().set_custom_rcfile(enabled);
-}
-
-pure fn EvalContext::has_custom_rcfile() const wontthrow -> bool
-{
-  return startup_store().has_custom_rcfile();
-}
-
 /* The arithmetic engine, the ArithmeticParser, the cached-token fast path, and
    the EvalContext arithmetic methods, lives in EvalArithmetic.cpp. */
 

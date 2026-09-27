@@ -607,7 +607,7 @@ cold fn EvalContext::show_runtime_warning_at(
     SourceLocation location, StringView message, StringView note,
     bool should_ignore_disabled) wontthrow -> void
 {
-  if (diagnostics_disabled() && !should_ignore_disabled) return;
+  if (runtime_state().is_diagnostics_disabled() && !should_ignore_disabled) return;
   let const trace_location = location;
   /* The stamped view may outlive its buffer once the defining command's sources
      are freed, so a windowed resolution swaps in the definition copy's owned
@@ -798,7 +798,7 @@ fn EvalContext::warn_or_throw(bool fatal, bool explicitly_requested,
     throw ErrorWithLocationAndDetails{location, message, note};
   }
   if (execution_store().completion_function_running()) return;
-  if ((fatal || should_demote) && !diagnostics_disabled() &&
+  if ((fatal || should_demote) && !runtime_state().is_diagnostics_disabled() &&
       source_store().m_current_source != nullptr)
   {
     try {

@@ -488,8 +488,8 @@ static fn run_script_contents(
         (FLAG_OPTIMIZER_DIAGNOSTICS.is_enabled() ||
          ((context.runtime_state().no_exec() ||
            !(context.runtime_state().is_bash_compatible() || context.runtime_state().is_posix_mode()) ||
-           context.warnings_enabled()) &&
-          !context.diagnostics_disabled()));
+           context.runtime_state().get_warning_level() > 0) &&
+          !context.runtime_state().is_diagnostics_disabled()));
 
     /* A run that only lints holds one top-level command at a time, so the peak
        memory of a large script is the memory of its widest command. */
@@ -629,11 +629,11 @@ static fn run_script_contents(
         return analyze_ast(
             ast, script_contents, context.function_names(),
             context.scope_store().alias_names(), &context,
-            context.warning_level(),
+            context.runtime_state().get_warning_level(),
             should_silence_unresolved_commands ||
-                (context.warnings_enabled() && context.shell_is_interactive()),
+                (context.runtime_state().get_warning_level() > 0 && context.shell_is_interactive()),
             context.runtime_state().get_mood() == mimic_mood::Default,
-            context.annoying_diagnostics_enabled(), shellcheck_suppressions,
+            context.runtime_state().is_annoying_diagnostics_enabled(), shellcheck_suppressions,
             analysis_scope_definitions, shellcheck_directive_spans,
             heredoc_terminator_misses,
             FLAG_OPTIMIZER_DIAGNOSTICS.is_enabled(), &followed_source_paths,
@@ -804,17 +804,17 @@ static fn run_lint_document_contents(
                                diagnostic_sink, true, false, should_print_ast);
 
   let const saved_mood = context.runtime_state().get_mood();
-  let const saved_warning_level = context.warning_level();
+  let const saved_warning_level = context.runtime_state().get_warning_level();
   defer
   {
     context.runtime_state().set_mood(saved_mood);
-    context.set_warning_level(saved_warning_level);
+    context.runtime_state().set_warning_level(saved_warning_level);
   };
 
   int status = EXIT_SUCCESS;
   for (let const &fragment : document.fragments) {
     context.runtime_state().set_mood(fragment.mood);
-    context.set_warning_level(fragment.mood == mimic_mood::Default ? 0 : 3);
+    context.runtime_state().set_warning_level(fragment.mood == mimic_mood::Default ? 0 : 3);
     let const fragment_status = run_script_contents(
         fragment.analysis_source, context, ast_arena, filename, nullptr,
         nullptr, None, diagnostic_totals, diagnostic_sink, false,

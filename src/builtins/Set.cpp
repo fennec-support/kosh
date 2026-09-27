@@ -477,12 +477,12 @@ fn option_is_on(const EvalContext &cxt,
   case set_option_behavior::Posix: return cxt.runtime_state().is_posix_option_on();
   case set_option_behavior::Vi: return cxt.vi_mode();
   case set_option_behavior::Emacs: return cxt.emacs_mode();
-  case set_option_behavior::WarningLevel: return cxt.warning_level() > 0;
+  case set_option_behavior::WarningLevel: return cxt.runtime_state().get_warning_level() > 0;
   case set_option_behavior::AnnoyingDiagnostics:
-    return cxt.annoying_diagnostics_enabled();
-  case set_option_behavior::NoDiagnostics: return cxt.diagnostics_disabled();
-  case set_option_behavior::Login: return cxt.is_login_shell();
-  case set_option_behavior::Rcfile: return cxt.has_custom_rcfile();
+    return cxt.runtime_state().is_annoying_diagnostics_enabled();
+  case set_option_behavior::NoDiagnostics: return cxt.runtime_state().is_diagnostics_disabled();
+  case set_option_behavior::Login: return cxt.startup_store().is_login_shell();
+  case set_option_behavior::Rcfile: return cxt.startup_store().has_custom_rcfile();
   }
   unreachable("Unhandled set option behavior");
 }
@@ -539,17 +539,17 @@ fn apply_or_reject_option(EvalContext &cxt, const set_option_descriptor &option,
   case set_option_behavior::WarningLevel:
     cxt.note_warning_option_mutation();
     if (should_step_warning_level)
-      cxt.set_warnings_enabled(enable);
+      cxt.runtime_state().set_warnings_enabled(enable);
     else
-      cxt.set_warning_level(enable ? 1 : 0);
+      cxt.runtime_state().set_warning_level(enable ? 1 : 0);
     break;
   case set_option_behavior::AnnoyingDiagnostics:
     cxt.note_annoying_diagnostics_option_mutation();
-    cxt.set_annoying_diagnostics_enabled(enable);
+    cxt.runtime_state().set_annoying_diagnostics_enabled(enable);
     break;
   case set_option_behavior::NoDiagnostics:
     cxt.note_diagnostics_option_mutation();
-    cxt.set_diagnostics_disabled(enable);
+    cxt.runtime_state().set_diagnostics_disabled(enable);
     break;
   case set_option_behavior::Login:
   case set_option_behavior::Rcfile: unreachable("Startup fact was applied");
@@ -751,7 +751,7 @@ fn enabled_shell_option_letters(const EvalContext &cxt) throws -> String
       continue;
     }
     if (option.behavior == set_option_behavior::WarningLevel) {
-      for (u8 warning_level = 0; warning_level < cxt.warning_level();
+      for (u8 warning_level = 0; warning_level < cxt.runtime_state().get_warning_level();
            warning_level++)
         letters.push('W');
       continue;
@@ -847,7 +847,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                 "', expected 'kosh', 'bash', 'sh', or 'bash-posix'");
       cxt.runtime_state().set_mood(*parsed);
       cxt.note_warning_option_mutation();
-      cxt.set_warning_level(0);
+      cxt.runtime_state().set_warning_level(0);
       cxt.apply_strictness_for_mood();
       cxt.note_explicit_mood();
       continue;
@@ -912,7 +912,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       if (cxt.arena_store().parse_arena() == nullptr)
         throw Error{"Unable to source the init moods outside of a parse"};
       let const previous_mood = cxt.runtime_state().get_mood();
-      source_init_moods(cxt, *cxt.arena_store().parse_arena(), moods, cxt.is_login_shell(),
+      source_init_moods(cxt, *cxt.arena_store().parse_arena(), moods, cxt.startup_store().is_login_shell(),
                         cxt.shell_is_interactive());
       cxt.runtime_state().set_mood(previous_mood);
       cxt.apply_strictness_for_mood();

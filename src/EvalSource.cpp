@@ -112,8 +112,8 @@ fn EvalContext::run_program_fallback(ExecContext &ec, mimic_mood mode,
   fallback_context.runtime_state().set_koshkit(runtime_state().koshkit());
   fallback_context.runtime_state().set_mimicry(
       runtime_state().is_mimicry_enabled());
-  fallback_context.set_warning_level(warning_level());
-  fallback_context.set_diagnostics_disabled(diagnostics_disabled());
+  fallback_context.runtime_state().set_warning_level(runtime_state().get_warning_level());
+  fallback_context.runtime_state().set_diagnostics_disabled(runtime_state().is_diagnostics_disabled());
   fallback_context.set_source_traces_enabled(should_print_source_traces());
   fallback_context.source_store().m_source_frames.reserve(
       source_store().m_source_frames.count());

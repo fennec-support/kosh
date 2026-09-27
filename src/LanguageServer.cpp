@@ -263,9 +263,9 @@ fn Server::select_document_mood(const Document &document) wontthrow -> void
 {
   m_context.runtime_state().set_mood(document.mood);
   m_context.apply_strictness_for_mood();
-  m_context.set_warning_level(3);
-  m_context.set_diagnostics_disabled(false);
-  m_context.set_annoying_diagnostics_enabled(true);
+  m_context.runtime_state().set_warning_level(3);
+  m_context.runtime_state().set_diagnostics_disabled(false);
+  m_context.runtime_state().set_annoying_diagnostics_enabled(true);
 }
 
 fn Server::read_source(const Path &canonical_path) throws -> Maybe<String>

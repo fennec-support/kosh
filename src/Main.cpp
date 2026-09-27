@@ -758,9 +758,9 @@ fn kosh_main(int argc, char **argv) -> int
   context.runtime_state().set_show_all_exit_codes(
       FLAG_ALL_EXIT_CODES.is_enabled());
   context.runtime_state().set_memory_stats_enabled(FLAG_MEMORY.is_enabled());
-  context.set_diagnostics_disabled(FLAG_SUPPRESS_DIAGNOSTICS.is_enabled() &&
+  context.runtime_state().set_diagnostics_disabled(FLAG_SUPPRESS_DIAGNOSTICS.is_enabled() &&
                                    !FLAG_LINT.is_enabled());
-  context.set_annoying_diagnostics_enabled(
+  context.runtime_state().set_annoying_diagnostics_enabled(
       FLAG_LINT.is_enabled() ||
       !FLAG_SUPPRESS_ANNOYING_DIAGNOSTICS.is_enabled());
   context.set_source_traces_enabled(!FLAG_NO_TRACES.is_enabled());
@@ -770,8 +770,8 @@ fn kosh_main(int argc, char **argv) -> int
                                  FLAG_ONE_COMMAND.is_enabled());
   if (should_execute_commands)
     context.set_execution_string(FLAG_COMMAND.get(0));
-  context.set_login_shell(is_login_shell);
-  context.set_custom_rcfile(koshka::selected_rcfile().has_value());
+  context.startup_store().set_login_shell(is_login_shell);
+  context.startup_store().set_custom_rcfile(koshka::selected_rcfile().has_value());
   if (is_restricted_shell) context.request_restricted_shell();
   /* The startup files source with strictness off, since they read unset
      variables such as $BASH_VERSION on the /etc/profile path. The session
@@ -794,7 +794,7 @@ fn kosh_main(int argc, char **argv) -> int
   let warning_level = specified_warning_level;
   if (FLAG_LINT.is_enabled())
     warning_level = session_mood == koshka::mimic_mood::Default ? 0 : 3;
-  context.set_warning_level(warning_level);
+  context.runtime_state().set_warning_level(warning_level);
   context.runtime_state().set_pipefail(false);
   context.runtime_state().set_no_clobber(FLAG_NO_CLOBBER.is_enabled());
   context.runtime_state().set_export_all(FLAG_EXPORT_ALL.is_enabled());
@@ -951,9 +951,9 @@ fn kosh_main(int argc, char **argv) -> int
                                   : "privileged");
   } else {
     /* --no-init-diagnostics disables analysis while startup files source. */
-    let const saved_diagnostics_disabled = context.diagnostics_disabled();
+    let const saved_diagnostics_disabled = context.runtime_state().is_diagnostics_disabled();
     if (FLAG_SUPPRESS_INIT_DIAGNOSTICS.is_enabled())
-      context.set_diagnostics_disabled(true);
+      context.runtime_state().set_diagnostics_disabled(true);
 
     let const saved_diagnostics_mutation_revision =
         context.diagnostics_mutation_revision();
@@ -969,7 +969,7 @@ fn kosh_main(int argc, char **argv) -> int
       if (context.diagnostics_mutation_revision() ==
           saved_diagnostics_mutation_revision)
       {
-        context.set_diagnostics_disabled(saved_diagnostics_disabled);
+        context.runtime_state().set_diagnostics_disabled(saved_diagnostics_disabled);
       }
     }
   }
@@ -986,7 +986,7 @@ fn kosh_main(int argc, char **argv) -> int
   if (!context.was_mood_set_explicitly()) context.runtime_state().set_mood(session_mood);
   context.apply_strictness_for_mood();
   if (FLAG_LINT.is_enabled()) {
-    context.set_warning_level(
+    context.runtime_state().set_warning_level(
         context.runtime_state().get_mood() == koshka::mimic_mood::Default ? 0 : 3);
   }
 
@@ -1187,7 +1187,7 @@ fn kosh_main(int argc, char **argv) -> int
                 context.apply_strictness_for_mood();
 
                 if (FLAG_LINT.is_enabled()) {
-                  context.set_warning_level(
+                  context.runtime_state().set_warning_level(
                       context.runtime_state().get_mood() == koshka::mimic_mood::Default ? 0 : 3);
                 }
               }

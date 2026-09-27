@@ -239,6 +239,16 @@ public:
     return option_is_enabled(shell_option_id::Mimicry);
   }
 
+  fn set_warning_level(u8 level) wontthrow -> void { warning_level = level; }
+  pure fn get_warning_level() const wontthrow -> u8 { return warning_level; }
+  fn set_warnings_enabled(bool enabled) wontthrow -> void
+  {
+    if (!enabled)
+      warning_level = 0;
+    else if (warning_level < 3)
+      warning_level++;
+  }
+
   fn set_option(shell_option_id option, bool enabled) wontthrow -> void
   {
     if (enabled)
@@ -2803,34 +2813,15 @@ public:
   {
     return runtime_control_store().is_warning_suppressed(which);
   }
-  fn set_warnings_enabled(bool enabled) wontthrow -> void
-  {
-    if (!enabled)
-      m_runtime.warning_level = 0;
-    else if (m_runtime.warning_level < 3)
-      m_runtime.warning_level++;
-  }
   fn note_warning_option_mutation() wontthrow -> void
   {
     runtime_control_store().note_warning_option_mutation();
   }
-  pure fn warnings_enabled() const wontthrow -> bool
-  {
-    return m_runtime.warning_level > 0;
-  }
-  pure fn warning_level() const wontthrow -> u8
-  {
-    return m_runtime.warning_level;
-  }
-  fn set_warning_level(u8 level) wontthrow -> void
-  {
-    m_runtime.warning_level = level;
-  }
   pure fn strict_diagnostics_are_warnings() const wontthrow -> bool
   {
     if (runtime_state().get_mood() == mimic_mood::Default)
-      return warning_level() >= 3;
-    return warning_level() >= 1;
+      return runtime_state().get_warning_level() >= 3;
+    return runtime_state().get_warning_level() >= 1;
   }
   /* A reference to an unset variable, fatal under set -u, downgraded to a
      warning under -W unless the set -u was explicit, else expanded to empty. */
@@ -2926,10 +2917,10 @@ public:
   {
     let const previous = RuntimeState::capture(*this);
     runtime_state().set_mood(defining_runtime.mood);
-    set_warning_level(defining_runtime.warning_level);
-    m_runtime.set_diagnostics_disabled(
+    runtime_state().set_warning_level(defining_runtime.warning_level);
+    runtime_state().set_diagnostics_disabled(
         defining_runtime.is_diagnostics_disabled());
-    m_runtime.set_annoying_diagnostics_enabled(
+    runtime_state().set_annoying_diagnostics_enabled(
         defining_runtime.is_annoying_diagnostics_enabled());
     apply_strictness_for_mood();
     return function_runtime_state{
@@ -3008,13 +2999,13 @@ public:
       runtime_state().set_mood(finished.mood);
     if (state.warning_mutation_revision !=
         runtime_control_store().warning_mutation_revision())
-      set_warning_level(finished.warning_level);
+      runtime_state().set_warning_level(finished.warning_level);
     if (state.diagnostics_mutation_revision !=
         runtime_control_store().diagnostics_mutation_revision())
-      m_runtime.set_diagnostics_disabled(finished.is_diagnostics_disabled());
+      runtime_state().set_diagnostics_disabled(finished.is_diagnostics_disabled());
     if (state.annoying_diagnostics_mutation_revision !=
         runtime_control_store().annoying_diagnostics_mutation_revision())
-      m_runtime.set_annoying_diagnostics_enabled(
+      runtime_state().set_annoying_diagnostics_enabled(
           finished.is_annoying_diagnostics_enabled());
   }
 
@@ -3378,20 +3369,6 @@ public:
   fn make_stats_string() const throws -> String;
 
   /* The granular memory report at exit, requested by --show-memory. */
-
-  /* The --no-diagnostics skip, so set -o no-diagnostics flips the per-chunk
-     analysis gate at runtime. */
-  fn set_diagnostics_disabled(bool disabled) wontthrow -> void;
-  pure fn diagnostics_disabled() const wontthrow -> bool;
-  fn set_annoying_diagnostics_enabled(bool enabled) wontthrow -> void;
-  pure fn annoying_diagnostics_enabled() const wontthrow -> bool;
-
-  /* The startup facts set -o reports read-only, mirrored from the invocation
-     flags once at startup and fixed for the session. */
-  fn set_login_shell(bool enabled) wontthrow -> void;
-  pure fn is_login_shell() const wontthrow -> bool;
-  fn set_custom_rcfile(bool enabled) wontthrow -> void;
-  pure fn has_custom_rcfile() const wontthrow -> bool;
 
 protected:
   StartupStore m_startup_store{};
