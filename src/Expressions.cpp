@@ -1305,7 +1305,7 @@ cold fn expressions::internal::report_command_resolution_error(
     EvalContext &cxt, const CommandResolutionErrorWithLocation &e) throws
     -> void
 {
-  const String *source = cxt.current_source();
+  const String *source = cxt.source_store().current_source();
   show_message(
       e.to_string(source != nullptr ? source->view() : StringView{}, &cxt));
   cxt.print_source_backtrace(e.location());

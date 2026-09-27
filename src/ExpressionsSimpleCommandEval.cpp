@@ -491,7 +491,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
        it is not recovered. The defers above put the partial redirections
        back. */
     if (is_command_special_builtin) throw;
-    const String *source = cxt.current_source();
+    const String *source = cxt.source_store().current_source();
     show_message(redirection_error.to_string(
         source != nullptr ? source->view() : StringView{}, &cxt));
     /* bash reports a redirection failure with status 1 and dash with 2. */
@@ -922,7 +922,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
 
   Maybe<ExecContext> resolved_ec;
   try {
-    let const *source = cxt.current_source();
+    let const *source = cxt.source_store().current_source();
     resolved_ec = ExecContext::make_from(
         source_location(), source != nullptr ? source->view() : StringView{},
         steal(program_args), cxt.koshkit_utilities_are_reachable(),
@@ -962,7 +962,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       {
         show_message(error.to_string(*windowed, &cxt));
       } else {
-        const String *source = cxt.current_source();
+        const String *source = cxt.source_store().current_source();
         show_message(error.to_string(
             source != nullptr ? source->view() : StringView{}, &cxt));
       }

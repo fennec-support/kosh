@@ -45,7 +45,7 @@ static fn report_exec_resolution_error(ExecContext &ec, EvalContext &cxt,
 {
   let error = ErrorWithLocation{steal(location), message};
   error.set_command_status(command_status);
-  const String *source = cxt.current_source();
+  const String *source = cxt.source_store().current_source();
   show_message(
       error.to_string(source != nullptr ? source->view() : StringView{}, &cxt));
 
@@ -156,7 +156,7 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let error_location = ec.arg_location_at(command_index);
       let reported_program = command_name.view();
       let raw_program = command_name.view();
-      if (let const *source = cxt.current_source(); source != nullptr)
+      if (let const *source = cxt.source_store().current_source(); source != nullptr)
         if (let source_text = error_location.get_source_text(source->view()))
           raw_program = *source_text;
       let const target = typed_program_path.to_absolute_without_normalizing();

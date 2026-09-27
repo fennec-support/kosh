@@ -1067,7 +1067,7 @@ static fn evaluate_subshell_in_process(const Expression *body,
       }
       LOG(Debug, "the subshell confined a script-fatal error: %s",
           error.message().c_str());
-      const String *source = cxt.current_source();
+      const String *source = cxt.source_store().current_source();
       show_message(error.to_string(
           source != nullptr ? source->view() : StringView{}, &cxt));
       ret = cxt.runtime_state().is_bash_compatible() ? 1 : 2;
@@ -1158,7 +1158,7 @@ fn Subshell::evaluate_impl(EvalContext &cxt) const throws -> i64
     try {
       status = static_cast<i32>(do_run_body());
     } catch (const ErrorBase &error) {
-      let const source = cxt.current_source();
+      let const source = cxt.source_store().current_source();
       show_message(error.to_string(
           source != nullptr ? source->view() : StringView{}, &cxt));
       if (cxt.runtime_state().is_posix_mode())
@@ -1176,7 +1176,7 @@ fn Subshell::evaluate_impl(EvalContext &cxt) const throws -> i64
     try {
       status = static_cast<i32>(do_run_body());
     } catch (const ErrorBase &error) {
-      let const source = cxt.current_source();
+      let const source = cxt.source_store().current_source();
       show_message(error.to_string(
           source != nullptr ? source->view() : StringView{}, &cxt));
       if (cxt.runtime_state().is_posix_mode())
@@ -1387,7 +1387,7 @@ fn FunctionDefinition::evaluate_impl(EvalContext &cxt) const throws -> i64
   }
 
   let definition_text = String{cxt.scratch_allocator()};
-  if (const String *source = cxt.current_source();
+  if (const String *source = cxt.source_store().current_source();
       source != nullptr &&
       body_end_position > m_body->source_location().position &&
       body_end_position <= source->count())
@@ -1679,7 +1679,7 @@ fn RedirectedCommand::evaluate_status_impl(EvalContext &cxt) const throws
     return m_child->evaluate_status(cxt);
   } catch (ErrorWithLocationAndDetails &error) {
     if (!error.was_rendered()) {
-      let const source = cxt.current_source();
+      let const source = cxt.source_store().current_source();
       let const source_text = source != nullptr ? source->view() : StringView{};
       show_message(error.to_string(source_text, &cxt));
       show_message(error.details_to_string(source_text, &cxt));
@@ -1688,7 +1688,7 @@ fn RedirectedCommand::evaluate_status_impl(EvalContext &cxt) const throws
     throw;
   } catch (ErrorWithLocation &error) {
     if (!error.was_rendered()) {
-      let const source = cxt.current_source();
+      let const source = cxt.source_store().current_source();
       show_message(error.to_string(
           source != nullptr ? source->view() : StringView{}, &cxt));
       error.set_rendered();

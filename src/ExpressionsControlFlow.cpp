@@ -73,7 +73,7 @@ CompoundCommand::CompoundCommand(SourceLocation location)
 
 fn CompoundCommand::evaluate_async(EvalContext &cxt) const throws -> i64
 {
-  let const source = cxt.current_source();
+  let const source = cxt.source_store().current_source();
   let command_text = StringView{};
   if (source != nullptr) {
     let command_end_position =
@@ -1483,7 +1483,7 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
 {
   ASSERT(m_body != nullptr);
 
-  let const source = cxt.current_source();
+  let const source = cxt.source_store().current_source();
   let command_text = StringView{};
   if (source != nullptr) {
     let command_end_position =

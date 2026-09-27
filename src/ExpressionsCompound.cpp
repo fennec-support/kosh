@@ -219,7 +219,7 @@ hot fn CompoundList::evaluate_root_status_impl(
           {
             show_message(error.to_string(*windowed, &cxt));
           } else {
-            const String *source = cxt.current_source();
+            const String *source = cxt.source_store().current_source();
             show_message(error.to_string(
                 source != nullptr ? source->view() : StringView{}, &cxt));
           }
@@ -235,7 +235,7 @@ hot fn CompoundList::evaluate_root_status_impl(
         LOG(Debug, "bash mood converted the error to command status %lld: %s",
             static_cast<long long>(error.command_status()),
             error.message().c_str());
-        const String *source = cxt.current_source();
+        const String *source = cxt.source_store().current_source();
         show_message(error.to_string(
             source != nullptr ? source->view() : StringView{}, &cxt));
         return {static_cast<i32>(
@@ -618,7 +618,7 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
       }
 
       let const stage_location = stage->source_location();
-      let const stage_source = cxt.current_source();
+      let const stage_source = cxt.source_store().current_source();
       let stage_text = StringView{};
       if (stage_source != nullptr) {
         let stage_start_position = usize{stage_location.position};
@@ -683,7 +683,7 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
         } catch (const BrokenPipeExit &) {
           stage_status = KOSH_BROKEN_PIPE_EXIT_STATUS;
         } catch (const ErrorWithLocation &e) {
-          const String *source = cxt.current_source();
+          const String *source = cxt.source_store().current_source();
           koshka::show_message(e.to_string(
               source != nullptr ? source->view() : StringView{}, &cxt));
           stage_status = 1;
@@ -889,7 +889,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
        closes its pipe to give the next stage EOF. */
     Maybe<ExecContext> stage_ec;
     try {
-      let const *source = cxt.current_source();
+      let const *source = cxt.source_store().current_source();
       stage_ec = ExecContext::make_from(
           e->source_location(),
           source != nullptr ? source->view() : StringView{}, steal(stage_args),
@@ -901,7 +901,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
          the slot ahead of the pipe. The next stage still sees EOF. The message
          is rendered here and written once the pipeline has placed every
          descriptor. A stage that merges into the pipe carries it there. */
-      let const *error_source = cxt.current_source();
+      let const *error_source = cxt.source_store().current_source();
       let const rendered = resolution_error.to_string(
           error_source != nullptr ? error_source->view() : StringView{}, &cxt);
       let unresolved = ExecContext::make_unresolved(
@@ -933,7 +933,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
          keeps the redirections written ahead of the failing one. Its diagnostic
          reaches the destination they named and the remaining stages still
          run. */
-      let const *error_source = cxt.current_source();
+      let const *error_source = cxt.source_store().current_source();
       let const rendered = redirection_error.to_string(
           error_source != nullptr ? error_source->view() : StringView{}, &cxt);
       ec.set_unresolved(static_cast<i32>(redirection_error.command_status()),

@@ -237,7 +237,7 @@ fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
     } catch (const ErrorBase &error) {
       let const location = segment.get_source_location(
           source_store().current_location().source_name_index);
-      if (!location.has_value() || current_source() == nullptr) {
+      if (!location.has_value() || source_store().current_source() == nullptr) {
         throw;
       }
 
@@ -245,7 +245,7 @@ fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
         relocate_error(error, *location);
       } catch (...) {
         render_contained_substitution_error(std::current_exception(),
-                                            current_source()->view());
+                                            source_store().current_source()->view());
         throw;
       }
     }
@@ -424,7 +424,7 @@ fn EvalContext::push_substitution_source_frame(const SourceLocation &location,
                                                StringView origin) throws -> bool
 {
   if (!diagnostics_store().source_traces_enabled() ||
-      current_source() == nullptr ||
+      source_store().current_source() == nullptr ||
       location.length == 0)
   {
     return false;
@@ -432,8 +432,8 @@ fn EvalContext::push_substitution_source_frame(const SourceLocation &location,
 
   source_store().source_frames().push(source_frame{
       String{heap_allocator(), origin},
-      location, current_source(),
-      source_generation_for(current_source()), String{heap_allocator()},
+      location, source_store().current_source(),
+      source_generation_for(source_store().current_source()), String{heap_allocator()},
       source_frame_kind::Ordinary
   });
   return true;

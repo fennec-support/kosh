@@ -301,7 +301,7 @@ fn Timeout::execute(const ExecContext &ec, EvalContext &cxt,
   let command = ExecContext::from_resolved(
       ec.source_location(), ResolvedCommand::from_program(*program_path),
       steal(command_args), steal(command_locations));
-  let const source = cxt.current_source();
+  let const source = cxt.source_store().current_source();
   let const has_controlling_terminal =
       cxt.shell_is_interactive() && os::shell_has_controlling_terminal();
   let const process_group_mode =

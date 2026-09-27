@@ -316,7 +316,7 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
       throw Error{"interactive prompting requires a controlling terminal"};
     Maybe<ExecContext> sub;
     try {
-      let const *source = cxt.current_source();
+      let const *source = cxt.source_store().current_source();
       sub = ExecContext::make_from(
           ec.source_location(),
           source != nullptr ? source->view() : StringView{}, steal(command),
@@ -324,7 +324,7 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
           cxt.is_shopt_enabled("checkhash"),
           cxt.get_program_resolver(), steal(command_locations), cxt.runtime_state().get_mood());
     } catch (const CommandResolutionErrorWithLocation &resolution_error) {
-      let const *source = cxt.current_source();
+      let const *source = cxt.source_store().current_source();
       show_message(resolution_error.to_string(
           source != nullptr ? source->view() : StringView{}, &cxt));
       return static_cast<i32>(resolution_error.command_status());

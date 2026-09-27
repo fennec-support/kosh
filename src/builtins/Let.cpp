@@ -49,7 +49,7 @@ fn Let::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   bool is_last_nonzero = false;
   for (usize i = 1; i < ec.args().count(); i++) {
     let expression_base = ec.arg_location_at(i);
-    if (let const source = cxt.current_source(); source != nullptr) {
+    if (let const source = cxt.source_store().current_source(); source != nullptr) {
       let const raw_expression =
           expression_base.get_source_text(source->view());
       if (raw_expression.has_value()) {

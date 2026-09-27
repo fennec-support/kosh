@@ -36,7 +36,7 @@ static fn report_break_out_of_range(const ExecContext &ec, EvalContext &cxt,
   message += "' is out of range";
 
   const ErrorWithLocation located{ec.arg_location_at(1), message.view()};
-  if (const String *source = cxt.current_source(); source != nullptr) {
+  if (const String *source = cxt.source_store().current_source(); source != nullptr) {
     show_message(located.to_string(source->view(), &cxt));
   } else {
     let fallback = String{cxt.scratch_allocator()};

@@ -102,7 +102,8 @@ fn EvalContext::run_program_fallback(ExecContext &ec, mimic_mood mode,
 
   let fallback_context = EvalContext{false, false, false, false};
   fallback_context.set_current_source(
-      current_source(), String{heap_allocator(), current_origin().view()});
+      source_store().current_source(),
+      String{heap_allocator(), source_store().current_origin().view()});
   fallback_context.source_store().set_mimicry_depth(
       source_store().mimicry_depth());
   fallback_context.source_store().retained_source_generation() =
@@ -211,7 +212,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
     details += "Use `";
     details += file_command;
     details += "` to check the file type.";
-    let const source = current_source();
+    let const source = source_store().current_source();
     show_message(ErrorWithLocationAndDetails{
         ec.source_location(),
         "Cannot execute `" + ec.program_path().text() + "` as a shell script.",
@@ -273,7 +274,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
   let const script_filename = ec.program_path().view();
   source_store().source_frames().push(
       source_frame{String{ec.program().view()}, ec.source_location(),
-                   current_source(), source_generation_for(current_source()),
+                   source_store().current_source(), source_generation_for(source_store().current_source()),
                    String{script_filename}, source_frame_kind::Ordinary});
   source_store().source_frames().back().should_defer_trace = true;
   source_store().source_frames().back().function_call_depth =

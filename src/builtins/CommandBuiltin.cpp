@@ -183,7 +183,7 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
 
   Maybe<ExecContext> sub;
   try {
-    let const *source = cxt.current_source();
+    let const *source = cxt.source_store().current_source();
     sub = ExecContext::make_from(
         ec.source_location(), source != nullptr ? source->view() : StringView{},
         steal(operand_args), cxt.runtime_state().koshkit(),
@@ -192,7 +192,7 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
   } catch (const CommandResolutionErrorWithLocation &resolution_error) {
     LOG(Debug, "command handled a resolution error: %s",
         resolution_error.message().c_str());
-    const String *source = cxt.current_source();
+    const String *source = cxt.source_store().current_source();
     show_message(resolution_error.to_string(
         source != nullptr ? source->view() : StringView{}, &cxt));
     return static_cast<i32>(resolution_error.command_status());

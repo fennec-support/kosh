@@ -199,16 +199,6 @@ fn EvalContext::set_current_source(const String *source,
                                     scan_source_generation(source));
 }
 
-pure fn EvalContext::current_source() const wontthrow -> const String *
-{
-  return source_store().get_current_source();
-}
-
-pure fn EvalContext::current_origin() const wontthrow -> const String &
-{
-  return source_store().get_current_origin();
-}
-
 fn EvalContext::set_current_history_event_number(Maybe<usize> number) wontthrow
     -> void
 {

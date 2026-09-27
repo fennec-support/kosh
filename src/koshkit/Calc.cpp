@@ -54,8 +54,8 @@ fn evaluate_one(const ExecContext &ec, EvalContext &cxt, StringView expression,
                 const SourceLocation *expression_base = nullptr) throws -> i32
 {
   let render_source = expression;
-  if (expression_base != nullptr && cxt.current_source() != nullptr)
-    render_source = cxt.current_source()->view();
+  if (expression_base != nullptr && cxt.source_store().current_source() != nullptr)
+    render_source = cxt.source_store().current_source()->view();
 
   if (let const operator_position =
           obvious_xor_power_operator_position(expression))
@@ -321,13 +321,13 @@ fn Calc::execute(const ExecContext &ec, EvalContext &cxt,
   Maybe<SourceLocation> expression_base;
   if (!operand_locations.is_empty() &&
       operand_locations.count() == operands.count() &&
-      cxt.current_source() != nullptr)
+      cxt.source_store().current_source() != nullptr)
   {
     let const first_location = operand_locations[0];
     let const last_location = operand_locations[operand_locations.count() - 1];
     let const expression_end =
         static_cast<usize>(last_location.position) + last_location.length;
-    let const source = cxt.current_source()->view();
+    let const source = cxt.source_store().current_source()->view();
     let const is_one_source =
         first_location.source_name_index == last_location.source_name_index;
     let const is_valid_span = first_location.position <= expression_end &&

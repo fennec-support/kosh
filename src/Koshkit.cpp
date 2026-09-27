@@ -1102,7 +1102,7 @@ cold static fn show_soft_koshkit_error(const ExecContext &ec, EvalContext &cxt,
                                        StringView message) throws -> void
 {
   const ErrorWithLocation located{steal(location), message};
-  if (const String *source = cxt.current_source(); source != nullptr) {
+  if (const String *source = cxt.source_store().current_source(); source != nullptr) {
     show_message(located.to_string(source->view(), &cxt));
     return;
   }

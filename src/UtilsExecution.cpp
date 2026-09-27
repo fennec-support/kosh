@@ -105,7 +105,7 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
               status =
                   cxt.run_mimicked_script(ec, *mode, script_isolation::Shared);
             } catch (const ErrorBase &error) {
-              const String *source = cxt.current_source();
+              const String *source = cxt.source_store().current_source();
               show_message(error.to_string(
                   source != nullptr ? source->view() : StringView{}, &cxt));
               status = static_cast<i32>(error.command_status());
@@ -159,12 +159,12 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
       os::replace_process(steal(ec));
     } catch (const ErrorWithLocation &error) {
       /* Resolved but unexecutable exits 126, missing exits 127. */
-      const String *source = cxt.current_source();
+      const String *source = cxt.source_store().current_source();
       show_message(error.to_string(
           source != nullptr ? source->view() : StringView{}, &cxt));
       quit(126, farewell_policy::Silent);
     } catch (const Error &error) {
-      const String *source = cxt.current_source();
+      const String *source = cxt.source_store().current_source();
       let located = ErrorWithLocation{ec.source_location(), error.message()};
       located.set_command_status(error.command_status());
       show_message(located.to_string(
@@ -200,7 +200,7 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
     if (is_async) command += " &";
   }
 
-  let const source = cxt.current_source();
+  let const source = cxt.source_store().current_source();
   unused(cxt.materialize_kosh_identity());
   os::process p = os::execute_program(
       ec, os::program_execution_options{
@@ -450,7 +450,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
       stage_status[stage_index] = ec.get_unresolved_status();
       unresolved_stages.push(stage_index);
     } else if (!ec.is_builtin()) {
-      let const source = cxt.current_source();
+      let const source = cxt.source_store().current_source();
       unused(cxt.materialize_kosh_identity());
       let const process_group =
           !is_async ? os::process_group_mode::Inherit
@@ -468,7 +468,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
       child_stage.push(stage_index);
       last_child = child;
     } else if (!is_last || is_async || should_fork_last_builtin) {
-      let const source = cxt.current_source();
+      let const source = cxt.source_store().current_source();
       let const process_group =
           !is_async ? os::process_group_mode::Inherit
                     : os::background_process_group_mode(process_group_id);
@@ -640,7 +640,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
           } catch (const BrokenPipeExit &) {
             child_status = KOSH_BROKEN_PIPE_EXIT_STATUS;
           } catch (const ErrorWithLocation &e) {
-            const String *source = cxt.current_source();
+            const String *source = cxt.source_store().current_source();
             koshka::show_message(e.to_string(
                 source != nullptr ? source->view() : StringView{}, &cxt));
             child_status = static_cast<i32>(e.command_status());
