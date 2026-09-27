@@ -758,7 +758,7 @@ fn EvalContext::report_unset_reference(StringView name) throws -> void
 
   let const should_demote = strict_diagnostics_are_warnings();
   if (runtime_state().error_unset() &&
-      (m_runtime.was_error_unset_set_explicitly() || !should_demote) &&
+      (runtime_state().was_error_unset_set_explicitly() || !should_demote) &&
       !is_warning_suppressed(suppressible_warning::UnsetTestOperand))
   {
     let const message = "Unable to expand '" + String{name} +

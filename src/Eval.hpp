@@ -2828,9 +2828,9 @@ public:
   }
   pure fn strict_diagnostics_are_warnings() const wontthrow -> bool
   {
-    if (m_runtime.mood == mimic_mood::Default)
-      return m_runtime.warning_level >= 3;
-    return m_runtime.warning_level >= 1;
+    if (runtime_state().get_mood() == mimic_mood::Default)
+      return warning_level() >= 3;
+    return warning_level() >= 1;
   }
   /* A reference to an unset variable, fatal under set -u, downgraded to a
      warning under -W unless the set -u was explicit, else expanded to empty. */
@@ -2907,16 +2907,16 @@ public:
 
   fn apply_strictness_for_mood() wontthrow -> void
   {
-    let const strict = m_runtime.mood == mimic_mood::Default;
-    if (!m_runtime.was_error_unset_set_explicitly())
+    let const strict = runtime_state().get_mood() == mimic_mood::Default;
+    if (!runtime_state().was_error_unset_set_explicitly())
       runtime_state().set_error_unset(
           strict && !execution_store().completion_function_running());
-    if (!m_runtime.was_pipefail_set_explicitly())
+    if (!runtime_state().was_pipefail_set_explicitly())
       runtime_state().set_pipefail(strict);
-    if (!m_runtime.was_failglob_set_explicitly())
+    if (!runtime_state().was_failglob_set_explicitly())
       runtime_state().set_failglob(
           strict && !execution_store().completion_function_running());
-    if (!m_runtime.was_extended_arithmetic_set_explicitly())
+    if (!runtime_state().was_extended_arithmetic_set_explicitly())
       runtime_state().set_extended_arithmetic(strict);
   }
 
@@ -2925,7 +2925,7 @@ public:
       -> function_runtime_state
   {
     let const previous = RuntimeState::capture(*this);
-    m_runtime.mood = defining_runtime.mood;
+    runtime_state().set_mood(defining_runtime.mood);
     set_warning_level(defining_runtime.warning_level);
     m_runtime.set_diagnostics_disabled(
         defining_runtime.is_diagnostics_disabled());
@@ -2985,30 +2985,30 @@ public:
         (finished.shell_options & changed_options);
 
     state.previous.restore(*this);
-    m_runtime.shell_options = merged_options;
+    runtime_state().shell_options = merged_options;
     if (runtime_control_store().option_mutations().touched_since(
             shell_option_id::Nounset, state.shell_option_mutation_revision))
-      m_runtime.set_error_unset_set_explicitly(
+      runtime_state().set_error_unset_set_explicitly(
           finished.was_error_unset_set_explicitly());
     if (runtime_control_store().option_mutations().touched_since(
             shell_option_id::Pipefail, state.shell_option_mutation_revision))
-      m_runtime.set_pipefail_set_explicitly(
+      runtime_state().set_pipefail_set_explicitly(
           finished.was_pipefail_set_explicitly());
     if (runtime_control_store().option_mutations().touched_since(
             shell_option_id::Failglob, state.shell_option_mutation_revision))
-      m_runtime.set_failglob_set_explicitly(
+      runtime_state().set_failglob_set_explicitly(
           finished.was_failglob_set_explicitly());
     if (runtime_control_store().option_mutations().touched_since(
             shell_option_id::ExtendedArithmetic,
             state.shell_option_mutation_revision))
-      m_runtime.set_extended_arithmetic_set_explicitly(
+      runtime_state().set_extended_arithmetic_set_explicitly(
           finished.was_extended_arithmetic_set_explicitly());
     if (state.mood_mutation_revision !=
         runtime_control_store().mood_mutation_revision())
-      m_runtime.mood = finished.mood;
+      runtime_state().set_mood(finished.mood);
     if (state.warning_mutation_revision !=
         runtime_control_store().warning_mutation_revision())
-      m_runtime.warning_level = finished.warning_level;
+      set_warning_level(finished.warning_level);
     if (state.diagnostics_mutation_revision !=
         runtime_control_store().diagnostics_mutation_revision())
       m_runtime.set_diagnostics_disabled(finished.is_diagnostics_disabled());
@@ -3075,19 +3075,19 @@ public:
                           script_isolation isolation) throws -> i32;
   pure fn get_extglob_mode() const wontthrow -> extglob_mode
   {
-    return m_runtime.mood != mimic_mood::Posix && is_shopt_enabled("extglob")
+    return !runtime_state().is_posix_mode() && is_shopt_enabled("extglob")
                ? extglob_mode::Enabled
                : extglob_mode::Disabled;
   }
 
   pure fn bash_dynamic_variables_enabled() const wontthrow -> bool
   {
-    return m_runtime.mood != mimic_mood::Posix;
+    return !runtime_state().is_posix_mode();
   }
 
   pure fn bash_additions_enabled() const wontthrow -> bool
   {
-    return m_runtime.mood != mimic_mood::Posix;
+    return !runtime_state().is_posix_mode();
   }
 
   fn set_shopt_option(StringView name, bool is_enabled) throws -> void;
@@ -3098,9 +3098,11 @@ public:
     if (!index.has_value()) return false;
     if (runtime_state().is_shopt_option_overridden(*index))
       return runtime_state().is_shopt_option_enabled(*index);
-    if (name == "extglob") return m_runtime.mood == mimic_mood::Default;
+    if (name == "extglob")
+      return runtime_state().get_mood() == mimic_mood::Default;
     if (name == "expand_aliases")
-      return m_runtime.mood != mimic_mood::Bash || shell_is_interactive();
+      return runtime_state().get_mood() != mimic_mood::Bash ||
+             shell_is_interactive();
     return shopt_default_is_on(name);
   }
   /* Whether bash ships the named shopt option enabled, the miss fallback for

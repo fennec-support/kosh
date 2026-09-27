@@ -685,7 +685,8 @@ hot fn EvalContext::expand_path(glob_field field,
     let const failglob_is_on =
         runtime_state().failglob() || is_shopt_enabled("failglob");
     let const failglob_is_explicit =
-        m_runtime.was_failglob_set_explicitly() || is_shopt_enabled("failglob");
+        runtime_state().was_failglob_set_explicitly() ||
+        is_shopt_enabled("failglob");
     if (!glob_exempt_for_test())
       warn_or_throw(failglob_is_on, failglob_is_explicit, location,
                     "The glob pattern '" + pattern +

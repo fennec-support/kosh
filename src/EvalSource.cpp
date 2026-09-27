@@ -255,7 +255,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
     }
   };
 
-  m_runtime.mood = mode;
+  runtime_state().set_mood(mode);
   LOG(Debug, "mimicking the script '%s'%s", ec.program().c_str(),
       isolated ? " in an isolated subshell" : "");
   source_store().set_script_run(true);
