@@ -65,6 +65,7 @@ def run_history_menu(directory, typed, keys, rows=24, add_peer=False):
     if pid == 0:
         fcntl.ioctl(1, termios.TIOCSWINSZ, struct.pack("HHHH", rows, 120, 0, 0))
         os.environ["TERM"] = "xterm-256color"
+        os.environ.pop("NO_COLOR", None)
         os.environ["HOME"] = directory
         os.environ["KOSH_HISTORY_FILE"] = os.path.join(directory, "history")
         os.chdir(directory)

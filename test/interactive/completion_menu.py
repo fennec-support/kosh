@@ -449,10 +449,10 @@ def main():
             b"<deep-one/inner-alpha>" in walked_accepted
         )
 
-        # Escape puts back the line the menu opened on. The narrowing key is
-        # undone. A menu that cancelled in place would submit alpha-t.
+        # Escape closes the menu with the current edit. The narrowing key stays
+        # in the line, while Ctrl-G below restores the opening line.
         _, _, cancelled = run_menu(directory, "tree", typed, [b"t", b"\x1b"])
-        escape_restores_the_opening_line = b"<alpha->" in cancelled
+        escape_keeps_the_current_line = b"<alpha-t>" in cancelled
 
         # Control G cancels the same way Escape does, here after the menu walked
         # into a directory. A menu that cancelled in place would submit
@@ -463,9 +463,8 @@ def main():
         control_g_restores_the_opening_line = b"<deep->" in aborted
 
         wide_menu, _, _ = run_menu(directory, "wide", wide_typed, [])
-        escaped_prefix = long_candidate_prefix.replace(" ", "\\ ").encode()
         long_candidate_uses_available_width = (
-            escaped_prefix + b"Fusion" in wide_menu
+            long_candidate_prefix.encode() + b"Fusion" in wide_menu
         )
 
         _, expanded, _ = run_menu(
@@ -592,9 +591,7 @@ def main():
                 a_slash_walks_into_the_directory
             ),
             "A_WALKED_MENU_ACCEPTS_AN_ENTRY": a_walked_menu_accepts_an_entry,
-            "ESCAPE_RESTORES_THE_OPENING_LINE": (
-                escape_restores_the_opening_line
-            ),
+            "ESCAPE_KEEPS_THE_CURRENT_LINE": escape_keeps_the_current_line,
             "CONTROL_G_RESTORES_THE_OPENING_LINE": (
                 control_g_restores_the_opening_line
             ),
