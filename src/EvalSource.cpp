@@ -224,7 +224,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
 
   contents->normalize_crlf_line_endings();
 
-  let const previous_runtime = m_runtime;
+  let const previous_runtime = runtime_state();
   let const was_restricted_shell = startup_store().is_restricted_shell();
   let const previous_script_run = source_store().is_script_run();
   let previous_shell_name = String{execution_store().get_shell_name()};

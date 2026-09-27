@@ -747,8 +747,8 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
       associative_values(),
       sparse_array_values(),
       sparse_array_names(),
-      m_runtime.shopt_option_overrides,
-      m_runtime.shopt_option_values,
+      runtime_state().shopt_option_overrides,
+      runtime_state().shopt_option_values,
       function_store().definitions(),
       scope_store().aliases(),
       positional_params(),
@@ -812,8 +812,8 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
   associative_values() = steal(snapshot.associative_values);
   sparse_array_values() = steal(snapshot.sparse_array_values);
   sparse_array_names() = steal(snapshot.sparse_array_names);
-  m_runtime.shopt_option_overrides = snapshot.shopt_option_overrides;
-  m_runtime.shopt_option_values = snapshot.shopt_option_values;
+  runtime_state().shopt_option_overrides = snapshot.shopt_option_overrides;
+  runtime_state().shopt_option_values = snapshot.shopt_option_values;
   function_store().definitions() = steal(snapshot.functions);
   scope_store().aliases() = steal(snapshot.aliases);
   positional_params() = steal(snapshot.positional_params);
@@ -1260,8 +1260,8 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
   append_subshell_bootstrap_i64(body, expansion_store().getopts_last_optind());
   append_subshell_bootstrap_i32(body, m_job_table.m_next_job_id);
   append_subshell_bootstrap_runtime(body, RuntimeState::capture(*this));
-  append_subshell_bootstrap_u64(body, m_runtime.shopt_option_overrides);
-  append_subshell_bootstrap_u64(body, m_runtime.shopt_option_values);
+  append_subshell_bootstrap_u64(body, runtime_state().shopt_option_overrides);
+  append_subshell_bootstrap_u64(body, runtime_state().shopt_option_values);
   body.push(static_cast<char>(variable_store().disabled_bash_special_arrays()));
   body.push(static_cast<char>(variable_store().unset_dynamic_readers()));
   body.push(static_cast<char>(startup_store().is_restricted_shell()));
@@ -1672,8 +1672,8 @@ fn EvalContext::apply_subshell_bootstrap(
   trap_store().m_startup_ignored_signals = startup_ignored_signals;
   expansion_store().set_getopts_char_index(getopts_char_index);
   expansion_store().set_getopts_last_optind(getopts_last_optind);
-  m_runtime.shopt_option_overrides = shopt_option_overrides;
-  m_runtime.shopt_option_values = shopt_option_values;
+  runtime_state().shopt_option_overrides = shopt_option_overrides;
+  runtime_state().shopt_option_values = shopt_option_values;
   reset_bash_argument_arrays();
   if (has_bash_argument_arrays)
     install_bash_argument_arrays(steal(bash_argument_values),

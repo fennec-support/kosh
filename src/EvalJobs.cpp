@@ -476,23 +476,23 @@ fn EvalContext::notify_done_jobs() throws -> void
 fn EvalContext::set_monitor(bool enabled) wontthrow -> void
 {
   LOG(Info, "the monitor option flips to %s", enabled ? "on" : "off");
-  m_runtime.set_option(shell_option_id::Monitor, enabled);
+  runtime_state().set_option(shell_option_id::Monitor, enabled);
 }
 
 pure fn EvalContext::monitor() const wontthrow -> bool
 {
-  return m_runtime.option_is_enabled(shell_option_id::Monitor);
+  return runtime_state().option_is_enabled(shell_option_id::Monitor);
 }
 
 fn EvalContext::set_notify(bool enabled) wontthrow -> void
 {
   LOG(Info, "the notify option flips to %s", enabled ? "on" : "off");
-  m_runtime.set_option(shell_option_id::Notify, enabled);
+  runtime_state().set_option(shell_option_id::Notify, enabled);
 }
 
 pure fn EvalContext::notify() const wontthrow -> bool
 {
-  return m_runtime.option_is_enabled(shell_option_id::Notify);
+  return runtime_state().option_is_enabled(shell_option_id::Notify);
 }
 
 } /* namespace koshka */

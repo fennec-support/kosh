@@ -604,7 +604,7 @@ fn EvalContext::save_untraced_trap(StringView condition,
   saved_frame_trap saved{};
   if (active_depth != nullptr) saved.active_depth = *active_depth;
 
-  if (m_runtime.option_is_enabled(trace_option)) return saved;
+  if (runtime_state().option_is_enabled(trace_option)) return saved;
 
   let const action = trap_store().actions().find(condition);
   if (!action.has_value()) return saved;

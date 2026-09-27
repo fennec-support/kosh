@@ -180,7 +180,7 @@ hot fn EvalContext::assign_variable(StringView name, StringView value) throws
 
   if (is_path_name) resolution_store().resolver().assign_path(String{value});
   if (is_ignoreeof_name) {
-    m_runtime.set_option(shell_option_id::Ignoreeof, true);
+    runtime_state().set_option(shell_option_id::Ignoreeof, true);
   }
 
   m_variable_store.shell_variables().set(name, value);
@@ -221,7 +221,7 @@ fn EvalContext::begin_confined_variable_writes() wontthrow -> usize
     environment_store().m_confined_seconds_base = dynamic_runtime_store().seconds_base();
     environment_store().m_confined_random_state = dynamic_runtime_store().random_state();
     environment_store().m_was_confined_ignoreeof_enabled =
-        m_runtime.option_is_enabled(shell_option_id::Ignoreeof);
+        runtime_state().option_is_enabled(shell_option_id::Ignoreeof);
   }
 
   environment_store().m_confined_write_depth++;
@@ -265,8 +265,9 @@ fn EvalContext::rollback_confined_variable_writes(usize mark) wontthrow -> void
   if (environment_store().m_confined_write_depth == 0) {
     dynamic_runtime_store().seconds_base() = environment_store().m_confined_seconds_base;
     dynamic_runtime_store().random_state() = environment_store().m_confined_random_state;
-    m_runtime.set_option(shell_option_id::Ignoreeof,
-                         environment_store().m_was_confined_ignoreeof_enabled);
+    runtime_state().set_option(
+        shell_option_id::Ignoreeof,
+        environment_store().m_was_confined_ignoreeof_enabled);
   }
 }
 
@@ -472,11 +473,11 @@ fn EvalContext::restore_local_binding(local_binding &binding) throws -> void
   else
     indexed_arrays().erase(binding.name.view());
   let const was_restricted = restricted_enforcement_active();
-  m_runtime.set_option(shell_option_id::Restricted, false);
+  runtime_state().set_option(shell_option_id::Restricted, false);
   variable_attributes().erase(binding.name.view());
   defer
   {
-    m_runtime.set_option(shell_option_id::Restricted, was_restricted);
+    runtime_state().set_option(shell_option_id::Restricted, was_restricted);
     if (binding.previous_attributes != 0)
       variable_attributes().set(binding.name.view(),
                                 binding.previous_attributes);
@@ -825,7 +826,7 @@ fn EvalContext::force_unset_shell_variable(StringView name) throws -> void
   if (utils::environment_name_is_path(name))
     resolution_store().resolver().assign_path(os::get_environment_variable("PATH"));
   if (name == "IGNOREEOF")
-    m_runtime.set_option(shell_option_id::Ignoreeof, false);
+  runtime_state().set_option(shell_option_id::Ignoreeof, false);
 }
 
 pure fn EvalContext::special_variable_definition_location(
