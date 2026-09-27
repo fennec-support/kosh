@@ -44,7 +44,7 @@ fn Popd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
-  let &stack = cxt.directory_stack();
+  let &stack = cxt.variable_store().directory_stack();
   if (stack.is_empty()) {
     throw ErrorWithLocationAndDetails{
         ec.source_location(), "popd found the directory stack empty",

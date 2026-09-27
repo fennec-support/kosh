@@ -384,7 +384,7 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
                  : String{heap_allocator()};
     case '-': return option_flags_string();
     case '#':
-      return String::from(positional_params().count(), heap_allocator());
+      return String::from(variable_store().positional_params().count(), heap_allocator());
     case '0': return String{heap_allocator(), execution_store().get_shell_name()};
     case '_':
       return String{heap_allocator(), execution_store().get_last_argument().view()};
@@ -400,17 +400,17 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
       }
       let joined = String{heap_allocator()};
       usize joined_length = 0;
-      for (usize i = 0; i < positional_params().count(); i++)
-        joined_length += positional_params()[i].count();
-      if (has_separator && positional_params().count() > 1) {
-        joined_length += positional_params().count() - 1;
+      for (usize i = 0; i < variable_store().positional_params().count(); i++)
+        joined_length += variable_store().positional_params()[i].count();
+      if (has_separator && variable_store().positional_params().count() > 1) {
+        joined_length += variable_store().positional_params().count() - 1;
       }
       joined.reserve(joined_length);
-      for (usize i = 0; i < positional_params().count(); i++) {
+      for (usize i = 0; i < variable_store().positional_params().count(); i++) {
         if (i > 0 && has_separator) {
           joined.push(separator);
         }
-        joined.append(positional_params()[i].view());
+        joined.append(variable_store().positional_params()[i].view());
       }
       return joined;
     }
@@ -427,9 +427,9 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
       let const parsed_index = name.to<i64>();
       if (parsed_index.is_error()) return None;
       let const index = static_cast<usize>(parsed_index.value());
-      if (index >= 1 && index <= positional_params().count()) {
-        ASSERT(index - 1 < positional_params().count());
-        return positional_params()[index - 1];
+      if (index >= 1 && index <= variable_store().positional_params().count()) {
+        ASSERT(index - 1 < variable_store().positional_params().count());
+        return variable_store().positional_params()[index - 1];
       }
       return None;
     }
@@ -441,8 +441,8 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
 
   /* A read of an array name with no scalar yields element zero, the way bash
      treats $a as ${a[0]}. */
-  if (indexed_arrays().count() != 0)
-    if (let const array = indexed_arrays().find(name); array.has_value()) {
+  if (variable_store().indexed_arrays().count() != 0)
+    if (let const array = variable_store().indexed_arrays().find(name); array.has_value()) {
       if (array->is_empty()) return koshka::None;
       return array->front();
     }

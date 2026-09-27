@@ -47,7 +47,7 @@ fn Pushd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
-  let &stack = cxt.directory_stack();
+  let &stack = cxt.variable_store().directory_stack();
   let const pwd = logical_working_directory(cxt).text().clone();
 
   /* With no directory the top two entries swap, so the current directory and

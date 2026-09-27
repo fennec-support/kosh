@@ -663,7 +663,7 @@ fn SelectLoop::evaluate_status_impl(EvalContext &cxt) const throws
   cxt.set_current_location(source_location());
 
   let const values =
-      m_has_in_clause ? cxt.process_args(m_words) : cxt.positional_params();
+      m_has_in_clause ? cxt.process_args(m_words) : cxt.variable_store().positional_params();
 
   /* The header is announced once before the menu, and an empty word list still
      announces it. */
@@ -800,7 +800,7 @@ hot fn ForLoop::evaluate_status_impl(EvalContext &cxt) const throws
 
   cxt.set_current_location(source_location());
   let const values =
-      m_has_in_clause ? cxt.process_args(m_words) : cxt.positional_params();
+      m_has_in_clause ? cxt.process_args(m_words) : cxt.variable_store().positional_params();
 
   /* The default mood scopes the loop variable so the name does not leak, while
      the bash and posix moods leave it set. */

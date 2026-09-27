@@ -47,7 +47,7 @@ fn Shift::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const shift_count = parse_optional_integer_arg(ec, 1);
 
-  let const &params = cxt.positional_params();
+  let const &params = cxt.variable_store().positional_params();
 
   let const do_range_note = [&]() throws -> String {
     return StringView{"The count must be from 0 to "} +

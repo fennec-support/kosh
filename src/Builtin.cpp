@@ -610,7 +610,7 @@ fn print_directory_stack(EvalContext &cxt, const ExecContext &ec,
                          bool should_print_full_paths,
                          Maybe<usize> selected_index) throws -> void
 {
-  let const &stack = cxt.directory_stack();
+  let const &stack = cxt.variable_store().directory_stack();
   let const pwd = logical_working_directory(cxt).text().clone();
   let const entry_count = stack.count() + 1;
   let const first_index = selected_index.value_or(0);

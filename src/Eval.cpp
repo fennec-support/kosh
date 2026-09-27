@@ -410,20 +410,20 @@ fn EvalContext::unset_shell_variable(StringView name) throws -> void
   let const should_disable_bash_directory_stack =
       is_bash_directory_stack_special(name);
   force_unset_shell_variable(name);
-  indexed_arrays().erase(name);
+  variable_store().indexed_arrays().erase(name);
   clear_sparse_array(name);
   clear_associative_array(name);
   if (should_disable_bash_aliases)
     disable_bash_special_array(bash_special_array_id::Aliases);
   if (should_disable_bash_directory_stack)
     disable_bash_special_array(bash_special_array_id::DirectoryStack);
-  variable_attributes().erase(name);
+  variable_store().variable_attributes().erase(name);
 }
 
 fn EvalContext::disable_ignoreeof() throws -> void
 {
   force_unset_shell_variable("IGNOREEOF");
-  variable_attributes().erase("IGNOREEOF");
+  variable_store().variable_attributes().erase("IGNOREEOF");
 }
 
 fn EvalContext::peel_caller_local_binding(StringView name) throws -> bool
@@ -468,21 +468,21 @@ fn EvalContext::restore_local_binding(local_binding &binding) throws -> void
           binding.name.view());
   }
   if (binding.previous_indexed_array.has_value())
-    indexed_arrays().set(binding.name.view(),
+    variable_store().indexed_arrays().set(binding.name.view(),
                          steal(*binding.previous_indexed_array));
   else
-    indexed_arrays().erase(binding.name.view());
+    variable_store().indexed_arrays().erase(binding.name.view());
   let const was_restricted = restricted_enforcement_active();
   runtime_state().set_option(shell_option_id::Restricted, false);
-  variable_attributes().erase(binding.name.view());
+  variable_store().variable_attributes().erase(binding.name.view());
   defer
   {
     runtime_state().set_option(shell_option_id::Restricted, was_restricted);
     if (binding.previous_attributes != 0)
-      variable_attributes().set(binding.name.view(),
+      variable_store().variable_attributes().set(binding.name.view(),
                                 binding.previous_attributes);
     else
-      variable_attributes().erase(binding.name.view());
+      variable_store().variable_attributes().erase(binding.name.view());
   };
   clear_sparse_array(binding.name.view());
   for (usize i = 0; i < binding.previous_sparse_indices.count(); i++)
@@ -522,13 +522,13 @@ fn EvalContext::set_indexed_array(StringView name,
       apply_variable_case(name, value);
   variable_store().shell_variables().erase(name);
   clear_sparse_array(name);
-  indexed_arrays().set(name, steal(values));
+  variable_store().indexed_arrays().set(name, steal(values));
 }
 
 fn EvalContext::publish_pipe_statuses(ArrayList<String> values) throws -> void
 {
   if (is_readonly("PIPESTATUS")) {
-    if (let current = indexed_arrays().find("PIPESTATUS"); current.has_value())
+    if (let current = variable_store().indexed_arrays().find("PIPESTATUS"); current.has_value())
       *current.value() = steal(values);
 
     return;
@@ -539,11 +539,11 @@ fn EvalContext::publish_pipe_statuses(ArrayList<String> values) throws -> void
 
 fn EvalContext::publish_single_pipe_status(i32 status) throws -> void
 {
-  let existing = indexed_arrays().find("PIPESTATUS");
+  let existing = variable_store().indexed_arrays().find("PIPESTATUS");
   if (!existing.has_value() && is_readonly("PIPESTATUS")) return;
 
   if (existing.has_value() && existing->count() == 1 &&
-      !sparse_array_names().contains("PIPESTATUS"))
+      !variable_store().sparse_array_names().contains("PIPESTATUS"))
   {
     variable_store().shell_variables().erase("PIPESTATUS");
     char status_text_buffer[32];
@@ -556,7 +556,7 @@ fn EvalContext::publish_single_pipe_status(i32 status) throws -> void
 
   variable_store().shell_variables().erase("PIPESTATUS");
   clear_sparse_array("PIPESTATUS");
-  let &values = indexed_arrays().get_or_create(
+  let &values = variable_store().indexed_arrays().get_or_create(
       "PIPESTATUS", ArrayList<String>{heap_allocator()});
   values.clear();
   values.push(String::from(status, values.allocator()));
@@ -567,7 +567,7 @@ fn EvalContext::append_indexed_array(StringView name,
 {
   if (is_write_discarded_dynamic_variable(name)) return;
 
-  if (let existing = indexed_arrays().find(name); existing.has_value()) {
+  if (let existing = variable_store().indexed_arrays().find(name); existing.has_value()) {
     LOG(All, "appending %zu elements to the existing array '%.*s'",
         values.count(), static_cast<int>(name.length), name.data);
     if (is_readonly(name))
@@ -892,34 +892,34 @@ fn EvalContext::mark_exported(StringView name) throws -> void
   LOG(All, "marking '%.*s' as exported", static_cast<int>(name.length),
       name.data);
   if constexpr (os::ENVIRONMENT_IS_CASE_SENSITIVE) {
-    store_exported_name(exported_names(), name, name);
+    store_exported_name(variable_store().exported_names(), name, name);
     return;
   }
 
   char folded[EXPORTED_NAME_FOLD_BYTES];
   let spill = String{heap_allocator()};
-  store_exported_name(exported_names(), fold_exported_name(name, folded, spill),
+  store_exported_name(variable_store().exported_names(), fold_exported_name(name, folded, spill),
                       name);
 }
 
 fn EvalContext::unmark_exported(StringView name) throws -> void
 {
   if constexpr (os::ENVIRONMENT_IS_CASE_SENSITIVE) {
-    exported_names().erase(name);
+    variable_store().exported_names().erase(name);
     return;
   }
 
   char folded[EXPORTED_NAME_FOLD_BYTES];
   let spill = String{heap_allocator()};
-  exported_names().erase(fold_exported_name(name, folded, spill));
+  variable_store().exported_names().erase(fold_exported_name(name, folded, spill));
 }
 
 fn EvalContext::unexport_shell_variable(StringView name) throws -> void
 {
   let const has_shell_binding =
       variable_store().shell_variables().find(name).has_value() ||
-      indexed_arrays().find(name).has_value() ||
-      associative_names().contains(name) || is_local_in_current_scope(name) ||
+      variable_store().indexed_arrays().find(name).has_value() ||
+      variable_store().associative_names().contains(name) || is_local_in_current_scope(name) ||
       variable_requires_dynamic_lookup(name);
   let const environment_value =
       has_shell_binding ? Maybe<String>{} : os::get_environment_variable(name);
@@ -933,11 +933,11 @@ fn EvalContext::unexport_shell_variable(StringView name) throws -> void
 fn EvalContext::is_exported(StringView name) const throws -> bool
 {
   if constexpr (os::ENVIRONMENT_IS_CASE_SENSITIVE)
-    return exported_names().find(name).has_value();
+    return variable_store().exported_names().find(name).has_value();
 
   char folded[EXPORTED_NAME_FOLD_BYTES];
   let spill = String{heap_allocator()};
-  return exported_names()
+  return variable_store().exported_names()
       .find(fold_exported_name(name, folded, spill))
       .has_value();
 }
@@ -986,13 +986,13 @@ fn EvalContext::initialize_bash_argument_arrays(
                                BashArgumentFrameFlag::HasSourceArguments);
     let const uses_source_path = is_source_frame && !has_source_arguments;
     let const argument_count =
-        uses_source_path ? usize{1} : positional_params().count();
+        uses_source_path ? usize{1} : variable_store().positional_params().count();
     values.reserve(argument_count);
     frame_counts.reserve(1);
     if (uses_source_path) {
       values.push_managed(bash_argument_frame_context()->source_path);
     } else {
-      for (let const &argument : positional_params())
+      for (let const &argument : variable_store().positional_params())
         values.push_managed(argument.view());
     }
     frame_counts.push(static_cast<u32>(argument_count));
@@ -1066,7 +1066,7 @@ fn EvalContext::append_current_bash_argument_frame() const throws -> void
   if (is_source_frame && !has_source_arguments) {
     append_bash_argument_frame(bash_argument_frame_context()->source_path);
   } else {
-    append_bash_argument_frame(positional_params());
+    append_bash_argument_frame(variable_store().positional_params());
   }
 }
 

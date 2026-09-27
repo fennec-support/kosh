@@ -2214,68 +2214,10 @@ public:
                           assignment_update_mode update_mode) throws -> void;
   fn read_array_element_arithmetic_text(StringView name,
                                         StringView subscript) throws -> String;
-  fn indexed_arrays() wontthrow -> StringMap<ArrayList<String>> &
-  {
-    return m_variable_store.indexed_arrays();
-  }
-  pure fn indexed_arrays() const wontthrow
-      -> const StringMap<ArrayList<String>> &
-  {
-    return m_variable_store.indexed_arrays();
-  }
-  fn associative_names() wontthrow -> HashSet &
-  {
-    return m_variable_store.associative_names();
-  }
-  pure fn associative_names() const wontthrow -> const HashSet &
-  {
-    return m_variable_store.associative_names();
-  }
-  fn associative_values() wontthrow -> StringMap<String> &
-  {
-    return m_variable_store.associative_values();
-  }
-  pure fn associative_values() const wontthrow -> const StringMap<String> &
-  {
-    return m_variable_store.associative_values();
-  }
-  fn sparse_array_values() wontthrow -> StringMap<String> &
-  {
-    return m_variable_store.sparse_array_values();
-  }
-  pure fn sparse_array_values() const wontthrow -> const StringMap<String> &
-  {
-    return m_variable_store.sparse_array_values();
-  }
-  fn sparse_array_names() wontthrow -> HashSet &
-  {
-    return m_variable_store.sparse_array_names();
-  }
-  pure fn sparse_array_names() const wontthrow -> const HashSet &
-  {
-    return m_variable_store.sparse_array_names();
-  }
-  fn exported_names() wontthrow -> StringMap<exported_name_value> &
-  {
-    return m_variable_store.exported_names();
-  }
-  pure fn exported_names() const wontthrow
-      -> const StringMap<exported_name_value> &
-  {
-    return m_variable_store.exported_names();
-  }
-  fn variable_attributes() wontthrow -> StringMap<u8> &
-  {
-    return m_variable_store.variable_attributes();
-  }
-  pure fn variable_attributes() const wontthrow -> const StringMap<u8> &
-  {
-    return m_variable_store.variable_attributes();
-  }
   pure fn lookup_indexed_array(StringView name) const wontthrow
       -> Maybe<const ArrayList<String> *>
   {
-    return indexed_arrays().find(name);
+    return m_variable_store.indexed_arrays().find(name);
   }
 
   /* The bash associative arrays. The values live in one flat map under a
@@ -2283,7 +2225,8 @@ public:
   fn declare_associative_array(StringView name) throws -> void;
   pure fn is_associative_array(StringView name) const wontthrow -> bool
   {
-    return associative_names().contains(name) || is_bash_aliases_special(name);
+    return m_variable_store.associative_names().contains(name) ||
+           is_bash_aliases_special(name);
   }
   pure fn is_bash_special_array_active(bash_special_array_id id) const wontthrow
       -> bool
@@ -2312,7 +2255,7 @@ public:
   }
   pure fn bash_directory_stack_element_count() const wontthrow -> usize
   {
-    return directory_stack().count() + 1;
+    return m_variable_store.directory_stack().count() + 1;
   }
   fn get_bash_directory_stack_element(usize index,
                                       Allocator allocator) const throws
@@ -2415,28 +2358,13 @@ public:
   hot fn has_variable_name(StringView name) const throws -> bool
   {
     return m_variable_store.shell_variables().find(name).has_value() ||
-           indexed_arrays().find(name).has_value() ||
-           associative_names().contains(name) || is_exported(name) ||
+           m_variable_store.indexed_arrays().find(name).has_value() ||
+           m_variable_store.associative_names().contains(name) ||
+           is_exported(name) ||
            variable_requires_dynamic_lookup(name);
   }
 
-  fn positional_params() wontthrow -> ArrayList<String> &
-  {
-    return m_variable_store.positional_params();
-  }
-  pure fn positional_params() const wontthrow -> const ArrayList<String> &
-  {
-    return m_variable_store.positional_params();
-  }
   fn set_positional_params(ArrayList<String> params) wontthrow -> void;
-  fn directory_stack() wontthrow -> ArrayList<String> &
-  {
-    return m_variable_store.directory_stack();
-  }
-  pure fn directory_stack() const wontthrow -> const ArrayList<String> &
-  {
-    return m_variable_store.directory_stack();
-  }
 
   /* Move the positional parameters out, so a function call saves the caller's
      without a deep copy and restores them by moving the saved list back. */

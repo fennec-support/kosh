@@ -684,15 +684,15 @@ fn EvalContext::suggest_similar_variable_name(StringView name) const throws
   variable_store().shell_variables().for_each(
       [&suggestion](StringView candidate, const String &)
           throws -> void { suggestion.consider(candidate); });
-  indexed_arrays().for_each(
+  variable_store().indexed_arrays().for_each(
       [&suggestion](StringView candidate, const ArrayList<String> &)
           throws -> void { suggestion.consider(candidate); });
-  associative_names().for_each(
+  variable_store().associative_names().for_each(
       [&suggestion](StringView candidate)
           throws -> void { suggestion.consider(candidate); });
   /* A case-sensitive environment types the value as Nothing. The generic
      parameter keeps the folded branch uninstantiated there. */
-  exported_names().for_each(
+  variable_store().exported_names().for_each(
       [&suggestion](StringView key, const auto &display_name) throws -> void {
         if constexpr (os::ENVIRONMENT_IS_CASE_SENSITIVE) {
           unused(display_name);
@@ -740,18 +740,18 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
   let snapshot = eval_state_snapshot{
       variable_store().shell_variables(),
       variable_store().special_variable_definition_locations(),
-      indexed_arrays(),
+      variable_store().indexed_arrays(),
       completion_store().specs(),
       completion_store().default_spec(),
-      associative_names(),
-      associative_values(),
-      sparse_array_values(),
-      sparse_array_names(),
+      variable_store().associative_names(),
+      variable_store().associative_values(),
+      variable_store().sparse_array_values(),
+      variable_store().sparse_array_names(),
       runtime_state().shopt_option_overrides,
       runtime_state().shopt_option_values,
       function_store().definitions(),
       scope_store().aliases(),
-      positional_params(),
+      variable_store().positional_params(),
       bash_argument_arrays() != nullptr
           ? static_cast<u32>(bash_argument_arrays()->values.count())
           : u32{0},
@@ -763,15 +763,15 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
           ? bash_argument_frame_context()->flags
           : u8{0},
       execution_store().get_last_argument(),
-      directory_stack(),
+      variable_store().directory_stack(),
       steal(working_directory),
       os::get_file_creation_mask(),
       trap_store().actions(),
       trap_store().debug_trap_active_depth(),
       trap_store().err_trap_active_depth(),
       trap_store().did_reset_inherited_signal_traps(),
-      variable_attributes(),
-      exported_names(),
+      variable_store().variable_attributes(),
+      variable_store().exported_names(),
       environment_store().environment_undo_log().count(),
       RuntimeState::capture(*this),
       resolution_store().resolver(),
@@ -805,18 +805,18 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
   variable_store().shell_variables() = steal(snapshot.shell_variables);
   variable_store().special_variable_definition_locations() =
       steal(snapshot.special_variable_definition_locations);
-  indexed_arrays() = steal(snapshot.indexed_arrays);
+  variable_store().indexed_arrays() = steal(snapshot.indexed_arrays);
   completion_store().specs() = steal(snapshot.completion_specs);
   completion_store().default_spec() = steal(snapshot.default_completion_spec);
-  associative_names() = steal(snapshot.associative_names);
-  associative_values() = steal(snapshot.associative_values);
-  sparse_array_values() = steal(snapshot.sparse_array_values);
-  sparse_array_names() = steal(snapshot.sparse_array_names);
+  variable_store().associative_names() = steal(snapshot.associative_names);
+  variable_store().associative_values() = steal(snapshot.associative_values);
+  variable_store().sparse_array_values() = steal(snapshot.sparse_array_values);
+  variable_store().sparse_array_names() = steal(snapshot.sparse_array_names);
   runtime_state().shopt_option_overrides = snapshot.shopt_option_overrides;
   runtime_state().shopt_option_values = snapshot.shopt_option_values;
   function_store().definitions() = steal(snapshot.functions);
   scope_store().aliases() = steal(snapshot.aliases);
-  positional_params() = steal(snapshot.positional_params);
+  variable_store().positional_params() = steal(snapshot.positional_params);
   if (!snapshot.had_bash_argument_arrays) {
     reset_bash_argument_arrays();
   } else {
@@ -836,7 +836,7 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
     bash_argument_frame_context()->flags =
         snapshot.bash_argument_frame_context_flags;
   execution_store().set_last_argument(steal(snapshot.last_argument));
-  directory_stack() = steal(snapshot.directory_stack);
+  variable_store().directory_stack() = steal(snapshot.directory_stack);
 
   snapshot.runtime.restore(*this);
   resolution_store().resolver() = steal(snapshot.program_resolver);
@@ -862,8 +862,8 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
   subshell_store().coprocess_read_fd() = snapshot.coprocess_read_fd;
   subshell_store().coprocess_write_fd() = snapshot.coprocess_write_fd;
 
-  variable_attributes() = steal(snapshot.variable_attributes);
-  exported_names() = steal(snapshot.exported_names);
+  variable_store().variable_attributes() = steal(snapshot.variable_attributes);
+  variable_store().exported_names() = steal(snapshot.exported_names);
 
   /* A signal the subshell trapped that the parent does not is returned to
      default before the parent's dispositions are reinstalled. */
@@ -1203,20 +1203,20 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
   });
 
   source += "set --";
-  for (let const &parameter : positional_params()) {
+  for (let const &parameter : variable_store().positional_params()) {
     source.push(' ');
     append_shell_quoted_arg(source, parameter.view());
   }
   source.push('\n');
 
   let const working_directory = Path::current_directory();
-  if (!directory_stack().is_empty()) {
+  if (!variable_store().directory_stack().is_empty()) {
     source += "builtin cd -- ";
-    append_shell_quoted_arg(source, directory_stack()[0].view());
+    append_shell_quoted_arg(source, variable_store().directory_stack()[0].view());
     source.push('\n');
-    for (usize index = 1; index < directory_stack().count(); index++) {
+    for (usize index = 1; index < variable_store().directory_stack().count(); index++) {
       source += "pushd ";
-      append_shell_quoted_arg(source, directory_stack()[index].view());
+      append_shell_quoted_arg(source, variable_store().directory_stack()[index].view());
       source += " >/dev/null\n";
     }
     source += "pushd ";

@@ -188,10 +188,10 @@ hot fn EvalContext::expand_word(const Word &word) throws
       break;
     case WordSegment::Kind::VariableReference: {
       if (segment.text == "@" && segment.is_in_double_quotes) {
-        for (usize i = 0; i < positional_params().count(); i++) {
+        for (usize i = 0; i < variable_store().positional_params().count(); i++) {
           if (i > 0) do_flush();
-          do_append_run(StringView{positional_params()[i].data(),
-                                   positional_params()[i].count()},
+          do_append_run(StringView{variable_store().positional_params()[i].data(),
+                                   variable_store().positional_params()[i].count()},
                         false);
         }
         break;
@@ -199,9 +199,9 @@ hot fn EvalContext::expand_word(const Word &word) throws
       if ((segment.text == "@" || segment.text == "*") &&
           !segment.is_in_double_quotes)
       {
-        for (usize i = 0; i < positional_params().count(); i++) {
+        for (usize i = 0; i < variable_store().positional_params().count(); i++) {
           if (i > 0) do_flush();
-          do_append_split_run(positional_params()[i].view(), true);
+          do_append_split_run(variable_store().positional_params()[i].view(), true);
         }
         break;
       }
@@ -277,15 +277,15 @@ hot fn EvalContext::expand_word(const Word &word) throws
         let const op = segment_text[positional_test_op_position];
         let const word =
             segment_text.substring(positional_test_op_position + 1);
-        let const param_count = positional_params().count();
+        let const param_count = variable_store().positional_params().count();
         let const positional_is_null =
             param_count == 0 ||
-            (param_count == 1 && positional_params()[0].view().is_empty());
+            (param_count == 1 && variable_store().positional_params()[0].view().is_empty());
         let const treat_as_unset =
             positional_test_has_colon ? positional_is_null : param_count == 0;
 
         let const do_emit_positional = [&]() throws {
-          do_emit_elements(positional_params(), segment.is_in_double_quotes,
+          do_emit_elements(variable_store().positional_params(), segment.is_in_double_quotes,
                            is_star);
         };
         let const do_emit_word = [&]() throws {
@@ -347,11 +347,11 @@ hot fn EvalContext::expand_word(const Word &word) throws
       {
         let const is_star = segment_text[0] == '*';
         let const slice = segment_text.substring(2);
-        let const param_count = positional_params().count();
+        let const param_count = variable_store().positional_params().count();
         let const total = static_cast<i64>(param_count) + 1;
         let const do_positional_at = [&](i64 index) wontthrow -> StringView {
           return index == 0 ? execution_store().get_shell_name()
-                            : positional_params()[static_cast<usize>(index - 1)]
+                            : variable_store().positional_params()[static_cast<usize>(index - 1)]
                                   .view();
         };
 
@@ -432,17 +432,17 @@ hot fn EvalContext::expand_word(const Word &word) throws
         if (segment.is_in_double_quotes && is_star) {
           let const ifs = field_separators();
           let joined = String{scratch_allocator()};
-          for (usize i = 0; i < positional_params().count(); i++) {
+          for (usize i = 0; i < variable_store().positional_params().count(); i++) {
             if (i > 0 && !ifs.is_empty()) {
               joined.push(ifs[0]);
             }
-            joined.append(do_transform(positional_params()[i].view()).view());
+            joined.append(do_transform(variable_store().positional_params()[i].view()).view());
           }
           do_append_run(joined, false);
         } else {
-          for (usize i = 0; i < positional_params().count(); i++) {
+          for (usize i = 0; i < variable_store().positional_params().count(); i++) {
             if (i > 0) do_flush();
-            let const modified = do_transform(positional_params()[i].view());
+            let const modified = do_transform(variable_store().positional_params()[i].view());
             if (segment.is_in_double_quotes)
               do_append_run(modified.view(), false);
             else
@@ -952,7 +952,7 @@ fn EvalContext::expand_wordlist_to_fields(StringView wordlist,
 
   defer
   {
-    indexed_arrays().erase("t__wordlist_fields");
+    variable_store().indexed_arrays().erase("t__wordlist_fields");
     force_unset_shell_variable("t__wordlist_fields");
   };
   let fields = ArrayList<String>{heap_allocator()};
