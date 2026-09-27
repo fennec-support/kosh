@@ -2403,13 +2403,6 @@ public:
 
   fn variable_names(Allocator result_allocator = heap_allocator()) const throws
       -> HashSet;
-#if !defined NDEBUG
-  pure fn debug_variable_name_enumeration_count() const wontthrow -> usize
-  {
-    return dynamic_runtime_store().debug_variable_name_enumeration_count();
-  }
-#endif
-
   /* A signal condition installs the shell's handler. */
   fn set_trap(StringView condition, StringView action) throws -> void;
   fn remove_trap(StringView condition) throws -> void;
@@ -2690,17 +2683,6 @@ public:
      frame as well as its own. */
   mustuse fn is_local_in_any_active_scope(StringView name) const wontthrow
       -> bool;
-  template <typename Callback>
-  fn for_each_local_name_in_current_scope(Callback callback) const throws
-      -> void
-  {
-    if (scope_store().local_scope_depth() == 0) return;
-
-    for (let const &binding :
-         scope_store().local_scopes()[scope_store().local_scope_depth() - 1])
-      callback(binding.name.view());
-  }
-
   fn snapshot_state() throws -> eval_state_snapshot;
   fn restore_state(eval_state_snapshot snapshot) throws -> void;
   fn make_subshell_bootstrap() const throws -> os::subshell_bootstrap;
