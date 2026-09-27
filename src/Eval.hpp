@@ -209,6 +209,43 @@ public:
       shell_options &= ~option_mask(option);
   }
 
+  fn set_error_exit(bool enabled) wontthrow -> void;
+  pure fn error_exit() const wontthrow -> bool;
+  fn set_echo_expanded(bool enabled) wontthrow -> void;
+  pure fn should_echo_expanded() const wontthrow -> bool;
+  fn set_error_unset(bool enabled) wontthrow -> void;
+  pure fn error_unset() const wontthrow -> bool;
+  fn set_pipefail(bool enabled) wontthrow -> void;
+  pure fn pipefail() const wontthrow -> bool;
+  fn set_no_clobber(bool enabled) wontthrow -> void;
+  pure fn no_clobber() const wontthrow -> bool;
+  fn set_export_all(bool enabled) wontthrow -> void;
+  pure fn export_all() const wontthrow -> bool;
+  fn set_no_glob(bool enabled) wontthrow -> void;
+  pure fn no_glob() const wontthrow -> bool;
+  fn set_no_exec(bool enabled) wontthrow -> void;
+  pure fn no_exec() const wontthrow -> bool;
+  fn set_extended_arithmetic(bool enabled) wontthrow -> void;
+  pure fn is_extended_arithmetic_enabled() const wontthrow -> bool;
+  fn set_koshkit(bool enabled) wontthrow -> void;
+  pure fn koshkit() const wontthrow -> bool;
+  fn set_failglob(bool enabled) wontthrow -> void;
+  pure fn failglob() const wontthrow -> bool;
+  fn set_echo(bool enabled) wontthrow -> void;
+  pure fn should_echo() const wontthrow -> bool;
+  fn set_stats_enabled(bool enabled) wontthrow -> void;
+  pure fn stats_enabled() const wontthrow -> bool;
+  fn set_show_ast(bool enabled) wontthrow -> void;
+  pure fn show_ast() const wontthrow -> bool;
+  fn set_show_lexed_words(bool enabled) wontthrow -> void;
+  pure fn show_lexed_words() const wontthrow -> bool;
+  fn set_show_exit_code(bool enabled) wontthrow -> void;
+  pure fn show_exit_code() const wontthrow -> bool;
+  fn set_show_all_exit_codes(bool enabled) wontthrow -> void;
+  pure fn show_all_exit_codes() const wontthrow -> bool;
+  fn set_memory_stats_enabled(bool enabled) wontthrow -> void;
+  pure fn memory_stats_enabled() const wontthrow -> bool;
+
   mustuse static fn capture(const EvalContext &context) wontthrow
       -> RuntimeState;
   fn restore(EvalContext &context) const wontthrow -> void;
@@ -1731,6 +1768,11 @@ public:
   {
     return m_runtime_control_store;
   }
+  fn runtime_state() wontthrow -> RuntimeState & { return m_runtime; }
+  pure fn runtime_state() const wontthrow -> const RuntimeState &
+  {
+    return m_runtime;
+  }
   fn scope_store() wontthrow -> ScopeStore & { return m_scope_store; }
   pure fn scope_store() const wontthrow -> const ScopeStore &
   {
@@ -2673,17 +2715,8 @@ public:
     return m_runtime.option_is_enabled(option);
   }
 
-  fn set_error_exit(bool enabled) wontthrow -> void;
-  pure fn error_exit() const wontthrow -> bool;
-  fn set_echo_expanded(bool enabled) wontthrow -> void;
-  fn set_error_unset(bool enabled) wontthrow -> void;
-  pure fn error_unset() const wontthrow -> bool;
   /* Marks the unset strictness as the script's own set -u rather than a mood
      seed, so the -W downgrade leaves it fatal. */
-  fn set_error_unset_explicit(bool enabled) wontthrow -> void
-  {
-    m_runtime.set_error_unset_set_explicitly(enabled);
-  }
   /* Mark a warning suppressed or not for the span of a construct. */
   fn set_warning_suppressed(suppressible_warning which, bool enabled) wontthrow
       -> void
@@ -2746,48 +2779,11 @@ public:
   pure fn locate_variable_reference(StringView name) const wontthrow
       -> SourceLocation;
 
-  fn set_pipefail(bool enabled) wontthrow -> void;
-  pure fn pipefail() const wontthrow -> bool;
   /* Marks the pipeline strictness as the script's own set -o pipefail rather
      than a mood seed, so a later mood switch leaves it in place. */
-  fn set_pipefail_explicit(bool enabled) wontthrow -> void
-  {
-    m_runtime.set_pipefail_set_explicitly(enabled);
-  }
-
-  fn set_no_clobber(bool enabled) wontthrow -> void;
-  pure fn no_clobber() const wontthrow -> bool;
-  fn set_export_all(bool enabled) wontthrow -> void;
-  pure fn export_all() const wontthrow -> bool;
-  fn set_no_glob(bool enabled) wontthrow -> void;
-  pure fn no_glob() const wontthrow -> bool;
-  fn set_no_exec(bool enabled) wontthrow -> void;
-  pure fn no_exec() const wontthrow -> bool;
-  fn set_extended_arithmetic(bool enabled) wontthrow -> void
-  {
-    m_runtime.set_option(shell_option_id::ExtendedArithmetic, enabled);
-  }
-  pure fn is_extended_arithmetic_enabled() const wontthrow -> bool
-  {
-    return m_runtime.option_is_enabled(shell_option_id::ExtendedArithmetic);
-  }
-  fn set_extended_arithmetic_explicit(bool enabled) wontthrow -> void
-  {
-    m_runtime.set_extended_arithmetic_set_explicitly(enabled);
-  }
-  fn set_koshkit(bool enabled) wontthrow -> void;
-  pure fn koshkit() const wontthrow -> bool;
   pure fn koshkit_utilities_are_reachable() const wontthrow -> bool
   {
     return m_runtime.koshkit_utilities_are_reachable();
-  }
-  fn set_failglob(bool enabled) wontthrow -> void;
-  pure fn failglob() const wontthrow -> bool;
-  /* Marks the glob strictness as the script's own set -o failglob rather than
-     a mood seed, so the -W downgrade leaves it fatal. */
-  fn set_failglob_explicit(bool enabled) wontthrow -> void
-  {
-    m_runtime.set_failglob_set_explicitly(enabled);
   }
   /* True while a test or [ command expands its arguments, so an unmatched glob
      there stays a silent literal and the probe answers false rather than
@@ -2877,14 +2873,15 @@ public:
   {
     let const strict = m_runtime.mood == mimic_mood::Default;
     if (!m_runtime.was_error_unset_set_explicitly())
-      set_error_unset(strict &&
-                      !execution_store().completion_function_running());
-    if (!m_runtime.was_pipefail_set_explicitly()) set_pipefail(strict);
+      runtime_state().set_error_unset(
+          strict && !execution_store().completion_function_running());
+    if (!m_runtime.was_pipefail_set_explicitly())
+      runtime_state().set_pipefail(strict);
     if (!m_runtime.was_failglob_set_explicitly())
-      set_failglob(strict &&
-                   !execution_store().completion_function_running());
+      runtime_state().set_failglob(
+          strict && !execution_store().completion_function_running());
     if (!m_runtime.was_extended_arithmetic_set_explicitly())
-      set_extended_arithmetic(strict);
+      runtime_state().set_extended_arithmetic(strict);
   }
 
   friend class RuntimeState;
@@ -3329,14 +3326,8 @@ public:
                                  const SourceLocation *source_location) throws
       -> String;
 
-  pure fn should_echo() const wontthrow -> bool;
   fn write_xtrace(StringView command) throws -> void;
   fn write_xtrace(const ArrayList<String> &args) throws -> void;
-  fn set_echo(bool enabled) wontthrow -> void
-  {
-    m_runtime.set_option(shell_option_id::Verbose, enabled);
-  }
-  pure fn should_echo_expanded() const wontthrow -> bool;
   pure fn shell_is_interactive() const wontthrow -> bool;
 
   pure fn startup_finished() const wontthrow -> bool
@@ -3369,21 +3360,7 @@ public:
 
   fn make_stats_string() const throws -> String;
 
-  fn set_stats_enabled(bool enabled) wontthrow -> void;
-  pure fn stats_enabled() const wontthrow -> bool;
-
-  fn set_show_ast(bool enabled) wontthrow -> void;
-  pure fn show_ast() const wontthrow -> bool;
-  fn set_show_lexed_words(bool enabled) wontthrow -> void;
-  pure fn show_lexed_words() const wontthrow -> bool;
-  fn set_show_exit_code(bool enabled) wontthrow -> void;
-  pure fn show_exit_code() const wontthrow -> bool;
-  fn set_show_all_exit_codes(bool enabled) wontthrow -> void;
-  pure fn show_all_exit_codes() const wontthrow -> bool;
-
   /* The granular memory report at exit, requested by --show-memory. */
-  fn set_memory_stats_enabled(bool enabled) wontthrow -> void;
-  pure fn memory_stats_enabled() const wontthrow -> bool;
 
   /* The --no-diagnostics skip, so set -o no-diagnostics flips the per-chunk
      analysis gate at runtime. */

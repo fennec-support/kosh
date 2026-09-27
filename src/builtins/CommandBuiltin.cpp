@@ -149,7 +149,8 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
         did_find_any = true;
         continue;
       }
-      if ((cxt.koshkit() || cxt.mood() == mimic_mood::Default) &&
+      if ((cxt.runtime_state().koshkit() ||
+           cxt.mood() == mimic_mood::Default) &&
           koshkit::find_util(name.view()).has_value())
       {
         ec.print_to_stdout(is_verbose ? name + " is a built-in utility\n"
@@ -185,7 +186,8 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
     let const *source = cxt.current_source();
     sub = ExecContext::make_from(
         ec.source_location(), source != nullptr ? source->view() : StringView{},
-        steal(operand_args), cxt.koshkit(), cxt.is_shopt_enabled("checkhash"),
+        steal(operand_args), cxt.runtime_state().koshkit(),
+        cxt.is_shopt_enabled("checkhash"),
         resolver, steal(operand_arg_locations), cxt.mood());
   } catch (const CommandResolutionErrorWithLocation &resolution_error) {
     LOG(Debug, "command handled a resolution error: %s",

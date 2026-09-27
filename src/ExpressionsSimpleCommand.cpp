@@ -281,7 +281,7 @@ hot fn AssignCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
   try {
     let value = cxt.expand_word_for_assignment(m_assignment->value_word());
 
-    if (cxt.should_echo_expanded()) {
+    if (cxt.runtime_state().should_echo_expanded()) {
       let trace = String{cxt.scratch_allocator(), m_assignment->key().view()};
       trace += m_assignment->get_update_mode() == assignment_update_mode::Append
                    ? "+="
@@ -317,7 +317,7 @@ hot fn AssignCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
     }
 
     cxt.set_shell_variable(m_assignment->key(), value);
-    if (cxt.export_all()) {
+    if (cxt.runtime_state().export_all()) {
       let const &key = m_assignment->key();
       cxt.record_environment_change(key);
       os::set_environment_variable(key, value);
@@ -688,7 +688,7 @@ fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
       let opened = os::open_file_descriptor(
           *resolved_dup.both_streams_file,
           redirection_open_mode(Redirection::Kind::TruncateOutput,
-                                cxt.no_clobber()));
+                                cxt.runtime_state().no_clobber()));
       if (!opened) {
         if (open_or_stage_failed != nullptr) *open_or_stage_failed = true;
         throw ErrorWithLocation{
@@ -715,7 +715,8 @@ fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
                             "Redirection target is not a single file"};
   }
 
-  let mode = redirection_open_mode(redir.kind, cxt.no_clobber());
+  let mode = redirection_open_mode(redir.kind,
+                                   cxt.runtime_state().no_clobber());
 
   const String &target_path = target[0];
 

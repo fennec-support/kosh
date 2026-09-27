@@ -133,7 +133,7 @@ hot fn CompoundList::evaluate_root_status_impl(
   defer { cxt.execution_store().terminal_exec_allowed() = was_terminal_exec_allowed; };
 
   for (usize index = 0; index < m_nodes.count(); index++) {
-    if (cxt.no_exec()) break;
+    if (cxt.runtime_state().no_exec()) break;
 
     /* A break or a continue a trap action requested before this list was
        entered runs nothing here and stays pending for the enclosing loop. */
@@ -273,14 +273,15 @@ hot fn CompoundList::evaluate_root_status_impl(
         !n->is_negated() && is_end_of_and_or_chain && ret.status != 0 &&
         ret.status != NOTHING_WAS_EXECUTED &&
         !ret.has(status_flag::ErrResolved);
-    const bool is_fatal_exit = cxt.error_exit() && was_command_failure_uncaught;
+    const bool is_fatal_exit =
+        cxt.runtime_state().error_exit() && was_command_failure_uncaught;
 
     const bool is_reportable_status =
         did_execute && ret.status != NOTHING_WAS_EXECUTED &&
         !ret.has(status_flag::ExitCodeReported) &&
-        (ret.status != 0 || cxt.show_all_exit_codes());
+        (ret.status != 0 || cxt.runtime_state().show_all_exit_codes());
 
-    if (cxt.show_exit_code() && is_reportable_status) {
+    if (cxt.runtime_state().show_exit_code() && is_reportable_status) {
       let message =
           String{cxt.scratch_allocator(),
                  ret.status != 0 ? "Non-zero exit code (" : "Exit code ("};
@@ -318,7 +319,7 @@ hot fn CompoundList::evaluate_root_status_impl(
 
     /* The action can turn errexit off or on, and the option decides the exit
        only as it stands once the action has returned. */
-    if (was_command_failure_uncaught && cxt.error_exit()) {
+    if (was_command_failure_uncaught && cxt.runtime_state().error_exit()) {
       cxt.execution_store().set_last_exit_status(ret.status);
       if (cxt.in_subshell()) {
         cxt.request_exit(ret.status, source_location());
@@ -550,7 +551,8 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
       const Command *stage = m_commands[stage_index];
       ASSERT(stage != nullptr);
 
-      cxt.evaluation_metrics_store().add_evaluated_expression(cxt.stats_enabled());
+      cxt.evaluation_metrics_store().add_evaluated_expression(
+          cxt.runtime_state().stats_enabled());
 
       let const is_first = (stage_index == 0);
       let const is_last = (stage_index + 1 == m_commands.count());
@@ -771,7 +773,7 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
   cxt.publish_pipe_statuses(steal(pipe_status));
 
   i32 ret = stage_status.is_empty() ? 0 : stage_status.back();
-  if (cxt.pipefail()) {
+  if (cxt.runtime_state().pipefail()) {
     ret = 0;
     for (usize i = stage_status.count(); i > 0; i--)
       if (stage_status[i - 1] != 0) {
@@ -781,7 +783,8 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
   }
 
   LOG(Debug, "the pipeline stages were reaped, %s status is %d",
-      cxt.pipefail() ? "the pipefail" : "the last stage's", ret);
+      cxt.runtime_state().pipefail() ? "the pipefail" : "the last stage's",
+      ret);
 
   SET_AND_RETURN_EXIT_STATUS(cxt, ret);
 }
@@ -856,7 +859,8 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
     ASSERT(stage->is_simple_command());
     const SimpleCommand *e = static_cast<const SimpleCommand *>(stage);
 
-    cxt.evaluation_metrics_store().add_evaluated_expression(cxt.stats_enabled());
+    cxt.evaluation_metrics_store().add_evaluated_expression(
+        cxt.runtime_state().stats_enabled());
 
     /* The location moves onto the stage first so a runtime warning from its
        words carets the stage that read the variable. */

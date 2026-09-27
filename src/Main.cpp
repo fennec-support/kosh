@@ -751,12 +751,13 @@ fn kosh_main(int argc, char **argv) -> int
   if (should_execute_commands || should_read_files)
     cli_invocation = koshka::join_command_line(parse_argc, parse_argv);
 
-  context.set_stats_enabled(FLAG_STATS.is_enabled());
-  context.set_show_ast(FLAG_AST.is_enabled());
-  context.set_show_lexed_words(FLAG_ESCAPE_MAP.is_enabled());
-  context.set_show_exit_code(FLAG_EXIT_CODE.is_enabled());
-  context.set_show_all_exit_codes(FLAG_ALL_EXIT_CODES.is_enabled());
-  context.set_memory_stats_enabled(FLAG_MEMORY.is_enabled());
+  context.runtime_state().set_stats_enabled(FLAG_STATS.is_enabled());
+  context.runtime_state().set_show_ast(FLAG_AST.is_enabled());
+  context.runtime_state().set_show_lexed_words(FLAG_ESCAPE_MAP.is_enabled());
+  context.runtime_state().set_show_exit_code(FLAG_EXIT_CODE.is_enabled());
+  context.runtime_state().set_show_all_exit_codes(
+      FLAG_ALL_EXIT_CODES.is_enabled());
+  context.runtime_state().set_memory_stats_enabled(FLAG_MEMORY.is_enabled());
   context.set_diagnostics_disabled(FLAG_SUPPRESS_DIAGNOSTICS.is_enabled() &&
                                    !FLAG_LINT.is_enabled());
   context.set_annoying_diagnostics_enabled(
@@ -777,14 +778,16 @@ fn kosh_main(int argc, char **argv) -> int
      strictness is applied at the seam below once the config has loaded. */
   context.set_mood(session_mood);
   context.set_tab_selector(koshka::resolve_session_tab_selector());
-  context.set_extended_arithmetic(session_mood == koshka::mimic_mood::Default ||
-                                  FLAG_EXTENDED_ARITHMETIC.is_enabled());
+  context.runtime_state().set_extended_arithmetic(
+      session_mood == koshka::mimic_mood::Default ||
+      FLAG_EXTENDED_ARITHMETIC.is_enabled());
   if (FLAG_EXTENDED_ARITHMETIC.is_enabled())
-    context.set_extended_arithmetic_explicit(true);
+    context.runtime_state().set_extended_arithmetic_set_explicitly(true);
   /* The CLI -u is the user's own ask, so the -W downgrade leaves it fatal and
      the mood seam keeps it on. */
-  context.set_error_unset(FLAG_NOUNSET.is_enabled());
-  if (FLAG_NOUNSET.is_enabled()) context.set_error_unset_explicit(true);
+  context.runtime_state().set_error_unset(FLAG_NOUNSET.is_enabled());
+  if (FLAG_NOUNSET.is_enabled())
+    context.runtime_state().set_error_unset_set_explicitly(true);
   let const warnings_specified_count = FLAG_WARNINGS.count();
   let const specified_warning_level = static_cast<u8>(
       warnings_specified_count > 3 ? 3 : warnings_specified_count);
@@ -792,12 +795,13 @@ fn kosh_main(int argc, char **argv) -> int
   if (FLAG_LINT.is_enabled())
     warning_level = session_mood == koshka::mimic_mood::Default ? 0 : 3;
   context.set_warning_level(warning_level);
-  context.set_pipefail(false);
-  context.set_no_clobber(FLAG_NO_CLOBBER.is_enabled());
-  context.set_export_all(FLAG_EXPORT_ALL.is_enabled());
-  context.set_no_exec(FLAG_NO_EXEC.is_enabled() || FLAG_LINT.is_enabled());
-  context.set_koshkit(FLAG_ENABLE_KOSHKIT.is_enabled());
-  context.set_failglob(false);
+  context.runtime_state().set_pipefail(false);
+  context.runtime_state().set_no_clobber(FLAG_NO_CLOBBER.is_enabled());
+  context.runtime_state().set_export_all(FLAG_EXPORT_ALL.is_enabled());
+  context.runtime_state().set_no_exec(FLAG_NO_EXEC.is_enabled() ||
+                                      FLAG_LINT.is_enabled());
+  context.runtime_state().set_koshkit(FLAG_ENABLE_KOSHKIT.is_enabled());
+  context.runtime_state().set_failglob(false);
   /* Mimicry is mirrored onto the context, since the execution path in Utils
      reads it there rather than the static flag. */
   context.set_mimicry(FLAG_MIMICRY.is_enabled());
@@ -1429,7 +1433,8 @@ fn kosh_main(int argc, char **argv) -> int
        command under EV_EXIT. An interactive prompt, an EXIT trap, or a pending
        trailer keeps the fork to regain control. */
     const bool should_print_post_run_trailer =
-        context.show_exit_code() || context.stats_enabled();
+        context.runtime_state().show_exit_code() ||
+        context.runtime_state().stats_enabled();
     context.execution_store().terminal_exec_allowed() =
         should_quit && !context.shell_is_interactive() &&
         !context.has_exit_trap() && !should_print_post_run_trailer;
@@ -1523,9 +1528,9 @@ fn kosh_main(int argc, char **argv) -> int
       LOG(Info, "exiting after the final chunk with code %d", exit_code);
       if (!koshka::os::is_child_process()) context.run_exit_trap();
       if (FLAG_LINT.is_enabled()) {
-        if (context.memory_stats_enabled()) {
+        if (context.runtime_state().memory_stats_enabled()) {
           koshka::utils::print_memory_report();
-          context.set_memory_stats_enabled(false);
+          context.runtime_state().set_memory_stats_enabled(false);
         }
         koshka::print_analysis_diagnostic_summary(lint_diagnostic_totals);
       }

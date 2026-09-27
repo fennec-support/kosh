@@ -62,10 +62,11 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
     return execute_builtin(steal(ec), cxt);
   }
 
-  let const can_replace_shell = cxt.execution_store().terminal_exec_allowed() &&
-                                !cxt.in_subshell() && !cxt.has_exit_trap() &&
-                                !cxt.show_exit_code() && !cxt.stats_enabled() &&
-                                !cxt.memory_stats_enabled();
+  let const can_replace_shell =
+      cxt.execution_store().terminal_exec_allowed() && !cxt.in_subshell() &&
+      !cxt.has_exit_trap() && !cxt.runtime_state().show_exit_code() &&
+      !cxt.runtime_state().stats_enabled() &&
+      !cxt.runtime_state().memory_stats_enabled();
 
   /* Mimicry runs the script in-process, a background command keeps its fork.
    */
@@ -713,7 +714,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
   cxt.publish_pipe_statuses(steal(pipe_status));
 
   /* pipefail reports the rightmost failing stage, otherwise the last stage. */
-  if (cxt.pipefail()) {
+  if (cxt.runtime_state().pipefail()) {
     for (usize i = stage_count; i > 0; i--)
       if (stage_status[i - 1] != 0) return stage_status[i - 1];
     return 0;
@@ -770,7 +771,8 @@ cold fn print_memory_report() wontthrow -> void
   let const should_goodbye = farewell == farewell_policy::Goodbye;
   LOG(Info, "quitting with code %d", code);
 
-  if (QUIT_CONTEXT != nullptr && QUIT_CONTEXT->memory_stats_enabled()) {
+  if (QUIT_CONTEXT != nullptr &&
+      QUIT_CONTEXT->runtime_state().memory_stats_enabled()) {
     print_memory_report();
   }
 

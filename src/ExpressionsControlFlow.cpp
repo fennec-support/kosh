@@ -43,7 +43,8 @@ static fn append_word_loop_header(EvalContext &cxt, String &header,
                                   const ArrayList<const Token *> &words) throws
     -> void
 {
-  if (!cxt.should_echo_expanded() && !cxt.bash_dynamic_variables_enabled() &&
+  if (!cxt.runtime_state().should_echo_expanded() &&
+      !cxt.bash_dynamic_variables_enabled() &&
       !cxt.has_debug_trap())
   {
     return;
@@ -498,7 +499,7 @@ hot fn WhileLoop::evaluate_status_impl(EvalContext &cxt) const throws
       defer { cxt.leave_condition(); };
       condition_status = m_condition->evaluate(cxt);
     }
-    if (cxt.no_exec()) break;
+    if (cxt.runtime_state().no_exec()) break;
     if (cxt.control_flow_store().has_pending()) {
       if (resolve_loop_control(cxt) == loop_disposition::StopLoop) break;
       continue;
@@ -509,7 +510,7 @@ hot fn WhileLoop::evaluate_status_impl(EvalContext &cxt) const throws
     if (!should_run_body) break;
 
     result = m_body->evaluate_status(cxt);
-    if (cxt.no_exec()) break;
+    if (cxt.runtime_state().no_exec()) break;
     if (resolve_loop_control(cxt) == loop_disposition::StopLoop) break;
   }
 
@@ -735,7 +736,7 @@ fn SelectLoop::evaluate_status_impl(EvalContext &cxt) const throws
     }
 
     result = m_body->evaluate_status(cxt);
-    if (cxt.no_exec()) break;
+    if (cxt.runtime_state().no_exec()) break;
     if (resolve_loop_control(cxt) == loop_disposition::StopLoop) break;
   }
 
@@ -851,7 +852,7 @@ hot fn ForLoop::evaluate_status_impl(EvalContext &cxt) const throws
     cxt.write_xtrace(loop_trace.view());
     cxt.set_shell_variable(m_variable_name, value);
     result = m_body->evaluate_status(cxt);
-    if (cxt.no_exec()) break;
+    if (cxt.runtime_state().no_exec()) break;
     if (resolve_loop_control(cxt) == loop_disposition::StopLoop) break;
   }
 

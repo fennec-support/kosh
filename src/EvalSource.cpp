@@ -109,7 +109,7 @@ fn EvalContext::run_program_fallback(ExecContext &ec, mimic_mood mode,
       source_store().m_retained_source_generation;
   fallback_context.execution_store().set_shell_executable_path(
       String{execution_store().get_shell_executable_path()});
-  fallback_context.set_koshkit(koshkit());
+  fallback_context.runtime_state().set_koshkit(runtime_state().koshkit());
   fallback_context.set_mimicry(mimicry());
   fallback_context.set_warning_level(warning_level());
   fallback_context.set_diagnostics_disabled(diagnostics_disabled());
@@ -263,9 +263,9 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
      or sh script clears nounset, pipefail, and failglob while a kosh script
      keeps the strict default. */
   let const is_mimic_strict = mode == mimic_mood::Default;
-  set_error_unset(is_mimic_strict);
-  set_pipefail(is_mimic_strict);
-  set_failglob(is_mimic_strict);
+  runtime_state().set_error_unset(is_mimic_strict);
+  runtime_state().set_pipefail(is_mimic_strict);
+  runtime_state().set_failglob(is_mimic_strict);
   LOG(Debug, "seeded the strict options for the %s mimicked run",
       is_mimic_strict ? "kosh" : "lax");
 

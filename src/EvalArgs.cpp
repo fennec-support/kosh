@@ -759,7 +759,7 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
           for (glob_field &field : expand_word(expandable)) {
             /* A field with no active glob is its own single result, pushed
                straight in without a directory scan. */
-            if (no_glob() ||
+            if (runtime_state().no_glob() ||
                 !first_active_glob(field.text.view(), field.glob_active,
                                    get_extglob_mode())
                      .has_value())
@@ -797,7 +797,7 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
 
 fn EvalContext::write_xtrace(StringView command) throws -> void
 {
-  if (!should_echo_expanded()) return;
+  if (!runtime_state().should_echo_expanded()) return;
 
   let trace = String{scratch_allocator()};
   let const ps4 = get_variable_value("PS4").value_or(String{"+ "});
@@ -825,7 +825,7 @@ fn EvalContext::write_xtrace(StringView command) throws -> void
 
 fn EvalContext::write_xtrace(const ArrayList<String> &args) throws -> void
 {
-  if (!should_echo_expanded()) return;
+  if (!runtime_state().should_echo_expanded()) return;
 
   let command = String{scratch_allocator()};
   for (usize i = 0; i < args.count(); i++) {

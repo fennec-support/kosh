@@ -2100,7 +2100,7 @@ fn EvalContext::evaluate_arithmetic(
 {
   let const scratch = scratch_mark();
   defer { scratch_release(scratch); };
-  let const is_exact = is_extended_arithmetic_enabled();
+  let const is_exact = runtime_state().is_extended_arithmetic_enabled();
   let const value =
       evaluate_arithmetic_value(this, expression, expression_base, is_exact,
                                 expansion_store().scratch_arena());
@@ -2113,7 +2113,7 @@ fn EvalContext::evaluate_arithmetic_text(
 {
   let const scratch = scratch_mark();
   defer { scratch_release(scratch); };
-  let const is_exact = is_extended_arithmetic_enabled();
+  let const is_exact = runtime_state().is_extended_arithmetic_enabled();
   let const value =
       evaluate_arithmetic_value(this, expression, expression_base, is_exact,
                                 expansion_store().scratch_arena());
@@ -2151,7 +2151,7 @@ fn EvalContext::evaluate_arithmetic_nonzero(
 {
   let const scratch = scratch_mark();
   defer { scratch_release(scratch); };
-  let const is_exact = is_extended_arithmetic_enabled();
+  let const is_exact = runtime_state().is_extended_arithmetic_enabled();
   return !evaluate_arithmetic_value(this, expression, expression_base, is_exact,
                                     expansion_store().scratch_arena())
               .is_zero();
@@ -2162,7 +2162,7 @@ fn EvalContext::compare_arithmetic(StringView left, StringView right) throws
 {
   let const scratch = scratch_mark();
   defer { scratch_release(scratch); };
-  let const is_exact = is_extended_arithmetic_enabled();
+  let const is_exact = runtime_state().is_extended_arithmetic_enabled();
   let const left_value = evaluate_arithmetic_value(
       this, left, nullptr, is_exact, expansion_store().scratch_arena());
   let const right_value = evaluate_arithmetic_value(
@@ -2233,7 +2233,7 @@ fn EvalContext::evaluate_arithmetic_cached_text(
     cache.arithmetic_lifetime = cache_arena->register_lifetime();
   }
 
-  let const is_exact = is_extended_arithmetic_enabled();
+  let const is_exact = runtime_state().is_extended_arithmetic_enabled();
   if (is_exact && cache.arith->has_exact_constant_text) {
     return String{scratch_allocator(), cache.arith->exact_constant_text.view()};
   }
@@ -2302,7 +2302,7 @@ fn EvalContext::evaluate_arithmetic_cached_clause(
 {
   let const scratch = scratch_mark();
   defer { scratch_release(scratch); };
-  let const is_exact = is_extended_arithmetic_enabled();
+  let const is_exact = runtime_state().is_extended_arithmetic_enabled();
   let const value = evaluate_arithmetic_cached_value(
       this, expression, tokens, is_tokenized, is_simple, source_location,
       is_exact, expansion_store().scratch_arena());
@@ -2315,7 +2315,7 @@ fn EvalContext::evaluate_arithmetic_cached_clause_nonzero(
 {
   let const scratch = scratch_mark();
   defer { scratch_release(scratch); };
-  let const is_exact = is_extended_arithmetic_enabled();
+  let const is_exact = runtime_state().is_extended_arithmetic_enabled();
   return !evaluate_arithmetic_cached_value(
               this, expression, tokens, is_tokenized, is_simple,
               source_location, is_exact, expansion_store().scratch_arena())

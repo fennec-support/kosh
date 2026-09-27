@@ -133,7 +133,7 @@ fn EvalContext::expand_path_once(const glob_field &field,
                                  : os::case_sensitivity::Sensitive);
   };
   let const do_append_entry = [&](StringView filename) throws -> void {
-    evaluation_metrics_store().add_expansion(stats_enabled());
+    evaluation_metrics_store().add_expansion(runtime_state().stats_enabled());
 
     let result_field = glob_field{scratch};
     result_field.text.append(typed_prefix);
@@ -652,9 +652,9 @@ hot fn EvalContext::expand_path(glob_field field,
 
   /* Fast path. A field with no glob is its own single result. */
   let const has_glob =
-      !no_glob() && first_active_glob(field.text.view(), field.glob_active,
-                                      get_extglob_mode())
-                        .has_value();
+      !runtime_state().no_glob() &&
+      first_active_glob(field.text.view(), field.glob_active, get_extglob_mode())
+          .has_value();
 
   if (!has_glob) {
     let single_result = ArrayList<String>{scratch};
@@ -682,7 +682,8 @@ hot fn EvalContext::expand_path(glob_field field,
      literal fallback with failglob off. A test or [ command is exempt so a glob
      probing for a file keeps its literal text. */
   if (values.count() == 0) {
-    let const failglob_is_on = failglob() || is_shopt_enabled("failglob");
+    let const failglob_is_on =
+        runtime_state().failglob() || is_shopt_enabled("failglob");
     let const failglob_is_explicit =
         m_runtime.was_failglob_set_explicitly() || is_shopt_enabled("failglob");
     if (!glob_exempt_for_test())

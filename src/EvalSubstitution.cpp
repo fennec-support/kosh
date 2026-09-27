@@ -519,7 +519,7 @@ fn EvalContext::run_captured_substitution(const Expression *ast,
         hide_coprocess_descriptors();
         if (mood() == mimic_mood::Bash && !is_shopt_enabled("inherit_errexit"))
         {
-          set_error_exit(false);
+          runtime_state().set_error_exit(false);
         }
         clear_inherited_exit_trap();
         reset_inherited_signal_traps();
@@ -675,7 +675,7 @@ fn EvalContext::run_captured_substitution(const Expression *ast,
     did_enter_subshell = true;
     hide_coprocess_descriptors();
     if (mood() == mimic_mood::Bash && !is_shopt_enabled("inherit_errexit")) {
-      set_error_exit(false);
+      runtime_state().set_error_exit(false);
     }
     clear_inherited_exit_trap();
     reset_inherited_signal_traps();

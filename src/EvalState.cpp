@@ -432,119 +432,144 @@ fn EvalContext::leave_parameter_expansion() wontthrow -> void
   expansion_store().parameter_expansion_depth()--;
 }
 
-fn EvalContext::set_error_exit(bool enabled) wontthrow -> void
+fn RuntimeState::set_error_exit(bool enabled) wontthrow -> void
 {
   LOG(Info, "the errexit option flips to %s", enabled ? "on" : "off");
-  m_runtime.set_option(shell_option_id::Errexit, enabled);
+  set_option(shell_option_id::Errexit, enabled);
 }
 
-pure fn EvalContext::error_exit() const wontthrow -> bool
+pure fn RuntimeState::error_exit() const wontthrow -> bool
 {
-  return m_runtime.option_is_enabled(shell_option_id::Errexit);
+  return option_is_enabled(shell_option_id::Errexit);
 }
 
-fn EvalContext::set_echo_expanded(bool enabled) wontthrow -> void
+fn RuntimeState::set_echo_expanded(bool enabled) wontthrow -> void
 {
   LOG(Info, "the xtrace option flips to %s", enabled ? "on" : "off");
-  m_runtime.set_option(shell_option_id::Xtrace, enabled);
+  set_option(shell_option_id::Xtrace, enabled);
 }
 
-fn EvalContext::set_error_unset(bool enabled) wontthrow -> void
+pure fn RuntimeState::should_echo_expanded() const wontthrow -> bool
+{
+  return option_is_enabled(shell_option_id::Xtrace);
+}
+
+fn RuntimeState::set_error_unset(bool enabled) wontthrow -> void
 {
   LOG(Info, "the nounset option flips to %s", enabled ? "on" : "off");
-  m_runtime.set_option(shell_option_id::Nounset, enabled);
+  set_option(shell_option_id::Nounset, enabled);
 }
 
-pure fn EvalContext::error_unset() const wontthrow -> bool
+pure fn RuntimeState::error_unset() const wontthrow -> bool
 {
-  return m_runtime.option_is_enabled(shell_option_id::Nounset);
+  return option_is_enabled(shell_option_id::Nounset);
 }
 
-fn EvalContext::set_pipefail(bool enabled) wontthrow -> void
+fn RuntimeState::set_pipefail(bool enabled) wontthrow -> void
 {
   LOG(Info, "the pipefail option flips to %s", enabled ? "on" : "off");
-  m_runtime.set_option(shell_option_id::Pipefail, enabled);
+  set_option(shell_option_id::Pipefail, enabled);
 }
 
-pure fn EvalContext::pipefail() const wontthrow -> bool
+pure fn RuntimeState::pipefail() const wontthrow -> bool
 {
-  return m_runtime.option_is_enabled(shell_option_id::Pipefail);
+  return option_is_enabled(shell_option_id::Pipefail);
 }
 
-fn EvalContext::set_no_clobber(bool enabled) wontthrow -> void
+fn RuntimeState::set_no_clobber(bool enabled) wontthrow -> void
 {
   LOG(Info, "the noclobber option flips to %s", enabled ? "on" : "off");
-  m_runtime.set_option(shell_option_id::Noclobber, enabled);
+  set_option(shell_option_id::Noclobber, enabled);
 }
 
-pure fn EvalContext::no_clobber() const wontthrow -> bool
+pure fn RuntimeState::no_clobber() const wontthrow -> bool
 {
-  return m_runtime.option_is_enabled(shell_option_id::Noclobber);
+  return option_is_enabled(shell_option_id::Noclobber);
 }
 
-fn EvalContext::set_export_all(bool enabled) wontthrow -> void
+fn RuntimeState::set_export_all(bool enabled) wontthrow -> void
 {
   LOG(Info, "the allexport option flips to %s", enabled ? "on" : "off");
-  m_runtime.set_option(shell_option_id::Allexport, enabled);
+  set_option(shell_option_id::Allexport, enabled);
 }
 
-pure fn EvalContext::export_all() const wontthrow -> bool
+pure fn RuntimeState::export_all() const wontthrow -> bool
 {
-  return m_runtime.option_is_enabled(shell_option_id::Allexport);
+  return option_is_enabled(shell_option_id::Allexport);
 }
 
-fn EvalContext::set_stats_enabled(bool enabled) wontthrow -> void
+fn RuntimeState::set_echo(bool enabled) wontthrow -> void
 {
-  m_runtime.set_option(shell_option_id::ShowStats, enabled);
+  set_option(shell_option_id::Verbose, enabled);
 }
 
-pure fn EvalContext::stats_enabled() const wontthrow -> bool
+pure fn RuntimeState::should_echo() const wontthrow -> bool
 {
-  return m_runtime.option_is_enabled(shell_option_id::ShowStats);
+  return option_is_enabled(shell_option_id::Verbose);
 }
 
-fn EvalContext::set_no_glob(bool enabled) wontthrow -> void
+fn RuntimeState::set_stats_enabled(bool enabled) wontthrow -> void
+{
+  set_option(shell_option_id::ShowStats, enabled);
+}
+
+pure fn RuntimeState::stats_enabled() const wontthrow -> bool
+{
+  return option_is_enabled(shell_option_id::ShowStats);
+}
+
+fn RuntimeState::set_no_glob(bool enabled) wontthrow -> void
 {
   LOG(Info, "the noglob option flips to %s", enabled ? "on" : "off");
-  m_runtime.set_option(shell_option_id::Noglob, enabled);
+  set_option(shell_option_id::Noglob, enabled);
 }
 
-pure fn EvalContext::no_glob() const wontthrow -> bool
+pure fn RuntimeState::no_glob() const wontthrow -> bool
 {
-  return m_runtime.option_is_enabled(shell_option_id::Noglob);
+  return option_is_enabled(shell_option_id::Noglob);
 }
 
-fn EvalContext::set_no_exec(bool enabled) wontthrow -> void
+fn RuntimeState::set_no_exec(bool enabled) wontthrow -> void
 {
   LOG(Info, "the noexec option flips to %s", enabled ? "on" : "off");
-  m_runtime.set_option(shell_option_id::Noexec, enabled);
+  set_option(shell_option_id::Noexec, enabled);
 }
 
-pure fn EvalContext::no_exec() const wontthrow -> bool
+pure fn RuntimeState::no_exec() const wontthrow -> bool
 {
-  return m_runtime.option_is_enabled(shell_option_id::Noexec);
+  return option_is_enabled(shell_option_id::Noexec);
 }
 
-fn EvalContext::set_koshkit(bool enabled) wontthrow -> void
+fn RuntimeState::set_extended_arithmetic(bool enabled) wontthrow -> void
+{
+  set_option(shell_option_id::ExtendedArithmetic, enabled);
+}
+
+pure fn RuntimeState::is_extended_arithmetic_enabled() const wontthrow -> bool
+{
+  return option_is_enabled(shell_option_id::ExtendedArithmetic);
+}
+
+fn RuntimeState::set_koshkit(bool enabled) wontthrow -> void
 {
   LOG(Info, "the koshkit option flips to %s", enabled ? "on" : "off");
-  m_runtime.set_option(shell_option_id::Koshkit, enabled);
+  set_option(shell_option_id::Koshkit, enabled);
 }
 
-pure fn EvalContext::koshkit() const wontthrow -> bool
+pure fn RuntimeState::koshkit() const wontthrow -> bool
 {
-  return m_runtime.option_is_enabled(shell_option_id::Koshkit);
+  return option_is_enabled(shell_option_id::Koshkit);
 }
 
-fn EvalContext::set_failglob(bool enabled) wontthrow -> void
+fn RuntimeState::set_failglob(bool enabled) wontthrow -> void
 {
   LOG(Info, "the failglob option flips to %s", enabled ? "on" : "off");
-  m_runtime.set_option(shell_option_id::Failglob, enabled);
+  set_option(shell_option_id::Failglob, enabled);
 }
 
-pure fn EvalContext::failglob() const wontthrow -> bool
+pure fn RuntimeState::failglob() const wontthrow -> bool
 {
-  return m_runtime.option_is_enabled(shell_option_id::Failglob);
+  return option_is_enabled(shell_option_id::Failglob);
 }
 
 fn EvalContext::enter_condition() wontthrow -> void
@@ -1717,7 +1742,7 @@ fn EvalContext::apply_indirect_or_name_listing(StringView body) throws -> String
 
   let const target = get_variable_value(body);
   if (!target.has_value()) {
-    if (error_unset())
+    if (runtime_state().error_unset())
       throw_script_fatal("Unable to expand '" + body +
                          "' because the parameter is not set");
     return String{scratch_allocator()};
@@ -1812,70 +1837,60 @@ cold fn EvalContext::make_stats_string() const throws -> String
   return stats_text;
 }
 
-pure fn EvalContext::should_echo() const wontthrow -> bool
-{
-  return m_runtime.option_is_enabled(shell_option_id::Verbose);
-}
-
-pure fn EvalContext::should_echo_expanded() const wontthrow -> bool
-{
-  return m_runtime.option_is_enabled(shell_option_id::Xtrace);
-}
-
 pure fn EvalContext::shell_is_interactive() const wontthrow -> bool
 {
   return execution_store().shell_is_interactive();
 }
 
-fn EvalContext::set_show_ast(bool enabled) wontthrow -> void
+fn RuntimeState::set_show_ast(bool enabled) wontthrow -> void
 {
-  m_runtime.set_option(shell_option_id::ShowAst, enabled);
+  set_option(shell_option_id::ShowAst, enabled);
 }
 
-pure fn EvalContext::show_ast() const wontthrow -> bool
+pure fn RuntimeState::show_ast() const wontthrow -> bool
 {
-  return m_runtime.option_is_enabled(shell_option_id::ShowAst);
+  return option_is_enabled(shell_option_id::ShowAst);
 }
 
-fn EvalContext::set_show_lexed_words(bool enabled) wontthrow -> void
+fn RuntimeState::set_show_lexed_words(bool enabled) wontthrow -> void
 {
-  m_runtime.set_option(shell_option_id::ShowLexedWords, enabled);
+  set_option(shell_option_id::ShowLexedWords, enabled);
 }
 
-pure fn EvalContext::show_lexed_words() const wontthrow -> bool
+pure fn RuntimeState::show_lexed_words() const wontthrow -> bool
 {
-  return m_runtime.option_is_enabled(shell_option_id::ShowLexedWords);
+  return option_is_enabled(shell_option_id::ShowLexedWords);
 }
 
-fn EvalContext::set_show_exit_code(bool enabled) wontthrow -> void
+fn RuntimeState::set_show_exit_code(bool enabled) wontthrow -> void
 {
-  m_runtime.set_option(shell_option_id::ShowExitCode, enabled);
+  set_option(shell_option_id::ShowExitCode, enabled);
 }
 
-pure fn EvalContext::show_exit_code() const wontthrow -> bool
+pure fn RuntimeState::show_exit_code() const wontthrow -> bool
 {
-  return m_runtime.option_is_enabled(shell_option_id::ShowExitCode) ||
-         m_runtime.option_is_enabled(shell_option_id::ShowAllExitCodes);
+  return option_is_enabled(shell_option_id::ShowExitCode) ||
+         option_is_enabled(shell_option_id::ShowAllExitCodes);
 }
 
-fn EvalContext::set_show_all_exit_codes(bool enabled) wontthrow -> void
+fn RuntimeState::set_show_all_exit_codes(bool enabled) wontthrow -> void
 {
-  m_runtime.set_option(shell_option_id::ShowAllExitCodes, enabled);
+  set_option(shell_option_id::ShowAllExitCodes, enabled);
 }
 
-pure fn EvalContext::show_all_exit_codes() const wontthrow -> bool
+pure fn RuntimeState::show_all_exit_codes() const wontthrow -> bool
 {
-  return m_runtime.option_is_enabled(shell_option_id::ShowAllExitCodes);
+  return option_is_enabled(shell_option_id::ShowAllExitCodes);
 }
 
-fn EvalContext::set_memory_stats_enabled(bool enabled) wontthrow -> void
+fn RuntimeState::set_memory_stats_enabled(bool enabled) wontthrow -> void
 {
-  m_runtime.set_option(shell_option_id::ShowMemory, enabled);
+  set_option(shell_option_id::ShowMemory, enabled);
 }
 
-pure fn EvalContext::memory_stats_enabled() const wontthrow -> bool
+pure fn RuntimeState::memory_stats_enabled() const wontthrow -> bool
 {
-  return m_runtime.option_is_enabled(shell_option_id::ShowMemory);
+  return option_is_enabled(shell_option_id::ShowMemory);
 }
 
 fn EvalContext::set_diagnostics_disabled(bool disabled) wontthrow -> void

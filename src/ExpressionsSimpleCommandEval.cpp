@@ -170,7 +170,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     }
   }
 
-  if (cxt.should_echo()) {
+  if (cxt.runtime_state().should_echo()) {
     koshka::print(utils::merge_tokens_to_string(m_args) + "\n");
     koshka::flush();
   }
@@ -519,7 +519,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   let const do_trace_assignment =
       [&](StringView name, assignment_update_mode update_mode, StringView value)
           throws -> void {
-    if (!cxt.should_echo_expanded()) return;
+    if (!cxt.runtime_state().should_echo_expanded()) return;
     let trace = String{cxt.scratch_allocator(), name};
     trace += update_mode == assignment_update_mode::Append ? "+=" : "=";
     append_shell_quoted_arg(trace, value);
@@ -528,7 +528,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   let const do_trace_array_assignment =
       [&](const array_builtin_assignment &assignment,
           const ArrayList<String> &values) throws -> void {
-    if (!cxt.should_echo_expanded()) return;
+    if (!cxt.runtime_state().should_echo_expanded()) return;
     let trace = String{cxt.scratch_allocator(), assignment.name.view()};
     trace +=
         assignment.update_mode == assignment_update_mode::Append ? "+=(" : "=(";
@@ -548,7 +548,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         if (assignment.get_update_mode() == assignment_update_mode::Append)
           do_apply_append(name, value);
         cxt.set_shell_variable(name, value);
-        if (cxt.export_all()) {
+        if (cxt.runtime_state().export_all()) {
           cxt.record_environment_change(name);
           os::set_environment_variable(name, value.view());
           cxt.mark_exported(name);
@@ -678,7 +678,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
            falls to the temporary path instead. */
         if (is_command_special_builtin && !cxt.is_bash_compatible()) {
           cxt.set_shell_variable(name, expanded_value);
-          if (cxt.export_all()) {
+          if (cxt.runtime_state().export_all()) {
             cxt.record_environment_change(name);
             os::set_environment_variable(name, expanded_value.view());
             cxt.mark_exported(name);

@@ -376,7 +376,8 @@ inline fn command_text_is_observed(const EvalContext &cxt) wontthrow -> bool
    takes its fast path and evaluates nothing. */
 inline fn folded_commands_are_observed(const EvalContext &cxt) wontthrow -> bool
 {
-  return cxt.should_run_debug_trap() || cxt.should_echo_expanded();
+  return cxt.should_run_debug_trap() ||
+         cxt.runtime_state().should_echo_expanded();
 }
 
 /* The command text a DEBUG trap and BASH_COMMAND observe, published before the

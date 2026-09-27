@@ -45,10 +45,10 @@ EvalContext::EvalContext(bool should_disable_path_expansion, bool should_echo,
     : m_variable_store(steal(positional_params)),
       m_execution_store(shell_is_interactive, steal(shell_name))
 {
-  set_no_glob(should_disable_path_expansion);
-  set_echo(should_echo);
-  set_echo_expanded(should_echo_expanded);
-  set_error_exit(should_error_exit);
+  runtime_state().set_no_glob(should_disable_path_expansion);
+  runtime_state().set_echo(should_echo);
+  runtime_state().set_echo_expanded(should_echo_expanded);
+  runtime_state().set_error_exit(should_error_exit);
   set_emacs_mode(shell_is_interactive);
   set_shell_option_state(shell_option_id::History, shell_is_interactive);
   set_shell_option_state(shell_option_id::Histexpand, shell_is_interactive);
@@ -757,7 +757,7 @@ fn EvalContext::report_unset_reference(StringView name) throws -> void
   }
 
   let const should_demote = strict_diagnostics_are_warnings();
-  if (error_unset() &&
+  if (runtime_state().error_unset() &&
       (m_runtime.was_error_unset_set_explicitly() || !should_demote) &&
       !is_warning_suppressed(suppressible_warning::UnsetTestOperand))
   {
@@ -779,7 +779,7 @@ fn EvalContext::report_unset_reference(StringView name) throws -> void
   if (execution_store().completion_function_running()) return;
   if (is_warning_suppressed(suppressible_warning::UnsetTestOperand)) return;
 
-  if (error_unset() || should_demote) {
+  if (runtime_state().error_unset() || should_demote) {
     show_runtime_warning_at(locate_variable_reference(name),
                             "The variable '" + String{name} +
                                 "' is not set, it expands to empty",

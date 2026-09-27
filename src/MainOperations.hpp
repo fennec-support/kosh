@@ -486,7 +486,7 @@ static fn run_script_contents(
     let const run_analysis =
         precompiled_ast == nullptr &&
         (FLAG_OPTIMIZER_DIAGNOSTICS.is_enabled() ||
-         ((context.no_exec() ||
+         ((context.runtime_state().no_exec() ||
            !(context.is_bash_compatible() || context.is_posix_mode()) ||
            context.warnings_enabled()) &&
           !context.diagnostics_disabled()));
@@ -494,13 +494,16 @@ static fn run_script_contents(
     /* A run that only lints holds one top-level command at a time, so the peak
        memory of a large script is the memory of its widest command. */
     let const should_stream_units =
-        run_analysis && precompiled_ast == nullptr && context.no_exec() &&
-        out_ast == nullptr && !(should_print_ast && context.show_ast()) &&
-        !context.show_lexed_words();
+        run_analysis && precompiled_ast == nullptr &&
+            context.runtime_state().no_exec() &&
+        out_ast == nullptr &&
+            !(should_print_ast && context.runtime_state().show_ast()) &&
+        !context.runtime_state().show_lexed_words();
     let const should_stream_execution =
-        precompiled_ast == nullptr && !context.no_exec() &&
-        out_ast == nullptr && !(should_print_ast && context.show_ast()) &&
-        !context.show_lexed_words();
+        precompiled_ast == nullptr && !context.runtime_state().no_exec() &&
+        out_ast == nullptr &&
+            !(should_print_ast && context.runtime_state().show_ast()) &&
+        !context.runtime_state().show_lexed_words();
 
     /* A file with any parse error must not run, so every error is collected
        and reported at once. */
@@ -560,7 +563,7 @@ static fn run_script_contents(
       let p = Parser{
           Lexer{script_contents.view(), ast_arena, filename, context.mood(),
                 ParseSession::AllocationKind::Syntax,
-                context.show_lexed_words()
+                context.runtime_state().show_lexed_words()
                     ? debug_word_collection_mode::Enabled
                     : debug_word_collection_mode::Disabled}
       };
@@ -572,12 +575,12 @@ static fn run_script_contents(
 
       if (do_report_parse_errors()) return EXIT_FAILURE;
 
-      if (should_print_ast && context.show_ast()) {
+      if (should_print_ast && context.runtime_state().show_ast()) {
         print(ast->to_ast_string());
         print("\n");
       }
 
-      if (context.show_lexed_words()) {
+      if (context.runtime_state().show_lexed_words()) {
         for (let const &word : p.debug_words()) {
           print(word.to_pretty_string());
           print("\n");
@@ -669,7 +672,7 @@ static fn run_script_contents(
 
     if (did_analysis_fail) {
       exit_code = EXIT_FAILURE;
-    } else if (context.no_exec()) {
+    } else if (context.runtime_state().no_exec()) {
       exit_code = EXIT_SUCCESS;
     } else {
       LOG(Debug, "evaluating the chunk");
@@ -736,7 +739,7 @@ static fn run_script_contents(
     }
     context.execution_store().set_last_exit_status(static_cast<i32>(exit_code));
 
-    if (context.stats_enabled()) {
+    if (context.runtime_state().stats_enabled()) {
       print(context.make_stats_string());
       print("\n");
     }
@@ -2245,7 +2248,8 @@ static fn run_format_operation(const ArrayList<String> &file_names,
     let ast_output = String{heap_allocator()};
     let formatted =
         format_document_source(source.view(), source_name, ast_arena, errors,
-                               context.show_ast() ? &ast_output : nullptr,
+                               context.runtime_state().show_ast() ? &ast_output
+                                                                  : nullptr,
                                context.arena_store().function_arena(), mood);
     if (!formatted.has_value()) {
       for (let const &error : errors)
@@ -2255,7 +2259,7 @@ static fn run_format_operation(const ArrayList<String> &file_names,
     }
     for (let const &warning : errors)
       show_message(warning.view());
-    if (context.show_ast() && !ast_output.is_empty()) {
+    if (context.runtime_state().show_ast() && !ast_output.is_empty()) {
       print(ast_output.view());
       print("\n");
     }

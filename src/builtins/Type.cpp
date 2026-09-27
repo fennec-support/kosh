@@ -132,7 +132,8 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     {
       word = "builtin";
       builtin_kind = kind;
-    } else if ((cxt.koshkit() || cxt.mood() == mimic_mood::Default) &&
+    } else if ((cxt.runtime_state().koshkit() ||
+                cxt.mood() == mimic_mood::Default) &&
                koshkit::find_util(name.view()).has_value() &&
                cxt.get_program_resolver().get_status(
                    name, ProgramResolver::StatusLookup::Authoritative) ==

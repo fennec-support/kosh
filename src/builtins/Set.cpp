@@ -555,11 +555,17 @@ fn apply_or_reject_option(EvalContext &cxt, const set_option_descriptor &option,
   case set_option_behavior::Rcfile: unreachable("Startup fact was applied");
   }
   switch (option.id) {
-  case shell_option_id::Nounset: cxt.set_error_unset_explicit(enable); break;
-  case shell_option_id::Failglob: cxt.set_failglob_explicit(enable); break;
-  case shell_option_id::Pipefail: cxt.set_pipefail_explicit(enable); break;
+  case shell_option_id::Nounset:
+    cxt.runtime_state().set_error_unset_set_explicitly(enable);
+    break;
+  case shell_option_id::Failglob:
+    cxt.runtime_state().set_failglob_set_explicitly(enable);
+    break;
+  case shell_option_id::Pipefail:
+    cxt.runtime_state().set_pipefail_set_explicitly(enable);
+    break;
   case shell_option_id::ExtendedArithmetic:
-    cxt.set_extended_arithmetic_explicit(enable);
+    cxt.runtime_state().set_extended_arithmetic_set_explicitly(enable);
     break;
   default: break;
   }

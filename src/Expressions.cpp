@@ -511,7 +511,8 @@ hot flatten fn Expression::evaluate_root(EvalContext &cxt,
       return cxt.execution_store().last_exit_status();
   }
 
-  cxt.evaluation_metrics_store().add_evaluated_expression(cxt.stats_enabled());
+  cxt.evaluation_metrics_store().add_evaluated_expression(
+      cxt.runtime_state().stats_enabled());
   if (is_compound_command()) {
     let const command = static_cast<const CompoundCommand *>(this);
     if (command->is_async()) return command->evaluate_async(cxt);
@@ -555,7 +556,8 @@ hot flatten fn Expression::evaluate_root_status(
       return {cxt.execution_store().last_exit_status(), 0};
   }
 
-  cxt.evaluation_metrics_store().add_evaluated_expression(cxt.stats_enabled());
+  cxt.evaluation_metrics_store().add_evaluated_expression(
+      cxt.runtime_state().stats_enabled());
   if (is_compound_command()) {
     let const command = static_cast<const CompoundCommand *>(this);
     if (command->is_async())

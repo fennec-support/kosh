@@ -821,7 +821,7 @@ fn CStyleForLoop::evaluate_status_impl(EvalContext &cxt) const throws
     if (is_condition_blank) return do_publish_implied_clause();
 
     if (is_condition_folded) {
-      return cxt.is_extended_arithmetic_enabled()
+      return cxt.runtime_state().is_extended_arithmetic_enabled()
                  ? m_is_exact_folded_condition_nonzero
                  : *m_folded_condition != 0;
     }
@@ -832,7 +832,7 @@ fn CStyleForLoop::evaluate_status_impl(EvalContext &cxt) const throws
   status_result result{};
   while (do_test_condition()) {
     result = m_body->evaluate_status(cxt);
-    if (cxt.no_exec()) break;
+    if (cxt.runtime_state().no_exec()) break;
     if (resolve_loop_control(cxt) == loop_disposition::StopLoop) break;
     /* The step runs after the body on every iteration, including one ended by a
        continue. */
