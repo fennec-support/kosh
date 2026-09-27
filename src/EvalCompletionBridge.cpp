@@ -63,7 +63,7 @@ fn EvalContext::run_completion_function(StringView function_name,
       throw Error{"Unable to assign '" + name + "' because it is read only"};
     }
 
-    m_variable_store.shell_variables().erase(name);
+    variable_store().shell_variables().erase(name);
     clear_sparse_array(name);
     let &storage = indexed_arrays().get_or_create(
         name, ArrayList<String>{heap_allocator()});

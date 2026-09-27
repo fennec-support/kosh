@@ -248,13 +248,13 @@ fn EvalContext::set_array_element(StringView name, usize index,
   let dense = indexed_arrays().find(name);
   if (!dense.has_value()) {
     let elements = ArrayList<String>{heap_allocator()};
-    if (let const scalar = m_variable_store.shell_variables().find(name);
+    if (let const scalar = variable_store().shell_variables().find(name);
         scalar.has_value())
       elements.push(String{heap_allocator(), scalar->view()});
     set_indexed_array(name, steal(elements));
     dense = indexed_arrays().find(name);
   }
-  m_variable_store.shell_variables().erase(name);
+  variable_store().shell_variables().erase(name);
   ASSERT(dense.has_value());
 
   let const dense_count = dense->count();
@@ -394,7 +394,7 @@ fn EvalContext::assign_array_element(StringView name, StringView subscript,
     }
 
     if (resolved_index == 0)
-      if (let const scalar = m_variable_store.shell_variables().find(name);
+      if (let const scalar = variable_store().shell_variables().find(name);
           scalar.has_value())
         return String{scalar->view()};
 
@@ -430,11 +430,11 @@ fn EvalContext::declare_associative_array(StringView name) throws -> void
   LOG(Debug, "declaring '%.*s' as an associative array",
       static_cast<int>(name.length), name.data);
   let scalar = Maybe<String>{};
-  if (let const stored = m_variable_store.shell_variables().find(name);
+  if (let const stored = variable_store().shell_variables().find(name);
       stored.has_value())
     scalar = *stored.value();
   associative_names().add(name);
-  m_variable_store.shell_variables().erase(name);
+  variable_store().shell_variables().erase(name);
   if (scalar.has_value()) set_associative_element(name, "0", scalar->view());
 }
 
@@ -457,7 +457,7 @@ fn EvalContext::set_associative_element(StringView name, StringView key,
 
   if (!is_associative_array(name)) {
     associative_names().add(name);
-    m_variable_store.shell_variables().erase(name);
+    variable_store().shell_variables().erase(name);
   }
   associative_values().set(
       associative_composite_key(name, key, scratch_allocator()).view(), value);
@@ -659,7 +659,7 @@ fn EvalContext::declare_local(StringView name, bool should_inherit_value) throws
   let const previous_was_exported = is_exported(name);
 
   let previous_value = Maybe<String>{};
-  if (let const scalar = m_variable_store.shell_variables().find(name);
+  if (let const scalar = variable_store().shell_variables().find(name);
       scalar.has_value())
   {
     previous_value = *scalar.value();

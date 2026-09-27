@@ -435,7 +435,7 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
     }
   }
 
-  if (let const stored = m_variable_store.shell_variables().find(name);
+  if (let const stored = variable_store().shell_variables().find(name);
       stored.has_value())
     return *stored.value();
 

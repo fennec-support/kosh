@@ -277,7 +277,7 @@ fn EvalContext::variable_names(Allocator result_allocator) const throws
     -> HashSet
 {
   let names = HashSet{result_allocator};
-  m_variable_store.shell_variables().for_each(
+  variable_store().shell_variables().for_each(
       [&](StringView name, const String &value) {
         unused(value);
         names.add(name);

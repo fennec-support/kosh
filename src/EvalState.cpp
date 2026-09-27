@@ -681,7 +681,7 @@ fn EvalContext::suggest_similar_variable_name(StringView name) const throws
   if (name.is_empty()) return None;
 
   let suggestion = utils::NameSuggestion{name};
-  m_variable_store.shell_variables().for_each(
+  variable_store().shell_variables().for_each(
       [&suggestion](StringView candidate, const String &)
           throws -> void { suggestion.consider(candidate); });
   indexed_arrays().for_each(
@@ -715,8 +715,8 @@ fn EvalContext::sorted_variable_assignments() const throws
     -> SortedArrayList<String, order_comparator<String>>
 {
   let assignments = ArrayList<String>{heap_allocator()};
-  assignments.reserve(m_variable_store.shell_variables().count());
-  m_variable_store.shell_variables().for_each(
+  assignments.reserve(variable_store().shell_variables().count());
+  variable_store().shell_variables().for_each(
       [&](StringView name, const String &value) {
         let entry = String{heap_allocator(), name};
         entry.push('=');
@@ -738,8 +738,8 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
     throw Error{"Could not preserve the current working directory"};
 
   let snapshot = eval_state_snapshot{
-      m_variable_store.shell_variables(),
-      m_variable_store.special_variable_definition_locations(),
+      variable_store().shell_variables(),
+      variable_store().special_variable_definition_locations(),
       indexed_arrays(),
       completion_store().specs(),
       completion_store().default_spec(),
@@ -802,8 +802,8 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
 fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
 {
   LOG(Debug, "restoring the evaluator state after a subshell or substitution");
-  m_variable_store.shell_variables() = steal(snapshot.shell_variables);
-  m_variable_store.special_variable_definition_locations() =
+  variable_store().shell_variables() = steal(snapshot.shell_variables);
+  variable_store().special_variable_definition_locations() =
       steal(snapshot.special_variable_definition_locations);
   indexed_arrays() = steal(snapshot.indexed_arrays);
   completion_store().specs() = steal(snapshot.completion_specs);
@@ -906,7 +906,7 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
   }
 
   if (let const ifs =
-          m_variable_store.shell_variables().find(StringView{"IFS", 3});
+          variable_store().shell_variables().find(StringView{"IFS", 3});
       ifs.has_value())
     set_field_separators(ifs->view());
   else

@@ -183,9 +183,9 @@ hot fn EvalContext::assign_variable(StringView name, StringView value) throws
     runtime_state().set_option(shell_option_id::Ignoreeof, true);
   }
 
-  m_variable_store.shell_variables().set(name, value);
+  variable_store().shell_variables().set(name, value);
   if (is_prompt_special_variable(name))
-    m_variable_store.special_variable_definition_locations().set(
+    variable_store().special_variable_definition_locations().set(
         name, source_store().m_current_location);
   if (is_exported(name)) {
     if (execution_store().subshell_depth() > 0)
@@ -200,15 +200,15 @@ fn EvalContext::restore_temporary_shell_variable(
     Maybe<SourceLocation> previous_definition_location) throws -> void
 {
   if (previous_value.has_value())
-    m_variable_store.shell_variables().set(name, previous_value->view());
+    variable_store().shell_variables().set(name, previous_value->view());
   else
-    m_variable_store.shell_variables().erase(name);
+    variable_store().shell_variables().erase(name);
   if (is_prompt_special_variable(name)) {
     if (previous_definition_location.has_value())
-      m_variable_store.special_variable_definition_locations().set(
+      variable_store().special_variable_definition_locations().set(
           name, *previous_definition_location);
     else
-      m_variable_store.special_variable_definition_locations().erase(name);
+      variable_store().special_variable_definition_locations().erase(name);
   }
 }
 
@@ -274,12 +274,12 @@ fn EvalContext::rollback_confined_variable_writes(usize mark) wontthrow -> void
 fn EvalContext::set_field_separators(StringView value) throws -> void
 {
   LOG(Debug, "caching %zu field separator bytes", value.length);
-  m_variable_store.set_field_separators(value);
+  variable_store().set_field_separators(value);
 }
 
 hot pure fn EvalContext::is_field_separator(char c) const wontthrow -> bool
 {
-  return m_variable_store.is_field_separator(c);
+  return variable_store().is_field_separator(c);
 }
 
 fn EvalContext::guard_restricted_path(StringView path,
@@ -461,10 +461,10 @@ fn EvalContext::restore_local_binding(local_binding &binding) throws -> void
     force_unset_shell_variable(binding.name);
   if (is_prompt_special_variable(binding.name.view())) {
     if (binding.previous_special_definition_location.has_value())
-      m_variable_store.special_variable_definition_locations().set(
+      variable_store().special_variable_definition_locations().set(
           binding.name.view(), *binding.previous_special_definition_location);
     else
-      m_variable_store.special_variable_definition_locations().erase(
+      variable_store().special_variable_definition_locations().erase(
           binding.name.view());
   }
   if (binding.previous_indexed_array.has_value())
@@ -520,7 +520,7 @@ fn EvalContext::set_indexed_array(StringView name,
   if (is_lowercase_variable(name) || is_uppercase_variable(name)) [[unlikely]]
     for (let &value : values)
       apply_variable_case(name, value);
-  m_variable_store.shell_variables().erase(name);
+  variable_store().shell_variables().erase(name);
   clear_sparse_array(name);
   indexed_arrays().set(name, steal(values));
 }
@@ -545,7 +545,7 @@ fn EvalContext::publish_single_pipe_status(i32 status) throws -> void
   if (existing.has_value() && existing->count() == 1 &&
       !sparse_array_names().contains("PIPESTATUS"))
   {
-    m_variable_store.shell_variables().erase("PIPESTATUS");
+    variable_store().shell_variables().erase("PIPESTATUS");
     char status_text_buffer[32];
     let const status_text = utils::int_to_text_into(status, status_text_buffer,
                                                     sizeof(status_text_buffer));
@@ -554,7 +554,7 @@ fn EvalContext::publish_single_pipe_status(i32 status) throws -> void
     return;
   }
 
-  m_variable_store.shell_variables().erase("PIPESTATUS");
+  variable_store().shell_variables().erase("PIPESTATUS");
   clear_sparse_array("PIPESTATUS");
   let &values = indexed_arrays().get_or_create(
       "PIPESTATUS", ArrayList<String>{heap_allocator()});
@@ -575,7 +575,7 @@ fn EvalContext::append_indexed_array(StringView name,
     if (is_lowercase_variable(name) || is_uppercase_variable(name)) [[unlikely]]
       for (let &value : values)
         apply_variable_case(name, value);
-    m_variable_store.shell_variables().erase(name);
+    variable_store().shell_variables().erase(name);
     for (let &element : values)
       existing->push(steal(element));
     return;
@@ -816,9 +816,9 @@ fn EvalContext::force_unset_shell_variable(StringView name) throws -> void
 {
   LOG(All, "removing variable '%.*s' from the store and the environment",
       static_cast<int>(name.length), name.data);
-  m_variable_store.shell_variables().erase(name);
+  variable_store().shell_variables().erase(name);
   if (is_prompt_special_variable(name))
-    m_variable_store.special_variable_definition_locations().erase(name);
+    variable_store().special_variable_definition_locations().erase(name);
   record_environment_change(name);
   os::unset_environment_variable(name);
   unmark_exported(name);
@@ -833,7 +833,7 @@ pure fn EvalContext::special_variable_definition_location(
     StringView name) const wontthrow -> Maybe<SourceLocation>
 {
   let const location =
-      m_variable_store.special_variable_definition_locations().find(name);
+      variable_store().special_variable_definition_locations().find(name);
   if (!location.has_value()) return None;
   return *location.value();
 }
@@ -917,7 +917,7 @@ fn EvalContext::unmark_exported(StringView name) throws -> void
 fn EvalContext::unexport_shell_variable(StringView name) throws -> void
 {
   let const has_shell_binding =
-      m_variable_store.shell_variables().find(name).has_value() ||
+      variable_store().shell_variables().find(name).has_value() ||
       indexed_arrays().find(name).has_value() ||
       associative_names().contains(name) || is_local_in_current_scope(name) ||
       variable_requires_dynamic_lookup(name);
