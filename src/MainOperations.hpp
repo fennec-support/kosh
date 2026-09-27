@@ -625,7 +625,8 @@ static fn run_script_contents(
       let const do_analyze = [&](AnalysisUnitStream *units) throws -> bool {
         return analyze_ast(
             ast, script_contents, context.function_names(),
-            context.alias_names(), &context, context.warning_level(),
+            context.scope_store().alias_names(), &context,
+            context.warning_level(),
             should_silence_unresolved_commands ||
                 (context.warnings_enabled() && context.shell_is_interactive()),
             context.mood() == mimic_mood::Default,

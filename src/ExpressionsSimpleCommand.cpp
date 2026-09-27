@@ -416,7 +416,8 @@ fn SimpleCommand::can_evaluate_in_process_substitution(
     const EvalContext &cxt, HashSet &active_functions) const throws -> bool
 {
   if (is_async() || is_timed() || !m_redirections.is_empty() ||
-      !m_array_args.is_empty() || cxt.has_aliases() || m_args.is_empty())
+      !m_array_args.is_empty() || cxt.scope_store().has_aliases() ||
+      m_args.is_empty())
   {
     return false;
   }

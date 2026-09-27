@@ -119,7 +119,8 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (utils::is_posix_reserved_word(name.view()) || is_bash_keyword_name) {
       word = "keyword";
-    } else if (let const alias = cxt.get_alias(name.view()); alias.has_value())
+    } else if (let const alias = cxt.scope_store().get_alias(name.view());
+               alias.has_value())
     {
       word = "alias";
       alias_value = alias;

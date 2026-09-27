@@ -68,7 +68,7 @@ static fn first_word_resolves(StringView word, EvalContext &context) throws
 
   if (search_builtin(word).has_value()) return true;
   if (context.find_function(word).has_value()) return true;
-  if (context.get_alias(word).has_value()) return true;
+  if (context.scope_store().get_alias(word).has_value()) return true;
 
   let const path_status = context.get_program_resolver().get_status(word);
   let const resolves = path_status == ProgramResolver::Status::Runnable;
@@ -100,7 +100,7 @@ static fn command_word_prefixes_any(StringView word,
     if (!was_found && do_has_prefix(name)) was_found = true;
   });
   if (was_found) return true;
-  context.for_each_alias_name([&](StringView name) {
+  context.scope_store().for_each_alias_name([&](StringView name) {
     if (!was_found && do_has_prefix(name)) was_found = true;
   });
   if (was_found) return true;

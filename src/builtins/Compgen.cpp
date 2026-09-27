@@ -310,7 +310,8 @@ static fn run_compgen_actions(EvalContext &cxt, u32 action_mask,
   let const do_push_name = [&](StringView name)
                                throws -> void { emitter.push_prefixed(name); };
 
-  if (do_wants(compgen_action::Alias)) cxt.for_each_alias_name(do_push_name);
+  if (do_wants(compgen_action::Alias))
+    cxt.scope_store().for_each_alias_name(do_push_name);
 
   let const should_scan_shell_variables =
       do_wants(compgen_action::ArrayVar) || do_wants(compgen_action::Variable);

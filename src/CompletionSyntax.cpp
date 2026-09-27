@@ -436,7 +436,7 @@ fn internal::resolve_completion_alias(StringView command,
 {
   let name = String{command};
   for (usize depth = 0; depth < 8; depth++) {
-    let const expansion = context.get_alias(name.view());
+    let const expansion = context.scope_store().get_alias(name.view());
     if (!expansion.has_value()) break;
     let const expanded = expansion->view();
     usize i = 0;

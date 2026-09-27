@@ -485,6 +485,56 @@ public:
     return m_local_scope_depth;
   }
 
+  fn set_alias(StringView name, StringView value) throws -> void
+  {
+    m_aliases.set(name, value);
+  }
+  fn remove_alias(StringView name) throws -> bool
+  {
+    if (!m_aliases.find(name).has_value()) return false;
+    m_aliases.erase(name);
+    return true;
+  }
+  pure fn has_aliases() const wontthrow -> bool
+  {
+    return m_aliases.count() != 0;
+  }
+  fn get_alias(StringView name) const throws -> Maybe<String>
+  {
+    if (let const value = m_aliases.find(name); value.has_value())
+      return String{heap_allocator(), value->view()};
+    return None;
+  }
+  fn alias_definitions() const throws
+      -> SortedArrayList<String, order_comparator<String>>
+  {
+    let out = ArrayList<String>{heap_allocator()};
+    m_aliases.for_each([&out](StringView key, const String &value) {
+      let definition = String{heap_allocator(), key};
+      definition.push('=');
+      append_shell_quoted_arg(definition, value.view());
+      out.push(steal(definition));
+    });
+    return steal(out).make_sorted(sort_order::ascending);
+  }
+  fn alias_names() const throws -> HashSet
+  {
+    let out = HashSet{heap_allocator()};
+    m_aliases.for_each([&out](StringView key, const String &value) {
+      unused(value);
+      out.add(key);
+    });
+    return out;
+  }
+  template <typename Callback>
+  fn for_each_alias_name(Callback callback) const throws -> void
+  {
+    m_aliases.for_each([&](StringView name, const String &value) throws {
+      unused(value);
+      callback(name);
+    });
+  }
+
 private:
   StringMap<String> m_aliases{heap_allocator()};
   ArrayList<ArrayList<local_binding>> m_local_scopes{heap_allocator()};
@@ -2133,7 +2183,6 @@ public:
       -> const FunctionBodyHandle *;
   pure fn has_functions() const wontthrow -> bool;
   pure fn function_storage_stats() const wontthrow -> function_arena_stats;
-  pure fn has_aliases() const wontthrow -> bool;
   fn unset_function(StringView name) throws -> void;
   fn clear_functions() wontthrow -> void;
   fn mark_function_readonly(StringView name) throws -> void;
@@ -2532,22 +2581,6 @@ public:
     for (let const &binding :
          scope_store().local_scopes()[scope_store().local_scope_depth() - 1])
       callback(binding.name.view());
-  }
-
-  fn set_alias(StringView name, StringView value) throws -> void;
-  fn remove_alias(StringView name) throws -> bool;
-  fn get_alias(StringView name) const throws -> Maybe<String>;
-  fn alias_definitions() const throws
-      -> SortedArrayList<String, order_comparator<String>>;
-  fn alias_names() const throws -> HashSet;
-  template <typename Callback>
-  fn for_each_alias_name(Callback callback) const throws -> void
-  {
-    scope_store().aliases().for_each([&](StringView name, const String &value)
-                                         throws {
-                                           unused(value);
-                                           callback(name);
-                                         });
   }
 
   fn snapshot_state() throws -> eval_state_snapshot;

@@ -412,7 +412,7 @@ collect_command_names(StringView token, EvalContext &context, Collector &collect
   }
 
   context.for_each_function_name(do_add);
-  context.for_each_alias_name(do_add);
+  context.scope_store().for_each_alias_name(do_add);
 
   let const &path_names = context.get_program_resolver().get_command_names(
       token_is_glob ? StringView{} : normalized_path_token.view(),

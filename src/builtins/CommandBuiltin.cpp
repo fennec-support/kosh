@@ -101,7 +101,8 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
         did_find_any = true;
         continue;
       }
-      if (let const alias = cxt.get_alias(name.view()); alias.has_value()) {
+      if (let const alias = cxt.scope_store().get_alias(name.view());
+          alias.has_value()) {
         if (is_verbose)
           ec.print_to_stdout(name + " is aliased to `" + *alias + "'\n");
         else

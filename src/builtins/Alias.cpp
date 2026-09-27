@@ -37,7 +37,7 @@ fn Alias::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (args.count() == 1) {
     let out = String{cxt.scratch_allocator()};
-    for (let const &definition : cxt.alias_definitions()) {
+    for (let const &definition : cxt.scope_store().alias_definitions()) {
       out += "alias ";
       out += definition;
       out += "\n";
@@ -54,8 +54,8 @@ fn Alias::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (parts.get_value().has_value()) {
       LOG(All, "alias defining '%.*s'",
           static_cast<int>(parts.get_name().length), parts.get_name().data);
-      cxt.set_alias(parts.get_name(), *parts.get_value());
-    } else if (const Maybe<String> value = cxt.get_alias(arg)) {
+      cxt.scope_store().set_alias(parts.get_name(), *parts.get_value());
+    } else if (const Maybe<String> value = cxt.scope_store().get_alias(arg)) {
       String message{cxt.scratch_allocator(), "alias "};
       message += arg;
       message += "='";

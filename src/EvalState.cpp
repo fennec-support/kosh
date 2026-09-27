@@ -1168,7 +1168,7 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
     source.append(function_source->view());
     source.push('\n');
   }
-  for (let const &definition : alias_definitions()) {
+  for (let const &definition : scope_store().alias_definitions()) {
     source += "alias ";
     source.append(definition.view());
     source.push('\n');

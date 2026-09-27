@@ -54,7 +54,8 @@ fn Which::execute(const ExecContext &ec, EvalContext &cxt,
   for (let const &program_name : operands) {
     LOG(Debug, "which resolving '%s' against builtins and PATH",
         program_name.c_str());
-    if (let const alias = cxt.get_alias(program_name.view()); alias.has_value())
+    if (let const alias = cxt.scope_store().get_alias(program_name.view());
+        alias.has_value())
     {
       if (!is_quiet) {
         output += "alias ";

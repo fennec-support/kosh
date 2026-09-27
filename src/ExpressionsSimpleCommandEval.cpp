@@ -40,7 +40,9 @@ fn internal::expand_command_aliases(
     EvalContext &cxt, ArrayList<String> &args,
     ArrayList<SourceLocation> &arg_locations) throws -> void
 {
-  if (!cxt.has_aliases() || !cxt.is_shopt_enabled("expand_aliases")) return;
+  if (!cxt.scope_store().has_aliases() ||
+      !cxt.is_shopt_enabled("expand_aliases"))
+    return;
 
   HashSet already_expanded{heap_allocator()};
 
@@ -49,7 +51,7 @@ fn internal::expand_command_aliases(
 
     if (already_expanded.contains(word.view())) break;
 
-    let const body = cxt.get_alias(word);
+    let const body = cxt.scope_store().get_alias(word);
     if (!body.has_value()) break;
     already_expanded.add(word.view());
     LOG(Debug, "expanding the alias '%s'", word.c_str());

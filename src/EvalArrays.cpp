@@ -444,7 +444,7 @@ fn EvalContext::set_associative_element(StringView name, StringView key,
   if (is_readonly(name))
     throw Error{"Unable to assign '" + name + "' because it is read only"};
   if (is_bash_aliases_special(name)) {
-    set_alias(key, value);
+    scope_store().set_alias(key, value);
     return;
   }
 
@@ -467,7 +467,7 @@ fn EvalContext::lookup_associative_element(StringView name,
                                            StringView key) const throws
     -> Maybe<String>
 {
-  if (is_bash_aliases_special(name)) return get_alias(key);
+  if (is_bash_aliases_special(name)) return scope_store().get_alias(key);
 
   if (let const value = associative_values().find(
           associative_composite_key(name, key, scratch_allocator()).view());

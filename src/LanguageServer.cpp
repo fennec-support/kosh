@@ -534,7 +534,7 @@ fn Server::publish_diagnostics(Document &document) throws -> bool
     let const directives = parser.take_shellcheck_directive_spans();
     let const heredoc_misses = parser.take_heredoc_terminator_misses();
     let const functions = m_context.function_names();
-    let const aliases = m_context.alias_names();
+    let const aliases = m_context.scope_store().alias_names();
     let source_effects = StringMap<followed_source_effects>{heap_allocator()};
     if (document.canonical_path.has_value())
       followed_paths.add(document.canonical_path->text().view());

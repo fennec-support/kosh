@@ -326,7 +326,7 @@ hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
   if (name == BASH_ALIASES_VARIABLE &&
       is_bash_special_array_active(bash_special_array_id::Aliases))
   {
-    set_alias("0", value);
+    scope_store().set_alias("0", value);
     return;
   }
   if (is_bash_directory_stack_special(name)) return;
@@ -1486,56 +1486,6 @@ fn EvalContext::is_local_in_any_active_scope(StringView name) const wontthrow
       if (binding.name.view() == name) return true;
 
   return false;
-}
-
-fn EvalContext::set_alias(StringView name, StringView value) throws -> void
-{
-  LOG(All, "setting alias '%.*s' to a %zu byte value",
-      static_cast<int>(name.length), name.data, value.length);
-  scope_store().aliases().set(name, value);
-}
-
-fn EvalContext::remove_alias(StringView name) throws -> bool
-{
-  if (!scope_store().aliases().find(name).has_value()) return false;
-  LOG(All, "removing alias '%.*s'", static_cast<int>(name.length), name.data);
-  scope_store().aliases().erase(name);
-  return true;
-}
-
-pure fn EvalContext::has_aliases() const wontthrow -> bool
-{
-  return scope_store().aliases().count() != 0;
-}
-
-fn EvalContext::get_alias(StringView name) const throws -> Maybe<String>
-{
-  if (let const value = scope_store().aliases().find(name); value.has_value())
-    return String{heap_allocator(), value->view()};
-  return None;
-}
-
-fn EvalContext::alias_definitions() const throws
-    -> SortedArrayList<String, order_comparator<String>>
-{
-  let out = ArrayList<String>{heap_allocator()};
-  scope_store().aliases().for_each([&out](StringView key, const String &value) {
-    let definition = String{heap_allocator(), key};
-    definition.push('=');
-    append_shell_quoted_arg(definition, value.view());
-    out.push(steal(definition));
-  });
-  return steal(out).make_sorted(sort_order::ascending);
-}
-
-fn EvalContext::alias_names() const throws -> HashSet
-{
-  let out = HashSet{heap_allocator()};
-  scope_store().aliases().for_each([&out](StringView key, const String &value) {
-    unused(value);
-    out.add(key);
-  });
-  return out;
 }
 
 ExecContext::ExecContext(SourceLocation location, ResolvedCommand &&kind,
