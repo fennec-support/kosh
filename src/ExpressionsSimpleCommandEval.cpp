@@ -143,7 +143,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   ASSERT(m_args.count() > 0 || !m_redirections.is_empty() ||
          m_local_vars.count() > 0 || !m_array_args.is_empty());
 
-  cxt.set_current_location(source_location());
+  cxt.source_store().set_current_location(source_location());
 
   let const should_run_command = publish_simple_command(cxt, *this, mode);
   if (!should_run_command) return cxt.execution_store().last_exit_status();
@@ -851,12 +851,12 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
        gate reaches that fire only while functrace is on. LINENO names the line
        the body opens on, and the call site is already behind the frame. */
     if (cxt.should_run_debug_trap()) {
-      let const saved_call_location = cxt.get_current_location();
+      let const saved_call_location = cxt.source_store().current_location();
       let const was_control_flow_pending = cxt.control_flow_store().has_pending();
 
-      cxt.set_current_location(function_body->source_location());
+      cxt.source_store().set_current_location(function_body->source_location());
       cxt.run_named_trap(StringView{"DEBUG", 5});
-      cxt.set_current_location(saved_call_location);
+      cxt.source_store().set_current_location(saved_call_location);
 
       /* An action that leaves an exit, a return, a break, or a continue
          abandons the body the entry traced. */

@@ -865,7 +865,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
 
     /* The location moves onto the stage first so a runtime warning from its
        words carets the stage that read the variable. */
-    cxt.set_current_location(e->source_location());
+    cxt.source_store().set_current_location(e->source_location());
     let const should_run_stage = publish_simple_command(cxt, *e);
     if (!should_run_stage) return cxt.execution_store().last_exit_status();
 

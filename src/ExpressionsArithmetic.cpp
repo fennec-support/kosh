@@ -503,7 +503,7 @@ conditional_command_text(const ArrayList<conditional_element> &elements) throws
 
 fn ConditionalCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
 {
-  cxt.set_current_location(source_location());
+  cxt.source_store().set_current_location(source_location());
 
   let const should_run_conditional =
       publish_command_and_run_debug_trap(cxt, [&] {
@@ -600,7 +600,7 @@ fn ArithmeticCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
   LOG(Debug, "evaluating the arithmetic command '%.*s'",
       static_cast<int>(m_expression.length), m_expression.data);
 
-  cxt.set_current_location(source_location());
+  cxt.source_store().set_current_location(source_location());
 
   let const should_run_clause = publish_command_and_run_debug_trap(
       cxt, [&] { return arithmetic_clause_command_text(m_expression); });
@@ -760,7 +760,7 @@ fn CStyleForLoop::evaluate_status_impl(EvalContext &cxt) const throws
     return {static_cast<i32>(set_and_return_exit_status(cxt, 0)), 0};
   }
 
-  cxt.set_current_location(source_location());
+  cxt.source_store().set_current_location(source_location());
 
   LOG(Debug,
       "entering the c-style for loop with init '%.*s', condition '%.*s', step "
@@ -772,7 +772,7 @@ fn CStyleForLoop::evaluate_status_impl(EvalContext &cxt) const throws
   /* A blank clause carries no expression of its own, and bash publishes the
      ((1)) that stands for it. */
   let const do_publish_implied_clause = [&]() throws -> bool {
-    cxt.set_current_location(source_location());
+    cxt.source_store().set_current_location(source_location());
 
     return publish_command_and_run_debug_trap(
         cxt, [&] { return arithmetic_clause_command_text(StringView{"1"}); });
@@ -801,7 +801,7 @@ fn CStyleForLoop::evaluate_status_impl(EvalContext &cxt) const throws
   let const is_step_blank = is_blank_clause(m_step);
 
   let const do_evaluate_condition = [&]() throws -> bool {
-    cxt.set_current_location(source_location());
+    cxt.source_store().set_current_location(source_location());
 
     let const should_run_condition =
         publish_command_and_run_debug_trap(cxt, [&] {
@@ -839,7 +839,7 @@ fn CStyleForLoop::evaluate_status_impl(EvalContext &cxt) const throws
     if (is_step_blank) {
       if (!do_publish_implied_clause()) break;
     } else {
-      cxt.set_current_location(source_location());
+      cxt.source_store().set_current_location(source_location());
 
       let const should_run_step = publish_command_and_run_debug_trap(cxt, [&] {
         return arithmetic_clause_command_text(
@@ -1139,7 +1139,7 @@ fn Subshell::evaluate_impl(EvalContext &cxt) const throws -> i64
      publishes it after the body has run, because the in-process body leaves its
      own last command behind. */
   let const do_publish_subshell = [&]() throws -> void {
-    cxt.set_current_location(closing_location);
+    cxt.source_store().set_current_location(closing_location);
 
     if (!command_text_is_observed(cxt)) return;
 
@@ -1588,7 +1588,7 @@ fn RedirectedCommand::evaluate_status_impl(EvalContext &cxt) const throws
 
   let const should_elide_child_fork = cxt.take_pending_subshell_fork_elision();
 
-  cxt.set_current_location(source_location());
+  cxt.source_store().set_current_location(source_location());
 
   /* The mark is taken before the expansion below so this command reaps only the
      process substitution its own redirection opens. Registered first so it runs

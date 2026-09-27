@@ -309,11 +309,6 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
   }
 }
 
-fn EvalContext::set_current_location(SourceLocation location) wontthrow -> void
-{
-  source_store().set_current_location(location);
-}
-
 /* TODO: these caps are hand-tuned below the observed native overflow point.
    Query the actual stack size per platform, getrlimit RLIMIT_STACK on POSIX and
    the thread stack on Windows, and derive the caps from it. */

@@ -260,7 +260,7 @@ hot fn AssignCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
 
   LOG(All, "assigning the variable '%s'", m_assignment->key().c_str());
 
-  cxt.set_current_location(source_location());
+  cxt.source_store().set_current_location(source_location());
 
   let const should_run_assignment =
       publish_command_and_run_debug_trap(cxt, [&] {

@@ -660,7 +660,7 @@ fn SelectLoop::evaluate_status_impl(EvalContext &cxt) const throws
   ASSERT(m_body != nullptr);
 
   cxt.execution_store().terminal_exec_allowed() = false;
-  cxt.set_current_location(source_location());
+  cxt.source_store().set_current_location(source_location());
 
   let const values =
       m_has_in_clause ? cxt.process_args(m_words) : cxt.variable_store().positional_params();
@@ -798,7 +798,7 @@ hot fn ForLoop::evaluate_status_impl(EvalContext &cxt) const throws
     return {static_cast<i32>(set_and_return_exit_status(cxt, 0)), 0};
   }
 
-  cxt.set_current_location(source_location());
+  cxt.source_store().set_current_location(source_location());
   let const values =
       m_has_in_clause ? cxt.process_args(m_words) : cxt.variable_store().positional_params();
 
@@ -837,7 +837,7 @@ hot fn ForLoop::evaluate_status_impl(EvalContext &cxt) const throws
   for (let const &value : values) {
     /* The body of the previous iteration left its own location behind, and the
        header fire reports the header line. */
-    cxt.set_current_location(source_location());
+    cxt.source_store().set_current_location(source_location());
 
     let const should_run_iteration = publish_command_and_run_debug_trap(
         cxt, [&] { return String{heap_allocator(), loop_trace.view()}; });
@@ -1074,7 +1074,7 @@ fn CaseClause::evaluate_status_impl(EvalContext &cxt) const throws
   ASSERT(m_word != nullptr);
 
   cxt.execution_store().terminal_exec_allowed() = false;
-  cxt.set_current_location(source_location());
+  cxt.source_store().set_current_location(source_location());
 
   let const should_run_case = publish_command_and_run_debug_trap(cxt, [&] {
     let header_text = String{heap_allocator(), "case "};
