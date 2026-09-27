@@ -408,7 +408,7 @@ fn EvalContext::expand_modifier_word_worker(
       /* A nested reference obeys set -u the way a top level reference does. A
          stored name resolves without the extra dynamic-value lookup and copy.
        */
-      let const stored = lookup_shell_variable(name);
+      let const stored = variable_store().shell_variables().find(name);
       if (stored.has_value()) {
         do_emit_run(stored->view(), !is_in_double_quote);
       } else {
@@ -609,7 +609,8 @@ hot fn EvalContext::apply_parameter_expansion(
           scratch_allocator());
     }
 
-    if (let const stored = lookup_shell_variable(name); stored.has_value())
+    if (let const stored = variable_store().shell_variables().find(name);
+        stored.has_value())
       return String::from(stored->count(), scratch_allocator());
     let const value = get_variable_value(name);
     if (!value.has_value()) report_unset_reference(name);
@@ -717,7 +718,8 @@ hot fn EvalContext::apply_parameter_expansion(
   if (rest.is_empty()) {
     /* A plain reference reports under set -u, a modifier form such as ${x:-w}
        handles the unset case itself. */
-    if (let const stored = lookup_shell_variable(name); stored.has_value())
+    if (let const stored = variable_store().shell_variables().find(name);
+        stored.has_value())
       return String{scratch_allocator(), stored->view()};
     let value = get_variable_value(name);
     if (!value.has_value()) report_unset_reference(name);
@@ -1170,7 +1172,7 @@ fn EvalContext::apply_parameter_transform_to_value(StringView text, char op,
     }
     return out;
   case 'a':
-    if (lookup_indexed_array(name).has_value()) out.push('a');
+    if (variable_store().indexed_arrays().find(name).has_value()) out.push('a');
     if (is_associative_array(name)) out.push('A');
     if (is_integer_variable(name)) out.push('i');
     if (is_readonly(name)) out.push('r');

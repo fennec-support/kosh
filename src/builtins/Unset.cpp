@@ -69,8 +69,8 @@ fn Unset::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         has_error = true;
       }
     } else if (!FLAG_UNSET_VARIABLE.is_enabled() &&
-               !cxt.lookup_shell_variable(name.view()).has_value() &&
-               !cxt.lookup_indexed_array(name.view()).has_value() &&
+               !cxt.variable_store().shell_variables().find(name.view()).has_value() &&
+               !cxt.variable_store().indexed_arrays().find(name.view()).has_value() &&
                !cxt.is_associative_array(name.view()) &&
                cxt.find_function(name.view()).has_value())
     {

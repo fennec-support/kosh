@@ -2175,12 +2175,6 @@ public:
                           assignment_update_mode update_mode) throws -> void;
   fn read_array_element_arithmetic_text(StringView name,
                                         StringView subscript) throws -> String;
-  pure fn lookup_indexed_array(StringView name) const wontthrow
-      -> Maybe<const ArrayList<String> *>
-  {
-    return m_variable_store.indexed_arrays().find(name);
-  }
-
   /* The bash associative arrays. The values live in one flat map under a
      composite name-and-key, the declared names are tracked separately. */
   fn declare_associative_array(StringView name) throws -> void;
@@ -2266,10 +2260,6 @@ public:
   /* Set IFS and refresh the separator table together, so the table never drifts
      from the cached value. */
   fn set_field_separators(StringView value) throws -> void;
-  pure fn field_separators() const wontthrow -> StringView
-  {
-    return m_variable_store.field_separators();
-  }
   fn get_variable_value(StringView name) const throws -> Maybe<String>;
   fn get_variable_value_checked(StringView name) const throws -> Maybe<String>;
   pure fn variable_requires_dynamic_lookup(StringView name) const wontthrow
@@ -2302,14 +2292,9 @@ public:
   fn suggest_similar_variable_name(StringView name) const throws
       -> Maybe<String>;
 
-  hot fn lookup_shell_variable(StringView name) const wontthrow
-      -> Maybe<const String *>
-  {
-    return m_variable_store.shell_variables().find(name);
-  }
   fn get_history_limit(StringView name, usize fallback) const wontthrow -> usize
   {
-    let const value = lookup_shell_variable(name);
+    let const value = variable_store().shell_variables().find(name);
     if (!value.has_value()) return fallback;
     let const parsed = value->view().to<i64>();
     if (parsed.is_error() || parsed.value() < 0) return fallback;
@@ -3213,7 +3198,6 @@ protected:
   /* The cached value of IFS, kept current by set_shell_variable, so word
      splitting does not look it up per word. */
   VariableStore m_variable_store{};
-  pure fn is_field_separator(char c) const wontthrow -> bool;
   ExecutionStore m_execution_store;
   /* The status the shell held when the return builtin last ran. The RETURN trap
      action reads this status, and the frame it leaves takes the status the
@@ -3310,7 +3294,6 @@ protected:
      terminate the shell. */
   fn assign_variable(StringView name, StringView value) throws -> void;
 
-  pure fn variable_attributes(StringView name) const wontthrow -> u8;
   fn set_variable_attribute(StringView name, variable_attribute attribute,
                             bool is_enabled) throws -> void;
   fn apply_variable_case(StringView name, String &value) const wontthrow

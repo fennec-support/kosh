@@ -1293,7 +1293,7 @@ fn AnalysisContext::note_variable_read(StringView name,
 
   if (eval_context != nullptr &&
       (eval_context->is_exported(name) ||
-       eval_context->lookup_shell_variable(name).has_value()))
+       eval_context->variable_store().shell_variables().find(name).has_value()))
   {
     return;
   }

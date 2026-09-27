@@ -187,7 +187,8 @@ fn EvalContext::assign_indexed_array_elements(
     if (update_mode == assignment_update_mode::Append)
       running_index = bash_directory_stack_element_count();
   } else if (update_mode == assignment_update_mode::Append) {
-    if (let const array = lookup_indexed_array(name); array.has_value())
+    if (let const array = variable_store().indexed_arrays().find(name);
+        array.has_value())
       running_index = array->count();
     if (variable_store().sparse_array_names().contains(name))
       for_each_sparse_index(variable_store().sparse_array_values(), name, scratch_allocator(),
@@ -381,7 +382,7 @@ fn EvalContext::assign_array_element(StringView name, StringView subscript,
       return get_bash_directory_stack_element(resolved_index,
                                               scratch_allocator());
 
-    if (let const array = lookup_indexed_array(name);
+    if (let const array = variable_store().indexed_arrays().find(name);
         array.has_value() && resolved_index < array->count())
       return String{array->operator[](resolved_index).view()};
 
@@ -621,7 +622,8 @@ fn EvalContext::declare_local(StringView name, bool should_inherit_value) throws
      is taken since the body may overwrite the stored array in place. */
   let previous_array = Maybe<ArrayList<String>>{};
   if (variable_store().indexed_arrays().count() != 0)
-    if (let const array = lookup_indexed_array(name); array.has_value()) {
+    if (let const array = variable_store().indexed_arrays().find(name);
+        array.has_value()) {
       let copy = ArrayList<String>{heap_allocator()};
       copy.reserve(array->count());
       for (let const &element : *array.value())
@@ -648,7 +650,9 @@ fn EvalContext::declare_local(StringView name, bool should_inherit_value) throws
     }
   }
 
-  let const previous_attributes = variable_attributes(name);
+  let const attributes = variable_store().variable_attributes().find(name);
+  let const previous_attributes =
+      attributes.has_value() ? *attributes.value() : u8{0};
   let const previous_special_definition_location =
       special_variable_definition_location(name);
   if (!should_inherit_value) variable_store().variable_attributes().erase(name);
@@ -760,7 +764,8 @@ fn EvalContext::array_element_count(StringView name) const throws -> usize
   }
 
   usize element_count = 0;
-  if (let const array = lookup_indexed_array(name); array.has_value())
+  if (let const array = variable_store().indexed_arrays().find(name);
+      array.has_value())
     element_count = array->count();
 
   if (variable_store().sparse_array_names().contains(name)) {
@@ -791,8 +796,8 @@ fn EvalContext::apply_array_subscript(
         let separator = ' ';
         let has_separator = true;
         if (subscript == "*") {
-          has_separator = !field_separators().is_empty();
-          if (has_separator) separator = field_separators()[0];
+          has_separator = !variable_store().field_separators().is_empty();
+          if (has_separator) separator = variable_store().field_separators()[0];
         }
 
         let out = String{scratch_allocator()};
@@ -832,8 +837,8 @@ fn EvalContext::apply_array_subscript(
       let separator = ' ';
       let has_separator = true;
       if (subscript == "*") {
-        has_separator = !field_separators().is_empty();
-        if (has_separator) separator = field_separators()[0];
+        has_separator = !variable_store().field_separators().is_empty();
+        if (has_separator) separator = variable_store().field_separators()[0];
       }
 
       let out = String{scratch_allocator()};
@@ -867,8 +872,8 @@ fn EvalContext::apply_array_subscript(
       let separator = ' ';
       let has_separator = true;
       if (subscript == "*") {
-        has_separator = !field_separators().is_empty();
-        if (has_separator) separator = field_separators()[0];
+        has_separator = !variable_store().field_separators().is_empty();
+        if (has_separator) separator = variable_store().field_separators()[0];
       }
       let out = String{scratch_allocator()};
       let const values = associative_values(name);
@@ -888,7 +893,7 @@ fn EvalContext::apply_array_subscript(
     return String{heap_allocator()};
   }
 
-  let const array = lookup_indexed_array(name);
+  let const array = variable_store().indexed_arrays().find(name);
 
   /* The single-string return loses the per-element split of a quoted
      "${a[@]}", the same limitation the positional "$@" has. */
@@ -897,8 +902,8 @@ fn EvalContext::apply_array_subscript(
     let separator = ' ';
     let has_separator = true;
     if (subscript == "*") {
-      has_separator = !field_separators().is_empty();
-      if (has_separator) separator = field_separators()[0];
+      has_separator = !variable_store().field_separators().is_empty();
+      if (has_separator) separator = variable_store().field_separators()[0];
     }
     let out = String{scratch_allocator()};
     for (usize i = 0; i < array->count(); i++) {
@@ -966,7 +971,8 @@ fn EvalContext::collect_array_elements(StringView name) const throws
   if (is_associative_array(name)) return associative_values(name);
 
   let out = ArrayList<String>{heap_allocator()};
-  if (let const array = lookup_indexed_array(name); array.has_value())
+  if (let const array = variable_store().indexed_arrays().find(name);
+      array.has_value())
   {
     out.reserve(array->count());
     for (let const &element : *array.value())
@@ -1010,7 +1016,8 @@ fn EvalContext::array_element_is_set(StringView name,
     return lookup_associative_element(name, key.view()).has_value();
   }
   let const index = evaluate_arithmetic(subscript);
-  if (let const array = lookup_indexed_array(name); array.has_value())
+  if (let const array = variable_store().indexed_arrays().find(name);
+      array.has_value())
   {
     let const array_count = static_cast<i64>(array->count());
     /* A negative index counts from the highest set index, so [[ -v a[-1] ]]
@@ -1075,7 +1082,8 @@ fn EvalContext::collect_array_subscripts(StringView name) const throws
       out.push(String::from(index, heap_allocator()));
     return out;
   }
-  if (let const array = lookup_indexed_array(name); array.has_value()) {
+  if (let const array = variable_store().indexed_arrays().find(name);
+      array.has_value()) {
     out.reserve(array->count());
     for (usize i = 0; i < array->count(); i++)
       out.push(String::from(i, heap_allocator()));

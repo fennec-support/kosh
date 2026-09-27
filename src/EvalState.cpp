@@ -1058,7 +1058,7 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
     let const is_uppercase = is_uppercase_variable(name);
     let const is_read_only = is_readonly(name);
     let const is_exported_value = is_exported(name);
-    let const indexed = lookup_indexed_array(name);
+    let const indexed = variable_store().indexed_arrays().find(name);
     let const is_associative = is_associative_array(name);
     let const value = get_variable_value(name);
     if (!indexed.has_value() && !is_associative && is_exported_value &&

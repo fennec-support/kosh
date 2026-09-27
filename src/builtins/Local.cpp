@@ -198,7 +198,7 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (should_make_associative) {
       cxt.declare_associative_array(name);
     } else if (should_make_indexed) {
-      if (!cxt.lookup_indexed_array(name).has_value() &&
+      if (!cxt.variable_store().indexed_arrays().find(name).has_value() &&
           !cxt.is_bash_directory_stack_special(name))
         cxt.set_indexed_array(name, ArrayList<String>{heap_allocator()});
     } else if (equals_position.has_value()) {

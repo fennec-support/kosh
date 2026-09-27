@@ -697,7 +697,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
           Maybe<SourceLocation> previous_special_definition_location;
           let const did_overlay_shell_value = command_word_function != nullptr;
           if (did_overlay_shell_value) {
-            if (let const stored = cxt.lookup_shell_variable(name);
+            if (let const stored = cxt.variable_store().shell_variables().find(name);
                 stored.has_value())
             {
               previous_shell_value =

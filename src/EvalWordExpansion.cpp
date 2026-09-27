@@ -123,10 +123,10 @@ hot fn EvalContext::expand_word(const Word &word) throws
     usize i = 0;
     while (i < text.length) {
       let const byte = text.data[i];
-      if (!is_field_separator(byte)) {
+      if (!variable_store().is_field_separator(byte)) {
         usize start = i;
 #pragma clang loop unroll_count(4)
-        while (i < text.length && !is_field_separator(text[i]))
+      while (i < text.length && !variable_store().is_field_separator(text[i]))
           i++;
         do_append_run(StringView{text.data + start, i - start}, glob_active);
         continue;
@@ -135,7 +135,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
       let const was_field_started = has_current;
       usize delimiter_count = 0;
 #pragma clang loop unroll_count(4)
-      while (i < text.length && is_field_separator(text[i])) {
+      while (i < text.length && variable_store().is_field_separator(text[i])) {
         let const separator = text[i];
         if (separator != ' ' && separator != '\t' && separator != '\n') {
           delimiter_count++;
@@ -155,7 +155,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
   let const do_emit_elements = [&](const ArrayList<String> &values, bool quoted,
                                    bool star) throws {
     if (quoted && star) {
-      let const ifs = field_separators();
+      let const ifs = variable_store().field_separators();
       let joined = String{scratch_allocator()};
       for (usize i = 0; i < values.count(); i++) {
         if (i > 0 && !ifs.is_empty()) {
@@ -381,7 +381,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
         let const end = bounds.end;
 
         if (segment.is_in_double_quotes && is_star) {
-          let const ifs = field_separators();
+      let const ifs = variable_store().field_separators();
           let joined = String{scratch_allocator()};
           for (i64 j = start; j < end; j++) {
             if (j > start && !ifs.is_empty()) {
@@ -430,7 +430,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
                                       modifier_location_pointer);
         };
         if (segment.is_in_double_quotes && is_star) {
-          let const ifs = field_separators();
+      let const ifs = variable_store().field_separators();
           let joined = String{scratch_allocator()};
           for (usize i = 0; i < variable_store().positional_params().count(); i++) {
             if (i > 0 && !ifs.is_empty()) {
@@ -499,7 +499,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
           let const end = bounds.end;
 
           if (segment.is_in_double_quotes && is_star) {
-            let const ifs = field_separators();
+      let const ifs = variable_store().field_separators();
             let joined = String{scratch_allocator()};
             for (i64 j = start; j < end; j++) {
               if (j > start && !ifs.is_empty()) {
@@ -557,7 +557,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
                                         modifier_location_pointer);
           };
           if (segment.is_in_double_quotes && is_star) {
-            let const ifs = field_separators();
+      let const ifs = variable_store().field_separators();
             let joined = String{scratch_allocator()};
             for (usize i = 0; i < elements.count(); i++) {
               if (i > 0 && !ifs.is_empty()) {
@@ -677,7 +677,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
             break;
           }
         if (is_plain_name)
-          if (let const stored = lookup_shell_variable(segment_text);
+      if (let const stored = variable_store().shell_variables().find(segment_text);
               stored.has_value())
           {
             if (segment.is_in_double_quotes)
@@ -962,7 +962,8 @@ fn EvalContext::expand_wordlist_to_fields(StringView wordlist,
     expansion_source.push(')');
     run_source(expansion_source.view(), "a -W word list", None, None, nullptr,
                nullptr, return_handling::Propagate);
-    if (let const expanded = lookup_indexed_array("t__wordlist_fields");
+    if (let const expanded =
+            variable_store().indexed_arrays().find("t__wordlist_fields");
         expanded.has_value())
     {
       fields.reserve(expanded->count());

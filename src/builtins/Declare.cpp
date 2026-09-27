@@ -233,7 +233,8 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       if (should_mark_uppercase_attribute && !cxt.is_uppercase_variable(name)) {
         return false;
       }
-      if (should_make_indexed && !cxt.lookup_indexed_array(name).has_value() &&
+      if (should_make_indexed &&
+          !cxt.variable_store().indexed_arrays().find(name).has_value() &&
           !cxt.is_bash_directory_stack_special(name) &&
           !cxt.is_bash_argument_array(name))
       {
@@ -339,7 +340,8 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       continue;
     }
 
-    if (should_make_associative && (cxt.lookup_indexed_array(name).has_value() ||
+    if (should_make_associative &&
+        (cxt.variable_store().indexed_arrays().find(name).has_value() ||
                                     cxt.is_bash_directory_stack_special(name) ||
                                     cxt.is_bash_argument_array(name)))
     {
@@ -390,14 +392,15 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       if (equals.has_value()) cxt.set_shell_variable(name, value);
       cxt.declare_associative_array(name);
     } else if (should_make_indexed) {
-      if (!cxt.lookup_indexed_array(name).has_value() &&
+    if (!cxt.variable_store().indexed_arrays().find(name).has_value() &&
           !cxt.is_bash_directory_stack_special(name) &&
           !cxt.is_bash_argument_array(name))
       {
         let values = ArrayList<String>{heap_allocator()};
         if (equals.has_value())
           values.push(String{heap_allocator(), value});
-        else if (let const scalar = cxt.lookup_shell_variable(name);
+        else if (let const scalar =
+                     cxt.variable_store().shell_variables().find(name);
                  scalar.has_value())
           values.push(String{heap_allocator(), scalar->view()});
         cxt.set_indexed_array(name, steal(values));

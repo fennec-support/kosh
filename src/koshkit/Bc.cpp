@@ -207,7 +207,7 @@ static fn bc_translate_expression(StringView expression, u32 input_base,
         let variable_name = String{allocator, "__bc_"};
         variable_name += name;
         translated += variable_name.view();
-        if (!cxt.lookup_shell_variable(variable_name.view()).has_value())
+        if (!cxt.variable_store().shell_variables().find(variable_name.view()).has_value())
           cxt.set_shell_variable(variable_name.view(), "0");
       }
       continue;
@@ -786,7 +786,8 @@ static fn bc_evaluate_function_call(StringView statement, const ExecContext &ec,
                           .trim_blanks();
       let translated = String{cxt.scratch_allocator(), "__bc_"};
       translated += source_name;
-      if (let const array = cxt.lookup_indexed_array(translated.view());
+      if (let const array =
+              cxt.variable_store().indexed_arrays().find(translated.view());
           array.has_value())
         argument.array = array->clone();
     } else {

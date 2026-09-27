@@ -653,7 +653,7 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
 
           let should_split = false;
           for (usize i = 0; i < literal.count(); i++)
-            if (is_field_separator(literal[i])) {
+            if (variable_store().is_field_separator(literal[i])) {
               should_split = true;
               break;
             }
@@ -734,7 +734,7 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
                 for (usize i = 1; is_plain_name && i < spec.length; i++)
                   if (!lexer::is_variable_name(spec[i])) is_plain_name = false;
                 if (is_plain_name)
-                  if (let const stored = lookup_shell_variable(spec);
+                  if (let const stored = variable_store().shell_variables().find(spec);
                       stored.has_value())
                   {
                     value += stored->view();

@@ -300,7 +300,7 @@ fn Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let const field_separators =
-      String{cxt.scratch_allocator(), cxt.field_separators()};
+      String{cxt.scratch_allocator(), cxt.variable_store().field_separators()};
   let const do_is_separator = [&](usize i) {
     return !is_literal_byte[i] &&
            field_separators.find_character(line[i]).has_value();

@@ -52,7 +52,7 @@ EvalContext::EvalContext(bool should_disable_path_expansion, bool should_echo,
   set_emacs_mode(shell_is_interactive);
   runtime_state().set_option(shell_option_id::History, shell_is_interactive);
   runtime_state().set_option(shell_option_id::Histexpand, shell_is_interactive);
-  set_field_separators(field_separators());
+  set_field_separators(variable_store().field_separators());
 
   dynamic_runtime_store().shell_start_time() = static_cast<i64>(std::time(nullptr));
   trap_store().startup_ignored_signals() = os::get_entry_ignored_signals();
@@ -166,7 +166,7 @@ hot fn EvalContext::assign_variable(StringView name, StringView value) throws
   }
 
   if (environment_store().confined_write_depth() > 0) [[unlikely]] {
-    let const previous = lookup_shell_variable(name);
+    let const previous = variable_store().shell_variables().find(name);
     let saved = Maybe<String>{};
     if (previous.has_value()) saved = String{previous->view()};
     let const saved_definition = special_variable_definition_location(name);
@@ -277,11 +277,6 @@ fn EvalContext::set_field_separators(StringView value) throws -> void
   variable_store().set_field_separators(value);
 }
 
-hot pure fn EvalContext::is_field_separator(char c) const wontthrow -> bool
-{
-  return variable_store().is_field_separator(c);
-}
-
 fn EvalContext::guard_restricted_path(StringView path,
                                       const SourceLocation &location,
                                       restricted_path_use use) const throws
@@ -376,12 +371,12 @@ fn EvalContext::seed_shell_identity_variables(shell_identity_mode identity_mode)
   case shell_identity_mode::Native: break;
   }
   LOG(Info, "clearing the bash identity variables for a non-bash mood");
-  if (lookup_shell_variable("BASH_VERSION").has_value() ||
+  if (variable_store().shell_variables().find("BASH_VERSION").has_value() ||
       os::has_environment_variable("BASH_VERSION"))
   {
     force_unset_shell_variable("BASH_VERSION");
   }
-  if (lookup_shell_variable("BASH").has_value() ||
+  if (variable_store().shell_variables().find("BASH").has_value() ||
       os::has_environment_variable("BASH"))
   {
     force_unset_shell_variable("BASH");

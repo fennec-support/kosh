@@ -364,7 +364,7 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
 {
   let const is_directory_stack = cxt.is_bash_directory_stack_special(name);
   let const is_argument_array = cxt.is_bash_argument_array(name);
-  let const elements = cxt.lookup_indexed_array(name);
+  let const elements = cxt.variable_store().indexed_arrays().find(name);
 
   if (elements.has_value() || is_directory_stack || is_argument_array) {
     let line = String{cxt.scratch_allocator(), "declare -a"};
