@@ -722,7 +722,8 @@ fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
 
   const bool should_memoize_append =
       allow_fd_memoization && mode == os::file_open_mode::Append &&
-      cxt.loop_depth() > 0 && redir.fd_allocation_name_token == nullptr;
+      cxt.execution_store().loop_depth() > 0 &&
+      redir.fd_allocation_name_token == nullptr;
   if (should_memoize_append) {
     let cached = cxt.find_loop_redirect_fd(redir.fd, target_path, mode);
     if (cached.has_value())

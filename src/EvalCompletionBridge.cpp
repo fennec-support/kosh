@@ -112,9 +112,9 @@ fn EvalContext::run_completion_function(StringView function_name,
 
   enter_function_call(SourceLocation{});
   defer { leave_function_call(); };
-  let const saved_loop_depth = loop_depth();
-  set_loop_depth(0);
-  defer { set_loop_depth(saved_loop_depth); };
+  let const saved_loop_depth = execution_store().loop_depth();
+  execution_store().loop_depth() = 0;
+  defer { execution_store().loop_depth() = saved_loop_depth; };
   enter_function_scope();
   push_function_call_name(function_name, body_storage);
   defer

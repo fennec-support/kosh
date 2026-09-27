@@ -62,11 +62,6 @@ fn EvalContext::enter_subshell() wontthrow -> void
       execution_store().subshell_depth());
 }
 
-pure fn EvalContext::get_subshell_depth() const wontthrow -> usize
-{
-  return execution_store().subshell_depth();
-}
-
 fn EvalContext::set_subshell_depth(usize depth) wontthrow -> void
 {
   execution_store().subshell_depth() = depth;
@@ -617,16 +612,6 @@ fn EvalContext::retain_loop_redirect_fd(i32 target_fd, const String &path,
         fd
   });
   return true;
-}
-
-pure fn EvalContext::loop_depth() const wontthrow -> usize
-{
-  return execution_store().loop_depth();
-}
-
-fn EvalContext::set_loop_depth(usize depth) wontthrow -> void
-{
-  execution_store().loop_depth() = depth;
 }
 
 pure fn EvalContext::getopts_char_index() const wontthrow -> usize

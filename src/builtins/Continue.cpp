@@ -39,7 +39,7 @@ fn Continue::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     SHOW_BUILTIN_HELP_AND_RETURN(ec);
   }
 
-  if (cxt.loop_depth() == 0) {
+  if (cxt.execution_store().loop_depth() == 0) {
     LOG(All, "continue outside a loop does nothing");
     report_loop_control_without_loop(ec, cxt);
     return 0;
@@ -67,7 +67,7 @@ fn Continue::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         utils::quit(2, utils::farewell_policy::Goodbye);
       }
 
-      cxt.request_break(static_cast<i64>(cxt.loop_depth()),
+      cxt.request_break(static_cast<i64>(cxt.execution_store().loop_depth()),
                         ec.source_location());
       return 2;
     }
@@ -86,7 +86,8 @@ fn Continue::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
                               "'" + ec.args()[1] +
                                   "' is not a valid loop count");
-    cxt.request_break(static_cast<i64>(cxt.loop_depth()), ec.source_location());
+    cxt.request_break(static_cast<i64>(cxt.execution_store().loop_depth()),
+                      ec.source_location());
     return 1;
   }
 

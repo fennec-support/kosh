@@ -96,7 +96,7 @@ fn CompoundCommand::evaluate_async(EvalContext &cxt) const throws -> i64
       .shell_name = cxt.execution_store().get_shell_name(),
       .previous_exit_status = cxt.execution_store().last_exit_status(),
       .shell_process_id = os::get_shell_process_id(),
-      .subshell_depth = cxt.get_subshell_depth() + 1,
+      .subshell_depth = cxt.execution_store().subshell_depth() + 1,
       .mood = cxt.runtime_state().get_mood(),
       .process_group = os::process_group_mode::NewBackground});
   let const child = launch.child;
@@ -1528,7 +1528,7 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
       .shell_name = cxt.execution_store().get_shell_name(),
       .previous_exit_status = cxt.execution_store().last_exit_status(),
       .shell_process_id = os::get_shell_process_id(),
-      .subshell_depth = cxt.get_subshell_depth() + 1,
+      .subshell_depth = cxt.execution_store().subshell_depth() + 1,
       .mood = cxt.runtime_state().get_mood(),
       .process_group = os::process_group_mode::NewBackground});
   let const child = launch.child;

@@ -792,9 +792,9 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
 
     /* A loop in the caller is not the body's to break, so the body starts with
        a fresh loop count. */
-    let const saved_loop_depth = cxt.loop_depth();
-    cxt.set_loop_depth(0);
-    defer { cxt.set_loop_depth(saved_loop_depth); };
+    let const saved_loop_depth = cxt.execution_store().loop_depth();
+    cxt.execution_store().loop_depth() = 0;
+    defer { cxt.execution_store().loop_depth() = saved_loop_depth; };
 
     /* Registered first so it runs last, after the scope pop restores the
        locals. */

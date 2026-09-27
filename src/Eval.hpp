@@ -2734,7 +2734,6 @@ public:
 
   fn enter_subshell() wontthrow -> void;
   fn leave_subshell() wontthrow -> void;
-  pure fn get_subshell_depth() const wontthrow -> usize;
   fn set_subshell_depth(usize depth) wontthrow -> void;
   pure fn in_subshell() const wontthrow -> bool;
   /* Back the descriptor up before a bare exec moves it inside an in-process
@@ -3070,8 +3069,6 @@ public:
      builtins clamp their level to. A function call and a subshell zero it. */
   fn enter_loop() wontthrow -> void;
   fn leave_loop() wontthrow -> void;
-  pure fn loop_depth() const wontthrow -> usize;
-  fn set_loop_depth(usize depth) wontthrow -> void;
 
   /* The run loop sets this before the final chunk when the shell will exit with
      that chunk's status and no EXIT trap is pending, so a terminal external

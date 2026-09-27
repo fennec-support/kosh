@@ -229,7 +229,7 @@ fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
           .shell_name = execution_store().get_shell_name(),
           .previous_exit_status = execution_store().last_exit_status(),
           .shell_process_id = os::get_shell_process_id(),
-          .subshell_depth = get_subshell_depth() + 1,
+          .subshell_depth = execution_store().subshell_depth() + 1,
           .direction = command_writes_the_pipe
                            ? os::process_substitution_direction::CommandWrites
                            : os::process_substitution_direction::CommandReads,

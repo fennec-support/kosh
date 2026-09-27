@@ -1018,9 +1018,9 @@ static fn evaluate_subshell_in_process(const Expression *body,
   /* This shell has no process-level subshell, so isolation is by snapshot. A
      loop in the parent is not the subshell's to break, so the body runs with a
      fresh loop count. */
-  let const saved_loop_depth = cxt.loop_depth();
-  cxt.set_loop_depth(0);
-  defer { cxt.set_loop_depth(saved_loop_depth); };
+    let const saved_loop_depth = cxt.execution_store().loop_depth();
+    cxt.execution_store().loop_depth() = 0;
+    defer { cxt.execution_store().loop_depth() = saved_loop_depth; };
 
   /* The trap action that forked this subshell is not running inside it. Bash
      lets the same condition fire again for the commands of the body, and each

@@ -54,7 +54,7 @@ fn Break::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     SHOW_BUILTIN_HELP_AND_RETURN(ec);
   }
 
-  if (cxt.loop_depth() == 0) {
+  if (cxt.execution_store().loop_depth() == 0) {
     LOG(All, "break outside a loop does nothing");
     report_loop_control_without_loop(ec, cxt);
     return 0;
