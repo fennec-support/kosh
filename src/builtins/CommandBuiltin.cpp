@@ -125,7 +125,7 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
         continue;
       }
       if (let const kind = search_builtin(name.view());
-          kind.has_value() && !builtin_is_hidden_by_mood(*kind, cxt.mood()))
+          kind.has_value() && !builtin_is_hidden_by_mood(*kind, cxt.runtime_state().get_mood()))
       {
         ec.print_to_stdout(is_verbose ? name + " is a shell builtin\n"
                                       : name + "\n");
@@ -150,7 +150,7 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
         continue;
       }
       if ((cxt.runtime_state().koshkit() ||
-           cxt.mood() == mimic_mood::Default) &&
+           cxt.runtime_state().get_mood() == mimic_mood::Default) &&
           koshkit::find_util(name.view()).has_value())
       {
         ec.print_to_stdout(is_verbose ? name + " is a built-in utility\n"
@@ -158,7 +158,7 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
         did_find_any = true;
         continue;
       }
-      if (cxt.mood() == mimic_mood::Posix) {
+      if (cxt.runtime_state().get_mood() == mimic_mood::Posix) {
         if (is_verbose) ec.print_to_stdout(name + ": not found\n");
         continue;
       }
@@ -171,7 +171,7 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
 
     if (did_find_any) return 0;
 
-    return cxt.mood() == mimic_mood::Posix ? 127 : 1;
+    return cxt.runtime_state().get_mood() == mimic_mood::Posix ? 127 : 1;
   }
 
   let operand_args = ArrayList<String>{heap_allocator()};
@@ -188,7 +188,7 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
         ec.source_location(), source != nullptr ? source->view() : StringView{},
         steal(operand_args), cxt.runtime_state().koshkit(),
         cxt.is_shopt_enabled("checkhash"),
-        resolver, steal(operand_arg_locations), cxt.mood());
+        resolver, steal(operand_arg_locations), cxt.runtime_state().get_mood());
   } catch (const CommandResolutionErrorWithLocation &resolution_error) {
     LOG(Debug, "command handled a resolution error: %s",
         resolution_error.message().c_str());

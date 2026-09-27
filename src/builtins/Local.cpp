@@ -183,7 +183,7 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     LOG(All, "local declaring '%.*s' in the function scope",
         static_cast<int>(name.length), name.data);
     cxt.declare_local(
-        name, !cxt.is_bash_compatible() ||
+        name, !cxt.runtime_state().is_bash_compatible() ||
                   cxt.is_shopt_enabled(shopt_option_id::LocalvarInherit));
     if (should_mark_integer) cxt.mark_integer(name);
     if (should_mark_lowercase) cxt.mark_lowercase(name);

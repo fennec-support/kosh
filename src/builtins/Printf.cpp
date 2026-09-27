@@ -449,7 +449,7 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     has_consumed_a_conversion = true;
   };
 
-  let const should_use_bash_escapes = !cxt.is_posix_mode();
+  let const should_use_bash_escapes = !cxt.runtime_state().is_posix_mode();
 
   do {
     has_consumed_a_conversion = false;

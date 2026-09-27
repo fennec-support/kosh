@@ -69,7 +69,7 @@ fn Let::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                                         &expression_base);
     } catch (const ErrorWithLocation &error) {
       let const message = builtin_error_message(ec.program(), error.message());
-      if (cxt.is_bash_compatible()) {
+      if (cxt.runtime_state().is_bash_compatible()) {
         if (error.detail_message().is_empty())
           report_soft_builtin_error(ec, cxt, error.location(),
                                     error.message().view());
@@ -85,7 +85,7 @@ fn Let::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       throw ErrorWithLocationAndDetails{error.location(), message.view(),
                                         error.detail_message()};
     } catch (const Error &error) {
-      if (cxt.is_bash_compatible()) {
+      if (cxt.runtime_state().is_bash_compatible()) {
         if (error.detail_message().is_empty())
           report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
                                     error.message().view());

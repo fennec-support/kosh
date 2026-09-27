@@ -142,7 +142,7 @@ fn BuiltinBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
     -> i32
 {
   if (ec.args().count() < 2) {
-    if (cxt.mood() == mimic_mood::Default)
+    if (cxt.runtime_state().get_mood() == mimic_mood::Default)
       print_builtin_columns(ec, cxt.scratch_allocator());
     return 0;
   }

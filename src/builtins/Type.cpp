@@ -62,8 +62,8 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                    !should_print_word && !should_print_path &&
                                    !should_force_path;
 
-  let const is_bash_function_report = cxt.is_bash_compatible();
-  let const is_posix_report = cxt.mood() == mimic_mood::Posix;
+  let const is_bash_function_report = cxt.runtime_state().is_bash_compatible();
+  let const is_posix_report = cxt.runtime_state().get_mood() == mimic_mood::Posix;
 
   let out = String{cxt.scratch_allocator()};
   let missing_names = ArrayList<String>{cxt.scratch_allocator()};
@@ -112,7 +112,7 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     Maybe<Builtin::Kind> builtin_kind;
     bool is_bundled_utility = false;
     let const is_bash_keyword_name =
-        cxt.mood() != mimic_mood::Posix &&
+        cxt.runtime_state().get_mood() != mimic_mood::Posix &&
         (name.view() == "[[" || name.view() == "]]" ||
          name.view() == "function" || name.view() == "select" ||
          name.view() == "time");
@@ -128,12 +128,12 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       word = "function";
     } else if (let const kind = search_builtin(name.view());
                kind.has_value() &&
-               !builtin_is_hidden_by_mood(*kind, cxt.mood()))
+               !builtin_is_hidden_by_mood(*kind, cxt.runtime_state().get_mood()))
     {
       word = "builtin";
       builtin_kind = kind;
     } else if ((cxt.runtime_state().koshkit() ||
-                cxt.mood() == mimic_mood::Default) &&
+                cxt.runtime_state().get_mood() == mimic_mood::Default) &&
                koshkit::find_util(name.view()).has_value() &&
                cxt.get_program_resolver().get_status(
                    name, ProgramResolver::StatusLookup::Authoritative) ==

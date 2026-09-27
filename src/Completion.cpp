@@ -1269,7 +1269,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
   let should_close_generated_prefix_quote = false;
   let should_ignore_common_prefix_case = false;
 
-  let const is_posix_completion = context.mood() == mimic_mood::Posix;
+  let const is_posix_completion = context.runtime_state().get_mood() == mimic_mood::Posix;
 
   if (token_is_variable(open_quote_content_token) && is_leading_variable_active)
   {

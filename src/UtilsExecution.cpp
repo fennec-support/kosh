@@ -70,7 +70,7 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
 
   /* Mimicry runs the script in-process, a background command keeps its fork.
    */
-  if (cxt.mimicry() && !is_async) {
+  if (cxt.runtime_state().is_mimicry_enabled() && !is_async) {
     if (Maybe<mimic_mood> mode = ec.program_path().detect_mimic_shell();
         mode.has_value())
     {
@@ -175,7 +175,7 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
     ec.in_fd.reset();
     ec.out_fd.reset();
     ec.err_fd.reset();
-    const mimic_mood mode = cxt.mood();
+    const mimic_mood mode = cxt.runtime_state().get_mood();
     quit(cxt.run_program_fallback(ec, mode,
                                   can_replace_shell
                                       ? script_isolation::Shared
@@ -213,7 +213,7 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
                                    : os::process_group_mode::Inherit});
   if (p == KOSH_INVALID_PROCESS) {
     LOG(Debug, "running the file as a shell script in this process");
-    const mimic_mood mode = cxt.mood();
+    const mimic_mood mode = cxt.runtime_state().get_mood();
     return cxt.run_program_fallback(ec, mode,
                                     can_replace_shell
                                         ? script_isolation::Shared
@@ -400,7 +400,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
     let const should_fork_last_builtin =
         is_last && !is_async &&
         (!unresolved_stages.is_empty() ||
-         (cxt.is_bash_compatible() &&
+         (cxt.runtime_state().is_bash_compatible() &&
           (!cxt.is_shopt_enabled("lastpipe") ||
            cxt.shell_option_state(shell_option_id::Monitor))));
 
@@ -573,7 +573,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
                     .previous_exit_status = cxt.execution_store().last_exit_status(),
                     .shell_process_id = os::get_shell_process_id(),
                     .subshell_depth = cxt.get_subshell_depth() + 1,
-                    .mood = cxt.mood(),
+                    .mood = cxt.runtime_state().get_mood(),
                     .process_group = process_group});
             forked_child = launch.child;
           } catch (...) {

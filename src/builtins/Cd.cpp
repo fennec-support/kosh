@@ -68,7 +68,7 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                             "cd is forbidden in a restricted shell"};
 
   let is_physical =
-      !cxt.is_posix_mode() && cxt.shell_option_state(shell_option_id::Physical);
+      !cxt.runtime_state().is_posix_mode() && cxt.shell_option_state(shell_option_id::Physical);
   usize operand_index = 1;
   while (operand_index < ec.args().count()) {
     let const option = ec.args()[operand_index].view();

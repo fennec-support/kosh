@@ -97,7 +97,7 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   if (args.count() == 1 && !ec.has_stripped_array_operands) {
-    let const is_declare_form = cxt.is_bash_compatible();
+    let const is_declare_form = cxt.runtime_state().is_bash_compatible();
     let const names =
         os::environment_names().make_sorted(sort_order::ascending);
 

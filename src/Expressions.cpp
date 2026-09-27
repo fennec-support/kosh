@@ -1662,7 +1662,7 @@ fn expressions::internal::analyze_followed_source(
   defer { actx.eval_context->arena_store().parse_arena()->release(arena_mark); };
   let parser = Parser{
       Lexer{contents->view(), *actx.eval_context->arena_store().parse_arena(),
-            canonical_path->text().view(), actx.eval_context->mood()}
+            canonical_path->text().view(), actx.eval_context->runtime_state().get_mood()}
   };
   parser.set_analysis_metadata_collection_mode(
       analysis_metadata_collection_mode::Enabled);

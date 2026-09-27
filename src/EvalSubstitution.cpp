@@ -102,7 +102,7 @@ fn EvalContext::read_redirect_substitution(StringView source) throws
   let const ast_mark = arena_store().parse_arena()->mark();
   defer { arena_store().parse_arena()->release(ast_mark); };
   let lexer = Lexer{source.substring_of_length(i, source.length - i),
-                    *arena_store().parse_arena(), None, mood()};
+                    *arena_store().parse_arena(), None, runtime_state().get_mood()};
   Token *name = lexer.next_shell_token();
   if (name == nullptr || name->kind() != Token::Kind::Word) {
     return None;
@@ -161,7 +161,7 @@ fn EvalContext::capture_command_substitution(
   };
 
   let parser = Parser{
-      Lexer{normalized_source.view(), *arena_store().parse_arena(), steal(filename), mood()}
+      Lexer{normalized_source.view(), *arena_store().parse_arena(), steal(filename), runtime_state().get_mood()}
   };
   const Expression *ast;
   try {
@@ -205,7 +205,7 @@ fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
     if (did_push_source_frame) source_store().m_source_frames.pop_back();
   };
   let parser = Parser{
-      Lexer{substitution_source.view(), *arena_store().parse_arena(), None, mood()}
+      Lexer{substitution_source.view(), *arena_store().parse_arena(), None, runtime_state().get_mood()}
   };
   const Expression *ast;
   try {
@@ -233,7 +233,7 @@ fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
           .direction = command_writes_the_pipe
                            ? os::process_substitution_direction::CommandWrites
                            : os::process_substitution_direction::CommandReads,
-          .mood = mood()});
+          .mood = runtime_state().get_mood()});
     } catch (const ErrorBase &error) {
       let const location = segment.get_source_location(
           source_store().m_current_location.source_name_index);
@@ -320,7 +320,7 @@ fn EvalContext::cleanup_process_substitutions(
       LOG(Debug, "a process substitution reap failed and was swallowed: %s",
           e.message().c_str());
       /* bash stays silent here, so the warning is suppressed in bash mode. */
-      if (!is_bash_compatible()) {
+      if (!runtime_state().is_bash_compatible()) {
         try {
           let const text =
               "A process substitution child could not be reaped. " +
@@ -336,7 +336,7 @@ fn EvalContext::cleanup_process_substitutions(
     } catch (...) {
       LOG(Debug, "a process substitution reap failed with an unknown error, "
                  "swallowed");
-      if (!is_bash_compatible()) {
+      if (!runtime_state().is_bash_compatible()) {
         try {
           let const text =
               StringView{"A process substitution child could not be reaped."};
@@ -389,7 +389,7 @@ fn EvalContext::capture_command_substitution(const WordSegment &segment) throws
                                     ? ParseSession::AllocationKind::FunctionBody
                                     : ParseSession::AllocationKind::Syntax;
     let parser = Parser{
-        Lexer{segment.text.view(), *cache_arena, None, mood(), allocation_kind}
+        Lexer{segment.text.view(), *cache_arena, None, runtime_state().get_mood(), allocation_kind}
     };
     try {
       cache.substitution_ast = parser.construct_ast();
@@ -517,7 +517,7 @@ fn EvalContext::run_captured_substitution(const Expression *ast,
         execution_store().set_shell_is_interactive(false);
         enter_subshell();
         hide_coprocess_descriptors();
-        if (mood() == mimic_mood::Bash && !is_shopt_enabled("inherit_errexit"))
+        if (runtime_state().get_mood() == mimic_mood::Bash && !is_shopt_enabled("inherit_errexit"))
         {
           runtime_state().set_error_exit(false);
         }
@@ -674,7 +674,7 @@ fn EvalContext::run_captured_substitution(const Expression *ast,
     enter_subshell();
     did_enter_subshell = true;
     hide_coprocess_descriptors();
-    if (mood() == mimic_mood::Bash && !is_shopt_enabled("inherit_errexit")) {
+    if (runtime_state().get_mood() == mimic_mood::Bash && !is_shopt_enabled("inherit_errexit")) {
       runtime_state().set_error_exit(false);
     }
     clear_inherited_exit_trap();
@@ -768,7 +768,7 @@ fn EvalContext::capture_function_substitution(const WordSegment &segment) throws
                                     ? ParseSession::AllocationKind::FunctionBody
                                     : ParseSession::AllocationKind::Syntax;
     let parser = Parser{
-        Lexer{segment.text.view(), *cache_arena, None, mood(), allocation_kind}
+        Lexer{segment.text.view(), *cache_arena, None, runtime_state().get_mood(), allocation_kind}
     };
     try {
       cache.substitution_ast = parser.construct_ast();

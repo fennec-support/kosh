@@ -75,7 +75,7 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let custom_argv0 = String{heap_allocator()};
   usize command_index = 1;
 
-  if (!cxt.is_posix_mode()) {
+  if (!cxt.runtime_state().is_posix_mode()) {
     while (command_index < args.count()) {
       let const arg = args[command_index].view();
       if (arg == "--") {
@@ -279,7 +279,7 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   command.out_fd.reset();
   command.err_fd.reset();
   let const status =
-      cxt.run_program_fallback(command, cxt.mood(), script_isolation::Shared);
+      cxt.run_program_fallback(command, cxt.runtime_state().get_mood(), script_isolation::Shared);
   utils::quit(status, utils::farewell_policy::Silent);
 }
 

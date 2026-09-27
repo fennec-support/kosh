@@ -82,7 +82,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
   {
     tilde_expanded_segments = clone_word_segments(word, scratch);
     expand_tilde(tilde_expanded_segments.front(),
-                 tilde_expanded_segments.count() > 1, !is_posix_mode());
+                 tilde_expanded_segments.count() > 1, !runtime_state().is_posix_mode());
     segments = &tilde_expanded_segments;
   }
 
@@ -804,7 +804,7 @@ fn EvalContext::expand_case_pattern_masked(const Word &word,
   {
     tilde_expanded_segments = clone_word_segments(word, scratch_allocator());
     expand_tilde(tilde_expanded_segments.front(),
-                 tilde_expanded_segments.count() > 1, !is_posix_mode());
+                 tilde_expanded_segments.count() > 1, !runtime_state().is_posix_mode());
     segments = &tilde_expanded_segments;
   }
 

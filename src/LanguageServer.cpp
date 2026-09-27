@@ -261,7 +261,7 @@ fn Server::request_positioned_document(const JsonValue *params) throws
 
 fn Server::select_document_mood(const Document &document) wontthrow -> void
 {
-  m_context.set_mood(document.mood);
+  m_context.runtime_state().set_mood(document.mood);
   m_context.apply_strictness_for_mood();
   m_context.set_warning_level(3);
   m_context.set_diagnostics_disabled(false);
@@ -516,7 +516,7 @@ fn Server::publish_diagnostics(Document &document) throws -> bool
   let const filename = document.path.has_value() ? document.path->text().view()
                                                  : document.uri.view();
   let parser = Parser{
-      Lexer{document.shell_source(), m_ast_arena, filename, m_context.mood()}
+      Lexer{document.shell_source(), m_ast_arena, filename, m_context.runtime_state().get_mood()}
   };
   parser.set_analysis_metadata_collection_mode(
       analysis_metadata_collection_mode::Enabled);
@@ -551,7 +551,7 @@ fn Server::publish_diagnostics(Document &document) throws -> bool
             : missing_shebang_policy::Suppress;
     analyze_ast(ast, document.shell_source(), functions, aliases, &m_context, 3,
                 should_silence_unresolved_commands,
-                m_context.mood() == mimic_mood::Default, true, suppressions,
+                m_context.runtime_state().get_mood() == mimic_mood::Default, true, suppressions,
                 scopes, directives, heredoc_misses, false, &followed_paths,
                 &source_effects, nullptr, nullptr, true,
                 true, nullptr, &diagnostics, this, &symbol_records, nullptr,
@@ -1068,7 +1068,7 @@ fn Server::symbol_at(const Document &document,
   let const fragment_index = document.fragment_at(*byte_position);
   if (!fragment_index.has_value()) return None;
   if (document.format.is_host_format) {
-    m_context.set_mood(document.format.fragments[*fragment_index].mood);
+    m_context.runtime_state().set_mood(document.format.fragments[*fragment_index].mood);
     m_context.apply_strictness_for_mood();
   }
   let const[line_start, line_end] = document.get_line_bounds(position.line);
@@ -1836,7 +1836,7 @@ fn Server::append_shell_variable_facts(
 
   if (has_shell_variable_fact(description.facts, shell_variable_fact::BashOnly))
   {
-    output.append(m_context.mood() == mimic_mood::Posix
+    output.append(m_context.runtime_state().get_mood() == mimic_mood::Posix
                       ? "\nThe sh mood is active, so the name is unavailable."
                       : "\nThe name is unavailable in the sh mood.");
     return;

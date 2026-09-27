@@ -1107,7 +1107,7 @@ fn collect_shell_provided_variable_names(const AnalysisContext &actx,
   }
 
   if (actx.eval_context == nullptr) return;
-  if (actx.eval_context->mood() != mimic_mood::Posix) {
+  if (actx.eval_context->runtime_state().get_mood() != mimic_mood::Posix) {
     static constexpr PackedStringKey BASH_IDENTITY_KEYS[] = {
         SSK("BASH"), SSK("BASH_VERSION"), SSK("BASH_VERSINFO")};
     for (let const &key : BASH_IDENTITY_KEYS) {

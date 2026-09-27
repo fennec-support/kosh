@@ -330,7 +330,7 @@ fn EvalContext::cached_trap_body(StringView condition, StringView action) throws
   ASSERT(stored_action != nullptr);
 
   let parser = Parser{
-      Lexer{stored_action->view(), *body_storage.get_arena(), None, mood(),
+      Lexer{stored_action->view(), *body_storage.get_arena(), None, runtime_state().get_mood(),
             ParseSession::AllocationKind::FunctionBody}
   };
   let const parsed_action = parser.construct_ast();

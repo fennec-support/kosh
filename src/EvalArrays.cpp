@@ -157,7 +157,7 @@ fn EvalContext::assign_indexed_array_elements(
 
   /* POSIX mode has no arrays, so a bash array literal stands in as an empty
      scalar. */
-  if (is_posix_mode()) [[unlikely]] {
+  if (runtime_state().is_posix_mode()) [[unlikely]] {
     LOG(Debug,
         "posix mode stores the array literal for '%.*s' as an empty scalar",
         static_cast<int>(name.length), name.data);

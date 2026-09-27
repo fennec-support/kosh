@@ -463,7 +463,7 @@ fn find_option_by_name(StringView name) throws -> Maybe<usize>
 fn option_is_available(const EvalContext &cxt,
                        const set_option_descriptor &option) wontthrow -> bool
 {
-  return option.id != shell_option_id::Physical || !cxt.is_posix_mode();
+  return option.id != shell_option_id::Physical || !cxt.runtime_state().is_posix_mode();
 }
 
 fn option_is_on(const EvalContext &cxt,
@@ -474,7 +474,7 @@ fn option_is_on(const EvalContext &cxt,
   case set_option_behavior::Stored: return cxt.shell_option_state(option.id);
   case set_option_behavior::InteractiveComments:
     return cxt.is_shopt_enabled("interactive_comments");
-  case set_option_behavior::Posix: return cxt.is_posix_option_on();
+  case set_option_behavior::Posix: return cxt.runtime_state().is_posix_option_on();
   case set_option_behavior::Vi: return cxt.vi_mode();
   case set_option_behavior::Emacs: return cxt.emacs_mode();
   case set_option_behavior::WarningLevel: return cxt.warning_level() > 0;
@@ -836,7 +836,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const value = do_read_option_value(arg);
       if (!value.has_value()) {
         ec.print_to_stdout(
-            String{cxt.scratch_allocator(), mood_name(cxt.mood())} + "\n");
+            String{cxt.scratch_allocator(), mood_name(cxt.runtime_state().get_mood())} + "\n");
         continue;
       }
       let const parsed = parse_mood_name(*value);
@@ -845,7 +845,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             ec, i,
             String{cxt.scratch_allocator(), "Unknown --mood value '"} + *value +
                 "', expected 'kosh', 'bash', 'sh', or 'bash-posix'");
-      cxt.set_mood(*parsed);
+      cxt.runtime_state().set_mood(*parsed);
       cxt.note_warning_option_mutation();
       cxt.set_warning_level(0);
       cxt.apply_strictness_for_mood();
@@ -859,7 +859,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const value = do_read_option_value(arg);
       if (!value.has_value()) {
         ec.print_to_stdout(String{cxt.scratch_allocator(),
-                                  tab_selector_name(cxt.tab_selector())} +
+                                  tab_selector_name(cxt.runtime_state().get_tab_selector())} +
                            "\n");
         continue;
       }
@@ -870,7 +870,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             String{cxt.scratch_allocator(), "Unknown --tab-selector value '"} +
                 *value + "', expected 'interactive', 'external', or 'plain'");
       }
-      cxt.set_tab_selector(*parsed);
+      cxt.runtime_state().set_tab_selector(*parsed);
       continue;
     }
 
@@ -911,10 +911,10 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
       if (cxt.arena_store().parse_arena() == nullptr)
         throw Error{"Unable to source the init moods outside of a parse"};
-      let const previous_mood = cxt.mood();
+      let const previous_mood = cxt.runtime_state().get_mood();
       source_init_moods(cxt, *cxt.arena_store().parse_arena(), moods, cxt.is_login_shell(),
                         cxt.shell_is_interactive());
-      cxt.set_mood(previous_mood);
+      cxt.runtime_state().set_mood(previous_mood);
       cxt.apply_strictness_for_mood();
       continue;
     }

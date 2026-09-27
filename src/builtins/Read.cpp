@@ -59,7 +59,7 @@ fn Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   /* The array, count, query, timeout, silent, delimiter, descriptor, and
      editor options are bash extensions the sh mood rejects. */
-  if (cxt.is_posix_mode() &&
+  if (cxt.runtime_state().is_posix_mode() &&
       (FLAG_READ_ARRAY.is_set() || FLAG_READ_TIMEOUT.is_set() ||
        FLAG_READ_NCHARS.is_set() || FLAG_READ_QUERY.is_enabled() ||
        FLAG_READ_SILENT.is_enabled() || FLAG_READ_DELIM.is_set() ||

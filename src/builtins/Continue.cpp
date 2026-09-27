@@ -50,7 +50,7 @@ fn Continue::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let const parsed_level = ec.args()[1].to<i64>();
 
     if (parsed_level.is_error()) {
-      if (!cxt.is_bash_compatible()) throw parsed_level.error();
+      if (!cxt.runtime_state().is_bash_compatible()) throw parsed_level.error();
 
       LOG(All, "continue rejecting a non-numeric count under bash mood");
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
@@ -76,7 +76,7 @@ fn Continue::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   if (level < 1) {
-    if (!cxt.is_bash_compatible()) {
+    if (!cxt.runtime_state().is_bash_compatible()) {
       throw make_error_for_arg(ec, 1,
                                "Unable to continue because '" + ec.args()[1] +
                                    "' is not a valid loop count");

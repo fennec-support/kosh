@@ -1661,7 +1661,7 @@ fn internal::scan_highlight_range(
       let should_expect_for_variable = false;
       if (Maybe<keyword_spec> spec = HIGHLIGHT_KEYWORDS.find(word);
           spec.has_value() &&
-          !(spec.value().is_non_posix_only && context.is_posix_mode()))
+          !(spec.value().is_non_posix_only && context.runtime_state().is_posix_mode()))
       {
         let const &keyword = spec.value();
         switch (keyword.role) {

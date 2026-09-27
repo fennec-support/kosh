@@ -228,7 +228,7 @@ fn execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
   } catch (const ErrorWithLocation &) {
     throw;
   } catch (const Error &e) {
-    if (cxt.is_bash_compatible()) {
+    if (cxt.runtime_state().is_bash_compatible()) {
       if (!e.detail_message().is_empty())
         report_soft_builtin_error(ec, cxt, e.message(), e.detail_message());
       else
@@ -293,7 +293,7 @@ fn report_soft_builtin_error(const ExecContext &ec, EvalContext &cxt,
 fn report_loop_control_without_loop(const ExecContext &ec,
                                     EvalContext &cxt) throws -> void
 {
-  if (!cxt.is_bash_compatible() || cxt.is_posix_option_on()) return;
+  if (!cxt.runtime_state().is_bash_compatible() || cxt.runtime_state().is_posix_option_on()) return;
 
   report_soft_builtin_error(
       ec, cxt, "only meaningful in a `for', `while', or `until' loop");

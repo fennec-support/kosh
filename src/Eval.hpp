@@ -201,6 +201,42 @@ public:
            mood == mimic_mood::Default;
   }
 
+  pure fn is_bash_compatible() const wontthrow -> bool
+  {
+    return mood == mimic_mood::Bash || mood == mimic_mood::BashPosix;
+  }
+
+  pure fn is_posix_mode() const wontthrow -> bool
+  {
+    return mood == mimic_mood::Posix;
+  }
+
+  pure fn is_posix_option_on() const wontthrow -> bool
+  {
+    return mood == mimic_mood::Posix || mood == mimic_mood::BashPosix;
+  }
+
+  fn set_mood(mimic_mood value) wontthrow -> void { mood = value; }
+  pure fn get_mood() const wontthrow -> mimic_mood { return mood; }
+
+  fn set_tab_selector(tab_selector_mode selector) wontthrow -> void
+  {
+    tab_selector = selector;
+  }
+  pure fn get_tab_selector() const wontthrow -> tab_selector_mode
+  {
+    return tab_selector;
+  }
+
+  fn set_mimicry(bool enabled) wontthrow -> void
+  {
+    set_option(shell_option_id::Mimicry, enabled);
+  }
+  pure fn is_mimicry_enabled() const wontthrow -> bool
+  {
+    return option_is_enabled(shell_option_id::Mimicry);
+  }
+
   fn set_option(shell_option_id option, bool enabled) wontthrow -> void
   {
     if (enabled)
@@ -2347,7 +2383,7 @@ public:
   }
   pure fn should_run_debug_trap() const wontthrow -> bool
   {
-    return trap_store().m_has_debug_trap && !is_posix_mode() &&
+    return trap_store().m_has_debug_trap && !runtime_state().is_posix_mode() &&
            !trap_store().m_is_replaying_inherited_state &&
            (m_runtime.option_is_enabled(shell_option_id::Functrace) ||
             nesting_depth() <= trap_store().m_debug_trap_active_depth);
@@ -2388,7 +2424,7 @@ public:
   }
   mustuse fn save_untraced_return_trap() throws -> saved_frame_trap
   {
-    if (!is_bash_compatible()) return saved_frame_trap{};
+    if (!runtime_state().is_bash_compatible()) return saved_frame_trap{};
 
     return save_untraced_trap(StringView{"RETURN", 6},
                               shell_option_id::Functrace, nullptr);
@@ -2404,7 +2440,7 @@ public:
                            usize *active_depth) wontthrow -> void;
   pure fn should_run_return_trap() const wontthrow -> bool
   {
-    return !is_posix_mode();
+    return !runtime_state().is_posix_mode();
   }
   pure fn is_running_trap_action() const wontthrow -> bool
   {
@@ -2478,7 +2514,9 @@ public:
 
   pure fn get_startup_ignored_signals() const wontthrow -> u64
   {
-    return is_bash_compatible() ? trap_store().m_startup_ignored_signals : 0;
+    return runtime_state().is_bash_compatible()
+               ? trap_store().m_startup_ignored_signals
+               : 0;
   }
   fn set_startup_ignored_signals(u64 signals) wontthrow -> void
   {
@@ -2801,44 +2839,6 @@ public:
   fn expand_glob_lenient(StringView pattern) throws
       -> SortedArrayList<String, order_comparator<String>>;
 
-  pure fn is_bash_compatible() const wontthrow -> bool
-  {
-    return m_runtime.mood == mimic_mood::Bash ||
-           m_runtime.mood == mimic_mood::BashPosix;
-  }
-
-  /* POSIX mood behaves like dash. The non-posix-breaking bash additions on in
-     the default mood, such as the extended globs, read this to stay off here.
-     BashPosix is bash in posix-option form, not the dash-like sh mood, so the
-     bash additions and the [[ grammar stay on. */
-  pure fn is_posix_mode() const wontthrow -> bool
-  {
-    return m_runtime.mood == mimic_mood::Posix;
-  }
-
-  pure fn is_posix_option_on() const wontthrow -> bool
-  {
-    return m_runtime.mood == mimic_mood::Posix ||
-           m_runtime.mood == mimic_mood::BashPosix;
-  }
-
-  /* The mood the lexer reads. set_mood changes only the mood, so a caller that
-     wants the strictness moved with it calls apply_strictness_for_mood after.
-  */
-  fn set_mood(mimic_mood mood) wontthrow -> void { m_runtime.mood = mood; }
-  pure fn mood() const wontthrow -> mimic_mood { return m_runtime.mood; }
-
-  /* The presentation the editor uses for a completion with several candidates.
-     The mood does not carry it. A mood change leaves it alone. */
-  fn set_tab_selector(tab_selector_mode selector) wontthrow -> void
-  {
-    m_runtime.tab_selector = selector;
-  }
-  pure fn tab_selector() const wontthrow -> tab_selector_mode
-  {
-    return m_runtime.tab_selector;
-  }
-
   /* The set -o posix form enters the BashPosix mood, and set +o posix steps
      down to bash when already in BashPosix or the dash-like Posix mood. A
      non-posix mood is left alone, since the mood is not a stack and the prior
@@ -2849,15 +2849,14 @@ public:
   {
     if (enable) {
       note_explicit_mood();
-      set_mood(mimic_mood::BashPosix);
+      runtime_state().set_mood(mimic_mood::BashPosix);
       apply_strictness_for_mood();
       return;
     }
-    if (m_runtime.mood != mimic_mood::Posix &&
-        m_runtime.mood != mimic_mood::BashPosix)
+    if (!runtime_state().is_posix_option_on())
       return;
     note_explicit_mood();
-    set_mood(mimic_mood::Bash);
+    runtime_state().set_mood(mimic_mood::Bash);
     apply_strictness_for_mood();
   }
 
@@ -3028,15 +3027,6 @@ public:
   fn note_annoying_diagnostics_option_mutation() wontthrow -> void
   {
     runtime_control_store().note_annoying_diagnostics_option_mutation();
-  }
-
-  fn set_mimicry(bool enabled) wontthrow -> void
-  {
-    m_runtime.set_option(shell_option_id::Mimicry, enabled);
-  }
-  pure fn mimicry() const wontthrow -> bool
-  {
-    return m_runtime.option_is_enabled(shell_option_id::Mimicry);
   }
 
   /* Run the script at the resolved program in-process in the matching mode.

@@ -270,7 +270,7 @@ fn EvalContext::expand_modifier_word_worker(
 
     let const next = word[i + 1];
     if (next == '\'' && remove_quotes && !is_in_double_quote &&
-        !is_posix_mode())
+        !runtime_state().is_posix_mode())
     {
       let body = String{scratch_allocator()};
       usize j = i + 2;
@@ -759,7 +759,7 @@ hot fn EvalContext::apply_parameter_expansion(
           name, rest, do_source_location_for(rest, rest_location));
     }
     case '@':
-      if (rest.length >= 2 && mood() != mimic_mood::Posix) {
+      if (rest.length >= 2 && runtime_state().get_mood() != mimic_mood::Posix) {
         return apply_parameter_transform(name, rest[1]);
       }
 

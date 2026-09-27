@@ -39,7 +39,7 @@ fn Return::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   /* The default mood rejects a return outside a function or a sourced file,
      while the sh mood lets it end the script the way dash does. */
-  if (!cxt.is_posix_mode() && !cxt.in_function_scope() && !cxt.is_sourcing()) {
+  if (!cxt.runtime_state().is_posix_mode() && !cxt.in_function_scope() && !cxt.is_sourcing()) {
     report_soft_builtin_error(
         ec, cxt, "can only `return' from a function or sourced script");
     return 2;
@@ -57,7 +57,7 @@ fn Return::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       return 2;
     }
 
-    if (ec.args().count() > 2 && !cxt.is_posix_mode()) {
+    if (ec.args().count() > 2 && !cxt.runtime_state().is_posix_mode()) {
       report_soft_builtin_error(
           ec, cxt, ec.arg_location_at(2), "too many arguments",
           "return takes at most one status, e.g. `return 1`");

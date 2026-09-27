@@ -1068,7 +1068,7 @@ static fn evaluate_subshell_in_process(const Expression *body,
       const String *source = cxt.current_source();
       show_message(error.to_string(
           source != nullptr ? source->view() : StringView{}, &cxt));
-      ret = cxt.is_bash_compatible() ? 1 : 2;
+      ret = cxt.runtime_state().is_bash_compatible() ? 1 : 2;
       cxt.execution_store().set_last_exit_status(static_cast<i32>(ret));
       cxt.control_flow_store().clear();
     }
@@ -1159,7 +1159,7 @@ fn Subshell::evaluate_impl(EvalContext &cxt) const throws -> i64
       let const source = cxt.current_source();
       show_message(error.to_string(
           source != nullptr ? source->view() : StringView{}, &cxt));
-      if (cxt.is_posix_mode())
+      if (cxt.runtime_state().is_posix_mode())
         status = static_cast<i32>(error.command_status());
     }
 
@@ -1177,7 +1177,7 @@ fn Subshell::evaluate_impl(EvalContext &cxt) const throws -> i64
       let const source = cxt.current_source();
       show_message(error.to_string(
           source != nullptr ? source->view() : StringView{}, &cxt));
-      if (cxt.is_posix_mode())
+      if (cxt.runtime_state().is_posix_mode())
         status = static_cast<i32>(error.command_status());
     } catch (...) {
       LOG(Debug, "the subshell child swallowed an unknown error");

@@ -164,7 +164,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       let const note =
           StringView{"Quote it to run a literal name, or list the matches with "
                      "compgen -G"};
-      if (cxt.mood() == mimic_mood::Default)
+      if (cxt.runtime_state().get_mood() == mimic_mood::Default)
         throw ErrorWithLocationAndDetails{location, message, note};
       cxt.show_runtime_warning_at(location, message, note);
     }
@@ -495,7 +495,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     show_message(redirection_error.to_string(
         source != nullptr ? source->view() : StringView{}, &cxt));
     /* bash reports a redirection failure with status 1 and dash with 2. */
-    let const redirection_status = cxt.is_bash_compatible() ? 1 : 2;
+    let const redirection_status = cxt.runtime_state().is_bash_compatible() ? 1 : 2;
     cxt.execution_store().set_last_exit_status(redirection_status);
     cxt.publish_single_pipe_status(redirection_status);
     return redirection_status;
@@ -676,7 +676,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         /* A special builtin keeps the assignment outside the bash mood, so it
            commits to the store. The bash mood drops it after the command, so it
            falls to the temporary path instead. */
-        if (is_command_special_builtin && !cxt.is_bash_compatible()) {
+        if (is_command_special_builtin && !cxt.runtime_state().is_bash_compatible()) {
           cxt.set_shell_variable(name, expanded_value);
           if (cxt.runtime_state().export_all()) {
             cxt.record_environment_change(name);
@@ -823,7 +823,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         command_function_storage.get_definition_info();
     let const needs_state_swap =
         definition_info != nullptr &&
-        (definition_info->defining_runtime.mood != cxt.mood() ||
+        (definition_info->defining_runtime.mood != cxt.runtime_state().get_mood() ||
          definition_info->defining_runtime.warning_level !=
              cxt.warning_level() ||
          definition_info->defining_runtime.is_diagnostics_disabled() !=
@@ -927,7 +927,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         source_location(), source != nullptr ? source->view() : StringView{},
         steal(program_args), cxt.koshkit_utilities_are_reachable(),
         cxt.is_shopt_enabled(shopt_option_id::Checkhash),
-        cxt.get_program_resolver(), steal(program_arg_locations), cxt.mood());
+        cxt.get_program_resolver(), steal(program_arg_locations), cxt.runtime_state().get_mood());
   } catch (const CommandResolutionErrorWithLocation &e) {
     report_command_resolution_error(cxt, e);
     let const status = e.command_status();
@@ -954,7 +954,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   } catch (const InterruptErrorWithLocation &) {
     throw;
   } catch (ErrorWithLocation &error) {
-    if (!cxt.is_bash_compatible() || error.is_script_fatal()) throw;
+    if (!cxt.runtime_state().is_bash_compatible() || error.is_script_fatal()) throw;
 
     if (!error.was_rendered()) {
       if (let const windowed = window_function_body_error(cxt, error);

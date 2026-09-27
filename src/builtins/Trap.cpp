@@ -144,7 +144,7 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
      dash and carries more than that dash is an illegal option there, and the
      special builtin ends a non-interactive shell with status 2. A lone dash and
      the separator stay operands. */
-  if (cxt.is_posix_mode() && args.count() > 1 && args[1].count() > 1 &&
+  if (cxt.runtime_state().is_posix_mode() && args.count() > 1 && args[1].count() > 1 &&
       args[1].starts_with("-") && args[1] != "--")
   {
     let option = String{cxt.scratch_allocator()};
@@ -174,7 +174,7 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       break;
     }
 
-    if (cxt.is_posix_mode()) break;
+    if (cxt.runtime_state().is_posix_mode()) break;
 
     if (word.count() < 2 || !word.starts_with("-")) break;
 
@@ -216,7 +216,7 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const has_filter = should_print_listing && operand_index < args.count();
   if (operand_index >= args.count() || has_filter) {
     let const condition_format =
-        cxt.is_bash_compatible() ? trap_condition_format::SignalPrefixed
+        cxt.runtime_state().is_bash_compatible() ? trap_condition_format::SignalPrefixed
                                  : trap_condition_format::Plain;
 
     let out = String{cxt.scratch_allocator()};
@@ -240,7 +240,7 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       for (usize i = operand_index; i < args.count(); i++) {
         let const condition =
             normalize_condition(args[i], cxt.scratch_allocator());
-        if (!is_valid_trap_condition(condition.view(), cxt.mood())) {
+        if (!is_valid_trap_condition(condition.view(), cxt.runtime_state().get_mood())) {
           report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
                                     args[i] + ": invalid signal specification",
                                     "List the signal names with `trap -l`");
@@ -303,14 +303,14 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (action_index + 1 == args.count()) {
     let const condition =
         normalize_condition(args[action_index], cxt.scratch_allocator());
-    if (!is_valid_trap_condition(condition.view(), cxt.mood())) {
+    if (!is_valid_trap_condition(condition.view(), cxt.runtime_state().get_mood())) {
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(action_index),
                                 args[action_index] +
                                     ": invalid signal specification",
                                 "List the signal names with `trap -l`");
 
       /* Dash reports 1 for the reset form, and bash reports 2. */
-      return cxt.is_posix_mode() ? 1 : 2;
+      return cxt.runtime_state().is_posix_mode() ? 1 : 2;
     }
 
     LOG(Info, "trap resetting condition '%s' to its default",
@@ -325,7 +325,7 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   i32 status = 0;
   for (usize i = action_index + 1; i < args.count(); i++) {
     let const condition = normalize_condition(args[i], cxt.scratch_allocator());
-    if (!is_valid_trap_condition(condition.view(), cxt.mood())) {
+    if (!is_valid_trap_condition(condition.view(), cxt.runtime_state().get_mood())) {
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
                                 args[i] + ": invalid signal specification",
                                 "List the signal names with `trap -l`");

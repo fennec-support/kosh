@@ -83,7 +83,7 @@ cold fn Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const layout =
       FLAG_TIME_POSIX.is_enabled() ? utils::time_report_layout::Posix
-      : cxt.is_bash_compatible()   ? utils::time_report_layout::Bash
+      : cxt.runtime_state().is_bash_compatible()   ? utils::time_report_layout::Bash
                                    : utils::time_report_layout::Rich;
 
   let const time_format = cxt.get_variable_value("TIMEFORMAT");

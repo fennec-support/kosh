@@ -110,7 +110,8 @@ fn EvalContext::run_program_fallback(ExecContext &ec, mimic_mood mode,
   fallback_context.execution_store().set_shell_executable_path(
       String{execution_store().get_shell_executable_path()});
   fallback_context.runtime_state().set_koshkit(runtime_state().koshkit());
-  fallback_context.set_mimicry(mimicry());
+  fallback_context.runtime_state().set_mimicry(
+      runtime_state().is_mimicry_enabled());
   fallback_context.set_warning_level(warning_level());
   fallback_context.set_diagnostics_disabled(diagnostics_disabled());
   fallback_context.set_source_traces_enabled(should_print_source_traces());
@@ -290,7 +291,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
     source_store().m_source_frames.pop_back();
   };
   let parser = Parser{
-      Lexer{contents->view(), *arena_store().parse_arena(), script_filename, mood()}
+      Lexer{contents->view(), *arena_store().parse_arena(), script_filename, runtime_state().get_mood()}
   };
 
   let params = ArrayList<String>{heap_allocator()};
@@ -346,7 +347,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
     bool was_error_rendered = false;
     if (error && !is_interrupt) {
       final_status = mimicked_error_status(
-          error, is_posix_mode() ? mimicked_error_status_mode::Posix
+          error, runtime_state().is_posix_mode() ? mimicked_error_status_mode::Posix
                                  : mimicked_error_status_mode::Default);
       execution_store().set_last_exit_status(final_status);
       do_render_error(error);
@@ -370,7 +371,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
           is_interrupt = mimicked_error_is_interrupt(error);
           if (!is_interrupt)
             final_status = mimicked_error_status(
-                error, is_posix_mode() ? mimicked_error_status_mode::Posix
+                error, runtime_state().is_posix_mode() ? mimicked_error_status_mode::Posix
                                        : mimicked_error_status_mode::Default);
         }
       }
@@ -580,7 +581,7 @@ fn EvalContext::run_source(StringView source, StringView origin,
       retained_source = cached_body->get_source();
     } else {
       let parser = Parser{
-          Lexer{source, *arena_store().parse_arena(), filename, mood()}
+          Lexer{source, *arena_store().parse_arena(), filename, runtime_state().get_mood()}
       };
 
       let const parsed_ast = parser.construct_ast();
@@ -699,7 +700,7 @@ fn EvalContext::resolve_source_path(
                                     ProgramResolver::Requirement::Regular,
                                     ProgramResolver::CachePolicy::Bypass);
   if (!path_matches.is_empty()) return path_matches[0].clone();
-  if (is_posix_mode()) return None;
+  if (runtime_state().is_posix_mode()) return None;
 
   return source_path;
 }

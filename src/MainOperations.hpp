@@ -487,7 +487,7 @@ static fn run_script_contents(
         precompiled_ast == nullptr &&
         (FLAG_OPTIMIZER_DIAGNOSTICS.is_enabled() ||
          ((context.runtime_state().no_exec() ||
-           !(context.is_bash_compatible() || context.is_posix_mode()) ||
+           !(context.runtime_state().is_bash_compatible() || context.runtime_state().is_posix_mode()) ||
            context.warnings_enabled()) &&
           !context.diagnostics_disabled()));
 
@@ -531,7 +531,7 @@ static fn run_script_contents(
       /* The whole file is scanned first, because analysis resolves a call to a
          function the source defines further down. */
       let scan_parser = Parser{
-          Lexer{script_contents.view(), ast_arena, filename, context.mood()}
+          Lexer{script_contents.view(), ast_arena, filename, context.runtime_state().get_mood()}
       };
       scan_parser.set_analysis_metadata_collection_mode(
           analysis_metadata_collection_mode::Enabled);
@@ -561,7 +561,7 @@ static fn run_script_contents(
       LOG(Debug, "parsing a chunk of %zu bytes", script_contents.count());
 
       let p = Parser{
-          Lexer{script_contents.view(), ast_arena, filename, context.mood(),
+          Lexer{script_contents.view(), ast_arena, filename, context.runtime_state().get_mood(),
                 ParseSession::AllocationKind::Syntax,
                 context.runtime_state().show_lexed_words()
                     ? debug_word_collection_mode::Enabled
@@ -632,7 +632,7 @@ static fn run_script_contents(
             context.warning_level(),
             should_silence_unresolved_commands ||
                 (context.warnings_enabled() && context.shell_is_interactive()),
-            context.mood() == mimic_mood::Default,
+            context.runtime_state().get_mood() == mimic_mood::Default,
             context.annoying_diagnostics_enabled(), shellcheck_suppressions,
             analysis_scope_definitions, shellcheck_directive_spans,
             heredoc_terminator_misses,
@@ -644,7 +644,7 @@ static fn run_script_contents(
 
       if (should_stream_units) {
         let unit_parser = Parser{
-            Lexer{script_contents.view(), ast_arena, filename, context.mood()}
+            Lexer{script_contents.view(), ast_arena, filename, context.runtime_state().get_mood()}
         };
         /* A function body and a subshell carry their own definitions on the
            node, and the walk seeds them when it enters. */
@@ -690,7 +690,7 @@ static fn run_script_contents(
         ast_arena.release(preflight_mark);
         ast = nullptr;
         let execution_parser = Parser{
-            Lexer{script_contents.view(), ast_arena, filename, context.mood()}
+            Lexer{script_contents.view(), ast_arena, filename, context.runtime_state().get_mood()}
         };
         let const was_terminal_exec_allowed = context.execution_store().terminal_exec_allowed();
         defer { context.execution_store().terminal_exec_allowed() = was_terminal_exec_allowed; };
@@ -752,17 +752,17 @@ static fn run_script_contents(
     }
     exit_code = e.command_status() != 1
                     ? static_cast<i32>(e.command_status())
-                    : (context.is_posix_mode() ? 2 : EXIT_FAILURE);
+                    : (context.runtime_state().is_posix_mode() ? 2 : EXIT_FAILURE);
   } catch (const ErrorWithLocation &e) {
     if (!e.was_rendered()) show_message(e.to_string(script_contents, &context));
     exit_code = e.command_status() != 1
                     ? static_cast<i32>(e.command_status())
-                    : (context.is_posix_mode() ? 2 : EXIT_FAILURE);
+                    : (context.runtime_state().is_posix_mode() ? 2 : EXIT_FAILURE);
   } catch (const Error &e) {
     show_message(e.to_string());
     exit_code = e.command_status() != 1
                     ? static_cast<i32>(e.command_status())
-                    : (context.is_posix_mode() ? 2 : EXIT_FAILURE);
+                    : (context.runtime_state().is_posix_mode() ? 2 : EXIT_FAILURE);
   } catch (const std::exception &e) {
     exit_code = EXIT_FAILURE;
     show_message(
@@ -803,17 +803,17 @@ static fn run_lint_document_contents(
                                nullptr, None, diagnostic_totals,
                                diagnostic_sink, true, false, should_print_ast);
 
-  let const saved_mood = context.mood();
+  let const saved_mood = context.runtime_state().get_mood();
   let const saved_warning_level = context.warning_level();
   defer
   {
-    context.set_mood(saved_mood);
+    context.runtime_state().set_mood(saved_mood);
     context.set_warning_level(saved_warning_level);
   };
 
   int status = EXIT_SUCCESS;
   for (let const &fragment : document.fragments) {
-    context.set_mood(fragment.mood);
+    context.runtime_state().set_mood(fragment.mood);
     context.set_warning_level(fragment.mood == mimic_mood::Default ? 0 : 3);
     let const fragment_status = run_script_contents(
         fragment.analysis_source, context, ast_arena, filename, nullptr,
@@ -1884,7 +1884,7 @@ fn source_init_moods(EvalContext &context, BumpArena &ast_arena,
     }
     context.set_init_mood_sourcing(flavor, true);
     defer { context.set_init_mood_sourcing(flavor, false); };
-    context.set_mood(flavor);
+    context.runtime_state().set_mood(flavor);
     LOG(Info, "sourcing the startup files for the %s mood",
         flavor == mimic_mood::Bash        ? "bash"
         : flavor == mimic_mood::Posix     ? "posix"
@@ -2346,7 +2346,7 @@ static fn run_lint_apply_operation(const ArrayList<String> &file_names,
       let errors = ArrayList<String>{heap_allocator()};
       let formatted = format_document_source(
           final_source.view(), file_name.view(), ast_arena, errors, nullptr,
-          context.arena_store().function_arena(), context.mood());
+          context.arena_store().function_arena(), context.runtime_state().get_mood());
       if (!formatted.has_value()) {
         for (let const &error : errors)
           show_message(error.view());

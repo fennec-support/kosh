@@ -202,7 +202,7 @@ hot fn CompoundList::evaluate_root_status_impl(
       } catch (const InterruptErrorWithLocation &) {
         throw;
       } catch (ErrorWithLocation &error) {
-        if (!cxt.is_bash_compatible() || error.is_script_fatal()) {
+        if (!cxt.runtime_state().is_bash_compatible() || error.is_script_fatal()) {
           throw;
         }
         LOG(Debug,
@@ -229,7 +229,7 @@ hot fn CompoundList::evaluate_root_status_impl(
                     set_and_return_exit_status(cxt, error.command_status())),
                 0};
       } catch (const ErrorBase &error) {
-        if (!cxt.is_bash_compatible() || error.is_script_fatal()) {
+        if (!cxt.runtime_state().is_bash_compatible() || error.is_script_fatal()) {
           throw;
         }
         LOG(Debug, "bash mood converted the error to command status %lld: %s",
@@ -301,7 +301,7 @@ hot fn CompoundList::evaluate_root_status_impl(
        list and unwinds to the boundary that consumes it. */
     if (has_pending_control_flow) break;
 
-    if (was_command_failure_uncaught && !cxt.is_posix_mode()) {
+    if (was_command_failure_uncaught && !cxt.runtime_state().is_posix_mode()) {
       cxt.execution_store().set_last_exit_status(ret.status);
       if (was_err_trapped && cxt.should_run_err_trap()) {
         let const failed_location = n->command()->error_report_location();
@@ -441,7 +441,7 @@ hot fn CompoundListCondition::evaluate_root_status_impl(
 
     let const layout = m_cmd->get_time_format_mode() == time_format_mode::Posix
                            ? utils::time_report_layout::Posix
-                       : cxt.is_bash_compatible()
+                       : cxt.runtime_state().is_bash_compatible()
                            ? utils::time_report_layout::Bash
                            : utils::time_report_layout::Rich;
 
@@ -557,7 +557,7 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
       let const is_first = (stage_index == 0);
       let const is_last = (stage_index + 1 == m_commands.count());
       let const should_run_in_parent =
-          is_last && !is_async() && cxt.is_bash_compatible() &&
+          is_last && !is_async() && cxt.runtime_state().is_bash_compatible() &&
           cxt.is_shopt_enabled(shopt_option_id::Lastpipe) &&
           !cxt.shell_option_state(shell_option_id::Monitor);
 
@@ -654,7 +654,7 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
           .previous_exit_status = cxt.execution_store().last_exit_status(),
           .shell_process_id = os::get_shell_process_id(),
           .subshell_depth = cxt.get_subshell_depth() + 1,
-          .mood = cxt.mood(),
+          .mood = cxt.runtime_state().get_mood(),
           .process_group = process_group});
       let const child = launch.child;
 
@@ -894,7 +894,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
           source != nullptr ? source->view() : StringView{}, steal(stage_args),
           cxt.koshkit_utilities_are_reachable(),
           cxt.is_shopt_enabled(shopt_option_id::Checkhash),
-          cxt.get_program_resolver(), steal(stage_arg_locations), cxt.mood());
+          cxt.get_program_resolver(), steal(stage_arg_locations), cxt.runtime_state().get_mood());
     } catch (const CommandResolutionErrorWithLocation &resolution_error) {
       /* The stage still applies its own redirections. A > onto its stdout takes
          the slot ahead of the pipe. The next stage still sees EOF. The message

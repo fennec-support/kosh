@@ -776,8 +776,8 @@ fn kosh_main(int argc, char **argv) -> int
   /* The startup files source with strictness off, since they read unset
      variables such as $BASH_VERSION on the /etc/profile path. The session
      strictness is applied at the seam below once the config has loaded. */
-  context.set_mood(session_mood);
-  context.set_tab_selector(koshka::resolve_session_tab_selector());
+  context.runtime_state().set_mood(session_mood);
+  context.runtime_state().set_tab_selector(koshka::resolve_session_tab_selector());
   context.runtime_state().set_extended_arithmetic(
       session_mood == koshka::mimic_mood::Default ||
       FLAG_EXTENDED_ARITHMETIC.is_enabled());
@@ -804,7 +804,7 @@ fn kosh_main(int argc, char **argv) -> int
   context.runtime_state().set_failglob(false);
   /* Mimicry is mirrored onto the context, since the execution path in Utils
      reads it there rather than the static flag. */
-  context.set_mimicry(FLAG_MIMICRY.is_enabled());
+  context.runtime_state().set_mimicry(FLAG_MIMICRY.is_enabled());
   context.set_monitor(should_be_interactive);
 
   /* BASH names the path used to invoke this shell, the symlink spelling such as
@@ -983,11 +983,11 @@ fn kosh_main(int argc, char **argv) -> int
   /* The session mood takes over and seeds its strictness once the config has
      loaded, unless the rc picked one with set --mood, which wins the way a
      command-line --mood would. */
-  if (!context.was_mood_set_explicitly()) context.set_mood(session_mood);
+  if (!context.was_mood_set_explicitly()) context.runtime_state().set_mood(session_mood);
   context.apply_strictness_for_mood();
   if (FLAG_LINT.is_enabled()) {
     context.set_warning_level(
-        context.mood() == koshka::mimic_mood::Default ? 0 : 3);
+        context.runtime_state().get_mood() == koshka::mimic_mood::Default ? 0 : 3);
   }
 
   if (!inherited_bootstrap.payload.is_empty()) {
@@ -1173,7 +1173,8 @@ fn kosh_main(int argc, char **argv) -> int
                  script.sh` picks the same mood the dispatch path picks for
                  `./script.sh`. A script with no shebang keeps the session
                  mood, and a mood a startup file chose explicitly wins. */
-              if (context.mimicry() && !was_mood_named_on_command_line &&
+              if (context.runtime_state().is_mimicry_enabled() &&
+                  !was_mood_named_on_command_line &&
                   !context.was_mood_set_explicitly())
               {
                 let const detected_mood =
@@ -1182,12 +1183,12 @@ fn kosh_main(int argc, char **argv) -> int
                 LOG(Info, "the script operand '%s' %s a shell to mimic",
                     file_name.c_str(),
                     detected_mood.has_value() ? "names" : "does not name");
-                context.set_mood(detected_mood.value_or(session_mood));
+                context.runtime_state().set_mood(detected_mood.value_or(session_mood));
                 context.apply_strictness_for_mood();
 
                 if (FLAG_LINT.is_enabled()) {
                   context.set_warning_level(
-                      context.mood() == koshka::mimic_mood::Default ? 0 : 3);
+                      context.runtime_state().get_mood() == koshka::mimic_mood::Default ? 0 : 3);
                 }
               }
             }
@@ -1293,7 +1294,7 @@ fn kosh_main(int argc, char **argv) -> int
         toiletline::set_edit_mode(context.vi_mode()
                                       ? toiletline::edit_mode::Vi
                                       : toiletline::edit_mode::Emacs);
-        toiletline::set_tab_selector(context.tab_selector());
+        toiletline::set_tab_selector(context.runtime_state().get_tab_selector());
         toiletline::set_space_after_completion(context.shell_option_state(
             koshka::shell_option_id::SpaceAfterCompletion));
         toiletline::set_history_limit(

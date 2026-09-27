@@ -255,7 +255,7 @@ static fn execute_fc_command(const ExecContext &ec, EvalContext &cxt,
     return report_fc_selection_error(ec, cxt, location, selection.error);
   }
 
-  if (cxt.is_posix_option_on() && operand_position + 1 < args.count()) {
+  if (cxt.runtime_state().is_posix_option_on() && operand_position + 1 < args.count()) {
     report_soft_builtin_error(ec, cxt, operand_locations[operand_position + 1],
                               "too many arguments");
     return 1;
@@ -297,7 +297,7 @@ static fn list_fc_commands(const ExecContext &ec, EvalContext &cxt,
     let const &event = events[static_cast<usize>(index)];
     if (options.should_number)
       output += String::from(event.number, cxt.scratch_allocator());
-    output += cxt.is_posix_option_on() ? "\t" : "\t ";
+    output += cxt.runtime_state().is_posix_option_on() ? "\t" : "\t ";
     output.append(event.command.view());
     output.push('\n');
   }
@@ -321,7 +321,7 @@ static fn editor_name(EvalContext &cxt, const fc_options &options) throws
   {
     return String{cxt.scratch_allocator(), value->view()};
   }
-  return cxt.is_posix_option_on() ? String{"ed"} : String{"vi"};
+  return cxt.runtime_state().is_posix_option_on() ? String{"ed"} : String{"vi"};
 }
 
 static fn edit_fc_commands(const ExecContext &ec, EvalContext &cxt,
@@ -383,7 +383,7 @@ static fn edit_fc_commands(const ExecContext &ec, EvalContext &cxt,
       cxt.arena_store().parse_arena()->release(ast_mark);
     };
     let parser = Parser{
-        Lexer{edited->view(), *cxt.arena_store().parse_arena(), None, cxt.mood()}
+        Lexer{edited->view(), *cxt.arena_store().parse_arena(), None, cxt.runtime_state().get_mood()}
     };
     unused(parser.construct_ast());
   }

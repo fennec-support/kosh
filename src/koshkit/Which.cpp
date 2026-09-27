@@ -73,7 +73,7 @@ fn Which::execute(const ExecContext &ec, EvalContext &cxt,
       }
     } else if (let const kind = search_builtin(program_name.view());
                kind.has_value() &&
-               !builtin_is_hidden_by_mood(*kind, cxt.mood()))
+               !builtin_is_hidden_by_mood(*kind, cxt.runtime_state().get_mood()))
     {
       if (!is_quiet) {
         output += program_name;
@@ -95,7 +95,7 @@ fn Which::execute(const ExecContext &ec, EvalContext &cxt,
         }
       }
     } else if ((cxt.runtime_state().koshkit() ||
-                cxt.mood() == mimic_mood::Default) &&
+                cxt.runtime_state().get_mood() == mimic_mood::Default) &&
                find_util(program_name.view()).has_value())
     {
       if (!is_quiet) {

@@ -97,7 +97,7 @@ fn CompoundCommand::evaluate_async(EvalContext &cxt) const throws -> i64
       .previous_exit_status = cxt.execution_store().last_exit_status(),
       .shell_process_id = os::get_shell_process_id(),
       .subshell_depth = cxt.get_subshell_depth() + 1,
-      .mood = cxt.mood(),
+      .mood = cxt.runtime_state().get_mood(),
       .process_group = os::process_group_mode::NewBackground});
   let const child = launch.child;
 
@@ -803,7 +803,7 @@ hot fn ForLoop::evaluate_status_impl(EvalContext &cxt) const throws
 
   /* The default mood scopes the loop variable so the name does not leak, while
      the bash and posix moods leave it set. */
-  let const scope_variable = !(cxt.is_bash_compatible() || cxt.is_posix_mode());
+  let const scope_variable = !(cxt.runtime_state().is_bash_compatible() || cxt.runtime_state().is_posix_mode());
   Maybe<String> saved_value =
       scope_variable ? cxt.get_variable_value(m_variable_name) : None;
   defer
@@ -1528,7 +1528,7 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
       .previous_exit_status = cxt.execution_store().last_exit_status(),
       .shell_process_id = os::get_shell_process_id(),
       .subshell_depth = cxt.get_subshell_depth() + 1,
-      .mood = cxt.mood(),
+      .mood = cxt.runtime_state().get_mood(),
       .process_group = os::process_group_mode::NewBackground});
   let const child = launch.child;
 

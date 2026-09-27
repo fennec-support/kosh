@@ -175,7 +175,7 @@ cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       out += label;
       out.append_repeated(' ', label.count() < 20 ? 20 - label.count() : 0);
       out.push(' ');
-      out += render_limit(limit, block_factor(entry, cxt.mood()),
+      out += render_limit(limit, block_factor(entry, cxt.runtime_state().get_mood()),
                           cxt.scratch_allocator());
       out.push('\n');
     }
@@ -206,7 +206,7 @@ cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (args.count() < 2) {
     LOG(Debug, "ulimit reading the '%s' limit", resource.label);
-    ec.print_to_stdout(render_limit(limit, block_factor(resource, cxt.mood()),
+    ec.print_to_stdout(render_limit(limit, block_factor(resource, cxt.runtime_state().get_mood()),
                                     cxt.scratch_allocator()) +
                        "\n");
     return 0;
@@ -216,7 +216,7 @@ cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       args[1].c_str());
 
   let const &requested = args[1];
-  let const units = block_factor(resource, cxt.mood());
+  let const units = block_factor(resource, cxt.runtime_state().get_mood());
   u64 value = os::RESOURCE_UNLIMITED;
   if (requested != "unlimited") {
     let const parsed = utils::parse_decimal_u64(requested.view());
