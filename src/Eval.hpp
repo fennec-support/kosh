@@ -2201,8 +2201,6 @@ public:
         });
   }
 
-  fn register_completion_spec(StringView command, completion_spec spec) throws
-      -> void;
   fn completion_store() wontthrow -> CompletionStore &
   {
     return m_completion_store;
@@ -2211,10 +2209,6 @@ public:
   {
     return m_completion_store;
   }
-  pure fn lookup_completion_spec(StringView command) const wontthrow
-      -> const completion_spec *;
-  fn register_default_completion_spec(completion_spec spec) throws -> void;
-  pure fn default_completion_spec() const wontthrow -> const completion_spec *;
   pure fn completion_specs() const wontthrow
       -> const StringMap<completion_spec> &
   {

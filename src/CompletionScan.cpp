@@ -1108,14 +1108,14 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
   };
   /* The surface name wins when it has a spec of its own, otherwise it resolves
      through an alias and a symlink. */
-  const completion_spec *spec = context.lookup_completion_spec(command);
+  const completion_spec *spec = context.completion_store().lookup_spec(command);
   String resolved_command{completion_allocator()};
   if (spec == nullptr &&
       context.is_shopt_enabled(shopt_option_id::ProgcompAlias))
   {
     resolved_command = resolve_completion_command(command, context);
     if (resolved_command.view() != command)
-      spec = context.lookup_completion_spec(resolved_command.view());
+    spec = context.completion_store().lookup_spec(resolved_command.view());
   }
   LOG(All,
       "spec lookup for '%.*s' %s, listing %d, function '%s', %zu word-list "
@@ -1140,7 +1140,7 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
      candidates itself. */
   if (spec == nullptr) {
     if (!for_listing) return None;
-    const completion_spec *def = context.default_completion_spec();
+    const completion_spec *def = context.completion_store().default_spec_ptr();
     if (def == nullptr || def->function_name.is_empty()) return None;
     let const default_spec = def->clone(completion_allocator());
     i32 status = 0;
@@ -1160,7 +1160,7 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
       if (loaded.is_empty()) return None;
       return loaded;
     }
-    spec = context.lookup_completion_spec(command);
+    spec = context.completion_store().lookup_spec(command);
     if (spec == nullptr) return None;
   }
 

@@ -1827,7 +1827,7 @@ static fn source_bash_system_rc(EvalContext &context,
 static fn ensure_bash_completion_loaded(EvalContext &context,
                                         BumpArena &ast_arena) throws -> void
 {
-  if (context.default_completion_spec() != nullptr) {
+  if (context.completion_store().default_spec_ptr() != nullptr) {
     LOG(Info, "skipping the bash-completion bootstrap because a "
               "default completion spec is already registered");
     return;

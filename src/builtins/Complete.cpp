@@ -93,12 +93,13 @@ static fn completion_specification_reusable_lines(const EvalContext &cxt) throws
       steal(collected_names).make_sorted(sort_order::ascending);
 
   for (let const &name : names) {
-    let const *spec = cxt.lookup_completion_spec(name.view());
+    let const *spec = cxt.completion_store().lookup_spec(name.view());
     ASSERT(spec != nullptr);
     append_completion_specification_line(lines, name.view(), *spec);
   }
 
-  if (let const *spec = cxt.default_completion_spec(); spec != nullptr)
+  if (let const *spec = cxt.completion_store().default_spec_ptr();
+      spec != nullptr)
     append_completion_specification_line(lines, "-D", *spec);
 
   return lines;
@@ -143,7 +144,7 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (should_print_specs) {
     if (is_default_completion) {
       let output = String{cxt.scratch_allocator()};
-      let const *spec = cxt.default_completion_spec();
+      let const *spec = cxt.completion_store().default_spec_ptr();
       if (spec == nullptr) {
         report_soft_builtin_error(
             ec, cxt, "The default completion specification was not found");
@@ -162,7 +163,7 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let output = String{cxt.scratch_allocator()};
     i32 print_status = 0;
     for (let const &command : commands) {
-      let const *spec = cxt.lookup_completion_spec(command.view());
+      let const *spec = cxt.completion_store().lookup_spec(command.view());
       if (spec == nullptr) {
         report_soft_builtin_error(ec, cxt,
                                   "The command '" + command +
@@ -188,13 +189,13 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (is_default_completion) {
     LOG(Debug, "complete registering the default spec with function '%s'",
         function_name.c_str());
-    cxt.register_default_completion_spec(do_make_spec());
+    cxt.completion_store().register_default_spec(do_make_spec());
     return 0;
   }
 
   for (let const &command : commands) {
     LOG(Debug, "complete registering spec for '%s'", command.c_str());
-    cxt.register_completion_spec(command.view(), do_make_spec());
+    cxt.completion_store().register_spec(command.view(), do_make_spec());
   }
   return 0;
 }

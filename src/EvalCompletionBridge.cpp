@@ -17,36 +17,6 @@
 
 namespace koshka {
 
-fn EvalContext::register_completion_spec(StringView command,
-                                         completion_spec spec) throws -> void
-{
-  LOG(Debug,
-      "registering a completion spec for '%.*s' with function '%s' and %zu "
-      "word-list bytes",
-      static_cast<int>(command.length), command.data,
-      spec.function_name.c_str(), spec.word_list.length());
-  completion_store().register_spec(command, steal(spec));
-}
-
-fn EvalContext::register_default_completion_spec(completion_spec spec) throws
-    -> void
-{
-  LOG(Debug, "registering the default completion spec");
-  completion_store().register_default_spec(steal(spec));
-}
-
-pure fn EvalContext::default_completion_spec() const wontthrow
-    -> const completion_spec *
-{
-  return completion_store().default_spec_ptr();
-}
-
-pure fn EvalContext::lookup_completion_spec(StringView command) const wontthrow
-    -> const completion_spec *
-{
-  return completion_store().lookup_spec(command);
-}
-
 fn EvalContext::run_completion_function(StringView function_name,
                                         const ArrayList<String> &words,
                                         usize cword, StringView line,
