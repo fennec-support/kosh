@@ -545,11 +545,11 @@ fn apply_or_reject_option(EvalContext &cxt, const set_option_descriptor &option,
       cxt.runtime_state().set_warning_level(enable ? 1 : 0);
     break;
   case set_option_behavior::AnnoyingDiagnostics:
-    cxt.note_annoying_diagnostics_option_mutation();
+    cxt.runtime_control_store().note_annoying_diagnostics_option_mutation();
     cxt.runtime_state().set_annoying_diagnostics_enabled(enable);
     break;
   case set_option_behavior::NoDiagnostics:
-    cxt.note_diagnostics_option_mutation();
+    cxt.runtime_control_store().note_diagnostics_option_mutation();
     cxt.runtime_state().set_diagnostics_disabled(enable);
     break;
   case set_option_behavior::Login:
@@ -851,7 +851,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       cxt.runtime_control_store().note_warning_option_mutation();
       cxt.runtime_state().set_warning_level(0);
       cxt.apply_strictness_for_mood();
-      cxt.note_explicit_mood();
+      cxt.runtime_control_store().note_explicit_mood();
       continue;
     }
 
@@ -886,7 +886,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         for (mimic_mood listed : {mimic_mood::Default, mimic_mood::Posix,
                                   mimic_mood::Bash, mimic_mood::BashPosix})
         {
-          if (!cxt.mood_initialized(listed)) continue;
+          if (!cxt.runtime_control_store().mood_initialized(listed)) continue;
           if (!out.is_empty()) out += " ";
           out += mood_name(listed);
         }

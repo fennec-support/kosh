@@ -2836,14 +2836,14 @@ public:
   fn set_posix_mode_via_option(bool enable) wontthrow -> void
   {
     if (enable) {
-      note_explicit_mood();
+      runtime_control_store().note_explicit_mood();
       runtime_state().set_mood(mimic_mood::BashPosix);
       apply_strictness_for_mood();
       return;
     }
     if (!runtime_state().is_posix_option_on())
       return;
-    note_explicit_mood();
+    runtime_control_store().note_explicit_mood();
     runtime_state().set_mood(mimic_mood::Bash);
     apply_strictness_for_mood();
   }
@@ -2963,54 +2963,6 @@ public:
         runtime_control_store().annoying_diagnostics_mutation_revision())
       runtime_state().set_annoying_diagnostics_enabled(
           finished.is_annoying_diagnostics_enabled());
-  }
-
-  /* The moods whose startup files are being sourced right now, a bit per mood.
-     source_init_moods marks a flavor while it sources it and skips a flavor the
-     bit already names, so a set --init-moods inside a sourced ~/.koshrc cannot
-     re-source the same rc and recurse without end. */
-  fn set_init_mood_sourcing(mimic_mood mood, bool active) wontthrow -> void
-  {
-    runtime_control_store().set_init_mood_sourcing(mood, active);
-  }
-  pure fn init_mood_sourcing(mimic_mood mood) const wontthrow -> bool
-  {
-    return runtime_control_store().init_mood_sourcing(mood);
-  }
-
-  /* set --mood records that the user chose the mood, so the post-rc restore in
-     main leaves a mood the rc selected in place. */
-  fn note_explicit_mood() wontthrow -> void
-  {
-    runtime_control_store().note_explicit_mood();
-  }
-  pure fn was_mood_set_explicitly() const wontthrow -> bool
-  {
-    return runtime_control_store().was_mood_set_explicitly();
-  }
-
-  /* The moods whose startup files have finished sourcing this session, so set
-     --init-moods with no value reports what loaded. */
-  fn mark_mood_initialized(mimic_mood mood) wontthrow -> void
-  {
-    runtime_control_store().mark_mood_initialized(mood);
-  }
-  pure fn mood_initialized(mimic_mood mood) const wontthrow -> bool
-  {
-    return runtime_control_store().mood_initialized(mood);
-  }
-
-  fn note_diagnostics_option_mutation() wontthrow -> void
-  {
-    runtime_control_store().note_diagnostics_option_mutation();
-  }
-  pure fn diagnostics_mutation_revision() const wontthrow -> u64
-  {
-    return runtime_control_store().diagnostics_mutation_revision();
-  }
-  fn note_annoying_diagnostics_option_mutation() wontthrow -> void
-  {
-    runtime_control_store().note_annoying_diagnostics_option_mutation();
   }
 
   /* Run the script at the resolved program in-process in the matching mode.

@@ -1788,7 +1788,7 @@ fn source_init_moods(EvalContext &context, BumpArena &ast_arena,
 
     /* A mood already on the sourcing stack is skipped, so a set --init-moods
        inside the rc this is sourcing cannot recurse to overflow. */
-    if (context.init_mood_sourcing(flavor)) {
+    if (context.runtime_control_store().init_mood_sourcing(flavor)) {
       LOG(Info, "skipping the %s mood, its startup files are already sourcing",
           flavor == mimic_mood::Bash        ? "bash"
           : flavor == mimic_mood::Posix     ? "posix"
@@ -1796,8 +1796,10 @@ fn source_init_moods(EvalContext &context, BumpArena &ast_arena,
                                             : "kosh");
       continue;
     }
-    context.set_init_mood_sourcing(flavor, true);
-    defer { context.set_init_mood_sourcing(flavor, false); };
+    context.runtime_control_store().set_init_mood_sourcing(flavor, true);
+    defer {
+      context.runtime_control_store().set_init_mood_sourcing(flavor, false);
+    };
     context.runtime_state().set_mood(flavor);
     LOG(Info, "sourcing the startup files for the %s mood",
         flavor == mimic_mood::Bash        ? "bash"
@@ -1852,7 +1854,7 @@ fn source_init_moods(EvalContext &context, BumpArena &ast_arena,
       break;
     }
     if (is_login_shell || should_be_interactive) {
-      context.mark_mood_initialized(flavor);
+      context.runtime_control_store().mark_mood_initialized(flavor);
     }
   }
 

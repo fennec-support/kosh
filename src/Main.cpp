@@ -954,7 +954,7 @@ fn kosh_main(int argc, char **argv) -> int
       context.runtime_state().set_diagnostics_disabled(true);
 
     let const saved_diagnostics_mutation_revision =
-        context.diagnostics_mutation_revision();
+        context.runtime_control_store().diagnostics_mutation_revision();
 
     if (!init_moods.is_empty() || is_login_shell || should_be_interactive ||
         session_mood == koshka::mimic_mood::Bash)
@@ -964,7 +964,7 @@ fn kosh_main(int argc, char **argv) -> int
                                 should_be_interactive);
     }
     if (FLAG_SUPPRESS_INIT_DIAGNOSTICS.is_enabled()) {
-      if (context.diagnostics_mutation_revision() ==
+      if (context.runtime_control_store().diagnostics_mutation_revision() ==
           saved_diagnostics_mutation_revision)
       {
         context.runtime_state().set_diagnostics_disabled(saved_diagnostics_disabled);
@@ -981,7 +981,8 @@ fn kosh_main(int argc, char **argv) -> int
   /* The session mood takes over and seeds its strictness once the config has
      loaded, unless the rc picked one with set --mood, which wins the way a
      command-line --mood would. */
-  if (!context.was_mood_set_explicitly()) context.runtime_state().set_mood(session_mood);
+  if (!context.runtime_control_store().was_mood_set_explicitly())
+    context.runtime_state().set_mood(session_mood);
   context.apply_strictness_for_mood();
   if (FLAG_LINT.is_enabled()) {
     context.runtime_state().set_warning_level(
@@ -1172,7 +1173,7 @@ fn kosh_main(int argc, char **argv) -> int
                  mood, and a mood a startup file chose explicitly wins. */
               if (context.runtime_state().is_mimicry_enabled() &&
                   !was_mood_named_on_command_line &&
-                  !context.was_mood_set_explicitly())
+                  !context.runtime_control_store().was_mood_set_explicitly())
               {
                 let const detected_mood =
                     koshka::detect_mimic_shell_from_source(
