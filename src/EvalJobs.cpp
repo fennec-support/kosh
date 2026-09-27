@@ -19,7 +19,7 @@ namespace koshka {
 
 fn EvalContext::set_last_background_pid(i64 pid) wontthrow -> void
 {
-  m_job_table.set_last_background_pid(pid);
+  job_table_store().set_last_background_pid(pid);
 }
 
 fn JobTable::set_last_background_pid(i64 pid) wontthrow -> void
@@ -60,7 +60,7 @@ fn JobTable::restore_snapshot(job_table_snapshot snapshot) throws -> void
 fn EvalContext::register_job(os::process pid, StringView command,
                              i64 process_group_id) throws -> i32
 {
-  return m_job_table.register_job(pid, command, process_group_id);
+  return job_table_store().register_job(pid, command, process_group_id);
 }
 
 fn JobTable::register_job(os::process pid, StringView command,
@@ -84,8 +84,8 @@ fn EvalContext::register_pipeline_job(const ArrayList<os::process> &processes,
                                       StringView command,
                                       i64 process_group_id) throws -> i32
 {
-  return m_job_table.register_pipeline_job(processes, primary_process, command,
-                                           process_group_id);
+  return job_table_store().register_pipeline_job(processes, primary_process,
+                                                  command, process_group_id);
 }
 
 fn JobTable::register_pipeline_job(const ArrayList<os::process> &processes,
@@ -119,8 +119,8 @@ fn EvalContext::register_stopped_job(os::process pid, StringView command,
                                      i32 status, i64 process_group_id) throws
     -> i32
 {
-  return m_job_table.register_stopped_job(pid, command, status,
-                                          process_group_id);
+  return job_table_store().register_stopped_job(pid, command, status,
+                                                process_group_id);
 }
 
 fn JobTable::register_stopped_job(os::process pid, StringView command,
@@ -158,7 +158,7 @@ static fn poll_owned_processes(ArrayList<os::process> &processes) wontthrow
   return stopped_status;
 }
 
-fn EvalContext::update_jobs() throws -> void { m_job_table.update_jobs(); }
+fn EvalContext::update_jobs() throws -> void { job_table_store().update_jobs(); }
 
 fn JobTable::update_jobs() throws -> void
 {
@@ -214,7 +214,7 @@ fn JobTable::update_jobs() throws -> void
 fn EvalContext::wait_for_job_processes(job &job, bool *was_stopped) throws
     -> i32
 {
-  return m_job_table.wait_for_job_processes(job, was_stopped);
+  return job_table_store().wait_for_job_processes(job, was_stopped);
 }
 
 fn JobTable::wait_for_job_processes(job &job, bool *was_stopped) throws -> i32
@@ -296,12 +296,12 @@ fn JobTable::wait_for_job_processes(job &job, bool *was_stopped) throws -> i32
 
 fn EvalContext::jobs() wontthrow -> ArrayList<job> &
 {
-  return m_job_table.m_jobs;
+  return job_table_store().m_jobs;
 }
 
 fn EvalContext::find_job(i32 id) wontthrow -> job *
 {
-  return m_job_table.find_job(id);
+  return job_table_store().find_job(id);
 }
 
 fn JobTable::find_job(i32 id) wontthrow -> job *
@@ -313,7 +313,7 @@ fn JobTable::find_job(i32 id) wontthrow -> job *
 
 fn EvalContext::find_job_index_by_spec(StringView spec) throws -> Maybe<usize>
 {
-  return m_job_table.find_job_index_by_spec(spec);
+  return job_table_store().find_job_index_by_spec(spec);
 }
 
 fn JobTable::find_job_index_by_spec(StringView spec) throws -> Maybe<usize>
@@ -356,7 +356,7 @@ fn JobTable::find_job_index_by_spec(StringView spec) throws -> Maybe<usize>
 
 fn EvalContext::find_job_by_spec(StringView spec) throws -> job *
 {
-  return m_job_table.find_job_by_spec(spec);
+  return job_table_store().find_job_by_spec(spec);
 }
 
 fn JobTable::find_job_by_spec(StringView spec) throws -> job *
@@ -368,7 +368,7 @@ fn JobTable::find_job_by_spec(StringView spec) throws -> job *
 
 fn EvalContext::most_recent_job() wontthrow -> job *
 {
-  return m_job_table.most_recent_job();
+  return job_table_store().most_recent_job();
 }
 
 fn JobTable::most_recent_job() wontthrow -> job *
@@ -384,7 +384,7 @@ fn JobTable::most_recent_job() wontthrow -> job *
 
 fn EvalContext::forget_done_jobs() throws -> void
 {
-  m_job_table.forget_done_jobs();
+  job_table_store().forget_done_jobs();
 }
 
 fn JobTable::forget_done_jobs() throws -> void
@@ -401,7 +401,7 @@ fn JobTable::forget_done_jobs() throws -> void
 
 fn EvalContext::remove_job(i32 id) throws -> bool
 {
-  return m_job_table.remove_job(id);
+  return job_table_store().remove_job(id);
 }
 
 fn JobTable::remove_job(i32 id) throws -> bool
@@ -436,7 +436,7 @@ fn JobTable::remove_job(i32 id) throws -> bool
 fn EvalContext::format_done_job_notifications(StringView line_ending) throws
     -> String
 {
-  return m_job_table.format_done_job_notifications(line_ending);
+  return job_table_store().format_done_job_notifications(line_ending);
 }
 
 fn JobTable::format_done_job_notifications(StringView line_ending) throws
