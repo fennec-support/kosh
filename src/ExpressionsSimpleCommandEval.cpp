@@ -875,7 +875,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
 
         if (pending_kind != control_flow::Kind::Exit) {
           cxt.run_return_trap(pending_kind == control_flow::Kind::Return
-                                  ? cxt.status_before_return()
+                                  ? cxt.trap_store().status_before_return()
                                   : cxt.execution_store().last_exit_status());
         }
       }

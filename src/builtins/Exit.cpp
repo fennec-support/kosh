@@ -40,7 +40,7 @@ fn Exit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   /* Bash keeps the status the shell had reached when a trap action began. An
      exit with no operand inside that action reports it, and the commands of the
      action itself are not visible to it. */
-  if (let const trap_status = cxt.get_trap_saved_exit_status();
+  if (let const trap_status = cxt.trap_store().trap_saved_exit_status();
       trap_status.has_value())
   {
     status = static_cast<i64>(*trap_status);

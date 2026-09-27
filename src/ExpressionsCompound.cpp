@@ -187,7 +187,7 @@ hot fn CompoundList::evaluate_root_status_impl(
     /* The ERR trap belongs to a command only when the trap was already
        installed as the command began. A function that installs one for itself
        leaves its own call untraced. */
-    const bool was_err_trapped = cxt.has_err_trap();
+    const bool was_err_trapped = cxt.trap_store().has_err_trap();
     /* In bash mood an evaluation error fails the command and the list goes on,
        while a script-fatal error still aborts the run. */
     let const do_run_node = [&]() throws -> status_result {

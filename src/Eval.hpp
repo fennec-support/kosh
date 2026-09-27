@@ -2505,18 +2505,6 @@ public:
   fn restore_trap_pipe_statuses(bool has_saved_pipe_statuses,
                                 ArrayList<String> saved_pipe_statuses) wontthrow
       -> void;
-  pure fn status_before_return() const wontthrow -> i32
-  {
-    return trap_store().status_before_return();
-  }
-  pure fn has_debug_trap() const wontthrow -> bool
-  {
-    return trap_store().has_debug_trap();
-  }
-  pure fn has_err_trap() const wontthrow -> bool
-  {
-    return trap_store().has_err_trap();
-  }
   /* The two hot conditions carry a flag beside the map. Every write to the map
      refreshes the flag. The child wake is armed from the same place, because
      the CHLD action is the only reader of a reaped child. */
@@ -2613,46 +2601,14 @@ public:
   {
     return !runtime_state().is_posix_mode();
   }
-  pure fn is_running_trap_action() const wontthrow -> bool
-  {
-    return trap_store().trap_action_depth() > 0;
-  }
   /* A subshell is a fresh shell for the trap engine. No action is running
      inside it, and the condition that forked it fires again there. */
-  pure fn get_running_trap_conditions() const wontthrow -> u8
-  {
-    return trap_store().running_trap_conditions();
-  }
-  fn set_running_trap_conditions(u8 conditions) wontthrow -> void
-  {
-    trap_store().running_trap_conditions() = conditions;
-  }
-  pure fn get_trap_action_depth() const wontthrow -> u32
-  {
-    return trap_store().trap_action_depth();
-  }
-  fn set_trap_action_depth(u32 depth) wontthrow -> void
-  {
-    trap_store().trap_action_depth() = depth;
-  }
   /* The status an exit with no operand reports inside a trap action. It is the
      status the shell had reached when the action began. The commands of the
      action itself replace that status in the ordinary exit status. */
-  pure fn get_trap_saved_exit_status() const wontthrow -> Maybe<i32>
-  {
-    return trap_store().trap_saved_exit_status();
-  }
-  fn set_trap_saved_exit_status(Maybe<i32> status) wontthrow -> void
-  {
-    trap_store().trap_saved_exit_status() = status;
-  }
   /* The status of the last trap action. It is recorded before the restoration
      returns the triggering command's own status. A condition that ran no action
      records zero. */
-  pure fn get_last_trap_action_status() const wontthrow -> i32
-  {
-    return trap_store().last_trap_action_status();
-  }
   /* The line $LINENO reports inside a trap action. It is the line of the
      command that fired the trap. A function or a sourced file the action enters
      carries its own lines. The answer is empty there. */

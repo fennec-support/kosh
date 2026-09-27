@@ -45,7 +45,7 @@ static fn append_word_loop_header(EvalContext &cxt, String &header,
 {
   if (!cxt.runtime_state().should_echo_expanded() &&
       !cxt.bash_dynamic_variables_enabled() &&
-      !cxt.has_debug_trap())
+      !cxt.trap_store().has_debug_trap())
   {
     return;
   }
@@ -846,7 +846,7 @@ hot fn ForLoop::evaluate_status_impl(EvalContext &cxt) const throws
          only this iteration and keeps the status its action reported. */
       if (cxt.control_flow_store().has_pending()) break;
 
-      result.status = cxt.get_last_trap_action_status();
+      result.status = cxt.trap_store().last_trap_action_status();
       continue;
     }
 

@@ -368,7 +368,8 @@ fn append_redirections_text(EvalContext &cxt, String &out,
    the bash mood, and a trap action keeps the command that triggered it. */
 inline fn command_text_is_observed(const EvalContext &cxt) wontthrow -> bool
 {
-  return cxt.bash_dynamic_variables_enabled() && !cxt.is_running_trap_action();
+  return cxt.bash_dynamic_variables_enabled() &&
+         cxt.trap_store().trap_action_depth() == 0;
 }
 
 /* Whether a reader can see the commands a folded or eliminated node would run.
@@ -417,7 +418,7 @@ fn publish_command_and_run_debug_trap(
     /* Under the extdebug option a nonzero action status skips the traced
        command. A skipped command reports success. */
     if (cxt.runtime_state().is_shopt_enabled(shopt_option_id::Extdebug) &&
-        cxt.get_last_trap_action_status() != 0)
+        cxt.trap_store().last_trap_action_status() != 0)
     {
       cxt.execution_store().set_last_exit_status(0);
       return false;
