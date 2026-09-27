@@ -404,7 +404,7 @@ hot fn CompoundListCondition::evaluate_root_status_impl(
     EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result
 {
   ASSERT(m_cmd != nullptr);
-  cxt.begin_command_evaluation();
+  cxt.evaluation_metrics_store().begin_command_evaluation();
 
   /* A negated or timed command must run to completion here, since the inverse
      or the report applies after the command returns, which an exec would
@@ -550,7 +550,7 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
       const Command *stage = m_commands[stage_index];
       ASSERT(stage != nullptr);
 
-      cxt.add_evaluated_expression();
+      cxt.evaluation_metrics_store().add_evaluated_expression(cxt.stats_enabled());
 
       let const is_first = (stage_index == 0);
       let const is_last = (stage_index + 1 == m_commands.count());
@@ -856,7 +856,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
     ASSERT(stage->is_simple_command());
     const SimpleCommand *e = static_cast<const SimpleCommand *>(stage);
 
-    cxt.add_evaluated_expression();
+    cxt.evaluation_metrics_store().add_evaluated_expression(cxt.stats_enabled());
 
     /* The location moves onto the stage first so a runtime warning from its
        words carets the stage that read the variable. */

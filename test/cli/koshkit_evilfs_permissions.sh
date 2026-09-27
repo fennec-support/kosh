@@ -3,7 +3,7 @@
 report=$($BIN -c 'koshkit --color never evilfs --all')
 
 case $report in
-  *'Source:'*'Options:'*) detail_shape=matched ;;
+  *'SOURCE'*'OPTIONS'*) detail_shape=matched ;;
   *) detail_shape=missing ;;
 esac
 printf 'detail-shape=%s\n' "$detail_shape"

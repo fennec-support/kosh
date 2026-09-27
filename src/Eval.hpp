@@ -1594,9 +1594,6 @@ public:
                   heap_allocator()});
   ~EvalContext();
 
-  fn add_expansion() wontthrow -> void;
-  fn add_evaluated_expression() wontthrow -> void;
-
   fn end_command() wontthrow -> void;
 
   /* Variable expand, tilde expand, field split, and glob each token. The
@@ -2598,7 +2595,6 @@ public:
   fn begin_history_transaction(ArrayList<String> &commands) throws -> void;
   fn end_history_transaction() wontthrow -> void;
   pure fn has_history_transaction() const wontthrow -> bool;
-  fn begin_command_evaluation() wontthrow -> void;
   /* A frame at error_location is dropped. */
   fn print_source_backtrace(Maybe<SourceLocation> error_location = None,
                             bool should_defer_for_source_file = true) throws
@@ -3375,15 +3371,6 @@ public:
   pure fn is_login_shell() const wontthrow -> bool;
   fn set_custom_rcfile(bool enabled) wontthrow -> void;
   pure fn has_custom_rcfile() const wontthrow -> bool;
-
-  pure fn last_expressions_executed() const wontthrow -> usize;
-  pure fn total_expressions_executed() const wontthrow -> usize;
-
-  pure fn last_expansion_count() const wontthrow -> usize;
-  pure fn total_expansion_count() const wontthrow -> usize;
-
-  pure fn commands_evaluated() const wontthrow -> usize;
-  pure fn peak_ast_arena_bytes() const wontthrow -> usize;
 
 protected:
   StartupStore m_startup_store{};

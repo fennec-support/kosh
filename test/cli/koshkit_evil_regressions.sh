@@ -271,7 +271,16 @@ while [ ! -s "$evilps_live_path" ] && [ "$evilps_live_attempt" -lt 250 ]; do
   sleep 0.02
   evilps_live_attempt=$((evilps_live_attempt + 1))
 done
-sleep 0.3
+evilps_live_sample_attempt=0
+while [ "$evilps_live_sample_attempt" -lt 150 ]; do
+  evilps_live_report=$(cat "$evilps_live_path")
+  case $evilps_live_report in
+    *'CPU '*'%') break ;;
+  esac
+  if ! kill -0 "$evilps_live_pid" 2> "$TEST_NULL_DEVICE"; then break; fi
+  sleep 0.02
+  evilps_live_sample_attempt=$((evilps_live_sample_attempt + 1))
+done
 if kill -0 "$evilps_live_pid" 2> "$TEST_NULL_DEVICE"; then
   kill -INT "$evilps_live_pid"
 fi

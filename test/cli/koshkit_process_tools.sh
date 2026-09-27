@@ -18,7 +18,7 @@ writer_pid=$!
   > "$event_output" 2>&1
 watcher_status=$?
 wait "$writer_pid"
-IFS=' ' read -r event_time event_path event_name event_kind < "$event_output"
+IFS=' ' read -r event_time event_mask event_path event_name event_kind < "$event_output"
 case $event_time in
   ''|*[!0-9]*) event_time=nonnumeric ;;
   *) event_time=numeric ;;
@@ -65,7 +65,7 @@ node_report=$("$BIN" -c 'koshkit --color never goodnode -r "$1" -i "$2"' \
   goodnode "$node_root" "$inode")
 node_status=$?
 case $node_report in
-  "$node_path"*) node_path_status=matched ;;
+  *"$node_path"*) node_path_status=matched ;;
   *) node_path_status=wrong ;;
 esac
 printf 'goodnode-status=%s\n' "$node_status"
@@ -83,7 +83,7 @@ printf 'goodnode-color=%s\n' "$node_color"
 
 default_report=$("$BIN" -c 'koshkit --color never evilio')
 case $default_report in
-  MEMORY*DISKS*SWAP*) default_shape=matched ;;
+  *'Memory'*'Disk I/O'*'Swap'*) default_shape=matched ;;
   *) default_shape=wrong ;;
 esac
 case $default_report in
@@ -95,7 +95,7 @@ printf 'evilio-default-scope=%s\n' "$default_scope"
 
 disk_report=$("$BIN" -c 'koshkit --color never evilio --cumulative 0.05')
 case $disk_report in
-  DEVICE*READ/0.05s*WRITE/0.05s*"READ OPS/0.05s"*"WRITE OPS/0.05s"*BUSY*"READ LAT"*"WRITE LAT"*"AVG QUEUE"*QUEUE*ERRORS*RETRIES*)
+  *'Disk I/O'*DEVICE*READ/0.05s*WRITE/0.05s*"READ OPS/0.05s"*"WRITE OPS/0.05s"*BUSY*"READ LAT"*"WRITE LAT"*"AVG QUEUE"*QUEUE*ERRORS*RETRIES*)
     disk_shape=matched
     ;;
   *) disk_shape=wrong ;;
@@ -198,16 +198,16 @@ printf 'evilio-process-limit=%s\n' "$process_limit"
 
 network_report=$("$BIN" -c 'koshkit evilnet')
 case $network_report in
-  NAME*FAMILY*ADDRESS*) network_title=omitted ;;
-  *) network_title=present ;;
+  *'Network interfaces'*NAME*FAMILY*ADDRESS*) network_title=present ;;
+  *) network_title=omitted ;;
 esac
 printf 'evilnet-single-title=%s\n' "$network_title"
 
 network_all_report=$("$BIN" -c 'koshkit evilnet --all' \
   2> "$TEST_NULL_DEVICE")
 case $network_all_report in
-  *NAME*FAMILY*ADDRESS*) network_all_title=omitted ;;
-  *) network_all_title=present ;;
+  *'Network interfaces'*'Network traffic'*) network_all_title=present ;;
+  *) network_all_title=omitted ;;
 esac
 printf 'evilnet-multiple-titles=%s\n' "$network_all_title"
 
@@ -241,15 +241,15 @@ printf 'evilps-single-title=%s\n' "$process_title"
 
 filesystem_report=$("$BIN" -c 'koshkit evilfs')
 case $filesystem_report in
-  SOURCE*TARGET*TYPE*OPTIONS*) filesystem_title=omitted ;;
-  *) filesystem_title=present ;;
+  *'Filesystems'*SOURCE*TARGET*TYPE*OPTIONS*) filesystem_title=present ;;
+  *) filesystem_title=omitted ;;
 esac
 printf 'evilfs-single-title=%s\n' "$filesystem_title"
 
 filesystem_all_report=$("$BIN" -c 'koshkit evilfs --all')
 case $filesystem_all_report in
-  *Source:*Type:*Options:*) filesystem_all_title=omitted ;;
-  *) filesystem_all_title=present ;;
+  *'Filesystems'*SOURCE*TARGET*VOLUME*OPTIONS*) filesystem_all_title=present ;;
+  *) filesystem_all_title=omitted ;;
 esac
 printf 'evilfs-multiple-titles=%s\n' "$filesystem_all_title"
 
@@ -296,7 +296,7 @@ evildisk_ata_report=$(PATH="$evildisk_tools:$PATH" "$BIN" -c \
   'koshkit --color never evildisk -a /dev/null' 2>&1)
 case $evildisk_ata_report in
   *uncorrectable*) evildisk_ata=failed ;;
-  *"Mock ATA"*"reallocated 2"*"timeouts 0"*"pending 3"*"CRC errors 4"*warning:*"nonzero SMART counters reallocated 2, pending 3, CRC errors 4"*)
+  *"Mock ATA"*"reallocated 2"*"timeouts 0"*"pending 3"*"CRC errors 4"*Warning:*"nonzero SMART counters reallocated 2, pending 3, CRC errors 4"*)
     evildisk_ata=passed
     ;;
   *) evildisk_ata=failed ;;

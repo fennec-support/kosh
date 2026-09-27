@@ -111,16 +111,6 @@ fn RuntimeState::restore(EvalContext &context) const wontthrow -> void
   context.m_runtime = *this;
 }
 
-fn EvalContext::add_evaluated_expression() wontthrow -> void
-{
-  evaluation_metrics_store().add_evaluated_expression(stats_enabled());
-}
-
-fn EvalContext::add_expansion() wontthrow -> void
-{
-  evaluation_metrics_store().add_expansion(stats_enabled());
-}
-
 fn EvalContext::end_command() wontthrow -> void
 {
   let const used = arena_store().parse_arena() != nullptr ? arena_store().parse_arena()->bytes_used() : 0;
@@ -153,11 +143,6 @@ fn EvalContext::end_history_transaction() wontthrow -> void
 pure fn EvalContext::has_history_transaction() const wontthrow -> bool
 {
   return source_store().has_history_transaction();
-}
-
-fn EvalContext::begin_command_evaluation() wontthrow -> void
-{
-  evaluation_metrics_store().begin_command_evaluation();
 }
 
 hot fn EvalContext::assign_variable(StringView name, StringView value) throws

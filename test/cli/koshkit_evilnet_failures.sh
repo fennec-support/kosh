@@ -2,7 +2,7 @@
 
 report=$($BIN -c 'koshkit --color never evilnet --failures' 2>/dev/null)
 case $report in
-  *'Opens:'*'Connections:'*'Failures:'*) failure_shape=matched ;;
+  *'TCP'*'GROUP'*'Opens'*'Connections'*'Failures'*) failure_shape=matched ;;
   *) failure_shape=wrong ;;
 esac
 printf 'failure-shape=%s\n' "$failure_shape"

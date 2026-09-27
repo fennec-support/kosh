@@ -1632,6 +1632,7 @@ uses only the named databases.
 .B find
 Sorted trees are walked with
 .BR \-name ,
+.BR \-iname ,
 .BR \-type ,
 .BR \-maxdepth ,
 .BR \-mindepth ,
@@ -1666,10 +1667,16 @@ option selects a supported POSIX environment.
 .TP
 .B grep
 Regular-expression matches are printed. The
-.B \-i
+.BR \-i ,
+.BR \-v ,
+.BR \-r ,
+.BR \-n ,
 and
-.B \-v
-options are supported.
+.BR \-h
+options ignore case, invert matches, recurse into directories, show line
+numbers, and suppress file-name prefixes. The combined
+.B \-rnh
+form is accepted.
 .TP
 .B head
 The first ten lines are printed by default. The

@@ -133,7 +133,7 @@ fn EvalContext::expand_path_once(const glob_field &field,
                                  : os::case_sensitivity::Sensitive);
   };
   let const do_append_entry = [&](StringView filename) throws -> void {
-    add_expansion();
+    evaluation_metrics_store().add_expansion(stats_enabled());
 
     let result_field = glob_field{scratch};
     result_field.text.append(typed_prefix);

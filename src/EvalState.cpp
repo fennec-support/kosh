@@ -1775,10 +1775,15 @@ cold fn EvalContext::make_stats_string() const throws -> String
               utils::format_duration_nanoseconds(execution_store().last_command_duration_nanos(),
                                                  allocator)
                   .view());
-  append_count_line("Expansions", last_expansion_count());
-  append_count_line("Nodes evaluated", last_expressions_executed());
-  append_count_line("Total expansions", total_expansion_count());
-  append_count_line("Total nodes evaluated", total_expressions_executed());
+  append_count_line("Expansions",
+                    evaluation_metrics_store().last_expansion_count());
+  append_count_line("Nodes evaluated",
+                    evaluation_metrics_store().last_expressions_executed());
+  append_count_line("Total expansions",
+                    evaluation_metrics_store().total_expansion_count());
+  append_count_line(
+      "Total nodes evaluated",
+      evaluation_metrics_store().total_expressions_executed());
   append_size_line("AST arena used", live_ast_arena_bytes);
   append_size_line("AST arena peak", peak_ast_arena_bytes);
   if (arena_store().parse_arena() != nullptr)
@@ -1911,36 +1916,6 @@ fn EvalContext::set_custom_rcfile(bool enabled) wontthrow -> void
 pure fn EvalContext::has_custom_rcfile() const wontthrow -> bool
 {
   return startup_store().has_custom_rcfile();
-}
-
-pure fn EvalContext::last_expressions_executed() const wontthrow -> usize
-{
-  return evaluation_metrics_store().last_expressions_executed();
-}
-
-pure fn EvalContext::total_expressions_executed() const wontthrow -> usize
-{
-  return evaluation_metrics_store().total_expressions_executed();
-}
-
-pure fn EvalContext::last_expansion_count() const wontthrow -> usize
-{
-  return evaluation_metrics_store().last_expansion_count();
-}
-
-pure fn EvalContext::total_expansion_count() const wontthrow -> usize
-{
-  return evaluation_metrics_store().total_expansion_count();
-}
-
-pure fn EvalContext::commands_evaluated() const wontthrow -> usize
-{
-  return evaluation_metrics_store().commands_evaluated();
-}
-
-pure fn EvalContext::peak_ast_arena_bytes() const wontthrow -> usize
-{
-  return evaluation_metrics_store().peak_ast_arena_bytes();
 }
 
 /* The arithmetic engine, the ArithmeticParser, the cached-token fast path, and
