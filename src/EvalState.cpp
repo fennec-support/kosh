@@ -372,11 +372,6 @@ fn EvalContext::leave_substitution() wontthrow -> void
   lower_trap_depths_to_current();
 }
 
-pure fn EvalContext::get_substitution_depth() const wontthrow -> usize
-{
-  return expansion_store().substitution_depth();
-}
-
 fn EvalContext::enter_parameter_expansion() throws -> void
 {
   if (expansion_store().parameter_expansion_depth() >=

@@ -465,7 +465,8 @@ fn EvalContext::run_captured_substitution(const Expression *ast,
   Maybe<eval_state_snapshot> in_process_snapshot;
   let active_functions = HashSet{scratch_allocator()};
   bool should_evaluate_in_process =
-      !execution_store().shell_is_interactive() && get_substitution_depth() <= 16 &&
+      !execution_store().shell_is_interactive() &&
+      expansion_store().substitution_depth() <= 16 &&
       traps().count() == 0 &&
       ast->can_evaluate_in_process_substitution(*this, active_functions);
   if (should_evaluate_in_process) {
