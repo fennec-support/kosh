@@ -536,22 +536,6 @@ pure fn RuntimeState::failglob() const wontthrow -> bool
   return option_is_enabled(shell_option_id::Failglob);
 }
 
-fn EvalContext::enter_condition() wontthrow -> void
-{
-  execution_store().condition_depth()++;
-}
-
-fn EvalContext::leave_condition() wontthrow -> void
-{
-  ASSERT(execution_store().condition_depth() > 0);
-  execution_store().condition_depth()--;
-}
-
-pure fn EvalContext::in_condition() const wontthrow -> bool
-{
-  return execution_store().condition_depth() > 0;
-}
-
 fn EvalContext::enter_loop() wontthrow -> void
 {
   execution_store().loop_depth()++;
@@ -612,26 +596,6 @@ fn EvalContext::retain_loop_redirect_fd(i32 target_fd, const String &path,
         fd
   });
   return true;
-}
-
-pure fn EvalContext::getopts_char_index() const wontthrow -> usize
-{
-  return expansion_store().getopts_char_index();
-}
-
-fn EvalContext::set_getopts_char_index(usize index) wontthrow -> void
-{
-  expansion_store().set_getopts_char_index(index);
-}
-
-pure fn EvalContext::getopts_last_optind() const wontthrow -> i64
-{
-  return expansion_store().getopts_last_optind();
-}
-
-fn EvalContext::set_getopts_last_optind(i64 optind) wontthrow -> void
-{
-  expansion_store().set_getopts_last_optind(optind);
 }
 
 fn EvalContext::suggest_similar_variable_name(StringView name) const throws

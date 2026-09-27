@@ -257,8 +257,8 @@ hot fn IfClause::evaluate_status_impl(EvalContext &cxt) const throws
 
     i64 condition_status;
     {
-      cxt.enter_condition();
-      defer { cxt.leave_condition(); };
+      cxt.execution_store().condition_depth()++;
+      defer { cxt.execution_store().condition_depth()--; };
       condition_status = condition->evaluate(cxt);
     }
 
@@ -496,8 +496,8 @@ hot fn WhileLoop::evaluate_status_impl(EvalContext &cxt) const throws
   {
     i64 condition_status;
     {
-      cxt.enter_condition();
-      defer { cxt.leave_condition(); };
+      cxt.execution_store().condition_depth()++;
+      defer { cxt.execution_store().condition_depth()--; };
       condition_status = m_condition->evaluate(cxt);
     }
     if (cxt.runtime_state().no_exec()) break;

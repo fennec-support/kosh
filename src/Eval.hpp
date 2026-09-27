@@ -3061,10 +3061,6 @@ public:
      is_shopt_enabled. */
   static pure fn shopt_default_is_on(StringView name) wontthrow -> bool;
 
-  fn enter_condition() wontthrow -> void;
-  fn leave_condition() wontthrow -> void;
-  pure fn in_condition() const wontthrow -> bool;
-
   /* The count of loops currently running, the cap the break and continue
      builtins clamp their level to. A function call and a subshell zero it. */
   fn enter_loop() wontthrow -> void;
@@ -3242,13 +3238,6 @@ public:
   pure fn get_substitution_depth() const wontthrow -> usize;
   fn enter_parameter_expansion() throws -> void;
   fn leave_parameter_expansion() wontthrow -> void;
-
-  /* getopts keeps the position inside the current argument here, so -abc is
-     parsed one letter per call. last_optind detects an OPTIND reset. */
-  pure fn getopts_char_index() const wontthrow -> usize;
-  fn set_getopts_char_index(usize index) wontthrow -> void;
-  pure fn getopts_last_optind() const wontthrow -> i64;
-  fn set_getopts_last_optind(i64 optind) wontthrow -> void;
 
   fn clear_retained_sources() wontthrow -> void;
 

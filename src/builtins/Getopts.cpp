@@ -75,14 +75,15 @@ fn Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       name.c_str(), static_cast<long long>(optind), operands.count());
 
   /* A script that resets OPTIND starts a fresh scan at the first letter. */
-  if (optind != cxt.getopts_last_optind()) cxt.set_getopts_char_index(1);
-  let char_index = cxt.getopts_char_index();
+  if (optind != cxt.expansion_store().getopts_last_optind())
+    cxt.expansion_store().set_getopts_char_index(1);
+  let char_index = cxt.expansion_store().getopts_char_index();
 
   let const do_finish = [&](i32 code) -> i32 {
     cxt.set_shell_variable("OPTIND",
                            String::from(optind, cxt.scratch_allocator()));
-    cxt.set_getopts_char_index(char_index);
-    cxt.set_getopts_last_optind(optind);
+    cxt.expansion_store().set_getopts_char_index(char_index);
+    cxt.expansion_store().set_getopts_last_optind(optind);
     return code;
   };
 

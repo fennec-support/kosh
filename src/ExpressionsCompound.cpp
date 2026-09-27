@@ -191,10 +191,10 @@ hot fn CompoundList::evaluate_root_status_impl(
     /* In bash mood an evaluation error fails the command and the list goes on,
        while a script-fatal error still aborts the run. */
     let const do_run_node = [&]() throws -> status_result {
-      if (should_ignore_errexit) cxt.enter_condition();
+      if (should_ignore_errexit) cxt.execution_store().condition_depth()++;
       defer
       {
-        if (should_ignore_errexit) cxt.leave_condition();
+        if (should_ignore_errexit) cxt.execution_store().condition_depth()--;
       };
       try {
         let const node_mode = index == 0 ? mode : root_evaluation_mode::Normal;
@@ -269,7 +269,8 @@ hot fn CompoundList::evaluate_root_status_impl(
        negates. */
     const bool has_pending_control_flow = cxt.control_flow_store().has_pending();
     const bool was_command_failure_uncaught =
-        !has_pending_control_flow && !cxt.in_condition() && did_execute &&
+        !has_pending_control_flow &&
+        cxt.execution_store().condition_depth() == 0 && did_execute &&
         !n->is_negated() && is_end_of_and_or_chain && ret.status != 0 &&
         ret.status != NOTHING_WAS_EXECUTED &&
         !ret.has(status_flag::ErrResolved);
