@@ -643,7 +643,7 @@ fn EvalContext::run_source(StringView source, StringView origin,
     {
       let const source_status = static_cast<i32>(control_flow_store().pending().value);
       if (status_before_return != nullptr)
-        *status_before_return = trap_store().m_status_before_return;
+        *status_before_return = trap_store().status_before_return();
 
       control_flow_store().clear();
       execution_store().set_last_exit_status(source_status);

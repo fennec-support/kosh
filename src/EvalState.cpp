@@ -177,7 +177,7 @@ fn EvalContext::request_return(i64 status, SourceLocation location) throws
     -> void
 {
   LOG(Debug, "return requested, status %lld", (long long) status);
-  trap_store().m_status_before_return = execution_store().last_exit_status();
+  trap_store().status_before_return() = execution_store().last_exit_status();
   control_flow_store().request_return(
       status, location, source_store().m_current_source,
       source_store().m_current_origin);
@@ -767,9 +767,9 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
       steal(working_directory),
       os::get_file_creation_mask(),
       trap_store().actions(),
-      trap_store().m_debug_trap_active_depth,
-      trap_store().m_err_trap_active_depth,
-      trap_store().m_did_reset_inherited_signal_traps,
+      trap_store().debug_trap_active_depth(),
+      trap_store().err_trap_active_depth(),
+      trap_store().did_reset_inherited_signal_traps(),
       variable_attributes(),
       exported_names(),
       environment_store().environment_undo_log().count(),
@@ -882,9 +882,9 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
     trap_store().actions() = steal(snapshot.traps);
   }
   refresh_trap_flags();
-  trap_store().m_debug_trap_active_depth = snapshot.debug_trap_active_depth;
-  trap_store().m_err_trap_active_depth = snapshot.err_trap_active_depth;
-  trap_store().m_did_reset_inherited_signal_traps =
+  trap_store().debug_trap_active_depth() = snapshot.debug_trap_active_depth;
+  trap_store().err_trap_active_depth() = snapshot.err_trap_active_depth;
+  trap_store().did_reset_inherited_signal_traps() =
       snapshot.did_reset_inherited_signal_traps;
 
   if (!os::restore_current_directory(snapshot.working_directory))
@@ -1354,7 +1354,7 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
   for (let const process : job_table_store().m_detached_job_processes)
     append_subshell_bootstrap_u32(body, do_reference_process(process));
 
-  append_subshell_bootstrap_u64(body, trap_store().m_startup_ignored_signals);
+  append_subshell_bootstrap_u64(body, trap_store().startup_ignored_signals());
 
   if (body.count() > UINT32_MAX) throw std::bad_alloc{};
   append_subshell_bootstrap_u32(source, SUBSHELL_BOOTSTRAP_MAGIC);
@@ -1656,8 +1656,8 @@ fn EvalContext::apply_subshell_bootstrap(
       disabled_bash_special_arrays;
   variable_store().unset_dynamic_readers() = unset_dynamic_readers;
   {
-    trap_store().m_is_replaying_inherited_state = true;
-    defer { trap_store().m_is_replaying_inherited_state = false; };
+    trap_store().is_replaying_inherited_state() = true;
+    defer { trap_store().is_replaying_inherited_state() = false; };
     run_source(bootstrap.payload.view().substring_of_length(
                    0, static_cast<usize>(bootstrap.source_length)),
                "inherited shell state");
@@ -1672,7 +1672,7 @@ fn EvalContext::apply_subshell_bootstrap(
   dynamic_runtime_store().random_state() = random_state;
   dynamic_runtime_store().shell_start_time() = shell_start_time;
   dynamic_runtime_store().seconds_base() = seconds_base;
-  trap_store().m_startup_ignored_signals = startup_ignored_signals;
+  trap_store().startup_ignored_signals() = startup_ignored_signals;
   expansion_store().set_getopts_char_index(getopts_char_index);
   expansion_store().set_getopts_last_optind(getopts_last_optind);
   runtime_state().shopt_option_overrides = shopt_option_overrides;

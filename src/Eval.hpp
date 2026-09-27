@@ -1372,6 +1372,120 @@ public:
     return m_cached_bodies;
   }
 
+  fn has_debug_trap() wontthrow -> bool & { return m_has_debug_trap; }
+  pure fn has_debug_trap() const wontthrow -> bool { return m_has_debug_trap; }
+  fn has_err_trap() wontthrow -> bool & { return m_has_err_trap; }
+  pure fn has_err_trap() const wontthrow -> bool { return m_has_err_trap; }
+  fn debug_trap_active_depth() wontthrow -> usize &
+  {
+    return m_debug_trap_active_depth;
+  }
+  pure fn debug_trap_active_depth() const wontthrow -> usize
+  {
+    return m_debug_trap_active_depth;
+  }
+  fn err_trap_active_depth() wontthrow -> usize &
+  {
+    return m_err_trap_active_depth;
+  }
+  pure fn err_trap_active_depth() const wontthrow -> usize
+  {
+    return m_err_trap_active_depth;
+  }
+  fn is_replaying_inherited_state() wontthrow -> bool &
+  {
+    return m_is_replaying_inherited_state;
+  }
+  pure fn is_replaying_inherited_state() const wontthrow -> bool
+  {
+    return m_is_replaying_inherited_state;
+  }
+  fn exit_trap_ran() wontthrow -> bool & { return m_exit_trap_ran; }
+  pure fn exit_trap_ran() const wontthrow -> bool { return m_exit_trap_ran; }
+  fn running_trap_conditions() wontthrow -> u8 &
+  {
+    return m_running_trap_conditions;
+  }
+  pure fn running_trap_conditions() const wontthrow -> u8
+  {
+    return m_running_trap_conditions;
+  }
+  fn did_reset_inherited_signal_traps() wontthrow -> bool &
+  {
+    return m_did_reset_inherited_signal_traps;
+  }
+  pure fn did_reset_inherited_signal_traps() const wontthrow -> bool
+  {
+    return m_did_reset_inherited_signal_traps;
+  }
+  fn startup_ignored_signals() wontthrow -> u64 &
+  {
+    return m_startup_ignored_signals;
+  }
+  pure fn startup_ignored_signals() const wontthrow -> u64
+  {
+    return m_startup_ignored_signals;
+  }
+  fn pending_child_trap_count() wontthrow -> u32 &
+  {
+    return m_pending_child_trap_count;
+  }
+  pure fn pending_child_trap_count() const wontthrow -> u32
+  {
+    return m_pending_child_trap_count;
+  }
+  fn trap_action_depth() wontthrow -> u32 & { return m_trap_action_depth; }
+  pure fn trap_action_depth() const wontthrow -> u32
+  {
+    return m_trap_action_depth;
+  }
+  fn trap_trigger_line_number() wontthrow -> usize &
+  {
+    return m_trap_trigger_line_number;
+  }
+  pure fn trap_trigger_line_number() const wontthrow -> usize
+  {
+    return m_trap_trigger_line_number;
+  }
+  fn trap_action_source_frame_count() wontthrow -> usize &
+  {
+    return m_trap_action_source_frame_count;
+  }
+  pure fn trap_action_source_frame_count() const wontthrow -> usize
+  {
+    return m_trap_action_source_frame_count;
+  }
+  fn trap_action_function_depth() wontthrow -> usize &
+  {
+    return m_trap_action_function_depth;
+  }
+  pure fn trap_action_function_depth() const wontthrow -> usize
+  {
+    return m_trap_action_function_depth;
+  }
+  fn trap_saved_exit_status() wontthrow -> Maybe<i32> &
+  {
+    return m_trap_saved_exit_status;
+  }
+  pure fn trap_saved_exit_status() const wontthrow -> const Maybe<i32> &
+  {
+    return m_trap_saved_exit_status;
+  }
+  fn last_trap_action_status() wontthrow -> i32 &
+  {
+    return m_last_trap_action_status;
+  }
+  pure fn last_trap_action_status() const wontthrow -> i32
+  {
+    return m_last_trap_action_status;
+  }
+  fn status_before_return() wontthrow -> i32 & { return m_status_before_return; }
+  pure fn status_before_return() const wontthrow -> i32
+  {
+    return m_status_before_return;
+  }
+
+private:
   bool m_has_debug_trap{false};
   bool m_has_err_trap{false};
   usize m_debug_trap_active_depth{0};
@@ -1389,8 +1503,6 @@ public:
   Maybe<i32> m_trap_saved_exit_status{None};
   i32 m_last_trap_action_status{0};
   i32 m_status_before_return{0};
-
-private:
   StringMap<String> m_actions{heap_allocator()};
   StringMap<FunctionBodyHandle> m_cached_bodies{heap_allocator()};
 };
@@ -2383,24 +2495,24 @@ public:
       -> void;
   pure fn status_before_return() const wontthrow -> i32
   {
-    return trap_store().m_status_before_return;
+    return trap_store().status_before_return();
   }
   pure fn has_debug_trap() const wontthrow -> bool
   {
-    return trap_store().m_has_debug_trap;
+    return trap_store().has_debug_trap();
   }
   pure fn has_err_trap() const wontthrow -> bool
   {
-    return trap_store().m_has_err_trap;
+    return trap_store().has_err_trap();
   }
   /* The two hot conditions carry a flag beside the map. Every write to the map
      refreshes the flag. The child wake is armed from the same place, because
      the CHLD action is the only reader of a reaped child. */
   fn refresh_trap_flags() wontthrow -> void
   {
-    trap_store().m_has_debug_trap =
+    trap_store().has_debug_trap() =
         trap_store().actions().find(StringView{"DEBUG", 5}).has_value();
-    trap_store().m_has_err_trap =
+    trap_store().has_err_trap() =
         trap_store().actions().find(StringView{"ERR", 3}).has_value();
 
     let const child_action = trap_store().actions().find(StringView{"CHLD", 4});
@@ -2416,9 +2528,9 @@ public:
      step belongs to the shell. */
   pure fn should_run_err_trap() const wontthrow -> bool
   {
-    return !trap_store().m_is_replaying_inherited_state &&
+    return !trap_store().is_replaying_inherited_state() &&
            (m_runtime.option_is_enabled(shell_option_id::Errtrace) ||
-            nesting_depth() <= trap_store().m_err_trap_active_depth);
+            nesting_depth() <= trap_store().err_trap_active_depth());
   }
   /* How deep the current frame sits inside function calls, subshells, and
      command substitutions together. Each of the three moves it by one. One
@@ -2430,20 +2542,20 @@ public:
   }
   pure fn should_run_debug_trap() const wontthrow -> bool
   {
-    return trap_store().m_has_debug_trap && !runtime_state().is_posix_mode() &&
-           !trap_store().m_is_replaying_inherited_state &&
+    return trap_store().has_debug_trap() && !runtime_state().is_posix_mode() &&
+           !trap_store().is_replaying_inherited_state() &&
            (m_runtime.option_is_enabled(shell_option_id::Functrace) ||
-            nesting_depth() <= trap_store().m_debug_trap_active_depth);
+            nesting_depth() <= trap_store().debug_trap_active_depth());
   }
   /* The trap installed inside a frame keeps running once that frame is left.
      Leaving a frame lowers the depth each action is allowed to reach. */
   fn lower_trap_depths_to_current() wontthrow -> void
   {
     let const depth = nesting_depth();
-    if (trap_store().m_debug_trap_active_depth > depth)
-      trap_store().m_debug_trap_active_depth = depth;
-    if (trap_store().m_err_trap_active_depth > depth)
-      trap_store().m_err_trap_active_depth = depth;
+    if (trap_store().debug_trap_active_depth() > depth)
+      trap_store().debug_trap_active_depth() = depth;
+    if (trap_store().err_trap_active_depth() > depth)
+      trap_store().err_trap_active_depth() = depth;
   }
   /* A function call the trace option does not follow runs its body without the
      trap the caller installed. The body sees no trap listed and can install one
@@ -2452,22 +2564,22 @@ public:
   {
     return save_untraced_trap(StringView{"DEBUG", 5},
                               shell_option_id::Functrace,
-                              &trap_store().m_debug_trap_active_depth);
+                              &trap_store().debug_trap_active_depth());
   }
   fn restore_untraced_debug_trap(saved_frame_trap &&saved) wontthrow -> void
   {
     restore_untraced_trap(StringView{"DEBUG", 5}, steal(saved),
-                          &trap_store().m_debug_trap_active_depth);
+                          &trap_store().debug_trap_active_depth());
   }
   mustuse fn save_untraced_err_trap() throws -> saved_frame_trap
   {
     return save_untraced_trap(StringView{"ERR", 3}, shell_option_id::Errtrace,
-                              &trap_store().m_err_trap_active_depth);
+                              &trap_store().err_trap_active_depth());
   }
   fn restore_untraced_err_trap(saved_frame_trap &&saved) wontthrow -> void
   {
     restore_untraced_trap(StringView{"ERR", 3}, steal(saved),
-                          &trap_store().m_err_trap_active_depth);
+                          &trap_store().err_trap_active_depth());
   }
   mustuse fn save_untraced_return_trap() throws -> saved_frame_trap
   {
@@ -2491,58 +2603,58 @@ public:
   }
   pure fn is_running_trap_action() const wontthrow -> bool
   {
-    return trap_store().m_trap_action_depth > 0;
+    return trap_store().trap_action_depth() > 0;
   }
   /* A subshell is a fresh shell for the trap engine. No action is running
      inside it, and the condition that forked it fires again there. */
   pure fn get_running_trap_conditions() const wontthrow -> u8
   {
-    return trap_store().m_running_trap_conditions;
+    return trap_store().running_trap_conditions();
   }
   fn set_running_trap_conditions(u8 conditions) wontthrow -> void
   {
-    trap_store().m_running_trap_conditions = conditions;
+    trap_store().running_trap_conditions() = conditions;
   }
   pure fn get_trap_action_depth() const wontthrow -> u32
   {
-    return trap_store().m_trap_action_depth;
+    return trap_store().trap_action_depth();
   }
   fn set_trap_action_depth(u32 depth) wontthrow -> void
   {
-    trap_store().m_trap_action_depth = depth;
+    trap_store().trap_action_depth() = depth;
   }
   /* The status an exit with no operand reports inside a trap action. It is the
      status the shell had reached when the action began. The commands of the
      action itself replace that status in the ordinary exit status. */
   pure fn get_trap_saved_exit_status() const wontthrow -> Maybe<i32>
   {
-    return trap_store().m_trap_saved_exit_status;
+    return trap_store().trap_saved_exit_status();
   }
   fn set_trap_saved_exit_status(Maybe<i32> status) wontthrow -> void
   {
-    trap_store().m_trap_saved_exit_status = status;
+    trap_store().trap_saved_exit_status() = status;
   }
   /* The status of the last trap action. It is recorded before the restoration
      returns the triggering command's own status. A condition that ran no action
      records zero. */
   pure fn get_last_trap_action_status() const wontthrow -> i32
   {
-    return trap_store().m_last_trap_action_status;
+    return trap_store().last_trap_action_status();
   }
   /* The line $LINENO reports inside a trap action. It is the line of the
      command that fired the trap. A function or a sourced file the action enters
      carries its own lines. The answer is empty there. */
   pure fn trap_trigger_line_number() const wontthrow -> Maybe<usize>
   {
-    if (trap_store().m_trap_action_depth == 0) return None;
+    if (trap_store().trap_action_depth() == 0) return None;
     if (source_store().m_source_frames.count() !=
-        trap_store().m_trap_action_source_frame_count)
+        trap_store().trap_action_source_frame_count())
       return None;
     if (function_store().call_depth() !=
-        trap_store().m_trap_action_function_depth)
+        trap_store().trap_action_function_depth())
       return None;
 
-    return trap_store().m_trap_trigger_line_number;
+    return trap_store().trap_trigger_line_number();
   }
 
   /* Run the action of every signal whose flag the handler set, at the command
@@ -2562,12 +2674,12 @@ public:
   pure fn get_startup_ignored_signals() const wontthrow -> u64
   {
     return runtime_state().is_bash_compatible()
-               ? trap_store().m_startup_ignored_signals
+               ? trap_store().startup_ignored_signals()
                : 0;
   }
   fn set_startup_ignored_signals(u64 signals) wontthrow -> void
   {
-    trap_store().m_startup_ignored_signals = signals;
+    trap_store().startup_ignored_signals() = signals;
   }
   pure fn is_signal_ignored_at_startup(StringView condition) const wontthrow
       -> bool;
