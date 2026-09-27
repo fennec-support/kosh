@@ -42,8 +42,8 @@ EvalContext::EvalContext(bool should_disable_path_expansion, bool should_echo,
                          bool should_echo_expanded, bool shell_is_interactive,
                          bool should_error_exit, String shell_name,
                          ArrayList<String> positional_params)
-    : m_variable_store(steal(positional_params)),
-      m_execution_store(shell_is_interactive, steal(shell_name))
+    : EvalContextState(steal(positional_params), shell_is_interactive,
+                       steal(shell_name))
 {
   runtime_state().set_no_glob(should_disable_path_expansion);
   runtime_state().set_echo(should_echo);

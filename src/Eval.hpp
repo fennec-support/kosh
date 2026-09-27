@@ -1984,29 +1984,15 @@ private:
 #endif
 };
 
-class EvalContext
+class EvalContextState
 {
 public:
-  EvalContext(bool should_disable_path_expansion, bool should_echo,
-              bool should_echo_expanded, bool shell_is_interactive,
-              bool should_error_exit = false,
-              String shell_name = String{heap_allocator()},
-              ArrayList<String> positional_params = ArrayList<String>{
-                  heap_allocator()});
-  ~EvalContext();
-
-  fn end_command() wontthrow -> void;
-
-  /* Variable expand, tilde expand, field split, and glob each token. The
-     expanded_locations out-parameter, when not null, is filled in parallel
-     with the returned strings, so each field carries the source_location of
-     the token it expanded from. A token that splits into many fields
-     contributes one location per field. */
-  fn process_args(const ArrayList<const Token *> &args,
-                  ArrayList<SourceLocation> *expanded_locations = nullptr,
-                  argument_lifetime lifetime = argument_lifetime::Persistent,
-                  argument_context context = argument_context::Command) throws
-      -> ArrayList<String>;
+  EvalContextState(ArrayList<String> positional_params,
+                  bool shell_is_interactive, String shell_name)
+      : m_variable_store(steal(positional_params)),
+        m_execution_store(shell_is_interactive, steal(shell_name))
+  {
+  }
 
   fn scratch_allocator() const wontthrow -> Allocator
   {
@@ -2069,6 +2055,10 @@ public:
   {
     return m_expansion_store;
   }
+  pure fn expansion_store() const wontthrow -> const ExpansionStore &
+  {
+    return m_expansion_store;
+  }
   fn source_store() wontthrow -> SourceStore & { return m_source_store; }
   pure fn source_store() const wontthrow -> const SourceStore &
   {
@@ -2125,10 +2115,6 @@ public:
   {
     return m_control_flow_store;
   }
-  pure fn expansion_store() const wontthrow -> const ExpansionStore &
-  {
-    return m_expansion_store;
-  }
   fn function_store() wontthrow -> FunctionStore & { return m_function_store; }
   pure fn function_store() const wontthrow -> const FunctionStore &
   {
@@ -2139,6 +2125,59 @@ public:
   {
     return m_variable_store;
   }
+  fn job_table_store() wontthrow -> JobTable & { return m_job_table; }
+  pure fn job_table_store() const wontthrow -> const JobTable &
+  {
+    return m_job_table;
+  }
+protected:
+  StartupStore m_startup_store{};
+  EvaluationMetricsStore m_evaluation_metrics_store{};
+  ArenaStore m_arena_store{};
+  CompletionStore m_completion_store{};
+  ExpansionStore m_expansion_store{};
+  VariableStore m_variable_store{};
+  ExecutionStore m_execution_store;
+  FunctionStore m_function_store{};
+  SubshellStore m_subshell_store{};
+  EnvironmentStore m_environment_store{};
+  DynamicRuntimeStore m_dynamic_runtime_store{};
+  DiagnosticsStore m_diagnostics_store{};
+  ControlFlowStore m_control_flow_store{};
+  SourceStore m_source_store{};
+  RuntimeState m_runtime{};
+  RuntimeControlStore m_runtime_control_store{};
+  ResolutionStore m_resolution_store{};
+  TrapStore m_trap_store{};
+  PromptCommandStore m_prompt_command_store{};
+  ScopeStore m_scope_store{};
+  JobTable m_job_table{heap_allocator()};
+};
+
+class EvalContext : public EvalContextState
+{
+public:
+  EvalContext(bool should_disable_path_expansion, bool should_echo,
+              bool should_echo_expanded, bool shell_is_interactive,
+              bool should_error_exit = false,
+              String shell_name = String{heap_allocator()},
+              ArrayList<String> positional_params = ArrayList<String>{
+                  heap_allocator()});
+  ~EvalContext();
+
+  fn end_command() wontthrow -> void;
+
+  /* Variable expand, tilde expand, field split, and glob each token. The
+     expanded_locations out-parameter, when not null, is filled in parallel
+     with the returned strings, so each field carries the source_location of
+     the token it expanded from. A token that splits into many fields
+     contributes one location per field. */
+  fn process_args(const ArrayList<const Token *> &args,
+                  ArrayList<SourceLocation> *expanded_locations = nullptr,
+                  argument_lifetime lifetime = argument_lifetime::Persistent,
+                  argument_context context = argument_context::Command) throws
+      -> ArrayList<String>;
+
   fn set_shell_variable(StringView name, StringView value) throws -> void;
   pure fn special_variable_definition_location(StringView name) const wontthrow
       -> Maybe<SourceLocation>;
@@ -2974,12 +3013,6 @@ public:
      that chunk's status and no EXIT trap is pending, so a terminal external
      command replaces the shell process instead of fork and wait. */
 
-  fn job_table_store() wontthrow -> JobTable & { return m_job_table; }
-  pure fn job_table_store() const wontthrow -> const JobTable &
-  {
-    return m_job_table;
-  }
-
   fn sorted_variable_assignments() const throws
       -> SortedArrayList<String, order_comparator<String>>;
 
@@ -3155,21 +3188,14 @@ public:
   /* The granular memory report at exit, requested by --show-memory. */
 
 protected:
-  StartupStore m_startup_store{};
-  EvaluationMetricsStore m_evaluation_metrics_store{};
 
-  ArenaStore m_arena_store{};
-  CompletionStore m_completion_store{};
   /* An indexed array element whose subscript is past the dense limit, held by
      its name and decimal index so a sparse far subscript does not pad a huge
      dense gap. The name still reads as indexed. */
   /* The compiled form of each [[ =~ ]] pattern, keyed by the pattern text, so a
      hot loop with a constant regex compiles it once and reuses it. */
-  ExpansionStore m_expansion_store{};
   /* The cached value of IFS, kept current by set_shell_variable, so word
      splitting does not look it up per word. */
-  VariableStore m_variable_store{};
-  ExecutionStore m_execution_store;
   /* The status the shell held when the return builtin last ran. The RETURN trap
      action reads this status, and the frame it leaves takes the status the
      return supplied only after the action has finished. */
@@ -3177,19 +3203,14 @@ protected:
   /* One pointer keeps unused Bash argument arrays out of every EvalContext.
      The lazily allocated object stores flattened values and one count per
      frame. */
-  FunctionStore m_function_store{};
   /* The shell descriptors the live coprocess is reached through, -1 when no
      coprocess runs. Only one coprocess is live at a time, the way bash counts
      them. */
   /* Coprocess descriptors and bare-exec backups are owned by the subshell
      store; the context only coordinates their lifecycle with snapshots. */
-  SubshellStore m_subshell_store{};
-
-  EnvironmentStore m_environment_store{};
   /* The names currently in the process environment, kept in step with every
      environment write. An assignment tests membership in O(1). A key is the
      ASCII lowercase form of the name where the environment ignores case. */
-  DynamicRuntimeStore m_dynamic_runtime_store{};
 
   /* The nesting depth of dot-source and eval runs, and of function calls, each
      bounded so a runaway recursion errors with a located message rather than
@@ -3197,53 +3218,18 @@ protected:
 
   /* Set once the startup files finish, so the per-command title is quiet while
      they run. */
-  DiagnosticsStore m_diagnostics_store{};
 
   /* The pending non-local jump, Normal when none is pending. */
-  ControlFlowStore m_control_flow_store{};
-  SourceStore m_source_store{};
 
   /* The mood and the diagnostic and strictness toggles, grouped as one runtime
      state so a scope that swaps them saves and restores the whole set with one
      RuntimeState copy. failglob defaults on, the other toggles default off. */
-  RuntimeState m_runtime{};
-  RuntimeControlStore m_runtime_control_store{};
-  ResolutionStore m_resolution_store{};
   /* Each bit names a dynamic_reader_id whose reader an unset has taken
      away. */
   /* Each bit names a suppressible_warning value. */
   /* The nesting of mimicked scripts, bounded so a script that mimics another
      cannot recurse without limit. */
-  TrapStore m_trap_store{};
-  /* The deepest frame the DEBUG action still reaches without functrace. An
-     install records the frame it ran in, and a command deeper than that frame
-     is not traced. */
-  /* The same ceiling for the ERR action. Errtrace lifts it. */
-  /* One bit for each named condition whose action is running. Only the
-     condition that is running is blocked. A signal action still fires the DEBUG
-     trap and a pending signal still drains inside a DEBUG action. */
-  /* Nonzero while a trap action evaluates. BASH_COMMAND keeps the command that
-     triggered the trap. */
-  /* The line of the command that fired the running trap, together with the
-     source and function nesting the action itself runs at. The action is parsed
-     as its own source, whose first line would otherwise be the only line
-     $LINENO can report. The frame count is not the source depth, because a
-     command substitution pushes a frame without entering a source. */
-  /* The status the shell had reached when the innermost running action began.
-     An exit with no operand inside that action reports it. */
-  /* The status of the last trap action. The extdebug skip reads it once the
-     DEBUG action has returned. */
-  /* The end of the source span a redirected wrapper holds for the subshell it
-     evaluates next. Zero when no wrapper is waiting. */
-  PromptCommandStore m_prompt_command_store{};
-
   fn install_trap_dispositions() throws -> void;
-
-  /* One entry per active function call, holding the bindings a local shadowed.
-   */
-  ScopeStore m_scope_store{};
-
-  JobTable m_job_table{heap_allocator()};
 
   fn option_flags_string() const throws -> String;
 
