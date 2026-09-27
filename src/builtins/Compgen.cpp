@@ -409,7 +409,7 @@ static fn run_compgen_actions(EvalContext &cxt, u32 action_mask,
   if (do_wants(compgen_action::Job) || do_wants(compgen_action::Running) ||
       do_wants(compgen_action::Stopped))
   {
-    for (let const &entry : cxt.jobs()) {
+    for (let const &entry : cxt.job_table_store().jobs()) {
       let const is_wanted = do_wants(compgen_action::Job) ||
                             (do_wants(compgen_action::Running) &&
                              entry.state == job::State::Running) ||

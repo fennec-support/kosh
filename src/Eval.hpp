@@ -2447,32 +2447,7 @@ public:
     execution_store().set_last_argument(String{value});
   }
 
-  fn set_last_background_pid(i64 pid) wontthrow -> void;
-
-  /* The job table tracks the background commands started with the & operator.
-     register_job adds a running job and returns its id. update_jobs polls every
-     job without blocking and marks the ones that finished or stopped. */
-  fn register_job(os::process pid, StringView command,
-                  i64 process_group_id = 0) throws -> i32;
-  fn register_pipeline_job(const ArrayList<os::process> &processes,
-                           os::process primary_process, StringView command,
-                           i64 process_group_id) throws -> i32;
-  fn register_stopped_job(os::process pid, StringView command, i32 status,
-                          i64 process_group_id) throws -> i32;
-  fn wait_for_job_processes(job &job, bool *was_stopped = nullptr) throws
-      -> i32;
-  fn notify_stopped_job(i32 id, StringView command) throws -> void;
-  fn update_jobs() throws -> void;
-  fn jobs() wontthrow -> ArrayList<job> &;
-  fn find_job(i32 id) wontthrow -> job *;
-  fn find_job_index_by_spec(StringView spec) throws -> Maybe<usize>;
-  fn find_job_by_spec(StringView spec) throws -> job *;
-  fn most_recent_job() wontthrow -> job *;
-  fn forget_done_jobs() throws -> void;
-  fn remove_job(i32 id) throws -> bool;
-
   fn notify_done_jobs() throws -> void;
-  fn format_done_job_notifications(StringView line_ending) throws -> String;
 
   /* monitor mode is set -m, on by default in an interactive shell. It gates the
      terminal handoff so a non-interactive run never touches the tty. */

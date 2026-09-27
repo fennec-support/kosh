@@ -731,14 +731,15 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
 
   if (is_async()) {
     if (last_child != KOSH_INVALID_PROCESS) {
-      cxt.set_last_background_pid(os::process_id_of(last_child));
+      cxt.job_table_store().set_last_background_pid(
+          os::process_id_of(last_child));
       let did_register_job = false;
       defer
       {
         if (!did_register_job) utils::terminate_and_reap_processes(children);
       };
-      let const id = cxt.register_pipeline_job(children, last_child, "pipeline",
-                                               process_group_id);
+      let const id = cxt.job_table_store().register_pipeline_job(
+          children, last_child, "pipeline", process_group_id);
       did_register_job = true;
       if (cxt.shell_is_interactive())
         koshka::print_error(

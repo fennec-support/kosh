@@ -129,10 +129,11 @@ fn CompoundCommand::evaluate_async(EvalContext &cxt) const throws -> i64
   }
 
   let const process_id = os::process_id_of(child);
-  cxt.set_last_background_pid(process_id);
+  cxt.job_table_store().set_last_background_pid(process_id);
   let command = String{command_text};
   command += " &";
-  let const id = cxt.register_job(child, command.view(), process_id);
+  let const id =
+      cxt.job_table_store().register_job(child, command.view(), process_id);
   if (cxt.shell_is_interactive()) {
     koshka::print_error(
         "[" + String::from(id, heap_allocator()) + "] " +
@@ -1600,11 +1601,12 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
       pid_name.view(),
       String::from(static_cast<u64>(process_id), heap_allocator()));
 
-  cxt.set_last_background_pid(process_id);
+  cxt.job_table_store().set_last_background_pid(process_id);
 
   let command = String{command_text};
   command += " &";
-  let const id = cxt.register_job(child, command.view(), process_id);
+  let const id =
+      cxt.job_table_store().register_job(child, command.view(), process_id);
   if (cxt.shell_is_interactive()) {
     koshka::print_error(
         "[" + String::from(id, heap_allocator()) + "] " +

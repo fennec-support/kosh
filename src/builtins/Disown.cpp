@@ -48,31 +48,31 @@ fn Disown::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (FLAG_ALL.is_enabled() || FLAG_RUNNING.is_enabled()) {
     let const should_keep_stopped = FLAG_RUNNING.is_enabled();
 
-    if (should_keep_stopped) cxt.update_jobs();
+    if (should_keep_stopped) cxt.job_table_store().update_jobs();
 
     let ids = ArrayList<i32>{cxt.scratch_allocator()};
-    for (let const &job : cxt.jobs()) {
+    for (let const &job : cxt.job_table_store().jobs()) {
       if (!should_keep_stopped || job.state == job::State::Running) {
         ids.push(job.id);
       }
     }
 
     for (let const id : ids)
-      cxt.remove_job(id);
+      cxt.job_table_store().remove_job(id);
 
     return 0;
   }
 
   if (names.count() <= 1) {
-    let const job = cxt.most_recent_job();
+    let const job = cxt.job_table_store().most_recent_job();
     if (job == nullptr) throw Error{"There is no such job"};
-    cxt.remove_job(job->id);
+    cxt.job_table_store().remove_job(job->id);
     return 0;
   }
 
   for (usize i = 1; i < names.count(); i++) {
-    let const job = cxt.find_job_by_spec(names[i]);
-    if (job == nullptr || !cxt.remove_job(job->id)) {
+    let const job = cxt.job_table_store().find_job_by_spec(names[i]);
+    if (job == nullptr || !cxt.job_table_store().remove_job(job->id)) {
       let const loc = i < operand_locations.count() ? operand_locations[i]
                                                     : ec.source_location();
       throw ErrorWithLocation{loc, "'" + names[i] + "' is not a valid job"};

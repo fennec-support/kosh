@@ -137,7 +137,7 @@ fn Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     let pid = os::process{};
     if (!target.is_empty() && target[0] == '%') {
-      const job *const job = cxt.find_job_by_spec(target);
+      const job *const job = cxt.job_table_store().find_job_by_spec(target);
       if (job == nullptr) {
         report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
                                   StringView{"'"} + target +

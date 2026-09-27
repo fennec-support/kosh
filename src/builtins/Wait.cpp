@@ -48,19 +48,20 @@ fn Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   };
 
   if (args.count() == 1) {
-    LOG(Debug, "wait blocking on every job of %zu", cxt.jobs().count());
+    LOG(Debug, "wait blocking on every job of %zu",
+        cxt.job_table_store().jobs().count());
 
-    for (job &job : cxt.jobs()) {
-      status = cxt.wait_for_job_processes(job);
+    for (job &job : cxt.job_table_store().jobs()) {
+      status = cxt.job_table_store().wait_for_job_processes(job);
 
       if (do_was_interrupted()) {
-        cxt.forget_done_jobs();
+        cxt.job_table_store().forget_done_jobs();
 
         return status;
       }
     }
 
-    cxt.forget_done_jobs();
+    cxt.job_table_store().forget_done_jobs();
 
     return 0;
   }
@@ -71,10 +72,10 @@ fn Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     LOG(Debug, "wait blocking on target '%s'", target.c_str());
 
     if (!target.is_empty() && target[0] == '%') {
-      job *const matched = cxt.find_job_by_spec(target);
+      job *const matched = cxt.job_table_store().find_job_by_spec(target);
 
       if (matched != nullptr) {
-        status = cxt.wait_for_job_processes(*matched);
+        status = cxt.job_table_store().wait_for_job_processes(*matched);
       } else {
         report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
                                   target + ": no such job",
@@ -92,7 +93,7 @@ fn Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         /* An untracked pid returns 127 with no waitpid, since waiting the raw
            pid would throw on ECHILD and abort the command. */
         job *matched = nullptr;
-        for (job &job : cxt.jobs()) {
+        for (job &job : cxt.job_table_store().jobs()) {
           bool is_matching_process = job.process_id == parsed.value();
           for (let const process : job.earlier_pipeline_processes)
             if (os::process_has_id(process, parsed.value()))
@@ -103,18 +104,20 @@ fn Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           }
         }
         status =
-            matched != nullptr ? cxt.wait_for_job_processes(*matched) : 127;
+            matched != nullptr
+                ? cxt.job_table_store().wait_for_job_processes(*matched)
+                : 127;
       }
     }
 
     if (do_was_interrupted()) {
-      cxt.forget_done_jobs();
+      cxt.job_table_store().forget_done_jobs();
 
       return status;
     }
   }
 
-  cxt.forget_done_jobs();
+  cxt.job_table_store().forget_done_jobs();
 
   return status;
 }

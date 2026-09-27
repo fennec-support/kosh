@@ -87,11 +87,11 @@ fn Jobs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
-  cxt.update_jobs();
+  cxt.job_table_store().update_jobs();
 
   let const color_mode = should_color_jobs(cxt) ? jobs_color_mode::Colored
                                                 : jobs_color_mode::Plain;
-  let &jobs = cxt.jobs();
+  let &jobs = cxt.job_table_store().jobs();
 
   LOG(Debug, "jobs listing %zu registered jobs", jobs.count());
 
@@ -99,7 +99,8 @@ fn Jobs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   i32 status = 0;
   if (names.count() > 1) {
     for (usize a = 1; a < names.count(); a++) {
-      if (let const index = cxt.find_job_index_by_spec(names[a].view());
+      if (let const index =
+              cxt.job_table_store().find_job_index_by_spec(names[a].view());
           index.has_value())
       {
         selected.push(*index);
@@ -158,7 +159,7 @@ fn Jobs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
   ec.print_to_stdout(out);
 
-  cxt.forget_done_jobs();
+  cxt.job_table_store().forget_done_jobs();
   return status;
 }
 

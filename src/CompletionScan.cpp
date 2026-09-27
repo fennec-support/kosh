@@ -876,7 +876,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
 
     /* A bare kill operand completes the %job ids, the one live table here. */
     if (wants_operand) {
-      for (let const &background_job : context.jobs()) {
+      for (let const &background_job : context.job_table_store().jobs()) {
         let job_id = String{"%"};
         job_id += String::from(background_job.id, heap_allocator());
         do_push_matching(job_id.view());

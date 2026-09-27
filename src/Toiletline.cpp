@@ -689,7 +689,7 @@ fn kosh_wake_callback(int phase) -> int
       if (koshka::os::CHILD_STATE_CHANGED == 0) return 0;
       if (JOB_CONTEXT == nullptr || !JOB_CONTEXT->notify()) return 0;
       WAKE_NOTIFICATION_STASH =
-          JOB_CONTEXT->format_done_job_notifications("\r\n");
+          JOB_CONTEXT->job_table_store().format_done_job_notifications("\r\n");
       koshka::os::CHILD_STATE_CHANGED = 0;
       return WAKE_NOTIFICATION_STASH.is_empty() ? 0 : 1;
     }
@@ -2192,7 +2192,8 @@ static fn expand_prompt_escapes(StringView prompt, StringView user,
       if (should_use_color && status != 0) out += colors::ansi::RESET;
     } break;
     case 'j':
-      out += String::from(static_cast<i64>(context.jobs().count()),
+          out += String::from(
+              static_cast<i64>(context.job_table_store().jobs().count()),
                           koshka::heap_allocator());
       break;
     case 'D':

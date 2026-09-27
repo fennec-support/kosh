@@ -127,9 +127,9 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
           os::reclaim_controlling_terminal();
 
           if (was_stopped) {
-            const i32 id = cxt.register_stopped_job(child, command, status,
-                                                    os::process_id_of(child));
-            cxt.notify_stopped_job(id, command.view());
+            const i32 id = cxt.job_table_store().register_stopped_job(
+                child, command, status, os::process_id_of(child));
+            cxt.job_table_store().notify_stopped_job(id, command.view());
           }
           return status;
         }
@@ -220,9 +220,10 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
                                         : script_isolation::Isolated);
   }
   if (is_async) {
-    cxt.set_last_background_pid(os::process_id_of(p));
+    cxt.job_table_store().set_last_background_pid(os::process_id_of(p));
     let const process_group_id = os::process_id_of(p);
-    const i32 id = cxt.register_job(p, command, process_group_id);
+    const i32 id =
+        cxt.job_table_store().register_job(p, command, process_group_id);
     if (cxt.shell_is_interactive())
       koshka::print_error("[" + String::from(id, heap_allocator()) + "] " +
                           String::from(static_cast<u64>(os::process_id_of(p)),
@@ -242,9 +243,9 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
     foreground_status = os::wait_and_monitor_process(p);
   }
   if (was_stopped) {
-    const i32 id = cxt.register_stopped_job(p, command, foreground_status,
-                                            os::process_id_of(p));
-    cxt.notify_stopped_job(id, command.view());
+    const i32 id = cxt.job_table_store().register_stopped_job(
+        p, command, foreground_status, os::process_id_of(p));
+    cxt.job_table_store().notify_stopped_job(id, command.view());
   }
   /* A foreground child owns the terminal, so an interrupt reaches it alone and
      the shell reads only its status. That is right at a prompt, where the next
@@ -681,8 +682,9 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
 
   if (is_async) {
     if (last_child != KOSH_INVALID_PROCESS) {
-      cxt.set_last_background_pid(os::process_id_of(last_child));
-      const i32 id = cxt.register_pipeline_job(
+      cxt.job_table_store().set_last_background_pid(
+          os::process_id_of(last_child));
+      const i32 id = cxt.job_table_store().register_pipeline_job(
           children, last_child, job_command.view(), process_group_id);
       should_reap_children_on_unwind = false;
       if (cxt.shell_is_interactive())

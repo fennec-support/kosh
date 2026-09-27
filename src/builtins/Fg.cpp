@@ -42,12 +42,12 @@ fn Fg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   job *job = nullptr;
   if (args.count() > 1 && !args[1].is_empty()) {
-    job = cxt.find_job_by_spec(args[1]);
+    job = cxt.job_table_store().find_job_by_spec(args[1]);
     if (job == nullptr)
       throw ErrorWithDetails{"'" + args[1] + "' is not a valid job",
                              "Use a job spec like `%1`, `%+`, or `%name`"};
   } else {
-    job = cxt.most_recent_job();
+    job = cxt.job_table_store().most_recent_job();
   }
 
   if (job == nullptr)
@@ -59,7 +59,7 @@ fn Fg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
      without waiting on a pid that no longer exists. */
   if (job->state == job::State::Done) {
     let const done_status = job->last_status;
-    cxt.forget_done_jobs();
+    cxt.job_table_store().forget_done_jobs();
     return done_status;
   }
 
@@ -101,20 +101,20 @@ fn Fg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     os::give_controlling_terminal_to_process_group(job->process_group_id);
     defer { os::reclaim_controlling_terminal(); };
     do_resume_job();
-    status = cxt.wait_for_job_processes(*job, &was_stopped);
+    status = cxt.job_table_store().wait_for_job_processes(*job, &was_stopped);
   } else {
     do_resume_job();
-    status = cxt.wait_for_job_processes(*job, &was_stopped);
+    status = cxt.job_table_store().wait_for_job_processes(*job, &was_stopped);
   }
 
   if (was_stopped) {
     job->state = job::State::Stopped;
     job->stopped_status = status;
-    cxt.notify_stopped_job(job->id, job->command.view());
+    cxt.job_table_store().notify_stopped_job(job->id, job->command.view());
     return status;
   }
 
-  cxt.forget_done_jobs();
+  cxt.job_table_store().forget_done_jobs();
 
   return status;
 }
