@@ -330,6 +330,28 @@ public:
   fn take_snapshot() throws -> job_table_snapshot;
   fn restore_snapshot(job_table_snapshot snapshot) throws -> void;
 
+  fn last_background_pid() wontthrow -> Maybe<i64> &
+  {
+    return m_last_background_pid;
+  }
+  pure fn last_background_pid() const wontthrow -> const Maybe<i64> &
+  {
+    return m_last_background_pid;
+  }
+  fn jobs() wontthrow -> ArrayList<job> & { return m_jobs; }
+  pure fn jobs() const wontthrow -> const ArrayList<job> & { return m_jobs; }
+  fn detached_job_processes() wontthrow -> ArrayList<os::process> &
+  {
+    return m_detached_job_processes;
+  }
+  pure fn detached_job_processes() const wontthrow
+      -> const ArrayList<os::process> &
+  {
+    return m_detached_job_processes;
+  }
+  fn next_job_id() wontthrow -> i32 & { return m_next_job_id; }
+  pure fn next_job_id() const wontthrow -> i32 { return m_next_job_id; }
+
   fn foreground_program_title_buffer() wontthrow -> String &
   {
     return m_foreground_program_title_buffer;

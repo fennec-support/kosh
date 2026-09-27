@@ -103,12 +103,12 @@ fn EvalContext::reset_runtime_diagnostic_highlight_cache() wontthrow -> void
 
 fn RuntimeState::capture(const EvalContext &context) wontthrow -> RuntimeState
 {
-  return context.m_runtime;
+  return context.runtime_state();
 }
 
 fn RuntimeState::restore(EvalContext &context) const wontthrow -> void
 {
-  context.m_runtime = *this;
+  context.runtime_state() = *this;
 }
 
 fn EvalContext::end_command() wontthrow -> void
@@ -165,7 +165,7 @@ hot fn EvalContext::assign_variable(StringView name, StringView value) throws
   default: break;
   }
 
-  if (environment_store().m_confined_write_depth > 0) [[unlikely]] {
+  if (environment_store().confined_write_depth() > 0) [[unlikely]] {
     let const previous = lookup_shell_variable(name);
     let saved = Maybe<String>{};
     if (previous.has_value()) saved = String{previous->view()};
@@ -217,21 +217,21 @@ fn EvalContext::begin_confined_variable_writes() wontthrow -> usize
   LOG(Debug, "confining variable writes above mark %zu",
       environment_store().confined_write_log().count());
 
-  if (environment_store().m_confined_write_depth == 0) {
-    environment_store().m_confined_seconds_base = dynamic_runtime_store().seconds_base();
-    environment_store().m_confined_random_state = dynamic_runtime_store().random_state();
-    environment_store().m_was_confined_ignoreeof_enabled =
+  if (environment_store().confined_write_depth() == 0) {
+    environment_store().confined_seconds_base() = dynamic_runtime_store().seconds_base();
+    environment_store().confined_random_state() = dynamic_runtime_store().random_state();
+    environment_store().was_confined_ignoreeof_enabled() =
         runtime_state().option_is_enabled(shell_option_id::Ignoreeof);
   }
 
-  environment_store().m_confined_write_depth++;
+  environment_store().confined_write_depth()++;
   return environment_store().confined_write_log().count();
 }
 
 fn EvalContext::rollback_confined_variable_writes(usize mark) wontthrow -> void
 {
-  ASSERT(environment_store().m_confined_write_depth > 0);
-  environment_store().m_confined_write_depth--;
+  ASSERT(environment_store().confined_write_depth() > 0);
+  environment_store().confined_write_depth()--;
   LOG(Debug, "rewinding %zu confined variable writes",
       environment_store().confined_write_log().count() - mark);
 
@@ -262,12 +262,12 @@ fn EvalContext::rollback_confined_variable_writes(usize mark) wontthrow -> void
     environment_store().confined_write_log().pop_back();
   }
 
-  if (environment_store().m_confined_write_depth == 0) {
-    dynamic_runtime_store().seconds_base() = environment_store().m_confined_seconds_base;
-    dynamic_runtime_store().random_state() = environment_store().m_confined_random_state;
+  if (environment_store().confined_write_depth() == 0) {
+    dynamic_runtime_store().seconds_base() = environment_store().confined_seconds_base();
+    dynamic_runtime_store().random_state() = environment_store().confined_random_state();
     runtime_state().set_option(
         shell_option_id::Ignoreeof,
-        environment_store().m_was_confined_ignoreeof_enabled);
+        environment_store().was_confined_ignoreeof_enabled());
   }
 }
 

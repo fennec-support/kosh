@@ -1250,17 +1250,17 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
   append_subshell_bootstrap_text(body,
                                  execution_store().get_last_argument().view());
   body.push(static_cast<char>(
-      job_table_store().m_last_background_pid.has_value()));
-  if (job_table_store().m_last_background_pid.has_value())
+      job_table_store().last_background_pid().has_value()));
+  if (job_table_store().last_background_pid().has_value())
     append_subshell_bootstrap_i64(
-        body, *job_table_store().m_last_background_pid);
+        body, *job_table_store().last_background_pid());
   append_subshell_bootstrap_u64(body, dynamic_runtime_store().random_state());
   append_subshell_bootstrap_i64(body, dynamic_runtime_store().shell_start_time());
   append_subshell_bootstrap_i64(body, dynamic_runtime_store().seconds_base());
   append_subshell_bootstrap_u64(
       body, static_cast<u64>(expansion_store().getopts_char_index()));
   append_subshell_bootstrap_i64(body, expansion_store().getopts_last_optind());
-  append_subshell_bootstrap_i32(body, job_table_store().m_next_job_id);
+  append_subshell_bootstrap_i32(body, job_table_store().next_job_id());
   append_subshell_bootstrap_runtime(body, RuntimeState::capture(*this));
   append_subshell_bootstrap_u64(body, runtime_state().shopt_option_overrides);
   append_subshell_bootstrap_u64(body, runtime_state().shopt_option_values);
@@ -1327,8 +1327,8 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
   };
 
   append_subshell_bootstrap_u32(body,
-                                static_cast<u32>(job_table_store().m_jobs.count()));
-  for (let const &child_job : job_table_store().m_jobs) {
+      static_cast<u32>(job_table_store().jobs().count()));
+  for (let const &child_job : job_table_store().jobs()) {
     append_subshell_bootstrap_i32(body, child_job.id);
     append_subshell_bootstrap_text(body, child_job.command.view());
     append_subshell_bootstrap_i64(body, child_job.process_id);
@@ -1350,8 +1350,8 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
 
   append_subshell_bootstrap_u32(
       body,
-      static_cast<u32>(job_table_store().m_detached_job_processes.count()));
-  for (let const process : job_table_store().m_detached_job_processes)
+      static_cast<u32>(job_table_store().detached_job_processes().count()));
+  for (let const process : job_table_store().detached_job_processes())
     append_subshell_bootstrap_u32(body, do_reference_process(process));
 
   append_subshell_bootstrap_u64(body, trap_store().startup_ignored_signals());
@@ -1668,7 +1668,7 @@ fn EvalContext::apply_subshell_bootstrap(
   execution_store().restore_execution_string(has_execution_string,
                                              steal(execution_string));
   execution_store().set_last_argument(steal(last_argument));
-  job_table_store().m_last_background_pid = last_background_pid;
+  job_table_store().last_background_pid() = last_background_pid;
   dynamic_runtime_store().random_state() = random_state;
   dynamic_runtime_store().shell_start_time() = shell_start_time;
   dynamic_runtime_store().seconds_base() = seconds_base;
@@ -1692,10 +1692,10 @@ fn EvalContext::apply_subshell_bootstrap(
   }
   completion_store().specs() = steal(completion_specs);
   completion_store().default_spec() = steal(default_completion_spec);
-  job_table_store().m_jobs = steal(jobs);
-  job_table_store().m_detached_job_processes = steal(detached_processes);
+  job_table_store().jobs() = steal(jobs);
+  job_table_store().detached_job_processes() = steal(detached_processes);
   bootstrap.release_process_ownership();
-  job_table_store().m_next_job_id = next_job_id;
+  job_table_store().next_job_id() = next_job_id;
 }
 
 fn EvalContext::option_flags_string() const throws -> String

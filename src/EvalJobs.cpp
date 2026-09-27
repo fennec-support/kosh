@@ -296,7 +296,7 @@ fn JobTable::wait_for_job_processes(job &job, bool *was_stopped) throws -> i32
 
 fn EvalContext::jobs() wontthrow -> ArrayList<job> &
 {
-  return job_table_store().m_jobs;
+  return job_table_store().jobs();
 }
 
 fn EvalContext::find_job(i32 id) wontthrow -> job *

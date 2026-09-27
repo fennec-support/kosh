@@ -1832,12 +1832,41 @@ public:
   {
     return m_confined_write_log;
   }
+  fn confined_write_depth() wontthrow -> usize & { return m_confined_write_depth; }
+  pure fn confined_write_depth() const wontthrow -> usize
+  {
+    return m_confined_write_depth;
+  }
+  fn confined_seconds_base() wontthrow -> i64 &
+  {
+    return m_confined_seconds_base;
+  }
+  pure fn confined_seconds_base() const wontthrow -> i64
+  {
+    return m_confined_seconds_base;
+  }
+  fn confined_random_state() wontthrow -> u64 &
+  {
+    return m_confined_random_state;
+  }
+  pure fn confined_random_state() const wontthrow -> u64
+  {
+    return m_confined_random_state;
+  }
+  fn was_confined_ignoreeof_enabled() wontthrow -> bool &
+  {
+    return m_was_confined_ignoreeof_enabled;
+  }
+  pure fn was_confined_ignoreeof_enabled() const wontthrow -> bool
+  {
+    return m_was_confined_ignoreeof_enabled;
+  }
+
+private:
   usize m_confined_write_depth{0};
   i64 m_confined_seconds_base{0};
   u64 m_confined_random_state{0};
   bool m_was_confined_ignoreeof_enabled{false};
-
-private:
   ArrayList<environment_undo_entry> m_environment_undo_log{heap_allocator()};
   ArrayList<environment_undo_entry> m_confined_write_log{heap_allocator()};
 };
@@ -2457,21 +2486,21 @@ public:
 
   fn set_vi_mode(bool enabled) wontthrow -> void
   {
-    m_runtime.set_option(shell_option_id::Vi, enabled);
-    if (enabled) m_runtime.set_option(shell_option_id::Emacs, false);
+    runtime_state().set_option(shell_option_id::Vi, enabled);
+    if (enabled) runtime_state().set_option(shell_option_id::Emacs, false);
   }
   pure fn vi_mode() const wontthrow -> bool
   {
-    return m_runtime.option_is_enabled(shell_option_id::Vi);
+    return runtime_state().option_is_enabled(shell_option_id::Vi);
   }
   fn set_emacs_mode(bool enabled) wontthrow -> void
   {
-    m_runtime.set_option(shell_option_id::Emacs, enabled);
-    if (enabled) m_runtime.set_option(shell_option_id::Vi, false);
+    runtime_state().set_option(shell_option_id::Emacs, enabled);
+    if (enabled) runtime_state().set_option(shell_option_id::Vi, false);
   }
   pure fn emacs_mode() const wontthrow -> bool
   {
-    return m_runtime.option_is_enabled(shell_option_id::Emacs);
+    return runtime_state().option_is_enabled(shell_option_id::Emacs);
   }
 
   fn register_function(StringView name, const FunctionBodyHandle &body_storage,
@@ -2619,7 +2648,7 @@ public:
   pure fn should_run_err_trap() const wontthrow -> bool
   {
     return !trap_store().is_replaying_inherited_state() &&
-           (m_runtime.option_is_enabled(shell_option_id::Errtrace) ||
+           (runtime_state().option_is_enabled(shell_option_id::Errtrace) ||
             nesting_depth() <= trap_store().err_trap_active_depth());
   }
   /* How deep the current frame sits inside function calls, subshells, and
@@ -2634,7 +2663,7 @@ public:
   {
     return trap_store().has_debug_trap() && !runtime_state().is_posix_mode() &&
            !trap_store().is_replaying_inherited_state() &&
-           (m_runtime.option_is_enabled(shell_option_id::Functrace) ||
+           (runtime_state().option_is_enabled(shell_option_id::Functrace) ||
             nesting_depth() <= trap_store().debug_trap_active_depth());
   }
   /* The trap installed inside a frame keeps running once that frame is left.
@@ -2991,7 +3020,7 @@ public:
   fn set_shell_option_state(shell_option_id option, bool enabled) wontthrow
       -> void
   {
-    m_runtime.set_option(option, enabled);
+    runtime_state().set_option(option, enabled);
   }
   fn note_shell_option_mutation(shell_option_id option) wontthrow -> void
   {
@@ -2999,7 +3028,7 @@ public:
   }
   pure fn shell_option_state(shell_option_id option) const wontthrow -> bool
   {
-    return m_runtime.option_is_enabled(option);
+    return runtime_state().option_is_enabled(option);
   }
 
   /* Marks the unset strictness as the script's own set -u rather than a mood
@@ -3051,7 +3080,7 @@ public:
      than a mood seed, so a later mood switch leaves it in place. */
   pure fn koshkit_utilities_are_reachable() const wontthrow -> bool
   {
-    return m_runtime.koshkit_utilities_are_reachable();
+    return runtime_state().koshkit_utilities_are_reachable();
   }
   /* True while a test or [ command expands its arguments, so an unmatched glob
      there stays a silent literal and the probe answers false rather than
@@ -3559,11 +3588,11 @@ public:
   }
   fn activate_restricted_mode() wontthrow -> void
   {
-    m_runtime.set_option(shell_option_id::Restricted, true);
+    runtime_state().set_option(shell_option_id::Restricted, true);
   }
   pure fn restricted_enforcement_active() const wontthrow -> bool
   {
-    return m_runtime.option_is_enabled(shell_option_id::Restricted);
+    return runtime_state().option_is_enabled(shell_option_id::Restricted);
   }
   fn guard_restricted_path(StringView path, const SourceLocation &location,
                            restricted_path_use use) const throws -> void;
