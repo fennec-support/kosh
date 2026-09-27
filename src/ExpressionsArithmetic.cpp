@@ -1114,8 +1114,17 @@ fn Subshell::evaluate_impl(EvalContext &cxt) const throws -> i64
 
   /* A redirected wrapper hands down the span that reaches over its
      redirections, and the bare subshell answers for its own. */
-  let const pending_end_position = cxt.take_pending_subshell_end_position();
-  let const should_elide_fork = cxt.take_pending_subshell_fork_elision();
+  let const pending_end_position = [&] {
+    let const end_position = cxt.execution_store().pending_subshell_end_position();
+    cxt.execution_store().pending_subshell_end_position() = 0;
+    return end_position;
+  }();
+  let const should_elide_fork = [&] {
+    let const should_elide =
+        cxt.execution_store().should_elide_pending_subshell_fork();
+    cxt.execution_store().should_elide_pending_subshell_fork() = false;
+    return should_elide;
+  }();
   let const end_position = pending_end_position != 0
                                ? static_cast<usize>(pending_end_position)
                                : source_end_position();
@@ -1129,7 +1138,8 @@ fn Subshell::evaluate_impl(EvalContext &cxt) const throws -> i64
       redirected_body->child()->as_subshell() != nullptr;
 
   let const do_run_body = [&]() throws -> i64 {
-    if (should_elide_body_fork) cxt.set_pending_subshell_fork_elision();
+    if (should_elide_body_fork)
+      cxt.execution_store().should_elide_pending_subshell_fork() = true;
 
     return evaluate_subshell_in_process(body, cxt);
   };
@@ -1586,7 +1596,12 @@ fn RedirectedCommand::evaluate_status_impl(EvalContext &cxt) const throws
   LOG(Debug, "applying %zu redirections around the compound command",
       m_redirections.count());
 
-  let const should_elide_child_fork = cxt.take_pending_subshell_fork_elision();
+  let const should_elide_child_fork = [&] {
+    let const should_elide =
+        cxt.execution_store().should_elide_pending_subshell_fork();
+    cxt.execution_store().should_elide_pending_subshell_fork() = false;
+    return should_elide;
+  }();
 
   cxt.source_store().set_current_location(source_location());
 
@@ -1670,9 +1685,10 @@ fn RedirectedCommand::evaluate_status_impl(EvalContext &cxt) const throws
      that reaches over the redirections written after the closing
      parenthesis. */
   if (m_child->as_subshell() != nullptr) {
-    cxt.set_pending_subshell_end_position(
-        static_cast<u32>(source_end_position()));
-    if (should_elide_child_fork) cxt.set_pending_subshell_fork_elision();
+    cxt.execution_store().pending_subshell_end_position() =
+        static_cast<u32>(source_end_position());
+    if (should_elide_child_fork)
+      cxt.execution_store().should_elide_pending_subshell_fork() = true;
   }
 
   try {

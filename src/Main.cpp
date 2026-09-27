@@ -765,7 +765,8 @@ fn kosh_main(int argc, char **argv) -> int
   context.runtime_state().set_option(koshka::shell_option_id::Onecmd,
                                      FLAG_ONE_COMMAND.is_enabled());
   if (should_execute_commands)
-    context.set_execution_string(FLAG_COMMAND.get(0));
+    context.execution_store().set_execution_string(
+        koshka::String{koshka::heap_allocator(), FLAG_COMMAND.get(0)});
   context.startup_store().set_login_shell(is_login_shell);
   context.startup_store().set_custom_rcfile(koshka::selected_rcfile().has_value());
   if (is_restricted_shell) context.startup_store().request_restricted_shell();
@@ -1051,7 +1052,8 @@ fn kosh_main(int argc, char **argv) -> int
         should_quit = true;
       } else if (should_execute_commands && !FLAG_COMMAND.at_end()) {
         script_contents = FLAG_COMMAND.take_next();
-        context.set_execution_string(script_contents.view());
+        context.execution_store().set_execution_string(
+            koshka::String{koshka::heap_allocator(), script_contents.view()});
         LOG(Info, "taking the next -c command string, %zu bytes",
             script_contents.count());
         {

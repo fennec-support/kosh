@@ -962,7 +962,8 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             throw make_error_for_arg(ec, i,
                                      "Restricted mode cannot be disabled");
           }
-          if (enable) cxt.activate_restricted_mode();
+          if (enable)
+            cxt.runtime_state().set_option(shell_option_id::Restricted, true);
           continue;
         }
 

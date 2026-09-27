@@ -2848,10 +2848,6 @@ public:
     apply_strictness_for_mood();
   }
 
-  fn set_execution_string(StringView text) throws -> void
-  {
-    execution_store().set_execution_string(String{heap_allocator(), text});
-  }
   /* While listing makefile targets for completion, the bundled make parser
      leaves $(shell ...) unrun, so a tab never forks the makefile's commands and
      never blocks on a slow one. */
@@ -3076,36 +3072,6 @@ public:
     return m_job_table;
   }
 
-  /* The end of the source span a redirected wrapper holds for the subshell it
-     evaluates next. The text that subshell publishes reaches past its closing
-     parenthesis and over the redirections written after it. The subshell takes
-     the value and leaves the field clear. A subshell nested in that body
-     publishes its own span. */
-  fn set_pending_subshell_end_position(u32 end_position) wontthrow -> void
-  {
-    execution_store().pending_subshell_end_position() = end_position;
-  }
-  fn take_pending_subshell_end_position() wontthrow -> u32
-  {
-    let const end_position = execution_store().pending_subshell_end_position();
-    execution_store().pending_subshell_end_position() = 0;
-
-    return end_position;
-  }
-
-  fn set_pending_subshell_fork_elision() wontthrow -> void
-  {
-    execution_store().should_elide_pending_subshell_fork() = true;
-  }
-  fn take_pending_subshell_fork_elision() wontthrow -> bool
-  {
-    let const should_elide =
-        execution_store().should_elide_pending_subshell_fork();
-    execution_store().should_elide_pending_subshell_fork() = false;
-
-    return should_elide;
-  }
-
   fn sorted_variable_assignments() const throws
       -> SortedArrayList<String, order_comparator<String>>;
 
@@ -3270,11 +3236,8 @@ public:
   fn set_startup_finished() wontthrow -> void
   {
     startup_store().mark_startup_finished();
-    if (startup_store().is_restricted_shell()) activate_restricted_mode();
-  }
-  fn activate_restricted_mode() wontthrow -> void
-  {
-    runtime_state().set_option(shell_option_id::Restricted, true);
+    if (startup_store().is_restricted_shell())
+      runtime_state().set_option(shell_option_id::Restricted, true);
   }
   fn guard_restricted_path(StringView path, const SourceLocation &location,
                            restricted_path_use use) const throws -> void;
