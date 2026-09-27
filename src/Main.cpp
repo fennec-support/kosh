@@ -800,7 +800,8 @@ fn kosh_main(int argc, char **argv) -> int
   /* Mimicry is mirrored onto the context, since the execution path in Utils
      reads it there rather than the static flag. */
   context.runtime_state().set_mimicry(FLAG_MIMICRY.is_enabled());
-  context.set_monitor(should_be_interactive);
+  context.runtime_state().set_option(koshka::shell_option_id::Monitor,
+                                     should_be_interactive);
 
   /* BASH names the path used to invoke this shell, the symlink spelling such as
      /usr/local/bin/bash when kosh is symlinked to bash. */

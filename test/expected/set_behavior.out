@@ -36,6 +36,7 @@ nolog          	off
 failglob       	on
 extended-arithmetic	on
 koshkit        	off
+space-after-completion	off
 vi             	off
 emacs          	off
 posix          	off

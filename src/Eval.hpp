@@ -2449,16 +2449,6 @@ public:
 
   fn notify_done_jobs() throws -> void;
 
-  /* monitor mode is set -m, on by default in an interactive shell. It gates the
-     terminal handoff so a non-interactive run never touches the tty. */
-  fn set_monitor(bool enabled) wontthrow -> void;
-  pure fn monitor() const wontthrow -> bool;
-
-  /* notify mode is set -b. The prompt's wake hook reports a background job's
-     completion immediately. */
-  fn set_notify(bool enabled) wontthrow -> void;
-  pure fn notify() const wontthrow -> bool;
-
   fn set_vi_mode(bool enabled) wontthrow -> void
   {
     runtime_state().set_option(shell_option_id::Vi, enabled);
