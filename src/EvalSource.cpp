@@ -101,6 +101,10 @@ fn EvalContext::run_program_fallback(ExecContext &ec, mimic_mood mode,
   };
 
   let fallback_context = EvalContext{false, false, false, false};
+  fallback_context.arena_store().set_parse_arena(
+      arena_store().parse_arena());
+  fallback_context.arena_store().set_function_arena(
+      arena_store().function_arena());
   fallback_context.set_current_source(
       source_store().current_source(),
       String{heap_allocator(), source_store().current_origin().view()});

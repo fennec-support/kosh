@@ -2458,11 +2458,6 @@ public:
   {
     return m_completion_store;
   }
-  pure fn completion_specs() const wontthrow
-      -> const StringMap<completion_spec> &
-  {
-    return m_completion_store.specs();
-  }
   /* out_exit_status receives the function's return status, so the engine sees
      the 124 a dynamic loader returns to request a retry. */
   fn run_completion_function(StringView function_name,

@@ -85,7 +85,7 @@ static fn completion_specification_reusable_lines(const EvalContext &cxt) throws
 {
   let lines = String{heap_allocator()};
   let collected_names = ArrayList<String>{heap_allocator()};
-  cxt.completion_specs().for_each(
+  cxt.completion_store().specs().for_each(
       [&](StringView command, const completion_spec &) -> void {
         collected_names.push_managed(command);
       });

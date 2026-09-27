@@ -165,7 +165,8 @@ fn append_anomaly_report(String &output, EvalContext &cxt,
   for (let const &file : files) {
     if (file.use != os::process_file_use::Mapped) continue;
 
-    let const filename = Path{file.path.view(), allocator}.filename();
+    let const path = Path{file.path.view(), allocator};
+    let const filename = path.filename();
     let const shared_object_marker = filename.find_substring(".so");
     let const marker = filename.find_substring(".so.");
     if (file.is_deleted && (shared_object_marker.has_value() ||
