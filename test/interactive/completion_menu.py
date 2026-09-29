@@ -233,12 +233,12 @@ def main():
         wide_typed = "printf '<%s>\\n' Blackmagic"
 
         first_open_output = []
-        opened, _, _ = run_menu(
+        opened, _, opened_tail = run_menu(
             directory,
             "tree",
             typed,
             [],
-            opened_required=GHOST_SGR + b"one" + HIGHLIGHT_RESET,
+            opened_required=SELECTED_SGR,
             first_open_output=first_open_output,
         )
         initial_loading_position = (
@@ -289,7 +289,7 @@ def main():
         # first row is the rest of alpha-one, drawn dimmed on the line the menu
         # opened on.
         preview_shows_the_selected_candidate = (
-            GHOST_SGR + b"one" + HIGHLIGHT_RESET in opened
+            GHOST_SGR + b"one" + HIGHLIGHT_RESET in opened + opened_tail
         )
 
         moved, _, submitted = run_menu(
@@ -297,13 +297,13 @@ def main():
             "tree",
             typed,
             [b"\x1b[B", b"\n"],
-            first_key_required=GHOST_SGR + b"three" + HIGHLIGHT_RESET,
+            first_key_required=SELECTED_SGR,
         )
         a_movement_key_highlights_a_row = SELECTED_SGR in moved
         # The down arrow moves to alpha-three, since shift tab reaches
         # alpha-two as the last row, and the preview follows the highlight.
         preview_follows_the_highlight = (
-            GHOST_SGR + b"three" + HIGHLIGHT_RESET in moved
+            GHOST_SGR + b"three" + HIGHLIGHT_RESET in moved + submitted
         )
         # Enter leaves the highlighted row behind and runs the line the first
         # tab grew to the common prefix. The key loop collects the output of

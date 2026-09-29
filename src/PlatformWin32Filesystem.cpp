@@ -1241,10 +1241,18 @@ fn stat_filesystem(StringView path, filesystem_status &status) wontthrow -> bool
 {
   let const wide_path = utf8_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return false;
+  if (GetFileAttributesW(wide_path->begin()) == INVALID_FILE_ATTRIBUTES)
+    return false;
+  wchar_t volume_root[MAX_PATH + 1]{};
+  if (GetVolumePathNameW(wide_path->begin(), volume_root,
+                         countof(volume_root)) == 0)
+  {
+    return false;
+  }
   ULARGE_INTEGER available{};
   ULARGE_INTEGER total{};
   ULARGE_INTEGER free{};
-  if (GetDiskFreeSpaceExW(wide_path->begin(), &available, &total, &free) == 0)
+  if (GetDiskFreeSpaceExW(volume_root, &available, &total, &free) == 0)
     return false;
   constexpr u64 block_size = 512;
   status.block_size = block_size;
@@ -1258,9 +1266,9 @@ fn stat_filesystem(StringView path, filesystem_status &status) wontthrow -> bool
   DWORD serial_number = 0;
   DWORD component_length = 0;
   DWORD volume_flags = 0;
-  if (GetVolumeInformationW(wide_path->begin(), volume_name, MAX_PATH,
-                            &serial_number, &component_length, &volume_flags,
-                            filesystem_name, MAX_PATH) != 0)
+  if (GetVolumeInformationW(volume_root, volume_name, MAX_PATH, &serial_number,
+                            &component_length, &volume_flags, filesystem_name,
+                            MAX_PATH) != 0)
   {
     status.name_max = component_length;
     status.filesystem_id = serial_number;

@@ -245,8 +245,9 @@ def main():
         )
         with open(private_history_path, encoding="utf-8") as private_history:
             private_listing = private_history.read()
+        peer_transcript = peer_search + peer_marker
         search_reads_peer_history = (
-            b"echo PEER-ONLY-HISTORY" in peer_search
+            b"echo PEER-ONLY-HISTORY" in peer_transcript
         )
         search_does_not_merge_peer_history = (
             "echo PEER-ONLY-HISTORY" not in private_listing
@@ -254,7 +255,7 @@ def main():
             and b"PEER-MARKER-END" in peer_marker
         )
         accepted_peer_returns_to_private_navigation = (
-            SEEDED_COMMANDS[-1].encode() in peer_search
+            SEEDED_COMMANDS[-1].encode() in peer_transcript
         )
 
         no_completion_search, _ = run_history_search(

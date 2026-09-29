@@ -1438,11 +1438,9 @@ fn enumerate_users() throws -> ArrayList<String>
 {
   ArrayList<String> users{heap_allocator()};
   let passwd_path = StringView{"/etc/passwd"};
-#if !defined NDEBUG
   if (let const test_path = std::getenv("KOSH_TEST_PASSWD");
       test_path != nullptr)
     passwd_path = test_path;
-#endif
 
   let const contents = Path{passwd_path}.read_entire_file();
   if (!contents) return users;
