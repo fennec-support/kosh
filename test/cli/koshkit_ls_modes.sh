@@ -106,7 +106,7 @@ else
 fi
 echo "--- recursive ls interruption ---"
 if [ "${TARGET-}" != Linux ] || ! command -v timeout >/dev/null 2>&1; then
-  echo "ls-interrupt=skipped"
+  :
 else
   interrupt_root=$TEST_TEMP_DIRECTORY/ls-interrupt
   mkdir -p "$interrupt_root"
@@ -125,9 +125,9 @@ else
     "koshkit ls -R '$interrupt_root'" > "$interrupt_root/output" 2>&1
   interrupt_status=$?
   if [ "$interrupt_status" -eq 130 ]; then
-    echo "ls-interrupt=matched"
+    :
   else
-    echo "ls-interrupt=failed"
+    exit 1
   fi
 fi
 

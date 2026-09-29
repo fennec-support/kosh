@@ -1,5 +1,5 @@
 status=130
 1:1: error: Interrupted.
-     1 |  value=$(echo ready > "$1"; while :; do :; done)
-       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     1 |  value=$(echo ready > "$1"; (koshkit sleep 0.05; kill -INT "$$") & while :; do :; done)
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 clean-interrupt

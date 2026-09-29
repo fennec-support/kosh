@@ -16,6 +16,10 @@ if [ -n "$SKIP_REASON" ]; then
   exit 0
 fi
 
+if [ "$(uname -s)" = Darwin ]; then
+  export MallocNanoZone=0
+fi
+
 OUTPUT_DIRECTORY="$TEST_TEMP_DIRECTORY/results/interactive"
 mkdir -p "$OUTPUT_DIRECTORY"
 TEST_STATUS=0

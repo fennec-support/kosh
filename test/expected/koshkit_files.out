@@ -54,17 +54,14 @@ mv-interactive-no=old source=present
 mv-interactive-yes=new source=missing
 --- du -s nums.txt ---
 du-file-allocation=matched
-du-sparse-allocation=matched
 --- du with no operand lists every entry and the total ---
 du-order=descending
 du-recursion=incomplete
 --- du multiple roots ---
-4096  du-default/a
-4096  du-default/b
+du-multiple-roots=matched
 --- du equal-size roots ---
-4096  du-default/tie-a
-4096  du-default/tie-b
-du-hardlinks=deduplicated
+du-equal-roots=matched
+du-hardlinks=matched
 du-unreadable=ok
 --- basename ---
 libfoo

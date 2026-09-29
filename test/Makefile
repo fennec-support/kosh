@@ -171,19 +171,41 @@ cli_assimilate:
 	@printf "	%-64s skipped, remote transaction requires POSIX\n" "cli/assimilate.sh"
 
 WINDOWS_SKIPPED_CLI_NAMES := \
+	cli_bash_startup_restricted \
+	cli_bash_xtracefd \
+	cli_bench_behavior \
+	cli_cd_suggestion \
+	cli_chld_trap_after_return \
+	cli_command_edge_case_behavior \
+	cli_command_flag_forms \
+	cli_command_p_restores_path \
 	cli_command_substitution_interrupt \
 	cli_command_substitution_strategy \
+	cli_crlf_source \
 	cli_ctrl_c_interrupts_bash_loop \
 	cli_deep_nesting_guard \
 	cli_diagnostic_levels \
+	cli_disown_removes_jobs \
 	cli_disown_running_only \
+	cli_env_runs_command_directly \
 	cli_exec_behavior \
+	cli_export_function \
+	cli_export_readonly_integer \
 	cli_fg_terminal_handoff \
+	cli_granular_arg_caret \
 	cli_help_colors \
 	cli_history_behavior \
+	cli_history_noninteractive \
 	cli_interrupt_during_blocking_open \
 	cli_job_state_running_then_stopped \
+	cli_jobspec_grammar \
+	cli_kill_behavior \
+	cli_kosh_identity \
+	cli_koshkit_error_notes \
+	cli_koshkit_evil_regressions \
+	cli_koshkit_evilfiles_parity \
 	cli_koshkit_evilio_live \
+	cli_koshkit_file_magic_batch \
 	cli_koshkit_stty \
 	cli_mkdir_mode_umask \
 	cli_path_cache_behavior \

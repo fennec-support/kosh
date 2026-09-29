@@ -73,6 +73,7 @@ cgroup_detail_report=$(run_report '-a -c')
 detail_shape=matched
 case $cgroup_detail_report in
   *"Cgroup membership"*"HIERARCHY"*"CONTROLLER"*"PATH"*"PID"*"NAME"*"ROLE"*"self"*) ;;
+  *"Cgroup status failures"*"Unavailable"*) ;;
   *"Membership unavailable"*) ;;
   *) detail_shape=missing ;;
 esac

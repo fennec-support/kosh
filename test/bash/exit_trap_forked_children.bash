@@ -12,9 +12,10 @@ wait
 ( trap 'echo inner_async' EXIT; echo asy ) &
 wait
 
-coproc CO { trap 'echo co_action' EXIT; echo hi; }
+coproc CO { trap 'echo co_action' EXIT; echo hi; read -r acknowledgment; }
 read -r line <&"${CO[0]}"
 echo "got=$line"
+printf 'ready\n' >&"${CO[1]}"
 wait "$COPROC_PID" 2> /dev/null
 echo "co_status=$?"
 

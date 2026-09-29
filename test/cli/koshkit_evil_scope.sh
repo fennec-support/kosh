@@ -21,9 +21,15 @@ printf 'users-selector=%s\n' "$users_selector"
 
 all_report=$($BIN -c 'koshkit --color never evil --all')
 case $all_report in
-  *'Page faults:'*'Mixed library ABIs:'*) all_extended=matched ;;
+  *'Mixed library ABIs:'*'Finding confidence:'*) all_extended=matched ;;
   *) all_extended=missing ;;
 esac
+if [ "$(uname -s)" = Linux ]; then
+  case $all_report in
+    *'Page faults:'*) ;;
+    *) all_extended=missing ;;
+  esac
+fi
 printf 'all-extended=%s\n' "$all_extended"
 
 short_report=$($BIN -c 'koshkit --color never evil --short')

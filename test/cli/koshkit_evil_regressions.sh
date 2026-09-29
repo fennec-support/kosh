@@ -83,19 +83,18 @@ esac
 printf 'evilio-unavailable-sort=%s\n' "$evilio_unavailable_sort_status"
 
 evilio_live_sort_path=$TEST_TEMP_DIRECTORY/evilio-live-sort-report
-set -m
 "$BIN" -c \
-  'koshkit --color never evilio --ps --sort read --live=0.05 --cumulative=0.1' \
-  > "$evilio_live_sort_path" &
-evilio_live_sort_pid=$!
-set +m
-sleep 0.30
-if kill -0 "$evilio_live_sort_pid" 2> "$TEST_NULL_DEVICE"; then
-  kill -INT "$evilio_live_sort_pid"
-fi
-wait "$evilio_live_sort_pid"
+  '(attempt=0; while [ "$attempt" -lt 250 ]; do
+      if koshkit grep "READ/0.1s" "$1" > /dev/null 2>&1; then break; fi
+      koshkit sleep 0.02
+      attempt=$((attempt + 1))
+    done
+    koshkit sleep 0.1
+    kill -INT "$$") &
+   koshkit --color never evilio --ps --sort read --live=0.05 --cumulative=0.1' \
+  live "$evilio_live_sort_path" > "$evilio_live_sort_path"
 printf 'evilio-live-sort-status=%s\n' "$?"
-evilio_live_sort_report=$(< "$evilio_live_sort_path")
+evilio_live_sort_report=$(cat "$evilio_live_sort_path")
 case $evilio_live_sort_report in
   *'READ/0.1s'*'ctrl+c to exit'*) evilio_live_sort_update=matched ;;
   *) evilio_live_sort_update=wrong ;;
@@ -148,19 +147,18 @@ esac
 printf 'evilnet-ambiguous-sort=%s\n' "$evilnet_ambiguous_sort_status"
 
 evilnet_live_sort_path=$TEST_TEMP_DIRECTORY/evilnet-live-sort-report
-set -m
 "$BIN" -c \
-  'koshkit --color never evilnet --traffic --sort tx --live=0.05 --cumulative=0.1' \
-  > "$evilnet_live_sort_path" &
-evilnet_live_sort_pid=$!
-set +m
-sleep 0.30
-if kill -0 "$evilnet_live_sort_pid" 2> "$TEST_NULL_DEVICE"; then
-  kill -INT "$evilnet_live_sort_pid"
-fi
-wait "$evilnet_live_sort_pid"
+  '(attempt=0; while [ "$attempt" -lt 250 ]; do
+      if koshkit grep "TX/0.1s" "$1" > /dev/null 2>&1; then break; fi
+      koshkit sleep 0.02
+      attempt=$((attempt + 1))
+    done
+    koshkit sleep 0.1
+    kill -INT "$$") &
+   koshkit --color never evilnet --traffic --sort tx --live=0.05 --cumulative=0.1' \
+  live "$evilnet_live_sort_path" > "$evilnet_live_sort_path"
 printf 'evilnet-live-sort-status=%s\n' "$?"
-evilnet_live_sort_report=$(< "$evilnet_live_sort_path")
+evilnet_live_sort_report=$(cat "$evilnet_live_sort_path")
 case $evilnet_live_sort_report in
   *'TX/0.1s'*'ctrl+c to exit'*) evilnet_live_sort_update=matched ;;
   *) evilnet_live_sort_update=wrong ;;
@@ -227,30 +225,16 @@ esac
 printf 'evilps-sampled-cpu-unit=%s\n' "$evilps_sampled_cpu_unit"
 
 evilps_live_path=$TEST_TEMP_DIRECTORY/evilps-live-report
-set -m
-"$BIN" -c 'koshkit --color never evilps --cpu --show-pids --live=0.05 --cumulative=0.1 -1' \
-  > "$evilps_live_path" &
-evilps_live_pid=$!
-set +m
-evilps_live_attempt=0
-while [ ! -s "$evilps_live_path" ] && [ "$evilps_live_attempt" -lt 250 ]; do
-  sleep 0.02
-  evilps_live_attempt=$((evilps_live_attempt + 1))
-done
-evilps_live_sample_attempt=0
-while [ "$evilps_live_sample_attempt" -lt 150 ]; do
-  evilps_live_report=$(cat "$evilps_live_path")
-  case $evilps_live_report in
-    *'CPU '*'%') break ;;
-  esac
-  if ! kill -0 "$evilps_live_pid" 2> "$TEST_NULL_DEVICE"; then break; fi
-  sleep 0.02
-  evilps_live_sample_attempt=$((evilps_live_sample_attempt + 1))
-done
-if kill -0 "$evilps_live_pid" 2> "$TEST_NULL_DEVICE"; then
-  kill -INT "$evilps_live_pid"
-fi
-wait "$evilps_live_pid"
+"$BIN" -c \
+  '(attempt=0; while [ "$attempt" -lt 250 ]; do
+      if koshkit grep "CPU .*%" "$1" > /dev/null 2>&1; then break; fi
+      koshkit sleep 0.02
+      attempt=$((attempt + 1))
+    done
+    koshkit sleep 0.1
+    kill -INT "$$") &
+   koshkit --color never evilps --cpu --show-pids --live=0.05 --cumulative=0.1 -1' \
+  live "$evilps_live_path" > "$evilps_live_path"
 printf 'evilps-live-status=%s\n' "$?"
 evilps_live_lines=$(wc -l < "$evilps_live_path")
 if [ "$evilps_live_lines" -ge 2 ]; then
@@ -259,7 +243,7 @@ else
   evilps_live_refresh=wrong
 fi
 printf 'evilps-live-refresh=%s\n' "$evilps_live_refresh"
-evilps_live_report=$(< "$evilps_live_path")
+evilps_live_report=$(cat "$evilps_live_path")
 case $evilps_live_report in
   *'ctrl+c to exit. cumulative stats over 0.1s every 0.05s'*)
     evilps_live_controls=matched

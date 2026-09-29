@@ -103,13 +103,9 @@ if [ "${TARGET:-$(uname -s)}" = Linux ]; then
   du_sparse_output=$("$BIN" -c 'koshkit du -s du-sparse')
   set -- $du_sparse_output
   du_sparse_blocks=$("$BIN" -c 'koshkit stat -c %b du-sparse')
-  if [ "$1" -eq "$((du_sparse_blocks * 512))" ]; then
-    echo "du-sparse-allocation=matched"
-  else
-    echo "du-sparse-allocation=wrong"
+  if [ "$1" -ne "$((du_sparse_blocks * 512))" ]; then
+    exit 1
   fi
-else
-  echo "du-sparse-allocation=skipped"
 fi
 mkdir -p du-default/sub
 printf a > du-default/a
@@ -148,19 +144,43 @@ else
   echo "du-recursion=incomplete"
 fi
 echo "--- du multiple roots ---"
-"$BIN" -c 'koshkit du -s du-default/a du-default/b'
+du_multiple_roots=$("$BIN" -c 'koshkit du -s du-default/a du-default/b')
+set -- $du_multiple_roots
+du_a_blocks=$("$BIN" -c 'koshkit stat -c %b du-default/a')
+du_b_blocks=$("$BIN" -c 'koshkit stat -c %b du-default/b')
+if [ "$#" -eq 4 ] && [ "$1" -eq "$((du_a_blocks * 512))" ] &&
+  [ "$2" = du-default/a ] && [ "$3" -eq "$((du_b_blocks * 512))" ] &&
+  [ "$4" = du-default/b ]; then
+  echo "du-multiple-roots=matched"
+else
+  echo "du-multiple-roots=wrong"
+fi
 echo "--- du equal-size roots ---"
-"$BIN" -c 'koshkit du -s du-default/tie-a du-default/tie-b'
+du_equal_roots=$("$BIN" -c 'koshkit du -s du-default/tie-a du-default/tie-b')
+set -- $du_equal_roots
+du_tie_blocks=$("$BIN" -c 'koshkit stat -c %b du-default/tie-a')
+if [ "$#" -eq 4 ] && [ "$1" -eq "$((du_tie_blocks * 512))" ] &&
+  [ "$2" = du-default/tie-a ] && [ "$3" -eq "$1" ] &&
+  [ "$4" = du-default/tie-b ]; then
+  echo "du-equal-roots=matched"
+else
+  echo "du-equal-roots=wrong"
+fi
 mkdir du-links
 printf x > du-links/a
 ln du-links/a du-links/b
 du_links_report=$d/du-links.out
 "$BIN" -c 'koshkit du -s du-links/a du-links/b' > "$du_links_report"
 du_link_line_count=$(wc -l < "$du_links_report")
-if [ "$du_link_line_count" -eq 1 ]; then
-  echo "du-hardlinks=deduplicated"
+if [ "${TARGET-}" = Windows_NT ]; then
+  expected_link_line_count=2
 else
-  echo "du-hardlinks=repeated"
+  expected_link_line_count=1
+fi
+if [ "$du_link_line_count" -eq "$expected_link_line_count" ]; then
+  echo "du-hardlinks=matched"
+else
+  echo "du-hardlinks=wrong"
 fi
 mkdir unreadable
 touch unreadable/entry

@@ -722,12 +722,6 @@
   Unquoted "LINK_MAX"
 ]
 [Word
-  Unquoted "MAX_CANON"
-]
-[Word
-  Unquoted "MAX_INPUT"
-]
-[Word
   Unquoted "NAME_MAX"
 ]
 [Word
@@ -780,9 +774,6 @@
 ]
 [Word
   Unquoted "_POSIX_TIMESTAMP_RESOLUTION"
-]
-[Word
-  Unquoted "_POSIX_VDISABLE"
 ]
 [Word
   Unquoted "do"
