@@ -767,7 +767,7 @@ fn wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
   loop
   {
     changed_pid = waitpid(pid, &status, wait_flags);
-    /* A signal interrupted the wait. Retry instead of failing. */
+    /* Retry waitpid after a signal interrupts it. */
     if (changed_pid == -1 && errno == EINTR) {
       continue;
     }

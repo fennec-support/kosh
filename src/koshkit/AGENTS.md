@@ -1,6 +1,6 @@
 # Koshkit utility guidance
 
-## Reuse the utility framework
+## Use shared utility helpers
 
 Search `src/koshkit`, `Koshkit.hpp`, and `Koshkit.cpp` before adding behavior.
 Existing flag types, parsers, path helpers, stream helpers, and diagnostics

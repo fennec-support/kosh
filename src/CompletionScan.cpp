@@ -1108,8 +1108,8 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
         context.unset_shell_variable("COLUMNS");
     }
   };
-  /* The surface name wins when it has a spec of its own, otherwise it resolves
-     through an alias and a symlink. */
+  /* A command's own completion spec takes precedence over specs reached through
+     aliases and symlinks. */
   const completion_spec *spec = context.completion_store().lookup_spec(command);
   String resolved_command{completion_allocator()};
   if (spec == nullptr &&

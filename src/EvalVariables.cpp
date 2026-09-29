@@ -421,8 +421,8 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
 
   if (first_byte >= '0' && first_byte <= '9') {
     if (name.is_all_decimal_digits()) {
-      /* A positional beyond the count is unset rather than empty, so
-         ${1-default} takes its default. */
+      /* A positional beyond the count is unset, so ${1-default} uses its
+         default. */
       if (name.count() > 9) return None;
       let const parsed_index = name.to<i64>();
       if (parsed_index.is_error()) return None;

@@ -311,8 +311,8 @@ static fn report_unresolved_stage(EvalContext &cxt,
 
   show_message(stage.get_unresolved_diagnostic());
 
-  /* The backtrace belongs to the message, a deferred one would surface after
-     the descriptor is restored and land on the shell's own stream. */
+  /* Print the backtrace before restoring the descriptor so it uses the
+     message's stream. */
   cxt.print_source_backtrace(stage.source_location(), !saved.is_dup2_ok);
 }
 

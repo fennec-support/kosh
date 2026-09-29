@@ -194,8 +194,8 @@ pure fn is_runtime_dynamic_variable_name(StringView name) wontthrow -> bool;
 pure fn is_bash_only_dynamic_variable_name(StringView name) wontthrow -> bool;
 pure fn is_process_dynamic_variable_name(StringView name) wontthrow -> bool;
 
-/* A pending non-local jump the evaluator carries instead of throwing, consumed
-   at the matching boundary or left pending for an outer node. */
+/* The evaluator carries a non-local jump until a matching boundary consumes it.
+   Otherwise, the jump remains pending for an outer node. */
 struct control_flow
 {
   enum class Kind : u8

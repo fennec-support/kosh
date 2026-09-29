@@ -2314,8 +2314,8 @@ The interactive selector draws a menu of the candidates below the prompt. The
 down arrow moves to the next row, the up arrow moves back, Tab accepts the
 highlighted row, and Escape or Ctrl\-G closes the menu and restores the line it
 opened on. Enter closes the menu and runs the line as it stands. The highlighted
-row is not accepted. A first row names the active source and lists the keys it
-answers beside it, reading
+row is not accepted. A first row names the active source and shows the available
+keys beside it, reading
 .B selecting completions
 for the candidates of a token and
 .B incremental history search
@@ -2327,9 +2327,9 @@ A printable key is inserted into the token, and the menu is drawn again from the
 candidates that still match. A candidate matches when the token opens it, when
 the token appears inside it whole, or when the bytes of the token appear inside
 it in order. The three kinds are drawn in that order, and each kind keeps the
-order the candidates arrived in. Letters are compared without case. The
-narrowing reads the list the search last produced. The file system and the
-history are not searched again. Backspace erases the last character of the token
+order the candidates arrived in. Letters are compared without case. Narrowing
+filters the most recent search results. The file system and history are not
+searched again. Backspace erases the last character of the token
 and widens the list again. A search that matches nothing keeps the menu open on
 a dimmed row reading
 .BR "no matches, erase to widen the search" ,
@@ -2361,8 +2361,8 @@ Each offered entry is drawn with the syntax colors the line itself receives. The
 selected row is drawn plain under its reverse video. Typing narrows the list,
 and an accepted row replaces the whole line. The external selector receives the
 same entries, and the line it prints replaces the whole line. The plain selector
-keeps the incremental search inside the editor and answers the keys the menu
-answers. The down arrow and Ctrl\-R step back to an older match, the up arrow
+keeps the incremental search inside the editor and accepts the same keys as the
+menu. The down arrow and Ctrl\-R step back to an older match, the up arrow
 and Ctrl\-F step forward to a newer one, Enter or Tab accepts the match without
 running it, and Escape or Ctrl\-G cancels the search and restores the preceding
 line state. A history that matches nothing leaves the line alone.

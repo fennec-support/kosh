@@ -1644,9 +1644,9 @@ static fn source_file(
 
   LOG(Info, "sourcing '%s', %zu bytes", path.c_str(), contents->count());
 
-  /* run_source parses into the active arena rather than resetting it, since a
-     set --init-moods inside a sourced rc reaches here while that rc's tree is
-     live and a reset would free the node mid-walk. */
+  /* run_source keeps the active arena because a sourced rc may run
+     set --init-moods while its syntax tree is still in use. Resetting the arena
+     then would free the current node. */
   unused(ast_arena);
   context.run_source(*contents, path.view(), /*call_site=*/None, path.view(),
                      nullptr, nullptr, return_handling::Consume);

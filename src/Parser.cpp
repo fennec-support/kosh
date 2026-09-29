@@ -397,8 +397,7 @@ cold fn Parser::record_parse_error(
       ArrayList<source_fix>{heap_allocator()}});
 }
 
-/* Parse every top-level command, recovering from a syntax error instead of
-   aborting at the first. */
+/* Parse every top-level command and recover after syntax errors. */
 cold fn Parser::construct_ast(
     ArrayList<String> &errors, EvalContext *context,
     ArrayList<source_diagnostic> *diagnostic_sink) throws -> Expression *

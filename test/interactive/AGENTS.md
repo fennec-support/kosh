@@ -3,8 +3,8 @@ Interactive pty harnesses
 
 These checks cover behavior that needs a controlling terminal.
 
-Build with `make MODE=dbg`, then run a script with an optional binary path. The
-main test suite discovers every `interactive/*.py` script when Python is
+Build Kosh with `make MODE=dbg`, then run a script with an optional binary path.
+The main test suite discovers every `interactive/*.py` script when Python is
 available.
 
 `calc_history.py` checks that calc expressions stay out of the shell history.

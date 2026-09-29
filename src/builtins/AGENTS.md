@@ -1,6 +1,6 @@
 # Builtin guidance
 
-## Reuse the builtin framework
+## Use shared builtin helpers
 
 Search `src/builtins`, `Builtin.hpp`, and `Builtin.cpp` before adding behavior.
 An existing builtin, flag type, parser option, diagnostic helper, or execution

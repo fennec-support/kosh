@@ -770,9 +770,9 @@ fn kosh_main(int argc, char **argv) -> int
   context.startup_store().set_login_shell(is_login_shell);
   context.startup_store().set_custom_rcfile(koshka::selected_rcfile().has_value());
   if (is_restricted_shell) context.startup_store().request_restricted_shell();
-  /* The startup files source with strictness off, since they read unset
-     variables such as $BASH_VERSION on the /etc/profile path. The session
-     strictness is applied at the seam below once the config has loaded. */
+  /* Startup files run with strictness off because /etc/profile may read unset
+     variables such as $BASH_VERSION. Session strictness applies after the
+     configuration loads. */
   context.runtime_state().set_mood(session_mood);
   context.runtime_state().set_tab_selector(koshka::resolve_session_tab_selector());
   context.runtime_state().set_extended_arithmetic(
@@ -780,8 +780,7 @@ fn kosh_main(int argc, char **argv) -> int
       FLAG_EXTENDED_ARITHMETIC.is_enabled());
   if (FLAG_EXTENDED_ARITHMETIC.is_enabled())
     context.runtime_state().set_extended_arithmetic_set_explicitly(true);
-  /* The CLI -u is the user's own ask, so the -W downgrade leaves it fatal and
-     the mood seam keeps it on. */
+  /* An explicit CLI -u remains fatal after a -W downgrade or mood change. */
   context.runtime_state().set_error_unset(FLAG_NOUNSET.is_enabled());
   if (FLAG_NOUNSET.is_enabled())
     context.runtime_state().set_error_unset_set_explicitly(true);
@@ -910,8 +909,8 @@ fn kosh_main(int argc, char **argv) -> int
   koshka::Maybe<usize> history_event_number = koshka::None;
   koshka::history_expansion_state history_expansion_state{};
 
-  /* The path map is reset rather than seeded here, since the eager scan pays
-     off only in interactive mode. */
+  /* The path map starts empty because eager scanning helps only in interactive
+     mode. */
   koshka::os::set_default_signal_handlers(
       should_be_interactive ? koshka::os::signal_profile::Interactive
                             : koshka::os::signal_profile::NonInteractive);

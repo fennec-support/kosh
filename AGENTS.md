@@ -50,8 +50,8 @@ changes update this file.
 - Declarations from an `Internal` source use `koshka::internal` or the owning
   namespace followed by `internal`.
 - `src/Toiletline.cpp` defines the vendored editor configuration macros itself
-  and cannot include `src/Toiletline.hpp`. A declaration that source must see
-  belongs in a light header such as `src/ToiletlineHistory.hpp`.
+  and cannot include `src/Toiletline.hpp`. Declarations needed by that source
+  belong in a light header such as `src/ToiletlineHistory.hpp`.
 - Each shell loads history once at startup and then keeps a private branch with
   session-local event numbers. Normal prompts and accepted-command appends do
   not import peer records. Only explicit history synchronization replaces the
@@ -102,10 +102,9 @@ changes update this file.
 - Descriptor-rebinding wrappers increment the descriptor epoch. Cached color
   decisions refresh against it. Forks, process groups, filesystems, and processor
   counts also use platform wrappers.
-- A routed platform fragment is included into `src/Platform.cpp` and owns no
-  object of its own. Compile such a fragment through `Platform.o` of the active
-  target and mode. A direct compile of one answers with spurious out-of-scope
-  errors.
+- A routed platform fragment is included in `src/Platform.cpp` and owns no
+  object of its own. Compile it through `Platform.o` for the active target and
+  mode. Compiling a fragment directly produces unrelated scope errors.
 
 ## Completion and language server
 
@@ -120,8 +119,8 @@ changes update this file.
   typed.
 - Command completion reads keywords, builtins, bundled utilities, functions,
   aliases, and PATH. `KEYWORD_ENTRIES` is the sole keyword catalog. A `type`
-  operand reads the same catalog. An empty operand is answered only in the
-  listing mode.
+  operand reads the same catalog. Only the listing mode accepts an empty
+  operand.
 - Static koshkit completion names stay alphabetically sorted.
 - The language server wraps completion in `begin_explicit_completion` and loads
   command documentation lazily. Mood selection checks the shebang, language
@@ -154,10 +153,10 @@ changes update this file.
   the detector finds by name is matched by file name in the client.
 - Zed receives no identifier for Shell Script. The extension of the file
   selects the mood.
-- A client names no transport kind. The stdio kind appends a `--stdio` flag
-  that the shell rejects. An executable server with no transport talks over the
-  standard streams of its child. Read the argument construction of a client
-  library before a transport is selected.
+- A client specifies no transport kind. The stdio kind appends a `--stdio` flag
+  that the shell rejects. An executable server with no transport uses the
+  child's standard streams. Read the client library's argument construction
+  before selecting a transport.
 - The client log of a real editor session confirms an integration change. The
   VS Code family writes one file for each extension output channel under its
   own log directory.
@@ -233,10 +232,10 @@ changes update this file.
   installed.
 - Golden comparisons use the resolved host diff on POSIX and koshkit diff on
   Windows through `test/bin/diff`.
-- A compat fixture compares its standard output and status exactly. Its error
-  output compares only presence, because a kosh diagnostic is worded and located
-  its own way. A fixture whose error output is meant to agree byte for byte
-  carries `# compat-stderr: exact` on a line of its own.
+- A compatibility fixture compares standard output and status exactly. It
+  compares only the presence of error output because Kosh formats and locates
+  diagnostics independently. A fixture whose error output must agree byte for
+  byte carries `# compat-stderr: exact` on a line of its own.
 
 ## Workflow
 
