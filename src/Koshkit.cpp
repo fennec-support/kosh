@@ -241,7 +241,7 @@ fn run_as_multicall(StringView util_name, ArrayList<String> operands,
     args.push(steal(operand));
   }
 
-  let ec = ExecContext::from_resolved(
+  let ec = ExecContext::make_from_resolved(
       SourceLocation{0, source_length},
       ResolvedCommand::from_builtin(Builtin::Kind::Koshkit), steal(args),
       steal(arg_locations));

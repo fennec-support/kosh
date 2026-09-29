@@ -39,14 +39,14 @@ using namespace expressions::internal;
 
 static constexpr StringView BINDER_DESCRIPTIONS[] = {
     "The value is assigned here.",
-    "The name takes each word of the loop list in turn.",
-    "The name takes the menu entry the reader selects.",
-    "The value is the result of an arithmetic expression.",
-    "The value is a field read from input.",
-    "The value is a list of lines read from input.",
-    "The value is the option letter the parse reached.",
-    "The value is the formatted text.",
-    "The name is declared and carries no value here.",
+    "The loop assigns each word to the variable.",
+    "The select menu assigns the chosen entry to the variable.",
+    "The arithmetic expression sets the variable.",
+    "read assigns an input field to the variable.",
+    "mapfile assigns input lines to the variable.",
+    "getopts assigns the current option letter to the variable.",
+    "printf assigns formatted text to the variable.",
+    "This declaration does not assign a value.",
 };
 static_assert(countof(BINDER_DESCRIPTIONS) ==
               static_cast<usize>(assignment_binder::Declaration) + 1);

@@ -218,7 +218,7 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     command_args[0] = steal(dashed_argv0);
   }
 
-  let command = ExecContext::from_resolved(
+  let command = ExecContext::make_from_resolved(
       ec.source_location(), ResolvedCommand::from_program(program_path),
       steal(command_args), steal(command_arg_locations));
   if (ec.in_fd) command.in_fd = ec.in_fd.take();

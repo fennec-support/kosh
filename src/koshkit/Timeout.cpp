@@ -298,7 +298,7 @@ fn Timeout::execute(const ExecContext &ec, EvalContext &cxt,
     command_locations.push(operand_locations[operand_index]);
   }
 
-  let command = ExecContext::from_resolved(
+  let command = ExecContext::make_from_resolved(
       ec.source_location(), ResolvedCommand::from_program(*program_path),
       steal(command_args), steal(command_locations));
   let const source = cxt.source_store().current_source();
@@ -342,7 +342,7 @@ fn Timeout::execute(const ExecContext &ec, EvalContext &cxt,
       fallback_locations.push(operand_locations[operand_index]);
     }
 
-    let fallback = ExecContext::from_resolved(
+    let fallback = ExecContext::make_from_resolved(
         ec.source_location(),
         ResolvedCommand::from_program(Path{shell_path->view()}),
         steal(fallback_args), steal(fallback_locations));

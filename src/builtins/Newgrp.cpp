@@ -61,7 +61,7 @@ fn Newgrp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     command_arg_locations.push(ec.arg_location_at(i));
   }
 
-  let command = ExecContext::from_resolved(
+  let command = ExecContext::make_from_resolved(
       ec.source_location(), ResolvedCommand::from_program(found[0]),
       steal(command_args), steal(command_arg_locations));
 

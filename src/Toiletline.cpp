@@ -364,7 +364,7 @@ fn run_selector_program(koshka::EvalContext &context, koshka::StringView input,
 
   let arg_locations =
       koshka::ArrayList<koshka::SourceLocation>{koshka::heap_allocator()};
-  let selector = koshka::ExecContext::from_resolved(
+  let selector = koshka::ExecContext::make_from_resolved(
       koshka::SourceLocation{},
       koshka::ResolvedCommand::from_program(
           koshka::Path{selector_program.text()}),

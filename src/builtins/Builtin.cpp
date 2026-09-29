@@ -178,7 +178,7 @@ fn BuiltinBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
     forwarded.push_managed(ec.args()[i]);
     forwarded_locations.push(ec.arg_location_at(i));
   }
-  let sub = ExecContext::from_resolved(
+  let sub = ExecContext::make_from_resolved(
       ec.source_location(), ResolvedCommand::from_builtin(*target),
       steal(forwarded), steal(forwarded_locations));
   return execute_builtin(steal(sub), cxt);

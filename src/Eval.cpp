@@ -1693,18 +1693,18 @@ fn ExecContext::make_from(const SourceLocation &location, StringView source,
   return {location, steal(kind), steal(args), steal(arg_locations)};
 }
 
-fn ExecContext::from_resolved(SourceLocation location, ResolvedCommand kind,
-                              ArrayList<String> &&args,
-                              ArrayList<SourceLocation> &&arg_locations) throws
-    -> ExecContext
+fn ExecContext::make_from_resolved(
+    SourceLocation location, ResolvedCommand kind, ArrayList<String> &&args,
+    ArrayList<SourceLocation> &&arg_locations) throws -> ExecContext
 {
   ASSERT(args.count() > 0);
   return {steal(location), steal(kind), steal(args), steal(arg_locations)};
 }
 
-fn ExecContext::make_unresolved(const SourceLocation &location,
-                                i32 resolution_status,
-                                StringView diagnostic) throws -> ExecContext
+fn ExecContext::make_from_unresolved(const SourceLocation &location,
+                                     i32 resolution_status,
+                                     StringView diagnostic) throws
+    -> ExecContext
 {
   let args = ArrayList<String>{heap_allocator()};
   args.push(String{heap_allocator()});

@@ -53,17 +53,17 @@ public:
 
   /* Build directly from an already resolved builtin kind or program path,
      skipping the PATH search. A simple command memoizes its resolution. */
-  static fn from_resolved(SourceLocation location, ResolvedCommand kind,
-                          ArrayList<String> &&args,
-                          ArrayList<SourceLocation> &&arg_locations) throws
+  static fn make_from_resolved(SourceLocation location, ResolvedCommand kind,
+                               ArrayList<String> &&args,
+                               ArrayList<SourceLocation> &&arg_locations) throws
       -> ExecContext;
 
   /* The rendered diagnostic rides the context because a pipeline stage only
      learns its pipe end after every stage is built, and the message has to
      reach that end. */
-  static fn make_unresolved(const SourceLocation &location,
-                            i32 resolution_status, StringView diagnostic) throws
-      -> ExecContext;
+  static fn make_from_unresolved(const SourceLocation &location,
+                                 i32 resolution_status,
+                                 StringView diagnostic) throws -> ExecContext;
 
   /* Turn an already built context into an unresolved one, keeping the
      descriptors its redirections placed. A stage whose redirection fails part

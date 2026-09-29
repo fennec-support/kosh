@@ -906,7 +906,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
       let const *error_source = cxt.source_store().current_source();
       let const rendered = resolution_error.to_string(
           error_source != nullptr ? error_source->view() : StringView{}, &cxt);
-      let unresolved = ExecContext::make_unresolved(
+      let unresolved = ExecContext::make_from_unresolved(
           e->source_location(),
           static_cast<i32>(resolution_error.command_status()), rendered.view());
       bool was_unresolved_handed_off = false;

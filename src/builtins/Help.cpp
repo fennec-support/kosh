@@ -130,7 +130,7 @@ fn Help::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     forwarded.push(String{heap_allocator(), name.view()});
     forwarded.push(String{"--help"});
     let forwarded_locations = ArrayList<SourceLocation>{heap_allocator()};
-    let sub = ExecContext::from_resolved(
+    let sub = ExecContext::make_from_resolved(
         ec.source_location(), ResolvedCommand::from_builtin(*resolved),
         steal(forwarded), steal(forwarded_locations));
     execute_builtin(steal(sub), cxt);

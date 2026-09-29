@@ -526,7 +526,7 @@ fn run_cd_to_directory(EvalContext &cxt, const ExecContext &ec,
   cd_args.push(String{"cd"});
   cd_args.push(String{target});
   let cd_arg_locations = ArrayList<SourceLocation>{heap_allocator()};
-  let routed = ExecContext::from_resolved(
+  let routed = ExecContext::make_from_resolved(
       ec.source_location(), ResolvedCommand::from_builtin(Builtin::Kind::Cd),
       steal(cd_args), steal(cd_arg_locations));
   return execute_builtin(steal(routed), cxt);
