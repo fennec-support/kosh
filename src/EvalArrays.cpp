@@ -608,7 +608,7 @@ fn EvalContext::declare_local(StringView name, bool should_inherit_value) throws
   /* One binding per scope, the bash rule. A second local of the same name keeps
      the first's saved caller state, so the scope pop restores the true pre-call
      value and the unset peel finds one entry to consume. */
-  if (is_local_in_current_scope(name)) return;
+  if (scope_store().has_current_local(name)) return;
   LOG(All, "declaring '%.*s' local in scope depth %zu",
       static_cast<int>(name.length), name.data,
       scope_store().local_scope_depth());

@@ -228,13 +228,10 @@ static fn apply_directory_listing_order(cached_directory_listing &listing,
 #if !defined NDEBUG
     DEBUG_DIRECTORY_SORT_COUNT++;
 #endif
-    let sorted_entries = steal(listing.entries).make_sorted(
-        [](const Path::directory_child &left,
-           const Path::directory_child &right) {
-          return directory_entry_name_is_less(left.name.view(),
-                                              right.name.view());
-        });
-    listing.entries = steal(sorted_entries).into_array_list();
+    listing.entries.sort([](const Path::directory_child &left,
+                            const Path::directory_child &right) {
+      return directory_entry_name_is_less(left.name.view(), right.name.view());
+    });
     listing.is_sorted = true;
   }
 

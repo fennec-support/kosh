@@ -1034,31 +1034,6 @@ fn sync_path(StringView path, sync_mode mode) wontthrow -> bool
 
 namespace batch_internal {
 
-#if defined __linux__
-
-static fn fill_relative_file_status(const struct stat &info,
-                                    file_status &status) wontthrow -> void
-{
-  status.device_id = static_cast<u64>(info.st_dev);
-  status.special_device_id = static_cast<u64>(info.st_rdev);
-  status.file_id = static_cast<u64>(info.st_ino);
-  status.link_count = static_cast<u64>(info.st_nlink);
-  status.size = static_cast<u64>(info.st_size);
-  status.access_time = info.st_atim.tv_sec;
-  status.modification_time = info.st_mtim.tv_sec;
-  status.change_time = info.st_ctim.tv_sec;
-  status.blocks = static_cast<u64>(info.st_blocks);
-  status.mode = static_cast<u32>(info.st_mode);
-  status.owner_id = static_cast<u32>(info.st_uid);
-  status.group_id = static_cast<u32>(info.st_gid);
-  status.access_nanoseconds = static_cast<u32>(info.st_atim.tv_nsec);
-  status.modification_nanoseconds = static_cast<u32>(info.st_mtim.tv_nsec);
-  status.change_nanoseconds = static_cast<u32>(info.st_ctim.tv_nsec);
-  status.has_file_identity = true;
-}
-
-#endif
-
 static fn validate_batched_syscall(const batched_syscall &operation) wontthrow
     -> i32
 {
@@ -1180,48 +1155,28 @@ execute_batched_syscall_direct(const batched_syscall &operation,
       result.error_number = errno;
     return;
   case batched_syscall_id::LstatAt:
-#if defined __linux__
-    {
-      struct stat info{};
-      loop
-      {
-        if (::fstatat(batch_operation_access::get_directory_descriptor(operation),
-                      batch_operation_access::get_relative_name(operation),
-                      &info, AT_SYMLINK_NOFOLLOW) == 0)
-        {
-          fill_relative_file_status(
-              info, *batch_operation_access::get_status(operation));
-          return;
-        }
-        if (errno != EINTR || INTERRUPT_REQUESTED) {
-          result.error_number = errno;
-          return;
-        }
-      }
-    }
-#else
-    result.error_number = ENOTSUP;
-#endif
-    return;
   case batched_syscall_id::StatAt:
 #if defined __linux__
     {
-      struct stat info{};
-      loop
+    let const stat_flags = batch_operation_access::get_kind(operation) ==
+                                   batched_syscall_id::LstatAt
+                               ? AT_SYMLINK_NOFOLLOW
+                               : 0;
+    struct stat info{};
+    loop
+    {
+      if (::fstatat(batch_operation_access::get_directory_descriptor(operation),
+                    batch_operation_access::get_relative_name(operation), &info,
+                    stat_flags) == 0)
       {
-        if (::fstatat(batch_operation_access::get_directory_descriptor(operation),
-                      batch_operation_access::get_relative_name(operation),
-                      &info, 0) == 0)
-        {
-          fill_relative_file_status(
-              info, *batch_operation_access::get_status(operation));
-          return;
-        }
-        if (errno != EINTR || INTERRUPT_REQUESTED) {
-          result.error_number = errno;
-          return;
-        }
+        fill_file_status(info, *batch_operation_access::get_status(operation));
+        return;
       }
+      if (errno != EINTR || INTERRUPT_REQUESTED) {
+        result.error_number = errno;
+        return;
+      }
+    }
     }
 #else
     result.error_number = ENOTSUP;

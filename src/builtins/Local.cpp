@@ -110,12 +110,10 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (should_print_declaration && first_name >= args.count()) {
     let listing = String{cxt.scratch_allocator()};
-    if (cxt.scope_store().local_scope_depth() != 0) {
-      let const &local_scope = cxt.scope_store().current_local_scope();
+    let const &local_scope = cxt.scope_store().current_local_scope();
 
-      for (let const &binding : local_scope)
-        append_variable_declaration(cxt, binding.name.view(), listing);
-    }
+    for (let const &binding : local_scope)
+      append_variable_declaration(cxt, binding.name.view(), listing);
     ec.print_to_stdout(listing.view());
 
     return 0;
@@ -163,7 +161,7 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (should_print_declaration) {
       let line = String{cxt.scratch_allocator()};
-      if (!cxt.is_local_in_current_scope(identifier) ||
+      if (!cxt.scope_store().has_current_local(identifier) ||
           !append_variable_declaration(cxt, identifier, line))
       {
         report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
@@ -182,7 +180,7 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
        it fresh. */
     let const was_already_local =
         update_mode == assignment_update_mode::Append &&
-        cxt.is_local_in_current_scope(name);
+        cxt.scope_store().has_current_local(name);
     LOG(All, "local declaring '%.*s' in the function scope",
         static_cast<int>(name.length), name.data);
     cxt.declare_local(

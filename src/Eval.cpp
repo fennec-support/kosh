@@ -406,7 +406,7 @@ fn EvalContext::disable_ignoreeof() throws -> void
 fn EvalContext::peel_caller_local_binding(StringView name) throws -> bool
 {
   if (scope_store().local_scope_depth() < 2) return false;
-  if (is_local_in_current_scope(name)) return false;
+  if (scope_store().has_current_local(name)) return false;
 
   for (usize frame_index = scope_store().local_scope_depth() - 1;
        frame_index-- > 0;)
@@ -902,7 +902,8 @@ fn EvalContext::unexport_shell_variable(StringView name) throws -> void
   let const has_shell_binding =
       variable_store().shell_variables().find(name).has_value() ||
       variable_store().indexed_arrays().find(name).has_value() ||
-      variable_store().associative_names().contains(name) || is_local_in_current_scope(name) ||
+      variable_store().associative_names().contains(name) ||
+      scope_store().has_current_local(name) ||
       variable_requires_dynamic_lookup(name);
   let const environment_value =
       has_shell_binding ? Maybe<String>{} : os::get_environment_variable(name);
@@ -1434,36 +1435,6 @@ fn EvalContext::dynamic_array_element_text(
   }
 
   return String{result_allocator};
-}
-
-fn EvalContext::is_local_in_current_scope(StringView name) const wontthrow
-    -> bool
-{
-  if (scope_store().local_scope_depth() == 0) return false;
-  for (let const &binding : scope_store().current_local_scope())
-    if (binding.name.view() == name) return true;
-  return false;
-}
-
-struct local_scope_match_proc : MapFn
-{
-  static fn operator()(const ArrayList<local_binding> &scope, StringView name,
-                       bool &has_match) wontthrow -> ErrorOr<Ok>
-  {
-    for (let const &binding : scope)
-      if (binding.name.view() == name) has_match = true;
-    return Success;
-  }
-};
-
-fn EvalContext::is_local_in_any_active_scope(StringView name) const wontthrow
-    -> bool
-{
-  bool has_match = false;
-  let result = scope_store().for_each_local_scope<local_scope_match_proc>(
-      name, has_match);
-  ASSERT(!result.is_error());
-  return has_match;
 }
 
 ExecContext::ExecContext(SourceLocation location, ResolvedCommand &&kind,

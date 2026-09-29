@@ -471,7 +471,7 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
 
   if (cxt.is_integer_variable(name) || cxt.is_lowercase_variable(name) ||
       cxt.is_uppercase_variable(name) || cxt.is_readonly(name) ||
-      cxt.is_declared(name) || cxt.is_local_in_current_scope(name))
+      cxt.is_declared(name) || cxt.scope_store().has_current_local(name))
   {
     let attribute = String{cxt.scratch_allocator(), "-"};
     if (cxt.is_integer_variable(name)) attribute += 'i';

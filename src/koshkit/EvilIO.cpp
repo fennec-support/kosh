@@ -741,11 +741,10 @@ pure fn disk_io_counter_reset(const os::disk_io_status &before,
          after.write_retry_count < before.write_retry_count;
 }
 
-fn sort_disk_rows(ArrayList<disk_io_row> rows,
-                  Maybe<evilio_sort_key> sort_key) throws
-    -> ArrayList<disk_io_row>
+fn sort_disk_rows(ArrayList<disk_io_row> &rows,
+                  Maybe<evilio_sort_key> sort_key) throws -> void
 {
-  if (!sort_key.has_value()) return rows;
+  if (!sort_key.has_value()) return;
   let const do_compare = [sort_key](const disk_io_row &left,
                                     const disk_io_row &right) {
     let const left_value = disk_sort_value(left, *sort_key);
@@ -757,8 +756,7 @@ fn sort_disk_rows(ArrayList<disk_io_row> rows,
     }
     return left.name.view() < right.name.view();
   };
-  let sorted_rows = steal(rows).make_sorted(do_compare);
-  return steal(sorted_rows).into_array_list();
+  rows.sort(do_compare);
 }
 
 pure fn sort_key_needs_sample(evilio_sort_key key) wontthrow -> bool
@@ -1218,7 +1216,7 @@ fn run_live_disk_io(const ExecContext &ec, f64 window_seconds,
     rows.reserve(retained.count());
     for (let const &row : retained)
       rows.push(make_disk_window_row(row, window_start, frame_allocator));
-    rows = sort_disk_rows(steal(rows), sort_key);
+    sort_disk_rows(rows, sort_key);
 
     let output = String{frame_allocator};
     if (is_terminal) output += "\x1b[H\x1b[2J";
@@ -2010,7 +2008,7 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
         (FLAG_EVILIO_ALL.is_enabled() || FLAG_EVILIO_CUMULATIVE.is_enabled())
             ? report_sampling_mode::Rolling
             : report_sampling_mode::Instant);
-    disk_rows = sort_disk_rows(steal(disk_rows), sort_key);
+    sort_disk_rows(disk_rows, sort_key);
     append_disk_io_report(
         output, disk_rows, allocator, sample_duration_label.view(),
         (FLAG_EVILIO_ALL.is_enabled() || FLAG_EVILIO_CUMULATIVE.is_enabled())

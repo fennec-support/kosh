@@ -356,10 +356,16 @@ cold fn list_directory_for_batch(StringView dir, Allocator allocator) throws
     -> directory_batch_listing
 {
 #if defined __linux__
-  let const opened = open_file_descriptor(dir, file_open_mode::Read);
-  if (!opened.has_value()) return {None, None};
+  const String dir_string{allocator, dir};
+  int opened = -1;
+  loop
+  {
+    opened = ::open(dir_string.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+    if (opened >= 0 || errno != EINTR || INTERRUPT_REQUESTED) break;
+  }
+  if (opened < 0) return {None, None};
 
-  let directory = DirectoryReference{*opened};
+  let directory = DirectoryReference{opened};
   let children = list_directory_typed(directory.get(), allocator);
   if (!children.has_value()) return {None, None};
 

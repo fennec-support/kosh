@@ -96,11 +96,9 @@ static fn command_word_prefixes_any(StringView word,
     if (do_has_prefix(builtin_name.view())) return true;
 
   bool was_found = false;
-  context.function_store().definitions().for_each(
-      [&](StringView name, const FunctionBodyHandle &storage) throws {
-        unused(storage);
-        if (!was_found && do_has_prefix(name)) was_found = true;
-      });
+  context.function_store().for_each_name([&](StringView name) throws {
+    if (!was_found && do_has_prefix(name)) was_found = true;
+  });
   if (was_found) return true;
   context.scope_store().for_each_alias_name([&](StringView name) {
     if (!was_found && do_has_prefix(name)) was_found = true;

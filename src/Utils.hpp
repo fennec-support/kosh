@@ -431,8 +431,6 @@ struct git_status_result
   i32 behind_count{0};
 };
 
-fn git_ahead_behind_counts(Allocator allocator = heap_allocator()) throws
-    -> git_status_result;
 fn git_status(Allocator allocator = heap_allocator()) throws -> git_status_result;
 
 fn read_entire_standard_input() throws -> String;

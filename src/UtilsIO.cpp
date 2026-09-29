@@ -417,11 +417,6 @@ fn git_upstream_ref(const Path &git_dir, StringView branch_name) throws
   return result;
 }
 
-fn git_ahead_behind_counts(Allocator allocator) throws -> git_status_result
-{
-  return git_status(allocator);
-}
-
 fn git_status(Allocator allocator) throws -> git_status_result
 {
   let result = git_status_result{allocator};

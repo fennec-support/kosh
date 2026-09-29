@@ -411,11 +411,7 @@ collect_command_names(StringView token, EvalContext &context, Collector &collect
       do_add(name);
   }
 
-  context.function_store().definitions().for_each(
-      [&](StringView name, const FunctionBodyHandle &storage) throws {
-        unused(storage);
-        do_add(name);
-      });
+  context.function_store().for_each_name(do_add);
   context.scope_store().for_each_alias_name(do_add);
 
   let const &path_names = context.resolution_store().resolver().get_command_names(

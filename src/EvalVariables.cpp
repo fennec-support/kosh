@@ -341,7 +341,7 @@ hot fn EvalContext::write_dynamic_variable(StringView name,
     return false;
   /* A local declaration turns the name into an ordinary frozen variable for the
      length of the call, and the outer state keeps moving underneath it. */
-  if (is_local_in_any_active_scope(name)) return false;
+  if (scope_store().has_active_local(name)) return false;
 
   let const parsed = value.to<i64>();
   let const assigned = parsed.is_error() ? i64{0} : parsed.value();
@@ -450,7 +450,7 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
   if (is_bash_directory_stack_special(name))
     return get_bash_directory_stack_element(0, heap_allocator());
 
-  if (is_local_in_current_scope(name)) return koshka::None;
+  if (scope_store().has_current_local(name)) return koshka::None;
 
   /* The store lookup above wins, so IFS= reads back empty while the unset
      default reads back space-tab-newline, keeping the IFS save/restore idiom

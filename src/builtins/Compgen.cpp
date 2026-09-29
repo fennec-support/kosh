@@ -392,11 +392,7 @@ static fn run_compgen_actions(EvalContext &cxt, u32 action_mask,
   }
 
   if (do_wants(compgen_action::Function)) {
-    cxt.function_store().definitions().for_each(
-        [&](StringView name, const FunctionBodyHandle &storage) throws {
-          unused(storage);
-          do_push_name(name);
-        });
+    cxt.function_store().for_each_name(do_push_name);
   }
 
   if (do_wants(compgen_action::Group)) {

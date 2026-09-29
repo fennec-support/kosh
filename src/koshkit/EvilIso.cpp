@@ -835,12 +835,10 @@ fn append_cgroup_failure_report(
     cells.push({"Unavailable", colors::ansi::BOLD_YELLOW});
     table.add_row(cells);
   }
-  if (has_failure)
+  if (has_failure || fallback == cgroup_failure_fallback::ReportUnavailable) {
     append_titled_report_table(output, "Cgroup status failures", table,
                                should_color);
-  else if (fallback == cgroup_failure_fallback::ReportUnavailable)
-    append_titled_report_table(output, "Cgroup status failures", table,
-                               should_color);
+  }
 }
 
 fn append_cgroup_report(String &output, bool should_color,

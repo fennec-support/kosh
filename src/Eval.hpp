@@ -578,21 +578,6 @@ private:
   u32 m_suppressed_warnings{0};
 };
 
-class MapFn
-{
-public:
-  template <typename Callback, typename... Arguments>
-  static fn operator()(const ArrayList<local_binding> &scope,
-                       Arguments &...arguments) wontthrow -> ErrorOr<Ok>
-  {
-    static_assert(__is_base_of(MapFn, Callback));
-    return Callback::operator()(scope, arguments...);
-  }
-
-private:
-  MapFn() = delete;
-};
-
 class ScopeStore
 {
 public:
@@ -628,17 +613,21 @@ public:
     ASSERT(m_local_scope_depth <= m_local_scopes.count());
     return m_local_scopes[m_local_scope_depth - 1];
   }
-  template <typename Callback, typename... Arguments>
-  fn for_each_local_scope(Arguments &...arguments) const wontthrow
-      -> ErrorOr<Ok>
+  pure fn has_current_local(StringView name) const wontthrow -> bool
+  {
+    if (m_local_scope_depth == 0) return false;
+    for (let const &binding : current_local_scope())
+      if (binding.name.view() == name) return true;
+    return false;
+  }
+  pure fn has_active_local(StringView name) const wontthrow -> bool
   {
     ASSERT(m_local_scope_depth <= m_local_scopes.count());
     for (usize frame_index = m_local_scope_depth; frame_index-- > 0;) {
-      let result = MapFn::operator()<Callback>(m_local_scopes[frame_index],
-                                               arguments...);
-      if (result.is_error()) return result;
+      for (let const &binding : m_local_scopes[frame_index])
+        if (binding.name.view() == name) return true;
     }
-    return Success;
+    return false;
   }
 
   fn set_alias(StringView name, StringView value) throws -> void
@@ -1358,6 +1347,12 @@ private:
 class FunctionStore
 {
 public:
+  template <typename Callback>
+  fn for_each_name(Callback do_callback) const throws -> void
+  {
+    m_definitions.for_each([&](StringView name, const FunctionBodyHandle &)
+                               throws { do_callback(name); });
+  }
   fn find_source(StringView name) const wontthrow -> const String *
   {
     let const storage = m_definitions.find(name);
@@ -1368,9 +1363,7 @@ public:
   {
     let out = ArrayList<String>{heap_allocator()};
     out.reserve(m_definitions.count());
-    m_definitions.for_each([&](StringView name, const FunctionBodyHandle &) {
-      out.push_managed(name);
-    });
+    for_each_name([&](StringView name) { out.push_managed(name); });
     return steal(out).make_sorted(sort_order::ascending);
   }
   fn find_function(StringView name) const wontthrow
@@ -1406,8 +1399,7 @@ public:
   fn names() const throws -> HashSet
   {
     let names = HashSet{heap_allocator()};
-    m_definitions.for_each(
-        [&](StringView name, const FunctionBodyHandle &) { names.add(name); });
+    for_each_name([&](StringView name) { names.add(name); });
     return names;
   }
   fn definitions() wontthrow -> StringMap<FunctionBodyHandle> &
@@ -2362,7 +2354,7 @@ public:
     return name == DIRSTACK_VARIABLE &&
            is_bash_special_array_active(
                bash_special_array_id::DirectoryStack) &&
-           !is_local_in_current_scope(name);
+           !scope_store().has_current_local(name);
   }
   fn get_bash_directory_stack_element(usize index,
                                       Allocator allocator) const throws
@@ -2761,12 +2753,6 @@ public:
   pure fn borrowed_frame_source(const source_frame &frame) const wontthrow
       -> const String *;
   fn declare_local(StringView name, bool should_inherit_value) throws -> void;
-  mustuse fn is_local_in_current_scope(StringView name) const wontthrow -> bool;
-  /* Answer whether any active frame binds the name, the reach a dynamic name
-     needs. A local declaration shadows the dynamic reader for every deeper
-     frame as well as its own. */
-  mustuse fn is_local_in_any_active_scope(StringView name) const wontthrow
-      -> bool;
   fn snapshot_state() throws -> eval_state_snapshot;
   fn restore_state(eval_state_snapshot snapshot) throws -> void;
   fn make_subshell_bootstrap() const throws -> os::subshell_bootstrap;

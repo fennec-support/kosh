@@ -305,18 +305,9 @@ fn Batch::execute(ArrayList<batch_result> &results,
   m_optimized_operations.clear();
   defer { m_optimized_operations.clear(); };
 
-  if (deduplication == batch_deduplication::Disabled) {
-    results.clear();
-    results.reserve(m_operations.count());
-    for (usize index = 0; index < m_operations.count(); index++)
-      results.push({});
-
-    batch_internal::execute_batch_operations(
-        m_operations.begin(), m_operations.count(), results.begin());
-    return;
-  }
-
-  if (!m_has_metadata_operations) {
+  if (deduplication == batch_deduplication::Disabled ||
+      !m_has_metadata_operations)
+  {
     results.clear();
     results.reserve(m_operations.count());
     for (usize index = 0; index < m_operations.count(); index++)
