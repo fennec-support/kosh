@@ -1,5 +1,5 @@
 echo "== alias and function operands:"
-"$BIN" -c 'alias zzalias=echo; zzfunc() { :; }' \
+"$BIN" -c 'PATH=; alias zzalias=echo; zzfunc() { :; }' \
     --debug-complete-at 'type zz' </dev/null
 echo "== builtin operand:"
 "$BIN" -c ':' --debug-complete-at 'type unali' </dev/null

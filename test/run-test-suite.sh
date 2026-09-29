@@ -167,10 +167,16 @@ print_platform_skips()
       printf "\t%-64s skipped, remote transaction requires POSIX\n" \
         cli/assimilate.sh
     fi
-    for TEST_FILE in $SKIPPED_CLI_INPUT; do
+    for TEST_NAME in $WINDOWS_SKIPPED_CLI_NAMES; do
       printf "\t%-64s skipped, unsupported Windows backend feature\n" \
-        "$TEST_FILE"
+        "cli/${TEST_NAME#cli_}.sh"
     done
+    for TEST_NAME in $NON_LINUX_SKIPPED_CLI_NAMES; do
+      printf "\t%-64s skipped, requires Linux\n" \
+        "cli/${TEST_NAME#cli_}.sh"
+    done
+    printf "\t%-64s skipped, separate sanitizer_live_probes target\n" \
+      cli/koshkit_live_sanitizers.sh
     ;;
   completion)
     for TEST_FILE in $SKIPPED_COMPLETION_INPUT; do

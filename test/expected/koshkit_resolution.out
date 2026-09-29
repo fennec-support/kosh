@@ -18,7 +18,7 @@ rc=127
 2
 3
 === set -o koshkit passes bare Koshka utility flags ===
-Host: void
+host-shape=matched
 === set -o koshkit passes bare POSIX utility flags ===
 === set -o koshkit leaves unknown names unresolved ===
 rc=1

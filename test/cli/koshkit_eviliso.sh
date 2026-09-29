@@ -447,7 +447,7 @@ if test "${IS_NONDEBUG_BUILD:-0}" = 0; then
       kill -0 "$cgroup_writer_pid" 2>/dev/null && \
       test "$writer_wait_count" -lt 500
   do
-    /usr/bin/sleep 0.01
+    command sleep 0.01
     writer_wait_count=$((writer_wait_count + 1))
   done
   test -e "$writer_ready" || exit 1

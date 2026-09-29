@@ -124,7 +124,7 @@ verify_koshkit_diff: $(BIN)
 		echo "The shell '$(BIN)' is missing or is not executable." >&2; \
 		exit 1; \
 	fi
-	@'$(BIN)' verify-koshkit-diff.sh
+	@sh verify-koshkit-diff.sh
 
 kosh_tests: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
 	@$(SHELL) run-test-suite.sh kosh
@@ -250,6 +250,7 @@ SKIP_CLI_ASSIMILATE := 1
 endif
 
 export SKIPPED_TEST_NAMES SKIPPED_CLI_INPUT
+export WINDOWS_SKIPPED_CLI_NAMES NON_LINUX_SKIPPED_CLI_NAMES
 export SKIPPED_COMPLETION_INPUT UNREPRESENTABLE_COMPLETION_INPUT
 export SKIP_CLI_ASSIMILATE
 

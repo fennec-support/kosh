@@ -1,7 +1,6 @@
 == alias and function operands:
 zzalias
 zzfunc
-zzz
 == builtin operand:
 unalias
 == keyword operand:

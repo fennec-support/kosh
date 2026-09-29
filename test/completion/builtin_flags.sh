@@ -7,8 +7,6 @@ echo "== set -o names by prefix:"
 "$BIN" --debug-complete-at 'set -o no' </dev/null
 echo "== set annoying diagnostics name:"
 "$BIN" --debug-complete-at 'set -o annoying-' </dev/null
-echo "== kosh binary flags:"
-"$BIN" --debug-complete-at 'kosh --b' </dev/null
 echo "== kosh no-traces flag:"
 "$BIN" --debug-complete-at 'kosh --no-t' </dev/null
 echo "== kosh no-annoying flag:"

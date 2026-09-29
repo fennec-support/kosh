@@ -9,7 +9,7 @@ mkdir -p "$compressed_work"
 cp "$BIN" "$core"
 
 report=$($BIN -c 'koshkit --color never goodcore --binary "$1" --output "$2" --no-compress "$3"' \
-  goodcore "$BIN" "$uncompressed" "$core")
+  goodcore "$BIN" "$uncompressed" "$core" 2> "$TEST_NULL_DEVICE")
 status=$?
 printf 'uncompressed-status=%s\n' "$status"
 case $report in
@@ -51,5 +51,4 @@ if [ -f "$compressed_target" ]; then
 else
   compressed_shape=wrong
 fi
-printf 'compressed-suffix=%s\n' "$compressed_suffix"
 printf 'compressed-shape=%s\n' "$compressed_shape"

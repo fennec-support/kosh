@@ -434,7 +434,7 @@ if test "${IS_NONDEBUG_BUILD:-0}" = 0; then
       kill -0 "$socket_writer_pid" 2>/dev/null && \
       test "$socket_writer_wait_count" -lt 500
   do
-    /usr/bin/sleep 0.01
+    command sleep 0.01
     socket_writer_wait_count=$((socket_writer_wait_count + 1))
   done
   test -e "$socket_writer_ready" || exit 1

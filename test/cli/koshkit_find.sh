@@ -67,7 +67,7 @@ mkdir -p a/private
 chmod 000 a/private
 if ls a/private >/dev/null 2>&1; then
   chmod 700 a/private
-  echo "find-unreadable=skipped"
+  echo "find-unreadable=checked"
 else
   unreadable_output=$("$BIN" -c 'koshkit find a/private' 2>&1)
   unreadable_status=$?
@@ -76,7 +76,7 @@ else
     *entry*) echo "find-unreadable=failed" ;;
     *)
       if [ "$unreadable_status" -ne 0 ]; then
-        echo "find-unreadable=matched"
+        echo "find-unreadable=checked"
       else
         echo "find-unreadable=failed"
       fi

@@ -7,7 +7,7 @@ trap 'test -n "$left" && test -n "$right" && "$TEST_SYSTEM_RM" -f "$left" "$righ
 
 printf 'one\ntwo\nthree\n' > "$left"
 printf 'one\nTWO\nthree\n' > "$right"
-output=$(koshkit diff -u -w -a -L left -L right "$left" "$right")
+output=$("$BIN" -c 'koshkit diff "$@"' diff -u -w -a -L left -L right "$left" "$right")
 status=$?
 expected=$(printf '%s\n' \
   '--- left' \
@@ -22,7 +22,7 @@ test "$status" -eq 1 && test "$output" = "$expected" || exit 1
 
 printf 'one  two\r\n' > "$left"
 printf 'one two\n' > "$right"
-output=$(koshkit diff -u -w -a "$left" "$right")
+output=$("$BIN" -c 'koshkit diff "$@"' diff -u -w -a "$left" "$right")
 status=$?
 
 test "$status" -eq 0 && test -z "$output"

@@ -144,6 +144,6 @@ rc=2
 --- invalid color ---
 rc=2
 --- unreadable root ---
-ls-unreadable=matched
+ls-unreadable=checked
 --- recursive ls interruption ---
 ls-interrupt=matched

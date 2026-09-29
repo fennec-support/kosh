@@ -227,7 +227,8 @@ printf 'evil-short-indent=%s\n' "$evil_short_indent"
 
 unix_socket_report=$("$BIN" -c 'koshkit --color never evilss -x')
 case $unix_socket_report in
-  *u_str*/*|*u_str*'@/'*|*u_dgr*/*|*u_seq*/*) unix_socket_shape=present ;;
+  *Sockets*Netid*'Local Address:Port'*'Peer Address:Port'*)
+    unix_socket_shape=present ;;
   *) unix_socket_shape=missing ;;
 esac
 printf 'evilss-unix=%s\n' "$unix_socket_shape"

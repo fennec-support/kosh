@@ -28,7 +28,11 @@ echo "=== set -o koshkit turns bare names on ==="
 "$BIN" -c 'PATH=; set -o koshkit; seq 3'
 
 echo "=== set -o koshkit passes bare Koshka utility flags ==="
-"$BIN" -c 'PATH=; set -o koshkit; evil --short' | head -1
+host_line=$("$BIN" -c 'PATH=; set -o koshkit; evil --short' | head -1)
+case $host_line in
+  'Host: '?*) echo 'host-shape=matched' ;;
+  *) echo 'host-shape=wrong' ;;
+esac
 
 echo "=== set -o koshkit passes bare POSIX utility flags ==="
 "$BIN" -c 'PATH=; set -o koshkit; ls --help' >/dev/null
