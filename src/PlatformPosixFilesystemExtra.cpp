@@ -15,7 +15,6 @@
 #elif defined __APPLE__
 #include <aio.h>
 #include <sys/attr.h>
-#include <sys/event.h>
 #include <sys/fsgetpath.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
@@ -1374,9 +1373,9 @@ static fn finish_suspended_aio(aiocb &control,
   return true;
 }
 
-static fn execute_kqueue_aio_batch(const batched_syscall *operations,
-                                   usize operation_count,
-                                   batched_syscall_result *results) wontthrow
+static fn execute_suspended_aio_batch(const batched_syscall *operations,
+                                      usize operation_count,
+                                      batched_syscall_result *results) wontthrow
     -> bool
 {
   constexpr usize MINIMUM_AIO_BYTE_COUNT = 1024 * 1024;
@@ -1407,10 +1406,6 @@ static fn execute_kqueue_aio_batch(const batched_syscall *operations,
   if (aio_operation_count < 2 || aio_byte_count < MINIMUM_AIO_BYTE_COUNT) {
     return false;
   }
-
-  let const queue_descriptor = ::kqueue();
-  if (queue_descriptor < 0) return false;
-  defer { ::close(queue_descriptor); };
 
   usize operation_start = 0;
   while (operation_start < operation_count) {
@@ -1453,9 +1448,7 @@ static fn execute_kqueue_aio_batch(const batched_syscall *operations,
               : const_cast<char *>(
                     batch_operation_access::get_input_buffer(operation));
       control.aio_nbytes = operation.byte_count;
-      control.aio_sigevent.sigev_notify = SIGEV_KEVENT;
-      control.aio_sigevent.sigev_signo = queue_descriptor;
-      control.aio_sigevent.sigev_value.sival_ptr = &control;
+      control.aio_sigevent.sigev_notify = SIGEV_NONE;
 
       let const submission_result = operation_kind == batched_syscall_id::Read
                                         ? ::aio_read(&control)
@@ -1474,7 +1467,7 @@ static fn execute_kqueue_aio_batch(const batched_syscall *operations,
     }
 
     usize completed_count = 0;
-    let const do_interrupt_batch = [&]() wontthrow -> void {
+    let const do_interrupt_batch = [&](i32 error_number) wontthrow -> void {
       for (usize chunk_index = 0; chunk_index < chunk_count; chunk_index++) {
         if (!is_queued[chunk_index] || is_completed[chunk_index]) continue;
         unused(::aio_cancel(controls[chunk_index].aio_fildes,
@@ -1488,69 +1481,42 @@ static fn execute_kqueue_aio_batch(const batched_syscall *operations,
         while (!finish_suspended_aio(controls[chunk_index], result))
           unused(::aio_suspend(pending, 1, nullptr));
         result = {operations[operation_start + chunk_index].request_id, 0,
-                  EINTR};
+                  error_number};
         is_completed[chunk_index] = true;
         completed_count++;
       }
       for (usize index = operation_start + chunk_count; index < operation_count;
            index++)
       {
-        results[index] = {operations[index].request_id, 0, EINTR};
+        results[index] = {operations[index].request_id, 0, error_number};
       }
     };
     while (completed_count < queued_count) {
       if (INTERRUPT_REQUESTED) {
-        do_interrupt_batch();
+        do_interrupt_batch(EINTR);
         return true;
       }
 
-      struct kevent64_s events[AIO_LISTIO_MAX]{};
-      let const event_count = ::kevent64(
-          queue_descriptor, nullptr, 0, events,
-          static_cast<i32>(queued_count - completed_count), 0, nullptr);
-      if (event_count < 0) {
-        if (errno == EINTR) {
-          if (!INTERRUPT_REQUESTED) continue;
-          do_interrupt_batch();
-          return true;
-        }
-
-        for (usize chunk_index = 0; chunk_index < chunk_count; chunk_index++) {
-          if (!is_queued[chunk_index] || is_completed[chunk_index]) continue;
-          const aiocb *pending[] = {&controls[chunk_index]};
-          while (!finish_suspended_aio(controls[chunk_index],
-                                       results[operation_start + chunk_index]))
-          {
-            if (INTERRUPT_REQUESTED) {
-              do_interrupt_batch();
-              return true;
-            }
-            unused(::aio_suspend(pending, 1, nullptr));
-          }
-          is_completed[chunk_index] = true;
-          completed_count++;
-        }
-        break;
-      }
-
-      for (i32 event_index = 0; event_index < event_count; event_index++) {
-        let const control_address =
-            static_cast<uintptr>(events[event_index].ident);
-        let const controls_begin = reinterpret_cast<uintptr>(controls);
-        let const controls_end =
-            reinterpret_cast<uintptr>(controls + chunk_count);
-        if (control_address < controls_begin || control_address >= controls_end)
-          continue;
-        let const byte_offset = control_address - controls_begin;
-        if (byte_offset % sizeof(aiocb) != 0) continue;
-        let const chunk_index = byte_offset / sizeof(aiocb);
+      const aiocb *pending[AIO_LISTIO_MAX]{};
+      usize pending_count = 0;
+      for (usize chunk_index = 0; chunk_index < chunk_count; chunk_index++) {
         if (!is_queued[chunk_index] || is_completed[chunk_index]) continue;
         let &result = results[operation_start + chunk_index];
-        const aiocb *pending[] = {&controls[chunk_index]};
-        while (!finish_suspended_aio(controls[chunk_index], result))
-          unused(::aio_suspend(pending, 1, nullptr));
-        is_completed[chunk_index] = true;
-        completed_count++;
+        if (finish_suspended_aio(controls[chunk_index], result)) {
+          is_completed[chunk_index] = true;
+          completed_count++;
+        } else {
+          pending[pending_count++] = &controls[chunk_index];
+        }
+      }
+
+      if (pending_count == 0) break;
+      if (::aio_suspend(pending, static_cast<i32>(pending_count), nullptr) <
+              0 &&
+          errno != EINTR)
+      {
+        do_interrupt_batch(errno);
+        return true;
       }
     }
 
@@ -1573,7 +1539,7 @@ static fn execute_native_batch(const batched_syscall *operations,
   if (execute_getattrlistbulk_batch(operations, operation_count, results))
     return true;
 
-  return execute_kqueue_aio_batch(operations, operation_count, results);
+  return execute_suspended_aio_batch(operations, operation_count, results);
 }
 
 #elif defined __linux__
