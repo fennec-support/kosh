@@ -585,7 +585,7 @@ public:
   static fn operator()(const ArrayList<local_binding> &scope,
                        Arguments &...arguments) wontthrow -> ErrorOr<Ok>
   {
-    static_assert(std::is_base_of_v<MapFn, Callback>);
+    static_assert(__is_base_of(MapFn, Callback));
     return Callback::operator()(scope, arguments...);
   }
 
