@@ -167,12 +167,11 @@ fi
 "$AUTOCD_ROOT/one"
 printf "reenabled=%s\n" "${PWD##*/}"
 '
-echo "== autocd can be enabled in the Bash mood:"
+echo "== autocd is enabled in the Bash mood by default:"
 AUTOCD_ROOT="$autocd_root" "$BIN" --no-init-files --no-diagnostics \
   --mood bash -c '
 shopt -q autocd
 printf "bash-default=%s\n" "$?"
-shopt -s autocd
 "$AUTOCD_ROOT/two"
-printf "bash-enabled=%s\n" "${PWD##*/}"
+printf "bash-directory=%s\n" "${PWD##*/}"
 '

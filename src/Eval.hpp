@@ -1053,16 +1053,19 @@ pure fn shopt_option_index(StringView name) wontthrow -> Maybe<u8>;
 
 enum class shopt_option_id : u8
 {
+  Autocd,
   Checkhash,
+  ExpandAliases,
   Extdebug,
+  Extglob,
   InheritErrexit,
   Lastpipe,
   LocalvarInherit,
   Progcomp,
   ProgcompAlias,
+  RestrictedShell,
   Sourcepath,
 };
-inline constexpr StringView EXTDEBUG_SHOPT_OPTION{"extdebug"};
 pure fn shopt_option_index(shopt_option_id option) wontthrow -> u8;
 
 inline pure fn RuntimeState::is_shopt_enabled(shopt_option_id option) const
@@ -3005,17 +3008,16 @@ public:
   fn set_shopt_option(StringView name, bool is_enabled) throws -> void;
   pure fn is_shopt_enabled(StringView name) const wontthrow -> bool
   {
-    if (name == "restricted_shell")
-      return startup_store().is_restricted_shell();
     let const index = shopt_option_index(name);
     if (!index.has_value()) return false;
+    if (*index == shopt_option_index(shopt_option_id::RestrictedShell))
+      return startup_store().is_restricted_shell();
     if (runtime_state().is_shopt_option_overridden(*index))
       return runtime_state().is_shopt_option_enabled(*index);
-    if (name == "extglob")
+    if (*index == shopt_option_index(shopt_option_id::Extglob))
       return runtime_state().get_mood() == mimic_mood::Default;
-    if (name == "autocd")
-      return runtime_state().get_mood() == mimic_mood::Default;
-    if (name == "expand_aliases")
+    if (*index == shopt_option_index(shopt_option_id::Autocd)) return true;
+    if (*index == shopt_option_index(shopt_option_id::ExpandAliases))
       return runtime_state().get_mood() != mimic_mood::Bash ||
              execution_store().shell_is_interactive();
     return shopt_default_is_on(name);

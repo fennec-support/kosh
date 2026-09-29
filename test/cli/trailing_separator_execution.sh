@@ -34,14 +34,12 @@ run_rejected_file env 'koshkit env ./program/'
 run_rejected_file symlink './link/'
 run_rejected_file pipeline 'set -o pipefail; ./program/ | koshkit cat'
 
-echo '--- directory remains a directory ---'
-output=$("$BIN" --mood sh -c './directory/' 2>&1)
-status=$?
+echo '--- directory path changes directory ---'
+output=$("$BIN" --mood sh -c './directory/; status=$?; printf "directory=%s status=%s\n" "${PWD##*/}" "$status"' 2>&1)
 case "$output" in
-*'This file is not a directory.'*) echo shape-error ;;
+*'directory=directory status=0'*) echo directory-changed ;;
 *) echo directory-error ;;
 esac
-echo "rc=$status"
 
 echo '--- missing remains missing ---'
 "$BIN" --mood sh -c './missing/' >/dev/null 2>&1

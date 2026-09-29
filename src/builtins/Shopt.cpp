@@ -158,10 +158,16 @@ pure fn shopt_option_index(StringView name) wontthrow -> Maybe<u8>
 pure fn shopt_option_index(shopt_option_id option) wontthrow -> u8
 {
   switch (option) {
+  case shopt_option_id::Autocd:
+    return compact_shopt_option_index(SSK("autocd"));
   case shopt_option_id::Checkhash:
     return compact_shopt_option_index(SSK("checkhash"));
+  case shopt_option_id::ExpandAliases:
+    return compact_shopt_option_index(SSK("expand_aliases"));
   case shopt_option_id::Extdebug:
     return compact_shopt_option_index(SSK("extdebug"));
+  case shopt_option_id::Extglob:
+    return compact_shopt_option_index(SSK("extglob"));
   case shopt_option_id::InheritErrexit:
     return compact_shopt_option_index(SSK("inherit_errexit"));
   case shopt_option_id::Lastpipe:
@@ -172,6 +178,8 @@ pure fn shopt_option_index(shopt_option_id option) wontthrow -> u8
     return compact_shopt_option_index(SSK("progcomp"));
   case shopt_option_id::ProgcompAlias:
     return compact_shopt_option_index(SSK("progcomp_alias"));
+  case shopt_option_id::RestrictedShell:
+    return compact_shopt_option_index(SSK("restricted_shell"));
   case shopt_option_id::Sourcepath:
     return compact_shopt_option_index(SSK("sourcepath"));
   }

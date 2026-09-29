@@ -67,6 +67,6 @@ option-name=-P
 disabled=yes
 extra-operand=rejected
 reenabled=one
-== autocd can be enabled in the Bash mood:
-bash-default=1
-bash-enabled=two
+== autocd is enabled in the Bash mood by default:
+bash-default=0
+bash-directory=two

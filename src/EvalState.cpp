@@ -37,8 +37,8 @@ fn EvalContext::set_shopt_option(StringView name, bool is_enabled) throws
   let const was_enabled = is_shopt_enabled(name);
   runtime_state().set_shopt_option(*index, is_enabled);
 
-  if (name == EXTDEBUG_SHOPT_OPTION && is_enabled && !was_enabled &&
-      runtime_state().bash_dynamic_variables_enabled())
+  if (*index == shopt_option_index(shopt_option_id::Extdebug) && is_enabled &&
+      !was_enabled && runtime_state().bash_dynamic_variables_enabled())
   {
     if (variable_store().bash_argument_arrays() == nullptr &&
         variable_store().bash_argument_frame_context() != nullptr &&
