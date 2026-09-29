@@ -57,13 +57,15 @@ for pick in picks:
 """
 
 
-def read_until_idle(master, timeout, required_output=None, idle_seconds=0.02):
+def read_until_idle(master, timeout, required_pattern=None, idle_seconds=0.02):
     output = b""
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         readable, _, _ = select.select([master], [], [], idle_seconds)
         if master not in readable:
-            if output and (required_output is None or required_output in output):
+            if output and (
+                required_pattern is None or required_pattern.search(output)
+            ):
                 break
             continue
         try:
@@ -158,7 +160,13 @@ def run_interrupt_scenario(directory):
 
 
 def run_scenario(
-    directory, selector, environment, typed, mode="external", tab_count=1
+    directory,
+    selector,
+    environment,
+    typed,
+    mode="external",
+    tab_count=1,
+    probe_after_tab=False,
 ):
     """Type the words, press tab, submit, and return the transcript and log."""
     log_path = os.path.join(directory, "selector-log")
@@ -193,6 +201,16 @@ def run_scenario(
     for _ in range(tab_count):
         os.write(master, b"\t")
         output += read_until_idle(master, 3)
+    if probe_after_tab:
+        os.write(master, b"z")
+        append_pattern = re.compile(rb"z(?:\x1b\[[0-9;]*m)*\x1b\[K")
+        append_output = read_until_idle(master, 3, required_pattern=append_pattern)
+        output += append_output
+        if append_pattern.search(append_output) is None:
+            os.close(master)
+            reap(pid)
+            raise AssertionError("editor did not process the queued probe key")
+        os.write(master, b"\x7f")
     os.write(master, b"\n")
     output += read_until_idle(master, 2)
     os.write(master, b"printf 'MARKER-END\\n'\nexit\n")
@@ -251,7 +269,12 @@ def main():
         )
 
         cancelled, cancelled_log = run_scenario(
-            directory, selector, {"STUB_CANCEL": "1"}, typed, tab_count=2
+            directory,
+            selector,
+            {"STUB_CANCEL": "1"},
+            typed,
+            tab_count=2,
+            probe_after_tab=True,
         )
         cancel_ran_the_selector = b"ran\n" in cancelled_log
         cancel_leaves_the_line_alone = b"<alpha->" in cancelled

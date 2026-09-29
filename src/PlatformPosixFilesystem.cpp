@@ -452,7 +452,8 @@ cold static fn list_directory_status_fallback(StringView dir,
 fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
 {
   let const allocator = uncached_heap_allocator();
-  let resolved_path = allocator.alloc_array<char>(PATH_MAX);
+  let resolved_path =
+      static_cast<char *>(allocator.raw_alloc(PATH_MAX, alignof(char)));
   if (resolved_path == nullptr) return None;
   defer { allocator.free_array(resolved_path, PATH_MAX); };
   if (realpath(path.c_str(), resolved_path) == nullptr) return None;

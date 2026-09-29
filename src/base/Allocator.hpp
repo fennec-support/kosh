@@ -326,7 +326,10 @@ public:
     {
       throw std::bad_alloc{};
     }
-    return static_cast<T *>(raw_alloc(count * sizeof(T), alignof(T)));
+    let const result =
+        static_cast<T *>(raw_alloc(count * sizeof(T), alignof(T)));
+    if (result == nullptr && count != 0) throw std::bad_alloc{};
+    return result;
   }
   template <class T>
   flatten fn free_array(T *pointer, usize count) const wontthrow -> void

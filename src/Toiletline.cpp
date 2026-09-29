@@ -61,8 +61,8 @@ fn tl_arena_malloc(usize length) -> opaque *
   if (length > static_cast<usize>(-1) - TL_ALLOC_HEADER) return nullptr;
 
   let const allocation_length = length + TL_ALLOC_HEADER;
-  let const base =
-      koshka::heap_allocator().alloc_array<char>(allocation_length);
+  let const base = static_cast<char *>(
+      koshka::heap_allocator().raw_alloc(allocation_length, alignof(char)));
   if (base != nullptr) {
     *reinterpret_cast<usize *>(base) = length;
     return base + TL_ALLOC_HEADER;
@@ -88,6 +88,7 @@ fn tl_arena_realloc(opaque *pointer, usize length) -> opaque *
   if (old_capacity >= length) return pointer;
 
   let const fresh = tl_arena_malloc(length);
+  if (fresh == nullptr) return nullptr;
   std::memcpy(fresh, pointer, old_capacity);
   tl_arena_free(pointer);
 

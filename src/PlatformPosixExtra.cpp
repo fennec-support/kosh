@@ -389,10 +389,10 @@ public:
     start_counter_count = logical_cpu_count * counter_count;
     if (start_counter_count > SIZE_MAX / sizeof(u64)) return false;
 
-    start_counters =
-        uncached_heap_allocator().alloc_array<u64>(start_counter_count);
-    end_counters =
-        uncached_heap_allocator().alloc_array<u64>(start_counter_count);
+    start_counters = static_cast<u64 *>(uncached_heap_allocator().raw_alloc(
+        start_counter_count * sizeof(u64), alignof(u64)));
+    end_counters = static_cast<u64 *>(uncached_heap_allocator().raw_alloc(
+        start_counter_count * sizeof(u64), alignof(u64)));
     if (start_counters == nullptr || end_counters == nullptr) return false;
     std::memset(start_counters, 0, start_counter_count * sizeof(u64));
     std::memset(end_counters, 0, start_counter_count * sizeof(u64));
