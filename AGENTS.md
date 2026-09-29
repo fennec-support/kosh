@@ -517,6 +517,10 @@ changes update this file.
 - Verify executables, services, interfaces, sanitizers, timing, platforms, and
   fallbacks. A Docker client does not prove daemon readiness. Match container
   toolchains to architecture. Force-sign relinked macOS workload binaries.
+- When container package downloads fail on DNS, inspect container networking
+  before retrying the package installation.
+- Run writable bind-mounted containers with the workspace user and group, or
+  restore ownership before a host suite uses their output paths.
 - Use isolated bounded temporary directories. Verify cleanup targets. Use a
   reviewed patch or Trash when direct removal is filtered. Deinitialize
   temporary worktree submodules before removal.
