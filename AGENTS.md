@@ -96,8 +96,9 @@ changes update this file.
   types, and macros stay behind `src/Platform.hpp` and `os` wrappers.
 - A platform-boundary move preserves each existing platform value unless the
   value is part of the requested behavior change.
-- Linux static PIE links without `-Bsymbolic`. Binding libc locale symbols in
-  the executable corrupts the locale state used by `localeconv()`.
+- Linux static PIE uses the system linker without `-Bsymbolic`. Binding libc
+  locale symbols in the executable corrupts the locale state used by
+  `localeconv()`.
 - Descriptor-rebinding wrappers increment the descriptor epoch. Cached color
   decisions refresh against it. Forks, process groups, filesystems, and processor
   counts also use platform wrappers.
@@ -214,12 +215,16 @@ changes update this file.
   Completion tests require debug. Bound interactive and long-running commands.
 - `refill` regenerates goldens. `REFILL` selects source stems. Goldens live
   directly under `test/expected` and have unique names. Read every changed line.
+- A native fixture with status 126 or 127 cannot use `refill`. The runner treats
+  that status as a driver failure. Verify its output and patch its golden.
 - Make discovers inputs and platform skips. Runners own setup, output,
   comparison, refill, and cleanup. Results are under `.test-work/results`.
   Auxiliary test shell scripts use two-space indentation.
 - Run bare `NAME`, `cli_NAME`, and completion targets through `make -C test`.
   Resolve the input and runner first, then pass matching `MODE` and `BIN`
-  values. The native runner suppresses incidental diagnostics outside
+  values. Pass the root build's `TARGET` explicitly for direct test make
+  invocations so capability-gated fixtures use the intended platform. The
+  native runner suppresses incidental diagnostics outside
   `shellcheck_static_*` tests.
 - Koshkit rm tests use `--dry-run`. Cleanup uses the system rm after a nonempty
   path check. Bashdiff and mimicrydiff need Bash 5.3 or newer.
@@ -459,6 +464,10 @@ changes update this file.
   golden in the same edit when a fixture result label changes.
 - Inspect the authoritative formatter order before writing an exact assertion
   for generated text.
+- Check which diagnostic producer owns a warning before changing its expected
+  capitalization. Formatter warnings and shell diagnostics can differ.
+- Capture capability-dependent warnings in fixtures and assert their shape.
+  Do not put host-dependent counts in goldens.
 - Run ordering assertions against clean state before unrelated entries can
   affect container iteration.
 - Remove a focused runner result file before invoking the runner. When direct
@@ -495,6 +504,10 @@ changes update this file.
 - Leave the machine idle while a suite runs. The editor recorder tests are timed
   against wall clock, and a concurrent probe makes one of them time out. Read a
   timing failure as load before it is read as a defect.
+- Keep the CLI harness separate from the other full-suite harnesses. Their
+  concurrent workloads can exhaust bounded CLI deadlines.
+- Give an interrupted interactive prompt its own settle interval. A short idle
+  read for ordinary keystrokes can consume the next command before recovery.
 - Name the target of every suite invocation. A directory make invocation with no
   target runs the first ordinary target of that makefile. The first ordinary
   target of `test/Makefile` is `clean`.
@@ -515,6 +528,12 @@ changes update this file.
   measured process directly.
 - Validate profilers on a small payload and bound full workloads. Let the
   command runner capture output.
+- Verify every benchmark tool and executable path inside the exact container.
+  Keep required packages in the container command that runs the benchmark.
+- Start GDB with `-nx` when a host configuration can install startup
+  breakpoints. Verify that a backtrace stopped on the reported signal.
+- Use the verified host Bash for process-group cleanup commands. The command
+  runner can select Kosh, whose `kill` option syntax differs.
 - Record each mistake in [MISTAKES.md](MISTAKES.md), and add one general
   prevention rule to this file for each distinct cause.
 - Format changes. Run focused and full bounded tests. Inspect goldens, the full
