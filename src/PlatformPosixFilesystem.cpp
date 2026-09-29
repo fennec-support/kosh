@@ -307,16 +307,15 @@ cold fn list_directory_typed(StringView dir) throws
 static fn list_directory_typed_handle(DIR *handle, Allocator allocator) throws
     -> Maybe<ArrayList<Path::directory_child>>
 {
+  defer { ::closedir(handle); };
+
   let entries = ArrayList<Path::directory_child>{allocator};
   loop
   {
     errno = 0;
     let const entry = ::readdir(handle);
     if (entry == nullptr) {
-      if (errno != 0) {
-        ::closedir(handle);
-        return None;
-      }
+      if (errno != 0) return None;
       break;
     }
 
@@ -340,7 +339,6 @@ static fn list_directory_typed_handle(DIR *handle, Allocator allocator) throws
     });
   }
 
-  ::closedir(handle);
   return entries;
 }
 
@@ -358,16 +356,14 @@ cold fn list_directory_for_batch(StringView dir, Allocator allocator) throws
     -> directory_batch_listing
 {
 #if defined __linux__
-  let const directory = open_file_descriptor(dir, file_open_mode::Read);
-  if (!directory.has_value()) return {None, None};
+  let const opened = open_file_descriptor(dir, file_open_mode::Read);
+  if (!opened.has_value()) return {None, None};
 
-  let children = list_directory_typed(*directory, allocator);
-  if (!children.has_value()) {
-    unused(close_fd(*directory));
-    return {None, None};
-  }
+  let directory = DirectoryReference{*opened};
+  let children = list_directory_typed(directory.get(), allocator);
+  if (!children.has_value()) return {None, None};
 
-  return {steal(children), directory};
+  return {steal(children), directory.take()};
 #else
   return {list_directory_typed(dir, allocator), None};
 #endif

@@ -1,2 +1,3 @@
 extended-shape=matched
 default-scope=capacity
+operand-order=preserved

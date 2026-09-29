@@ -19,3 +19,15 @@ case $default_report in
   *) default_scope=capacity ;;
 esac
 printf 'default-scope=%s\n' "$default_scope"
+
+first_path=$TEST_TEMP_DIRECTORY/evildisk-z
+second_path=$TEST_TEMP_DIRECTORY/evildisk-a
+: > "$first_path"
+: > "$second_path"
+ordered_report=$("$BIN" -c 'koshkit --color never evildisk "$1" "$2"' \
+  evildisk "$first_path" "$second_path" 2>/dev/null)
+case $ordered_report in
+  *"$first_path"*"$second_path"*) operand_order=preserved ;;
+  *) operand_order=changed ;;
+esac
+printf 'operand-order=%s\n' "$operand_order"

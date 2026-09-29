@@ -2311,11 +2311,11 @@ setting inserts one space after a complete non-directory candidate is accepted;
 it is disabled by default.
 .PP
 The interactive selector draws a menu of the candidates below the prompt. The
-down arrow moves to the next row, the up arrow moves back, Tab accepts the
-highlighted row, and Escape or Ctrl\-G closes the menu and restores the line it
-opened on. Enter closes the menu and runs the line as it stands. The highlighted
-row is not accepted. A first row names the active source and shows the available
-keys beside it, reading
+down arrow moves to the next row, the up arrow moves back, and Tab accepts the
+highlighted row. In the completion menu, Escape closes the menu with the current
+edit, and Ctrl\-G restores the line that opened it. Enter closes the completion
+menu and runs the line as it stands. The highlighted row is not accepted. A first
+row names the active source and shows the available keys beside it, reading
 .B selecting completions
 for the candidates of a token and
 .B incremental history search

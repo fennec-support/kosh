@@ -66,8 +66,19 @@ mkdir -p a/private
 : > a/private/entry
 chmod 000 a/private
 if ls a/private >/dev/null 2>&1; then
+  readable_output=$("$BIN" -c 'koshkit find a/private' 2>&1)
+  readable_status=$?
   chmod 700 a/private
-  echo "find-unreadable=checked"
+  case $readable_output in
+    *a/private/entry*)
+      if [ "$readable_status" -eq 0 ]; then
+        echo "find-unreadable=checked"
+      else
+        echo "find-unreadable=failed"
+      fi
+      ;;
+    *) echo "find-unreadable=failed" ;;
+  esac
 else
   unreadable_output=$("$BIN" -c 'koshkit find a/private' 2>&1)
   unreadable_status=$?

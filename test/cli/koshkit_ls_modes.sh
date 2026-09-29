@@ -87,8 +87,19 @@ mkdir unreadable
 : > unreadable/entry
 chmod 000 unreadable
 if ls unreadable >/dev/null 2>&1; then
+  readable_output=$("$BIN" -c 'koshkit ls unreadable' 2>&1)
+  readable_status=$?
   chmod 700 unreadable
-  echo "ls-unreadable=checked"
+  case $readable_output in
+    *entry*)
+      if [ "$readable_status" -eq 0 ]; then
+        echo "ls-unreadable=checked"
+      else
+        echo "ls-unreadable=failed"
+      fi
+      ;;
+    *) echo "ls-unreadable=failed" ;;
+  esac
 else
   unreadable_output=$("$BIN" -c 'koshkit ls unreadable' 2>&1)
   unreadable_status=$?
