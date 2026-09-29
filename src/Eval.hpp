@@ -21,6 +21,7 @@
 #include "base/Bitset.hpp"
 #include "base/Common.hpp"
 #include "base/Containers.hpp"
+#include "base/ErrorOr.hpp"
 #include "base/Maybe.hpp"
 #include "base/Path.hpp"
 
@@ -577,6 +578,21 @@ private:
   u32 m_suppressed_warnings{0};
 };
 
+class MapFn
+{
+public:
+  template <typename Callback, typename... Arguments>
+  static fn operator()(const ArrayList<local_binding> &scope,
+                       Arguments &...arguments) wontthrow -> ErrorOr<Ok>
+  {
+    static_assert(std::is_base_of_v<MapFn, Callback>);
+    return Callback::operator()(scope, arguments...);
+  }
+
+private:
+  MapFn() = delete;
+};
+
 class ScopeStore
 {
 public:
@@ -598,6 +614,31 @@ public:
   pure fn local_scope_depth() const wontthrow -> usize
   {
     return m_local_scope_depth;
+  }
+  fn current_local_scope() wontthrow -> ArrayList<local_binding> &
+  {
+    ASSERT(m_local_scope_depth != 0);
+    ASSERT(m_local_scope_depth <= m_local_scopes.count());
+    return m_local_scopes[m_local_scope_depth - 1];
+  }
+  pure fn current_local_scope() const wontthrow
+      -> const ArrayList<local_binding> &
+  {
+    ASSERT(m_local_scope_depth != 0);
+    ASSERT(m_local_scope_depth <= m_local_scopes.count());
+    return m_local_scopes[m_local_scope_depth - 1];
+  }
+  template <typename Callback, typename... Arguments>
+  fn for_each_local_scope(Arguments &...arguments) const wontthrow
+      -> ErrorOr<Ok>
+  {
+    ASSERT(m_local_scope_depth <= m_local_scopes.count());
+    for (usize frame_index = m_local_scope_depth; frame_index-- > 0;) {
+      let result = MapFn::operator()<Callback>(m_local_scopes[frame_index],
+                                               arguments...);
+      if (result.is_error()) return result;
+    }
+    return Success;
   }
 
   fn set_alias(StringView name, StringView value) throws -> void

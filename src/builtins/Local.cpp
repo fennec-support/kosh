@@ -111,7 +111,9 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (should_print_declaration && first_name >= args.count()) {
     let listing = String{cxt.scratch_allocator()};
     if (cxt.scope_store().local_scope_depth() != 0) {
-      for (let const &binding : cxt.scope_store().local_scopes().back())
+      let const &local_scope = cxt.scope_store().current_local_scope();
+
+      for (let const &binding : local_scope)
         append_variable_declaration(cxt, binding.name.view(), listing);
     }
     ec.print_to_stdout(listing.view());

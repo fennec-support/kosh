@@ -1136,8 +1136,7 @@ fn EvalContext::leave_function_scope() throws -> void
      ends with the value it held before the function ran. */
   ASSERT(scope_store().local_scope_depth() <=
          scope_store().local_scopes().count());
-  let &scope =
-      scope_store().local_scopes()[scope_store().local_scope_depth() - 1];
+  let &scope = scope_store().current_local_scope();
   LOG(Debug, "leaving function scope, restoring %zu shadowed locals",
       scope.count());
   for (usize i = scope.count(); i > 0; i--) {
@@ -1441,21 +1440,30 @@ fn EvalContext::is_local_in_current_scope(StringView name) const wontthrow
     -> bool
 {
   if (scope_store().local_scope_depth() == 0) return false;
-  for (let const &binding :
-       scope_store().local_scopes()[scope_store().local_scope_depth() - 1])
+  for (let const &binding : scope_store().current_local_scope())
     if (binding.name.view() == name) return true;
   return false;
 }
 
+struct local_scope_match_proc : MapFn
+{
+  static fn operator()(const ArrayList<local_binding> &scope, StringView name,
+                       bool &has_match) wontthrow -> ErrorOr<Ok>
+  {
+    for (let const &binding : scope)
+      if (binding.name.view() == name) has_match = true;
+    return Success;
+  }
+};
+
 fn EvalContext::is_local_in_any_active_scope(StringView name) const wontthrow
     -> bool
 {
-  for (usize frame_index = scope_store().local_scope_depth();
-       frame_index-- > 0;)
-    for (let const &binding : scope_store().local_scopes()[frame_index])
-      if (binding.name.view() == name) return true;
-
-  return false;
+  bool has_match = false;
+  let result = scope_store().for_each_local_scope<local_scope_match_proc>(
+      name, has_match);
+  ASSERT(!result.is_error());
+  return has_match;
 }
 
 ExecContext::ExecContext(SourceLocation location, ResolvedCommand &&kind,

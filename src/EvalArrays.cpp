@@ -680,13 +680,11 @@ fn EvalContext::declare_local(StringView name, bool should_inherit_value) throws
     previous_value = get_variable_value(name);
   }
 
-  scope_store().local_scopes()[scope_store().local_scope_depth() - 1].push(
-      local_binding{String{name}, steal(previous_value),
-                    previous_special_definition_location, steal(previous_array),
-                    steal(previous_keys), steal(previous_values),
-                    steal(previous_sparse_indices),
-                    steal(previous_sparse_values), previous_attributes,
-                    previous_was_associative, previous_was_exported});
+  scope_store().current_local_scope().push(local_binding{
+      String{name}, steal(previous_value), previous_special_definition_location,
+      steal(previous_array), steal(previous_keys), steal(previous_values),
+      steal(previous_sparse_indices), steal(previous_sparse_values),
+      previous_attributes, previous_was_associative, previous_was_exported});
 
   if (should_inherit_value && was_bash_directory_stack_special)
     set_indexed_array(name, steal(inherited_directory_stack));

@@ -138,7 +138,7 @@ fn parse_text_position_ranges(StringView text, Allocator allocator) throws
   while (ranges.count() > output_count)
     ranges.pop_back();
 
-  return steal(ranges);
+  return ranges;
 }
 
 pure fn text_position_is_selected(

@@ -1445,7 +1445,8 @@ fn run_nice(const ArrayList<String> &argv, i32 increment) throws -> Maybe<i32>
     unused(setpriority(PRIO_PROCESS, 0, static_cast<int>(target)));
     execvp(raw_argv[0], const_cast<char *const *>(raw_argv.begin()));
     let const child_errno = errno;
-    unused(write(exec_error_pipe[1], &child_errno, sizeof(child_errno)));
+    unused(
+        os::write_all(exec_error_pipe[1], &child_errno, sizeof(child_errno)));
     _exit(child_errno == ENOENT ? 127 : 126);
   }
 
@@ -1522,7 +1523,8 @@ fn run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
             open(home_output.c_str(), O_WRONLY | O_APPEND | O_CREAT, 0600);
       if (nohup_output == -1) {
         let const child_errno = errno;
-        unused(write(exec_error_pipe[1], &child_errno, sizeof(child_errno)));
+        unused(os::write_all(exec_error_pipe[1], &child_errno,
+                             sizeof(child_errno)));
         _exit(127);
       }
       child_output = nohup_output;
@@ -1535,7 +1537,8 @@ fn run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
     if (nohup_output > STDERR_FILENO) close(nohup_output);
     execvp(raw_argv[0], const_cast<char *const *>(raw_argv.begin()));
     let const child_errno = errno;
-    unused(write(exec_error_pipe[1], &child_errno, sizeof(child_errno)));
+    unused(
+        os::write_all(exec_error_pipe[1], &child_errno, sizeof(child_errno)));
     _exit(child_errno == ENOENT ? 127 : 126);
   }
 

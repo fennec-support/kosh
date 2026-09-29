@@ -217,6 +217,10 @@ endif
 
 LINK_LIBRARIES := # nothing
 
+ifeq ($(TARGET), Linux)
+LINK_LIBRARIES += -lm
+endif
+
 ifeq ($(TARGET), Windows_NT)
 ifeq ($(IS_WINDOWS_GNU_ABI),)
 LINK_LIBRARIES += --rtlib=compiler-rt
@@ -240,6 +244,13 @@ else ifneq ($(AVAILABLE_LLD),)
 USE_LD := -fuse-ld=lld
 else
 USE_LD :=
+endif
+ifeq ($(TARGET), Linux)
+ifeq ($(SHOULD_LINK_STATIC_LINUX), 1)
+ifneq ($(filter rel tinyrel prof cov,$(MODE)),)
+USE_LD :=
+endif
+endif
 endif
 LINKER_SELECTION_FLAG := $(USE_LD)
 

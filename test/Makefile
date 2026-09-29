@@ -265,9 +265,9 @@ refill: $(EVILISO_LOOPBACK_DEPENDENCY) $(BIN)
 
 ZSH ?= /bin/zsh
 ASH ?= /bin/busybox
-YASH ?= /bin/yash
+YASH ?= $(shell command -v yash)
 PYTHON ?= python3
-DASH ?= /bin/dash
+DASH ?= $(shell command -v dash)
 
 ifeq ($(origin BASHP), undefined)
 MODERN_BASH := $(shell ./find-modern-bash.sh)
