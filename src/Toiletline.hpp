@@ -68,7 +68,7 @@ struct history_event
 koshka::ErrorOr<koshka::ArrayList<history_event>>
 get_history_events(koshka::Allocator allocator,
                    koshka::Maybe<usize> after_event_number = koshka::None);
-koshka::Maybe<usize> get_newest_history_event_number();
+koshka::ErrorOr<koshka::Maybe<usize>> get_newest_history_event_number();
 koshka::Maybe<history_event> get_relative_history_event(
     koshka::Allocator allocator, usize distance,
     koshka::Maybe<usize> before_event_number = koshka::None);

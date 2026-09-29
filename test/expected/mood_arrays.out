@@ -95,6 +95,12 @@
     [SimpleCommand]
   [CompoundListCondition, None]
     [SimpleCommand "declare" "-p" "b"]
+  [CompoundListCondition, None]
+    [SimpleCommand]
+  [CompoundListCondition, None]
+    [Assign array_index=probe_a[0]=0,probe_b[0]=0,probe_c[0]=0,probe_d[0]=0,probe_e[0]=0,probe_f[0]=0,probe_g[0]=0,probe_h[0]=0,probe_i[0]=0,probe_j[0]=0,probe_k[0]=0,probe_l[0]=0,probe_m[0]=0,probe_n[0]=0,probe_o[0]=0,probe_p[0]=0,probe_q[0]=0,probe_r[0]=0,probe_s[0]=0,probe_t[0]=0]
+  [CompoundListCondition, None]
+    [SimpleCommand "echo" "rehash=$array_rehash[array_index]"]
 [Word
   Unquoted "a="
 ]
@@ -471,6 +477,23 @@
 [Word
   Unquoted "b"
 ]
+[Word
+  Unquoted "array_rehash="
+]
+[Word
+  Unquoted "kept"
+]
+[Word
+  Unquoted "array_index="
+  Literal "probe_a[0]=0,probe_b[0]=0,probe_c[0]=0,probe_d[0]=0,probe_e[0]=0,probe_f[0]=0,probe_g[0]=0,probe_h[0]=0,probe_i[0]=0,probe_j[0]=0,probe_k[0]=0,probe_l[0]=0,probe_m[0]=0,probe_n[0]=0,probe_o[0]=0,probe_p[0]=0,probe_q[0]=0,probe_r[0]=0,probe_s[0]=0,probe_t[0]=0"
+]
+[Word
+  Unquoted "echo"
+]
+[Word
+  DoubleQuoted "rehash="
+  Variable "array_rehash[array_index]"
+]
 one two three four five
 one two three four five
 5
@@ -501,3 +524,4 @@ loop c=x
 loop c=y
 declare -a a=([0]="1" [1]="2" [2]="9")
 declare -a b=([0]="10" [1]="20" [2]="99" [3]="40")
+rehash=kept

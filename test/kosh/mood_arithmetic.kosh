@@ -135,3 +135,9 @@ echo "enabled=$((big + 1))"
 set --mood default
 set +o extended-arithmetic
 echo "disabled=$((big + 1))"
+
+x='x=1,'
+for ((pad=0; pad<300; pad++)); do x+=' '; done
+x+='2'
+result=$((x))
+echo "nested=$result value=$x"

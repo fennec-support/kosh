@@ -705,11 +705,13 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
         util_for_flags = koshkit::find_util(*second);
       }
     } else if (!completes_shell_binary &&
-               context.runtime_state().koshkit_utilities_are_reachable() &&
-               context.resolution_store().resolver().get_status(command) ==
-                   ProgramResolver::Status::Missing)
+               context.runtime_state().koshkit_utilities_are_reachable())
     {
       util_for_flags = koshkit::find_util(command);
+      if (util_for_flags.has_value() &&
+          context.resolution_store().resolver().get_status(command) !=
+              ProgramResolver::Status::Missing)
+        util_for_flags = None;
     }
 
     if (should_offer_util_names) {

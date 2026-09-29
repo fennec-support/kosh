@@ -5,6 +5,7 @@ type nope
 
 alias ll='ls -l'
 type if
+type -t when
 type ll
 command -v if
 command -v ll

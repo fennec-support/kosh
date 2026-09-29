@@ -306,8 +306,9 @@ public:
       fail("The variable value recurses too deeply",
            "A variable value refers back to itself");
 
-    ArithmeticParser nested{context,   value,         is_exact, arena,
-                            depth + 1, m_is_skipping, bc_scale};
+    let const stable_value = String{bump_allocator(arena), value};
+    ArithmeticParser nested{context,   stable_value.view(), is_exact, arena,
+                            depth + 1, m_is_skipping,       bc_scale};
     nested.should_error_unset = should_error_unset;
     return nested.parse();
   }
@@ -1920,7 +1921,8 @@ static fn evaluate_named_value_operand(EvalContext *context, StringView value,
       return ArithmeticValue{literal.value()};
   }
 
-  ArithmeticParser nested{context, value, is_exact, arena};
+  let const stable_value = String{bump_allocator(arena), value};
+  ArithmeticParser nested{context, stable_value.view(), is_exact, arena};
   return nested.parse();
 }
 

@@ -10,6 +10,8 @@
   [CompoundListCondition, None]
     [SimpleCommand "type" "if"]
   [CompoundListCondition, None]
+    [SimpleCommand "type" "-t" "when"]
+  [CompoundListCondition, None]
     [SimpleCommand "type" "ll"]
   [CompoundListCondition, None]
     [SimpleCommand "command" "-v" "if"]
@@ -69,6 +71,15 @@
 ]
 [Word
   Unquoted "if"
+]
+[Word
+  Unquoted "type"
+]
+[Word
+  Unquoted "-t"
+]
+[Word
+  Unquoted "when"
 ]
 [Word
   Unquoted "type"
@@ -154,6 +165,7 @@ cd is a shell builtin
      4 |  type nope
        |  ^~~~~~~~~
 if is a shell keyword
+keyword
 ll is an alias for ls -l
 if
 alias ll='ls -l'
@@ -162,6 +174,6 @@ ll is aliased to `ls -l'
 echo is a shell builtin
 g is a shell function
 true is a shell builtin
-18:1: error: Builtin `type`: The command 'nonexistent_xyz' was not found.
-    18 |  type nonexistent_xyz
+19:1: error: Builtin `type`: The command 'nonexistent_xyz' was not found.
+    19 |  type nonexistent_xyz
        |  ^~~~~~~~~~~~~~~~~~~~

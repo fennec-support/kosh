@@ -9,7 +9,7 @@ koshkit cp "$BIN" "$probe_file"
 PATH=$d
 probe() { echo function_probe; }
 command -v probe
-koshkit rm -rf "$d"
+if [ -n "$d" ]; then "$TEST_SYSTEM_RM" -rf -- "$d"; fi
 
 echo "== command -v guard:"
 if ! command -v nonexistent-tool-xyz >/dev/null 2>&1; then echo "tool is required"; fi

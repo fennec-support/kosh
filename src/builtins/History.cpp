@@ -284,9 +284,8 @@ static fn write_history_to_file(EvalContext &cxt, const Path &target,
     append_state.event_number = 0;
 
   usize newest_number = 0;
-  if (let const current_number = toiletline::get_newest_history_event_number();
-      current_number.has_value())
-  {
+  let const current_number = TRY(toiletline::get_newest_history_event_number());
+  if (current_number.has_value()) {
     newest_number = *current_number;
   }
 

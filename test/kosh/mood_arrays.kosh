@@ -56,3 +56,7 @@ declare -p a
 b=(10 20 30 40)
 b+=([-2]=99)
 declare -p b
+
+array_rehash=(kept)
+array_index='probe_a[0]=0,probe_b[0]=0,probe_c[0]=0,probe_d[0]=0,probe_e[0]=0,probe_f[0]=0,probe_g[0]=0,probe_h[0]=0,probe_i[0]=0,probe_j[0]=0,probe_k[0]=0,probe_l[0]=0,probe_m[0]=0,probe_n[0]=0,probe_o[0]=0,probe_p[0]=0,probe_q[0]=0,probe_r[0]=0,probe_s[0]=0,probe_t[0]=0'
+echo "rehash=${array_rehash[array_index]}"

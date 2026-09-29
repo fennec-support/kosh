@@ -1264,14 +1264,14 @@ struct history_event
   String command;
 };
 
-fn get_newest_history_event_number() -> koshka::Maybe<usize>
+fn get_newest_history_event_number() -> koshka::ErrorOr<koshka::Maybe<usize>>
 {
   let const path = get_history_file_path();
-  if (!path.has_value() || ensure_history_loaded(*path, true).is_error())
-    return koshka::None;
-  if (::itl_g_history_count == 0) return koshka::None;
+  if (!path.has_value()) return koshka::Maybe<usize>{koshka::None};
+  TRY(ensure_history_loaded(*path, true));
+  if (::itl_g_history_count == 0) return koshka::Maybe<usize>{koshka::None};
 
-  return ::itl_g_history_total_count;
+  return koshka::Maybe<usize>{::itl_g_history_total_count};
 }
 
 fn get_history_events(koshka::Allocator allocator,

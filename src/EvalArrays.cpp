@@ -565,8 +565,11 @@ fn EvalContext::unset_array_element(StringView name,
     return;
   }
 
-  if (let array = variable_store().indexed_arrays().find(name); array.has_value()) {
+  if (variable_store().indexed_arrays().find(name).has_value()) {
     let const index = evaluate_arithmetic(subscript);
+    let array = variable_store().indexed_arrays().find(name);
+    if (!array.has_value()) return;
+
     let const array_count = static_cast<i64>(array->count());
     const i64 resolved =
         index < 0 ? index + array_negative_index_base(name) : index;
@@ -892,11 +895,10 @@ fn EvalContext::apply_array_subscript(
     return String{heap_allocator()};
   }
 
-  let const array = variable_store().indexed_arrays().find(name);
-
   /* The single-string return loses the per-element split of a quoted
      "${a[@]}", the same limitation the positional "$@" has. */
   if (subscript == "@" || subscript == "*") {
+    let const array = variable_store().indexed_arrays().find(name);
     if (!array.has_value()) return expand_variable(name);
     let separator = ' ';
     let has_separator = true;
@@ -915,6 +917,7 @@ fn EvalContext::apply_array_subscript(
   }
 
   i64 index = evaluate_arithmetic(subscript, source_location);
+  let const array = variable_store().indexed_arrays().find(name);
   if (!array.has_value()) {
     /* A scalar reads as a one-element array, so ${name[0]} is the value and any
        other index is empty. */

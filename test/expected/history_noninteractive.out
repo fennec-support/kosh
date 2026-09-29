@@ -65,6 +65,8 @@ rc=1
     2  existing two
     3  merged alpha
     4  merged beta
+== history -a rejects invalid backing data ==
+rc=1
 == history -r rejects malformed UTF-8 without changing the list ==
 rc=1
     1  existing one

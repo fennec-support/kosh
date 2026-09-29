@@ -118,6 +118,12 @@ fn Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
      does not count against -n. */
   for (i64 skipped = 0; skipped < skip_count; skipped++) {
     let const skipped_line = utils::read_line_from_fd(read_fd, delimiter);
+    if (skipped_line.did_read_fail) {
+      report_soft_builtin_error(ec, cxt, ec.source_location(),
+                                StringView{"Unable to read mapfile input: "} +
+                                    os::last_system_error_message());
+      return 1;
+    }
     if (!skipped_line.line.has_value()) break;
   }
 
@@ -132,10 +138,16 @@ fn Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       break;
     }
 
-    let const read = utils::read_line_from_fd(read_fd, delimiter);
+    let read = utils::read_line_from_fd(read_fd, delimiter);
+    if (read.did_read_fail) {
+      report_soft_builtin_error(ec, cxt, ec.source_location(),
+                                StringView{"Unable to read mapfile input: "} +
+                                    os::last_system_error_message());
+      return 1;
+    }
     if (!read.line.has_value()) break;
 
-    let element = String{read.line->view()};
+    let element = read.line.take();
     if (!should_strip_newline && read.was_delimiter_terminated) {
       element.push(delimiter);
     }

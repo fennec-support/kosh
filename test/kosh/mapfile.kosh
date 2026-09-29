@@ -1,0 +1,8 @@
+#!/bin/env kosh
+mapfile -t rows <<< $'first\nsecond'
+echo "rows=${rows[0]},${rows[1]}"
+
+mapfile -u 999 rows 2>/dev/null
+echo "read_status=$?"
+mapfile -s 1 -u 999 rows 2>/dev/null
+echo "skip_status=$?"

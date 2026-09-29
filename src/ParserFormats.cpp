@@ -212,6 +212,8 @@ static fn detect_format_kind(const parser_format_input &input) throws
       parser_format_ascii_equal(filename, "readme") ||
       parser_format_ascii_equal(language_id, "markdown"))
     return parser_format_kind::Markdown;
+  if (parser_format_ascii_equal(language_id, "dockercompose"))
+    return parser_format_kind::Compose;
 
   if (path_ends_with(path, ".yml") || path_ends_with(path, ".yaml") ||
       parser_format_ascii_equal(language_id, "yaml"))

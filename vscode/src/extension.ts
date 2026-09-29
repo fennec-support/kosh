@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { randomUUID } from "node:crypto";
 import * as vscode from "vscode";
 import {
   Executable,
@@ -171,7 +172,7 @@ function select_release_asset(
 async function download_release_binary(
   context: vscode.ExtensionContext,
   progress: vscode.Progress<{ message?: string }>,
-): Promise<string> {
+): Promise<{ tag: string; temporary_path: string }> {
   progress.report({ message: "Reading the release list" });
 
   const releases_response = await fetch(RELEASES_URL, {
@@ -210,40 +211,55 @@ async function download_release_binary(
 
   const payload = new Uint8Array(await asset_response.arrayBuffer());
   const binary_path = get_downloaded_binary_path(context);
+  const temporary_path = `${binary_path}.${randomUUID()}.tmp`;
 
   await fs.promises.mkdir(path.dirname(binary_path), { recursive: true });
-  await fs.promises.writeFile(binary_path, payload);
-
-  if (process.platform !== "win32") {
-    await fs.promises.chmod(binary_path, 0o755);
+  try {
+    await fs.promises.writeFile(temporary_path, payload, { flag: "wx" });
+    if (process.platform !== "win32") {
+      await fs.promises.chmod(temporary_path, 0o755);
+    }
+  } catch (error) {
+    await fs.promises.unlink(temporary_path).catch(() => {});
+    throw error;
   }
 
-  return selection.tag;
+  return { tag: selection.tag, temporary_path };
 }
 
 async function download_and_restart(
   context: vscode.ExtensionContext,
 ): Promise<void> {
-  await stop_client();
+  const was_running = client !== undefined;
+  let temporary_path: string | undefined;
+  let has_replaced_binary = false;
 
   try {
-    const tag = await vscode.window.withProgress(
+    const download = await vscode.window.withProgress(
       { location: vscode.ProgressLocation.Notification, title: "Koshka" },
       (progress) => download_release_binary(context, progress),
     );
+    temporary_path = download.temporary_path;
+    await stop_client();
+    await fs.promises.rename(temporary_path, get_downloaded_binary_path(context));
+    temporary_path = undefined;
+    has_replaced_binary = true;
 
     vscode.window.showInformationMessage(
-      `Koshka ${tag} was downloaded to ${get_downloaded_binary_path(context)}.`,
+      `Koshka ${download.tag} was downloaded to ${get_downloaded_binary_path(context)}.`,
     );
+    await start_client(context);
   } catch (error) {
+    if (was_running && !has_replaced_binary && client === undefined) {
+      await start_client(context);
+    }
     const detail = error instanceof Error ? error.message : String(error);
-
     vscode.window.showErrorMessage(`The Koshka download failed. ${detail}`);
-
-    return;
+  } finally {
+    if (temporary_path !== undefined) {
+      await fs.promises.unlink(temporary_path).catch(() => {});
+    }
   }
-
-  await start_client(context);
 }
 
 async function offer_download(context: vscode.ExtensionContext): Promise<void> {

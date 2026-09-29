@@ -26,7 +26,16 @@ refill_harness()
 }
 
 if [ -n "${REFILL-}" ]; then
-  refill_harness run-kosh-test.sh $REFILL
+  ACTIVE_TEST_NAMES=
+  for TEST_NAME in $REFILL; do
+    if [ -f "kosh/$TEST_NAME.kosh" ] && \
+      ! word_is_listed "$TEST_NAME" "$SKIPPED_TEST_NAMES"; then
+      ACTIVE_TEST_NAMES="$ACTIVE_TEST_NAMES $TEST_NAME"
+    fi
+  done
+  if [ -n "$ACTIVE_TEST_NAMES" ]; then
+    refill_harness run-kosh-test.sh $ACTIVE_TEST_NAMES
+  fi
 
   for TEST_NAME in $REFILL; do
     DID_FIND_TEST=no
@@ -36,7 +45,9 @@ if [ -n "${REFILL-}" ]; then
 
     if [ -f "cli/$TEST_NAME.sh" ]; then
       DID_FIND_TEST=yes
-      if ! word_is_listed "cli/$TEST_NAME.sh" "$SKIPPED_CLI_INPUT"; then
+      if ! word_is_listed "cli/$TEST_NAME.sh" "$SKIPPED_CLI_INPUT" &&
+        { [ -z "${SKIP_CLI_ASSIMILATE-}" ] || \
+          [ "$TEST_NAME" != assimilate ]; }; then
         refill_harness run-cli-test.sh "$TEST_SHELL_COMMAND" \
           "cli/$TEST_NAME.sh"
       fi
@@ -44,8 +55,13 @@ if [ -n "${REFILL-}" ]; then
 
     if [ -f "completion/$TEST_NAME.sh" ]; then
       DID_FIND_TEST=yes
-      refill_harness run-completion-test.sh "$TEST_SHELL_COMMAND" \
-        "completion/$TEST_NAME.sh"
+      if ! word_is_listed "completion/$TEST_NAME.sh" \
+        "$SKIPPED_COMPLETION_INPUT" && \
+        ! word_is_listed "completion/$TEST_NAME.sh" \
+          "$UNREPRESENTABLE_COMPLETION_INPUT"; then
+        refill_harness run-completion-test.sh "$TEST_SHELL_COMMAND" \
+          "completion/$TEST_NAME.sh"
+      fi
     fi
 
     if [ -f "highlight/$TEST_NAME.sh" ]; then
@@ -66,19 +82,34 @@ fi
 NATIVE_TEST_NAMES=
 for TEST_FILE in kosh/*.kosh; do
   TEST_NAME=${TEST_FILE#kosh/}
-  NATIVE_TEST_NAMES="$NATIVE_TEST_NAMES ${TEST_NAME%.kosh}"
+  TEST_NAME=${TEST_NAME%.kosh}
+  if word_is_listed "$TEST_NAME" "$SKIPPED_TEST_NAMES"; then
+    continue
+  fi
+  NATIVE_TEST_NAMES="$NATIVE_TEST_NAMES $TEST_NAME"
 done
 
 refill_harness run-kosh-test.sh $NATIVE_TEST_NAMES
 ACTIVE_CLI_INPUT=
 for TEST_FILE in cli/*.sh; do
-  if word_is_listed "$TEST_FILE" "$SKIPPED_CLI_INPUT"; then
+  if word_is_listed "$TEST_FILE" "$SKIPPED_CLI_INPUT" ||
+    { [ -n "${SKIP_CLI_ASSIMILATE-}" ] && \
+      [ "$TEST_FILE" = cli/assimilate.sh ]; }; then
     continue
   fi
   ACTIVE_CLI_INPUT="$ACTIVE_CLI_INPUT $TEST_FILE"
 done
 refill_harness run-cli-test.sh "$TEST_SHELL_COMMAND" $ACTIVE_CLI_INPUT
-refill_harness run-completion-test.sh "$TEST_SHELL_COMMAND" completion/*.sh
+ACTIVE_COMPLETION_INPUT=
+for TEST_FILE in completion/*.sh; do
+  if word_is_listed "$TEST_FILE" "$SKIPPED_COMPLETION_INPUT" || \
+    word_is_listed "$TEST_FILE" "$UNREPRESENTABLE_COMPLETION_INPUT"; then
+    continue
+  fi
+  ACTIVE_COMPLETION_INPUT="$ACTIVE_COMPLETION_INPUT $TEST_FILE"
+done
+refill_harness run-completion-test.sh "$TEST_SHELL_COMMAND" \
+  $ACTIVE_COMPLETION_INPUT
 refill_harness run-highlight-test.sh "$TEST_SHELL_COMMAND" highlight/*.sh
 
 exit "$REFILL_STATUS"

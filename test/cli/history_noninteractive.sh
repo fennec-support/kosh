@@ -63,6 +63,9 @@ printf '\001' > "$dir/invalid"
 echo "== history -r rejects invalid data without changing the list =="
 "$BIN" -c 'history -r "$1"; echo "rc=$?"; history' history-test \
   "$dir/invalid" 2>/dev/null
+echo "== history -a rejects invalid backing data =="
+KOSH_HISTORY_FILE="$dir/invalid" "$BIN" --no-init-files -c \
+  'history -a "$KOSH_HISTORY_FILE"; echo "rc=$?"' 2>/dev/null
 
 printf '\377\n' > "$dir/invalid-utf8"
 echo "== history -r rejects malformed UTF-8 without changing the list =="

@@ -123,8 +123,17 @@ hot fn execute_program(ExecContext &ec,
                               "Could not open the program start gate"};
     }
 
-    koshka::flush();
-    let const child = fork_job_process();
+    process child;
+    try {
+      koshka::flush();
+      child = fork_job_process();
+    } catch (...) {
+      os::close_fd(start_pipe->in);
+      os::close_fd(start_pipe->out);
+      os::close_fd(outcome_pipe->in);
+      os::close_fd(outcome_pipe->out);
+      throw;
+    }
     if (child == 0) {
       os::close_fd(start_pipe->out);
       os::close_fd(outcome_pipe->in);

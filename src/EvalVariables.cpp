@@ -606,9 +606,9 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
           if (execution_store().shell_is_interactive()) {
             if (let const newest =
                     toiletline::get_newest_history_event_number();
-                newest.has_value())
+                !newest.is_error() && newest.value().has_value())
             {
-              event_number = *newest;
+              event_number = *newest.value();
             }
           }
 

@@ -665,18 +665,17 @@ fn set_history_limit(usize entry_count) -> void
   state.first_record_index = 0;
 }
 
-fn get_newest_history_event_number() -> koshka::Maybe<usize>
+fn get_newest_history_event_number() -> koshka::ErrorOr<koshka::Maybe<usize>>
 {
   let const path = get_history_path();
-  if (!path.has_value()) return koshka::None;
-  if (koshka::internal::ensure_no_editor_history_loaded(*path, false)
-          .is_error())
-    return koshka::None;
+  if (!path.has_value()) return koshka::Maybe<usize>{koshka::None};
+  TRY(koshka::internal::ensure_no_editor_history_loaded(*path, false));
 
   let const &state = koshka::internal::get_no_editor_history_state();
-  if (state.record_byte_offsets.is_empty()) return koshka::None;
+  if (state.record_byte_offsets.is_empty())
+    return koshka::Maybe<usize>{koshka::None};
 
-  return state.total_count;
+  return koshka::Maybe<usize>{state.total_count};
 }
 
 fn get_history_events(koshka::Allocator allocator,

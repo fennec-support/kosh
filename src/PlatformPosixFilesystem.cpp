@@ -400,6 +400,7 @@ cold static fn list_directory_status_fallback(StringView dir,
   const String dir_string{dir};
   let const handle = ::opendir(dir_string.c_str());
   if (handle == nullptr) return None;
+  defer { ::closedir(handle); };
 
   let entries = ArrayList<directory_status_entry>{allocator};
   loop
@@ -407,10 +408,7 @@ cold static fn list_directory_status_fallback(StringView dir,
     errno = 0;
     let const native_entry = ::readdir(handle);
     if (native_entry == nullptr) {
-      if (errno != 0) {
-        ::closedir(handle);
-        return None;
-      }
+      if (errno != 0) return None;
       break;
     }
 
@@ -431,8 +429,6 @@ cold static fn list_directory_status_fallback(StringView dir,
     };
     entries.push(steal(entry));
   }
-
-  ::closedir(handle);
 
   let paths = ArrayList<Path>{allocator};
   let batch = Batch{allocator};
@@ -471,12 +467,11 @@ fn glob_matches(StringView pattern, Allocator allocator) throws
 
   const String pattern_string{allocator, pattern};
   glob_t glob_result{};
+  defer { globfree(&glob_result); };
   if (glob(pattern_string.c_str(), 0, nullptr, &glob_result) == 0) {
     for (usize i = 0; i < glob_result.gl_pathc; i++)
       matches.push(String{allocator, StringView{glob_result.gl_pathv[i]}});
   }
-  globfree(&glob_result);
-
   return matches;
 }
 

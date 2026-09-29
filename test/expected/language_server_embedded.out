@@ -1,6 +1,8 @@
 status=0
 embedded-diagnostic=ok
 host-diagnostic=none
+compose-host-diagnostic=none
+compose-shell-diagnostic=ok
 host-shebang=none
 local-command-diagnostic=ok
 dev-host-diagnostic=ok
@@ -13,4 +15,5 @@ hover=ok
 definition=ok
 completion=ok
 rename=ok
+rename-host=none
 code-actions=ok

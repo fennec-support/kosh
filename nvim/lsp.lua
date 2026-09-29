@@ -41,6 +41,15 @@ end
 
 vim.lsp.config("kosh", {
   cmd = { "kosh", "--as-language-server" },
+  get_language_id = function(_, filetype)
+    if filetype == "yaml.ansible" then
+      return "yaml"
+    end
+    if filetype == "make" then
+      return "makefile"
+    end
+    return filetype
+  end,
   filetypes = {
     "sh",
     "bash",

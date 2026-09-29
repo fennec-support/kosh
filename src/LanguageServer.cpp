@@ -99,7 +99,7 @@ private:
   fn initialize(const JsonValue *id, const JsonValue *params) throws -> bool;
   fn open_document(const JsonValue *params) throws -> Document *;
   fn change_document(const JsonValue *params) throws -> Document *;
-  fn close_document(const JsonValue *params) throws -> void;
+  fn close_document(const JsonValue *params) throws -> bool;
   fn complete(const JsonValue *id, const JsonValue *params) throws -> bool;
   fn resolve_completion(const JsonValue *id, const JsonValue *params) throws
       -> bool;
@@ -424,19 +424,20 @@ fn Server::send_empty_diagnostics(StringView uri) throws -> bool
   return send_payload(payload.view());
 }
 
-fn Server::close_document(const JsonValue *params) throws -> void
+fn Server::close_document(const JsonValue *params) throws -> bool
 {
   let const *text_document =
       params != nullptr ? params->get("textDocument") : nullptr;
   let const uri = string_field(text_document, "uri");
-  if (!uri.has_value()) return;
-  send_empty_diagnostics(*uri);
+  if (!uri.has_value()) return true;
+  if (!send_empty_diagnostics(*uri)) return false;
 
   for (usize index = 0; index < m_documents.count(); index++) {
     if (m_documents[index].uri != *uri) continue;
     m_documents.remove(index);
     break;
   }
+  return true;
 }
 
 fn Server::append_diagnostic(String &output, const Document &document,
@@ -704,6 +705,8 @@ fn Server::complete(const JsonValue *id, const JsonValue *params) throws -> bool
   let result = completion::complete(
       document->shell_source(), *cursor, m_context, base_directory,
       &document_function_names, true, completion::completion_mode::Listing);
+  let sorted_function_names =
+      steal(document_function_names).make_sorted(sort_order::ascending);
   let response = String{"["};
   let text_edit_prefix = String{heap_allocator()};
 
@@ -731,8 +734,10 @@ fn Server::complete(const JsonValue *id, const JsonValue *params) throws -> bool
       if (KEYWORDS.find(candidate.view()).has_value()) {
         response.append(",\"kind\":14,\"data\":{\"command\":");
       } else if (search_builtin(candidate.view()).has_value() ||
-                 m_context.function_store().find_function(candidate.view()).has_value() ||
-                 document_function_names.find(candidate.view()).has_value() ||
+                 m_context.function_store()
+                     .find_function(candidate.view())
+                     .has_value() ||
+                 sorted_function_names.find(candidate.view()).has_value() ||
                  (m_context.runtime_state().koshkit_utilities_are_reachable() &&
                   koshkit::find_util(candidate.view()).has_value() &&
                   resolver.get_status(candidate.view()) !=
@@ -1256,7 +1261,7 @@ fn Server::collect_rename_spans(const Document &document, rename_kind kind,
   for (usize line = 0; line < document.line_starts.count(); line++) {
     let const[line_start, line_end] = document.get_line_bounds(line);
     let const *spans = m_highlight_cache.spans_for(
-        document.normalized_source.view(), line_start, line_end, m_context);
+        document.shell_source(), line_start, line_end, m_context);
 
     for (let const &span : *spans) {
       let const is_wanted = kind == rename_kind::variable
@@ -2108,7 +2113,9 @@ fn Server::dispatch(const JsonValue &message) throws -> bool
     let *document = change_document(params);
     return document == nullptr ? true : validate_all(document);
   }
-  case request_method::DidClose: close_document(params); return validate_all();
+  case request_method::DidClose:
+    if (!close_document(params)) return false;
+    return validate_all();
   case request_method::Completion: return complete(id, params);
   case request_method::ResolveCompletion: return resolve_completion(id, params);
   case request_method::CodeAction: return code_actions(id, params);

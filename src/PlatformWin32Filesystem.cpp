@@ -660,6 +660,8 @@ cold fn list_directory_typed(StringView dir, Allocator allocator) throws
       kind = Path::entry_kind::Directory;
     entries.push(Path::directory_child{name.take(), kind});
   } while (FindNextFileW(handle, &data) != 0);
+  if (GetLastError() != ERROR_NO_MORE_FILES) return None;
+
   return entries;
 }
 

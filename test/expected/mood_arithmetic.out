@@ -339,6 +339,19 @@
     [SimpleCommand "set" "+o" "extended-arithmetic"]
   [CompoundListCondition, None]
     [SimpleCommand "echo" "disabled=$((big + 1))"]
+  [CompoundListCondition, None]
+    [Assign x=x=1,]
+  [CompoundListCondition, None]
+    [CStyleForLoop "pad=0; pad<300; pad++"]
+      [CompoundList]
+        [CompoundListCondition, None]
+          [Assign x+= ]
+  [CompoundListCondition, None]
+    [Assign x+=2]
+  [CompoundListCondition, None]
+    [Assign result=$((x))]
+  [CompoundListCondition, None]
+    [SimpleCommand "echo" "nested=$result value=$x"]
 [Word
   Unquoted "echo"
 ]
@@ -1396,6 +1409,52 @@
   DoubleQuoted "disabled="
   ArithmeticExpansion "big + 1"
 ]
+[Word
+  Unquoted "x="
+  Literal "x=1,"
+]
+[Word
+  Unquoted "for"
+]
+[Word
+  Unquoted "pad=0"
+]
+[Word
+  Unquoted "pad"
+]
+[Word
+  Unquoted "300"
+]
+[Word
+  Unquoted "pad++"
+]
+[Word
+  Unquoted "do"
+]
+[Word
+  Unquoted "x+="
+  Literal " "
+]
+[Word
+  Unquoted "done"
+]
+[Word
+  Unquoted "x+="
+  Literal "2"
+]
+[Word
+  Unquoted "result="
+  ArithmeticExpansion "x"
+]
+[Word
+  Unquoted "echo"
+]
+[Word
+  DoubleQuoted "nested="
+  Variable "result"
+  DoubleQuoted " value="
+  Variable "x"
+]
 31:23: warning: An unquoted variable can split into words and expand globs. (SC2086)
     31 |  echo $((y = 7)); echo $y
        |                        ^~
@@ -1575,3 +1634,4 @@ bash=off
 sh=off
 enabled=18446744073709551617
 disabled=1
+nested=2 value=1

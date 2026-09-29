@@ -147,8 +147,8 @@ changes update this file.
   `kosh --format` command is the documented fallback for a setup without the
   server.
 - A client document selector names only the language identifiers the format
-  detector compares against. These are `markdown`, `yaml`, `dockerfile`,
-  `makefile`, `json`, and `jsonc`, plus the shell identifiers. Any other
+  detector compares against. These are `markdown`, `yaml`, `dockercompose`,
+  `dockerfile`, `makefile`, `json`, and `jsonc`, plus the shell identifiers. Any other
   non-empty identifier makes the whole document parse as shell. A host format
   the detector finds by name is matched by file name in the client.
 - Zed receives no identifier for Shell Script. The extension of the file

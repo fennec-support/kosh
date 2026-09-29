@@ -4,7 +4,13 @@
   [CompoundListCondition, None]
     [Assign directory=$TEST_TEMP_DIRECTORY/glob-dot-slash]
   [CompoundListCondition, None]
-    [SimpleCommand "koshkit" "rm" "-rf" "$directory"]
+    [IfClause]
+      [CompoundList]
+        [CompoundListCondition, None]
+          [SimpleCommand "[" "-n" "$directory" "]"]
+      [CompoundList]
+        [CompoundListCondition, None]
+          [SimpleCommand "$TEST_SYSTEM_RM" "-rf" "--" "$directory"]
   [CompoundListCondition, None]
     [SimpleCommand "koshkit" "mkdir" "-p" "$directory/real/nested"]
   [CompoundListCondition, None]
@@ -28,7 +34,13 @@
   [CompoundListCondition, None]
     [SimpleCommand "cd" "$start"]
   [CompoundListCondition, None]
-    [SimpleCommand "koshkit" "rm" "-rf" "$directory"]
+    [IfClause]
+      [CompoundList]
+        [CompoundListCondition, None]
+          [SimpleCommand "[" "-n" "$directory" "]"]
+      [CompoundList]
+        [CompoundListCondition, None]
+          [SimpleCommand "$TEST_SYSTEM_RM" "-rf" "--" "$directory"]
 [Word
   Unquoted "start="
   Variable "PWD"
@@ -39,16 +51,37 @@
   Unquoted "/glob-dot-slash"
 ]
 [Word
-  Unquoted "koshkit"
+  Unquoted "if"
 ]
 [Word
-  Unquoted "rm"
+  Unquoted "["
+]
+[Word
+  Unquoted "-n"
+]
+[Word
+  Variable "directory"
+]
+[Word
+  Unquoted "]"
+]
+[Word
+  Unquoted "then"
+]
+[Word
+  Variable "TEST_SYSTEM_RM"
 ]
 [Word
   Unquoted "-rf"
 ]
 [Word
+  Unquoted "--"
+]
+[Word
   Variable "directory"
+]
+[Word
+  Unquoted "fi"
 ]
 [Word
   Unquoted "koshkit"
@@ -144,16 +177,37 @@
   Variable "start"
 ]
 [Word
-  Unquoted "koshkit"
+  Unquoted "if"
 ]
 [Word
-  Unquoted "rm"
+  Unquoted "["
+]
+[Word
+  Unquoted "-n"
+]
+[Word
+  Variable "directory"
+]
+[Word
+  Unquoted "]"
+]
+[Word
+  Unquoted "then"
+]
+[Word
+  Variable "TEST_SYSTEM_RM"
 ]
 [Word
   Unquoted "-rf"
 ]
 [Word
+  Unquoted "--"
+]
+[Word
   Variable "directory"
+]
+[Word
+  Unquoted "fi"
 ]
 ./a.sh ./b.sh
 a.sh b.sh
