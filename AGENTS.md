@@ -240,322 +240,71 @@ changes update this file.
 
 ## Workflow
 
-- Read and state the matching guidance before planning, editing, review, prose,
-  and commits. Resolve the configuration directory before expanding an at-sign
-  path. Reuse a current read until an edit or external change can make it stale.
-  Review matching entries in [MISTAKES.md](MISTAKES.md) before repeating an
-  action whose shape has already failed.
-- Print the required before-and-after table immediately after each edit batch.
-  No tool call may precede a pending table, including a formatter, a build, a
-  test, a search, or a guidance reread. After a resumed session, print any
-  pending table first, then reread the matching guidance and the current target
-  before the first edit.
-- Use parallel read-only research for broad work. Keep scopes disjoint between
-  agents and the main process until each agent reports. Validate task names and
-  arguments. Wait at least ten seconds.
-- Resolve files, tools, services, interpreters, options, streams, test targets,
-  cleanup, and expected statuses before use. Verify the identity and version of
-  a reference interpreter, because a name on PATH can be a symbolic link to the
-  shell under test. Recheck CLI options after checkout. Inspect local help
-  before using an unfamiliar tool option, and inspect an unfamiliar make target
-  recipe before invoking it.
-- Resolve an executable in the environment that launches it. Pass its verified
-  absolute path when a nested shell can use a different command search path.
-  Pass an absolute script path, or set the working directory explicitly, when a
-  runner is launched from outside its own directory. A runner that the makefile
-  supplies with exported inputs is invoked through its owning target.
-- Before branch integration, verify that durable snapshots exist and that the
-  integration worktree has no overlapping local changes.
-- Inspect the reported source line before diagnosing a shell error.
-- Use parallel tool calls for independent reads. Do not join them with shell
-  command separators. Run independent probes and searches independently.
-- Resolve build artifact paths from the active target before passing them to
-  stat, debuggers, or inspection tools.
-- Compatibility fixtures use a stable peer-file operand when that operand is
-  printed. The runner may pass the main input through different path forms to
-  the shell under test and the reference shell.
-- Put the explicitly verified interpreter and `-c` in the command text for a
-  compound host probe. Do not rely on command-runner shell metadata.
-- Reduce a bounded platform probe to one verified command. Confirm its mood,
-  option defaults, output order, and final status before writing the golden.
-- Run a Bash compatibility probe under `--mood bash`. The default mood follows
-  dash where the two shells disagree.
-- Redirect a build or a suite into a log file and echo its status, then read the
-  log. A pipe reports the status of the last command in the pipeline.
-- Resolve redirected log paths from the command runner's working directory;
-  a nested tool's `-C` option does not change where the parent shell opens a
-  redirection.
-- Do not embed direct recursive removal in a probe. Use an accepted cleanup
-  owner, or leave a bounded temporary directory for system cleanup.
-- Reduce a high-volume fixture to its failing section before enabling shell
-  xtrace.
-- Bound searches by matches and bytes. Use current nonoverlapping excerpts and
-  literal ripgrep patterns. Put every ripgrep option, including `--glob`, before
-  the pattern, the separator, and the paths. Give `--glob` a concrete pattern,
-  and treat a zero count from a filtered search as unproven until the filter is
-  checked. Put `--` before dash-leading patterns. Keep short options separate
-  when any option accepts a value. Never pass `-r` to ripgrep, because it names
-  the replacement text and rewrites every printed match. Enable PCRE2 only when
-  required.
-- A command that runs ripgrep must not contain `&&` or `||`. Run an expected
-  no-match search as its own command, because its status must not stop later
-  checks.
-- Resolve every guessed or optional peer path, include root, and wildcard with
-  `fd` before passing it to `rg`. Do not type a path merely because a nearby
-  file suggests its name, including a file named in a prior run. Select `fd`
-  glob mode before passing a wildcard pattern.
-- Quote shell source, use `-c` for source, put `--` before dash-leading
-  operands, and place every option before a `--` separator. Order redirections
-  from creation to use. Capture status or PIPESTATUS as the next command after
-  the pipeline it describes. Place environment assignments before the command
-  that receives them. Single-quote literal shell arguments that contain
-  backticks.
-- Quote an expansion whose exact spacing an assertion depends on, because word
-  splitting collapses a run of blanks in both shells.
-- Compare a delimiter-sensitive shell pattern with the literal observed value
-  before running it. When a host shell invokes a reference shell with `-c`,
-  single-quote the source at the host boundary so the host cannot expand the
-  reference variables.
-- Keep a shell assignment value on the same logical line as its equals sign.
-  Use an explicit continuation before any physical line break.
-- Do not use Python, here-documents, sed in-place rewrites, or awk rewrites.
-  Shell text tools remain read-only probes. Inspect the complete command
-  string, including nested quoted source, for prohibited forms before
-  execution. Write a generated file with the write tool or with a `printf`
-  redirection. An interpreter chosen for convenience carries its own prohibited
-  forms.
-- Keep Bash's `$(< file)` fast file read as the substitution's only command.
-  Append a sentinel before the read when trailing newlines must be preserved.
-  Pass generated text through a literal `printf` format when the text contains
-  percent conversions.
-- Check the fixture's runner interpreter before using shell-specific syntax.
-  A plain sh fixture reads a file with a portable command substitution.
-- Test a replacement regular expression against exact representative input
-  before using it in shared fixture normalization. Keep normalization that must
-  visit every line before any sed stage that uses `n`, because the newly read
-  line resumes after that command.
-- Edit with apply_patch when available. Otherwise, use the exact-edit tool after
-  reading the target. Use one file, concern, and operation per path in each
-  patch. Copy current anchors and escaping. Anchor patches on unchanged lines
-  without escapes when the tool input adds an escaping layer. Restore deleted
-  code from the exact diff. Check every multi-file patch boundary before
-  applying it. Inspect failed patches, reread after formatting or concurrent
-  work, and apply only nonempty changes.
-- Do not run a whole-file formatter on a vendored file. Apply narrow formatting
-  patches that preserve the surrounding style.
-- Before a bulk mechanical rewrite, count every known input form and make the
-  transformation idempotent when files may already contain the target form.
-- Inspect the formatter diff before validation. Restore changes to unrelated
-  files that were clean before the formatter ran.
-- Name the active case before each assertion in a compound probe that can stop
-  on the first nonzero status.
+- Read the applicable repository guidance before planning, editing, reviewing,
+  writing prose, tests, or commits. Check [MISTAKES.md](MISTAKES.md) before
+  repeating a failed action. Preserve unrelated working-tree changes.
+- Resolve files with fd or rg --files before naming optional paths. Verify
+  unfamiliar tool options, make recipes, interpreters, executables, and
+  environment paths in the context where they run. Do not infer a filename
+  from a type or a previous run.
+- Put every rg option before its pattern and resolved paths. Use one fd
+  pattern per invocation; select glob mode for wildcard patterns. Keep
+  searches bounded. Run independent reads as separate commands or parallel
+  tool calls, never joined with shell separators. A no-match result is
+  evidence only after filters and command status are checked.
+- Resolve redirected logs from the command runner's working directory.
+  A nested make -C changes Make's directory, not the parent shell's
+  redirection path. Keep result and artifact paths tied to their runner.
+- Use the verified host shell for host probes, timing, signals, and compound
+  commands. Pass source through -c, use verified absolute executable paths
+  when command search can differ, and inspect nested quoting before running.
+  Bound live commands and publish a process identity before signaling it.
+- Edit with apply_patch. Use narrow changes and inspect the diff after
+  formatting. Do not use Python, here-documents, sed -i, or awk rewrites.
+  Print the required before-and-after table immediately after each edit batch,
+  before any other tool call.
+- Search owners and all callers before changing an interface or deleting a
+  shared symbol. Inspect exact types, aggregate layouts, ownership, platform
+  boundaries, and every active build configuration. Review both ends of a
+  framed format together.
+- For shell compatibility, measure the exact construct in both shells first.
+  Verify mood, options, input channel, output, and status. Keep fixture
+  operands stable across both commands.
 
-## Implementation
+## Build and validation
 
-- Search the owner and all callers. Inspect declarations, linkage, enums,
-  helpers, containers, packed keys, formatters, and iteration syntax. Use an
-  unrestricted literal source search before deleting a shared symbol, and
-  repeat it after the edit.
-- Inspect the exact local type before copying member access syntax between
-  nearby paths. Copy platform argument types, helper namespaces, and ownership
-  transfers from their current declarations before the first compile.
-- Complete interface, type, field, and container migrations across all uses and
-  aggregate initializers before compiling. Check overloads, result types,
-  explicit template instantiations, parameter use, widths, local scope, switch
-  case scopes, and standard helper declarations.
-- Recheck every break and continue when moving a loop body into a lambda.
-- Place a gate on the single producer of the value it governs. A gate added at
-  one consumer leaves every other consumer unchanged.
-- Read the declaration of an aggregate before writing or reading its positional
-  initializer. Read the access label that governs a member before calling it.
-- Search for every golden that reads a shared name table before the table gains
-  an entry.
-- Write and read framed fields in identical order. Review both sides together
-  whenever a framed format changes.
-- Inspect exact-length stream readers for read-ahead and end-of-file dependence
-  before using them on persistent protocol streams.
-- Parse internal control markers by their complete validated value. Do not infer
-  different values from a shared prefix.
-- Verify option defaults against the reference shell. Resolve compact option
-  identifiers through the canonical packed table. Declaration order does not
-  carry them.
-- Measure the reference shell on the exact construct before designing a
-  compatibility fix, and design from the measured output alone. The channel
-  that carries the source belongs to the construct. Measure through a script
-  file, standard input, and `-c` before a rule is generalized across them.
-  Measure both shells before a task premise authorizes a source change, because
-  the divergence a task describes can already be absent.
-- Attribute an observed status to the branch that produced it before that status
-  is generalized to another branch of the same builtin.
-- Keep borrowed views within owner lifetimes. Prove bounds, spans, offsets,
-  lengths, optionals, and static evidence. Install restoration guards before
-  mutation. A view copied into heap storage needs a named owner, and the macOS
-  sanitizer build reports no leak. A Linux run is the only place such a leak is
-  reported.
-- Handle zero and empty containers before indexed access. Check saturated
-  accumulators before subtraction. Narrow values only at command-status edges.
-- Order packed fields by alignment and assert important sizes. Use the project
-  Bitset or integer masks for fixed boolean tables.
-- Inspect the syntax tree before changing control-flow ownership. Cover every
-  evaluator and cache path. Use nonconstant fixtures for uncertain branches.
-- Remove obsolete branches, fields, flags, and writes. Keep valid comments.
-- Use an explicit branch when a Maybe fallback performs work, because value_or
-  evaluates the fallback before the call.
-- Verify that macros and declarations are visible in every active build
-  configuration before using them.
+- Use root make for builds and root make test for the full suite. Inspect a
+  focused target's recipe, inputs, runner, golden, and cleanup owner before
+  invoking it. Pass matching MODE, BIN, and TARGET to direct test targets.
+- Run test owners that share result or artifact paths sequentially, including
+  debug and release modes. Keep the CLI harness separate from other full
+  suites. Do not load the machine while timed interactive fixtures run.
+- Redirect a build or suite to a resolved log, capture its final status, then
+  read the log. A full suite passes only after all shards finish and no
+  failure artifact remains. Check that capability-gated tests took the active
+  branch.
+- Use focused regression coverage for behavior changes. Inspect changed
+  golden lines and exact streams and statuses. Native fixtures with status
+  126 or 127 need a manually verified golden instead of refill.
+- Check the fixture runner's interpreter before shell-specific syntax.
+  Host-dependent counts belong in shape assertions, not goldens. Run
+  containers without a terminal and with the workspace user and group when
+  they write through a bind mount. Verify packages and binary dependencies
+  inside the target container.
+- Use MODE=rel for performance comparisons. Verify the timing tool and
+  workload inside the exact environment, use isolated bounded inputs, and
+  check status before comparing numbers. Start GDB with -nx if startup
+  configuration can stop at main; confirm the actual stop signal.
 
-## Make
+## Finish
 
-- Select a cross-platform build with the documented `TARGET` value, such as
-  `TARGET=Windows_NT`; do not invent a `PLATFORM` override. Confirm the target
-  from the object path in the build log.
-- A make target is owned by the makefile of the directory the command runs in.
-  Confirm the working directory before a nonzero status is attributed to the
-  files under change, and give a root build the repository root as its make
-  directory.
-- Place conditionals and immediate expansions after their variables. Assign
-  deferred tools after parse-time probes.
-- A repeated command-line override keeps only its last assignment. Pass a
-  multi-valued override as one space-separated value.
-- Add variant compiler definitions through `BUILD_DEFINITIONS`. An early
-  override of accumulated compiler flags can suppress later platform flags.
-- Read the variable that receives an override before a build is retried with it.
-  A simple assignment discards the environment value of the same name. The
-  environment `CXXFLAGS` reaches both the compile and the link recipe, and its
-  text is stamped into a metadata define.
-- Preserve argument zero and input origin when parsing MAKEFLAGS. Exclude parent
-  bookkeeping and assignments from operands. Recipe exports use macro
-  precedence.
-- The first ordinary target, including included text, remains the default.
-  Repeated makefiles do not replace it.
-- Inference preserves explicit rule identity and its own first prerequisite.
-  Use POSIX recipe syntax unless syntax mood is under test.
-
-## Validation
-
-- Locate the owner, runner, input, golden, and environment. Run a failing
-  regression before a behavior fix. Native tests need a placeholder golden
-  before REFILL.
-- Verify that a capability-gated test ran its active branch. A skip summary is
-  not coverage.
-- Inspect fixture instrumentation before direct invocation. Match the binary
-  mode to every counter or diagnostic hook the fixture requires.
-- Rebuild the required mode. Verify platform, mode, and revision when relevant.
-  Compile release after changing assertion-only locals. Read the binary a
-  failing section actually runs.
-- Run a container suite without an allocated terminal. A terminal moves a
-  fixture onto its terminal branch and hides the result continuous integration
-  reports. A container exec also starts with SIGQUIT ignored, and the startup
-  ignore listing reports it. Reproduce a container failure outside the harness
-  before it is attributed to the harness.
-- Inspect package names and the test binary's shared-library dependencies in
-  the target container before invoking its suite.
-- A bounded golden fixture runs in a new session without a controlling
-  terminal. Job control is unavailable there. A helper that must keep the
-  default interrupt disposition runs in the foreground and publishes its own
-  process id.
-- A helper that moves a process into a new session forks when the caller already
-  leads a process group. The new identity is read from the process that owns it,
-  and the completion of the work is read from a value that process publishes.
-- Force-sign a relinked macOS binary and prove it runs one command before a
-  suite is started. An invalid signature kills every invocation with signal 9.
-- Run owners sharing result or artifact paths sequentially. Use finite
-  workloads, event-based synchronization, bounded polling, and preserved
-  session ids.
-- Assert exact streams, statuses, punctuation, source, carets, and log
-  arguments. Use distinct fixture names. CLI fixtures cover runtime output.
-  Native fixtures also emit lexer and syntax tree output. Update the matching
-  golden in the same edit when a fixture result label changes.
-- Inspect the authoritative formatter order before writing an exact assertion
-  for generated text.
-- Check which diagnostic producer owns a warning before changing its expected
-  capitalization. Formatter warnings and shell diagnostics can differ.
-- Capture capability-dependent warnings in fixtures and assert their shape.
-  Do not put host-dependent counts in goldens.
-- Run ordering assertions against clean state before unrelated entries can
-  affect container iteration.
-- Remove a focused runner result file before invoking the runner. When direct
-  removal is filtered, move it to a bounded temporary backup instead.
-- Disable unrelated analysis when a probe isolates runtime behavior, or prefer
-  positional operands after `--` in harness-only source.
-- Assign a runtime shell variable through source when the test depends on its
-  setter. Importing an environment value does not prove that the setter ran.
-- Isolate each operation in a hanging command before identifying the cause.
-  Repeated probes start with a verified unused or clean path.
-- Give each section of an interactive fixture its own temporary directory.
-- Read the owner that computes a default before a fixture asserts it.
-- Measure a divergence between the two shells for each assertion of a
-  compatibility fixture before the fixture is written.
-- Run a status or PIPESTATUS capture in the same shell and the same order the
-  fixture will use. Read a process-sensitive name with a builtin print in the
-  current shell, because a command substitution reports the child identity.
-  Target a subshell with `$BASHPID`, because `$$` names the original shell.
-- Trace native creation and open requests before changing platform access,
-  sharing, or security. Verify both payload and status in every direction.
-- Normalize platform branches to the same output before changing a shared
-  golden. Trace each platform child transition before asserting shared subshell
-  state.
-- Use explicit koshkit dispatch unless bare lookup is under test. Koshkit rm
-  uses `--dry-run`.
-- Verify bundled utility options before using them in fixtures. Prefer shell
-  syntax for simple assertions. Keep fixture control flow exhaustive and free
-  of unrelated diagnostics.
-- Language server probes initialize first, redirect the emitter, drain output,
-  and keep final status. Debug completion and highlighting receive source
-  through their debug option without `-c`.
-- Poll long work to its final exit. A full suite passes only after every shard
-  finishes and no partial failure artifact remains.
-- Leave the machine idle while a suite runs. The editor recorder tests are timed
-  against wall clock, and a concurrent probe makes one of them time out. Read a
-  timing failure as load before it is read as a defect.
-- Keep the CLI harness separate from the other full-suite harnesses. Their
-  concurrent workloads can exhaust bounded CLI deadlines.
-- Give an interrupted interactive prompt its own settle interval. A short idle
-  read for ordinary keystrokes can consume the next command before recovery.
-- Name the target of every suite invocation. A directory make invocation with no
-  target runs the first ordinary target of that makefile. The first ordinary
-  target of `test/Makefile` is `clean`.
-
-## Performance and finish
-
-- Verify executables, services, interfaces, sanitizers, timing, platforms, and
-  fallbacks. A Docker client does not prove daemon readiness. Match container
-  toolchains to architecture. Force-sign relinked macOS workload binaries.
-- When container package downloads fail on DNS, inspect container networking
-  before retrying the package installation.
-- Run writable bind-mounted containers with the workspace user and group, or
-  restore ownership before a host suite uses their output paths.
-- Use isolated bounded temporary directories. Verify cleanup targets. Use a
-  reviewed patch or Trash when direct removal is filtered. Deinitialize
-  temporary worktree submodules before removal.
-- Use `MODE=rel` for every performance make command. Clear inherited jobserver
-  flags before serial submakes. Resolve benchmark inputs, options, and statuses.
-  Pass additional compiler flags through `USER_CXXFLAGS`. Command-line
-  `CXXFLAGS` replaces the project compiler flags. Enable nonzero handling for
-  expected failures. Run bench through `-c`. Benchmark timeouts wrap the
-  measured process directly.
-- Validate profilers on a small payload and bound full workloads. Let the
-  command runner capture output.
-- Verify every benchmark tool and executable path inside the exact container.
-  Keep required packages in the container command that runs the benchmark.
-- Start GDB with `-nx` when a host configuration can install startup
-  breakpoints. Verify that a backtrace stopped on the reported signal.
-- Use the verified host Bash for process-group cleanup commands. The command
-  runner can select Kosh, whose `kill` option syntax differs.
-- Record each mistake in [MISTAKES.md](MISTAKES.md), and add one general
-  prevention rule to this file for each distinct cause.
-- Format changes. Run focused and full bounded tests. Inspect goldens, the full
-  diff, untracked files, and `git diff --check`. Confirm README.md is untouched.
-  Check `git ls-files` before staging a path that is absent from status output.
-  Inspect vendored formatting rules before formatting a touched vendor file.
-- Verify git identity. Keep commit subjects within the limit and bodies within
-  72 columns. Pass a commit body through repeated `-m` arguments. Read the
-  commit and prose guidance against a drafted body before the commit command is
-  composed. Count each drafted body line before composing the command, and give
-  every consequence clause its own sentence.
-- Run `git add` on every new path before that path appears in a commit
-  pathspec, and pass an explicit pathspec to every commit, because the index can
-  hold a path that another worker staged in the same working copy. A status
-  reading goes stale as soon as another command runs.
-- Commit locally. Never push or create external artifacts without an explicit
-  request.
+- Keep MISTAKES.md concise: record a distinct cause and reusable fix once;
+  fold recurrences into that entry. Add a general rule here only when the
+  current rules do not cover the cause.
+- Inspect the full diff, git diff --check, untracked files, and any changed
+  goldens. Confirm README.md is untouched unless its edit was approved.
+- Format and validate meaningful changes, then commit locally. Verify the
+  active git identity before posting through a CLI or committing. Stage only
+  intended paths, inspect staged name-status including rename deletions, and
+  pass commit options before pathspecs. Keep commit body lines within 72
+  columns. Never push or create external artifacts without a request.
