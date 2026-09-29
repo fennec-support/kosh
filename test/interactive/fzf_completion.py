@@ -57,11 +57,11 @@ for pick in picks:
 """
 
 
-def read_until_idle(master, timeout, required_output=None):
+def read_until_idle(master, timeout, required_output=None, idle_seconds=0.02):
     output = b""
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        readable, _, _ = select.select([master], [], [], 0.1)
+        readable, _, _ = select.select([master], [], [], idle_seconds)
         if master not in readable:
             if output and (required_output is None or required_output in output):
                 break
@@ -146,7 +146,7 @@ def run_interrupt_scenario(directory):
 
     started = time.monotonic()
     os.write(master, b"\x03")
-    output = read_until_idle(master, 8, b"MARKER-BACK")
+    output = read_until_idle(master, 8, idle_seconds=0.1)
     os.write(master, b"printf 'MARKER-BACK\\n'\nexit\n")
     output += read_until_idle(master, 3)
     elapsed = time.monotonic() - started
@@ -194,7 +194,7 @@ def run_scenario(
         os.write(master, b"\t")
         output += read_until_idle(master, 3)
     os.write(master, b"\n")
-    output += read_until_idle(master, 2, b"MARKER-END")
+    output += read_until_idle(master, 2)
     os.write(master, b"printf 'MARKER-END\\n'\nexit\n")
     output += read_until_idle(master, 2)
     os.close(master)

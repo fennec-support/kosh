@@ -295,14 +295,14 @@
 [Word
   Unquoted "outer_fn"
 ]
-8:3: Warning: The 'lifetime_fn' function calls itself. (SC2264)
+8:3: warning: The 'lifetime_fn' function calls itself. (SC2264)
      8 |    lifetime_fn
        |    ^~~~~~~~~~~
 5:1: details:
      5 |  lifetime_fn() {
        |  ^~~~~~~~~~~ 'lifetime_fn' is defined here.
 note: Use `command` before the wrapped command name.
-32:5: Warning: The 'nested_fn' function calls itself. (SC2264)
+32:5: warning: The 'nested_fn' function calls itself. (SC2264)
     32 |      nested_fn
        |      ^~~~~~~~~
 29:3: details:

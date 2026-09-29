@@ -280,28 +280,28 @@
 [Word
   Unquoted "./never_generated_4242"
 ]
-2:1: Warning: The command 'zzqqxxnonexist_command_4242' was not found.
+2:1: warning: The command 'zzqqxxnonexist_command_4242' was not found.
      2 |  zzqqxxnonexist_command_4242
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~
-18:3: Warning: The command './not_generated_option_4242' was not found.
+18:3: warning: The command './not_generated_option_4242' was not found.
     18 |  ./not_generated_option_4242
        |    ^~~~~~~~~~~~~~~~~~~~~~~~~
-21:3: Warning: The command './dynamic_generated_4242' was not found.
+21:3: warning: The command './dynamic_generated_4242' was not found.
     21 |  ./dynamic_generated_4242
        |    ^~~~~~~~~~~~~~~~~~~~~~
-24:3: Warning: The command './removed_generated_4242' was not found.
+24:3: warning: The command './removed_generated_4242' was not found.
     24 |  ./removed_generated_4242
        |    ^~~~~~~~~~~~~~~~~~~~~~
-27:3: Warning: The command './cwd_generated_4242' was not found.
+27:3: warning: The command './cwd_generated_4242' was not found.
     27 |  ./cwd_generated_4242
        |    ^~~~~~~~~~~~~~~~~~
-29:40: Warning: The command './or_generated_4242' was not found.
+29:40: warning: The command './or_generated_4242' was not found.
     29 |  cc -o or_generated_4242 missing.c || ./or_generated_4242
        |                                         ^~~~~~~~~~~~~~~~~
-31:3: Warning: The command './branch_generated_4242' was not found.
+31:3: warning: The command './branch_generated_4242' was not found.
     31 |  ./branch_generated_4242
        |    ^~~~~~~~~~~~~~~~~~~~~
-32:3: Warning: The command './never_generated_4242' was not found.
+32:3: warning: The command './never_generated_4242' was not found.
     32 |  ./never_generated_4242
        |    ^~~~~~~~~~~~~~~~~~~~
 Encountered 8 warnings.

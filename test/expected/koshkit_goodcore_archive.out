@@ -1,8 +1,8 @@
 goodcore: copying existing core
 goodcore: collecting executable and libraries
 goodcore: collected 6 candidate files
-goodcore: copying /usr/lib/libstdc++.so.6
 goodcore: copying /usr/lib/libm.so.6
+goodcore: copying /usr/lib/libstdc++.so.6
 goodcore: copying /usr/lib/libresolv.so.2
 goodcore: copying /usr/lib/libgcc_s.so.1
 goodcore: copying /usr/lib/libc.so.6

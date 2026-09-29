@@ -29,4 +29,4 @@ check_contains "$diagnostic" \
 check_contains "$diagnostic" \
   "${escape}[36mnote${escape}[0m: ${escape}[36mUse" note-color
 check_contains "$warning" \
-  "${escape}[33mWarning${escape}[0m: retry attempt 1 of 2 failed with status 1." warning-color
+  "${escape}[33mwarning${escape}[0m: retry attempt 1 of 2 failed with status 1." warning-color

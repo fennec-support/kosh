@@ -239,14 +239,15 @@ case $process_tree in
 esac
 printf 'evilps-single-title=%s\n' "$process_title"
 
-filesystem_report=$("$BIN" -c 'koshkit evilfs')
+filesystem_report=$("$BIN" -c 'koshkit evilfs' 2> "$TEST_NULL_DEVICE")
 case $filesystem_report in
   *'Filesystems'*SOURCE*TARGET*TYPE*OPTIONS*) filesystem_title=present ;;
   *) filesystem_title=omitted ;;
 esac
 printf 'evilfs-single-title=%s\n' "$filesystem_title"
 
-filesystem_all_report=$("$BIN" -c 'koshkit evilfs --all')
+filesystem_all_report=$("$BIN" -c 'koshkit evilfs --all' \
+  2> "$TEST_NULL_DEVICE")
 case $filesystem_all_report in
   *'Filesystems'*SOURCE*TARGET*VOLUME*OPTIONS*) filesystem_all_title=present ;;
   *) filesystem_all_title=omitted ;;
@@ -280,7 +281,7 @@ if [ "$host_system" = Darwin ]; then
   evildisk_report=$(PATH="$evildisk_tools:$PATH" "$BIN" -c \
     'koshkit --color never evildisk -a /dev/null' 2>&1)
   case $evildisk_report in
-    *disk-test*Verified*temperature*"42 Celsius"*"used 7%"*"media errors 5,075"*Warning:*"nonzero SMART counters"*)
+    *disk-test*Verified*temperature*"42 Celsius"*"used 7%"*"media errors 5,075"*warning:*"nonzero SMART counters"*)
       evildisk_fallback=passed
       ;;
     *) evildisk_fallback=failed ;;
@@ -297,7 +298,7 @@ if [ "$host_system" = Darwin ]; then
     'koshkit --color never evildisk -a /dev/null' 2>&1)
   case $evildisk_ata_report in
     *uncorrectable*) evildisk_ata=failed ;;
-    *"Mock ATA"*"reallocated 2"*"timeouts 0"*"pending 3"*"CRC errors 4"*Warning:*"nonzero SMART counters reallocated 2, pending 3, CRC errors 4"*)
+    *"Mock ATA"*"reallocated 2"*"timeouts 0"*"pending 3"*"CRC errors 4"*warning:*"nonzero SMART counters reallocated 2, pending 3, CRC errors 4"*)
       evildisk_ata=passed
       ;;
     *) evildisk_ata=failed ;;

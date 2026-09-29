@@ -22,11 +22,14 @@ TEST_STATUS=0
 
 for TEST_FILE in "$@"; do
   OUTPUT="$OUTPUT_DIRECTORY/$(basename "$TEST_FILE").out"
+  START_SECONDS=$SECONDS
   if python3 "$TEST_FILE" "$BIN" > "$OUTPUT" 2>&1; then
-    printf "\t%-64s ok\033[K\r" "$TEST_FILE"
+    printf "\t%-64s ok in %s seconds\033[K\r" "$TEST_FILE" \
+      "$((SECONDS - START_SECONDS))"
   else
     cat "$OUTPUT"
-    printf "\t%-64s FAILED :c\n" "$TEST_FILE"
+    printf "\t%-64s FAILED :c after %s seconds\n" "$TEST_FILE" \
+      "$((SECONDS - START_SECONDS))"
     if [ "$TEST_STATUS" -eq 0 ]; then
       TEST_STATUS=1
     fi

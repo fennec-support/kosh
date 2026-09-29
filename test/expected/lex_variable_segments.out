@@ -46,52 +46,52 @@
   Unquoted "c"
   Variable "d"
 ]
-4:3: Warning: An unquoted variable can split into words and expand globs. (SC2086)
+4:3: warning: An unquoted variable can split into words and expand globs. (SC2086)
      4 |  : $foo ${bar}
        |    ^~~~
 note: Quote the expansion to keep one argument.
-4:8: Warning: An unquoted variable can split into words and expand globs. (SC2086)
+4:8: warning: An unquoted variable can split into words and expand globs. (SC2086)
      4 |  : $foo ${bar}
        |         ^~~~~~
 note: Quote the expansion to keep one argument.
-6:6: Warning: An unquoted variable can split into words and expand globs. (SC2086)
+6:6: warning: An unquoted variable can split into words and expand globs. (SC2086)
      6 |  : pre$foo "lead${bar}tail"
        |       ^~~~
 note: Quote the expansion to keep one argument.
-7:4: Warning: An unquoted variable can split into words and expand globs. (SC2086)
+7:4: warning: An unquoted variable can split into words and expand globs. (SC2086)
      7 |  : a${b}c$d
        |     ^~~~
 note: Quote the expansion to keep one argument.
 Encountered 4 warnings.
-4:3: Warning: The variable 'foo' is not set, it expands to empty.
+4:3: warning: The variable 'foo' is not set, it expands to empty.
      4 |  : $foo ${bar}
        |    ^~~~
 note: Replace it with ${foo-} if empty expansion is desired.
-4:8: Warning: The variable 'bar' is not set, it expands to empty.
+4:8: warning: The variable 'bar' is not set, it expands to empty.
      4 |  : $foo ${bar}
        |         ^~~~~~
 note: Replace it with ${bar-} if empty expansion is desired.
-5:4: Warning: The variable 'foo' is not set, it expands to empty.
+5:4: warning: The variable 'foo' is not set, it expands to empty.
      5 |  : "$foo" "${bar}"
        |     ^~~~
 note: Replace it with ${foo-} if empty expansion is desired.
-5:11: Warning: The variable 'bar' is not set, it expands to empty.
+5:11: warning: The variable 'bar' is not set, it expands to empty.
      5 |  : "$foo" "${bar}"
        |            ^~~~~~
 note: Replace it with ${bar-} if empty expansion is desired.
-6:6: Warning: The variable 'foo' is not set, it expands to empty.
+6:6: warning: The variable 'foo' is not set, it expands to empty.
      6 |  : pre$foo "lead${bar}tail"
        |       ^~~~
 note: Replace it with ${foo-} if empty expansion is desired.
-6:16: Warning: The variable 'bar' is not set, it expands to empty.
+6:16: warning: The variable 'bar' is not set, it expands to empty.
      6 |  : pre$foo "lead${bar}tail"
        |                 ^~~~~~
 note: Replace it with ${bar-} if empty expansion is desired.
-7:4: Warning: The variable 'b' is not set, it expands to empty.
+7:4: warning: The variable 'b' is not set, it expands to empty.
      7 |  : a${b}c$d
        |     ^~~~
 note: Replace it with ${b-} if empty expansion is desired.
-7:9: Warning: The variable 'd' is not set, it expands to empty.
+7:9: warning: The variable 'd' is not set, it expands to empty.
      7 |  : a${b}c$d
        |          ^~
 note: Replace it with ${d-} if empty expansion is desired.

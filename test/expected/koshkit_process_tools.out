@@ -30,8 +30,6 @@ evil-short-indent=none
 evilss-unix=present
 evilps-single-title=omitted
 evilfs-single-title=present
-
-Warning: Skipped 2 filesystems due to permission denied.
 evilfs-multiple-titles=present
 evillogs-single-title=omitted
 evillogs-multiple-titles=omitted

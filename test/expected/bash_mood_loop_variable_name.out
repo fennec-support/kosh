@@ -48,7 +48,7 @@ rc=0
        |                                   ^~~~
 rc=1
 == a select menu word is checked against the sh shebang ==
-2:16: Warning: The `$"..."` quoting form is a bash extension absent from POSIX sh. (SC3004)
+2:16: warning: The `$"..."` quoting form is a bash extension absent from POSIX sh. (SC3004)
      2 |  select menu in item=$"select locale"; do break; done
        |                 ^~~~~~~~~~~~~~~~~~~~~
 note: Use ordinary double quotes under a `sh` shebang.

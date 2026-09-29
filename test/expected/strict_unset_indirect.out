@@ -40,7 +40,7 @@
 [Word
   Unquoted "not-reached"
 ]
-3:2: Warning: The variable 'missing_target' is not set, it expands to empty.
+3:2: warning: The variable 'missing_target' is not set, it expands to empty.
      3 |  (echo "${!ref}")
        |   ^~~~~~~~~~~~~~
 note: Replace it with ${missing_target-} if empty expansion is desired.

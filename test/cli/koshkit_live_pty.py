@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bounded PTY and redirected probes for EvilIO and EvilPS live output."""
+"""Bounded PTY and redirected probes for EvilIO, EvilNet, and EvilPS."""
 
 import fcntl
 import os
@@ -133,6 +133,8 @@ def main():
     for name, command, keys in (
         ("evilio-pty", "koshkit --color never evilio --ps --live=0.05 "
          "--cumulative=0.1", ()),
+        ("evilnet-pty", "koshkit --color never evilnet --traffic --live=0.05 "
+         "--cumulative=0.1", ()),
         ("evilps-pty", "koshkit --color never evilps --cpu --live=0.05 "
          "--cumulative=0.1 -1",
          (b"s\n", b"s\n", b"s\n", b"s\n", b"s\n", b"/1\n", b"/\n")),
@@ -157,6 +159,8 @@ def main():
     for name, command in (
         ("evilio-redirected", "koshkit --color never evilio --ps --live=0.05 "
          "--cumulative=0.1"),
+        ("evilnet-redirected", "koshkit --color never evilnet --traffic "
+         "--live=0.05 --cumulative=0.1"),
         ("evilps-redirected", "koshkit --color never evilps --cpu --live=0.05 "
          "--cumulative=0.1 -1"),
     ):

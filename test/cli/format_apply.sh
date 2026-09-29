@@ -70,8 +70,8 @@ openmpi_before_status=$?
 "$BIN" --lint --no-traces "$root/openmpi-formatted.sh" \
   > /dev/null 2> "$root/openmpi-after.err"
 openmpi_after_status=$?
-openmpi_before_warnings=$(grep -c ': Warning:' "$root/openmpi-before.err" || :)
-openmpi_after_warnings=$(grep -c ': Warning:' "$root/openmpi-after.err" || :)
+openmpi_before_warnings=$(grep -c ': warning:' "$root/openmpi-before.err" || :)
+openmpi_after_warnings=$(grep -c ': warning:' "$root/openmpi-after.err" || :)
 openmpi_before_errors=$(grep -c ': error:' "$root/openmpi-before.err" || :)
 openmpi_after_errors=$(grep -c ': error:' "$root/openmpi-after.err" || :)
 printf 'openmpi-format-diagnostics=%s,%s warnings=%s,%s errors=%s,%s\n' \

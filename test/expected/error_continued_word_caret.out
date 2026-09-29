@@ -4,7 +4,7 @@
 [Word
   Unquoted "xyzzy_undefined"
 ]
-2:1: Warning: The command 'xyzzy_undefined' was not found.
+2:1: warning: The command 'xyzzy_undefined' was not found.
      2 |  xy\
        |  ^~~
 2:1: error: The command 'xyzzy_undefined' was not found.

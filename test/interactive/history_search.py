@@ -42,7 +42,7 @@ def read_until_idle(master, timeout, required_output=None):
     output = b""
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        readable, _, _ = select.select([master], [], [], 0.1)
+        readable, _, _ = select.select([master], [], [], 0.02)
         if master not in readable:
             if output and (required_output is None or required_output in output):
                 break

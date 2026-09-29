@@ -18,8 +18,8 @@ echo "show-exit-code help describes diagnostics"
 
 continued_output=$("$BIN" --no-diagnostics --show-exit-code -c 'false; echo after' 2>&1)
 [ "$?" -eq 0 ] || exit 1
-[ "$(printf '%s\n' "$continued_output" | grep -c 'Warning: Non-zero exit code (1)')" -eq 1 ] || exit 1
-printf '%s\n' "$continued_output" | grep -Eq '^[0-9]+:[0-9]+: Warning: Non-zero exit code \(1\)$' || exit 1
+[ "$(printf '%s\n' "$continued_output" | grep -c 'warning: Non-zero exit code (1)')" -eq 1 ] || exit 1
+printf '%s\n' "$continued_output" | grep -Eq '^[0-9]+:[0-9]+: warning: Non-zero exit code \(1\)$' || exit 1
 echo "show-exit-code reports a located continued failure"
 
 errexit_output=$("$BIN" --no-diagnostics --show-exit-code -e -c 'false; echo never' 2>&1)
@@ -31,7 +31,7 @@ echo "show-exit-code reports before errexit"
 
 guarded_output=$("$BIN" --no-diagnostics --show-exit-code -e -c 'false || true; ! false; if false; then :; fi; echo after' 2>&1)
 [ "$?" -eq 0 ] || exit 1
-[ "$(printf '%s\n' "$guarded_output" | grep -c 'Warning: Non-zero exit code (1)')" -eq 2 ] || exit 1
+[ "$(printf '%s\n' "$guarded_output" | grep -c 'warning: Non-zero exit code (1)')" -eq 2 ] || exit 1
 echo "show-exit-code reports guarded failures once"
 
 pipeline_output=$("$BIN" --no-diagnostics --show-exit-code -c 'set +o pipefail; false | true; echo after' 2>&1)
@@ -39,7 +39,7 @@ pipeline_output=$("$BIN" --no-diagnostics --show-exit-code -c 'set +o pipefail; 
 [ "$(printf '%s\n' "$pipeline_output" | grep -c 'Non-zero exit code')" -eq 0 ] || exit 1
 pipefail_output=$("$BIN" --no-diagnostics --show-exit-code -c 'set -o pipefail; false | true; echo after' 2>&1)
 [ "$?" -eq 0 ] || exit 1
-[ "$(printf '%s\n' "$pipefail_output" | grep -c 'Warning: Non-zero exit code (1)')" -eq 1 ] || exit 1
+[ "$(printf '%s\n' "$pipefail_output" | grep -c 'warning: Non-zero exit code (1)')" -eq 1 ] || exit 1
 echo "show-exit-code follows the effective pipeline status"
 
 pipefail_errexit_output=$("$BIN" --no-diagnostics --show-exit-code -e -c 'set -o pipefail; false | true; echo never' 2>&1)
@@ -49,7 +49,7 @@ echo "show-exit-code reports fatal pipefail as an error"
 
 runtime_option_output=$("$BIN" --no-diagnostics -c 'set -o show-exit-code; "$1" --no-diagnostics -c "exit 7"' kosh-test "$BIN" 2>&1)
 [ "$?" -eq 7 ] || exit 1
-[ "$(printf '%s\n' "$runtime_option_output" | grep -c 'Warning: Non-zero exit code (7)')" -eq 1 ] || exit 1
+[ "$(printf '%s\n' "$runtime_option_output" | grep -c 'warning: Non-zero exit code (7)')" -eq 1 ] || exit 1
 echo "runtime show-exit-code survives the terminal command"
 
 runtime_errexit_output=$(
@@ -62,13 +62,13 @@ echo "runtime show-exit-code reports errexit as an error"
 
 all_codes_output=$("$BIN" --no-diagnostics -N -c 'true; false; echo after' 2>&1)
 [ "$?" -eq 0 ] || exit 1
-[ "$(printf '%s\n' "$all_codes_output" | grep -c 'Warning: Exit code (0)')" -eq 2 ] || exit 1
-[ "$(printf '%s\n' "$all_codes_output" | grep -c 'Warning: Non-zero exit code (1)')" -eq 1 ] || exit 1
+[ "$(printf '%s\n' "$all_codes_output" | grep -c 'warning: Exit code (0)')" -eq 2 ] || exit 1
+[ "$(printf '%s\n' "$all_codes_output" | grep -c 'warning: Non-zero exit code (1)')" -eq 1 ] || exit 1
 echo "show-all-exit-codes reports a successful zero"
 
 clustered_all_codes_output=$("$BIN" --no-diagnostics -Ne -c 'true; echo after' 2>&1)
 [ "$?" -eq 0 ] || exit 1
-[ "$(printf '%s\n' "$clustered_all_codes_output" | grep -c 'Warning: Exit code (0)')" -eq 2 ] || exit 1
+[ "$(printf '%s\n' "$clustered_all_codes_output" | grep -c 'warning: Exit code (0)')" -eq 2 ] || exit 1
 echo "the clustered short form reports every exit code"
 
 quiet_option_output=$("$BIN" --no-diagnostics -c 'set -o show-exit-code; true' 2>&1)
@@ -80,12 +80,12 @@ runtime_letter_output=$(
   "$BIN" --no-diagnostics -N -c 'false; set +N; false; set -N; false; echo after' 2>&1
 )
 [ "$?" -eq 0 ] || exit 1
-[ "$(printf '%s\n' "$runtime_letter_output" | grep -c 'Warning: Non-zero exit code (1)')" -eq 2 ] || exit 1
+[ "$(printf '%s\n' "$runtime_letter_output" | grep -c 'warning: Non-zero exit code (1)')" -eq 2 ] || exit 1
 echo "set -N and set +N toggle the exit code diagnostic"
 
 errtrace_letter_output=$("$BIN" --no-diagnostics -N -c 'set +E; false; echo after' 2>&1)
 [ "$?" -eq 0 ] || exit 1
-[ "$(printf '%s\n' "$errtrace_letter_output" | grep -c 'Warning: Non-zero exit code (1)')" -eq 1 ] || exit 1
+[ "$(printf '%s\n' "$errtrace_letter_output" | grep -c 'warning: Non-zero exit code (1)')" -eq 1 ] || exit 1
 echo "set +E leaves the exit code diagnostic alone"
 
 runtime_stats_output=$("$BIN" --no-diagnostics -c 'set -o show-stats; "$1" --no-diagnostics -c ":"' kosh-test "$BIN" 2>&1)

@@ -33,7 +33,7 @@ def read_until_idle(master, timeout, required_output=None, required_count=1):
     output = b""
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        readable, _, _ = select.select([master], [], [], 0.1)
+        readable, _, _ = select.select([master], [], [], 0.02)
         if master not in readable:
             if output and (
                 required_output is None
@@ -154,7 +154,7 @@ def run_menu(
             key_outputs.append(key_output)
 
     os.write(master, b"\n")
-    tail = read_until_idle(master, 2, b"MARKER-END")
+    tail = read_until_idle(master, 2)
     os.write(master, b"printf 'MARKER-END\\n'\nexit\n")
     tail += read_until_idle(master, 2)
     os.close(master)
