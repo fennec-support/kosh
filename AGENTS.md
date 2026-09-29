@@ -302,8 +302,8 @@ changes update this file.
   checks.
 - Resolve every guessed or optional peer path, include root, and wildcard with
   `fd` before passing it to `rg`. Do not type a path merely because a nearby
-  file suggests its name. Select `fd` glob mode before passing a wildcard
-  pattern.
+  file suggests its name, including a file named in a prior run. Select `fd`
+  glob mode before passing a wildcard pattern.
 - Quote shell source, use `-c` for source, put `--` before dash-leading
   operands, and place every option before a `--` separator. Order redirections
   from creation to use. Capture status or PIPESTATUS as the next command after
@@ -328,6 +328,8 @@ changes update this file.
   Append a sentinel before the read when trailing newlines must be preserved.
   Pass generated text through a literal `printf` format when the text contains
   percent conversions.
+- Check the fixture's runner interpreter before using shell-specific syntax.
+  A plain sh fixture reads a file with a portable command substitution.
 - Test a replacement regular expression against exact representative input
   before using it in shared fixture normalization. Keep normalization that must
   visit every line before any sed stage that uses `n`, because the newly read
@@ -446,6 +448,8 @@ changes update this file.
   reports. A container exec also starts with SIGQUIT ignored, and the startup
   ignore listing reports it. Reproduce a container failure outside the harness
   before it is attributed to the harness.
+- Inspect package names and the test binary's shared-library dependencies in
+  the target container before invoking its suite.
 - A bounded golden fixture runs in a new session without a controlling
   terminal. Job control is unavailable there. A helper that must keep the
   default interrupt disposition runs in the foreground and publishes its own
@@ -547,7 +551,8 @@ changes update this file.
 - Verify git identity. Keep commit subjects within the limit and bodies within
   72 columns. Pass a commit body through repeated `-m` arguments. Read the
   commit and prose guidance against a drafted body before the commit command is
-  composed, and give every consequence clause its own sentence.
+  composed. Count each drafted body line before composing the command, and give
+  every consequence clause its own sentence.
 - Run `git add` on every new path before that path appears in a commit
   pathspec, and pass an explicit pathspec to every commit, because the index can
   hold a path that another worker staged in the same working copy. A status
