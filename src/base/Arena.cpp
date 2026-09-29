@@ -13,25 +13,23 @@
 #include "Containers.hpp"
 #include "Trace.hpp"
 
-#include <atomic>
-
 namespace koshka {
 
-static std::atomic<u32> NEXT_ARENA_INCARNATION{1};
+static u32 NEXT_ARENA_INCARNATION = 1;
 static BumpArena *LIVE_ARENAS = nullptr;
-static std::atomic_flag LIVE_ARENAS_LOCK = ATOMIC_FLAG_INIT;
+static bool LIVE_ARENAS_LOCK = false;
 
 class live_arenas_lock
 {
 public:
   live_arenas_lock() wontthrow
   {
-    while (LIVE_ARENAS_LOCK.test_and_set(std::memory_order_acquire)) {}
+    while (__atomic_test_and_set(&LIVE_ARENAS_LOCK, __ATOMIC_ACQUIRE)) {}
   }
 
   ~live_arenas_lock() wontthrow
   {
-    LIVE_ARENAS_LOCK.clear(std::memory_order_release);
+    __atomic_clear(&LIVE_ARENAS_LOCK, __ATOMIC_RELEASE);
   }
 };
 
@@ -54,14 +52,14 @@ fn bump_arena_owns(const BumpArena *arena, const opaque *pointer) wontthrow
 
 BumpArena::BumpArena()
     : m_arena_incarnation{
-          NEXT_ARENA_INCARNATION.fetch_add(1, std::memory_order_relaxed)}
+          __atomic_fetch_add(&NEXT_ARENA_INCARNATION, 1, __ATOMIC_RELAXED)}
 {
   register_live();
 }
 
 BumpArena::BumpArena(usize initial_block_size)
     : m_arena_incarnation{
-          NEXT_ARENA_INCARNATION.fetch_add(1, std::memory_order_relaxed)}
+          __atomic_fetch_add(&NEXT_ARENA_INCARNATION, 1, __ATOMIC_RELAXED)}
 {
   ASSERT(initial_block_size > 0);
   register_live();
