@@ -374,7 +374,12 @@ def main():
         )
 
         failed, failed_log = run_scenario(
-            directory, selector, {"STUB_FAIL": "3"}, typed, tab_count=2
+            directory,
+            selector,
+            {"STUB_FAIL": "3"},
+            typed,
+            tab_count=2,
+            probe_after_tab=True,
         )
         a_failing_selector_ran = b"ran\n" in failed_log
         a_failing_selector_is_reported = b"exited with status 3" in failed

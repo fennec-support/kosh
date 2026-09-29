@@ -131,3 +131,48 @@ koshkit mv "$2/rehash-probe.off" "$2/rehash-probe"
 hash -R
 rehash-probe
 ' kosh "$checkhash_first" "$checkhash_second"
+autocd_root=$TEST_TEMP_DIRECTORY/autocd
+mkdir -p "$autocd_root/one" "$autocd_root/two" "$autocd_root/-P"
+autocd_root=$(cd "$autocd_root" && pwd)
+echo "== autocd changes directories in the default mood:"
+AUTOCD_ROOT="$autocd_root" "$BIN" --no-init-files --no-diagnostics -c '
+shopt -q autocd
+printf "default=%s\n" "$?"
+"$AUTOCD_ROOT/one"
+printf "absolute=%s\n" "${PWD##*/}"
+..
+if [ "$PWD" = "$AUTOCD_ROOT" ]; then
+  echo parent=yes
+else
+  echo parent=no
+fi
+two
+printf "relative=%s\n" "${PWD##*/}"
+cd "$AUTOCD_ROOT"
+./-P
+printf "option-name=%s\n" "${PWD##*/}"
+cd "$AUTOCD_ROOT"
+shopt -u autocd
+if "$AUTOCD_ROOT/one" >/dev/null 2>&1; then
+  echo disabled=no
+else
+  echo disabled=yes
+fi
+shopt -s autocd
+if "$AUTOCD_ROOT/one" extra >/dev/null 2>&1; then
+  echo extra-operand=accepted
+else
+  echo extra-operand=rejected
+fi
+"$AUTOCD_ROOT/one"
+printf "reenabled=%s\n" "${PWD##*/}"
+'
+echo "== autocd can be enabled in the Bash mood:"
+AUTOCD_ROOT="$autocd_root" "$BIN" --no-init-files --no-diagnostics \
+  --mood bash -c '
+shopt -q autocd
+printf "bash-default=%s\n" "$?"
+shopt -s autocd
+"$AUTOCD_ROOT/two"
+printf "bash-enabled=%s\n" "${PWD##*/}"
+'

@@ -1424,6 +1424,16 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
                                             actx, unavailable);
   }
   if (should_check_command_resolution && !command_was_resolved &&
+      m_args.count() == 1 &&
+      (actx.eval_context != nullptr
+           ? actx.eval_context->is_shopt_enabled("autocd")
+           : actx.is_default_mood) &&
+      Path{*name}.is_directory())
+  {
+    command_was_resolved = true;
+    actx.mark_working_directory_unknown();
+  }
+  if (should_check_command_resolution && !command_was_resolved &&
       !actx.tested_command_names.contains(*name))
   {
     let reported_diagnostic = resolution_diagnostic;

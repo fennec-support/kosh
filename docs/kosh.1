@@ -895,6 +895,14 @@ forgets cached command locations.
 .B hash \-R
 forgets them and rebuilds the PATH command index at once.
 .PP
+In the default mood, a single directory path in command position changes the
+working directory as if it were an operand to
+.BR cd .
+Functions, builtins, programs, and bundled utilities take precedence. The
+.B autocd
+shopt option controls this behavior. Compatibility moods leave it disabled by
+default.
+.PP
 A command path ending in a directory separator fails with status 126 when the
 typed target is not a directory. Components are resolved in order. An
 unavailable path is reported through its first unavailable component. The caret

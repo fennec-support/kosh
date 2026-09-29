@@ -127,11 +127,25 @@ def run_history_search(
 
     for key in keys:
         os.write(master, key)
-        search += read_until_idle(master, 1)
+        required_output = (
+            b"echo PEER-ONLY-HISTORY"
+            if add_peer and key == b"PEER-ONLY"
+            else None
+        )
+        search += read_until_idle(
+            master, 3 if required_output is not None else 1, required_output
+        )
 
     for key in post_search_keys:
         os.write(master, key)
-        search += read_until_idle(master, 1)
+        required_output = (
+            SEEDED_COMMANDS[-1].encode()
+            if recall_before_search and key == b"\x1b[A"
+            else None
+        )
+        search += read_until_idle(
+            master, 3 if required_output is not None else 1, required_output
+        )
 
     # Accepting a match only rewrites the line. The run needs a submit of its
     # own.

@@ -58,3 +58,15 @@ rehash=0
 == hash -R rebuilds the PATH index:
 rehash first
 rehash second
+== autocd changes directories in the default mood:
+default=0
+absolute=one
+parent=yes
+relative=two
+option-name=-P
+disabled=yes
+extra-operand=rejected
+reenabled=one
+== autocd can be enabled in the Bash mood:
+bash-default=1
+bash-enabled=two

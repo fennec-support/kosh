@@ -84,6 +84,7 @@ def run_menu(
         os.environ["TERM"] = "xterm-256color"
         os.environ["HOME"] = directory
         os.environ["KOSH_HISTORY_FILE"] = os.path.join(directory, "history")
+        os.environ.pop("KOSH_FLAGS", None)
         os.environ.pop("NO_COLOR", None)
         for name, value in (environment or {}).items():
             os.environ[name] = value

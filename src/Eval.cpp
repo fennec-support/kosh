@@ -1565,7 +1565,8 @@ fn ExecContext::make_from(const SourceLocation &location, StringView source,
                           bool should_check_hash,
                           ProgramResolver &program_resolver,
                           ArrayList<SourceLocation> &&arg_locations,
-                          mimic_mood mood) throws -> ExecContext
+                          mimic_mood mood, bool should_autocd) throws
+    -> ExecContext
 {
   ASSERT(args.count() > 0);
 
@@ -1631,6 +1632,23 @@ fn ExecContext::make_from(const SourceLocation &location, StringView source,
         }
       }
     }
+  }
+
+  if (should_autocd && args.count() == 1 && !resolved_builtin.has_value() &&
+      (!resolved_program_path.has_value() ||
+       resolved_program_path->is_directory()) &&
+      (!are_koshkit_utilities_reachable ||
+       !koshkit::find_util(program.view()).has_value()) &&
+      Path{program.view()}.is_directory())
+  {
+    let directory_operand = steal(args[0]);
+    args[0] = String{"cd"};
+    args.push(String{"--"});
+    args.push(steal(directory_operand));
+    arg_locations.push(resolution_location);
+    arg_locations.push(resolution_location);
+    return {location, ResolvedCommand::from_builtin(Builtin::Kind::Cd),
+            steal(args), steal(arg_locations)};
   }
 
   ResolvedCommand kind;

@@ -48,7 +48,8 @@ public:
                       bool are_koshkit_utilities_reachable,
                       bool should_check_hash, ProgramResolver &program_resolver,
                       ArrayList<SourceLocation> &&arg_locations,
-                      mimic_mood mood) throws -> ExecContext;
+                      mimic_mood mood, bool should_autocd = false) throws
+      -> ExecContext;
 
   /* Build directly from an already resolved builtin kind or program path,
      skipping the PATH search. A simple command memoizes its resolution. */

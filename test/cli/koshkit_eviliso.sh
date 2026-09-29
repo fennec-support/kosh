@@ -74,6 +74,8 @@ detail_shape=matched
 case $cgroup_detail_report in
   *"Cgroup membership"*"HIERARCHY"*"CONTROLLER"*"PATH"*"PID"*"NAME"*"ROLE"*"self"*) ;;
   *"Cgroup status failures"*"Unavailable"*) ;;
+  *"Cgroup status failures"*"unavailable"*) ;;
+  *"Cgroup status failures"*"empty"*) ;;
   *"Membership unavailable"*) ;;
   *) detail_shape=missing ;;
 esac

@@ -160,7 +160,12 @@ evilnet_live_sort_path=$TEST_TEMP_DIRECTORY/evilnet-live-sort-report
 printf 'evilnet-live-sort-status=%s\n' "$?"
 evilnet_live_sort_report=$(cat "$evilnet_live_sort_path")
 case $evilnet_live_sort_report in
-  *'TX/0.1s'*'ctrl+c to exit'*) evilnet_live_sort_update=matched ;;
+  *'TX/0.1s'*)
+    case $evilnet_live_sort_report in
+      *'ctrl+c to exit'*) evilnet_live_sort_update=matched ;;
+      *) evilnet_live_sort_update=wrong ;;
+    esac
+    ;;
   *) evilnet_live_sort_update=wrong ;;
 esac
 printf 'evilnet-live-sort=%s\n' "$evilnet_live_sort_update"

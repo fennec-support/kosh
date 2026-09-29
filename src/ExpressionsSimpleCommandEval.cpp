@@ -928,9 +928,11 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     let const *source = cxt.source_store().current_source();
     resolved_ec = ExecContext::make_from(
         source_location(), source != nullptr ? source->view() : StringView{},
-        steal(program_args), cxt.runtime_state().koshkit_utilities_are_reachable(),
+        steal(program_args),
+        cxt.runtime_state().koshkit_utilities_are_reachable(),
         cxt.runtime_state().is_shopt_enabled(shopt_option_id::Checkhash),
-        cxt.resolution_store().resolver(), steal(program_arg_locations), cxt.runtime_state().get_mood());
+        cxt.resolution_store().resolver(), steal(program_arg_locations),
+        cxt.runtime_state().get_mood(), cxt.is_shopt_enabled("autocd"));
   } catch (const CommandResolutionErrorWithLocation &e) {
     report_command_resolution_error(cxt, e);
     let const status = e.command_status();

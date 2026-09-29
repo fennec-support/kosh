@@ -37,12 +37,21 @@ printf '%s\n' "unnamed wait status:$?"
 # A word names the coprocess only when a compound command follows it. Here the
 # word is the command, and the coprocess takes the default name.
 echo "== word that is not a name =="
-NOTANAME() { printf 'ran:%s\n' "$*"; }
+NOTANAME() {
+  read -r ready
+  printf 'ran:%s\n' "$*"
+  read -r finished
+}
 coproc NOTANAME cat
 word_pid=$COPROC_PID
 printf '%s\n' "elements:${#COPROC[@]}"
-read -r line <&"${COPROC[0]}"
+word_read=${COPROC[0]}
+word_write=${COPROC[1]}
+printf 'ready\n' >&"$word_write"
+read -r line <&"$word_read"
 printf '%s\n' "line:$line"
+printf 'finished\n' >&"$word_write"
+eval "exec ${word_write}>&-"
 wait "$word_pid"
 printf '%s\n' "word wait status:$?"
 

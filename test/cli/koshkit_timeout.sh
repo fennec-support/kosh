@@ -336,14 +336,14 @@ else
     "$BIN" -p --mood sh -c \
         'waited=0
          while [ "$waited" -lt 1000 ]; do
-             if [ -s "$1" ] && [ -s "$2" ]; then
+             if [ -s "$1" ] && [ -s "$2" ] && [ -s "$3" ]; then
                  kill -INT "$(cat "$1")" 2>/dev/null
                  exit 0
              fi
              /bin/sleep 0.01
              waited=$((waited + 1))
          done' \
-        shell "$d/supervisor-pid" "$d/child-pid" &
+        shell "$d/supervisor-pid" "$d/child-pid" "$d/descendant-ready" &
     interrupter_pid=$!
     "$BIN" -p --mood sh -c \
         'koshkit sleep 10
@@ -352,7 +352,7 @@ else
          fi' \
         shell "$d/supervisor-pid" &
     watchdog_pid=$!
-    "$BIN" -c "echo \$\$ > '$d/supervisor-pid'; koshkit timeout 0 /bin/sh -c 'echo \$\$ > '$d/child-pid'; (sleep 0.1; echo leaked > '$d/interrupt-marker') & while :; do :; done'" \
+    "$BIN" -c "echo \$\$ > '$d/supervisor-pid'; koshkit timeout 0 /bin/sh -c 'echo \$\$ > '$d/child-pid'; (while [ ! -e '$d/interrupt-check' ]; do /bin/sleep 0.01; done; echo leaked > '$d/interrupt-marker') & echo ready > '$d/descendant-ready'; while :; do :; done'" \
         >/dev/null 2>&1 </dev/null
     supervisor_status=$?
     kill "$interrupter_pid" 2>/dev/null
@@ -361,10 +361,11 @@ else
     kill "$watchdog_pid" 2>/dev/null
     wait "$watchdog_pid" 2>/dev/null
     watchdog_pid=
-    if [ ! -s "$d/child-pid" ]; then
+    if [ ! -s "$d/child-pid" ] || [ ! -s "$d/descendant-ready" ]; then
         supervisor_status=125
     fi
     echo "rc=$supervisor_status"
+    : > "$d/interrupt-check"
     /bin/sleep 0.15
     if [ -e "$d/interrupt-marker" ]; then
         interrupt_result=leaked

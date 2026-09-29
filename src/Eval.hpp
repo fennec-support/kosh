@@ -3013,6 +3013,8 @@ public:
       return runtime_state().is_shopt_option_enabled(*index);
     if (name == "extglob")
       return runtime_state().get_mood() == mimic_mood::Default;
+    if (name == "autocd")
+      return runtime_state().get_mood() == mimic_mood::Default;
     if (name == "expand_aliases")
       return runtime_state().get_mood() != mimic_mood::Bash ||
              execution_store().shell_is_interactive();
