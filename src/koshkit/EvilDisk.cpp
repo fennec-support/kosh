@@ -461,7 +461,7 @@ fn EvilDisk::execute(
       StringView uuid;
     };
     let identity_rows = ArrayList<identity_row>{allocator};
-    for (let const &filesystem : filesystems) {
+    for (let const &filesystem : sorted_filesystems) {
       if (filesystem.volume_name.is_empty() &&
           filesystem.volume_uuid.is_empty())
         continue;
@@ -513,7 +513,7 @@ fn EvilDisk::execute(
     table.add_column("RECORDED ERRORS", report_table_alignment::Right,
                      colors::ansi::BOLD_CYAN);
     constexpr StringView SUPPORTED_TYPES[] = {"btrfs", "ext4", "ntfs", "ntfs3"};
-    for (let const &filesystem : filesystems) {
+    for (let const &filesystem : sorted_filesystems) {
       let status = StringView{"unsupported"};
       let read_count = String{allocator, "-"};
       let write_count = String{allocator, "-"};
@@ -571,7 +571,7 @@ fn EvilDisk::execute(
   }
 
   if (FLAG_EVILDISK_ALL.is_enabled()) {
-    let const smart_rows = read_smart_rows(cxt, filesystems, allocator);
+    let const smart_rows = read_smart_rows(cxt, sorted_filesystems, allocator);
     if (smart_rows.is_empty()) {
       unavailable_sections.push("SMART data");
     } else {
