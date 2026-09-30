@@ -140,9 +140,8 @@ trap 'request_exit 129' HUP
 if [ "${OS-}" = Windows_NT ]; then
   set -m
   BIN=$BIN BOUNDED_GOLDEN=$GOLDEN BOUNDED_TIMEOUT_SECONDS=$TIMEOUT_SECONDS \
-    KOSH_TEST_TIMEOUT_JOB_LIFETIME=leader \
     "$BIN" -p --mood sh -c \
-    'koshkit timeout "$BOUNDED_TIMEOUT_SECONDS" "$BIN" --mood sh -c '\''unset KOSH_TEST_TIMEOUT_JOB_LIFETIME; sh "$BOUNDED_GOLDEN"'\''' &
+    'koshkit timeout -k 2s "$BOUNDED_TIMEOUT_SECONDS" "$BIN" "$BOUNDED_GOLDEN"' &
   GOLDEN_PROCESS=$!
   set +m
   LAUNCH_PROCESS=$GOLDEN_PROCESS

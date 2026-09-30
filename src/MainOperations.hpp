@@ -57,34 +57,13 @@ static fn run_debug_completion_driver(StringView driver_line,
                                       EvalContext &context) throws -> i32
 {
   context.resolution_store().resolver().initialize_path_map();
-  usize driver_cursor = driver_line.length;
-  if (let const cursor_text =
-          os::get_environment_variable("KOSH_TEST_COMPLETE_CURSOR");
-      cursor_text.has_value())
-  {
-    let const parsed_cursor = cursor_text->view().to<u64>();
-    if (!parsed_cursor.is_error() &&
-        parsed_cursor.value() <= driver_line.length)
-      driver_cursor = static_cast<usize>(parsed_cursor.value());
-  }
-
-  let const lexical_scan_byte_count_before =
-      completion::debug_shell_lexical_scan_byte_count();
   let const driver_result = completion::complete(
-      driver_line, driver_cursor, context, Path::current_directory(), nullptr,
-      false, completion::completion_mode::Listing);
+      driver_line, driver_line.length, context, Path::current_directory(),
+      nullptr, false, completion::completion_mode::Listing);
   let listing = String{heap_allocator()};
 
   for (let const &candidate : driver_result.candidates) {
     listing += candidate.view();
-    listing += '\n';
-  }
-
-  if (os::get_environment_variable("KOSH_TEST_COMPLETION_STATS").has_value()) {
-    listing += "lexical-scan-bytes=";
-    listing += String::from(completion::debug_shell_lexical_scan_byte_count() -
-                                lexical_scan_byte_count_before,
-                            heap_allocator());
     listing += '\n';
   }
 

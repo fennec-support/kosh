@@ -128,15 +128,6 @@ using linux_unix_socket_peer_list =
 static fn linux_socket_proc_path(StringView suffix, Allocator allocator) throws
     -> String
 {
-#ifndef NDEBUG
-  if (let const *root = std::getenv("KOSH_TEST_SOCKET_PROC");
-      root != nullptr && root[0] != '\0')
-  {
-    let path = String{allocator, root};
-    path += suffix;
-    return path;
-  }
-#endif
   let path = String{allocator, "/proc"};
   path += suffix;
   return path;
@@ -1437,12 +1428,7 @@ fn get_home_for_user(StringView username) throws -> Maybe<Path>
 fn enumerate_users() throws -> ArrayList<String>
 {
   ArrayList<String> users{heap_allocator()};
-  let passwd_path = StringView{"/etc/passwd"};
-  if (let const test_path = std::getenv("KOSH_TEST_PASSWD");
-      test_path != nullptr)
-    passwd_path = test_path;
-
-  let const contents = Path{passwd_path}.read_entire_file();
+  let const contents = Path{"/etc/passwd"}.read_entire_file();
   if (!contents) return users;
 
   let const text = contents->view();
@@ -1459,14 +1445,7 @@ fn enumerate_users() throws -> ArrayList<String>
 fn enumerate_groups() throws -> ArrayList<String>
 {
   ArrayList<String> groups{heap_allocator()};
-  let group_path = StringView{"/etc/group"};
-#if !defined NDEBUG
-  if (let const test_path = std::getenv("KOSH_TEST_GROUP");
-      test_path != nullptr)
-    group_path = test_path;
-#endif
-
-  let const contents = Path{group_path}.read_entire_file();
+  let const contents = Path{"/etc/group"}.read_entire_file();
   if (!contents) return groups;
 
   let const text = contents->view();

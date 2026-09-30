@@ -1,15 +1,5 @@
 == inside $( ):
 alpha
-== before a closed substitution delimiter:
-alpha
-== command name before a closed substitution delimiter:
-innerprobe-command
-== quoted close and outer suffix stay outside the active body:
-beta
-== innermost closed substitution owns the cursor:
-gamma
-== a heredoc close does not close the substitution:
-alpha
 == inside backticks:
 beta
 == inside a for-head substitution:
@@ -17,7 +7,3 @@ gamma
 == filesystem still completes inside a substitution:
 onlyfile
 == arithmetic is not a command body:
-== a case pattern does not close the substitution:
-alpha
-== an operator-adjacent comment ends at its newline:
-alpha

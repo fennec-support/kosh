@@ -175,11 +175,15 @@ echo negated-status=$?
 trap - DEBUG
 
 echo pipeline-async
+async_output_file=${TEST_TEMP_DIRECTORY:-.test-work}/debug-trap-async-$$
+mkdir -p "${async_output_file%/*}"
 trap 'echo "D-[$BASH_COMMAND]"' DEBUG
-pipeline_function | wc -l | tr -d ' ' &
+pipeline_function | wc -l | tr -d ' ' > "$async_output_file" &
 wait
 echo async-status=$?
 trap - DEBUG
+cat "$async_output_file"
+rm -f "$async_output_file"
 
 echo pipeline-errexit
 trap 'echo "D-[$BASH_COMMAND]"' DEBUG

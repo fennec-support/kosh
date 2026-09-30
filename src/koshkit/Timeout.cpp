@@ -305,11 +305,6 @@ fn Timeout::execute(const ExecContext &ec, EvalContext &cxt,
   let const has_controlling_terminal =
       cxt.execution_store().shell_is_interactive() &&
       os::shell_has_controlling_terminal();
-  let const process_group_mode =
-      os::get_environment_variable("KOSH_TEST_TIMEOUT_JOB_LIFETIME") ==
-              StringView{"leader"}
-          ? os::process_group_mode::NewLeaderOwned
-          : os::process_group_mode::New;
   unused(cxt.materialize_kosh_identity());
   defer
   {
@@ -323,7 +318,7 @@ fn Timeout::execute(const ExecContext &ec, EvalContext &cxt,
                    .handoff = has_controlling_terminal
                                   ? os::terminal_handoff::BeforeStart
                                   : os::terminal_handoff::Keep,
-                   .process_group = process_group_mode});
+                   .process_group = os::process_group_mode::New});
   if (child == KOSH_INVALID_PROCESS) {
     let const shell_path = os::current_executable_path();
     if (!shell_path.has_value())
@@ -354,7 +349,7 @@ fn Timeout::execute(const ExecContext &ec, EvalContext &cxt,
             .handoff = has_controlling_terminal
                            ? os::terminal_handoff::BeforeStart
                            : os::terminal_handoff::Keep,
-            .process_group = process_group_mode});
+            .process_group = os::process_group_mode::New});
   }
 
   os::process process_group = KOSH_INVALID_PROCESS;

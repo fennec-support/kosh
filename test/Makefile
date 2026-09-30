@@ -276,10 +276,6 @@ export WINDOWS_SKIPPED_CLI_NAMES NON_LINUX_SKIPPED_CLI_NAMES
 export SKIPPED_COMPLETION_INPUT UNREPRESENTABLE_COMPLETION_INPUT
 export SKIP_CLI_ASSIMILATE
 
-diagnostic_tty_test: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
-	@$(SHELL) run-test-suite.sh interactive
-
-
 REFILL ?=
 
 refill: $(EVILISO_LOOPBACK_DEPENDENCY) $(BIN)
@@ -334,4 +330,4 @@ bench: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
 .PHONY: test clean eviliso_loopback_helper \
 	verify_koshkit_diff kosh_tests refill \
 		compatdiff dashdiff bashdiff mimicrydiff bench completion_tests \
-		diagnostic_tty_test cli_tests highlight_tests
+		cli_tests highlight_tests

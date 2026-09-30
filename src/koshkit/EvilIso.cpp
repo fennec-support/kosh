@@ -97,51 +97,9 @@ struct namespace_relation
   bool is_available{false};
 };
 
-fn eviliso_namespace_process_override(Allocator allocator) throws
-    -> Maybe<ArrayList<namespace_process>>
-{
-#ifndef NDEBUG
-  if (let const *path = std::getenv("KOSH_TEST_EVILISO_NAMESPACE_PROCESSES");
-      path != nullptr && path[0] != '\0')
-  {
-    let processes = ArrayList<namespace_process>{allocator};
-    let const contents = Path{path, allocator}.read_entire_file();
-    if (!contents.has_value()) return processes;
-    for (let const line : utils::split_lines(contents->view())) {
-      let const process_end = line.find_character('|');
-      if (!process_end.has_value()) continue;
-      let const remainder = line.substring(*process_end + 1);
-      let const name_end = remainder.find_character('|');
-      if (!name_end.has_value()) continue;
-      let const process_id =
-          line.substring_of_length(0, *process_end).to<i64>();
-      if (process_id.is_error()) continue;
-      let const name = remainder.substring_of_length(0, *name_end);
-      let const role = remainder.substring(*name_end + 1);
-      if (role != "self" && role != "other") continue;
-      processes.push(namespace_process{process_id.value(), name, role == "self",
-                                       allocator});
-    }
-    return processes;
-  }
-#endif
-  unused(allocator);
-  return None;
-}
-
 fn eviliso_namespace_proc_path(StringView suffix, Allocator allocator) throws
     -> String
 {
-#ifndef NDEBUG
-  if (let const *root = std::getenv("KOSH_TEST_EVILISO_NAMESPACE_PROC");
-      root != nullptr && root[0] != '\0')
-  {
-    let path = String{allocator, root};
-    path += '/';
-    path += suffix;
-    return path;
-  }
-#endif
   let path = String{allocator, "/proc/"};
   path += suffix;
   return path;
@@ -386,16 +344,6 @@ struct cgroup_membership
 
 fn cgroup_proc_path(StringView suffix, Allocator allocator) throws -> String
 {
-#ifndef NDEBUG
-  if (let const *root = std::getenv("KOSH_TEST_CGROUP_PROC");
-      root != nullptr && root[0] != '\0')
-  {
-    let path = String{allocator, root};
-    path += '/';
-    path += suffix;
-    return path;
-  }
-#endif
   let path = String{allocator, "/proc/"};
   path += suffix;
   return path;
@@ -404,16 +352,6 @@ fn cgroup_proc_path(StringView suffix, Allocator allocator) throws -> String
 fn container_marker_path(StringView suffix, Allocator allocator) throws
     -> String
 {
-#ifndef NDEBUG
-  if (let const *root = std::getenv("KOSH_TEST_EVILISO_MARKER_ROOT");
-      root != nullptr && root[0] != '\0')
-  {
-    let path = String{allocator, root};
-    path += '/';
-    path += suffix;
-    return path;
-  }
-#endif
   let path = String{allocator, "/"};
   path += suffix;
   return path;
@@ -422,16 +360,6 @@ fn container_marker_path(StringView suffix, Allocator allocator) throws
 fn kubernetes_service_account_path(StringView name, Allocator allocator) throws
     -> String
 {
-#ifndef NDEBUG
-  if (let const *root = std::getenv("KOSH_TEST_EVILISO_SERVICE_ACCOUNT_ROOT");
-      root != nullptr && root[0] != '\0')
-  {
-    let path = String{allocator, root};
-    path += '/';
-    path += name;
-    return path;
-  }
-#endif
   let path =
       String{allocator, "/var/run/secrets/kubernetes.io/serviceaccount/"};
   path += name;
@@ -938,38 +866,6 @@ fn append_cgroup_report(String &output, bool should_color,
                                cgroup_failure_fallback::SuppressEmpty);
 }
 
-fn eviliso_sessions() throws -> ArrayList<os::user_session>
-{
-#ifndef NDEBUG
-  if (let const *path = std::getenv("KOSH_TEST_EVILISO_SESSIONS");
-      path != nullptr && path[0] != '\0')
-  {
-    let sessions = ArrayList<os::user_session>{heap_allocator()};
-    let const contents = Path{path}.read_entire_file();
-    if (!contents.has_value()) return sessions;
-    for (let const line : utils::split_lines(contents->view())) {
-      let const user_end = line.find_character('|');
-      if (!user_end.has_value()) continue;
-      let const remainder = line.substring(*user_end + 1);
-      let const terminal_end = remainder.find_character('|');
-      if (!terminal_end.has_value()) continue;
-      let const user = line.substring_of_length(0, *user_end);
-      let const terminal = remainder.substring_of_length(0, *terminal_end);
-      let const login_time = remainder.substring(*terminal_end + 1).to<i64>();
-      if (user.is_empty() || terminal.is_empty() || login_time.is_error())
-        continue;
-      sessions.push({
-          String{heap_allocator(), user    },
-          String{heap_allocator(), terminal},
-          login_time.value(),
-      });
-    }
-    return sessions;
-  }
-#endif
-  return os::logged_in_users();
-}
-
 struct session_report_row
 {
   explicit session_report_row(Allocator allocator)
@@ -984,7 +880,7 @@ struct session_report_row
 fn append_session_report(String &output, bool should_color, Allocator allocator,
                          eviliso_detail_mode detail) throws -> void
 {
-  let sessions = eviliso_sessions();
+  let sessions = os::logged_in_users();
   let const sorted_sessions = steal(sessions).make_sorted(
       [](const os::user_session &left, const os::user_session &right) {
         if (left.user != right.user) return left.user < right.user;
@@ -2057,20 +1953,13 @@ fn EvilIso::execute(const ExecContext &ec, EvalContext &cxt,
   if (show_namespaces) {
     let namespace_processes =
         ArrayList<namespace_process>{cxt.scratch_allocator()};
-    if (let override =
-            eviliso_namespace_process_override(cxt.scratch_allocator());
-        override.has_value())
-    {
-      namespace_processes = override.take();
-    } else {
-      let const self_process_id = os::get_current_process_id();
-      namespace_processes.reserve(process_cgroups.count());
-      for (let const &process : process_cgroups) {
-        if (!process_snapshot_identity_is_valid(process.status)) continue;
-        namespace_processes.push(namespace_process{
-            process.process_id, process.name.view(),
-            process.process_id == self_process_id, cxt.scratch_allocator()});
-      }
+    let const self_process_id = os::get_current_process_id();
+    namespace_processes.reserve(process_cgroups.count());
+    for (let const &process : process_cgroups) {
+      if (!process_snapshot_identity_is_valid(process.status)) continue;
+      namespace_processes.push(namespace_process{
+          process.process_id, process.name.view(),
+          process.process_id == self_process_id, cxt.scratch_allocator()});
     }
     append_namespace_report(output, should_color, steal(namespace_processes),
                             detail);

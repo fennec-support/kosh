@@ -30,11 +30,10 @@ for TEST_NAME in "$@"; do
     OUTPUT="$OUTPUT_DIRECTORY/$TEST_NAME.out"
   fi
 
-  KOSH_TEST_TIMEOUT_JOB_LIFETIME=leader \
-    "$BIN" --no-diagnostics -c \
-      'koshkit timeout "$1" "$2" $3 -' native-test \
-      "$NATIVE_TEST_TIMEOUT_SECONDS" "$BIN" "$TEST_BIN_FLAGS" \
-      < "kosh/$TEST_NAME.kosh" > "$OUTPUT" 2>&1
+  "$BIN" --no-diagnostics -c \
+    'koshkit timeout -k 2s "$1" "$2" $3 -' native-test \
+    "$NATIVE_TEST_TIMEOUT_SECONDS" "$BIN" "$TEST_BIN_FLAGS" \
+    < "kosh/$TEST_NAME.kosh" > "$OUTPUT" 2>&1
   DRIVER_STATUS=$?
   if is_driver_status_harness_failure "$DRIVER_STATUS" "$REFILL_MODE"; then
     command cat "$OUTPUT"

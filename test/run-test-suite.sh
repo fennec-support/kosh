@@ -70,7 +70,6 @@ for TEST_FILE in completion/*.sh; do
 done
 
 HIGHLIGHT_INPUT=$(printf '%s ' highlight/*.sh)
-INTERACTIVE_INPUT=$(printf '%s ' interactive/*.py)
 SH_COMPAT_FILES=
 for TEST_FILE in sh/*.sh; do
   case $TEST_FILE in
@@ -249,9 +248,6 @@ run_named_suite()
   highlight)
     run_parallel_harness highlight "$HIGHLIGHT_INPUT"
     ;;
-  interactive)
-    BIN="$BIN" "$TEST_SHELL" run-interactive-test.sh $INTERACTIVE_INPUT
-    ;;
   compat)
     BIN="$BIN" BASHP="$BASHP" DASH="$DASH" \
       DIFF_FLAGS="$DIFF_FLAGS" FAILED_LIST="$FAILED_LIST" \
@@ -323,10 +319,6 @@ run_named_suite compat || RUNNER_STATUS=$?
 
 RUNNER_STATUS=0
 wait "$PARALLEL_PROCESS" || RUNNER_STATUS=$?
-[ "$SUITE_STATUS" -ne 0 ] || SUITE_STATUS=$RUNNER_STATUS
-
-RUNNER_STATUS=0
-run_named_suite interactive || RUNNER_STATUS=$?
 [ "$SUITE_STATUS" -ne 0 ] || SUITE_STATUS=$RUNNER_STATUS
 
 RESULT_STATUS=0

@@ -16,4 +16,4 @@ echo '== nounset names the set name in its fatal note:'
 echo "rc=$?"
 
 echo '== an exported name is a candidate:'
-KOSH_TEST_EXPORTED=1 "$BIN" -WWW -c 'echo "$KOSH_TEST_EXPORTE"' 2>&1
+DEMO_TEST_EXPORTED=1 "$BIN" -WWW -c 'echo "$DEMO_TEST_EXPORTE"' 2>&1

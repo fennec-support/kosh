@@ -31,8 +31,6 @@ Place a test in the cheapest harness that can express its behavior.
   uses the matching `expected/<name>.out` golden.
 - `highlight/` owns debug highlighting output. Each source uses the matching
   `expected/<name>.out` golden.
-- `interactive/` owns checks that require a controlling terminal or byte-level
-  terminal inspection.
 - `bench/` owns performance workloads. Behavioral regressions belong in another
   harness.
 - `data/` owns shared goldens. A golden is data and does not become a second
@@ -65,8 +63,9 @@ copy a timeout list, argument parser, golden comparison, or cleanup path.
 
 `run-test-suite.sh` bounds parallel workers and starts each harness runner.
 `run-bounded-cli-golden.sh` owns process-tree timeouts for CLI cases that can
-block. A bounded golden is launched under `/bin/sh`, which is busybox ash on the
-Alpine image, so its body is restricted to POSIX shell. A bash extension such as
+block. On POSIX, a bounded golden is launched under `/bin/sh`, which is busybox
+ash on the Alpine image, so its body is restricted to POSIX shell. A bash
+extension such as
 `$(<file)` or a here-string is silently empty there while the exit status still
 looks correct. `run-refill.sh` selects the normal harness runners in refill mode.
 
