@@ -50,9 +50,16 @@ fn Path::is_relative() const wontthrow -> bool { return !is_absolute(); }
 
 static pure fn filename_offset(StringView text) wontthrow -> usize
 {
-  for (usize i = text.length; i > 0; i--)
-    if (os::is_directory_separator(text[i - 1])) return i;
-  return 0;
+  let separator = text.find_last_character('/');
+#if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
+  if (let const backslash = text.find_last_character('\\');
+      backslash.has_value() &&
+      (!separator.has_value() || *backslash > *separator))
+  {
+    separator = backslash;
+  }
+#endif
+  return separator.has_value() ? *separator + 1 : 0;
 }
 
 fn Path::filename() const wontthrow -> StringView
@@ -63,6 +70,16 @@ fn Path::filename() const wontthrow -> StringView
 fn Path::filename(StringView path) wontthrow -> StringView
 {
   return path.substring(filename_offset(path));
+}
+
+fn Path::invocation_filename(StringView path,
+                             bool should_strip_marker) wontthrow -> StringView
+{
+  let name = filename(path);
+  if (should_strip_marker && !name.is_empty() && name[0] == '-')
+    return name.substring(1);
+
+  return name;
 }
 
 fn Path::extension() const wontthrow -> StringView

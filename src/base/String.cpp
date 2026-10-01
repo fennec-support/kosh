@@ -168,9 +168,7 @@ fn String::find_substring(StringView needle, usize from) const wontthrow
 
 fn String::find_last_character(char wanted) const wontthrow -> Maybe<usize>
 {
-  for (usize i = m_length; i > 0; i--)
-    if (m_data[i - 1] == wanted) return i - 1;
-  return None;
+  return view().find_last_character(wanted);
 }
 
 cold fn String::free_storage() wontthrow -> void

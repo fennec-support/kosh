@@ -116,6 +116,16 @@ fn StringView::find_character(char wanted) const wontthrow -> Maybe<usize>
   return static_cast<usize>(found - data);
 }
 
+fn StringView::find_last_character(char wanted) const wontthrow -> Maybe<usize>
+{
+  if (length == 0) return None;
+  let const found = byte_scan::find_last_byte(
+      data, length, static_cast<unsigned char>(wanted));
+  if (found == nullptr) return None;
+
+  return static_cast<usize>(found - data);
+}
+
 fn StringView::find_substring(StringView needle, usize from) const wontthrow
     -> Maybe<usize>
 {

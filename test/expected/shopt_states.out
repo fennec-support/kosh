@@ -64,8 +64,17 @@ absolute=one
 parent=yes
 relative=two
 option-name=-P
+dot-one=three
+dot-two=two
+dot-three=one
+dot-root=/
+dot-program
+dot-precedence=0
+literal=...
 disabled=yes
+dot-disabled=rejected
 extra-operand=rejected
+dot-extra=rejected
 reenabled=one
 == autocd is enabled in the Bash mood by default:
 bash-default=0

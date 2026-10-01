@@ -1559,6 +1559,16 @@ fn ExecContext::print_to_stderr(StringView s) const throws -> void
   }
 }
 
+static pure fn dot_parent_steps(StringView word) wontthrow -> Maybe<usize>
+{
+  if (word.length < 2) return None;
+
+  for (usize i = 0; i < word.length; i++)
+    if (word[i] != '.') return None;
+
+  return word.length - 1;
+}
+
 fn ExecContext::make_from(const SourceLocation &location, StringView source,
                           ArrayList<String> &&args,
                           bool are_koshkit_utilities_reachable,
@@ -1638,17 +1648,41 @@ fn ExecContext::make_from(const SourceLocation &location, StringView source,
       (!resolved_program_path.has_value() ||
        resolved_program_path->is_directory()) &&
       (!are_koshkit_utilities_reachable ||
-       !koshkit::find_util(program.view()).has_value()) &&
-      Path{program.view()}.is_directory())
+       !koshkit::find_util(program.view()).has_value()))
   {
-    let directory_operand = steal(args[0]);
-    args[0] = String{"cd"};
-    args.push(String{"--"});
-    args.push(steal(directory_operand));
-    arg_locations.push(resolution_location);
-    arg_locations.push(resolution_location);
-    return {location, ResolvedCommand::from_builtin(Builtin::Kind::Cd),
-            steal(args), steal(arg_locations)};
+    String directory_operand{heap_allocator()};
+    bool should_rewrite_to_cd = false;
+
+    if (let parent_steps = dot_parent_steps(program.view());
+        parent_steps.has_value())
+    {
+      let directory_path = Path{"..", heap_allocator()};
+      for (usize i = 1; i < *parent_steps; i++)
+        directory_path.push_component("..");
+
+      if (!directory_path.is_directory()) {
+        let const directory_message = StringView{"The directory '"} +
+                                      directory_path.view() + "' does not exist";
+        throw CommandResolutionErrorWithLocation{
+            resolution_location, directory_message.view()};
+      }
+
+      directory_operand = String{directory_path.view()};
+      should_rewrite_to_cd = true;
+    } else if (Path{program.view()}.is_directory()) {
+      directory_operand = steal(args[0]);
+      should_rewrite_to_cd = true;
+    }
+
+    if (should_rewrite_to_cd) {
+      args[0] = String{"cd"};
+      args.push(String{"--"});
+      args.push(steal(directory_operand));
+      arg_locations.push(resolution_location);
+      arg_locations.push(resolution_location);
+      return {location, ResolvedCommand::from_builtin(Builtin::Kind::Cd),
+              steal(args), steal(arg_locations)};
+    }
   }
 
   ResolvedCommand kind;

@@ -60,6 +60,9 @@ public:
   mustuse fn parent_or_current() const throws -> Path;
   mustuse pure fn filename() const wontthrow -> StringView;
   mustuse pure static fn filename(StringView path) wontthrow -> StringView;
+  mustuse pure static fn invocation_filename(StringView path,
+                                             bool should_strip_marker) wontthrow
+      -> StringView;
   mustuse pure fn extension() const wontthrow -> StringView;
   mustuse fn next_component(usize &position) const wontthrow -> component;
   mustuse static fn next_component(StringView path, usize &position) wontthrow

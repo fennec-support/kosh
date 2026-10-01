@@ -132,10 +132,16 @@ hash -R
 rehash-probe
 ' kosh "$checkhash_first" "$checkhash_second"
 autocd_root=$TEST_TEMP_DIRECTORY/autocd
-mkdir -p "$autocd_root/one" "$autocd_root/two" "$autocd_root/-P"
+autocd_bin=$TEST_TEMP_DIRECTORY/autocd-bin
+mkdir -p "$autocd_root/one" "$autocd_root/two" "$autocd_root/-P" \
+  "$autocd_root/tree/one/two/three/four" "$autocd_root/literal/..." \
+  "$autocd_bin"
 autocd_root=$(cd "$autocd_root" && pwd)
+autocd_bin=$(cd "$autocd_bin" && pwd)
+printf '#!/bin/sh\nprintf "dot-program\\n"\n' > "$autocd_bin/..."
+chmod +x "$autocd_bin/..."
 echo "== autocd changes directories in the default mood:"
-AUTOCD_ROOT="$autocd_root" "$BIN" --no-init-files --no-diagnostics -c '
+AUTOCD_ROOT="$autocd_root" AUTOCD_BIN="$autocd_bin" "$BIN" --no-init-files --no-diagnostics -c '
 shopt -q autocd
 printf "default=%s\n" "$?"
 "$AUTOCD_ROOT/one"
@@ -151,18 +157,48 @@ printf "relative=%s\n" "${PWD##*/}"
 cd "$AUTOCD_ROOT"
 ./-P
 printf "option-name=%s\n" "${PWD##*/}"
-cd "$AUTOCD_ROOT"
+cd "$AUTOCD_ROOT/tree/one/two/three/four"
+..
+printf "dot-one=%s\n" "${PWD##*/}"
+cd "$AUTOCD_ROOT/tree/one/two/three/four"
+...
+printf "dot-two=%s\n" "${PWD##*/}"
+cd "$AUTOCD_ROOT/tree/one/two/three/four"
+....
+printf "dot-three=%s\n" "${PWD##*/}"
+cd "$AUTOCD_ROOT/tree/one/two/three/four"
+................................
+printf "dot-root=%s\n" "$PWD"
+cd "$AUTOCD_ROOT/tree/one/two/three/four"
+PATH="$AUTOCD_BIN:$PATH"
+...
+printf "dot-precedence=%s\n" "$?"
+cd "$AUTOCD_ROOT/literal"
+./...
+printf "literal=%s\n" "${PWD##*/}"
+cd "$AUTOCD_ROOT/tree/one/two/three/four"
+PATH=/usr/bin:/bin
 shopt -u autocd
 if "$AUTOCD_ROOT/one" >/dev/null 2>&1; then
   echo disabled=no
 else
   echo disabled=yes
 fi
+if .. >/dev/null 2>&1; then
+  echo dot-disabled=accepted
+else
+  echo dot-disabled=rejected
+fi
 shopt -s autocd
 if "$AUTOCD_ROOT/one" extra >/dev/null 2>&1; then
   echo extra-operand=accepted
 else
   echo extra-operand=rejected
+fi
+if ... extra >/dev/null 2>&1; then
+  echo dot-extra=accepted
+else
+  echo dot-extra=rejected
 fi
 "$AUTOCD_ROOT/one"
 printf "reenabled=%s\n" "${PWD##*/}"

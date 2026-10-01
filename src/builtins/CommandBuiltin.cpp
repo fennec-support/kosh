@@ -65,10 +65,12 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
                               restricted_path_use::Command);
   }
 
-  let default_resolver = ProgramResolver{String{"/usr/bin:/bin"}};
-  let &resolver = FLAG_COMMAND_DEFAULT_PATH.is_enabled()
-                      ? default_resolver
-                      : cxt.resolution_store().resolver();
+  let default_resolver = Maybe<ProgramResolver>{};
+  ProgramResolver *resolver = &cxt.resolution_store().resolver();
+  if (FLAG_COMMAND_DEFAULT_PATH.is_enabled()) {
+    default_resolver = ProgramResolver{String{"/usr/bin:/bin"}};
+    resolver = &*default_resolver;
+  }
 
   if (FLAG_SHOW.is_enabled() || FLAG_SHOW_VERBOSE.is_enabled()) {
     let const is_verbose = FLAG_SHOW_VERBOSE.is_enabled();
@@ -82,9 +84,9 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
 
       if (os::has_directory_separator(name.view())) {
         let const paths =
-            resolver.search(name, ProgramResolver::SearchMode::First,
-                            ProgramResolver::Requirement::Runnable,
-                            ProgramResolver::CachePolicy::Bypass);
+            resolver->search(name, ProgramResolver::SearchMode::First,
+                             ProgramResolver::Requirement::Runnable,
+                             ProgramResolver::CachePolicy::Bypass);
         if (!paths.is_empty()) {
           ec.print_to_stdout(is_verbose ? name + " is " + name + "\n"
                                         : name + "\n");
@@ -135,9 +137,9 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
         continue;
       }
       if (let const paths =
-              resolver.search(name, ProgramResolver::SearchMode::First,
-                              ProgramResolver::Requirement::Regular,
-                              ProgramResolver::CachePolicy::ReadOnly);
+              resolver->search(name, ProgramResolver::SearchMode::First,
+                               ProgramResolver::Requirement::Regular,
+                               ProgramResolver::CachePolicy::ReadOnly);
           !paths.is_empty())
       {
         let resolved_text = String{cxt.scratch_allocator()};
@@ -189,8 +191,8 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
     sub = ExecContext::make_from(
         ec.source_location(), source != nullptr ? source->view() : StringView{},
         steal(operand_args), cxt.runtime_state().koshkit(),
-        cxt.is_shopt_enabled("checkhash"),
-        resolver, steal(operand_arg_locations), cxt.runtime_state().get_mood());
+        cxt.is_shopt_enabled("checkhash"), *resolver,
+        steal(operand_arg_locations), cxt.runtime_state().get_mood());
   } catch (const CommandResolutionErrorWithLocation &resolution_error) {
     LOG(Debug, "command handled a resolution error: %s",
         resolution_error.message().c_str());

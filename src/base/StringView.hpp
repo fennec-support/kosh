@@ -84,6 +84,33 @@ hot inline fn find_byte(const char *bytes, usize byte_count,
   return nullptr;
 }
 
+hot inline fn find_last_byte(const char *bytes, usize byte_count,
+                             unsigned char wanted) wontthrow -> const char *
+{
+  usize position = byte_count;
+
+#if defined __BYTE_ORDER__ && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+  let const broadcast = LOW_BITS * wanted;
+  while (position >= 8) {
+    position -= 8;
+    let const word = load_word(bytes + position) ^ broadcast;
+    let const marks = (word - LOW_BITS) & ~word & HIGH_BITS;
+    if (marks != 0) {
+      for (usize offset = 8; offset > 0; offset--)
+        if (bytes[position + offset - 1] == static_cast<char>(wanted))
+          return bytes + position + offset - 1;
+    }
+  }
+#endif
+
+  while (position > 0) {
+    position--;
+    if (bytes[position] == static_cast<char>(wanted)) return bytes + position;
+  }
+
+  return nullptr;
+}
+
 } /* namespace byte_scan */
 
 template <class T>
@@ -145,6 +172,8 @@ public:
   mustuse fn to() const throws -> ErrorOr<T>;
 
   hot mustuse pure fn find_character(char wanted) const wontthrow
+      -> Maybe<usize>;
+  hot mustuse pure fn find_last_character(char wanted) const wontthrow
       -> Maybe<usize>;
   mustuse pure fn find_substring(StringView needle,
                                  usize from = 0) const wontthrow

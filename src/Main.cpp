@@ -189,10 +189,7 @@ fn kosh_main(int argc, char **argv) -> int
      before any flag parsing, so `ls -l` reaches ls and its own flag parser. */
   if (argc > 0) {
     koshka::StringView invocation =
-        koshka::Path::filename(koshka::StringView{argv[0]});
-    if (!invocation.is_empty() && invocation[0] == '-') {
-      invocation = invocation.substring(1);
-    }
+        koshka::Path::invocation_filename(koshka::StringView{argv[0]}, true);
     let invocation_name = koshka::String{invocation};
     let const invocation_info =
         koshka::os::normalize_program_name(invocation_name);
@@ -401,8 +398,10 @@ fn kosh_main(int argc, char **argv) -> int
 
   /* A basename of sh or dash selects POSIX mode and a basename of bash selects
      bash mode, so a symlink named after a system shell behaves like it. */
-  let normalized_program_basename =
-      koshka::String{koshka::Path::filename(program_path.view())};
+  const bool is_login_name =
+      !program_path.view().is_empty() && program_path.view()[0] == '-';
+  let normalized_program_basename = koshka::String{
+      koshka::Path::invocation_filename(program_path.view(), is_login_name)};
   let const program_name_info =
       koshka::os::normalize_program_name(normalized_program_basename);
   koshka::StringView program_basename =
@@ -412,8 +411,6 @@ fn kosh_main(int argc, char **argv) -> int
      exec -l prepends the dash to the whole path, such as -/usr/bin/bash. The
      mark is the first byte of argv[0], not of the basename, so a path whose
      directory component contains a dash is not mistaken for a login shell. */
-  const bool is_login_name =
-      !program_path.view().is_empty() && program_path.view()[0] == '-';
 
   /* SHELL and BASH must name a runnable file a child can exec, so the login
      dash is dropped here for the executable identity while $0 keeps the dashed
@@ -422,12 +419,6 @@ fn kosh_main(int argc, char **argv) -> int
   let executable_path = program_path.clone();
   if (is_login_name && program_path.view().length > 1)
     executable_path = koshka::String{program_path.view().substring(1)};
-
-  if (is_login_name && !program_basename.is_empty() &&
-      program_basename[0] == '-')
-  {
-    program_basename = program_basename.substring(1);
-  }
 
   const koshka::mimic_mood invocation_mood =
       (program_basename == "sh" || program_basename == "dash")

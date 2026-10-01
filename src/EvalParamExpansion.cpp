@@ -1279,16 +1279,23 @@ fn EvalContext::apply_case_modification_to_value(
   }
 
   let const pattern_matches_any = pattern_word.is_empty();
+  let const is_single_literal_pattern =
+      pattern.length() == 1 &&
+      (!pattern_active[0] ||
+       (pattern[0] != '*' && pattern[0] != '?' && pattern[0] != '['));
   let const extglob = get_extglob_mode();
   let out = String{scratch_allocator()};
   out.reserve(value.length);
   for (usize i = 0; i < value.length; i++) {
     char character = value[i];
     let const is_affected = should_modify_all || i == 0;
-    if (is_affected &&
-        (pattern_matches_any ||
+    let const is_pattern_match =
+        pattern_matches_any ||
+        (is_single_literal_pattern && character == pattern[0]) ||
+        (!is_single_literal_pattern &&
          utils::glob_matches(pattern.view(), value.substring_of_length(i, 1),
-                             pattern_active, 0, extglob)))
+                             pattern_active, 0, extglob));
+    if (is_affected && is_pattern_match)
     {
       const unsigned char byte = static_cast<unsigned char>(character);
       if (op == '^') {

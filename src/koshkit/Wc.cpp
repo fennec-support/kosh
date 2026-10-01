@@ -250,7 +250,7 @@ fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
               file_size.has_value() && os::descriptor_is_seekable(*descriptor);
           unused(os::close_fd(*descriptor));
 
-          if (is_seekable && *file_size != 0) {
+          if (is_seekable) {
             source_states[source_index].byte_count = *file_size;
             continue;
           }

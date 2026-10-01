@@ -500,13 +500,39 @@ private:
       m_data[i].~T();
   }
 
-  fn swap_elements(usize first, usize second) throws -> void
+  alwaysinline fn swap_elements(usize first, usize second) throws -> void
   {
     if (first == second) return;
 
     T temporary = steal(m_data[first]);
     m_data[first] = steal(m_data[second]);
     m_data[second] = steal(temporary);
+  }
+
+  template <typename Compare>
+  fn sort_three(usize first, usize middle, usize last, Compare &is_less) throws
+      -> void
+  {
+    if (is_less(m_data[middle], m_data[first])) swap_elements(middle, first);
+    if (is_less(m_data[last], m_data[first])) swap_elements(last, first);
+    if (is_less(m_data[last], m_data[middle])) swap_elements(last, middle);
+  }
+
+  template <typename Compare>
+  fn select_pivot(usize first, usize last, Compare &is_less) throws -> void
+  {
+    let const length = last - first;
+    let const middle = first + length / 2;
+    if (length >= 128) {
+      let const step = length / 8;
+      sort_three(first, first + step, first + step * 2, is_less);
+      sort_three(middle - step, middle, middle + step, is_less);
+      sort_three(last - 1 - step * 2, last - 1 - step, last - 1, is_less);
+      sort_three(first + step, middle, last - 1 - step, is_less);
+    } else {
+      sort_three(first, middle, last - 1, is_less);
+    }
+    swap_elements(middle, last - 1);
   }
 
   template <typename Compare>
@@ -568,25 +594,19 @@ private:
       }
       depth_limit--;
 
-      let const middle = first + (last - first) / 2;
-      if (is_less(m_data[middle], m_data[first])) swap_elements(middle, first);
-      if (is_less(m_data[last - 1], m_data[first]))
-        swap_elements(last - 1, first);
-      if (is_less(m_data[last - 1], m_data[middle]))
-        swap_elements(last - 1, middle);
-      swap_elements(middle, last - 1);
+      select_pivot(first, last, is_less);
 
       usize less = first;
       usize index = first;
       usize greater = last - 1;
       while (index < greater) {
         if (is_less(m_data[index], m_data[last - 1])) {
-          swap_elements(index, less);
+          if (index != less) swap_elements(index, less);
           index++;
           less++;
         } else if (is_less(m_data[last - 1], m_data[index])) {
           greater--;
-          swap_elements(index, greater);
+          if (index != greater) swap_elements(index, greater);
         } else {
           index++;
         }

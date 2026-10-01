@@ -901,6 +901,10 @@ working directory as if it were an operand to
 Functions, builtins, programs, and bundled utilities take precedence. The
 .B autocd
 shopt option controls this behavior and is enabled by default in every mood.
+When the command is made only of dots, two dots move to the parent directory
+and each additional dot moves one more parent directory. This shorthand also
+requires a single command word, and functions, builtins, programs, and bundled
+utilities keep precedence over it.
 .PP
 A command path ending in a directory separator fails with status 126 when the
 typed target is not a directory. Components are resolved in order. An
