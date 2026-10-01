@@ -338,6 +338,21 @@ public:
     m_newline_offsets.release();
   }
 
+  fn invalidate_for(StringView source) wontthrow -> void
+  {
+    if (m_source_data == nullptr || source.data == nullptr) return;
+
+    let const cached_address = reinterpret_cast<usize>(m_source_data);
+    let const source_address = reinterpret_cast<usize>(source.data);
+    if (cached_address < source_address) return;
+
+    let const offset = cached_address - source_address;
+    if (offset > source.length || m_source_length > source.length - offset)
+      return;
+
+    invalidate();
+  }
+
   pure fn locate(usize position) const wontthrow -> source_line_position
   {
     usize low = 0;
@@ -391,9 +406,9 @@ fn line_number_at(StringView source, usize position) throws -> usize
   return source_line_position_at(source, position).line_number + 1;
 }
 
-fn invalidate_line_number_cache() wontthrow -> void
+fn invalidate_line_number_cache_for(StringView source) wontthrow -> void
 {
-  LINE_NUMBER_CACHE.invalidate();
+  LINE_NUMBER_CACHE.invalidate_for(source);
 }
 
 static fn skip_ascii_whitespace(StringView text, usize &offset) wontthrow

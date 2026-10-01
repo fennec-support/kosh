@@ -12,6 +12,9 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
+#include "../base/StaticStringMap.hpp"
+
+#include <ctype.h>
 
 FLAG_LIST_DECL();
 
@@ -40,6 +43,30 @@ enum class grep_recursion_mode : u8
   Files,
   Recursive,
 };
+
+enum class grep_repeated_class : u8
+{
+  None = 0,
+  Alpha = 1,
+  Digit = 2,
+  Alnum = 3,
+  Space = 4,
+  AlphaSpace = 5,
+  DigitSpace = 6,
+  AlnumSpace = 7,
+};
+
+static constexpr static_string_entry<grep_repeated_class>
+    GREP_REPEATED_CLASS_ENTRIES[] = {
+        {SSK("[[:alpha:]]*"),  grep_repeated_class::Alpha     },
+        {SSK("[[:digit:]]*"),  grep_repeated_class::Digit     },
+        {SSK("[[:alnum:]]*"),  grep_repeated_class::Alnum     },
+        {SSK("[[:alpha:] ]*"), grep_repeated_class::AlphaSpace},
+        {SSK("[[:digit:] ]*"), grep_repeated_class::DigitSpace},
+        {SSK("[[:alnum:] ]*"), grep_repeated_class::AlnumSpace},
+};
+static constexpr StaticStringMap GREP_REPEATED_CLASSES{
+    GREP_REPEATED_CLASS_ENTRIES};
 
 constexpr usize GREP_UNKNOWN_BATCH_COUNT = 512;
 constexpr usize GREP_READ_BYTE_COUNT = 256 * 1024;
@@ -101,8 +128,7 @@ static fn collect_recursive_sources(const ExecContext &ec, EvalContext &cxt,
   }
 
   if (path_kind != Path::entry_kind::Directory) {
-    if (path_kind == Path::entry_kind::Regular)
-      storage.push(path.clone());
+    if (path_kind == Path::entry_kind::Regular) storage.push(path.clone());
     return;
   }
 
@@ -219,6 +245,62 @@ fn Grep::execute(const ExecContext &ec, EvalContext &cxt,
   let const should_use_literal_search =
       is_literal_search_pattern(pattern) &&
       (!should_ignore_case || is_ascii_pattern(pattern));
+  let fast_regex_prefix = StringView{};
+  let fast_regex_suffix = StringView{};
+  let fast_regex_class = grep_repeated_class::None;
+  if (!should_use_literal_search && !should_ignore_case &&
+      pattern.length >= 4 && pattern[0] == '^' &&
+      pattern[pattern.length - 1] == '$' &&
+      !pattern.find_character('\0').has_value() &&
+      !pattern.find_character('\n').has_value())
+  {
+    let const body = pattern.substring_of_length(1, pattern.length - 2);
+    let const class_position = body.find_character('[');
+    if (class_position.has_value()) {
+      let const class_and_suffix = body.substring(*class_position);
+      let const repetition_position = class_and_suffix.find_character('*');
+      if (repetition_position.has_value()) {
+        let const class_expression =
+            class_and_suffix.substring_of_length(0, *repetition_position + 1);
+        let const repeated_class = GREP_REPEATED_CLASSES.find(class_expression);
+        let const prefix = body.substring_of_length(0, *class_position);
+        let const suffix = class_and_suffix.substring(*repetition_position + 1);
+        if (repeated_class.has_value() && is_literal_search_pattern(prefix) &&
+            is_literal_search_pattern(suffix) && is_ascii_pattern(prefix) &&
+            is_ascii_pattern(suffix))
+        {
+          fast_regex_prefix = prefix;
+          fast_regex_suffix = suffix;
+          fast_regex_class = *repeated_class;
+        }
+      }
+    }
+  }
+  let regex_prefix = StringView{};
+  if (!should_use_literal_search && !should_ignore_case && pattern.length > 1 &&
+      pattern[0] == '^' && !pattern.find_substring("\\|").has_value())
+  {
+    usize prefix_length = 0;
+    for (usize index = 1; index < pattern.length; index++) {
+      let const character = pattern[index];
+      if (character == '*' || character == '\\') {
+        if (prefix_length != 0) prefix_length--;
+        break;
+      }
+      if (character == '.' || character == '[' || character == '$' ||
+          character == '^' || character == '\n' || character == '\0' ||
+          static_cast<unsigned char>(character) > 0x7f)
+        break;
+
+      prefix_length++;
+    }
+    if (prefix_length != 0)
+      regex_prefix = pattern.substring_of_length(1, prefix_length);
+  }
+  let const chunk_search = should_use_literal_search ? pattern : regex_prefix;
+  let const should_skip_empty_chunks = !should_ignore_case && !should_invert &&
+                                       !should_print_line_numbers &&
+                                       !chunk_search.is_empty();
 
   let folded_pattern = String{cxt.scratch_allocator()};
   if (should_use_literal_search && should_ignore_case) {
@@ -274,15 +356,18 @@ fn Grep::execute(const ExecContext &ec, EvalContext &cxt,
   let const should_print_names = !should_suppress_names && sources.count() > 1;
   let output = String{allocator};
   let line = String{allocator};
-  let reader = SourceBatchReader{
-      ec, sources, allocator, GREP_READ_BYTE_COUNT,
-      SourceBatchReader::source_dash_mode::TreatAsStdin,
-      recursion_mode == grep_recursion_mode::Recursive
-          ? SourceBatchReader::source_kind_mode::KnownRegular
-          : SourceBatchReader::source_kind_mode::Probe,
-      recursion_mode == grep_recursion_mode::Recursive
-          ? SourceBatchReader::source_read_mode::Sequential
-          : SourceBatchReader::source_read_mode::Batched};
+  let reader =
+      SourceBatchReader{ec,
+                        sources,
+                        allocator,
+                        GREP_READ_BYTE_COUNT,
+                        SourceBatchReader::source_dash_mode::TreatAsStdin,
+                        recursion_mode == grep_recursion_mode::Recursive
+                            ? SourceBatchReader::source_kind_mode::KnownRegular
+                            : SourceBatchReader::source_kind_mode::Probe,
+                        recursion_mode == grep_recursion_mode::Recursive
+                            ? SourceBatchReader::source_read_mode::Sequential
+                            : SourceBatchReader::source_read_mode::Batched};
   let chunks = ArrayList<SourceBatchReader::Chunk>{allocator};
   ArrayList<usize> source_line_numbers{allocator};
   if (should_print_line_numbers) {
@@ -291,15 +376,49 @@ fn Grep::execute(const ExecContext &ec, EvalContext &cxt,
       source_line_numbers.push(1);
   }
   bool has_any_match = false;
+  let const do_match_line = [&](StringView value) throws -> bool {
+    if (should_use_literal_search)
+      return should_ignore_case ? utils::contains_case_insensitive_ascii(
+                                      value, folded_pattern.view())
+                                : value.find_substring(pattern).has_value();
+
+    if (!regex_prefix.is_empty() && !value.starts_with(regex_prefix))
+      return false;
+
+    if (fast_regex_class != grep_repeated_class::None) {
+      if (value.length < fast_regex_prefix.length + fast_regex_suffix.length ||
+          !value.starts_with(fast_regex_prefix) ||
+          value.substring(value.length - fast_regex_suffix.length) !=
+              fast_regex_suffix)
+        return false;
+
+      let const class_bits = static_cast<u8>(fast_regex_class);
+      let const middle_end = value.length - fast_regex_suffix.length;
+      for (usize index = fast_regex_prefix.length; index < middle_end; index++)
+      {
+        let const byte = static_cast<unsigned char>(value[index]);
+        if (byte == 0 || byte >= 0x80)
+          return os::regex_matches_null_terminated(compiled, value);
+
+        u8 byte_class = 0;
+        if (isalpha(byte) != 0)
+          byte_class = 1;
+        else if (isdigit(byte) != 0)
+          byte_class = 2;
+        else if (byte == ' ')
+          byte_class = 4;
+        if ((byte_class & class_bits) == 0) return false;
+      }
+
+      return true;
+    }
+
+    return os::regex_matches_null_terminated(compiled, value);
+  };
   let const do_process_line = [&](usize source_index, StringView source,
-                                  StringView value) throws -> void {
+                                  StringView value, bool is_match)
+                                  throws -> void {
     char line_number[20];
-    let const is_match =
-        should_use_literal_search
-            ? (should_ignore_case ? utils::contains_case_insensitive_ascii(
-                                        value, folded_pattern.view())
-                                  : value.find_substring(pattern).has_value())
-            : os::regex_matches_null_terminated(compiled, value);
     if (is_match != should_invert) {
       has_any_match = true;
       if (should_print_names) {
@@ -329,33 +448,55 @@ fn Grep::execute(const ExecContext &ec, EvalContext &cxt,
 
     for (let const &chunk : chunks) {
       let const source = sources[chunk.source_index];
-      usize position = 0;
-      while (position < chunk.content.length) {
-        let const remaining = chunk.content.substring(position);
-        let const newline_offset = remaining.find_character('\n');
-        let const delimiter_position = newline_offset.has_value()
-                                           ? position + *newline_offset
-                                           : chunk.content.length;
+      if (should_skip_empty_chunks &&
+          !chunk.content.find_substring(chunk_search).has_value())
+      {
+        let const first_newline = chunk.content.find_character('\n');
+        if (first_newline.has_value()) {
+          if (!line.is_empty()) {
+            line.append(chunk.content.substring_of_length(0, *first_newline));
+            do_process_line(chunk.source_index, source, line.view(),
+                            do_match_line(line.view()));
+          }
 
-        let const segment = chunk.content.substring_of_length(
-            position, delimiter_position - position);
-        if (delimiter_position == chunk.content.length) {
-          line.append(segment);
-          break;
-        }
-
-        if (should_use_literal_search && line.is_empty()) {
-          do_process_line(chunk.source_index, source, segment);
-          if (should_print_line_numbers)
-            source_line_numbers[chunk.source_index]++;
+          usize trailing_position = chunk.content.length;
+          while (trailing_position > *first_newline &&
+                 chunk.content[trailing_position - 1] != '\n')
+            trailing_position--;
+          line.append(chunk.content.substring(trailing_position));
         } else {
-          line.append(segment);
-          do_process_line(chunk.source_index, source, line.view());
+          line.append(chunk.content);
+        }
+      } else {
+        usize position = 0;
+        while (position < chunk.content.length) {
+          let const remaining = chunk.content.substring(position);
+          let const newline_offset = remaining.find_character('\n');
+          let const delimiter_position = newline_offset.has_value()
+                                             ? position + *newline_offset
+                                             : chunk.content.length;
+
+          let const segment = chunk.content.substring_of_length(
+              position, delimiter_position - position);
+          if (delimiter_position == chunk.content.length) {
+            line.append(segment);
+            break;
+          }
+
+          if (line.is_empty()) {
+            do_process_line(chunk.source_index, source, segment,
+                            do_match_line(segment));
+          } else {
+            line.append(segment);
+            do_process_line(chunk.source_index, source, line.view(),
+                            do_match_line(line.view()));
+          }
           if (should_print_line_numbers)
             source_line_numbers[chunk.source_index]++;
+
+          position = delimiter_position;
+          position++;
         }
-        position = delimiter_position;
-        position++;
       }
 
       if (chunk.completion != source_completion_state::Complete) continue;
@@ -375,8 +516,10 @@ fn Grep::execute(const ExecContext &ec, EvalContext &cxt,
       }
 
       if (!line.is_empty()) {
-        do_process_line(chunk.source_index, source, line.view());
-        if (should_print_line_numbers) source_line_numbers[chunk.source_index]++;
+        do_process_line(chunk.source_index, source, line.view(),
+                        do_match_line(line.view()));
+        if (should_print_line_numbers)
+          source_line_numbers[chunk.source_index]++;
       }
     }
   }

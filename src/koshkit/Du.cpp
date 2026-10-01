@@ -40,6 +40,13 @@ struct du_output_row
   String path;
 };
 
+struct du_sort_key
+{
+  u64 size_bytes;
+  StringView path_suffix;
+  usize row_index;
+};
+
 struct du_size_result
 {
   u64 size_bytes;
@@ -130,6 +137,7 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
   let const list_allocator = bump_allocator(list_arena);
   let frames = ArrayList<du_directory_frame>{allocator};
   let directory_queue = ArrayList<usize>{allocator};
+  let reusable_frame_indices = ArrayList<usize>{allocator};
   let stat_work = ArrayList<du_stat_work>{allocator};
   let stat_batch = os::Batch{allocator};
   let batch_results = ArrayList<os::batch_result>{allocator};
@@ -145,7 +153,8 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
   fallback_batch.reserve(512);
   fallback_results.reserve(512);
   frames.push(du_directory_frame{
-      Path{path.view(), allocator}, SIZE_MAX, allocated_size_bytes, 0,
+      Path{path.view(), heap_allocator()},
+      SIZE_MAX, allocated_size_bytes, 0,
       false, false, false
   });
   directory_queue.push(0);
@@ -195,12 +204,14 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
       let const parent_index = frame.parent_index;
       let &parent = frames[parent_index];
       if (parent.pending_directory_count != 0) parent.pending_directory_count--;
+      frame.path = Path{};
+      reusable_frame_indices.push(frame_index);
       frame_index = parent_index;
     }
   };
 
-  let const do_process_stat_work = [&](du_stat_work &work,
-                                       i32 error_number) throws -> void {
+  let const do_process_stat_work = [&](du_stat_work &work, i32 error_number)
+                                       throws -> void {
     let const parent_index = work.parent_index;
     let const make_child_path = [&]() throws -> Path {
       let child_path = Path{frames[parent_index].path.view(), wave_allocator};
@@ -230,10 +241,9 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
     }
     if (status.blocks > UINT64_MAX / 512) {
       let child_path = make_child_path();
-      report_soft_koshkit_util_error(
-          ec, cxt, "du",
-          "cannot read '" + child_path.text() +
-              "': the total size is too large");
+      report_soft_koshkit_util_error(ec, cxt, "du",
+                                     "cannot read '" + child_path.text() +
+                                         "': the total size is too large");
       frames[parent_index].has_failure = true;
       has_failure = true;
       return;
@@ -241,24 +251,33 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
 
     let const allocated_size_bytes = status.blocks * 512;
     if (type == 'd') {
-      let child_path = make_child_path();
+      let child_path = Path{frames[parent_index].path.view(), heap_allocator()};
+      child_path.append(StringView{work.name});
       frames[parent_index].pending_directory_count++;
-      frames.push(du_directory_frame{
-          Path{child_path.view(), allocator}, parent_index,
-          allocated_size_bytes, 0, false, false, false
-      });
-      directory_queue.push(frames.count() - 1);
+      let child_frame = du_directory_frame{steal(child_path),
+                                           parent_index,
+                                           allocated_size_bytes,
+                                           0,
+                                           false,
+                                           false,
+                                           false};
+      if (reusable_frame_indices.is_empty()) {
+        frames.push(steal(child_frame));
+        directory_queue.push(frames.count() - 1);
+      } else {
+        let const frame_index = reusable_frame_indices.back();
+        reusable_frame_indices.pop_back();
+        frames[frame_index] = steal(child_frame);
+        directory_queue.push(frame_index);
+      }
       return;
     }
 
-    if (allocated_size_bytes >
-        UINT64_MAX - frames[parent_index].total_bytes)
-    {
+    if (allocated_size_bytes > UINT64_MAX - frames[parent_index].total_bytes) {
       let child_path = make_child_path();
-      report_soft_koshkit_util_error(
-          ec, cxt, "du",
-          "cannot read '" + child_path.text() +
-              "': the total size is too large");
+      report_soft_koshkit_util_error(ec, cxt, "du",
+                                     "cannot read '" + child_path.text() +
+                                         "': the total size is too large");
       frames[parent_index].has_failure = true;
       has_failure = true;
       return;
@@ -273,14 +292,14 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
   };
 
   let const do_flush_stat_work = [&](Maybe<os::descriptor> directory)
-      throws -> void {
+                                     throws -> void {
     if (stat_work.is_empty()) return;
 
     if (directory.has_value()) {
       stat_batch.clear();
       for (let &work : stat_work)
-        stat_batch.add(os::batch_operation::lstat_at(
-            *directory, work.name, work.status));
+        stat_batch.add(
+            os::batch_operation::lstat_at(*directory, work.name, work.status));
       stat_batch.execute(batch_results, os::batch_deduplication::Disabled);
     } else {
       fallback_paths.clear();
@@ -296,7 +315,8 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
                              os::batch_deduplication::Disabled);
     }
 
-    let const &results = directory.has_value() ? batch_results : fallback_results;
+    let const &results =
+        directory.has_value() ? batch_results : fallback_results;
     for (usize index = 0; index < stat_work.count(); index++) {
       let &work = stat_work[index];
       do_process_stat_work(work, results[index].error_number);
@@ -323,7 +343,8 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
       let const listing = os::list_directory_for_batch(
           frames[frame_index].path.view(), list_allocator);
       let const directory = listing.directory;
-      defer {
+      defer
+      {
         if (directory.has_value()) unused(os::close_fd(*directory));
       };
       let const &children = listing.children;
@@ -443,41 +464,78 @@ fn Du::execute(const ExecContext &ec, EvalContext &cxt,
                         allocator);
   }
 
-  let collected_output_order = ArrayList<usize>{allocator};
+  usize shared_path_prefix_length = 0;
+  if (!output_rows.is_empty()) {
+    let const first_path = output_rows[0].path.view();
+    shared_path_prefix_length = first_path.length;
+    for (usize row_index = 1; row_index < output_rows.count(); row_index++) {
+      let const path = output_rows[row_index].path.view();
+      if (path.length < shared_path_prefix_length)
+        shared_path_prefix_length = path.length;
+
+      usize prefix_index = 0;
+      while (prefix_index < shared_path_prefix_length &&
+             first_path[prefix_index] == path[prefix_index])
+        prefix_index++;
+      shared_path_prefix_length = prefix_index;
+      if (shared_path_prefix_length == 0) break;
+    }
+  }
+
+  let collected_output_order = ArrayList<du_sort_key>{allocator};
   collected_output_order.reserve(output_rows.count());
-  for (usize index = 0; index < output_rows.count(); index++)
-    collected_output_order.push(index);
+  for (usize row_index = 0; row_index < output_rows.count(); row_index++) {
+    let const &row = output_rows[row_index];
+    collected_output_order.push(du_sort_key{
+        row.size_bytes, row.path.view().substring(shared_path_prefix_length),
+        row_index});
+  }
+
   let const output_order =
       steal(collected_output_order)
-          .make_sorted([&](usize left_index, usize right_index) {
-            let const &left = output_rows[left_index];
-            let const &right = output_rows[right_index];
+          .make_sorted([](const du_sort_key &left, const du_sort_key &right) {
             if (left.size_bytes != right.size_bytes)
               return left.size_bytes > right.size_bytes;
-            return left.path.view() < right.path.view();
+            return left.path_suffix < right.path_suffix;
           });
 
+  let const is_human = FLAG_DU_HUMAN.is_enabled();
   let rendered_sizes = ArrayList<String>{allocator};
-  rendered_sizes.reserve(output_order.count());
   usize size_width = 0;
-  for (let const row_index : output_order) {
-    let const &row = output_rows[row_index];
-    let rendered_size = FLAG_DU_HUMAN.is_enabled()
-                            ? format_human_size(row.size_bytes, allocator)
-                            : String::from(row.size_bytes, allocator);
-    if (rendered_size.length() > size_width)
-      size_width = rendered_size.length();
-    rendered_sizes.push(steal(rendered_size));
+  if (is_human) {
+    rendered_sizes.reserve(output_order.count());
+    for (let const &sort_key : output_order) {
+      let rendered_size = format_human_size(sort_key.size_bytes, allocator);
+      if (rendered_size.length() > size_width)
+        size_width = rendered_size.length();
+      rendered_sizes.push(steal(rendered_size));
+    }
+  } else if (!output_order.is_empty()) {
+    size_width = String::from(output_order[0].size_bytes, allocator).length();
   }
 
   let output = String{allocator};
-  let const color_mode = koshkit_should_color() ? du_color_mode::Colored
-                                                : du_color_mode::Plain;
-  for (usize index = 0; index < output_order.count(); index++)
-    append_size_line(output, output_rows[output_order[index]],
-                     rendered_sizes[index].view(), size_width, color_mode);
+  let const color_mode =
+      koshkit_should_color() ? du_color_mode::Colored : du_color_mode::Plain;
+  for (usize index = 0; index < output_order.count(); index++) {
+    let const &sort_key = output_order[index];
+    let const &row = output_rows[sort_key.row_index];
+    if (is_human) {
+      append_size_line(output, row, rendered_sizes[index].view(), size_width,
+                       color_mode);
+    } else {
+      let const rendered_size = String::from(sort_key.size_bytes, allocator);
+      append_size_line(output, row, rendered_size.view(), size_width,
+                       color_mode);
+    }
 
-  ec.print_to_stdout(output);
+    if (output.length() >= 65536) {
+      ec.print_to_stdout(output.view());
+      output.clear();
+    }
+  }
+
+  ec.print_to_stdout(output.view());
   if (was_interrupted) return 130;
   if (has_failure) status = 1;
   return status;

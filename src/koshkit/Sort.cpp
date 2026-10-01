@@ -47,15 +47,25 @@ fn Sort::execute(const ExecContext &ec, EvalContext &cxt,
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
 
-  /* contents keeps each file's bytes alive for the line views, and the reserve
-     stops a grow from dangling a view into a String's inline buffer. */
-  ArrayList<String> contents{cxt.scratch_allocator()};
-  contents.reserve(sources.count());
-  let collected_lines = ArrayList<StringView>{cxt.scratch_allocator()};
   i32 status = 0;
   let source_results =
       read_named_or_stdin_batch(ec, sources, cxt.scratch_allocator());
   if (os::INTERRUPT_REQUESTED) return 130;
+
+  usize line_count = 0;
+  for (let const &source_result : source_results) {
+    if (!source_result.content.has_value()) continue;
+
+    let const content = source_result.content->view();
+    usize position = 0;
+    while (position < content.length) {
+      unused(content.next_line(position));
+      line_count++;
+    }
+  }
+
+  let collected_lines = ArrayList<StringView>{cxt.scratch_allocator()};
+  collected_lines.reserve(line_count);
 
   for (usize source_index = 0; source_index < sources.count(); source_index++) {
     let &source_result = source_results[source_index];
@@ -70,17 +80,14 @@ fn Sort::execute(const ExecContext &ec, EvalContext &cxt,
       continue;
     }
 
-    contents.push(source_result.content.take());
-    for (let const &line : utils::split_lines(contents.back().view(),
-                                              cxt.scratch_allocator(),
-                                              utils::line_terminator_mode::Preserve))
-    {
-      collected_lines.push(line.without_trailing_newline());
+    let const content = source_result.content->view();
+    usize position = 0;
+    while (position < content.length) {
+      collected_lines.push(content.next_line(position));
     }
   }
 
-  let const lines =
-      steal(collected_lines).make_sorted(sort_order::ascending);
+  let const lines = steal(collected_lines).make_sorted(sort_order::ascending);
 
   let output = String{cxt.scratch_allocator()};
   static constexpr usize OUTPUT_BUFFER_LENGTH = 64 * 1024;

@@ -188,12 +188,8 @@ fn kosh_main(int argc, char **argv) -> int
   /* A symlink or rename to a koshkit utility name runs that utility directly,
      before any flag parsing, so `ls -l` reaches ls and its own flag parser. */
   if (argc > 0) {
-    koshka::StringView invocation = koshka::StringView{argv[0]};
-    usize basename_start = 0;
-    for (usize i = 0; i < invocation.length; i++)
-      if (koshka::os::is_directory_separator(invocation[i]))
-        basename_start = i + 1;
-    invocation = invocation.substring(basename_start);
+    koshka::StringView invocation =
+        koshka::Path::filename(koshka::StringView{argv[0]});
     if (!invocation.is_empty() && invocation[0] == '-') {
       invocation = invocation.substring(1);
     }
@@ -405,12 +401,8 @@ fn kosh_main(int argc, char **argv) -> int
 
   /* A basename of sh or dash selects POSIX mode and a basename of bash selects
      bash mode, so a symlink named after a system shell behaves like it. */
-  usize program_basename_start = 0;
-  for (usize i = 0; i < program_path.length(); i++)
-    if (koshka::os::is_directory_separator(program_path[i]))
-      program_basename_start = i + 1;
   let normalized_program_basename =
-      koshka::String{program_path.substring(program_basename_start)};
+      koshka::String{koshka::Path::filename(program_path.view())};
   let const program_name_info =
       koshka::os::normalize_program_name(normalized_program_basename);
   koshka::StringView program_basename =
@@ -753,8 +745,8 @@ fn kosh_main(int argc, char **argv) -> int
   context.runtime_state().set_show_all_exit_codes(
       FLAG_ALL_EXIT_CODES.is_enabled());
   context.runtime_state().set_memory_stats_enabled(FLAG_MEMORY.is_enabled());
-  context.runtime_state().set_diagnostics_disabled(FLAG_SUPPRESS_DIAGNOSTICS.is_enabled() &&
-                                   !FLAG_LINT.is_enabled());
+  context.runtime_state().set_diagnostics_disabled(
+      FLAG_SUPPRESS_DIAGNOSTICS.is_enabled() && !FLAG_LINT.is_enabled());
   context.runtime_state().set_annoying_diagnostics_enabled(
       FLAG_LINT.is_enabled() ||
       !FLAG_SUPPRESS_ANNOYING_DIAGNOSTICS.is_enabled());
@@ -768,13 +760,15 @@ fn kosh_main(int argc, char **argv) -> int
     context.execution_store().set_execution_string(
         koshka::String{koshka::heap_allocator(), FLAG_COMMAND.get(0)});
   context.startup_store().set_login_shell(is_login_shell);
-  context.startup_store().set_custom_rcfile(koshka::selected_rcfile().has_value());
+  context.startup_store().set_custom_rcfile(
+      koshka::selected_rcfile().has_value());
   if (is_restricted_shell) context.startup_store().request_restricted_shell();
   /* Startup files run with strictness off because /etc/profile may read unset
      variables such as $BASH_VERSION. Session strictness applies after the
      configuration loads. */
   context.runtime_state().set_mood(session_mood);
-  context.runtime_state().set_tab_selector(koshka::resolve_session_tab_selector());
+  context.runtime_state().set_tab_selector(
+      koshka::resolve_session_tab_selector());
   context.runtime_state().set_extended_arithmetic(
       session_mood == koshka::mimic_mood::Default ||
       FLAG_EXTENDED_ARITHMETIC.is_enabled());
@@ -807,7 +801,8 @@ fn kosh_main(int argc, char **argv) -> int
   /* BASH names the path used to invoke this shell, the symlink spelling such as
      /usr/local/bin/bash when kosh is symlinked to bash. */
   context.execution_store().set_shell_executable_path(steal(executable_path));
-  let const shell_executable_path = context.execution_store().get_shell_executable_path();
+  let const shell_executable_path =
+      context.execution_store().get_shell_executable_path();
   context.mark_exported("KOSH_IDENTITY");
   context.mark_readonly("KOSH_IDENTITY");
   /* SHELL is owned by login, getty, or the display manager, so an inherited
@@ -821,14 +816,21 @@ fn kosh_main(int argc, char **argv) -> int
   context.set_shell_variable("KOSH_COMMIT", KOSH_COMMIT_HASH);
   context.set_shell_variable("KOSH_BUILD_MODE", KOSH_BUILD_MODE);
   context.set_shell_variable("KOSH_OS", KOSH_OS_INFO);
-  if (!context.variable_store().shell_variables().find("KOSH_HISTORY_FILE").has_value()) {
+  if (!context.variable_store()
+           .shell_variables()
+           .find("KOSH_HISTORY_FILE")
+           .has_value())
+  {
     if (let const history_path = toiletline::get_history_path();
         history_path.has_value())
     {
       context.set_shell_variable("KOSH_HISTORY_FILE", history_path->text());
     }
   }
-  if (!context.variable_store().shell_variables().find("KOSH_HISTORY_SIZE").has_value())
+  if (!context.variable_store()
+           .shell_variables()
+           .find("KOSH_HISTORY_SIZE")
+           .has_value())
     context.set_shell_variable("KOSH_HISTORY_SIZE", "4096");
   context.mark_exported("KOSH_HISTORY_FILE");
   context.mark_exported("KOSH_HISTORY_SIZE");
@@ -948,7 +950,8 @@ fn kosh_main(int argc, char **argv) -> int
                                   : "privileged");
   } else {
     /* --no-init-diagnostics disables analysis while startup files source. */
-    let const saved_diagnostics_disabled = context.runtime_state().is_diagnostics_disabled();
+    let const saved_diagnostics_disabled =
+        context.runtime_state().is_diagnostics_disabled();
     if (FLAG_SUPPRESS_INIT_DIAGNOSTICS.is_enabled())
       context.runtime_state().set_diagnostics_disabled(true);
 
@@ -966,7 +969,8 @@ fn kosh_main(int argc, char **argv) -> int
       if (context.runtime_control_store().diagnostics_mutation_revision() ==
           saved_diagnostics_mutation_revision)
       {
-        context.runtime_state().set_diagnostics_disabled(saved_diagnostics_disabled);
+        context.runtime_state().set_diagnostics_disabled(
+            saved_diagnostics_disabled);
       }
     }
   }
@@ -985,7 +989,8 @@ fn kosh_main(int argc, char **argv) -> int
   context.apply_strictness_for_mood();
   if (FLAG_LINT.is_enabled()) {
     context.runtime_state().set_warning_level(
-        context.runtime_state().get_mood() == koshka::mimic_mood::Default ? 0 : 3);
+        context.runtime_state().get_mood() == koshka::mimic_mood::Default ? 0
+                                                                          : 3);
   }
 
   if (!inherited_bootstrap.payload.is_empty()) {
@@ -1183,12 +1188,16 @@ fn kosh_main(int argc, char **argv) -> int
                 LOG(Info, "the script operand '%s' %s a shell to mimic",
                     file_name.c_str(),
                     detected_mood.has_value() ? "names" : "does not name");
-                context.runtime_state().set_mood(detected_mood.value_or(session_mood));
+                context.runtime_state().set_mood(
+                    detected_mood.value_or(session_mood));
                 context.apply_strictness_for_mood();
 
                 if (FLAG_LINT.is_enabled()) {
                   context.runtime_state().set_warning_level(
-                      context.runtime_state().get_mood() == koshka::mimic_mood::Default ? 0 : 3);
+                      context.runtime_state().get_mood() ==
+                              koshka::mimic_mood::Default
+                          ? 0
+                          : 3);
                 }
               }
             }
@@ -1291,11 +1300,12 @@ fn kosh_main(int argc, char **argv) -> int
 
         koshka::String prompt = toiletline::build_prompt(context);
 
-      toiletline::set_edit_mode(
-          context.runtime_state().option_is_enabled(koshka::shell_option_id::Vi)
-                                    ? toiletline::edit_mode::Vi
-                                    : toiletline::edit_mode::Emacs);
-        toiletline::set_tab_selector(context.runtime_state().get_tab_selector());
+        toiletline::set_edit_mode(context.runtime_state().option_is_enabled(
+                                      koshka::shell_option_id::Vi)
+                                      ? toiletline::edit_mode::Vi
+                                      : toiletline::edit_mode::Emacs);
+        toiletline::set_tab_selector(
+            context.runtime_state().get_tab_selector());
         toiletline::set_space_after_completion(
             context.runtime_state().option_is_enabled(
                 koshka::shell_option_id::SpaceAfterCompletion));
@@ -1400,7 +1410,8 @@ fn kosh_main(int argc, char **argv) -> int
 
     bool should_execute_history_expansion = true;
     if (context.execution_store().shell_is_interactive() &&
-        context.runtime_state().option_is_enabled(koshka::shell_option_id::Histexpand) &&
+        context.runtime_state().option_is_enabled(
+            koshka::shell_option_id::Histexpand) &&
         !script_contents.is_empty())
     {
       try {
@@ -1419,7 +1430,8 @@ fn kosh_main(int argc, char **argv) -> int
     }
 
     if (context.execution_store().shell_is_interactive() &&
-        context.runtime_state().option_is_enabled(koshka::shell_option_id::History) &&
+        context.runtime_state().option_is_enabled(
+            koshka::shell_option_id::History) &&
         !script_contents.is_empty())
     {
       history_event_number =
@@ -1443,7 +1455,8 @@ fn kosh_main(int argc, char **argv) -> int
         !context.has_exit_trap() && !should_print_post_run_trailer;
 
     if (context.execution_store().shell_is_interactive() &&
-        !script_contents.is_empty()) {
+        !script_contents.is_empty())
+    {
       koshka::String ps0 = toiletline::render_ps0(context);
       if (!ps0.is_empty()) {
         koshka::print(ps0);
@@ -1498,7 +1511,8 @@ fn kosh_main(int argc, char **argv) -> int
     /* A child process reaches here when its exec() failed and printed the error
        itself. */
     if (should_quit ||
-        context.runtime_state().option_is_enabled(koshka::shell_option_id::Onecmd) ||
+        context.runtime_state().option_is_enabled(
+            koshka::shell_option_id::Onecmd) ||
         koshka::os::is_child_process() ||
         (!FLAG_LINT.is_enabled() && FLAG_ERROR_EXIT.is_enabled() &&
          exit_code != 0))

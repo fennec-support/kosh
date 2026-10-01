@@ -134,9 +134,16 @@ fn Strings::execute(const ExecContext &ec, EvalContext &cxt,
       usize position = 0;
       while (position < chunk.content.length) {
         if (!is_strings_printable(static_cast<u8>(chunk.content[position]))) {
-          do_flush();
-          position++;
-          byte_offset++;
+          if (!run.is_empty()) do_flush();
+
+          let const separator_begin = position;
+          while (
+              position < chunk.content.length &&
+              !is_strings_printable(static_cast<u8>(chunk.content[position])))
+          {
+            position++;
+          }
+          byte_offset += position - separator_begin;
           continue;
         }
 
@@ -147,11 +154,19 @@ fn Strings::execute(const ExecContext &ec, EvalContext &cxt,
           run_end++;
         }
 
-        if (run.is_empty()) run_offset = byte_offset;
+        let const run_length = run_end - position;
+        let const run_text =
+            chunk.content.substring_of_length(position, run_length);
+        if (run.is_empty() && run_end < chunk.content.length) {
+          if (run_length >= minimum_length)
+            append_strings_record(output, run_text, byte_offset, radix);
+        } else {
+          if (run.is_empty()) run_offset = byte_offset;
 
-        run.append(
-            chunk.content.substring_of_length(position, run_end - position));
-        byte_offset += run_end - position;
+          run.append(run_text);
+        }
+
+        byte_offset += run_length;
         position = run_end;
       }
 

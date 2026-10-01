@@ -48,18 +48,21 @@ fn Path::is_absolute() const wontthrow -> bool
 
 fn Path::is_relative() const wontthrow -> bool { return !is_absolute(); }
 
-static pure fn filename_offset(const String &text) wontthrow -> usize
+static pure fn filename_offset(StringView text) wontthrow -> usize
 {
-  for (usize i = text.count(); i > 0; i--)
+  for (usize i = text.length; i > 0; i--)
     if (os::is_directory_separator(text[i - 1])) return i;
   return 0;
 }
 
 fn Path::filename() const wontthrow -> StringView
 {
-  let const start = filename_offset(m_text);
-  ASSERT(start <= m_text.count());
-  return m_text.substring(start);
+  return filename(m_text.view());
+}
+
+fn Path::filename(StringView path) wontthrow -> StringView
+{
+  return path.substring(filename_offset(path));
 }
 
 fn Path::extension() const wontthrow -> StringView
@@ -77,7 +80,7 @@ fn Path::extension() const wontthrow -> StringView
 
 fn Path::parent() const throws -> Path
 {
-  let const end = filename_offset(m_text);
+  let const end = filename_offset(m_text.view());
   if (end == 0) return Path{{}, allocator()};
   if (end == 1) return Path{m_text.substring_of_length(0, 1), allocator()};
   return Path{m_text.substring_of_length(0, end - 1), allocator()};

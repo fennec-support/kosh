@@ -44,19 +44,52 @@ enum class cat_highlight_mode : u8
   Highlighted,
 };
 
-static fn append_number_prefix(String &output, i64 line_number,
-                               Allocator allocator) throws -> void
+static fn append_number_prefix(String &output, i64 line_number) throws -> void
 {
-  let const digits = String::from(line_number, allocator);
-  if (digits.count() < 6) output.append_repeated(' ', 6 - digits.count());
+  char prefix[32];
+  usize position = sizeof(prefix);
+  prefix[--position] = '\t';
+  let remaining = static_cast<u64>(line_number);
+  loop
+  {
+    prefix[--position] = static_cast<char>('0' + remaining % 10);
+    remaining /= 10;
+    if (remaining == 0) break;
+  }
 
-  output += digits.view();
-  output += '\t';
+  let digit_count = sizeof(prefix) - position - 1;
+  while (digit_count < 6) {
+    prefix[--position] = ' ';
+    digit_count++;
+  }
+
+  output.append(StringView{prefix + position, sizeof(prefix) - position});
 }
 
-static fn append_cat_source(String &output, StringView source,
-                            i64 &line_number, bool &is_at_output_line_start,
-                            EvalContext &context, cat_number_mode number_mode,
+static fn append_numbered_chunk(String &output, StringView source,
+                                i64 &line_number,
+                                bool &is_at_output_line_start) throws -> void
+{
+  usize position = 0;
+  while (position < source.length) {
+    if (is_at_output_line_start) {
+      append_number_prefix(output, line_number);
+      line_number++;
+    }
+
+    let const remaining = source.substring(position);
+    let const newline_offset = remaining.find_character('\n');
+    let const length =
+        newline_offset.has_value() ? *newline_offset + 1 : remaining.length;
+    output.append(remaining.substring_of_length(0, length));
+    is_at_output_line_start = newline_offset.has_value();
+    position += length;
+  }
+}
+
+static fn append_cat_source(String &output, StringView source, i64 &line_number,
+                            bool &is_at_output_line_start, EvalContext &context,
+                            cat_number_mode number_mode,
                             cat_highlight_mode highlight_mode) throws -> void
 {
   let const should_number = number_mode == cat_number_mode::Numbered;
@@ -84,7 +117,7 @@ static fn append_cat_source(String &output, StringView source,
                              : source.length;
 
     if (is_at_output_line_start) {
-      append_number_prefix(output, line_number, context.scratch_allocator());
+      append_number_prefix(output, line_number);
       line_number++;
     }
 
@@ -152,6 +185,52 @@ fn Cat::execute(const ExecContext &ec, EvalContext &cxt,
         status = 1;
       }
     }
+  }
+
+  if (FLAG_CAT_NUMBER.is_enabled() && !should_highlight_output) {
+    let output = String{cxt.scratch_allocator()};
+    let reader = SourceBatchReader{ec, sources, cxt.scratch_allocator()};
+    let chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
+    i64 line_number = 1;
+    i64 source_line_number = 1;
+    let is_at_output_line_start = true;
+    let is_at_source_output_line_start = true;
+    usize source_start = 0;
+    i32 status = 0;
+
+    loop
+    {
+      let const read_result = reader.read_next_ordered(chunks);
+      if (read_result == SourceBatchReader::ReadResult::Complete) break;
+      if (read_result == SourceBatchReader::ReadResult::Interrupted) return 130;
+
+      for (let const &chunk : chunks) {
+        if (chunk.error_number != 0) {
+          output.truncate(source_start);
+          line_number = source_line_number;
+          is_at_output_line_start = is_at_source_output_line_start;
+
+          os::set_last_system_error(chunk.error_number);
+          report_soft_koshkit_util_error(
+              ec, cxt, args[0].view(),
+              String{cxt.scratch_allocator(), sources[chunk.source_index]} +
+                  ": " + os::last_system_error_message());
+          status = 1;
+        } else {
+          append_numbered_chunk(output, chunk.content, line_number,
+                                is_at_output_line_start);
+        }
+
+        if (chunk.completion == source_completion_state::Complete) {
+          source_start = output.count();
+          source_line_number = line_number;
+          is_at_source_output_line_start = is_at_output_line_start;
+        }
+      }
+    }
+
+    ec.print_to_stdout(output);
+    return status;
   }
 
   let output = String{cxt.scratch_allocator()};

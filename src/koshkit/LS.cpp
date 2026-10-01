@@ -75,6 +75,7 @@ enum class sort_key : u8
 
 struct listing_options
 {
+  Maybe<os::terminal_dimensions> terminal_dimensions{};
   sort_key key{sort_key::Name};
   usize max_depth{0};
   bool has_depth_limit{false};
@@ -106,7 +107,7 @@ struct listing_entry_comparator
   sort_order order;
 
   pure fn is_less(const listing_entry &left,
-                  const listing_entry &right) const wontthrow->bool
+                  const listing_entry &right) const wontthrow -> bool
   {
     switch (key) {
     case sort_key::Time:
@@ -365,8 +366,8 @@ static fn prepare_entries(ArrayList<listing_entry> entries,
   }
 
   return steal(entries).make_sorted(listing_entry_comparator{
-      options.key, options.is_reversed ? sort_order::descending
-                                       : sort_order::ascending});
+      options.key,
+      options.is_reversed ? sort_order::descending : sort_order::ascending});
 }
 
 static fn collect_directory(const Path &directory,
@@ -531,10 +532,7 @@ static fn render_columns(const ArrayList<listing_entry> &entries,
   let const count = entries.count();
   if (count == 0) return;
 
-  let const terminal_dimensions = options.is_one_per_line
-                                      ? Maybe<os::terminal_dimensions>{}
-                                      : os::get_terminal_dimensions();
-  if (!terminal_dimensions.has_value()) {
+  if (!options.terminal_dimensions.has_value()) {
     for (let const &entry : entries) {
       append_decorated_name(output, entry, options);
       output += '\n';
@@ -553,7 +551,7 @@ static fn render_columns(const ArrayList<listing_entry> &entries,
     widths.push(decorated_width(entry, options));
   }
 
-  const usize terminal_width = terminal_dimensions->columns;
+  const usize terminal_width = options.terminal_dimensions->columns;
 
   /* A column-major grid puts the entry at column*rows+row. */
   usize shortest_name_length = widths.front();
@@ -690,8 +688,7 @@ static fn render_directory_block(
   if (os::INTERRUPT_REQUESTED) return;
   let const entries =
       collect_directory(Path{directory, allocator}, options, allocator);
-  if (!entries.has_value())
-  {
+  if (!entries.has_value()) {
     report_soft_koshkit_util_error(ec, cxt, "ls",
                                    "cannot open directory '" +
                                        String{allocator, directory} + "'");
@@ -805,6 +802,8 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
   options.needs_full_status = options.is_long || options.key != sort_key::Name;
   options.needs_type = options.should_color || options.should_classify ||
                        options.is_recursive || options.is_tree;
+  if (!options.is_long && !options.is_one_per_line && !options.is_tree)
+    options.terminal_dimensions = os::get_terminal_dimensions();
 
   let const allocator = cxt.scratch_allocator();
   ArrayList<StringView> unsorted_targets{allocator};

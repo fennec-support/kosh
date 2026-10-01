@@ -63,9 +63,9 @@ enum class shell_word_source_mapping : u8
   Record,
 };
 
-fn decode_shell_word(StringView word, Allocator allocator,
-                     shell_word_source_mapping mapping =
-                         shell_word_source_mapping::Omit) throws
+fn decode_shell_word(
+    StringView word, Allocator allocator,
+    shell_word_source_mapping mapping = shell_word_source_mapping::Omit) throws
     -> decoded_shell_word;
 
 struct unavailable_path_source_component
@@ -248,9 +248,8 @@ enum class line_terminator_mode : u8
 };
 
 fn split_lines(StringView text, Allocator allocator = heap_allocator(),
-               line_terminator_mode terminators =
-                   line_terminator_mode::Discard) throws
-    -> ArrayList<StringView>;
+               line_terminator_mode terminators = line_terminator_mode::Discard)
+    throws -> ArrayList<StringView>;
 
 fn format_unix_timestamp(i64 unix_time, const char *format) throws -> String;
 
@@ -315,9 +314,8 @@ fn source_line_position_at(StringView source, usize position) throws
     -> source_line_position;
 fn line_number_at(StringView source, usize position) throws -> usize;
 
-/* Dropped when the host frees a retained source, so a later source at the same
-   address with the same length does not read a stale table. */
-fn invalidate_line_number_cache() wontthrow -> void;
+/* Drop the table only when it points into a source being freed. */
+fn invalidate_line_number_cache_for(StringView source) wontthrow -> void;
 fn parse_integer_in_base(StringView text, bool *out_of_range,
                          int_base base) throws -> ErrorOr<i64>;
 fn parse_integer_in_base_u64(StringView text, int_base base) throws
@@ -431,7 +429,8 @@ struct git_status_result
   i32 behind_count{0};
 };
 
-fn git_status(Allocator allocator = heap_allocator()) throws -> git_status_result;
+fn git_status(Allocator allocator = heap_allocator()) throws
+    -> git_status_result;
 
 fn read_entire_standard_input() throws -> String;
 

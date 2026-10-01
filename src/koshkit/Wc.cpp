@@ -46,8 +46,8 @@ enum class wc_scan_mode : u8
   LinesWords,
 };
 
-constexpr fn operator|(wc_count_selection left, wc_count_selection right)
-    wontthrow -> wc_count_selection
+constexpr fn operator|(wc_count_selection left,
+                       wc_count_selection right) wontthrow->wc_count_selection
 {
   return static_cast<wc_count_selection>(static_cast<u8>(left) |
                                          static_cast<u8>(right));
@@ -81,35 +81,47 @@ struct wc_source_state
   bool is_in_word{false};
 };
 
+static fn count_newlines(StringView content) wontthrow -> u64
+{
+  constexpr u64 LOW_BITS = 0x7f7f7f7f7f7f7f7fULL;
+  constexpr u64 HIGH_BITS = 0x8080808080808080ULL;
+  constexpr u64 NEWLINES = 0x0a0a0a0a0a0a0a0aULL;
+
+  u64 newline_count = 0;
+  usize byte_position = 0;
+  for (; byte_position + sizeof(u64) <= content.length;
+       byte_position += sizeof(u64))
+  {
+    u64 word;
+    __builtin_memcpy(&word, content.data + byte_position, sizeof(word));
+    let const matches = word ^ NEWLINES;
+    let const zero_bytes =
+        ~(((matches & LOW_BITS) + LOW_BITS) | matches | LOW_BITS) & HIGH_BITS;
+    newline_count += __builtin_popcountll(zero_bytes);
+  }
+
+  for (; byte_position < content.length; byte_position++)
+    newline_count += content[byte_position] == '\n';
+
+  return newline_count;
+}
+
 static fn update_wc_source(wc_source_state &state, StringView content,
-                           wc_count_selection selection) wontthrow
-    -> void
+                           wc_count_selection selection) wontthrow -> void
 {
   let const scan_mode =
       has_wc_count(selection, wc_count_selection::Lines) &&
               has_wc_count(selection, wc_count_selection::Words)
           ? wc_scan_mode::LinesWords
-      : has_wc_count(selection, wc_count_selection::Lines)
-          ? wc_scan_mode::Lines
-      : has_wc_count(selection, wc_count_selection::Words)
-          ? wc_scan_mode::Words
-          : wc_scan_mode::None;
+      : has_wc_count(selection, wc_count_selection::Lines) ? wc_scan_mode::Lines
+      : has_wc_count(selection, wc_count_selection::Words) ? wc_scan_mode::Words
+                                                           : wc_scan_mode::None;
   if (has_wc_count(selection, wc_count_selection::Bytes))
     state.byte_count += content.length;
 
   switch (scan_mode) {
   case wc_scan_mode::None: break;
-  case wc_scan_mode::Lines: {
-    let remaining = content;
-    loop
-    {
-      let const newline = remaining.find_character('\n');
-      if (!newline.has_value()) break;
-      state.line_count++;
-      remaining = remaining.substring(*newline + 1);
-    }
-    break;
-  }
+  case wc_scan_mode::Lines: state.line_count += count_newlines(content); break;
   case wc_scan_mode::Words:
     for (usize byte_position = 0; byte_position < content.length;
          byte_position++)
@@ -204,12 +216,12 @@ fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
       !has_requested_selection
           ? wc_count_selection::Lines | wc_count_selection::Words |
                 wc_count_selection::Bytes
-      : (FLAG_WC_LINES.is_enabled() ? wc_count_selection::Lines
-                                    : wc_count_selection::None) |
-            (FLAG_WC_WORDS.is_enabled() ? wc_count_selection::Words
+          : (FLAG_WC_LINES.is_enabled() ? wc_count_selection::Lines
                                         : wc_count_selection::None) |
-            (FLAG_WC_BYTES.is_enabled() ? wc_count_selection::Bytes
-                                        : wc_count_selection::None);
+                (FLAG_WC_WORDS.is_enabled() ? wc_count_selection::Words
+                                            : wc_count_selection::None) |
+                (FLAG_WC_BYTES.is_enabled() ? wc_count_selection::Bytes
+                                            : wc_count_selection::None);
 
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
@@ -218,21 +230,60 @@ fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
   for (usize source_index = 0; source_index < sources.count(); source_index++)
     source_states.push({});
 
-  let reader = SourceBatchReader{ec, sources, cxt.scratch_allocator()};
-  let chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
-  loop
-  {
-    let const read_result = reader.read_next(chunks);
-    if (read_result == SourceBatchReader::ReadResult::Interrupted) return 130;
-    if (read_result == SourceBatchReader::ReadResult::Complete) break;
+  let read_sources = ArrayList<StringView>{cxt.scratch_allocator()};
+  let read_source_indices = ArrayList<usize>{cxt.scratch_allocator()};
+  if (selection == wc_count_selection::Bytes) {
+    read_sources.reserve(sources.count());
+    read_source_indices.reserve(sources.count());
 
-    for (let const &chunk : chunks) {
-      let &state = source_states[chunk.source_index];
-      if (chunk.error_number != 0) {
-        state.error_number = chunk.error_number;
-        continue;
+    for (usize source_index = 0; source_index < sources.count(); source_index++)
+    {
+      if (os::INTERRUPT_REQUESTED) return 130;
+
+      let const source = sources[source_index];
+      if (source != "-" && os::path_is_regular_file(source)) {
+        let const descriptor =
+            os::open_file_descriptor(source, os::file_open_mode::Read);
+        if (descriptor.has_value()) {
+          let const file_size = os::regular_descriptor_file_size(*descriptor);
+          let const is_seekable =
+              file_size.has_value() && os::descriptor_is_seekable(*descriptor);
+          unused(os::close_fd(*descriptor));
+
+          if (is_seekable && *file_size != 0) {
+            source_states[source_index].byte_count = *file_size;
+            continue;
+          }
+        }
       }
-      update_wc_source(state, chunk.content, selection);
+
+      read_sources.push(source);
+      read_source_indices.push(source_index);
+    }
+  }
+
+  let const &stream_sources =
+      selection == wc_count_selection::Bytes ? read_sources : sources;
+  if (!stream_sources.is_empty()) {
+    let reader = SourceBatchReader{ec, stream_sources, cxt.scratch_allocator()};
+    let chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
+    loop
+    {
+      let const read_result = reader.read_next(chunks);
+      if (read_result == SourceBatchReader::ReadResult::Interrupted) return 130;
+      if (read_result == SourceBatchReader::ReadResult::Complete) break;
+
+      for (let const &chunk : chunks) {
+        let const source_index = selection == wc_count_selection::Bytes
+                                     ? read_source_indices[chunk.source_index]
+                                     : chunk.source_index;
+        let &state = source_states[source_index];
+        if (chunk.error_number != 0) {
+          state.error_number = chunk.error_number;
+          continue;
+        }
+        update_wc_source(state, chunk.content, selection);
+      }
     }
   }
 
@@ -264,15 +315,18 @@ fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
 
   u64 max_count = 0;
   if (has_wc_count(selection, wc_count_selection::Lines) &&
-      total_lines > max_count) {
+      total_lines > max_count)
+  {
     max_count = total_lines;
   }
   if (has_wc_count(selection, wc_count_selection::Words) &&
-      total_words > max_count) {
+      total_words > max_count)
+  {
     max_count = total_words;
   }
   if (has_wc_count(selection, wc_count_selection::Bytes) &&
-      total_bytes > max_count) {
+      total_bytes > max_count)
+  {
     max_count = total_bytes;
   }
 

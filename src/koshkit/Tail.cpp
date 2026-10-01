@@ -82,7 +82,6 @@ struct regular_tail_state
   u64 start_offset{0};
   u64 remaining_newline_count{0};
   usize read_byte_count{0};
-  tail_unit unit{tail_unit::Lines};
   bool has_boundary{false};
   bool is_done{false};
   bool has_error{false};
@@ -109,14 +108,6 @@ static fn read_regular_tails(ArrayList<regular_tail_state> &states,
     if (state.file_size == 0 || state.remaining_newline_count == 0) {
       state.is_done = true;
       outputs[state.source_index] = String{allocator};
-      continue;
-    }
-
-    if (state.unit == tail_unit::Bytes) {
-      state.start_offset = state.file_size > state.remaining_newline_count
-                               ? state.file_size - state.remaining_newline_count
-                               : 0;
-      state.has_boundary = true;
     }
   }
 
@@ -168,20 +159,18 @@ static fn read_regular_tails(ArrayList<regular_tail_state> &states,
       block.append(StringView{state.buffer.begin(), transferred});
       state.blocks.push({steal(block), block_offset});
 
-      if (state.unit != tail_unit::Bytes) {
-        for (usize position = transferred; position > 0; position--) {
-          let const absolute = block_offset + position - 1;
-          if (absolute + 1 == state.file_size &&
-              state.buffer.begin()[position - 1] == '\n')
-            continue;
-          if (state.buffer.begin()[position - 1] != '\n') continue;
+      for (usize position = transferred; position > 0; position--) {
+        let const absolute = block_offset + position - 1;
+        if (absolute + 1 == state.file_size &&
+            state.buffer.begin()[position - 1] == '\n')
+          continue;
+        if (state.buffer.begin()[position - 1] != '\n') continue;
 
-          if (--state.remaining_newline_count == 0) {
-            state.start_offset = absolute;
-            state.has_boundary = true;
-            state.is_done = true;
-            break;
-          }
+        if (--state.remaining_newline_count == 0) {
+          state.start_offset = absolute + 1;
+          state.has_boundary = true;
+          state.is_done = true;
+          break;
         }
       }
 
@@ -278,12 +267,15 @@ static fn read_regular_forward_tails(ArrayList<forward_tail_state> &states,
         state.has_error = true;
         state.is_done = true;
         errors[state.source_index] = result.error_number;
+        outputs[state.source_index] = None;
         continue;
       }
 
       let const transferred = result.transferred_byte_count;
       if (transferred == 0) {
         state.is_done = true;
+        if (!outputs[state.source_index].has_value())
+          outputs[state.source_index] = String{allocator};
         continue;
       }
 
@@ -298,8 +290,13 @@ static fn read_regular_forward_tails(ArrayList<forward_tail_state> &states,
         if (state.skipped_newlines != 0) append_start = transferred;
       }
 
-      if (!outputs[state.source_index].has_value())
+      if (!outputs[state.source_index].has_value()) {
         outputs[state.source_index] = String{allocator};
+        if (state.unit == tail_unit::Bytes &&
+            state.file_size - state.next_offset < SIZE_MAX)
+          outputs[state.source_index]->reserve(
+              static_cast<usize>(state.file_size - state.next_offset));
+      }
       if (append_start < transferred)
         outputs[state.source_index]->append(StringView{
             state.buffer.begin() + append_start, transferred - append_start});
@@ -402,7 +399,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
     positioned_attempted.push(false);
     positioned_errors.push(0);
   }
-  if (origin == count_origin::FromEnd) {
+  if (origin == count_origin::FromEnd && unit == tail_unit::Lines) {
     for (usize source_index = 0; source_index < sources.count(); source_index++)
     {
       if (sources[source_index] == "" || sources[source_index] == "-" ||
@@ -426,7 +423,6 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
       state.file_size = *file_size;
       state.next_end = *file_size;
       state.remaining_newline_count = static_cast<u64>(count);
-      state.unit = unit;
       state.buffer = ArrayList<char>{allocator};
       state.blocks = ArrayList<tail_block>{allocator};
       state.buffer.reserve(TAIL_BLOCK_BYTE_COUNT);
@@ -467,14 +463,17 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
       state.descriptor = *descriptor;
       state.file_size = *file_size;
       state.unit = unit;
-      state.next_offset =
-          unit == tail_unit::Bytes
-              ? (count == 0 ? 0
-                            : (static_cast<u64>(count - 1) < *file_size
-                                   ? static_cast<u64>(count - 1)
-                                   : *file_size))
-              : 0;
-      state.skipped_newlines = unit != tail_unit::Bytes && count > 0
+      if (unit == tail_unit::Bytes) {
+        if (origin == count_origin::FromEnd)
+          state.next_offset = *file_size > static_cast<u64>(count)
+                                  ? *file_size - static_cast<u64>(count)
+                                  : 0;
+        else if (count > 0)
+          state.next_offset = static_cast<u64>(count - 1) < *file_size
+                                  ? static_cast<u64>(count - 1)
+                                  : *file_size;
+      }
+      state.skipped_newlines = unit == tail_unit::Lines && count > 0
                                    ? static_cast<u64>(count - 1)
                                    : 0;
       state.buffer = ArrayList<char>{allocator};
@@ -537,7 +536,18 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
                       : sub_sat(text.length, wanted_count);
       if (start > text.length) start = text.length;
 
-      output += text.substring(start);
+      if (!should_print_headers && start == 0 && output.is_empty())
+        output = steal(*content);
+      else
+        output += text.substring(start);
+      continue;
+    }
+
+    if (did_use_positioned_read) {
+      if (!should_print_headers && output.is_empty())
+        output = steal(*content);
+      else
+        output += content->view();
       continue;
     }
 
@@ -545,14 +555,12 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
     let const wanted_count = static_cast<usize>(count);
     usize start = 0;
     if (origin == count_origin::FromStart) {
-      if (!did_use_positioned_read) {
-        usize remaining_newline_count = count > 0 ? wanted_count - 1 : 0;
-        while (start < text.length && remaining_newline_count > 0) {
-          if (text[start] == '\n') remaining_newline_count--;
-          start++;
-        }
-        if (remaining_newline_count > 0) start = text.length;
+      usize remaining_newline_count = count > 0 ? wanted_count - 1 : 0;
+      while (start < text.length && remaining_newline_count > 0) {
+        if (text[start] == '\n') remaining_newline_count--;
+        start++;
       }
+      if (remaining_newline_count > 0) start = text.length;
     } else if (wanted_count == 0) {
       start = text.length;
     } else {

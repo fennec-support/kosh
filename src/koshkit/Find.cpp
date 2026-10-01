@@ -118,6 +118,19 @@ static fn find_entry_matches(char type_letter, StringView filename, usize depth,
   return true;
 }
 
+static pure fn get_find_type_letter(Path::entry_kind kind) wontthrow -> char
+{
+  switch (kind) {
+  case Path::entry_kind::Directory: return 'd';
+  case Path::entry_kind::Regular: return '-';
+  case Path::entry_kind::Symlink: return 'l';
+  case Path::entry_kind::Other:
+  case Path::entry_kind::Unknown: return '?';
+  }
+
+  return '?';
+}
+
 static fn find_walk(const ExecContext &ec, EvalContext &cxt,
                     StringView path_text, StringView display, usize depth,
                     const find_options &options, String &output,
@@ -126,9 +139,7 @@ static fn find_walk(const ExecContext &ec, EvalContext &cxt,
                     char known_type_letter = 0) throws -> void
 {
   let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
-  defer {
-    cxt.expansion_store().scratch_arena().release(directory_scratch);
-  };
+  defer { cxt.expansion_store().scratch_arena().release(directory_scratch); };
 
   /* The stat reads the symlink, not its target, and a failed stat yields the
      marker '\0' that matches no -type filter and is not descended. */
@@ -177,6 +188,31 @@ static fn find_walk(const ExecContext &ec, EvalContext &cxt,
 
     return;
   }
+
+  let const is_terminal_depth =
+      options.max_depth >= 0 &&
+      static_cast<i64>(depth + 1) == options.max_depth;
+  if (is_terminal_depth &&
+      (options.name_patterns != nullptr || options.type_filter != 0 ||
+       static_cast<i64>(depth + 1) < options.min_depth))
+  {
+    usize kept_count = 0;
+    for (usize index = 0; index < children->count(); index++) {
+      let const child_scratch = cxt.expansion_store().scratch_arena().mark();
+      defer { cxt.expansion_store().scratch_arena().release(child_scratch); };
+      let const &child = (*children)[index];
+      if (child.kind != Path::entry_kind::Unknown &&
+          !find_entry_matches(get_find_type_letter(child.kind),
+                              child.name.view(), depth + 1, options, allocator))
+        continue;
+
+      if (kept_count != index)
+        (*children)[kept_count] = steal((*children)[index]);
+      kept_count++;
+    }
+    children->truncate(kept_count);
+  }
+
   children->sort([](const Path::directory_child &left,
                     const Path::directory_child &right) {
     return left.name.view() < right.name.view();
@@ -257,8 +293,32 @@ static fn find_walk(const ExecContext &ec, EvalContext &cxt,
     let const child_scratch = cxt.expansion_store().scratch_arena().mark();
     defer { cxt.expansion_store().scratch_arena().release(child_scratch); };
     let const &child_entry = (*children)[index];
-    String child_display{allocator, display};
     let const child_name = child_entry.name.view();
+    let const child_type_letter = get_find_type_letter(child_entry.kind);
+    let const should_descend_child =
+        child_type_letter == 'd' &&
+        (options.max_depth < 0 ||
+         static_cast<i64>(depth + 1) < options.max_depth);
+    if (!should_descend_child) {
+      if (!find_entry_matches(child_type_letter, child_name, depth + 1, options,
+                              allocator))
+        continue;
+
+      output += display;
+      if (!display.is_empty() && display[display.length - 1] != '/') {
+        output += '/';
+      }
+      output += child_name;
+      output += '\n';
+      if (output.length() >= FIND_OUTPUT_BUFFER_BYTE_COUNT) {
+        ec.print_to_stdout(output);
+        output.clear();
+      }
+
+      continue;
+    }
+
+    String child_display{allocator, display};
     let const has_separator =
         !child_display.is_empty() && child_display.back() != '/';
     let const separator_length = has_separator ? usize{1} : usize{0};
@@ -274,14 +334,6 @@ static fn find_walk(const ExecContext &ec, EvalContext &cxt,
     child_display += child_name;
     let child_path = Path{path_text, allocator};
     child_path.append(child_entry.name.view());
-    char child_type_letter = '?';
-    switch (child_entry.kind) {
-    case Path::entry_kind::Directory: child_type_letter = 'd'; break;
-    case Path::entry_kind::Regular: child_type_letter = '-'; break;
-    case Path::entry_kind::Symlink: child_type_letter = 'l'; break;
-    case Path::entry_kind::Other:
-    case Path::entry_kind::Unknown: break;
-    }
     find_walk(ec, cxt, child_path.view(), child_display.view(), depth + 1,
               options, output, exit_status, allocator, nullptr,
               child_type_letter);

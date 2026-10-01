@@ -91,6 +91,69 @@ fn trim_matching(Allocator result_allocator, StringView value,
 {
   ASSERT(active.count() == pattern.length);
 
+  usize active_star_count = 0;
+  bool has_other_glob_syntax = false;
+  for (usize index = 0; index < pattern.length; index++) {
+    let const character = pattern[index];
+    if (mode == extglob_mode::Enabled && index + 1 < pattern.length &&
+        pattern[index + 1] == '(' &&
+        (character == '?' || character == '*' || character == '+' ||
+         character == '@' || character == '!'))
+    {
+      has_other_glob_syntax = true;
+      break;
+    }
+
+    if (!active[index]) continue;
+    if (character == '*') {
+      active_star_count++;
+      if (index != 0) has_other_glob_syntax = true;
+    } else if (character == '?' || character == '[') {
+      has_other_glob_syntax = true;
+    }
+  }
+
+  if (!has_other_glob_syntax && active_star_count == 0) {
+    if (pattern.length <= value.length) {
+      if (end == trim_end::Prefix && value.starts_with(pattern))
+        return String{result_allocator, value.substring(pattern.length)};
+      if (end == trim_end::Suffix &&
+          value.substring(value.length - pattern.length) == pattern)
+        return String{result_allocator, value.substring_of_length(
+                                            0, value.length - pattern.length)};
+    }
+
+    return String{result_allocator, value};
+  }
+
+  if (!has_other_glob_syntax && active_star_count == 1) {
+    let const suffix = pattern.substring(1);
+    if (end == trim_end::Prefix) {
+      if (suffix.is_empty())
+        return String{result_allocator, extent == pattern_match_extent::Longest
+                                            ? StringView{}
+                                            : value};
+
+      let match = value.find_substring(suffix);
+      if (!match.has_value()) return String{result_allocator, value};
+      if (extent == pattern_match_extent::Longest) {
+        while (let const next = value.find_substring(suffix, *match + 1))
+          match = next;
+      }
+      return String{result_allocator, value.substring(*match + suffix.length)};
+    }
+
+    if (suffix.length <= value.length &&
+        value.substring(value.length - suffix.length) == suffix)
+      return String{
+          result_allocator,
+          extent == pattern_match_extent::Longest
+              ? StringView{}
+              : value.substring_of_length(0, value.length - suffix.length)};
+
+    return String{result_allocator, value};
+  }
+
   if (end == trim_end::Prefix) {
     if (extent == pattern_match_extent::Longest) {
       for (usize length = value.length;; length--) {
@@ -585,7 +648,8 @@ hot fn EvalContext::apply_parameter_expansion(
   if (spec.length > 1 && spec[0] == '#') {
     let const name = spec.substring(1);
     if (name == "@" || name == "*") {
-      return String::from(variable_store().positional_params().count(), scratch_allocator());
+      return String::from(variable_store().positional_params().count(),
+                          scratch_allocator());
     }
 
     /* ${#a[@]} is the element count, ${#a[i]} the length of one element. */

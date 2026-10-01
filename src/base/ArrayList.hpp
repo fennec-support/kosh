@@ -14,8 +14,6 @@
 #include "Debug.hpp"
 #include "Maybe.hpp"
 
-#include <algorithm>
-
 namespace koshka {
 
 enum class sort_order
@@ -410,10 +408,15 @@ public:
   {
     if (m_length < 2) return;
 
-    if (m_length <= INSERTION_SORT_THRESHOLD)
-      insertion_sort(is_less);
-    else
-      std::sort(m_data, m_data + m_length, is_less);
+    if (m_length <= INSERTION_SORT_THRESHOLD) {
+      insertion_sort_range(0, m_length, is_less);
+      return;
+    }
+
+    usize depth_limit = 0;
+    for (usize count = m_length; count > 1; count >>= 1)
+      depth_limit++;
+    intro_sort_range(0, m_length, depth_limit * 2, is_less);
   }
 
   fn sort() throws -> void
@@ -497,18 +500,109 @@ private:
       m_data[i].~T();
   }
 
-  template <typename Compare>
-  fn insertion_sort(Compare is_less) throws -> void
+  fn swap_elements(usize first, usize second) throws -> void
   {
-    for (usize i = 1; i < m_length; i++) {
+    if (first == second) return;
+
+    T temporary = steal(m_data[first]);
+    m_data[first] = steal(m_data[second]);
+    m_data[second] = steal(temporary);
+  }
+
+  template <typename Compare>
+  fn insertion_sort_range(usize first, usize last, Compare &is_less) throws
+      -> void
+  {
+    for (usize i = first + 1; i < last; i++) {
       T key = steal(m_data[i]);
       usize j = i;
-      while (j > 0 && is_less(key, m_data[j - 1])) {
+      while (j > first && is_less(key, m_data[j - 1])) {
         m_data[j] = steal(m_data[j - 1]);
         j--;
       }
       m_data[j] = steal(key);
     }
+  }
+
+  template <typename Compare>
+  fn sift_down(usize first, usize root, usize heap_length,
+               Compare &is_less) throws -> void
+  {
+    while (root < heap_length / 2) {
+      let const left = 2 * root + 1;
+      let const right = left + 1;
+      usize largest = root;
+      if (is_less(m_data[first + largest], m_data[first + left]))
+        largest = left;
+      if (right < heap_length &&
+          is_less(m_data[first + largest], m_data[first + right]))
+        largest = right;
+      if (largest == root) return;
+
+      swap_elements(first + root, first + largest);
+      root = largest;
+    }
+  }
+
+  template <typename Compare>
+  fn heap_sort_range(usize first, usize last, Compare &is_less) throws -> void
+  {
+    let const heap_length = last - first;
+    for (usize parent = heap_length / 2; parent > 0; parent--)
+      sift_down(first, parent - 1, heap_length, is_less);
+
+    for (usize end = heap_length; end > 1; end--) {
+      swap_elements(first, first + end - 1);
+      sift_down(first, 0, end - 1, is_less);
+    }
+  }
+
+  template <typename Compare>
+  fn intro_sort_range(usize first, usize last, usize depth_limit,
+                      Compare &is_less) throws -> void
+  {
+    while (last - first > INSERTION_SORT_THRESHOLD) {
+      if (depth_limit == 0) {
+        heap_sort_range(first, last, is_less);
+        return;
+      }
+      depth_limit--;
+
+      let const middle = first + (last - first) / 2;
+      if (is_less(m_data[middle], m_data[first])) swap_elements(middle, first);
+      if (is_less(m_data[last - 1], m_data[first]))
+        swap_elements(last - 1, first);
+      if (is_less(m_data[last - 1], m_data[middle]))
+        swap_elements(last - 1, middle);
+      swap_elements(middle, last - 1);
+
+      usize less = first;
+      usize index = first;
+      usize greater = last - 1;
+      while (index < greater) {
+        if (is_less(m_data[index], m_data[last - 1])) {
+          swap_elements(index, less);
+          index++;
+          less++;
+        } else if (is_less(m_data[last - 1], m_data[index])) {
+          greater--;
+          swap_elements(index, greater);
+        } else {
+          index++;
+        }
+      }
+      swap_elements(greater, last - 1);
+
+      if (less - first < last - greater - 1) {
+        intro_sort_range(first, less, depth_limit, is_less);
+        first = greater + 1;
+      } else {
+        intro_sort_range(greater + 1, last, depth_limit, is_less);
+        last = less;
+      }
+    }
+
+    insertion_sort_range(first, last, is_less);
   }
 
   fn destroy_all() wontthrow -> void

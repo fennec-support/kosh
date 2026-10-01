@@ -101,8 +101,7 @@ fn EvalContext::run_program_fallback(ExecContext &ec, mimic_mood mode,
   };
 
   let fallback_context = EvalContext{false, false, false, false};
-  fallback_context.arena_store().set_parse_arena(
-      arena_store().parse_arena());
+  fallback_context.arena_store().set_parse_arena(arena_store().parse_arena());
   fallback_context.arena_store().set_function_arena(
       arena_store().function_arena());
   fallback_context.set_current_source(
@@ -117,8 +116,10 @@ fn EvalContext::run_program_fallback(ExecContext &ec, mimic_mood mode,
   fallback_context.runtime_state().set_koshkit(runtime_state().koshkit());
   fallback_context.runtime_state().set_mimicry(
       runtime_state().is_mimicry_enabled());
-  fallback_context.runtime_state().set_warning_level(runtime_state().get_warning_level());
-  fallback_context.runtime_state().set_diagnostics_disabled(runtime_state().is_diagnostics_disabled());
+  fallback_context.runtime_state().set_warning_level(
+      runtime_state().get_warning_level());
+  fallback_context.runtime_state().set_diagnostics_disabled(
+      runtime_state().is_diagnostics_disabled());
   fallback_context.diagnostics_store().set_source_traces_enabled(
       diagnostics_store().source_traces_enabled());
   fallback_context.source_store().source_frames().reserve(
@@ -137,7 +138,8 @@ fn EvalContext::run_program_fallback(ExecContext &ec, mimic_mood mode,
     fallback_context.source_store().source_frames().back().has_deferred_trace =
         frame.has_deferred_trace;
     fallback_context.source_store()
-        .source_frames().back()
+        .source_frames()
+        .back()
         .deferred_trace_location = frame.deferred_trace_location;
   }
   defer
@@ -279,7 +281,8 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
   let const script_filename = ec.program_path().view();
   source_store().source_frames().push(
       source_frame{String{ec.program().view()}, ec.source_location(),
-                   source_store().current_source(), source_generation_for(source_store().current_source()),
+                   source_store().current_source(),
+                   source_generation_for(source_store().current_source()),
                    String{script_filename}, source_frame_kind::Ordinary});
   source_store().source_frames().back().should_defer_trace = true;
   source_store().source_frames().back().function_call_depth =
@@ -297,7 +300,8 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
     source_store().source_frames().pop_back();
   };
   let parser = Parser{
-      Lexer{contents->view(), *arena_store().parse_arena(), script_filename, runtime_state().get_mood()}
+      Lexer{contents->view(), *arena_store().parse_arena(), script_filename,
+            runtime_state().get_mood()}
   };
 
   let params = ArrayList<String>{heap_allocator()};
@@ -345,16 +349,17 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
       print_source_backtrace();
     }
   };
-  let const do_finish_script = [&](std::exception_ptr &error,
-                                    script_exit_context exit_context) throws
-      -> bool {
+  let const do_finish_script =
+      [&](std::exception_ptr &error, script_exit_context exit_context)
+          throws -> bool {
     let is_interrupt = mimicked_error_is_interrupt(error);
     i32 final_status = execution_store().last_exit_status();
     bool was_error_rendered = false;
     if (error && !is_interrupt) {
       final_status = mimicked_error_status(
-          error, runtime_state().is_posix_mode() ? mimicked_error_status_mode::Posix
-                                 : mimicked_error_status_mode::Default);
+          error, runtime_state().is_posix_mode()
+                     ? mimicked_error_status_mode::Posix
+                     : mimicked_error_status_mode::Default);
       execution_store().set_last_exit_status(final_status);
       do_render_error(error);
       was_error_rendered = true;
@@ -377,8 +382,9 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
           is_interrupt = mimicked_error_is_interrupt(error);
           if (!is_interrupt)
             final_status = mimicked_error_status(
-                error, runtime_state().is_posix_mode() ? mimicked_error_status_mode::Posix
-                                       : mimicked_error_status_mode::Default);
+                error, runtime_state().is_posix_mode()
+                           ? mimicked_error_status_mode::Posix
+                           : mimicked_error_status_mode::Default);
         }
       }
     }
@@ -393,8 +399,8 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
      BASH_SOURCE read that path rather than the word as typed. */
   execution_store().set_shell_name(
       String{heap_allocator(), ec.should_use_fallback_argv0
-                                  ? ec.args()[0].view()
-                                  : ec.program_path().view()});
+                                   ? ec.args()[0].view()
+                                   : ec.program_path().view()});
   set_current_source(&*contents, String{ec.program().view()});
   source_store().current_location() = SourceLocation{};
   source_store().mimicry_depth()++;
@@ -407,7 +413,8 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
   let const do_evaluate_script = [&]() throws {
     let const was_terminal_exec_allowed =
         execution_store().terminal_exec_allowed();
-    defer {
+    defer
+    {
       execution_store().terminal_exec_allowed() = was_terminal_exec_allowed;
     };
 
@@ -448,7 +455,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
     return execution_store().last_exit_status();
   }
 
-    variable_store().positional_params() = steal(params);
+  variable_store().positional_params() = steal(params);
   seed_shell_identity_variables(mode == mimic_mood::Bash
                                     ? shell_identity_mode::Bash
                                     : shell_identity_mode::Native);
@@ -462,7 +469,8 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
   }
   if (control_flow_store().has_pending()) {
     if (control_flow_store().pending().kind == control_flow::Kind::Exit)
-      execution_store().set_last_exit_status(static_cast<i32>(control_flow_store().pending().value));
+      execution_store().set_last_exit_status(
+          static_cast<i32>(control_flow_store().pending().value));
     control_flow_store().clear();
   }
   let const is_interrupt =
@@ -587,7 +595,8 @@ fn EvalContext::run_source(StringView source, StringView origin,
       retained_source = cached_body->get_source();
     } else {
       let parser = Parser{
-          Lexer{source, *arena_store().parse_arena(), filename, runtime_state().get_mood()}
+          Lexer{source, *arena_store().parse_arena(), filename,
+                runtime_state().get_mood()}
       };
 
       let const parsed_ast = parser.construct_ast();
@@ -647,7 +656,8 @@ fn EvalContext::run_source(StringView source, StringView origin,
     if (consume_return && control_flow_store().has_pending() &&
         control_flow_store().pending().kind == control_flow::Kind::Return)
     {
-      let const source_status = static_cast<i32>(control_flow_store().pending().value);
+      let const source_status =
+          static_cast<i32>(control_flow_store().pending().value);
       if (status_before_return != nullptr)
         *status_before_return = trap_store().status_before_return();
 
@@ -699,12 +709,13 @@ fn EvalContext::resolve_source_path(
   }
   let source_path = Path{path};
   if (os::has_directory_separator(path)) return source_path;
-  if (!runtime_state().is_shopt_enabled(shopt_option_id::Sourcepath)) return source_path;
+  if (!runtime_state().is_shopt_enabled(shopt_option_id::Sourcepath))
+    return source_path;
 
-  let const path_matches =
-      resolution_store().resolver().search(path, ProgramResolver::SearchMode::First,
-                                    ProgramResolver::Requirement::Regular,
-                                    ProgramResolver::CachePolicy::Bypass);
+  let const path_matches = resolution_store().resolver().search(
+      path, ProgramResolver::SearchMode::First,
+      ProgramResolver::Requirement::Regular,
+      ProgramResolver::CachePolicy::Bypass);
   if (!path_matches.is_empty()) return path_matches[0].clone();
   if (runtime_state().is_posix_mode()) return None;
 
@@ -743,19 +754,13 @@ fn EvalContext::clear_retained_sources() wontthrow -> void
     control_flow_store().pending().location = SourceLocation{};
   }
 
-  let const has_retained_sources =
-      !source_store().retained_sources().is_empty();
-
   for (String *source : source_store().retained_sources()) {
+    utils::invalidate_line_number_cache_for(source->view());
     source->~String();
     heap_allocator().free_array(source, 1);
   }
   source_store().retained_sources().clear();
 
-  /* A just-freed buffer can be reissued at the same address and length, so the
-     caches keyed on that are dropped to keep them from serving a stale index.
-   */
-  if (has_retained_sources) utils::invalidate_line_number_cache();
   reset_runtime_diagnostic_highlight_cache();
 
   source_store().current_source() = nullptr;

@@ -251,17 +251,15 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
       source_list_from_operands(operands, cxt.scratch_allocator());
 
   let const should_print_headers = sources.count() > 1;
-  let const do_print_source = [&](usize source_index, StringView text)
-                                  throws -> void {
-    let output = String{cxt.scratch_allocator()};
-    if (should_print_headers) {
-      if (source_index > 0) output += '\n';
-      output += "==> ";
-      output += sources[source_index];
-      output += " <==\n";
-    }
-    output += text;
-    ec.print_to_stdout(output);
+  let const do_print_header = [&](usize source_index) throws -> void {
+    if (!should_print_headers) return;
+
+    let header = String{cxt.scratch_allocator()};
+    if (source_index > 0) header += '\n';
+    header += "==> ";
+    header += sources[source_index];
+    header += " <==\n";
+    ec.print_to_stdout(header);
   };
 
   i32 status = 0;
@@ -311,13 +309,14 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
         continue;
       }
 
-      do_print_source(source_index, text->view());
+      do_print_header(source_index);
+      ec.print_to_stdout(text->view());
     }
 
     return status;
   }
 
-  usize read_byte_count = 4096;
+  usize read_byte_count = is_byte_mode ? 64 * 1024 : 4096;
   if (count == 0) {
     read_byte_count = 0;
   } else if (is_byte_mode && count < read_byte_count) {
@@ -326,14 +325,20 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
 
   let source_results = ArrayList<source_read_result>{cxt.scratch_allocator()};
   let line_counts = ArrayList<u64>{cxt.scratch_allocator()};
+  let byte_counts = ArrayList<u64>{cxt.scratch_allocator()};
   let open_error_flags = ArrayList<u8>{cxt.scratch_allocator()};
+  let buffered_chunks = ArrayList<ArrayList<String>>{cxt.scratch_allocator()};
   source_results.reserve(sources.count());
   line_counts.reserve(sources.count());
+  byte_counts.reserve(sources.count());
   open_error_flags.reserve(sources.count());
+  buffered_chunks.reserve(sources.count());
   for (usize source_index = 0; source_index < sources.count(); source_index++) {
     source_results.push({None, 0, source_completion_state::Pending});
     line_counts.push(0);
+    byte_counts.push(0);
     open_error_flags.push(0);
+    buffered_chunks.push(ArrayList<String>{heap_allocator()});
   }
 
   let reader =
@@ -357,6 +362,7 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
       result.completion = chunk.completion;
       if (chunk.error_number != 0) {
         result.content.reset();
+        buffered_chunks[chunk.source_index].clear();
         result.error_number = chunk.error_number;
         open_error_flags[chunk.source_index] =
             chunk.open_state == source_open_state::Failed ? 1 : 0;
@@ -367,9 +373,7 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
 
       usize append_count = chunk.content.length;
       if (is_byte_mode) {
-        let const accumulated_count =
-            static_cast<u64>(result.content->length());
-        let const remaining_count = count - accumulated_count;
+        let const remaining_count = count - byte_counts[chunk.source_index];
         if (remaining_count < append_count)
           append_count = static_cast<usize>(remaining_count);
       } else {
@@ -385,11 +389,15 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
           }
         }
       }
-      result.content->append(
-          chunk.content.substring_of_length(0, append_count));
+      if (append_count != 0) {
+        buffered_chunks[chunk.source_index].push(
+            String{heap_allocator(),
+                   chunk.content.substring_of_length(0, append_count)});
+        byte_counts[chunk.source_index] += append_count;
+      }
 
       let const has_reached_limit =
-          is_byte_mode ? static_cast<u64>(result.content->length()) == count
+          is_byte_mode ? byte_counts[chunk.source_index] == count
                        : line_counts[chunk.source_index] == count;
       if (has_reached_limit &&
           result.completion != source_completion_state::Complete)
@@ -399,8 +407,7 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
       } else if (is_byte_mode &&
                  result.completion != source_completion_state::Complete)
       {
-        let const remaining_count =
-            count - static_cast<u64>(result.content->length());
+        let const remaining_count = count - byte_counts[chunk.source_index];
         reader.set_source_read_byte_count(
             chunk.source_index, remaining_count < read_byte_count
                                     ? static_cast<usize>(remaining_count)
@@ -423,7 +430,10 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
                 "': " + os::last_system_error_message());
         status = 1;
       } else {
-        do_print_source(next_source_index, result.content->view());
+        do_print_header(next_source_index);
+        for (let const &buffered_chunk : buffered_chunks[next_source_index])
+          ec.print_to_stdout(buffered_chunk.view());
+        buffered_chunks[next_source_index].clear();
         result.content.reset();
       }
       next_source_index++;

@@ -235,13 +235,12 @@ fn render_file_directive(String &output, const directive_spec &spec,
 
   switch (spec.letter) {
   case 'a':
-    append_padded(
-        output,
-        octal_of(status.mode & 07777u, allocator,
-                 spec.is_alternate ? octal_prefix_mode::Alternate
-                                   : octal_prefix_mode::Bare)
-            .view(),
-        spec, stat_value_kind::Numeric);
+    append_padded(output,
+                  octal_of(status.mode & 07777u, allocator,
+                           spec.is_alternate ? octal_prefix_mode::Alternate
+                                             : octal_prefix_mode::Bare)
+                      .view(),
+                  spec, stat_value_kind::Numeric);
     return;
 
   case 'A':
@@ -258,9 +257,7 @@ fn render_file_directive(String &output, const directive_spec &spec,
     append_padded(output, "512", spec, stat_value_kind::Numeric);
     return;
 
-  case 'C':
-    append_padded(output, "?", spec, stat_value_kind::Text);
-    return;
+  case 'C': append_padded(output, "?", spec, stat_value_kind::Text); return;
 
   case 'd':
     if (spec.sub_field == 'H') {
@@ -423,13 +420,9 @@ fn render_file_directive(String &output, const directive_spec &spec,
     return;
   }
 
-  case 'w':
-    append_padded(output, "-", spec, stat_value_kind::Text);
-    return;
+  case 'w': append_padded(output, "-", spec, stat_value_kind::Text); return;
 
-  case 'W':
-    append_padded(output, "0", spec, stat_value_kind::Numeric);
-    return;
+  case 'W': append_padded(output, "0", spec, stat_value_kind::Numeric); return;
 
   case 'x':
     append_padded(output,
@@ -657,11 +650,15 @@ fn render_format(String &output, StringView format, file_subject *subject,
 {
   usize position = 0;
   while (position < format.length) {
-    if (format[position] != '%') {
-      output += format.substring_of_length(position, 1);
+    let const literal_start = position;
+    while (position < format.length && format[position] != '%')
       position++;
-      continue;
+    if (position != literal_start) {
+      output +=
+          format.substring_of_length(literal_start, position - literal_start);
     }
+
+    if (position >= format.length) break;
 
     position++;
     if (position >= format.length) {
@@ -770,17 +767,25 @@ fn Stat::execute(const ExecContext &ec, EvalContext &cxt,
                                              file_statuses[index]));
       }
     }
-    results = batch.execute();
+    results = batch.execute(os::batch_deduplication::Disabled);
   }
 
   i32 status = 0;
+  constexpr usize OUTPUT_BATCH_BYTES = 64 * 1024;
+  let output = String{allocator};
+  if (operands.count() > 16) output.reserve(OUTPUT_BATCH_BYTES);
+
   for (usize index = 0; index < operands.count(); index++) {
     let const &operand = operands[index];
-    let output = String{allocator};
 
     if (target == stat_target::Filesystem) {
       os::filesystem_status filesystem{};
       if (!os::stat_filesystem(operand.view(), filesystem)) {
+        if (!output.is_empty()) {
+          ec.print_to_stdout(output);
+          output.clear();
+        }
+
         report_soft_koshkit_util_error(
             ec, cxt, args[0].view(),
             "cannot read filesystem of '" + operand +
@@ -792,35 +797,42 @@ fn Stat::execute(const ExecContext &ec, EvalContext &cxt,
       render_format(output, selected_format.view(), nullptr, &filesystem,
                     operand.view(), cxt);
       if (should_append_newline) output += "\n";
+    } else {
+      file_subject subject{file_statuses[index], operand.view(),
+                           String{allocator}, String{allocator}};
+      if (results[index].error_number != 0) {
+        if (!output.is_empty()) {
+          ec.print_to_stdout(output);
+          output.clear();
+        }
 
-      ec.print_to_stdout(output);
-      continue;
+        os::set_last_system_error(results[index].error_number);
+        report_soft_koshkit_util_error(ec, cxt, args[0].view(),
+                                       "cannot stat '" + operand + "': " +
+                                           os::last_system_error_message());
+        status = 1;
+        continue;
+      }
+
+      let active_format = selected_format.view();
+      if (active_format.is_empty()) {
+        let const type_letter = os::file_type_letter(subject.status.mode);
+        let const is_device = type_letter == 'b' || type_letter == 'c';
+        active_format = is_device ? DEVICE_FILE_FORMAT : DEFAULT_FILE_FORMAT;
+      }
+
+      render_format(output, active_format, &subject, nullptr, operand.view(),
+                    cxt);
+      if (should_append_newline) output += "\n";
     }
 
-    file_subject subject{file_statuses[index], operand.view(),
-                         String{allocator}, String{allocator}};
-    if (results[index].error_number != 0) {
-      os::set_last_system_error(results[index].error_number);
-      report_soft_koshkit_util_error(
-          ec, cxt, args[0].view(),
-          "cannot stat '" + operand + "': " + os::last_system_error_message());
-      status = 1;
-      continue;
-    }
-
-    let active_format = String{allocator, selected_format.view()};
-    if (active_format.is_empty()) {
-      let const type_letter = os::file_type_letter(subject.status.mode);
-      let const is_device = type_letter == 'b' || type_letter == 'c';
-      active_format += is_device ? DEVICE_FILE_FORMAT : DEFAULT_FILE_FORMAT;
-    }
-
-    render_format(output, active_format.view(), &subject, nullptr,
-                  operand.view(), cxt);
-    if (should_append_newline) output += "\n";
+    if (output.length() < OUTPUT_BATCH_BYTES) continue;
 
     ec.print_to_stdout(output);
+    output.clear();
   }
+
+  if (!output.is_empty()) ec.print_to_stdout(output);
 
   return status;
 }
