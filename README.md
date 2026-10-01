@@ -1,6 +1,6 @@
 # koshka-oriented shell
 
-<center><img height=512 src="assets/logo.png"/></center>
+<img width=66% src="assets/logo.png"/>
 
 ---
 
@@ -234,4 +234,8 @@ $ make uninstall
 Assuming the same arch and target, the running binary can install itself on an
 SSH target with a builtin command: `assimilate user@host`.
 
-<center><img height=256 src="assets/favicon.png"/></center>
+Meow.
+
+---
+
+<img width=12% src="assets/favicon.png"/>
