@@ -36,10 +36,9 @@ jobs:
         run: make kosh
 
       - name: Run golden tests
-        run: make test
-
-      - name: Run no-editor history tests
-        run: NO_TOILETLINE=1 make test
+        run: |
+          make test
+          NO_TOILETLINE=1 make test
 
       - name: Build release binary
         run: make clean && make CXX=g++ LINKER_SELECTION_FLAG= MODE=rel kosh && du -sh kosh
@@ -131,21 +130,13 @@ jobs:
           clang++ --version | head -1
           python3 --version
 
-      - name: Run debug tests
+      - name: Run golden tests
         run: |
           make MODE=dbg kosh
           make -C test MODE=dbg cli_tests
-
-      - name: Run editor tests
-        run: make MODE=dbg toiletline_test
-
-      - name: Run remaining debug tests
-        run: >-
-          make -C test MODE=dbg
-          kosh_tests highlight_tests completion_tests
-
-      - name: Run compatibility tests
-        run: make -C test MODE=dbg compatdiff
+          make MODE=dbg toiletline_test
+          make -C test MODE=dbg kosh_tests highlight_tests completion_tests
+          make -C test MODE=dbg compatdiff
 
   debug-windows:
     name: Run debug build tests on Windows
@@ -231,6 +222,6 @@ jobs:
           sh --version | Select-Object -First 1
           python3 --version
 
-      - name: Run debug tests
+      - name: Run golden tests
         shell: pwsh
         run: make.exe MODE=dbg test
