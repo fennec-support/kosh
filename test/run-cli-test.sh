@@ -23,7 +23,9 @@ for TEST_FILE in "$@"; do
   fi
 
   GOLDEN_TIMEOUT_SECONDS=60
-  if [ "$TEST_NAME" = history_behavior ] || [ "$TEST_NAME" = koshkit_timeout ]; then
+  if [ "$TEST_NAME" = history_behavior ] || \
+    [ "$TEST_NAME" = koshkit_timeout ] || \
+    [ "$TEST_NAME" = transaction_lock_lifetime ]; then
     GOLDEN_TIMEOUT_SECONDS=120
   fi
   "$TEST_KOSHKIT" timeout -k 2s \

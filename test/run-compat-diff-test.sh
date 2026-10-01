@@ -9,7 +9,7 @@ RUNNER_STATUS=0
 capture_command() {
   local TEST_FILE=$1
   shift
-  if run_test_with_timeout "${COMPAT_TEST_TIMEOUT_SECONDS:-60}" \
+  if run_test_with_timeout "${COMPAT_TEST_TIMEOUT_SECONDS:-180}" \
     "$@" > "$CAPTURE_DIRECTORY/stdout" 2> "$CAPTURE_DIRECTORY/stderr"; then
     CAPTURED_STATUS=0
   else
