@@ -2,7 +2,7 @@ unset KOSH_FLAGS
 BIN=$(cd "$(dirname "$BIN")" && pwd -P)/$(basename "$BIN")
 root=$TEST_TEMP_DIRECTORY/format-apply
 mkdir -p "$root"
-trap '[ -n "$root" ] && /bin/rm -rf "$root"' EXIT
+trap '[ -n "$root" ] && "$TEST_KOSHKIT" rm -rf "$root"' EXIT
 
 help_output=$("$BIN" --help 2>&1)
 printf 'help-status=%s\n' "$?"

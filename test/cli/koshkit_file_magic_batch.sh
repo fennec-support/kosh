@@ -3,7 +3,7 @@
 unset KOSH_FLAGS
 BIN=$(CDPATH= cd -- "$(dirname -- "$BIN")" && pwd)/$(basename -- "$BIN")
 d=$(mktemp -d) || exit 1
-trap '[ -n "$d" ] && "$TEST_SYSTEM_RM" -r "$d"' EXIT
+trap '[ -n "$d" ] && "$TEST_KOSHKIT" rm -r "$d"' EXIT
 cd "$d" || exit 1
 
 if [ "${OS-}" = Windows_NT ]; then

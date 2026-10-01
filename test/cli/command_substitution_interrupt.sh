@@ -1,7 +1,7 @@
 #!/bin/bash
 
 d=$(mktemp -d) || exit 1
-trap 'test -n "$d" && /bin/rm -rf "$d"' EXIT
+trap 'test -n "$d" && "$TEST_KOSHKIT" rm -rf "$d"' EXIT
 
 "$BIN" --mood bash -c \
   'value=$(echo ready > "$1"; (koshkit sleep 0.05; kill -INT "$$") & while :; do :; done)' \

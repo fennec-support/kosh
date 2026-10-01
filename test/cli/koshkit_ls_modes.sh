@@ -119,15 +119,15 @@ else
   esac
 fi
 echo "--- recursive ls interruption ---"
-if [ "${TARGET-}" != Linux ] || ! command -v timeout >/dev/null 2>&1; then
+if [ "${TARGET-}" != Linux ]; then
   :
 else
   interrupt_root=$TEST_TEMP_DIRECTORY/ls-interrupt
-  mkdir -p "$interrupt_root"
+  "$BIN" -c 'koshkit mkdir -p "$1"' mkdir "$interrupt_root"
   interrupt_directory=0
   while [ "$interrupt_directory" -lt 200 ]; do
     interrupt_path=$interrupt_root/d$interrupt_directory
-    mkdir "$interrupt_path"
+    "$BIN" -c 'koshkit mkdir "$1"' mkdir "$interrupt_path"
     interrupt_file=0
     while [ "$interrupt_file" -lt 200 ]; do
       printf x > "$interrupt_path/f$interrupt_file"
@@ -135,7 +135,7 @@ else
     done
     interrupt_directory=$((interrupt_directory + 1))
   done
-  timeout --preserve-status -s INT 0.005s "$BIN" -c \
+  "$BIN" -c 'koshkit timeout -p -s INT "$@"' timeout 0.005s "$BIN" -c \
     "koshkit ls -R '$interrupt_root'" > "$interrupt_root/output" 2>&1
   interrupt_status=$?
   if [ "$interrupt_status" -eq 130 ]; then
@@ -146,4 +146,4 @@ else
 fi
 
 cd / || exit 1
-rm -rf "$d"
+[ -n "$d" ] && "$TEST_KOSHKIT" rm -rf "$d"

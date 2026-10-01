@@ -6,7 +6,7 @@ unset KOSH_FLAGS
 # runs, because the status of a pipeline belongs to its last stage.
 
 work=$(mktemp -d)
-trap '[ -n "$work" ] && /bin/rm -rf "$work"' EXIT
+trap '[ -n "$work" ] && "$TEST_KOSHKIT" rm -rf "$work"' EXIT
 
 # Vertical compounds. An elif chain expands into a nested if, a brace group
 # opens on its own line, a word loop puts do on its own line, and a case arm

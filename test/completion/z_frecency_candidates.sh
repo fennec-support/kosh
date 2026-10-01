@@ -12,5 +12,5 @@ echo "== prefix filters recent directories:"
 KOSH_DIRECTORY_HISTORY="$store" "$BIN" --debug-complete-at 'z al' </dev/null |
   tr '\\' '/' | sed "s#$normalized_d#TMPDIR#g"
 if [ -n "$d" ] && [ -n "$store" ]; then
-  "$TEST_SYSTEM_RM" -r "$d" "$store"
+  "$TEST_KOSHKIT" rm -r "$d" "$store"
 fi

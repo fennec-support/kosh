@@ -39,7 +39,7 @@ is_driver_status_harness_failure()
 set_golden_failure_file()
 {
   GOLDEN_FAILURE_DIRECTORY="$FAILED_LIST.d"
-  mkdir -p "$GOLDEN_FAILURE_DIRECTORY"
+  "$TEST_KOSHKIT" mkdir -p "$GOLDEN_FAILURE_DIRECTORY"
   GOLDEN_FAILURE_FILE="$GOLDEN_FAILURE_DIRECTORY/$1.diff"
 }
 
@@ -47,5 +47,5 @@ run_test_with_timeout()
 {
   local timeout_seconds=$1
   shift
-  "$TEST_TIMEOUT_COMMAND" -k 2s "$timeout_seconds" "$@"
+  "$TEST_KOSHKIT" timeout -k 2s "$timeout_seconds" "$@"
 }

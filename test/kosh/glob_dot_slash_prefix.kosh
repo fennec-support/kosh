@@ -1,10 +1,10 @@
 #!/bin/env kosh
 start=$PWD
 directory=$TEST_TEMP_DIRECTORY/glob-dot-slash
-if [ -n "$directory" ]; then "$TEST_SYSTEM_RM" -rf -- "$directory"; fi
+if [ -n "$directory" ]; then "$TEST_KOSHKIT" rm -rf -- "$directory"; fi
 koshkit mkdir -p "$directory/real/nested"
 koshkit ln -s real "$directory/linked"
 koshkit ln -s missing "$directory/broken"
 cd "$directory" && : > a.sh && : > b.sh && : > plain && echo ./*.sh && echo *.sh && echo */nested
 cd "$start"
-if [ -n "$directory" ]; then "$TEST_SYSTEM_RM" -rf -- "$directory"; fi
+if [ -n "$directory" ]; then "$TEST_KOSHKIT" rm -rf -- "$directory"; fi

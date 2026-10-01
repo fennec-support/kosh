@@ -13,7 +13,7 @@ d=$(mktemp -d); printf 'data\n' > "$d/notexec"; chmod -x "$d/notexec"
 real_d=$(CDPATH= cd -- "$d" && pwd -P)
 out=$(cd "$d" && "$BIN" -c 'exec ./notexec' 2>&1); rc=$?
 echo "$out" | sed "s#$real_d#.#g"; echo "rc=$rc"
-[ -n "$d" ] && /bin/rm -rf "$d"
+[ -n "$d" ] && "$TEST_KOSHKIT" rm -rf "$d"
 echo "== exec replaces the shell and runs the command:"
 "$BIN" -c 'exec echo replaced'
 echo "== exec in a command substitution runs as a child:"
@@ -31,7 +31,7 @@ cat "$d/out"
 
 echo "== direct no-shebang exec honors an empty environment:"
 "$BIN" -c 'shown=exported; export shown; exec -c -a empty "$1" value' shell "$d/plain"
-[ -n "$d" ] && /bin/rm -rf "$d"
+[ -n "$d" ] && "$TEST_KOSHKIT" rm -rf "$d"
 
 unset KOSH_FLAGS
 input=$(mktemp)

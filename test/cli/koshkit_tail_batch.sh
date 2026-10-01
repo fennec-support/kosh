@@ -56,5 +56,5 @@ echo "--- missing source preserves later output and status ---"
 } 2>&1 | tr '\\' '/' | sed "s#$normalized_d#TMPDIR#g"
 
 if [ -n "$d" ]; then
-  "$TEST_SYSTEM_RM" -r "$d"
+  "$TEST_KOSHKIT" rm -r "$d"
 fi

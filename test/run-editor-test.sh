@@ -23,12 +23,13 @@ if [ "${IS_NONDEBUG_BUILD:-0}" = 1 ]; then
 fi
 
 for TEST_FILE in "$@"; do
-  TEST_NAME=$(basename "$TEST_FILE" .sh)
+  TEST_NAME=${TEST_FILE##*/}
+  TEST_NAME=${TEST_NAME%.sh}
   if [ "$REFILL_MODE" = yes ]; then
     OUTPUT="expected/.$TEST_NAME.out.tmp"
   else
     OUTPUT_DIRECTORY="$TEST_TEMP_DIRECTORY/results/$TEST_GROUP"
-    mkdir -p "$OUTPUT_DIRECTORY"
+    "$TEST_KOSHKIT" mkdir -p "$OUTPUT_DIRECTORY"
     OUTPUT="$OUTPUT_DIRECTORY/$TEST_NAME.out"
   fi
 
@@ -38,7 +39,7 @@ for TEST_FILE in "$@"; do
   if is_driver_status_harness_failure "$DRIVER_STATUS" "$REFILL_MODE"; then
     printf "\t%-64s harness failure, status %s\n" \
       "$TEST_GROUP/$TEST_NAME.sh" "$DRIVER_STATUS"
-    rm -f "$OUTPUT"
+    "$TEST_KOSHKIT" rm -f "$OUTPUT"
     if [ "$TEST_STATUS" -eq 0 ]; then
       TEST_STATUS=$DRIVER_STATUS
     fi
@@ -46,7 +47,7 @@ for TEST_FILE in "$@"; do
   fi
 
   if [ "$REFILL_MODE" = yes ]; then
-    mv "$OUTPUT" "expected/$TEST_NAME.out"
+    "$TEST_KOSHKIT" mv "$OUTPUT" "expected/$TEST_NAME.out"
     printf "\t%-64s %s.out\n" "$TEST_GROUP/$TEST_NAME.sh" "$TEST_NAME"
     continue
   fi
@@ -56,13 +57,13 @@ for TEST_FILE in "$@"; do
   else
     set_golden_failure_file "$TEST_GROUP-$TEST_NAME"
     diff $DIFF_FLAGS "expected/$TEST_NAME.out" "$OUTPUT" | \
-      tee -a "$GOLDEN_FAILURE_FILE"
+      "$TEST_KOSHKIT" tee -a "$GOLDEN_FAILURE_FILE"
     printf "\t%-64s FAILED :c\n" "$TEST_GROUP/$TEST_NAME.sh"
     if [ "$TEST_STATUS" -eq 0 ]; then
       TEST_STATUS=1
     fi
   fi
-  rm -f "$OUTPUT"
+  "$TEST_KOSHKIT" rm -f "$OUTPUT"
 done
 
 exit "$TEST_STATUS"

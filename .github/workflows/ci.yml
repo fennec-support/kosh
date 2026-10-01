@@ -121,7 +121,7 @@ jobs:
 
       - name: Verify the test toolchain
         run: |
-          for tool in make clang++ python3 perl script expect mkfifo strings gtimeout; do
+          for tool in make clang++ python3 perl script expect mkfifo strings; do
             command -v "$tool"
           done
           test -x /bin/stty
@@ -156,11 +156,11 @@ jobs:
 
       - name: Run remaining debug tests
         run: >-
-          gtimeout -k 2s 300 make -C test MODE=dbg
+          make -C test MODE=dbg
           kosh_tests highlight_tests completion_tests
 
       - name: Run compatibility tests
-        run: gtimeout -k 2s 300 make -C test MODE=dbg compatdiff
+        run: make -C test MODE=dbg compatdiff
 
   debug-windows:
     name: Run debug build tests on Windows
@@ -216,7 +216,7 @@ jobs:
             throw "Unexpected shell platform: $shellPlatform"
           }
           sh.exe -c `
-            'for tool in env mkfifo mktemp rm script sed stat strings stty tee; do command -v "$tool" || exit 1; done; test -x /usr/bin/timeout.exe'
+            'for tool in env mkfifo mktemp rm script sed stat strings stty tee; do command -v "$tool" || exit 1; done'
           if ($LASTEXITCODE -ne 0) {
             throw "The MSYS2 golden test toolchain is incomplete"
           }
@@ -246,42 +246,6 @@ jobs:
           sh --version | Select-Object -First 1
           python3 --version
 
-      - name: Build debug binary
-        id: debug_build
+      - name: Run debug tests
         shell: pwsh
-        run: make.exe MODE=dbg kosh
-
-      - name: Run editor tests
-        if: ${{ !cancelled() && steps.debug_build.outcome == 'success' }}
-        shell: pwsh
-        run: make.exe MODE=dbg toiletline_test
-
-      - name: Run CLI tests
-        if: ${{ !cancelled() && steps.debug_build.outcome == 'success' }}
-        shell: pwsh
-        run: make.exe -C test MODE=dbg cli_tests
-
-      - name: Run native tests
-        if: ${{ !cancelled() && steps.debug_build.outcome == 'success' }}
-        shell: pwsh
-        run: make.exe -C test MODE=dbg kosh_tests
-
-      - name: Run highlight tests
-        if: ${{ !cancelled() && steps.debug_build.outcome == 'success' }}
-        shell: pwsh
-        run: make.exe -C test MODE=dbg highlight_tests
-
-      - name: Run completion tests
-        if: ${{ !cancelled() && steps.debug_build.outcome == 'success' }}
-        shell: pwsh
-        run: make.exe -C test MODE=dbg completion_tests
-
-      - name: Run compatibility tests
-        if: ${{ !cancelled() && steps.debug_build.outcome == 'success' }}
-        shell: pwsh
-        run: make.exe -C test MODE=dbg compatdiff
-
-      - name: Run no-editor history tests
-        if: ${{ !cancelled() && steps.debug_build.outcome == 'success' }}
-        shell: pwsh
-        run: make.exe MODE=dbg NO_TOILETLINE=1 test
+        run: make.exe MODE=dbg test

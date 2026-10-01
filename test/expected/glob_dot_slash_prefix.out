@@ -10,7 +10,7 @@
           [SimpleCommand "[" "-n" "$directory" "]"]
       [CompoundList]
         [CompoundListCondition, None]
-          [SimpleCommand "$TEST_SYSTEM_RM" "-rf" "--" "$directory"]
+          [SimpleCommand "$TEST_KOSHKIT" "rm" "-rf" "--" "$directory"]
   [CompoundListCondition, None]
     [SimpleCommand "koshkit" "mkdir" "-p" "$directory/real/nested"]
   [CompoundListCondition, None]
@@ -40,7 +40,7 @@
           [SimpleCommand "[" "-n" "$directory" "]"]
       [CompoundList]
         [CompoundListCondition, None]
-          [SimpleCommand "$TEST_SYSTEM_RM" "-rf" "--" "$directory"]
+          [SimpleCommand "$TEST_KOSHKIT" "rm" "-rf" "--" "$directory"]
 [Word
   Unquoted "start="
   Variable "PWD"
@@ -69,7 +69,10 @@
   Unquoted "then"
 ]
 [Word
-  Variable "TEST_SYSTEM_RM"
+  Variable "TEST_KOSHKIT"
+]
+[Word
+  Unquoted "rm"
 ]
 [Word
   Unquoted "-rf"
@@ -195,7 +198,10 @@
   Unquoted "then"
 ]
 [Word
-  Variable "TEST_SYSTEM_RM"
+  Variable "TEST_KOSHKIT"
+]
+[Word
+  Unquoted "rm"
 ]
 [Word
   Unquoted "-rf"

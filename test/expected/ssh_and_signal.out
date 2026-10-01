@@ -11,4 +11,4 @@ beta-box
 == kill completes a signal name for a dashed token:
 -TERM
 == and another signal prefix:
--HUP
+-KILL

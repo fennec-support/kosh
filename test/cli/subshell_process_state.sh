@@ -7,7 +7,7 @@ after_mask=$(umask)
 '
 
 directory=$(mktemp -d)
-trap '[ -n "$directory" ] && /bin/rm -rf "$directory"' EXIT
+trap '[ -n "$directory" ] && "$TEST_KOSHKIT" rm -rf "$directory"' EXIT
 /bin/mkdir -p "$directory/original" "$directory/sibling"
 : > "$directory/original/marker"
 SUBSHELL_DIRECTORY=$directory "$BIN" -c '

@@ -1,7 +1,7 @@
 #!/bin/sh
 
 directory=$(mktemp -d)
-trap '[ -n "$directory" ] && /bin/rm -rf "$directory"' EXIT
+trap '[ -n "$directory" ] && "$TEST_KOSHKIT" rm -rf "$directory"' EXIT
 
 for utility in cat cksum head sort tail uniq wc; do
     "$BIN" -c "koshkit $utility '$directory'" >/dev/null 2>&1

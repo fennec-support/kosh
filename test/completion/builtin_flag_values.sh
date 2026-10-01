@@ -1,14 +1,14 @@
-# A flag whose value comes from a closed set answers from that table instead of
-# the filename fallback. The spaced form and the joined equals form are both
-# accepted. HUP, INT, QUIT, KILL, and TERM are the signal names every platform
-# carries. A signal prefix that a platform-only name also answers is filtered
-# down to the portable answers. The last check reads its prefix from the
-# platform table itself, and the golden is the same where that table is smaller.
 echo "== kill -s signal names:"
-"$BIN" --debug-complete-at 'kill -s ' </dev/null |
-  grep -E '^(HUP|INT|KILL|QUIT|TERM)$'
+signal_names=$("$BIN" --debug-complete-at 'kill -s ' </dev/null)
+printf '%s\n' "$signal_names" | grep -E '^(KILL|TERM)$'
+if [ "${OS-}" != Windows_NT ]; then
+  for signal_name in HUP INT QUIT; do
+    printf '%s\n' "$signal_names" | grep -qxF "$signal_name" ||
+      printf 'missing-signal=%s\n' "$signal_name"
+  done
+fi
 echo "== kill -s prefix:"
-"$BIN" --debug-complete-at 'kill -s QU' </dev/null
+"$BIN" --debug-complete-at 'kill -s KI' </dev/null
 echo "== kill -n prefix:"
 "$BIN" --debug-complete-at 'kill -n TE' </dev/null
 echo "== trap special conditions:"
@@ -34,7 +34,7 @@ echo "== compgen -V joined form:"
 echo "== koshkit find entry types:"
 "$BIN" --debug-complete-at 'koshkit find -type ' </dev/null
 echo "== koshkit timeout signal prefix:"
-"$BIN" --debug-complete-at 'koshkit timeout -s QU' </dev/null
+"$BIN" --debug-complete-at 'koshkit timeout -s KI' </dev/null
 echo "== koshkit pkill joined signal form:"
 "$BIN" --debug-complete-at 'koshkit pkill --signal=TE' </dev/null
 echo "== koshkit killall signal prefix:"

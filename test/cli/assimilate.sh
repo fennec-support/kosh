@@ -2,7 +2,7 @@
 
 # shellcheck disable=SC2119,SC2120
 root=$(mktemp -d)
-trap '[ -n "$root" ] && /bin/rm -rf "$root"' EXIT
+trap '[ -n "$root" ] && "$TEST_KOSHKIT" rm -rf "$root"' EXIT
 transport=$root/transport
 remote=$root/remote
 install=$remote/bin

@@ -4,7 +4,7 @@ unset KOSH_FLAGS
 BIN=$(CDPATH= cd -- "$(dirname -- "$BIN")" && pwd)/$(basename -- "$BIN")
 
 d=$(mktemp -d) || exit 1
-trap '[ -n "$d" ] && /bin/rm -rf "$d"' EXIT
+trap '[ -n "$d" ] && "$TEST_KOSHKIT" rm -rf "$d"' EXIT
 printf 'data\n' > "$d/notexec"
 chmod -x "$d/notexec"
 real_d=$(CDPATH= cd -- "$d" && pwd -P)

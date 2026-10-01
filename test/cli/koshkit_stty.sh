@@ -4,7 +4,7 @@ unset KOSH_FLAGS
 BIN=$(CDPATH= cd -- "$(dirname -- "$BIN")" && pwd)/$(basename -- "$BIN")
 d=$(mktemp -d)
 d=$(cd "$d" && pwd -P)
-trap 'test -n "$d" && /bin/rm -r "$d"' EXIT
+trap 'test -n "$d" && "$TEST_KOSHKIT" rm -r "$d"' EXIT
 
 command_text="exec \"$BIN\" -c 'before=\$(koshkit stty -g) || exit
 echo

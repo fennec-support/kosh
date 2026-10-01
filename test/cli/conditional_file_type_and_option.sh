@@ -1,6 +1,6 @@
 unset KOSH_FLAGS
 directory=$(mktemp -d)
-trap '[ -n "$directory" ] && /bin/rm -rf "$directory"' EXIT
+trap '[ -n "$directory" ] && "$TEST_KOSHKIT" rm -rf "$directory"' EXIT
 plain=$directory/plain
 : > "$plain"
 

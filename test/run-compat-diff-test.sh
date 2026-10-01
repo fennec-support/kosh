@@ -2,8 +2,8 @@
 . ./runner-status.sh
 
 CAPTURE_DIRECTORY="$TEST_TEMP_DIRECTORY/compat-diff-capture.$$"
-mkdir -p "$CAPTURE_DIRECTORY"
-trap '"$TEST_SYSTEM_RM" -rf "$CAPTURE_DIRECTORY"' EXIT
+"$TEST_KOSHKIT" mkdir -p "$CAPTURE_DIRECTORY"
+trap '"$TEST_KOSHKIT" rm -rf "$CAPTURE_DIRECTORY"' EXIT
 RUNNER_STATUS=0
 
 capture_command() {
@@ -35,12 +35,11 @@ capture_command() {
 
 STDERR_DIRECTIVE='# compat-stderr: exact'
 
-# A kosh diagnostic is worded and located its own way, and the default
-# comparison asks only that both shells stayed silent or both wrote something. A
-# fixture whose error output is meant to agree byte for byte names the exact
-# comparison in a directive on a line of its own.
 wants_exact_stderr() {
-  grep -q -x -F -- "$STDERR_DIRECTIVE" "$1"
+  while IFS= read -r line || [ -n "$line" ]; do
+    [ "$line" = "$STDERR_DIRECTIVE" ] && return 0
+  done < "$1"
+  return 1
 }
 
 have_matching_stderr() {

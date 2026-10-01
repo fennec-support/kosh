@@ -2,7 +2,7 @@ set -e
 
 BIN=$(CDPATH= cd -- "$(dirname -- "$BIN")" && pwd)/$(basename -- "$BIN")
 dir=$(mktemp -d)
-trap '[ -n "$dir" ] && /bin/rm -rf "$dir"' EXIT
+trap '[ -n "$dir" ] && "$TEST_KOSHKIT" rm -rf "$dir"' EXIT
 mkdir "$dir/adir"
 : > "$dir/afile"
 ln -s afile "$dir/alink"

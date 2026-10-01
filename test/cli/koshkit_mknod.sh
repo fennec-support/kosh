@@ -132,7 +132,7 @@ if test -c "$posix_device_path"; then
   else
     posix_device_check=failed
   fi
-  "$TEST_SYSTEM_RM" -f "$posix_device_path"
+  "$TEST_KOSHKIT" rm -f "$posix_device_path"
 elif test "$posix_device_status" -ne 0; then
   case "$posix_device_error" in
     *"permission denied"*|*"Operation not permitted"*|*"not supported"*)
@@ -155,7 +155,7 @@ if test -c "$device_path"; then
   else
     device_check=failed
   fi
-  "$TEST_SYSTEM_RM" -f "$device_path"
+  "$TEST_KOSHKIT" rm -f "$device_path"
 elif test "$device_status" -ne 0; then
   case "$device_error" in
     *"permission denied"*|*"Operation not permitted"*|*"not supported"*)
@@ -175,7 +175,7 @@ case "$type_device_error" in
   *)
     if test -c "$root/device-type"; then
       type_device_check=ok
-      "$TEST_SYSTEM_RM" -f "$root/device-type"
+      "$TEST_KOSHKIT" rm -f "$root/device-type"
     else
       type_device_check=failed
     fi

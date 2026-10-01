@@ -4,7 +4,7 @@ printf 'echo   combined\n' | "$BIN" -A --lint --format --no-traces
 
 root=$TEST_TEMP_DIRECTORY/ast-operations
 mkdir -p "$root"
-trap '[ -n "$root" ] && /bin/rm -rf "$root"' EXIT
+trap '[ -n "$root" ] && "$TEST_KOSHKIT" rm -rf "$root"' EXIT
 
 printf 'echo apply\n' > "$root/lint.sh"
 "$BIN" -A --lint --apply --no-traces "$root/lint.sh"

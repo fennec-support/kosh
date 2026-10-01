@@ -7,7 +7,7 @@
 unset KOSH_FLAGS
 
 dir=$(mktemp -d) || exit 1
-trap '[ -n "$dir" ] && /bin/rm -rf "$dir"' EXIT
+trap '[ -n "$dir" ] && "$TEST_KOSHKIT" rm -rf "$dir"' EXIT
 printf '#!/bin/sh\nprintf "PATH seq\\n"\n' > "$dir/seq"
 /bin/chmod +x "$dir/seq"
 

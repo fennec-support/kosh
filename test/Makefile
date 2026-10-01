@@ -10,7 +10,12 @@ DIFF_FLAGS := -u
 MODE ?= dbg
 ARCH ?= $(shell uname -m)
 NO_TOILETLINE ?= 0
-IS_NONDEBUG_BUILD := $(if $(filter rel tinyrel prof cov cosmo,$(MODE)),1,0)
+IS_NONDEBUG_BUILD := 1
+ifeq ($(MODE),dbg)
+IS_NONDEBUG_BUILD := 0
+else ifeq ($(MODE),cosmo_dbg)
+IS_NONDEBUG_BUILD := 0
+endif
 export IS_NONDEBUG_BUILD
 BUILD_VARIANT_SUFFIX := $(if $(filter 1,$(NO_TOILETLINE)),-no-toiletline,)
 ifeq ($(OS), Windows_NT)
@@ -18,21 +23,7 @@ TARGET ?= Windows_NT
 else
 TARGET ?= $(shell uname -s)
 endif
-ifeq ($(TARGET),Windows_NT)
-TEST_TIMEOUT_COMMAND ?= C:/msys64/usr/bin/timeout.exe
-else ifeq ($(TARGET),Darwin)
-TEST_TIMEOUT_COMMAND ?= gtimeout
-else
-TEST_TIMEOUT_COMMAND ?= timeout
-endif
-export TEST_TIMEOUT_COMMAND
-ifeq ($(TARGET), Windows_NT)
-export TEST_USE_KOSHKIT_DIFF := 1
-WINDOWS_DIFF_BOOTSTRAP := verify_koshkit_diff
-else
-export TEST_USE_KOSHKIT_DIFF := 0
-export TEST_HOST_DIFF := $(shell command -v diff)
-endif
+DIFF_BOOTSTRAP := verify_koshkit_diff
 
 ifeq ($(TARGET), Windows_NT)
 export TEST_PATH_SEPARATOR := ;
@@ -49,18 +40,21 @@ TEST_JOBS ?= $(or $(shell ../scripts/cpu-count.sh),1)
 export TEST_HOST_PATH_SEPARATOR := :
 export TEST_TEMP_DIRECTORY := .test-work
 export TEST_MKTEMP_DIRECTORY := $(shell $(TEST_ABSOLUTE_DIRECTORY_COMMAND))/.test-work
-export TEST_SYSTEM_RM := $(shell \
-	rm_path=$$(command -v rm); \
-	echo "$$(cd "$$(dirname "$$rm_path")" && $(TEST_ABSOLUTE_DIRECTORY_COMMAND))/$$(basename "$$rm_path")")
+export TEST_KOSHKIT := $(CURDIR)/bin/test-koshkit
 
-MODE_SUFFIX := $(if $(filter rel,$(MODE)),,-$(MODE))
-ifeq ($(MODE), cosmo)
-BIN ?= ../kosh$(MODE_SUFFIX).com
-else ifeq ($(TARGET), Windows_NT)
-BIN ?= ../kosh$(MODE_SUFFIX).exe
-DIFF_FLAGS += -w -a # CRLF on Windows SMH
+ifeq ($(MODE),rel)
+BIN_NAME := kosh
 else
-BIN ?= ../kosh$(MODE_SUFFIX)
+BIN_NAME := kosh-$(MODE)
+endif
+ifeq ($(MODE),cosmo)
+BIN_EXTENSION := .com
+else ifeq ($(TARGET),Windows_NT)
+BIN_EXTENSION := .exe
+endif
+BIN ?= ../$(BIN_NAME)$(BIN_EXTENSION)
+ifeq ($(TARGET),Windows_NT)
+DIFF_FLAGS += -w -a # CRLF on Windows SMH
 endif
 
 # The test drivers run with the current directory set to test, so a BIN given
@@ -80,6 +74,7 @@ RESOLVED_BIN := $(strip $(shell \
 # A directory probe that produces nothing leaves the original path in place.
 override BIN := $(if $(RESOLVED_BIN),$(RESOLVED_BIN),$(BIN))
 export BIN
+TEST_TIMEOUT = $(TEST_KOSHKIT) timeout -k 2s
 ifeq ($(TARGET), Linux)
 export TEST_EVILISO_LOOPBACK := $(abspath \
 	../src/o/$(TARGET)/$(MODE)$(BUILD_VARIANT_SUFFIX)/eviliso-loop)
@@ -103,8 +98,8 @@ export TEST_UNAME_DIRECTORY := $(shell \
 endif
 export PATH := $(CURDIR)/bin$(TEST_HOST_PATH_SEPARATOR)$(PATH)
 
-%: kosh/%.kosh expected/%.out $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
-	@rm -f '$(FAILED_LIST)' && rm -rf '$(FAILED_LIST).d'
+%: kosh/%.kosh expected/%.out $(BIN) $(DIFF_BOOTSTRAP)
+	@$(TEST_KOSHKIT) rm -f '$(FAILED_LIST)' && $(TEST_KOSHKIT) rm -rf '$(FAILED_LIST).d'
 	@BIN='$(BIN)' BIN_FLAGS='$(BIN_FLAGS)' DIFF_FLAGS='$(DIFF_FLAGS)' \
 		FAILED_LIST='$(FAILED_LIST)' $(SHELL) run-kosh-test.sh $*
 
@@ -113,9 +108,8 @@ clean:
 	@rm -rf $(FAILED_LIST).d
 	@rm -rf "$(CURDIR)/.test-work"
 
-test: $(EVILISO_LOOPBACK_DEPENDENCY) $(BIN) \
-	$(WINDOWS_DIFF_BOOTSTRAP)
-	@$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(SHELL) run-test-suite.sh all
+test: $(EVILISO_LOOPBACK_DEPENDENCY) $(BIN) $(DIFF_BOOTSTRAP)
+	@$(SHELL) run-test-suite.sh all
 
 eviliso_loopback_helper:
 	@$(MAKE) -C ../src MODE='$(MODE)' TARGET='$(TARGET)' ARCH='$(ARCH)' \
@@ -126,24 +120,24 @@ verify_koshkit_diff: $(BIN)
 		echo "The shell '$(BIN)' is missing or is not executable." >&2; \
 		exit 1; \
 	fi
-	@$(TEST_TIMEOUT_COMMAND) -k 2s 30 sh verify-koshkit-diff.sh
+	@$(TEST_TIMEOUT) 30 sh verify-koshkit-diff.sh
 
-kosh_tests: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
-	@$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(SHELL) run-test-suite.sh kosh
+kosh_tests: $(BIN) $(DIFF_BOOTSTRAP)
+	@$(SHELL) run-test-suite.sh kosh
 
-cli_%: expected/%.out $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
-	@rm -f '$(FAILED_LIST)' && rm -rf '$(FAILED_LIST).d'
+cli_%: expected/%.out $(BIN) $(DIFF_BOOTSTRAP)
+	@$(TEST_KOSHKIT) rm -f '$(FAILED_LIST)' && $(TEST_KOSHKIT) rm -rf '$(FAILED_LIST).d'
 	@BIN='$(BIN)' DIFF_FLAGS='$(DIFF_FLAGS)' FAILED_LIST='$(FAILED_LIST)' \
 		$(SHELL) run-cli-test.sh '$(SHELL)' cli/$*.sh
 
 pty_live_probes: $(BIN)
 	@BIN='$(BIN)' TARGET='$(TARGET)' \
-		$(TEST_TIMEOUT_COMMAND) -k 2s 30 python3 cli/koshkit_live_pty.py
+		$(TEST_TIMEOUT) 30 python3 cli/koshkit_live_pty.py
 
 cli_koshkit_eviliso_loopback: $(EVILISO_LOOPBACK_DEPENDENCY)
 
-cli_tests: $(EVILISO_LOOPBACK_DEPENDENCY) $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
-	@$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(SHELL) run-test-suite.sh cli
+cli_tests: $(EVILISO_LOOPBACK_DEPENDENCY) $(BIN) $(DIFF_BOOTSTRAP)
+	@$(SHELL) run-test-suite.sh cli
 
 ifneq ($(TARGET), Linux)
 NON_LINUX_SKIPPED_CLI_NAMES := \
@@ -155,8 +149,8 @@ $(NON_LINUX_SKIPPED_CLI_NAMES):
 		"cli/$(patsubst cli_%,%,$@).sh"
 endif
 
-completion_%: expected/%.out $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
-	@rm -f '$(FAILED_LIST)' && rm -rf '$(FAILED_LIST).d'
+completion_%: expected/%.out $(BIN) $(DIFF_BOOTSTRAP)
+	@$(TEST_KOSHKIT) rm -f '$(FAILED_LIST)' && $(TEST_KOSHKIT) rm -rf '$(FAILED_LIST).d'
 	@$(SHELL) run-editor-test.sh completion '$(SHELL)' completion/$*.sh
 
 ifeq ($(TARGET), Windows_NT)
@@ -248,17 +242,17 @@ $(WINDOWS_UNREPRESENTABLE_COMPLETION_NAMES):
 		"$(patsubst completion_%,completion/%,$@).sh"
 endif
 
-completion_tests: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
-	@$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(SHELL) run-test-suite.sh completion
+completion_tests: $(BIN) $(DIFF_BOOTSTRAP)
+	@$(SHELL) run-test-suite.sh completion
 
 
-highlight_%: expected/%.out $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
-	@rm -f '$(FAILED_LIST)' && rm -rf '$(FAILED_LIST).d'
+highlight_%: expected/%.out $(BIN) $(DIFF_BOOTSTRAP)
+	@$(TEST_KOSHKIT) rm -f '$(FAILED_LIST)' && $(TEST_KOSHKIT) rm -rf '$(FAILED_LIST).d'
 	@BIN='$(BIN)' DIFF_FLAGS='$(DIFF_FLAGS)' FAILED_LIST='$(FAILED_LIST)' \
 		$(SHELL) run-editor-test.sh highlight '$(SHELL)' highlight/$*.sh
 
-highlight_tests: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
-	@$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(SHELL) run-test-suite.sh highlight
+highlight_tests: $(BIN) $(DIFF_BOOTSTRAP)
+	@$(SHELL) run-test-suite.sh highlight
 
 SKIPPED_TEST_NAMES := $(WINDOWS_SKIPPED_TEST_NAMES)
 SKIPPED_CLI_INPUT := $(patsubst cli_%,cli/%.sh,\
@@ -279,7 +273,7 @@ export SKIP_CLI_ASSIMILATE
 REFILL ?=
 
 refill: $(EVILISO_LOOPBACK_DEPENDENCY) $(BIN)
-	@REFILL='$(REFILL)' $(TEST_TIMEOUT_COMMAND) -k 2s 300 \
+	@REFILL='$(REFILL)' \
 		$(SHELL) run-refill.sh '$(SHELL)'
 
 
@@ -299,8 +293,8 @@ BASHP ?= /bin/bash
 
 export BASHP DASH
 
-compatdiff: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
-	@$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(SHELL) run-test-suite.sh compat
+compatdiff: $(BIN) $(DIFF_BOOTSTRAP)
+	@$(SHELL) run-test-suite.sh compat
 
 dashdiff bashdiff mimicrydiff: compatdiff
 
@@ -317,7 +311,7 @@ BENCH_SAMPLE_COUNT ?= 1
 DASH_SPEEDUP_REQUIRED ?= 1
 BASH_SPEEDUP_REQUIRED ?= 3
 
-bench: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
+bench: $(BIN) $(DIFF_BOOTSTRAP)
 	@SCALE='$(SCALE)' BIN='$(BIN)' DASH='$(DASH)' BASHP='$(BASHP)' ZSH='$(ZSH)' \
 		ASH='$(ASH)' YASH='$(YASH)' BENCH='$(BENCH)' \
 		BENCH_BASH='$(BENCH_BASH)' BENCH_KOSH='$(BENCH_KOSH)' PRIMES='$(PRIMES)' \
@@ -326,7 +320,7 @@ bench: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
 		BENCH_SAMPLE_COUNT='$(BENCH_SAMPLE_COUNT)' \
 		DASH_SPEEDUP_REQUIRED='$(DASH_SPEEDUP_REQUIRED)' \
 		BASH_SPEEDUP_REQUIRED='$(BASH_SPEEDUP_REQUIRED)' \
-		$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(SHELL) run-bench-test.sh
+		$(SHELL) run-bench-test.sh
 
 .PHONY: test clean eviliso_loopback_helper \
 	verify_koshkit_diff kosh_tests refill \

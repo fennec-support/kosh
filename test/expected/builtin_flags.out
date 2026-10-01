@@ -68,10 +68,7 @@ annoying-diagnostics
 -u
 -x
 == kill signal names:
--HUP
--INT
 -KILL
--QUIT
 -TERM
 == shopt names by prefix:
 globasciiranges

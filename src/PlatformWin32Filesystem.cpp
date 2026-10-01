@@ -1079,7 +1079,26 @@ fn create_symlink(StringView target, StringView link_path) wontthrow -> bool
   /* A directory target needs the directory flag, the unprivileged flag avoids
      elevation on developer-mode Windows. */
   DWORD flags = SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE;
-  const DWORD attributes = GetFileAttributesW(wide_target->begin());
+  DWORD attributes = INVALID_FILE_ATTRIBUTES;
+  if (path_is_absolute(target) || path_is_drive_relative(target)) {
+    attributes = GetFileAttributesW(wide_target->begin());
+  } else {
+    try {
+      let probe_path = Path{link_path}.parent_or_current();
+      if (path_is_drive_relative(link_path)) {
+        let const resolved_link = resolve_drive_relative_path(link_path);
+        if (!resolved_link.has_value()) return false;
+        probe_path = resolved_link->parent_or_current();
+      }
+      probe_path.append(target);
+      let const wide_probe = utf8_to_wide(probe_path.view(), heap_allocator());
+      if (!wide_probe.has_value()) return false;
+      attributes = GetFileAttributesW(wide_probe->begin());
+    } catch (...) {
+      SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+      return false;
+    }
+  }
   if (attributes != INVALID_FILE_ATTRIBUTES &&
       (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
     flags |= SYMBOLIC_LINK_FLAG_DIRECTORY;

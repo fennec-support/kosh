@@ -1,5 +1,5 @@
 dir=$(mktemp -d)
-trap '[ -n "$dir" ] && /bin/rm -rf "$dir"' EXIT
+trap '[ -n "$dir" ] && "$TEST_KOSHKIT" rm -rf "$dir"' EXIT
 
 script="$dir/named.kosh"
 {

@@ -688,7 +688,7 @@ SHELL = $(BIN)
 all:
 	@shell_value=$$(printf '%s' "$$SHELL" | koshkit tr "\\\\" '/'); expected_shell=$$(printf '%s' "$$EXPECTED_SHELL" | koshkit tr "\\\\" '/'); case "$$shell_value" in "$$expected_shell"|"$$expected_shell.exe") echo shell-env=inherited-value;; *) echo "shell-env=$$SHELL";; esac
 EOF
-SHELL="$TEST_SYSTEM_RM" EXPECTED_SHELL="$TEST_SYSTEM_RM" \
+SHELL="$TEST_KOSHKIT" EXPECTED_SHELL="$TEST_KOSHKIT" \
   "$BIN" -c 'koshkit make -f shell-env.mk'
 cat > shell-function.mk <<'EOF'
 SHELL = false

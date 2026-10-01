@@ -62,11 +62,10 @@ temporary output. Refill is a mode of the same runner. A second script must not
 copy a timeout list, argument parser, golden comparison, or cleanup path.
 
 `run-test-suite.sh` bounds parallel workers and starts each harness runner.
-`run-cli-test.sh` owns process-tree timeouts for CLI cases. On POSIX, it runs
-each case under the test shell selected by Make. Native, editor, and
-compatibility runners use the shared host timeout. The root Makefile also
-bounds the full test target. `run-refill.sh` selects the normal harness runners
-in refill mode.
+`run-cli-test.sh` bounds each CLI case through koshkit timeout and runs it under
+the test shell selected by Make. Native, editor, and compatibility runners also
+use koshkit timeout. `run-refill.sh` selects the normal harness runners in refill
+mode.
 
 Auxiliary shell scripts use two-space indentation. They receive configuration
 through exported test variables. They do not reconstruct Make variables or
@@ -116,15 +115,15 @@ focused assertion is sufficient.
 
 Use paths below `$TEST_TEMP_DIRECTORY`. Prefer one fixed directory for the
 test. The `bin/mktemp` shim is available when uniqueness is part of the test.
-It uses host filesystem operations and does not launch the tested shell.
+It uses `TEST_KOSHKIT mkdir` for directories and shell redirection for files.
 `TEST_MKTEMP_DIRECTORY` gives the shim an absolute native allocation root.
 
 Do not add fixed sleeps for synchronization. Use a ready marker, pipe,
 process-state check, or bounded polling loop. Retain a bounded timeout for a
 test that can block.
 
-Every koshkit rm invocation uses `--dry-run`. Temporary directory cleanup uses
-the system rm behind a nonempty path guard.
+Tests of koshkit rm use `--dry-run`. Temporary directory cleanup uses koshkit
+rm behind a nonempty path guard.
 
 Use `TEST_PATH_SEPARATOR`, `TEST_NULL_DEVICE`, `TEST_PATH_ENVIRONMENT_NAME`,
 `TEST_SYSTEM_PATH`, and `TEST_UNAME_DIRECTORY` for portable goldens. Add a

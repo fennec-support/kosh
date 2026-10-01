@@ -36,7 +36,7 @@
           [SimpleCommand "[" "-n" "$d" "]"]
       [CompoundList]
         [CompoundListCondition, None]
-          [SimpleCommand "$TEST_SYSTEM_RM" "-rf" "--" "$d"]
+          [SimpleCommand "$TEST_KOSHKIT" "rm" "-rf" "--" "$d"]
   [CompoundListCondition, None]
     [SimpleCommand "echo" "== command -v guard:"]
   [CompoundListCondition, None]
@@ -236,7 +236,10 @@
   Unquoted "then"
 ]
 [Word
-  Variable "TEST_SYSTEM_RM"
+  Variable "TEST_KOSHKIT"
+]
+[Word
+  Unquoted "rm"
 ]
 [Word
   Unquoted "-rf"

@@ -2,7 +2,7 @@ directory=
 cleanup()
 {
   if [ -n "$directory" ]; then
-    "$TEST_SYSTEM_RM" -rf -- "$directory"
+    "$TEST_KOSHKIT" rm -rf -- "$directory"
   fi
 }
 trap cleanup EXIT

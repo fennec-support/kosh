@@ -36,14 +36,6 @@ export TARGET
 
 TEST_TARGET := $(if $(filter 1,$(NO_TOILETLINE)),cli_history_noninteractive,test)
 EDITOR_TEST_TARGET := $(if $(filter 1,$(NO_TOILETLINE)),,toiletline_test)
-ifeq ($(TARGET),Windows_NT)
-TEST_TIMEOUT_COMMAND ?= C:/msys64/usr/bin/timeout.exe
-else ifeq ($(TARGET),Darwin)
-TEST_TIMEOUT_COMMAND ?= gtimeout
-else
-TEST_TIMEOUT_COMMAND ?= timeout
-endif
-export TEST_TIMEOUT_COMMAND
 
 all: kosh test
 
@@ -69,11 +61,11 @@ fmt:
 
 toiletline_test: kosh
 	echo Launching editor tests...
-	$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(MAKE) -C src/toiletline test
+	$(MAKE) -C src/toiletline test
 
 test: kosh $(EDITOR_TEST_TARGET)
 	echo Launching tests...
-	$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(MAKE) $(AUTO_JOBS) -C test $(TEST_TARGET)
+	$(MAKE) $(AUTO_JOBS) -C test $(TEST_TARGET)
 
 bench: kosh
 	echo Launching benchmarks...

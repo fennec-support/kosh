@@ -1,4 +1,5 @@
 #!/bin/bash
+. ./runner-status.sh
 
 # Job control gives each background worker its own process group and the
 # default signal dispositions. Without it a worker inherits SIGINT and SIGQUIT
@@ -141,7 +142,7 @@ wait_for_worker_slot()
       WORKER_COUNT=$((WORKER_COUNT - 1))
       return
     done
-    sleep 0.01
+    "$TEST_KOSHKIT" sleep 0.01
   done
 }
 
@@ -222,7 +223,8 @@ run_serial_cli_tests()
 {
   SERIAL_STATUS=0
   for TEST_FILE in $SERIAL_CLI_INPUT; do
-    printf "\t%-64s running\n" "cli_$(basename "$TEST_FILE" .sh)"
+    TEST_NAME=${TEST_FILE##*/}
+    printf "\t%-64s running\n" "cli_${TEST_NAME%.sh}"
     RUNNER_STATUS=0
     run_harness_item cli "$TEST_FILE" || RUNNER_STATUS=$?
     [ "$SERIAL_STATUS" -ne 0 ] || SERIAL_STATUS=$RUNNER_STATUS
@@ -235,8 +237,9 @@ run_serial_completion_tests()
 {
   SERIAL_STATUS=0
   for TEST_FILE in $SERIAL_COMPLETION_INPUT; do
+    TEST_NAME=${TEST_FILE##*/}
     printf "\t%-64s running\n" \
-      "completion_$(basename "$TEST_FILE" .sh)"
+      "completion_${TEST_NAME%.sh}"
     RUNNER_STATUS=0
     run_harness_item completion "$TEST_FILE" || RUNNER_STATUS=$?
     [ "$SERIAL_STATUS" -ne 0 ] || SERIAL_STATUS=$RUNNER_STATUS
@@ -292,15 +295,15 @@ run_named_suite()
 # fixtures by name.
 finish_results()
 {
-  touch "$FAILED_LIST"
+  "$TEST_KOSHKIT" touch "$FAILED_LIST"
   for RECORDED_DIFF in "$FAILED_LIST.d"/*.diff; do
     if [ -s "$RECORDED_DIFF" ]; then
-      command cat "$RECORDED_DIFF" >> "$FAILED_LIST"
+      "$TEST_KOSHKIT" cat "$RECORDED_DIFF" >> "$FAILED_LIST"
     fi
   done
-  rm -rf "$FAILED_LIST.d"
+  "$TEST_KOSHKIT" rm -rf "$FAILED_LIST.d"
 
-  command cat "$FAILED_LIST"
+  "$TEST_KOSHKIT" cat "$FAILED_LIST"
   if [ -s "$FAILED_LIST" ]; then
     return 1
   fi
@@ -309,8 +312,8 @@ finish_results()
 }
 
 if [ "$SUITE_NAME" != all ]; then
-  rm -f "$FAILED_LIST"
-  rm -rf "$FAILED_LIST.d"
+  "$TEST_KOSHKIT" rm -f "$FAILED_LIST"
+  "$TEST_KOSHKIT" rm -rf "$FAILED_LIST.d"
   run_named_suite "$SUITE_NAME"
   SUITE_STATUS=$?
   RESULT_STATUS=0
@@ -320,11 +323,11 @@ if [ "$SUITE_NAME" != all ]; then
   exit "$SUITE_STATUS"
 fi
 
-START_TIME=$(date +%s)
+START_TIME=$("$TEST_KOSHKIT" date +%s)
 SUITE_STATUS=0
-rm -f "$FAILED_LIST" "$KOSH_HISTORY_FILE" "$KOSH_DIRECTORY_HISTORY"
-rm -rf "$FAILED_LIST.d"
-rm -rf "$PWD/.test-work"
+"$TEST_KOSHKIT" rm -f "$FAILED_LIST" "$KOSH_HISTORY_FILE" "$KOSH_DIRECTORY_HISTORY"
+"$TEST_KOSHKIT" rm -rf "$FAILED_LIST.d"
+"$TEST_KOSHKIT" rm -rf "$PWD/.test-work"
 
 RUNNER_STATUS=0
 run_named_suite cli || RUNNER_STATUS=$?
@@ -353,7 +356,7 @@ RESULT_STATUS=0
 finish_results || RESULT_STATUS=$?
 [ "$SUITE_STATUS" -ne 0 ] || SUITE_STATUS=$RESULT_STATUS
 
-ELAPSED_SECONDS=$(($(date +%s) - START_TIME))
+ELAPSED_SECONDS=$(($("$TEST_KOSHKIT" date +%s) - START_TIME))
 printf "\nDebug test step completed in %s seconds\n" "$ELAPSED_SECONDS"
 
 exit "$SUITE_STATUS"

@@ -1,7 +1,7 @@
 unset KOSH_FLAGS
 
 directory=
-trap 'test -n "$directory" && /bin/rm -rf "$directory"' EXIT
+trap 'test -n "$directory" && "$TEST_KOSHKIT" rm -rf "$directory"' EXIT
 directory=$(mktemp -d)
 touch "$directory/apple.c" "$directory/apple.txt"
 
@@ -34,5 +34,5 @@ echo "== compgen exclusion filter:"
     "$BIN" -M bash -c "compgen -W 'a* a*foo' -X '&' -- 'a*'"
 )
 
-test -n "$directory" && /bin/rm -rf "$directory"
+test -n "$directory" && "$TEST_KOSHKIT" rm -rf "$directory"
 directory=

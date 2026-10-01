@@ -212,8 +212,7 @@ changes update this file.
   configuration before the next fixture run.
 - `make test` runs main and completion suites. `make bench` runs benchmarks.
   Completion tests require debug. Bound interactive and long-running commands.
-  The editor test phase and suite each have a 300-second deadline, and test
-  runners apply a deadline to each case.
+  Test runners apply a deadline to each case.
 - `refill` regenerates goldens. `REFILL` selects source stems. Goldens live
   directly under `test/expected` and have unique names. Read every changed line.
 - A native fixture with status 126 or 127 cannot use `refill`. The runner treats
@@ -227,13 +226,13 @@ changes update this file.
   invocations so capability-gated fixtures use the intended platform. The
   native runner suppresses incidental diagnostics outside
   `shellcheck_static_*` tests.
-- Koshkit rm tests use `--dry-run`. Cleanup uses the system rm after a nonempty
+- Koshkit rm tests use `--dry-run`. Cleanup uses koshkit rm after a nonempty
   path check. Bashdiff and mimicrydiff need Bash 5.3 or newer.
   `scripts/find-modern-bash.sh` selects one from PATH, and `BASHP` overrides that
   choice. An unsuitable `BASHP` fails the suite while a suitable Bash is
   installed.
-- Golden comparisons use the resolved host diff on POSIX and koshkit diff on
-  Windows through `test/bin/diff`.
+- Golden comparisons use koshkit diff on every platform through
+  `test/bin/diff`.
 - A compatibility fixture compares standard output and status exactly. It
   compares only the presence of error output because Kosh formats and locates
   diagnostics independently. A fixture whose error output must agree byte for

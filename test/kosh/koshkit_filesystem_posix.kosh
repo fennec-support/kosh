@@ -90,5 +90,5 @@ fifo_fields=$(koshkit ls -l "$root/read-only-fifo")
 echo "mkfifo-symbolic=${fifo_fields%% *}"
 
 if [[ -n "$root" ]]; then
-  "$TEST_SYSTEM_RM" -rf -- "$root"
+  "$TEST_KOSHKIT" rm -rf -- "$root"
 fi

@@ -144,7 +144,7 @@
           [ConditionalCommand]
       [CompoundList]
         [CompoundListCondition, None]
-          [SimpleCommand "$TEST_SYSTEM_RM" "-rf" "--" "$root"]
+          [SimpleCommand "$TEST_KOSHKIT" "rm" "-rf" "--" "$root"]
 [Word
   Unquoted "root="
   CommandSubstitution "mktemp -d"
@@ -960,7 +960,10 @@
   Unquoted "then"
 ]
 [Word
-  Variable "TEST_SYSTEM_RM"
+  Variable "TEST_KOSHKIT"
+]
+[Word
+  Unquoted "rm"
 ]
 [Word
   Unquoted "-rf"

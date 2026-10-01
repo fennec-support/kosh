@@ -4,7 +4,7 @@ unset KOSH_FLAGS
 # accepts all three. The same mood reaches a script operand and a script run as
 # a command. An explicit --mood overrides the shebang in both directions.
 directory=$(mktemp -d)
-trap '[ -n "$directory" ] && /bin/rm -rf "$directory"' EXIT
+trap '[ -n "$directory" ] && "$TEST_KOSHKIT" rm -rf "$directory"' EXIT
 
 printf '#!/bin/sh\ntrap "echo action" ERR\necho "err-rc=$?"\ntrap "echo action" RETURN\necho "return-rc=$?"\ntrap "echo action" DEBUG\necho "debug-rc=$?"\necho body\n' \
     > "$directory/sh-script"

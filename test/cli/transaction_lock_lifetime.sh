@@ -104,7 +104,7 @@ cleanup()
     if [ -e "$directory/started" ]; then
         wait_for_lock_release 2>/dev/null || :
     fi
-    /bin/rm -rf "$directory"
+    "$TEST_KOSHKIT" rm -rf "$directory"
 }
 
 trap cleanup EXIT

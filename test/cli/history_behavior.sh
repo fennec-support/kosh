@@ -11,7 +11,7 @@ dir=$(mktemp -d)
 cleanup()
 {
   if [ -n "$dir" ]; then
-    "$TEST_SYSTEM_RM" -rf -- "$dir"
+    "$TEST_KOSHKIT" rm -rf -- "$dir"
   fi
 }
 trap cleanup EXIT

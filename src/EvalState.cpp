@@ -1567,6 +1567,8 @@ fn EvalContext::apply_subshell_bootstrap(
   replay_runtime.set_option(shell_option_id::Noexec, false);
   replay_runtime.set_option(shell_option_id::Nounset, false);
   replay_runtime.set_option(shell_option_id::Restricted, false);
+  replay_runtime.set_option(shell_option_id::ShowAst, false);
+  replay_runtime.set_option(shell_option_id::ShowLexedWords, false);
   replay_runtime.set_option(shell_option_id::Verbose, false);
   replay_runtime.set_option(shell_option_id::Xtrace, false);
   replay_runtime.restore(*this);

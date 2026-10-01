@@ -9,7 +9,7 @@ if native_root=$(cd "$root" && pwd -W 2>/dev/null); then
 else
   native_root=$root
 fi
-trap 'cd "$start_directory" && [ -n "$root" ] && /bin/rm -rf "$root"' EXIT
+trap 'cd "$start_directory" && [ -n "$root" ] && "$TEST_KOSHKIT" rm -rf "$root"' EXIT
 
 cat > "$root/nested/root.bash" <<'EOF'
 #!/bin/bash

@@ -998,6 +998,8 @@ fn kosh_main(int argc, char **argv) -> int
       koshka::show_message("Could not allocate inherited shell state");
       return 1;
     }
+    context.runtime_state().set_show_ast(false);
+    context.runtime_state().set_show_lexed_words(false);
   }
   if (inherited_exit_status.has_value())
     context.execution_store().set_last_exit_status(*inherited_exit_status);

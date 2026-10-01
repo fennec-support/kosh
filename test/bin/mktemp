@@ -41,13 +41,13 @@ case $template in
         ;;
 esac
 
-mkdir -p "$workspace" "$candidate_directory" || exit 1
+"$TEST_KOSHKIT" mkdir -p "$workspace" "$candidate_directory" || exit 1
 
 attempt_count=0
 while [ "$attempt_count" -lt 100 ]; do
     candidate="$candidate_directory/$candidate_prefix${PPID-0}-$$-$attempt_count"
     if [ "$is_directory" -eq 1 ]; then
-        if mkdir "$candidate" 2>/dev/null; then
+        if "$TEST_KOSHKIT" mkdir "$candidate" 2>/dev/null; then
             printf '%s\n' "$candidate"
             exit 0
         fi

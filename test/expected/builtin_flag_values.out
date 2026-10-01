@@ -1,11 +1,8 @@
 == kill -s signal names:
-HUP
-INT
 KILL
-QUIT
 TERM
 == kill -s prefix:
-QUIT
+KILL
 == kill -n prefix:
 TERM
 == trap special conditions:
@@ -38,7 +35,7 @@ d
 f
 l
 == koshkit timeout signal prefix:
-QUIT
+KILL
 == koshkit pkill joined signal form:
 TERM
 == koshkit killall signal prefix:

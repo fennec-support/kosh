@@ -4,7 +4,7 @@
 # registered spec and a controlled directory keep the candidates stable across
 # machines.
 dir=$(mktemp -d)
-trap '[ -n "$dir" ] && /bin/rm -rf "$dir"' EXIT
+trap '[ -n "$dir" ] && "$TEST_KOSHKIT" rm -rf "$dir"' EXIT
 
 echo "== inside \$( ):"
 "$BIN" -c 'complete -W "alpha beta gamma" probecmd' --debug-complete-at 'echo $(probecmd a' </dev/null

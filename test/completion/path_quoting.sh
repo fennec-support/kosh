@@ -3,7 +3,7 @@
 # candidates stable across machines. The typed prefix is one token, the special
 # byte lives in the matched entry.
 dir=$(mktemp -d)
-trap '[ -n "$dir" ] && /bin/rm -rf "$dir"' EXIT
+trap '[ -n "$dir" ] && "$TEST_KOSHKIT" rm -rf "$dir"' EXIT
 : > "$dir/spacey file.txt"
 : > "$dir/dollar\$x.txt"
 : > "$dir/plainfile.txt"

@@ -1,5 +1,5 @@
 temporary_directory=$(mktemp -d)
-trap 'test -n "$temporary_directory" && /bin/rm -rf "$temporary_directory"' EXIT
+trap 'test -n "$temporary_directory" && "$TEST_KOSHKIT" rm -rf "$temporary_directory"' EXIT
 script_command=$(command -v script)
 
 echo '== command flag ordering:'

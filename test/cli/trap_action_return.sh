@@ -26,7 +26,7 @@ echo f-rc=$?
 echo tail'; echo "rc=$?"
 echo "== a return in an action leaves the sourced file with its status:"
 d=$(mktemp -d) || exit 1
-trap '[ -n "$d" ] && /bin/rm -rf "$d"' EXIT
+trap '[ -n "$d" ] && "$TEST_KOSHKIT" rm -rf "$d"' EXIT
 printf 'echo sourced-1\necho sourced-2\n' > "$d/sourced.sh"
 "$BIN" --mood bash -c 'set -T
 trap '"'"'case "$BASH_COMMAND" in echo\ sourced*) return 3;; esac'"'"' DEBUG

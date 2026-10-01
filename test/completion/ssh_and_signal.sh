@@ -26,4 +26,8 @@ HOME="$dir" "$BIN" --debug-complete-at 'ssh gamma' </dev/null
 echo "== kill completes a signal name for a dashed token:"
 "$BIN" --debug-complete-at 'kill -TE' </dev/null
 echo "== and another signal prefix:"
-"$BIN" --debug-complete-at 'kill -HU' </dev/null
+"$BIN" --debug-complete-at 'kill -KI' </dev/null
+if [ "${OS-}" != Windows_NT ]; then
+  "$BIN" --debug-complete-at 'kill -HU' </dev/null |
+    grep -qxF -- '-HUP' || echo 'missing-signal=HUP'
+fi

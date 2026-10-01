@@ -1,5 +1,5 @@
 directory=$(mktemp -d) || exit 1
-trap '[ -n "$directory" ] && /bin/rm -rf "$directory"' EXIT
+trap '[ -n "$directory" ] && "$TEST_KOSHKIT" rm -rf "$directory"' EXIT
 
 frame()
 {

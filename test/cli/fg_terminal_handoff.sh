@@ -4,7 +4,7 @@ BIN=$(CDPATH= cd -- "$(dirname -- "$BIN")" && pwd)/$(basename -- "$BIN")
 
 d=$(mktemp -d)
 d=$(cd "$d" && pwd -P)
-trap 'test -n "$d" && /bin/rm -rf "$d"' EXIT
+trap 'test -n "$d" && "$TEST_KOSHKIT" rm -rf "$d"' EXIT
 
 probe="$d/stopped.bash"
 printf '%s\n' '#!/bin/bash' \

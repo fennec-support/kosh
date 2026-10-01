@@ -1,6 +1,6 @@
 unset KOSH_FLAGS
 dir=$(mktemp -d)
-trap '[ -n "$dir" ] && /bin/rm -rf "$dir"' EXIT
+trap '[ -n "$dir" ] && "$TEST_KOSHKIT" rm -rf "$dir"' EXIT
 
 # A loop body append opens its file once and keeps the descriptor for the whole
 # loop. Removing the file mid-loop leaves the later writes on the original
@@ -11,7 +11,7 @@ plain_script="$dir/plain.kosh"
   printf 'cd "$1" || exit 1\n'
   printf 'for i in 1 2 3; do\n'
   printf '  echo "$i" >> plain.log\n'
-  printf '  if [ "$i" = 1 ]; then /bin/rm -f plain.log; fi\n'
+  printf '  if [ "$i" = 1 ]; then koshkit rm -f plain.log; fi\n'
   printf 'done\n'
   printf 'if [ -f plain.log ]; then\n'
   printf '  printf "plain=present:"; cat plain.log\n'
@@ -27,7 +27,7 @@ stage_script="$dir/stage.kosh"
   printf 'cd "$1" || exit 1\n'
   printf 'for i in 1 2 3; do\n'
   printf '  echo "$i" >> stage.log | cat\n'
-  printf '  if [ "$i" = 1 ]; then /bin/rm -f stage.log; fi\n'
+  printf '  if [ "$i" = 1 ]; then koshkit rm -f stage.log; fi\n'
   printf 'done\n'
   printf 'if [ -f stage.log ]; then\n'
   printf '  printf "stage=present:"; cat stage.log\n'

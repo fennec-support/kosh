@@ -16,7 +16,7 @@ cleanup()
     has_release_descriptor=no
   fi
   if test -n "$work" && test -d "$work"; then
-    "$TEST_SYSTEM_RM" -rf -- "$work"
+    "$TEST_KOSHKIT" rm -rf -- "$work"
   fi
 }
 

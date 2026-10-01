@@ -1,5 +1,5 @@
 dir=$(mktemp -d)
-trap '[ -n "$dir" ] && /bin/rm -rf "$dir"' EXIT
+trap '[ -n "$dir" ] && "$TEST_KOSHKIT" rm -rf "$dir"' EXIT
 /bin/cp "$BIN" "$dir/path_probe"
 
 empty_result=$(env -u PATH "$TEST_PATH_ENVIRONMENT_NAME=$dir" \
