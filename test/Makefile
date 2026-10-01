@@ -80,7 +80,7 @@ export TEST_PATH_SEPARATOR := :
 export TEST_NULL_DEVICE := /dev/null
 export TEST_PATH_ENVIRONMENT_NAME := PATH
 endif
-TEST_JOBS ?= 4
+TEST_JOBS ?= $(or $(shell ../scripts/cpu-count.sh),1)
 export TEST_HOST_PATH_SEPARATOR := :
 export TEST_TEMP_DIRECTORY := .test-work
 export TEST_MKTEMP_DIRECTORY := $(shell $(TEST_ABSOLUTE_DIRECTORY_COMMAND))/.test-work
