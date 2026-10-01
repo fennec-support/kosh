@@ -136,21 +136,6 @@ jobs:
           make MODE=dbg kosh
           make -C test MODE=dbg cli_tests
 
-  debug-macos-other:
-    name: Run remaining debug tests on macOS
-    runs-on: macos-15
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          submodules: recursive
-
-      - name: Install the test shells
-        run: |
-          brew install bash dash-shell coreutils
-          echo "BASHP=$(brew --prefix bash)/bin/bash" >> "$GITHUB_ENV"
-          echo "DASH=$(brew --prefix dash-shell)/bin/dash" >> "$GITHUB_ENV"
-
       - name: Run editor tests
         run: make MODE=dbg toiletline_test
 

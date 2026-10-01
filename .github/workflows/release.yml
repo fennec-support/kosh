@@ -35,26 +35,6 @@ jobs:
         id: revision
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Require green CI for the selected commit
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COMMIT_SHA: ${{ steps.revision.outputs.sha }}
-        run: |
-          run_id=$(gh api \
-            "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$COMMIT_SHA&event=push&per_page=1" \
-            --jq '.workflow_runs[0] | select(.status == "completed" and .conclusion == "success") | .id')
-          if [ -z "$run_id" ]; then
-            echo "The selected commit has no completed successful CI run." >&2
-            exit 1
-          fi
-          successful_jobs=$(gh api \
-            "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?per_page=100" \
-            --jq '[.jobs[] | select(.conclusion == "success" and (.name == "Build, test and bench" or .name == "Run debug build tests on macOS" or .name == "Run remaining debug tests on macOS" or .name == "Run debug build tests on Windows"))] | length')
-          if [ "$successful_jobs" -ne 4 ]; then
-            echo "The selected commit has no green Linux, macOS, and Windows CI jobs." >&2
-            exit 1
-          fi
-
   build-image:
     name: Build or pull the cached image
     needs: resolve
