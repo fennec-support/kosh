@@ -238,4 +238,5 @@ jobs:
         shell: pwsh
         run: |
           make.exe test
-          NO_TOILETLINE=1 make.exe test
+          $env:NO_TOILETLINE = '1'
+          make.exe test
