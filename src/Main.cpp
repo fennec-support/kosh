@@ -1024,7 +1024,8 @@ fn kosh_main(int argc, char **argv) -> int
 
   loop
   {
-    ASSERT(!koshka::os::is_child_process());
+    ASSERT(!koshka::os::can_fork_evaluator() ||
+           !koshka::os::is_child_process());
 
     let script_contents = koshka::String{koshka::heap_allocator()};
     /* The named script file flows into the diagnostics so an error reads

@@ -263,7 +263,7 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   usize item_position = 0;
-  bool should_run_empty = items.is_empty();
+  bool should_run_empty = items.is_empty() && !FLAG_XARGS_REPLACE.is_set();
   i32 status = 0;
   while (item_position < items.count() || should_run_empty) {
     should_run_empty = false;
