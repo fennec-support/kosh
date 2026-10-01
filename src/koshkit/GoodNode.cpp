@@ -106,9 +106,6 @@ fn append_node_report(String &output, const ExecContext &ec, StringView path,
 {
   let const should_color = color_mode == goodnode_color_mode::Colored;
   let table = ReportTable{allocator};
-  table.add_column("FIELD", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("VALUE");
   let const do_append_field = [&](StringView name, StringView value) throws {
     let cells = ArrayList<report_table_cell_view>{allocator};
     cells.push({name, colors::ansi::BOLD_CYAN});

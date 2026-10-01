@@ -1087,10 +1087,6 @@ fn append_remote_report(String &output, bool should_color,
       zero_identity_count + do_count_unique(socket_identities);
   let const remote_count =
       remote_zero_identity_count + do_count_unique(remote_identities);
-  table.add_column("FIELD", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("VALUE", report_table_alignment::Right,
-                   colors::ansi::BOLD_CYAN);
   let summary_cells = ArrayList<report_table_cell_view>{allocator};
   summary_cells.reserve(2);
   let const remote_socket_text = String::from(remote_count, allocator);

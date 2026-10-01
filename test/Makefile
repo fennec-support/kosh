@@ -18,6 +18,14 @@ TARGET ?= Windows_NT
 else
 TARGET ?= $(shell uname -s)
 endif
+ifeq ($(TARGET),Windows_NT)
+TEST_TIMEOUT_COMMAND ?= C:/msys64/usr/bin/timeout.exe
+else ifeq ($(TARGET),Darwin)
+TEST_TIMEOUT_COMMAND ?= gtimeout
+else
+TEST_TIMEOUT_COMMAND ?= timeout
+endif
+export TEST_TIMEOUT_COMMAND
 ifeq ($(TARGET), Windows_NT)
 export TEST_USE_KOSHKIT_DIFF := 1
 WINDOWS_DIFF_BOOTSTRAP := verify_koshkit_diff
@@ -285,7 +293,7 @@ PYTHON ?= python3
 DASH ?= $(shell command -v dash)
 
 ifeq ($(origin BASHP), undefined)
-MODERN_BASH := $(shell ./find-modern-bash.sh)
+MODERN_BASH := $(shell ../scripts/find-modern-bash.sh)
 ifneq ($(MODERN_BASH),)
 BASHP := $(MODERN_BASH)
 endif

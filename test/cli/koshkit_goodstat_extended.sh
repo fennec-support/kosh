@@ -13,7 +13,7 @@ printf 'default-scope=%s\n' "$default_scope"
 filesystem_report=$($BIN -c 'koshkit --color never goodstat --filesystem "$1"' \
   goodstat "$fixture")
 case $filesystem_report in
-  *FIELD*VALUE*Filesystem*'Filesystem block size'*'Filesystem capacity'*)
+  *Type*Size*Filesystem*'Filesystem block size'*'Filesystem capacity'*)
     filesystem_shape=matched
     ;;
   *) filesystem_shape=wrong ;;
@@ -36,7 +36,7 @@ esac
 printf 'checksum-shape=%s\n' "$checksum_shape"
 
 case $checksum_report in
-  *FIELD*VALUE*) checksum_grid=matched ;;
+  *Type*Size*CRC32C*) checksum_grid=matched ;;
   *) checksum_grid=missing ;;
 esac
 printf 'checksum-grid=%s\n' "$checksum_grid"
@@ -47,7 +47,7 @@ printf 'unicode fixture\n' > "$unicode_fixture"
 unicode_report=$($BIN -c 'koshkit --color never goodstat "$1"' \
   goodstat "$unicode_fixture")
 case $unicode_report in
-  *"$unicode_name"*FIELD*VALUE*) unicode_grid=matched ;;
+  *"$unicode_name"*Type*Size*) unicode_grid=matched ;;
   *) unicode_grid=missing ;;
 esac
 printf 'unicode-grid=%s\n' "$unicode_grid"

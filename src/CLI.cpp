@@ -1172,15 +1172,24 @@ static fn append_report_grid(
     StringView indentation, bool should_show_header,
     usize column_gap_space_count) throws -> void
 {
-  if (columns.is_empty()) return;
+  let column_count = columns.count();
+  if (column_count == 0) {
+    for (let const &row : rows)
+      if (column_count < row.count()) column_count = row.count();
+  }
+  if (column_count == 0) return;
 
   let widths = ArrayList<usize>{columns.allocator()};
-  widths.reserve(columns.count());
-  for (let const &column : columns)
-    widths.push(toiletline::get_display_width(column.heading.view()));
+  widths.reserve(column_count);
+  for (usize index = 0; index < column_count; index++) {
+    usize width = 0;
+    if (index < columns.count())
+      width = toiletline::get_display_width(columns[index].heading.view());
+    widths.push(width);
+  }
 
   for (let const &row : rows) {
-    for (usize index = 0; index < columns.count(); index++) {
+    for (usize index = 0; index < column_count; index++) {
       if (index >= row.count()) continue;
       let const width = toiletline::get_display_width(row[index].text.view());
       if (widths[index] < width) widths[index] = width;
@@ -1199,22 +1208,23 @@ static fn append_report_grid(
 
   let const append_row = [&](const ArrayList<report_table_cell> &row) throws {
     output += indentation;
-    for (usize index = 0; index < columns.count(); index++) {
+    for (usize index = 0; index < column_count; index++) {
       let const text =
           index < row.count() ? row[index].text.view() : StringView{};
-      let const style = index < row.count() && !row[index].style.is_empty()
-                            ? row[index].style
-                            : columns[index].style;
-      append_grid_column(
-          output, text, widths[index],
-          columns[index].alignment == report_table_alignment::Right, style);
-      if (index + 1 < columns.count())
+      let style = index < columns.count() ? columns[index].style : StringView{};
+      if (index < row.count() && !row[index].style.is_empty())
+        style = row[index].style;
+      let const is_right_aligned =
+          index < columns.count() &&
+          columns[index].alignment == report_table_alignment::Right;
+      append_grid_column(output, text, widths[index], is_right_aligned, style);
+      if (index + 1 < column_count)
         output.append_repeated(' ', column_gap_space_count);
     }
     output += '\n';
   };
 
-  if (should_show_header) {
+  if (should_show_header && !columns.is_empty()) {
     let header = ArrayList<report_table_cell>{columns.allocator()};
     header.reserve(columns.count());
     for (let const &column : columns)

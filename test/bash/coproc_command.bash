@@ -57,9 +57,10 @@ printf '%s\n' "word wait status:$?"
 
 # The launch reports its own status. The status of the body is reached by wait.
 echo "== status of the coproc command =="
-coproc LAST { exit 7; }
+coproc LAST { read -r _; exit 7; }
 printf '%s\n' "launch status:$?"
 last_pid=$LAST_PID
+printf 'release\n' >&"${LAST[1]}"
 wait "$last_pid"
 printf '%s\n' "body status:$?"
 

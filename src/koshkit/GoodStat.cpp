@@ -150,9 +150,6 @@ fn append_subject(String &output, StringView operand,
 {
   let const should_color = color_mode == goodstat_color_mode::Colored;
   let table = ReportTable{allocator};
-  table.add_column("FIELD", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("VALUE");
   let const do_append_field = [&](StringView name, StringView value,
                                   StringView style) throws {
     let cells = ArrayList<report_table_cell_view>{allocator};

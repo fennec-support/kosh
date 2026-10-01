@@ -4,26 +4,15 @@ run_live_report() {
   live_report_path=$1
   live_command=$2
   : > "$live_report_path"
-  set -m
-  "$BIN" -c "$live_command" > "$live_report_path" &
-  live_pid=$!
-  set +m
-
-  live_attempt=0
-  live_report=
-  while [ "$live_attempt" -lt 250 ]; do
-    live_report=$(cat "$live_report_path")
-    case $live_report in
-      *ctrl*c\ to\ exit.*COMMAND*|*ctrl*c\ to\ exit.*RETRIES*) break ;;
-    esac
-    sleep 0.02
-    live_attempt=$((live_attempt + 1))
-  done
-
-  if kill -0 "$live_pid" 2> "$TEST_NULL_DEVICE"; then
-    kill -INT "$live_pid"
-  fi
-  wait "$live_pid"
+  "$BIN" -c \
+    '(attempt=0; while [ "$attempt" -lt 250 ]; do
+        if koshkit grep "ctrl+c to exit" "$1" > /dev/null 2>&1; then break; fi
+        koshkit sleep 0.02
+        attempt=$((attempt + 1))
+      done
+      koshkit sleep 0.1
+      kill -INT "$$") & '"$live_command" \
+    live "$live_report_path" > "$live_report_path"
   live_status=$?
   live_report=$(cat "$live_report_path")
 }

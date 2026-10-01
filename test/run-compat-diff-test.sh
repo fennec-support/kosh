@@ -7,7 +7,10 @@ trap '"$TEST_SYSTEM_RM" -rf "$CAPTURE_DIRECTORY"' EXIT
 RUNNER_STATUS=0
 
 capture_command() {
-  if "$@" > "$CAPTURE_DIRECTORY/stdout" 2> "$CAPTURE_DIRECTORY/stderr"; then
+  local TEST_FILE=$1
+  shift
+  if run_test_with_timeout "${COMPAT_TEST_TIMEOUT_SECONDS:-60}" \
+    "$@" > "$CAPTURE_DIRECTORY/stdout" 2> "$CAPTURE_DIRECTORY/stderr"; then
     CAPTURED_STATUS=0
   else
     CAPTURED_STATUS=$?
@@ -19,6 +22,15 @@ capture_command() {
   printf X >> "$CAPTURE_DIRECTORY/stderr"
   CAPTURED_STDERR=$(< "$CAPTURE_DIRECTORY/stderr")
   CAPTURED_STDERR=${CAPTURED_STDERR%X}
+
+  case $CAPTURED_STATUS in
+  124|125)
+    printf "\t%-64s harness failure, status %s\n" \
+      "$TEST_FILE" "$CAPTURED_STATUS"
+    RUNNER_STATUS=$CAPTURED_STATUS
+    return "$CAPTURED_STATUS"
+    ;;
+  esac
 }
 
 STDERR_DIRECTIVE='# compat-stderr: exact'
@@ -81,15 +93,17 @@ compare_one() {
     EXACT_STDERR=1
   fi
 
-  capture_command "$BIN" --no-traces --mood "$MOOD" "$TEST_FILE"
+  capture_command "$TEST_FILE" "$BIN" --no-traces --mood "$MOOD" \
+    "$TEST_FILE" || return
   EXPLICIT_STDOUT=$CAPTURED_STDOUT
   EXPLICIT_STDERR=$CAPTURED_STDERR
   EXPLICIT_STATUS=$CAPTURED_STATUS
-  capture_command "$BIN" --no-traces -I -c "$TEST_FILE"
+  capture_command "$TEST_FILE" "$BIN" --no-traces -I -c "$TEST_FILE" || \
+    return
   MIMIC_STDOUT=$CAPTURED_STDOUT
   MIMIC_STDERR=$CAPTURED_STDERR
   MIMIC_STATUS=$CAPTURED_STATUS
-  capture_command "$REFERENCE_SHELL" "$TEST_FILE"
+  capture_command "$TEST_FILE" "$REFERENCE_SHELL" "$TEST_FILE" || return
   REFERENCE_STDOUT=$CAPTURED_STDOUT
   REFERENCE_STDERR=$CAPTURED_STDERR
   REFERENCE_STATUS=$CAPTURED_STATUS
@@ -109,7 +123,8 @@ compare_one() {
   if [ -f "$ALTERNATIVE_FILE" ] && \
     { [ "$EXPLICIT_MATCHES" -eq 0 ] || [ "$MIMIC_MATCHES" -eq 0 ]; }
   then
-    capture_command "$REFERENCE_SHELL" "$ALTERNATIVE_FILE"
+    capture_command "$TEST_FILE" "$REFERENCE_SHELL" "$ALTERNATIVE_FILE" || \
+      return
     ALTERNATIVE_STDOUT=$CAPTURED_STDOUT
     ALTERNATIVE_STDERR=$CAPTURED_STDERR
     ALTERNATIVE_STATUS=$CAPTURED_STATUS
@@ -169,7 +184,7 @@ if [ -z "$BASH_SKIP_REASON" ]; then
     compare_one "$BASHP" "$TEST_FILE" .bash bash bash
   done
 else
-  MODERN_BASH=$(./find-modern-bash.sh)
+  MODERN_BASH=$(../scripts/find-modern-bash.sh)
   if [ -n "$MODERN_BASH" ]; then
     printf "\t%-64s FAILED :c\n" \
       "bashdiff ($BASH_SKIP_REASON, $MODERN_BASH is suitable)"

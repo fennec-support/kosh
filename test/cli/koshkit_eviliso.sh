@@ -56,7 +56,7 @@ printf 'detail-shape=%s\n' "$detail_shape"
 
 remote_report=$(run_report '--remote --all')
 case $remote_report in
-  *"Socket summary"*"Remote peers"*"FAMILY"*"PROTO"*"STATE"*"RECV-Q"*\
+  *"Socket summary"*"Remote sockets"*"Total sockets"*"Remote peers"*"FAMILY"*"PROTO"*"STATE"*"RECV-Q"*\
 *"SEND-Q"*"LOCAL"*"PEER"*"SOCKET"*"PID"*"UID"*"USER"*"NAME"*\
 *"COMMAND"*"NETNS"*"ORCHESTRATOR"*"RUNTIME"*"CONTAINER"*"CGROUP"*)
     remote_table=matched

@@ -568,10 +568,6 @@ fn GoodCore::execute(
   if (!FLAG_GOODCORE_QUIET.is_enabled()) {
     let const should_color = koshkit_should_color();
     let table = ReportTable{allocator};
-    table.add_column("FIELD", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("VALUE", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
     let cells = ArrayList<report_table_cell_view>{allocator};
     cells.reserve(2);
     cells.push({"Archive", colors::ansi::BOLD_CYAN});

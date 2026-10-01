@@ -32,7 +32,8 @@ for TEST_FILE in "$@"; do
     OUTPUT="$OUTPUT_DIRECTORY/$TEST_NAME.out"
   fi
 
-  BIN="$BIN" "$TEST_SHELL_COMMAND" "$TEST_FILE" > "$OUTPUT" 2>/dev/null
+  BIN="$BIN" run_test_with_timeout "${EDITOR_TEST_TIMEOUT_SECONDS:-60}" \
+    "$TEST_SHELL_COMMAND" "$TEST_FILE" > "$OUTPUT" 2>/dev/null
   DRIVER_STATUS=$?
   if is_driver_status_harness_failure "$DRIVER_STATUS" "$REFILL_MODE"; then
     printf "\t%-64s harness failure, status %s\n" \

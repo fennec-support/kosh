@@ -306,7 +306,7 @@ fn append_core_dump_report(String &output, Allocator allocator,
     }
   }
 
-  if (total_dump_count == 0) output += "No core dumps were found\n";
+  if (total_dump_count == 0) output += "  No core dumps were found\n";
 }
 
 constexpr i64 DEFAULT_LOG_ENTRY_COUNT = 5;

@@ -1232,10 +1232,6 @@ fn run_live_disk_io(const ExecContext &ec, f64 window_seconds,
 fn make_metric_table(Allocator allocator) throws -> ReportTable
 {
   let table = ReportTable{allocator};
-  table.add_column("METRIC", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("VALUE", report_table_alignment::Right,
-                   colors::ansi::BOLD_CYAN);
   return table;
 }
 

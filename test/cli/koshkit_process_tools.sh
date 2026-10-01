@@ -71,7 +71,8 @@ esac
 printf 'goodnode-status=%s\n' "$node_status"
 printf 'goodnode-path=%s\n' "$node_path_status"
 case $node_report in
-  *FIELD*VALUE*) node_grid=matched ;;
+  *FIELD*VALUE*) node_grid=unexpected-header ;;
+  *Type*Inode*Device*Links*) node_grid=matched ;;
   *) node_grid=missing ;;
 esac
 case $node_report in
@@ -83,7 +84,8 @@ printf 'goodnode-color=%s\n' "$node_color"
 
 default_report=$("$BIN" -c 'koshkit --color never evilio')
 case $default_report in
-  *'Memory'*'Disk I/O'*'Swap'*) default_shape=matched ;;
+  *'Memory'*'Disk I/O'*'Swap'*'Usage'*|*'Memory'*'Disk I/O'*'Swap'*'Status'*)
+    default_shape=matched ;;
   *) default_shape=wrong ;;
 esac
 case $default_report in

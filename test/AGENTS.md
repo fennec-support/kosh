@@ -62,12 +62,11 @@ temporary output. Refill is a mode of the same runner. A second script must not
 copy a timeout list, argument parser, golden comparison, or cleanup path.
 
 `run-test-suite.sh` bounds parallel workers and starts each harness runner.
-`run-bounded-cli-golden.sh` owns process-tree timeouts for CLI cases that can
-block. On POSIX, a bounded golden is launched under `/bin/sh`, which is busybox
-ash on the Alpine image, so its body is restricted to POSIX shell. A bash
-extension such as
-`$(<file)` or a here-string is silently empty there while the exit status still
-looks correct. `run-refill.sh` selects the normal harness runners in refill mode.
+`run-cli-test.sh` owns process-tree timeouts for CLI cases. On POSIX, it runs
+each case under the test shell selected by Make. Native, editor, and
+compatibility runners use the shared host timeout. The root Makefile also
+bounds the full test target. `run-refill.sh` selects the normal harness runners
+in refill mode.
 
 Auxiliary shell scripts use two-space indentation. They receive configuration
 through exported test variables. They do not reconstruct Make variables or

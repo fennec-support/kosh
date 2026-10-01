@@ -115,13 +115,13 @@ jobs:
 
       - name: Install the test shells
         run: |
-          brew install bash dash-shell
+          brew install bash dash-shell coreutils
           echo "BASHP=$(brew --prefix bash)/bin/bash" >> "$GITHUB_ENV"
           echo "DASH=$(brew --prefix dash-shell)/bin/dash" >> "$GITHUB_ENV"
 
       - name: Verify the test toolchain
         run: |
-          for tool in make clang++ python3 perl script expect mkfifo strings; do
+          for tool in make clang++ python3 perl script expect mkfifo strings gtimeout; do
             command -v "$tool"
           done
           test -x /bin/stty
@@ -200,7 +200,7 @@ jobs:
             throw "Unexpected shell platform: $shellPlatform"
           }
           sh.exe -c `
-            'for tool in env mkfifo mktemp rm script sed stat strings stty tee; do command -v "$tool" || exit 1; done'
+            'for tool in env mkfifo mktemp rm script sed stat strings stty tee; do command -v "$tool" || exit 1; done; test -x /usr/bin/timeout.exe'
           if ($LASTEXITCODE -ne 0) {
             throw "The MSYS2 golden test toolchain is incomplete"
           }
