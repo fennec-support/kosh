@@ -124,11 +124,8 @@ run_harness_item()
   cli)
     "$TEST_SHELL" run-cli-test.sh "$TEST_SHELL" "$TEST_ITEM"
     ;;
-  completion)
-    "$TEST_SHELL" run-completion-test.sh "$TEST_SHELL" "$TEST_ITEM"
-    ;;
-  highlight)
-    "$TEST_SHELL" run-highlight-test.sh "$TEST_SHELL" "$TEST_ITEM"
+  completion|highlight)
+    "$TEST_SHELL" run-editor-test.sh "$HARNESS_NAME" "$TEST_SHELL" "$TEST_ITEM"
     ;;
   esac
 }
@@ -174,8 +171,6 @@ print_platform_skips()
       printf "\t%-64s skipped, requires Linux\n" \
         "cli/${TEST_NAME#cli_}.sh"
     done
-    printf "\t%-64s skipped, separate sanitizer_live_probes target\n" \
-      cli/koshkit_live_sanitizers.sh
     ;;
   completion)
     for TEST_FILE in $SKIPPED_COMPLETION_INPUT; do

@@ -4,7 +4,7 @@
 dir=$(mktemp -d)
 trap 'rm -rf "$dir"' EXIT
 printf 'all: build test\n\nbuild:\n\ttrue\n\ntest: build\n\ttrue\n\nclean:\n\ttrue\n\n.PHONY: clean\n' > "$dir/Makefile"
-printf '{ "scripts": { "dev": "x", "build": "y", "lint:fix": "z" } }\n' > "$dir/package.json"
+printf '{ "description": "scripts", "metadata": { "scripts": { "fake": "x" } }, "scripts": { "dev": "x", "build": "y", "lint:fix": "z" } }\n' > "$dir/package.json"
 cd "$dir"
 echo "== make targets:"
 "$BIN" --debug-complete-at 'make ' </dev/null

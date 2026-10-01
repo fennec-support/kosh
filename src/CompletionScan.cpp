@@ -201,15 +201,53 @@ static fn parse_package_json_scripts(StringView text) throws
     -> ArrayList<String>
 {
   let scripts = ArrayList<String>{heap_allocator()};
-  let const section = StringView{"\"scripts\""};
-  let const section_start = text.find_substring(section);
-  if (!section_start.has_value()) return scripts;
+  usize i = 0;
+  usize object_depth = 0;
+  while (i < text.length) {
+    if (text[i] == '{') {
+      object_depth++;
+      i++;
+      continue;
+    }
+    if (text[i] == '}') {
+      if (object_depth > 0) object_depth--;
+      i++;
+      continue;
+    }
+    if (text[i] != '"') {
+      i++;
+      continue;
+    }
 
-  let i = *section_start + section.length;
-  while (i < text.length && text[i] != '{')
+    let const key_start = ++i;
+    while (i < text.length && text[i] != '"') {
+      if (text[i] == '\\' && i + 1 < text.length) i++;
+      i++;
+    }
+    if (i >= text.length) return scripts;
+
+    let const key_end = i++;
+    if (object_depth != 1 ||
+        text.substring_of_length(key_start, key_end - key_start) != "scripts")
+      continue;
+
+    while (i < text.length &&
+           (text[i] == ' ' || text[i] == '\t' || text[i] == '\n' ||
+            text[i] == '\r'))
+      i++;
+    if (i >= text.length || text[i] != ':') continue;
+
     i++;
-  if (i >= text.length) return scripts;
-  i++;
+    while (i < text.length &&
+           (text[i] == ' ' || text[i] == '\t' || text[i] == '\n' ||
+            text[i] == '\r'))
+      i++;
+    if (i >= text.length || text[i] != '{') continue;
+
+    i++;
+    break;
+  }
+
   usize depth = 1;
   let expecting_key = true;
   while (i < text.length && depth > 0) {

@@ -328,21 +328,6 @@ fn free_regex(compiled_regex &compiled) wontthrow -> void
   regfree(&compiled.re);
 }
 
-fn compile_search_regex(StringView pattern, compiled_regex &out,
-                        case_sensitivity sensitivity) throws
-    -> regex_compile_result
-{
-  let const is_case_insensitive = sensitivity == case_sensitivity::Insensitive;
-  const String pattern_text{heap_allocator(), pattern};
-  int compile_flags = 0;
-  if (is_case_insensitive) compile_flags |= REG_ICASE;
-
-  if (regcomp(&out.re, pattern_text.c_str(), compile_flags) != 0)
-    return regex_compile_result::Invalid;
-
-  return regex_compile_result::Ok;
-}
-
 fn regex_matches(compiled_regex &compiled, StringView subject) throws -> bool
 {
 #if defined REG_STARTEND

@@ -73,6 +73,7 @@ fn is_valid_trap_condition(StringView condition, mimic_mood mood) throws -> bool
     return mood != mimic_mood::Posix || condition == "EXIT";
 
   if (condition.is_all_decimal_digits()) return false;
+  if (condition == "CHLD") return true;
 
   return os::signal_number_from_name(condition).has_value();
 }

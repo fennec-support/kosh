@@ -59,14 +59,14 @@ if [ -n "${REFILL-}" ]; then
         "$SKIPPED_COMPLETION_INPUT" && \
         ! word_is_listed "completion/$TEST_NAME.sh" \
           "$UNREPRESENTABLE_COMPLETION_INPUT"; then
-        refill_harness run-completion-test.sh "$TEST_SHELL_COMMAND" \
+        refill_harness run-editor-test.sh completion "$TEST_SHELL_COMMAND" \
           "completion/$TEST_NAME.sh"
       fi
     fi
 
     if [ -f "highlight/$TEST_NAME.sh" ]; then
       DID_FIND_TEST=yes
-      refill_harness run-highlight-test.sh "$TEST_SHELL_COMMAND" \
+      refill_harness run-editor-test.sh highlight "$TEST_SHELL_COMMAND" \
         "highlight/$TEST_NAME.sh"
     fi
 
@@ -108,8 +108,8 @@ for TEST_FILE in completion/*.sh; do
   fi
   ACTIVE_COMPLETION_INPUT="$ACTIVE_COMPLETION_INPUT $TEST_FILE"
 done
-refill_harness run-completion-test.sh "$TEST_SHELL_COMMAND" \
+refill_harness run-editor-test.sh completion "$TEST_SHELL_COMMAND" \
   $ACTIVE_COMPLETION_INPUT
-refill_harness run-highlight-test.sh "$TEST_SHELL_COMMAND" highlight/*.sh
+refill_harness run-editor-test.sh highlight "$TEST_SHELL_COMMAND" highlight/*.sh
 
 exit "$REFILL_STATUS"

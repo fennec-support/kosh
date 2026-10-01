@@ -1447,11 +1447,6 @@ fn execute_regex(compiled_regex &compiled,
 
 fn free_regex(compiled_regex &compiled) wontthrow -> void;
 
-/* Compiles a basic search pattern with no capture for line-at-a-time grep. */
-fn compile_search_regex(StringView pattern, compiled_regex &out,
-                        case_sensitivity sensitivity) throws
-    -> regex_compile_result;
-
 fn regex_matches(compiled_regex &compiled, StringView subject) throws -> bool;
 fn regex_matches_null_terminated(compiled_regex &compiled,
                                  StringView subject) throws -> bool;

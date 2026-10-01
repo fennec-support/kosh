@@ -2,6 +2,10 @@ name: Build the cross toolchain image
 
 on:
   workflow_call:
+    inputs:
+      commit_sha:
+        required: true
+        type: string
     outputs:
       image:
         description: The cross toolchain image reference to pull and run.
@@ -22,6 +26,8 @@ jobs:
       image: ${{ steps.meta.outputs.image }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.commit_sha }}
 
       - name: Tag the image by the Dockerfile hash
         id: meta

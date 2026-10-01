@@ -141,7 +141,7 @@ if [ "${OS-}" = Windows_NT ]; then
   set -m
   BIN=$BIN BOUNDED_GOLDEN=$GOLDEN BOUNDED_TIMEOUT_SECONDS=$TIMEOUT_SECONDS \
     "$BIN" -p --mood sh -c \
-    'koshkit timeout -k 2s "$BOUNDED_TIMEOUT_SECONDS" "$BIN" "$BOUNDED_GOLDEN"' &
+    'koshkit timeout -k 2s "$BOUNDED_TIMEOUT_SECONDS" sh "$BOUNDED_GOLDEN"' &
   GOLDEN_PROCESS=$!
   set +m
   LAUNCH_PROCESS=$GOLDEN_PROCESS

@@ -12,7 +12,7 @@ run_live_report() {
   live_attempt=0
   live_report=
   while [ "$live_attempt" -lt 250 ]; do
-    live_report=$(< "$live_report_path")
+    live_report=$(cat "$live_report_path")
     case $live_report in
       *ctrl*c\ to\ exit.*COMMAND*|*ctrl*c\ to\ exit.*RETRIES*) break ;;
     esac
@@ -25,7 +25,7 @@ run_live_report() {
   fi
   wait "$live_pid"
   live_status=$?
-  live_report=$(< "$live_report_path")
+  live_report=$(cat "$live_report_path")
 }
 
 run_live_report "$TEST_TEMP_DIRECTORY/evilio-live-process-report" \

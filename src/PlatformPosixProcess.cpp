@@ -403,12 +403,25 @@ fn capture_program_output(const ArrayList<String> &argv,
   }
   close(read_end);
 
-  if (was_timed_out) signal_process(child_pid, SIGKILL);
   int wait_status = 0;
-  waitpid(child_pid, &wait_status, 0);
+  while (!was_timed_out) {
+    let const waited_pid = waitpid(child_pid, &wait_status, WNOHANG);
+    if (waited_pid == child_pid) return captured;
+    if (waited_pid < 0) {
+      if (errno == EINTR) continue;
+      return None;
+    }
 
-  if (was_timed_out) return None;
-  return captured;
+    if (monotonic_nanos() >= deadline_nanos) {
+      was_timed_out = true;
+      break;
+    }
+    poll(nullptr, 0, 1);
+  }
+
+  signal_process(child_pid, SIGKILL);
+  while (waitpid(child_pid, &wait_status, 0) < 0 && errno == EINTR) {}
+  return None;
 }
 
 fn give_controlling_terminal_to(process p) wontthrow -> void

@@ -8,3 +8,21 @@ printf 'all: build\n\ttrue\nbuild:\n\ttrue\ntest: build\n\ttrue\nclean:\n\ttrue\
 cd "$dir"
 echo "== make targets without gnu make:"
 PATH=/nonexistent "$BIN" --debug-complete-at 'make ' </dev/null
+
+cat > "$dir/make" <<'SH'
+#!/bin/sh
+: > probe-ran
+exec >/dev/null 2>&1
+exec sleep 4
+SH
+chmod +x "$dir/make"
+echo "== make targets after a timed out probe:"
+PATH="$dir${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" "$BIN" -c \
+  'koshkit timeout -k 1s 3s "$1" --debug-complete-at "make "' \
+  shell "$BIN" </dev/null
+printf 'completion-status=%s\n' "$?"
+if [ -f probe-ran ]; then
+  echo probe-started
+else
+  echo probe-not-started
+fi

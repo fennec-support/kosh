@@ -3,3 +3,10 @@ all
 build
 clean
 test
+== make targets after a timed out probe:
+all
+build
+clean
+test
+completion-status=0
+probe-started

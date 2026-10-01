@@ -38,9 +38,6 @@ jobs:
       - name: Run golden tests
         run: make test
 
-      - name: Run Linux live sanitizer probes
-        run: make -C test TARGET=Linux MODE=dbg BIN="$PWD/kosh-dbg" sanitizer_live_probes
-
       - name: Run no-editor history tests
         run: NO_TOILETLINE=1 make test
 

@@ -1716,14 +1716,6 @@ public:
     m_current_source_generation = source_generation;
     m_current_origin = steal(origin);
   }
-  pure fn get_current_source() const wontthrow -> const String *
-  {
-    return m_current_source;
-  }
-  pure fn get_current_origin() const wontthrow -> const String &
-  {
-    return m_current_origin;
-  }
   fn set_current_history_event_number(Maybe<usize> number) wontthrow -> void
   {
     m_current_history_event_number = steal(number);
@@ -1748,10 +1740,6 @@ public:
   fn set_current_location(SourceLocation location) wontthrow -> void
   {
     m_current_location = location;
-  }
-  pure fn get_current_location() const wontthrow -> const SourceLocation &
-  {
-    return m_current_location;
   }
   fn set_source_depth(usize depth) wontthrow -> void { m_source_depth = depth; }
   pure fn source_depth() const wontthrow -> usize { return m_source_depth; }
@@ -1783,14 +1771,6 @@ public:
   pure fn current_origin() const wontthrow -> const String &
   {
     return m_current_origin;
-  }
-  fn current_history_event_number() wontthrow -> Maybe<usize> &
-  {
-    return m_current_history_event_number;
-  }
-  pure fn current_history_event_number() const wontthrow -> Maybe<usize>
-  {
-    return m_current_history_event_number;
   }
   fn history_recording_root() wontthrow -> const Expression *&
   {
@@ -2750,7 +2730,6 @@ public:
                             SourceLocation call_site,
                             source_frame_kind kind) throws -> void;
   fn pop_root_source_frame() wontthrow -> void;
-  pure fn get_retained_source_generation() const wontthrow -> u64;
   pure fn scan_source_generation(const String *source) const wontthrow -> u64;
   pure fn source_generation_for(const String *source) const wontthrow -> u64;
   pure fn borrowed_frame_source(const source_frame &frame) const wontthrow

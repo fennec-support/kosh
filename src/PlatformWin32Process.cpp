@@ -325,39 +325,46 @@ fn capture_program_output(const ArrayList<String> &argv,
   let captured = String{heap_allocator()};
   const u64 deadline_nanos = monotonic_nanos() + timeout_nanos;
   bool was_timed_out = false;
+  bool has_pipe_closed = false;
   loop
   {
-    DWORD available_byte_count = 0;
-    if (PeekNamedPipe(read_end, nullptr, 0, nullptr, &available_byte_count,
-                      nullptr) == FALSE)
-    {
-      let const error = GetLastError();
-      if (error == ERROR_BROKEN_PIPE) break;
-      return None;
+    if (monotonic_nanos() >= deadline_nanos) {
+      was_timed_out = true;
+      break;
     }
 
-    if (available_byte_count != 0) {
-      char buffer[4096];
-      let const requested_count = available_byte_count < sizeof(buffer)
-                                      ? available_byte_count
-                                      : sizeof(buffer);
-      DWORD read_count = 0;
-      if (ReadFile(read_end, buffer, requested_count, &read_count, nullptr) ==
-          FALSE)
+    if (!has_pipe_closed) {
+      DWORD available_byte_count = 0;
+      if (PeekNamedPipe(read_end, nullptr, 0, nullptr, &available_byte_count,
+                        nullptr) == FALSE)
       {
-        return None;
+        if (GetLastError() != ERROR_BROKEN_PIPE) return None;
+        has_pipe_closed = true;
       }
-      captured.append(StringView{buffer, static_cast<usize>(read_count)});
-      continue;
+
+      if (available_byte_count != 0) {
+        char buffer[4096];
+        let const requested_count = available_byte_count < sizeof(buffer)
+                                        ? available_byte_count
+                                        : sizeof(buffer);
+        DWORD read_count = 0;
+        if (ReadFile(read_end, buffer, requested_count, &read_count, nullptr) ==
+            FALSE)
+        {
+          if (GetLastError() != ERROR_BROKEN_PIPE) return None;
+          has_pipe_closed = true;
+        } else {
+          captured.append(StringView{buffer, static_cast<usize>(read_count)});
+          continue;
+        }
+      }
     }
 
     if (WaitForSingleObject(process_info.hProcess, 0) == WAIT_OBJECT_0) {
       /* The pipe can report empty just before the final child write arrives. */
-      if (WaitForSingleObject(read_end, 1) == WAIT_OBJECT_0) continue;
-      break;
-    }
-    if (monotonic_nanos() >= deadline_nanos) {
-      was_timed_out = true;
+      if (!has_pipe_closed &&
+          WaitForSingleObject(read_end, 1) == WAIT_OBJECT_0)
+        continue;
       break;
     }
     Sleep(1);

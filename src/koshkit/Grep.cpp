@@ -228,10 +228,10 @@ fn Grep::execute(const ExecContext &ec, EvalContext &cxt,
 
   os::compiled_regex compiled;
   if (!should_use_literal_search) {
-    if (os::compile_search_regex(pattern, compiled,
-                                 should_ignore_case
-                                     ? os::case_sensitivity::Insensitive
-                                     : os::case_sensitivity::Sensitive) !=
+    if (os::compile_basic_regex(pattern, compiled,
+                                should_ignore_case
+                                    ? os::case_sensitivity::Insensitive
+                                    : os::case_sensitivity::Sensitive) !=
         os::regex_compile_result::Ok)
     {
       report_soft_koshkit_util_error(

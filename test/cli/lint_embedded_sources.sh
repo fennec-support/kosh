@@ -66,6 +66,7 @@ EOF
 cat > "$root/package.json" <<'EOF'
 {
   "name": "embedded-test",
+  "metadata": { "scripts": { "ignored": "echo nested" } },
   "scripts": {
     "check": "printf '%s\\n' \"$PACKAGE_EMBEDDED\"; missing_package_executable"
   }

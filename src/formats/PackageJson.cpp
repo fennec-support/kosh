@@ -37,9 +37,21 @@ fn parse_package_json_format(const parser_format_input &input,
                              parsed_format_document &document) throws -> void
 {
   usize position = 0;
+  usize object_depth = 0;
   while (position < input.source.length) {
     position = skip_json_space(input.source, position);
-    if (position >= input.source.length || input.source[position] != '"') {
+    if (position >= input.source.length) return;
+    if (input.source[position] == '{') {
+      object_depth++;
+      position++;
+      continue;
+    }
+    if (input.source[position] == '}') {
+      if (object_depth > 0) object_depth--;
+      position++;
+      continue;
+    }
+    if (input.source[position] != '"') {
       position++;
       continue;
     }
@@ -47,6 +59,7 @@ fn parse_package_json_format(const parser_format_input &input,
     let const key_end = json_string_end(input.source, key_start);
     if (key_end >= input.source.length) return;
     position = skip_json_space(input.source, key_end + 1);
+    if (object_depth != 1) continue;
     if (position >= input.source.length || input.source[position] != ':')
       continue;
     position = skip_json_space(input.source, position + 1);

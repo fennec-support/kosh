@@ -18,16 +18,58 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  resolve:
+    name: Resolve release commit and verify CI
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      sha: ${{ steps.revision.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Resolve the selected commit
+        id: revision
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Require green CI for the selected commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_SHA: ${{ steps.revision.outputs.sha }}
+        run: |
+          run_id=$(gh api \
+            "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$COMMIT_SHA&event=push&per_page=1" \
+            --jq '.workflow_runs[0] | select(.status == "completed" and .conclusion == "success") | .id')
+          if [ -z "$run_id" ]; then
+            echo "The selected commit has no completed successful CI run." >&2
+            exit 1
+          fi
+          successful_jobs=$(gh api \
+            "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?per_page=100" \
+            --jq '[.jobs[] | select(.conclusion == "success" and (.name == "Build, test and bench" or .name == "Run debug build tests on macOS" or .name == "Run debug build tests on Windows"))] | length')
+          if [ "$successful_jobs" -ne 3 ]; then
+            echo "The selected commit has no green Linux, macOS, and Windows CI jobs." >&2
+            exit 1
+          fi
+
   build-image:
     name: Build or pull the cached image
+    needs: resolve
     uses: ./.github/workflows/build-image.yml
+    with:
+      commit_sha: ${{ needs.resolve.outputs.sha }}
     permissions:
       contents: read
       packages: write
 
   build:
     name: Release / Cross-compile
-    needs: build-image
+    needs:
+      - resolve
+      - build-image
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -39,7 +81,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           submodules: recursive
-          ref: ${{ github.event.inputs.ref || github.ref }}
+          ref: ${{ needs.resolve.outputs.sha }}
 
       - name: Log in to the registry
         uses: docker/login-action@v4
@@ -74,6 +116,7 @@ jobs:
 
   build-linux-arm64:
     name: Release / Build Linux arm64
+    needs: resolve
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
@@ -83,7 +126,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           submodules: recursive
-          ref: ${{ github.event.inputs.ref || github.ref }}
+          ref: ${{ needs.resolve.outputs.sha }}
 
       - name: Build the native Linux arm64 binary
         run: |
@@ -104,6 +147,7 @@ jobs:
   publish:
     name: Release / Attach binaries
     needs:
+      - resolve
       - build
       - build-linux-arm64
     runs-on: ubuntu-24.04
@@ -111,7 +155,28 @@ jobs:
       contents: write
     env:
       VERSION: ${{ github.event.inputs.tag || github.ref_name }}
+      COMMIT_SHA: ${{ needs.resolve.outputs.sha }}
     steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+
+      - name: Check an existing release tag
+        run: |
+          if git ls-remote --exit-code --refs origin \
+            "refs/tags/$VERSION" >/dev/null; then
+            git fetch --force --no-tags origin \
+              "refs/tags/$VERSION:refs/tags/$VERSION"
+            release_sha=$(git rev-parse "refs/tags/$VERSION^{commit}")
+            if [ "$release_sha" != "$COMMIT_SHA" ]; then
+              echo "The release tag targets a different commit." >&2
+              exit 1
+            fi
+          else
+            status=$?
+            if [ "$status" -ne 2 ]; then exit "$status"; fi
+          fi
+
       - name: Download the release binaries
         uses: actions/download-artifact@v4
         with:
@@ -129,17 +194,24 @@ jobs:
       - name: Create the prerelease when it does not exist
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_REF: ${{ github.event.inputs.ref }}
         run: |
           if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             exit 0
           fi
           gh release create "$VERSION" --repo "$GITHUB_REPOSITORY" \
-            --target "$RELEASE_REF" --title "$VERSION" --notes '<TBD>' \
+            --target "$COMMIT_SHA" --title "$VERSION" --notes '<TBD>' \
             --prerelease ||
             gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null
 
       - name: Attach the binaries to the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "$VERSION" dist/* --clobber --repo "$GITHUB_REPOSITORY"
+        run: |
+          git fetch --force --no-tags origin \
+            "refs/tags/$VERSION:refs/tags/$VERSION"
+          release_sha=$(git rev-parse "refs/tags/$VERSION^{commit}")
+          if [ "$release_sha" != "$COMMIT_SHA" ]; then
+            echo "The release tag targets a different commit." >&2
+            exit 1
+          fi
+          gh release upload "$VERSION" dist/* --clobber --repo "$GITHUB_REPOSITORY"

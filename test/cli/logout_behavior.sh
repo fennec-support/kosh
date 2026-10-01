@@ -17,7 +17,7 @@ echo "== bare logout keeps the status the action found:"
 "$BIN" -l --no-init-files -c 'trap "echo action-ran" EXIT; logout' 2>&1
 echo "rc=$?"
 echo "== an external last command in the action keeps the logout status:"
-"$BIN" -l --no-init-files -c 'trap "/bin/echo external-last" EXIT; logout 6' \
+"$BIN" -l --no-init-files -c 'trap '"'"'"$BIN" -c "echo external-last"'"'"' EXIT; logout 6' \
   2>&1; echo "rc=$?"
 echo "== an exit inside the action replaces the logout status:"
 "$BIN" -l --no-init-files -c 'trap "echo head; exit 9" EXIT; logout 7' 2>&1

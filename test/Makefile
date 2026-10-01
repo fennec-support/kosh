@@ -10,7 +10,7 @@ DIFF_FLAGS := -u
 MODE ?= dbg
 ARCH ?= $(shell uname -m)
 NO_TOILETLINE ?= 0
-IS_NONDEBUG_BUILD := $(if $(filter rel prof cov cosmo,$(MODE)),1,0)
+IS_NONDEBUG_BUILD := $(if $(filter rel tinyrel prof cov cosmo,$(MODE)),1,0)
 export IS_NONDEBUG_BUILD
 BUILD_VARIANT_SUFFIX := $(if $(filter 1,$(NO_TOILETLINE)),-no-toiletline,)
 ifeq ($(OS), Windows_NT)
@@ -134,10 +134,6 @@ cli_%: expected/%.out $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
 	@BIN='$(BIN)' DIFF_FLAGS='$(DIFF_FLAGS)' FAILED_LIST='$(FAILED_LIST)' \
 		$(SHELL) run-cli-test.sh '$(SHELL)' cli/$*.sh
 
-sanitizer_live_probes: $(BIN)
-	@BIN='$(BIN)' TARGET='$(TARGET)' TEST_NULL_DEVICE='$(TEST_NULL_DEVICE)' \
-		$(SHELL) cli/koshkit_live_sanitizers.sh
-
 pty_live_probes: $(BIN)
 	@BIN='$(BIN)' TARGET='$(TARGET)' python3 cli/koshkit_live_pty.py
 
@@ -158,7 +154,7 @@ endif
 
 completion_%: expected/%.out $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
 	@rm -f '$(FAILED_LIST)' && rm -rf '$(FAILED_LIST).d'
-	@$(SHELL) run-completion-test.sh '$(SHELL)' completion/$*.sh
+	@$(SHELL) run-editor-test.sh completion '$(SHELL)' completion/$*.sh
 
 ifeq ($(TARGET), Windows_NT)
 WINDOWS_SKIPPED_TEST_NAMES := \
@@ -233,7 +229,8 @@ WINDOWS_SKIPPED_COMPLETION_NAMES := \
 	completion_help_options_trusted_dir_only \
 	completion_help_subcommand_second_level \
 	completion_help_subcommand_third_level \
-	completion_help_subcommands_no_colon
+	completion_help_subcommands_no_colon \
+	completion_make_targets_fallback
 
 $(WINDOWS_SKIPPED_COMPLETION_NAMES):
 	@printf "	%-64s skipped, needs a POSIX helper executable\n" "$@"
@@ -254,15 +251,14 @@ completion_tests: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
 highlight_%: expected/%.out $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
 	@rm -f '$(FAILED_LIST)' && rm -rf '$(FAILED_LIST).d'
 	@BIN='$(BIN)' DIFF_FLAGS='$(DIFF_FLAGS)' FAILED_LIST='$(FAILED_LIST)' \
-		$(SHELL) run-highlight-test.sh '$(SHELL)' highlight/$*.sh
+		$(SHELL) run-editor-test.sh highlight '$(SHELL)' highlight/$*.sh
 
 highlight_tests: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
 	@$(SHELL) run-test-suite.sh highlight
 
 SKIPPED_TEST_NAMES := $(WINDOWS_SKIPPED_TEST_NAMES)
 SKIPPED_CLI_INPUT := $(patsubst cli_%,cli/%.sh,\
-	$(WINDOWS_SKIPPED_CLI_NAMES) $(NON_LINUX_SKIPPED_CLI_NAMES)) \
-	cli/koshkit_live_sanitizers.sh
+	$(WINDOWS_SKIPPED_CLI_NAMES) $(NON_LINUX_SKIPPED_CLI_NAMES))
 SKIPPED_COMPLETION_INPUT := \
 	$(patsubst completion_%,completion/%.sh,$(WINDOWS_SKIPPED_COMPLETION_NAMES))
 UNREPRESENTABLE_COMPLETION_INPUT := \

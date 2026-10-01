@@ -8,11 +8,17 @@ if [ "${1-}" = --refill ]; then
   shift
 fi
 
-TEST_SHELL_COMMAND=$1
-shift
+TEST_GROUP=$1
+TEST_SHELL_COMMAND=$2
+shift 2
+
+case $TEST_GROUP in
+  completion|highlight) ;;
+  *) printf 'invalid editor test group: %s\n' "$TEST_GROUP" >&2; exit 125 ;;
+esac
 
 if [ "${IS_NONDEBUG_BUILD:-0}" = 1 ]; then
-  printf "\t%-64s skipped, release binary\n" completion
+  printf "\t%-64s skipped, release binary\n" "$TEST_GROUP"
   exit 0
 fi
 
@@ -21,7 +27,7 @@ for TEST_FILE in "$@"; do
   if [ "$REFILL_MODE" = yes ]; then
     OUTPUT="expected/.$TEST_NAME.out.tmp"
   else
-    OUTPUT_DIRECTORY="$TEST_TEMP_DIRECTORY/results/completion"
+    OUTPUT_DIRECTORY="$TEST_TEMP_DIRECTORY/results/$TEST_GROUP"
     mkdir -p "$OUTPUT_DIRECTORY"
     OUTPUT="$OUTPUT_DIRECTORY/$TEST_NAME.out"
   fi
@@ -30,7 +36,7 @@ for TEST_FILE in "$@"; do
   DRIVER_STATUS=$?
   if is_driver_status_harness_failure "$DRIVER_STATUS" "$REFILL_MODE"; then
     printf "\t%-64s harness failure, status %s\n" \
-      "completion/$TEST_NAME.sh" "$DRIVER_STATUS"
+      "$TEST_GROUP/$TEST_NAME.sh" "$DRIVER_STATUS"
     rm -f "$OUTPUT"
     if [ "$TEST_STATUS" -eq 0 ]; then
       TEST_STATUS=$DRIVER_STATUS
@@ -40,17 +46,17 @@ for TEST_FILE in "$@"; do
 
   if [ "$REFILL_MODE" = yes ]; then
     mv "$OUTPUT" "expected/$TEST_NAME.out"
-    printf "\t%-64s %s.out\n" "completion/$TEST_NAME.sh" "$TEST_NAME"
+    printf "\t%-64s %s.out\n" "$TEST_GROUP/$TEST_NAME.sh" "$TEST_NAME"
     continue
   fi
 
   if diff $DIFF_FLAGS "expected/$TEST_NAME.out" "$OUTPUT" >/dev/null 2>&1; then
-    printf "\t%-64s ok\033[K\r" "completion/$TEST_NAME.sh"
+    printf "\t%-64s ok\033[K\r" "$TEST_GROUP/$TEST_NAME.sh"
   else
-    set_golden_failure_file "completion-$TEST_NAME"
+    set_golden_failure_file "$TEST_GROUP-$TEST_NAME"
     diff $DIFF_FLAGS "expected/$TEST_NAME.out" "$OUTPUT" | \
       tee -a "$GOLDEN_FAILURE_FILE"
-    printf "\t%-64s FAILED :c\n" "completion/$TEST_NAME.sh"
+    printf "\t%-64s FAILED :c\n" "$TEST_GROUP/$TEST_NAME.sh"
     if [ "$TEST_STATUS" -eq 0 ]; then
       TEST_STATUS=1
     fi

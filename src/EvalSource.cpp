@@ -761,11 +761,6 @@ fn EvalContext::clear_retained_sources() wontthrow -> void
   source_store().retained_source_generation()++;
 }
 
-pure fn EvalContext::get_retained_source_generation() const wontthrow -> u64
-{
-  return source_store().retained_source_generation();
-}
-
 pure fn
 EvalContext::scan_source_generation(const String *source) const wontthrow -> u64
 {

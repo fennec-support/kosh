@@ -51,11 +51,14 @@ append_result_diff() {
   local REFERENCE_STDERR=$7
   local REFERENCE_STATUS=$8
 
+  printf 'stdout\n%s\nstderr\n%s\nstatus\n%s\n' \
+    "$ACTUAL_STDOUT" "$ACTUAL_STDERR" "$ACTUAL_STATUS" > \
+    "$CAPTURE_DIRECTORY/diff-actual"
+  printf 'stdout\n%s\nstderr\n%s\nstatus\n%s\n' \
+    "$REFERENCE_STDOUT" "$REFERENCE_STDERR" "$REFERENCE_STATUS" > \
+    "$CAPTURE_DIRECTORY/diff-reference"
   diff $DIFF_FLAGS --label "$ACTUAL_LABEL" --label "$REFERENCE_LABEL" \
-    <(printf 'stdout\n%s\nstderr\n%s\nstatus\n%s\n' \
-      "$ACTUAL_STDOUT" "$ACTUAL_STDERR" "$ACTUAL_STATUS") \
-    <(printf 'stdout\n%s\nstderr\n%s\nstatus\n%s\n' \
-      "$REFERENCE_STDOUT" "$REFERENCE_STDERR" "$REFERENCE_STATUS") \
+    "$CAPTURE_DIRECTORY/diff-actual" "$CAPTURE_DIRECTORY/diff-reference" \
     >> "$GOLDEN_FAILURE_FILE"
 }
 

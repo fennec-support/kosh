@@ -426,11 +426,9 @@ LINK_LIBRARIES += -Wl,/entry:wmainCRTStartup
 endif
 endif
 
-REGEX_COMPILER_FLAGS := $(filter-out -std=c++23 -fno-rtti,$(CXXFLAGS)) -std=c11 \
-	-I../vendor/regex
+REGEX_COMPILER_FLAGS := \
+	$(filter-out -std=c++23 -fno-rtti,$(CXXFLAGS)) -std=c11 -I../vendor/regex
 
-# A bare `make` builds the shell, the same as `make kosh`, rather than the first
-# object the rules below would otherwise name as the default goal.
 .DEFAULT_GOAL := kosh
 
 COMMIT_HASH_STAMP := $(OBJECT_DIRECTORY)/.commit-hash
@@ -455,9 +453,6 @@ $(COMMIT_HASH_STAMP): force_commit_hash | dirs
 
 $(COMMIT_HASH_OBJECTS): $(COMMIT_HASH_STAMP)
 
-# Every object is built into $(OBJECT_DIRECTORY), so its directory tree must exist first.
-# The order-only prerequisite creates it before any compile, so a plain
-# `make MODE=rel` from a clean tree works without first running the kosh target.
 $(OBJECTS): | dirs
 
 $(OBJECT_DIRECTORY)/%.o: %.cpp Makefile

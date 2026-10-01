@@ -69,6 +69,9 @@ measure_command() {
 
   TIMING=$(<"$TIME_OUTPUT")
   TIMING=${TIMING%$'\r'}
+  if [[ $TIMING =~ ^([0-9]+)[.]:00$ ]]; then
+    TIMING="$((10#${BASH_REMATCH[1]} + 1)).000"
+  fi
   if [[ ! $TIMING =~ ^[0-9]+[.][0-9]{3}$ ]]; then
     echo "benchmark command produced an invalid timing '$TIMING'" >&2
     return 1
