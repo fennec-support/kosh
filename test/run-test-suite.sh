@@ -102,14 +102,47 @@ wait_for_worker_slot()
     return
   fi
 
-  set -- $WORKER_PIDS
-  WORKER_PID=$1
-  shift
-  WAIT_STATUS=0
-  wait "$WORKER_PID" || WAIT_STATUS=$?
-  [ "$WORKER_STATUS" -ne 0 ] || WORKER_STATUS=$WAIT_STATUS
-  WORKER_PIDS="$*"
-  WORKER_COUNT=$((WORKER_COUNT - 1))
+  if [ "${OS-}" = Windows_NT ]; then
+    set -- $WORKER_PIDS
+    WORKER_PID=$1
+    shift
+    WAIT_STATUS=0
+    wait "$WORKER_PID" || WAIT_STATUS=$?
+    [ "$WORKER_STATUS" -ne 0 ] || WORKER_STATUS=$WAIT_STATUS
+    WORKER_PIDS="$*"
+    WORKER_COUNT=$((WORKER_COUNT - 1))
+    return
+  fi
+
+  while :; do
+    RUNNING_WORKER_PIDS=$(jobs -pr)
+    for WORKER_PID in $WORKER_PIDS; do
+      IS_RUNNING=no
+      for RUNNING_WORKER_PID in $RUNNING_WORKER_PIDS; do
+        if [ "$WORKER_PID" = "$RUNNING_WORKER_PID" ]; then
+          IS_RUNNING=yes
+          break
+        fi
+      done
+      if [ "$IS_RUNNING" = yes ]; then
+        continue
+      fi
+
+      WAIT_STATUS=0
+      wait "$WORKER_PID" || WAIT_STATUS=$?
+      [ "$WORKER_STATUS" -ne 0 ] || WORKER_STATUS=$WAIT_STATUS
+      REMAINING_WORKER_PIDS=
+      for REMAINING_WORKER_PID in $WORKER_PIDS; do
+        if [ "$REMAINING_WORKER_PID" != "$WORKER_PID" ]; then
+          REMAINING_WORKER_PIDS="$REMAINING_WORKER_PIDS $REMAINING_WORKER_PID"
+        fi
+      done
+      WORKER_PIDS=$REMAINING_WORKER_PIDS
+      WORKER_COUNT=$((WORKER_COUNT - 1))
+      return
+    done
+    sleep 0.01
+  done
 }
 
 run_harness_item()

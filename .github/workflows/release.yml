@@ -49,8 +49,8 @@ jobs:
           fi
           successful_jobs=$(gh api \
             "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?per_page=100" \
-            --jq '[.jobs[] | select(.conclusion == "success" and (.name == "Build, test and bench" or .name == "Run debug build tests on macOS" or .name == "Run debug build tests on Windows"))] | length')
-          if [ "$successful_jobs" -ne 3 ]; then
+            --jq '[.jobs[] | select(.conclusion == "success" and (.name == "Build, test and bench" or .name == "Run debug build tests on macOS" or .name == "Run remaining debug tests on macOS" or .name == "Run debug build tests on Windows"))] | length')
+          if [ "$successful_jobs" -ne 4 ]; then
             echo "The selected commit has no green Linux, macOS, and Windows CI jobs." >&2
             exit 1
           fi

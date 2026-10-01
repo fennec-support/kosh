@@ -132,7 +132,32 @@ jobs:
           python3 --version
 
       - name: Run debug tests
-        run: make MODE=dbg test
+        run: |
+          make MODE=dbg kosh
+          make -C test MODE=dbg cli_tests
+
+  debug-macos-other:
+    name: Run remaining debug tests on macOS
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Install the test shells
+        run: |
+          brew install bash dash-shell coreutils
+          echo "BASHP=$(brew --prefix bash)/bin/bash" >> "$GITHUB_ENV"
+          echo "DASH=$(brew --prefix dash-shell)/bin/dash" >> "$GITHUB_ENV"
+
+      - name: Run editor tests
+        run: make MODE=dbg toiletline_test
+
+      - name: Run remaining debug tests
+        run: >-
+          gtimeout -k 2s 300 make -C test MODE=dbg
+          kosh_tests highlight_tests completion_tests compatdiff
 
   debug-windows:
     name: Run debug build tests on Windows
@@ -234,6 +259,15 @@ jobs:
       - name: Run debug tests
         shell: pwsh
         run: make.exe SHELL=C:/msys64/usr/bin/sh.exe MODE=dbg test
+
+      - name: Diagnose pipeline launch
+        if: failure()
+        shell: pwsh
+        run: |
+          $env:KOSH_FLAGS = '--debug-logging=debug'
+          & C:/msys64/usr/bin/timeout.exe -k 2s 60 `
+            ./kosh-dbg.exe -c 'echo pipeline | koshkit cat'
+          Write-Host "Pipeline status: $LASTEXITCODE"
 
       - name: Run no-editor history tests
         shell: pwsh

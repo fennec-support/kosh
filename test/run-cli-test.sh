@@ -133,7 +133,7 @@ if [ "${1-}" = --bounded ]; then
   fi
 
   GOLDEN_LAUNCHER='printf "%s\n" "$$" > "$GOLDEN_SESSION_FILE"
-  /bin/sh "$1"
+  "$TEST_SHELL_COMMAND" "$1"
   printf "%s\n" "$?" > "$GOLDEN_STATUS_FILE"'
 
   set -m
