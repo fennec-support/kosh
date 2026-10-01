@@ -1,12 +1,16 @@
 # koshka-oriented shell
 
-[![Koshka is at least 3 times faster than Bash](https://github.com/toiletbril/kosh/actions/workflows/ci.yml/badge.svg)](https://github.com/toiletbril/kosh/actions/workflows/ci.yml)
+<center><img height=512 src="assets/logo.png"/></center>
+
+---
 
 0.1.0 has been released! See the [Release Blog Post](https://fennec.support/scribbles/shell-release).
 
 **The project was renamed in 0.2.0.** `shit` became `kosh`, `shitbox` became
 `koshkit`, and all prefixes now use `kosh` or `KOSH_`. I got over the funny
 name. Thanks.
+
+[![Koshka is at least 3 times faster than Bash](https://github.com/toiletbril/kosh/actions/workflows/ci.yml/badge.svg)](https://github.com/toiletbril/kosh/actions/workflows/ci.yml)
 
 ---
 
@@ -229,3 +233,5 @@ $ make uninstall
 
 Assuming the same arch and target, the running binary can install itself on an
 SSH target with a builtin command: `assimilate user@host`.
+
+<center><img height=256 src="assets/favicon.png"/></center>
