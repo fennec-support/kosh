@@ -17,15 +17,24 @@ jobs:
           apk add --no-cache \
             nodejs git git-doc make build-base musl-dev linux-headers clang \
             llvm lld compiler-rt yash bash dash zsh busybox coreutils mandoc \
-            util-linux-misc python3
+            util-linux-misc python3 expect
           [ -e /bin/dash ] || ln -s /usr/bin/dash /bin/dash
           git config --global --add safe.directory '*'
           llvm_bin=$(find /usr/lib /usr/bin -name llvm-profdata 2>/dev/null \
             | head -1 | xargs -r dirname)
           [ -n "$llvm_bin" ] && echo "$llvm_bin" >> "$GITHUB_PATH"
-          clang++ --version
-          ld.lld --version
-          busybox | head -1
+
+      - name: Verify the test toolchain
+        run: |
+          for tool in make clang++ python3 perl script expect mkfifo strings; do
+            command -v "$tool"
+          done
+          test -x /bin/stty
+          bash --version | head -1
+          dash -c 'echo dash available'
+          make --version | head -1
+          clang++ --version | head -1
+          python3 --version
 
       - name: Checkout
         uses: actions/checkout@v5
@@ -130,13 +139,13 @@ jobs:
           clang++ --version | head -1
           python3 --version
 
+      - name: Build ASAN binary
+        run: make kosh
+
       - name: Run golden tests
         run: |
-          make MODE=dbg kosh
-          make -C test MODE=dbg cli_tests
-          make MODE=dbg toiletline_test
-          make -C test MODE=dbg kosh_tests highlight_tests completion_tests
-          make -C test MODE=dbg compatdiff
+          make test
+          NO_TOILETLINE=1 make test
 
   debug-windows:
     name: Run debug build tests on Windows
@@ -222,6 +231,11 @@ jobs:
           sh --version | Select-Object -First 1
           python3 --version
 
+      - name: Build ASAN binary
+        run: make.exe kosh
+
       - name: Run golden tests
         shell: pwsh
-        run: make.exe MODE=dbg test
+        run: |
+          make.exe test
+          NO_TOILETLINE=1 make.exe test
