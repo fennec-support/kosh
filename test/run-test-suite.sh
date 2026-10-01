@@ -1,7 +1,7 @@
 #!/bin/bash
 . ./utils.sh
 
-if [ -t 0 ] && [ -t 1 ]; then
+if [ "${OS-}" != Windows_NT ]; then
   set -m
 fi
 
