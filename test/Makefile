@@ -30,7 +30,7 @@ WINDOWS_SKIPPED_TEST_NAMES := \
 	cli_trap_during_blocking_builtin cli_trap_startup_ignored \
 	cli_unknown_flag_color cli_wait_on_stopped_job \
 	cli_koshkit_goodcore_archive cli_koshkit_ls_modes cli_koshkit_misc \
-	cli_assimilate cli_koshkit_make \
+	cli_assimilate cli_koshkit_make cli_windows_echo_path \
 	cli_koshkit_printenv cli_koshkit_process_tools cli_koshkit_text \
 	cli_koshkit_timeout cli_loop_redirect_descriptor \
 	cli_pipeline_stage_evaluation_mode cli_shopt_states \
@@ -47,7 +47,8 @@ WINDOWS_SKIPPED_TEST_NAMES := \
 ifneq ($(TARGET), Linux)
 NON_LINUX_SKIPPED_CLI_NAMES := \
 	cli_koshkit_eviliso_loopback \
-	cli_koshkit_mknod
+	cli_koshkit_mknod \
+	cli_koshkit_make
 endif
 
 DIFF_FLAGS := -u

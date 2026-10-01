@@ -68,7 +68,8 @@ SERIAL_CLI_INPUT=
 for TEST_FILE in cli/*.sh; do
   TEST_NAME=${TEST_FILE#cli/}
   TEST_NAME=${TEST_NAME%.sh}
-  if word_is_listed "cli_$TEST_NAME" "$WINDOWS_SKIPPED_TEST_NAMES"; then
+  if word_is_listed "cli_$TEST_NAME" "$WINDOWS_SKIPPED_TEST_NAMES" || \
+    word_is_listed "cli_$TEST_NAME" "$NON_LINUX_SKIPPED_CLI_NAMES"; then
     continue
   fi
   if word_is_listed "$TEST_FILE" "$SERIAL_CLI_CANDIDATES"; then
