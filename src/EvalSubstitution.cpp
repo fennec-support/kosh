@@ -701,6 +701,8 @@ fn EvalContext::run_captured_substitution(const Expression *ast,
         error = std::current_exception();
       }
     }
+    if (error)
+      render_contained_substitution_error(error, source.view());
     do_cleanup();
 
     if (drain_context.data != nullptr) {
@@ -719,7 +721,6 @@ fn EvalContext::run_captured_substitution(const Expression *ast,
          bash holds a fatal expansion error to the command substitution. */
       LOG(Debug, "the command substitution failed, containing the error with "
                  "status 1");
-      render_contained_substitution_error(error, source.view());
       execution_store().set_last_exit_status(1);
     }
 
