@@ -157,7 +157,10 @@ jobs:
       - name: Run remaining debug tests
         run: >-
           gtimeout -k 2s 300 make -C test MODE=dbg
-          kosh_tests highlight_tests completion_tests compatdiff
+          kosh_tests highlight_tests completion_tests
+
+      - name: Run compatibility tests
+        run: gtimeout -k 2s 300 make -C test MODE=dbg compatdiff
 
   debug-windows:
     name: Run debug build tests on Windows
@@ -185,14 +188,19 @@ jobs:
             -Name AllowDevelopmentWithoutDevLicense -Value 1 `
             -PropertyType DWord -Force | Out-Null
           $makeRoot = 'C:\GnuWin32'
-          winget install --id GnuWin32.Make --exact --version 3.81 `
-            --source winget --location $makeRoot --silent `
-            --accept-package-agreements --accept-source-agreements `
-            --disable-interactivity
-          if ($LASTEXITCODE -ne 0) {
-            throw "WinGet failed to install GNU Make, exit $LASTEXITCODE"
-          }
           $makePath = "$makeRoot\bin\make.exe"
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            winget install --id GnuWin32.Make --exact --version 3.81 `
+              --source winget --location $makeRoot --silent `
+              --accept-package-agreements --accept-source-agreements `
+              --disable-interactivity
+            $installStatus = $LASTEXITCODE
+            if (Test-Path -LiteralPath $makePath) { break }
+            if ($attempt -eq 3) {
+              throw "WinGet failed to install GNU Make, exit $installStatus"
+            }
+            Start-Sleep -Seconds 5
+          }
           if (-not (Test-Path -LiteralPath $makePath)) {
             throw "WinGet did not install GNU Make at $makePath"
           }
@@ -257,11 +265,12 @@ jobs:
           python3 --version
 
       - name: Run debug tests
+        id: debug_tests
         shell: pwsh
         run: make.exe SHELL=C:/msys64/usr/bin/sh.exe MODE=dbg test
 
       - name: Diagnose pipeline launch
-        if: failure()
+        if: failure() && steps.debug_tests.outcome == 'failure'
         shell: pwsh
         run: |
           $env:KOSH_FLAGS = '--debug-logging=debug'

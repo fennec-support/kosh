@@ -220,8 +220,10 @@ evilps_sampled_cpu=$(
   "$BIN" -c \
     "koshkit --color never evilps --cpu --cumulative=0.3 $busy_process_pid"
 )
-kill -TERM "$busy_process_pid"
-wait "$busy_process_pid" 2> "$TEST_NULL_DEVICE"
+{
+  kill -TERM "$busy_process_pid"
+  wait "$busy_process_pid"
+} 2> "$TEST_NULL_DEVICE"
 case $evilps_sampled_cpu in
   *'CPU 0.00%'*|*'CPU -'*) evilps_sampled_cpu_unit=wrong ;;
   *'CPU '*'%'*) evilps_sampled_cpu_unit=matched ;;
