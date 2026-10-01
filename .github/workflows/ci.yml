@@ -255,7 +255,7 @@ jobs:
         if: failure() && steps.debug_tests.outcome == 'failure'
         shell: pwsh
         run: |
-          $env:KOSH_FLAGS = '--debug-logging=debug'
+          $env:KOSH_FLAGS = '--debug-logging=debug --debug-logging-file=pipeline-debug.log'
           & C:/msys64/usr/bin/timeout.exe -k 2s 60 `
             ./kosh-dbg.exe --privileged --no-init-files `
             --no-diagnostics --no-traces -c 'echo child'
@@ -263,6 +263,7 @@ jobs:
           & C:/msys64/usr/bin/timeout.exe -k 2s 60 `
             ./kosh-dbg.exe -c 'echo pipeline | koshkit cat; echo after=$?'
           Write-Host "Pipeline status: $LASTEXITCODE"
+          Get-Content pipeline-debug.log
 
       - name: Run no-editor history tests
         shell: pwsh

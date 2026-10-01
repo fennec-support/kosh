@@ -740,6 +740,12 @@ fn descriptors_refer_to_same_file(os::descriptor first,
 
 fn descriptor_from_fd_number(i64 fd_number) wontthrow -> os::descriptor
 {
+#if defined(_MSC_VER)
+  let const previous_handler = _set_thread_local_invalid_parameter_handler(
+      +[](const wchar_t *, const wchar_t *, const wchar_t *, unsigned int,
+          uintptr_t) {});
+  defer { _set_thread_local_invalid_parameter_handler(previous_handler); };
+#endif
   return reinterpret_cast<os::descriptor>(
       _get_osfhandle(static_cast<int>(fd_number)));
 }
