@@ -14,6 +14,8 @@
 #include "Debug.hpp"
 #include "Maybe.hpp"
 
+#include <algorithm>
+
 namespace koshka {
 
 enum class sort_order
@@ -411,7 +413,7 @@ public:
     if (m_length <= INSERTION_SORT_THRESHOLD)
       insertion_sort(is_less);
     else
-      heap_sort(is_less);
+      std::sort(m_data, m_data + m_length, is_less);
   }
 
   fn sort() throws -> void
@@ -495,13 +497,6 @@ private:
       m_data[i].~T();
   }
 
-  fn swap_elements(usize a, usize b) throws -> void
-  {
-    T temporary = steal(m_data[a]);
-    m_data[a] = steal(m_data[b]);
-    m_data[b] = steal(temporary);
-  }
-
   template <typename Compare>
   fn insertion_sort(Compare is_less) throws -> void
   {
@@ -513,43 +508,6 @@ private:
         j--;
       }
       m_data[j] = steal(key);
-    }
-  }
-
-  /* Restore the max-heap property at root within the first heap_length
-     elements, sinking the root past any larger child. */
-  template <typename Compare>
-  fn sift_down(usize root, usize heap_length, Compare is_less) throws -> void
-  {
-    loop
-    {
-      usize largest = root;
-      let const left = 2 * root + 1;
-      let const right = 2 * root + 2;
-
-      if (left < heap_length && is_less(m_data[largest], m_data[left])) {
-        largest = left;
-      }
-      if (right < heap_length && is_less(m_data[largest], m_data[right])) {
-        largest = right;
-      }
-
-      if (largest == root) break;
-
-      swap_elements(root, largest);
-      root = largest;
-    }
-  }
-
-  template <typename Compare>
-  fn heap_sort(Compare is_less) throws -> void
-  {
-    for (usize parent = m_length / 2; parent > 0; parent--)
-      sift_down(parent - 1, m_length, is_less);
-
-    for (usize end = m_length; end > 1; end--) {
-      swap_elements(0, end - 1);
-      sift_down(0, end - 1, is_less);
     }
   }
 

@@ -268,6 +268,7 @@ struct function_definition_record
   SourceLocation first_positional_read_location;
   bool has_been_called{false};
   bool is_analysis_complete{false};
+  Maybe<usize> previous_definition_index{};
   SourceLocation first_recursive_call_location{};
   usize recursive_call_count{0};
   usize async_recursive_call_count{0};
@@ -568,6 +569,23 @@ public:
     while (defined_function_insertions.count() > insertion_count) {
       defined_functions.remove(defined_function_insertions.back().view());
       defined_function_insertions.pop_back();
+    }
+  }
+
+  fn rollback_latest_function_definitions(usize definition_count) throws -> void
+  {
+    for (usize index = function_definitions.count(); index > definition_count;
+         index--)
+    {
+      let const &definition = function_definitions[index - 1];
+      if (!definition.is_analysis_complete) continue;
+
+      if (definition.previous_definition_index.has_value()) {
+        latest_function_definition_indices.set(
+            definition.name.view(), *definition.previous_definition_index);
+      } else {
+        latest_function_definition_indices.erase(definition.name.view());
+      }
     }
   }
 

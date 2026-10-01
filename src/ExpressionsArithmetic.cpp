@@ -1299,8 +1299,7 @@ fn Subshell::analyze(AnalysisContext &actx, bool is_unconditional) const throws
       actx.variable_occurrence_assignments.snapshot();
   let saved_inherited_occurrence_assignments =
       actx.inherited_variable_occurrence_assignments.snapshot();
-  let saved_latest_function_definition_indices =
-      actx.latest_function_definition_indices.clone();
+  let const function_definition_count = actx.function_definitions.count();
   let const defined_function_insertion_count =
       actx.defined_function_insertions.count();
   let const known_alias_insertion_count = actx.known_alias_insertions.count();
@@ -1335,8 +1334,7 @@ fn Subshell::analyze(AnalysisContext &actx, bool is_unconditional) const throws
   actx.variable_occurrence_assignments = steal(saved_occurrence_assignments);
   actx.inherited_variable_occurrence_assignments =
       steal(saved_inherited_occurrence_assignments);
-  actx.latest_function_definition_indices =
-      steal(saved_latest_function_definition_indices);
+  actx.rollback_latest_function_definitions(function_definition_count);
   actx.rollback_defined_functions(defined_function_insertion_count);
   actx.rollback_known_aliases(known_alias_insertion_count);
   actx.is_analyzing_condition = was_analyzing_condition;
@@ -1434,8 +1432,7 @@ fn FunctionDefinition::analyze(AnalysisContext &actx,
       actx.variable_occurrence_assignments.snapshot();
   let saved_inherited_occurrence_assignments =
       actx.inherited_variable_occurrence_assignments.snapshot();
-  let saved_latest_function_definition_indices =
-      actx.latest_function_definition_indices.clone();
+  let const function_definition_count = actx.function_definitions.count();
   let const defined_function_insertion_count =
       actx.defined_function_insertions.count();
   let const known_alias_insertion_count = actx.known_alias_insertions.count();
@@ -1492,6 +1489,12 @@ fn FunctionDefinition::analyze(AnalysisContext &actx,
   function_definition.exit_states =
       actx.variable_occurrence_assignments.snapshot();
   function_definition.is_analysis_complete = true;
+  let const previous_definition_index =
+      actx.latest_function_definition_indices.find(m_name.view());
+  if (previous_definition_index.has_value()) {
+    function_definition.previous_definition_index =
+        *previous_definition_index.value();
+  }
   actx.latest_function_definition_indices.set(m_name.view(),
                                               function_definition_index);
   actx.current_source_effects = saved_source_effects;
@@ -1507,8 +1510,7 @@ fn FunctionDefinition::analyze(AnalysisContext &actx,
   actx.variable_occurrence_assignments = steal(saved_occurrence_assignments);
   actx.inherited_variable_occurrence_assignments =
       steal(saved_inherited_occurrence_assignments);
-  actx.latest_function_definition_indices =
-      steal(saved_latest_function_definition_indices);
+  actx.rollback_latest_function_definitions(function_definition_count);
   actx.latest_function_definition_indices.set(m_name.view(),
                                               function_definition_index);
   actx.rollback_defined_functions(defined_function_insertion_count);

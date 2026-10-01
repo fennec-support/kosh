@@ -743,6 +743,9 @@ fn EvalContext::clear_retained_sources() wontthrow -> void
     control_flow_store().pending().location = SourceLocation{};
   }
 
+  let const has_retained_sources =
+      !source_store().retained_sources().is_empty();
+
   for (String *source : source_store().retained_sources()) {
     source->~String();
     heap_allocator().free_array(source, 1);
@@ -752,7 +755,7 @@ fn EvalContext::clear_retained_sources() wontthrow -> void
   /* A just-freed buffer can be reissued at the same address and length, so the
      caches keyed on that are dropped to keep them from serving a stale index.
    */
-  utils::invalidate_line_number_cache();
+  if (has_retained_sources) utils::invalidate_line_number_cache();
   reset_runtime_diagnostic_highlight_cache();
 
   source_store().current_source() = nullptr;
