@@ -1,25 +1,3 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "$count"]
-  [CompoundListCondition, None]
-    [Assign count=5]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "$count"]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Variable "count"
-]
-[Word
-  Unquoted "count=5"
-]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Variable "count"
-]
 2:7: warning: The variable 'count' is read before it is assigned.
      2 |  echo "$count"
        |        ^~~~~~

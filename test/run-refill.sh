@@ -1,18 +1,8 @@
 #!/bin/bash
+. ./test-inventory.sh
 
 TEST_SHELL_COMMAND=$1
 REFILL_STATUS=0
-
-word_is_listed()
-{
-  WORD=$1
-  WORDS=$2
-
-  case " $WORDS " in
-  *" $WORD "*) return 0 ;;
-  *) return 1 ;;
-  esac
-}
 
 # Refills one harness and keeps the first failing status. The named runner
 # receives the refill flag and the remaining operands.
@@ -26,15 +16,14 @@ refill_harness()
 }
 
 if [ -n "${REFILL-}" ]; then
-  ACTIVE_TEST_NAMES=
+  SELECTED_NATIVE_TEST_NAMES=
   for TEST_NAME in $REFILL; do
-    if [ -f "kosh/$TEST_NAME.kosh" ] && \
-      ! word_is_listed "$TEST_NAME" "$SKIPPED_TEST_NAMES"; then
-      ACTIVE_TEST_NAMES="$ACTIVE_TEST_NAMES $TEST_NAME"
+    if word_is_listed "$TEST_NAME" "$ACTIVE_TEST_NAMES"; then
+      SELECTED_NATIVE_TEST_NAMES="$SELECTED_NATIVE_TEST_NAMES $TEST_NAME"
     fi
   done
-  if [ -n "$ACTIVE_TEST_NAMES" ]; then
-    refill_harness run-kosh-test.sh $ACTIVE_TEST_NAMES
+  if [ -n "$SELECTED_NATIVE_TEST_NAMES" ]; then
+    refill_harness run-kosh-test.sh $SELECTED_NATIVE_TEST_NAMES
   fi
 
   for TEST_NAME in $REFILL; do
@@ -45,9 +34,8 @@ if [ -n "${REFILL-}" ]; then
 
     if [ -f "cli/$TEST_NAME.sh" ]; then
       DID_FIND_TEST=yes
-      if ! word_is_listed "cli/$TEST_NAME.sh" "$SKIPPED_CLI_INPUT" &&
-        { [ -z "${SKIP_CLI_ASSIMILATE-}" ] || \
-          [ "$TEST_NAME" != assimilate ]; }; then
+      if word_is_listed "cli/$TEST_NAME.sh" \
+        "$PARALLEL_CLI_INPUT $SERIAL_CLI_INPUT"; then
         refill_harness run-cli-test.sh "$TEST_SHELL_COMMAND" \
           "cli/$TEST_NAME.sh"
       fi
@@ -55,10 +43,8 @@ if [ -n "${REFILL-}" ]; then
 
     if [ -f "completion/$TEST_NAME.sh" ]; then
       DID_FIND_TEST=yes
-      if ! word_is_listed "completion/$TEST_NAME.sh" \
-        "$SKIPPED_COMPLETION_INPUT" && \
-        ! word_is_listed "completion/$TEST_NAME.sh" \
-          "$UNREPRESENTABLE_COMPLETION_INPUT"; then
+      if word_is_listed "completion/$TEST_NAME.sh" \
+        "$PARALLEL_COMPLETION_INPUT $SERIAL_COMPLETION_INPUT"; then
         refill_harness run-editor-test.sh completion "$TEST_SHELL_COMMAND" \
           "completion/$TEST_NAME.sh"
       fi
@@ -79,37 +65,12 @@ if [ -n "${REFILL-}" ]; then
   exit "$REFILL_STATUS"
 fi
 
-NATIVE_TEST_NAMES=
-for TEST_FILE in kosh/*.kosh; do
-  TEST_NAME=${TEST_FILE#kosh/}
-  TEST_NAME=${TEST_NAME%.kosh}
-  if word_is_listed "$TEST_NAME" "$SKIPPED_TEST_NAMES"; then
-    continue
-  fi
-  NATIVE_TEST_NAMES="$NATIVE_TEST_NAMES $TEST_NAME"
-done
-
-refill_harness run-kosh-test.sh $NATIVE_TEST_NAMES
-ACTIVE_CLI_INPUT=
-for TEST_FILE in cli/*.sh; do
-  if word_is_listed "$TEST_FILE" "$SKIPPED_CLI_INPUT" ||
-    { [ -n "${SKIP_CLI_ASSIMILATE-}" ] && \
-      [ "$TEST_FILE" = cli/assimilate.sh ]; }; then
-    continue
-  fi
-  ACTIVE_CLI_INPUT="$ACTIVE_CLI_INPUT $TEST_FILE"
-done
-refill_harness run-cli-test.sh "$TEST_SHELL_COMMAND" $ACTIVE_CLI_INPUT
-ACTIVE_COMPLETION_INPUT=
-for TEST_FILE in completion/*.sh; do
-  if word_is_listed "$TEST_FILE" "$SKIPPED_COMPLETION_INPUT" || \
-    word_is_listed "$TEST_FILE" "$UNREPRESENTABLE_COMPLETION_INPUT"; then
-    continue
-  fi
-  ACTIVE_COMPLETION_INPUT="$ACTIVE_COMPLETION_INPUT $TEST_FILE"
-done
+refill_harness run-kosh-test.sh $ACTIVE_TEST_NAMES
+refill_harness run-cli-test.sh "$TEST_SHELL_COMMAND" \
+  $PARALLEL_CLI_INPUT $SERIAL_CLI_INPUT
 refill_harness run-editor-test.sh completion "$TEST_SHELL_COMMAND" \
-  $ACTIVE_COMPLETION_INPUT
-refill_harness run-editor-test.sh highlight "$TEST_SHELL_COMMAND" highlight/*.sh
+  $PARALLEL_COMPLETION_INPUT $SERIAL_COMPLETION_INPUT
+refill_harness run-editor-test.sh highlight "$TEST_SHELL_COMMAND" \
+  $HIGHLIGHT_INPUT
 
 exit "$REFILL_STATUS"

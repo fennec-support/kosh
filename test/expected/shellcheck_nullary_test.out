@@ -1,26 +1,4 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "[" "$x" "]"]
-  [CompoundListCondition, None]
-    [SimpleCommand "[" "-n" "$x" "]"]
-[Word
-  Unquoted "["
-]
-[Word
-  Variable "x"
-]
-[Word
-  Unquoted "]"
-]
-[Word
-  Unquoted "["
-]
-[Word
-  Unquoted "-n"
-]
-[Word
-  Variable "x"
-]
-[Word
-  Unquoted "]"
-]
+nullary-empty=1
+explicit-empty=1
+nullary-set=0
+explicit-set=0

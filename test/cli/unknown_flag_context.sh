@@ -4,5 +4,7 @@ unset KOSH_FLAGS
 # prefix, with the caret staying on the flag.
 echo "== builtin unknown flag carries the Builtin prefix:"
 "$BIN" -c 'enable --badflag' 2>&1
+[ "$?" -eq 2 ] || exit 1
 echo "== koshkit unknown flag carries the koshkit util prefix:"
 "$BIN" -c 'koshkit ls --dasdas' 2>&1
+[ "$?" -eq 2 ]

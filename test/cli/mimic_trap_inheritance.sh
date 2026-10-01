@@ -10,7 +10,7 @@ printf '#!/bin/sh\ntrap "echo action" ERR\necho "err-rc=$?"\ntrap "echo action" 
     > "$directory/sh-script"
 printf '#!/bin/bash\ntrap "echo action" ERR\necho "err-rc=$?"\ntrap "echo action" RETURN\necho "return-rc=$?"\ntrap "echo action" DEBUG\necho "debug-rc=$?"\ntrap - DEBUG\necho body\n' \
     > "$directory/bash-script"
-/bin/chmod +x "$directory/sh-script" "$directory/bash-script"
+"$TEST_KOSHKIT" chmod +x "$directory/sh-script" "$directory/bash-script"
 
 echo "== an sh shebang rejects the three bash conditions:"
 "$BIN" --no-traces -I "$directory/sh-script" > "$directory/out" 2>&1

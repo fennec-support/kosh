@@ -1,20 +1,3 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "printf" "[%s]" "$x:-$(printf ")")"]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo"]
-[Word
-  Unquoted "printf"
-]
-[Word
-  DoubleQuoted "[%s]"
-]
-[Word
-  Variable "x:-$(printf ")")"
-]
-[Word
-  Unquoted "echo"
-]
 2:15: warning: An unquoted variable can split into words and expand globs. (SC2086)
      2 |  printf "[%s]" ${x:-$(printf ")")}
        |                ^~~~~~~~~~~~~~~~~~~

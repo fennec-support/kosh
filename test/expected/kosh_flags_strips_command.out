@@ -1,5 +1,6 @@
 == -c in KOSH_FLAGS does not run its command:
 clean
 == benign flag in KOSH_FLAGS survives:
+sh
 flagged
 rc=0

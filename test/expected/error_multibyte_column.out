@@ -1,14 +1,3 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [Assign a=€]
-  [CompoundListCondition, None]
-    [SimpleCommand "doesnotexist_xyz*"]
-[Word
-  Unquoted "a=€"
-]
-[Word
-  Unquoted "doesnotexist_xyz*"
-]
 3:1: error: A glob pattern in command position is rarely intended as a command name.
      3 |  doesnotexist_xyz*
        |  ^~~~~~~~~~~~~~~~~

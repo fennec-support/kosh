@@ -39,3 +39,4 @@ echo "--- utility error is located in the bash mood ---"
 "$BIN" --mood bash -c 'koshkit cp' 2>&1
 echo "--- and a missing operand is located in the bash mood ---"
 "$BIN" --mood bash -c 'koshkit ls /no/such/path' 2>&1
+[ "$?" -eq 2 ]

@@ -11,6 +11,29 @@ echo format
 echo combined
 [CompoundList]
   [CompoundListCondition, None]
+    [Assign name=ok]
+  [CompoundListCondition, None]
+    [Pipeline]
+      [SimpleCommand "echo" "$name"]
+      [SimpleCommand "koshkit" "cat"]
+[Word
+  Unquoted "name=ok"
+]
+[Word
+  Unquoted "echo"
+]
+[Word
+  Variable "name"
+]
+[Word
+  Unquoted "koshkit"
+]
+[Word
+  Unquoted "cat"
+]
+ok
+[CompoundList]
+  [CompoundListCondition, None]
     [SimpleCommand "echo" "apply"]
 [CompoundList]
   [CompoundListCondition, None]

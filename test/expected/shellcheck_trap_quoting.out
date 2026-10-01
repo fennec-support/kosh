@@ -1,35 +1,3 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "trap" ": $unset_at_set_time-" "EXIT"]
-  [CompoundListCondition, None]
-    [SimpleCommand "trap" ": ${expands_when_fired-}" "EXIT"]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "done"]
-[Word
-  Unquoted "trap"
-]
-[Word
-  DoubleQuoted ": "
-  Variable "unset_at_set_time-"
-]
-[Word
-  Unquoted "EXIT"
-]
-[Word
-  Unquoted "trap"
-]
-[Word
-  Literal ": ${expands_when_fired-}"
-]
-[Word
-  Unquoted "EXIT"
-]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Unquoted "done"
-]
 2:6: warning: The double-quoted `trap` action expands as the trap is set. (SC2064)
      2 |  trap ": ${unset_at_set_time-}" EXIT
        |       ^~~~~~~~~~~~~~~~~~~~~~~~~

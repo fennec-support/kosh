@@ -19,8 +19,8 @@ fi
 for TEST_NAME in "$@"; do
   [ -f "kosh/$TEST_NAME.kosh" ] || continue
   case $TEST_NAME in
-  shellcheck_static_*) TEST_BIN_FLAGS="$BIN_FLAGS -WWW" ;;
-  *) TEST_BIN_FLAGS="$BIN_FLAGS -WWW --no-annoying-diagnostics" ;;
+  shellcheck_static_*) TEST_BIN_FLAGS="-WWW" ;;
+  *) TEST_BIN_FLAGS="-WWW --no-annoying-diagnostics" ;;
   esac
   if [ "$REFILL_MODE" = yes ]; then
     OUTPUT="expected/.$TEST_NAME.out.tmp"

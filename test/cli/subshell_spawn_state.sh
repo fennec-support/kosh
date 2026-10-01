@@ -8,7 +8,7 @@ alias state_alias="printf alias"
 set -- first second
 set -o pipefail
 expected_pwd=$PWD
-pushd . >/dev/null
+pushd . >"$TEST_NULL_DEVICE"
 expected_dirs=$(dirs -p | koshkit wc -l)
 
 printf "process="
@@ -72,13 +72,13 @@ BASH_ALIASES[written]="printf written"
 printf "aliases-process="
 koshkit cat < <(
   printf "%s:%s:" "${BASH_ALIASES[carried]}" "${BASH_ALIASES[written]}"
-  if alias carried >/dev/null; then printf present; fi
+  if alias carried >"$TEST_NULL_DEVICE"; then printf present; fi
 )
 printf "\n"
 printf "" | {
   printf "aliases-compound=%s:%s:" \
     "${BASH_ALIASES[carried]}" "${BASH_ALIASES[written]}"
-  if alias written >/dev/null; then printf "present\n"; fi
+  if alias written >"$TEST_NULL_DEVICE"; then printf "present\n"; fi
 }
 
 alias retained="printf retained"
@@ -88,36 +88,67 @@ BASH_ALIASES[ordinary]=value
 printf "ordinary-aliases-process="
 koshkit cat < <(
   printf "%s:" "${BASH_ALIASES[ordinary]}"
-  if alias retained >/dev/null; then printf retained; fi
+  if alias retained >"$TEST_NULL_DEVICE"; then printf retained; fi
 )
 printf "\n"
 printf "" | {
   printf "ordinary-aliases-compound=%s:" "${BASH_ALIASES[ordinary]}"
-  if alias retained >/dev/null; then printf "retained\n"; fi
+  if alias retained >"$TEST_NULL_DEVICE"; then printf "retained\n"; fi
 }
 '
 
-"$BIN" --mood bash --no-init-files --no-diagnostics -c '
-cd /
-pushd /tmp >/dev/null
-pushd /usr >/dev/null
-DIRSTACK[1]=/bin
+dirstack_root=$TEST_MKTEMP_DIRECTORY/subshell-dirstack
+"$TEST_KOSHKIT" mkdir -p "$dirstack_root/first" "$dirstack_root/second" \
+  "$dirstack_root/replacement"
+TEST_DIRSTACK_ROOT=$dirstack_root "$BIN" --mood bash --no-init-files --no-diagnostics -c '
+cd "$TEST_DIRSTACK_ROOT"
+root_dir=$PWD
+pushd "$TEST_DIRSTACK_ROOT/first" >"$TEST_NULL_DEVICE"
+pushd "$TEST_DIRSTACK_ROOT/second" >"$TEST_NULL_DEVICE"
+second_dir=$PWD
+replacement_dir=$TEST_DIRSTACK_ROOT/replacement
+DIRSTACK[1]="$replacement_dir"
+expected_stack="$second_dir $replacement_dir $root_dir"
 printf "dirstack-process="
-koshkit cat < <(printf "%s:%s\n" "${DIRSTACK[*]}" "$(dirs +1)")
+koshkit cat < <(
+  if [ "${DIRSTACK[*]}" = "$expected_stack" ] &&
+    [ "$(dirs -l +1)" = "$replacement_dir" ]; then
+    printf "ok\n"
+  else
+    printf "wrong\n"
+  fi
+)
 printf "" | {
-  printf "dirstack-compound=%s:%s\n" "${DIRSTACK[*]}" "$(dirs +1)"
+  if [ "${DIRSTACK[*]}" = "$expected_stack" ] &&
+    [ "$(dirs -l +1)" = "$replacement_dir" ]; then
+    printf "dirstack-compound=ok\n"
+  else
+    printf "dirstack-compound=wrong\n"
+  fi
 }
 
 unset DIRSTACK
 declare -a DIRSTACK
 DIRSTACK=(ordinary array)
 printf "ordinary-dirstack-process="
-koshkit cat < <(printf "%s:%s\n" "${DIRSTACK[*]}" "$(dirs +1)")
+koshkit cat < <(
+  if [ "${DIRSTACK[*]}" = "ordinary array" ] &&
+    [ "$(dirs -l +1)" = "$replacement_dir" ]; then
+    printf "ok\n"
+  else
+    printf "wrong\n"
+  fi
+)
 printf "" | {
-  printf "ordinary-dirstack-compound=%s:%s\n" \
-    "${DIRSTACK[*]}" "$(dirs +1)"
+  if [ "${DIRSTACK[*]}" = "ordinary array" ] &&
+    [ "$(dirs -l +1)" = "$replacement_dir" ]; then
+    printf "ordinary-dirstack-compound=ok\n"
+  else
+    printf "ordinary-dirstack-compound=wrong\n"
+  fi
 }
 '
+test -n "$dirstack_root" && "$TEST_KOSHKIT" rm -rf "$dirstack_root"
 
 "$BIN" --mood posix --no-init-files -c '
 printf "mood="

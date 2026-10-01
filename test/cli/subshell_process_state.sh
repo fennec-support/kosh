@@ -1,6 +1,6 @@
 "$BIN" -c '
 before_mask=$(umask)
-(pushd / >/dev/null; umask 077)
+(pushd "$TEST_MKTEMP_DIRECTORY" >"$TEST_NULL_DEVICE"; umask 077)
 after_mask=$(umask)
 [ "$before_mask" = "$after_mask" ] && echo mask-restored
 [ "$(dirs -p | koshkit wc -l)" -eq 1 ] && echo directory-stack-restored
@@ -8,7 +8,7 @@ after_mask=$(umask)
 
 directory=$(mktemp -d)
 trap '[ -n "$directory" ] && "$TEST_KOSHKIT" rm -rf "$directory"' EXIT
-/bin/mkdir -p "$directory/original" "$directory/sibling"
+"$TEST_KOSHKIT" mkdir -p "$directory/original" "$directory/sibling"
 : > "$directory/original/marker"
 SUBSHELL_DIRECTORY=$directory "$BIN" -c '
 cd "$SUBSHELL_DIRECTORY/original" || exit 1

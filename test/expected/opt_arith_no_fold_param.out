@@ -1,28 +1,3 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "set" "+u"]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "$((notrecorded+1))"]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "$((0x10+1))"]
-[Word
-  Unquoted "set"
-]
-[Word
-  Unquoted "+u"
-]
-[Word
-  Unquoted "echo"
-]
-[Word
-  ArithmeticExpansion "notrecorded+1"
-]
-[Word
-  Unquoted "echo"
-]
-[Word
-  ArithmeticExpansion "0x10+1"
-]
 3:9: warning: The variable 'notrecorded' is not set, it expands to empty.
      3 |  echo $((notrecorded+1))
        |          ^~~~~~~~~~~

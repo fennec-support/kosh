@@ -3,7 +3,7 @@
 DIRECTORY=$(mktemp -d) || exit 1
 trap '[ -n "$DIRECTORY" ] && "$TEST_KOSHKIT" rm -rf "$DIRECTORY"' EXIT
 printf '#!/bin/sh\nexit 0\n' > "$DIRECTORY/ls"
-/bin/chmod +x "$DIRECTORY/ls"
+chmod +x "$DIRECTORY/ls"
 
 echo "== koshkit utilities by prefix:"
 "$BIN" --debug-complete-at 'koshkit m' </dev/null

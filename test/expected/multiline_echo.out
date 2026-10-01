@@ -1,19 +1,1 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "привет" "мир!" "hello" "sailor!"]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Unquoted "привет"
-]
-[Word
-  Unquoted "мир!"
-]
-[Word
-  Unquoted "hello"
-]
-[Word
-  Unquoted "sailor!"
-]
 привет мир! hello sailor!

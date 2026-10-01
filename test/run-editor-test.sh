@@ -32,14 +32,16 @@ for TEST_FILE in "$@"; do
     "$TEST_KOSHKIT" mkdir -p "$OUTPUT_DIRECTORY"
     OUTPUT="$OUTPUT_DIRECTORY/$TEST_NAME.out"
   fi
+  ERROR_OUTPUT="$OUTPUT.stderr"
 
   BIN="$BIN" run_test_with_timeout "${EDITOR_TEST_TIMEOUT_SECONDS:-60}" \
-    "$TEST_SHELL_COMMAND" "$TEST_FILE" > "$OUTPUT" 2>/dev/null
+    "$TEST_SHELL_COMMAND" "$TEST_FILE" > "$OUTPUT" 2> "$ERROR_OUTPUT"
   DRIVER_STATUS=$?
-  if is_driver_status_harness_failure "$DRIVER_STATUS" "$REFILL_MODE"; then
+  if [ "$DRIVER_STATUS" -ne 0 ]; then
+    "$TEST_KOSHKIT" cat "$ERROR_OUTPUT"
     printf "\t%-64s harness failure, status %s\n" \
       "$TEST_GROUP/$TEST_NAME.sh" "$DRIVER_STATUS"
-    "$TEST_KOSHKIT" rm -f "$OUTPUT"
+    "$TEST_KOSHKIT" rm -f "$OUTPUT" "$ERROR_OUTPUT"
     if [ "$TEST_STATUS" -eq 0 ]; then
       TEST_STATUS=$DRIVER_STATUS
     fi
@@ -48,6 +50,7 @@ for TEST_FILE in "$@"; do
 
   if [ "$REFILL_MODE" = yes ]; then
     "$TEST_KOSHKIT" mv "$OUTPUT" "expected/$TEST_NAME.out"
+    "$TEST_KOSHKIT" rm -f "$ERROR_OUTPUT"
     printf "\t%-64s %s.out\n" "$TEST_GROUP/$TEST_NAME.sh" "$TEST_NAME"
     continue
   fi
@@ -55,6 +58,7 @@ for TEST_FILE in "$@"; do
   if diff $DIFF_FLAGS "expected/$TEST_NAME.out" "$OUTPUT" >/dev/null 2>&1; then
     printf "\t%-64s ok\033[K\r" "$TEST_GROUP/$TEST_NAME.sh"
   else
+    "$TEST_KOSHKIT" cat "$ERROR_OUTPUT"
     set_golden_failure_file "$TEST_GROUP-$TEST_NAME"
     diff $DIFF_FLAGS "expected/$TEST_NAME.out" "$OUTPUT" | \
       "$TEST_KOSHKIT" tee -a "$GOLDEN_FAILURE_FILE"
@@ -63,7 +67,7 @@ for TEST_FILE in "$@"; do
       TEST_STATUS=1
     fi
   fi
-  "$TEST_KOSHKIT" rm -f "$OUTPUT"
+  "$TEST_KOSHKIT" rm -f "$OUTPUT" "$ERROR_OUTPUT"
 done
 
 exit "$TEST_STATUS"

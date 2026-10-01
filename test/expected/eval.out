@@ -1,34 +1,3 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "eval" "badcmd_xyzzy"]
-  [CompoundListCondition, None]
-    [SimpleCommand "eval" "x=5; echo "eval set x=$x""]
-  [CompoundListCondition, None]
-    [Assign cmd=echo evaluated]
-  [CompoundListCondition, None]
-    [SimpleCommand "eval" "$cmd"]
-[Word
-  Unquoted "eval"
-]
-[Word
-  Literal "badcmd_xyzzy"
-]
-[Word
-  Unquoted "eval"
-]
-[Word
-  Literal "x=5; echo "eval set x=$x""
-]
-[Word
-  Unquoted "cmd="
-  DoubleQuoted "echo evaluated"
-]
-[Word
-  Unquoted "eval"
-]
-[Word
-  Variable "cmd"
-]
 eval:1:1: error: The command 'badcmd_xyzzy' was not found.
      1 |  badcmd_xyzzy
        |  ^~~~~~~~~~~~

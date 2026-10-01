@@ -20,3 +20,4 @@ cd "$d" || exit 1
 mkdir sub
 : > sub/f
 "$BIN" -c 'koshkit cp -r sub sub' 2>&1
+[ "$?" -eq 1 ]

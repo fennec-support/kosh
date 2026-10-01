@@ -1,12 +1,3 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "data/*/doesnotexist"]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Unquoted "data/*/doesnotexist"
-]
 2:6: warning: The glob pattern 'data/*/doesnotexist' matched no file, it expands to its literal text, which is rarely intended.
      2 |  echo data/*/doesnotexist
        |       ^~~~~~~~~~~~~~~~~~~

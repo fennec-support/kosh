@@ -1013,10 +1013,13 @@ EOF
 "$BIN" -c 'koshkit make'
 
 unset KOSH_FLAGS
-# A command that fails inside a $(shell ...) of a koshkit makefile reports the
-# error with the make filename rather than a bare unnamed line. The temp
-# directory is left in place so the test never runs rm.
-dir=$(mktemp -d)
+dir=$TEST_MKTEMP_DIRECTORY/koshkit-make-error
+"$TEST_KOSHKIT" mkdir -p "$dir"
 printf 'V := $(shell nonexistent_prog_zzz)\nall:\n\techo $(V)\n' > "$dir/Makefile"
 echo "== the \$(shell) error names the make source (count):"
-"$BIN" -c "cd '$dir'; koshkit make" 2>&1 | grep -c "make:.*Program 'nonexistent_prog_zzz' wasn't found"
+result=$("$BIN" -c "cd '$dir'; koshkit make" 2>&1)
+result_status=$?
+test -n "$dir" && "$TEST_KOSHKIT" rm -rf "$dir"
+[ "$result_status" -eq 0 ] || exit 1
+printf '%s\n' "$result" |
+  grep -cF "Makefile:1:1: error: The command 'nonexistent_prog_zzz' was not found."

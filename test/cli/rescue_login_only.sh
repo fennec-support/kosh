@@ -6,6 +6,11 @@ unset KOSH_FLAGS
 # symlink the way login and tmux start one.
 echo "== login shell with a bad flag enters rescue:"
 "$BIN" -c 'exec -a -kosh "$1" --nonexistent-flag' \
-    test-login "$BIN" </dev/null 2>&1 | grep -c "Entering rescue"
+    test-login "$BIN" <"$TEST_NULL_DEVICE" 2>&1 | grep -c "Entering rescue"
 echo "== non-login shell with the same bad flag does not:"
-"$BIN" --nonexistent-flag </dev/null 2>&1 | grep -c "Entering rescue"
+result=$("$BIN" --nonexistent-flag <"$TEST_NULL_DEVICE" 2>&1)
+[ "$?" -eq 2 ] || exit 1
+case $result in
+  *'Entering rescue'*) exit 1 ;;
+  *) printf '0\n' ;;
+esac

@@ -1,36 +1,39 @@
 echo "== set --m:"
-"$BIN" --debug-complete-at 'set --m' </dev/null
+"$BIN" --debug-complete-at 'set --m' <"$TEST_NULL_DEVICE"
 echo "== set --i:"
-"$BIN" --debug-complete-at 'set --i' </dev/null
+"$BIN" --debug-complete-at 'set --i' <"$TEST_NULL_DEVICE"
 echo "== set --mood value:"
-"$BIN" --debug-complete-at 'set --mood ' </dev/null
+"$BIN" --debug-complete-at 'set --mood ' <"$TEST_NULL_DEVICE"
 echo "== set --init-moods value:"
-"$BIN" --debug-complete-at 'set --init-moods ' </dev/null
+"$BIN" --debug-complete-at 'set --init-moods ' <"$TEST_NULL_DEVICE"
 echo "== set -M value:"
-"$BIN" --debug-complete-at 'set -M ' </dev/null
+"$BIN" --debug-complete-at 'set -M ' <"$TEST_NULL_DEVICE"
 echo "== set -L value:"
-"$BIN" --debug-complete-at 'set -L ' </dev/null
+"$BIN" --debug-complete-at 'set -L ' <"$TEST_NULL_DEVICE"
 echo "== set --mood= value:"
-"$BIN" --debug-complete-at 'set --mood=' </dev/null
+"$BIN" --debug-complete-at 'set --mood=' <"$TEST_NULL_DEVICE"
 echo "== set --init-moods= value:"
-"$BIN" --debug-complete-at 'set --init-moods=' </dev/null
+"$BIN" --debug-complete-at 'set --init-moods=' <"$TEST_NULL_DEVICE"
 echo "== set -M= value:"
-"$BIN" --debug-complete-at 'set -M=' </dev/null
+"$BIN" --debug-complete-at 'set -M=' <"$TEST_NULL_DEVICE"
 echo "== set --mood= prefix:"
-"$BIN" --debug-complete-at 'set --mood=b' </dev/null
+"$BIN" --debug-complete-at 'set --mood=b' <"$TEST_NULL_DEVICE"
 echo "== kosh --mood value:"
-"$BIN" --debug-complete-at 'kosh --mood ' </dev/null
+"$BIN" --debug-complete-at 'kosh --mood ' <"$TEST_NULL_DEVICE"
 echo "== kosh --mood= value:"
-"$BIN" --debug-complete-at 'kosh --mood=' </dev/null
+"$BIN" --debug-complete-at 'kosh --mood=' <"$TEST_NULL_DEVICE"
 echo "== kosh -M value:"
-"$BIN" --debug-complete-at 'kosh -M ' </dev/null
+"$BIN" --debug-complete-at 'kosh -M ' <"$TEST_NULL_DEVICE"
 echo "== kosh --init-moods value:"
-"$BIN" --debug-complete-at 'kosh --init-moods ' </dev/null
+"$BIN" --debug-complete-at 'kosh --init-moods ' <"$TEST_NULL_DEVICE"
 echo "== kosh -L= prefix:"
-"$BIN" --debug-complete-at 'kosh -L=k' </dev/null
+"$BIN" --debug-complete-at 'kosh -L=k' <"$TEST_NULL_DEVICE"
 echo "== assimilate --link-mood value:"
-"$BIN" --debug-complete-at 'assimilate --link-mood ' </dev/null
+"$BIN" --debug-complete-at 'assimilate --link-mood ' <"$TEST_NULL_DEVICE"
 echo "== assimilate --link-mood= prefix:"
-"$BIN" --debug-complete-at 'assimilate --link-mood=d' </dev/null
+"$BIN" --debug-complete-at 'assimilate --link-mood=d' <"$TEST_NULL_DEVICE"
 echo "== assignment prefix is untouched:"
-"$BIN" --debug-complete-at 'MOOD=' </dev/null | grep -c '^bash$'
+result=$("$BIN" --debug-complete-at 'MOOD=' <"$TEST_NULL_DEVICE") || exit 1
+printf '%s\n' "$result" | grep -qxF bash
+[ "$?" -eq 1 ] || exit 1
+printf '0\n'

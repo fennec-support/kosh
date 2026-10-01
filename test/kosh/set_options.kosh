@@ -6,5 +6,5 @@ set --mood -- mood-marker; echo "mood=$(set --mood) args=$*"
 set --init-moods -- init-marker; echo "init=$*"
 set --tab-selector -- selector-marker; echo "selector=$(set --tab-selector) args=$*"
 ( set -euo pipefail; echo "bundled=$?" )
-set -Z 2>&1; echo "bad=$?"
 ( set -e; false; echo notreached ); echo "after=$?"
+set -Z 2>&1; echo "bad=$?"

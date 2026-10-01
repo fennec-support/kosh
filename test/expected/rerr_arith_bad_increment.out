@@ -1,12 +1,3 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "$((++))"]
-[Word
-  Unquoted "echo"
-]
-[Word
-  ArithmeticExpansion "++"
-]
 2:9: error: Expected a variable after '++' or '--'.
      2 |  echo $((++))
        |          ^~

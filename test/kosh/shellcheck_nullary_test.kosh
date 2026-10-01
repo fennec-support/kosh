@@ -1,3 +1,11 @@
 #!/bin/env kosh
+x=
 [ "$x" ]
+printf 'nullary-empty=%s\n' "$?"
 [ -n "$x" ]
+printf 'explicit-empty=%s\n' "$?"
+x=value
+[ "$x" ]
+printf 'nullary-set=%s\n' "$?"
+[ -n "$x" ]
+printf 'explicit-set=%s\n' "$?"

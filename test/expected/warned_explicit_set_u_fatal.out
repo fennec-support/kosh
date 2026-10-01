@@ -1,36 +1,3 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "set" "-WWW"]
-  [CompoundListCondition, None]
-    [SimpleCommand "set" "-u"]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "$never_set_var"]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "not-reached"]
-[Word
-  Unquoted "set"
-]
-[Word
-  Unquoted "-WWW"
-]
-[Word
-  Unquoted "set"
-]
-[Word
-  Unquoted "-u"
-]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Variable "never_set_var"
-]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Unquoted "not-reached"
-]
 6:7: error: Unable to expand 'never_set_var' because the parameter is not set.
      6 |  echo "$never_set_var"
        |        ^~~~~~~~~~~~~~

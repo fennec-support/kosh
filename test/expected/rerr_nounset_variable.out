@@ -1,20 +1,3 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "set" "-u"]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "$undefined_var"]
-[Word
-  Unquoted "set"
-]
-[Word
-  Unquoted "-u"
-]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Variable "undefined_var"
-]
 5:7: error: Unable to expand 'undefined_var' because the parameter is not set.
      5 |  echo "$undefined_var"
        |        ^~~~~~~~~~~~~~

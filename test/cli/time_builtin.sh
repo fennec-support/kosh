@@ -8,46 +8,63 @@
 
 unset KOSH_FLAGS
 
-# The digits of a time report vary between runs. Each line is printed up to its
-# first digit, which leaves the label and the separator that follows it.
 report_shape()
 {
   printf '%s\n' "$1" | while IFS= read -r line; do
-    printf '[%s]' "${line%%[0-9]*}"
+    case $line in
+      ''|custom) prefix=$line ;;
+      *[0-9]*)
+        prefix=${line%%[0-9]*}
+        numeric_tail=${line#"$prefix"}
+        case $numeric_tail in
+          *[!0-9m.s%MKGTPB]*) exit 1 ;;
+        esac
+        ;;
+      *) exit 1 ;;
+    esac
+    printf '[%s]' "$prefix"
   done
+  [ "$?" -eq 0 ] || return 1
   printf '\n'
 }
 
 report=$("$BIN" --no-init-files --mood bash -c \
   'time "$1" --no-init-files -c :; set --mood kosh; time "$1" --no-init-files -c :' \
-  time-test "$BIN" 2>&1)
-echo "runtime-mood=$(report_shape "$report")"
+  time-test "$BIN" 2>&1) || exit 1
+shape=$(report_shape "$report") || exit 1
+echo "runtime-mood=$shape"
 
 report=$("$BIN" --no-init-files --no-diagnostics -c \
   'TIMEFORMAT=""; time -R "$1" --no-init-files -c :' \
-  time-test "$BIN" 2>&1)
-echo "kosh-rss=$(report_shape "$report")"
+  time-test "$BIN" 2>&1) || exit 1
+shape=$(report_shape "$report") || exit 1
+echo "kosh-rss=$shape"
 
 report=$("$BIN" --no-init-files --no-diagnostics -c \
-  'TIMEFORMAT=""; time -R true' 2>&1)
-echo "zero-rss=$(report_shape "$report")"
+  'TIMEFORMAT=""; time -R true' 2>&1) || exit 1
+shape=$(report_shape "$report") || exit 1
+echo "zero-rss=$shape"
 
 report=$("$BIN" --no-init-files --no-diagnostics -c \
   'TIMEFORMAT=""; builtin time -R "$1" --no-init-files -c :' \
-  time-test "$BIN" 2>&1)
-echo "builtin-rss=$(report_shape "$report")"
+  time-test "$BIN" 2>&1) || exit 1
+shape=$(report_shape "$report") || exit 1
+echo "builtin-rss=$shape"
 
 report=$("$BIN" --no-init-files --no-diagnostics -c \
   'time -p -R "$1" --no-init-files -c :' \
-  time-test "$BIN" 2>&1)
-echo "posix=$(report_shape "$report")"
+  time-test "$BIN" 2>&1) || exit 1
+shape=$(report_shape "$report") || exit 1
+echo "posix=$shape"
 
 report=$("$BIN" --no-init-files --mood bash -c \
   'TIMEFORMAT=custom; time -R "$1" --no-init-files -c :' \
-  time-test "$BIN" 2>&1)
-echo "bash-custom=$(report_shape "$report")"
+  time-test "$BIN" 2>&1) || exit 1
+shape=$(report_shape "$report") || exit 1
+echo "bash-custom=$shape"
 
 report=$("$BIN" --no-init-files --mood bash -c \
   'builtin time "$1" --no-init-files -c :' \
-  time-test "$BIN" 2>&1)
-echo "bash-builtin=$(report_shape "$report")"
+  time-test "$BIN" 2>&1) || exit 1
+shape=$(report_shape "$report") || exit 1
+echo "bash-builtin=$shape"

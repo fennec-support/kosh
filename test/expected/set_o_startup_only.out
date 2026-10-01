@@ -1,44 +1,5 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [Pipeline]
-      [SimpleCommand "set" "--options"]
-      [SimpleCommand "grep" "-E" "login|rcfile"]
-  [CompoundListCondition, None]
-    [SimpleCommand "set" "-o" "login"]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "not-reached"]
-[Word
-  Unquoted "set"
-]
-[Word
-  Unquoted "--options"
-]
-[Word
-  Unquoted "grep"
-]
-[Word
-  Unquoted "-E"
-]
-[Word
-  Literal "login|rcfile"
-]
-[Word
-  Unquoted "set"
-]
-[Word
-  Unquoted "-o"
-]
-[Word
-  Unquoted "login"
-]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Unquoted "not-reached"
-]
-      login             [off] Whether the shell started as a login shell, fixed at startup.
-      rcfile            [off] Whether a custom rc file was named at startup, fixed at startup.
-3:1: error: Builtin `set`: Unable to change 'login' because it is fixed at shell startup.
-     3 |  set -o login
+login=off
+rcfile=off
+4:1: error: Builtin `set`: Unable to change 'login' because it is fixed at shell startup.
+     4 |  set -o login
        |  ^~~~~~~~~~~~

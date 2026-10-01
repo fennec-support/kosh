@@ -30,3 +30,4 @@ echo end
 echo "== unguarded still errors:"
 totally-nonexistent-command
 echo "rc=$?"
+"echo" "string exec"

@@ -1,31 +1,3 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "koshkit" "mkdir" "-p" "$TEST_TEMP_DIRECTORY/redirect-directory"]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "hi"]
-[Word
-  Unquoted "koshkit"
-]
-[Word
-  Unquoted "mkdir"
-]
-[Word
-  Unquoted "-p"
-]
-[Word
-  Variable "TEST_TEMP_DIRECTORY"
-  DoubleQuoted "/redirect-directory"
-]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Unquoted "hi"
-]
-[Word
-  Variable "TEST_TEMP_DIRECTORY"
-  DoubleQuoted "/redirect-directory"
-]
 3:11: error: Could not open '.test-work/redirect-directory': Is a directory.
      3 |  echo hi > "$TEST_TEMP_DIRECTORY/redirect-directory"
        |            ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -80,9 +80,8 @@ export TEST_EVILISO_LOOPBACK := $(abspath \
 	../src/o/$(TARGET)/$(MODE)$(BUILD_VARIANT_SUFFIX)/eviliso-loop)
 EVILISO_LOOPBACK_DEPENDENCY := eviliso_loopback_helper
 endif
-BIN_FLAGS := -AR
 FAILED_LIST := failed.diff
-export BIN_FLAGS DIFF_FLAGS FAILED_LIST TEST_JOBS
+export DIFF_FLAGS FAILED_LIST TEST_JOBS
 export TEST_SHELL := $(SHELL)
 
 export KOSH_HISTORY_FILE := $(CURDIR)/.test_history
@@ -100,7 +99,7 @@ export PATH := $(CURDIR)/bin$(TEST_HOST_PATH_SEPARATOR)$(PATH)
 
 %: kosh/%.kosh expected/%.out $(BIN) $(DIFF_BOOTSTRAP)
 	@$(TEST_KOSHKIT) rm -f '$(FAILED_LIST)' && $(TEST_KOSHKIT) rm -rf '$(FAILED_LIST).d'
-	@BIN='$(BIN)' BIN_FLAGS='$(BIN_FLAGS)' DIFF_FLAGS='$(DIFF_FLAGS)' \
+	@BIN='$(BIN)' DIFF_FLAGS='$(DIFF_FLAGS)' \
 		FAILED_LIST='$(FAILED_LIST)' $(SHELL) run-kosh-test.sh $*
 
 clean:
@@ -125,7 +124,7 @@ verify_koshkit_diff: $(BIN)
 kosh_tests: $(BIN) $(DIFF_BOOTSTRAP)
 	@$(SHELL) run-test-suite.sh kosh
 
-cli_%: expected/%.out $(BIN) $(DIFF_BOOTSTRAP)
+cli_%: cli/%.sh expected/%.out $(BIN) $(DIFF_BOOTSTRAP)
 	@$(TEST_KOSHKIT) rm -f '$(FAILED_LIST)' && $(TEST_KOSHKIT) rm -rf '$(FAILED_LIST).d'
 	@BIN='$(BIN)' DIFF_FLAGS='$(DIFF_FLAGS)' FAILED_LIST='$(FAILED_LIST)' \
 		$(SHELL) run-cli-test.sh '$(SHELL)' cli/$*.sh
@@ -149,7 +148,7 @@ $(NON_LINUX_SKIPPED_CLI_NAMES):
 		"cli/$(patsubst cli_%,%,$@).sh"
 endif
 
-completion_%: expected/%.out $(BIN) $(DIFF_BOOTSTRAP)
+completion_%: completion/%.sh expected/%.out $(BIN) $(DIFF_BOOTSTRAP)
 	@$(TEST_KOSHKIT) rm -f '$(FAILED_LIST)' && $(TEST_KOSHKIT) rm -rf '$(FAILED_LIST).d'
 	@$(SHELL) run-editor-test.sh completion '$(SHELL)' completion/$*.sh
 
@@ -206,7 +205,6 @@ WINDOWS_SKIPPED_CLI_NAMES := \
 	cli_signal_noninteractive_term \
 	cli_set_option_state \
 	cli_spawn_failure_location \
-	cli_stopped_job_survives_poll \
 	cli_suspend_behavior \
 	cli_trap_during_blocking_builtin \
 	cli_trap_startup_ignored \
@@ -246,7 +244,7 @@ completion_tests: $(BIN) $(DIFF_BOOTSTRAP)
 	@$(SHELL) run-test-suite.sh completion
 
 
-highlight_%: expected/%.out $(BIN) $(DIFF_BOOTSTRAP)
+highlight_%: highlight/%.sh expected/%.out $(BIN) $(DIFF_BOOTSTRAP)
 	@$(TEST_KOSHKIT) rm -f '$(FAILED_LIST)' && $(TEST_KOSHKIT) rm -rf '$(FAILED_LIST).d'
 	@BIN='$(BIN)' DIFF_FLAGS='$(DIFF_FLAGS)' FAILED_LIST='$(FAILED_LIST)' \
 		$(SHELL) run-editor-test.sh highlight '$(SHELL)' highlight/$*.sh

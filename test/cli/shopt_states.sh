@@ -104,7 +104,7 @@ array_test
 checkhash_first=$TEST_TEMP_DIRECTORY/checkhash-first
 checkhash_second=$TEST_TEMP_DIRECTORY/checkhash-second
 mkdir -p "$checkhash_first" "$checkhash_second"
-printf '#!/bin/sh\nprintf "first\\n"\n/bin/mv "$0" "$0.off"\n' > "$checkhash_first/checkhash-probe"
+printf '#!/bin/sh\nprintf "first\\n"\n"$TEST_KOSHKIT" mv "$0" "$0.off"\n' > "$checkhash_first/checkhash-probe"
 printf '#!/bin/sh\nprintf "second\\n"\n' > "$checkhash_second/checkhash-probe"
 printf '#!/bin/sh\nprintf "rehash first\\n"\n' > "$checkhash_first/rehash-probe"
 printf '#!/bin/sh\nprintf "rehash second\\n"\n' > "$checkhash_second/rehash-probe.off"

@@ -1,29 +1,3 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [Assign fmt=%s\n]
-  [CompoundListCondition, None]
-    [SimpleCommand "printf" "$fmt" "hi"]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "after"]
-[Word
-  Unquoted "fmt="
-  DoubleQuoted "%s\n"
-]
-[Word
-  Unquoted "printf"
-]
-[Word
-  Variable "fmt"
-]
-[Word
-  Unquoted "hi"
-]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Unquoted "after"
-]
 3:8: warning: An unquoted variable can split into words and expand globs. (SC2086)
      3 |  printf $fmt hi
        |         ^~~~

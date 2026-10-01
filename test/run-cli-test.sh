@@ -31,7 +31,7 @@ for TEST_FILE in "$@"; do
     "$TEST_SHELL_COMMAND" "$TEST_FILE" > "$OUTPUT" 2>&1
   DRIVER_STATUS=$?
 
-  if is_driver_status_harness_failure "$DRIVER_STATUS" "$REFILL_MODE"; then
+  if [ "$DRIVER_STATUS" -ne 0 ]; then
     "$TEST_KOSHKIT" cat "$OUTPUT"
     printf "\t%-64s harness failure, status %s\n" \
       "cli/$TEST_NAME.sh" "$DRIVER_STATUS"

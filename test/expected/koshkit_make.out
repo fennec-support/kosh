@@ -302,4 +302,4 @@ cc foo.c -o foo.o
 echo all are a b c and first is a
 all are a b c and first is a
 == the $(shell) error names the make source (count):
-0
+1

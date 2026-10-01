@@ -98,16 +98,8 @@ if [ -n "$script_mode" ]; then
     *) unreadable_rc=broken ;;
   esac
 else
-  norc=ok
-  rcfile=ok
-  init_file=ok
-  last_alias=ok
-  last_rcfile=ok
-  login=ok
-  tilde=ok
-  privileged_rc=ok
-  privileged_env=ok
-  unreadable_rc=ok
+  printf 'A terminal test requires the script command.\n' >&2
+  exit 125
 fi
 printf 'norc=%s rcfile=%s init-file=%s aliases=%s/%s login=%s tilde=%s privileged-rc=%s privileged-env=%s unreadable-rc=%s\n' \
   "$norc" "$rcfile" "$init_file" "$last_alias" "$last_rcfile" "$login" "$tilde" \

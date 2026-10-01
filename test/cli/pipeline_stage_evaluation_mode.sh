@@ -5,31 +5,31 @@ unset KOSH_FLAGS
 # relaunches a bootstrap child, and both transports produce the same trace.
 echo "== a compound stage publishes one boundary without functrace:"
 "$BIN" --no-traces --mood bash -c 'trap "echo debug=[\$BASH_COMMAND]" DEBUG
-{ echo one; echo two; } | /bin/cat
-for i in 1 2; do echo "i=$i"; done | /bin/cat
-( echo sub ) | /bin/cat
+{ echo one; echo two; } | "$TEST_SHELL" -c cat
+for i in 1 2; do echo "i=$i"; done | "$TEST_SHELL" -c cat
+( echo sub ) | "$TEST_SHELL" -c cat
 echo tail'; echo "rc=$?"
 echo "== a compound stage publishes every inner boundary under functrace:"
 "$BIN" --no-traces --mood bash -c 'set -o functrace
 trap "echo debug=[\$BASH_COMMAND]" DEBUG
-{ echo one; echo two; } | /bin/cat
-for i in 1 2; do echo "i=$i"; done | /bin/cat
-( echo sub ) | /bin/cat
+{ echo one; echo two; } | "$TEST_SHELL" -c cat
+for i in 1 2; do echo "i=$i"; done | "$TEST_SHELL" -c cat
+( echo sub ) | "$TEST_SHELL" -c cat
 echo tail'; echo "rc=$?"
 echo "== a nested pipeline inside a stage carries the mode further:"
 "$BIN" --no-traces --mood bash -c 'set -o functrace
 trap "echo debug=[\$BASH_COMMAND]" DEBUG
-{ echo deep | /bin/cat; } | /bin/cat
+{ echo deep | "$TEST_SHELL" -c cat; } | "$TEST_SHELL" -c cat
 echo tail'; echo "rc=$?"
 echo "== clearing functrace between two stages narrows the later one:"
 "$BIN" --no-traces --mood bash -c 'set -o functrace
 trap "echo debug=[\$BASH_COMMAND]" DEBUG
-{ echo staged; } | /bin/cat
+{ echo staged; } | "$TEST_SHELL" -c cat
 set +o functrace
-{ echo quiet; } | /bin/cat
+{ echo quiet; } | "$TEST_SHELL" -c cat
 echo tail'; echo "rc=$?"
 echo "== a failing command inside a stage publishes its own boundary:"
 "$BIN" --no-traces --mood bash -c 'set -o functrace
 trap "echo debug=[\$BASH_COMMAND]" DEBUG
-{ echo before; false; } | /bin/cat
+{ echo before; false; } | "$TEST_SHELL" -c cat
 echo "status=$?"'; echo "rc=$?"

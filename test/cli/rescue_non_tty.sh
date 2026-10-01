@@ -7,10 +7,15 @@ echo "== non-tty bad flag exits 2:"
 # The error reconstructs argv, which carries the binary path, so the test keeps
 # only the path-independent error text and the exit status. The golden then does
 # not shift when the suite runs a mode-suffixed binary such as kosh-dbg.
-rescue_output=$(KOSH_FLAGS='--nonexistent-flag' "$BIN" -c 'echo unreached' </dev/null 2>&1)
+rescue_output=$(KOSH_FLAGS='--nonexistent-flag' "$BIN" -c 'echo unreached' <"$TEST_NULL_DEVICE" 2>&1)
 rescue_status=$?
 printf '%s\n' "$rescue_output" | grep -o "error: Unknown flag '--nonexistent-flag'."
 echo "exit=$rescue_status"
+[ "$rescue_status" -eq 2 ] || exit 1
 echo "== non-tty run does not enter rescue:"
-KOSH_FLAGS='--nonexistent-flag' "$BIN" -c 'echo unreached' </dev/null 2>&1 |
-  grep -c "Entering rescue"
+rescue_output=$(KOSH_FLAGS='--nonexistent-flag' "$BIN" -c 'echo unreached' <"$TEST_NULL_DEVICE" 2>&1)
+[ "$?" -eq 2 ] || exit 1
+case $rescue_output in
+  *'Entering rescue'*) exit 1 ;;
+  *) printf '0\n' ;;
+esac

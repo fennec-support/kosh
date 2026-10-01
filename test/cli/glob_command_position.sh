@@ -9,6 +9,17 @@ echo "== bash mood warns once, not fatal (count):"
 echo "== a plain command is unaffected:"
 "$BIN" -c 'echo plain-ok' 2>&1
 echo "== the [ test command is not flagged (count):"
-"$BIN" -c '[ -n x ] && echo bracket-ok' 2>&1 | grep -c "command position"
+result=$("$BIN" -c '[ -n x ] && echo bracket-ok' 2>&1) || exit 1
+case $result in
+  *'command position'*) exit 1 ;;
+  *bracket-ok*) printf '0\n' ;;
+  *) exit 1 ;;
+esac
 echo "== a quoted glob is not a command-position glob (count):"
-"$BIN" -c '"*.zzz" 2>/dev/null; true' 2>&1 | grep -c "command position"
+result=$("$BIN" -c '"*.zzz" 2>"$TEST_NULL_DEVICE"; true' 2>&1)
+[ "$?" -eq 1 ] || exit 1
+case $result in
+  *'command position'*) exit 1 ;;
+  *"The command '*.zzz' was not found."*) printf '0\n' ;;
+  *) exit 1 ;;
+esac

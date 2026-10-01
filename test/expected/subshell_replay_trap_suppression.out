@@ -33,7 +33,7 @@ debug=[echo tail]
 tail
 rc=0
 == a pipeline stage and a substitution suppress the replay too:
-debug=[/bin/cat]
+debug=["$TEST_SHELL" -c cat]
 debug=[helper]
 debug=[helper]
 debug=[echo helper]

@@ -1,16 +1,1 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "cat"]
-[Word
-  Unquoted "cat"
-]
-[Word
-  Unquoted "3"
-]
-[Word
-  Unquoted "EOF"
-]
-[Word
-  Unquoted "3"
-]
 body

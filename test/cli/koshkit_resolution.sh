@@ -8,8 +8,12 @@ unset KOSH_FLAGS
 
 dir=$(mktemp -d) || exit 1
 trap '[ -n "$dir" ] && "$TEST_KOSHKIT" rm -rf "$dir"' EXIT
-printf '#!/bin/sh\nprintf "PATH seq\\n"\n' > "$dir/seq"
-/bin/chmod +x "$dir/seq"
+if [ "${OS-}" = Windows_NT ]; then
+  printf '@echo PATH seq\r\n' > "$dir/seq.bat"
+else
+  printf '#!/bin/sh\nprintf "PATH seq\\n"\n' > "$dir/seq"
+  "$TEST_KOSHKIT" chmod +x "$dir/seq"
+fi
 
 echo "=== koshkit prefix always works ==="
 "$BIN" -c 'koshkit seq 3'
@@ -35,7 +39,7 @@ case $host_line in
 esac
 
 echo "=== set -o koshkit passes bare POSIX utility flags ==="
-"$BIN" -c 'PATH=; set -o koshkit; ls --help' >/dev/null
+"$BIN" -c 'PATH=; set -o koshkit; ls --help' >"$TEST_NULL_DEVICE"
 
 echo "=== set -o koshkit leaves unknown names unresolved ==="
 "$BIN" -c 'PATH=; set -o koshkit; command -v KOSH_NOT_A_UTILITY; echo "rc=$?"'

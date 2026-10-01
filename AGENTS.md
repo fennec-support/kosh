@@ -211,6 +211,7 @@ changes update this file.
   object directory and links the same `./kosh-dbg` path. Rebuild the ordinary
   configuration before the next fixture run.
 - `make test` runs main and completion suites. `make bench` runs benchmarks.
+  `make toiletline_test` runs the standalone editor unit suite.
   Completion tests require debug. Bound interactive and long-running commands.
   Test runners apply a deadline to each case.
 - `refill` regenerates goldens. `REFILL` selects source stems. Goldens live

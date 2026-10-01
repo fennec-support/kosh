@@ -1,15 +1,3 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "exit" "hello world" "hello world"]
-[Word
-  Unquoted "exit"
-]
-[Word
-  DoubleQuoted "hello world"
-]
-[Word
-  DoubleQuoted "hello world"
-]
 2:20: warning: The `exit` builtin takes one number from 0 to 255. (SC2241)
      2 |  exit "hello world" "hello world"
        |                     ^~~~~~~~~~~~~

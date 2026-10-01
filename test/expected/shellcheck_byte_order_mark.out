@@ -1,20 +1,3 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "﻿#!/bin/env" "kosh"]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "marked"]
-[Word
-  Unquoted "﻿#!/bin/env"
-]
-[Word
-  Unquoted "kosh"
-]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Unquoted "marked"
-]
 1:1: warning: A UTF-8 byte-order mark precedes the script text. (SC1082)
      1 |  ﻿#!/bin/env kosh
        |  ^

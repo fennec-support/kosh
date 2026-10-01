@@ -1,10 +1,13 @@
 unset KOSH_FLAGS
-# The ${name:+word} alternate form tests whether a name is set, so an unset name
-# expands to empty by design and never warns, not even under -W. Each grep count
-# is zero because no warning is printed.
 echo "== -W is silent on an unset :+:"
-"$BIN" -W -c 'echo "[${UNSETV:+x}]"' 2>&1 | grep -c "is not set"
+result=$("$BIN" -W -c 'echo "[${UNSETV:+x}]"' 2>&1) || exit 1
+[ "$result" = '[]' ] || exit 1
+printf '0\n'
 echo "== plain run is silent:"
-"$BIN" --mood bash -c 'echo "[${UNSETV:+x}]"' 2>&1 | grep -c "is not set"
+result=$("$BIN" --mood bash -c 'echo "[${UNSETV:+x}]"' 2>&1) || exit 1
+[ "$result" = '[]' ] || exit 1
+printf '0\n'
 echo "== a set name is silent under -W:"
-"$BIN" -W -c 'V=val; echo "[${V:+y}]"' 2>&1 | grep -c "is not set"
+result=$("$BIN" -W -c 'V=val; echo "[${V:+y}]"' 2>&1) || exit 1
+[ "$result" = '[y]' ] || exit 1
+printf '0\n'

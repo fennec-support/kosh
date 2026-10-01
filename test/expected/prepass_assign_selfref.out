@@ -1,15 +1,3 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "$VAR"]
-[Word
-  Unquoted "VAR=1"
-]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Variable "VAR"
-]
 2:12: warning: An unquoted variable can split into words and expand globs. (SC2086)
      2 |  VAR=1 echo $VAR
        |             ^~~~

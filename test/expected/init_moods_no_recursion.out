@@ -1,2 +1,3 @@
-exit=clean
+exit=1
 rc-mark=1
+bashrc-array=1

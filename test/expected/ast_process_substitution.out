@@ -1,17 +1,3 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "cat" "<echo input"]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "data"]
-[Word
-  Unquoted "cat"
-]
-[Word
-  Unquoted "/dev/null"
-]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Unquoted "data"
-]
+read=input
+write
+empty-redirections=0

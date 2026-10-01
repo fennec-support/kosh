@@ -1,4 +1,5 @@
 #!/bin/env kosh
-set --options | grep -E 'login|rcfile'
+if [[ -o login ]]; then echo login=on; else echo login=off; fi
+if [[ -o rcfile ]]; then echo rcfile=on; else echo rcfile=off; fi
 set -o login
 echo not-reached

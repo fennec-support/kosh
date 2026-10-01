@@ -1,31 +1,3 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "[" "hello" "]"]
-  [CompoundListCondition, &&]
-    [SimpleCommand "echo" "yes"]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "after"]
-[Word
-  Unquoted "["
-]
-[Word
-  Unquoted "hello"
-]
-[Word
-  Unquoted "]"
-]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Unquoted "yes"
-]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Unquoted "after"
-]
 2:3: warning: The 'hello' operand is a literal. (SC2078)
      2 |  [ hello ] && echo yes
        |    ^~~~~

@@ -35,7 +35,6 @@ export NO_TOILETLINE
 export TARGET
 
 TEST_TARGET := $(if $(filter 1,$(NO_TOILETLINE)),cli_history_noninteractive,test)
-EDITOR_TEST_TARGET := $(if $(filter 1,$(NO_TOILETLINE)),,toiletline_test)
 
 all: kosh test
 
@@ -63,7 +62,7 @@ toiletline_test: kosh
 	echo Launching editor tests...
 	$(MAKE) -C src/toiletline test
 
-test: kosh $(EDITOR_TEST_TARGET)
+test: kosh
 	echo Launching tests...
 	$(MAKE) $(AUTO_JOBS) -C test $(TEST_TARGET)
 

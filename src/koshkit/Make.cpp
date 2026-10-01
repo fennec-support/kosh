@@ -1128,8 +1128,13 @@ static fn run_make_shell_function(EvalContext &cxt, makefile &mk,
     }
   }
 
+  let source_name = StringView{"make"};
+  if (let const active_name = source_name_at(mk.active_source_name_index);
+      active_name.has_value())
+    source_name = *active_name;
+
   let const captured =
-      cxt.capture_command_substitution(source.view(), StringView{"make"});
+      cxt.capture_command_substitution(source.view(), source_name);
   let folded = String{cxt.scratch_allocator()};
   for (usize byte_position = 0; byte_position < captured.count();
        byte_position++)

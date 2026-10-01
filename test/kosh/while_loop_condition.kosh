@@ -1,2 +1,0 @@
-#!/bin/env kosh
-while false; do echo no; done; echo after

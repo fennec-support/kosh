@@ -1,36 +1,3 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "printf" "[%s]" "$y:-${z:-"a}b"}"]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo"]
-  [CompoundListCondition, None]
-    [SimpleCommand "printf" "[%s]" "$y:-${z:-$(echo "}")}"]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo"]
-[Word
-  Unquoted "printf"
-]
-[Word
-  DoubleQuoted "[%s]"
-]
-[Word
-  Variable "y:-${z:-"a}b"}"
-]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Unquoted "printf"
-]
-[Word
-  DoubleQuoted "[%s]"
-]
-[Word
-  Variable "y:-${z:-$(echo "}")}"
-]
-[Word
-  Unquoted "echo"
-]
 2:15: warning: An unquoted variable can split into words and expand globs. (SC2086)
      2 |  printf "[%s]" ${y:-${z:-"a}b"}}
        |                ^~~~~~~~~~~~~~~~~

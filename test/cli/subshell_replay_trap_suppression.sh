@@ -32,7 +32,7 @@ echo "== a pipeline stage and a substitution suppress the replay too:"
 "$BIN" --no-traces --mood bash -c 'set -o functrace
 helper() { echo helper; }
 trap "echo debug=[\$BASH_COMMAND]" DEBUG
-{ helper; } | /bin/cat
+{ helper; } | "$TEST_SHELL" -c cat
 captured=$(helper)
 echo "captured=$captured"
 echo tail'; echo "rc=$?"

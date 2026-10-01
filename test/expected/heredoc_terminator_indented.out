@@ -1,20 +1,3 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "before"]
-  [CompoundListCondition, None]
-    [SimpleCommand ":"]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Unquoted "before"
-]
-[Word
-  Unquoted ":"
-]
-[Word
-  Unquoted "EOF"
-]
 4:3: warning: The indented line holding 'EOF' does not close the here-document. (SC1039)
      4 |    EOF
        |    ^~~

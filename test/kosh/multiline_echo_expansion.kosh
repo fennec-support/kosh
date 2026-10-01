@@ -1,3 +1,0 @@
-#!/bin/env kosh
-echo \
-word*

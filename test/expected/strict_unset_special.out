@@ -1,28 +1,3 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "before"]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "$1"]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "not-reached"]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Unquoted "before"
-]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Variable "1"
-]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Unquoted "not-reached"
-]
 before
 3:7: warning: The variable '1' is not set, it expands to empty.
      3 |  echo "$1"

@@ -555,3 +555,4 @@ echo "=== xargs line count location ==="
 
 echo "=== xargs byte count location ==="
 "$BIN" -c 'koshkit xargs -s 0' 2>&1
+[ "$?" -eq 1 ]

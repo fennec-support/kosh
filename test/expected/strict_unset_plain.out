@@ -1,28 +1,3 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "before"]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "$nope"]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "not-reached"]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Unquoted "before"
-]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Variable "nope"
-]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Unquoted "not-reached"
-]
 5:6: warning: An unquoted variable can split into words and expand globs. (SC2086)
      5 |  echo $nope
        |       ^~~~~

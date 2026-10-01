@@ -1,20 +1,3 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "before"]
-  [CompoundListCondition, None]
-    [SimpleCommand ":"]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Unquoted "before"
-]
-[Word
-  Unquoted ":"
-]
-[Word
-  Unquoted "EOF"
-]
 4:1: warning: A blank follows 'EOF', and the here-document stays open. (SC1118)
      4 |  EOF 
        |  ^~~

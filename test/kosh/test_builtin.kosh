@@ -1,12 +1,12 @@
 #!/bin/env kosh
-# shellcheck disable=SC2078,SC2193,SC2212
-test -s /dev/null; echo $?
+# shellcheck disable=SC2078,SC2154,SC2193,SC2212
+test -s "$TEST_NULL_DEVICE"; echo $?
 test 5 -le 10; echo $?
-test abc -eq 5; echo $?
+( test abc -eq 5 ); echo "invalid_number=$?"
 test ! ""; echo $?
 [ ]; echo $?
-test a -a b c; echo $?
-test /dev/null -nt /dev/null; echo $?
+( test a -a b c ); echo "invalid_arity=$?"
+test "$TEST_NULL_DEVICE" -nt "$TEST_NULL_DEVICE"; echo $?
 
 
 [ ! ]
@@ -39,3 +39,18 @@ koshkit unlink "$TEST_TEMP_DIRECTORY/different-file"
 [ abc \< abd ]; echo "abc_lt_abd=$?"
 [ \( a = a \) ]; echo "group_eq=$?"
 [ \( a = a \) -a -n x ]; echo "group_and=$?"
+
+unset UNSET_VAR
+echo "== [ -z unset ]:"
+[ -z "$UNSET_VAR" ]; echo "exit=$?"
+echo "== [ -n unset ]:"
+[ -n "$UNSET_VAR" ]; echo "exit=$?"
+echo "== [[ -z unset ]]:"
+[[ -z "$UNSET_VAR" ]]; echo "exit=$?"
+echo "== [[ unset -ne 0 ]]:"
+[[ "$UNSET_VAR" -ne 0 ]]; echo "exit=$?"
+echo "== [ unset -ne 0 ] (builtin, integer expected):"
+( [ "$UNSET_VAR" -ne 0 ] ) 2>&1; echo "exit=$?"
+echo "== set -u aborts a bare reference:"
+( set -u; echo "$UNSET_VAR" ) 2>&1
+echo "rc=$?"

@@ -29,4 +29,4 @@ eval:1:8: error: Division by zero.
 note: The right operand evaluated to 0.
 rc=1
 == function defined in default mood, called from bash, renders once ==
-0
+1

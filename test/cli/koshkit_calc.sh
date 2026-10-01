@@ -163,3 +163,4 @@ echo "== --pipe is the long form:"
 printf '7 * 6\n' | "$BIN" -c 'koshkit calc --pipe' 2>&1
 echo "== no expression off a pipe reports a verbose error:"
 printf '' | "$BIN" -c 'koshkit calc' 2>&1
+[ "$?" -eq 1 ]

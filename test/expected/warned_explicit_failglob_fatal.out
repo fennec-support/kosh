@@ -1,39 +1,3 @@
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "set" "-WWW"]
-  [CompoundListCondition, None]
-    [SimpleCommand "set" "-o" "failglob"]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "*.zzz_explicit_fatal"]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "not-reached"]
-[Word
-  Unquoted "set"
-]
-[Word
-  Unquoted "-WWW"
-]
-[Word
-  Unquoted "set"
-]
-[Word
-  Unquoted "-o"
-]
-[Word
-  Unquoted "failglob"
-]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Unquoted "*.zzz_explicit_fatal"
-]
-[Word
-  Unquoted "echo"
-]
-[Word
-  Unquoted "not-reached"
-]
 4:6: error: The glob pattern '*.zzz_explicit_fatal' matched no file, it expands to its literal text, which is rarely intended.
      4 |  echo *.zzz_explicit_fatal
        |       ^~~~~~~~~~~~~~~~~~~~

@@ -33,8 +33,8 @@ Place a test in the cheapest harness that can express its behavior.
   `expected/<name>.out` golden.
 - `bench/` owns performance workloads. Behavioral regressions belong in another
   harness.
-- `data/` owns shared goldens. A golden is data and does not become a second
-  behavior owner.
+- `data/` owns shared input fixtures. Goldens live directly in `expected/` and
+  do not become a second behavior owner.
 
 Tests do not parse owned source files, inspect private member names or symbols,
 link production objects into a unit binary, or assert test-only counters and
@@ -130,7 +130,8 @@ Use `TEST_PATH_SEPARATOR`, `TEST_NULL_DEVICE`, `TEST_PATH_ENVIRONMENT_NAME`,
 Windows skip in `Makefile` only when the backend cannot express the contract.
 Do not hide a portable test behind a platform skip.
 
-`kosh/` fixtures run the built executable with `-AER`. Normalize mood,
+`kosh/` fixtures run the built executable with `-WWW`. The runner suppresses
+incidental diagnostics outside `shellcheck_static_*` cases. Normalize mood,
 diagnostics, warnings, and shell options inside a moved or merged case when it
 relied on another initial state.
 
