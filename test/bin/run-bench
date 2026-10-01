@@ -4,7 +4,6 @@
 # shells and kosh, reporting wall-clock seconds at the given scale and checking
 # that kosh output matches the reference shell. Run from the test directory.
 # The bash time keyword formats the wall clock through TIMEFORMAT.
-. ./aux/source-utils
 set -euo pipefail
 export TIMEFORMAT="%3R"
 WORK=$TEST_TEMP_DIRECTORY/bench

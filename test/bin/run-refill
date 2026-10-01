@@ -1,7 +1,6 @@
 #!/bin/bash
 
 AUX_DIRECTORY=${0%/*}
-. "$AUX_DIRECTORY/source-utils"
 TEST_SHELL_COMMAND=$1
 REFILL_STATUS=0
 
@@ -12,23 +11,26 @@ do
   TEST_NAME=${TEST_FILE##*/}
   TEST_NAME=${TEST_NAME%.*}
 
-  if [ -n "${REFILL-}" ] && ! word_is_listed "$TEST_NAME" "$REFILL"
-  then
-    continue
+  if [ -n "${REFILL-}" ]; then
+    case " $REFILL " in
+    *" $TEST_NAME "*) ;;
+    *) continue ;;
+    esac
   fi
 
   OUTPUT="expected/.$TEST_NAME.out.tmp"
 
   case $TEST_FILE in
     harness/kosh/*.kosh)
-      "$TEST_SHELL_COMMAND" "$AUX_DIRECTORY/run-test" "$TEST_FILE" "$OUTPUT" "$BIN" \
-                            -WWW \
-                            --no-annoying-diagnostics - <"$TEST_FILE" || \
+      "$TEST_KOSHKIT" timeout -k 2s "${TEST_TIMEOUT_SECONDS:-60}" \
+        "$BIN" -WWW --no-annoying-diagnostics - <"$TEST_FILE" \
+        >"$OUTPUT" 2>&1 || \
         REFILL_STATUS=$?
     ;;
     harness/cli/*.sh | harness/completion/*.sh | harness/highlight/*.sh)
-      "$TEST_SHELL_COMMAND" "$AUX_DIRECTORY/run-test" "$TEST_FILE" "$OUTPUT" \
-        "$TEST_SHELL_COMMAND" "$TEST_FILE" || REFILL_STATUS=$?
+      "$TEST_KOSHKIT" timeout -k 2s "${TEST_TIMEOUT_SECONDS:-60}" \
+        "$TEST_SHELL_COMMAND" "$TEST_FILE" >"$OUTPUT" 2>&1 || \
+        REFILL_STATUS=$?
     ;;
   esac
 

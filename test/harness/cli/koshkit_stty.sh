@@ -1,5 +1,5 @@
 unset KOSH_FLAGS
-. ./aux/invoke-capture
+. ./bin/invoke-capture
 
 BIN=$(CDPATH= cd -- "$(dirname -- "$BIN")" && pwd)/$(basename -- "$BIN")
 d=$(mktemp -d)

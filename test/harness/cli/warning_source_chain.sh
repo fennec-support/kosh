@@ -20,14 +20,14 @@ inner=1
 EOF
 "$BIN" -WWW -c ". $outer" 2>&1 |
     sed 's|[^ ]*wscouter|OUTER|g; s|[^ ]*wscinner|INNER|g' |
-    ./aux/invoke-normalize-trace "$BIN"
+    ./bin/invoke-normalize-trace "$BIN"
 cat > "$inner" <<'EOF'
 echo "$MIMIC_CHAIN_FIRST"
 echo "$MIMIC_CHAIN_SECOND"
 EOF
 chmod +x "$inner"
 "$BIN" --mood bash -WWW -c '"$1"' trace-driver "$inner" 2>&1 |
-    sed 's|[^ ]*wscinner|INNER|g' | ./aux/invoke-normalize-trace "$BIN"
+    sed 's|[^ ]*wscinner|INNER|g' | ./bin/invoke-normalize-trace "$BIN"
 "$BIN" -WWW -c '[[ x = "$UNSET_FLAT" ]]' 2>&1 | grep -Ec 'trace:'
 [ -n "$TEST_TEMP_DIRECTORY" ] && rm -f "$outer" "$inner"
 echo "rc=$?"

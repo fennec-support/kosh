@@ -7,7 +7,7 @@ echo "== local outside a function is an error:"
 {
     "$BIN" -c 'local x=5' 2>&1
     printf 'rc=%s\n' "$?"
-} | ./aux/invoke-normalize-trace "$BIN"
+} | ./bin/invoke-normalize-trace "$BIN"
 echo "== local -i evaluates an integer assignment:"
 "$BIN" -c 'f(){ local -i n=3+4; echo $n; }; f'
 echo "== local -a declares an indexed array:"

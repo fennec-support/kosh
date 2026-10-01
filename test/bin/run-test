@@ -1,0 +1,26 @@
+#!/bin/bash
+
+AUX_DIRECTORY=${0%/*}
+TEST_FILE=$1
+HARNESS=$2
+TEST_NAME=${TEST_FILE##*/}
+TEST_NAME=${TEST_NAME%.*}
+
+case " $SKIPPED_TESTS " in
+*" $TEST_NAME "*)
+  printf "\t%-64s skipped.\n" "$TEST_FILE"
+  exit 0
+  ;;
+esac
+
+printf "\t%-64s running\033[K\r" "$TEST_FILE"
+"$HARNESS" "$TEST_FILE" \
+  2> >(cat -n | tee -a "$FAILED_LIST" >&2)
+STATUS=$?
+
+if [ "$STATUS" -eq 0 ]
+then
+  printf "\t%-64s ok.\033[K\n" "$TEST_FILE"
+else
+  printf "\t%-64s FAILED!!!\n" "$TEST_FILE"
+fi

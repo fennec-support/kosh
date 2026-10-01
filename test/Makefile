@@ -86,7 +86,7 @@ endif
 export TEST_HOST_PATH_SEPARATOR := :
 export TEST_TEMP_DIRECTORY := .test-work
 export TEST_MKTEMP_DIRECTORY := $(shell $(TEST_ABSOLUTE_DIRECTORY_COMMAND))/$(TEST_TEMP_DIRECTORY)
-export TEST_KOSHKIT := $(CURDIR)/aux/invoke-koshkit
+export TEST_KOSHKIT := $(CURDIR)/bin/invoke-koshkit
 
 ifeq ($(MODE),rel)
 BIN_NAME := kosh
@@ -157,22 +157,22 @@ BASH_TESTS := $(wildcard harness/bash/*.bash)
 bash: $(BASH_TESTS)
 
 harness/kosh/%.kosh: FORCE $(BIN) | test_prepare
-	@$(SHELL) aux/run-harness-kosh '$@'
+	@$(SHELL) bin/run-test '$@' bin/run-harness-kosh
 
 harness/cli/%.sh: FORCE $(BIN) | test_prepare
-	@$(SHELL) aux/run-harness-cli '$@'
+	@$(SHELL) bin/run-test '$@' bin/run-harness-script
 
 harness/completion/%.sh: FORCE $(BIN) | test_prepare
-	@$(SHELL) aux/run-harness-completion '$@'
+	@$(SHELL) bin/run-test '$@' bin/run-harness-script
 
 harness/highlight/%.sh: FORCE $(BIN) | test_prepare
-	@$(SHELL) aux/run-harness-highlight '$@'
+	@$(SHELL) bin/run-test '$@' bin/run-harness-script
 
 harness/sh/%.sh: FORCE $(BIN) | test_prepare
-	@$(SHELL) aux/run-harness-sh '$@'
+	@$(SHELL) bin/run-test '$@' bin/run-harness-sh
 
 harness/bash/%.bash: FORCE $(BIN) | test_prepare
-	@$(SHELL) aux/run-harness-bash '$@'
+	@$(SHELL) bin/run-test '$@' bin/run-harness-bash
 
 FORCE:
 
@@ -195,7 +195,7 @@ REFILL ?=
 
 refill: $(BIN)
 	@REFILL='$(REFILL)' \
-		$(SHELL) aux/run-refill '$(SHELL)'
+		$(SHELL) bin/run-refill '$(SHELL)'
 
 export ZSH ?= /bin/zsh
 export ASH ?= /bin/busybox
@@ -212,6 +212,6 @@ export DASH_SPEEDUP_REQUIRED ?= 1
 export BASH_SPEEDUP_REQUIRED ?= 3
 
 bench: $(BIN)
-	@$(SHELL) aux/run-bench
+	@$(SHELL) bin/run-bench
 
 .PHONY: test clean refill bench
