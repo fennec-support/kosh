@@ -534,6 +534,35 @@ fn EvalContext::run_source(StringView source, StringView origin,
   if (arena_store().parse_arena() == nullptr)
     throw Error{"Cannot run source outside of a parse"};
 
+  let *parse_arena = arena_store().parse_arena();
+  let const parse_mark = parse_arena->mark();
+  let const retained_ast_count = source_store().retained_source_asts().count();
+  let const retained_source_count = source_store().retained_sources().count();
+  let const process_substitution_count =
+      expansion_store().pending_process_substitutions().count();
+  bool did_complete_source = false;
+  defer
+  {
+    if (!did_complete_source || retained_ast_count != 0 ||
+        retained_source_count != 0 || control_flow_store().has_pending() ||
+        expansion_store().pending_process_substitutions().count() !=
+            process_substitution_count)
+    {
+      return;
+    }
+
+    source_store().retained_source_asts().clear();
+    parse_arena->release(parse_mark);
+    for (String *retained : source_store().retained_sources()) {
+      utils::invalidate_line_number_cache_for(retained->view());
+      retained->~String();
+      heap_allocator().free_array(retained, 1);
+    }
+    source_store().retained_sources().clear();
+    reset_runtime_diagnostic_highlight_cache();
+    source_store().retained_source_generation()++;
+  };
+
   LOG(Debug, "running source '%.*s' of %zu bytes at depth %zu",
       static_cast<int>(origin.length), origin.data, source.length,
       source_store().source_depth());
@@ -651,6 +680,7 @@ fn EvalContext::run_source(StringView source, StringView origin,
     };
 
     ast->evaluate(*this);
+    did_complete_source = true;
     /* A return at the top of a sourced file or an eval returns from that source
        with its status. Break, continue, and exit keep propagating. */
     if (consume_return && control_flow_store().has_pending() &&
@@ -674,14 +704,17 @@ fn EvalContext::run_source(StringView source, StringView origin,
     show_message(detailed_error.to_string(source, this));
     show_message(detailed_error.details_to_string(source, this));
     print_source_backtrace(detailed_error.location());
+    did_complete_source = true;
     return static_cast<i32>(detailed_error.command_status());
   } catch (const ErrorWithLocation &located_error) {
     show_message(located_error.to_string(source, this));
     print_source_backtrace(located_error.location());
+    did_complete_source = true;
     return static_cast<i32>(located_error.command_status());
   } catch (const Error &caught_error) {
     show_message(caught_error.to_string());
     print_source_backtrace();
+    did_complete_source = true;
     return static_cast<i32>(caught_error.command_status());
   }
 }
