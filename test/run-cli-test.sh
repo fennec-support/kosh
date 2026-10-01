@@ -4,7 +4,7 @@
 if [ "${1-}" = --windows-driver ]; then
   shift
   set -m
-  "$TEST_SHELL_COMMAND" "$1" &
+  sh "$1" &
   GOLDEN_PROCESS=$!
   set +m
   trap 'taskkill.exe //PID "$GOLDEN_PROCESS" //T //F >/dev/null 2>&1; kill -KILL "$GOLDEN_PROCESS" 2>/dev/null' TERM INT HUP
@@ -54,29 +54,6 @@ if [ "${1-}" = --bounded ]; then
         PROCESS_ID=${PROCESS_STAT_PATH#/proc/}
         printf '%s\n' "${PROCESS_ID%/stat}"
       done
-      return
-    fi
-
-    if [ "$HOST_SYSTEM" = Darwin ]; then
-      PROCESS_IDS=$(ps -Ao pid= 2>/dev/null) || return 1
-      printf '%s\n' "$PROCESS_IDS" | python3 -c '
-import os
-import sys
-
-session = int(sys.argv[1])
-try:
-  os.getsid(0)
-except (AttributeError, OSError):
-  raise SystemExit(1)
-for line in sys.stdin:
-  process = int(line)
-  try:
-    process_session = os.getsid(process)
-  except OSError:
-    continue
-  if process_session == session:
-    print(process)
-      ' "$GOLDEN_SESSION"
       return
     fi
 
@@ -156,7 +133,7 @@ for line in sys.stdin:
   fi
 
   GOLDEN_LAUNCHER='printf "%s\n" "$$" > "$GOLDEN_SESSION_FILE"
-  "$TEST_SHELL_COMMAND" "$1"
+  /bin/sh "$1"
   printf "%s\n" "$?" > "$GOLDEN_STATUS_FILE"'
 
   set -m

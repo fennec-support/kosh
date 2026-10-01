@@ -10,12 +10,15 @@ mkdir -p sub/deep empty sized .symlink-batch
 printf 'aaa\n' > plain.txt
 printf '#!/bin/sh\n' > run.sh
 chmod +x run.sh
+: > nowhere
+: > .symlink-batch/nowhere
 ln -s plain.txt good-link
 ln -s nowhere bad-link
 for link_index in 1 2 3 4; do
   ln -s ../plain.txt ".symlink-batch/good-$link_index"
   ln -s nowhere ".symlink-batch/bad-$link_index"
 done
+rm nowhere .symlink-batch/nowhere
 : > sub/inner.txt
 : > sub/deep/leaf.txt
 # The size sort reads regular files alone, because the size a directory reports

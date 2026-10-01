@@ -143,7 +143,7 @@ static fn find_walk(const ExecContext &ec, EvalContext &cxt,
 
   usize filename_start = 0;
   for (usize index = path_text.length; index > 0; index--) {
-    if (path_text[index - 1] == '/') {
+    if (os::is_directory_separator(path_text[index - 1])) {
       filename_start = index;
       break;
     }

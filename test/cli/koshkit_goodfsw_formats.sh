@@ -17,7 +17,7 @@ run_watch() {
   done
   wait "$watch_pid"
   watch_status=$?
-  watch_line=$(cat "$watch_output")
+  watch_line=$(tr '\\' '/' < "$watch_output")
 }
 
 run_watch "$TEST_TEMP_DIRECTORY/goodfsw-machine" ""

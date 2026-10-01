@@ -50,7 +50,8 @@ measure_command() {
   local TIMING
   shift
 
-  if { time SCALE="$SCALE" "$@" >"$OUTPUT" 2>"$ERROR_OUTPUT"; } \
+  if { time SCALE="$SCALE" "$TEST_TIMEOUT_COMMAND" -k 2s \
+    "${BENCH_TEST_TIMEOUT_SECONDS:-60}" "$@" >"$OUTPUT" 2>"$ERROR_OUTPUT"; } \
     2>"$TIME_OUTPUT"
   then
     STATUS=0

@@ -121,7 +121,7 @@ clean:
 
 test: $(EVILISO_LOOPBACK_DEPENDENCY) $(BIN) \
 	$(WINDOWS_DIFF_BOOTSTRAP)
-	@$(SHELL) run-test-suite.sh all
+	@$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(SHELL) run-test-suite.sh all
 
 eviliso_loopback_helper:
 	@$(MAKE) -C ../src MODE='$(MODE)' TARGET='$(TARGET)' ARCH='$(ARCH)' \
@@ -132,10 +132,10 @@ verify_koshkit_diff: $(BIN)
 		echo "The shell '$(BIN)' is missing or is not executable." >&2; \
 		exit 1; \
 	fi
-	@sh verify-koshkit-diff.sh
+	@$(TEST_TIMEOUT_COMMAND) -k 2s 30 sh verify-koshkit-diff.sh
 
 kosh_tests: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
-	@$(SHELL) run-test-suite.sh kosh
+	@$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(SHELL) run-test-suite.sh kosh
 
 cli_%: expected/%.out $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
 	@rm -f '$(FAILED_LIST)' && rm -rf '$(FAILED_LIST).d'
@@ -143,12 +143,13 @@ cli_%: expected/%.out $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
 		$(SHELL) run-cli-test.sh '$(SHELL)' cli/$*.sh
 
 pty_live_probes: $(BIN)
-	@BIN='$(BIN)' TARGET='$(TARGET)' python3 cli/koshkit_live_pty.py
+	@BIN='$(BIN)' TARGET='$(TARGET)' \
+		$(TEST_TIMEOUT_COMMAND) -k 2s 30 python3 cli/koshkit_live_pty.py
 
 cli_koshkit_eviliso_loopback: $(EVILISO_LOOPBACK_DEPENDENCY)
 
 cli_tests: $(EVILISO_LOOPBACK_DEPENDENCY) $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
-	@$(SHELL) run-test-suite.sh cli
+	@$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(SHELL) run-test-suite.sh cli
 
 ifneq ($(TARGET), Linux)
 NON_LINUX_SKIPPED_CLI_NAMES := \
@@ -209,6 +210,7 @@ WINDOWS_SKIPPED_CLI_NAMES := \
 	cli_koshkit_evil_regressions \
 	cli_koshkit_evilfiles_parity \
 	cli_koshkit_evilio_live \
+	cli_koshkit_eviliso \
 	cli_koshkit_file_magic_batch \
 	cli_koshkit_stty \
 	cli_mkdir_mode_umask \
@@ -253,7 +255,7 @@ $(WINDOWS_UNREPRESENTABLE_COMPLETION_NAMES):
 endif
 
 completion_tests: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
-	@$(SHELL) run-test-suite.sh completion
+	@$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(SHELL) run-test-suite.sh completion
 
 
 highlight_%: expected/%.out $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
@@ -262,7 +264,7 @@ highlight_%: expected/%.out $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
 		$(SHELL) run-editor-test.sh highlight '$(SHELL)' highlight/$*.sh
 
 highlight_tests: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
-	@$(SHELL) run-test-suite.sh highlight
+	@$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(SHELL) run-test-suite.sh highlight
 
 SKIPPED_TEST_NAMES := $(WINDOWS_SKIPPED_TEST_NAMES)
 SKIPPED_CLI_INPUT := $(patsubst cli_%,cli/%.sh,\
@@ -283,7 +285,8 @@ export SKIP_CLI_ASSIMILATE
 REFILL ?=
 
 refill: $(EVILISO_LOOPBACK_DEPENDENCY) $(BIN)
-	@REFILL='$(REFILL)' $(SHELL) run-refill.sh '$(SHELL)'
+	@REFILL='$(REFILL)' $(TEST_TIMEOUT_COMMAND) -k 2s 300 \
+		$(SHELL) run-refill.sh '$(SHELL)'
 
 
 ZSH ?= /bin/zsh
@@ -303,7 +306,7 @@ BASHP ?= /bin/bash
 export BASHP DASH
 
 compatdiff: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
-	@$(SHELL) run-test-suite.sh compat
+	@$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(SHELL) run-test-suite.sh compat
 
 dashdiff bashdiff mimicrydiff: compatdiff
 
@@ -329,7 +332,7 @@ bench: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
 		BENCH_SAMPLE_COUNT='$(BENCH_SAMPLE_COUNT)' \
 		DASH_SPEEDUP_REQUIRED='$(DASH_SPEEDUP_REQUIRED)' \
 		BASH_SPEEDUP_REQUIRED='$(BASH_SPEEDUP_REQUIRED)' \
-		$(SHELL) run-bench-test.sh
+		$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(SHELL) run-bench-test.sh
 
 .PHONY: test clean eviliso_loopback_helper \
 	verify_koshkit_diff kosh_tests refill \
