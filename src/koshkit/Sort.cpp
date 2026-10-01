@@ -83,15 +83,35 @@ fn Sort::execute(const ExecContext &ec, EvalContext &cxt,
       steal(collected_lines).make_sorted(sort_order::ascending);
 
   let output = String{cxt.scratch_allocator()};
+  static constexpr usize OUTPUT_BUFFER_LENGTH = 64 * 1024;
+  output.reserve(OUTPUT_BUFFER_LENGTH);
+  let const do_print_line = [&](StringView line) {
+    if (line.count() >= OUTPUT_BUFFER_LENGTH) {
+      if (!output.is_empty()) {
+        ec.print_to_stdout(output);
+        output.clear();
+      }
+      ec.print_to_stdout(line);
+      output += '\n';
+      return;
+    }
+
+    if (output.count() + line.count() + 1 > OUTPUT_BUFFER_LENGTH) {
+      ec.print_to_stdout(output);
+      output.clear();
+    }
+
+    output += line;
+    output += '\n';
+  };
+
   if (FLAG_SORT_REVERSE.is_enabled())
     for (usize i = lines.count(); i > 0; i--) {
-      output += lines[i - 1];
-      output += '\n';
+      do_print_line(lines[i - 1]);
     }
   else
     for (let const &line : lines) {
-      output += line;
-      output += '\n';
+      do_print_line(line);
     }
 
   ec.print_to_stdout(output);
