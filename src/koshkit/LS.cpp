@@ -531,10 +531,10 @@ static fn render_columns(const ArrayList<listing_entry> &entries,
   let const count = entries.count();
   if (count == 0) return;
 
-  let const terminal_dimensions = os::get_terminal_dimensions();
-  let const is_terminal =
-      !options.is_one_per_line && terminal_dimensions.has_value();
-  if (!is_terminal) {
+  let const terminal_dimensions = options.is_one_per_line
+                                      ? Maybe<os::terminal_dimensions>{}
+                                      : os::get_terminal_dimensions();
+  if (!terminal_dimensions.has_value()) {
     for (let const &entry : entries) {
       append_decorated_name(output, entry, options);
       output += '\n';
