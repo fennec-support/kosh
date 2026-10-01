@@ -110,6 +110,10 @@ print_platform_skips()
 {
   HARNESS_NAME=$1
 
+  if [ "${OS-}" != Windows_NT ]; then
+    return
+  fi
+
   case $HARNESS_NAME in
   kosh)
     for TEST_NAME in $WINDOWS_SKIPPED_TEST_NAMES; do

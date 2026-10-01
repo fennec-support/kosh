@@ -56,7 +56,8 @@ ACTIVE_TEST_NAMES=
 for TEST_FILE in kosh/*.kosh; do
   TEST_NAME=${TEST_FILE#kosh/}
   TEST_NAME=${TEST_NAME%.kosh}
-  if word_is_listed "$TEST_NAME" "$WINDOWS_SKIPPED_TEST_NAMES"; then
+  if [ "${OS-}" = Windows_NT ] && \
+    word_is_listed "$TEST_NAME" "$WINDOWS_SKIPPED_TEST_NAMES"; then
     continue
   fi
   ACTIVE_TEST_NAMES="$ACTIVE_TEST_NAMES $TEST_NAME"
@@ -68,7 +69,8 @@ SERIAL_CLI_INPUT=
 for TEST_FILE in cli/*.sh; do
   TEST_NAME=${TEST_FILE#cli/}
   TEST_NAME=${TEST_NAME%.sh}
-  if word_is_listed "cli_$TEST_NAME" "$WINDOWS_SKIPPED_TEST_NAMES" || \
+  if [ "${OS-}" = Windows_NT ] && \
+    word_is_listed "cli_$TEST_NAME" "$WINDOWS_SKIPPED_TEST_NAMES" || \
     word_is_listed "cli_$TEST_NAME" "$NON_LINUX_SKIPPED_CLI_NAMES"; then
     continue
   fi
@@ -85,7 +87,8 @@ SERIAL_COMPLETION_INPUT=
 for TEST_FILE in completion/*.sh; do
   TEST_NAME=${TEST_FILE#completion/}
   TEST_NAME=${TEST_NAME%.sh}
-  if word_is_listed "completion_$TEST_NAME" "$WINDOWS_SKIPPED_TEST_NAMES"; then
+  if [ "${OS-}" = Windows_NT ] && \
+    word_is_listed "completion_$TEST_NAME" "$WINDOWS_SKIPPED_TEST_NAMES"; then
     continue
   fi
   case $TEST_FILE in
