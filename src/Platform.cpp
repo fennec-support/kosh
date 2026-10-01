@@ -347,7 +347,8 @@ fn regex_matches_null_terminated(compiled_regex &compiled,
 #if defined REG_STARTEND
   return regex_matches(compiled, subject);
 #else
-  return regexec(&compiled.re, subject.data, 0, nullptr, 0) == 0;
+  const String null_terminated{heap_allocator(), subject};
+  return regexec(&compiled.re, null_terminated.c_str(), 0, nullptr, 0) == 0;
 #endif
 }
 

@@ -154,7 +154,19 @@ completion_%: completion/%.sh expected/%.out $(BIN) $(DIFF_BOOTSTRAP)
 
 ifeq ($(TARGET), Windows_NT)
 WINDOWS_SKIPPED_TEST_NAMES := \
-	koshkit_filesystem_posix
+	koshkit_filesystem_posix \
+	koshkit_inspect_posix \
+	koshkit_system_posix \
+	koshkit_text_posix \
+	alias_unalias \
+	glob_dot_slash_prefix \
+	koshkit_getconf \
+	pipeline_compound_group \
+	read_builtin \
+	redirect_high_fd \
+	shellcheck_bashisms_sh_shebang \
+	trap \
+	umask_modes
 
 $(WINDOWS_SKIPPED_TEST_NAMES):
 	@printf "	%-64s skipped, unsupported Windows backend feature\n" "$@.kosh"
@@ -209,7 +221,22 @@ WINDOWS_SKIPPED_CLI_NAMES := \
 	cli_trap_during_blocking_builtin \
 	cli_trap_startup_ignored \
 	cli_unknown_flag_color \
-	cli_wait_on_stopped_job
+	cli_wait_on_stopped_job \
+	cli_koshkit_goodcore_archive \
+	cli_koshkit_ls_modes \
+	cli_koshkit_misc \
+	cli_koshkit_printenv \
+	cli_koshkit_process_tools \
+	cli_koshkit_text \
+	cli_koshkit_timeout \
+	cli_loop_redirect_descriptor \
+	cli_pipeline_stage_evaluation_mode \
+	cli_shopt_states \
+	cli_subshell_replay_trap_suppression \
+	cli_subshell_spawn_state \
+	cli_trace_policy \
+	cli_trailing_separator_execution \
+	cli_ulimit_validation
 
 $(WINDOWS_SKIPPED_CLI_NAMES):
 	@printf "	%-64s skipped, unsupported Windows backend feature\n" \

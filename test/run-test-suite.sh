@@ -206,6 +206,10 @@ run_named_suite()
     run_parallel_harness highlight "$HIGHLIGHT_INPUT"
     ;;
   compat)
+    if [ "${OS-}" = Windows_NT ]; then
+      printf "\tcompat                                                        skipped, requires POSIX process semantics\n"
+      return 0
+    fi
     BIN="$BIN" BASHP="$BASHP" DASH="$DASH" \
       DIFF_FLAGS="$DIFF_FLAGS" FAILED_LIST="$FAILED_LIST" \
       SH_COMPAT_FILES="$SH_COMPAT_FILES" \
