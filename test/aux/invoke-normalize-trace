@@ -1,4 +1,5 @@
 #!/bin/sh
+
 # Normalize the CLI invocation trace so a golden does not break when the
 # binary moves between rel, dbg, or a different build tree. The trace echoes
 # argv[0], and the Makefile resolves BIN to an absolute path, so the path
@@ -19,6 +20,9 @@ BIN_BACKWARD=$(printf '%s\n' "$BIN_FORWARD" | tr '/' '\\')
 BIN_PATTERN=$(printf '%s\n' "$BIN" | sed 's/[][\\.^$*]/\\&/g; s/#/\\#/g')
 BIN_FORWARD_PATTERN=$(printf '%s\n' "$BIN_FORWARD" | sed 's/[][\\.^$*]/\\&/g; s/#/\\#/g')
 BIN_BACKWARD_PATTERN=$(printf '%s\n' "$BIN_BACKWARD" | sed 's/[][\\.^$*]/\\&/g; s/#/\\#/g')
-sed "s#$BIN_PATTERN#KOSH#g; s#$BIN_FORWARD_PATTERN#KOSH#g; s#$BIN_BACKWARD_PATTERN#KOSH#g; s#'KOSH'#KOSH#g; s/^\([0-9][0-9]*\):[0-9][0-9]*: trace:/\1:0: trace:/" |
-  sed '/: trace:$/ {n; n; s/\^~*/^~~~/;}' |
-  sed '/KOSH.\{0,1\} -/{n; d;}'
+
+sed \
+  "s#$BIN_PATTERN#KOSH#g; s#$BIN_FORWARD_PATTERN#KOSH#g; s#$BIN_BACKWARD_PATTERN#KOSH#g; s#'KOSH'#KOSH#g; s/^\([0-9][0-9]*\):[0-9][0-9]*: trace:/\1:0: trace:/" \
+  |
+sed '/: trace:$/ {n; n; s/\^~*/^~~~/;}' |
+sed '/KOSH.\{0,1\} -/{n; d;}'

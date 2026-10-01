@@ -1,0 +1,24 @@
+#!/bin/bash
+
+AUX_DIRECTORY=${0%/*}
+. "$AUX_DIRECTORY/source-utils"
+TEST_FILE=$1
+OUTPUT=$2
+
+shift 2
+TEST_NAME=${TEST_FILE##*/}
+TEST_NAME=${TEST_NAME%.*}
+
+if word_is_listed "$TEST_NAME" "$SKIPPED_TESTS"
+then
+  printf "\t%-64s skipped, unsupported on current platform\n" "$TEST_FILE"
+  exit 0
+fi
+
+printf "\t%-64s running\033[K\r" "$TEST_FILE"
+run_test_with_timeout "${TEST_TIMEOUT_SECONDS:-60}" "$@" >"$OUTPUT" 2>&1
+STATUS=$?
+
+printf "\t%-64s ok\033[K\n" "$TEST_FILE"
+
+exit "$STATUS"

@@ -1,0 +1,35 @@
+#!/bin/bash
+
+AUX_DIRECTORY=${0%/*}
+. "$AUX_DIRECTORY/source-utils"
+read -r -a DIFF_OPTIONS <<<"$DIFF_FLAGS"
+TEST_FILE=$1
+TEST_NAME=${TEST_FILE##*/}
+TEST_NAME=${TEST_NAME%.sh}
+
+if word_is_listed "$TEST_NAME" "$SKIPPED_TESTS"
+then
+  printf "\t%-64s skipped, unsupported on current platform\n" "$TEST_FILE"
+  exit 0
+fi
+
+REFERENCE="$TEST_TEMP_DIRECTORY/$TEST_NAME.dash"
+CANDIDATE="$TEST_TEMP_DIRECTORY/$TEST_NAME.kosh"
+REFERENCE_STATUS=0
+KOSH_STATUS=0
+
+mkdir -p "$TEST_TEMP_DIRECTORY"
+"$AUX_DIRECTORY/run-test" "$TEST_FILE" "$REFERENCE" "$DASH" "$TEST_FILE" || \
+  REFERENCE_STATUS=$?
+
+"$AUX_DIRECTORY/run-test" "$TEST_FILE" "$CANDIDATE" "$BIN" --mood sh "$TEST_FILE" || \
+  KOSH_STATUS=$?
+
+if [ "$REFERENCE_STATUS" -ne "$KOSH_STATUS" ] || ! diff "${DIFF_OPTIONS[@]}" \
+  "$REFERENCE" "$CANDIDATE" >/dev/null 2>&1
+then
+  diff "${DIFF_OPTIONS[@]}" "$REFERENCE" "$CANDIDATE" >>"$FAILED_LIST" || true
+fi
+
+rm -f "$REFERENCE" "$CANDIDATE"
+exit 0

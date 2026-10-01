@@ -26,7 +26,7 @@ echo "=== sh mood, empty PATH, not found ==="
 {
     "$BIN" --mood sh -c 'PATH=; seq 3' 2>&1
     printf 'rc=%s\n' "$?"
-} | ./normalize-trace.sh "$BIN"
+} | ./aux/invoke-normalize-trace "$BIN"
 
 echo "=== set -o koshkit turns bare names on ==="
 "$BIN" -c 'PATH=; set -o koshkit; seq 3'
@@ -73,7 +73,7 @@ echo "=== command reports the enabled fallback ==="
 echo "=== which reports the enabled fallback ==="
 "$BIN" --enable-koshkit -c '# shellcheck disable=SC2230
 PATH=; which seq' 2>&1 |
-  ./normalize-trace.sh "$BIN"
+  ./aux/invoke-normalize-trace "$BIN"
 
 echo "=== a builtin name is not a koshkit utility ==="
 "$BIN" -c 'koshkit echo routed via koshkit' 2>&1

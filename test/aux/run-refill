@@ -1,0 +1,43 @@
+#!/bin/bash
+
+AUX_DIRECTORY=${0%/*}
+. "$AUX_DIRECTORY/source-utils"
+TEST_SHELL_COMMAND=$1
+REFILL_STATUS=0
+
+for TEST_FILE in harness/kosh/*.kosh harness/cli/*.sh harness/completion/*.sh \
+  harness/highlight/*.sh
+do
+  [ -f "$TEST_FILE" ] || continue
+  TEST_NAME=${TEST_FILE##*/}
+  TEST_NAME=${TEST_NAME%.*}
+
+  if [ -n "${REFILL-}" ] && ! word_is_listed "$TEST_NAME" "$REFILL"
+  then
+    continue
+  fi
+
+  OUTPUT="expected/.$TEST_NAME.out.tmp"
+
+  case $TEST_FILE in
+    harness/kosh/*.kosh)
+      "$TEST_SHELL_COMMAND" "$AUX_DIRECTORY/run-test" "$TEST_FILE" "$OUTPUT" "$BIN" \
+                            -WWW \
+                            --no-annoying-diagnostics - <"$TEST_FILE" || \
+        REFILL_STATUS=$?
+    ;;
+    harness/cli/*.sh | harness/completion/*.sh | harness/highlight/*.sh)
+      "$TEST_SHELL_COMMAND" "$AUX_DIRECTORY/run-test" "$TEST_FILE" "$OUTPUT" \
+        "$TEST_SHELL_COMMAND" "$TEST_FILE" || REFILL_STATUS=$?
+    ;;
+  esac
+
+  if [ "$REFILL_STATUS" -eq 0 ]
+  then
+    "$TEST_KOSHKIT" mv "$OUTPUT" "expected/$TEST_NAME.out"
+  else
+    "$TEST_KOSHKIT" rm -f "$OUTPUT"
+  fi
+done
+
+exit "$REFILL_STATUS"

@@ -8,7 +8,7 @@ echo "--- builtin let with no expression ---"
 {
     "$BIN" -c 'let' 2>&1
     printf 'rc=%s\n' "$?"
-} | ./normalize-trace.sh "$BIN"
+} | ./aux/invoke-normalize-trace "$BIN"
 echo "--- calc with no expression ---"
 "$BIN" -c 'koshkit calc' 2>&1; echo "rc=$?"
 echo "--- koshkit cp with one operand ---"

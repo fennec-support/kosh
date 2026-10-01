@@ -1,19 +1,20 @@
 #!/bin/bash
+
 # Benchmark configure.sh, configure.bash, and configure.kosh across the reference
 # shells and kosh, reporting wall-clock seconds at the given scale and checking
-# that kosh output matches the reference shell. The Makefile passes SCALE, BIN,
-# DASH, BASHP, ZSH, ASH, YASH, PYTHON, BENCH, BENCH_BASH, and BENCH_KOSH. Run
-# from the test directory. The bash time keyword formats the wall clock through
-# TIMEFORMAT.
-. ./utils.sh
-
+# that kosh output matches the reference shell. Run from the test directory.
+# The bash time keyword formats the wall clock through TIMEFORMAT.
+. ./aux/source-utils
 set -euo pipefail
-
 export TIMEFORMAT="%3R"
-
 WORK=$TEST_TEMP_DIRECTORY/bench
-cleanup_benchmark_work() {
-  if [ -n "${WORK-}" ]; then "$TEST_KOSHKIT" rm -rf "$WORK"; fi
+
+cleanup_benchmark_work ()
+{
+  if [ -n "${WORK-}" ]
+  then
+    "$TEST_KOSHKIT" rm -rf "$WORK"
+  fi
 }
 
 cleanup_benchmark_work
@@ -36,31 +37,39 @@ TIME_OUTPUT=$WORK/time
 ERROR_OUTPUT=$WORK/error
 DIFF_OUTPUT=$WORK/diff
 
-require_executable() {
+require_executable ()
+{
   local EXECUTABLE=$1
 
-  if command -v "$EXECUTABLE" >/dev/null 2>&1; then return 0; fi
+  if command -v "$EXECUTABLE" >/dev/null 2>&1
+  then
+    return 0
+  fi
 
   echo "required benchmark executable '$EXECUTABLE' was not found" >&2
   return 1
 }
 
-measure_command() {
+measure_command ()
+{
   local OUTPUT=$1
   local STATUS
   local TIMING
-  shift
 
-  if { time SCALE="$SCALE" "$TEST_KOSHKIT" timeout -k 2s \
-    "${BENCH_TEST_TIMEOUT_SECONDS:-60}" "$@" \
-    >"$OUTPUT" 2>"$ERROR_OUTPUT"; } \
-    2>"$TIME_OUTPUT"
+  shift
+  if
+  {
+    time SCALE="$SCALE" "$TEST_KOSHKIT" timeout -k 2s \
+      "${BENCH_TEST_TIMEOUT_SECONDS:-60}" "$@" >"$OUTPUT" 2>"$ERROR_OUTPUT"
+  } 2>"$TIME_OUTPUT"
   then
     STATUS=0
   else
     STATUS=$?
   fi
-  if [ "$STATUS" -ne 0 ]; then
+
+  if [ "$STATUS" -ne 0 ]
+  then
     echo "benchmark command failed with status $STATUS" >&2
     printf '  command' >&2
     printf ' %q' "$@" >&2
@@ -72,38 +81,53 @@ measure_command() {
 
   TIMING=$(<"$TIME_OUTPUT")
   TIMING=${TIMING%$'\r'}
-  if [[ $TIMING =~ ^([0-9]+)[.]:00$ ]]; then
+
+  if [[ $TIMING =~ ^ ( [0-9]+ ) [.]:00$ ]]
+  then
     TIMING="$((10#${BASH_REMATCH[1]} + 1)).000"
   fi
-  if [[ ! $TIMING =~ ^[0-9]+[.][0-9]{3}$ ]]; then
+
+  if [[ ! $TIMING =~ ^[0-9]+[.][0-9]{3}$ ]]
+  then
     echo "benchmark command produced an invalid timing '$TIMING'" >&2
     return 1
   fi
+
   LAST_TIMING_MILLISECONDS=$((10#${TIMING/./}))
-  if ((LAST_TIMING_MILLISECONDS == 0)); then
+
+  if ((LAST_TIMING_MILLISECONDS == 0))
+  then
     echo "benchmark command produced an invalid timing '$TIMING'" >&2
     return 1
   fi
+
   LAST_TIMING=$TIMING
 }
 
-run_timed() {
+run_timed ()
+{
   local LABEL=$1
   local OUTPUT=$2
-  shift 2
 
+  shift 2
   measure_command "$OUTPUT" "$@"
   printf "  %-16s%s\n" "$LABEL" "$LAST_TIMING"
 }
 
-compare_outputs() {
+compare_outputs ()
+{
   local EXPECTED=$1
   local ACTUAL=$2
   local REFERENCE_NAME=$3
   local REPORT_MATCH=${4:-yes}
 
-  if diff "$EXPECTED" "$ACTUAL" >/dev/null 2>&1; then
-    if [ "$REPORT_MATCH" = yes ]; then echo "output matches $REFERENCE_NAME"; fi
+  if diff "$EXPECTED" "$ACTUAL" >/dev/null 2>&1
+  then
+    if [ "$REPORT_MATCH" = yes ]
+    then
+      echo "output matches $REFERENCE_NAME"
+    fi
+
     return 0
   fi
 
@@ -113,41 +137,47 @@ compare_outputs() {
   return 1
 }
 
-run_mode_command() {
+run_mode_command ()
+{
   local MODE=$1
   local IMPLEMENTATION=$2
 
   case "$MODE:$IMPLEMENTATION" in
     sh:reference)
-      measure_command "$D" "$DASH" "$BENCH"
-      ;;
+      measure_command "$D" "$DASH" bench/configure.sh
+    ;;
     sh:candidate)
-      measure_command "$S" "$BIN" --mood sh --no-diagnostics "$BENCH"
-      ;;
+      measure_command "$S" "$BIN" --mood sh --no-diagnostics \
+        bench/configure.sh
+    ;;
     bash:reference)
-      measure_command "$BB" "$BASHP" "$BENCH_BASH"
-      ;;
+      measure_command "$BB" "$BASHP" bench/configure.bash
+    ;;
     bash:candidate)
-      measure_command "$SB" "$BIN" --mood bash --no-diagnostics "$BENCH_BASH"
-      ;;
+      measure_command "$SB" "$BIN" --mood bash --no-diagnostics \
+        bench/configure.bash
+    ;;
     *)
       echo "unknown benchmark mode '$MODE:$IMPLEMENTATION'" >&2
       return 1
-      ;;
+    ;;
   esac
 }
 
-run_pair() {
+run_pair ()
+{
   local MODE=$1
   local ORDER=$2
   local EXPECTED
   local ACTUAL
   local REFERENCE_NAME
 
-  if [ "$ORDER" = reference-first ]; then
+  if [ "$ORDER" = reference-first ]
+  then
     run_mode_command "$MODE" reference
     PAIR_REFERENCE_TIMING=$LAST_TIMING
     PAIR_REFERENCE_MILLISECONDS=$LAST_TIMING_MILLISECONDS
+
     run_mode_command "$MODE" candidate
     PAIR_CANDIDATE_TIMING=$LAST_TIMING
     PAIR_CANDIDATE_MILLISECONDS=$LAST_TIMING_MILLISECONDS
@@ -155,12 +185,14 @@ run_pair() {
     run_mode_command "$MODE" candidate
     PAIR_CANDIDATE_TIMING=$LAST_TIMING
     PAIR_CANDIDATE_MILLISECONDS=$LAST_TIMING_MILLISECONDS
+
     run_mode_command "$MODE" reference
     PAIR_REFERENCE_TIMING=$LAST_TIMING
     PAIR_REFERENCE_MILLISECONDS=$LAST_TIMING_MILLISECONDS
   fi
 
-  if [ "$MODE" = sh ]; then
+  if [ "$MODE" = sh ]
+  then
     EXPECTED=$D
     ACTUAL=$S
     REFERENCE_NAME=dash
@@ -169,10 +201,12 @@ run_pair() {
     ACTUAL=$SB
     REFERENCE_NAME=bash
   fi
+
   compare_outputs "$EXPECTED" "$ACTUAL" "$REFERENCE_NAME" no
 }
 
-benchmark_pair() {
+benchmark_pair ()
+{
   local MODE=$1
   local REFERENCE_LABEL
   local CANDIDATE_LABEL
@@ -186,7 +220,8 @@ benchmark_pair() {
   local CANDIDATE_MINIMUM_MILLISECONDS
   local SPEEDUP_THOUSANDTHS
 
-  if [ "$MODE" = sh ]; then
+  if [ "$MODE" = sh ]
+  then
     REFERENCE_LABEL=$("$TEST_KOSHKIT" basename "$DASH")
     REFERENCE_NAME=dash
     REQUIRED_SPEEDUP=$DASH_SPEEDUP_REQUIRED
@@ -195,36 +230,49 @@ benchmark_pair() {
     REFERENCE_NAME=bash
     REQUIRED_SPEEDUP=$BASH_SPEEDUP_REQUIRED
   fi
+
   CANDIDATE_LABEL=$("$TEST_KOSHKIT" basename "$BIN")
 
-  for ((SAMPLE_INDEX = 1;
+  for \
+    ((SAMPLE_INDEX = 1;
         SAMPLE_INDEX <= BENCH_WARMUP_COUNT;
-        SAMPLE_INDEX++)); do
-    if ((SAMPLE_INDEX % 2 == 1)); then
+        SAMPLE_INDEX++))
+  do
+    if ((SAMPLE_INDEX % 2 == 1))
+    then
       ORDER=reference-first
     else
       ORDER=candidate-first
     fi
+
     run_pair "$MODE" "$ORDER"
   done
 
-  for ((SAMPLE_INDEX = 1;
+  for \
+    ((SAMPLE_INDEX = 1;
         SAMPLE_INDEX <= BENCH_SAMPLE_COUNT;
-        SAMPLE_INDEX++)); do
-    if ((SAMPLE_INDEX % 2 == 1)); then
+        SAMPLE_INDEX++))
+  do
+    if ((SAMPLE_INDEX % 2 == 1))
+    then
       ORDER=reference-first
     else
       ORDER=candidate-first
     fi
-    run_pair "$MODE" "$ORDER"
 
-    if ((SAMPLE_INDEX == 1 ||
-        PAIR_REFERENCE_MILLISECONDS > REFERENCE_MAXIMUM_MILLISECONDS)); then
+    run_pair "$MODE" "$ORDER"
+    if \
+      ((SAMPLE_INDEX == 1 ||
+        PAIR_REFERENCE_MILLISECONDS > REFERENCE_MAXIMUM_MILLISECONDS))
+    then
       REFERENCE_MAXIMUM=$PAIR_REFERENCE_TIMING
       REFERENCE_MAXIMUM_MILLISECONDS=$PAIR_REFERENCE_MILLISECONDS
     fi
-    if ((SAMPLE_INDEX == 1 ||
-        PAIR_CANDIDATE_MILLISECONDS < CANDIDATE_MINIMUM_MILLISECONDS)); then
+
+    if \
+      ((SAMPLE_INDEX == 1 ||
+        PAIR_CANDIDATE_MILLISECONDS < CANDIDATE_MINIMUM_MILLISECONDS))
+    then
       CANDIDATE_MINIMUM=$PAIR_CANDIDATE_TIMING
       CANDIDATE_MINIMUM_MILLISECONDS=$PAIR_CANDIDATE_MILLISECONDS
     fi
@@ -234,25 +282,30 @@ benchmark_pair() {
     REFERENCE_MAXIMUM_MILLISECONDS * 1000 /
     CANDIDATE_MINIMUM_MILLISECONDS
   ))
+
   printf "  %-16s%s maximum\n" "$REFERENCE_LABEL" "$REFERENCE_MAXIMUM"
   printf "  %-16s%s minimum\n" "$CANDIDATE_LABEL" "$CANDIDATE_MINIMUM"
   echo "output matches $REFERENCE_NAME"
-  printf 'best-case speedup is %d.%03d\n' \
-    "$((SPEEDUP_THOUSANDTHS / 1000))" \
+  printf 'best-case speedup is %d.%03d\n' "$((SPEEDUP_THOUSANDTHS / 1000))" \
     "$((SPEEDUP_THOUSANDTHS % 1000))"
-
-  if ((REQUIRED_SPEEDUP > 0)); then
-    if [ "$MODE" = sh ]; then
-      if ((REFERENCE_MAXIMUM_MILLISECONDS <=
-          CANDIDATE_MINIMUM_MILLISECONDS * REQUIRED_SPEEDUP)); then
+  if ((REQUIRED_SPEEDUP > 0))
+  then
+    if [ "$MODE" = sh ]
+    then
+      if \
+        ((REFERENCE_MAXIMUM_MILLISECONDS <=
+          CANDIDATE_MINIMUM_MILLISECONDS * REQUIRED_SPEEDUP))
+      then
         echo "kosh is not faster than dash" >&2
         return 1
       fi
     else
-      if ((REFERENCE_MAXIMUM_MILLISECONDS <
-          CANDIDATE_MINIMUM_MILLISECONDS * REQUIRED_SPEEDUP)); then
-        echo "kosh is not at least $REQUIRED_SPEEDUP times faster" \
-          "than bash" >&2
+      if \
+        ((REFERENCE_MAXIMUM_MILLISECONDS <
+          CANDIDATE_MINIMUM_MILLISECONDS * REQUIRED_SPEEDUP))
+      then
+        echo "kosh is not at least $REQUIRED_SPEEDUP times faster" "than bash" \
+          >&2
         return 1
       fi
     fi
@@ -261,109 +314,152 @@ benchmark_pair() {
 
 require_executable "$DASH"
 require_executable "$BASHP"
-
 BASH_SKIP_REASON=
-for BASH_REFERENCE_INPUT in "$BENCH_BASH" "$BENCH_KOSH" "$PRIMES"; do
-  if ! "$BASHP" -O extglob -n "$BASH_REFERENCE_INPUT" 2>/dev/null; then
+
+for BASH_REFERENCE_INPUT in bench/configure.bash bench/configure.kosh \
+  bench/primes.bash
+do
+  if ! "$BASHP" -O extglob -n "$BASH_REFERENCE_INPUT" 2>/dev/null
+  then
     BASH_VERSION_TEXT=$("$BASHP" -c 'printf "%s" "$BASH_VERSION"' 2>/dev/null)
     BASH_SKIP_REASON="$BASHP is bash ${BASH_VERSION_TEXT:-unknown}, too old"
+
     break
   fi
 done
 
-skip_bash_reference() {
-  printf "  %-16s%s\n" "$("$TEST_KOSHKIT" basename "$BASHP")" "skipped, $BASH_SKIP_REASON"
+skip_bash_reference ()
+{
+  printf "  %-16s%s\n" "$("$TEST_KOSHKIT" basename "$BASHP")" \
+    "skipped, $BASH_SKIP_REASON"
 }
 
 case "$BENCH_WARMUP_COUNT:$BENCH_SAMPLE_COUNT" in
-  *[!0-9:]*|:*|*:)
+  *[!0-9:]* | :* | *:)
     echo "benchmark sample counts must be nonnegative integers" >&2
     exit 1
-    ;;
+  ;;
 esac
-if [ "$BENCH_SAMPLE_COUNT" -lt 1 ]; then
+
+if [ "$BENCH_SAMPLE_COUNT" -lt 1 ]
+then
   echo "the benchmark sample count must be a positive integer" >&2
   exit 1
 fi
+
 case "$DASH_SPEEDUP_REQUIRED:$BASH_SPEEDUP_REQUIRED" in
-  *[!0-9:]*|:*|*:)
+  *[!0-9:]* | :* | *:)
     echo "benchmark speedup thresholds must be nonnegative integers" >&2
     exit 1
-    ;;
+  ;;
 esac
 
 echo "configure.sh, wall-clock seconds at SCALE=$SCALE, lower is better:"
 benchmark_pair sh
-run_timed "$("$TEST_KOSHKIT" basename "$BASHP")" "$B" "$BASHP" "$BENCH"
-if command -v "$ZSH" >/dev/null 2>&1; then
-  run_timed "$("$TEST_KOSHKIT" basename "$ZSH")" "$Z" "$ZSH" --emulate sh "$BENCH"
+run_timed "$("$TEST_KOSHKIT" basename "$BASHP")" "$B" "$BASHP" \
+  bench/configure.sh
+if command -v "$ZSH" >/dev/null 2>&1
+then
+  run_timed "$("$TEST_KOSHKIT" basename "$ZSH")" "$Z" "$ZSH" \
+            --emulate sh bench/configure.sh
 else
   printf "  %-16s%s\n" "$("$TEST_KOSHKIT" basename "$ZSH")" \
     "skipped, executable was not found"
 fi
-if command -v "$ASH" >/dev/null 2>&1; then
-  run_timed "$("$TEST_KOSHKIT" basename "$ASH") ash" "$G" "$ASH" ash "$BENCH"
+
+if command -v "$ASH" >/dev/null 2>&1
+then
+  run_timed "$("$TEST_KOSHKIT" basename "$ASH") ash" "$G" "$ASH" ash \
+    bench/configure.sh
 else
   printf "  %-16s%s\n" "$("$TEST_KOSHKIT" basename "$ASH") ash" \
     "skipped, executable was not found"
 fi
-if command -v "$YASH" >/dev/null 2>&1; then
-  run_timed "$("$TEST_KOSHKIT" basename "$YASH")" "$L" "$YASH" "$BENCH"
+
+if command -v "$YASH" >/dev/null 2>&1
+then
+  run_timed "$("$TEST_KOSHKIT" basename "$YASH")" "$L" "$YASH" \
+    bench/configure.sh
 else
   printf "  %-16s%s\n" "$("$TEST_KOSHKIT" basename "$YASH")" \
     "skipped, executable was not found"
 fi
-run_timed "$("$TEST_KOSHKIT" basename "$BIN")+analysis" "$S" "$BIN" --mood sh -W "$BENCH"
-compare_outputs "$D" "$S" "dash with analysis"
 
+run_timed "$("$TEST_KOSHKIT" basename "$BIN")+analysis" "$S" "$BIN" \
+          --mood sh \
+          -W bench/configure.sh
+compare_outputs "$D" "$S" "dash with analysis"
 echo "configure.bash, wall-clock seconds at SCALE=$SCALE, lower is better:"
-if [ -z "$BASH_SKIP_REASON" ]; then
+if [ -z "$BASH_SKIP_REASON" ]
+then
   benchmark_pair bash
 else
   skip_bash_reference
 fi
-run_timed "$("$TEST_KOSHKIT" basename "$BIN")+analysis" "$SB" \
-  "$BIN" --mood bash -W "$BENCH_BASH"
-if [ -z "$BASH_SKIP_REASON" ]; then
+
+run_timed "$("$TEST_KOSHKIT" basename "$BIN")+analysis" "$SB" "$BIN" \
+          --mood bash \
+          -W bench/configure.bash
+if [ -z "$BASH_SKIP_REASON" ]
+then
   compare_outputs "$BB" "$SB" "bash with analysis"
 fi
 
 echo "configure.kosh, wall-clock seconds at SCALE=$SCALE, lower is better:"
-if [ -z "$BASH_SKIP_REASON" ]; then
-  run_timed "$("$TEST_KOSHKIT" basename "$BASHP")" "$ZB" "$BASHP" "$BENCH_KOSH"
+if [ -z "$BASH_SKIP_REASON" ]
+then
+  run_timed "$("$TEST_KOSHKIT" basename "$BASHP")" "$ZB" "$BASHP" \
+    bench/configure.kosh
 else
   skip_bash_reference
 fi
-run_timed "$("$TEST_KOSHKIT" basename "$BIN")+analysis" "$ZS" "$BIN" "$BENCH_KOSH"
-if [ -z "$BASH_SKIP_REASON" ]; then
+
+run_timed "$("$TEST_KOSHKIT" basename "$BIN")+analysis" "$ZS" "$BIN" \
+  bench/configure.kosh
+if [ -z "$BASH_SKIP_REASON" ]
+then
   compare_outputs "$ZB" "$ZS" "bash with analysis"
 fi
 
-echo "primes.bash, wall-clock seconds up to LIMIT=$PRIMES_LIMIT, lower is better:"
-if command -v "$PYTHON" >/dev/null 2>&1; then
-  run_timed "$("$TEST_KOSHKIT" basename "$PYTHON")" "$PP" \
-    "$PYTHON" "$PRIMES_PY" "$PRIMES_LIMIT"
+echo \
+  "primes.bash, wall-clock seconds up to LIMIT=$PRIMES_LIMIT, lower is better:"
+if command -v "$PYTHON" >/dev/null 2>&1
+then
+  run_timed "$("$TEST_KOSHKIT" basename "$PYTHON")" "$PP" "$PYTHON" \
+    bench/primes.py "$PRIMES_LIMIT"
 else
   printf "  %-16s%s\n" "$("$TEST_KOSHKIT" basename "$PYTHON")" \
     "skipped, executable was not found"
 fi
-if [ -z "$BASH_SKIP_REASON" ]; then
-  run_timed "$("$TEST_KOSHKIT" basename "$BASHP")" "$PB" "$BASHP" "$PRIMES" "$PRIMES_LIMIT"
+
+if [ -z "$BASH_SKIP_REASON" ]
+then
+  run_timed "$("$TEST_KOSHKIT" basename "$BASHP")" "$PB" "$BASHP" \
+    bench/primes.bash "$PRIMES_LIMIT"
 else
   skip_bash_reference
 fi
-run_timed "$("$TEST_KOSHKIT" basename "$BIN")" "$PS" \
-  "$BIN" --mood bash --no-diagnostics "$PRIMES" "$PRIMES_LIMIT"
-if [ -z "$BASH_SKIP_REASON" ]; then
+
+run_timed "$("$TEST_KOSHKIT" basename "$BIN")" "$PS" "$BIN" \
+          --mood bash \
+          --no-diagnostics bench/primes.bash "$PRIMES_LIMIT"
+if [ -z "$BASH_SKIP_REASON" ]
+then
   compare_outputs "$PB" "$PS" "bash"
 fi
-run_timed "$("$TEST_KOSHKIT" basename "$BIN")+analysis" "$PS" \
-  "$BIN" --mood bash -W "$PRIMES" "$PRIMES_LIMIT"
-if [ -z "$BASH_SKIP_REASON" ]; then
+
+run_timed "$("$TEST_KOSHKIT" basename "$BIN")+analysis" "$PS" "$BIN" \
+          --mood bash \
+          -W bench/primes.bash "$PRIMES_LIMIT"
+if [ -z "$BASH_SKIP_REASON" ]
+then
   compare_outputs "$PB" "$PS" "bash with analysis"
 fi
-if command -v "$PYTHON" >/dev/null 2>&1; then
-  if [ -z "$BASH_SKIP_REASON" ]; then
+
+if command -v "$PYTHON" >/dev/null 2>&1
+then
+  if [ -z "$BASH_SKIP_REASON" ]
+  then
     compare_outputs "$PB" "$PP" "python"
   else
     compare_outputs "$PS" "$PP" "python"

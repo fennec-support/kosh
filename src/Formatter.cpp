@@ -802,25 +802,14 @@ fn append_long_string_warnings(StringView source,
             FormatWriter::MAX_LINE_WIDTH)
       continue;
 
-    usize line = 1;
-    usize column = 1;
-    for (usize index = 0; index < piece.source_position; index++) {
-      if (source[index] == '\n') {
-        line++;
-        column = 1;
-      } else {
-        column++;
-      }
-    }
-
-    let warning_name = filename.has_value() ? *filename : StringView{"<stdin>"};
-    warnings.push(String{heap_allocator(),
-                             warning_name + ":" +
-                             String::from(line, heap_allocator()) + ":" +
-                             String::from(column, heap_allocator()) +
-                             ": Warning: unbreakable word exceeds 78 columns; "
-                             "consider making it "
-                             "shorter or splitting it"});
+    let const source_name_index =
+        filename.has_value() ? intern_source_name(*filename) : 0;
+    let const warning = WarningWithLocation{
+        SourceLocation{piece.source_position, piece.text.count(),
+                       source_name_index},
+        "Unbreakable word exceeds 78 columns; consider making it shorter or "
+        "splitting it"};
+    warnings.push(warning.to_string(source, nullptr));
   }
 }
 

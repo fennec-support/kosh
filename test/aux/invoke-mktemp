@@ -1,0 +1,75 @@
+#!/bin/sh
+
+is_directory=0
+template=
+
+while [ "$#" -gt 0 ]
+do
+  case $1 in
+    -d)
+      is_directory=1
+    ;;
+    -t)
+      shift
+      template=${1-}
+    ;;
+    --)
+      shift
+      template=${1-}
+
+      break
+    ;;
+    -*)
+      exit 1
+    ;;
+    *)
+      template=$1
+    ;;
+  esac
+
+  shift
+done
+
+workspace=${TEST_MKTEMP_DIRECTORY:-${TEST_TEMP_DIRECTORY}}
+candidate_directory=$workspace
+candidate_prefix=temp-
+
+case $template in
+  */*)
+    candidate_directory=${template%/*}
+    candidate_name=${template##*/}
+    candidate_prefix=${candidate_name%XXXXXX}
+  ;;
+  ?*)
+    candidate_prefix=${template%XXXXXX}
+    candidate_prefix=${candidate_prefix%XXX}
+  ;;
+esac
+
+"$TEST_KOSHKIT" mkdir -p "$workspace" "$candidate_directory" || exit 1
+attempt_count=0
+
+while [ "$attempt_count" -lt 100 ]
+do
+  candidate="$candidate_directory/$candidate_prefix${PPID-0}-$$-$attempt_count"
+
+  if [ "$is_directory" -eq 1 ]
+  then
+    if "$TEST_KOSHKIT" mkdir "$candidate" 2>/dev/null
+    then
+      printf '%s\n' "$candidate"
+      exit 0
+    fi
+  elif (
+    set -C
+    : >"$candidate"
+  ) 2>/dev/null
+  then
+    printf '%s\n' "$candidate"
+    exit 0
+  fi
+
+  attempt_count=$((attempt_count + 1))
+done
+
+exit 1

@@ -1,0 +1,32 @@
+#!/bin/bash
+
+AUX_DIRECTORY=${0%/*}
+. "$AUX_DIRECTORY/source-utils"
+read -r -a DIFF_OPTIONS <<<"$DIFF_FLAGS"
+TEST_FILE=$1
+TEST_NAME=${TEST_FILE##*/}
+TEST_NAME=${TEST_NAME%.kosh}
+
+if word_is_listed "$TEST_NAME" "$SKIPPED_TESTS"
+then
+  printf "\t%-64s skipped, unsupported on current platform\n" "$TEST_FILE"
+  exit 0
+fi
+
+OUTPUT="$TEST_TEMP_DIRECTORY/$TEST_NAME.out"
+STATUS=0
+
+mkdir -p "$TEST_TEMP_DIRECTORY"
+"$AUX_DIRECTORY/run-test" "$TEST_FILE" "$OUTPUT" "$BIN" -WWW --no-annoying-diagnostics - <"$TEST_FILE" \
+  || STATUS=$?
+
+if diff "${DIFF_OPTIONS[@]}" "expected/$TEST_NAME.out" "$OUTPUT" >/dev/null 2>&1
+then
+  :
+else
+  diff "${DIFF_OPTIONS[@]}" "expected/$TEST_NAME.out" "$OUTPUT" >>"$FAILED_LIST" \
+    || true
+fi
+
+rm -f "$OUTPUT"
+exit 0

@@ -75,12 +75,9 @@ OBJ_DIR ?= o/$(TARGET)/$(MODE)$(BUILD_VARIANT_SUFFIX)
 endif
 OBJECT_DIRECTORY := $(OBJ_DIR)
 
-EVILISO_LOOPBACK_SOURCE := ../test/native/EvilIsoLoopback.cpp
-EVILISO_LOOPBACK_OBJECT := $(OBJECT_DIRECTORY)/tests/EvilIsoLoopback.o
-EVILISO_LOOPBACK_BINARY := $(OBJECT_DIRECTORY)/eviliso-loop
 REGEX_OBJECTS := $(REGEX_SOURCES:%=$(OBJECT_DIRECTORY)/vendor/regex/%.o)
 OBJECTS := $(SOURCES:%.cpp=$(OBJECT_DIRECTORY)/%.o) $(REGEX_OBJECTS)
-DEPENDENCY_FILES := $(OBJECTS:.o=.d) $(EVILISO_LOOPBACK_OBJECT:.o=.d)
+DEPENDENCY_FILES := $(OBJECTS:.o=.d)
 
 MODE_SUFFIX := $(if $(filter rel,$(MODE)),,-$(MODE))
 ifeq ($(MODE), cosmo)
@@ -463,22 +460,6 @@ $(OBJECT_DIRECTORY)/vendor/regex/%.o: ../vendor/regex/%.c Makefile
 	printf "\tCompiling %-42s $@... %-12s\r" $< ' '
 	$(CXX) $(REGEX_COMPILER_FLAGS) -x c -MMD -MP -c $< -o $@
 
-ifeq ($(TARGET), Linux)
-$(EVILISO_LOOPBACK_OBJECT): $(EVILISO_LOOPBACK_SOURCE) Makefile | dirs
-	mkdir -p $(dir $@)
-	printf "\tCompiling %-42s $@... %-12s\r" $< ' '
-	$(CXX) $(CXXFLAGS) -I. -MMD -MP -c $< -o $@
-
-$(EVILISO_LOOPBACK_BINARY): $(EVILISO_LOOPBACK_OBJECT)
-	printf "\tLinking $(EVILISO_LOOPBACK_BINARY)... %-64s\r" ' '
-	$(CXX) $(CXXFLAGS) $(LINKER_SELECTION_FLAG) $^ $(LINK_LIBRARIES) -o $@
-
-eviliso_loopback: $(EVILISO_LOOPBACK_BINARY)
-else
-eviliso_loopback:
-	@printf "EvilIso loopback helper requires Linux.\n"
-endif
-
 # Linking.
 $(LINKED_OUTPUT_PATH): $(OBJECTS)
 	printf "\tLinking $(LINKED_OUTPUT_PATH)... %-64s\r" ' '
@@ -570,7 +551,6 @@ clean:
 	rm -rf ../zig-out
 	rm -rf ../*.profraw ../*.profdata ../coverage # Coverage
 
-.PHONY: dirs force_commit_hash force_commit_hash_objects eviliso_loopback \
-	kosh install uninstall tidy fmt clean
+.PHONY: dirs force_commit_hash force_commit_hash_objects kosh install uninstall tidy fmt clean
 
 -include $(DEPENDENCY_FILES)
