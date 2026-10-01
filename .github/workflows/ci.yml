@@ -45,9 +45,13 @@ jobs:
         run: make kosh
 
       - name: Run golden tests
-        run: |
-          make test
-          NO_TOILETLINE=1 make test
+        run: make test
+
+      - name: Build no-editor binary
+        run: NO_TOILETLINE=1 make kosh
+
+      - name: Run no-editor golden tests
+        run: NO_TOILETLINE=1 make test
 
       - name: Build release binary
         run: make clean && make CXX=g++ LINKER_SELECTION_FLAG= MODE=rel kosh && du -sh kosh
@@ -143,9 +147,13 @@ jobs:
         run: make kosh
 
       - name: Run golden tests
-        run: |
-          make test
-          NO_TOILETLINE=1 make test
+        run: make test
+
+      - name: Build no-editor binary
+        run: NO_TOILETLINE=1 make kosh
+
+      - name: Run no-editor golden tests
+        run: NO_TOILETLINE=1 make test
 
   debug-windows:
     name: Run debug build tests on Windows
@@ -236,7 +244,16 @@ jobs:
 
       - name: Run golden tests
         shell: pwsh
+        run: make.exe test
+
+      - name: Build no-editor binary
+        shell: pwsh
         run: |
-          make.exe test
+          $env:NO_TOILETLINE = '1'
+          make.exe kosh
+
+      - name: Run no-editor golden tests
+        shell: pwsh
+        run: |
           $env:NO_TOILETLINE = '1'
           make.exe test
