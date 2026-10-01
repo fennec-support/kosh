@@ -392,6 +392,8 @@ static fn run_script_contents(
         out_ast == nullptr &&
             !(should_print_ast && context.runtime_state().show_ast()) &&
         !context.runtime_state().show_lexed_words();
+    let const should_stream_syntax_preflight =
+        should_stream_execution && !run_analysis;
 
     /* A file with any parse error must not run, so every error is collected
        and reported at once. */
@@ -443,6 +445,29 @@ static fn run_script_contents(
       shellcheck_directive_spans =
           scan_parser.take_shellcheck_directive_spans();
       heredoc_terminator_misses = scan_parser.take_heredoc_terminator_misses();
+
+      if (do_report_parse_errors()) return EXIT_FAILURE;
+    } else if (should_stream_syntax_preflight) {
+      LOG(Debug, "checking a chunk of %zu bytes before streamed execution",
+          script_contents.count());
+
+      let preflight_parser = Parser{
+          Lexer{script_contents.view(), ast_arena, filename,
+                context.runtime_state().get_mood()}
+      };
+      loop
+      {
+        let const unit_mark = ast_arena.mark();
+        let const *unit = preflight_parser.construct_next_top_level_ast(
+            parse_errors, &context, diagnostic_sink);
+        if (unit == nullptr) {
+          ast_arena.release(unit_mark);
+          break;
+        }
+
+        preflight_parser.drop_lexer_peek_cache();
+        ast_arena.release(unit_mark);
+      }
 
       if (do_report_parse_errors()) return EXIT_FAILURE;
     } else if (precompiled_ast == nullptr) {
