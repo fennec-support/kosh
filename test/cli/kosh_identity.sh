@@ -32,6 +32,18 @@ validate_identity "$identity_entry" || exit 1
 if [ "${OS-}" != Windows_NT ]; then
     (PATH="$directory${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH"
      validate_identity entry) || exit 1
+
+    "$BIN" -c 'koshkit cp "$1" "$2"; koshkit cp "$1" "$3"; printf x >> "$3"' \
+        replacement-setup "$BIN" "$directory/running-entry" \
+        "$directory/replacement-entry" || exit 1
+    KOSH_RUNNING_ENTRY=$directory/running-entry \
+    KOSH_REPLACEMENT_ENTRY=$directory/replacement-entry \
+        "$directory/running-entry" -c '
+            before=$KOSH_IDENTITY
+            koshkit mv "$KOSH_REPLACEMENT_ENTRY" "$KOSH_RUNNING_ENTRY"
+            after=$KOSH_IDENTITY
+            [ "$before" != "$after" ]
+        ' || exit 1
 fi
 
 KOSH_IDENTITY=forged "$BIN" -c '

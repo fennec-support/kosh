@@ -729,32 +729,64 @@ fn file_content_identity(const Path &path, Allocator allocator) throws
 
 namespace {
 
-fn compute_kosh_identity(StringView fallback_path) throws -> Maybe<String>
+struct kosh_identity_cache
 {
-  if (let const executable = os::current_executable_path();
-      executable.has_value())
-  {
-    let const identity =
-        file_content_identity(Path{executable->view()}, heap_allocator());
-    if (identity.has_value()) {
-      os::set_environment_variable("KOSH_IDENTITY", identity->view());
-      return identity;
-    }
-  }
-  let const identity =
-      file_content_identity(Path{fallback_path}, heap_allocator());
-  if (identity.has_value())
-    os::set_environment_variable("KOSH_IDENTITY", identity->view());
-  return identity;
-}
+  Path path{};
+  os::file_status status{};
+  Maybe<String> identity{};
+  bool is_initialized{false};
+};
 
 } /* namespace */
 
 fn kosh_identity(StringView fallback_path) throws -> Maybe<StringView>
 {
-  static const Maybe<String> cached = compute_kosh_identity(fallback_path);
-  if (cached.has_value()) return cached->view();
-  return None;
+  static kosh_identity_cache cache;
+
+  let path = Path{fallback_path};
+  let status = os::file_status{};
+  bool has_status = false;
+  if (let executable = os::current_executable_path(); executable.has_value()) {
+    let executable_path = Path{executable->view()};
+    if (os::stat_path_following(executable_path.text(), status)) {
+      path = steal(executable_path);
+      has_status = true;
+    }
+  }
+  if (!has_status) has_status = os::stat_path_following(path.text(), status);
+
+  if (!has_status) {
+    if (cache.is_initialized && cache.path.text() == path.text() &&
+        cache.identity.has_value())
+    {
+      return cache.identity->view();
+    }
+    return None;
+  }
+
+  if (cache.is_initialized && cache.path.text() == path.text() &&
+      os::file_status_matches(cache.status, status) &&
+      cache.identity.has_value())
+  {
+    return cache.identity->view();
+  }
+
+  let identity = file_content_identity(path, heap_allocator());
+  if (!identity.has_value()) return None;
+
+  let verified_status = os::file_status{};
+  if (!os::stat_path_following(path.text(), verified_status) ||
+      !os::file_status_matches(status, verified_status))
+  {
+    return None;
+  }
+
+  cache.path = steal(path);
+  cache.status = verified_status;
+  cache.identity = steal(identity);
+  cache.is_initialized = true;
+  os::set_environment_variable("KOSH_IDENTITY", cache.identity->view());
+  return cache.identity->view();
 }
 
 fn merge_tokens_to_string(const ArrayList<const Token *> &tokens) throws
