@@ -146,4 +146,4 @@ else
 fi
 
 cd / || exit 1
-[ -n "$d" ] && "$TEST_KOSHKIT" rm -rf "$d"
+[ -n "$d" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$d"

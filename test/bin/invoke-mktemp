@@ -46,7 +46,7 @@ case $template in
   ;;
 esac
 
-"$TEST_KOSHKIT" mkdir -p "$workspace" "$candidate_directory" || exit 1
+"$BIN_DIR/invoke-koshkit" mkdir -p "$workspace" "$candidate_directory" || exit 1
 attempt_count=0
 
 while [ "$attempt_count" -lt 100 ]
@@ -55,7 +55,7 @@ do
 
   if [ "$is_directory" -eq 1 ]
   then
-    if "$TEST_KOSHKIT" mkdir "$candidate" 2>/dev/null
+    if "$BIN_DIR/invoke-koshkit" mkdir "$candidate" 2>/dev/null
     then
       printf '%s\n' "$candidate"
       exit 0

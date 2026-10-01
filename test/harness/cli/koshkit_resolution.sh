@@ -7,12 +7,12 @@
 unset KOSH_FLAGS
 
 dir=$(mktemp -d) || exit 1
-trap '[ -n "$dir" ] && "$TEST_KOSHKIT" rm -rf "$dir"' EXIT
+trap '[ -n "$dir" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$dir"' EXIT
 if [ "${OS-}" = Windows_NT ]; then
   printf '@echo PATH seq\r\n' > "$dir/seq.bat"
 else
   printf '#!/bin/sh\nprintf "PATH seq\\n"\n' > "$dir/seq"
-  "$TEST_KOSHKIT" chmod +x "$dir/seq"
+  "$BIN_DIR/invoke-koshkit" chmod +x "$dir/seq"
 fi
 
 echo "=== koshkit prefix always works ==="
@@ -26,7 +26,7 @@ echo "=== sh mood, empty PATH, not found ==="
 {
     "$BIN" --mood sh -c 'PATH=; seq 3' 2>&1
     printf 'rc=%s\n' "$?"
-} | ./bin/invoke-normalize-trace "$BIN"
+} | "invoke-normalize-trace" "$BIN"
 
 echo "=== set -o koshkit turns bare names on ==="
 "$BIN" -c 'PATH=; set -o koshkit; seq 3'
@@ -73,7 +73,7 @@ echo "=== command reports the enabled fallback ==="
 echo "=== which reports the enabled fallback ==="
 "$BIN" --enable-koshkit -c '# shellcheck disable=SC2230
 PATH=; which seq' 2>&1 |
-  ./bin/invoke-normalize-trace "$BIN"
+  "invoke-normalize-trace" "$BIN"
 
 echo "=== a builtin name is not a koshkit utility ==="
 "$BIN" -c 'koshkit echo routed via koshkit' 2>&1

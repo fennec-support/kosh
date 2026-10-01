@@ -1,5 +1,5 @@
 unset KOSH_FLAGS
-. ./bin/invoke-capture
+. "invoke-capture"
 
 BIN=$(CDPATH= cd -- "$(dirname -- "$BIN")" && pwd)/$(basename -- "$BIN")
 

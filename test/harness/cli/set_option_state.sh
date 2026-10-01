@@ -1,7 +1,7 @@
 unset KOSH_FLAGS
 
 directory=$(mktemp -d)
-trap 'test -n "$directory" && "$TEST_KOSHKIT" rm -rf "$directory"' EXIT
+trap 'test -n "$directory" && "$BIN_DIR/invoke-koshkit" rm -rf "$directory"' EXIT
 
 echo "== standard option state:"
 "$BIN" -M bash -c '

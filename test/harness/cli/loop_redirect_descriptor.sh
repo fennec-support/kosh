@@ -1,6 +1,6 @@
 unset KOSH_FLAGS
 dir=$(mktemp -d)
-trap '[ -n "$dir" ] && "$TEST_KOSHKIT" rm -rf "$dir"' EXIT
+trap '[ -n "$dir" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$dir"' EXIT
 
 # A loop body append opens its file once and keeps the descriptor for the whole
 # loop. Removing the file mid-loop leaves the later writes on the original

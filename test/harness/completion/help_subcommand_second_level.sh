@@ -4,7 +4,7 @@
 # settled second word names a parsed subcommand. A fake binary named for an
 # allowlisted command keeps the candidates stable across machines.
 dir=$(mktemp -d) || exit 1
-trap '[ -n "$dir" ] && "$TEST_KOSHKIT" rm -rf "$dir"' EXIT
+trap '[ -n "$dir" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$dir"' EXIT
 chmod 755 "$dir"
 cat > "$dir/tailscale" <<'SH'
 #!/bin/sh

@@ -1,11 +1,11 @@
 dir=$(mktemp -d)
-trap '[ -n "$dir" ] && "$TEST_KOSHKIT" rm -rf "$dir"' EXIT
+trap '[ -n "$dir" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$dir"' EXIT
 if [ "${OS-}" = Windows_NT ]; then
   executable_suffix=.exe
 else
   executable_suffix=
 fi
-"$TEST_KOSHKIT" cp "$BIN" "$dir/path_probe$executable_suffix"
+"$BIN_DIR/invoke-koshkit" cp "$BIN" "$dir/path_probe$executable_suffix"
 
 empty_result=$(env -u PATH "$TEST_PATH_ENVIRONMENT_NAME=$dir" \
     "$BIN" --debug-complete-at '' <"$TEST_NULL_DEVICE")

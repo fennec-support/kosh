@@ -6,7 +6,7 @@
 # pinned to an empty directory so a host binary such as exportfs cannot join the
 # command candidates.
 dir=$(mktemp -d)
-trap 'rm -rf "$dir"' EXIT
+trap '"$BIN_DIR/invoke-koshkit" rm -rf "$dir"' EXIT
 export PATH="$dir"
 echo "== if body:"
 "$BIN" --debug-complete-at 'if expor' </dev/null

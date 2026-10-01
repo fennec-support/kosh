@@ -54,7 +54,7 @@ unset KOSH_FLAGS
 BIN=$(CDPATH= cd -- "$(dirname -- "$BIN")" && pwd)/$(basename -- "$BIN")
 
 d=$(mktemp -d) || exit 1
-trap '[ -n "$d" ] && "$TEST_KOSHKIT" rm -rf "$d"' EXIT
+trap '[ -n "$d" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$d"' EXIT
 
 wait_for_marker()
 {

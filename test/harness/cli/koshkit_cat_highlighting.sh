@@ -4,7 +4,7 @@ unset KOSH_FLAGS
 BIN=$(CDPATH= cd -- "$(dirname -- "$BIN")" && pwd)/$(basename -- "$BIN")
 d=$(mktemp -d) || exit 1
 starting_directory=$PWD
-trap 'cd "$starting_directory" && test -n "$d" && "$TEST_KOSHKIT" rm -rf "$d"' EXIT
+trap 'cd "$starting_directory" && test -n "$d" && "$BIN_DIR/invoke-koshkit" rm -rf "$d"' EXIT
 cd "$d" || exit 1
 
 printf 'echo "extension"\n' > extension.sh

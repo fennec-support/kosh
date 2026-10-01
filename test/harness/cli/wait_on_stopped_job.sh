@@ -8,7 +8,7 @@ cleanup()
         kill "$escaped_pid" 2>/dev/null || true
         kill -CONT "$escaped_pid" 2>/dev/null || true
     fi
-    [ -n "$d" ] && "$TEST_KOSHKIT" rm -rf "$d"
+    [ -n "$d" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$d"
 }
 trap cleanup EXIT
 trap 'exit 143' TERM

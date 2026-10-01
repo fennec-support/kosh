@@ -2,7 +2,7 @@
 unset KOSH_FLAGS
 export KOSH_FLAGS=--no-diagnostics
 d=$(mktemp -d)
-trap 'test -n "$d" && "$TEST_KOSHKIT" rm -rf "$d"' EXIT
+trap 'test -n "$d" && "$BIN_DIR/invoke-koshkit" rm -rf "$d"' EXIT
 if [ "${OS-}" = Windows_NT ]; then
     BENCH_ECHO='cmd.exe /d /c echo'
 else

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-AUX_DIRECTORY=${0%/*}
+BIN_DIR=${0%/*}
 TEST_SHELL_COMMAND=$1
 REFILL_STATUS=0
 
@@ -22,13 +22,13 @@ do
 
   case $TEST_FILE in
     harness/kosh/*.kosh)
-      "$TEST_KOSHKIT" timeout -k 2s "${TEST_TIMEOUT_SECONDS:-60}" \
+      "$BIN_DIR/invoke-koshkit" timeout -k 2s "${TEST_TIMEOUT_SECONDS:-60}" \
         "$BIN" -WWW --no-annoying-diagnostics - <"$TEST_FILE" \
         >"$OUTPUT" 2>&1 || \
         REFILL_STATUS=$?
     ;;
     harness/cli/*.sh | harness/completion/*.sh | harness/highlight/*.sh)
-      "$TEST_KOSHKIT" timeout -k 2s "${TEST_TIMEOUT_SECONDS:-60}" \
+      "$BIN_DIR/invoke-koshkit" timeout -k 2s "${TEST_TIMEOUT_SECONDS:-60}" \
         "$TEST_SHELL_COMMAND" "$TEST_FILE" >"$OUTPUT" 2>&1 || \
         REFILL_STATUS=$?
     ;;
@@ -36,9 +36,9 @@ do
 
   if [ "$REFILL_STATUS" -eq 0 ]
   then
-    "$TEST_KOSHKIT" mv "$OUTPUT" "expected/$TEST_NAME.out"
+    "$BIN_DIR/invoke-koshkit" mv "$OUTPUT" "expected/$TEST_NAME.out"
   else
-    "$TEST_KOSHKIT" rm -f "$OUTPUT"
+    "$BIN_DIR/invoke-koshkit" rm -f "$OUTPUT"
   fi
 done
 

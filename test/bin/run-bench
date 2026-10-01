@@ -6,18 +6,19 @@
 # The bash time keyword formats the wall clock through TIMEFORMAT.
 set -euo pipefail
 export TIMEFORMAT="%3R"
+BIN_DIR=${0%/*}
 WORK=$TEST_TEMP_DIRECTORY/bench
 
 cleanup_benchmark_work ()
 {
   if [ -n "${WORK-}" ]
   then
-    "$TEST_KOSHKIT" rm -rf "$WORK"
+    "$BIN_DIR/invoke-koshkit" rm -rf "$WORK"
   fi
 }
 
 cleanup_benchmark_work
-"$TEST_KOSHKIT" mkdir -p "$WORK"
+"$BIN_DIR/invoke-koshkit" mkdir -p "$WORK"
 trap cleanup_benchmark_work EXIT
 D=$WORK/d
 B=$WORK/b
@@ -58,7 +59,7 @@ measure_command ()
   shift
   if
   {
-    time SCALE="$SCALE" "$TEST_KOSHKIT" timeout -k 2s \
+    time SCALE="$SCALE" "$BIN_DIR/invoke-koshkit" timeout -k 2s \
       "${BENCH_TEST_TIMEOUT_SECONDS:-60}" "$@" >"$OUTPUT" 2>"$ERROR_OUTPUT"
   } 2>"$TIME_OUTPUT"
   then
@@ -73,15 +74,15 @@ measure_command ()
     printf '  command' >&2
     printf ' %q' "$@" >&2
     printf '\n' >&2
-    "$TEST_KOSHKIT" head -n 20 "$OUTPUT" >&2
-    "$TEST_KOSHKIT" head -n 20 "$ERROR_OUTPUT" >&2
+    "$BIN_DIR/invoke-koshkit" head -n 20 "$OUTPUT" >&2
+    "$BIN_DIR/invoke-koshkit" head -n 20 "$ERROR_OUTPUT" >&2
     return "$STATUS"
   fi
 
   TIMING=$(<"$TIME_OUTPUT")
   TIMING=${TIMING%$'\r'}
 
-  if [[ $TIMING =~ ^ ( [0-9]+ ) [.]:00$ ]]
+  if [[ $TIMING =~ ^([0-9]+)[.]:00$ ]]
   then
     TIMING="$((10#${BASH_REMATCH[1]} + 1)).000"
   fi
@@ -132,7 +133,7 @@ compare_outputs ()
 
   diff -u "$EXPECTED" "$ACTUAL" >"$DIFF_OUTPUT" || true
   echo "output differs from $REFERENCE_NAME:"
-  "$TEST_KOSHKIT" head -n 20 "$DIFF_OUTPUT"
+  "$BIN_DIR/invoke-koshkit" head -n 20 "$DIFF_OUTPUT"
   return 1
 }
 
@@ -221,16 +222,16 @@ benchmark_pair ()
 
   if [ "$MODE" = sh ]
   then
-    REFERENCE_LABEL=$("$TEST_KOSHKIT" basename "$DASH")
+    REFERENCE_LABEL=$("$BIN_DIR/invoke-koshkit" basename "$DASH")
     REFERENCE_NAME=dash
     REQUIRED_SPEEDUP=$DASH_SPEEDUP_REQUIRED
   else
-    REFERENCE_LABEL=$("$TEST_KOSHKIT" basename "$BASHP")
+    REFERENCE_LABEL=$("$BIN_DIR/invoke-koshkit" basename "$BASHP")
     REFERENCE_NAME=bash
     REQUIRED_SPEEDUP=$BASH_SPEEDUP_REQUIRED
   fi
 
-  CANDIDATE_LABEL=$("$TEST_KOSHKIT" basename "$BIN")
+  CANDIDATE_LABEL=$("$BIN_DIR/invoke-koshkit" basename "$BIN")
 
   for \
     ((SAMPLE_INDEX = 1;
@@ -329,7 +330,7 @@ done
 
 skip_bash_reference ()
 {
-  printf "  %-16s%s\n" "$("$TEST_KOSHKIT" basename "$BASHP")" \
+  printf "  %-16s%s\n" "$("$BIN_DIR/invoke-koshkit" basename "$BASHP")" \
     "skipped, $BASH_SKIP_REASON"
 }
 
@@ -355,36 +356,36 @@ esac
 
 echo "configure.sh, wall-clock seconds at SCALE=$SCALE, lower is better:"
 benchmark_pair sh
-run_timed "$("$TEST_KOSHKIT" basename "$BASHP")" "$B" "$BASHP" \
+run_timed "$("$BIN_DIR/invoke-koshkit" basename "$BASHP")" "$B" "$BASHP" \
   bench/configure.sh
 if command -v "$ZSH" >/dev/null 2>&1
 then
-  run_timed "$("$TEST_KOSHKIT" basename "$ZSH")" "$Z" "$ZSH" \
+  run_timed "$("$BIN_DIR/invoke-koshkit" basename "$ZSH")" "$Z" "$ZSH" \
             --emulate sh bench/configure.sh
 else
-  printf "  %-16s%s\n" "$("$TEST_KOSHKIT" basename "$ZSH")" \
+  printf "  %-16s%s\n" "$("$BIN_DIR/invoke-koshkit" basename "$ZSH")" \
     "skipped, executable was not found"
 fi
 
 if command -v "$ASH" >/dev/null 2>&1
 then
-  run_timed "$("$TEST_KOSHKIT" basename "$ASH") ash" "$G" "$ASH" ash \
+  run_timed "$("$BIN_DIR/invoke-koshkit" basename "$ASH") ash" "$G" "$ASH" ash \
     bench/configure.sh
 else
-  printf "  %-16s%s\n" "$("$TEST_KOSHKIT" basename "$ASH") ash" \
+  printf "  %-16s%s\n" "$("$BIN_DIR/invoke-koshkit" basename "$ASH") ash" \
     "skipped, executable was not found"
 fi
 
 if command -v "$YASH" >/dev/null 2>&1
 then
-  run_timed "$("$TEST_KOSHKIT" basename "$YASH")" "$L" "$YASH" \
+  run_timed "$("$BIN_DIR/invoke-koshkit" basename "$YASH")" "$L" "$YASH" \
     bench/configure.sh
 else
-  printf "  %-16s%s\n" "$("$TEST_KOSHKIT" basename "$YASH")" \
+  printf "  %-16s%s\n" "$("$BIN_DIR/invoke-koshkit" basename "$YASH")" \
     "skipped, executable was not found"
 fi
 
-run_timed "$("$TEST_KOSHKIT" basename "$BIN")+analysis" "$S" "$BIN" \
+run_timed "$("$BIN_DIR/invoke-koshkit" basename "$BIN")+analysis" "$S" "$BIN" \
           --mood sh \
           -W bench/configure.sh
 compare_outputs "$D" "$S" "dash with analysis"
@@ -396,7 +397,7 @@ else
   skip_bash_reference
 fi
 
-run_timed "$("$TEST_KOSHKIT" basename "$BIN")+analysis" "$SB" "$BIN" \
+run_timed "$("$BIN_DIR/invoke-koshkit" basename "$BIN")+analysis" "$SB" "$BIN" \
           --mood bash \
           -W bench/configure.bash
 if [ -z "$BASH_SKIP_REASON" ]
@@ -407,13 +408,13 @@ fi
 echo "configure.kosh, wall-clock seconds at SCALE=$SCALE, lower is better:"
 if [ -z "$BASH_SKIP_REASON" ]
 then
-  run_timed "$("$TEST_KOSHKIT" basename "$BASHP")" "$ZB" "$BASHP" \
+  run_timed "$("$BIN_DIR/invoke-koshkit" basename "$BASHP")" "$ZB" "$BASHP" \
     bench/configure.kosh
 else
   skip_bash_reference
 fi
 
-run_timed "$("$TEST_KOSHKIT" basename "$BIN")+analysis" "$ZS" "$BIN" \
+run_timed "$("$BIN_DIR/invoke-koshkit" basename "$BIN")+analysis" "$ZS" "$BIN" \
   bench/configure.kosh
 if [ -z "$BASH_SKIP_REASON" ]
 then
@@ -424,22 +425,22 @@ echo \
   "primes.bash, wall-clock seconds up to LIMIT=$PRIMES_LIMIT, lower is better:"
 if command -v "$PYTHON" >/dev/null 2>&1
 then
-  run_timed "$("$TEST_KOSHKIT" basename "$PYTHON")" "$PP" "$PYTHON" \
+  run_timed "$("$BIN_DIR/invoke-koshkit" basename "$PYTHON")" "$PP" "$PYTHON" \
     bench/primes.py "$PRIMES_LIMIT"
 else
-  printf "  %-16s%s\n" "$("$TEST_KOSHKIT" basename "$PYTHON")" \
+  printf "  %-16s%s\n" "$("$BIN_DIR/invoke-koshkit" basename "$PYTHON")" \
     "skipped, executable was not found"
 fi
 
 if [ -z "$BASH_SKIP_REASON" ]
 then
-  run_timed "$("$TEST_KOSHKIT" basename "$BASHP")" "$PB" "$BASHP" \
+  run_timed "$("$BIN_DIR/invoke-koshkit" basename "$BASHP")" "$PB" "$BASHP" \
     bench/primes.bash "$PRIMES_LIMIT"
 else
   skip_bash_reference
 fi
 
-run_timed "$("$TEST_KOSHKIT" basename "$BIN")" "$PS" "$BIN" \
+run_timed "$("$BIN_DIR/invoke-koshkit" basename "$BIN")" "$PS" "$BIN" \
           --mood bash \
           --no-diagnostics bench/primes.bash "$PRIMES_LIMIT"
 if [ -z "$BASH_SKIP_REASON" ]
@@ -447,7 +448,7 @@ then
   compare_outputs "$PB" "$PS" "bash"
 fi
 
-run_timed "$("$TEST_KOSHKIT" basename "$BIN")+analysis" "$PS" "$BIN" \
+run_timed "$("$BIN_DIR/invoke-koshkit" basename "$BIN")+analysis" "$PS" "$BIN" \
           --mood bash \
           -W bench/primes.bash "$PRIMES_LIMIT"
 if [ -z "$BASH_SKIP_REASON" ]

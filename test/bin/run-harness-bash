@@ -1,6 +1,6 @@
 #!/bin/bash
 
-AUX_DIRECTORY=${0%/*}
+BIN_DIR=${0%/*}
 read -r -a DIFF_OPTIONS <<<"$DIFF_FLAGS"
 TEST_FILE=$1
 TEST_NAME=${TEST_FILE##*/}
@@ -16,11 +16,11 @@ esac
 REFERENCE="$TEST_TEMP_DIRECTORY/$TEST_NAME.bash"
 CANDIDATE="$TEST_TEMP_DIRECTORY/$TEST_NAME.kosh"
 mkdir -p "$TEST_TEMP_DIRECTORY"
-"$TEST_KOSHKIT" timeout -k 2s "${TEST_TIMEOUT_SECONDS:-60}" \
+"$BIN_DIR/invoke-koshkit" timeout -k 2s "${TEST_TIMEOUT_SECONDS:-60}" \
   "$BASHP" "$TEST_FILE" >"$REFERENCE" 2>&1
 REFERENCE_STATUS=$?
 
-"$TEST_KOSHKIT" timeout -k 2s "${TEST_TIMEOUT_SECONDS:-60}" \
+"$BIN_DIR/invoke-koshkit" timeout -k 2s "${TEST_TIMEOUT_SECONDS:-60}" \
   "$BIN" --mood bash "$TEST_FILE" >"$CANDIDATE" 2>&1
 KOSH_STATUS=$?
 

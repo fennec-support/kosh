@@ -2,7 +2,7 @@
 # registered spec, the engine end to end without a tty. PATH is pinned to an
 # empty directory so a host binary such as exportfs cannot join the candidates.
 DIRECTORY=$(mktemp -d)
-trap 'rm -rf "$DIRECTORY"' EXIT
+trap '"$BIN_DIR/invoke-koshkit" rm -rf "$DIRECTORY"' EXIT
 export PATH="$DIRECTORY"
 echo "== command prefix:"
 "$BIN" --debug-complete-at 'expor' </dev/null

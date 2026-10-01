@@ -1,5 +1,5 @@
 d=$(mktemp -d)
-trap 'test -n "$d" && "$TEST_KOSHKIT" rm -rf "$d"' EXIT
+trap 'test -n "$d" && "$BIN_DIR/invoke-koshkit" rm -rf "$d"' EXIT
 script_command=$(command -v script)
 expect_command=$(command -v expect || :)
 RCFILE="$d/editor-rc"

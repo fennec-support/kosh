@@ -5,7 +5,7 @@ BIN=$(CDPATH= cd -- "$(dirname -- "$BIN")" && pwd)/$(basename -- "$BIN")
 # that owns it. An ignored interrupt leaves the open blocked, and the file is
 # still opened once the peer arrives.
 directory=$(mktemp -d)
-trap '[ -n "$directory" ] && "$TEST_KOSHKIT" rm -rf "$directory"' EXIT
+trap '[ -n "$directory" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$directory"' EXIT
 mkfifo "$directory/read" "$directory/write" "$directory/exec" "$directory/kept" \
   "$directory/wc" "$directory/cksum" "$directory/grep" "$directory/diff"
 printf 'first\n' > "$directory/first"

@@ -7,8 +7,8 @@ after_mask=$(umask)
 '
 
 directory=$(mktemp -d)
-trap '[ -n "$directory" ] && "$TEST_KOSHKIT" rm -rf "$directory"' EXIT
-"$TEST_KOSHKIT" mkdir -p "$directory/original" "$directory/sibling"
+trap '[ -n "$directory" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$directory"' EXIT
+"$BIN_DIR/invoke-koshkit" mkdir -p "$directory/original" "$directory/sibling"
 : > "$directory/original/marker"
 SUBSHELL_DIRECTORY=$directory "$BIN" -c '
 cd "$SUBSHELL_DIRECTORY/original" || exit 1

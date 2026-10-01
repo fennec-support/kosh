@@ -1,6 +1,6 @@
 unset KOSH_FLAGS
 directory=
-trap 'test -n "$directory" && "$TEST_KOSHKIT" rm -rf "$directory"' EXIT
+trap 'test -n "$directory" && "$BIN_DIR/invoke-koshkit" rm -rf "$directory"' EXIT
 # A function runs in the mood it was defined in. A function defined in bash mood
 # expands an unset variable to empty even after the session switches to the
 # strict default, and a function defined in the default mood stays strict even
@@ -31,6 +31,6 @@ set --mood kosh
 f
 printf "mood=%s unset=[%s]\n" "$(set --mood)" "$NEVER_SET"
 '
-test -n "$directory" && "$TEST_KOSHKIT" rm -rf "$directory"
+test -n "$directory" && "$BIN_DIR/invoke-koshkit" rm -rf "$directory"
 directory=
 echo "rc-done"

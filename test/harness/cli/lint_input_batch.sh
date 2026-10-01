@@ -4,7 +4,7 @@ start_directory=$(pwd -P)
 root=$TEST_TEMP_DIRECTORY/lint-input-batch
 mkdir -p "$root/directory"
 root=$(cd "$root" && pwd -P)
-trap 'cd "$start_directory" && [ -n "$root" ] && "$TEST_KOSHKIT" rm -rf "$root"' EXIT
+trap 'cd "$start_directory" && [ -n "$root" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$root"' EXIT
 
 cat > "$root/first.bash" <<'EOF'
 #!/bin/bash

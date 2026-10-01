@@ -51,9 +51,9 @@ part of the contract.
 
 ## Keep harness logic in runners
 
-Make discovers inputs, declares direct target dependencies, and keeps platform
-skip lists. A Make recipe launches the runner for its harness. A runner never
-invokes Make.
+Make discovers inputs, declares direct target dependencies, keeps platform skip
+lists, and schedules fixture targets in parallel. A Make recipe launches the
+runner for its harness. A runner never invokes Make.
 
 Each harness has one `run-<harness>-test.sh` file when one process model can
 serve all of its cases. The runner creates the required directories, launches
@@ -61,11 +61,23 @@ the test process, captures output, compares the flat golden, and removes its
 temporary output. Refill is a mode of the same runner. A second script must not
 copy a timeout list, argument parser, golden comparison, or cleanup path.
 
-`run-test-suite.sh` bounds parallel workers and starts each harness runner.
-`run-cli-test.sh` bounds each CLI case through koshkit timeout and runs it under
-the test shell selected by Make. Native, editor, and compatibility runners also
-use koshkit timeout. `run-refill.sh` selects the normal harness runners in refill
-mode.
+`test/bin/run-test` prints the fixture status and records runner diagnostics.
+`test/bin/run-harness-kosh` handles native fixtures. `test/bin/run-harness-script`
+handles CLI, completion, and highlighting fixtures. The compatibility runners
+handle POSIX and Bash fixtures. `test/bin/run-refill` selects the normal
+harness runners in refill mode. Koshkit supplies the timeout command through
+the exported test variables.
+
+The harness was reduced to one Make target per fixture and one small runner per
+process model. `failed.diff` is the single failure artifact. It is printed only
+when it is nonempty after the test targets finish.
+
+The reduction removed the worker harness, per-directory CLI, completion, and
+highlight wrappers, the shared utility script, and separate comparison targets.
+Make now expands the fixture wildcards and provides the parallel jobs. Pattern
+recipes pass the exact fixture path to `run-test`. The runner handles skips,
+status output, and diagnostic capture. A harness runner contains only the
+process launch, comparison, cleanup, and return status for its process model.
 
 Auxiliary shell scripts use two-space indentation. They receive configuration
 through exported test variables. They do not reconstruct Make variables or

@@ -6,7 +6,7 @@ cleanup()
 {
     if [ -n "$dir" ]; then
         cd "$TEST_MKTEMP_DIRECTORY" || cd /
-        "$TEST_KOSHKIT" rm -rf "$dir"
+        "$BIN_DIR/invoke-koshkit" rm -rf "$dir"
     fi
 }
 trap cleanup EXIT

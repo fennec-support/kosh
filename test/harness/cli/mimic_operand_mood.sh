@@ -4,7 +4,7 @@ unset KOSH_FLAGS
 # analyzes and runs the file under the mood its interpreter names, the same
 # mood the dispatch path picks for the script run as a command.
 directory=$(mktemp -d)
-trap '[ -n "$directory" ] && "$TEST_KOSHKIT" rm -rf "$directory"' EXIT
+trap '[ -n "$directory" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$directory"' EXIT
 
 printf '#!/bin/bash\nset --mood\n' > "$directory/bash-script"
 printf '#!/bin/sh\nset --mood\n' > "$directory/sh-script"

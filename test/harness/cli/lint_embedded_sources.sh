@@ -6,7 +6,7 @@ mkdir -p "$root/.github/workflows" "$root/.gitea/workflows" \
   "$root/.forgejo/workflows" "$root/.circleci" "$root/.buildkite" \
   "$root/.woodpecker" "$root/.vscode" "$root/.devcontainer"
 root=$(cd "$root" && pwd -P)
-trap 'cd "$start_directory" && [ -n "$root" ] && "$TEST_KOSHKIT" rm -rf "$root"' EXIT
+trap 'cd "$start_directory" && [ -n "$root" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$root"' EXIT
 
 cat > "$root/.github/workflows/check.yml" <<'EOF'
 name: check

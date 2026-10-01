@@ -4,7 +4,7 @@
 # ';' or '|', so the argument saw a broken command word and offered nothing. PATH
 # is pinned to an empty directory so only the marker files join the candidates.
 dir=$(mktemp -d)
-trap 'rm -rf "$dir"' EXIT
+trap '"$BIN_DIR/invoke-koshkit" rm -rf "$dir"' EXIT
 : > "$dir/ZQmarker_file"
 mkdir "$dir/ZQdir_marker"
 export PATH="$dir"

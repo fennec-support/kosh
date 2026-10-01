@@ -8,7 +8,7 @@
 
 root=$TEST_TEMP_DIRECTORY/koshkit-filesystem-portable
 if [[ -n "$root" ]]; then
-  "$TEST_KOSHKIT" rm -rf -- "$root"
+  "$BIN_DIR/invoke-koshkit" rm -rf -- "$root"
 fi
 koshkit mkdir -p "$root"
 : > "$root/source"
@@ -38,5 +38,5 @@ koshkit pathchk -P '' 2> "$TEST_NULL_DEVICE"
 echo "pathchk-empty=$?"
 
 if [[ -n "$root" ]]; then
-  "$TEST_KOSHKIT" rm -rf -- "$root"
+  "$BIN_DIR/invoke-koshkit" rm -rf -- "$root"
 fi

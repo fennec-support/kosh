@@ -56,5 +56,5 @@ echo "--- missing source preserves later output and status ---"
 } 2>&1 | tr '\\' '/' | sed "s#$normalized_d#TMPDIR#g"
 
 if [ -n "$d" ]; then
-  "$TEST_KOSHKIT" rm -r "$d"
+  "$BIN_DIR/invoke-koshkit" rm -r "$d"
 fi

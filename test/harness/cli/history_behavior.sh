@@ -11,7 +11,7 @@ dir=$(mktemp -d)
 cleanup()
 {
   if [ -n "$dir" ]; then
-    "$TEST_KOSHKIT" rm -rf -- "$dir"
+    "$BIN_DIR/invoke-koshkit" rm -rf -- "$dir"
   fi
 }
 trap cleanup EXIT

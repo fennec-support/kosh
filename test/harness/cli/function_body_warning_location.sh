@@ -13,7 +13,7 @@ probe_fn() {
   echo "line=$LINENO"
 }
 EOF
-"$BIN" -WWW -c ". $lib; probe_fn" 2>&1 | sed "s|$lib|LIB|" | ./normalize-trace.sh "$BIN"
+"$BIN" -WWW -c ". $lib; probe_fn" 2>&1 | sed "s|$lib|LIB|" | "invoke-normalize-trace" "$BIN"
 "$BIN" -c 'koshkit unlink "$1"' cleanup "$lib"
 echo "rc=$?"
 
@@ -26,6 +26,6 @@ first_fn() {
   echo "line=$LINENO"
 }
 EOF
-"$BIN" -WWW -c ". $first; first_fn" 2>&1 | sed "s|$first|FIRST|" | ./normalize-trace.sh "$BIN"
+"$BIN" -WWW -c ". $first; first_fn" 2>&1 | sed "s|$first|FIRST|" | "invoke-normalize-trace" "$BIN"
 "$BIN" -c 'koshkit unlink "$1"' cleanup "$first"
 echo "rc=$?"

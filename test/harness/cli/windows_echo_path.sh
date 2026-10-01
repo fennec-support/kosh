@@ -2,7 +2,7 @@ directory=
 cleanup()
 {
   if [ -n "$directory" ]; then
-    "$TEST_KOSHKIT" rm -rf -- "$directory"
+    "$BIN_DIR/invoke-koshkit" rm -rf -- "$directory"
   fi
 }
 trap cleanup EXIT

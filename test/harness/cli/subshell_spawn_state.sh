@@ -98,7 +98,7 @@ printf "" | {
 '
 
 dirstack_root=$TEST_MKTEMP_DIRECTORY/subshell-dirstack
-"$TEST_KOSHKIT" mkdir -p "$dirstack_root/first" "$dirstack_root/second" \
+"$BIN_DIR/invoke-koshkit" mkdir -p "$dirstack_root/first" "$dirstack_root/second" \
   "$dirstack_root/replacement"
 TEST_DIRSTACK_ROOT=$dirstack_root "$BIN" --mood bash --no-init-files --no-diagnostics -c '
 cd "$TEST_DIRSTACK_ROOT"
@@ -148,7 +148,7 @@ printf "" | {
   fi
 }
 '
-test -n "$dirstack_root" && "$TEST_KOSHKIT" rm -rf "$dirstack_root"
+test -n "$dirstack_root" && "$BIN_DIR/invoke-koshkit" rm -rf "$dirstack_root"
 
 "$BIN" --mood posix --no-init-files -c '
 printf "mood="

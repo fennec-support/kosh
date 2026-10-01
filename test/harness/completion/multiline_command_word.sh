@@ -5,7 +5,7 @@
 # completion spec is registered so the candidate set is stable. The cd case shows
 # the directories-only filter also follows the command onto the next line.
 dir=$(mktemp -d)
-trap 'rm -rf "$dir"' EXIT
+trap '"$BIN_DIR/invoke-koshkit" rm -rf "$dir"' EXIT
 mkdir "$dir/adir"
 : > "$dir/afile"
 export PATH="$dir"

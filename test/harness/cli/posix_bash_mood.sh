@@ -38,7 +38,7 @@ echo "rc=$?"
 # reference shell fires it under set -o posix. Only the sh mood rejects the
 # condition.
 posix_directory=$(mktemp -d)
-trap '[ -n "$posix_directory" ] && "$TEST_KOSHKIT" rm -rf "$posix_directory"' EXIT
+trap '[ -n "$posix_directory" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$posix_directory"' EXIT
 printf 'echo inner-body\n' > "$posix_directory/inner.sh"
 echo "== --posix fires RETURN when a sourced file finishes:"
 "$BIN" --posix -c 'trap "echo R-src" RETURN; . "$1"; echo "after=$?"' \

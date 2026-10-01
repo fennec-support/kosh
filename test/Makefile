@@ -36,19 +36,19 @@ SKIPPED_TESTS := \
 	cli_trap_during_blocking_builtin cli_trap_startup_ignored \
 	cli_unknown_flag_color cli_wait_on_stopped_job \
 	cli_koshkit_goodcore_archive cli_koshkit_ls_modes cli_koshkit_misc \
-	cli_assimilate \
-	cli_koshkit_printenv cli_koshkit_process_tools cli_koshkit_text \
-	cli_koshkit_timeout cli_loop_redirect_descriptor \
+	cli_assimilate cli_koshkit_printenv cli_koshkit_process_tools \
+	cli_koshkit_text cli_koshkit_timeout cli_loop_redirect_descriptor \
 	cli_pipeline_stage_evaluation_mode cli_shopt_states \
 	cli_subshell_replay_trap_suppression cli_subshell_spawn_state \
 	cli_trace_policy cli_trailing_separator_execution cli_ulimit_validation \
 	completion_ansi_c_quoted_word completion_complete_git_grouped_subcommands \
 	completion_complete_go_subcommands completion_complete_help_subcommands \
 	completion_editor_append_hot_path completion_executable_filtering_batch \
-	completion_help_options_trusted_dir_only completion_help_subcommand_second_level \
-	completion_help_subcommand_third_level completion_help_subcommands_no_colon \
-	completion_make_targets_fallback completion_completion_glob_quoting \
-	completion_path_quoting
+	completion_help_options_trusted_dir_only \
+	completion_help_subcommand_second_level \
+	completion_help_subcommand_third_level \
+	completion_help_subcommands_no_colon completion_make_targets_fallback \
+	completion_completion_glob_quoting completion_path_quoting
 else ifneq ($(TARGET), Linux)
 SKIPPED_TESTS := koshkit_mknod
 else
@@ -86,7 +86,7 @@ endif
 export TEST_HOST_PATH_SEPARATOR := :
 export TEST_TEMP_DIRECTORY := .test-work
 export TEST_MKTEMP_DIRECTORY := $(shell $(TEST_ABSOLUTE_DIRECTORY_COMMAND))/$(TEST_TEMP_DIRECTORY)
-export TEST_KOSHKIT := $(CURDIR)/bin/invoke-koshkit
+export BIN_DIR := $(CURDIR)/bin
 
 ifeq ($(MODE),rel)
 BIN_NAME := kosh
@@ -115,12 +115,13 @@ export BIN ?= ../kosh$(BIN_EXTENSION)
 else
 export BIN ?= ../kosh-$(MODE)$(BIN_EXTENSION)
 endif
+override BIN := $(abspath $(BIN))
 
-TEST_TIMEOUT = $(TEST_KOSHKIT) timeout -k 2s
 FAILED_LIST := failed.diff
 export FAILED_LIST
 
 export TEST_SHELL := $(SHELL)
+unexport KOSH_IDENTITY
 
 export KOSH_HISTORY_FILE := $(CURDIR)/.test_history
 export KOSH_DIRECTORY_HISTORY := $(CURDIR)/.test_directory_history
@@ -131,7 +132,7 @@ else
 export TEST_SYSTEM_PATH := $(dir $(shell command -v sh))
 endif
 
-export PATH := $(CURDIR)/aux$(TEST_HOST_PATH_SEPARATOR)$(PATH)
+export PATH := $(BIN_DIR)$(TEST_HOST_PATH_SEPARATOR)$(PATH)
 export ASAN_OPTIONS := symbolize=0
 
 .PHONY: test kosh cli completion highlight sh bash test_prepare FORCE
@@ -157,22 +158,22 @@ BASH_TESTS := $(wildcard harness/bash/*.bash)
 bash: $(BASH_TESTS)
 
 harness/kosh/%.kosh: FORCE $(BIN) | test_prepare
-	@$(SHELL) bin/run-test '$@' bin/run-harness-kosh
+	@$(SHELL) $(BIN_DIR)/run-test '$@' $(BIN_DIR)/run-harness-kosh
 
 harness/cli/%.sh: FORCE $(BIN) | test_prepare
-	@$(SHELL) bin/run-test '$@' bin/run-harness-script
+	@$(SHELL) $(BIN_DIR)/run-test '$@' $(BIN_DIR)/run-harness-script
 
 harness/completion/%.sh: FORCE $(BIN) | test_prepare
-	@$(SHELL) bin/run-test '$@' bin/run-harness-script
+	@$(SHELL) $(BIN_DIR)/run-test '$@' $(BIN_DIR)/run-harness-script
 
 harness/highlight/%.sh: FORCE $(BIN) | test_prepare
-	@$(SHELL) bin/run-test '$@' bin/run-harness-script
+	@$(SHELL) $(BIN_DIR)/run-test '$@' $(BIN_DIR)/run-harness-script
 
 harness/sh/%.sh: FORCE $(BIN) | test_prepare
-	@$(SHELL) bin/run-test '$@' bin/run-harness-sh
+	@$(SHELL) $(BIN_DIR)/run-test '$@' $(BIN_DIR)/run-harness-sh
 
 harness/bash/%.bash: FORCE $(BIN) | test_prepare
-	@$(SHELL) bin/run-test '$@' bin/run-harness-bash
+	@$(SHELL) $(BIN_DIR)/run-test '$@' $(BIN_DIR)/run-harness-bash
 
 FORCE:
 
@@ -181,9 +182,9 @@ clean:
 	@rm -rf "$(CURDIR)/$(TEST_TEMP_DIRECTORY)"
 
 test_prepare:
-	@$(TEST_KOSHKIT) rm -f '$(FAILED_LIST)'
-	@$(TEST_KOSHKIT) touch '$(FAILED_LIST)'
-	@$(TEST_KOSHKIT) rm -rf '$(CURDIR)/$(TEST_TEMP_DIRECTORY)'
+	@$(BIN_DIR)/invoke-koshkit rm -f '$(FAILED_LIST)'
+	@$(BIN_DIR)/invoke-koshkit touch '$(FAILED_LIST)'
+	@$(BIN_DIR)/invoke-koshkit rm -rf '$(CURDIR)/$(TEST_TEMP_DIRECTORY)'
 
 test: | test_prepare
 	@if test -s '$(FAILED_LIST)'; then \
@@ -195,7 +196,7 @@ REFILL ?=
 
 refill: $(BIN)
 	@REFILL='$(REFILL)' \
-		$(SHELL) bin/run-refill '$(SHELL)'
+		$(SHELL) $(BIN_DIR)/run-refill '$(SHELL)'
 
 export ZSH ?= /bin/zsh
 export ASH ?= /bin/busybox
@@ -212,6 +213,6 @@ export DASH_SPEEDUP_REQUIRED ?= 1
 export BASH_SPEEDUP_REQUIRED ?= 3
 
 bench: $(BIN)
-	@$(SHELL) bin/run-bench
+	@$(SHELL) $(BIN_DIR)/run-bench
 
 .PHONY: test clean refill bench

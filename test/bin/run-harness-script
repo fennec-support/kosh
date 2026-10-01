@@ -1,6 +1,6 @@
 #!/bin/bash
 
-AUX_DIRECTORY=${0%/*}
+BIN_DIR=${0%/*}
 read -r -a DIFF_OPTIONS <<<"$DIFF_FLAGS"
 TEST_FILE=$1
 TEST_NAME=${TEST_FILE##*/}
@@ -15,8 +15,8 @@ esac
 
 OUTPUT="$TEST_TEMP_DIRECTORY/$TEST_NAME.out"
 mkdir -p "$TEST_TEMP_DIRECTORY"
-"$TEST_KOSHKIT" timeout -k 2s "${TEST_TIMEOUT_SECONDS:-60}" \
-  "$SHELL" "$TEST_FILE" >"$OUTPUT" 2>&1
+"$BIN_DIR/invoke-koshkit" timeout -k 2s "${TEST_TIMEOUT_SECONDS:-60}" \
+  "$TEST_SHELL" "$TEST_FILE" >"$OUTPUT" 2>&1
 
 if diff "${DIFF_OPTIONS[@]}" "expected/$TEST_NAME.out" "$OUTPUT" >/dev/null 2>&1
 then

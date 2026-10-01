@@ -5,7 +5,7 @@ printf 'name=ok; echo "$name" | koshkit cat\n' | "$BIN" -AR -
 
 root=$TEST_TEMP_DIRECTORY/ast-operations
 mkdir -p "$root"
-trap '[ -n "$root" ] && "$TEST_KOSHKIT" rm -rf "$root"' EXIT
+trap '[ -n "$root" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$root"' EXIT
 
 printf 'echo apply\n' > "$root/lint.sh"
 "$BIN" -A --lint --apply --no-traces "$root/lint.sh"

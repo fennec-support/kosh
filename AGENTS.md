@@ -221,6 +221,21 @@ changes update this file.
 - Make discovers inputs and platform skips. Runners own setup, output,
   comparison, refill, and cleanup. Results are under `.test-work/results`.
   Auxiliary test shell scripts use two-space indentation.
+- The test Makefile owns fixture discovery, pattern targets, platform skips, and
+  parallel scheduling. Each target delegates one fixture to a small runner.
+  `test/bin/run-test` prints the running and final status lines. Harness
+  runners execute one fixture, compare its result, write failures to stderr,
+  and return the comparison status.
+- The shared CLI, completion, and highlight behavior is implemented by
+  `test/bin/run-harness-script`. The other process models use one runner each.
+  Helpers live in `test/bin` because `bin` is a valid directory name on every
+  supported checkout platform.
+- The harness was simplified by deleting the worker layer and directory
+  specific wrapper copies. Make expands each harness wildcard into direct
+  pattern targets. Each recipe passes its fixture path to `run-test`. The
+  shared runner prints status and records diagnostics. A process model runner
+  only launches the required commands, compares output, and returns a status.
+  Shared setup is exported by Make or kept in the runner that uses it once.
 - Run bare `NAME`, `cli_NAME`, and completion targets through `make -C test`.
   Resolve the input and runner first, then pass matching `MODE` and `BIN`
   values. Pass the root build's `TARGET` explicitly for direct test make
@@ -232,8 +247,7 @@ changes update this file.
   `scripts/find-modern-bash.sh` selects one from PATH, and `BASHP` overrides that
   choice. An unsuitable `BASHP` fails the suite while a suitable Bash is
   installed.
-- Golden comparisons use koshkit diff on every platform through
-  `test/bin/diff`.
+- Golden comparisons use the host `diff` command with platform-specific flags.
 - A compatibility fixture compares standard output and status exactly. It
   compares only the presence of error output because Kosh formats and locates
   diagnostics independently. A fixture whose error output must agree byte for

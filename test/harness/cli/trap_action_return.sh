@@ -26,7 +26,7 @@ echo f-rc=$?
 echo tail'; echo "rc=$?"
 echo "== a return in an action leaves the sourced file with its status:"
 d=$(mktemp -d) || exit 1
-trap '[ -n "$d" ] && "$TEST_KOSHKIT" rm -rf "$d"' EXIT
+trap '[ -n "$d" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$d"' EXIT
 printf 'echo sourced-1\necho sourced-2\n' > "$d/sourced.sh"
 "$BIN" --mood bash -c 'set -T
 trap '"'"'case "$BASH_COMMAND" in echo\ sourced*) return 3;; esac'"'"' DEBUG
@@ -35,7 +35,7 @@ echo src-rc=$?
 trap - DEBUG
 echo tail' > "$d/captured.out" 2>&1
 rc=$?
-sed "s|$d|DIR|g" < "$d/captured.out" | ./normalize-trace.sh "$BIN"; echo "rc=$rc"
+sed "s|$d|DIR|g" < "$d/captured.out" | "invoke-normalize-trace" "$BIN"; echo "rc=$rc"
 echo "== a return in an action leaves the function a sourced file defined:"
 printf 'g() {\n  echo g-1\n  echo g-2\n}\ng\necho after-call\n' > "$d/frame.sh"
 "$BIN" --mood bash -c 'set -T
@@ -45,7 +45,7 @@ echo src-rc=$?
 trap - DEBUG
 echo tail' > "$d/captured.out" 2>&1
 rc=$?
-sed "s|$d|DIR|g" < "$d/captured.out" | ./normalize-trace.sh "$BIN"; echo "rc=$rc"
+sed "s|$d|DIR|g" < "$d/captured.out" | "invoke-normalize-trace" "$BIN"; echo "rc=$rc"
 echo "== a return in a RETURN action fires the trap again for the same frame:"
 "$BIN" --mood bash -c 'set -T
 f() { echo inner; }
@@ -65,4 +65,4 @@ echo top-2
 trap - DEBUG
 echo tail' > "$d/captured.out" 2>&1
 rc=$?
-./normalize-trace.sh "$BIN" < "$d/captured.out"; echo "rc=$rc"
+"invoke-normalize-trace" "$BIN" < "$d/captured.out"; echo "rc=$rc"

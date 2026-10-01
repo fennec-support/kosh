@@ -1,6 +1,6 @@
 unset KOSH_FLAGS
 home=$(mktemp -d)
-trap '[ -n "$home" ] && "$TEST_KOSHKIT" rm -rf "$home"' EXIT
+trap '[ -n "$home" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$home"' EXIT
 printf 'echo RC-MARK\nset --init-moods kosh,bash\n' > "$home/.koshrc"
 printf 'arr=(a b c)\necho "bashrc-arr=${arr[1]}"\n' > "$home/.bashrc"
 HOME="$home" "$BIN" -i <"$TEST_NULL_DEVICE" >"$home/out" 2>&1

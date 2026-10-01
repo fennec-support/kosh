@@ -3,7 +3,7 @@
 # way and its body completes as a double quoted word. PATH is pinned to one
 # directory so only the marker names join the candidates.
 dir=$(mktemp -d) || exit 1
-trap '[ -n "$dir" ] && "$TEST_KOSHKIT" rm -rf -- "$dir"' EXIT
+trap '[ -n "$dir" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$dir"' EXIT
 : > "$dir/ZQmarker_file"
 mkdir "$dir/ZQdir_marker"
 : > "$dir/ZQdir_marker/ZQinner"

@@ -3,7 +3,7 @@
 # keeps every match, floating the matching extension to the front while hiding
 # nothing. A program with no table entry is unaffected.
 dir=$(mktemp -d)
-trap 'rm -rf "$dir"' EXIT
+trap '"$BIN_DIR/invoke-koshkit" rm -rf "$dir"' EXIT
 : > "$dir/archive.zip"
 : > "$dir/OLD.ZIP"
 : > "$dir/backup.tar.gz"

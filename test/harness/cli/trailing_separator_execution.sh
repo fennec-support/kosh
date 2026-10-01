@@ -2,7 +2,7 @@ unset KOSH_FLAGS
 
 starting_directory=$PWD
 d=$(mktemp -d) || exit 1
-trap 'cd "$starting_directory" && [ -n "$d" ] && "$TEST_KOSHKIT" rm -rf "$d"' EXIT
+trap 'cd "$starting_directory" && [ -n "$d" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$d"' EXIT
 
 printf '#!/bin/sh\nprintf "launched\\n"\n' > "$d/program"
 chmod +x "$d/program"

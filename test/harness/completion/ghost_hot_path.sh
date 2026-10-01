@@ -1,7 +1,7 @@
 set -e
 
 d=$(mktemp -d)
-trap 'test -n "$d" && "$TEST_KOSHKIT" rm -rf "$d"' EXIT
+trap 'test -n "$d" && "$BIN_DIR/invoke-koshkit" rm -rf "$d"' EXIT
 
 result_field()
 {

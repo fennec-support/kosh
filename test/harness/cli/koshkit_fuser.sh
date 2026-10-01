@@ -11,7 +11,7 @@ finish()
     if [ -n "$holder_pid_two" ]; then
       wait "$holder_pid_two" 2>/dev/null
     fi
-    "$TEST_KOSHKIT" rm -r "$d"
+    "$BIN_DIR/invoke-koshkit" rm -r "$d"
   fi
 }
 trap finish EXIT

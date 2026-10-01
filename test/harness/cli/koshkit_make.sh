@@ -688,7 +688,7 @@ SHELL = $(BIN)
 all:
 	@shell_value=$$(printf '%s' "$$SHELL" | koshkit tr "\\\\" '/'); expected_shell=$$(printf '%s' "$$EXPECTED_SHELL" | koshkit tr "\\\\" '/'); case "$$shell_value" in "$$expected_shell"|"$$expected_shell.exe") echo shell-env=inherited-value;; *) echo "shell-env=$$SHELL";; esac
 EOF
-SHELL="$TEST_KOSHKIT" EXPECTED_SHELL="$TEST_KOSHKIT" \
+SHELL="$BIN_DIR/invoke-koshkit" EXPECTED_SHELL="$BIN_DIR/invoke-koshkit" \
   "$BIN" -c 'koshkit make -f shell-env.mk'
 cat > shell-function.mk <<'EOF'
 SHELL = false
@@ -1014,12 +1014,12 @@ EOF
 
 unset KOSH_FLAGS
 dir=$TEST_MKTEMP_DIRECTORY/koshkit-make-error
-"$TEST_KOSHKIT" mkdir -p "$dir"
+"$BIN_DIR/invoke-koshkit" mkdir -p "$dir"
 printf 'V := $(shell nonexistent_prog_zzz)\nall:\n\techo $(V)\n' > "$dir/Makefile"
 echo "== the \$(shell) error names the make source (count):"
 result=$("$BIN" -c "cd '$dir'; koshkit make" 2>&1)
 result_status=$?
-test -n "$dir" && "$TEST_KOSHKIT" rm -rf "$dir"
+test -n "$dir" && "$BIN_DIR/invoke-koshkit" rm -rf "$dir"
 [ "$result_status" -eq 0 ] || exit 1
 printf '%s\n' "$result" |
   grep -cF "Makefile:1:1: error: The command 'nonexistent_prog_zzz' was not found."
