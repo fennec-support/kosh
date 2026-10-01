@@ -173,53 +173,36 @@ jobs:
         with:
           submodules: recursive
 
+      - uses: msys2/setup-msys2@v2
+        with:
+          release: false
+          msystem: MSYS
+          update: true
+          install: make
+
       - name: Install the test toolchain
         shell: pwsh
         run: |
-          if (-not (Get-Command winget.exe -ErrorAction SilentlyContinue)) {
-            Install-Module -Name Microsoft.WinGet.Client -Force `
-              -Repository PSGallery
-            Repair-WinGetPackageManager -AllUsers
-          }
           $developerModePath = `
             'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock'
           New-Item -Path $developerModePath -Force | Out-Null
           New-ItemProperty -Path $developerModePath `
             -Name AllowDevelopmentWithoutDevLicense -Value 1 `
             -PropertyType DWord -Force | Out-Null
-          $makeRoot = 'C:\GnuWin32'
-          $makePath = "$makeRoot\bin\make.exe"
-          for ($attempt = 1; $attempt -le 3; $attempt++) {
-            winget install --id GnuWin32.Make --exact --version 3.81 `
-              --source winget --location $makeRoot --silent `
-              --accept-package-agreements --accept-source-agreements `
-              --disable-interactivity
-            $installStatus = $LASTEXITCODE
-            if (Test-Path -LiteralPath $makePath) { break }
-            if ($attempt -eq 3) {
-              throw "WinGet failed to install GNU Make, exit $installStatus"
-            }
-            Start-Sleep -Seconds 5
-          }
-          if (-not (Test-Path -LiteralPath $makePath)) {
-            throw "WinGet did not install GNU Make at $makePath"
-          }
-          "$makeRoot\bin" |
-            Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           'C:\msys64\usr\bin' |
             Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Verify the test toolchain
         shell: pwsh
         run: |
-          $makePath = 'C:/GnuWin32/bin/make.exe'
+          $makePath = 'C:/msys64/usr/bin/make.exe'
           $resolvedMakePath = (Get-Command make.exe -ErrorAction Stop).Source `
             -replace '\\', '/'
           if ($resolvedMakePath -ne $makePath) {
             throw "Unexpected make executable at $resolvedMakePath"
           }
           $makeVersion = make.exe --version | Select-Object -First 1
-          if ($makeVersion -ne 'GNU Make 3.81') {
+          if ($makeVersion -notlike 'GNU Make 4.*') {
             throw "Unexpected make version: $makeVersion"
           }
           $shPath = 'C:/msys64/usr/bin/sh.exe'
@@ -257,7 +240,6 @@ jobs:
             }
           }
           Remove-Item -LiteralPath $symlinkProbeDirectory -Recurse -Force
-          Get-Command winget.exe -ErrorAction Stop
           Get-Command clang++.exe -ErrorAction Stop
           Get-Command python3.exe -ErrorAction Stop
           clang++ --version | Select-Object -First 1
@@ -267,7 +249,7 @@ jobs:
       - name: Run debug tests
         id: debug_tests
         shell: pwsh
-        run: make.exe SHELL=C:/msys64/usr/bin/sh.exe MODE=dbg test
+        run: make.exe MODE=dbg test
 
       - name: Diagnose pipeline launch
         if: failure() && steps.debug_tests.outcome == 'failure'
@@ -280,4 +262,4 @@ jobs:
 
       - name: Run no-editor history tests
         shell: pwsh
-        run: make.exe SHELL=C:/msys64/usr/bin/sh.exe MODE=dbg NO_TOILETLINE=1 test
+        run: make.exe MODE=dbg NO_TOILETLINE=1 test
