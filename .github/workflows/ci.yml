@@ -246,25 +246,42 @@ jobs:
           sh --version | Select-Object -First 1
           python3 --version
 
-      - name: Run debug tests
-        id: debug_tests
+      - name: Build debug binary
+        id: debug_build
         shell: pwsh
-        run: make.exe MODE=dbg test
+        run: make.exe MODE=dbg kosh
 
-      - name: Diagnose pipeline launch
-        if: failure() && steps.debug_tests.outcome == 'failure'
+      - name: Run editor tests
+        if: ${{ !cancelled() && steps.debug_build.outcome == 'success' }}
         shell: pwsh
-        run: |
-          $env:KOSH_FLAGS = '--debug-logging=debug --debug-logging-file=pipeline-debug.log'
-          & C:/msys64/usr/bin/timeout.exe -k 2s 60 `
-            ./kosh-dbg.exe --privileged --no-init-files `
-            --no-diagnostics --no-traces -c 'echo child'
-          Write-Host "Fresh shell status: $LASTEXITCODE"
-          & C:/msys64/usr/bin/timeout.exe -k 2s 60 `
-            ./kosh-dbg.exe -c 'echo pipeline | koshkit cat; echo after=$?'
-          Write-Host "Pipeline status: $LASTEXITCODE"
-          Get-Content pipeline-debug.log
+        run: make.exe MODE=dbg toiletline_test
+
+      - name: Run CLI tests
+        if: ${{ !cancelled() && steps.debug_build.outcome == 'success' }}
+        shell: pwsh
+        run: make.exe -C test MODE=dbg cli_tests
+
+      - name: Run native tests
+        if: ${{ !cancelled() && steps.debug_build.outcome == 'success' }}
+        shell: pwsh
+        run: make.exe -C test MODE=dbg kosh_tests
+
+      - name: Run highlight tests
+        if: ${{ !cancelled() && steps.debug_build.outcome == 'success' }}
+        shell: pwsh
+        run: make.exe -C test MODE=dbg highlight_tests
+
+      - name: Run completion tests
+        if: ${{ !cancelled() && steps.debug_build.outcome == 'success' }}
+        shell: pwsh
+        run: make.exe -C test MODE=dbg completion_tests
+
+      - name: Run compatibility tests
+        if: ${{ !cancelled() && steps.debug_build.outcome == 'success' }}
+        shell: pwsh
+        run: make.exe -C test MODE=dbg compatdiff
 
       - name: Run no-editor history tests
+        if: ${{ !cancelled() && steps.debug_build.outcome == 'success' }}
         shell: pwsh
         run: make.exe MODE=dbg NO_TOILETLINE=1 test
