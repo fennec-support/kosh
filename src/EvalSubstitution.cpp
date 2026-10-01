@@ -455,7 +455,7 @@ fn EvalContext::run_captured_substitution(const Expression *ast,
   let const previous_source = source_store().current_source();
   let const previous_origin = source_store().current_origin();
   let const previous_location = source_store().current_location();
-  set_current_source(&source, String{"command substitution"});
+  set_current_source(&source, previous_origin.clone());
   defer
   {
     set_current_source(previous_source, previous_origin);
