@@ -110,34 +110,26 @@ print_platform_skips()
 {
   HARNESS_NAME=$1
 
-  if [ "${OS-}" != Windows_NT ]; then
-    return
-  fi
-
   case $HARNESS_NAME in
   kosh)
-    for TEST_NAME in $WINDOWS_SKIPPED_TEST_NAMES; do
+    for TEST_NAME in $SKIPPED_TESTS; do
       case "$TEST_NAME" in cli_*|completion_*) continue ;; esac
-      printf "\t%-64s skipped, unsupported Windows backend feature\n" \
+      printf "\t%-64s skipped, unsupported on current platform\n" \
         "$TEST_NAME.kosh"
     done
     ;;
   cli)
-    for TEST_NAME in $WINDOWS_SKIPPED_TEST_NAMES; do
+    for TEST_NAME in $SKIPPED_TESTS; do
       case "$TEST_NAME" in
-      cli_*) printf "\t%-64s skipped, unsupported on Windows\n" \
+      cli_*) printf "\t%-64s skipped, unsupported on current platform\n" \
         "cli/${TEST_NAME#cli_}.sh" ;;
       esac
     done
-    for TEST_NAME in $NON_LINUX_SKIPPED_CLI_NAMES; do
-      printf "\t%-64s skipped, requires Linux\n" \
-        "cli/${TEST_NAME#cli_}.sh"
-    done
     ;;
   completion)
-    for TEST_NAME in $WINDOWS_SKIPPED_TEST_NAMES; do
+    for TEST_NAME in $SKIPPED_TESTS; do
       case "$TEST_NAME" in
-      completion_*) printf "\t%-64s skipped, unsupported on Windows\n" \
+      completion_*) printf "\t%-64s skipped, unsupported on current platform\n" \
         "completion/${TEST_NAME#completion_}.sh" ;;
       esac
     done

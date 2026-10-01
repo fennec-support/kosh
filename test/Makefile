@@ -6,7 +6,14 @@ SHELL := /bin/bash
 TEST_ABSOLUTE_DIRECTORY_COMMAND := pwd
 endif
 
-WINDOWS_SKIPPED_TEST_NAMES := \
+ifeq ($(OS), Windows_NT)
+TARGET ?= Windows_NT
+else
+TARGET ?= $(shell uname -s)
+endif
+
+ifeq ($(TARGET), Windows_NT)
+SKIPPED_TESTS := \
 	koshkit_filesystem_posix koshkit_inspect_posix koshkit_system_posix \
 	koshkit_text_posix alias_unalias glob_dot_slash_prefix koshkit_getconf \
 	pipeline_compound_group read_builtin redirect_high_fd \
@@ -43,11 +50,10 @@ WINDOWS_SKIPPED_TEST_NAMES := \
 	completion_help_subcommand_third_level completion_help_subcommands_no_colon \
 	completion_make_targets_fallback completion_completion_glob_quoting \
 	completion_path_quoting
-
-ifneq ($(TARGET), Linux)
-NON_LINUX_SKIPPED_CLI_NAMES := \
-	cli_koshkit_eviliso_loopback \
-	cli_koshkit_mknod
+else ifneq ($(TARGET), Linux)
+SKIPPED_TESTS := cli_koshkit_eviliso_loopback cli_koshkit_mknod
+else
+SKIPPED_TESTS :=
 endif
 
 DIFF_FLAGS := -u
@@ -183,18 +189,12 @@ cli_koshkit_eviliso_loopback: $(EVILISO_LOOPBACK_DEPENDENCY)
 cli_tests: $(EVILISO_LOOPBACK_DEPENDENCY) $(BIN) $(DIFF_BOOTSTRAP)
 	@$(SHELL) run-test-suite.sh cli
 
-ifneq ($(TARGET), Linux)
-$(NON_LINUX_SKIPPED_CLI_NAMES):
-	@printf "\t%-64s skipped, requires Linux\n" \
-		"cli/$(patsubst cli_%,%,$@).sh"
-endif
-
 completion_%: completion/%.sh expected/%.out $(BIN) $(DIFF_BOOTSTRAP)
 	@$(TEST_KOSHKIT) rm -f '$(FAILED_LIST)' && $(TEST_KOSHKIT) rm -rf '$(FAILED_LIST).d'
 	@$(SHELL) run-editor-test.sh completion '$(SHELL)' completion/$*.sh
 
 ifeq ($(TARGET), Windows_NT)
-$(WINDOWS_SKIPPED_TEST_NAMES):
+$(SKIPPED_TESTS):
 	@case "$@" in \
 	cli_*) printf "	%-64s skipped, unsupported on Windows\n" \
 		"cli/$${@#cli_}.sh" ;; \
@@ -216,7 +216,7 @@ highlight_%: highlight/%.sh expected/%.out $(BIN) $(DIFF_BOOTSTRAP)
 highlight_tests: $(BIN) $(DIFF_BOOTSTRAP)
 	@$(SHELL) run-test-suite.sh highlight
 
-export WINDOWS_SKIPPED_TEST_NAMES NON_LINUX_SKIPPED_CLI_NAMES
+export SKIPPED_TESTS
 
 REFILL ?=
 
