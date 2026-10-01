@@ -257,7 +257,11 @@ jobs:
         run: |
           $env:KOSH_FLAGS = '--debug-logging=debug'
           & C:/msys64/usr/bin/timeout.exe -k 2s 60 `
-            ./kosh-dbg.exe -c 'echo pipeline | koshkit cat'
+            ./kosh-dbg.exe --privileged --no-init-files `
+            --no-diagnostics --no-traces -c 'echo child'
+          Write-Host "Fresh shell status: $LASTEXITCODE"
+          & C:/msys64/usr/bin/timeout.exe -k 2s 60 `
+            ./kosh-dbg.exe -c 'echo pipeline | koshkit cat; echo after=$?'
           Write-Host "Pipeline status: $LASTEXITCODE"
 
       - name: Run no-editor history tests
