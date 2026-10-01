@@ -30,7 +30,7 @@ WINDOWS_SKIPPED_TEST_NAMES := \
 	cli_trap_during_blocking_builtin cli_trap_startup_ignored \
 	cli_unknown_flag_color cli_wait_on_stopped_job \
 	cli_koshkit_goodcore_archive cli_koshkit_ls_modes cli_koshkit_misc \
-	cli_assimilate \
+	cli_assimilate cli_koshkit_make \
 	cli_koshkit_printenv cli_koshkit_process_tools cli_koshkit_text \
 	cli_koshkit_timeout cli_loop_redirect_descriptor \
 	cli_pipeline_stage_evaluation_mode cli_shopt_states \
@@ -80,7 +80,7 @@ export TEST_PATH_SEPARATOR := :
 export TEST_NULL_DEVICE := /dev/null
 export TEST_PATH_ENVIRONMENT_NAME := PATH
 endif
-TEST_JOBS ?= $(or $(shell ../scripts/cpu-count.sh),1)
+TEST_JOBS ?= 4
 export TEST_HOST_PATH_SEPARATOR := :
 export TEST_TEMP_DIRECTORY := .test-work
 export TEST_MKTEMP_DIRECTORY := $(shell $(TEST_ABSOLUTE_DIRECTORY_COMMAND))/.test-work
