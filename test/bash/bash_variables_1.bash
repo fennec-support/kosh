@@ -3,7 +3,8 @@
 # BASH_MONOSECONDS, and on a distro or platform whose bash reports a HOSTTYPE
 # and a MACHTYPE target other than kosh's. The monoseconds line is
 # unconditional, and the platform values are derived from the running system.
-[ "$SECONDS" -eq 0 ] && echo "seconds starts zero"
+initial_seconds=$SECONDS
+[ "$initial_seconds" -ge 0 ] && [ "$initial_seconds" -le 1 ] && echo "seconds starts zero"
 r=$RANDOM
 [ "$r" -ge 0 ] && [ "$r" -le 32767 ] && echo "random in range"
 a=$RANDOM

@@ -282,7 +282,7 @@ if [ "$host_system" = Darwin ]; then
     > "$evildisk_tools/diskutil"
   chmod 755 "$evildisk_tools/smartctl" "$evildisk_tools/diskutil"
   evildisk_report=$(PATH="$evildisk_tools:$PATH" "$BIN" -c \
-    'koshkit --color never evildisk -a /dev/null' 2>&1)
+    'koshkit --color never evildisk -a "$TEST_NULL_DEVICE"' 2>&1)
   case $evildisk_report in
     *disk-test*Verified*temperature*"42 Celsius"*"used 7%"*"media errors 5,075"*warning:*"nonzero SMART counters"*)
       evildisk_fallback=passed
@@ -297,7 +297,7 @@ printf '%s\n' '#!/bin/sh' \
   > "$evildisk_tools/smartctl"
 chmod 755 "$evildisk_tools/smartctl"
 evildisk_ata_report=$(PATH="$evildisk_tools:$PATH" "$BIN" -c \
-  'koshkit --color never evildisk -a /dev/null' 2>&1)
+  'koshkit --color never evildisk -a "$TEST_NULL_DEVICE"' 2>&1)
 case $evildisk_ata_report in
   *uncorrectable*) evildisk_ata=failed ;;
   *"Mock ATA"*"reallocated 2"*"timeouts 0"*"pending 3"*"CRC errors 4"*warning:*"nonzero SMART counters reallocated 2, pending 3, CRC errors 4"*)

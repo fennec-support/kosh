@@ -2,7 +2,7 @@
 
 run_probe()
 {
-  "$BIN" -c "$2" >/dev/null 2>&1
+  "$BIN" -c "$2" >"$TEST_NULL_DEVICE" 2>&1
   printf '%s=%s\n' "$1" "$?"
 }
 
@@ -15,8 +15,8 @@ run_probe shadowed_hash 'hash(){ false; }; hash guard_missing && guard_missing'
 run_probe until_failure 'until command -v guard_missing; do guard_missing; break; done'
 run_probe valid_or '! command -v printf || printf okay'
 run_probe valid_until 'until ! command -v printf; do printf okay; break; done'
-run_probe zsh_guard 'if test -n "${ZSH_VERSION+set}" && (emulate sh) >/dev/null 2>&1; then emulate sh; setopt NO_GLOB_SUBST; zmodload zsh/parameter; fi'
-run_probe zsh_bracket_guard 'if [ -n "${ZSH_VERSION+set}" ] && (emulate sh) >/dev/null 2>&1; then emulate sh; setopt NO_GLOB_SUBST; zmodload zsh/parameter; fi'
+run_probe zsh_guard 'if test -n "${ZSH_VERSION+set}" && (emulate sh) >"$TEST_NULL_DEVICE" 2>&1; then emulate sh; setopt NO_GLOB_SUBST; zmodload zsh/parameter; fi'
+run_probe zsh_bracket_guard 'if [ -n "${ZSH_VERSION+set}" ] && (emulate sh) >"$TEST_NULL_DEVICE" 2>&1; then emulate sh; setopt NO_GLOB_SUBST; zmodload zsh/parameter; fi'
 run_probe zsh_semicolon 'test -n "${ZSH_VERSION+set}"; emulate sh'
 run_probe zsh_else 'if test -n "${ZSH_VERSION+set}"; then :; else emulate sh; fi'
 run_probe zsh_negated 'if ! test -n "${ZSH_VERSION+set}"; then setopt NO_GLOB_SUBST; fi'

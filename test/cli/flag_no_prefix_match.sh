@@ -4,5 +4,10 @@ unset KOSH_FLAGS
 # so the location prefix is stripped to keep the golden stable across the rel
 # and the dbg binary names.
 echo "== a long flag matches its whole name, not a prefix:"
-"$BIN" --helpXYZ -c 'echo unreached' 2>&1 | head -1 |
-  sed 's/^[0-9]*:[0-9]*: //'
+output=$("$BIN" --helpXYZ -c 'echo unreached' 2>&1)
+status=$?
+[ "$status" -eq 2 ] || exit 1
+if printf '%s\n' "$output" | grep -qx 'unreached'; then
+  exit 1
+fi
+printf '%s\n' "$output" | head -1 | sed 's/^[0-9]*:[0-9]*: //'

@@ -14,7 +14,7 @@ chld_count=0
 wait
 echo "background=$chld_count"
 chld_count=0
-"$1" --no-traces -c "exit 0" > /dev/null
+"$1" --no-traces -c "exit 0" > "$TEST_NULL_DEVICE"
 echo "redirected=$chld_count"' shell "$BIN"
 echo "rc=$?"
 
@@ -33,7 +33,7 @@ echo "== raising CHLD by hand follows the platform:"
 else
   expected=accepted
 fi
-if kill -CHLD $$ 2> /dev/null; then
+if kill -CHLD $$ 2> "$TEST_NULL_DEVICE"; then
   observed=accepted
 else
   observed=rejected
@@ -48,13 +48,13 @@ echo "rc=$?"
 echo "== KILL and TERM reach a child on both platforms:"
 "$BIN" --no-traces --mood bash -c '"$1" --no-traces -c "sleep 30" &
 victim=$!
-kill -TERM "$victim" 2> /dev/null
+kill -TERM "$victim" 2> "$TEST_NULL_DEVICE"
 if [ $? -eq 0 ]; then
   echo term-accepted
 else
   echo term-rejected
 fi
-wait "$victim" 2> /dev/null
+wait "$victim" 2> "$TEST_NULL_DEVICE"
 term_status=$?
 if [ "$term_status" -ne 0 ]; then
   echo term-ended-child
@@ -63,13 +63,13 @@ else
 fi
 "$1" --no-traces -c "sleep 30" &
 victim=$!
-kill -KILL "$victim" 2> /dev/null
+kill -KILL "$victim" 2> "$TEST_NULL_DEVICE"
 if [ $? -eq 0 ]; then
   echo kill-accepted
 else
   echo kill-rejected
 fi
-wait "$victim" 2> /dev/null
+wait "$victim" 2> "$TEST_NULL_DEVICE"
 kill_status=$?
 if [ "$kill_status" -ne 0 ]; then
   echo kill-ended-child

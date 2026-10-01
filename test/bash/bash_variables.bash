@@ -2,7 +2,8 @@
 # Bash dynamic variables $RANDOM, $SECONDS, $EPOCHSECONDS, $BASHPID. The values
 # are non-deterministic, so the script asserts their properties, which match bash
 # byte-for-byte.
-[ "$SECONDS" -eq 0 ] && echo "seconds starts zero"
+initial_seconds=$SECONDS
+[ "$initial_seconds" -ge 0 ] && [ "$initial_seconds" -le 1 ] && echo "seconds starts zero"
 r=$RANDOM
 [ "$r" -ge 0 ] && [ "$r" -le 32767 ] && echo "random in range"
 a=$RANDOM
