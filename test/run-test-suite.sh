@@ -112,19 +112,18 @@ print_platform_skips()
 
   case $HARNESS_NAME in
   kosh)
-    for TEST_NAME in $SKIPPED_TEST_NAMES; do
+    for TEST_NAME in $WINDOWS_SKIPPED_TEST_NAMES; do
+      case "$TEST_NAME" in cli_*|completion_*) continue ;; esac
       printf "\t%-64s skipped, unsupported Windows backend feature\n" \
         "$TEST_NAME.kosh"
     done
     ;;
   cli)
-    if [ -n "${SKIP_CLI_ASSIMILATE-}" ]; then
-      printf "\t%-64s skipped, remote transaction requires POSIX\n" \
-        cli/assimilate.sh
-    fi
-    for TEST_NAME in $WINDOWS_SKIPPED_CLI_NAMES; do
-      printf "\t%-64s skipped, unsupported Windows backend feature\n" \
-        "cli/${TEST_NAME#cli_}.sh"
+    for TEST_NAME in $WINDOWS_SKIPPED_TEST_NAMES; do
+      case "$TEST_NAME" in
+      cli_*) printf "\t%-64s skipped, unsupported on Windows\n" \
+        "cli/${TEST_NAME#cli_}.sh" ;;
+      esac
     done
     for TEST_NAME in $NON_LINUX_SKIPPED_CLI_NAMES; do
       printf "\t%-64s skipped, requires Linux\n" \
@@ -132,13 +131,11 @@ print_platform_skips()
     done
     ;;
   completion)
-    for TEST_FILE in $SKIPPED_COMPLETION_INPUT; do
-      printf "\t%-64s skipped, needs a POSIX helper executable\n" \
-        "$TEST_FILE"
-    done
-    for TEST_FILE in $UNREPRESENTABLE_COMPLETION_INPUT; do
-      printf "\t%-64s skipped, golden test filenames are unsupported on Windows\n" \
-        "$TEST_FILE"
+    for TEST_NAME in $WINDOWS_SKIPPED_TEST_NAMES; do
+      case "$TEST_NAME" in
+      completion_*) printf "\t%-64s skipped, unsupported on Windows\n" \
+        "completion/${TEST_NAME#completion_}.sh" ;;
+      esac
     done
     ;;
   esac

@@ -56,7 +56,7 @@ ACTIVE_TEST_NAMES=
 for TEST_FILE in kosh/*.kosh; do
   TEST_NAME=${TEST_FILE#kosh/}
   TEST_NAME=${TEST_NAME%.kosh}
-  if word_is_listed "$TEST_NAME" "$SKIPPED_TEST_NAMES"; then
+  if word_is_listed "$TEST_NAME" "$WINDOWS_SKIPPED_TEST_NAMES"; then
     continue
   fi
   ACTIVE_TEST_NAMES="$ACTIVE_TEST_NAMES $TEST_NAME"
@@ -66,11 +66,9 @@ SERIAL_CLI_CANDIDATES="cli/set_option_state.sh cli/read_behavior.sh"
 PARALLEL_CLI_INPUT=
 SERIAL_CLI_INPUT=
 for TEST_FILE in cli/*.sh; do
-  if word_is_listed "$TEST_FILE" "$SKIPPED_CLI_INPUT"; then
-    continue
-  fi
-  if [ -n "${SKIP_CLI_ASSIMILATE-}" ] && \
-    [ "$TEST_FILE" = cli/assimilate.sh ]; then
+  TEST_NAME=${TEST_FILE#cli/}
+  TEST_NAME=${TEST_NAME%.sh}
+  if word_is_listed "cli_$TEST_NAME" "$WINDOWS_SKIPPED_TEST_NAMES"; then
     continue
   fi
   if word_is_listed "$TEST_FILE" "$SERIAL_CLI_CANDIDATES"; then
@@ -84,8 +82,9 @@ SERIAL_COMPLETION_CANDIDATES=completion/editor_append_hot_path.sh
 PARALLEL_COMPLETION_INPUT=
 SERIAL_COMPLETION_INPUT=
 for TEST_FILE in completion/*.sh; do
-  if word_is_listed "$TEST_FILE" "$SKIPPED_COMPLETION_INPUT" || \
-    word_is_listed "$TEST_FILE" "$UNREPRESENTABLE_COMPLETION_INPUT"; then
+  TEST_NAME=${TEST_FILE#completion/}
+  TEST_NAME=${TEST_NAME%.sh}
+  if word_is_listed "completion_$TEST_NAME" "$WINDOWS_SKIPPED_TEST_NAMES"; then
     continue
   fi
   case $TEST_FILE in

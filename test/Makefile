@@ -6,6 +6,50 @@ SHELL := /bin/bash
 TEST_ABSOLUTE_DIRECTORY_COMMAND := pwd
 endif
 
+WINDOWS_SKIPPED_TEST_NAMES := \
+	koshkit_filesystem_posix koshkit_inspect_posix koshkit_system_posix \
+	koshkit_text_posix alias_unalias glob_dot_slash_prefix koshkit_getconf \
+	pipeline_compound_group read_builtin redirect_high_fd \
+	shellcheck_bashisms_sh_shebang trap umask_modes \
+	cli_bash_startup_restricted cli_bash_xtracefd cli_bench_behavior \
+	cli_cd_suggestion cli_chld_trap_after_return cli_command_edge_case_behavior \
+	cli_command_flag_forms cli_command_p_restores_path \
+	cli_command_substitution_interrupt cli_command_substitution_strategy \
+	cli_crlf_source cli_ctrl_c_interrupts_bash_loop cli_deep_nesting_guard \
+	cli_diagnostic_levels cli_disown_removes_jobs cli_disown_running_only \
+	cli_env_runs_command_directly cli_exec_behavior cli_export_function \
+	cli_export_readonly_integer cli_fg_terminal_handoff cli_granular_arg_caret \
+	cli_help_colors cli_history_behavior cli_history_noninteractive \
+	cli_interrupt_during_blocking_open cli_job_state_running_then_stopped \
+	cli_jobspec_grammar cli_kill_behavior cli_kosh_identity \
+	cli_koshkit_error_notes cli_koshkit_evil_regressions \
+	cli_koshkit_evilfiles_parity cli_koshkit_evilio_live cli_koshkit_eviliso \
+	cli_koshkit_file_magic_batch cli_koshkit_stty cli_mkdir_mode_umask \
+	cli_path_cache_behavior cli_signal_noninteractive_term cli_set_option_state \
+	cli_spawn_failure_location cli_suspend_behavior \
+	cli_trap_during_blocking_builtin cli_trap_startup_ignored \
+	cli_unknown_flag_color cli_wait_on_stopped_job \
+	cli_koshkit_goodcore_archive cli_koshkit_ls_modes cli_koshkit_misc \
+	cli_assimilate \
+	cli_koshkit_printenv cli_koshkit_process_tools cli_koshkit_text \
+	cli_koshkit_timeout cli_loop_redirect_descriptor \
+	cli_pipeline_stage_evaluation_mode cli_shopt_states \
+	cli_subshell_replay_trap_suppression cli_subshell_spawn_state \
+	cli_trace_policy cli_trailing_separator_execution cli_ulimit_validation \
+	completion_ansi_c_quoted_word completion_complete_git_grouped_subcommands \
+	completion_complete_go_subcommands completion_complete_help_subcommands \
+	completion_editor_append_hot_path completion_executable_filtering_batch \
+	completion_help_options_trusted_dir_only completion_help_subcommand_second_level \
+	completion_help_subcommand_third_level completion_help_subcommands_no_colon \
+	completion_make_targets_fallback completion_completion_glob_quoting \
+	completion_path_quoting
+
+ifneq ($(TARGET), Linux)
+NON_LINUX_SKIPPED_CLI_NAMES := \
+	cli_koshkit_eviliso_loopback \
+	cli_koshkit_mknod
+endif
+
 DIFF_FLAGS := -u
 MODE ?= dbg
 ARCH ?= $(shell uname -m)
@@ -140,10 +184,6 @@ cli_tests: $(EVILISO_LOOPBACK_DEPENDENCY) $(BIN) $(DIFF_BOOTSTRAP)
 	@$(SHELL) run-test-suite.sh cli
 
 ifneq ($(TARGET), Linux)
-NON_LINUX_SKIPPED_CLI_NAMES := \
-	cli_koshkit_eviliso_loopback \
-	cli_koshkit_mknod
-
 $(NON_LINUX_SKIPPED_CLI_NAMES):
 	@printf "\t%-64s skipped, requires Linux\n" \
 		"cli/$(patsubst cli_%,%,$@).sh"
@@ -154,122 +194,14 @@ completion_%: completion/%.sh expected/%.out $(BIN) $(DIFF_BOOTSTRAP)
 	@$(SHELL) run-editor-test.sh completion '$(SHELL)' completion/$*.sh
 
 ifeq ($(TARGET), Windows_NT)
-WINDOWS_SKIPPED_TEST_NAMES := \
-	koshkit_filesystem_posix \
-	koshkit_inspect_posix \
-	koshkit_system_posix \
-	koshkit_text_posix \
-	alias_unalias \
-	glob_dot_slash_prefix \
-	koshkit_getconf \
-	pipeline_compound_group \
-	read_builtin \
-	redirect_high_fd \
-	shellcheck_bashisms_sh_shebang \
-	trap \
-	umask_modes
-
-WINDOWS_SKIPPED_NATIVE_NAMES := $(filter-out cli_%,$(WINDOWS_SKIPPED_TEST_NAMES))
-
-$(WINDOWS_SKIPPED_NATIVE_NAMES):
-	@printf "	%-64s skipped, unsupported Windows backend feature\n" "$@.kosh"
-
-cli_assimilate:
-	@printf "	%-64s skipped, remote transaction requires POSIX\n" "cli/assimilate.sh"
-
-WINDOWS_SKIPPED_TEST_NAMES += \
-	cli_bash_startup_restricted \
-	cli_bash_xtracefd \
-	cli_bench_behavior \
-	cli_cd_suggestion \
-	cli_chld_trap_after_return \
-	cli_command_edge_case_behavior \
-	cli_command_flag_forms \
-	cli_command_p_restores_path \
-	cli_command_substitution_interrupt \
-	cli_command_substitution_strategy \
-	cli_crlf_source \
-	cli_ctrl_c_interrupts_bash_loop \
-	cli_deep_nesting_guard \
-	cli_diagnostic_levels \
-	cli_disown_removes_jobs \
-	cli_disown_running_only \
-	cli_env_runs_command_directly \
-	cli_exec_behavior \
-	cli_export_function \
-	cli_export_readonly_integer \
-	cli_fg_terminal_handoff \
-	cli_granular_arg_caret \
-	cli_help_colors \
-	cli_history_behavior \
-	cli_history_noninteractive \
-	cli_interrupt_during_blocking_open \
-	cli_job_state_running_then_stopped \
-	cli_jobspec_grammar \
-	cli_kill_behavior \
-	cli_kosh_identity \
-	cli_koshkit_error_notes \
-	cli_koshkit_evil_regressions \
-	cli_koshkit_evilfiles_parity \
-	cli_koshkit_evilio_live \
-	cli_koshkit_eviliso \
-	cli_koshkit_file_magic_batch \
-	cli_koshkit_stty \
-	cli_mkdir_mode_umask \
-	cli_path_cache_behavior \
-	cli_signal_noninteractive_term \
-	cli_set_option_state \
-	cli_spawn_failure_location \
-	cli_suspend_behavior \
-	cli_trap_during_blocking_builtin \
-	cli_trap_startup_ignored \
-	cli_unknown_flag_color \
-	cli_wait_on_stopped_job \
-	cli_koshkit_goodcore_archive \
-	cli_koshkit_ls_modes \
-	cli_koshkit_misc \
-	cli_koshkit_printenv \
-	cli_koshkit_process_tools \
-	cli_koshkit_text \
-	cli_koshkit_timeout \
-	cli_loop_redirect_descriptor \
-	cli_pipeline_stage_evaluation_mode \
-	cli_shopt_states \
-	cli_subshell_replay_trap_suppression \
-	cli_subshell_spawn_state \
-	cli_trace_policy \
-	cli_trailing_separator_execution \
-	cli_ulimit_validation
-
-WINDOWS_SKIPPED_CLI_NAMES := $(filter cli_%,$(WINDOWS_SKIPPED_TEST_NAMES))
-
-$(WINDOWS_SKIPPED_CLI_NAMES):
-	@printf "	%-64s skipped, unsupported Windows backend feature\n" \
-		"cli/$(patsubst cli_%,%,$@).sh"
-
-WINDOWS_SKIPPED_COMPLETION_NAMES := \
-	completion_ansi_c_quoted_word \
-	completion_complete_git_grouped_subcommands \
-	completion_complete_go_subcommands \
-	completion_complete_help_subcommands \
-	completion_editor_append_hot_path \
-	completion_executable_filtering_batch \
-	completion_help_options_trusted_dir_only \
-	completion_help_subcommand_second_level \
-	completion_help_subcommand_third_level \
-	completion_help_subcommands_no_colon \
-	completion_make_targets_fallback
-
-$(WINDOWS_SKIPPED_COMPLETION_NAMES):
-	@printf "	%-64s skipped, needs a POSIX helper executable\n" "$@"
-
-WINDOWS_UNREPRESENTABLE_COMPLETION_NAMES := \
-	completion_completion_glob_quoting \
-	completion_path_quoting
-
-$(WINDOWS_UNREPRESENTABLE_COMPLETION_NAMES):
-	@printf "	%-64s skipped, golden test filenames are unsupported on Windows\n" \
-		"$(patsubst completion_%,completion/%,$@).sh"
+$(WINDOWS_SKIPPED_TEST_NAMES):
+	@case "$@" in \
+	cli_*) printf "	%-64s skipped, unsupported on Windows\n" \
+		"cli/$${@#cli_}.sh" ;; \
+	completion_*) printf "	%-64s skipped, unsupported on Windows\n" \
+		"completion/$${@#completion_}.sh" ;; \
+	*) printf "	%-64s skipped, unsupported on Windows\n" "$@.kosh" ;; \
+	esac
 endif
 
 completion_tests: $(BIN) $(DIFF_BOOTSTRAP)
@@ -284,21 +216,7 @@ highlight_%: highlight/%.sh expected/%.out $(BIN) $(DIFF_BOOTSTRAP)
 highlight_tests: $(BIN) $(DIFF_BOOTSTRAP)
 	@$(SHELL) run-test-suite.sh highlight
 
-SKIPPED_TEST_NAMES := $(WINDOWS_SKIPPED_TEST_NAMES)
-SKIPPED_CLI_INPUT := $(patsubst cli_%,cli/%.sh,\
-	$(WINDOWS_SKIPPED_CLI_NAMES) $(NON_LINUX_SKIPPED_CLI_NAMES))
-SKIPPED_COMPLETION_INPUT := \
-	$(patsubst completion_%,completion/%.sh,$(WINDOWS_SKIPPED_COMPLETION_NAMES))
-UNREPRESENTABLE_COMPLETION_INPUT := \
-	$(patsubst completion_%,completion/%.sh,$(WINDOWS_UNREPRESENTABLE_COMPLETION_NAMES))
-ifeq ($(TARGET), Windows_NT)
-SKIP_CLI_ASSIMILATE := 1
-endif
-
-export SKIPPED_TEST_NAMES SKIPPED_CLI_INPUT
-export WINDOWS_SKIPPED_CLI_NAMES NON_LINUX_SKIPPED_CLI_NAMES
-export SKIPPED_COMPLETION_INPUT UNREPRESENTABLE_COMPLETION_INPUT
-export SKIP_CLI_ASSIMILATE
+export WINDOWS_SKIPPED_TEST_NAMES NON_LINUX_SKIPPED_CLI_NAMES
 
 REFILL ?=
 
