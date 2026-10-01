@@ -465,15 +465,6 @@ static fn fork_compound_stage(
     /* A throw would unwind into the parent's evaluator, the child must exit
        directly. */
     try {
-      if (process_group != process_group_mode::Inherit) {
-        ASSERT(process_group != process_group_mode::Join ||
-               process_group_id > 0);
-        let const target_group = process_group == process_group_mode::Join
-                                     ? static_cast<pid_t>(process_group_id)
-                                     : 0;
-        check_syscall(setpgid(0, target_group));
-      }
-
       if (in_fd) {
         check_syscall(dup2(*in_fd, STDIN_FILENO));
         check_syscall(close(*in_fd));

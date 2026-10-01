@@ -3491,11 +3491,11 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
   };
 
   if (requested_makefiles.is_empty()) {
-    if (Path{"makefile"}.exists()) {
-      requested_makefiles.push(String{cxt.scratch_allocator(), "makefile"});
-      requested_makefile_locations.push(ec.source_location());
-    } else if (Path{"Makefile"}.exists()) {
+    if (Path{"Makefile"}.exists()) {
       requested_makefiles.push(String{cxt.scratch_allocator(), "Makefile"});
+      requested_makefile_locations.push(ec.source_location());
+    } else if (Path{"makefile"}.exists()) {
+      requested_makefiles.push(String{cxt.scratch_allocator(), "makefile"});
       requested_makefile_locations.push(ec.source_location());
     }
   }

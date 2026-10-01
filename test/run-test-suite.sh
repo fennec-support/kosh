@@ -1,10 +1,9 @@
 #!/bin/bash
 . ./utils.sh
 
-# Job control gives each background worker its own process group and the
-# default signal dispositions. Without it a worker inherits SIGINT and SIGQUIT
-# ignored, and a fixture that sends itself an interrupt never receives one.
-set -m
+if [ -t 0 ] && [ -t 1 ]; then
+  set -m
+fi
 
 SUITE_NAME=${1:-all}
 WORKER_PIDS=
