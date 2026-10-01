@@ -96,6 +96,7 @@ export TEST_UNAME_DIRECTORY := $(shell \
 	uname_path=$$(command -v uname); printf '%s' "$${uname_path%/*}")
 endif
 export PATH := $(CURDIR)/bin$(TEST_HOST_PATH_SEPARATOR)$(PATH)
+export ASAN_OPTIONS := symbolize=0
 
 %: kosh/%.kosh expected/%.out $(BIN) $(DIFF_BOOTSTRAP)
 	@$(TEST_KOSHKIT) rm -f '$(FAILED_LIST)' && $(TEST_KOSHKIT) rm -rf '$(FAILED_LIST).d'
@@ -168,13 +169,15 @@ WINDOWS_SKIPPED_TEST_NAMES := \
 	trap \
 	umask_modes
 
-$(WINDOWS_SKIPPED_TEST_NAMES):
+WINDOWS_SKIPPED_NATIVE_NAMES := $(filter-out cli_%,$(WINDOWS_SKIPPED_TEST_NAMES))
+
+$(WINDOWS_SKIPPED_NATIVE_NAMES):
 	@printf "	%-64s skipped, unsupported Windows backend feature\n" "$@.kosh"
 
 cli_assimilate:
 	@printf "	%-64s skipped, remote transaction requires POSIX\n" "cli/assimilate.sh"
 
-WINDOWS_SKIPPED_CLI_NAMES := \
+WINDOWS_SKIPPED_TEST_NAMES += \
 	cli_bash_startup_restricted \
 	cli_bash_xtracefd \
 	cli_bench_behavior \
@@ -237,6 +240,8 @@ WINDOWS_SKIPPED_CLI_NAMES := \
 	cli_trace_policy \
 	cli_trailing_separator_execution \
 	cli_ulimit_validation
+
+WINDOWS_SKIPPED_CLI_NAMES := $(filter cli_%,$(WINDOWS_SKIPPED_TEST_NAMES))
 
 $(WINDOWS_SKIPPED_CLI_NAMES):
 	@printf "	%-64s skipped, unsupported Windows backend feature\n" \

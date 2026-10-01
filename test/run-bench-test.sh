@@ -5,7 +5,7 @@
 # DASH, BASHP, ZSH, ASH, YASH, PYTHON, BENCH, BENCH_BASH, and BENCH_KOSH. Run
 # from the test directory. The bash time keyword formats the wall clock through
 # TIMEFORMAT.
-. ./runner-status.sh
+. ./utils.sh
 
 set -euo pipefail
 

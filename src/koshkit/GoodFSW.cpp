@@ -186,11 +186,15 @@ fn format_watch_timestamp(i64 seconds, u32 nanoseconds, usize precision,
     text += fraction.substring_of_length(0, precision);
   }
 
-  char zone_buffer[16];
-  let const zone_length =
-      std::strftime(zone_buffer, sizeof(zone_buffer), "%z", broken_down);
   text += " ";
-  text += StringView{zone_buffer, zone_length};
+  if (timezone == timestamp_timezone::UTC) {
+    text += "+0000";
+  } else {
+    char zone_buffer[16];
+    let const zone_length =
+        std::strftime(zone_buffer, sizeof(zone_buffer), "%z", broken_down);
+    text += StringView{zone_buffer, zone_length};
+  }
   return text;
 }
 

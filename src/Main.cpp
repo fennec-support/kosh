@@ -419,6 +419,12 @@ fn kosh_main(int argc, char **argv) -> int
   let executable_path = program_path.clone();
   if (is_login_name && program_path.view().length > 1)
     executable_path = koshka::String{program_path.view().substring(1)};
+  if (!executable_path.is_empty() &&
+      !koshka::Path{executable_path.view()}.is_absolute())
+    executable_path = koshka::String{
+        koshka::Path{executable_path.view()}
+            .to_absolute_without_normalizing()
+            .view()};
 
   const koshka::mimic_mood invocation_mood =
       (program_basename == "sh" || program_basename == "dash")

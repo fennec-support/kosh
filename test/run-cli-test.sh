@@ -1,5 +1,5 @@
 #!/bin/bash
-. ./runner-status.sh
+. ./utils.sh
 
 REFILL_MODE=no
 TEST_STATUS=0

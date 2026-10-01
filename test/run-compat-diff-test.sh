@@ -1,5 +1,5 @@
 #!/bin/bash
-. ./runner-status.sh
+. ./utils.sh
 
 CAPTURE_DIRECTORY="$TEST_TEMP_DIRECTORY/compat-diff-capture.$$"
 "$TEST_KOSHKIT" mkdir -p "$CAPTURE_DIRECTORY"

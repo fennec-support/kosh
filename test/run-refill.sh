@@ -1,5 +1,5 @@
 #!/bin/bash
-. ./test-inventory.sh
+. ./utils.sh
 
 TEST_SHELL_COMMAND=$1
 REFILL_STATUS=0

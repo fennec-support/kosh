@@ -1,3 +1,46 @@
+#
+#    This file is a part of the Koshka shell, (c) toiletbril, 2026
+#    See the top-level LICENSE file for the licensing information.
+#
+# This file defines the shared test runner status, failure file, timeout, and
+# discovered test inventory helpers.
+
+is_driver_status_harness_failure()
+{
+  case $1 in
+  124 | 125)
+    return 0
+    ;;
+  126 | 127)
+    if [ "$2" = yes ]; then
+      return 0
+    fi
+
+    return 1
+    ;;
+  esac
+
+  if [ "$1" -ge 128 ]; then
+    return 0
+  fi
+
+  return 1
+}
+
+set_golden_failure_file()
+{
+  GOLDEN_FAILURE_DIRECTORY="$FAILED_LIST.d"
+  "$TEST_KOSHKIT" mkdir -p "$GOLDEN_FAILURE_DIRECTORY"
+  GOLDEN_FAILURE_FILE="$GOLDEN_FAILURE_DIRECTORY/$1.diff"
+}
+
+run_test_with_timeout()
+{
+  local timeout_seconds=$1
+  shift
+  "$TEST_KOSHKIT" timeout -k 2s "$timeout_seconds" "$@"
+}
+
 word_is_listed()
 {
   WORD=$1

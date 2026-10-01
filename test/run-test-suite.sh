@@ -1,6 +1,5 @@
 #!/bin/bash
-. ./runner-status.sh
-. ./test-inventory.sh
+. ./utils.sh
 
 # Job control gives each background worker its own process group and the
 # default signal dispositions. Without it a worker inherits SIGINT and SIGQUIT
