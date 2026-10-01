@@ -1237,6 +1237,7 @@ static fn spawn_subshell_stage(
 {
   /* Windows has no fork, so a compound pipeline stage re-parses its source in a
      fresh shell, returned unwaited for the pipeline to reap. */
+  LOG(Debug, "preparing Windows subshell stage");
   let const module_path = current_executable_path();
   if (!module_path.has_value()) return koshka::None;
 
@@ -1353,10 +1354,18 @@ static fn spawn_subshell_stage(
                                  : CREATE_NEW_PROCESS_GROUP;
   HANDLE inherited_handles[] = {startup_info.hStdInput, startup_info.hStdOutput,
                                 startup_info.hStdError};
+  LOG(Debug, "creating Windows subshell process");
   if (!create_process_utf8(module_path->view(), command_line.view(), {},
                            creation_flags, nullptr, startup_info,
                            inherited_handles, 3, process_info))
+  {
+    let const error_code = GetLastError();
+    LOG(Debug, "Windows subshell process creation failed with error %lu",
+        error_code);
     return koshka::None;
+  }
+  LOG(Debug, "created Windows subshell process %lu",
+      GetProcessId(process_info.hProcess));
   CloseHandle(process_info.hThread);
   bool should_terminate_child = has_bootstrap;
   defer
@@ -1368,13 +1377,16 @@ static fn spawn_subshell_stage(
     CloseHandle(process_info.hProcess);
   };
   if (has_bootstrap) {
+    LOG(Debug, "sending Windows subshell bootstrap");
     let transport = make_subshell_transport(*bootstrap, process_info.hProcess);
     if (!transport.has_value() ||
         !send_internal_pipe(bootstrap_pipe_path.view(), transport->view(),
                             process_info.hProcess))
     {
+      LOG(Debug, "Windows subshell bootstrap transfer failed");
       return koshka::None;
     }
+    LOG(Debug, "sent Windows subshell bootstrap");
   }
   should_terminate_child = false;
   return process_info.hProcess;

@@ -85,16 +85,10 @@ export TEST_EVILISO_LOOPBACK := $(abspath \
 	../src/o/$(TARGET)/$(MODE)$(BUILD_VARIANT_SUFFIX)/eviliso-loop)
 EVILISO_LOOPBACK_DEPENDENCY := eviliso_loopback_helper
 endif
-ifeq ($(OS), Windows_NT)
-TEST_SHELL := $(BIN)
-else
-TEST_SHELL := $(SHELL)
-endif
-
 BIN_FLAGS := -AR
 FAILED_LIST := failed.diff
 export BIN_FLAGS DIFF_FLAGS FAILED_LIST TEST_JOBS
-export TEST_SHELL
+export TEST_SHELL := $(SHELL)
 
 export KOSH_HISTORY_FILE := $(CURDIR)/.test_history
 export KOSH_DIRECTORY_HISTORY := $(CURDIR)/.test_directory_history
@@ -112,7 +106,7 @@ export PATH := $(CURDIR)/bin$(TEST_HOST_PATH_SEPARATOR)$(PATH)
 %: kosh/%.kosh expected/%.out $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
 	@rm -f '$(FAILED_LIST)' && rm -rf '$(FAILED_LIST).d'
 	@BIN='$(BIN)' BIN_FLAGS='$(BIN_FLAGS)' DIFF_FLAGS='$(DIFF_FLAGS)' \
-		FAILED_LIST='$(FAILED_LIST)' $(TEST_SHELL) run-kosh-test.sh $*
+		FAILED_LIST='$(FAILED_LIST)' $(SHELL) run-kosh-test.sh $*
 
 clean:
 	@rm -f $(FAILED_LIST) $(KOSH_HISTORY_FILE) $(KOSH_DIRECTORY_HISTORY)
@@ -121,7 +115,7 @@ clean:
 
 test: $(EVILISO_LOOPBACK_DEPENDENCY) $(BIN) \
 	$(WINDOWS_DIFF_BOOTSTRAP)
-	@$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(TEST_SHELL) run-test-suite.sh all
+	@$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(SHELL) run-test-suite.sh all
 
 eviliso_loopback_helper:
 	@$(MAKE) -C ../src MODE='$(MODE)' TARGET='$(TARGET)' ARCH='$(ARCH)' \
@@ -135,12 +129,12 @@ verify_koshkit_diff: $(BIN)
 	@$(TEST_TIMEOUT_COMMAND) -k 2s 30 sh verify-koshkit-diff.sh
 
 kosh_tests: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
-	@$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(TEST_SHELL) run-test-suite.sh kosh
+	@$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(SHELL) run-test-suite.sh kosh
 
 cli_%: expected/%.out $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
 	@rm -f '$(FAILED_LIST)' && rm -rf '$(FAILED_LIST).d'
 	@BIN='$(BIN)' DIFF_FLAGS='$(DIFF_FLAGS)' FAILED_LIST='$(FAILED_LIST)' \
-		$(TEST_SHELL) run-cli-test.sh '$(TEST_SHELL)' cli/$*.sh
+		$(SHELL) run-cli-test.sh '$(SHELL)' cli/$*.sh
 
 pty_live_probes: $(BIN)
 	@BIN='$(BIN)' TARGET='$(TARGET)' \
@@ -149,7 +143,7 @@ pty_live_probes: $(BIN)
 cli_koshkit_eviliso_loopback: $(EVILISO_LOOPBACK_DEPENDENCY)
 
 cli_tests: $(EVILISO_LOOPBACK_DEPENDENCY) $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
-	@$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(TEST_SHELL) run-test-suite.sh cli
+	@$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(SHELL) run-test-suite.sh cli
 
 ifneq ($(TARGET), Linux)
 NON_LINUX_SKIPPED_CLI_NAMES := \
@@ -163,7 +157,7 @@ endif
 
 completion_%: expected/%.out $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
 	@rm -f '$(FAILED_LIST)' && rm -rf '$(FAILED_LIST).d'
-	@$(TEST_SHELL) run-editor-test.sh completion '$(TEST_SHELL)' completion/$*.sh
+	@$(SHELL) run-editor-test.sh completion '$(SHELL)' completion/$*.sh
 
 ifeq ($(TARGET), Windows_NT)
 WINDOWS_SKIPPED_TEST_NAMES := \
@@ -255,16 +249,16 @@ $(WINDOWS_UNREPRESENTABLE_COMPLETION_NAMES):
 endif
 
 completion_tests: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
-	@$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(TEST_SHELL) run-test-suite.sh completion
+	@$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(SHELL) run-test-suite.sh completion
 
 
 highlight_%: expected/%.out $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
 	@rm -f '$(FAILED_LIST)' && rm -rf '$(FAILED_LIST).d'
 	@BIN='$(BIN)' DIFF_FLAGS='$(DIFF_FLAGS)' FAILED_LIST='$(FAILED_LIST)' \
-		$(TEST_SHELL) run-editor-test.sh highlight '$(TEST_SHELL)' highlight/$*.sh
+		$(SHELL) run-editor-test.sh highlight '$(SHELL)' highlight/$*.sh
 
 highlight_tests: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
-	@$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(TEST_SHELL) run-test-suite.sh highlight
+	@$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(SHELL) run-test-suite.sh highlight
 
 SKIPPED_TEST_NAMES := $(WINDOWS_SKIPPED_TEST_NAMES)
 SKIPPED_CLI_INPUT := $(patsubst cli_%,cli/%.sh,\
@@ -286,7 +280,7 @@ REFILL ?=
 
 refill: $(EVILISO_LOOPBACK_DEPENDENCY) $(BIN)
 	@REFILL='$(REFILL)' $(TEST_TIMEOUT_COMMAND) -k 2s 300 \
-		$(TEST_SHELL) run-refill.sh '$(TEST_SHELL)'
+		$(SHELL) run-refill.sh '$(SHELL)'
 
 
 ZSH ?= /bin/zsh
@@ -306,7 +300,7 @@ BASHP ?= /bin/bash
 export BASHP DASH
 
 compatdiff: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
-	@$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(TEST_SHELL) run-test-suite.sh compat
+	@$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(SHELL) run-test-suite.sh compat
 
 dashdiff bashdiff mimicrydiff: compatdiff
 
@@ -332,7 +326,7 @@ bench: $(BIN) $(WINDOWS_DIFF_BOOTSTRAP)
 		BENCH_SAMPLE_COUNT='$(BENCH_SAMPLE_COUNT)' \
 		DASH_SPEEDUP_REQUIRED='$(DASH_SPEEDUP_REQUIRED)' \
 		BASH_SPEEDUP_REQUIRED='$(BASH_SPEEDUP_REQUIRED)' \
-		$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(TEST_SHELL) run-bench-test.sh
+		$(TEST_TIMEOUT_COMMAND) -k 2s 300 $(SHELL) run-bench-test.sh
 
 .PHONY: test clean eviliso_loopback_helper \
 	verify_koshkit_diff kosh_tests refill \

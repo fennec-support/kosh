@@ -402,6 +402,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
     Maybe<os::Pipe> pipe;
 
     let const is_last = (&ec == &ecs.back());
+    LOG(Debug, "preparing pipeline stage %zu", stage_index);
     let const should_fork_last_builtin =
         is_last && !is_async &&
         (!unresolved_stages.is_empty() ||
@@ -414,6 +415,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
       if (!pipe) {
         throw ErrorWithLocation{ec.source_location(), "Could not open a pipe"};
       }
+      LOG(Debug, "created pipe for pipeline stage %zu", stage_index);
       /* The write end is the stage's standard output before the stage applies
          its own redirections. A dup written ahead of them reads the pipe.
          2>&1 >file on a stage is 2>pipe 1>file. */
@@ -560,9 +562,13 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
               [&]() { stage_out = stage_err.value_or(KOSH_STDERR); });
           try {
             if (!os::can_fork_evaluator() && !has_bootstrap) {
+              LOG(Debug, "building bootstrap for pipeline stage %zu",
+                  stage_index);
               bootstrap = cxt.make_subshell_bootstrap();
               has_bootstrap = true;
+              LOG(Debug, "built bootstrap for pipeline stage %zu", stage_index);
             }
+            LOG(Debug, "launching pipeline stage %zu", stage_index);
             let const launch =
                 os::launch_compound_stage(os::compound_stage_options{
                     .source = stage_source.view(),
@@ -580,6 +586,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
                     .subshell_depth = cxt.execution_store().subshell_depth() + 1,
                     .mood = cxt.runtime_state().get_mood(),
                     .process_group = process_group});
+            LOG(Debug, "launched pipeline stage %zu", stage_index);
             forked_child = launch.child;
           } catch (...) {
             ec.close_fds();
