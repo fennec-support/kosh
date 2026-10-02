@@ -1104,10 +1104,20 @@ fn EvalContext::ParameterExpander::expand_subscripted() throws -> Maybe<String>
   let subscript_location = SourceLocation{};
   let const *subscript_location_pointer =
       get_location_for(subscript, subscript_location);
-  if (*close + 1 == m_rest.length) {
-    return m_context.apply_array_subscript(m_name, subscript,
-                                           subscript_location_pointer);
-  }
+  let const do_read_element = [&]() throws -> String {
+    let element = m_context.apply_array_subscript(m_name, subscript,
+                                                  subscript_location_pointer);
+    if (element.is_empty() && subscript != "@" && subscript != "*" &&
+        m_context.runtime_state().error_unset() &&
+        !m_context.array_element_is_set(m_name, subscript))
+    {
+      m_context.report_unset_reference(m_name + "[" + subscript + "]");
+    }
+
+    return element;
+  };
+  if (*close + 1 == m_rest.length) return do_read_element();
+
   /* The / # % ^ , modifiers after the ] modify the one element, a different
      modifier such as :- falls through to the general path. */
   let const modifier = m_rest.substring(*close + 1);
@@ -1119,12 +1129,8 @@ fn EvalContext::ParameterExpander::expand_subscripted() throws -> Maybe<String>
       (modifier_op == '/' || modifier_op == '#' || modifier_op == '%' ||
        modifier_op == '^' || modifier_op == ','))
   {
-    return m_context.apply_value_modifier(
-        m_context
-            .apply_array_subscript(m_name, subscript,
-                                   subscript_location_pointer)
-            .view(),
-        modifier, modifier_location_pointer);
+    return m_context.apply_value_modifier(do_read_element().view(), modifier,
+                                          modifier_location_pointer);
   }
   if (subscript != "@" && subscript != "*" && !modifier.is_empty()) {
     return expand_element_operator(subscript, subscript_location_pointer,
@@ -1237,6 +1243,8 @@ fn EvalContext::ParameterExpander::expand_trim_operator(
     const Maybe<String> &current) throws -> String
 {
   let word_location = SourceLocation{};
+  if (!current.has_value()) m_context.report_unset_reference(m_name);
+
   let const current_view = current.has_value() ? current->view() : StringView{};
   return trim_value_with_modifier(m_context, current_view, word, op,
                                   is_doubled,

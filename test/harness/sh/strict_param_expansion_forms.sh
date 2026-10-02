@@ -134,3 +134,10 @@ echo "[$p][$q]"
 # IFS is back to its whitespace default after the prefixed commands, so a later
 # read splits on spaces rather than the prior separators.
 printf 'one two three\n' | { read first rest; echo "[$first][$rest]"; }
+
+# A trim of an unset parameter under set -u stops the shell like a bare read.
+( set -u; unset u; echo "${u#a}"; echo not_reached_hash )
+echo "hash_status=$?"
+( set -u; unset u; echo "${u%%a}"; echo not_reached_percent )
+echo "percent_status=$?"
+( set -u; u=; echo "[${u#a}][${u%a}]" )

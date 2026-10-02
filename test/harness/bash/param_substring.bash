@@ -380,4 +380,14 @@ echo "[${es/*/X}][${es//*(a)/X}][${es/#*/X}][${es/%*/X}][${es/a/X}]"
 ea=("" b "")
 echo "[${ea[@]/*/X}][${ea[@]//*(b)/X}][${ea[@]/b/X}]"
 
+( set -u; unset u; echo "${u#a}"; echo not_reached_hash )
+echo "hash_status=$?"
+( set -u; unset u; echo "${u%%a}"; echo not_reached_percent )
+echo "percent_status=$?"
+( set -u; unset u; echo "${u[0]}"; echo not_reached_element )
+echo "element_status=$?"
+( set -u; ua=(x); echo "${ua[5]#a}"; echo not_reached_missing )
+echo "missing_status=$?"
+( set -u; ua=(x); echo "${ua[0]}${ua[@]#a}"; echo reached )
+
 for word in "${@^}"; do count=$((count + 1)); echo "elem$count=$word"; done
