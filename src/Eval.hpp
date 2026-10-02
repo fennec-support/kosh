@@ -1776,6 +1776,15 @@ public:
   {
     return m_current_source;
   }
+  fn substitution_line_bases() wontthrow -> ArrayList<substitution_line_base> &
+  {
+    return m_substitution_line_bases;
+  }
+  pure fn substitution_line_bases() const wontthrow
+      -> const ArrayList<substitution_line_base> &
+  {
+    return m_substitution_line_bases;
+  }
   fn current_origin() wontthrow -> String & { return m_current_origin; }
   pure fn current_origin() const wontthrow -> const String &
   {
@@ -1862,6 +1871,7 @@ private:
   ArrayList<ArrayList<String> *> m_history_transaction_stack{heap_allocator()};
   SourceLocation m_current_location{};
   ArrayList<source_frame> m_source_frames{heap_allocator()};
+  ArrayList<substitution_line_base> m_substitution_line_bases{heap_allocator()};
   ArrayList<Expression *> m_retained_source_asts{heap_allocator()};
   ArrayList<String *> m_retained_sources{heap_allocator()};
   u64 m_retained_source_generation{0};
@@ -3127,8 +3137,9 @@ public:
                                      os::file_open_mode mode,
                                      os::descriptor fd) throws -> bool;
 
-  fn run_captured_substitution(const Expression *ast,
-                               const String &source) throws -> String;
+  fn run_captured_substitution(const Expression *ast, const String &source,
+                               Maybe<SourceLocation> call_site) throws
+      -> String;
 
   /* Lex, parse, and evaluate a chunk of source in this context, without
      capturing output or snapshotting state. A dot-source consumes a return at

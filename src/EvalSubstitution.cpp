@@ -178,7 +178,10 @@ fn EvalContext::capture_command_substitution(
   }
   ASSERT(ast != nullptr);
 
-  return run_captured_substitution(ast, normalized_source);
+  return run_captured_substitution(
+      ast, normalized_source,
+      call_site != nullptr ? Maybe<SourceLocation>{*call_site}
+                           : Maybe<SourceLocation>{None});
 }
 
 fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
@@ -408,7 +411,9 @@ fn EvalContext::capture_command_substitution(const WordSegment &segment) throws
   ASSERT(cache.substitution_ast != nullptr);
 
   return run_captured_substitution(
-      cache.substitution_ast, String{heap_allocator(), segment.text.view()});
+      cache.substitution_ast, String{heap_allocator(), segment.text.view()},
+      segment.get_source_location(
+          source_store().current_location().source_name_index));
 }
 
 fn EvalContext::push_substitution_source_frame(const WordSegment &segment,
@@ -439,8 +444,9 @@ fn EvalContext::push_substitution_source_frame(const SourceLocation &location,
   return true;
 }
 
-fn EvalContext::run_captured_substitution(const Expression *ast,
-                                          const String &source) throws -> String
+fn EvalContext::run_captured_substitution(
+    const Expression *ast, const String &source,
+    Maybe<SourceLocation> call_site) throws -> String
 {
   ASSERT(ast != nullptr);
   LOG(Debug, "running a captured substitution body of %zu bytes",
@@ -456,8 +462,15 @@ fn EvalContext::run_captured_substitution(const Expression *ast,
   let const previous_origin = source_store().current_origin();
   let const previous_location = source_store().current_location();
   set_current_source(&source, previous_origin.clone());
+  let const did_push_line_base = call_site.has_value();
+  if (did_push_line_base) {
+    source_store().substitution_line_bases().push(substitution_line_base{
+        &source, previous_source, *call_site,
+        function_store().call_names().count()});
+  }
   defer
   {
+    if (did_push_line_base) source_store().substitution_line_bases().pop_back();
     set_current_source(previous_source, previous_origin);
     source_store().current_location() = previous_location;
   };

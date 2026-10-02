@@ -1294,18 +1294,53 @@ fn EvalContext::line_number_at_location(
     const SourceLocation &location, const String *fallback_source) const throws
     -> usize
 {
-  let const resolved_source = resolve_render_source(location, fallback_source);
+  /* A substitution body is its own source, so its line count restarts. The
+     lines before the enclosing site add up through every substitution the
+     site is itself nested in. */
+  let const &line_bases = source_store().substitution_line_bases();
+  let site = location;
+  let site_source = fallback_source != nullptr
+                        ? fallback_source
+                        : source_store().current_source();
+  let site_depth = fallback_source != nullptr
+                       ? Maybe<usize>{None}
+                       : Maybe<usize>{function_store().call_names().count()};
+  usize preceding_line_count = 0;
+  usize search_limit = line_bases.count();
+  while (search_limit > 0) {
+    usize found = search_limit;
+    for (usize index = search_limit; index > 0; index--) {
+      let const &base = line_bases[index - 1];
+      if (base.source == site_source &&
+          (!site_depth.has_value() || base.function_call_depth == *site_depth))
+      {
+        found = index - 1;
+        break;
+      }
+    }
+    if (found == search_limit) break;
+
+    let const &base = line_bases[found];
+    preceding_line_count +=
+        utils::line_number_at(site_source->view(), site.position) - 1;
+    site = base.call_site;
+    site_source = base.parent_source;
+    site_depth = base.function_call_depth;
+    search_limit = found;
+  }
+
+  let const resolved_source = resolve_render_source(site, site_source);
   usize line = 1;
   if (resolved_source.text != nullptr) {
     const usize render_position =
-        resolved_source.to_render_position(location.position);
+        resolved_source.to_render_position(site.position);
     let const render_line = static_cast<isize>(
         utils::line_number_at(resolved_source.text->view(), render_position));
     line = static_cast<usize>(render_line + (resolved_source.is_windowed
                                                  ? resolved_source.line_offset
                                                  : 0));
   }
-  return line;
+  return line + preceding_line_count;
 }
 
 fn EvalContext::funcname_line_at(usize index) const throws -> usize

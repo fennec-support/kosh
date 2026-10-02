@@ -51,3 +51,13 @@ if true; then
 fi
 echo "unit three at $LINENO"; unit_function
 echo "unit four at $LINENO"
+
+echo substitution-lineno
+echo "plain $(echo $LINENO) backquote `echo $LINENO`"
+substitution_function() {
+  echo "body $(echo $LINENO) frames $(echo "${FUNCNAME[*]}|${BASH_SOURCE[*]##*/}")"
+  echo "nested $(echo "$(echo $LINENO)")"
+}
+substitution_function
+captured=$(substitution_function)
+echo "$captured"

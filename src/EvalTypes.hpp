@@ -229,6 +229,14 @@ enum class source_frame_kind : u8
   SoleCliRoot,
 };
 
+struct substitution_line_base
+{
+  const String *source;
+  const String *parent_source;
+  SourceLocation call_site;
+  usize function_call_depth;
+};
+
 struct source_frame
 {
   source_frame(String origin, SourceLocation call_site,
