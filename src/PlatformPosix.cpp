@@ -26,6 +26,10 @@
 #include <utmpx.h>
 #include <wctype.h>
 
+#if defined __APPLE__ || defined __FreeBSD__
+#include <xlocale.h>
+#endif
+
 #if defined __linux__
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
