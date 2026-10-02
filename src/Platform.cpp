@@ -342,7 +342,13 @@ fn regex_matches(compiled_regex &compiled, StringView subject) throws -> bool
   return regexec(&compiled.re, subject.data, 1, bounds, REG_STARTEND) == 0;
 #endif
 #else
-  const String null_terminated{heap_allocator(), subject};
+  let null_terminated = String{heap_allocator()};
+  null_terminated.reserve(subject.length);
+  for (usize position = 0; position < subject.length; position++) {
+    let const byte = subject[position];
+    null_terminated.push(byte == '\0' ? '\n' : byte);
+  }
+
   return regexec(&compiled.re, null_terminated.c_str(), 0, nullptr, 0) == 0;
 #endif
 }

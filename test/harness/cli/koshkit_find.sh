@@ -114,7 +114,7 @@ echo "--- find -name bracket expressions ---"
 "$BIN" -c 'koshkit find br -maxdepth 1 -name "[a-c]"'
 "$BIN" -c 'koshkit find br -maxdepth 1 -name "[A]"'
 "$BIN" -c 'koshkit find br -maxdepth 1 -name "[!a]*"'
-"$BIN" -c 'koshkit find br -maxdepth 1 -name "[^a-c]"'
+"$BIN" -c 'LC_ALL=C.UTF-8; export LC_ALL; koshkit find br -maxdepth 1 -name "[^a-c]"'
 "$BIN" -c 'koshkit find br -maxdepth 1 -name "[[:digit:]]"'
 "$BIN" -c 'koshkit find br -maxdepth 1 -name "[-a]"'
 "$BIN" -c 'koshkit find br -maxdepth 1 -name "[]a]"'
