@@ -40,3 +40,14 @@ done
 echo "call at $LINENO"
 
 echo function-lineno-done
+
+echo streamed-units
+unit_function() { echo "unit body at $LINENO"; }
+echo "unit one at $LINENO"
+unit_function
+if true; then
+  echo "unit two at $LINENO"
+  unit_function
+fi
+echo "unit three at $LINENO"; unit_function
+echo "unit four at $LINENO"
