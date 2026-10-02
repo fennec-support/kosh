@@ -1,3 +1,12 @@
+3:1: warning: This `cd` is unchecked. (SC2164)
+     3 |  cd "$d"
+       |  ^~
+note: Stop or return when `cd` fails.
+14:1: warning: This `cd` is unchecked. (SC2164)
+    14 |  cd /
+       |  ^~
+note: Stop or return when `cd` fails.
+Encountered 2 warnings.
 real.txt
 glob-match=0
 glob-miss=1

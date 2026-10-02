@@ -1,3 +1,12 @@
+4:1: warning: This `cd` is unchecked. (SC2164)
+     4 |  cd "$d"
+       |  ^~
+note: Stop or return when `cd` fails.
+34:1: warning: This `cd` is unchecked. (SC2164)
+    34 |  cd /
+       |  ^~
+note: Stop or return when `cd` fails.
+Encountered 2 warnings.
 main-scalar=./main.sh
 main[0]=./main.sh depth=1
 lib-top=./lib.sh depth=2

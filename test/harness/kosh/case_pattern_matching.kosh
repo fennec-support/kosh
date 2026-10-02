@@ -1,5 +1,5 @@
 #!/bin/env kosh
-# shellcheck disable=SC2194,SC2195
+# shellcheck disable=constant-case-word,unmatchable-case-pattern
 case foo in f*) echo match;; *) echo no;; esac
 
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2034,SC2050,SC2086,SC2157,SC2194,SC2249
+# shellcheck disable=constant-comparison,unquoted-expansion,unquoted-test-expansion,literal-string-test,literal-test,constant-case-word,case-without-default
 
 echo assignment
 trap 'echo "D-[$BASH_COMMAND]"' DEBUG

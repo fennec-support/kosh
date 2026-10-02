@@ -39,7 +39,7 @@ trap 'echo "D-[$BASH_COMMAND]"' DEBUG
 capture_function() {
   echo in-substitution
 }
-# shellcheck disable=SC2046
+# shellcheck disable=unquoted-command-substitution
 echo captured $(capture_function)
 trap - DEBUG
 

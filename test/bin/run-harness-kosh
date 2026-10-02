@@ -16,7 +16,7 @@ esac
 OUTPUT="$TEST_TEMP_DIRECTORY/$TEST_NAME.out"
 mkdir -p "$TEST_TEMP_DIRECTORY"
 "$BIN_DIR/invoke-koshkit" timeout -k 2s "${TEST_TIMEOUT_SECONDS:-60}" \
-  "$BIN" -WWW --no-annoying-diagnostics - <"$TEST_FILE" \
+  "$BIN" -WWW - <"$TEST_FILE" \
   >"$OUTPUT" 2>&1
 
 if diff "${DIFF_OPTIONS[@]}" "expected/$TEST_NAME.out" "$OUTPUT" >/dev/null 2>&1

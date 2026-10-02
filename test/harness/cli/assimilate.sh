@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# shellcheck disable=SC2119,SC2120
+# shellcheck disable=function-call-without-arguments,function-arguments-never-passed
 root=$(mktemp -d)
 trap '[ -n "$root" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$root"' EXIT
 transport=$root/transport

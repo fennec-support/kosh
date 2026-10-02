@@ -117,7 +117,7 @@ greet' 2>&1
 echo "rc=$?"
 
 echo '== a disable directive silences the sweep:'
-"$BIN" -n -WWW -c '# shellcheck disable=SC2119,SC2120
+"$BIN" -n -WWW -c '# shellcheck disable=function-call-without-arguments,function-arguments-never-passed
 greet() {
   echo "hello $1"
 }

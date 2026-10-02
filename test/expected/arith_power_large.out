@@ -1,3 +1,7 @@
+25:5: warning: This assignment to 'lifetime' in a function has no `local`.
+    25 |      lifetime=bad
+       |      ^~~~~~~~~~~~
+note: Declare it with `local` to keep it inside the function.
 3010
 99753155844037919244
 40887152396298354688

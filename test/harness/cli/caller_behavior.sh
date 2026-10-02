@@ -1,4 +1,4 @@
-# shellcheck disable=SC2154
+# shellcheck disable=unassigned-variable-read
 unset KOSH_FLAGS
 # caller returns 1 at the top level and prints the frame line and source inside
 # a function. The top level has no call stack, so an operand there is never

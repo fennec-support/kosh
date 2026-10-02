@@ -1,4 +1,4 @@
-# shellcheck disable=SC2154
+# shellcheck disable=unassigned-variable-read
 # The koshkit builtin prefix always works. In the default mood a bare coreutil
 # name falls back to the koshkit utility when PATH has no binary of that name,
 # while the sh mood reports a command not found. The --enable-koshkit flag and
@@ -71,7 +71,7 @@ echo "=== command reports the enabled fallback ==="
 "$BIN" --enable-koshkit -c 'PATH=; command -v seq; command -V seq'
 
 echo "=== which reports the enabled fallback ==="
-"$BIN" --enable-koshkit -c '# shellcheck disable=SC2230
+"$BIN" --enable-koshkit -c '# shellcheck disable=which-is-nonstandard
 PATH=; which seq' 2>&1 |
   "invoke-normalize-trace" "$BIN"
 

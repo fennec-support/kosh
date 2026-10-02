@@ -10,7 +10,7 @@ echo "== [ -z on an unset var is silent:"
 echo "== test equality with an unset var is silent:"
 "$BIN" -W -c 'test "$NOPE" = x || echo not-x' 2>&1
 echo "== a plain expansion still warns (count):"
-"$BIN" -W -c '# shellcheck disable=SC2154
+"$BIN" -W -c '# shellcheck disable=unassigned-variable-read
 echo "[$NOPE]"' 2>&1 | grep -c "is not set"
 echo "== the suppression does not leak past the test (count):"
 "$BIN" -W -c '# shellcheck disable=SC2154

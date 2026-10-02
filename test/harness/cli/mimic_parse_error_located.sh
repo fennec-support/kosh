@@ -1,4 +1,4 @@
-# shellcheck disable=SC2154
+# shellcheck disable=unassigned-variable-read
 unset KOSH_FLAGS
 # A script run as a command hits ENOEXEC and is mimicked in-process, so a parse
 # error in it locates against the script file and name, not the command line the

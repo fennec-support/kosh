@@ -74,12 +74,12 @@ note: Move the comment above the command, or wrap it in `` `# ...` ``.
     11 |    # shellcheck foobar=baz
        |                 ^~~~~~
 note: Use `disable`, `enable`, `shell`, `source`, `source-path`, or `external-sources`.
-13:31: warning: The directive text 'not' is not a `key=value` pair. (SC1125)
-    13 |    # shellcheck disable=SC2153 not a misspelling
-       |                                ^~~
-note: Write the directive as `key=value`, such as `disable=SC2034`.
+13:82: warning: The directive text 'not' is not a `key=value` pair. (SC1125)
+    13 |    # shellcheck disable=misspelled-variable-name,misspelled-builtin-variable-name not a misspelling
+       |                                                                                   ^~~
+note: Write the directive as `key=value`, such as `disable=SC2086` or `disable=unquoted-expansion`.
 15:14: warning: The directive follows a command on the same line. (SC1126)
-    15 |    echo three # shellcheck disable=SC2034
+    15 |    echo three # shellcheck disable=SC2086
        |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~
 note: Move the directive to its own line above the command.
 18:3: warning: The word 'elif' continues the command above the directive. (SC1123)

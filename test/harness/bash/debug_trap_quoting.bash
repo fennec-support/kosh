@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2034,SC2086,SC2249
+# shellcheck disable=unquoted-expansion,unquoted-test-expansion,case-without-default
 
 echo words
 trap 'echo "D-[$BASH_COMMAND]"' DEBUG

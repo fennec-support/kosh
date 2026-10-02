@@ -1,3 +1,7 @@
+32:5: warning: This assignment to 'decimal_lifetime' in a function has no `local`.
+    32 |      decimal_lifetime=bad
+       |      ^~~~~~~~~~~~~~~~~~~~
+note: Declare it with `local` to keep it inside the function.
 3.75
 0.75
 -1.000

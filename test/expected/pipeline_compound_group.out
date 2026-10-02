@@ -13,6 +13,9 @@ note: Add `-r` to read the line literally.
     15 |  printf 'a\nb\nc\n' | while read l; do echo "got $l"; done
        |                             ^~~~~~
 note: Add `-r` to read the line literally.
+30:30: warning: This `case` has no default `*)` branch. (SC2249)
+    30 |  printf 'case-value\n' | case "$(cat)" in
+       |                               ^~~~~~~~
 37:8: warning: The 'false' command never reads the upstream output. (SC2216)
     37 |  true | false
        |         ^~~~~
@@ -33,7 +36,7 @@ note: Feed the loop with a redirection or process substitution.
 47:10: warning: The 'false' command never reads the upstream output. (SC2216)
     47 |  ! true | false
        |           ^~~~~
-Encountered 10 warnings.
+Encountered 11 warnings.
 x
 1-2
 1

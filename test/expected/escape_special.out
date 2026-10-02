@@ -1,3 +1,7 @@
+3:7: warning: A backslash carries no meaning inside single quotes. (SC1003)
+     3 |  echo '\'
+       |        ^~
+note: Write the quote as `'\''` outside the single-quoted run.
 "
 \
 $?

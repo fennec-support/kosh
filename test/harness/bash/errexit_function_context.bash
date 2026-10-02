@@ -1,2 +1,2 @@
 #!/bin/bash
-. sh/errexit_function_context.sh
+. harness/sh/errexit_function_context.sh

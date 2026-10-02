@@ -1,3 +1,20 @@
+3:9: warning: The `-n` test has a literal operand. (SC2157)
+     3 |  if [ -n abc ]; then echo n_true; fi
+       |          ^~~
+note: Test a variable or drop the check.
+4:9: warning: The `-z` test has a literal operand. (SC2157)
+     4 |  if [ -z "" ]; then echo z_true; fi
+       |          ^~
+note: Test a variable or drop the check.
+5:6: warning: Both operands of the `=` comparison are literal. (SC2050)
+     5 |  if [ a = a ]; then echo eq_true; fi
+       |       ^~~~~
+note: Remove the constant condition or compare runtime data.
+6:6: warning: Both operands of the `!=` comparison are literal. (SC2050)
+     6 |  if [ a != b ]; then echo neq_true; fi
+       |       ^~~~~~
+note: Remove the constant condition or compare runtime data.
+Encountered 4 warnings.
 n_true
 z_true
 eq_true

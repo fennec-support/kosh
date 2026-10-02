@@ -1,5 +1,5 @@
 #!/bin/env kosh
-# shellcheck disable=SC2043
+# shellcheck disable=for-over-constant-word
 for x in ""; do echo "iter[$x]"; done
 for x in '' a ''; do echo "[$x]"; done
 set -- "" a ""; echo $#

@@ -2,5 +2,10 @@
      2 |  echo before $(echo one two)
        |              ^~~~~~~~~~~~~~~
 note: Quote it to keep one argument.
+2:13: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
+     2 |  echo before $(echo one two)
+       |              ^~~~~~~~~~~~~~~
+note: Use the text directly without the command substitution.
+Encountered 2 warnings.
 before one two
 after

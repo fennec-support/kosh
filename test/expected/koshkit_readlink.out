@@ -1,3 +1,7 @@
+4:1: warning: This `cd` is unchecked. (SC2164)
+     4 |  cd "$TEST_TEMP_DIRECTORY/koshkit-readlink"
+       |  ^~
+note: Stop or return when `cd` fails.
 default=[relative-target
 ]
 no-newline=[relative-target]

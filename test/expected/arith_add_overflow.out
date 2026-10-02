@@ -1,3 +1,7 @@
+15:31: warning: The `^` operator performs bitwise XOR in Bash arithmetic.
+    15 |  echo $(( 13946233938940740889 ^ 12028823668264674112 ))
+       |                                ^
+note: Use `**`, the Bash power operator, if you meant exponentiation.
 9223372036854775808
 18446744073709551614
 5

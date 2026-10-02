@@ -1,2 +1,6 @@
+2:9: warning: The `-a` and `-o` operators are marked obsolescent by POSIX. (SC2166)
+     2 |  [ -f /a -o -f /b ] || echo none
+       |          ^~
+note: Join two tests with `&&` or `||`.
 none
 after

@@ -45,7 +45,7 @@ echo '== distant miss:'
 
 echo '== first missing expanded component:'
 BASE="$d" "$BIN" -c 'cd "$BASE/expanded-parent/miss/tail"' 2>&1 |
-    sed -e 's|\\|/|g' -e "s|$d|<tmp>|g"
+    sed -e 's|\\|/|g' -e 's|/private/|/|g' -e "s|$d|<tmp>|g"
 
 echo '== intermediate regular file:'
 "$BIN" -c 'cd regular-file/child' 2>&1 | sed 's|\\|/|g'
@@ -88,7 +88,7 @@ echo '== cd preserves missing dot-dot component:'
 
 echo '== logical cd preserves symlink traversal:'
 "$BIN" -c 'cd -L link/../sibling && pwd' 2>&1 |
-    sed -e 's|\\|/|g' -e "s|$d|<tmp>|g"
+    sed -e 's|\\|/|g' -e 's|/private/|/|g' -e "s|$d|<tmp>|g"
 
 echo '== analyzed trailing separator preserves missing dot-dot component:'
 "$BIN" -c './missing/../existing/' 2>&1 | sed 's|\\|/|g'
@@ -105,7 +105,7 @@ echo '== command path preserves symlink traversal:'
 
 echo '== CDPATH logical traversal preserves symlink traversal:'
 CDPATH="$d/cdpath" "$BIN" -c 'cd link/../sibling >/dev/null && pwd' 2>&1 |
-    sed -e 's|\\|/|g' -e "s|$d|<tmp>|g"
+    sed -e 's|\\|/|g' -e 's|/private/|/|g' -e "s|$d|<tmp>|g"
 
 if [ "${OS-}" = Windows_NT ]; then
     native_pwd=$("$BIN" -c pwd | sed 's|\\|/|g')

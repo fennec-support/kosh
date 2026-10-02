@@ -46,6 +46,10 @@ note: Use ordinary double quotes under a `sh` shebang.
     19 |    bare_assignment=$"localized bare"
        |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 note: Use ordinary double quotes under a `sh` shebang.
+19:3: warning: This assignment to 'bare_assignment' in a function has no `local`.
+    19 |    bare_assignment=$"localized bare"
+       |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+note: Declare it with `local` to keep it inside the function.
 20:8: warning: The `$"..."` quoting form is a bash extension absent from POSIX sh. (SC3004)
     20 |    echo $'\''$"escaped ansi quote"
        |         ^~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -141,6 +145,9 @@ note: Add the missing `$`, or drop the `case`.
 41:5: warning: The pattern 'item=$"case pattern"' cannot match the `case` word 'item=$"case subject"'. (SC2195)
     41 |      item=$"case pattern") : ;;
        |      ^~~~~~~~~~~~~~~~~~~~
+40:8: warning: This `case` has no default `*)` branch. (SC2249)
+    40 |    case item=$"case subject" in
+       |         ^~~~~~~~~~~~~~~~~~~~
 43:15: warning: The `$"..."` quoting form is a bash extension absent from POSIX sh. (SC3004)
     43 |    [[ value =~ prefix$"regex locale" ]]
        |                ^~~~~~~~~~~~~~~~~~~~~
@@ -164,6 +171,9 @@ note: Add the missing `$`, or drop the `case`.
 46:5: warning: The pattern 'item=$'case ansi'' cannot match the `case` word 'value'. (SC2195)
     46 |      item=$'case ansi') : ;;
        |      ^~~~~~~~~~~~~~~~~
+45:8: warning: This `case` has no default `*)` branch. (SC2249)
+    45 |    case value in
+       |         ^~~~~
 50:15: warning: The `&>` redirection is a bash extension absent from POSIX sh. (SC3020)
     50 |    echo both &>out.log
        |                ^~~~~~~
@@ -228,10 +238,18 @@ note: Write the assignment out under a `sh` shebang.
     72 |    : $((base ** exponent))
        |         ^~~~~~~~~~~~~~~~
 note: Multiply the value out under a `sh` shebang.
+73:5: warning: Both operands of the `<` comparison are literal. (SC2050)
+    73 |    [ alpha \< beta ]
+       |      ^~~~~~~~~~~~~
+note: Remove the constant condition or compare runtime data.
 73:11: warning: The `<` comparison in `test` is undefined in POSIX sh. (SC3012)
     73 |    [ alpha \< beta ]
        |            ^~
 note: Compare with `expr` or a `case` statement under a `sh` shebang.
+74:5: warning: Both operands of the `>` comparison are literal. (SC2050)
+    74 |    [ alpha \> beta ]
+       |      ^~~~~~~~~~~~~
+note: Remove the constant condition or compare runtime data.
 74:11: warning: The `>` comparison in `test` is undefined in POSIX sh. (SC3012)
     74 |    [ alpha \> beta ]
        |            ^~
@@ -248,6 +266,10 @@ note: Compare the timestamps with `find` or `ls` under a `sh` shebang.
     77 |    [ -a present ]
        |      ^~
 note: Use `-e` for the file test.
+78:5: warning: Both operands of the `=` comparison are literal. (SC2050)
+    78 |    [ alpha = beta ]
+       |      ^~~~~~~~~~~~
+note: Remove the constant condition or compare runtime data.
 78:11: warning: The literals 'alpha' and 'beta' differ. (SC2193)
     78 |    [ alpha = beta ]
        |            ^
@@ -287,6 +309,10 @@ note: Drop the flag under a `sh` shebang.
     91 |    let value=1
        |    ^~~
 note: Use the `: $((...))` form under a `sh` shebang.
+91:3: warning: The `let` builtin evaluates its argument as arithmetic. (SC2219)
+    91 |    let value=1
+       |    ^~~
+note: Write `(( ... ))` for the arithmetic.
 92:18: warning: The `ERR` condition is a bash extension absent from POSIX sh. (SC3047)
     92 |    trap 'cleanup' ERR
        |                   ^~~
@@ -339,5 +365,5 @@ note: Name the file explicitly under a `sh` shebang.
    114 |    { echo localized; } >$"compound.log"
        |                         ^~~~~~~~~~~~~~~
 note: Use ordinary double quotes under a `sh` shebang.
-Encountered 85 warnings.
+Encountered 92 warnings.
 done

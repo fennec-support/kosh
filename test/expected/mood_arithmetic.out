@@ -1,3 +1,11 @@
+22:1: warning: The `let` builtin evaluates its argument as arithmetic. (SC2219)
+    22 |  let "fact = 1"
+       |  ^~~
+note: Write `(( ... ))` for the arithmetic.
+23:32: warning: The `let` builtin evaluates its argument as arithmetic. (SC2219)
+    23 |  for ((i = 1; i <= 5; i++)); do let "fact *= i"; done
+       |                                 ^~~
+note: Write `(( ... ))` for the arithmetic.
 31:23: warning: An unquoted variable can split into words and expand globs. (SC2086)
     31 |  echo $((y = 7)); echo $y
        |                        ^~
@@ -66,7 +74,7 @@ note: Quote the expansion to keep one argument.
     86 |  c=0; x=9; r=$((c ? (x=77) : (x=88))); echo $r $x
        |                                                ^~
 note: Quote the expansion to keep one argument.
-Encountered 17 warnings.
+Encountered 19 warnings.
 1024
 4
 512

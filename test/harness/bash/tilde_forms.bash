@@ -1,7 +1,6 @@
 #!/bin/bash
 # The tilde prefix expands only when wholly unquoted, ~+ and ~- read PWD and
 # OLDPWD, and an unknown user stays literal, the lines tilde.tests runs.
-HOME=/usr/xyz
 echo ~
 echo ~/foo
 echo ~/"foo"

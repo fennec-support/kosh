@@ -1,3 +1,39 @@
+4:1: warning: This `cd` is unchecked. (SC2164)
+     4 |  cd .test-work/cd-paths/parent/child
+       |  ^~
+note: Stop or return when `cd` fails.
+6:1: warning: This `cd` is unchecked. (SC2164)
+     6 |  cd ..
+       |  ^~
+note: Stop or return when `cd` fails.
+8:1: warning: This `cd` is unchecked. (SC2164)
+     8 |  cd - > ../cd-output
+       |  ^~
+note: Stop or return when `cd` fails.
+6:1: warning: A later `cd -` undoes this directory change. (SC2103)
+     6 |  cd ..
+       |  ^~
+8:1: details:
+     8 |  cd - > ../cd-output
+       |  ^~ the working directory is restored here.
+note: Run the commands inside `( )`.
+10:1: warning: This `cd` is unchecked. (SC2164)
+    10 |  cd ../..
+       |  ^~
+note: Stop or return when `cd` fails.
+11:31: warning: This `cd` is unchecked. (SC2164)
+    11 |  CDPATH="$TEST_PATH_SEPARATOR" cd parent > cd-output
+       |                                ^~
+note: Stop or return when `cd` fails.
+13:1: warning: This `cd` is unchecked. (SC2164)
+    13 |  cd "$start"
+       |  ^~
+note: Stop or return when `cd` fails.
+14:1: warning: This `cd` is unchecked. (SC2164)
+    14 |  cd .test-work/nonexistent-xyz-dir 2>&-
+       |  ^~
+note: Stop or return when `cd` fails.
+Encountered 8 warnings.
 child
 parent
 child

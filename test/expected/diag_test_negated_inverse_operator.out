@@ -1,2 +1,11 @@
+2:3: warning: A negated `-eq` is `-ne`. (SC2335)
+     2 |  [ ! 3 -eq 4 ] && echo notequal
+       |    ^
+note: Drop the `!` and use `-ne`.
+2:5: warning: Both operands of the `-eq` comparison are literal. (SC2050)
+     2 |  [ ! 3 -eq 4 ] && echo notequal
+       |      ^~~~~~~
+note: Remove the constant condition or compare runtime data.
+Encountered 2 warnings.
 notequal
 after

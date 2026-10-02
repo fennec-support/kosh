@@ -2,7 +2,7 @@
 # shellcheck disable=unresolved-command
 
 directive_scope() {
-  # shellcheck disable=SC2086
+  # shellcheck disable=unquoted-expansion,unquoted-test-expansion
   echo $suppressed
   echo $reported
 }
@@ -10,9 +10,9 @@ directive_scope() {
 directive_placement_diagnostics() {
   # shellcheck foobar=baz
   echo one
-  # shellcheck disable=SC2153 not a misspelling
+  # shellcheck disable=misspelled-variable-name,misspelled-builtin-variable-name not a misspelling
   echo two
-  echo three # shellcheck disable=SC2034
+  echo three # shellcheck disable=SC2086
   if false; then
     echo four
   # shellcheck disable=SC2086
@@ -91,7 +91,7 @@ stdin_and_subscript_diagnostics() {
   echo value | tally=1
 }
 
-# shellcheck disable=SC2155
+# shellcheck disable=declare-substitution-status
 assignment_operand_diagnostics() {
   export assigned_glob=*.txt
   export assigned_substitution=$(printf 'a b')

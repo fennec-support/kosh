@@ -24,7 +24,7 @@ f
 [[ -o failglob ]] || echo failglob=off
 '
 echo "== propagated mood carries its strictness:"
-"$BIN" -c '# shellcheck disable=SC2154
+"$BIN" -c '# shellcheck disable=unassigned-variable-read
 set --mood bash
 f() { set --mood sh; }
 set --mood kosh

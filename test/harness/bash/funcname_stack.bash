@@ -12,7 +12,7 @@ k
 
 # BASH_ARGC and BASH_ARGV expose immutable call-entry arguments while extdebug
 # tracks active function frames.
-bash_argument_source_path=bash/goldens/bash_argument_source.bash
+bash_argument_source_path=harness/bash/goldens/bash_argument_source.bash
 (
   set -- root-one 'root two'
   source "$bash_argument_source_path"

@@ -1,3 +1,7 @@
+26:1: warning: This `cd` is unchecked. (SC2164)
+    26 |  cd .
+       |  ^~
+note: Stop or return when `cd` fails.
 2:1: warning: The command 'zzqqxxnonexist_command_4242' was not found.
      2 |  zzqqxxnonexist_command_4242
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -22,7 +26,7 @@
 32:3: warning: The command './never_generated_4242' was not found.
     32 |  ./never_generated_4242
        |    ^~~~~~~~~~~~~~~~~~~~
-Encountered 8 warnings.
+Encountered 9 warnings.
 2:1: error: The command 'zzqqxxnonexist_command_4242' was not found.
      2 |  zzqqxxnonexist_command_4242
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~

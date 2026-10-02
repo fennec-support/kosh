@@ -1,5 +1,5 @@
 #!/bin/env kosh
-# shellcheck disable=SC2251
+# shellcheck disable=negation-skips-errexit
 set -e
 false && echo never-and
 echo after-and

@@ -1,1 +1,5 @@
+2:6: warning: Both operands of the `=` comparison are literal. (SC2050)
+     2 |  if [ ~ = ~ ]; then echo tilde_branch; fi
+       |       ^~~~~
+note: Remove the constant condition or compare runtime data.
 tilde_branch

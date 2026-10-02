@@ -41,7 +41,7 @@ two-async-fork-bomb=1
 two-async-note=1
 file-directive
 file-directive-errors=0
-local-directive-warnings=2
+local-directive-warnings=3
 numeric-variant-directive
 numeric-variant-errors=0
 slug-variant-general=0

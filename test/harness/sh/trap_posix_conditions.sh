@@ -1,5 +1,5 @@
 #!/bin/sh
-# shellcheck disable=SC2249
+# shellcheck disable=case-without-default
 
 echo set-debug
 trap 'echo D-fired' DEBUG 2>/dev/null

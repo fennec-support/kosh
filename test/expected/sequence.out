@@ -1,3 +1,16 @@
+3:18: warning: The `C` command runs whenever `A` or `B` fails. (SC2015)
+     3 |  echo 1 && echo 2 || echo 3;
+       |                   ^~
+note: Use an `if` statement when C is the else branch.
+4:17: warning: The `C` command runs whenever `A` or `B` fails. (SC2015)
+     4 |  false && echo 1 || false && echo 2 || true && echo 3;
+       |                  ^~
+note: Use an `if` statement when C is the else branch.
+4:36: warning: The `C` command runs whenever `A` or `B` fails. (SC2015)
+     4 |  false && echo 1 || false && echo 2 || true && echo 3;
+       |                                     ^~
+note: Use an `if` statement when C is the else branch.
+Encountered 3 warnings.
 1
 2
 3

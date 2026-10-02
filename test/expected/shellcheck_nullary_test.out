@@ -1,3 +1,12 @@
+3:3: warning: A one-operand test is the nonempty-string test. (SC2244)
+     3 |  [ "$x" ]
+       |    ^~~~
+note: Write it with `-n`.
+8:3: warning: A one-operand test is the nonempty-string test. (SC2244)
+     8 |  [ "$x" ]
+       |    ^~~~
+note: Write it with `-n`.
+Encountered 2 warnings.
 nullary-empty=1
 explicit-empty=1
 nullary-set=0

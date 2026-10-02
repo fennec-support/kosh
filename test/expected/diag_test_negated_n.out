@@ -1,2 +1,11 @@
+2:3: warning: A negated `-n` is `-z`. (SC2237)
+     2 |  [ ! -n "" ] && echo empty
+       |    ^
+note: Test with `-z`.
+2:8: warning: The `-n` test has a literal operand. (SC2157)
+     2 |  [ ! -n "" ] && echo empty
+       |         ^~
+note: Test a variable or drop the check.
+Encountered 2 warnings.
 empty
 after

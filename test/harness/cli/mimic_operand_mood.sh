@@ -1,4 +1,4 @@
-# shellcheck disable=SC2154
+# shellcheck disable=unassigned-variable-read
 unset KOSH_FLAGS
 # A script operand under mimicry reads its own shebang. `kosh -I script.sh`
 # analyzes and runs the file under the mood its interpreter names, the same

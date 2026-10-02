@@ -46,7 +46,7 @@ w=1 b=$w c=$b; echo "[$w][$b][$c]"
 x=foo x+=bar; echo "[$x]"
 y=1 y=2; echo "[$y]"
 
-# shellcheck disable=SC2125
+# shellcheck disable=literal-glob-assignment
 Y=data/*
 echo $Y
 echo "$Y"

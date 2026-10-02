@@ -1,5 +1,5 @@
 #!/bin/env kosh
-# shellcheck disable=SC2078,SC2212
+# shellcheck disable=constant-test-operand,empty-test
 if [ -n abc ]; then echo n_true; fi
 if [ -z "" ]; then echo z_true; fi
 if [ a = a ]; then echo eq_true; fi

@@ -1,5 +1,5 @@
 #!/bin/env kosh
-# shellcheck disable=SC2194,SC2195
+# shellcheck disable=constant-case-word,unmatchable-case-pattern
 if true; then ( while false; do echo x; done; { echo y; } ); fi >/dev/null
 
 

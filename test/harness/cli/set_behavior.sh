@@ -16,7 +16,7 @@ unset KOSH_FLAGS
 # and -L is the short for --init-moods, matching the command-line flags so a
 # config can set either form.
 echo "== bash mood relaxes nounset:"
-"$BIN" -c '# shellcheck disable=SC2154
+"$BIN" -c '# shellcheck disable=unassigned-variable-read
 set --mood bash; echo "[${UNSETA}]"; echo ok'
 echo "== -M short form prints the active mood:"
 "$BIN" -c 'set -M sh; set --mood'

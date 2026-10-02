@@ -177,7 +177,7 @@ echo '== a read before a later assignment names that assignment:'
 greeting_text=hello' 2>&1
 
 echo '== a disable directive silences the sweep:'
-"$BIN" -n -WWW -c '# shellcheck disable=SC2154
+"$BIN" -n -WWW -c '# shellcheck disable=unassigned-variable-read
 echo "$suppressed_name"' 2>&1
 echo "rc=$?"
 

@@ -1,1 +1,5 @@
+2:1: warning: The `which` program is not standard and is missing on some systems. (SC2230)
+     2 |  which ls >/dev/null 2>&1
+       |  ^~~~~
+note: Use `command -v` to look up the name.
 after

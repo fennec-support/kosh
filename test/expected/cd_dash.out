@@ -1,3 +1,27 @@
+4:1: warning: This `cd` is unchecked. (SC2164)
+     4 |  cd "$TEST_TEMP_DIRECTORY/cd-dash/first"
+       |  ^~
+note: Stop or return when `cd` fails.
+5:1: warning: This `cd` is unchecked. (SC2164)
+     5 |  cd ../second
+       |  ^~
+note: Stop or return when `cd` fails.
+6:1: warning: This `cd` is unchecked. (SC2164)
+     6 |  cd - >/dev/null
+       |  ^~
+note: Stop or return when `cd` fails.
+5:1: warning: A later `cd -` undoes this directory change. (SC2103)
+     5 |  cd ../second
+       |  ^~
+6:1: details:
+     6 |  cd - >/dev/null
+       |  ^~ the working directory is restored here.
+note: Run the commands inside `( )`.
+9:1: warning: This `cd` is unchecked. (SC2164)
+     9 |  cd - >/dev/null
+       |  ^~
+note: Stop or return when `cd` fails.
+Encountered 5 warnings.
 first
 PWD=first OLDPWD=second
 second

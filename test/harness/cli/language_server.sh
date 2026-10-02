@@ -451,7 +451,14 @@ check_contains valueless-declaration-outline '"id":106,"result":[{"name":"SHIPPE
 check_contains hover-valueless-declaration '"id":107,"result":{"contents":{"kind":"plaintext","value":"export SHIPPED\nThis declaration does not assign a value."}'
 check_contains hover-reaches-declaration '"id":108,"result":{"contents":{"kind":"plaintext","value":"export SHIPPED\nThis declaration does not assign a value."}'
 check_contains method-error '"id":9,"error":{"code":-32601'
-check_contains auxiliary-uri "\"uri\":\"file://$directory/disk-source.sh\""
+case $output in
+*"\"uri\":\"file://$directory/disk-source.sh\""*|*"\"uri\":\"file:///private$directory/disk-source.sh\""*)
+  printf 'auxiliary-uri=ok\n'
+  ;;
+*)
+  printf 'auxiliary-uri=missing\n'
+  ;;
+esac
 check_contains auxiliary-diagnostic disk_aux
 check_contains open-source-version "\"uri\":\"file://$directory/open-source.sh\",\"version\":1"
 check_contains primary-message '"message":"An unquoted variable can split into words and expand globs. (SC2086)"'
@@ -462,6 +469,9 @@ case $output in
 *) printf 'open-source-precedence=ok\n' ;;
 esac
 disk_payload=${output#*"\"uri\":\"file://$directory/disk-source.sh\""}
+if [ "$disk_payload" = "$output" ]; then
+  disk_payload=${output#*"\"uri\":\"file:///private$directory/disk-source.sh\""}
+fi
 disk_payload=${disk_payload%%Content-Length:*}
 case $disk_payload in
 *'"data":'*) printf 'disk-fix-data=present\n' ;;

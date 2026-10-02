@@ -14,23 +14,61 @@ case " $SKIPPED_TESTS " in
 esac
 
 REFERENCE="$TEST_TEMP_DIRECTORY/$TEST_NAME.bash"
+REFERENCE_ERROR="$REFERENCE.err"
 CANDIDATE="$TEST_TEMP_DIRECTORY/$TEST_NAME.kosh"
+CANDIDATE_ERROR="$CANDIDATE.err"
 mkdir -p "$TEST_TEMP_DIRECTORY"
 "$BIN_DIR/invoke-koshkit" timeout -k 2s "${TEST_TIMEOUT_SECONDS:-60}" \
-  "$BASHP" "$TEST_FILE" >"$REFERENCE" 2>&1
+  "$BASHP" "$TEST_FILE" >"$REFERENCE" 2>"$REFERENCE_ERROR"
 REFERENCE_STATUS=$?
 
 "$BIN_DIR/invoke-koshkit" timeout -k 2s "${TEST_TIMEOUT_SECONDS:-60}" \
-  "$BIN" --mood bash "$TEST_FILE" >"$CANDIDATE" 2>&1
+  "$BIN" --mood bash "$TEST_FILE" >"$CANDIDATE" 2>"$CANDIDATE_ERROR"
 KOSH_STATUS=$?
 
-if [ "$REFERENCE_STATUS" -ne "$KOSH_STATUS" ] || ! diff "${DIFF_OPTIONS[@]}" \
-  "$REFERENCE" "$CANDIDATE" >/dev/null 2>&1
+STDOUT_MATCH=0
+STDERR_MATCH=0
+if diff "${DIFF_OPTIONS[@]}" "$REFERENCE" "$CANDIDATE" >/dev/null 2>&1
 then
-  diff "${DIFF_OPTIONS[@]}" "$REFERENCE" "$CANDIDATE" >&2 || true
-  rm -f "$REFERENCE" "$CANDIDATE"
+  STDOUT_MATCH=1
+fi
+
+if grep -q '^# compat-stderr: exact$' "$TEST_FILE"
+then
+  if diff "${DIFF_OPTIONS[@]}" "$REFERENCE_ERROR" "$CANDIDATE_ERROR" >/dev/null 2>&1
+  then
+    STDERR_MATCH=1
+  fi
+elif [ -s "$REFERENCE_ERROR" ]
+then
+  if [ -s "$CANDIDATE_ERROR" ]
+  then
+    STDERR_MATCH=1
+  fi
+elif [ ! -s "$CANDIDATE_ERROR" ]
+then
+  STDERR_MATCH=1
+fi
+
+if [ "$REFERENCE_STATUS" -ne "$KOSH_STATUS" ] || \
+  [ "$STDOUT_MATCH" -ne 1 ] || [ "$STDERR_MATCH" -ne 1 ]
+then
+  if [ "$STDOUT_MATCH" -ne 1 ]
+  then
+    diff "${DIFF_OPTIONS[@]}" "$REFERENCE" "$CANDIDATE" >&2 || true
+  fi
+  if [ "$STDERR_MATCH" -ne 1 ]
+  then
+    printf 'stderr presence differs\n' >&2
+  fi
+  if [ "$REFERENCE_STATUS" -ne "$KOSH_STATUS" ]
+  then
+    printf 'status differs: reference=%s candidate=%s\n' \
+      "$REFERENCE_STATUS" "$KOSH_STATUS" >&2
+  fi
+  rm -f "$REFERENCE" "$REFERENCE_ERROR" "$CANDIDATE" "$CANDIDATE_ERROR"
   exit 1
 fi
 
-rm -f "$REFERENCE" "$CANDIDATE"
+rm -f "$REFERENCE" "$REFERENCE_ERROR" "$CANDIDATE" "$CANDIDATE_ERROR"
 exit 0

@@ -1,3 +1,7 @@
+2:1: warning: This `cd` is unchecked. (SC2164)
+     2 |  cd "$root"
+       |  ^~
+note: Stop or return when `cd` fails.
 equal=0
 --- left
 +++ right

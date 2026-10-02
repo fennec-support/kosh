@@ -1,3 +1,7 @@
+9:1: warning: This `cd` is unchecked. (SC2164)
+     9 |  cd "$start"
+       |  ^~
+note: Stop or return when `cd` fails.
 ./a.sh ./b.sh
 a.sh b.sh
 linked/nested real/nested

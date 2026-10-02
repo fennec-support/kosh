@@ -14,7 +14,15 @@ note: Remove it, or move it into the loop it belongs to.
     15 |  continue
        |  ^~~~~~~~
 note: Remove it, or move it into the loop it belongs to.
-Encountered 4 warnings.
+22:3: warning: This assignment to 'count' in a function has no `local`.
+    22 |    count=0
+       |    ^~~~~~~
+note: Declare it with `local` to keep it inside the function.
+24:5: warning: This assignment to 'count' in a function has no `local`.
+    24 |      count=$((count + 1))
+       |      ^~~~~~~~~~~~~~~~~~~~
+note: Declare it with `local` to keep it inside the function.
+Encountered 6 warnings.
 end-break
 end-continue
 1

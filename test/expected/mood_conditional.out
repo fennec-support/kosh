@@ -1,3 +1,28 @@
+4:4: warning: Both operands of the `==` comparison are literal. (SC2050)
+     4 |  [[ "a*b" == "a*b" ]] && echo quoted-literal
+       |     ^~~~~~~~~~~~~~
+note: Remove the constant condition or compare runtime data.
+5:7: warning: The string test has a literal operand. (SC2157)
+     5 |  [[ -n "x" && ( -z "" || "a" == "a" ) ]] && echo grouped
+       |        ^~~
+note: Test a variable or drop the check.
+5:19: warning: The string test has a literal operand. (SC2157)
+     5 |  [[ -n "x" && ( -z "" || "a" == "a" ) ]] && echo grouped
+       |                    ^~
+note: Test a variable or drop the check.
+5:25: warning: Both operands of the `==` comparison are literal. (SC2050)
+     5 |  [[ -n "x" && ( -z "" || "a" == "a" ) ]] && echo grouped
+       |                          ^~~~~~~~~~
+note: Remove the constant condition or compare runtime data.
+6:4: warning: Both operands of the `-gt` comparison are literal. (SC2050)
+     6 |  [[ 10 -gt 5 && 3 -le 3 ]] && echo numeric
+       |     ^~~~~~~~
+note: Remove the constant condition or compare runtime data.
+6:16: warning: Both operands of the `-le` comparison are literal. (SC2050)
+     6 |  [[ 10 -gt 5 && 3 -le 3 ]] && echo numeric
+       |                 ^~~~~~~
+note: Remove the constant condition or compare runtime data.
+Encountered 6 warnings.
 glob-yes
 quoted-literal
 grouped

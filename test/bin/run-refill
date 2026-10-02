@@ -19,13 +19,16 @@ do
   fi
 
   OUTPUT="expected/.$TEST_NAME.out.tmp"
-
   case $TEST_FILE in
     harness/kosh/*.kosh)
       "$BIN_DIR/invoke-koshkit" timeout -k 2s "${TEST_TIMEOUT_SECONDS:-60}" \
-        "$BIN" -WWW --no-annoying-diagnostics - <"$TEST_FILE" \
-        >"$OUTPUT" 2>&1 || \
-        REFILL_STATUS=$?
+        "$BIN" -WWW - <"$TEST_FILE" \
+        >"$OUTPUT" 2>&1
+      TEST_STATUS=$?
+      case $TEST_STATUS in
+        124) REFILL_STATUS=$TEST_STATUS ;;
+        *) ;;
+      esac
     ;;
     harness/cli/*.sh | harness/completion/*.sh | harness/highlight/*.sh)
       "$BIN_DIR/invoke-koshkit" timeout -k 2s "${TEST_TIMEOUT_SECONDS:-60}" \

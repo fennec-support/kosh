@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2015,SC2034,SC2086,SC2249
+# shellcheck disable=and-or-else,unquoted-expansion,unquoted-test-expansion,case-without-default
 
 echo ignored-debug
 ( set -T; trap '' DEBUG; echo body-1; echo body-2 )

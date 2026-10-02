@@ -2,10 +2,18 @@
      2 |  echo a $(echo b) c
        |         ^~~~~~~~~
 note: Quote it to keep one argument.
+2:8: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
+     2 |  echo a $(echo b) c
+       |         ^~~~~~~~~
+note: Use the text directly without the command substitution.
 31:6: warning: An `echo` of a command substitution prints what the command already prints. (SC2005)
     31 |  f(){ echo "$(echo hi)"; }
        |       ^~~~
 note: Run the command on its own.
+31:11: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
+    31 |  f(){ echo "$(echo hi)"; }
+       |            ^~~~~~~~~~~~
+note: Use the text directly without the command substitution.
 38:1: warning: An `echo` of a command substitution prints what the command already prints. (SC2005)
     38 |  echo $(echo $(echo deep))
        |  ^~~~
@@ -14,6 +22,10 @@ note: Run the command on its own.
     38 |  echo $(echo $(echo deep))
        |       ^~~~~~~~~~~~~~~~~~~~
 note: Quote it to keep one argument.
+38:6: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
+    38 |  echo $(echo $(echo deep))
+       |       ^~~~~~~~~~~~~~~~~~~~
+note: Use the text directly without the command substitution.
 50:1: warning: The substitution output is run as a command. (SC2091)
     50 |  $(false); echo "bare_csub=$?"
        |  ^~~~~~~~
@@ -22,7 +34,7 @@ note: Run the command inside the substitution directly.
     52 |  true; $(false); echo "vanished_word=$?"
        |        ^~~~~~~~
 note: Run the command inside the substitution directly.
-Encountered 6 warnings.
+Encountered 9 warnings.
 a b c
 got=hello
 hello

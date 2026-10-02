@@ -1,2 +1,6 @@
+3:3: warning: This assignment to 'leaked' in a function has no `local`.
+     3 |    leaked=1
+       |    ^~~~~~~~
+note: Declare it with `local` to keep it inside the function.
 1
 after

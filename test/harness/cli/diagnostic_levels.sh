@@ -99,7 +99,7 @@ echo "two-async-note=$(printf '%s\n' "$two_async_recursive_output" |
   grep -c 'Note: rewrite your program')"
 
 cat > "$temporary_directory/file-directive.sh" <<'EOF'
-# shellcheck disable=SC2164
+# shellcheck disable=unchecked-cd
 f(){ cd missing; echo wrong-directory; }
 echo file-directive
 EOF
@@ -112,14 +112,14 @@ echo "file-directive-errors=$(printf '%s\n' "$file_directive_output" |
 
 cat > "$temporary_directory/local-directive.sh" <<'EOF'
 f() {
-  # shellcheck disable='SC2080-SC2090'
+  # shellcheck disable='octal-literal-quoted-value-expansion'
   echo $suppressed
   # shellcheck disable=SC9999 disable=2086
   echo $repeated
   # shellcheck disable="all"
   echo $all
   echo $reported
-  true && # shellcheck disable=SC2086
+  true && # shellcheck disable=unquoted-expansion,unquoted-test-expansion
     echo $after_and
 }
 echo local-directive
@@ -131,7 +131,7 @@ echo "local-directive-warnings=$(printf '%s\n' "$local_directive_output" |
   grep -c 'An unquoted variable can split')"
 
 cat > "$temporary_directory/numeric-variant-directive.sh" <<'EOF'
-# shellcheck disable=SC2086
+# shellcheck disable=unquoted-expansion,unquoted-test-expansion
 f() { echo $general; [ $tested = value ]; }
 echo numeric-variant-directive
 EOF

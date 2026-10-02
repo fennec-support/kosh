@@ -804,7 +804,7 @@ fn internal::allocate_redirection_descriptor(
 
     if (open_or_stage_failed != nullptr) *open_or_stage_failed = true;
     throw ErrorWithLocation{location, "'" + String{*allocation_name} +
-                                          "' does not name an open descriptor"};
+                                          "' is not associated with any descriptor"};
   }
 
   let const allocated_fd = os::allocate_free_shell_fd(10);

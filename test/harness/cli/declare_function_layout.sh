@@ -1,4 +1,4 @@
-# shellcheck disable=SC2154
+# shellcheck disable=unassigned-variable-read
 unset KOSH_FLAGS
 # Under the bash mood, declare -f reprints a stored function body the way bash
 # lays it out. A trailing space is rendered as <SP> so the golden holds none.

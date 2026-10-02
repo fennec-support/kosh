@@ -1,4 +1,4 @@
-# shellcheck disable=SC2154
+# shellcheck disable=unassigned-variable-read
 unset KOSH_FLAGS
 
 "$BIN" -c \

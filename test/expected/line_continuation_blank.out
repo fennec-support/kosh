@@ -1,2 +1,6 @@
+1:10: warning: A blank follows the backslash, and the line does not continue. (SC1101)
+     1 |  echo one \ 
+       |           ^~
+note: Delete the blanks between the backslash and the line ending.
 one  
 two

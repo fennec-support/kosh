@@ -1,5 +1,5 @@
 #!/usr/bin/env kosh
-# shellcheck disable=SC2172
+# shellcheck disable=trap-signal-number
 trap "echo hi" INT
 trap INT
 trap

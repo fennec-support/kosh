@@ -210,17 +210,25 @@ changes update this file.
 - `NO_TOILETLINE=1 make` builds the no editor configuration in a separate
   object directory and links the same `./kosh-dbg` path. Rebuild the ordinary
   configuration before the next fixture run.
-- `make test` runs main and completion suites. `make bench` runs benchmarks.
+- `make test` runs Kosh, CLI, completion, highlighting, POSIX, and Bash
+  suites. `make bench` runs benchmarks.
   `make toiletline_test` runs the standalone editor unit suite.
   Completion tests require debug. Bound interactive and long-running commands.
   Test runners apply a deadline to each case.
-- `refill` regenerates goldens. `REFILL` selects source stems. Goldens live
-  directly under `test/expected` and have unique names. Read every changed line.
-- A native fixture with status 126 or 127 cannot use `refill`. The runner treats
-  that status as a driver failure. Verify its output and patch its golden.
-- Make discovers inputs and platform skips. Runners own setup, output,
-  comparison, refill, and cleanup. Results are under `.test-work/results`.
-  Auxiliary test shell scripts use two-space indentation.
+- `make -C test refill` regenerates goldens for Kosh, CLI, completion, and
+  highlight fixtures. `REFILL` selects source stems. POSIX and Bash fixtures
+  compare against their reference shells and do not use repository goldens.
+  Goldens live directly under `test/expected` and have unique names. Read every
+  changed line.
+- Refill records process output. It does not validate behavior. Every changed
+  golden requires absolute validation against its fixture, including output,
+  status, diagnostics, side effects, and active platform branches.
+- A native fixture that reaches the timeout status cannot use `refill`. The
+  runner treats that status as a driver failure. Verify its output and patch
+  its golden.
+- Make discovers inputs, platform skips, and direct fixture targets. Runners own
+  setup, output, comparison, refill, and cleanup. Results are under
+  `.test-work`. Auxiliary test shell scripts use two-space indentation.
 - The test Makefile owns fixture discovery, pattern targets, platform skips, and
   parallel scheduling. Each target delegates one fixture to a small runner.
   `test/bin/run-test` prints the running and final status lines. Harness
@@ -236,12 +244,11 @@ changes update this file.
   shared runner prints status and records diagnostics. A process model runner
   only launches the required commands, compares output, and returns a status.
   Shared setup is exported by Make or kept in the runner that uses it once.
-- Run bare `NAME`, `cli_NAME`, and completion targets through `make -C test`.
-  Resolve the input and runner first, then pass matching `MODE` and `BIN`
-  values. Pass the root build's `TARGET` explicitly for direct test make
-  invocations so capability-gated fixtures use the intended platform. The
-  native runner suppresses incidental diagnostics outside
-  `shellcheck_static_*` tests.
+- Run a focused fixture through its direct path target, for example
+  `make -C test harness/kosh/name.kosh` or
+  `make -C test harness/cli/name.sh`. Pass matching `MODE`, `BIN`, and `TARGET`
+  values when a direct invocation needs a different root build. Native Kosh
+  fixtures run with `-WWW` and keep all diagnostics in their output.
 - Koshkit rm tests use `--dry-run`. Cleanup uses koshkit rm after a nonempty
   path check. Bashdiff and mimicrydiff need Bash 5.3 or newer.
   `scripts/find-modern-bash.sh` selects one from PATH, and `BASHP` overrides that
@@ -282,6 +289,9 @@ changes update this file.
   shared symbol. Inspect exact types, aggregate layouts, ownership, platform
   boundaries, and every active build configuration. Review both ends of a
   framed format together.
+- Treat a workaround for one specific case as a design warning. Ask whether
+  the whole construction can be simplified and whether the assumption that
+  requires the workaround is wrong. Verify those answers before keeping it.
 - For shell compatibility, measure the exact construct in both shells first.
   Verify mood, options, input channel, output, and status. Keep fixture
   operands stable across both commands.

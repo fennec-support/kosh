@@ -1,3 +1,45 @@
+6:6: warning: This `case` has no default `*)` branch. (SC2249)
+     6 |  case b in
+       |       ^
+14:3: warning: An earlier `case` pattern is broader. (SC2222)
+    14 |    hi) echo exact ;;
+       |    ^~
+12:3: details:
+    12 |    h*) echo h ;;&
+       |    ^~ this broader pattern shadows the later pattern.
+note: Move the specific pattern before the broader pattern.
+11:6: warning: This `case` has no default `*)` branch. (SC2249)
+    11 |  case hi in
+       |       ^~
+17:6: warning: This `case` has no default `*)` branch. (SC2249)
+    17 |  case x in #comment
+       |       ^
+23:6: warning: This `case` has no default `*)` branch. (SC2249)
+    23 |  case b in
+       |       ^
+31:6: warning: This `case` has no default `*)` branch. (SC2249)
+    31 |  case a in a) ;; esac
+       |       ^
+34:6: warning: This `case` has no default `*)` branch. (SC2249)
+    34 |  case a in (a) echo match;; esac
+       |       ^
+37:6: warning: This `case` has no default `*)` branch. (SC2249)
+    37 |  case a in a|b) echo match;; esac
+       |       ^
+38:6: warning: This `case` has no default `*)` branch. (SC2249)
+    38 |  case b in a|b) echo match;; esac
+       |       ^
+41:6: warning: This `case` has no default `*)` branch. (SC2249)
+    41 |  case x in a) echo hi;; esac
+       |       ^
+57:1: warning: An earlier `case` pattern is broader. (SC2222)
+    57 |  hello) marks+="3" ;;
+       |  ^~~~~
+55:1: details:
+    55 |  h*) marks+="1" ;;&
+       |  ^~ this broader pattern shadows the later pattern.
+note: Move the specific pattern before the broader pattern.
+Encountered 11 warnings.
 match
 b
 c

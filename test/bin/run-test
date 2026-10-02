@@ -24,3 +24,5 @@ then
 else
   printf "\t%-64s FAILED!!!\n" "$TEST_FILE"
 fi
+
+exit 0

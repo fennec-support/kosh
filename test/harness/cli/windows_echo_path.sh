@@ -16,7 +16,7 @@ if [ "${OS-}" = Windows_NT ]; then
   [ "$output" = "$expected" ] || exit 1
 
   output=$(env -u PATH "$TEST_PATH_ENVIRONMENT_NAME=$path_value" \
-    "$BIN" -c '# shellcheck disable=SC2123
+    "$BIN" -c '# shellcheck disable=search-path-overwritten
 PATH="C:\updated"; koshkit env | koshkit grep "^Path="')
   [ "$output" = 'Path=C:\updated' ] || exit 1
 

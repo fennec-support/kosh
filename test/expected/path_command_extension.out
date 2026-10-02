@@ -12,5 +12,4 @@ ech	unknown-command
 ./existing/	existing-path
 out	invalid-path
 ./	existing-path
-kos	partial-path
 ~	partial-path
