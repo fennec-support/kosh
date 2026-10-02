@@ -135,7 +135,9 @@ static fn find_required_regex_literal(StringView pattern) wontthrow
       if (index + 1 == pattern.length) break;
 
       let const escaped = pattern[index + 1];
-      if (escaped == '(' || escaped == ')') break;
+      if (escaped == '(' || escaped == ')') {
+        break;
+      }
 
       if (escaped == '{' || escaped == '?' || escaped == '+') {
         if (run_length != 0) run_length--;
@@ -597,8 +599,9 @@ private:
         return false;
       }
 
-      if (segment_count == 1 && m_is_fast_end_anchored)
+      if (segment_count == 1 && m_is_fast_end_anchored) {
         return value.length == head.length;
+      }
 
       position = head.length;
       first = 1;
@@ -726,8 +729,9 @@ private:
     for (usize index = m_fast_regex_prefix.length; index < middle_end; index++)
     {
       let const byte = static_cast<unsigned char>(value[index]);
-      if (byte == 0 || byte >= 0x80)
+      if (byte == 0 || byte >= 0x80) {
         return os::regex_matches_null_terminated(m_compiled, value);
+      }
 
       u8 byte_class = 0;
       if (isalpha(byte) != 0)
@@ -753,8 +757,9 @@ private:
 
     if (m_has_fast_matcher) return match_fast_line(value);
 
-    if (!m_regex_prefix.is_empty() && !value.starts_with(m_regex_prefix))
+    if (!m_regex_prefix.is_empty() && !value.starts_with(m_regex_prefix)) {
       return false;
+    }
 
     if (m_fast_regex_class != grep_repeated_class::None)
       return match_repeated_class_line(value);
@@ -799,8 +804,9 @@ private:
   fn skip_candidate_free_lines(usize source_index, StringView source,
                                StringView lines) throws -> void
   {
-    if (!m_options.should_invert && !m_options.should_print_line_numbers)
+    if (!m_options.should_invert && !m_options.should_print_line_numbers) {
       return;
+    }
 
     usize position = 0;
     while (position < lines.length) {

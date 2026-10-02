@@ -96,7 +96,9 @@ static fn find_tail_starts_from_end(ArrayList<positioned_tail_state> &states,
     operation_states.clear();
     for (usize state_index = 0; state_index < states.count(); state_index++) {
       let &state = states[state_index];
-      if (state.is_done || state.scan_offset == 0) continue;
+      if (state.is_done || state.scan_offset == 0) {
+        continue;
+      }
 
       let const block_size = state.scan_offset > TAIL_BLOCK_BYTE_COUNT
                                  ? TAIL_BLOCK_BYTE_COUNT
@@ -322,11 +324,12 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
   i32 status = 0;
   let const do_report_error = [&](usize source_index, StringView prefix)
                                   throws -> void {
-    report_soft_koshkit_util_error(
-        ec, cxt, args[0].view(),
+    let const message =
         String{allocator, prefix} +
-            String{cxt.scratch_allocator(), sources[source_index]} +
-            "': " + os::last_system_error_message());
+        String{cxt.scratch_allocator(), sources[source_index]} + "': " +
+        os::last_system_error_message();
+    do_flush_output();
+    report_soft_koshkit_util_error(ec, cxt, args[0].view(), message);
     status = 1;
   };
 
@@ -342,7 +345,9 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
     if (sources[source_index] == "" || sources[source_index] == "-" ||
         metadata_errors[source_index] != 0 ||
         os::file_type_letter(statuses[source_index].mode) != '-')
+    {
       return;
+    }
 
     let const descriptor = os::open_file_descriptor(sources[source_index],
                                                     os::file_open_mode::Read);
@@ -465,10 +470,11 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
       window_end++;
     }
 
-    if (unit == tail_unit::Lines && origin == count_origin::FromEnd)
+    if (unit == tail_unit::Lines && origin == count_origin::FromEnd) {
       find_tail_starts_from_end(states, allocator);
-    else if (unit == tail_unit::Lines)
+    } else if (unit == tail_unit::Lines) {
       find_tail_starts_from_start(states, allocator);
+    }
     if (os::INTERRUPT_REQUESTED) return 130;
 
     usize state_index = 0;

@@ -1277,7 +1277,9 @@ fn code_point_is_in_class(StringView class_name, u32 code_point) wontthrow
     -> bool
 {
   char name[16];
-  if (code_point > 0xffff || class_name.length >= sizeof(name)) return false;
+  if (code_point > 0xffff || class_name.length >= sizeof(name)) {
+    return false;
+  }
 
   std::memcpy(name, class_name.data, class_name.length);
   name[class_name.length] = '\0';

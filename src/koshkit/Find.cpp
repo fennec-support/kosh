@@ -142,23 +142,11 @@ public:
   {}
 
   fn walk(StringView path_text, StringView display, usize depth,
-          const os::file_status *known_status, char known_type_letter) throws
-      -> void
+          char type_letter) throws -> void
   {
     let &scratch_arena = m_cxt.expansion_store().scratch_arena();
     let const directory_scratch = scratch_arena.mark();
     defer { scratch_arena.release(directory_scratch); };
-
-    /* The stat reads the symlink, not its target, and a failed stat yields the
-       marker '\0' that matches no -type filter and is not descended. */
-    os::file_status queried_status{};
-    if (known_status == nullptr && known_type_letter == 0) {
-      if (os::stat_path(path_text, queried_status))
-        known_status = &queried_status;
-    }
-    let const type_letter = known_status != nullptr
-                                ? os::file_type_letter(known_status->mode)
-                                : known_type_letter;
 
     if (find_entry_matches(type_letter, get_filename(path_text), depth,
                            m_options, m_allocator))
@@ -294,7 +282,7 @@ private:
     child_display += child_name;
     let child_path = Path{path_text, m_allocator};
     child_path.append(child_name);
-    walk(child_path.view(), child_display.view(), child_depth, nullptr,
+    walk(child_path.view(), child_display.view(), child_depth,
          child_type_letter);
   }
 
@@ -584,7 +572,8 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
       status = 1;
       continue;
     }
-    walker.walk(root, root, 0, &root_statuses[root_index], 0);
+    walker.walk(root, root, 0,
+                os::file_type_letter(root_statuses[root_index].mode));
     if (os::INTERRUPT_REQUESTED) {
       ec.print_to_stdout(output);
       return 130;

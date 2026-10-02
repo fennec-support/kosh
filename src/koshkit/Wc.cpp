@@ -86,7 +86,6 @@ static fn count_newlines(StringView content) wontthrow -> u64
   u64 newline_count = 0;
   usize byte_position = 0;
 
-#if T__HAS_GCC_EXTENSIONS
   typedef char byte_vector __attribute__((vector_size(16)));
   constexpr usize LANE_COUNT = sizeof(byte_vector);
   constexpr usize MAXIMUM_ROUND_COUNT = 255;
@@ -115,22 +114,6 @@ static fn count_newlines(StringView content) wontthrow -> u64
       newline_count += (pair_sums * PAIR_SUM_MULTIPLIER) >> 48;
     }
   }
-#else
-  constexpr u64 LOW_BITS = 0x7f7f7f7f7f7f7f7fULL;
-  constexpr u64 HIGH_BITS = 0x8080808080808080ULL;
-  constexpr u64 NEWLINES = 0x0a0a0a0a0a0a0a0aULL;
-
-  for (; byte_position + sizeof(u64) <= content.length;
-       byte_position += sizeof(u64))
-  {
-    u64 word;
-    __builtin_memcpy(&word, content.data + byte_position, sizeof(word));
-    let const matches = word ^ NEWLINES;
-    let const zero_bytes =
-        ~(((matches & LOW_BITS) + LOW_BITS) | matches | LOW_BITS) & HIGH_BITS;
-    newline_count += __builtin_popcountll(zero_bytes);
-  }
-#endif
 
   for (; byte_position < content.length; byte_position++)
     newline_count += content[byte_position] == '\n';

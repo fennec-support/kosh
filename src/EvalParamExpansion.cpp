@@ -6,7 +6,9 @@
  * assignments, errors, lengths, substrings, trimming, replacement, quoting,
  * and case changes. The same operators apply to scalar and array values. The
  * split keeps parameter syntax and transformations outside the word-expansion
- * coordinator.
+ * coordinator. ParameterExpander holds the state of one ${...} expansion and
+ * dispatches to the operator families, and ModifierWordExpander scans and
+ * expands the word that follows an operator.
  */
 
 #include "Errors.hpp"
@@ -82,22 +84,13 @@ enum class pattern_match_extent : u8
   Longest,
 };
 
-static fn get_character_length(StringView text, usize position,
-                               glob_charset charset) wontthrow -> usize
-{
-  if (charset == glob_charset::Utf8 && position < text.length)
-    return utils::utf8_character_length(text, position);
-
-  return 1;
-}
-
-/* True when position falls inside a valid multibyte sequence of text, so a cut
-   there would split a character. */
 static fn splits_character(StringView text, usize position,
                            glob_charset charset) wontthrow -> bool
 {
   if (charset != glob_charset::Utf8 || position == 0 || position >= text.length)
+  {
     return false;
+  }
   if ((static_cast<u8>(text[position]) & 0xc0) != 0x80) return false;
 
   for (usize distance = 1; distance <= 3 && distance <= position; distance++) {
@@ -111,11 +104,11 @@ static fn splits_character(StringView text, usize position,
 
 /* The active mask marks which pattern bytes may act as glob metacharacters, so
    a quoted or escaped * or ? matches itself. */
-fn trim_matching(Allocator result_allocator, StringView value,
-                 StringView pattern, const Bitset &active, trim_end end,
-                 extglob_mode mode, glob_charset charset,
-                 pattern_match_extent extent) throws -> String
+fn trim_matching(const EvalContext &cxt, Allocator result_allocator,
+                 StringView value, StringView pattern, const Bitset &active,
+                 trim_end end, pattern_match_extent extent) throws -> String
 {
+  let const mode = cxt.get_extglob_mode();
   ASSERT(active.count() == pattern.length);
 
   usize active_star_count = 0;
@@ -215,6 +208,7 @@ fn trim_matching(Allocator result_allocator, StringView value,
     return String{result_allocator, value.substring_of_length(0, *match)};
   }
 
+  let const charset = cxt.get_glob_charset();
   let const literal_head =
       has_extglob_group ? StringView{}
                         : pattern.substring_of_length(0, first_glob_position);
@@ -283,10 +277,9 @@ fn trim_matching(Allocator result_allocator, StringView value,
   return String{result_allocator, value};
 }
 
-static fn trim_value_with_modifier(
-    EvalContext &cxt, StringView value, StringView word, trim_end end,
-    const SourceLocation *source_location = nullptr,
-    pattern_match_extent extent = pattern_match_extent::Shortest) throws
+static fn trim_value_with_modifier(EvalContext &cxt, StringView value,
+                                   StringView word, char op, bool is_doubled,
+                                   const SourceLocation *source_location) throws
     -> String
 {
   LOG(All, "trimming a value of %zu bytes with the pattern word '%.*s'",
@@ -294,9 +287,11 @@ static fn trim_value_with_modifier(
   let active = Bitset{cxt.scratch_allocator()};
   let const pattern =
       cxt.expand_modifier_word_masked(word, active, true, source_location);
-  return trim_matching(cxt.scratch_allocator(), value, pattern.view(), active,
-                       end, cxt.get_extglob_mode(), cxt.get_glob_charset(),
-                       extent);
+  return trim_matching(
+      cxt, cxt.scratch_allocator(), value, pattern.view(), active,
+      op == '#' ? trim_end::Prefix : trim_end::Suffix,
+      is_doubled ? pattern_match_extent::Longest
+                 : pattern_match_extent::Shortest);
 }
 
 } /* namespace */
@@ -364,7 +359,7 @@ private:
   fn emit_command_substitution(StringView body, usize end_index) throws -> void;
   fn scan_braced_body(usize &position) throws -> String;
   fn scan_arithmetic_body(usize &position) throws -> String;
-  fn scan_command_body(usize &position) throws -> String;
+  fn scan_command_body(usize start, usize &position) throws -> String;
   fn copy_braced_backquote(String &inner, usize &position) throws -> void;
   fn copy_braced_command(String &inner, usize &position) throws -> void;
   fn copy_braced_quoted_byte(String &inner, usize &position, char &quote) throws
@@ -532,34 +527,11 @@ fn EvalContext::ModifierWordExpander::copy_braced_command(
     String &inner, usize &position) throws -> void
 {
   inner += m_word[position];
-  inner += m_word[++position];
-  position++;
-  usize paren_depth = 1;
-  char nested_quote = 0;
-  while (position < m_word.length) {
-    let const p = m_word[position];
-    inner += p;
+  inner += m_word[position + 1];
+  inner += scan_command_body(position + 2, position);
+  if (position < m_word.length) {
+    inner += ')';
     position++;
-    if (nested_quote != 0) {
-      if (nested_quote == '"' && p == '\\' && position < m_word.length) {
-        inner += m_word[position++];
-        continue;
-      }
-      if (p == nested_quote) nested_quote = 0;
-      continue;
-    }
-    if (p == '\\' && position < m_word.length) {
-      inner += m_word[position++];
-      continue;
-    }
-    if (p == '\'' || p == '"') {
-      nested_quote = p;
-    } else if (p == '(') {
-      paren_depth++;
-    } else if (p == ')') {
-      paren_depth--;
-      if (paren_depth == 0) break;
-    }
   }
 }
 
@@ -720,13 +692,14 @@ fn EvalContext::ModifierWordExpander::expand_arithmetic() throws -> void
   m_index = j - 1;
 }
 
-fn EvalContext::ModifierWordExpander::scan_command_body(usize &position) throws
+fn EvalContext::ModifierWordExpander::scan_command_body(usize start,
+                                                        usize &position) throws
     -> String
 {
   /* Command substitution $(...), scanned to the matching ). A quote run
      keeps its bytes literal so a ) inside a string does not close early. */
   let inner = String{m_context.scratch_allocator()};
-  position = m_index + 2;
+  position = start;
   usize depth = 1;
   char quote = 0;
   for (; position < m_word.length; position++) {
@@ -763,7 +736,7 @@ fn EvalContext::ModifierWordExpander::expand_command_substitution() throws
     -> void
 {
   usize j = 0;
-  let const inner = scan_command_body(j);
+  let const inner = scan_command_body(m_index + 2, j);
   emit_command_substitution(inner.view(), j);
 }
 
@@ -1253,12 +1226,9 @@ fn EvalContext::ParameterExpander::expand_trim_operator(
 {
   let word_location = SourceLocation{};
   let const current_view = current.has_value() ? current->view() : StringView{};
-  return trim_value_with_modifier(m_context, current_view, word,
-                                  op == '#' ? trim_end::Prefix
-                                            : trim_end::Suffix,
-                                  get_location_for(word, word_location),
-                                  is_doubled ? pattern_match_extent::Longest
-                                             : pattern_match_extent::Shortest);
+  return trim_value_with_modifier(m_context, current_view, word, op,
+                                  is_doubled,
+                                  get_location_for(word, word_location));
 }
 
 fn EvalContext::ParameterExpander::expand_operator() throws -> String
@@ -1308,8 +1278,12 @@ fn EvalContext::ParameterExpander::expand_operator() throws -> String
 fn EvalContext::ParameterExpander::expand() throws -> String
 {
   if (m_spec.is_empty()) return String{m_context.scratch_allocator()};
-  if (m_spec.length > 1 && m_spec[0] == '!') return expand_indirect();
-  if (m_spec.length > 1 && m_spec[0] == '#') return expand_length();
+  if (m_spec.length > 1 && m_spec[0] == '!') {
+    return expand_indirect();
+  }
+  if (m_spec.length > 1 && m_spec[0] == '#') {
+    return expand_length();
+  }
 
   split_name();
 
@@ -1588,7 +1562,7 @@ fn EvalContext::pattern_replace_value(
       matched = longest_pattern_match_at(pattern.view(), pattern_active, value,
                                          i, extglob, charset);
     }
-    let const step = get_character_length(value, i, charset);
+    let const step = utils::charset_character_length(value, i, charset);
     if (matched.has_value()) {
       append_pattern_replacement(out, replacement.view(),
                                  value.substring_of_length(i, *matched));
@@ -1737,7 +1711,9 @@ fn EvalContext::apply_case_modification_to_value(
       (!pattern_active[0] ||
        (pattern[0] != '*' && pattern[0] != '?' && pattern[0] != '['));
   let const extglob = get_extglob_mode();
-  let const charset = get_glob_charset();
+  let const charset = pattern_matches_any || is_single_literal_pattern
+                          ? glob_charset::Bytes
+                          : get_glob_charset();
   let out = String{scratch_allocator()};
   out.reserve(value.length);
   for (usize i = 0; i < value.length; i++) {
@@ -1750,7 +1726,7 @@ fn EvalContext::apply_case_modification_to_value(
          utils::glob_matches(
              pattern.view(),
              value.substring_of_length(
-                 i, get_character_length(value, i, charset)),
+                 i, utils::charset_character_length(value, i, charset)),
              pattern_active, 0, extglob, charset));
     if (is_affected && is_pattern_match)
     {
@@ -1786,12 +1762,9 @@ fn EvalContext::apply_value_modifier(
     let const pattern_word = modifier.substring(is_doubled ? 2 : 1);
     let pattern_location = SourceLocation{};
     return trim_value_with_modifier(
-        *this, value, pattern_word,
-        op == '#' ? trim_end::Prefix : trim_end::Suffix,
+        *this, value, pattern_word, op, is_doubled,
         source_location_for_subview(source_location, modifier, pattern_word,
-                                    pattern_location),
-        is_doubled ? pattern_match_extent::Longest
-                   : pattern_match_extent::Shortest);
+                                    pattern_location));
   }
   return String{scratch_allocator(), value};
 }

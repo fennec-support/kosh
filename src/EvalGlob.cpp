@@ -48,7 +48,9 @@ fn EvalContext::get_glob_charset() const throws -> glob_charset
 {
   for (let const name : {"LC_ALL", "LC_CTYPE", "LANG"}) {
     let const value = get_variable_value(name);
-    if (!value.has_value() || value->is_empty()) continue;
+    if (!value.has_value() || value->is_empty()) {
+      continue;
+    }
 
     return utils::locale_name_is_utf8(value->view()) ? glob_charset::Utf8
                                                      : glob_charset::Bytes;

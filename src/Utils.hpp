@@ -540,6 +540,11 @@ pure fn locale_name_is_utf8(StringView locale_name) wontthrow -> bool;
 pure fn utf8_character_length(StringView text, usize position) wontthrow
     -> usize;
 
+/* The length of the character that starts at position under the charset, one
+   byte in the byte charset and at or past the end of text. */
+pure fn charset_character_length(StringView text, usize position,
+                                 glob_charset charset) wontthrow -> usize;
+
 fn set_quit_context(const EvalContext *context) wontthrow -> void;
 fn print_memory_report() wontthrow -> void;
 

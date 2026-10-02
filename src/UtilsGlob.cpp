@@ -108,15 +108,10 @@ fn extglob_group_close(StringView glob) wontthrow -> usize
   return glob.count();
 }
 
-/* The position one character past position, one byte in the byte charset. A
-   position at or past the end advances by one so a split loop ends. */
 pure fn get_next_split(StringView str, usize position,
                        glob_charset charset) wontthrow -> usize
 {
-  if (charset == glob_charset::Utf8 && position < str.count())
-    return position + utf8_character_length(str, position);
-
-  return position + 1;
+  return position + charset_character_length(str, position, charset);
 }
 
 /* The length of the bracket expression that opens at glob[0], or zero when no
@@ -435,6 +430,16 @@ pure fn utf8_character_length(StringView text, usize position) wontthrow
   return decode_utf8(text, position, 0xfffd).length;
 }
 
+pure fn charset_character_length(StringView text, usize position,
+                                 glob_charset charset) wontthrow -> usize
+{
+  if (charset == glob_charset::Utf8 && position < text.count()) {
+    return utf8_character_length(text, position);
+  }
+
+  return 1;
+}
+
 hot flatten fn glob_matches(StringView glob, StringView str,
                             const Bitset &glob_active, usize mask_offset,
                             extglob_mode mode, glob_charset charset) throws
@@ -522,17 +527,17 @@ hot flatten fn glob_matches(StringView glob, StringView str,
           [](StringView view, usize index)
               wontthrow -> u8 { return static_cast<u8>(view[index]); };
 
-      /* The character that starts at index. The byte charset reads one byte.
-         The Utf8 charset decodes a whole sequence, and an invalid byte becomes
-         a value above the code point range so it equals only itself. */
       let const do_get_character_at =
           [&](StringView view, usize index) wontthrow -> decoded_codepoint {
         let const byte = do_get_byte_at(view, index);
-        if (!is_utf8 || byte < 0x80) return {byte, 1};
+        if (!is_utf8 || byte < 0x80) {
+          return {byte, 1};
+        }
 
         let const decoded = decode_utf8(view, index, 0xfffd);
-        if (decoded.value == 0xfffd && decoded.length == 1)
+        if (decoded.value == 0xfffd && decoded.length == 1) {
           return {0x110000u + byte, 1};
+        }
 
         return decoded;
       };

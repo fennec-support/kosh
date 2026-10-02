@@ -2993,9 +2993,6 @@ public:
                : extglob_mode::Disabled;
   }
 
-  /* The first nonempty of LC_ALL, LC_CTYPE, and LANG selects the character
-     locale. Reading the variables here applies assignment, unset, export, and
-     a prefix assignment without a separate refresh. */
   fn get_glob_charset() const throws -> glob_charset;
 
   fn set_shopt_option(StringView name, bool is_enabled) throws -> void;
