@@ -5,4 +5,6 @@
   koshkit ln -sf stat-file stat-link
   koshkit stat -c '%n=%s' stat-file stat-file-two
   koshkit stat -c '%n=%F' stat-file stat-link
+  koshkit stat -c '%n=%s' stat-file stat-file stat-missing stat-file-two stat-file
+  printf 'duplicate-status=%s\n' "$?"
 )

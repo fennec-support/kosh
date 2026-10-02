@@ -2,3 +2,11 @@ stat-file=4
 stat-file-two=4
 stat-file=regular file
 stat-link=symbolic link
+stat-file=4
+stat-file=4
+8:3: error: koshkit stat: cannot stat 'stat-missing': No such file or directory.
+     8 |    koshkit stat -c '%n=%s' stat-file stat-file stat-missing stat-file-two stat-file
+       |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+stat-file-two=4
+stat-file=4
+duplicate-status=1

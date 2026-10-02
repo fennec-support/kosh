@@ -40,6 +40,13 @@ status=0
 ./broken
 ./file-link
 ./long
+--- find -maxdepth 2 -name *.txt ---
+./a/literal[bracket].txt
+./a/one.txt
+--- find -maxdepth 1 -type d ---
+.
+./a
+./long
 --- find -mindepth 3 -type f ---
 ./a/b/c/three.txt
 ./a/b/two.log

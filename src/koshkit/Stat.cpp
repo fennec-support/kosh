@@ -767,7 +767,7 @@ fn Stat::execute(const ExecContext &ec, EvalContext &cxt,
                                              file_statuses[index]));
       }
     }
-    results = batch.execute(os::batch_deduplication::Enabled);
+    results = batch.execute(os::batch_deduplication::Disabled);
   }
 
   i32 status = 0;

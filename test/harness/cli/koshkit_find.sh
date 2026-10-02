@@ -33,6 +33,10 @@ echo "--- find -type d ---"
 "$BIN" -c 'koshkit find . -type d'
 echo "--- find -maxdepth 1 ---"
 "$BIN" -c 'koshkit find . -maxdepth 1'
+echo "--- find -maxdepth 2 -name *.txt ---"
+"$BIN" -c 'koshkit find . -maxdepth 2 -name "*.txt"'
+echo "--- find -maxdepth 1 -type d ---"
+"$BIN" -c 'koshkit find . -maxdepth 1 -type d'
 echo "--- find -mindepth 3 -type f ---"
 "$BIN" -c 'koshkit find . -mindepth 3 -type f'
 echo "--- find a named root ---"

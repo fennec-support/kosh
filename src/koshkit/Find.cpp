@@ -287,6 +287,7 @@ static fn find_walk(const ExecContext &ec, EvalContext &cxt,
     do_flush_unknown();
   }
 
+  let const is_every_child_matched = is_terminal_depth && unknown_count == 0;
   for (usize index = 0; index < children->count(); index++) {
     if (os::INTERRUPT_REQUESTED) return;
 
@@ -300,9 +301,12 @@ static fn find_walk(const ExecContext &ec, EvalContext &cxt,
         (options.max_depth < 0 ||
          static_cast<i64>(depth + 1) < options.max_depth);
     if (!should_descend_child) {
-      if (!find_entry_matches(child_type_letter, child_name, depth + 1, options,
+      if (!is_every_child_matched &&
+          !find_entry_matches(child_type_letter, child_name, depth + 1, options,
                               allocator))
+      {
         continue;
+      }
 
       output += display;
       if (!display.is_empty() && display[display.length - 1] != '/') {
