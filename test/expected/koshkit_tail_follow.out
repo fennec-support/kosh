@@ -1,0 +1,79 @@
+--- descriptor follow: append, truncate, rename ---
+one
+two
+three
+fresh
+renamed
+stderr:
+TMPDIR/a.txt: file truncated.
+--- name follow: rotation and replacement ---
+first
+second
+third
+stderr:
+'TMPDIR/r.txt' has become inaccessible: No such file or directory.
+'TMPDIR/r.txt' has appeared;  following new file.
+'TMPDIR/r.txt' has been replaced;  following new file.
+--- name follow without retry drops a deleted file ---
+status=1
+gone
+TMPDIR/g.txt: No such file or directory.
+no files remaining.
+--- retry opens a file that appears later ---
+late
+stderr:
+cannot open 'TMPDIR/late.txt': No such file or directory.
+'TMPDIR/late.txt' has appeared;  following new file.
+--- headers switch with the file that printed last ---
+==> TMPDIR/h1.txt <==
+1a
+
+==> TMPDIR/h2.txt <==
+2a
+2b
+
+==> TMPDIR/h1.txt <==
+1b
+1c
+stderr:
+--- quiet and verbose headers ---
+1a
+1b
+1c
+2a
+2b
+1d
+stderr:
+==> TMPDIR/h1.txt <==
+1a
+1b
+1c
+1d
+stderr:
+--- zero lines still follows ---
+==> TMPDIR/h1.txt <==
+
+==> TMPDIR/h2.txt <==
+
+==> TMPDIR/h1.txt <==
+1e
+stderr:
+--- regular standard input is followed ---
+in1
+in2
+stderr:
+--- pipe standard input ignores follow ---
+p2
+status=0
+--- missing file without retry ---
+cannot open 'TMPDIR/none.txt': No such file or directory.
+no files remaining.
+--- watched process ends the follow ---
+w1
+status=0
+--- invalid operands ---
+invalid number of seconds 'x'.
+invalid PID 'x'.
+--- interrupt ends the wait ---
+w1
+status=130

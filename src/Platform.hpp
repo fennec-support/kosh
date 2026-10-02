@@ -998,6 +998,7 @@ pure constexpr fn file_status_matches(const file_status &expected,
 
 fn stat_path(StringView path, file_status &status) wontthrow -> bool;
 fn stat_path_following(StringView path, file_status &status) wontthrow -> bool;
+fn stat_descriptor(os::descriptor fd, file_status &status) wontthrow -> bool;
 
 enum class process_file_match_scope : u8
 {
@@ -1319,6 +1320,22 @@ public:
 
 private:
   descriptor m_descriptor{KOSH_INVALID_FD};
+};
+
+class FileWatcher
+{
+public:
+  FileWatcher() wontthrow;
+  FileWatcher(const FileWatcher &) = delete;
+  FileWatcher &operator=(const FileWatcher &) = delete;
+  ~FileWatcher();
+
+  fn watch(StringView path) wontthrow -> void;
+  fn wait(f64 timeout_seconds) wontthrow -> void;
+
+private:
+  descriptor m_descriptor{KOSH_INVALID_FD};
+  ArrayList<descriptor> m_watched_descriptors{heap_allocator()};
 };
 
 /* Every rebinding of a standard descriptor bumps this counter. A cached answer

@@ -7,7 +7,8 @@
  * implements hardware performance counters, heap and resource statistics, CPU
  * affinity, executable path discovery, process enumeration, ownership lookup,
  * and process file-user scans, including fallbacks for targets that lack a
- * facility. The separate fragment keeps target-specific conditionals out of
+ * facility. It also implements the FileWatcher that wakes a tail follower
+ * through inotify on Linux and kqueue on macOS and FreeBSD. The separate fragment keeps target-specific conditionals out of
  * the common POSIX backend.
  */
 
@@ -15,6 +16,12 @@
 #define st_mtim st_mtimespec
 #define st_atim st_atimespec
 #define st_ctim st_ctimespec
+#endif
+
+#if defined __linux__
+#include <sys/inotify.h>
+#elif defined __APPLE__ || defined __FreeBSD__
+#include <sys/event.h>
 #endif
 
 #if defined __GLIBC__
@@ -2827,6 +2834,120 @@ fn list_process_open_files(i64 pid, Allocator allocator,
   unused(detail);
   return files;
 #endif
+}
+
+constexpr f64 FILE_WATCHER_SLICE_SECONDS = 0.1;
+
+FileWatcher::FileWatcher() wontthrow
+{
+#if defined __linux__
+  m_descriptor = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
+#elif defined __APPLE__ || defined __FreeBSD__
+  m_descriptor = kqueue();
+  if (m_descriptor != KOSH_INVALID_FD) fcntl(m_descriptor, F_SETFD, FD_CLOEXEC);
+#endif
+}
+
+FileWatcher::~FileWatcher()
+{
+  for (let const watched : m_watched_descriptors) close_fd(watched);
+
+  if (m_descriptor != KOSH_INVALID_FD) close_fd(m_descriptor);
+}
+
+fn FileWatcher::watch(StringView path) wontthrow -> void
+{
+#if defined __linux__ || defined __APPLE__ || defined __FreeBSD__
+  if (m_descriptor == KOSH_INVALID_FD || path.length == 0 ||
+      path.length >= PATH_MAX)
+  {
+    return;
+  }
+
+  char file_path[PATH_MAX];
+  std::memcpy(file_path, path.data, path.length);
+  file_path[path.length] = '\0';
+
+  char directory_path[PATH_MAX];
+  let const slash = path.find_last_character('/');
+  if (!slash.has_value()) {
+    directory_path[0] = '.';
+    directory_path[1] = '\0';
+  } else {
+    let const directory_length = *slash == 0 ? usize{1} : *slash;
+    std::memcpy(directory_path, path.data, directory_length);
+    directory_path[directory_length] = '\0';
+  }
+
+#if defined __linux__
+  inotify_add_watch(m_descriptor, file_path,
+                    IN_MODIFY | IN_ATTRIB | IN_DELETE_SELF | IN_MOVE_SELF);
+  inotify_add_watch(m_descriptor, directory_path,
+                    IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO);
+#else
+  for (let const watched_path : {static_cast<const char *>(file_path),
+                                 static_cast<const char *>(directory_path)})
+  {
+#if defined __APPLE__
+    let const watched = open(watched_path, O_EVTONLY | O_CLOEXEC);
+#else
+    let const watched = open(watched_path, O_RDONLY | O_CLOEXEC);
+#endif
+    if (watched == KOSH_INVALID_FD) continue;
+
+    struct kevent change;
+    EV_SET(&change, static_cast<uintptr_t>(watched), EVFILT_VNODE,
+           EV_ADD | EV_CLEAR, NOTE_WRITE | NOTE_EXTEND | NOTE_DELETE |
+               NOTE_RENAME | NOTE_ATTRIB | NOTE_LINK | NOTE_REVOKE,
+           0, nullptr);
+    if (kevent(m_descriptor, &change, 1, nullptr, 0, nullptr) != 0) {
+      close_fd(watched);
+      continue;
+    }
+
+    m_watched_descriptors.push(watched);
+  }
+#endif
+#else
+  unused(path);
+#endif
+}
+
+fn FileWatcher::wait(f64 timeout_seconds) wontthrow -> void
+{
+  f64 remaining_seconds = timeout_seconds;
+  while (remaining_seconds > 0.0 && !INTERRUPT_REQUESTED) {
+    let const slice_seconds = remaining_seconds < FILE_WATCHER_SLICE_SECONDS
+                                  ? remaining_seconds
+                                  : FILE_WATCHER_SLICE_SECONDS;
+    remaining_seconds -= slice_seconds;
+    if (m_descriptor == KOSH_INVALID_FD) {
+      sleep_for_seconds(slice_seconds);
+      continue;
+    }
+
+#if defined __linux__
+    if (wait_for_fd_readable(m_descriptor,
+                             static_cast<i64>(slice_seconds * 1e9) + 1) <= 0)
+    {
+      continue;
+    }
+
+    char events[4096];
+    while (read(m_descriptor, events, sizeof(events)) > 0) {}
+
+    return;
+#elif defined __APPLE__ || defined __FreeBSD__
+    struct timespec timeout;
+    timeout.tv_sec = static_cast<time_t>(slice_seconds);
+    timeout.tv_nsec = static_cast<long>(
+        (slice_seconds - static_cast<f64>(timeout.tv_sec)) * 1e9);
+    struct kevent event;
+    if (kevent(m_descriptor, nullptr, 0, &event, 1, &timeout) > 0) return;
+#else
+    sleep_for_seconds(slice_seconds);
+#endif
+  }
 }
 
 } /* namespace os */

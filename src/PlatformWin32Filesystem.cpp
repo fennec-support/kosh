@@ -1651,6 +1651,25 @@ fn stat_path(StringView path, file_status &status) wontthrow -> bool
   return true;
 }
 
+fn stat_descriptor(os::descriptor fd, file_status &status) wontthrow -> bool
+{
+  BY_HANDLE_FILE_INFORMATION identity{};
+  if (GetFileInformationByHandle(fd, &identity) == 0) return false;
+
+  status = {};
+  status.device_id = identity.dwVolumeSerialNumber;
+  status.file_id = (static_cast<u64>(identity.nFileIndexHigh) << 32) |
+                   identity.nFileIndexLow;
+  status.has_file_identity = true;
+  status.link_count = identity.nNumberOfLinks;
+  status.size = (static_cast<u64>(identity.nFileSizeHigh) << 32) |
+                identity.nFileSizeLow;
+  status.mode = (identity.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0
+                    ? 0040000u
+                    : 0100000u;
+  return true;
+}
+
 fn stat_path_following(StringView path, file_status &status) wontthrow -> bool
 {
   let const resolved = canonical_path(Path{path});

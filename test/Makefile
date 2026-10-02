@@ -37,7 +37,8 @@ SKIPPED_TESTS := \
 	unknown_flag_color wait_on_stopped_job \
 	koshkit_goodcore_archive koshkit_ls_modes koshkit_misc \
 	assimilate koshkit_printenv koshkit_process_tools \
-	koshkit_text koshkit_timeout loop_redirect_descriptor \
+	koshkit_tail_follow koshkit_text koshkit_timeout \
+	loop_redirect_descriptor \
 	pipeline_stage_evaluation_mode shopt_states \
 	subshell_replay_trap_suppression subshell_spawn_state \
 	trace_policy trailing_separator_execution ulimit_validation \

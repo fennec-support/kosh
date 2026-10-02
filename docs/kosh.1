@@ -1718,7 +1718,37 @@ The last ten lines are printed by default. The
 .B \-n
 option selects a line count and the
 .B \-c
-option selects a byte count.
+option selects a byte count. The
+.BR \-q ,
+.BR \-\-quiet ,
+and
+.B \-\-silent
+options never print file name headers and
+.BR \-v ,
+.B \-\-verbose
+always prints them. The
+.B \-f
+option keeps each regular file open after the initial output and prints the
+bytes appended to it, with a header whenever the output switches to another
+file. The
+.B \-F
+option follows the file name, reports and reopens a file that is replaced,
+removed, or created later, and implies
+.BR \-\-retry .
+The
+.BI \-\-follow= descriptor|name
+option selects the mode, and a name follow without
+.B \-\-retry
+stops following a removed file. A truncated file is reported on standard error
+and read again from its start. Standard input is followed only when it is a
+regular file, and a pipe is printed once. The
+.BR \-s ,
+.B \-\-sleep\-interval
+option sets the longest wait between checks in seconds, one by default, and the
+.BI \-\-pid= pid
+option ends the follow after that process exits. Linux and macOS wake on file
+changes, and other targets check every interval. A follow ends with status 130
+on interrupt.
 .TP
 .B killall
 Processes are signaled by exact name. The signal is selected and the signal

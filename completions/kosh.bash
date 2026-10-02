@@ -305,8 +305,11 @@ _koshkit_util_flags ()
     du)
       echo "-s -h"
     ;;
-    head | tail)
+    head)
       echo "-n -c"
+    ;;
+    tail)
+      echo "-n -c -f -F -q -v -s --follow --retry --pid --sleep-interval --quiet --silent --verbose"
     ;;
     wc)
       echo "-l -w -c"

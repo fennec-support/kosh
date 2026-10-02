@@ -915,6 +915,14 @@ fn stat_path_following(StringView path, file_status &status) wontthrow -> bool
   return true;
 }
 
+fn stat_descriptor(os::descriptor fd, file_status &status) wontthrow -> bool
+{
+  struct stat info{};
+  if (::fstat(fd, &info) != 0) return false;
+  fill_file_status(info, status);
+  return true;
+}
+
 fn file_type_letter(u32 mode) wontthrow -> char
 {
   const mode_t bits = static_cast<mode_t>(mode);

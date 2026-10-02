@@ -102,6 +102,9 @@ changes update this file.
 - Descriptor-rebinding wrappers increment the descriptor epoch. Cached color
   decisions refresh against it. Forks, process groups, filesystems, and processor
   counts also use platform wrappers.
+- `os::FileWatcher` wakes `tail -f` through inotify or kqueue and polls on
+  other targets. A follower rescans every file after each wait, so a missed
+  event costs one interval.
 - A routed platform fragment is included in `src/Platform.cpp` and owns no
   object of its own. Compile it through `Platform.o` for the active target and
   mode. Compiling a fragment directly produces unrelated scope errors.

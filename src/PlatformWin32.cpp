@@ -4,7 +4,7 @@
  *
  * This routed Win32 source fragment implements text conversion, descriptor and
  * shell-fd mapping, named pipes, terminal settings, signals, users, clocks,
- * resource and configuration queries, environment access, program-name
+ * the polling file watcher, resource and configuration queries, environment access, program-name
  * normalization, regex allocation, evaluator bootstrap reception, platform
  * initialization, and the native entry point. Dedicated fragments contain
  * filesystem operations and process creation, leaving this file as the general
@@ -1730,6 +1730,25 @@ fn sleep_for_seconds(double seconds) wontthrow -> void
 {
   if (seconds <= 0.0) return;
   Sleep(static_cast<DWORD>(seconds * 1000.0));
+}
+
+FileWatcher::FileWatcher() wontthrow {}
+
+FileWatcher::~FileWatcher() {}
+
+fn FileWatcher::watch(StringView path) wontthrow -> void { unused(path); }
+
+fn FileWatcher::wait(f64 timeout_seconds) wontthrow -> void
+{
+  constexpr f64 SLICE_SECONDS = 0.1;
+
+  f64 remaining_seconds = timeout_seconds;
+  while (remaining_seconds > 0.0 && !INTERRUPT_REQUESTED) {
+    let const slice_seconds =
+        remaining_seconds < SLICE_SECONDS ? remaining_seconds : SLICE_SECONDS;
+    remaining_seconds -= slice_seconds;
+    sleep_for_seconds(slice_seconds);
+  }
 }
 
 } /* namespace os */

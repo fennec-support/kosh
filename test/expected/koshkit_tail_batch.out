@@ -98,7 +98,6 @@ c
 1:1: error: koshkit tail: cannot open 'missing.txt': No such file or directory.
      1 |  koshkit tail -n 1 missing.txt with-final.txt
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 ==> with-final.txt <==
 c
 status=1
