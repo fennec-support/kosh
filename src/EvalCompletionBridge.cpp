@@ -42,6 +42,7 @@ fn EvalContext::run_completion_function(StringView function_name,
       cword);
 
   execution_store().completion_function_running() = true;
+  execution_store().should_mark_completion_directories() = false;
   defer { execution_store().completion_function_running() = false; };
 
   let defining_runtime = RuntimeState::capture(*this);

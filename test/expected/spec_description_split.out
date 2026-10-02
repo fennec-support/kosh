@@ -5,3 +5,14 @@ void.ts.net
 plainvalue
 == a parenthesis inside a value is left whole:
 'file(1).txt'
+== trailing spaces are trimmed from a value:
+checkout
+clean
+== compopt -o filenames marks directories:
+Makefile
+harness/
+== the -D loader marks directories after compopt -o filenames:
+Makefile
+harness/
+== a directory is left bare without compopt -o filenames:
+harness

@@ -800,6 +800,14 @@ public:
   {
     return m_is_completion_function_running;
   }
+  fn should_mark_completion_directories() wontthrow -> bool &
+  {
+    return m_should_mark_completion_directories;
+  }
+  pure fn should_mark_completion_directories() const wontthrow -> bool
+  {
+    return m_should_mark_completion_directories;
+  }
   fn prompt_command_running() wontthrow -> bool &
   {
     return m_is_prompt_command_running;
@@ -842,6 +850,7 @@ private:
   bool m_should_elide_pending_subshell_fork{false};
   bool m_terminal_exec_allowed{false};
   bool m_is_completion_function_running{false};
+  bool m_should_mark_completion_directories{false};
   bool m_is_prompt_command_running{false};
   bool m_shell_is_interactive{false};
 };

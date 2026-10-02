@@ -1099,6 +1099,11 @@ static pure fn entry_is_unrequested_dash_word(
 static fn push_spec_candidate(StringView entry, ArrayList<String> &candidates,
                               StringMap<String> &descriptions) throws -> void
 {
+  while (!entry.is_empty() && entry[entry.length - 1] == ' ')
+    entry = entry.substring_of_length(0, entry.length - 1);
+
+  if (entry.is_empty()) return;
+
   let const paren = entry.find_character('(');
   if (paren.has_value() && *paren > 0 && entry[*paren - 1] == ' ' &&
       entry[entry.length - 1] == ')')
@@ -1115,6 +1120,30 @@ static fn push_spec_candidate(StringView entry, ArrayList<String> &candidates,
     }
   }
   candidates.push(String{completion_allocator(), entry});
+}
+
+static fn mark_spec_directory_candidates(ArrayList<String> &candidates,
+                                         const StringMap<String> &descriptions,
+                                         EvalContext &context) throws -> void
+{
+  if (!context.execution_store().should_mark_completion_directories()) return;
+
+  usize marked_count = 0;
+  for (let &candidate : candidates) {
+    if (os::is_directory_separator(candidate[candidate.length() - 1]) ||
+        descriptions.find(candidate.view()).has_value())
+    {
+      continue;
+    }
+
+    if (!Path{candidate.view()}.is_directory()) continue;
+
+    candidate.push('/');
+    marked_count++;
+  }
+
+  LOG(Debug, "marked %zu of %zu spec candidates as directories", marked_count,
+      candidates.count());
 }
 
 fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
@@ -1195,6 +1224,9 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
           continue;
         push_spec_candidate(entry.view(), loaded, descriptions);
       }
+
+      mark_spec_directory_candidates(loaded, descriptions, context);
+
       /* An empty reply never claims the completion, so the cascade falls to the
          filesystem the way bash-completion's -o default behaves. */
       if (loaded.is_empty()) return None;
@@ -1240,6 +1272,8 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
         continue;
       push_spec_candidate(entry.view(), candidates, descriptions);
     }
+
+    mark_spec_directory_candidates(candidates, descriptions, context);
   }
 
   if (candidates.is_empty()) return None;
