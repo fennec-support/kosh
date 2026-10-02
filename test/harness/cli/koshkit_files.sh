@@ -106,6 +106,13 @@ if [ "${TARGET:-$(uname -s)}" = Linux ]; then
   if [ "$1" -ne "$((du_sparse_blocks * 512))" ]; then
     exit 1
   fi
+  procfs_path_count=$("$BIN" -c 'koshkit wc -l /proc/self/mountinfo /proc/kallsyms')
+  procfs_pipe_count=$(cat /proc/self/mountinfo /proc/kallsyms | "$BIN" -c 'koshkit wc -l')
+  set -- $procfs_path_count
+  procfs_path_total=$5
+  if [ "$procfs_path_total" -ne "$procfs_pipe_count" ]; then
+    exit 1
+  fi
 fi
 mkdir -p du-default/sub
 printf a > du-default/a

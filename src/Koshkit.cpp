@@ -601,12 +601,17 @@ fn SourceBatchReader::fill_readers() throws -> void
       break;
     }
 
+    let const reported_byte_count =
+        os::regular_descriptor_file_size(*descriptor);
+
     Reader reader;
     reader.buffer.reserve(m_read_byte_count);
     reader.source_index = source_index;
     reader.read_byte_count = m_read_byte_count;
     reader.descriptor = *descriptor;
     reader.descriptor_mode = reader_descriptor_mode::Owned;
+    reader.should_end_at_short_read =
+        reported_byte_count.has_value() && *reported_byte_count > 0;
     m_source_index++;
 
     if (m_read_mode == source_read_mode::Sequential) {
@@ -671,8 +676,11 @@ fn SourceBatchReader::read_seekable() throws -> ReadResult
     reader.byte_offset += result.transferred_byte_count;
     /* A short positioned read from a regular file is the EOF boundary. Avoid
        submitting a second zero-byte read for the common small-file case. */
-    if (result.transferred_byte_count < reader.read_byte_count)
+    if (reader.should_end_at_short_read &&
+        result.transferred_byte_count < reader.read_byte_count)
+    {
       close_reader(reader);
+    }
   }
 
   return ReadResult::Chunks;
@@ -712,8 +720,10 @@ fn SourceBatchReader::read_sequential() throws -> ReadResult
   /* A short read is the EOF boundary only for sources already known regular.
      Pipes and other sequential sources must keep reading until EOF. */
   if (m_kind_mode == source_kind_mode::KnownRegular &&
-      *read_count < reader.read_byte_count)
+      reader.should_end_at_short_read && *read_count < reader.read_byte_count)
+  {
     close_reader(reader);
+  }
   return ReadResult::Chunks;
 }
 

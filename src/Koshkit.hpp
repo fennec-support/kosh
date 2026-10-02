@@ -784,6 +784,7 @@ private:
     usize read_byte_count{0};
     os::descriptor descriptor{KOSH_INVALID_FD};
     i32 pending_error_number{0};
+    bool should_end_at_short_read{false};
     reader_descriptor_mode descriptor_mode{reader_descriptor_mode::Borrowed};
     reader_state state{reader_state::Active};
     reader_chunk_state chunk_state{reader_chunk_state::Empty};
