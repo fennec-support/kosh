@@ -915,8 +915,57 @@ fn signal_process(process p, i32 signal_number) wontthrow -> bool
 }
 
 #if defined __linux__
+static pid_t LAST_RUNNING_GROUP_ID = 0;
+static i64 LAST_RUNNING_MEMBER_ID = 0;
+
+static fn is_running_group_member(i64 process_id, pid_t group_id) wontthrow
+    -> bool
+{
+  char stat_path[64];
+  let const stat_path_length =
+      std::snprintf(stat_path, sizeof(stat_path), "/proc/%lld/stat",
+                    static_cast<long long>(process_id));
+  if (stat_path_length <= 0 ||
+      static_cast<usize>(stat_path_length) >= sizeof(stat_path))
+  {
+    return false;
+  }
+
+  char stat_buffer[512];
+  let const stat_length =
+      read_small_file(stat_path, stat_buffer, sizeof(stat_buffer));
+  let const stat_text = StringView{stat_buffer, stat_length};
+  let const command_end = stat_text.find_last_character(')');
+  if (!command_end.has_value()) return false;
+
+  usize position = *command_end + 1;
+  let const state = stat_text.next_ascii_whitespace_word(position);
+  unused(stat_text.next_ascii_whitespace_word(position));
+  let const member_group_id =
+      stat_text.next_ascii_whitespace_word(position).to<i64>();
+  if (state.is_empty() || member_group_id.is_error() ||
+      member_group_id.value() != group_id)
+  {
+    return false;
+  }
+  if (state[0] != 'Z') return true;
+
+  for (usize field_number = 6; field_number < 20; field_number++)
+    unused(stat_text.next_ascii_whitespace_word(position));
+
+  let const thread_count =
+      stat_text.next_ascii_whitespace_word(position).to<i64>();
+  return !thread_count.is_error() && thread_count.value() > 1;
+}
+
 static fn process_group_has_running_member(pid_t group_id) wontthrow -> bool
 {
+  if (LAST_RUNNING_GROUP_ID == group_id &&
+      is_running_group_member(LAST_RUNNING_MEMBER_ID, group_id))
+  {
+    return true;
+  }
+
   DIR *proc_directory = ::opendir("/proc");
   if (proc_directory == nullptr) return true;
   defer { ::closedir(proc_directory); };
@@ -927,34 +976,15 @@ static fn process_group_has_running_member(pid_t group_id) wontthrow -> bool
     let const name = StringView{entry->d_name};
     if (name.is_empty() || !name.is_all_decimal_digits()) continue;
 
-    char stat_path[64];
-    let const stat_path_length = std::snprintf(stat_path, sizeof(stat_path),
-                                               "/proc/%s/stat", entry->d_name);
-    if (stat_path_length <= 0 ||
-        static_cast<usize>(stat_path_length) >= sizeof(stat_path))
-    {
-      continue;
-    }
+    let const process_id = name.to<i64>();
+    if (process_id.is_error()) continue;
 
-    char stat_buffer[512];
-    let const stat_length =
-        read_small_file(stat_path, stat_buffer, sizeof(stat_buffer));
-    let const stat_text = StringView{stat_buffer, stat_length};
-    let const command_end = stat_text.find_last_character(')');
-    if (!command_end.has_value()) continue;
-
-    usize position = *command_end + 1;
-    let const state = stat_text.next_ascii_whitespace_word(position);
-    let const parent_id = stat_text.next_ascii_whitespace_word(position);
-    let const member_group_id = stat_text.next_ascii_whitespace_word(position);
-    unused(parent_id);
-    if (state.is_empty() || state[0] == 'Z') continue;
-
-    let const parsed_group_id = member_group_id.to<i64>();
-    if (!parsed_group_id.is_error() && parsed_group_id.value() == group_id) {
+    if (is_running_group_member(process_id.value(), group_id)) {
       LOG(Debug, "process group %d keeps running member %.*s",
           static_cast<int>(group_id), static_cast<int>(name.length),
           name.data);
+      LAST_RUNNING_GROUP_ID = group_id;
+      LAST_RUNNING_MEMBER_ID = process_id.value();
       return true;
     }
   }
