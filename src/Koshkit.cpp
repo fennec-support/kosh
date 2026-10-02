@@ -122,13 +122,40 @@ fn capture_util_program_output(EvalContext &cxt, StringView name,
                                      timeout_nanoseconds);
 }
 
+template <typename Value>
+static fn get_exported_spelling(const Value &value,
+                                StringView environment_name) wontthrow
+    -> StringView
+{
+  if constexpr (os::ENVIRONMENT_IS_CASE_SENSITIVE) {
+    unused(value);
+    return environment_name;
+  } else {
+    return value.is_empty() ? environment_name : value.view();
+  }
+}
+
 fn print_environment(const ExecContext &ec, EvalContext &cxt) throws -> void
 {
   unused(cxt.materialize_kosh_identity());
   let output = String{cxt.scratch_allocator()};
+  let printed_names = HashSet{cxt.scratch_allocator()};
   for (let const &name : os::environment_names()) {
+    let display_name = name.view();
+    if constexpr (!os::ENVIRONMENT_IS_CASE_SENSITIVE) {
+      let const folded_name = name.view().to_lower_ascii(cxt.scratch_allocator());
+      if (!printed_names.add(folded_name.view())) continue;
+
+      let const exported_spelling =
+          cxt.variable_store().exported_names().find(folded_name.view());
+      if (exported_spelling.has_value()) {
+        display_name =
+            get_exported_spelling(*exported_spelling.value(), display_name);
+      }
+    }
+
     let const value = os::get_environment_variable(name.view());
-    output += name.view();
+    output += display_name;
     output += '=';
     if (value.has_value()) output += value->view();
     output += '\n';
