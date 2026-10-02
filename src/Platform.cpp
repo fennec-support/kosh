@@ -277,6 +277,9 @@ fn compile_basic_regex(StringView pattern, compiled_regex &out,
   let const is_case_insensitive = sensitivity == case_sensitivity::Insensitive;
   let const pattern_text = String{heap_allocator(), pattern};
   int compile_flags = 0;
+#if defined REG_ENHANCED
+  compile_flags |= REG_ENHANCED;
+#endif
   if (is_case_insensitive) compile_flags |= REG_ICASE;
 
   if (regcomp(&out.re, pattern_text.c_str(), compile_flags) != 0)

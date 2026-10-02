@@ -110,9 +110,9 @@ echo "--- find -name ? follows the locale codeset ---"
 "$BIN" -c 'LC_ALL=C.UTF-8; export LC_ALL; koshkit find wide -name "?"'
 "$BIN" -c 'LC_ALL=C; export LC_ALL; koshkit find wide -name "?"'
 echo "--- find -name bracket expressions ---"
-"$BIN" -c 'koshkit mkdir -p br; koshkit touch br/a br/b br/c br/A br/d br/1 br/2 br/ab "br/!" br/- br/é'
+"$BIN" -c 'koshkit mkdir -p br; koshkit touch br/a br/b br/c br/E br/d br/1 br/2 br/ab "br/!" br/- br/é'
 "$BIN" -c 'koshkit find br -maxdepth 1 -name "[a-c]"'
-"$BIN" -c 'koshkit find br -maxdepth 1 -name "[A]"'
+"$BIN" -c 'koshkit find br -maxdepth 1 -name "[E]"'
 "$BIN" -c 'koshkit find br -maxdepth 1 -name "[!a]*"'
 "$BIN" -c 'LC_ALL=C.UTF-8; export LC_ALL; koshkit find br -maxdepth 1 -name "[^a-c]"'
 "$BIN" -c 'koshkit find br -maxdepth 1 -name "[[:digit:]]"'

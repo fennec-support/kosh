@@ -123,13 +123,13 @@ wide/x
 br/a
 br/b
 br/c
-br/A
+br/E
 br
 br/!
 br/-
 br/1
 br/2
-br/A
+br/E
 br/b
 br/c
 br/d
@@ -138,7 +138,7 @@ br/!
 br/-
 br/1
 br/2
-br/A
+br/E
 br/d
 br/é
 br/1

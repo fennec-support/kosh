@@ -55,7 +55,7 @@ if script -q -c true /dev/null >/dev/null 2>&1; then
     send_input | LOGNAME=kosh-title-user USER=kosh-title-user script -q -c \
         "exec \"$BIN\" -i -I --mood bash --rcfile \"$d/rc\"" \
         "$d/typescript" >"$d/live" 2>/dev/null
-elif script -q /dev/null /usr/bin/true >/dev/null 2>&1; then
+elif script -q /dev/null /usr/bin/true </dev/null >/dev/null 2>&1; then
     send_input | LOGNAME=kosh-title-user USER=kosh-title-user \
         script -q "$d/typescript" /bin/sh -c \
         "exec \"$BIN\" -i -I --mood bash --rcfile \"$d/rc\"" \

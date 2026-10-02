@@ -108,7 +108,7 @@ if script -qec true /dev/null >/dev/null 2>&1; then
         BENCH_VANISHING_COMMAND="$vanishing_command" script -qec \
         "$BIN -c 'bench --runs 3 --no-shell \"$vanishing_command --mood bash -c true\"'" \
         "$d/typescript" >/dev/null 2>&1
-elif script -q /dev/null /usr/bin/true >/dev/null 2>&1; then
+elif script -q /dev/null /usr/bin/true </dev/null >/dev/null 2>&1; then
     has_typescript=1
     native_terminal_output=$(BIN="$BIN" script -q /dev/null "$BIN" -c \
         'test -t 2 && echo native-stderr-terminal' 2>/dev/null)
@@ -157,7 +157,7 @@ SH
     if script -qec true /dev/null >/dev/null 2>&1; then
         NO_COLOR= TERM=xterm BIN=$BIN script -qec "$d/progress-driver" \
             "$d/progress-typescript" >/dev/null 2>&1
-    elif script -q /dev/null /usr/bin/true >/dev/null 2>&1; then
+    elif script -q /dev/null /usr/bin/true </dev/null >/dev/null 2>&1; then
         NO_COLOR= TERM=xterm BIN=$BIN script -q "$d/progress-typescript" \
             "$d/progress-driver" >/dev/null 2>&1
     fi

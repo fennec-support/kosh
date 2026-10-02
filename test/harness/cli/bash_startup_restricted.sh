@@ -28,7 +28,7 @@ unreadable_rc=ok
 script_mode=
 if script -qec true /dev/null >/dev/null 2>&1; then
   script_mode=gnu
-elif script -q /dev/null /usr/bin/true >/dev/null 2>&1; then
+elif script -q /dev/null /usr/bin/true </dev/null >/dev/null 2>&1; then
   script_mode=bsd
 fi
 run_interactive()

@@ -3,7 +3,7 @@
 if script -q -c true /dev/null >/dev/null 2>&1
 then
   TEST_TERMINAL_SCRIPT_STYLE=util-linux
-elif script -q /dev/null /usr/bin/true >/dev/null 2>&1
+elif script -q /dev/null /usr/bin/true </dev/null >/dev/null 2>&1
 then
   TEST_TERMINAL_SCRIPT_STYLE=bsd
 else

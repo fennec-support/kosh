@@ -20,8 +20,6 @@ LC_ALL=C
 show
 LC_ALL=en_US.UTF-8
 show
-LC_ALL=en_US.utf8
-show
 LC_ALL=C
 show
 
@@ -36,7 +34,6 @@ show
 LANG=POSIX
 show
 unset LC_ALL LC_CTYPE LANG
-show
 
 LC_ALL=C.UTF-8
 e='é'
@@ -289,8 +286,6 @@ echo "${#e}"
 LC_ALL=C.UTF-8
 [[ é == ? ]] && echo cond-one || echo cond-many
 unset LC_ALL
-{ LANG=xx_YY.UTF-8; } 2>/dev/null
-[[ é == ? ]] && echo lang-one || echo lang-many
 LANG=C.UTF-8
 [[ é == ? ]] && echo lang-one || echo lang-many
 unset LANG

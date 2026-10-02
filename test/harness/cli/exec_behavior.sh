@@ -40,7 +40,7 @@ printf 'exec . <<EOF\nignored\nEOF\necho input-survived\nkill -PIPE $$\necho sig
 
 if script -qec true /dev/null >/dev/null 2>&1; then
     output=$(script -qec "$BIN --no-init-files" /dev/null < "$input" 2>/dev/null)
-elif script -q /dev/null /usr/bin/true >/dev/null 2>&1; then
+elif script -q /dev/null /usr/bin/true </dev/null >/dev/null 2>&1; then
     output=$(script -q /dev/null "$BIN" --no-init-files < "$input" 2>/dev/null)
 else
     output='input-survived signal-survived'
