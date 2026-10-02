@@ -1273,6 +1273,10 @@ fn collate_compare(const String &left, const String &right) wontthrow -> int
   return right < left ? 1 : 0;
 }
 
+regex_utf8_scope::regex_utf8_scope(bool) wontthrow {}
+
+regex_utf8_scope::~regex_utf8_scope() {}
+
 fn code_point_is_in_class(StringView class_name, u32 code_point) wontthrow
     -> bool
 {

@@ -78,3 +78,17 @@ printf 'right-one\nright-two\n' > right
 koshkit pr -t -m -w 30 -s : left right
 printf 'x\0y\nplain\n' > nul-subject
 echo "regex-across-nul=$(koshkit grep '[y]$' nul-subject | koshkit wc -l)"
+printf 'a\303\251b\n\303\251\naxb\n\346\227\245\346\234\254\n\303\211\n' > wide
+patterns=('a.b' '^.$' '^..$' '^...$' 'a.*b' '[^x]' '^[[:alpha:]]*$'
+  '^.\{2\}$' "$(printf '^\303\251*$')")
+for locale in C.UTF-8 C; do
+  export LC_ALL=$locale
+  echo "locale=$locale"
+  for pattern in "${patterns[@]}"; do
+    echo "pattern=$pattern"
+    koshkit grep -n "$pattern" wide
+  done
+  koshkit grep -in "$(printf '\303\251')" wide
+  koshkit grep -vn '^.$' wide
+done
+unset LC_ALL

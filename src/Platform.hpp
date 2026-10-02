@@ -1405,6 +1405,25 @@ fn collate_compare(const String &left, const String &right) wontthrow -> int;
 fn code_point_is_in_class(StringView class_name, u32 code_point) wontthrow
     -> bool;
 
+/* Makes the calling thread classify and decode text as UTF-8 for its lifetime
+   when the requested mode is on, so regex compilation and execution under it
+   match whole characters. It restores the previous locale on destruction and
+   changes nothing when the mode is off, when no UTF-8 locale exists, or on a
+   platform whose regex engine always decodes UTF-8. */
+class regex_utf8_scope
+{
+public:
+  explicit regex_utf8_scope(bool is_enabled) wontthrow;
+  ~regex_utf8_scope();
+
+  regex_utf8_scope(const regex_utf8_scope &) = delete;
+  fn operator=(const regex_utf8_scope &)->regex_utf8_scope & = delete;
+
+private:
+  opaque *m_previous{nullptr};
+  bool m_is_active{false};
+};
+
 /* One capture group's byte span in the subject. A group that did not
    participate carries a negative start. */
 struct regex_span

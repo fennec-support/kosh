@@ -9,6 +9,10 @@
  * A pattern made only of literal runs, single-byte wildcards, ".*" gaps, and
  * optional edge anchors compiles to a segment list that decides each line
  * without the system regex engine. Every other pattern uses that engine.
+ * In a UTF-8 locale the pattern is compiled twice: a byte copy decides ASCII
+ * lines and a copy built under a UTF-8 character type decides every other line
+ * so that "." and bracket classes match whole characters. A segment list with
+ * single-character wildcards decides ASCII lines only.
  */
 
 #include "../CLI.hpp"
@@ -104,6 +108,22 @@ static pure fn is_ascii_pattern(StringView pattern) wontthrow -> bool
 {
   for (usize index = 0; index < pattern.length; index++)
     if (static_cast<unsigned char>(pattern[index]) > 0x7f) return false;
+  return true;
+}
+
+static pure fn is_ascii_line(StringView line) wontthrow -> bool
+{
+  constexpr u64 HIGH_BITS = 0x8080808080808080ULL;
+  usize index = 0;
+  for (; index + sizeof(u64) <= line.length; index += sizeof(u64)) {
+    u64 word = 0;
+    std::memcpy(&word, line.data + index, sizeof(word));
+    if ((word & HIGH_BITS) != 0) return false;
+  }
+
+  for (; index < line.length; index++)
+    if (static_cast<unsigned char>(line[index]) > 0x7f) return false;
+
   return true;
 }
 
@@ -303,6 +323,7 @@ struct grep_options
   bool should_invert{false};
   bool should_print_line_numbers{false};
   bool should_suppress_names{false};
+  bool is_utf8{false};
 };
 
 class GrepSearch
@@ -328,6 +349,7 @@ public:
         m_line(m_allocator)
   {
     let const pattern = m_options.pattern;
+    m_is_ascii_pattern = is_ascii_pattern(pattern);
     m_should_use_literal_search =
         is_literal_search_pattern(pattern) &&
         (!m_options.should_ignore_case || is_ascii_pattern(pattern));
@@ -345,6 +367,7 @@ public:
   ~GrepSearch()
   {
     if (m_is_regex_compiled) os::free_regex(m_compiled);
+    if (m_is_utf8_regex_compiled) os::free_regex(m_utf8_compiled);
   }
 
   GrepSearch(const GrepSearch &) = delete;
@@ -352,21 +375,48 @@ public:
 
   fn compile_pattern() throws -> bool
   {
-    if (m_should_use_literal_search || m_has_fast_matcher) {
+    if (m_should_use_literal_search ||
+        (m_has_fast_matcher && !m_has_utf8_wildcard))
+    {
       return true;
     }
 
-    if (os::compile_basic_regex(m_options.pattern, m_compiled,
-                                m_options.should_ignore_case
-                                    ? os::case_sensitivity::Insensitive
-                                    : os::case_sensitivity::Sensitive) !=
-        os::regex_compile_result::Ok)
+    let const sensitivity = m_options.should_ignore_case
+                                ? os::case_sensitivity::Insensitive
+                                : os::case_sensitivity::Sensitive;
+    if (!m_has_fast_matcher && (!m_options.is_utf8 || m_is_ascii_pattern)) {
+      if (os::compile_basic_regex(m_options.pattern, m_compiled,
+                                  sensitivity) !=
+          os::regex_compile_result::Ok)
+      {
+        return false;
+      }
+
+      m_is_regex_compiled = true;
+    }
+
+    if (!m_options.is_utf8) return true;
+
+    let const scope = os::regex_utf8_scope{true};
+    if (os::compile_basic_regex(m_options.pattern, m_utf8_compiled,
+                                sensitivity) != os::regex_compile_result::Ok)
     {
       return false;
     }
 
-    m_is_regex_compiled = true;
+    m_is_utf8_regex_compiled = true;
     return true;
+  }
+
+  fn match_regex(StringView value) throws -> bool
+  {
+    if (m_is_utf8_regex_compiled &&
+        (!m_is_ascii_pattern || !is_ascii_line(value)))
+    {
+      return os::regex_matches_null_terminated(m_utf8_compiled, value);
+    }
+
+    return os::regex_matches_null_terminated(m_compiled, value);
   }
 
   fn collect_sources(const ArrayList<String> &operands) throws -> void
@@ -409,6 +459,7 @@ public:
 
   fn run() throws -> i32
   {
+    let const scope = os::regex_utf8_scope{m_is_utf8_regex_compiled};
     let const is_recursive =
         m_options.recursion_mode == grep_recursion_mode::Recursive;
     let reader = SourceBatchReader{
@@ -474,6 +525,7 @@ private:
     let has_trailing_gap = false;
     usize segment_start = 0;
     let did_fail = false;
+    let has_single_wildcard = false;
     for (usize index = body_start; index < body_end; index++) {
       let const character = pattern[index];
       if (character == '.') {
@@ -488,6 +540,7 @@ private:
           index++;
         } else {
           m_fast_bytes += '\0';
+          has_single_wildcard = true;
           has_trailing_gap = false;
         }
         continue;
@@ -535,6 +588,7 @@ private:
     }
     if (has_leading_gap) m_is_fast_start_anchored = false;
     if (has_trailing_gap) m_is_fast_end_anchored = false;
+    m_has_utf8_wildcard = m_options.is_utf8 && has_single_wildcard;
     m_has_fast_matcher = true;
   }
 
@@ -730,7 +784,7 @@ private:
     {
       let const byte = static_cast<unsigned char>(value[index]);
       if (byte == 0 || byte >= 0x80) {
-        return os::regex_matches_null_terminated(m_compiled, value);
+        return match_regex(value);
       }
 
       u8 byte_class = 0;
@@ -755,7 +809,11 @@ private:
                  : value.find_substring(m_options.pattern).has_value();
     }
 
-    if (m_has_fast_matcher) return match_fast_line(value);
+    if (m_has_fast_matcher &&
+        (!m_has_utf8_wildcard || is_ascii_line(value)))
+    {
+      return match_fast_line(value);
+    }
 
     if (!m_regex_prefix.is_empty() && !value.starts_with(m_regex_prefix)) {
       return false;
@@ -764,7 +822,7 @@ private:
     if (m_fast_regex_class != grep_repeated_class::None)
       return match_repeated_class_line(value);
 
-    return os::regex_matches_null_terminated(m_compiled, value);
+    return match_regex(value);
   }
 
   fn process_line(usize source_index, StringView source, StringView value,
@@ -952,16 +1010,20 @@ private:
   StringView m_regex_prefix;
   StringView m_candidate_literal;
   os::compiled_regex m_compiled;
+  os::compiled_regex m_utf8_compiled;
   grep_repeated_class m_fast_regex_class{grep_repeated_class::None};
   i32 m_status{0};
   bool m_should_use_literal_search{false};
   bool m_has_fast_matcher{false};
+  bool m_has_utf8_wildcard{false};
+  bool m_is_ascii_pattern{false};
   bool m_is_fast_start_anchored{false};
   bool m_is_fast_end_anchored{false};
   bool m_is_fast_empty_line_only{false};
   bool m_should_print_names{false};
   bool m_has_any_match{false};
   bool m_is_regex_compiled{false};
+  bool m_is_utf8_regex_compiled{false};
 };
 
 Grep::Grep() = default;
@@ -990,6 +1052,7 @@ fn Grep::execute(const ExecContext &ec, EvalContext &cxt,
   options.should_invert = FLAG_GREP_INVERT.is_enabled();
   options.should_print_line_numbers = FLAG_GREP_LINE_NUMBER.is_enabled();
   options.should_suppress_names = FLAG_GREP_NO_FILENAME.is_enabled();
+  options.is_utf8 = cxt.get_glob_charset() == glob_charset::Utf8;
 
   let search = GrepSearch{ec, cxt, args, operand_locations, options};
   if (!search.compile_pattern()) {

@@ -1704,7 +1704,13 @@ and
 options ignore case, invert matches, recurse into directories, show line
 numbers, and suppress file-name prefixes. The combined
 .B \-rnh
-form is accepted.
+form is accepted. In a UTF-8 locale, chosen from the first nonempty of
+.BR LC_ALL ,
+.BR LC_CTYPE ,
+and
+.BR LANG ,
+a dot and a bracket expression match one whole character. In every other
+locale they match one byte.
 .TP
 .B head
 The first ten lines are printed by default. The
