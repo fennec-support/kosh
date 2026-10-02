@@ -1128,7 +1128,6 @@ static fn mark_spec_directory_candidates(ArrayList<String> &candidates,
 {
   if (!context.execution_store().should_mark_completion_directories()) return;
 
-  usize marked_count = 0;
   for (let &candidate : candidates) {
     if (os::is_directory_separator(candidate[candidate.length() - 1]) ||
         descriptions.find(candidate.view()).has_value())
@@ -1138,12 +1137,10 @@ static fn mark_spec_directory_candidates(ArrayList<String> &candidates,
 
     if (!Path{candidate.view()}.is_directory()) continue;
 
+    LOG(Debug, "marking the spec candidate '%s' as a directory",
+        candidate.c_str());
     candidate.push('/');
-    marked_count++;
   }
-
-  LOG(Debug, "marked %zu of %zu spec candidates as directories", marked_count,
-      candidates.count());
 }
 
 fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
