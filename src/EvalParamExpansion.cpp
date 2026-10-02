@@ -92,7 +92,11 @@ fn trim_matching(Allocator result_allocator, StringView value,
   ASSERT(active.count() == pattern.length);
 
   usize active_star_count = 0;
+  usize first_glob_position = pattern.length;
+  usize last_glob_position = 0;
   bool has_other_glob_syntax = false;
+  bool has_extglob_group = false;
+  bool has_active_bracket = false;
   for (usize index = 0; index < pattern.length; index++) {
     let const character = pattern[index];
     if (mode == extglob_mode::Enabled && index + 1 < pattern.length &&
@@ -101,17 +105,24 @@ fn trim_matching(Allocator result_allocator, StringView value,
          character == '@' || character == '!'))
     {
       has_other_glob_syntax = true;
+      has_extglob_group = true;
       break;
     }
 
     if (!active[index]) continue;
+    if (character != '*' && character != '?' && character != '[') continue;
+
+    if (first_glob_position == pattern.length) first_glob_position = index;
+    last_glob_position = index;
     if (character == '*') {
       active_star_count++;
-      if (index != 0) has_other_glob_syntax = true;
-    } else if (character == '?' || character == '[') {
+    } else {
       has_other_glob_syntax = true;
+      if (character == '[') has_active_bracket = true;
     }
   }
+
+  if (active_star_count > 1) has_other_glob_syntax = true;
 
   if (!has_other_glob_syntax && active_star_count == 0) {
     if (pattern.length <= value.length) {
@@ -126,7 +137,9 @@ fn trim_matching(Allocator result_allocator, StringView value,
     return String{result_allocator, value};
   }
 
-  if (!has_other_glob_syntax && active_star_count == 1) {
+  if (!has_other_glob_syntax && active_star_count == 1 &&
+      first_glob_position == 0)
+  {
     let const suffix = pattern.substring(1);
     if (end == trim_end::Prefix) {
       if (suffix.is_empty())
@@ -154,34 +167,84 @@ fn trim_matching(Allocator result_allocator, StringView value,
     return String{result_allocator, value};
   }
 
+  if (!has_other_glob_syntax && active_star_count == 1 &&
+      first_glob_position == pattern.length - 1)
+  {
+    let const literal = pattern.substring_of_length(0, first_glob_position);
+    if (end == trim_end::Prefix) {
+      if (!value.starts_with(literal)) return String{result_allocator, value};
+
+      return String{result_allocator, extent == pattern_match_extent::Longest
+                                          ? StringView{}
+                                          : value.substring(literal.length)};
+    }
+
+    let match = value.find_substring(literal);
+    if (!match.has_value()) return String{result_allocator, value};
+    if (extent == pattern_match_extent::Shortest) {
+      while (let const next = value.find_substring(literal, *match + 1))
+        match = next;
+    }
+    return String{result_allocator, value.substring_of_length(0, *match)};
+  }
+
+  let const literal_head =
+      has_extglob_group ? StringView{}
+                        : pattern.substring_of_length(0, first_glob_position);
+  let const literal_tail = has_extglob_group || has_active_bracket
+                               ? StringView{}
+                               : pattern.substring(last_glob_position + 1);
+  let const do_has_literal_tail = [&](StringView candidate) wontthrow -> bool {
+    return literal_tail.length <= candidate.length &&
+           candidate.substring(candidate.length - literal_tail.length) ==
+               literal_tail;
+  };
+
   if (end == trim_end::Prefix) {
+    if (!value.starts_with(literal_head))
+      return String{result_allocator, value};
+
     if (extent == pattern_match_extent::Longest) {
       for (usize length = value.length;; length--) {
-        if (utils::glob_matches(pattern, value.substring_of_length(0, length),
-                                active, 0, mode))
+        let const candidate = value.substring_of_length(0, length);
+        if (do_has_literal_tail(candidate) &&
+            utils::glob_matches(pattern, candidate, active, 0, mode))
+        {
           return String{result_allocator, value.substring(length)};
+        }
         if (length == 0) break;
       }
     } else {
       for (usize length = 0; length <= value.length; length++) {
-        if (utils::glob_matches(pattern, value.substring_of_length(0, length),
-                                active, 0, mode))
+        let const candidate = value.substring_of_length(0, length);
+        if (do_has_literal_tail(candidate) &&
+            utils::glob_matches(pattern, candidate, active, 0, mode))
+        {
           return String{result_allocator, value.substring(length)};
+        }
       }
     }
 
   } else {
+    if (!do_has_literal_tail(value)) return String{result_allocator, value};
+
     if (extent == pattern_match_extent::Longest) {
       for (usize start = 0; start <= value.length; start++) {
-        if (utils::glob_matches(pattern, value.substring(start), active, 0,
-                                mode))
+        let const candidate = value.substring(start);
+        if (candidate.starts_with(literal_head) &&
+            utils::glob_matches(pattern, candidate, active, 0, mode))
+        {
           return String{result_allocator, value.substring_of_length(0, start)};
+        }
       }
     } else {
       for (usize start = value.length;; start--) {
-        if (utils::glob_matches(pattern, value.substring(start), active, 0,
-                                mode))
+        let const candidate = value.substring(start);
+        if (candidate.starts_with(literal_head) &&
+            utils::glob_matches(pattern, candidate, active, 0, mode))
+        {
           return String{result_allocator, value.substring_of_length(0, start)};
+        }
         if (start == 0) break;
       }
     }

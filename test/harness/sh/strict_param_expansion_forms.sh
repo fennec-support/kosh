@@ -29,6 +29,17 @@ echo "pctpct=${path%%.*}"
 echo "hash=${path#*.}"
 echo "hashhash=${path##*.}"
 
+# A literal before a trailing star, a quoted or escaped star, a bracket, and an
+# empty or absent pattern all keep the shortest and longest trim results.
+star='a*b.*c'
+echo "lead=${path#usr*} ${path##usr*} ${path#bin*} ${path%.l*} ${path%%.l*}"
+echo "miss=${path%x*} ${path%%x*} ${path#x*} ${path##x*}"
+echo "escaped=${star%\**} ${star%%\**} ${star#*\*} ${star##*\*}"
+echo "quoted=${star%"*"*} ${star%%"*"*} ${star#"a*"*} ${star#'a*b'}"
+echo "bracket=${path%[.]*} ${path%%[.]*} ${path#*[.]} ${path%[ln]*l} ${path%.?o*}"
+echo "anchored=${path%.*l} ${path%%.*l} ${path#u*.} ${path##u*.} ${path#?s*l}"
+echo "empty=${path%} ${path#} ${path%%*} ${path##*}."
+
 # The length form counts characters.
 word=length
 echo "len=${#word}"
