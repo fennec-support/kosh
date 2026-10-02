@@ -17,38 +17,38 @@ SKIPPED_TESTS := \
 	koshkit_text_posix alias_unalias glob_dot_slash_prefix koshkit_getconf \
 	pipeline_compound_group read_builtin redirect_high_fd \
 	shellcheck_bashisms_sh_shebang trap umask_modes \
-	cli_bash_startup_restricted cli_bash_xtracefd cli_bench_behavior \
-	cli_cd_suggestion cli_chld_trap_after_return cli_command_edge_case_behavior \
-	cli_command_flag_forms cli_command_p_restores_path \
-	cli_command_substitution_interrupt cli_command_substitution_strategy \
-	cli_crlf_source cli_ctrl_c_interrupts_bash_loop cli_deep_nesting_guard \
-	cli_diagnostic_levels cli_disown_removes_jobs cli_disown_running_only \
-	cli_env_runs_command_directly cli_exec_behavior cli_export_function \
-	cli_export_readonly_integer cli_fg_terminal_handoff cli_granular_arg_caret \
-	cli_help_colors cli_history_behavior cli_history_noninteractive \
-	cli_interrupt_during_blocking_open cli_job_state_running_then_stopped \
-	cli_jobspec_grammar cli_kill_behavior cli_kosh_identity \
-	cli_koshkit_error_notes cli_koshkit_evil_regressions \
-	cli_koshkit_evilfiles_parity cli_koshkit_evilio_live cli_koshkit_eviliso \
-	cli_koshkit_file_magic_batch cli_koshkit_stty cli_mkdir_mode_umask \
-	cli_path_cache_behavior cli_signal_noninteractive_term cli_set_option_state \
-	cli_spawn_failure_location cli_suspend_behavior \
-	cli_trap_during_blocking_builtin cli_trap_startup_ignored \
-	cli_unknown_flag_color cli_wait_on_stopped_job \
-	cli_koshkit_goodcore_archive cli_koshkit_ls_modes cli_koshkit_misc \
-	cli_assimilate cli_koshkit_printenv cli_koshkit_process_tools \
-	cli_koshkit_text cli_koshkit_timeout cli_loop_redirect_descriptor \
-	cli_pipeline_stage_evaluation_mode cli_shopt_states \
-	cli_subshell_replay_trap_suppression cli_subshell_spawn_state \
-	cli_trace_policy cli_trailing_separator_execution cli_ulimit_validation \
-	completion_ansi_c_quoted_word completion_complete_git_grouped_subcommands \
-	completion_complete_go_subcommands completion_complete_help_subcommands \
-	completion_editor_append_hot_path completion_executable_filtering_batch \
-	completion_help_options_trusted_dir_only \
-	completion_help_subcommand_second_level \
-	completion_help_subcommand_third_level \
-	completion_help_subcommands_no_colon completion_make_targets_fallback \
-	completion_completion_glob_quoting completion_path_quoting
+	bash_startup_restricted bash_xtracefd bench_behavior \
+	cd_suggestion chld_trap_after_return command_edge_case_behavior \
+	command_flag_forms command_p_restores_path \
+	command_substitution_interrupt command_substitution_strategy \
+	crlf_source ctrl_c_interrupts_bash_loop deep_nesting_guard \
+	diagnostic_levels disown_removes_jobs disown_running_only \
+	env_runs_command_directly exec_behavior export_function \
+	export_readonly_integer fg_terminal_handoff granular_arg_caret \
+	help_colors history_behavior history_noninteractive \
+	interrupt_during_blocking_open job_state_running_then_stopped \
+	jobspec_grammar kill_behavior kosh_identity \
+	koshkit_error_notes koshkit_evil_regressions \
+	koshkit_evilfiles_parity koshkit_evilio_live koshkit_eviliso \
+	koshkit_file_magic_batch koshkit_stty mkdir_mode_umask \
+	path_cache_behavior signal_noninteractive_term set_option_state \
+	spawn_failure_location suspend_behavior \
+	trap_during_blocking_builtin trap_startup_ignored \
+	unknown_flag_color wait_on_stopped_job \
+	koshkit_goodcore_archive koshkit_ls_modes koshkit_misc \
+	assimilate koshkit_printenv koshkit_process_tools \
+	koshkit_text koshkit_timeout loop_redirect_descriptor \
+	pipeline_stage_evaluation_mode shopt_states \
+	subshell_replay_trap_suppression subshell_spawn_state \
+	trace_policy trailing_separator_execution ulimit_validation \
+	ansi_c_quoted_word complete_git_grouped_subcommands \
+	complete_go_subcommands complete_help_subcommands \
+	editor_append_hot_path executable_filtering_batch \
+	help_options_trusted_dir_only \
+	help_subcommand_second_level \
+	help_subcommand_third_level \
+	help_subcommands_no_colon make_targets_fallback \
+	completion_glob_quoting path_quoting
 else ifneq ($(TARGET), Linux)
 SKIPPED_TESTS := koshkit_mknod
 else
