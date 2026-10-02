@@ -825,7 +825,18 @@ fn read_named_or_stdin_batch(const ExecContext &ec,
         result.error_number = chunk.error_number;
         continue;
       }
-      if (!result.content.has_value()) result.content = String{allocator};
+      if (!result.content.has_value()) {
+        result.content = String{allocator};
+        let const source = sources[chunk.source_index];
+        if (chunk.completion == source_completion_state::Pending &&
+            source != "-")
+        {
+          let const file_byte_count = Path{source}.file_size();
+          if (file_byte_count.has_value())
+            result.content->reserve(*file_byte_count);
+        }
+      }
+
       result.content->append(chunk.content);
     }
   }
