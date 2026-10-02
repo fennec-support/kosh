@@ -57,7 +57,7 @@ fn EvalContext::get_glob_charset() const throws -> glob_charset
                                                      : glob_charset::Bytes;
   }
 
-  return glob_charset::Bytes;
+  return os::DEFAULT_LOCALE_IS_UTF8 ? glob_charset::Utf8 : glob_charset::Bytes;
 }
 
 hot fn EvalContext::get_glob_charset_for(StringView subject) const throws

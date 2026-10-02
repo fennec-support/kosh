@@ -262,6 +262,7 @@ constexpr char DIRECTORY_SEPARATOR = '\\';
 constexpr bool ENVIRONMENT_IS_CASE_SENSITIVE = false;
 constexpr bool FILESYSTEM_IS_CASE_SENSITIVE = false;
 constexpr bool HAS_CHILD_STATE_CHANGE_WAIT = false;
+constexpr bool DEFAULT_LOCALE_IS_UTF8 = false;
 
 using process = HANDLE;
 using descriptor = HANDLE;
@@ -280,6 +281,11 @@ constexpr char DIRECTORY_SEPARATOR = '/';
 constexpr bool ENVIRONMENT_IS_CASE_SENSITIVE = true;
 constexpr bool FILESYSTEM_IS_CASE_SENSITIVE = true;
 constexpr bool HAS_CHILD_STATE_CHANGE_WAIT = true;
+#if defined __linux__ && !defined __GLIBC__
+constexpr bool DEFAULT_LOCALE_IS_UTF8 = true;
+#else
+constexpr bool DEFAULT_LOCALE_IS_UTF8 = false;
+#endif
 
 using process = pid_t;
 using descriptor = int;
