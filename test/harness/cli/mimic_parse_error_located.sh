@@ -15,6 +15,10 @@ printf 'printf "incremental reached\\n"\nexit 0\n(\n' > "$dir/incremental"
 chmod +x "$dir/incremental"
 "$BIN" --no-traces -c "$dir/incremental"
 echo "incremental rc=$?"
+"$BIN" --no-traces "$dir/incremental" > "$dir/direct-output" 2>&1
+direct_status=$?
+sed 's|\\|/|g' "$dir/direct-output" | sed "s|$canonical_dir|TMPDIR|g" | sed "s|$dir|TMPDIR|g"
+echo "direct rc=$direct_status"
 
 printf '%s\n' \
     '"$1" -c '\''printf "complete first\\n"'\''' \

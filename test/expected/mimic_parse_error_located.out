@@ -7,6 +7,13 @@ TMPDIR/unterminated:2:10: details:
 rc=0
 incremental reached
 incremental rc=0
+TMPDIR/incremental:3:1: error: Unterminated subshell.
+     3 |  (
+       |  ^
+TMPDIR/incremental:3:2: details:
+     3 |  (
+       |   ^ expected ')'.
+direct rc=1
 complete first
 complete second
 TMPDIR/error-state:3:1: error: Unterminated subshell.
