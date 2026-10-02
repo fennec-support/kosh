@@ -374,4 +374,10 @@ IFS=-
 echo "star_join: ${*^}"
 unset IFS
 count=0
+shopt -s extglob
+es=""
+echo "[${es/*/X}][${es//*(a)/X}][${es/#*/X}][${es/%*/X}][${es/a/X}]"
+ea=("" b "")
+echo "[${ea[@]/*/X}][${ea[@]//*(b)/X}][${ea[@]/b/X}]"
+
 for word in "${@^}"; do count=$((count + 1)); echo "elem$count=$word"; done

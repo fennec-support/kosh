@@ -1568,6 +1568,16 @@ fn EvalContext::pattern_replace_value(
     return out;
   }
 
+  if (value.is_empty()) {
+    if (let const matched = longest_pattern_match_at(
+            pattern.view(), pattern_active, value, 0, extglob, charset))
+    {
+      append_pattern_replacement(out, replacement.view(),
+                                 value.substring_of_length(0, *matched));
+    }
+    return out;
+  }
+
   /* A zero-length match advances one byte so the scan cannot loop. */
   bool has_replaced = false;
   usize i = 0;
