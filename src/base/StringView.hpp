@@ -162,6 +162,15 @@ public:
   hot mustuse pure fn operator<(StringView other) const wontthrow->bool
   {
     let const shared_length = length < other.length ? length : other.length;
+#if defined __BYTE_ORDER__ && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    if (shared_length >= 8) {
+      let const left_word = __builtin_bswap64(byte_scan::load_word(data));
+      let const right_word =
+          __builtin_bswap64(byte_scan::load_word(other.data));
+      if (left_word != right_word) return left_word < right_word;
+    }
+#endif
+
     let const order = shared_length == 0
                           ? 0
                           : __builtin_memcmp(data, other.data, shared_length);
