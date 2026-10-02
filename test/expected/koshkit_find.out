@@ -138,3 +138,9 @@ br/a
 --- find -name multibyte bracket follows the locale codeset ---
 br/é
 br/é
+--- find roots with trailing separators ---
+a/
+a//
+a/b/
+status=0
+status=0

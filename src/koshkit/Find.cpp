@@ -235,15 +235,24 @@ public:
 private:
   static pure fn get_filename(StringView path_text) wontthrow -> StringView
   {
+    usize filename_end = path_text.length;
+    while (filename_end > 0 &&
+           os::is_directory_separator(path_text[filename_end - 1]))
+      filename_end--;
+
+    if (filename_end == 0 && path_text.length > 0)
+      return path_text.substring_of_length(0, 1);
+
     usize filename_start = 0;
-    for (usize index = path_text.length; index > 0; index--) {
+    for (usize index = filename_end; index > 0; index--) {
       if (os::is_directory_separator(path_text[index - 1])) {
         filename_start = index;
         break;
       }
     }
 
-    return path_text.substring(filename_start);
+    return path_text.substring_of_length(filename_start,
+                                         filename_end - filename_start);
   }
 
   fn flush_full_output() throws -> void

@@ -116,3 +116,9 @@ echo "--- find -name bracket expressions ---"
 echo "--- find -name multibyte bracket follows the locale codeset ---"
 "$BIN" -c 'LC_ALL=C.UTF-8; export LC_ALL; koshkit find br -maxdepth 1 -name "[é]*"'
 "$BIN" -c 'LC_ALL=C; export LC_ALL; koshkit find br -maxdepth 1 -name "[é]*"'
+echo "--- find roots with trailing separators ---"
+"$BIN" -c 'koshkit find a/ -maxdepth 0 -name a'
+"$BIN" -c 'koshkit find a// -maxdepth 0 -name a'
+"$BIN" -c 'koshkit find a/b/ -name b'
+"$BIN" -c 'koshkit find a/ -maxdepth 0 -name b; printf "status=%s\\n" "$?"'
+"$BIN" -c 'koshkit find / -maxdepth 0 -name ""; printf "status=%s\\n" "$?"'
