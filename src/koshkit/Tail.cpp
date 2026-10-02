@@ -266,6 +266,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
     }
   }
   let const[origin, count] = *parsed_count;
+  if (origin == count_origin::FromEnd && count == 0) return 0;
 
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
@@ -430,7 +431,13 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
     let const content = read_named_or_stdin(ec, sources[source_index]);
     if (os::INTERRUPT_REQUESTED) return;
     if (!content.has_value()) {
-      do_report_error(source_index, "cannot open '");
+      let const is_directory =
+          metadata_errors[source_index] == 0 &&
+          os::file_type_letter(statuses[source_index].mode) == 'd';
+      if (is_directory) do_write_header(source_index);
+
+      do_report_error(source_index,
+                      is_directory ? "cannot read '" : "cannot open '");
       return;
     }
 

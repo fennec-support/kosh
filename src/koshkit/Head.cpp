@@ -275,7 +275,8 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
 
     if (source_index > 0) output += '\n';
     output += "==> ";
-    output += sources[source_index];
+    output += sources[source_index] == "-" ? StringView{"standard input"}
+                                           : sources[source_index];
     output += " <==\n";
   };
 
@@ -317,6 +318,7 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
       if (was_opened) os::close_fd(fd);
       if (os::INTERRUPT_REQUESTED) return 130;
       if (!text.has_value()) {
+        do_print_header(source_index);
         do_flush_output();
         os::set_last_system_error(read_error);
         report_soft_koshkit_util_error(
@@ -366,6 +368,13 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
       }
 
       if (chunk.error_number != 0) {
+        if (chunk.open_state != source_open_state::Failed &&
+            !has_printed_header)
+        {
+          do_print_header(chunk.source_index);
+          has_printed_header = true;
+        }
+
         do_flush_output();
         os::set_last_system_error(chunk.error_number);
         report_soft_koshkit_util_error(

@@ -287,7 +287,7 @@ status=1
 ==> cat-first.txt <==
 first
 
-==> - <==
+==> standard input <==
 middle
 
 ==> cat-last.txt <==

@@ -126,6 +126,51 @@ head -c [1:1: error: invalid byte count ''.] status=1
 c
 a
 c
+--- standard input and empty counts in headers ---
+==> standard input <==
+p
+
+==> with-final.txt <==
+a
+==> standard input <==
+q
+
+==> with-final.txt <==
+c
+tail -n 0 writes no header:
+status=0
+tail -c 0 writes no header:
+status=0
+tail -n +0 keeps every header:
+==> bytes.txt <==
+0123456789
+==> empty.txt <==
+a directory operand keeps its header and error:
+==> dir <==
+1:1: error: koshkit tail: cannot read 'dir': Is a directory.
+     1 |  koshkit tail -n 1 dir with-final.txt; echo "status=$?"
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+==> with-final.txt <==
+c
+status=1
+==> dir <==
+1:1: error: koshkit head: cannot read 'dir': Is a directory.
+     1 |  koshkit head -n 1 dir with-final.txt; echo "status=$?"
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+==> with-final.txt <==
+a
+status=1
+==> dir <==
+1:1: error: koshkit head: cannot read 'dir': Is a directory.
+     1 |  koshkit head -n -1 dir with-final.txt; echo "status=$?"
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+==> with-final.txt <==
+a
+b
+status=1
 --- page sized files are read to the end ---
 5
 4096 page.txt

@@ -75,6 +75,20 @@ for count_spec in 99999999999999999999 '1 ' ++1 +99999999999999999999 ''; do
   done
 done
 "$BIN" -c 'koshkit tail -n " 1" with-final.txt; koshkit head -n +1 with-final.txt; koshkit tail -n -+1 with-final.txt'
+echo "--- standard input and empty counts in headers ---"
+printf 'p\nq\n' | "$BIN" -c 'koshkit head -n 1 - with-final.txt'
+printf 'p\nq\n' | "$BIN" -c 'koshkit tail -n 1 - with-final.txt'
+echo "tail -n 0 writes no header:"
+"$BIN" -c 'koshkit tail -n 0 with-final.txt empty.txt missing.txt; echo "status=$?"'
+echo "tail -c 0 writes no header:"
+"$BIN" -c 'koshkit tail -c 0 with-final.txt empty.txt; echo "status=$?"'
+echo "tail -n +0 keeps every header:"
+"$BIN" -c 'koshkit tail -n +0 bytes.txt empty.txt'
+echo "a directory operand keeps its header and error:"
+mkdir dir
+"$BIN" -c 'koshkit tail -n 1 dir with-final.txt; echo "status=$?"' 2>&1
+"$BIN" -c 'koshkit head -n 1 dir with-final.txt; echo "status=$?"' 2>&1
+"$BIN" -c 'koshkit head -n -1 dir with-final.txt; echo "status=$?"' 2>&1
 echo "--- page sized files are read to the end ---"
 head -c 4096 large-forward.txt > page.txt
 "$BIN" -c 'koshkit tail -c 5 page.txt | koshkit wc -c; koshkit wc -c page.txt; koshkit head -c -5 page.txt | koshkit wc -c; koshkit tail -n 1 page.txt'
