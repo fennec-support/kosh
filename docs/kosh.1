@@ -2619,7 +2619,9 @@ and build host distribution and kernel.
 .B KOSH_GIT_BRANCH
 For a working directory inside a repository, the value contains the branch
 name. A detached HEAD produces a short commit hash. The value is empty outside a
-repository. An assignment overrides detection.
+repository. An assignment overrides detection. The search for a repository
+moves up from the working directory and never enters a directory listed in
+GIT_CEILING_DIRECTORIES, which holds absolute paths separated the way PATH is.
 .TP
 .BR KOSH_GIT_AHEAD ", " KOSH_GIT_BEHIND
 The values contain the unpushed and unpulled commit counts relative to the

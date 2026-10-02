@@ -5,5 +5,6 @@ walked=probe-branch
 detached=0123456
 worktree=linked-tree
 outside=[]
+below-ceiling=0123456
 stored=stored
 rc=0

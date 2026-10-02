@@ -2050,7 +2050,16 @@ static fn shorten_path_with_ellipsis(StringView path, usize max_length) throws
   return shortened;
 }
 
-static fn git_branch() throws -> String { return utils::current_git_branch(); }
+static fn git_branch() throws -> String
+{
+  if (COMPLETION_CONTEXT == nullptr) return utils::current_git_branch({});
+
+  let const ceiling_directories =
+      COMPLETION_CONTEXT->get_variable_value("GIT_CEILING_DIRECTORIES");
+  return utils::current_git_branch(ceiling_directories.has_value()
+                                       ? ceiling_directories->view()
+                                       : StringView{});
+}
 
 static fn format_prompt_duration(u64 nanos) throws -> String
 {

@@ -476,7 +476,11 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
         if (evaluation_metrics_store().git_branch_command_index() !=
             evaluation_metrics_store().command_evaluation_index())
         {
-          evaluation_metrics_store().git_branch() = utils::current_git_branch();
+          let const ceiling_directories =
+              get_variable_value("GIT_CEILING_DIRECTORIES");
+          evaluation_metrics_store().git_branch() = utils::current_git_branch(
+              ceiling_directories.has_value() ? ceiling_directories->view()
+                                              : StringView{});
           evaluation_metrics_store().git_branch_command_index() =
               evaluation_metrics_store().command_evaluation_index();
         }
@@ -488,7 +492,12 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
         if (evaluation_metrics_store().git_counts_command_index() !=
             evaluation_metrics_store().command_evaluation_index())
         {
-          let status = utils::git_status(heap_allocator());
+          let const ceiling_directories =
+              get_variable_value("GIT_CEILING_DIRECTORIES");
+          let status = utils::git_status(ceiling_directories.has_value()
+                                             ? ceiling_directories->view()
+                                             : StringView{},
+                                         heap_allocator());
           evaluation_metrics_store().git_branch() = steal(status.branch);
           evaluation_metrics_store().git_ahead_count() = status.ahead_count;
           evaluation_metrics_store().git_behind_count() = status.behind_count;

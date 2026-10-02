@@ -239,8 +239,36 @@ pure fn BufferedLineReader::get_line() const wontthrow -> StringView
   return m_line.view();
 }
 
-fn resolve_git_directory() throws -> Path
+static fn ceiling_directory_list(StringView ceiling_directories) throws
+    -> ArrayList<String>
 {
+  let ceilings = ArrayList<String>{heap_allocator()};
+  usize entry_start = 0;
+  for (usize position = 0; position <= ceiling_directories.length; position++)
+  {
+    if (position < ceiling_directories.length &&
+        ceiling_directories[position] != os::PATH_DELIMITER)
+    {
+      continue;
+    }
+
+    let const entry = ceiling_directories.substring_of_length(
+        entry_start, position - entry_start);
+    entry_start = position + 1;
+    if (entry.is_empty()) continue;
+
+    let const ceiling = Path{entry};
+    if (!ceiling.is_absolute()) continue;
+
+    ceilings.push(String{ceiling.normalized().text()});
+  }
+
+  return ceilings;
+}
+
+fn resolve_git_directory(StringView ceiling_directories) throws -> Path
+{
+  let const ceilings = ceiling_directory_list(ceiling_directories);
   let dir = Path::current_directory();
   loop
   {
@@ -271,14 +299,22 @@ fn resolve_git_directory() throws -> Path
     parent.push_component("..");
     let normalized = parent.to_absolute().normalized();
     if (normalized.text() == dir.text()) break;
+
+    if (ceilings.find(String{normalized.text()}).has_value()) {
+      LOG(Debug, "the git directory walk stops below the ceiling '%.*s'",
+          static_cast<int>(normalized.text().view().length),
+          normalized.text().view().data);
+      break;
+    }
+
     dir = steal(normalized);
   }
   return Path{StringView{}};
 }
 
-fn current_git_branch() throws -> String
+fn current_git_branch(StringView ceiling_directories) throws -> String
 {
-  let const git_dir = resolve_git_directory();
+  let const git_dir = resolve_git_directory(ceiling_directories);
   if (git_dir.text().is_empty()) return String{heap_allocator()};
 
   let git_head = git_dir.clone();
@@ -417,11 +453,12 @@ fn git_upstream_ref(const Path &git_dir, StringView branch_name) throws
   return result;
 }
 
-fn git_status(Allocator allocator) throws -> git_status_result
+fn git_status(StringView ceiling_directories, Allocator allocator) throws
+    -> git_status_result
 {
   let result = git_status_result{allocator};
 
-  let const git_dir = resolve_git_directory();
+  let const git_dir = resolve_git_directory(ceiling_directories);
   if (git_dir.text().is_empty()) return result;
 
   let git_head = git_dir.clone();

@@ -409,11 +409,12 @@ fn suggest_directory_entry(const Path &directory, StringView name) throws
     -> Maybe<String>;
 
 /* The current git branch read from .git/HEAD without forking git, walking up
-   from the working directory to the filesystem root. Empty outside a
-   repository. A detached HEAD reads as the short commit hash. */
-fn current_git_branch() throws -> String;
+   from the working directory to the filesystem root or to a directory listed
+   in the ceiling list, the way GIT_CEILING_DIRECTORIES bounds git. Empty
+   outside a repository. A detached HEAD reads as the short commit hash. */
+fn current_git_branch(StringView ceiling_directories) throws -> String;
 
-fn resolve_git_directory() throws -> Path;
+fn resolve_git_directory(StringView ceiling_directories) throws -> Path;
 
 fn read_git_ref_sha(const Path &git_dir, StringView ref_name) throws -> String;
 
@@ -429,7 +430,8 @@ struct git_status_result
   i32 behind_count{0};
 };
 
-fn git_status(Allocator allocator = heap_allocator()) throws
+fn git_status(StringView ceiling_directories,
+              Allocator allocator = heap_allocator()) throws
     -> git_status_result;
 
 fn read_entire_standard_input() throws -> String;

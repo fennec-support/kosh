@@ -21,7 +21,11 @@ fi
 printf 'gitdir: %s\n' "$real_gitdir" > "$root/tree/.git"
 printf 'ref: refs/heads/linked-tree\n' > "$root/real/gitdir/HEAD"
 "$BIN" -c "cd '$root/tree' && echo \"worktree=\$KOSH_GIT_BRANCH\""
-"$BIN" -c "cd '$root' && echo \"outside=[\$KOSH_GIT_BRANCH]\""
+if ! ceiling=$(cd "$root/.." && pwd -W 2>/dev/null); then
+    ceiling=$(cd "$root/.." && pwd -P)
+fi
+GIT_CEILING_DIRECTORIES=$ceiling "$BIN" -c "cd '$root' && echo \"outside=[\$KOSH_GIT_BRANCH]\""
+"$BIN" -c "cd '$root/repo/sub/dir' && GIT_CEILING_DIRECTORIES='$ceiling' && echo \"below-ceiling=\$KOSH_GIT_BRANCH\""
 "$BIN" -c "cd '$root/repo' && KOSH_GIT_BRANCH=stored && echo \"stored=\$KOSH_GIT_BRANCH\""
 rm -rf "$root"
 echo "rc=$?"
