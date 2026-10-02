@@ -247,3 +247,68 @@ LC_ALL=C
 echo c-nocase
 check_nocase "$dir"
 rm -rf "$dir"
+
+show_lengths() {
+  local s=$'\xc3\xa9bc' bad=$'a\xffb' wide=$'日本語'
+  echo "len:${#s}:${#bad}:${#wide}:${#1}"
+  echo "sub:${s:1:1}|${s:0:1}|${s:1}|${s: -1}|${s:2:-1}|${wide:1:1}|${wide: -2}"
+  printf '%s' "${bad:1:1}" | od -An -c
+  set -- "$s" "$wide"
+  local arr=("$s" "$wide")
+  echo "elem:${#arr[0]}:${#arr[1]}:${#1}:${#2}:${arr[1]:1:1}"
+}
+
+LC_ALL=C.UTF-8
+echo utf8-lengths
+show_lengths é
+LC_ALL=C
+echo c-lengths
+show_lengths é
+
+show_case() {
+  local lower=$'\xc3\xa9a' upper=$'\xc3\x89A' mixed=$'\xc3\xa9\xc3\x89b'
+  echo "up:${lower^}:${lower^^}:${lower~}:${lower~~}"
+  echo "lo:${upper,}:${upper,,}:${upper~}:${upper~~}"
+  echo "mix:${mixed^^}:${mixed,,}:${mixed~~}"
+  echo "pat:${mixed^^[é]}:${mixed,,[É]}:${mixed^^[[:alpha:]]}:${lower^?}"
+  echo "greek:${1^^}:${2,,}"
+}
+
+LC_ALL=C.UTF-8
+echo utf8-case
+show_case αβγ ΑΒΓ
+LC_ALL=C
+echo c-case
+show_case αβγ ΑΒΓ
+
+{ LC_ALL=xx_YY.UTF-8; } 2>/dev/null
+echo invalid-locale
+[[ é == ? ]] && echo cond-one || echo cond-many
+e=é
+echo "${#e}"
+LC_ALL=C.UTF-8
+[[ é == ? ]] && echo cond-one || echo cond-many
+unset LC_ALL
+{ LANG=xx_YY.UTF-8; } 2>/dev/null
+[[ é == ? ]] && echo lang-one || echo lang-many
+LANG=C.UTF-8
+[[ é == ? ]] && echo lang-one || echo lang-many
+unset LANG
+
+show_incomplete_replacement() {
+  local e=$'\xc3\xa9' f=$'a\xc3\xa9b' lead=$'\xc3' trail=$'\xa9'
+  local out
+  for out in "${e/$lead/X}" "${e/$trail/X}" "${e//$lead/X}" "${e/#$lead/X}" \
+    "${e/%$trail/X}" "${e//$trail/X}" "${e/$lead*/X}" "${e/?/X}" \
+    "${e/$lead$trail/X}" "${f/$lead/X}" "${f//[$lead]/X}" "${f//$trail/X}" \
+    "${f//$lead$trail/X}" "${f//?/X}" "${f/#a$lead/X}" "${f/%$trail?/X}"; do
+    printf '%s' "$out" | od -An -c
+  done
+}
+
+LC_ALL=C.UTF-8
+echo utf8-incomplete-replacement
+show_incomplete_replacement
+LC_ALL=C
+echo c-incomplete-replacement
+show_incomplete_replacement

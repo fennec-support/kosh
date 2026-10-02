@@ -869,10 +869,14 @@ The character locale decides how much a ? matches. The first nonempty value of
 LC_ALL, LC_CTYPE, and LANG selects it, read from the shell variables at the
 time of each match, so assignment, unset, export, and a prefix assignment all
 apply. A value whose codeset after the dot is UTF\-8 or utf8, in any letter
-case, selects UTF\-8. Any other value, an empty value, and no value select
-bytes. In UTF\-8, a ? and each step of a * consume one whole valid UTF\-8
-sequence, and an invalid byte counts as one character. In bytes, each consumes
-one byte. The rule applies to pathname expansion, case, [[ == ]], ${v#pat},
+case, selects UTF\-8 when the platform can select that locale. Any other value,
+a UTF\-8 name the platform cannot select, an empty value, and no value select
+bytes, the way bash falls back to the C locale. In UTF\-8, a ? and each step of
+a * consume one whole valid UTF\-8 sequence, and an invalid byte counts as one
+character. In bytes, each consumes one byte. In UTF\-8, ${#v} and
+${v:offset:length} count characters, ${v^}, ${v,}, and ${v~} change the case of
+multibyte letters, and a ${v/pat/rep} whose pattern holds an invalid UTF\-8
+sequence matches by byte. The rule applies to pathname expansion, case, [[ == ]], ${v#pat},
 ${v%pat}, ${v/pat/rep}, ${v^pat}, and compgen \-X. In UTF\-8, a bracket
 expression consumes one whole character, its members and range endpoints are
 whole characters, a range compares code points, and a negated bracket still

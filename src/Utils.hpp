@@ -539,13 +539,18 @@ fn lowercase_for_glob(StringView text, glob_charset charset,
                       Allocator allocator) throws -> String;
 
 /* True when a locale name selects the UTF-8 codeset, as in en_US.UTF-8 or
-   C.utf8. */
-pure fn locale_name_is_utf8(StringView locale_name) wontthrow -> bool;
+   C.utf8, and the platform can select that locale. A name the platform cannot
+   select falls back to the C locale the way bash does. The availability answer
+   is cached for the last few names. */
+fn locale_name_is_utf8(StringView locale_name) wontthrow -> bool;
 
 /* The length of the character that starts at position, one byte for ASCII or
    an invalid sequence. */
 pure fn utf8_character_length(StringView text, usize position) wontthrow
     -> usize;
+
+/* The number of characters in text, counting each invalid byte as one. */
+pure fn utf8_character_count(StringView text) wontthrow -> usize;
 
 /* The length of the character that starts at position under the charset, one
    byte in the byte charset and at or past the end of text. */

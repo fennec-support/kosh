@@ -102,6 +102,41 @@ alwaysinline static fn splits_character(StringView text, usize position,
   return false;
 }
 
+static fn get_character_count(const EvalContext &cxt, StringView value) throws
+    -> usize
+{
+  if (cxt.get_glob_charset_for(value) == glob_charset::Bytes) {
+    return value.length;
+  }
+
+  return utils::utf8_character_count(value);
+}
+
+static fn has_invalid_utf8(StringView text) wontthrow -> bool
+{
+  for (usize position = 0; position < text.length;) {
+    let const decoded = utils::decode_utf8(text, position, 0xfffd);
+    if (decoded.length == 1 && static_cast<u8>(text[position]) >= 0x80) {
+      return true;
+    }
+    position += decoded.length;
+  }
+
+  return false;
+}
+
+static fn get_byte_position_after(StringView value, usize byte_position,
+                                  usize character_count) wontthrow -> usize
+{
+  for (usize step = 0; step < character_count && byte_position < value.length;
+       step++)
+  {
+    byte_position += utils::utf8_character_length(value, byte_position);
+  }
+
+  return byte_position;
+}
+
 /* The active mask marks which pattern bytes may act as glob metacharacters, so
    a quoted or escaped * or ? matches itself. */
 fn trim_matching(const EvalContext &cxt, Allocator result_allocator,
@@ -937,11 +972,9 @@ fn EvalContext::ParameterExpander::expand_element_length(StringView name,
                         m_context.scratch_allocator());
   }
   let subscript_location = SourceLocation{};
-  return String::from(m_context
-                          .apply_array_subscript(
-                              array_name, subscript,
-                              get_location_for(subscript, subscript_location))
-                          .length(),
+  let const element = m_context.apply_array_subscript(
+      array_name, subscript, get_location_for(subscript, subscript_location));
+  return String::from(get_character_count(m_context, element.view()),
                       m_context.scratch_allocator());
 }
 
@@ -964,11 +997,13 @@ fn EvalContext::ParameterExpander::expand_length() throws -> String
   if (let const stored =
           m_context.variable_store().shell_variables().find(name);
       stored.has_value())
-    return String::from(stored->count(), m_context.scratch_allocator());
+    return String::from(get_character_count(m_context, stored->view()),
+                        m_context.scratch_allocator());
   let const value = m_context.get_variable_value(name);
   if (!value.has_value()) m_context.report_unset_reference(name);
-  return String::from(value.has_value() ? value->length() : 0,
-                      m_context.scratch_allocator());
+  return String::from(
+      value.has_value() ? get_character_count(m_context, value->view()) : 0,
+      m_context.scratch_allocator());
 }
 
 static fn find_variable_name_end(StringView spec) wontthrow -> usize
@@ -1362,7 +1397,11 @@ fn EvalContext::apply_substring_to_value(
 {
   LOG(All, "taking the substring '%.*s' of a value of %zu bytes",
       static_cast<int>(body.length), body.data, value.length);
-  let const value_length = static_cast<i64>(value.length);
+  let const charset = get_glob_charset_for(value);
+  let const value_length =
+      static_cast<i64>(charset == glob_charset::Utf8
+                           ? utils::utf8_character_count(value)
+                           : value.length);
 
   let const separator = find_substring_length_separator(body);
   let const offset_text = body.substring_of_length(0, separator);
@@ -1388,6 +1427,17 @@ fn EvalContext::apply_substring_to_value(
   }
   let const bounds = compute_substring_bounds(
       value_length, offset, requested_length, substring_subject::Scalar);
+
+  if (charset == glob_charset::Utf8) {
+    let const start_position = get_byte_position_after(
+        value, 0, static_cast<usize>(bounds.start));
+    let const end_position = get_byte_position_after(
+        value, start_position, static_cast<usize>(bounds.end - bounds.start));
+
+    return String{scratch_allocator(),
+                  value.substring_of_length(start_position,
+                                            end_position - start_position)};
+  }
 
   return String{
       scratch_allocator(),
@@ -1517,7 +1567,11 @@ fn EvalContext::pattern_replace_value(
 
   let out = String{scratch_allocator()};
   let const extglob = get_extglob_mode();
-  let const charset = get_glob_charset_for(value);
+  let const value_charset = get_glob_charset_for(value);
+  let const charset =
+      value_charset == glob_charset::Utf8 && has_invalid_utf8(pattern.view())
+          ? glob_charset::Bytes
+          : value_charset;
 
   if (is_anchored_at_start) {
     if (let const matched = longest_pattern_match_at(
@@ -1722,38 +1776,55 @@ fn EvalContext::apply_case_modification_to_value(
       (!pattern_active[0] ||
        (pattern[0] != '*' && pattern[0] != '?' && pattern[0] != '['));
   let const extglob = get_extglob_mode();
-  let const charset = pattern_matches_any || is_single_literal_pattern
-                          ? glob_charset::Bytes
-                          : get_glob_charset_for(value);
+  let const charset = get_glob_charset_for(value);
   let out = String{scratch_allocator()};
   out.reserve(value.length);
-  for (usize i = 0; i < value.length; i++) {
-    char character = value[i];
+  for (usize i = 0; i < value.length;) {
+    let const step = utils::charset_character_length(value, i, charset);
     let const is_affected = should_modify_all || i == 0;
     let const is_pattern_match =
         pattern_matches_any ||
-        (is_single_literal_pattern && character == pattern[0]) ||
+        (is_single_literal_pattern && step == 1 && value[i] == pattern[0]) ||
         (!is_single_literal_pattern &&
-         utils::glob_matches(
-             pattern.view(),
-             value.substring_of_length(
-                 i, utils::charset_character_length(value, i, charset)),
-             pattern_active, 0, extglob, charset));
-    if (is_affected && is_pattern_match)
-    {
-      const unsigned char byte = static_cast<unsigned char>(character);
+         utils::glob_matches(pattern.view(), value.substring_of_length(i, step),
+                             pattern_active, 0, extglob, charset));
+    if (!is_affected || !is_pattern_match) {
+      out.append(value.substring_of_length(i, step));
+      i += step;
+      continue;
+    }
+
+    if (step > 1) {
+      let const code_point = utils::decode_utf8(value, i, 0xfffd).value;
+      let const upper = os::code_point_to_upper(code_point);
+      let mapped = code_point;
       if (op == '^') {
-        character = static_cast<char>(std::toupper(byte));
+        mapped = upper;
       } else if (op == ',') {
-        character = static_cast<char>(std::tolower(byte));
+        mapped = os::code_point_to_lower(code_point);
       } else {
-        if (std::islower(byte) != 0)
-          character = static_cast<char>(std::toupper(byte));
-        else if (std::isupper(byte) != 0)
-          character = static_cast<char>(std::tolower(byte));
+        mapped = upper != code_point ? upper
+                                     : os::code_point_to_lower(code_point);
       }
+      utils::append_utf8(out, mapped);
+      i += step;
+      continue;
+    }
+
+    char character = value[i];
+    const unsigned char byte = static_cast<unsigned char>(character);
+    if (op == '^') {
+      character = static_cast<char>(std::toupper(byte));
+    } else if (op == ',') {
+      character = static_cast<char>(std::tolower(byte));
+    } else {
+      if (std::islower(byte) != 0)
+        character = static_cast<char>(std::toupper(byte));
+      else if (std::isupper(byte) != 0)
+        character = static_cast<char>(std::tolower(byte));
     }
     out.push(character);
+    i += step;
   }
   return out;
 }

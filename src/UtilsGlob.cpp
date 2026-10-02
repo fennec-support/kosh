@@ -410,7 +410,41 @@ pure fn smart_case_prefix_matches(StringView candidate,
                                    token_has_uppercase(prefix));
 }
 
-pure fn locale_name_is_utf8(StringView locale_name) wontthrow -> bool
+struct locale_availability_entry
+{
+  char name[48];
+  u8 name_length;
+  bool is_available;
+};
+
+static fn locale_is_installed(StringView locale_name) wontthrow -> bool
+{
+  constexpr usize CACHE_ENTRY_COUNT = 4;
+  static thread_local locale_availability_entry cache[CACHE_ENTRY_COUNT]{};
+  static thread_local usize next_slot = 0;
+
+  if (locale_name.length >= sizeof(cache[0].name)) {
+    return os::locale_is_available(locale_name);
+  }
+
+  for (let const &entry : cache) {
+    if (entry.name_length == locale_name.length &&
+        std::memcmp(entry.name, locale_name.data, locale_name.length) == 0)
+    {
+      return entry.is_available;
+    }
+  }
+
+  let &slot = cache[next_slot];
+  next_slot = (next_slot + 1) % CACHE_ENTRY_COUNT;
+  std::memcpy(slot.name, locale_name.data, locale_name.length);
+  slot.name_length = static_cast<u8>(locale_name.length);
+  slot.is_available = os::locale_is_available(locale_name);
+
+  return slot.is_available;
+}
+
+static fn locale_codeset_is_utf8(StringView locale_name) wontthrow -> bool
 {
   let const dot = locale_name.find_character('.');
   if (!dot.has_value()) return false;
@@ -429,6 +463,14 @@ pure fn locale_name_is_utf8(StringView locale_name) wontthrow -> bool
          ascii_to_lower(codeset[1]) == 't' &&
          ascii_to_lower(codeset[2]) == 'f' && codeset[3] == '-' &&
          codeset[4] == '8';
+}
+
+fn locale_name_is_utf8(StringView locale_name) wontthrow -> bool
+{
+  if (!locale_codeset_is_utf8(locale_name)) return false;
+  if (locale_name == "C.UTF-8" || locale_name == "C.utf8") return true;
+
+  return locale_is_installed(locale_name);
 }
 
 pure fn utf8_character_length(StringView text, usize position) wontthrow
@@ -460,11 +502,21 @@ fn lowercase_for_glob(StringView text, glob_charset charset,
     }
 
     let folded = String{allocator};
-    append_utf8(folded, os::lowercase_code_point(decoded.value));
+    append_utf8(folded, os::code_point_to_lower(decoded.value));
     result.append(folded.length() == decoded.length ? folded.view() : original);
   }
 
   return result;
+}
+
+pure fn utf8_character_count(StringView text) wontthrow -> usize
+{
+  usize character_count = 0;
+  for (usize position = 0; position < text.length; character_count++) {
+    position += utf8_character_length(text, position);
+  }
+
+  return character_count;
 }
 
 hot flatten fn glob_matches(StringView glob, StringView str,

@@ -1541,13 +1541,38 @@ static fn get_unicode_locale() wontthrow -> locale_t
   return unicode_locale;
 }
 
-fn lowercase_code_point(u32 code_point) wontthrow -> u32
+fn code_point_to_upper(u32 code_point) wontthrow -> u32
+{
+  let const unicode_locale = get_unicode_locale();
+  if (unicode_locale == nullptr) return code_point;
+
+  return static_cast<u32>(
+      towupper_l(static_cast<wint_t>(code_point), unicode_locale));
+}
+
+fn code_point_to_lower(u32 code_point) wontthrow -> u32
 {
   let const unicode_locale = get_unicode_locale();
   if (unicode_locale == nullptr) return code_point;
 
   return static_cast<u32>(
       towlower_l(static_cast<wint_t>(code_point), unicode_locale));
+}
+
+fn locale_is_available(StringView locale_name) wontthrow -> bool
+{
+  char name[64];
+  if (locale_name.length >= sizeof(name)) return false;
+
+  std::memcpy(name, locale_name.data, locale_name.length);
+  name[locale_name.length] = '\0';
+
+  let const created = newlocale(LC_CTYPE_MASK, name, nullptr);
+  if (created == nullptr) return false;
+
+  freelocale(created);
+
+  return true;
 }
 
 fn code_point_is_in_class(StringView class_name, u32 code_point) wontthrow

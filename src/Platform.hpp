@@ -1424,10 +1424,14 @@ private:
   bool m_is_active{false};
 };
 
-/* The lowercase form of a Unicode code point under the platform's UTF-8
-   classification, or the code point itself when the platform has none or the
-   code point has no lowercase form. */
-fn lowercase_code_point(u32 code_point) wontthrow -> u32;
+/* The simple case mapping of a Unicode code point under the platform's UTF-8
+   classification, or the code point itself when it has no mapping or the
+   platform has no such classification. */
+fn code_point_to_upper(u32 code_point) wontthrow -> u32;
+fn code_point_to_lower(u32 code_point) wontthrow -> u32;
+
+/* Whether the platform can select the named locale, as newlocale does. */
+fn locale_is_available(StringView locale_name) wontthrow -> bool;
 
 /* One capture group's byte span in the subject. A group that did not
    participate carries a negative start. */
