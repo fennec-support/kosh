@@ -190,8 +190,9 @@ changes update this file.
   queries identify a specific arena. Raw storage is guarded until throwing
   construction succeeds.
 - `ArrayList` allocates on first growth and stores 32-bit length and capacity.
-  `String` has inline storage and an exact first heap allocation. Use
-  `SparseList` for almost-empty member lists.
+  `String` has inline storage and an exact first heap allocation. It caches
+  whether its bytes are ASCII, and every mutator that can add a high byte
+  resets that cache. Use `SparseList` for almost-empty member lists.
 - Bump arenas register destructors for nontrivial objects. Use
   `is_arena_destructor_noop` only when reachable resources have arena lifetime
   or need no cleanup. Destructor chunks hold 128 records first and 64 KiB later.
