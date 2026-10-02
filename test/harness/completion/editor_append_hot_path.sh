@@ -7,7 +7,10 @@ export RCFILE
 printf '%s\n' \
     "PS1='> '" \
     "PROMPT_COMMAND='printf ready > \"\$EDITOR_READY_FILE\"; unset PROMPT_COMMAND'" \
+    "trap 'echo exited >> \"\$EDITOR_EXIT_FILE\"' EXIT" \
     > "$RCFILE"
+EDITOR_EXIT_FILE="$d/editor-exits"
+export EDITOR_EXIT_FILE
 
 fail()
 {
@@ -137,6 +140,17 @@ wait_for_marker_count()
   done
 }
 
+finish_editor_input()
+{
+  exit_count=0
+  if [ -f "$EDITOR_EXIT_FILE" ]; then
+    exit_count=$(wc -l < "$EDITOR_EXIT_FILE")
+  fi
+  printf 'exit 0\n'
+  wait_for_marker_count "$EDITOR_EXIT_FILE" $((exit_count + 1)) || return 1
+  sleep 0.1
+}
+
 mkdir "$d/path"
 printf '#!/bin/sh\n' > "$d/path/probe-alpha"
 printf '#!/bin/sh\n' > "$d/path/probe-beta"
@@ -156,8 +170,7 @@ send_typing_input()
     done
     printf '\n'
     sleep 0.2
-    printf 'exit 0\n'
-    sleep 0.5
+    finish_editor_input || fail "$LINENO"
 }
 
 send_typing_input | TERM=xterm-256color PATH="$d/path" \
@@ -175,14 +188,14 @@ send_unhighlighted_input()
     sleep 0.2
     printf 'probe-\t\n'
     sleep 0.2
-    printf 'exit 0\n'
-    sleep 0.5
+    finish_editor_input || fail "$LINENO"
 }
 
 printf '%s\n' \
     "set --tab-selector=plain" \
     "PS1='> '" \
     "PROMPT_COMMAND='printf ready > \"\$EDITOR_READY_FILE\"; unset PROMPT_COMMAND'" \
+    "trap 'echo exited >> \"\$EDITOR_EXIT_FILE\"' EXIT" \
     > "$d/unhighlighted-rc"
 send_unhighlighted_input | TERM=xterm-256color PATH="$d/path" \
     EDITOR_OPTIONS=--no-syntax-highlighting \
@@ -206,8 +219,7 @@ send_history_input()
     sleep 0.2
     printf 'zzzzzzz\n'
     sleep 0.2
-    printf 'exit 0\n'
-    sleep 0.5
+    finish_editor_input || fail "$LINENO"
 }
 
 send_history_input | TERM=xterm-256color PATH="$d/path" \
@@ -231,8 +243,7 @@ send_accepted_history_input()
     sleep 0.3
     printf '\003'
     sleep 0.2
-    printf 'exit 0\n'
-    sleep 0.5
+    finish_editor_input || fail "$LINENO"
 }
 
 send_accepted_history_input | TERM=xterm-256color PATH="$d/path" \
@@ -266,8 +277,7 @@ send_menu_input()
     sleep 0.5
     printf '\003'
     sleep 0.2
-    printf 'exit 0\n'
-    sleep 0.5
+    finish_editor_input || fail "$LINENO"
 }
 
 send_menu_input | ASAN_OPTIONS=detect_stack_use_after_return=1 \
@@ -395,8 +405,7 @@ send_quoted_input()
     sleep 0.2
     printf "printf '<%%s>\\\\n' read\tone\n"
     sleep 0.2
-    printf 'exit 0\n'
-    sleep 0.5
+    finish_editor_input || fail "$LINENO"
 }
 
 send_quoted_input | EDITOR_READY_FILE="$d/quoted-ready" \
