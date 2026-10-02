@@ -62,6 +62,35 @@ echo "--- missing source preserves later output and status ---"
   printf 'status=%s\n' "$?"
 } 2>&1 | tr '\\' '/' | sed "s#$normalized_d#TMPDIR#g"
 
+(
+cd "$d" || exit 1
+echo "--- page sized files are read to the end ---"
+head -c 4096 large-forward.txt > page.txt
+"$BIN" -c 'koshkit tail -c 5 page.txt | koshkit wc -c; koshkit wc -c page.txt; koshkit head -c -5 page.txt | koshkit wc -c; koshkit tail -n 1 page.txt'
+)
+if [ "${TARGET:-$(uname -s)}" = Linux ]; then
+  for pseudo_file in /proc/version /sys/kernel/mm/transparent_hugepage/enabled; do
+    [ -r "$pseudo_file" ] || continue
+
+    pseudo_text=$(cat "$pseudo_file")
+    pseudo_size=$(cat "$pseudo_file" | wc -c)
+    pseudo_size=$((pseudo_size + 0))
+    pseudo_last=$(printf '%s\n' "$pseudo_text" | tail -n 1)
+    [ "$("$BIN" -c 'koshkit tail -n 1 "$1"' x "$pseudo_file")" = "$pseudo_last" ] ||
+      echo "pseudo-tail-n=wrong $pseudo_file"
+    [ "$("$BIN" -c 'koshkit tail -c +3 "$1"' x "$pseudo_file")" = "$(printf '%s\n' "$pseudo_text" | tail -c +3)" ] ||
+      echo "pseudo-tail-offset=wrong $pseudo_file"
+    [ "$("$BIN" -c 'koshkit tail -c 5 "$1"' x "$pseudo_file")" = "$(printf '%s\n' "$pseudo_text" | tail -c 5)" ] ||
+      echo "pseudo-tail-c=wrong $pseudo_file"
+    [ "$("$BIN" -c 'koshkit head -c -5 "$1"' x "$pseudo_file" | cksum)" = "$(printf '%s\n' "$pseudo_text" | head -c -5 | cksum)" ] ||
+      echo "pseudo-head-c=wrong $pseudo_file"
+    [ "$("$BIN" -c 'koshkit head -n -0 "$1"' x "$pseudo_file" | cksum)" = "$(printf '%s\n' "$pseudo_text" | cksum)" ] ||
+      echo "pseudo-head-n=wrong $pseudo_file"
+    [ "$("$BIN" -c 'koshkit wc -c "$1"' x "$pseudo_file")" = "$pseudo_size $pseudo_file" ] ||
+      echo "pseudo-wc=wrong $pseudo_file"
+  done
+fi
+
 if [ -n "$d" ]; then
   "$BIN_DIR/invoke-koshkit" rm -r "$d"
 fi

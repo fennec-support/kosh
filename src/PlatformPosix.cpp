@@ -651,10 +651,14 @@ fn descriptor_is_seekable(os::descriptor fd) wontthrow -> bool
 fn regular_descriptor_file_size(os::descriptor fd) wontthrow -> Maybe<u64>
 {
   struct stat info{};
-  if (fstat(fd, &info) != 0 || !S_ISREG(info.st_mode) || info.st_size < 0)
+  if (fstat(fd, &info) != 0 || !S_ISREG(info.st_mode) || info.st_size <= 0)
     return None;
 
-  return static_cast<u64>(info.st_size);
+  static let const page_byte_count = static_cast<u64>(sysconf(_SC_PAGESIZE));
+  let const size = static_cast<u64>(info.st_size);
+  if (page_byte_count != 0 && size % page_byte_count == 0) return None;
+
+  return size;
 }
 
 fn rewind_descriptor(os::descriptor fd, usize byte_count) wontthrow -> bool

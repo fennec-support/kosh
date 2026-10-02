@@ -102,3 +102,8 @@ c
 ==> with-final.txt <==
 c
 status=1
+--- page sized files are read to the end ---
+5
+4096 page.txt
+4091
+x
