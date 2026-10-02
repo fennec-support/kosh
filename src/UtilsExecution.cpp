@@ -772,7 +772,7 @@ cold fn print_memory_report() wontthrow -> void
                  heap_stats.mapped_bytes);
 }
 
-[[noreturn]] fn quit(i32 code, farewell_policy farewell) throws -> void
+wontreturn fn quit(i32 code, farewell_policy farewell) throws -> void
 {
   let const should_goodbye = farewell == farewell_policy::Goodbye;
   LOG(Info, "quitting with code %d", code);

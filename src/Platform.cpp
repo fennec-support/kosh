@@ -453,9 +453,9 @@ pure alwaysinline fn shift_crc32c(const crc32c_shift_table &table,
 
 #if defined __x86_64__ && !defined __COSMOPOLITAN__
 #if defined __clang__
-[[gnu::target("crc32")]]
+targetisa("crc32")
 #else
-[[gnu::target("sse4.2")]]
+targetisa("sse4.2")
 #endif
 pure fn crc32c_update_sse42_streams(u32 crc, const u8 *data, usize block_length,
                                     const crc32c_shift_table &table) wontthrow
@@ -482,9 +482,9 @@ pure fn crc32c_update_sse42_streams(u32 crc, const u8 *data, usize block_length,
 }
 
 #if defined __clang__
-[[gnu::target("crc32")]]
+targetisa("crc32")
 #else
-[[gnu::target("sse4.2")]]
+targetisa("sse4.2")
 #endif
 pure fn crc32c_update_sse42(u32 crc, const u8 *data, usize length) wontthrow
     -> u32
@@ -529,7 +529,7 @@ fn is_x86_sse42_available() wontthrow -> bool
 #endif
 
 #if defined __aarch64__ || defined __arm64__ || defined _M_ARM64
-[[gnu::target("+crc")]] pure
+targetisa("+crc") pure
     fn crc32c_update_acle_streams(u32 crc, const u8 *data, usize block_length,
                                   const crc32c_shift_table &table) wontthrow
     -> u32
@@ -552,7 +552,7 @@ fn is_x86_sse42_available() wontthrow -> bool
   return shift_crc32c(table, crc) ^ last_crc;
 }
 
-[[gnu::target("+crc")]] pure fn crc32c_update_acle(u32 crc, const u8 *data,
+targetisa("+crc") pure fn crc32c_update_acle(u32 crc, const u8 *data,
                                                    usize length) wontthrow
     -> u32
 {

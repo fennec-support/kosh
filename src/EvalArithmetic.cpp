@@ -203,7 +203,7 @@ public:
   ArithmeticValue cached_pi{};
   usize calculator_function_position{0};
 
-  [[noreturn]] cold fn fail(StringView message, StringView note = {}) throws
+  wontreturn cold fn fail(StringView message, StringView note = {}) throws
       -> void
   {
     if (precise_base.has_value()) {
@@ -221,7 +221,7 @@ public:
     throw ErrorWithDetails{message, note};
   }
 
-  [[noreturn]] cold fn fail_span(usize start_position, usize end_position,
+  wontreturn cold fn fail_span(usize start_position, usize end_position,
                                  StringView message,
                                  StringView note = {}) throws -> void
   {

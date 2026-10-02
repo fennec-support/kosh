@@ -925,7 +925,7 @@ static fn find_history_search_word(StringView command, StringView needle) throws
   return None;
 }
 
-cold [[noreturn]] static fn
+cold wontreturn static fn
 throw_bad_history_word_specifier(StringView spelling) throws -> void
 {
   let message = String{spelling};
@@ -1065,7 +1065,7 @@ enum class history_substitution_scope : u8
   FirstPerWord,
 };
 
-cold [[noreturn]] static fn
+cold wontreturn static fn
 throw_history_modifier_error(StringView spelling, StringView reason) throws
     -> void
 {

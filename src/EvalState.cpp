@@ -316,7 +316,7 @@ static constexpr usize MAX_SUBSTITUTION_DEPTH = 64;
 static constexpr usize MAX_PARAMETER_EXPANSION_DEPTH = 256;
 
 static fn guard_located_depth(usize current_depth, usize cap,
-                              [[maybe_unused]] const char *what,
+                              maybeunused const char *what,
                               const SourceLocation &location) throws -> void
 {
   if (current_depth >= cap) {
@@ -1023,7 +1023,7 @@ static fn read_subshell_bootstrap_runtime(subshell_bootstrap_reader &reader,
   return true;
 }
 
-[[noreturn]] static fn invalid_subshell_bootstrap() throws -> void
+wontreturn static fn invalid_subshell_bootstrap() throws -> void
 {
   throw Error{"Invalid inherited shell state"};
 }

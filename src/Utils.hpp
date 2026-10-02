@@ -574,7 +574,7 @@ enum class farewell_policy : u8
   Goodbye,
 };
 
-[[noreturn]] fn quit(i32 code,
+wontreturn fn quit(i32 code,
                      farewell_policy farewell = farewell_policy::Silent) throws
     -> void;
 

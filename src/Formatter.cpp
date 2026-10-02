@@ -1564,7 +1564,7 @@ fn render_format_pieces(const ArrayList<format_piece> &pieces,
         writer.append_token(text);
         continue;
       }
-      [[fallthrough]];
+      fallthrough;
     case format_operator::Continuation:
       do_close_test();
       writer.append_token(text);

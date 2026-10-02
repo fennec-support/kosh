@@ -175,7 +175,7 @@ fn run_util(Utility::Kind chosen, const ExecContext &ec, EvalContext &cxt,
   unreachable("unhandled koshkit utility of kind %d", ENUM(chosen));
 }
 
-[[noreturn]] fn rethrow_with_prefix(const ErrorWithLocation &error,
+wontreturn fn rethrow_with_prefix(const ErrorWithLocation &error,
                                     StringView prefix) throws -> void
 {
   let const message = prefix + ": " + error.message();

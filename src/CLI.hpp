@@ -23,7 +23,7 @@
 #define HELP_DESCRIPTION T__FLAG_HELP_DESCRIPTION
 
 #define HELP_DESCRIPTION_DECL(text)                                            \
-  [[maybe_unused]] static constexpr koshka::StringView HELP_DESCRIPTION { text }
+  maybeunused static constexpr koshka::StringView HELP_DESCRIPTION { text }
 
 #define FLAG_LIST_DECL() static koshka::FlagList FLAG_LIST
 

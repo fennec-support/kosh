@@ -154,7 +154,7 @@ hot fn EvalContext::assign_variable(StringView name, StringView value) throws
   default: break;
   }
 
-  if (environment_store().confined_write_depth() > 0) [[unlikely]] {
+  if (environment_store().confined_write_depth() > 0) unlikely {
     let const previous = variable_store().shell_variables().find(name);
     let saved = Maybe<String>{};
     if (previous.has_value()) saved = String{previous->view()};
@@ -315,14 +315,14 @@ hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
   }
   if (is_bash_directory_stack_special(name)) return;
 
-  if (is_integer_variable(name)) [[unlikely]] {
+  if (is_integer_variable(name)) unlikely {
     let const result = value.length == 0 ? String{scratch_allocator(), "0"}
                                          : evaluate_arithmetic_text(value);
     assign_variable(name, result.view());
     return;
   }
 
-  if (is_lowercase_variable(name) || is_uppercase_variable(name)) [[unlikely]] {
+  if (is_lowercase_variable(name) || is_uppercase_variable(name)) unlikely {
     let adjusted = String{scratch_allocator(), value};
     apply_variable_case(name, adjusted);
     assign_variable(name, adjusted.view());
@@ -501,7 +501,7 @@ fn EvalContext::set_indexed_array(StringView name,
       set_bash_directory_stack_element(index, values[index].view());
     return;
   }
-  if (is_lowercase_variable(name) || is_uppercase_variable(name)) [[unlikely]]
+  if (is_lowercase_variable(name) || is_uppercase_variable(name)) unlikely
     for (let &value : values)
       apply_variable_case(name, value);
   variable_store().shell_variables().erase(name);
@@ -556,7 +556,7 @@ fn EvalContext::append_indexed_array(StringView name,
         values.count(), static_cast<int>(name.length), name.data);
     if (is_readonly(name))
       throw Error{"Unable to assign '" + name + "' because it is read only"};
-    if (is_lowercase_variable(name) || is_uppercase_variable(name)) [[unlikely]]
+    if (is_lowercase_variable(name) || is_uppercase_variable(name)) unlikely
       for (let &value : values)
         apply_variable_case(name, value);
     variable_store().shell_variables().erase(name);
@@ -569,7 +569,7 @@ fn EvalContext::append_indexed_array(StringView name,
 
 /* The script-fatal mark aborts the whole run, unlike the command-level errors
    the bash mood continues past. */
-[[noreturn]] fn throw_script_fatal(StringView message, StringView note) throws
+wontreturn fn throw_script_fatal(StringView message, StringView note) throws
     -> void
 {
   if (note.is_empty()) {

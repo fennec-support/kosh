@@ -363,8 +363,11 @@ fn shell_highlight_cache::spans_for(StringView source, usize line_start,
   for (let const &span : generated)
     cached.spans.push(span);
   m_lines.push(steal(cached));
-  for (usize index = m_lines.count() - 1; index > cached_line_index; index--)
-    std::swap(m_lines[index], m_lines[index - 1]);
+  for (usize index = m_lines.count() - 1; index > cached_line_index; index--) {
+    let displaced = steal(m_lines[index]);
+    m_lines[index] = steal(m_lines[index - 1]);
+    m_lines[index - 1] = steal(displaced);
+  }
   if (line_state != &m_sequential_state)
     m_sequential_state = steal(lexical_state);
   let state_target = line_end;

@@ -894,7 +894,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
           loop
           {
             let const c = chop_character(byte_count);
-            if (c == lexer::CEOF) [[unlikely]] {
+            if (c == lexer::CEOF) unlikely {
               throw ErrorWithLocationAndDetails{
                   here(m_cursor_position, byte_count),
                   "Unterminated arithmetic expansion",
@@ -1009,7 +1009,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
         let const inner_start = m_cursor_position + byte_count;
         let const substitution_end =
             lexer::scan_balanced_shell_region(m_source, inner_start, ')');
-        if (!substitution_end.has_value()) [[unlikely]] {
+        if (!substitution_end.has_value()) unlikely {
           throw ErrorWithLocationAndDetails{
               here(m_cursor_position, m_source.count() - m_cursor_position),
               "Unterminated command substitution", here(m_source.count(), 1),
@@ -1045,7 +1045,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
         loop
         {
           let const c = chop_character(byte_count);
-          if (c == lexer::CEOF) [[unlikely]] {
+          if (c == lexer::CEOF) unlikely {
             throw ErrorWithLocationAndDetails{
                 here(m_cursor_position + byte_count, 1),
                 "Unterminated variable expansion",
@@ -1175,7 +1175,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
       loop
       {
         let const c = chop_character(byte_count);
-        if (c == lexer::CEOF) [[unlikely]] {
+        if (c == lexer::CEOF) unlikely {
           throw ErrorWithLocationAndDetails{
               here(m_cursor_position + relative_open_backtick_pos, 1),
               "Unterminated command substitution",
@@ -1222,7 +1222,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
     byte_count++;
   }
 
-  if (quote_char.has_value()) [[unlikely]] {
+  if (quote_char.has_value()) unlikely {
     let expected_quote = String{heap_allocator()};
     expected_quote += "expected ";
     expected_quote += *quote_char;
@@ -1234,7 +1234,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
         expected_quote};
   }
 
-  if (should_escape) [[unlikely]] {
+  if (should_escape) unlikely {
     throw ErrorWithLocationAndDetails{
         here(m_cursor_position + byte_count - 1, 1), "Nothing to escape",
         here(m_cursor_position + byte_count, 1), "expected a character here"};
@@ -1441,7 +1441,7 @@ hot alwaysinline fn Lexer::lex_process_substitution(char direction) throws
   let const inner_start = open_position + 2;
   let const substitution_end =
       lexer::scan_balanced_shell_region(m_source, inner_start, ')');
-  if (!substitution_end.has_value()) [[unlikely]] {
+  if (!substitution_end.has_value()) unlikely {
     throw ErrorWithLocationAndDetails{
         here(open_position, m_source.count() - open_position),
         "Unterminated process substitution", here(m_source.count(), 1),

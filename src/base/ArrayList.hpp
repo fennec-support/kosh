@@ -226,7 +226,7 @@ public:
 
   hot fn push(T value) throws -> void
   {
-    if (m_length == m_capacity) [[unlikely]]
+    if (m_length == m_capacity) unlikely
       reserve(m_length + 1);
     new (&m_data[m_length]) T(steal(value));
     m_length++;
@@ -314,7 +314,7 @@ public:
   cold fn reserve(usize needed) throws -> void
   {
     if (needed <= m_capacity) return;
-    if (needed > MAXIMUM_ELEMENT_COUNT) [[unlikely]]
+    if (needed > MAXIMUM_ELEMENT_COUNT) unlikely
       throw std::bad_alloc{};
 
     constexpr usize INITIAL_ALLOCATION_BYTES = 64;

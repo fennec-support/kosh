@@ -124,9 +124,9 @@ fn String::clear() wontthrow -> void
 
 cold fn String::reserve(usize needed) throws -> void
 {
-  if (needed < m_capacity) [[likely]]
+  if (needed < m_capacity) likely
     return;
-  if (needed == SIZE_MAX) [[unlikely]]
+  if (needed == SIZE_MAX) unlikely
     throw std::bad_alloc{};
 
   let const required_capacity = needed + 1;
@@ -215,7 +215,7 @@ cold fn String::free_storage() wontthrow -> void
 
 fn operator+(StringView left, StringView right) throws->String
 {
-  if (right.length > SIZE_MAX - left.length) [[unlikely]]
+  if (right.length > SIZE_MAX - left.length) unlikely
     throw std::bad_alloc{};
   let result = String{heap_allocator()};
   result.reserve(left.length + right.length);

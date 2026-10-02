@@ -1334,7 +1334,7 @@ public:
   fn wait(f64 timeout_seconds) wontthrow -> void;
 
 private:
-  descriptor m_descriptor{KOSH_INVALID_FD};
+  maybeunused descriptor m_descriptor{KOSH_INVALID_FD};
   ArrayList<descriptor> m_watched_descriptors{heap_allocator()};
   ArrayList<String> m_watched_paths{heap_allocator()};
 };
@@ -1420,8 +1420,8 @@ public:
   fn operator=(const regex_utf8_scope &)->regex_utf8_scope & = delete;
 
 private:
-  opaque *m_previous{nullptr};
-  bool m_is_active{false};
+  maybeunused opaque *m_previous{nullptr};
+  maybeunused bool m_is_active{false};
 };
 
 /* The simple case mapping of a Unicode code point under the platform's UTF-8
@@ -2227,7 +2227,7 @@ fn take_subshell_bootstrap() wontthrow -> subshell_bootstrap;
 
 /* A forked pipeline-stage child calls this so it never runs the parent's
    cleanup inside the duplicated process. */
-[[noreturn]] fn exit_process_immediately(i32 status) wontthrow -> void;
+wontreturn fn exit_process_immediately(i32 status) wontthrow -> void;
 
 /* It does not fork, so on success it never returns. */
 fn replace_process(ExecContext &&ec) throws -> void;

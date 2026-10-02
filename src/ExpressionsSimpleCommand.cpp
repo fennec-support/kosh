@@ -607,7 +607,7 @@ static fn redirection_open_error(StringView path) throws -> String
    open_or_stage_failed is set true only for the open, stage, and
    ambiguous-target failures the simple-command path recovers from, so a
    duplication-resolve or word-expansion error stays fatal. */
-[[noreturn]] fn
+wontreturn fn
 reject_restricted_output_redirection(const Redirection &redir,
                                      const SourceLocation &fallback_location,
                                      bool *open_or_stage_failed) throws -> void

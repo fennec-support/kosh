@@ -99,12 +99,12 @@ public:
   cold fn reserve(usize expected_count) throws -> void
   {
     let const third = expected_count / 3;
-    if (expected_count > SIZE_MAX - third - 1) [[unlikely]]
+    if (expected_count > SIZE_MAX - third - 1) unlikely
       throw std::bad_alloc{};
     let const needed = expected_count + third + 1;
     usize new_capacity = m_capacity == 0 ? 16 : m_capacity;
     while (new_capacity < needed) {
-      if (new_capacity > SIZE_MAX / 2) [[unlikely]]
+      if (new_capacity > SIZE_MAX / 2) unlikely
         throw std::bad_alloc{};
       new_capacity *= 2;
     }
@@ -249,7 +249,7 @@ private:
                 first_tombstone != NO_INDEX ? first_tombstone : index};
       }
       if (candidate.state == slot::Occupied && candidate.hash == hash &&
-          candidate.key.view() == key) [[likely]]
+          candidate.key.view() == key) likely
       {
         return {index, index};
       }
@@ -281,7 +281,7 @@ private:
     if (m_count + m_tombstones + 1 <= maximum_occupied) return result;
 
     if (m_count + 1 > maximum_occupied) {
-      if (m_capacity > UINT32_MAX / 2) [[unlikely]]
+      if (m_capacity > UINT32_MAX / 2) unlikely
         throw std::bad_alloc{};
       rehash(m_capacity * 2);
     } else {
@@ -323,7 +323,7 @@ private:
 
   cold fn rehash(usize new_capacity) throws -> void
   {
-    if (new_capacity > UINT32_MAX) [[unlikely]]
+    if (new_capacity > UINT32_MAX) unlikely
       throw std::bad_alloc{};
     let const fresh_slots = m_allocator.alloc_array<slot>(new_capacity);
     usize constructed_count = 0;

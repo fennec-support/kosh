@@ -171,11 +171,11 @@ public:
      null slot, so the fit test is length + count < capacity. */
   hot fn push(char c) throws -> void
   {
-    if (m_length == SIZE_MAX) [[unlikely]]
+    if (m_length == SIZE_MAX) unlikely
       throw std::bad_alloc{};
     m_ascii_state = AsciiState::Unknown;
     let const new_length = m_length + 1;
-    if (new_length < m_capacity) [[likely]] {
+    if (new_length < m_capacity) likely {
       m_data[m_length++] = c;
       m_data[m_length] = '\0';
       return;
@@ -187,11 +187,11 @@ public:
   hot fn append(StringView other) throws -> void
   {
     if (other.length == 0) return;
-    if (other.length > SIZE_MAX - m_length) [[unlikely]]
+    if (other.length > SIZE_MAX - m_length) unlikely
       throw std::bad_alloc{};
     m_ascii_state = AsciiState::Unknown;
     let const new_length = m_length + other.length;
-    if (new_length < m_capacity) [[likely]] {
+    if (new_length < m_capacity) likely {
       std::memcpy(m_data + m_length, other.data, other.length);
       m_length = new_length;
       m_data[m_length] = '\0';
@@ -213,7 +213,7 @@ public:
   hot fn append_repeated(char byte, usize repeat_count) throws -> void
   {
     if (repeat_count == 0) return;
-    if (repeat_count > SIZE_MAX - m_length) [[unlikely]]
+    if (repeat_count > SIZE_MAX - m_length) unlikely
       throw std::bad_alloc{};
     m_ascii_state = AsciiState::Unknown;
     let const new_length = m_length + repeat_count;
@@ -300,7 +300,7 @@ public:
 
   hot mustuse fn is_ascii() const wontthrow -> bool
   {
-    if (m_ascii_state == AsciiState::Unknown) [[unlikely]]
+    if (m_ascii_state == AsciiState::Unknown) unlikely
       classify_ascii();
 
     return m_ascii_state == AsciiState::Ascii;

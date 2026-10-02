@@ -627,7 +627,7 @@ cold fn SegmentText::grow_owned(usize needed) throws -> void
 fn SegmentText::append(StringView other) throws -> void
 {
   if (other.length == 0) return;
-  if (other.length > MAXIMUM_TEXT_LENGTH - m_length) [[unlikely]]
+  if (other.length > MAXIMUM_TEXT_LENGTH - m_length) unlikely
     throw std::bad_alloc{};
 
   let const needed = static_cast<usize>(m_length) + other.length;

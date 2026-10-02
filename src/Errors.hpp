@@ -361,7 +361,7 @@ static_assert(!std::is_same_v<WarningWithDetails, Warning>);
 static_assert(
     !std::is_same_v<WarningWithLocationAndDetails, WarningWithLocation>);
 
-[[noreturn]] inline fn relocate_error(const ErrorBase &error,
+wontreturn inline fn relocate_error(const ErrorBase &error,
                                       const SourceLocation &location) throws
     -> void
 {

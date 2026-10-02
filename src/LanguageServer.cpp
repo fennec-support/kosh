@@ -192,7 +192,13 @@ static constexpr u32 SEMANTIC_UNRESOLVED = 1u << 3;
 static constexpr u32 SEMANTIC_SET = 1u << 9;
 static constexpr u32 SEMANTIC_UNUSED = 1u << 10;
 
-pure fn semantic_style(highlight_role role) wontthrow -> std::pair<u32, u32>
+struct semantic_token_style
+{
+  u32 type;
+  u32 modifiers;
+};
+
+pure fn semantic_style(highlight_role role) wontthrow -> semantic_token_style
 {
   static constexpr u32 READONLY = 1u << 1;
   static constexpr u32 INVALID = 1u << 2;
@@ -202,7 +208,7 @@ pure fn semantic_style(highlight_role role) wontthrow -> std::pair<u32, u32>
   static constexpr u32 HEREDOC = 1u << 7;
   static constexpr u32 URL = 1u << 8;
 
-  static constexpr std::pair<u32, u32> STYLES[] = {
+  static constexpr semantic_token_style STYLES[] = {
       {0, 0                            },
       {1, 0                            },
       {2, 0                            },

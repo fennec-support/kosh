@@ -632,7 +632,7 @@ fn take_subshell_bootstrap() wontthrow -> subshell_bootstrap
   return subshell_bootstrap{};
 }
 
-[[noreturn]] fn exit_process_immediately(i32 status) wontthrow -> void
+wontreturn fn exit_process_immediately(i32 status) wontthrow -> void
 {
   _exit(status);
 }

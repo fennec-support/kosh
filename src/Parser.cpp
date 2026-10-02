@@ -187,7 +187,7 @@ cold pure static fn find_standalone_keyword(StringView source,
   return koshka::None;
 }
 
-cold [[noreturn]] fn
+cold wontreturn fn
 internal::throw_unterminated(const SourceLocation &opener, StringView what,
                              StringView source, StringView keyword,
                              SourceLocation fallback) throws -> void
@@ -687,7 +687,7 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
     switch (token->kind()) {
     case Token::Kind::Ampersand:
       if (lhs != nullptr) lhs->make_async();
-      [[fallthrough]];
+      fallthrough;
     case Token::Kind::DoublePipe:
     case Token::Kind::DoubleAmpersand:
       if (lhs == nullptr) {
@@ -699,7 +699,7 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
         msg += "'";
         throw koshka::ErrorWithLocation{token->source_location(), msg};
       }
-      [[fallthrough]];
+      fallthrough;
     case Token::Kind::Newline:
     case Token::Kind::EndOfFile:
     case Token::Kind::Semicolon: {

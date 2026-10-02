@@ -322,7 +322,7 @@ public:
        multiply, since count times sizeof(T) cannot exceed the max when count is
        at most the max divided by sizeof(T). */
     if (sizeof(T) != 0 && count > (static_cast<usize>(-1) / sizeof(T)))
-        [[unlikely]]
+        unlikely
     {
       throw std::bad_alloc{};
     }

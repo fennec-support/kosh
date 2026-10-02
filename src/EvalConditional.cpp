@@ -22,18 +22,18 @@
 
 namespace koshka {
 
-cold [[noreturn]] static fn fail_conditional(StringView message,
+cold wontreturn static fn fail_conditional(StringView message,
                                              StringView reason) throws -> void
 {
   throw ErrorWithDetails{message, reason};
 }
 
-cold [[noreturn]] static fn fail_conditional(StringView reason) throws -> void
+cold wontreturn static fn fail_conditional(StringView reason) throws -> void
 {
   fail_conditional("Unable to evaluate the [[ ]]", reason);
 }
 
-cold [[noreturn]] static fn fail_conditional_syntax(StringView reason) throws
+cold wontreturn static fn fail_conditional_syntax(StringView reason) throws
     -> void
 {
   ErrorWithDetails error{"Unable to evaluate the [[ ]]", reason};

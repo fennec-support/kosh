@@ -1423,13 +1423,16 @@ fn EvalContext::apply_substring_to_value(
   let const is_forward_window =
       offset >= 0 && (!requested_length.has_value() || *requested_length >= 0);
   if (is_forward_window) {
+    let const requested_offset = static_cast<usize>(offset);
     let const start_limit =
-        std::min(static_cast<usize>(offset), value.length);
-    let const window_limit =
-        requested_length.has_value()
-            ? start_limit + std::min(static_cast<usize>(*requested_length),
-                                     value.length - start_limit)
-            : start_limit;
+        requested_offset < value.length ? requested_offset : value.length;
+    let const remaining_length = value.length - start_limit;
+    let window_limit = start_limit;
+    if (requested_length.has_value()) {
+      let const window_length = static_cast<usize>(*requested_length);
+      window_limit += window_length < remaining_length ? window_length
+                                                       : remaining_length;
+    }
     let const window_charset =
         get_glob_charset_for(value.substring_of_length(0, window_limit));
     let const start_position =

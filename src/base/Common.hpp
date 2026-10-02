@@ -190,6 +190,12 @@ public:
 #define notunique
 #endif
 
+#define fallthrough [[fallthrough]]
+#define likely      [[likely]]
+#define unlikely    [[unlikely]]
+#define maybeunused [[maybe_unused]]
+#define wontreturn  [[noreturn]]
+
 #define fn   auto
 #define let  auto
 #define loop for (;;)
@@ -212,12 +218,14 @@ public:
 #define flatten /* nothing. GNU is too harsh with inlining. */
 #endif          /* __clang__ */
 #define noinline [[gnu::noinline]]
+#define targetisa(isa) [[gnu::target(isa)]]
 #else
 #define pure
 #define cold
 #define hot
 #define flatten
 #define noinline
+#define targetisa(isa)
 #endif /* T__HAS_GCC_EXTENSIONS */
 
 namespace koshka {
