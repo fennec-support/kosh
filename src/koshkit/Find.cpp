@@ -131,198 +131,154 @@ static pure fn get_find_type_letter(Path::entry_kind kind) wontthrow -> char
   return '?';
 }
 
-static fn find_walk(const ExecContext &ec, EvalContext &cxt,
-                    StringView path_text, StringView display, usize depth,
-                    const find_options &options, String &output,
-                    i32 &exit_status, Allocator allocator,
-                    const os::file_status *known_status = nullptr,
-                    char known_type_letter = 0) throws -> void
+class FindWalker
 {
-  let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
-  defer { cxt.expansion_store().scratch_arena().release(directory_scratch); };
+public:
+  FindWalker(const ExecContext &ec, EvalContext &cxt,
+             const find_options &options, String &output, i32 &exit_status,
+             Allocator allocator)
+      : m_ec(ec), m_cxt(cxt), m_options(options), m_output(output),
+        m_exit_status(exit_status), m_allocator(allocator)
+  {}
 
-  /* The stat reads the symlink, not its target, and a failed stat yields the
-     marker '\0' that matches no -type filter and is not descended. */
-  os::file_status queried_status{};
-  if (known_status == nullptr && known_type_letter == 0) {
-    if (os::stat_path(path_text, queried_status))
-      known_status = &queried_status;
-  }
-  let const type_letter = known_status != nullptr
-                              ? os::file_type_letter(known_status->mode)
-                              : known_type_letter;
-
-  usize filename_start = 0;
-  for (usize index = path_text.length; index > 0; index--) {
-    if (os::is_directory_separator(path_text[index - 1])) {
-      filename_start = index;
-      break;
-    }
-  }
-  let const filename = path_text.substring(filename_start);
-
-  if (find_entry_matches(type_letter, filename, depth, options, allocator)) {
-    output += display;
-    output += '\n';
-    if (output.length() >= FIND_OUTPUT_BUFFER_BYTE_COUNT) {
-      ec.print_to_stdout(output);
-      output.clear();
-    }
-  }
-
-  let const should_descend =
-      options.max_depth < 0 || static_cast<i64>(depth) < options.max_depth;
-  if (!should_descend || type_letter != 'd') {
-    return;
-  }
-
-  let children =
-      Path::read_directory_typed(Path{path_text, allocator}, allocator);
-  if (!children.has_value()) {
-    if (!os::path_is_readable(path_text)) {
-      report_soft_koshkit_util_error(ec, cxt, "find",
-                                     "'" + String{allocator, display} +
-                                         "': Permission denied");
-      exit_status = 1;
-    }
-
-    return;
-  }
-
-  let const is_terminal_depth =
-      options.max_depth >= 0 &&
-      static_cast<i64>(depth + 1) == options.max_depth;
-  if (is_terminal_depth &&
-      (options.name_patterns != nullptr || options.type_filter != 0 ||
-       static_cast<i64>(depth + 1) < options.min_depth))
+  fn walk(StringView path_text, StringView display, usize depth,
+          const os::file_status *known_status, char known_type_letter) throws
+      -> void
   {
-    usize kept_count = 0;
-    for (usize index = 0; index < children->count(); index++) {
-      let const child_scratch = cxt.expansion_store().scratch_arena().mark();
-      defer { cxt.expansion_store().scratch_arena().release(child_scratch); };
-      let const &child = (*children)[index];
-      if (child.kind != Path::entry_kind::Unknown &&
-          !find_entry_matches(get_find_type_letter(child.kind),
-                              child.name.view(), depth + 1, options, allocator))
-        continue;
+    let &scratch_arena = m_cxt.expansion_store().scratch_arena();
+    let const directory_scratch = scratch_arena.mark();
+    defer { scratch_arena.release(directory_scratch); };
 
-      if (kept_count != index)
-        (*children)[kept_count] = steal((*children)[index]);
-      kept_count++;
+    /* The stat reads the symlink, not its target, and a failed stat yields the
+       marker '\0' that matches no -type filter and is not descended. */
+    os::file_status queried_status{};
+    if (known_status == nullptr && known_type_letter == 0) {
+      if (os::stat_path(path_text, queried_status))
+        known_status = &queried_status;
     }
-    children->truncate(kept_count);
-  }
+    let const type_letter = known_status != nullptr
+                                ? os::file_type_letter(known_status->mode)
+                                : known_type_letter;
 
-  children->sort([](const Path::directory_child &left,
-                    const Path::directory_child &right) {
-    return left.name.view() < right.name.view();
-  });
+    if (find_entry_matches(type_letter, get_filename(path_text), depth,
+                           m_options, m_allocator))
+    {
+      m_output += display;
+      m_output += '\n';
+      flush_full_output();
+    }
 
-  usize unknown_count = 0;
-  for (let const &child : *children)
-    if (child.kind == Path::entry_kind::Unknown) unknown_count++;
+    let const should_descend = m_options.max_depth < 0 ||
+                               static_cast<i64>(depth) < m_options.max_depth;
+    if (!should_descend || type_letter != 'd') {
+      return;
+    }
 
-  if (unknown_count != 0) {
-    let const wave_allocator = heap_allocator();
-    let unknown_paths = ArrayList<Path>{wave_allocator};
-    let unknown_statuses = ArrayList<os::file_status>{wave_allocator};
-    let unknown_indices = ArrayList<usize>{wave_allocator};
-    let unknown_results = ArrayList<os::batch_result>{wave_allocator};
-    let unknown_batch = os::Batch{wave_allocator};
-    let const wave_count = unknown_count < FIND_UNKNOWN_BATCH_COUNT
-                               ? unknown_count
-                               : FIND_UNKNOWN_BATCH_COUNT;
-    unknown_paths.reserve(wave_count);
-    unknown_statuses.reserve(wave_count);
-    unknown_indices.reserve(wave_count);
-    unknown_results.reserve(wave_count);
-    unknown_batch.reserve(wave_count);
-
-    let const do_flush_unknown = [&]() throws -> void {
-      if (unknown_indices.is_empty()) return;
-
-      unknown_batch.clear();
-      for (usize index = 0; index < unknown_indices.count(); index++)
-        unknown_batch.add(os::batch_operation::lstat(unknown_paths[index],
-                                                     unknown_statuses[index]));
-
-      unknown_batch.execute(unknown_results, os::batch_deduplication::Disabled);
-      for (usize index = 0; index < unknown_indices.count(); index++) {
-        let &kind = (*children)[unknown_indices[index]].kind;
-        if (unknown_results[index].error_number != 0) {
-          os::set_last_system_error(unknown_results[index].error_number);
-          report_soft_koshkit_util_error(
-              ec, cxt, "find",
-              "'" + unknown_paths[index].text() +
-                  "': " + os::last_system_error_message());
-          exit_status = 1;
-          kind = Path::entry_kind::Other;
-          continue;
-        }
-
-        switch (os::file_type_letter(unknown_statuses[index].mode)) {
-        case 'd': kind = Path::entry_kind::Directory; break;
-        case '-': kind = Path::entry_kind::Regular; break;
-        case 'l': kind = Path::entry_kind::Symlink; break;
-        default: kind = Path::entry_kind::Other; break;
-        }
+    let children =
+        Path::read_directory_typed(Path{path_text, m_allocator}, m_allocator);
+    if (!children.has_value()) {
+      if (!os::path_is_readable(path_text)) {
+        report_soft_koshkit_util_error(m_ec, m_cxt, "find",
+                                       "'" + String{m_allocator, display} +
+                                           "': Permission denied");
+        m_exit_status = 1;
       }
-      unknown_batch.clear();
-      unknown_paths.clear();
-      unknown_statuses.clear();
-      unknown_indices.clear();
-    };
 
-    for (usize index = 0; index < children->count(); index++) {
-      if ((*children)[index].kind != Path::entry_kind::Unknown) continue;
-
-      let child_path = Path{path_text, wave_allocator};
-      child_path.append((*children)[index].name.view());
-      unknown_paths.push(steal(child_path));
-      unknown_statuses.push({});
-      unknown_indices.push(index);
-      if (unknown_indices.count() == FIND_UNKNOWN_BATCH_COUNT)
-        do_flush_unknown();
+      return;
     }
-    do_flush_unknown();
-  }
 
-  let const is_every_child_matched = is_terminal_depth && unknown_count == 0;
-  for (usize index = 0; index < children->count(); index++) {
-    if (os::INTERRUPT_REQUESTED) return;
+    let const child_depth = depth + 1;
+    let const is_terminal_depth =
+        m_options.max_depth >= 0 &&
+        static_cast<i64>(child_depth) == m_options.max_depth;
+    if (is_terminal_depth &&
+        (m_options.name_patterns != nullptr || m_options.type_filter != 0 ||
+         static_cast<i64>(child_depth) < m_options.min_depth))
+    {
+      discard_nonmatching_children(*children, child_depth);
+    }
 
-    let const child_scratch = cxt.expansion_store().scratch_arena().mark();
-    defer { cxt.expansion_store().scratch_arena().release(child_scratch); };
-    let const &child_entry = (*children)[index];
-    let const child_name = child_entry.name.view();
-    let const child_type_letter = get_find_type_letter(child_entry.kind);
-    let const should_descend_child =
-        child_type_letter == 'd' &&
-        (options.max_depth < 0 ||
-         static_cast<i64>(depth + 1) < options.max_depth);
-    if (!should_descend_child) {
+    children->sort([](const Path::directory_child &left,
+                      const Path::directory_child &right) {
+      return left.name.view() < right.name.view();
+    });
+
+    usize unknown_count = 0;
+    for (let const &child : *children)
+      if (child.kind == Path::entry_kind::Unknown) unknown_count++;
+
+    if (unknown_count != 0) {
+      resolve_unknown_children(*children, path_text, unknown_count);
+    }
+
+    let const is_every_child_matched = is_terminal_depth && unknown_count == 0;
+    for (usize index = 0; index < children->count(); index++) {
+      if (os::INTERRUPT_REQUESTED) return;
+
+      let const child_scratch = scratch_arena.mark();
+      defer { scratch_arena.release(child_scratch); };
+      let const &child_entry = (*children)[index];
+      let const child_type_letter = get_find_type_letter(child_entry.kind);
+      let const should_descend_child =
+          child_type_letter == 'd' &&
+          (m_options.max_depth < 0 ||
+           static_cast<i64>(child_depth) < m_options.max_depth);
+      if (should_descend_child) {
+        walk_child(path_text, display, child_entry, child_depth,
+                   child_type_letter);
+        continue;
+      }
+
       if (!is_every_child_matched &&
-          !find_entry_matches(child_type_letter, child_name, depth + 1, options,
-                              allocator))
+          !find_entry_matches(child_type_letter, child_entry.name.view(),
+                              child_depth, m_options, m_allocator))
       {
         continue;
       }
 
-      output += display;
-      if (!display.is_empty() && display[display.length - 1] != '/') {
-        output += '/';
-      }
-      output += child_name;
-      output += '\n';
-      if (output.length() >= FIND_OUTPUT_BUFFER_BYTE_COUNT) {
-        ec.print_to_stdout(output);
-        output.clear();
-      }
+      emit_child(display, child_entry.name.view());
+    }
+  }
 
-      continue;
+private:
+  static pure fn get_filename(StringView path_text) wontthrow -> StringView
+  {
+    usize filename_start = 0;
+    for (usize index = path_text.length; index > 0; index--) {
+      if (os::is_directory_separator(path_text[index - 1])) {
+        filename_start = index;
+        break;
+      }
     }
 
-    String child_display{allocator, display};
+    return path_text.substring(filename_start);
+  }
+
+  fn flush_full_output() throws -> void
+  {
+    if (m_output.length() < FIND_OUTPUT_BUFFER_BYTE_COUNT) return;
+
+    m_ec.print_to_stdout(m_output);
+    m_output.clear();
+  }
+
+  fn emit_child(StringView display, StringView child_name) throws -> void
+  {
+    m_output += display;
+    if (!display.is_empty() && display[display.length - 1] != '/') {
+      m_output += '/';
+    }
+    m_output += child_name;
+    m_output += '\n';
+    flush_full_output();
+  }
+
+  fn walk_child(StringView path_text, StringView display,
+                const Path::directory_child &child_entry, usize child_depth,
+                char child_type_letter) throws -> void
+  {
+    let const child_name = child_entry.name.view();
+    String child_display{m_allocator, display};
     let const has_separator =
         !child_display.is_empty() && child_display.back() != '/';
     let const separator_length = has_separator ? usize{1} : usize{0};
@@ -336,13 +292,114 @@ static fn find_walk(const ExecContext &ec, EvalContext &cxt,
       child_display += '/';
     }
     child_display += child_name;
-    let child_path = Path{path_text, allocator};
-    child_path.append(child_entry.name.view());
-    find_walk(ec, cxt, child_path.view(), child_display.view(), depth + 1,
-              options, output, exit_status, allocator, nullptr,
-              child_type_letter);
+    let child_path = Path{path_text, m_allocator};
+    child_path.append(child_name);
+    walk(child_path.view(), child_display.view(), child_depth, nullptr,
+         child_type_letter);
   }
-}
+
+  fn discard_nonmatching_children(ArrayList<Path::directory_child> &children,
+                                  usize child_depth) throws -> void
+  {
+    usize kept_count = 0;
+    for (usize index = 0; index < children.count(); index++) {
+      let const child_scratch = m_cxt.expansion_store().scratch_arena().mark();
+      defer { m_cxt.expansion_store().scratch_arena().release(child_scratch); };
+      let const &child = children[index];
+      if (child.kind != Path::entry_kind::Unknown &&
+          !find_entry_matches(get_find_type_letter(child.kind),
+                              child.name.view(), child_depth, m_options,
+                              m_allocator))
+      {
+        continue;
+      }
+
+      if (kept_count != index) children[kept_count] = steal(children[index]);
+      kept_count++;
+    }
+
+    children.truncate(kept_count);
+  }
+
+  fn resolve_unknown_children(ArrayList<Path::directory_child> &children,
+                              StringView path_text, usize unknown_count) throws
+      -> void
+  {
+    let const wave_count = unknown_count < FIND_UNKNOWN_BATCH_COUNT
+                               ? unknown_count
+                               : FIND_UNKNOWN_BATCH_COUNT;
+    m_unknown_paths.reserve(wave_count);
+    m_unknown_statuses.reserve(wave_count);
+    m_unknown_indices.reserve(wave_count);
+    m_unknown_results.reserve(wave_count);
+    m_unknown_batch.reserve(wave_count);
+
+    for (usize index = 0; index < children.count(); index++) {
+      if (children[index].kind != Path::entry_kind::Unknown) continue;
+
+      let child_path = Path{path_text, heap_allocator()};
+      child_path.append(children[index].name.view());
+      m_unknown_paths.push(steal(child_path));
+      m_unknown_statuses.push({});
+      m_unknown_indices.push(index);
+      if (m_unknown_indices.count() == FIND_UNKNOWN_BATCH_COUNT)
+        resolve_unknown_wave(children);
+    }
+
+    resolve_unknown_wave(children);
+  }
+
+  fn resolve_unknown_wave(ArrayList<Path::directory_child> &children) throws
+      -> void
+  {
+    if (m_unknown_indices.is_empty()) return;
+
+    m_unknown_batch.clear();
+    for (usize index = 0; index < m_unknown_indices.count(); index++)
+      m_unknown_batch.add(os::batch_operation::lstat(
+          m_unknown_paths[index], m_unknown_statuses[index]));
+
+    m_unknown_batch.execute(m_unknown_results,
+                            os::batch_deduplication::Disabled);
+    for (usize index = 0; index < m_unknown_indices.count(); index++) {
+      let &kind = children[m_unknown_indices[index]].kind;
+      if (m_unknown_results[index].error_number != 0) {
+        os::set_last_system_error(m_unknown_results[index].error_number);
+        report_soft_koshkit_util_error(
+            m_ec, m_cxt, "find",
+            "'" + m_unknown_paths[index].text() +
+                "': " + os::last_system_error_message());
+        m_exit_status = 1;
+        kind = Path::entry_kind::Other;
+        continue;
+      }
+
+      switch (os::file_type_letter(m_unknown_statuses[index].mode)) {
+      case 'd': kind = Path::entry_kind::Directory; break;
+      case '-': kind = Path::entry_kind::Regular; break;
+      case 'l': kind = Path::entry_kind::Symlink; break;
+      default: kind = Path::entry_kind::Other; break;
+      }
+    }
+
+    m_unknown_batch.clear();
+    m_unknown_paths.clear();
+    m_unknown_statuses.clear();
+    m_unknown_indices.clear();
+  }
+
+  const ExecContext &m_ec;
+  EvalContext &m_cxt;
+  const find_options &m_options;
+  String &m_output;
+  i32 &m_exit_status;
+  Allocator m_allocator;
+  ArrayList<Path> m_unknown_paths{heap_allocator()};
+  ArrayList<os::file_status> m_unknown_statuses{heap_allocator()};
+  ArrayList<usize> m_unknown_indices{heap_allocator()};
+  ArrayList<os::batch_result> m_unknown_results{heap_allocator()};
+  os::Batch m_unknown_batch{heap_allocator()};
+};
 
 Find::Find() = default;
 
@@ -516,6 +573,7 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
   let const output_allocator = bump_allocator(output_arena);
   let output = String{output_allocator};
   i32 status = 0;
+  let walker = FindWalker{ec, cxt, options, output, status, allocator};
   for (usize root_index = 0; root_index < roots.count(); root_index++) {
     let const root = roots[root_index];
     if (results[root_index].error_number != 0) {
@@ -526,8 +584,7 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
       status = 1;
       continue;
     }
-    find_walk(ec, cxt, root, root, 0, options, output, status, allocator,
-              &root_statuses[root_index]);
+    walker.walk(root, root, 0, &root_statuses[root_index], 0);
     if (os::INTERRUPT_REQUESTED) {
       ec.print_to_stdout(output);
       return 130;
