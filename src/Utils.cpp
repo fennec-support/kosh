@@ -486,7 +486,9 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
     decoded.glob_active.push(
         is_unquoted &&
         (byte == '*' || byte == '?' || byte == '[' || is_bracket_syntax));
-    if (is_unquoted && byte == '[') has_active_bracket = true;
+    if (is_unquoted && byte == '[') {
+      has_active_bracket = true;
+    }
 
     if (should_map_source) decoded.raw_positions.push(position + 1);
     if (os::is_directory_separator(byte)) {

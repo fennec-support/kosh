@@ -238,10 +238,13 @@ private:
     usize filename_end = path_text.length;
     while (filename_end > 0 &&
            os::is_directory_separator(path_text[filename_end - 1]))
+    {
       filename_end--;
+    }
 
-    if (filename_end == 0 && path_text.length > 0)
+    if (filename_end == 0 && path_text.length > 0) {
       return path_text.substring_of_length(0, 1);
+    }
 
     usize filename_start = 0;
     for (usize index = filename_end; index > 0; index--) {
