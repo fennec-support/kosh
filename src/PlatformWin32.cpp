@@ -1277,6 +1277,13 @@ regex_utf8_scope::regex_utf8_scope(bool) wontthrow {}
 
 regex_utf8_scope::~regex_utf8_scope() {}
 
+fn lowercase_code_point(u32 code_point) wontthrow -> u32
+{
+  if (code_point > 0xffff) return code_point;
+
+  return static_cast<u32>(towlower(static_cast<wint_t>(code_point)));
+}
+
 fn code_point_is_in_class(StringView class_name, u32 code_point) wontthrow
     -> bool
 {

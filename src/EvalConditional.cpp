@@ -41,12 +41,6 @@ cold [[noreturn]] static fn fail_conditional_syntax(StringView reason) throws
   throw error;
 }
 
-static fn ascii_lower_copy(Allocator allocator, StringView text) throws
-    -> String
-{
-  return text.to_lower_ascii(allocator);
-}
-
 namespace {
 
 struct conditional_evaluator
@@ -494,10 +488,12 @@ struct conditional_evaluator
                          : is_matched;
             }
 
-            let const match_pattern =
-                ascii_lower_copy(cxt.scratch_allocator(), pattern.view());
-            let const match_value =
-                ascii_lower_copy(cxt.scratch_allocator(), left.view());
+            let const match_pattern = utils::lowercase_for_glob(
+                pattern.view(), cxt.get_glob_charset_for(pattern.view()),
+                cxt.scratch_allocator());
+            let const match_value = utils::lowercase_for_glob(
+                left.view(), cxt.get_glob_charset_for(left.view()),
+                cxt.scratch_allocator());
             let const is_matched =
                 utils::glob_matches(match_pattern.view(), match_value.view(),
                                     active, 0, cxt.get_extglob_mode(),

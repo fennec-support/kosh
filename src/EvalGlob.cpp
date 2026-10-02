@@ -36,7 +36,8 @@ fn name_matches_glob(StringView glob, StringView filename,
   /* The glob arrives already lowered from the caller, so only the per-entry
      filename is lowered here. Lowering preserves length, so the active mask
      stays aligned. */
-  let const lowered_name = filename.to_lower_ascii(allocator);
+  let const lowered_name =
+      utils::lowercase_for_glob(filename, charset, allocator);
 
   return utils::glob_matches(glob, lowered_name.view(), glob_active,
                              mask_offset, mode, charset);
@@ -147,7 +148,10 @@ fn EvalContext::expand_path_once(const glob_field &field,
   };
 
   let lowered_glob = String{scratch};
-  if (nocaseglob_is_on) lowered_glob = glob.to_lower_ascii(scratch);
+  if (nocaseglob_is_on) {
+    lowered_glob =
+        utils::lowercase_for_glob(glob, get_glob_charset_for(glob), scratch);
+  }
   let const match_glob = nocaseglob_is_on ? lowered_glob.view() : glob;
 
   let const do_entry_matches = [&](const Path::directory_child &entry)

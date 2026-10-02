@@ -531,6 +531,13 @@ fn glob_matches(StringView glob, StringView str, const Bitset &glob_active,
                 usize mask_offset, extglob_mode mode = extglob_mode::Disabled,
                 glob_charset charset = glob_charset::Bytes) throws -> bool;
 
+/* A copy of text folded to lower case for a case-insensitive glob match. The
+   Bytes charset folds ASCII only. The Utf8 charset folds every well-formed
+   character whose lower case form has the same encoded length, so the copy
+   keeps the byte length and a glob mask built for text stays aligned. */
+fn lowercase_for_glob(StringView text, glob_charset charset,
+                      Allocator allocator) throws -> String;
+
 /* True when a locale name selects the UTF-8 codeset, as in en_US.UTF-8 or
    C.utf8. */
 pure fn locale_name_is_utf8(StringView locale_name) wontthrow -> bool;

@@ -1117,6 +1117,12 @@ fn CaseClause::evaluate_status_impl(EvalContext &cxt) const throws
 
   let const extglob = cxt.get_extglob_mode();
   let const charset = cxt.get_glob_charset_for(subject.view());
+  let const is_case_insensitive = cxt.is_shopt_enabled("nocasematch");
+  let const folded_subject =
+      is_case_insensitive
+          ? utils::lowercase_for_glob(subject.view(), charset,
+                                      cxt.scratch_allocator())
+          : String{cxt.scratch_allocator()};
 
   let const do_arm_matches = [&](const case_item &item) throws -> bool {
     for (let const pattern_token : item.patterns) {
@@ -1126,7 +1132,9 @@ fn CaseClause::evaluate_status_impl(EvalContext &cxt) const throws
       if (pattern_token->kind() == Token::Kind::Word) {
         const Word &pattern_word =
             static_cast<const tokens::WordToken *>(pattern_token)->word();
-        if (pattern_word.plain_literal_kind() != Word::PlainLiteral::NotPlain) {
+        if (!is_case_insensitive &&
+            pattern_word.plain_literal_kind() != Word::PlainLiteral::NotPlain)
+        {
           if (subject.view() == pattern_word.constant_value()) return true;
           continue;
         }
@@ -1149,6 +1157,18 @@ fn CaseClause::evaluate_status_impl(EvalContext &cxt) const throws
         for (usize k = 0; k < pattern.count(); k++)
           pattern_active.push(true);
       }
+      if (is_case_insensitive) {
+        let const folded_pattern = utils::lowercase_for_glob(
+            pattern.view(), cxt.get_glob_charset_for(pattern.view()),
+            cxt.scratch_allocator());
+        if (utils::glob_matches(folded_pattern.view(), folded_subject.view(),
+                                pattern_active, 0, extglob, charset))
+        {
+          return true;
+        }
+        continue;
+      }
+
       if (utils::glob_matches(pattern, subject, pattern_active, 0, extglob,
                               charset))
         return true;

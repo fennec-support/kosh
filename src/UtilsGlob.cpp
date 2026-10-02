@@ -432,6 +432,34 @@ pure fn utf8_character_length(StringView text, usize position) wontthrow
   return decode_utf8(text, position, 0xfffd).length;
 }
 
+fn lowercase_for_glob(StringView text, glob_charset charset,
+                      Allocator allocator) throws -> String
+{
+  if (charset != glob_charset::Utf8) return text.to_lower_ascii(allocator);
+
+  let result = String{allocator};
+  result.reserve(text.length);
+  usize position = 0;
+  while (position < text.length) {
+    let const decoded = decode_utf8(text, position, 0xfffd);
+    let const original = text.substring_of_length(position, decoded.length);
+    position += decoded.length;
+
+    if (decoded.length == 1) {
+      let const byte = original[0];
+      result.push(byte >= 'A' && byte <= 'Z' ? static_cast<char>(byte + 32)
+                                            : byte);
+      continue;
+    }
+
+    let folded = String{allocator};
+    append_utf8(folded, os::lowercase_code_point(decoded.value));
+    result.append(folded.length() == decoded.length ? folded.view() : original);
+  }
+
+  return result;
+}
+
 hot flatten fn glob_matches(StringView glob, StringView str,
                             const Bitset &glob_active, usize mask_offset,
                             extglob_mode mode, glob_charset charset) throws

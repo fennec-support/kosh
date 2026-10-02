@@ -180,3 +180,36 @@ check_quoted_and_escaped_operators
 LC_ALL=C
 echo c-operators
 check_quoted_and_escaped_operators
+
+check_nocase() {
+  local d=$1
+  shopt -s nocasematch
+  [[ É == é ]] && echo cond-fold-y || echo cond-fold-n
+  [[ é == É ]] && echo cond-fold-rev-y || echo cond-fold-rev-n
+  [[ ÀB == à? ]] && echo cond-fold-q-y || echo cond-fold-q-n
+  [[ ÀB == [à]b ]] && echo cond-fold-set-y || echo cond-fold-set-n
+  [[ É != é ]] && echo cond-fold-ne-y || echo cond-fold-ne-n
+  case É in é) echo case-fold-y ;; *) echo case-fold-n ;; esac
+  case ÀB in à?) echo case-fold-q-y ;; *) echo case-fold-q-n ;; esac
+  case AB in a?) echo case-ascii-y ;; *) echo case-ascii-n ;; esac
+  case AB in a) echo case-ascii-short-y ;; *) echo case-ascii-short-n ;; esac
+  shopt -u nocasematch
+  [[ É == é ]] && echo cond-exact-y || echo cond-exact-n
+  case É in é) echo case-exact-y ;; *) echo case-exact-n ;; esac
+  shopt -s nocaseglob
+  local f
+  for f in "$d"/É* "$d"/X*; do echo "nocaseglob:${f##*/}"; done
+  shopt -u nocaseglob
+  for f in "$d"/É* "$d"/X*; do echo "caseglob:${f##*/}"; done
+}
+
+dir=$(mktemp -d)
+: > "$dir/é"
+: > "$dir/xy"
+LC_ALL=C.UTF-8
+echo utf8-nocase
+check_nocase "$dir"
+LC_ALL=C
+echo c-nocase
+check_nocase "$dir"
+rm -rf "$dir"

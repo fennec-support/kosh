@@ -1424,6 +1424,11 @@ private:
   bool m_is_active{false};
 };
 
+/* The lowercase form of a Unicode code point under the platform's UTF-8
+   classification, or the code point itself when the platform has none or the
+   code point has no lowercase form. */
+fn lowercase_code_point(u32 code_point) wontthrow -> u32;
+
 /* One capture group's byte span in the subject. A group that did not
    participate carries a negative start. */
 struct regex_span

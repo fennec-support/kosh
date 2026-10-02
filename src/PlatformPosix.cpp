@@ -1529,8 +1529,7 @@ fn collate_compare(const String &left, const String &right) wontthrow -> int
   return strcoll(left.c_str(), right.c_str());
 }
 
-fn code_point_is_in_class(StringView class_name, u32 code_point) wontthrow
-    -> bool
+static fn get_unicode_locale() wontthrow -> locale_t
 {
   static const locale_t unicode_locale = [] {
     locale_t created = newlocale(LC_CTYPE_MASK, "C.UTF-8", nullptr);
@@ -1538,6 +1537,23 @@ fn code_point_is_in_class(StringView class_name, u32 code_point) wontthrow
       created = newlocale(LC_CTYPE_MASK, "en_US.UTF-8", nullptr);
     return created;
   }();
+
+  return unicode_locale;
+}
+
+fn lowercase_code_point(u32 code_point) wontthrow -> u32
+{
+  let const unicode_locale = get_unicode_locale();
+  if (unicode_locale == nullptr) return code_point;
+
+  return static_cast<u32>(
+      towlower_l(static_cast<wint_t>(code_point), unicode_locale));
+}
+
+fn code_point_is_in_class(StringView class_name, u32 code_point) wontthrow
+    -> bool
+{
+  let const unicode_locale = get_unicode_locale();
 
   char name[16];
   if (unicode_locale == nullptr || class_name.length >= sizeof(name)) {
