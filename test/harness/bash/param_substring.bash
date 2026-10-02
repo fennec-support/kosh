@@ -416,3 +416,10 @@ echo 'echo "dot:$PC"' > "${TMPDIR:-/tmp}/prefix_posix_$$.sh"
 rm -f "${TMPDIR:-/tmp}/prefix_posix_$$.sh"
 
 for word in "${@^}"; do count=$((count + 1)); echo "elem$count=$word"; done
+unset missing
+echo "modifier_case: ${missing:-$(case x in x) echo y;; esac)}"
+echo "modifier_ansi: ${missing:-$(echo $'\'')}"
+echo "modifier_comment: ${missing:-$(echo a # ) comment
+)}"
+echo "modifier_nested: ${missing:-$(echo "${missing:-$(echo ')')}")}"
+echo "modifier_backquote: ${missing:-`echo bq`} arith: ${missing:-$((1 + 2))}"

@@ -1091,40 +1091,11 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
           }
           if (c == '$' && chop_character(byte_count) == '(') {
             byte_count++;
-            usize paren_depth = 1;
-            char nested_quote = 0;
-            loop
-            {
-              let const p = chop_character(byte_count);
-              if (p == lexer::CEOF) break;
-              byte_count++;
-              if (nested_quote != 0) {
-                if (nested_quote == '"' && p == '\\') {
-                  let const escaped = chop_character(byte_count);
-                  if (escaped != lexer::CEOF) {
-                    byte_count++;
-                  }
-                  continue;
-                }
-                if (p == nested_quote) nested_quote = 0;
-                continue;
-              }
-              if (p == '\\') {
-                let const escaped = chop_character(byte_count);
-                if (escaped != lexer::CEOF) {
-                  byte_count++;
-                }
-                continue;
-              }
-              if (p == '\'' || p == '"') {
-                nested_quote = p;
-              } else if (p == '(') {
-                paren_depth++;
-              } else if (p == ')') {
-                paren_depth--;
-                if (paren_depth == 0) break;
-              }
-            }
+            let const nested_end = lexer::scan_balanced_shell_region(
+                m_source, m_cursor_position + byte_count, ')');
+            byte_count = nested_end.has_value()
+                             ? *nested_end - m_cursor_position
+                             : m_source.count() - m_cursor_position;
             continue;
           }
           if (c == '$' && chop_character(byte_count) == '{') {

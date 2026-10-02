@@ -708,38 +708,10 @@ fn EvalContext::ModifierWordExpander::scan_command_body(usize start,
                                                         usize &position) throws
     -> String
 {
-  /* Command substitution $(...), scanned to the matching ). A quote run
-     keeps its bytes literal so a ) inside a string does not close early. */
   let inner = String{m_context.scratch_allocator()};
-  position = start;
-  usize depth = 1;
-  char quote = 0;
-  for (; position < m_word.length; position++) {
-    let const ch = m_word[position];
-    if (quote != 0) {
-      inner += ch;
-      if (quote == '"' && ch == '\\' && position + 1 < m_word.length) {
-        inner += m_word[++position];
-        continue;
-      }
-      if (ch == quote) quote = 0;
-      continue;
-    }
-    if (ch == '\\' && position + 1 < m_word.length) {
-      inner += ch;
-      inner += m_word[++position];
-      continue;
-    }
-    if (ch == '\'' || ch == '"') {
-      quote = ch;
-    } else if (ch == '(') {
-      depth++;
-    } else if (ch == ')') {
-      depth--;
-      if (depth == 0) break;
-    }
-    inner += ch;
-  }
+  let const end = lexer::scan_balanced_shell_region(m_word, start, ')');
+  position = end.has_value() ? *end - 1 : m_word.length;
+  inner.append(m_word.substring_of_length(start, position - start));
 
   return inner;
 }

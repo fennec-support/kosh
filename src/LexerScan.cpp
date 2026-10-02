@@ -167,12 +167,15 @@ fn scan_balanced_shell_region(StringView source, usize position,
   bool has_seen_case_keyword = false;
   bool is_case_pattern_expected = false;
   bool is_command_position = true;
+  bool is_ansi_c_quote = false;
   let const opening_byte = closing_byte == ')' ? '(' : '{';
 
   while (position < source.length) {
     let const byte = source[position++];
     if (quote != 0) {
-      if (byte == '\\' && quote != '\'' && position < source.length) {
+      if (byte == '\\' && (quote != '\'' || is_ansi_c_quote) &&
+          position < source.length)
+      {
         position++;
         previous_byte = byte;
         continue;
@@ -259,6 +262,7 @@ fn scan_balanced_shell_region(StringView source, usize position,
     case '"':
     case '`':
       quote = byte;
+      is_ansi_c_quote = byte == '\'' && previous_byte == '$';
       previous_byte = byte;
       continue;
 
