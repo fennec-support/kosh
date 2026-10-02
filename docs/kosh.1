@@ -864,6 +864,17 @@ disabled, the nonmatching pattern remains literal. The warning policy may
 report that literal fallback. A glob in command position is fatal in the
 default mood and reports a warning in a compatibility mood unless diagnostics
 are disabled.
+.PP
+The character locale decides how much a ? matches. The first nonempty value of
+LC_ALL, LC_CTYPE, and LANG selects it, read from the shell variables at the
+time of each match, so assignment, unset, export, and a prefix assignment all
+apply. A value whose codeset after the dot is UTF\-8 or utf8, in any letter
+case, selects UTF\-8. Any other value, an empty value, and no value select
+bytes. In UTF\-8, a ? and each step of a * consume one whole valid UTF\-8
+sequence, and an invalid byte counts as one character. In bytes, each consumes
+one byte. The rule applies to pathname expansion, case, [[ == ]], ${v#pat},
+${v%pat}, ${v/pat/rep}, ${v^pat}, and compgen \-X. Bracket expressions and
+extglob groups stay byte based. Completion always matches by UTF\-8 sequence.
 .SH REDIRECTIONS
 The operators &> and &>> redirect standard output and standard error to one
 file. The operator |& pipes both streams. The operator <<< supplies a

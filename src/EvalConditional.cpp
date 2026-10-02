@@ -486,7 +486,8 @@ struct conditional_evaluator
             if (!is_case_insensitive) {
               let const is_matched =
                   utils::glob_matches(pattern.view(), left.view(), active, 0,
-                                      cxt.get_extglob_mode());
+                                      cxt.get_extglob_mode(),
+                                      cxt.get_glob_charset());
               return *selected_binary_operator ==
                              BinaryOperatorKind::PatternNotEqual
                          ? !is_matched
@@ -499,7 +500,8 @@ struct conditional_evaluator
                 ascii_lower_copy(cxt.scratch_allocator(), left.view());
             let const is_matched =
                 utils::glob_matches(match_pattern.view(), match_value.view(),
-                                    active, 0, cxt.get_extglob_mode());
+                                    active, 0, cxt.get_extglob_mode(),
+                                    cxt.get_glob_charset());
             return *selected_binary_operator ==
                            BinaryOperatorKind::PatternNotEqual
                        ? !is_matched

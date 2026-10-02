@@ -82,12 +82,39 @@ enum class pattern_match_extent : u8
   Longest,
 };
 
+static fn get_character_length(StringView text, usize position,
+                               glob_charset charset) wontthrow -> usize
+{
+  if (charset == glob_charset::Utf8 && position < text.length)
+    return utils::utf8_character_length(text, position);
+
+  return 1;
+}
+
+/* True when position falls inside a valid multibyte sequence of text, so a cut
+   there would split a character. */
+static fn splits_character(StringView text, usize position,
+                           glob_charset charset) wontthrow -> bool
+{
+  if (charset != glob_charset::Utf8 || position == 0 || position >= text.length)
+    return false;
+  if ((static_cast<u8>(text[position]) & 0xc0) != 0x80) return false;
+
+  for (usize distance = 1; distance <= 3 && distance <= position; distance++) {
+    if ((static_cast<u8>(text[position - distance]) & 0xc0) == 0x80) continue;
+
+    return utils::utf8_character_length(text, position - distance) > distance;
+  }
+
+  return false;
+}
+
 /* The active mask marks which pattern bytes may act as glob metacharacters, so
    a quoted or escaped * or ? matches itself. */
 fn trim_matching(Allocator result_allocator, StringView value,
                  StringView pattern, const Bitset &active, trim_end end,
-                 extglob_mode mode, pattern_match_extent extent) throws
-    -> String
+                 extglob_mode mode, glob_charset charset,
+                 pattern_match_extent extent) throws -> String
 {
   ASSERT(active.count() == pattern.length);
 
@@ -208,7 +235,8 @@ fn trim_matching(Allocator result_allocator, StringView value,
       for (usize length = value.length;; length--) {
         let const candidate = value.substring_of_length(0, length);
         if (do_has_literal_tail(candidate) &&
-            utils::glob_matches(pattern, candidate, active, 0, mode))
+            !splits_character(value, length, charset) &&
+            utils::glob_matches(pattern, candidate, active, 0, mode, charset))
         {
           return String{result_allocator, value.substring(length)};
         }
@@ -218,7 +246,8 @@ fn trim_matching(Allocator result_allocator, StringView value,
       for (usize length = 0; length <= value.length; length++) {
         let const candidate = value.substring_of_length(0, length);
         if (do_has_literal_tail(candidate) &&
-            utils::glob_matches(pattern, candidate, active, 0, mode))
+            !splits_character(value, length, charset) &&
+            utils::glob_matches(pattern, candidate, active, 0, mode, charset))
         {
           return String{result_allocator, value.substring(length)};
         }
@@ -232,7 +261,8 @@ fn trim_matching(Allocator result_allocator, StringView value,
       for (usize start = 0; start <= value.length; start++) {
         let const candidate = value.substring(start);
         if (candidate.starts_with(literal_head) &&
-            utils::glob_matches(pattern, candidate, active, 0, mode))
+            !splits_character(value, start, charset) &&
+            utils::glob_matches(pattern, candidate, active, 0, mode, charset))
         {
           return String{result_allocator, value.substring_of_length(0, start)};
         }
@@ -241,7 +271,8 @@ fn trim_matching(Allocator result_allocator, StringView value,
       for (usize start = value.length;; start--) {
         let const candidate = value.substring(start);
         if (candidate.starts_with(literal_head) &&
-            utils::glob_matches(pattern, candidate, active, 0, mode))
+            !splits_character(value, start, charset) &&
+            utils::glob_matches(pattern, candidate, active, 0, mode, charset))
         {
           return String{result_allocator, value.substring_of_length(0, start)};
         }
@@ -264,7 +295,8 @@ static fn trim_value_with_modifier(
   let const pattern =
       cxt.expand_modifier_word_masked(word, active, true, source_location);
   return trim_matching(cxt.scratch_allocator(), value, pattern.view(), active,
-                       end, cxt.get_extglob_mode(), extent);
+                       end, cxt.get_extglob_mode(), cxt.get_glob_charset(),
+                       extent);
 }
 
 } /* namespace */
@@ -1428,12 +1460,14 @@ static fn find_replacement_separator(StringView body) wontthrow -> usize
 static fn longest_pattern_match_at(StringView pattern,
                                    const Bitset &pattern_active,
                                    StringView value, usize start,
-                                   extglob_mode mode) throws -> Maybe<usize>
+                                   extglob_mode mode,
+                                   glob_charset charset) throws -> Maybe<usize>
 {
   for (usize end = value.length; end >= start; end--) {
-    if (utils::glob_matches(pattern,
+    if (!splits_character(value, end, charset) &&
+        utils::glob_matches(pattern,
                             value.substring_of_length(start, end - start),
-                            pattern_active, 0, mode))
+                            pattern_active, 0, mode, charset))
       return end - start;
     if (end == start) break;
   }
@@ -1514,10 +1548,11 @@ fn EvalContext::pattern_replace_value(
 
   let out = String{scratch_allocator()};
   let const extglob = get_extglob_mode();
+  let const charset = get_glob_charset();
 
   if (is_anchored_at_start) {
     if (let const matched = longest_pattern_match_at(
-            pattern.view(), pattern_active, value, 0, extglob))
+            pattern.view(), pattern_active, value, 0, extglob, charset))
     {
       append_pattern_replacement(out, replacement.view(),
                                  value.substring_of_length(0, *matched));
@@ -1530,8 +1565,9 @@ fn EvalContext::pattern_replace_value(
 
   if (is_anchored_at_end) {
     for (usize start = 0; start <= value.length; start++) {
-      if (utils::glob_matches(pattern.view(), value.substring(start),
-                              pattern_active, 0, extglob))
+      if (!splits_character(value, start, charset) &&
+          utils::glob_matches(pattern.view(), value.substring(start),
+                              pattern_active, 0, extglob, charset))
       {
         out.append(value.substring_of_length(0, start));
         append_pattern_replacement(out, replacement.view(),
@@ -1550,15 +1586,16 @@ fn EvalContext::pattern_replace_value(
     Maybe<usize> matched;
     if (!has_replaced || should_replace_all) {
       matched = longest_pattern_match_at(pattern.view(), pattern_active, value,
-                                         i, extglob);
+                                         i, extglob, charset);
     }
+    let const step = get_character_length(value, i, charset);
     if (matched.has_value()) {
       append_pattern_replacement(out, replacement.view(),
                                  value.substring_of_length(i, *matched));
       has_replaced = true;
       if (*matched == 0) {
-        out.push(value[i]);
-        i++;
+        out.append(value.substring_of_length(i, step));
+        i += step;
       } else {
         i += *matched;
       }
@@ -1567,8 +1604,8 @@ fn EvalContext::pattern_replace_value(
         return out;
       }
     } else {
-      out.push(value[i]);
-      i++;
+      out.append(value.substring_of_length(i, step));
+      i += step;
     }
   }
   return out;
@@ -1700,6 +1737,7 @@ fn EvalContext::apply_case_modification_to_value(
       (!pattern_active[0] ||
        (pattern[0] != '*' && pattern[0] != '?' && pattern[0] != '['));
   let const extglob = get_extglob_mode();
+  let const charset = get_glob_charset();
   let out = String{scratch_allocator()};
   out.reserve(value.length);
   for (usize i = 0; i < value.length; i++) {
@@ -1709,8 +1747,11 @@ fn EvalContext::apply_case_modification_to_value(
         pattern_matches_any ||
         (is_single_literal_pattern && character == pattern[0]) ||
         (!is_single_literal_pattern &&
-         utils::glob_matches(pattern.view(), value.substring_of_length(i, 1),
-                             pattern_active, 0, extglob));
+         utils::glob_matches(
+             pattern.view(),
+             value.substring_of_length(
+                 i, get_character_length(value, i, charset)),
+             pattern_active, 0, extglob, charset));
     if (is_affected && is_pattern_match)
     {
       const unsigned char byte = static_cast<unsigned char>(character);

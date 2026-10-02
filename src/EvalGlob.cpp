@@ -25,11 +25,13 @@ namespace {
 
 fn name_matches_glob(StringView glob, StringView filename,
                      const Bitset &glob_active, usize mask_offset,
-                     utils::extglob_mode mode, Allocator allocator,
+                     utils::extglob_mode mode, utils::glob_charset charset,
+                     Allocator allocator,
                      os::case_sensitivity sensitivity) throws -> bool
 {
   if (sensitivity == os::case_sensitivity::Sensitive)
-    return utils::glob_matches(glob, filename, glob_active, mask_offset, mode);
+    return utils::glob_matches(glob, filename, glob_active, mask_offset, mode,
+                               charset);
 
   /* The glob arrives already lowered from the caller, so only the per-entry
      filename is lowered here. Lowering preserves length, so the active mask
@@ -37,10 +39,23 @@ fn name_matches_glob(StringView glob, StringView filename,
   let const lowered_name = filename.to_lower_ascii(allocator);
 
   return utils::glob_matches(glob, lowered_name.view(), glob_active,
-                             mask_offset, mode);
+                             mask_offset, mode, charset);
 }
 
 } /* namespace */
+
+fn EvalContext::get_glob_charset() const throws -> glob_charset
+{
+  for (let const name : {"LC_ALL", "LC_CTYPE", "LANG"}) {
+    let const value = get_variable_value(name);
+    if (!value.has_value() || value->is_empty()) continue;
+
+    return utils::locale_name_is_utf8(value->view()) ? glob_charset::Utf8
+                                                     : glob_charset::Bytes;
+  }
+
+  return glob_charset::Bytes;
+}
 
 fn EvalContext::expand_path_once(const glob_field &field,
                                  glob_expansion_mode expansion_mode) throws
@@ -108,6 +123,7 @@ fn EvalContext::expand_path_once(const glob_field &field,
   let const dotglob_is_on = is_shopt_enabled("dotglob");
   let const nocaseglob_is_on = is_shopt_enabled("nocaseglob");
   let const extglob = get_extglob_mode();
+  let const charset = get_glob_charset();
 
   let lowered_glob = String{scratch};
   if (nocaseglob_is_on) lowered_glob = glob.to_lower_ascii(scratch);
@@ -127,7 +143,7 @@ fn EvalContext::expand_path_once(const glob_field &field,
     }
 
     return name_matches_glob(match_glob, filename, field.glob_active,
-                             stem_start, extglob, scratch,
+                             stem_start, extglob, charset, scratch,
                              nocaseglob_is_on
                                  ? os::case_sensitivity::Insensitive
                                  : os::case_sensitivity::Sensitive);

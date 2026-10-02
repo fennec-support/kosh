@@ -150,6 +150,12 @@ enum class extglob_mode : u8
   Enabled,
 };
 
+enum class glob_charset : u8
+{
+  Bytes,
+  Utf8,
+};
+
 /* The index of the first active glob metacharacter in a field, or None when the
    field is all literal. The argument expander reads it to push a glob-free
    field straight through, skipping the directory scan that expand_path would

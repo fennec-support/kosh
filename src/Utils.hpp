@@ -24,6 +24,7 @@ namespace koshka {
 namespace utils {
 
 using extglob_mode = koshka::extglob_mode;
+using glob_charset = koshka::glob_charset;
 
 struct opaque_shell_word_range
 {
@@ -523,10 +524,21 @@ fn kosh_identity(StringView fallback_path) throws -> Maybe<StringView>;
 
 /* glob_active reads which bytes act as metacharacters. With extglob set the
    bash extended-glob groups ?(..), *(..), +(..), @(..), and !(..) are
-   recognized, otherwise they are plain bytes. */
+   recognized, otherwise they are plain bytes. With the Utf8 charset a ? and a
+   star retry step over one whole UTF-8 sequence, and an invalid byte counts as
+   one character. */
 fn glob_matches(StringView glob, StringView str, const Bitset &glob_active,
-                usize mask_offset,
-                extglob_mode mode = extglob_mode::Disabled) throws -> bool;
+                usize mask_offset, extglob_mode mode = extglob_mode::Disabled,
+                glob_charset charset = glob_charset::Bytes) throws -> bool;
+
+/* True when a locale name selects the UTF-8 codeset, as in en_US.UTF-8 or
+   C.utf8. */
+pure fn locale_name_is_utf8(StringView locale_name) wontthrow -> bool;
+
+/* The length of the character that starts at position, one byte for ASCII or
+   an invalid sequence. */
+pure fn utf8_character_length(StringView text, usize position) wontthrow
+    -> usize;
 
 fn set_quit_context(const EvalContext *context) wontthrow -> void;
 fn print_memory_report() wontthrow -> void;

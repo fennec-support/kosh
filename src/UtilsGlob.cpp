@@ -341,10 +341,42 @@ pure fn smart_case_prefix_matches(StringView candidate,
                                    token_has_uppercase(prefix));
 }
 
+pure fn locale_name_is_utf8(StringView locale_name) wontthrow -> bool
+{
+  let const dot = locale_name.find_character('.');
+  if (!dot.has_value()) return false;
+
+  usize end = *dot + 1;
+  while (end < locale_name.length && locale_name[end] != '@') end++;
+
+  let const codeset = locale_name.substring_of_length(*dot + 1, end - *dot - 1);
+  if (codeset.length == 4) {
+    return ascii_to_lower(codeset[0]) == 'u' &&
+           ascii_to_lower(codeset[1]) == 't' &&
+           ascii_to_lower(codeset[2]) == 'f' && codeset[3] == '8';
+  }
+
+  return codeset.length == 5 && ascii_to_lower(codeset[0]) == 'u' &&
+         ascii_to_lower(codeset[1]) == 't' &&
+         ascii_to_lower(codeset[2]) == 'f' && codeset[3] == '-' &&
+         codeset[4] == '8';
+}
+
+pure fn utf8_character_length(StringView text, usize position) wontthrow
+    -> usize
+{
+  if (static_cast<u8>(text[position]) < 0x80) return 1;
+
+  return decode_utf8(text, position, 0xfffd).length;
+}
+
 hot flatten fn glob_matches(StringView glob, StringView str,
                             const Bitset &glob_active, usize mask_offset,
-                            extglob_mode mode) throws -> bool
+                            extglob_mode mode, glob_charset charset) throws
+    -> bool
 {
+  let const is_utf8 = charset == glob_charset::Utf8;
+
   /* The extended-glob grammar needs backtracking over alternatives and
      repetition, so it runs in a separate recursive matcher. It is taken only
      when extglob is on and the pattern actually holds a group, so a plain glob
@@ -379,7 +411,7 @@ hot flatten fn glob_matches(StringView glob, StringView str,
     switch (glob[g]) {
     case '?': {
       g++;
-      s++;
+      s += is_utf8 ? utf8_character_length(str, s) : 1;
     } break;
 
     case '*': {
@@ -543,7 +575,8 @@ retry_star:
     if (star_glob_position == static_cast<usize>(-1) ||
         star_string_position >= str.count())
       return false;
-    star_string_position++;
+    star_string_position +=
+        is_utf8 ? utf8_character_length(str, star_string_position) : 1;
     s = star_string_position;
     g = star_glob_position;
   }

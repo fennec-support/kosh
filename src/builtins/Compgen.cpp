@@ -138,14 +138,16 @@ struct compgen_filter
   Bitset active;
   bool is_negated{false};
   extglob_mode extglob{extglob_mode::Disabled};
+  glob_charset charset{glob_charset::Bytes};
 };
 
 static fn compile_filter(StringView raw_filter, StringView word,
-                         Allocator allocator, extglob_mode extglob) throws
-    -> compgen_filter
+                         Allocator allocator, extglob_mode extglob,
+                         glob_charset charset) throws -> compgen_filter
 {
   let compiled = compgen_filter{allocator};
   compiled.extglob = extglob;
+  compiled.charset = charset;
 
   let const upper_bound = raw_filter.length + word.length;
   compiled.pattern.reserve(upper_bound);
@@ -181,7 +183,8 @@ static fn candidate_is_excluded(StringView candidate,
                                 const compgen_filter &filter) throws -> bool
 {
   let const matches = utils::glob_matches(filter.pattern.view(), candidate,
-                                          filter.active, 0, filter.extglob);
+                                          filter.active, 0, filter.extglob,
+                                          filter.charset);
   return filter.is_negated ? !matches : matches;
 }
 
@@ -586,7 +589,7 @@ fn Compgen::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   Maybe<compgen_filter> filter = None;
   if (filter_pattern.has_value()) {
     filter = compile_filter(*filter_pattern, word, cxt.scratch_allocator(),
-                            cxt.get_extglob_mode());
+                            cxt.get_extglob_mode(), cxt.get_glob_charset());
   }
 
   let const prefix =

@@ -203,7 +203,8 @@ static fn command_name_match(StringView name, StringView token,
     -> Maybe<match_tier>
 {
   if (token_is_glob) {
-    if (utils::glob_matches(token, name, glob_active, 0))
+    if (utils::glob_matches(token, name, glob_active, 0, extglob_mode::Disabled,
+                            glob_charset::Utf8))
       return match_tier::exact_prefix;
     return None;
   }
@@ -900,7 +901,9 @@ static fn complete_glob(StringView token, const Path &base_directory,
       match_name = candidate_name.view();
     }
 
-    if (!utils::glob_matches(match_pattern, match_name, glob_active, 0)) {
+    if (!utils::glob_matches(match_pattern, match_name, glob_active, 0,
+                             extglob_mode::Disabled, glob_charset::Utf8))
+    {
       continue;
     }
 
