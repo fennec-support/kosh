@@ -380,7 +380,106 @@ namespace os {
 
 namespace {
 
+#if (defined __x86_64__ && !defined __COSMOPOLITAN__) ||                       \
+    defined __aarch64__ || defined __arm64__ || defined _M_ARM64
+constexpr u32 CRC32C_POLYNOMIAL = 0x82f63b78u;
+constexpr usize CRC32C_LONG_BLOCK_LENGTH = 8192;
+constexpr usize CRC32C_SHORT_BLOCK_LENGTH = 256;
+
+struct crc32c_shift_operator
+{
+  u32 columns[32];
+};
+
+struct crc32c_shift_table
+{
+  u32 entries[4][256];
+};
+
+consteval fn apply_crc32c_shift_operator(const crc32c_shift_operator &shift,
+                                         u32 value) -> u32
+{
+  u32 result = 0;
+  for (usize bit = 0; bit < 32; bit++) {
+    if (((value >> bit) & 1) != 0) result ^= shift.columns[bit];
+  }
+
+  return result;
+}
+
+consteval fn make_crc32c_shift_table(usize byte_length) -> crc32c_shift_table
+{
+  let shift = crc32c_shift_operator{};
+  for (usize bit = 0; bit < 32; bit++) {
+    u32 value = u32{1} << bit;
+    for (usize step = 0; step < 8; step++)
+      value = (value >> 1) ^ ((value & 1) != 0 ? CRC32C_POLYNOMIAL : 0);
+    shift.columns[bit] = value;
+  }
+
+  for (usize shifted_length = 1; shifted_length < byte_length;
+       shifted_length *= 2)
+  {
+    let squared = crc32c_shift_operator{};
+    for (usize bit = 0; bit < 32; bit++)
+      squared.columns[bit] =
+          apply_crc32c_shift_operator(shift, shift.columns[bit]);
+    shift = squared;
+  }
+
+  let table = crc32c_shift_table{};
+  for (usize byte_index = 0; byte_index < 4; byte_index++) {
+    for (u32 byte = 0; byte < 256; byte++)
+      table.entries[byte_index][byte] =
+          apply_crc32c_shift_operator(shift, byte << (byte_index * 8));
+  }
+
+  return table;
+}
+
+constexpr crc32c_shift_table CRC32C_LONG_SHIFT_TABLE =
+    make_crc32c_shift_table(CRC32C_LONG_BLOCK_LENGTH);
+constexpr crc32c_shift_table CRC32C_SHORT_SHIFT_TABLE =
+    make_crc32c_shift_table(CRC32C_SHORT_BLOCK_LENGTH);
+
+pure alwaysinline fn shift_crc32c(const crc32c_shift_table &table,
+                                  u32 crc) wontthrow -> u32
+{
+  return table.entries[0][crc & 0xff] ^ table.entries[1][(crc >> 8) & 0xff] ^
+         table.entries[2][(crc >> 16) & 0xff] ^ table.entries[3][crc >> 24];
+}
+#endif
+
 #if defined __x86_64__ && !defined __COSMOPOLITAN__
+#if defined __clang__
+[[gnu::target("crc32")]]
+#else
+[[gnu::target("sse4.2")]]
+#endif
+pure fn crc32c_update_sse42_streams(u32 crc, const u8 *data, usize block_length,
+                                    const crc32c_shift_table &table) wontthrow
+    -> u32
+{
+  u64 middle_crc = 0;
+  u64 last_crc = 0;
+  u64 first_crc = crc;
+  for (usize offset = 0; offset < block_length; offset += 8) {
+    u64 first_word;
+    u64 middle_word;
+    u64 last_word;
+    __builtin_memcpy(&first_word, data + offset, 8);
+    __builtin_memcpy(&middle_word, data + block_length + offset, 8);
+    __builtin_memcpy(&last_word, data + 2 * block_length + offset, 8);
+    first_crc = _mm_crc32_u64(first_crc, first_word);
+    middle_crc = _mm_crc32_u64(middle_crc, middle_word);
+    last_crc = _mm_crc32_u64(last_crc, last_word);
+  }
+
+  crc = shift_crc32c(table, static_cast<u32>(first_crc)) ^
+        static_cast<u32>(middle_crc);
+  return shift_crc32c(table, crc) ^ static_cast<u32>(last_crc);
+}
+
 #if defined __clang__
 [[gnu::target("crc32")]]
 #else
@@ -389,6 +488,20 @@ namespace {
 pure fn crc32c_update_sse42(u32 crc, const u8 *data, usize length) wontthrow
     -> u32
 {
+  while (length >= 3 * CRC32C_LONG_BLOCK_LENGTH) {
+    crc = crc32c_update_sse42_streams(crc, data, CRC32C_LONG_BLOCK_LENGTH,
+                                      CRC32C_LONG_SHIFT_TABLE);
+    data += 3 * CRC32C_LONG_BLOCK_LENGTH;
+    length -= 3 * CRC32C_LONG_BLOCK_LENGTH;
+  }
+
+  while (length >= 3 * CRC32C_SHORT_BLOCK_LENGTH) {
+    crc = crc32c_update_sse42_streams(crc, data, CRC32C_SHORT_BLOCK_LENGTH,
+                                      CRC32C_SHORT_SHIFT_TABLE);
+    data += 3 * CRC32C_SHORT_BLOCK_LENGTH;
+    length -= 3 * CRC32C_SHORT_BLOCK_LENGTH;
+  }
+
   while (length >= 8) {
     u64 word;
     __builtin_memcpy(&word, data, 8);
@@ -415,10 +528,47 @@ fn is_x86_sse42_available() wontthrow -> bool
 #endif
 
 #if defined __aarch64__ || defined __arm64__ || defined _M_ARM64
+[[gnu::target("+crc")]] pure
+    fn crc32c_update_acle_streams(u32 crc, const u8 *data, usize block_length,
+                                  const crc32c_shift_table &table) wontthrow
+    -> u32
+{
+  u32 middle_crc = 0;
+  u32 last_crc = 0;
+  for (usize offset = 0; offset < block_length; offset += 8) {
+    u64 first_word;
+    u64 middle_word;
+    u64 last_word;
+    __builtin_memcpy(&first_word, data + offset, 8);
+    __builtin_memcpy(&middle_word, data + block_length + offset, 8);
+    __builtin_memcpy(&last_word, data + 2 * block_length + offset, 8);
+    crc = __crc32cd(crc, first_word);
+    middle_crc = __crc32cd(middle_crc, middle_word);
+    last_crc = __crc32cd(last_crc, last_word);
+  }
+
+  crc = shift_crc32c(table, crc) ^ middle_crc;
+  return shift_crc32c(table, crc) ^ last_crc;
+}
+
 [[gnu::target("+crc")]] pure fn crc32c_update_acle(u32 crc, const u8 *data,
                                                    usize length) wontthrow
     -> u32
 {
+  while (length >= 3 * CRC32C_LONG_BLOCK_LENGTH) {
+    crc = crc32c_update_acle_streams(crc, data, CRC32C_LONG_BLOCK_LENGTH,
+                                     CRC32C_LONG_SHIFT_TABLE);
+    data += 3 * CRC32C_LONG_BLOCK_LENGTH;
+    length -= 3 * CRC32C_LONG_BLOCK_LENGTH;
+  }
+
+  while (length >= 3 * CRC32C_SHORT_BLOCK_LENGTH) {
+    crc = crc32c_update_acle_streams(crc, data, CRC32C_SHORT_BLOCK_LENGTH,
+                                     CRC32C_SHORT_SHIFT_TABLE);
+    data += 3 * CRC32C_SHORT_BLOCK_LENGTH;
+    length -= 3 * CRC32C_SHORT_BLOCK_LENGTH;
+  }
+
   while (length >= 8) {
     u64 word;
     __builtin_memcpy(&word, data, 8);
