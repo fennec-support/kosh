@@ -542,8 +542,16 @@ pure fn utf8_character_length(StringView text, usize position) wontthrow
 
 /* The length of the character that starts at position under the charset, one
    byte in the byte charset and at or past the end of text. */
-pure fn charset_character_length(StringView text, usize position,
-                                 glob_charset charset) wontthrow -> usize;
+pure alwaysinline fn charset_character_length(StringView text, usize position,
+                                              glob_charset charset) wontthrow
+    -> usize
+{
+  if (charset == glob_charset::Utf8 && position < text.length) {
+    return utf8_character_length(text, position);
+  }
+
+  return 1;
+}
 
 fn set_quit_context(const EvalContext *context) wontthrow -> void;
 fn print_memory_report() wontthrow -> void;

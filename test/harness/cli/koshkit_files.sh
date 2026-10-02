@@ -110,7 +110,8 @@ if [ "${TARGET:-$(uname -s)}" = Linux ]; then
   procfs_pipe_count=$(cat /proc/self/mountinfo /proc/kallsyms | "$BIN" -c 'koshkit wc -l')
   set -- $procfs_path_count
   procfs_path_total=$5
-  if [ "$procfs_path_total" -ne "$procfs_pipe_count" ]; then
+  if [ -z "$procfs_path_total" ] ||
+    [ "$procfs_path_total" -ne "$procfs_pipe_count" ]; then
     exit 1
   fi
 fi

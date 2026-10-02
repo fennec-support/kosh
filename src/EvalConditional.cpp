@@ -487,7 +487,7 @@ struct conditional_evaluator
               let const is_matched =
                   utils::glob_matches(pattern.view(), left.view(), active, 0,
                                       cxt.get_extglob_mode(),
-                                      cxt.get_glob_charset());
+                                      cxt.get_glob_charset_for(left.view()));
               return *selected_binary_operator ==
                              BinaryOperatorKind::PatternNotEqual
                          ? !is_matched
@@ -501,7 +501,8 @@ struct conditional_evaluator
             let const is_matched =
                 utils::glob_matches(match_pattern.view(), match_value.view(),
                                     active, 0, cxt.get_extglob_mode(),
-                                    cxt.get_glob_charset());
+                                    cxt.get_glob_charset_for(
+                                        match_value.view()));
             return *selected_binary_operator ==
                            BinaryOperatorKind::PatternNotEqual
                        ? !is_matched

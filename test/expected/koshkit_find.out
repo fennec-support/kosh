@@ -104,3 +104,7 @@ note: Pass a whole number greater than or equal to zero.
 .
 --- find unreadable nested path ---
 find-unreadable=checked
+--- find -name ? follows the locale codeset ---
+wide/x
+wide/é
+wide/x

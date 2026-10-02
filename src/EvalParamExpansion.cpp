@@ -84,8 +84,8 @@ enum class pattern_match_extent : u8
   Longest,
 };
 
-static fn splits_character(StringView text, usize position,
-                           glob_charset charset) wontthrow -> bool
+alwaysinline static fn splits_character(StringView text, usize position,
+                                        glob_charset charset) wontthrow -> bool
 {
   if (charset != glob_charset::Utf8 || position == 0 || position >= text.length)
   {
@@ -208,7 +208,7 @@ fn trim_matching(const EvalContext &cxt, Allocator result_allocator,
     return String{result_allocator, value.substring_of_length(0, *match)};
   }
 
-  let const charset = cxt.get_glob_charset();
+  let const charset = cxt.get_glob_charset_for(value);
   let const literal_head =
       has_extglob_group ? StringView{}
                         : pattern.substring_of_length(0, first_glob_position);
@@ -1431,18 +1431,21 @@ static fn find_replacement_separator(StringView body) wontthrow -> usize
   return body.length;
 }
 
-static fn longest_pattern_match_at(StringView pattern,
+alwaysinline static fn longest_pattern_match_at(StringView pattern,
                                    const Bitset &pattern_active,
                                    StringView value, usize start,
                                    extglob_mode mode,
                                    glob_charset charset) throws -> Maybe<usize>
 {
+  let const is_utf8 = charset == glob_charset::Utf8;
   for (usize end = value.length; end >= start; end--) {
-    if (!splits_character(value, end, charset) &&
+    if ((!is_utf8 || !splits_character(value, end, charset)) &&
         utils::glob_matches(pattern,
                             value.substring_of_length(start, end - start),
                             pattern_active, 0, mode, charset))
+    {
       return end - start;
+    }
     if (end == start) break;
   }
   return None;
@@ -1522,7 +1525,7 @@ fn EvalContext::pattern_replace_value(
 
   let out = String{scratch_allocator()};
   let const extglob = get_extglob_mode();
-  let const charset = get_glob_charset();
+  let const charset = get_glob_charset_for(value);
 
   if (is_anchored_at_start) {
     if (let const matched = longest_pattern_match_at(
@@ -1562,14 +1565,21 @@ fn EvalContext::pattern_replace_value(
       matched = longest_pattern_match_at(pattern.view(), pattern_active, value,
                                          i, extglob, charset);
     }
-    let const step = utils::charset_character_length(value, i, charset);
+    let const do_copy_character = [&]() throws -> void {
+      let const step = utils::charset_character_length(value, i, charset);
+      if (step == 1) {
+        out.push(value[i]);
+      } else {
+        out.append(value.substring_of_length(i, step));
+      }
+      i += step;
+    };
     if (matched.has_value()) {
       append_pattern_replacement(out, replacement.view(),
                                  value.substring_of_length(i, *matched));
       has_replaced = true;
       if (*matched == 0) {
-        out.append(value.substring_of_length(i, step));
-        i += step;
+        do_copy_character();
       } else {
         i += *matched;
       }
@@ -1578,8 +1588,7 @@ fn EvalContext::pattern_replace_value(
         return out;
       }
     } else {
-      out.append(value.substring_of_length(i, step));
-      i += step;
+      do_copy_character();
     }
   }
   return out;
@@ -1713,7 +1722,7 @@ fn EvalContext::apply_case_modification_to_value(
   let const extglob = get_extglob_mode();
   let const charset = pattern_matches_any || is_single_literal_pattern
                           ? glob_charset::Bytes
-                          : get_glob_charset();
+                          : get_glob_charset_for(value);
   let out = String{scratch_allocator()};
   out.reserve(value.length);
   for (usize i = 0; i < value.length; i++) {

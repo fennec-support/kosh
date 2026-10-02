@@ -63,3 +63,14 @@ case $help in
   *) help_shape=wrong ;;
 esac
 printf 'help-shape=%s\n' "$help_shape"
+
+for crc_size in 767 768 24575 24576 49920 65536 100003; do
+  crc_file=$TEST_TEMP_DIRECTORY/goodstat-crc-$crc_size
+  $BIN -c 'koshkit yes abcdefghijklmnopqrstuvwxyz0123456789 |
+    koshkit head -c "$1" > "$2"' crc "$crc_size" "$crc_file"
+  crc_report=$($BIN -c 'koshkit --color never goodstat --checksum "$1"' \
+    goodstat "$crc_file")
+  crc_value=$(printf '%s\n' "$crc_report" |
+    sed -n 's/.*CRC32C[[:space:]]*\([0-9a-f]\{8\}\).*/\1/p')
+  printf 'crc32c-%s=%s\n' "$crc_size" "$crc_value"
+done

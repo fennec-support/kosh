@@ -59,6 +59,16 @@ fn EvalContext::get_glob_charset() const throws -> glob_charset
   return glob_charset::Bytes;
 }
 
+hot fn EvalContext::get_glob_charset_for(StringView subject) const throws
+    -> glob_charset
+{
+  for (usize position = 0; position < subject.length; position++) {
+    if (static_cast<u8>(subject[position]) >= 0x80) return get_glob_charset();
+  }
+
+  return glob_charset::Bytes;
+}
+
 fn EvalContext::expand_path_once(const glob_field &field,
                                  glob_expansion_mode expansion_mode) throws
     -> ArrayList<glob_field>
@@ -125,7 +135,16 @@ fn EvalContext::expand_path_once(const glob_field &field,
   let const dotglob_is_on = is_shopt_enabled("dotglob");
   let const nocaseglob_is_on = is_shopt_enabled("nocaseglob");
   let const extglob = get_extglob_mode();
-  let const charset = get_glob_charset();
+  Maybe<glob_charset> locale_charset = None;
+  let const do_get_entry_charset = [&](StringView filename) throws
+      -> glob_charset {
+    if (get_glob_charset_for(filename) == glob_charset::Bytes) {
+      return glob_charset::Bytes;
+    }
+    if (!locale_charset.has_value()) locale_charset = get_glob_charset();
+
+    return *locale_charset;
+  };
 
   let lowered_glob = String{scratch};
   if (nocaseglob_is_on) lowered_glob = glob.to_lower_ascii(scratch);
@@ -145,7 +164,8 @@ fn EvalContext::expand_path_once(const glob_field &field,
     }
 
     return name_matches_glob(match_glob, filename, field.glob_active,
-                             stem_start, extglob, charset, scratch,
+                             stem_start, extglob,
+                             do_get_entry_charset(filename), scratch,
                              nocaseglob_is_on
                                  ? os::case_sensitivity::Insensitive
                                  : os::case_sensitivity::Sensitive);

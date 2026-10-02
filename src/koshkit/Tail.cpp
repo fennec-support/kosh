@@ -362,7 +362,6 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
     state.source_index = source_index;
     state.descriptor = *descriptor;
     state.file_size = *file_size;
-    state.buffer = ArrayList<char>{allocator};
     if (unit == tail_unit::Bytes) {
       if (origin == count_origin::FromEnd)
         state.start_offset = *file_size > static_cast<u64>(count)

@@ -2994,6 +2994,7 @@ public:
   }
 
   fn get_glob_charset() const throws -> glob_charset;
+  fn get_glob_charset_for(StringView subject) const throws -> glob_charset;
 
   fn set_shopt_option(StringView name, bool is_enabled) throws -> void;
   pure fn is_shopt_enabled(StringView name) const wontthrow -> bool

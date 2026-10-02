@@ -37,6 +37,7 @@ struct find_options
   const ArrayList<StringView> *name_patterns{nullptr};
   const ArrayList<bool> *name_pattern_ignore_case{nullptr};
   const ArrayList<Bitset> *name_pattern_masks{nullptr};
+  glob_charset name_charset{glob_charset::Bytes};
   bool has_case_insensitive_name_pattern{false};
   char type_filter{0};
   i64 max_depth{-1};
@@ -110,8 +111,11 @@ static fn find_entry_matches(char type_letter, StringView filename, usize depth,
       let const candidate =
           should_ignore_case ? folded_filename.view() : original_filename;
       if (!utils::glob_matches(pattern, candidate,
-                               (*options.name_pattern_masks)[index], 0))
+                               (*options.name_pattern_masks)[index], 0,
+                               extglob_mode::Disabled, options.name_charset))
+      {
         return false;
+      }
     }
   }
 
@@ -536,6 +540,7 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
     options.name_patterns = &matcher_name_patterns;
     options.name_pattern_ignore_case = &name_pattern_ignore_case;
     options.name_pattern_masks = &matcher_name_masks;
+    options.name_charset = cxt.get_glob_charset();
   }
 
   if (roots.is_empty()) roots.push(StringView{"."});

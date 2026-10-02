@@ -430,16 +430,6 @@ pure fn utf8_character_length(StringView text, usize position) wontthrow
   return decode_utf8(text, position, 0xfffd).length;
 }
 
-pure fn charset_character_length(StringView text, usize position,
-                                 glob_charset charset) wontthrow -> usize
-{
-  if (charset == glob_charset::Utf8 && position < text.count()) {
-    return utf8_character_length(text, position);
-  }
-
-  return 1;
-}
-
 hot flatten fn glob_matches(StringView glob, StringView str,
                             const Bitset &glob_active, usize mask_offset,
                             extglob_mode mode, glob_charset charset) throws

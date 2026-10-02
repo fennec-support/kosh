@@ -1112,7 +1112,7 @@ fn CaseClause::evaluate_status_impl(EvalContext &cxt) const throws
   LOG(Debug, "the case subject expanded to '%s'", subject.c_str());
 
   let const extglob = cxt.get_extglob_mode();
-  let const charset = cxt.get_glob_charset();
+  let const charset = cxt.get_glob_charset_for(subject.view());
 
   let const do_arm_matches = [&](const case_item &item) throws -> bool {
     for (let const pattern_token : item.patterns) {

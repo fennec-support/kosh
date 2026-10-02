@@ -344,12 +344,7 @@ fn regex_matches(compiled_regex &compiled, StringView subject) throws -> bool
 fn regex_matches_null_terminated(compiled_regex &compiled,
                                  StringView subject) throws -> bool
 {
-#if defined REG_STARTEND && !defined KOSH_HAS_ADDRESS_SANITIZER
   return regex_matches(compiled, subject);
-#else
-  const String null_terminated{heap_allocator(), subject};
-  return regexec(&compiled.re, null_terminated.c_str(), 0, nullptr, 0) == 0;
-#endif
 }
 
 static u64 DESCRIPTOR_EPOCH = 0;

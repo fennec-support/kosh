@@ -99,3 +99,8 @@ else
   esac
 fi
 unset KOSH_FLAGS
+
+echo "--- find -name ? follows the locale codeset ---"
+"$BIN" -c 'koshkit mkdir -p wide; koshkit touch wide/x wide/é'
+"$BIN" -c 'LC_ALL=C.UTF-8; export LC_ALL; koshkit find wide -name "?"'
+"$BIN" -c 'LC_ALL=C; export LC_ALL; koshkit find wide -name "?"'
