@@ -647,10 +647,16 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       cxt.runtime_state().set_option(shell_option_id::Ignoreeof,
                                      *previous_ignoreeof_state);
   };
-  const bool is_source_evaluating_builtin =
+  let const is_source_evaluating_builtin =
       !program_args.is_empty() && command_word_function == nullptr &&
       (program_args[0] == "eval" || program_args[0] == "." ||
        program_args[0] == "source");
+  let const is_prefix_assignment_persistent =
+      is_command_special_builtin
+          ? !cxt.runtime_state().is_bash_compatible() ||
+                cxt.runtime_state().is_posix_option_on()
+          : is_source_evaluating_builtin &&
+                cxt.runtime_state().is_posix_option_on();
   /* The assignments apply left to right, each committed before the next is
      expanded, so a later value reads an earlier same-line one. */
   let const do_apply_environment_assignment =
@@ -682,7 +688,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         /* A special builtin keeps the assignment outside the bash mood, so it
            commits to the store. The bash mood drops it after the command, so it
            falls to the temporary path instead. */
-        if (is_command_special_builtin && !cxt.runtime_state().is_bash_compatible()) {
+        if (is_prefix_assignment_persistent) {
           cxt.set_shell_variable(name, expanded_value);
           if (cxt.runtime_state().export_all()) {
             cxt.record_environment_change(name);

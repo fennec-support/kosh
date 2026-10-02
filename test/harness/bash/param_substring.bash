@@ -399,5 +399,20 @@ PB=3 . "${TMPDIR:-/tmp}/prefix_dot_$$.sh"
 PB=4 source "${TMPDIR:-/tmp}/prefix_dot_$$.sh"
 echo "after:$PB"
 rm -f "${TMPDIR:-/tmp}/prefix_dot_$$.sh"
+echo 'echo "dot:$PC"' > "${TMPDIR:-/tmp}/prefix_posix_$$.sh"
+( set -o posix
+  PC=1
+  PC=2 eval 'PC=3'
+  echo "posix-eval:$PC"
+  unset PC
+  PC=4 . "${TMPDIR:-/tmp}/prefix_posix_$$.sh"
+  echo "posix-dot:$PC"
+  unset PC
+  PC=5 source "${TMPDIR:-/tmp}/prefix_posix_$$.sh"
+  echo "posix-source:$PC"
+  unset PC
+  PC=6 eval :
+  echo "posix-colon:$PC" )
+rm -f "${TMPDIR:-/tmp}/prefix_posix_$$.sh"
 
 for word in "${@^}"; do count=$((count + 1)); echo "elem$count=$word"; done

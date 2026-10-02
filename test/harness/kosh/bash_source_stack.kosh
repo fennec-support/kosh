@@ -9,7 +9,7 @@ inner()
   printf 'inner[1]=%s\n' "${BASH_SOURCE[1]}"
   printf 'inner-all=%s depth=%s\n' "${BASH_SOURCE[*]}" "${#BASH_SOURCE[@]}"
   printf 'inner-last=%s\n' "${BASH_SOURCE[-1]}"
-  printf 'inner-past=[%s]\n' "${BASH_SOURCE[9]}"
+  printf 'inner-past=[%s]\n' "${BASH_SOURCE[9]-}"
 }
 printf 'lib-top=%s depth=%s\n' "${BASH_SOURCE[0]}" "${#BASH_SOURCE[@]}"
 called_while_sourcing()

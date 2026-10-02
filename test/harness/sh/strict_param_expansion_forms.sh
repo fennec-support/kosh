@@ -149,4 +149,9 @@ echo "after:$pa"
 echo 'echo "dot:$pb"' > "${TMPDIR:-/tmp}/prefix_dot_$$.sh"
 pb=3 . "${TMPDIR:-/tmp}/prefix_dot_$$.sh"
 echo "after:$pb"
+unset pa
+pa=4 eval :
+echo "colon:${pa-unset}"
+pa=5 eval 'pa=6'
+echo "assigned:$pa"
 rm -f "${TMPDIR:-/tmp}/prefix_dot_$$.sh"
