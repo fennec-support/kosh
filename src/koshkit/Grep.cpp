@@ -6,6 +6,9 @@
  * expression and streams matching or inverted lines with optional ASCII case
  * folding. Each read chunk is searched for a literal that every match must
  * contain, and only the lines holding that literal reach the line matcher.
+ * A pattern made only of literal runs, single-byte wildcards, ".*" gaps, and
+ * optional edge anchors compiles to a segment list that decides each line
+ * without the system regex engine. Every other pattern uses that engine.
  */
 
 #include "../CLI.hpp"
@@ -283,6 +286,13 @@ static fn collect_recursive_sources(const ExecContext &ec, EvalContext &cxt,
   }
 }
 
+struct grep_fast_segment
+{
+  u32 start{0};
+  u32 length{0};
+  bool has_wildcard{false};
+};
+
 struct grep_options
 {
   StringView pattern;
@@ -310,6 +320,8 @@ public:
         m_sources(m_allocator),
         m_source_line_numbers(m_allocator),
         m_folded_pattern(m_allocator),
+        m_fast_bytes(m_allocator),
+        m_fast_segments(m_allocator),
         m_output(m_allocator),
         m_line(m_allocator)
   {
@@ -317,6 +329,7 @@ public:
     m_should_use_literal_search =
         is_literal_search_pattern(pattern) &&
         (!m_options.should_ignore_case || is_ascii_pattern(pattern));
+    prepare_fast_matcher();
     prepare_repeated_class_path();
     prepare_regex_prefix();
     prepare_candidate_literal();
@@ -337,7 +350,9 @@ public:
 
   fn compile_pattern() throws -> bool
   {
-    if (m_should_use_literal_search) return true;
+    if (m_should_use_literal_search || m_has_fast_matcher) {
+      return true;
+    }
 
     if (os::compile_basic_regex(m_options.pattern, m_compiled,
                                 m_options.should_ignore_case
@@ -423,10 +438,200 @@ public:
   }
 
 private:
+  fn close_fast_segment(usize segment_start) throws -> void
+  {
+    let const length = m_fast_bytes.count() - segment_start;
+    if (length == 0) return;
+
+    let has_wildcard = false;
+    for (usize index = segment_start; index < m_fast_bytes.count(); index++)
+      if (m_fast_bytes[index] == '\0') has_wildcard = true;
+
+    m_fast_segments.push({static_cast<u32>(segment_start),
+                          static_cast<u32>(length), has_wildcard});
+  }
+
+  fn prepare_fast_matcher() throws -> void
+  {
+    let const pattern = m_options.pattern;
+    if (m_should_use_literal_search) return;
+
+    usize body_start = 0;
+    usize body_end = pattern.length;
+    if (body_end != 0 && pattern[0] == '^') {
+      m_is_fast_start_anchored = true;
+      body_start = 1;
+    }
+    if (body_end > body_start && pattern[body_end - 1] == '$') {
+      m_is_fast_end_anchored = true;
+      body_end--;
+    }
+
+    let has_any_gap = false;
+    let has_leading_gap = false;
+    let has_trailing_gap = false;
+    usize segment_start = 0;
+    let did_fail = false;
+    for (usize index = body_start; index < body_end; index++) {
+      let const character = pattern[index];
+      if (character == '.') {
+        if (index + 1 < body_end && pattern[index + 1] == '*') {
+          close_fast_segment(segment_start);
+          segment_start = m_fast_bytes.count();
+          if (m_fast_segments.is_empty() && !has_any_gap) {
+            has_leading_gap = true;
+          }
+          has_any_gap = true;
+          has_trailing_gap = true;
+          index++;
+        } else {
+          m_fast_bytes += '\0';
+          has_trailing_gap = false;
+        }
+        continue;
+      }
+
+      switch (character) {
+      case '\0':
+      case '\n':
+      case '\\':
+      case '[':
+      case '*':
+      case '^':
+      case '$':
+      case '+':
+      case '?':
+      case '(':
+      case ')':
+      case '{':
+      case '}':
+      case '|': did_fail = true; break;
+      default:
+        did_fail = static_cast<unsigned char>(character) > 0x7f;
+        break;
+      }
+      if (did_fail) break;
+
+      m_fast_bytes += m_options.should_ignore_case
+                          ? utils::ascii_to_lower(character)
+                          : character;
+      has_trailing_gap = false;
+    }
+
+    if (did_fail || m_fast_bytes.count() > 0x7fffffff) {
+      m_fast_bytes.clear();
+      m_fast_segments.clear();
+      m_is_fast_start_anchored = false;
+      m_is_fast_end_anchored = false;
+      return;
+    }
+
+    close_fast_segment(segment_start);
+    if (m_fast_segments.is_empty()) {
+      m_is_fast_empty_line_only = m_is_fast_start_anchored &&
+                                  m_is_fast_end_anchored && !has_any_gap;
+    }
+    if (has_leading_gap) m_is_fast_start_anchored = false;
+    if (has_trailing_gap) m_is_fast_end_anchored = false;
+    m_has_fast_matcher = true;
+  }
+
+  fn does_fast_segment_match_at(const grep_fast_segment &segment,
+                                StringView value, usize position) const
+      wontthrow -> bool
+  {
+    let const needle = m_fast_bytes.view().substring_of_length(segment.start,
+                                                               segment.length);
+    for (usize index = 0; index < segment.length; index++) {
+      let const wanted = needle[index];
+      if (wanted == '\0') continue;
+
+      let const actual = value[position + index];
+      if ((m_options.should_ignore_case ? utils::ascii_to_lower(actual)
+                                        : actual) != wanted)
+      {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  fn find_fast_segment(const grep_fast_segment &segment, StringView value,
+                       usize from, usize limit) const wontthrow
+      -> Maybe<usize>
+  {
+    if (limit < from || limit - from < segment.length) {
+      return None;
+    }
+
+    if (!segment.has_wildcard && !m_options.should_ignore_case) {
+      let const needle = m_fast_bytes.view().substring_of_length(
+          segment.start, segment.length);
+      return value.substring_of_length(0, limit).find_substring(needle, from);
+    }
+
+    let const last_start = limit - segment.length;
+    for (usize start = from; start <= last_start; start++)
+      if (does_fast_segment_match_at(segment, value, start)) return start;
+
+    return None;
+  }
+
+  fn match_fast_line(StringView value) const wontthrow -> bool
+  {
+    let const segment_count = m_fast_segments.count();
+    if (segment_count == 0)
+      return !m_is_fast_empty_line_only || value.length == 0;
+
+    usize position = 0;
+    usize first = 0;
+    usize last = segment_count;
+    usize limit = value.length;
+
+    if (m_is_fast_start_anchored) {
+      let const &head = m_fast_segments[0];
+      if (value.length < head.length ||
+          !does_fast_segment_match_at(head, value, 0))
+      {
+        return false;
+      }
+
+      if (segment_count == 1 && m_is_fast_end_anchored)
+        return value.length == head.length;
+
+      position = head.length;
+      first = 1;
+    }
+
+    if (m_is_fast_end_anchored) {
+      last--;
+      let const &tail = m_fast_segments[last];
+      if (value.length < tail.length || value.length - tail.length < position ||
+          !does_fast_segment_match_at(tail, value, value.length - tail.length))
+      {
+        return false;
+      }
+
+      limit = value.length - tail.length;
+    }
+
+    for (usize index = first; index < last; index++) {
+      let const found =
+          find_fast_segment(m_fast_segments[index], value, position, limit);
+      if (!found.has_value()) return false;
+
+      position = *found + m_fast_segments[index].length;
+    }
+
+    return true;
+  }
+
   fn prepare_repeated_class_path() wontthrow -> void
   {
     let const pattern = m_options.pattern;
-    if (m_should_use_literal_search || m_options.should_ignore_case ||
+    if (m_should_use_literal_search || m_has_fast_matcher ||
+        m_options.should_ignore_case ||
         pattern.length < 4 || pattern[0] != '^' ||
         pattern[pattern.length - 1] != '$' ||
         pattern.find_character('\0').has_value() ||
@@ -545,6 +750,8 @@ private:
                        value, m_folded_pattern.view())
                  : value.find_substring(m_options.pattern).has_value();
     }
+
+    if (m_has_fast_matcher) return match_fast_line(value);
 
     if (!m_regex_prefix.is_empty() && !value.starts_with(m_regex_prefix))
       return false;
@@ -730,6 +937,8 @@ private:
   ArrayList<StringView> m_sources;
   ArrayList<usize> m_source_line_numbers;
   String m_folded_pattern;
+  String m_fast_bytes;
+  ArrayList<grep_fast_segment> m_fast_segments;
   String m_output;
   String m_line;
   StringView m_fast_regex_prefix;
@@ -740,6 +949,10 @@ private:
   grep_repeated_class m_fast_regex_class{grep_repeated_class::None};
   i32 m_status{0};
   bool m_should_use_literal_search{false};
+  bool m_has_fast_matcher{false};
+  bool m_is_fast_start_anchored{false};
+  bool m_is_fast_end_anchored{false};
+  bool m_is_fast_empty_line_only{false};
   bool m_should_print_names{false};
   bool m_has_any_match{false};
   bool m_is_regex_compiled{false};
