@@ -208,11 +208,12 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     /* The unset here is this move, not a user unset, so the integer mark it
        clears is put back. */
     LOG(All, "export moving '%s' into the environment", name.c_str());
+    let const environment_name = os::get_environment_spelling(name.view());
     cxt.unset_shell_variable(name);
     if (is_integer_name) cxt.mark_integer(name.view());
-    cxt.record_environment_change(name);
-    os::set_environment_variable(name, value);
-    cxt.mark_exported(name);
+    cxt.record_environment_change(environment_name.view());
+    os::set_environment_variable(environment_name.view(), value);
+    cxt.mark_exported(environment_name.view());
     /* The unset above pointed the resolver at the now-removed environment PATH,
        so an export PATH=... refreshes it to the value just placed in the
        environment. */

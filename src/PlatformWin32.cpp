@@ -1730,6 +1730,20 @@ fn set_environment_variable(StringView key, StringView value) -> void
                           wide_value->begin());
 }
 
+fn get_environment_spelling(StringView key) -> String
+{
+  let const wide_key = utf8_to_wide(key, heap_allocator());
+  if (!wide_key.has_value()) return String{key};
+
+  let const existing_spelling = find_environment_spelling(wide_key->begin());
+  if (!existing_spelling.has_value()) return String{key};
+
+  let const spelling =
+      wide_to_utf8(existing_spelling->begin(), existing_spelling->count() - 1,
+                   heap_allocator());
+  return spelling.has_value() ? String{spelling->view()} : String{key};
+}
+
 fn unset_environment_variable(StringView key) -> void
 {
   let const wide_key = utf8_to_wide(key, heap_allocator());

@@ -1610,6 +1610,7 @@ fn has_environment_variable(StringView key) throws -> bool;
 fn get_environment_variable(StringView key) throws -> Maybe<String>;
 fn set_environment_variable(StringView key, StringView value) throws -> void;
 fn unset_environment_variable(StringView key) throws -> void;
+fn get_environment_spelling(StringView key) throws -> String;
 fn signal_internal_diagnostic() wontthrow -> void;
 
 using environment_name_callback = void (*)(opaque *, StringView);

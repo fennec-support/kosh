@@ -2231,6 +2231,11 @@ fn unset_environment_variable(StringView key) throws -> void
   unsetenv(key_string.c_str());
 }
 
+fn get_environment_spelling(StringView key) throws -> String
+{
+  return String{key};
+}
+
 fn signal_internal_diagnostic() wontthrow -> void {}
 
 fn for_each_environment_name(opaque *context,
