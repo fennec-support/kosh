@@ -118,8 +118,8 @@ fn Env::execute(const ExecContext &ec, EvalContext &cxt,
     sub = ExecContext::make_from(
         ec.source_location(), source != nullptr ? source->view() : StringView{},
         steal(env_args), cxt.runtime_state().koshkit(),
-        cxt.is_shopt_enabled("checkhash"),
-        environment_resolver, steal(env_arg_locations), cxt.runtime_state().get_mood());
+        cxt.is_shopt_enabled("checkhash"), environment_resolver,
+        steal(env_arg_locations), cxt.runtime_state().get_mood());
   } catch (const CommandResolutionErrorWithLocation &resolution_error) {
     const String *source = cxt.source_store().current_source();
     show_message(resolution_error.to_string(

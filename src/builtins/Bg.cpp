@@ -61,7 +61,7 @@ fn Bg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   if (args.count() <= 1) {
-  job *job = cxt.job_table_store().most_recent_job();
+    job *job = cxt.job_table_store().most_recent_job();
     if (job == nullptr)
       throw ErrorWithDetails{"There is no such job", "List jobs with `jobs`"};
 

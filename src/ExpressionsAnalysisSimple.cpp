@@ -680,8 +680,7 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
     if (active_index != AnalysisContext::NO_ACTIVE_FUNCTION_DEFINITION &&
         actx.function_definitions[active_index].name.view() ==
             command_literal &&
-        actx.conditional_branch_depth == 0 &&
-        !was_redefined_in_body)
+        actx.conditional_branch_depth == 0 && !was_redefined_in_body)
     {
       let &definition =
           actx.function_definitions[actx.active_function_definition_index];

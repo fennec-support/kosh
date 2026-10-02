@@ -575,7 +575,7 @@ enum class farewell_policy : u8
 };
 
 wontreturn fn quit(i32 code,
-                     farewell_policy farewell = farewell_policy::Silent) throws
+                   farewell_policy farewell = farewell_policy::Silent) throws
     -> void;
 
 } /* namespace utils */

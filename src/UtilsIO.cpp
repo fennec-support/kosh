@@ -244,8 +244,7 @@ static fn ceiling_directory_list(StringView ceiling_directories) throws
 {
   let ceilings = ArrayList<String>{heap_allocator()};
   usize entry_start = 0;
-  for (usize position = 0; position <= ceiling_directories.length; position++)
-  {
+  for (usize position = 0; position <= ceiling_directories.length; position++) {
     if (position < ceiling_directories.length &&
         ceiling_directories[position] != os::PATH_DELIMITER)
     {

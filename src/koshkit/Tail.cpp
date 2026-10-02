@@ -44,8 +44,7 @@ FLAG(TAIL_RETRY, Bool, '\0', "retry",
      "Keep trying to open a file that is missing.");
 FLAG(TAIL_SLEEP, String, 's', "sleep-interval",
      "Wait this many seconds between checks while following.");
-FLAG(TAIL_PID, String, '\0', "pid",
-     "Stop following when this process exits.");
+FLAG(TAIL_PID, String, '\0', "pid", "Stop following when this process exits.");
 FLAG(TAIL_QUIET, Bool, 'q', "quiet", "Never write file name headers.");
 FLAG(TAIL_SILENT, Bool, '\0', "silent", "Never write file name headers.");
 FLAG(TAIL_VERBOSE, Bool, 'v', "verbose", "Always write file name headers.");
@@ -310,10 +309,9 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
   }
   let const[origin, count] = *parsed_count;
 
-  let const should_follow_name =
-      FLAG_TAIL_FOLLOW_NAME.is_enabled() ||
-      (FLAG_TAIL_FOLLOW_MODE.has_value() &&
-       FLAG_TAIL_FOLLOW_MODE.value()[0] == 'n');
+  let const should_follow_name = FLAG_TAIL_FOLLOW_NAME.is_enabled() ||
+                                 (FLAG_TAIL_FOLLOW_MODE.has_value() &&
+                                  FLAG_TAIL_FOLLOW_MODE.value()[0] == 'n');
   let const is_following = FLAG_TAIL_FOLLOW.is_enabled() ||
                            FLAG_TAIL_FOLLOW_MODE.is_enabled() ||
                            FLAG_TAIL_FOLLOW_NAME.is_enabled();
@@ -432,10 +430,9 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
   i32 status = 0;
   let const do_report_error = [&](usize source_index, StringView prefix)
                                   throws -> void {
-    let const message =
-        String{allocator, prefix} +
-        String{cxt.scratch_allocator(), sources[source_index]} + "': " +
-        os::last_system_error_message();
+    let const message = String{allocator, prefix} +
+                        String{cxt.scratch_allocator(), sources[source_index]} +
+                        "': " + os::last_system_error_message();
     do_flush_output();
     report_soft_koshkit_util_error(ec, cxt, args[0].view(), message);
     status = 1;
@@ -731,8 +728,8 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
     return 1;
   }
 
-  let const do_report_follow_message = [&](const String &message) throws
-      -> void {
+  let const do_report_follow_message = [&](const String &message)
+                                           throws -> void {
     do_flush_output();
     report_soft_koshkit_util_error(ec, cxt, args[0].view(), message.view());
   };
@@ -841,8 +838,8 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
             unused(os::close_fd(entry.descriptor));
             entry.descriptor = KOSH_INVALID_FD;
           } else {
-            do_report_follow_message(
-                String{allocator, sources[source_index]} + ": " + message);
+            do_report_follow_message(String{allocator, sources[source_index]} +
+                                     ": " + message);
             do_deactivate(source_index);
           }
 

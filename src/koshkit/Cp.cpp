@@ -57,8 +57,9 @@ static fn report_copy_error(const ExecContext &ec, EvalContext &cxt,
 }
 
 static fn copy_file(const ExecContext &ec, StringView source,
-                    StringView destination, bool is_verbose, Allocator allocator,
-                    copy_force_mode force_mode) throws -> void
+                    StringView destination, bool is_verbose,
+                    Allocator allocator, copy_force_mode force_mode) throws
+    -> void
 {
   switch (copy_file_contents(source, destination, force_mode)) {
   case copy_file_result::SourceOpenFailed:
@@ -191,9 +192,7 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
     let const did_destination_exist = Path{destination}.is_directory();
     os::make_directory(destination, 0700);
     let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
-    defer {
-      cxt.expansion_store().scratch_arena().release(directory_scratch);
-    };
+    defer { cxt.expansion_store().scratch_arena().release(directory_scratch); };
     let names = os::list_directory_status(source, allocator);
     if (!names.has_value())
       throw Error{
@@ -264,8 +263,8 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
   }
 
   let const did_destination_exist = Path{destination}.exists();
-  let const force_mode = should_force ? copy_force_mode::Force
-                                      : copy_force_mode::Normal;
+  let const force_mode =
+      should_force ? copy_force_mode::Force : copy_force_mode::Normal;
   copy_file(ec, source, destination, is_verbose, allocator, force_mode);
 
   if (source_status.has_value() && (should_preserve || !did_destination_exist))

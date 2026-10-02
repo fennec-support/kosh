@@ -171,15 +171,15 @@ public:
      null slot, so the fit test is length + count < capacity. */
   hot fn push(char c) throws -> void
   {
-    if (m_length == SIZE_MAX) unlikely
-      throw std::bad_alloc{};
+    if (m_length == SIZE_MAX) rarely throw std::bad_alloc{};
     m_ascii_state = AsciiState::Unknown;
     let const new_length = m_length + 1;
-    if (new_length < m_capacity) likely {
-      m_data[m_length++] = c;
-      m_data[m_length] = '\0';
-      return;
-    }
+    if (new_length < m_capacity) usually
+      {
+        m_data[m_length++] = c;
+        m_data[m_length] = '\0';
+        return;
+      }
     reserve(new_length);
     m_data[m_length++] = c;
     m_data[m_length] = '\0';
@@ -187,16 +187,16 @@ public:
   hot fn append(StringView other) throws -> void
   {
     if (other.length == 0) return;
-    if (other.length > SIZE_MAX - m_length) unlikely
-      throw std::bad_alloc{};
+    if (other.length > SIZE_MAX - m_length) rarely throw std::bad_alloc{};
     m_ascii_state = AsciiState::Unknown;
     let const new_length = m_length + other.length;
-    if (new_length < m_capacity) likely {
-      std::memcpy(m_data + m_length, other.data, other.length);
-      m_length = new_length;
-      m_data[m_length] = '\0';
-      return;
-    }
+    if (new_length < m_capacity) usually
+      {
+        std::memcpy(m_data + m_length, other.data, other.length);
+        m_length = new_length;
+        m_data[m_length] = '\0';
+        return;
+      }
     let const source_address = reinterpret_cast<uintptr>(other.data);
     let const storage_address = reinterpret_cast<uintptr>(m_data);
     let const is_aliased = source_address >= storage_address &&
@@ -213,8 +213,7 @@ public:
   hot fn append_repeated(char byte, usize repeat_count) throws -> void
   {
     if (repeat_count == 0) return;
-    if (repeat_count > SIZE_MAX - m_length) unlikely
-      throw std::bad_alloc{};
+    if (repeat_count > SIZE_MAX - m_length) rarely throw std::bad_alloc{};
     m_ascii_state = AsciiState::Unknown;
     let const new_length = m_length + repeat_count;
     if (new_length >= m_capacity) reserve(new_length);
@@ -300,8 +299,7 @@ public:
 
   hot mustuse fn is_ascii() const wontthrow -> bool
   {
-    if (m_ascii_state == AsciiState::Unknown) unlikely
-      classify_ascii();
+    if (m_ascii_state == AsciiState::Unknown) rarely classify_ascii();
 
     return m_ascii_state == AsciiState::Ascii;
   }

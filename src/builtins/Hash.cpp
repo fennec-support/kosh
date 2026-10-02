@@ -52,8 +52,8 @@ fn Hash::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                               FLAG_PATHNAME.value_location(),
                               restricted_path_use::Hash);
     for (usize i = 1; i < args.count(); i++)
-    cxt.resolution_store().resolver().remember_path(args[i].view(),
-                                               Path{FLAG_PATHNAME.value()});
+      cxt.resolution_store().resolver().remember_path(
+          args[i].view(), Path{FLAG_PATHNAME.value()});
     return 0;
   }
 
@@ -65,7 +65,8 @@ fn Hash::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (os::has_directory_separator(name.view())) continue;
 
-    if (cxt.resolution_store().resolver()
+    if (cxt.resolution_store()
+            .resolver()
             .search(name, ProgramResolver::SearchMode::First,
                     ProgramResolver::Requirement::Runnable,
                     ProgramResolver::CachePolicy::Remember)

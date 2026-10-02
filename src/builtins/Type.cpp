@@ -63,7 +63,8 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                    !should_force_path;
 
   let const is_bash_function_report = cxt.runtime_state().is_bash_compatible();
-  let const is_posix_report = cxt.runtime_state().get_mood() == mimic_mood::Posix;
+  let const is_posix_report =
+      cxt.runtime_state().get_mood() == mimic_mood::Posix;
 
   let out = String{cxt.scratch_allocator()};
   let missing_names = ArrayList<String>{cxt.scratch_allocator()};
@@ -130,11 +131,12 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       word = "alias";
       alias_value = alias;
     } else if (cxt.function_store().has_functions() &&
-               cxt.function_store().find_function(name).has_value()) {
+               cxt.function_store().find_function(name).has_value())
+    {
       word = "function";
     } else if (let const kind = search_builtin(name.view());
-               kind.has_value() &&
-               !builtin_is_hidden_by_mood(*kind, cxt.runtime_state().get_mood()))
+               kind.has_value() && !builtin_is_hidden_by_mood(
+                                       *kind, cxt.runtime_state().get_mood()))
     {
       word = "builtin";
       builtin_kind = kind;

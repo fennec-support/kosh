@@ -89,8 +89,7 @@ static fn completion_specification_reusable_lines(const EvalContext &cxt) throws
       [&](StringView command, const completion_spec &) -> void {
         collected_names.push_managed(command);
       });
-  let const names =
-      steal(collected_names).make_sorted(sort_order::ascending);
+  let const names = steal(collected_names).make_sorted(sort_order::ascending);
 
   for (let const &name : names) {
     let const *spec = cxt.completion_store().lookup_spec(name.view());

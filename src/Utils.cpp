@@ -483,9 +483,8 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
     let const is_bracket_syntax =
         has_active_bracket && (byte == ']' || byte == '!' || byte == '^' ||
                                byte == '-' || byte == ':');
-    decoded.glob_active.push(
-        is_unquoted &&
-        (byte == '*' || byte == '?' || byte == '[' || is_bracket_syntax));
+    decoded.glob_active.push(is_unquoted && (byte == '*' || byte == '?' ||
+                                             byte == '[' || is_bracket_syntax));
     if (is_unquoted && byte == '[') {
       has_active_bracket = true;
     }
@@ -653,8 +652,8 @@ fn locate_first_unavailable_path_component(const Path &target,
   let const unavailable = target.first_unavailable_component();
   if (!unavailable.has_value()) return None;
 
-  let const decoded = decode_shell_word(
-      raw_operand, allocator, shell_word_source_mapping::Record);
+  let const decoded = decode_shell_word(raw_operand, allocator,
+                                        shell_word_source_mapping::Record);
   let const raw_components =
       split_path_source_components(decoded.text.view(), &decoded, allocator);
   let const expanded_components =

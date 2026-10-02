@@ -321,11 +321,10 @@ public:
        request that the caller then writes past. The division guards the
        multiply, since count times sizeof(T) cannot exceed the max when count is
        at most the max divided by sizeof(T). */
-    if (sizeof(T) != 0 && count > (static_cast<usize>(-1) / sizeof(T)))
-        unlikely
-    {
-      throw std::bad_alloc{};
-    }
+    if (sizeof(T) != 0 && count > (static_cast<usize>(-1) / sizeof(T))) rarely
+      {
+        throw std::bad_alloc{};
+      }
     let const result =
         static_cast<T *>(raw_alloc(count * sizeof(T), alignof(T)));
     if (result == nullptr && count != 0) throw std::bad_alloc{};

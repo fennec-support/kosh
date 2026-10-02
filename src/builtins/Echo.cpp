@@ -39,7 +39,8 @@ fn Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   /* Only the kosh default mood answers --help, since bash and dash print the
      literal text a script may depend on. */
-  if (args.count() == 2 && args[1] == "--help" && !cxt.runtime_state().is_posix_mode() &&
+  if (args.count() == 2 && args[1] == "--help" &&
+      !cxt.runtime_state().is_posix_mode() &&
       !cxt.runtime_state().is_bash_compatible())
   {
     SHOW_BUILTIN_HELP_AND_RETURN(ec);
@@ -50,7 +51,8 @@ fn Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   usize start = 1;
   let should_suppress_newline = false;
   let const is_windows_default =
-      cxt.runtime_state().get_mood() == mimic_mood::Default && os::DIRECTORY_SEPARATOR == '\\';
+      cxt.runtime_state().get_mood() == mimic_mood::Default &&
+      os::DIRECTORY_SEPARATOR == '\\';
   let should_interpret_escapes =
       cxt.is_shopt_enabled("xpg_echo") ||
       (!cxt.runtime_state().is_bash_compatible() && !is_windows_default);

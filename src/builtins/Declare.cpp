@@ -256,7 +256,8 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     cxt.append_attributed_names(names);
 
     let collected_names = ArrayList<String>{cxt.scratch_allocator()};
-    names.for_each([&](StringView name) { collected_names.push_managed(name); });
+    names.for_each(
+        [&](StringView name) { collected_names.push_managed(name); });
     let const sorted_names =
         steal(collected_names).make_sorted(sort_order::ascending);
 
@@ -343,8 +344,8 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (should_make_associative &&
         (cxt.variable_store().indexed_arrays().find(name).has_value() ||
-                                    cxt.is_bash_directory_stack_special(name) ||
-                                    cxt.is_bash_argument_array(name)))
+         cxt.is_bash_directory_stack_special(name) ||
+         cxt.is_bash_argument_array(name)))
     {
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
                                 StringView{"Unable to convert '"} + name +
@@ -363,9 +364,9 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
 
     if (!should_be_global)
-      cxt.declare_local(
-          name, !cxt.runtime_state().is_bash_compatible() ||
-                    cxt.runtime_state().is_shopt_enabled(shopt_option_id::LocalvarInherit));
+      cxt.declare_local(name, !cxt.runtime_state().is_bash_compatible() ||
+                                  cxt.runtime_state().is_shopt_enabled(
+                                      shopt_option_id::LocalvarInherit));
 
     /* The attribute applies before the assignment, so declare -i x+=3 already
        adds on this command the way bash applies the integer mark first. */
@@ -393,7 +394,7 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       if (equals.has_value()) cxt.set_shell_variable(name, value);
       cxt.declare_associative_array(name);
     } else if (should_make_indexed) {
-    if (!cxt.variable_store().indexed_arrays().find(name).has_value() &&
+      if (!cxt.variable_store().indexed_arrays().find(name).has_value() &&
           !cxt.is_bash_directory_stack_special(name) &&
           !cxt.is_bash_argument_array(name))
       {

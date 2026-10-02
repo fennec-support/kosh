@@ -231,16 +231,14 @@ static fn parse_package_json_scripts(StringView text) throws
         text.substring_of_length(key_start, key_end - key_start) != "scripts")
       continue;
 
-    while (i < text.length &&
-           (text[i] == ' ' || text[i] == '\t' || text[i] == '\n' ||
-            text[i] == '\r'))
+    while (i < text.length && (text[i] == ' ' || text[i] == '\t' ||
+                               text[i] == '\n' || text[i] == '\r'))
       i++;
     if (i >= text.length || text[i] != ':') continue;
 
     i++;
-    while (i < text.length &&
-           (text[i] == ' ' || text[i] == '\t' || text[i] == '\n' ||
-            text[i] == '\r'))
+    while (i < text.length && (text[i] == ' ' || text[i] == '\t' ||
+                               text[i] == '\n' || text[i] == '\r'))
       i++;
     if (i >= text.length || text[i] != '{') continue;
 
@@ -766,8 +764,8 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
       {
         if (token.is_empty() && mode != completion_mode::Listing) return None;
 
-        let names = complete_command_names(
-            token, context, nullptr, command_match_mode::Prefix);
+        let names = complete_command_names(token, context, nullptr,
+                                           command_match_mode::Prefix);
         if (!names.is_empty()) return names;
         return None;
       }
@@ -952,9 +950,8 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
   {
     if (token.is_empty() && mode != completion_mode::Listing) return None;
 
-    let names =
-        complete_command_names(token, context, nullptr,
-                               command_match_mode::Prefix);
+    let names = complete_command_names(token, context, nullptr,
+                                       command_match_mode::Prefix);
     if (!names.is_empty()) return names;
     return None;
   }
@@ -1001,9 +998,8 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     if (!has_command_operand || should_complete_later_operands) {
       if (token.is_empty() && mode != completion_mode::Listing) return None;
 
-      let names =
-          complete_command_names(token, context, nullptr,
-                                 command_match_mode::Prefix);
+      let names = complete_command_names(token, context, nullptr,
+                                         command_match_mode::Prefix);
       if (!names.is_empty()) return names;
     }
     return None;
@@ -1149,7 +1145,8 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
                                 completion_mode mode) throws
     -> Maybe<ArrayList<String>>
 {
-  if (!context.runtime_state().is_shopt_enabled(shopt_option_id::Progcomp)) return None;
+  if (!context.runtime_state().is_shopt_enabled(shopt_option_id::Progcomp))
+    return None;
 
   let const for_listing = mode == completion_mode::Listing;
   let const command = command_word_of(line.substring_of_length(0, cursor));
@@ -1181,7 +1178,7 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
   {
     resolved_command = resolve_completion_command(command, context);
     if (resolved_command.view() != command)
-    spec = context.completion_store().lookup_spec(resolved_command.view());
+      spec = context.completion_store().lookup_spec(resolved_command.view());
   }
   LOG(All,
       "spec lookup for '%.*s' %s, listing %d, function '%s', %zu word-list "

@@ -1631,8 +1631,8 @@ fn expressions::internal::analyze_followed_source(
       return false;
     }
   }
-  let resolved_path = actx.eval_context->resolve_source_path(
-      *literal_path, tilde_expansion);
+  let resolved_path =
+      actx.eval_context->resolve_source_path(*literal_path, tilde_expansion);
   if (!resolved_path.has_value()) return do_give_up_on_source();
 
   let canonical_path = os::canonical_path(*resolved_path);
@@ -1659,10 +1659,14 @@ fn expressions::internal::analyze_followed_source(
     return false;
 
   let const arena_mark = actx.eval_context->arena_store().parse_arena()->mark();
-  defer { actx.eval_context->arena_store().parse_arena()->release(arena_mark); };
+  defer
+  {
+    actx.eval_context->arena_store().parse_arena()->release(arena_mark);
+  };
   let parser = Parser{
       Lexer{contents->view(), *actx.eval_context->arena_store().parse_arena(),
-            canonical_path->text().view(), actx.eval_context->runtime_state().get_mood()}
+            canonical_path->text().view(),
+            actx.eval_context->runtime_state().get_mood()}
   };
   parser.set_analysis_metadata_collection_mode(
       analysis_metadata_collection_mode::Enabled);
@@ -1842,8 +1846,7 @@ fn analyze_ast(
     const ArrayList<analysis_scope_definition> &scope_definitions,
     const ArrayList<shellcheck_directive_span> &directive_spans,
     const ArrayList<heredoc_terminator_miss> &heredoc_misses,
-    bool should_report_optimizer_diagnostics,
-    HashSet *followed_source_paths,
+    bool should_report_optimizer_diagnostics, HashSet *followed_source_paths,
     StringMap<followed_source_effects> *source_effects_cache,
     AnalysisContext *parent_analysis_context,
     analysis_diagnostic_totals *deferred_diagnostic_totals,
@@ -1863,7 +1866,7 @@ fn analyze_ast(
   actx.are_koshkit_utilities_reachable =
       eval_context != nullptr
           ? eval_context->runtime_state().koshkit_utilities_are_reachable()
-                              : is_default_mood;
+          : is_default_mood;
   actx.should_emit_annoying_diagnostics = should_emit_annoying_diagnostics;
   actx.shellcheck_suppressions = &shellcheck_suppressions;
   actx.should_silence_unresolved_commands = silence_unresolved_commands;

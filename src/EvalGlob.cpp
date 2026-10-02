@@ -160,8 +160,8 @@ fn EvalContext::expand_path_once(const glob_field &field,
   let const nocaseglob_is_on = is_shopt_enabled("nocaseglob");
   let const extglob = get_extglob_mode();
   Maybe<glob_charset> locale_charset = None;
-  let const do_get_entry_charset = [&](StringView filename) throws
-      -> glob_charset {
+  let const do_get_entry_charset = [&](StringView filename)
+                                       throws -> glob_charset {
     if (get_glob_charset_for(filename) == glob_charset::Bytes) {
       return glob_charset::Bytes;
     }
@@ -190,12 +190,11 @@ fn EvalContext::expand_path_once(const glob_field &field,
       return false;
     }
 
-    return name_matches_glob(match_glob, filename, field.glob_active,
-                             stem_start, extglob,
-                             do_get_entry_charset(filename), scratch,
-                             nocaseglob_is_on
-                                 ? os::case_sensitivity::Insensitive
-                                 : os::case_sensitivity::Sensitive);
+    return name_matches_glob(
+        match_glob, filename, field.glob_active, stem_start, extglob,
+        do_get_entry_charset(filename), scratch,
+        nocaseglob_is_on ? os::case_sensitivity::Insensitive
+                         : os::case_sensitivity::Sensitive);
   };
   let const do_append_entry = [&](StringView filename) throws -> void {
     evaluation_metrics_store().add_expansion(runtime_state().stats_enabled());
@@ -726,8 +725,8 @@ fn parse_glob_ignore_patterns(StringView list, bool should_fold_case,
   while (entry_start <= list.length) {
     let const rest = list.substring(entry_start);
     let const colon = rest.find_character(':');
-    let const entry = colon.has_value() ? rest.substring_of_length(0, *colon)
-                                        : rest;
+    let const entry =
+        colon.has_value() ? rest.substring_of_length(0, *colon) : rest;
     entry_start += entry.length + 1;
     if (entry.is_empty()) continue;
 
@@ -754,9 +753,8 @@ fn glob_ignore_segments_match(const glob_ignore_pattern &pattern,
   usize pattern_start = 0;
   usize text_start = 0;
   while (true) {
-    let const pattern_rest =
-        pattern_text.substring_of_length(pattern_start,
-                                         pattern_length - pattern_start);
+    let const pattern_rest = pattern_text.substring_of_length(
+        pattern_start, pattern_length - pattern_start);
     let const text_rest = text.substring(text_start);
     let const pattern_slash = pattern_rest.find_character('/');
     let const text_slash = text_rest.find_character('/');
@@ -786,9 +784,8 @@ fn glob_ignore_pattern_matches(const glob_ignore_pattern &pattern,
                                glob_charset charset) throws -> bool
 {
   let const length = pattern.text.length();
-  let const has_trailing_star =
-      length > 0 && pattern.text[length - 1] == '*' &&
-      pattern.active[length - 1];
+  let const has_trailing_star = length > 0 && pattern.text[length - 1] == '*' &&
+                                pattern.active[length - 1];
   if (!has_trailing_star) {
     return glob_ignore_segments_match(pattern, length, path, mode, charset);
   }
@@ -814,10 +811,10 @@ hot fn EvalContext::expand_path(glob_field field,
   let const scratch = scratch_allocator();
 
   /* Fast path. A field with no glob is its own single result. */
-  let const has_glob =
-      !runtime_state().no_glob() &&
-      first_active_glob(field.text.view(), field.glob_active, get_extglob_mode())
-          .has_value();
+  let const has_glob = !runtime_state().no_glob() &&
+                       first_active_glob(field.text.view(), field.glob_active,
+                                         get_extglob_mode())
+                           .has_value();
 
   if (!has_glob) {
     let single_result = ArrayList<String>{scratch};
@@ -896,7 +893,9 @@ hot fn EvalContext::expand_path(glob_field field,
                         "' or relax with set +o failglob");
     /* nullglob drops a no-match glob entirely, while the default and a test
        probe keep its literal text. */
-    if (expansion_store().glob_exempt_for_test() || !is_shopt_enabled("nullglob")) {
+    if (expansion_store().glob_exempt_for_test() ||
+        !is_shopt_enabled("nullglob"))
+    {
       values.push(steal(pattern));
     }
   }

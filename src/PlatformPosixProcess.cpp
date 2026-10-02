@@ -981,8 +981,7 @@ static fn process_group_has_running_member(pid_t group_id) wontthrow -> bool
 
     if (is_running_group_member(process_id.value(), group_id)) {
       LOG(Debug, "process group %d keeps running member %.*s",
-          static_cast<int>(group_id), static_cast<int>(name.length),
-          name.data);
+          static_cast<int>(group_id), static_cast<int>(name.length), name.data);
       LAST_RUNNING_GROUP_ID = group_id;
       LAST_RUNNING_MEMBER_ID = process_id.value();
       return true;
@@ -1409,8 +1408,8 @@ fn spawn_measured_child(const ArrayList<String> &argv, measured_output output,
 
   close(ready_descriptors[1]);
   close(start_descriptors[0]);
-  let const is_ready = transfer_barrier_byte(
-      ready_descriptors[0], barrier_transfer_direction::Read);
+  let const is_ready = transfer_barrier_byte(ready_descriptors[0],
+                                             barrier_transfer_direction::Read);
   close(ready_descriptors[0]);
   if (!is_ready) {
     close(start_descriptors[1]);

@@ -199,9 +199,8 @@ hot pure fn is_special_parameter_char(char ch) wontthrow -> bool
 
 } /* namespace lexer */
 
-Lexer::Lexer(StringView source, BumpArena &arena,
-             Maybe<StringView> filename, mimic_mood mood,
-             ParseSession::AllocationKind allocation_kind,
+Lexer::Lexer(StringView source, BumpArena &arena, Maybe<StringView> filename,
+             mimic_mood mood, ParseSession::AllocationKind allocation_kind,
              debug_word_collection_mode debug_words)
     : m_source(source), m_parse_session(arena)
 {
@@ -340,12 +339,10 @@ cold fn Lexer::register_heredoc(StringView delimiter,
     -> const heredoc_contents *
 {
   let &arena = m_parse_session.get_arena();
-  let contents =
-      arena.create<heredoc_contents>(
-          bump_allocator(arena),
-          tab_policy == heredoc_tab_policy::Preserve
-              ? heredoc_source_mapping::Contiguous
-              : heredoc_source_mapping::Transformed);
+  let contents = arena.create<heredoc_contents>(
+      bump_allocator(arena), tab_policy == heredoc_tab_policy::Preserve
+                                 ? heredoc_source_mapping::Contiguous
+                                 : heredoc_source_mapping::Transformed);
   ASSERT(contents != nullptr);
 
   LOG(Debug, "registering a pending heredoc with delimiter '%.*s'",
@@ -362,8 +359,7 @@ cold fn Lexer::register_heredoc(StringView delimiter,
 template <class Emit>
 cold fn Lexer::walk_heredoc_body(usize start, StringView delimiter,
                                  heredoc_tab_policy tab_policy,
-                                 Emit emit_line) throws
-    -> usize
+                                 Emit emit_line) throws -> usize
 {
   usize position = start;
   bool did_find_delimiter = false;
@@ -894,12 +890,14 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
           loop
           {
             let const c = chop_character(byte_count);
-            if (c == lexer::CEOF) unlikely {
-              throw ErrorWithLocationAndDetails{
-                  here(m_cursor_position, byte_count),
-                  "Unterminated arithmetic expansion",
-                  here(m_cursor_position + byte_count, 1), "expected )) here"};
-            }
+            if (c == lexer::CEOF) rarely
+              {
+                throw ErrorWithLocationAndDetails{
+                    here(m_cursor_position, byte_count),
+                    "Unterminated arithmetic expansion",
+                    here(m_cursor_position + byte_count, 1),
+                    "expected )) here"};
+              }
             /* A backslash escape, a quoted span, a backtick run, and a nested
                $(...) are copied as balanced units so a ) inside them is text.
              */
@@ -1009,12 +1007,13 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
         let const inner_start = m_cursor_position + byte_count;
         let const substitution_end =
             lexer::scan_balanced_shell_region(m_source, inner_start, ')');
-        if (!substitution_end.has_value()) unlikely {
-          throw ErrorWithLocationAndDetails{
-              here(m_cursor_position, m_source.count() - m_cursor_position),
-              "Unterminated command substitution", here(m_source.count(), 1),
-              "expected ) here"};
-        }
+        if (!substitution_end.has_value()) rarely
+          {
+            throw ErrorWithLocationAndDetails{
+                here(m_cursor_position, m_source.count() - m_cursor_position),
+                "Unterminated command substitution", here(m_source.count(), 1),
+                "expected ) here"};
+          }
         let inner =
             SegmentText{bump_allocator(arena()),
                         m_source.substring_of_length(
@@ -1045,12 +1044,13 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
         loop
         {
           let const c = chop_character(byte_count);
-          if (c == lexer::CEOF) unlikely {
-            throw ErrorWithLocationAndDetails{
-                here(m_cursor_position + byte_count, 1),
-                "Unterminated variable expansion",
-                here(m_cursor_position + byte_count, 1), "expected } here"};
-          }
+          if (c == lexer::CEOF) rarely
+            {
+              throw ErrorWithLocationAndDetails{
+                  here(m_cursor_position + byte_count, 1),
+                  "Unterminated variable expansion",
+                  here(m_cursor_position + byte_count, 1), "expected } here"};
+            }
           byte_count++;
 
           if (quote == '\'') {
@@ -1175,12 +1175,13 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
       loop
       {
         let const c = chop_character(byte_count);
-        if (c == lexer::CEOF) unlikely {
-          throw ErrorWithLocationAndDetails{
-              here(m_cursor_position + relative_open_backtick_pos, 1),
-              "Unterminated command substitution",
-              here(m_cursor_position + byte_count, 1), "expected ` here"};
-        }
+        if (c == lexer::CEOF) rarely
+          {
+            throw ErrorWithLocationAndDetails{
+                here(m_cursor_position + relative_open_backtick_pos, 1),
+                "Unterminated command substitution",
+                here(m_cursor_position + byte_count, 1), "expected ` here"};
+          }
         if (c == '`') {
           byte_count++;
           break;
@@ -1222,23 +1223,25 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
     byte_count++;
   }
 
-  if (quote_char.has_value()) unlikely {
-    let expected_quote = String{heap_allocator()};
-    expected_quote += "expected ";
-    expected_quote += *quote_char;
-    expected_quote += " here";
-    throw ErrorWithLocationAndDetails{
-        here(m_cursor_position + relative_last_quote_position,
-             sub_sat(byte_count, relative_last_quote_position)),
-        "Unterminated string literal", here(m_cursor_position + byte_count, 1),
-        expected_quote};
-  }
+  if (quote_char.has_value()) rarely
+    {
+      let expected_quote = String{heap_allocator()};
+      expected_quote += "expected ";
+      expected_quote += *quote_char;
+      expected_quote += " here";
+      throw ErrorWithLocationAndDetails{
+          here(m_cursor_position + relative_last_quote_position,
+               sub_sat(byte_count, relative_last_quote_position)),
+          "Unterminated string literal",
+          here(m_cursor_position + byte_count, 1), expected_quote};
+    }
 
-  if (should_escape) unlikely {
-    throw ErrorWithLocationAndDetails{
-        here(m_cursor_position + byte_count - 1, 1), "Nothing to escape",
-        here(m_cursor_position + byte_count, 1), "expected a character here"};
-  }
+  if (should_escape) rarely
+    {
+      throw ErrorWithLocationAndDetails{
+          here(m_cursor_position + byte_count - 1, 1), "Nothing to escape",
+          here(m_cursor_position + byte_count, 1), "expected a character here"};
+    }
 
   let const actual_cursor_position = m_cursor_position;
   ASSERT(actual_cursor_position <= m_source.length);
@@ -1441,12 +1444,13 @@ hot alwaysinline fn Lexer::lex_process_substitution(char direction) throws
   let const inner_start = open_position + 2;
   let const substitution_end =
       lexer::scan_balanced_shell_region(m_source, inner_start, ')');
-  if (!substitution_end.has_value()) unlikely {
-    throw ErrorWithLocationAndDetails{
-        here(open_position, m_source.count() - open_position),
-        "Unterminated process substitution", here(m_source.count(), 1),
-        "expected ) here"};
-  }
+  if (!substitution_end.has_value()) rarely
+    {
+      throw ErrorWithLocationAndDetails{
+          here(open_position, m_source.count() - open_position),
+          "Unterminated process substitution", here(m_source.count(), 1),
+          "expected ) here"};
+    }
   let const byte_count = *substitution_end - open_position;
   let const body = m_source.substring_of_length(
       inner_start, *substitution_end - inner_start - 1);

@@ -322,11 +322,10 @@ static fn trim_value_with_modifier(EvalContext &cxt, StringView value,
   let active = Bitset{cxt.scratch_allocator()};
   let const pattern =
       cxt.expand_modifier_word_masked(word, active, true, source_location);
-  return trim_matching(
-      cxt, cxt.scratch_allocator(), value, pattern.view(), active,
-      op == '#' ? trim_end::Prefix : trim_end::Suffix,
-      is_doubled ? pattern_match_extent::Longest
-                 : pattern_match_extent::Shortest);
+  return trim_matching(cxt, cxt.scratch_allocator(), value, pattern.view(),
+                       active, op == '#' ? trim_end::Prefix : trim_end::Suffix,
+                       is_doubled ? pattern_match_extent::Longest
+                                  : pattern_match_extent::Shortest);
 }
 
 } /* namespace */
@@ -1001,9 +1000,9 @@ fn EvalContext::ParameterExpander::expand_length() throws -> String
                         m_context.scratch_allocator());
   let const value = m_context.get_variable_value(name);
   if (!value.has_value()) m_context.report_unset_reference(name);
-  return String::from(
-      value.has_value() ? get_character_count(m_context, *value) : 0,
-      m_context.scratch_allocator());
+  return String::from(value.has_value() ? get_character_count(m_context, *value)
+                                        : 0,
+                      m_context.scratch_allocator());
 }
 
 static fn find_variable_name_end(StringView spec) wontthrow -> usize
@@ -1253,8 +1252,7 @@ fn EvalContext::ParameterExpander::expand_trim_operator(
   if (!current.has_value()) m_context.report_unset_reference(m_name);
 
   let const current_view = current.has_value() ? current->view() : StringView{};
-  return trim_value_with_modifier(m_context, current_view, word, op,
-                                  is_doubled,
+  return trim_value_with_modifier(m_context, current_view, word, op, is_doubled,
                                   get_location_for(word, word_location));
 }
 
@@ -1430,8 +1428,8 @@ fn EvalContext::apply_substring_to_value(
     let window_limit = start_limit;
     if (requested_length.has_value()) {
       let const window_length = static_cast<usize>(*requested_length);
-      window_limit += window_length < remaining_length ? window_length
-                                                       : remaining_length;
+      window_limit +=
+          window_length < remaining_length ? window_length : remaining_length;
     }
     let const window_charset =
         get_glob_charset_for(value.substring_of_length(0, window_limit));
@@ -1440,8 +1438,7 @@ fn EvalContext::apply_substring_to_value(
             ? get_byte_position_after(value, 0, static_cast<usize>(offset))
             : start_limit;
     let const end_position =
-        !requested_length.has_value()
-            ? value.length
+        !requested_length.has_value() ? value.length
         : window_charset == glob_charset::Utf8
             ? get_byte_position_after(value, start_position,
                                       static_cast<usize>(*requested_length))
@@ -1453,16 +1450,15 @@ fn EvalContext::apply_substring_to_value(
   }
 
   let const charset = get_glob_charset_for(value);
-  let const value_length =
-      static_cast<i64>(charset == glob_charset::Utf8
-                           ? utils::utf8_character_count(value)
-                           : value.length);
+  let const value_length = static_cast<i64>(
+      charset == glob_charset::Utf8 ? utils::utf8_character_count(value)
+                                    : value.length);
   let const bounds = compute_substring_bounds(
       value_length, offset, requested_length, substring_subject::Scalar);
 
   if (charset == glob_charset::Utf8) {
-    let const start_position = get_byte_position_after(
-        value, 0, static_cast<usize>(bounds.start));
+    let const start_position =
+        get_byte_position_after(value, 0, static_cast<usize>(bounds.start));
     let const end_position = get_byte_position_after(
         value, start_position, static_cast<usize>(bounds.end - bounds.start));
 
@@ -1505,11 +1501,10 @@ static fn find_replacement_separator(StringView body) wontthrow -> usize
   return body.length;
 }
 
-alwaysinline static fn longest_pattern_match_at(StringView pattern,
-                                   const Bitset &pattern_active,
-                                   StringView value, usize start,
-                                   extglob_mode mode,
-                                   glob_charset charset) throws -> Maybe<usize>
+alwaysinline static fn
+longest_pattern_match_at(StringView pattern, const Bitset &pattern_active,
+                         StringView value, usize start, extglob_mode mode,
+                         glob_charset charset) throws -> Maybe<usize>
 {
   let const is_utf8 = charset == glob_charset::Utf8;
   for (usize end = value.length; end >= start; end--) {
@@ -1855,8 +1850,8 @@ fn EvalContext::apply_case_modification_to_value(
       } else if (op == ',') {
         mapped = os::code_point_to_lower(code_point);
       } else {
-        mapped = upper != code_point ? upper
-                                     : os::code_point_to_lower(code_point);
+        mapped =
+            upper != code_point ? upper : os::code_point_to_lower(code_point);
       }
       utils::append_utf8(out, mapped);
       i += step;

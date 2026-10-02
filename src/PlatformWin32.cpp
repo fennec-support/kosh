@@ -267,8 +267,8 @@ fn write_system_log(const system_log_options &options) wontthrow -> bool
   }
   event_type = *event_type_value;
 
-  let const source_name = String{heap_allocator(),
-                                 options.tag.is_empty() ? "kosh" : options.tag};
+  let const source_name =
+      String{heap_allocator(), options.tag.is_empty() ? "kosh" : options.tag};
   let const event_source = RegisterEventSourceA(nullptr, source_name.c_str());
   if (event_source == nullptr) return false;
   defer { DeregisterEventSource(event_source); };

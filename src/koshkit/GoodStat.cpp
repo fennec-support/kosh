@@ -142,8 +142,8 @@ fn percent_used(const os::filesystem_status &filesystem) wontthrow -> u64
 }
 
 fn append_subject(String &output, StringView operand,
-                  const os::file_status &status,
-                  const ExecContext &ec, Allocator allocator,
+                  const os::file_status &status, const ExecContext &ec,
+                  Allocator allocator,
                   goodstat_filesystem_report filesystem_report,
                   goodstat_checksum_report checksum_report,
                   goodstat_color_mode color_mode) throws -> void
@@ -286,9 +286,8 @@ fn GoodStat::execute(
     return report_usage_error(ec, cxt, args[0].view());
   }
 
-  let const color_mode = koshkit_should_color()
-                             ? goodstat_color_mode::Colored
-                             : goodstat_color_mode::Plain;
+  let const color_mode = koshkit_should_color() ? goodstat_color_mode::Colored
+                                                : goodstat_color_mode::Plain;
   let const filesystem_report = FLAG_GOODSTAT_FILESYSTEM.is_enabled()
                                     ? goodstat_filesystem_report::Include
                                     : goodstat_filesystem_report::Omit;

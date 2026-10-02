@@ -185,13 +185,14 @@ fn t__string_from_struct(const T &value, AllocatorT allocator) throws -> StringT
 #if !defined NDEBUG
 #define ASSERT(x, ...)                                                         \
   do {                                                                         \
-    if (!(x)) unlikely {                                                   \
-      TRACELN("'ASSERT(" #x ")' fail in %s().", __func__);                     \
-      if (!VA_ARE_EMPTY(__VA_ARGS__)) {                                        \
-        TRACELN("Details: " __VA_ARGS__);                                      \
+    if (!(x)) rarely                                                         \
+      {                                                                        \
+        TRACELN("'ASSERT(" #x ")' fail in %s().", __func__);                   \
+        if (!VA_ARE_EMPTY(__VA_ARGS__)) {                                      \
+          TRACELN("Details: " __VA_ARGS__);                                    \
+        }                                                                      \
+        TRAP();                                                                \
       }                                                                        \
-      TRAP();                                                                  \
-    }                                                                          \
   } while (0)
 #else
 #define ASSERT(...) /* None */

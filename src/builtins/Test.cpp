@@ -336,7 +336,8 @@ fn Test::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
      and only for the word form, since bash and dash evaluate the word as a
      nonempty string and [ --help ] stays an expression. */
   if (arguments.count() == 2 && arguments[1] == "--help" &&
-      ec.program() != "[" && !cxt.runtime_state().is_posix_mode() && !cxt.runtime_state().is_bash_compatible())
+      ec.program() != "[" && !cxt.runtime_state().is_posix_mode() &&
+      !cxt.runtime_state().is_bash_compatible())
   {
     SHOW_BUILTIN_HELP_AND_RETURN(ec);
   }
@@ -355,8 +356,8 @@ fn Test::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   LOG(All, "test evaluating %zu operands", expression_end - 1);
 
-  let evaluator =
-      TestEvaluator{ec, arguments, 1, expression_end, cxt.runtime_state().is_bash_compatible()};
+  let evaluator = TestEvaluator{ec, arguments, 1, expression_end,
+                                cxt.runtime_state().is_bash_compatible()};
   let const result = evaluator.evaluate_top();
   /* A paren pair the argument-count rules stripped narrowed end past the
      closing paren, so the leftover check runs against the narrowed window

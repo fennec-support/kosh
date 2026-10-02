@@ -49,8 +49,8 @@ enum class csplit_exhaustion_mode : u8
   Allow,
 };
 
-constexpr fn operator|(csplit_write_policy left, csplit_write_policy right)
-    wontthrow -> csplit_write_policy
+constexpr fn operator|(csplit_write_policy left,
+                       csplit_write_policy right) wontthrow->csplit_write_policy
 {
   return static_cast<csplit_write_policy>(static_cast<u8>(left) |
                                           static_cast<u8>(right));
@@ -84,8 +84,7 @@ static fn write_csplit_part(const ExecContext &ec, EvalContext &cxt,
                             StringView prefix, usize digit_count,
                             u64 output_index,
                             const ArrayList<StringView> &lines, usize first,
-                            usize last,
-                            SourceLocation width_location,
+                            usize last, SourceLocation width_location,
                             ArrayList<String> &output_paths,
                             csplit_write_policy policy) throws -> bool
 {
@@ -196,9 +195,8 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
                                        "': " + os::last_system_error_message());
     return 1;
   }
-  let lines =
-      utils::split_lines(content->view(), cxt.scratch_allocator(),
-                         utils::line_terminator_mode::Preserve);
+  let lines = utils::split_lines(content->view(), cxt.scratch_allocator(),
+                                 utils::line_terminator_mode::Preserve);
   usize current_line = 0;
   u64 output_index = 0;
   let output_paths = ArrayList<String>{cxt.scratch_allocator()};
@@ -359,9 +357,9 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
       let const width_location = FLAG_CSPLIT_DIGITS.is_set()
                                      ? FLAG_CSPLIT_DIGITS.value_location()
                                      : pattern_location;
-      if (!write_csplit_part(
-              ec, cxt, prefix, digit_count, output_index++, lines, current_line,
-              target_line, width_location, output_paths, write_policy))
+      if (!write_csplit_part(ec, cxt, prefix, digit_count, output_index++,
+                             lines, current_line, target_line, width_location,
+                             output_paths, write_policy))
         throw Error{"cannot write output"};
     }
     current_line = target_line;
@@ -385,10 +383,9 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
 
       let const repeat = pattern.substring_of_length(1, pattern.length - 2);
       if (repeat == "*") {
-        while (do_apply_pattern(previous_pattern.view(),
-                                operand_locations[pattern_index],
-                                csplit_repeat_mode::Repeat,
-                                csplit_exhaustion_mode::Allow))
+        while (do_apply_pattern(
+            previous_pattern.view(), operand_locations[pattern_index],
+            csplit_repeat_mode::Repeat, csplit_exhaustion_mode::Allow))
         {}
       } else {
         let const repeat_count = utils::parse_decimal_u64(repeat);
@@ -401,10 +398,9 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
 
         for (u64 repetition = 0; repetition < repeat_count.value();
              repetition++)
-          unused(do_apply_pattern(previous_pattern.view(),
-                                  operand_locations[pattern_index],
-                                  csplit_repeat_mode::Repeat,
-                                  csplit_exhaustion_mode::Error));
+          unused(do_apply_pattern(
+              previous_pattern.view(), operand_locations[pattern_index],
+              csplit_repeat_mode::Repeat, csplit_exhaustion_mode::Error));
       }
       has_previous_nonrepeat_pattern = false;
       continue;
@@ -420,9 +416,9 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
       FLAG_CSPLIT_DIGITS.is_set()
           ? FLAG_CSPLIT_DIGITS.value_location()
           : operand_locations[operand_locations.count() - 1];
-  if (!write_csplit_part(
-          ec, cxt, prefix, digit_count, output_index, lines, current_line,
-          lines.count(), width_location, output_paths, write_policy))
+  if (!write_csplit_part(ec, cxt, prefix, digit_count, output_index, lines,
+                         current_line, lines.count(), width_location,
+                         output_paths, write_policy))
     return 1;
   output_paths.clear();
   return 0;

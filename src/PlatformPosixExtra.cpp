@@ -2888,8 +2888,7 @@ fn FileWatcher::watch(StringView path) wontthrow -> void
                     IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO);
 #else
   usize slot = 0;
-  while (slot < m_watched_paths.count() &&
-         m_watched_paths[slot].view() != path)
+  while (slot < m_watched_paths.count() && m_watched_paths[slot].view() != path)
   {
     slot++;
   }
@@ -2917,8 +2916,9 @@ fn FileWatcher::watch(StringView path) wontthrow -> void
 
     struct kevent change;
     EV_SET(&change, static_cast<uintptr_t>(watched), EVFILT_VNODE,
-           EV_ADD | EV_CLEAR, NOTE_WRITE | NOTE_EXTEND | NOTE_DELETE |
-               NOTE_RENAME | NOTE_ATTRIB | NOTE_LINK | NOTE_REVOKE,
+           EV_ADD | EV_CLEAR,
+           NOTE_WRITE | NOTE_EXTEND | NOTE_DELETE | NOTE_RENAME | NOTE_ATTRIB |
+               NOTE_LINK | NOTE_REVOKE,
            0, nullptr);
     if (kevent(m_descriptor, &change, 1, nullptr, 0, nullptr) != 0) {
       close_fd(watched);

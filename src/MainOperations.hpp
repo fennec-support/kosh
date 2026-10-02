@@ -376,7 +376,8 @@ static fn run_script_contents(
         precompiled_ast == nullptr &&
         (FLAG_OPTIMIZER_DIAGNOSTICS.is_enabled() ||
          ((context.runtime_state().no_exec() ||
-           !(context.runtime_state().is_bash_compatible() || context.runtime_state().is_posix_mode()) ||
+           !(context.runtime_state().is_bash_compatible() ||
+             context.runtime_state().is_posix_mode()) ||
            context.runtime_state().get_warning_level() > 0) &&
           !context.runtime_state().is_diagnostics_disabled()));
 
@@ -384,14 +385,13 @@ static fn run_script_contents(
        memory of a large script is the memory of its widest command. */
     let const should_stream_units =
         run_analysis && precompiled_ast == nullptr &&
-            context.runtime_state().no_exec() &&
-        out_ast == nullptr &&
-            !(should_print_ast && context.runtime_state().show_ast()) &&
+        context.runtime_state().no_exec() && out_ast == nullptr &&
+        !(should_print_ast && context.runtime_state().show_ast()) &&
         !context.runtime_state().show_lexed_words();
     let const should_stream_execution =
         precompiled_ast == nullptr && !context.runtime_state().no_exec() &&
         out_ast == nullptr &&
-            !(should_print_ast && context.runtime_state().show_ast()) &&
+        !(should_print_ast && context.runtime_state().show_ast()) &&
         !context.runtime_state().show_lexed_words();
     let const should_stream_syntax_preflight =
         should_stream_execution && !run_analysis;
@@ -422,7 +422,8 @@ static fn run_script_contents(
       /* The whole file is scanned first, because analysis resolves a call to a
          function the source defines further down. */
       let scan_parser = Parser{
-          Lexer{script_contents.view(), ast_arena, filename, context.runtime_state().get_mood()}
+          Lexer{script_contents.view(), ast_arena, filename,
+                context.runtime_state().get_mood()}
       };
       scan_parser.set_analysis_metadata_collection_mode(
           analysis_metadata_collection_mode::Enabled);
@@ -475,7 +476,8 @@ static fn run_script_contents(
       LOG(Debug, "parsing a chunk of %zu bytes", script_contents.count());
 
       let p = Parser{
-          Lexer{script_contents.view(), ast_arena, filename, context.runtime_state().get_mood(),
+          Lexer{script_contents.view(), ast_arena, filename,
+                context.runtime_state().get_mood(),
                 ParseSession::AllocationKind::Syntax,
                 context.runtime_state().show_lexed_words()
                     ? debug_word_collection_mode::Enabled
@@ -537,8 +539,8 @@ static fn run_script_contents(
         context.set_diagnostic_highlight_cache(previous_highlight_cache);
       };
       let const shebang_policy = should_require_shebang && filename.has_value()
-                                       ? missing_shebang_policy::Report
-                                       : missing_shebang_policy::Suppress;
+                                     ? missing_shebang_policy::Report
+                                     : missing_shebang_policy::Suppress;
       let const do_analyze = [&](AnalysisUnitStream *units) throws -> bool {
         return analyze_ast(
             ast, script_contents, context.function_store().names(),
@@ -548,9 +550,9 @@ static fn run_script_contents(
                 (context.runtime_state().get_warning_level() > 0 &&
                  context.execution_store().shell_is_interactive()),
             context.runtime_state().get_mood() == mimic_mood::Default,
-            context.runtime_state().is_annoying_diagnostics_enabled(), shellcheck_suppressions,
-            analysis_scope_definitions, shellcheck_directive_spans,
-            heredoc_terminator_misses,
+            context.runtime_state().is_annoying_diagnostics_enabled(),
+            shellcheck_suppressions, analysis_scope_definitions,
+            shellcheck_directive_spans, heredoc_terminator_misses,
             FLAG_OPTIMIZER_DIAGNOSTICS.is_enabled(), &followed_source_paths,
             &source_effects_cache, nullptr, diagnostic_totals, true, true,
             nullptr, diagnostic_sink, nullptr, nullptr, units, nullptr,
@@ -559,7 +561,8 @@ static fn run_script_contents(
 
       if (should_stream_units) {
         let unit_parser = Parser{
-            Lexer{script_contents.view(), ast_arena, filename, context.runtime_state().get_mood()}
+            Lexer{script_contents.view(), ast_arena, filename,
+                  context.runtime_state().get_mood()}
         };
         /* A function body and a subshell carry their own definitions on the
            node, and the walk seeds them when it enters. */
@@ -606,10 +609,16 @@ static fn run_script_contents(
         ast_arena.release(preflight_mark);
         ast = nullptr;
         let execution_parser = Parser{
-            Lexer{script_contents.view(), ast_arena, filename, context.runtime_state().get_mood()}
+            Lexer{script_contents.view(), ast_arena, filename,
+                  context.runtime_state().get_mood()}
         };
-        let const was_terminal_exec_allowed = context.execution_store().terminal_exec_allowed();
-        defer { context.execution_store().terminal_exec_allowed() = was_terminal_exec_allowed; };
+        let const was_terminal_exec_allowed =
+            context.execution_store().terminal_exec_allowed();
+        defer
+        {
+          context.execution_store().terminal_exec_allowed() =
+              was_terminal_exec_allowed;
+        };
 
         loop
         {
@@ -633,7 +642,8 @@ static fn run_script_contents(
               static_cast<int>(unit->evaluate_root(context, evaluation_mode));
           evaluation_mode = root_evaluation_mode::Normal;
           if (context.control_flow_store().has_pending() ||
-              (context.runtime_state().option_is_enabled(shell_option_id::Onecmd) &&
+              (context.runtime_state().option_is_enabled(
+                   shell_option_id::Onecmd) &&
                !context.execution_store().has_execution_string()))
           {
             break;
@@ -643,8 +653,8 @@ static fn run_script_contents(
         exit_code =
             static_cast<int>(ast->evaluate_root(context, evaluation_mode));
       }
-      context.execution_store().set_last_command_duration_nanos(koshka::os::monotonic_nanos() -
-                                              command_start_nanos);
+      context.execution_store().set_last_command_duration_nanos(
+          koshka::os::monotonic_nanos() - command_start_nanos);
       LOG(Debug, "the chunk finished with exit code %d", exit_code);
       /* A signal trapped during the last command has no following node to
          trigger its action, so the pending traps drain here. */
@@ -666,19 +676,22 @@ static fn run_script_contents(
       show_message(e.to_string(script_contents, &context));
       show_message(e.details_to_string(script_contents, &context));
     }
-    exit_code = e.command_status() != 1
-                    ? static_cast<i32>(e.command_status())
-                    : (context.runtime_state().is_posix_mode() ? 2 : EXIT_FAILURE);
+    exit_code =
+        e.command_status() != 1
+            ? static_cast<i32>(e.command_status())
+            : (context.runtime_state().is_posix_mode() ? 2 : EXIT_FAILURE);
   } catch (const ErrorWithLocation &e) {
     if (!e.was_rendered()) show_message(e.to_string(script_contents, &context));
-    exit_code = e.command_status() != 1
-                    ? static_cast<i32>(e.command_status())
-                    : (context.runtime_state().is_posix_mode() ? 2 : EXIT_FAILURE);
+    exit_code =
+        e.command_status() != 1
+            ? static_cast<i32>(e.command_status())
+            : (context.runtime_state().is_posix_mode() ? 2 : EXIT_FAILURE);
   } catch (const Error &e) {
     show_message(e.to_string());
-    exit_code = e.command_status() != 1
-                    ? static_cast<i32>(e.command_status())
-                    : (context.runtime_state().is_posix_mode() ? 2 : EXIT_FAILURE);
+    exit_code =
+        e.command_status() != 1
+            ? static_cast<i32>(e.command_status())
+            : (context.runtime_state().is_posix_mode() ? 2 : EXIT_FAILURE);
   } catch (const std::exception &e) {
     exit_code = EXIT_FAILURE;
     show_message(
@@ -730,7 +743,8 @@ static fn run_lint_document_contents(
   int status = EXIT_SUCCESS;
   for (let const &fragment : document.fragments) {
     context.runtime_state().set_mood(fragment.mood);
-    context.runtime_state().set_warning_level(fragment.mood == mimic_mood::Default ? 0 : 3);
+    context.runtime_state().set_warning_level(
+        fragment.mood == mimic_mood::Default ? 0 : 3);
     let const fragment_status = run_script_contents(
         fragment.analysis_source, context, ast_arena, filename, nullptr,
         nullptr, None, diagnostic_totals, diagnostic_sink, false,
@@ -825,7 +839,8 @@ static fn run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
       context.print_source_backtrace(definition);
 
   context.execution_store().set_last_exit_status(saved_exit_status);
-  context.execution_store().set_last_command_duration_nanos(saved_command_duration_nanos);
+  context.execution_store().set_last_command_duration_nanos(
+      saved_command_duration_nanos);
 }
 
 static fn history_control_operator_byte_length(StringView source,
@@ -1065,8 +1080,8 @@ enum class history_substitution_scope : u8
   FirstPerWord,
 };
 
-cold wontreturn static fn
-throw_history_modifier_error(StringView spelling, StringView reason) throws
+cold wontreturn static fn throw_history_modifier_error(StringView spelling,
+                                                       StringView reason) throws
     -> void
 {
   let message = String{spelling};
@@ -1351,9 +1366,7 @@ static fn expand_interactive_history(StringView source,
     -> Maybe<interactive_history_expansion>
 {
   let const scratch_mark = context.expansion_store().scratch_arena().mark();
-  defer {
-    context.expansion_store().scratch_arena().release(scratch_mark);
-  };
+  defer { context.expansion_store().scratch_arena().release(scratch_mark); };
 
   bool is_single_quoted = false;
   bool is_double_quoted = false;
@@ -1784,7 +1797,8 @@ fn source_init_moods(EvalContext &context, BumpArena &ast_arena,
   for (let flavor : moods) {
     let const should_consider_bash_env =
         flavor == mimic_mood::Bash &&
-        !context.runtime_state().option_is_enabled(shell_option_id::Privileged) &&
+        !context.runtime_state().option_is_enabled(
+            shell_option_id::Privileged) &&
         !context.startup_store().startup_finished() && !did_source_bash_env;
     if (!is_login_shell && !should_be_interactive && !should_consider_bash_env)
     {
@@ -1802,7 +1816,8 @@ fn source_init_moods(EvalContext &context, BumpArena &ast_arena,
       continue;
     }
     context.runtime_control_store().set_init_mood_sourcing(flavor, true);
-    defer {
+    defer
+    {
       context.runtime_control_store().set_init_mood_sourcing(flavor, false);
     };
     context.runtime_state().set_mood(flavor);
@@ -1826,8 +1841,8 @@ fn source_init_moods(EvalContext &context, BumpArena &ast_arena,
       break;
     case mimic_mood::Posix:
       if (is_login_shell) source_posix_login_files(context, ast_arena);
-      if (should_be_interactive &&
-          !context.runtime_state().option_is_enabled(shell_option_id::Privileged))
+      if (should_be_interactive && !context.runtime_state().option_is_enabled(
+                                       shell_option_id::Privileged))
       {
         if (Maybe<String> env = context.get_variable_value("ENV");
             env.has_value() && !env->is_empty())
@@ -1840,10 +1855,10 @@ fn source_init_moods(EvalContext &context, BumpArena &ast_arena,
          that. BashPosix falls through so --posix finds the bash integration. */
       if (is_login_shell) source_bash_login_files(context, ast_arena);
       if (flavor == mimic_mood::Bash &&
-          !context.runtime_state().option_is_enabled(shell_option_id::Privileged) &&
+          !context.runtime_state().option_is_enabled(
+              shell_option_id::Privileged) &&
           !should_be_interactive &&
-          !context.startup_store().startup_finished() &&
-          !did_source_bash_env)
+          !context.startup_store().startup_finished() && !did_source_bash_env)
       {
         source_environment_file("BASH_ENV", context, ast_arena);
         did_source_bash_env = true;
@@ -2005,9 +2020,8 @@ static fn append_applied_fix_label(String &label, diagnostic_id id) throws
   label.push(')');
 }
 
-cold static fn
-print_applied_fix_summary(ArrayList<applied_fix_tally> &&collected_tallies)
-    throws -> void
+cold static fn print_applied_fix_summary(
+    ArrayList<applied_fix_tally> &&collected_tallies) throws -> void
 {
   if (collected_tallies.is_empty()) return;
 
@@ -2168,11 +2182,10 @@ static fn run_format_operation(const ArrayList<String> &file_names,
                                 ? Maybe<StringView>{}
                                 : Maybe<StringView>{file_names[input_index]};
     let ast_output = String{heap_allocator()};
-    let formatted =
-        format_document_source(source.view(), source_name, ast_arena, errors,
-                               context.runtime_state().show_ast() ? &ast_output
-                                                                  : nullptr,
-                               context.arena_store().function_arena(), mood);
+    let formatted = format_document_source(
+        source.view(), source_name, ast_arena, errors,
+        context.runtime_state().show_ast() ? &ast_output : nullptr,
+        context.arena_store().function_arena(), mood);
     if (!formatted.has_value()) {
       for (let const &error : errors)
         show_message(error.view());
@@ -2268,7 +2281,8 @@ static fn run_lint_apply_operation(const ArrayList<String> &file_names,
       let errors = ArrayList<String>{heap_allocator()};
       let formatted = format_document_source(
           final_source.view(), file_name.view(), ast_arena, errors, nullptr,
-          context.arena_store().function_arena(), context.runtime_state().get_mood());
+          context.arena_store().function_arena(),
+          context.runtime_state().get_mood());
       if (!formatted.has_value()) {
         for (let const &error : errors)
           show_message(error.view());

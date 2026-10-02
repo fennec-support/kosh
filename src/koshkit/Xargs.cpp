@@ -320,9 +320,9 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
       sub = ExecContext::make_from(
           ec.source_location(),
           source != nullptr ? source->view() : StringView{}, steal(command),
-          cxt.runtime_state().koshkit(),
-          cxt.is_shopt_enabled("checkhash"),
-          cxt.resolution_store().resolver(), steal(command_locations), cxt.runtime_state().get_mood());
+          cxt.runtime_state().koshkit(), cxt.is_shopt_enabled("checkhash"),
+          cxt.resolution_store().resolver(), steal(command_locations),
+          cxt.runtime_state().get_mood());
     } catch (const CommandResolutionErrorWithLocation &resolution_error) {
       let const *source = cxt.source_store().current_source();
       show_message(resolution_error.to_string(
@@ -342,7 +342,8 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
       throw;
     }
     if (cxt.control_flow_store().has_pending()) {
-      command_status = static_cast<i32>(cxt.control_flow_store().pending().value);
+      command_status =
+          static_cast<i32>(cxt.control_flow_store().pending().value);
       cxt.control_flow_store().clear();
     }
     cxt.leave_subshell();

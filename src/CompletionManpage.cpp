@@ -117,7 +117,8 @@ capture_completion_program_output(EvalContext &context,
                                   const ArrayList<String> &arguments) wontthrow
     -> Maybe<String>
 {
-  let const is_prompt_waiting = context.execution_store().shell_is_interactive();
+  let const is_prompt_waiting =
+      context.execution_store().shell_is_interactive();
   let const timeout_nanos = is_prompt_waiting ? HELP_FORK_TIMEOUT_NANOS
                                               : HELP_FORK_BATCH_TIMEOUT_NANOS;
   let const attempt_limit = is_prompt_waiting ? 1u : KILLED_FORK_ATTEMPT_LIMIT;

@@ -786,7 +786,8 @@ fn CStyleForLoop::evaluate_status_impl(EvalContext &cxt) const throws
   defer { cxt.leave_loop(); };
 
   if (is_blank_clause(m_init)) {
-    if (!do_publish_implied_clause()) return {cxt.execution_store().last_exit_status()};
+    if (!do_publish_implied_clause())
+      return {cxt.execution_store().last_exit_status()};
   } else {
     let const should_run_init = publish_command_and_run_debug_trap(cxt, [&] {
       return arithmetic_clause_command_text(
@@ -1022,9 +1023,9 @@ static fn evaluate_subshell_in_process(const Expression *body,
   /* This shell has no process-level subshell, so isolation is by snapshot. A
      loop in the parent is not the subshell's to break, so the body runs with a
      fresh loop count. */
-    let const saved_loop_depth = cxt.execution_store().loop_depth();
-    cxt.execution_store().loop_depth() = 0;
-    defer { cxt.execution_store().loop_depth() = saved_loop_depth; };
+  let const saved_loop_depth = cxt.execution_store().loop_depth();
+  cxt.execution_store().loop_depth() = 0;
+  defer { cxt.execution_store().loop_depth() = saved_loop_depth; };
 
   /* The trap action that forked this subshell is not running inside it. Bash
      lets the same condition fire again for the commands of the body, and each
@@ -1038,8 +1039,7 @@ static fn evaluate_subshell_in_process(const Expression *body,
   cxt.trap_store().trap_saved_exit_status() = Maybe<i32>{};
   defer
   {
-    cxt.trap_store().running_trap_conditions() =
-        saved_running_trap_conditions;
+    cxt.trap_store().running_trap_conditions() = saved_running_trap_conditions;
     cxt.trap_store().trap_action_depth() = saved_trap_action_depth;
     cxt.trap_store().trap_saved_exit_status() = saved_trap_exit_status;
   };
@@ -1119,7 +1119,8 @@ fn Subshell::evaluate_impl(EvalContext &cxt) const throws -> i64
   /* A redirected wrapper hands down the span that reaches over its
      redirections, and the bare subshell answers for its own. */
   let const pending_end_position = [&] {
-    let const end_position = cxt.execution_store().pending_subshell_end_position();
+    let const end_position =
+        cxt.execution_store().pending_subshell_end_position();
     cxt.execution_store().pending_subshell_end_position() = 0;
     return end_position;
   }();
@@ -1159,7 +1160,8 @@ fn Subshell::evaluate_impl(EvalContext &cxt) const throws -> i64
 
     let text =
         internal::subshell_command_text(cxt, source_location(), end_position);
-    if (!text.is_empty()) cxt.execution_store().set_current_command(steal(text));
+    if (!text.is_empty())
+      cxt.execution_store().set_current_command(steal(text));
   };
 
   koshka::flush();
@@ -1480,10 +1482,11 @@ fn FunctionDefinition::analyze(AnalysisContext &actx,
   let &function_definition =
       actx.function_definitions[function_definition_index];
   if (function_definition.recursive_call_count > 0) {
-    let const diagnostic = function_definition.recursive_call_count >= 2 &&
-                                   function_definition.async_recursive_call_count >= 2
-                               ? diagnostic_id::fork_bomb
-                               : diagnostic_id::sc2264;
+    let const diagnostic =
+        function_definition.recursive_call_count >= 2 &&
+                function_definition.async_recursive_call_count >= 2
+            ? diagnostic_id::fork_bomb
+            : diagnostic_id::sc2264;
     actx.report_diagnostic(diagnostic,
                            function_definition.first_recursive_call_location,
                            {m_name.view()}, source_location());

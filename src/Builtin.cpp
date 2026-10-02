@@ -255,7 +255,9 @@ fn report_soft_builtin_error(const ExecContext &ec, EvalContext &cxt,
 {
   const ErrorWithLocation located{ec.source_location(),
                                   builtin_error_message(ec.program(), message)};
-  if (const String *source = cxt.source_store().current_source(); source != nullptr) {
+  if (const String *source = cxt.source_store().current_source();
+      source != nullptr)
+  {
     show_message(located.to_string(source->view(), &cxt));
     cxt.print_source_backtrace(ec.source_location(), false);
   } else
@@ -275,7 +277,9 @@ fn report_soft_builtin_error(const ExecContext &ec, EvalContext &cxt,
 {
   const ErrorWithLocation located{location,
                                   builtin_error_message(ec.program(), message)};
-  if (const String *source = cxt.source_store().current_source(); source != nullptr) {
+  if (const String *source = cxt.source_store().current_source();
+      source != nullptr)
+  {
     show_message(located.to_string(source->view(), &cxt));
     cxt.print_source_backtrace(location, false);
   } else
@@ -293,7 +297,9 @@ fn report_soft_builtin_error(const ExecContext &ec, EvalContext &cxt,
 fn report_loop_control_without_loop(const ExecContext &ec,
                                     EvalContext &cxt) throws -> void
 {
-  if (!cxt.runtime_state().is_bash_compatible() || cxt.runtime_state().is_posix_option_on()) return;
+  if (!cxt.runtime_state().is_bash_compatible() ||
+      cxt.runtime_state().is_posix_option_on())
+    return;
 
   report_soft_builtin_error(
       ec, cxt, "only meaningful in a `for', `while', or `until' loop");
@@ -310,7 +316,8 @@ fn report_usage_error(const ExecContext &ec, EvalContext &cxt,
      the multicall entry. */
   const ErrorWithLocation located{
       ec.source_location(), String{program_name} + ": Not enough arguments"};
-  if (const String *source = cxt.source_store().current_source(); source != nullptr)
+  if (const String *source = cxt.source_store().current_source();
+      source != nullptr)
     show_message(located.to_string(source->view(), &cxt));
   else
     print_error(String{program_name} + ": Not enough arguments.\n");
@@ -324,7 +331,8 @@ fn report_usage_error(EvalContext &cxt, SourceLocation location,
 {
   const ErrorWithLocation located{
       steal(location), String{program_name} + ": Not enough arguments"};
-  if (const String *source = cxt.source_store().current_source(); source != nullptr)
+  if (const String *source = cxt.source_store().current_source();
+      source != nullptr)
     show_message(located.to_string(source->view(), &cxt));
   else
     print_error(String{program_name} + ": Not enough arguments.\n");

@@ -30,9 +30,9 @@ hot pure fn get_unquoted_word_text(const Token *token) wontthrow
 hot pure fn is_unquoted_word(const Token *token, StringView expected) wontthrow
     -> bool;
 cold wontreturn fn throw_unterminated(const SourceLocation &opener,
-                                        StringView what, StringView source,
-                                        StringView keyword,
-                                        SourceLocation fallback) throws -> void;
+                                      StringView what, StringView source,
+                                      StringView keyword,
+                                      SourceLocation fallback) throws -> void;
 
 } /* namespace internal */
 

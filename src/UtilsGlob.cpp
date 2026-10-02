@@ -89,8 +89,7 @@ fn extglob_opens_group(StringView glob, const Bitset &mask, usize mask_offset,
   if (op != '?' && op != '*' && op != '+' && op != '@' && op != '!') {
     return false;
   }
-  return glob[index + 1] == '(' &&
-         extglob_active(mask, mask_offset + index) &&
+  return glob[index + 1] == '(' && extglob_active(mask, mask_offset + index) &&
          extglob_active(mask, mask_offset + index + 1);
 }
 
@@ -171,8 +170,8 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
    the first repetition, so a + needs one and a * needs none. */
 fn extglob_match_repetition(const ExtglobAlternatives &alternatives,
                             StringView suffix, usize suffix_offset,
-                            StringView str, const Bitset &mask,
-                            usize min_reps, glob_charset charset) throws -> bool
+                            StringView str, const Bitset &mask, usize min_reps,
+                            glob_charset charset) throws -> bool
 {
   if (min_reps == 0 &&
       extglob_full_match(suffix, str, mask, suffix_offset, charset))
@@ -250,8 +249,7 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
              alternative_index < alternatives.count(); alternative_index++)
         {
           let const &alternative = alternatives.get_at(alternative_index);
-          for (usize length =
-                   head == '?' ? 0 : get_next_split(str, 0, charset);
+          for (usize length = head == '?' ? 0 : get_next_split(str, 0, charset);
                length <= str.count();
                length = get_next_split(str, length, charset))
           {
@@ -326,10 +324,10 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
     let const span = get_bracket_span(glob, mask, mask_offset);
     if (span != 0) {
       let const character_length = get_next_split(str, 0, charset);
-      let const did_class_match = glob_matches(
-          glob.substring_of_length(0, span),
-          str.substring_of_length(0, character_length), mask, mask_offset,
-          extglob_mode::Disabled, charset);
+      let const did_class_match =
+          glob_matches(glob.substring_of_length(0, span),
+                       str.substring_of_length(0, character_length), mask,
+                       mask_offset, extglob_mode::Disabled, charset);
       if (!did_class_match) return false;
       return extglob_full_match(glob.substring(span),
                                 str.substring(character_length), mask,
@@ -450,7 +448,8 @@ static fn locale_codeset_is_utf8(StringView locale_name) wontthrow -> bool
   if (!dot.has_value()) return false;
 
   usize end = *dot + 1;
-  while (end < locale_name.length && locale_name[end] != '@') end++;
+  while (end < locale_name.length && locale_name[end] != '@')
+    end++;
 
   let const codeset = locale_name.substring_of_length(*dot + 1, end - *dot - 1);
   if (codeset.length == 4) {
@@ -499,7 +498,7 @@ fn lowercase_for_glob(StringView text, glob_charset charset,
     if (decoded.length == 1) {
       let const byte = original[0];
       result.push(byte >= 'A' && byte <= 'Z' ? static_cast<char>(byte + 32)
-                                            : byte);
+                                             : byte);
       continue;
     }
 
@@ -605,8 +604,8 @@ hot flatten fn glob_matches(StringView glob, StringView str,
           [](StringView view, usize index)
               wontthrow -> u8 { return static_cast<u8>(view[index]); };
 
-      let const do_get_character_at =
-          [&](StringView view, usize index) wontthrow -> decoded_codepoint {
+      let const do_get_character_at = [&](StringView view, usize index)
+                                          wontthrow -> decoded_codepoint {
         let const byte = do_get_byte_at(view, index);
         if (!is_utf8 || byte < 0x80) {
           return {byte, 1};
@@ -697,12 +696,12 @@ hot flatten fn glob_matches(StringView glob, StringView str,
         {
           let const class_name =
               glob.substring_of_length(g + 2, *past_class - g - 4);
-          is_matched |= (!is_utf8 || subject.value < 0x80)
-                            ? byte_is_in_posix_class(
-                                  class_name, static_cast<u8>(subject.value))
-                            : subject.value < 0x110000 &&
-                                  os::code_point_is_in_class(class_name,
-                                                             subject.value);
+          is_matched |=
+              (!is_utf8 || subject.value < 0x80)
+                  ? byte_is_in_posix_class(class_name,
+                                           static_cast<u8>(subject.value))
+                  : subject.value < 0x110000 &&
+                        os::code_point_is_in_class(class_name, subject.value);
           g = *past_class;
           is_first_member = false;
           continue;
@@ -716,8 +715,8 @@ hot flatten fn glob_matches(StringView glob, StringView str,
             !do_get_class_end_past(range_dash + 1).has_value())
         {
           let const upper = do_get_character_at(glob, range_dash + 1);
-          is_matched |= lower.value <= subject.value &&
-                        subject.value <= upper.value;
+          is_matched |=
+              lower.value <= subject.value && subject.value <= upper.value;
           g = range_dash + 1 + upper.length;
         } else {
           is_matched |= lower.value == subject.value;

@@ -33,16 +33,22 @@ namespace koshka {
 fn EvalContext::next_random_u32() const wontthrow -> u32
 {
   if (dynamic_runtime_store().random_state() == 0) {
-    dynamic_runtime_store().random_state() = os::realtime_microseconds() ^
-                     (static_cast<u64>(os::get_shell_process_id()) << 32) ^
-                     static_cast<u64>(dynamic_runtime_store().shell_start_time());
-    if (dynamic_runtime_store().random_state() == 0) dynamic_runtime_store().random_state() = 0x9e3779b97f4a7c15ULL;
+    dynamic_runtime_store().random_state() =
+        os::realtime_microseconds() ^
+        (static_cast<u64>(os::get_shell_process_id()) << 32) ^
+        static_cast<u64>(dynamic_runtime_store().shell_start_time());
+    if (dynamic_runtime_store().random_state() == 0)
+      dynamic_runtime_store().random_state() = 0x9e3779b97f4a7c15ULL;
   }
 
-  dynamic_runtime_store().random_state() ^= dynamic_runtime_store().random_state() >> 12;
-  dynamic_runtime_store().random_state() ^= dynamic_runtime_store().random_state() << 25;
-  dynamic_runtime_store().random_state() ^= dynamic_runtime_store().random_state() >> 27;
-  return static_cast<u32>((dynamic_runtime_store().random_state() * 0x2545f4914f6cdd1dULL) >> 32);
+  dynamic_runtime_store().random_state() ^=
+      dynamic_runtime_store().random_state() >> 12;
+  dynamic_runtime_store().random_state() ^=
+      dynamic_runtime_store().random_state() << 25;
+  dynamic_runtime_store().random_state() ^=
+      dynamic_runtime_store().random_state() >> 27;
+  return static_cast<u32>(
+      (dynamic_runtime_store().random_state() * 0x2545f4914f6cdd1dULL) >> 32);
 }
 
 struct ansi_color_variable
@@ -257,8 +263,8 @@ pure fn EvalContext::variable_requires_dynamic_lookup(
   if (is_bash_aliases_special(name)) return true;
   if (is_bash_directory_stack_special(name)) return true;
 
-  return runtime_state().bash_dynamic_variables_enabled() && !is_dynamic_reader_unset(name) &&
-         BASH_DYNAMIC.find(name).has_value();
+  return runtime_state().bash_dynamic_variables_enabled() &&
+         !is_dynamic_reader_unset(name) && BASH_DYNAMIC.find(name).has_value();
 }
 
 pure fn EvalContext::is_write_discarded_dynamic_variable(
@@ -349,11 +355,13 @@ hot fn EvalContext::write_dynamic_variable(StringView name,
   if (*id == dynamic_reader_id::Random) {
     LOG(Debug, "seeding $RANDOM from '%.*s'", static_cast<int>(value.length),
         value.data);
-    dynamic_runtime_store().random_state() = (static_cast<u64>(assigned) + 0x9e3779b97f4a7c15ULL) *
-                     0x2545f4914f6cdd1dULL;
+    dynamic_runtime_store().random_state() =
+        (static_cast<u64>(assigned) + 0x9e3779b97f4a7c15ULL) *
+        0x2545f4914f6cdd1dULL;
     /* A zero state reads as unseeded and would draw a fresh seed from the
        clock. */
-    if (dynamic_runtime_store().random_state() == 0) dynamic_runtime_store().random_state() = 0x9e3779b97f4a7c15ULL;
+    if (dynamic_runtime_store().random_state() == 0)
+      dynamic_runtime_store().random_state() = 0x9e3779b97f4a7c15ULL;
 
     return true;
   }
@@ -361,7 +369,8 @@ hot fn EvalContext::write_dynamic_variable(StringView name,
   LOG(Debug, "moving the $SECONDS base to '%.*s'",
       static_cast<int>(value.length), value.data);
   dynamic_runtime_store().seconds_base() =
-      assigned - (static_cast<i64>(std::time(nullptr)) - dynamic_runtime_store().shell_start_time());
+      assigned - (static_cast<i64>(std::time(nullptr)) -
+                  dynamic_runtime_store().shell_start_time());
 
   return true;
 }
@@ -384,10 +393,13 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
                  : String{heap_allocator()};
     case '-': return option_flags_string();
     case '#':
-      return String::from(variable_store().positional_params().count(), heap_allocator());
-    case '0': return String{heap_allocator(), execution_store().get_shell_name()};
+      return String::from(variable_store().positional_params().count(),
+                          heap_allocator());
+    case '0':
+      return String{heap_allocator(), execution_store().get_shell_name()};
     case '_':
-      return String{heap_allocator(), execution_store().get_last_argument().view()};
+      return String{heap_allocator(),
+                    execution_store().get_last_argument().view()};
 
     case '*':
     case '@': {
@@ -442,7 +454,9 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
   /* A read of an array name with no scalar yields element zero, the way bash
      treats $a as ${a[0]}. */
   if (variable_store().indexed_arrays().count() != 0)
-    if (let const array = variable_store().indexed_arrays().find(name); array.has_value()) {
+    if (let const array = variable_store().indexed_arrays().find(name);
+        array.has_value())
+    {
       if (array->is_empty()) return koshka::None;
       return array->front();
     }
@@ -537,7 +551,9 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
       }
     }
 
-    if (runtime_state().bash_dynamic_variables_enabled() && !is_dynamic_reader_unset(name)) {
+    if (runtime_state().bash_dynamic_variables_enabled() &&
+        !is_dynamic_reader_unset(name))
+    {
       if (let const info = BASH_DYNAMIC.find(name); info.has_value()) {
         switch (info->kind) {
         case dynamic_var::RANDOM:
@@ -545,7 +561,8 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
                               heap_allocator());
         case dynamic_var::SECONDS:
           return String::from(static_cast<i64>(std::time(nullptr)) -
-                                  dynamic_runtime_store().shell_start_time() + dynamic_runtime_store().seconds_base(),
+                                  dynamic_runtime_store().shell_start_time() +
+                                  dynamic_runtime_store().seconds_base(),
                               heap_allocator());
         case dynamic_var::BASHOPTS: return enabled_shopt_option_names(*this);
         case dynamic_var::SHELLOPTS: {
@@ -590,7 +607,8 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
           return String{heap_allocator(), execution_store().get_shell_name()};
         case dynamic_var::BASH_EXECUTION_STRING:
           if (execution_store().has_execution_string())
-            return String{heap_allocator(), execution_store().get_execution_string()};
+            return String{heap_allocator(),
+                          execution_store().get_execution_string()};
           break;
         case dynamic_var::BASH_SUBSHELL:
           return String::from(
@@ -604,7 +622,8 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
           return koshka::None;
         case dynamic_var::BASH_COMMAND:
           if (!execution_store().get_current_command().is_empty())
-            return String{heap_allocator(), execution_store().get_current_command()};
+            return String{heap_allocator(),
+                          execution_store().get_current_command()};
           break;
         case dynamic_var::PPID:
           return String::from(os::get_parent_process_id(), heap_allocator());

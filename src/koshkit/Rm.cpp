@@ -111,9 +111,7 @@ static fn remove_path_with_prompt(
   if (is_recursive && is_directory && !is_symbolic_link) {
     bool did_succeed = true;
     let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
-    defer {
-      cxt.expansion_store().scratch_arena().release(directory_scratch);
-    };
+    defer { cxt.expansion_store().scratch_arena().release(directory_scratch); };
     let names = os::list_directory_status(path, allocator);
     if (names.has_value()) {
       for (let const &entry : *names) {
@@ -178,9 +176,7 @@ static fn report_dry_run_removal(
   bool did_succeed = true;
   if (is_recursive && is_directory && !is_symbolic_link) {
     let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
-    defer {
-      cxt.expansion_store().scratch_arena().release(directory_scratch);
-    };
+    defer { cxt.expansion_store().scratch_arena().release(directory_scratch); };
     if (let names = os::list_directory_status(path, allocator);
         names.has_value())
     {
@@ -261,8 +257,8 @@ fn Rm::execute(const ExecContext &ec, EvalContext &cxt,
   let const should_prompt = FLAG_RM_INTERACTIVE.is_enabled() &&
                             (!should_force || FLAG_RM_INTERACTIVE.position() >
                                                   FLAG_RM_FORCE.position());
-  let const prompt_mode = should_prompt ? removal_prompt_mode::Always
-                                        : removal_prompt_mode::Never;
+  let const prompt_mode =
+      should_prompt ? removal_prompt_mode::Always : removal_prompt_mode::Never;
   let const is_recursive =
       FLAG_RM_RECURSIVE_R.is_enabled() || FLAG_RM_RECURSIVE_UPPER.is_enabled();
   let const is_dry_run = FLAG_RM_DRY_RUN.is_enabled();
@@ -303,11 +299,10 @@ fn Rm::execute(const ExecContext &ec, EvalContext &cxt,
       continue;
     }
     if (is_dry_run) {
-      if (!report_dry_run_removal(ec, cxt, args[0].view(), operand.view(),
-                                  allocator,
-                                  is_recursive ? removal_mode::Recursive
-                                               : removal_mode::SinglePath,
-                                  prompt_mode))
+      if (!report_dry_run_removal(
+              ec, cxt, args[0].view(), operand.view(), allocator,
+              is_recursive ? removal_mode::Recursive : removal_mode::SinglePath,
+              prompt_mode))
         status = 1;
       if (os::INTERRUPT_REQUESTED) return 130;
       continue;

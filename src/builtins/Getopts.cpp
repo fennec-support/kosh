@@ -63,7 +63,8 @@ fn Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   /* The common while-getopts form names no operands, so the positional
      parameters are read in place with no per-call copy. */
   const ArrayList<String> &operands =
-      args.count() > 3 ? explicit_operands : cxt.variable_store().positional_params();
+      args.count() > 3 ? explicit_operands
+                       : cxt.variable_store().positional_params();
 
   i64 optind = 1;
   if (let value = cxt.get_variable_value("OPTIND"); value.has_value()) {

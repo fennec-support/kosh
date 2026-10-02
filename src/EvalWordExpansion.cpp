@@ -82,7 +82,8 @@ hot fn EvalContext::expand_word(const Word &word) throws
   {
     tilde_expanded_segments = clone_word_segments(word, scratch);
     expand_tilde(tilde_expanded_segments.front(),
-                 tilde_expanded_segments.count() > 1, !runtime_state().is_posix_mode());
+                 tilde_expanded_segments.count() > 1,
+                 !runtime_state().is_posix_mode());
     segments = &tilde_expanded_segments;
   }
 
@@ -126,7 +127,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
       if (!variable_store().is_field_separator(byte)) {
         usize start = i;
 #pragma clang loop unroll_count(4)
-      while (i < text.length && !variable_store().is_field_separator(text[i]))
+        while (i < text.length && !variable_store().is_field_separator(text[i]))
           i++;
         do_append_run(StringView{text.data + start, i - start}, glob_active);
         continue;
@@ -188,20 +189,24 @@ hot fn EvalContext::expand_word(const Word &word) throws
       break;
     case WordSegment::Kind::VariableReference: {
       if (segment.text == "@" && segment.is_in_double_quotes) {
-        for (usize i = 0; i < variable_store().positional_params().count(); i++) {
+        for (usize i = 0; i < variable_store().positional_params().count(); i++)
+        {
           if (i > 0) do_flush();
-          do_append_run(StringView{variable_store().positional_params()[i].data(),
-                                   variable_store().positional_params()[i].count()},
-                        false);
+          do_append_run(
+              StringView{variable_store().positional_params()[i].data(),
+                         variable_store().positional_params()[i].count()},
+              false);
         }
         break;
       }
       if ((segment.text == "@" || segment.text == "*") &&
           !segment.is_in_double_quotes)
       {
-        for (usize i = 0; i < variable_store().positional_params().count(); i++) {
+        for (usize i = 0; i < variable_store().positional_params().count(); i++)
+        {
           if (i > 0) do_flush();
-          do_append_split_run(variable_store().positional_params()[i].view(), true);
+          do_append_split_run(variable_store().positional_params()[i].view(),
+                              true);
         }
         break;
       }
@@ -280,13 +285,14 @@ hot fn EvalContext::expand_word(const Word &word) throws
         let const param_count = variable_store().positional_params().count();
         let const positional_is_null =
             param_count == 0 ||
-            (param_count == 1 && variable_store().positional_params()[0].view().is_empty());
+            (param_count == 1 &&
+             variable_store().positional_params()[0].view().is_empty());
         let const treat_as_unset =
             positional_test_has_colon ? positional_is_null : param_count == 0;
 
         let const do_emit_positional = [&]() throws {
-          do_emit_elements(variable_store().positional_params(), segment.is_in_double_quotes,
-                           is_star);
+          do_emit_elements(variable_store().positional_params(),
+                           segment.is_in_double_quotes, is_star);
         };
         let const do_emit_word = [&]() throws {
           if (let const array_word = parse_modifier_array_word(word);
@@ -350,9 +356,11 @@ hot fn EvalContext::expand_word(const Word &word) throws
         let const param_count = variable_store().positional_params().count();
         let const total = static_cast<i64>(param_count) + 1;
         let const do_positional_at = [&](i64 index) wontthrow -> StringView {
-          return index == 0 ? execution_store().get_shell_name()
-                            : variable_store().positional_params()[static_cast<usize>(index - 1)]
-                                  .view();
+          return index == 0
+                     ? execution_store().get_shell_name()
+                     : variable_store()
+                           .positional_params()[static_cast<usize>(index - 1)]
+                           .view();
         };
 
         let const sep = find_substring_length_separator(slice);
@@ -381,7 +389,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
         let const end = bounds.end;
 
         if (segment.is_in_double_quotes && is_star) {
-      let const ifs = variable_store().field_separators();
+          let const ifs = variable_store().field_separators();
           let joined = String{scratch_allocator()};
           for (i64 j = start; j < end; j++) {
             if (j > start && !ifs.is_empty()) {
@@ -430,19 +438,26 @@ hot fn EvalContext::expand_word(const Word &word) throws
                                       modifier_location_pointer);
         };
         if (segment.is_in_double_quotes && is_star) {
-      let const ifs = variable_store().field_separators();
+          let const ifs = variable_store().field_separators();
           let joined = String{scratch_allocator()};
-          for (usize i = 0; i < variable_store().positional_params().count(); i++) {
+          for (usize i = 0; i < variable_store().positional_params().count();
+               i++)
+          {
             if (i > 0 && !ifs.is_empty()) {
               joined.push(ifs[0]);
             }
-            joined.append(do_transform(variable_store().positional_params()[i].view()).view());
+            joined.append(
+                do_transform(variable_store().positional_params()[i].view())
+                    .view());
           }
           do_append_run(joined, false);
         } else {
-          for (usize i = 0; i < variable_store().positional_params().count(); i++) {
+          for (usize i = 0; i < variable_store().positional_params().count();
+               i++)
+          {
             if (i > 0) do_flush();
-            let const modified = do_transform(variable_store().positional_params()[i].view());
+            let const modified =
+                do_transform(variable_store().positional_params()[i].view());
             if (segment.is_in_double_quotes)
               do_append_run(modified.view(), false);
             else
@@ -499,7 +514,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
           let const end = bounds.end;
 
           if (segment.is_in_double_quotes && is_star) {
-      let const ifs = variable_store().field_separators();
+            let const ifs = variable_store().field_separators();
             let joined = String{scratch_allocator()};
             for (i64 j = start; j < end; j++) {
               if (j > start && !ifs.is_empty()) {
@@ -557,7 +572,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
                                         modifier_location_pointer);
           };
           if (segment.is_in_double_quotes && is_star) {
-      let const ifs = variable_store().field_separators();
+            let const ifs = variable_store().field_separators();
             let joined = String{scratch_allocator()};
             for (usize i = 0; i < elements.count(); i++) {
               if (i > 0 && !ifs.is_empty()) {
@@ -677,7 +692,8 @@ hot fn EvalContext::expand_word(const Word &word) throws
             break;
           }
         if (is_plain_name)
-      if (let const stored = variable_store().shell_variables().find(segment_text);
+          if (let const stored =
+                  variable_store().shell_variables().find(segment_text);
               stored.has_value())
           {
             if (segment.is_in_double_quotes)
@@ -804,7 +820,8 @@ fn EvalContext::expand_case_pattern_masked(const Word &word,
   {
     tilde_expanded_segments = clone_word_segments(word, scratch_allocator());
     expand_tilde(tilde_expanded_segments.front(),
-                 tilde_expanded_segments.count() > 1, !runtime_state().is_posix_mode());
+                 tilde_expanded_segments.count() > 1,
+                 !runtime_state().is_posix_mode());
     segments = &tilde_expanded_segments;
   }
 

@@ -222,8 +222,8 @@ public:
   }
 
   wontreturn cold fn fail_span(usize start_position, usize end_position,
-                                 StringView message,
-                                 StringView note = {}) throws -> void
+                               StringView message, StringView note = {}) throws
+      -> void
   {
     while (end_position > start_position && (source[end_position - 1] == ' ' ||
                                              source[end_position - 1] == '\t' ||
@@ -266,7 +266,8 @@ public:
     if (m_is_skipping) return ArithmeticValue{};
 
     ASSERT(context != nullptr);
-    if (let const stored = context->variable_store().shell_variables().find(name);
+    if (let const stored =
+            context->variable_store().shell_variables().find(name);
         stored.has_value())
     {
       return evaluate_operand_value(stored->view());

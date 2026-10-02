@@ -647,8 +647,7 @@ enum class copy_force_mode : u8
 };
 
 fn copy_file_contents(StringView source, StringView destination,
-                      copy_force_mode force_mode) throws
-    -> copy_file_result;
+                      copy_force_mode force_mode) throws -> copy_file_result;
 fn make_directories(const Path &directory, u32 mode) wontthrow -> bool;
 fn read_named_or_stdin(const ExecContext &ec, StringView path) throws
     -> Maybe<String>;
@@ -757,12 +756,12 @@ public:
     source_open_state open_state{source_open_state::Opened};
   };
 
-  SourceBatchReader(const ExecContext &ec, const ArrayList<StringView> &sources,
-                    Allocator allocator, usize read_byte_count = 64 * 1024,
-                    source_dash_mode dash_mode = source_dash_mode::TreatAsStdin,
-                    source_kind_mode kind_mode = source_kind_mode::Probe,
-                    source_read_mode read_mode = source_read_mode::Batched)
-      throws;
+  SourceBatchReader(
+      const ExecContext &ec, const ArrayList<StringView> &sources,
+      Allocator allocator, usize read_byte_count = 64 * 1024,
+      source_dash_mode dash_mode = source_dash_mode::TreatAsStdin,
+      source_kind_mode kind_mode = source_kind_mode::Probe,
+      source_read_mode read_mode = source_read_mode::Batched) throws;
   ~SourceBatchReader();
 
   fn read_next(ArrayList<Chunk> &chunks) throws -> ReadResult;
@@ -798,8 +797,8 @@ private:
   fn read_sequential() throws -> ReadResult;
   fn append_pending_chunks(ArrayList<Chunk> &chunks,
                            chunk_emit_mode emit_mode) throws -> void;
-  fn read_next_internal(ArrayList<Chunk> &chunks, chunk_emit_mode emit_mode) throws
-      -> ReadResult;
+  fn read_next_internal(ArrayList<Chunk> &chunks,
+                        chunk_emit_mode emit_mode) throws -> ReadResult;
 
   const ExecContext &m_ec;
   const ArrayList<StringView> &m_sources;

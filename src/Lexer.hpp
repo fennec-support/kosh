@@ -98,8 +98,7 @@ public:
 
   pure fn should_collect_debug_words() const wontthrow -> bool
   {
-    return m_debug_word_collection_mode ==
-           debug_word_collection_mode::Enabled;
+    return m_debug_word_collection_mode == debug_word_collection_mode::Enabled;
   }
 
   fn set_debug_word_collection_mode(debug_word_collection_mode mode) wontthrow
@@ -209,8 +208,7 @@ pure fn is_special_parameter_char(char ch) wontthrow -> bool;
 class Lexer
 {
 public:
-  Lexer(StringView source, BumpArena &arena,
-        Maybe<StringView> filename = None,
+  Lexer(StringView source, BumpArena &arena, Maybe<StringView> filename = None,
         mimic_mood mood = mimic_mood::Default,
         ParseSession::AllocationKind allocation_kind =
             ParseSession::AllocationKind::Syntax,
@@ -283,8 +281,8 @@ public:
   fn take_heredoc_terminator_misses() throws
       -> ArrayList<heredoc_terminator_miss>;
 
-  fn register_heredoc(StringView delimiter, heredoc_tab_policy tab_policy)
-      throws
+  fn register_heredoc(StringView delimiter,
+                      heredoc_tab_policy tab_policy) throws
       -> const heredoc_contents *;
 
 protected:

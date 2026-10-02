@@ -202,9 +202,8 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
     columns.reserve(contents.count());
     usize row_count = 0;
     for (let &content : contents) {
-      let lines =
-          utils::split_lines(content.view(), cxt.scratch_allocator(),
-                             utils::line_terminator_mode::Preserve);
+      let lines = utils::split_lines(content.view(), cxt.scratch_allocator(),
+                                     utils::line_terminator_mode::Preserve);
       for (let &line : lines)
         line = line.without_trailing_newline();
       if (lines.count() > row_count) row_count = lines.count();

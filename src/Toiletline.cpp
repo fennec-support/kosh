@@ -523,13 +523,17 @@ fn kosh_completion_callback(const char *buffer, size_t cursor,
   try {
     let const is_explicit_completion = for_listing != 0;
     if (is_explicit_completion) {
-      COMPLETION_CONTEXT->resolution_store().resolver().begin_explicit_completion(
-          koshka::ProgramResolver::CompletionRefresh::Cached);
+      COMPLETION_CONTEXT->resolution_store()
+          .resolver()
+          .begin_explicit_completion(
+              koshka::ProgramResolver::CompletionRefresh::Cached);
     }
     defer
     {
       if (is_explicit_completion)
-      COMPLETION_CONTEXT->resolution_store().resolver().end_explicit_completion();
+        COMPLETION_CONTEXT->resolution_store()
+            .resolver()
+            .end_explicit_completion();
     };
 
     /* A completion spec can shell out, and a command talking to an unreachable
@@ -2205,12 +2209,13 @@ static fn expand_prompt_escapes(StringView prompt, StringView user,
       if (should_use_color && status != 0) out += colors::ansi::RESET;
     } break;
     case 'j':
-          out += String::from(
-              static_cast<i64>(context.job_table_store().jobs().count()),
-                          koshka::heap_allocator());
+      out += String::from(
+          static_cast<i64>(context.job_table_store().jobs().count()),
+          koshka::heap_allocator());
       break;
     case 'D':
-      out += format_prompt_duration(context.execution_store().last_command_duration_nanos());
+      out += format_prompt_duration(
+          context.execution_store().last_command_duration_nanos());
       break;
     /* \! and \# are untracked here, so they expand to nothing. */
     case '!': break;

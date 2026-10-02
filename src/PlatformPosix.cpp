@@ -105,20 +105,19 @@ struct linux_unix_socket_peer
 struct linux_unix_socket_peer_comparator
 {
   pure fn operator()(const linux_unix_socket_peer &left,
-                     const linux_unix_socket_peer &right) const wontthrow
-      -> bool
+                     const linux_unix_socket_peer &right) const wontthrow->bool
   {
     return left.identity < right.identity;
   }
 
-  pure fn operator()(u64 left, const linux_unix_socket_peer &right) const
-      wontthrow -> bool
+  pure fn operator()(u64 left,
+                     const linux_unix_socket_peer &right) const wontthrow->bool
   {
     return left < right.identity;
   }
 
-  pure fn operator()(const linux_unix_socket_peer &left, u64 right) const
-      wontthrow -> bool
+  pure fn operator()(const linux_unix_socket_peer &left,
+                     u64 right) const wontthrow->bool
   {
     return left.identity < right;
   }
@@ -142,8 +141,8 @@ static fn linux_unix_socket_peers(Allocator allocator) throws
   let const descriptor =
       ::socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, NETLINK_SOCK_DIAG);
   if (descriptor < 0)
-    return linux_unix_socket_peer_list{
-        allocator, linux_unix_socket_peer_comparator{}};
+    return linux_unix_socket_peer_list{allocator,
+                                       linux_unix_socket_peer_comparator{}};
   defer { ::close(descriptor); };
 
   struct
@@ -163,8 +162,8 @@ static fn linux_unix_socket_peers(Allocator allocator) throws
   if (::sendto(descriptor, &message, message.header.nlmsg_len, 0,
                reinterpret_cast<struct sockaddr *>(&kernel),
                sizeof(kernel)) < 0)
-    return linux_unix_socket_peer_list{
-        allocator, linux_unix_socket_peer_comparator{}};
+    return linux_unix_socket_peer_list{allocator,
+                                       linux_unix_socket_peer_comparator{}};
 
   let const deadline_nanos = monotonic_nanos() + 1000000000;
   bool is_done = false;
@@ -234,14 +233,13 @@ static fn linux_unix_socket_peers(Allocator allocator) throws
     }
   }
   if (!is_done || !is_valid)
-    return linux_unix_socket_peer_list{
-        allocator, linux_unix_socket_peer_comparator{}};
+    return linux_unix_socket_peer_list{allocator,
+                                       linux_unix_socket_peer_comparator{}};
   return steal(peers).make_sorted(linux_unix_socket_peer_comparator{});
 }
 
 static pure fn linux_unix_peer_identity(
-    const linux_unix_socket_peer_list &peers, u64 identity) wontthrow
-    -> u64
+    const linux_unix_socket_peer_list &peers, u64 identity) wontthrow -> u64
 {
   if (let const index = peers.find(identity); index.has_value())
     return peers[*index].peer_identity;

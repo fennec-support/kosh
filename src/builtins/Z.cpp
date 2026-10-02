@@ -174,8 +174,8 @@ fn z_completion_candidates(StringView query, Allocator allocator) throws
   let const now = now_epoch_seconds();
 
   entries.sort([now](const frecency_entry &left, const frecency_entry &right) {
-    let const left_score = static_cast<double>(left.rank) *
-                           recency_weight(now - left.last_access);
+    let const left_score =
+        static_cast<double>(left.rank) * recency_weight(now - left.last_access);
     let const right_score = static_cast<double>(right.rank) *
                             recency_weight(now - right.last_access);
     if (left_score != right_score) return left_score > right_score;

@@ -143,7 +143,8 @@ fn print_environment(const ExecContext &ec, EvalContext &cxt) throws -> void
   for (let const &name : os::environment_names()) {
     let display_name = name.view();
     if constexpr (!os::ENVIRONMENT_IS_CASE_SENSITIVE) {
-      let const folded_name = name.view().to_lower_ascii(cxt.scratch_allocator());
+      let const folded_name =
+          name.view().to_lower_ascii(cxt.scratch_allocator());
       if (!printed_names.add(folded_name.view())) continue;
 
       let const exported_spelling =
@@ -176,7 +177,7 @@ fn run_util(Utility::Kind chosen, const ExecContext &ec, EvalContext &cxt,
 }
 
 wontreturn fn rethrow_with_prefix(const ErrorWithLocation &error,
-                                    StringView prefix) throws -> void
+                                  StringView prefix) throws -> void
 {
   let const message = prefix + ": " + error.message();
   if (!error.detail_message().is_empty()) {
@@ -329,8 +330,7 @@ fn read_fd_to_string(os::descriptor fd) throws -> Maybe<String>
 }
 
 fn copy_file_contents(StringView source, StringView destination,
-                      copy_force_mode force_mode) throws
-    -> copy_file_result
+                      copy_force_mode force_mode) throws -> copy_file_result
 {
   let const source_descriptor =
       os::open_file_descriptor(source, os::file_open_mode::Read);
@@ -340,8 +340,7 @@ fn copy_file_contents(StringView source, StringView destination,
   let destination_descriptor =
       os::open_file_descriptor(destination, os::file_open_mode::Truncate);
   if (!destination_descriptor.has_value() &&
-      force_mode == copy_force_mode::Force &&
-      os::remove_file(destination))
+      force_mode == copy_force_mode::Force && os::remove_file(destination))
   {
     destination_descriptor =
         os::open_file_descriptor(destination, os::file_open_mode::Truncate);
@@ -568,8 +567,7 @@ fn SourceBatchReader::fill_readers() throws -> void
              candidate_index++)
         {
           let const candidate = m_sources[candidate_index];
-          if (m_dash_mode == source_dash_mode::TreatAsStdin &&
-              candidate == "-")
+          if (m_dash_mode == source_dash_mode::TreatAsStdin && candidate == "-")
             break;
 
           m_metadata_paths.push(Path{candidate});
@@ -616,13 +614,13 @@ fn SourceBatchReader::fill_readers() throws -> void
       break;
     }
 
-    let const seek_mode =
-        m_kind_mode == source_kind_mode::KnownRegular ||
-                os::descriptor_is_seekable(*descriptor)
-            ? source_seek_mode::Seekable
-            : source_seek_mode::Sequential;
+    let const seek_mode = m_kind_mode == source_kind_mode::KnownRegular ||
+                                  os::descriptor_is_seekable(*descriptor)
+                              ? source_seek_mode::Seekable
+                              : source_seek_mode::Sequential;
     if (probe_mode == source_probe_mode::Nonblocking &&
-        seek_mode == source_seek_mode::Sequential) {
+        seek_mode == source_seek_mode::Sequential)
+    {
       os::close_fd(*descriptor);
       m_defer_mode = source_defer_mode::Deferred;
       break;
@@ -927,7 +925,7 @@ fn parse_strict_count(StringView text) throws -> ErrorOr<u64>
 struct signal_number_comparator
 {
   pure fn operator()(const utils::signal_pair &left,
-                     const utils::signal_pair &right) const wontthrow -> bool
+                     const utils::signal_pair &right) const wontthrow->bool
   {
     return left.number < right.number;
   }
@@ -947,8 +945,7 @@ fn format_signal_list() throws -> String
     }
   }
 
-  let const numbered =
-      steal(collected).make_sorted(signal_number_comparator{});
+  let const numbered = steal(collected).make_sorted(signal_number_comparator{});
 
   let out = String{heap_allocator()};
   for (usize index = 0; index < numbered.count(); index++) {
@@ -1164,7 +1161,9 @@ cold static fn show_soft_koshkit_error(const ExecContext &ec, EvalContext &cxt,
                                        StringView message) throws -> void
 {
   const ErrorWithLocation located{steal(location), message};
-  if (const String *source = cxt.source_store().current_source(); source != nullptr) {
+  if (const String *source = cxt.source_store().current_source();
+      source != nullptr)
+  {
     show_message(located.to_string(source->view(), &cxt));
     return;
   }

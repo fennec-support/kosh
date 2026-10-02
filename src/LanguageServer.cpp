@@ -523,7 +523,8 @@ fn Server::publish_diagnostics(Document &document) throws -> bool
   let const filename = document.path.has_value() ? document.path->text().view()
                                                  : document.uri.view();
   let parser = Parser{
-      Lexer{document.shell_source(), m_ast_arena, filename, m_context.runtime_state().get_mood()}
+      Lexer{document.shell_source(), m_ast_arena, filename,
+            m_context.runtime_state().get_mood()}
   };
   parser.set_analysis_metadata_collection_mode(
       analysis_metadata_collection_mode::Enabled);
@@ -558,10 +559,10 @@ fn Server::publish_diagnostics(Document &document) throws -> bool
             : missing_shebang_policy::Suppress;
     analyze_ast(ast, document.shell_source(), functions, aliases, &m_context, 3,
                 should_silence_unresolved_commands,
-                m_context.runtime_state().get_mood() == mimic_mood::Default, true, suppressions,
-                scopes, directives, heredoc_misses, false, &followed_paths,
-                &source_effects, nullptr, nullptr, true,
-                true, nullptr, &diagnostics, this, &symbol_records, nullptr,
+                m_context.runtime_state().get_mood() == mimic_mood::Default,
+                true, suppressions, scopes, directives, heredoc_misses, false,
+                &followed_paths, &source_effects, nullptr, nullptr, true, true,
+                nullptr, &diagnostics, this, &symbol_records, nullptr,
                 format_document, shebang_policy);
     symbol_records.variable_occurrences.sort(
         [](const variable_occurrence_record &left,
@@ -822,9 +823,9 @@ fn Server::format_document(const JsonValue *id, const JsonValue *params) throws
   let errors = ArrayList<String>{heap_allocator()};
   let formatted = Maybe<String>{};
   if (!document->format.is_host_format) {
-    formatted = format_shell_source(document->normalized_source.view(),
-                                    m_ast_arena, errors, nullptr,
-                                    m_context.arena_store().function_arena(), document->mood);
+    formatted = format_shell_source(
+        document->normalized_source.view(), m_ast_arena, errors, nullptr,
+        m_context.arena_store().function_arena(), document->mood);
   } else {
     let replacements = ArrayList<parser_format_replacement>{heap_allocator()};
     for (let const &fragment : document->format.fragments) {
@@ -1079,7 +1080,8 @@ fn Server::symbol_at(const Document &document,
   let const fragment_index = document.fragment_at(*byte_position);
   if (!fragment_index.has_value()) return None;
   if (document.format.is_host_format) {
-    m_context.runtime_state().set_mood(document.format.fragments[*fragment_index].mood);
+    m_context.runtime_state().set_mood(
+        document.format.fragments[*fragment_index].mood);
     m_context.apply_strictness_for_mood();
   }
   let const[line_start, line_end] = document.get_line_bounds(position.line);
@@ -1549,7 +1551,8 @@ fn Server::command_information(StringView command) throws -> Maybe<String>
   /* A PATH program is what an ordinary command word resolves to, so the
      bundled utility answers only for a name PATH does not hold. */
   if (paths.is_empty()) {
-    if (!m_context.runtime_state().koshkit_utilities_are_reachable()) return None;
+    if (!m_context.runtime_state().koshkit_utilities_are_reachable())
+      return None;
     if (!koshkit::find_util(command).has_value()) return None;
 
     let source = String{"koshkit "};
@@ -1712,9 +1715,9 @@ fn clipped_line_span(StringView text, usize line_limit,
 
 struct reaching_assignment_comparator
 {
-  pure fn operator()(const variable_assignment_record *left,
-                     const variable_assignment_record *right) const
-      wontthrow->bool
+  pure fn
+  operator()(const variable_assignment_record *left,
+             const variable_assignment_record *right) const wontthrow->bool
   {
     return left->position > right->position;
   }

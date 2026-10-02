@@ -64,9 +64,9 @@ fn Dirs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
 
     usize index = 0;
-    if (!parse_directory_stack_rotation(args[1].view(),
-                                        cxt.variable_store().directory_stack().count() + 1,
-                                        operand_locations[1], index))
+    if (!parse_directory_stack_rotation(
+            args[1].view(), cxt.variable_store().directory_stack().count() + 1,
+            operand_locations[1], index))
     {
       throw ErrorWithLocationAndDetails{
           operand_locations[1],

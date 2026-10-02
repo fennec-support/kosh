@@ -83,8 +83,7 @@ public:
 
   SegmentText(Allocator allocator, char prefix, StringView suffix) throws
   {
-    if (suffix.length >= MAXIMUM_TEXT_LENGTH) unlikely
-      throw std::bad_alloc{};
+    if (suffix.length >= MAXIMUM_TEXT_LENGTH) rarely throw std::bad_alloc{};
 
     let const length = suffix.length + 1;
     let const bytes = allocator.alloc_array<char>(length);
@@ -145,8 +144,7 @@ public:
       release();
       return;
     }
-    if (source.length > MAXIMUM_TEXT_LENGTH) unlikely
-      throw std::bad_alloc{};
+    if (source.length > MAXIMUM_TEXT_LENGTH) rarely throw std::bad_alloc{};
 
     /* The source may be a view of this text, so the copy is taken before the
        old bytes are released. */

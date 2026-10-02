@@ -91,8 +91,8 @@ fn Fuser::execute(const ExecContext &ec, EvalContext &cxt,
 
   let queries = ArrayList<os::process_file_query>{allocator};
   let const match_scope = FLAG_FUSER_FILESYSTEM.is_enabled()
-                               ? os::process_file_match_scope::Filesystem
-                               : os::process_file_match_scope::File;
+                              ? os::process_file_match_scope::Filesystem
+                              : os::process_file_match_scope::File;
   i32 status = 0;
   for (usize operand_position = 0; operand_position < operands.count();
        operand_position++)
@@ -108,8 +108,7 @@ fn Fuser::execute(const ExecContext &ec, EvalContext &cxt,
     }
 
     let const &file_status = file_statuses[operand_position];
-    if (!os::process_file_query_is_supported(file_status, match_scope))
-    {
+    if (!os::process_file_query_is_supported(file_status, match_scope)) {
       report_soft_koshkit_util_error(
           ec, cxt, operand_locations[operand_position], args[0].view(),
           "filesystem and directory queries are unsupported on Windows");
@@ -145,7 +144,7 @@ fn Fuser::execute(const ExecContext &ec, EvalContext &cxt,
   if (users.is_empty() && status == 0) status = 1;
   let const sorted_users =
       steal(users).make_sorted([](const os::process_file_user &left,
-                                   const os::process_file_user &right) {
+                                  const os::process_file_user &right) {
         if (left.query_position != right.query_position)
           return left.query_position < right.query_position;
         return left.pid < right.pid;

@@ -600,9 +600,9 @@ enum class process_open_file_detail : u8
 };
 
 fn has_process_open_file_listing() wontthrow -> bool;
-fn list_process_open_files(i64 pid, Allocator allocator,
-                           process_open_file_detail detail =
-                               process_open_file_detail::Basic) throws
+fn list_process_open_files(
+    i64 pid, Allocator allocator,
+    process_open_file_detail detail = process_open_file_detail::Basic) throws
     -> ArrayList<process_open_file>;
 
 fn make_directory(StringView path, u32 mode) wontthrow -> bool;

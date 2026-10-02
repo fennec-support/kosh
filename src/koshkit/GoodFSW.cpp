@@ -98,7 +98,7 @@ struct watched_entry
 struct watched_entry_comparator
 {
   pure fn operator()(const watched_entry &left,
-                     const watched_entry &right) const wontthrow -> bool
+                     const watched_entry &right) const wontthrow->bool
   {
     return left.path.view() < right.path.view();
   }
@@ -135,8 +135,8 @@ pure fn event_style(watch_event event) wontthrow -> StringView
 }
 
 fn append_event_names(String &output, const os::file_status &status,
-                      watch_event event,
-                      goodfsw_color_mode color_mode) throws -> void
+                      watch_event event, goodfsw_color_mode color_mode) throws
+    -> void
 {
   let const should_color = color_mode == goodfsw_color_mode::Colored;
   let event_name = StringView{};
@@ -402,9 +402,8 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
   let recycled_entries = ArrayList<watched_entry>{watch_allocator};
   let output = String{watch_allocator};
 
-  let const color_mode = koshkit_should_color()
-                             ? goodfsw_color_mode::Colored
-                             : goodfsw_color_mode::Plain;
+  let const color_mode = koshkit_should_color() ? goodfsw_color_mode::Colored
+                                                : goodfsw_color_mode::Plain;
 
   bool was_interrupted = false;
   loop

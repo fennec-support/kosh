@@ -1694,7 +1694,8 @@ fn show_report_warnings(const ArrayList<String> &warnings) throws -> void
   if (warnings.is_empty()) return;
 
   print_error("\n");
-  for (let const &warning : warnings) show_warning(warning.view());
+  for (let const &warning : warnings)
+    show_warning(warning.view());
 }
 
 } /* namespace koshka */

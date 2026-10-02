@@ -101,8 +101,9 @@ fn EvalContext::read_redirect_substitution(StringView source) throws
   if (arena_store().parse_arena() == nullptr) return None;
   let const ast_mark = arena_store().parse_arena()->mark();
   defer { arena_store().parse_arena()->release(ast_mark); };
-  let lexer = Lexer{source.substring_of_length(i, source.length - i),
-                    *arena_store().parse_arena(), None, runtime_state().get_mood()};
+  let lexer =
+      Lexer{source.substring_of_length(i, source.length - i),
+            *arena_store().parse_arena(), None, runtime_state().get_mood()};
   Token *name = lexer.next_shell_token();
   if (name == nullptr || name->kind() != Token::Kind::Word) {
     return None;
@@ -161,7 +162,8 @@ fn EvalContext::capture_command_substitution(
   };
 
   let parser = Parser{
-      Lexer{normalized_source.view(), *arena_store().parse_arena(), steal(filename), runtime_state().get_mood()}
+      Lexer{normalized_source.view(), *arena_store().parse_arena(),
+            steal(filename), runtime_state().get_mood()}
   };
   const Expression *ast;
   try {
@@ -178,10 +180,10 @@ fn EvalContext::capture_command_substitution(
   }
   ASSERT(ast != nullptr);
 
-  return run_captured_substitution(
-      ast, normalized_source,
-      call_site != nullptr ? Maybe<SourceLocation>{*call_site}
-                           : Maybe<SourceLocation>{None});
+  return run_captured_substitution(ast, normalized_source,
+                                   call_site != nullptr
+                                       ? Maybe<SourceLocation>{*call_site}
+                                       : Maybe<SourceLocation>{None});
 }
 
 fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
@@ -208,7 +210,8 @@ fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
     if (did_push_source_frame) source_store().source_frames().pop_back();
   };
   let parser = Parser{
-      Lexer{substitution_source.view(), *arena_store().parse_arena(), None, runtime_state().get_mood()}
+      Lexer{substitution_source.view(), *arena_store().parse_arena(), None,
+            runtime_state().get_mood()}
   };
   const Expression *ast;
   try {
@@ -247,8 +250,8 @@ fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
       try {
         relocate_error(error, *location);
       } catch (...) {
-        render_contained_substitution_error(std::current_exception(),
-                                            source_store().current_source()->view());
+        render_contained_substitution_error(
+            std::current_exception(), source_store().current_source()->view());
         throw;
       }
     }
@@ -392,7 +395,8 @@ fn EvalContext::capture_command_substitution(const WordSegment &segment) throws
                                     ? ParseSession::AllocationKind::FunctionBody
                                     : ParseSession::AllocationKind::Syntax;
     let parser = Parser{
-        Lexer{segment.text.view(), *cache_arena, None, runtime_state().get_mood(), allocation_kind}
+        Lexer{segment.text.view(), *cache_arena, None,
+              runtime_state().get_mood(), allocation_kind}
     };
     try {
       cache.substitution_ast = parser.construct_ast();
@@ -420,7 +424,7 @@ fn EvalContext::push_substitution_source_frame(const WordSegment &segment,
                                                StringView origin) throws -> bool
 {
   let const location = segment.get_source_location(
-          source_store().current_location().source_name_index);
+      source_store().current_location().source_name_index);
   if (!location.has_value()) return false;
   return push_substitution_source_frame(*location, origin);
 }
@@ -429,16 +433,17 @@ fn EvalContext::push_substitution_source_frame(const SourceLocation &location,
                                                StringView origin) throws -> bool
 {
   if (!diagnostics_store().source_traces_enabled() ||
-      source_store().current_source() == nullptr ||
-      location.length == 0)
+      source_store().current_source() == nullptr || location.length == 0)
   {
     return false;
   }
 
   source_store().source_frames().push(source_frame{
       String{heap_allocator(), origin},
-      location, source_store().current_source(),
-      source_generation_for(source_store().current_source()), String{heap_allocator()},
+      location,
+      source_store().current_source(),
+      source_generation_for(source_store().current_source()),
+      String{heap_allocator()},
       source_frame_kind::Ordinary
   });
   return true;
@@ -464,9 +469,9 @@ fn EvalContext::run_captured_substitution(
   set_current_source(&source, previous_origin.clone());
   let const did_push_line_base = call_site.has_value();
   if (did_push_line_base) {
-    source_store().substitution_line_bases().push(substitution_line_base{
-        &source, previous_source, *call_site,
-        function_store().call_names().count()});
+    source_store().substitution_line_bases().push(
+        substitution_line_base{&source, previous_source, *call_site,
+                               function_store().call_names().count()});
   }
   defer
   {
@@ -531,7 +536,8 @@ fn EvalContext::run_captured_substitution(
         execution_store().set_shell_is_interactive(false);
         enter_subshell();
         hide_coprocess_descriptors();
-        if (runtime_state().get_mood() == mimic_mood::Bash && !is_shopt_enabled("inherit_errexit"))
+        if (runtime_state().get_mood() == mimic_mood::Bash &&
+            !is_shopt_enabled("inherit_errexit"))
         {
           runtime_state().set_error_exit(false);
         }
@@ -688,7 +694,9 @@ fn EvalContext::run_captured_substitution(
     enter_subshell();
     did_enter_subshell = true;
     hide_coprocess_descriptors();
-    if (runtime_state().get_mood() == mimic_mood::Bash && !is_shopt_enabled("inherit_errexit")) {
+    if (runtime_state().get_mood() == mimic_mood::Bash &&
+        !is_shopt_enabled("inherit_errexit"))
+    {
       runtime_state().set_error_exit(false);
     }
     clear_inherited_exit_trap();
@@ -701,7 +709,8 @@ fn EvalContext::run_captured_substitution(
     }
     if (control_flow_store().has_pending()) {
       if (control_flow_store().pending().kind == control_flow::Kind::Exit)
-        execution_store().set_last_exit_status(static_cast<i32>(control_flow_store().pending().value));
+        execution_store().set_last_exit_status(
+            static_cast<i32>(control_flow_store().pending().value));
       control_flow_store().clear();
     }
     /* The substitution's own EXIT action runs while stdout still points at the
@@ -714,8 +723,7 @@ fn EvalContext::run_captured_substitution(
         error = std::current_exception();
       }
     }
-    if (error)
-      render_contained_substitution_error(error, source.view());
+    if (error) render_contained_substitution_error(error, source.view());
     do_cleanup();
 
     if (drain_context.data != nullptr) {
@@ -783,7 +791,8 @@ fn EvalContext::capture_function_substitution(const WordSegment &segment) throws
                                     ? ParseSession::AllocationKind::FunctionBody
                                     : ParseSession::AllocationKind::Syntax;
     let parser = Parser{
-        Lexer{segment.text.view(), *cache_arena, None, runtime_state().get_mood(), allocation_kind}
+        Lexer{segment.text.view(), *cache_arena, None,
+              runtime_state().get_mood(), allocation_kind}
     };
     try {
       cache.substitution_ast = parser.construct_ast();

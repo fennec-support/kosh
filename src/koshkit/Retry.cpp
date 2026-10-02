@@ -162,7 +162,10 @@ fn Retry::execute(const ExecContext &ec, EvalContext &cxt,
 
   let const saved_terminal_exec = cxt.execution_store().terminal_exec_allowed();
   cxt.execution_store().terminal_exec_allowed() = false;
-  defer { cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec; };
+  defer
+  {
+    cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec;
+  };
 
   for (i64 attempt = 1; attempt <= attempt_limit; attempt++) {
     status = cxt.run_source(source.view(), "retry", ec.source_location(),

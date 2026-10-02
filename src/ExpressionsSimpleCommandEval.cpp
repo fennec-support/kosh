@@ -496,7 +496,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     show_message(redirection_error.to_string(
         source != nullptr ? source->view() : StringView{}, &cxt));
     /* bash reports a redirection failure with status 1 and dash with 2. */
-    let const redirection_status = cxt.runtime_state().is_bash_compatible() ? 1 : 2;
+    let const redirection_status =
+        cxt.runtime_state().is_bash_compatible() ? 1 : 2;
     cxt.execution_store().set_last_exit_status(redirection_status);
     cxt.publish_single_pipe_status(redirection_status);
     return redirection_status;
@@ -652,11 +653,10 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       (program_args[0] == "eval" || program_args[0] == "." ||
        program_args[0] == "source");
   let const is_prefix_assignment_persistent =
-      is_command_special_builtin
-          ? !cxt.runtime_state().is_bash_compatible() ||
-                cxt.runtime_state().is_posix_option_on()
-          : is_source_evaluating_builtin &&
-                cxt.runtime_state().is_posix_option_on();
+      is_command_special_builtin ? !cxt.runtime_state().is_bash_compatible() ||
+                                       cxt.runtime_state().is_posix_option_on()
+                                 : is_source_evaluating_builtin &&
+                                       cxt.runtime_state().is_posix_option_on();
   /* The assignments apply left to right, each committed before the next is
      expanded, so a later value reads an earlier same-line one. */
   let const do_apply_environment_assignment =
@@ -710,7 +710,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
           let const did_overlay_shell_value =
               command_word_function != nullptr || is_source_evaluating_builtin;
           if (did_overlay_shell_value) {
-            if (let const stored = cxt.variable_store().shell_variables().find(name);
+            if (let const stored =
+                    cxt.variable_store().shell_variables().find(name);
                 stored.has_value())
             {
               previous_shell_value =
@@ -719,8 +720,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
             previous_special_definition_location =
                 cxt.special_variable_definition_location(name);
             if (name == "IGNOREEOF" && !previous_ignoreeof_state.has_value()) {
-              previous_ignoreeof_state =
-                  cxt.runtime_state().option_is_enabled(shell_option_id::Ignoreeof);
+              previous_ignoreeof_state = cxt.runtime_state().option_is_enabled(
+                  shell_option_id::Ignoreeof);
             }
             cxt.set_shell_variable(name, expanded_value.view());
           }
@@ -739,7 +740,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
           if (!saved_program_resolver.has_value())
             saved_program_resolver =
                 Maybe<ProgramResolver>{cxt.resolution_store().resolver()};
-          cxt.resolution_store().resolver().assign_path(String{expanded_value.view()});
+          cxt.resolution_store().resolver().assign_path(
+              String{expanded_value.view()});
         }
         if (name == "IFS")
           cxt.variable_store().set_field_separators(expanded_value.view());
@@ -825,9 +827,13 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
 
     /* A command at the tail of the body must not exec the shell in place, since
        the call's cleanup has to run after the body. */
-    let const saved_terminal_exec = cxt.execution_store().terminal_exec_allowed();
+    let const saved_terminal_exec =
+        cxt.execution_store().terminal_exec_allowed();
     cxt.execution_store().terminal_exec_allowed() = false;
-    defer { cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec; };
+    defer
+    {
+      cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec;
+    };
 
     /* The body runs in the mood and diagnostics state the function was defined
        in, so a function defined in bash mood runs bash even after a later set
@@ -837,7 +843,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         command_function_storage.get_definition_info();
     let const needs_state_swap =
         definition_info != nullptr &&
-        (definition_info->defining_runtime.mood != cxt.runtime_state().get_mood() ||
+        (definition_info->defining_runtime.mood !=
+             cxt.runtime_state().get_mood() ||
          definition_info->defining_runtime.warning_level !=
              cxt.runtime_state().get_warning_level() ||
          definition_info->defining_runtime.is_diagnostics_disabled() !=
@@ -866,7 +873,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
        the body opens on, and the call site is already behind the frame. */
     if (cxt.should_run_debug_trap()) {
       let const saved_call_location = cxt.source_store().current_location();
-      let const was_control_flow_pending = cxt.control_flow_store().has_pending();
+      let const was_control_flow_pending =
+          cxt.control_flow_store().has_pending();
 
       cxt.source_store().set_current_location(function_body->source_location());
       cxt.run_named_trap(StringView{"DEBUG", 5});
@@ -970,7 +978,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   } catch (const InterruptErrorWithLocation &) {
     throw;
   } catch (ErrorWithLocation &error) {
-    if (!cxt.runtime_state().is_bash_compatible() || error.is_script_fatal()) throw;
+    if (!cxt.runtime_state().is_bash_compatible() || error.is_script_fatal())
+      throw;
 
     if (!error.was_rendered()) {
       if (let const windowed = window_function_body_error(cxt, error);

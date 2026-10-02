@@ -175,7 +175,8 @@ cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       out += label;
       out.append_repeated(' ', label.count() < 20 ? 20 - label.count() : 0);
       out.push(' ');
-      out += render_limit(limit, block_factor(entry, cxt.runtime_state().get_mood()),
+      out += render_limit(limit,
+                          block_factor(entry, cxt.runtime_state().get_mood()),
                           cxt.scratch_allocator());
       out.push('\n');
     }
@@ -206,9 +207,11 @@ cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (args.count() < 2) {
     LOG(Debug, "ulimit reading the '%s' limit", resource.label);
-    ec.print_to_stdout(render_limit(limit, block_factor(resource, cxt.runtime_state().get_mood()),
-                                    cxt.scratch_allocator()) +
-                       "\n");
+    ec.print_to_stdout(
+        render_limit(limit,
+                     block_factor(resource, cxt.runtime_state().get_mood()),
+                     cxt.scratch_allocator()) +
+        "\n");
     return 0;
   }
 

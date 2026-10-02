@@ -362,8 +362,7 @@ fn capture_program_output(const ArrayList<String> &argv,
 
     if (WaitForSingleObject(process_info.hProcess, 0) == WAIT_OBJECT_0) {
       /* The pipe can report empty just before the final child write arrives. */
-      if (!has_pipe_closed &&
-          WaitForSingleObject(read_end, 1) == WAIT_OBJECT_0)
+      if (!has_pipe_closed && WaitForSingleObject(read_end, 1) == WAIT_OBJECT_0)
         continue;
       break;
     }

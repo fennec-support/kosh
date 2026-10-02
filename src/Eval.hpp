@@ -702,7 +702,8 @@ private:
 class ExecutionStore
 {
 public:
-  explicit ExecutionStore(bool shell_is_interactive, String shell_name) wontthrow
+  explicit ExecutionStore(bool shell_is_interactive,
+                          String shell_name) wontthrow
       : m_shell_name(steal(shell_name)),
         m_shell_is_interactive(shell_is_interactive)
   {}
@@ -768,10 +769,7 @@ public:
   }
 
   fn last_exit_status() wontthrow -> i32 & { return m_last_exit_status; }
-  fn set_last_exit_status(i32 status) wontthrow
-  {
-    m_last_exit_status = status;
-  }
+  fn set_last_exit_status(i32 status) wontthrow { m_last_exit_status = status; }
   pure fn last_exit_status() const wontthrow -> i32
   {
     return m_last_exit_status;
@@ -983,10 +981,9 @@ private:
 class ControlFlowStore
 {
 public:
-  fn request_loop_control(control_flow::Kind kind, i64 level,
-                          usize loop_depth, SourceLocation location,
-                          const String *source, StringView origin) throws
-      -> void
+  fn request_loop_control(control_flow::Kind kind, i64 level, usize loop_depth,
+                          SourceLocation location, const String *source,
+                          StringView origin) throws -> void
   {
     if (loop_depth == 0) return;
     if (static_cast<usize>(level) > loop_depth)
@@ -1091,12 +1088,11 @@ enum class shopt_option_id : u8
 };
 pure fn shopt_option_index(shopt_option_id option) wontthrow -> u8;
 
-inline pure fn RuntimeState::is_shopt_enabled(shopt_option_id option) const
-    wontthrow -> bool
+inline pure fn
+RuntimeState::is_shopt_enabled(shopt_option_id option) const wontthrow -> bool
 {
   let const index = shopt_option_index(option);
-  if (is_shopt_option_overridden(index))
-    return is_shopt_option_enabled(index);
+  if (is_shopt_option_overridden(index)) return is_shopt_option_enabled(index);
   switch (option) {
   case shopt_option_id::PatsubReplacement:
   case shopt_option_id::Progcomp:
@@ -1393,8 +1389,7 @@ public:
     for_each_name([&](StringView name) { out.push_managed(name); });
     return steal(out).make_sorted(sort_order::ascending);
   }
-  fn find_function(StringView name) const wontthrow
-      -> Maybe<const Expression *>
+  fn find_function(StringView name) const wontthrow -> Maybe<const Expression *>
   {
     let const storage = m_definitions.find(name);
     return storage.has_value() ? Maybe<const Expression *>{storage->get_body()}
@@ -1607,7 +1602,10 @@ public:
   {
     return m_last_trap_action_status;
   }
-  fn status_before_return() wontthrow -> i32 & { return m_status_before_return; }
+  fn status_before_return() wontthrow -> i32 &
+  {
+    return m_status_before_return;
+  }
   pure fn status_before_return() const wontthrow -> i32
   {
     return m_status_before_return;
@@ -1821,8 +1819,7 @@ public:
   {
     return m_history_recording_source;
   }
-  fn history_transaction_stack() wontthrow
-      -> ArrayList<ArrayList<String> *> &
+  fn history_transaction_stack() wontthrow -> ArrayList<ArrayList<String> *> &
   {
     return m_history_transaction_stack;
   }
@@ -1831,7 +1828,10 @@ public:
   {
     return m_history_transaction_stack;
   }
-  fn current_location() wontthrow -> SourceLocation & { return m_current_location; }
+  fn current_location() wontthrow -> SourceLocation &
+  {
+    return m_current_location;
+  }
   pure fn current_location() const wontthrow -> const SourceLocation &
   {
     return m_current_location;
@@ -1877,6 +1877,7 @@ public:
   {
     return m_current_source_generation;
   }
+
 private:
   const String *m_current_source{nullptr};
   String m_current_origin{heap_allocator()};
@@ -1904,10 +1905,7 @@ public:
   {
     m_parse_arena = arena;
   }
-  pure fn parse_arena() const wontthrow -> BumpArena *
-  {
-    return m_parse_arena;
-  }
+  pure fn parse_arena() const wontthrow -> BumpArena * { return m_parse_arena; }
   fn set_function_arena(BumpArena *arena) wontthrow -> void
   {
     m_function_arena = arena;
@@ -1927,8 +1925,7 @@ class SubshellStore
 public:
   fn coprocess_read_fd() wontthrow -> i32 & { return m_coprocess_read_fd; }
   fn coprocess_write_fd() wontthrow -> i32 & { return m_coprocess_write_fd; }
-  fn saved_descriptors() wontthrow
-      -> ArrayList<subshell_saved_descriptor> &
+  fn saved_descriptors() wontthrow -> ArrayList<subshell_saved_descriptor> &
   {
     return m_saved_descriptors;
   }
@@ -1950,7 +1947,10 @@ public:
   {
     return m_confined_write_log;
   }
-  fn confined_write_depth() wontthrow -> usize & { return m_confined_write_depth; }
+  fn confined_write_depth() wontthrow -> usize &
+  {
+    return m_confined_write_depth;
+  }
   pure fn confined_write_depth() const wontthrow -> usize
   {
     return m_confined_write_depth;
@@ -2106,11 +2106,10 @@ class EvalContextState
 {
 public:
   EvalContextState(ArrayList<String> positional_params,
-                  bool shell_is_interactive, String shell_name)
+                   bool shell_is_interactive, String shell_name)
       : m_variable_store(steal(positional_params)),
         m_execution_store(shell_is_interactive, steal(shell_name))
-  {
-  }
+  {}
 
   fn scratch_allocator() const wontthrow -> Allocator
   {
@@ -2159,8 +2158,7 @@ public:
   {
     return m_dynamic_runtime_store;
   }
-  pure fn dynamic_runtime_store() const wontthrow
-      -> const DynamicRuntimeStore &
+  pure fn dynamic_runtime_store() const wontthrow -> const DynamicRuntimeStore &
   {
     return m_dynamic_runtime_store;
   }
@@ -2256,6 +2254,7 @@ public:
   {
     return m_job_table;
   }
+
 protected:
   StartupStore m_startup_store{};
   EvaluationMetricsStore m_evaluation_metrics_store{};
@@ -2455,8 +2454,7 @@ public:
     return m_variable_store.shell_variables().find(name).has_value() ||
            m_variable_store.indexed_arrays().find(name).has_value() ||
            m_variable_store.associative_names().contains(name) ||
-           is_exported(name) ||
-           variable_requires_dynamic_lookup(name);
+           is_exported(name) || variable_requires_dynamic_lookup(name);
   }
 
   /* Move the positional parameters out, so a function call saves the caller's
@@ -2539,10 +2537,9 @@ public:
         trap_store().actions().find(StringView{"ERR", 3}).has_value();
 
     let const child_action = trap_store().actions().find(StringView{"CHLD", 4});
-    let const arming =
-        child_action.has_value() && child_action->count() > 0
-            ? os::child_trap_arming::Armed
-            : os::child_trap_arming::Disarmed;
+    let const arming = child_action.has_value() && child_action->count() > 0
+                           ? os::child_trap_arming::Armed
+                           : os::child_trap_arming::Disarmed;
     os::set_child_trap_armed(arming);
   }
   /* A trap a frame installs for itself traces that frame without errtrace. An
@@ -2880,8 +2877,7 @@ public:
       apply_strictness_for_mood();
       return;
     }
-    if (!runtime_state().is_posix_option_on())
-      return;
+    if (!runtime_state().is_posix_option_on()) return;
     runtime_control_store().note_explicit_mood();
     runtime_state().set_mood(mimic_mood::Bash);
     apply_strictness_for_mood();
@@ -2997,7 +2993,8 @@ public:
       runtime_state().set_warning_level(finished.warning_level);
     if (state.diagnostics_mutation_revision !=
         runtime_control_store().diagnostics_mutation_revision())
-      runtime_state().set_diagnostics_disabled(finished.is_diagnostics_disabled());
+      runtime_state().set_diagnostics_disabled(
+          finished.is_diagnostics_disabled());
     if (state.annoying_diagnostics_mutation_revision !=
         runtime_control_store().annoying_diagnostics_mutation_revision())
       runtime_state().set_annoying_diagnostics_enabled(
@@ -3235,7 +3232,6 @@ public:
   /* The granular memory report at exit, requested by --show-memory. */
 
 protected:
-
   /* An indexed array element whose subscript is past the dense limit, held by
      its name and decimal index so a sparse far subscript does not pad a huge
      dense gap. The name still reads as indexed. */

@@ -54,7 +54,8 @@ fn evaluate_one(const ExecContext &ec, EvalContext &cxt, StringView expression,
                 const SourceLocation *expression_base = nullptr) throws -> i32
 {
   let render_source = expression;
-  if (expression_base != nullptr && cxt.source_store().current_source() != nullptr)
+  if (expression_base != nullptr &&
+      cxt.source_store().current_source() != nullptr)
     render_source = cxt.source_store().current_source()->view();
 
   if (let const operator_position =
@@ -285,9 +286,13 @@ fn Calc::execute(const ExecContext &ec, EvalContext &cxt,
   KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
 
   /* calc prints only errors, an unset variable is a calc error instead. */
-  let const were_diagnostics_disabled = cxt.runtime_state().is_diagnostics_disabled();
+  let const were_diagnostics_disabled =
+      cxt.runtime_state().is_diagnostics_disabled();
   cxt.runtime_state().set_diagnostics_disabled(true);
-  defer { cxt.runtime_state().set_diagnostics_disabled(were_diagnostics_disabled); };
+  defer
+  {
+    cxt.runtime_state().set_diagnostics_disabled(were_diagnostics_disabled);
+  };
 
   /* A piped run with no expression keeps the usage error so it does not hang.
    */

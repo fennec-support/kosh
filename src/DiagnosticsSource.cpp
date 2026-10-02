@@ -1191,15 +1191,15 @@ fn check_unassigned_variable_reads(AnalysisContext &actx) throws -> void
   actx.reads_before_assignment.for_each(
       [&collected_reads](StringView name, const SourceLocation &location)
           throws -> void {
-        collected_reads.push(unassigned_read{name, location});
-      });
+            collected_reads.push(unassigned_read{name, location});
+          });
 
   let const reads =
       steal(collected_reads)
-          .make_sorted([](const unassigned_read &left,
-                          const unassigned_read &right) {
-            return left.location.position < right.location.position;
-          });
+          .make_sorted(
+              [](const unassigned_read &left, const unassigned_read &right) {
+                return left.location.position < right.location.position;
+              });
 
   let shell_maintained_variable_names = HashSet{heap_allocator()};
   collect_shell_provided_variable_names(actx, shell_maintained_variable_names);

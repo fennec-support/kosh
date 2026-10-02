@@ -463,7 +463,8 @@ fn find_option_by_name(StringView name) throws -> Maybe<usize>
 fn option_is_available(const EvalContext &cxt,
                        const set_option_descriptor &option) wontthrow -> bool
 {
-  return option.id != shell_option_id::Physical || !cxt.runtime_state().is_posix_mode();
+  return option.id != shell_option_id::Physical ||
+         !cxt.runtime_state().is_posix_mode();
 }
 
 fn option_is_on(const EvalContext &cxt,
@@ -475,17 +476,21 @@ fn option_is_on(const EvalContext &cxt,
     return cxt.runtime_state().option_is_enabled(option.id);
   case set_option_behavior::InteractiveComments:
     return cxt.is_shopt_enabled("interactive_comments");
-  case set_option_behavior::Posix: return cxt.runtime_state().is_posix_option_on();
+  case set_option_behavior::Posix:
+    return cxt.runtime_state().is_posix_option_on();
   case set_option_behavior::Vi:
     return cxt.runtime_state().option_is_enabled(shell_option_id::Vi);
   case set_option_behavior::Emacs:
     return cxt.runtime_state().option_is_enabled(shell_option_id::Emacs);
-  case set_option_behavior::WarningLevel: return cxt.runtime_state().get_warning_level() > 0;
+  case set_option_behavior::WarningLevel:
+    return cxt.runtime_state().get_warning_level() > 0;
   case set_option_behavior::AnnoyingDiagnostics:
     return cxt.runtime_state().is_annoying_diagnostics_enabled();
-  case set_option_behavior::NoDiagnostics: return cxt.runtime_state().is_diagnostics_disabled();
+  case set_option_behavior::NoDiagnostics:
+    return cxt.runtime_state().is_diagnostics_disabled();
   case set_option_behavior::Login: return cxt.startup_store().is_login_shell();
-  case set_option_behavior::Rcfile: return cxt.startup_store().has_custom_rcfile();
+  case set_option_behavior::Rcfile:
+    return cxt.startup_store().has_custom_rcfile();
   }
   unreachable("Unhandled set option behavior");
 }
@@ -761,7 +766,8 @@ fn enabled_shell_option_letters(const EvalContext &cxt) throws -> String
       continue;
     }
     if (option.behavior == set_option_behavior::WarningLevel) {
-      for (u8 warning_level = 0; warning_level < cxt.runtime_state().get_warning_level();
+      for (u8 warning_level = 0;
+           warning_level < cxt.runtime_state().get_warning_level();
            warning_level++)
         letters.push('W');
       continue;
@@ -845,8 +851,9 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     {
       let const value = do_read_option_value(arg);
       if (!value.has_value()) {
-        ec.print_to_stdout(
-            String{cxt.scratch_allocator(), mood_name(cxt.runtime_state().get_mood())} + "\n");
+        ec.print_to_stdout(String{cxt.scratch_allocator(),
+                                  mood_name(cxt.runtime_state().get_mood())} +
+                           "\n");
         continue;
       }
       let const parsed = parse_mood_name(*value);
@@ -868,9 +875,10 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     {
       let const value = do_read_option_value(arg);
       if (!value.has_value()) {
-        ec.print_to_stdout(String{cxt.scratch_allocator(),
-                                  tab_selector_name(cxt.runtime_state().get_tab_selector())} +
-                           "\n");
+        ec.print_to_stdout(
+            String{cxt.scratch_allocator(),
+                   tab_selector_name(cxt.runtime_state().get_tab_selector())} +
+            "\n");
         continue;
       }
       let const parsed = parse_tab_selector_name(*value);
@@ -922,7 +930,8 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       if (cxt.arena_store().parse_arena() == nullptr)
         throw Error{"Unable to source the init moods outside of a parse"};
       let const previous_mood = cxt.runtime_state().get_mood();
-      source_init_moods(cxt, *cxt.arena_store().parse_arena(), moods, cxt.startup_store().is_login_shell(),
+      source_init_moods(cxt, *cxt.arena_store().parse_arena(), moods,
+                        cxt.startup_store().is_login_shell(),
                         cxt.execution_store().shell_is_interactive());
       cxt.runtime_state().set_mood(previous_mood);
       cxt.apply_strictness_for_mood();
@@ -965,8 +974,9 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           break;
         }
         if (letter == 'r') {
-          if (!enable &&
-              cxt.runtime_state().option_is_enabled(shell_option_id::Restricted)) {
+          if (!enable && cxt.runtime_state().option_is_enabled(
+                             shell_option_id::Restricted))
+          {
             throw make_error_for_arg(ec, i,
                                      "Restricted mode cannot be disabled");
           }

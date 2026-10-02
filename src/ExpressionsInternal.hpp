@@ -340,7 +340,8 @@ fn source_command_text(EvalContext &cxt, const SourceLocation &location,
   let const text = cxt.source_text_in_span(location, end_position);
   if (text.length == 0) return do_build_command_text();
 
-  return reprinted_command_text(text, cxt.runtime_state().bash_additions_enabled());
+  return reprinted_command_text(text,
+                                cxt.runtime_state().bash_additions_enabled());
 }
 
 /* The subshell the way bash reprints it, with one blank inside each

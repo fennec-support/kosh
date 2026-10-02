@@ -56,7 +56,8 @@ EvalContext::EvalContext(bool should_disable_path_expansion, bool should_echo,
   runtime_state().set_option(shell_option_id::Histexpand, shell_is_interactive);
   variable_store().set_field_separators(variable_store().field_separators());
 
-  dynamic_runtime_store().shell_start_time() = static_cast<i64>(std::time(nullptr));
+  dynamic_runtime_store().shell_start_time() =
+      static_cast<i64>(std::time(nullptr));
   trap_store().startup_ignored_signals() = os::get_entry_ignored_signals();
 
   os::for_each_environment_name(this, [](opaque *context, StringView name) {
@@ -96,7 +97,8 @@ fn EvalContext::reset_runtime_diagnostic_highlight_cache() wontthrow -> void
 {
   if (diagnostics_store().runtime_diagnostic_highlight_cache() == nullptr)
     return;
-  diagnostics_store().runtime_diagnostic_highlight_cache()
+  diagnostics_store()
+      .runtime_diagnostic_highlight_cache()
       ->~shell_highlight_cache();
   heap_allocator().free_array(
       diagnostics_store().runtime_diagnostic_highlight_cache(), 1);
@@ -115,7 +117,9 @@ fn RuntimeState::restore(EvalContext &context) const wontthrow -> void
 
 fn EvalContext::end_command() wontthrow -> void
 {
-  let const used = arena_store().parse_arena() != nullptr ? arena_store().parse_arena()->bytes_used() : 0;
+  let const used = arena_store().parse_arena() != nullptr
+                       ? arena_store().parse_arena()->bytes_used()
+                       : 0;
   evaluation_metrics_store().end_command(used);
 }
 
@@ -154,15 +158,16 @@ hot fn EvalContext::assign_variable(StringView name, StringView value) throws
   default: break;
   }
 
-  if (environment_store().confined_write_depth() > 0) unlikely {
-    let const previous = variable_store().shell_variables().find(name);
-    let saved = Maybe<String>{};
-    if (previous.has_value()) saved = String{previous->view()};
-    let const saved_definition = special_variable_definition_location(name);
+  if (environment_store().confined_write_depth() > 0) rarely
+    {
+      let const previous = variable_store().shell_variables().find(name);
+      let saved = Maybe<String>{};
+      if (previous.has_value()) saved = String{previous->view()};
+      let const saved_definition = special_variable_definition_location(name);
 
-    environment_store().confined_write_log().push(
-        environment_undo_entry{String{name}, steal(saved), saved_definition});
-  }
+      environment_store().confined_write_log().push(
+          environment_undo_entry{String{name}, steal(saved), saved_definition});
+    }
 
   if (is_field_separator_name) variable_store().set_field_separators(value);
   if (write_dynamic_variable(name, value)) return;
@@ -211,8 +216,10 @@ fn EvalContext::begin_confined_variable_writes() wontthrow -> usize
       environment_store().confined_write_log().count());
 
   if (environment_store().confined_write_depth() == 0) {
-    environment_store().confined_seconds_base() = dynamic_runtime_store().seconds_base();
-    environment_store().confined_random_state() = dynamic_runtime_store().random_state();
+    environment_store().confined_seconds_base() =
+        dynamic_runtime_store().seconds_base();
+    environment_store().confined_random_state() =
+        dynamic_runtime_store().random_state();
     environment_store().was_confined_ignoreeof_enabled() =
         runtime_state().option_is_enabled(shell_option_id::Ignoreeof);
   }
@@ -256,8 +263,10 @@ fn EvalContext::rollback_confined_variable_writes(usize mark) wontthrow -> void
   }
 
   if (environment_store().confined_write_depth() == 0) {
-    dynamic_runtime_store().seconds_base() = environment_store().confined_seconds_base();
-    dynamic_runtime_store().random_state() = environment_store().confined_random_state();
+    dynamic_runtime_store().seconds_base() =
+        environment_store().confined_seconds_base();
+    dynamic_runtime_store().random_state() =
+        environment_store().confined_random_state();
     runtime_state().set_option(
         shell_option_id::Ignoreeof,
         environment_store().was_confined_ignoreeof_enabled());
@@ -270,7 +279,8 @@ fn EvalContext::guard_restricted_path(StringView path,
     -> void
 {
   if (!runtime_state().option_is_enabled(shell_option_id::Restricted) ||
-      !os::has_directory_separator(path)) {
+      !os::has_directory_separator(path))
+  {
     return;
   }
 
@@ -315,26 +325,27 @@ hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
   }
   if (is_bash_directory_stack_special(name)) return;
 
-  if (is_integer_variable(name)) unlikely {
-    let const result = value.length == 0 ? String{scratch_allocator(), "0"}
-                                         : evaluate_arithmetic_text(value);
-    assign_variable(name, result.view());
-    return;
-  }
+  if (is_integer_variable(name)) rarely
+    {
+      let const result = value.length == 0 ? String{scratch_allocator(), "0"}
+                                           : evaluate_arithmetic_text(value);
+      assign_variable(name, result.view());
+      return;
+    }
 
-  if (is_lowercase_variable(name) || is_uppercase_variable(name)) unlikely {
-    let adjusted = String{scratch_allocator(), value};
-    apply_variable_case(name, adjusted);
-    assign_variable(name, adjusted.view());
-    return;
-  }
+  if (is_lowercase_variable(name) || is_uppercase_variable(name)) rarely
+    {
+      let adjusted = String{scratch_allocator(), value};
+      apply_variable_case(name, adjusted);
+      assign_variable(name, adjusted.view());
+      return;
+    }
 
   assign_variable(name, value);
 }
 
-fn EvalContext::seed_shell_identity_variables(shell_identity_mode identity_mode)
-    throws
-    -> void
+fn EvalContext::seed_shell_identity_variables(
+    shell_identity_mode identity_mode) throws -> void
 {
   switch (identity_mode) {
   case shell_identity_mode::Bash: {
@@ -372,7 +383,8 @@ fn EvalContext::seed_shell_identity_variables(shell_identity_mode identity_mode)
 
 fn EvalContext::materialize_kosh_identity() const throws -> Maybe<String>
 {
-  let const identity = utils::kosh_identity(execution_store().get_shell_executable_path());
+  let const identity =
+      utils::kosh_identity(execution_store().get_shell_executable_path());
   if (identity.has_value()) return String{heap_allocator(), *identity};
   return None;
 }
@@ -451,8 +463,8 @@ fn EvalContext::restore_local_binding(local_binding &binding) throws -> void
           binding.name.view());
   }
   if (binding.previous_indexed_array.has_value())
-    variable_store().indexed_arrays().set(binding.name.view(),
-                         steal(*binding.previous_indexed_array));
+    variable_store().indexed_arrays().set(
+        binding.name.view(), steal(*binding.previous_indexed_array));
   else
     variable_store().indexed_arrays().erase(binding.name.view());
   let const was_restricted =
@@ -464,7 +476,7 @@ fn EvalContext::restore_local_binding(local_binding &binding) throws -> void
     runtime_state().set_option(shell_option_id::Restricted, was_restricted);
     if (binding.previous_attributes != 0)
       variable_store().variable_attributes().set(binding.name.view(),
-                                binding.previous_attributes);
+                                                 binding.previous_attributes);
     else
       variable_store().variable_attributes().erase(binding.name.view());
   };
@@ -501,9 +513,8 @@ fn EvalContext::set_indexed_array(StringView name,
       set_bash_directory_stack_element(index, values[index].view());
     return;
   }
-  if (is_lowercase_variable(name) || is_uppercase_variable(name)) unlikely
-    for (let &value : values)
-      apply_variable_case(name, value);
+  if (is_lowercase_variable(name) || is_uppercase_variable(name))
+    rarely for (let &value : values) apply_variable_case(name, value);
   variable_store().shell_variables().erase(name);
   clear_sparse_array(name);
   variable_store().indexed_arrays().set(name, steal(values));
@@ -512,7 +523,8 @@ fn EvalContext::set_indexed_array(StringView name,
 fn EvalContext::publish_pipe_statuses(ArrayList<String> values) throws -> void
 {
   if (is_readonly("PIPESTATUS")) {
-    if (let current = variable_store().indexed_arrays().find("PIPESTATUS"); current.has_value())
+    if (let current = variable_store().indexed_arrays().find("PIPESTATUS");
+        current.has_value())
       *current.value() = steal(values);
 
     return;
@@ -551,14 +563,15 @@ fn EvalContext::append_indexed_array(StringView name,
 {
   if (is_write_discarded_dynamic_variable(name)) return;
 
-  if (let existing = variable_store().indexed_arrays().find(name); existing.has_value()) {
+  if (let existing = variable_store().indexed_arrays().find(name);
+      existing.has_value())
+  {
     LOG(All, "appending %zu elements to the existing array '%.*s'",
         values.count(), static_cast<int>(name.length), name.data);
     if (is_readonly(name))
       throw Error{"Unable to assign '" + name + "' because it is read only"};
-    if (is_lowercase_variable(name) || is_uppercase_variable(name)) unlikely
-      for (let &value : values)
-        apply_variable_case(name, value);
+    if (is_lowercase_variable(name) || is_uppercase_variable(name))
+      rarely for (let &value : values) apply_variable_case(name, value);
     variable_store().shell_variables().erase(name);
     for (let &element : values)
       existing->push(steal(element));
@@ -592,7 +605,8 @@ cold fn EvalContext::show_runtime_warning_at(
     SourceLocation location, StringView message, StringView note,
     bool should_ignore_disabled) wontthrow -> void
 {
-  if (runtime_state().is_diagnostics_disabled() && !should_ignore_disabled) return;
+  if (runtime_state().is_diagnostics_disabled() && !should_ignore_disabled)
+    return;
   let const trace_location = location;
   /* The stamped view may outlive its buffer once the defining command's sources
      are freed, so a windowed resolution swaps in the definition copy's owned
@@ -813,9 +827,10 @@ fn EvalContext::force_unset_shell_variable(StringView name) throws -> void
   unmark_exported(name);
   if (name == "IFS") variable_store().set_field_separators(" \t\n");
   if (utils::environment_name_is_path(name))
-    resolution_store().resolver().assign_path(os::get_environment_variable("PATH"));
+    resolution_store().resolver().assign_path(
+        os::get_environment_variable("PATH"));
   if (name == "IGNOREEOF")
-  runtime_state().set_option(shell_option_id::Ignoreeof, false);
+    runtime_state().set_option(shell_option_id::Ignoreeof, false);
   if (name == "GLOBIGNORE") {
     runtime_state().set_glob_ignore_assigned(false);
     set_shopt_option("dotglob", false);
@@ -891,8 +906,8 @@ fn EvalContext::mark_exported(StringView name) throws -> void
 
   char folded[EXPORTED_NAME_FOLD_BYTES];
   let spill = String{heap_allocator()};
-  store_exported_name(variable_store().exported_names(), fold_exported_name(name, folded, spill),
-                      name);
+  store_exported_name(variable_store().exported_names(),
+                      fold_exported_name(name, folded, spill), name);
 }
 
 fn EvalContext::unmark_exported(StringView name) throws -> void
@@ -904,7 +919,8 @@ fn EvalContext::unmark_exported(StringView name) throws -> void
 
   char folded[EXPORTED_NAME_FOLD_BYTES];
   let spill = String{heap_allocator()};
-  variable_store().exported_names().erase(fold_exported_name(name, folded, spill));
+  variable_store().exported_names().erase(
+      fold_exported_name(name, folded, spill));
 }
 
 fn EvalContext::unexport_shell_variable(StringView name) throws -> void
@@ -931,7 +947,8 @@ fn EvalContext::is_exported(StringView name) const throws -> bool
 
   char folded[EXPORTED_NAME_FOLD_BYTES];
   let spill = String{heap_allocator()};
-  return variable_store().exported_names()
+  return variable_store()
+      .exported_names()
       .find(fold_exported_name(name, folded, spill))
       .has_value();
 }
@@ -964,17 +981,20 @@ fn EvalContext::initialize_bash_argument_arrays(
     let const is_source_frame =
         variable_store().bash_argument_frame_context() != nullptr &&
         variable_store().bash_argument_frame_context()->has_flag(
-                                    BashArgumentFrameFlag::IsSource);
+            BashArgumentFrameFlag::IsSource);
     let const has_source_arguments =
-        is_source_frame && variable_store().bash_argument_frame_context()->has_flag(
-                               BashArgumentFrameFlag::HasSourceArguments);
+        is_source_frame &&
+        variable_store().bash_argument_frame_context()->has_flag(
+            BashArgumentFrameFlag::HasSourceArguments);
     let const uses_source_path = is_source_frame && !has_source_arguments;
     let const argument_count =
-        uses_source_path ? usize{1} : variable_store().positional_params().count();
+        uses_source_path ? usize{1}
+                         : variable_store().positional_params().count();
     values.reserve(argument_count);
     frame_counts.reserve(1);
     if (uses_source_path) {
-      values.push_managed(variable_store().bash_argument_frame_context()->source_path);
+      values.push_managed(
+          variable_store().bash_argument_frame_context()->source_path);
     } else {
       for (let const &argument : variable_store().positional_params())
         values.push_managed(argument.view());
@@ -1046,10 +1066,12 @@ fn EvalContext::append_current_bash_argument_frame() const throws -> void
   let const is_source_frame =
       variable_store().bash_argument_frame_context()->has_flag(
           BashArgumentFrameFlag::IsSource);
-  let const has_source_arguments = variable_store().bash_argument_frame_context()->has_flag(
-      BashArgumentFrameFlag::HasSourceArguments);
+  let const has_source_arguments =
+      variable_store().bash_argument_frame_context()->has_flag(
+          BashArgumentFrameFlag::HasSourceArguments);
   if (is_source_frame && !has_source_arguments) {
-    append_bash_argument_frame(variable_store().bash_argument_frame_context()->source_path);
+    append_bash_argument_frame(
+        variable_store().bash_argument_frame_context()->source_path);
   } else {
     append_bash_argument_frame(variable_store().positional_params());
   }
@@ -1459,7 +1481,8 @@ fn EvalContext::dynamic_array_element_text(
   case DynamicArray::ArgumentCount: {
     unused(dynamic_array_element_count(which));
     ASSERT(variable_store().bash_argument_arrays() != nullptr);
-    let const &frame_counts = variable_store().bash_argument_arrays()->frame_counts;
+    let const &frame_counts =
+        variable_store().bash_argument_arrays()->frame_counts;
     ASSERT(index < frame_counts.count());
     let const storage_index = frame_counts.count() - 1 - index;
     return String::from(frame_counts[storage_index], result_allocator);
@@ -1708,9 +1731,10 @@ fn ExecContext::make_from(const SourceLocation &location, StringView source,
 
       if (!directory_path.is_directory()) {
         let const directory_message = StringView{"The directory '"} +
-                                      directory_path.view() + "' does not exist";
-        throw CommandResolutionErrorWithLocation{
-            resolution_location, directory_message.view()};
+                                      directory_path.view() +
+                                      "' does not exist";
+        throw CommandResolutionErrorWithLocation{resolution_location,
+                                                 directory_message.view()};
       }
 
       directory_operand = String{directory_path.view()};

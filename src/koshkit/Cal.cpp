@@ -188,8 +188,8 @@ fn Cal::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   let output = String{cxt.scratch_allocator()};
-  let const color_mode = koshkit_should_color() ? cal_color_mode::Colored
-                                                : cal_color_mode::Plain;
+  let const color_mode =
+      koshkit_should_color() ? cal_color_mode::Colored : cal_color_mode::Plain;
   let const first_day =
       FLAG_CAL_TODAY.is_enabled() ? week_start::Monday : week_start::Sunday;
   if (month != 0) {

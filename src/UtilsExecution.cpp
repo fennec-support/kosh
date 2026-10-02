@@ -34,7 +34,8 @@ fn set_foreground_program_title(const ArrayList<String> &arguments,
 
   if (!cxt.execution_store().shell_is_interactive() ||
       !cxt.startup_store().startup_finished() ||
-      cxt.execution_store().completion_function_running() || cxt.execution_store().prompt_command_running())
+      cxt.execution_store().completion_function_running() ||
+      cxt.execution_store().prompt_command_running())
   {
     return;
   }
@@ -63,11 +64,11 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
     return execute_builtin(steal(ec), cxt);
   }
 
-  let const can_replace_shell =
-      cxt.execution_store().terminal_exec_allowed() && !cxt.in_subshell() &&
-      !cxt.has_exit_trap() && !cxt.runtime_state().show_exit_code() &&
-      !cxt.runtime_state().stats_enabled() &&
-      !cxt.runtime_state().memory_stats_enabled();
+  let const can_replace_shell = cxt.execution_store().terminal_exec_allowed() &&
+                                !cxt.in_subshell() && !cxt.has_exit_trap() &&
+                                !cxt.runtime_state().show_exit_code() &&
+                                !cxt.runtime_state().stats_enabled() &&
+                                !cxt.runtime_state().memory_stats_enabled();
 
   /* Mimicry runs the script in-process, a background command keeps its fork.
    */
@@ -78,7 +79,8 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
       LOG(Debug, "execute_context mimicking the shell for '%s'",
           ec.program().c_str());
       if (cxt.execution_store().shell_is_interactive() &&
-          os::shell_has_controlling_terminal()) {
+          os::shell_has_controlling_terminal())
+      {
         let command = String{heap_allocator()};
         for (usize index = 0; index < ec.args().count(); index++) {
           if (index > 0) command.push(' ');
@@ -190,8 +192,8 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
 
   /* An interactive foreground command runs in its own process group and holds
      the terminal, so it dies on its own Ctrl-C. */
-  let const is_foreground_job =
-      !is_async && cxt.execution_store().shell_is_interactive() &&
+  let const is_foreground_job = !is_async &&
+                                cxt.execution_store().shell_is_interactive() &&
                                 os::shell_has_controlling_terminal();
 
   let command = String{heap_allocator()};
@@ -257,7 +259,8 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
      offer it as if nothing had happened. The interrupt is therefore raised
      here, which unwinds the spec and turns the key into a cancelled
      completion. */
-  if (foreground_status == 130 && cxt.execution_store().completion_function_running())
+  if (foreground_status == 130 &&
+      cxt.execution_store().completion_function_running())
     os::INTERRUPT_REQUESTED = 1;
   return foreground_status;
 }
@@ -324,7 +327,8 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
 
   if (!is_async && cxt.execution_store().shell_is_interactive() &&
       cxt.startup_store().startup_finished() &&
-      !cxt.execution_store().completion_function_running() && !cxt.execution_store().prompt_command_running())
+      !cxt.execution_store().completion_function_running() &&
+      !cxt.execution_store().prompt_command_running())
   {
     let command = String{cxt.scratch_allocator()};
     for (usize stage = 0; stage < ecs.count(); stage++) {
@@ -575,9 +579,11 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
                     .process_group_id = process_group_id,
                     .bootstrap = has_bootstrap ? &bootstrap : nullptr,
                     .shell_name = cxt.execution_store().get_shell_name(),
-                    .previous_exit_status = cxt.execution_store().last_exit_status(),
+                    .previous_exit_status =
+                        cxt.execution_store().last_exit_status(),
                     .shell_process_id = os::get_shell_process_id(),
-                    .subshell_depth = cxt.execution_store().subshell_depth() + 1,
+                    .subshell_depth =
+                        cxt.execution_store().subshell_depth() + 1,
                     .mood = cxt.runtime_state().get_mood(),
                     .process_group = process_group});
             forked_child = launch.child;
@@ -747,15 +753,17 @@ fn set_quit_context(const EvalContext *context) wontthrow -> void
    other long-lived allocations the arenas do not own. */
 cold fn print_memory_report() wontthrow -> void
 {
-  if (QUIT_CONTEXT != nullptr && QUIT_CONTEXT->arena_store().parse_arena() != nullptr)
-    std::fprintf(stderr,
-                 "AST arena: used %zu, reserved %zu, blocks %zu, destructors "
-                 "%zu of %zu\n",
-                 QUIT_CONTEXT->arena_store().parse_arena()->bytes_used(),
-                 QUIT_CONTEXT->arena_store().parse_arena()->bytes_capacity(),
-                 QUIT_CONTEXT->arena_store().parse_arena()->block_count(),
-                 QUIT_CONTEXT->arena_store().parse_arena()->destructor_count(),
-                 QUIT_CONTEXT->arena_store().parse_arena()->destructor_capacity());
+  if (QUIT_CONTEXT != nullptr &&
+      QUIT_CONTEXT->arena_store().parse_arena() != nullptr)
+    std::fprintf(
+        stderr,
+        "AST arena: used %zu, reserved %zu, blocks %zu, destructors "
+        "%zu of %zu\n",
+        QUIT_CONTEXT->arena_store().parse_arena()->bytes_used(),
+        QUIT_CONTEXT->arena_store().parse_arena()->bytes_capacity(),
+        QUIT_CONTEXT->arena_store().parse_arena()->block_count(),
+        QUIT_CONTEXT->arena_store().parse_arena()->destructor_count(),
+        QUIT_CONTEXT->arena_store().parse_arena()->destructor_capacity());
   if (QUIT_CONTEXT != nullptr) {
     let const stats = QUIT_CONTEXT->function_storage_stats();
     std::fprintf(stderr,
@@ -778,7 +786,8 @@ wontreturn fn quit(i32 code, farewell_policy farewell) throws -> void
   LOG(Info, "quitting with code %d", code);
 
   if (QUIT_CONTEXT != nullptr &&
-      QUIT_CONTEXT->runtime_state().memory_stats_enabled()) {
+      QUIT_CONTEXT->runtime_state().memory_stats_enabled())
+  {
     print_memory_report();
   }
 

@@ -65,15 +65,17 @@ fn Which::execute(const ExecContext &ec, EvalContext &cxt,
         output += "'\n";
       }
     } else if (cxt.function_store().has_functions() &&
-               cxt.function_store().find_function(program_name.view()).has_value())
+               cxt.function_store()
+                   .find_function(program_name.view())
+                   .has_value())
     {
       if (!is_quiet) {
         output += program_name;
         output += '\n';
       }
     } else if (let const kind = search_builtin(program_name.view());
-               kind.has_value() &&
-               !builtin_is_hidden_by_mood(*kind, cxt.runtime_state().get_mood()))
+               kind.has_value() && !builtin_is_hidden_by_mood(
+                                       *kind, cxt.runtime_state().get_mood()))
     {
       if (!is_quiet) {
         output += program_name;

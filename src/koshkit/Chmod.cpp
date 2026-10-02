@@ -49,11 +49,10 @@ static fn change_mode(const ExecContext &ec, EvalContext &cxt, const Path &path,
     return false;
   }
 
-  let const parsed =
-      parse_file_mode(expression, status.mode, os::get_file_creation_mask(),
-                      os::file_type_letter(status.mode) == 'd'
-                          ? file_kind_mode::Directory
-                          : file_kind_mode::Regular);
+  let const parsed = parse_file_mode(
+      expression, status.mode, os::get_file_creation_mask(),
+      os::file_type_letter(status.mode) == 'd' ? file_kind_mode::Directory
+                                               : file_kind_mode::Regular);
   ASSERT(parsed.has_value());
 
   bool did_succeed = true;
@@ -70,9 +69,7 @@ static fn change_mode(const ExecContext &ec, EvalContext &cxt, const Path &path,
     return did_succeed;
 
   let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
-  defer {
-    cxt.expansion_store().scratch_arena().release(directory_scratch);
-  };
+  defer { cxt.expansion_store().scratch_arena().release(directory_scratch); };
   let children =
       os::list_directory_status(path.view(), cxt.scratch_allocator());
   if (!children.has_value()) {
@@ -124,8 +121,7 @@ fn Chmod::execute(const ExecContext &ec, EvalContext &cxt,
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
   let const expression = operands[0].view();
-  if (!parse_file_mode(expression, 0, 0, file_kind_mode::Regular)
-           .has_value()) {
+  if (!parse_file_mode(expression, 0, 0, file_kind_mode::Regular).has_value()) {
     KOSHKIT_REPORT_ERROR_AT(
         operand_locations[0], "invalid mode '" + operands[0] + "'",
         "use one to four octal digits or symbolic clauses such as u+x,g-w");

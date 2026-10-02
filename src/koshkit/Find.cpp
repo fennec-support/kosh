@@ -508,8 +508,8 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
         return 1;
       }
       bool is_depth_out_of_range = false;
-      let const parsed_depth = utils::parse_decimal_i64(
-          args[index + 1].view(), &is_depth_out_of_range);
+      let const parsed_depth = utils::parse_decimal_i64(args[index + 1].view(),
+                                                        &is_depth_out_of_range);
       if (parsed_depth.is_error() || is_depth_out_of_range ||
           parsed_depth.value() < 0)
       {

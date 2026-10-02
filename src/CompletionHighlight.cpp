@@ -70,7 +70,8 @@ static fn first_word_resolves(StringView word, EvalContext &context) throws
   if (context.function_store().find_function(word).has_value()) return true;
   if (context.scope_store().get_alias(word).has_value()) return true;
 
-  let const path_status = context.resolution_store().resolver().get_status(word);
+  let const path_status =
+      context.resolution_store().resolver().get_status(word);
   let const resolves = path_status == ProgramResolver::Status::Runnable;
   LOG(All, "the path search resolves '%.*s' to %s",
       static_cast<int>(word.length), word.data, resolves ? "yes" : "no");
@@ -105,7 +106,8 @@ static fn command_word_prefixes_any(StringView word,
   });
   if (was_found) return true;
 
-  if (context.resolution_store().resolver().command_name_has_prefix(word)) return true;
+  if (context.resolution_store().resolver().command_name_has_prefix(word))
+    return true;
 
   if (context.runtime_state().koshkit_utilities_are_reachable()) {
     for (let const &util_name : koshkit::util_names())
@@ -1362,9 +1364,8 @@ fn internal::scan_highlight_range(
       }
 
       let const decoded =
-          utils::decode_shell_word(
-              word, bump_allocator(HIGHLIGHT_ARENA),
-              utils::shell_word_source_mapping::Record);
+          utils::decode_shell_word(word, bump_allocator(HIGHLIGHT_ARENA),
+                                   utils::shell_word_source_mapping::Record);
       if (word_spans.is_empty() && word_has_erased_directory_separator(word) &&
           !os::has_directory_separator(decoded.text.view()))
       {
@@ -1660,8 +1661,8 @@ fn internal::scan_highlight_range(
       let should_expect_in = false;
       let should_expect_for_variable = false;
       if (Maybe<keyword_spec> spec = HIGHLIGHT_KEYWORDS.find(word);
-          spec.has_value() &&
-          !(spec.value().is_non_posix_only && context.runtime_state().is_posix_mode()))
+          spec.has_value() && !(spec.value().is_non_posix_only &&
+                                context.runtime_state().is_posix_mode()))
       {
         let const &keyword = spec.value();
         switch (keyword.role) {

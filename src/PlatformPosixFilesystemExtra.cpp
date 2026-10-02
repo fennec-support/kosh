@@ -599,8 +599,7 @@ static fn
 populate_linux_volume_identity(ArrayList<mounted_filesystem> &filesystems,
                                const ArrayList<Path> &canonical_sources,
                                StringView directory,
-                               volume_identity_kind kind) throws
-    -> void
+                               volume_identity_kind kind) throws -> void
 {
   let const allocator = heap_allocator();
   let const identity_directory = Path{directory, allocator};
@@ -1070,7 +1069,7 @@ static fn validate_batched_syscall(const batched_syscall &operation) wontthrow
   case batched_syscall_id::LstatAt:
   case batched_syscall_id::StatAt:
     return batch_operation_access::get_directory_descriptor(operation) ==
-                   KOSH_INVALID_FD ||
+                       KOSH_INVALID_FD ||
                    batch_operation_access::get_relative_name(operation) ==
                        nullptr ||
                    batch_operation_access::get_status(operation) == nullptr
@@ -1157,7 +1156,7 @@ execute_batched_syscall_direct(const batched_syscall &operation,
   case batched_syscall_id::LstatAt:
   case batched_syscall_id::StatAt:
 #if defined __linux__
-    {
+  {
     let const stat_flags = batch_operation_access::get_kind(operation) ==
                                    batched_syscall_id::LstatAt
                                ? AT_SYMLINK_NOFOLLOW
@@ -1177,7 +1176,7 @@ execute_batched_syscall_direct(const batched_syscall &operation,
         return;
       }
     }
-    }
+  }
 #else
     result.error_number = ENOTSUP;
 #endif

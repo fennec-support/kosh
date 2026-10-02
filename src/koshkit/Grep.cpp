@@ -385,8 +385,7 @@ public:
                                 ? os::case_sensitivity::Insensitive
                                 : os::case_sensitivity::Sensitive;
     if (!m_has_fast_matcher && (!m_options.is_utf8 || m_is_ascii_pattern)) {
-      if (os::compile_basic_regex(m_options.pattern, m_compiled,
-                                  sensitivity) !=
+      if (os::compile_basic_regex(m_options.pattern, m_compiled, sensitivity) !=
           os::regex_compile_result::Ok)
       {
         return false;
@@ -561,9 +560,7 @@ private:
       case '{':
       case '}':
       case '|': did_fail = true; break;
-      default:
-        did_fail = static_cast<unsigned char>(character) > 0x7f;
-        break;
+      default: did_fail = static_cast<unsigned char>(character) > 0x7f; break;
       }
       if (did_fail) break;
 
@@ -583,8 +580,8 @@ private:
 
     close_fast_segment(segment_start);
     if (m_fast_segments.is_empty()) {
-      m_is_fast_empty_line_only = m_is_fast_start_anchored &&
-                                  m_is_fast_end_anchored && !has_any_gap;
+      m_is_fast_empty_line_only =
+          m_is_fast_start_anchored && m_is_fast_end_anchored && !has_any_gap;
     }
     if (has_leading_gap) m_is_fast_start_anchored = false;
     if (has_trailing_gap) m_is_fast_end_anchored = false;
@@ -593,11 +590,11 @@ private:
   }
 
   fn does_fast_segment_match_at(const grep_fast_segment &segment,
-                                StringView value, usize position) const
-      wontthrow -> bool
+                                StringView value,
+                                usize position) const wontthrow -> bool
   {
-    let const needle = m_fast_bytes.view().substring_of_length(segment.start,
-                                                               segment.length);
+    let const needle =
+        m_fast_bytes.view().substring_of_length(segment.start, segment.length);
     for (usize index = 0; index < segment.length; index++) {
       let const wanted = needle[index];
       if (wanted == '\0') continue;
@@ -614,8 +611,7 @@ private:
   }
 
   fn find_fast_segment(const grep_fast_segment &segment, StringView value,
-                       usize from, usize limit) const wontthrow
-      -> Maybe<usize>
+                       usize from, usize limit) const wontthrow -> Maybe<usize>
   {
     if (limit < from || limit - from < segment.length) {
       return None;
@@ -688,9 +684,8 @@ private:
   {
     let const pattern = m_options.pattern;
     if (m_should_use_literal_search || m_has_fast_matcher ||
-        m_options.should_ignore_case ||
-        pattern.length < 4 || pattern[0] != '^' ||
-        pattern[pattern.length - 1] != '$' ||
+        m_options.should_ignore_case || pattern.length < 4 ||
+        pattern[0] != '^' || pattern[pattern.length - 1] != '$' ||
         pattern.find_character('\0').has_value() ||
         pattern.find_character('\n').has_value())
     {
@@ -809,9 +804,7 @@ private:
                  : value.find_substring(m_options.pattern).has_value();
     }
 
-    if (m_has_fast_matcher &&
-        (!m_has_utf8_wildcard || is_ascii_line(value)))
-    {
+    if (m_has_fast_matcher && (!m_has_utf8_wildcard || is_ascii_line(value))) {
       return match_fast_line(value);
     }
 

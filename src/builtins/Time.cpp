@@ -61,7 +61,10 @@ cold fn Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
      run and restored after. */
   let const saved_terminal_exec = cxt.execution_store().terminal_exec_allowed();
   cxt.execution_store().terminal_exec_allowed() = false;
-  defer { cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec; };
+  defer
+  {
+    cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec;
+  };
 
   let const start_nanos = os::monotonic_nanos();
 
@@ -81,10 +84,11 @@ cold fn Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const user_cpu = user_after - user_before;
   let const system_cpu = system_after - system_before;
 
-  let const layout =
-      FLAG_TIME_POSIX.is_enabled() ? utils::time_report_layout::Posix
-      : cxt.runtime_state().is_bash_compatible()   ? utils::time_report_layout::Bash
-                                   : utils::time_report_layout::Rich;
+  let const layout = FLAG_TIME_POSIX.is_enabled()
+                         ? utils::time_report_layout::Posix
+                     : cxt.runtime_state().is_bash_compatible()
+                         ? utils::time_report_layout::Bash
+                         : utils::time_report_layout::Rich;
 
   let const time_format = cxt.get_variable_value("TIMEFORMAT");
   let const report = utils::format_time_report(

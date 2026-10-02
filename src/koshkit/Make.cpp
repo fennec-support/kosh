@@ -787,7 +787,8 @@ static fn lookup_make_variable(EvalContext &cxt, const makefile &mk,
       do_use_stored(*variable);
       return lookup;
     }
-    lookup.set_borrowed_value(cxt.execution_store().get_shell_executable_path());
+    lookup.set_borrowed_value(
+        cxt.execution_store().get_shell_executable_path());
     lookup.origin = make_variable_origin::Default;
     lookup.flavor = make_variable_flavor::Recursive;
     return lookup;
@@ -1351,10 +1352,10 @@ evaluate_make_function(EvalContext &cxt, makefile &mk, StringView function_name,
   }
   case make_function_kind::Sort: {
     let const source = do_expand(0);
-    let const words =
-        split_word_views(source.view(), allocator)
-            .make_sorted(
-                [](StringView left, StringView right) { return left < right; });
+    let const words = split_word_views(source.view(), allocator)
+                          .make_sorted([](StringView left, StringView right) {
+                            return left < right;
+                          });
     let result = String{allocator};
     bool has_word = false;
     for (usize word_index = 0; word_index < words.count(); word_index++) {

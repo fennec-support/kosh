@@ -51,7 +51,8 @@ fn Readonly::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let out = String{cxt.scratch_allocator()};
 
       for (let const &name : cxt.function_store().sorted_readonly_names()) {
-        if (const String *source = cxt.function_store().find_source(name.view());
+        if (const String *source =
+                cxt.function_store().find_source(name.view());
             source != nullptr && !source->is_empty())
         {
           out.append(source->view());

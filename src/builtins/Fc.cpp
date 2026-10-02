@@ -256,7 +256,9 @@ static fn execute_fc_command(const ExecContext &ec, EvalContext &cxt,
     return report_fc_selection_error(ec, cxt, location, selection.error);
   }
 
-  if (cxt.runtime_state().is_posix_option_on() && operand_position + 1 < args.count()) {
+  if (cxt.runtime_state().is_posix_option_on() &&
+      operand_position + 1 < args.count())
+  {
     report_soft_builtin_error(ec, cxt, operand_locations[operand_position + 1],
                               "too many arguments");
     return 1;
@@ -349,9 +351,13 @@ static fn edit_fc_commands(const ExecContext &ec, EvalContext &cxt,
 
   i32 editor_status = 1;
   {
-    let const saved_terminal_exec = cxt.execution_store().terminal_exec_allowed();
+    let const saved_terminal_exec =
+        cxt.execution_store().terminal_exec_allowed();
     cxt.execution_store().terminal_exec_allowed() = false;
-    defer { cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec; };
+    defer
+    {
+      cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec;
+    };
     editor_status = cxt.run_source(
         editor_command.view(), "fc editor", ec.source_location(),
         StringView{"fc"}, nullptr, nullptr, return_handling::Propagate);
@@ -384,7 +390,8 @@ static fn edit_fc_commands(const ExecContext &ec, EvalContext &cxt,
       cxt.arena_store().parse_arena()->release(ast_mark);
     };
     let parser = Parser{
-        Lexer{edited->view(), *cxt.arena_store().parse_arena(), None, cxt.runtime_state().get_mood()}
+        Lexer{edited->view(), *cxt.arena_store().parse_arena(), None,
+              cxt.runtime_state().get_mood()}
     };
     unused(parser.construct_ast());
   }
@@ -456,9 +463,8 @@ fn Fc::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let const &events = read_events.value();
-  let const active_index =
-      active_event_index(events,
-                         cxt.source_store().get_current_history_event_number());
+  let const active_index = active_event_index(
+      events, cxt.source_store().get_current_history_event_number());
 
   if (options.should_execute)
     return execute_fc_command(ec, cxt, args, operand_locations, events,

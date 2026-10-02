@@ -808,7 +808,8 @@ fn append_long_string_warnings(StringView source,
         SourceLocation{piece.source_position, piece.text.count(),
                        source_name_index},
         "Unbreakable word exceeds 78 columns; consider making it shorter or "
-        "splitting it"};
+        "splitting it"
+    };
     warnings.push(warning.to_string(source, nullptr));
   }
 }
@@ -1564,7 +1565,7 @@ fn render_format_pieces(const ArrayList<format_piece> &pieces,
         writer.append_token(text);
         continue;
       }
-      fallthrough;
+      fallthru;
     case format_operator::Continuation:
       do_close_test();
       writer.append_token(text);

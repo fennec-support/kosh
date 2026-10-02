@@ -641,10 +641,11 @@ fn collect_process_cgroup_snapshot(Allocator allocator,
 
   let current_unsorted =
       os::enumerate_processes(os::process_detail::ResourceStats);
-  let const current = steal(current_unsorted).make_sorted(
-      [](const os::process_entry &left, const os::process_entry &right) {
-        return left.pid < right.pid;
-      });
+  let const current = steal(current_unsorted)
+                          .make_sorted([](const os::process_entry &left,
+                                          const os::process_entry &right) {
+                            return left.pid < right.pid;
+                          });
   for (let &candidate : snapshot) {
     usize lower = 0;
     usize upper = current.count();
@@ -1033,9 +1034,9 @@ fn append_remote_report(String &output, bool should_color,
       detail == eviliso_detail_mode::All
           ? os::network_socket_process_mode::WithProcesses
           : os::network_socket_process_mode::WithoutProcesses);
-  let const sorted_sockets = steal(sockets).make_sorted(
-      [](const os::network_socket_entry &left,
-         const os::network_socket_entry &right) {
+  let const sorted_sockets =
+      steal(sockets).make_sorted([](const os::network_socket_entry &left,
+                                    const os::network_socket_entry &right) {
         if (left.peer_address != right.peer_address) {
           return left.peer_address < right.peer_address;
         }
@@ -1613,13 +1614,14 @@ fn append_container_report(String &output, bool should_color,
   table.add_column("CONTAINER", report_table_alignment::Left,
                    colors::ansi::BOLD_CYAN);
   if (detail != eviliso_detail_mode::All) {
-    let const sorted_summary_rows = steal(summary_rows).make_sorted(
-        [](const container_summary_row &left,
-           const container_summary_row &right) {
-          if (left.runtime != right.runtime)
-            return left.runtime < right.runtime;
-          return left.identifier < right.identifier;
-        });
+    let const sorted_summary_rows =
+        steal(summary_rows)
+            .make_sorted([](const container_summary_row &left,
+                            const container_summary_row &right) {
+              if (left.runtime != right.runtime)
+                return left.runtime < right.runtime;
+              return left.identifier < right.identifier;
+            });
     table.add_column("PROCESSES", report_table_alignment::Right,
                      colors::ansi::BOLD_CYAN);
     for (let const &row : sorted_summary_rows) {
@@ -1631,17 +1633,18 @@ fn append_container_report(String &output, bool should_color,
       table.add_row(cells);
     }
   } else {
-    let const sorted_detail_rows = steal(detail_rows).make_sorted(
-        [](const container_detail_row &left,
-           const container_detail_row &right) {
-          if (left.runtime != right.runtime)
-            return left.runtime < right.runtime;
-          if (left.identifier != right.identifier)
-            return left.identifier < right.identifier;
-          if (left.process_id_value != right.process_id_value)
-            return left.process_id_value < right.process_id_value;
-          return left.cgroup < right.cgroup;
-        });
+    let const sorted_detail_rows =
+        steal(detail_rows)
+            .make_sorted([](const container_detail_row &left,
+                            const container_detail_row &right) {
+              if (left.runtime != right.runtime)
+                return left.runtime < right.runtime;
+              if (left.identifier != right.identifier)
+                return left.identifier < right.identifier;
+              if (left.process_id_value != right.process_id_value)
+                return left.process_id_value < right.process_id_value;
+              return left.cgroup < right.cgroup;
+            });
     table.add_column("PID", report_table_alignment::Right,
                      colors::ansi::BOLD_CYAN);
     table.add_column("NAME", report_table_alignment::Left,

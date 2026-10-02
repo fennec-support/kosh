@@ -340,9 +340,8 @@ fn GoodNode::execute(
     return report_usage_error(ec, cxt, args[0].view());
   }
 
-  let const color_mode = koshkit_should_color()
-                             ? goodnode_color_mode::Colored
-                             : goodnode_color_mode::Plain;
+  let const color_mode = koshkit_should_color() ? goodnode_color_mode::Colored
+                                                : goodnode_color_mode::Plain;
   let const verification = FLAG_GOODNODE_VERIFY.is_enabled()
                                ? goodnode_verification_mode::Verify
                                : goodnode_verification_mode::Skip;

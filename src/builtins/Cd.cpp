@@ -306,7 +306,8 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let operand_location = ec.arg_location_at(operand_index);
   let raw_operand = arg_path.view();
   if (operand_index < ec.arg_locations().count()) {
-    if (let const source = cxt.source_store().current_source(); source != nullptr)
+    if (let const source = cxt.source_store().current_source();
+        source != nullptr)
       if (let source_text = operand_location.get_source_text(source->view()))
         raw_operand = *source_text;
   }

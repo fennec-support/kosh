@@ -356,10 +356,10 @@ private:
 
 template <typename Collector>
 static fn
-collect_command_names(StringView token, EvalContext &context, Collector &collector,
+collect_command_names(StringView token, EvalContext &context,
+                      Collector &collector,
                       const ArrayList<StringView> *extra_command_names,
-                      command_match_mode match_mode) throws
-    -> void
+                      command_match_mode match_mode) throws -> void
 {
   let const token_is_glob = match_mode == command_match_mode::Glob;
   let const is_case_sensitive = utils::token_has_uppercase(token);
@@ -415,11 +415,12 @@ collect_command_names(StringView token, EvalContext &context, Collector &collect
   context.function_store().for_each_name(do_add);
   context.scope_store().for_each_alias_name(do_add);
 
-  let const &path_names = context.resolution_store().resolver().get_command_names(
-      token_is_glob ? StringView{} : normalized_path_token.view(),
-      token_is_glob || token.is_empty()
-          ? ProgramResolver::ValidationScope::All
-          : ProgramResolver::ValidationScope::Prefix);
+  let const &path_names =
+      context.resolution_store().resolver().get_command_names(
+          token_is_glob ? StringView{} : normalized_path_token.view(),
+          token_is_glob || token.is_empty()
+              ? ProgramResolver::ValidationScope::All
+              : ProgramResolver::ValidationScope::Prefix);
   if (!token_is_glob &&
       (!token.is_empty() || collector.wants_empty_token_listing()))
   {
@@ -439,10 +440,10 @@ collect_command_names(StringView token, EvalContext &context, Collector &collect
   }
 }
 
-static fn complete_command_name_prefix(
-    StringView token, EvalContext &context,
-    const ArrayList<StringView> *extra_command_names,
-    command_match_mode match_mode) throws
+static fn
+complete_command_name_prefix(StringView token, EvalContext &context,
+                             const ArrayList<StringView> *extra_command_names,
+                             command_match_mode match_mode) throws
     -> GhostPrefixCollector
 {
   let collector =
@@ -469,10 +470,9 @@ static fn compute_longest_common_prefix(const ArrayList<String> &candidates,
                 first.substring_of_length(0, prefix_length)};
 }
 
-fn complete_command_names(
-    StringView token, EvalContext &context,
-    const ArrayList<StringView> *extra_command_names,
-    command_match_mode match_mode) throws
+fn complete_command_names(StringView token, EvalContext &context,
+                          const ArrayList<StringView> *extra_command_names,
+                          command_match_mode match_mode) throws
     -> ArrayList<String>
 {
   let collector = CommandListCollector{};
@@ -588,11 +588,13 @@ check_filesystem_entry(const filesystem_listing &listing,
   return eligible_filesystem_entry{is_directory};
 }
 
-static fn build_filesystem_candidate(
-    StringView directory_part, StringView raw_directory_part, StringView name,
-    bool is_directory, StringView raw_token,
-    const utils::decoded_shell_word &decoded_word,
-    directory_suffix_mode suffix_mode, path_text_mode text_mode) throws -> String
+static fn
+build_filesystem_candidate(StringView directory_part,
+                           StringView raw_directory_part, StringView name,
+                           bool is_directory, StringView raw_token,
+                           const utils::decoded_shell_word &decoded_word,
+                           directory_suffix_mode suffix_mode,
+                           path_text_mode text_mode) throws -> String
 {
   let const inside_quote = text_mode == path_text_mode::Literal;
   let const preserve_directory_spelling = raw_directory_part != directory_part;
@@ -796,24 +798,22 @@ static fn complete_filesystem_with(
       decoded_storage = utils::decode_shell_word(token, completion_allocator());
     decoded = &decoded_storage;
   }
-  collect_filesystem_matches(token, *decoded, base_directory, context, collector,
-                             text_mode, filter, suffix_mode);
+  collect_filesystem_matches(token, *decoded, base_directory, context,
+                             collector, text_mode, filter, suffix_mode);
 
   return collector;
 }
 
-static fn
-complete_filesystem(StringView token, const Path &base_directory,
-                    EvalContext &context,
-                    const utils::decoded_shell_word *decoded = nullptr,
-                    path_text_mode text_mode = path_text_mode::ShellSyntax,
-                    filesystem_entry_filter filter = filesystem_entry_filter::All)
-    throws
+static fn complete_filesystem(
+    StringView token, const Path &base_directory, EvalContext &context,
+    const utils::decoded_shell_word *decoded = nullptr,
+    path_text_mode text_mode = path_text_mode::ShellSyntax,
+    filesystem_entry_filter filter = filesystem_entry_filter::All) throws
     -> ArrayList<String>
 {
   let collector = complete_filesystem_with<CommandListCollector>(
-      token, base_directory, context, CommandListCollector{}, decoded, text_mode,
-      filter, directory_suffix_mode::Marked);
+      token, base_directory, context, CommandListCollector{}, decoded,
+      text_mode, filter, directory_suffix_mode::Marked);
   return collector.take();
 }
 
@@ -858,8 +858,8 @@ static fn complete_filesystem_prefix(
 {
   return complete_filesystem_with<GhostPrefixCollector>(
       token, base_directory, context,
-      GhostPrefixCollector{GhostPrefixCollector::Selection::FirstMatch}, decoded,
-      text_mode, filter, directory_suffix_mode::Marked);
+      GhostPrefixCollector{GhostPrefixCollector::Selection::FirstMatch},
+      decoded, text_mode, filter, directory_suffix_mode::Marked);
 }
 
 /* Only the trailing component is globbed. */
@@ -1272,7 +1272,8 @@ fn complete(StringView line, usize cursor, EvalContext &context,
   let should_close_generated_prefix_quote = false;
   let should_ignore_common_prefix_case = false;
 
-  let const is_posix_completion = context.runtime_state().get_mood() == mimic_mood::Posix;
+  let const is_posix_completion =
+      context.runtime_state().get_mood() == mimic_mood::Posix;
 
   if (token_is_variable(open_quote_content_token) && is_leading_variable_active)
   {
@@ -1302,10 +1303,10 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       candidates.clear();
       candidates.push(steal(joined));
     } else if (is_command && !token_has_path_separator) {
-      candidates = complete_command_names(
-          stage_token,
-          context, extra_command_names,
-          token_is_glob ? command_match_mode::Glob : command_match_mode::Prefix);
+      candidates =
+          complete_command_names(stage_token, context, extra_command_names,
+                                 token_is_glob ? command_match_mode::Glob
+                                               : command_match_mode::Prefix);
       should_rebuild_shell_syntax_candidates = true;
     }
   } else if (is_command && !token_has_path_separator) {
@@ -1317,10 +1318,10 @@ fn complete(StringView line, usize cursor, EvalContext &context,
         should_ignore_common_prefix_case =
             !stage_token.is_empty() && !token_is_glob &&
             !utils::token_has_uppercase(stage_token);
-        candidates = complete_command_names(
-            stage_token, context, extra_command_names,
-            token_is_glob ? command_match_mode::Glob
-                          : command_match_mode::Prefix);
+        candidates =
+            complete_command_names(stage_token, context, extra_command_names,
+                                   token_is_glob ? command_match_mode::Glob
+                                                 : command_match_mode::Prefix);
       } else {
         let collector = complete_command_name_prefix(
             stage_token, context, extra_command_names,
@@ -1380,9 +1381,9 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       should_ignore_common_prefix_case =
           !basename.is_empty() && (!os::FILESYSTEM_IS_CASE_SENSITIVE ||
                                    !utils::token_has_uppercase(basename));
-      candidates = complete_filesystem(
-          token, base_directory, context, &decoded_token,
-          path_text_mode::ShellSyntax, filesystem_filter);
+      candidates =
+          complete_filesystem(token, base_directory, context, &decoded_token,
+                              path_text_mode::ShellSyntax, filesystem_filter);
       should_close_generated_prefix_quote = decoded_token.quote_character == 0;
     } else if (!decoded_token.text.is_empty()) {
       /* A token ending in a slash names a directory the ghost has not read yet,
@@ -1411,9 +1412,8 @@ fn complete(StringView line, usize cursor, EvalContext &context,
 
       usize kept_count = 0;
       for (usize i = 0; i < sorted_candidates.count(); i++) {
-        if (kept_count > 0 &&
-            sorted_candidates[kept_count - 1].view() ==
-                sorted_candidates[i].view())
+        if (kept_count > 0 && sorted_candidates[kept_count - 1].view() ==
+                                  sorted_candidates[i].view())
         {
           continue;
         }

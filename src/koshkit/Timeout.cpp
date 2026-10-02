@@ -99,8 +99,7 @@ static fn wait_for_process_until(os::process child, os::process process_group,
 
       let const remaining_nanos = timeout_nanos - elapsed_nanos;
       let const poll_nanos = has_child_exited ? u64{10000000} : u64{1000000};
-      sleep_nanos =
-          remaining_nanos < poll_nanos ? remaining_nanos : poll_nanos;
+      sleep_nanos = remaining_nanos < poll_nanos ? remaining_nanos : poll_nanos;
     }
     os::sleep_for_seconds(static_cast<f64>(sleep_nanos) / 1000000000.0);
   }

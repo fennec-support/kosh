@@ -299,7 +299,7 @@ fn execute_regex(compiled_regex &compiled,
 
   let const execute_flags =
       options.start_position == regex_start_position::NotBeginning ? REG_NOTBOL
-                                                                    : 0;
+                                                                   : 0;
   const int match_result = regexec(&compiled.re, subject_text.c_str(),
                                    group_count, matches.begin(), execute_flags);
 
@@ -457,9 +457,9 @@ targetisa("crc32")
 #else
 targetisa("sse4.2")
 #endif
-pure fn crc32c_update_sse42_streams(u32 crc, const u8 *data, usize block_length,
-                                    const crc32c_shift_table &table) wontthrow
-    -> u32
+    pure fn
+    crc32c_update_sse42_streams(u32 crc, const u8 *data, usize block_length,
+                                const crc32c_shift_table &table) wontthrow->u32
 {
   u64 middle_crc = 0;
   u64 last_crc = 0;
@@ -486,8 +486,8 @@ targetisa("crc32")
 #else
 targetisa("sse4.2")
 #endif
-pure fn crc32c_update_sse42(u32 crc, const u8 *data, usize length) wontthrow
-    -> u32
+    pure fn
+    crc32c_update_sse42(u32 crc, const u8 *data, usize length) wontthrow->u32
 {
   while (length >= 3 * CRC32C_LONG_BLOCK_LENGTH) {
     crc = crc32c_update_sse42_streams(crc, data, CRC32C_LONG_BLOCK_LENGTH,
@@ -529,10 +529,9 @@ fn is_x86_sse42_available() wontthrow -> bool
 #endif
 
 #if defined __aarch64__ || defined __arm64__ || defined _M_ARM64
-targetisa("+crc") pure
-    fn crc32c_update_acle_streams(u32 crc, const u8 *data, usize block_length,
-                                  const crc32c_shift_table &table) wontthrow
-    -> u32
+targetisa("+crc") pure fn
+    crc32c_update_acle_streams(u32 crc, const u8 *data, usize block_length,
+                               const crc32c_shift_table &table) wontthrow->u32
 {
   u32 middle_crc = 0;
   u32 last_crc = 0;
@@ -552,9 +551,8 @@ targetisa("+crc") pure
   return shift_crc32c(table, crc) ^ last_crc;
 }
 
-targetisa("+crc") pure fn crc32c_update_acle(u32 crc, const u8 *data,
-                                                   usize length) wontthrow
-    -> u32
+targetisa("+crc") pure fn
+    crc32c_update_acle(u32 crc, const u8 *data, usize length) wontthrow->u32
 {
   while (length >= 3 * CRC32C_LONG_BLOCK_LENGTH) {
     crc = crc32c_update_acle_streams(crc, data, CRC32C_LONG_BLOCK_LENGTH,

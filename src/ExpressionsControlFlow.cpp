@@ -670,8 +670,8 @@ fn SelectLoop::evaluate_status_impl(EvalContext &cxt) const throws
   cxt.execution_store().terminal_exec_allowed() = false;
   cxt.source_store().set_current_location(source_location());
 
-  let const values =
-      m_has_in_clause ? cxt.process_args(m_words) : cxt.variable_store().positional_params();
+  let const values = m_has_in_clause ? cxt.process_args(m_words)
+                                     : cxt.variable_store().positional_params();
 
   /* The header is announced once before the menu, and an empty word list still
      announces it. */
@@ -807,12 +807,13 @@ hot fn ForLoop::evaluate_status_impl(EvalContext &cxt) const throws
   }
 
   cxt.source_store().set_current_location(source_location());
-  let const values =
-      m_has_in_clause ? cxt.process_args(m_words) : cxt.variable_store().positional_params();
+  let const values = m_has_in_clause ? cxt.process_args(m_words)
+                                     : cxt.variable_store().positional_params();
 
   /* The default mood scopes the loop variable so the name does not leak, while
      the bash and posix moods leave it set. */
-  let const scope_variable = !(cxt.runtime_state().is_bash_compatible() || cxt.runtime_state().is_posix_mode());
+  let const scope_variable = !(cxt.runtime_state().is_bash_compatible() ||
+                               cxt.runtime_state().is_posix_mode());
   Maybe<String> saved_value =
       scope_variable ? cxt.get_variable_value(m_variable_name) : None;
   defer
@@ -1119,10 +1120,9 @@ fn CaseClause::evaluate_status_impl(EvalContext &cxt) const throws
   let const charset = cxt.get_glob_charset_for(subject.view());
   let const is_case_insensitive = cxt.is_shopt_enabled("nocasematch");
   let const folded_subject =
-      is_case_insensitive
-          ? utils::lowercase_for_glob(subject.view(), charset,
-                                      cxt.scratch_allocator())
-          : String{cxt.scratch_allocator()};
+      is_case_insensitive ? utils::lowercase_for_glob(subject.view(), charset,
+                                                      cxt.scratch_allocator())
+                          : String{cxt.scratch_allocator()};
 
   let const do_arm_matches = [&](const case_item &item) throws -> bool {
     for (let const pattern_token : item.patterns) {

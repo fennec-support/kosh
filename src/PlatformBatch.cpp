@@ -82,7 +82,8 @@ fn batch_operation::lstat_at(descriptor directory, const char *name,
   operation.m_primary.input_buffer = name;
   operation.m_secondary.status = &status;
 #if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
-  operation.byte_offset = static_cast<u64>(reinterpret_cast<uintptr_t>(directory));
+  operation.byte_offset =
+      static_cast<u64>(reinterpret_cast<uintptr_t>(directory));
 #else
   operation.byte_offset = static_cast<u64>(directory);
 #endif
@@ -97,7 +98,8 @@ fn batch_operation::stat_at(descriptor directory, const char *name,
   operation.m_primary.input_buffer = name;
   operation.m_secondary.status = &status;
 #if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
-  operation.byte_offset = static_cast<u64>(reinterpret_cast<uintptr_t>(directory));
+  operation.byte_offset =
+      static_cast<u64>(reinterpret_cast<uintptr_t>(directory));
 #else
   operation.byte_offset = static_cast<u64>(directory);
 #endif
@@ -256,7 +258,8 @@ static fn find_canonical_operation_positions(
         static_cast<u64>(
             batch_internal::batch_operation_access::get_kind(operation)) *
         0x9e3779b97f4a7c15ull;
-    let const *path = batch_internal::batch_operation_access::get_path(operation);
+    let const *path =
+        batch_internal::batch_operation_access::get_path(operation);
     u64 request_hash = kind_hash;
     if (path != nullptr) {
       request_hash ^= hash_bytes(path->text().view());
@@ -274,8 +277,7 @@ static fn find_canonical_operation_positions(
       request_hash ^= static_cast<u64>(directory);
 #endif
     }
-    usize bucket =
-        static_cast<usize>(request_hash) & (bucket_count - 1);
+    usize bucket = static_cast<usize>(request_hash) & (bucket_count - 1);
     loop
     {
       let const existing_position = buckets[bucket];

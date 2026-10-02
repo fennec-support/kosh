@@ -66,8 +66,7 @@ fn Chgrp::execute(const ExecContext &ec, EvalContext &cxt,
     if (!utils::change_path_ownership(
             ec, cxt, "chgrp",
             Path{operands[index].view(), cxt.scratch_allocator()}, -1,
-            *group_id,
-            FLAG_CHGRP_COMMAND_LINE_FOLLOW.position(),
+            *group_id, FLAG_CHGRP_COMMAND_LINE_FOLLOW.position(),
             FLAG_CHGRP_FOLLOW.position(), FLAG_CHGRP_PHYSICAL.position(),
             FLAG_CHGRP_RECURSIVE.is_enabled()
                 ? utils::ownership_traversal_mode::Recursive

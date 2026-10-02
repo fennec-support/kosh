@@ -68,8 +68,8 @@ fn Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   /* Operands after the file set the sourced $1 upward, a bash extension the
      sh mood ignores. */
-  let const has_extra_args =
-      !cxt.runtime_state().is_posix_mode() && ec.args().count() > path_index + 1;
+  let const has_extra_args = !cxt.runtime_state().is_posix_mode() &&
+                             ec.args().count() > path_index + 1;
   let saved_params = ArrayList<String>{heap_allocator()};
   let params = ArrayList<String>{heap_allocator()};
   if (has_extra_args) {

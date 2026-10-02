@@ -296,8 +296,8 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
 
           let const message =
               "cannot open '" +
-              String{cxt.scratch_allocator(), sources[source_index]} + "': " +
-              os::last_system_error_message();
+              String{cxt.scratch_allocator(), sources[source_index]} +
+              "': " + os::last_system_error_message();
           do_flush_output();
           report_soft_koshkit_util_error(ec, cxt, args[0].view(), message);
           status = 1;

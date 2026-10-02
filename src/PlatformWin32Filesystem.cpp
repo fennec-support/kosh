@@ -29,16 +29,14 @@ enum class unc_trailing_separator_mode : u8
   Include,
 };
 
-static pure fn unc_share_end(StringView path, usize position,
-                             unc_trailing_separator_mode separator_mode)
-    wontthrow
-    -> usize
+static pure fn
+unc_share_end(StringView path, usize position,
+              unc_trailing_separator_mode separator_mode) wontthrow -> usize
 {
   unused(Path::next_component(path, position));
   unused(Path::next_component(path, position));
   if (separator_mode == unc_trailing_separator_mode::Include &&
-      position < path.length &&
-      is_directory_separator(path[position]))
+      position < path.length && is_directory_separator(path[position]))
   {
     position++;
   }
@@ -55,8 +53,8 @@ fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
       is_directory_separator(text[1]) && text[2] == '?' &&
       is_directory_separator(text[3]);
 
-  let const do_resolve_direct =
-      [has_extended_prefix](const Path &candidate) wontthrow -> Maybe<Path> {
+  let const do_resolve_direct = [has_extended_prefix](const Path &candidate)
+                                    wontthrow -> Maybe<Path> {
     let const wide_candidate = utf8_to_wide(candidate.view(), heap_allocator());
     if (!wide_candidate.has_value()) return koshka::None;
     let const handle = CreateFileW(
@@ -134,14 +132,12 @@ fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
              utils::ascii_to_lower(text[6]) == 'c' &&
              is_directory_separator(text[7]))
   {
-    position =
-        unc_share_end(text, 8, unc_trailing_separator_mode::Exclude);
+    position = unc_share_end(text, 8, unc_trailing_separator_mode::Exclude);
     resolved = Path{text.substring_of_length(0, position)};
   } else if (text.length >= 2 && is_directory_separator(text[0]) &&
              is_directory_separator(text[1]))
   {
-    position =
-        unc_share_end(text, 2, unc_trailing_separator_mode::Exclude);
+    position = unc_share_end(text, 2, unc_trailing_separator_mode::Exclude);
     resolved = Path{text.substring_of_length(0, position)};
   } else if (text.length >= 3 && text[1] == ':' &&
              is_directory_separator(text[2]))
@@ -1662,8 +1658,8 @@ fn stat_descriptor(os::descriptor fd, file_status &status) wontthrow -> bool
                    identity.nFileIndexLow;
   status.has_file_identity = true;
   status.link_count = identity.nNumberOfLinks;
-  status.size = (static_cast<u64>(identity.nFileSizeHigh) << 32) |
-                identity.nFileSizeLow;
+  status.size =
+      (static_cast<u64>(identity.nFileSizeHigh) << 32) | identity.nFileSizeLow;
   status.mode = (identity.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0
                     ? 0040000u
                     : 0100000u;
@@ -1804,18 +1800,16 @@ enum class overlapped_wait_mode : u8
   Wait,
 };
 
-static fn finish_positioned_file_operation(const batched_syscall &operation,
-                                           batched_syscall_result &result,
-                                           win32_batch_request &request,
-                                           overlapped_wait_mode wait_mode)
-    wontthrow -> void
+static fn finish_positioned_file_operation(
+    const batched_syscall &operation, batched_syscall_result &result,
+    win32_batch_request &request, overlapped_wait_mode wait_mode) wontthrow
+    -> void
 {
   DWORD transferred_byte_count = 0;
   let const should_wait =
       wait_mode == overlapped_wait_mode::Wait ? TRUE : FALSE;
   if (GetOverlappedResult(request.positioned_handle, &request.control,
-                          &transferred_byte_count, should_wait) ==
-      FALSE)
+                          &transferred_byte_count, should_wait) == FALSE)
   {
     let const error_number = GetLastError();
     if (batch_operation_access::get_kind(operation) ==
@@ -2017,10 +2011,9 @@ fn execute_batch_operations(const batched_syscall *operations,
 
       let const chunk_index = request_positions[event_index];
       let const operation_index = operation_start + chunk_index;
-      finish_positioned_file_operation(operations[operation_index],
-                                       results[operation_index],
-                                       requests[chunk_index],
-                                       overlapped_wait_mode::DoNotWait);
+      finish_positioned_file_operation(
+          operations[operation_index], results[operation_index],
+          requests[chunk_index], overlapped_wait_mode::DoNotWait);
       if (was_interrupted) {
         results[operation_index] = {operations[operation_index].request_id, 0,
                                     ERROR_OPERATION_ABORTED};

@@ -103,10 +103,9 @@ fn Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             break;
           }
         }
-        status =
-            matched != nullptr
-                ? cxt.job_table_store().wait_for_job_processes(*matched)
-                : 127;
+        status = matched != nullptr
+                     ? cxt.job_table_store().wait_for_job_processes(*matched)
+                     : 127;
       }
     }
 

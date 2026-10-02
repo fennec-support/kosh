@@ -197,8 +197,8 @@ struct batch_operation_access
     return KOSH_INVALID_FD;
   }
 
-  static pure fn get_relative_name(const batch_operation &operation)
-      wontthrow -> const char *
+  static pure fn get_relative_name(const batch_operation &operation) wontthrow
+      -> const char *
   {
     switch (operation.syscall_id) {
     case batch_operation::Kind::LstatAt:
@@ -215,8 +215,8 @@ struct batch_operation_access
     return nullptr;
   }
 
-  static pure fn get_directory_descriptor(const batch_operation &operation)
-      wontthrow -> descriptor
+  static pure fn get_directory_descriptor(
+      const batch_operation &operation) wontthrow -> descriptor
   {
     switch (operation.syscall_id) {
     case batch_operation::Kind::LstatAt:

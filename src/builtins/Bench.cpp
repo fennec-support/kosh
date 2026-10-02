@@ -594,8 +594,8 @@ cold fn Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const should_suppress_output = !FLAG_BENCH_SHOW_OUTPUT.is_enabled();
   let const should_use_shell = !FLAG_BENCH_NO_SHELL.is_enabled();
 
-  let shell_binary =
-      String{cxt.scratch_allocator(), cxt.execution_store().get_shell_executable_path()};
+  let shell_binary = String{cxt.scratch_allocator(),
+                            cxt.execution_store().get_shell_executable_path()};
   if (shell_binary.is_empty()) {
     if (let const detected = os::current_executable_path())
       shell_binary = String{cxt.scratch_allocator(), detected->view()};

@@ -124,18 +124,19 @@ fn BumpArena::push_destructor(pending_destructor pending) throws -> void
     position_in_chunk = later_position % DESTRUCTORS_PER_CHUNK;
   }
 
-  if (chunk_index == m_destructor_chunks.count()) unlikely {
-    let const chunk_count =
-        chunk_index == 0 ? FIRST_DESTRUCTOR_CHUNK_COUNT : DESTRUCTORS_PER_CHUNK;
-    let const chunk =
-        heap_allocator().alloc_array<pending_destructor>(chunk_count);
-    try {
-      m_destructor_chunks.push(chunk);
-    } catch (...) {
-      heap_allocator().free_array(chunk, chunk_count);
-      throw;
+  if (chunk_index == m_destructor_chunks.count()) rarely
+    {
+      let const chunk_count = chunk_index == 0 ? FIRST_DESTRUCTOR_CHUNK_COUNT
+                                               : DESTRUCTORS_PER_CHUNK;
+      let const chunk =
+          heap_allocator().alloc_array<pending_destructor>(chunk_count);
+      try {
+        m_destructor_chunks.push(chunk);
+      } catch (...) {
+        heap_allocator().free_array(chunk, chunk_count);
+        throw;
+      }
     }
-  }
 
   m_destructor_chunks[chunk_index][position_in_chunk] = pending;
   m_destructor_count++;
@@ -206,14 +207,15 @@ hot fn BumpArena::allocate(usize size, usize alignment) throws -> opaque *
       let &block = m_blocks[m_current_index];
       let const aligned = (block.used + (alignment - 1)) & ~(alignment - 1);
 
-      if (aligned <= block.size && size <= block.size - aligned) likely {
-        ASSERT(block.base != nullptr);
+      if (aligned <= block.size && size <= block.size - aligned) usually
+        {
+          ASSERT(block.base != nullptr);
 
-        let const pointer = block.base + aligned;
-        block.used = aligned + size;
+          let const pointer = block.base + aligned;
+          block.used = aligned + size;
 
-        return pointer;
-      }
+          return pointer;
+        }
 
       m_current_index++;
     }

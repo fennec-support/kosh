@@ -143,11 +143,10 @@ static fn count_words(wc_source_state &state, StringView content) wontthrow
   u32 is_in_word = state.is_in_word ? 1 : 0;
   u64 word_count = 0;
 
-  for (usize byte_position = 0; byte_position < content.length;
-       byte_position++)
+  for (usize byte_position = 0; byte_position < content.length; byte_position++)
   {
-    let const entry = static_cast<u32>(WORD_BYTE_TABLE.values[static_cast<u8>(
-        content.data[byte_position])]);
+    let const entry = static_cast<u32>(
+        WORD_BYTE_TABLE.values[static_cast<u8>(content.data[byte_position])]);
     let const does_start_word = entry & 1;
     word_count += does_start_word & (is_in_word ^ 1);
     is_in_word = (((is_in_word << 1) & entry) >> 1) | does_start_word;

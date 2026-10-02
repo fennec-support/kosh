@@ -207,7 +207,10 @@ static fn bc_translate_expression(StringView expression, u32 input_base,
         let variable_name = String{allocator, "__bc_"};
         variable_name += name;
         translated += variable_name.view();
-        if (!cxt.variable_store().shell_variables().find(variable_name.view()).has_value())
+        if (!cxt.variable_store()
+                 .shell_variables()
+                 .find(variable_name.view())
+                 .has_value())
           cxt.set_shell_variable(variable_name.view(), "0");
       }
       continue;

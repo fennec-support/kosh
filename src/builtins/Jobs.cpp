@@ -59,7 +59,8 @@ pure fn job_marker(const ArrayList<job> &jobs, usize index) wontthrow -> char
   return ' ';
 }
 
-fn state_color(job::State state, jobs_color_mode color_mode) throws -> StringView
+fn state_color(job::State state, jobs_color_mode color_mode) throws
+    -> StringView
 {
   if (color_mode == jobs_color_mode::Plain) return StringView{};
   switch (state) {

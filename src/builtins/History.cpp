@@ -293,8 +293,8 @@ static fn write_history_to_file(EvalContext &cxt, const Path &target,
 
   let const source_path = toiletline::get_history_path();
   if (write_mode == history_file_write_mode::Append &&
-      source_path.has_value() && source_path->exists() &&
-      target.exists() && source_path->is_same_file_as(target))
+      source_path.has_value() && source_path->exists() && target.exists() &&
+      source_path->is_same_file_as(target))
   {
     append_state.identity = get_history_file_identity(target);
     append_state.event_number = newest_number;
@@ -528,10 +528,9 @@ fn History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                 restricted_path_use::History);
       let const target = Path{args[1].view()};
       let const write_mode = FLAG_HISTORY_APPEND.is_enabled()
-                                  ? history_file_write_mode::Append
-                                  : history_file_write_mode::Replace;
-      if (let const result = write_history_to_file(
-              cxt, target, write_mode);
+                                 ? history_file_write_mode::Append
+                                 : history_file_write_mode::Replace;
+      if (let const result = write_history_to_file(cxt, target, write_mode);
           result.is_error())
       {
         report_soft_builtin_error(

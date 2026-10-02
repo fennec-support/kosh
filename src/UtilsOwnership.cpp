@@ -116,9 +116,7 @@ static fn change_path_ownership_recursive(
   };
 
   let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
-  defer {
-    cxt.expansion_store().scratch_arena().release(directory_scratch);
-  };
+  defer { cxt.expansion_store().scratch_arena().release(directory_scratch); };
   let children =
       os::list_directory_status(path.view(), cxt.scratch_allocator());
   if (!children.has_value()) {
@@ -189,8 +187,7 @@ static fn change_path_ownership_recursive(
     if (!change_path_ownership_recursive(
             ec, cxt, utility_name, child_paths[child_position], owner_id,
             group_id, active_directories, child_status,
-            known_child_followed_status,
-            was_child_followed_status_queried,
+            known_child_followed_status, was_child_followed_status_queried,
             ownership_traversal_mode::Recursive,
             should_follow_nested_symlinks ? ownership_symlink_mode::Follow
                                           : ownership_symlink_mode::NoFollow,

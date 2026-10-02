@@ -103,10 +103,9 @@ fn complete(StringView line, usize cursor, EvalContext &context,
             completion_mode mode = completion_mode::Ghost) throws
     -> completion_result;
 
-fn complete_command_names(
-    StringView token, EvalContext &context,
-    const ArrayList<StringView> *extra_command_names,
-    command_match_mode match_mode) throws
+fn complete_command_names(StringView token, EvalContext &context,
+                          const ArrayList<StringView> *extra_command_names,
+                          command_match_mode match_mode) throws
     -> ArrayList<String>;
 fn complete_filesystem_names(StringView token, EvalContext &context,
                              const Path &base_directory) throws

@@ -182,9 +182,9 @@ static fn compile_filter(StringView raw_filter, StringView word,
 static fn candidate_is_excluded(StringView candidate,
                                 const compgen_filter &filter) throws -> bool
 {
-  let const matches = utils::glob_matches(filter.pattern.view(), candidate,
-                                          filter.active, 0, filter.extglob,
-                                          filter.charset);
+  let const matches =
+      utils::glob_matches(filter.pattern.view(), candidate, filter.active, 0,
+                          filter.extglob, filter.charset);
   return filter.is_negated ? !matches : matches;
 }
 

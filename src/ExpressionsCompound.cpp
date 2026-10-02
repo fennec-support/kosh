@@ -128,9 +128,13 @@ hot fn CompoundList::evaluate_root_status_impl(
 
   /* Only the last node yields the list's status, so a terminal exec rides into
      that node alone. */
-  let const was_terminal_exec_allowed = cxt.execution_store().terminal_exec_allowed();
+  let const was_terminal_exec_allowed =
+      cxt.execution_store().terminal_exec_allowed();
   cxt.execution_store().terminal_exec_allowed() = false;
-  defer { cxt.execution_store().terminal_exec_allowed() = was_terminal_exec_allowed; };
+  defer
+  {
+    cxt.execution_store().terminal_exec_allowed() = was_terminal_exec_allowed;
+  };
 
   for (usize index = 0; index < m_nodes.count(); index++) {
     if (cxt.runtime_state().no_exec()) break;
@@ -174,7 +178,8 @@ hot fn CompoundList::evaluate_root_status_impl(
     }
 
     let const is_last_node = index + 1 >= m_nodes.count();
-    cxt.execution_store().terminal_exec_allowed() = was_terminal_exec_allowed && is_last_node;
+    cxt.execution_store().terminal_exec_allowed() =
+        was_terminal_exec_allowed && is_last_node;
 
     /* set -e keys off the command that actually produced the status, not one
        carried over from a short-circuited sibling. */
@@ -202,7 +207,9 @@ hot fn CompoundList::evaluate_root_status_impl(
       } catch (const InterruptErrorWithLocation &) {
         throw;
       } catch (ErrorWithLocation &error) {
-        if (!cxt.runtime_state().is_bash_compatible() || error.is_script_fatal()) {
+        if (!cxt.runtime_state().is_bash_compatible() ||
+            error.is_script_fatal())
+        {
           throw;
         }
         LOG(Debug,
@@ -229,7 +236,9 @@ hot fn CompoundList::evaluate_root_status_impl(
                     set_and_return_exit_status(cxt, error.command_status())),
                 0};
       } catch (const ErrorBase &error) {
-        if (!cxt.runtime_state().is_bash_compatible() || error.is_script_fatal()) {
+        if (!cxt.runtime_state().is_bash_compatible() ||
+            error.is_script_fatal())
+        {
           throw;
         }
         LOG(Debug, "bash mood converted the error to command status %lld: %s",
@@ -267,7 +276,8 @@ hot fn CompoundList::evaluate_root_status_impl(
     /* POSIX exempts set -e for a command that is an operand of && or || and not
        the last of the and-or list, and for a command the ! reserved word
        negates. */
-    const bool has_pending_control_flow = cxt.control_flow_store().has_pending();
+    const bool has_pending_control_flow =
+        cxt.control_flow_store().has_pending();
     const bool was_command_failure_uncaught =
         !has_pending_control_flow &&
         cxt.execution_store().condition_depth() == 0 && did_execute &&
@@ -677,9 +687,11 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
           stage_status =
               static_cast<i32>(stage->evaluate_root(cxt, stage_mode));
           if (cxt.control_flow_store().has_pending() &&
-              cxt.control_flow_store().pending().kind == control_flow::Kind::Exit)
+              cxt.control_flow_store().pending().kind ==
+                  control_flow::Kind::Exit)
           {
-            stage_status = static_cast<i32>(cxt.control_flow_store().pending().value);
+            stage_status =
+                static_cast<i32>(cxt.control_flow_store().pending().value);
           }
         } catch (const BrokenPipeExit &) {
           stage_status = KOSH_BROKEN_PIPE_EXIT_STATUS;

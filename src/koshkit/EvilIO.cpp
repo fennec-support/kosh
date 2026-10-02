@@ -194,8 +194,8 @@ pure fn process_sort_value(const io_row &row, evilio_sort_key key) wontthrow
 
 struct process_pid_comparator
 {
-  pure fn operator()(const io_row &left, const io_row &right) const
-      wontthrow->bool
+  pure fn operator()(const io_row &left,
+                     const io_row &right) const wontthrow->bool
   {
     return left.pid < right.pid;
   }
@@ -205,8 +205,7 @@ struct process_row_comparator
 {
   Maybe<evilio_sort_key> sort_key;
 
-  pure fn operator()(const io_row &left, const io_row &right) const throws
-      -> bool
+  pure fn operator()(const io_row &left, const io_row &right) const throws->bool
   {
     if (!sort_key.has_value()) {
       let const left_total =
@@ -439,11 +438,11 @@ fn get_process_window_status(const live_process_row &row,
   return status;
 }
 
-fn append_process_io_rate_report(
-    String &output, const ArrayList<io_row> &rows, usize row_limit,
-    Allocator allocator, StringView duration_suffix,
-    const ArrayList<u64> *idle_nanoseconds_list,
-    evilio_color_mode color_mode) throws -> void
+fn append_process_io_rate_report(String &output, const ArrayList<io_row> &rows,
+                                 usize row_limit, Allocator allocator,
+                                 StringView duration_suffix,
+                                 const ArrayList<u64> *idle_nanoseconds_list,
+                                 evilio_color_mode color_mode) throws -> void
 {
   let const should_color = color_mode == evilio_color_mode::Colored;
   unused(idle_nanoseconds_list);
@@ -862,11 +861,10 @@ fn append_disk_io_report(String &output, const ArrayList<disk_io_row> &rows,
                           ? utils::format_duration_nanoseconds(
                                 *row.write_latency_nanoseconds, allocator)
                           : String{allocator, "-"};
-      average_queue =
-          row.average_queue_tenths.has_value()
-              ? tenths_text(*row.average_queue_tenths, allocator,
-                            evilio_percent_mode::Omit)
-              : String{allocator, "-"};
+      average_queue = row.average_queue_tenths.has_value()
+                          ? tenths_text(*row.average_queue_tenths, allocator,
+                                        evilio_percent_mode::Omit)
+                          : String{allocator, "-"};
       cells.push({busy.view(), {}});
       cells.push({read_latency.view(), {}});
       cells.push({write_latency.view(), {}});
@@ -914,8 +912,8 @@ fn run_live_process_io(const ExecContext &ec, Maybe<i64> selected_pid,
   let const sample_label = format_live_duration(window_seconds, allocator);
   let const refresh_label =
       format_live_duration(refresh_interval_seconds, allocator);
-  let baseline_rows = read_process_io_rows(
-      allocator, selected_pid, evilio_idle_mode::Include);
+  let baseline_rows =
+      read_process_io_rows(allocator, selected_pid, evilio_idle_mode::Include);
   if (os::INTERRUPT_REQUESTED != 0) {
     os::INTERRUPT_REQUESTED = 0;
     return 130;
@@ -961,9 +959,8 @@ fn run_live_process_io(const ExecContext &ec, Maybe<i64> selected_pid,
 
     let const now = os::monotonic_nanos();
     if (now - last_sample_nanoseconds >= sample_interval_nanoseconds) {
-      let after_rows =
-          read_process_io_rows(frame_allocator, selected_pid,
-                               evilio_idle_mode::Include);
+      let after_rows = read_process_io_rows(frame_allocator, selected_pid,
+                                            evilio_idle_mode::Include);
       if (os::INTERRUPT_REQUESTED != 0) {
         os::INTERRUPT_REQUESTED = 0;
         return 130;
@@ -1222,9 +1219,8 @@ fn run_live_disk_io(const ExecContext &ec, f64 window_seconds,
     if (is_terminal) output += "\x1b[H\x1b[2J";
     append_live_controls_bar(output, sample_label.view(), refresh_label.view(),
                              color_mode == evilio_color_mode::Colored);
-    append_disk_io_report(
-        output, rows, frame_allocator, sample_duration_label,
-        report_sampling_mode::Rolling, color_mode);
+    append_disk_io_report(output, rows, frame_allocator, sample_duration_label,
+                          report_sampling_mode::Rolling, color_mode);
     ec.print_to_stdout(output);
   }
 }
@@ -1554,35 +1550,31 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
     };
 
     if (should_show_processes) {
-      return run_live_process_io(ec, selected_pid, row_limit,
-                                 sample_duration_seconds,
-                                 DEFAULT_LIVE_SAMPLE_INTERVAL_SECONDS,
-                                 refresh_interval_seconds, is_terminal,
-                                 sample_duration_label.view(),
-                                 sort_key,
-                                 should_color ? evilio_color_mode::Colored
-                                              : evilio_color_mode::Plain);
+      return run_live_process_io(
+          ec, selected_pid, row_limit, sample_duration_seconds,
+          DEFAULT_LIVE_SAMPLE_INTERVAL_SECONDS, refresh_interval_seconds,
+          is_terminal, sample_duration_label.view(), sort_key,
+          should_color ? evilio_color_mode::Colored : evilio_color_mode::Plain);
     }
 
-    return run_live_disk_io(ec, sample_duration_seconds,
-                            DEFAULT_LIVE_SAMPLE_INTERVAL_SECONDS,
-                            refresh_interval_seconds, is_terminal,
-                            sample_duration_label.view(), sort_key,
-                            should_color ? evilio_color_mode::Colored
-                                         : evilio_color_mode::Plain);
+    return run_live_disk_io(
+        ec, sample_duration_seconds, DEFAULT_LIVE_SAMPLE_INTERVAL_SECONDS,
+        refresh_interval_seconds, is_terminal, sample_duration_label.view(),
+        sort_key,
+        should_color ? evilio_color_mode::Colored : evilio_color_mode::Plain);
   }
 
   if (FLAG_EVILIO_CUMULATIVE.is_enabled() && should_show_processes) {
-    let const before_rows = read_process_io_rows(
-        allocator, selected_pid, evilio_idle_mode::Include);
+    let const before_rows = read_process_io_rows(allocator, selected_pid,
+                                                 evilio_idle_mode::Include);
     let const started_at_nanoseconds = os::monotonic_nanos();
     os::sleep_for_seconds(cumulative_duration_seconds);
     if (os::INTERRUPT_REQUESTED != 0) {
       os::INTERRUPT_REQUESTED = 0;
       return 130;
     }
-    let const after_rows = read_process_io_rows(
-        allocator, selected_pid, evilio_idle_mode::Include);
+    let const after_rows = read_process_io_rows(allocator, selected_pid,
+                                                evilio_idle_mode::Include);
     let const elapsed_nanoseconds =
         os::monotonic_nanos() - started_at_nanoseconds;
     let const sampled_rows = sample_process_io_rows(
@@ -1597,8 +1589,8 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   if (should_show_processes) {
-    let rows = read_process_io_rows(allocator, selected_pid,
-                                    evilio_idle_mode::Omit);
+    let rows =
+        read_process_io_rows(allocator, selected_pid, evilio_idle_mode::Omit);
     u64 total_read_bytes = 0;
     u64 total_written_bytes = 0;
     u64 total_read_operation_count = 0;
@@ -1619,12 +1611,11 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
     let const sorted_rows = sort_process_rows(steal(rows), sort_key);
 
     let output = String{allocator};
-    append_process_io_report(output, sorted_rows, row_limit, total_read_bytes,
-                             total_written_bytes, total_read_operation_count,
-                             total_write_operation_count, has_operation_counts,
-                             allocator,
-                             should_color ? evilio_color_mode::Colored
-                                           : evilio_color_mode::Plain);
+    append_process_io_report(
+        output, sorted_rows, row_limit, total_read_bytes, total_written_bytes,
+        total_read_operation_count, total_write_operation_count,
+        has_operation_counts, allocator,
+        should_color ? evilio_color_mode::Colored : evilio_color_mode::Plain);
     ec.print_to_stdout(output);
     return selected_pid.has_value() && sorted_rows.is_empty() ? 1 : 0;
   }

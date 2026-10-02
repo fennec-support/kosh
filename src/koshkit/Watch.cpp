@@ -148,7 +148,10 @@ fn Watch::execute(const ExecContext &ec, EvalContext &cxt,
 
   let const saved_terminal_exec = cxt.execution_store().terminal_exec_allowed();
   cxt.execution_store().terminal_exec_allowed() = false;
-  defer { cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec; };
+  defer
+  {
+    cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec;
+  };
 
   bool is_alternate_screen_active = false;
   if (is_terminal) is_alternate_screen_active = enter_alternate_screen(ec);

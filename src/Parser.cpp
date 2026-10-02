@@ -66,9 +66,8 @@ fn Parser::take_analysis_scope_definitions() throws
   return steal(m_analysis_scope_definitions);
 }
 
-fn Parser::record_analysis_scope_definition(StringView name,
-                                            analysis_scope_definition_kind kind)
-    throws -> void
+fn Parser::record_analysis_scope_definition(
+    StringView name, analysis_scope_definition_kind kind) throws -> void
 {
   if (m_analysis_scope_collection_mode !=
       analysis_metadata_collection_mode::Enabled)
@@ -83,7 +82,8 @@ fn Parser::record_analysis_alias_definitions(
 {
   if (m_analysis_scope_collection_mode !=
           analysis_metadata_collection_mode::Enabled ||
-      args.is_empty()) {
+      args.is_empty())
+  {
     return;
   }
 
@@ -187,10 +187,9 @@ cold pure static fn find_standalone_keyword(StringView source,
   return koshka::None;
 }
 
-cold wontreturn fn
-internal::throw_unterminated(const SourceLocation &opener, StringView what,
-                             StringView source, StringView keyword,
-                             SourceLocation fallback) throws -> void
+cold wontreturn fn internal::throw_unterminated(
+    const SourceLocation &opener, StringView what, StringView source,
+    StringView keyword, SourceLocation fallback) throws -> void
 {
   if (Maybe<SourceLocation> found = find_standalone_keyword(source, keyword);
       found.has_value())
@@ -579,7 +578,8 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
          report. */
       Token *maybe_time = nullptr;
       if (m_analysis_metadata_collection_mode ==
-          analysis_metadata_collection_mode::Enabled) {
+          analysis_metadata_collection_mode::Enabled)
+      {
         let const should_collect_directives =
             next_cond == CompoundListCondition::Kind::None;
         m_lexer.set_shellcheck_directive_collection_mode(
@@ -687,7 +687,7 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
     switch (token->kind()) {
     case Token::Kind::Ampersand:
       if (lhs != nullptr) lhs->make_async();
-      fallthrough;
+      fallthru;
     case Token::Kind::DoublePipe:
     case Token::Kind::DoubleAmpersand:
       if (lhs == nullptr) {
@@ -699,7 +699,7 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
         msg += "'";
         throw koshka::ErrorWithLocation{token->source_location(), msg};
       }
-      fallthrough;
+      fallthru;
     case Token::Kind::Newline:
     case Token::Kind::EndOfFile:
     case Token::Kind::Semicolon: {
@@ -969,12 +969,12 @@ fn Parser::build_both_streams_redirection(
     ArrayList<expressions::Redirection> &out,
     assignment_update_mode update_mode) throws -> void
 {
-  build_file_or_dup_redirection(
-      1,
-      update_mode == assignment_update_mode::Append ? Token::Kind::DoubleGreater
-                                                    : Token::Kind::Greater,
-      op_location, first_location, out, nullptr,
-      redirection_descriptor_spelling::Explicit);
+  build_file_or_dup_redirection(1,
+                                update_mode == assignment_update_mode::Append
+                                    ? Token::Kind::DoubleGreater
+                                    : Token::Kind::Greater,
+                                op_location, first_location, out, nullptr,
+                                redirection_descriptor_spelling::Explicit);
   out.back().is_both_streams_spelling = true;
   out.push(stderr_to_stdout_dup());
 }

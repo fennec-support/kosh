@@ -137,8 +137,9 @@ fn append_unique_path(ArrayList<String> &paths, StringView path,
 fn collect_paths_from_output(StringView output, ArrayList<String> &paths,
                              Allocator allocator) throws -> void
 {
-  for (let view : utils::split_lines(
-           output, allocator, utils::line_terminator_mode::Discard)) {
+  for (let view : utils::split_lines(output, allocator,
+                                     utils::line_terminator_mode::Discard))
+  {
     view = view.trim_blanks();
     let const start = view.find_character('/');
     if (!start.has_value()) continue;
@@ -253,8 +254,8 @@ fn GoodCore::execute(
   let const allocator = cxt.scratch_allocator();
   let const has_pid = FLAG_GOODCORE_PID.is_set();
   let const progress_mode = FLAG_GOODCORE_QUIET.is_enabled()
-                                 ? goodcore_progress_mode::Hidden
-                                 : goodcore_progress_mode::Visible;
+                                ? goodcore_progress_mode::Hidden
+                                : goodcore_progress_mode::Visible;
   defer
   {
     if (progress_mode == goodcore_progress_mode::Visible &&
@@ -310,7 +311,8 @@ fn GoodCore::execute(
   let paths = ArrayList<String>{allocator};
   if (has_pid) {
     for (let const &file : os::list_process_open_files(
-             process_id, allocator, os::process_open_file_detail::Basic)) {
+             process_id, allocator, os::process_open_file_detail::Basic))
+    {
       if (file.use == os::process_file_use::Executable) {
         binary = file.path.clone();
       }

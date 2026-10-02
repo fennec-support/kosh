@@ -385,8 +385,9 @@ fn EvilDisk::execute(
 
   let disk_snapshot = os::read_disk_io_snapshot(allocator);
   let const sorted_disks =
-      steal(disk_snapshot.disks).make_sorted(
-          [](const os::disk_io_status &left, const os::disk_io_status &right) {
+      steal(disk_snapshot.disks)
+          .make_sorted([](const os::disk_io_status &left,
+                          const os::disk_io_status &right) {
             return left.name < right.name;
           });
   bool has_failure_counters = false;
@@ -630,7 +631,8 @@ fn EvilDisk::execute(
     if (skipped_permission_count != 1) warning += "s";
     warning += " due to permission denied";
     show_report_warning(warning.view());
-    for (let const &warning : warnings) show_warning(warning.view());
+    for (let const &warning : warnings)
+      show_warning(warning.view());
   } else {
     show_report_warnings(warnings);
   }

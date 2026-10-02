@@ -155,8 +155,8 @@ const diagnostic_definition DIAGNOSTIC_DEFINITIONS[] = {
       "a directive takes a key and a value",
       "The directive text '{0}' is not a `key=value` pair",
       "Write the directive as `key=value`, such as `disable=SC2086` or "
-      "`disable=unquoted-expansion`", None,
-      Annoying, Policy),
+      "`disable=unquoted-expansion`",
+      None, Annoying, Policy),
     D(1126, "directive-after-command",
       "a directive belongs before the command it covers",
       "The directive follows a command on the same line",

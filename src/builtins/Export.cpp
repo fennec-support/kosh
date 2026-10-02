@@ -218,7 +218,7 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
        so an export PATH=... refreshes it to the value just placed in the
        environment. */
     if (utils::environment_name_is_path(name.view()))
-        cxt.resolution_store().resolver().assign_path(String{value.view()});
+      cxt.resolution_store().resolver().assign_path(String{value.view()});
   }
 
   return has_error ? 1 : 0;

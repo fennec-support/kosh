@@ -133,8 +133,7 @@ static fn append_replacement_edits(ArrayList<diff_edit> &edits,
 }
 
 static fn make_diff_edits(const diff_lines &left_lines,
-                          const diff_lines &right_lines,
-                          Allocator allocator,
+                          const diff_lines &right_lines, Allocator allocator,
                           diff_whitespace_mode whitespace_mode) throws
     -> diff_edit_result
 {
@@ -143,8 +142,7 @@ static fn make_diff_edits(const diff_lines &left_lines,
   while (equal_prefix_count < left_lines.count() &&
          equal_prefix_count < right_lines.count() &&
          diff_lines_equal(left_lines.get(equal_prefix_count),
-                          right_lines.get(equal_prefix_count),
-                          whitespace_mode))
+                          right_lines.get(equal_prefix_count), whitespace_mode))
   {
     if (os::INTERRUPT_REQUESTED) return {steal(edits), true};
     equal_prefix_count++;
@@ -593,7 +591,7 @@ fn Diff::execute(const ExecContext &ec, EvalContext &cxt,
   let const result = make_diff_edits(
       left_lines, right_lines, cxt.scratch_allocator(),
       FLAG_DIFF_IGNORE_SPACE.is_enabled() ? diff_whitespace_mode::Ignore
-                                           : diff_whitespace_mode::Preserve);
+                                          : diff_whitespace_mode::Preserve);
   if (result.was_interrupted) return 130;
 
   bool has_difference = false;

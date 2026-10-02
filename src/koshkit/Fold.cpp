@@ -99,7 +99,7 @@ fn Fold::execute(const ExecContext &ec, EvalContext &cxt,
           output,
           content.substring_of_length(line_start, line_end - line_start), width,
           FLAG_FOLD_SPACES.is_enabled() ? fold_break_mode::Blank
-                                         : fold_break_mode::Width);
+                                        : fold_break_mode::Width);
       line_start = line_end < content.length ? line_end + 1 : line_end;
     }
   };

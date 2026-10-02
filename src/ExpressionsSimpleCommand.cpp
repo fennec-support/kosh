@@ -300,7 +300,8 @@ hot fn AssignCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
           *bracket + 1, key_view.length - *bracket - 2);
       cxt.assign_array_element(array_name, subscript, value.view(),
                                m_assignment->get_update_mode());
-      if (!value_ran_substitution) cxt.execution_store().set_last_exit_status(0);
+      if (!value_ran_substitution)
+        cxt.execution_store().set_last_exit_status(0);
       cxt.publish_single_pipe_status(cxt.execution_store().last_exit_status());
       return cxt.execution_store().last_exit_status();
     }
@@ -347,7 +348,8 @@ fn AssignCommand::can_evaluate_in_process_substitution(
   unused(active_functions);
   return !is_async() && !is_timed() &&
          word_is_safe_for_in_process_substitution(
-             m_assignment->value_word(), cxt.runtime_state().bash_dynamic_variables_enabled());
+             m_assignment->value_word(),
+             cxt.runtime_state().bash_dynamic_variables_enabled());
 }
 
 SimpleCommand::SimpleCommand(SourceLocation location,
@@ -434,7 +436,8 @@ fn SimpleCommand::can_evaluate_in_process_substitution(
   let const command_name = static_command_name(m_args[0]);
   if (!command_name.has_value()) return false;
 
-  if (let const function_body = cxt.function_store().find_function(*command_name);
+  if (let const function_body =
+          cxt.function_store().find_function(*command_name);
       function_body.has_value())
   {
     if (!active_functions.add(*command_name)) return true;
@@ -607,10 +610,9 @@ static fn redirection_open_error(StringView path) throws -> String
    open_or_stage_failed is set true only for the open, stage, and
    ambiguous-target failures the simple-command path recovers from, so a
    duplication-resolve or word-expansion error stays fatal. */
-wontreturn fn
-reject_restricted_output_redirection(const Redirection &redir,
-                                     const SourceLocation &fallback_location,
-                                     bool *open_or_stage_failed) throws -> void
+wontreturn fn reject_restricted_output_redirection(
+    const Redirection &redir, const SourceLocation &fallback_location,
+    bool *open_or_stage_failed) throws -> void
 {
   if (open_or_stage_failed != nullptr) *open_or_stage_failed = true;
   throw ErrorWithLocation{
@@ -646,8 +648,8 @@ fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
       if (redir.should_expand_heredoc) {
         let source_location = SourceLocation{};
         const SourceLocation *source_location_pointer = nullptr;
-        if (redir.heredoc->source_mapping ==
-            heredoc_source_mapping::Contiguous) {
+        if (redir.heredoc->source_mapping == heredoc_source_mapping::Contiguous)
+        {
           source_location =
               SourceLocation{redir.heredoc->source_position, body.length,
                              fallback_location.source_name_index};
@@ -716,15 +718,15 @@ fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
                             "Redirection target is not a single file"};
   }
 
-  let mode = redirection_open_mode(redir.kind,
-                                   cxt.runtime_state().no_clobber());
+  let mode =
+      redirection_open_mode(redir.kind, cxt.runtime_state().no_clobber());
 
   const String &target_path = target[0];
 
-  const bool should_memoize_append =
-      allow_fd_memoization && mode == os::file_open_mode::Append &&
-      cxt.execution_store().loop_depth() > 0 &&
-      redir.fd_allocation_name_token == nullptr;
+  const bool should_memoize_append = allow_fd_memoization &&
+                                     mode == os::file_open_mode::Append &&
+                                     cxt.execution_store().loop_depth() > 0 &&
+                                     redir.fd_allocation_name_token == nullptr;
   if (should_memoize_append) {
     let cached = cxt.find_loop_redirect_fd(redir.fd, target_path, mode);
     if (cached.has_value())
@@ -804,8 +806,9 @@ fn internal::allocate_redirection_descriptor(
     }
 
     if (open_or_stage_failed != nullptr) *open_or_stage_failed = true;
-    throw ErrorWithLocation{location, "'" + String{*allocation_name} +
-                                          "' is not associated with any descriptor"};
+    throw ErrorWithLocation{location,
+                            "'" + String{*allocation_name} +
+                                "' is not associated with any descriptor"};
   }
 
   let const allocated_fd = os::allocate_free_shell_fd(10);
@@ -1395,7 +1398,8 @@ fn internal::subshell_command_text(EvalContext &cxt,
   let const body_end = lexer::scan_balanced_shell_region(source, 1, ')');
   if (!body_end.has_value()) return text;
 
-  let const are_bash_additions_enabled = cxt.runtime_state().bash_additions_enabled();
+  let const are_bash_additions_enabled =
+      cxt.runtime_state().bash_additions_enabled();
 
   text.reserve(source.length + 2);
   append_reprinted_subshell(text, source.substring_of_length(0, *body_end),
@@ -1414,7 +1418,8 @@ fn internal::append_word_source_text(EvalContext &cxt, String &out,
 {
   let const text = cxt.source_text_in_span(word.source_location(), 0);
   if (text.length != 0) {
-    out += reprinted_command_text(text, cxt.runtime_state().bash_additions_enabled());
+    out += reprinted_command_text(text,
+                                  cxt.runtime_state().bash_additions_enabled());
 
     return;
   }

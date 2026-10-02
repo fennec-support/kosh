@@ -24,4 +24,4 @@ enum class file_kind_mode : u8
 fn parse_file_mode(StringView expression, u32 current_mode, u32 creation_mask,
                    file_kind_mode kind) wontthrow -> Maybe<u32>;
 
-}
+} // namespace koshka::koshkit

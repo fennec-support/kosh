@@ -81,8 +81,8 @@ fn EvalContext::leave_subshell() wontthrow -> void
         subshell_store().saved_descriptors().back().saved.shell_fd,
         execution_store().subshell_depth());
     os::restore_descriptor(subshell_store().saved_descriptors().back().saved);
-    subshell_store().saved_descriptors().remove(subshell_store().saved_descriptors().count() -
-                                        1);
+    subshell_store().saved_descriptors().remove(
+        subshell_store().saved_descriptors().count() - 1);
   }
   execution_store().subshell_depth()--;
   lower_trap_depths_to_current();
@@ -119,7 +119,9 @@ fn EvalContext::set_coprocess_descriptors(i32 read_fd, i32 write_fd) wontthrow
 
 fn EvalContext::hide_coprocess_descriptors() throws -> void
 {
-  if (subshell_store().coprocess_read_fd() < 0 && subshell_store().coprocess_write_fd() < 0) return;
+  if (subshell_store().coprocess_read_fd() < 0 &&
+      subshell_store().coprocess_write_fd() < 0)
+    return;
 
   LOG(Debug, "taking the coprocess descriptors away at subshell depth %zu",
       execution_store().subshell_depth());
@@ -127,11 +129,15 @@ fn EvalContext::hide_coprocess_descriptors() throws -> void
   /* The backup is what leave_subshell hands back. An in-process subshell
      returns the descriptors to the shell that owns them. Both backups are
      taken before either close. Each one then lands on a number of its own. */
-  for (let const shell_fd : {subshell_store().coprocess_read_fd(), subshell_store().coprocess_write_fd()}) {
+  for (let const shell_fd : {subshell_store().coprocess_read_fd(),
+                             subshell_store().coprocess_write_fd()})
+  {
     if (shell_fd >= 0) snapshot_subshell_descriptor(shell_fd);
   }
 
-  for (let const shell_fd : {subshell_store().coprocess_read_fd(), subshell_store().coprocess_write_fd()}) {
+  for (let const shell_fd : {subshell_store().coprocess_read_fd(),
+                             subshell_store().coprocess_write_fd()})
+  {
     if (shell_fd >= 0) unused(os::close_shell_fd(shell_fd));
   }
 
@@ -174,17 +180,17 @@ fn EvalContext::request_return(i64 status, SourceLocation location) throws
 {
   LOG(Debug, "return requested, status %lld", (long long) status);
   trap_store().status_before_return() = execution_store().last_exit_status();
-  control_flow_store().request_return(
-      status, location, source_store().current_source(),
-      source_store().current_origin());
+  control_flow_store().request_return(status, location,
+                                      source_store().current_source(),
+                                      source_store().current_origin());
 }
 
 fn EvalContext::request_exit(i64 status, SourceLocation location) throws -> void
 {
   LOG(Debug, "exit requested, status %lld", (long long) status);
-  control_flow_store().request_exit(
-      status, location, source_store().current_source(),
-      source_store().current_origin());
+  control_flow_store().request_exit(status, location,
+                                    source_store().current_source(),
+                                    source_store().current_origin());
 }
 
 fn EvalContext::set_current_source(const String *source,
@@ -671,10 +677,12 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
       scope_store().aliases(),
       variable_store().positional_params(),
       variable_store().bash_argument_arrays() != nullptr
-          ? static_cast<u32>(variable_store().bash_argument_arrays()->values.count())
+          ? static_cast<u32>(
+                variable_store().bash_argument_arrays()->values.count())
           : u32{0},
       variable_store().bash_argument_arrays() != nullptr
-          ? static_cast<u32>(variable_store().bash_argument_arrays()->frame_counts.count())
+          ? static_cast<u32>(
+                variable_store().bash_argument_arrays()->frame_counts.count())
           : u32{0},
       variable_store().bash_argument_arrays() != nullptr,
       variable_store().bash_argument_frame_context() != nullptr
@@ -812,8 +820,11 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
   /* The logged environment writes revert newest first, before the PATH re-point
      below so an exported PATH reads its restored value. */
   LOG(Debug, "rewinding %zu environment writes made inside the subshell",
-      environment_store().environment_undo_log().count() - snapshot.environment_undo_mark);
-  while (environment_store().environment_undo_log().count() > snapshot.environment_undo_mark) {
+      environment_store().environment_undo_log().count() -
+          snapshot.environment_undo_mark);
+  while (environment_store().environment_undo_log().count() >
+         snapshot.environment_undo_mark)
+  {
     let const &entry = environment_store().environment_undo_log().back();
     if (entry.previous_value)
       os::set_environment_variable(entry.name.view(),
@@ -1035,8 +1046,7 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
   let collected_names = ArrayList<String>{heap_allocator()};
   variable_names().for_each(
       [&](StringView name) { collected_names.push_managed(name); });
-  let const names =
-      steal(collected_names).make_sorted(sort_order::ascending);
+  let const names = steal(collected_names).make_sorted(sort_order::ascending);
 
   let const do_append_assignment = [&](StringView name, StringView subscript,
                                        StringView value) throws {
@@ -1070,15 +1080,15 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
       if (environment_value.has_value()) continue;
     }
 
-    source += is_associative       ? "declare -A"
+    source += is_associative        ? "declare -A"
               : indexed.has_value() ? "declare -a"
-                                   : "declare -";
+                                    : "declare -";
     if (is_integer) source.push('i');
     if (is_lowercase) source.push('l');
     if (is_uppercase) source.push('u');
     if (is_exported_value) source.push('x');
-    if (!indexed.has_value() && !is_associative && !is_integer && !is_lowercase &&
-        !is_uppercase && !is_exported_value)
+    if (!indexed.has_value() && !is_associative && !is_integer &&
+        !is_lowercase && !is_uppercase && !is_exported_value)
     {
       source.push('-');
     }
@@ -1113,14 +1123,15 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
     source.append(definition.view());
     source.push('\n');
   }
-  trap_store().actions().for_each([&](StringView condition, const String &action) throws {
-    if (condition == "EXIT") return;
-    source += "trap -- ";
-    append_shell_quoted_arg(source, action.view());
-    source.push(' ');
-    append_shell_quoted_arg(source, condition);
-    source.push('\n');
-  });
+  trap_store().actions().for_each(
+      [&](StringView condition, const String &action) throws {
+        if (condition == "EXIT") return;
+        source += "trap -- ";
+        append_shell_quoted_arg(source, action.view());
+        source.push(' ');
+        append_shell_quoted_arg(source, condition);
+        source.push('\n');
+      });
 
   source += "set --";
   for (let const &parameter : variable_store().positional_params()) {
@@ -1132,11 +1143,15 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
   let const working_directory = Path::current_directory();
   if (!variable_store().directory_stack().is_empty()) {
     source += "builtin cd -- ";
-    append_shell_quoted_arg(source, variable_store().directory_stack()[0].view());
+    append_shell_quoted_arg(source,
+                            variable_store().directory_stack()[0].view());
     source.push('\n');
-    for (usize index = 1; index < variable_store().directory_stack().count(); index++) {
+    for (usize index = 1; index < variable_store().directory_stack().count();
+         index++)
+    {
       source += "pushd ";
-      append_shell_quoted_arg(source, variable_store().directory_stack()[index].view());
+      append_shell_quoted_arg(source,
+                              variable_store().directory_stack()[index].view());
       source += " >/dev/null\n";
     }
     source += "pushd ";
@@ -1166,16 +1181,18 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
   let body = String{heap_allocator()};
   body.push(static_cast<char>(execution_store().has_execution_string()));
   if (execution_store().has_execution_string())
-    append_subshell_bootstrap_text(body, execution_store().get_execution_string());
+    append_subshell_bootstrap_text(body,
+                                   execution_store().get_execution_string());
   append_subshell_bootstrap_text(body,
                                  execution_store().get_last_argument().view());
-  body.push(static_cast<char>(
-      job_table_store().last_background_pid().has_value()));
+  body.push(
+      static_cast<char>(job_table_store().last_background_pid().has_value()));
   if (job_table_store().last_background_pid().has_value())
-    append_subshell_bootstrap_i64(
-        body, *job_table_store().last_background_pid());
+    append_subshell_bootstrap_i64(body,
+                                  *job_table_store().last_background_pid());
   append_subshell_bootstrap_u64(body, dynamic_runtime_store().random_state());
-  append_subshell_bootstrap_i64(body, dynamic_runtime_store().shell_start_time());
+  append_subshell_bootstrap_i64(body,
+                                dynamic_runtime_store().shell_start_time());
   append_subshell_bootstrap_i64(body, dynamic_runtime_store().seconds_base());
   append_subshell_bootstrap_u64(
       body, static_cast<u64>(expansion_store().getopts_char_index()));
@@ -1187,14 +1204,19 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
   body.push(static_cast<char>(variable_store().disabled_bash_special_arrays()));
   body.push(static_cast<char>(variable_store().unset_dynamic_readers()));
   body.push(static_cast<char>(startup_store().is_restricted_shell()));
-  body.push(static_cast<char>(variable_store().bash_argument_arrays() != nullptr));
+  body.push(
+      static_cast<char>(variable_store().bash_argument_arrays() != nullptr));
   if (variable_store().bash_argument_arrays() != nullptr) {
     append_subshell_bootstrap_u32(
-        body, static_cast<u32>(variable_store().bash_argument_arrays()->frame_counts.count()));
-    for (let const argument_count : variable_store().bash_argument_arrays()->frame_counts)
+        body,
+        static_cast<u32>(
+            variable_store().bash_argument_arrays()->frame_counts.count()));
+    for (let const argument_count :
+         variable_store().bash_argument_arrays()->frame_counts)
       append_subshell_bootstrap_u32(body, argument_count);
     append_subshell_bootstrap_u32(
-        body, static_cast<u32>(variable_store().bash_argument_arrays()->values.count()));
+        body, static_cast<u32>(
+                  variable_store().bash_argument_arrays()->values.count()));
     for (let const &argument : variable_store().bash_argument_arrays()->values)
       append_subshell_bootstrap_text(body, argument.view());
   } else {
@@ -1246,8 +1268,8 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
     return process_index;
   };
 
-  append_subshell_bootstrap_u32(body,
-      static_cast<u32>(job_table_store().jobs().count()));
+  append_subshell_bootstrap_u32(
+      body, static_cast<u32>(job_table_store().jobs().count()));
   for (let const &child_job : job_table_store().jobs()) {
     append_subshell_bootstrap_i32(body, child_job.id);
     append_subshell_bootstrap_text(body, child_job.command.view());
@@ -1584,8 +1606,7 @@ fn EvalContext::apply_subshell_bootstrap(
                    0, static_cast<usize>(bootstrap.source_length)),
                "inherited shell state");
   }
-  if (is_restricted_shell_identity)
-    startup_store().request_restricted_shell();
+  if (is_restricted_shell_identity) startup_store().request_restricted_shell();
   runtime.restore(*this);
 
   execution_store().restore_execution_string(has_execution_string,
@@ -1707,7 +1728,9 @@ cold fn EvalContext::make_stats_string() const throws -> String
   /* Stats print before end_command runs the rollup, so the live arena is
      sampled here. */
   const usize live_ast_arena_bytes =
-      arena_store().parse_arena() != nullptr ? arena_store().parse_arena()->bytes_used() : 0;
+      arena_store().parse_arena() != nullptr
+          ? arena_store().parse_arena()->bytes_used()
+          : 0;
   usize peak_ast_arena_bytes =
       evaluation_metrics_store().peak_ast_arena_bytes();
   if (live_ast_arena_bytes > peak_ast_arena_bytes)
@@ -1718,8 +1741,8 @@ cold fn EvalContext::make_stats_string() const throws -> String
   append_count_line("Commands evaluated",
                     evaluation_metrics_store().commands_evaluated() + 1);
   append_line("Last command duration",
-              utils::format_duration_nanoseconds(execution_store().last_command_duration_nanos(),
-                                                 allocator)
+              utils::format_duration_nanoseconds(
+                  execution_store().last_command_duration_nanos(), allocator)
                   .view());
   append_count_line("Expansions",
                     evaluation_metrics_store().last_expansion_count());
@@ -1727,13 +1750,13 @@ cold fn EvalContext::make_stats_string() const throws -> String
                     evaluation_metrics_store().last_expressions_executed());
   append_count_line("Total expansions",
                     evaluation_metrics_store().total_expansion_count());
-  append_count_line(
-      "Total nodes evaluated",
-      evaluation_metrics_store().total_expressions_executed());
+  append_count_line("Total nodes evaluated",
+                    evaluation_metrics_store().total_expressions_executed());
   append_size_line("AST arena used", live_ast_arena_bytes);
   append_size_line("AST arena peak", peak_ast_arena_bytes);
   if (arena_store().parse_arena() != nullptr)
-    append_size_line("AST arena capacity", arena_store().parse_arena()->bytes_capacity());
+    append_size_line("AST arena capacity",
+                     arena_store().parse_arena()->bytes_capacity());
 
   let const function_stats = function_storage_stats();
   append_size_line("Function arenas used", function_stats.bytes_used);

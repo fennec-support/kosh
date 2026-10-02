@@ -57,8 +57,8 @@ struct dump_entry
 struct newest_named_entry_comparator
 {
   template <class Entry>
-  pure fn operator()(const Entry &left, const Entry &right) const wontthrow
-      -> bool
+  pure fn operator()(const Entry &left,
+                     const Entry &right) const wontthrow->bool
   {
     if (left.modification_time != right.modification_time)
       return left.modification_time > right.modification_time;

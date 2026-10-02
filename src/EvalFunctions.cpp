@@ -223,7 +223,8 @@ fn EvalContext::variable_names(Allocator result_allocator) const throws
         unused(value);
         names.add(name);
       });
-  variable_store().associative_names().for_each([&](StringView name) { names.add(name); });
+  variable_store().associative_names().for_each(
+      [&](StringView name) { names.add(name); });
   if (runtime_state().bash_dynamic_variables_enabled()) {
     names.add(BASH_ARGUMENT_COUNT_VARIABLE);
     names.add(BASH_ARGUMENT_VALUE_VARIABLE);
@@ -233,7 +234,8 @@ fn EvalContext::variable_names(Allocator result_allocator) const throws
   if (is_bash_directory_stack_special(DIRSTACK_VARIABLE))
     names.add(DIRSTACK_VARIABLE);
 #if !defined NDEBUG
-  dynamic_runtime_store().debug_variable_name_enumeration_count() += names.count();
+  dynamic_runtime_store().debug_variable_name_enumeration_count() +=
+      names.count();
 #endif
   return names;
 }
@@ -264,7 +266,8 @@ fn EvalContext::cached_trap_body(StringView condition, StringView action) throws
   ASSERT(stored_action != nullptr);
 
   let parser = Parser{
-      Lexer{stored_action->view(), *body_storage.get_arena(), None, runtime_state().get_mood(),
+      Lexer{stored_action->view(), *body_storage.get_arena(), None,
+            runtime_state().get_mood(),
             ParseSession::AllocationKind::FunctionBody}
   };
   let const parsed_action = parser.construct_ast();
@@ -301,7 +304,8 @@ fn EvalContext::run_named_trap(StringView condition,
   let const was_terminal_exec_allowed =
       execution_store().terminal_exec_allowed();
   execution_store().terminal_exec_allowed() = false;
-  defer {
+  defer
+  {
     execution_store().terminal_exec_allowed() = was_terminal_exec_allowed;
   };
 
@@ -331,7 +335,8 @@ fn EvalContext::run_named_trap(StringView condition,
   };
 
   let const saved_exit_status = execution_store().last_exit_status();
-  let const current_pipe_statuses = variable_store().indexed_arrays().find("PIPESTATUS");
+  let const current_pipe_statuses =
+      variable_store().indexed_arrays().find("PIPESTATUS");
   let const has_saved_pipe_statuses = current_pipe_statuses.has_value();
   ArrayList<String> saved_pipe_statuses{heap_allocator()};
   if (has_saved_pipe_statuses)
@@ -384,13 +389,15 @@ fn EvalContext::restore_trap_pipe_statuses(
       return;
     }
 
-    if (let current = variable_store().indexed_arrays().find("PIPESTATUS"); current.has_value())
+    if (let current = variable_store().indexed_arrays().find("PIPESTATUS");
+        current.has_value())
     {
       *current.value() = steal(saved_pipe_statuses);
       return;
     }
 
-    variable_store().indexed_arrays().set("PIPESTATUS", steal(saved_pipe_statuses));
+    variable_store().indexed_arrays().set("PIPESTATUS",
+                                          steal(saved_pipe_statuses));
   } catch (...) {
     LOG(Info, "the PIPESTATUS restore of a trap action could not allocate");
   }
@@ -604,7 +611,8 @@ fn EvalContext::run_pending_traps() throws -> void
   let const was_terminal_exec_allowed =
       execution_store().terminal_exec_allowed();
   execution_store().terminal_exec_allowed() = false;
-  defer {
+  defer
+  {
     execution_store().terminal_exec_allowed() = was_terminal_exec_allowed;
   };
 
@@ -626,7 +634,8 @@ fn EvalContext::run_pending_traps() throws -> void
   }
 
   let const saved_exit_status = execution_store().last_exit_status();
-  let const current_pipe_statuses = variable_store().indexed_arrays().find("PIPESTATUS");
+  let const current_pipe_statuses =
+      variable_store().indexed_arrays().find("PIPESTATUS");
   let const has_saved_pipe_statuses = current_pipe_statuses.has_value();
   ArrayList<String> saved_pipe_statuses{heap_allocator()};
   if (has_saved_pipe_statuses)
@@ -740,7 +749,8 @@ cold fn EvalContext::run_exit_trap(Maybe<i32> final_status) throws -> void
   defer { trap_store().trap_action_depth() -= 1; };
 
   let const saved_exit_status = execution_store().last_exit_status();
-  let const current_pipe_statuses = variable_store().indexed_arrays().find("PIPESTATUS");
+  let const current_pipe_statuses =
+      variable_store().indexed_arrays().find("PIPESTATUS");
   let const has_saved_pipe_statuses = current_pipe_statuses.has_value();
   ArrayList<String> saved_pipe_statuses{heap_allocator()};
   if (has_saved_pipe_statuses)
@@ -797,7 +807,8 @@ cold fn EvalContext::run_subshell_exit_trap() throws -> Maybe<i32>
   defer { trap_store().trap_action_depth() -= 1; };
 
   let const saved_exit_status = execution_store().last_exit_status();
-  let const current_pipe_statuses = variable_store().indexed_arrays().find("PIPESTATUS");
+  let const current_pipe_statuses =
+      variable_store().indexed_arrays().find("PIPESTATUS");
   let const has_saved_pipe_statuses = current_pipe_statuses.has_value();
   ArrayList<String> saved_pipe_statuses{heap_allocator()};
   if (has_saved_pipe_statuses)
@@ -834,7 +845,8 @@ cold fn EvalContext::run_subshell_exit_trap() throws -> Maybe<i32>
       if (control_flow_store().has_pending() &&
           control_flow_store().pending().kind == control_flow::Kind::Exit)
       {
-        requested_status = static_cast<i32>(control_flow_store().pending().value);
+        requested_status =
+            static_cast<i32>(control_flow_store().pending().value);
         control_flow_store().clear();
       }
     }
@@ -881,14 +893,16 @@ fn EvalContext::readonly_names() const throws
   out.reserve(variable_store().variable_attributes().count() +
               countof(RESTRICTED_READONLY_KEYS) +
               countof(BASH_IMPLICIT_READONLY_KEYS));
-  variable_store().variable_attributes().for_each([&](StringView name, u8 attributes) {
-    if ((attributes & static_cast<u8>(variable_attribute::Readonly)) != 0)
-      out.push_managed(name);
-  });
+  variable_store().variable_attributes().for_each(
+      [&](StringView name, u8 attributes) {
+        if ((attributes & static_cast<u8>(variable_attribute::Readonly)) != 0)
+          out.push_managed(name);
+      });
 
   let const do_push_implicit = [&](const PackedStringKey &key) throws {
     let name = key.to_string();
-    let const attributes = variable_store().variable_attributes().find(name.view());
+    let const attributes =
+        variable_store().variable_attributes().find(name.view());
     if (((attributes.has_value() ? *attributes.value() : 0) &
          static_cast<u8>(variable_attribute::Readonly)) == 0)
       out.push(steal(name));
@@ -919,7 +933,8 @@ fn EvalContext::is_declared(StringView name) const wontthrow -> bool
 
 fn EvalContext::append_attributed_names(HashSet &out) const throws -> void
 {
-  variable_store().variable_attributes().for_each([&](StringView name, u8) { out.add(name); });
+  variable_store().variable_attributes().for_each(
+      [&](StringView name, u8) { out.add(name); });
 }
 
 fn EvalContext::mark_integer(StringView name) throws -> void
@@ -934,7 +949,8 @@ fn EvalContext::unmark_integer(StringView name) throws -> void
 
 fn EvalContext::is_integer_variable(StringView name) const wontthrow -> bool
 {
-  if (runtime_state().bash_dynamic_variables_enabled() && !is_dynamic_reader_unset(name) &&
+  if (runtime_state().bash_dynamic_variables_enabled() &&
+      !is_dynamic_reader_unset(name) &&
       BASH_IMPLICIT_INTEGER_NAMES.contains(name))
   {
     return true;
@@ -996,14 +1012,16 @@ fn EvalContext::set_variable_attribute(StringView name,
   if (!attributes.has_value()) return;
 
   *attributes.value() &= static_cast<u8>(~mask);
-  if (*attributes.value() == 0) variable_store().variable_attributes().erase(name);
+  if (*attributes.value() == 0)
+    variable_store().variable_attributes().erase(name);
 }
 
 fn EvalContext::apply_variable_case(StringView name,
                                     String &value) const wontthrow -> void
 {
   let const attribute_entry = variable_store().variable_attributes().find(name);
-  let const attributes = attribute_entry.has_value() ? *attribute_entry.value() : 0;
+  let const attributes =
+      attribute_entry.has_value() ? *attribute_entry.value() : 0;
   if ((attributes & static_cast<u8>(variable_attribute::Lowercase)) != 0)
     value.lowercase_ascii();
   else if ((attributes & static_cast<u8>(variable_attribute::Uppercase)) != 0)

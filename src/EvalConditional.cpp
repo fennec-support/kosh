@@ -23,7 +23,7 @@
 namespace koshka {
 
 cold wontreturn static fn fail_conditional(StringView message,
-                                             StringView reason) throws -> void
+                                           StringView reason) throws -> void
 {
   throw ErrorWithDetails{message, reason};
 }
@@ -409,7 +409,8 @@ struct conditional_evaluator
         cxt.runtime_control_store().set_warning_suppressed(
             suppressible_warning::UnsetReference, saved_suppress_unset);
         cxt.runtime_control_store().set_warning_suppressed(
-            suppressible_warning::UnsetTestOperand, saved_suppress_test_operand);
+            suppressible_warning::UnsetTestOperand,
+            saved_suppress_test_operand);
       };
       let const operand = operand_value(elements[pos - 1]);
       return eval_unary(*selected_unary_operator, operand.view());
@@ -494,11 +495,10 @@ struct conditional_evaluator
             let const match_value = utils::lowercase_for_glob(
                 left.view(), cxt.get_glob_charset_for(left.view()),
                 cxt.scratch_allocator());
-            let const is_matched =
-                utils::glob_matches(match_pattern.view(), match_value.view(),
-                                    active, 0, cxt.get_extglob_mode(),
-                                    cxt.get_glob_charset_for(
-                                        match_value.view()));
+            let const is_matched = utils::glob_matches(
+                match_pattern.view(), match_value.view(), active, 0,
+                cxt.get_extglob_mode(),
+                cxt.get_glob_charset_for(match_value.view()));
             return *selected_binary_operator ==
                            BinaryOperatorKind::PatternNotEqual
                        ? !is_matched

@@ -104,7 +104,8 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
         continue;
       }
       if (let const alias = cxt.scope_store().get_alias(name.view());
-          alias.has_value()) {
+          alias.has_value())
+      {
         if (is_verbose)
           ec.print_to_stdout(name + " is aliased to `" + *alias + "'\n");
         else
@@ -113,7 +114,8 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
         continue;
       }
       if (cxt.function_store().has_functions() &&
-          cxt.function_store().find_function(name.view()).has_value()) {
+          cxt.function_store().find_function(name.view()).has_value())
+      {
         if (!is_verbose) {
           ec.print_to_stdout(name + "\n");
         } else {
@@ -129,7 +131,8 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
         continue;
       }
       if (let const kind = search_builtin(name.view());
-          kind.has_value() && !builtin_is_hidden_by_mood(*kind, cxt.runtime_state().get_mood()))
+          kind.has_value() &&
+          !builtin_is_hidden_by_mood(*kind, cxt.runtime_state().get_mood()))
       {
         ec.print_to_stdout(is_verbose ? name + " is a shell builtin\n"
                                       : name + "\n");

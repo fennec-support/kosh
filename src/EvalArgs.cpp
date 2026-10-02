@@ -531,7 +531,8 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
      declaration command such as unset names a variable, so its operand stays
      literal too. */
   let const previous_glob_exempt = expansion_store().glob_exempt_for_test();
-  expansion_store().set_glob_exempt_for_test(is_test_command || is_declaration_command);
+  expansion_store().set_glob_exempt_for_test(is_test_command ||
+                                             is_declaration_command);
   defer { expansion_store().set_glob_exempt_for_test(previous_glob_exempt); };
 
   /* An unset variable in a test operand is the question the command asks, so
@@ -545,8 +546,7 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
   defer
   {
     runtime_control_store().set_warning_suppressed(
-        suppressible_warning::UnsetTestOperand,
-        previous_suppress_test_warning);
+        suppressible_warning::UnsetTestOperand, previous_suppress_test_warning);
   };
 
   for (let const *token : args) {
@@ -734,7 +734,8 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
                 for (usize i = 1; is_plain_name && i < spec.length; i++)
                   if (!lexer::is_variable_name(spec[i])) is_plain_name = false;
                 if (is_plain_name)
-                  if (let const stored = variable_store().shell_variables().find(spec);
+                  if (let const stored =
+                          variable_store().shell_variables().find(spec);
                       stored.has_value())
                   {
                     value += stored->view();
