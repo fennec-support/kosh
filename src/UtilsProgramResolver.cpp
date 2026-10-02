@@ -1097,15 +1097,18 @@ fn ProgramResolver::resolve_along_path(StringView program_name,
     return result;
   }
 
-  for (let const &dir_string : *directories) {
-    let const directory = Path{dir_string.view()};
+  let candidate_paths = ArrayList<Path>{heap_allocator()};
+  let candidate_statuses = ArrayList<os::file_status>{heap_allocator()};
+  let candidate_batch = os::Batch{heap_allocator()};
+  let candidate_results = ArrayList<os::batch_result>{heap_allocator()};
 
-    let full_path = directory.clone();
+  for (let const &dir_string : *directories) {
+    let full_path = Path{dir_string.view()};
     full_path.push_component(program_name);
 
-    let candidate_paths = ArrayList<Path>{heap_allocator()};
-    let candidate_statuses = ArrayList<os::file_status>{heap_allocator()};
-    let candidate_batch = os::Batch{heap_allocator()};
+    candidate_paths.clear();
+    candidate_statuses.clear();
+    candidate_batch.clear();
 
     if (name_info.extension == os::program_extension::None) {
       for (let const &suffix : os::PROGRAM_SUFFIXES) {
@@ -1127,7 +1130,7 @@ fn ProgramResolver::resolve_along_path(StringView program_name,
 #if !defined NDEBUG
     DEBUG_PROGRAM_PATH_CANDIDATE_COUNT += candidate_paths.count();
 #endif
-    let const candidate_results = candidate_batch.execute();
+    candidate_batch.execute(candidate_results);
     for (usize index = 0; index < candidate_paths.count(); index++) {
       if (candidate_results[index].error_number != 0 ||
           os::file_type_letter(candidate_statuses[index].mode) != '-')
