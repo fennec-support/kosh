@@ -473,4 +473,18 @@ note: Remove the condition.
    123 |    trap 'helper_function' SIGSTOP
        |                           ^~~~~~~
 note: Remove the condition.
-Encountered 118 warnings.
+132:22: warning: The 'spin_while' function calls itself. (SC2264)
+   132 |  spin_while() { while spin_while; do :; done; }
+       |                       ^~~~~~~~~~
+132:1: details:
+   132 |  spin_while() { while spin_while; do :; done; }
+       |  ^~~~~~~~~~ 'spin_while' is defined here.
+note: Use `command` before the wrapped command name.
+133:22: warning: The 'spin_until' function calls itself. (SC2264)
+   133 |  spin_until() { until spin_until; do :; done; }
+       |                       ^~~~~~~~~~
+133:1: details:
+   133 |  spin_until() { until spin_until; do :; done; }
+       |  ^~~~~~~~~~ 'spin_until' is defined here.
+note: Use `command` before the wrapped command name.
+Encountered 120 warnings.

@@ -684,7 +684,9 @@ fn SelectLoop::analyze(AnalysisContext &actx,
 
   actx.constant_variables.clear();
   actx.loop_body_depth++;
+  actx.conditional_branch_depth++;
   m_body->analyze(actx, false);
+  actx.conditional_branch_depth--;
   actx.loop_body_depth--;
 
   merge_variable_occurrence_states(loop_entry_occurrence_assignments,
@@ -896,7 +898,9 @@ fn CStyleForLoop::analyze(AnalysisContext &actx,
 
   actx.constant_variables.clear();
   actx.loop_body_depth++;
+  actx.conditional_branch_depth++;
   m_body->analyze(actx, false);
+  actx.conditional_branch_depth--;
   actx.loop_body_depth--;
 
   if (!m_step.is_empty()) {

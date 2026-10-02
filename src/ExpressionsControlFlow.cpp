@@ -583,7 +583,9 @@ fn WhileLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
   if (has_input_reading_loop_condition) actx.is_inside_read_loop = true;
   if (is_folded_to_skip()) actx.should_silence_unresolved_commands = true;
   actx.loop_body_depth++;
+  actx.conditional_branch_depth++;
   m_body->analyze(actx, false);
+  actx.conditional_branch_depth--;
   actx.loop_body_depth--;
 
   merge_variable_occurrence_states(condition_occurrence_assignments,
@@ -1015,7 +1017,9 @@ fn ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
      being inlined into a counter the body increments. */
   actx.constant_variables.clear();
   actx.loop_body_depth++;
+  actx.conditional_branch_depth++;
   m_body->analyze(actx, false);
+  actx.conditional_branch_depth--;
   actx.loop_body_depth--;
 
   merge_variable_occurrence_states(loop_entry_occurrence_assignments,
