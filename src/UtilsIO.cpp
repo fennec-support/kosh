@@ -266,6 +266,29 @@ static fn ceiling_directory_list(StringView ceiling_directories) throws
   return ceilings;
 }
 
+static pure fn is_same_directory_text(StringView left,
+                                      StringView right) wontthrow -> bool
+{
+  if (left.length != right.length) return false;
+
+  for (usize index = 0; index < left.length; index++) {
+    let left_byte = left[index];
+    let right_byte = right[index];
+    if (os::is_directory_separator(left_byte) &&
+        os::is_directory_separator(right_byte))
+    {
+      continue;
+    }
+    if (!os::FILESYSTEM_IS_CASE_SENSITIVE) {
+      left_byte = ascii_to_lower(left_byte);
+      right_byte = ascii_to_lower(right_byte);
+    }
+    if (left_byte != right_byte) return false;
+  }
+
+  return true;
+}
+
 fn resolve_git_directory(StringView ceiling_directories) throws -> Path
 {
   let const ceilings = ceiling_directory_list(ceiling_directories);
@@ -300,7 +323,15 @@ fn resolve_git_directory(StringView ceiling_directories) throws -> Path
     let normalized = parent.to_absolute().normalized();
     if (normalized.text() == dir.text()) break;
 
-    if (ceilings.find(String{normalized.text()}).has_value()) {
+    let is_below_ceiling = false;
+    for (let const &ceiling : ceilings) {
+      if (is_same_directory_text(ceiling.view(), normalized.text().view())) {
+        is_below_ceiling = true;
+        break;
+      }
+    }
+
+    if (is_below_ceiling) {
       LOG(Debug, "the git directory walk stops below the ceiling '%.*s'",
           static_cast<int>(normalized.text().view().length),
           normalized.text().view().data);
