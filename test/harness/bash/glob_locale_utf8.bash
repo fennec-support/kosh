@@ -106,7 +106,19 @@ check_patterns() {
     'é|@(?)' 'é|@(??)' 'é|!(?)' 'é|!(??)' 'éa|*(?)' 'éa|*(??)' 'éa|+(?)' \
     'éa|?(?)a' 'éa|?(??)a' 'éb|@([é]|x)b' 'éb|@([!a])b' 'éb|@([a-z])b' \
     'éb|@([à-ü])b' 'éb|*([é])b' 'éb|!(?)b' 'éb|!(??)b' 'éé|!(?)' \
-    'éé|!(??)' 'éé|!(????)'; do
+    'éé|!(??)' 'éé|!(????)' \
+    'ab|@([[:alpha:]])b' 'éb|@([[:alpha:]])b' '1b|@([[:alpha:]])b' \
+    'ab|*([[:alpha:]])b' 'éb|*([[:alpha:]])b' '1b|*([[:alpha:]])b' \
+    'ab|+([[:alpha:]])b' 'éb|+([[:alpha:]])b' '1b|+([[:alpha:]])b' \
+    'ab|?([[:alpha:]])b' 'éb|?([[:alpha:]])b' '1b|?([[:alpha:]])b' \
+    'ab|!([[:alpha:]])b' 'éb|!([[:alpha:]])b' '1b|!([[:alpha:]])b' \
+    'ab|@([[:digit:]])b' 'éb|@([[:digit:]])b' '1b|@([[:digit:]])b' \
+    'ab|@([![:alpha:]])b' 'éb|@([![:alpha:]])b' '1b|@([![:alpha:]])b' \
+    'ab|@([a[:digit:]])b' 'éb|@([a[:digit:]])b' '1b|@([a[:digit:]])b' \
+    'ab|@([[:alpha:]]|x)b' 'éb|@([[:alpha:]]|x)b' '1b|@([[:alpha:]]|x)b' \
+    'ab|@([]a])b' 'éb|@([]a])b' 'ab|@([[:alpha:])b' 'éb|@([[:foo:]])b' \
+    'ab|@([[:alpha:][:digit:]])b' 'éb|@([[:alpha:][:digit:]])b' \
+    '1b|@([[:alpha:][:digit:]])b' '-b|@([![:alpha:]])b'; do
     subject=${entry%%|*}
     pattern=${entry#*|}
     case $subject in
@@ -122,3 +134,25 @@ check_patterns
 LC_ALL=C
 echo c-brackets
 check_patterns
+
+check_class_forms() {
+  local subject pattern trimmed
+  for subject in ab éb 1b; do
+    for pattern in '@([[:alpha:]])b' '*([[:alpha:]])' '+([![:alpha:]])b' \
+      '?([a[:digit:]])b'; do
+      [[ $subject == $pattern ]] && echo "cond-Y $subject $pattern" ||
+        echo "cond-N $subject $pattern"
+      trimmed=${subject##$pattern}
+      echo "trim:$trimmed"
+      trimmed=${subject%%$pattern}
+      echo "trim-suffix:$trimmed"
+    done
+  done
+}
+
+LC_ALL=C.UTF-8
+echo utf8-class-forms
+check_class_forms
+LC_ALL=C
+echo c-class-forms
+check_class_forms

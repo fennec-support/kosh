@@ -119,6 +119,49 @@ pure fn get_next_split(StringView str, usize position,
   return position + 1;
 }
 
+/* The length of the bracket expression that opens at glob[0], or zero when no
+   closing ] exists. A ] right after [ or [! or [^ is a member, and a [:name:]
+   unit is taken whole so its inner ] never closes the bracket. */
+fn get_bracket_span(StringView glob, const Bitset &mask,
+                    usize mask_offset) wontthrow -> usize
+{
+  let const do_is_close_at = [&](usize index) wontthrow -> bool {
+    return glob[index] == ']' && extglob_active(mask, mask_offset + index);
+  };
+
+  usize scan = 1;
+  if (scan < glob.count() && (glob[scan] == '!' || glob[scan] == '^') &&
+      extglob_active(mask, mask_offset + scan))
+  {
+    scan++;
+  }
+  if (scan < glob.count() && do_is_close_at(scan)) scan++;
+
+  while (scan < glob.count()) {
+    if (scan + 1 < glob.count() && glob[scan] == '[' && glob[scan + 1] == ':' &&
+        extglob_active(mask, mask_offset + scan))
+    {
+      usize class_scan = scan + 2;
+      while (class_scan + 1 < glob.count() &&
+             !(glob[class_scan] == ':' && glob[class_scan + 1] == ']') &&
+             !do_is_close_at(class_scan))
+      {
+        class_scan++;
+      }
+      if (class_scan + 1 < glob.count() && glob[class_scan] == ':' &&
+          glob[class_scan + 1] == ']')
+      {
+        scan = class_scan + 2;
+        continue;
+      }
+    }
+    if (do_is_close_at(scan)) return scan + 1;
+    scan++;
+  }
+
+  return 0;
+}
+
 fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
                       usize mask_offset, glob_charset charset) throws -> bool;
 
@@ -276,12 +319,8 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
   if (is_active && head == '[') {
     /* Reuse the iterative matcher for a single bracket class by matching one
        character, then continue with the rest of the glob and the string. */
-    usize span = 1;
-    while (span < glob.count() &&
-           !(glob[span] == ']' && extglob_active(mask, mask_offset + span)))
-      span++;
-    if (span < glob.count()) {
-      span++;
+    let const span = get_bracket_span(glob, mask, mask_offset);
+    if (span != 0) {
       let const character_length = get_next_split(str, 0, charset);
       let const did_class_match = glob_matches(
           glob.substring_of_length(0, span),
@@ -575,7 +614,7 @@ hot flatten fn glob_matches(StringView glob, StringView str,
         {
           let const class_name =
               glob.substring_of_length(g + 2, *past_class - g - 4);
-          is_matched |= subject.value < 0x80
+          is_matched |= (!is_utf8 || subject.value < 0x80)
                             ? byte_is_in_posix_class(
                                   class_name, static_cast<u8>(subject.value))
                             : subject.value < 0x110000 &&
