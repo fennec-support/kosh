@@ -66,73 +66,48 @@ static fn parse_tail_count(StringView spec) throws -> Maybe<parsed_tail_count>
 
 constexpr usize TAIL_BLOCK_BYTE_COUNT = 64 * 1024;
 constexpr usize TAIL_ACTIVE_SOURCE_COUNT = 16;
+constexpr usize TAIL_OUTPUT_FLUSH_BYTE_COUNT = 64 * 1024;
 
-struct tail_block
-{
-  String content;
-  u64 offset;
-};
-
-struct regular_tail_state
+struct positioned_tail_state
 {
   usize source_index{0};
   os::descriptor descriptor{KOSH_INVALID_FD};
   u64 file_size{0};
-  u64 next_end{0};
+  u64 scan_offset{0};
   u64 start_offset{0};
   u64 remaining_newline_count{0};
   usize read_byte_count{0};
-  bool has_boundary{false};
+  i32 error_number{0};
   bool is_done{false};
-  bool has_error{false};
   ArrayList<char> buffer{heap_allocator()};
-  ArrayList<tail_block> blocks{heap_allocator()};
 };
 
-static fn read_regular_tails(ArrayList<regular_tail_state> &states,
-                             ArrayList<Maybe<String>> &outputs,
-                             ArrayList<i32> &errors, Allocator allocator) throws
-    -> void
+static fn find_tail_starts_from_end(ArrayList<positioned_tail_state> &states,
+                                    Allocator allocator) throws -> void
 {
   let batch = os::Batch{allocator};
   let results = ArrayList<os::batch_result>{allocator};
   let operation_states = ArrayList<usize>{allocator};
-  defer
-  {
-    for (let &state : states)
-      if (state.descriptor != KOSH_INVALID_FD)
-        unused(os::close_fd(state.descriptor));
-  };
-
-  for (let &state : states) {
-    if (state.file_size == 0 || state.remaining_newline_count == 0) {
-      state.is_done = true;
-      outputs[state.source_index] = String{allocator};
-    }
-  }
 
   loop
   {
     batch.clear();
     results.clear();
     operation_states.clear();
-    let has_pending = false;
     for (usize state_index = 0; state_index < states.count(); state_index++) {
       let &state = states[state_index];
-      if (state.is_done || state.has_error || state.next_end == 0) continue;
+      if (state.is_done || state.scan_offset == 0) continue;
 
-      let const block_size = state.next_end > TAIL_BLOCK_BYTE_COUNT
+      let const block_size = state.scan_offset > TAIL_BLOCK_BYTE_COUNT
                                  ? TAIL_BLOCK_BYTE_COUNT
-                                 : static_cast<usize>(state.next_end);
+                                 : static_cast<usize>(state.scan_offset);
       state.read_byte_count = block_size;
-
-      let const block_offset = state.next_end - block_size;
-      batch.add(os::batch_operation::read(
-          state.descriptor, state.buffer.begin(), block_size, block_offset));
+      batch.add(os::batch_operation::read(state.descriptor,
+                                          state.buffer.begin(), block_size,
+                                          state.scan_offset - block_size));
       operation_states.push(state_index);
-      has_pending = true;
     }
-    if (!has_pending) break;
+    if (operation_states.is_empty()) break;
 
     batch.execute(results);
     if (os::INTERRUPT_REQUESTED) return;
@@ -141,9 +116,8 @@ static fn read_regular_tails(ArrayList<regular_tail_state> &states,
       let &state = states[operation_states[result_index]];
       let const &result = results[result_index];
       if (result.error_number != 0) {
-        state.has_error = true;
+        state.error_number = result.error_number;
         state.is_done = true;
-        errors[state.source_index] = result.error_number;
         continue;
       }
 
@@ -153,109 +127,59 @@ static fn read_regular_tails(ArrayList<regular_tail_state> &states,
         continue;
       }
 
-      let const block_size = state.read_byte_count;
-      let const block_offset = state.next_end - block_size;
-      let block = String{allocator};
-      block.append(StringView{state.buffer.begin(), transferred});
-      state.blocks.push({steal(block), block_offset});
-
+      let const block_offset = state.scan_offset - state.read_byte_count;
       for (usize position = transferred; position > 0; position--) {
-        let const absolute = block_offset + position - 1;
-        if (absolute + 1 == state.file_size &&
-            state.buffer.begin()[position - 1] == '\n')
-          continue;
         if (state.buffer.begin()[position - 1] != '\n') continue;
+
+        let const absolute = block_offset + position - 1;
+        if (absolute + 1 == state.file_size) continue;
 
         if (--state.remaining_newline_count == 0) {
           state.start_offset = absolute + 1;
-          state.has_boundary = true;
           state.is_done = true;
           break;
         }
       }
 
-      state.next_end = block_offset;
-      if (transferred < block_size ||
-          (state.has_boundary && state.next_end <= state.start_offset))
-        state.is_done = true;
+      state.scan_offset = block_offset;
+      if (transferred < state.read_byte_count) state.is_done = true;
     }
-  }
-
-  for (let &state : states) {
-    if (state.has_error) continue;
-    let output = String{allocator};
-    for (usize block_index = state.blocks.count(); block_index-- > 0;) {
-      let const &block = state.blocks[block_index];
-      if (block.offset + block.content.length() <= state.start_offset) continue;
-
-      let const skip_count =
-          state.start_offset > block.offset
-              ? static_cast<usize>(state.start_offset - block.offset)
-              : usize{0};
-      output += block.content.substring(skip_count);
-    }
-    outputs[state.source_index] = steal(output);
   }
 }
 
-struct forward_tail_state
-{
-  usize source_index{0};
-  os::descriptor descriptor{KOSH_INVALID_FD};
-  u64 file_size{0};
-  u64 next_offset{0};
-  u64 skipped_newlines{0};
-  usize read_byte_count{0};
-  tail_unit unit{tail_unit::Lines};
-  bool is_done{false};
-  bool has_error{false};
-  ArrayList<char> buffer{heap_allocator()};
-};
-
-static fn read_regular_forward_tails(ArrayList<forward_tail_state> &states,
-                                     ArrayList<Maybe<String>> &outputs,
-                                     ArrayList<i32> &errors,
-                                     Allocator allocator) throws -> void
+static fn find_tail_starts_from_start(ArrayList<positioned_tail_state> &states,
+                                      Allocator allocator) throws -> void
 {
   let batch = os::Batch{allocator};
   let results = ArrayList<os::batch_result>{allocator};
   let operation_states = ArrayList<usize>{allocator};
-  defer
-  {
-    for (let &state : states)
-      if (state.descriptor != KOSH_INVALID_FD)
-        unused(os::close_fd(state.descriptor));
-  };
-
-  for (let &state : states) {
-    if (state.next_offset >= state.file_size) {
-      state.is_done = true;
-      outputs[state.source_index] = String{allocator};
-    }
-  }
 
   loop
   {
     batch.clear();
     results.clear();
     operation_states.clear();
-    bool has_pending = false;
     for (usize state_index = 0; state_index < states.count(); state_index++) {
       let &state = states[state_index];
-      if (state.is_done || state.has_error) continue;
+      if (state.is_done) continue;
 
-      let const remaining = state.file_size - state.next_offset;
+      if (state.scan_offset >= state.file_size) {
+        state.start_offset = state.file_size;
+        state.is_done = true;
+        continue;
+      }
+
+      let const remaining = state.file_size - state.scan_offset;
       let const block_size = remaining > TAIL_BLOCK_BYTE_COUNT
                                  ? TAIL_BLOCK_BYTE_COUNT
                                  : static_cast<usize>(remaining);
       state.read_byte_count = block_size;
       batch.add(os::batch_operation::read(state.descriptor,
                                           state.buffer.begin(), block_size,
-                                          state.next_offset));
+                                          state.scan_offset));
       operation_states.push(state_index);
-      has_pending = true;
     }
-    if (!has_pending) break;
+    if (operation_states.is_empty()) break;
 
     batch.execute(results);
     if (os::INTERRUPT_REQUESTED) return;
@@ -264,47 +188,28 @@ static fn read_regular_forward_tails(ArrayList<forward_tail_state> &states,
       let &state = states[operation_states[result_index]];
       let const &result = results[result_index];
       if (result.error_number != 0) {
-        state.has_error = true;
+        state.error_number = result.error_number;
         state.is_done = true;
-        errors[state.source_index] = result.error_number;
-        outputs[state.source_index] = None;
         continue;
       }
 
       let const transferred = result.transferred_byte_count;
-      if (transferred == 0) {
-        state.is_done = true;
-        if (!outputs[state.source_index].has_value())
-          outputs[state.source_index] = String{allocator};
-        continue;
-      }
+      for (usize position = 0; position < transferred; position++) {
+        if (state.buffer.begin()[position] != '\n') continue;
 
-      usize append_start = 0;
-      if (state.unit != tail_unit::Bytes && state.skipped_newlines != 0) {
-        for (usize position = 0; position < transferred; position++) {
-          if (state.buffer.begin()[position] != '\n') continue;
-          state.skipped_newlines--;
-          append_start = position + 1;
-          if (state.skipped_newlines == 0) break;
+        if (--state.remaining_newline_count == 0) {
+          state.start_offset = state.scan_offset + position + 1;
+          state.is_done = true;
+          break;
         }
-        if (state.skipped_newlines != 0) append_start = transferred;
       }
+      if (state.is_done) continue;
 
-      if (!outputs[state.source_index].has_value()) {
-        outputs[state.source_index] = String{allocator};
-        if (state.unit == tail_unit::Bytes &&
-            state.file_size - state.next_offset < SIZE_MAX)
-          outputs[state.source_index]->reserve(
-              static_cast<usize>(state.file_size - state.next_offset));
-      }
-      if (append_start < transferred)
-        outputs[state.source_index]->append(StringView{
-            state.buffer.begin() + append_start, transferred - append_start});
-
-      state.next_offset += transferred;
-      if (transferred < state.read_byte_count ||
-          state.next_offset >= state.file_size)
+      state.scan_offset += transferred;
+      if (transferred < state.read_byte_count) {
+        state.start_offset = state.scan_offset;
         state.is_done = true;
+      }
     }
   }
 }
@@ -386,175 +291,149 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
           metadata_results[result_index].error_number;
   }
 
-  let positioned_contents = ArrayList<Maybe<String>>{allocator};
-  let positioned_attempted = ArrayList<bool>{allocator};
-  let positioned_errors = ArrayList<i32>{allocator};
-  let regular_states = ArrayList<regular_tail_state>{allocator};
-  let forward_states = ArrayList<forward_tail_state>{allocator};
-  positioned_contents.reserve(sources.count());
-  positioned_attempted.reserve(sources.count());
-  positioned_errors.reserve(sources.count());
-  for (usize source_index = 0; source_index < sources.count(); source_index++) {
-    positioned_contents.push(None);
-    positioned_attempted.push(false);
-    positioned_errors.push(0);
-  }
-  if (origin == count_origin::FromEnd && unit == tail_unit::Lines) {
-    for (usize source_index = 0; source_index < sources.count(); source_index++)
-    {
-      if (sources[source_index] == "" || sources[source_index] == "-" ||
-          metadata_errors[source_index] != 0 ||
-          os::file_type_letter(statuses[source_index].mode) != '-')
-        continue;
+  let output = String{allocator};
+  let const do_flush_output = [&]() throws -> void {
+    if (output.is_empty()) return;
 
-      let const descriptor = os::open_file_descriptor(sources[source_index],
-                                                      os::file_open_mode::Read);
-      if (!descriptor.has_value()) continue;
-      let const file_size = os::regular_descriptor_file_size(*descriptor);
-      if (!file_size.has_value()) {
-        unused(os::close_fd(*descriptor));
-        continue;
-      }
-
-      positioned_attempted[source_index] = true;
-      regular_tail_state state{};
-      state.source_index = source_index;
-      state.descriptor = *descriptor;
-      state.file_size = *file_size;
-      state.next_end = *file_size;
-      state.remaining_newline_count = static_cast<u64>(count);
-      state.buffer = ArrayList<char>{allocator};
-      state.blocks = ArrayList<tail_block>{allocator};
-      state.buffer.reserve(TAIL_BLOCK_BYTE_COUNT);
-      state.blocks.reserve(2);
-      regular_states.push(steal(state));
-
-      if (regular_states.count() == TAIL_ACTIVE_SOURCE_COUNT) {
-        read_regular_tails(regular_states, positioned_contents,
-                           positioned_errors, allocator);
-        regular_states.clear();
-        if (os::INTERRUPT_REQUESTED) return 130;
-      }
+    ec.print_to_stdout(output);
+    output.clear();
+  };
+  let const do_write_output = [&](StringView text) throws -> void {
+    if (output.count() + text.length < TAIL_OUTPUT_FLUSH_BYTE_COUNT) {
+      output += text;
+      return;
     }
-    if (regular_states.count() != 0)
-      read_regular_tails(regular_states, positioned_contents, positioned_errors,
-                         allocator);
-    if (os::INTERRUPT_REQUESTED) return 130;
-  } else {
-    for (usize source_index = 0; source_index < sources.count(); source_index++)
-    {
-      if (sources[source_index] == "" || sources[source_index] == "-" ||
-          metadata_errors[source_index] != 0 ||
-          os::file_type_letter(statuses[source_index].mode) != '-')
-        continue;
 
-      let const descriptor = os::open_file_descriptor(sources[source_index],
-                                                      os::file_open_mode::Read);
-      if (!descriptor.has_value()) continue;
-      let const file_size = os::regular_descriptor_file_size(*descriptor);
-      if (!file_size.has_value()) {
-        unused(os::close_fd(*descriptor));
-        continue;
-      }
-
-      positioned_attempted[source_index] = true;
-      forward_tail_state state{};
-      state.source_index = source_index;
-      state.descriptor = *descriptor;
-      state.file_size = *file_size;
-      state.unit = unit;
-      if (unit == tail_unit::Bytes) {
-        if (origin == count_origin::FromEnd)
-          state.next_offset = *file_size > static_cast<u64>(count)
-                                  ? *file_size - static_cast<u64>(count)
-                                  : 0;
-        else if (count > 0)
-          state.next_offset = static_cast<u64>(count - 1) < *file_size
-                                  ? static_cast<u64>(count - 1)
-                                  : *file_size;
-      }
-      state.skipped_newlines = unit == tail_unit::Lines && count > 0
-                                   ? static_cast<u64>(count - 1)
-                                   : 0;
-      state.buffer = ArrayList<char>{allocator};
-      state.buffer.reserve(TAIL_BLOCK_BYTE_COUNT);
-      forward_states.push(steal(state));
-
-      if (forward_states.count() == TAIL_ACTIVE_SOURCE_COUNT) {
-        read_regular_forward_tails(forward_states, positioned_contents,
-                                   positioned_errors, allocator);
-        forward_states.clear();
-        if (os::INTERRUPT_REQUESTED) return 130;
-      }
-    }
-    if (forward_states.count() != 0)
-      read_regular_forward_tails(forward_states, positioned_contents,
-                                 positioned_errors, allocator);
-    if (os::INTERRUPT_REQUESTED) return 130;
-  }
+    do_flush_output();
+    ec.print_to_stdout(text);
+  };
 
   let const should_print_headers = sources.count() > 1;
-  let output = String{cxt.scratch_allocator()};
+  let const do_write_header = [&](usize source_index) throws -> void {
+    if (!should_print_headers) return;
+
+    if (source_index > 0) output += '\n';
+    output += "==> ";
+    output += sources[source_index] == "-" ? StringView{"standard input"}
+                                           : sources[source_index];
+    output += " <==\n";
+  };
+
   i32 status = 0;
-  for (usize source_index = 0; source_index < sources.count(); source_index++) {
-    Maybe<String> content;
-    bool did_use_positioned_read = false;
-    if (positioned_attempted[source_index]) {
-      content = steal(positioned_contents[source_index]);
-      did_use_positioned_read = true;
-    }
-    if (!did_use_positioned_read)
-      content = read_named_or_stdin(ec, sources[source_index]);
-    if (os::INTERRUPT_REQUESTED) return 130;
-    if (!content.has_value()) {
-      if (positioned_errors[source_index] != 0)
-        os::set_last_system_error(positioned_errors[source_index]);
-      report_soft_koshkit_util_error(
-          ec, cxt, args[0].view(),
-          String{did_use_positioned_read ? "cannot read '" : "cannot open '"} +
-              String{cxt.scratch_allocator(), sources[source_index]} +
-              "': " + os::last_system_error_message());
-      status = 1;
-      continue;
+  let const do_report_error = [&](usize source_index, StringView prefix)
+                                  throws -> void {
+    report_soft_koshkit_util_error(
+        ec, cxt, args[0].view(),
+        String{allocator, prefix} +
+            String{cxt.scratch_allocator(), sources[source_index]} +
+            "': " + os::last_system_error_message());
+    status = 1;
+  };
+
+  let states = ArrayList<positioned_tail_state>{allocator};
+  defer
+  {
+    for (let &state : states)
+      if (state.descriptor != KOSH_INVALID_FD)
+        unused(os::close_fd(state.descriptor));
+  };
+
+  let const do_open_positioned = [&](usize source_index) throws -> void {
+    if (sources[source_index] == "" || sources[source_index] == "-" ||
+        metadata_errors[source_index] != 0 ||
+        os::file_type_letter(statuses[source_index].mode) != '-')
+      return;
+
+    let const descriptor = os::open_file_descriptor(sources[source_index],
+                                                    os::file_open_mode::Read);
+    if (!descriptor.has_value()) return;
+    let const file_size = os::regular_descriptor_file_size(*descriptor);
+    if (!file_size.has_value()) {
+      unused(os::close_fd(*descriptor));
+      return;
     }
 
-    if (should_print_headers) {
-      if (source_index > 0) output += '\n';
-      output += "==> ";
-      output += sources[source_index] == "-" ? StringView{"standard input"}
-                                             : sources[source_index];
-      output += " <==\n";
-    }
-
+    positioned_tail_state state{};
+    state.source_index = source_index;
+    state.descriptor = *descriptor;
+    state.file_size = *file_size;
+    state.buffer = ArrayList<char>{allocator};
     if (unit == tail_unit::Bytes) {
-      let const wanted_count = static_cast<usize>(count);
-      let const text = content->view();
-      let start = origin == count_origin::FromStart
-                      ? (did_use_positioned_read || count == 0
-                             ? 0
-                             : static_cast<usize>(count - 1))
-                      : sub_sat(text.length, wanted_count);
-      if (start > text.length) start = text.length;
+      if (origin == count_origin::FromEnd)
+        state.start_offset = *file_size > static_cast<u64>(count)
+                                 ? *file_size - static_cast<u64>(count)
+                                 : 0;
+      else if (count > 0)
+        state.start_offset = static_cast<u64>(count - 1) < *file_size
+                                 ? static_cast<u64>(count - 1)
+                                 : *file_size;
+      state.is_done = true;
+    } else if (origin == count_origin::FromEnd) {
+      state.scan_offset = *file_size;
+      state.remaining_newline_count = static_cast<u64>(count);
+      if (*file_size == 0 || count == 0) {
+        state.start_offset = *file_size;
+        state.is_done = true;
+      }
+    } else {
+      state.remaining_newline_count =
+          count > 0 ? static_cast<u64>(count - 1) : 0;
+      state.is_done = state.remaining_newline_count == 0;
+    }
+    if (!state.is_done) state.buffer.reserve(TAIL_BLOCK_BYTE_COUNT);
 
-      if (!should_print_headers && start == 0 && output.is_empty())
-        output = steal(*content);
-      else
-        output += text.substring(start);
-      continue;
+    states.push(steal(state));
+  };
+
+  let block = ArrayList<char>{allocator};
+  block.reserve(TAIL_BLOCK_BYTE_COUNT);
+  let read_batch = os::Batch{allocator};
+  let read_results = ArrayList<os::batch_result>{allocator};
+  let const do_write_positioned = [&](const positioned_tail_state &state)
+                                      throws -> i32 {
+    u64 offset = state.start_offset;
+    while (offset < state.file_size) {
+      let const remaining = state.file_size - offset;
+      let const block_size = remaining > TAIL_BLOCK_BYTE_COUNT
+                                 ? TAIL_BLOCK_BYTE_COUNT
+                                 : static_cast<usize>(remaining);
+      read_batch.clear();
+      read_results.clear();
+      read_batch.add(os::batch_operation::read(state.descriptor, block.begin(),
+                                               block_size, offset));
+      read_batch.execute(read_results);
+      if (os::INTERRUPT_REQUESTED) return 0;
+
+      let const &result = read_results[0];
+      if (result.error_number != 0) return result.error_number;
+      if (result.transferred_byte_count == 0) break;
+
+      do_write_output(StringView{block.begin(), result.transferred_byte_count});
+      offset += result.transferred_byte_count;
     }
 
-    if (did_use_positioned_read) {
-      if (!should_print_headers && output.is_empty())
-        output = steal(*content);
-      else
-        output += content->view();
-      continue;
+    return 0;
+  };
+
+  let const do_write_buffered = [&](usize source_index) throws -> void {
+    let const content = read_named_or_stdin(ec, sources[source_index]);
+    if (os::INTERRUPT_REQUESTED) return;
+    if (!content.has_value()) {
+      do_report_error(source_index, "cannot open '");
+      return;
     }
+
+    do_write_header(source_index);
 
     let const text = content->view();
     let const wanted_count = static_cast<usize>(count);
     usize start = 0;
-    if (origin == count_origin::FromStart) {
+    if (unit == tail_unit::Bytes) {
+      start = origin == count_origin::FromStart
+                  ? (count == 0 ? 0 : static_cast<usize>(count - 1))
+                  : sub_sat(text.length, wanted_count);
+      if (start > text.length) start = text.length;
+    } else if (origin == count_origin::FromStart) {
       usize remaining_newline_count = count > 0 ? wanted_count - 1 : 0;
       while (start < text.length && remaining_newline_count > 0) {
         if (text[start] == '\n') remaining_newline_count--;
@@ -572,10 +451,64 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
         start--;
       }
     }
-    output += text.substring(start);
+
+    do_write_output(text.substring(start));
+  };
+
+  usize window_begin = 0;
+  while (window_begin < sources.count()) {
+    usize window_end = window_begin;
+    while (window_end < sources.count() &&
+           states.count() < TAIL_ACTIVE_SOURCE_COUNT)
+    {
+      do_open_positioned(window_end);
+      window_end++;
+    }
+
+    if (unit == tail_unit::Lines && origin == count_origin::FromEnd)
+      find_tail_starts_from_end(states, allocator);
+    else if (unit == tail_unit::Lines)
+      find_tail_starts_from_start(states, allocator);
+    if (os::INTERRUPT_REQUESTED) return 130;
+
+    usize state_index = 0;
+    for (usize source_index = window_begin; source_index < window_end;
+         source_index++)
+    {
+      if (state_index == states.count() ||
+          states[state_index].source_index != source_index)
+      {
+        do_write_buffered(source_index);
+        if (os::INTERRUPT_REQUESTED) return 130;
+        continue;
+      }
+
+      let const &state = states[state_index];
+      state_index++;
+      if (state.error_number != 0) {
+        os::set_last_system_error(state.error_number);
+        do_report_error(source_index, "cannot read '");
+        continue;
+      }
+
+      do_write_header(source_index);
+      let const error_number = do_write_positioned(state);
+      if (os::INTERRUPT_REQUESTED) return 130;
+      if (error_number != 0) {
+        os::set_last_system_error(error_number);
+        do_report_error(source_index, "cannot read '");
+      }
+    }
+
+    for (let &state : states) {
+      unused(os::close_fd(state.descriptor));
+      state.descriptor = KOSH_INVALID_FD;
+    }
+    states.clear();
+    window_begin = window_end;
   }
 
-  ec.print_to_stdout(output);
+  do_flush_output();
   return status;
 }
 

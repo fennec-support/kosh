@@ -48,6 +48,13 @@ printf '\n'
 echo "--- bounded source order ---"
 "$BIN" -c "koshkit tail -n 1 '$d/batch-01.txt' '$d/batch-02.txt' '$d/batch-03.txt' '$d/batch-04.txt' '$d/batch-05.txt' '$d/batch-06.txt' '$d/batch-07.txt' '$d/batch-08.txt' '$d/batch-09.txt' '$d/batch-10.txt' '$d/batch-11.txt' '$d/batch-12.txt' '$d/batch-13.txt' '$d/batch-14.txt' '$d/batch-15.txt' '$d/batch-16.txt' '$d/batch-17.txt' '$d/batch-18.txt'" \
   | tr '\\' '/' | sed "s#$normalized_d#TMPDIR#g"
+echo "--- streamed positioned output keeps headers and order ---"
+"$BIN" -c "cd '$d' && koshkit tail -n 69999 large-forward.txt with-final.txt | koshkit cksum"
+"$BIN" -c "cd '$d' && koshkit tail -c 70000 large-forward.txt bytes.txt | koshkit cksum"
+"$BIN" -c "cd '$d' && koshkit tail -n +2 large-forward.txt forward-lines.txt | koshkit cksum"
+printf 'p\nq\n' | "$BIN" -c \
+  "cd '$d' && koshkit tail -n 1 with-final.txt - no-final.txt"
+printf '\n'
 echo "--- missing source preserves later output and status ---"
 {
   cd "$d" || exit 1

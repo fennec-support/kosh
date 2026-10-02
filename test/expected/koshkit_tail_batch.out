@@ -82,6 +82,18 @@ last-17
 
 ==> TMPDIR/batch-18.txt <==
 last-18
+--- streamed positioned output keeps headers and order ---
+1400893954 140054
+2545079891 70055
+1522966423 140066
+==> with-final.txt <==
+c
+
+==> standard input <==
+q
+
+==> no-final.txt <==
+c
 --- missing source preserves later output and status ---
 1:1: error: koshkit tail: cannot open 'missing.txt': No such file or directory.
      1 |  koshkit tail -n 1 missing.txt with-final.txt
