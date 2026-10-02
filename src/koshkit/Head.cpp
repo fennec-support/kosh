@@ -294,10 +294,16 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
         if (!opened_fd.has_value()) {
           if (os::INTERRUPT_REQUESTED) return 130;
 
+          let const error_message = os::last_system_error_message();
+          let const is_directory_operand =
+              os::path_is_directory(sources[source_index]);
+          if (is_directory_operand) do_print_header(source_index);
+
           let const message =
-              "cannot open '" +
+              StringView{is_directory_operand ? "cannot read '"
+                                              : "cannot open '"} +
               String{cxt.scratch_allocator(), sources[source_index]} +
-              "': " + os::last_system_error_message();
+              "': " + error_message;
           do_flush_output();
           report_soft_koshkit_util_error(ec, cxt, args[0].view(), message);
           status = 1;
@@ -368,9 +374,10 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
       }
 
       if (chunk.error_number != 0) {
-        if (chunk.open_state != source_open_state::Failed &&
-            !has_printed_header)
-        {
+        let const has_failed_open =
+            chunk.open_state == source_open_state::Failed &&
+            !os::path_is_directory(sources[chunk.source_index]);
+        if (!has_failed_open && !has_printed_header) {
           do_print_header(chunk.source_index);
           has_printed_header = true;
         }
@@ -379,9 +386,7 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
         os::set_last_system_error(chunk.error_number);
         report_soft_koshkit_util_error(
             ec, cxt, args[0].view(),
-            String{chunk.open_state == source_open_state::Failed
-                       ? "cannot open '"
-                       : "cannot read '"} +
+            String{has_failed_open ? "cannot open '" : "cannot read '"} +
                 sources[chunk.source_index] +
                 "': " + os::last_system_error_message());
         status = 1;

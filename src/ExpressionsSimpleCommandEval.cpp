@@ -648,15 +648,20 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       cxt.runtime_state().set_option(shell_option_id::Ignoreeof,
                                      *previous_ignoreeof_state);
   };
+  let const has_prefix_assignments =
+      !m_local_vars.is_empty() || !keyword_assignments.is_empty();
   let const is_source_evaluating_builtin =
-      !program_args.is_empty() && command_word_function == nullptr &&
+      has_prefix_assignments && !program_args.is_empty() &&
+      command_word_function == nullptr &&
       (program_args[0] == "eval" || program_args[0] == "." ||
        program_args[0] == "source");
   let const is_prefix_assignment_persistent =
-      is_command_special_builtin ? !cxt.runtime_state().is_bash_compatible() ||
-                                       cxt.runtime_state().is_posix_option_on()
-                                 : is_source_evaluating_builtin &&
-                                       cxt.runtime_state().is_posix_option_on();
+      has_prefix_assignments &&
+      (is_command_special_builtin
+           ? !cxt.runtime_state().is_bash_compatible() ||
+                 cxt.runtime_state().is_posix_option_on()
+           : is_source_evaluating_builtin &&
+                 cxt.runtime_state().is_posix_option_on());
   /* The assignments apply left to right, each committed before the next is
      expanded, so a later value reads an earlier same-line one. */
   let const do_apply_environment_assignment =

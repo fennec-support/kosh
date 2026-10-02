@@ -153,7 +153,7 @@ fn format_named_values(StringView names, Args &&...args) -> String
 #define LOG(level, ...)                                                        \
   do {                                                                         \
     constexpr ::koshka::verbosity t__log_level = ::koshka::verbosity::level;   \
-    if (t__log_level <= ::koshka::LOGGER_VERBOSITY) rarely                   \
+    if (t__log_level <= ::koshka::LOGGER_VERBOSITY) rarely                     \
       {                                                                        \
         std::FILE *t__log_stream = ::koshka::log_output_stream();              \
         unused(std::fprintf(                                                   \
@@ -169,7 +169,7 @@ fn format_named_values(StringView names, Args &&...args) -> String
 #define LOG_VARS(level, ...)                                                   \
   do {                                                                         \
     constexpr ::koshka::verbosity t__log_level = ::koshka::verbosity::level;   \
-    if (t__log_level <= ::koshka::LOGGER_VERBOSITY) rarely                   \
+    if (t__log_level <= ::koshka::LOGGER_VERBOSITY) rarely                     \
       {                                                                        \
         ::koshka::String t__vars = ::koshka::log_detail::format_named_values(  \
             #__VA_ARGS__, __VA_ARGS__);                                        \

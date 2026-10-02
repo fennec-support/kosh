@@ -129,7 +129,7 @@ private:
 #define TRY(expr)                                                              \
   ({                                                                           \
     auto t__result = (expr);                                                   \
-    if (t__result.is_error()) rarely return t__result.error();               \
+    if (t__result.is_error()) rarely return t__result.error();                 \
     t__result.take();                                                          \
   })
 
