@@ -37,10 +37,12 @@ cold String::String(const String &other) throws : m_allocator(other.m_allocator)
 {
   reset_to_inline();
   append(other.view());
+  m_ascii_state = other.m_ascii_state;
 }
 
 hot fn String::adopt_storage_of(String &&other) wontthrow -> void
 {
+  m_ascii_state = other.m_ascii_state;
   if (other.is_inline()) {
     std::memcpy(m_inline, other.m_inline, other.m_length + 1);
     m_data = m_inline;
@@ -54,6 +56,32 @@ hot fn String::adopt_storage_of(String &&other) wontthrow -> void
   }
 }
 
+cold fn String::classify_ascii() const wontthrow -> void
+{
+  usize position = 0;
+  using byte_vector = u64 __attribute__((vector_size(16)));
+  while (position + 4 * sizeof(byte_vector) <= m_length) {
+    byte_vector lanes[4];
+    __builtin_memcpy(lanes, m_data + position, sizeof(lanes));
+    let const merged = lanes[0] | lanes[1] | lanes[2] | lanes[3];
+    if (((merged[0] | merged[1]) & byte_scan::HIGH_BITS) != 0) {
+      m_ascii_state = AsciiState::NonAscii;
+      return;
+    }
+
+    position += sizeof(lanes);
+  }
+
+  for (; position < m_length; position++) {
+    if (static_cast<u8>(m_data[position]) >= 0x80) {
+      m_ascii_state = AsciiState::NonAscii;
+      return;
+    }
+  }
+
+  m_ascii_state = AsciiState::Ascii;
+}
+
 String::String(String &&other) wontthrow : m_allocator(other.m_allocator)
 {
   adopt_storage_of(steal(other));
@@ -64,6 +92,7 @@ fn String::operator=(const String &other) throws -> String &
   if (this != &other) {
     clear();
     append(other.view());
+    m_ascii_state = other.m_ascii_state;
   }
   return *this;
 }
@@ -89,6 +118,7 @@ fn String::move_to_allocator(Allocator allocator) throws -> void
 fn String::clear() wontthrow -> void
 {
   m_length = 0;
+  m_ascii_state = AsciiState::Ascii;
   if (m_data != nullptr) m_data[0] = '\0';
 }
 
@@ -124,7 +154,9 @@ cold fn String::reserve(usize needed) throws -> void
   let const preserved_length = m_length;
   if (preserved_length > 0) std::memcpy(fresh, m_data, preserved_length);
   fresh[preserved_length] = '\0';
+  let const preserved_state = m_ascii_state;
   free_storage();
+  m_ascii_state = preserved_state;
   m_data = fresh;
   m_length = preserved_length;
   m_capacity = new_capacity;
@@ -133,6 +165,7 @@ cold fn String::reserve(usize needed) throws -> void
 fn String::pop_back() wontthrow -> void
 {
   ASSERT(m_length > 0, "pop_back on empty string");
+  m_ascii_state = AsciiState::Unknown;
   m_length--;
   m_data[m_length] = '\0';
 }

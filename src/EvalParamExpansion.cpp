@@ -102,14 +102,14 @@ alwaysinline static fn splits_character(StringView text, usize position,
   return false;
 }
 
-static fn get_character_count(const EvalContext &cxt, StringView value) throws
-    -> usize
+static fn get_character_count(const EvalContext &cxt,
+                              const String &value) throws -> usize
 {
   if (cxt.get_glob_charset_for(value) == glob_charset::Bytes) {
-    return value.length;
+    return value.length();
   }
 
-  return utils::utf8_character_count(value);
+  return utils::utf8_character_count(value.view());
 }
 
 static fn has_invalid_utf8(StringView text) wontthrow -> bool
@@ -974,7 +974,7 @@ fn EvalContext::ParameterExpander::expand_element_length(StringView name,
   let subscript_location = SourceLocation{};
   let const element = m_context.apply_array_subscript(
       array_name, subscript, get_location_for(subscript, subscript_location));
-  return String::from(get_character_count(m_context, element.view()),
+  return String::from(get_character_count(m_context, element),
                       m_context.scratch_allocator());
 }
 
@@ -997,12 +997,12 @@ fn EvalContext::ParameterExpander::expand_length() throws -> String
   if (let const stored =
           m_context.variable_store().shell_variables().find(name);
       stored.has_value())
-    return String::from(get_character_count(m_context, stored->view()),
+    return String::from(get_character_count(m_context, **stored),
                         m_context.scratch_allocator());
   let const value = m_context.get_variable_value(name);
   if (!value.has_value()) m_context.report_unset_reference(name);
   return String::from(
-      value.has_value() ? get_character_count(m_context, value->view()) : 0,
+      value.has_value() ? get_character_count(m_context, *value) : 0,
       m_context.scratch_allocator());
 }
 

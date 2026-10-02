@@ -22,8 +22,9 @@ class String
 public:
   /* The inline buffer length. A string shorter than this, counting the trailing
      null, lives inline. The value keeps sizeof(String) at fifty-six bytes next
-     to the one-word allocator and the three size words. */
-  static constexpr usize INLINE_CAPACITY = 24;
+     to the one-word allocator, the three size words, and the ASCII state
+     byte. */
+  static constexpr usize INLINE_CAPACITY = 23;
 
   explicit String(Allocator allocator) : m_allocator(allocator)
   {
@@ -172,6 +173,7 @@ public:
   {
     if (m_length == SIZE_MAX) [[unlikely]]
       throw std::bad_alloc{};
+    m_ascii_state = AsciiState::Unknown;
     let const new_length = m_length + 1;
     if (new_length < m_capacity) [[likely]] {
       m_data[m_length++] = c;
@@ -187,6 +189,7 @@ public:
     if (other.length == 0) return;
     if (other.length > SIZE_MAX - m_length) [[unlikely]]
       throw std::bad_alloc{};
+    m_ascii_state = AsciiState::Unknown;
     let const new_length = m_length + other.length;
     if (new_length < m_capacity) [[likely]] {
       std::memcpy(m_data + m_length, other.data, other.length);
@@ -212,6 +215,7 @@ public:
     if (repeat_count == 0) return;
     if (repeat_count > SIZE_MAX - m_length) [[unlikely]]
       throw std::bad_alloc{};
+    m_ascii_state = AsciiState::Unknown;
     let const new_length = m_length + repeat_count;
     if (new_length >= m_capacity) reserve(new_length);
     std::memset(m_data + m_length, static_cast<unsigned char>(byte),
@@ -237,6 +241,7 @@ public:
     ASSERT(kept_count <= m_length, "truncate past the end of the string");
     if (kept_count == m_length) return;
 
+    m_ascii_state = AsciiState::Unknown;
     m_length = kept_count;
     m_data[m_length] = '\0';
   }
@@ -293,7 +298,24 @@ public:
   mustuse pure fn find_last_character(char wanted) const wontthrow
       -> Maybe<usize>;
 
+  hot mustuse fn is_ascii() const wontthrow -> bool
+  {
+    if (m_ascii_state == AsciiState::Unknown) [[unlikely]]
+      classify_ascii();
+
+    return m_ascii_state == AsciiState::Ascii;
+  }
+
 private:
+  enum AsciiState : u8
+  {
+    Unknown = 0,
+    Ascii = 1,
+    NonAscii = 2,
+  };
+
+  cold fn classify_ascii() const wontthrow -> void;
+
   /* A default String is inline and empty, so it can serve as a container slot
      before its real allocator and value are assigned. The friend keeps it
      reachable to the table while every call site must name its lifetime. */
@@ -318,6 +340,7 @@ private:
     m_inline[0] = '\0';
     m_length = 0;
     m_capacity = INLINE_CAPACITY;
+    m_ascii_state = AsciiState::Ascii;
   }
 
   Allocator m_allocator;
@@ -325,6 +348,7 @@ private:
   usize m_length{0};
   usize m_capacity{0};
   char m_inline[INLINE_CAPACITY];
+  mutable AsciiState m_ascii_state{AsciiState::Ascii};
 };
 
 static_assert(sizeof(usize) != 8 || sizeof(String) == 56);
