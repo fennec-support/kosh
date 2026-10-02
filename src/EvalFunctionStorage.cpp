@@ -9,6 +9,7 @@
  */
 
 #include "Eval.hpp"
+#include "Utils.hpp"
 #include "base/Allocator.hpp"
 #include "base/Debug.hpp"
 
@@ -34,6 +35,7 @@ function_body_storage::~function_body_storage()
     LIVE_EVAL_FUNCTION_STORAGES = next_live;
   if (next_live != nullptr) next_live->previous_live = previous_live;
 
+  utils::invalidate_line_number_cache_for(source.view());
   arena->~BumpArena();
   heap_allocator().free_array(arena, 1);
 }
@@ -131,6 +133,7 @@ fn FunctionBodyHandle::set_definition(
   ASSERT(m_storage != nullptr);
 
   let owned_source = String{heap_allocator(), source};
+  utils::invalidate_line_number_cache_for(m_storage->source.view());
   m_storage->source = steal(owned_source);
   m_storage->definition_info = steal(definition_info);
 }

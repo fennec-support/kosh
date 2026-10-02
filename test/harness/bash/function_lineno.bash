@@ -29,4 +29,14 @@ outer_function() {
 echo "call at $LINENO"
 outer_function
 
+echo redefined-function
+for pass in 1 2 3; do
+  redefined_function() { echo "pass $pass at $LINENO"; }
+  redefined_function
+  redefined_function() {
+echo "pass $pass at $LINENO"; }
+  redefined_function
+done
+echo "call at $LINENO"
+
 echo function-lineno-done

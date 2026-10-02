@@ -352,6 +352,7 @@ static fn run_script_contents(
 
   try {
     defer { context.end_command(); };
+    defer { utils::invalidate_line_number_cache_for(script_contents.view()); };
 
     /* Function bodies live in the separate function arena, so they survive this
        reset. */

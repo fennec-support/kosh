@@ -292,104 +292,155 @@ fn format_time_report(const Maybe<String> &time_format, double real_seconds,
   return report;
 }
 
-/* A newline offset table cached on one source, keyed on the source pointer and
-   length, so a $LINENO lookup is a binary search over the newlines. */
+/* Newline offset tables cached on the few most recently used sources, keyed on
+   the source pointer and length, so a $LINENO lookup is a binary search over
+   the newlines. */
 class LineNumberCache
 {
 public:
-  LineNumberCache() : m_newline_offsets(heap_allocator()) {}
-
-  fn ensure_built_for(StringView source) throws -> void
+  fn locate(StringView source, usize position) throws -> source_line_position
   {
-    if (m_source_data == source.data && m_source_length == source.count()) {
-      return;
-    }
-
-    m_source_data = source.data;
-    m_source_length = source.count();
-    m_newline_offsets.clear();
-
-    /* An offset is 32-bit, matching every other source offset the shell
-       carries, so a source beyond four gigabytes is indexed up to that point
-       and everything past it reads as the last line. */
-    let const indexable_length =
-        source.count() < UINT32_MAX ? source.count() : usize{UINT32_MAX};
-    let const indexable = source.substring_of_length(0, indexable_length);
-
-    /* The count pass is one memchr sweep and it makes the offset table an
-       exact allocation, where geometric growth would leave up to half the
-       block unused on a source with hundreds of thousands of lines. */
-    m_newline_offsets.reserve(count_newlines(indexable));
-
-    usize scan_position = 0;
-    while (scan_position < indexable_length) {
-      let const remaining = indexable.substring(scan_position);
-      let const newline = remaining.find_character('\n');
-      if (!newline.has_value()) break;
-      m_newline_offsets.push(static_cast<u32>(scan_position + *newline));
-      scan_position += *newline + 1;
-    }
-  }
-
-  fn invalidate() wontthrow -> void
-  {
-    m_source_data = nullptr;
-    m_source_length = 0;
-    m_newline_offsets.release();
+    let &indexed_source = indexed_source_for(source);
+    indexed_source.set_last_use_tick(++m_use_tick);
+    return indexed_source.locate(position);
   }
 
   fn invalidate_for(StringView source) wontthrow -> void
   {
-    if (m_source_data == nullptr || source.data == nullptr) return;
-
-    let const cached_address = reinterpret_cast<usize>(m_source_data);
-    let const source_address = reinterpret_cast<usize>(source.data);
-    if (cached_address < source_address) return;
-
-    let const offset = cached_address - source_address;
-    if (offset > source.length || m_source_length > source.length - offset)
-      return;
-
-    invalidate();
-  }
-
-  pure fn locate(usize position) const wontthrow -> source_line_position
-  {
-    usize low = 0;
-    usize high = m_newline_offsets.count();
-    while (low < high) {
-      const usize mid = low + (high - low) / 2;
-      if (m_newline_offsets[mid] < position)
-        low = mid + 1;
-      else
-        high = mid;
-    }
-
-    const usize line_start = low == 0 ? 0 : m_newline_offsets[low - 1] + 1;
-    const usize line_end = low == m_newline_offsets.count()
-                               ? m_source_length
-                               : m_newline_offsets[low];
-    return source_line_position{low, line_start, line_end};
+    for (let &indexed_source : m_indexed_sources)
+      indexed_source.invalidate_for(source);
   }
 
 private:
-  static pure fn count_newlines(StringView text) wontthrow -> usize
+  class IndexedSource
   {
-    usize newline_count = 0;
-    usize scan_position = 0;
-    while (scan_position < text.count()) {
-      let const newline = text.substring(scan_position).find_character('\n');
-      if (!newline.has_value()) break;
-      newline_count++;
-      scan_position += *newline + 1;
+  public:
+    IndexedSource() : m_newline_offsets(heap_allocator()) {}
+
+    pure fn is_built_for(StringView source) const wontthrow -> bool
+    {
+      return m_source_data == source.data && m_source_length == source.count();
     }
 
-    return newline_count;
+    fn build_for(StringView source) throws -> void
+    {
+      invalidate();
+
+      /* An offset is 32-bit, matching every other source offset the shell
+         carries, so a source beyond four gigabytes is indexed up to that point
+         and everything past it reads as the last line. */
+      let const indexable_length =
+          source.count() < UINT32_MAX ? source.count() : usize{UINT32_MAX};
+      let const indexable = source.substring_of_length(0, indexable_length);
+
+      /* The count pass is one memchr sweep and it makes the offset table an
+         exact allocation, where geometric growth would leave up to half the
+         block unused on a source with hundreds of thousands of lines. */
+      m_newline_offsets.reserve(count_newlines(indexable));
+
+      usize scan_position = 0;
+      while (scan_position < indexable_length) {
+        let const remaining = indexable.substring(scan_position);
+        let const newline = remaining.find_character('\n');
+        if (!newline.has_value()) break;
+        m_newline_offsets.push(static_cast<u32>(scan_position + *newline));
+        scan_position += *newline + 1;
+      }
+
+      m_source_data = source.data;
+      m_source_length = source.count();
+    }
+
+    fn invalidate() wontthrow -> void
+    {
+      m_source_data = nullptr;
+      m_source_length = 0;
+      m_newline_offsets.clear();
+      m_last_use_tick = 0;
+    }
+
+    fn invalidate_for(StringView source) wontthrow -> void
+    {
+      if (m_source_data == nullptr || source.data == nullptr) return;
+
+      let const cached_address = reinterpret_cast<usize>(m_source_data);
+      let const source_address = reinterpret_cast<usize>(source.data);
+      if (cached_address < source_address) return;
+
+      let const offset = cached_address - source_address;
+      if (offset > source.length || m_source_length > source.length - offset)
+        return;
+
+      invalidate();
+    }
+
+    pure fn locate(usize position) const wontthrow -> source_line_position
+    {
+      usize low = 0;
+      usize high = m_newline_offsets.count();
+      while (low < high) {
+        const usize mid = low + (high - low) / 2;
+        if (m_newline_offsets[mid] < position)
+          low = mid + 1;
+        else
+          high = mid;
+      }
+
+      const usize line_start = low == 0 ? 0 : m_newline_offsets[low - 1] + 1;
+      const usize line_end = low == m_newline_offsets.count()
+                                 ? m_source_length
+                                 : m_newline_offsets[low];
+      return source_line_position{low, line_start, line_end};
+    }
+
+    pure fn get_last_use_tick() const wontthrow -> u64
+    {
+      return m_last_use_tick;
+    }
+
+    fn set_last_use_tick(u64 tick) wontthrow -> void { m_last_use_tick = tick; }
+
+  private:
+    static pure fn count_newlines(StringView text) wontthrow -> usize
+    {
+      usize newline_count = 0;
+      usize scan_position = 0;
+      while (scan_position < text.count()) {
+        let const newline = text.substring(scan_position).find_character('\n');
+        if (!newline.has_value()) break;
+        newline_count++;
+        scan_position += *newline + 1;
+      }
+
+      return newline_count;
+    }
+
+    const char *m_source_data{nullptr};
+    usize m_source_length{0};
+    ArrayList<u32> m_newline_offsets;
+    u64 m_last_use_tick{0};
+  };
+
+  fn indexed_source_for(StringView source) throws -> IndexedSource &
+  {
+    let *least_recent = &m_indexed_sources[0];
+    for (let &indexed_source : m_indexed_sources) {
+      if (indexed_source.is_built_for(source)) return indexed_source;
+      if (indexed_source.get_last_use_tick() <
+          least_recent->get_last_use_tick())
+      {
+        least_recent = &indexed_source;
+      }
+    }
+
+    least_recent->build_for(source);
+    return *least_recent;
   }
 
-  const char *m_source_data{nullptr};
-  usize m_source_length{0};
-  ArrayList<u32> m_newline_offsets;
+  static constexpr usize INDEXED_SOURCE_COUNT = 4;
+
+  IndexedSource m_indexed_sources[INDEXED_SOURCE_COUNT];
+  u64 m_use_tick{0};
 };
 
 static thread_local LineNumberCache LINE_NUMBER_CACHE{};
@@ -397,8 +448,7 @@ static thread_local LineNumberCache LINE_NUMBER_CACHE{};
 fn source_line_position_at(StringView source, usize position) throws
     -> source_line_position
 {
-  LINE_NUMBER_CACHE.ensure_built_for(source);
-  return LINE_NUMBER_CACHE.locate(position);
+  return LINE_NUMBER_CACHE.locate(source, position);
 }
 
 fn line_number_at(StringView source, usize position) throws -> usize
