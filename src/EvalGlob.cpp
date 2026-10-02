@@ -686,6 +686,104 @@ fn EvalContext::expand_colon_tildes(WordSegment &segment,
   }
 }
 
+namespace {
+
+struct glob_ignore_pattern
+{
+  String text;
+  Bitset active;
+};
+
+fn parse_glob_ignore_patterns(StringView list, bool should_fold_case,
+                              Allocator allocator) throws
+    -> ArrayList<glob_ignore_pattern>
+{
+  let patterns = ArrayList<glob_ignore_pattern>{allocator};
+  usize entry_start = 0;
+  while (entry_start <= list.length) {
+    let const rest = list.substring(entry_start);
+    let const colon = rest.find_character(':');
+    let const entry = colon.has_value() ? rest.substring_of_length(0, *colon)
+                                        : rest;
+    entry_start += entry.length + 1;
+    if (entry.is_empty()) continue;
+
+    let pattern = glob_ignore_pattern{String{allocator}, Bitset{allocator}};
+    for (usize index = 0; index < entry.length; index++) {
+      let const is_escaped = entry[index] == '\\' && index + 1 < entry.length;
+      if (is_escaped) index++;
+      pattern.text.push(should_fold_case ? utils::ascii_to_lower(entry[index])
+                                         : entry[index]);
+      pattern.active.push(!is_escaped);
+    }
+    patterns.push(steal(pattern));
+  }
+
+  return patterns;
+}
+
+fn glob_ignore_segments_match(const glob_ignore_pattern &pattern,
+                              usize pattern_length, StringView text,
+                              extglob_mode mode, glob_charset charset) throws
+    -> bool
+{
+  let const pattern_text = pattern.text.view();
+  usize pattern_start = 0;
+  usize text_start = 0;
+  while (true) {
+    let const pattern_rest =
+        pattern_text.substring_of_length(pattern_start,
+                                         pattern_length - pattern_start);
+    let const text_rest = text.substring(text_start);
+    let const pattern_slash = pattern_rest.find_character('/');
+    let const text_slash = text_rest.find_character('/');
+    let const pattern_segment =
+        pattern_slash.has_value()
+            ? pattern_rest.substring_of_length(0, *pattern_slash)
+            : pattern_rest;
+    let const text_segment = text_slash.has_value()
+                                 ? text_rest.substring_of_length(0, *text_slash)
+                                 : text_rest;
+    if (!utils::glob_matches(pattern_segment, text_segment, pattern.active,
+                             pattern_start, mode, charset))
+    {
+      return false;
+    }
+    if (!pattern_slash.has_value() || !text_slash.has_value()) {
+      return !pattern_slash.has_value() && !text_slash.has_value();
+    }
+
+    pattern_start += *pattern_slash + 1;
+    text_start += *text_slash + 1;
+  }
+}
+
+fn glob_ignore_pattern_matches(const glob_ignore_pattern &pattern,
+                               StringView path, extglob_mode mode,
+                               glob_charset charset) throws -> bool
+{
+  let const length = pattern.text.length();
+  let const has_trailing_star =
+      length > 0 && pattern.text[length - 1] == '*' &&
+      pattern.active[length - 1];
+  if (!has_trailing_star) {
+    return glob_ignore_segments_match(pattern, length, path, mode, charset);
+  }
+
+  for (usize prefix_length = 0; prefix_length <= path.length; prefix_length++) {
+    if (glob_ignore_segments_match(pattern, length - 1,
+                                   path.substring_of_length(0, prefix_length),
+                                   mode, charset))
+    {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+} /* namespace */
+
 hot fn EvalContext::expand_path(glob_field field,
                                 const SourceLocation &location) throws
     -> SortedArrayList<String, order_comparator<String>>
@@ -714,8 +812,39 @@ hot fn EvalContext::expand_path(glob_field field,
 
   let values = ArrayList<String>{scratch};
   values.reserve(fields.count());
-  for (let &f : fields)
+
+  let const glob_ignore_value = get_variable_value("GLOBIGNORE");
+  let const has_glob_ignore =
+      glob_ignore_value.has_value() && !glob_ignore_value->is_empty();
+  let const should_fold_case = is_shopt_enabled("nocaseglob");
+  let const ignored_patterns =
+      has_glob_ignore ? parse_glob_ignore_patterns(glob_ignore_value->view(),
+                                                   should_fold_case, scratch)
+                      : ArrayList<glob_ignore_pattern>{scratch};
+  let const extglob = get_extglob_mode();
+  let const do_is_ignored = [&](StringView path) throws -> bool {
+    let const last_slash = path.find_last_character('/');
+    let const name =
+        last_slash.has_value() ? path.substring(*last_slash + 1) : path;
+    if (name == "." || name == "..") return true;
+
+    let const folded_path =
+        should_fold_case ? path.to_lower_ascii(scratch) : String{scratch};
+    let const subject = should_fold_case ? folded_path.view() : path;
+    let const charset = get_glob_charset_for(subject);
+    for (let const &pattern : ignored_patterns) {
+      if (glob_ignore_pattern_matches(pattern, subject, extglob, charset)) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+  for (let &f : fields) {
+    if (has_glob_ignore && do_is_ignored(f.text.view())) continue;
+
     values.push(steal(f.text));
+  }
 
   LOG(All, "the glob pattern '%s' matched %zu paths", pattern.c_str(),
       values.count());

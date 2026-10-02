@@ -869,6 +869,21 @@ report that literal fallback. A glob in command position is fatal in the
 default mood and reports a warning in a compatibility mood unless diagnostics
 are disabled.
 .PP
+A nonempty
+.B GLOBIGNORE
+holds colon\-separated patterns. A pathname expansion result that matches one
+pattern is removed, and a glob whose results are all removed follows the
+nonmatching rules. A pattern is matched against the whole result, where a star
+crosses a slash only at the end of the pattern. The names . and .. are never
+results while GLOBIGNORE is nonempty. Assigning a nonempty value enables the
+.B dotglob
+option, an empty assignment leaves it unchanged, and unsetting GLOBIGNORE
+disables it. The
+.B extglob
+and
+.B nocaseglob
+options apply to the patterns.
+.PP
 The character locale decides how much a ? matches. The first nonempty value of
 LC_ALL, LC_CTYPE, and LANG selects it, read from the shell variables at the
 time of each match, so assignment, unset, export, and a prefix assignment all
@@ -2735,6 +2750,13 @@ groups, host, and platform. The value of $$ remains the original shell process
 id. These names are unavailable in the
 .B sh
 mood.
+.TP
+.B GLOBIGNORE
+The value lists colon\-separated patterns that pathname expansion removes from
+its results. Assignment enables
+.B dotglob
+and unsetting disables it. The pathname expansion section describes the
+matching.
 .TP
 .B HISTCMD
 The value is the history number of the current command. A non-interactive shell

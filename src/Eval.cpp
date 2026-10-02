@@ -141,8 +141,10 @@ hot fn EvalContext::assign_variable(StringView name, StringView value) throws
   let is_field_separator_name = false;
   let is_ignoreeof_name = false;
   let is_path_name = false;
+  let is_glob_ignore_name = false;
 
   switch (first_byte) {
+  case 'G': is_glob_ignore_name = name == "GLOBIGNORE"; break;
   case 'I':
     is_field_separator_name = name == "IFS";
     is_ignoreeof_name = name == "IGNOREEOF";
@@ -171,6 +173,9 @@ hot fn EvalContext::assign_variable(StringView name, StringView value) throws
   }
 
   variable_store().shell_variables().set(name, value);
+  if (is_glob_ignore_name && !value.is_empty()) {
+    set_shopt_option("dotglob", true);
+  }
   if (is_prompt_special_variable(name))
     variable_store().special_variable_definition_locations().set(
         name, source_store().current_location());
@@ -810,6 +815,7 @@ fn EvalContext::force_unset_shell_variable(StringView name) throws -> void
     resolution_store().resolver().assign_path(os::get_environment_variable("PATH"));
   if (name == "IGNOREEOF")
   runtime_state().set_option(shell_option_id::Ignoreeof, false);
+  if (name == "GLOBIGNORE") set_shopt_option("dotglob", false);
 }
 
 pure fn EvalContext::special_variable_definition_location(

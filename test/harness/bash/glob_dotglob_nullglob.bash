@@ -88,6 +88,61 @@ echo .*
 cd "$initial_directory" || exit 1
 rm -rf "$d"
 
+# GLOBIGNORE removes matching pathname results. A nonempty value turns dotglob
+# on, an empty assignment leaves it alone, and unset turns it off. Dot and
+# dot-dot are never matched. Each colon-separated pattern is matched against the
+# whole result, where a star crosses a slash only at the end of the pattern, so
+# a pattern naming a directory removes the entries beneath it. A glob whose
+# results are all removed stays literal, or vanishes with nullglob.
+d=$(mktemp -d)
+mkdir "$d/sub"
+touch "$d/a.txt" "$d/b.txt" "$d/.hid" "$d/c.log" "$d/sub/x.txt" "$d/sub/.y"
+cd "$d" || exit 1
+GLOBIGNORE='*.txt'
+echo "txt:" *
+shopt dotglob
+GLOBIGNORE='*.txt:*.log'
+echo "two:" *
+GLOBIGNORE=
+echo "empty:" *
+GLOBIGNORE='?.txt'
+echo "dot-and-dotdot:" .* sub/.*
+GLOBIGNORE='*'
+echo "all:" *
+shopt -s nullglob
+echo "all-null: [" * "]"
+shopt -u nullglob
+GLOBIGNORE='*.txt'
+echo "literal:" a.t?t b.txt
+echo "path-star:" sub/*
+GLOBIGNORE='sub/*'
+echo "path-tail:" sub/* ./sub/*
+GLOBIGNORE='s*'
+echo "path-prefix:" sub/*
+GLOBIGNORE='[ab].txt:.h*'
+echo "bracket:" *
+GLOBIGNORE='A.TXT'
+echo "case:" *
+shopt -s nocaseglob
+echo "nocase:" *
+shopt -u nocaseglob
+shopt -s extglob
+GLOBIGNORE='@(a|b).txt'
+echo "extglob:" *
+GLOBIGNORE='*.t\xt'
+echo "escaped:" *
+unset GLOBIGNORE
+shopt dotglob
+echo "unset:" *
+shopt -s dotglob
+GLOBIGNORE=x
+shopt -u dotglob
+echo "dotglob-off:" *
+unset GLOBIGNORE
+shopt -u extglob
+cd "$initial_directory" || exit 1
+rm -rf "$d"
+
 # Bash globstar **, checked byte-for-byte against bash. The ** matches across
 # directory levels when shopt globstar is on, as a trailing component it lists
 # every file and directory recursively, and in a path position it stands in for
