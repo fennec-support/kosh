@@ -2,6 +2,7 @@ directory=
 fail()
 {
   echo "failed at line $1"
+  printf '%s\n' "$output" | sed -n l
   exit 1
 }
 
