@@ -543,24 +543,30 @@ fn EvalContext::run_source(StringView source, StringView origin,
   bool did_complete_source = false;
   defer
   {
-    if (!did_complete_source || retained_ast_count != 0 ||
-        retained_source_count != 0 || control_flow_store().has_pending() ||
+    if (!did_complete_source || control_flow_store().has_pending() ||
         expansion_store().pending_process_substitutions().count() !=
             process_substitution_count)
     {
       return;
     }
 
-    source_store().retained_source_asts().clear();
+    source_store().retained_source_asts().truncate(retained_ast_count);
     parse_arena->release(parse_mark);
-    for (String *retained : source_store().retained_sources()) {
+
+    let &retained_sources = source_store().retained_sources();
+    for (usize index = retained_source_count; index < retained_sources.count();
+         index++)
+    {
+      String *retained = retained_sources[index];
       utils::invalidate_line_number_cache_for(retained->view());
       retained->~String();
       heap_allocator().free_array(retained, 1);
     }
-    source_store().retained_sources().clear();
+
+    retained_sources.truncate(retained_source_count);
     reset_runtime_diagnostic_highlight_cache();
-    source_store().retained_source_generation()++;
+    if (retained_source_count == 0)
+      source_store().retained_source_generation()++;
   };
 
   LOG(Debug, "running source '%.*s' of %zu bytes at depth %zu",
