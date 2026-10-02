@@ -210,4 +210,7 @@ shopt -q autocd
 printf "bash-default=%s\n" "$?"
 "$AUTOCD_ROOT/two"
 printf "bash-directory=%s\n" "${PWD##*/}"
+cd "$AUTOCD_ROOT/tree/one/two/three/four"
+...
+printf "bash-dot-two=%s\n" "${PWD##*/}"
 '

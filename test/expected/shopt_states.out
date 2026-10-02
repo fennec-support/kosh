@@ -79,3 +79,4 @@ reenabled=one
 == autocd is enabled in the Bash mood by default:
 bash-default=0
 bash-directory=two
+bash-dot-two=two

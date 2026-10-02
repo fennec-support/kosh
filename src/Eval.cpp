@@ -1653,11 +1653,12 @@ fn ExecContext::make_from(const SourceLocation &location, StringView source,
     String directory_operand{heap_allocator()};
     bool should_rewrite_to_cd = false;
 
-    if (let parent_steps = dot_parent_steps(program.view());
-        parent_steps.has_value())
+    if (let parent_step_count = dot_parent_steps(program.view());
+        parent_step_count.has_value())
     {
       let directory_path = Path{"..", heap_allocator()};
-      for (usize i = 1; i < *parent_steps; i++)
+
+      for (usize i = 1; i < *parent_step_count; i++)
         directory_path.push_component("..");
 
       if (!directory_path.is_directory()) {
