@@ -330,11 +330,17 @@ fn free_regex(compiled_regex &compiled) wontthrow -> void
 
 fn regex_matches(compiled_regex &compiled, StringView subject) throws -> bool
 {
-#if defined REG_STARTEND && !defined KOSH_HAS_ADDRESS_SANITIZER
+#if defined REG_STARTEND
   regmatch_t bounds[1];
   bounds[0].rm_so = 0;
   bounds[0].rm_eo = static_cast<regoff_t>(subject.length);
+#if defined KOSH_HAS_ADDRESS_SANITIZER
+  const String null_terminated{heap_allocator(), subject};
+  return regexec(&compiled.re, null_terminated.c_str(), 1, bounds,
+                 REG_STARTEND) == 0;
+#else
   return regexec(&compiled.re, subject.data, 1, bounds, REG_STARTEND) == 0;
+#endif
 #else
   const String null_terminated{heap_allocator(), subject};
   return regexec(&compiled.re, null_terminated.c_str(), 0, nullptr, 0) == 0;

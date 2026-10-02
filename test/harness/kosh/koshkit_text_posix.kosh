@@ -76,3 +76,5 @@ printf 'wide-one\nwide-two\n' |
 printf 'left-one\nleft-two\n' > left
 printf 'right-one\nright-two\n' > right
 koshkit pr -t -m -w 30 -s : left right
+printf 'x\0y\nplain\n' > nul-subject
+echo "regex-across-nul=$(koshkit grep '[y]$' nul-subject | koshkit wc -l)"

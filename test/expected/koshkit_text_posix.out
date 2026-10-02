@@ -110,3 +110,4 @@ three:four
 wide-one	wide-two
 left-one:right-one
 left-two:right-two
+regex-across-nul=1
