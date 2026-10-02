@@ -64,6 +64,17 @@ echo "--- missing source preserves later output and status ---"
 
 (
 cd "$d" || exit 1
+echo "--- counts accept only plain decimal digits ---"
+for count_spec in 99999999999999999999 '1 ' ++1 +99999999999999999999 ''; do
+  for count_command in "tail -n" "tail -c" "head -n" "head -c"; do
+    count_output=$("$BIN" -c "koshkit $count_command \"\$1\" \"\$2\"" count \
+      "$count_spec" with-final.txt 2>&1)
+    count_status=$?
+    printf '%s [%s] status=%s\n' "$count_command" \
+      "$(printf '%s\n' "$count_output" | sed 1q)" "$count_status"
+  done
+done
+"$BIN" -c 'koshkit tail -n " 1" with-final.txt; koshkit head -n +1 with-final.txt; koshkit tail -n -+1 with-final.txt'
 echo "--- page sized files are read to the end ---"
 head -c 4096 large-forward.txt > page.txt
 "$BIN" -c 'koshkit tail -c 5 page.txt | koshkit wc -c; koshkit wc -c page.txt; koshkit head -c -5 page.txt | koshkit wc -c; koshkit tail -n 1 page.txt'

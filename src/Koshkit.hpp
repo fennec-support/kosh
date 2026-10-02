@@ -846,6 +846,8 @@ fn source_list_from_operands(const ArrayList<String> &operands,
                              usize first_operand_index = 0) throws
     -> ArrayList<StringView>;
 
+fn parse_strict_count(StringView text) throws -> ErrorOr<u64>;
+
 fn format_human_size(u64 bytes, Allocator allocator) throws -> String;
 fn scaled_filesystem_blocks(u64 block_count, u64 block_size,
                             u64 output_unit) wontthrow -> u64;

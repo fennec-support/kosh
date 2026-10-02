@@ -90,6 +90,17 @@ note: Pass `f`, `d`, or `l` after `-type`.
      1 |  koshkit find . -maxdepth -1
        |                           ^~
 note: Depth must be a whole number greater than or equal to zero.
+--- find out of range -maxdepth argument ---
+1:26: error: koshkit find: -maxdepth expects a non-negative number, got '99999999999999999999'.
+     1 |  koshkit find . -maxdepth 99999999999999999999
+       |                           ^~~~~~~~~~~~~~~~~~~~
+note: Depth must be a whole number greater than or equal to zero.
+status=1
+1:26: error: koshkit find: -mindepth expects a non-negative number, got '99999999999999999999'.
+     1 |  koshkit find . -mindepth 99999999999999999999
+       |                           ^~~~~~~~~~~~~~~~~~~~
+note: Depth must be a whole number greater than or equal to zero.
+status=1
 --- find invalid -mindepth argument ---
 1:26: error: koshkit find: -mindepth expects a non-negative number, got 'many'.
      1 |  koshkit find . -mindepth many

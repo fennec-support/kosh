@@ -225,7 +225,7 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
     let const raw = FLAG_HEAD_BYTES.value();
     is_all_but_last = raw.length > 0 && raw[0] == '-';
     let const magnitude = is_all_but_last ? raw.substring(1) : raw;
-    let const parsed_value = utils::parse_decimal_u64(magnitude);
+    let const parsed_value = parse_strict_count(magnitude);
     if (parsed_value.is_error()) {
       throw ErrorWithDetails{
           "invalid byte count '" + String{cxt.scratch_allocator(), raw}
@@ -238,7 +238,7 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
     let const raw = FLAG_HEAD_LINES.value();
     is_all_but_last = raw.length > 0 && raw[0] == '-';
     let const magnitude = is_all_but_last ? raw.substring(1) : raw;
-    let const parsed_value = utils::parse_decimal_u64(magnitude);
+    let const parsed_value = parse_strict_count(magnitude);
     if (parsed_value.is_error()) {
       throw ErrorWithDetails{
           "invalid line count '" + String{cxt.scratch_allocator(), raw}

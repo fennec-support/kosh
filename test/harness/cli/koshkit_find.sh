@@ -59,6 +59,11 @@ echo "--- find missing -type argument ---"
 "$BIN" -c 'koshkit find . -type' 2>&1
 echo "--- find negative -maxdepth argument ---"
 "$BIN" -c 'koshkit find . -maxdepth -1' 2>&1
+echo "--- find out of range -maxdepth argument ---"
+"$BIN" -c 'koshkit find . -maxdepth 99999999999999999999' 2>&1
+echo "status=$?"
+"$BIN" -c 'koshkit find . -mindepth 99999999999999999999' 2>&1
+echo "status=$?"
 echo "--- find invalid -mindepth argument ---"
 "$BIN" -c 'koshkit find . -mindepth many' 2>&1
 echo "--- find missing -maxdepth argument ---"

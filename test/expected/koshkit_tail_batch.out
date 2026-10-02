@@ -102,6 +102,30 @@ c
 ==> with-final.txt <==
 c
 status=1
+--- counts accept only plain decimal digits ---
+tail -n [1:1: error: invalid line count '99999999999999999999'.] status=1
+tail -c [1:1: error: invalid byte count '99999999999999999999'.] status=1
+head -n [1:1: error: invalid line count '99999999999999999999'.] status=1
+head -c [1:1: error: invalid byte count '99999999999999999999'.] status=1
+tail -n [1:1: error: invalid line count '1 '.] status=1
+tail -c [1:1: error: invalid byte count '1 '.] status=1
+head -n [1:1: error: invalid line count '1 '.] status=1
+head -c [1:1: error: invalid byte count '1 '.] status=1
+tail -n [1:1: error: invalid line count '++1'.] status=1
+tail -c [1:1: error: invalid byte count '++1'.] status=1
+head -n [1:1: error: invalid line count '++1'.] status=1
+head -c [1:1: error: invalid byte count '++1'.] status=1
+tail -n [1:1: error: invalid line count '+99999999999999999999'.] status=1
+tail -c [1:1: error: invalid byte count '+99999999999999999999'.] status=1
+head -n [1:1: error: invalid line count '+99999999999999999999'.] status=1
+head -c [1:1: error: invalid byte count '+99999999999999999999'.] status=1
+tail -n [1:1: error: invalid line count ''.] status=1
+tail -c [1:1: error: invalid byte count ''.] status=1
+head -n [1:1: error: invalid line count ''.] status=1
+head -c [1:1: error: invalid byte count ''.] status=1
+c
+a
+c
 --- page sized files are read to the end ---
 5
 4096 page.txt

@@ -58,10 +58,17 @@ static fn parse_tail_count(StringView spec) throws -> Maybe<parsed_tail_count>
     digits = digits.substring(1);
   }
 
-  let const parsed = digits.to<i64>();
-  if (parsed.is_error() || parsed.value() < 0) return None;
+  if (origin == count_origin::FromStart && digits.length > 0 &&
+      digits[0] == '+')
+  {
+    return None;
+  }
 
-  return parsed_tail_count{origin, parsed.value()};
+  let const parsed = parse_strict_count(digits);
+  if (parsed.is_error() || parsed.value() > static_cast<u64>(INT64_MAX))
+    return None;
+
+  return parsed_tail_count{origin, static_cast<i64>(parsed.value())};
 }
 
 constexpr usize TAIL_BLOCK_BYTE_COUNT = 64 * 1024;

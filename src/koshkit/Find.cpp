@@ -507,8 +507,12 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
             "Pass a whole number greater than or equal to zero");
         return 1;
       }
-      let const parsed_depth = args[index + 1].view().to<i64>();
-      if (parsed_depth.is_error() || parsed_depth.value() < 0) {
+      bool is_depth_out_of_range = false;
+      let const parsed_depth = utils::parse_decimal_i64(
+          args[index + 1].view(), &is_depth_out_of_range);
+      if (parsed_depth.is_error() || is_depth_out_of_range ||
+          parsed_depth.value() < 0)
+      {
         KOSHKIT_REPORT_ERROR_AT(
             arg_locations[index + 1],
             String{cxt.scratch_allocator(), predicate} +
