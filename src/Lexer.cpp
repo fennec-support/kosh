@@ -664,19 +664,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
     return None;
   };
 
-  let const do_scan_to_matched_close = [this](usize &offset, char open,
-                                              char close) -> void {
-    usize depth = 1;
-    while (depth > 0) {
-      let const c = chop_character(offset);
-      if (c == lexer::CEOF) break;
-      offset++;
-      if (c == open)
-        depth++;
-      else if (c == close)
-        depth--;
-    }
-  };
+  usize extglob_depth = 0;
 
   loop
   {
@@ -687,7 +675,16 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
     if (!(is_inside_quote_or_escape && ch != lexer::CEOF) &&
         !lexer::is_part_of_identifier(ch))
     {
-      break;
+      if (extglob_depth == 0 || ch == lexer::CEOF) break;
+
+      if (ch == '(')
+        extglob_depth++;
+      else if (ch == ')')
+        extglob_depth--;
+      do_append_unquoted_run(
+          m_source.substring_of_length(m_cursor_position + byte_count, 1));
+      byte_count++;
+      continue;
     }
 
     /* A NAME[subscript]= assignment keeps the subscript's operators in the word
@@ -707,16 +704,16 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
       }
     }
 
-    /* An extended-glob group such as @(a|b) is captured whole so its (, nested
-       |, and ) stay in the word for the matcher. */
+    /* An extended-glob group such as @(a|b) keeps its (, nested |, and ) in the
+       word for the matcher, while quotes and expansions between them lex as in
+       any other word. */
     if (!is_inside_quote_or_escape && lexer::is_extglob_operator(ch) &&
         chop_character(byte_count + 1) == '(')
     {
-      let const group_start = byte_count;
+      do_append_unquoted_run(
+          m_source.substring_of_length(m_cursor_position + byte_count, 2));
       byte_count += 2;
-      do_scan_to_matched_close(byte_count, '(', ')');
-      do_append_unquoted_run(m_source.substring_of_length(
-          m_cursor_position + group_start, byte_count - group_start));
+      extglob_depth++;
       continue;
     }
 

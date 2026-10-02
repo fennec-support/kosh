@@ -95,11 +95,15 @@ fn extglob_opens_group(StringView glob, const Bitset &mask, usize mask_offset,
 }
 
 /* The index of the ) that closes the group whose ( sits at glob[1], tracking
-   nested groups by text. Returns glob.count() when the group is unbalanced. */
-fn extglob_group_close(StringView glob) wontthrow -> usize
+   nested groups by text. A quoted parenthesis is a literal and never nests or
+   closes. Returns glob.count() when the group is unbalanced. */
+fn extglob_group_close(StringView glob, const Bitset &mask,
+                       usize mask_offset) wontthrow -> usize
 {
   usize depth = 0;
   for (usize i = 1; i < glob.count(); i++) {
+    if (!extglob_active(mask, mask_offset + i)) continue;
+
     if (glob[i] == '(')
       depth++;
     else if (glob[i] == ')') {
@@ -207,7 +211,7 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
   /* An extended-glob group such as @(a|b), *(a|b), or !(a) drives the match
      through the alternatives split on the top-level |. */
   if (extglob_opens_group(glob, mask, mask_offset, 0)) {
-    const usize close = extglob_group_close(glob);
+    const usize close = extglob_group_close(glob, mask, mask_offset);
     if (close < glob.count()) {
       const StringView content = glob.substring_of_length(2, close - 2);
       const usize content_offset = mask_offset + 2;
@@ -218,15 +222,18 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
       usize depth = 0;
       usize start = 0;
       for (usize i = 0; i <= content.count(); i++) {
+        let const is_active_byte =
+            i < content.count() && extglob_active(mask, content_offset + i);
         let const is_boundary =
-            i == content.count() || (content[i] == '|' && depth == 0);
+            i == content.count() ||
+            (is_active_byte && content[i] == '|' && depth == 0);
         if (is_boundary) {
           alternatives.push({content.substring_of_length(start, i - start),
                              content_offset + start});
           start = i + 1;
-        } else if (content[i] == '(')
+        } else if (is_active_byte && content[i] == '(')
           depth++;
-        else if (content[i] == ')')
+        else if (is_active_byte && content[i] == ')')
           depth--;
       }
 

@@ -181,6 +181,40 @@ LC_ALL=C
 echo c-operators
 check_quoted_and_escaped_operators
 
+check_quoted_group_members() {
+  local s=a e=é pipe='|'
+  case a in +('a')) echo plus-quoted-y ;; *) echo plus-quoted-n ;; esac
+  case a in +($s)) echo plus-var-y ;; *) echo plus-var-n ;; esac
+  case b in +(a|"b")) echo plus-alt-y ;; *) echo plus-alt-n ;; esac
+  case é in @("é"|x)) echo at-utf8-y ;; *) echo at-utf8-n ;; esac
+  case é in @($e|x)) echo at-var-utf8-y ;; *) echo at-var-utf8-n ;; esac
+  case ab in @(a"b")) echo at-tail-y ;; *) echo at-tail-n ;; esac
+  case a in @(a"|"b)) echo at-quoted-bar-a-y ;; *) echo at-quoted-bar-a-n ;; esac
+  case 'a|b' in @(a"|"b)) echo at-quoted-bar-y ;; *) echo at-quoted-bar-n ;; esac
+  case 'a|b' in @(a"$pipe"b)) echo at-var-bar-y ;; *) echo at-var-bar-n ;; esac
+  case 'a)' in @(a")")) echo at-quoted-close-y ;; *) echo at-quoted-close-n ;; esac
+  case b in !(a|"b")) echo not-quoted-y ;; *) echo not-quoted-n ;; esac
+  case c in !('a'|b)) echo not-other-y ;; *) echo not-other-n ;; esac
+  case aa in *('a')) echo star-quoted-y ;; *) echo star-quoted-n ;; esac
+  case '' in ?('a')) echo opt-quoted-y ;; *) echo opt-quoted-n ;; esac
+  case xb in x@(a|@('b'|c))) echo nested-y ;; *) echo nested-n ;; esac
+  case xab in x@(a|@('b'|c)*)) echo nested-tail-y ;; *) echo nested-tail-n ;; esac
+  [[ x == @('x'|y) ]] && echo cond-quoted-y || echo cond-quoted-n
+  [[ y == @('x'|y) ]] && echo cond-second-y || echo cond-second-n
+  [[ z == @('x'|y) ]] && echo cond-none-y || echo cond-none-n
+  [[ a == +($s) ]] && echo cond-var-y || echo cond-var-n
+  [[ '*' == @('*') ]] && echo cond-star-y || echo cond-star-n
+  [[ x == @('*') ]] && echo cond-star-literal-y || echo cond-star-literal-n
+}
+
+shopt -s extglob
+LC_ALL=C.UTF-8
+echo utf8-groups
+check_quoted_group_members
+LC_ALL=C
+echo c-groups
+check_quoted_group_members
+
 check_nocase() {
   local d=$1
   shopt -s nocasematch
