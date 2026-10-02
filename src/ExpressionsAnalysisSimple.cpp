@@ -475,7 +475,8 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
     /* A PATH=... prefix leaves the runtime search path unknown to the prepass,
        so the not-found check for the prefixed command and everything after it
        stays quiet. */
-    if (var.get_name() == "PATH") actx.mark_path_unknown(true);
+    if (utils::environment_name_is_path(var.get_name()))
+      actx.mark_path_unknown(true);
     if (is_source_location_variable(var.get_name()))
       actx.mark_working_directory_unknown();
 
@@ -1344,7 +1345,8 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
                                  .to_literal_string()
                            : m_args[i]->raw_string();
       let const target_name = operand_target_name(word.view());
-      if (target_name == "PATH") actx.mark_path_unknown(true);
+      if (utils::environment_name_is_path(target_name))
+        actx.mark_path_unknown(true);
       if (is_source_location_variable(target_name))
         actx.mark_working_directory_unknown();
     }
