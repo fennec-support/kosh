@@ -11,7 +11,7 @@ printf '%s\n' \
 
 fail()
 {
-  echo "failed at line $1"
+  echo "failed at line $1" >&2
   exit 1
 }
 

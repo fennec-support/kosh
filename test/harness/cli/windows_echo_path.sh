@@ -22,9 +22,10 @@ if [ "${OS-}" = Windows_NT ]; then
   expected=$(printf '%s\n%s' "$path_value" survived)
   [ "$output" = "$expected" ] || fail "$LINENO"
 
-  output=$(env -u PATH "$TEST_PATH_ENVIRONMENT_NAME=$path_value" \
+  environment_output=$(env -u PATH "$TEST_PATH_ENVIRONMENT_NAME=$path_value" \
     "$BIN" -c '# shellcheck disable=search-path-overwritten
-PATH="C:\updated"; koshkit env | koshkit grep "^Path="')
+PATH="C:\updated"; koshkit env')
+  output=$(printf '%s\n' "$environment_output" | grep -i '^path=')
   [ "$output" = 'Path=C:\updated' ] || fail "$LINENO"
 
   output=$(env -u PATH "$TEST_PATH_ENVIRONMENT_NAME=$path_value" \
