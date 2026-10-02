@@ -376,6 +376,18 @@ fn EvalContext::ModifierWordExpander::emit_byte(char byte,
 fn EvalContext::ModifierWordExpander::emit_run(StringView bytes,
                                                bool is_active) throws -> void
 {
+  if (m_is_pattern_word && is_active) {
+    for (usize k = 0; k < bytes.length; k++) {
+      if (bytes[k] == '\\' && k + 1 < bytes.length) {
+        k++;
+        emit_byte(bytes[k], false);
+        continue;
+      }
+      emit_byte(bytes[k], true);
+    }
+    return;
+  }
+
   m_out.append(bytes);
   if (m_active_out != nullptr) {
     for (usize k = 0; k < bytes.length; k++)

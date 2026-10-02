@@ -156,3 +156,27 @@ check_class_forms
 LC_ALL=C
 echo c-class-forms
 check_class_forms
+
+check_quoted_and_escaped_operators() {
+  local s=abc q='*(a)b' p='\a' t=ab
+  echo "quoted:${s#'*(a)b'}|${s/"$q"/X}|${s#"$q"}|${s%%"$q"}"
+  echo "unquoted:${s#$q}|${s/$q/X}"
+  echo "escaped:${t#$p}|${t/$p/X}|${t#"$p"}|${t/"$p"/X}"
+  [[ a == $p ]] && echo cond-escaped-y || echo cond-escaped-n
+  [[ ab == $p ]] && echo cond-escaped-two-y || echo cond-escaped-two-n
+  [[ $t == $p* ]] && echo cond-escaped-star-y || echo cond-escaped-star-n
+  [[ $s == "$q" ]] && echo cond-quoted-y || echo cond-quoted-n
+  case a in $p) echo case-escaped-y ;; *) echo case-escaped-n ;; esac
+  case $t in $p*) echo case-escaped-star-y ;; *) echo case-escaped-star-n ;; esac
+  case $q in "$q") echo case-quoted-y ;; *) echo case-quoted-n ;; esac
+  case aab in $q) echo case-ext-y ;; *) echo case-ext-n ;; esac
+  case aab in "$q") echo case-extq-y ;; *) echo case-extq-n ;; esac
+}
+
+shopt -s extglob
+LC_ALL=C.UTF-8
+echo utf8-operators
+check_quoted_and_escaped_operators
+LC_ALL=C
+echo c-operators
+check_quoted_and_escaped_operators

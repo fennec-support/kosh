@@ -816,6 +816,20 @@ fn EvalContext::expand_case_pattern_masked(const Word &word,
       active_out.push(is_active);
   };
 
+  let const do_emit_expansion_run = [&](StringView bytes, bool is_active) {
+    if (!is_active) {
+      do_emit_run(bytes, false);
+      return;
+    }
+
+    for (usize k = 0; k < bytes.length; k++) {
+      let const is_escape = bytes[k] == '\\' && k + 1 < bytes.length;
+      if (is_escape) k++;
+      result.push(bytes[k]);
+      active_out.push(!is_escape);
+    }
+  };
+
   for (let const &segment : *segments) {
     let const segment_text = segment.text.view();
     switch (segment.kind) {
@@ -832,15 +846,15 @@ fn EvalContext::expand_case_pattern_masked(const Word &word,
       let const value = apply_parameter_expansion(
           segment_text,
           source_location.has_value() ? &*source_location : nullptr);
-      do_emit_run(value.view(), !segment.is_in_double_quotes);
+      do_emit_expansion_run(value.view(), !segment.is_in_double_quotes);
     } break;
     case WordSegment::Kind::CommandSubstitution: {
       let const output = capture_command_substitution(segment);
-      do_emit_run(output.view(), !segment.is_in_double_quotes);
+      do_emit_expansion_run(output.view(), !segment.is_in_double_quotes);
     } break;
     case WordSegment::Kind::FunctionSubstitution: {
       let const output = capture_function_substitution(segment);
-      do_emit_run(output.view(), !segment.is_in_double_quotes);
+      do_emit_expansion_run(output.view(), !segment.is_in_double_quotes);
     } break;
     case WordSegment::Kind::ProcessSubstitution: {
       let const path = setup_process_substitution(segment);
