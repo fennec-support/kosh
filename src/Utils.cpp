@@ -315,6 +315,7 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
   let is_scanning_leading_variable = false;
   let leading_variable_is_braced = false;
   let is_after_unconsumed_dollar = false;
+  let has_active_bracket = false;
   for (usize position = 0; position < word.length; position++) {
     let const byte = word[position];
 
@@ -478,8 +479,15 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
       }
     }
     decoded.text.push(byte);
-    decoded.glob_active.push(quote_character == 0 &&
-                             (byte == '*' || byte == '?' || byte == '['));
+    let const is_unquoted = quote_character == 0;
+    let const is_bracket_syntax =
+        has_active_bracket && (byte == ']' || byte == '!' || byte == '^' ||
+                               byte == '-' || byte == ':');
+    decoded.glob_active.push(
+        is_unquoted &&
+        (byte == '*' || byte == '?' || byte == '[' || is_bracket_syntax));
+    if (is_unquoted && byte == '[') has_active_bracket = true;
+
     if (should_map_source) decoded.raw_positions.push(position + 1);
     if (os::is_directory_separator(byte)) {
       decoded.raw_directory_end = position + 1;

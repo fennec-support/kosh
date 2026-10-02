@@ -108,3 +108,33 @@ find-unreadable=checked
 wide/x
 wide/é
 wide/x
+--- find -name bracket expressions ---
+br/a
+br/b
+br/c
+br/A
+br
+br/!
+br/-
+br/1
+br/2
+br/A
+br/b
+br/c
+br/d
+br/é
+br/!
+br/-
+br/1
+br/2
+br/A
+br/d
+br/é
+br/1
+br/2
+br/-
+br/a
+br/a
+--- find -name multibyte bracket follows the locale codeset ---
+br/é
+br/é
