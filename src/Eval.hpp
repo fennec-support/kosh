@@ -3175,6 +3175,7 @@ public:
       const SourceLocation *source_location = nullptr) throws -> String;
 
   class ModifierWordExpander;
+  class ParameterExpander;
 
   /* is_pattern_word makes a backslash quote the following byte, the # and %
      rule. */

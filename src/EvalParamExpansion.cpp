@@ -825,6 +825,475 @@ fn EvalContext::expand_modifier_word_worker(
   return expander.expand();
 }
 
+class EvalContext::ParameterExpander
+{
+public:
+  ParameterExpander(EvalContext &context, StringView spec,
+                    const SourceLocation *source_location,
+                    usize source_location_offset) wontthrow
+      : m_context(context),
+        m_spec(spec),
+        m_source_location(source_location),
+        m_source_location_offset(source_location_offset)
+  {}
+
+  fn expand() throws -> String;
+
+private:
+  EvalContext &m_context;
+  StringView m_spec;
+  const SourceLocation *m_source_location;
+  usize m_source_location_offset;
+  StringView m_name;
+  StringView m_rest;
+
+  fn get_location_for(StringView part, SourceLocation &storage) const wontthrow
+      -> const SourceLocation *;
+  fn expand_word(StringView word) throws -> String;
+  fn expand_indirect() throws -> String;
+  fn expand_length() throws -> String;
+  fn expand_element_length(StringView name, usize bracket) throws -> String;
+  fn split_name() wontthrow -> void;
+  fn expand_subscripted() throws -> Maybe<String>;
+  fn expand_element_operator(StringView subscript,
+                             const SourceLocation *subscript_location,
+                             StringView modifier, char modifier_op) throws
+      -> Maybe<String>;
+  fn expand_element_test(StringView subscript,
+                         const SourceLocation *subscript_location,
+                         StringView modifier, bool is_colon, char after) throws
+      -> Maybe<String>;
+  fn expand_bare_reference() throws -> String;
+  fn expand_operator() throws -> String;
+  fn expand_substring_form() throws -> String;
+  fn expand_leading_form() throws -> Maybe<String>;
+  fn take_value(Maybe<String> &current) wontthrow -> String;
+  fn assign_word(StringView word) throws -> String;
+  fn raise_unset_error(StringView word) throws -> void;
+  fn expand_test_operator(char op, StringView word, Maybe<String> &current,
+                          bool treat_as_unset) throws -> String;
+  fn expand_trim_operator(char op, StringView word, bool is_doubled,
+                          const Maybe<String> &current) throws -> String;
+};
+
+static fn find_indirect_name_end(StringView body) wontthrow -> usize
+{
+  usize name_end = 0;
+  while (name_end < body.length && lexer::is_variable_name(body[name_end])) {
+    name_end++;
+  }
+  if (name_end > 0 && name_end < body.length && body[name_end] == '[') {
+    if (let const close = body.substring(name_end).find_character(']'))
+      name_end += *close + 1;
+  }
+
+  return name_end;
+}
+
+fn EvalContext::ParameterExpander::get_location_for(
+    StringView part, SourceLocation &storage) const wontthrow
+    -> const SourceLocation *
+{
+  return source_location_for_subview(m_source_location, m_spec, part, storage,
+                                     m_source_location_offset);
+}
+
+fn EvalContext::ParameterExpander::expand_word(StringView word) throws -> String
+{
+  let word_location = SourceLocation{};
+  return m_context.expand_modifier_word(word, true, true,
+                                        get_location_for(word, word_location));
+}
+
+fn EvalContext::ParameterExpander::expand_indirect() throws -> String
+{
+  /* ${!name} indirection, or a prefix listing when it ends with * or @. */
+  let const body = m_spec.substring(1);
+  /* A modifier after the name applies to the indirected value, the bare
+     trailing * and @ stay with the body as the prefix-listing forms. */
+  let const name_end = find_indirect_name_end(body);
+  if (name_end > 0 && name_end < body.length &&
+      !(name_end == body.length - 1 &&
+        (body[name_end] == '*' || body[name_end] == '@')))
+  {
+    let const name = body.substring_of_length(0, name_end);
+    let const target = m_context.get_variable_value(name);
+    let const target_name = target.has_value() ? target->view() : name;
+    let const suffix = body.substring(name_end);
+    let rewritten = String{m_context.scratch_allocator()};
+    rewritten.reserve(target_name.length + suffix.length);
+    /* An unset indirection name stands in for the target so the modifier sees
+       the unset state, a fatal error would be harsher than bash. */
+    rewritten.append(target_name);
+    rewritten.append(suffix);
+    let suffix_location = SourceLocation{};
+    let const *suffix_location_pointer =
+        get_location_for(suffix, suffix_location);
+    return m_context.apply_parameter_expansion(
+        rewritten.view(), suffix_location_pointer, target_name.length);
+  }
+
+  return m_context.apply_indirect_or_name_listing(body);
+}
+
+fn EvalContext::ParameterExpander::expand_element_length(StringView name,
+                                                         usize bracket) throws
+    -> String
+{
+  let const array_name = name.substring_of_length(0, bracket);
+  let const subscript =
+      name.substring_of_length(bracket + 1, name.length - bracket - 2);
+  if (subscript == "@" || subscript == "*") {
+    return String::from(m_context.array_element_count(array_name),
+                        m_context.scratch_allocator());
+  }
+  let subscript_location = SourceLocation{};
+  return String::from(m_context
+                          .apply_array_subscript(
+                              array_name, subscript,
+                              get_location_for(subscript, subscript_location))
+                          .length(),
+                      m_context.scratch_allocator());
+}
+
+fn EvalContext::ParameterExpander::expand_length() throws -> String
+{
+  let const name = m_spec.substring(1);
+  if (name == "@" || name == "*") {
+    return String::from(m_context.variable_store().positional_params().count(),
+                        m_context.scratch_allocator());
+  }
+
+  /* ${#a[@]} is the element count, ${#a[i]} the length of one element. */
+  if (let const bracket = name.find_character('[');
+      bracket.has_value() && *bracket > 0 && name[name.length - 1] == ']' &&
+      lexer::is_variable_name_start(name[0]))
+  {
+    return expand_element_length(name, *bracket);
+  }
+
+  if (let const stored =
+          m_context.variable_store().shell_variables().find(name);
+      stored.has_value())
+    return String::from(stored->count(), m_context.scratch_allocator());
+  let const value = m_context.get_variable_value(name);
+  if (!value.has_value()) m_context.report_unset_reference(name);
+  return String::from(value.has_value() ? value->length() : 0,
+                      m_context.scratch_allocator());
+}
+
+static fn find_variable_name_end(StringView spec) wontthrow -> usize
+{
+  usize name_end = 0;
+#pragma clang loop unroll_count(4)
+  while (name_end < spec.length && lexer::is_variable_name(spec[name_end])) {
+    name_end++;
+  }
+
+  return name_end;
+}
+
+static fn find_number_end(StringView spec) wontthrow -> usize
+{
+  usize name_end = 0;
+#pragma clang loop unroll_count(4)
+  while (name_end < spec.length && lexer::is_number(spec[name_end])) {
+    name_end++;
+  }
+
+  return name_end;
+}
+
+fn EvalContext::ParameterExpander::split_name() wontthrow -> void
+{
+  usize name_end = 1;
+  if (lexer::is_variable_name_start(m_spec[0])) {
+    name_end = find_variable_name_end(m_spec);
+  } else if (lexer::is_number(m_spec[0])) {
+    name_end = find_number_end(m_spec);
+  }
+
+  m_name = m_spec.substring_of_length(0, name_end);
+  m_rest = m_spec.substring(name_end);
+}
+
+fn EvalContext::ParameterExpander::expand_element_test(
+    StringView subscript, const SourceLocation *subscript_location,
+    StringView modifier, bool is_colon, char after) throws -> Maybe<String>
+{
+  let const element_is_set = m_context.array_element_is_set(m_name, subscript);
+  let value = element_is_set ? m_context.apply_array_subscript(
+                                   m_name, subscript, subscript_location)
+                             : String{m_context.scratch_allocator()};
+  let const treat_as_unset = is_colon ? value.is_empty() : !element_is_set;
+  let const word = modifier.substring(is_colon ? 2 : 1);
+  switch (after) {
+  case '-':
+    if (treat_as_unset) return expand_word(word);
+    return value;
+  case '+':
+    if (treat_as_unset) return String{m_context.scratch_allocator()};
+    return expand_word(word);
+  case '=': {
+    if (!treat_as_unset) return value;
+    let assigned = expand_word(word);
+    m_context.assign_array_element(m_name, subscript, assigned.view(),
+                                   assignment_update_mode::Replace);
+    return assigned;
+  }
+  case '?':
+    if (treat_as_unset) {
+      if (word.is_empty())
+        throw_script_fatal("Unable to expand '" + m_name + "[" + subscript +
+                           "]' because the element is not set or is empty");
+      throw_script_fatal(expand_word(word));
+    }
+    return value;
+  default: break;
+  }
+
+  return None;
+}
+
+fn EvalContext::ParameterExpander::expand_element_operator(
+    StringView subscript, const SourceLocation *subscript_location,
+    StringView modifier, char modifier_op) throws -> Maybe<String>
+{
+  let const is_colon = modifier_op == ':';
+  let const after = is_colon && modifier.length > 1 ? modifier[1] : modifier_op;
+  let const is_test_form = is_colon_modifier_operator(after);
+  if (is_colon && !is_test_form) {
+    let const substring_body = modifier.substring(1);
+    let substring_location = SourceLocation{};
+    return m_context.apply_substring_to_value(
+        m_context.apply_array_subscript(m_name, subscript, subscript_location)
+            .view(),
+        substring_body, get_location_for(substring_body, substring_location));
+  }
+  if (is_test_form) {
+    return expand_element_test(subscript, subscript_location, modifier,
+                               is_colon, after);
+  }
+
+  return None;
+}
+
+fn EvalContext::ParameterExpander::expand_subscripted() throws -> Maybe<String>
+{
+  let const close = m_rest.find_character(']');
+  if (!close.has_value()) return None;
+
+  let const subscript = m_rest.substring_of_length(1, *close - 1);
+  let subscript_location = SourceLocation{};
+  let const *subscript_location_pointer =
+      get_location_for(subscript, subscript_location);
+  if (*close + 1 == m_rest.length) {
+    return m_context.apply_array_subscript(m_name, subscript,
+                                           subscript_location_pointer);
+  }
+  /* The / # % ^ , modifiers after the ] modify the one element, a different
+     modifier such as :- falls through to the general path. */
+  let const modifier = m_rest.substring(*close + 1);
+  let modifier_location = SourceLocation{};
+  let const *modifier_location_pointer =
+      get_location_for(modifier, modifier_location);
+  let const modifier_op = modifier.is_empty() ? '\0' : modifier[0];
+  if (subscript != "@" && subscript != "*" &&
+      (modifier_op == '/' || modifier_op == '#' || modifier_op == '%' ||
+       modifier_op == '^' || modifier_op == ','))
+  {
+    return m_context.apply_value_modifier(
+        m_context
+            .apply_array_subscript(m_name, subscript,
+                                   subscript_location_pointer)
+            .view(),
+        modifier, modifier_location_pointer);
+  }
+  if (subscript != "@" && subscript != "*" && !modifier.is_empty()) {
+    return expand_element_operator(subscript, subscript_location_pointer,
+                                   modifier, modifier_op);
+  }
+
+  return None;
+}
+
+fn EvalContext::ParameterExpander::expand_bare_reference() throws -> String
+{
+  /* A plain reference reports under set -u, a modifier form such as ${x:-w}
+     handles the unset case itself. */
+  if (let const stored =
+          m_context.variable_store().shell_variables().find(m_name);
+      stored.has_value())
+    return String{m_context.scratch_allocator(), stored->view()};
+  let value = m_context.get_variable_value(m_name);
+  if (!value.has_value()) m_context.report_unset_reference(m_name);
+  if (value.has_value()) {
+    return String{m_context.scratch_allocator(), value->view()};
+  }
+
+  return String{m_context.scratch_allocator()};
+}
+
+fn EvalContext::ParameterExpander::expand_substring_form() throws -> String
+{
+  let const substring_body = m_rest.substring(1);
+  let substring_location = SourceLocation{};
+  return m_context.apply_substring_expansion(
+      m_name, substring_body,
+      get_location_for(substring_body, substring_location));
+}
+
+fn EvalContext::ParameterExpander::expand_leading_form() throws -> Maybe<String>
+{
+  switch (m_rest[0]) {
+  case '/': {
+    let rest_location = SourceLocation{};
+    return m_context.apply_pattern_replacement(
+        m_name, m_rest, get_location_for(m_rest, rest_location));
+  }
+  case '^':
+  case ',':
+  case '~': {
+    let rest_location = SourceLocation{};
+    return m_context.apply_case_modification(
+        m_name, m_rest, get_location_for(m_rest, rest_location));
+  }
+  case '@':
+    if (m_rest.length >= 2 &&
+        m_context.runtime_state().get_mood() != mimic_mood::Posix)
+    {
+      return m_context.apply_parameter_transform(m_name, m_rest[1]);
+    }
+
+    break;
+  default: break;
+  }
+
+  return None;
+}
+
+fn EvalContext::ParameterExpander::expand_test_operator(
+    char op, StringView word, Maybe<String> &current,
+    bool treat_as_unset) throws -> String
+{
+  switch (op) {
+  case '-':
+    if (treat_as_unset) return expand_word(word);
+    return take_value(current);
+  case '=':
+    if (treat_as_unset) return assign_word(word);
+    return take_value(current);
+  case '+':
+    if (treat_as_unset) return String{m_context.scratch_allocator()};
+    return expand_word(word);
+  default:
+    if (treat_as_unset) raise_unset_error(word);
+    return take_value(current);
+  }
+}
+
+fn EvalContext::ParameterExpander::take_value(Maybe<String> &current) wontthrow
+    -> String
+{
+  ASSERT(current.has_value());
+  return steal(*current);
+}
+
+fn EvalContext::ParameterExpander::assign_word(StringView word) throws -> String
+{
+  let const assigned = expand_word(word);
+  m_context.set_shell_variable(m_name, assigned);
+  return assigned;
+}
+
+fn EvalContext::ParameterExpander::raise_unset_error(StringView word) throws
+    -> void
+{
+  if (word.is_empty())
+    throw_script_fatal("Unable to expand '" + m_name +
+                       "' because the parameter is not set or is empty");
+  throw_script_fatal(expand_word(word));
+}
+
+fn EvalContext::ParameterExpander::expand_trim_operator(
+    char op, StringView word, bool is_doubled,
+    const Maybe<String> &current) throws -> String
+{
+  let word_location = SourceLocation{};
+  let const current_view = current.has_value() ? current->view() : StringView{};
+  return trim_value_with_modifier(m_context, current_view, word,
+                                  op == '#' ? trim_end::Prefix
+                                            : trim_end::Suffix,
+                                  get_location_for(word, word_location),
+                                  is_doubled ? pattern_match_extent::Longest
+                                             : pattern_match_extent::Shortest);
+}
+
+fn EvalContext::ParameterExpander::expand_operator() throws -> String
+{
+  /* A leading colon makes the test forms treat an empty value as unset. */
+  let const is_colon_form = m_rest[0] == ':';
+  const usize op_index = is_colon_form ? 1 : 0;
+  if (op_index >= m_rest.length) return m_context.expand_variable(m_name);
+
+  let const is_all_parameters = m_name == "@" || m_name == "*";
+
+  if (is_colon_form) {
+    let const after_colon = m_rest[op_index];
+    if (!is_colon_modifier_operator(after_colon) && !is_all_parameters) {
+      return expand_substring_form();
+    }
+  }
+
+  if (!is_colon_form && !is_all_parameters) {
+    if (let form = expand_leading_form(); form.has_value()) {
+      return steal(*form);
+    }
+  }
+
+  let const op = m_rest[op_index];
+  let const is_doubled =
+      (op_index + 1 < m_rest.length && m_rest[op_index + 1] == op &&
+       (op == '#' || op == '%'));
+  let const word = m_rest.substring(op_index + (is_doubled ? 2 : 1));
+
+  let current = m_context.get_variable_value(m_name);
+  let const is_set = current.has_value();
+  let const is_empty = !is_set || current->is_empty();
+  let const treat_as_unset = is_colon_form ? is_empty : !is_set;
+
+  switch (op) {
+  case '-':
+  case '=':
+  case '+':
+  case '?': return expand_test_operator(op, word, current, treat_as_unset);
+  case '#':
+  case '%': return expand_trim_operator(op, word, is_doubled, current);
+  default: return m_context.expand_variable(m_name);
+  }
+}
+
+fn EvalContext::ParameterExpander::expand() throws -> String
+{
+  if (m_spec.is_empty()) return String{m_context.scratch_allocator()};
+  if (m_spec.length > 1 && m_spec[0] == '!') return expand_indirect();
+  if (m_spec.length > 1 && m_spec[0] == '#') return expand_length();
+
+  split_name();
+
+  if (!m_rest.is_empty() && m_rest[0] == '[' && !m_name.is_empty() &&
+      lexer::is_variable_name_start(m_name[0]))
+  {
+    if (let element = expand_subscripted(); element.has_value()) {
+      return steal(*element);
+    }
+  }
+
+  if (m_rest.is_empty()) return expand_bare_reference();
+
+  return expand_operator();
+}
+
 hot fn EvalContext::apply_parameter_expansion(
     StringView spec, const SourceLocation *source_location,
     usize source_location_offset) throws -> String
@@ -837,303 +1306,10 @@ hot fn EvalContext::apply_parameter_expansion(
   enter_parameter_expansion();
   defer { leave_parameter_expansion(); };
 
-  let const do_source_location_for =
-      [&](StringView part, SourceLocation &storage) -> const SourceLocation * {
-    return source_location_for_subview(source_location, spec, part, storage,
-                                       source_location_offset);
-  };
-  let const do_expand_modifier_word = [&](StringView word) throws -> String {
-    let word_location = SourceLocation{};
-    return expand_modifier_word(word, true, true,
-                                do_source_location_for(word, word_location));
-  };
+  let expander =
+      ParameterExpander{*this, spec, source_location, source_location_offset};
 
-  if (spec.is_empty()) return String{scratch_allocator()};
-
-  /* ${!name} indirection, or a prefix listing when it ends with * or @. */
-  if (spec.length > 1 && spec[0] == '!') {
-    let const body = spec.substring(1);
-    /* A modifier after the name applies to the indirected value, the bare
-       trailing * and @ stay with the body as the prefix-listing forms. */
-    usize name_end = 0;
-    while (name_end < body.length && lexer::is_variable_name(body[name_end]))
-      name_end++;
-    if (name_end > 0 && name_end < body.length && body[name_end] == '[') {
-      if (let const close = body.substring(name_end).find_character(']'))
-        name_end += *close + 1;
-    }
-    if (name_end > 0 && name_end < body.length &&
-        !(name_end == body.length - 1 &&
-          (body[name_end] == '*' || body[name_end] == '@')))
-    {
-      let const name = body.substring_of_length(0, name_end);
-      let const target = get_variable_value(name);
-      let const target_name = target.has_value() ? target->view() : name;
-      let const suffix = body.substring(name_end);
-      let rewritten = String{scratch_allocator()};
-      rewritten.reserve(target_name.length + suffix.length);
-      /* An unset indirection name stands in for the target so the modifier sees
-         the unset state, a fatal error would be harsher than bash. */
-      rewritten.append(target_name);
-      rewritten.append(suffix);
-      let suffix_location = SourceLocation{};
-      let const *suffix_location_pointer =
-          do_source_location_for(suffix, suffix_location);
-      return apply_parameter_expansion(
-          rewritten.view(), suffix_location_pointer, target_name.length);
-    }
-    return apply_indirect_or_name_listing(body);
-  }
-
-  if (spec.length > 1 && spec[0] == '#') {
-    let const name = spec.substring(1);
-    if (name == "@" || name == "*") {
-      return String::from(variable_store().positional_params().count(),
-                          scratch_allocator());
-    }
-
-    /* ${#a[@]} is the element count, ${#a[i]} the length of one element. */
-    if (let const bracket = name.find_character('[');
-        bracket.has_value() && *bracket > 0 && name[name.length - 1] == ']' &&
-        lexer::is_variable_name_start(name[0]))
-    {
-      let const array_name = name.substring_of_length(0, *bracket);
-      let const subscript =
-          name.substring_of_length(*bracket + 1, name.length - *bracket - 2);
-      if (subscript == "@" || subscript == "*") {
-        return String::from(array_element_count(array_name),
-                            scratch_allocator());
-      }
-      let subscript_location = SourceLocation{};
-      return String::from(
-          apply_array_subscript(
-              array_name, subscript,
-              do_source_location_for(subscript, subscript_location))
-              .length(),
-          scratch_allocator());
-    }
-
-    if (let const stored = variable_store().shell_variables().find(name);
-        stored.has_value())
-      return String::from(stored->count(), scratch_allocator());
-    let const value = get_variable_value(name);
-    if (!value.has_value()) report_unset_reference(name);
-    return String::from(value.has_value() ? value->length() : 0,
-                        scratch_allocator());
-  }
-
-  ASSERT(!spec.is_empty());
-  usize name_end = 0;
-  if (lexer::is_variable_name_start(spec[0])) {
-#pragma clang loop unroll_count(4)
-    while (name_end < spec.length && lexer::is_variable_name(spec[name_end]))
-      name_end++;
-  } else if (lexer::is_number(spec[0])) {
-#pragma clang loop unroll_count(4)
-    while (name_end < spec.length && lexer::is_number(spec[name_end]))
-      name_end++;
-  } else {
-    name_end = 1;
-  }
-
-  let const name = spec.substring_of_length(0, name_end);
-  let const rest = spec.substring(name_end);
-
-  if (!rest.is_empty() && rest[0] == '[' && !name.is_empty() &&
-      lexer::is_variable_name_start(name[0]))
-  {
-    if (let const close = rest.find_character(']'); close.has_value()) {
-      let const subscript = rest.substring_of_length(1, *close - 1);
-      let subscript_location = SourceLocation{};
-      let const *subscript_location_pointer =
-          do_source_location_for(subscript, subscript_location);
-      if (*close + 1 == rest.length)
-        return apply_array_subscript(name, subscript,
-                                     subscript_location_pointer);
-      /* The / # % ^ , modifiers after the ] modify the one element, a different
-         modifier such as :- falls through to the general path. */
-      let const modifier = rest.substring(*close + 1);
-      let modifier_location = SourceLocation{};
-      let const *modifier_location_pointer =
-          do_source_location_for(modifier, modifier_location);
-      let const modifier_op = modifier.is_empty() ? '\0' : modifier[0];
-      if (subscript != "@" && subscript != "*" &&
-          (modifier_op == '/' || modifier_op == '#' || modifier_op == '%' ||
-           modifier_op == '^' || modifier_op == ','))
-      {
-        return apply_value_modifier(
-            apply_array_subscript(name, subscript, subscript_location_pointer)
-                .view(),
-            modifier, modifier_location_pointer);
-      }
-      if (subscript != "@" && subscript != "*" && !modifier.is_empty()) {
-        let const is_colon = modifier_op == ':';
-        let const after =
-            is_colon && modifier.length > 1 ? modifier[1] : modifier_op;
-        let const is_test_form = is_colon_modifier_operator(after);
-        if (is_colon && !is_test_form) {
-          let const substring_body = modifier.substring(1);
-          let substring_location = SourceLocation{};
-          return apply_substring_to_value(
-              apply_array_subscript(name, subscript, subscript_location_pointer)
-                  .view(),
-              substring_body,
-              do_source_location_for(substring_body, substring_location));
-        }
-        if (is_test_form) {
-          let const element_is_set = array_element_is_set(name, subscript);
-          let value = element_is_set
-                          ? apply_array_subscript(name, subscript,
-                                                  subscript_location_pointer)
-                          : String{scratch_allocator()};
-          let const treat_as_unset =
-              is_colon ? value.is_empty() : !element_is_set;
-          let const word = modifier.substring(is_colon ? 2 : 1);
-          switch (after) {
-          case '-':
-            if (treat_as_unset) return do_expand_modifier_word(word);
-            return value;
-          case '+':
-            if (treat_as_unset) return String{scratch_allocator()};
-            return do_expand_modifier_word(word);
-          case '=': {
-            if (!treat_as_unset) return value;
-            let assigned = do_expand_modifier_word(word);
-            assign_array_element(name, subscript, assigned.view(),
-                                 assignment_update_mode::Replace);
-            return assigned;
-          }
-          case '?':
-            if (treat_as_unset) {
-              if (word.is_empty())
-                throw_script_fatal(
-                    "Unable to expand '" + name + "[" + subscript +
-                    "]' because the element is not set or is empty");
-              throw_script_fatal(do_expand_modifier_word(word));
-            }
-            return value;
-          default: break;
-          }
-        }
-      }
-    }
-  }
-
-  if (rest.is_empty()) {
-    /* A plain reference reports under set -u, a modifier form such as ${x:-w}
-       handles the unset case itself. */
-    if (let const stored = variable_store().shell_variables().find(name);
-        stored.has_value())
-      return String{scratch_allocator(), stored->view()};
-    let value = get_variable_value(name);
-    if (!value.has_value()) report_unset_reference(name);
-    if (value.has_value()) return String{scratch_allocator(), value->view()};
-
-    return String{scratch_allocator()};
-  }
-
-  /* A leading colon makes the test forms treat an empty value as unset. */
-  let const is_colon_form = rest[0] == ':';
-  const usize op_index = is_colon_form ? 1 : 0;
-  if (op_index >= rest.length) return expand_variable(name);
-
-  let const is_all_parameters = name == "@" || name == "*";
-
-  if (is_colon_form) {
-    let const after_colon = rest[op_index];
-    if (!is_colon_modifier_operator(after_colon) && !is_all_parameters) {
-      let const substring_body = rest.substring(1);
-      let substring_location = SourceLocation{};
-      return apply_substring_expansion(
-          name, substring_body,
-          do_source_location_for(substring_body, substring_location));
-    }
-  }
-
-  if (!is_colon_form && !is_all_parameters) {
-    switch (rest[0]) {
-    case '/': {
-      let rest_location = SourceLocation{};
-      return apply_pattern_replacement(
-          name, rest, do_source_location_for(rest, rest_location));
-    }
-    case '^':
-    case ',':
-    case '~': {
-      let rest_location = SourceLocation{};
-      return apply_case_modification(
-          name, rest, do_source_location_for(rest, rest_location));
-    }
-    case '@':
-      if (rest.length >= 2 && runtime_state().get_mood() != mimic_mood::Posix) {
-        return apply_parameter_transform(name, rest[1]);
-      }
-
-      break;
-    default: break;
-    }
-  }
-
-  let const op = rest[op_index];
-  let const is_doubled = (op_index + 1 < rest.length &&
-                          rest[op_index + 1] == op && (op == '#' || op == '%'));
-  let const word = rest.substring(op_index + (is_doubled ? 2 : 1));
-
-  let current = get_variable_value(name);
-  let const is_set = current.has_value();
-  let const is_empty = !is_set || current->is_empty();
-  let const treat_as_unset = is_colon_form ? is_empty : !is_set;
-
-  switch (op) {
-  case '-':
-    if (treat_as_unset) return do_expand_modifier_word(word);
-    ASSERT(current.has_value());
-    return steal(*current);
-  case '=':
-    if (treat_as_unset) {
-      let const assigned = do_expand_modifier_word(word);
-      set_shell_variable(name, assigned);
-      return assigned;
-    }
-    ASSERT(current.has_value());
-    return steal(*current);
-  case '+':
-    if (treat_as_unset) return String{scratch_allocator()};
-    return do_expand_modifier_word(word);
-  case '?':
-    if (treat_as_unset) {
-      if (word.is_empty())
-        throw_script_fatal("Unable to expand '" + name +
-                           "' because the parameter is not set or is empty");
-      throw_script_fatal(do_expand_modifier_word(word));
-    }
-    ASSERT(current.has_value());
-    return steal(*current);
-
-  case '#': {
-    let word_location = SourceLocation{};
-    let const current_view =
-        current.has_value() ? current->view() : StringView{};
-    return trim_value_with_modifier(*this, current_view, word, trim_end::Prefix,
-                                    do_source_location_for(word, word_location),
-                                    is_doubled
-                                        ? pattern_match_extent::Longest
-                                        : pattern_match_extent::Shortest);
-  }
-
-  case '%': {
-    let word_location = SourceLocation{};
-    let const current_view =
-        current.has_value() ? current->view() : StringView{};
-    return trim_value_with_modifier(*this, current_view, word, trim_end::Suffix,
-                                    do_source_location_for(word, word_location),
-                                    is_doubled
-                                        ? pattern_match_extent::Longest
-                                        : pattern_match_extent::Shortest);
-  }
-
-  default: return expand_variable(name);
-  }
+  return expander.expand();
 }
 
 /* The index of the colon that separates the offset from the length, or the body
