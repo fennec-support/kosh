@@ -28,6 +28,8 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Strings);
 
 namespace koshka::koshkit {
 
+constexpr usize STRINGS_OUTPUT_FLUSH_BYTE_COUNT = 64 * 1024;
+
 static pure fn is_strings_printable(u8 byte) wontthrow -> bool
 {
   return (byte >= 0x20 && byte <= 0x7e) || byte == '\t';
@@ -168,6 +170,11 @@ fn Strings::execute(const ExecContext &ec, EvalContext &cxt,
 
         byte_offset += run_length;
         position = run_end;
+      }
+
+      if (output.length() >= STRINGS_OUTPUT_FLUSH_BYTE_COUNT) {
+        ec.print_to_stdout(output);
+        output.clear();
       }
 
       if (chunk.completion != source_completion_state::Complete) continue;

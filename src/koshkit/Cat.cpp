@@ -32,6 +32,8 @@ namespace koshka {
 
 namespace koshkit {
 
+constexpr usize CAT_OUTPUT_FLUSH_BYTE_COUNT = 64 * 1024;
+
 enum class cat_number_mode : u8
 {
   Unnumbered,
@@ -219,6 +221,14 @@ fn Cat::execute(const ExecContext &ec, EvalContext &cxt,
         } else {
           append_numbered_chunk(output, chunk.content, line_number,
                                 is_at_output_line_start);
+        }
+
+        if (output.count() >= CAT_OUTPUT_FLUSH_BYTE_COUNT) {
+          ec.print_to_stdout(output);
+          output.clear();
+          source_start = 0;
+          source_line_number = line_number;
+          is_at_source_output_line_start = is_at_output_line_start;
         }
 
         if (chunk.completion == source_completion_state::Complete) {

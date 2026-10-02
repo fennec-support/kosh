@@ -37,6 +37,9 @@ echo "--- numbered cat reads later files after a missing operand ---"
 "$BIN" -c \
   'koshkit cat -n cat-first.txt missing.txt cat-last.txt; printf "status=%s\n" "$?"' \
   2>&1
+echo "--- numbered cat flushes large output and keeps numbering ---"
+"$BIN" -c \
+  'koshkit cat -n batch-input.txt missing.txt batch-input.txt 2>"$TEST_NULL_DEVICE" | koshkit cksum; koshkit cat -n batch-input.txt batch-input.txt | koshkit tail -n 1'
 echo "--- cat preserves bounded source-window order ---"
 "$BIN" -c \
   'koshkit cat batch-source-18.txt batch-source-01.txt batch-source-17.txt batch-source-02.txt batch-source-16.txt batch-source-03.txt batch-source-15.txt batch-source-04.txt batch-source-14.txt batch-source-05.txt batch-source-13.txt batch-source-06.txt batch-source-12.txt batch-source-07.txt batch-source-11.txt batch-source-08.txt batch-source-10.txt batch-source-09.txt'
@@ -61,6 +64,8 @@ printf 'tail\0' >> strings-boundary.txt
 echo "--- strings preserves a run across chunks ---"
 "$BIN" -c \
   'koshkit strings -t d strings-boundary.txt | koshkit wc -c; koshkit strings strings-boundary.txt | koshkit tail -c 5'
+echo "--- strings flushes large output in source order ---"
+"$BIN" -c 'koshkit strings batch-input.txt cat-first.txt | koshkit cksum'
 echo "--- strings reads later files after a missing operand ---"
 "$BIN" -c \
   'koshkit strings cat-first.txt missing.txt cat-last.txt; printf "status=%s\n" "$?"' \
@@ -95,6 +100,9 @@ echo "--- wc multi-chunk input with a missing operand ---"
 "$BIN" -c \
   'koshkit wc -c batch-input.txt missing.txt empty.txt; printf "status=%s\n" "$?"' \
   2>&1
+echo "--- wc counts newlines across vector blocks ---"
+"$BIN" -c 'koshkit wc -l batch-input.txt cat-first.txt transform-first.txt'
+"$BIN" -c 'koshkit cat batch-input.txt | koshkit wc -l'
 echo "--- wc repeated explicit standard input ---"
 printf 'abc\n' | "$BIN" -c 'koshkit wc -c - -'
 echo "--- wc implicit standard input ---"
@@ -208,6 +216,11 @@ echo "--- head bounds multi-chunk prefix reads ---"
 "$BIN" -c 'koshkit head -n 1000 batch-input.txt | koshkit cksum'
 "$BIN" -c 'koshkit cat batch-input.txt' | "$BIN" -c \
   'koshkit head -c 5000 >/dev/null; koshkit wc -c'
+echo "--- head streams large output with headers in source order ---"
+"$BIN" -c \
+  'koshkit head -c 70000 batch-input.txt cat-first.txt batch-input.txt | koshkit cksum'
+"$BIN" -c 'koshkit head -n 15000 cat-first.txt batch-input.txt | koshkit cksum'
+"$BIN" -c 'koshkit cat batch-input.txt | koshkit head -n 15000 | koshkit cksum'
 echo "--- head handles zero bytes without reading data ---"
 "$BIN" -c 'koshkit head -c 0 cat-first.txt; printf "status=%s\n" "$?"'
 echo "--- head reads later files after a missing operand ---"

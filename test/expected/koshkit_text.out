@@ -20,6 +20,9 @@ status=1
      1	first
      2	last
 status=1
+--- numbered cat flushes large output and keeps numbering ---
+4239749508 497788
+ 40000	20000
 --- cat preserves bounded source-window order ---
 source-18
 source-01
@@ -59,6 +62,8 @@ last
 --- strings preserves a run across chunks ---
 65547
 tail
+--- strings flushes large output in source order ---
+839252499 105012
 --- strings reads later files after a missing operand ---
 1:1: error: koshkit strings: cannot read 'missing.txt': No such file or directory.
      1 |  koshkit strings cat-first.txt missing.txt cat-last.txt; printf "status=%s\n" "$?"
@@ -99,6 +104,12 @@ status=2
      0 empty.txt
 108894 total
 status=1
+--- wc counts newlines across vector blocks ---
+20000 batch-input.txt
+    1 cat-first.txt
+    0 transform-first.txt
+20001 total
+20000
 --- wc repeated explicit standard input ---
 4 -
 0 -
@@ -256,6 +267,10 @@ note: order the endpoints from the lower byte to the higher byte.
 812508710 5000
 1830648734 3893
 103894
+--- head streams large output with headers in source order ---
+1471366182 140078
+1228112630 78947
+2187048818 78894
 --- head handles zero bytes without reading data ---
 status=0
 --- head reads later files after a missing operand ---

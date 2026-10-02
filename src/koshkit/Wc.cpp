@@ -83,12 +83,43 @@ struct wc_source_state
 
 static fn count_newlines(StringView content) wontthrow -> u64
 {
+  u64 newline_count = 0;
+  usize byte_position = 0;
+
+#if T__HAS_GCC_EXTENSIONS
+  typedef char byte_vector __attribute__((vector_size(16)));
+  constexpr usize LANE_COUNT = sizeof(byte_vector);
+  constexpr usize MAXIMUM_ROUND_COUNT = 255;
+  constexpr u64 PAIR_LOW_BYTES = 0x00ff00ff00ff00ffULL;
+  constexpr u64 PAIR_SUM_MULTIPLIER = 0x0001000100010001ULL;
+
+  let const newlines = byte_vector{} + '\n';
+
+  while (byte_position + LANE_COUNT <= content.length) {
+    byte_vector lane_counts = {};
+    for (usize round_count = 0; round_count < MAXIMUM_ROUND_COUNT &&
+                                byte_position + LANE_COUNT <= content.length;
+         round_count++)
+    {
+      byte_vector bytes;
+      __builtin_memcpy(&bytes, content.data + byte_position, sizeof(bytes));
+      lane_counts -= static_cast<byte_vector>(bytes == newlines);
+      byte_position += LANE_COUNT;
+    }
+
+    u64 lane_words[2];
+    __builtin_memcpy(lane_words, &lane_counts, sizeof(lane_words));
+    for (let const lane_word : lane_words) {
+      let const pair_sums =
+          (lane_word & PAIR_LOW_BYTES) + ((lane_word >> 8) & PAIR_LOW_BYTES);
+      newline_count += (pair_sums * PAIR_SUM_MULTIPLIER) >> 48;
+    }
+  }
+#else
   constexpr u64 LOW_BITS = 0x7f7f7f7f7f7f7f7fULL;
   constexpr u64 HIGH_BITS = 0x8080808080808080ULL;
   constexpr u64 NEWLINES = 0x0a0a0a0a0a0a0a0aULL;
 
-  u64 newline_count = 0;
-  usize byte_position = 0;
   for (; byte_position + sizeof(u64) <= content.length;
        byte_position += sizeof(u64))
   {
@@ -99,6 +130,7 @@ static fn count_newlines(StringView content) wontthrow -> u64
         ~(((matches & LOW_BITS) + LOW_BITS) | matches | LOW_BITS) & HIGH_BITS;
     newline_count += __builtin_popcountll(zero_bytes);
   }
+#endif
 
   for (; byte_position < content.length; byte_position++)
     newline_count += content[byte_position] == '\n';
