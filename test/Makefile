@@ -137,7 +137,13 @@ export ASAN_OPTIONS := symbolize=0
 
 .PHONY: test kosh cli completion highlight sh bash test_prepare FORCE
 
-test: kosh cli completion highlight sh bash | test_prepare
+ifeq ($(IS_NONDEBUG_BUILD),1)
+DEBUG_DRIVER_SUITES :=
+else
+DEBUG_DRIVER_SUITES := completion highlight
+endif
+
+test: kosh cli $(DEBUG_DRIVER_SUITES) sh bash | test_prepare
 
 KOSH_TESTS := $(wildcard harness/kosh/*.kosh)
 kosh: $(KOSH_TESTS)
