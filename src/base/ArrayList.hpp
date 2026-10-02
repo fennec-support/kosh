@@ -413,10 +413,11 @@ public:
       return;
     }
 
-    usize depth_limit = 0;
+    usize allowed_unbalanced_count = 0;
     for (usize count = m_length; count > 1; count >>= 1)
-      depth_limit++;
-    intro_sort_range(0, m_length, depth_limit * 2, is_less);
+      allowed_unbalanced_count++;
+
+    intro_sort_range(0, m_length, allowed_unbalanced_count, true, is_less);
   }
 
   fn sort() throws -> void
@@ -449,6 +450,8 @@ private:
   ArrayList() : m_allocator(fake_allocator()) {}
 
   static constexpr usize INSERTION_SORT_THRESHOLD = 16;
+  static constexpr usize NINTHER_THRESHOLD = 128;
+  static constexpr usize PARTIAL_INSERTION_MOVE_LIMIT = 8;
 
   fn insert_at(usize index, T value) throws -> void
   {
@@ -523,16 +526,129 @@ private:
   {
     let const length = last - first;
     let const middle = first + length / 2;
-    if (length >= 128) {
-      let const step = length / 8;
-      sort_three(first, first + step, first + step * 2, is_less);
-      sort_three(middle - step, middle, middle + step, is_less);
-      sort_three(last - 1 - step * 2, last - 1 - step, last - 1, is_less);
-      sort_three(first + step, middle, last - 1 - step, is_less);
-    } else {
+    if (length > NINTHER_THRESHOLD) {
       sort_three(first, middle, last - 1, is_less);
+      sort_three(first + 1, middle - 1, last - 2, is_less);
+      sort_three(first + 2, middle + 1, last - 3, is_less);
+      sort_three(middle - 1, middle, middle + 1, is_less);
+      swap_elements(first, middle);
+    } else {
+      sort_three(middle, first, last - 1, is_less);
     }
-    swap_elements(middle, last - 1);
+  }
+
+  template <typename Compare>
+  fn partition_right(usize first, usize last, Compare &is_less,
+                     bool &was_partitioned) throws -> usize
+  {
+    T pivot = steal(m_data[first]);
+    usize left = first;
+    usize right = last;
+    do {
+      left++;
+    } while (is_less(m_data[left], pivot));
+
+    if (left - 1 == first) {
+      while (left < right) {
+        right--;
+        if (is_less(m_data[right], pivot)) break;
+      }
+    } else {
+      do {
+        right--;
+      } while (!is_less(m_data[right], pivot));
+    }
+
+    was_partitioned = left >= right;
+    while (left < right) {
+      swap_elements(left, right);
+      do {
+        left++;
+      } while (is_less(m_data[left], pivot));
+      do {
+        right--;
+      } while (!is_less(m_data[right], pivot));
+    }
+
+    let const pivot_position = left - 1;
+    if (pivot_position != first) m_data[first] = steal(m_data[pivot_position]);
+    m_data[pivot_position] = steal(pivot);
+    return pivot_position;
+  }
+
+  template <typename Compare>
+  fn partition_left(usize first, usize last, Compare &is_less) throws -> usize
+  {
+    T pivot = steal(m_data[first]);
+    usize left = first;
+    usize right = last;
+    do {
+      right--;
+    } while (is_less(pivot, m_data[right]));
+
+    if (right + 1 == last) {
+      while (left < right) {
+        left++;
+        if (is_less(pivot, m_data[left])) break;
+      }
+    } else {
+      do {
+        left++;
+      } while (!is_less(pivot, m_data[left]));
+    }
+
+    while (left < right) {
+      swap_elements(left, right);
+      do {
+        right--;
+      } while (is_less(pivot, m_data[right]));
+      do {
+        left++;
+      } while (!is_less(pivot, m_data[left]));
+    }
+
+    let const pivot_position = right;
+    if (pivot_position != first) m_data[first] = steal(m_data[pivot_position]);
+    m_data[pivot_position] = steal(pivot);
+    return pivot_position;
+  }
+
+  fn break_partition_patterns(usize first, usize last) throws -> void
+  {
+    let const length = last - first;
+    if (length < INSERTION_SORT_THRESHOLD) return;
+
+    let const quarter_length = length / 4;
+    swap_elements(first, first + quarter_length);
+    swap_elements(last - 1, last - quarter_length);
+    if (length > NINTHER_THRESHOLD) {
+      swap_elements(first + 1, first + quarter_length + 1);
+      swap_elements(first + 2, first + quarter_length + 2);
+      swap_elements(last - 2, last - quarter_length - 1);
+      swap_elements(last - 3, last - quarter_length - 2);
+    }
+  }
+
+  template <typename Compare>
+  fn partial_insertion_sort_range(usize first, usize last,
+                                  Compare &is_less) throws -> bool
+  {
+    usize moved_count = 0;
+    for (usize i = first + 1; i < last; i++) {
+      if (moved_count > PARTIAL_INSERTION_MOVE_LIMIT) return false;
+      if (!is_less(m_data[i], m_data[i - 1])) continue;
+
+      T key = steal(m_data[i]);
+      usize j = i;
+      do {
+        m_data[j] = steal(m_data[j - 1]);
+        j--;
+      } while (j > first && is_less(key, m_data[j - 1]));
+      m_data[j] = steal(key);
+      moved_count += i - j;
+    }
+
+    return true;
   }
 
   template <typename Compare>
@@ -584,41 +700,49 @@ private:
   }
 
   template <typename Compare>
-  fn intro_sort_range(usize first, usize last, usize depth_limit,
-                      Compare &is_less) throws -> void
+  fn intro_sort_range(usize first, usize last, usize allowed_unbalanced_count,
+                      bool is_leftmost, Compare &is_less) throws -> void
   {
     while (last - first > INSERTION_SORT_THRESHOLD) {
-      if (depth_limit == 0) {
-        heap_sort_range(first, last, is_less);
-        return;
-      }
-      depth_limit--;
-
       select_pivot(first, last, is_less);
 
-      usize less = first;
-      usize index = first;
-      usize greater = last - 1;
-      while (index < greater) {
-        if (is_less(m_data[index], m_data[last - 1])) {
-          if (index != less) swap_elements(index, less);
-          index++;
-          less++;
-        } else if (is_less(m_data[last - 1], m_data[index])) {
-          greater--;
-          if (index != greater) swap_elements(index, greater);
-        } else {
-          index++;
-        }
+      if (!is_leftmost && !is_less(m_data[first - 1], m_data[first])) {
+        first = partition_left(first, last, is_less) + 1;
+        continue;
       }
-      swap_elements(greater, last - 1);
 
-      if (less - first < last - greater - 1) {
-        intro_sort_range(first, less, depth_limit, is_less);
-        first = greater + 1;
+      bool was_partitioned = false;
+      let const pivot_position =
+          partition_right(first, last, is_less, was_partitioned);
+      let const left_length = pivot_position - first;
+      let const right_length = last - pivot_position - 1;
+      let const balanced_length = (last - first) / 8;
+      if (left_length < balanced_length || right_length < balanced_length) {
+        if (allowed_unbalanced_count == 0) {
+          heap_sort_range(first, last, is_less);
+          return;
+        }
+
+        allowed_unbalanced_count--;
+        break_partition_patterns(first, pivot_position);
+        break_partition_patterns(pivot_position + 1, last);
+      } else if (was_partitioned &&
+                 partial_insertion_sort_range(first, pivot_position, is_less) &&
+                 partial_insertion_sort_range(pivot_position + 1, last,
+                                              is_less))
+      {
+        return;
+      }
+
+      if (left_length < right_length) {
+        intro_sort_range(first, pivot_position, allowed_unbalanced_count,
+                         is_leftmost, is_less);
+        first = pivot_position + 1;
+        is_leftmost = false;
       } else {
-        intro_sort_range(greater + 1, last, depth_limit, is_less);
-        last = less;
+        intro_sort_range(pivot_position + 1, last, allowed_unbalanced_count,
+                         false, is_less);
+        last = pivot_position;
       }
     }
 
