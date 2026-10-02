@@ -108,8 +108,19 @@ fn extglob_group_close(StringView glob) wontthrow -> usize
   return glob.count();
 }
 
+/* The position one character past position, one byte in the byte charset. A
+   position at or past the end advances by one so a split loop ends. */
+pure fn get_next_split(StringView str, usize position,
+                       glob_charset charset) wontthrow -> usize
+{
+  if (charset == glob_charset::Utf8 && position < str.count())
+    return position + utf8_character_length(str, position);
+
+  return position + 1;
+}
+
 fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
-                      usize mask_offset) throws -> bool;
+                      usize mask_offset, glob_charset charset) throws -> bool;
 
 /* Match min_reps or more repetitions of one of the alternatives against the
    front of str, then the suffix against the rest. The min drops to zero after
@@ -117,23 +128,28 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
 fn extglob_match_repetition(const ExtglobAlternatives &alternatives,
                             StringView suffix, usize suffix_offset,
                             StringView str, const Bitset &mask,
-                            usize min_reps) throws -> bool
+                            usize min_reps, glob_charset charset) throws -> bool
 {
-  if (min_reps == 0 && extglob_full_match(suffix, str, mask, suffix_offset)) {
+  if (min_reps == 0 &&
+      extglob_full_match(suffix, str, mask, suffix_offset, charset))
+  {
     return true;
   }
   for (usize alternative_index = 0; alternative_index < alternatives.count();
        alternative_index++)
   {
     let const &alternative = alternatives.get_at(alternative_index);
-    for (usize length = 1; length <= str.count(); length++) {
+    for (usize length = get_next_split(str, 0, charset); length <= str.count();
+         length = get_next_split(str, length, charset))
+    {
       if (!extglob_full_match(alternative.pattern,
                               str.substring_of_length(0, length), mask,
-                              alternative.mask_offset))
+                              alternative.mask_offset, charset))
         continue;
       const usize next_min = min_reps > 0 ? min_reps - 1 : 0;
       if (extglob_match_repetition(alternatives, suffix, suffix_offset,
-                                   str.substring(length), mask, next_min))
+                                   str.substring(length), mask, next_min,
+                                   charset))
         return true;
     }
   }
@@ -141,7 +157,7 @@ fn extglob_match_repetition(const ExtglobAlternatives &alternatives,
 }
 
 fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
-                      usize mask_offset) throws -> bool
+                      usize mask_offset, glob_charset charset) throws -> bool
 {
   if (glob.is_empty()) return str.is_empty();
 
@@ -177,35 +193,39 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
       switch (head) {
       case '*':
         return extglob_match_repetition(alternatives, suffix, suffix_offset,
-                                        str, mask, 0);
+                                        str, mask, 0, charset);
       case '+':
         return extglob_match_repetition(alternatives, suffix, suffix_offset,
-                                        str, mask, 1);
+                                        str, mask, 1, charset);
       case '?':
       case '@':
         for (usize alternative_index = 0;
              alternative_index < alternatives.count(); alternative_index++)
         {
           let const &alternative = alternatives.get_at(alternative_index);
-          for (usize length = head == '?' ? 0 : 1; length <= str.count();
-               length++)
+          for (usize length =
+                   head == '?' ? 0 : get_next_split(str, 0, charset);
+               length <= str.count();
+               length = get_next_split(str, length, charset))
           {
             if (extglob_full_match(alternative.pattern,
                                    str.substring_of_length(0, length), mask,
-                                   alternative.mask_offset) &&
+                                   alternative.mask_offset, charset) &&
                 extglob_full_match(suffix, str.substring(length), mask,
-                                   suffix_offset))
+                                   suffix_offset, charset))
               return true;
           }
         }
         /* A ? group also matches zero occurrences, so the suffix may follow
            with nothing consumed. */
         return head == '?' &&
-               extglob_full_match(suffix, str, mask, suffix_offset);
+               extglob_full_match(suffix, str, mask, suffix_offset, charset);
       case '!':
         /* A negated group consumes a prefix that none of the alternatives
            match, then the suffix matches the rest. */
-        for (usize length = 0; length <= str.count(); length++) {
+        for (usize length = 0; length <= str.count();
+             length = get_next_split(str, length, charset))
+        {
           bool has_matching_alternative = false;
           for (usize alternative_index = 0;
                alternative_index < alternatives.count(); alternative_index++)
@@ -213,7 +233,7 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
             let const &alternative = alternatives.get_at(alternative_index);
             if (extglob_full_match(alternative.pattern,
                                    str.substring_of_length(0, length), mask,
-                                   alternative.mask_offset))
+                                   alternative.mask_offset, charset))
             {
               has_matching_alternative = true;
               break;
@@ -221,7 +241,7 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
           }
           if (!has_matching_alternative &&
               extglob_full_match(suffix, str.substring(length), mask,
-                                 suffix_offset))
+                                 suffix_offset, charset))
           {
             return true;
           }
@@ -235,9 +255,11 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
   /* A trailing * matches the rest of the string, so it is taken without trying
      every split. */
   if (is_active && head == '*') {
-    for (usize eaten = 0; eaten <= str.count(); eaten++) {
+    for (usize eaten = 0; eaten <= str.count();
+         eaten = get_next_split(str, eaten, charset))
+    {
       if (extglob_full_match(glob.substring(1), str.substring(eaten), mask,
-                             mask_offset + 1))
+                             mask_offset + 1, charset))
         return true;
     }
     return false;
@@ -246,8 +268,9 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
   if (str.is_empty()) return false;
 
   if (is_active && head == '?') {
-    return extglob_full_match(glob.substring(1), str.substring(1), mask,
-                              mask_offset + 1);
+    return extglob_full_match(glob.substring(1),
+                              str.substring(get_next_split(str, 0, charset)),
+                              mask, mask_offset + 1, charset);
   }
 
   if (is_active && head == '[') {
@@ -259,18 +282,21 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
       span++;
     if (span < glob.count()) {
       span++;
-      let const did_class_match =
-          glob_matches(glob.substring_of_length(0, span),
-                       str.substring_of_length(0, 1), mask, mask_offset);
+      let const character_length = get_next_split(str, 0, charset);
+      let const did_class_match = glob_matches(
+          glob.substring_of_length(0, span),
+          str.substring_of_length(0, character_length), mask, mask_offset,
+          extglob_mode::Disabled, charset);
       if (!did_class_match) return false;
-      return extglob_full_match(glob.substring(span), str.substring(1), mask,
-                                mask_offset + span);
+      return extglob_full_match(glob.substring(span),
+                                str.substring(character_length), mask,
+                                mask_offset + span, charset);
     }
   }
 
   if (str[0] != head) return false;
   return extglob_full_match(glob.substring(1), str.substring(1), mask,
-                            mask_offset + 1);
+                            mask_offset + 1, charset);
 }
 
 /* The POSIX character classes a bracket accepts as [:name:], each name bound
@@ -387,7 +413,7 @@ hot flatten fn glob_matches(StringView glob, StringView str,
       if ((c == '?' || c == '*' || c == '+' || c == '@' || c == '!') &&
           glob[i + 1] == '(')
       {
-        return extglob_full_match(glob, str, glob_active, mask_offset);
+        return extglob_full_match(glob, str, glob_active, mask_offset, charset);
       }
     }
   }
@@ -456,6 +482,23 @@ hot flatten fn glob_matches(StringView glob, StringView str,
       let const do_get_byte_at =
           [](StringView view, usize index)
               wontthrow -> u8 { return static_cast<u8>(view[index]); };
+
+      /* The character that starts at index. The byte charset reads one byte.
+         The Utf8 charset decodes a whole sequence, and an invalid byte becomes
+         a value above the code point range so it equals only itself. */
+      let const do_get_character_at =
+          [&](StringView view, usize index) wontthrow -> decoded_codepoint {
+        let const byte = do_get_byte_at(view, index);
+        if (!is_utf8 || byte < 0x80) return {byte, 1};
+
+        let const decoded = decode_utf8(view, index, 0xfffd);
+        if (decoded.value == 0xfffd && decoded.length == 1)
+          return {0x110000u + byte, 1};
+
+        return decoded;
+      };
+
+      let const subject = do_get_character_at(str, s);
 
       /* A [:name:] unit inside the bracket is a POSIX character class. The
          index past its closing ":]" comes back when one starts here, so both
@@ -532,24 +575,31 @@ hot flatten fn glob_matches(StringView glob, StringView str,
         {
           let const class_name =
               glob.substring_of_length(g + 2, *past_class - g - 4);
-          is_matched |=
-              byte_is_in_posix_class(class_name, do_get_byte_at(str, s));
+          is_matched |= subject.value < 0x80
+                            ? byte_is_in_posix_class(
+                                  class_name, static_cast<u8>(subject.value))
+                            : subject.value < 0x110000 &&
+                                  os::code_point_is_in_class(class_name,
+                                                             subject.value);
           g = *past_class;
           is_first_member = false;
           continue;
         }
-        if (glob[g] != '-' && g + 2 < glob.count() && glob[g + 1] == '-' &&
-            do_is_active(g + 1) && !do_is_close_at(g + 2) &&
-            !do_get_class_end_past(g + 2).has_value())
+
+        let const lower = do_get_character_at(glob, g);
+        let const range_dash = g + lower.length;
+        if (glob[g] != '-' && range_dash + 1 < glob.count() &&
+            glob[range_dash] == '-' && do_is_active(range_dash) &&
+            !do_is_close_at(range_dash + 1) &&
+            !do_get_class_end_past(range_dash + 1).has_value())
         {
-          let const lower = do_get_byte_at(glob, g);
-          let const upper = do_get_byte_at(glob, g + 2);
-          is_matched |= lower <= do_get_byte_at(str, s) &&
-                        do_get_byte_at(str, s) <= upper;
-          g += 3;
+          let const upper = do_get_character_at(glob, range_dash + 1);
+          is_matched |= lower.value <= subject.value &&
+                        subject.value <= upper.value;
+          g = range_dash + 1 + upper.length;
         } else {
-          is_matched |= do_get_byte_at(glob, g) == do_get_byte_at(str, s);
-          g++;
+          is_matched |= lower.value == subject.value;
+          g += lower.length;
         }
         is_first_member = false;
       }
@@ -561,7 +611,7 @@ hot flatten fn glob_matches(StringView glob, StringView str,
       if (!is_matched) goto retry_star;
 
       g++;
-      s++;
+      s += subject.length;
     } break;
 
     default:

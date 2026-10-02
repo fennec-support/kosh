@@ -23,6 +23,7 @@
 #include "base/Trace.hpp"
 
 #include <fcntl.h>
+#include <wctype.h>
 
 #define KOSH_UMASK(mask) _umask(static_cast<int>(mask))
 
@@ -1270,6 +1271,19 @@ fn collate_compare(const String &left, const String &right) wontthrow -> int
 {
   if (left < right) return -1;
   return right < left ? 1 : 0;
+}
+
+fn code_point_is_in_class(StringView class_name, u32 code_point) wontthrow
+    -> bool
+{
+  char name[16];
+  if (code_point > 0xffff || class_name.length >= sizeof(name)) return false;
+
+  std::memcpy(name, class_name.data, class_name.length);
+  name[class_name.length] = '\0';
+
+  let const kind = wctype(name);
+  return kind != 0 && iswctype(static_cast<wint_t>(code_point), kind) != 0;
 }
 
 static fn

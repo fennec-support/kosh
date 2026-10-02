@@ -873,8 +873,14 @@ case, selects UTF\-8. Any other value, an empty value, and no value select
 bytes. In UTF\-8, a ? and each step of a * consume one whole valid UTF\-8
 sequence, and an invalid byte counts as one character. In bytes, each consumes
 one byte. The rule applies to pathname expansion, case, [[ == ]], ${v#pat},
-${v%pat}, ${v/pat/rep}, ${v^pat}, and compgen \-X. Bracket expressions and
-extglob groups stay byte based. Completion always matches by UTF\-8 sequence.
+${v%pat}, ${v/pat/rep}, ${v^pat}, and compgen \-X. In UTF\-8, a bracket
+expression consumes one whole character, its members and range endpoints are
+whole characters, a range compares code points, and a negated bracket still
+consumes one character. A POSIX class such as [:alpha:] tests a non\-ASCII
+character against the platform Unicode class and matches nothing where the
+platform has none. In bytes, a bracket compares one byte. An extglob group
+splits the subject only at character boundaries in UTF\-8, and its inner
+patterns follow the same rule. Completion always matches by UTF\-8 sequence.
 .SH REDIRECTIONS
 The operators &> and &>> redirect standard output and standard error to one
 file. The operator |& pipes both streams. The operator <<< supplies a

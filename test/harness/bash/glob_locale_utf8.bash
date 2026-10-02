@@ -1,9 +1,12 @@
 #!/bin/bash
 # Bash pattern matching under the character locale, checked byte-for-byte
 # against bash. A ? and the retry of a * consume one whole character in a UTF-8
-# locale and one byte in the C locale. Covers the first nonempty of LC_ALL,
-# LC_CTYPE, and LANG, assignment, unset, and trims, case, [[ ]], substitution,
-# and pathname expansion over multibyte values.
+# locale and one byte in the C locale. A bracket expression consumes one whole
+# character, compares ranges by code point, and classifies a non-ASCII
+# character by its Unicode class, and extglob groups split only at character
+# boundaries. Covers the first nonempty of LC_ALL, LC_CTYPE, and LANG,
+# assignment, unset, and trims, case, [[ ]], substitution, and pathname
+# expansion over multibyte values.
 
 v='日本.語.x'
 
@@ -85,3 +88,37 @@ for f in "$dir"/??; do echo "bytes2:${f##*/}"; done
 LC_ALL=C.UTF-8 true
 for f in "$dir"/?; do echo "bytes-after-prefix:${f##*/}"; done
 rm -rf "$dir"
+
+shopt -s extglob
+check_patterns() {
+  local entry subject pattern
+  for entry in \
+    'é|[é]' 'é|[à-ü]' 'é|[ü-à]' 'é|[é-é]' 'é|[a-é]' 'é|[é-z]' 'ý|[é-ü]' \
+    'à|[é-ü]' '語|[一-龥]' 'é|[!語]' '語|[!語]' 'é|[!a]' 'é|[^a]' 'é|[a-z]' \
+    'é|[]é]' 'é|[!]é]' 'é|[\é]' 'é|["é"]' 'é|[é]*' 'éa|[é]a' 'éa|[é]?' \
+    'éé|[é][é]' 'éé|[é]' 'ab|[é]b' \
+    'é|[[:alpha:]]' 'é|[[:alnum:]]' 'é|[[:lower:]]' 'é|[[:upper:]]' \
+    'É|[[:upper:]]' 'É|[[:alpha:]]' 'é|[[:print:]]' 'é|[[:graph:]]' \
+    'é|[[:punct:]]' 'é|[[:space:]]' 'é|[[:cntrl:]]' 'é|[![:alpha:]]' \
+    '語|[[:alpha:]]' '語|[[:print:]]' 'a|[[:alpha:]]' ' |[[:space:]]' \
+    'é|@(é)' 'é|?(é)' 'éé|*(é)' 'éé|+(é)' 'é|!(é)' 'é|!(a)' 'éa|!(é)a' \
+    'éa|@(é|語)a' 'éa|?(é)a' '日本|*(日|本)' '日本|+(日|本)' '日|@(?)' \
+    'é|@(?)' 'é|@(??)' 'é|!(?)' 'é|!(??)' 'éa|*(?)' 'éa|*(??)' 'éa|+(?)' \
+    'éa|?(?)a' 'éa|?(??)a' 'éb|@([é]|x)b' 'éb|@([!a])b' 'éb|@([a-z])b' \
+    'éb|@([à-ü])b' 'éb|*([é])b' 'éb|!(?)b' 'éb|!(??)b' 'éé|!(?)' \
+    'éé|!(??)' 'éé|!(????)'; do
+    subject=${entry%%|*}
+    pattern=${entry#*|}
+    case $subject in
+      $pattern) printf 'Y %s\n' "$entry" ;;
+      *) printf 'N %s\n' "$entry" ;;
+    esac
+  done
+}
+
+LC_ALL=C.UTF-8
+echo utf8-brackets
+check_patterns
+LC_ALL=C
+echo c-brackets
+check_patterns

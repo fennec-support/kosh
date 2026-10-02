@@ -1381,6 +1381,12 @@ fn descriptor_is_shell_fd(os::descriptor fd, i32 shell_fd) wontthrow -> bool;
    platform without one. The sign follows strcmp. */
 fn collate_compare(const String &left, const String &right) wontthrow -> int;
 
+/* Whether a Unicode code point belongs to the named ctype class, such as alpha
+   or punct. The answer comes from the platform's UTF-8 classification and is
+   false when the platform has none or the class name is unknown. */
+fn code_point_is_in_class(StringView class_name, u32 code_point) wontthrow
+    -> bool;
+
 /* One capture group's byte span in the subject. A group that did not
    participate carries a negative start. */
 struct regex_span
