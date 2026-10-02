@@ -115,6 +115,11 @@ if [ "${TARGET:-$(uname -s)}" = Linux ]; then
       echo "pseudo-wc=wrong $pseudo_file"
   done
 fi
+echo "--- wc words start at a printable byte ---"
+printf '\314\307\200\324' | "$BIN" -c 'LC_ALL=C; export LC_ALL; koshkit wc -w'
+printf '\033\ra' | "$BIN" -c 'koshkit wc -w'
+printf 'a\033b \033\n\200 c\177d\n' | "$BIN" -c 'koshkit wc -lw'
+printf 'ab\033' | "$BIN" -c 'koshkit wc -w'
 
 if [ -n "$d" ]; then
   "$BIN_DIR/invoke-koshkit" rm -r "$d"

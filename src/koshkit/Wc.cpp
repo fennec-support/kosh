@@ -59,10 +59,26 @@ constexpr fn has_wc_count(wc_count_selection selection,
   return (static_cast<u8>(selection) & static_cast<u8>(count)) != 0;
 }
 
-static fn is_blank(char c) wontthrow -> bool
+struct word_byte_table
 {
-  return c == ' ' || (c >= '\t' && c <= '\r');
+  u8 values[256];
+};
+
+static consteval fn make_word_byte_table() -> word_byte_table
+{
+  word_byte_table table{};
+
+  for (u32 byte = 0; byte < 256; byte++) {
+    let const is_blank = byte == ' ' || (byte >= '\t' && byte <= '\r');
+    let const is_printable = byte > ' ' && byte < 0x7f;
+
+    table.values[byte] = is_printable ? 1 : (is_blank ? 0 : 2);
+  }
+
+  return table;
 }
+
+inline constexpr word_byte_table WORD_BYTE_TABLE = make_word_byte_table();
 
 struct wc_row
 {
@@ -121,6 +137,26 @@ static fn count_newlines(StringView content) wontthrow -> u64
   return newline_count;
 }
 
+static fn count_words(wc_source_state &state, StringView content) wontthrow
+    -> void
+{
+  u32 is_in_word = state.is_in_word ? 1 : 0;
+  u64 word_count = 0;
+
+  for (usize byte_position = 0; byte_position < content.length;
+       byte_position++)
+  {
+    let const entry = static_cast<u32>(WORD_BYTE_TABLE.values[static_cast<u8>(
+        content.data[byte_position])]);
+    let const does_start_word = entry & 1;
+    word_count += does_start_word & (is_in_word ^ 1);
+    is_in_word = (((is_in_word << 1) & entry) >> 1) | does_start_word;
+  }
+
+  state.word_count += word_count;
+  state.is_in_word = is_in_word != 0;
+}
+
 static fn update_wc_source(wc_source_state &state, StringView content,
                            wc_count_selection selection) wontthrow -> void
 {
@@ -137,32 +173,10 @@ static fn update_wc_source(wc_source_state &state, StringView content,
   switch (scan_mode) {
   case wc_scan_mode::None: break;
   case wc_scan_mode::Lines: state.line_count += count_newlines(content); break;
-  case wc_scan_mode::Words:
-    for (usize byte_position = 0; byte_position < content.length;
-         byte_position++)
-    {
-      let const byte = content[byte_position];
-      if (is_blank(byte)) {
-        state.is_in_word = false;
-      } else if (!state.is_in_word) {
-        state.is_in_word = true;
-        state.word_count++;
-      }
-    }
-    break;
+  case wc_scan_mode::Words: count_words(state, content); break;
   case wc_scan_mode::LinesWords:
-    for (usize byte_position = 0; byte_position < content.length;
-         byte_position++)
-    {
-      let const byte = content[byte_position];
-      if (byte == '\n') state.line_count++;
-      if (is_blank(byte)) {
-        state.is_in_word = false;
-      } else if (!state.is_in_word) {
-        state.is_in_word = true;
-        state.word_count++;
-      }
-    }
+    state.line_count += count_newlines(content);
+    count_words(state, content);
     break;
   }
 }
