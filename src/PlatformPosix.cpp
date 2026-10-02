@@ -1593,23 +1593,11 @@ fn code_point_is_in_class(StringView class_name, u32 code_point) wontthrow
          iswctype_l(static_cast<wint_t>(code_point), kind, unicode_locale) != 0;
 }
 
-static fn get_regex_utf8_locale() wontthrow -> locale_t
-{
-  static const locale_t regex_locale = [] {
-    locale_t created = newlocale(LC_CTYPE_MASK, "C.UTF-8", nullptr);
-    if (created == nullptr)
-      created = newlocale(LC_CTYPE_MASK, "en_US.UTF-8", nullptr);
-    return created;
-  }();
-
-  return regex_locale;
-}
-
 regex_utf8_scope::regex_utf8_scope(bool is_enabled) wontthrow
 {
   if (!is_enabled) return;
 
-  let const regex_locale = get_regex_utf8_locale();
+  let const regex_locale = get_unicode_locale();
   if (regex_locale == nullptr) return;
 
   let const previous = uselocale(regex_locale);

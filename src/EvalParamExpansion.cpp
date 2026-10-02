@@ -1657,8 +1657,7 @@ fn EvalContext::pattern_replace_value(
     if (let const matched = longest_pattern_match_at(
             pattern.view(), pattern_active, value, 0, extglob, charset))
     {
-      append_pattern_replacement(out, replacement.view(),
-                                 value.substring_of_length(0, *matched));
+      do_append_replacement(value.substring_of_length(0, *matched));
     }
     return out;
   }
