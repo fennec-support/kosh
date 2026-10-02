@@ -9,6 +9,12 @@ printf '%s\n' \
     "PROMPT_COMMAND='printf ready > \"\$EDITOR_READY_FILE\"; unset PROMPT_COMMAND'" \
     > "$RCFILE"
 
+fail()
+{
+  echo "failed at line $1"
+  exit 1
+}
+
 if "$script_command" --version >/dev/null 2>&1; then
     script_style=gnu
 else
@@ -138,7 +144,7 @@ chmod +x "$d/path/probe-alpha" "$d/path/probe-beta"
 
 send_typing_input()
 {
-    wait_for_editor "$d/typing-ready" || exit 1
+    wait_for_editor "$d/typing-ready" || fail "$LINENO"
     for character in e c h o ' ' h e l l o; do
         printf %s "$character"
         sleep 0.02
@@ -157,14 +163,14 @@ send_typing_input()
 send_typing_input | TERM=xterm-256color PATH="$d/path" \
     EDITOR_READY_FILE="$d/typing-ready" \
     KOSH_HISTORY_FILE="$d/typing-history" BIN="$BIN" \
-    run_editor "$d/typing-typescript" || exit 1
+    run_editor "$d/typing-typescript" || fail "$LINENO"
 
-strings "$d/typing-typescript" | grep -q '^hello$' || exit 1
+strings "$d/typing-typescript" | grep -q '^hello$' || fail "$LINENO"
 echo 'interactive typing runs a command'
 
 send_unhighlighted_input()
 {
-    wait_for_editor "$d/unhighlighted-ready" || exit 1
+    wait_for_editor "$d/unhighlighted-ready" || fail "$LINENO"
     printf 'probe\n'
     sleep 0.2
     printf 'probe-\t\n'
@@ -182,9 +188,9 @@ send_unhighlighted_input | TERM=xterm-256color PATH="$d/path" \
     EDITOR_OPTIONS=--no-syntax-highlighting \
     EDITOR_READY_FILE="$d/unhighlighted-ready" \
     KOSH_HISTORY_FILE="$d/unhighlighted-history" RCFILE="$d/unhighlighted-rc" \
-    BIN="$BIN" run_editor "$d/unhighlighted-typescript" || exit 1
+    BIN="$BIN" run_editor "$d/unhighlighted-typescript" || fail "$LINENO"
 
-strings "$d/unhighlighted-typescript" | grep -q probe-alpha || exit 1
+strings "$d/unhighlighted-typescript" | grep -q probe-alpha || fail "$LINENO"
 echo 'disabled highlighting defers PATH work until TAB'
 
 history_index=0
@@ -195,7 +201,7 @@ done > "$d/miss-history"
 
 send_history_input()
 {
-    wait_for_editor "$d/history-ready" || exit 1
+    wait_for_editor "$d/history-ready" || fail "$LINENO"
     printf 'zz\n'
     sleep 0.2
     printf 'zzzzzzz\n'
@@ -207,7 +213,7 @@ send_history_input()
 send_history_input | TERM=xterm-256color PATH="$d/path" \
     EDITOR_READY_FILE="$d/history-ready" \
     KOSH_HISTORY_FILE="$d/miss-history" BIN="$BIN" \
-    run_editor "$d/history-typescript" || exit 1
+    run_editor "$d/history-typescript" || fail "$LINENO"
 
 if strings "$d/history-typescript" | grep -q zzzz-invalid-history-command; then
     printf 'a history entry with an unresolvable command was suggested\n'
@@ -220,7 +226,7 @@ printf 'probe-alpha --ghost-accepted\n' > "$d/accept-history"
 
 send_accepted_history_input()
 {
-    wait_for_editor "$d/accept-ready" || exit 1
+    wait_for_editor "$d/accept-ready" || fail "$LINENO"
     printf 'probe-alpha -'
     sleep 0.3
     printf '\003'
@@ -232,7 +238,7 @@ send_accepted_history_input()
 send_accepted_history_input | TERM=xterm-256color PATH="$d/path" \
     EDITOR_READY_FILE="$d/accept-ready" \
     KOSH_HISTORY_FILE="$d/accept-history" BIN="$BIN" \
-    run_editor "$d/accept-typescript" || exit 1
+    run_editor "$d/accept-typescript" || fail "$LINENO"
 
 strings "$d/accept-typescript" | grep -q ghost-accepted || {
     printf 'a history entry with a resolvable command was not suggested\n'
@@ -255,7 +261,7 @@ chmod +x "$d/menu-bin/tailscale"
 
 send_menu_input()
 {
-    wait_for_editor "$d/menu-ready" || exit 1
+    wait_for_editor "$d/menu-ready" || fail "$LINENO"
     printf 'tailscale \t'
     sleep 0.5
     printf '\003'
@@ -268,12 +274,12 @@ send_menu_input | ASAN_OPTIONS=detect_stack_use_after_return=1 \
     EDITOR_READY_FILE="$d/menu-ready" MANPATH= \
     PATH="$d/menu-bin${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" \
     KOSH_HISTORY_FILE="$d/menu-history" BIN="$BIN" \
-    run_editor "$d/menu-typescript" 100 || exit 1
+    run_editor "$d/menu-typescript" 100 || fail "$LINENO"
 
 strings "$d/menu-typescript" | \
-    grep -q 'Keep this first long completion description intact' || exit 1
+    grep -q 'Keep this first long completion description intact' || fail "$LINENO"
 strings "$d/menu-typescript" | \
-    grep -q 'Keep this second long completion description intact' || exit 1
+    grep -q 'Keep this second long completion description intact' || fail "$LINENO"
 echo 'completion menu keeps callback-owned strings alive'
 
 mkdir "$d/retry-bin"
@@ -286,12 +292,12 @@ chmod +x "$d/retry-bin/act"
 
 send_help_retry_input()
 {
-  wait_for_prompt_count "$d/help-retry-ready" 1 || exit 1
+  wait_for_prompt_count "$d/help-retry-ready" 1 || fail "$LINENO"
   printf 'act --mark\t'
-  wait_for_marker_count "$d/help-retry-marker" 1 || exit 1
+  wait_for_marker_count "$d/help-retry-marker" 1 || fail "$LINENO"
   sleep 1.1
   printf '\t'
-  wait_for_marker_count "$d/help-retry-marker" 2 || exit 1
+  wait_for_marker_count "$d/help-retry-marker" 2 || fail "$LINENO"
   sleep 1.1
   printf '\t'
   sleep 0.2
@@ -311,9 +317,9 @@ send_help_retry_input | TERM=xterm-256color \
   EDITOR_READY_FILE="$d/help-retry-ready" \
   KOSH_HISTORY_FILE="$d/help-retry-history" RCFILE="$d/help-retry-rc" \
   EDITOR_OPTIONS=--no-syntax-highlighting BIN="$BIN" \
-  run_editor "$d/help-retry-typescript" || exit 1
+  run_editor "$d/help-retry-typescript" || fail "$LINENO"
 
-test "$(wc -l < "$d/help-retry-marker")" -eq 2 || exit 1
+test "$(wc -l < "$d/help-retry-marker")" -eq 2 || fail "$LINENO"
 echo 'timed out help completion stops after two attempts'
 
 mkdir "$d/manpath-bin" "$d/recovered-man"
@@ -338,15 +344,15 @@ printf '%s\n' '.TH KOSHMANPROBE-RECOVERED 1' '.SH SYNOPSIS' \
 
 send_manpath_retry_input()
 {
-  wait_for_prompt_count "$d/manpath-ready" 1 || exit 1
+  wait_for_prompt_count "$d/manpath-ready" 1 || fail "$LINENO"
   printf 'koshmanprobe rec\t'
-  wait_for_marker_count "$d/manpath-marker" 1 || exit 1
+  wait_for_marker_count "$d/manpath-marker" 1 || fail "$LINENO"
   sleep 1.1
   printf '\t'
-  wait_for_marker_count "$d/manpath-marker" 2 || exit 1
+  wait_for_marker_count "$d/manpath-marker" 2 || fail "$LINENO"
   sleep 0.2
   printf '\n'
-  wait_for_prompt_count "$d/manpath-ready" 2 || exit 1
+  wait_for_prompt_count "$d/manpath-ready" 2 || fail "$LINENO"
   printf 'exit 0\n'
 }
 
@@ -362,10 +368,10 @@ send_manpath_retry_input | TERM=xterm-256color MANPATH= \
   KOSH_MANPATH_ROOT="$d/recovered-man" \
   EDITOR_READY_FILE="$d/manpath-ready" KOSH_HISTORY_FILE="$d/manpath-history" \
   RCFILE="$d/manpath-rc" BIN="$BIN" \
-  run_editor "$d/manpath-typescript" || exit 1
+  run_editor "$d/manpath-typescript" || fail "$LINENO"
 
-test "$(wc -l < "$d/manpath-marker")" -eq 2 || exit 1
-strings "$d/manpath-typescript" | grep -q recovered || exit 1
+test "$(wc -l < "$d/manpath-marker")" -eq 2 || fail "$LINENO"
+strings "$d/manpath-typescript" | grep -q recovered || fail "$LINENO"
 echo 'man subcommand indexing recovers after a timed out manpath command'
 
 mkdir "$d/quoted-completion"
@@ -376,7 +382,7 @@ touch "$d/quoted-completion/space name" \
 
 send_quoted_input()
 {
-    wait_for_editor "$d/quoted-ready" || exit 1
+    wait_for_editor "$d/quoted-ready" || fail "$LINENO"
     printf "cd '%s'\n" "$d/quoted-completion"
     sleep 0.2
     printf "printf '<%%s>\\\\n' 'spX'\033[D\033[D\t\n"
@@ -395,7 +401,7 @@ send_quoted_input()
 
 send_quoted_input | EDITOR_READY_FILE="$d/quoted-ready" \
     KOSH_HISTORY_FILE="$d/quoted-history" BIN="$BIN" \
-    run_editor "$d/quoted-typescript" || exit 1
+    run_editor "$d/quoted-typescript" || fail "$LINENO"
 
 for quoted_expected_output in \
     '<space name>' '<plain name>' '<variable-value>' '<README-one>'
@@ -412,25 +418,25 @@ echo 'quoted replacement and smart-case TAB preserve the completed token'
 
 send_navigation_input()
 {
-    wait_for_prompt_count "$d/navigation-ready" 1 || exit 1
+    wait_for_prompt_count "$d/navigation-ready" 1 || fail "$LINENO"
     printf 'echo alt-left-XXX\033[1;3Dfixed-\n'
-    wait_for_prompt_count "$d/navigation-ready" 2 || exit 1
+    wait_for_prompt_count "$d/navigation-ready" 2 || fail "$LINENO"
     printf 'echo ctrl-left-XXX\033[1;5Dfixed-\n'
-    wait_for_prompt_count "$d/navigation-ready" 3 || exit 1
+    wait_for_prompt_count "$d/navigation-ready" 3 || fail "$LINENO"
     printf 'echo XXX tail\001\033[C\033[C\033[C\033[C\033[C\033[1;3C-fixed\n'
-    wait_for_prompt_count "$d/navigation-ready" 4 || exit 1
+    wait_for_prompt_count "$d/navigation-ready" 4 || fail "$LINENO"
     printf 'echo XXX tail\001\033[C\033[C\033[C\033[C\033[C\033[1;5C-fixed\n'
-    wait_for_prompt_count "$d/navigation-ready" 5 || exit 1
+    wait_for_prompt_count "$d/navigation-ready" 5 || fail "$LINENO"
     printf 'cho command-home\033[He\n'
-    wait_for_prompt_count "$d/navigation-ready" 6 || exit 1
+    wait_for_prompt_count "$d/navigation-ready" 6 || fail "$LINENO"
     printf 'echo command-end\033[H\033[F-ok\n'
-    wait_for_prompt_count "$d/navigation-ready" 7 || exit 1
+    wait_for_prompt_count "$d/navigation-ready" 7 || fail "$LINENO"
     printf 'echo option-del remove\033\177kept\n'
-    wait_for_prompt_count "$d/navigation-ready" 8 || exit 1
+    wait_for_prompt_count "$d/navigation-ready" 8 || fail "$LINENO"
     printf 'echo option-bs remove\033\010kept\n'
-    wait_for_prompt_count "$d/navigation-ready" 9 || exit 1
+    wait_for_prompt_count "$d/navigation-ready" 9 || fail "$LINENO"
     printf 'echo ctrl-w remove\027kept\n'
-    wait_for_prompt_count "$d/navigation-ready" 10 || exit 1
+    wait_for_prompt_count "$d/navigation-ready" 10 || fail "$LINENO"
     printf 'exit 0\n'
 }
 
@@ -441,7 +447,7 @@ printf '%s\n' \
 send_navigation_input | TERM=xterm-256color \
     EDITOR_READY_FILE="$d/navigation-ready" \
     KOSH_HISTORY_FILE="$d/navigation-history" RCFILE="$d/navigation-rc" BIN="$BIN" \
-    run_editor "$d/navigation-typescript" || exit 1
+    run_editor "$d/navigation-typescript" || fail "$LINENO"
 
 for navigation_expected_output in \
     'alt-left-fixed-XXX' 'ctrl-left-fixed-XXX' \
@@ -449,7 +455,7 @@ for navigation_expected_output in \
     'option-del kept' 'option-bs kept' 'ctrl-w kept'
 do
     strings "$d/navigation-typescript" | \
-        grep -q "$navigation_expected_output" || exit 1
+        grep -q "$navigation_expected_output" || fail "$LINENO"
 done
 echo 'Alt and Ctrl keys preserve word and line editing'
 
@@ -458,5 +464,5 @@ chmod +x "$d/actual-cwd-probe"
 actual_cwd_completion=$(
     cd "$d" && PWD=invalid "$BIN" --debug-complete-at './actual-cwd-'
 )
-printf '%s\n' "$actual_cwd_completion" | grep -q actual-cwd-probe || exit 1
+printf '%s\n' "$actual_cwd_completion" | grep -q actual-cwd-probe || fail "$LINENO"
 echo 'clobbered PWD completion uses the actual directory'

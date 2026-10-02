@@ -1682,13 +1682,52 @@ fn get_environment_variable(StringView key) -> Maybe<String>
                       heap_allocator());
 }
 
+static fn find_environment_spelling(const wchar_t *wide_key) throws
+    -> Maybe<ArrayList<wchar_t>>
+{
+  wchar_t *block = GetEnvironmentStringsW();
+  if (block == nullptr) return None;
+  defer { FreeEnvironmentStringsW(block); };
+
+  let const key_length = static_cast<int>(wcslen(wide_key));
+  for (wchar_t *entry = block; *entry != L'\0';) {
+    usize pair_length = 0;
+    while (entry[pair_length] != L'\0')
+      pair_length++;
+
+    usize name_length = 0;
+    while (name_length < pair_length && entry[name_length] != L'=')
+      name_length++;
+
+    if (entry[0] != L'=' &&
+        CompareStringOrdinal(entry, static_cast<int>(name_length), wide_key,
+                             key_length, TRUE) == CSTR_EQUAL)
+    {
+      ArrayList<wchar_t> spelling{heap_allocator()};
+      spelling.reserve(name_length + 1);
+      for (usize index = 0; index < name_length; index++)
+        spelling.push(entry[index]);
+      spelling.push(L'\0');
+      return spelling;
+    }
+
+    entry += pair_length + 1;
+  }
+
+  return None;
+}
+
 fn set_environment_variable(StringView key, StringView value) -> void
 {
   let const wide_key = utf8_to_wide(key, heap_allocator());
   let const wide_value = utf8_to_wide(value, heap_allocator());
   if (!wide_key.has_value() || !wide_value.has_value()) return;
 
-  SetEnvironmentVariableW(wide_key->begin(), wide_value->begin());
+  let const existing_spelling = find_environment_spelling(wide_key->begin());
+  SetEnvironmentVariableW(existing_spelling.has_value()
+                              ? existing_spelling->begin()
+                              : wide_key->begin(),
+                          wide_value->begin());
 }
 
 fn unset_environment_variable(StringView key) -> void
