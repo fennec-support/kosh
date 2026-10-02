@@ -390,4 +390,14 @@ echo "element_status=$?"
 echo "missing_status=$?"
 ( set -u; ua=(x); echo "${ua[0]}${ua[@]#a}"; echo reached )
 
+PA=1
+PA=2 eval 'echo "eval:$PA"'
+echo "after:$PA"
+echo 'echo "dot:$PB"' > "${TMPDIR:-/tmp}/prefix_dot_$$.sh"
+PB=1
+PB=3 . "${TMPDIR:-/tmp}/prefix_dot_$$.sh"
+PB=4 source "${TMPDIR:-/tmp}/prefix_dot_$$.sh"
+echo "after:$PB"
+rm -f "${TMPDIR:-/tmp}/prefix_dot_$$.sh"
+
 for word in "${@^}"; do count=$((count + 1)); echo "elem$count=$word"; done

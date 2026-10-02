@@ -141,3 +141,12 @@ echo "hash_status=$?"
 ( set -u; unset u; echo "${u%%a}"; echo not_reached_percent )
 echo "percent_status=$?"
 ( set -u; u=; echo "[${u#a}][${u%a}]" )
+
+# A prefix assignment before a special builtin persists in this shell.
+pa=1
+pa=2 eval 'echo "in:$pa"'
+echo "after:$pa"
+echo 'echo "dot:$pb"' > "${TMPDIR:-/tmp}/prefix_dot_$$.sh"
+pb=3 . "${TMPDIR:-/tmp}/prefix_dot_$$.sh"
+echo "after:$pb"
+rm -f "${TMPDIR:-/tmp}/prefix_dot_$$.sh"

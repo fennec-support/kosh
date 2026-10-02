@@ -647,6 +647,10 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       cxt.runtime_state().set_option(shell_option_id::Ignoreeof,
                                      *previous_ignoreeof_state);
   };
+  const bool is_source_evaluating_builtin =
+      !program_args.is_empty() && command_word_function == nullptr &&
+      (program_args[0] == "eval" || program_args[0] == "." ||
+       program_args[0] == "source");
   /* The assignments apply left to right, each committed before the next is
      expanded, so a later value reads an earlier same-line one. */
   let const do_apply_environment_assignment =
@@ -697,7 +701,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         if (!is_read_field_separator) {
           Maybe<String> previous_shell_value;
           Maybe<SourceLocation> previous_special_definition_location;
-          let const did_overlay_shell_value = command_word_function != nullptr;
+          let const did_overlay_shell_value =
+              command_word_function != nullptr || is_source_evaluating_builtin;
           if (did_overlay_shell_value) {
             if (let const stored = cxt.variable_store().shell_variables().find(name);
                 stored.has_value())
