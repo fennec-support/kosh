@@ -63,7 +63,30 @@ fn EvalContext::get_glob_charset() const throws -> glob_charset
 hot fn EvalContext::get_glob_charset_for(StringView subject) const throws
     -> glob_charset
 {
-  for (usize position = 0; position < subject.length; position++) {
+  usize position = 0;
+  using byte_vector = u64 __attribute__((vector_size(16)));
+  while (position + 4 * sizeof(byte_vector) <= subject.length) {
+    byte_vector lanes[4];
+    __builtin_memcpy(lanes, subject.data + position, sizeof(lanes));
+    let const merged = lanes[0] | lanes[1] | lanes[2] | lanes[3];
+    if (((merged[0] | merged[1]) & byte_scan::HIGH_BITS) != 0) {
+      return get_glob_charset();
+    }
+
+    position += sizeof(lanes);
+  }
+
+  while (position + sizeof(u64) <= subject.length) {
+    if ((byte_scan::load_word(subject.data + position) &
+         byte_scan::HIGH_BITS) != 0)
+    {
+      return get_glob_charset();
+    }
+
+    position += sizeof(u64);
+  }
+
+  for (; position < subject.length; position++) {
     if (static_cast<u8>(subject[position]) >= 0x80) return get_glob_charset();
   }
 
@@ -813,7 +836,9 @@ hot fn EvalContext::expand_path(glob_field field,
   let values = ArrayList<String>{scratch};
   values.reserve(fields.count());
 
-  let const glob_ignore_value = get_variable_value("GLOBIGNORE");
+  let const glob_ignore_value = runtime_state().was_glob_ignore_assigned()
+                                    ? get_variable_value("GLOBIGNORE")
+                                    : Maybe<String>{};
   let const has_glob_ignore =
       glob_ignore_value.has_value() && !glob_ignore_value->is_empty();
   let const should_fold_case = is_shopt_enabled("nocaseglob");
@@ -826,7 +851,9 @@ hot fn EvalContext::expand_path(glob_field field,
     let const last_slash = path.find_last_character('/');
     let const name =
         last_slash.has_value() ? path.substring(*last_slash + 1) : path;
-    if (name == "." || name == "..") return true;
+    if (name == "." || name == "..") {
+      return true;
+    }
 
     let const folded_path =
         should_fold_case ? path.to_lower_ascii(scratch) : String{scratch};
@@ -841,7 +868,9 @@ hot fn EvalContext::expand_path(glob_field field,
     return false;
   };
   for (let &f : fields) {
-    if (has_glob_ignore && do_is_ignored(f.text.view())) continue;
+    if (has_glob_ignore && do_is_ignored(f.text.view())) {
+      continue;
+    }
 
     values.push(steal(f.text));
   }

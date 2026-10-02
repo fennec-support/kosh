@@ -878,7 +878,9 @@ crosses a slash only at the end of the pattern. The names . and .. are never
 results while GLOBIGNORE is nonempty. Assigning a nonempty value enables the
 .B dotglob
 option, an empty assignment leaves it unchanged, and unsetting GLOBIGNORE
-disables it. The
+disables it. A value imported from the environment filters nothing and leaves
+.B dotglob
+alone until the shell assigns GLOBIGNORE. The
 .B extglob
 and
 .B nocaseglob

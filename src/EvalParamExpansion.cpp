@@ -1397,12 +1397,6 @@ fn EvalContext::apply_substring_to_value(
 {
   LOG(All, "taking the substring '%.*s' of a value of %zu bytes",
       static_cast<int>(body.length), body.data, value.length);
-  let const charset = get_glob_charset_for(value);
-  let const value_length =
-      static_cast<i64>(charset == glob_charset::Utf8
-                           ? utils::utf8_character_count(value)
-                           : value.length);
-
   let const separator = find_substring_length_separator(body);
   let const offset_text = body.substring_of_length(0, separator);
   let offset_location = SourceLocation{};
@@ -1425,6 +1419,41 @@ fn EvalContext::apply_substring_to_value(
                                                               body, length_text,
                                                               length_location));
   }
+
+  let const is_forward_window =
+      offset >= 0 && (!requested_length.has_value() || *requested_length >= 0);
+  if (is_forward_window) {
+    let const start_limit =
+        std::min(static_cast<usize>(offset), value.length);
+    let const window_limit =
+        requested_length.has_value()
+            ? start_limit + std::min(static_cast<usize>(*requested_length),
+                                     value.length - start_limit)
+            : start_limit;
+    let const window_charset =
+        get_glob_charset_for(value.substring_of_length(0, window_limit));
+    let const start_position =
+        window_charset == glob_charset::Utf8
+            ? get_byte_position_after(value, 0, static_cast<usize>(offset))
+            : start_limit;
+    let const end_position =
+        !requested_length.has_value()
+            ? value.length
+        : window_charset == glob_charset::Utf8
+            ? get_byte_position_after(value, start_position,
+                                      static_cast<usize>(*requested_length))
+            : window_limit;
+
+    return String{scratch_allocator(),
+                  value.substring_of_length(start_position,
+                                            end_position - start_position)};
+  }
+
+  let const charset = get_glob_charset_for(value);
+  let const value_length =
+      static_cast<i64>(charset == glob_charset::Utf8
+                           ? utils::utf8_character_count(value)
+                           : value.length);
   let const bounds = compute_substring_bounds(
       value_length, offset, requested_length, substring_subject::Scalar);
 

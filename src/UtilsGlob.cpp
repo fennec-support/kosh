@@ -468,7 +468,9 @@ static fn locale_codeset_is_utf8(StringView locale_name) wontthrow -> bool
 fn locale_name_is_utf8(StringView locale_name) wontthrow -> bool
 {
   if (!locale_codeset_is_utf8(locale_name)) return false;
-  if (locale_name == "C.UTF-8" || locale_name == "C.utf8") return true;
+  if (locale_name == "C.UTF-8" || locale_name == "C.utf8") {
+    return true;
+  }
 
   return locale_is_installed(locale_name);
 }

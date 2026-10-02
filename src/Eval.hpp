@@ -163,6 +163,7 @@ private:
     PipefailExplicit = 1U << 3,
     FailglobExplicit = 1U << 4,
     ExtendedArithmeticExplicit = 1U << 5,
+    GlobIgnoreAssigned = 1U << 6,
   };
 
   u8 m_flags{static_cast<u8>(Flag::AnnoyingDiagnosticsEnabled)};
@@ -187,6 +188,8 @@ public:
   fn set_failglob_set_explicitly(bool enabled) wontthrow -> void;
   pure fn was_extended_arithmetic_set_explicitly() const wontthrow -> bool;
   fn set_extended_arithmetic_set_explicitly(bool enabled) wontthrow -> void;
+  pure fn was_glob_ignore_assigned() const wontthrow -> bool;
+  fn set_glob_ignore_assigned(bool enabled) wontthrow -> void;
 
   pure static constexpr fn option_mask(shell_option_id option) wontthrow -> u64
   {
@@ -414,6 +417,16 @@ RuntimeState::set_extended_arithmetic_set_explicitly(bool enabled) wontthrow
     -> void
 {
   set_flag(Flag::ExtendedArithmeticExplicit, enabled);
+}
+
+inline pure fn RuntimeState::was_glob_ignore_assigned() const wontthrow -> bool
+{
+  return has_flag(Flag::GlobIgnoreAssigned);
+}
+
+inline fn RuntimeState::set_glob_ignore_assigned(bool enabled) wontthrow -> void
+{
+  set_flag(Flag::GlobIgnoreAssigned, enabled);
 }
 
 } /* namespace koshka */

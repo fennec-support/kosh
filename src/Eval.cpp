@@ -173,8 +173,9 @@ hot fn EvalContext::assign_variable(StringView name, StringView value) throws
   }
 
   variable_store().shell_variables().set(name, value);
-  if (is_glob_ignore_name && !value.is_empty()) {
-    set_shopt_option("dotglob", true);
+  if (is_glob_ignore_name) {
+    runtime_state().set_glob_ignore_assigned(true);
+    if (!value.is_empty()) set_shopt_option("dotglob", true);
   }
   if (is_prompt_special_variable(name))
     variable_store().special_variable_definition_locations().set(
@@ -815,7 +816,10 @@ fn EvalContext::force_unset_shell_variable(StringView name) throws -> void
     resolution_store().resolver().assign_path(os::get_environment_variable("PATH"));
   if (name == "IGNOREEOF")
   runtime_state().set_option(shell_option_id::Ignoreeof, false);
-  if (name == "GLOBIGNORE") set_shopt_option("dotglob", false);
+  if (name == "GLOBIGNORE") {
+    runtime_state().set_glob_ignore_assigned(false);
+    set_shopt_option("dotglob", false);
+  }
 }
 
 pure fn EvalContext::special_variable_definition_location(

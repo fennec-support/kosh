@@ -143,6 +143,18 @@ shopt -u extglob
 cd "$initial_directory" || exit 1
 rm -rf "$d"
 
+# A GLOBIGNORE imported from the environment is kept as a variable but neither
+# filters a glob nor turns dotglob on until the script assigns it.
+d=$(mktemp -d)
+touch "$d/a.c" "$d/b.o" "$d/.h"
+cd "$d" || exit 1
+shell=${KOSH-$BASH}
+GLOBIGNORE='*.o' "$shell" -c 'echo "imported: [$GLOBIGNORE]" *; shopt dotglob'
+GLOBIGNORE='*.o' "$shell" -c 'GLOBIGNORE="*.o"; echo "assigned:" *; shopt dotglob'
+GLOBIGNORE='*.o' "$shell" -c 'unset GLOBIGNORE; GLOBIGNORE=; echo "reset:" *'
+cd "$initial_directory" || exit 1
+rm -rf "$d"
+
 # Bash globstar **, checked byte-for-byte against bash. The ** matches across
 # directory levels when shopt globstar is on, as a trailing component it lists
 # every file and directory recursively, and in a path position it stands in for

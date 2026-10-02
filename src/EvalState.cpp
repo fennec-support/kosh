@@ -891,6 +891,7 @@ static fn append_subshell_bootstrap_runtime(String &output,
   if (runtime.was_pipefail_set_explicitly()) flags |= 1U << 3;
   if (runtime.was_failglob_set_explicitly()) flags |= 1U << 4;
   if (runtime.was_extended_arithmetic_set_explicitly()) flags |= 1U << 5;
+  if (runtime.was_glob_ignore_assigned()) flags |= 1U << 6;
   output.push(static_cast<char>(flags));
   append_subshell_bootstrap_u64(output, runtime.shell_options);
 }
@@ -1018,6 +1019,7 @@ static fn read_subshell_bootstrap_runtime(subshell_bootstrap_reader &reader,
   runtime.set_pipefail_set_explicitly((flags & (1U << 3)) != 0);
   runtime.set_failglob_set_explicitly((flags & (1U << 4)) != 0);
   runtime.set_extended_arithmetic_set_explicitly((flags & (1U << 5)) != 0);
+  runtime.set_glob_ignore_assigned((flags & (1U << 6)) != 0);
   return true;
 }
 
