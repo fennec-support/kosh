@@ -817,8 +817,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
   {
     let const is_watched_process_gone =
         watched_process_id != 0 &&
-        !(os::signal_process(os::process_from_pid(watched_process_id), 0) ||
-          os::last_system_error_is_permission_denied());
+        !os::process_is_running(os::process_from_pid(watched_process_id));
 
     for (usize source_index = 0; source_index < sources.count(); source_index++)
     {

@@ -915,6 +915,44 @@ fn signal_process(process p, i32 signal_number) wontthrow -> bool
 }
 
 #if defined __linux__
+static fn is_zombie_process(pid_t process_id) wontthrow -> bool
+{
+  char stat_path[64];
+  let const stat_path_length =
+      std::snprintf(stat_path, sizeof(stat_path), "/proc/%lld/stat",
+                    static_cast<long long>(process_id));
+  if (stat_path_length <= 0 ||
+      static_cast<usize>(stat_path_length) >= sizeof(stat_path))
+  {
+    return false;
+  }
+
+  char stat_buffer[512];
+  let const stat_length =
+      read_small_file(stat_path, stat_buffer, sizeof(stat_buffer));
+  let const stat_text = StringView{stat_buffer, stat_length};
+  let const command_end = stat_text.find_last_character(')');
+  if (!command_end.has_value()) return false;
+
+  usize position = *command_end + 1;
+  let const state = stat_text.next_ascii_whitespace_word(position);
+
+  return !state.is_empty() && state[0] == 'Z';
+}
+#endif
+
+fn process_is_running(process p) wontthrow -> bool
+{
+  if (kill(p, 0) != 0 && errno != EPERM) return false;
+
+#if defined __linux__
+  if (p > 0 && is_zombie_process(p)) return false;
+#endif
+
+  return true;
+}
+
+#if defined __linux__
 static pid_t LAST_RUNNING_GROUP_ID = 0;
 static i64 LAST_RUNNING_MEMBER_ID = 0;
 

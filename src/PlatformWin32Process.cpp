@@ -1583,6 +1583,11 @@ fn poll_process(process p, i32 &status_out) wontthrow -> process_state
   return process_state::Exited;
 }
 
+fn process_is_running(process p) wontthrow -> bool
+{
+  return signal_process(p, 0) || last_system_error_is_permission_denied();
+}
+
 fn signal_process(process p, i32 signal_number) wontthrow -> bool
 {
   if (signal_number == 0) {
