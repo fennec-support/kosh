@@ -1070,6 +1070,7 @@ enum class shopt_option_id : u8
   InheritErrexit,
   Lastpipe,
   LocalvarInherit,
+  PatsubReplacement,
   Progcomp,
   ProgcompAlias,
   RestrictedShell,
@@ -1084,6 +1085,7 @@ inline pure fn RuntimeState::is_shopt_enabled(shopt_option_id option) const
   if (is_shopt_option_overridden(index))
     return is_shopt_option_enabled(index);
   switch (option) {
+  case shopt_option_id::PatsubReplacement:
   case shopt_option_id::Progcomp:
   case shopt_option_id::Sourcepath: return true;
   default: return false;

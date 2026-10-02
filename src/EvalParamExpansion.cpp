@@ -1502,13 +1502,29 @@ fn EvalContext::apply_pattern_replacement(
   return pattern_replace_value(current_view, spec, source_location);
 }
 
-/* & reads as the matched span, \& is a literal &, and a backslash before any
-   other byte is dropped. */
+/* With patsub_replacement an unquoted & reads as the matched span. A quoted
+   byte stays literal, and a backslash that came from an unquoted expansion
+   quotes a following & or backslash. */
 static fn append_pattern_replacement(String &out, StringView replacement,
+                                     const Bitset &active,
+                                     bool is_patsub_enabled,
                                      StringView matched) throws -> void
 {
+  if (!is_patsub_enabled) {
+    out.append(replacement);
+    return;
+  }
+
+  let const do_is_active = [&](usize index) wontthrow -> bool {
+    return index < active.count() && active[index];
+  };
   for (usize i = 0; i < replacement.length; i++) {
-    if (replacement[i] == '\\' && i + 1 < replacement.length) {
+    if (!do_is_active(i)) {
+      out.push(replacement[i]);
+    } else if (replacement[i] == '\\' && i + 1 < replacement.length &&
+               do_is_active(i + 1) &&
+               (replacement[i + 1] == '&' || replacement[i + 1] == '\\'))
+    {
       out.push(replacement[i + 1]);
       i++;
     } else if (replacement[i] == '&') {
@@ -1549,14 +1565,18 @@ fn EvalContext::pattern_replace_value(
       source_location_for_subview(source_location, spec, pattern_word,
                                   pattern_location));
   let replacement_location = SourceLocation{};
+  let replacement_active = Bitset{scratch_allocator()};
   let const replacement =
       separator < remainder.length
-          ? expand_modifier_word(
-                remainder.substring(separator + 1), true, false,
+          ? expand_modifier_word_worker(
+                remainder.substring(separator + 1), &replacement_active, true,
+                false, true,
                 source_location_for_subview(source_location, spec,
                                             remainder.substring(separator + 1),
                                             replacement_location))
           : String{heap_allocator()};
+  let const is_patsub_enabled =
+      runtime_state().is_shopt_enabled(shopt_option_id::PatsubReplacement);
 
   /* An empty unanchored pattern matches nothing in bash, so the value is
      returned unchanged. The anchored forms still splice at the start or the
@@ -1566,6 +1586,10 @@ fn EvalContext::pattern_replace_value(
   }
 
   let out = String{scratch_allocator()};
+  let const do_append_replacement = [&](StringView matched) throws -> void {
+    append_pattern_replacement(out, replacement.view(), replacement_active,
+                               is_patsub_enabled, matched);
+  };
   let const extglob = get_extglob_mode();
   let const value_charset = get_glob_charset_for(value);
   let const charset =
@@ -1577,8 +1601,7 @@ fn EvalContext::pattern_replace_value(
     if (let const matched = longest_pattern_match_at(
             pattern.view(), pattern_active, value, 0, extglob, charset))
     {
-      append_pattern_replacement(out, replacement.view(),
-                                 value.substring_of_length(0, *matched));
+      do_append_replacement(value.substring_of_length(0, *matched));
       out.append(value.substring(*matched));
     } else {
       out.append(value);
@@ -1593,8 +1616,7 @@ fn EvalContext::pattern_replace_value(
                               pattern_active, 0, extglob, charset))
       {
         out.append(value.substring_of_length(0, start));
-        append_pattern_replacement(out, replacement.view(),
-                                   value.substring(start));
+        do_append_replacement(value.substring(start));
         return out;
       }
     }
@@ -1631,8 +1653,7 @@ fn EvalContext::pattern_replace_value(
       i += step;
     };
     if (matched.has_value()) {
-      append_pattern_replacement(out, replacement.view(),
-                                 value.substring_of_length(i, *matched));
+      do_append_replacement(value.substring_of_length(i, *matched));
       has_replaced = true;
       if (*matched == 0) {
         do_copy_character();

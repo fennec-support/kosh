@@ -57,11 +57,11 @@ const StringView SHOPT_OPTION_NAMES[] = {
     "localvar_unset",   "login_shell",
     "mailwarn",         "no_empty_cmd_completion",
     "nocaseglob",       "nocasematch",
-    "nullglob",         "progcomp",
-    "progcomp_alias",   "promptvars",
-    "restricted_shell", "shift_verbose",
-    "sourcepath",       "varredir_close",
-    "xpg_echo",
+    "nullglob",         "patsub_replacement",
+    "progcomp",         "progcomp_alias",
+    "promptvars",       "restricted_shell",
+    "shift_verbose",    "sourcepath",
+    "varredir_close",   "xpg_echo",
 };
 
 constexpr PackedStringKey SHOPT_OPTION_KEYS[] = {
@@ -83,11 +83,11 @@ constexpr PackedStringKey SHOPT_OPTION_KEYS[] = {
     SSK("localvar_unset"),   SSK("login_shell"),
     SSK("mailwarn"),         SSK("no_empty_cmd_completion"),
     SSK("nocaseglob"),       SSK("nocasematch"),
-    SSK("nullglob"),         SSK("progcomp"),
-    SSK("progcomp_alias"),   SSK("promptvars"),
-    SSK("restricted_shell"), SSK("shift_verbose"),
-    SSK("sourcepath"),       SSK("varredir_close"),
-    SSK("xpg_echo"),
+    SSK("nullglob"),         SSK("patsub_replacement"),
+    SSK("progcomp"),         SSK("progcomp_alias"),
+    SSK("promptvars"),       SSK("restricted_shell"),
+    SSK("shift_verbose"),    SSK("sourcepath"),
+    SSK("varredir_close"),   SSK("xpg_echo"),
 };
 constexpr StaticStringSet SHOPT_OPTIONS{SHOPT_OPTION_KEYS};
 static_assert(countof(SHOPT_OPTION_KEYS) <= 64);
@@ -174,6 +174,8 @@ pure fn shopt_option_index(shopt_option_id option) wontthrow -> u8
     return compact_shopt_option_index(SSK("lastpipe"));
   case shopt_option_id::LocalvarInherit:
     return compact_shopt_option_index(SSK("localvar_inherit"));
+  case shopt_option_id::PatsubReplacement:
+    return compact_shopt_option_index(SSK("patsub_replacement"));
   case shopt_option_id::Progcomp:
     return compact_shopt_option_index(SSK("progcomp"));
   case shopt_option_id::ProgcompAlias:

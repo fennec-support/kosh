@@ -803,8 +803,12 @@ leading space, as in ${v: \-3}. Without the space, ${v:\-3} is the default-value
 form. A negative length excludes that many characters from the end.
 .PP
 The form ${v/pat/rep} replaces the first match. The form ${v//pat/rep} replaces
-every match. The anchors /# and /% select the start and end. An ampersand in the
-replacement denotes the matched text. The form \e& denotes a literal ampersand.
+every match. The anchors /# and /% select the start and end. While the
+.B patsub_replacement
+shopt option is enabled, which is the default, an unquoted ampersand in the
+replacement denotes the matched text, including one that comes from an unquoted
+expansion. A quoted ampersand and the form \e& denote a literal ampersand.
+Disabling the option makes every ampersand literal.
 .PP
 The forms ${v^^}, ${v,,}, ${v^}, and ${v,} change case with an optional pattern.
 The transforms ${v@Q}, ${v@E}, ${v@A}, ${v@P}, and ${v@a} produce a quoted

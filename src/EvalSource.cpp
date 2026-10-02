@@ -501,6 +501,7 @@ pure fn EvalContext::shopt_default_is_on(StringView name) wontthrow -> bool
       SSK("checkwinsize"),       SSK("force_fignore"),
       SSK("globasciiranges"),    SSK("globskipdots"),
       SSK("expand_aliases"),     SSK("interactive_comments"),
+      SSK("patsub_replacement"),
   };
   static constexpr StaticStringSet DEFAULT_ON_SHOPT_NAMES{KEYS};
   return DEFAULT_ON_SHOPT_NAMES.contains(name);
