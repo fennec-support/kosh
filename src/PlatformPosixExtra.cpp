@@ -8,8 +8,8 @@
  * affinity, executable path discovery, process enumeration, ownership lookup,
  * and process file-user scans, including fallbacks for targets that lack a
  * facility. It also implements the FileWatcher that wakes a tail follower
- * through inotify on Linux and kqueue on macOS and FreeBSD. The separate fragment keeps target-specific conditionals out of
- * the common POSIX backend.
+ * through inotify on Linux and kqueue on macOS and FreeBSD. The separate
+ * fragment keeps target-specific conditionals out of the common POSIX backend.
  */
 
 #if defined __APPLE__
@@ -2850,7 +2850,9 @@ FileWatcher::FileWatcher() wontthrow
 
 FileWatcher::~FileWatcher()
 {
-  for (let const watched : m_watched_descriptors) close_fd(watched);
+  for (let const watched : m_watched_descriptors) {
+    if (watched != KOSH_INVALID_FD) close_fd(watched);
+  }
 
   if (m_descriptor != KOSH_INVALID_FD) close_fd(m_descriptor);
 }
@@ -2885,13 +2887,31 @@ fn FileWatcher::watch(StringView path) wontthrow -> void
   inotify_add_watch(m_descriptor, directory_path,
                     IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO);
 #else
-  for (let const watched_path : {static_cast<const char *>(file_path),
-                                 static_cast<const char *>(directory_path)})
+  usize slot = 0;
+  while (slot < m_watched_paths.count() &&
+         m_watched_paths[slot].view() != path)
   {
+    slot++;
+  }
+
+  if (slot == m_watched_paths.count()) {
+    m_watched_paths.push(String{heap_allocator(), path});
+    m_watched_descriptors.push(KOSH_INVALID_FD);
+    m_watched_descriptors.push(KOSH_INVALID_FD);
+  }
+
+  const char *const watched_paths[2] = {file_path, directory_path};
+  for (usize side = 0; side < 2; side++) {
+    let &stored = m_watched_descriptors[slot * 2 + side];
+    if (stored != KOSH_INVALID_FD) {
+      close_fd(stored);
+      stored = KOSH_INVALID_FD;
+    }
+
 #if defined __APPLE__
-    let const watched = open(watched_path, O_EVTONLY | O_CLOEXEC);
+    let const watched = open(watched_paths[side], O_EVTONLY | O_CLOEXEC);
 #else
-    let const watched = open(watched_path, O_RDONLY | O_CLOEXEC);
+    let const watched = open(watched_paths[side], O_RDONLY | O_CLOEXEC);
 #endif
     if (watched == KOSH_INVALID_FD) continue;
 
@@ -2905,7 +2925,7 @@ fn FileWatcher::watch(StringView path) wontthrow -> void
       continue;
     }
 
-    m_watched_descriptors.push(watched);
+    stored = watched;
   }
 #endif
 #else

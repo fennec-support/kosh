@@ -125,6 +125,33 @@ head -c [1:1: error: invalid byte count ''.] status=1
 c
 a
 c
+--- counts up to the largest unsigned value select everything ---
+==> bytes.txt <==
+0123456789
+==> with-final.txt <==
+a
+b
+c
+0123456789a
+b
+c
+0123456789
+p
+q
+status=0
+==> bytes.txt <==
+0123456789
+==> with-final.txt <==
+a
+b
+c
+0123456789a
+b
+c
+0123456789
+p
+q
+status=0
 --- standard input and empty counts in headers ---
 ==> standard input <==
 p
@@ -175,6 +202,10 @@ status=1
 4096 page.txt
 4091
 x
+5
+8192 two-pages.txt
+8187
+3
 --- wc words start at a printable byte ---
 0
 1

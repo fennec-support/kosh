@@ -93,10 +93,13 @@ static fn parse_tail_count(StringView spec) throws -> Maybe<parsed_tail_count>
   }
 
   let const parsed = parse_strict_count(digits);
-  if (parsed.is_error() || parsed.value() > static_cast<u64>(INT64_MAX))
-    return None;
+  if (parsed.is_error()) return None;
 
-  return parsed_tail_count{origin, static_cast<i64>(parsed.value())};
+  let const largest_count = static_cast<u64>(INT64_MAX);
+  let const clamped_count =
+      parsed.value() > largest_count ? largest_count : parsed.value();
+
+  return parsed_tail_count{origin, static_cast<i64>(clamped_count)};
 }
 
 constexpr usize TAIL_BLOCK_BYTE_COUNT = 64 * 1024;
@@ -350,7 +353,9 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
     watched_process_id = static_cast<i64>(parsed_process_id.value());
   }
 
-  if (!is_following && origin == count_origin::FromEnd && count == 0) return 0;
+  if (!is_following && origin == count_origin::FromEnd && count == 0) {
+    return 0;
+  }
 
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
@@ -457,9 +462,11 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
   }
   defer
   {
-    for (let &entry : follow_entries)
-      if (entry.descriptor != KOSH_INVALID_FD && !entry.is_standard_input)
+    for (let &entry : follow_entries) {
+      if (entry.descriptor != KOSH_INVALID_FD && !entry.is_standard_input) {
         unused(os::close_fd(entry.descriptor));
+      }
+    }
   };
 
   let const do_open_positioned = [&](usize source_index) throws -> void {
@@ -734,8 +741,9 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
   };
   let const do_deactivate = [&](usize source_index) wontthrow -> void {
     let &entry = follow_entries[source_index];
-    if (entry.descriptor != KOSH_INVALID_FD && !entry.is_standard_input)
+    if (entry.descriptor != KOSH_INVALID_FD && !entry.is_standard_input) {
       unused(os::close_fd(entry.descriptor));
+    }
 
     entry.descriptor = KOSH_INVALID_FD;
     entry.is_active = false;
@@ -782,6 +790,11 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
 
     if (entry.descriptor != KOSH_INVALID_FD) {
       do_read_followed(source_index);
+      if (!entry.is_active) {
+        unused(os::close_fd(*descriptor));
+        return;
+      }
+
       if (!entry.is_standard_input) unused(os::close_fd(entry.descriptor));
     }
 

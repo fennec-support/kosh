@@ -4,11 +4,11 @@
  *
  * This routed Win32 source fragment implements text conversion, descriptor and
  * shell-fd mapping, named pipes, terminal settings, signals, users, clocks,
- * the polling file watcher, resource and configuration queries, environment access, program-name
- * normalization, regex allocation, evaluator bootstrap reception, platform
- * initialization, and the native entry point. Dedicated fragments contain
- * filesystem operations and process creation, leaving this file as the general
- * Win32 backend.
+ * the polling file watcher, resource and configuration queries, environment
+ * access, program-name normalization, regex allocation, evaluator bootstrap
+ * reception, platform initialization, and the native entry point. Dedicated
+ * fragments contain filesystem operations and process creation, leaving this
+ * file as the general Win32 backend.
  */
 
 #include "CLI.hpp"

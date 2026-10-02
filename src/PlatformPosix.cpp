@@ -651,12 +651,16 @@ fn descriptor_is_seekable(os::descriptor fd) wontthrow -> bool
 fn regular_descriptor_file_size(os::descriptor fd) wontthrow -> Maybe<u64>
 {
   struct stat info{};
-  if (fstat(fd, &info) != 0 || !S_ISREG(info.st_mode) || info.st_size <= 0)
+  if (fstat(fd, &info) != 0 || !S_ISREG(info.st_mode) || info.st_size <= 0) {
     return None;
+  }
 
   static let const page_byte_count = static_cast<u64>(sysconf(_SC_PAGESIZE));
   let const size = static_cast<u64>(info.st_size);
-  if (page_byte_count != 0 && size % page_byte_count == 0) return None;
+  let const is_page_multiple =
+      page_byte_count != 0 && size % page_byte_count == 0;
+  let const is_unbacked = is_page_multiple && info.st_blocks == 0;
+  if (is_unbacked) return None;
 
   return size;
 }

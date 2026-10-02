@@ -1336,6 +1336,7 @@ public:
 private:
   descriptor m_descriptor{KOSH_INVALID_FD};
   ArrayList<descriptor> m_watched_descriptors{heap_allocator()};
+  ArrayList<String> m_watched_paths{heap_allocator()};
 };
 
 /* Every rebinding of a standard descriptor bumps this counter. A cached answer

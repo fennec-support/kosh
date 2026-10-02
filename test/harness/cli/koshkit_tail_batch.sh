@@ -75,6 +75,13 @@ for count_spec in 99999999999999999999 '1 ' ++1 +99999999999999999999 ''; do
   done
 done
 "$BIN" -c 'koshkit tail -n " 1" with-final.txt; koshkit head -n +1 with-final.txt; koshkit tail -n -+1 with-final.txt'
+echo "--- counts up to the largest unsigned value select everything ---"
+for huge_count in 9223372036854775808 18446744073709551615; do
+  "$BIN" -c "koshkit tail -n $huge_count bytes.txt with-final.txt; koshkit tail -c $huge_count bytes.txt; koshkit head -n $huge_count with-final.txt; koshkit head -c $huge_count bytes.txt"
+  printf '\n'
+  printf 'p\nq\n' | "$BIN" -c "koshkit tail -n $huge_count"
+  "$BIN" -c "koshkit tail -n +$huge_count with-final.txt; koshkit tail -c +$huge_count bytes.txt; echo \"status=\$?\""
+done
 echo "--- standard input and empty counts in headers ---"
 printf 'p\nq\n' | "$BIN" -c 'koshkit head -n 1 - with-final.txt'
 printf 'p\nq\n' | "$BIN" -c 'koshkit tail -n 1 - with-final.txt'
@@ -92,6 +99,8 @@ mkdir dir
 echo "--- page sized files are read to the end ---"
 head -c 4096 large-forward.txt > page.txt
 "$BIN" -c 'koshkit tail -c 5 page.txt | koshkit wc -c; koshkit wc -c page.txt; koshkit head -c -5 page.txt | koshkit wc -c; koshkit tail -n 1 page.txt'
+head -c 8192 large-forward.txt > two-pages.txt
+"$BIN" -c 'koshkit tail -c 5 two-pages.txt | koshkit wc -c; koshkit wc -c two-pages.txt; koshkit head -c -5 two-pages.txt | koshkit wc -c; koshkit tail -c +8190 two-pages.txt | koshkit wc -c'
 )
 if [ "${TARGET:-$(uname -s)}" = Linux ]; then
   for pseudo_file in /proc/version /sys/kernel/mm/transparent_hugepage/enabled; do

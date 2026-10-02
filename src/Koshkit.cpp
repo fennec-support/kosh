@@ -883,9 +883,13 @@ fn source_list_from_operands(const ArrayList<String> &operands,
 fn parse_strict_count(StringView text) throws -> ErrorOr<u64>
 {
   usize start = 0;
-  while (start < text.length && is_ascii_whitespace(text[start])) start++;
+  while (start < text.length && is_ascii_whitespace(text[start])) {
+    start++;
+  }
 
-  if (start < text.length && text[start] == '+') start++;
+  if (start < text.length && text[start] == '+') {
+    start++;
+  }
 
   let const digits = text.substring(start);
   if (!digits.is_all_decimal_digits()) return Error{"invalid count"};
