@@ -79,17 +79,19 @@ hot fn extglob_active(const Bitset &mask, usize index) wontthrow -> bool
 }
 
 /* True when glob at index opens an extended-glob group, one of ?, *, +, @, or !
-   immediately followed by (. The caller has opted into extglob, so the group
-   structure is read from the text rather than the metacharacter mask, which
-   only distinguishes a leaf star or bracket from a quoted literal. */
-fn extglob_opens_group(StringView glob, usize index) wontthrow -> bool
+   immediately followed by (, with both bytes active. A quoted operator or a
+   quoted parenthesis is a literal and never opens a group. */
+fn extglob_opens_group(StringView glob, const Bitset &mask, usize mask_offset,
+                       usize index) wontthrow -> bool
 {
   if (index + 1 >= glob.count()) return false;
   let const op = glob[index];
   if (op != '?' && op != '*' && op != '+' && op != '@' && op != '!') {
     return false;
   }
-  return glob[index + 1] == '(';
+  return glob[index + 1] == '(' &&
+         extglob_active(mask, mask_offset + index) &&
+         extglob_active(mask, mask_offset + index + 1);
 }
 
 /* The index of the ) that closes the group whose ( sits at glob[1], tracking
@@ -204,7 +206,7 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
 
   /* An extended-glob group such as @(a|b), *(a|b), or !(a) drives the match
      through the alternatives split on the top-level |. */
-  if (extglob_opens_group(glob, 0)) {
+  if (extglob_opens_group(glob, mask, mask_offset, 0)) {
     const usize close = extglob_group_close(glob);
     if (close < glob.count()) {
       const StringView content = glob.substring_of_length(2, close - 2);
@@ -443,10 +445,7 @@ hot flatten fn glob_matches(StringView glob, StringView str,
      keeps the iterative matcher below, unchanged, and pays nothing. */
   if (mode == extglob_mode::Enabled) {
     for (usize i = 0; i + 1 < glob.count(); i++) {
-      let const c = glob[i];
-      if ((c == '?' || c == '*' || c == '+' || c == '@' || c == '!') &&
-          glob[i + 1] == '(')
-      {
+      if (extglob_opens_group(glob, glob_active, mask_offset, i)) {
         return extglob_full_match(glob, str, glob_active, mask_offset, charset);
       }
     }
