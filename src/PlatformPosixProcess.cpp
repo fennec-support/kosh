@@ -914,10 +914,66 @@ fn signal_process(process p, i32 signal_number) wontthrow -> bool
   return kill(p, signal_number) == 0;
 }
 
+#if defined __linux__
+static fn process_group_has_running_member(pid_t group_id) wontthrow -> bool
+{
+  DIR *proc_directory = ::opendir("/proc");
+  if (proc_directory == nullptr) return true;
+  defer { ::closedir(proc_directory); };
+
+  for (struct dirent *entry = ::readdir(proc_directory); entry != nullptr;
+       entry = ::readdir(proc_directory))
+  {
+    let const name = StringView{entry->d_name};
+    if (name.is_empty() || !name.is_all_decimal_digits()) continue;
+
+    char stat_path[64];
+    let const stat_path_length = std::snprintf(stat_path, sizeof(stat_path),
+                                               "/proc/%s/stat", entry->d_name);
+    if (stat_path_length <= 0 ||
+        static_cast<usize>(stat_path_length) >= sizeof(stat_path))
+    {
+      continue;
+    }
+
+    char stat_buffer[512];
+    let const stat_length =
+        read_small_file(stat_path, stat_buffer, sizeof(stat_buffer));
+    let const stat_text = StringView{stat_buffer, stat_length};
+    let const command_end = stat_text.find_last_character(')');
+    if (!command_end.has_value()) continue;
+
+    usize position = *command_end + 1;
+    let const state = stat_text.next_ascii_whitespace_word(position);
+    let const parent_id = stat_text.next_ascii_whitespace_word(position);
+    let const member_group_id = stat_text.next_ascii_whitespace_word(position);
+    unused(parent_id);
+    if (state.is_empty() || state[0] == 'Z') continue;
+
+    let const parsed_group_id = member_group_id.to<i64>();
+    if (!parsed_group_id.is_error() && parsed_group_id.value() == group_id) {
+      LOG(Debug, "process group %d keeps running member %.*s",
+          static_cast<int>(group_id), static_cast<int>(name.length),
+          name.data);
+      return true;
+    }
+  }
+
+  LOG(Debug, "process group %d holds only exited members",
+      static_cast<int>(group_id));
+  return false;
+}
+#endif
+
 fn process_group_has_members(process group) wontthrow -> bool
 {
-  if (kill(group, 0) == 0) return true;
-  return errno == EPERM;
+  if (kill(group, 0) != 0) return errno == EPERM;
+
+#if defined __linux__
+  return process_group_has_running_member(static_cast<pid_t>(-group));
+#else
+  return true;
+#endif
 }
 
 fn is_process_signal_supported(i32 signal_number) wontthrow -> bool
@@ -1165,7 +1221,7 @@ fn machine_target_name() throws -> String
 #if defined __APPLE__
   return machine_type() + "-apple-darwin" + system_release_name();
 #else
-  return machine_type() + "-unknown-linux-gnu";
+  return machine_type() + "-unknown-" + ostype_name();
 #endif
 }
 
@@ -1173,8 +1229,10 @@ fn ostype_name() wontthrow -> StringView
 {
 #if defined __APPLE__
   return "darwin";
-#else
+#elif defined __GLIBC__
   return "linux-gnu";
+#else
+  return "linux-musl";
 #endif
 }
 
