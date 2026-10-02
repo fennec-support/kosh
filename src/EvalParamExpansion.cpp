@@ -285,367 +285,544 @@ fn EvalContext::expand_modifier_word_masked(
                                      false, source_location);
 }
 
+class EvalContext::ModifierWordExpander
+{
+public:
+  ModifierWordExpander(EvalContext &context, StringView word,
+                       Bitset *active_out, bool remove_quotes,
+                       bool is_pattern_word, bool strip_escaped_literals,
+                       const SourceLocation *source_location) throws
+      : m_context(context),
+        m_word(word),
+        m_active_out(active_out),
+        m_out(context.scratch_allocator()),
+        m_source_location(source_location),
+        m_remove_quotes(remove_quotes),
+        m_is_pattern_word(is_pattern_word),
+        m_strip_escaped_literals(strip_escaped_literals)
+  {}
+
+  fn expand() throws -> String;
+
+private:
+  EvalContext &m_context;
+  StringView m_word;
+  Bitset *m_active_out;
+  String m_out;
+  const SourceLocation *m_source_location;
+  usize m_index = 0;
+  bool m_remove_quotes;
+  bool m_is_pattern_word;
+  bool m_strip_escaped_literals;
+  bool m_is_in_single_quote = false;
+  bool m_is_in_double_quote = false;
+
+  fn emit_byte(char byte, bool is_active) throws -> void;
+  fn emit_run(StringView bytes, bool is_active) throws -> void;
+  fn toggle_quote_state() wontthrow -> bool;
+  fn expand_backslash() throws -> void;
+  fn expand_backquote() throws -> void;
+  fn expand_dollar() throws -> void;
+  fn expand_ansi_c_quote() throws -> void;
+  fn expand_braced_parameter() throws -> void;
+  fn expand_plain_parameter() throws -> void;
+  fn expand_arithmetic() throws -> void;
+  fn expand_command_substitution() throws -> void;
+  fn expand_special_parameter(char name) throws -> void;
+  fn emit_command_substitution(StringView body, usize end_index) throws -> void;
+  fn scan_braced_body(usize &position) throws -> String;
+  fn scan_arithmetic_body(usize &position) throws -> String;
+  fn scan_command_body(usize &position) throws -> String;
+  fn copy_braced_backquote(String &inner, usize &position) throws -> void;
+  fn copy_braced_command(String &inner, usize &position) throws -> void;
+  fn copy_braced_quoted_byte(String &inner, usize &position, char &quote) throws
+      -> bool;
+};
+
+fn EvalContext::ModifierWordExpander::emit_byte(char byte,
+                                                bool is_active) throws -> void
+{
+  m_out += byte;
+  if (m_active_out != nullptr) m_active_out->push(is_active);
+}
+
+fn EvalContext::ModifierWordExpander::emit_run(StringView bytes,
+                                               bool is_active) throws -> void
+{
+  m_out.append(bytes);
+  if (m_active_out != nullptr) {
+    for (usize k = 0; k < bytes.length; k++)
+      m_active_out->push(is_active);
+  }
+}
+
+fn EvalContext::ModifierWordExpander::toggle_quote_state() wontthrow -> bool
+{
+  /* A heredoc body passes remove_quotes as false, so its quotes stay. */
+  if (m_remove_quotes && !m_is_in_single_quote && m_word[m_index] == '"') {
+    m_is_in_double_quote = !m_is_in_double_quote;
+    return true;
+  }
+  if (m_remove_quotes && !m_is_in_double_quote && m_word[m_index] == '\'') {
+    m_is_in_single_quote = !m_is_in_single_quote;
+    return true;
+  }
+
+  return false;
+}
+
+fn EvalContext::ModifierWordExpander::expand_backslash() throws -> void
+{
+  /* In a # or % pattern word a backslash quotes the next byte so a quoted
+     glob character such as \* matches itself. */
+  if (m_is_pattern_word && m_index + 1 < m_word.length) {
+    emit_byte(m_word[m_index + 1], false);
+    m_index++;
+    return;
+  }
+  if (m_index + 1 < m_word.length) {
+    let const next = m_word[m_index + 1];
+    if (next == '\n') {
+      m_index++;
+      return;
+    }
+    if (m_strip_escaped_literals && m_remove_quotes && !m_is_in_double_quote) {
+      emit_byte(next, false);
+      m_index++;
+      return;
+    }
+    if (next == '$' || next == '`' || next == '\\' ||
+        (m_remove_quotes && next == '"'))
+    {
+      emit_byte(next, false);
+      m_index++;
+      return;
+    }
+  }
+
+  emit_byte('\\', false);
+}
+
+fn EvalContext::ModifierWordExpander::emit_command_substitution(
+    StringView body, usize end_index) throws -> void
+{
+  let call_site = SourceLocation{};
+  const SourceLocation *call_site_pointer = nullptr;
+  let const call_site_length =
+      end_index - m_index + (end_index < m_word.length);
+  if (m_source_location != nullptr && m_index <= m_source_location->length &&
+      call_site_length <= m_source_location->length - m_index)
+  {
+    call_site = m_source_location->subspan(m_index, call_site_length);
+    call_site_pointer = &call_site;
+  }
+  emit_run(
+      m_context.capture_command_substitution(body, None, call_site_pointer),
+      !m_is_in_double_quote);
+  m_index = end_index;
+}
+
+fn EvalContext::ModifierWordExpander::expand_backquote() throws -> void
+{
+  /* The POSIX backquote unescaping strips a backslash before a backtick, a
+     dollar sign, or another backslash. */
+  let inner = String{m_context.scratch_allocator()};
+  usize j = m_index + 1;
+  for (; j < m_word.length; j++) {
+    if (m_word[j] == '\\' && j + 1 < m_word.length &&
+        (m_word[j + 1] == '`' || m_word[j + 1] == '$' || m_word[j + 1] == '\\'))
+    {
+      inner += m_word[j + 1];
+      j++;
+      continue;
+    }
+    if (m_word[j] == '`') break;
+    inner += m_word[j];
+  }
+
+  emit_command_substitution(inner.view(), j);
+}
+
+fn EvalContext::ModifierWordExpander::expand_ansi_c_quote() throws -> void
+{
+  let body = String{m_context.scratch_allocator()};
+  usize j = m_index + 2;
+  while (j < m_word.length && m_word[j] != '\'') {
+    body.push(m_word[j]);
+    if (m_word[j] == '\\' && j + 1 < m_word.length) {
+      body.push(m_word[j + 1]);
+      j++;
+    }
+    j++;
+  }
+  let decoded = String{m_context.scratch_allocator()};
+  utils::decode_ansi_c_escapes(decoded, body.view());
+  emit_run(decoded.view(), false);
+  m_index = j;
+}
+
+fn EvalContext::ModifierWordExpander::copy_braced_quoted_byte(
+    String &inner, usize &position, char &quote) throws -> bool
+{
+  let const ch = m_word[position];
+  if (quote == 0) return false;
+
+  inner += ch;
+  if (quote == '"' && ch == '\\' && position + 1 < m_word.length) {
+    inner += m_word[++position];
+    position++;
+    return true;
+  }
+  if (ch == quote) quote = 0;
+  position++;
+
+  return true;
+}
+
+fn EvalContext::ModifierWordExpander::copy_braced_backquote(
+    String &inner, usize &position) throws -> void
+{
+  inner += m_word[position];
+  position++;
+  while (position < m_word.length) {
+    let const b = m_word[position];
+    inner += b;
+    position++;
+    if (b == '\\' && position < m_word.length) {
+      inner += m_word[position++];
+      continue;
+    }
+    if (b == '`') break;
+  }
+}
+
+fn EvalContext::ModifierWordExpander::copy_braced_command(
+    String &inner, usize &position) throws -> void
+{
+  inner += m_word[position];
+  inner += m_word[++position];
+  position++;
+  usize paren_depth = 1;
+  char nested_quote = 0;
+  while (position < m_word.length) {
+    let const p = m_word[position];
+    inner += p;
+    position++;
+    if (nested_quote != 0) {
+      if (nested_quote == '"' && p == '\\' && position < m_word.length) {
+        inner += m_word[position++];
+        continue;
+      }
+      if (p == nested_quote) nested_quote = 0;
+      continue;
+    }
+    if (p == '\\' && position < m_word.length) {
+      inner += m_word[position++];
+      continue;
+    }
+    if (p == '\'' || p == '"') {
+      nested_quote = p;
+    } else if (p == '(') {
+      paren_depth++;
+    } else if (p == ')') {
+      paren_depth--;
+      if (paren_depth == 0) break;
+    }
+  }
+}
+
+fn EvalContext::ModifierWordExpander::scan_braced_body(usize &position) throws
+    -> String
+{
+  /* Scan the ${...} body to the matching } at brace depth one. A quote run
+     or a backslash escape keeps its bytes literal so a } inside is never
+     counted. */
+  let inner = String{m_context.scratch_allocator()};
+  position = m_index + 2;
+  i32 depth = 1;
+  char quote = 0;
+  while (position < m_word.length) {
+    let const ch = m_word[position];
+    if (copy_braced_quoted_byte(inner, position, quote)) continue;
+    if (ch == '\\' && position + 1 < m_word.length) {
+      inner += ch;
+      inner += m_word[++position];
+      position++;
+      continue;
+    }
+    if (ch == '\'' || ch == '"') {
+      quote = ch;
+      inner += ch;
+      position++;
+      continue;
+    }
+    if (ch == '`') {
+      copy_braced_backquote(inner, position);
+      continue;
+    }
+    if (ch == '$' && position + 1 < m_word.length &&
+        m_word[position + 1] == '(')
+    {
+      copy_braced_command(inner, position);
+      continue;
+    }
+    if (ch == '$' && position + 1 < m_word.length &&
+        m_word[position + 1] == '{')
+    {
+      depth++;
+      inner += ch;
+      inner += m_word[++position];
+      position++;
+      continue;
+    }
+    if (ch == '}') {
+      depth--;
+      if (depth == 0) break;
+      inner += ch;
+      position++;
+      continue;
+    }
+    inner += ch;
+    position++;
+  }
+
+  return inner;
+}
+
+fn EvalContext::ModifierWordExpander::expand_braced_parameter() throws -> void
+{
+  usize j = 0;
+  let const inner = scan_braced_body(j);
+  let inner_location = SourceLocation{};
+  const SourceLocation *inner_location_pointer = nullptr;
+  if (m_source_location != nullptr &&
+      m_index + 2 <= m_source_location->length &&
+      inner.count() <= m_source_location->length - (m_index + 2))
+  {
+    inner_location = m_source_location->subspan(m_index + 2, inner.count());
+    inner_location_pointer = &inner_location;
+  }
+  emit_run(
+      m_context.apply_parameter_expansion(inner.view(), inner_location_pointer),
+      !m_is_in_double_quote);
+  m_index = j;
+}
+
+fn EvalContext::ModifierWordExpander::expand_plain_parameter() throws -> void
+{
+  let name = String{m_context.scratch_allocator()};
+  usize j = m_index + 1;
+  while (j < m_word.length && lexer::is_variable_name(m_word[j])) {
+    name += m_word[j++];
+  }
+  /* A nested reference obeys set -u the way a top level reference does. A
+     stored name resolves without the extra dynamic-value lookup and copy.
+   */
+  let const stored = m_context.variable_store().shell_variables().find(name);
+  if (stored.has_value()) {
+    emit_run(stored->view(), !m_is_in_double_quote);
+  } else {
+    let value = m_context.get_variable_value(name);
+    if (!value.has_value()) m_context.report_unset_reference(name);
+    emit_run(value.has_value() ? value->view() : StringView{},
+             !m_is_in_double_quote);
+  }
+  m_index = j - 1;
+}
+
+fn EvalContext::ModifierWordExpander::scan_arithmetic_body(
+    usize &position) throws -> String
+{
+  /* Arithmetic $((...)), scanned to the matching )). A quote run keeps its
+     bytes literal so a ) inside a string does not count. */
+  let inner = String{m_context.scratch_allocator()};
+  position = m_index + 3;
+  usize depth = 0;
+  char quote = 0;
+  for (; position < m_word.length; position++) {
+    let const ch = m_word[position];
+    if (quote != 0) {
+      inner += ch;
+      if (quote == '"' && ch == '\\' && position + 1 < m_word.length) {
+        inner += m_word[++position];
+        continue;
+      }
+      if (ch == quote) quote = 0;
+      continue;
+    }
+    if (ch == '\\' && position + 1 < m_word.length) {
+      inner += ch;
+      inner += m_word[++position];
+      continue;
+    }
+    if (ch == '\'' || ch == '"') {
+      quote = ch;
+    } else if (ch == '(') {
+      depth++;
+    } else if (ch == ')' && depth > 0) {
+      depth--;
+    } else if (ch == ')' && position + 1 < m_word.length &&
+               m_word[position + 1] == ')')
+    {
+      position += 2;
+      break;
+    }
+    inner += ch;
+  }
+
+  return inner;
+}
+
+fn EvalContext::ModifierWordExpander::expand_arithmetic() throws -> void
+{
+  usize j = 0;
+  let const inner = scan_arithmetic_body(j);
+  let inner_location = SourceLocation{};
+  let const inner_source =
+      m_word.substring_of_length(m_index + 3, inner.count());
+  emit_run(
+      m_context.evaluate_arithmetic_text(
+          inner, source_location_for_subview(m_source_location, m_word,
+                                             inner_source, inner_location)),
+      false);
+  m_index = j - 1;
+}
+
+fn EvalContext::ModifierWordExpander::scan_command_body(usize &position) throws
+    -> String
+{
+  /* Command substitution $(...), scanned to the matching ). A quote run
+     keeps its bytes literal so a ) inside a string does not close early. */
+  let inner = String{m_context.scratch_allocator()};
+  position = m_index + 2;
+  usize depth = 1;
+  char quote = 0;
+  for (; position < m_word.length; position++) {
+    let const ch = m_word[position];
+    if (quote != 0) {
+      inner += ch;
+      if (quote == '"' && ch == '\\' && position + 1 < m_word.length) {
+        inner += m_word[++position];
+        continue;
+      }
+      if (ch == quote) quote = 0;
+      continue;
+    }
+    if (ch == '\\' && position + 1 < m_word.length) {
+      inner += ch;
+      inner += m_word[++position];
+      continue;
+    }
+    if (ch == '\'' || ch == '"') {
+      quote = ch;
+    } else if (ch == '(') {
+      depth++;
+    } else if (ch == ')') {
+      depth--;
+      if (depth == 0) break;
+    }
+    inner += ch;
+  }
+
+  return inner;
+}
+
+fn EvalContext::ModifierWordExpander::expand_command_substitution() throws
+    -> void
+{
+  usize j = 0;
+  let const inner = scan_command_body(j);
+  emit_command_substitution(inner.view(), j);
+}
+
+fn EvalContext::ModifierWordExpander::expand_special_parameter(char name) throws
+    -> void
+{
+  let const special_name = StringView{&name, 1};
+  if (!m_context.get_variable_value(special_name).has_value())
+    m_context.report_unset_reference(special_name);
+  emit_run(m_context.expand_variable(special_name), !m_is_in_double_quote);
+  m_index++;
+}
+
+fn EvalContext::ModifierWordExpander::expand_dollar() throws -> void
+{
+  let const next = m_word[m_index + 1];
+  if (next == '\'' && m_remove_quotes && !m_is_in_double_quote &&
+      !m_context.runtime_state().is_posix_mode())
+  {
+    expand_ansi_c_quote();
+    return;
+  }
+  if (next == '"' && m_remove_quotes && !m_is_in_double_quote) {
+    return;
+  }
+
+  if (next == '{') {
+    expand_braced_parameter();
+  } else if (lexer::is_variable_name_start(next)) {
+    expand_plain_parameter();
+  } else if (next == '(' && m_index + 2 < m_word.length &&
+             m_word[m_index + 2] == '(')
+  {
+    expand_arithmetic();
+  } else if (next == '(') {
+    expand_command_substitution();
+  } else if (next == '?' || next == '@' || next == '*' || next == '#' ||
+             next == '$' || next == '!' || next == '-' ||
+             lexer::is_number(next))
+  {
+    expand_special_parameter(next);
+  } else {
+    emit_byte('$', !m_is_in_double_quote);
+  }
+}
+
+fn EvalContext::ModifierWordExpander::expand() throws -> String
+{
+  for (m_index = 0; m_index < m_word.length; m_index++) {
+    if (toggle_quote_state()) continue;
+    if (m_is_in_single_quote) {
+      emit_byte(m_word[m_index], false);
+      continue;
+    }
+
+    let const byte = m_word[m_index];
+    if (byte == '\\') {
+      expand_backslash();
+      continue;
+    }
+    if (byte == '`') {
+      expand_backquote();
+      continue;
+    }
+    if (byte != '$') {
+      emit_byte(byte, !m_is_in_double_quote);
+      continue;
+    }
+    if (m_index + 1 >= m_word.length) {
+      emit_byte('$', !m_is_in_double_quote);
+      break;
+    }
+
+    expand_dollar();
+  }
+
+  return steal(m_out);
+}
+
 fn EvalContext::expand_modifier_word_worker(
     StringView word, Bitset *active_out, bool remove_quotes,
     bool is_pattern_word, bool strip_escaped_literals,
     const SourceLocation *source_location) throws -> String
 {
   LOG(All, "expanding a modifier word of %zu bytes", word.length);
-  let out = String{scratch_allocator()};
+  let expander = ModifierWordExpander{*this,           word,
+                                      active_out,      remove_quotes,
+                                      is_pattern_word, strip_escaped_literals,
+                                      source_location};
 
-  let const do_emit_byte = [&](char byte, bool is_active) {
-    out += byte;
-    if (active_out != nullptr) active_out->push(is_active);
-  };
-
-  let const do_emit_run = [&](StringView bytes, bool is_active) {
-    out.append(bytes);
-    if (active_out != nullptr) {
-      for (usize k = 0; k < bytes.length; k++)
-        active_out->push(is_active);
-    }
-  };
-
-  let is_in_single_quote = false;
-  let is_in_double_quote = false;
-  for (usize i = 0; i < word.length; i++) {
-    /* A heredoc body passes remove_quotes as false, so its quotes stay. */
-    if (remove_quotes && !is_in_single_quote && word[i] == '"') {
-      is_in_double_quote = !is_in_double_quote;
-      continue;
-    }
-    if (remove_quotes && !is_in_double_quote && word[i] == '\'') {
-      is_in_single_quote = !is_in_single_quote;
-      continue;
-    }
-    if (is_in_single_quote) {
-      do_emit_byte(word[i], false);
-      continue;
-    }
-
-    if (word[i] == '\\') {
-      /* In a # or % pattern word a backslash quotes the next byte so a quoted
-         glob character such as \* matches itself. */
-      if (is_pattern_word && i + 1 < word.length) {
-        do_emit_byte(word[i + 1], false);
-        i++;
-        continue;
-      }
-      if (i + 1 < word.length) {
-        let const next = word[i + 1];
-        if (next == '\n') {
-          i++;
-          continue;
-        }
-        if (strip_escaped_literals && remove_quotes && !is_in_double_quote) {
-          do_emit_byte(next, false);
-          i++;
-          continue;
-        }
-        if (next == '$' || next == '`' || next == '\\' ||
-            (remove_quotes && next == '"'))
-        {
-          do_emit_byte(next, false);
-          i++;
-          continue;
-        }
-      }
-      do_emit_byte('\\', false);
-      continue;
-    }
-
-    if (word[i] == '`') {
-      /* The POSIX backquote unescaping strips a backslash before a backtick, a
-         dollar sign, or another backslash. */
-      let inner = String{scratch_allocator()};
-      usize j = i + 1;
-      for (; j < word.length; j++) {
-        if (word[j] == '\\' && j + 1 < word.length &&
-            (word[j + 1] == '`' || word[j + 1] == '$' || word[j + 1] == '\\'))
-        {
-          inner += word[j + 1];
-          j++;
-          continue;
-        }
-        if (word[j] == '`') break;
-        inner += word[j];
-      }
-      let call_site = SourceLocation{};
-      const SourceLocation *call_site_pointer = nullptr;
-      let const call_site_length = j - i + (j < word.length);
-      if (source_location != nullptr && i <= source_location->length &&
-          call_site_length <= source_location->length - i)
-      {
-        call_site = source_location->subspan(i, call_site_length);
-        call_site_pointer = &call_site;
-      }
-      do_emit_run(capture_command_substitution(inner, None, call_site_pointer),
-                  !is_in_double_quote);
-      i = j;
-      continue;
-    }
-
-    if (word[i] != '$') {
-      do_emit_byte(word[i], !is_in_double_quote);
-      continue;
-    }
-    if (i + 1 >= word.length) {
-      do_emit_byte('$', !is_in_double_quote);
-      break;
-    }
-
-    let const next = word[i + 1];
-    if (next == '\'' && remove_quotes && !is_in_double_quote &&
-        !runtime_state().is_posix_mode())
-    {
-      let body = String{scratch_allocator()};
-      usize j = i + 2;
-      while (j < word.length && word[j] != '\'') {
-        body.push(word[j]);
-        if (word[j] == '\\' && j + 1 < word.length) {
-          body.push(word[j + 1]);
-          j++;
-        }
-        j++;
-      }
-      let decoded = String{scratch_allocator()};
-      utils::decode_ansi_c_escapes(decoded, body.view());
-      do_emit_run(decoded.view(), false);
-      i = j;
-      continue;
-    }
-    if (next == '"' && remove_quotes && !is_in_double_quote) {
-      continue;
-    }
-    if (next == '{') {
-      /* Scan the ${...} body to the matching } at brace depth one. A quote run
-         or a backslash escape keeps its bytes literal so a } inside is never
-         counted. */
-      let inner = String{scratch_allocator()};
-      usize j = i + 2;
-      i32 depth = 1;
-      char quote = 0;
-      while (j < word.length) {
-        let const ch = word[j];
-        if (quote != 0) {
-          inner += ch;
-          if (quote == '"' && ch == '\\' && j + 1 < word.length) {
-            inner += word[++j];
-            j++;
-            continue;
-          }
-          if (ch == quote) quote = 0;
-          j++;
-          continue;
-        }
-        if (ch == '\\' && j + 1 < word.length) {
-          inner += ch;
-          inner += word[++j];
-          j++;
-          continue;
-        }
-        if (ch == '\'' || ch == '"') {
-          quote = ch;
-          inner += ch;
-          j++;
-          continue;
-        }
-        if (ch == '`') {
-          inner += ch;
-          j++;
-          while (j < word.length) {
-            let const b = word[j];
-            inner += b;
-            j++;
-            if (b == '\\' && j < word.length) {
-              inner += word[j++];
-              continue;
-            }
-            if (b == '`') break;
-          }
-          continue;
-        }
-        if (ch == '$' && j + 1 < word.length && word[j + 1] == '(') {
-          inner += ch;
-          inner += word[++j];
-          j++;
-          usize paren_depth = 1;
-          char nested_quote = 0;
-          while (j < word.length) {
-            let const p = word[j];
-            inner += p;
-            j++;
-            if (nested_quote != 0) {
-              if (nested_quote == '"' && p == '\\' && j < word.length) {
-                inner += word[j++];
-                continue;
-              }
-              if (p == nested_quote) nested_quote = 0;
-              continue;
-            }
-            if (p == '\\' && j < word.length) {
-              inner += word[j++];
-              continue;
-            }
-            if (p == '\'' || p == '"') {
-              nested_quote = p;
-            } else if (p == '(') {
-              paren_depth++;
-            } else if (p == ')') {
-              paren_depth--;
-              if (paren_depth == 0) break;
-            }
-          }
-          continue;
-        }
-        if (ch == '$' && j + 1 < word.length && word[j + 1] == '{') {
-          depth++;
-          inner += ch;
-          inner += word[++j];
-          j++;
-          continue;
-        }
-        if (ch == '}') {
-          depth--;
-          if (depth == 0) break;
-          inner += ch;
-          j++;
-          continue;
-        }
-        inner += ch;
-        j++;
-      }
-      let inner_location = SourceLocation{};
-      const SourceLocation *inner_location_pointer = nullptr;
-      if (source_location != nullptr && i + 2 <= source_location->length &&
-          inner.count() <= source_location->length - (i + 2))
-      {
-        inner_location = source_location->subspan(i + 2, inner.count());
-        inner_location_pointer = &inner_location;
-      }
-      do_emit_run(apply_parameter_expansion(inner, inner_location_pointer),
-                  !is_in_double_quote);
-      i = j;
-    } else if (lexer::is_variable_name_start(next)) {
-      let name = String{scratch_allocator()};
-      usize j = i + 1;
-      while (j < word.length && lexer::is_variable_name(word[j]))
-        name += word[j++];
-      /* A nested reference obeys set -u the way a top level reference does. A
-         stored name resolves without the extra dynamic-value lookup and copy.
-       */
-      let const stored = variable_store().shell_variables().find(name);
-      if (stored.has_value()) {
-        do_emit_run(stored->view(), !is_in_double_quote);
-      } else {
-        let value = get_variable_value(name);
-        if (!value.has_value()) report_unset_reference(name);
-        do_emit_run(value.has_value() ? value->view() : StringView{},
-                    !is_in_double_quote);
-      }
-      i = j - 1;
-    } else if (next == '(' && i + 2 < word.length && word[i + 2] == '(') {
-      /* Arithmetic $((...)), scanned to the matching )). A quote run keeps its
-         bytes literal so a ) inside a string does not count. */
-      let inner = String{scratch_allocator()};
-      usize j = i + 3;
-      usize depth = 0;
-      char quote = 0;
-      for (; j < word.length; j++) {
-        let const ch = word[j];
-        if (quote != 0) {
-          inner += ch;
-          if (quote == '"' && ch == '\\' && j + 1 < word.length) {
-            inner += word[++j];
-            continue;
-          }
-          if (ch == quote) quote = 0;
-          continue;
-        }
-        if (ch == '\\' && j + 1 < word.length) {
-          inner += ch;
-          inner += word[++j];
-          continue;
-        }
-        if (ch == '\'' || ch == '"') {
-          quote = ch;
-        } else if (ch == '(') {
-          depth++;
-        } else if (ch == ')' && depth > 0) {
-          depth--;
-        } else if (ch == ')' && j + 1 < word.length && word[j + 1] == ')') {
-          j += 2;
-          break;
-        }
-        inner += ch;
-      }
-      let inner_location = SourceLocation{};
-      let const inner_source = word.substring_of_length(i + 3, inner.count());
-      do_emit_run(
-          evaluate_arithmetic_text(
-              inner, source_location_for_subview(source_location, word,
-                                                 inner_source, inner_location)),
-          false);
-      i = j - 1;
-    } else if (next == '(') {
-      /* Command substitution $(...), scanned to the matching ). A quote run
-         keeps its bytes literal so a ) inside a string does not close early. */
-      let inner = String{scratch_allocator()};
-      usize j = i + 2;
-      usize depth = 1;
-      char quote = 0;
-      for (; j < word.length; j++) {
-        let const ch = word[j];
-        if (quote != 0) {
-          inner += ch;
-          if (quote == '"' && ch == '\\' && j + 1 < word.length) {
-            inner += word[++j];
-            continue;
-          }
-          if (ch == quote) quote = 0;
-          continue;
-        }
-        if (ch == '\\' && j + 1 < word.length) {
-          inner += ch;
-          inner += word[++j];
-          continue;
-        }
-        if (ch == '\'' || ch == '"') {
-          quote = ch;
-        } else if (ch == '(') {
-          depth++;
-        } else if (ch == ')') {
-          depth--;
-          if (depth == 0) break;
-        }
-        inner += ch;
-      }
-      let call_site = SourceLocation{};
-      const SourceLocation *call_site_pointer = nullptr;
-      let const call_site_length = j - i + (j < word.length);
-      if (source_location != nullptr && i <= source_location->length &&
-          call_site_length <= source_location->length - i)
-      {
-        call_site = source_location->subspan(i, call_site_length);
-        call_site_pointer = &call_site;
-      }
-      do_emit_run(capture_command_substitution(inner, None, call_site_pointer),
-                  !is_in_double_quote);
-      i = j;
-    } else if (next == '?' || next == '@' || next == '*' || next == '#' ||
-               next == '$' || next == '!' || next == '-' ||
-               lexer::is_number(next))
-    {
-      let const special_name = StringView{&next, 1};
-      if (!get_variable_value(special_name).has_value())
-        report_unset_reference(special_name);
-      do_emit_run(expand_variable(special_name), !is_in_double_quote);
-      i++;
-    } else {
-      do_emit_byte('$', !is_in_double_quote);
-    }
-  }
-  return out;
+  return expander.expand();
 }
 
 hot fn EvalContext::apply_parameter_expansion(

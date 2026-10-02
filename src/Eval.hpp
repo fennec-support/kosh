@@ -3174,6 +3174,8 @@ public:
       StringView word, Bitset &active_out, bool remove_quotes = true,
       const SourceLocation *source_location = nullptr) throws -> String;
 
+  class ModifierWordExpander;
+
   /* is_pattern_word makes a backslash quote the following byte, the # and %
      rule. */
   fn expand_modifier_word_worker(StringView word, Bitset *active_out,
