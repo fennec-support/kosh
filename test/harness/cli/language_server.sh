@@ -468,20 +468,50 @@ case $output in
 *disk_only*) printf 'open-source-precedence=missing\n' ;;
 *) printf 'open-source-precedence=ok\n' ;;
 esac
-disk_payload=${output#*"\"uri\":\"file://$directory/disk-source.sh\""}
-if [ "$disk_payload" = "$output" ]; then
-  disk_payload=${output#*"\"uri\":\"file:///private$directory/disk-source.sh\""}
+text_between()
+{
+  printf '%s\n' "$1" | TEXT_START=$2 TEXT_STOP=$3 awk '
+    !found {
+      position = index($0, ENVIRON["TEXT_START"])
+      if (position == 0) next
+      found = 1
+      $0 = substr($0, position + length(ENVIRON["TEXT_START"]))
+    }
+    {
+      position = index($0, ENVIRON["TEXT_STOP"])
+      if (position > 0) {
+        print substr($0, 1, position - 1)
+        exit
+      }
+      print
+    }'
+}
+
+count_text()
+{
+  printf '%s\n' "$1" | TEXT_MARKER=$2 awk '
+    {
+      line = $0
+      while ((position = index(line, ENVIRON["TEXT_MARKER"])) > 0) {
+        count++
+        line = substr(line, position + length(ENVIRON["TEXT_MARKER"]))
+      }
+    }
+    END { print count + 0 }'
+}
+
+disk_payload=$(text_between "$output" \
+  "\"uri\":\"file://$directory/disk-source.sh\"" 'Content-Length:')
+if [ -z "$disk_payload" ]; then
+  disk_payload=$(text_between "$output" \
+    "\"uri\":\"file:///private$directory/disk-source.sh\"" 'Content-Length:')
 fi
-disk_payload=${disk_payload%%Content-Length:*}
 case $disk_payload in
 *'"data":'*) printf 'disk-fix-data=present\n' ;;
 *) printf 'disk-fix-data=ok\n' ;;
 esac
 
-after_first_clear=${output#*'"diagnostics":[]'}
-after_second_clear=${after_first_clear#*'"diagnostics":[]'}
-if [ "$after_first_clear" != "$output" ] &&
-   [ "$after_second_clear" != "$after_first_clear" ]; then
+if [ "$(count_text "$output" '"diagnostics":[]')" -ge 2 ]; then
   printf 'diagnostic-clears=ok\n'
 else
   printf 'diagnostic-clears=missing\n'
