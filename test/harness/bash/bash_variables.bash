@@ -17,7 +17,10 @@ c=$RANDOM
 [ "$PPID" -gt 0 ] && echo "ppid positive"
 [ "$BASH_MONOSECONDS" -gt 0 ] && echo "monoseconds positive"
 echo "hosttype=$HOSTTYPE"
-echo "machtype=$MACHTYPE"
+case $MACHTYPE in
+"$HOSTTYPE"-*-"$OSTYPE"*) echo "machtype names the host and system" ;;
+*) echo "machtype=$MACHTYPE" ;;
+esac
 [ "$GROUPS" -ge 0 ] && echo "groups present"
 [ -n "$SRANDOM" ] && echo "srandom present"
 for name in EUID UID PPID BASHPID RANDOM SECONDS SRANDOM LINENO; do
