@@ -298,7 +298,9 @@ fn IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     actx.should_retain_tested_command_names = true;
     let const was_analyzing_condition = actx.is_analyzing_condition;
     actx.is_analyzing_condition = true;
+    if (!is_first_branch) actx.conditional_branch_depth++;
     condition->analyze(actx, is_unconditional && is_first_branch);
+    if (!is_first_branch) actx.conditional_branch_depth--;
     actx.is_analyzing_condition = was_analyzing_condition;
     actx.should_retain_tested_command_names =
         was_retaining_tested_command_names;
@@ -310,7 +312,9 @@ fn IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
         actx.inherited_variable_occurrence_assignments.snapshot();
     let const was_silenced = actx.should_silence_unresolved_commands;
     if (is_dead_branch) actx.should_silence_unresolved_commands = true;
+    actx.conditional_branch_depth++;
     body->analyze(actx, false);
+    actx.conditional_branch_depth--;
     actx.should_silence_unresolved_commands = was_silenced;
 
     if (!is_dead_branch) {
@@ -346,7 +350,9 @@ fn IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
   let const was_else_silenced = actx.should_silence_unresolved_commands;
   if (else_is_dead) actx.should_silence_unresolved_commands = true;
   actx.tested_command_names = steal(condition_failure_names);
+  actx.conditional_branch_depth++;
   if (m_otherwise != nullptr) m_otherwise->analyze(actx, false);
+  actx.conditional_branch_depth--;
   actx.should_silence_unresolved_commands = was_else_silenced;
   actx.tested_command_names = steal(saved_tested_command_names);
 
@@ -1265,7 +1271,9 @@ fn CaseClause::analyze(AnalysisContext &actx,
       }
     }
 
+    actx.conditional_branch_depth++;
     item.body->analyze(actx, false);
+    actx.conditional_branch_depth--;
 
     let const has_later_item = i + 1 < m_items.count();
     if (item.terminator != case_terminator::FallThrough || !has_later_item) {

@@ -388,6 +388,7 @@ public:
   /* Saved and zeroed on entry to a function body, since a break inside the body
      cannot leave a loop that only surrounds the call. */
   usize loop_body_depth{0};
+  usize conditional_branch_depth{0};
 
   /* Saved and cleared on entry to a function body and restored on exit. Each
      name carries the assignment that recorded it, read by the diagnostic that

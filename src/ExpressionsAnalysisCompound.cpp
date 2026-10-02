@@ -738,10 +738,14 @@ fn CompoundList::analyze(AnalysisContext &actx,
        is conditional. */
     let const node_unconditional =
         is_unconditional && node->kind() == CompoundListCondition::Kind::None;
+    let const is_conditional_node =
+        node->kind() != CompoundListCondition::Kind::None;
     let const was_command_status_observed = actx.is_command_status_observed;
     actx.is_command_status_observed =
         was_command_status_observed || next_node_joins;
+    if (is_conditional_node) actx.conditional_branch_depth++;
     node->analyze(actx, node_unconditional);
+    if (is_conditional_node) actx.conditional_branch_depth--;
     actx.is_command_status_observed = was_command_status_observed;
     previous_node = node;
   }
@@ -789,6 +793,7 @@ fn IfStatement::analyze(AnalysisContext &actx,
   let before_then = actx.variable_occurrence_assignments.snapshot();
   let before_then_inherited =
       actx.inherited_variable_occurrence_assignments.snapshot();
+  actx.conditional_branch_depth++;
   m_then->analyze(actx, false);
   let const after_then = actx.variable_occurrence_assignments.snapshot();
   let const after_then_inherited =
@@ -797,6 +802,7 @@ fn IfStatement::analyze(AnalysisContext &actx,
   actx.variable_occurrence_assignments = steal(before_then);
   actx.inherited_variable_occurrence_assignments = steal(before_then_inherited);
   if (m_otherwise != nullptr) m_otherwise->analyze(actx, false);
+  actx.conditional_branch_depth--;
 
   merge_variable_occurrence_states(actx.variable_occurrence_assignments,
                                    after_then);

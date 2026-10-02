@@ -1449,6 +1449,8 @@ fn FunctionDefinition::analyze(AnalysisContext &actx,
   actx.apply_scope_definitions(m_analysis_scope_definitions);
   let const saved_loop_body_depth = actx.loop_body_depth;
   actx.loop_body_depth = 0;
+  let const saved_conditional_branch_depth = actx.conditional_branch_depth;
+  actx.conditional_branch_depth = 0;
   let const saved_active_function = actx.active_function_definition_index;
   actx.active_function_definition_index = actx.function_definitions.count();
   actx.function_definitions.push(function_definition_record{
@@ -1501,6 +1503,7 @@ fn FunctionDefinition::analyze(AnalysisContext &actx,
   actx.function_scope_depth--;
   actx.active_function_definition_index = saved_active_function;
   actx.loop_body_depth = saved_loop_body_depth;
+  actx.conditional_branch_depth = saved_conditional_branch_depth;
   actx.array_valued_names = steal(saved_array_valued_names);
   actx.inherited_global_assigned_names =
       steal(saved_inherited_global_assigned_names);

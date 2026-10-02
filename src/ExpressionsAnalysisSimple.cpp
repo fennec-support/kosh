@@ -671,10 +671,16 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
         call_location,
         m_args.count() > 1, actx.function_scope_depth != 0
     });
-    if (actx.active_function_definition_index !=
-            AnalysisContext::NO_ACTIVE_FUNCTION_DEFINITION &&
-        actx.function_definitions[actx.active_function_definition_index]
-                .name.view() == command_literal)
+    let const active_index = actx.active_function_definition_index;
+    let const latest_index =
+        actx.latest_function_definition_indices.find(command_literal);
+    let const was_redefined_in_body =
+        latest_index.has_value() && *latest_index.value() > active_index;
+    if (active_index != AnalysisContext::NO_ACTIVE_FUNCTION_DEFINITION &&
+        actx.function_definitions[active_index].name.view() ==
+            command_literal &&
+        actx.conditional_branch_depth == 0 && actx.loop_body_depth == 0 &&
+        !was_redefined_in_body)
     {
       let &definition =
           actx.function_definitions[actx.active_function_definition_index];
