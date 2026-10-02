@@ -471,6 +471,7 @@ esac
 text_between()
 {
   printf '%s\n' "$1" | TEXT_START=$2 TEXT_STOP=$3 awk '
+    stopped { next }
     !found {
       position = index($0, ENVIRON["TEXT_START"])
       if (position == 0) next
@@ -481,7 +482,8 @@ text_between()
       position = index($0, ENVIRON["TEXT_STOP"])
       if (position > 0) {
         print substr($0, 1, position - 1)
-        exit
+        stopped = 1
+        next
       }
       print
     }'
