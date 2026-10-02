@@ -5,7 +5,7 @@
 # uppercase byte stays case sensitive. A single byte or an option dash is too
 # loose for a subsequence and matches nothing extra.
 dir=$(mktemp -d)
-trap '"$BIN_DIR/invoke-koshkit" rm -rf "$dir"' EXIT
+trap 'cd / && "$BIN_DIR/invoke-koshkit" rm -rf "$dir"' EXIT
 : > "$dir/README"
 : > "$dir/Makefile"
 : > "$dir/makefile.bak"

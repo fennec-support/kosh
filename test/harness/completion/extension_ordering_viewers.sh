@@ -3,7 +3,7 @@
 # shows a .pdf, an image viewer an image. A typed prefix keeps every match and
 # only floats the opened type first.
 dir=$(mktemp -d)
-trap '"$BIN_DIR/invoke-koshkit" rm -rf "$dir"' EXIT
+trap 'cd / && "$BIN_DIR/invoke-koshkit" rm -rf "$dir"' EXIT
 : > "$dir/book.pdf"
 : > "$dir/photo.png"
 : > "$dir/notes.txt"

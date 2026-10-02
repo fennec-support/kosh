@@ -159,8 +159,6 @@ compound-before-failure
 compound-final-failure=2
 compound-ignored
 compound-ignored=0
-interrupt=130
-interrupt-cleanup=yes
 --- special targets and suffix inference ---
 after-error
 finished

@@ -48,7 +48,7 @@ SKIPPED_TESTS := \
 	help_subcommand_second_level \
 	help_subcommand_third_level \
 	help_subcommands_no_colon make_targets_fallback \
-	completion_glob_quoting path_quoting
+	completion_glob_quoting path_quoting koshkit_mknod
 else ifneq ($(TARGET), Linux)
 SKIPPED_TESTS := koshkit_mknod
 else
@@ -143,7 +143,13 @@ else
 DEBUG_DRIVER_SUITES := completion highlight
 endif
 
-test: kosh cli $(DEBUG_DRIVER_SUITES) sh bash | test_prepare
+ifeq ($(TARGET),Windows_NT)
+COMPATIBILITY_SUITES :=
+else
+COMPATIBILITY_SUITES := sh bash
+endif
+
+test: kosh cli $(DEBUG_DRIVER_SUITES) $(COMPATIBILITY_SUITES) | test_prepare
 
 KOSH_TESTS := $(wildcard harness/kosh/*.kosh)
 kosh: $(KOSH_TESTS)

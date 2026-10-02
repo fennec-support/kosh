@@ -437,9 +437,12 @@ interrupted:
 	@: > interrupted
 	@kill -INT $$$$
 EOF
-"$BIN" -c 'koshkit make interrupted' 2> "$TEST_NULL_DEVICE"
-echo "interrupt=$?"
-[ -e interrupted ] && echo interrupt-cleanup=no || echo interrupt-cleanup=yes
+if [ "${OS-}" != Windows_NT ]; then
+  "$BIN" -c 'koshkit make interrupted' 2> "$TEST_NULL_DEVICE"
+  interrupt_status=$?
+  [ "$interrupt_status" -eq 130 ] || echo "interrupt=$interrupt_status"
+  [ -e interrupted ] && echo interrupt-cleanup=no
+fi
 
 echo "--- special targets and suffix inference ---"
 cat > Makefile <<'EOF'
