@@ -30,6 +30,20 @@ koshkit sed -e '2a\after' records
 koshkit sed -e '2,3c\replaced' records
 koshkit sed 'y/ot/OT/' lines
 printf 'alpha\nBETA\n' | koshkit grep -i '^[[:alpha:]]*ta$'
+filler=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+koshkit yes "$filler" | koshkit head -n 4095 > boundary
+printf '%sneedletail\nafter needle\nplain\n' \
+  yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy >> boundary
+koshkit grep -n needle boundary
+koshkit grep -vn x boundary
+printf 'xac\nxabbc\nzzz\n' | koshkit grep 'xab*c'
+printf 'xac\nzzz\n' | koshkit grep -vn 'xab*c'
+printf 'ac\nabc\n' | koshkit grep 'ab\{0,1\}c'
+printf 'cat\ndog\nbird\n' | koshkit grep 'cat\|dog'
+printf 'abde\nabxe\n' | koshkit grep 'ab[cd]e'
+printf 'abc\nxabc\n' | koshkit grep '^abc$'
+printf 'a.b\naxb\n' | koshkit grep 'a\.b'
+printf 'ABC\nabd\n' | koshkit grep -i 'a.c'
 printf 'ab\n' | koshkit sed -E 's/a|b/x/g'
 printf 'ab\n' | koshkit sed 's/a*/x/g'
 

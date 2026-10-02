@@ -4,7 +4,8 @@
  *
  * This file implements the grep utility. It compiles the requested regular
  * expression and streams matching or inverted lines with optional ASCII case
- * folding.
+ * folding. Each read chunk is searched for a literal that every match must
+ * contain, and only the lines holding that literal reach the line matcher.
  */
 
 #include "../CLI.hpp"
@@ -101,6 +102,71 @@ static pure fn is_ascii_pattern(StringView pattern) wontthrow -> bool
   for (usize index = 0; index < pattern.length; index++)
     if (static_cast<unsigned char>(pattern[index]) > 0x7f) return false;
   return true;
+}
+
+static fn find_required_regex_literal(StringView pattern) wontthrow
+    -> StringView
+{
+  if (!is_ascii_pattern(pattern) || pattern.find_character('\0').has_value() ||
+      pattern.find_character('\n').has_value() ||
+      pattern.find_substring("\\|").has_value())
+  {
+    return {};
+  }
+
+  let required_literal = StringView{};
+  usize run_start = 0;
+  usize run_length = 0;
+  let const do_close_run = [&]() wontthrow -> void {
+    if (run_length > required_literal.length)
+      required_literal = pattern.substring_of_length(run_start, run_length);
+    run_length = 0;
+  };
+
+  usize index = 0;
+  while (index < pattern.length) {
+    let const character = pattern[index];
+    if (character == '[') break;
+
+    if (character == '\\') {
+      if (index + 1 == pattern.length) break;
+
+      let const escaped = pattern[index + 1];
+      if (escaped == '(' || escaped == ')') break;
+
+      if (escaped == '{' || escaped == '?' || escaped == '+') {
+        if (run_length != 0) run_length--;
+      }
+      do_close_run();
+      if (escaped == '{') {
+        let const interval_end = pattern.find_substring("\\}", index + 2);
+        index = interval_end.has_value() ? *interval_end + 2 : pattern.length;
+        continue;
+      }
+
+      index += 2;
+      continue;
+    }
+
+    switch (character) {
+    case '*':
+      if (run_length != 0) run_length--;
+      do_close_run();
+      break;
+    case '.':
+    case '^':
+    case '$': do_close_run(); break;
+    default:
+      if (run_length == 0) run_start = index;
+      run_length++;
+      break;
+    }
+
+    index++;
+  }
+
+  do_close_run();
+  return required_literal;
 }
 
 static fn collect_recursive_sources(const ExecContext &ec, EvalContext &cxt,
@@ -253,10 +319,7 @@ public:
         (!m_options.should_ignore_case || is_ascii_pattern(pattern));
     prepare_repeated_class_path();
     prepare_regex_prefix();
-    m_chunk_search = m_should_use_literal_search ? pattern : m_regex_prefix;
-    m_should_skip_empty_chunks =
-        !m_options.should_ignore_case && !m_options.should_invert &&
-        !m_options.should_print_line_numbers && !m_chunk_search.is_empty();
+    prepare_candidate_literal();
 
     if (m_should_use_literal_search && m_options.should_ignore_case) {
       for (usize index = 0; index < pattern.length; index++)
@@ -426,6 +489,22 @@ private:
       m_regex_prefix = pattern.substring_of_length(1, prefix_length);
   }
 
+  fn prepare_candidate_literal() wontthrow -> void
+  {
+    if (m_options.should_ignore_case) return;
+
+    if (m_should_use_literal_search) {
+      m_candidate_literal = m_options.pattern;
+    } else {
+      m_candidate_literal = find_required_regex_literal(m_options.pattern);
+      if (m_regex_prefix.length > m_candidate_literal.length)
+        m_candidate_literal = m_regex_prefix;
+    }
+
+    if (m_candidate_literal.find_character('\n').has_value())
+      m_candidate_literal = {};
+  }
+
   fn match_repeated_class_line(StringView value) throws -> bool
   {
     if (value.length <
@@ -510,33 +589,81 @@ private:
       m_source_line_numbers[source_index]++;
   }
 
-  fn skip_chunk(const SourceBatchReader::Chunk &chunk, StringView source) throws
-      -> void
+  fn skip_candidate_free_lines(usize source_index, StringView source,
+                               StringView lines) throws -> void
   {
-    let const first_newline = chunk.content.find_character('\n');
-    if (!first_newline.has_value()) {
-      m_line.append(chunk.content);
+    if (!m_options.should_invert && !m_options.should_print_line_numbers)
       return;
+
+    usize position = 0;
+    while (position < lines.length) {
+      let const line_end =
+          position + *lines.substring(position).find_character('\n');
+      if (m_options.should_invert) {
+        process_line(source_index, source,
+                     lines.substring_of_length(position, line_end - position),
+                     false);
+      }
+      if (m_options.should_print_line_numbers)
+        m_source_line_numbers[source_index]++;
+
+      position = line_end + 1;
     }
-
-    if (!m_line.is_empty()) {
-      m_line.append(chunk.content.substring_of_length(0, *first_newline));
-      process_line(chunk.source_index, source, m_line.view(),
-                   match_line(m_line.view()));
-    }
-
-    usize trailing_position = chunk.content.length;
-    while (trailing_position > *first_newline &&
-           chunk.content[trailing_position - 1] != '\n')
-      trailing_position--;
-
-    m_line.append(chunk.content.substring(trailing_position));
   }
 
-  fn split_chunk(const SourceBatchReader::Chunk &chunk,
-                 StringView source) throws -> void
+  fn scan_chunk_candidates(const SourceBatchReader::Chunk &chunk,
+                           StringView source) throws -> usize
   {
+    let const content = chunk.content;
+    let const last_newline = content.find_last_character('\n');
+    if (!last_newline.has_value()) return 0;
+
     usize position = 0;
+    if (!m_line.is_empty()) {
+      let const first_newline = *content.find_character('\n');
+      m_line.append(content.substring_of_length(0, first_newline));
+      finish_pending_line(chunk.source_index, source);
+      position = first_newline + 1;
+    }
+
+    let const lines_end = *last_newline + 1;
+    while (position < lines_end) {
+      let const hit = content.find_substring(m_candidate_literal, position);
+      if (!hit.has_value() || *hit >= lines_end) {
+        skip_candidate_free_lines(
+            chunk.source_index, source,
+            content.substring_of_length(position, lines_end - position));
+        break;
+      }
+
+      let const hit_line_offset =
+          content.substring_of_length(position, *hit - position)
+              .find_last_character('\n');
+      let const candidate_start = hit_line_offset.has_value()
+                                      ? position + *hit_line_offset + 1
+                                      : position;
+      skip_candidate_free_lines(
+          chunk.source_index, source,
+          content.substring_of_length(position, candidate_start - position));
+
+      let const candidate_end =
+          *hit + *content.substring(*hit).find_character('\n');
+      let const candidate = content.substring_of_length(
+          candidate_start, candidate_end - candidate_start);
+      process_line(chunk.source_index, source, candidate,
+                   m_should_use_literal_search || match_line(candidate));
+      if (m_options.should_print_line_numbers)
+        m_source_line_numbers[chunk.source_index]++;
+
+      position = candidate_end + 1;
+    }
+
+    return lines_end;
+  }
+
+  fn split_chunk(const SourceBatchReader::Chunk &chunk, StringView source,
+                 usize position) throws -> void
+  {
     while (position < chunk.content.length) {
       let const remaining = chunk.content.substring(position);
       let const newline_offset = remaining.find_character('\n');
@@ -568,13 +695,10 @@ private:
   fn process_chunk(const SourceBatchReader::Chunk &chunk) throws -> void
   {
     let const source = m_sources[chunk.source_index];
-    if (m_should_skip_empty_chunks &&
-        !chunk.content.find_substring(m_chunk_search).has_value())
-    {
-      skip_chunk(chunk, source);
-    } else {
-      split_chunk(chunk, source);
-    }
+    let const scanned_length = m_candidate_literal.is_empty()
+                                   ? 0
+                                   : scan_chunk_candidates(chunk, source);
+    split_chunk(chunk, source, scanned_length);
 
     if (chunk.completion != source_completion_state::Complete) return;
 
@@ -611,12 +735,11 @@ private:
   StringView m_fast_regex_prefix;
   StringView m_fast_regex_suffix;
   StringView m_regex_prefix;
-  StringView m_chunk_search;
+  StringView m_candidate_literal;
   os::compiled_regex m_compiled;
   grep_repeated_class m_fast_regex_class{grep_repeated_class::None};
   i32 m_status{0};
   bool m_should_use_literal_search{false};
-  bool m_should_skip_empty_chunks{false};
   bool m_should_print_names{false};
   bool m_has_any_match{false};
   bool m_is_regex_compiled{false};
