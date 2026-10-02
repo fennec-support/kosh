@@ -58,6 +58,10 @@ printf 'ABC\nxabcx\nabd\n' | koshkit grep -in 'A.*C$'
 printf 'ABC\nxabcx\nabd\n' | koshkit grep -i 'x.B'
 printf 'axbb\naxb\nxaxbb\n' | koshkit grep '^a.*b\{2\}$'
 printf 'axb\naxxb\n' | koshkit grep 'a.\{2\}b'
+koshkit yes 'aaa ccc' | koshkit head -c 524288 > wide
+koshkit grep 'a*c' wide | koshkit wc -l
+koshkit grep -r 'a*c' wide | koshkit wc -l
+koshkit grep 'a*c' < wide | koshkit wc -l
 printf 'ab\n' | koshkit sed -E 's/a|b/x/g'
 printf 'ab\n' | koshkit sed 's/a*/x/g'
 
