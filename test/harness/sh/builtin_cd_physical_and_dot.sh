@@ -64,3 +64,24 @@ echo "$x"
 echo a~root
 echo ~root:~root
 echo ~
+
+# A function and a signal trap defined by a dot-sourced file stay usable after
+# the enclosing file dot-sources a leaf file many times, checked against dash.
+d=$(mktemp -d)
+printf '%s\n' \
+  'defined() { echo "defined called with $1"; }' \
+  "trap 'echo trap_fired' USR1" > "$d/def.sh"
+printf '%s\n' \
+  'if [ "$1" = 1 ] || [ "$1" = 300 ]; then echo "leaf $1"; fi' > "$d/leaf.sh"
+printf '%s\n' \
+  ". \"$d/def.sh\"" \
+  'count=1' \
+  'while [ "$count" -le 300 ]; do' \
+  "  . \"$d/leaf.sh\" \"\$count\"" \
+  '  count=$((count + 1))' \
+  'done' > "$d/driver.sh"
+. "$d/driver.sh"
+defined first
+kill -USR1 $$
+defined second
+rm -rf "$d"
