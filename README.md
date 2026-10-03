@@ -74,29 +74,11 @@ its own utilities when coreutils are unavailable.
 
 ### Shell linter, formatter, and language server
 
-`kosh --lint` checks complete Bash and POSIX shell syntax and about 300
-built-in ShellCheck and native diagnostics. It reads shell source from standard
-input, `-c` command strings, or multiple files.
-
-In host files, the linter analyzes only embedded `sh`, `bash`, or `kosh`
-regions while rejecting unsupported files.
-
-ShellCheck disable comments accept diagnostic numbers and Koshka diagnostic
-names. With files, `--apply` writes non-conflicting safe fixes and reports the
-remaining diagnostics.
-
-`kosh --format` formats standard input or one named file without running it. It
-uses two-space indentation and wraps at safe token boundaries within 80
-columns. Use `--apply` to overwrite files with new formatting.
-
-The formatting style cannot be configured.
-
-`kosh --as-language-server` communicates over standard input and output. It
-provides diagnostics, quick fixes, completion, navigation, command help,
-semantic tokens, a document outline, and rename support.
-
-The language server recognizes the same embedded shell regions as the linter.
-The editor's host language service handles the surrounding syntax.
+| Flag | Description |
+| :-- | :-- |
+| `kosh --lint` | `kosh --lint` checks complete Bash and POSIX shell syntax and about 300 built-in ShellCheck and native diagnostics. It reads shell source from standard input, `-c` command strings, or multiple files.<br><br>In host files, the linter analyzes only embedded `sh`, `bash`, or `kosh` regions while rejecting unsupported files.<br><br>ShellCheck disable comments accept diagnostic numbers and Koshka diagnostic names. With files, `--apply` writes non-conflicting safe fixes and reports the remaining diagnostics. |
+| `kosh --format` | `kosh --format` formats standard input or one named file without running it. It uses two-space indentation and wraps at safe token boundaries within 80 columns. Use `--apply` to overwrite files with new formatting.<br><br>The formatting style cannot be configured. |
+| `kosh --as-language-server` | `kosh --as-language-server` communicates over standard input and output. It provides diagnostics, quick fixes, completion, navigation, command help, semantic tokens, a document outline, and rename support.<br><br>The language server recognizes the same embedded shell regions as the linter. The editor's host language service handles the surrounding syntax. |
 
 ### Interactive shell and command interpreter
 
