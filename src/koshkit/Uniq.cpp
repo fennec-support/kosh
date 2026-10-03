@@ -69,12 +69,15 @@ static fn get_uniq_key(StringView line, usize skipped_fields,
   usize position = 0;
 
   for (usize field = 0; field < skipped_fields; field++) {
-    while (position < line.length) {
-      if (line[position] != ' ' && line[position] != '\t') break;
+    while (position < line.length &&
+           (line[position] == ' ' || line[position] == '\t'))
+    {
       position++;
     }
-    while (position < line.length) {
-      if (line[position] == ' ' || line[position] == '\t') break;
+
+    while (position < line.length && line[position] != ' ' &&
+           line[position] != '\t')
+    {
       position++;
     }
   }
@@ -174,8 +177,14 @@ fn Uniq::execute(const ExecContext &ec, EvalContext &cxt,
 
   let const do_flush = [&]() throws -> void {
     if (!has_previous) return;
-    if (should_show_repeated && run_length < 2) return;
-    if (should_show_unique && run_length != 1) return;
+    if (should_show_repeated && run_length < 2) {
+      return;
+    }
+
+    if (should_show_unique && run_length != 1) {
+      return;
+    }
+
     if (should_show_count)
       output += count_prefix(run_length, cxt.scratch_allocator());
     output += previous.view();

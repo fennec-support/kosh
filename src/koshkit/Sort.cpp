@@ -12,6 +12,7 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
+#include "../Lexer.hpp"
 #include "../Utils.hpp"
 
 FLAG_LIST_DECL();
@@ -91,14 +92,9 @@ pure static fn is_sort_blank(char ch) wontthrow -> bool
   return ch == ' ' || ch == '\t';
 }
 
-pure static fn is_sort_digit(char ch) wontthrow -> bool
-{
-  return ch >= '0' && ch <= '9';
-}
-
 pure static fn is_sort_alphanumeric(char ch) wontthrow -> bool
 {
-  return is_sort_digit(ch) || (ch >= 'a' && ch <= 'z') ||
+  return lexer::is_number(ch) || (ch >= 'a' && ch <= 'z') ||
          (ch >= 'A' && ch <= 'Z');
 }
 
@@ -123,7 +119,7 @@ static fn skip_sort_non_blanks(StringView text, usize position) wontthrow
 
 static fn skip_sort_digits(StringView text, usize position) wontthrow -> usize
 {
-  while (position < text.length && is_sort_digit(text[position])) {
+  while (position < text.length && lexer::is_number(text[position])) {
     position++;
   }
 
@@ -136,7 +132,7 @@ static fn parse_sort_count(StringView text, usize &position,
   let const start = position;
   value = 0;
 
-  while (position < text.length && is_sort_digit(text[position])) {
+  while (position < text.length && lexer::is_number(text[position])) {
     value = value * 10 + static_cast<usize>(text[position] - '0');
     position++;
   }
@@ -366,19 +362,18 @@ static fn next_sort_character(StringView text, usize &position,
   while (position < text.length) {
     let ch = text[position++];
 
-    let const is_dictionary_character =
-        is_sort_alphanumeric(ch) || is_sort_blank(ch);
-    if (modifiers.is_dictionary) {
-      if (!is_dictionary_character) continue;
+    if (modifiers.is_dictionary && !is_sort_alphanumeric(ch) &&
+        !is_sort_blank(ch))
+    {
+      continue;
     }
 
-    let const is_printable = ch >= ' ' && ch <= '~';
-    if (modifiers.is_printable_only) {
-      if (!is_printable) continue;
+    if (modifiers.is_printable_only && (ch < ' ' || ch > '~')) {
+      continue;
     }
 
-    if (modifiers.is_folding) {
-      if (ch >= 'a' && ch <= 'z') ch = static_cast<char>(ch - 'a' + 'A');
+    if (modifiers.is_folding && ch >= 'a' && ch <= 'z') {
+      ch = static_cast<char>(ch - 'a' + 'A');
     }
 
     return static_cast<unsigned char>(ch);
