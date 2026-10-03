@@ -1,16 +1,14 @@
+[![Koshka is at least 3 times faster than Bash](https://github.com/toiletbril/kosh/actions/workflows/ci.yml/badge.svg)](https://github.com/toiletbril/kosh/actions/workflows/ci.yml)
+
 # koshka-oriented shell
 
-<img width=66% src="assets/logo.png"/>
+<img width=100% src="assets/card-no-bg.png"/>
 
 ---
-
-0.1.0 has been released! See the [Release Blog Post](https://fennec.support/scribbles/shell-release).
 
 **The project was renamed in 0.2.0.** `shit` became `kosh`, `shitbox` became
 `koshkit`, and all prefixes now use `kosh` or `KOSH_`. I got over the funny
 name. Thanks.
-
-[![Koshka is at least 3 times faster than Bash](https://github.com/toiletbril/kosh/actions/workflows/ci.yml/badge.svg)](https://github.com/toiletbril/kosh/actions/workflows/ci.yml)
 
 ---
 
