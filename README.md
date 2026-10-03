@@ -121,6 +121,11 @@ builtin supports `--help`. Additional builtins include the following commands.
   Optimizer Observation Platform ([poop](https://github.com/andrewrk/poop)).
 - `assimilate` provides transactional installation on an SSH target.
 
+**Koshka** also implements arbitrary precision arithmetic, including floats, in
+`calc` builtin and in the default mood.
+
+### Koshkit
+
 The `koshkit` builtin bundles a BusyBox-style set of small core utilities.
 
 - File utilities include `cp`, `mv`, `ln`, and `rm`.
@@ -128,8 +133,27 @@ The `koshkit` builtin bundles a BusyBox-style set of small core utilities.
 - Process utilities include `killall`, `pkill`, `ps`, `timeout`, and `nproc`.
 - Minimal implementations of `calc` and `make` are included.
 
-**Koshka** also implements arbitrary precision arithmetic, including floats, in
-`calc` builtin and in the default mood.
+Every implemented utility is at least POSIX compliant.
+
+The `good` and `evil` utilities are system tools of their own. Run each with
+`--help` for its options.
+
+| Utility | Description |
+| :-- | :-- |
+| `evil` | Reports what the machine is and how it is running. |
+| `evildisk` | Reports filesystem capacity and disk health data. |
+| `evilfiles` | Lists the files that running processes hold open. |
+| `evilfs` | Reports the filesystems mounted on the host. |
+| `evilio` | Reports system and process I/O activity. |
+| `eviliso` | Reports namespaces, cgroups, sessions, remote connections, container runtimes, containers, and Kubernetes. |
+| `evillogs` | Reports core dumps and system logs. |
+| `evilnet` | Reports the addresses assigned to each interface. |
+| `evilps` | Shows running processes as a tree. |
+| `evilss` | Reports visible network sockets. |
+| `goodcore` | Captures or packages a core dump with its executable, mapped libraries, and host metadata. |
+| `goodfsw` | Reports changes under the paths it watches. |
+| `goodnode` | Reports inode metadata and a CRC32C checksum. |
+| `goodstat` | Presents file metadata as a readable report. |
 
 # Development
 
