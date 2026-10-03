@@ -23,7 +23,8 @@ RUN apk add \
     libxml2-dev \
     openssl-dev \
     bsd-compat-headers \
-    fts-dev
+    fts-dev \
+    zig
 
 ARG MAC_SDK_URL="https://github.com/joseluisq/macosx-sdks/releases/download/11.3/MacOSX11.3.sdk.tar.xz"
 
@@ -35,7 +36,7 @@ RUN git clone --depth=1 'https://github.com/tpoechtrager/osxcross' '/opt/osxcros
 
 ENV PATH="/opt/osxcross/target/bin:$PATH"
 
-ENV KOSH_TARGETS="x86_64-linux-musl aarch64-apple-darwin"
+ENV KOSH_TARGETS="x86_64-linux-musl aarch64-linux-musl aarch64-apple-darwin"
 
 RUN git config --global --add safe.directory '*'
 

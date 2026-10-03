@@ -43,19 +43,32 @@ ifeq ($(TARGET), Windows_NT)
 REGEX_SOURCES := regcomp regerror regexec tre-mem
 endif
 
+# A Linux target is cross-compiled with Zig and musl from another host, or from
+# a Linux host when ARCH names a different processor.
 ifeq ($(TARGET), Linux)
-ifneq ($(HOST_OPERATING_SYSTEM), Linux)
-ifneq ($(MODE), rel)
-$(error Linux cross-compilation only supports MODE=rel)
+HOST_MACHINE := $(shell uname -m)
+ifneq ($(filter arm64 aarch64,$(HOST_MACHINE)),)
+HOST_MACHINE := aarch64
 endif
 ifneq ($(filter arm64 aarch64,$(ARCH)),)
 LINUX_TARGET_ARCHITECTURE := aarch64
-else ifeq ($(ARCH), x86_64)
+else ifneq ($(filter x86_64 amd64,$(ARCH)),)
 LINUX_TARGET_ARCHITECTURE := x86_64
-else
+endif
+ifneq ($(HOST_OPERATING_SYSTEM), Linux)
+IS_LINUX_CROSS_COMPILATION := 1
+else ifneq ($(origin ARCH), file)
+ifneq ($(LINUX_TARGET_ARCHITECTURE), $(HOST_MACHINE))
+IS_LINUX_CROSS_COMPILATION := 1
+endif
+endif
+ifeq ($(IS_LINUX_CROSS_COMPILATION), 1)
+ifneq ($(MODE), rel)
+$(error Linux cross-compilation only supports MODE=rel)
+endif
+ifeq ($(LINUX_TARGET_ARCHITECTURE),)
 $(error Linux cross-compilation does not support ARCH='$(ARCH)')
 endif
-IS_LINUX_CROSS_COMPILATION := 1
 endif
 endif
 
@@ -115,10 +128,8 @@ IS_WINDOWS_GNU_ABI := $(or $(findstring mingw,$(WINDOWS_COMPILER_TARGET)),\
 	$(findstring windows-gnu,$(WINDOWS_COMPILER_TARGET)))
 endif
 
-ifeq ($(TARGET), Linux)
-ifneq ($(HOST_OPERATING_SYSTEM), Linux)
+ifeq ($(IS_LINUX_CROSS_COMPILATION), 1)
 CXX := zig c++ -target $(LINUX_TARGET_ARCHITECTURE)-linux-musl
-endif
 endif
 
 ifeq ($(TARGET), Darwin)
@@ -157,6 +168,8 @@ else ifeq ($(TARGET), Darwin)
 LIBC_INFO := Apple libSystem
 else ifeq ($(IS_ANDROID_HOST), 1)
 LIBC_INFO := Android bionic
+else ifeq ($(IS_LINUX_CROSS_COMPILATION), 1)
+LIBC_INFO := zig musl libc++
 else ifneq ($(TARGET), $(HOST_OPERATING_SYSTEM))
 LIBC_INFO := zig musl libc++
 else

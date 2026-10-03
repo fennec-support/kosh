@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   resolve:
-    name: Resolve release commit and verify CI
+    name: Resolve release commit
     runs-on: ubuntu-24.04
     permissions:
       actions: read
@@ -73,17 +73,24 @@ jobs:
       - name: Pull the cross toolchain image
         run: docker pull "$IMAGE"
 
-      - name: Cross-compile the three release binaries
+      - name: Cross-compile release binaries
         run: |
           docker run --rm -v "$PWD:/src" -w /src -e "VERSION=$VERSION" "$IMAGE" \
             sh -euc '
               mkdir -p dist
               make -C src MODE=rel TARGET=Linux ARCH=x86_64
               install -m 755 kosh "dist/kosh-linux-amd64-$VERSION"
+              make -C src MODE=rel TARGET=Linux ARCH=aarch64
+              install -m 755 kosh "dist/kosh-linux-aarch64-$VERSION"
+              readelf -h "dist/kosh-linux-aarch64-$VERSION" |
+                grep -Eq "Machine:[[:space:]]+AArch64"
               make -C src MODE=rel TARGET=Windows_NT ARCH=x86_64
               install -m 755 kosh.exe "dist/kosh-win32-amd64-$VERSION.exe"
               make -C src MODE=rel TARGET=Darwin ARCH=aarch64
               install -m 755 kosh "dist/kosh-darwin-aarch64-$VERSION"
+              llvm-strip dist/kosh-*
+              llvm-objdump --macho --private-headers \
+                "dist/kosh-darwin-aarch64-$VERSION" | grep -q LC_CODE_SIGNATURE
             '
 
       - name: Upload the binaries as workflow artifacts
@@ -94,42 +101,11 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  build-linux-arm64:
-    name: Release / Build Linux arm64
-    needs: resolve
-    runs-on: ubuntu-24.04-arm
-    permissions:
-      contents: read
-    env:
-      VERSION: ${{ github.event.inputs.tag || github.ref_name }}
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          submodules: recursive
-          ref: ${{ needs.resolve.outputs.sha }}
-
-      - name: Build the native Linux arm64 binary
-        run: |
-          make CXX=g++ LINKER_SELECTION_FLAG= MODE=rel kosh
-          mkdir -p dist
-          install -m 755 kosh "dist/kosh-linux-aarch64-$VERSION"
-          readelf -h "dist/kosh-linux-aarch64-$VERSION" |
-            grep -Eq 'Machine:[[:space:]]+AArch64'
-
-      - name: Upload the Linux arm64 binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-${{ env.VERSION }}-linux-arm64
-          path: dist/*
-          if-no-files-found: error
-          retention-days: 1
-
   publish:
     name: Release / Attach binaries
     needs:
       - resolve
       - build
-      - build-linux-arm64
     runs-on: ubuntu-24.04
     permissions:
       contents: write
