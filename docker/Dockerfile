@@ -37,4 +37,4 @@ RUN set -eu; \
       esac; \
     done
 
-CMD ["/usr/bin/kosh"]
+CMD ["/usr/bin/kosh", "-L", "bash", "-Il"]

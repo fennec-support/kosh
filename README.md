@@ -19,7 +19,8 @@
 
 ## Install
 
-**Koshka** supports `amd64` Linux and Windows, and `aarch64` macOS.
+**Koshka** officially supports `amd64` Linux and Windows, and `aarch64` macOS
+and Linux.
 
 ```sh
 # on Linux, macOS, or any system with a POSIX shell:
