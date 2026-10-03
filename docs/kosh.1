@@ -1989,9 +1989,9 @@ and
 .B mkdir
 Directories are created with
 .B \-p
-and an octal
+and an octal or symbolic
 .B \-m
-mode.
+mode. A symbolic mode starts from 777 and follows the chmod grammar.
 .TP
 .B mknod
 FIFO, character, and block special files are created with POSIX type operands

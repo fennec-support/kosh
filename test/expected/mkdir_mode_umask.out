@@ -3,3 +3,10 @@
 == -p -m 777 names the deep directory exactly, parents stay umask-narrowed:
 named (want 777): 777
 parent (want 755): 755
+== -m u=rwx,go=rx is symbolic, applied to 777 (want 755):
+755
+== -m a-w removes write from 777 (want 555):
+555
+== an invalid symbolic mode is rejected (want status 1):
+status=1
+not created

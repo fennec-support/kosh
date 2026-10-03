@@ -13,6 +13,7 @@
 #include "../Utils.hpp"
 #include "../base/Path.hpp"
 #include "../base/Trace.hpp"
+#include "Mode.hpp"
 
 FLAG_LIST_DECL();
 
@@ -24,7 +25,8 @@ FLAG(MKDIR_PARENTS, Bool, 'p', "",
      "Create the missing parent directories and ignore one that already "
      "exists.");
 FLAG(MKDIR_MODE, String, 'm', "",
-     "Set the file mode of the named directory, an octal operand.");
+     "Set the file mode of the named directory, an octal or symbolic "
+     "operand.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Mkdir);
@@ -85,21 +87,19 @@ fn Mkdir::execute(const ExecContext &ec, EvalContext &cxt,
 
   u32 named_mode = 0777;
   if (FLAG_MKDIR_MODE.is_set()) {
-    let const parsed = utils::parse_integer_in_base(FLAG_MKDIR_MODE.value(),
-                                                    nullptr, int_base::octal);
-    /* parse_integer_in_base accepts a sign and saturates on overflow without an
-       error, so a sign-prefixed or oversized operand parses cleanly. The range
-       check rejects it rather than truncating to an over-permissive mode. */
-    if (parsed.is_error() || parsed.value() < 0 || parsed.value() > 07777) {
+    let const parsed = parse_file_mode(FLAG_MKDIR_MODE.value(), 0777,
+                                       os::get_file_creation_mask(),
+                                       file_kind_mode::Directory);
+    if (!parsed.has_value()) {
       throw ErrorWithDetails{
           "invalid mode '" +
               String{cxt.scratch_allocator(), FLAG_MKDIR_MODE.value()}
               + "'",
-          "A mode is an octal number such as 0755"
+          "A mode is octal such as 0755 or symbolic such as u=rwx,go=rx"
       };
     }
 
-    named_mode = static_cast<u32>(parsed.value());
+    named_mode = *parsed;
   }
 
   constexpr u32 owner_write_and_search_bits = 0300;
