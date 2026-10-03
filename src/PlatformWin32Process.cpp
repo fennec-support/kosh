@@ -1419,6 +1419,7 @@ fn launch_compound_stage(const compound_stage_options &options) throws
 
 wontreturn fn exit_process_immediately(i32 status) wontthrow -> void
 {
+  restore_console_codepages();
   ExitProcess(static_cast<UINT>(status));
   unreachable("ExitProcess returned while exiting immediately");
 }
@@ -1438,6 +1439,7 @@ fn replace_process(ExecContext &&ec) -> void
   }
 
   i32 status = wait_and_monitor_process(child);
+  restore_console_codepages();
   ExitProcess(static_cast<UINT>(status));
   unreachable("ExitProcess returned after process replacement");
 }
