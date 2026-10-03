@@ -140,13 +140,11 @@ jobs:
           pattern: release-${{ env.VERSION }}-*
           merge-multiple: true
 
-      - name: Add the manual pages, completion and install scripts
+      - name: Add the manual pages and completion
         run: |
           zstd -19 -q -o dist/kosh.1.zst docs/kosh.1
           zstd -19 -q -o dist/kosh.5.zst docs/kosh.5
           install -m 644 completions/kosh.bash dist/kosh.bash
-          install -m 755 scripts/install.sh dist/install.sh
-          install -m 644 scripts/install.ps1 dist/install.ps1
 
       - name: Write the checksum list
         working-directory: dist
