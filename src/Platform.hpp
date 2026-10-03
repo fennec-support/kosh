@@ -70,6 +70,8 @@
 #include <net/if.h>
 #include <net/if_mib.h>
 #include <net/route.h>
+#include <sys/socketvar.h>
+
 #include <netinet/tcp_var.h>
 #include <sys/proc.h>
 #include <sys/proc_info.h>
