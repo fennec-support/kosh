@@ -8,6 +8,7 @@
  * analysis.
  */
 
+#include "../Lexer.hpp"
 #include "../ParserFormats.hpp"
 
 namespace koshka {
@@ -83,12 +84,6 @@ struct docker_heredoc
   bool is_shell_body;
 };
 
-static fn is_heredoc_delimiter_byte(char byte) wontthrow -> bool
-{
-  return (byte >= 'A' && byte <= 'Z') || (byte >= 'a' && byte <= 'z') ||
-         (byte >= '0' && byte <= '9') || byte == '_';
-}
-
 static fn read_docker_heredoc(StringView command) wontthrow
     -> Maybe<docker_heredoc>
 {
@@ -109,7 +104,7 @@ static fn read_docker_heredoc(StringView command) wontthrow
 
   let const delimiter_start = position;
   while (position < command.length &&
-         is_heredoc_delimiter_byte(command[position]))
+         lexer::is_variable_name(command[position]))
   {
     position++;
   }
@@ -174,9 +169,10 @@ fn parse_dockerfile_format(const parser_format_input &input,
         line[content_position] == '[')
       continue;
 
-    let const heredoc = instruction == docker_instruction_kind::Run
-                            ? read_docker_heredoc(line.substring(content_position))
-                            : None;
+    let const heredoc =
+        instruction == docker_instruction_kind::Run
+            ? read_docker_heredoc(line.substring(content_position))
+            : None;
     if (heredoc.has_value()) {
       let const body_start = position;
       usize body_end = position;

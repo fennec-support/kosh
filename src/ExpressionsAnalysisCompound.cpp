@@ -358,7 +358,9 @@ fn CompoundList::always_exits(const AnalysisContext &actx) const wontthrow
     if (node->is_negated()) continue;
 
     let const command = node->command();
-    if (command != nullptr && command->always_exits(actx)) return true;
+    if (command != nullptr && command->always_exits(actx)) {
+      return true;
+    }
   }
 
   return false;

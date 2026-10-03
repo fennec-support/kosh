@@ -1830,7 +1830,9 @@ fn SimpleCommand::as_simple_command() const wontthrow -> const SimpleCommand *
 fn SimpleCommand::always_exits(const AnalysisContext &actx) const wontthrow
     -> bool
 {
-  if (m_args.is_empty() || is_async()) return false;
+  if (m_args.is_empty() || is_async()) {
+    return false;
+  }
 
   let const name = m_args[0]->raw_view();
   if (!name.has_value()) return false;

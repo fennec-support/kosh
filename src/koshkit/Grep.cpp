@@ -2,9 +2,21 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the grep utility. It compiles each requested pattern as
- * a basic expression, an extended expression, or a fixed string, and streams
- * selected lines with optional ASCII case folding and whole-line matching.
+ * This file implements the grep utility. Patterns come from the first operand,
+ * from each -e value, and from each -f file, and a newline inside any of them
+ * starts another pattern. Each pattern compiles as a basic expression, an
+ * extended expression, or a fixed string, and a line is selected when any
+ * pattern matches it, or matches it entirely under -x. Selected lines are
+ * printed, counted per file, listed by file name, or end the search under -q.
+ * With a single pattern, each read chunk is searched for a literal that every
+ * match must contain, and only the lines holding that literal reach the line
+ * matcher. A pattern made only of literal runs, single-byte wildcards, ".*"
+ * gaps, and optional edge anchors compiles to a segment list that decides each
+ * line without the system regex engine. Every other pattern uses that engine.
+ * In a UTF-8 locale the pattern is compiled twice: a byte copy decides ASCII
+ * lines and a copy built under a UTF-8 character type decides every other line
+ * so that "." and bracket classes match whole characters. A segment list with
+ * single-character wildcards decides ASCII lines only.
  */
 
 #include "../CLI.hpp"
@@ -397,29 +409,6 @@ struct grep_pattern_span
   bool is_fixed{false};
 };
 
-struct grep_regex
-{
-  os::compiled_regex compiled;
-  bool is_compiled{false};
-
-  grep_regex() = default;
-
-  grep_regex(grep_regex &&other) noexcept
-      : compiled(other.compiled), is_compiled(other.is_compiled)
-  {
-    other.is_compiled = false;
-  }
-
-  ~grep_regex()
-  {
-    if (is_compiled) os::free_regex(compiled);
-  }
-
-  grep_regex(const grep_regex &) = delete;
-  grep_regex &operator=(const grep_regex &) = delete;
-  grep_regex &operator=(grep_regex &&) = delete;
-};
-
 class GrepMatcher
 {
 public:
@@ -484,37 +473,37 @@ public:
 
   pure fn is_utf8_regex_compiled() const wontthrow -> bool
   {
-    return m_utf8_regex.is_compiled;
+    return m_utf8_regex.has_value();
   }
 
   fn match_regex(StringView value) throws -> bool
   {
-    let &selected = m_utf8_regex.is_compiled &&
+    let &selected = m_utf8_regex.has_value() &&
                             (!m_is_ascii_pattern || !is_ascii_line(value))
-                        ? m_utf8_regex
-                        : m_regex;
+                        ? *m_utf8_regex
+                        : *m_regex;
     if (!m_options.is_whole_line)
-      return os::regex_matches_null_terminated(selected.compiled, value);
+      return os::regex_matches_null_terminated(*selected.get(), value);
 
     let const report = os::execute_regex(
-        selected.compiled, os::regex_execution_options{value, m_allocator});
+        *selected.get(), os::regex_execution_options{value, m_allocator});
     return report.result == os::regex_match_result::Matched &&
            report.spans[0].start == 0 &&
            static_cast<usize>(report.spans[0].end) == value.length;
   }
 
 private:
-  fn compile_regex_into(grep_regex &target,
+  fn compile_regex_into(Maybe<CompiledRegex> &target,
                         os::case_sensitivity sensitivity) throws -> bool
   {
+    os::compiled_regex compiled{};
     let const result =
         m_options.is_extended
-            ? os::compile_regex(m_options.pattern, target.compiled, sensitivity)
-            : os::compile_basic_regex(m_options.pattern, target.compiled,
-                                      sensitivity);
+            ? os::compile_regex(m_options.pattern, compiled, sensitivity)
+            : os::compile_basic_regex(m_options.pattern, compiled, sensitivity);
     if (result != os::regex_compile_result::Ok) return false;
 
-    target.is_compiled = true;
+    target = CompiledRegex{compiled};
     return true;
   }
 
@@ -878,8 +867,8 @@ private:
   StringView m_fast_regex_suffix;
   StringView m_regex_prefix;
   StringView m_candidate_literal;
-  grep_regex m_regex;
-  grep_regex m_utf8_regex;
+  Maybe<CompiledRegex> m_regex;
+  Maybe<CompiledRegex> m_utf8_regex;
   grep_repeated_class m_fast_regex_class{grep_repeated_class::None};
   bool m_should_use_literal_search{false};
   bool m_has_fast_matcher{false};

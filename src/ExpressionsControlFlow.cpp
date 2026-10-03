@@ -318,9 +318,10 @@ fn IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     actx.conditional_branch_depth--;
     actx.should_silence_unresolved_commands = was_silenced;
 
-    if (!is_dead_branch && body->always_exits(actx)) {
-      did_skip_exiting_branch = true;
-    } else if (!is_dead_branch) {
+    let const is_exiting_branch = !is_dead_branch && body->always_exits(actx);
+    if (is_exiting_branch) did_skip_exiting_branch = true;
+
+    if (!is_dead_branch && !is_exiting_branch) {
       if (!has_merged_occurrence_exit) {
         merged_occurrence_assignments =
             steal(actx.variable_occurrence_assignments);
@@ -359,11 +360,11 @@ fn IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
   actx.should_silence_unresolved_commands = was_else_silenced;
   actx.tested_command_names = steal(saved_tested_command_names);
 
-  let const else_exits =
+  let const is_exiting_else =
       m_otherwise != nullptr && m_otherwise->always_exits(actx);
-  if (else_exits) did_skip_exiting_branch = true;
+  if (is_exiting_else) did_skip_exiting_branch = true;
 
-  if (!else_is_dead && !else_exits) {
+  if (!else_is_dead && !is_exiting_else) {
     if (!has_merged_occurrence_exit) {
       merged_occurrence_assignments =
           steal(actx.variable_occurrence_assignments);
@@ -1312,8 +1313,8 @@ fn CaseClause::analyze(AnalysisContext &actx,
     actx.conditional_branch_depth--;
 
     let const has_later_item = i + 1 < m_items.count();
-    let const does_item_exit = item.body->always_exits(actx);
-    if (!does_item_exit &&
+    let const is_exiting_item = item.body->always_exits(actx);
+    if (!is_exiting_item &&
         (item.terminator != case_terminator::FallThrough || !has_later_item))
     {
       if (!has_merged_occurrence_exit) {
@@ -1331,7 +1332,7 @@ fn CaseClause::analyze(AnalysisContext &actx,
       }
     }
 
-    has_continued_occurrence_path = !does_item_exit && has_later_item &&
+    has_continued_occurrence_path = !is_exiting_item && has_later_item &&
                                     item.terminator != case_terminator::Break;
     if (has_continued_occurrence_path) {
       continued_occurrence_assignments =
