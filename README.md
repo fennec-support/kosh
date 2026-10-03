@@ -78,7 +78,7 @@ its own utilities when coreutils are unavailable.
 | :-- | :-- |
 | `kosh --lint` | `kosh --lint` checks complete Bash and POSIX shell syntax and about 300 built-in ShellCheck and native diagnostics. It reads shell source from standard input, `-c` command strings, or multiple files.<br><br>In host files, the linter analyzes only embedded `sh`, `bash`, or `kosh` regions while rejecting unsupported files.<br><br>ShellCheck disable comments accept diagnostic numbers and Koshka diagnostic names. With files, `--apply` writes non-conflicting safe fixes and reports the remaining diagnostics. |
 | `kosh --format` | `kosh --format` formats standard input or one named file without running it. It uses two-space indentation and wraps at safe token boundaries within 80 columns. Use `--apply` to overwrite files with new formatting.<br><br>The formatting style cannot be configured. |
-| `kosh --as-language-server` | `kosh --as-language-server` communicates over standard input and output. It provides diagnostics, quick fixes, completion, navigation, command help, semantic tokens, a document outline, and rename support.<br><br>The language server recognizes the same embedded shell regions as the linter. The editor's host language service handles the surrounding syntax. |
+| `kosh --as-language-server` | `kosh --as-language-server` communicates over standard input and output. It provides diagnostics, quick fixes, completion, navigation, command help, semantic tokens, a document outline, and rename support.<br><br>The language server recognizes the same embedded shell regions as the linter. The editor's host language service handles the surrounding syntax.<br><br>To set up the language server in your editor, see [Install](#install). |
 
 ### Interactive shell and command interpreter
 
@@ -97,26 +97,13 @@ optimization enabled. The other moods are `bash`, `bash-posix`, and `sh`. The
 
 Before running a command, **Koshka** analyzes and optimizes the complete script.
 
-The `--mood` option, or `-M`, selects `kosh`, `bash`, `bash-posix`, or `sh`.
-The default is `kosh`. A binary symlinked as `sh`, `dash`, or `bash` selects
-the matching mood and disables diagnostics. `set --mood` changes the mood at
-runtime. In the default mood, `-W` retains the default severities, `-WW`
-demotes lenient errors to warnings, and `-WWW` also demotes strict errors. In
-other moods, `-W` enables strict warnings, `-WW` also enables lenient warnings,
-and `-WWW` also enables annoying warnings.
-
-The `-I` option enables mimicry. **Koshka** detects `sh`, `dash`, and `bash`
-shebangs and runs each script in the matching mood. The current diagnostics
-setting is preserved.
-
-The `--init-moods` option, or `-L`, accepts a comma-separated list of moods whose
-startup files will be used. Its default value is the selected mood.
-
-The `KOSH_FLAGS` environment variable sets default flags. Command-line flags
-override them.
-
-When `KOSH_FLAGS` or the command line contains an invalid flag or argument, a
-login shell skips its startup files and opens a rescue session.
+| Flag | Description |
+| :-- | :-- |
+| `--mood`, `-M` | The `--mood` option, or `-M`, selects `kosh`, `bash`, `bash-posix`, or `sh`. The default is `kosh`. A binary symlinked as `sh`, `dash`, or `bash` selects the matching mood and disables diagnostics. `set --mood` changes the mood at runtime. |
+| `-W`, `-WW`, `-WWW` | In the default mood, `-W` retains the default severities, `-WW` demotes lenient errors to warnings, and `-WWW` also demotes strict errors. In other moods, `-W` enables strict warnings, `-WW` also enables lenient warnings, and `-WWW` also enables annoying warnings. |
+| `-I` | The `-I` option enables mimicry. **Koshka** detects `sh`, `dash`, and `bash` shebangs and runs each script in the matching mood. The current diagnostics setting is preserved. |
+| `--init-moods`, `-L` | The `--init-moods` option, or `-L`, accepts a comma-separated list of moods whose startup files will be used. Its default value is the selected mood. |
+| `KOSH_FLAGS` | The `KOSH_FLAGS` environment variable sets default flags. Command-line flags override them.<br><br>When `KOSH_FLAGS` or the command line contains an invalid flag or argument, a login shell skips its startup files and opens a rescue session. |
 
 ### Additional furballs
 
