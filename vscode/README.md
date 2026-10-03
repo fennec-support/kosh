@@ -34,17 +34,18 @@ Add these to `settings.json`. The values shown are the defaults.
 
 ```jsonc
 {
-  // Run the Koshka language server.
+  // The Koshka language server is started when this is true.
   "kosh.enable": true,
 
-  // Name or absolute path of the kosh binary. A bare name is searched in PATH.
+  // This is the name or the absolute path of the kosh binary. A bare name is
+  // searched in PATH.
   "kosh.path": "kosh",
 
-  // Extra arguments placed before --as-language-server.
+  // These arguments are placed before --as-language-server.
   "kosh.arguments": [],
 
-  // Trace the messages exchanged with the server: "off", "messages", or
-  // "verbose".
+  // The messages exchanged with the server are traced at this level. The
+  // levels are "off", "messages", and "verbose".
   "kosh.trace.server": "off"
 }
 ```

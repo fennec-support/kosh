@@ -4,6 +4,19 @@
 
 <img align="center" width=100% src="assets/card-no-bg.png"/>
 
+## Contents
+
+- [Install](#install)
+- [Quick look](#quick-look)
+  - [How to use it](#how-to-use-it)
+  - [Shell linter, formatter, and language server](#shell-linter-formatter-and-language-server)
+  - [Interactive shell and command interpreter](#interactive-shell-and-command-interpreter)
+  - [Additional furballs](#additional-furballs)
+  - [Koshkit](#koshkit)
+- [Development](#development)
+  - [Prerequisites](#prerequisites)
+  - [Build](#build)
+
 ## Install
 
 **Koshka** supports `amd64` Linux and Windows, and `aarch64` macOS.
@@ -135,8 +148,8 @@ The `koshkit` builtin bundles a BusyBox-style set of small core utilities.
 
 Every implemented utility is at least POSIX compliant.
 
-The `good` and `evil` utilities are system tools of their own. Run each with
-`--help` for its options.
+The `good` and `evil` utilities are listed below. The options of each utility
+are described by its `--help`.
 
 | Utility | Description |
 | :-- | :-- |

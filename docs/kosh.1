@@ -803,12 +803,12 @@ leading space, as in ${v: \-3}. Without the space, ${v:\-3} is the default-value
 form. A negative length excludes that many characters from the end.
 .PP
 The form ${v/pat/rep} replaces the first match. The form ${v//pat/rep} replaces
-every match. The anchors /# and /% select the start and end. While the
+every match. The anchors /# and /% select the start and end. The
 .B patsub_replacement
-shopt option is enabled, which is the default, an unquoted ampersand in the
-replacement denotes the matched text, including one that comes from an unquoted
-expansion. A quoted ampersand and the form \e& denote a literal ampersand.
-Disabling the option makes every ampersand literal.
+shopt option is enabled by default. While it is enabled, an unquoted ampersand
+in the replacement denotes the matched text, and so does an ampersand that comes
+from an unquoted expansion. A quoted ampersand and the form \e& denote a literal
+ampersand. When the option is disabled, every ampersand is literal.
 .PP
 The forms ${v^^}, ${v,,}, ${v^}, and ${v,} change case with an optional pattern.
 The transforms ${v@Q}, ${v@E}, ${v@A}, ${v@P}, and ${v@a} produce a quoted
@@ -873,39 +873,44 @@ A nonempty
 .B GLOBIGNORE
 holds colon\-separated patterns. A pathname expansion result that matches one
 pattern is removed, and a glob whose results are all removed follows the
-nonmatching rules. A pattern is matched against the whole result, where a star
-crosses a slash only at the end of the pattern. The names . and .. are never
-results while GLOBIGNORE is nonempty. Assigning a nonempty value enables the
+nonmatching rules. A pattern is matched against the whole result. A star in a
+pattern crosses a slash only at the end of the pattern. The names . and .. are
+never results while GLOBIGNORE is nonempty. A nonempty assignment enables the
 .B dotglob
-option, an empty assignment leaves it unchanged, and unsetting GLOBIGNORE
-disables it. A value imported from the environment filters nothing and leaves
+option, an empty assignment leaves it unchanged, and an unset of GLOBIGNORE
+disables it. A value imported from the environment filters nothing, and
 .B dotglob
-alone until the shell assigns GLOBIGNORE. The
+is left alone until the shell assigns GLOBIGNORE. The
 .B extglob
 and
 .B nocaseglob
 options apply to the patterns.
 .PP
-The character locale decides how much a ? matches. The first nonempty value of
-LC_ALL, LC_CTYPE, and LANG selects it, read from the shell variables at the
-time of each match, so assignment, unset, export, and a prefix assignment all
-apply. A value whose codeset after the dot is UTF\-8 or utf8, in any letter
-case, selects UTF\-8 when the platform can select that locale. Any other value,
-a UTF\-8 name the platform cannot select, an empty value, and no value select
-bytes, the way bash falls back to the C locale. In UTF\-8, a ? and each step of
-a * consume one whole valid UTF\-8 sequence, and an invalid byte counts as one
-character. In bytes, each consumes one byte. In UTF\-8, ${#v} and
-${v:offset:length} count characters, ${v^}, ${v,}, and ${v~} change the case of
-multibyte letters, and a ${v/pat/rep} whose pattern holds an invalid UTF\-8
-sequence matches by byte. The rule applies to pathname expansion, case, [[ == ]], ${v#pat},
-${v%pat}, ${v/pat/rep}, ${v^pat}, and compgen \-X. In UTF\-8, a bracket
-expression consumes one whole character, its members and range endpoints are
-whole characters, a range compares code points, and a negated bracket still
-consumes one character. A POSIX class such as [:alpha:] tests a non\-ASCII
-character against the platform Unicode class and matches nothing where the
-platform has none. In bytes, a bracket compares one byte. An extglob group
-splits the subject only at character boundaries in UTF\-8, and its inner
-patterns follow the same rule. Completion always matches by UTF\-8 sequence.
+The character locale decides how much a ? matches. The locale is selected by
+the first nonempty value of LC_ALL, LC_CTYPE, and LANG. These variables are
+read from the shell at the time of each match, and an assignment, an unset, an
+export, and a prefix assignment all take effect. A value whose codeset after
+the dot is UTF\-8 or utf8, in any letter case, selects UTF\-8 when the platform
+can select that locale. Any other value selects bytes, and so do a UTF\-8 name
+that the platform cannot select, an empty value, and no value. This is the way
+bash falls back to the C locale.
+.PP
+In UTF\-8, a ? and each step of a * consume one whole valid UTF\-8 sequence,
+and an invalid byte counts as one character. In bytes, each of them consumes
+one byte. In UTF\-8, ${#v} and ${v:offset:length} count characters, ${v^},
+${v,}, and ${v~} change the case of multibyte letters, and a ${v/pat/rep} whose
+pattern holds an invalid UTF\-8 sequence matches by byte. The rule applies to
+pathname expansion, case, [[ == ]], ${v#pat}, ${v%pat}, ${v/pat/rep},
+${v^pat}, and compgen \-X.
+.PP
+In UTF\-8, a bracket expression consumes one whole character, its members and
+range endpoints are whole characters, a range compares code points, and a
+negated bracket still consumes one character. A POSIX class such as [:alpha:]
+tests a non\-ASCII character against the Unicode class of the platform, and it
+matches nothing on a platform that has no such class. In bytes, a bracket
+compares one byte. In UTF\-8, an extglob group splits the subject only at
+character boundaries, and its inner patterns follow the same rule. Completion
+always matches by UTF\-8 sequence.
 .SH REDIRECTIONS
 The operators &> and &>> redirect standard output and standard error to one
 file. The operator |& pipes both streams. The operator <<< supplies a
@@ -1729,13 +1734,13 @@ and
 options ignore case, invert matches, recurse into directories, show line
 numbers, and suppress file-name prefixes. The combined
 .B \-rnh
-form is accepted. In a UTF-8 locale, chosen from the first nonempty of
+form is accepted. The locale is chosen from the first nonempty value of
 .BR LC_ALL ,
 .BR LC_CTYPE ,
 and
-.BR LANG ,
-a dot and a bracket expression match one whole character. In every other
-locale they match one byte.
+.BR LANG .
+In a UTF-8 locale, a dot and a bracket expression match one whole character.
+In every other locale, they match one byte.
 .TP
 .B head
 The first ten lines are printed by default. The
@@ -1754,10 +1759,10 @@ option selects a byte count. The
 .BR \-\-quiet ,
 and
 .B \-\-silent
-options never print file name headers and
+options never print file name headers, and the
 .BR \-v ,
 .B \-\-verbose
-always prints them. The
+options always print them. The
 .B \-f
 option keeps each regular file open after the initial output and prints the
 bytes appended to it, with a header whenever the output switches to another
@@ -1775,11 +1780,12 @@ and read again from its start. Standard input is followed only when it is a
 regular file, and a pipe is printed once. The
 .BR \-s ,
 .B \-\-sleep\-interval
-option sets the longest wait between checks in seconds, one by default, and the
+option sets the longest wait between checks in seconds, and the wait is one
+second by default. The
 .BI \-\-pid= pid
-option ends the follow after that process exits. Linux and macOS wake on file
-changes, and other targets check every interval. A follow ends with status 130
-on interrupt.
+option ends the follow after that process exits. On Linux and macOS, the
+follow is woken by file changes, and on other targets, the files are checked
+every interval. An interrupted follow ends with status 130.
 .TP
 .B killall
 Processes are signaled by exact name. The signal is selected and the signal
@@ -2699,7 +2705,8 @@ For a working directory inside a repository, the value contains the branch
 name. A detached HEAD produces a short commit hash. The value is empty outside a
 repository. An assignment overrides detection. The search for a repository
 moves up from the working directory and never enters a directory listed in
-GIT_CEILING_DIRECTORIES, which holds absolute paths separated the way PATH is.
+GIT_CEILING_DIRECTORIES. That variable holds absolute paths, separated the way
+PATH is.
 .TP
 .BR KOSH_GIT_AHEAD ", " KOSH_GIT_BEHIND
 The values contain the unpushed and unpulled commit counts relative to the
