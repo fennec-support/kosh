@@ -23,6 +23,13 @@ Binaries and their checksums used are on the
 [Releases](https://github.com/toiletbril/kosh/releases) page. To build from
 source, see [Development](#development).
 
+To set up the universal language server and formatter in an editor, follow its
+guide:
+
+- [VS Code](vscode/README.md)
+- [Zed](zed/README.md)
+- [Neovim](nvim/lsp.lua)
+
 ## Quick look
 
 **Koshka** is the Russian word for a cat.
@@ -53,7 +60,7 @@ mistakes in Bash code, including the following:
 | :-: | 
 | ![](assets/lsp-demo.gif) |
 
-### How to use
+### How to use it
 
 `kosh` is the **Koshka** binary.
 
