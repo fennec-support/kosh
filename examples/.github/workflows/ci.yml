@@ -1,0 +1,9 @@
+name: Example
+on: push
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          archive=$(find dist -name '*.tar.gz' | head -n 1)

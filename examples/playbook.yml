@@ -1,0 +1,4 @@
+- hosts: all
+  tasks:
+    - name: Rotate logs
+      ansible.builtin.shell: rm -rf $LOG_DIR/*.log

@@ -45,6 +45,10 @@ guide:
 
 ## Quick look
 
+| Koshka has the best interactive tab selector |
+| :-: |
+| ![](assets/selector-demo.gif) |
+
 **Koshka** is the Russian word for a cat.
 
 **Koshka** is an absurdly fast and tiny cross-platform interpreter, an
@@ -72,6 +76,13 @@ mistakes in Bash code, including the following:
 | Koshka provides instant shell diagnostics for Scripts, Dockerfiles, GitHub CI, Ansible via LSP |
 | :-: | 
 | ![](assets/lsp-demo.gif) |
+
+LSP has completions and formatter built-in. It also provides hover diagnostics
+and symbolizes all source files.
+
+| Koshka helps writing code |
+| :-: | 
+| ![](assets/code-demo.gif) |
 
 ### How to use it
 
