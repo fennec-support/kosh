@@ -1850,7 +1850,7 @@ fn read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
   let *matching = IOServiceMatching(kIOBlockStorageDriverClass);
   if (matching == nullptr) return snapshot;
   io_iterator_t iterator = IO_OBJECT_NULL;
-  if (IOServiceGetMatchingServices(kIOMainPortDefault, matching, &iterator) !=
+  if (IOServiceGetMatchingServices(MACH_PORT_NULL, matching, &iterator) !=
       KERN_SUCCESS)
   {
     return snapshot;
