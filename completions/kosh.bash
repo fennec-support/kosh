@@ -315,16 +315,16 @@ _koshkit_util_flags ()
       echo "-l -w -c"
     ;;
     tr)
-      echo "-d"
+      echo "-c -C -d -s"
     ;;
     grep)
       echo "-i -v -r -n -h -E -F -e -f -c -l -q -s -x -rnh --recursive --line-number --no-filename --extended-regexp --fixed-strings --regexp --file --count --files-with-matches --quiet --no-messages --line-regexp"
     ;;
     sort)
-      echo "-r"
+      echo "-b -c -C -d -f -i -k -m -n -o -r -s -t -u"
     ;;
     uniq)
-      echo "-c"
+      echo "-c -d -f -s -u"
     ;;
     timeout)
       echo "-s --signal -k --kill-after -p --preserve-status"

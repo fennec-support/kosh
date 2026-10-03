@@ -258,6 +258,262 @@ abc
      1 |  koshkit tr a-c z-x
        |                 ^~~
 note: order the endpoints from the lower byte to the higher byte.
+--- tr squeeze and complement ---
+ab  c d11
+aabb
+cc
+d
+aabb__cc_d___aabbccdb  cc d11
+x  cc d11
+--- sort keys and orderings ---
+sort -n
+-1.50
+  d  -5
+B 3 w
+a 10 y
+a 10 y
+b 2 x
+c 1 z
+2.5
+9
+10
+sort -nr
+10
+9
+2.5
+c 1 z
+b 2 x
+a 10 y
+a 10 y
+B 3 w
+  d  -5
+-1.50
+sort -u
+  d  -5
+-1.50
+10
+2.5
+9
+B 3 w
+a 10 y
+b 2 x
+c 1 z
+sort -f
+  d  -5
+-1.50
+10
+2.5
+9
+a 10 y
+a 10 y
+b 2 x
+B 3 w
+c 1 z
+sort -b
+-1.50
+10
+2.5
+9
+B 3 w
+a 10 y
+a 10 y
+b 2 x
+c 1 z
+  d  -5
+sort -d
+  d  -5
+10
+-1.50
+2.5
+9
+B 3 w
+a 10 y
+a 10 y
+b 2 x
+c 1 z
+sort -i
+  d  -5
+-1.50
+10
+2.5
+9
+B 3 w
+a 10 y
+a 10 y
+b 2 x
+c 1 z
+sort -k2
+-1.50
+10
+2.5
+9
+  d  -5
+c 1 z
+a 10 y
+a 10 y
+b 2 x
+B 3 w
+sort -k2n
+  d  -5
+-1.50
+10
+2.5
+9
+c 1 z
+b 2 x
+B 3 w
+a 10 y
+a 10 y
+sort -k2,2n
+  d  -5
+-1.50
+10
+2.5
+9
+c 1 z
+b 2 x
+B 3 w
+a 10 y
+a 10 y
+sort -k 2n -k1
+  d  -5
+-1.50
+10
+2.5
+9
+c 1 z
+b 2 x
+B 3 w
+a 10 y
+a 10 y
+sort -k1.2
+9
+c 1 z
+a 10 y
+a 10 y
+b 2 x
+B 3 w
+  d  -5
+2.5
+10
+-1.50
+sort -k1,1r
+c 1 z
+b 2 x
+a 10 y
+a 10 y
+B 3 w
+9
+2.5
+10
+-1.50
+  d  -5
+sort -k3b
+  d  -5
+-1.50
+10
+2.5
+9
+B 3 w
+b 2 x
+a 10 y
+a 10 y
+c 1 z
+sort -rn
+10
+9
+2.5
+c 1 z
+b 2 x
+a 10 y
+a 10 y
+B 3 w
+  d  -5
+-1.50
+sort -t: -k2n
+y:1:a
+z:2:c
+x:3:a
+x:3:b
+sort -t: -k2,2n -k3
+y:1:a
+z:2:c
+x:3:a
+x:3:b
+sort -t: -k3 -r
+z:2:c
+x:3:b
+y:1:a
+x:3:a
+sort -t: -k2n -u
+y:1:a
+z:2:c
+x:3:b
+sort -t: -k1,1 -k2n
+x:3:a
+x:3:b
+y:1:a
+z:2:c
+--- sort check ---
+status=1
+1:1: error: koshkit sort: sort-keys.txt:2: disorder: a 10 y.
+     1 |  koshkit sort -c sort-keys.txt; printf "status=%s\n" "$?"
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+status=1
+1:1: error: koshkit sort: sort-a.txt:2: disorder: alpha.
+     1 |  koshkit sort -c sort-a.txt sort-b.txt; printf "status=%s\n" "$?"
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+status=1
+1:1: error: koshkit sort: sort-keys.txt:2: disorder: a 10 y.
+     1 |  koshkit sort -u -c sort-keys.txt; printf "status=%s\n" "$?"
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+status=1
+--- sort output file ---
+x:3:a
+x:3:b
+y:1:a
+z:2:c
+--- sort invalid key ---
+1:16: error: koshkit sort: invalid key definition '0'.
+     1 |  koshkit sort -k0 sort-keys.txt; printf "status=%s\n" "$?"
+       |                 ^
+note: use F[.C][bdfinr][,F[.C][bdfinr]] with fields starting at 1.
+status=2
+--- uniq repeated unique fields and characters ---
+uniq -c
+      1 a 1
+      1 a 2
+      1 b 3
+      2 c 3
+      1 d
+uniq -d
+c 3
+uniq -u
+a 1
+a 2
+b 3
+d
+uniq -f1
+a 1
+a 2
+b 3
+d
+uniq -f1 -c
+      1 a 1
+      1 a 2
+      3 b 3
+      1 d
+uniq -s2
+a 1
+a 2
+b 3
+d
+uniq -s 2 -d
+b 3
+uniq -cd
+      2 c 3
+uniq -du
+c 3
 --- seq into head ---
 1
 2

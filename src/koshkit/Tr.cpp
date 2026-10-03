@@ -3,7 +3,8 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the tr utility. It expands escapes, ranges, repetitions,
- * and POSIX character classes, then translates or deletes streamed input bytes.
+ * and POSIX character classes, then translates, deletes, or squeezes streamed
+ * input bytes, optionally over the complement of the first set.
  */
 
 #include "../CLI.hpp"
@@ -13,13 +14,19 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[-d] set1 [set2]");
+HELP_SYNOPSIS_DECL("[-cCds] set1 [set2]");
 
 HELP_DESCRIPTION_DECL(
     "The tr utility translates the bytes in set1 to the matching bytes in "
     "set2.");
 
 FLAG(TR_DELETE, Bool, 'd', "", "Delete the bytes in set1.");
+FLAG(TR_COMPLEMENT, Bool, 'c', "",
+     "Use every byte that is not in set1, in byte order.");
+FLAG(TR_COMPLEMENT_VALUES, Bool, 'C', "",
+     "Use every byte that is not in set1, in byte order.");
+FLAG(TR_SQUEEZE, Bool, 's', "",
+     "Collapse each run of one repeated byte from the final set into one.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Tr);
@@ -169,14 +176,29 @@ fn Tr::execute(const ExecContext &ec, EvalContext &cxt,
   KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
 
   let const is_deleting = FLAG_TR_DELETE.is_enabled();
+  let const is_squeezing = FLAG_TR_SQUEEZE.is_enabled();
+  let const is_complementing =
+      FLAG_TR_COMPLEMENT.is_enabled() || FLAG_TR_COMPLEMENT_VALUES.is_enabled();
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
 
-  if (!is_deleting && operands.count() < 2) {
+  if (!is_deleting && !is_squeezing && operands.count() < 2) {
     throw ErrorWithDetails{"tr expects two sets unless -d is given",
                            "Supply SET1 and SET2, or use `-d` with one set"};
   }
 
-  let const set1 = expand_set(operands[0].view(), cxt.scratch_allocator());
+  if (operands.count() > 2) {
+    return report_usage_error(ec, cxt, args[0].view());
+  }
+
+  if (is_deleting && is_squeezing && operands.count() < 2) {
+    return report_usage_error(ec, cxt, args[0].view());
+  }
+
+  if (is_deleting && !is_squeezing && operands.count() > 1) {
+    return report_usage_error(ec, cxt, args[0].view());
+  }
+
+  let set1 = expand_set(operands[0].view(), cxt.scratch_allocator());
   if (!set1.has_value()) {
     KOSHKIT_REPORT_ERROR_AT(
         operand_locations[0], "reverse range in set '" + operands[0] + "'",
@@ -184,8 +206,20 @@ fn Tr::execute(const ExecContext &ec, EvalContext &cxt,
     return 1;
   }
 
+  if (is_complementing) {
+    bool is_listed[256] = {};
+    for (usize i = 0; i < set1->count(); i++)
+      is_listed[static_cast<unsigned char>(set1->view()[i])] = true;
+
+    let complement = String{cxt.scratch_allocator()};
+    for (int byte = 0; byte < 256; byte++) {
+      if (!is_listed[byte]) complement.push(static_cast<char>(byte));
+    }
+    set1 = steal(complement);
+  }
+
   let set2 = String{cxt.scratch_allocator()};
-  if (!is_deleting) {
+  if (operands.count() >= 2) {
     let expanded_set2 = expand_set(operands[1].view(), cxt.scratch_allocator());
     if (!expanded_set2.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(
@@ -210,6 +244,14 @@ fn Tr::execute(const ExecContext &ec, EvalContext &cxt,
       translation[from] = static_cast<unsigned char>(set2.view()[index]);
     }
   }
+
+  bool is_squeezed[BYTE_VALUE_COUNT] = {};
+  if (is_squeezing) {
+    let const &squeeze_source = operands.count() >= 2 ? set2 : *set1;
+    for (usize i = 0; i < squeeze_source.count(); i++)
+      is_squeezed[static_cast<unsigned char>(squeeze_source.view()[i])] = true;
+  }
+  int last_byte = -1;
 
   char input[65536];
   char output[sizeof(input)];
@@ -238,6 +280,20 @@ fn Tr::execute(const ExecContext &ec, EvalContext &cxt,
             translation[static_cast<unsigned char>(input[i])]);
 
       output_count = *read_count;
+    }
+
+    if (is_squeezing) {
+      usize kept_count = 0;
+      for (usize i = 0; i < output_count; i++) {
+        let const byte = static_cast<unsigned char>(output[i]);
+        if (is_squeezed[byte]) {
+          if (byte == last_byte) continue;
+        }
+
+        last_byte = byte;
+        output[kept_count++] = static_cast<char>(byte);
+      }
+      output_count = kept_count;
     }
 
     if (output_count > 0) ec.print_to_stdout(StringView{output, output_count});

@@ -207,6 +207,44 @@ echo "--- tr -d digits ---"
 "$BIN" -c 'printf "a1b2c3\n" | koshkit tr -d 0-9'
 echo "--- tr reverse range ---"
 printf "abc\n" | "$BIN" -c 'koshkit tr a-c z-x'
+echo "--- tr squeeze and complement ---"
+printf 'aabb  cc d11\n' | "$BIN" -c 'koshkit tr -s a-z'
+printf 'aabb  cc d11\n' | "$BIN" -c "koshkit tr -cs a-z '\\n'"
+printf 'aabb  cc d11\n' | "$BIN" -c 'koshkit tr -c a-z _'
+printf 'aabb  cc d11\n' | "$BIN" -c 'koshkit tr -cd a-z'
+printf 'aabb  cc d11\n' | "$BIN" -c 'koshkit tr -ds a b'
+printf 'aabb  cc d11\n' | "$BIN" -c 'koshkit tr -s ab x'
+echo "--- sort keys and orderings ---"
+printf 'b 2 x\na 10 y\nc 1 z\na 10 y\nB 3 w\n  d  -5\n10\n9\n-1.50\n2.5\n' \
+  > sort-keys.txt
+printf 'x:3:b\ny:1:a\nz:2:c\nx:3:a\n' > sort-fields.txt
+for sort_args in -n -nr -u -f -b -d -i -k2 -k2n -k2,2n '-k 2n -k1' -k1.2 \
+  -k1,1r -k3b -rn; do
+  echo "sort $sort_args"
+  "$BIN" -c "koshkit sort $sort_args sort-keys.txt"
+done
+for sort_args in '-t: -k2n' '-t: -k2,2n -k3' '-t: -k3 -r' '-t: -k2n -u' \
+  '-t: -k1,1 -k2n'; do
+  echo "sort $sort_args"
+  "$BIN" -c "koshkit sort $sort_args sort-fields.txt"
+done
+echo "--- sort check ---"
+"$BIN" -c 'koshkit sort -C sort-keys.txt; printf "status=%s\n" "$?"'
+"$BIN" -c 'koshkit sort -c sort-keys.txt; printf "status=%s\n" "$?"' 2>&1
+"$BIN" -c 'koshkit sort -c sort-a.txt sort-b.txt; printf "status=%s\n" "$?"' \
+  2>&1
+"$BIN" -c 'koshkit sort -u -c sort-keys.txt; printf "status=%s\n" "$?"' 2>&1
+echo "--- sort output file ---"
+"$BIN" -c 'koshkit sort -o sort-fields.txt sort-fields.txt; koshkit cat sort-fields.txt'
+echo "--- sort invalid key ---"
+"$BIN" -c 'koshkit sort -k0 sort-keys.txt; printf "status=%s\n" "$?"' 2>&1
+echo "--- uniq repeated unique fields and characters ---"
+printf 'a 1\na 2\nb 3\nc 3\nc 3\nd\n' > uniq-input.txt
+for uniq_args in -c -d -u -f1 '-f1 -c' -s2 '-s 2 -d' -cd -du; do
+  echo "uniq $uniq_args"
+  "$BIN" -c "koshkit uniq $uniq_args uniq-input.txt"
+done
+"$BIN" -c 'koshkit uniq -d uniq-input.txt uniq-output.txt; koshkit cat uniq-output.txt'
 echo "--- seq into head ---"
 "$BIN" -c 'koshkit seq 5 | koshkit head -n 2'
 echo "--- head batches regular prefix reads ---"

@@ -1999,9 +1999,35 @@ Signed integer sequences are printed with a nonzero step.
 Execution pauses for summed durations with optional s, m, h, or d suffixes.
 .TP
 .B sort
-Input lines are sorted in byte order. The
+Input lines are sorted in byte order, or by the keys named with
+.BR \-k .
+A key is
+.IR F[.C][bdfinr][,F[.C][bdfinr]] .
+The
+.BR \-t
+option sets the field separator byte. The
+.BR \-b ,
+.BR \-d ,
+.BR \-f ,
+.BR \-i ,
+.BR \-n ,
+and
 .B \-r
-option reverses the result.
+options ignore leading blanks, compare only blanks and alphanumeric characters,
+fold lowercase letters, compare only printable characters, compare leading
+numbers by value, and reverse the result. The
+.B \-u
+option writes the first of each run of equal keys. The
+.BR \-c
+and
+.B \-C
+options check the order and report the first disorder or stay silent. The
+.B \-o
+option writes the result to a file after all input is read. The
+.B \-s
+option skips the last-resort comparison of whole lines, and
+.B \-m
+is accepted for merging sorted input.
 .TP
 .B stty
 Terminal settings are reported or changed. The
@@ -2042,12 +2068,27 @@ modification time, name a reference file, and set an explicit timestamp.
 .B tr
 Input bytes are translated with ranges and character classes. The
 .B \-d
-option deletes bytes.
+option deletes bytes. The
+.BR \-c
+and
+.B \-C
+options use every byte outside the first set in byte order. The
+.B \-s
+option collapses each run of one repeated byte from the final set.
 .TP
 .B uniq
 Adjacent equal lines are collapsed. The
 .B \-c
-option prints run counts.
+option prints run counts. The
+.B \-d
+and
+.B \-u
+options write only lines that have a repeat or only lines that have none. The
+.B \-f
+and
+.B \-s
+options ignore leading fields and characters when lines are compared. A second
+operand names an output file.
 .TP
 .B unlink
 One non-directory path is removed.
