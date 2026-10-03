@@ -19,13 +19,7 @@ languages = [
   "Make",
 ]
 
-# Zed sends a lowercased language name as the identifier, and the shell reads
-# an identifier it does not recognize as a plain shell script. Every host
-# format is mapped onto the identifier the shell knows.
-#
-# Shell Script is left out on purpose. The shell does not recognize its
-# lowercased name and falls back to the extension of the file. A .kosh file
-# keeps the kosh mood, and a .sh file gets the posix one.
+# Shell Script is left out on purpose.
 [language_servers.kosh.language_ids]
 "YAML" = "yaml"
 "Markdown" = "markdown"

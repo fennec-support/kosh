@@ -10,7 +10,7 @@ provides.
 ## Installing
 
 ```bash
-$ rustup target add wasm32-wasip2
+rustup target add wasm32-wasip2
 ```
 
 Open the command palette, run `zed: install dev extension`, and select this

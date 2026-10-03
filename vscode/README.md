@@ -1,16 +1,15 @@
 # Koshka for VS Code
 
 This extension runs the Koshka language server and formatter. The server is
-part of the shell binary. A `kosh` on your PATH is used when there is one, and
-the latest release is offered for download when there is not.
+part of the shell binary.
 
 ## Building and installing
 
 ```bash
-$ npm install
-$ npm run compile
-$ npm run package
-$ code --install-extension kosh.vsix
+npm install
+npm run compile
+npm run package
+code --install-extension kosh.vsix
 ```
 
 ## Formatting on save
@@ -31,12 +30,24 @@ formats whole documents and advertises no range formatting. The
 
 ## Settings
 
-| Setting | Meaning |
-| ------- | ------- |
-| `kosh.enable` | Starts the language server. |
-| `kosh.path` | Names the shell binary. The default is `kosh`. |
-| `kosh.arguments` | Adds arguments before the language server option. |
-| `kosh.trace.server` | Traces the messages exchanged with the server. |
+Add these to `settings.json`. The values shown are the defaults.
 
-The server reads its configuration once at startup. A change to the path, the
-arguments, or the enable switch restarts it.
+```jsonc
+{
+  // Run the Koshka language server.
+  "kosh.enable": true,
+
+  // Name or absolute path of the kosh binary. A bare name is searched in PATH.
+  "kosh.path": "kosh",
+
+  // Extra arguments placed before --as-language-server.
+  "kosh.arguments": [],
+
+  // Trace the messages exchanged with the server: "off", "messages", or
+  // "verbose".
+  "kosh.trace.server": "off"
+}
+```
+
+The server reads its configuration once at startup. A change to any of the
+options triggers a restart.
