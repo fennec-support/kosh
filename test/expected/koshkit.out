@@ -19,8 +19,14 @@ mv
 -R
 -S
 -a
+-d
+-g
 -h
+-k
 -l
+-n
+-o
+-p
 -r
 -t
 == du flags through koshkit:
@@ -310,8 +316,14 @@ mv
 -R
 -S
 -a
+-d
+-g
 -h
+-k
 -l
+-n
+-o
+-p
 -r
 -t
 == bare utility names in the default mood:

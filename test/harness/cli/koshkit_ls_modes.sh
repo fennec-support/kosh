@@ -47,6 +47,16 @@ echo "--- long name ---"
 "$BIN" -c 'koshkit ls -1' | grep "$long_name"
 echo "--- classify ---"
 "$BIN" -c 'koshkit ls -F'
+echo "--- mark directories only ---"
+"$BIN" -c 'koshkit ls -p'
+echo "--- directory operands are listed as themselves ---"
+"$BIN" -c 'koshkit ls -d sub plain.txt'
+"$BIN" -c 'koshkit ls -d'
+"$BIN" -c 'koshkit ls -dp sub'
+echo "--- numeric and partial long forms ---"
+"$BIN" -c 'koshkit ls -dn plain.txt | koshkit grep "^-[rwx-]* *1 [0-9][0-9]* [0-9][0-9]* *4 " | koshkit wc -l'
+"$BIN" -c 'koshkit ls -dg plain.txt | koshkit cut -d " " -f 4'
+"$BIN" -c 'koshkit ls -do plain.txt | koshkit cut -d " " -f 4'
 echo "--- reverse name ---"
 "$BIN" -c 'koshkit ls -r'
 echo "--- sort by size ---"

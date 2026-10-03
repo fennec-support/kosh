@@ -241,7 +241,7 @@ _koshkit_util_flags ()
     ;;
     ls)
       echo \
-        "-a -A -1 -l -h -F -t -S -r -R -L --classify --recursive --level --tree"
+        "-a -A -1 -d -g -k -l -h -n -o -p -F -t -S -r -R -L --classify --recursive --level --tree"
     ;;
     nproc)
       echo "--all --ignore="

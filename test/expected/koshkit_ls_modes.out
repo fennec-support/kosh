@@ -56,6 +56,24 @@ plain.txt
 run.sh*
 sized/
 sub/
+--- mark directories only ---
+abcdefghijklmnopqrstuvwxyz-abcdefghijklmnopqrstuvwxyz-abcdefghijklmnopqrstuvwxyz.txt
+bad-link
+empty/
+good-link
+plain.txt
+run.sh
+sized/
+sub/
+--- directory operands are listed as themselves ---
+plain.txt
+sub
+.
+sub/
+--- numeric and partial long forms ---
+1
+4
+4
 --- reverse name ---
 sub
 sized

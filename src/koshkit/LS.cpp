@@ -20,7 +20,7 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[-aA1lhFRrtS] [-L level] [--tree] "
+HELP_SYNOPSIS_DECL("[-aA1dgFhklnoprRSt] [-L level] [--tree] "
                    "[path ...]");
 
 HELP_DESCRIPTION_DECL("The ls utility lists the names in each directory.");
@@ -35,6 +35,16 @@ FLAG(LS_HUMAN, Bool, 'h', "",
      "With -l, print the size in a human-readable form such as 4.0K.");
 FLAG(LS_CLASSIFY, Bool, 'F', "classify",
      "Append a type indicator to each name, one of / * @ | and =.");
+FLAG(LS_DIRECTORY, Bool, 'd', "",
+     "List a directory operand as itself instead of its contents.");
+FLAG(LS_MARK_DIRECTORIES, Bool, 'p', "",
+     "Append a slash to the name of each directory.");
+FLAG(LS_NUMERIC, Bool, 'n', "",
+     "With -l, print the numeric owner and group identifiers.");
+FLAG(LS_NO_GROUP, Bool, 'g', "", "Like -l, but print no owner.");
+FLAG(LS_NO_OWNER, Bool, 'o', "", "Like -l, but print no group.");
+FLAG(LS_KIBIBYTES, Bool, 'k', "",
+     "Accepted for compatibility; sizes are never scaled to blocks.");
 FLAG(LS_SORT_TIME, Bool, 't', "", "Sort by modification time, newest first.");
 FLAG(LS_SORT_SIZE, Bool, 'S', "", "Sort by size, largest first.");
 FLAG(LS_REVERSE, Bool, 'r', "", "Reverse the sort order.");
@@ -83,6 +93,10 @@ struct listing_options
   bool should_color{false};
   bool should_classify{false};
   bool is_long{false};
+  bool is_directory_marker_only{false};
+  bool is_numeric_ids{false};
+  bool should_hide_owner{false};
+  bool should_hide_group{false};
   bool is_one_per_line{false};
   bool is_recursive{false};
   bool is_tree{false};
@@ -229,6 +243,15 @@ static pure fn classify_suffix(entry_type type) wontthrow -> char
   return '\0';
 }
 
+static pure fn listing_suffix(entry_type type,
+                              const listing_options &options) wontthrow -> char
+{
+  let const suffix = classify_suffix(type);
+  if (!options.is_directory_marker_only) return suffix;
+
+  return suffix == '/' ? '/' : '\0';
+}
+
 static fn append_decorated_name(String &output, const listing_entry &entry,
                                 const listing_options &options) throws -> void
 {
@@ -244,7 +267,7 @@ static fn append_decorated_name(String &output, const listing_entry &entry,
 
   if (!options.should_classify) return;
 
-  let const suffix = classify_suffix(entry.type);
+  let const suffix = listing_suffix(entry.type, options);
   if (suffix != '\0') output.push(suffix);
 }
 
@@ -253,7 +276,7 @@ static pure fn decorated_width(const listing_entry &entry,
     -> usize
 {
   let const has_suffix =
-      options.should_classify && classify_suffix(entry.type) != '\0';
+      options.should_classify && listing_suffix(entry.type, options) != '\0';
   return entry.name.count() + (has_suffix ? 1 : 0);
 }
 
@@ -465,10 +488,15 @@ static fn build_long_entry(const listing_entry &entry,
   const os::file_status &status = entry.status;
   row.mode_string = os::format_mode_string(status.mode);
   row.link_count = String::from(status.link_count, allocator);
-  row.owner = cached_id_name(status.owner_id, id_name_kind::Owner, uid_cache,
-                             allocator);
-  row.group = cached_id_name(status.group_id, id_name_kind::Group, gid_cache,
-                             allocator);
+  if (options.is_numeric_ids) {
+    row.owner = String::from(status.owner_id, allocator);
+    row.group = String::from(status.group_id, allocator);
+  } else {
+    row.owner = cached_id_name(status.owner_id, id_name_kind::Owner, uid_cache,
+                               allocator);
+    row.group = cached_id_name(status.group_id, id_name_kind::Group, gid_cache,
+                               allocator);
+  }
   row.size = FLAG_LS_HUMAN.is_enabled()
                  ? format_human_size(status.size, allocator)
                  : String::from(status.size, allocator);
@@ -479,6 +507,7 @@ static fn build_long_entry(const listing_entry &entry,
 }
 
 static fn render_long_entries(const ArrayList<long_entry> &entries,
+                              const listing_options &options,
                               String &output) throws -> void
 {
   usize link_width = 0;
@@ -498,10 +527,14 @@ static fn render_long_entries(const ArrayList<long_entry> &entries,
     output += ' ';
     append_padded(output, entry.link_count.view(), link_width, true);
     output += ' ';
-    append_padded(output, entry.owner.view(), owner_width, false);
-    output += ' ';
-    append_padded(output, entry.group.view(), group_width, false);
-    output += ' ';
+    if (!options.should_hide_owner) {
+      append_padded(output, entry.owner.view(), owner_width, false);
+      output += ' ';
+    }
+    if (!options.should_hide_group) {
+      append_padded(output, entry.group.view(), group_width, false);
+      output += ' ';
+    }
     append_padded(output, entry.size.view(), size_width, true);
     output += ' ';
     output += entry.time.view();
@@ -634,7 +667,7 @@ static fn render_entries(const ArrayList<listing_entry> &entries,
     output += '\n';
   }
 
-  render_long_entries(rows, output);
+  render_long_entries(rows, options, output);
 }
 
 static pure fn is_dot_or_dotdot(StringView name) wontthrow -> bool
@@ -775,8 +808,15 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
 
   if (!resolve_depth_limit(ec, cxt, args[0].view(), options)) return 2;
 
-  options.should_classify = FLAG_LS_CLASSIFY.is_enabled();
-  options.is_long = FLAG_LS_LONG.is_enabled();
+  options.should_classify =
+      FLAG_LS_CLASSIFY.is_enabled() || FLAG_LS_MARK_DIRECTORIES.is_enabled();
+  options.is_directory_marker_only = !FLAG_LS_CLASSIFY.is_enabled();
+  options.is_numeric_ids = FLAG_LS_NUMERIC.is_enabled();
+  options.should_hide_owner = FLAG_LS_NO_GROUP.is_enabled();
+  options.should_hide_group = FLAG_LS_NO_OWNER.is_enabled();
+  options.is_long = FLAG_LS_LONG.is_enabled() || FLAG_LS_NUMERIC.is_enabled() ||
+                    FLAG_LS_NO_GROUP.is_enabled() ||
+                    FLAG_LS_NO_OWNER.is_enabled();
   options.is_one_per_line = FLAG_LS_ONE.is_enabled();
   options.is_recursive = FLAG_LS_RECURSIVE.is_enabled();
   options.is_tree = FLAG_LS_TREE.is_enabled();
@@ -852,6 +892,11 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
                                          String{allocator, target} +
                                          "': no such file or directory");
       status = 2;
+      continue;
+    }
+
+    if (FLAG_LS_DIRECTORY.is_enabled()) {
+      file_target_indices.push(index);
       continue;
     }
 
