@@ -1682,20 +1682,25 @@ option removes one variable.
 .TP
 .B xargs
 Arguments read from standard input are appended to a command. The
-.BR \-0 ,
-.BR \-r ,
-.BR \-E ,
-.BR \-I ,
+.B \-0
+option splits the input on null bytes, and
+.B \-r
+skips the command when the input is empty. The
+.B \-E
+option sets the end-of-input marker, and
+.B \-I
+replaces a string in the command with each input line. The
 .BR \-L ,
 .BR \-n ,
-.BR \-s ,
-.BR \-p ,
-.BR \-t ,
 and
+.B \-s
+options limit each command to a number of lines, arguments, or bytes. The
+.B \-p
+option asks before each command runs, and
+.B \-t
+traces each command. The
 .B \-x
-options split on null bytes, skip an empty input, set the end marker, replace
-a string, and limit lines, arguments, and bytes, ask before a run, trace it,
-and fail on an oversized command.
+option fails when a command does not fit in the size limit.
 .TP
 .B od
 Input bytes are written in the formats selected by
@@ -1800,9 +1805,9 @@ Each
 .B \-e
 option adds a pattern, and each
 .B \-f
-option adds the lines of a file as patterns. When either appears, every operand
-is a file. A pattern text holding newlines names several patterns, and a line is
-selected when any pattern matches. An empty pattern matches every line, and an
+option adds the lines of a file as patterns. When either option is given, every
+operand is a file. A newline inside a pattern separates two patterns, and a line
+is selected when any pattern matches it. An empty pattern matches every line, and an
 empty pattern file matches none.
 The
 .B \-x
@@ -1820,10 +1825,11 @@ option prints nothing and exits with status 0 at the first selected line, even
 if an earlier file could not be read. The
 .B \-s
 option suppresses messages about files that cannot be read, and the exit status
-stays 2. The standard input is named
+is still 2. The standard input is named
 .I (standard input)
 in prefixes, counts, and lists. The exit status is 0 when a line is selected, 1
-when none is, and 2 on an error. The locale is chosen from the first nonempty value of
+when no line is selected, and 2 on an error. The locale is chosen from the first
+nonempty value of
 .BR LC_ALL ,
 .BR LC_CTYPE ,
 and
@@ -1991,7 +1997,7 @@ Directories are created with
 .B \-p
 and an octal or symbolic
 .B \-m
-mode. A symbolic mode starts from 777 and follows the chmod grammar.
+mode. A symbolic mode is applied to mode 777 with the chmod grammar.
 .TP
 .B mknod
 FIFO, character, and block special files are created with POSIX type operands
@@ -2085,10 +2091,11 @@ fold lowercase letters, compare only printable characters, compare leading
 numbers by value, and reverse the result. The
 .B \-u
 option writes the first of each run of equal keys. The
-.BR \-c
-and
+.B \-c
+option checks that the input is sorted and reports the first line out of
+order, and
 .B \-C
-options check the order and report the first disorder or stay silent. The
+checks it without a message. The
 .B \-o
 option writes the result to a file after all input is read. The
 .B \-s
@@ -2139,9 +2146,9 @@ option deletes bytes. The
 .BR \-c
 and
 .B \-C
-options use every byte outside the first set in byte order. The
+options replace the first set with every byte outside it, in byte order. The
 .B \-s
-option collapses each run of one repeated byte from the final set.
+option squeezes each run of a repeated byte from the last set into one byte.
 .TP
 .B uniq
 Adjacent equal lines are collapsed. The
@@ -2155,7 +2162,7 @@ options write only lines that have a repeat or only lines that have none. The
 and
 .B \-s
 options ignore leading fields and characters when lines are compared. A second
-operand names an output file.
+operand is the output file.
 .TP
 .B unlink
 One non-directory path is removed.

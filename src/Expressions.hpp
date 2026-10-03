@@ -767,8 +767,6 @@ public:
   virtual fn as_redirected_command() const wontthrow
       -> const expressions::RedirectedCommand *;
 
-  /* Whether every run of this node ends the shell, by an `exit` or by a call to
-     a function that was analyzed earlier and always exits. */
   virtual fn always_exits(const AnalysisContext &actx) const wontthrow -> bool;
 
   /* This no-ops for arena storage and frees an ordinary heap node otherwise. */
