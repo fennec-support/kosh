@@ -14,3 +14,12 @@ noexec-commands=2 noexec-files=0 rc=0
 dash-file=1 second-file=1 rc=1
 stdin=1 rc=1
 stdin-precedence=1 command=0 file=0 rc=1
+Dockerfile:4:6: warning: An unquoted variable can split into words and expand globs. (SC2086)
+Dockerfile:4:6: warning: The variable 'PLAIN_BODY_NAME' is read before any assignment gives it a value. (SC2154)
+Dockerfile:7:6: warning: An unquoted variable can split into words and expand globs. (SC2086)
+Dockerfile:7:6: warning: The variable 'QUOTED_BODY_NAME' is read before any assignment gives it a value. (SC2154)
+Dockerfile:10:7: warning: An unquoted variable can split into words and expand globs. (SC2086)
+Dockerfile:10:7: warning: The variable 'STRIPPED_BODY_NAME' is read before any assignment gives it a value. (SC2154)
+dockerfile-heredoc python=0 rc=0
+dockerfile-builder findings=6 unrecognized=0 rc=0
+dockerfile-other unrecognized=1 rc=1

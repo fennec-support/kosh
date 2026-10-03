@@ -189,3 +189,42 @@ command_count=$(printf '%s\n' "$output" |
 file_count=$(printf '%s\n' "$output" | grep -c 'Unterminated if')
 printf 'stdin-precedence=%s command=%s file=%s rc=%s\n' \
   "$stdin_count" "$command_count" "$file_count" "$rc"
+
+mkdir -p "$root/docker-heredoc"
+cat > "$root/docker-heredoc/Dockerfile" <<'DOCKERFILE_END'
+FROM alpine
+RUN <<EOF
+set -e
+echo $PLAIN_BODY_NAME
+EOF
+RUN <<'EOF'
+echo $QUOTED_BODY_NAME
+EOF
+RUN <<-EOF
+	echo $STRIPPED_BODY_NAME
+	EOF
+RUN <<EOF python3
+print($PYTHON_BODY_NAME
+EOF
+DOCKERFILE_END
+cp "$root/docker-heredoc/Dockerfile" "$root/docker-heredoc/Dockerfile.builder"
+cp "$root/docker-heredoc/Dockerfile" "$root/docker-heredoc/other.txt"
+
+cd "$root/docker-heredoc" || exit 1
+output=$("$BIN" --lint --no-traces Dockerfile 2>&1)
+rc=$?
+printf '%s\n' "$output" | grep -E '^Dockerfile:[0-9]+:[0-9]+: '
+python_count=$(printf '%s\n' "$output" | grep -c 'PYTHON_BODY_NAME')
+printf 'dockerfile-heredoc python=%s rc=%s\n' "$python_count" "$rc"
+
+output=$("$BIN" --lint --no-traces Dockerfile.builder 2>&1)
+rc=$?
+builder_count=$(printf '%s\n' "$output" | grep -c '^Dockerfile.builder:')
+unrecognized=$(printf '%s\n' "$output" | grep -c 'not recognized')
+printf 'dockerfile-builder findings=%s unrecognized=%s rc=%s\n' \
+  "$builder_count" "$unrecognized" "$rc"
+
+output=$("$BIN" --lint --no-traces other.txt 2>&1)
+rc=$?
+unrecognized=$(printf '%s\n' "$output" | grep -c 'not recognized')
+printf 'dockerfile-other unrecognized=%s rc=%s\n' "$unrecognized" "$rc"
