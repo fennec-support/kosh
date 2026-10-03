@@ -231,6 +231,8 @@ jobs:
           esac
           echo "tags=$tags" >> "$GITHUB_OUTPUT"
 
+      - uses: docker/setup-qemu-action@v3
+
       - uses: docker/setup-buildx-action@v3
 
       - name: Log in to the registry
