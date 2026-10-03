@@ -12,6 +12,26 @@ name. Thanks.
 
 ---
 
+## Install
+
+On Linux, macOS, or Git Bash on Windows:
+
+```sh
+curl -fsSL https://fennec.support/kosh/install | sh
+```
+
+In Windows PowerShell:
+
+```powershell
+irm https://fennec.support/kosh/install | iex
+```
+
+Binaries and their checksums used are on the
+[Releases](https://github.com/toiletbril/kosh/releases) page. To build from
+source, see [Development](#development).
+
+---
+
 **Koshka** is the Russian word for a cat.
 
 **Koshka** is an absurdly fast and tiny cross-platform interpreter, an

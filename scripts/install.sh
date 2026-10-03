@@ -18,7 +18,7 @@
 # for root and to ~/.local otherwise. The manual pages are skipped with a note
 # when zstd is not installed.
 #
-#   curl -fsSL https://fennec.support/install-kosh | sh
+#   curl -fsSL https://fennec.support/kosh/install | sh
 
 set -eu
 REPOSITORY=toiletbril/kosh

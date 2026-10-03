@@ -18,7 +18,7 @@
 # PATH is left unchanged. The manual pages are skipped with a note when zstd is
 # not on PATH.
 #
-#   irm https://fennec.support/install-kosh | iex
+#   irm https://fennec.support/kosh/install | iex
 
 & {
   $ErrorActionPreference = "Stop"
