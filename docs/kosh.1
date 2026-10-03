@@ -1640,7 +1640,13 @@ Files and directory trees are copied. The
 .BR \-p ,
 and
 .B \-v
-options are supported.
+options are supported. A recursive copy keeps symbolic links as links. The
+.B \-L
+option follows every symbolic link, and
+.B \-H
+follows only a link named on the command line. The
+.B \-P
+option restores the default.
 .TP
 .B diff
 Two files are compared line by line. The

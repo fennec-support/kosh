@@ -3,7 +3,8 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the cp utility. It copies files and directory trees,
- * handles overwrite policy, and optionally preserves modes and timestamps.
+ * handles overwrite policy, follows or preserves symbolic links, and
+ * optionally preserves modes and timestamps.
  */
 
 #include "../CLI.hpp"
@@ -14,7 +15,7 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[-fipRrv] source ... destination");
+HELP_SYNOPSIS_DECL("[-fHiLPpRrv] source ... destination");
 
 HELP_DESCRIPTION_DECL("The cp utility copies each source to the destination.");
 
@@ -24,6 +25,10 @@ FLAG(CP_FORCE, Bool, 'f', "", "Remove a destination that cannot be opened.");
 FLAG(CP_INTERACTIVE, Bool, 'i', "", "Ask before overwriting a destination.");
 FLAG(CP_PRESERVE, Bool, 'p', "", "Preserve file mode and timestamps.");
 FLAG(CP_VERBOSE, Bool, 'v', "", "Print the name of each copy as it happens.");
+FLAG(CP_FOLLOW_ROOT, Bool, 'H', "",
+     "Follow a symbolic link named on the command line.");
+FLAG(CP_FOLLOW_ALL, Bool, 'L', "", "Follow every symbolic link.");
+FLAG(CP_FOLLOW_NONE, Bool, 'P', "", "Copy symbolic links as links.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Cp);
@@ -41,6 +46,13 @@ enum class cp_recursive_mode : u8
 };
 
 }
+
+enum class cp_symlink_mode : u8
+{
+  Preserve,
+  FollowRoot,
+  FollowAll,
+};
 
 static fn report_copy_error(const ExecContext &ec, EvalContext &cxt,
                             StringView utility_name, const Error &error) throws
@@ -107,7 +119,8 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
                     StringView destination, bool should_force,
                     bool should_preserve, bool is_verbose, Allocator allocator,
                     const os::file_status *known_lstat,
-                    cp_recursive_mode recursive_mode) throws -> bool
+                    cp_recursive_mode recursive_mode,
+                    cp_symlink_mode symlink_mode) throws -> bool
 {
   let const source_path = Path{source};
   let const destination_path = Path{destination};
@@ -122,8 +135,9 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
     };
   }
   let const is_source_symlink =
-      known_lstat != nullptr ? os::file_type_letter(known_lstat->mode) == 'l'
-                             : source_path.is_symbolic_link();
+      symlink_mode == cp_symlink_mode::Preserve &&
+      (known_lstat != nullptr ? os::file_type_letter(known_lstat->mode) == 'l'
+                              : source_path.is_symbolic_link());
 
   if (is_source_symlink && recursive_mode == cp_recursive_mode::Recursive) {
     if (let const target = os::read_symlink(source, allocator)) {
@@ -155,7 +169,7 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
   }
 
   let source_status = Maybe<os::file_status>{};
-  if (known_lstat != nullptr && !is_source_symlink)
+  if (known_lstat != nullptr && os::file_type_letter(known_lstat->mode) != 'l')
     source_status = *known_lstat;
   else
     source_status = source_file_status(source);
@@ -215,7 +229,10 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
                        child_destination.view(), should_force, should_preserve,
                        is_verbose, allocator,
                        entry.has_status ? &entry.status : nullptr,
-                       recursive_mode))
+                       recursive_mode,
+                       symlink_mode == cp_symlink_mode::FollowAll
+                           ? cp_symlink_mode::FollowAll
+                           : cp_symlink_mode::Preserve))
           did_succeed = false;
       } catch (const BrokenPipeExit &) {
         throw;
@@ -312,6 +329,23 @@ fn Cp::execute(const ExecContext &ec, EvalContext &cxt,
       FLAG_CP_RECURSIVE_R.is_enabled() || FLAG_CP_RECURSIVE_UPPER.is_enabled()
           ? cp_recursive_mode::Recursive
           : cp_recursive_mode::SinglePath;
+  usize symlink_position = 0;
+  cp_symlink_mode symlink_mode = cp_symlink_mode::Preserve;
+  if (FLAG_CP_FOLLOW_ROOT.is_enabled()) {
+    symlink_position = FLAG_CP_FOLLOW_ROOT.position();
+    symlink_mode = cp_symlink_mode::FollowRoot;
+  }
+  if (FLAG_CP_FOLLOW_ALL.is_enabled()) {
+    if (FLAG_CP_FOLLOW_ALL.position() > symlink_position) {
+      symlink_position = FLAG_CP_FOLLOW_ALL.position();
+      symlink_mode = cp_symlink_mode::FollowAll;
+    }
+  }
+  if (FLAG_CP_FOLLOW_NONE.is_enabled()) {
+    if (FLAG_CP_FOLLOW_NONE.position() > symlink_position)
+      symlink_mode = cp_symlink_mode::Preserve;
+  }
+
   let const should_force = FLAG_CP_FORCE.is_enabled();
   let const should_preserve = FLAG_CP_PRESERVE.is_enabled();
   let const should_prompt = FLAG_CP_INTERACTIVE.is_enabled() &&
@@ -350,7 +384,8 @@ fn Cp::execute(const ExecContext &ec, EvalContext &cxt,
     try {
       if (!copy_path(ec, cxt, args[0].view(), source, target.view(),
                      should_force, should_preserve, is_verbose,
-                     cxt.scratch_allocator(), nullptr, recursive_mode))
+                     cxt.scratch_allocator(), nullptr, recursive_mode,
+                     symlink_mode))
         status = 1;
     } catch (const BrokenPipeExit &) {
       throw;

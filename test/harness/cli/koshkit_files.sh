@@ -224,3 +224,11 @@ echo "--- unlink removes a single file ---"
 echo "--- unlink a directory fails ---"
 "$BIN" -c 'koshkit unlink a' 2>&1
 echo "rc=$?"
+echo "--- cp symbolic link policy ---"
+"$BIN" -c 'koshkit mkdir -p cp-links; printf data > cp-links/real; koshkit ln -s real cp-links/link; koshkit mkdir cp-links/tree; koshkit ln -s ../real cp-links/tree/inner'
+"$BIN" -c 'koshkit cp -R cp-links/tree cp-links/tree-p; koshkit ls -F cp-links/tree-p'
+"$BIN" -c 'koshkit cp -RP cp-links/tree cp-links/tree-explicit; koshkit ls -F cp-links/tree-explicit'
+"$BIN" -c 'koshkit cp -RL cp-links/tree cp-links/tree-l; koshkit ls -F cp-links/tree-l'
+"$BIN" -c 'koshkit cp -RH cp-links/tree cp-links/tree-h; koshkit ls -F cp-links/tree-h'
+"$BIN" -c 'koshkit cp -RH cp-links/link cp-links/copy-h; koshkit ls -F cp-links/copy-h'
+"$BIN" -c 'koshkit cp -R cp-links/link cp-links/copy-r; koshkit ls -F cp-links/copy-r'

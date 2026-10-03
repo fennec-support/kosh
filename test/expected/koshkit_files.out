@@ -79,3 +79,10 @@ unlink rc=0
      1 |  koshkit unlink a
        |                 ^
 rc=1
+--- cp symbolic link policy ---
+inner@
+inner@
+inner
+inner@
+cp-links/copy-h
+cp-links/copy-r@

@@ -179,7 +179,7 @@ _koshkit_util_flags ()
       echo "-i --interactive -p --pipe"
     ;;
     cp)
-      echo "-r -R -f -i -p -v"
+      echo "-r -R -f -H -i -L -P -p -v"
     ;;
     cut)
       echo \
