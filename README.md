@@ -11,7 +11,7 @@
   - [How to use it](#how-to-use-it)
   - [Shell linter, formatter, and language server](#shell-linter-formatter-and-language-server)
   - [Interactive shell and command interpreter](#interactive-shell-and-command-interpreter)
-  - [Additional furballs](#additional-furballs)
+  - [Builtins and interactive editor](#builtins-and-interactive-editor)
   - [Koshkit](#koshkit)
 - [Development](#development)
   - [Prerequisites](#prerequisites)
@@ -118,7 +118,7 @@ Before running a command, **Koshka** analyzes and optimizes the complete script.
 | `--init-moods`, `-L` | The `--init-moods` option, or `-L`, accepts a comma-separated list of moods whose startup files will be used. Its default value is the selected mood. |
 | `KOSH_FLAGS` | The `KOSH_FLAGS` environment variable sets default flags. Command-line flags override them.<br><br>When `KOSH_FLAGS` or the command line contains an invalid flag or argument, a login shell skips its startup files and opens a rescue session. |
 
-### Additional furballs
+### Builtins and interactive editor
 
 The interactive mode takes inspiration from
 [fish](https://github.com/fish-shell/fish-shell). It provides syntax
