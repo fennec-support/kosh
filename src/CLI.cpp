@@ -940,8 +940,7 @@ cold fn append_version_triple(String &out, Allocator allocator) throws -> void
   out += String::from(KOSH_VER_MINOR, allocator);
   out += '.';
   out += String::from(KOSH_VER_PATCH, allocator);
-  out += '-';
-  out += KOSH_VER_EXTRA;
+  out += KOSH_VER_SUFFIX;
 }
 
 cold fn show_version() throws -> void

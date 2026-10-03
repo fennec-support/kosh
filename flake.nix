@@ -15,27 +15,27 @@
         "aarch64-darwin"
       ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
-      versionLines = nixpkgs.lib.splitString "\n" (builtins.readFile ./src/Common.hpp);
+      versionLines = nixpkgs.lib.splitString "\n" (builtins.readFile ./src/base/Common.hpp);
       versionValue = name:
         let
           matches = builtins.filter
             (line: builtins.match "#define[[:space:]]+${name}[[:space:]]+.*" line != null)
             versionLines;
           line = if matches == [] then
-            throw "Missing ${name} in src/Common.hpp"
+            throw "Missing ${name} in src/base/Common.hpp"
           else
             builtins.head matches;
         in
         builtins.elemAt
           (builtins.match "#define[[:space:]]+${name}[[:space:]]+(.+)" line)
           0;
-      versionExtra = nixpkgs.lib.removeSuffix "\""
-        (nixpkgs.lib.removePrefix "\"" (versionValue "KOSH_VER_EXTRA"));
+      versionSuffix = nixpkgs.lib.removeSuffix "\""
+        (nixpkgs.lib.removePrefix "\"" (versionValue "KOSH_VER_SUFFIX"));
       packageVersion = nixpkgs.lib.concatStringsSep "." [
         (versionValue "KOSH_VER_MAJOR")
         (versionValue "KOSH_VER_MINOR")
         (versionValue "KOSH_VER_PATCH")
-      ] + nixpkgs.lib.optionalString (versionExtra != "") "-${versionExtra}";
+      ] + versionSuffix;
 
       mkPackage = { pkgs, mode ? "rel" }:
         pkgs.stdenv.mkDerivation {
