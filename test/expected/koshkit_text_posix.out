@@ -180,3 +180,187 @@ pattern=^é*$
 3:axb
 4:日本
 5:É
+--- grep -c apple a b
+a:2
+b:1
+status=0
+--- grep -c -v apple a
+4
+status=0
+--- grep -cv apple a
+4
+status=0
+--- grep -l apple a b
+a
+b
+status=0
+--- grep -lx apple a b
+a
+b
+status=0
+--- grep -lc apple a b
+a
+b
+status=0
+--- grep -ch apple a b
+2
+1
+status=0
+--- grep -nc apple a
+2
+status=0
+--- grep -q apple a missing
+status=0
+--- grep -qE pp a
+status=0
+--- grep -q zzzz a missing
+status=2
+--- grep -qc apple a
+status=0
+--- grep -s apple missing a
+a:apple
+a:apple pie
+status=2
+--- grep -s zzzz missing a
+status=2
+--- grep -c apple missing a
+a:2
+status=2
+--- grep -l apple a b missing
+a
+b
+status=2
+--- grep -E ap+le|ch a
+apple
+cherry pie
+apple pie
+status=0
+--- grep ap+le a
+status=1
+--- grep -E ^(app|ban) a
+apple
+apple pie
+status=0
+--- grep -E p{2} a
+apple
+apple pie
+status=0
+--- grep -E ^ap+ a
+apple
+apple pie
+status=0
+--- grep -E ( a
+status=2
+--- grep -F x.y a
+x.y
+status=0
+--- grep -F [x a
+status=1
+--- grep -Fi X.Y a
+x.y
+status=0
+--- grep -Fx x.y a
+x.y
+status=0
+--- grep -x apple a
+apple
+status=0
+--- grep -xv apple a
+Banana
+cherry pie
+
+apple pie
+x.y
+status=0
+--- grep -x -i APPLE a
+apple
+status=0
+--- grep -x app.e a
+apple
+status=0
+--- grep -x .*pie a
+cherry pie
+apple pie
+status=0
+--- grep -xE apple|cherry pie a
+apple
+cherry pie
+status=0
+--- grep -x  a
+
+status=0
+--- grep -e apple -e x\.y a
+apple
+apple pie
+x.y
+status=0
+--- grep -e apple
+zzz -c a b
+a:2
+b:2
+status=0
+--- grep -ie APPLE a
+apple
+apple pie
+status=0
+--- grep -e  -c a
+6
+status=0
+--- grep -F -e  -c a
+6
+status=0
+--- grep -x -F  -c a
+1
+status=0
+--- grep -v -e  -c a
+0
+status=1
+--- grep -f pats a
+apple
+apple pie
+status=0
+--- grep -f blankpat -c a
+6
+status=0
+--- grep -f nonl -c a
+0
+status=1
+--- grep -f emptypats -c a
+0
+status=1
+--- grep -f emptypats -vc a
+6
+status=0
+--- grep -f missingpats a
+status=2
+--- grep -e apple -f pats -c a
+2
+status=0
+--- grep -c -e zzz -e Banana a b
+a:1
+b:1
+status=0
+--- grep apple a -n
+1:apple
+5:apple pie
+status=0
+--- grep -E -F x a
+status=2
+--- grep -s -c apple missing
+status=2
+--- grep -c apple - b
+(standard input):0
+b:1
+status=0
+--- grep -l apple -
+status=1
+--- stdin names
+1
+(standard input)
+(standard input):1
+b:1
+(standard input)
+b
+--- error output
+2
+0
