@@ -28,8 +28,8 @@ curl -fsSL "https://fennec.support/kosh/install" | sh
 # on Windows, Powershell:
 irm "https://fennec.support/kosh/install" | iex
 
-# with Docker:
-# <TBD>
+# with Docker, as an Alpine image:
+docker run --rm -it ghcr.io/toiletbril/kosh
 ```
 
 Binaries and their checksums used are on the
