@@ -32,7 +32,7 @@ jobs:
       - name: Tag the image by the Dockerfile hash
         id: meta
         run: |
-          hash=$(sha256sum Dockerfile | cut -c1-16)
+          hash=$(sha256sum docker/Dockerfile.builder | cut -c1-16)
           base="${REGISTRY}/${{ github.repository }}/${IMAGE_NAME}"
           echo "image=${base}:${hash}" >> "$GITHUB_OUTPUT"
 
@@ -55,5 +55,5 @@ jobs:
       - name: Build and push the image on a cache miss
         if: steps.cache.outputs.hit != 'true'
         run: |
-          docker build -t "${{ steps.meta.outputs.image }}" .
+          docker build -f docker/Dockerfile.builder -t "${{ steps.meta.outputs.image }}" docker
           docker push "${{ steps.meta.outputs.image }}"
