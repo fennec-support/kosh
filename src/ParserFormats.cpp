@@ -104,6 +104,14 @@ static pure fn path_ends_with(StringView path, StringView suffix) wontthrow
                                    suffix);
 }
 
+static pure fn path_starts_with(StringView path, StringView prefix) wontthrow
+    -> bool
+{
+  return prefix.length <= path.length &&
+         parser_format_ascii_equal(path.substring_of_length(0, prefix.length),
+                                   prefix);
+}
+
 static pure fn path_holds(StringView path, StringView part) wontthrow -> bool
 {
   if (part.length > path.length) return false;
@@ -190,7 +198,9 @@ static fn detect_format_kind(const parser_format_input &input) throws
   if (parser_format_ascii_equal(filename, "dockerfile") ||
       parser_format_ascii_equal(filename, "containerfile") ||
       path_ends_with(filename, ".dockerfile") ||
-      path_ends_with(filename, ".containerfile"))
+      path_ends_with(filename, ".containerfile") ||
+      path_starts_with(filename, "dockerfile.") ||
+      path_starts_with(filename, "containerfile."))
     return parser_format_kind::Dockerfile;
   if (parser_format_ascii_equal(filename, "makefile") ||
       parser_format_ascii_equal(filename, "gnumakefile") ||

@@ -77,6 +77,64 @@ static fn docker_instruction(StringView line, usize &content_position) wontthrow
   return kind;
 }
 
+struct docker_heredoc
+{
+  StringView delimiter;
+  bool is_shell_body;
+};
+
+static fn is_heredoc_delimiter_byte(char byte) wontthrow -> bool
+{
+  return (byte >= 'A' && byte <= 'Z') || (byte >= 'a' && byte <= 'z') ||
+         (byte >= '0' && byte <= '9') || byte == '_';
+}
+
+static fn read_docker_heredoc(StringView command) wontthrow
+    -> Maybe<docker_heredoc>
+{
+  if (command.length < 3 || command[0] != '<' || command[1] != '<') {
+    return None;
+  }
+
+  usize position = 2;
+  if (command[position] == '-') position++;
+
+  char quote = '\0';
+  if (position < command.length &&
+      (command[position] == '\'' || command[position] == '"'))
+  {
+    quote = command[position];
+    position++;
+  }
+
+  let const delimiter_start = position;
+  while (position < command.length &&
+         is_heredoc_delimiter_byte(command[position]))
+  {
+    position++;
+  }
+
+  if (position == delimiter_start) return None;
+
+  let const delimiter =
+      command.substring_of_length(delimiter_start, position - delimiter_start);
+  if (quote != '\0') {
+    if (position >= command.length || command[position] != quote) {
+      return None;
+    }
+    position++;
+  }
+
+  while (position < command.length &&
+         (command[position] == ' ' || command[position] == '\t' ||
+          command[position] == '\r'))
+  {
+    position++;
+  }
+
+  return docker_heredoc{delimiter, position == command.length};
+}
+
 fn parse_dockerfile_format(const parser_format_input &input,
                            parsed_format_document &document) throws -> void
 {
@@ -115,6 +173,30 @@ fn parse_dockerfile_format(const parser_format_input &input,
     if (!is_shell_instruction || content_position >= line.length ||
         line[content_position] == '[')
       continue;
+
+    let const heredoc = instruction == docker_instruction_kind::Run
+                            ? read_docker_heredoc(line.substring(content_position))
+                            : None;
+    if (heredoc.has_value()) {
+      let const body_start = position;
+      usize body_end = position;
+      while (position < input.source.length) {
+        let const body_line_start = position;
+        let body_line = input.source.next_line(position);
+        if (!body_line.is_empty() && body_line[body_line.length - 1] == '\r') {
+          body_line = body_line.substring_of_length(0, body_line.length - 1);
+        }
+        if (body_line == heredoc->delimiter) break;
+
+        body_end = body_line_start + body_line.length;
+      }
+
+      if (heredoc->is_shell_body && body_end > body_start) {
+        parser_format_add_fragment(document, input.source, body_start, body_end,
+                                   0, None, parser_format_codec::Direct, mood);
+      }
+      continue;
+    }
 
     usize shell_end = line_start + line.length;
     let continued = !line.is_empty() && line[line.length - 1] == '\\';
