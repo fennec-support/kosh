@@ -1380,6 +1380,11 @@ fn Expression::as_compound_list() const wontthrow
   return nullptr;
 }
 
+fn Expression::always_exits(const AnalysisContext &) const wontthrow -> bool
+{
+  return false;
+}
+
 fn Expression::as_for_loop() const wontthrow -> const expressions::ForLoop *
 {
   return nullptr;

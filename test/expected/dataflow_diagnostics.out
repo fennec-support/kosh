@@ -57,6 +57,22 @@ rc=0
 note: Assign 'if_value' before it is read, or set it in the environment.
 == an assignment on every if exit stays quiet:
 rc=0
+== a case arm that exits leaves the assigning arm alone:
+rc=0
+== an else that exits leaves the assigning branch alone:
+rc=0
+== a function that always exits ends its branch:
+rc=0
+== a function that can return does not end its branch:
+3:7: warning: The variable 'maybe_value' is read before any assignment gives it a value. (SC2154)
+     3 |  echo "$maybe_value"
+       |        ^~~~~~~~~~~~
+note: Assign 'maybe_value' before it is read, or set it in the environment.
+== an exit joined by a connector does not end its branch:
+2:7: warning: The variable 'connector_value' is read before any assignment gives it a value. (SC2154)
+     2 |  echo "$connector_value"
+       |        ^~~~~~~~~~~~~~~~
+note: Assign 'connector_value' before it is read, or set it in the environment.
 == compacted divergent branches preserve uncertainty:
 39:33: warning: The variable 'branch_special' is read before any assignment gives it a value. (SC2154)
     39 |  echo "$removed_marker $seed_128 $branch_special $nested_value"

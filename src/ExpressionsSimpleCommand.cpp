@@ -1827,6 +1827,19 @@ fn SimpleCommand::as_simple_command() const wontthrow -> const SimpleCommand *
   return this;
 }
 
+fn SimpleCommand::always_exits(const AnalysisContext &actx) const wontthrow
+    -> bool
+{
+  if (m_args.is_empty() || is_async()) return false;
+
+  let const name = m_args[0]->raw_view();
+  if (!name.has_value()) return false;
+
+  if (actx.always_exiting_function_names.contains(*name)) return true;
+
+  return *name == StringView{"exit"} && !actx.defined_functions.contains(*name);
+}
+
 cold fn SimpleCommand::to_string() const throws -> String
 {
   String s = "SimpleCommand";

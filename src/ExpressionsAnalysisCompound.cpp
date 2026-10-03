@@ -350,6 +350,20 @@ fn CompoundList::as_compound_list() const wontthrow -> const CompoundList *
   return this;
 }
 
+fn CompoundList::always_exits(const AnalysisContext &actx) const wontthrow
+    -> bool
+{
+  for (let const *node : m_nodes) {
+    if (node->kind() != CompoundListCondition::Kind::None) continue;
+    if (node->is_negated()) continue;
+
+    let const command = node->command();
+    if (command != nullptr && command->always_exits(actx)) return true;
+  }
+
+  return false;
+}
+
 /* The opening [ of a bracket test the node leaves unclosed, null when the node
    holds anything else. */
 cold static fn

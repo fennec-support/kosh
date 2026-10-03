@@ -43,6 +43,32 @@ echo '== an assignment on every if exit stays quiet:'
 echo "$branch_value"' 2>&1
 echo "rc=$?"
 
+echo '== a case arm that exits leaves the assigning arm alone:'
+"$BIN" -n -WWW -c 'case $1 in a) exit_case_value=1 ;; *) exit 1 ;; esac
+echo "$exit_case_value"' 2>&1
+echo "rc=$?"
+
+echo '== an else that exits leaves the assigning branch alone:'
+"$BIN" -n -WWW -c 'if test -e /; then exit_if_value=1; else exit 1; fi
+echo "$exit_if_value"' 2>&1
+echo "rc=$?"
+
+echo '== a function that always exits ends its branch:'
+"$BIN" -n -WWW -c 'die() { printf x >&2; exit 1; }
+if test -e /; then die_if_value=1; else die; fi
+case $1 in a) die_case_value=1 ;; *) die msg ;; esac
+echo "$die_if_value $die_case_value"' 2>&1
+echo "rc=$?"
+
+echo '== a function that can return does not end its branch:'
+"$BIN" -n -WWW -c 'maybe() { test -e / || exit 1; }
+if test -e /; then maybe_value=1; else maybe; fi
+echo "$maybe_value"' 2>&1
+
+echo '== an exit joined by a connector does not end its branch:'
+"$BIN" -n -WWW -c 'if test -e /; then connector_value=1; else test -e / && exit 1; fi
+echo "$connector_value"' 2>&1
+
 echo '== compacted divergent branches preserve uncertainty:'
 "$BIN" -n -WWW -c 'seed_001=1 seed_002=1 seed_003=1 seed_004=1 seed_005=1 seed_006=1 seed_007=1 seed_008=1
 seed_009=1 seed_010=1 seed_011=1 seed_012=1 seed_013=1 seed_014=1 seed_015=1 seed_016=1

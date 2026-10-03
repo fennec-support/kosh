@@ -1479,6 +1479,11 @@ fn FunctionDefinition::analyze(AnalysisContext &actx,
                                  m_body->source_end_position());
   actx.function_scope_depth++;
   m_body->analyze(actx, false);
+  if (m_body->always_exits(actx))
+    actx.always_exiting_function_names.add(m_name.view());
+  else
+    actx.always_exiting_function_names.remove(m_name.view());
+
   let &function_definition =
       actx.function_definitions[function_definition_index];
   if (function_definition.recursive_call_count > 0) {

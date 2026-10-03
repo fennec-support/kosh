@@ -403,6 +403,8 @@ public:
   StringMap<SourceLocation> global_assigned_names{heap_allocator()};
   HashSet inherited_global_assigned_names{heap_allocator()};
 
+  HashSet always_exiting_function_names{heap_allocator()};
+
   StringMap<SourceLocation> assigned_names_so_far{heap_allocator()};
   HashSet inherited_assigned_names{heap_allocator()};
 
@@ -765,6 +767,10 @@ public:
   virtual fn as_redirected_command() const wontthrow
       -> const expressions::RedirectedCommand *;
 
+  /* Whether every run of this node ends the shell, by an `exit` or by a call to
+     a function that was analyzed earlier and always exits. */
+  virtual fn always_exits(const AnalysisContext &actx) const wontthrow -> bool;
+
   /* This no-ops for arena storage and frees an ordinary heap node otherwise. */
   static fn operator delete(opaque *pointer) wontthrow->void;
 
@@ -1110,6 +1116,8 @@ public:
 
   fn as_simple_command() const wontthrow -> const SimpleCommand * override;
 
+  fn always_exits(const AnalysisContext &actx) const wontthrow -> bool override;
+
   fn can_evaluate_in_process_substitution(
       const EvalContext &cxt, HashSet &active_functions) const throws
       -> bool override;
@@ -1209,6 +1217,7 @@ public:
   fn try_static_condition_verdict(const AnalysisContext &actx) const wontthrow
       -> Maybe<bool> override;
   fn as_compound_list() const wontthrow -> const CompoundList * override;
+  fn always_exits(const AnalysisContext &actx) const wontthrow -> bool override;
 
   fn can_evaluate_in_process_substitution(
       const EvalContext &cxt, HashSet &active_functions) const throws
@@ -1438,6 +1447,7 @@ public:
   fn to_ast_string(usize layer = 0) const throws -> String override;
   fn analyze(AnalysisContext &actx, bool is_unconditional) const throws
       -> void override;
+  fn always_exits(const AnalysisContext &actx) const wontthrow -> bool override;
   fn can_evaluate_in_process_substitution(
       const EvalContext &cxt, HashSet &active_functions) const throws
       -> bool override;
