@@ -78,7 +78,7 @@ jobs:
           docker run --rm -v "$PWD:/src" -w /src -e "VERSION=$VERSION" "$IMAGE" \
             sh -euc '
               mkdir -p dist
-              make -C src MODE=rel TARGET=Linux ARCH=x86_64
+              make -C src MODE=rel TARGET=Linux ARCH=x86_64 LINUX_ZIG=1
               install -m 755 kosh "dist/kosh-linux-amd64-$VERSION"
               make -C src MODE=rel TARGET=Linux ARCH=aarch64
               install -m 755 kosh "dist/kosh-linux-aarch64-$VERSION"

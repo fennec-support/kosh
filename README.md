@@ -30,7 +30,7 @@ curl -fsSL "https://fennec.support/kosh/install" | sh
 irm "https://fennec.support/kosh/install" | iex
 
 # with Docker, as an Alpine image:
-docker run --rm -it ghcr.io/toiletbril/kosh
+docker run --rm -it "ghcr.io/toiletbril/kosh"
 ```
 
 Binaries and their checksums used are on the

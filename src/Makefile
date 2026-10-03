@@ -43,8 +43,9 @@ ifeq ($(TARGET), Windows_NT)
 REGEX_SOURCES := regcomp regerror regexec tre-mem
 endif
 
-# A Linux target is cross-compiled with Zig and musl from another host, or from
-# a Linux host when ARCH names a different processor.
+# A Linux target is cross-compiled with Zig and musl from another host, from a
+# Linux host when ARCH names a different processor, or whenever LINUX_ZIG=1.
+LINUX_ZIG ?= 0
 ifeq ($(TARGET), Linux)
 HOST_MACHINE := $(shell uname -m)
 ifneq ($(filter arm64 aarch64,$(HOST_MACHINE)),)
@@ -56,6 +57,8 @@ else ifneq ($(filter x86_64 amd64,$(ARCH)),)
 LINUX_TARGET_ARCHITECTURE := x86_64
 endif
 ifneq ($(HOST_OPERATING_SYSTEM), Linux)
+IS_LINUX_CROSS_COMPILATION := 1
+else ifeq ($(LINUX_ZIG), 1)
 IS_LINUX_CROSS_COMPILATION := 1
 else ifneq ($(origin ARCH), file)
 ifneq ($(LINUX_TARGET_ARCHITECTURE), $(HOST_MACHINE))
