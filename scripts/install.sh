@@ -11,25 +11,60 @@
 # It runs on Linux, macOS, and the MSYS2, Git Bash, and Cygwin environments on
 # Windows.
 #
-# The script installs the latest release. KOSH_VERSION selects another release
-# tag. KOSH_PREFIX selects the prefix and
-# defaults to /usr/local for root and to ~/.local otherwise. The manual pages
-# are skipped with a note when zstd is not installed.
+# The script prints the detected system and processor and stops when the
+# release has no build for them. It installs the latest release. KOSH_VERSION
+# selects another release tag. KOSH_ARCH selects amd64 or aarch64 instead of the
+# detected processor. KOSH_PREFIX selects the prefix and defaults to /usr/local
+# for root and to ~/.local otherwise. The manual pages are skipped with a note
+# when zstd is not installed.
 #
 #   curl -fsSL https://fennec.support/install-kosh | sh
 
 set -eu
 REPOSITORY=toiletbril/kosh
+escape=$(printf '\033')
+error_style=
+bold_style=
+note_style=
+heading_style=
+reset_style=
+
+if [ -z "${NO_COLOR:-}" ] && [ "${TERM:-}" != dumb ]
+then
+  if [ -t 2 ]
+  then
+    error_style="$escape[1;91m"
+    bold_style="$escape[1m"
+    note_style="$escape[36m"
+    reset_style="$escape[0m"
+  fi
+
+  if [ -t 1 ]
+  then
+    heading_style="$escape[1;34m"
+  fi
+fi
 
 fail ()
 {
-  printf 'install.sh: %s\n' "$1" >&2
+  printf '%serror:%s %sinstall.sh: %s.%s\n' "$error_style" "$reset_style" \
+    "$bold_style" "$1" "$reset_style" >&2
   exit 1
 }
 
 note ()
 {
-  printf 'install.sh: %s\n' "$1" >&2
+  printf '%snote:%s %s.\n' "$note_style" "$reset_style" "$1" >&2
+}
+
+report ()
+{
+  if [ -n "$heading_style" ]
+  then
+    printf '%s%s%s %s\n' "$heading_style" "$1" "$escape[0m" "$2"
+  else
+    printf '%s %s\n' "$1" "$2"
+  fi
 }
 
 has_command ()
@@ -108,6 +143,8 @@ place_file ()
 }
 
 suffix=
+platform=
+processor=
 
 case $(uname -s) in
   Linux)
@@ -125,7 +162,9 @@ case $(uname -s) in
   ;;
 esac
 
-case $(uname -m) in
+machine=${KOSH_ARCH:-$(uname -m)}
+
+case $machine in
   x86_64 | amd64)
     processor=amd64
   ;;
@@ -133,20 +172,11 @@ case $(uname -m) in
     processor=aarch64
   ;;
   *)
-    fail "unsupported processor '$(uname -m)'"
+    fail "unsupported processor '$machine'"
   ;;
 esac
 
-if [ "$platform" = win32 ]
-then
-  processor=amd64
-fi
-
-if [ "$platform" = darwin ] && [ "$processor" = amd64 ]
-then
-  fail "only Apple silicon macOS builds are published"
-fi
-
+report Detected "$(uname -s) on $processor"
 if [ -n "${KOSH_VERSION:-}" ]
 then
   version=$KOSH_VERSION
@@ -177,9 +207,11 @@ base_url=https://github.com/$REPOSITORY/releases/download/$version
 work_dir=$(mktemp -d)
 
 trap 'rm -rf "$work_dir"' EXIT INT TERM
-printf 'Installing kosh %s into %s\n' "$version" "$prefix"
+report Installing "kosh $version into $prefix"
 download "$base_url/SHA256SUMS" "$work_dir/SHA256SUMS" ||
 fail "release $version has no SHA256SUMS file"
+[ -n "$(listed_sha256 "$asset")" ] ||
+fail "release $version has no build for $platform on $processor"
 fetch_verified "$asset"
 fetch_verified kosh.bash
 place_file "$work_dir/$asset" 755 "$prefix/bin/kosh$suffix"
@@ -197,11 +229,11 @@ else
   note "zstd is not installed, so the manual pages were skipped"
 fi
 
-printf 'Installed %s\n' "$prefix/bin/kosh$suffix"
+report Installed "$prefix/bin/kosh$suffix"
 case ":$PATH:" in
   *":$prefix/bin:"*)
   ;;
   *)
-    printf 'Add %s to PATH to run kosh by name.\n' "$prefix/bin"
+    note "add $prefix/bin to PATH to run kosh by name"
   ;;
 esac
