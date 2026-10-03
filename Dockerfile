@@ -38,6 +38,14 @@ ENV PATH="/opt/osxcross/target/bin:$PATH"
 
 ENV KOSH_TARGETS="x86_64-linux-musl aarch64-linux-musl aarch64-apple-darwin"
 
+ENV ZIG_GLOBAL_CACHE_DIR=/opt/zig-cache
+
+RUN printf '#include <cstdio>\nint main() { std::puts("warm"); }\n' > /tmp/warm.cpp && \
+    for TARGET in x86_64-linux-musl aarch64-linux-musl; do \
+      zig c++ -target "$TARGET" -O3 -flto -static /tmp/warm.cpp -o /tmp/warm; \
+    done && \
+    rm -f /tmp/warm /tmp/warm.cpp
+
 RUN git config --global --add safe.directory '*'
 
 WORKDIR /src
