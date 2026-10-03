@@ -514,6 +514,34 @@ uniq -cd
       2 c 3
 uniq -du
 c 3
+--- wc characters ---
+10 wc-utf8.txt
+ 1 10 11 wc-utf8.txt
+ 1 10 11 wc-utf8.txt
+ 2 20 22 total
+--- cat unbuffered ---
+héllo wor
+--- od type shorthands ---
+0000000 141 142 012
+          a   b  \n
+0000003
+0000000   a   b  \n
+        141 142 012
+0000003
+0000000  25185     10
+        061141 000012
+         25185     10
+        6261 000a
+0000003
+--- xargs null items and empty input ---
+[a b][c d][][e]
+status=0
+ran
+status=0
+--- env clears and removes variables ---
+A=1
+status=1
+FOO=bar
 --- seq into head ---
 1
 2

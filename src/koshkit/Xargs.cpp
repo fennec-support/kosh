@@ -2,9 +2,10 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the xargs utility. It parses quoted input items or
- * logical lines, batches commands by argument and byte limits, performs
- * replacement, prompts, traces, and propagates execution failures.
+ * This file implements the xargs utility. It parses quoted input items, null
+ * separated items, or logical lines, batches commands by argument and byte
+ * limits, performs replacement, prompts, traces, and propagates execution
+ * failures.
  */
 
 #include "../CLI.hpp"
@@ -16,7 +17,7 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[-ptx] [-E eof] [-I replace] [-L lines] [-n count] [-s "
+HELP_SYNOPSIS_DECL("[-0prtx] [-E eof] [-I replace] [-L lines] [-n count] [-s "
                    "bytes] [utility [argument ...]]");
 
 HELP_DESCRIPTION_DECL(
@@ -34,6 +35,10 @@ FLAG(XARGS_MAX_SIZE, String, 's', "max-size",
      "Limit each command to this many bytes.");
 FLAG(XARGS_TRACE, Bool, 't', "trace", "Write each command before invoking it.");
 FLAG(XARGS_EXIT, Bool, 'x', "exit", "Stop when the size limit cannot be met.");
+FLAG(XARGS_NULL, Bool, '0', "null",
+     "Separate input items with null bytes and keep quotes literal.");
+FLAG(XARGS_NO_RUN_IF_EMPTY, Bool, 'r', "no-run-if-empty",
+     "Do not run the utility when the input has no items.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Xargs);
@@ -115,6 +120,27 @@ static fn parse_xargs_items(StringView input, Allocator allocator) throws
     if (quote != '\0') throw Error{"unmatched quote"};
     items.push(xargs_item{steal(value), item_line});
   }
+  return items;
+}
+
+static fn parse_xargs_null_items(StringView input, Allocator allocator) throws
+    -> ArrayList<xargs_item>
+{
+  let items = ArrayList<xargs_item>{allocator};
+  usize position = 0;
+  while (position < input.length) {
+    let const remaining = input.substring(position);
+    let const item_length =
+        remaining.find_character('\0').value_or(remaining.length);
+    if (item_length > 0 || position + item_length < input.length) {
+      items.push(xargs_item{
+          String{allocator, remaining.substring_of_length(0, item_length)},
+          0
+      });
+    }
+    position += item_length + 1;
+  }
+
   return items;
 }
 
@@ -207,9 +233,12 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
     return 1;
   }
 
-  let items = FLAG_XARGS_REPLACE.is_set()
-                  ? parse_xargs_lines(input->view(), cxt.scratch_allocator())
-                  : parse_xargs_items(input->view(), cxt.scratch_allocator());
+  let items =
+      FLAG_XARGS_NULL.is_enabled()
+          ? parse_xargs_null_items(input->view(), cxt.scratch_allocator())
+      : FLAG_XARGS_REPLACE.is_set()
+          ? parse_xargs_lines(input->view(), cxt.scratch_allocator())
+          : parse_xargs_items(input->view(), cxt.scratch_allocator());
   if (FLAG_XARGS_EOF.is_set()) {
     usize kept_count = 0;
     while (kept_count < items.count() &&
@@ -263,7 +292,8 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   usize item_position = 0;
-  bool should_run_empty = items.is_empty() && !FLAG_XARGS_REPLACE.is_set();
+  bool should_run_empty = items.is_empty() && !FLAG_XARGS_REPLACE.is_set() &&
+                          !FLAG_XARGS_NO_RUN_IF_EMPTY.is_enabled();
   i32 status = 0;
   while (item_position < items.count() || should_run_empty) {
     should_run_empty = false;

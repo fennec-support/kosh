@@ -277,7 +277,14 @@ _koshkit_util_flags ()
     ;;
     od)
       echo \
-        "-A --address-radix -j --skip-bytes -N --read-bytes -t --format -v --output-duplicates"
+        "-A --address-radix -b -c -d -j --skip-bytes -N --read-bytes -o -s -t --format -v --output-duplicates -x"
+    ;;
+    env)
+      echo "-i --ignore-environment -u --unset"
+    ;;
+    xargs)
+      echo \
+        "-0 --null -r --no-run-if-empty -E --eof -I --replace -L --max-lines -n --max-args -p --prompt -s --max-size -t --trace -x --exit"
     ;;
     pr)
       echo \
@@ -287,7 +294,7 @@ _koshkit_util_flags ()
       echo "-a --all -g --save"
     ;;
     cat)
-      echo "-n --syntax-highlighting"
+      echo "-n -u --syntax-highlighting"
     ;;
     tee)
       echo "-a"
@@ -312,7 +319,7 @@ _koshkit_util_flags ()
       echo "-n -c -f -F -q -v -s --follow --retry --pid --sleep-interval --quiet --silent --verbose"
     ;;
     wc)
-      echo "-l -w -c"
+      echo "-l -w -c -m"
     ;;
     tr)
       echo "-c -C -d -s"

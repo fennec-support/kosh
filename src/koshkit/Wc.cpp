@@ -3,7 +3,8 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the wc utility. It streams each input, counts newlines,
- * whitespace-delimited words, and bytes, aligns columns, and computes totals.
+ * whitespace-delimited words, UTF-8 characters, and bytes, aligns columns, and
+ * computes totals.
  */
 
 #include "../CLI.hpp"
@@ -14,14 +15,16 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[-lwc] [file ...]");
+HELP_SYNOPSIS_DECL("[-lwcm] [file ...]");
 
 HELP_DESCRIPTION_DECL(
-    "The wc utility counts the lines, words, and bytes of each file.");
+    "The wc utility counts the lines, words, characters, and bytes of each "
+    "file.");
 
 FLAG(WC_LINES, Bool, 'l', "", "Print the newline count.");
 FLAG(WC_WORDS, Bool, 'w', "", "Print the word count.");
 FLAG(WC_BYTES, Bool, 'c', "", "Print the byte count.");
+FLAG(WC_CHARACTERS, Bool, 'm', "", "Print the UTF-8 character count.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Wc);
@@ -36,6 +39,7 @@ enum class wc_count_selection : u8
   Lines = 1,
   Words = 2,
   Bytes = 4,
+  Characters = 8,
 };
 
 enum class wc_scan_mode : u8
@@ -85,6 +89,7 @@ struct wc_row
   StringView name;
   u64 line_count;
   u64 word_count;
+  u64 character_count;
   u64 byte_count;
 };
 
@@ -92,6 +97,7 @@ struct wc_source_state
 {
   u64 line_count{0};
   u64 word_count{0};
+  u64 character_count{0};
   u64 byte_count{0};
   i32 error_number{0};
   bool is_in_word{false};
@@ -169,6 +175,15 @@ static fn update_wc_source(wc_source_state &state, StringView content,
   if (has_wc_count(selection, wc_count_selection::Bytes))
     state.byte_count += content.length;
 
+  if (has_wc_count(selection, wc_count_selection::Characters)) {
+    for (usize byte_position = 0; byte_position < content.length;
+         byte_position++)
+    {
+      state.character_count +=
+          (static_cast<u8>(content[byte_position]) & 0xC0) != 0x80;
+    }
+  }
+
   switch (scan_mode) {
   case wc_scan_mode::None: break;
   case wc_scan_mode::Lines: state.line_count += count_newlines(content); break;
@@ -192,8 +207,8 @@ static fn decimal_digit_count(u64 value) wontthrow -> usize
   return digit_count;
 }
 
-static fn append_counts(String &line, u64 lines, u64 words, u64 bytes,
-                        StringView name, usize field_width,
+static fn append_counts(String &line, u64 lines, u64 words, u64 characters,
+                        u64 bytes, StringView name, usize field_width,
                         wc_count_selection selection) throws -> void
 {
   bool has_field = false;
@@ -212,6 +227,8 @@ static fn append_counts(String &line, u64 lines, u64 words, u64 bytes,
 
   if (has_wc_count(selection, wc_count_selection::Lines)) do_emit_field(lines);
   if (has_wc_count(selection, wc_count_selection::Words)) do_emit_field(words);
+  if (has_wc_count(selection, wc_count_selection::Characters))
+    do_emit_field(characters);
   if (has_wc_count(selection, wc_count_selection::Bytes)) do_emit_field(bytes);
 
   if (!name.is_empty()) {
@@ -237,9 +254,9 @@ fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
 
   KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
 
-  let const has_requested_selection = FLAG_WC_LINES.is_enabled() ||
-                                      FLAG_WC_WORDS.is_enabled() ||
-                                      FLAG_WC_BYTES.is_enabled();
+  let const has_requested_selection =
+      FLAG_WC_LINES.is_enabled() || FLAG_WC_WORDS.is_enabled() ||
+      FLAG_WC_BYTES.is_enabled() || FLAG_WC_CHARACTERS.is_enabled();
   let const selection =
       !has_requested_selection
           ? wc_count_selection::Lines | wc_count_selection::Words |
@@ -248,6 +265,9 @@ fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
                                         : wc_count_selection::None) |
                 (FLAG_WC_WORDS.is_enabled() ? wc_count_selection::Words
                                             : wc_count_selection::None) |
+                (FLAG_WC_CHARACTERS.is_enabled()
+                     ? wc_count_selection::Characters
+                     : wc_count_selection::None) |
                 (FLAG_WC_BYTES.is_enabled() ? wc_count_selection::Bytes
                                             : wc_count_selection::None);
 
@@ -318,6 +338,7 @@ fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
   ArrayList<wc_row> rows{cxt.scratch_allocator()};
   u64 total_lines = 0;
   u64 total_words = 0;
+  u64 total_characters = 0;
   u64 total_bytes = 0;
   i32 status = 0;
   for (usize source_index = 0; source_index < sources.count(); source_index++) {
@@ -334,11 +355,12 @@ fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
 
     total_lines += state.line_count;
     total_words += state.word_count;
+    total_characters += state.character_count;
     total_bytes += state.byte_count;
 
     let const name = operands.is_empty() ? StringView{} : sources[source_index];
-    rows.push(
-        wc_row{name, state.line_count, state.word_count, state.byte_count});
+    rows.push(wc_row{name, state.line_count, state.word_count,
+                     state.character_count, state.byte_count});
   }
 
   u64 max_count = 0;
@@ -352,6 +374,11 @@ fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
   {
     max_count = total_words;
   }
+  if (has_wc_count(selection, wc_count_selection::Characters) &&
+      total_characters > max_count)
+  {
+    max_count = total_characters;
+  }
   if (has_wc_count(selection, wc_count_selection::Bytes) &&
       total_bytes > max_count)
   {
@@ -362,12 +389,12 @@ fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
 
   let output = String{cxt.scratch_allocator()};
   for (let const &row : rows)
-    append_counts(output, row.line_count, row.word_count, row.byte_count,
-                  row.name, field_width, selection);
+    append_counts(output, row.line_count, row.word_count, row.character_count,
+                  row.byte_count, row.name, field_width, selection);
 
   if (sources.count() > 1)
-    append_counts(output, total_lines, total_words, total_bytes,
-                  StringView{"total"}, field_width, selection);
+    append_counts(output, total_lines, total_words, total_characters,
+                  total_bytes, StringView{"total"}, field_width, selection);
 
   ec.print_to_stdout(output);
   return status;

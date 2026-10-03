@@ -245,6 +245,25 @@ for uniq_args in -c -d -u -f1 '-f1 -c' -s2 '-s 2 -d' -cd -du; do
   "$BIN" -c "koshkit uniq $uniq_args uniq-input.txt"
 done
 "$BIN" -c 'koshkit uniq -d uniq-input.txt uniq-output.txt; koshkit cat uniq-output.txt'
+echo "--- wc characters ---"
+printf 'h\303\251llo wor\n' > wc-utf8.txt
+"$BIN" -c 'koshkit wc -m wc-utf8.txt'
+"$BIN" -c 'koshkit wc -lmc wc-utf8.txt wc-utf8.txt'
+echo "--- cat unbuffered ---"
+"$BIN" -c 'koshkit cat -u wc-utf8.txt'
+echo "--- od type shorthands ---"
+printf 'ab\n' | "$BIN" -c 'koshkit od -b -c'
+printf 'ab\n' | "$BIN" -c 'koshkit od -c -b'
+printf 'ab\n' | "$BIN" -c 'koshkit od -d -o -s -x'
+echo "--- xargs null items and empty input ---"
+printf 'a b\0c d\0\0e' | "$BIN" -c 'koshkit xargs -0 printf "[%s]"'
+echo
+"$BIN" -c 'koshkit xargs -r echo ran </dev/null; printf "status=%s\n" "$?"'
+"$BIN" -c 'koshkit xargs echo ran </dev/null; printf "status=%s\n" "$?"'
+echo "--- env clears and removes variables ---"
+"$BIN" -c 'koshkit env -i A=1 koshkit env | koshkit grep A=1'
+"$BIN" -c 'export FOO=bar; koshkit env -u FOO koshkit env | koshkit grep FOO; printf "status=%s\n" "$?"'
+"$BIN" -c 'export FOO=bar; koshkit env -u FOO true; printf "FOO=%s\n" "$FOO"'
 echo "--- seq into head ---"
 "$BIN" -c 'koshkit seq 5 | koshkit head -n 2'
 echo "--- head batches regular prefix reads ---"

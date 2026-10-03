@@ -17,11 +17,13 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[-n] [--syntax-highlighting] [file ...]");
+HELP_SYNOPSIS_DECL("[-nu] [--syntax-highlighting] [file ...]");
 
 HELP_DESCRIPTION_DECL("The cat utility writes each file to standard output.");
 
 FLAG(CAT_NUMBER, Bool, 'n', "", "Number every output line, starting at one.");
+FLAG(CAT_UNBUFFERED, Bool, 'u', "",
+     "Accepted for compatibility; output is never delayed past a read.");
 FLAG(CAT_SYNTAX_HIGHLIGHTING, Bool, '\0', "syntax-highlighting",
      "Highlight detected shell source on a terminal.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");

@@ -3,8 +3,9 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the env utility. It installs temporary environment
- * assignments, prints the resulting environment, or resolves and executes a
- * command before restoring prior values.
+ * assignments, clears or removes named variables, prints the resulting
+ * environment, or resolves and executes a command before restoring prior
+ * values.
  */
 
 #include "../CLI.hpp"
@@ -15,11 +16,16 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[NAME=value ...] [command [argument ...]]");
+HELP_SYNOPSIS_DECL(
+    "[-i] [-u name]... [NAME=value ...] [command [argument ...]]");
 
 HELP_DESCRIPTION_DECL(
     "The env utility runs a command in a modified environment.");
 
+FLAG(ENV_IGNORE, Bool, 'i', "ignore-environment",
+     "Start with an empty environment.");
+FLAG(ENV_UNSET, ManyStrings, 'u', "unset",
+     "Remove this variable from the environment.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Env);
@@ -68,6 +74,36 @@ fn Env::execute(const ExecContext &ec, EvalContext &cxt,
   ArrayList<String> saved_names{cxt.scratch_allocator()};
   ArrayList<String> saved_values{cxt.scratch_allocator()};
   ArrayList<bool> was_present{cxt.scratch_allocator()};
+  let const do_save_and_unset = [&](StringView name) throws -> void {
+    let const previous = os::get_environment_variable(name);
+    saved_names.push(String{cxt.scratch_allocator(), name});
+    saved_values.push(previous.has_value() ? previous->clone()
+                                           : String{cxt.scratch_allocator()});
+    was_present.push(previous.has_value());
+    os::unset_environment_variable(name);
+  };
+
+  defer
+  {
+    for (usize i = saved_names.count(); i-- > 0;) {
+      if (was_present[i])
+        os::set_environment_variable(saved_names[i].view(),
+                                     saved_values[i].view());
+      else
+        os::unset_environment_variable(saved_names[i].view());
+    }
+  };
+
+  if (FLAG_ENV_IGNORE.is_enabled()) {
+    let const names = os::environment_names();
+    for (let const &name : names)
+      do_save_and_unset(name.view());
+  }
+
+  for (usize unset_index = 0; unset_index < FLAG_ENV_UNSET.count();
+       unset_index++)
+    do_save_and_unset(FLAG_ENV_UNSET.get(unset_index));
+
   usize first_command = 0;
   while (first_command < operands.count() &&
          is_assignment(operands[first_command].view()))
@@ -86,17 +122,6 @@ fn Env::execute(const ExecContext &ec, EvalContext &cxt,
     os::set_environment_variable(name, value);
     first_command++;
   }
-
-  defer
-  {
-    for (usize i = saved_names.count(); i-- > 0;) {
-      if (was_present[i])
-        os::set_environment_variable(saved_names[i].view(),
-                                     saved_values[i].view());
-      else
-        os::unset_environment_variable(saved_names[i].view());
-    }
-  };
 
   if (first_command >= operands.count()) {
     print_environment(ec, cxt);

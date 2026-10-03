@@ -3,8 +3,9 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the od utility. It applies byte ranges and address
- * bases, renders selected numeric or character formats, and folds repeated
- * output rows.
+ * bases, renders selected numeric or character formats from -t and the
+ * single-letter shorthands in command line order, and folds repeated output
+ * rows.
  */
 
 #include "../CLI.hpp"
@@ -15,7 +16,7 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[-v] [-A base] [-j skip] [-N count] [-t type]... "
+HELP_SYNOPSIS_DECL("[-bcdosvx] [-A base] [-j skip] [-N count] [-t type]... "
                    "[file ...]");
 
 HELP_DESCRIPTION_DECL("The od utility writes formatted file bytes.");
@@ -26,11 +27,25 @@ FLAG(OD_COUNT, String, 'N', "read-bytes", "Read at most this many bytes.");
 FLAG(OD_TYPE, ManyStrings, 't', "format", "Add an output type.");
 FLAG(OD_VERBOSE, Bool, 'v', "output-duplicates",
      "Write every repeated group of input data.");
+FLAG(OD_BYTES, Bool, 'b', "", "Write bytes in octal, as -t o1.");
+FLAG(OD_CHARACTERS, Bool, 'c', "", "Write bytes as characters, as -t c.");
+FLAG(OD_DECIMAL_WORDS, Bool, 'd', "",
+     "Write unsigned decimal words, as -t u2.");
+FLAG(OD_OCTAL_WORDS, Bool, 'o', "", "Write octal words, as -t o2.");
+FLAG(OD_SIGNED_WORDS, Bool, 's', "", "Write signed decimal words, as -t d2.");
+FLAG(OD_HEX_WORDS, Bool, 'x', "", "Write hexadecimal words, as -t x2.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Od);
 
 namespace koshka::koshkit {
+
+struct od_type_request
+{
+  usize position;
+  StringView format;
+  SourceLocation location;
+};
 
 static fn append_od_padded(String &output, u64 magnitude, bool is_negative,
                            usize width_columns, char padding,
@@ -208,11 +223,34 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
     byte_limit = *parsed;
   }
 
+  let type_requests = ArrayList<od_type_request>{cxt.scratch_allocator()};
+  for (usize type_index = 0; type_index < FLAG_OD_TYPE.count(); type_index++) {
+    type_requests.push(od_type_request{FLAG_OD_TYPE.get_position(type_index),
+                                       FLAG_OD_TYPE.get(type_index),
+                                       FLAG_OD_TYPE.get_location(type_index)});
+  }
+
+  let const do_add_shorthand = [&](const FlagBool &flag, StringView format)
+                                   throws -> void {
+    if (flag.is_enabled())
+      type_requests.push(od_type_request{flag.position(), format, {}});
+  };
+  do_add_shorthand(FLAG_OD_BYTES, "o1");
+  do_add_shorthand(FLAG_OD_CHARACTERS, "c");
+  do_add_shorthand(FLAG_OD_DECIMAL_WORDS, "u2");
+  do_add_shorthand(FLAG_OD_OCTAL_WORDS, "o2");
+  do_add_shorthand(FLAG_OD_SIGNED_WORDS, "d2");
+  do_add_shorthand(FLAG_OD_HEX_WORDS, "x2");
+  type_requests.sort(
+      [](const od_type_request &left, const od_type_request &right) {
+        return left.position < right.position;
+      });
+
   let input_operands = ArrayList<String>{cxt.scratch_allocator()};
   let operand_count = operands.count();
   let const has_legacy_blocking_option =
       FLAG_OD_ADDRESS.is_set() || FLAG_OD_SKIP.is_set() ||
-      FLAG_OD_COUNT.is_set() || !FLAG_OD_TYPE.is_empty() ||
+      FLAG_OD_COUNT.is_set() || !type_requests.is_empty() ||
       FLAG_OD_VERBOSE.is_enabled();
   let const has_legacy_plus_offset = !operands.is_empty() &&
                                      !operands.back().is_empty() &&
@@ -316,14 +354,14 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
   if (byte_limit < available) available = static_cast<usize>(byte_limit);
   let const bytes = input_bytes.view().substring_of_length(first, available);
   let output = String{cxt.scratch_allocator()};
-  let const type_count = FLAG_OD_TYPE.count();
+  let const type_count = type_requests.count();
   let const format_count = type_count == 0 ? 1 : type_count;
   let formats = ArrayList<od_format>{cxt.scratch_allocator()};
   formats.reserve(format_count);
 
   for (usize format_index = 0; format_index < format_count; format_index++) {
     let const format =
-        type_count == 0 ? StringView{"o2"} : FLAG_OD_TYPE.get(format_index);
+        type_count == 0 ? StringView{"o2"} : type_requests[format_index].format;
     if (format == "c") {
       formats.push(od_format{int_base::octal, 1, 0, true, false});
       continue;
@@ -331,7 +369,7 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
 
     let const format_location = type_count == 0
                                     ? SourceLocation{}
-                                    : FLAG_OD_TYPE.get_location(format_index);
+                                    : type_requests[format_index].location;
     if (format.is_empty() || format.length > 2) {
       KOSHKIT_REPORT_ERROR_AT(
           format_location, "unsupported output type '" + String{format} + "'",

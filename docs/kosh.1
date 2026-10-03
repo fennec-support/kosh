@@ -1624,6 +1624,8 @@ option enables atan, cos, exp, ln, and sin and selects a scale of 20.
 Files or standard input are concatenated. The
 .B \-n
 option numbers lines. The
+.B \-u
+option is accepted because output is never delayed. The
 .B \-\-syntax\-highlighting
 option colors recognized shell source when standard output is a terminal. A
 file containing a null byte is written without highlighting. Line numbering
@@ -1666,7 +1668,41 @@ used.
 .TP
 .B env
 Temporary assignments are applied before a command, or the environment is
-printed.
+printed. The
+.B \-i
+option starts with an empty environment, and each
+.B \-u
+option removes one variable.
+.TP
+.B xargs
+Arguments read from standard input are appended to a command. The
+.BR \-0 ,
+.BR \-r ,
+.BR \-E ,
+.BR \-I ,
+.BR \-L ,
+.BR \-n ,
+.BR \-s ,
+.BR \-p ,
+.BR \-t ,
+and
+.B \-x
+options split on null bytes, skip an empty input, set the end marker, replace
+a string, and limit lines, arguments, and bytes, ask before a run, trace it,
+and fail on an oversized command.
+.TP
+.B od
+Input bytes are written in the formats selected by
+.BR \-t .
+The
+.BR \-b ,
+.BR \-c ,
+.BR \-d ,
+.BR \-o ,
+.BR \-s ,
+and
+.B \-x
+options select the o1, c, u2, o2, d2, and x2 formats in command line order.
 .TP
 .B printenv
 The whole environment is printed when no name is given. Named values are
@@ -2433,11 +2469,13 @@ Utilities with styled reports use color when their output stream is a terminal.
 Redirected output contains no terminal escape sequences.
 .TP
 .B wc
-Lines, words, and bytes are counted with
+Lines, words, characters, and bytes are counted with
 .BR \-l ,
 .BR \-w ,
+.BR \-m ,
 and
 .BR \-c .
+A character is a UTF-8 sequence.
 .TP
 .B which
 Builtins, PATH programs, and koshkit utilities are resolved. The
