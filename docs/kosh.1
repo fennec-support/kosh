@@ -1734,7 +1734,41 @@ and
 options ignore case, invert matches, recurse into directories, show line
 numbers, and suppress file-name prefixes. The combined
 .B \-rnh
-form is accepted. The locale is chosen from the first nonempty value of
+form is accepted, and options may follow the operands.
+A pattern is a basic regular expression. The
+.B \-E
+option reads patterns as extended regular expressions and the
+.B \-F
+option reads them as fixed strings. The two options conflict and exit with
+status 2.
+Each
+.B \-e
+option adds a pattern, and each
+.B \-f
+option adds the lines of a file as patterns. When either appears, every operand
+is a file. A pattern text holding newlines names several patterns, and a line is
+selected when any pattern matches. An empty pattern matches every line, and an
+empty pattern file matches none.
+The
+.B \-x
+option selects only lines that match entirely.
+The
+.B \-c
+option prints the count of selected lines for each file, prefixed with the file
+name when several files are searched. The
+.B \-l
+option prints each file with a selected line once, and takes precedence over
+.BR \-c .
+The
+.B \-q
+option prints nothing and exits with status 0 at the first selected line, even
+if an earlier file could not be read. The
+.B \-s
+option suppresses messages about files that cannot be read, and the exit status
+stays 2. The standard input is named
+.I (standard input)
+in prefixes, counts, and lists. The exit status is 0 when a line is selected, 1
+when none is, and 2 on an error. The locale is chosen from the first nonempty value of
 .BR LC_ALL ,
 .BR LC_CTYPE ,
 and

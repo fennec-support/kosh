@@ -318,7 +318,7 @@ _koshkit_util_flags ()
       echo "-d"
     ;;
     grep)
-      echo "-i -v -r -n -h -rnh --recursive --line-number --no-filename"
+      echo "-i -v -r -n -h -E -F -e -f -c -l -q -s -x -rnh --recursive --line-number --no-filename --extended-regexp --fixed-strings --regexp --file --count --files-with-matches --quiet --no-messages --line-regexp"
     ;;
     sort)
       echo "-r"

@@ -2,17 +2,9 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the grep utility. It compiles the requested regular
- * expression and streams matching or inverted lines with optional ASCII case
- * folding. Each read chunk is searched for a literal that every match must
- * contain, and only the lines holding that literal reach the line matcher.
- * A pattern made only of literal runs, single-byte wildcards, ".*" gaps, and
- * optional edge anchors compiles to a segment list that decides each line
- * without the system regex engine. Every other pattern uses that engine.
- * In a UTF-8 locale the pattern is compiled twice: a byte copy decides ASCII
- * lines and a copy built under a UTF-8 character type decides every other line
- * so that "." and bracket classes match whole characters. A segment list with
- * single-character wildcards decides ASCII lines only.
+ * This file implements the grep utility. It compiles each requested pattern as
+ * a basic expression, an extended expression, or a fixed string, and streams
+ * selected lines with optional ASCII case folding and whole-line matching.
  */
 
 #include "../CLI.hpp"
@@ -26,11 +18,28 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[-ivrnh] pattern [file ...]");
+HELP_SYNOPSIS_DECL(
+    "[-EFivrnhcqslx] [-e pattern] [-f file] [pattern] [file ...]");
 
 HELP_DESCRIPTION_DECL(
     "The grep utility prints the lines of each file that match a pattern.");
 
+FLAG(GREP_EXTENDED, Bool, 'E', "extended-regexp",
+     "Read patterns as extended regular expressions.");
+FLAG(GREP_FIXED, Bool, 'F', "fixed-strings", "Read patterns as fixed strings.");
+FLAG(GREP_EXPRESSION, ManyStrings, 'e', "regexp",
+     "Add a pattern. Newlines separate patterns.");
+FLAG(GREP_PATTERN_FILE, ManyStrings, 'f', "file",
+     "Read patterns from a file, one per line.");
+FLAG(GREP_COUNT, Bool, 'c', "count", "Print the count of selected lines.");
+FLAG(GREP_LIST, Bool, 'l', "files-with-matches",
+     "Print the names of files with a selected line.");
+FLAG(GREP_QUIET, Bool, 'q', "quiet",
+     "Print nothing and stop at the first selected line.");
+FLAG(GREP_NO_MESSAGES, Bool, 's', "no-messages",
+     "Suppress messages about unreadable files.");
+FLAG(GREP_LINE_REGEXP, Bool, 'x', "line-regexp",
+     "Select only lines that match entirely.");
 FLAG(GREP_IGNORE_CASE, Bool, 'i', "", "Match without regard to letter case.");
 FLAG(GREP_INVERT, Bool, 'v', "", "Print the lines that do not match.");
 FLAG(GREP_RECURSIVE, Bool, 'r', "recursive", "Search directories recursively.");
@@ -104,6 +113,19 @@ static pure fn is_literal_search_pattern(StringView pattern) wontthrow -> bool
   return true;
 }
 
+static pure fn is_basic_regex_special(char character) wontthrow -> bool
+{
+  switch (character) {
+  case '\\':
+  case '.':
+  case '[':
+  case '*':
+  case '^':
+  case '$': return true;
+  default: return false;
+  }
+}
+
 static pure fn is_ascii_pattern(StringView pattern) wontthrow -> bool
 {
   for (usize index = 0; index < pattern.length; index++)
@@ -127,12 +149,13 @@ static pure fn is_ascii_line(StringView line) wontthrow -> bool
   return true;
 }
 
-static fn find_required_regex_literal(StringView pattern) wontthrow
-    -> StringView
+static fn find_required_regex_literal(StringView pattern,
+                                      bool is_extended) wontthrow -> StringView
 {
   if (!is_ascii_pattern(pattern) || pattern.find_character('\0').has_value() ||
       pattern.find_character('\n').has_value() ||
-      pattern.find_substring("\\|").has_value())
+      pattern.find_substring("\\|").has_value() ||
+      (is_extended && pattern.find_character('|').has_value()))
   {
     return {};
   }
@@ -150,6 +173,19 @@ static fn find_required_regex_literal(StringView pattern) wontthrow
   while (index < pattern.length) {
     let const character = pattern[index];
     if (character == '[') break;
+
+    if (is_extended && (character == '(' || character == ')')) {
+      break;
+    }
+
+    if (is_extended && character == '{') {
+      if (run_length != 0) run_length--;
+      do_close_run();
+      let const interval_end = pattern.substring(index + 1).find_character('}');
+      index =
+          interval_end.has_value() ? index + *interval_end + 2 : pattern.length;
+      continue;
+    }
 
     if (character == '\\') {
       if (index + 1 == pattern.length) break;
@@ -174,6 +210,16 @@ static fn find_required_regex_literal(StringView pattern) wontthrow
     }
 
     switch (character) {
+    case '+':
+    case '?':
+      if (is_extended) {
+        if (run_length != 0) run_length--;
+        do_close_run();
+        break;
+      }
+      if (run_length == 0) run_start = index;
+      run_length++;
+      break;
     case '*':
       if (run_length != 0) run_length--;
       do_close_run();
@@ -198,15 +244,17 @@ static fn collect_recursive_sources(const ExecContext &ec, EvalContext &cxt,
                                     const Path &path,
                                     Path::entry_kind path_kind,
                                     Allocator allocator,
-                                    ArrayList<Path> &storage,
-                                    i32 &status) throws -> void
+                                    ArrayList<Path> &storage, i32 &status,
+                                    bool should_report_errors) throws -> void
 {
   if (path_kind == Path::entry_kind::Unknown) {
     os::file_status file_status{};
     if (!os::stat_path(path.view(), file_status)) {
-      report_soft_koshkit_util_error(ec, cxt, "grep",
-                                     path.text() + ": " +
-                                         os::last_system_error_message());
+      if (should_report_errors) {
+        report_soft_koshkit_util_error(ec, cxt, "grep",
+                                       path.text() + ": " +
+                                           os::last_system_error_message());
+      }
       status = 2;
       return;
     }
@@ -225,8 +273,11 @@ static fn collect_recursive_sources(const ExecContext &ec, EvalContext &cxt,
 
   let children = Path::read_directory_typed(path, allocator);
   if (!children.has_value()) {
-    report_soft_koshkit_util_error(
-        ec, cxt, "grep", path.text() + ": " + os::last_system_error_message());
+    if (should_report_errors) {
+      report_soft_koshkit_util_error(ec, cxt, "grep",
+                                     path.text() + ": " +
+                                         os::last_system_error_message());
+    }
     status = 2;
     return;
   }
@@ -302,7 +353,7 @@ static fn collect_recursive_sources(const ExecContext &ec, EvalContext &cxt,
     let const kind = (*children)[index].kind;
     if (kind == Path::entry_kind::Directory)
       collect_recursive_sources(ec, cxt, child_paths[index], kind, allocator,
-                                storage, status);
+                                storage, status, should_report_errors);
     else if (kind == Path::entry_kind::Regular)
       storage.push(steal(child_paths[index]));
   }
@@ -315,43 +366,74 @@ struct grep_fast_segment
   bool has_wildcard{false};
 };
 
+enum class grep_output_mode : u8
+{
+  Lines,
+  Count,
+  List,
+  Quiet,
+};
+
 struct grep_options
 {
   StringView pattern;
   grep_recursion_mode recursion_mode{grep_recursion_mode::Files};
+  grep_output_mode output_mode{grep_output_mode::Lines};
   bool should_ignore_case{false};
   bool should_invert{false};
   bool should_print_line_numbers{false};
   bool should_suppress_names{false};
+  bool should_suppress_messages{false};
   bool is_utf8{false};
+  bool is_extended{false};
+  bool is_fixed{false};
+  bool is_whole_line{false};
 };
 
-class GrepSearch
+struct grep_pattern_span
+{
+  u32 start{0};
+  u32 length{0};
+  bool is_fixed{false};
+};
+
+struct grep_regex
+{
+  os::compiled_regex compiled;
+  bool is_compiled{false};
+
+  grep_regex() = default;
+
+  grep_regex(grep_regex &&other) noexcept
+      : compiled(other.compiled), is_compiled(other.is_compiled)
+  {
+    other.is_compiled = false;
+  }
+
+  ~grep_regex()
+  {
+    if (is_compiled) os::free_regex(compiled);
+  }
+
+  grep_regex(const grep_regex &) = delete;
+  grep_regex &operator=(const grep_regex &) = delete;
+  grep_regex &operator=(grep_regex &&) = delete;
+};
+
+class GrepMatcher
 {
 public:
-  GrepSearch(const ExecContext &ec, EvalContext &cxt,
-             const ArrayList<String> &args,
-             const ArrayList<SourceLocation> &operand_locations,
-             const grep_options &options) throws
-      : m_ec(ec),
-        m_cxt(cxt),
-        m_args(args),
-        m_operand_locations(operand_locations),
-        m_options(options),
-        m_allocator(cxt.scratch_allocator()),
-        m_recursive_storage(m_allocator),
-        m_sources(m_allocator),
-        m_source_line_numbers(m_allocator),
-        m_folded_pattern(m_allocator),
-        m_fast_bytes(m_allocator),
-        m_fast_segments(m_allocator),
-        m_output(m_allocator),
-        m_line(m_allocator)
+  GrepMatcher(Allocator allocator, const grep_options &options) throws
+      : m_options(options),
+        m_allocator(allocator),
+        m_folded_pattern(allocator),
+        m_fast_bytes(allocator),
+        m_fast_segments(allocator)
   {
     let const pattern = m_options.pattern;
     m_is_ascii_pattern = is_ascii_pattern(pattern);
     m_should_use_literal_search =
-        is_literal_search_pattern(pattern) &&
+        (m_options.is_fixed || is_literal_search_pattern(pattern)) &&
         (!m_options.should_ignore_case || is_ascii_pattern(pattern));
     prepare_fast_matcher();
     prepare_repeated_class_path();
@@ -363,15 +445,6 @@ public:
         m_folded_pattern.push(utils::ascii_to_lower(pattern[index]));
     }
   }
-
-  ~GrepSearch()
-  {
-    if (m_is_regex_compiled) os::free_regex(m_compiled);
-    if (m_is_utf8_regex_compiled) os::free_regex(m_utf8_compiled);
-  }
-
-  GrepSearch(const GrepSearch &) = delete;
-  GrepSearch &operator=(const GrepSearch &) = delete;
 
   fn compile_pattern() throws -> bool
   {
@@ -385,111 +458,66 @@ public:
                                 ? os::case_sensitivity::Insensitive
                                 : os::case_sensitivity::Sensitive;
     if (!m_has_fast_matcher && (!m_options.is_utf8 || m_is_ascii_pattern)) {
-      if (os::compile_basic_regex(m_options.pattern, m_compiled, sensitivity) !=
-          os::regex_compile_result::Ok)
-      {
-        return false;
-      }
-
-      m_is_regex_compiled = true;
+      if (!compile_regex_into(m_regex, sensitivity)) return false;
     }
 
     if (!m_options.is_utf8) return true;
 
     let const scope = os::regex_utf8_scope{true};
-    if (os::compile_basic_regex(m_options.pattern, m_utf8_compiled,
-                                sensitivity) != os::regex_compile_result::Ok)
-    {
-      return false;
-    }
+    return compile_regex_into(m_utf8_regex, sensitivity);
+  }
 
-    m_is_utf8_regex_compiled = true;
-    return true;
+  pure fn get_candidate_literal() const wontthrow -> StringView
+  {
+    return m_candidate_literal;
+  }
+
+  pure fn get_pattern() const wontthrow -> StringView
+  {
+    return m_options.pattern;
+  }
+
+  pure fn is_literal_hit_sufficient() const wontthrow -> bool
+  {
+    return m_should_use_literal_search && !m_options.is_whole_line;
+  }
+
+  pure fn is_utf8_regex_compiled() const wontthrow -> bool
+  {
+    return m_utf8_regex.is_compiled;
   }
 
   fn match_regex(StringView value) throws -> bool
   {
-    if (m_is_utf8_regex_compiled &&
-        (!m_is_ascii_pattern || !is_ascii_line(value)))
-    {
-      return os::regex_matches_null_terminated(m_utf8_compiled, value);
-    }
+    let &selected = m_utf8_regex.is_compiled &&
+                            (!m_is_ascii_pattern || !is_ascii_line(value))
+                        ? m_utf8_regex
+                        : m_regex;
+    if (!m_options.is_whole_line)
+      return os::regex_matches_null_terminated(selected.compiled, value);
 
-    return os::regex_matches_null_terminated(m_compiled, value);
-  }
-
-  fn collect_sources(const ArrayList<String> &operands) throws -> void
-  {
-    let const operand_sources =
-        source_list_from_operands(operands, m_allocator, 1);
-    if (m_options.recursion_mode == grep_recursion_mode::Recursive) {
-      for (let const source : operand_sources) {
-        if (source == "-") {
-          m_sources.push(source);
-          continue;
-        }
-        let const source_path = Path{source, m_allocator};
-        collect_recursive_sources(m_ec, m_cxt, source_path,
-                                  Path::entry_kind::Unknown, m_allocator,
-                                  m_recursive_storage, m_status);
-      }
-
-      m_sources.reserve(m_recursive_storage.count() + 1);
-      for (let const &source : m_recursive_storage)
-        m_sources.push(source.view());
-
-      if (m_sources.is_empty() && operand_sources.count() == 1 &&
-          operand_sources[0] == "-")
-      {
-        m_sources.push("-");
-      }
-    } else {
-      m_sources = steal(operand_sources);
-    }
-
-    m_should_print_names =
-        !m_options.should_suppress_names && m_sources.count() > 1;
-    if (m_options.should_print_line_numbers) {
-      m_source_line_numbers.reserve(m_sources.count());
-      for (usize index = 0; index < m_sources.count(); index++)
-        m_source_line_numbers.push(1);
-    }
-  }
-
-  fn run() throws -> i32
-  {
-    let const scope = os::regex_utf8_scope{m_is_utf8_regex_compiled};
-    let const is_recursive =
-        m_options.recursion_mode == grep_recursion_mode::Recursive;
-    let reader = SourceBatchReader{
-        m_ec,
-        m_sources,
-        m_allocator,
-        GREP_READ_BYTE_COUNT,
-        SourceBatchReader::source_dash_mode::TreatAsStdin,
-        is_recursive ? SourceBatchReader::source_kind_mode::KnownRegular
-                     : SourceBatchReader::source_kind_mode::Probe,
-        is_recursive ? SourceBatchReader::source_read_mode::Sequential
-                     : SourceBatchReader::source_read_mode::Batched};
-    let chunks = ArrayList<SourceBatchReader::Chunk>{m_allocator};
-
-    loop
-    {
-      let const read_result = reader.read_next_ordered(chunks);
-      if (read_result == SourceBatchReader::ReadResult::Complete) break;
-      if (read_result == SourceBatchReader::ReadResult::Interrupted) return 130;
-
-      for (let const &chunk : chunks)
-        process_chunk(chunk);
-    }
-
-    m_ec.print_to_stdout(m_output);
-    if (m_status == 2) return 2;
-
-    return m_has_any_match ? 0 : 1;
+    let const report = os::execute_regex(
+        selected.compiled, os::regex_execution_options{value, m_allocator});
+    return report.result == os::regex_match_result::Matched &&
+           report.spans[0].start == 0 &&
+           static_cast<usize>(report.spans[0].end) == value.length;
   }
 
 private:
+  fn compile_regex_into(grep_regex &target,
+                        os::case_sensitivity sensitivity) throws -> bool
+  {
+    let const result =
+        m_options.is_extended
+            ? os::compile_regex(m_options.pattern, target.compiled, sensitivity)
+            : os::compile_basic_regex(m_options.pattern, target.compiled,
+                                      sensitivity);
+    if (result != os::regex_compile_result::Ok) return false;
+
+    target.is_compiled = true;
+    return true;
+  }
+
   fn close_fast_segment(usize segment_start) throws -> void
   {
     let const length = m_fast_bytes.count() - segment_start;
@@ -576,6 +604,11 @@ private:
       m_is_fast_start_anchored = false;
       m_is_fast_end_anchored = false;
       return;
+    }
+
+    if (m_options.is_whole_line) {
+      m_is_fast_start_anchored = true;
+      m_is_fast_end_anchored = true;
     }
 
     close_fast_segment(segment_start);
@@ -720,7 +753,8 @@ private:
     let const pattern = m_options.pattern;
     if (m_should_use_literal_search || m_options.should_ignore_case ||
         pattern.length <= 1 || pattern[0] != '^' ||
-        pattern.find_substring("\\|").has_value())
+        pattern.find_substring("\\|").has_value() ||
+        (m_options.is_extended && pattern.find_character('|').has_value()))
     {
       return;
     }
@@ -728,8 +762,14 @@ private:
     usize prefix_length = 0;
     for (usize index = 1; index < pattern.length; index++) {
       let const character = pattern[index];
-      if (character == '*' || character == '\\') {
+      if (character == '*' || character == '\\' ||
+          (m_options.is_extended &&
+           (character == '+' || character == '?' || character == '{')))
+      {
         if (prefix_length != 0) prefix_length--;
+        break;
+      }
+      if (m_options.is_extended && (character == '(' || character == ')')) {
         break;
       }
       if (character == '.' || character == '[' || character == '$' ||
@@ -753,7 +793,8 @@ private:
     if (m_should_use_literal_search) {
       m_candidate_literal = m_options.pattern;
     } else {
-      m_candidate_literal = find_required_regex_literal(m_options.pattern);
+      m_candidate_literal =
+          find_required_regex_literal(m_options.pattern, m_options.is_extended);
       if (m_regex_prefix.length > m_candidate_literal.length)
         m_candidate_literal = m_regex_prefix;
     }
@@ -795,9 +836,18 @@ private:
     return true;
   }
 
+public:
   fn match_line(StringView value) throws -> bool
   {
     if (m_should_use_literal_search) {
+      if (m_options.is_whole_line) {
+        return value.length == m_options.pattern.length &&
+               (m_options.should_ignore_case
+                    ? utils::contains_case_insensitive_ascii(
+                          value, m_folded_pattern.view())
+                    : value == m_options.pattern);
+      }
+
       return m_options.should_ignore_case
                  ? utils::contains_case_insensitive_ascii(
                        value, m_folded_pattern.view())
@@ -818,30 +868,236 @@ private:
     return match_regex(value);
   }
 
+private:
+  grep_options m_options;
+  Allocator m_allocator;
+  String m_folded_pattern;
+  String m_fast_bytes;
+  ArrayList<grep_fast_segment> m_fast_segments;
+  StringView m_fast_regex_prefix;
+  StringView m_fast_regex_suffix;
+  StringView m_regex_prefix;
+  StringView m_candidate_literal;
+  grep_regex m_regex;
+  grep_regex m_utf8_regex;
+  grep_repeated_class m_fast_regex_class{grep_repeated_class::None};
+  bool m_should_use_literal_search{false};
+  bool m_has_fast_matcher{false};
+  bool m_has_utf8_wildcard{false};
+  bool m_is_ascii_pattern{false};
+  bool m_is_fast_start_anchored{false};
+  bool m_is_fast_end_anchored{false};
+  bool m_is_fast_empty_line_only{false};
+};
+
+class GrepSearch
+{
+public:
+  GrepSearch(const ExecContext &ec, EvalContext &cxt,
+             const ArrayList<String> &args,
+             const ArrayList<SourceLocation> &operand_locations,
+             const grep_options &options, String pattern_text,
+             const ArrayList<grep_pattern_span> &pattern_spans,
+             usize first_source_index) throws
+      : m_ec(ec),
+        m_cxt(cxt),
+        m_args(args),
+        m_operand_locations(operand_locations),
+        m_options(options),
+        m_first_source_index(first_source_index),
+        m_allocator(cxt.scratch_allocator()),
+        m_pattern_text(steal(pattern_text)),
+        m_matchers(m_allocator),
+        m_recursive_storage(m_allocator),
+        m_sources(m_allocator),
+        m_source_line_numbers(m_allocator),
+        m_source_match_counts(m_allocator),
+        m_output(m_allocator),
+        m_line(m_allocator)
+  {
+    m_matchers.reserve(pattern_spans.count());
+    for (let const &span : pattern_spans) {
+      let matcher_options = m_options;
+      matcher_options.pattern =
+          m_pattern_text.view().substring_of_length(span.start, span.length);
+      matcher_options.is_fixed = span.is_fixed;
+      matcher_options.is_extended = m_options.is_extended && !span.is_fixed;
+      m_matchers.push(GrepMatcher{m_allocator, matcher_options});
+    }
+
+    if (m_matchers.count() == 1) {
+      m_candidate_literal = m_matchers[0].get_candidate_literal();
+      m_is_literal_hit_sufficient = m_matchers[0].is_literal_hit_sufficient();
+    }
+  }
+
+  GrepSearch(const GrepSearch &) = delete;
+  GrepSearch &operator=(const GrepSearch &) = delete;
+
+  fn find_invalid_pattern() throws -> Maybe<StringView>
+  {
+    for (let &matcher : m_matchers) {
+      if (!matcher.compile_pattern()) return matcher.get_pattern();
+      m_has_utf8_regex = m_has_utf8_regex || matcher.is_utf8_regex_compiled();
+    }
+
+    return None;
+  }
+
+  fn collect_sources(const ArrayList<String> &operands) throws -> void
+  {
+    let const operand_sources =
+        source_list_from_operands(operands, m_allocator, m_first_source_index);
+    if (m_options.recursion_mode == grep_recursion_mode::Recursive) {
+      for (let const source : operand_sources) {
+        if (source == "-") {
+          m_sources.push(source);
+          continue;
+        }
+        let const source_path = Path{source, m_allocator};
+        collect_recursive_sources(
+            m_ec, m_cxt, source_path, Path::entry_kind::Unknown, m_allocator,
+            m_recursive_storage, m_status, !m_options.should_suppress_messages);
+      }
+
+      m_sources.reserve(m_recursive_storage.count() + 1);
+      for (let const &source : m_recursive_storage)
+        m_sources.push(source.view());
+
+      if (m_sources.is_empty() && operand_sources.count() == 1 &&
+          operand_sources[0] == "-")
+      {
+        m_sources.push("-");
+      }
+    } else {
+      m_sources = steal(operand_sources);
+    }
+
+    m_should_print_names =
+        !m_options.should_suppress_names && m_sources.count() > 1;
+    if (m_options.should_print_line_numbers) {
+      m_source_line_numbers.reserve(m_sources.count());
+      for (usize index = 0; index < m_sources.count(); index++)
+        m_source_line_numbers.push(1);
+    }
+    if (m_options.output_mode == grep_output_mode::Count ||
+        m_options.output_mode == grep_output_mode::List)
+    {
+      m_source_match_counts.reserve(m_sources.count());
+      for (usize index = 0; index < m_sources.count(); index++)
+        m_source_match_counts.push(0);
+    }
+  }
+
+  fn run() throws -> i32
+  {
+    let const scope = os::regex_utf8_scope{m_has_utf8_regex};
+    let const is_recursive =
+        m_options.recursion_mode == grep_recursion_mode::Recursive;
+    let reader = SourceBatchReader{
+        m_ec,
+        m_sources,
+        m_allocator,
+        GREP_READ_BYTE_COUNT,
+        SourceBatchReader::source_dash_mode::TreatAsStdin,
+        is_recursive ? SourceBatchReader::source_kind_mode::KnownRegular
+                     : SourceBatchReader::source_kind_mode::Probe,
+        is_recursive ? SourceBatchReader::source_read_mode::Sequential
+                     : SourceBatchReader::source_read_mode::Batched};
+    let chunks = ArrayList<SourceBatchReader::Chunk>{m_allocator};
+    let const is_quiet = m_options.output_mode == grep_output_mode::Quiet;
+
+    loop
+    {
+      let const read_result = reader.read_next_ordered(chunks);
+      if (read_result == SourceBatchReader::ReadResult::Complete) break;
+      if (read_result == SourceBatchReader::ReadResult::Interrupted) return 130;
+
+      for (let const &chunk : chunks) {
+        process_chunk(chunk);
+        if (is_quiet && m_has_any_match) {
+          return 0;
+        }
+      }
+    }
+
+    m_ec.print_to_stdout(m_output);
+    if (m_status == 2) return 2;
+
+    return m_has_any_match ? 0 : 1;
+  }
+
+private:
+  fn match_line(StringView value) throws -> bool
+  {
+    for (let &matcher : m_matchers)
+      if (matcher.match_line(value)) return true;
+
+    return false;
+  }
+
+  fn append_source_name(StringView source) throws -> void
+  {
+    m_output += source == "-" ? StringView{"(standard input)"} : source;
+  }
+
+  fn flush_output_if_full() throws -> void
+  {
+    if (m_output.count() < 65536) return;
+
+    m_ec.print_to_stdout(m_output);
+    m_output.clear();
+  }
+
   fn process_line(usize source_index, StringView source, StringView value,
                   bool is_match) throws -> void
   {
     char line_number[20];
     if (is_match != m_options.should_invert) {
       m_has_any_match = true;
-      if (m_should_print_names) {
-        m_output += source == "-" ? StringView{"(standard input)"} : source;
-        m_output += ':';
-      }
-      if (m_options.should_print_line_numbers) {
-        m_output +=
-            utils::uint_to_text_into(m_source_line_numbers[source_index],
-                                     line_number, sizeof(line_number));
-        m_output += ':';
-      }
-      m_output += value;
-      m_output += '\n';
-      if (m_output.count() >= 65536) {
-        m_ec.print_to_stdout(m_output);
-        m_output.clear();
+      switch (m_options.output_mode) {
+      case grep_output_mode::Lines:
+        if (m_should_print_names) {
+          append_source_name(source);
+          m_output += ':';
+        }
+        if (m_options.should_print_line_numbers) {
+          m_output +=
+              utils::uint_to_text_into(m_source_line_numbers[source_index],
+                                       line_number, sizeof(line_number));
+          m_output += ':';
+        }
+        m_output += value;
+        m_output += '\n';
+        flush_output_if_full();
+        break;
+      case grep_output_mode::Count:
+        m_source_match_counts[source_index]++;
+        break;
+      case grep_output_mode::List:
+        if (m_source_match_counts[source_index]++ == 0) {
+          append_source_name(source);
+          m_output += '\n';
+          flush_output_if_full();
+        }
+        break;
+      case grep_output_mode::Quiet: break;
       }
     }
     m_line.clear();
+  }
+
+  fn print_source_count(usize source_index, StringView source) throws -> void
+  {
+    char count_text[20];
+    if (m_should_print_names) {
+      append_source_name(source);
+      m_output += ':';
+    }
+    m_output += utils::uint_to_text_into(m_source_match_counts[source_index],
+                                         count_text, sizeof(count_text));
+    m_output += '\n';
+    flush_output_if_full();
   }
 
   fn finish_pending_line(usize source_index, StringView source) throws -> void
@@ -915,7 +1171,7 @@ private:
       let const candidate = content.substring_of_length(
           candidate_start, candidate_end - candidate_start);
       process_line(chunk.source_index, source, candidate,
-                   m_should_use_literal_search || match_line(candidate));
+                   m_is_literal_hit_sufficient || match_line(candidate));
       if (m_options.should_print_line_numbers)
         m_source_line_numbers[chunk.source_index]++;
 
@@ -968,20 +1224,27 @@ private:
 
     if (chunk.error_number != 0) {
       m_line.clear();
+      m_status = 2;
+      if (m_options.should_suppress_messages) return;
+
       os::set_last_system_error(chunk.error_number);
       let const source_location =
-          chunk.source_index + 1 < m_operand_locations.count()
-              ? m_operand_locations[chunk.source_index + 1]
+          chunk.source_index + m_first_source_index <
+                  m_operand_locations.count()
+              ? m_operand_locations[chunk.source_index + m_first_source_index]
               : m_ec.source_location();
+      m_ec.print_to_stdout(m_output);
+      m_output.clear();
       report_soft_koshkit_util_error(
           m_ec, m_cxt, source_location, m_args[0].view(),
           String{m_cxt.scratch_allocator(), source} + ": " +
               os::last_system_error_message());
-      m_status = 2;
       return;
     }
 
     if (!m_line.is_empty()) finish_pending_line(chunk.source_index, source);
+    if (m_options.output_mode == grep_output_mode::Count)
+      print_source_count(chunk.source_index, source);
   }
 
   const ExecContext &m_ec;
@@ -989,34 +1252,22 @@ private:
   const ArrayList<String> &m_args;
   const ArrayList<SourceLocation> &m_operand_locations;
   grep_options m_options;
+  usize m_first_source_index;
   Allocator m_allocator;
+  String m_pattern_text;
+  ArrayList<GrepMatcher> m_matchers;
   ArrayList<Path> m_recursive_storage;
   ArrayList<StringView> m_sources;
   ArrayList<usize> m_source_line_numbers;
-  String m_folded_pattern;
-  String m_fast_bytes;
-  ArrayList<grep_fast_segment> m_fast_segments;
+  ArrayList<usize> m_source_match_counts;
   String m_output;
   String m_line;
-  StringView m_fast_regex_prefix;
-  StringView m_fast_regex_suffix;
-  StringView m_regex_prefix;
   StringView m_candidate_literal;
-  os::compiled_regex m_compiled;
-  os::compiled_regex m_utf8_compiled;
-  grep_repeated_class m_fast_regex_class{grep_repeated_class::None};
   i32 m_status{0};
-  bool m_should_use_literal_search{false};
-  bool m_has_fast_matcher{false};
-  bool m_has_utf8_wildcard{false};
-  bool m_is_ascii_pattern{false};
-  bool m_is_fast_start_anchored{false};
-  bool m_is_fast_end_anchored{false};
-  bool m_is_fast_empty_line_only{false};
+  bool m_is_literal_hit_sufficient{false};
+  bool m_has_utf8_regex{false};
   bool m_should_print_names{false};
   bool m_has_any_match{false};
-  bool m_is_regex_compiled{false};
-  bool m_is_utf8_regex_compiled{false};
 };
 
 Grep::Grep() = default;
@@ -1029,29 +1280,120 @@ fn Grep::execute(const ExecContext &ec, EvalContext &cxt,
     -> i32
 {
   let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
+      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations, false, true);
   defer { reset_flags(FLAG_LIST); };
 
   KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
 
-  if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
+  let const has_pattern_flag =
+      !FLAG_GREP_EXPRESSION.is_empty() || !FLAG_GREP_PATTERN_FILE.is_empty();
+  if (operands.is_empty() && !has_pattern_flag) {
+    return report_usage_error(ec, cxt, args[0].view());
+  }
+
+  if (FLAG_GREP_EXTENDED.is_enabled() && FLAG_GREP_FIXED.is_enabled()) {
+    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
+                                   "the -E and -F options conflict");
+    return 2;
+  }
 
   let options = grep_options{};
-  options.pattern = operands[0].view();
   options.recursion_mode = FLAG_GREP_RECURSIVE.is_enabled()
                                ? grep_recursion_mode::Recursive
                                : grep_recursion_mode::Files;
+  options.output_mode = FLAG_GREP_QUIET.is_enabled()  ? grep_output_mode::Quiet
+                        : FLAG_GREP_LIST.is_enabled() ? grep_output_mode::List
+                        : FLAG_GREP_COUNT.is_enabled()
+                            ? grep_output_mode::Count
+                            : grep_output_mode::Lines;
   options.should_ignore_case = FLAG_GREP_IGNORE_CASE.is_enabled();
   options.should_invert = FLAG_GREP_INVERT.is_enabled();
-  options.should_print_line_numbers = FLAG_GREP_LINE_NUMBER.is_enabled();
+  options.should_print_line_numbers =
+      FLAG_GREP_LINE_NUMBER.is_enabled() &&
+      options.output_mode == grep_output_mode::Lines;
   options.should_suppress_names = FLAG_GREP_NO_FILENAME.is_enabled();
+  options.should_suppress_messages = FLAG_GREP_NO_MESSAGES.is_enabled();
   options.is_utf8 = cxt.get_glob_charset() == glob_charset::Utf8;
+  options.is_extended = FLAG_GREP_EXTENDED.is_enabled();
+  options.is_fixed = FLAG_GREP_FIXED.is_enabled();
+  options.is_whole_line = FLAG_GREP_LINE_REGEXP.is_enabled();
 
-  let search = GrepSearch{ec, cxt, args, operand_locations, options};
-  if (!search.compile_pattern()) {
+  let pattern_text = String{cxt.scratch_allocator()};
+  let pattern_spans = ArrayList<grep_pattern_span>{cxt.scratch_allocator()};
+  let const do_add_pattern = [&](StringView pattern) throws -> void {
+    let const should_escape = options.is_fixed && options.should_ignore_case &&
+                              !is_ascii_pattern(pattern);
+    let const start = pattern_text.count();
+    for (usize index = 0; index < pattern.length; index++) {
+      if (should_escape && is_basic_regex_special(pattern[index])) {
+        pattern_text += '\\';
+      }
+      pattern_text += pattern[index];
+    }
+
+    pattern_spans.push({static_cast<u32>(start),
+                        static_cast<u32>(pattern_text.count() - start),
+                        options.is_fixed && !should_escape});
+  };
+  let const do_add_pattern_list = [&](StringView list) throws -> void {
+    usize start = 0;
+    loop
+    {
+      let const newline = list.substring(start).find_character('\n');
+      if (!newline.has_value()) {
+        do_add_pattern(list.substring(start));
+        break;
+      }
+
+      do_add_pattern(list.substring_of_length(start, *newline));
+      start += *newline + 1;
+    }
+  };
+
+  usize first_source_index = 0;
+  if (!has_pattern_flag) {
+    do_add_pattern_list(operands[0].view());
+    first_source_index = 1;
+  }
+
+  for (usize index = 0; index < FLAG_GREP_EXPRESSION.count(); index++)
+    do_add_pattern_list(FLAG_GREP_EXPRESSION.get(index));
+
+  for (usize index = 0; index < FLAG_GREP_PATTERN_FILE.count(); index++) {
+    let const file_name = FLAG_GREP_PATTERN_FILE.get(index);
+    let const contents =
+        Path{file_name, cxt.scratch_allocator()}.read_entire_file();
+    if (!contents.has_value()) {
+      report_soft_koshkit_util_error(
+          ec, cxt, FLAG_GREP_PATTERN_FILE.get_location(index), args[0].view(),
+          String{cxt.scratch_allocator(), file_name} + ": " +
+              os::last_system_error_message());
+      return 2;
+    }
+
+    if (contents->is_empty()) continue;
+
+    let list = contents->view();
+    if (list[list.length - 1] == '\n')
+      list = list.substring_of_length(0, list.length - 1);
+    do_add_pattern_list(list);
+  }
+
+  let search = GrepSearch{ec,
+                          cxt,
+                          args,
+                          operand_locations,
+                          options,
+                          steal(pattern_text),
+                          pattern_spans,
+                          first_source_index};
+  let const invalid_pattern = search.find_invalid_pattern();
+  if (invalid_pattern.has_value()) {
     report_soft_koshkit_util_error(
-        ec, cxt, operand_locations[0], args[0].view(),
-        "the pattern '" + operands[0] + "' is not a valid regex");
+        ec, cxt, has_pattern_flag ? ec.source_location() : operand_locations[0],
+        args[0].view(),
+        "the pattern '" + String{cxt.scratch_allocator(), *invalid_pattern} +
+            "' is not a valid regex");
     return 2;
   }
 

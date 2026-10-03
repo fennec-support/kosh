@@ -243,10 +243,10 @@ pear.txt:pear
 --- grep match across chunk boundary ---
 65541
 --- grep multiple files with a missing operand ---
+sort-a.txt:alpha
 1:27: error: koshkit grep: missing.txt: No such file or directory.
      1 |  koshkit grep a sort-a.txt missing.txt sort-b.txt; printf "status=%s\n" "$?"
        |                            ^~~~~~~~~~~
-sort-a.txt:alpha
 sort-b.txt:beta
 status=2
 --- tr to lower ---
