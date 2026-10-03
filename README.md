@@ -2,35 +2,28 @@
 
 # koshka-oriented shell
 
-<img width=100% src="assets/card-no-bg.png"/>
-
----
-
-**The project was renamed in 0.2.0.** `shit` became `kosh`, `shitbox` became
-`koshkit`, and all prefixes now use `kosh` or `KOSH_`. I got over the funny
-name. Thanks.
-
----
+<img align="center" width=100% src="assets/card-no-bg.png"/>
 
 ## Install
 
-On Linux, macOS, or Git Bash on Windows:
+**Koshka** supports `amd64` Linux and Windows, and `aarch64` macOS.
 
 ```sh
-curl -fsSL https://fennec.support/kosh/install | sh
-```
+# on Linux, macOS, or any system with a POSIX shell:
+curl -fsSL "https://fennec.support/kosh/install" | sh
 
-In Windows PowerShell:
+# on Windows, Powershell:
+irm "https://fennec.support/kosh/install" | iex
 
-```powershell
-irm https://fennec.support/kosh/install | iex
+# with Docker:
+# <TBD>
 ```
 
 Binaries and their checksums used are on the
 [Releases](https://github.com/toiletbril/kosh/releases) page. To build from
 source, see [Development](#development).
 
----
+## Quick look
 
 **Koshka** is the Russian word for a cat.
 
@@ -60,7 +53,7 @@ mistakes in Bash code, including the following:
 | :-: | 
 | ![](assets/lsp-demo.gif) |
 
-## What
+### How to use
 
 `kosh` is the **Koshka** binary.
 
@@ -72,10 +65,7 @@ The shell is designed to work sensibly without any configuration. The Linux
 binary is static and does not use the C++ standard library. **Koshka** can use
 its own utilities when coreutils are unavailable. 
 
-**The project is at an early stage.** It may still blow up your computer. Bug
-reports are welcome.
-
-## Shell linter, formatter, and language server
+### Shell linter, formatter, and language server
 
 `kosh --lint` checks complete Bash and POSIX shell syntax and about 300
 built-in ShellCheck and native diagnostics. It reads shell source from standard
@@ -101,7 +91,7 @@ semantic tokens, a document outline, and rename support.
 The language server recognizes the same embedded shell regions as the linter.
 The editor's host language service handles the surrounding syntax.
 
-## Interactive shell and command interpreter
+### Interactive shell and command interpreter
 
 For more details, see the [manual page](docs/kosh.1).
 
@@ -209,6 +199,8 @@ targets and cross-compiles Linux release binaries. MinGW-w64 builds Windows
 targets. Osxcross with a macOS SDK builds Darwin arm64 targets. `cosmoc++` builds
 the Cosmopolitan modes.
 
+## Build
+
 The `MODE` variable controls the build type.
 
 * `rel` is an optimized build.
@@ -256,4 +248,4 @@ Meow.
 
 ---
 
-<img width=12% src="assets/favicon.png"/>
+<img align="right" width=12% src="assets/favicon.png"/>
