@@ -1730,8 +1730,21 @@ Sorted trees are walked with
 .BR \-type ,
 .BR \-maxdepth ,
 .BR \-mindepth ,
+.BR \-print ,
 and
-.BR \-print .
+.BR \-print0 .
+The
+.B \-exec
+action runs a command that ends at a
+.B ;
+argument for each matched path, replacing each
+.B {}
+with the path. A command ended by
+.B +
+after
+.B {}
+receives the matched paths in batches. A failed command skips the later actions
+for that path.
 .TP
 .B flock
 A command runs while a directory lock is held. The

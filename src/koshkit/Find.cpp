@@ -2,8 +2,9 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the find utility. It parses name, type, depth, and print
- * predicates, then walks directory trees without following symbolic links.
+ * This file implements the find utility. It parses name, type, depth, print,
+ * and exec predicates, then walks directory trees without following symbolic
+ * links, printing each match or running the exec commands for it.
  */
 
 #include "../CLI.hpp"
@@ -19,7 +20,8 @@
 FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[path ...] [-name glob] [-iname glob] [-type fdl] "
-                   "[-maxdepth n] [-mindepth n]");
+                   "[-maxdepth n] [-mindepth n] [-print] [-print0] "
+                   "[-exec command [argument ...] {} ;|+]");
 
 HELP_DESCRIPTION_DECL(
     "The find utility walks each path and prints every entry under it.");
@@ -44,10 +46,29 @@ struct find_options
   i64 min_depth{0};
 };
 
+enum class find_action_kind : uchar
+{
+  Print,
+  PrintNull,
+  Execute,
+  ExecuteBatch,
+};
+
+struct find_action
+{
+  find_action_kind kind{find_action_kind::Print};
+  ArrayList<String> command{heap_allocator()};
+  ArrayList<SourceLocation> command_locations{heap_allocator()};
+  ArrayList<String> batch_paths{heap_allocator()};
+  usize batch_byte_count{0};
+};
+
 enum class find_predicate_kind : uchar
 {
   Help,
   Print,
+  PrintNull,
+  Execute,
   Name,
   Iname,
   Type,
@@ -59,6 +80,8 @@ static constexpr static_string_entry<find_predicate_kind>
     FIND_PREDICATE_ENTRIES[] = {
         {SSK("--help"),    find_predicate_kind::Help        },
         {SSK("-print"),    find_predicate_kind::Print       },
+        {SSK("-print0"),   find_predicate_kind::PrintNull   },
+        {SSK("-exec"),     find_predicate_kind::Execute     },
         {SSK("-name"),     find_predicate_kind::Name        },
         {SSK("-iname"),    find_predicate_kind::Iname       },
         {SSK("-type"),     find_predicate_kind::Type        },
@@ -68,6 +91,25 @@ static constexpr static_string_entry<find_predicate_kind>
 static constexpr StaticStringMap FIND_PREDICATES{FIND_PREDICATE_ENTRIES};
 constexpr usize FIND_OUTPUT_BUFFER_BYTE_COUNT = 64 * 1024;
 constexpr usize FIND_UNKNOWN_BATCH_COUNT = 512;
+constexpr usize FIND_BATCH_BYTE_LIMIT = 128 * 1024;
+
+static fn replace_find_braces(StringView source, StringView path,
+                              Allocator allocator) throws -> String
+{
+  String replaced{allocator};
+  usize position = 0;
+  while (position < source.length) {
+    if (source.substring(position).starts_with("{}")) {
+      replaced += path;
+      position += 2;
+      continue;
+    }
+
+    replaced += source[position++];
+  }
+
+  return replaced;
+}
 
 static fn find_entry_matches(char type_letter, StringView filename, usize depth,
                              const find_options &options,
@@ -139,11 +181,20 @@ class FindWalker
 {
 public:
   FindWalker(const ExecContext &ec, EvalContext &cxt,
-             const find_options &options, String &output, i32 &exit_status,
-             Allocator allocator)
-      : m_ec(ec), m_cxt(cxt), m_options(options), m_output(output),
-        m_exit_status(exit_status), m_allocator(allocator)
+             const find_options &options, ArrayList<find_action> *actions,
+             String &output, i32 &exit_status, Allocator allocator)
+      : m_ec(ec), m_cxt(cxt), m_options(options), m_actions(actions),
+        m_output(output), m_exit_status(exit_status), m_allocator(allocator)
   {}
+
+  fn finish() throws -> void
+  {
+    if (m_actions == nullptr) return;
+
+    for (let &action : *m_actions) {
+      if (action.kind == find_action_kind::ExecuteBatch) run_batch(action);
+    }
+  }
 
   fn walk(StringView path_text, StringView display, usize depth,
           char type_letter) throws -> void
@@ -155,9 +206,7 @@ public:
     if (find_entry_matches(type_letter, get_filename(path_text), depth,
                            m_options, m_allocator))
     {
-      m_output += display;
-      m_output += '\n';
-      flush_full_output();
+      report_match(display, StringView{});
     }
 
     let const should_descend = m_options.max_depth < 0 ||
@@ -268,13 +317,131 @@ private:
 
   fn emit_child(StringView display, StringView child_name) throws -> void
   {
-    m_output += display;
-    if (!display.is_empty() && display[display.length - 1] != '/') {
-      m_output += '/';
+    report_match(display, child_name);
+  }
+
+  fn report_match(StringView display, StringView child_name) throws -> void
+  {
+    if (m_actions == nullptr) {
+      m_output += display;
+      if (!child_name.is_empty()) {
+        if (!display.is_empty() && display[display.length - 1] != '/') {
+          m_output += '/';
+        }
+        m_output += child_name;
+      }
+      m_output += '\n';
+      flush_full_output();
+      return;
     }
-    m_output += child_name;
-    m_output += '\n';
-    flush_full_output();
+
+    String path{m_allocator, display};
+    if (!child_name.is_empty()) {
+      if (!display.is_empty() && display[display.length - 1] != '/') {
+        path += '/';
+      }
+      path += child_name;
+    }
+
+    for (let &action : *m_actions) {
+      switch (action.kind) {
+      case find_action_kind::Print:
+        m_output += path.view();
+        m_output += '\n';
+        flush_full_output();
+        break;
+      case find_action_kind::PrintNull:
+        m_output += path.view();
+        m_output += '\0';
+        flush_full_output();
+        break;
+      case find_action_kind::Execute: {
+        let command = ArrayList<String>{m_allocator};
+        for (let const &part : action.command)
+          command.push(
+              replace_find_braces(part.view(), path.view(), m_allocator));
+
+        m_ec.print_to_stdout(m_output);
+        m_output.clear();
+        if (run_command(steal(command), action.command_locations) != 0) return;
+        break;
+      }
+      case find_action_kind::ExecuteBatch:
+        action.batch_byte_count += path.count() + 1;
+        action.batch_paths.push(steal(path));
+        if (action.batch_byte_count >= FIND_BATCH_BYTE_LIMIT) run_batch(action);
+        break;
+      }
+    }
+  }
+
+  fn run_batch(find_action &action) throws -> void
+  {
+    if (action.batch_paths.is_empty()) return;
+
+    let command = ArrayList<String>{m_allocator};
+    let locations = ArrayList<SourceLocation>{m_allocator};
+    for (usize index = 0; index + 1 < action.command.count(); index++) {
+      command.push(action.command[index].clone());
+      locations.push(action.command_locations[index]);
+    }
+    for (let &path : action.batch_paths) {
+      command.push(steal(path));
+      locations.push(m_ec.source_location());
+    }
+
+    action.batch_paths.clear();
+    action.batch_byte_count = 0;
+    m_ec.print_to_stdout(m_output);
+    m_output.clear();
+    if (run_command(steal(command), locations) != 0) m_exit_status = 1;
+  }
+
+  fn run_command(ArrayList<String> command,
+                 const ArrayList<SourceLocation> &locations) throws -> i32
+  {
+    let command_locations = ArrayList<SourceLocation>{m_allocator};
+    for (usize index = 0; index < command.count(); index++)
+      command_locations.push(index < locations.count()
+                                 ? locations[index]
+                                 : m_ec.source_location());
+
+    Maybe<ExecContext> sub;
+    try {
+      let const *source = m_cxt.source_store().current_source();
+      sub = ExecContext::make_from(
+          m_ec.source_location(),
+          source != nullptr ? source->view() : StringView{}, steal(command),
+          m_cxt.runtime_state().koshkit(), m_cxt.is_shopt_enabled("checkhash"),
+          m_cxt.resolution_store().resolver(), steal(command_locations),
+          m_cxt.runtime_state().get_mood());
+    } catch (const CommandResolutionErrorWithLocation &resolution_error) {
+      let const *source = m_cxt.source_store().current_source();
+      show_message(resolution_error.to_string(
+          source != nullptr ? source->view() : StringView{}, &m_cxt));
+      return static_cast<i32>(resolution_error.command_status());
+    }
+
+    let snapshot = m_cxt.snapshot_state();
+    m_cxt.enter_subshell();
+    i32 command_status = 0;
+    try {
+      command_status = utils::execute_context(steal(*sub), m_cxt,
+                                              execution_mode::Foreground);
+    } catch (...) {
+      m_cxt.leave_subshell();
+      m_cxt.restore_state(steal(snapshot));
+      throw;
+    }
+    if (m_cxt.control_flow_store().has_pending()) {
+      command_status =
+          static_cast<i32>(m_cxt.control_flow_store().pending().value);
+      m_cxt.control_flow_store().clear();
+    }
+    m_cxt.leave_subshell();
+    m_cxt.restore_state(steal(snapshot));
+
+    return command_status;
   }
 
   fn walk_child(StringView path_text, StringView display,
@@ -395,6 +562,7 @@ private:
   const ExecContext &m_ec;
   EvalContext &m_cxt;
   const find_options &m_options;
+  ArrayList<find_action> *m_actions;
   String &m_output;
   i32 &m_exit_status;
   Allocator m_allocator;
@@ -421,6 +589,7 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
   ArrayList<StringView> matcher_name_patterns{cxt.scratch_allocator()};
   ArrayList<Bitset> matcher_name_masks{cxt.scratch_allocator()};
   find_options options{};
+  ArrayList<find_action> actions{cxt.scratch_allocator()};
 
   /* The flag parser is bypassed, a predicate such as -name is not a
      single-letter flag bundle. An empty argument is a start path, not a
@@ -455,9 +624,48 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
                       FLAG_LIST);
       return 0;
     case find_predicate_kind::Print:
-      /* The walk prints every matched entry already, so -print is the default
-         and needs no action. */
+    case find_predicate_kind::PrintNull: {
+      actions.push(find_action{});
+      actions.back().kind = *predicate_kind == find_predicate_kind::Print
+                                ? find_action_kind::Print
+                                : find_action_kind::PrintNull;
       break;
+    }
+    case find_predicate_kind::Execute: {
+      usize end_index = index + 1;
+      while (end_index < args.count()) {
+        if (args[end_index].view() == ";") break;
+        if (args[end_index].view() == "+") break;
+        end_index++;
+      }
+      if (end_index >= args.count() || end_index == index + 1) {
+        KOSHKIT_REPORT_ERROR_AT(
+            arg_locations[index], "-exec expects a command ended by `;` or `+`",
+            "Write `-exec command {} \\;` or `-exec command {} +`");
+        return 1;
+      }
+
+      actions.push(find_action{});
+      let &action = actions.back();
+      for (usize part_index = index + 1; part_index < end_index; part_index++) {
+        action.command.push(args[part_index].clone());
+        action.command_locations.push(arg_locations[part_index]);
+      }
+
+      if (args[end_index].view() == "+") {
+        if (action.command.back().view() != "{}") {
+          KOSHKIT_REPORT_ERROR_AT(arg_locations[end_index],
+                                  "-exec with `+` expects `{}` before it",
+                                  "Put `{}` as the last command argument");
+          return 1;
+        }
+        action.kind = find_action_kind::ExecuteBatch;
+      } else {
+        action.kind = find_action_kind::Execute;
+      }
+      index = end_index;
+      break;
+    }
     case find_predicate_kind::Name:
     case find_predicate_kind::Iname: {
       if (index + 1 >= args.count()) {
@@ -582,7 +790,12 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
   let const output_allocator = bump_allocator(output_arena);
   let output = String{output_allocator};
   i32 status = 0;
-  let walker = FindWalker{ec, cxt, options, output, status, allocator};
+  let const is_default_print =
+      actions.is_empty() ||
+      (actions.count() == 1 && actions[0].kind == find_action_kind::Print);
+  let walker = FindWalker{
+      ec,     cxt,    options,  is_default_print ? nullptr : &actions,
+      output, status, allocator};
   for (usize root_index = 0; root_index < roots.count(); root_index++) {
     let const root = roots[root_index];
     if (results[root_index].error_number != 0) {
@@ -601,6 +814,7 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
     }
   }
 
+  walker.finish();
   ec.print_to_stdout(output);
   return status;
 }

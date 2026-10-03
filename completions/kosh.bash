@@ -344,7 +344,7 @@ _koshkit_util_flags ()
         "-f --file -C --directory -B --always-make -k --keep-going -e --environment-overrides -i --ignore-errors -S --stop -n --just-print -j --jobs -p --print-data-base -q --question -r --no-builtin-rules -s --silent -t --touch"
     ;;
     find)
-      echo "-name -iname -type -maxdepth -mindepth -print"
+      echo "-name -iname -type -maxdepth -mindepth -print -print0 -exec"
     ;;
     flock)
       echo "--transaction-held-lock"

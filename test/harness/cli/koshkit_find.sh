@@ -127,3 +127,15 @@ echo "--- find roots with trailing separators ---"
 "$BIN" -c 'koshkit find a/b/ -name b'
 "$BIN" -c 'koshkit find a/ -maxdepth 0 -name b; printf "status=%s\\n" "$?"'
 "$BIN" -c 'koshkit find / -maxdepth 0 -name ""; printf "status=%s\\n" "$?"'
+echo "--- find -exec runs a command for each entry ---"
+"$BIN" -c 'koshkit find a -name "*.txt" -exec echo got {} \;'
+echo "--- find -exec batches entries after plus ---"
+"$BIN" -c 'koshkit find a -name "*.txt" -exec echo batch {} +'
+echo "--- find -exec failure skips the later print ---"
+"$BIN" -c 'koshkit find a -name "*.txt" -exec false \; -print'
+"$BIN" -c 'koshkit find a -name "*.txt" -exec true \; -print'
+echo "--- find -print0 separates paths with null bytes ---"
+"$BIN" -c 'koshkit find a -name "*.txt" -print0 | koshkit xargs -0 echo'
+echo "--- find -exec without a terminator ---"
+"$BIN" -c 'koshkit find a -exec echo {}; printf "status=%s\\n" "$?"' 2>&1
+"$BIN" -c 'koshkit find a -exec echo \+; printf "status=%s\\n" "$?"' 2>&1

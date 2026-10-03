@@ -155,3 +155,26 @@ a//
 a/b/
 status=0
 status=0
+--- find -exec runs a command for each entry ---
+got a/b/c/three.txt
+got a/literal[bracket].txt
+got a/one.txt
+--- find -exec batches entries after plus ---
+batch a/b/c/three.txt a/literal[bracket].txt a/one.txt
+--- find -exec failure skips the later print ---
+a/b/c/three.txt
+a/literal[bracket].txt
+a/one.txt
+--- find -print0 separates paths with null bytes ---
+a/b/c/three.txt a/literal[bracket].txt a/one.txt
+--- find -exec without a terminator ---
+1:16: error: koshkit find: -exec expects a command ended by `;` or `+`.
+     1 |  koshkit find a -exec echo {}; printf "status=%s\\n" "$?"
+       |                 ^~~~~
+note: Write `-exec command {} \;` or `-exec command {} +`.
+status=1
+1:27: error: koshkit find: -exec with `+` expects `{}` before it.
+     1 |  koshkit find a -exec echo \+; printf "status=%s\\n" "$?"
+       |                            ^~
+note: Put `{}` as the last command argument.
+status=1
