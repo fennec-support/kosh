@@ -167,8 +167,12 @@ changes update this file.
   storage. A missing shell is downloaded from the newest release of
   `toiletbril/kosh`. Drafts and prereleases are skipped. An asset is named
   `kosh-<platform>-<processor>-<tag>`. The platform is `darwin`, `linux`, or
-  `win32`. The Darwin processor is `aarch64`, and the Linux and Windows
-  processor is `amd64`. A Windows asset ends in `.exe`.
+  `win32`. The processor is `aarch64` for arm64 and `amd64` for x86-64. A
+  Windows asset ends in `.exe`. Each release also carries `kosh.1.zst`,
+  `kosh.5.zst`, `kosh.bash`, both install scripts, and a `SHA256SUMS` file.
+  `scripts/install.sh` and `scripts/install.ps1` resolve the latest release,
+  verify every file against `SHA256SUMS`, and install with the `make install`
+  layout.
 
 ## Diagnostics and storage
 

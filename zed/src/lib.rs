@@ -12,9 +12,9 @@ struct KoshExtension {
 }
 
 /*
- * An asset name holds the platform and the processor. The Darwin asset names
- * the processor aarch64, and the Linux and Windows assets name it amd64. No
- * asset is built for a 32-bit machine.
+ * An asset name holds the platform and the processor. An arm64 asset names
+ * the processor aarch64, and an x86-64 asset names it amd64. No asset is built
+ * for a 32-bit machine.
  */
 fn get_asset_name_prefixes() -> Vec<String> {
     let (os, architecture) = zed::current_platform();

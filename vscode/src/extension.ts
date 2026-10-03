@@ -41,8 +41,8 @@ const DOCUMENT_SELECTOR = [
 ];
 
 /*
- * An asset name holds the platform and the processor. The Darwin asset names
- * the processor aarch64, and the Linux and Windows assets name it amd64.
+ * An asset name holds the platform and the processor. An arm64 asset names
+ * the processor aarch64, and an x86-64 asset names it amd64.
  */
 const ARCHITECTURE_TOKENS: Record<string, string[]> = {
   x64: ["amd64", "x86_64"],

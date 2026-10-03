@@ -112,8 +112,8 @@ jobs:
         run: |
           make CXX=g++ LINKER_SELECTION_FLAG= MODE=rel kosh
           mkdir -p dist
-          install -m 755 kosh "dist/kosh-linux-arm64-$VERSION"
-          readelf -h "dist/kosh-linux-arm64-$VERSION" |
+          install -m 755 kosh "dist/kosh-linux-aarch64-$VERSION"
+          readelf -h "dist/kosh-linux-aarch64-$VERSION" |
             grep -Eq 'Machine:[[:space:]]+AArch64'
 
       - name: Upload the Linux arm64 binary
@@ -163,6 +163,21 @@ jobs:
           path: dist
           pattern: release-${{ env.VERSION }}-*
           merge-multiple: true
+
+      - name: Add the manual pages, completion and install scripts
+        run: |
+          zstd -19 -q -o dist/kosh.1.zst docs/kosh.1
+          zstd -19 -q -o dist/kosh.5.zst docs/kosh.5
+          install -m 644 completions/kosh.bash dist/kosh.bash
+          install -m 755 scripts/install.sh dist/install.sh
+          install -m 644 scripts/install.ps1 dist/install.ps1
+
+      - name: Write the checksum list
+        working-directory: dist
+        run: |
+          sha256sum -- * > ../SHA256SUMS
+          mv ../SHA256SUMS SHA256SUMS
+          cat SHA256SUMS
 
       - name: Upload the consolidated workflow artifact
         uses: actions/upload-artifact@v4
