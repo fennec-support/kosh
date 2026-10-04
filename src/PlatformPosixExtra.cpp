@@ -817,7 +817,8 @@ fn describe_processes(const ArrayList<u32> &pids) throws
 {
   ArrayList<process_entry> described{heap_allocator()};
   for (let const pid : pids) {
-    const String process_directory = "/proc/" + String::from(pid, heap_allocator()).view();
+    const String process_directory =
+        "/proc/" + String::from(pid, heap_allocator()).view();
     let command_name =
         Path{(process_directory + "/comm").view()}.read_entire_file();
     if (!command_name.has_value()) continue;
