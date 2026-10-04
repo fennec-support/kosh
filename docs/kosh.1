@@ -2353,17 +2353,18 @@ rates use compact binary units by default; the
 .BR \-h " and " \-\-human-readable
 options request that representation explicitly. The
 .B \-\-cumulative
-option collects counters for the specified number of seconds before printing;
-its default collection window is one second. With
+option waits for the specified number of seconds, M, and prints the counter
+change over that window; the default window is one second. With
 .BR \-\-ps ,
 each mode prints per-process data. The
 .BR \-l " and " \-\-live
-options collect and refresh the rate report until interrupted. Their optional
-value sets the refresh cadence in seconds and defaults to 0.5 seconds.
+options print the report again and again until interrupted. Their optional
+value, N, is the number of seconds between samples and between refreshes; it
+defaults to 0.5 seconds.
 Output uses
 the alternate screen and restores the previous contents on exit.
 Every frame of a live utility starts with a header line that names the utility,
-shows a LIVE indicator, the local time, the rolling window and the refresh
+shows a LIVE indicator, the local time, the window and the refresh
 interval, and, on a terminal, the keys the utility accepts. The header
 is shortened to fit the terminal width and is colored only when color is
 enabled. The terminal reads keys without echo and without Enter: q quits with
@@ -2371,14 +2372,20 @@ status 0, and an interrupt quits with status 130. Each frame is written with one
 write and follows the terminal size at the time of the frame. Output
 that is not a terminal carries a plain header and no escape sequences.
 When both options are present,
-.B \-\-cumulative
-sets the rolling window and
 .B \-\-live
-sets the sampling and refresh interval. The
+sets how often the utility samples and refreshes, and
 .B \-\-cumulative
-option does not change either interval. A counter change remains in the report
-until it leaves the rolling window; inactive process and disk rows follow the
-same window. The
+sets the length of a rolling window that keeps the counter changes of the last
+M seconds. The window never changes the sampling or refresh interval. The
+counter columns show the accumulated change inside the window, and a heading
+such as
+.B READ OPS/2s
+names its length. A burst stays in the report until its samples age out of the
+window, and then it leaves at once; counters do not fade gradually. When the
+window is shorter than the interval, the last interval is divided in
+proportion. A row that is not seen again leaves the report after it has been
+missing for a whole window. A process is identified by its identifier and
+start time, so a reused identifier begins a new row. The
 .BR \-\-ps ,
 .BR \-n ,
 .BR \-p ,
@@ -2412,7 +2419,7 @@ and
 Metrics sort from largest to smallest, unavailable values sort last, and ties
 use the process identifier or device name. Process identifiers sort from
 smallest to largest. Busy, latency, and average queue values require a sampled
-report. Live reports sort the values from the displayed rolling window.
+report. Live reports sort the values from the displayed window.
 .TP
 .B evillogs
 Core dump settings, recognized dump reports, and known log directories are
@@ -2429,20 +2436,25 @@ option adds interface traffic, packet errors, packet drops, and a TCP counter
 table.
 .B \-f
 prints TCP failure and packet-loss telemetry without interface or socket rows.
-Nonzero error, drop, and failure counters are also reported as warnings.
+Nonzero error, drop, and failure counters are also reported as warnings. The
+.BR \-t " and " \-\-traffic
+options print only the interface traffic table. On Linux the interface that
+carries the default IPv4 route is shown in bold green when color is enabled.
 The
 .B \-\-live
-option samples and refreshes traffic at an optional interval, defaulting to
+option samples and refreshes the traffic table every N seconds, defaulting to
 0.5 seconds.
 The
 .B \-\-cumulative
-option collects traffic for an optional window, defaulting to one second;
-with
-.B \-\-live
-it controls the rolling window without changing the sampling and refresh
-interval. Without
+option sets a window of M seconds, defaulting to one second. Without
 .BR \-\-live ,
-it enables the traffic table and waits for the requested measurement window.
+it enables the traffic table, waits M seconds, and prints the counter change
+over that window. With
+.B \-\-live
+it keeps a rolling window of M seconds that never changes the sampling and
+refresh interval. The traffic columns show the accumulated change inside the
+window, and the headings carry its length, as in
+.BR RX\ PACKETS/2s .
 The
 .B \-\-sort
 option orders traffic rows by name, receive or transmit bytes, packet counts,
@@ -2471,12 +2483,16 @@ Visible processes are printed as a parent and child tree. The
 .BR \-A ,
 .BR \-U ,
 .BR \-c ,
+.BR \-M ,
 and
-.BR \-M
+.BR \-w
 options show process identifiers, sort numerically, enable every field, show
-command lines, show owners, show processor usage, and show resident memory.
-Processor usage is accumulated time in an ordinary report and rolling
-utilization in a sampled report. The
+command lines, show owners, show processor usage, show resident memory, and
+keep command lines at full length. Without
+.BR \-w ,
+a command line is cut to the width of the terminal. Processor usage is
+accumulated time in an ordinary report and the average utilization over the
+window in a sampled report. The
 .B \-\-sort
 option accepts name, pid, cpu, memory, or an unambiguous prefix of one of those
 names. Each sorted tree starts with its highest-ranked process and shows its
@@ -2488,11 +2504,10 @@ The
 .B \-C
 option is shorthand for
 .BR \-\-cumulative .
-.B \-l
-and
-.B \-\-live
-options sample and refresh the process tree until interrupted. An optional
-duration sets both intervals, which default to 0.5 seconds. On a terminal,
+.BR \-l " and " \-\-live
+options sample and refresh the process tree until interrupted. Their optional
+value, N, is the number of seconds between samples and between refreshes; it
+defaults to 0.5 seconds. On a terminal,
 .BR j ,
 .BR k ,
 and the arrow keys scroll, the page keys scroll by ten lines,
@@ -2506,15 +2521,16 @@ cycles the sort key. The
 key starts a search; the typed text is edited with Backspace, Enter applies it,
 and Escape clears it. The
 .B \-\-cumulative
-option accepts an optional sliding window. With
+option sets a window of M seconds, defaulting to one second. With
 .BR \-\-live ,
-the window defaults to the live interval unless an explicit cumulative value
-is given. Each refresh keeps complete sampled counter changes whose intervals
-are in the preceding window. A new process shows unavailable processor
-utilization until two samples have been collected. Without
-.B \-\-live,
-two snapshots are taken across the cumulative interval and the report shows
-their average processor utilization.
+the window rolls over the last M seconds and never changes the sampling or
+refresh interval; a window shorter than the interval divides the last interval
+in proportion. A new process shows unavailable processor utilization until two
+samples have been collected. A process is identified by its identifier and
+start time, so a reused identifier begins a new row. Without
+.BR \-\-live ,
+the utility takes two snapshots M seconds apart and the report shows the
+average processor utilization between them.
 .TP
 .B evilss
 Visible TCP, UDP, and Unix-domain sockets are printed in a table. Address
