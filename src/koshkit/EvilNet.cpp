@@ -676,9 +676,7 @@ fn sample_network_statistics(
 struct live_network_row
 {
   String interface_name{heap_allocator()};
-  ArrayList<os::network_interface_statistics_entry> history{heap_allocator()};
-  ArrayList<u64> history_nanoseconds{heap_allocator()};
-  u64 last_seen_nanoseconds{0};
+  rolling_history<os::network_interface_statistics_entry> history;
 };
 
 fn get_network_window_status(const live_network_row &row,
@@ -686,13 +684,12 @@ fn get_network_window_status(const live_network_row &row,
                              Allocator allocator) throws
     -> os::network_interface_statistics_entry
 {
-  let const boundary = find_rolling_window_boundary(row.history_nanoseconds,
-                                                    window_start_nanoseconds);
-  let const &before = row.history[boundary.before_index];
-  let const &after_boundary = row.history[boundary.after_index];
-  let sampled = row.history.back();
+  let const boundary = row.history.get_boundary(window_start_nanoseconds);
+  let const &before = row.history.samples[boundary.before_index];
+  let const &after_boundary = row.history.samples[boundary.after_index];
+  let sampled = row.history.get_newest();
   sampled.interface_name = String{allocator, row.interface_name.view()};
-  let const &newest = row.history.back();
+  let const &newest = row.history.get_newest();
   let const do_sample =
       [&](os::network_statistics_field field,
           u64 os::network_interface_statistics_entry::*member) {
@@ -700,10 +697,8 @@ fn get_network_window_status(const live_network_row &row,
           sampled.available_fields &= ~static_cast<u32>(field);
           return;
         }
-        let const baseline = interpolate_rolling_counter(
-            before.*member, after_boundary.*member,
-            row.history_nanoseconds[boundary.before_index],
-            row.history_nanoseconds[boundary.after_index], boundary.timestamp);
+        let const baseline = row.history.interpolate(
+            boundary, before.*member, after_boundary.*member);
         if (!baseline.has_value()) {
           sampled.available_fields &= ~static_cast<u32>(field);
           return;

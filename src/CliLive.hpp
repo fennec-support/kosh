@@ -273,14 +273,11 @@ fn update_retained_rows(ArrayList<Row> &retained, Items &observed, u64 now,
     if (!found.has_value()) retained.push(do_make_row(item));
 
     let &row = found.has_value() ? retained[*found] : retained.back();
-    if (found.has_value() && do_is_reset(row.history.back(), value)) {
+    if (found.has_value() && do_is_reset(row.history.get_newest(), value))
       row.history.clear();
-      row.history_nanoseconds.clear();
-    }
 
-    row.history.push(value);
-    row.history_nanoseconds.push(now);
-    row.last_seen_nanoseconds = now;
+    row.history.push(value, now);
+    row.history.last_seen_nanoseconds = now;
     do_updated(item, row);
   }
 
@@ -288,16 +285,15 @@ fn update_retained_rows(ArrayList<Row> &retained, Items &observed, u64 now,
   for (usize remaining = retained.count(); remaining > 0; remaining--) {
     let const position = remaining - 1;
     let &row = retained[position];
-    if (now - row.last_seen_nanoseconds >= window_nanoseconds) {
+    if (now - row.history.last_seen_nanoseconds >= window_nanoseconds) {
       retained.remove(position);
       continue;
     }
 
-    if (row.history_nanoseconds.back() != now) {
-      row.history.push(row.history.back());
-      row.history_nanoseconds.push(now);
-    }
-    trim_rolling_history(row.history, row.history_nanoseconds, window_start);
+    if (row.history.get_newest_timestamp() != now)
+      row.history.push(row.history.get_newest(), now);
+
+    row.history.trim(window_start);
   }
 }
 

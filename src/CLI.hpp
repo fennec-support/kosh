@@ -459,27 +459,87 @@ struct rolling_window_boundary
   u64 timestamp{0};
 };
 
-pure fn find_rolling_window_boundary(const ArrayList<u64> &timestamps,
-                                     u64 window_start) wontthrow
-    -> rolling_window_boundary;
-pure fn interpolate_rolling_counter(u64 before, u64 after, u64 before_timestamp,
-                                    u64 after_timestamp,
-                                    u64 target_timestamp) wontthrow
-    -> Maybe<u64>;
-
 pure fn rolling_window_start(u64 now_nanoseconds,
                              u64 window_nanoseconds) wontthrow -> u64;
 
 template <class T>
-fn trim_rolling_history(ArrayList<T> &values, ArrayList<u64> &timestamps,
-                        u64 window_start_nanoseconds) throws -> void
+struct rolling_history
 {
-  ASSERT(values.count() == timestamps.count());
-  while (timestamps.count() > 2 && timestamps[1] <= window_start_nanoseconds) {
-    values.remove(0);
-    timestamps.remove(0);
+  ArrayList<T> samples;
+  ArrayList<u64> timestamps;
+  u64 last_seen_nanoseconds{0};
+
+  rolling_history() : rolling_history(heap_allocator()) {}
+
+  explicit rolling_history(Allocator allocator)
+      : samples(allocator), timestamps(allocator)
+  {}
+
+  fn push(const T &value, u64 now_nanoseconds) throws -> void
+  {
+    samples.push(value);
+    timestamps.push(now_nanoseconds);
   }
-}
+
+  fn clear() wontthrow -> void
+  {
+    samples.clear();
+    timestamps.clear();
+  }
+
+  pure fn get_newest() const wontthrow->const T & { return samples.back(); }
+
+  pure fn get_newest_timestamp() const wontthrow->u64
+  {
+    return timestamps.back();
+  }
+
+  fn trim(u64 window_start_nanoseconds) throws -> void
+  {
+    ASSERT(samples.count() == timestamps.count());
+    while (timestamps.count() > 2 &&
+           timestamps[1] <= window_start_nanoseconds)
+    {
+      samples.remove(0);
+      timestamps.remove(0);
+    }
+  }
+
+  pure fn get_boundary(u64 window_start_nanoseconds) const wontthrow
+      -> rolling_window_boundary
+  {
+    ASSERT(!timestamps.is_empty());
+    if (window_start_nanoseconds <= timestamps[0]) return {0, 0, timestamps[0]};
+
+    usize before = 0;
+    while (before + 1 < timestamps.count() &&
+           timestamps[before + 1] <= window_start_nanoseconds)
+      before++;
+
+    if (before + 1 == timestamps.count())
+      return {before, before, timestamps[before]};
+
+    return {before, before + 1, window_start_nanoseconds};
+  }
+
+  pure fn interpolate(const rolling_window_boundary &boundary, u64 before_value,
+                      u64 after_value) const wontthrow -> Maybe<u64>
+  {
+    if (after_value < before_value) return None;
+
+    let const before_timestamp = timestamps[boundary.before_index];
+    let const after_timestamp = timestamps[boundary.after_index];
+    if (boundary.timestamp <= before_timestamp) return before_value;
+    if (boundary.timestamp >= after_timestamp) return after_value;
+    if (after_timestamp <= before_timestamp) return before_value;
+
+    let const elapsed = after_timestamp - before_timestamp;
+    let const passed = boundary.timestamp - before_timestamp;
+    return before_value + static_cast<u64>(
+                              static_cast<u128>(after_value - before_value) *
+                              passed / elapsed);
+  }
+};
 
 fn show_message(StringView err) throws -> void;
 fn show_warning(StringView warning) throws -> void;

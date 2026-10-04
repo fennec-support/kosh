@@ -145,32 +145,27 @@ struct tree_node
 struct live_process_cpu_row
 {
   explicit live_process_cpu_row(Allocator allocator)
-      : history(allocator), history_nanoseconds(allocator)
+      : history(allocator)
   {}
 
   i64 pid{0};
   u64 start_token{0};
-  ArrayList<u64> history;
-  ArrayList<u64> history_nanoseconds;
-  u64 last_seen_nanoseconds{0};
+  rolling_history<u64> history;
 };
 
-fn set_cpu_percentage(tree_node &node, const live_process_cpu_row &history,
+fn set_cpu_percentage(tree_node &node, const live_process_cpu_row &row,
                       u64 window_start_nanoseconds,
                       u64 now_nanoseconds) wontthrow -> void
 {
-  if (history.history_nanoseconds.count() < 2) return;
+  if (row.history.timestamps.count() < 2) return;
 
-  let const boundary = find_rolling_window_boundary(history.history_nanoseconds,
-                                                    window_start_nanoseconds);
-  let const baseline = interpolate_rolling_counter(
-      history.history[boundary.before_index],
-      history.history[boundary.after_index],
-      history.history_nanoseconds[boundary.before_index],
-      history.history_nanoseconds[boundary.after_index], boundary.timestamp);
+  let const boundary = row.history.get_boundary(window_start_nanoseconds);
+  let const baseline = row.history.interpolate(
+      boundary, row.history.samples[boundary.before_index],
+      row.history.samples[boundary.after_index]);
   if (!baseline.has_value()) return;
 
-  let const current_milliseconds = history.history.back();
+  let const current_milliseconds = row.history.get_newest();
   if (current_milliseconds < *baseline || now_nanoseconds <= boundary.timestamp)
   {
     return;

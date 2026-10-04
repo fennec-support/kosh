@@ -388,27 +388,21 @@ struct live_process_row
   i64 pid{0};
   u64 start_token{0};
   String name{heap_allocator()};
-  ArrayList<os::process_io_status> history{heap_allocator()};
-  ArrayList<u64> history_nanoseconds{heap_allocator()};
-  u64 last_seen_nanoseconds{0};
+  rolling_history<os::process_io_status> history;
 };
 
 fn get_process_window_status(const live_process_row &row,
                              u64 window_start_nanoseconds) wontthrow
     -> os::process_io_status
 {
-  let const boundary = find_rolling_window_boundary(row.history_nanoseconds,
-                                                    window_start_nanoseconds);
-  let const &before = row.history[boundary.before_index];
-  let const &after_boundary = row.history[boundary.after_index];
-  let const &newest = row.history.back();
+  let const boundary = row.history.get_boundary(window_start_nanoseconds);
+  let const &before = row.history.samples[boundary.before_index];
+  let const &after_boundary = row.history.samples[boundary.after_index];
+  let const &newest = row.history.get_newest();
   os::process_io_status status{0, 0, 0, 0, false};
 
   let const get_baseline = [&](u64 before_value, u64 after_value) {
-    return interpolate_rolling_counter(
-        before_value, after_value,
-        row.history_nanoseconds[boundary.before_index],
-        row.history_nanoseconds[boundary.after_index], boundary.timestamp);
+    return row.history.interpolate(boundary, before_value, after_value);
   };
   if (let const baseline =
           get_baseline(before.read_bytes, after_boundary.read_bytes);
@@ -987,29 +981,24 @@ fn run_live_process_io(const ExecContext &ec, Maybe<i64> selected_pid,
 struct live_disk_row
 {
   String name{heap_allocator()};
-  ArrayList<os::disk_io_status> history{heap_allocator()};
-  ArrayList<u64> history_nanoseconds{heap_allocator()};
-  u64 last_seen_nanoseconds{0};
+  rolling_history<os::disk_io_status> history;
 };
 
 fn make_disk_window_row(const live_disk_row &row, u64 window_start_nanoseconds,
                         Allocator allocator) throws -> disk_io_row
 {
-  let const boundary = find_rolling_window_boundary(row.history_nanoseconds,
-                                                    window_start_nanoseconds);
-  let const &lower = row.history[boundary.before_index];
-  let const &upper = row.history[boundary.after_index];
-  let const &newest = row.history.back();
+  let const boundary = row.history.get_boundary(window_start_nanoseconds);
+  let const &lower = row.history.samples[boundary.before_index];
+  let const &upper = row.history.samples[boundary.after_index];
+  let const &newest = row.history.get_newest();
   os::disk_io_status before{};
   before.name = String{allocator, row.name.view()};
   before.available_fields = lower.available_fields & upper.available_fields;
   let const do_interpolate = [&](os::disk_io_field field,
                                  u64 os::disk_io_status::*member) {
     if (!lower.has_field(field) || !upper.has_field(field)) return;
-    if (let const value = interpolate_rolling_counter(
-            lower.*member, upper.*member,
-            row.history_nanoseconds[boundary.before_index],
-            row.history_nanoseconds[boundary.after_index], boundary.timestamp);
+    if (let const value =
+            row.history.interpolate(boundary, lower.*member, upper.*member);
         value.has_value())
       before.*member = *value;
   };
@@ -1039,8 +1028,8 @@ fn make_disk_window_row(const live_disk_row &row, u64 window_start_nanoseconds,
   do_interpolate(os::disk_io_field::WriteRetries,
                  &os::disk_io_status::write_retry_count);
   let const elapsed_nanoseconds =
-      row.history_nanoseconds.back() > boundary.timestamp
-          ? row.history_nanoseconds.back() - boundary.timestamp
+      row.history.get_newest_timestamp() > boundary.timestamp
+          ? row.history.get_newest_timestamp() - boundary.timestamp
           : 0;
   return make_disk_io_row(&before, newest, elapsed_nanoseconds, allocator,
                           report_sampling_mode::Rolling);
