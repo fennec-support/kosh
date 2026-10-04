@@ -86,6 +86,11 @@ wait_until_tree_blocked() {
   done
 }
 
+can_observe_tree=no
+if [ -r "/proc/$$/wchan" ] && command -v pgrep > /dev/null 2>&1; then
+  can_observe_tree=yes
+fi
+
 wait_for_marker() {
   local attempt=0
   while [ ! -e "$1" ] && [ "$attempt" -lt 200 ]; do
@@ -214,6 +219,7 @@ trap - USR1
 echo open-whose-action-breaks-done
 
 echo open-in-a-stage-whose-action-returns
+if [ "$can_observe_tree" = yes ]; then
 trap 'echo action-stage-return; return 3' USR1
 return_from_stage() {
   read -r line < "$dir/tenth" | cat
@@ -229,9 +235,13 @@ echo "stage-return-case-status=$?"
 wait "$notifier" 2> /dev/null
 wait "$writer" 2> /dev/null
 trap - USR1
+else
+  echo skipped-without-a-blocked-state-probe
+fi
 echo open-in-a-stage-whose-action-returns-done
 
 echo open-in-a-group-stage-whose-action-sets-a-variable
+if [ "$can_observe_tree" = yes ]; then
 trap 'stage_marker=action-ran' USR1
 stage_marker=untouched
 ( wait_until_tree_blocked $$; kill -USR1 $$; : > "$dir/group-stage-sent" ) &
@@ -243,9 +253,13 @@ echo "group-stage-status=$? marker=$stage_marker"
 wait "$notifier" 2> /dev/null
 wait "$writer" 2> /dev/null
 trap - USR1
+else
+  echo skipped-without-a-blocked-state-probe
+fi
 echo open-in-a-group-stage-whose-action-sets-a-variable-done
 
 echo open-in-a-loop-stage-whose-action-sets-a-variable
+if [ "$can_observe_tree" = yes ]; then
 trap 'stage_marker=loop-action-ran' USR1
 stage_marker=untouched
 ( wait_until_tree_blocked $$; kill -USR1 $$; : > "$dir/loop-stage-sent" ) &
@@ -257,6 +271,9 @@ echo "loop-stage-status=$? marker=$stage_marker"
 wait "$notifier" 2> /dev/null
 wait "$writer" 2> /dev/null
 trap - USR1
+else
+  echo skipped-without-a-blocked-state-probe
+fi
 echo open-in-a-loop-stage-whose-action-sets-a-variable-done
 
 echo open-that-no-signal-reaches
