@@ -2,14 +2,11 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This routed POSIX source fragment exists because its native interfaces and
- * required headers differ across Linux, macOS, and other POSIX targets. It
- * implements hardware performance counters, heap and resource statistics, CPU
- * affinity, executable path discovery, process enumeration, ownership lookup,
- * and process file-user scans, including fallbacks for targets that lack a
- * facility. It also implements the FileWatcher that wakes a tail follower
- * through inotify on Linux and kqueue on macOS and FreeBSD. The separate
- * fragment keeps target-specific conditionals out of the common POSIX backend.
+ * This routed POSIX source fragment keeps target-specific headers and
+ * conditionals out of the common POSIX backend. It implements performance
+ * counters, resource statistics, CPU affinity, executable path discovery,
+ * process enumeration, and file-user scans, with fallbacks for missing
+ * facilities. It also implements the FileWatcher through inotify and kqueue.
  */
 
 #if defined __APPLE__

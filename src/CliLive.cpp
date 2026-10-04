@@ -3,17 +3,9 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the terminal and header half of the shared live view
- * driver declared in CliLive.hpp. It enters the alternate screen, hides the
- * cursor, and switches the active input descriptor to raw no-echo mode only
- * when the active output descriptor is a terminal, and restores all three in
- * the destructor. It waits for the next sample or refresh moment while reading
- * key bytes, decodes escape sequences into arrow and page keys, builds the
- * styled header line fitted to the terminal width, and delivers each frame
- * with one write clipped to the terminal height. Redirected output receives a
- * plain header without escape sequences. The title, live indicator, local
- * time, window and refresh labels, and key hints are dropped from the right
- * when the terminal is too narrow. The extra key hints of a utility separate
- * entries with a vertical bar and put the key before the first space.
+ * driver declared in CliLive.hpp. It manages the alternate screen, raw key
+ * input, the styled header line, and the single write that delivers each
+ * frame. Redirected output receives a plain header without escape sequences.
  */
 
 #include "CliLive.hpp"

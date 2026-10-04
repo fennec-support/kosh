@@ -5,8 +5,7 @@
  * This file declares the helper interface implemented across the Utils
  * sources. It covers word decoding, command execution, stream input, glob
  * matching, numeric conversion, source positions, directory caches, and
- * command resolution. The build compiles those domains independently. Callers
- * use this shared declaration interface.
+ * command resolution.
  */
 
 #pragma once

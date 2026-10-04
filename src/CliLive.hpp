@@ -2,33 +2,11 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file declares the shared live view driver of the evil utilities. A
- * utility describes its title, cadence, and key hints in live_view_options and
- * plugs in three callbacks: a sampler that runs when the sample interval is
- * due, a renderer that appends the body of one frame, and an optional key
- * handler. The driver owns everything else: terminal detection on the active
- * output descriptor, alternate screen and cursor restore, raw no-echo key input
- * on the active input descriptor, the sample and refresh cadence, interrupt
- * handling that returns status 130, the per-frame bump arena, per-frame
- * terminal dimensions, the styled header line, and the single write that
- * delivers each frame. The loop is a template so callbacks are inlined, while
- * the terminal and header work lives in CliLive.cpp.
- *
- * It also declares the retained row updater of the live utilities. A live
- * utility keeps one row for each tracked object, such as a process, a disk, or
- * a network interface. A row owns the counters it sampled and the monotonic
- * time of every sample, plus the time it was last observed.
- * update_retained_rows folds one fresh sample into those rows in a fixed
- * order: match each observation to a row by identity, discard the history of
- * a row whose counters went backwards, push the new counters, start a row for
- * an object seen for the first time, carry the previous counters forward for a
- * row that was not observed, expire a row that has been unobserved for the
- * whole window, and trim samples that no longer influence the window. The
- * identity lookup uses a sorted index built once per sample, so the cost grows
- * with the number of rows instead of with the square of it. A process
- * identity pairs the process id with the start token, so a reused process id
- * is a different row. The window is the length of the rolling boxcar and never
- * controls how often a utility samples.
+ * This file declares the shared live view driver of the evil utilities, where
+ * a utility supplies its options plus sampler, renderer, and key callbacks.
+ * The driver owns terminal handling, cadence, interrupts, and one write per
+ * frame. It also declares update_retained_rows, which folds each fresh sample
+ * into the retained per-object rows of a live utility.
  */
 
 #pragma once

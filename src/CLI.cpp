@@ -4,11 +4,7 @@
  *
  * This file implements command-line and builtin option parsing. It owns flag
  * declarations, help rendering, operand collection, validation, and located
- * usage errors. It also renders ReportTable grids. A rendered row never ends
- * in a space, so the last left-aligned column is not padded and a right-aligned
- * column keeps its left padding. A table with no rows renders nothing, title
- * included. A titled table puts its title at the section indentation and its
- * body two spaces beneath it.
+ * usage errors. It also renders ReportTable grids.
  */
 
 #include "CLI.hpp"

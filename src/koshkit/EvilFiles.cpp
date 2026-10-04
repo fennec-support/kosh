@@ -3,10 +3,8 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the evilfiles utility. It lists files held by visible
- * processes and filters them by process, owner, command, and path. Column
- * widths are measured in display cells. Socket descriptors are described from
- * one table of every socket inode, read once for the whole run, which gives the
- * family and the endpoint of each descriptor.
+ * processes and filters them by process, owner, command, and path. Socket
+ * descriptors are described from one socket inode table read once per run.
  */
 
 #include "../CLI.hpp"

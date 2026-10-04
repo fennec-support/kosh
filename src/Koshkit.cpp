@@ -4,9 +4,7 @@
  *
  * This file implements runtime registration and dispatch for bundled koshkit
  * utilities. It also provides shared argument parsing, input opening, help,
- * error reporting, signal formatting, size formatting, and duration parsing.
- * The central unit owns the utility registry and common dispatch. Each source
- * under koshkit implements one command.
+ * error reporting, and signal, size, and duration helpers.
  */
 
 #include "Koshkit.hpp"

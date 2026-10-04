@@ -2,21 +2,10 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the grep utility. Patterns come from the first operand,
- * from each -e value, and from each -f file, and a newline inside any of them
- * starts another pattern. Each pattern compiles as a basic expression, an
- * extended expression, or a fixed string, and a line is selected when any
- * pattern matches it, or matches it entirely under -x. Selected lines are
- * printed, counted per file, listed by file name, or end the search under -q.
- * With a single pattern, each read chunk is searched for a literal that every
- * match must contain, and only the lines holding that literal reach the line
- * matcher. A pattern made only of literal runs, single-byte wildcards, ".*"
- * gaps, and optional edge anchors compiles to a segment list that decides each
- * line without the system regex engine. Every other pattern uses that engine.
- * In a UTF-8 locale the pattern is compiled twice: a byte copy decides ASCII
- * lines and a copy built under a UTF-8 character type decides every other line
- * so that "." and bracket classes match whole characters. A segment list with
- * single-character wildcards decides ASCII lines only.
+ * This file implements the grep utility. It gathers patterns from operands,
+ * -e values, and -f files, compiles each as a basic, extended, or fixed
+ * pattern, and prints, counts, or lists the selected lines. A literal
+ * prefilter and a segment matcher avoid the system regex engine when possible.
  */
 
 #include "../CLI.hpp"

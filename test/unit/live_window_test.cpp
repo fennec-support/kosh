@@ -3,18 +3,9 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file is the unit test of the rolling counter window used by the live
- * koshkit reports. It drives find_rolling_window_boundary,
- * interpolate_rolling_counter, and rolling_window_start with synthetic sample
- * histories instead of a clock. It checks the baseline of a window that starts
- * before the first sample, an idle counter, a burst inside the window, a
- * counter reset, and the three relations between the number of retained samples
- * and the window length: fewer samples than the window holds, exactly as many,
- * and more. It also drives update_retained_rows, the retained row updater the
- * evil utilities share, with synthetic observations: the first sample of a
- * row, an idle row, a burst that ages out of the window, a counter reset, a
- * row that disappears and expires, a row that reappears before and after it
- * expires, a reused process id with a new start token, and a window shorter
- * than, equal to, and longer than the sampling interval.
+ * koshkit reports. It drives the window boundary, interpolation, and start
+ * functions with synthetic sample histories instead of a clock. It also
+ * drives update_retained_rows with synthetic observations.
  */
 
 #include "CLI.hpp"
