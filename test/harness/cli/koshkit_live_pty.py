@@ -114,7 +114,12 @@ def run_redirected(binary, command):
     with tempfile.TemporaryFile() as output:
         process = subprocess.Popen([binary, "-Q", "-c", command],
                                    stdout=output, stderr=subprocess.STDOUT)
-        time.sleep(0.35)
+        deadline = time.monotonic() + 10.0
+        while time.monotonic() < deadline and process.poll() is None:
+            output.seek(0)
+            if output.read().count(FRAME_MARKER) >= 2:
+                break
+            time.sleep(0.05)
         process.send_signal(signal.SIGINT)
         status = process.wait(timeout=3.0)
         output.seek(0)
