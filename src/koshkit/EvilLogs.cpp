@@ -214,41 +214,62 @@ fn collect_dumps(StringView directory, Allocator allocator) throws
   return steal(dumps).make_sorted(newest_named_entry_comparator{});
 }
 
-fn append_kernel_settings(String &output, bool should_color) throws -> void
+fn append_titled_message(String &output, StringView title, StringView message,
+                         Allocator allocator, bool should_color) throws -> void
 {
-  bool was_any_setting_found = false;
+  let table = ReportTable{allocator};
+  table.set_header_visible(false);
+  table.add_column("");
+  let cells = ArrayList<report_table_cell_view>{allocator};
+  cells.push({message, {}});
+  table.add_row(cells);
+  append_titled_report_table(output, title, table, should_color);
+}
+
+fn append_setting_row(ReportTable &table, Allocator allocator, StringView name,
+                      StringView value) throws -> void
+{
+  let cells = ArrayList<report_table_cell_view>{allocator};
+  cells.push({name, colors::ansi::BOLD_CYAN});
+  cells.push({value, colors::ansi::GREEN});
+  table.add_row(cells);
+}
+
+fn append_kernel_settings(String &output, Allocator allocator,
+                          bool should_color) throws -> void
+{
+  let table = ReportTable{allocator};
+  table.set_header_visible(false);
+  table.add_column("");
+  table.add_column("");
   for (let const setting : KERNEL_SETTINGS) {
     let const content = Path{setting}.read_entire_file();
     if (!content.has_value()) continue;
 
-    was_any_setting_found = true;
-    append_report_text(output, setting, colors::ansi::BOLD_CYAN, should_color);
-    output += " ";
-    append_report_text(output, trimmed_line(content->view()),
-                       colors::ansi::GREEN, should_color);
-    output += "\n";
+    append_setting_row(table, allocator, setting, trimmed_line(content->view()));
   }
 
-  if (was_any_setting_found) return;
-
-  let const pattern = os::get_environment_variable("KOSH_CORE_PATTERN");
-  if (pattern.has_value()) {
-    append_report_text(output, "core pattern", colors::ansi::BOLD_CYAN,
-                       should_color);
-    output += " ";
-    append_report_text(output, pattern->view(), colors::ansi::GREEN,
-                       should_color);
-    output += "\n";
-    return;
+  if (table.get_row_count() == 0) {
+    let const pattern = os::get_environment_variable("KOSH_CORE_PATTERN");
+    if (pattern.has_value()) {
+      append_setting_row(table, allocator, "core pattern", pattern->view());
+    } else {
+      append_titled_message(
+          output, "Core dump settings",
+          "The kernel exposes no core dump settings on this platform",
+          allocator, should_color);
+      return;
+    }
   }
 
-  output += "The kernel exposes no core dump settings on this platform\n";
+  append_titled_report_table(output, "Core dump settings", table,
+                             should_color);
 }
 
 fn append_core_dump_report(String &output, Allocator allocator,
                            bool should_color) throws -> void
 {
-  append_kernel_settings(output, should_color);
+  append_kernel_settings(output, allocator, should_color);
 
   let directories = ArrayList<String>{allocator};
   for (let const candidate : CORE_DUMP_DIRECTORIES)
@@ -274,39 +295,44 @@ fn append_core_dump_report(String &output, Allocator allocator,
     for (let const &dump : dumps)
       total_size += dump.size;
 
-    output += "\n";
-    append_report_text(output, directory, colors::ansi::BOLD, should_color);
-    output += " ";
-    append_report_text(output, String::from(dumps.count(), allocator).view(),
-                       colors::ansi::BOLD_GREEN, should_color);
-    output += " dumps ";
-    append_report_text(output, format_human_size(total_size, allocator).view(),
-                       colors::ansi::GREEN, should_color);
-    output += "\n";
+    let title = String{allocator, directory};
+    title += ": ";
+    title += String::from(dumps.count(), allocator).view();
+    title += " dumps, ";
+    title += format_human_size(total_size, allocator).view();
+
+    let table = ReportTable{allocator};
+    table.add_column("SIZE", report_table_alignment::Left,
+                     colors::ansi::BOLD_CYAN);
+    table.add_column("MODIFIED", report_table_alignment::Left,
+                     colors::ansi::BOLD_CYAN);
+    table.add_column("PROGRAM", report_table_alignment::Left,
+                     colors::ansi::BOLD_CYAN);
+    table.add_column("NAME", report_table_alignment::Left,
+                     colors::ansi::BOLD_CYAN);
 
     let const shown_count = dumps.count() < DEFAULT_DUMP_COUNT
                                 ? dumps.count()
                                 : static_cast<usize>(DEFAULT_DUMP_COUNT);
     for (usize index = 0; index < shown_count; index++) {
       let const &dump = dumps[index];
-      output += "  ";
-      append_report_column(output,
-                           format_human_size(dump.size, allocator).view(), 10,
-                           false, colors::ansi::GREEN, should_color);
-      append_report_text(
-          output,
-          utils::format_unix_timestamp(dump.modification_time, "%Y-%m-%d %H:%M")
-              .view(),
-          colors::ansi::DIM, should_color);
-      output += "  ";
-      append_report_column(output, dump.program.view(), 16, false,
-                           colors::ansi::BOLD_MAGENTA, should_color);
-      output += dump.name.view();
-      output += "\n";
+      let const size = format_human_size(dump.size, allocator);
+      let const modified =
+          utils::format_unix_timestamp(dump.modification_time, "%Y-%m-%d %H:%M");
+      let cells = ArrayList<report_table_cell_view>{allocator};
+      cells.push({size.view(), colors::ansi::GREEN});
+      cells.push({modified.view(), colors::ansi::DIM});
+      cells.push({dump.program.view(), colors::ansi::BOLD_MAGENTA});
+      cells.push({dump.name.view(), {}});
+      table.add_row(cells);
     }
+    append_titled_report_table(output, title.view(), table, should_color);
   }
 
-  if (total_dump_count == 0) output += "  No core dumps were found\n";
+  if (total_dump_count == 0) {
+    append_titled_message(output, "Core dumps", "No core dumps were found",
+                          allocator, should_color);
+  }
 }
 
 constexpr i64 DEFAULT_LOG_ENTRY_COUNT = 5;
@@ -471,45 +497,51 @@ fn append_log_report(String &output, Allocator allocator,
     let const entries = collect_log_entries(directory, allocator);
     if (entries.is_empty()) continue;
 
-    if (directory_count > 0) output += "\n";
     directory_count++;
 
     u64 total_size = 0;
     for (let const &entry : entries)
       total_size += entry.size;
 
-    append_report_text(output, directory, colors::ansi::BOLD, should_color);
-    output += " ";
-    append_report_text(output, String::from(entries.count(), allocator).view(),
-                       colors::ansi::BOLD_GREEN, should_color);
-    output += " entries ";
-    append_report_text(output, format_human_size(total_size, allocator).view(),
-                       colors::ansi::GREEN, should_color);
-    output += "\n";
+    let title = String{allocator, directory};
+    title += ": ";
+    title += String::from(entries.count(), allocator).view();
+    title += " entries, ";
+    title += format_human_size(total_size, allocator).view();
+
+    let table = ReportTable{allocator};
+    table.add_column("SIZE", report_table_alignment::Left,
+                     colors::ansi::BOLD_CYAN);
+    table.add_column("FORMAT", report_table_alignment::Left,
+                     colors::ansi::BOLD_CYAN);
+    table.add_column("MODIFIED", report_table_alignment::Left,
+                     colors::ansi::BOLD_CYAN);
+    table.add_column("NAME", report_table_alignment::Left,
+                     colors::ansi::BOLD_CYAN);
 
     let const shown_count = entries.count() < DEFAULT_LOG_ENTRY_COUNT
                                 ? entries.count()
                                 : static_cast<usize>(DEFAULT_LOG_ENTRY_COUNT);
     for (usize index = 0; index < shown_count; index++) {
       let const &entry = entries[index];
-      output += "  ";
-      append_report_column(output,
-                           format_human_size(entry.size, allocator).view(), 10,
-                           false, colors::ansi::GREEN, should_color);
-      append_report_column(output, entry.format_label, 11, false,
-                           colors::ansi::BOLD_MAGENTA, should_color);
-      append_report_text(output,
-                         utils::format_unix_timestamp(entry.modification_time,
-                                                      "%Y-%m-%d %H:%M")
-                             .view(),
-                         colors::ansi::DIM, should_color);
-      output += "  ";
-      output += entry.name.view();
-      output += "\n";
+      let const size = format_human_size(entry.size, allocator);
+      let const modified = utils::format_unix_timestamp(entry.modification_time,
+                                                        "%Y-%m-%d %H:%M");
+      let cells = ArrayList<report_table_cell_view>{allocator};
+      cells.push({size.view(), colors::ansi::GREEN});
+      cells.push({entry.format_label, colors::ansi::BOLD_MAGENTA});
+      cells.push({modified.view(), colors::ansi::DIM});
+      cells.push({entry.name.view(), {}});
+      table.add_row(cells);
     }
+    append_titled_report_table(output, title.view(), table, should_color);
   }
 
-  if (directory_count == 0) output += "No log directories were found\n";
+  if (directory_count == 0) {
+    append_titled_message(output, "Log directories",
+                          "No log directories were found", allocator,
+                          should_color);
+  }
 }
 
 } /* namespace */
@@ -543,15 +575,10 @@ fn EvilLogs::execute(
   let const has_filter =
       FLAG_EVILLOGS_CORES.is_enabled() || FLAG_EVILLOGS_LOGS.is_enabled();
   if (!has_filter || FLAG_EVILLOGS_CORES.is_enabled()) {
-    let section = String{allocator};
-    append_core_dump_report(section, allocator, should_color);
-    output += section.view();
+    append_core_dump_report(output, allocator, should_color);
   }
   if (!has_filter || FLAG_EVILLOGS_LOGS.is_enabled()) {
-    if (!output.is_empty()) output += "\n";
-    let section = String{allocator};
-    append_log_report(section, allocator, should_color);
-    output += section.view();
+    append_log_report(output, allocator, should_color);
   }
 
   ec.print_to_stdout(output);
