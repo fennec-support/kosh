@@ -82,6 +82,62 @@ enum class rename_kind : u8
   command,
 };
 
+struct client_capabilities
+{
+  position_encoding encoding{position_encoding::Utf16};
+  bool has_document_changes{false};
+  bool has_code_action_literals{false};
+  bool has_quick_fixes{false};
+  bool has_fix_all{false};
+  bool has_diagnostic_data{false};
+  bool has_preferred_actions{false};
+  bool has_markdown_hover{false};
+
+  static fn from_initialize_params(const JsonValue *params) throws
+      -> client_capabilities
+  {
+    client_capabilities client{};
+    if (params == nullptr || params->kind != json_kind::Object) return client;
+
+    let const *capabilities = params->get("capabilities");
+    let const *code_action =
+        json_field_path(capabilities, "textDocument", "codeAction");
+    let const *kind_values = json_field_path(
+        code_action, "codeActionLiteralSupport", "codeActionKind", "valueSet");
+
+    client.has_document_changes = json_field_is_true(json_field_path(
+        capabilities, "workspace", "workspaceEdit", "documentChanges"));
+    client.has_code_action_literals =
+        kind_values != nullptr && kind_values->kind == json_kind::Array;
+    if (client.has_code_action_literals) {
+      for (let const *kind : kind_values->array) {
+        if (kind->kind != json_kind::String) continue;
+        if (code_action_kind_includes(kind->text, "quickfix"))
+          client.has_quick_fixes = true;
+        if (code_action_kind_includes(kind->text, "source.fixAll.kosh"))
+          client.has_fix_all = true;
+      }
+    }
+
+    client.has_preferred_actions =
+        json_field_is_true(json_field_path(code_action, "isPreferredSupport"));
+    client.has_diagnostic_data = json_field_is_true(json_field_path(
+        capabilities, "textDocument", "publishDiagnostics", "dataSupport"));
+    client.has_markdown_hover = json_array_holds(
+        json_field_path(capabilities, "textDocument", "hover", "contentFormat"),
+        "markdown");
+
+    if (json_array_holds(
+            json_field_path(capabilities, "general", "positionEncodings"),
+            "utf-8"))
+    {
+      client.encoding = position_encoding::Utf8;
+    }
+
+    return client;
+  }
+};
+
 class Server : public AnalysisSourceProvider
 {
 public:
@@ -175,16 +231,9 @@ private:
   StringMap<String> m_builtin_information_cache{heap_allocator()};
   completion::shell_highlight_cache m_highlight_cache;
   Path m_workspace_root;
-  position_encoding m_encoding{position_encoding::Utf16};
+  client_capabilities m_client{};
   bool m_is_initialized{false};
   bool m_is_shutdown{false};
-  bool m_supports_document_changes{false};
-  bool m_supports_code_action_literals{false};
-  bool m_supports_quick_fixes{false};
-  bool m_supports_fix_all{false};
-  bool m_supports_diagnostic_data{false};
-  bool m_supports_preferred_actions{false};
-  bool m_supports_markdown_hover{false};
 };
 
 static constexpr u32 SEMANTIC_DECLARATION = 1u << 0;
@@ -295,46 +344,11 @@ fn Server::initialize(const JsonValue *id, const JsonValue *params) throws
       if (let path = decode_file_uri(*root_uri); path.has_value())
         m_workspace_root = path.take();
     }
-    let const *capabilities = params->get("capabilities");
-    let const *code_action =
-        json_field_path(capabilities, "textDocument", "codeAction");
-    let const *kind_values = json_field_path(
-        code_action, "codeActionLiteralSupport", "codeActionKind", "valueSet");
-
-    m_supports_document_changes = json_field_is_true(json_field_path(
-        capabilities, "workspace", "workspaceEdit", "documentChanges"));
-    m_supports_code_action_literals =
-        kind_values != nullptr && kind_values->kind == json_kind::Array;
-    m_supports_quick_fixes = false;
-    m_supports_fix_all = false;
-    if (m_supports_code_action_literals) {
-      for (let const *kind : kind_values->array) {
-        if (kind->kind != json_kind::String) continue;
-        if (code_action_kind_includes(kind->text, "quickfix"))
-          m_supports_quick_fixes = true;
-        if (code_action_kind_includes(kind->text, "source.fixAll.kosh"))
-          m_supports_fix_all = true;
-      }
-    }
-
-    m_supports_preferred_actions =
-        json_field_is_true(json_field_path(code_action, "isPreferredSupport"));
-    m_supports_diagnostic_data = json_field_is_true(json_field_path(
-        capabilities, "textDocument", "publishDiagnostics", "dataSupport"));
-    m_supports_markdown_hover = json_array_holds(
-        json_field_path(capabilities, "textDocument", "hover", "contentFormat"),
-        "markdown");
-
-    if (json_array_holds(
-            json_field_path(capabilities, "general", "positionEncodings"),
-            "utf-8"))
-    {
-      m_encoding = position_encoding::Utf8;
-    }
   }
+  m_client = client_capabilities::from_initialize_params(params);
   m_is_initialized = true;
   let const encoding =
-      m_encoding == position_encoding::Utf8 ? "utf-8" : "utf-16";
+      m_client.encoding == position_encoding::Utf8 ? "utf-8" : "utf-16";
   let result = String{"{\"capabilities\":{\"positionEncoding\":"};
   append_json_string(result, encoding);
   result.append(",\"textDocumentSync\":{\"openClose\":true,\"change\":1},"
@@ -344,11 +358,11 @@ fn Server::initialize(const JsonValue *id, const JsonValue *params) throws
                 "\"documentFormattingProvider\":true,"
                 "\"documentSymbolProvider\":true,"
                 "\"renameProvider\":{\"prepareProvider\":true},");
-  if (m_supports_quick_fixes || m_supports_fix_all) {
+  if (m_client.has_quick_fixes || m_client.has_fix_all) {
     result.append("\"codeActionProvider\":{\"codeActionKinds\":[");
-    if (m_supports_quick_fixes) result.append("\"quickfix\"");
-    if (m_supports_quick_fixes && m_supports_fix_all) result.push(',');
-    if (m_supports_fix_all) result.append("\"source.fixAll.kosh\"");
+    if (m_client.has_quick_fixes) result.append("\"quickfix\"");
+    if (m_client.has_quick_fixes && m_client.has_fix_all) result.push(',');
+    if (m_client.has_fix_all) result.append("\"source.fixAll.kosh\"");
     result.append("],\"resolveProvider\":false},");
   }
   result.append(
@@ -461,7 +475,8 @@ fn Server::append_diagnostic(String &output, const Document &document,
     is_first = false;
     output.append("{\"range\":");
     append_protocol_range(output, document, location.position,
-                          location.position + location.length, m_encoding);
+                          location.position + location.length,
+                          m_client.encoding);
     output.append(",\"severity\":");
     append_json_integer(output, static_cast<u64>(severity));
     if (id.has_value()) {
@@ -470,7 +485,7 @@ fn Server::append_diagnostic(String &output, const Document &document,
     }
     output.append(",\"source\":\"kosh\",\"message\":");
     append_json_string(output, message);
-    if (has_fixes && m_supports_diagnostic_data && document.version >= 0) {
+    if (has_fixes && m_client.has_diagnostic_data && document.version >= 0) {
       output.append(",\"data\":{\"kind\":\"kosh.fix\","
                     "\"documentVersion\":");
       append_json_integer(output, document.version);
@@ -689,7 +704,7 @@ fn Server::complete(const JsonValue *id, const JsonValue *params) throws -> bool
   if (!request.has_value()) return send_result(id, "[]");
   let *document = request->document;
   let const cursor = document->byte_position(
-      request->position.line, request->position.character, m_encoding);
+      request->position.line, request->position.character, m_client.encoding);
   if (!cursor.has_value()) return send_result(id, "[]");
   let const fragment_index = document->fragment_at(*cursor);
   if (!fragment_index.has_value()) return send_result(id, "[]");
@@ -720,7 +735,7 @@ fn Server::complete(const JsonValue *id, const JsonValue *params) throws -> bool
     } else {
       text_edit_prefix.append("{\"range\":");
       append_protocol_range(text_edit_prefix, *document, result.token_start,
-                            result.token_end, m_encoding);
+                            result.token_end, m_client.encoding);
       text_edit_prefix.append(",\"newText\":");
     }
     let const &candidate = result.candidates[index];
@@ -803,7 +818,7 @@ fn Server::append_text_edit(String &output, const Document &document,
 {
   output.append("{\"range\":");
   append_protocol_range(output, document, start_position, end_position,
-                        m_encoding);
+                        m_client.encoding);
   output.append(",\"newText\":");
   append_json_string(output, replacement);
   output.push('}');
@@ -858,7 +873,7 @@ fn Server::format_document(const JsonValue *id, const JsonValue *params) throws
 fn Server::open_workspace_edit(String &output, const Document &document) throws
     -> void
 {
-  if (m_supports_document_changes) {
+  if (m_client.has_document_changes) {
     output.append("\"documentChanges\":[{\"textDocument\":{\"uri\":");
     append_json_string(output, document.uri.view());
     output.append(",\"version\":");
@@ -875,13 +890,13 @@ fn Server::open_workspace_edit(String &output, const Document &document) throws
 
 fn Server::close_workspace_edit(String &output) throws -> void
 {
-  output.append(m_supports_document_changes ? "]}]}" : "]}}");
+  output.append(m_client.has_document_changes ? "]}]}" : "]}}");
 }
 
 fn Server::code_actions(const JsonValue *id, const JsonValue *params) throws
     -> bool
 {
-  if (!m_supports_code_action_literals) return send_result(id, "[]");
+  if (!m_client.has_code_action_literals) return send_result(id, "[]");
   let *document = request_document(params);
   if (document == nullptr) return send_result(id, "[]");
 
@@ -893,10 +908,10 @@ fn Server::code_actions(const JsonValue *id, const JsonValue *params) throws
     let const start = document_position(range->get("start"));
     let const end = document_position(range->get("end"));
     if (!start.has_value() || !end.has_value()) return send_result(id, "[]");
-    let const start_byte =
-        document->byte_position(start->line, start->character, m_encoding);
+    let const start_byte = document->byte_position(
+        start->line, start->character, m_client.encoding);
     let const end_byte =
-        document->byte_position(end->line, end->character, m_encoding);
+        document->byte_position(end->line, end->character, m_client.encoding);
     if (!start_byte.has_value() || !end_byte.has_value())
       return send_result(id, "[]");
     range_start = *start_byte;
@@ -904,8 +919,8 @@ fn Server::code_actions(const JsonValue *id, const JsonValue *params) throws
     if (range_end < range_start) return send_result(id, "[]");
   }
 
-  bool should_include_quick_fixes = m_supports_quick_fixes;
-  bool should_include_fix_all = m_supports_fix_all;
+  bool should_include_quick_fixes = m_client.has_quick_fixes;
+  bool should_include_fix_all = m_client.has_fix_all;
   let const *context = params != nullptr ? params->get("context") : nullptr;
   let const *only = context != nullptr ? context->get("only") : nullptr;
   if (only != nullptr && only->kind == json_kind::Array) {
@@ -913,10 +928,10 @@ fn Server::code_actions(const JsonValue *id, const JsonValue *params) throws
     should_include_fix_all = false;
     for (let const *kind : only->array) {
       if (kind->kind != json_kind::String) continue;
-      if (m_supports_quick_fixes &&
+      if (m_client.has_quick_fixes &&
           code_action_kind_includes(kind->text, "quickfix"))
         should_include_quick_fixes = true;
-      if (m_supports_fix_all &&
+      if (m_client.has_fix_all &&
           code_action_kind_includes(kind->text, "source.fixAll.kosh"))
         should_include_fix_all = true;
     }
@@ -929,7 +944,7 @@ fn Server::code_actions(const JsonValue *id, const JsonValue *params) throws
   let const do_associated_diagnostic =
       [&](usize diagnostic_index, const source_diagnostic &diagnostic)
           wontthrow -> const JsonValue * {
-    if (!m_supports_diagnostic_data || context_diagnostics == nullptr ||
+    if (!m_client.has_diagnostic_data || context_diagnostics == nullptr ||
         context_diagnostics->kind != json_kind::Array ||
         !diagnostic.id.has_value())
     {
@@ -961,10 +976,10 @@ fn Server::code_actions(const JsonValue *id, const JsonValue *params) throws
       let const start = document_position(candidate_range->get("start"));
       let const end = document_position(candidate_range->get("end"));
       if (!start.has_value() || !end.has_value()) continue;
-      let const start_byte =
-          document->byte_position(start->line, start->character, m_encoding);
+      let const start_byte = document->byte_position(
+          start->line, start->character, m_client.encoding);
       let const end_byte =
-          document->byte_position(end->line, end->character, m_encoding);
+          document->byte_position(end->line, end->character, m_client.encoding);
       if (!start_byte.has_value() || !end_byte.has_value() ||
           *start_byte != diagnostic.location.position ||
           *end_byte !=
@@ -1001,7 +1016,7 @@ fn Server::code_actions(const JsonValue *id, const JsonValue *params) throws
     append_json_string(response, title);
     response.append(",\"kind\":");
     append_json_string(response, kind);
-    if (is_preferred && m_supports_preferred_actions)
+    if (is_preferred && m_client.has_preferred_actions)
       response.append(",\"isPreferred\":true");
     if (diagnostic != nullptr) {
       response.append(",\"diagnostics\":[");
@@ -1069,8 +1084,8 @@ fn Server::symbol_at(const Document &document,
                      protocol_position position) throws
     -> Maybe<document_symbol>
 {
-  let const byte_position =
-      document.byte_position(position.line, position.character, m_encoding);
+  let const byte_position = document.byte_position(
+      position.line, position.character, m_client.encoding);
   if (!byte_position.has_value() ||
       position.line >= document.line_starts.count())
     return None;
@@ -1218,7 +1233,7 @@ fn Server::definition(const JsonValue *id, const JsonValue *params) throws
   append_json_string(response, document->uri.view());
   response.append(",\"range\":");
   append_protocol_range(response, *document, target->start, target->end,
-                        m_encoding);
+                        m_client.encoding);
   response.push('}');
 
   return send_result(id, response.view());
@@ -1319,7 +1334,7 @@ fn Server::prepare_rename(const JsonValue *id, const JsonValue *params) throws
       (is_variable ? variable_name_start_of(symbol->text.view()) : 0);
   let response = String{"{\"range\":"};
   append_protocol_range(response, *document, name_start,
-                        name_start + name.length, m_encoding);
+                        name_start + name.length, m_client.encoding);
   response.append(",\"placeholder\":");
   append_json_string(response, name);
   response.push('}');
@@ -1495,10 +1510,11 @@ fn Server::document_symbols(const JsonValue *id, const JsonValue *params) throws
     response.append(",\"kind\":");
     append_json_integer(response, static_cast<u64>(entry.kind));
     response.append(",\"range\":");
-    append_protocol_range(response, *document, entry.start, end, m_encoding);
+    append_protocol_range(response, *document, entry.start, end,
+                          m_client.encoding);
     response.append(",\"selectionRange\":");
     append_protocol_range(response, *document, entry.selection_start,
-                          entry.selection_end, m_encoding);
+                          entry.selection_end, m_client.encoding);
     scopes.push(outline_scope{end, 0, HashSet{heap_allocator()}});
   }
 
@@ -1770,7 +1786,7 @@ fn Server::variable_hover_text(
                             HOVER_ASSIGNMENT_TEXT_LENGTH_LIMIT);
 
   let text = String{heap_allocator()};
-  append_hover_block(text, headline.view(), m_supports_markdown_hover,
+  append_hover_block(text, headline.view(), m_client.has_markdown_hover,
                      StringView{"shell"});
 
   if (nearest.binder != assignment_binder::Assignment) {
@@ -1795,7 +1811,7 @@ fn Server::variable_hover_text(
   if (earlier_count == 0) return text;
 
   text.append("\n\nEarlier assignments:");
-  if (m_supports_markdown_hover) text.push('\n');
+  if (m_client.has_markdown_hover) text.push('\n');
 
   let const listed_count = earlier_count < HOVER_EARLIER_ASSIGNMENT_LIMIT
                                ? earlier_count
@@ -1804,14 +1820,15 @@ fn Server::variable_hover_text(
     let const &record = *reaching[index];
     text.push('\n');
 
-    if (m_supports_markdown_hover) text.append("- ");
-    append_hover_line_number(text, document, record.position, m_encoding);
+    if (m_client.has_markdown_hover) text.append("- ");
+    append_hover_line_number(text, document, record.position,
+                             m_client.encoding);
     text.append(": ");
 
-    if (m_supports_markdown_hover) text.push('`');
+    if (m_client.has_markdown_hover) text.push('`');
     append_hover_clipped_text(text, assignment_headline_span(document, record),
                               HOVER_ASSIGNMENT_TEXT_LENGTH_LIMIT);
-    if (m_supports_markdown_hover) text.push('`');
+    if (m_client.has_markdown_hover) text.push('`');
 
     if (record.is_conditional) text.append(" (conditional)");
   }
@@ -1868,7 +1885,7 @@ fn Server::shell_variable_hover_text(
   headline.append(name);
 
   let text = String{heap_allocator()};
-  append_hover_block(text, headline.view(), m_supports_markdown_hover,
+  append_hover_block(text, headline.view(), m_client.has_markdown_hover,
                      StringView{"shell"});
   text.push('\n');
   append_shell_variable_facts(text, description);
@@ -1898,7 +1915,7 @@ fn Server::function_hover_text(const Document &document,
   definition.append(kept_body);
 
   let text = String{heap_allocator()};
-  append_hover_block(text, definition.view(), m_supports_markdown_hover,
+  append_hover_block(text, definition.view(), m_client.has_markdown_hover,
                      StringView{"shell"});
 
   if (dropped_line_count > 0) {
@@ -1915,12 +1932,13 @@ fn Server::send_hover(const JsonValue *id, const Document &document,
     -> bool
 {
   let response = String{"{\"contents\":{\"kind\":"};
-  response.append(m_supports_markdown_hover ? "\"markdown\"" : "\"plaintext\"");
+  response.append(m_client.has_markdown_hover ? "\"markdown\""
+                                              : "\"plaintext\"");
   response.append(",\"value\":");
   append_json_string(response, value);
   response.append("},\"range\":");
   append_protocol_range(response, document, symbol.start, symbol.end,
-                        m_encoding);
+                        m_client.encoding);
   response.push('}');
 
   return send_result(id, response.view());
@@ -1981,7 +1999,7 @@ fn Server::hover(const JsonValue *id, const JsonValue *params) throws -> bool
   }
   if (!information.has_value()) return send_result(id, "null");
   let text = String{heap_allocator()};
-  append_hover_block(text, information->view(), m_supports_markdown_hover,
+  append_hover_block(text, information->view(), m_client.has_markdown_hover,
                      StringView{});
 
   return send_hover(id, *document, *symbol, text.view());
@@ -2006,14 +2024,14 @@ fn Server::semantic_tokens(const JsonValue *id, const JsonValue *params) throws
     for (let const &span : *spans) {
       let const absolute_start = line_start + span.start;
       let const absolute_end = line_start + span.end;
-      let const start_character =
-          document->encoded_length(line_start, absolute_start, m_encoding);
+      let const start_character = document->encoded_length(
+          line_start, absolute_start, m_client.encoding);
       let const delta_line = line - previous_line;
       let const delta_character = delta_line == 0
                                       ? start_character - previous_character
                                       : start_character;
-      let const length =
-          document->encoded_length(absolute_start, absolute_end, m_encoding);
+      let const length = document->encoded_length(absolute_start, absolute_end,
+                                                  m_client.encoding);
       if (length == 0) continue;
       let const[type, base_modifiers] = semantic_style(span.role);
       let modifiers = base_modifiers;
