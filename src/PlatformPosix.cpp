@@ -767,8 +767,11 @@ fn redirect_stdout(os::descriptor target) wontthrow -> os::descriptor
   dup2(target, STDOUT_FILENO);
   note_descriptor_rebound();
 
-  if (const int flags = fcntl(target, F_GETFD); flags != -1)
+  if (const int flags = fcntl(target, F_GETFD);
+      flags != -1 && (flags & FD_CLOEXEC) == 0)
+  {
     fcntl(target, F_SETFD, flags | FD_CLOEXEC);
+  }
 
   return saved;
 }

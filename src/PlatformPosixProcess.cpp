@@ -759,6 +759,12 @@ fn make_pipe() wontthrow -> Maybe<Pipe>
 
   descriptor p[2] = {KOSH_INVALID_FD, KOSH_INVALID_FD};
 
+#if defined __linux__ || defined __FreeBSD__ || defined __NetBSD__ ||          \
+    defined __OpenBSD__ || defined __DragonFly__
+  if (pipe2(p, O_CLOEXEC) != 0) {
+    return koshka::None;
+  }
+#else
   if (pipe(p) != 0) {
     return koshka::None;
   }
@@ -767,42 +773,130 @@ fn make_pipe() wontthrow -> Maybe<Pipe>
     const int flags = fcntl(end, F_GETFD);
     if (flags != -1) fcntl(end, F_SETFD, flags | FD_CLOEXEC);
   }
+#endif
 
   return Pipe{p[0], p[1]};
 }
 
-struct thread_start_context
+struct pooled_worker
 {
-  void (*entry)(opaque *);
-  opaque *context;
+  pthread_t thread_id{};
+  pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+  pthread_cond_t changed = PTHREAD_COND_INITIALIZER;
+  void (*entry)(opaque *){nullptr};
+  opaque *context{nullptr};
+  bool has_job{false};
+  bool is_done{false};
+  pooled_worker *next_idle{nullptr};
 };
 
-fn thread_trampoline(opaque *raw_context) wontthrow -> opaque *
+static pthread_mutex_t IDLE_WORKERS_MUTEX = PTHREAD_MUTEX_INITIALIZER;
+static pooled_worker *IDLE_WORKERS = nullptr;
+
+static fn forget_idle_workers_in_child() wontthrow -> void
 {
-  let const start = static_cast<thread_start_context *>(raw_context);
-  let const entry = start->entry;
-  let const context = start->context;
-  os::free_aligned(start);
-  entry(context);
+  IDLE_WORKERS = nullptr;
+  pthread_mutex_init(&IDLE_WORKERS_MUTEX, nullptr);
+}
+
+static fn pooled_worker_main(opaque *raw_worker) wontthrow -> opaque *
+{
+  let const worker = static_cast<pooled_worker *>(raw_worker);
+
+  sigset_t blocked_signals;
+  sigfillset(&blocked_signals);
+  sigdelset(&blocked_signals, SIGSEGV);
+  sigdelset(&blocked_signals, SIGBUS);
+  sigdelset(&blocked_signals, SIGFPE);
+  sigdelset(&blocked_signals, SIGILL);
+  pthread_sigmask(SIG_BLOCK, &blocked_signals, nullptr);
+
+  pthread_mutex_lock(&worker->mutex);
+  loop
+  {
+    while (!worker->has_job)
+      pthread_cond_wait(&worker->changed, &worker->mutex);
+
+    let const entry = worker->entry;
+    let const context = worker->context;
+    pthread_mutex_unlock(&worker->mutex);
+    entry(context);
+    pthread_mutex_lock(&worker->mutex);
+
+    worker->has_job = false;
+    worker->is_done = true;
+    pthread_cond_broadcast(&worker->changed);
+  }
+
   return nullptr;
+}
+
+static fn take_idle_worker() wontthrow -> pooled_worker *
+{
+  pthread_mutex_lock(&IDLE_WORKERS_MUTEX);
+  let const worker = IDLE_WORKERS;
+  if (worker != nullptr) IDLE_WORKERS = worker->next_idle;
+  pthread_mutex_unlock(&IDLE_WORKERS_MUTEX);
+
+  return worker;
+}
+
+static fn create_worker() wontthrow -> pooled_worker *
+{
+  static bool did_register_fork_handler = false;
+  if (!did_register_fork_handler) {
+    pthread_atfork(nullptr, nullptr, forget_idle_workers_in_child);
+    did_register_fork_handler = true;
+  }
+
+  let const storage =
+      os::allocate_aligned(sizeof(pooled_worker), alignof(pooled_worker));
+  if (storage == nullptr) return nullptr;
+  let const worker = new (storage) pooled_worker{};
+  if (pthread_create(&worker->thread_id, nullptr, pooled_worker_main, worker) !=
+      0)
+  {
+    os::free_aligned(worker);
+    return nullptr;
+  }
+
+  pthread_detach(worker->thread_id);
+  return worker;
 }
 
 fn start_thread(void (*entry)(opaque *), opaque *context) wontthrow
     -> Maybe<thread>
 {
-  let const storage = os::allocate_aligned(sizeof(thread_start_context),
-                                           alignof(thread_start_context));
-  if (storage == nullptr) return koshka::None;
-  let const start = new (storage) thread_start_context{entry, context};
-  pthread_t handle{};
-  if (pthread_create(&handle, nullptr, thread_trampoline, start) != 0) {
-    os::free_aligned(start);
-    return koshka::None;
-  }
-  return thread{handle};
+  let worker = take_idle_worker();
+  if (worker == nullptr) worker = create_worker();
+  if (worker == nullptr) return koshka::None;
+
+  pthread_mutex_lock(&worker->mutex);
+  worker->entry = entry;
+  worker->context = context;
+  worker->is_done = false;
+  worker->has_job = true;
+  pthread_cond_broadcast(&worker->changed);
+  pthread_mutex_unlock(&worker->mutex);
+
+  return thread{worker};
 }
 
-fn join_thread(thread t) wontthrow -> void { pthread_join(t.handle, nullptr); }
+fn join_thread(thread t) wontthrow -> void
+{
+  let const worker = static_cast<pooled_worker *>(t.handle);
+
+  pthread_mutex_lock(&worker->mutex);
+  while (!worker->is_done)
+    pthread_cond_wait(&worker->changed, &worker->mutex);
+  worker->is_done = false;
+  pthread_mutex_unlock(&worker->mutex);
+
+  pthread_mutex_lock(&IDLE_WORKERS_MUTEX);
+  worker->next_idle = IDLE_WORKERS;
+  IDLE_WORKERS = worker;
+  pthread_mutex_unlock(&IDLE_WORKERS_MUTEX);
+}
 
 fn wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
 {

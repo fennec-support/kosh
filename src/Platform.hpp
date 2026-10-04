@@ -464,7 +464,7 @@ struct thread
 #if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
   HANDLE handle{nullptr};
 #elif KOSH_PLATFORM_IS KOSH_PLATFORM_POSIX
-  pthread_t handle{};
+  void *handle{nullptr};
 #endif
 };
 
