@@ -201,6 +201,35 @@ fn EvalContext::set_current_source(const String *source,
                                     scan_source_generation(source));
 }
 
+fn EvalContext::set_fresh_source(const String *source, String origin) wontthrow
+    -> void
+{
+  set_current_source(source, steal(origin));
+  source_store().current_location() = SourceLocation{};
+}
+
+SourceScope::SourceScope(EvalContext &context) wontthrow
+    : m_context(&context), m_source(context.source_store().current_source()),
+      m_origin(context.source_store().current_origin()),
+      m_location(context.source_store().current_location())
+{}
+
+SourceScope::SourceScope(EvalContext &context, const String *source,
+                         String origin) wontthrow
+    : SourceScope(context)
+{
+  context.set_current_source(source, steal(origin));
+}
+
+fn SourceScope::restore() wontthrow -> void
+{
+  if (!m_is_armed) return;
+
+  m_is_armed = false;
+  m_context->set_current_source(m_source, steal(m_origin));
+  m_context->source_store().current_location() = m_location;
+}
+
 fn EvalContext::push_root_source_frame(const String *parent_source,
                                        SourceLocation call_site,
                                        source_frame_kind kind) throws -> void

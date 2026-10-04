@@ -232,16 +232,14 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
   let const was_restricted_shell = startup_store().is_restricted_shell();
   let const previous_script_run = source_store().is_script_run();
   let previous_shell_name = String{execution_store().get_shell_name()};
-  let const previous_source = source_store().current_source();
-  let const previous_origin = source_store().current_origin();
-  let const previous_location = source_store().current_location();
+  let source_scope = capture_source_scope();
+  let const previous_location = source_scope.get_location();
   let isolated_snapshot = Maybe<eval_state_snapshot>{};
   if (isolated) isolated_snapshot = snapshot_state();
 
   bool should_restore_isolated_state = isolated;
   let const do_restore_auxiliary_state = [&]() throws {
-    set_current_source(previous_source, previous_origin);
-    source_store().current_location() = previous_location;
+    source_scope.restore();
     previous_runtime.restore(*this);
     startup_store().set_restricted_shell(was_restricted_shell);
     source_store().set_script_run(previous_script_run);
@@ -397,8 +395,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
       String{heap_allocator(), ec.should_use_fallback_argv0
                                    ? ec.args()[0].view()
                                    : ec.program_path().view()});
-  set_current_source(&*contents, String{ec.program().view()});
-  source_store().current_location() = SourceLocation{};
+  set_fresh_source(&*contents, String{ec.program().view()});
   source_store().mimicry_depth()++;
   bool should_leave_mimicry = true;
   defer
@@ -672,16 +669,8 @@ fn EvalContext::run_source(StringView source, StringView origin,
           previous_history_recording_source;
     };
 
-    let const previous_source = source_store().current_source();
-    let const previous_origin = source_store().current_origin();
-    let const previous_location = source_store().current_location();
-    set_current_source(retained_source, String{origin});
-    source_store().current_location() = SourceLocation{};
-    defer
-    {
-      set_current_source(previous_source, previous_origin);
-      source_store().current_location() = previous_location;
-    };
+    let const source_scope = capture_source_scope();
+    set_fresh_source(retained_source, String{origin});
 
     ast->evaluate(*this);
     did_complete_source = true;

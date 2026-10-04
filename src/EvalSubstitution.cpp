@@ -375,15 +375,8 @@ fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
     enter_subshell();
     hide_coprocess_descriptors();
     i32 status = 0;
-    let const previous_source = source_store().current_source();
-    let const previous_origin = source_store().current_origin();
-    let const previous_location = source_store().current_location();
-    set_current_source(&substitution_source, String{"process substitution"});
-    defer
-    {
-      set_current_source(previous_source, previous_origin);
-      source_store().current_location() = previous_location;
-    };
+    let const source_scope = enter_source_scope(
+        &substitution_source, String{"process substitution"});
     try {
       ast->evaluate(*this);
       status = execution_store().last_exit_status();
@@ -593,9 +586,6 @@ fn EvalContext::run_captured_substitution(
   let const substitution_mark = expansion_store().scratch_arena().mark();
   defer { expansion_store().scratch_arena().release(substitution_mark); };
 
-  let const previous_source = source_store().current_source();
-  let const previous_origin = source_store().current_origin();
-  let const previous_location = source_store().current_location();
   let const did_register_embedded =
       call_site.has_value() &&
       register_embedded_source(source.view(), *call_site);
@@ -603,7 +593,10 @@ fn EvalContext::run_captured_substitution(
   {
     if (did_register_embedded) unregister_embedded_source();
   };
-  set_current_source(&source, previous_origin.clone());
+  let const source_scope = enter_source_scope(
+      &source, String{source_store().current_origin()});
+  let const previous_source = source_scope.get_source();
+  let const previous_location = source_scope.get_location();
   let const did_push_line_base = call_site.has_value();
   if (did_push_line_base) {
     source_store().substitution_line_bases().push(
@@ -613,8 +606,6 @@ fn EvalContext::run_captured_substitution(
   defer
   {
     if (did_push_line_base) source_store().substitution_line_bases().pop_back();
-    set_current_source(previous_source, previous_origin);
-    source_store().current_location() = previous_location;
   };
 
   Maybe<eval_state_snapshot> in_process_snapshot;
@@ -952,15 +943,8 @@ fn EvalContext::capture_function_substitution(const WordSegment &segment) throws
   /* The body runs against the live state, no snapshot and no subshell, so its
      assignments, cd, and definitions persist the way the bash 5.3 funsub
      leaves them. */
-  let const previous_source = source_store().current_source();
-  let const previous_origin = source_store().current_origin();
-  let const previous_location = source_store().current_location();
-  set_current_source(&source, String{"function substitution"});
-  defer
-  {
-    set_current_source(previous_source, previous_origin);
-    source_store().current_location() = previous_location;
-  };
+  let const source_scope =
+      enter_source_scope(&source, String{"function substitution"});
 
   let const pipe = os::make_pipe();
   if (!pipe) throw Error{"Could not open a pipe for function substitution"};

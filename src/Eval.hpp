@@ -2436,6 +2436,34 @@ protected:
   JobTable m_job_table{heap_allocator()};
 };
 
+class SourceScope
+{
+public:
+  explicit SourceScope(EvalContext &context) wontthrow;
+  SourceScope(EvalContext &context, const String *source,
+              String origin) wontthrow;
+  SourceScope(const SourceScope &) = delete;
+  SourceScope &operator=(const SourceScope &) = delete;
+  ~SourceScope() { restore(); }
+
+  fn restore() wontthrow -> void;
+  pure fn get_source() const wontthrow -> const String *
+  {
+    return m_source;
+  }
+  pure fn get_location() const wontthrow -> const SourceLocation &
+  {
+    return m_location;
+  }
+
+private:
+  EvalContext *m_context;
+  const String *m_source;
+  String m_origin;
+  SourceLocation m_location;
+  bool m_is_armed{true};
+};
+
 class EvalContext : public EvalContextState
 {
 public:
@@ -2974,6 +3002,16 @@ public:
   fn request_exit(i64 status, SourceLocation location) throws -> void;
 
   fn set_current_source(const String *source, String origin) wontthrow -> void;
+  fn set_fresh_source(const String *source, String origin) wontthrow -> void;
+  mustuse fn capture_source_scope() wontthrow -> SourceScope
+  {
+    return SourceScope{*this};
+  }
+  mustuse fn enter_source_scope(const String *source, String origin) wontthrow
+      -> SourceScope
+  {
+    return SourceScope{*this, source, steal(origin)};
+  }
   pure fn history_recording_source_for(const Expression *root) const wontthrow
       -> Maybe<StringView>
   {
