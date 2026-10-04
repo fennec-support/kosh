@@ -4,7 +4,7 @@
  *
  * This file implements the df utility. It queries mounted or operand
  * filesystems and renders capacity, usage, availability, and percentage values
- * in selected block units.
+ * in selected block units or in human-readable powers of 1024 or 1000.
  */
 
 #include "../CLI.hpp"
@@ -15,12 +15,16 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[-kP] [file ...]");
+HELP_SYNOPSIS_DECL("[-hHkP] [file ...]");
 
 HELP_DESCRIPTION_DECL("The df utility reports available filesystem space.");
 
 FLAG(DF_KIBIBYTES, Bool, 'k', "kilobytes", "Use 1024-byte units.");
 FLAG(DF_PORTABLE, Bool, 'P', "portability", "Use the POSIX output format.");
+FLAG(DF_HUMAN, Bool, 'h', "human-readable",
+     "Print sizes in powers of 1024 with K, M, G, T, or P suffixes.");
+FLAG(DF_SI, Bool, 'H', "si",
+     "Print sizes in powers of 1000 with K, M, G, T, or P suffixes.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Df);
@@ -42,9 +46,13 @@ fn Df::execute(const ExecContext &ec, EvalContext &cxt,
 
   KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
 
-  let const output_unit = FLAG_DF_KIBIBYTES.is_enabled() ? 1024u : 512u;
+  let const is_human = FLAG_DF_HUMAN.is_enabled() || FLAG_DF_SI.is_enabled();
+  let const human_step = FLAG_DF_SI.is_enabled() ? 1000u : 1024u;
+  let const output_unit =
+      is_human ? 1u : FLAG_DF_KIBIBYTES.is_enabled() ? 1024u : 512u;
   ec.print_to_stdout(
-      FLAG_DF_KIBIBYTES.is_enabled()
+      is_human ? "Filesystem Size Used Avail Use% Mounted on\n"
+      : FLAG_DF_KIBIBYTES.is_enabled()
           ? "Filesystem 1024-blocks Used Available Capacity Mounted on\n"
           : "Filesystem 512-blocks Used Available Capacity Mounted on\n");
   i32 status = 0;
@@ -81,10 +89,13 @@ fn Df::execute(const ExecContext &ec, EvalContext &cxt,
         output_unit);
     let const used = total > free ? total - free : 0;
     let const capacity = filesystem_usage_percent(used, available);
-    ec.print_to_stdout(mounted.source + " " +
-                       String::from(total, cxt.scratch_allocator()) + " " +
-                       String::from(used, cxt.scratch_allocator()) + " " +
-                       String::from(available, cxt.scratch_allocator()) + " " +
+    let const do_format = [&](u64 value) throws -> String {
+      return is_human
+                 ? format_human_size(value, cxt.scratch_allocator(), human_step)
+                 : String::from(value, cxt.scratch_allocator());
+    };
+    ec.print_to_stdout(mounted.source + " " + do_format(total) + " " +
+                       do_format(used) + " " + do_format(available) + " " +
                        String::from(capacity, cxt.scratch_allocator()) + "% " +
                        mounted.target + "\n");
   }

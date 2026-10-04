@@ -48,6 +48,21 @@ fn koshkit_should_color() throws -> bool
   return stdout_wants_color(KOSHKIT_COLOR_MODE);
 }
 
+pure fn is_koshkit_color_when(StringView value) wontthrow -> bool
+{
+  return parse_cli_color_mode(value).has_value();
+}
+
+fn resolve_koshkit_color_flag(bool is_enabled, bool has_value,
+                              StringView value) throws -> bool
+{
+  if (!is_enabled) return false;
+  if (!has_value) return stdout_wants_color(cli_color_mode::Auto);
+
+  let const mode = parse_cli_color_mode(value);
+  return mode.has_value() && stdout_wants_color(*mode);
+}
+
 /* Zero-initialized so it is immune to static-init order, filled by each
    utility's registrar. */
 static const FlagList *KOSHKIT_UTIL_FLAG_LISTS[KOSHKIT_UTIL_COUNT] = {};
@@ -987,22 +1002,24 @@ pure fn network_socket_state_name(os::network_socket_state state) wontthrow
   unreachable("unknown network socket state");
 }
 
-fn format_human_size(u64 bytes, Allocator allocator) throws -> String
+fn format_human_size(u64 bytes, Allocator allocator, u64 unit_step) throws
+    -> String
 {
-  if (bytes < 1024) return String::from(bytes, allocator);
+  if (bytes < unit_step) return String::from(bytes, allocator);
 
   static const char units[] = {'K', 'M', 'G', 'T', 'P'};
+  let const step = static_cast<double>(unit_step);
   double value = static_cast<double>(bytes);
   usize unit = 0;
   /* The condition reads unit, so the last unit P stays reachable. */
-  while (value >= 1024.0 && unit < sizeof(units)) {
-    value /= 1024.0;
+  while (value >= step && unit < sizeof(units)) {
+    value /= step;
     unit++;
   }
 
-  /* A value that rounds up to 1024 crosses over to the next unit. */
-  if (value >= 1023.5 && unit < sizeof(units)) {
-    value /= 1024.0;
+  /* A value that rounds up to a whole step crosses over to the next unit. */
+  if (value >= step - 0.5 && unit < sizeof(units)) {
+    value /= step;
     unit++;
   }
 

@@ -27,6 +27,7 @@ inline const StringView INVERSE = "\x1b[7m";
 inline const StringView RED = "\x1b[31m";
 inline const StringView GREEN = "\x1b[32m";
 inline const StringView YELLOW = "\x1b[33m";
+inline const StringView MAGENTA = "\x1b[35m";
 inline const StringView BLUE = "\x1b[34m";
 /* The high-intensity foreground colors, distinct from the bold attribute. */
 inline const StringView BRIGHT_RED = "\x1b[91m";

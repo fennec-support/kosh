@@ -288,6 +288,9 @@ fn find_util(StringView name) throws -> Maybe<Utility::Kind>;
 fn set_koshkit_color_mode(cli_color_mode mode) wontthrow -> void;
 fn get_koshkit_color_mode() wontthrow -> cli_color_mode;
 fn koshkit_should_color() throws -> bool;
+pure fn is_koshkit_color_when(StringView value) wontthrow -> bool;
+fn resolve_koshkit_color_flag(bool is_enabled, bool has_value,
+                              StringView value) throws -> bool;
 
 fn util_names() throws -> const ArrayList<String> &;
 fn sorted_util_names() throws -> const ArrayList<String> &;
@@ -849,7 +852,8 @@ fn parse_strict_count(StringView text) throws -> ErrorOr<u64>;
 
 pure fn network_socket_state_name(os::network_socket_state state) wontthrow
     -> StringView;
-fn format_human_size(u64 bytes, Allocator allocator) throws -> String;
+fn format_human_size(u64 bytes, Allocator allocator,
+                     u64 unit_step = 1024) throws -> String;
 fn scaled_filesystem_blocks(u64 block_count, u64 block_size,
                             u64 output_unit) wontthrow -> u64;
 fn filesystem_usage_percent(u64 used, u64 available) wontthrow -> u64;
