@@ -250,7 +250,7 @@ fn AssignCommand::analyze(AnalysisContext &actx,
         literal->c_str());
     actx.constant_variables.set(name.view(), literal->view());
     actx.optimizer_eliminated_count++;
-    if (actx.should_report_optimizer_diagnostics)
+    if (actx.options.should_report_optimizer_diagnostics)
       actx.trace_optimizer_line(String{"recorded constant: "} + name + " = " +
                                 *literal);
   } else {

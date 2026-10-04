@@ -520,7 +520,7 @@ fn fold_constant_arithmetic_in_word(
               : nullptr);
       did_fold = true;
       actx.optimizer_eliminated_count++;
-      if (actx.should_report_optimizer_diagnostics) {
+      if (actx.options.should_report_optimizer_diagnostics) {
         let const segment_location =
             segment.get_source_location(fallback_location.source_name_index);
         actx.report_diagnostic(diagnostic_id::optimizer_folded_arithmetic,
@@ -596,7 +596,7 @@ fn rule_dead_branch_elimination(const Expression *node,
       LOG(All, "dead-branch elimination chose branch %zu", i);
       clause->set_folded_branch(i);
       actx.optimizer_eliminated_count++;
-      if (actx.should_report_optimizer_diagnostics) {
+      if (actx.options.should_report_optimizer_diagnostics) {
         let const index = String::from(static_cast<i64>(i), heap_allocator());
         actx.report_diagnostic(diagnostic_id::optimizer_folded_branch,
                                node->source_location(), {index.view()});
@@ -607,7 +607,7 @@ fn rule_dead_branch_elimination(const Expression *node,
   LOG(All, "every if condition is statically false, folding to the else body");
   clause->set_folded_branch(clause->branches().count());
   actx.optimizer_eliminated_count++;
-  if (actx.should_report_optimizer_diagnostics)
+  if (actx.options.should_report_optimizer_diagnostics)
     actx.report_diagnostic(diagnostic_id::optimizer_folded_else,
                            node->source_location());
   return true;
@@ -642,7 +642,7 @@ fn rule_loop_elimination(const Expression *node, AnalysisContext &actx) throws
       loop_node->is_until() ? "until" : "while");
   loop_node->set_folded_to_skip();
   actx.optimizer_eliminated_count++;
-  if (actx.should_report_optimizer_diagnostics)
+  if (actx.options.should_report_optimizer_diagnostics)
     actx.report_diagnostic(
         diagnostic_id::optimizer_folded_loop, node->source_location(),
         {loop_node->is_until() ? StringView{"until"} : StringView{"while"}});
@@ -666,7 +666,7 @@ fn rule_eliminate_compound_body(const Expression *node,
            "no-op");
   clause->set_fully_eliminated();
   actx.optimizer_eliminated_count++;
-  if (actx.should_report_optimizer_diagnostics)
+  if (actx.options.should_report_optimizer_diagnostics)
     actx.report_diagnostic(diagnostic_id::optimizer_eliminated_if,
                            node->source_location());
   return true;
@@ -690,7 +690,7 @@ fn rule_eliminate_empty_for(const Expression *node,
            "a no-op");
   loop_node->set_fully_eliminated();
   actx.optimizer_eliminated_count++;
-  if (actx.should_report_optimizer_diagnostics)
+  if (actx.options.should_report_optimizer_diagnostics)
     actx.report_diagnostic(diagnostic_id::optimizer_eliminated_for,
                            node->source_location());
   return true;
@@ -735,7 +735,7 @@ fn rule_fold_cstyle_for(const Expression *node, AnalysisContext &actx) throws
       static_cast<int>(trimmed.length), trimmed.data,
       static_cast<long long>(*value));
   actx.optimizer_eliminated_count++;
-  if (actx.should_report_optimizer_diagnostics) {
+  if (actx.options.should_report_optimizer_diagnostics) {
     let const folded = String::from(*value, heap_allocator());
     actx.report_diagnostic(diagnostic_id::optimizer_folded_arithmetic,
                            node->source_location(), {trimmed, folded.view()});
@@ -749,7 +749,7 @@ fn rule_fold_cstyle_for(const Expression *node, AnalysisContext &actx) throws
   if (*value == 0 && !is_exact_nonzero && init_is_blank) {
     loop_node->set_fully_eliminated();
     actx.optimizer_eliminated_count++;
-    if (actx.should_report_optimizer_diagnostics)
+    if (actx.options.should_report_optimizer_diagnostics)
       actx.report_diagnostic(diagnostic_id::optimizer_eliminated_cstyle_for,
                              node->source_location());
   }

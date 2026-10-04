@@ -66,6 +66,17 @@ fn Parser::take_analysis_scope_definitions() throws
   return steal(m_analysis_scope_definitions);
 }
 
+fn Parser::take_analysis_directives() throws -> analysis_directives
+{
+  analysis_directives directives{};
+  directives.shellcheck_suppressions = take_shellcheck_suppressions();
+  directives.scope_definitions = take_analysis_scope_definitions();
+  directives.directive_spans = take_shellcheck_directive_spans();
+  directives.heredoc_misses = take_heredoc_terminator_misses();
+
+  return directives;
+}
+
 fn Parser::record_analysis_scope_definition(
     StringView name, analysis_scope_definition_kind kind) throws -> void
 {

@@ -729,7 +729,7 @@ fn check_shebang(AnalysisContext &actx, StringView source,
     /* A script without a shebang runs correctly, so the missing interpreter is
        reported only when diagnostics were asked for. */
     if (shebang_policy == missing_shebang_policy::Report &&
-        actx.warning_level != 0)
+        actx.options.warning_level != 0)
       actx.report_diagnostic(diagnostic_id::sc2148, SourceLocation{0, 1});
 
     return;

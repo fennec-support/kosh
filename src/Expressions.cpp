@@ -756,7 +756,7 @@ cold fn AnalysisContext::print_diagnostic_summary() const throws -> void
 
 cold fn AnalysisContext::print_optimizer_summary() const throws -> void
 {
-  if (!should_report_optimizer_diagnostics) return;
+  if (!options.should_report_optimizer_diagnostics) return;
 
   let const wants_color = colors::stderr_wants_color();
 
@@ -779,10 +779,10 @@ pure fn AnalysisContext::should_report(diagnostic_id id) const wontthrow -> bool
 pure fn AnalysisContext::should_report(diagnostic_tier tier) const wontthrow
     -> bool
 {
-  if (tier == diagnostic_tier::Annoying && !should_emit_annoying_diagnostics) {
+  if (tier == diagnostic_tier::Annoying && !options.should_emit_annoying) {
     return false;
   }
-  if (is_default_mood) return true;
+  if (options.is_default_mood) return true;
 
   u8 required_level = 0;
   switch (tier) {
@@ -791,7 +791,7 @@ pure fn AnalysisContext::should_report(diagnostic_tier tier) const wontthrow
   case diagnostic_tier::Annoying: required_level = 3; break;
   }
 
-  return warning_level >= required_level;
+  return options.warning_level >= required_level;
 }
 
 pure fn AnalysisContext::should_silence_unresolved_command_at(
@@ -849,7 +849,7 @@ fn AnalysisContext::report_diagnostic(
 cold fn AnalysisContext::trace_optimizer_line(StringView message) const throws
     -> void
 {
-  if (!should_report_optimizer_diagnostics) return;
+  if (!options.should_report_optimizer_diagnostics) return;
   print_error("[optimizer] ");
   print_error(message);
   print_error("\n");
@@ -867,7 +867,7 @@ fn AnalysisContext::fail(diagnostic_id id, const SourceLocation &location,
                          const Maybe<SourceLocation> &related_location,
                          StringView related_message) throws -> void
 {
-  if (!is_default_mood) {
+  if (!options.is_default_mood) {
     if (should_report(tier))
       warn(id, location, message, suggestion, tier, related_location,
            related_message);
@@ -887,7 +887,7 @@ fn AnalysisContext::fail(diagnostic_id id, const SourceLocation &location,
   case diagnostic_tier::Annoying: break;
   }
 
-  if (warning_level >= demote_at_level) {
+  if (options.warning_level >= demote_at_level) {
     warn(id, location, message, suggestion, tier, related_location,
          related_message);
     return;
@@ -1752,26 +1752,23 @@ fn expressions::internal::analyze_followed_source(
     return true;
   }
 
-  let const shellcheck_suppressions = parser.take_shellcheck_suppressions();
-  let const scope_definitions = parser.take_analysis_scope_definitions();
-  let const directive_spans = parser.take_shellcheck_directive_spans();
-  let const heredoc_misses = parser.take_heredoc_terminator_misses();
+  let const directives = parser.take_analysis_directives();
   /* A child that skips its own nested sources records partial effects, wrong
      for a later visit that carries no uncertainty. */
   let const was_analyzed_under_uncertainty =
       actx.has_unknown_path || actx.has_unknown_working_directory;
 
   followed_source_effects effects{};
+  let child_options = actx.options;
+  child_options.should_silence_unresolved_commands =
+      actx.should_silence_unresolved_commands;
   let const analyzed = analyze_ast(
       ast, contents->view(), actx.defined_functions, actx.known_aliases,
-      actx.eval_context, actx.warning_level,
-      actx.should_silence_unresolved_commands, actx.is_default_mood,
-      actx.should_emit_annoying_diagnostics, shellcheck_suppressions,
-      scope_definitions, directive_spans, heredoc_misses,
-      actx.should_report_optimizer_diagnostics, actx.followed_source_paths,
-      actx.followed_source_effects_cache, &actx, nullptr,
-      should_merge_parent_state, should_merge_parent_uncertainty, &effects,
-      actx.diagnostic_sink, actx.source_provider);
+      actx.eval_context, child_options, directives,
+      {actx.followed_source_paths, actx.followed_source_effects_cache},
+      {&actx, should_merge_parent_state, should_merge_parent_uncertainty,
+       &effects},
+      {nullptr, actx.diagnostic_sink, nullptr}, actx.source_provider);
   if (actx.diagnostic_sink != nullptr) {
     for (usize index = child_diagnostic_start;
          index < actx.diagnostic_sink->count(); index++)
@@ -1892,46 +1889,34 @@ pure fn expressions::internal::word_has_malformed_glob_bracket(
   return state == bracket_scan_state::InsideClass;
 }
 
-fn analyze_ast(
-    const Expression *root, StringView source, const HashSet &known_functions,
-    const HashSet &known_aliases, EvalContext *eval_context, u8 warning_level,
-    bool silence_unresolved_commands, bool is_default_mood,
-    bool should_emit_annoying_diagnostics,
-    const ArrayList<shellcheck_suppression> &shellcheck_suppressions,
-    const ArrayList<analysis_scope_definition> &scope_definitions,
-    const ArrayList<shellcheck_directive_span> &directive_spans,
-    const ArrayList<heredoc_terminator_miss> &heredoc_misses,
-    bool should_report_optimizer_diagnostics, HashSet *followed_source_paths,
-    StringMap<followed_source_effects> *source_effects_cache,
-    AnalysisContext *parent_analysis_context,
-    analysis_diagnostic_totals *deferred_diagnostic_totals,
-    bool should_merge_parent_state, bool should_merge_parent_uncertainty,
-    followed_source_effects *source_effects,
-    ArrayList<source_diagnostic> *diagnostic_sink,
-    AnalysisSourceProvider *source_provider,
-    analysis_symbol_records *symbol_records, AnalysisUnitStream *unit_stream,
-    const parsed_format_document *format_document,
-    missing_shebang_policy shebang_policy) throws -> bool
+fn analyze_ast(const Expression *root, StringView source,
+               const HashSet &known_functions, const HashSet &known_aliases,
+               EvalContext *eval_context, const analysis_options &options,
+               const analysis_directives &directives,
+               const analysis_followed_sources &followed_sources,
+               const analysis_parent_link &parent,
+               const analysis_outputs &outputs,
+               AnalysisSourceProvider *source_provider,
+               AnalysisUnitStream *unit_stream,
+               const parsed_format_document *format_document) throws -> bool
 {
   ASSERT(root != nullptr || unit_stream != nullptr);
 
-  AnalysisContext actx{source};
-  actx.warning_level = warning_level;
-  actx.is_default_mood = is_default_mood;
+  let const parent_analysis_context = parent.context;
+  let const symbol_records = outputs.symbol_records;
+  let const source_effects = parent.source_effects;
+
+  AnalysisContext actx{source, options};
   actx.are_koshkit_utilities_reachable =
       eval_context != nullptr
           ? eval_context->runtime_state().koshkit_utilities_are_reachable()
-          : is_default_mood;
-  actx.should_emit_annoying_diagnostics = should_emit_annoying_diagnostics;
-  actx.shellcheck_suppressions = &shellcheck_suppressions;
-  actx.should_silence_unresolved_commands = silence_unresolved_commands;
+          : options.is_default_mood;
+  actx.shellcheck_suppressions = &directives.shellcheck_suppressions;
   actx.format_document = format_document;
   actx.eval_context = eval_context;
-  actx.should_report_optimizer_diagnostics =
-      should_report_optimizer_diagnostics;
-  actx.followed_source_paths = followed_source_paths;
-  actx.followed_source_effects_cache = source_effects_cache;
-  actx.diagnostic_sink = diagnostic_sink;
+  actx.followed_source_paths = followed_sources.paths;
+  actx.followed_source_effects_cache = followed_sources.effects_cache;
+  actx.diagnostic_sink = outputs.diagnostic_sink;
   actx.source_provider = source_provider;
   /* A followed source file is left out. Its byte positions index another
      source string. */
@@ -1969,14 +1954,14 @@ fn analyze_ast(
   if (parent_analysis_context != nullptr) {
     actx.is_posix_sh_shebang = parent_analysis_context->is_posix_sh_shebang;
   } else {
-    expressions::internal::check_shebang(actx, source, shebang_policy);
+    expressions::internal::check_shebang(actx, source, options.shebang_policy);
   }
 
-  expressions::internal::check_shellcheck_directives(actx, source,
-                                                     directive_spans);
+  expressions::internal::check_shellcheck_directives(
+      actx, source, directives.directive_spans);
 
   expressions::internal::check_heredoc_terminators(actx, source,
-                                                   heredoc_misses);
+                                                   directives.heredoc_misses);
 
   LOG(Debug, "analyzing the ast, the posix sh shebang gate is %s",
       actx.is_posix_sh_shebang ? "armed" : "off");
@@ -1988,7 +1973,7 @@ fn analyze_ast(
   known_aliases.for_each(
       [&actx](StringView name) { actx.add_known_alias(name); });
   actx.current_source_effects = source_effects;
-  actx.apply_scope_definitions(scope_definitions);
+  actx.apply_scope_definitions(directives.scope_definitions);
 
   if (unit_stream != nullptr) {
     /* Each unit is flushed before its arena span is handed back, so a warning
@@ -2033,12 +2018,12 @@ fn analyze_ast(
     ASSERT(source_effects != nullptr);
     source_effects->has_fatal = actx.has_fatal;
     apply_followed_source_effects(*parent_analysis_context, *source_effects,
-                                  should_merge_parent_state,
-                                  should_merge_parent_uncertainty);
-  } else if (deferred_diagnostic_totals != nullptr) {
-    deferred_diagnostic_totals->warning_count += actx.reported_warning_count;
-    deferred_diagnostic_totals->error_count += actx.reported_error_count;
-  } else if (diagnostic_sink == nullptr) {
+                                  parent.should_merge_state,
+                                  parent.should_merge_uncertainty);
+  } else if (outputs.deferred_totals != nullptr) {
+    outputs.deferred_totals->warning_count += actx.reported_warning_count;
+    outputs.deferred_totals->error_count += actx.reported_error_count;
+  } else if (outputs.diagnostic_sink == nullptr) {
     actx.print_diagnostic_summary();
   }
 

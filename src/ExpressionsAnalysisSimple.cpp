@@ -1444,7 +1444,7 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
       m_args.count() == 1 &&
       (actx.eval_context != nullptr
            ? actx.eval_context->is_shopt_enabled("autocd")
-           : actx.is_default_mood) &&
+           : actx.options.is_default_mood) &&
       Path{*name}.is_directory())
   {
     command_was_resolved = true;

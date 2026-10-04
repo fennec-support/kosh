@@ -87,6 +87,7 @@ public:
   }
   fn take_analysis_scope_definitions() throws
       -> ArrayList<analysis_scope_definition>;
+  fn take_analysis_directives() throws -> analysis_directives;
 
 private:
   /* The compound-command nesting limit guards the native stack against a

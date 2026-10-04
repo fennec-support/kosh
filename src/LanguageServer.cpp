@@ -539,10 +539,7 @@ fn Server::publish_diagnostics(Document &document) throws -> bool
   let const ast =
       parser.construct_ast(rendered_errors, &m_context, &diagnostics);
   if (rendered_errors.is_empty()) {
-    let const suppressions = parser.take_shellcheck_suppressions();
-    let const scopes = parser.take_analysis_scope_definitions();
-    let const directives = parser.take_shellcheck_directive_spans();
-    let const heredoc_misses = parser.take_heredoc_terminator_misses();
+    let const directives = parser.take_analysis_directives();
     let const functions = m_context.function_store().names();
     let const aliases = m_context.scope_store().alias_names();
     let source_effects = StringMap<followed_source_effects>{heap_allocator()};
@@ -550,22 +547,20 @@ fn Server::publish_diagnostics(Document &document) throws -> bool
       followed_paths.add(document.canonical_path->text().view());
     let const is_mixed_command_context =
         document.format.kind == parser_format_kind::DevContainer;
-    let const should_silence_unresolved_commands =
-        !is_mixed_command_context &&
-        parser_format_should_silence_unresolved_commands(document.format.kind);
     let const *format_document =
         is_mixed_command_context ? &document.format : nullptr;
-    let const shebang_policy =
+    let options = analysis_options::from_runtime(m_context.runtime_state());
+    options.should_silence_unresolved_commands =
+        !is_mixed_command_context &&
+        parser_format_should_silence_unresolved_commands(document.format.kind);
+    options.shebang_policy =
         document.path.has_value() && !document.format.is_host_format
             ? missing_shebang_policy::Report
             : missing_shebang_policy::Suppress;
-    analyze_ast(ast, document.shell_source(), functions, aliases, &m_context, 3,
-                should_silence_unresolved_commands,
-                m_context.runtime_state().get_mood() == mimic_mood::Default,
-                true, suppressions, scopes, directives, heredoc_misses, false,
-                &followed_paths, &source_effects, nullptr, nullptr, true, true,
-                nullptr, &diagnostics, this, &symbol_records, nullptr,
-                format_document, shebang_policy);
+    analyze_ast(ast, document.shell_source(), functions, aliases, &m_context,
+                options, directives, {&followed_paths, &source_effects}, {},
+                {nullptr, &diagnostics, &symbol_records}, this, nullptr,
+                format_document);
     symbol_records.variable_occurrences.sort(
         [](const variable_occurrence_record &left,
            const variable_occurrence_record &right) {

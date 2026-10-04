@@ -367,6 +367,64 @@ struct top_level_sibling_carry
   usize repeated_append_count{0};
 };
 
+enum class missing_shebang_policy : u8
+{
+  Suppress,
+  Report,
+};
+
+struct analysis_options
+{
+  u8 warning_level{0};
+  bool is_default_mood{true};
+  bool should_emit_annoying{true};
+  bool should_silence_unresolved_commands{false};
+  bool should_report_optimizer_diagnostics{false};
+  missing_shebang_policy shebang_policy{missing_shebang_policy::Suppress};
+
+  static fn from_runtime(const RuntimeState &runtime) wontthrow
+      -> analysis_options
+  {
+    analysis_options options{};
+    options.warning_level = runtime.get_warning_level();
+    options.is_default_mood = runtime.get_mood() == mimic_mood::Default;
+    options.should_emit_annoying = runtime.is_annoying_diagnostics_enabled();
+
+    return options;
+  }
+};
+
+struct analysis_directives
+{
+  ArrayList<shellcheck_suppression> shellcheck_suppressions{heap_allocator()};
+  ArrayList<analysis_scope_definition> scope_definitions{heap_allocator()};
+  ArrayList<shellcheck_directive_span> directive_spans{heap_allocator()};
+  ArrayList<heredoc_terminator_miss> heredoc_misses{heap_allocator()};
+};
+
+struct analysis_followed_sources
+{
+  HashSet *paths{nullptr};
+  StringMap<followed_source_effects> *effects_cache{nullptr};
+};
+
+class AnalysisContext;
+
+struct analysis_parent_link
+{
+  AnalysisContext *context{nullptr};
+  bool should_merge_state{true};
+  bool should_merge_uncertainty{true};
+  followed_source_effects *source_effects{nullptr};
+};
+
+struct analysis_outputs
+{
+  analysis_diagnostic_totals *deferred_totals{nullptr};
+  ArrayList<source_diagnostic> *diagnostic_sink{nullptr};
+  analysis_symbol_records *symbol_records{nullptr};
+};
+
 class AnalysisContext
 {
 public:
@@ -374,10 +432,8 @@ public:
   bool has_fatal{false};
   usize reported_warning_count{0};
   usize reported_error_count{0};
-  u8 warning_level{0};
-  bool is_default_mood{true};
+  const analysis_options options;
   bool are_koshkit_utilities_reachable{true};
-  bool should_emit_annoying_diagnostics{true};
   const ArrayList<shellcheck_suppression> *shellcheck_suppressions{nullptr};
   bool has_seen_runtime_definer{false};
   HashSet defined_functions{heap_allocator()};
@@ -485,7 +541,6 @@ public:
   bool should_retain_tested_command_names{false};
   bool is_analyzing_condition{false};
 
-  bool should_report_optimizer_diagnostics{false};
   usize optimizer_eliminated_count{0};
   HashSet *followed_source_paths{nullptr};
   StringMap<followed_source_effects> *followed_source_effects_cache{nullptr};
@@ -503,7 +558,11 @@ public:
      value, so an ordinary run pays one null test per assignment. */
   analysis_symbol_records *symbol_records{nullptr};
 
-  explicit AnalysisContext(StringView source_view) : source(source_view) {}
+  AnalysisContext(StringView source_view, const analysis_options &analysis)
+      : source(source_view), options(analysis),
+        should_silence_unresolved_commands(
+            analysis.should_silence_unresolved_commands)
+  {}
 
   fn add_defined_function(StringView name) throws -> void
   {
@@ -693,36 +752,17 @@ private:
           StringView related_message) throws -> void;
 };
 
-enum class missing_shebang_policy : u8
-{
-  Suppress,
-  Report,
-};
-
-fn analyze_ast(
-    const Expression *root, StringView source, const HashSet &known_functions,
-    const HashSet &known_aliases, EvalContext *eval_context, u8 warning_level,
-    bool silence_unresolved_commands, bool is_default_mood,
-    bool should_emit_annoying_diagnostics,
-    const ArrayList<shellcheck_suppression> &shellcheck_suppressions,
-    const ArrayList<analysis_scope_definition> &scope_definitions,
-    const ArrayList<shellcheck_directive_span> &directive_spans,
-    const ArrayList<heredoc_terminator_miss> &heredoc_misses,
-    bool should_report_optimizer_diagnostics = false,
-    HashSet *followed_source_paths = nullptr,
-    StringMap<followed_source_effects> *source_effects_cache = nullptr,
-    AnalysisContext *parent_analysis_context = nullptr,
-    analysis_diagnostic_totals *deferred_diagnostic_totals = nullptr,
-    bool should_merge_parent_state = true,
-    bool should_merge_parent_uncertainty = true,
-    followed_source_effects *source_effects = nullptr,
-    ArrayList<source_diagnostic> *diagnostic_sink = nullptr,
-    AnalysisSourceProvider *source_provider = nullptr,
-    analysis_symbol_records *symbol_records = nullptr,
-    AnalysisUnitStream *unit_stream = nullptr,
-    const parsed_format_document *format_document = nullptr,
-    missing_shebang_policy shebang_policy =
-        missing_shebang_policy::Suppress) throws -> bool;
+fn analyze_ast(const Expression *root, StringView source,
+               const HashSet &known_functions, const HashSet &known_aliases,
+               EvalContext *eval_context, const analysis_options &options,
+               const analysis_directives &directives,
+               const analysis_followed_sources &followed_sources = {},
+               const analysis_parent_link &parent = {},
+               const analysis_outputs &outputs = {},
+               AnalysisSourceProvider *source_provider = nullptr,
+               AnalysisUnitStream *unit_stream = nullptr,
+               const parsed_format_document *format_document = nullptr) throws
+    -> bool;
 
 mustuse pure fn is_source_location_variable(StringView name) wontthrow -> bool;
 

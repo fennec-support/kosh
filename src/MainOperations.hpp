@@ -360,14 +360,7 @@ static fn run_script_contents(
     ast_arena.reset();
     context.expansion_store().scratch_arena().reset();
 
-    let shellcheck_suppressions =
-        ArrayList<shellcheck_suppression>{heap_allocator()};
-    let analysis_scope_definitions =
-        ArrayList<analysis_scope_definition>{heap_allocator()};
-    let shellcheck_directive_spans =
-        ArrayList<shellcheck_directive_span>{heap_allocator()};
-    let heredoc_terminator_misses =
-        ArrayList<heredoc_terminator_miss>{heap_allocator()};
+    let directives = analysis_directives{};
 
     /* The default mood and noexec run analysis. Compatibility moods require
        enabled warnings. The live context is read so a mood or diagnostic
@@ -443,12 +436,7 @@ static fn run_script_contents(
       }
       ast_arena.release(scan_mark);
 
-      shellcheck_suppressions = scan_parser.take_shellcheck_suppressions();
-      analysis_scope_definitions =
-          scan_parser.take_analysis_scope_definitions();
-      shellcheck_directive_spans =
-          scan_parser.take_shellcheck_directive_spans();
-      heredoc_terminator_misses = scan_parser.take_heredoc_terminator_misses();
+      directives = scan_parser.take_analysis_directives();
 
       if (do_report_parse_errors()) return EXIT_FAILURE;
     } else if (should_stream_syntax_preflight) {
@@ -507,10 +495,7 @@ static fn run_script_contents(
           print("\n");
         }
       }
-      shellcheck_suppressions = p.take_shellcheck_suppressions();
-      analysis_scope_definitions = p.take_analysis_scope_definitions();
-      shellcheck_directive_spans = p.take_shellcheck_directive_spans();
-      heredoc_terminator_misses = p.take_heredoc_terminator_misses();
+      directives = p.take_analysis_directives();
     }
 
     LOG(Debug, "the analysis stage %s for this chunk",
@@ -543,25 +528,22 @@ static fn run_script_contents(
       {
         context.set_diagnostic_highlight_cache(previous_highlight_cache);
       };
-      let const shebang_policy = should_require_shebang && filename.has_value()
-                                     ? missing_shebang_policy::Report
-                                     : missing_shebang_policy::Suppress;
+      let options = analysis_options::from_runtime(context.runtime_state());
+      options.should_silence_unresolved_commands =
+          should_silence_unresolved_commands ||
+          (options.warning_level > 0 &&
+           context.execution_store().shell_is_interactive());
+      options.should_report_optimizer_diagnostics =
+          FLAG_OPTIMIZER_DIAGNOSTICS.is_enabled();
+      options.shebang_policy = should_require_shebang && filename.has_value()
+                                   ? missing_shebang_policy::Report
+                                   : missing_shebang_policy::Suppress;
       let const do_analyze = [&](AnalysisUnitStream *units) throws -> bool {
         return analyze_ast(
             ast, script_contents, context.function_store().names(),
-            context.scope_store().alias_names(), &context,
-            context.runtime_state().get_warning_level(),
-            should_silence_unresolved_commands ||
-                (context.runtime_state().get_warning_level() > 0 &&
-                 context.execution_store().shell_is_interactive()),
-            context.runtime_state().get_mood() == mimic_mood::Default,
-            context.runtime_state().is_annoying_diagnostics_enabled(),
-            shellcheck_suppressions, analysis_scope_definitions,
-            shellcheck_directive_spans, heredoc_terminator_misses,
-            FLAG_OPTIMIZER_DIAGNOSTICS.is_enabled(), &followed_source_paths,
-            &source_effects_cache, nullptr, diagnostic_totals, true, true,
-            nullptr, diagnostic_sink, nullptr, nullptr, units, nullptr,
-            shebang_policy);
+            context.scope_store().alias_names(), &context, options, directives,
+            {&followed_source_paths, &source_effects_cache}, {},
+            {diagnostic_totals, diagnostic_sink, nullptr}, nullptr, units);
       };
 
       if (should_stream_units) {
