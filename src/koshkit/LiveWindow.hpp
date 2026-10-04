@@ -62,6 +62,7 @@ fn update_retained_rows(ArrayList<Row> &retained, Items &observed, u64 now,
     usize position;
   };
 
+  retained.reserve(retained.count() + observed.count());
   let index = ArrayList<index_entry>{index_allocator};
   index.reserve(retained.count());
   for (usize position = 0; position < retained.count(); position++)
