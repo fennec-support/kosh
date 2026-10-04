@@ -933,8 +933,8 @@ fn run_live_process_io(const ExecContext &ec, Maybe<i64> selected_pid,
   }
   if (selected_pid.has_value() && baseline_rows.is_empty()) return 1;
   update_retained_rows(retained, baseline_rows, last_sample_nanoseconds,
-                       window_nanoseconds, allocator, do_get_key,
-                       do_get_value, process_io_counter_reset, do_make_row);
+                       window_nanoseconds, allocator, do_get_key, do_get_value,
+                       process_io_counter_reset, do_make_row);
 
   let const do_sample = [&](u64 now, Allocator frame_allocator) -> Maybe<i32> {
     let after_rows = read_process_io_rows(frame_allocator, selected_pid,
@@ -1426,10 +1426,10 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
           should_color ? evilio_color_mode::Colored : evilio_color_mode::Plain);
     }
 
-    return run_live_disk_io(
-        ec, sample_duration_seconds, live_interval_seconds,
-        sample_duration_label.view(), sort_key,
-        should_color ? evilio_color_mode::Colored : evilio_color_mode::Plain);
+    return run_live_disk_io(ec, sample_duration_seconds, live_interval_seconds,
+                            sample_duration_label.view(), sort_key,
+                            should_color ? evilio_color_mode::Colored
+                                         : evilio_color_mode::Plain);
   }
 
   if (FLAG_EVILIO_CUMULATIVE.is_enabled() && should_show_processes) {

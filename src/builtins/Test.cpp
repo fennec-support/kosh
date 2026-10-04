@@ -194,8 +194,7 @@ public:
 
     switch (*found) {
     case binary_operator::IntegerEqual: return *left_number == *right_number;
-    case binary_operator::IntegerNotEqual:
-      return *left_number != *right_number;
+    case binary_operator::IntegerNotEqual: return *left_number != *right_number;
     case binary_operator::IntegerLess: return *left_number < *right_number;
     case binary_operator::IntegerLessOrEqual:
       return *left_number <= *right_number;

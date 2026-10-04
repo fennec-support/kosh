@@ -443,9 +443,8 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
                     .view());
     session.add("Process",
                 String::from(os::get_current_process_id(), allocator).view());
-    session.add(
-        "Parent process",
-        String::from(os::get_parent_process_id(), allocator).view());
+    session.add("Parent process",
+                String::from(os::get_parent_process_id(), allocator).view());
 
     let user_ids = String::from(os::get_real_user_id(), allocator);
     user_ids += " real, ";

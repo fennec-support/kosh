@@ -259,8 +259,8 @@ static fn linux_unix_socket_peers(Allocator allocator) throws
   return steal(peers).make_sorted(linux_unix_socket_peer_comparator{});
 }
 
-static pure fn linux_unix_peer_record(
-    const linux_unix_socket_peer_list &peers, u64 identity) wontthrow
+static pure fn linux_unix_peer_record(const linux_unix_socket_peer_list &peers,
+                                      u64 identity) wontthrow
     -> linux_unix_socket_peer
 {
   if (let const index = peers.find(identity); index.has_value())

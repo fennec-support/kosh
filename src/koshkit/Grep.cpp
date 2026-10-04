@@ -31,8 +31,8 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL(
-    "[-EFivrnhcqslx] [--color[=when]] [-e pattern] [-f file] [pattern] [file ...]");
+HELP_SYNOPSIS_DECL("[-EFivrnhcqslx] [--color[=when]] [-e pattern] [-f file] "
+                   "[pattern] [file ...]");
 
 HELP_DESCRIPTION_DECL(
     "The grep utility prints the lines of each file that match a pattern.");
@@ -453,8 +453,8 @@ static constexpr StaticStringMap GREP_COLOR_CAPABILITIES{
     GREP_COLOR_CAPABILITY_ENTRIES};
 
 static fn apply_grep_color_capability(grep_palette &palette, StringView name,
-                                      bool has_value, StringView value) wontthrow
-    -> void
+                                      bool has_value,
+                                      StringView value) wontthrow -> void
 {
   let const capability = GREP_COLOR_CAPABILITIES.find(name);
   if (!capability.has_value()) return;
@@ -468,7 +468,9 @@ static fn apply_grep_color_capability(grep_palette &palette, StringView name,
   switch (*capability) {
   case grep_color_capability::SelectedMatch:
   case grep_color_capability::MatchBoth: palette.selected_match = value; break;
-  case grep_color_capability::SelectedLine: palette.selected_line = value; break;
+  case grep_color_capability::SelectedLine:
+    palette.selected_line = value;
+    break;
   case grep_color_capability::ContextLine: palette.context_line = value; break;
   case grep_color_capability::FileName: palette.file_name = value; break;
   case grep_color_capability::LineNumber: palette.line_number = value; break;
@@ -477,8 +479,8 @@ static fn apply_grep_color_capability(grep_palette &palette, StringView name,
   }
 }
 
-static fn parse_grep_colors(grep_palette &palette, StringView specification)
-    wontthrow -> void
+static fn parse_grep_colors(grep_palette &palette,
+                            StringView specification) wontthrow -> void
 {
   usize name_start = 0;
   usize value_start = 0;
@@ -544,9 +546,8 @@ public:
   {
     let const does_need_span_regex =
         m_options.should_highlight && !m_should_use_literal_search;
-    if (!does_need_span_regex &&
-        (m_should_use_literal_search ||
-         (m_has_fast_matcher && !m_has_utf8_wildcard)))
+    if (!does_need_span_regex && (m_should_use_literal_search ||
+                                  (m_has_fast_matcher && !m_has_utf8_wildcard)))
     {
       return true;
     }
@@ -611,8 +612,7 @@ public:
                              : m_options.pattern;
       if (needle.is_empty() || value.length < needle.length) return false;
 
-      for (usize start = from; start + needle.length <= value.length; start++)
-      {
+      for (usize start = from; start + needle.length <= value.length; start++) {
         usize offset = 0;
         while (offset < needle.length &&
                (m_options.should_ignore_case
@@ -638,10 +638,10 @@ public:
                         : *m_regex;
     let const report = os::execute_regex(
         *selected.get(),
-        os::regex_execution_options{value.substring(from), m_allocator,
-                                    from == 0
-                                        ? os::regex_start_position::Beginning
-                                        : os::regex_start_position::NotBeginning});
+        os::regex_execution_options{
+            value.substring(from), m_allocator,
+            from == 0 ? os::regex_start_position::Beginning
+                      : os::regex_start_position::NotBeginning});
     if (report.result != os::regex_match_result::Matched) return false;
 
     out_start = from + static_cast<usize>(report.spans[0].start);
@@ -1668,8 +1668,7 @@ fn Grep::execute(const ExecContext &ec, EvalContext &cxt,
   if (options.should_color) {
     grep_palette palette{};
     legacy_color_variable = cxt.get_variable_value("GREP_COLOR");
-    if (legacy_color_variable.has_value() &&
-        !legacy_color_variable->is_empty())
+    if (legacy_color_variable.has_value() && !legacy_color_variable->is_empty())
     {
       palette.selected_match = legacy_color_variable->view();
     }

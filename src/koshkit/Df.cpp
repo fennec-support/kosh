@@ -48,8 +48,9 @@ fn Df::execute(const ExecContext &ec, EvalContext &cxt,
 
   let const is_human = FLAG_DF_HUMAN.is_enabled() || FLAG_DF_SI.is_enabled();
   let const human_step = FLAG_DF_SI.is_enabled() ? 1000u : 1024u;
-  let const output_unit =
-      is_human ? 1u : FLAG_DF_KIBIBYTES.is_enabled() ? 1024u : 512u;
+  let const output_unit = is_human                         ? 1u
+                          : FLAG_DF_KIBIBYTES.is_enabled() ? 1024u
+                                                           : 512u;
   ec.print_to_stdout(
       is_human ? "Filesystem Size Used Avail Use% Mounted on\n"
       : FLAG_DF_KIBIBYTES.is_enabled()

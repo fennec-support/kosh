@@ -59,17 +59,17 @@
 
 #define KOSH_COMPILER KOSH_COMPILER_COMMAND " (" __VERSION__ ", " KOSH_LIBC ")"
 
-#define KOSH_VER_MAJOR 0
-#define KOSH_VER_MINOR 3
-#define KOSH_VER_PATCH 0
+#define KOSH_VER_MAJOR  0
+#define KOSH_VER_MINOR  3
+#define KOSH_VER_PATCH  0
 #define KOSH_VER_SUFFIX ""
 
 #define KOSH_STRINGIFY_INNER(x) #x
 #define KOSH_STRINGIFY(x)       KOSH_STRINGIFY_INNER(x)
 #define KOSH_VERSION_STRING                                                    \
   KOSH_STRINGIFY(KOSH_VER_MAJOR)                                               \
-  "." KOSH_STRINGIFY(KOSH_VER_MINOR) "." KOSH_STRINGIFY(                       \
-      KOSH_VER_PATCH) KOSH_VER_SUFFIX
+  "." KOSH_STRINGIFY(KOSH_VER_MINOR) "." KOSH_STRINGIFY(KOSH_VER_PATCH)        \
+      KOSH_VER_SUFFIX
 
 #define KOSH_SHORT_LICENSE                                                     \
   "Licensed under the 3-Clause BSD License.\n"                                 \

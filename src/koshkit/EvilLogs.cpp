@@ -246,7 +246,8 @@ fn append_kernel_settings(String &output, Allocator allocator,
     let const content = Path{setting}.read_entire_file();
     if (!content.has_value()) continue;
 
-    append_setting_row(table, allocator, setting, trimmed_line(content->view()));
+    append_setting_row(table, allocator, setting,
+                       trimmed_line(content->view()));
   }
 
   if (table.get_row_count() == 0) {
@@ -262,8 +263,7 @@ fn append_kernel_settings(String &output, Allocator allocator,
     }
   }
 
-  append_titled_report_table(output, "Core dump settings", table,
-                             should_color);
+  append_titled_report_table(output, "Core dump settings", table, should_color);
 }
 
 fn append_core_dump_report(String &output, Allocator allocator,
@@ -317,8 +317,8 @@ fn append_core_dump_report(String &output, Allocator allocator,
     for (usize index = 0; index < shown_count; index++) {
       let const &dump = dumps[index];
       let const size = format_human_size(dump.size, allocator);
-      let const modified =
-          utils::format_unix_timestamp(dump.modification_time, "%Y-%m-%d %H:%M");
+      let const modified = utils::format_unix_timestamp(dump.modification_time,
+                                                        "%Y-%m-%d %H:%M");
       let cells = ArrayList<report_table_cell_view>{allocator};
       cells.push({size.view(), colors::ansi::GREEN});
       cells.push({modified.view(), colors::ansi::DIM});

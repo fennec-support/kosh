@@ -236,18 +236,17 @@ fn load_socket_directory(socket_directory &directory,
 {
   directory.did_load = true;
   if (os::has_network_socket_listing()) {
-    let const sockets = os::network_sockets(
-        os::network_socket_process_mode::WithoutProcesses);
+    let const sockets =
+        os::network_sockets(os::network_socket_process_mode::WithoutProcesses);
     for (let const &socket : sockets) {
       let type = StringView{"unix"};
       if (socket.protocol != os::network_socket_protocol::Unix) {
-        type = socket.family == os::network_address_family::IPv6 ? "IPv6"
-                                                                 : "IPv4";
+        type =
+            socket.family == os::network_address_family::IPv6 ? "IPv6" : "IPv4";
       }
 
-      directory.entries.push(
-          socket_description{socket.identity, type,
-                             describe_network_socket(socket, allocator)});
+      directory.entries.push(socket_description{
+          socket.identity, type, describe_network_socket(socket, allocator)});
     }
   }
 
@@ -523,21 +522,20 @@ fn EvilFiles::execute(
       }
 
       open_file_row row{
-          String{allocator, process.name.view()                                                         },
+          String{allocator, process.name.view()},
           String::from(static_cast<u64>(process.pid), allocator),
-          owner.has_value() ? String{allocator, owner->view()                                                               }
+          owner.has_value() ? String{allocator, owner->view()}
                             : String::from(process.owner_id, allocator),
           descriptor_label(file, allocator),
           String{allocator, did_stat ? file_type_label(status.mode)
                             : socket_index.has_value()
                                 ? sockets.entries[*socket_index].type
                                 : bracketed_type_label(file.path.view())},
-          did_stat ? os::format_mode_string(status.mode)
-          : file.mode != 0
-              ? os::format_mode_string(file.mode)
-              : String{allocator, "-"},
-          String{allocator, file.is_deleted ? "deleted" : "-"                                           },
-          did_stat ? device_label(status, allocator) : String{allocator, "-"                                                                         },
+          did_stat         ? os::format_mode_string(status.mode)
+          : file.mode != 0 ? os::format_mode_string(file.mode)
+                           : String{allocator, "-"},
+          String{allocator, file.is_deleted ? "deleted" : "-"},
+          did_stat ? device_label(status, allocator) : String{allocator, "-"},
           String::from(file.size != 0 || !did_stat ? file.size : status.size,
                        allocator),
           String::from(file.offset, allocator),
@@ -545,9 +543,10 @@ fn EvilFiles::execute(
                                                       : status.file_id,
                        allocator),
           socket_index.has_value()
-              ? String{allocator, sockets.entries[*socket_index].endpoint.view()}
+              ? String{allocator,
+                 sockets.entries[*socket_index].endpoint.view()}
               : String{allocator},
-          String{allocator, file.path.view()                                                            },
+          String{allocator, file.path.view()},
       };
 
       widen(widths.command, row.command);
@@ -632,11 +631,11 @@ fn EvilFiles::execute(
   table.add_column("NAME", report_table_alignment::Left,
                    colors::ansi::BOLD_CYAN);
 
-  let const used_width = 2 + widths.command + 2 + widths.pid + 2 +
-                         widths.user + 2 + widths.descriptor + 2 + widths.type +
-                         2 + widths.mode + 2 + widths.state + 2 +
-                         widths.device + 2 + widths.size + 2 + widths.offset +
-                         2 + widths.node + 2 + widths.endpoint + 2;
+  let const used_width = 2 + widths.command + 2 + widths.pid + 2 + widths.user +
+                         2 + widths.descriptor + 2 + widths.type + 2 +
+                         widths.mode + 2 + widths.state + 2 + widths.device +
+                         2 + widths.size + 2 + widths.offset + 2 + widths.node +
+                         2 + widths.endpoint + 2;
   for (let const &row : rows) {
     let command = String{allocator, row.command.view()};
     if (toiletline::get_display_width(command.view()) > widths.command &&

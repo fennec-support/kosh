@@ -748,8 +748,8 @@ fn run_live_network_traffic(const ExecContext &ec, Allocator allocator,
   let const do_get_key = [](const auto &row) {
     return row.interface_name.view();
   };
-  let const do_get_value = [](const os::network_interface_statistics_entry
-                                  &entry)
+  let const do_get_value =
+      [](const os::network_interface_statistics_entry &entry)
       -> const os::network_interface_statistics_entry & { return entry; };
   let const do_make_row =
       [&](const os::network_interface_statistics_entry &entry) {

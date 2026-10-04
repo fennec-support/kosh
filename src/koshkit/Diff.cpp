@@ -320,8 +320,7 @@ static fn append_diff_line(const ExecContext &ec, String &output,
                            StringView style, StringView prefix,
                            StringView line) throws -> void
 {
-  let const has_newline =
-      !line.is_empty() && line[line.length - 1] == '\n';
+  let const has_newline = !line.is_empty() && line[line.length - 1] == '\n';
   if (style.is_empty()) {
     output += prefix;
     output += line;

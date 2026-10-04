@@ -34,7 +34,7 @@ struct live_process_identity
   i64 pid{0};
   u64 start_token{0};
 
-  pure fn operator<(const live_process_identity &other) const wontthrow -> bool
+  pure fn operator<(const live_process_identity &other) const wontthrow->bool
   {
     return pid != other.pid ? pid < other.pid : start_token < other.start_token;
   }
@@ -43,7 +43,7 @@ struct live_process_identity
 struct no_retained_update
 {
   template <class Item, class Row>
-  fn operator()(Item &, Row &) const wontthrow -> void
+  fn operator()(Item &, Row &) const wontthrow->void
   {}
 };
 

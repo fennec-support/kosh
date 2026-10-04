@@ -2538,15 +2538,15 @@ fn list_process_open_files(i64 pid, Allocator allocator,
     -> ArrayList<process_open_file>
 {
   ArrayList<process_open_file> files{allocator};
-  let const do_push =
-      [&files, allocator](StringView path, i64 descriptor_number, u64 size,
-                          u64 file_id, u64 offset, u32 mode,
-                          process_file_use use, char access,
-                          bool is_deleted) throws -> void {
+  let const do_push = [&files, allocator](StringView path,
+                                          i64 descriptor_number, u64 size,
+                                          u64 file_id, u64 offset, u32 mode,
+                                          process_file_use use, char access,
+                                          bool is_deleted) throws -> void {
     if (path.is_empty()) return;
 
     files.push(process_open_file{
-        String{allocator, path           },
+        String{allocator, path},
         descriptor_number, size, file_id, offset, mode,
         use, access, is_deleted, false
     });
