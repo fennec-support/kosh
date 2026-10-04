@@ -157,6 +157,7 @@ hot fn EvalContext::assign_variable(StringView name, StringView value) throws
   case 'p': is_path_name = utils::environment_name_is_path(name); break;
   default: break;
   }
+  let const is_pipestatus_name = first_byte == 'P' && name == "PIPESTATUS";
 
   if (environment_store().confined_write_depth() > 0) rarely
     {
@@ -178,6 +179,7 @@ hot fn EvalContext::assign_variable(StringView name, StringView value) throws
   }
 
   variable_store().shell_variables().set(name, value);
+  if (is_pipestatus_name) variable_store().set_pipestatus_scalar_possible(true);
   if (is_glob_ignore_name) {
     runtime_state().set_glob_ignore_assigned(true);
     if (!value.is_empty()) set_shopt_option("dotglob", true);
@@ -197,9 +199,10 @@ fn EvalContext::restore_temporary_shell_variable(
     StringView name, const Maybe<String> &previous_value,
     Maybe<SourceLocation> previous_definition_location) throws -> void
 {
-  if (previous_value.has_value())
+  if (previous_value.has_value()) {
     variable_store().shell_variables().set(name, previous_value->view());
-  else
+    variable_store().set_pipestatus_scalar_possible(true);
+  } else
     variable_store().shell_variables().erase(name);
   if (is_prompt_special_variable(name)) {
     if (previous_definition_location.has_value())
@@ -535,13 +538,20 @@ fn EvalContext::publish_pipe_statuses(ArrayList<String> values) throws -> void
 
 fn EvalContext::publish_single_pipe_status(i32 status) throws -> void
 {
-  let existing = variable_store().indexed_arrays().find("PIPESTATUS");
+  static const StringView PIPESTATUS_NAME{"PIPESTATUS", 10};
+  static const u64 PIPESTATUS_HASH = hash_bytes(PIPESTATUS_NAME);
+  let existing = variable_store().indexed_arrays().find_hashed(PIPESTATUS_NAME,
+                                                               PIPESTATUS_HASH);
   if (!existing.has_value() && is_readonly("PIPESTATUS")) return;
 
   if (existing.has_value() && existing->count() == 1 &&
-      !variable_store().sparse_array_names().contains("PIPESTATUS"))
+      (variable_store().sparse_array_names().count() == 0 ||
+       !variable_store().sparse_array_names().contains("PIPESTATUS")))
   {
-    variable_store().shell_variables().erase("PIPESTATUS");
+    if (variable_store().is_pipestatus_scalar_possible()) {
+      variable_store().shell_variables().erase("PIPESTATUS");
+      variable_store().set_pipestatus_scalar_possible(false);
+    }
     char status_text_buffer[32];
     let const status_text = utils::int_to_text_into(status, status_text_buffer,
                                                     sizeof(status_text_buffer));

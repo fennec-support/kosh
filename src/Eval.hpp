@@ -1190,6 +1190,14 @@ public:
   {
     return m_shell_variables;
   }
+  pure fn is_pipestatus_scalar_possible() const wontthrow -> bool
+  {
+    return m_is_pipestatus_scalar_possible;
+  }
+  fn set_pipestatus_scalar_possible(bool is_possible) wontthrow -> void
+  {
+    m_is_pipestatus_scalar_possible = is_possible;
+  }
   fn history_limit(StringView name, usize fallback) const wontthrow -> usize
   {
     let const value = m_shell_variables.find(name);
@@ -1336,6 +1344,7 @@ private:
   String m_field_separators{" \t\n"};
   u64 m_field_separator_bits[4]{};
   StringMap<String> m_shell_variables{heap_allocator()};
+  bool m_is_pipestatus_scalar_possible{true};
   StringMap<SourceLocation> m_special_variable_definition_locations{
       heap_allocator()};
   StringMap<ArrayList<String>> m_indexed_arrays{heap_allocator()};

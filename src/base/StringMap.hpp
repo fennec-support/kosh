@@ -113,16 +113,28 @@ public:
   hot mustuse pure fn find(StringView key) const wontthrow
       -> Maybe<const Value *>
   {
-    if (m_capacity == 0) return None;
-    let const found = probe(key, hash_bytes(key)).found;
-    return found == NO_INDEX ? None
-                             : Maybe<const Value *>{&m_slots[found].value};
+    return find_hashed(key, hash_bytes(key));
   }
 
   hot flatten mustuse fn find(StringView key) wontthrow -> Maybe<Value *>
   {
+    return find_hashed(key, hash_bytes(key));
+  }
+
+  hot mustuse pure fn find_hashed(StringView key, u64 hash) const wontthrow
+      -> Maybe<const Value *>
+  {
     if (m_capacity == 0) return None;
-    let const found = probe(key, hash_bytes(key)).found;
+    let const found = probe(key, hash).found;
+    return found == NO_INDEX ? None
+                             : Maybe<const Value *>{&m_slots[found].value};
+  }
+
+  hot mustuse fn find_hashed(StringView key, u64 hash) wontthrow
+      -> Maybe<Value *>
+  {
+    if (m_capacity == 0) return None;
+    let const found = probe(key, hash).found;
     return found == NO_INDEX ? None : Maybe<Value *>{&m_slots[found].value};
   }
 

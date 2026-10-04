@@ -730,6 +730,7 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
 {
   LOG(Debug, "restoring the evaluator state after a subshell or substitution");
   variable_store().shell_variables() = steal(snapshot.shell_variables);
+  variable_store().set_pipestatus_scalar_possible(true);
   variable_store().special_variable_definition_locations() =
       steal(snapshot.special_variable_definition_locations);
   variable_store().indexed_arrays() = steal(snapshot.indexed_arrays);
