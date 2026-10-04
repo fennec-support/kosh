@@ -2090,6 +2090,14 @@ struct process_resource_usage
 
 fn read_own_resource_usage() wontthrow -> process_resource_usage;
 
+struct process_launch_counts
+{
+  u64 fork_count{0};
+  u64 exec_count{0};
+};
+
+fn get_process_launch_counts() wontthrow -> process_launch_counts;
+
 /* The perf counts are filled only when has_perf is true. */
 struct measured_result
 {

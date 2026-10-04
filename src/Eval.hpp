@@ -879,6 +879,28 @@ public:
     if (enabled) m_expansions_last++;
   }
 
+  fn add_builtin_run(bool enabled) wontthrow -> void
+  {
+    if (enabled) m_builtins_run++;
+  }
+
+  fn add_function_run(bool enabled) wontthrow -> void
+  {
+    if (enabled) m_functions_run++;
+  }
+
+  fn add_external_command_run(bool enabled) wontthrow -> void
+  {
+    if (enabled) m_external_commands_run++;
+  }
+
+  pure fn builtins_run() const wontthrow -> usize { return m_builtins_run; }
+  pure fn functions_run() const wontthrow -> usize { return m_functions_run; }
+  pure fn external_commands_run() const wontthrow -> usize
+  {
+    return m_external_commands_run;
+  }
+
   fn end_command(usize live_ast_arena_bytes) wontthrow -> void
   {
     m_expansions_total += m_expansions_last;
@@ -952,6 +974,9 @@ private:
   usize m_expansions_last{0};
   usize m_expansions_total{0};
   usize m_commands_evaluated{0};
+  usize m_builtins_run{0};
+  usize m_functions_run{0};
+  usize m_external_commands_run{0};
   usize m_command_evaluation_index{0};
   mutable usize m_git_branch_command_index{static_cast<usize>(-1)};
   mutable usize m_git_counts_command_index{static_cast<usize>(-1)};

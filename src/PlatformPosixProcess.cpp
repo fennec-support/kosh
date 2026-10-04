@@ -24,6 +24,29 @@ namespace os {
 
 static fn fork_job_process() throws -> process;
 
+static process_launch_counts PROCESS_LAUNCH_COUNTS{};
+
+static inline fn note_fork_launch() wontthrow -> void
+{
+  PROCESS_LAUNCH_COUNTS.fork_count++;
+}
+
+static inline fn note_exec_launch() wontthrow -> void
+{
+  PROCESS_LAUNCH_COUNTS.exec_count++;
+}
+
+static inline fn note_spawn_launch() wontthrow -> void
+{
+  note_fork_launch();
+  note_exec_launch();
+}
+
+fn get_process_launch_counts() wontthrow -> process_launch_counts
+{
+  return PROCESS_LAUNCH_COUNTS;
+}
+
 fn is_child_process() wontthrow -> bool { return getpid() != PARENT_SHELL_PID; }
 
 fn is_running_setuid() wontthrow -> bool
@@ -283,6 +306,7 @@ hot fn execute_program(ExecContext &ec,
 
   pid_t child_pid = 0;
   char *const empty_environment[] = {nullptr};
+  note_spawn_launch();
   const int spawn_error =
       posix_spawn(&child_pid, ec.program_path().c_str(), &file_actions, &attr,
                   const_cast<char *const *>(child_args.begin()),
@@ -352,6 +376,7 @@ fn capture_program_output(const ArrayList<String> &argv,
   posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGDEF);
 
   pid_t child_pid = 0;
+  note_spawn_launch();
   const int spawn_result =
       posix_spawn(&child_pid, raw_args[0], &file_actions, &attr,
                   const_cast<char *const *>(raw_args.begin()), environ);
@@ -459,6 +484,7 @@ static fn fork_compound_stage(
 {
   LOG(Debug, "forking a compound pipeline stage");
 
+  note_fork_launch();
   const pid_t child_pid = check_syscall(fork());
 
   if (child_pid == 0) {
@@ -518,6 +544,7 @@ static fn fork_job_process() throws -> process
 {
   LOG(Debug, "forking a mimicked job into its own process group");
 
+  note_fork_launch();
   const pid_t child_pid = check_syscall(fork());
 
   if (child_pid == 0) {
@@ -699,6 +726,7 @@ fn replace_process(ExecContext &&ec) throws -> void
      starts with an empty environment. execve takes the envp explicitly where
      execv would have read environ. */
   char *const empty_environment[] = {nullptr};
+  note_exec_launch();
   execve(ec.program_path().c_str(),
          const_cast<char *const *>(child_args.begin()),
          ec.should_use_empty_environment
@@ -1408,6 +1436,7 @@ fn spawn_measured_child(const ArrayList<String> &argv, measured_output output,
     return false;
   }
 
+  note_spawn_launch();
   const pid_t child_pid = fork();
   if (child_pid == -1) {
     close(ready_descriptors[0]);
@@ -1684,6 +1713,7 @@ fn run_nice(const ArrayList<String> &argv, i32 increment) throws -> Maybe<i32>
     errno = saved_errno;
     return None;
   }
+  note_spawn_launch();
   let const child = fork();
   if (child == -1) {
     let const saved_errno = errno;
@@ -1754,6 +1784,7 @@ fn run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
     return None;
   }
 
+  note_spawn_launch();
   let const child = fork();
   if (child == -1) {
     let const saved_errno = errno;

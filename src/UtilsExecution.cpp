@@ -205,6 +205,9 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
     if (is_async) command += " &";
   }
 
+  cxt.evaluation_metrics_store().add_external_command_run(
+      cxt.runtime_state().stats_enabled());
+
   let const source = cxt.source_store().current_source();
   unused(cxt.materialize_kosh_identity());
   os::process p = os::execute_program(
@@ -458,6 +461,8 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
       stage_status[stage_index] = ec.get_unresolved_status();
       unresolved_stages.push(stage_index);
     } else if (!ec.is_builtin()) {
+      cxt.evaluation_metrics_store().add_external_command_run(
+          cxt.runtime_state().stats_enabled());
       let const source = cxt.source_store().current_source();
       unused(cxt.materialize_kosh_identity());
       let const process_group =

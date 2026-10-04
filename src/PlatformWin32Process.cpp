@@ -192,6 +192,13 @@ static fn filetime_ticks(FILETIME time) wontthrow -> u64
   return ticks.QuadPart;
 }
 
+static process_launch_counts PROCESS_LAUNCH_COUNTS{};
+
+fn get_process_launch_counts() wontthrow -> process_launch_counts
+{
+  return PROCESS_LAUNCH_COUNTS;
+}
+
 static fn fill_resource_usage(HANDLE process_handle,
                               process_resource_usage &resources) wontthrow
     -> void
@@ -782,6 +789,9 @@ static fn create_process_utf8(StringView application_path,
     extended_startup.lpAttributeList = attribute_list;
     creation_flags |= EXTENDED_STARTUPINFO_PRESENT;
   }
+
+  PROCESS_LAUNCH_COUNTS.fork_count++;
+  PROCESS_LAUNCH_COUNTS.exec_count++;
 
   let const did_create =
       CreateProcessW(

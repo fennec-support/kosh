@@ -565,6 +565,11 @@ The escape bitmap is printed after each parsed command.
 .TP
 .B \-\-show\-stats
 Command, expansion, node, and arena statistics are printed after each command.
+The report also counts the builtins, functions, and external commands this
+shell ran, the processes it forked and executed, the bytes and system calls it
+read and wrote, and its resource usage: user and system time, peak resident
+set, context switches, and page faults. A figure the platform cannot report is
+omitted. Windows counts each created process as one fork and one exec.
 .TP
 .B \-\-show\-memory
 Arena and heap usage is printed at exit.

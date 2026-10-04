@@ -139,6 +139,9 @@ fn execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
 {
   ASSERT(!ec.args().is_empty());
 
+  cxt.evaluation_metrics_store().add_builtin_run(
+      cxt.runtime_state().stats_enabled());
+
   /* A builtin runs inside the shell process, so it keeps the shell's own signal
      handlers. Resetting them to the default here would let a Ctrl-C during a
      builtin terminate the whole shell, and would cost two extra syscalls on

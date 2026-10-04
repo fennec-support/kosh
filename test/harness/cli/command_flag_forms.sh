@@ -91,6 +91,17 @@ echo "set +E leaves the exit code diagnostic alone"
 runtime_stats_output=$("$BIN" --no-diagnostics -c 'set -o show-stats; "$1" --no-diagnostics -c ":"' kosh-test "$BIN" 2>&1)
 [ "$?" -eq 0 ] || exit 1
 printf '%s\n' "$runtime_stats_output" | grep -F '[Stats' >/dev/null || exit 1
+stats_breadth_output=$("$BIN" --no-diagnostics --show-stats -c 'f() { :; }; f; f' 2>&1)
+for stats_label in 'Builtins run' 'Functions run' 'External commands run' 'Forks' 'Execs'; do
+  printf '%s\n' "$stats_breadth_output" | grep -Eq "^  $stats_label: [0-9]+\$" || { echo "stats row missing: $stats_label"; exit 1; }
+done
+printf '%s\n' "$stats_breadth_output" | grep -Fxq '  Functions run: 2' || { echo "stats function count wrong"; exit 1; }
+if [ "$(uname -s)" = Linux ]; then
+  for stats_label in 'Bytes read' 'Bytes written' 'Read calls' 'Write calls' 'User time' 'System time' 'Peak RSS' 'Voluntary context switches' 'Involuntary context switches' 'Minor page faults' 'Major page faults'; do
+    printf '%s\n' "$stats_breadth_output" | grep -Eq "^  $stats_label: " || { echo "stats row missing: $stats_label"; exit 1; }
+  done
+fi
+echo "stats report counts, transfers, and resource usage"
 runtime_memory_output=$("$BIN" --no-diagnostics -c 'set -o show-memory; "$1" --no-diagnostics -c ":"' kosh-test "$BIN" 2>&1)
 [ "$?" -eq 0 ] || exit 1
 printf '%s\n' "$runtime_memory_output" | grep -F 'AST arena:' >/dev/null || exit 1

@@ -350,6 +350,7 @@ fn EvalContext::enter_function_call(const SourceLocation &location) throws
 {
   guard_located_depth(function_store().call_depth(), MAX_FUNCTION_CALL_DEPTH,
                       "function call", location);
+  evaluation_metrics_store().add_function_run(runtime_state().stats_enabled());
   function_store().call_depth()++;
   LOG(Debug, "entered function call depth %zu", function_store().call_depth());
 }
@@ -1768,6 +1769,45 @@ cold fn EvalContext::make_stats_string() const throws -> String
   append_count_line("Functions", function_store().definitions().count());
   append_count_line("Function call depth", function_store().call_depth());
   append_count_line("Source frames", bash_source_frame_count());
+  append_count_line("Builtins run", evaluation_metrics_store().builtins_run());
+  append_count_line("Functions run",
+                    evaluation_metrics_store().functions_run());
+  append_count_line("External commands run",
+                    evaluation_metrics_store().external_commands_run());
+
+  let const launch_counts = os::get_process_launch_counts();
+  append_count_line("Forks", static_cast<usize>(launch_counts.fork_count));
+  append_count_line("Execs", static_cast<usize>(launch_counts.exec_count));
+
+  let const usage = os::read_own_resource_usage();
+  let const do_append_optional_count = [&](StringView name,
+                                           const Maybe<u64> &value) throws {
+    if (value.has_value()) append_count_line(name, static_cast<usize>(*value));
+  };
+  let const do_append_optional_size = [&](StringView name,
+                                          const Maybe<u64> &value) throws {
+    if (value.has_value()) append_size_line(name, static_cast<usize>(*value));
+  };
+  let const do_append_optional_duration = [&](StringView name,
+                                              const Maybe<u64> &value) throws {
+    if (value.has_value())
+      append_line(name,
+                  utils::format_duration_nanoseconds(*value, allocator).view());
+  };
+  do_append_optional_size("Bytes read", usage.read_byte_count);
+  do_append_optional_size("Bytes written", usage.written_byte_count);
+  do_append_optional_count("Read calls", usage.read_call_count);
+  do_append_optional_count("Write calls", usage.write_call_count);
+  do_append_optional_duration("User time", usage.user_nanos);
+  do_append_optional_duration("System time", usage.system_nanos);
+  do_append_optional_size("Peak RSS", usage.peak_rss_bytes);
+  do_append_optional_count("Voluntary context switches",
+                           usage.voluntary_context_switch_count);
+  do_append_optional_count("Involuntary context switches",
+                           usage.involuntary_context_switch_count);
+  do_append_optional_count("Minor page faults", usage.minor_fault_count);
+  do_append_optional_count("Major page faults", usage.major_fault_count);
+  do_append_optional_count("Page faults", usage.page_fault_count);
 
   os::malloc_heap_stats heap_stats{};
   if (os::read_malloc_heap_stats(heap_stats)) {
