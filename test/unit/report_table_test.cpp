@@ -245,8 +245,33 @@ static fn test_no_row_ends_in_a_space() throws -> void
     if (view[index] == '\n') CHECK(view[index - 1] != ' ');
 }
 
+static fn test_minimum_width_survives_clearing_rows() throws -> void
+{
+  let table = ReportTable{heap_allocator()};
+  table.set_header_visible(false);
+  table.add_column("", report_table_alignment::Right);
+  table.add_column("");
+  table.set_column_min_width(0, 4);
+
+  let cells = ArrayList<report_table_cell_view>{heap_allocator()};
+  cells.push({"7", {}});
+  cells.push({"a", {}});
+  table.add_row(cells);
+  CHECK_EQUAL(table.to_string(false, "").view(), "   7  a\n");
+
+  table.clear_rows();
+  CHECK_EQUAL(table.get_row_count(), 0);
+
+  cells.clear();
+  cells.push({"123456", {}});
+  cells.push({"b", {}});
+  table.add_row(cells);
+  CHECK_EQUAL(table.to_string(false, "").view(), "123456  b\n");
+}
+
 fn kosh_main(int, char **) -> int
 {
+  RUN_TEST(test_minimum_width_survives_clearing_rows);
   RUN_TEST(test_right_aligned_last_column_keeps_left_padding);
   RUN_TEST(test_last_left_column_is_not_padded);
   RUN_TEST(test_titleless_default_indentation);

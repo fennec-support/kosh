@@ -492,16 +492,32 @@ fn Du::execute(const ExecContext &ec, EvalContext &cxt,
 
   let const is_human = FLAG_DU_HUMAN.is_enabled();
   let rendered_sizes = ArrayList<String>{allocator};
+  usize size_width = 0;
   if (is_human) {
     rendered_sizes.reserve(output_order.count());
-    for (let const &sort_key : output_order)
-      rendered_sizes.push(format_human_size(sort_key.size_bytes, allocator));
+    for (let const &sort_key : output_order) {
+      let rendered_size = format_human_size(sort_key.size_bytes, allocator);
+      if (rendered_size.length() > size_width)
+        size_width = rendered_size.length();
+      rendered_sizes.push(steal(rendered_size));
+    }
+  } else if (!output_order.is_empty()) {
+    size_width = String::from(output_order[0].size_bytes, allocator).length();
   }
 
+  let const should_color = koshkit_should_color();
   let table = ReportTable{allocator};
   table.set_header_visible(false);
   table.add_column("", report_table_alignment::Right, colors::ansi::BOLD_GREEN);
   table.add_column("", report_table_alignment::Left, colors::ansi::BOLD_CYAN);
+  table.set_column_min_width(0, size_width);
+  usize pending_byte_count = 0;
+  let const do_flush_table = [&]() throws -> void {
+    let const output = table.to_string(should_color, "");
+    ec.print_to_stdout(output.view());
+    table.clear_rows();
+    pending_byte_count = 0;
+  };
   for (usize index = 0; index < output_order.count(); index++) {
     let const &sort_key = output_order[index];
     let const &row = output_rows[sort_key.row_index];
@@ -511,10 +527,12 @@ fn Du::execute(const ExecContext &ec, EvalContext &cxt,
       let const rendered_size = String::from(sort_key.size_bytes, allocator);
       add_size_row(table, allocator, row, rendered_size.view());
     }
+
+    pending_byte_count += size_width + row.path.length() + 3;
+    if (pending_byte_count >= 65536) do_flush_table();
   }
 
-  let const output = table.to_string(koshkit_should_color(), "");
-  ec.print_to_stdout(output.view());
+  do_flush_table();
   if (was_interrupted) return 130;
   if (has_failure) status = 1;
   return status;

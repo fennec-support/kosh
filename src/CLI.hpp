@@ -387,6 +387,7 @@ struct report_table_column
   String heading;
   report_table_alignment alignment;
   StringView style;
+  usize min_width{0};
 };
 struct report_table_cell_view
 {
@@ -412,6 +413,11 @@ public:
   {
     m_should_show_header = should_show_header;
   }
+  fn set_column_min_width(usize column_index, usize width) wontthrow -> void
+  {
+    m_columns[column_index].min_width = width;
+  }
+  fn clear_rows() wontthrow -> void { m_grid_rows.clear(); }
   fn set_column_gap(usize space_count) wontthrow -> void
   {
     m_column_gap_space_count = space_count;

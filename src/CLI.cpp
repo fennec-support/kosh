@@ -1153,6 +1153,8 @@ static fn append_report_grid(
     usize width = 0;
     if (index < columns.count())
       width = toiletline::get_display_width(columns[index].heading.view());
+    if (index < columns.count() && width < columns[index].min_width)
+      width = columns[index].min_width;
     widths.push(width);
   }
 
