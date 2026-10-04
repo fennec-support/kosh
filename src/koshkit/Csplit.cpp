@@ -62,34 +62,40 @@ constexpr fn has_csplit_policy(csplit_write_policy policy,
   return (static_cast<u8>(policy) & static_cast<u8>(value)) != 0;
 }
 
-static fn csplit_output_name(StringView prefix, usize width, u64 index,
-                             SourceLocation width_location,
+struct csplit_name_format
+{
+  StringView prefix;
+  usize digit_count;
+  SourceLocation width_location;
+};
+
+static fn csplit_output_name(const csplit_name_format &format, u64 index,
                              Allocator allocator) throws -> String
 {
   let const digits = String::from(index, allocator);
-  if (digits.length() > width) {
-    throw ErrorWithLocationAndDetails{width_location,
+  if (digits.length() > format.digit_count) {
+    throw ErrorWithLocationAndDetails{format.width_location,
                                       "output file suffixes are exhausted",
                                       "increase the suffix width with -n"};
   }
 
-  String name{allocator, prefix};
-  for (usize position = digits.length(); position < width; position++)
+  String name{allocator, format.prefix};
+  for (usize position = digits.length(); position < format.digit_count;
+       position++)
     name += '0';
   name += digits.view();
   return name;
 }
 
 static fn write_csplit_part(const ExecContext &ec, EvalContext &cxt,
-                            StringView prefix, usize digit_count,
+                            const csplit_name_format &name_format,
                             u64 output_index,
                             const ArrayList<StringView> &lines, usize first,
-                            usize last, SourceLocation width_location,
-                            ArrayList<String> &output_paths,
+                            usize last, ArrayList<String> &output_paths,
                             csplit_write_policy policy) throws -> bool
 {
-  let const name = csplit_output_name(prefix, digit_count, output_index,
-                                      width_location, cxt.scratch_allocator());
+  let const name = csplit_output_name(name_format, output_index,
+                                      cxt.scratch_allocator());
   let const descriptor =
       os::open_file_descriptor(name.view(), os::file_open_mode::Truncate);
   if (!descriptor.has_value()) {
@@ -356,9 +362,10 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
       let const width_location = FLAG_CSPLIT_DIGITS.is_set()
                                      ? FLAG_CSPLIT_DIGITS.value_location()
                                      : pattern_location;
-      if (!write_csplit_part(ec, cxt, prefix, digit_count, output_index++,
-                             lines, current_line, target_line, width_location,
-                             output_paths, write_policy))
+      if (!write_csplit_part(
+              ec, cxt, csplit_name_format{prefix, digit_count, width_location},
+              output_index++, lines, current_line, target_line, output_paths,
+              write_policy))
         throw Error{"cannot write output"};
     }
     current_line = target_line;
@@ -415,9 +422,10 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
       FLAG_CSPLIT_DIGITS.is_set()
           ? FLAG_CSPLIT_DIGITS.value_location()
           : operand_locations[operand_locations.count() - 1];
-  if (!write_csplit_part(ec, cxt, prefix, digit_count, output_index, lines,
-                         current_line, lines.count(), width_location,
-                         output_paths, write_policy))
+  if (!write_csplit_part(
+          ec, cxt, csplit_name_format{prefix, digit_count, width_location},
+          output_index, lines, current_line, lines.count(), output_paths,
+          write_policy))
     return 1;
   output_paths.clear();
   return 0;
