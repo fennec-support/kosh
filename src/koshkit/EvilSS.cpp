@@ -95,21 +95,6 @@ pure fn unix_protocol_name(os::network_unix_socket_type type) wontthrow
   unreachable("unknown Unix socket type");
 }
 
-fn endpoint(StringView address, u16 port, Allocator allocator,
-            os::network_address_family family) throws -> String
-{
-  let result = String{allocator};
-  if (family == os::network_address_family::IPv6) result += "[";
-  result += address.is_empty() ? StringView{"*"} : address;
-  if (family == os::network_address_family::IPv6) result += "]";
-  result += ":";
-  if (port == 0)
-    result += "*";
-  else
-    result += String::from(port, allocator).view();
-  return result;
-}
-
 fn unix_endpoint(StringView path, u64 identity, Allocator allocator) throws
     -> String
 {
@@ -224,11 +209,13 @@ fn append_network_socket_report(String &output,
     row.send_queue = String::from(socket.send_queue_bytes, allocator);
     row.local = is_unix ? unix_endpoint(socket.local_address.view(),
                                         socket.identity, allocator)
-                        : endpoint(socket.local_address.view(),
-                                   socket.local_port, allocator, socket.family);
+                        : format_socket_endpoint(socket.local_address.view(),
+                                                 socket.local_port,
+                                                 socket.family, allocator);
     row.peer = is_unix ? unix_endpoint({}, socket.peer_identity, allocator)
-                       : endpoint(socket.peer_address.view(), socket.peer_port,
-                                  allocator, socket.family);
+                       : format_socket_endpoint(socket.peer_address.view(),
+                                                socket.peer_port,
+                                                socket.family, allocator);
     row.process_id = socket.process_id == 0
                          ? String{allocator, "-"}
                          : String::from(socket.process_id, allocator);

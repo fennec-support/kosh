@@ -148,23 +148,6 @@ pure fn parse_bracketed_inode(StringView path, StringView prefix) wontthrow
   return parsed.value();
 }
 
-fn append_socket_address(String &endpoint, StringView address, u16 port,
-                         os::network_address_family family,
-                         Allocator allocator) throws -> void
-{
-  let const is_wildcard = address == "0.0.0.0" || address == "::";
-  let const should_bracket =
-      family == os::network_address_family::IPv6 && !is_wildcard;
-  if (should_bracket) endpoint += "[";
-  endpoint += is_wildcard || address.is_empty() ? StringView{"*"} : address;
-  if (should_bracket) endpoint += "]";
-  endpoint += ":";
-  if (port == 0)
-    endpoint += "*";
-  else
-    endpoint += String::from(port, allocator).view();
-}
-
 fn describe_network_socket(const os::network_socket_entry &socket,
                            Allocator allocator) throws -> String
 {
@@ -179,12 +162,16 @@ fn describe_network_socket(const os::network_socket_entry &socket,
     return endpoint;
   }
 
-  append_socket_address(endpoint, socket.local_address.view(),
-                        socket.local_port, socket.family, allocator);
+  endpoint += format_socket_endpoint(socket.local_address.view(),
+                                     socket.local_port, socket.family,
+                                     allocator)
+                  .view();
   if (socket.peer_port != 0) {
     endpoint += "->";
-    append_socket_address(endpoint, socket.peer_address.view(),
-                          socket.peer_port, socket.family, allocator);
+    endpoint += format_socket_endpoint(socket.peer_address.view(),
+                                       socket.peer_port, socket.family,
+                                       allocator)
+                    .view();
   }
 
   if (socket.protocol == os::network_socket_protocol::Tcp) {

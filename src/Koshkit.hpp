@@ -852,6 +852,9 @@ fn parse_strict_count(StringView text) throws -> ErrorOr<u64>;
 
 pure fn network_socket_state_name(os::network_socket_state state) wontthrow
     -> StringView;
+fn format_socket_endpoint(StringView address, u16 port,
+                          os::network_address_family family,
+                          Allocator allocator) throws -> String;
 fn format_human_size(u64 bytes, Allocator allocator,
                      u64 unit_step = 1024) throws -> String;
 fn scaled_filesystem_blocks(u64 block_count, u64 block_size,

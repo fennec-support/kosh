@@ -938,18 +938,6 @@ pure fn is_remote_socket(const os::network_socket_entry &socket) wontthrow
          !socket.peer_address.is_empty() && socket.peer_port != 0;
 }
 
-fn remote_endpoint(StringView address, u16 port, Allocator allocator,
-                   os::network_address_family family) throws -> String
-{
-  let result = String{allocator};
-  if (family == os::network_address_family::IPv6) result += "[";
-  result += address.is_empty() ? StringView{"*"} : address;
-  if (family == os::network_address_family::IPv6) result += "]";
-  result += ":";
-  result += port == 0 ? StringView{"*"} : String::from(port, allocator).view();
-  return result;
-}
-
 fn remote_table_text(StringView text, usize maximum_cells,
                      Allocator allocator) throws -> String
 {
@@ -1188,10 +1176,12 @@ fn append_remote_report(String &output, bool should_color,
     row.protocol =
         socket.protocol == os::network_socket_protocol::Udp ? "UDP" : "TCP";
     row.state = network_socket_state_name(socket.state);
-    row.local = remote_endpoint(socket.local_address.view(), socket.local_port,
-                                allocator, socket.family);
-    row.peer = remote_endpoint(socket.peer_address.view(), socket.peer_port,
-                               allocator, socket.family);
+    row.local = format_socket_endpoint(socket.local_address.view(),
+                                       socket.local_port, socket.family,
+                                       allocator);
+    row.peer = format_socket_endpoint(socket.peer_address.view(),
+                                      socket.peer_port, socket.family,
+                                      allocator);
     row.socket_id = socket.identity == 0
                         ? String{allocator, "-"}
                         : String::from(socket.identity, allocator);

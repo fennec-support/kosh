@@ -1000,6 +1000,24 @@ pure fn network_socket_state_name(os::network_socket_state state) wontthrow
   unreachable("unknown network socket state");
 }
 
+fn format_socket_endpoint(StringView address, u16 port,
+                          os::network_address_family family,
+                          Allocator allocator) throws -> String
+{
+  let const is_bracketed = family == os::network_address_family::IPv6;
+  let result = String{allocator};
+  if (is_bracketed) result += "[";
+  result += address.is_empty() ? StringView{"*"} : address;
+  if (is_bracketed) result += "]";
+  result += ":";
+  if (port == 0)
+    result += "*";
+  else
+    result += String::from(port, allocator).view();
+
+  return result;
+}
+
 fn format_human_size(u64 bytes, Allocator allocator, u64 unit_step) throws
     -> String
 {

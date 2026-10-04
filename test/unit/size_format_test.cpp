@@ -2,8 +2,9 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file is the unit test of format_live_duration and format_human_size.
- * It checks the exact text of the live duration at whole seconds, trimmed
+ * This file is the unit test of format_live_duration, format_human_size, and
+ * format_socket_endpoint, which brackets every IPv6 address and prints a star
+ * for an empty address or a zero port. It checks the exact text of the live duration at whole seconds, trimmed
  * fractions, rounding at the nanosecond boundary, and zero. It checks the
  * human-readable size at every unit boundary for the 1024 step and the 1000
  * step, including the lowercase SI kilo prefix, the carry of a value that
@@ -100,8 +101,32 @@ static fn test_human_size_largest_value() throws -> void
   CHECK_EQUAL(human(UINT64_MAX, 1000).view(), "18447P");
 }
 
+static fn test_socket_endpoint_wildcards_and_brackets() throws -> void
+{
+  let const v4 = os::network_address_family::IPv4;
+  let const v6 = os::network_address_family::IPv6;
+  CHECK_EQUAL(
+      koshkit::format_socket_endpoint("0.0.0.0", 80, v4, heap_allocator())
+          .view(),
+      "0.0.0.0:80");
+  CHECK_EQUAL(
+      koshkit::format_socket_endpoint("::", 80, v6, heap_allocator()).view(),
+      "[::]:80");
+  CHECK_EQUAL(
+      koshkit::format_socket_endpoint("::1", 22, v6, heap_allocator()).view(),
+      "[::1]:22");
+  CHECK_EQUAL(
+      koshkit::format_socket_endpoint("0.0.0.0", 0, v4, heap_allocator())
+          .view(),
+      "0.0.0.0:*");
+  CHECK_EQUAL(
+      koshkit::format_socket_endpoint("", 0, v4, heap_allocator()).view(),
+      "*:*");
+}
+
 fn kosh_main(int, char **) -> int
 {
+  RUN_TEST(test_socket_endpoint_wildcards_and_brackets);
   RUN_TEST(test_live_duration_whole_seconds);
   RUN_TEST(test_live_duration_trims_fraction);
   RUN_TEST(test_live_duration_rounds_to_nanosecond);
