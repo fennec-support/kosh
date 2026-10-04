@@ -44,7 +44,9 @@ fn Dirs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const args =
       parse_flags_vec(FLAG_LIST, ec.args(), ec.source_location().position,
                       nullptr, &ec.arg_locations(), &operand_locations,
-                      builtin_error_context(ec.program()), true, true);
+                      builtin_error_context(ec.program()),
+                      {.should_accept_negative_number_operand = true,
+                       .should_allow_options_after_operands = true});
   defer { reset_flags(FLAG_LIST); };
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);

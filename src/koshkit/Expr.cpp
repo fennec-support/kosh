@@ -279,7 +279,8 @@ fn Expr::execute(const ExecContext &ec, EvalContext &cxt,
     -> i32
 {
   let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations, true);
+      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations,
+      {.should_accept_negative_number_operand = true});
   defer { reset_flags(FLAG_LIST); };
 
   KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);

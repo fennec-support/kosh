@@ -1223,7 +1223,9 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
   let const operands = PARSE_KOSHKIT_ARGS_WITH_LOCATIONS(
-      args, arg_locations, operand_locations, true, true);
+      args, arg_locations, operand_locations,
+      flag_parse_options{.should_accept_negative_number_operand = true,
+                         .should_allow_options_after_operands = true});
 
   KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
 

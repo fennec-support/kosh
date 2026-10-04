@@ -327,10 +327,7 @@ fn parse_flags_vec(const FlagList &flags, const ArrayList<String> &args,
                    usize base_position, const Flag *operand_value_flag,
                    const ArrayList<SourceLocation> *arg_locations,
                    ArrayList<SourceLocation> *operand_locations,
-                   StringView program_name,
-                   bool should_accept_negative_number_operand,
-                   bool should_allow_options_after_operands,
-                   bool should_accept_unknown_flag_operand,
+                   StringView program_name, flag_parse_options parse_options,
                    Allocator allocator) throws -> ArrayList<String>
 {
   reset_flags(flags);
@@ -355,10 +352,8 @@ fn parse_flags_vec(const FlagList &flags, const ArrayList<String> &args,
   try {
     return parse_flags(flags, static_cast<int>(args.count()), argument_data,
                        base_position, operand_value_flag, arg_locations,
-                       operand_locations, program_name,
-                       should_accept_negative_number_operand,
-                       should_allow_options_after_operands,
-                       should_accept_unknown_flag_operand, allocator);
+                       operand_locations, program_name, parse_options,
+                       allocator);
   } catch (...) {
     reset_flags(flags);
     throw;
@@ -461,10 +456,7 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
                usize base_position, const Flag *operand_value_flag,
                const ArrayList<SourceLocation> *arg_locations,
                ArrayList<SourceLocation> *operand_locations,
-               StringView program_name,
-               bool should_accept_negative_number_operand,
-               bool should_allow_options_after_operands,
-               bool should_accept_unknown_flag_operand,
+               StringView program_name, flag_parse_options parse_options,
                Allocator allocator) throws -> ArrayList<String>
 {
   ASSERT(argc >= 0);
@@ -548,7 +540,8 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
        convention that spawns a shell as -bash, so it is never a flag bundle. */
     let const argument = StringView{argv[i]};
     let const is_negative_number_operand =
-        should_accept_negative_number_operand && argument.length > 1 &&
+        parse_options.should_accept_negative_number_operand &&
+        argument.length > 1 &&
         argument[0] == '-' && argument.substring(1).is_all_decimal_digits();
     if (should_ignore_rest || argv[i][0] != '-' || i == 0 ||
         is_negative_number_operand)
@@ -559,7 +552,8 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
       LOG(Debug, "taking '%s' as an operand", argv[i]);
       args.push_managed(StringView{argv[i]});
       do_record_operand(static_cast<usize>(i));
-      if (!is_program_name && !should_allow_options_after_operands)
+      if (!is_program_name &&
+          !parse_options.should_allow_options_after_operands)
         should_ignore_rest = true;
       continue;
     }
@@ -757,7 +751,7 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
         } break;
         }
       } else {
-        if (should_accept_unknown_flag_operand) {
+        if (parse_options.should_accept_unknown_flag_operand) {
           LOG(Debug, "taking the unknown flag '%s' as an operand", argv[i]);
           args.push_managed(StringView{argv[i]});
           do_record_operand(static_cast<usize>(i));
@@ -831,17 +825,13 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
 fn parse_util_operands(const FlagList &flags, const ArrayList<String> &args,
                        Allocator allocator,
                        const ArrayList<SourceLocation> *arg_locations,
-                       bool should_accept_negative_number_operand,
-                       bool should_allow_options_after_operands,
-                       bool should_accept_unknown_flag_operand) throws
+                       flag_parse_options parse_options) throws
     -> util_operands_result
 {
   let operand_locations = ArrayList<SourceLocation>{allocator};
-  let operands = parse_flags_vec(flags, args, 0, nullptr, arg_locations,
-                                 &operand_locations, {},
-                                 should_accept_negative_number_operand,
-                                 should_allow_options_after_operands,
-                                 should_accept_unknown_flag_operand, allocator);
+  let operands =
+      parse_flags_vec(flags, args, 0, nullptr, arg_locations,
+                      &operand_locations, {}, parse_options, allocator);
   ASSERT(operands.allocator() == allocator);
   ASSERT(operand_locations.allocator() == allocator);
   ASSERT(operands.count() == operand_locations.count());

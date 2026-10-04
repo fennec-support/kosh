@@ -1544,7 +1544,8 @@ fn Grep::execute(const ExecContext &ec, EvalContext &cxt,
     -> i32
 {
   let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations, false, true);
+      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations,
+      {.should_allow_options_after_operands = true});
   defer { reset_flags(FLAG_LIST); };
 
   KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);

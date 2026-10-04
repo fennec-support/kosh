@@ -290,6 +290,13 @@ private:
   StringView m_value_name;
 };
 
+struct flag_parse_options
+{
+  bool should_accept_negative_number_operand{false};
+  bool should_allow_options_after_operands{false};
+  bool should_accept_unknown_flag_operand{false};
+};
+
 /* operand_value_flag names the one flag whose value is read from the first
    non-option operand the way the shell's -c command is, so a recognized boolean
    flag that follows it is parsed as a flag rather than swallowed as the value.
@@ -301,9 +308,7 @@ fn parse_flags_vec(const FlagList &flags, const ArrayList<String> &args,
                    const ArrayList<SourceLocation> *arg_locations = nullptr,
                    ArrayList<SourceLocation> *operand_locations = nullptr,
                    StringView program_name = StringView{},
-                   bool should_accept_negative_number_operand = false,
-                   bool should_allow_options_after_operands = false,
-                   bool should_accept_unknown_flag_operand = false,
+                   flag_parse_options parse_options = {},
                    Allocator allocator = heap_allocator()) throws
     -> ArrayList<String>;
 fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
@@ -312,9 +317,7 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
                const ArrayList<SourceLocation> *arg_locations = nullptr,
                ArrayList<SourceLocation> *operand_locations = nullptr,
                StringView program_name = StringView{},
-               bool should_accept_negative_number_operand = false,
-               bool should_allow_options_after_operands = false,
-               bool should_accept_unknown_flag_operand = false,
+               flag_parse_options parse_options = {},
                Allocator allocator = heap_allocator()) throws
     -> ArrayList<String>;
 struct util_operands_result
@@ -326,9 +329,7 @@ struct util_operands_result
 fn parse_util_operands(const FlagList &flags, const ArrayList<String> &args,
                        Allocator allocator,
                        const ArrayList<SourceLocation> *arg_locations = nullptr,
-                       bool should_accept_negative_number_operand = false,
-                       bool should_allow_options_after_operands = false,
-                       bool should_accept_unknown_flag_operand = false) throws
+                       flag_parse_options parse_options = {}) throws
     -> util_operands_result;
 fn parse_until_subcommand(
     const FlagList &flags, const ArrayList<String> &args,
