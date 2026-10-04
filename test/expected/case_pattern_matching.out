@@ -1,6 +1,9 @@
 6:6: warning: This `case` has no default `*)` branch. (SC2249)
      6 |  case b in
        |       ^
+11:6: warning: This `case` has no default `*)` branch. (SC2249)
+    11 |  case hi in
+       |       ^~
 14:3: warning: An earlier `case` pattern is broader. (SC2222)
     14 |    hi) echo exact ;;
        |    ^~
@@ -8,9 +11,6 @@
     12 |    h*) echo h ;;&
        |    ^~ this broader pattern shadows the later pattern.
 note: Move the specific pattern before the broader pattern.
-11:6: warning: This `case` has no default `*)` branch. (SC2249)
-    11 |  case hi in
-       |       ^~
 17:6: warning: This `case` has no default `*)` branch. (SC2249)
     17 |  case x in #comment
        |       ^

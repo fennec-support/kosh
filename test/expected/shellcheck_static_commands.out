@@ -38,6 +38,10 @@ note: Write `first=$(...)` around the complete pipeline.
     15 |    swallowed=printf 'x\n'
        |    ^~~~~~~~~~~~~~~~
 note: Write `swallowed=$(...)` to assign the command output.
+15:3: warning: The value of 'swallowed' is the command name 'printf'. (SC2209)
+    15 |    swallowed=printf 'x\n'
+       |    ^~~~~~~~~~~~~~~~
+note: Write `swallowed=$(printf)` to store its output, or quote the name.
 20:8: warning: The expansion of 'entries' without a subscript reads the first element alone. (SC2128)
     20 |    echo "$entries"
        |         ^~~~~~~~~~
@@ -121,6 +125,10 @@ note: Write `$'\t'` to place the control byte.
     42 |    pager=cat
        |    ^~~~~~~~~
 note: Declare it with `local` to keep it inside the function.
+42:3: warning: The value of 'pager' is the command name 'cat'. (SC2209)
+    42 |    pager=cat
+       |    ^~~~~~~~~
+note: Write `pager=$(cat)` to store its output, or quote the name.
 43:3: warning: A positional parameter cannot be assigned, and '$1=first' runs as a command. (SC2270)
     43 |    $1=first
        |    ^~~~~~~~
@@ -242,13 +250,6 @@ note: Add the missing `$`, or drop the `case`.
    104 |    $expanded) : ;;
        |    ^~~~~~~~~
 note: Quote the expansion so the pattern matches literally.
-110:5: warning: The optstring does not declare 'z'. (SC2214)
-   110 |      z) : ;;
-       |      ^
-107:17: details:
-   107 |    while getopts "ab:" chosen_option; do
-       |                  ^~~~~ this optstring omits the option.
-note: Add the letter to the optstring, or remove the branch.
 108:10: warning: This `case` has no default `*)` branch. (SC2249)
    108 |      case $chosen_option in
        |           ^~~~~~~~~~~~~~
@@ -266,6 +267,13 @@ note: Add a `b)` branch, or drop the letter from the optstring.
    107 |    while getopts "ab:" chosen_option; do
        |                  ^~~~~ this loop reads the options.
 note: Add a `*)` branch that prints the usage and exits.
+110:5: warning: The optstring does not declare 'z'. (SC2214)
+   110 |      z) : ;;
+       |      ^
+107:17: details:
+   107 |    while getopts "ab:" chosen_option; do
+       |                  ^~~~~ this optstring omits the option.
+note: Add the letter to the optstring, or remove the branch.
 116:3: warning: The `( )` group starts a subshell and costs a process on every run. (SC2235)
    116 |    ( echo first || echo second ) && echo third
        |    ^
@@ -282,12 +290,4 @@ note: Remove it, or move it into the loop it belongs to.
    122 |  false && continue
        |           ^~~~~~~~
 note: Remove it, or move it into the loop it belongs to.
-15:3: warning: The value of 'swallowed' is the command name 'printf'. (SC2209)
-    15 |    swallowed=printf 'x\n'
-       |    ^~~~~~~~~~~~~~~~
-note: Write `swallowed=$(printf)` to store its output, or quote the name.
-42:3: warning: The value of 'pager' is the command name 'cat'. (SC2209)
-    42 |    pager=cat
-       |    ^~~~~~~~~
-note: Write `pager=$(cat)` to store its output, or quote the name.
 Encountered 69 warnings.

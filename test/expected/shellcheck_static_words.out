@@ -201,21 +201,6 @@ note: Give the file to the next command directly.
     80 |  which sh >/dev/null 2>&1
        |  ^~~~~
 note: Use `command -v` to look up the name.
-94:3: warning: The `exec` replaces the shell process. (SC2093)
-    94 |    exec echo replaced; echo unreachable
-       |    ^~~~
-94:23: details:
-    94 |    exec echo replaced; echo unreachable
-       |                        ^~~~~~~~~~~~~~~~ this is the first command skipped after `exec`.
-note: Remove the `exec`, or remove the unreachable commands.
-95:3: warning: This `cd` is unchecked. (SC2164)
-    95 |    cd missing; echo wrong-directory
-       |    ^~
-note: Stop or return when `cd` fails.
-96:17: warning: The `C` command runs whenever `A` or `B` fails. (SC2015)
-    96 |    true && false || echo fallback
-       |                  ^~
-note: Use an `if` statement when C is the else branch.
 83:15: warning: A `for` loop over `ls` output breaks filenames at whitespace. (SC2045)
     83 |    for file in $(ls *.mp3); do echo "$file"; done
        |                ^~~~~~~~~~~
@@ -244,14 +229,14 @@ note: Pass the result as an argument and reference it as `$1`.
     88 |    unset values[0]
        |          ^~~~~~~~~
 note: Quote the complete array element name.
-89:8: warning: The `read` operand carries a dollar sign. (SC2229)
-    89 |    read $target
-       |         ^~~~~~~
-note: Drop the dollar sign from the variable name.
 89:3: warning: A `read` without `-r` treats a backslash in the input as an escape. (SC2162)
     89 |    read $target
        |    ^~~~~~~~~~~~
 note: Add `-r` to read the line literally.
+89:8: warning: The `read` operand carries a dollar sign. (SC2229)
+    89 |    read $target
+       |         ^~~~~~~
+note: Drop the dollar sign from the variable name.
 92:10: warning: The `printf` format consumes more arguments than the command supplies. (SC2183)
     92 |    printf '%s %s\n' one
        |           ^~~~~~~~~
@@ -260,6 +245,21 @@ note: Add the missing arguments, or remove format directives.
     93 |    command -v sudo >/dev/null 2>&1 && sudo echo protected > output
        |                                                             ^~~~~~
 note: Run a shell under `sudo` or pipe through `sudo tee`.
+94:3: warning: The `exec` replaces the shell process. (SC2093)
+    94 |    exec echo replaced; echo unreachable
+       |    ^~~~
+94:23: details:
+    94 |    exec echo replaced; echo unreachable
+       |                        ^~~~~~~~~~~~~~~~ this is the first command skipped after `exec`.
+note: Remove the `exec`, or remove the unreachable commands.
+95:3: warning: This `cd` is unchecked. (SC2164)
+    95 |    cd missing; echo wrong-directory
+       |    ^~
+note: Stop or return when `cd` fails.
+96:17: warning: The `C` command runs whenever `A` or `B` fails. (SC2015)
+    96 |    true && false || echo fallback
+       |                  ^~
+note: Use an `if` statement when C is the else branch.
 99:6: warning: The `( )` around the test starts a subshell and changes nothing else. (SC2234)
     99 |    if (test -n "$value"); then :; fi
        |       ^
@@ -276,14 +276,14 @@ note: Feed the loop with a redirection or process substitution.
    103 |    echo "$pipeline_value"
        |         ^~~~~~~~~~~~~~~~~
 note: Move the assignment outside the pipeline.
-104:9: warning: The `>` operator compares strings lexicographically. (SC2071)
-   104 |    [[ 10 > 7 ]]
-       |          ^
-note: Use an arithmetic command, or a numeric `-lt` or `-gt` operator.
 104:6: warning: Both operands of the `>` comparison are literal. (SC2050)
    104 |    [[ 10 > 7 ]]
        |       ^~~~~~
 note: Remove the constant condition or compare runtime data.
+104:9: warning: The `>` operator compares strings lexicographically. (SC2071)
+   104 |    [[ 10 > 7 ]]
+       |          ^
+note: Use an arithmetic command, or a numeric `-lt` or `-gt` operator.
 105:6: warning: Both operands of the `<` comparison are literal. (SC2050)
    105 |    [[ left < right ]]
        |       ^~~~~~~~~~~~
@@ -316,14 +316,14 @@ note: Quote the expansion to keep one argument.
    111 |    tr [A-Z] [a-z]
        |       ^~~~~
 note: Use a quoted range without brackets.
-111:12: warning: The `[` and `]` are read as members of the `tr` set. (SC2021)
-   111 |    tr [A-Z] [a-z]
-       |             ^~~~~
-note: Use a quoted range without brackets.
 111:6: warning: The unquoted `tr` range can expand as a filename glob. (SC2060)
    111 |    tr [A-Z] [a-z]
        |       ^~~~~
 note: Quote the range.
+111:12: warning: The `[` and `]` are read as members of the `tr` set. (SC2021)
+   111 |    tr [A-Z] [a-z]
+       |             ^~~~~
+note: Use a quoted range without brackets.
 111:12: warning: The unquoted `tr` range can expand as a filename glob. (SC2060)
    111 |    tr [A-Z] [a-z]
        |             ^~~~~
@@ -375,14 +375,14 @@ note: Use `$(...)` for command substitution.
    126 |    echo `date`
        |         ^~~~~~
 note: Quote it to keep one argument.
-127:11: warning: A dollar sign expands the value before the arithmetic runs. (SC2004)
-   127 |    echo $(($number + 1))
-       |            ^~~~~~~~~~~
-note: Use the variable name directly inside arithmetic.
 127:8: warning: A value from external input is evaluated as arithmetic code.
    127 |    echo $(($number + 1))
        |         ^~~~~~~~~~~~~~~~
 note: Validate the value as decimal digits before arithmetic.
+127:11: warning: A dollar sign expands the value before the arithmetic runs. (SC2004)
+   127 |    echo $(($number + 1))
+       |            ^~~~~~~~~~~
+note: Use the variable name directly inside arithmetic.
 128:5: warning: The x-prefix test workaround is obsolete. (SC2268)
    128 |    [ x"$value" = xvalue ]
        |      ^~~~~~~~~
@@ -443,6 +443,13 @@ note: Expand `HOME` before assigning `PATH`.
    142 |    echo $[1+2]
        |         ^~~~~~
 note: Use `$((...))` for arithmetic expansion.
+143:7: warning: The outer loop variable 'outer_index' is overwritten by the inner loop. (SC2167)
+   143 |    for outer_index in one; do
+       |        ^~~~~~~~~~~
+144:9: details:
+   144 |      for outer_index in two; do echo "$outer_index"; done
+       |          ^~~~~~~~~~~ the inner loop binds 'outer_index' again here.
+note: Use a distinct variable for the nested loop.
 143:22: warning: The word list is the one constant word 'one'. (SC2043)
    143 |    for outer_index in one; do
        |                       ^~~
@@ -454,13 +461,6 @@ note: Loop over a glob, a variable, or a command substitution.
    143 |    for outer_index in one; do
        |        ^~~~~~~~~~~ the outer loop first binds 'outer_index' here.
 note: Use a distinct variable for the nested loop.
-143:7: warning: The outer loop variable 'outer_index' is overwritten by the inner loop. (SC2167)
-   143 |    for outer_index in one; do
-       |        ^~~~~~~~~~~
-144:9: details:
-   144 |      for outer_index in two; do echo "$outer_index"; done
-       |          ^~~~~~~~~~~ the inner loop binds 'outer_index' again here.
-note: Use a distinct variable for the nested loop.
 144:24: warning: The word list is the one constant word 'two'. (SC2043)
    144 |      for outer_index in two; do echo "$outer_index"; done
        |                         ^~~
@@ -469,6 +469,9 @@ note: Loop over a glob, a variable, or a command substitution.
    146 |    case value in
        |         ^~~~~
 note: Add the missing `$`, or drop the `case`.
+146:8: warning: This `case` has no default `*)` branch. (SC2249)
+   146 |    case value in
+       |         ^~~~~
 147:3: warning: The pattern 'same' cannot match the `case` word 'value'. (SC2195)
    147 |    same) : ;;
        |    ^~~~
@@ -498,9 +501,6 @@ note: Move the specific pattern before the broader pattern.
 152:3: warning: The pattern 'prefix-value' cannot match the `case` word 'value'. (SC2195)
    152 |    prefix-value) : ;;
        |    ^~~~~~~~~~~~
-146:8: warning: This `case` has no default `*)` branch. (SC2249)
-   146 |    case value in
-       |         ^~~~~
 163:3: warning: A dollar sign expands the value before the arithmetic runs. (SC2004)
    163 |    ((total = $counter))
        |    ^~~~~~~~~~~~~~~~~~~~

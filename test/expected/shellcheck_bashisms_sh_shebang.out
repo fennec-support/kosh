@@ -130,20 +130,20 @@ note: Loop over a glob, a variable, or a command substitution.
     40 |    case item=$"case subject" in
        |         ^~~~~~~~~~~~~~~~~~~~
 note: Use ordinary double quotes under a `sh` shebang.
-41:5: warning: The `$"..."` quoting form is a bash extension absent from POSIX sh. (SC3004)
-    41 |      item=$"case pattern") : ;;
-       |      ^~~~~~~~~~~~~~~~~~~~
-note: Use ordinary double quotes under a `sh` shebang.
 40:8: warning: The `case` word 'item=$"case subject"' is constant. (SC2194)
     40 |    case item=$"case subject" in
        |         ^~~~~~~~~~~~~~~~~~~~
 note: Add the missing `$`, or drop the `case`.
-41:5: warning: The pattern 'item=$"case pattern"' cannot match the `case` word 'item=$"case subject"'. (SC2195)
-    41 |      item=$"case pattern") : ;;
-       |      ^~~~~~~~~~~~~~~~~~~~
 40:8: warning: This `case` has no default `*)` branch. (SC2249)
     40 |    case item=$"case subject" in
        |         ^~~~~~~~~~~~~~~~~~~~
+41:5: warning: The `$"..."` quoting form is a bash extension absent from POSIX sh. (SC3004)
+    41 |      item=$"case pattern") : ;;
+       |      ^~~~~~~~~~~~~~~~~~~~
+note: Use ordinary double quotes under a `sh` shebang.
+41:5: warning: The pattern 'item=$"case pattern"' cannot match the `case` word 'item=$"case subject"'. (SC2195)
+    41 |      item=$"case pattern") : ;;
+       |      ^~~~~~~~~~~~~~~~~~~~
 43:15: warning: The `$"..."` quoting form is a bash extension absent from POSIX sh. (SC3004)
     43 |    [[ value =~ prefix$"regex locale" ]]
        |                ^~~~~~~~~~~~~~~~~~~~~
@@ -156,20 +156,20 @@ note: Use `printf` to produce the escapes under a `sh` shebang.
     44 |    for value in item=$'for ansi'; do :; done
        |                 ^~~~~~~~~~~~~~~~
 note: Loop over a glob, a variable, or a command substitution.
-46:5: warning: The `$'...'` quoting form is a bash extension absent from POSIX sh. (SC3003)
-    46 |      item=$'case ansi') : ;;
-       |      ^~~~~~~~~~~~~~~~~
-note: Use `printf` to produce the escapes under a `sh` shebang.
 45:8: warning: The `case` word 'value' is constant. (SC2194)
     45 |    case value in
        |         ^~~~~
 note: Add the missing `$`, or drop the `case`.
-46:5: warning: The pattern 'item=$'case ansi'' cannot match the `case` word 'value'. (SC2195)
-    46 |      item=$'case ansi') : ;;
-       |      ^~~~~~~~~~~~~~~~~
 45:8: warning: This `case` has no default `*)` branch. (SC2249)
     45 |    case value in
        |         ^~~~~
+46:5: warning: The `$'...'` quoting form is a bash extension absent from POSIX sh. (SC3003)
+    46 |      item=$'case ansi') : ;;
+       |      ^~~~~~~~~~~~~~~~~
+note: Use `printf` to produce the escapes under a `sh` shebang.
+46:5: warning: The pattern 'item=$'case ansi'' cannot match the `case` word 'value'. (SC2195)
+    46 |      item=$'case ansi') : ;;
+       |      ^~~~~~~~~~~~~~~~~
 50:15: warning: The `&>` redirection is a bash extension absent from POSIX sh. (SC3020)
     50 |    echo both &>out.log
        |                ^~~~~~~
@@ -270,6 +270,10 @@ note: Remove the constant condition or compare runtime data.
     78 |    [ alpha = beta ]
        |            ^
 note: Compare a variable, or correct the operand spelling.
+82:3: warning: The `time` keyword times only a simple command in POSIX sh. (SC2176)
+    82 |    time printf 'timed\n' | wc -l
+       |    ^~~~
+note: Time one stage, or run the pipeline through `sh -c` and time that.
 83:3: warning: The `time` keyword times only a simple command in POSIX sh. (SC2177)
     83 |    time { printf 'grouped\n'; }
        |    ^~~~
@@ -278,17 +282,6 @@ note: Run the compound command through `sh -c` and time that.
     84 |    time ( printf 'subshell\n' )
        |    ^~~~
 note: Run the compound command through `sh -c` and time that.
-82:3: warning: The `time` keyword times only a simple command in POSIX sh. (SC2176)
-    82 |    time printf 'timed\n' | wc -l
-       |    ^~~~
-note: Time one stage, or run the pipeline through `sh -c` and time that.
-90:3: warning: The `exec` replaces the shell process. (SC2093)
-    90 |    exec -c env
-       |    ^~~~
-91:3: details:
-    91 |    let value=1
-       |    ^~~~~~~~~~~ this is the first command skipped after `exec`.
-note: Remove the `exec`, or remove the unreachable commands.
 88:3: warning: The `+=` assignment to 'LIST' is a bash extension absent from POSIX sh. (SC3024)
     88 |    LIST+=extra
        |    ^~~~~~~~~~~
@@ -297,6 +290,13 @@ note: Write `NAME="$NAME"value` under a `sh` shebang.
     89 |    PREFIX+=extra env
        |    ^~~~~~~~~~~~~
 note: Write `NAME="$NAME"value` under a `sh` shebang.
+90:3: warning: The `exec` replaces the shell process. (SC2093)
+    90 |    exec -c env
+       |    ^~~~
+91:3: details:
+    91 |    let value=1
+       |    ^~~~~~~~~~~ this is the first command skipped after `exec`.
+note: Remove the `exec`, or remove the unreachable commands.
 90:8: warning: The `exec` `-c` flag is a bash extension absent from POSIX sh. (SC3038)
     90 |    exec -c env
        |         ^~

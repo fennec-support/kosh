@@ -1,0 +1,5 @@
+#!/bin/env kosh
+ech hi
+cd /tmp
+echo $x
+ech2 ho

@@ -655,7 +655,22 @@ fn AnalysisContext::flush_warnings() throws -> void
     }
   }
 
-  for (let const &warning : pending_warnings) {
+  let report_order = ArrayList<usize>{heap_allocator()};
+  report_order.reserve(pending_warnings.count());
+  for (usize index = 0; index < pending_warnings.count(); index++)
+    report_order.push(index);
+  report_order.sort([this](const usize &left, const usize &right) {
+    let const &left_location = pending_warnings[left].location;
+    let const &right_location = pending_warnings[right].location;
+    if (left_location.source_name_index != right_location.source_name_index)
+      return left_location.source_name_index < right_location.source_name_index;
+    if (left_location.position != right_location.position)
+      return left_location.position < right_location.position;
+    return left < right;
+  });
+
+  for (let const report_index : report_order) {
+    let const &warning = pending_warnings[report_index];
     if (diagnostic_sink != nullptr) {
       let source_name = String{heap_allocator()};
       if (let const name = warning.location.get_filename(); name.has_value())

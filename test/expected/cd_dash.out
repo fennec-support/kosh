@@ -6,10 +6,6 @@ note: Stop or return when `cd` fails.
      5 |  cd ../second
        |  ^~
 note: Stop or return when `cd` fails.
-6:1: warning: This `cd` is unchecked. (SC2164)
-     6 |  cd - >/dev/null
-       |  ^~
-note: Stop or return when `cd` fails.
 5:1: warning: A later `cd -` undoes this directory change. (SC2103)
      5 |  cd ../second
        |  ^~
@@ -17,6 +13,10 @@ note: Stop or return when `cd` fails.
      6 |  cd - >/dev/null
        |  ^~ the working directory is restored here.
 note: Run the commands inside `( )`.
+6:1: warning: This `cd` is unchecked. (SC2164)
+     6 |  cd - >/dev/null
+       |  ^~
+note: Stop or return when `cd` fails.
 9:1: warning: This `cd` is unchecked. (SC2164)
      9 |  cd - >/dev/null
        |  ^~

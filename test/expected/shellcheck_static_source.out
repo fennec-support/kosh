@@ -1,3 +1,27 @@
+7:8: warning: An unquoted variable can split into words and expand globs. (SC2086)
+     7 |    echo $reported
+       |         ^~~~~~~~~
+note: Quote the expansion to keep one argument.
+11:16: warning: The directive key 'foobar' is unknown. (SC1107)
+    11 |    # shellcheck foobar=baz
+       |                 ^~~~~~
+note: Use `disable`, `enable`, `shell`, `source`, `source-path`, or `external-sources`.
+13:82: warning: The directive text 'not' is not a `key=value` pair. (SC1125)
+    13 |    # shellcheck disable=misspelled-variable-name,misspelled-builtin-variable-name not a misspelling
+       |                                                                                   ^~~
+note: Write the directive as `key=value`, such as `disable=SC2086` or `disable=unquoted-expansion`.
+15:14: warning: The directive follows a command on the same line. (SC1126)
+    15 |    echo three # shellcheck disable=SC2086
+       |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+note: Move the directive to its own line above the command.
+18:3: warning: The word 'elif' continues the command above the directive. (SC1123)
+    18 |    # shellcheck disable=SC2086
+       |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+note: Move the directive above the complete command.
+24:3: warning: The directive sits before a case branch. (SC1124)
+    24 |    # shellcheck disable=SC2086
+       |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+note: Move the directive above the `case` command.
 30:8: warning: The Unicode quote 'U+201C' opens no quoted string. (SC1110)
     30 |    echo “curly”
        |         ^
@@ -54,6 +78,10 @@ note: Convert the file to Unix line endings with `tr -d '\r'`.
     46 |    echo Yay \o/
        |             ^~
 note: Quote the backslash, or build the byte with `printf`.
+47:3: warning: This assignment to 'spacing' in a function has no `local`.
+    47 |    spacing=foo\tbar
+       |    ^~~~~~~~~~~~~~~~
+note: Declare it with `local` to keep it inside the function.
 47:14: warning: The escape `\t` is read by the shell as a plain 't'. (SC1012)
     47 |    spacing=foo\tbar
        |               ^~
@@ -62,46 +90,14 @@ note: Build the byte with `printf`, or write it inside `$'...'`.
     48 |    echo 'no way it\'
        |                   ^~
 note: Write the quote as `'\''` outside the single-quoted run.
-49:15: warning: The backslash and the line ending are both kept in the single-quoted text. (SC1004)
-    49 |    quoted='long \
-       |                ^~
-note: Close the quote, break the line, and reopen the quote.
-64:16: warning: A backslash carries no continuation inside a comment. (SC1143)
-    64 |    # -e "middle" \
-       |                 ^~
-note: Move the comment above the command, or wrap it in `` `# ...` ``.
-11:16: warning: The directive key 'foobar' is unknown. (SC1107)
-    11 |    # shellcheck foobar=baz
-       |                 ^~~~~~
-note: Use `disable`, `enable`, `shell`, `source`, `source-path`, or `external-sources`.
-13:82: warning: The directive text 'not' is not a `key=value` pair. (SC1125)
-    13 |    # shellcheck disable=misspelled-variable-name,misspelled-builtin-variable-name not a misspelling
-       |                                                                                   ^~~
-note: Write the directive as `key=value`, such as `disable=SC2086` or `disable=unquoted-expansion`.
-15:14: warning: The directive follows a command on the same line. (SC1126)
-    15 |    echo three # shellcheck disable=SC2086
-       |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~
-note: Move the directive to its own line above the command.
-18:3: warning: The word 'elif' continues the command above the directive. (SC1123)
-    18 |    # shellcheck disable=SC2086
-       |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~
-note: Move the directive above the complete command.
-24:3: warning: The directive sits before a case branch. (SC1124)
-    24 |    # shellcheck disable=SC2086
-       |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~
-note: Move the directive above the `case` command.
-7:8: warning: An unquoted variable can split into words and expand globs. (SC2086)
-     7 |    echo $reported
-       |         ^~~~~~~~~
-note: Quote the expansion to keep one argument.
-47:3: warning: This assignment to 'spacing' in a function has no `local`.
-    47 |    spacing=foo\tbar
-       |    ^~~~~~~~~~~~~~~~
-note: Declare it with `local` to keep it inside the function.
 49:3: warning: This assignment to 'quoted' in a function has no `local`.
     49 |    quoted='long \
        |    ^~~~~~~~~~~~~~
 note: Declare it with `local` to keep it inside the function.
+49:15: warning: The backslash and the line ending are both kept in the single-quoted text. (SC1004)
+    49 |    quoted='long \
+       |                ^~
+note: Close the quote, break the line, and reopen the quote.
 51:8: warning: The double-quoted string is closed right after `$`, and the word continues after it. (SC1135)
     51 |    echo "The apples are $""1 each"
        |         ^~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -114,6 +110,10 @@ note: Write `\$` inside the quotes.
     61 |    echo "$"
        |         ^~~
 note: Write `\$` inside the quotes.
+64:16: warning: A backslash carries no continuation inside a comment. (SC1143)
+    64 |    # -e "middle" \
+       |                 ^~
+note: Move the comment above the command, or wrap it in `` `# ...` ``.
 65:3: warning: An option-shaped word in command position is looked up as a command name. (SC2215)
     65 |    -e x file
        |    ^~
@@ -122,6 +122,10 @@ note: Place the option after its command.
     69 |    runner=printf
        |    ^~~~~~~~~~~~~
 note: Declare it with `local` to keep it inside the function.
+69:3: warning: The value of 'runner' is the command name 'printf'. (SC2209)
+    69 |    runner=printf
+       |    ^~~~~~~~~~~~~
+note: Write `runner=$(printf)` to store its output, or quote the name.
 70:3: warning: This assignment to 'linker' in a function has no `local`.
     70 |    linker=ln
        |    ^~~~~~~~~
@@ -190,8 +194,4 @@ note: Write to a temporary file and move it over.
    104 |    if true; then echo branched; fi > "file$((index++))"
        |                                      ^~~~~~~~~~~~~~~~~~
 note: Update the variable before forming the redirect path.
-69:3: warning: The value of 'runner' is the command name 'printf'. (SC2209)
-    69 |    runner=printf
-       |    ^~~~~~~~~~~~~
-note: Write `runner=$(printf)` to store its output, or quote the name.
 Encountered 48 warnings.

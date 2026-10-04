@@ -6,10 +6,6 @@ note: Stop or return when `cd` fails.
      6 |  cd ..
        |  ^~
 note: Stop or return when `cd` fails.
-8:1: warning: This `cd` is unchecked. (SC2164)
-     8 |  cd - > ../cd-output
-       |  ^~
-note: Stop or return when `cd` fails.
 6:1: warning: A later `cd -` undoes this directory change. (SC2103)
      6 |  cd ..
        |  ^~
@@ -17,6 +13,10 @@ note: Stop or return when `cd` fails.
      8 |  cd - > ../cd-output
        |  ^~ the working directory is restored here.
 note: Run the commands inside `( )`.
+8:1: warning: This `cd` is unchecked. (SC2164)
+     8 |  cd - > ../cd-output
+       |  ^~
+note: Stop or return when `cd` fails.
 10:1: warning: This `cd` is unchecked. (SC2164)
     10 |  cd ../..
        |  ^~

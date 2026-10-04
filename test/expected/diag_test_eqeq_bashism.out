@@ -1,15 +1,15 @@
-2:23: warning: The `C` command runs whenever `A` or `B` fails. (SC2015)
-     2 |  [ x == x ] && echo eq || echo neq
-       |                        ^~
-note: Use an `if` statement when C is the else branch.
-2:5: warning: `==` is undefined in POSIX `test`. (SC3014)
-     2 |  [ x == x ] && echo eq || echo neq
-       |      ^~
-note: Use `=` for string equality.
 2:3: warning: Both operands of the `==` comparison are literal. (SC2050)
      2 |  [ x == x ] && echo eq || echo neq
        |    ^~~~~~
 note: Remove the constant condition or compare runtime data.
+2:5: warning: `==` is undefined in POSIX `test`. (SC3014)
+     2 |  [ x == x ] && echo eq || echo neq
+       |      ^~
+note: Use `=` for string equality.
+2:23: warning: The `C` command runs whenever `A` or `B` fails. (SC2015)
+     2 |  [ x == x ] && echo eq || echo neq
+       |                        ^~
+note: Use an `if` statement when C is the else branch.
 Encountered 3 warnings.
 2:3: error: Builtin `[`: '==' is a bashism, use = for string equality in POSIX mode.
      2 |  [ x == x ] && echo eq || echo neq

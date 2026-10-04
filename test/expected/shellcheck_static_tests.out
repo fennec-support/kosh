@@ -5,14 +5,14 @@
      4 |  recursive_wrapper() { recursive_wrapper "$@"; }
        |  ^~~~~~~~~~~~~~~~~ 'recursive_wrapper' is defined here.
 note: Use `command` before the wrapped command name.
-7:7: warning: Arithmetic reads the `-lt` operator as a subtraction. (SC1106)
-     7 |    let "counter -lt limit"
-       |        ^~~~~~~~~~~~~~~~~~~
-note: Use the symbolic form such as `<` or `>` inside arithmetic.
 7:3: warning: The `let` builtin evaluates its argument as arithmetic. (SC2219)
      7 |    let "counter -lt limit"
        |    ^~~
 note: Write `(( ... ))` for the arithmetic.
+7:7: warning: Arithmetic reads the `-lt` operator as a subtraction. (SC1106)
+     7 |    let "counter -lt limit"
+       |        ^~~~~~~~~~~~~~~~~~~
+note: Use the symbolic form such as `<` or `>` inside arithmetic.
 8:14: warning: The `>=` operator does not exist in `test`. (SC2122)
      8 |    [[ "$left" >= "$right" ]]
        |               ^~
@@ -113,38 +113,38 @@ note: Join the two tests with `&&`.
     37 |    [[ -z == foo ]]
        |       ^~
 note: Give the operator its operand before the comparison.
-37:9: warning: The string test has a literal operand. (SC2157)
-    37 |    [[ -z == foo ]]
-       |          ^~
-note: Test a variable or drop the check.
 37:6: warning: Both operands of the `==` comparison are literal. (SC2050)
     37 |    [[ -z == foo ]]
        |       ^~~~~~~~~
 note: Remove the constant condition or compare runtime data.
+37:9: warning: The string test has a literal operand. (SC2157)
+    37 |    [[ -z == foo ]]
+       |          ^~
+note: Test a variable or drop the check.
 41:3: warning: A `[ ]` test does not take `&&`. (SC2107)
     41 |    [ "$left" = a && "$right" = b ]
        |    ^
 note: Write `[ a ] && [ b ]`.
-41:33: warning: The trailing `]` has no opening `[`. (SC2171)
-    41 |    [ "$left" = a && "$right" = b ]
-       |                                  ^
-note: Add the opening `[`, or quote the bracket when it is data.
 41:29: warning: An assignment with spaces around equals is read as a command and its arguments. (SC2283)
     41 |    [ "$left" = a && "$right" = b ]
        |                              ^
 note: Write `NAME=value` without spaces.
+41:33: warning: The trailing `]` has no opening `[`. (SC2171)
+    41 |    [ "$left" = a && "$right" = b ]
+       |                                  ^
+note: Add the opening `[`, or quote the bracket when it is data.
 42:3: warning: A `[ ]` test does not take `||`. (SC2109)
     42 |    [ "$left" = a || "$right" = b ]
        |    ^
 note: Write `[ a ] || [ b ]`.
-42:33: warning: The trailing `]` has no opening `[`. (SC2171)
-    42 |    [ "$left" = a || "$right" = b ]
-       |                                  ^
-note: Add the opening `[`, or quote the bracket when it is data.
 42:29: warning: An assignment with spaces around equals is read as a command and its arguments. (SC2283)
     42 |    [ "$left" = a || "$right" = b ]
        |                              ^
 note: Write `NAME=value` without spaces.
+42:33: warning: The trailing `]` has no opening `[`. (SC2171)
+    42 |    [ "$left" = a || "$right" = b ]
+       |                                  ^
+note: Add the opening `[`, or quote the bracket when it is data.
 43:17: warning: The trailing `]` has no opening `[`. (SC2171)
     43 |    echo trailing ]
        |                  ^
@@ -173,22 +173,22 @@ note: Group the expression with `( )`.
     47 |    [[ { "$left" = a } ]]
        |                     ^
 note: Group the expression with `( )`.
+48:5: warning: A one-operand test is the nonempty-string test. (SC2244)
+    48 |    [ "$left" > "$right" ]
+       |      ^~~~~~~
+note: Write it with `-n`.
 48:15: warning: The `>` is a file redirection. (SC2065)
     48 |    [ "$left" > "$right" ]
        |                ^~~~~~~~
 note: Escape it as `\>`, or use the `[[ ]]` form.
-48:5: warning: A one-operand test is the nonempty-string test. (SC2244)
-    48 |    [ "$left" > "$right" ]
+49:5: warning: A one-operand test is the nonempty-string test. (SC2244)
+    49 |    [ "$left" < "$right" ]
        |      ^~~~~~~
 note: Write it with `-n`.
 49:15: warning: The `<` reads a file into the test. (SC2073)
     49 |    [ "$left" < "$right" ]
        |                ^~~~~~~~
 note: Escape it as `\<`, or use the `[[ ]]` form.
-49:5: warning: A one-operand test is the nonempty-string test. (SC2244)
-    49 |    [ "$left" < "$right" ]
-       |      ^~~~~~~
-note: Write it with `-n`.
 50:18: warning: The redirect writes to the file named '2'. (SC2210)
     50 |    echo written > 2
        |                   ^
@@ -356,21 +356,6 @@ note: Use `grep -q` and test its exit status.
     92 |    printf 'plain\n' one two
        |           ^~~~~~~~~
 note: Add a format directive, or remove the extra operands.
-107:3: warning: This `cd` is unchecked. (SC2164)
-   107 |    cd /tmp
-       |    ^~
-note: Stop or return when `cd` fails.
-108:3: warning: This `cd` is unchecked. (SC2164)
-   108 |    cd -
-       |    ^~
-note: Stop or return when `cd` fails.
-107:3: warning: A later `cd -` undoes this directory change. (SC2103)
-   107 |    cd /tmp
-       |    ^~
-108:3: details:
-   108 |    cd -
-       |    ^~ the working directory is restored here.
-note: Run the commands inside `( )`.
 98:14: warning: The expansion in this `ssh` operand runs on the client before `ssh` starts. (SC2029)
     98 |    ssh remote "echo $value"
        |               ^~~~~~~~~~~~~
@@ -399,14 +384,29 @@ note: Wrap the call in `sh -c`, or move the body into its own script.
    105 |    find . -execdir helper_function {} \;
        |                    ^~~~~~~~~~~~~~~
 note: Wrap the call in `sh -c`, or move the body into its own script.
-106:14: warning: The function 'helper_function' is not visible to an external command. (SC2033)
-   106 |    ls | xargs helper_function
-       |               ^~~~~~~~~~~~~~~
-note: Wrap the call in `sh -c`, or move the body into its own script.
 106:8: warning: The `ls` listing splits a name with a space or a newline before `xargs` reads it. (SC2011)
    106 |    ls | xargs helper_function
        |         ^~~~~
 note: Use `find -print0` with `xargs -0`, or `find -exec`.
+106:14: warning: The function 'helper_function' is not visible to an external command. (SC2033)
+   106 |    ls | xargs helper_function
+       |               ^~~~~~~~~~~~~~~
+note: Wrap the call in `sh -c`, or move the body into its own script.
+107:3: warning: This `cd` is unchecked. (SC2164)
+   107 |    cd /tmp
+       |    ^~
+note: Stop or return when `cd` fails.
+107:3: warning: A later `cd -` undoes this directory change. (SC2103)
+   107 |    cd /tmp
+       |    ^~
+108:3: details:
+   108 |    cd -
+       |    ^~ the working directory is restored here.
+note: Run the commands inside `( )`.
+108:3: warning: This `cd` is unchecked. (SC2164)
+   108 |    cd -
+       |    ^~
+note: Stop or return when `cd` fails.
 109:3: warning: The `break` command stands in a function outside any loop. (SC2104)
    109 |    break
        |    ^~~~~
@@ -415,20 +415,20 @@ note: Use `return` to leave the function.
    110 |    set assigned=value
        |        ^~~~~~~~~~~~~~
 note: Write `assigned=value` on its own.
+111:10: warning: The code 'one' is not a number from 0 to 255, and `return` either rejects it or wraps it modulo 256. (SC2242)
+   111 |    return one two
+       |           ^~~
 111:14: warning: The `return` builtin takes one number from 0 to 255. (SC2151)
    111 |    return one two
        |               ^~~
 note: Write the other data to standard output.
-111:10: warning: The code 'one' is not a number from 0 to 255, and `return` either rejects it or wraps it modulo 256. (SC2242)
-   111 |    return one two
-       |           ^~~
+112:8: warning: The code 'one' is not a number from 0 to 255, and `exit` either rejects it or wraps it modulo 256. (SC2242)
+   112 |    exit one two
+       |         ^~~
 112:12: warning: The `exit` builtin takes one number from 0 to 255. (SC2241)
    112 |    exit one two
        |             ^~~
 note: Write the other data to standard output.
-112:8: warning: The code 'one' is not a number from 0 to 255, and `exit` either rejects it or wraps it modulo 256. (SC2242)
-   112 |    exit one two
-       |         ^~~
 113:10: warning: An unquoted command substitution splits its output into words and expands globs. (SC2046)
    113 |    return $(echo 5)
        |           ^~~~~~~~~
