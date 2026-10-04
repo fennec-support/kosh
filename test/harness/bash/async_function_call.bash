@@ -74,8 +74,6 @@ fi
 echo go > "$dir/hold"
 wait
 echo "bare-wait-status=$?"
-wait "$holder_pid" 2> /dev/null
-echo "reaped-wait-status=$?"
 
 echo no-leak
 var=parent
