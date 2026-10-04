@@ -4,7 +4,8 @@
  *
  * This file implements command-line and builtin option parsing. It owns flag
  * declarations, help rendering, operand collection, validation, and located
- * usage errors.
+ * usage errors. It also declares the ReportTable grid whose rendering rules are
+ * described in CLI.cpp.
  */
 
 #pragma once
@@ -423,6 +424,14 @@ public:
   {
     m_column_gap_space_count = space_count;
   }
+  fn set_empty_visible(bool should_show_empty) wontthrow -> void
+  {
+    m_should_show_empty = should_show_empty;
+  }
+  pure fn get_row_count() const wontthrow -> usize
+  {
+    return m_grid_rows.count();
+  }
   fn add_row(const ArrayList<report_table_cell_view> &cells) throws -> void;
   fn to_string() const throws -> String;
   fn to_string(bool should_color, StringView indentation = "  ") const throws
@@ -432,6 +441,7 @@ private:
   ArrayList<report_table_column> m_columns;
   ArrayList<ArrayList<report_table_cell>> m_grid_rows;
   bool m_should_show_header{true};
+  bool m_should_show_empty{false};
   usize m_column_gap_space_count{2};
 };
 fn append_titled_report_table(String &output, StringView title,

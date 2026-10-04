@@ -4,7 +4,11 @@
  *
  * This file implements command-line and builtin option parsing. It owns flag
  * declarations, help rendering, operand collection, validation, and located
- * usage errors.
+ * usage errors. It also renders ReportTable grids. A rendered row never ends
+ * in a space, so the last left-aligned column is not padded and a right-aligned
+ * column keeps its left padding. A table with no rows renders nothing, title
+ * included, unless the caller selects set_empty_visible. A titled table puts
+ * its title at the section indentation and its body two spaces beneath it.
  */
 
 #include "CLI.hpp"
@@ -1195,18 +1199,9 @@ static fn append_report_grid(
     }
   }
 
-  let const append_grid_column = [&](String &target, StringView text,
-                                     usize width, bool is_right_aligned,
-                                     StringView style) throws -> void {
-    let const text_width = toiletline::get_display_width(text);
-    let const padding_length = text_width < width ? width - text_width : 0;
-    if (is_right_aligned) target.append_repeated(' ', padding_length);
-    append_report_text(target, text, style, should_color);
-    if (!is_right_aligned) target.append_repeated(' ', padding_length);
-  };
-
   let const append_row = [&](const ArrayList<report_table_cell> &row) throws {
-    output += indentation;
+    usize pending_space_count = 0;
+    bool did_write_indentation = false;
     for (usize index = 0; index < column_count; index++) {
       let const text =
           index < row.count() ? row[index].text.view() : StringView{};
@@ -1216,9 +1211,20 @@ static fn append_report_grid(
       let const is_right_aligned =
           index < columns.count() &&
           columns[index].alignment == report_table_alignment::Right;
-      append_grid_column(output, text, widths[index], is_right_aligned, style);
-      if (index + 1 < column_count)
-        output.append_repeated(' ', column_gap_space_count);
+      let const text_width = toiletline::get_display_width(text);
+      let const padding_length =
+          text_width < widths[index] ? widths[index] - text_width : 0;
+
+      if (is_right_aligned) pending_space_count += padding_length;
+      if (!text.is_empty()) {
+        if (!did_write_indentation) output += indentation;
+        did_write_indentation = true;
+        output.append_repeated(' ', pending_space_count);
+        pending_space_count = 0;
+        append_report_text(output, text, style, should_color);
+      }
+      if (!is_right_aligned) pending_space_count += padding_length;
+      pending_space_count += column_gap_space_count;
     }
     output += '\n';
   };
@@ -1241,6 +1247,8 @@ fn ReportTable::to_string(bool should_color,
                           StringView indentation) const throws -> String
 {
   let output = String{m_columns.allocator()};
+  if (m_grid_rows.is_empty() && !m_should_show_empty) return output;
+
   append_report_grid(output, m_columns, m_grid_rows, should_color, indentation,
                      m_should_show_header, m_column_gap_space_count);
   return output;
@@ -1252,15 +1260,17 @@ fn append_titled_report_table(String &output, StringView title,
                               const ReportTable &table,
                               bool should_color) throws -> void
 {
+  let const body = table.to_string(should_color, "  ");
+  if (body.is_empty()) return;
+
   if (!output.is_empty()) {
     while (!output.is_empty() && output.back() == '\n')
       output.truncate(output.length() - 1);
     output += "\n\n";
   }
-  output += "  ";
   append_report_text(output, title, colors::ansi::BOLD_BLUE, should_color);
   output += '\n';
-  output += table.to_string(should_color, "  ").view();
+  output += body.view();
 }
 
 static pure fn report_indentation_width(StringView indentation) wontthrow
