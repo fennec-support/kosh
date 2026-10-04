@@ -138,8 +138,9 @@ fn EvalContext::function_definition_info_of(StringView name) const wontthrow
 }
 
 pure fn EvalContext::resolve_render_source(
-    const SourceLocation &location,
-    const String *fallback_source) const wontthrow -> resolved_render_source
+    const SourceLocation &location, const String *fallback_source,
+    usize call_depth_limit, usize call_depth_floor) const wontthrow
+    -> resolved_render_source
 {
   let resolved_source = resolved_render_source{};
   resolved_source.text = fallback_source != nullptr
@@ -148,9 +149,24 @@ pure fn EvalContext::resolve_render_source(
 
   if (function_store().call_names().is_empty()) return resolved_source;
 
-  for (usize depth = function_store().call_storages().count(); depth > 0;
-       depth--)
-  {
+  let const first_depth =
+      function_store().call_storages().count() < call_depth_limit
+          ? function_store().call_storages().count()
+          : call_depth_limit;
+  usize lowest_depth = call_depth_floor;
+  if (lowest_depth == static_cast<usize>(-1)) {
+    lowest_depth = 0;
+    for (usize index = source_store().source_frames().count(); index > 0;
+         index--)
+    {
+      let const &frame = source_store().source_frames()[index - 1];
+      if (!frame.does_change_source) continue;
+
+      lowest_depth = frame.function_call_depth;
+      break;
+    }
+  }
+  for (usize depth = first_depth; depth > lowest_depth; depth--) {
     let const &storage = function_store().call_storages()[depth - 1];
     let const *info = storage.get_definition_info();
     if (info == nullptr) continue;
@@ -163,6 +179,16 @@ pure fn EvalContext::resolve_render_source(
     let const body_length = copy->count() - info->header_length;
     if (location.position < info->body_start_position ||
         location.position >= info->body_start_position + body_length)
+    {
+      continue;
+    }
+
+    let const *rendered_source = resolved_source.text;
+    if (rendered_source != nullptr &&
+        rendered_source->count() >= info->body_start_position + body_length &&
+        rendered_source->view().substring_of_length(info->body_start_position,
+                                                    body_length) ==
+            copy->view().substring(info->header_length))
     {
       continue;
     }
@@ -182,6 +208,23 @@ pure fn EvalContext::resolve_render_source(
     resolved_source.source_name_index = info->source_name_index;
     return resolved_source;
   }
+
+  return resolved_source;
+}
+
+pure fn EvalContext::resolve_current_function_window(
+    StringView rendered_source, const SourceLocation &location) const wontthrow
+    -> resolved_render_source
+{
+  let const *current = source_store().current_source();
+  if (current == nullptr || rendered_source.data != current->view().data ||
+      rendered_source.length != current->view().length)
+  {
+    return resolved_render_source{};
+  }
+
+  let resolved_source = resolve_render_source(location);
+  if (!resolved_source.is_windowed) return resolved_render_source{};
 
   return resolved_source;
 }
@@ -393,11 +436,14 @@ fn EvalContext::run_named_trap(StringView condition,
      action is traced back to the line that fired the trap. */
   let const cached_action = cached_trap_body(condition, action->view());
 
+  let const definition = find_trap_definition(condition, action->view());
+
   run_source(action->view(),
              "the " + String{heap_allocator(), condition} + " trap",
              trigger_site, None, nullptr,
              cached_action.has_value() ? &cached_action : nullptr,
-             return_handling::Reject);
+             return_handling::Reject, history_recording::Disabled,
+             definition.has_value() ? &*definition : nullptr);
 
   restore_trap_pipe_statuses(has_saved_pipe_statuses,
                              steal(saved_pipe_statuses));
@@ -515,7 +561,60 @@ pure fn EvalContext::is_signal_ignored_at_startup(
   return (ignored & (u64{1} << (*number - 1))) != 0;
 }
 
-fn EvalContext::set_trap(StringView condition, StringView action) throws -> void
+fn EvalContext::capture_trap_definition(const SourceLocation &location,
+                                        StringView action) throws
+    -> trap_definition
+{
+  let definition = trap_definition{
+      String{heap_allocator(), action},
+      String{heap_allocator()},
+      location, 0
+  };
+  let const resolved_source = resolve_render_source(location);
+  if (resolved_source.text == nullptr) return definition;
+
+  let const source = resolved_source.text->view();
+  let const position = resolved_source.to_render_position(location.position);
+  if (position >= source.length) return definition;
+
+  let const line_position = utils::source_line_position_at(source, position);
+  let const line_source = source.substring_of_length(
+      line_position.line_start,
+      line_position.line_end - line_position.line_start);
+  let const available_length =
+      line_source.length - (position - line_position.line_start);
+
+  definition.line_source = String{heap_allocator(), line_source};
+  definition.location = SourceLocation{
+      position - line_position.line_start,
+      location.length < available_length ? location.length : available_length,
+      resolved_source.is_windowed ? resolved_source.source_name_index
+                                  : location.source_name_index};
+  definition.line_offset =
+      static_cast<isize>(line_position.line_number) +
+      (resolved_source.is_windowed ? resolved_source.line_offset : 0);
+
+  return definition;
+}
+
+fn EvalContext::find_trap_definition(StringView condition,
+                                     StringView action) const wontthrow
+    -> Maybe<trap_definition>
+{
+  let const definition = trap_store().definitions().find(condition);
+  if (!definition.has_value() || definition->action_text.view() != action)
+    return None;
+
+  try {
+    return trap_definition{*definition.value()};
+  } catch (...) {
+    return None;
+  }
+}
+
+fn EvalContext::set_trap(StringView condition, StringView action,
+                         Maybe<SourceLocation> definition_location) throws
+    -> void
 {
   if (is_signal_ignored_at_startup(condition)) {
     LOG(Info, "keeping '%.*s' ignored because the shell inherited it ignored",
@@ -527,6 +626,12 @@ fn EvalContext::set_trap(StringView condition, StringView action) throws -> void
       static_cast<int>(condition.length), condition.data, action.length);
   discard_inherited_signal_traps();
   trap_store().actions().set(condition, action);
+  if (definition_location.has_value()) {
+    trap_store().definitions().set(
+        condition, capture_trap_definition(*definition_location, action));
+  } else {
+    trap_store().definitions().erase(condition);
+  }
   refresh_trap_flags();
   /* A trap installed inside a function, a subshell, or a substitution traces
      that frame without functrace or errtrace. An inherited trap needs the
@@ -575,6 +680,7 @@ fn EvalContext::remove_trap(StringView condition) throws -> void
       condition.data);
   discard_inherited_signal_traps();
   trap_store().actions().erase(condition);
+  trap_store().definitions().erase(condition);
   refresh_trap_flags();
   if (condition == "EXIT") return;
   if (let const number = os::signal_number_from_name(condition))
@@ -715,10 +821,14 @@ fn EvalContext::run_pending_traps() throws -> void
         let const cached_action =
             cached_trap_body(name->view(), action->view());
 
+        let const definition =
+            find_trap_definition(name->view(), action->view());
+
         run_source(action->view(), "the " + *name + " trap",
                    source_store().current_location(), None, nullptr,
                    cached_action.has_value() ? &cached_action : nullptr,
-                   return_handling::Reject);
+                   return_handling::Reject, history_recording::Disabled,
+                   definition.has_value() ? &*definition : nullptr);
       }
 
     /* A return, a break, or an exit the action requested leaves the remaining
@@ -744,6 +854,8 @@ fn EvalContext::run_pending_traps() throws -> void
         trap_store().running_trap_conditions() &= static_cast<u8>(~child_bit);
       };
 
+      let const child_definition =
+          find_trap_definition(child_condition, action.view());
       let const child_body = cached_trap_body(child_condition, action.view());
       let const *cached_child_body =
           child_body.has_value() ? &child_body : nullptr;
@@ -765,7 +877,9 @@ fn EvalContext::run_pending_traps() throws -> void
         LOG(Info, "running the trap action for signal 'CHLD'");
         run_source(action.view(), "the CHLD trap",
                    source_store().current_location(), None, nullptr,
-                   cached_child_body, return_handling::Reject);
+                   cached_child_body, return_handling::Reject,
+                   history_recording::Disabled,
+                   child_definition.has_value() ? &*child_definition : nullptr);
       }
     }
   }
@@ -819,8 +933,12 @@ cold fn EvalContext::run_exit_trap(Maybe<i32> final_status) throws -> void
       action.has_value())
     if (action->count() > 0) {
       LOG(Info, "running the EXIT trap action at shell exit");
+      let const definition =
+          find_trap_definition(StringView{"EXIT", 4}, action->view());
+
       run_source(action->view(), "the EXIT trap", None, None, nullptr, nullptr,
-                 return_handling::Reject);
+                 return_handling::Reject, history_recording::Disabled,
+                 definition.has_value() ? &*definition : nullptr);
     }
 
   restore_trap_pipe_statuses(has_saved_pipe_statuses,
@@ -881,8 +999,12 @@ cold fn EvalContext::run_subshell_exit_trap() throws -> Maybe<i32>
       action.has_value())
     if (action->count() > 0) {
       LOG(Info, "running the EXIT trap action the subshell set at its end");
+      let const definition =
+          find_trap_definition(StringView{"EXIT", 4}, action->view());
+
       run_source(action->view(), "the EXIT trap", None, None, nullptr, nullptr,
-                 return_handling::Reject);
+                 return_handling::Reject, history_recording::Disabled,
+                 definition.has_value() ? &*definition : nullptr);
 
       if (control_flow_store().has_pending() &&
           control_flow_store().pending().kind == control_flow::Kind::Exit)

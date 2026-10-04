@@ -46,6 +46,96 @@ fn EvalContext::render_contained_substitution_error(
   }
 }
 
+fn EvalContext::register_embedded_source(
+    StringView inner, const SourceLocation &parent_location) throws -> bool
+{
+  let const *parent = source_store().current_source();
+  if (parent == nullptr || parent_location.length == 0 || inner.is_empty() ||
+      parent_location.position > parent->count() ||
+      parent_location.length > parent->count() - parent_location.position)
+  {
+    return false;
+  }
+
+  let const span = parent->view().substring_of_length(parent_location.position,
+                                                      parent_location.length);
+  Maybe<usize> inner_offset = None;
+  static constexpr usize PREFIX_LENGTHS[] = {2, 1, 0};
+  for (let const prefix_length : PREFIX_LENGTHS) {
+    if (span.length >= prefix_length &&
+        span.substring(prefix_length).starts_with(inner))
+    {
+      inner_offset = prefix_length;
+      break;
+    }
+  }
+  if (!inner_offset.has_value()) return false;
+
+  source_store().embedded_sources().push(
+      embedded_source{inner, parent, parent_location, *inner_offset});
+  return true;
+}
+
+fn EvalContext::unregister_embedded_source() wontthrow -> void
+{
+  source_store().embedded_sources().pop_back();
+}
+
+fn EvalContext::map_embedded_site(StringView &rendered_source,
+                                  SourceLocation &location) const wontthrow
+    -> const String *
+{
+  const String *mapped_parent = nullptr;
+  usize remaining_steps = source_store().embedded_sources().count();
+  while (remaining_steps-- > 0) {
+    const embedded_source *match = nullptr;
+    for (usize index = source_store().embedded_sources().count(); index > 0;
+         index--)
+    {
+      let const &candidate = source_store().embedded_sources()[index - 1];
+      if (candidate.text.data == rendered_source.data &&
+          candidate.text.length == rendered_source.length)
+      {
+        match = &candidate;
+        break;
+      }
+    }
+    if (match == nullptr) break;
+
+    location.position =
+        static_cast<u32>(match->parent_location.position + match->inner_offset +
+                         location.position);
+    location.source_name_index = match->parent_location.source_name_index;
+    mapped_parent = match->parent;
+    rendered_source = match->parent->view();
+  }
+
+  return mapped_parent;
+}
+
+pure fn EvalContext::embedded_source_name_index() const wontthrow -> Maybe<u32>
+{
+  if (source_store().embedded_sources().is_empty()) return None;
+
+  let const *entry = &source_store().embedded_sources().back();
+  for (usize step = 0; step < source_store().embedded_sources().count(); step++)
+  {
+    const embedded_source *outer = nullptr;
+    for (let const &candidate : source_store().embedded_sources()) {
+      if (candidate.text.data == entry->parent->view().data &&
+          candidate.text.length == entry->parent->view().length)
+      {
+        outer = &candidate;
+      }
+    }
+    if (outer == nullptr) break;
+
+    entry = outer;
+  }
+
+  return entry->parent_location.source_name_index;
+}
+
 static constexpr usize DRAIN_CHUNK_LENGTH = 4096;
 
 struct command_substitution_drain_context
@@ -161,6 +251,13 @@ fn EvalContext::capture_command_substitution(
     if (did_push_source_frame) source_store().source_frames().pop_back();
   };
 
+  let const did_register_embedded =
+      call_site != nullptr &&
+      register_embedded_source(normalized_source.view(), *call_site);
+  defer
+  {
+    if (did_register_embedded) unregister_embedded_source();
+  };
   let parser = Parser{
       Lexer{normalized_source.view(), *arena_store().parse_arena(),
             steal(filename), runtime_state().get_mood()}
@@ -208,6 +305,15 @@ fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
   defer
   {
     if (did_push_source_frame) source_store().source_frames().pop_back();
+  };
+  let const segment_location = segment.get_source_location(
+      source_store().current_location().source_name_index);
+  let const did_register_embedded =
+      segment_location.has_value() &&
+      register_embedded_source(substitution_source.view(), *segment_location);
+  defer
+  {
+    if (did_register_embedded) unregister_embedded_source();
   };
   let parser = Parser{
       Lexer{substitution_source.view(), *arena_store().parse_arena(), None,
@@ -391,6 +497,15 @@ fn EvalContext::capture_command_substitution(const WordSegment &segment) throws
       !cache_arena->is_lifetime_valid(cache.substitution_lifetime))
   {
     LOG(Debug, "command substitution ast cache miss, reparsing");
+    let const segment_location = segment.get_source_location(
+        source_store().current_location().source_name_index);
+    let const did_register_embedded =
+        segment_location.has_value() &&
+        register_embedded_source(segment.text.view(), *segment_location);
+    defer
+    {
+      if (did_register_embedded) unregister_embedded_source();
+    };
     let const allocation_kind = segment.is_substitution_cache_in_function_arena
                                     ? ParseSession::AllocationKind::FunctionBody
                                     : ParseSession::AllocationKind::Syntax;
@@ -446,6 +561,9 @@ fn EvalContext::push_substitution_source_frame(const SourceLocation &location,
       String{heap_allocator()},
       source_frame_kind::Ordinary
   });
+  source_store().source_frames().back().function_call_depth =
+      function_store().call_names().count();
+  source_store().source_frames().back().does_change_source = false;
   return true;
 }
 
@@ -466,6 +584,13 @@ fn EvalContext::run_captured_substitution(
   let const previous_source = source_store().current_source();
   let const previous_origin = source_store().current_origin();
   let const previous_location = source_store().current_location();
+  let const did_register_embedded =
+      call_site.has_value() &&
+      register_embedded_source(source.view(), *call_site);
+  defer
+  {
+    if (did_register_embedded) unregister_embedded_source();
+  };
   set_current_source(&source, previous_origin.clone());
   let const did_push_line_base = call_site.has_value();
   if (did_push_line_base) {

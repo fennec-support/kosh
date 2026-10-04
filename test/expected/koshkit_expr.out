@@ -8,3 +8,6 @@ expr-false=1
      9 |  (koshkit expr x : '[') 2>&1
        |                    ^~~
 note: use a valid basic regular expression.
+9:1: trace:
+     9 |  (koshkit expr x : '[') 2>&1
+       |  ^

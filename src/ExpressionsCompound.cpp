@@ -221,6 +221,7 @@ hot fn CompoundList::evaluate_root_status_impl(
            the function. An error a deeper frame already rendered keeps its
            status without a second render. */
         if (!error.was_rendered()) {
+          let const trace_location = error.location();
           if (let const windowed = window_function_body_error(cxt, error);
               windowed.has_value())
           {
@@ -230,6 +231,7 @@ hot fn CompoundList::evaluate_root_status_impl(
             show_message(error.to_string(
                 source != nullptr ? source->view() : StringView{}, &cxt));
           }
+          cxt.print_source_backtrace(trace_location, false);
           error.set_rendered();
         }
         return {static_cast<i32>(
@@ -697,8 +699,10 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
           stage_status = KOSH_BROKEN_PIPE_EXIT_STATUS;
         } catch (const ErrorWithLocation &e) {
           const String *source = cxt.source_store().current_source();
-          koshka::show_message(e.to_string(
-              source != nullptr ? source->view() : StringView{}, &cxt));
+          if (!e.was_rendered()) {
+            koshka::show_message(e.to_string(
+                source != nullptr ? source->view() : StringView{}, &cxt));
+          }
           stage_status = 1;
         } catch (const Error &e) {
           koshka::show_message(e.to_string());
@@ -910,14 +914,18 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
           cxt.runtime_state().is_shopt_enabled(shopt_option_id::Checkhash),
           cxt.resolution_store().resolver(), steal(stage_arg_locations),
           cxt.runtime_state().get_mood(), cxt.is_shopt_enabled("autocd"));
-    } catch (const CommandResolutionErrorWithLocation &resolution_error) {
+    } catch (CommandResolutionErrorWithLocation &resolution_error) {
       /* The stage still applies its own redirections. A > onto its stdout takes
          the slot ahead of the pipe. The next stage still sees EOF. The message
          is rendered here and written once the pipeline has placed every
          descriptor. A stage that merges into the pipe carries it there. */
       let const *error_source = cxt.source_store().current_source();
+      let const windowed = window_function_body_error(cxt, resolution_error);
       let const rendered = resolution_error.to_string(
-          error_source != nullptr ? error_source->view() : StringView{}, &cxt);
+          windowed.has_value()      ? *windowed
+          : error_source != nullptr ? error_source->view()
+                                    : StringView{},
+          &cxt);
       let unresolved = ExecContext::make_from_unresolved(
           e->source_location(),
           static_cast<i32>(resolution_error.command_status()), rendered.view());

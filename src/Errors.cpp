@@ -485,11 +485,67 @@ ErrorWithLocation::ErrorWithLocation(SourceLocation location,
       m_location.position, m_location.length);
 }
 
+struct rendered_site
+{
+  StringView source;
+  SourceLocation location;
+  isize line_offset;
+};
+
+/* A location inside a function body names the defining file, while the caller
+   renders against whatever source is current. The stored definition copy is
+   the text the position belongs to. */
+cold static fn resolve_rendered_site(StringView source,
+                                     const SourceLocation &location,
+                                     isize line_offset, bool is_rebased,
+                                     EvalContext *context) wontthrow
+    -> rendered_site
+{
+  if (context == nullptr) return rendered_site{source, location, line_offset};
+
+  let mapped_source = source;
+  let mapped_location = location;
+  if (let const *parent =
+          context->map_embedded_site(mapped_source, mapped_location);
+      parent != nullptr)
+  {
+    let const parent_site = context->resolve_render_source(
+        mapped_location, parent, static_cast<usize>(-1), 0);
+    if (parent_site.is_windowed && parent_site.text != nullptr) {
+      mapped_location.position = static_cast<u32>(
+          parent_site.to_render_position(mapped_location.position));
+      mapped_location.source_name_index = parent_site.source_name_index;
+
+      return rendered_site{parent_site.text->view(), mapped_location,
+                           parent_site.line_offset};
+    }
+
+    return rendered_site{mapped_source, mapped_location, 0};
+  }
+
+  if (is_rebased) return rendered_site{source, location, line_offset};
+
+  let const resolved =
+      context->resolve_current_function_window(source, location);
+  if (!resolved.is_windowed || resolved.text == nullptr)
+    return rendered_site{source, location, line_offset};
+
+  let rebased = location;
+  rebased.position =
+      static_cast<u32>(resolved.to_render_position(location.position));
+  rebased.source_name_index = resolved.source_name_index;
+
+  return rendered_site{resolved.text->view(), rebased, resolved.line_offset};
+}
+
 fn ErrorWithLocation::to_string(StringView source,
                                 EvalContext *context) const throws -> String
 {
-  usize byte_position = m_location.position;
-  let const byte_count = m_location.length;
+  let const site = resolve_rendered_site(source, m_location, m_line_offset,
+                                         m_is_rebased, context);
+  source = site.source;
+  usize byte_position = site.location.position;
+  let const byte_count = site.location.length;
 
   /* The location can name a byte in a source other than the one rendered, so
      the caret would read out of bounds and the message renders unlocated. */
@@ -524,12 +580,14 @@ fn ErrorWithLocation::to_string(StringView source,
 
   let result = String{heap_allocator()};
   result += color.location;
-  if (let const name = m_location.get_filename(); name.has_value()) {
+  if (let const name = site.location.get_filename();
+      name.has_value() && !m_is_filename_hidden)
+  {
     result += *name;
     result += ':';
   }
   result += String::from(
-      reported_line_number(line_position.line_number, m_line_offset),
+      reported_line_number(line_position.line_number, site.line_offset),
       heap_allocator());
   result += ':';
   result += String::from(line_byte_position, heap_allocator());
@@ -553,7 +611,7 @@ fn ErrorWithLocation::to_string(StringView source,
 
   result +=
       get_context_pointing_to(source, byte_position, byte_count, line_position,
-                              m_line_offset, None, color, context);
+                              site.line_offset, None, color, context);
   result += trailing_details_to_string();
   return result;
 }
@@ -590,8 +648,9 @@ cold fn WarningWithLocation::get_severity() const wontthrow -> error_severity
   return error_severity::warning;
 }
 
-TraceWithLocation::TraceWithLocation(SourceLocation location)
-    : ErrorWithLocation(steal(location), {})
+TraceWithLocation::TraceWithLocation(SourceLocation location,
+                                     StringView message)
+    : ErrorWithLocation(steal(location), message)
 {}
 
 cold fn TraceWithLocation::get_severity() const wontthrow -> error_severity
@@ -630,8 +689,11 @@ cold fn DetailsWithLocation::to_string(StringView source,
 {
   if (m_message.is_empty()) return String{heap_allocator()};
 
-  usize byte_position = m_location.position;
-  let const byte_count = m_location.length;
+  let const site = resolve_rendered_site(source, m_location, m_line_offset,
+                                         m_is_rebased, context);
+  source = site.source;
+  usize byte_position = site.location.position;
+  let const byte_count = site.location.length;
 
   /* The out-of-source guard renders nothing when the location names another
      source, so the caret never reads past the end. */
@@ -659,12 +721,14 @@ cold fn DetailsWithLocation::to_string(StringView source,
 
   let result = String{heap_allocator()};
   result += color.location;
-  if (let const name = m_location.get_filename(); name.has_value()) {
+  if (let const name = site.location.get_filename();
+      name.has_value() && !m_is_filename_hidden)
+  {
     result += *name;
     result += ':';
   }
   result += String::from(
-      reported_line_number(details_line_position.line_number, m_line_offset),
+      reported_line_number(details_line_position.line_number, site.line_offset),
       heap_allocator());
   result += ':';
   result += String::from(details_line_byte_position, heap_allocator());
@@ -677,7 +741,7 @@ cold fn DetailsWithLocation::to_string(StringView source,
   result += ":\n";
 
   result += get_context_pointing_to(source, byte_position, byte_count,
-                                    details_line_position, m_line_offset,
+                                    details_line_position, site.line_offset,
                                     m_message.view(), color, context);
   return result;
 }

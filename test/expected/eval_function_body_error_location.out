@@ -6,12 +6,18 @@ eval:1:11: error: Division by zero.
      1 |  f(){ echo $((1/0)); }
        |            ^~~~~~~~
 note: The right operand evaluated to 0.
+1:0: trace:
+     1 |  eval "f(){ echo \$((1/0)); }"; f
+       |                                 ^~~~
 rc=1
 == bash mood, literal eval argument ==
 eval:1:11: error: Division by zero.
      1 |  g(){ echo $((1/0)); }
        |            ^~~~~~~~
 note: The right operand evaluated to 0.
+1:0: trace:
+     1 |  eval "g(){ echo \$((1/0)); }"; g
+       |                                 ^~~~
 rc=1
 == default mood, eval of a variable ==
 1:61: warning: The command 'h' could not be verified after runtime code.
@@ -21,12 +27,18 @@ eval:1:11: error: Division by zero.
      1 |  h(){ echo $((1/0)); }
        |            ^~~~~~~~
 note: The right operand evaluated to 0.
+1:0: trace:
+     1 |  code=$(printf "%s" "h(){ echo \$((1/0)); }"); eval "$code"; h
+       |                                                              ^~~~
 rc=1
 == bash mood, function keyword form ==
 eval:1:19: error: Division by zero.
      1 |  function k { echo $((1/0)); }
        |                    ^~~~~~~~
 note: The right operand evaluated to 0.
+1:0: trace:
+     1 |  eval "function k { echo \$((1/0)); }"; k
+       |                                         ^~~~
 rc=1
 == function defined in default mood, called from bash, renders once ==
 1

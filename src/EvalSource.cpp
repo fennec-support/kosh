@@ -292,7 +292,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
     let &frame = source_store().source_frames().back();
     if (frame.has_deferred_trace) {
       try {
-        print_source_backtrace(frame.deferred_trace_location, false);
+        print_source_backtrace(frame.deferred_trace_location, false, true);
       } catch (...) {
         LOG(Debug, "rendering a deferred source trace failed");
       }
@@ -512,8 +512,8 @@ fn EvalContext::run_source(StringView source, StringView origin,
                            Maybe<StringView> filename,
                            Maybe<i32> *status_before_return,
                            const FunctionBodyHandle *cached_body,
-                           return_handling handling,
-                           history_recording history) throws -> i32
+                           return_handling handling, history_recording history,
+                           const trap_definition *definition) throws -> i32
 {
   if (cached_body != nullptr && (cached_body->get_body() == nullptr ||
                                  cached_body->get_source() == nullptr))
@@ -599,6 +599,7 @@ fn EvalContext::run_source(StringView source, StringView origin,
       : String{heap_allocator()},
       source_frame_kind::Ordinary
   });
+  source_store().source_frames().back().definition = definition;
   source_store().source_frames().back().should_defer_trace =
       frame_is_sourced_file;
   source_store().source_frames().back().function_call_depth =
@@ -614,7 +615,7 @@ fn EvalContext::run_source(StringView source, StringView origin,
     let &frame = source_store().source_frames().back();
     if (frame.has_deferred_trace) {
       try {
-        print_source_backtrace(frame.deferred_trace_location, false);
+        print_source_backtrace(frame.deferred_trace_location, false, true);
       } catch (...) {
         LOG(Debug, "rendering a deferred source trace failed");
       }
@@ -708,14 +709,18 @@ fn EvalContext::run_source(StringView source, StringView origin,
        file, the eval, and the trap action that was running. */
     throw;
   } catch (const ErrorWithLocationAndDetails &detailed_error) {
-    show_message(detailed_error.to_string(source, this));
-    show_message(detailed_error.details_to_string(source, this));
-    print_source_backtrace(detailed_error.location());
+    if (!detailed_error.was_rendered()) {
+      show_message(detailed_error.to_string(source, this));
+      show_message(detailed_error.details_to_string(source, this));
+      print_source_backtrace(detailed_error.location());
+    }
     did_complete_source = true;
     return static_cast<i32>(detailed_error.command_status());
   } catch (const ErrorWithLocation &located_error) {
-    show_message(located_error.to_string(source, this));
-    print_source_backtrace(located_error.location());
+    if (!located_error.was_rendered()) {
+      show_message(located_error.to_string(source, this));
+      print_source_backtrace(located_error.location());
+    }
     did_complete_source = true;
     return static_cast<i32>(located_error.command_status());
   } catch (const Error &caught_error) {

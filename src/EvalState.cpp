@@ -222,12 +222,31 @@ fn EvalContext::pop_root_source_frame() wontthrow -> void
     source_store().source_frames().pop_back();
 }
 
+struct backtrace_entry
+{
+  SourceLocation location{};
+  const String *text{nullptr};
+  isize line_offset{0};
+  bool *was_printed{nullptr};
+  source_frame *frame{nullptr};
+  usize call_index{0};
+  usize repeat_count{0};
+  bool is_definition{false};
+  bool is_repeat{false};
+};
+
 fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
-                                       bool should_defer_for_source_file) throws
-    -> void
+                                       bool should_defer_for_source_file,
+                                       bool is_replay) throws -> void
 {
   if (!diagnostics_store().source_traces_enabled()) return;
+  if (source_store().source_frames().is_empty() &&
+      function_store().call_names().is_empty())
+  {
+    return;
+  }
 
+  source_frame *deferring_frame = nullptr;
   if (should_defer_for_source_file) {
     for (usize i = source_store().source_frames().count(); i > 0; i--) {
       let &frame = source_store().source_frames()[i - 1];
@@ -240,9 +259,8 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
           break;
         }
       }
-      frame.has_deferred_trace = true;
-      frame.deferred_trace_location = error_location;
-      return;
+      deferring_frame = &frame;
+      break;
     }
   }
 
@@ -267,47 +285,167 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
             (left_source != nullptr && right_source != nullptr &&
              left_source->view() == right_source->view()));
   };
-  let const do_frame_render = [&](const source_frame &frame) {
-    return borrowed_frame_source(frame) != nullptr &&
-           !do_frame_repeat_error(frame);
+  let entries = ArrayList<backtrace_entry>{heap_allocator()};
+  let const do_add_site = [&](backtrace_entry entry,
+                              const resolved_render_source &resolved) {
+    if (resolved.text == nullptr) return;
+
+    entry.text = resolved.text;
+    entry.line_offset = resolved.is_windowed ? resolved.line_offset : 0;
+    if (resolved.is_windowed) {
+      entry.location.position = static_cast<u32>(
+          resolved.to_render_position(entry.location.position));
+      entry.location.source_name_index = resolved.source_name_index;
+    }
+    if (entry.location.position > resolved.text->count()) return;
+
+    entries.push(entry);
   };
 
-  let has_traceable_source_frame = false;
-  for (let const &frame : source_store().source_frames())
-    if (borrowed_frame_source(frame) != nullptr &&
-        frame.kind != source_frame_kind::SoleCliRoot)
-    {
-      has_traceable_source_frame = true;
-      break;
+  let const do_find_floor = [&](usize frame_limit) {
+    for (usize index = frame_limit; index > 0; index--) {
+      let const &candidate = source_store().source_frames()[index - 1];
+      if (candidate.does_change_source) return candidate.function_call_depth;
     }
-  if (!has_traceable_source_frame) return;
+    return usize{0};
+  };
 
-  for (usize i = source_store().source_frames().count(); i > 0; i--) {
-    let &frame = source_store().source_frames()[i - 1];
-    if (!do_frame_render(frame) || frame.was_printed) {
-      continue;
-    }
-
-    let is_repeated_frame = false;
-    for (usize other_index = source_store().source_frames().count();
-         other_index > i; other_index--)
-    {
-      let const &other = source_store().source_frames()[other_index - 1];
-      if (!do_frame_render(other) || !do_frame_identity_match(frame, other)) {
+  usize deferral_index = static_cast<usize>(-1);
+  usize frame_index = source_store().source_frames().count();
+  usize call_index = function_store().call_names().count();
+  while (frame_index > 0 || call_index > 0) {
+    let const is_call_next =
+        call_index > 0 &&
+        (frame_index == 0 || call_index > source_store()
+                                              .source_frames()[frame_index - 1]
+                                              .function_call_depth);
+    if (is_call_next) {
+      call_index--;
+      let const call_site = function_store().call_locations()[call_index];
+      if (error_location.has_value() &&
+          do_location_match(call_site, *error_location))
+      {
         continue;
       }
-      is_repeated_frame = true;
-      break;
-    }
-    if (is_repeated_frame) {
-      frame.was_printed = true;
+
+      let entry = backtrace_entry{};
+      entry.location = call_site;
+      entry.call_index = call_index;
+      entry.was_printed = &function_store().call_was_printed()[call_index];
+      do_add_site(entry,
+                  resolve_render_source(
+                      call_site, function_store().call_sources()[call_index],
+                      call_index, do_find_floor(frame_index)));
       continue;
+    }
+
+    frame_index--;
+    let &frame = source_store().source_frames()[frame_index];
+    if (&frame == deferring_frame) deferral_index = entries.count();
+
+    if (frame.definition != nullptr) {
+      let entry = backtrace_entry{};
+      entry.location = frame.definition->location;
+      entry.line_offset = frame.definition->line_offset;
+      entry.text = &frame.definition->line_source;
+      entry.was_printed = &frame.was_definition_printed;
+      entry.frame = &frame;
+      entry.is_definition = true;
+      entries.push(entry);
     }
 
     let const *frame_source = borrowed_frame_source(frame);
-    let const sourced_here = TraceWithLocation{frame.call_site};
-    show_message(sourced_here.to_string(*frame_source, this));
-    frame.was_printed = true;
+    if (frame_source != nullptr && !do_frame_repeat_error(frame)) {
+      let entry = backtrace_entry{};
+      entry.location = frame.call_site;
+      entry.frame = &frame;
+      entry.was_printed = &frame.was_printed;
+      do_add_site(entry, resolve_render_source(frame.call_site, frame_source,
+                                               frame.function_call_depth,
+                                               do_find_floor(frame_index)));
+    }
+  }
+
+  if (entries.is_empty() && deferring_frame == nullptr) return;
+
+  let const do_entries_match = [&](const backtrace_entry &left,
+                                   const backtrace_entry &right) {
+    if (left.is_definition != right.is_definition ||
+        !do_location_match(left.location, right.location) ||
+        left.line_offset != right.line_offset)
+    {
+      return false;
+    }
+    if (left.text != right.text && left.text->view() != right.text->view())
+      return false;
+
+    if (left.frame != nullptr && right.frame != nullptr)
+      return do_frame_identity_match(*left.frame, *right.frame);
+
+    return left.frame == right.frame;
+  };
+
+  for (usize i = 0; i < entries.count(); i++) {
+    if (entries[i].is_repeat) continue;
+
+    for (usize other = i + 1; other < entries.count(); other++) {
+      if (entries[other].is_repeat ||
+          !do_entries_match(entries[i], entries[other]))
+        continue;
+
+      entries[other].is_repeat = true;
+      entries[i].repeat_count++;
+      *entries[other].was_printed = true;
+    }
+  }
+
+  Maybe<u32> last_name_index = None;
+  if (!is_replay && error_location.has_value()) {
+    last_name_index = error_location->source_name_index;
+    if (error_location->source_name_index == 0) {
+      if (let const embedded_name = embedded_source_name_index();
+          embedded_name.has_value())
+      {
+        last_name_index = *embedded_name;
+      }
+    }
+  }
+
+  for (usize entry_index = 0; entry_index < entries.count(); entry_index++) {
+    let const &entry = entries[entry_index];
+    if (entry_index == deferral_index) break;
+    if (entry.is_repeat || *entry.was_printed) continue;
+
+    let const location = entry.location;
+    let mapped_location = location;
+    let mapped_text = entry.text->view();
+    unused(map_embedded_site(mapped_text, mapped_location));
+    let const should_hide_filename =
+        last_name_index.has_value() &&
+        *last_name_index == mapped_location.source_name_index;
+    last_name_index = mapped_location.source_name_index;
+
+    let repeat_message = String{heap_allocator()};
+    if (entry.repeat_count != 0) {
+      repeat_message += "repeated ";
+      repeat_message += String::from(entry.repeat_count + 1, heap_allocator());
+      repeat_message += " times";
+    }
+
+    let trace = TraceWithLocation{location, repeat_message.view()};
+    trace.set_line_offset(entry.line_offset);
+    if (should_hide_filename) trace.hide_filename();
+    show_message(trace.to_string(entry.text->view(), this));
+    if (entry.is_definition) {
+      utils::invalidate_line_number_cache_for(entry.text->view());
+      reset_runtime_diagnostic_highlight_cache();
+    }
+    *entry.was_printed = true;
+  }
+
+  if (deferring_frame != nullptr) {
+    deferring_frame->has_deferred_trace = true;
+    deferring_frame->deferred_trace_location = error_location;
   }
 }
 

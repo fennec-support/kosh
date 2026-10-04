@@ -951,23 +951,31 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
           }
         }
       } catch (ErrorWithLocationAndDetails &error) {
-        if (!error.was_rendered())
-          if (let const windowed = window_function_body_error(cxt, error);
-              windowed.has_value())
-          {
-            show_message(error.to_string(*windowed, &cxt));
-            show_message(error.details_to_string(*windowed, &cxt));
-            error.set_rendered();
-          }
+        if (!error.was_rendered()) {
+          let const trace_location = error.location();
+          let const windowed = window_function_body_error(cxt, error);
+          let const *current = cxt.source_store().current_source();
+          let const rendered_source = windowed.has_value() ? *windowed
+                                      : current != nullptr ? current->view()
+                                                           : StringView{};
+          show_message(error.to_string(rendered_source, &cxt));
+          show_message(error.details_to_string(rendered_source, &cxt));
+          cxt.print_source_backtrace(trace_location);
+          error.set_rendered();
+        }
         throw;
       } catch (ErrorWithLocation &error) {
-        if (!error.was_rendered())
-          if (let const windowed = window_function_body_error(cxt, error);
-              windowed.has_value())
-          {
-            show_message(error.to_string(*windowed, &cxt));
-            error.set_rendered();
-          }
+        if (!error.was_rendered()) {
+          let const trace_location = error.location();
+          let const windowed = window_function_body_error(cxt, error);
+          let const *current = cxt.source_store().current_source();
+          let const rendered_source = windowed.has_value() ? *windowed
+                                      : current != nullptr ? current->view()
+                                                           : StringView{};
+          show_message(error.to_string(rendered_source, &cxt));
+          cxt.print_source_backtrace(trace_location);
+          error.set_rendered();
+        }
         throw;
       }
 
@@ -1038,7 +1046,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
           cxt.runtime_state().is_shopt_enabled(shopt_option_id::Checkhash),
           cxt.resolution_store().resolver(), steal(program_arg_locations),
           cxt.runtime_state().get_mood(), cxt.is_shopt_enabled("autocd"));
-    } catch (const CommandResolutionErrorWithLocation &e) {
+    } catch (CommandResolutionErrorWithLocation &e) {
       report_command_resolution_error(cxt, e);
       did_resolution_fail = true;
       resolution_failure_status = e.command_status();
@@ -1077,6 +1085,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       throw;
 
     if (!error.was_rendered()) {
+      let const trace_location = error.location();
       if (let const windowed = window_function_body_error(cxt, error);
           windowed.has_value())
       {
@@ -1086,6 +1095,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         show_message(error.to_string(
             source != nullptr ? source->view() : StringView{}, &cxt));
       }
+      cxt.print_source_backtrace(trace_location, false);
       error.set_rendered();
     }
 

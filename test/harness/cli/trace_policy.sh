@@ -134,7 +134,7 @@ out=$("$BIN" --no-diagnostics \
 printf 'process eval traces=%s errors=%s inner-sites=%s\n' \
     "$(printf '%s\n' "$out" | grep -Ec 'trace:')" \
     "$(printf '%s\n' "$out" | grep -c 'error:')" \
-    "$(printf '%s\n' "$out" | grep -c '^1:1: trace:')"
+    "$(printf '%s\n' "$out" | grep -c '^1:15: trace:')"
 
 out=$("$BIN" --no-diagnostics \
     -c 'koshkit cat <(echo prefix >&2; eval no_such_prefixed_process_eval_xyz)' \

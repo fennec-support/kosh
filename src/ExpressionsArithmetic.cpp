@@ -1072,8 +1072,10 @@ static fn evaluate_subshell_in_process(const Expression *body,
       LOG(Debug, "the subshell confined a script-fatal error: %s",
           error.message().c_str());
       const String *source = cxt.source_store().current_source();
-      show_message(error.to_string(
-          source != nullptr ? source->view() : StringView{}, &cxt));
+      if (!error.was_rendered()) {
+        show_message(error.to_string(
+            source != nullptr ? source->view() : StringView{}, &cxt));
+      }
       ret = cxt.runtime_state().is_bash_compatible() ? 1 : 2;
       cxt.execution_store().set_last_exit_status(static_cast<i32>(ret));
       cxt.control_flow_store().clear();
@@ -1146,7 +1148,26 @@ fn Subshell::evaluate_impl(EvalContext &cxt) const throws -> i64
     if (should_elide_body_fork)
       cxt.execution_store().should_elide_pending_subshell_fork() = true;
 
-    return evaluate_subshell_in_process(body, cxt);
+    let const did_push_source_frame =
+        cxt.push_substitution_source_frame(source_location(), "a subshell");
+    defer
+    {
+      if (did_push_source_frame) cxt.source_store().source_frames().pop_back();
+    };
+
+    try {
+      return evaluate_subshell_in_process(body, cxt);
+    } catch (ErrorWithLocation &error) {
+      if (error.is_script_fatal() || error.was_rendered()) throw;
+
+      let const trace_location = error.location();
+      let const *source = cxt.source_store().current_source();
+      show_message(error.to_string(
+          source != nullptr ? source->view() : StringView{}, &cxt));
+      cxt.print_source_backtrace(trace_location);
+      error.set_rendered();
+      throw;
+    }
   };
 
   /* Bash traces the commands inside a subshell and fires nothing for the
@@ -1175,8 +1196,10 @@ fn Subshell::evaluate_impl(EvalContext &cxt) const throws -> i64
       status = static_cast<i32>(do_run_body());
     } catch (const ErrorBase &error) {
       let const source = cxt.source_store().current_source();
-      show_message(error.to_string(
-          source != nullptr ? source->view() : StringView{}, &cxt));
+      if (!error.was_rendered()) {
+        show_message(error.to_string(
+            source != nullptr ? source->view() : StringView{}, &cxt));
+      }
       if (cxt.runtime_state().is_posix_mode())
         status = static_cast<i32>(error.command_status());
     }
@@ -1193,8 +1216,10 @@ fn Subshell::evaluate_impl(EvalContext &cxt) const throws -> i64
       status = static_cast<i32>(do_run_body());
     } catch (const ErrorBase &error) {
       let const source = cxt.source_store().current_source();
-      show_message(error.to_string(
-          source != nullptr ? source->view() : StringView{}, &cxt));
+      if (!error.was_rendered()) {
+        show_message(error.to_string(
+            source != nullptr ? source->view() : StringView{}, &cxt));
+      }
       if (cxt.runtime_state().is_posix_mode())
         status = static_cast<i32>(error.command_status());
     } catch (...) {

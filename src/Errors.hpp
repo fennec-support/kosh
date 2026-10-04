@@ -140,7 +140,11 @@ public:
   }
   pure fn command_status() const wontthrow -> i64 { return m_command_status; }
 
+  fn set_rendered() wontthrow -> void { m_was_rendered = true; }
+  pure fn was_rendered() const wontthrow -> bool { return m_was_rendered; }
+
 protected:
+  bool m_was_rendered{false};
   fn trailing_details_to_string() const throws -> String;
 
   bool m_is_script_fatal{false};
@@ -235,7 +239,13 @@ public:
   /* The line numbering shifts by this many lines, for a source that is a window
      into a larger file. A window that carries a synthesized header ahead of the
      original text shifts backwards. */
-  fn set_line_offset(isize offset) wontthrow -> void { m_line_offset = offset; }
+  fn set_line_offset(isize offset) wontthrow -> void
+  {
+    m_line_offset = offset;
+    m_is_rebased = true;
+  }
+  pure fn is_rebased() const wontthrow -> bool { return m_is_rebased; }
+  fn hide_filename() wontthrow -> void { m_is_filename_hidden = true; }
 
   pure fn location() const wontthrow -> SourceLocation { return m_location; }
   fn set_location(SourceLocation location) wontthrow -> void
@@ -243,13 +253,11 @@ public:
     m_location = steal(location);
   }
 
-  fn set_rendered() wontthrow -> void { m_was_rendered = true; }
-  pure fn was_rendered() const wontthrow -> bool { return m_was_rendered; }
-
 protected:
   SourceLocation m_location;
   isize m_line_offset{0};
-  bool m_was_rendered{false};
+  bool m_is_rebased{false};
+  bool m_is_filename_hidden{false};
 };
 
 /* The mimic boundary tests this type, never the message text, so a
@@ -312,7 +320,7 @@ private:
 class TraceWithLocation : public ErrorWithLocation
 {
 public:
-  TraceWithLocation(SourceLocation location);
+  TraceWithLocation(SourceLocation location, StringView message = {});
 
   fn get_severity() const wontthrow -> error_severity override;
 };

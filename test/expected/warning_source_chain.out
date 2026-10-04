@@ -12,8 +12,6 @@ OUTER:2:3: trace:
 1:0: trace:
      1 |  . OUTER
        |    ^~~~
-1:0: trace:
-     1 |  KOSH -WWW -c '. OUTER'
 INNER:1:7: warning: The variable 'MIMIC_CHAIN_FIRST' is not set, it expands to empty.
      1 |  echo "$MIMIC_CHAIN_FIRST"
        |        ^~~~~~~~~~~~~~~~~~
@@ -27,7 +25,5 @@ note: Replace it with ${MIMIC_CHAIN_SECOND-} if empty expansion is desired.
 1:0: trace:
      1 |  "$1"
        |  ^~~~
-1:0: trace:
-     1 |  KOSH --mood bash -WWW -c '"$1"' trace-driver INNER
 0
 rc=0

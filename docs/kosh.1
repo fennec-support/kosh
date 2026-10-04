@@ -2944,10 +2944,32 @@ directive applies to the next complete and-or command. A directive after
 or a pipe does not apply. These comments do not suppress parser or runtime
 diagnostics outside the analysis catalog.
 .PP
-Eval, command substitution, function substitution, and process substitution add
-their call sites to a source backtrace. A repeated frame is printed once. A
-printed frame begins with
+A diagnostic names the file, line, and column of the failing command, quotes
+its source line, and puts a caret under it. Text inside command substitution,
+backticks, process substitution, and here-document bodies is part of the file,
+so its diagnostics use the file's own line and column. Text built at run time,
+such as an eval string or a trap action, is its own source.
+.PP
+Every level of indirection between the top level and the failing command adds
+one backtrace frame at the construct that entered it. The levels are a function
+call, a sourced file, an eval, a trap action, a subshell, a command
+substitution, a function substitution, and a process substitution. A trap
+action also adds a frame at the
+.B trap
+command that installed it. A diagnostic with no indirection has no frame. A
+script given on the command line adds no frame. The command line counts as a
+level only when more than one script file or
+.B \-c
+string is given.
+.PP
+A frame begins with
 .BR trace: .
+Consecutive frames in one file print the file name once, in the first header of
+the group, and the later headers show only the line and column. A repeated frame
+is printed once and its header ends with the repeat count, as in
+.BR "trace: repeated 4 times." .
+A frame is printed once for each activation. Diagnostics print the same text
+in every mood.
 .SH ENVIRONMENT
 .TP
 .B KOSH_FLAGS

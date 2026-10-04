@@ -187,6 +187,11 @@ changes update this file.
 
 ## Diagnostics and storage
 
+- `print_source_backtrace` merges source frames and function calls into one
+  trace. An error renders where its stack is intact, and a rendered error is
+  never printed twice. `embedded_sources` maps substitution text onto the
+  file, and `trap_definition` carries the `trap` command of an action.
+  `to_string` resolves function windows and embedded text itself.
 - `DiagnosticsCatalog.cpp` owns analysis diagnostics.
   `DiagnosticsDispatch.cpp` owns command dispatch. Other `Diagnostics` sources
   own grouped checks. `SimpleCommand::analyze` builds one `command_lint_input`.

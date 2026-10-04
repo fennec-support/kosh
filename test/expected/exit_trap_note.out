@@ -3,3 +3,6 @@ hello
      1 |  rm -f nonexistent_zzz_glob_*.tmp
        |        ^~~~~~~~~~~~~~~~~~~~~~~~~~
 note: Probe for matches with compgen -G 'nonexistent_zzz_glob_*.tmp' or relax with set +o failglob.
+2:1: trace:
+     2 |  trap 'rm -f nonexistent_zzz_glob_*.tmp' EXIT
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

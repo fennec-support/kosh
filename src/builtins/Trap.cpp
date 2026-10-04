@@ -353,7 +353,7 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (is_reset)
       cxt.remove_trap(condition);
     else
-      cxt.set_trap(condition, action);
+      cxt.set_trap(condition, action, ec.source_location());
   }
 
   return status;

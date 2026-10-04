@@ -134,8 +134,10 @@ fn Command::evaluate_async_with(EvalContext &cxt, async_body body,
     } catch (const BrokenPipeExit &) {
       status = KOSH_BROKEN_PIPE_EXIT_STATUS;
     } catch (const ErrorWithLocation &e) {
-      koshka::show_message(
-          e.to_string(source != nullptr ? source->view() : StringView{}, &cxt));
+      if (!e.was_rendered()) {
+        koshka::show_message(e.to_string(
+            source != nullptr ? source->view() : StringView{}, &cxt));
+      }
       status = static_cast<i32>(e.command_status());
     } catch (const Error &e) {
       koshka::show_message(e.to_string());
@@ -1623,8 +1625,10 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
     } catch (const BrokenPipeExit &) {
       status = KOSH_BROKEN_PIPE_EXIT_STATUS;
     } catch (const ErrorWithLocation &e) {
-      koshka::show_message(
-          e.to_string(source != nullptr ? source->view() : StringView{}, &cxt));
+      if (!e.was_rendered()) {
+        koshka::show_message(e.to_string(
+            source != nullptr ? source->view() : StringView{}, &cxt));
+      }
       status = static_cast<i32>(e.command_status());
     } catch (const Error &e) {
       koshka::show_message(e.to_string());

@@ -8,6 +8,9 @@ rc=1
 1:14: error: Builtin `caller`: 'abc' is not a whole number.
      1 |  f() { caller abc; }; f
        |               ^~~
+1:22: trace:
+     1 |  f() { caller abc; }; f
+       |                       ^
 note: The frame index must be a whole number such as `caller 0`.
 rc=2
 == caller with a negative operand inside a call returns 1:

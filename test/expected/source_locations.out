@@ -1,0 +1,518 @@
+== no indirection, no trace
+start
+top.sh:2:1: error: The command 'missing_top' was not found.
+     2 |  missing_top
+       |  ^~~~~~~~~~~
+end
+rc=0
+== command not found at the top of a sourced file
+before
+lib-loaded
+./lib.sh:2:1: error: The command 'missing_lib' was not found.
+     2 |  missing_lib
+       |  ^~~~~~~~~~~
+lib-done
+use_lib.sh:2:3: trace:
+     2 |  . ./lib.sh
+       |    ^~~~~~~~
+after
+rc=0
+== function defined in a sourced file, called by the sourcer
+hello
+building
+./helper_lib.sh:5:3: error: The command 'missing_tool' was not found.
+     5 |    missing_tool --flag
+       |    ^~~~~~~~~~~~
+call_helper.sh:7:1: trace:
+     7 |  build
+       |  ^~~~~
+built
+rc=0
+== file sourced through a variable
+building
+./helper_lib.sh:5:3: error: The command 'missing_tool' was not found.
+     5 |    missing_tool --flag
+       |    ^~~~~~~~~~~~
+viavar.sh:3:1: trace:
+     3 |  build
+       |  ^~~~~
+built
+rc=0
+== nested source with an error at each level
+a-start
+b-start
+./level_b.sh:2:1: error: The command 'missing_b' was not found.
+     2 |  missing_b
+       |  ^~~~~~~~~
+c-start
+./level_c.sh:2:1: error: The command 'missing_c' was not found.
+     2 |  missing_c
+       |  ^~~~~~~~~
+./level_b.sh:3:3: trace:
+     3 |  . ./level_c.sh
+       |    ^~~~~~~~~~~~
+level_a.sh:2:3: trace:
+     2 |  . ./level_b.sh
+       |    ^~~~~~~~~~~~
+level_a.sh:3:1: error: The command 'missing_a' was not found.
+     3 |  missing_a
+       |  ^~~~~~~~~
+rc=127
+== source with arguments and a return
+arg=stop
+status=3
+arg=go
+./args_lib.sh:5:1: error: The command 'missing_args' was not found.
+     5 |  missing_args
+       |  ^~~~~~~~~~~~
+use_args.sh:3:3: trace:
+     3 |  . ./args_lib.sh go
+       |    ^~~~~~~~~~~~~
+status=127
+rc=0
+== the same file sourced twice
+lib-loaded
+./lib.sh:2:1: error: The command 'missing_lib' was not found.
+     2 |  missing_lib
+       |  ^~~~~~~~~~~
+lib-done
+twice.sh:1:3: trace:
+     1 |  . ./lib.sh
+       |    ^~~~~~~~
+lib-loaded
+./lib.sh:2:1: error: The command 'missing_lib' was not found.
+     2 |  missing_lib
+       |  ^~~~~~~~~~~
+lib-done
+twice.sh:2:3: trace:
+     2 |  . ./lib.sh
+       |    ^~~~~~~~
+rc=0
+== a sourced file modified and sourced again
+./swap_lib.sh:3:3: error: The command 'first_version_missing' was not found.
+     3 |    first_version_missing
+       |    ^~~~~~~~~~~~~~~~~~~~~
+redefine.sh:8:1: trace:
+     8 |  swapped
+       |  ^~~~~~~
+changed
+./swap_lib.sh:7:3: error: The command 'second_version_missing' was not found.
+     7 |    second_version_missing
+       |    ^~~~~~~~~~~~~~~~~~~~~~
+redefine.sh:20:1: trace:
+    20 |  swapped
+       |  ^~~~~~~
+rc=127
+== dot and source
+lib-loaded
+./lib.sh:2:1: error: The command 'missing_lib' was not found.
+     2 |  missing_lib
+       |  ^~~~~~~~~~~
+lib-done
+dot_and_source.sh:1:3: trace:
+     1 |  . ./lib.sh
+       |    ^~~~~~~~
+lib-loaded
+./lib.sh:2:1: error: The command 'missing_lib' was not found.
+     2 |  missing_lib
+       |  ^~~~~~~~~~~
+lib-done
+dot_and_source.sh:2:8: trace:
+     2 |  source ./lib.sh
+       |         ^~~~~~~~
+rc=0
+== relative, dot slash, absolute, and PATH lookup
+sub/inner.sh:1:1: error: The command 'missing_inner' was not found.
+     1 |  missing_inner
+       |  ^~~~~~~~~~~~~
+paths.sh:1:3: trace:
+     1 |  . sub/inner.sh
+       |    ^~~~~~~~~~~~
+./sub/inner.sh:1:1: error: The command 'missing_inner' was not found.
+     1 |  missing_inner
+       |  ^~~~~~~~~~~~~
+paths.sh:2:3: trace:
+     2 |  . ./sub/inner.sh
+       |    ^~~~~~~~~~~~~~
+DIR/sub/inner.sh:1:1: error: The command 'missing_inner' was not found.
+     1 |  missing_inner
+       |  ^~~~~~~~~~~~~
+paths.sh:3:3: trace:
+     3 |  . "$PWD/sub/inner.sh"
+       |    ^~~~~~~~~~~~~~~~~~~
+DIR/sub/inner.sh:1:1: error: The command 'missing_inner' was not found.
+     1 |  missing_inner
+       |  ^~~~~~~~~~~~~
+paths.sh:5:3: trace:
+     5 |  . inner.sh
+       |    ^~~~~~~~
+rc=127
+== arithmetic error in a here-document
+before
+heredoc.sh:4:12: error: Division by zero.
+     4 |  value $((1/0))
+       |             ^
+note: The right operand evaluated to 0.
+after
+rc=0
+== failure on a continuation line
+multiline.sh:3:5: error: The command 'missing_multiline' was not found.
+     3 |    $(missing_multiline) \
+       |      ^~~~~~~~~~~~~~~~~
+3:3: trace:
+     3 |    $(missing_multiline) \
+       |    ^~~~~~~~~~~~~~~~~~~~
+one two three
+next
+rc=0
+== line after a long function body
+after_body.sh:10:1: error: The command 'missing_after_body' was not found.
+    10 |  missing_after_body
+       |  ^~~~~~~~~~~~~~~~~~
+rc=127
+== source file with CRLF line endings
+crlf
+./crlf_lib.sh:2:1: error: The command 'missing_crlf' was not found.
+     2 |  missing_crlf
+       |  ^~~~~~~~~~~~
+crlf_use.sh:1:3: trace:
+     1 |  . ./crlf_lib.sh
+       |    ^~~~~~~~~~~~~
+./crlf_lib.sh:5:3: error: The command 'missing_in_crlf' was not found.
+     5 |    missing_in_crlf
+       |    ^~~~~~~~~~~~~~~
+crlf_use.sh:2:1: trace:
+     2 |  f
+       |  ^
+rc=127
+== trap set in a sourced file fires at exit
+working
+cleaning
+./trap_lib.sh:5:3: error: The command 'missing_cleanup' was not found.
+     5 |    missing_cleanup
+       |    ^~~~~~~~~~~~~~~
+1:1: trace:
+     1 |  cleanup
+       |  ^~~~~~~
+./trap_lib.sh:7:1: trace:
+     7 |  trap cleanup EXIT
+       |  ^~~~~~~~~~~~~~~~~
+rc=0
+== trap on EXIT
+working
+1:1: error: The command 'missing_exit_action' was not found.
+     1 |  missing_exit_action
+       |  ^~~~~~~~~~~~~~~~~~~
+trap_exit.sh:2:1: trace:
+     2 |  trap 'missing_exit_action' EXIT
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+rc=0
+== trap on a signal
+1:1: error: The command 'missing_signal_action' was not found.
+     1 |  missing_signal_action
+       |  ^~~~~~~~~~~~~~~~~~~~~
+trap_signal.sh:1:1: trace:
+     1 |  trap 'missing_signal_action' USR1
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2:1: trace:
+     2 |  kill -USR1 $$
+       |  ^~~~~~~~~~~~~
+after-signal
+rc=0
+== trap on ERR
+1:1: error: The command 'missing_err_action' was not found.
+     1 |  missing_err_action
+       |  ^~~~~~~~~~~~~~~~~~
+trap_err.sh:1:1: trace:
+     1 |  trap 'missing_err_action' ERR
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2:1: trace:
+     2 |  false
+       |  ^~~~~
+after-err
+rc=0
+== trap on DEBUG
+1:1: error: The command 'missing_debug_action' was not found.
+     1 |  missing_debug_action
+       |  ^~~~~~~~~~~~~~~~~~~~
+trap_debug.sh:1:1: trace:
+     1 |  trap 'missing_debug_action' DEBUG
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2:1: trace:
+     2 |  echo debugged
+       |  ^~~~~~~~~~~~~
+debugged
+1:1: error: The command 'missing_debug_action' was not found.
+     1 |  missing_debug_action
+       |  ^~~~~~~~~~~~~~~~~~~~
+trap_debug.sh:1:1: trace:
+     1 |  trap 'missing_debug_action' DEBUG
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+3:1: trace:
+     3 |  trap - DEBUG
+       |  ^~~~~~~~~~~~
+rc=0
+== trap on RETURN
+in-f
+1:1: error: The command 'missing_return_action' was not found.
+     1 |  missing_return_action
+       |  ^~~~~~~~~~~~~~~~~~~~~
+trap_return.sh:3:3: trace:
+     3 |    trap 'missing_return_action' RETURN
+       |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+4:3: trace:
+     4 |    echo in-f
+       |    ^~~~~~~~~
+6:1: trace:
+     6 |  f
+       |  ^
+rc=0
+== trap action calling a function that fails
+working
+trap_function.sh:3:3: error: The command 'missing_in_function' was not found.
+     3 |    missing_in_function
+       |    ^~~~~~~~~~~~~~~~~~~
+1:1: trace:
+     1 |  inner_failure
+       |  ^~~~~~~~~~~~~
+trap_function.sh:5:1: trace:
+     5 |  trap inner_failure EXIT
+       |  ^~~~~~~~~~~~~~~~~~~~~~~
+rc=0
+== trap defined inside a function
+working
+1:1: error: The command 'missing_installed' was not found.
+     1 |  missing_installed
+       |  ^~~~~~~~~~~~~~~~~
+trap_in_function.sh:3:3: trace:
+     3 |    trap 'missing_installed' EXIT
+       |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+rc=0
+== recursion collapses repeated frames
+recursion.sh:6:5: error: The command 'missing_bottom' was not found.
+     6 |      missing_bottom
+       |      ^~~~~~~~~~~~~~
+4:5: trace: repeated 4 times.
+     4 |      down $(($1 - 1))
+       |      ^~~~~~~~~~~~~~~~
+9:1: trace:
+     9 |  down 4
+       |  ^~~~~~
+rc=127
+== frames alternate between two files
+alternate.sh:7:3: error: The command 'missing_alternate' was not found.
+     7 |    missing_alternate
+       |    ^~~~~~~~~~~~~~~~~
+3:3: trace:
+     3 |    ping_end "$@"
+       |    ^~~~~~~~~~~~~
+./ping.sh:3:3: trace:
+     3 |    pong "$@"
+       |    ^~~~~~~~~
+alternate.sh:10:1: trace:
+    10 |  ping 1
+       |  ^~~~~~
+rc=127
+== substitution, process substitution, and eval
+constructs.sh:1:9: error: The command 'missing_substitution' was not found.
+     1 |  value=$(missing_substitution)
+       |          ^~~~~~~~~~~~~~~~~~~~
+1:7: trace:
+     1 |  value=$(missing_substitution)
+       |        ^~~~~~~~~~~~~~~~~~~~~~~
+constructs.sh:2:7: error: The command 'missing_process' was not found.
+     2 |  cat <(missing_process)
+       |        ^~~~~~~~~~~~~~~
+2:5: trace:
+     2 |  cat <(missing_process)
+       |      ^~~~~~~~~~~~~~~~~~
+eval:1:1: error: The command 'missing_eval' was not found.
+     1 |  missing_eval
+       |  ^~~~~~~~~~~~
+constructs.sh:3:1: trace:
+     3 |  eval 'missing_eval'
+       |  ^~~~~~~~~~~~~~~~~~~
+eval:1:1: error: The command 'missing_nested_eval' was not found.
+     1 |  missing_nested_eval
+       |  ^~~~~~~~~~~~~~~~~~~
+1:1: trace:
+     1 |  eval "missing_nested_eval"
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~
+constructs.sh:4:1: trace:
+     4 |  eval 'eval "missing_nested_eval"'
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+rc=127
+== function from a sourced file called by a trap
+working
+building
+./helper_lib.sh:5:3: error: The command 'missing_tool' was not found.
+     5 |    missing_tool --flag
+       |    ^~~~~~~~~~~~
+1:1: trace:
+     1 |  build
+       |  ^~~~~
+combined.sh:2:1: trace:
+     2 |  trap build EXIT
+       |  ^~~~~~~~~~~~~~~
+built
+rc=0
+== nested eval, bash mood
+eval:1:6: error: Division by zero.
+     1 |  echo $((1/0))
+       |       ^~~~~~~~
+note: The right operand evaluated to 0.
+1:1: trace:
+     1 |  eval "echo \$((1/0))"
+       |  ^~~~~~~~~~~~~~~~~~~~~
+nested_eval.sh:2:1: trace:
+     2 |  eval "$inner"
+       |  ^~~~~~~~~~~~~
+rc=1
+== nested eval, sh mood
+eval:1:6: error: Division by zero.
+     1 |  echo $((1/0))
+       |       ^~~~~~~~
+note: The right operand evaluated to 0.
+1:1: trace:
+     1 |  eval "echo \$((1/0))"
+       |  ^~~~~~~~~~~~~~~~~~~~~
+nested_eval.sh:2:1: trace:
+     2 |  eval "$inner"
+       |  ^~~~~~~~~~~~~
+rc=1
+== nested eval, kosh mood
+eval:1:6: error: Division by zero.
+     1 |  echo $((1/0))
+       |       ^~~~~~~~
+note: The right operand evaluated to 0.
+1:1: trace:
+     1 |  eval "echo \$((1/0))"
+       |  ^~~~~~~~~~~~~~~~~~~~~
+nested_eval.sh:2:1: trace:
+     2 |  eval "$inner"
+       |  ^~~~~~~~~~~~~
+rc=1
+== arithmetic errors in every substitution form
+substitutions.sh:1:12: error: Division by zero.
+     1 |  one=$(echo $((1/0)))
+       |             ^~~~~~~~
+note: The right operand evaluated to 0.
+1:5: trace:
+     1 |  one=$(echo $((1/0)))
+       |      ^~~~~~~~~~~~~~~~
+substitutions.sh:2:11: error: Division by zero.
+     2 |  two=`echo $((2/0))`
+       |            ^~~~~~~~
+note: The right operand evaluated to 0.
+2:5: trace:
+     2 |  two=`echo $((2/0))`
+       |      ^~~~~~~~~~~~~~~
+substitutions.sh:3:21: error: Division by zero.
+     3 |  three=$(echo $(echo $((3/0))))
+       |                      ^~~~~~~~
+note: The right operand evaluated to 0.
+3:14: trace:
+     3 |  three=$(echo $(echo $((3/0))))
+       |               ^~~~~~~~~~~~~~~~
+3:7: trace:
+     3 |  three=$(echo $(echo $((3/0))))
+       |        ^~~~~~~~~~~~~~~~~~~~~~~~
+rc=0
+== glob warnings from inside substitutions and here-documents
+warnings.sh:2:14: warning: The glob pattern '*.txt' matched no file, it expands to its literal text, which is rarely intended.
+     2 |  files=$(echo *.txt)
+       |               ^~~~~
+note: Probe for matches with compgen -G '*.txt' or relax with set +o failglob.
+2:7: trace:
+     2 |  files=$(echo *.txt)
+       |        ^~~~~~~~~~~~~
+warnings.sh:3:12: warning: The glob pattern '*.nope' matched no file, it expands to its literal text, which is rarely intended.
+     3 |  cat <(echo *.nope)
+       |             ^~~~~~
+note: Probe for matches with compgen -G '*.nope' or relax with set +o failglob.
+3:5: trace:
+     3 |  cat <(echo *.nope)
+       |      ^~~~~~~~~~~~~~
+*.nope
+warnings.sh:4:9: warning: The glob pattern '*.back' matched no file, it expands to its literal text, which is rarely intended.
+     4 |  x=`echo *.back`
+       |          ^~~~~~
+note: Probe for matches with compgen -G '*.back' or relax with set +o failglob.
+4:3: trace:
+     4 |  x=`echo *.back`
+       |    ^~~~~~~~~~~~~
+warnings.sh:6:8: warning: The glob pattern '*.zip' matched no file, it expands to its literal text, which is rarely intended.
+     6 |  $(echo *.zip)
+       |         ^~~~~
+note: Probe for matches with compgen -G '*.zip' or relax with set +o failglob.
+6:1: trace:
+     6 |  $(echo *.zip)
+       |  ^~~~~~~~~~~~~
+*.zip
+rc=0
+== function called from a subshell reports once
+subshell_function.sh:3:8: error: Division by zero.
+     3 |    echo $((1/0))
+       |         ^~~~~~~~
+note: The right operand evaluated to 0.
+5:3: trace:
+     5 |  ( c )
+       |    ^
+5:1: trace:
+     5 |  ( c )
+       |  ^
+rc=1
+== sourced function called by a trap inside a subshell
+working
+building
+./helper_lib.sh:5:3: error: The command 'missing_tool' was not found.
+     5 |    missing_tool --flag
+       |    ^~~~~~~~~~~~
+1:3: trace:
+     1 |  ( build )
+       |    ^~~~~
+1:1: trace:
+     1 |  ( build )
+       |  ^
+subshell_nested.sh:2:1: trace:
+     2 |  trap '( build )' EXIT
+       |  ^~~~~~~~~~~~~~~~~~~~~
+built
+rc=0
+== function in a pipeline stage
+pipeline.sh:3:8: error: Division by zero.
+     3 |    echo $((1/0))
+       |         ^~~~~~~~
+note: The right operand evaluated to 0.
+5:12: trace:
+     5 |  echo one | c | cat
+       |             ^
+rc=0
+== multi-line eval text
+first
+eval:2:6: error: Division by zero.
+     2 |  echo $((1/0))
+       |       ^~~~~~~~
+note: The right operand evaluated to 0.
+bash_c_string.sh:1:1: trace:
+     1 |  eval "$(printf 'echo first\necho $((1/0))\n')"
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+rc=1
+== a script with arguments carries no command line frame
+first
+first.sh:2:1: error: The command 'missing_first' was not found.
+     2 |  missing_first
+       |  ^~~~~~~~~~~~~
+== two command strings carry the command line frame
+1:6: error: Division by zero.
+     1 |  echo $((1/0))
+       |       ^~~~~~~~
+note: The right operand evaluated to 0.
+1:0: trace:
+     1 |  KOSH --mood bash -c 'echo $((1/0))' -c 'echo $((2/0))'
+1:6: error: Division by zero.
+     1 |  echo $((2/0))
+       |       ^~~~~~~~
+note: The right operand evaluated to 0.
+1:0: trace:
+     1 |  KOSH --mood bash -c 'echo $((1/0))' -c 'echo $((2/0))'

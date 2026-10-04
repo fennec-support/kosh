@@ -1347,13 +1347,16 @@ fn AnalysisContext::note_variable_read(StringView name,
 }
 
 cold fn expressions::internal::report_command_resolution_error(
-    EvalContext &cxt, const CommandResolutionErrorWithLocation &e) throws
-    -> void
+    EvalContext &cxt, CommandResolutionErrorWithLocation &e) throws -> void
 {
+  let const trace_location = e.location();
   const String *source = cxt.source_store().current_source();
-  show_message(
-      e.to_string(source != nullptr ? source->view() : StringView{}, &cxt));
-  cxt.print_source_backtrace(e.location());
+  let const windowed = window_function_body_error(cxt, e);
+  show_message(e.to_string(windowed.has_value() ? *windowed
+                           : source != nullptr  ? source->view()
+                                                : StringView{},
+                           &cxt));
+  cxt.print_source_backtrace(trace_location);
 }
 
 fn expressions::internal::window_function_body_error(

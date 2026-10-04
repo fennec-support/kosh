@@ -1531,6 +1531,14 @@ public:
   {
     return m_call_sources;
   }
+  fn call_was_printed() wontthrow -> ArrayList<bool> &
+  {
+    return m_call_was_printed;
+  }
+  pure fn call_was_printed() const wontthrow -> const ArrayList<bool> &
+  {
+    return m_call_was_printed;
+  }
 
 private:
   StringMap<FunctionBodyHandle> m_definitions{heap_allocator()};
@@ -1540,6 +1548,7 @@ private:
   ArrayList<FunctionBodyHandle> m_call_storages{heap_allocator()};
   ArrayList<SourceLocation> m_call_locations{heap_allocator()};
   ArrayList<const String *> m_call_sources{heap_allocator()};
+  ArrayList<bool> m_call_was_printed{heap_allocator()};
 };
 
 class TrapStore
@@ -1549,6 +1558,14 @@ public:
   pure fn actions() const wontthrow -> const StringMap<String> &
   {
     return m_actions;
+  }
+  fn definitions() wontthrow -> StringMap<trap_definition> &
+  {
+    return m_definitions;
+  }
+  pure fn definitions() const wontthrow -> const StringMap<trap_definition> &
+  {
+    return m_definitions;
   }
   fn cached_bodies() wontthrow -> StringMap<FunctionBodyHandle> &
   {
@@ -1695,6 +1712,7 @@ private:
   i32 m_last_trap_action_status{0};
   i32 m_status_before_return{0};
   StringMap<String> m_actions{heap_allocator()};
+  StringMap<trap_definition> m_definitions{heap_allocator()};
   StringMap<FunctionBodyHandle> m_cached_bodies{heap_allocator()};
 };
 
@@ -1854,6 +1872,15 @@ public:
   {
     return m_current_source;
   }
+  fn embedded_sources() wontthrow -> ArrayList<embedded_source> &
+  {
+    return m_embedded_sources;
+  }
+  pure fn embedded_sources() const wontthrow
+      -> const ArrayList<embedded_source> &
+  {
+    return m_embedded_sources;
+  }
   fn substitution_line_bases() wontthrow -> ArrayList<substitution_line_base> &
   {
     return m_substitution_line_bases;
@@ -1953,6 +1980,7 @@ private:
   SourceLocation m_current_location{};
   ArrayList<source_frame> m_source_frames{heap_allocator()};
   ArrayList<substitution_line_base> m_substitution_line_bases{heap_allocator()};
+  ArrayList<embedded_source> m_embedded_sources{heap_allocator()};
   ArrayList<Expression *> m_retained_source_asts{heap_allocator()};
   ArrayList<String *> m_retained_sources{heap_allocator()};
   u64 m_retained_source_generation{0};
@@ -2548,10 +2576,22 @@ public:
                  : absolute_position;
     }
   };
-  pure fn
-  resolve_render_source(const SourceLocation &location,
-                        const String *fallback_source = nullptr) const wontthrow
+  pure fn resolve_render_source(
+      const SourceLocation &location, const String *fallback_source = nullptr,
+      usize call_depth_limit = static_cast<usize>(-1),
+      usize call_depth_floor = static_cast<usize>(-1)) const wontthrow
       -> resolved_render_source;
+  fn register_embedded_source(StringView inner,
+                              const SourceLocation &parent_location) throws
+      -> bool;
+  fn unregister_embedded_source() wontthrow -> void;
+  pure fn embedded_source_name_index() const wontthrow -> Maybe<u32>;
+  fn map_embedded_site(StringView &rendered_source,
+                       SourceLocation &location) const wontthrow
+      -> const String *;
+  pure fn resolve_current_function_window(
+      StringView rendered_source,
+      const SourceLocation &location) const wontthrow -> resolved_render_source;
   pure fn source_text_in_span(const SourceLocation &location,
                               usize end_position) const wontthrow -> StringView;
   pure fn function_storage_stats() const wontthrow -> function_arena_stats;
@@ -2573,7 +2613,10 @@ public:
   fn variable_names(Allocator result_allocator = heap_allocator()) const throws
       -> HashSet;
   /* A signal condition installs the shell's handler. */
-  fn set_trap(StringView condition, StringView action) throws -> void;
+  fn set_trap(StringView condition, StringView action,
+              Maybe<SourceLocation> definition_location = None) throws -> void;
+  fn capture_trap_definition(const SourceLocation &location,
+                             StringView action) throws -> trap_definition;
   fn remove_trap(StringView condition) throws -> void;
   fn discard_inherited_signal_traps() throws -> void;
   fn run_exit_trap(Maybe<i32> final_status = None) throws -> void;
@@ -2872,10 +2915,11 @@ public:
     return source_store().history_recording_source();
   }
   fn record_history_event(StringView command) throws -> bool;
-  /* A frame at error_location is dropped. */
+  /* A frame at error_location is dropped. Consecutive frames in one file print
+     the file name once, and a replayed trace starts with the name. */
   fn print_source_backtrace(Maybe<SourceLocation> error_location = None,
-                            bool should_defer_for_source_file = true) throws
-      -> void;
+                            bool should_defer_for_source_file = true,
+                            bool is_replay = false) throws -> void;
   fn set_diagnostic_highlight_cache(completion::shell_highlight_cache *cache)
       wontthrow -> completion::shell_highlight_cache *
   {
@@ -3238,8 +3282,11 @@ public:
                 Maybe<i32> *status_before_return = nullptr,
                 const FunctionBodyHandle *cached_body = nullptr,
                 return_handling handling = return_handling::Consume,
-                history_recording history = history_recording::Disabled) throws
-      -> i32;
+                history_recording history = history_recording::Disabled,
+                const trap_definition *definition = nullptr) throws -> i32;
+  fn find_trap_definition(StringView condition,
+                          StringView action) const wontthrow
+      -> Maybe<trap_definition>;
   fn resolve_source_path(StringView path,
                          source_tilde_expansion tilde_expansion =
                              source_tilde_expansion::Disabled) throws

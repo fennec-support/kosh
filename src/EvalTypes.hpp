@@ -226,7 +226,6 @@ enum class source_frame_kind : u8
 {
   Ordinary,
   CliRoot,
-  SoleCliRoot,
 };
 
 struct substitution_line_base
@@ -235,6 +234,22 @@ struct substitution_line_base
   const String *parent_source;
   SourceLocation call_site;
   usize function_call_depth;
+};
+
+struct trap_definition
+{
+  String action_text;
+  String line_source;
+  SourceLocation location;
+  isize line_offset{0};
+};
+
+struct embedded_source
+{
+  StringView text;
+  const String *parent;
+  SourceLocation parent_location;
+  usize inner_offset;
 };
 
 struct source_frame
@@ -255,7 +270,10 @@ struct source_frame
   String source_path;
   usize function_call_depth{0};
   source_frame_kind kind;
+  const trap_definition *definition{nullptr};
+  bool does_change_source{true};
   bool was_printed{false};
+  bool was_definition_printed{false};
   bool should_defer_trace{false};
   bool has_deferred_trace{false};
   Maybe<SourceLocation> deferred_trace_location;

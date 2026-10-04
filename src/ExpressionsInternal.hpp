@@ -25,8 +25,8 @@
 namespace koshka::expressions::internal {
 
 fn indent_for_layer(usize layer) throws -> String;
-fn report_command_resolution_error(
-    EvalContext &cxt, const CommandResolutionErrorWithLocation &e) throws
+fn report_command_resolution_error(EvalContext &cxt,
+                                   CommandResolutionErrorWithLocation &e) throws
     -> void;
 
 /* The returned view is the windowed source, or None when no window applies and

@@ -645,10 +645,9 @@ cold fn EvalContext::show_runtime_warning_at(
       return;
     }
     let warning = WarningWithLocationAndDetails{location, message, note};
-    warning.set_line_offset(line_offset);
+    if (resolved_source.is_windowed) warning.set_line_offset(line_offset);
     show_message(warning.to_string(resolved_source.text->view(), this));
-    if (!source_store().source_frames().is_empty())
-      print_source_backtrace(trace_location);
+    print_source_backtrace(trace_location);
   } catch (...) {
     LOG(Debug, "formatting a runtime warning failed, the error is swallowed");
   }
@@ -674,10 +673,9 @@ cold fn EvalContext::show_runtime_error_at(SourceLocation location,
       return;
     }
     let error = ErrorWithLocation{location, message};
-    error.set_line_offset(line_offset);
+    if (resolved_source.is_windowed) error.set_line_offset(line_offset);
     show_message(error.to_string(resolved_source.text->view(), this));
-    if (!source_store().source_frames().is_empty())
-      print_source_backtrace(trace_location);
+    print_source_backtrace(trace_location);
   } catch (...) {
     LOG(Debug, "formatting a runtime error failed, the error is swallowed");
   }
@@ -827,6 +825,7 @@ fn EvalContext::warn_or_throw(bool fatal, bool explicitly_requested,
       let warning = WarningWithLocationAndDetails{location, message, note};
       show_message(
           warning.to_string(source_store().current_source()->view(), this));
+      print_source_backtrace(location);
     } catch (...) {
       LOG(Debug, "showing a located warning failed, the error is swallowed");
     }
@@ -1289,6 +1288,9 @@ fn EvalContext::push_function_call_name(
       function_store().call_locations().count() + 1);
   function_store().call_sources().reserve(
       function_store().call_sources().count() + 1);
+  function_store().call_was_printed().reserve(
+      function_store().call_was_printed().count() + 1);
+  function_store().call_was_printed().push(false);
   function_store().call_names().push(steal(owned_name));
   function_store().call_storages().push(body_storage);
   function_store().call_locations().push(source_store().current_location());
@@ -1306,6 +1308,8 @@ fn EvalContext::pop_function_call_name() wontthrow -> void
         function_store().call_locations().count() - 1);
     function_store().call_sources().remove(
         function_store().call_sources().count() - 1);
+    function_store().call_was_printed().remove(
+        function_store().call_was_printed().count() - 1);
   }
 }
 

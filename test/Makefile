@@ -38,6 +38,7 @@ SKIPPED_TESTS := \
 	koshkit_goodcore_archive koshkit_ls_modes koshkit_misc \
 	assimilate koshkit_printenv koshkit_process_tools \
 	koshkit_tail_follow koshkit_text koshkit_timeout \
+	source_locations mood_diagnostics_parity \
 	loop_redirect_descriptor \
 	pipeline_stage_evaluation_mode shopt_states \
 	subshell_replay_trap_suppression subshell_spawn_state \

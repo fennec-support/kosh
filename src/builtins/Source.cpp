@@ -59,6 +59,9 @@ fn Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         "Unable to source the file '" + path + "': not found in PATH",
         "Pass an absolute path or add its directory to PATH"};
   let source_path = resolved_source_path.take();
+  let const source_name = os::has_directory_separator(path.view())
+                              ? path.view()
+                              : source_path.text().view();
 
   let const contents = source_path.read_entire_file();
   if (!contents.has_value())
@@ -99,7 +102,7 @@ fn Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let bash_argument_frame_context = EvalContext::BashArgumentFrameContext{};
     cxt.enter_bash_source_argument_frame(bash_argument_frame_context,
                                          has_extra_args ? &params : nullptr,
-                                         path.view());
+                                         source_name);
     defer { cxt.leave_bash_argument_frame(bash_argument_frame_context); };
 
     if (has_extra_args) {
@@ -107,10 +110,9 @@ fn Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       cxt.variable_store().positional_params() = steal(params);
     }
 
-    status = cxt.run_source(*contents, "the file '" + path + "'",
-                            ec.arg_location_at(path_index), StringView{path},
-                            &status_before_return, nullptr,
-                            return_handling::Consume);
+    status = cxt.run_source(
+        *contents, "the file '" + path + "'", ec.arg_location_at(path_index),
+        source_name, &status_before_return, nullptr, return_handling::Consume);
   }
 
   /* A sourced file runs in the current scope, and its finish fires the RETURN

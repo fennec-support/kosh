@@ -2,6 +2,9 @@ LIB:3:15: warning: The variable 'UNSET_FN_PROBE' is not set, it expands to empty
      3 |    echo "first=${UNSET_FN_PROBE}"
        |                ^~~~~~~~~~~~~~~~~
 note: Replace it with ${UNSET_FN_PROBE-} if empty expansion is desired.
+1:0: trace:
+     1 |  . LIB; probe_fn
+       |                                      ^~~~
 first=
 LIB:4:11: warning: The variable 'UNSET_FN_ARITH' is not set, it expands to empty.
      4 |    echo $((UNSET_FN_ARITH + 1))
@@ -14,6 +17,9 @@ FIRST:2:15: warning: The variable 'UNSET_FIRST_PROBE' is not set, it expands to 
      2 |    echo "first=${UNSET_FIRST_PROBE}"
        |                ^~~~~~~~~~~~~~~~~~~~
 note: Replace it with ${UNSET_FIRST_PROBE-} if empty expansion is desired.
+1:0: trace:
+     1 |  . FIRST; first_fn
+       |                                            ^~~~
 first=
 line=3
 rc=0

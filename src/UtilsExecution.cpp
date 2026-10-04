@@ -655,8 +655,10 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
             child_status = KOSH_BROKEN_PIPE_EXIT_STATUS;
           } catch (const ErrorWithLocation &e) {
             const String *source = cxt.source_store().current_source();
-            koshka::show_message(e.to_string(
-                source != nullptr ? source->view() : StringView{}, &cxt));
+            if (!e.was_rendered()) {
+              koshka::show_message(e.to_string(
+                  source != nullptr ? source->view() : StringView{}, &cxt));
+            }
             child_status = static_cast<i32>(e.command_status());
           } catch (const Error &e) {
             koshka::show_message(e.to_string());

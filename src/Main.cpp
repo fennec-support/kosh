@@ -1501,21 +1501,20 @@ fn kosh_main(int argc, char **argv) -> int
       }
     }
 
-    if (root_frame_call_site.has_value() && !should_suppress_root_source_trace)
-    {
-      let const root_frame_kind = FLAG_COMMAND.count() <= 1
-                                      ? koshka::source_frame_kind::SoleCliRoot
-                                      : koshka::source_frame_kind::CliRoot;
+    let const has_multiple_root_sources =
+        should_execute_commands
+            ? FLAG_COMMAND.count() > 1
+            : FLAG_LINT.is_enabled() && file_names.count() > 1;
+    let const should_push_root_frame = root_frame_call_site.has_value() &&
+                                       has_multiple_root_sources &&
+                                       !should_suppress_root_source_trace;
+    if (should_push_root_frame) {
       context.push_root_source_frame(&cli_invocation, *root_frame_call_site,
-                                     root_frame_kind);
+                                     koshka::source_frame_kind::CliRoot);
     }
     defer
     {
-      if (root_frame_call_site.has_value() &&
-          !should_suppress_root_source_trace)
-      {
-        context.pop_root_source_frame();
-      }
+      if (should_push_root_frame) context.pop_root_source_frame();
     };
 
     /* Only the first chunk stands in for the pipeline stage the parent
