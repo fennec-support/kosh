@@ -84,21 +84,59 @@ static consteval fn make_word_byte_table() -> word_byte_table
 
 inline constexpr word_byte_table WORD_BYTE_TABLE = make_word_byte_table();
 
-struct wc_row
-{
-  StringView name;
-  u64 line_count;
-  u64 word_count;
-  u64 character_count;
-  u64 byte_count;
-};
-
-struct wc_source_state
+struct wc_counts
 {
   u64 line_count{0};
   u64 word_count{0};
   u64 character_count{0};
   u64 byte_count{0};
+
+  fn add(const wc_counts &other) wontthrow -> void
+  {
+    line_count += other.line_count;
+    word_count += other.word_count;
+    character_count += other.character_count;
+    byte_count += other.byte_count;
+  }
+
+  fn get_maximum(wc_count_selection selection) const wontthrow -> u64
+  {
+    u64 maximum = 0;
+
+    if (has_wc_count(selection, wc_count_selection::Lines) &&
+        line_count > maximum)
+    {
+      maximum = line_count;
+    }
+    if (has_wc_count(selection, wc_count_selection::Words) &&
+        word_count > maximum)
+    {
+      maximum = word_count;
+    }
+    if (has_wc_count(selection, wc_count_selection::Characters) &&
+        character_count > maximum)
+    {
+      maximum = character_count;
+    }
+    if (has_wc_count(selection, wc_count_selection::Bytes) &&
+        byte_count > maximum)
+    {
+      maximum = byte_count;
+    }
+
+    return maximum;
+  }
+};
+
+struct wc_row
+{
+  StringView name;
+  wc_counts counts;
+};
+
+struct wc_source_state
+{
+  wc_counts counts;
   i32 error_number{0};
   bool is_in_word{false};
 };
@@ -158,7 +196,7 @@ static fn count_words(wc_source_state &state, StringView content) wontthrow
     is_in_word = (((is_in_word << 1) & entry) >> 1) | does_start_word;
   }
 
-  state.word_count += word_count;
+  state.counts.word_count += word_count;
   state.is_in_word = is_in_word != 0;
 }
 
@@ -173,23 +211,25 @@ static fn update_wc_source(wc_source_state &state, StringView content,
       : has_wc_count(selection, wc_count_selection::Words) ? wc_scan_mode::Words
                                                            : wc_scan_mode::None;
   if (has_wc_count(selection, wc_count_selection::Bytes))
-    state.byte_count += content.length;
+    state.counts.byte_count += content.length;
 
   if (has_wc_count(selection, wc_count_selection::Characters)) {
     for (usize byte_position = 0; byte_position < content.length;
          byte_position++)
     {
-      state.character_count +=
+      state.counts.character_count +=
           (static_cast<u8>(content[byte_position]) & 0xC0) != 0x80;
     }
   }
 
   switch (scan_mode) {
   case wc_scan_mode::None: break;
-  case wc_scan_mode::Lines: state.line_count += count_newlines(content); break;
+  case wc_scan_mode::Lines:
+    state.counts.line_count += count_newlines(content);
+    break;
   case wc_scan_mode::Words: count_words(state, content); break;
   case wc_scan_mode::LinesWords:
-    state.line_count += count_newlines(content);
+    state.counts.line_count += count_newlines(content);
     count_words(state, content);
     break;
   }
@@ -207,9 +247,9 @@ static fn decimal_digit_count(u64 value) wontthrow -> usize
   return digit_count;
 }
 
-static fn append_counts(String &line, u64 lines, u64 words, u64 characters,
-                        u64 bytes, StringView name, usize field_width,
-                        wc_count_selection selection) throws -> void
+static fn append_counts(String &line, const wc_counts &counts, StringView name,
+                        usize field_width, wc_count_selection selection) throws
+    -> void
 {
   bool has_field = false;
 
@@ -225,11 +265,14 @@ static fn append_counts(String &line, u64 lines, u64 words, u64 characters,
     has_field = true;
   };
 
-  if (has_wc_count(selection, wc_count_selection::Lines)) do_emit_field(lines);
-  if (has_wc_count(selection, wc_count_selection::Words)) do_emit_field(words);
+  if (has_wc_count(selection, wc_count_selection::Lines))
+    do_emit_field(counts.line_count);
+  if (has_wc_count(selection, wc_count_selection::Words))
+    do_emit_field(counts.word_count);
   if (has_wc_count(selection, wc_count_selection::Characters))
-    do_emit_field(characters);
-  if (has_wc_count(selection, wc_count_selection::Bytes)) do_emit_field(bytes);
+    do_emit_field(counts.character_count);
+  if (has_wc_count(selection, wc_count_selection::Bytes))
+    do_emit_field(counts.byte_count);
 
   if (!name.is_empty()) {
     line += ' ';
@@ -299,7 +342,7 @@ fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
           unused(os::close_fd(*descriptor));
 
           if (is_seekable) {
-            source_states[source_index].byte_count = *file_size;
+            source_states[source_index].counts.byte_count = *file_size;
             continue;
           }
         }
@@ -336,10 +379,7 @@ fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   ArrayList<wc_row> rows{cxt.scratch_allocator()};
-  u64 total_lines = 0;
-  u64 total_words = 0;
-  u64 total_characters = 0;
-  u64 total_bytes = 0;
+  wc_counts totals;
   i32 status = 0;
   for (usize source_index = 0; source_index < sources.count(); source_index++) {
     let const &state = source_states[source_index];
@@ -353,48 +393,20 @@ fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
       continue;
     }
 
-    total_lines += state.line_count;
-    total_words += state.word_count;
-    total_characters += state.character_count;
-    total_bytes += state.byte_count;
+    totals.add(state.counts);
 
     let const name = operands.is_empty() ? StringView{} : sources[source_index];
-    rows.push(wc_row{name, state.line_count, state.word_count,
-                     state.character_count, state.byte_count});
+    rows.push(wc_row{name, state.counts});
   }
 
-  u64 max_count = 0;
-  if (has_wc_count(selection, wc_count_selection::Lines) &&
-      total_lines > max_count)
-  {
-    max_count = total_lines;
-  }
-  if (has_wc_count(selection, wc_count_selection::Words) &&
-      total_words > max_count)
-  {
-    max_count = total_words;
-  }
-  if (has_wc_count(selection, wc_count_selection::Characters) &&
-      total_characters > max_count)
-  {
-    max_count = total_characters;
-  }
-  if (has_wc_count(selection, wc_count_selection::Bytes) &&
-      total_bytes > max_count)
-  {
-    max_count = total_bytes;
-  }
-
-  let const field_width = decimal_digit_count(max_count);
+  let const field_width = decimal_digit_count(totals.get_maximum(selection));
 
   let output = String{cxt.scratch_allocator()};
   for (let const &row : rows)
-    append_counts(output, row.line_count, row.word_count, row.character_count,
-                  row.byte_count, row.name, field_width, selection);
+    append_counts(output, row.counts, row.name, field_width, selection);
 
   if (sources.count() > 1)
-    append_counts(output, total_lines, total_words, total_characters,
-                  total_bytes, StringView{"total"}, field_width, selection);
+    append_counts(output, totals, StringView{"total"}, field_width, selection);
 
   ec.print_to_stdout(output);
   return status;
