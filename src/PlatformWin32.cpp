@@ -2036,9 +2036,7 @@ fn initialize_platform_runtime() wontthrow -> void
   if (!is_internal_child) {
     SetEnvironmentVariableW(internal::STATE_NAMED_PIPE_WIDE, nullptr);
     SetEnvironmentVariableW(internal::CONNECT_NAMED_PIPE_WIDE, nullptr);
-    unset_environment_variable(internal::PREVIOUS_EXIT_STATUS);
-    unset_environment_variable(internal::SHELL_PROCESS_ID);
-    unset_environment_variable(internal::SUBSHELL_DEPTH);
+    inherited_subshell_state::clear_environment();
     return;
   }
 

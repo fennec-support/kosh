@@ -2235,6 +2235,36 @@ private:
   fn close_owned_processes() wontthrow -> void;
 };
 
+struct inherited_subshell_state
+{
+  class EnvironmentScope
+  {
+  public:
+    explicit EnvironmentScope(const inherited_subshell_state &state) throws;
+    ~EnvironmentScope();
+
+    EnvironmentScope(const EnvironmentScope &) = delete;
+    fn operator=(const EnvironmentScope &)->EnvironmentScope & = delete;
+
+  private:
+    Maybe<String> m_previous_exit_status{};
+    Maybe<String> m_previous_shell_process_id{};
+    Maybe<String> m_previous_subshell_depth{};
+  };
+
+  i32 previous_exit_status{0};
+  i64 shell_process_id{0};
+  usize subshell_depth{0};
+
+  fn apply_to_environment() const throws -> EnvironmentScope
+  {
+    return EnvironmentScope{*this};
+  }
+
+  static fn take_from_environment() throws -> Maybe<inherited_subshell_state>;
+  static fn clear_environment() throws -> void;
+};
+
 struct process_substitution_options
 {
   StringView source{};

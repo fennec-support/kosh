@@ -11,6 +11,8 @@
 
 #include "Platform.hpp"
 
+#include "EvalVariablesInternal.hpp"
+
 namespace koshka {
 namespace os {
 
@@ -118,6 +120,99 @@ fn subshell_bootstrap::operator=(subshell_bootstrap &&other) noexcept
   other.evaluation_mode = root_evaluation_mode::Normal;
   other.owns_processes = false;
   return *this;
+}
+
+static fn restore_environment_variable(StringView key,
+                                       const Maybe<String> &previous) wontthrow
+    -> void
+{
+  try {
+    if (previous.has_value())
+      set_environment_variable(key, previous->view());
+    else
+      unset_environment_variable(key);
+  } catch (...) {}
+}
+
+static fn replace_environment_variable(StringView key, StringView value,
+                                       Maybe<String> &previous) throws -> void
+{
+  previous = get_environment_variable(key);
+  set_environment_variable(key, value);
+}
+
+static fn take_environment_variable(StringView key) throws -> Maybe<String>
+{
+  let text = get_environment_variable(key);
+  if (text.has_value()) unset_environment_variable(key);
+  return text;
+}
+
+inherited_subshell_state::EnvironmentScope::EnvironmentScope(
+    const inherited_subshell_state &state) throws
+{
+  replace_environment_variable(
+      internal::PREVIOUS_EXIT_STATUS,
+      String::from(state.previous_exit_status, heap_allocator()).view(),
+      m_previous_exit_status);
+  replace_environment_variable(
+      internal::SHELL_PROCESS_ID,
+      String::from(state.shell_process_id, heap_allocator()).view(),
+      m_previous_shell_process_id);
+  replace_environment_variable(
+      internal::SUBSHELL_DEPTH,
+      String::from(state.subshell_depth, heap_allocator()).view(),
+      m_previous_subshell_depth);
+}
+
+inherited_subshell_state::EnvironmentScope::~EnvironmentScope()
+{
+  restore_environment_variable(internal::SUBSHELL_DEPTH,
+                               m_previous_subshell_depth);
+  restore_environment_variable(internal::SHELL_PROCESS_ID,
+                               m_previous_shell_process_id);
+  restore_environment_variable(internal::PREVIOUS_EXIT_STATUS,
+                               m_previous_exit_status);
+}
+
+fn inherited_subshell_state::take_from_environment() throws
+    -> Maybe<inherited_subshell_state>
+{
+  let const status_text =
+      take_environment_variable(internal::PREVIOUS_EXIT_STATUS);
+  let const process_id_text =
+      take_environment_variable(internal::SHELL_PROCESS_ID);
+  let const depth_text = take_environment_variable(internal::SUBSHELL_DEPTH);
+  if (!status_text.has_value() || !process_id_text.has_value() ||
+      !depth_text.has_value())
+  {
+    return None;
+  }
+
+  let const status = status_text->view().to<i32>();
+  let const process_id = process_id_text->view().to<i64>();
+  let const depth = depth_text->view().to<u64>();
+  if (status.is_error() || process_id.is_error() || depth.is_error()) {
+    return None;
+  }
+  if (process_id.value() <= 0 ||
+      depth.value() > static_cast<u64>(SIZE_MAX))
+  {
+    return None;
+  }
+
+  return inherited_subshell_state{
+      .previous_exit_status = status.value(),
+      .shell_process_id = process_id.value(),
+      .subshell_depth = static_cast<usize>(depth.value()),
+  };
+}
+
+fn inherited_subshell_state::clear_environment() throws -> void
+{
+  unset_environment_variable(internal::PREVIOUS_EXIT_STATUS);
+  unset_environment_variable(internal::SHELL_PROCESS_ID);
+  unset_environment_variable(internal::SUBSHELL_DEPTH);
 }
 
 fn subshell_bootstrap::release_process_ownership() wontthrow -> void

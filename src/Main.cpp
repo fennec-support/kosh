@@ -710,44 +710,15 @@ fn kosh_main(int argc, char **argv) -> int
   koshka::os::unset_environment_variable("KOSH_IDENTITY");
   let inherited_bootstrap = koshka::os::take_subshell_bootstrap();
   let inherited_evaluation_mode = inherited_bootstrap.evaluation_mode;
-  koshka::Maybe<i32> inherited_exit_status = koshka::None;
-  koshka::Maybe<usize> inherited_subshell_depth = koshka::None;
+  koshka::Maybe<koshka::os::inherited_subshell_state> inherited_state =
+      koshka::None;
   if (!koshka::os::can_fork_evaluator() &&
       !inherited_bootstrap.payload.is_empty())
   {
-    if (let const status_text = koshka::os::get_environment_variable(
-            koshka::internal::PREVIOUS_EXIT_STATUS);
-        status_text.has_value())
-    {
-      let const parsed_status = status_text->view().to<i32>();
-      if (!parsed_status.is_error())
-        inherited_exit_status = parsed_status.value();
-      koshka::os::unset_environment_variable(
-          koshka::internal::PREVIOUS_EXIT_STATUS);
-    }
-    if (let const process_id_text = koshka::os::get_environment_variable(
-            koshka::internal::SHELL_PROCESS_ID);
-        process_id_text.has_value())
-    {
-      let const parsed_process_id = process_id_text->view().to<i64>();
-      if (!parsed_process_id.is_error() && parsed_process_id.value() > 0) {
-        koshka::os::set_shell_process_id(parsed_process_id.value());
-      }
-      koshka::os::unset_environment_variable(
-          koshka::internal::SHELL_PROCESS_ID);
-    }
-    if (let const depth_text = koshka::os::get_environment_variable(
-            koshka::internal::SUBSHELL_DEPTH);
-        depth_text.has_value())
-    {
-      let const parsed_depth = depth_text->view().to<u64>();
-      if (!parsed_depth.is_error() &&
-          parsed_depth.value() <= static_cast<u64>(SIZE_MAX))
-      {
-        inherited_subshell_depth = static_cast<usize>(parsed_depth.value());
-      }
-      koshka::os::unset_environment_variable(koshka::internal::SUBSHELL_DEPTH);
-    }
+    inherited_state =
+        koshka::os::inherited_subshell_state::take_from_environment();
+    if (inherited_state.has_value())
+      koshka::os::set_shell_process_id(inherited_state->shell_process_id);
   }
   let const should_suppress_root_source_trace =
       koshka::os::get_environment_variable(
@@ -887,7 +858,7 @@ fn kosh_main(int argc, char **argv) -> int
 
   /* SHLVL counts shell nesting, incremented and exported so a child shell
      continues the count. */
-  if (!inherited_subshell_depth.has_value()) {
+  if (!inherited_state.has_value()) {
     i64 shell_level = 0;
     if (koshka::Maybe<koshka::String> inherited =
             koshka::os::get_environment_variable("SHLVL");
@@ -1046,10 +1017,11 @@ fn kosh_main(int argc, char **argv) -> int
     context.runtime_state().set_show_ast(false);
     context.runtime_state().set_show_lexed_words(false);
   }
-  if (inherited_exit_status.has_value())
-    context.execution_store().set_last_exit_status(*inherited_exit_status);
-  if (inherited_subshell_depth.has_value())
-    context.set_subshell_depth(*inherited_subshell_depth);
+  if (inherited_state.has_value()) {
+    context.execution_store().set_last_exit_status(
+        inherited_state->previous_exit_status);
+    context.set_subshell_depth(inherited_state->subshell_depth);
+  }
 
   /* The rc files retained a heap copy of their text and tree until the next
      top-level command clears them, dropped now rather than carried through the

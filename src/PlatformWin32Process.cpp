@@ -1309,19 +1309,10 @@ static fn spawn_subshell_stage(
     arguments.push(String{heap_allocator(), shell_name});
   let command_line = make_os_args(arguments);
 
-  let const previous_status_value =
-      get_environment_variable(internal::PREVIOUS_EXIT_STATUS);
-  set_environment_variable(
-      internal::PREVIOUS_EXIT_STATUS,
-      String::from(previous_exit_status, heap_allocator()).view());
-  defer
-  {
-    if (previous_status_value.has_value())
-      set_environment_variable(internal::PREVIOUS_EXIT_STATUS,
-                               previous_status_value->view());
-    else
-      unset_environment_variable(internal::PREVIOUS_EXIT_STATUS);
-  };
+  let const inherited_scope =
+      inherited_subshell_state{previous_exit_status, shell_process_id,
+                               subshell_depth}
+          .apply_to_environment();
 
   let const previous_parent_process_id =
       get_environment_variable(internal::PARENT_PROCESS_ID);
@@ -1335,34 +1326,6 @@ static fn spawn_subshell_stage(
                                previous_parent_process_id->view());
     else
       unset_environment_variable(internal::PARENT_PROCESS_ID);
-  };
-
-  let const previous_shell_process_id =
-      get_environment_variable(internal::SHELL_PROCESS_ID);
-  set_environment_variable(
-      internal::SHELL_PROCESS_ID,
-      String::from(shell_process_id, heap_allocator()).view());
-  defer
-  {
-    if (previous_shell_process_id.has_value())
-      set_environment_variable(internal::SHELL_PROCESS_ID,
-                               previous_shell_process_id->view());
-    else
-      unset_environment_variable(internal::SHELL_PROCESS_ID);
-  };
-
-  let const previous_subshell_depth =
-      get_environment_variable(internal::SUBSHELL_DEPTH);
-  set_environment_variable(
-      internal::SUBSHELL_DEPTH,
-      String::from(subshell_depth, heap_allocator()).view());
-  defer
-  {
-    if (previous_subshell_depth.has_value())
-      set_environment_variable(internal::SUBSHELL_DEPTH,
-                               previous_subshell_depth->view());
-    else
-      unset_environment_variable(internal::SUBSHELL_DEPTH);
   };
 
   STARTUPINFOW startup_info{};
