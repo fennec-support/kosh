@@ -229,9 +229,27 @@ esac
 printf 'evil-short-indent=%s\n' "$evil_short_indent"
 
 if [ "${TARGET:-$(uname -s)}" = Linux ]; then
-  unix_socket_report=$("$BIN" -c 'koshkit --color never evilss -x')
+  unix_socket_path=$TEST_TEMP_DIRECTORY/evilss-listener.sock
+  python3 -c '
+import os, socket, sys, time
+path = sys.argv[1]
+listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+listener.bind(path)
+listener.listen(1)
+open(path + ".ready", "w").close()
+time.sleep(60)
+' "$unix_socket_path" &
+  unix_socket_owner=$!
+  unix_socket_wait=0
+  while [ ! -e "$unix_socket_path.ready" ] && [ "$unix_socket_wait" -lt 500 ]; do
+    sleep 0.01
+    unix_socket_wait=$((unix_socket_wait + 1))
+  done
+  unix_socket_report=$("$BIN" -c 'koshkit --color never evilss -xa')
+  kill "$unix_socket_owner" 2> "$TEST_NULL_DEVICE"
+  wait "$unix_socket_owner" 2> "$TEST_NULL_DEVICE"
   case $unix_socket_report in
-    *Sockets*Netid*'Local Address:Port'*'Peer Address:Port'*) ;;
+    *Sockets*Netid*'Local Address:Port'*'Peer Address:Port'*"$unix_socket_path"*) ;;
     *) echo 'evilss-unix=missing' ;;
   esac
 fi

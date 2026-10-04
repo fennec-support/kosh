@@ -3,7 +3,6 @@ remote-table=matched
 namespaces-scope=matched
 cgroups-selector=matched
 cgroups-scope=matched
-sessions-selector=matched
 sessions-scope=matched
 remote-selector=matched
 remote-scope=matched

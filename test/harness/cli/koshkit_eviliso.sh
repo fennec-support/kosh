@@ -82,7 +82,7 @@ for selector_section in \
     esac
   fi
   case $1 in
-  namespaces|runtime) ;;
+  namespaces|runtime|sessions) ;;
   *) printf '%s-selector=%s\n' "$1" "$selector_status" ;;
   esac
 

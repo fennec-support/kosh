@@ -107,14 +107,20 @@ chmod 000 locked-tree/locked
 echo "--- top-largest with an unreadable directory ---"
 if ls locked-tree/locked >/dev/null 2>&1; then
   chmod 700 locked-tree/locked
-  echo "locked-readable=skipped"
 else
   "$BIN" -c 'koshkit du -T locked-tree' >locked.out 2>locked.err
   locked_status=$?
   chmod 700 locked-tree/locked
-  mask_sizes < locked.out
-  printf 'locked-status=%s\n' "$locked_status"
-  printf 'locked-errors=%s\n' "$(grep -c "cannot read 'locked-tree/locked'" locked.err)"
+  locked_tree=$(mask_sizes < locked.out)
+  expected_tree="└─┬ locked-tree
+  └─┬ open
+    └── file"
+  locked_errors=$(grep -c "cannot read 'locked-tree/locked'" locked.err)
+  if [ "$locked_tree" != "$expected_tree" ] || [ "$locked_status" != 1 ] ||
+    [ "$locked_errors" != 1 ]; then
+    echo "locked-failed: status=$locked_status errors=$locked_errors"
+    printf '%s\n' "$locked_tree"
+  fi
 fi
 
 echo "--- help ---"

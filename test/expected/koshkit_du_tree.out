@@ -96,11 +96,6 @@ ties-lines=21
 └─┬ t/c
   └── small
 --- top-largest with an unreadable directory ---
-└─┬ locked-tree
-  └─┬ open
-    └── file
-locked-status=1
-locked-errors=1
 --- help ---
   du [-shT] [--tree] [path ...]
       --tree                            Print the entries as a tree, largest

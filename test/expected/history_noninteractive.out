@@ -382,12 +382,6 @@ durable
 == history -S after a peer truncation adopts the truncated file ==
 rc=0
     1  peer only
-== a failed append leaves the branch and the file unchanged ==
-rc=1
-rc=1
-    1  read only one
-durable
-read only one
 == six concurrent writers append whole records in order ==
 writer 1 own=25 all=25
 writer 2 own=25 all=25

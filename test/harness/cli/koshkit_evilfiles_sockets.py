@@ -77,10 +77,10 @@ def unix_socket_lines(text, inodes):
 
 def compare_unix_sockets(inodes):
     if shutil.which("ss") is None:
-        return "ss-parity=skipped-no-ss"
+        return None
     reference = subprocess.run(["ss", "-xaH"], capture_output=True)
     if reference.returncode != 0:
-        return "ss-parity=skipped-ss-failed"
+        return None
     code, output = run_shell("koshkit --color never evilss -xaH")
     if code != 0:
         return "ss-parity=evilss-status-%d" % code
@@ -98,7 +98,7 @@ def compare_unix_sockets(inodes):
     expected = unix_socket_lines(reference.stdout.decode(), inodes)
     actual = unix_socket_lines("\n".join(ours), inodes)
     if expected == actual and expected:
-        return "ss-parity=match"
+        return None
     sys.stderr.write("ss:\n%s\nevilss:\n%s\n" %
                      ("\n".join(expected), "\n".join(actual)))
     return "ss-parity=mismatch"
@@ -269,7 +269,9 @@ def main():
 
     unix_inodes = {os.fstat(descriptor.fileno()).st_ino for descriptor in
                    (pair_left, pair_right, listener, client, server)}
-    print(compare_unix_sockets(unix_inodes))
+    parity_failure = compare_unix_sockets(unix_inodes)
+    if parity_failure is not None:
+        print(parity_failure)
 
     width_probes(long_name, helper.pid)
 

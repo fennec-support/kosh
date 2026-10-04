@@ -614,15 +614,20 @@ history -S; echo "rc=$?"; history'
 
 printf 'read only one\n' > "$dir/read-only"
 "$BIN_DIR/invoke-koshkit" chmod 444 "$dir/read-only"
-if ( : >> "$dir/read-only" ) 2>/dev/null; then
-  echo "== a failed append leaves the branch and the file unchanged =="
-  echo "skipped: the file stays writable for this user"
-else
-  echo "== a failed append leaves the branch and the file unchanged =="
-  KOSH_HISTORY_FILE="$dir/read-only" "$BIN" --no-init-files -c \
+if ! ( : >> "$dir/read-only" ) 2>/dev/null; then
+  failed_append=$(KOSH_HISTORY_FILE="$dir/read-only" "$BIN" --no-init-files -c \
     'history >/dev/null; history -s refused; echo "rc=$?"; \
 history -s refused-again; echo "rc=$?"; history; echo durable; \
-cat "$KOSH_HISTORY_FILE"' 2>/dev/null
+cat "$KOSH_HISTORY_FILE"' 2>/dev/null)
+  expected_append="rc=1
+rc=1
+    1  read only one
+durable
+read only one"
+  if [ "$failed_append" != "$expected_append" ]; then
+    echo "== a failed append leaves the branch and the file unchanged =="
+    printf '%s\n' "$failed_append"
+  fi
 fi
 
 : > "$dir/many-writers"
