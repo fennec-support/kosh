@@ -125,19 +125,34 @@ static_assert(toiletline::HISTORY_RECORD_MAX_DECODED_BYTE_COUNT ==
 
 namespace {
 
-koshka::EvalContext *COMPLETION_CONTEXT = nullptr;
-const koshka::Path *COMPLETION_BASE_DIRECTORY = nullptr;
-bool HIGHLIGHT_COLOR_ENABLED = false;
-bool HIGHLIGHT_STYLED_UNDERLINES_ENABLED = false;
+struct completion_session
+{
+  koshka::EvalContext *context{nullptr};
+  const koshka::Path *base_directory{nullptr};
+  koshka::completion::completion_result *result{nullptr};
+  koshka::ArrayList<const char *> candidate_pointers{koshka::heap_allocator()};
+  koshka::ArrayList<const char *> description_pointers{
+      koshka::heap_allocator()};
+  bool is_highlight_color_enabled{false};
+  bool is_highlight_styled_underlines_enabled{false};
+  koshka::tab_selector_mode tab_selector{
+      koshka::tab_selector_mode::Interactive};
 
-koshka::ArrayList<const char *> COMPLETION_CANDIDATE_POINTERS{
-    koshka::heap_allocator()};
-koshka::ArrayList<const char *> COMPLETION_DESCRIPTION_POINTERS{
-    koshka::heap_allocator()};
-koshka::completion::completion_result *COMPLETION_RESULT = nullptr;
+  fn attach_prompt(const koshka::Path *directory,
+                   koshka::completion::completion_result *storage) -> void
+  {
+    base_directory = directory;
+    result = storage;
+  }
 
-/* The presentation the shell pushes before each prompt. */
-koshka::tab_selector_mode TAB_SELECTOR{koshka::tab_selector_mode::Interactive};
+  fn detach_prompt() -> void
+  {
+    base_directory = nullptr;
+    result = nullptr;
+  }
+};
+
+completion_session COMPLETION_SESSION{};
 
 /* The external selector hands the candidates to a filtering program, and what
    it prints replaces them. The engine, the replaced token span, and the quoting
@@ -431,7 +446,7 @@ fn run_completion_selector(koshka::EvalContext &context,
                            usize token_codepoint_count) throws
     -> selector_outcome
 {
-  if (TAB_SELECTOR != koshka::tab_selector_mode::External)
+  if (COMPLETION_SESSION.tab_selector != koshka::tab_selector_mode::External)
     return selector_outcome::NotRun;
 
   if (::tl_utf8_strlen(result.longest_common_prefix.c_str()) >
@@ -477,8 +492,9 @@ koshka::String SELECTED_HISTORY_ENTRY{koshka::heap_allocator()};
 fn kosh_history_select_callback(const char *const *entries, size_t count,
                                 const char **out_selected) -> int
 {
-  if (COMPLETION_CONTEXT == nullptr) return 0;
-  if (TAB_SELECTOR != koshka::tab_selector_mode::External) return 0;
+  if (COMPLETION_SESSION.context == nullptr) return 0;
+  if (COMPLETION_SESSION.tab_selector != koshka::tab_selector_mode::External)
+    return 0;
   if (entries == nullptr || count == 0) return 0;
 
   /* Toiletline calls this through a C function pointer. A throw unwinding past
@@ -491,8 +507,8 @@ fn kosh_history_select_callback(const char *const *entries, size_t count,
     }
 
     let selected = koshka::ArrayList<koshka::String>{koshka::heap_allocator()};
-    let const outcome = run_selector_program(*COMPLETION_CONTEXT, input.view(),
-                                             false, selected);
+    let const outcome = run_selector_program(*COMPLETION_SESSION.context,
+                                             input.view(), false, selected);
     if (outcome == selector_outcome::NotRun) return 0;
     if (outcome == selector_outcome::Dismissed) return -1;
     if (selected.is_empty()) return 0;
@@ -511,8 +527,9 @@ fn kosh_history_select_callback(const char *const *entries, size_t count,
 fn kosh_completion_callback(const char *buffer, size_t cursor,
                             tl_completion *out, int for_listing) -> int
 {
-  if (COMPLETION_CONTEXT == nullptr || COMPLETION_BASE_DIRECTORY == nullptr ||
-      COMPLETION_RESULT == nullptr)
+  if (COMPLETION_SESSION.context == nullptr ||
+      COMPLETION_SESSION.base_directory == nullptr ||
+      COMPLETION_SESSION.result == nullptr)
   {
     return 0;
   }
@@ -523,7 +540,7 @@ fn kosh_completion_callback(const char *buffer, size_t cursor,
   try {
     let const is_explicit_completion = for_listing != 0;
     if (is_explicit_completion) {
-      COMPLETION_CONTEXT->resolution_store()
+      COMPLETION_SESSION.context->resolution_store()
           .resolver()
           .begin_explicit_completion(
               koshka::ProgramResolver::CompletionRefresh::Cached);
@@ -531,7 +548,7 @@ fn kosh_completion_callback(const char *buffer, size_t cursor,
     defer
     {
       if (is_explicit_completion)
-        COMPLETION_CONTEXT->resolution_store()
+        COMPLETION_SESSION.context->resolution_store()
             .resolver()
             .end_explicit_completion();
     };
@@ -560,15 +577,15 @@ fn kosh_completion_callback(const char *buffer, size_t cursor,
     /* A completion diagnostic is armed to break onto its own line, then
        disarmed so a later command's message is unaffected. */
     koshka::arm_message_leading_newline(true);
-    COMPLETION_RESULT->candidates.clear();
-    COMPLETION_RESULT->descriptions.clear();
-    COMPLETION_RESULT->longest_common_prefix.clear();
-    *COMPLETION_RESULT = koshka::completion::complete(
-        line, byte_cursor, *COMPLETION_CONTEXT, *COMPLETION_BASE_DIRECTORY,
-        nullptr, false,
+    COMPLETION_SESSION.result->candidates.clear();
+    COMPLETION_SESSION.result->descriptions.clear();
+    COMPLETION_SESSION.result->longest_common_prefix.clear();
+    *COMPLETION_SESSION.result = koshka::completion::complete(
+        line, byte_cursor, *COMPLETION_SESSION.context,
+        *COMPLETION_SESSION.base_directory, nullptr, false,
         for_listing != 0 ? koshka::completion::completion_mode::Listing
                          : koshka::completion::completion_mode::Ghost);
-    let const &result = *COMPLETION_RESULT;
+    let const &result = *COMPLETION_SESSION.result;
     koshka::arm_message_leading_newline(false);
 
     /* An abandoned completion offers nothing, so the key leaves the line as it
@@ -582,41 +599,44 @@ fn kosh_completion_callback(const char *buffer, size_t cursor,
     let const token_codepoint_count =
         cursor >= token_start_codepoint ? cursor - token_start_codepoint : 0;
     if (is_explicit_completion &&
-        run_completion_selector(*COMPLETION_CONTEXT, *COMPLETION_RESULT,
-                                token_codepoint_count) ==
-            selector_outcome::Dismissed)
+        run_completion_selector(
+            *COMPLETION_SESSION.context, *COMPLETION_SESSION.result,
+            token_codepoint_count) == selector_outcome::Dismissed)
     {
       return 0;
     }
 
     if (result.candidate_count == 0) return 0;
 
-    COMPLETION_CANDIDATE_POINTERS.clear();
+    COMPLETION_SESSION.candidate_pointers.clear();
     if (for_listing != 0) {
-      COMPLETION_CANDIDATE_POINTERS.reserve(result.candidates.count());
+      COMPLETION_SESSION.candidate_pointers.reserve(result.candidates.count());
       for (let const &candidate : result.candidates)
-        COMPLETION_CANDIDATE_POINTERS.push(candidate.c_str());
+        COMPLETION_SESSION.candidate_pointers.push(candidate.c_str());
     }
 
     /* The candidate text keys the description lookup, and the build is skipped
        when none was produced. */
-    COMPLETION_DESCRIPTION_POINTERS.clear();
+    COMPLETION_SESSION.description_pointers.clear();
     out->descriptions = nullptr;
     if (for_listing != 0 && result.descriptions.count() > 0) {
-      COMPLETION_DESCRIPTION_POINTERS.reserve(result.candidates.count());
+      COMPLETION_SESSION.description_pointers.reserve(
+          result.candidates.count());
       for (let const &candidate : result.candidates) {
         if (let const found_description =
                 result.descriptions.find(candidate.view());
             found_description.has_value())
-          COMPLETION_DESCRIPTION_POINTERS.push(found_description->c_str());
+          COMPLETION_SESSION.description_pointers.push(
+              found_description->c_str());
         else
-          COMPLETION_DESCRIPTION_POINTERS.push("");
+          COMPLETION_SESSION.description_pointers.push("");
       }
-      out->descriptions = COMPLETION_DESCRIPTION_POINTERS.begin();
+      out->descriptions = COMPLETION_SESSION.description_pointers.begin();
     }
 
-    out->candidates =
-        for_listing != 0 ? COMPLETION_CANDIDATE_POINTERS.begin() : nullptr;
+    out->candidates = for_listing != 0
+                          ? COMPLETION_SESSION.candidate_pointers.begin()
+                          : nullptr;
     out->count = result.candidate_count;
     out->longest_common_prefix = result.longest_common_prefix.c_str();
     /* The engine reports the span in bytes, converted to codepoint indices. */
@@ -639,16 +659,16 @@ fn kosh_completion_callback(const char *buffer, size_t cursor,
 /* The body is guarded since toiletline calls through a C function pointer. */
 fn kosh_highlight_callback(const char *buffer, tl_highlight *out) -> int
 {
-  if (COMPLETION_CONTEXT == nullptr) return 0;
-  if (!HIGHLIGHT_COLOR_ENABLED) return 0;
+  if (COMPLETION_SESSION.context == nullptr) return 0;
+  if (!COMPLETION_SESSION.is_highlight_color_enabled) return 0;
 
   try {
     const usize byte_length = std::strlen(buffer);
     let line = koshka::StringView{buffer, byte_length};
 
     koshka::ArrayList<koshka::highlight_span> result =
-        koshka::completion::highlight_line(line, *COMPLETION_CONTEXT);
-    let const &theme = HIGHLIGHT_STYLED_UNDERLINES_ENABLED
+        koshka::completion::highlight_line(line, *COMPLETION_SESSION.context);
+    let const &theme = COMPLETION_SESSION.is_highlight_styled_underlines_enabled
                            ? koshka::colors::SHELL_HIGHLIGHT_THEME
                            : koshka::colors::NONINTERACTIVE_HIGHLIGHT_THEME;
 
@@ -714,11 +734,12 @@ fn kosh_wake_callback(int phase) -> int
    the entry. */
 fn kosh_ghost_validate_callback(const char *entry) -> int
 {
-  if (COMPLETION_CONTEXT == nullptr) return 1;
+  if (COMPLETION_SESSION.context == nullptr) return 1;
   try {
     const usize byte_length = std::strlen(entry);
     return koshka::completion::command_word_resolves(
-               koshka::StringView{entry, byte_length}, *COMPLETION_CONTEXT)
+               koshka::StringView{entry, byte_length},
+               *COMPLETION_SESSION.context)
                ? 1
                : 0;
   } catch (...) {
@@ -802,8 +823,8 @@ struct history_file_tracking
   }
 
   fn update_after_append(const history_file_tracking &previous,
-                         const os::file_status &appended,
-                         bool was_empty) -> void
+                         const os::file_status &appended, bool was_empty)
+      -> void
   {
     if (!appended.has_file_identity) {
       can_rewrite = false;
@@ -1789,7 +1810,7 @@ fn set_idle_title() -> void
 
 fn enable_completion(koshka::EvalContext &context) -> void
 {
-  COMPLETION_CONTEXT = &context;
+  COMPLETION_SESSION.context = &context;
   ::tl_set_complete_callback(kosh_completion_callback);
   ::tl_set_highlight_callback(kosh_highlight_callback);
   ::tl_set_ghost_validate_callback(kosh_ghost_validate_callback);
@@ -1808,14 +1829,17 @@ fn enable_completion(koshka::EvalContext &context) -> void
 
 fn disable_completion() -> void
 {
-  COMPLETION_CONTEXT = nullptr;
+  COMPLETION_SESSION.context = nullptr;
   ::tl_set_complete_callback(nullptr);
   ::tl_set_highlight_callback(nullptr);
   ::tl_set_ghost_validate_callback(nullptr);
   ::tl_set_history_select_callback(nullptr);
 }
 
-fn is_completion_enabled() -> bool { return COMPLETION_CONTEXT != nullptr; }
+fn is_completion_enabled() -> bool
+{
+  return COMPLETION_SESSION.context != nullptr;
+}
 
 fn enable_job_notifications(koshka::EvalContext &context) -> void
 {
@@ -1852,7 +1876,7 @@ fn set_edit_mode(edit_mode mode) -> void
 
 fn set_tab_selector(koshka::tab_selector_mode selector) -> void
 {
-  TAB_SELECTOR = selector;
+  COMPLETION_SESSION.tab_selector = selector;
   ::tl_set_completion_menu_enabled(selector ==
                                    koshka::tab_selector_mode::Interactive);
 }
@@ -1946,8 +1970,9 @@ fn get_input(const String &prompt) -> input_result
   let completion_storage =
       koshka::Maybe<koshka::completion::completion_result>{};
   if (is_completion_enabled()) {
-    HIGHLIGHT_COLOR_ENABLED = colors::stdout_wants_color();
-    HIGHLIGHT_STYLED_UNDERLINES_ENABLED =
+    COMPLETION_SESSION.is_highlight_color_enabled =
+        colors::stdout_wants_color();
+    COMPLETION_SESSION.is_highlight_styled_underlines_enabled =
         colors::terminal_supports_styled_underlines();
     completion_base_directory = Path::current_directory();
     completion_storage = koshka::completion::completion_result{
@@ -1960,8 +1985,8 @@ fn get_input(const String &prompt) -> input_result
         0,
         0,
         false};
-    COMPLETION_BASE_DIRECTORY = &*completion_base_directory;
-    COMPLETION_RESULT = &*completion_storage;
+    COMPLETION_SESSION.attach_prompt(&*completion_base_directory,
+                                     &*completion_storage);
   }
   let const history_path = get_active_history_file_path();
   if (history_path.has_value())
@@ -1980,8 +2005,7 @@ fn get_input(const String &prompt) -> input_result
     HISTORY_FILE.note_append(*history_path, previous_history_tracking,
                              was_history_empty, ::itl_g_history_file_size);
   }
-  COMPLETION_BASE_DIRECTORY = nullptr;
-  COMPLETION_RESULT = nullptr;
+  COMPLETION_SESSION.detach_prompt();
   if (code == TL_ERROR) {
     throw koshka::ErrorWithDetails{
         "Toiletline: could not read the input: " +
@@ -2052,10 +2076,11 @@ static fn shorten_path_with_ellipsis(StringView path, usize max_length) throws
 
 static fn git_branch() throws -> String
 {
-  if (COMPLETION_CONTEXT == nullptr) return utils::current_git_branch({});
+  if (COMPLETION_SESSION.context == nullptr)
+    return utils::current_git_branch({});
 
   let const ceiling_directories =
-      COMPLETION_CONTEXT->get_variable_value("GIT_CEILING_DIRECTORIES");
+      COMPLETION_SESSION.context->get_variable_value("GIT_CEILING_DIRECTORIES");
   return utils::current_git_branch(ceiling_directories.has_value()
                                        ? ceiling_directories->view()
                                        : StringView{});
@@ -2227,11 +2252,45 @@ struct prompt_cache_input
   String name{koshka::heap_allocator()};
   Maybe<String> value{};
 };
-static String PROMPT_CACHE_TEMPLATE{koshka::heap_allocator()};
-static koshka::ArrayList<prompt_cache_input> PROMPT_CACHE_INPUTS{
-    koshka::heap_allocator()};
-static String PROMPT_CACHE_EXPANSION{koshka::heap_allocator()};
-static bool PROMPT_CACHE_VALID = false;
+struct prompt_cache
+{
+  String prompt_template{koshka::heap_allocator()};
+  koshka::ArrayList<prompt_cache_input> inputs{koshka::heap_allocator()};
+  String expansion{koshka::heap_allocator()};
+  bool is_valid{false};
+
+  fn invalidate() -> void { is_valid = false; }
+
+  fn matches(StringView current_template, EvalContext &context) const -> bool
+  {
+    if (!is_valid || current_template != prompt_template.view()) return false;
+
+    for (let const &input : inputs) {
+      let current = context.get_variable_value(input.name.view());
+      let const both_unset = !current.has_value() && !input.value.has_value();
+      let const both_equal = current.has_value() && input.value.has_value() &&
+                             current->view() == input.value->view();
+      if (!both_unset && !both_equal) return false;
+    }
+
+    return true;
+  }
+
+  fn store(const String &current_template,
+           koshka::ArrayList<prompt_cache_input> &&scanned_inputs,
+           String &&rendered_expansion, EvalContext &context) -> void
+  {
+    for (let &input : scanned_inputs)
+      input.value = context.get_variable_value(input.name.view());
+
+    prompt_template = current_template;
+    inputs = steal(scanned_inputs);
+    expansion = steal(rendered_expansion);
+    is_valid = true;
+  }
+};
+
+static prompt_cache PROMPT_CACHE{};
 
 /* A $ that opens anything but a plain name or a non-assigning braced parameter
    form marks the template impure. */
@@ -2440,28 +2499,12 @@ fn build_prompt(EvalContext &context) -> String
       koshka::ArrayList<prompt_cache_input>{koshka::heap_allocator()};
   let const is_cacheable =
       scan_prompt_template_inputs(ps1_template.view(), scanned_inputs);
-  if (is_cacheable && PROMPT_CACHE_VALID &&
-      ps1_template.view() == PROMPT_CACHE_TEMPLATE.view())
-  {
-    bool is_every_input_unchanged = true;
-    for (let const &input : PROMPT_CACHE_INPUTS) {
-      let current = context.get_variable_value(input.name.view());
-      let const both_unset = !current.has_value() && !input.value.has_value();
-      let const both_equal = current.has_value() && input.value.has_value() &&
-                             current->view() == input.value->view();
-      if (!both_unset && !both_equal) {
-        is_every_input_unchanged = false;
-        break;
-      }
-    }
-    if (is_every_input_unchanged) {
-      String rendered =
-          expand_prompt_escapes(PROMPT_CACHE_EXPANSION.view(),
-                                CACHED_USER.view(), full_pwd.view(), context);
-      if (!colors::stdout_wants_color())
-        return strip_ansi_color(rendered.view());
-      return rendered;
-    }
+  if (is_cacheable && PROMPT_CACHE.matches(ps1_template.view(), context)) {
+    String rendered =
+        expand_prompt_escapes(PROMPT_CACHE.expansion.view(), CACHED_USER.view(),
+                              full_pwd.view(), context);
+    if (!colors::stdout_wants_color()) return strip_ansi_color(rendered.view());
+    return rendered;
   }
 
   const i32 saved_status = context.execution_store().last_exit_status();
@@ -2488,15 +2531,10 @@ fn build_prompt(EvalContext &context) -> String
   String rendered = expand_prompt_escapes(expanded.view(), CACHED_USER.view(),
                                           full_pwd.view(), context);
 
-  PROMPT_CACHE_VALID = false;
-  if (is_cacheable) {
-    for (let &input : scanned_inputs)
-      input.value = context.get_variable_value(input.name.view());
-    PROMPT_CACHE_TEMPLATE = ps1_template;
-    PROMPT_CACHE_INPUTS = steal(scanned_inputs);
-    PROMPT_CACHE_EXPANSION = steal(expanded);
-    PROMPT_CACHE_VALID = true;
-  }
+  PROMPT_CACHE.invalidate();
+  if (is_cacheable)
+    PROMPT_CACHE.store(ps1_template, steal(scanned_inputs), steal(expanded),
+                       context);
 
   if (!colors::stdout_wants_color()) return strip_ansi_color(rendered.view());
   return rendered;
