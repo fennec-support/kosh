@@ -83,6 +83,33 @@ struct socket_row
   String owner;
 };
 
+struct owner_text_entry
+{
+  u32 owner_id;
+  String text;
+};
+
+struct process_pid_order
+{
+  pure fn operator()(const os::process_entry &left,
+                     const os::process_entry &right) const wontthrow->bool
+  {
+    return left.pid < right.pid;
+  }
+
+  pure fn operator()(const os::process_entry &left,
+                     i64 right) const wontthrow->bool
+  {
+    return left.pid < right;
+  }
+
+  pure fn operator()(i64 left,
+                     const os::process_entry &right) const wontthrow->bool
+  {
+    return left < right.pid;
+  }
+};
+
 pure fn unix_protocol_name(os::network_unix_socket_type type) wontthrow
     -> StringView
 {
@@ -142,14 +169,37 @@ fn append_network_socket_report(String &output,
   let owner_process_ids = ArrayList<u32>{allocator};
   if (options.should_show_processes) {
     for (let const &socket : sockets) {
-      if (socket.process_id != 0 && socket.has_owner_start_token &&
-          !owner_process_ids.find(socket.process_id).has_value())
-      {
+      if (socket.process_id != 0 && socket.has_owner_start_token)
         owner_process_ids.push(socket.process_id);
+    }
+    owner_process_ids.sort();
+
+    usize unique_count = 0;
+    for (let const process_id : owner_process_ids) {
+      if (unique_count == 0 ||
+          owner_process_ids[unique_count - 1] != process_id)
+      {
+        owner_process_ids[unique_count++] = process_id;
       }
     }
+    owner_process_ids.truncate(unique_count);
   }
-  let const processes = os::describe_processes(owner_process_ids);
+  let const processes = os::describe_processes(owner_process_ids)
+                            .make_sorted(process_pid_order{});
+  let owner_texts = ArrayList<owner_text_entry>{allocator};
+  let const do_get_owner_text = [&](u32 owner_id) throws -> String {
+    for (let const &entry : owner_texts) {
+      if (entry.owner_id == owner_id)
+        return String{allocator, entry.text.view()};
+    }
+
+    let const owner_name = os::uid_to_username(owner_id);
+    owner_texts.push(owner_text_entry{
+        owner_id, owner_name.has_value() ? String{allocator, owner_name->view()}
+                                         : String::from(owner_id, allocator)
+    });
+    return String{allocator, owner_texts.back().text.view()};
+  };
   let rows = ArrayList<socket_row>{allocator};
   u64 previous_identity = 0;
   u32 previous_process_id = 0;
@@ -214,34 +264,28 @@ fn append_network_socket_report(String &output,
                                                  socket.family, allocator);
     row.peer = is_unix ? unix_endpoint({}, socket.peer_identity, allocator)
                        : format_socket_endpoint(socket.peer_address.view(),
-                                                socket.peer_port,
-                                                socket.family, allocator);
+                                                socket.peer_port, socket.family,
+                                                allocator);
     row.process_id = socket.process_id == 0
                          ? String{allocator, "-"}
                          : String::from(socket.process_id, allocator);
     row.process_name = "-";
     row.owner = "-";
     if (options.should_show_processes) {
-      if (socket.has_owner_id) {
-        let const owner_name = os::uid_to_username(socket.owner_id);
-        row.owner = owner_name.has_value()
-                        ? String{allocator, owner_name->view()}
-                        : String::from(socket.owner_id, allocator);
-      }
+      if (socket.has_owner_id) row.owner = do_get_owner_text(socket.owner_id);
+
       if (socket.process_id != 0 && socket.has_owner_start_token) {
-        for (let const &process : processes) {
-          if (process.pid != socket.process_id || process.start_token == 0 ||
-              process.start_token != socket.owner_start_token)
-            continue;
-          if (!process.name.is_empty())
-            row.process_name = String{allocator, process.name.view()};
-          if (!socket.has_owner_id) {
-            let const owner_name = os::uid_to_username(process.owner_id);
-            row.owner = owner_name.has_value()
-                            ? String{allocator, owner_name->view()}
-                            : String::from(process.owner_id, allocator);
+        let const found = processes.find(static_cast<i64>(socket.process_id));
+        if (found.has_value()) {
+          let const &process = processes[*found];
+          if (process.start_token != 0 &&
+              process.start_token == socket.owner_start_token)
+          {
+            if (!process.name.is_empty())
+              row.process_name = String{allocator, process.name.view()};
+            if (!socket.has_owner_id)
+              row.owner = do_get_owner_text(process.owner_id);
           }
-          break;
         }
       }
     }

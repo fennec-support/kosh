@@ -864,9 +864,10 @@ fn describe_processes(const ArrayList<u32> &pids) throws
   ArrayList<process_entry> described{heap_allocator()};
   if (pids.is_empty()) return described;
 
+  let const sorted_pids = pids.make_sorted(sort_order::ascending);
   let all = enumerate_processes(process_detail::ResourceStats);
   for (let &process : all) {
-    if (pids.find(static_cast<u32>(process.pid)).has_value())
+    if (sorted_pids.find(static_cast<u32>(process.pid)).has_value())
       described.push(steal(process));
   }
 
@@ -1745,10 +1746,10 @@ fn read_network_interface_statistics() throws
 
 #if defined __linux__
 
-static fn append_kernel_socket_table(StringView table_path,
-                                     kernel_socket_kind kind,
-                                     ArrayList<kernel_socket_entry> &result)
-    throws -> void
+static fn
+append_kernel_socket_table(StringView table_path, kernel_socket_kind kind,
+                           ArrayList<kernel_socket_entry> &result) throws
+    -> void
 {
   let const contents = Path{table_path}.read_entire_file();
   if (!contents.has_value()) return;
