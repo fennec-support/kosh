@@ -1022,28 +1022,6 @@ public:
   {
     return m_command_evaluation_index;
   }
-  fn git_branch_command_index() wontthrow -> usize &
-  {
-    return m_git_branch_command_index;
-  }
-  fn git_branch_command_index() const wontthrow -> usize &
-  {
-    return m_git_branch_command_index;
-  }
-  fn git_counts_command_index() wontthrow -> usize &
-  {
-    return m_git_counts_command_index;
-  }
-  fn git_counts_command_index() const wontthrow -> usize &
-  {
-    return m_git_counts_command_index;
-  }
-  fn git_branch() wontthrow -> String & { return m_git_branch; }
-  fn git_branch() const wontthrow -> String & { return m_git_branch; }
-  fn git_ahead_count() wontthrow -> i32 & { return m_git_ahead_count; }
-  fn git_ahead_count() const wontthrow -> i32 & { return m_git_ahead_count; }
-  fn git_behind_count() wontthrow -> i32 & { return m_git_behind_count; }
-  fn git_behind_count() const wontthrow -> i32 & { return m_git_behind_count; }
 
 private:
   usize m_expressions_executed_last{0};
@@ -1055,12 +1033,36 @@ private:
   usize m_functions_run{0};
   usize m_external_commands_run{0};
   usize m_command_evaluation_index{0};
-  mutable usize m_git_branch_command_index{static_cast<usize>(-1)};
-  mutable usize m_git_counts_command_index{static_cast<usize>(-1)};
-  mutable String m_git_branch{heap_allocator()};
-  mutable i32 m_git_ahead_count{0};
-  mutable i32 m_git_behind_count{0};
   usize m_peak_ast_arena_bytes{0};
+};
+
+class GitStatusCache
+{
+public:
+  pure fn is_branch_current(usize command_index) const wontthrow -> bool
+  {
+    return m_branch_command_index == command_index;
+  }
+  pure fn are_counts_current(usize command_index) const wontthrow -> bool
+  {
+    return m_counts_command_index == command_index;
+  }
+
+  fn refresh_branch(usize command_index,
+                    StringView ceiling_directories) const throws -> void;
+  fn refresh_status(usize command_index,
+                    StringView ceiling_directories) const throws -> void;
+
+  pure fn get_branch() const wontthrow -> StringView { return m_branch.view(); }
+  pure fn get_ahead_count() const wontthrow -> i32 { return m_ahead_count; }
+  pure fn get_behind_count() const wontthrow -> i32 { return m_behind_count; }
+
+private:
+  mutable usize m_branch_command_index{static_cast<usize>(-1)};
+  mutable usize m_counts_command_index{static_cast<usize>(-1)};
+  mutable String m_branch{heap_allocator()};
+  mutable i32 m_ahead_count{0};
+  mutable i32 m_behind_count{0};
 };
 
 class PromptCommandStore
@@ -2346,6 +2348,14 @@ public:
   {
     return m_evaluation_metrics_store;
   }
+  fn git_status_cache() wontthrow -> GitStatusCache &
+  {
+    return m_git_status_cache;
+  }
+  pure fn git_status_cache() const wontthrow -> const GitStatusCache &
+  {
+    return m_git_status_cache;
+  }
   fn completion_store() wontthrow -> CompletionStore &
   {
     return m_completion_store;
@@ -2389,6 +2399,7 @@ public:
 protected:
   StartupStore m_startup_store{};
   EvaluationMetricsStore m_evaluation_metrics_store{};
+  GitStatusCache m_git_status_cache{};
   ArenaStore m_arena_store{};
   CompletionStore m_completion_store{};
   ExpansionStore m_expansion_store{};

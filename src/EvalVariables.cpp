@@ -30,6 +30,26 @@
 
 namespace koshka {
 
+fn GitStatusCache::refresh_branch(usize command_index,
+                                  StringView ceiling_directories) const throws
+    -> void
+{
+  m_branch = utils::current_git_branch(ceiling_directories);
+  m_branch_command_index = command_index;
+}
+
+fn GitStatusCache::refresh_status(usize command_index,
+                                  StringView ceiling_directories) const throws
+    -> void
+{
+  let status = utils::git_status(ceiling_directories, heap_allocator());
+  m_branch = steal(status.branch);
+  m_ahead_count = status.ahead_count;
+  m_behind_count = status.behind_count;
+  m_branch_command_index = command_index;
+  m_counts_command_index = command_index;
+}
+
 fn EvalContext::next_random_u32() const wontthrow -> u32
 {
   if (dynamic_runtime_store().random_state() == 0) {
@@ -487,52 +507,41 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
             heap_allocator());
       }
       case dynamic_var::KOSH_GIT_BRANCH: {
-        if (evaluation_metrics_store().git_branch_command_index() !=
-            evaluation_metrics_store().command_evaluation_index())
-        {
+        let const command_index =
+            evaluation_metrics_store().command_evaluation_index();
+        if (!git_status_cache().is_branch_current(command_index)) {
           let const ceiling_directories =
               get_variable_value("GIT_CEILING_DIRECTORIES");
-          evaluation_metrics_store().git_branch() = utils::current_git_branch(
-              ceiling_directories.has_value() ? ceiling_directories->view()
-                                              : StringView{});
-          evaluation_metrics_store().git_branch_command_index() =
-              evaluation_metrics_store().command_evaluation_index();
+          git_status_cache().refresh_branch(command_index,
+                                            ceiling_directories.has_value()
+                                                ? ceiling_directories->view()
+                                                : StringView{});
         }
-        return String{heap_allocator(),
-                      evaluation_metrics_store().git_branch().view()};
+        return String{heap_allocator(), git_status_cache().get_branch()};
       }
       case dynamic_var::KOSH_GIT_AHEAD:
       case dynamic_var::KOSH_GIT_BEHIND: {
-        if (evaluation_metrics_store().git_counts_command_index() !=
-            evaluation_metrics_store().command_evaluation_index())
-        {
+        let const command_index =
+            evaluation_metrics_store().command_evaluation_index();
+        if (!git_status_cache().are_counts_current(command_index)) {
           let const ceiling_directories =
               get_variable_value("GIT_CEILING_DIRECTORIES");
-          let status = utils::git_status(ceiling_directories.has_value()
-                                             ? ceiling_directories->view()
-                                             : StringView{},
-                                         heap_allocator());
-          evaluation_metrics_store().git_branch() = steal(status.branch);
-          evaluation_metrics_store().git_ahead_count() = status.ahead_count;
-          evaluation_metrics_store().git_behind_count() = status.behind_count;
-          evaluation_metrics_store().git_branch_command_index() =
-              evaluation_metrics_store().command_evaluation_index();
-          evaluation_metrics_store().git_counts_command_index() =
-              evaluation_metrics_store().command_evaluation_index();
+          git_status_cache().refresh_status(command_index,
+                                            ceiling_directories.has_value()
+                                                ? ceiling_directories->view()
+                                                : StringView{});
         }
 
         switch (info->kind) {
         case dynamic_var::KOSH_GIT_AHEAD:
-          return evaluation_metrics_store().git_ahead_count() > 0
-                     ? String::from(
-                           evaluation_metrics_store().git_ahead_count(),
-                           heap_allocator())
+          return git_status_cache().get_ahead_count() > 0
+                     ? String::from(git_status_cache().get_ahead_count(),
+                                    heap_allocator())
                      : String{heap_allocator()};
         case dynamic_var::KOSH_GIT_BEHIND:
-          return evaluation_metrics_store().git_behind_count() > 0
-                     ? String::from(
-                           evaluation_metrics_store().git_behind_count(),
-                           heap_allocator())
+          return git_status_cache().get_behind_count() > 0
+                     ? String::from(git_status_cache().get_behind_count(),
+                                    heap_allocator())
                      : String{heap_allocator()};
         default:
           unreachable("the git count variable must be KOSH_GIT_AHEAD or "
