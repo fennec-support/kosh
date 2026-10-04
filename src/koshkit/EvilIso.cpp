@@ -931,28 +931,6 @@ fn append_session_report(String &output, bool should_color, Allocator allocator,
   append_titled_report_table(output, "Sessions", table, should_color);
 }
 
-pure fn remote_state_name(os::network_socket_state state) wontthrow
-    -> StringView
-{
-  switch (state) {
-  case os::network_socket_state::Unconnected: return "UNCONN";
-  case os::network_socket_state::Listen: return "LISTEN";
-  case os::network_socket_state::SynSent: return "SYN-SENT";
-  case os::network_socket_state::SynReceived: return "SYN-RECV";
-  case os::network_socket_state::Established: return "ESTAB";
-  case os::network_socket_state::CloseWait: return "CLOSE-WAIT";
-  case os::network_socket_state::FinWait1: return "FIN-WAIT-1";
-  case os::network_socket_state::Closing: return "CLOSING";
-  case os::network_socket_state::LastAck: return "LAST-ACK";
-  case os::network_socket_state::FinWait2: return "FIN-WAIT-2";
-  case os::network_socket_state::TimeWait: return "TIME-WAIT";
-  case os::network_socket_state::Closed: return "CLOSED";
-  case os::network_socket_state::Unknown: return "UNKNOWN";
-  }
-
-  unreachable("unknown network socket state");
-}
-
 pure fn is_remote_socket(const os::network_socket_entry &socket) wontthrow
     -> bool
 {
@@ -1209,7 +1187,7 @@ fn append_remote_report(String &output, bool should_color,
         socket.family == os::network_address_family::IPv6 ? "IPv6" : "IPv4";
     row.protocol =
         socket.protocol == os::network_socket_protocol::Udp ? "UDP" : "TCP";
-    row.state = remote_state_name(socket.state);
+    row.state = network_socket_state_name(socket.state);
     row.local = remote_endpoint(socket.local_address.view(), socket.local_port,
                                 allocator, socket.family);
     row.peer = remote_endpoint(socket.peer_address.view(), socket.peer_port,

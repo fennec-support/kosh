@@ -95,27 +95,6 @@ pure fn unix_protocol_name(os::network_unix_socket_type type) wontthrow
   unreachable("unknown Unix socket type");
 }
 
-pure fn state_name(os::network_socket_state state) wontthrow -> StringView
-{
-  switch (state) {
-  case os::network_socket_state::Unconnected: return "UNCONN";
-  case os::network_socket_state::Listen: return "LISTEN";
-  case os::network_socket_state::SynSent: return "SYN-SENT";
-  case os::network_socket_state::SynReceived: return "SYN-RECV";
-  case os::network_socket_state::Established: return "ESTAB";
-  case os::network_socket_state::CloseWait: return "CLOSE-WAIT";
-  case os::network_socket_state::FinWait1: return "FIN-WAIT-1";
-  case os::network_socket_state::Closing: return "CLOSING";
-  case os::network_socket_state::LastAck: return "LAST-ACK";
-  case os::network_socket_state::FinWait2: return "FIN-WAIT-2";
-  case os::network_socket_state::TimeWait: return "TIME-WAIT";
-  case os::network_socket_state::Closed: return "CLOSED";
-  case os::network_socket_state::Unknown: return "UNKNOWN";
-  }
-
-  unreachable("unknown network socket state");
-}
-
 fn endpoint(StringView address, u16 port, Allocator allocator,
             os::network_address_family family) throws -> String
 {
@@ -234,7 +213,7 @@ fn append_network_socket_report(String &output,
     row.protocol =
         String{allocator, is_unix ? unix_protocol_name(socket.unix_type)
                                   : (is_tcp ? "tcp" : "udp")};
-    row.state = String{allocator, state_name(socket.state)};
+    row.state = String{allocator, network_socket_state_name(socket.state)};
     row.receive_queue = String::from(socket.receive_queue_bytes, allocator);
     row.send_queue = String::from(socket.send_queue_bytes, allocator);
     row.local = is_unix ? unix_endpoint(socket.local_address.view(),

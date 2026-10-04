@@ -965,6 +965,28 @@ fn format_signal_list() throws -> String
   return out;
 }
 
+pure fn network_socket_state_name(os::network_socket_state state) wontthrow
+    -> StringView
+{
+  switch (state) {
+  case os::network_socket_state::Unconnected: return "UNCONN";
+  case os::network_socket_state::Listen: return "LISTEN";
+  case os::network_socket_state::SynSent: return "SYN-SENT";
+  case os::network_socket_state::SynReceived: return "SYN-RECV";
+  case os::network_socket_state::Established: return "ESTAB";
+  case os::network_socket_state::CloseWait: return "CLOSE-WAIT";
+  case os::network_socket_state::FinWait1: return "FIN-WAIT-1";
+  case os::network_socket_state::Closing: return "CLOSING";
+  case os::network_socket_state::LastAck: return "LAST-ACK";
+  case os::network_socket_state::FinWait2: return "FIN-WAIT-2";
+  case os::network_socket_state::TimeWait: return "TIME-WAIT";
+  case os::network_socket_state::Closed: return "CLOSED";
+  case os::network_socket_state::Unknown: return "UNKNOWN";
+  }
+
+  unreachable("unknown network socket state");
+}
+
 fn format_human_size(u64 bytes, Allocator allocator) throws -> String
 {
   if (bytes < 1024) return String::from(bytes, allocator);
