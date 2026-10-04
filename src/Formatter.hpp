@@ -37,7 +37,8 @@ struct source_fix
 
 fn format_shell_source(StringView source, BumpArena &arena,
                        ArrayList<String> &errors, String *ast_output,
-                       BumpArena *function_arena, mimic_mood mood) throws
+                       BumpArena *function_arena, mimic_mood mood,
+                       Maybe<StringView> filename = None) throws
     -> Maybe<String>;
 
 fn format_bash_function_source(StringView source) throws -> String;

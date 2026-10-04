@@ -423,3 +423,96 @@ RUN apk add curl && if [ -f /etc/os-release ]; \
     fi && echo done
 CMD echo hi
 dockerfile-idempotent=yes
+== comment-keeps-line
+status=0
+echo a # first
+echo b
+idempotent=yes
+== comment-in-array
+status=0
+items=(
+  one # first
+  two
+  # standalone
+  three
+)
+idempotent=yes
+== comment-in-case-arms
+status=0
+case x in
+  a) # arm comment
+    echo 1
+  ;;
+  # between arms
+  b)
+    echo 2
+  ;; # trailing
+esac
+
+echo after
+idempotent=yes
+== comment-after-pipe-and-and
+status=0
+a | # pipe comment
+b
+c && # and comment
+d
+e ||
+# own line
+f
+idempotent=yes
+== comment-next-to-heredoc
+status=0
+cat <<EOF
+body \
+EOF
+# after heredoc
+echo z
+idempotent=yes
+== continuation-collapses
+status=0
+echo one two three
+a | b && c
+idempotent=yes
+== continuation-before-blank-line
+status=0
+echo a
+# comment
+echo b
+idempotent=yes
+== continuation-kept-in-data
+status=0
+echo 'a \
+b'
+echo "x \
+y"
+echo a\
+b
+idempotent=yes
+== continuation-too-long
+status=0
+echo aaaaaaaaaaaaaaaaaaaa bbbbbbbbbbbbbbbbbbbbbbbbbbbb cccccccccccccccccccccc \
+  ddddddddddddddddd
+idempotent=yes
+== option-break-required
+status=0
+tool \
+     --alpha=1 \
+     --beta=2 \
+     --gamma=3 \
+     --delta=4 \
+     --epsilon=5 \
+     --zeta=6 \
+     --eta=7 \
+     --theta=8
+idempotent=yes
+long-string-status=0
+echo ok
+echo \
+  "<A>"
+long-string.sh:2:6: warning: Unbreakable word exceeds 78 columns; consider making it shorter or splitting it.
+     2 |  echo "<A>"
+       |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2:6: warning: Unbreakable word exceeds 78 columns; consider making it shorter or splitting it.
+     2 |  echo "<A>"
+       |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

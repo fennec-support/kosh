@@ -1747,8 +1747,8 @@ fn validate_formatted_source(StringView source, BumpArena &arena,
 
 fn format_shell_source(StringView source, BumpArena &arena,
                        ArrayList<String> &errors, String *ast_output,
-                       BumpArena *function_arena, mimic_mood mood) throws
-    -> Maybe<String>
+                       BumpArena *function_arena, mimic_mood mood,
+                       Maybe<StringView> filename) throws -> Maybe<String>
 {
   let normalized = String{heap_allocator()};
   let source_view = source;
@@ -1762,7 +1762,7 @@ fn format_shell_source(StringView source, BumpArena &arena,
                                  function_arena, mood))
     return None;
   let const pieces = scan_format_pieces(source_view);
-  append_long_string_warnings(source_view, pieces, None, errors);
+  append_long_string_warnings(source_view, pieces, filename, errors);
   let formatted = render_format_pieces(pieces);
   let formatted_errors = ArrayList<String>{heap_allocator()};
   if (!validate_formatted_source(formatted.view(), arena, formatted_errors,

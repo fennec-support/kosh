@@ -571,3 +571,90 @@ cp "$root/docker-first/formatted" "$root/docker-second/Dockerfile"
 printf 'dockerfile-idempotent=%s\n' \
   "$(cmp -s "$root/docker-first/formatted" "$root/docker-second/formatted" && \
       printf yes)"
+
+format_twice() {
+  printf '== %s\n' "$1"
+  printf '%s' "$2" > "$root/twice-in.sh"
+  "$BIN" --format "$root/twice-in.sh" > "$root/twice-one.sh" 2> "$root/twice.err"
+  printf 'status=%s\n' "$?"
+  cat "$root/twice-one.sh"
+  "$BIN" --format "$root/twice-one.sh" > "$root/twice-two.sh" 2>/dev/null
+  printf 'idempotent=%s\n' \
+    "$(cmp -s "$root/twice-one.sh" "$root/twice-two.sh" && printf yes)"
+}
+
+format_twice comment-keeps-line \
+'echo a # first
+echo b
+'
+format_twice comment-in-array \
+'items=(
+  one # first
+  two
+  # standalone
+  three
+)
+'
+format_twice comment-in-case-arms \
+'case x in
+  a) # arm comment
+    echo 1 ;;
+  # between arms
+  b) echo 2 ;; # trailing
+esac
+echo after
+'
+format_twice comment-after-pipe-and-and \
+'a | # pipe comment
+  b
+c && # and comment
+  d
+e ||
+  # own line
+  f
+'
+format_twice comment-next-to-heredoc \
+'cat <<EOF
+body \
+EOF
+# after heredoc
+echo z
+'
+format_twice continuation-collapses \
+'echo one \
+  two \
+  three
+a \
+  | b \
+  && c
+'
+format_twice continuation-before-blank-line \
+'echo a\
+
+# comment
+echo b
+'
+format_twice continuation-kept-in-data \
+"echo 'a \\
+b'
+echo \"x \\
+y\"
+echo a\\
+b
+"
+format_twice continuation-too-long \
+'echo aaaaaaaaaaaaaaaaaaaa bbbbbbbbbbbbbbbbbbbbbbbbbbbb cccccccccccccccccccccc \
+  ddddddddddddddddd
+'
+format_twice option-break-required \
+'tool --alpha=1 --beta=2 --gamma=3 --delta=4 --epsilon=5 --zeta=6 --eta=7 --theta=8
+'
+long_word=$(printf 'a%.0s' $(seq 1 90))
+printf 'echo ok\necho "%s"\n' "$long_word" > "$root/long-string.sh"
+"$BIN" --format "$root/long-string.sh" > "$root/long-string.out" \
+  2> "$root/long-string.err"
+printf 'long-string-status=%s\n' "$?"
+sed -e "s/a\{20,\}/<A>/g" "$root/long-string.out"
+sed -e "s|$root/||" "$root/long-string.err" | sed -e "s/a\{20,\}/<A>/g"
+printf 'echo ok\necho "%s"\n' "$long_word" | "$BIN" --format 2>&1 >/dev/null |
+  sed -e "s/a\{20,\}/<A>/g"

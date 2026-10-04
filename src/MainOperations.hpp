@@ -772,7 +772,7 @@ static fn format_document_source(StringView source, Maybe<StringView> filename,
   }
   if (!document.is_host_format)
     return format_shell_source(source, ast_arena, errors, ast_output,
-                               function_arena, mood);
+                               function_arena, mood, filename);
 
   let replacements = ArrayList<parser_format_replacement>{heap_allocator()};
   for (let const &fragment : document.fragments) {
