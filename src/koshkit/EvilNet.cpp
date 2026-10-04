@@ -767,6 +767,7 @@ fn run_live_network_traffic(const ExecContext &ec, Allocator allocator,
                          frame_allocator, do_get_key, do_get_value,
                          network_counter_reset, do_make_row);
     last_sample_nanoseconds = now;
+
     return None;
   };
   let const do_render = [&](String &output, const live_view_dimensions &,

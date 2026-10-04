@@ -1016,6 +1016,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
           StringView{});
     }
   };
+
   let ec = do_resolve_context();
   if (did_resolution_fail) {
     cxt.execution_store().set_last_exit_status(

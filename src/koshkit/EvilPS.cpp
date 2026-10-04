@@ -727,7 +727,9 @@ fn handle_live_key(live_view_key key, String &input, String &search,
 
   switch (key.special) {
   case live_view_special_key::Escape:
-    if (!is_editing && search.is_empty()) return live_view_key_action::Consumed;
+    if (!is_editing && search.is_empty()) {
+      return live_view_key_action::Consumed;
+    }
 
     input.clear();
     search.clear();
@@ -795,10 +797,12 @@ fn handle_live_key(live_view_key key, String &input, String &search,
       }
     }
     scroll_offset = 0;
-    if (sort_key.has_value() && *sort_key == evilps_sort_key::Cpu)
+    if (sort_key.has_value() && *sort_key == evilps_sort_key::Cpu) {
       should_sample_cpu = true;
-    if (sort_key.has_value() && *sort_key == evilps_sort_key::Memory)
+    }
+    if (sort_key.has_value() && *sort_key == evilps_sort_key::Memory) {
       resource_mode = evilps_resource_mode::ResourceStats;
+    }
     return live_view_key_action::Redraw;
   case '/':
     input.clear();
@@ -925,6 +929,7 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
       nodes = read_process_nodes(live_allocator, resource_mode);
       if (should_sample_cpu)
         update_cpu_history(nodes, history, now, window_nanoseconds);
+
       return None;
     };
     let const do_key = [&](live_view_key key) -> live_view_key_action {

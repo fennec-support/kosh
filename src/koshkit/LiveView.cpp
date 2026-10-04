@@ -258,6 +258,7 @@ fn LiveView::wait_for_input(u64 wait_nanoseconds,
   if (os::INTERRUPT_REQUESTED != 0) return false;
   if (readiness < 0) {
     m_has_input = false;
+
     return true;
   }
   if (readiness == 0) return true;
@@ -266,6 +267,7 @@ fn LiveView::wait_for_input(u64 wait_nanoseconds,
   let const read_count = os::read_fd(m_input_fd, buffer, sizeof(buffer));
   if (!read_count.has_value() || *read_count == 0) {
     m_has_input = false;
+
     return true;
   }
 
@@ -301,10 +303,12 @@ fn LiveView::wait_for_input(u64 wait_nanoseconds,
     index++;
     if (final_byte == 'A') key.special = live_view_special_key::Up;
     if (final_byte == 'B') key.special = live_view_special_key::Down;
-    if (final_byte == '~' && parameter == '5')
+    if (final_byte == '~' && parameter == '5') {
       key.special = live_view_special_key::PageUp;
-    if (final_byte == '~' && parameter == '6')
+    }
+    if (final_byte == '~' && parameter == '6') {
       key.special = live_view_special_key::PageDown;
+    }
     if (key.special != live_view_special_key::None)
       input.keys[input.count++] = key;
   }
@@ -347,6 +351,7 @@ fn LiveView::append_frame_start(String &frame,
     frame += SEGMENT_GAP;
     frame += pieces.labels;
     frame += "\n\n";
+
     return;
   }
 

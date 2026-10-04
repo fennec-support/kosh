@@ -253,14 +253,14 @@ private:
   variable_occurrence_map_storage *m_base{nullptr};
 };
 
-/* One function this script defines. The whole-script sweep reads these after
-   the walk, so the name is owned and never a slice of the syntax tree. */
 struct function_global_assignment
 {
   String name;
   SourceLocation location;
 };
 
+/* One function this script defines. The whole-script sweep reads these after
+   the walk, so the name is owned and never a slice of the syntax tree. */
 struct function_definition_record
 {
   String name;

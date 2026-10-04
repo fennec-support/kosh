@@ -316,7 +316,9 @@ static fn linux_unix_sockets(const ArrayList<linux_socket_owner> *owners,
   let const peers = linux_unix_socket_peers(allocator);
   let const path = linux_socket_proc_path("/net/unix", allocator);
   let const contents = Path{path.view()}.read_entire_file();
-  if (!contents.has_value() || contents->is_empty()) return result;
+  if (!contents.has_value() || contents->is_empty()) {
+    return result;
+  }
 
   let const text = contents->view();
   usize position = 0;
@@ -459,7 +461,9 @@ static fn linux_network_sockets_from_file(
 {
   let result = ArrayList<network_socket_entry>{allocator};
   let const contents = Path{path}.read_entire_file();
-  if (!contents.has_value() || contents->is_empty()) return result;
+  if (!contents.has_value() || contents->is_empty()) {
+    return result;
+  }
 
   let const text = contents->view();
   usize position = 0;

@@ -943,12 +943,15 @@ fn run_live_process_io(const ExecContext &ec, Maybe<i64> selected_pid,
       os::INTERRUPT_REQUESTED = 0;
       return 130;
     }
-    if (selected_pid.has_value() && after_rows.is_empty()) return 1;
+    if (selected_pid.has_value() && after_rows.is_empty()) {
+      return 1;
+    }
 
     update_retained_rows(retained, after_rows, now, window_nanoseconds,
                          frame_allocator, do_get_key, do_get_value,
                          process_io_counter_reset, do_make_row);
     last_sample_nanoseconds = now;
+
     return None;
   };
   let const do_render = [&](String &output, const live_view_dimensions &,
@@ -1077,6 +1080,7 @@ fn run_live_disk_io(const ExecContext &ec, f64 window_seconds,
                          window_nanoseconds, frame_allocator, do_get_key,
                          do_get_value, disk_io_counter_reset, do_make_row);
     last_sample_nanoseconds = now;
+
     return None;
   };
   let const do_render = [&](String &output, const live_view_dimensions &,
@@ -1091,6 +1095,7 @@ fn run_live_disk_io(const ExecContext &ec, f64 window_seconds,
 
     append_disk_io_report(output, rows, frame_allocator, sample_duration_label,
                           report_sampling_mode::Rolling, color_mode);
+
     return None;
   };
 

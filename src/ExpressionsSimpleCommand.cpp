@@ -754,6 +754,7 @@ fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
     opened = os::open_file_descriptor_until_signal(target_path, mode,
                                                    did_signal_arrive);
   }
+
   if (!opened) {
     if (open_or_stage_failed != nullptr) *open_or_stage_failed = true;
 

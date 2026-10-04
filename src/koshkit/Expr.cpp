@@ -173,8 +173,9 @@ private:
       let const left_number = require_number(left.view());
       let const right_number = require_number(right.view());
       let const operator_byte = operation.view()[0];
-      if ((operator_byte == '/' || operator_byte == '%') && right_number == 0)
+      if ((operator_byte == '/' || operator_byte == '%') && right_number == 0) {
         throw Error{"division by zero"};
+      }
 
       i128 result = 0;
       switch (operator_byte) {

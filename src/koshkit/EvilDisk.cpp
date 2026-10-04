@@ -635,6 +635,7 @@ fn EvilDisk::execute(
     for (let const &other : warnings)
       ordered_warnings.push(String{allocator, other.view()});
     show_report_warnings(ordered_warnings);
+
     return status;
   }
   show_report_warnings(warnings);

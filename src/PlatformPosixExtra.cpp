@@ -817,7 +817,7 @@ fn describe_processes(const ArrayList<u32> &pids) throws
 {
   ArrayList<process_entry> described{heap_allocator()};
   for (let const pid : pids) {
-    const String process_directory =
+    let const process_directory =
         "/proc/" + String::from(pid, heap_allocator()).view();
     let command_name =
         Path{(process_directory + "/comm").view()}.read_entire_file();
@@ -846,7 +846,9 @@ fn describe_processes(const ArrayList<u32> &pids) throws
         let const fields = text.substring(after_name_position);
         if (let const start_ticks = nth_space_field(fields, 19).to<i64>();
             !start_ticks.is_error() && start_ticks.value() >= 0)
+        {
           process.start_token = static_cast<u64>(start_ticks.value());
+        }
       }
     }
 
@@ -1256,9 +1258,13 @@ static fn parse_decimal_word(StringView word) wontthrow -> Maybe<u64>
   u64 parsed = 0;
   for (usize index = 0; index < word.length; index++) {
     let const character = word[index];
-    if (character < '0' || character > '9') return None;
+    if (character < '0' || character > '9') {
+      return None;
+    }
     let const digit = static_cast<u64>(character - '0');
-    if (parsed > (UINT64_MAX - digit) / 10) return None;
+    if (parsed > (UINT64_MAX - digit) / 10) {
+      return None;
+    }
     parsed = parsed * 10 + digit;
   }
 

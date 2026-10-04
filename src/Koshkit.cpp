@@ -1017,8 +1017,8 @@ fn format_human_size(u64 bytes, Allocator allocator, u64 unit_step) throws
     unit++;
   }
 
-  /* A value that rounds up to a whole step crosses over to the next unit. */
-  if (value >= step - 0.5 && unit < sizeof(units)) {
+  let const does_round_to_next_unit = value >= step - 0.5;
+  if (does_round_to_next_unit && unit < sizeof(units)) {
     value /= step;
     unit++;
   }

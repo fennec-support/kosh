@@ -140,8 +140,9 @@ pure fn parse_bracketed_inode(StringView path, StringView prefix) wontthrow
   if (!path.starts_with(prefix)) return None;
 
   let const rest = path.substring(prefix.length);
-  if (rest.length < 3 || rest[0] != '[' || rest[rest.length - 1] != ']')
+  if (rest.length < 3 || rest[0] != '[' || rest[rest.length - 1] != ']') {
     return None;
+  }
 
   let const parsed = rest.substring_of_length(1, rest.length - 2).to<u64>();
   if (parsed.is_error()) return None;
@@ -274,7 +275,9 @@ fn find_socket_description(socket_directory &directory, u64 inode,
   }
 
   if (low < directory.entries.count() && directory.entries[low].inode == inode)
+  {
     return low;
+  }
 
   return None;
 }

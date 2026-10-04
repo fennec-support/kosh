@@ -1153,8 +1153,9 @@ static fn append_report_grid(
     usize width = 0;
     if (index < columns.count())
       width = toiletline::get_display_width(columns[index].heading.view());
-    if (index < columns.count() && width < columns[index].min_width)
+    if (index < columns.count() && width < columns[index].min_width) {
       width = columns[index].min_width;
+    }
     widths.push(width);
   }
 
@@ -1214,7 +1215,9 @@ fn ReportTable::to_string(bool should_color,
                           StringView indentation) const throws -> String
 {
   let output = String{m_columns.allocator()};
-  if (m_grid_rows.is_empty() && !m_should_show_empty) return output;
+  if (m_grid_rows.is_empty() && !m_should_show_empty) {
+    return output;
+  }
 
   append_report_grid(output, m_columns, m_grid_rows, should_color, indentation,
                      m_should_show_header, m_column_gap_space_count);

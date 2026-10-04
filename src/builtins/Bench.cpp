@@ -410,6 +410,7 @@ fn sample_command(StringView shell_binary, StringView command,
   bool has_perf = true;
   bool is_perf_system_wide = false;
   bool is_extended_available[EXTENDED_METRIC_COUNT];
+
   for (usize k = 0; k < EXTENDED_METRIC_COUNT; k++)
     is_extended_available[k] = should_collect_extended;
 
@@ -480,6 +481,7 @@ fn sample_command(StringView shell_binary, StringView command,
       sample.cache_misses = static_cast<double>(measured->perf.cache_misses);
       sample.branch_misses = static_cast<double>(measured->perf.branch_misses);
     }
+
     if (should_collect_extended) {
       for (usize k = 0; k < EXTENDED_METRIC_COUNT; k++) {
         let const &value = measured->resources.*(EXTENDED_METRICS[k].field);
@@ -573,6 +575,7 @@ fn append_summary(String &out, const CommandResult &result, bool should_color,
     rows.push(make_metric_row(branch_misses_name, result.branch_misses,
                               metric_unit::Count, allocator));
   }
+
   for (usize k = 0; k < EXTENDED_METRIC_COUNT; k++) {
     if (result.has_extended[k]) {
       rows.push(make_metric_row(EXTENDED_METRICS[k].name,

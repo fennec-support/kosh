@@ -530,9 +530,6 @@ static fn open_with_flags(StringView path, file_open_mode mode,
   loop
   {
     const int fd = ::open(path_string.c_str(), flags, 0666);
-    /* An open of a named pipe blocks until its peer arrives. A Ctrl-C returns
-       to the caller. A trapped signal returns to a caller that runs the action
-       and opens again. Any other interrupting signal retries the open. */
     if (fd < 0 && errno == EINTR) {
       if (INTERRUPT_REQUESTED) return koshka::None;
       if (should_return_on_signal && SIGNAL_PENDING) {

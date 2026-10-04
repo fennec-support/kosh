@@ -527,13 +527,9 @@ fn EvalContext::set_trap(StringView condition, StringView action) throws -> void
     case pseudo_condition::Error:
       trap_store().err_trap_active_depth() = nesting_depth();
       break;
-    case pseudo_condition::Exit:
-      /* EXIT runs at the shell's end and needs no OS handler. */
-      return;
+    case pseudo_condition::Exit: return;
     }
   }
-  /* An empty action installs the ignore disposition the way trap "" SIG
-     asks. */
   if (let const number = os::signal_number_from_name(condition)) {
     if (action.is_empty())
       os::set_trap_ignore(*number);

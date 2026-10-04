@@ -538,8 +538,9 @@ public:
     prepare_regex_prefix();
     prepare_candidate_literal();
 
-    if (m_should_use_literal_search && m_options.should_ignore_case)
+    if (m_should_use_literal_search && m_options.should_ignore_case) {
       m_folded_pattern.assign_lowercase_ascii(pattern);
+    }
   }
 
   fn compile_pattern() throws -> bool
@@ -610,7 +611,9 @@ public:
       let const needle = m_options.should_ignore_case
                              ? StringView{m_folded_pattern.view()}
                              : m_options.pattern;
-      if (needle.is_empty() || value.length < needle.length) return false;
+      if (needle.is_empty() || value.length < needle.length) {
+        return false;
+      }
 
       for (usize start = from; start + needle.length <= value.length; start++) {
         usize offset = 0;
@@ -622,6 +625,7 @@ public:
         {
           offset++;
         }
+
         if (offset == needle.length) {
           out_start = start;
           out_end = start + needle.length;

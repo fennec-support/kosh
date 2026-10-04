@@ -1028,6 +1028,7 @@ fn AnalysisContext::note_variable_occurrence(
   if (name.is_empty()) return;
 
   note_variable_scope(name);
+
   if (kind == variable_occurrence_kind::Assignment &&
       active_function_definition_index == NO_ACTIVE_FUNCTION_DEFINITION)
   {
@@ -1992,12 +1993,14 @@ fn analyze_ast(
   expressions::internal::check_command_name_assignments(actx);
   expressions::internal::check_unassigned_variable_reads(actx);
   expressions::internal::check_function_argument_dataflow(actx);
+
   for (let const &assignment : actx.function_global_assignments) {
     if (actx.shared_scope_variable_names.contains(assignment.name.view())) {
       actx.report_diagnostic(diagnostic_id::function_global_assignment,
                              assignment.location, {assignment.name.view()});
     }
   }
+
   if (symbol_records != nullptr)
     resolve_function_occurrence_states(*symbol_records);
 

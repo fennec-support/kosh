@@ -159,7 +159,9 @@ fn append_network_socket_report(String &output,
     for (let const &socket : sockets) {
       if (socket.process_id != 0 && socket.has_owner_start_token &&
           !owner_process_ids.find(socket.process_id).has_value())
+      {
         owner_process_ids.push(socket.process_id);
+      }
     }
   }
   let const processes = os::describe_processes(owner_process_ids);
@@ -368,6 +370,7 @@ fn EvilSS::execute(const ExecContext &ec, EvalContext &cxt,
                               Allocator frame_allocator) -> Maybe<i32> {
       append_network_socket_report(frame, report_options, frame_allocator,
                                    should_color);
+
       return None;
     };
 

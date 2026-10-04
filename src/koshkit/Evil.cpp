@@ -625,8 +625,9 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   let const load = read_first_line("/proc/loadavg", allocator);
-  if (load.has_value() && !load->is_empty())
+  if (load.has_value() && !load->is_empty()) {
     resources.add("Load", load->view());
+  }
 
   let const processes = os::enumerate_processes();
   resources.add("Processes", String::from(processes.count(), allocator).view());

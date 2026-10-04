@@ -861,6 +861,7 @@ static fn create_worker() wontthrow -> pooled_worker *
   }
 
   pthread_detach(worker->thread_id);
+
   return worker;
 }
 
@@ -1634,6 +1635,7 @@ fn fill_usage_from_proc_io(int io_descriptor,
   do {
     length = ::pread(io_descriptor, buffer, sizeof(buffer), 0);
   } while (length == -1 && errno == EINTR);
+
   if (length <= 0) return;
 
   let const text = StringView{buffer, static_cast<usize>(length)};
@@ -1715,6 +1717,7 @@ fn read_own_resource_usage() wontthrow -> process_resource_usage
   fill_usage_from_proc_io(io_descriptor, resources);
   if (io_descriptor >= 0) ::close(io_descriptor);
 #endif
+
   return resources;
 }
 

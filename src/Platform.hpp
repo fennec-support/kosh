@@ -485,9 +485,6 @@ enum class file_open_mode : u8
 
 fn open_file_descriptor(StringView path, file_open_mode mode) throws
     -> Maybe<descriptor>;
-/* Returns None with did_signal_arrive set when a signal with a trap action
-   interrupted a blocked open, so the caller can run the action and open again.
-   A Ctrl-C returns None with the flag clear. */
 fn open_file_descriptor_until_signal(StringView path, file_open_mode mode,
                                      bool &did_signal_arrive) throws
     -> Maybe<descriptor>;
@@ -587,9 +584,6 @@ static_assert(sizeof(usize) != 8 || sizeof(process_entry) == 168);
 fn enumerate_processes(process_detail detail = process_detail::Basic) throws
     -> ArrayList<process_entry>;
 
-/* The name, owner uid, and start token of each listed pid that still exists.
-   Linux reads only those processes, other platforms filter one full
-   enumeration. */
 fn describe_processes(const ArrayList<u32> &pids) throws
     -> ArrayList<process_entry>;
 
@@ -1630,7 +1624,6 @@ struct resource_limit
   u64 hard{RESOURCE_UNLIMITED};
 };
 
-/* None when the platform carries no such limit. */
 fn get_resource_limit(resource_kind kind) wontthrow -> Maybe<resource_limit>;
 fn set_resource_limit(const resource_limit &limit, resource_kind kind) wontthrow
     -> bool;

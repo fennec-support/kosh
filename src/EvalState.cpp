@@ -1770,11 +1770,12 @@ cold fn EvalContext::make_stats_string() const throws -> String
   append_count_line("Functions", function_store().definitions().count());
   append_count_line("Function call depth", function_store().call_depth());
   append_count_line("Source frames", bash_source_frame_count());
-  append_count_line("Builtins run", evaluation_metrics_store().builtins_run());
+  append_count_line("Builtins run",
+                    evaluation_metrics_store().get_builtins_run());
   append_count_line("Functions run",
-                    evaluation_metrics_store().functions_run());
+                    evaluation_metrics_store().get_functions_run());
   append_count_line("External commands run",
-                    evaluation_metrics_store().external_commands_run());
+                    evaluation_metrics_store().get_external_commands_run());
 
   let const launch_counts = os::get_process_launch_counts();
   append_count_line("Forks", static_cast<usize>(launch_counts.fork_count));

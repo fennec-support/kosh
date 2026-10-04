@@ -81,8 +81,9 @@ fn update_retained_rows(ArrayList<Row> &retained, Items &observed, u64 now,
       else
         high = middle;
     }
-    if (low < index.count() && !(key < index[low].key))
+    if (low < index.count() && !(key < index[low].key)) {
       return index[low].position;
+    }
 
     return None;
   };

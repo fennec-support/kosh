@@ -57,7 +57,10 @@ static fn parse_touch_time(StringView text) throws -> Maybe<i64>
 
     main_length -= 3;
   }
-  if (main_length != 8 && main_length != 10 && main_length != 12) return None;
+
+  if (main_length != 8 && main_length != 10 && main_length != 12) {
+    return None;
+  }
 
   let const now = std::time(nullptr);
   let const *current = std::localtime(&now);

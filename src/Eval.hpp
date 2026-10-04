@@ -879,24 +879,27 @@ public:
     if (enabled) m_expansions_last++;
   }
 
-  fn add_builtin_run(bool enabled) wontthrow -> void
+  fn add_builtin_run(bool is_enabled) wontthrow -> void
   {
-    if (enabled) m_builtins_run++;
+    if (is_enabled) m_builtins_run++;
   }
 
-  fn add_function_run(bool enabled) wontthrow -> void
+  fn add_function_run(bool is_enabled) wontthrow -> void
   {
-    if (enabled) m_functions_run++;
+    if (is_enabled) m_functions_run++;
   }
 
-  fn add_external_command_run(bool enabled) wontthrow -> void
+  fn add_external_command_run(bool is_enabled) wontthrow -> void
   {
-    if (enabled) m_external_commands_run++;
+    if (is_enabled) m_external_commands_run++;
   }
 
-  pure fn builtins_run() const wontthrow -> usize { return m_builtins_run; }
-  pure fn functions_run() const wontthrow -> usize { return m_functions_run; }
-  pure fn external_commands_run() const wontthrow -> usize
+  pure fn get_builtins_run() const wontthrow -> usize { return m_builtins_run; }
+  pure fn get_functions_run() const wontthrow -> usize
+  {
+    return m_functions_run;
+  }
+  pure fn get_external_commands_run() const wontthrow -> usize
   {
     return m_external_commands_run;
   }
