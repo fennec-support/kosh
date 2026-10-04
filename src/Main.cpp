@@ -792,7 +792,7 @@ fn kosh_main(int argc, char **argv) -> int
     analysis.reporting.is_diagnostics_disabled = false;
     analysis.reporting.is_annoying_disabled = false;
     analysis.reporting.warning_level =
-        session_mood == koshka::mimic_mood::Default ? 0 : 3;
+        koshka::warning_level_for_mood(session_mood);
   }
 
   context.runtime_state().set_inheritable_analysis_state(analysis);
@@ -992,13 +992,12 @@ fn kosh_main(int argc, char **argv) -> int
   /* The session mood takes over and seeds its strictness once the config has
      loaded, unless the rc picked one with set --mood, which wins the way a
      command-line --mood would. */
-  if (!context.runtime_control_store().was_mood_set_explicitly())
-    context.runtime_state().set_mood(session_mood);
-  context.apply_strictness_for_mood();
+  context.select_mood(context.runtime_control_store().was_mood_set_explicitly()
+                          ? context.runtime_state().get_mood()
+                          : session_mood);
   if (FLAG_LINT.is_enabled()) {
-    context.runtime_state().set_warning_level(
-        context.runtime_state().get_mood() == koshka::mimic_mood::Default ? 0
-                                                                          : 3);
+    context.runtime_state().set_warning_level(koshka::warning_level_for_mood(
+        context.runtime_state().get_mood()));
   }
 
   if (koshka::os::has_environment_variable(
@@ -1198,16 +1197,12 @@ fn kosh_main(int argc, char **argv) -> int
                 LOG(Info, "the script operand '%s' %s a shell to mimic",
                     file_name.c_str(),
                     detected_mood.has_value() ? "names" : "does not name");
-                context.runtime_state().set_mood(
-                    detected_mood.value_or(session_mood));
-                context.apply_strictness_for_mood();
+                context.select_mood(detected_mood.value_or(session_mood));
 
                 if (FLAG_LINT.is_enabled()) {
                   context.runtime_state().set_warning_level(
-                      context.runtime_state().get_mood() ==
-                              koshka::mimic_mood::Default
-                          ? 0
-                          : 3);
+                      koshka::warning_level_for_mood(
+                          context.runtime_state().get_mood()));
                 }
               }
             }

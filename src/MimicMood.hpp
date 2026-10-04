@@ -51,6 +51,11 @@ inline pure fn parse_mood_name(StringView name) throws -> Maybe<mimic_mood>
   return MOODS.find(name);
 }
 
+inline pure fn warning_level_for_mood(mimic_mood mood) wontthrow -> u8
+{
+  return mood == mimic_mood::Default ? 0 : 3;
+}
+
 inline pure fn mood_name(mimic_mood mood) wontthrow -> StringView
 {
   switch (mood) {

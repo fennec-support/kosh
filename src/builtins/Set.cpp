@@ -863,10 +863,9 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             ec, i,
             String{cxt.scratch_allocator(), "Unknown --mood value '"} + *value +
                 "', expected 'kosh', 'bash', 'sh', or 'bash-posix'");
-      cxt.runtime_state().set_mood(*parsed);
+      cxt.select_mood(*parsed);
       cxt.runtime_control_store().note_warning_option_mutation();
       cxt.runtime_state().set_warning_level(0);
-      cxt.apply_strictness_for_mood();
       cxt.runtime_control_store().note_explicit_mood();
       continue;
     }
@@ -934,8 +933,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       source_init_moods(cxt, *cxt.arena_store().parse_arena(), moods,
                         cxt.startup_store().is_login_shell(),
                         cxt.execution_store().shell_is_interactive());
-      cxt.runtime_state().set_mood(previous_mood);
-      cxt.apply_strictness_for_mood();
+      cxt.select_mood(previous_mood);
       continue;
     }
 

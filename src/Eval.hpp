@@ -3052,13 +3052,17 @@ public:
   {
     if (enable) {
       runtime_control_store().note_explicit_mood();
-      runtime_state().set_mood(mimic_mood::BashPosix);
-      apply_strictness_for_mood();
+      select_mood(mimic_mood::BashPosix);
       return;
     }
     if (!runtime_state().is_posix_option_on()) return;
     runtime_control_store().note_explicit_mood();
-    runtime_state().set_mood(mimic_mood::Bash);
+    select_mood(mimic_mood::Bash);
+  }
+
+  fn select_mood(mimic_mood mood) wontthrow -> void
+  {
+    runtime_state().set_mood(mood);
     apply_strictness_for_mood();
   }
 

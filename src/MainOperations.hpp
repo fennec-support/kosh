@@ -739,7 +739,7 @@ static fn run_lint_document_contents(
   for (let const &fragment : document.fragments) {
     context.runtime_state().set_mood(fragment.mood);
     context.runtime_state().set_warning_level(
-        fragment.mood == mimic_mood::Default ? 0 : 3);
+        warning_level_for_mood(fragment.mood));
     let const fragment_status = run_script_contents(
         fragment.analysis_source, context, ast_arena, filename, nullptr,
         nullptr, None, {diagnostic_totals, diagnostic_sink, nullptr},

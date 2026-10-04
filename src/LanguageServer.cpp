@@ -316,8 +316,7 @@ fn Server::request_positioned_document(const JsonValue *params) throws
 
 fn Server::select_document_mood(const Document &document) wontthrow -> void
 {
-  m_context.runtime_state().set_mood(document.mood);
-  m_context.apply_strictness_for_mood();
+  m_context.select_mood(document.mood);
   m_context.runtime_state().set_reporting_state(
       reporting_state{3, false, false});
 }
@@ -1091,9 +1090,7 @@ fn Server::symbol_at(const Document &document,
   let const fragment_index = document.fragment_at(*byte_position);
   if (!fragment_index.has_value()) return None;
   if (document.format.is_host_format) {
-    m_context.runtime_state().set_mood(
-        document.format.fragments[*fragment_index].mood);
-    m_context.apply_strictness_for_mood();
+    m_context.select_mood(document.format.fragments[*fragment_index].mood);
   }
   let const[line_start, line_end] = document.get_line_bounds(position.line);
   let const *spans = m_highlight_cache.spans_for(
