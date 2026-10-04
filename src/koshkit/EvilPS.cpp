@@ -84,12 +84,6 @@ enum class evilps_resource_mode : u8
   ResourceStats,
 };
 
-enum class evilps_color_mode : u8
-{
-  Plain,
-  Colored,
-};
-
 enum class evilps_parent_display_mode : u8
 {
   HideAncestors,
@@ -292,10 +286,9 @@ fn append_cpu_value(String &output, const tree_node &node, Allocator allocator,
 }
 
 fn append_bounded_command(String &output, StringView command,
-                          usize line_width_limit,
-                          evilps_color_mode color_mode) throws -> void
+                          usize line_width_limit, bool should_color) throws
+    -> void
 {
-  let const should_color = color_mode == evilps_color_mode::Colored;
   if (command.is_empty()) return;
   if (line_width_limit == 0 || line_width_limit == SIZE_MAX) {
     output += " ";
@@ -338,10 +331,9 @@ fn append_bounded_command(String &output, StringView command,
 
 fn append_label(String &output, const tree_node &node, Allocator allocator,
                 Maybe<evilps_sort_key> sort_key, usize line_width_limit,
-                report_sampling_mode sampling,
-                evilps_color_mode color_mode) throws -> void
+                report_sampling_mode sampling, bool should_color) throws
+    -> void
 {
-  let const should_color = color_mode == evilps_color_mode::Colored;
   append_report_text(output, node.name.view(), colors::ansi::BOLD_GREEN,
                      should_color);
 
@@ -389,7 +381,7 @@ fn append_label(String &output, const tree_node &node, Allocator allocator,
       !node.command_line.is_empty())
   {
     append_bounded_command(output, node.command_line.view(), line_width_limit,
-                           color_mode);
+                           should_color);
   }
 
   output += "\n";
@@ -400,10 +392,8 @@ fn render_process_relatives(
     const String &prefix, usize depth, Allocator allocator, usize output_limit,
     usize &rendered_count, Maybe<evilps_sort_key> sort_key,
     usize line_width_limit, report_sampling_mode sampling,
-    evilps_color_mode color_mode, evilps_parent_display_mode parent_mode) throws
-    -> void
+    bool should_color, evilps_parent_display_mode parent_mode) throws -> void
 {
-  let const should_color = color_mode == evilps_color_mode::Colored;
   if (depth > MAXIMUM_TREE_DEPTH || rendered_count >= output_limit) return;
 
   ArrayList<usize> relative_positions{allocator};
@@ -456,14 +446,14 @@ fn render_process_relatives(
     append_report_text(output, connector.branch, colors::ansi::CYAN,
                        should_color);
     append_label(output, nodes[position], allocator, sort_key, line_width_limit,
-                 sampling, color_mode);
+                 sampling, should_color);
     rendered_count++;
 
     let relative_prefix = String{allocator, prefix.view()};
     relative_prefix += connector.continuation;
     render_process_relatives(output, nodes, position, relative_prefix,
                              depth + 1, allocator, output_limit, rendered_count,
-                             sort_key, line_width_limit, sampling, color_mode,
+                             sort_key, line_width_limit, sampling, should_color,
                              parent_mode);
   }
 }
@@ -536,7 +526,7 @@ fn render_process_snapshot(const ExecContext &ec, EvalContext &cxt,
                            Maybe<evilps_sort_key> sort_key,
                            usize line_width_limit, usize &visible_line_count,
                            report_sampling_mode sampling,
-                           evilps_color_mode color_mode) throws -> i32
+                           bool should_color) throws -> i32
 {
   if (unordered_nodes.is_empty()) {
     report_soft_koshkit_error(ec, cxt, "the process listing is unavailable",
@@ -581,12 +571,12 @@ fn render_process_snapshot(const ExecContext &ec, EvalContext &cxt,
       nodes[root_position].was_rendered = true;
       output += root_indentation;
       append_label(output, nodes[root_position], allocator, sort_key,
-                   line_width_limit, sampling, color_mode);
+                   line_width_limit, sampling, should_color);
       rendered_count++;
       render_process_relatives(
           output, nodes, root_position, String{allocator, root_indentation}, 0,
           allocator, output_limit, rendered_count, sort_key, line_width_limit,
-          sampling, color_mode, evilps_parent_display_mode::HideAncestors);
+          sampling, should_color, evilps_parent_display_mode::HideAncestors);
     }
     visible_line_count = 1;
     if (viewport_rows != 0) {
@@ -635,12 +625,12 @@ fn render_process_snapshot(const ExecContext &ec, EvalContext &cxt,
       nodes[position].was_rendered = true;
       output += root_indentation;
       append_label(output, nodes[position], allocator, sort_key,
-                   line_width_limit, sampling, color_mode);
+                   line_width_limit, sampling, should_color);
       rendered_count++;
       render_process_relatives(
           output, nodes, position, String{allocator, root_indentation}, 0,
           allocator, output_limit, rendered_count, sort_key, line_width_limit,
-          sampling, color_mode, evilps_parent_display_mode::FollowAncestors);
+          sampling, should_color, evilps_parent_display_mode::FollowAncestors);
       continue;
     }
 
@@ -660,12 +650,12 @@ fn render_process_snapshot(const ExecContext &ec, EvalContext &cxt,
     nodes[position].was_rendered = true;
     output += root_indentation;
     append_label(output, nodes[position], allocator, sort_key, line_width_limit,
-                 sampling, color_mode);
+                 sampling, should_color);
     rendered_count++;
     render_process_relatives(
         output, nodes, position, String{allocator, root_indentation}, 0,
         allocator, output_limit, rendered_count, sort_key, line_width_limit,
-        sampling, color_mode, evilps_parent_display_mode::HideAncestors);
+        sampling, should_color, evilps_parent_display_mode::HideAncestors);
   }
 
   visible_line_count = rendered_count;
@@ -869,8 +859,7 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
   evilps_resource_mode resource_mode = should_collect_resources
                                            ? evilps_resource_mode::ResourceStats
                                            : evilps_resource_mode::Basic;
-  let const color_mode = koshkit_should_color() ? evilps_color_mode::Colored
-                                                : evilps_color_mode::Plain;
+  let const should_color = koshkit_should_color();
 
   let const report_options = live_report_options::parse(
       ec, cxt, args[0].view(), FLAG_EVILPS_LIVE, FLAG_EVILPS_CUMULATIVE,
@@ -958,7 +947,7 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
             ec, cxt, frame_allocator, frame, nodes, operands, operand_locations,
             output_limit, viewport_rows, rendered_offset, live_search.view(),
             sort_key, live_line_width_limit, visible_line_count,
-            report_sampling_mode::Rolling, color_mode);
+            report_sampling_mode::Rolling, should_color);
         if (status != 0) return status;
         if (viewport_rows == 0) break;
 
@@ -974,9 +963,8 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
       return None;
     };
 
-    let options = report_options->make_view_options(
-        "evilps", color_mode == evilps_color_mode::Colored,
-        started_at_nanoseconds);
+    let options = report_options->make_view_options("evilps", should_color,
+                                                    started_at_nanoseconds);
     options.extra_key_hints = "s sort|j/k scroll|/ search";
     options.should_render_first_frame_immediately = true;
 
@@ -1008,7 +996,7 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
   let const status = render_process_snapshot(
       ec, cxt, allocator, output, nodes, operands, operand_locations,
       output_limit, 0, 0, StringView{}, sort_key, line_width_limit,
-      output_limit, sampling, color_mode);
+      output_limit, sampling, should_color);
   if (status == 0) ec.print_to_stdout(output);
   return status;
 }

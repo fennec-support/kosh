@@ -51,12 +51,6 @@ enum class goodstat_checksum_report : u8
   Include,
 };
 
-enum class goodstat_color_mode : u8
-{
-  Plain,
-  Colored,
-};
-
 fn id_name(u32 id, Allocator allocator, goodstat_identity_kind kind) throws
     -> String
 {
@@ -146,9 +140,8 @@ fn append_subject(String &output, StringView operand,
                   Allocator allocator,
                   goodstat_filesystem_report filesystem_report,
                   goodstat_checksum_report checksum_report,
-                  goodstat_color_mode color_mode) throws -> void
+                  bool should_color) throws -> void
 {
-  let const should_color = color_mode == goodstat_color_mode::Colored;
   let table = ReportTable{allocator};
   let const do_append_field = [&](StringView name, StringView value,
                                   StringView style) throws {
@@ -286,8 +279,7 @@ fn GoodStat::execute(
     return report_usage_error(ec, cxt, args[0].view());
   }
 
-  let const color_mode = koshkit_should_color() ? goodstat_color_mode::Colored
-                                                : goodstat_color_mode::Plain;
+  let const should_color = koshkit_should_color();
   let const filesystem_report = FLAG_GOODSTAT_FILESYSTEM.is_enabled()
                                     ? goodstat_filesystem_report::Include
                                     : goodstat_filesystem_report::Omit;
@@ -332,7 +324,7 @@ fn GoodStat::execute(
 
     if (!output.is_empty()) output += "\n";
     append_subject(output, operand.view(), file_statuses[index], ec, allocator,
-                   filesystem_report, checksum_report, color_mode);
+                   filesystem_report, checksum_report, should_color);
   }
 
   ec.print_to_stdout(output);

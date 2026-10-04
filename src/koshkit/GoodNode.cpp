@@ -42,12 +42,6 @@ enum class goodnode_verification_mode : u8
   Verify,
 };
 
-enum class goodnode_color_mode : u8
-{
-  Plain,
-  Colored,
-};
-
 fn file_crc32c(const ExecContext &ec, StringView path,
                Allocator allocator) throws -> Maybe<String>
 {
@@ -102,9 +96,8 @@ fn filesystem_features(StringView filesystem_type) throws -> Maybe<StringView>
 fn append_node_report(String &output, const ExecContext &ec, StringView path,
                       const os::file_status &status, Allocator allocator,
                       goodnode_verification_mode verification,
-                      goodnode_color_mode color_mode) throws -> void
+                      bool should_color) throws -> void
 {
-  let const should_color = color_mode == goodnode_color_mode::Colored;
   let table = ReportTable{allocator};
   let const do_append_field = [&](StringView name, StringView value) throws {
     let cells = ArrayList<report_table_cell_view>{allocator};
@@ -340,8 +333,7 @@ fn GoodNode::execute(
     return report_usage_error(ec, cxt, args[0].view());
   }
 
-  let const color_mode = koshkit_should_color() ? goodnode_color_mode::Colored
-                                                : goodnode_color_mode::Plain;
+  let const should_color = koshkit_should_color();
   let const verification = FLAG_GOODNODE_VERIFY.is_enabled()
                                ? goodnode_verification_mode::Verify
                                : goodnode_verification_mode::Skip;
@@ -376,7 +368,7 @@ fn GoodNode::execute(
 
     if (!output.is_empty()) output += '\n';
     append_node_report(output, ec, path.view(), report_statuses[index],
-                       allocator, verification, color_mode);
+                       allocator, verification, should_color);
     if (os::INTERRUPT_REQUESTED) return 130;
   }
 

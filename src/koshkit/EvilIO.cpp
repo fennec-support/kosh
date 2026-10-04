@@ -56,12 +56,6 @@ REGISTER_KOSHKIT_UTIL_FLAGS(EvilIO);
 
 namespace koshka::koshkit {
 
-enum class evilio_color_mode : u8
-{
-  Plain,
-  Colored,
-};
-
 enum class evilio_idle_mode : u8
 {
   Omit,
@@ -445,9 +439,8 @@ fn get_process_window_status(const live_process_row &row,
 fn append_process_io_rate_report(String &output, const ArrayList<io_row> &rows,
                                  usize row_limit, Allocator allocator,
                                  StringView duration_suffix,
-                                 evilio_color_mode color_mode) throws -> void
+                                 bool should_color) throws -> void
 {
-  let const should_color = color_mode == evilio_color_mode::Colored;
   let table = ReportTable{allocator};
   table.add_column("PID", report_table_alignment::Right,
                    colors::ansi::BOLD_CYAN);
@@ -784,9 +777,8 @@ fn tenths_text(u64 tenths, Allocator allocator,
 fn append_disk_io_report(String &output, const ArrayList<disk_io_row> &rows,
                          Allocator allocator, StringView duration_suffix,
                          report_sampling_mode sampling,
-                         evilio_color_mode color_mode) throws -> void
+                         bool should_color) throws -> void
 {
-  let const should_color = color_mode == evilio_color_mode::Colored;
   if (rows.is_empty() && sampling == report_sampling_mode::Instant) return;
 
   let table = ReportTable{allocator};
@@ -897,7 +889,7 @@ fn run_live_process_io(const ExecContext &ec, Maybe<i64> selected_pid,
                        const live_report_options &report_options,
                        StringView sample_duration_label,
                        Maybe<evilio_sort_key> sort_key,
-                       evilio_color_mode color_mode) throws -> i32
+                       bool should_color) throws -> i32
 {
   let const allocator = heap_allocator();
   let retained = ArrayList<live_process_row>{allocator};
@@ -963,14 +955,13 @@ fn run_live_process_io(const ExecContext &ec, Maybe<i64> selected_pid,
     let const sorted_rows = sort_process_rows(steal(rows), sort_key);
     append_process_io_rate_report(output, sorted_rows, row_limit,
                                   frame_allocator, sample_duration_label,
-                                  color_mode);
+                                  should_color);
     return None;
   };
 
   return run_live_view(
       ec,
-      report_options.make_view_options("evilio",
-                                       color_mode == evilio_color_mode::Colored,
+      report_options.make_view_options("evilio", should_color,
                                        started_at_nanoseconds),
       do_sample, do_render);
 }
@@ -1036,7 +1027,7 @@ fn run_live_disk_io(const ExecContext &ec,
                     const live_report_options &report_options,
                     StringView sample_duration_label,
                     Maybe<evilio_sort_key> sort_key,
-                    evilio_color_mode color_mode) throws -> i32
+                    bool should_color) throws -> i32
 {
   let const allocator = heap_allocator();
   let retained = ArrayList<live_disk_row>{allocator};
@@ -1079,15 +1070,14 @@ fn run_live_disk_io(const ExecContext &ec,
     sort_disk_rows(rows, sort_key);
 
     append_disk_io_report(output, rows, frame_allocator, sample_duration_label,
-                          report_sampling_mode::Rolling, color_mode);
+                          report_sampling_mode::Rolling, should_color);
 
     return None;
   };
 
   return run_live_view(
       ec,
-      report_options.make_view_options("evilio",
-                                       color_mode == evilio_color_mode::Colored,
+      report_options.make_view_options("evilio", should_color,
                                        started_at_nanoseconds),
       do_sample, do_render);
 }
@@ -1134,9 +1124,8 @@ fn append_process_io_report(String &output, const ArrayList<io_row> &rows,
                             u64 total_read_operation_count,
                             u64 total_write_operation_count,
                             bool has_operation_counts, Allocator allocator,
-                            evilio_color_mode color_mode) throws -> void
+                            bool should_color) throws -> void
 {
-  let const should_color = color_mode == evilio_color_mode::Colored;
   let summary_table = make_metric_table(allocator);
   add_metric_row(summary_table, "Visible processes",
                  String::from(rows.count(), allocator), allocator);
@@ -1402,14 +1391,11 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
     if (should_show_processes) {
       return run_live_process_io(
           ec, selected_pid, row_limit, *report_options,
-          sample_duration_label.view(), sort_key,
-          should_color ? evilio_color_mode::Colored : evilio_color_mode::Plain);
+          sample_duration_label.view(), sort_key, should_color);
     }
 
     return run_live_disk_io(ec, *report_options, sample_duration_label.view(),
-                            sort_key,
-                            should_color ? evilio_color_mode::Colored
-                                         : evilio_color_mode::Plain);
+                            sort_key, should_color);
   }
 
   if (FLAG_EVILIO_CUMULATIVE.is_enabled() && should_show_processes) {
@@ -1426,9 +1412,7 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
         sample_process_io_rows(before_rows, after_rows, allocator, sort_key);
     let output = String{allocator};
     append_process_io_rate_report(output, sampled_rows, row_limit, allocator,
-                                  sample_duration_label.view(),
-                                  should_color ? evilio_color_mode::Colored
-                                               : evilio_color_mode::Plain);
+                                  sample_duration_label.view(), should_color);
     ec.print_to_stdout(output);
     return selected_pid.has_value() && after_rows.is_empty() ? 1 : 0;
   }
@@ -1459,8 +1443,7 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
     append_process_io_report(
         output, sorted_rows, row_limit, total_read_bytes, total_written_bytes,
         total_read_operation_count, total_write_operation_count,
-        has_operation_counts, allocator,
-        should_color ? evilio_color_mode::Colored : evilio_color_mode::Plain);
+        has_operation_counts, allocator, should_color);
     ec.print_to_stdout(output);
     return selected_pid.has_value() && sorted_rows.is_empty() ? 1 : 0;
   }
@@ -1846,7 +1829,7 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
         (FLAG_EVILIO_ALL.is_enabled() || FLAG_EVILIO_CUMULATIVE.is_enabled())
             ? report_sampling_mode::Rolling
             : report_sampling_mode::Instant,
-        should_color ? evilio_color_mode::Colored : evilio_color_mode::Plain);
+        should_color);
   }
 
   if (FLAG_EVILIO_CUMULATIVE.is_enabled()) {
