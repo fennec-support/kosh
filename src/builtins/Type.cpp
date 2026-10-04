@@ -152,13 +152,31 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
 
     let const do_describe_resolution = [&](StringView type_word) throws {
+      enum class resolution_kind : u8
+      {
+        Alias,
+        Keyword,
+        Function,
+      };
+      static constexpr static_string_entry<resolution_kind> KIND_ENTRIES[] = {
+          {SSK("alias"),    resolution_kind::Alias   },
+          {SSK("keyword"),  resolution_kind::Keyword },
+          {SSK("function"), resolution_kind::Function},
+      };
+      static constexpr StaticStringMap RESOLUTION_KINDS{KIND_ENTRIES};
+      let const kind = RESOLUTION_KINDS.find(type_word);
+      let const is_function =
+          kind.has_value() && *kind == resolution_kind::Function;
+
       out += name;
-      if (type_word == "alias") {
+      if (!kind.has_value()) {
+        out += " is a shell builtin";
+      } else if (*kind == resolution_kind::Alias) {
         out += " is an alias for ";
         out += *alias_value;
-      } else if (type_word == "keyword") {
+      } else if (*kind == resolution_kind::Keyword) {
         out += " is a shell keyword";
-      } else if (type_word == "function") {
+      } else {
         out +=
             is_bash_function_report ? " is a function" : " is a shell function";
 
@@ -179,12 +197,10 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             }
           }
         }
-      } else {
-        out += " is a shell builtin";
       }
       out += "\n";
 
-      if (type_word == "function") {
+      if (is_function) {
         if (!should_print_verbose && !is_bash_function_report) return;
 
         if (let const *source = cxt.function_store().find_source(name.view());

@@ -146,6 +146,24 @@ static fn bc_translate_expression(StringView expression, u32 input_base,
       SSK("atan"), SSK("cos"), SSK("exp"), SSK("ln"), SSK("sin"), SSK("sqrt"),
   };
   static constexpr StaticStringSet SCALED_FUNCTIONS{SCALED_FUNCTION_ENTRIES};
+  enum class bc_state_variable : u8
+  {
+    InputBase,
+    OutputBase,
+    Scale,
+  };
+  static constexpr static_string_entry<bc_state_variable> STATE_ENTRIES[] = {
+      {SSK("ibase"), bc_state_variable::InputBase },
+      {SSK("obase"), bc_state_variable::OutputBase},
+      {SSK("scale"), bc_state_variable::Scale     },
+  };
+  static constexpr StaticStringMap STATE_VARIABLES{STATE_ENTRIES};
+  static constexpr PackedStringKey NATIVE_FUNCTION_ENTRIES[] = {
+      SSK("length"),
+      SSK("scale"),
+      SSK("sqrt"),
+  };
+  static constexpr StaticStringSet NATIVE_FUNCTIONS{NATIVE_FUNCTION_ENTRIES};
   let translated = String{allocator};
   usize position = 0;
   while (position < expression.length) {
@@ -189,15 +207,21 @@ static fn bc_translate_expression(StringView expression, u32 input_base,
         next_position++;
       let const is_function =
           next_position < expression.length && expression[next_position] == '(';
-      if (!is_function && name == "ibase") {
-        translated += String::from(input_base, allocator);
-      } else if (!is_function && name == "obase") {
-        translated += String::from(output_base, allocator);
-      } else if (!is_function && name == "scale") {
-        translated += String::from(scale, allocator);
-      } else if (is_function &&
-                 (name == "length" || name == "scale" || name == "sqrt"))
-      {
+      let const state_variable =
+          is_function ? Maybe<bc_state_variable>{} : STATE_VARIABLES.find(name);
+      if (state_variable.has_value()) {
+        switch (*state_variable) {
+        case bc_state_variable::InputBase:
+          translated += String::from(input_base, allocator);
+          break;
+        case bc_state_variable::OutputBase:
+          translated += String::from(output_base, allocator);
+          break;
+        case bc_state_variable::Scale:
+          translated += String::from(scale, allocator);
+          break;
+        }
+      } else if (is_function && NATIVE_FUNCTIONS.contains(name)) {
         translated += name;
       } else if (let const math_function = MATH_FUNCTIONS.find(name);
                  is_function && has_math_library && math_function.has_value())

@@ -208,6 +208,10 @@ constexpr PackedStringKey CONDITIONAL_DIRECTIVE_KEYS[] = {
     SSK("ifeq"), SSK("ifneq"), SSK("ifdef"), SSK("ifndef")};
 constexpr StaticStringSet CONDITIONAL_DIRECTIVES{CONDITIONAL_DIRECTIVE_KEYS};
 
+constexpr PackedStringKey RULE_ENDING_DIRECTIVE_KEYS[] = {
+    SSK("else"), SSK("endif"), SSK("include")};
+constexpr StaticStringSet RULE_ENDING_DIRECTIVES{RULE_ENDING_DIRECTIVE_KEYS};
+
 struct builtin_rule_entry
 {
   const char *target;
@@ -633,6 +637,19 @@ static fn archive_member_modification_time(const Path &archive,
                                            StringView wanted_member) throws
     -> Maybe<i64>
 {
+  enum class archive_special_member : u8
+  {
+    LongNames,
+    SymbolTable,
+  };
+  static constexpr static_string_entry<archive_special_member>
+      SPECIAL_MEMBER_ENTRIES[] = {
+          {SSK("//"),      archive_special_member::LongNames  },
+          {SSK("/"),       archive_special_member::SymbolTable},
+          {SSK("/SYM64/"), archive_special_member::SymbolTable},
+  };
+  static constexpr StaticStringMap SPECIAL_MEMBERS{SPECIAL_MEMBER_ENTRIES};
+
   let const contents = archive.read_entire_file();
   if (!contents.has_value() || contents->view().length < 8 ||
       contents->view().substring_of_length(0, 8) != StringView{"!<arch>\n"})
@@ -670,13 +687,15 @@ static fn archive_member_modification_time(const Path &archive,
       extended_name_length = parsed_name_length.value();
       member_name = contents->view().substring_of_length(
           content_position, static_cast<usize>(extended_name_length));
-    } else if (member_name == StringView{"//"}) {
-      long_names = contents->view().substring_of_length(
-          content_position, static_cast<usize>(member_size.value()));
-    } else if (member_name == StringView{"/"} ||
-               member_name == StringView{"/SYM64/"})
+    } else if (let const special = SPECIAL_MEMBERS.find(member_name);
+               special.has_value())
     {
-      member_name = StringView{};
+      if (*special == archive_special_member::LongNames) {
+        long_names = contents->view().substring_of_length(
+            content_position, static_cast<usize>(member_size.value()));
+      } else {
+        member_name = StringView{};
+      }
     } else if (member_name.length > 1 && member_name[0] == '/') {
       let const parsed_offset =
           utils::parse_decimal_u64(member_name.substring(1));
@@ -3199,8 +3218,7 @@ fn parse_makefile_shell_sources(StringView source, Allocator allocator) throws
       continue;
     }
     if (CONDITIONAL_DIRECTIVES.contains(statement_directive) ||
-        statement_directive == "else" || statement_directive == "endif" ||
-        statement_directive == "include")
+        RULE_ENDING_DIRECTIVES.contains(statement_directive))
     {
       has_current_rule = false;
       continue;

@@ -106,10 +106,16 @@ fn trap_listing_order(StringView condition) throws -> i64
 {
   static constexpr i64 SPECIAL_CONDITION_BASE = 1000;
 
-  if (condition == "EXIT") return 0;
-  if (condition == "DEBUG") return SPECIAL_CONDITION_BASE;
-  if (condition == "ERR") return SPECIAL_CONDITION_BASE + 1;
-  if (condition == "RETURN") return SPECIAL_CONDITION_BASE + 2;
+  static constexpr static_string_entry<i64> ORDER_ENTRIES[] = {
+      {SSK("EXIT"),   0                         },
+      {SSK("DEBUG"),  SPECIAL_CONDITION_BASE    },
+      {SSK("ERR"),    SPECIAL_CONDITION_BASE + 1},
+      {SSK("RETURN"), SPECIAL_CONDITION_BASE + 2},
+  };
+  static constexpr StaticStringMap SPECIAL_ORDER{ORDER_ENTRIES};
+
+  if (let const special = SPECIAL_ORDER.find(condition); special.has_value())
+    return *special;
 
   if (let const number = os::signal_number_from_name(condition))
     return static_cast<i64>(*number);

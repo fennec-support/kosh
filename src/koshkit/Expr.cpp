@@ -172,19 +172,19 @@ private:
       let const right = parse_match();
       let const left_number = require_number(left.view());
       let const right_number = require_number(right.view());
-      if ((operation.view() == "/" || operation.view() == "%") &&
-          right_number == 0)
+      let const operator_byte = operation.view()[0];
+      if ((operator_byte == '/' || operator_byte == '%') && right_number == 0)
         throw Error{"division by zero"};
 
       i128 result = 0;
-      if (operation.view() == "*")
-        result = static_cast<i128>(left_number) * right_number;
-      else if (operation.view() == "/") {
+      switch (operator_byte) {
+      case '*': result = static_cast<i128>(left_number) * right_number; break;
+      case '/':
         if (left_number == INT64_MIN && right_number == -1)
           throw Error{"integer overflow"};
         result = left_number / right_number;
-      } else {
-        result = left_number % right_number;
+        break;
+      default: result = left_number % right_number; break;
       }
       left = number_string(result);
     }
