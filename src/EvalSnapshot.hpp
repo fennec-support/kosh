@@ -93,8 +93,7 @@ struct eval_state_snapshot
   bool terminal_exec_allowed;
   /* The shell descriptors of the live coprocess ride the snapshot, so a
      coprocess started inside a subshell leaves the outer record alone. */
-  i32 coprocess_read_fd;
-  i32 coprocess_write_fd;
+  coprocess_descriptors coprocess;
 };
 
 /* Owns one compiled regex and frees it on destruction, so the regex cache

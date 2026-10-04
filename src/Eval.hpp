@@ -2083,16 +2083,18 @@ private:
 class SubshellStore
 {
 public:
-  fn coprocess_read_fd() wontthrow -> i32 & { return m_coprocess_read_fd; }
-  fn coprocess_write_fd() wontthrow -> i32 & { return m_coprocess_write_fd; }
+  fn coprocess() wontthrow -> coprocess_descriptors & { return m_coprocess; }
+  pure fn coprocess() const wontthrow -> const coprocess_descriptors &
+  {
+    return m_coprocess;
+  }
   fn saved_descriptors() wontthrow -> ArrayList<subshell_saved_descriptor> &
   {
     return m_saved_descriptors;
   }
 
 private:
-  i32 m_coprocess_read_fd{-1};
-  i32 m_coprocess_write_fd{-1};
+  coprocess_descriptors m_coprocess{};
   ArrayList<subshell_saved_descriptor> m_saved_descriptors{heap_allocator()};
 };
 

@@ -113,15 +113,12 @@ fn EvalContext::set_coprocess_descriptors(i32 read_fd, i32 write_fd) wontthrow
 {
   LOG(Debug, "the live coprocess is read on %d and written on %d", read_fd,
       write_fd);
-  subshell_store().coprocess_read_fd() = read_fd;
-  subshell_store().coprocess_write_fd() = write_fd;
+  subshell_store().coprocess() = coprocess_descriptors{read_fd, write_fd};
 }
 
 fn EvalContext::hide_coprocess_descriptors() throws -> void
 {
-  if (subshell_store().coprocess_read_fd() < 0 &&
-      subshell_store().coprocess_write_fd() < 0)
-    return;
+  if (!subshell_store().coprocess().has_any()) return;
 
   LOG(Debug, "taking the coprocess descriptors away at subshell depth %zu",
       execution_store().subshell_depth());
@@ -129,20 +126,16 @@ fn EvalContext::hide_coprocess_descriptors() throws -> void
   /* The backup is what leave_subshell hands back. An in-process subshell
      returns the descriptors to the shell that owns them. Both backups are
      taken before either close. Each one then lands on a number of its own. */
-  for (let const shell_fd : {subshell_store().coprocess_read_fd(),
-                             subshell_store().coprocess_write_fd()})
-  {
+  let const coprocess = subshell_store().coprocess();
+  for (let const shell_fd : {coprocess.read_fd, coprocess.write_fd}) {
     if (shell_fd >= 0) snapshot_subshell_descriptor(shell_fd);
   }
 
-  for (let const shell_fd : {subshell_store().coprocess_read_fd(),
-                             subshell_store().coprocess_write_fd()})
-  {
+  for (let const shell_fd : {coprocess.read_fd, coprocess.write_fd}) {
     if (shell_fd >= 0) unused(os::close_shell_fd(shell_fd));
   }
 
-  subshell_store().coprocess_read_fd() = -1;
-  subshell_store().coprocess_write_fd() = -1;
+  subshell_store().coprocess() = coprocess_descriptors{};
 }
 
 pure fn EvalContext::in_subshell() const wontthrow -> bool
@@ -876,8 +869,7 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
       job_table_store().take_snapshot(),
       expansion_store().get_getopts_cursor(),
       execution_store().terminal_exec_allowed(),
-      subshell_store().coprocess_read_fd(),
-      subshell_store().coprocess_write_fd()};
+      subshell_store().coprocess()};
   return snapshot;
 }
 
@@ -933,8 +925,7 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
   job_table_store().restore_snapshot(steal(snapshot.job_state));
   expansion_store().set_getopts_cursor(snapshot.getopts);
   execution_store().terminal_exec_allowed() = snapshot.terminal_exec_allowed;
-  subshell_store().coprocess_read_fd() = snapshot.coprocess_read_fd;
-  subshell_store().coprocess_write_fd() = snapshot.coprocess_write_fd;
+  subshell_store().coprocess() = snapshot.coprocess;
 
   variable_store().variable_attributes() = steal(snapshot.variable_attributes);
   variable_store().exported_names() = steal(snapshot.exported_names);

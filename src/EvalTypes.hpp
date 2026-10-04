@@ -265,6 +265,17 @@ struct trap_action_frame
   }
 };
 
+struct coprocess_descriptors
+{
+  i32 read_fd{-1};
+  i32 write_fd{-1};
+
+  pure fn has_any() const wontthrow -> bool
+  {
+    return read_fd >= 0 || write_fd >= 0;
+  }
+};
+
 struct trap_install_state
 {
   usize debug_active_depth{0};
