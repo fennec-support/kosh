@@ -1164,6 +1164,9 @@ protected:
   fn get_literal_command_lookup(const ArrayList<String> &program_args)
       const throws -> const literal_command_lookup *;
 
+  fn names_function_by_literal_word(const EvalContext &cxt) const throws
+      -> bool;
+
   u32 m_full_source_end_position{0};
 
   SparseList<Redirection> m_redirections{};
