@@ -725,17 +725,17 @@ fn get_network_window_status(const live_network_row &row,
 }
 
 fn run_live_network_traffic(const ExecContext &ec, Allocator allocator,
-                            f64 window_seconds, f64 interval_seconds,
+                            const live_report_options &report_options,
                             Maybe<evilnet_sort_key> sort_key,
                             evilnet_color_mode color_mode) throws -> i32
 {
   let const should_color = color_mode == evilnet_color_mode::Colored;
   let retained = ArrayList<live_network_row>{allocator};
-  let const window_nanoseconds =
-      static_cast<u64>(window_seconds * 1000000000.0);
+  let const window_nanoseconds = report_options.get_window_nanoseconds();
   u64 last_sample_nanoseconds = os::monotonic_nanos();
   let const started_at_nanoseconds = last_sample_nanoseconds;
-  let const sample_label = format_live_duration(window_seconds, allocator);
+  let const sample_label =
+      format_live_duration(report_options.window_seconds, allocator);
   let const default_interface = os::default_network_interface(allocator);
   let duration_suffix = String{allocator, "/"};
   duration_suffix += sample_label.view();
@@ -789,15 +789,10 @@ fn run_live_network_traffic(const ExecContext &ec, Allocator allocator,
     return None;
   };
 
-  live_view_options options{};
-  options.title = "evilnet";
-  options.window_seconds = window_seconds;
-  options.sample_interval_seconds = interval_seconds;
-  options.refresh_interval_seconds = interval_seconds;
-  options.started_at_nanoseconds = started_at_nanoseconds;
-  options.should_color = should_color;
-
-  return run_live_view(ec, options, do_sample, do_render);
+  return run_live_view(ec,
+                       report_options.make_view_options(
+                           "evilnet", should_color, started_at_nanoseconds),
+                       do_sample, do_render);
 }
 
 } /* namespace */
@@ -859,32 +854,19 @@ fn EvilNet::execute(const ExecContext &ec, EvalContext &cxt,
                             "--failures cannot be combined with --live");
     return 2;
   }
-  let const live_interval = parse_live_interval_seconds(
-      ec, cxt, args[0].view(), FLAG_EVILNET_LIVE, allocator);
-  if (!live_interval.has_value()) return 1;
+  let const report_options = live_report_options::parse(
+      ec, cxt, args[0].view(), FLAG_EVILNET_LIVE, FLAG_EVILNET_CUMULATIVE,
+      allocator);
+  if (!report_options.has_value()) return 1;
 
-  let const live_interval_seconds = *live_interval;
-  f64 window_seconds = 1.0;
-  if (FLAG_EVILNET_CUMULATIVE.has_value()) {
-    window_seconds = parse_koshkit_duration_seconds(
-        FLAG_EVILNET_CUMULATIVE.value(),
-        FLAG_EVILNET_CUMULATIVE.value_location(), allocator);
-    if (window_seconds <= 0.0) {
-      KOSHKIT_REPORT_ERROR_AT(FLAG_EVILNET_CUMULATIVE.value_location(),
-                              "invalid cumulative interval",
-                              "use a positive number of seconds");
-      return 1;
-    }
-  }
-  if (FLAG_EVILNET_LIVE.is_enabled()) {
-    return run_live_network_traffic(ec, heap_allocator(), window_seconds,
-                                    live_interval_seconds, sort_key,
-                                    color_mode);
+  if (report_options->is_live) {
+    return run_live_network_traffic(ec, heap_allocator(), *report_options,
+                                    sort_key, color_mode);
   }
   let const should_show_all = FLAG_EVILNET_ALL.is_enabled();
   let const should_show_traffic =
       should_show_all || FLAG_EVILNET_TRAFFIC.is_enabled() ||
-      FLAG_EVILNET_CUMULATIVE.is_enabled() || sort_key.has_value();
+      report_options->is_cumulative || sort_key.has_value();
   let const should_show_failures = FLAG_EVILNET_FAILURES.is_enabled();
   let const should_show_interfaces =
       !FLAG_EVILNET_TRAFFIC.is_enabled() && !should_show_failures;
@@ -895,9 +877,9 @@ fn EvilNet::execute(const ExecContext &ec, EvalContext &cxt,
   usize traffic_count = 0;
   bool has_tcp_statistics = false;
   if (should_show_traffic && !should_show_failures) {
-    if (FLAG_EVILNET_CUMULATIVE.is_enabled()) {
+    if (report_options->is_cumulative) {
       let const before = os::read_network_interface_statistics();
-      os::sleep_for_seconds(window_seconds);
+      os::sleep_for_seconds(report_options->window_seconds);
       if (os::INTERRUPT_REQUESTED != 0) {
         os::INTERRUPT_REQUESTED = 0;
         return 130;
@@ -908,7 +890,9 @@ fn EvilNet::execute(const ExecContext &ec, EvalContext &cxt,
           sort_network_statistics(steal(sampled), sort_key);
       let const default_interface = os::default_network_interface(allocator);
       let duration_suffix = String{allocator, "/"};
-      duration_suffix += format_live_duration(window_seconds, allocator).view();
+      duration_suffix +=
+          format_live_duration(report_options->window_seconds, allocator)
+              .view();
       traffic_count = append_network_traffic_statistics_report(
           output, warnings, allocator, sorted_sampled, duration_suffix.view(),
           default_interface, color_mode);

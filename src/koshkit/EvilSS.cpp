@@ -382,11 +382,9 @@ fn EvilSS::execute(const ExecContext &ec, EvalContext &cxt,
   };
 
   if (FLAG_EVILSS_LIVE.is_enabled()) {
-    let const live_interval = parse_live_interval_seconds(
-        ec, cxt, args[0].view(), FLAG_EVILSS_LIVE, allocator);
-    if (!live_interval.has_value()) return 1;
-
-    let const live_interval_seconds = *live_interval;
+    let const live_options = live_report_options::parse_with_window(
+        ec, cxt, args[0].view(), FLAG_EVILSS_LIVE, false, 1.0, allocator);
+    if (!live_options.has_value()) return 1;
 
     let const do_sample = [](u64, Allocator) -> Maybe<i32> { return None; };
     let const do_render = [&](String &frame, const live_view_dimensions &,
@@ -397,12 +395,9 @@ fn EvilSS::execute(const ExecContext &ec, EvalContext &cxt,
       return None;
     };
 
-    live_view_options options{};
-    options.title = "evilss";
-    options.refresh_interval_seconds = live_interval_seconds;
-    options.should_color = should_color;
-
-    return run_live_view(ec, options, do_sample, do_render);
+    return run_live_view(
+        ec, live_options->make_refresh_view_options("evilss", should_color),
+        do_sample, do_render);
   }
 
   let output = String{allocator};

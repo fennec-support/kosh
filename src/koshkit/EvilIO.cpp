@@ -893,15 +893,15 @@ fn append_disk_io_report(String &output, const ArrayList<disk_io_row> &rows,
   append_titled_report_table(output, "Disk I/O", table, should_color);
 }
 fn run_live_process_io(const ExecContext &ec, Maybe<i64> selected_pid,
-                       usize row_limit, f64 window_seconds,
-                       f64 interval_seconds, StringView sample_duration_label,
+                       usize row_limit,
+                       const live_report_options &report_options,
+                       StringView sample_duration_label,
                        Maybe<evilio_sort_key> sort_key,
                        evilio_color_mode color_mode) throws -> i32
 {
   let const allocator = heap_allocator();
   let retained = ArrayList<live_process_row>{allocator};
-  let const window_nanoseconds =
-      static_cast<u64>(window_seconds * 1000000000.0);
+  let const window_nanoseconds = report_options.get_window_nanoseconds();
   u64 last_sample_nanoseconds = os::monotonic_nanos();
   let const started_at_nanoseconds = last_sample_nanoseconds;
   let const do_get_key = [](const auto &row) {
@@ -967,15 +967,12 @@ fn run_live_process_io(const ExecContext &ec, Maybe<i64> selected_pid,
     return None;
   };
 
-  live_view_options options{};
-  options.title = "evilio";
-  options.window_seconds = window_seconds;
-  options.sample_interval_seconds = interval_seconds;
-  options.refresh_interval_seconds = interval_seconds;
-  options.started_at_nanoseconds = started_at_nanoseconds;
-  options.should_color = color_mode == evilio_color_mode::Colored;
-
-  return run_live_view(ec, options, do_sample, do_render);
+  return run_live_view(
+      ec,
+      report_options.make_view_options("evilio",
+                                       color_mode == evilio_color_mode::Colored,
+                                       started_at_nanoseconds),
+      do_sample, do_render);
 }
 
 struct live_disk_row
@@ -1035,15 +1032,15 @@ fn make_disk_window_row(const live_disk_row &row, u64 window_start_nanoseconds,
                           report_sampling_mode::Rolling);
 }
 
-fn run_live_disk_io(const ExecContext &ec, f64 window_seconds,
-                    f64 interval_seconds, StringView sample_duration_label,
+fn run_live_disk_io(const ExecContext &ec,
+                    const live_report_options &report_options,
+                    StringView sample_duration_label,
                     Maybe<evilio_sort_key> sort_key,
                     evilio_color_mode color_mode) throws -> i32
 {
   let const allocator = heap_allocator();
   let retained = ArrayList<live_disk_row>{allocator};
-  let const window_nanoseconds =
-      static_cast<u64>(window_seconds * 1000000000.0);
+  let const window_nanoseconds = report_options.get_window_nanoseconds();
   u64 last_sample_nanoseconds = os::monotonic_nanos();
   let const started_at_nanoseconds = last_sample_nanoseconds;
   let const do_get_key = [](const auto &row) { return row.name.view(); };
@@ -1087,15 +1084,12 @@ fn run_live_disk_io(const ExecContext &ec, f64 window_seconds,
     return None;
   };
 
-  live_view_options options{};
-  options.title = "evilio";
-  options.window_seconds = window_seconds;
-  options.sample_interval_seconds = interval_seconds;
-  options.refresh_interval_seconds = interval_seconds;
-  options.started_at_nanoseconds = started_at_nanoseconds;
-  options.should_color = color_mode == evilio_color_mode::Colored;
-
-  return run_live_view(ec, options, do_sample, do_render);
+  return run_live_view(
+      ec,
+      report_options.make_view_options("evilio",
+                                       color_mode == evilio_color_mode::Colored,
+                                       started_at_nanoseconds),
+      do_sample, do_render);
 }
 
 fn make_metric_table(Allocator allocator) throws -> ReportTable
@@ -1266,13 +1260,13 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
 
   f64 cumulative_duration_seconds = 1.0;
   if (sample_duration_operand.has_value()) {
-    cumulative_duration_seconds = parse_koshkit_duration_seconds(
-        *sample_duration_operand, *sample_duration_location, allocator);
-    if (cumulative_duration_seconds <= 0.0) {
-      KOSHKIT_REPORT_ERROR_AT(*sample_duration_location, "invalid duration",
-                              "the duration must be greater than zero");
-      return 1;
-    }
+    let const parsed_duration = live_report_options::parse_window_seconds(
+        ec, cxt, args[0].view(), *sample_duration_operand,
+        *sample_duration_location, "invalid duration",
+        "the duration must be greater than zero", allocator);
+    if (!parsed_duration.has_value()) return 1;
+
+    cumulative_duration_seconds = *parsed_duration;
   }
 
   usize row_limit = FLAG_EVILIO_PS.is_enabled() ? SIZE_MAX : 10;
@@ -1323,18 +1317,17 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   let const should_color = koshkit_should_color();
-  let const live_interval = parse_live_interval_seconds(
-      ec, cxt, args[0].view(), FLAG_EVILIO_LIVE, allocator);
-  if (!live_interval.has_value()) return 1;
+  let const report_options = live_report_options::parse_with_window(
+      ec, cxt, args[0].view(), FLAG_EVILIO_LIVE,
+      FLAG_EVILIO_CUMULATIVE.is_enabled(), cumulative_duration_seconds,
+      allocator);
+  if (!report_options.has_value()) return 1;
 
-  let const live_interval_seconds = *live_interval;
-  let const sample_duration_seconds =
-      FLAG_EVILIO_CUMULATIVE.is_enabled() ? cumulative_duration_seconds : 1.0;
   String sample_duration_label{allocator, "/S"};
-  if (FLAG_EVILIO_CUMULATIVE.is_enabled() || FLAG_EVILIO_LIVE.is_enabled())
+  if (report_options->is_cumulative || report_options->is_live)
     sample_duration_label =
         String{allocator, "/"} +
-        format_live_duration(sample_duration_seconds, allocator).view();
+        format_live_duration(report_options->window_seconds, allocator).view();
   let const should_show_processes =
       FLAG_EVILIO_PS.is_enabled() || FLAG_EVILIO_COUNT.is_set() ||
       selected_pid.has_value() || process_limit_operand.has_value();
@@ -1405,16 +1398,16 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
     return 1;
   }
 
-  if (FLAG_EVILIO_LIVE.is_enabled()) {
+  if (report_options->is_live) {
     if (should_show_processes) {
       return run_live_process_io(
-          ec, selected_pid, row_limit, sample_duration_seconds,
-          live_interval_seconds, sample_duration_label.view(), sort_key,
+          ec, selected_pid, row_limit, *report_options,
+          sample_duration_label.view(), sort_key,
           should_color ? evilio_color_mode::Colored : evilio_color_mode::Plain);
     }
 
-    return run_live_disk_io(ec, sample_duration_seconds, live_interval_seconds,
-                            sample_duration_label.view(), sort_key,
+    return run_live_disk_io(ec, *report_options, sample_duration_label.view(),
+                            sort_key,
                             should_color ? evilio_color_mode::Colored
                                          : evilio_color_mode::Plain);
   }

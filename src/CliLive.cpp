@@ -3,7 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the terminal and header half of the shared live view
- * driver declared in CliLive.hpp and the shared --live interval parser. It
+ * driver declared in CliLive.hpp and the live_report_options parser. It
  * manages the alternate screen, raw key input, the styled header line, and the
  * single write that delivers each frame. Redirected output receives a plain
  * header without escape sequences.
@@ -201,24 +201,63 @@ pure fn LiveView::get_wait_nanoseconds(
   return until_sample < wait_nanoseconds ? until_sample : wait_nanoseconds;
 }
 
-fn parse_live_interval_seconds(const ExecContext &ec, EvalContext &cxt,
-                               StringView utility_name,
-                               const FlagOptionalValue &live_flag,
-                               Allocator allocator) throws -> Maybe<f64>
+fn live_report_options::parse_window_seconds(
+    const ExecContext &ec, EvalContext &cxt, StringView utility_name,
+    StringView text, SourceLocation location, StringView title,
+    StringView note, Allocator allocator) throws -> Maybe<f64>
 {
-  if (!live_flag.has_value()) return DEFAULT_LIVE_INTERVAL_SECONDS;
-
-  let const location = live_flag.value_location();
-  let const seconds =
-      parse_koshkit_duration_seconds(live_flag.value(), location, allocator);
+  let const seconds = parse_koshkit_duration_seconds(text, location, allocator);
   if (seconds <= 0.0) {
-    report_soft_koshkit_util_error(ec, cxt, location, utility_name,
-                                   "invalid live interval",
-                                   "use a positive number of seconds");
+    report_soft_koshkit_util_error(ec, cxt, location, utility_name, title,
+                                   note);
     return None;
   }
 
   return seconds;
+}
+
+fn live_report_options::parse_with_window(
+    const ExecContext &ec, EvalContext &cxt, StringView utility_name,
+    const FlagOptionalValue &live_flag, bool is_cumulative, f64 window_seconds,
+    Allocator allocator) throws -> Maybe<live_report_options>
+{
+  live_report_options options{};
+  options.is_live = live_flag.is_enabled();
+  options.is_cumulative = is_cumulative;
+  options.window_seconds = window_seconds;
+  if (!live_flag.has_value()) {
+    options.interval_seconds = DEFAULT_LIVE_INTERVAL_SECONDS;
+    return options;
+  }
+
+  let const interval = parse_window_seconds(
+      ec, cxt, utility_name, live_flag.value(), live_flag.value_location(),
+      "invalid live interval", "use a positive number of seconds", allocator);
+  if (!interval.has_value()) return None;
+
+  options.interval_seconds = *interval;
+  return options;
+}
+
+fn live_report_options::parse(const ExecContext &ec, EvalContext &cxt,
+                              StringView utility_name,
+                              const FlagOptionalValue &live_flag,
+                              const FlagOptionalValue &cumulative_flag,
+                              Allocator allocator) throws
+    -> Maybe<live_report_options>
+{
+  let options = parse_with_window(ec, cxt, utility_name, live_flag,
+                                  cumulative_flag.is_enabled(), 1.0, allocator);
+  if (!options.has_value() || !cumulative_flag.has_value()) return options;
+
+  let const window = parse_window_seconds(
+      ec, cxt, utility_name, cumulative_flag.value(),
+      cumulative_flag.value_location(), "invalid cumulative interval",
+      "use a positive number of seconds", allocator);
+  if (!window.has_value()) return None;
+
+  options->window_seconds = *window;
+  return options;
 }
 
 fn LiveView::get_dimensions() const wontthrow -> live_view_dimensions

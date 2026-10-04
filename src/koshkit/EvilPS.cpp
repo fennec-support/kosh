@@ -872,24 +872,12 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
   let const color_mode = koshkit_should_color() ? evilps_color_mode::Colored
                                                 : evilps_color_mode::Plain;
 
-  let const live_interval = parse_live_interval_seconds(
-      ec, cxt, args[0].view(), FLAG_EVILPS_LIVE, allocator);
-  if (!live_interval.has_value()) return 1;
+  let const report_options = live_report_options::parse(
+      ec, cxt, args[0].view(), FLAG_EVILPS_LIVE, FLAG_EVILPS_CUMULATIVE,
+      allocator);
+  if (!report_options.has_value()) return 1;
 
-  let const live_interval_seconds = *live_interval;
-
-  f64 cumulative_interval_seconds = 1.0;
-  if (FLAG_EVILPS_CUMULATIVE.has_value()) {
-    cumulative_interval_seconds = parse_koshkit_duration_seconds(
-        FLAG_EVILPS_CUMULATIVE.value(), FLAG_EVILPS_CUMULATIVE.value_location(),
-        allocator);
-    if (cumulative_interval_seconds <= 0.0) {
-      KOSHKIT_REPORT_ERROR_AT(FLAG_EVILPS_CUMULATIVE.value_location(),
-                              "invalid cumulative interval",
-                              "use a positive number of seconds");
-      return 1;
-    }
-  }
+  let const window_nanoseconds = report_options->get_window_nanoseconds();
   let line_width_limit = SIZE_MAX;
   if (!FLAG_EVILPS_WIDE.is_enabled()) {
     if (let const dimensions =
@@ -898,10 +886,8 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
       line_width_limit = dimensions->columns;
   }
 
-  if (FLAG_EVILPS_LIVE.is_enabled()) {
+  if (report_options->is_live) {
     let const live_allocator = heap_allocator();
-    let const window_nanoseconds =
-        static_cast<u64>(cumulative_interval_seconds * 1000000000.0);
     let history = ArrayList<live_process_cpu_row>{live_allocator};
     let nodes = read_process_nodes(live_allocator, resource_mode);
     let const started_at_nanoseconds = os::monotonic_nanos();
@@ -988,14 +974,10 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
       return None;
     };
 
-    live_view_options options{};
-    options.title = "evilps";
+    let options = report_options->make_view_options(
+        "evilps", color_mode == evilps_color_mode::Colored,
+        started_at_nanoseconds);
     options.extra_key_hints = "s sort|j/k scroll|/ search";
-    options.window_seconds = cumulative_interval_seconds;
-    options.sample_interval_seconds = live_interval_seconds;
-    options.refresh_interval_seconds = live_interval_seconds;
-    options.started_at_nanoseconds = started_at_nanoseconds;
-    options.should_color = color_mode == evilps_color_mode::Colored;
     options.should_render_first_frame_immediately = true;
 
     return run_live_view(ec, options, do_sample, do_render, do_key);
@@ -1003,14 +985,13 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
 
   let nodes = read_process_nodes(allocator, resource_mode);
   report_sampling_mode sampling = report_sampling_mode::Instant;
-  if (FLAG_EVILPS_CUMULATIVE.is_enabled()) {
+  if (report_options->is_cumulative) {
     let history = ArrayList<live_process_cpu_row>{allocator};
     let const before_nanoseconds = os::monotonic_nanos();
     if (should_sample_cpu)
-      update_cpu_history(
-          nodes, history, before_nanoseconds,
-          static_cast<u64>(cumulative_interval_seconds * 1000000000.0));
-    os::sleep_for_seconds(cumulative_interval_seconds);
+      update_cpu_history(nodes, history, before_nanoseconds,
+                         window_nanoseconds);
+    os::sleep_for_seconds(report_options->window_seconds);
     if (os::INTERRUPT_REQUESTED != 0) {
       os::INTERRUPT_REQUESTED = 0;
       return 130;
@@ -1018,9 +999,8 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
     nodes = read_process_nodes(allocator, resource_mode);
     let const after_nanoseconds = os::monotonic_nanos();
     if (should_sample_cpu)
-      update_cpu_history(
-          nodes, history, after_nanoseconds,
-          static_cast<u64>(cumulative_interval_seconds * 1000000000.0));
+      update_cpu_history(nodes, history, after_nanoseconds,
+                         window_nanoseconds);
     sampling = report_sampling_mode::Rolling;
   }
 

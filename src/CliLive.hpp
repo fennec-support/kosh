@@ -6,8 +6,8 @@
  * a utility supplies its options plus sampler, renderer, and key callbacks.
  * The driver owns terminal handling, cadence, interrupts, and one write per
  * frame. It also declares update_retained_rows, which folds each fresh sample
- * into the retained rows of a live utility, and parse_live_interval_seconds,
- * which owns the default, duration suffixes, and positivity of --live.
+ * into the retained rows of a live utility, and live_report_options, which
+ * owns the --live and --cumulative parsing, the window, and the view options.
  */
 
 #pragma once
@@ -115,10 +115,56 @@ private:
   bool m_has_input{false};
 };
 
-fn parse_live_interval_seconds(const ExecContext &ec, EvalContext &cxt,
-                               StringView utility_name,
-                               const FlagOptionalValue &live_flag,
-                               Allocator allocator) throws -> Maybe<f64>;
+struct live_report_options
+{
+  f64 interval_seconds{0.5};
+  f64 window_seconds{1.0};
+  bool is_live{false};
+  bool is_cumulative{false};
+
+  static fn parse(const ExecContext &ec, EvalContext &cxt,
+                  StringView utility_name, const FlagOptionalValue &live_flag,
+                  const FlagOptionalValue &cumulative_flag,
+                  Allocator allocator) throws -> Maybe<live_report_options>;
+  static fn parse_with_window(const ExecContext &ec, EvalContext &cxt,
+                              StringView utility_name,
+                              const FlagOptionalValue &live_flag,
+                              bool is_cumulative, f64 window_seconds,
+                              Allocator allocator) throws
+      -> Maybe<live_report_options>;
+  static fn parse_window_seconds(const ExecContext &ec, EvalContext &cxt,
+                                 StringView utility_name, StringView text,
+                                 SourceLocation location, StringView title,
+                                 StringView note, Allocator allocator) throws
+      -> Maybe<f64>;
+
+  pure fn get_window_nanoseconds() const wontthrow -> u64
+  {
+    return static_cast<u64>(window_seconds * 1000000000.0);
+  }
+
+  pure fn make_refresh_view_options(StringView title,
+                                    bool should_color) const wontthrow
+      -> live_view_options
+  {
+    live_view_options options{};
+    options.title = title;
+    options.refresh_interval_seconds = interval_seconds;
+    options.should_color = should_color;
+    return options;
+  }
+
+  pure fn make_view_options(StringView title, bool should_color,
+                            u64 started_at_nanoseconds) const wontthrow
+      -> live_view_options
+  {
+    let options = make_refresh_view_options(title, should_color);
+    options.window_seconds = window_seconds;
+    options.sample_interval_seconds = interval_seconds;
+    options.started_at_nanoseconds = started_at_nanoseconds;
+    return options;
+  }
+};
 
 template <class Sample, class Render, class Key>
 fn run_live_view(const ExecContext &ec, const live_view_options &options,
