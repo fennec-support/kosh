@@ -105,9 +105,10 @@ pure fn stripped_root(StringView path) wontthrow -> StringView
   return path.substring_of_length(start_position, path.length - start_position);
 }
 
-fn copy_into_root(const Path &stage, StringView source) throws -> bool
+fn copy_into_root(const Path &stage, StringView source,
+                  Allocator allocator) throws -> bool
 {
-  if (!Path{source}.is_regular_file()) return false;
+  if (!Path{source, allocator}.is_regular_file()) return false;
 
   let const relative = stripped_root(source);
   if (relative.is_empty()) return false;
@@ -323,12 +324,16 @@ fn GoodCore::execute(
       }
     }
   } else if (FLAG_GOODCORE_BINARY.is_set()) {
-    binary = Path{FLAG_GOODCORE_BINARY.value()}.to_absolute().text().clone();
+    binary = Path{FLAG_GOODCORE_BINARY.value(), allocator}
+                 .to_absolute()
+                 .text()
+                 .clone();
   } else {
     binary = infer_binary(cxt, operands[0].view(), allocator);
   }
 
-  if (!binary.has_value() || !Path{binary->view()}.is_regular_file()) {
+  if (!binary.has_value() || !Path{binary->view(), allocator}.is_regular_file())
+  {
     let const error_location = FLAG_GOODCORE_BINARY.is_set()
                                    ? FLAG_GOODCORE_BINARY.value_location()
                                : has_pid ? FLAG_GOODCORE_PID.value_location()
@@ -392,8 +397,8 @@ fn GoodCore::execute(
       return 1;
     }
     if (platform_tools.capture_mode == os::goodcore_capture_mode::Gcore) {
-      let const captured_core =
-          Path{core.text() + "." + String::from(process_id, allocator)};
+      let const captured_core = Path{
+          core.text() + "." + String::from(process_id, allocator), allocator};
       if (!os::rename_path(captured_core.view(), core.view())) {
         report_soft_koshkit_error(ec, cxt, "capture failed",
                                   "the debugger produced no usable core file");
@@ -402,7 +407,7 @@ fn GoodCore::execute(
     }
   } else {
     print_progress(ec, "copying existing core", progress_mode);
-    let const source = Path{operands[0].view()}.to_absolute();
+    let const source = Path{operands[0].view(), allocator}.to_absolute();
     if (!source.is_regular_file()) {
       report_soft_koshkit_error(ec, cxt, "core file not found",
                                 "the operand must name a regular file");
@@ -439,7 +444,7 @@ fn GoodCore::execute(
   usize copied_path_count = 0;
   for (let const &path : paths) {
     print_progress(ec, String{"copying "} + path.view(), progress_mode);
-    if (!copy_into_root(stage, path.view())) {
+    if (!copy_into_root(stage, path.view(), allocator)) {
       report_soft_koshkit_error(ec, cxt, "cannot copy required file",
                                 path.view());
       return 1;
@@ -481,14 +486,14 @@ fn GoodCore::execute(
                        : resolve_util_program(cxt, "zstd");
   let output =
       FLAG_GOODCORE_OUTPUT.is_set()
-          ? Path{FLAG_GOODCORE_OUTPUT.value()}.to_absolute()
+          ? Path{FLAG_GOODCORE_OUTPUT.value(), allocator}.to_absolute()
           : Path{String{"goodcore-"} + core.filename() +
                  (FLAG_GOODCORE_NO_COMPRESS.is_enabled() ? StringView{".tar"}
                   : zstd.has_value() ? StringView{".tar.zst"}
                                      : StringView{".tar.gz"})}
                 .to_absolute();
-  if (output.is_same_file_as(Path{binary->view()}) ||
-      (!has_pid && output.is_same_file_as(Path{operands[0].view()})))
+  if (output.is_same_file_as(Path{binary->view(), allocator}) ||
+      (!has_pid && output.is_same_file_as(Path{operands[0].view(), allocator})))
   {
     report_soft_koshkit_error(ec, cxt, "unsafe output path",
                               "the archive cannot replace an input file");

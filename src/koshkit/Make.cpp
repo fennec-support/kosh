@@ -1592,7 +1592,7 @@ evaluate_make_function(EvalContext &cxt, makefile &mk, StringView function_name,
     bool has_word = false;
     for (StringView word : split_word_views(source.view(), allocator)) {
       if (spec.kind == make_function_kind::Abspath) {
-        let const path = Path{word}.to_absolute();
+        let const path = Path{word, allocator}.to_absolute();
         append_make_word(result, path.view(), has_word);
       } else if (let path = Path::canonicalize(word); path.has_value()) {
         append_make_word(result, path->text().view(), has_word);
@@ -2215,7 +2215,8 @@ static fn parse_makefile_into(EvalContext &cxt, makefile &mk,
         {
           let const &include_path = include_paths[include_position - 1];
           let const included_source =
-              Path{include_path.view()}.read_entire_file();
+              Path{include_path.view(), cxt.scratch_allocator()}
+                  .read_entire_file();
           if (!included_source.has_value())
             throw ErrorWithLocation{
                 logical.source_span,
@@ -2595,7 +2596,9 @@ static fn is_make_target_supplyable(EvalContext &cxt, makefile &mk,
   if (active_targets.find(goal).has_value()) return false;
   if (let const cached = supplyability_cache.find(goal); cached.has_value())
     return *cached.value();
-  if (Path{goal}.exists() || mk.find_rule(goal) != nullptr) {
+  if (Path{goal, cxt.scratch_allocator()}.exists() ||
+      mk.find_rule(goal) != nullptr)
+  {
     supplyability_cache.set(goal, true);
     return true;
   }
@@ -2811,7 +2814,9 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
                         inference_target.substring_of_length(
                             0, inference_target.length - target_suffix.length)};
         } else {
-          let const member_extension = Path{archive_member.view()}.extension();
+          let const member_path =
+              Path{archive_member.view(), cxt.scratch_allocator()};
+          let const member_extension = member_path.extension();
           stem = String{
               cxt.scratch_allocator(),
               archive_member.view().substring_of_length(
@@ -2842,7 +2847,7 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
           recipe_lines.push(recipe.clone());
         inferred_first_prerequisite = String{cxt.scratch_allocator(), goal};
       } else {
-        if (Path{goal}.exists()) {
+        if (Path{goal, cxt.scratch_allocator()}.exists()) {
           completed_target_results.set(goal, false);
           return false;
         }
@@ -2935,7 +2940,8 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
         "' was not remade because a prerequisite failed"
     };
 
-  let const target_path = Path{automatic_target.view()};
+  let const target_path =
+      Path{automatic_target.view(), cxt.scratch_allocator()};
   let const archive_member_time = archive_member.is_empty()
                                       ? Maybe<i64>{}
                                       : archive_member_modification_time(
@@ -2948,7 +2954,8 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
                        !was_target_existing || has_outdated_prerequisite;
   if (!is_out_of_date)
     for (let const &prerequisite : normal_prerequisites) {
-      let const prerequisite_path = Path{prerequisite.view()};
+      let const prerequisite_path =
+          Path{prerequisite.view(), cxt.scratch_allocator()};
       let is_prerequisite_newer = prerequisite_path.is_newer_than(target_path);
       if (!archive_member.is_empty()) {
         let const prerequisite_time = prerequisite_path.modification_time();
@@ -3008,7 +3015,8 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
     if (!all_prereqs.is_empty()) all_prereqs += ' ';
     all_prereqs += prerequisite.view();
 
-    let const prerequisite_path = Path{prerequisite.view()};
+    let const prerequisite_path =
+        Path{prerequisite.view(), cxt.scratch_allocator()};
     let is_prerequisite_newer = prerequisite_path.is_newer_than(target_path);
     if (!archive_member.is_empty()) {
       let const prerequisite_time = prerequisite_path.modification_time();
@@ -3494,7 +3502,10 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
   Maybe<Path> saved_directory;
   if (FLAG_MAKE_DIR.is_set()) {
     saved_directory = Path::current_directory();
-    if (Path::set_current_directory(Path{FLAG_MAKE_DIR.value()}).is_error()) {
+    if (Path::set_current_directory(
+            Path{FLAG_MAKE_DIR.value(), cxt.scratch_allocator()})
+            .is_error())
+    {
       report_soft_koshkit_util_error(
           ec, cxt, FLAG_MAKE_DIR.value_location(), args[0].view(),
           "unable to change to the directory '" +
@@ -3510,10 +3521,10 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
   };
 
   if (requested_makefiles.is_empty()) {
-    if (Path{"Makefile"}.exists()) {
+    if (Path{"Makefile", cxt.scratch_allocator()}.exists()) {
       requested_makefiles.push(String{cxt.scratch_allocator(), "Makefile"});
       requested_makefile_locations.push(ec.source_location());
-    } else if (Path{"makefile"}.exists()) {
+    } else if (Path{"makefile", cxt.scratch_allocator()}.exists()) {
       requested_makefiles.push(String{cxt.scratch_allocator(), "makefile"});
       requested_makefile_locations.push(ec.source_location());
     }
@@ -3532,7 +3543,8 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
       continue;
     }
 
-    let part = Path{makefile_path.view()}.read_entire_file();
+    let part =
+        Path{makefile_path.view(), cxt.scratch_allocator()}.read_entire_file();
     if (!part.has_value()) {
       report_soft_koshkit_util_error(
           ec, cxt, requested_makefile_locations[makefile_position],
