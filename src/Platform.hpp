@@ -2265,18 +2265,21 @@ struct inherited_subshell_state
   static fn clear_environment() throws -> void;
 };
 
+struct child_evaluator_state
+{
+  const subshell_bootstrap *bootstrap{nullptr};
+  StringView shell_name{};
+  inherited_subshell_state inherited{};
+  mimic_mood mood{static_cast<mimic_mood>(0)};
+};
+
 struct process_substitution_options
 {
   StringView source{};
   bool source_traces_enabled{true};
-  const subshell_bootstrap *bootstrap{nullptr};
-  StringView shell_name{};
-  i32 previous_exit_status{0};
-  i64 shell_process_id{0};
-  usize subshell_depth{0};
+  child_evaluator_state evaluator{};
   process_substitution_direction direction{
       process_substitution_direction::CommandReads};
-  mimic_mood mood{static_cast<mimic_mood>(0)};
 };
 
 fn launch_process_substitution(const process_substitution_options &options)
@@ -2315,12 +2318,7 @@ struct compound_stage_options
   SourceLocation location{};
   StringView diagnostic_source{};
   i64 process_group_id{0};
-  const subshell_bootstrap *bootstrap{nullptr};
-  StringView shell_name{};
-  i32 previous_exit_status{0};
-  i64 shell_process_id{0};
-  usize subshell_depth{0};
-  mimic_mood mood{static_cast<mimic_mood>(0)};
+  child_evaluator_state evaluator{};
   process_group_mode process_group{process_group_mode::Inherit};
 };
 

@@ -2930,6 +2930,8 @@ public:
   fn snapshot_state() throws -> eval_state_snapshot;
   fn restore_state(eval_state_snapshot snapshot) throws -> void;
   fn make_subshell_bootstrap() const throws -> os::subshell_bootstrap;
+  fn make_child_evaluator_state(os::subshell_bootstrap &bootstrap) const throws
+      -> os::child_evaluator_state;
   fn apply_subshell_bootstrap(os::subshell_bootstrap bootstrap) throws -> void;
 
   fn enter_subshell() wontthrow -> void;

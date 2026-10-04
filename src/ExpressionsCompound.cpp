@@ -552,8 +552,7 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
   let parent_stage_status = Maybe<i32>{};
   bool was_pipeline_abandoned = false;
   let bootstrap = os::subshell_bootstrap{};
-  let const should_launch_fresh_evaluator = !os::can_fork_evaluator();
-  if (should_launch_fresh_evaluator) bootstrap = cxt.make_subshell_bootstrap();
+  let const child_evaluator = cxt.make_child_evaluator_state(bootstrap);
 
   /* On a make_pipe or fork failure mid-loop the previous read end and the
      current pipe are closed and every spawned child is waited, then the error
@@ -662,12 +661,7 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
           .diagnostic_source =
               stage_source != nullptr ? stage_source->view() : StringView{},
           .process_group_id = process_group_id,
-          .bootstrap = should_launch_fresh_evaluator ? &bootstrap : nullptr,
-          .shell_name = cxt.execution_store().get_shell_name(),
-          .previous_exit_status = cxt.execution_store().last_exit_status(),
-          .shell_process_id = os::get_shell_process_id(),
-          .subshell_depth = cxt.execution_store().subshell_depth() + 1,
-          .mood = cxt.runtime_state().get_mood(),
+          .evaluator = child_evaluator,
           .process_group = process_group});
       let const child = launch.child;
 

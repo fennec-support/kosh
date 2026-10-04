@@ -402,7 +402,6 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
   bool is_first = true;
   usize stage_index = 0;
   let bootstrap = os::subshell_bootstrap{};
-  bool has_bootstrap = false;
 
   for (ExecContext &ec : ecs) {
     Maybe<os::Pipe> pipe;
@@ -567,10 +566,6 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
               [&]() { stage_err = stage_out.value_or(KOSH_STDOUT); },
               [&]() { stage_out = stage_err.value_or(KOSH_STDERR); });
           try {
-            if (!os::can_fork_evaluator() && !has_bootstrap) {
-              bootstrap = cxt.make_subshell_bootstrap();
-              has_bootstrap = true;
-            }
             let const launch =
                 os::launch_compound_stage(os::compound_stage_options{
                     .source = stage_source.view(),
@@ -581,14 +576,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
                     .diagnostic_source =
                         source != nullptr ? source->view() : StringView{},
                     .process_group_id = process_group_id,
-                    .bootstrap = has_bootstrap ? &bootstrap : nullptr,
-                    .shell_name = cxt.execution_store().get_shell_name(),
-                    .previous_exit_status =
-                        cxt.execution_store().last_exit_status(),
-                    .shell_process_id = os::get_shell_process_id(),
-                    .subshell_depth =
-                        cxt.execution_store().subshell_depth() + 1,
-                    .mood = cxt.runtime_state().get_mood(),
+                    .evaluator = cxt.make_child_evaluator_state(bootstrap),
                     .process_group = process_group});
             forked_child = launch.child;
           } catch (...) {

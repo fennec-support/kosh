@@ -104,19 +104,12 @@ fn Command::evaluate_async_with(EvalContext &cxt, async_body body,
   }
 
   let bootstrap = os::subshell_bootstrap{};
-  let const should_launch_fresh_evaluator = !os::can_fork_evaluator();
-  if (should_launch_fresh_evaluator) bootstrap = cxt.make_subshell_bootstrap();
   let const launch = os::launch_compound_stage(os::compound_stage_options{
       .source = expanded_child_source.is_empty() ? command_text
                                                  : expanded_child_source,
       .location = source_location(),
       .diagnostic_source = source != nullptr ? source->view() : StringView{},
-      .bootstrap = should_launch_fresh_evaluator ? &bootstrap : nullptr,
-      .shell_name = cxt.execution_store().get_shell_name(),
-      .previous_exit_status = cxt.execution_store().last_exit_status(),
-      .shell_process_id = os::get_shell_process_id(),
-      .subshell_depth = cxt.execution_store().subshell_depth() + 1,
-      .mood = cxt.runtime_state().get_mood(),
+      .evaluator = cxt.make_child_evaluator_state(bootstrap),
       .process_group = os::process_group_mode::NewBackground});
   let const child = launch.child;
 
@@ -1589,8 +1582,6 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
       m_name.data);
 
   let bootstrap = os::subshell_bootstrap{};
-  let const should_launch_fresh_evaluator = !os::can_fork_evaluator();
-  if (should_launch_fresh_evaluator) bootstrap = cxt.make_subshell_bootstrap();
 
   let const launch = os::launch_compound_stage(os::compound_stage_options{
       .source = command_text,
@@ -1598,12 +1589,7 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
       .out_fd = away_from_child->out,
       .location = source_location(),
       .diagnostic_source = source != nullptr ? source->view() : StringView{},
-      .bootstrap = should_launch_fresh_evaluator ? &bootstrap : nullptr,
-      .shell_name = cxt.execution_store().get_shell_name(),
-      .previous_exit_status = cxt.execution_store().last_exit_status(),
-      .shell_process_id = os::get_shell_process_id(),
-      .subshell_depth = cxt.execution_store().subshell_depth() + 1,
-      .mood = cxt.runtime_state().get_mood(),
+      .evaluator = cxt.make_child_evaluator_state(bootstrap),
       .process_group = os::process_group_mode::NewBackground});
   let const child = launch.child;
 

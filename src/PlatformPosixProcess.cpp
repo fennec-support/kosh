@@ -584,13 +584,8 @@ fn launch_process_substitution(const process_substitution_options &options)
     throws -> process_substitution_launch
 {
   unused(options.source);
-  unused(options.mood);
   unused(options.source_traces_enabled);
-  unused(options.bootstrap);
-  unused(options.shell_name);
-  unused(options.previous_exit_status);
-  unused(options.shell_process_id);
-  unused(options.subshell_depth);
+  unused(options.evaluator);
 
   let const command_writes_pipe =
       options.direction == process_substitution_direction::CommandWrites;

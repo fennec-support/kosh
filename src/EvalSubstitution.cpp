@@ -343,22 +343,15 @@ fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
   ASSERT(ast != nullptr);
 
   let bootstrap = os::subshell_bootstrap{};
-  let const should_launch_fresh_evaluator = !os::can_fork_evaluator();
-  if (should_launch_fresh_evaluator) bootstrap = make_subshell_bootstrap();
   let const do_launch = [&]() throws -> os::process_substitution_launch {
     try {
       return os::launch_process_substitution(os::process_substitution_options{
           .source = substitution_source.view(),
           .source_traces_enabled = diagnostics_store().source_traces_enabled(),
-          .bootstrap = should_launch_fresh_evaluator ? &bootstrap : nullptr,
-          .shell_name = execution_store().get_shell_name(),
-          .previous_exit_status = execution_store().last_exit_status(),
-          .shell_process_id = os::get_shell_process_id(),
-          .subshell_depth = execution_store().subshell_depth() + 1,
+          .evaluator = make_child_evaluator_state(bootstrap),
           .direction = command_writes_the_pipe
                            ? os::process_substitution_direction::CommandWrites
-                           : os::process_substitution_direction::CommandReads,
-          .mood = runtime_state().get_mood()});
+                           : os::process_substitution_direction::CommandReads});
     } catch (const ErrorBase &error) {
       let const location = segment.get_source_location(
           source_store().current_location().source_name_index);

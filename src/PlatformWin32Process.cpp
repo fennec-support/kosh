@@ -1075,12 +1075,9 @@ fn execute_program(ExecContext &ec, const program_execution_options &options)
 
 static fn spawn_subshell_stage(
     StringView source, Maybe<descriptor> in_fd, Maybe<descriptor> out_fd,
-    Maybe<descriptor> err_fd, bool source_traces_enabled = true,
-    const subshell_bootstrap *bootstrap = nullptr, StringView shell_name = {},
-    i32 previous_exit_status = 0, i64 shell_process_id = 0,
-    usize subshell_depth = 0, mimic_mood mood = mimic_mood::Default,
-    process_group_mode process_group = process_group_mode::Inherit) throws
-    -> Maybe<process>;
+    Maybe<descriptor> err_fd, bool source_traces_enabled,
+    const child_evaluator_state &evaluator,
+    process_group_mode process_group) throws -> Maybe<process>;
 
 static fn make_internal_pipe_path() throws -> String
 {
@@ -1223,9 +1220,7 @@ fn launch_process_substitution(const process_substitution_options &options)
   };
   let const child = spawn_subshell_stage(
       options.source, None, None, None, options.source_traces_enabled,
-      options.bootstrap, options.shell_name, options.previous_exit_status,
-      options.shell_process_id, options.subshell_depth, options.mood,
-      process_group_mode::Inherit);
+      options.evaluator, process_group_mode::Inherit);
   if (!child.has_value())
     throw Error{"Unable to run the process substitution because the inner "
                 "shell could not be spawned: " +
@@ -1283,10 +1278,13 @@ fn release_unused_process_substitution(opaque *cleanup) wontthrow -> void
 static fn spawn_subshell_stage(
     StringView source, Maybe<descriptor> in_fd, Maybe<descriptor> out_fd,
     Maybe<descriptor> err_fd, bool source_traces_enabled,
-    const subshell_bootstrap *bootstrap, StringView shell_name,
-    i32 previous_exit_status, i64 shell_process_id, usize subshell_depth,
-    mimic_mood mood, process_group_mode process_group) throws -> Maybe<process>
+    const child_evaluator_state &evaluator,
+    process_group_mode process_group) throws -> Maybe<process>
 {
+  let const bootstrap = evaluator.bootstrap;
+  let const mood = evaluator.mood;
+  let const shell_name = evaluator.shell_name;
+
   /* Windows has no fork, so a compound pipeline stage re-parses its source in a
      fresh shell, returned unwaited for the pipeline to reap. */
   let const module_path = current_executable_path();
@@ -1309,10 +1307,7 @@ static fn spawn_subshell_stage(
     arguments.push(String{heap_allocator(), shell_name});
   let command_line = make_os_args(arguments);
 
-  let const inherited_scope =
-      inherited_subshell_state{previous_exit_status, shell_process_id,
-                               subshell_depth}
-          .apply_to_environment();
+  let const inherited_scope = evaluator.inherited.apply_to_environment();
 
   let const previous_parent_process_id =
       get_environment_variable(internal::PARENT_PROCESS_ID);
@@ -1420,9 +1415,7 @@ fn launch_compound_stage(const compound_stage_options &options) throws
   unused(options.process_group_id);
   let child = spawn_subshell_stage(
       options.source, options.in_fd, options.out_fd, options.err_fd, true,
-      options.bootstrap, options.shell_name, options.previous_exit_status,
-      options.shell_process_id, options.subshell_depth, options.mood,
-      options.process_group);
+      options.evaluator, options.process_group);
   if (!child.has_value())
     throw ErrorWithLocation{steal(options.location),
                             "Could not spawn the compound pipeline stage"};

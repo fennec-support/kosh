@@ -1449,6 +1449,27 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
   return bootstrap;
 }
 
+fn EvalContext::make_child_evaluator_state(
+    os::subshell_bootstrap &bootstrap) const throws
+    -> os::child_evaluator_state
+{
+  let const should_launch_fresh_evaluator = !os::can_fork_evaluator();
+  if (should_launch_fresh_evaluator && bootstrap.payload.is_empty())
+    bootstrap = make_subshell_bootstrap();
+
+  return os::child_evaluator_state{
+      .bootstrap = should_launch_fresh_evaluator ? &bootstrap : nullptr,
+      .shell_name = execution_store().get_shell_name(),
+      .inherited =
+          os::inherited_subshell_state{
+              .previous_exit_status = execution_store().last_exit_status(),
+              .shell_process_id = os::get_shell_process_id(),
+              .subshell_depth = execution_store().subshell_depth() + 1,
+          },
+      .mood = runtime_state().get_mood(),
+  };
+}
+
 fn EvalContext::apply_subshell_bootstrap(
     os::subshell_bootstrap bootstrap) throws -> void
 {
