@@ -1768,10 +1768,10 @@ static fn ensure_bash_completion_loaded(EvalContext &context,
     return;
   }
   LOG(Info, "sourcing the stock bash-completion script");
-  let bash_completion_runtime = RuntimeState::capture(context);
-  bash_completion_runtime.mood = mimic_mood::Bash;
+  let bash_completion_state = definition_state::from(context.runtime_state());
+  bash_completion_state.mood = mimic_mood::Bash;
   let const saved_runtime_state =
-      context.enter_definition_state(bash_completion_runtime);
+      context.enter_definition_state(bash_completion_state);
   defer
   {
     context.leave_definition_state(saved_runtime_state,

@@ -777,20 +777,21 @@ fn kosh_main(int argc, char **argv) -> int
     context.runtime_state().set_error_unset_set_explicitly(true);
   let analysis = koshka::inheritable_analysis_state::from_environment();
   analysis.is_mimicry_enabled |= FLAG_MIMICRY.is_enabled();
-  analysis.is_diagnostics_disabled |= FLAG_SUPPRESS_DIAGNOSTICS.is_enabled();
-  analysis.is_annoying_disabled |=
+  analysis.reporting.is_diagnostics_disabled |=
+      FLAG_SUPPRESS_DIAGNOSTICS.is_enabled();
+  analysis.reporting.is_annoying_disabled |=
       FLAG_SUPPRESS_ANNOYING_DIAGNOSTICS.is_enabled();
   if (let const warnings_specified_count = FLAG_WARNINGS.count();
       warnings_specified_count != 0)
   {
-    analysis.warning_level = static_cast<u8>(
+    analysis.reporting.warning_level = static_cast<u8>(
         warnings_specified_count > 3 ? 3 : warnings_specified_count);
   }
 
   if (FLAG_LINT.is_enabled()) {
-    analysis.is_diagnostics_disabled = false;
-    analysis.is_annoying_disabled = false;
-    analysis.warning_level =
+    analysis.reporting.is_diagnostics_disabled = false;
+    analysis.reporting.is_annoying_disabled = false;
+    analysis.reporting.warning_level =
         session_mood == koshka::mimic_mood::Default ? 0 : 3;
   }
 

@@ -122,7 +122,7 @@ fn EvalContext::register_function(StringView name,
   }
 
   info.source_name_index = definition_location.source_name_index;
-  info.defining_runtime = RuntimeState::capture(*this);
+  info.defining_state = definition_state::from(runtime_state());
   body_storage.set_definition(definition_text, info);
 
   LOG(Info, "registering function '%.*s' with a %zu byte definition",

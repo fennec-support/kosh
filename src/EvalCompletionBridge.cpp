@@ -45,13 +45,13 @@ fn EvalContext::run_completion_function(StringView function_name,
   execution_store().should_mark_completion_directories() = false;
   defer { execution_store().completion_function_running() = false; };
 
-  let defining_runtime = RuntimeState::capture(*this);
+  let defining_state = definition_state::from(runtime_state());
   if (let const *definition_info = body_storage.get_definition_info();
       definition_info != nullptr)
-    defining_runtime = definition_info->defining_runtime;
+    defining_state = definition_info->defining_state;
   else
-    defining_runtime.mood = mimic_mood::Bash;
-  let const saved_runtime_state = enter_definition_state(defining_runtime);
+    defining_state.mood = mimic_mood::Bash;
+  let const saved_runtime_state = enter_definition_state(defining_state);
   defer
   {
     leave_definition_state(saved_runtime_state,

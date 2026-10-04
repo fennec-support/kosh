@@ -976,7 +976,7 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
 }
 
 static constexpr u32 SUBSHELL_BOOTSTRAP_MAGIC = 0x4b534842U;
-static constexpr u32 SUBSHELL_BOOTSTRAP_VERSION = 12U;
+static constexpr u32 SUBSHELL_BOOTSTRAP_VERSION = 13U;
 static constexpr u32 NO_BOOTSTRAP_PROCESS = UINT32_MAX;
 
 static fn append_subshell_bootstrap_u32(String &output, u32 value) throws
@@ -1028,6 +1028,14 @@ fn getopts_cursor::append_wire(String &output) const throws -> void
 {
   append_subshell_bootstrap_u64(output, static_cast<u64>(char_index));
   append_subshell_bootstrap_i64(output, last_optind);
+}
+
+fn definition_state::append_wire(String &output) const throws -> void
+{
+  output.push(static_cast<char>(mood));
+  output.push(static_cast<char>(reporting.warning_level));
+  output.push(static_cast<char>(reporting.is_annoying_disabled));
+  output.push(static_cast<char>(reporting.is_diagnostics_disabled));
 }
 
 fn RuntimeState::append_wire(String &output) const throws -> void
@@ -1151,6 +1159,27 @@ fn getopts_cursor::from_wire(subshell_bootstrap_reader &reader,
     return false;
 
   cursor.char_index = static_cast<usize>(char_index_bits);
+  return true;
+}
+
+fn definition_state::from_wire(subshell_bootstrap_reader &reader,
+                               definition_state &state) wontthrow -> bool
+{
+  let const mood = reader.read_u8();
+  let const warning_level = reader.read_u8();
+  bool is_annoying_disabled = false;
+  bool is_diagnostics_disabled = false;
+  if (!reader.is_valid || mood > static_cast<u8>(mimic_mood::BashPosix) ||
+      warning_level > 3 ||
+      !read_subshell_bootstrap_bool(reader, is_annoying_disabled) ||
+      !read_subshell_bootstrap_bool(reader, is_diagnostics_disabled))
+  {
+    return false;
+  }
+
+  state.mood = static_cast<mimic_mood>(mood);
+  state.reporting = {warning_level, is_annoying_disabled,
+                     is_diagnostics_disabled};
   return true;
 }
 
@@ -1390,7 +1419,7 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
     append_subshell_bootstrap_text(body, spec.function_name.view());
     append_subshell_bootstrap_text(body, spec.word_list.view());
     body.push(static_cast<char>(spec.should_use_default));
-    spec.defining_runtime.append_wire(body);
+    spec.defining_state.append_wire(body);
   };
 
   for (let const &command : completion_names) {
@@ -1581,7 +1610,7 @@ fn EvalContext::apply_subshell_bootstrap(
 
   let completion_specs = StringMap<completion_spec>{heap_allocator()};
   let const completion_spec_count = static_cast<usize>(reader.read_u32());
-  constexpr usize MINIMUM_COMPLETION_SPEC_BYTES = 24;
+  constexpr usize MINIMUM_COMPLETION_SPEC_BYTES = 17;
   if (!reader.is_valid ||
       completion_spec_count >
           reader.get_remaining_length() / MINIMUM_COMPLETION_SPEC_BYTES)
@@ -1595,7 +1624,7 @@ fn EvalContext::apply_subshell_bootstrap(
     let const word_list = reader.read_text();
     bool should_use_default = false;
     if (!read_subshell_bootstrap_bool(reader, should_use_default) ||
-        !RuntimeState::from_wire(reader, spec.defining_runtime))
+        !definition_state::from_wire(reader, spec.defining_state))
     {
       return false;
     }

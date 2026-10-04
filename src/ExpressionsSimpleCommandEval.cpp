@@ -888,19 +888,12 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
           command_function_storage.get_definition_info();
       let const needs_state_swap =
           definition_info != nullptr &&
-          (definition_info->defining_runtime.mood !=
-               cxt.runtime_state().get_mood() ||
-           definition_info->defining_runtime.warning_level !=
-               cxt.runtime_state().get_warning_level() ||
-           definition_info->defining_runtime.is_diagnostics_disabled() !=
-               cxt.runtime_state().is_diagnostics_disabled() ||
-           definition_info->defining_runtime
-                   .is_annoying_diagnostics_enabled() !=
-               cxt.runtime_state().is_annoying_diagnostics_enabled());
+          !(definition_info->defining_state ==
+            definition_state::from(cxt.runtime_state()));
       Maybe<function_runtime_state> saved_runtime_state = None;
       if (needs_state_swap) {
         saved_runtime_state =
-            cxt.enter_definition_state(definition_info->defining_runtime);
+            cxt.enter_definition_state(definition_info->defining_state);
       }
       defer
       {

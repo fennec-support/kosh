@@ -475,7 +475,7 @@ struct function_definition_info
   String line_suffix{heap_allocator()};
   mutable String render_source{heap_allocator()};
   mutable bool has_render_source{false};
-  RuntimeState defining_runtime;
+  definition_state defining_state;
 };
 
 struct function_arena_stats

@@ -955,13 +955,13 @@ fn inheritable_analysis_state::from_environment() throws
     if (token == "mimicry") {
       result.is_mimicry_enabled = true;
     } else if (token == "no-annoying") {
-      result.is_annoying_disabled = true;
+      result.reporting.is_annoying_disabled = true;
     } else if (token == "no-diagnostics") {
-      result.is_diagnostics_disabled = true;
+      result.reporting.is_diagnostics_disabled = true;
     } else if (token.length == 10 && token.starts_with("warnings=") &&
                token[9] >= '1' && token[9] <= '3')
     {
-      result.warning_level = static_cast<u8>(token[9] - '0');
+      result.reporting.warning_level = static_cast<u8>(token[9] - '0');
     }
   });
 
@@ -972,13 +972,13 @@ fn inheritable_analysis_state::append_environment_text(
     String &text) const throws -> void
 {
   if (is_mimicry_enabled) text += "mimicry ";
-  if (warning_level > 0) {
+  if (reporting.warning_level > 0) {
     text += "warnings=";
-    text += static_cast<char>('0' + warning_level);
+    text += static_cast<char>('0' + reporting.warning_level);
     text += " ";
   }
-  if (is_annoying_disabled) text += "no-annoying ";
-  if (is_diagnostics_disabled) text += "no-diagnostics ";
+  if (reporting.is_annoying_disabled) text += "no-annoying ";
+  if (reporting.is_diagnostics_disabled) text += "no-diagnostics ";
 
   if (!text.is_empty()) text.pop_back();
 }

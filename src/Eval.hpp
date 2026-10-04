@@ -147,14 +147,26 @@ constexpr pure fn dynamic_reader_mask(dynamic_reader_id id) wontthrow -> u8
   return static_cast<u8>(1U << static_cast<u8>(id));
 }
 
+struct reporting_state
+{
+  u8 warning_level{0};
+  bool is_annoying_disabled{false};
+  bool is_diagnostics_disabled{false};
+
+  pure fn operator==(const reporting_state &other) const wontthrow -> bool
+  {
+    return warning_level == other.warning_level &&
+           is_annoying_disabled == other.is_annoying_disabled &&
+           is_diagnostics_disabled == other.is_diagnostics_disabled;
+  }
+};
+
 struct inheritable_analysis_state
 {
   static constexpr StringView ENVIRONMENT_NAME{"KOSH_ANALYSIS"};
 
   bool is_mimicry_enabled{false};
-  u8 warning_level{0};
-  bool is_annoying_disabled{false};
-  bool is_diagnostics_disabled{false};
+  reporting_state reporting;
 
   static fn from_environment() throws -> inheritable_analysis_state;
   fn append_environment_text(String &text) const throws -> void;
@@ -316,13 +328,21 @@ public:
   pure fn get_inheritable_analysis_state() const wontthrow
       -> inheritable_analysis_state
   {
-    return {is_mimicry_enabled(), warning_level,
-            !is_annoying_diagnostics_enabled(), is_diagnostics_disabled()};
+    return {is_mimicry_enabled(), get_reporting_state()};
   }
   fn set_inheritable_analysis_state(
       const inheritable_analysis_state &state) wontthrow -> void
   {
     set_mimicry(state.is_mimicry_enabled);
+    set_reporting_state(state.reporting);
+  }
+  pure fn get_reporting_state() const wontthrow -> reporting_state
+  {
+    return {warning_level, !is_annoying_diagnostics_enabled(),
+            is_diagnostics_disabled()};
+  }
+  fn set_reporting_state(const reporting_state &state) wontthrow -> void
+  {
     warning_level = state.warning_level;
     set_annoying_diagnostics_enabled(!state.is_annoying_disabled);
     set_diagnostics_disabled(state.is_diagnostics_disabled);
@@ -421,6 +441,32 @@ private:
 };
 
 static_assert(sizeof(RuntimeState) == 32);
+
+struct definition_state
+{
+  mimic_mood mood{mimic_mood::Default};
+  reporting_state reporting;
+
+  static fn from(const RuntimeState &runtime) wontthrow -> definition_state
+  {
+    return {runtime.get_mood(), runtime.get_reporting_state()};
+  }
+
+  fn apply_to(RuntimeState &runtime) const wontthrow -> void
+  {
+    runtime.set_mood(mood);
+    runtime.set_reporting_state(reporting);
+  }
+
+  pure fn operator==(const definition_state &other) const wontthrow -> bool
+  {
+    return mood == other.mood && reporting == other.reporting;
+  }
+
+  fn append_wire(String &output) const throws -> void;
+  static fn from_wire(subshell_bootstrap_reader &reader,
+                      definition_state &state) wontthrow -> bool;
+};
 
 inline pure fn RuntimeState::is_diagnostics_disabled() const wontthrow -> bool
 {
@@ -3067,16 +3113,11 @@ public:
   }
 
   friend class RuntimeState;
-  fn enter_definition_state(const RuntimeState &defining_runtime) wontthrow
+  fn enter_definition_state(const definition_state &defining_state) wontthrow
       -> function_runtime_state
   {
     let const previous = RuntimeState::capture(*this);
-    runtime_state().set_mood(defining_runtime.mood);
-    runtime_state().set_warning_level(defining_runtime.warning_level);
-    runtime_state().set_diagnostics_disabled(
-        defining_runtime.is_diagnostics_disabled());
-    runtime_state().set_annoying_diagnostics_enabled(
-        defining_runtime.is_annoying_diagnostics_enabled());
+    defining_state.apply_to(runtime_state());
     apply_strictness_for_mood();
     return function_runtime_state{
         previous,
