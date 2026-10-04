@@ -697,6 +697,25 @@ static fn push_variable_name_candidates(StringView token, EvalContext &context,
     do_add_name(name);
 }
 
+static fn declaration_flags_select_functions(StringView line,
+                                             usize token_start) throws -> bool
+{
+  usize cword = 0;
+  let const words = split_completion_words(
+      line.substring_of_length(0, token_start), token_start, cword);
+  for (usize i = 1; i < words.count(); i++) {
+    let const word = words[i].view();
+    if (word.length < 2 || word[0] != '-' || word[1] == '-') continue;
+    if (word.find_character('f').has_value() ||
+        word.find_character('F').has_value())
+    {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 fn internal::complete_from_builtin_flags(StringView line, StringView token,
                                          usize token_start,
                                          EvalContext &context,
@@ -890,12 +909,17 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     return None;
   }
 
-  if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Export &&
-      wants_operand)
+  if (builtin_kind.has_value() && wants_operand &&
+      (*builtin_kind == Builtin::Kind::Export ||
+       *builtin_kind == Builtin::Kind::Readonly ||
+       *builtin_kind == Builtin::Kind::Declare ||
+       *builtin_kind == Builtin::Kind::Local))
   {
     let const is_value_after_equals =
         token_start > 0 && line[token_start - 1] == '=';
-    if (!is_value_after_equals) {
+    if (!is_value_after_equals &&
+        !declaration_flags_select_functions(line, token_start))
+    {
       let names = ArrayList<String>{heap_allocator()};
       push_variable_name_candidates(token, context, names);
       if (!names.is_empty()) return names;
