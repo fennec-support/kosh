@@ -112,7 +112,9 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           break;
         } else {
           let option_text = String{cxt.scratch_allocator()};
-          option_text.push(option);
+          let const decoded = utils::decode_utf8(arg, k, 0);
+          let const byte_count = decoded.length > 1 ? decoded.length : 1;
+          option_text.append(arg.substring_of_length(k, byte_count));
           report_soft_builtin_error(
               ec, cxt, ec.arg_location_at(command_index),
               StringView{"Invalid option -- "} + option_text,

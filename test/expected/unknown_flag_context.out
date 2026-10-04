@@ -8,3 +8,33 @@ note: Use `--` before an operand that begins with a dash.
      1 |  koshkit ls --dasdas
        |             ^~~~~~~~
 note: Use `--` before an operand that begins with a dash.
+== multibyte unknown flag in a koshkit utility keeps the whole character:
+1:17: error: koshkit eviliso: Unknown flag '-в'.
+     1 |  koshkit eviliso -в
+       |                  ^~
+note: Use `--` before an operand that begins with a dash.
+== multibyte unknown flag after an ASCII flag keeps the whole character:
+1:12: error: koshkit ls: Unknown flag '-в'.
+     1 |  koshkit ls -aв
+       |             ^~~
+note: Use `--` before an operand that begins with a dash.
+== multibyte unknown flag in a builtin keeps the whole character:
+1:6: error: Builtin `type`: Unknown flag '-в'.
+     1 |  type -в
+       |       ^~
+note: Use `--` before an operand that begins with a dash.
+== multibyte unknown option in set keeps the whole character:
+1:5: error: Builtin `set`: Unknown option '-в'.
+     1 |  set -aв
+       |      ^~~
+== multibyte unknown flag of the shell keeps the whole character:
+error: Unknown flag '-в'.
+== multibyte invalid option in exec and eval keeps the whole character:
+1:6: error: Builtin `exec`: Invalid option -- в.
+     1 |  exec -в
+       |       ^~
+note: Run 'exec --help' for the accepted options.
+1:6: error: Builtin `eval`: -в: invalid option.
+     1 |  eval -в
+       |       ^~
+note: Try `eval --help` for more info.

@@ -12,6 +12,7 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Platform.hpp"
+#include "../Utils.hpp"
 #include "../base/StaticStringMap.hpp"
 #include "../base/Trace.hpp"
 
@@ -990,8 +991,10 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             !option_is_available(cxt, SET_OPTIONS[*option_position]))
         {
           let invalid_option = String{heap_allocator()};
+          let const decoded = utils::decode_utf8(arg.view(), c, 0);
+          let const byte_count = decoded.length > 1 ? decoded.length : 1;
           invalid_option += arg[0];
-          invalid_option += letter;
+          invalid_option += arg.view().substring_of_length(c, byte_count);
           if (!option_position.has_value())
             throw make_error_for_arg(
                 ec, i, StringView{"Unknown option '"} + invalid_option + "'");
