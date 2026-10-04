@@ -50,10 +50,11 @@ SKIPPED_TESTS := \
 	help_subcommand_third_level \
 	help_subcommands_no_colon make_targets_fallback \
 	completion_glob_quoting path_quoting koshkit_mknod \
-	koshkit_live_pty koshkit_live_sanitizers koshkit_live_deltas
+	koshkit_live_pty koshkit_live_sanitizers koshkit_live_deltas \
+	editor_ghost_menu_pty
 else ifneq ($(TARGET), Linux)
 SKIPPED_TESTS := koshkit_mknod koshkit_live_pty koshkit_live_sanitizers \
-	koshkit_live_deltas
+	koshkit_live_deltas editor_ghost_menu_pty
 else
 SKIPPED_TESTS :=
 endif
@@ -74,7 +75,7 @@ ifeq ($(IS_NONDEBUG_BUILD),1)
 SKIPPED_TESTS += koshkit_live_sanitizers
 endif
 ifeq ($(shell command -v python3),)
-SKIPPED_TESTS += koshkit_live_pty koshkit_live_deltas
+SKIPPED_TESTS += koshkit_live_pty koshkit_live_deltas editor_ghost_menu_pty
 endif
 
 ifeq ($(OS), Windows_NT)

@@ -1,0 +1,485 @@
+#!/usr/bin/env python3
+#
+#    This file is a part of the Koshka shell, (c) toiletbril, 2026
+#    See the top-level LICENSE file for the licensing information.
+#
+# Drives the interactive editor through a real PTY of fixed size and checks the
+# ghost suggestion and the completion menu from parsed terminal state. A small
+# terminal model replays the escape sequences the editor writes and tracks which
+# cells are drawn in the dim ghost color. The checks cover the ghost appearing
+# without Tab, its acceptance through Right, End, and Ctrl-E, menu narrowing and
+# widening on every keystroke, Ctrl-W and Alt-Backspace refreshing an open menu
+# down to an empty line, Escape and Ctrl-C afterwards, and session functions and
+# aliases in ghost and Tab completion. Every wait polls for the expected final
+# state under a deadline, so a failure reports the last screen instead of
+# hanging. Each check prints one stable PASS line for the golden output.
+
+import fcntl
+import os
+import pty
+import re
+import select
+import signal
+import shutil
+import struct
+import sys
+import tempfile
+import termios
+import time
+
+
+COLUMNS = 120
+ROWS = 40
+WAIT_SECONDS = 8.0
+MENU_HEADER = "selecting completions"
+MENU_FOOTER = "showing "
+RIGHT = b"\x1b[C"
+END = b"\x1b[F"
+CTRL_E = b"\x05"
+CTRL_W = b"\x17"
+CTRL_C = b"\x03"
+CTRL_D = b"\x04"
+ALT_BACKSPACE = b"\x1b\x7f"
+BACKSPACE = b"\x7f"
+ESCAPE = b"\x1b"
+CSI_PATTERN = re.compile(rb"\x1b\[([0-9;?]*)([ -/]*[@-~])")
+
+
+class Screen:
+    def __init__(self):
+        self.rows = [[]]
+        self.row = 0
+        self.column = 0
+        self.is_dim = False
+        self.pending = b""
+
+    def get_cells(self):
+        while len(self.rows) <= self.row:
+            self.rows.append([])
+        return self.rows[self.row]
+
+    def put(self, text):
+        cells = self.get_cells()
+        while len(cells) < self.column:
+            cells.append((" ", False))
+        if self.column < len(cells):
+            cells[self.column] = (text, self.is_dim)
+        else:
+            cells.append((text, self.is_dim))
+        self.column += 1
+
+    def apply_style(self, parameters):
+        index = 0
+        values = parameters or [0]
+        while index < len(values):
+            value = values[index]
+            if value in (38, 48):
+                self.is_dim = False
+                index += 2 if index + 1 < len(values) and values[index + 1] == 5 else 4
+                continue
+            if value in (2, 90):
+                self.is_dim = True
+            elif value in (0, 22, 39) or 30 <= value <= 37 or 91 <= value <= 97:
+                self.is_dim = False
+            index += 1
+
+    def apply_csi(self, parameter_text, final):
+        if parameter_text.startswith("?"):
+            return
+        parameters = [int(part) if part else 0
+                      for part in parameter_text.split(";")] if parameter_text else []
+        count = parameters[0] if parameters and parameters[0] else 1
+        if final == "m":
+            self.apply_style(parameters)
+        elif final == "K":
+            cells = self.get_cells()
+            mode = parameters[0] if parameters else 0
+            if mode == 0:
+                del cells[self.column:]
+            elif mode == 2:
+                cells.clear()
+        elif final == "J":
+            del self.get_cells()[self.column:]
+            del self.rows[self.row + 1:]
+        elif final == "G":
+            self.column = count - 1
+        elif final == "A":
+            self.row = max(0, self.row - count)
+        elif final == "B":
+            self.row += count
+        elif final == "C":
+            self.column += count
+        elif final == "D":
+            self.column = max(0, self.column - count)
+
+    def feed(self, data):
+        data = self.pending + data
+        index = 0
+        while index < len(data):
+            byte = data[index]
+            if byte == 0x1b:
+                if index + 1 >= len(data):
+                    break
+                if data[index + 1] == 0x5b:
+                    match = CSI_PATTERN.match(data, index)
+                    if match is None:
+                        break
+                    self.apply_csi(match.group(1).decode(), match.group(2).decode())
+                    index = match.end()
+                    continue
+                if data[index + 1] == 0x5d:
+                    end = data.find(b"\x07", index)
+                    if end < 0:
+                        break
+                    index = end + 1
+                    continue
+                index += 2
+                continue
+            if byte == 13:
+                self.column = 0
+            elif byte == 10:
+                self.row += 1
+            elif byte >= 32:
+                length = 1 if byte < 0x80 else 2 if byte < 0xe0 else 3 if byte < 0xf0 else 4
+                if index + length > len(data):
+                    break
+                self.put(data[index:index + length].decode("utf-8", "replace"))
+                index += length
+                continue
+            index += 1
+        self.pending = data[index:]
+
+    def get_lines(self):
+        return ["".join(text for text, _ in cells).rstrip() for cells in self.rows]
+
+    def get_prompt_row(self):
+        for row in range(len(self.rows) - 1, -1, -1):
+            if any(text == "\u2022" for text, _ in self.rows[row]):
+                return row
+        return -1
+
+    def get_typed_and_ghost(self):
+        row = self.get_prompt_row()
+        if row < 0:
+            return None
+        cells = self.rows[row]
+        mark = next(index for index, (text, _) in enumerate(cells) if text == "\u2022")
+        typed = "".join(text for text, is_dim in cells[mark + 2:] if not is_dim)
+        ghost = "".join(text for text, is_dim in cells[mark + 2:] if is_dim)
+        return typed.rstrip(), ghost.rstrip()
+
+    def get_menu(self):
+        row = self.get_prompt_row()
+        if row < 0:
+            return None
+        lines = self.get_lines()[row + 1:]
+        if not lines or MENU_HEADER not in lines[0]:
+            return None
+        entries = []
+        total = None
+        for line in lines[1:]:
+            text = line.strip()
+            if text.startswith(MENU_FOOTER):
+                total = int(text.split(" of ")[1])
+            elif text and text != "loading...":
+                entries.append(text)
+        return entries, total
+
+    def count_lines(self, text):
+        return sum(1 for line in self.get_lines() if line.strip() == text)
+
+
+class Session:
+    def __init__(self, binary, directory, command_directory):
+        environment = {
+            "PATH": command_directory,
+            "HOME": directory,
+            "KOSH_HISTORY_FILE": os.path.join(directory, "history"),
+            "TERM": "xterm-256color",
+            "LANG": "C.UTF-8",
+        }
+        self.screen = Screen()
+        self.pid, self.fd = pty.fork()
+        if self.pid == 0:
+            os.chdir(directory)
+            os.execve(binary, [binary, "-i", "--rcfile", "/dev/null"], environment)
+        fcntl.ioctl(self.fd, termios.TIOCSWINSZ,
+                    struct.pack("HHHH", ROWS, COLUMNS, 0, 0))
+        self.is_closed = False
+
+    def pump(self, seconds):
+        ready, _, _ = select.select([self.fd], [], [], seconds)
+        if not ready:
+            return True
+        try:
+            chunk = os.read(self.fd, 65536)
+        except OSError:
+            return False
+        if not chunk:
+            return False
+        self.screen.feed(chunk)
+        return True
+
+    def wait_until(self, is_ready):
+        deadline = time.monotonic() + WAIT_SECONDS
+        while time.monotonic() < deadline:
+            if is_ready(self.screen):
+                return True
+            if not self.pump(0.02):
+                return is_ready(self.screen)
+        return is_ready(self.screen)
+
+    def send(self, data):
+        os.write(self.fd, data)
+
+    def close(self):
+        if self.is_closed:
+            return
+        self.is_closed = True
+        try:
+            os.kill(self.pid, signal.SIGKILL)
+        except OSError:
+            pass
+        os.waitpid(self.pid, 0)
+        os.close(self.fd)
+
+
+def get_state(screen):
+    return screen.get_typed_and_ghost()
+
+
+def is_line(typed, ghost=""):
+    return lambda screen: get_state(screen) == (typed, ghost)
+
+
+def is_menu(names, total_filter=None):
+    def do_check(screen):
+        menu = screen.get_menu()
+        if menu is None:
+            return False
+        entries, total = menu
+        if total_filter is not None and not total_filter(total):
+            return False
+        return sorted(entries) == sorted(names)
+    return do_check
+
+
+def has_typed_menu(typed, names):
+    return lambda screen: (get_state(screen) is not None
+                           and get_state(screen)[0] == typed
+                           and is_menu(names)(screen))
+
+
+def is_all_commands_menu(screen):
+    menu = screen.get_menu()
+    return (get_state(screen) is not None and get_state(screen)[0] == ""
+            and menu is not None
+            and menu[1] is not None and menu[1] > 20)
+
+
+def is_menu_closed(screen):
+    return screen.get_menu() is None and get_state(screen) is not None
+
+
+class Report:
+    def __init__(self):
+        self.is_ok = True
+
+    def record(self, name, session, is_ready):
+        if session.wait_until(is_ready):
+            print("%s PASS" % name)
+            return True
+        print("%s FAIL" % name)
+        sys.stderr.write("%s: typed/ghost=%r menu=%r\n%s\n" % (
+            name, get_state(session.screen), session.screen.get_menu(),
+            "\n".join(session.screen.get_lines()[-20:])))
+        self.is_ok = False
+        return False
+
+
+def clear_line(session):
+    session.send(CTRL_C)
+    session.wait_until(is_line(""))
+
+
+def run_command(session, report, name, keys, expected_text, expected_count):
+    session.send(keys)
+    session.send(b"\r")
+    report.record(
+        name, session,
+        lambda screen: screen.count_lines(expected_text) == expected_count
+        and get_state(screen) == ("", ""))
+
+
+def run_checks(binary, directory, command_directory, report):
+    session = Session(binary, directory, command_directory)
+    try:
+        if not report.record("startup-prompt", session, is_line("")):
+            return
+
+        session.send(b"cat sub/al")
+        report.record("ghost-without-tab", session,
+                      is_line("cat sub/al", "pha-beta.txt"))
+        session.send(RIGHT)
+        report.record("ghost-right-accepts", session,
+                      is_line("cat sub/alpha-beta.txt"))
+        run_command(session, report, "ghost-right-runs", b"",
+                    "ALPHA-CONTENT", 1)
+
+        session.send(b"cat sub/al")
+        session.wait_until(is_line("cat sub/al", "pha-beta.txt"))
+        session.send(END)
+        report.record("ghost-end-accepts", session,
+                      is_line("cat sub/alpha-beta.txt"))
+        run_command(session, report, "ghost-end-runs", b"",
+                    "ALPHA-CONTENT", 2)
+
+        session.send(b"cat sub/al")
+        session.wait_until(is_line("cat sub/al", "pha-beta.txt"))
+        session.send(CTRL_E)
+        report.record("ghost-ctrl-e-accepts", session,
+                      is_line("cat sub/alpha-beta.txt"))
+        run_command(session, report, "ghost-ctrl-e-runs", b"",
+                    "ALPHA-CONTENT", 3)
+
+        session.send(b"cat menu/menu-")
+        session.send(b"\t")
+        names = ["menu/menu-apple", "menu/menu-apricot",
+                 "menu/menu-avocado", "menu/menu-banana"]
+        report.record("menu-opens-with-all-candidates", session,
+                      is_menu(names, lambda total: total in (None, 4)))
+        session.send(b"a")
+        report.record("menu-narrows-on-first-letter", session,
+                      is_menu(names[:3]))
+        session.send(b"p")
+        report.record("menu-narrows-on-second-letter", session,
+                      is_menu(names[:2]))
+        session.send(BACKSPACE)
+        report.record("menu-widens-on-backspace", session, is_menu(names[:3]))
+        session.send(BACKSPACE)
+        report.record("menu-widens-to-all-on-backspace", session, is_menu(names))
+        session.send(ESCAPE)
+        report.record("menu-escape-closes", session, is_menu_closed)
+        clear_line(session)
+
+        session.send(b"cat menu/menu-ap")
+        session.send(b"\t")
+        session.wait_until(is_menu(names[:2]))
+        for name, keys, typed, names_expected in (
+            ("menu-ctrl-w-drops-partial-word", CTRL_W, "cat menu/menu-", names),
+            ("menu-alt-backspace-drops-dash", ALT_BACKSPACE, "cat menu/menu", names),
+            ("menu-alt-backspace-drops-name", ALT_BACKSPACE, "cat menu/", names),
+            ("menu-alt-backspace-drops-slash", ALT_BACKSPACE, "cat menu", ["menu/"]),
+        ):
+            session.send(keys)
+            report.record(name, session, has_typed_menu(typed, names_expected))
+        session.send(ALT_BACKSPACE)
+        report.record("menu-alt-backspace-reaches-argument-position", session,
+                      lambda screen: get_state(screen) is not None
+                      and get_state(screen)[0] == "cat"
+                      and screen.get_menu() is not None
+                      and "menu/" in screen.get_menu()[0]
+                      and "sub/" in screen.get_menu()[0])
+        session.send(CTRL_W)
+        report.record("menu-ctrl-w-reaches-command-word", session,
+                      has_typed_menu("cat", ["cat"]))
+        session.send(CTRL_W)
+        report.record("menu-ctrl-w-reaches-empty-line", session,
+                      is_all_commands_menu)
+        session.send(ESCAPE)
+        report.record("menu-escape-after-empty-line", session,
+                      lambda screen: is_menu_closed(screen)
+                      and get_state(screen) == ("", ""))
+        run_command(session, report, "shell-alive-after-escape",
+                    b"echo STILL-ALIVE", "STILL-ALIVE", 1)
+
+        session.send(b"zzprobe-\t")
+        report.record("menu-lists-path-commands", session,
+                      is_menu(["zzprobe-one", "zzprobe-two"]))
+        session.send(ALT_BACKSPACE)
+        report.record("menu-alt-backspace-refreshes-command", session,
+                      lambda screen: get_state(screen) is not None
+                      and get_state(screen)[0] == "zzprobe"
+                      and screen.get_menu() is not None
+                      and "zzprobe-one" in screen.get_menu()[0])
+        session.send(ALT_BACKSPACE)
+        report.record("menu-alt-backspace-reaches-empty-line", session,
+                      is_all_commands_menu)
+        session.send(CTRL_C)
+        report.record("menu-ctrl-c-closes", session,
+                      lambda screen: is_menu_closed(screen)
+                      and get_state(screen) == ("", ""))
+        run_command(session, report, "shell-alive-after-ctrl-c",
+                    b"echo STILL-ALIVE", "STILL-ALIVE", 2)
+
+        session.send(b"zzfunc() { echo FUNC-RAN; }\r")
+        session.wait_until(is_line(""))
+        session.send(b"alias zzalias='echo ALIAS-RAN'\r")
+        session.wait_until(is_line(""))
+        session.send(b"zzfu")
+        report.record("function-in-ghost", session, is_line("zzfu", "nc"))
+        session.send(RIGHT)
+        run_command(session, report, "function-ghost-runs", b"",
+                    "FUNC-RAN", 1)
+        session.send(b"zzal")
+        report.record("alias-in-ghost", session, is_line("zzal", "ias"))
+        session.send(END)
+        run_command(session, report, "alias-ghost-runs", b"", "ALIAS-RAN", 1)
+
+        session.send(b"zz\t")
+        report.record("function-alias-in-tab-menu", session,
+                      is_menu(["zzalias", "zzfunc", "zzprobe-one",
+                               "zzprobe-two"]))
+        session.send(b"f")
+        report.record("function-narrowed-in-tab-menu", session,
+                      is_menu(["zzfunc"]))
+        clear_line(session)
+        session.send(CTRL_D)
+        try:
+            deadline = time.monotonic() + WAIT_SECONDS
+            while time.monotonic() < deadline:
+                finished, _ = os.waitpid(session.pid, os.WNOHANG)
+                if finished:
+                    session.is_closed = True
+                    os.close(session.fd)
+                    break
+                session.pump(0.02)
+        except OSError:
+            pass
+    finally:
+        session.close()
+
+
+def main():
+    if sys.platform != "linux":
+        print("editor ghost and menu PTY probes: skipped (requires Linux)")
+        return 0
+    binary = os.environ.get("BIN")
+    if not binary:
+        print("BIN is required", file=sys.stderr)
+        return 2
+    binary = os.path.abspath(binary)
+
+    directory = tempfile.mkdtemp(prefix="kosh-editor-pty-")
+    report = Report()
+    try:
+        os.makedirs(os.path.join(directory, "sub"))
+        os.makedirs(os.path.join(directory, "menu"))
+        os.makedirs(os.path.join(directory, "bin"))
+        with open(os.path.join(directory, "sub", "alpha-beta.txt"), "w") as handle:
+            handle.write("ALPHA-CONTENT\n")
+        for name in ("apple", "apricot", "avocado", "banana"):
+            open(os.path.join(directory, "menu", "menu-" + name), "w").close()
+        for name in ("zzprobe-one", "zzprobe-two"):
+            path = os.path.join(directory, "bin", name)
+            with open(path, "w") as handle:
+                handle.write("#!/bin/sh\n")
+            os.chmod(path, 0o755)
+        run_checks(binary, directory, os.path.join(directory, "bin"), report)
+    finally:
+        shutil.rmtree(directory, ignore_errors=True)
+    return 0 if report.is_ok else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
