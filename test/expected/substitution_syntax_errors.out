@@ -51,6 +51,29 @@ unterminated_if.sh:1:28: details:
      1 |  echo $(if true; then echo; )
        |                             ^ expected 'fi'.
 status=1
+== subscript.sh
+subscript.sh:2:17: error: Expected a filename after '<>'.
+     2 |  values[$(echo <><>)]=1
+       |                  ^
+status=1
+== subscript_forms.sh
+subscript_forms.sh:2:14: error: Expected a filename after '<>'.
+     2 |  map[$(echo <><>)]+=1
+       |               ^
+subscript_forms.sh:3:20: error: Expected a filename after '<>'.
+     3 |  export map[`echo <><>`]=2
+       |                     ^
+status=1
+== subscript_arithmetic.sh
+subscript_arithmetic.sh:1:20: error: Expected a filename after '<>'.
+     1 |  (( values[$(echo <><>)]++ ))
+       |                     ^
+status=1
+== quoted_modifier.sh
+quoted_modifier.sh:1:22: error: Expected a filename after '<>'.
+     1 |  echo "${x:-'$(echo <><>)'}"
+       |                       ^
+status=1
 == several_commands.sh
 several_commands.sh:1:12: error: Expected a filename after '<>'.
      1 |  x=$(echo <><>)

@@ -23,6 +23,11 @@ printf 'x=${ echo <><>; }\n' > funsub.sh
 printf 'echo $(if true; then echo; )\n' > unterminated_if.sh
 printf 'x=$(echo <><>)\necho ok\ny=`echo <><>`\nif true; then\n  z=$(if)\nfi\n' \
   > several_commands.sh
+printf 'echo ok\nvalues[$(echo <><>)]=1\n' > subscript.sh
+printf 'declare -A map\nmap[$(echo <><>)]+=1\nexport map[`echo <><>`]=2\n' \
+  > subscript_forms.sh
+printf '(( values[$(echo <><>)]++ ))\n' > subscript_arithmetic.sh
+printf 'echo "${x:-'"'"'$(echo <><>)'"'"'}"\n' > quoted_modifier.sh
 printf 'echo $(echo <><>) "$(echo ok)" $(echo <><>) <(echo <><>)\n' \
   > several_words.sh
 printf 'cat <<EOF\n$(echo <><>)\n$(echo <><>)\nEOF\necho $(echo <><>)\n' \
@@ -48,6 +53,9 @@ nest 65 > depth_over.sh
   printf '$(echo <><>)\nEOF\n'
   printf 'z=`echo \\`echo ok\\``\n'
   printf 'w=${x:-"$(echo ok)"}\n'
+  printf "v=\"\${x:-'\$(echo ok)'}\"\n"
+  printf 'values[$(echo 1)]=2\n'
+  printf "echo '\$(echo <><>)' \${x:-'a\"\$(echo <><>)\"'}\n"
 } > valid.sh
 
 check process.sh
@@ -60,6 +68,10 @@ check modifier.sh
 check arithmetic.sh
 check funsub.sh
 check unterminated_if.sh
+check subscript.sh
+check subscript_forms.sh
+check subscript_arithmetic.sh
+check quoted_modifier.sh
 check several_commands.sh
 check several_words.sh
 check several_heredoc.sh

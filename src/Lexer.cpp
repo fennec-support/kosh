@@ -710,6 +710,10 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
         byte_count = *close;
         do_append_unquoted_run(m_source.substring_of_length(
             m_cursor_position + subscript_start, byte_count - subscript_start));
+        if (should_validate_substitutions()) {
+          validate_nested_expansions(m_cursor_position + subscript_start,
+                                     byte_count - subscript_start, false);
+        }
         continue;
       }
     }
@@ -1167,7 +1171,8 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
                      name.find_character('`').has_value())
           {
             validate_nested_expansions(m_cursor_position + name_start,
-                                       name.length, false);
+                                       name.length, false,
+                                       is_in_double_quotes);
           }
         }
       } else if (lexer::is_variable_name_start(next)) {
@@ -1580,14 +1585,14 @@ cold fn Lexer::validate_substitution_body(
   }
 }
 
-cold fn Lexer::validate_nested_expansions(usize region_position,
-                                          usize region_length,
-                                          bool is_heredoc) throws -> void
+cold fn Lexer::validate_nested_expansions(
+    usize region_position, usize region_length, bool is_heredoc,
+    bool is_region_in_double_quotes) throws -> void
 {
   let const region =
       m_source.substring_of_length(region_position, region_length);
   let is_in_single_quotes = false;
-  let is_in_double_quotes = false;
+  let is_in_double_quotes = is_region_in_double_quotes;
   usize offset = 0;
   while (offset < region.length) {
     let const c = region[offset];

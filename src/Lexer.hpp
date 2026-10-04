@@ -402,7 +402,9 @@ protected:
                                 const SourceLocation &outer_location) throws
       -> void;
   fn validate_nested_expansions(usize region_position, usize region_length,
-                                bool is_heredoc) throws -> void;
+                                bool is_heredoc,
+                                bool is_region_in_double_quotes = false) throws
+      -> void;
 };
 
 } /* namespace koshka */
