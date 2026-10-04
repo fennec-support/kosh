@@ -20,7 +20,7 @@ echo "== an env shebang selects the named shell:"
 "$BIN" --no-traces -I "$directory/env-script"
 echo "== a script with no shebang keeps the session mood:"
 "$BIN" --no-traces -I "$directory/plain-script"
-echo "== the shebang is unread without -I:"
+echo "== a script operand reads its shebang without -I:"
 "$BIN" --no-traces "$directory/bash-script"
 echo "== an explicit --mood wins:"
 "$BIN" --no-traces -I --mood kosh "$directory/bash-script"
@@ -42,8 +42,26 @@ sed 's|\\|/|g' "$directory/strict-output" | sed "s|$directory|TMPDIR|g"
 echo "rc=$strict_status"
 
 echo "== the strict default still reports the unset read:"
-"$BIN" --no-traces "$directory/unset-script" \
+"$BIN" --no-traces -M kosh "$directory/unset-script" \
     > "$directory/default-output" 2>&1
 default_status=$?
 sed 's|\\|/|g' "$directory/default-output" | sed "s|$directory|TMPDIR|g"
 echo "rc=$default_status"
+
+printf '#!/usr/bin/env bash\n[[ x == x ]] && echo ok\na=(1 2)\necho "${a[1]}"\necho $(echo unquoted)\n' \
+    > "$directory/bash-syntax"
+printf '#!/usr/bin/env -S bash -e\necho $(echo split)\n' > "$directory/env-split"
+printf '#!/bin/sh\n[[ x == x ]] && echo ok\n' > "$directory/sh-syntax"
+
+echo "== a bash shebang runs bash syntax without -I:"
+"$BIN" --no-traces "$directory/bash-syntax"
+echo "rc=$?"
+echo "== an env -S shebang selects the named shell:"
+"$BIN" --no-traces "$directory/env-split"
+echo "rc=$?"
+echo "== an sh shebang rejects the bash conditional:"
+"$BIN" --no-traces "$directory/sh-syntax" 2>&1 |
+    sed "s|$directory|TMPDIR|g" | head -n 1
+echo "== -M kosh keeps the strict analysis on a bash shebang:"
+"$BIN" --no-traces -M kosh "$directory/bash-syntax" > /dev/null 2>&1
+echo "rc=$?"

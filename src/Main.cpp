@@ -435,7 +435,7 @@ fn kosh_main(int argc, char **argv) -> int
       FLAG_RESTRICTED.is_enabled() || program_basename == "rbash";
   LOG(Info, "invocation basename is '%.*s'",
       static_cast<int>(program_basename.length), program_basename.data);
-  let const session_mood = koshka::resolve_session_mood(invocation_mood);
+  let session_mood = koshka::resolve_session_mood(invocation_mood);
   LOG(Info, "selecting the %s mood",
       session_mood == koshka::mimic_mood::Posix       ? "posix"
       : session_mood == koshka::mimic_mood::Bash      ? "bash"
@@ -643,6 +643,25 @@ fn kosh_main(int argc, char **argv) -> int
       : should_execute_commands ? "the -c command strings"
       : should_read_files       ? "the named script file"
                                 : "the interactive prompt");
+
+  koshka::Maybe<koshka::String> prefetched_script_contents = koshka::None;
+  if (should_read_files && !FLAG_LINT.is_enabled() && !file_names.is_empty() &&
+      file_names[0] != "-" &&
+      !(FLAG_MOOD.is_set() || FLAG_DUMB.is_enabled() ||
+        FLAG_POSIX_COMPAT.is_enabled() ||
+        invocation_mood != koshka::mimic_mood::Default))
+  {
+    prefetched_script_contents =
+        koshka::Path{file_names[0].view()}.read_entire_file();
+    if (prefetched_script_contents.has_value()) {
+      let const shebang_mood = koshka::detect_mimic_shell_from_source(
+          prefetched_script_contents->view());
+      LOG(Info, "the script operand '%s' %s a shell to mimic",
+          file_names[0].c_str(),
+          shebang_mood.has_value() ? "names" : "does not name");
+      session_mood = shebang_mood.value_or(session_mood);
+    }
+  }
 
   /* A script file or a -c run takes its first operand as $0 and the rest as the
      arguments, while an interactive or -s shell keeps the shell name as $0 and
@@ -1136,7 +1155,9 @@ fn kosh_main(int argc, char **argv) -> int
           if (should_analyze_input) {
             LOG(Info, "reading the script file '%s'", file_name.c_str());
             koshka::Maybe<koshka::String> contents =
-                script_path.read_entire_file();
+                next_file_index == 1 && prefetched_script_contents.has_value()
+                    ? steal(prefetched_script_contents)
+                    : script_path.read_entire_file();
             if (!contents) {
               let const looks_like_command =
                   !FLAG_LINT.is_enabled() &&

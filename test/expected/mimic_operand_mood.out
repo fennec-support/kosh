@@ -6,8 +6,8 @@ sh
 sh
 == a script with no shebang keeps the session mood:
 kosh
-== the shebang is unread without -I:
-kosh
+== a script operand reads its shebang without -I:
+bash
 == an explicit --mood wins:
 kosh
 == --dumb wins:
@@ -28,4 +28,16 @@ TMPDIR/unset-script:2:8: error: The variable 'undefined_name' is read before any
      2 |  echo "[${undefined_name}]"
        |         ^~~~~~~~~~~~~~~~~
 note: Assign 'undefined_name' before it is read, or set it in the environment.
+rc=1
+== a bash shebang runs bash syntax without -I:
+ok
+2
+unquoted
+rc=0
+== an env -S shebang selects the named shell:
+split
+rc=0
+== an sh shebang rejects the bash conditional:
+TMPDIR/sh-syntax:2:1: error: The [[ conditional is a bash extension that the sh mood does not provide.
+== -M kosh keeps the strict analysis on a bash shebang:
 rc=1

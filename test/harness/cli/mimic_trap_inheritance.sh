@@ -24,8 +24,8 @@ status=$?
 sed "s|$directory|TMPDIR|g" "$directory/out"
 echo "rc=$status"
 
-echo "== the shebang is unread without mimicry:"
-"$BIN" --no-traces "$directory/sh-script" > "$directory/out" 2>&1
+echo "== the shebang is unread under an explicit kosh mood:"
+"$BIN" --no-traces -M kosh "$directory/sh-script" > "$directory/out" 2>&1
 status=$?
 sed "s|$directory|TMPDIR|g" "$directory/out"
 echo "rc=$status"

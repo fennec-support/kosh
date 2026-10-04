@@ -274,6 +274,30 @@ is accepted for kosh, and
 and
 .B dash
 are accepted for sh.
+When no mood is chosen and the shell runs a script file operand, the first line
+of the script selects the mood. A bash shebang selects
+.BR bash ,
+an sh or dash shebang selects
+.BR sh ,
+and a kosh shebang selects
+.BR kosh .
+The interpreter may be named through
+.BR env ,
+as in
+.B "#!/usr/bin/env bash"
+or
+.BR "#!/usr/bin/env \-S bash \-e" .
+Any other interpreter, or no shebang, leaves the
+.B kosh
+mood. The mood is chosen before startup files are read. An explicit
+.BR \-\-mood ,
+.BR \-\-dumb ,
+.BR \-\-posix ,
+or a shell invocation name such as sh or bash takes precedence over the shebang.
+The shebang is not read for
+.BR \-c ,
+standard input, or
+.BR \-\-lint .
 .TP
 .BR \-L ", " \-\-init\-moods =\fILIST\fR
 Startup files for each listed mood are sourced in order. LIST accepts
@@ -281,9 +305,9 @@ comma-separated names. The option may be repeated. The selected runtime mood
 is used when the option is omitted.
 .TP
 .BR \-I ", " \-\-enable\-mimicry
-A script with a recognized shell shebang runs under the corresponding mood.
-This applies to a script operand and to a script run as a command. A recognized
-shell invocation name, an explicit
+A script run as a command with a recognized shell shebang runs under the
+corresponding mood. A script operand always does, with or without this
+option. A recognized shell invocation name, an explicit
 .BR \-\-mood ,
 .BR \-\-dumb ,
 or

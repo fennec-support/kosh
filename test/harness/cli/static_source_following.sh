@@ -139,7 +139,7 @@ printf 'lint-order=%s summaries=%s files=%s,%s rc=%s\n' \
   "$lint_order" "$summary_count" "$grandchild_filename_count" \
   "$child_filename_count" "$rc"
 test ! -e should-not-exist || exit 1
-run_and_capture "$BIN" -n nested/root.bash
+run_and_capture "$BIN" -M kosh -n nested/root.bash
 grandchild_count=$(printf '%s\n' "$output" |
   grep -c "The variable 'GRANDCHILD_SOURCE_UNSET'")
 child_count=$(printf '%s\n' "$output" |
@@ -181,7 +181,7 @@ path_followed_count=$(printf '%s\n' "$output" |
 path_assignment_count=$(printf '%s\n' "$output" | grep -c '(SC2123)')
 printf 'path-mutation-followed=%s assignment=%s rc=%s\n' \
   "$path_followed_count" "$path_assignment_count" "$rc"
-run_and_capture "$BIN" nested/root.bash
+run_and_capture "$BIN" -M kosh nested/root.bash
 grandchild_count=$(printf '%s\n' "$output" |
   grep -c "The variable 'GRANDCHILD_SOURCE_UNSET'")
 child_count=$(printf '%s\n' "$output" |

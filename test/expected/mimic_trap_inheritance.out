@@ -24,7 +24,7 @@ debug-rc=0
 action
 body
 rc=0
-== the shebang is unread without mimicry:
+== the shebang is unread under an explicit kosh mood:
 TMPDIR/sh-script:2:20: error: The `ERR` condition is a bash extension absent from POSIX sh. (SC3047)
      2 |  trap "echo action" ERR
        |                     ^~~
