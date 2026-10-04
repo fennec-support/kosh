@@ -1,0 +1,261 @@
+host-self-namespaces=matched
+unshare -Ur differs: user
+unshare -Urm differs: mnt,user
+unshare -Urn differs: net,user
+unshare -Uri differs: ipc,user
+unshare -Uru differs: user,uts
+unshare -Urc differs: user
+unshare -Urpf --mount-proc differs: mnt,pid,user
+== empty cgroup file: -c -k --containers --kubernetes
+  Cgroup membership
+  HIERARCHY  CONTROLLER  PATH  PID  NAME  ROLE
+
+  Cgroup status failures
+  PID  PROCESS        STATUS
+    1  isolated-kosh  empty 
+
+  Container runtimes
+  RUNTIME  SOURCE  EVIDENCE
+
+  Containers
+  RUNTIME  CONTAINER  PROCESSES
+
+  Kubernetes
+  SOURCE  HOST  NAMESPACE  EVIDENCE
+
+  Kubernetes workloads
+  SOURCE  POD UID  QOS  RUNTIME  CONTAINER  PROCESSES
+status=0
+== systemd burstable containerd: -c -k --containers --kubernetes
+  Cgroup membership
+  HIERARCHY  CONTROLLER  PATH                                                                                                                                                                                             PID  NAME           ROLE
+          0  unified     /kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod12345678_1234_1234_1234_123456789abc.slice/cri-containerd-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.scope    1  isolated-kosh  self
+
+  Container runtimes
+  RUNTIME     SOURCE  EVIDENCE                                                                                                                                                                                       
+  containerd  cgroup  /kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod12345678_1234_1234_1234_123456789abc.slice/cri-containerd-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.scope
+
+  Containers
+  RUNTIME     CONTAINER                                                         PROCESSES
+  containerd  0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef          1
+
+  Kubernetes
+  SOURCE  HOST  NAMESPACE  EVIDENCE          
+  cgroup  -     -          kubepods component
+
+  Kubernetes workloads
+  SOURCE  POD UID                               QOS        RUNTIME     CONTAINER                                                         PROCESSES
+  cgroup  12345678-1234-1234-1234-123456789abc  burstable  containerd  0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef          1
+status=0
+== systemd guaranteed cri-o: -k --containers --kubernetes
+  Container runtimes
+  RUNTIME  SOURCE  EVIDENCE                                                                                                                                          
+  cri-o    cgroup  /kubepods.slice/kubepods-pod12345678_1234_1234_1234_123456789abc.slice/crio-fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210.scope
+
+  Containers
+  RUNTIME  CONTAINER                                                         PROCESSES
+  cri-o    fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210          1
+
+  Kubernetes
+  SOURCE  HOST  NAMESPACE  EVIDENCE          
+  cgroup  -     -          kubepods component
+
+  Kubernetes workloads
+  SOURCE  POD UID                               QOS         RUNTIME  CONTAINER                                                         PROCESSES
+  cgroup  12345678-1234-1234-1234-123456789abc  guaranteed  cri-o    fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210          1
+status=0
+== systemd besteffort uppercase pod: --kubernetes
+  Kubernetes
+  SOURCE  HOST  NAMESPACE  EVIDENCE          
+  cgroup  -     -          kubepods component
+
+  Kubernetes workloads
+  SOURCE  POD UID                               QOS         RUNTIME  CONTAINER                                                         PROCESSES
+  cgroup  abcdef01-2345-6789-abcd-ef0123456789  besteffort  docker   0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef          1
+status=0
+== cgroupfs besteffort: -k --containers --kubernetes
+  Container runtimes
+  RUNTIME  SOURCE  EVIDENCE
+
+  Containers
+  RUNTIME  CONTAINER                                                         PROCESSES
+  -        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef          1
+
+  Kubernetes
+  SOURCE  HOST  NAMESPACE  EVIDENCE          
+  cgroup  -     -          kubepods component
+
+  Kubernetes workloads
+  SOURCE  POD UID                               QOS         RUNTIME  CONTAINER                                                         PROCESSES
+  cgroup  12345678-1234-1234-1234-123456789abc  besteffort  -        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef          1
+status=0
+== cgroupfs burstable detail: -a -k --containers --kubernetes
+  Container runtimes
+  RUNTIME  SOURCE  PID  NAME  ROLE  EVIDENCE
+
+  Containers
+  RUNTIME  CONTAINER                                                         PID  NAME           ROLE  CGROUP                                                                                                                      
+  -        fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210    1  isolated-kosh  self  /kubepods/burstable/pod12345678-1234-1234-1234-123456789abc/fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
+
+  Kubernetes
+  SOURCE  HOST  NAMESPACE  EVIDENCE          
+  cgroup  -     -          kubepods component
+
+  Kubernetes workloads
+  SOURCE  POD UID                               QOS        RUNTIME  CONTAINER                                                         PID  NAME           ROLE  CGROUP                                                                                                                      
+  cgroup  12345678-1234-1234-1234-123456789abc  burstable  -        fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210    1  isolated-kosh  self  /kubepods/burstable/pod12345678-1234-1234-1234-123456789abc/fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
+status=0
+== cgroupfs guaranteed detail: -a --kubernetes
+  Kubernetes
+  SOURCE  HOST  NAMESPACE  EVIDENCE          
+  cgroup  -     -          kubepods component
+
+  Kubernetes workloads
+  SOURCE  POD UID                               QOS         RUNTIME  CONTAINER                                                         PID  NAME           ROLE  CGROUP                                                                                                            
+  cgroup  12345678-1234-1234-1234-123456789abc  guaranteed  -        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef    1  isolated-kosh  self  /kubepods/pod12345678-1234-1234-1234-123456789abc/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+status=0
+== docker v1 hierarchies and duplicates: -c -k --containers
+  Cgroup membership
+  HIERARCHY  CONTROLLER    PATH                                                                      PID  NAME           ROLE
+          0  unified       /docker/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef    1  isolated-kosh  self
+          1  name=systemd  /docker/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef    1  isolated-kosh  self
+         11  memory        /docker/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef    1  isolated-kosh  self
+         12  pids          /docker/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef    1  isolated-kosh  self
+
+  Container runtimes
+  RUNTIME  SOURCE  EVIDENCE                                                                
+  docker   cgroup  /docker/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+
+  Containers
+  RUNTIME  CONTAINER                                                         PROCESSES
+  docker   0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef          1
+status=0
+== docker v1 detail: -a -c -k --containers
+  Cgroup membership
+  HIERARCHY  CONTROLLER  PATH                                                                      PID  NAME           ROLE  STATUS   
+          0  unified     /docker/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef    1  isolated-kosh  self  available
+         11  memory      /docker/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef    1  isolated-kosh  self  available
+         12  pids        /docker/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef    1  isolated-kosh  self  available
+
+  Container runtimes
+  RUNTIME  SOURCE  PID  NAME           ROLE  EVIDENCE                                                                
+  docker   cgroup    1  isolated-kosh  self  /docker/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+
+  Containers
+  RUNTIME  CONTAINER                                                         PID  NAME           ROLE  CGROUP                                                                  
+  docker   0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef    1  isolated-kosh  self  /docker/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+status=0
+== podman and libpod: -k --containers
+  Container runtimes
+  RUNTIME  SOURCE  EVIDENCE                                                                                    
+  podman   cgroup  /machine.slice/libpod-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.scope
+  podman   cgroup  /user.slice/libpod/fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210         
+
+  Containers
+  RUNTIME  CONTAINER                                                         PROCESSES
+  podman   0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef          1
+  podman   fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210          1
+status=0
+== malformed lines are skipped: -c -k --containers
+  Cgroup membership
+  HIERARCHY  CONTROLLER  PATH         PID  NAME           ROLE
+          2  cpu         /valid/path    1  isolated-kosh  self
+
+  Container runtimes
+  RUNTIME  SOURCE  EVIDENCE
+
+  Containers
+  RUNTIME  CONTAINER  PROCESSES
+status=0
+== invalid identifiers are rejected: -c -k --containers --kubernetes
+  Cgroup membership
+  HIERARCHY  CONTROLLER  PATH                                                                                                                           PID  NAME           ROLE
+          2  cpu         /system.slice/docker-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcde.scope                                       1  isolated-kosh  self
+          3  cpu         /kubepods/besteffort/pod12345678-1234-1234-1234-123456789abcd                                                                    1  isolated-kosh  self
+          4  cpu         /kubepods/besteffort/pod12345678-1234-1234-1234-12345678XXXX/fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210    1  isolated-kosh  self
+          5  cpu         /docker/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdeg                                                         1  isolated-kosh  self
+          6  cpu         /docker/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcde                                                          1  isolated-kosh  self
+
+  Container runtimes
+  RUNTIME  SOURCE  EVIDENCE                                                                
+  docker   cgroup  /docker/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcde 
+  docker   cgroup  /docker/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdeg
+
+  Containers
+  RUNTIME  CONTAINER                                                         PROCESSES
+  -        fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210          1
+
+  Kubernetes
+  SOURCE  HOST  NAMESPACE  EVIDENCE          
+  cgroup  -     -          kubepods component
+
+  Kubernetes workloads
+  SOURCE  POD UID  QOS  RUNTIME  CONTAINER  PROCESSES
+status=0
+== kubernetes environment: --kubernetes
+  Kubernetes
+  SOURCE       HOST       NAMESPACE  EVIDENCE               
+  environment  10.96.0.1  -          KUBERNETES_SERVICE_HOST
+
+  Kubernetes workloads
+  SOURCE  POD UID  QOS  RUNTIME  CONTAINER  PROCESSES
+status=0
+== kubernetes environment control bytes: --kubernetes
+  Kubernetes
+  SOURCE       HOST      NAMESPACE  EVIDENCE               
+  environment  api host  -          KUBERNETES_SERVICE_HOST
+
+  Kubernetes workloads
+  SOURCE  POD UID  QOS  RUNTIME  CONTAINER  PROCESSES
+status=0
+kubernetes-host-bytes=256
+== self and other process
+  Cgroup membership
+  HIERARCHY  CONTROLLER  PATH                                                                      PID  NAME           ROLE   STATUS   
+          0  unified     /docker/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef    1  isolated-kosh  self   available
+          0  unified     /docker/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef    3  sleep          other  available
+
+  Container runtimes
+  RUNTIME  SOURCE  PID  NAME           ROLE   EVIDENCE                                                                
+  docker   cgroup    1  isolated-kosh  self   /docker/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+  docker   cgroup    3  sleep          other  /docker/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+
+  Containers
+  RUNTIME  CONTAINER                                                         PID  NAME           ROLE   CGROUP                                                                                                                       
+  -        fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210    2  sleep          other  /kubepods/besteffort/pod12345678-1234-1234-1234-123456789abc/fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
+  docker   0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef    1  isolated-kosh  self   /docker/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef                                                     
+  docker   0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef    3  sleep          other  /docker/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef                                                     
+
+  Kubernetes
+  SOURCE  HOST  NAMESPACE  EVIDENCE          
+  cgroup  -     -          kubepods component
+
+  Kubernetes workloads
+  SOURCE  POD UID                               QOS         RUNTIME  CONTAINER                                                         PID  NAME   ROLE   CGROUP                                                                                                                       
+  cgroup  12345678-1234-1234-1234-123456789abc  besteffort  -        fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210    2  sleep  other  /kubepods/besteffort/pod12345678-1234-1234-1234-123456789abc/fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
+== service account namespace file
+  Kubernetes
+  SOURCE           HOST       NAMESPACE  EVIDENCE               
+  environment      10.96.0.1  team-a     KUBERNETES_SERVICE_HOST
+  service-account  -          team-a     namespace file         
+
+  Kubernetes workloads
+  SOURCE  POD UID  QOS  RUNTIME  CONTAINER  PROCESSES
+status=0
+== service account namespace file with control bytes
+  Kubernetes
+  SOURCE           HOST       NAMESPACE   EVIDENCE               
+  environment      10.96.0.1  team b [0m  KUBERNETES_SERVICE_HOST
+  service-account  -          team b [0m  namespace file         
+
+  Kubernetes workloads
+  SOURCE  POD UID  QOS  RUNTIME  CONTAINER  PROCESSES
+status=0
+== service account empty namespace file
+  Kubernetes
+  SOURCE       HOST       NAMESPACE  EVIDENCE               
+  environment  10.96.0.1  -          KUBERNETES_SERVICE_HOST
+
+  Kubernetes workloads
+  SOURCE  POD UID  QOS  RUNTIME  CONTAINER  PROCESSES
+status=0
