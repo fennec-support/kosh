@@ -45,6 +45,12 @@ enum class cp_recursive_mode : u8
   Recursive,
 };
 
+struct cp_directory_identity
+{
+  u64 device_id;
+  u64 file_id;
+};
+
 }
 
 enum class cp_symlink_mode : u8
@@ -120,7 +126,9 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
                     bool should_preserve, bool is_verbose, Allocator allocator,
                     const os::file_status *known_lstat,
                     cp_recursive_mode recursive_mode,
-                    cp_symlink_mode symlink_mode) throws -> bool
+                    cp_symlink_mode symlink_mode,
+                    ArrayList<cp_directory_identity> &active_directories) throws
+    -> bool
 {
   let const source_path = Path{source, allocator};
   let const destination_path = Path{destination, allocator};
@@ -139,7 +147,7 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
       (known_lstat != nullptr ? os::file_type_letter(known_lstat->mode) == 'l'
                               : source_path.is_symbolic_link());
 
-  if (is_source_symlink && recursive_mode == cp_recursive_mode::Recursive) {
+  if (is_source_symlink) {
     if (let const target = os::read_symlink(source, allocator)) {
       /* Symlink creation fails when the path is already present, so an existing
          destination is removed first. */
@@ -204,6 +212,28 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
       };
     }
 
+    let const has_identity =
+        source_status.has_value() && source_status->has_file_identity;
+    if (has_identity) {
+      for (let const &identity : active_directories) {
+        if (identity.device_id == source_status->device_id &&
+            identity.file_id == source_status->file_id)
+        {
+          throw Error{
+              "cannot copy cyclic symbolic link '" +
+              String{allocator, source} + "'"
+          };
+        }
+      }
+
+      active_directories.push(
+          {source_status->device_id, source_status->file_id});
+    }
+    defer
+    {
+      if (has_identity) active_directories.pop_back();
+    };
+
     let const did_destination_exist =
         Path{destination, allocator}.is_directory();
     os::make_directory(destination, 0700);
@@ -234,7 +264,8 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
                        recursive_mode,
                        symlink_mode == cp_symlink_mode::FollowAll
                            ? cp_symlink_mode::FollowAll
-                           : cp_symlink_mode::Preserve))
+                           : cp_symlink_mode::Preserve,
+                       active_directories))
           did_succeed = false;
       } catch (const BrokenPipeExit &) {
         throw;
@@ -347,6 +378,11 @@ fn Cp::execute(const ExecContext &ec, EvalContext &cxt,
     if (FLAG_CP_FOLLOW_NONE.position() > symlink_position)
       symlink_mode = cp_symlink_mode::Preserve;
   }
+  if (recursive_mode == cp_recursive_mode::SinglePath &&
+      !FLAG_CP_FOLLOW_NONE.is_enabled())
+  {
+    symlink_mode = cp_symlink_mode::FollowRoot;
+  }
 
   let const should_force = FLAG_CP_FORCE.is_enabled();
   let const should_preserve = FLAG_CP_PRESERVE.is_enabled();
@@ -366,6 +402,7 @@ fn Cp::execute(const ExecContext &ec, EvalContext &cxt,
     };
   }
 
+  ArrayList<cp_directory_identity> active_directories{cxt.scratch_allocator()};
   i32 status = 0;
   for (usize i = 0; i + 1 < operands.count(); i++) {
     let const source = operands[i].view();
@@ -389,7 +426,7 @@ fn Cp::execute(const ExecContext &ec, EvalContext &cxt,
       if (!copy_path(ec, cxt, args[0].view(), source, target.view(),
                      should_force, should_preserve, is_verbose,
                      cxt.scratch_allocator(), nullptr, recursive_mode,
-                     symlink_mode))
+                     symlink_mode, active_directories))
         status = 1;
     } catch (const BrokenPipeExit &) {
       throw;

@@ -273,3 +273,11 @@ echo "--- cp symbolic link policy ---"
 "$BIN" -c 'koshkit cp -RH cp-links/tree cp-links/tree-h; koshkit ls -F cp-links/tree-h'
 "$BIN" -c 'koshkit cp -RH cp-links/link cp-links/copy-h; koshkit ls -F cp-links/copy-h'
 "$BIN" -c 'koshkit cp -R cp-links/link cp-links/copy-r; koshkit ls -F cp-links/copy-r'
+echo "--- cp links without recursion and cycles ---"
+"$BIN" -c 'koshkit mkdir cp-links/realdir; koshkit ln -s realdir cp-links/dirlink; koshkit ln -s nowhere cp-links/dangling; koshkit mkdir -p cp-links/loop/sub; printf x > cp-links/loop/file; koshkit ln -s .. cp-links/loop/sub/up'
+"$BIN" -c 'koshkit cp -P cp-links/dirlink cp-links/copy-dirlink; echo "rc=$?"; [ -L cp-links/copy-dirlink ] && echo is-link; koshkit ls -F cp-links/copy-dirlink'
+"$BIN" -c 'koshkit cp -P cp-links/link cp-links/copy-filelink; echo "rc=$?"; koshkit ls -F cp-links/copy-filelink'
+"$BIN" -c 'koshkit cp -P cp-links/dangling cp-links/copy-dangling; echo "rc=$?"; koshkit ls -F cp-links/copy-dangling'
+"$BIN" -c 'koshkit cp cp-links/link cp-links/copy-default; echo "rc=$?"; koshkit ls -F cp-links/copy-default'
+"$BIN" -c 'koshkit cp -rL cp-links/loop cp-links/loop-l 2>&1; echo "rc=$?"; koshkit ls -F cp-links/loop-l cp-links/loop-l/sub'
+"$BIN" -c 'koshkit cp -rP cp-links/loop cp-links/loop-p; echo "rc=$?"; koshkit ls -F cp-links/loop-p/sub'

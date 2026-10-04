@@ -86,3 +86,23 @@ inner
 inner@
 cp-links/copy-h
 cp-links/copy-r@
+--- cp links without recursion and cycles ---
+rc=0
+is-link
+rc=0
+cp-links/copy-filelink@
+rc=0
+cp-links/copy-dangling@
+rc=0
+cp-links/copy-default
+1:1: error: koshkit cp: cannot copy cyclic symbolic link 'cp-links/loop/sub/up'.
+     1 |  koshkit cp -rL cp-links/loop cp-links/loop-l 2>&1; echo "rc=$?"; koshkit ls -F cp-links/loop-l cp-links/loop-l/sub
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+rc=1
+cp-links/loop-l:
+file
+sub/
+
+cp-links/loop-l/sub:
+rc=0
+up@

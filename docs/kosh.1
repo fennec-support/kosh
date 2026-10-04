@@ -1690,7 +1690,14 @@ option follows every symbolic link, and
 .B \-H
 follows only a link named on the command line. The
 .B \-P
-option restores the default.
+option restores the default and copies a link as a link without
+.BR \-r .
+A copy without
+.B \-r
+or
+.B \-P
+follows links. A symbolic link that leads back into a directory being copied is
+reported as cyclic and skipped, and the status is 1.
 .TP
 .B df
 Mounted filesystems or the filesystems of the operands are reported. The
