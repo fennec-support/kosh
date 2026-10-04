@@ -206,6 +206,19 @@ x
 8192 two-pages.txt
 8187
 3
+--- negative head counts across the 64 KiB read boundary ---
+head -n -65535: matched
+head -c -65535: matched
+head -n -65536: matched
+head -c -65536: matched
+head -n -65537: matched
+head -c -65537: matched
+head -n -1 without a final newline:
+a
+b
+|
+head -n -1 multiple sources: matched
+head -c -65536 multiple sources: matched
 --- wc words start at a printable byte ---
 0
 1
