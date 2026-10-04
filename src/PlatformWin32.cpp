@@ -1260,6 +1260,29 @@ pure fn terminal_echo_guard::did_succeed() const wontthrow -> bool
   return m_did_succeed;
 }
 
+terminal_raw_input_guard::terminal_raw_input_guard(descriptor input) wontthrow
+    : m_input(input)
+{
+  if (!is_fd_a_tty(input)) return;
+  if (GetConsoleMode(input, &m_original_mode) == FALSE) return;
+
+  let const raw_mode = m_original_mode & ~static_cast<DWORD>(ENABLE_ECHO_INPUT |
+                                                             ENABLE_LINE_INPUT);
+  if (SetConsoleMode(input, raw_mode) == FALSE) return;
+
+  m_should_restore = true;
+}
+
+terminal_raw_input_guard::~terminal_raw_input_guard()
+{
+  if (m_should_restore) unused(SetConsoleMode(m_input, m_original_mode));
+}
+
+pure fn terminal_raw_input_guard::is_active() const wontthrow -> bool
+{
+  return m_should_restore;
+}
+
 fn allocate_aligned(usize length, usize alignment) wontthrow -> opaque *
 {
   return _aligned_malloc(length, alignment);

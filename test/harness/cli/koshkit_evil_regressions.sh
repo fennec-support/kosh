@@ -96,7 +96,7 @@ evilio_live_sort_path=$TEST_TEMP_DIRECTORY/evilio-live-sort-report
 printf 'evilio-live-sort-status=%s\n' "$?"
 evilio_live_sort_report=$(cat "$evilio_live_sort_path")
 case $evilio_live_sort_report in
-  *'READ/0.1s'*'ctrl+c to exit'*) evilio_live_sort_update=matched ;;
+  *'evilio  LIVE'*'READ/0.1s'*) evilio_live_sort_update=matched ;;
   *) evilio_live_sort_update=wrong ;;
 esac
 printf 'evilio-live-sort=%s\n' "$evilio_live_sort_update"
@@ -162,7 +162,7 @@ evilnet_live_sort_report=$(cat "$evilnet_live_sort_path")
 case $evilnet_live_sort_report in
   *'TX/0.1s'*)
     case $evilnet_live_sort_report in
-      *'ctrl+c to exit'*) evilnet_live_sort_update=matched ;;
+      *'evilnet  LIVE'*) evilnet_live_sort_update=matched ;;
       *) evilnet_live_sort_update=wrong ;;
     esac
     ;;
@@ -252,7 +252,7 @@ fi
 printf 'evilps-live-refresh=%s\n' "$evilps_live_refresh"
 evilps_live_report=$(cat "$evilps_live_path")
 case $evilps_live_report in
-  *'ctrl+c to exit. cumulative stats over 0.1s every 0.05s'*)
+  *'evilps  LIVE'*'window 0.1s, every 0.05s'*)
     evilps_live_controls=matched
     ;;
   *) evilps_live_controls=wrong ;;

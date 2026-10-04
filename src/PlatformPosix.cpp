@@ -1517,6 +1517,31 @@ pure fn terminal_echo_guard::did_succeed() const wontthrow -> bool
   return m_did_succeed;
 }
 
+terminal_raw_input_guard::terminal_raw_input_guard(descriptor input) wontthrow
+    : m_input(input)
+{
+  if (!is_fd_a_tty(input)) return;
+  if (tcgetattr(input, &m_original_mode) != 0) return;
+
+  let raw_mode = m_original_mode;
+  raw_mode.c_lflag &= static_cast<tcflag_t>(~(ECHO | ICANON));
+  raw_mode.c_cc[VMIN] = 1;
+  raw_mode.c_cc[VTIME] = 0;
+  if (tcsetattr(input, TCSANOW, &raw_mode) != 0) return;
+
+  m_should_restore = true;
+}
+
+terminal_raw_input_guard::~terminal_raw_input_guard()
+{
+  if (m_should_restore) unused(tcsetattr(m_input, TCSANOW, &m_original_mode));
+}
+
+pure fn terminal_raw_input_guard::is_active() const wontthrow -> bool
+{
+  return m_should_restore;
+}
+
 fn allocate_aligned(usize length, usize alignment) wontthrow -> opaque *
 {
   return ::aligned_alloc(alignment, length);

@@ -14,6 +14,9 @@ import termios
 import time
 
 
+FRAME_MARKER = b"  LIVE"
+
+
 def run_pty(binary, command, keys=()):
     pid, fd = pty.fork()
     if pid == 0:
@@ -28,7 +31,9 @@ def run_pty(binary, command, keys=()):
     resized = False
     key_index = 0
     key_frame_count = 0
-    deadline = time.monotonic() + 2.0
+    key_marker = FRAME_MARKER
+    key_marker_count = 0
+    deadline = time.monotonic() + (8.0 if keys else 2.0)
     while time.monotonic() < deadline:
         ready, _, _ = select.select([fd], [], [], 0.05)
         if not ready:
@@ -44,12 +49,21 @@ def run_pty(binary, command, keys=()):
             resize(45, 10)
             resized = True
             time.sleep(0.15)
-        frame_count = bytes(output).count(b"ctrl+c to exit")
-        if (resized and key_index < len(keys)
-                and frame_count > key_frame_count):
-            os.write(fd, keys[key_index])
+        frame_count = bytes(output).count(FRAME_MARKER)
+        has_key_taken_effect = (
+            frame_count > key_frame_count + 1
+            if key_marker is None
+            else bytes(output).count(key_marker) > key_marker_count)
+        if (resized and key_index < len(keys) and has_key_taken_effect):
+            os.write(fd, keys[key_index][0])
+            key_marker = keys[key_index][1]
+            key_marker_count = (0 if key_marker is None
+                                else bytes(output).count(key_marker))
             key_index += 1
             key_frame_count = frame_count
+        elif (resized and keys and keys[-1][0] != b"q"
+              and key_index == len(keys) and has_key_taken_effect):
+            break
 
     if resized:
         os.kill(pid, signal.SIGINT)
@@ -68,15 +82,16 @@ def run_pty(binary, command, keys=()):
             break
         output.extend(chunk)
     _, status = os.waitpid(pid, 0)
-    all_parts = bytes(output).split(b"ctrl+c to exit")
+    all_parts = bytes(output).split(FRAME_MARKER)
     # The final part contains terminal cleanup after the last frame, not a frame.
     frame_parts = all_parts[1:-1]
     blank_counts = [part.count(b"\r\n\r\n") for part in frame_parts]
     return {
         "status": os.waitstatus_to_exitcode(status),
         "resized": resized,
-        "frames": bytes(output).count(b"ctrl+c to exit"),
-        "controls": b"ctrl+c to exit" in output,
+        "frames": bytes(output).count(FRAME_MARKER),
+        "controls": FRAME_MARKER in output,
+        "hints": b"q quit" in output,
         "ansi": b"\x1b[" in output,
         "alternate_enter": b"\x1b[?1049h" in output,
         "alternate_leave": b"\x1b[?1049l" in output,
@@ -106,7 +121,8 @@ def run_redirected(binary, command):
         "status": status,
         "lines": data.count(b"\n"),
         "ansi": b"\x1b[" in data,
-        "controls": b"ctrl+c to exit" in data,
+        "controls": FRAME_MARKER in data,
+        "hints": b"q quit" in data,
     }
 
 
@@ -137,11 +153,13 @@ def main():
          "--cumulative=0.1", ()),
         ("evilps-pty", "koshkit --color never evilps --cpu --live=0.05 "
          "--cumulative=0.1 -1",
-         (b"s\n", b"s\n", b"s\n", b"s\n", b"s\n", b"/1\n", b"/\n")),
+         ((b"s", b"SORT name"), (b"s", b"SORT pid"), (b"s", b"SORT cpu"),
+          (b"s", b"SORT memory"), (b"s", None), (b"/", b"SEARCH /"),
+          (b"1", b"SEARCH /1"), (b"\r", None), (b"\x1b", None))),
     ):
         result = run_pty(binary, command, keys)
         requirements = {"status": 130, "resized": True,
-                        "controls": True, "ansi": True,
+                        "controls": True, "hints": True, "ansi": True,
                         "alternate_enter": True,
                         "alternate_leave": True,
                         "cursor_hide": True,
@@ -157,6 +175,21 @@ def main():
             ok = False
 
     for name, command in (
+        ("evilio-quit", "koshkit --color never evilio --ps --live=0.05 "
+         "--cumulative=0.1"),
+        ("evilnet-quit", "koshkit --color never evilnet --traffic "
+         "--live=0.05 --cumulative=0.1"),
+        ("evilps-quit", "koshkit --color never evilps --cpu --live=0.05 "
+         "--cumulative=0.1 -1"),
+    ):
+        result = run_pty(binary, command, ((b"q", None),))
+        ok &= check(name, result, {"status": 0, "resized": True,
+                                   "alternate_enter": True,
+                                   "alternate_leave": True,
+                                   "cursor_hide": True,
+                                   "cursor_show": True})
+
+    for name, command in (
         ("evilio-redirected", "koshkit --color never evilio --ps --live=0.05 "
          "--cumulative=0.1"),
         ("evilnet-redirected", "koshkit --color never evilnet --traffic "
@@ -166,7 +199,7 @@ def main():
     ):
         result = run_redirected(binary, command)
         ok &= check(name, result, {"status": 130, "ansi": False,
-                                   "controls": True})
+                                   "controls": True, "hints": False})
         if result["lines"] < 2:
             print("%s FAIL fewer than two redirected frames" % name)
             ok = False

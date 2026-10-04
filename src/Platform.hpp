@@ -329,6 +329,28 @@ private:
   bool m_did_succeed{true};
 };
 
+class terminal_raw_input_guard
+{
+public:
+  explicit terminal_raw_input_guard(descriptor input) wontthrow;
+  ~terminal_raw_input_guard();
+
+  terminal_raw_input_guard(const terminal_raw_input_guard &) = delete;
+  fn operator=(const terminal_raw_input_guard &)->terminal_raw_input_guard & =
+      delete;
+
+  mustuse fn is_active() const wontthrow -> bool;
+
+private:
+  descriptor m_input{KOSH_INVALID_FD};
+#if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
+  DWORD m_original_mode{0};
+#else
+  termios m_original_mode{};
+#endif
+  bool m_should_restore{false};
+};
+
 enum class program_extension : u8
 {
   None,

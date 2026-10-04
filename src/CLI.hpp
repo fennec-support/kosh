@@ -452,9 +452,6 @@ fn leave_alternate_screen(const ExecContext &ec) wontthrow -> void;
 fn hide_cursor(const ExecContext &ec) wontthrow -> bool;
 fn show_cursor(const ExecContext &ec) wontthrow -> void;
 constexpr f64 DEFAULT_LIVE_SAMPLE_INTERVAL_SECONDS = 0.5;
-fn append_live_controls_bar(String &output, StringView sample_label,
-                            StringView refresh_label, bool should_color) throws
-    -> void;
 fn format_live_duration(f64 seconds, Allocator allocator) throws -> String;
 
 struct rolling_window_boundary

@@ -14,6 +14,7 @@
 #include "../Platform.hpp"
 #include "../Utils.hpp"
 #include "../base/Arena.hpp"
+#include "LiveView.hpp"
 
 FLAG_LIST_DECL();
 
@@ -737,20 +738,10 @@ fn run_live_network_traffic(const ExecContext &ec, Allocator allocator,
   let retained = ArrayList<live_network_row>{allocator};
   let const falloff_nanoseconds =
       static_cast<u64>(window_seconds * 1000000000.0);
-  let const refresh_interval_nanoseconds =
-      static_cast<u64>(refresh_interval_seconds * 1000000000.0);
-  let const sample_interval_nanoseconds =
-      static_cast<u64>(sample_interval_seconds * 1000000000.0);
-  u64 last_refresh_nanoseconds = os::monotonic_nanos();
-  u64 last_sample_nanoseconds = last_refresh_nanoseconds;
-  let const is_terminal = os::is_fd_a_tty(ec.out_fd.value_or(KOSH_STDOUT));
-  let const is_alternate = is_terminal && enter_alternate_screen(ec);
-  let const is_cursor_hidden = is_terminal && hide_cursor(ec);
+  u64 last_sample_nanoseconds = os::monotonic_nanos();
+  let const started_at_nanoseconds = last_sample_nanoseconds;
   let const sample_label = format_live_duration(window_seconds, allocator);
-  let const refresh_label =
-      format_live_duration(refresh_interval_seconds, allocator);
   let const default_interface = os::default_network_interface(allocator);
-  let frame_arena = BumpArena{};
   let duration_suffix = String{allocator, "/"};
   duration_suffix += sample_label.view();
   let baseline = os::read_network_interface_statistics();
@@ -762,89 +753,54 @@ fn run_live_network_traffic(const ExecContext &ec, Allocator allocator,
     row.last_seen_nanoseconds = last_sample_nanoseconds;
     retained.push(steal(row));
   }
-  defer
-  {
-    if (is_cursor_hidden) show_cursor(ec);
-    if (is_alternate) leave_alternate_screen(ec);
-  };
-
-  loop
-  {
-    let const frame_mark = frame_arena.mark();
-    defer { frame_arena.release(frame_mark); };
-    let const frame_allocator = bump_allocator(frame_arena);
-
-    let const before_wait_nanoseconds = os::monotonic_nanos();
-    let const sample_elapsed =
-        before_wait_nanoseconds - last_sample_nanoseconds;
-    let const refresh_elapsed =
-        before_wait_nanoseconds - last_refresh_nanoseconds;
-    let const until_sample = sample_interval_nanoseconds > sample_elapsed
-                                 ? sample_interval_nanoseconds - sample_elapsed
-                                 : 0;
-    let const until_refresh =
-        refresh_interval_nanoseconds > refresh_elapsed
-            ? refresh_interval_nanoseconds - refresh_elapsed
-            : 0;
-    let const wait_nanoseconds =
-        until_sample < until_refresh ? until_sample : until_refresh;
-    os::sleep_for_seconds(static_cast<f64>(wait_nanoseconds) / 1000000000.0);
-    if (os::INTERRUPT_REQUESTED != 0) {
-      os::INTERRUPT_REQUESTED = 0;
-      return 130;
-    }
-
-    let const now = os::monotonic_nanos();
-    if (now - last_sample_nanoseconds >= sample_interval_nanoseconds) {
-      let const current = os::read_network_interface_statistics();
-      for (let const &entry : current) {
-        bool is_known = false;
-        for (usize index = 0; index < retained.count(); index++) {
-          if (retained[index].interface_name.view() !=
-              entry.interface_name.view())
-            continue;
-          if (network_counter_reset(retained[index].history.back(), entry)) {
-            retained[index].history.clear();
-            retained[index].history_nanoseconds.clear();
-          }
-          retained[index].history.push(entry);
-          retained[index].history_nanoseconds.push(now);
-          retained[index].last_seen_nanoseconds = now;
-          is_known = true;
-          break;
-        }
-        if (!is_known) {
-          live_network_row row_entry{};
-          row_entry.interface_name =
-              String{allocator, entry.interface_name.view()};
-          row_entry.history.push(entry);
-          row_entry.history_nanoseconds.push(now);
-          row_entry.last_seen_nanoseconds = now;
-          retained.push(steal(row_entry));
-        }
-      }
-      for (usize index = retained.count(); index > 0; index--) {
-        let const position = index - 1;
-        if (retained[position].history_nanoseconds.back() != now) {
-          retained[position].history.push(retained[position].history.back());
-          retained[position].history_nanoseconds.push(now);
-        }
-        if (now - retained[position].last_seen_nanoseconds >=
-            falloff_nanoseconds)
-        {
-          retained.remove(position);
+  let const do_sample = [&](u64 now, Allocator) -> Maybe<i32> {
+    let const current = os::read_network_interface_statistics();
+    for (let const &entry : current) {
+      bool is_known = false;
+      for (usize index = 0; index < retained.count(); index++) {
+        if (retained[index].interface_name.view() !=
+            entry.interface_name.view())
           continue;
+        if (network_counter_reset(retained[index].history.back(), entry)) {
+          retained[index].history.clear();
+          retained[index].history_nanoseconds.clear();
         }
-        trim_rolling_history(retained[position].history,
-                             retained[position].history_nanoseconds,
-                             rolling_window_start(now, falloff_nanoseconds));
+        retained[index].history.push(entry);
+        retained[index].history_nanoseconds.push(now);
+        retained[index].last_seen_nanoseconds = now;
+        is_known = true;
+        break;
       }
-      last_sample_nanoseconds = now;
+      if (!is_known) {
+        live_network_row row_entry{};
+        row_entry.interface_name =
+            String{allocator, entry.interface_name.view()};
+        row_entry.history.push(entry);
+        row_entry.history_nanoseconds.push(now);
+        row_entry.last_seen_nanoseconds = now;
+        retained.push(steal(row_entry));
+      }
     }
-    if (now - last_refresh_nanoseconds < refresh_interval_nanoseconds) {
-      continue;
+    for (usize index = retained.count(); index > 0; index--) {
+      let const position = index - 1;
+      if (retained[position].history_nanoseconds.back() != now) {
+        retained[position].history.push(retained[position].history.back());
+        retained[position].history_nanoseconds.push(now);
+      }
+      if (now - retained[position].last_seen_nanoseconds >= falloff_nanoseconds)
+      {
+        retained.remove(position);
+        continue;
+      }
+      trim_rolling_history(retained[position].history,
+                           retained[position].history_nanoseconds,
+                           rolling_window_start(now, falloff_nanoseconds));
     }
-    last_refresh_nanoseconds = now;
+    last_sample_nanoseconds = now;
+    return None;
+  };
+  let const do_render = [&](String &output, const live_view_dimensions &,
+                            Allocator frame_allocator) -> Maybe<i32> {
     let statistics =
         ArrayList<os::network_interface_statistics_entry>{frame_allocator};
     statistics.reserve(retained.count());
@@ -856,11 +812,7 @@ fn run_live_network_traffic(const ExecContext &ec, Allocator allocator,
     }
     let const sorted_statistics =
         sort_network_statistics(steal(statistics), sort_key);
-    let output = String{frame_allocator};
     let warnings = ArrayList<String>{frame_allocator};
-    if (is_terminal) output += "\x1b[H\x1b[2J";
-    append_live_controls_bar(output, sample_label.view(), refresh_label.view(),
-                             should_color);
     append_network_traffic_statistics_report(
         output, warnings, frame_allocator, sorted_statistics,
         duration_suffix.view(), default_interface, color_mode);
@@ -869,8 +821,18 @@ fn run_live_network_traffic(const ExecContext &ec, Allocator allocator,
       output += Warning{warning.view()}.to_string().view();
       output += "\n";
     }
-    ec.print_to_stdout(output);
-  }
+    return None;
+  };
+
+  live_view_options options{};
+  options.title = "evilnet";
+  options.window_seconds = window_seconds;
+  options.sample_interval_seconds = sample_interval_seconds;
+  options.refresh_interval_seconds = refresh_interval_seconds;
+  options.started_at_nanoseconds = started_at_nanoseconds;
+  options.should_color = should_color;
+
+  return run_live_view(ec, options, do_sample, do_render);
 }
 
 } /* namespace */

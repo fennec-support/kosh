@@ -6,7 +6,7 @@ run_live_report() {
   : > "$live_report_path"
   "$BIN" -c \
     '(attempt=0; while [ "$attempt" -lt 250 ]; do
-        if koshkit grep "ctrl+c to exit" "$1" > /dev/null 2>&1; then break; fi
+        if koshkit grep "  LIVE  " "$1" > /dev/null 2>&1; then break; fi
         koshkit sleep 0.02
         attempt=$((attempt + 1))
       done
@@ -22,14 +22,16 @@ run_live_report "$TEST_TEMP_DIRECTORY/evilio-live-process-report" \
 process_live_status=$live_status
 process_live_report=$live_report
 case $process_live_report in
-  *ctrl*c*exit*PID*READ/0.02s*WRITE/0.02s*COMMAND*) live_shape=matched ;;
+  *evilio\ \ LIVE*window\ 0.02s,\ every\ 0.05s*PID*READ/0.02s*WRITE/0.02s*COMMAND*)
+    live_shape=matched
+    ;;
   *) live_shape=wrong ;;
 esac
 run_live_report "$TEST_TEMP_DIRECTORY/evilio-live-process-window-report" \
   'koshkit --color never evilio --live=0.05 --cumulative=1.2 --ps -1'
 process_window_report=$live_report
 case $process_window_report in
-  *ctrl*c*exit*"READ OPS/1.2s"*"WRITE OPS/1.2s"*)
+  *LIVE*"READ OPS/1.2s"*"WRITE OPS/1.2s"*)
     process_window_shape=matched
     ;;
   *) process_window_shape=wrong ;;
@@ -44,7 +46,7 @@ run_live_report "$TEST_TEMP_DIRECTORY/evilio-live-disk-report" \
 disk_live_status=$live_status
 disk_live_report=$live_report
 case $disk_live_report in
-  *ctrl*c*exit*DEVICE*READ/0.02s*WRITE/0.02s*READ\ OPS/0.02s*WRITE\ OPS/0.02s*BUSY*READ\ LAT*WRITE\ LAT*AVG\ QUEUE*QUEUE*ERRORS*RETRIES*)
+  *LIVE*DEVICE*READ/0.02s*WRITE/0.02s*READ\ OPS/0.02s*WRITE\ OPS/0.02s*BUSY*READ\ LAT*WRITE\ LAT*AVG\ QUEUE*QUEUE*ERRORS*RETRIES*)
     disk_live_shape=matched
     ;;
   *) disk_live_shape=wrong ;;
@@ -54,14 +56,14 @@ case $disk_live_report in
   *) disk_live_scope=only-disk-io ;;
 esac
 case $disk_live_report in
-  *ctrl*c\ to\ exit.*) disk_live_margin=unindented ;;
+  evilio\ \ LIVE*) disk_live_margin=unindented ;;
   *) disk_live_margin=wrong ;;
 esac
 run_live_report "$TEST_TEMP_DIRECTORY/evilio-live-disk-window-report" \
   'koshkit --color never evilio --live=0.05 --cumulative=1.2'
 disk_window_report=$live_report
 case $disk_window_report in
-  *ctrl*c*exit*"READ OPS/1.2s"*"WRITE OPS/1.2s"*)
+  *LIVE*"READ OPS/1.2s"*"WRITE OPS/1.2s"*)
     disk_window_shape=matched
     ;;
   *) disk_window_shape=wrong ;;

@@ -15,6 +15,7 @@
 #include "../Utils.hpp"
 #include "../base/Arena.hpp"
 #include "../base/StaticStringMap.hpp"
+#include "LiveView.hpp"
 
 FLAG_LIST_DECL();
 
@@ -893,25 +894,17 @@ fn append_disk_io_report(String &output, const ArrayList<disk_io_row> &rows,
 fn run_live_process_io(const ExecContext &ec, Maybe<i64> selected_pid,
                        usize row_limit, f64 window_seconds,
                        f64 sample_interval_seconds,
-                       f64 refresh_interval_seconds, bool is_terminal,
+                       f64 refresh_interval_seconds,
                        StringView sample_duration_label,
                        Maybe<evilio_sort_key> sort_key,
                        evilio_color_mode color_mode) throws -> i32
 {
   let const allocator = heap_allocator();
-  let frame_arena = BumpArena{};
   let retained = ArrayList<live_process_row>{allocator};
   let const falloff_nanoseconds =
       static_cast<u64>(window_seconds * 1000000000.0);
-  let const sample_interval_nanoseconds =
-      static_cast<u64>(sample_interval_seconds * 1000000000.0);
-  let const refresh_interval_nanoseconds =
-      static_cast<u64>(refresh_interval_seconds * 1000000000.0);
-  u64 last_refresh_nanoseconds = os::monotonic_nanos();
-  u64 last_sample_nanoseconds = last_refresh_nanoseconds;
-  let const sample_label = format_live_duration(window_seconds, allocator);
-  let const refresh_label =
-      format_live_duration(refresh_interval_seconds, allocator);
+  u64 last_sample_nanoseconds = os::monotonic_nanos();
+  let const started_at_nanoseconds = last_sample_nanoseconds;
   let baseline_rows =
       read_process_io_rows(allocator, selected_pid, evilio_idle_mode::Include);
   if (os::INTERRUPT_REQUESTED != 0) {
@@ -930,93 +923,64 @@ fn run_live_process_io(const ExecContext &ec, Maybe<i64> selected_pid,
     retained.push(steal(entry));
   }
 
-  loop
-  {
-    let const frame_mark = frame_arena.mark();
-    defer { frame_arena.release(frame_mark); };
-    let const frame_allocator = bump_allocator(frame_arena);
-
-    let const before_wait_nanoseconds = os::monotonic_nanos();
-    let const until_sample =
-        sample_interval_nanoseconds -
-        (before_wait_nanoseconds - last_sample_nanoseconds <
-                 sample_interval_nanoseconds
-             ? before_wait_nanoseconds - last_sample_nanoseconds
-             : sample_interval_nanoseconds);
-    let const until_refresh =
-        refresh_interval_nanoseconds -
-        (before_wait_nanoseconds - last_refresh_nanoseconds <
-                 refresh_interval_nanoseconds
-             ? before_wait_nanoseconds - last_refresh_nanoseconds
-             : refresh_interval_nanoseconds);
-    let const wait_nanoseconds =
-        until_sample < until_refresh ? until_sample : until_refresh;
-    os::sleep_for_seconds(static_cast<f64>(wait_nanoseconds) / 1000000000.0);
+  let const do_sample = [&](u64 now, Allocator frame_allocator) -> Maybe<i32> {
+    let after_rows = read_process_io_rows(frame_allocator, selected_pid,
+                                          evilio_idle_mode::Include);
     if (os::INTERRUPT_REQUESTED != 0) {
       os::INTERRUPT_REQUESTED = 0;
       return 130;
     }
+    if (selected_pid.has_value() && after_rows.is_empty()) return 1;
 
-    let const now = os::monotonic_nanos();
-    if (now - last_sample_nanoseconds >= sample_interval_nanoseconds) {
-      let after_rows = read_process_io_rows(frame_allocator, selected_pid,
-                                            evilio_idle_mode::Include);
-      if (os::INTERRUPT_REQUESTED != 0) {
-        os::INTERRUPT_REQUESTED = 0;
-        return 130;
-      }
-      if (selected_pid.has_value() && after_rows.is_empty()) return 1;
-
-      for (let const &row : after_rows) {
-        bool is_known = false;
-        for (usize index = 0; index < retained.count(); index++) {
-          if (retained[index].pid != row.pid ||
-              retained[index].start_token != row.start_token)
-            continue;
-          if (process_io_counter_reset(retained[index].history.back(),
-                                       row.status))
-          {
-            retained[index].history.clear();
-            retained[index].history_nanoseconds.clear();
-          }
-          retained[index].history.push(row.status);
-          retained[index].history_nanoseconds.push(now);
-          retained[index].last_seen_nanoseconds = now;
-          is_known = true;
-          break;
-        }
-        if (!is_known) {
-          live_process_row entry{};
-          entry.pid = row.pid;
-          entry.start_token = row.start_token;
-          entry.name = String{allocator, row.name.view()};
-          entry.history.push(row.status);
-          entry.history_nanoseconds.push(now);
-          entry.last_seen_nanoseconds = now;
-          retained.push(steal(entry));
-        }
-      }
-      for (usize index = retained.count(); index > 0; index--) {
-        let const position = index - 1;
-        if (retained[position].history_nanoseconds.back() != now) {
-          retained[position].history.push(retained[position].history.back());
-          retained[position].history_nanoseconds.push(now);
-        }
-        if (now - retained[position].last_seen_nanoseconds >=
-            falloff_nanoseconds)
-        {
-          retained.remove(position);
+    for (let const &row : after_rows) {
+      bool is_known = false;
+      for (usize index = 0; index < retained.count(); index++) {
+        if (retained[index].pid != row.pid ||
+            retained[index].start_token != row.start_token)
           continue;
+        if (process_io_counter_reset(retained[index].history.back(),
+                                     row.status))
+        {
+          retained[index].history.clear();
+          retained[index].history_nanoseconds.clear();
         }
-        trim_rolling_history(retained[position].history,
-                             retained[position].history_nanoseconds,
-                             rolling_window_start(now, falloff_nanoseconds));
+        retained[index].history.push(row.status);
+        retained[index].history_nanoseconds.push(now);
+        retained[index].last_seen_nanoseconds = now;
+        is_known = true;
+        break;
       }
-      last_sample_nanoseconds = now;
+      if (!is_known) {
+        live_process_row entry{};
+        entry.pid = row.pid;
+        entry.start_token = row.start_token;
+        entry.name = String{allocator, row.name.view()};
+        entry.history.push(row.status);
+        entry.history_nanoseconds.push(now);
+        entry.last_seen_nanoseconds = now;
+        retained.push(steal(entry));
+      }
     }
-    if (now - last_refresh_nanoseconds < refresh_interval_nanoseconds) continue;
-
-    last_refresh_nanoseconds = now;
+    for (usize index = retained.count(); index > 0; index--) {
+      let const position = index - 1;
+      if (retained[position].history_nanoseconds.back() != now) {
+        retained[position].history.push(retained[position].history.back());
+        retained[position].history_nanoseconds.push(now);
+      }
+      if (now - retained[position].last_seen_nanoseconds >= falloff_nanoseconds)
+      {
+        retained.remove(position);
+        continue;
+      }
+      trim_rolling_history(retained[position].history,
+                           retained[position].history_nanoseconds,
+                           rolling_window_start(now, falloff_nanoseconds));
+    }
+    last_sample_nanoseconds = now;
+    return None;
+  };
+  let const do_render = [&](String &output, const live_view_dimensions &,
+                            Allocator frame_allocator) -> Maybe<i32> {
     let rows = ArrayList<io_row>{frame_allocator};
     rows.reserve(retained.count());
     let const window_start =
@@ -1029,15 +993,21 @@ fn run_live_process_io(const ExecContext &ec, Maybe<i64> selected_pid,
       });
     }
     let const sorted_rows = sort_process_rows(steal(rows), sort_key);
-    let output = String{frame_allocator};
-    if (is_terminal) output += "\x1b[H\x1b[2J";
-    append_live_controls_bar(output, sample_label.view(), refresh_label.view(),
-                             color_mode == evilio_color_mode::Colored);
     append_process_io_rate_report(output, sorted_rows, row_limit,
                                   frame_allocator, sample_duration_label,
                                   nullptr, color_mode);
-    ec.print_to_stdout(output);
-  }
+    return None;
+  };
+
+  live_view_options options{};
+  options.title = "evilio";
+  options.window_seconds = window_seconds;
+  options.sample_interval_seconds = sample_interval_seconds;
+  options.refresh_interval_seconds = refresh_interval_seconds;
+  options.started_at_nanoseconds = started_at_nanoseconds;
+  options.should_color = color_mode == evilio_color_mode::Colored;
+
+  return run_live_view(ec, options, do_sample, do_render);
 }
 
 struct live_disk_row
@@ -1104,24 +1074,16 @@ fn make_disk_window_row(const live_disk_row &row, u64 window_start_nanoseconds,
 
 fn run_live_disk_io(const ExecContext &ec, f64 window_seconds,
                     f64 sample_interval_seconds, f64 refresh_interval_seconds,
-                    bool is_terminal, StringView sample_duration_label,
+                    StringView sample_duration_label,
                     Maybe<evilio_sort_key> sort_key,
                     evilio_color_mode color_mode) throws -> i32
 {
   let const allocator = heap_allocator();
-  let frame_arena = BumpArena{};
   let retained = ArrayList<live_disk_row>{allocator};
   let const falloff_nanoseconds =
       static_cast<u64>(window_seconds * 1000000000.0);
-  let const sample_interval_nanoseconds =
-      static_cast<u64>(sample_interval_seconds * 1000000000.0);
-  let const refresh_interval_nanoseconds =
-      static_cast<u64>(refresh_interval_seconds * 1000000000.0);
-  u64 last_refresh_nanoseconds = os::monotonic_nanos();
-  u64 last_sample_nanoseconds = last_refresh_nanoseconds;
-  let const sample_label = format_live_duration(window_seconds, allocator);
-  let const refresh_label =
-      format_live_duration(refresh_interval_seconds, allocator);
+  u64 last_sample_nanoseconds = os::monotonic_nanos();
+  let const started_at_nanoseconds = last_sample_nanoseconds;
   let baseline_snapshot = os::read_disk_io_snapshot(allocator);
   for (let const &disk : baseline_snapshot.disks) {
     live_disk_row entry{};
@@ -1132,81 +1094,51 @@ fn run_live_disk_io(const ExecContext &ec, f64 window_seconds,
     retained.push(steal(entry));
   }
 
-  loop
-  {
-    let const frame_mark = frame_arena.mark();
-    defer { frame_arena.release(frame_mark); };
-    let const frame_allocator = bump_allocator(frame_arena);
-
-    let const now_before_wait = os::monotonic_nanos();
-    let const sample_elapsed = now_before_wait - last_sample_nanoseconds;
-    let const refresh_elapsed = now_before_wait - last_refresh_nanoseconds;
-    let const until_sample = sample_interval_nanoseconds > sample_elapsed
-                                 ? sample_interval_nanoseconds - sample_elapsed
-                                 : 0;
-    let const until_refresh =
-        refresh_interval_nanoseconds > refresh_elapsed
-            ? refresh_interval_nanoseconds - refresh_elapsed
-            : 0;
-    let const wait_nanoseconds =
-        until_sample < until_refresh ? until_sample : until_refresh;
-    os::sleep_for_seconds(static_cast<f64>(wait_nanoseconds) / 1000000000.0);
-    if (os::INTERRUPT_REQUESTED != 0) {
-      os::INTERRUPT_REQUESTED = 0;
-      return 130;
-    }
-
-    let const now = os::monotonic_nanos();
-    let const did_sample =
-        now - last_sample_nanoseconds >= sample_interval_nanoseconds;
-    if (did_sample) {
-      let after_snapshot = os::read_disk_io_snapshot(allocator);
-      for (let const &disk : after_snapshot.disks) {
-        bool is_known = false;
-        for (usize index = 0; index < retained.count(); index++) {
-          if (retained[index].name != disk.name) continue;
-          if (disk_io_counter_reset(retained[index].history.back(), disk)) {
-            retained[index].history.clear();
-            retained[index].history_nanoseconds.clear();
-          }
-          retained[index].history.push(disk);
-          retained[index].history_nanoseconds.push(now);
-          retained[index].last_seen_nanoseconds = now;
-          is_known = true;
-          break;
+  let const do_sample = [&](u64 now, Allocator) -> Maybe<i32> {
+    let after_snapshot = os::read_disk_io_snapshot(allocator);
+    for (let const &disk : after_snapshot.disks) {
+      bool is_known = false;
+      for (usize index = 0; index < retained.count(); index++) {
+        if (retained[index].name != disk.name) continue;
+        if (disk_io_counter_reset(retained[index].history.back(), disk)) {
+          retained[index].history.clear();
+          retained[index].history_nanoseconds.clear();
         }
-        if (!is_known) {
-          live_disk_row entry{};
-          entry.name = String{allocator, disk.name.view()};
-          entry.history.push(disk);
-          entry.history_nanoseconds.push(now);
-          entry.last_seen_nanoseconds = now;
-          retained.push(steal(entry));
-        }
+        retained[index].history.push(disk);
+        retained[index].history_nanoseconds.push(now);
+        retained[index].last_seen_nanoseconds = now;
+        is_known = true;
+        break;
       }
-      for (usize index = retained.count(); index > 0; index--) {
-        let const position = index - 1;
-        if (retained[position].history_nanoseconds.back() != now) {
-          retained[position].history.push(retained[position].history.back());
-          retained[position].history_nanoseconds.push(now);
-        }
-        if (now - retained[position].last_seen_nanoseconds >=
-            falloff_nanoseconds)
-        {
-          retained.remove(position);
-          continue;
-        }
-        trim_rolling_history(retained[position].history,
-                             retained[position].history_nanoseconds,
-                             rolling_window_start(now, falloff_nanoseconds));
+      if (!is_known) {
+        live_disk_row entry{};
+        entry.name = String{allocator, disk.name.view()};
+        entry.history.push(disk);
+        entry.history_nanoseconds.push(now);
+        entry.last_seen_nanoseconds = now;
+        retained.push(steal(entry));
       }
-      last_sample_nanoseconds = now;
     }
-    if (now - last_refresh_nanoseconds < refresh_interval_nanoseconds) {
-      continue;
+    for (usize index = retained.count(); index > 0; index--) {
+      let const position = index - 1;
+      if (retained[position].history_nanoseconds.back() != now) {
+        retained[position].history.push(retained[position].history.back());
+        retained[position].history_nanoseconds.push(now);
+      }
+      if (now - retained[position].last_seen_nanoseconds >= falloff_nanoseconds)
+      {
+        retained.remove(position);
+        continue;
+      }
+      trim_rolling_history(retained[position].history,
+                           retained[position].history_nanoseconds,
+                           rolling_window_start(now, falloff_nanoseconds));
     }
-
-    last_refresh_nanoseconds = now;
+    last_sample_nanoseconds = now;
+    return None;
+  };
+  let const do_render = [&](String &output, const live_view_dimensions &,
+                            Allocator frame_allocator) -> Maybe<i32> {
     let const window_start =
         rolling_window_start(last_sample_nanoseconds, falloff_nanoseconds);
     let rows = ArrayList<disk_io_row>{frame_allocator};
@@ -1215,14 +1147,20 @@ fn run_live_disk_io(const ExecContext &ec, f64 window_seconds,
       rows.push(make_disk_window_row(row, window_start, frame_allocator));
     sort_disk_rows(rows, sort_key);
 
-    let output = String{frame_allocator};
-    if (is_terminal) output += "\x1b[H\x1b[2J";
-    append_live_controls_bar(output, sample_label.view(), refresh_label.view(),
-                             color_mode == evilio_color_mode::Colored);
     append_disk_io_report(output, rows, frame_allocator, sample_duration_label,
                           report_sampling_mode::Rolling, color_mode);
-    ec.print_to_stdout(output);
-  }
+    return None;
+  };
+
+  live_view_options options{};
+  options.title = "evilio";
+  options.window_seconds = window_seconds;
+  options.sample_interval_seconds = sample_interval_seconds;
+  options.refresh_interval_seconds = refresh_interval_seconds;
+  options.started_at_nanoseconds = started_at_nanoseconds;
+  options.should_color = color_mode == evilio_color_mode::Colored;
+
+  return run_live_view(ec, options, do_sample, do_render);
 }
 
 fn make_metric_table(Allocator allocator) throws -> ReportTable
@@ -1539,28 +1477,17 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   if (FLAG_EVILIO_LIVE.is_enabled()) {
-    let const is_terminal = os::is_fd_a_tty(ec.out_fd.value_or(KOSH_STDOUT));
-    bool is_alternate_screen_active = false;
-    if (is_terminal) is_alternate_screen_active = enter_alternate_screen(ec);
-    let const is_cursor_hidden = is_terminal && hide_cursor(ec);
-    defer
-    {
-      if (is_cursor_hidden) show_cursor(ec);
-      if (is_alternate_screen_active) leave_alternate_screen(ec);
-    };
-
     if (should_show_processes) {
       return run_live_process_io(
           ec, selected_pid, row_limit, sample_duration_seconds,
           DEFAULT_LIVE_SAMPLE_INTERVAL_SECONDS, refresh_interval_seconds,
-          is_terminal, sample_duration_label.view(), sort_key,
+          sample_duration_label.view(), sort_key,
           should_color ? evilio_color_mode::Colored : evilio_color_mode::Plain);
     }
 
     return run_live_disk_io(
         ec, sample_duration_seconds, DEFAULT_LIVE_SAMPLE_INTERVAL_SECONDS,
-        refresh_interval_seconds, is_terminal, sample_duration_label.view(),
-        sort_key,
+        refresh_interval_seconds, sample_duration_label.view(), sort_key,
         should_color ? evilio_color_mode::Colored : evilio_color_mode::Plain);
   }
 

@@ -1439,18 +1439,6 @@ fn show_cursor(const ExecContext &ec) wontthrow -> void
   unused(write_alternate_screen_sequence(ec, "\x1b[?25h"));
 }
 
-fn append_live_controls_bar(String &output, StringView sample_label,
-                            StringView refresh_label, bool should_color) throws
-    -> void
-{
-  append_report_text(output,
-                     "ctrl+c to exit. cumulative stats over " + sample_label +
-                         " every " + refresh_label,
-                     colors::ansi::DIM, should_color);
-  output += "\n";
-  output += "\n";
-}
-
 fn format_live_duration(f64 seconds, Allocator allocator) throws -> String
 {
   let const nanoseconds = static_cast<u64>(seconds * 1000000000.0 + 0.5);
