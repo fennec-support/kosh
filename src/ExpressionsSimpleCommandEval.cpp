@@ -156,31 +156,6 @@ hot fn SimpleCommand::get_literal_command_lookup(
   return &*m_literal_command_lookup;
 }
 
-fn SimpleCommand::names_function_by_literal_word(const EvalContext &cxt) const
-    throws -> bool
-{
-  if (m_args.is_empty() || m_args[0]->kind() != Token::Kind::Word ||
-      !cxt.function_store().has_functions())
-  {
-    return false;
-  }
-
-  const Word &command_word =
-      static_cast<const tokens::WordToken *>(m_args[0])->word();
-  if (command_word.plain_literal_kind() == Word::PlainLiteral::NotPlain)
-    return false;
-
-  let const name = command_word.constant_value();
-  if (cxt.scope_store().has_aliases() &&
-      cxt.is_shopt_enabled("expand_aliases") &&
-      cxt.scope_store().get_alias(name).has_value())
-  {
-    return false;
-  }
-
-  return cxt.function_store().find_storage(name) != nullptr;
-}
-
 hot fn SimpleCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
 {
   return evaluate_root_impl(cxt, root_evaluation_mode::Normal);
@@ -205,12 +180,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
 
   let const should_run_command = publish_simple_command(cxt, *this, mode);
   if (!should_run_command) return cxt.execution_store().last_exit_status();
-
-  if (is_async() && !os::can_fork_evaluator() &&
-      names_function_by_literal_word(cxt))
-  {
-    return evaluate_async(cxt);
-  }
 
   /* The check reads the typed command word before its expansion, so a pattern
      that happens to match a single file is still caught. */
@@ -1028,9 +997,23 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       return (*static_cast<decltype(do_call_function) *>(context))();
     };
 
+    /* A fresh evaluator replays source, so it receives the words already
+       expanded here as quoted literals and expands nothing again. The
+       redirections and prefix assignments already took effect on the
+       descriptors and the state the child inherits. */
+    let expanded_child_source = String{cxt.scratch_allocator()};
+    if (!os::can_fork_evaluator()) {
+      for (usize i = 0; i < program_args.count(); i++) {
+        if (i > 0) expanded_child_source.push(' ');
+        append_shell_quoted_arg(expanded_child_source, program_args[i].view(),
+                                true);
+      }
+    }
+
     return evaluate_async_with(
         cxt, do_run_in_child,
-        const_cast<void *>(static_cast<const void *>(&do_call_function)));
+        const_cast<void *>(static_cast<const void *>(&do_call_function)),
+        expanded_child_source.view());
   }
 
   let did_resolution_fail = false;

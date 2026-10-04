@@ -953,8 +953,9 @@ protected:
   using async_body = i64 (*)(void *context, EvalContext &cxt);
 
   virtual fn evaluate_async_body(EvalContext &cxt) const throws -> i64;
-  fn evaluate_async_with(EvalContext &cxt, async_body body,
-                         void *context) const throws -> i64;
+  fn evaluate_async_with(EvalContext &cxt, async_body body, void *context,
+                         StringView expanded_child_source = StringView{}) const
+      throws -> i64;
 
   fn append_ast_execution_flags(String &label) const throws -> void;
 
@@ -1163,9 +1164,6 @@ protected:
 
   fn get_literal_command_lookup(const ArrayList<String> &program_args)
       const throws -> const literal_command_lookup *;
-
-  fn names_function_by_literal_word(const EvalContext &cxt) const throws
-      -> bool;
 
   u32 m_full_source_end_position{0};
 

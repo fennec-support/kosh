@@ -32,4 +32,11 @@ MARK=set mark "$(echo hit >> "$dir/count"; echo value)" &
 wait "$!"
 echo "count=$(wc -l < "$dir/count" | tr -d ' ')"
 
+echo expanded-function-name
+: > "$dir/count"
+fn=show
+$fn "$(echo hit >> "$dir/count"; echo value)" tail &
+wait "$!"
+echo "count=$(wc -l < "$dir/count" | tr -d ' ')"
+
 echo expansion-done

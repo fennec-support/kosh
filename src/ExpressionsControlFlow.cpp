@@ -87,7 +87,9 @@ fn Command::evaluate_async(EvalContext &cxt) const throws -> i64
 }
 
 fn Command::evaluate_async_with(EvalContext &cxt, async_body body,
-                                void *context) const throws -> i64
+                                void *context,
+                                StringView expanded_child_source) const throws
+    -> i64
 {
   let const source = cxt.source_store().current_source();
   let command_text = StringView{};
@@ -105,7 +107,8 @@ fn Command::evaluate_async_with(EvalContext &cxt, async_body body,
   let const should_launch_fresh_evaluator = !os::can_fork_evaluator();
   if (should_launch_fresh_evaluator) bootstrap = cxt.make_subshell_bootstrap();
   let const launch = os::launch_compound_stage(os::compound_stage_options{
-      .source = command_text,
+      .source = expanded_child_source.is_empty() ? command_text
+                                                 : expanded_child_source,
       .location = source_location(),
       .diagnostic_source = source != nullptr ? source->view() : StringView{},
       .bootstrap = should_launch_fresh_evaluator ? &bootstrap : nullptr,
