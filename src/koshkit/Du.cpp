@@ -532,7 +532,7 @@ static fn order_tree_children(ArrayList<du_tree_node> &nodes,
   keys.reserve(nodes.count());
   for (usize index = 0; index < nodes.count(); index++) {
     let const &node = nodes[index];
-    if (node.parent_index != SIZE_MAX)
+    if (node.parent_index != SIZE_MAX && node.is_kept)
       keys.push(du_tree_order_key{index, node.parent_index, node.size_bytes,
                                   node.path});
   }
@@ -557,21 +557,51 @@ static fn keep_largest_tree_nodes(ArrayList<du_tree_node> &nodes,
                                   usize top_count, Allocator allocator) throws
     -> void
 {
-  let keys = ArrayList<du_tree_order_key>{allocator};
-  keys.reserve(nodes.count());
+  let heap = ArrayList<du_tree_order_key>{allocator};
+  heap.reserve(top_count);
+  let const do_sift_down = [&]() wontthrow -> void {
+    usize index = 0;
+    while (true) {
+      usize worst = index * 2 + 1;
+      if (worst >= heap.count()) break;
+
+      if (worst + 1 < heap.count() &&
+          is_tree_key_before(heap[worst], heap[worst + 1]))
+        worst++;
+      if (!is_tree_key_before(heap[index], heap[worst])) break;
+
+      let const displaced = heap[index];
+      heap[index] = heap[worst];
+      heap[worst] = displaced;
+      index = worst;
+    }
+  };
+
   for (usize index = 0; index < nodes.count(); index++) {
     let const &node = nodes[index];
-    if (node.parent_index != SIZE_MAX)
-      keys.push(du_tree_order_key{index, node.parent_index, node.size_bytes,
-                                  node.path});
+    if (node.parent_index == SIZE_MAX) continue;
+
+    let const key =
+        du_tree_order_key{index, node.parent_index, node.size_bytes, node.path};
+    if (heap.count() < top_count) {
+      heap.push(key);
+      usize child = heap.count() - 1;
+      while (child != 0 && is_tree_key_before(heap[(child - 1) / 2], key)) {
+        heap[child] = heap[(child - 1) / 2];
+        child = (child - 1) / 2;
+      }
+      heap[child] = key;
+    } else if (top_count != 0 && is_tree_key_before(key, heap[0])) {
+      heap[0] = key;
+      do_sift_down();
+    }
   }
 
-  let const sorted = steal(keys).make_sorted(is_tree_key_before);
   for (let const root_index : root_indices)
     nodes[root_index].is_kept = true;
 
-  for (usize rank = 0; rank < sorted.count() && rank < top_count; rank++) {
-    usize index = sorted[rank].node_index;
+  for (let const &selected : heap) {
+    usize index = selected.node_index;
     while (index != SIZE_MAX && !nodes[index].is_kept) {
       nodes[index].is_kept = true;
       index = nodes[index].parent_index;
@@ -589,10 +619,15 @@ static fn render_tree(const ArrayList<du_tree_node> &nodes,
   rendered_sizes.reserve(nodes.count());
   usize size_width = 0;
   for (let const &node : nodes) {
+    if (!node.is_kept) {
+      rendered_sizes.push(String{allocator});
+      continue;
+    }
+
     let rendered_size = request.is_human
                             ? format_human_size(node.size_bytes, allocator)
                             : String::from(node.size_bytes, allocator);
-    if (node.is_kept && rendered_size.length() > size_width)
+    if (rendered_size.length() > size_width)
       size_width = rendered_size.length();
     rendered_sizes.push(steal(rendered_size));
   }
@@ -685,13 +720,14 @@ static fn print_tree_report(const du_tree_request &request,
   nodes.reserve(request.rows.count() + request.spans.count());
   if (!build_tree_nodes(request, allocator, nodes, root_indices)) return false;
 
-  order_tree_children(nodes, child_order, allocator);
   if (request.top_count != 0) {
     keep_largest_tree_nodes(nodes, root_indices, request.top_count, allocator);
   } else {
     for (let &node : nodes)
       node.is_kept = true;
   }
+
+  order_tree_children(nodes, child_order, allocator);
 
   let root_keys = ArrayList<du_tree_order_key>{allocator};
   for (let const root_index : root_indices)
