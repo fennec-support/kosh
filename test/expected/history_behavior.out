@@ -1,6 +1,11 @@
 recall ok
 fc replacement ok
 search casefold ok
+recall after a peer append and truncation keeps the private branch
+local runs=2
+base runs=1
+peer runs=0
+truncated runs=0
 history expansion ok
 history words ok
 history modifiers ok

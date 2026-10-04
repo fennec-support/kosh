@@ -122,6 +122,31 @@ case "$out" in
 *) echo "search casefold broken" ;;
 esac
 
+peer_hist=$dir/peer
+printf 'echo BASE_$((6*7))\n' > "$peer_hist"
+rm -f "$ready"
+rm -f "$input_status"
+out=$({
+  send_input_when_ready 'echo LOCAL_$((6*7))\r'
+  printf 'echo PEER_$((6*7))\n' >> "$peer_hist"
+  send_input_when_ready '\033[A' '\r'
+  printf 'echo TRUNCATED_$((6*7))\n' > "$peer_hist"
+  send_input_when_ready '\033[A' '\033[A' '\r' 'exit\r'
+  printf '%s\n' "$?" > "$input_status"
+} |
+  BIN="$BIN" READY="$ready" KOSH_HISTORY_FILE="$peer_hist" \
+    PROMPT_COMMAND='printf ready > "$READY"; unset PROMPT_COMMAND' \
+    run_interactive \
+      'stty cols 120 rows 40; exec "$BIN" -i --rcfile /dev/null') ||
+  exit 1
+[ "$(cat "$input_status")" = 0 ] || exit 1
+echo "recall after a peer append and truncation keeps the private branch"
+printf 'local runs=%s\n' "$(printf '%s\n' "$out" | grep -c 'LOCAL_42')"
+printf 'base runs=%s\n' "$(printf '%s\n' "$out" | grep -c 'BASE_42')"
+printf 'peer runs=%s\n' "$(printf '%s\n' "$out" | grep -c 'PEER_42')"
+printf 'truncated runs=%s\n' \
+  "$(printf '%s\n' "$out" | grep -c 'TRUNCATED_42')"
+
 printf 'echo HISTORY_EXPANSION_MARKER\n' > "$expansion_hist"
 rm -f "$ready"
 rm -f "$input_status"
