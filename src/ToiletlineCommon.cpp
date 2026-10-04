@@ -103,8 +103,15 @@ static fn codepoint_display_width(u32 codepoint) -> usize
 flatten static fn display_width_walk(StringView text, usize stop_after,
                                      usize *out_byte_offset) -> usize
 {
-  usize width = 0;
   usize byte_offset = 0;
+  let const ascii_limit = stop_after < text.length ? stop_after : text.length;
+  while (byte_offset < ascii_limit &&
+         static_cast<u8>(text[byte_offset]) - 0x20U < 0x5fU)
+  {
+    byte_offset++;
+  }
+
+  usize width = byte_offset;
   while (byte_offset < text.length && text[byte_offset] != '\0') {
     if (static_cast<u8>(text[byte_offset]) == 0x1b) {
       byte_offset++;
