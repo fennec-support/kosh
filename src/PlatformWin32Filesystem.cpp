@@ -1075,10 +1075,18 @@ fn create_symlink(StringView target, StringView link_path) wontthrow -> bool
 #ifndef SYMBOLIC_LINK_FLAG_DIRECTORY
 #define SYMBOLIC_LINK_FLAG_DIRECTORY 0x1
 #endif
-  let const wide_target = utf8_to_wide(target, heap_allocator());
+  let wide_target = utf8_to_wide(target, heap_allocator());
   if (!wide_target.has_value()) return false;
   let const wide_link_path = utf8_to_wide(link_path, heap_allocator());
   if (!wide_link_path.has_value()) return false;
+
+  /* A stored target with a forward slash cannot be resolved by the filesystem
+     when the link is opened. */
+  for (WCHAR *wide_character = wide_target->begin(); *wide_character != L'\0';
+       ++wide_character)
+  {
+    if (*wide_character == L'/') *wide_character = L'\\';
+  }
 
   /* A directory target needs the directory flag, the unprivileged flag avoids
      elevation on developer-mode Windows. */
