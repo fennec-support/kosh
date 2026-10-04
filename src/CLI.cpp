@@ -7,8 +7,8 @@
  * usage errors. It also renders ReportTable grids. A rendered row never ends
  * in a space, so the last left-aligned column is not padded and a right-aligned
  * column keeps its left padding. A table with no rows renders nothing, title
- * included, unless the caller selects set_empty_visible. A titled table puts
- * its title at the section indentation and its body two spaces beneath it.
+ * included. A titled table puts its title at the section indentation and its
+ * body two spaces beneath it.
  */
 
 #include "CLI.hpp"
@@ -1215,9 +1215,7 @@ fn ReportTable::to_string(bool should_color,
                           StringView indentation) const throws -> String
 {
   let output = String{m_columns.allocator()};
-  if (m_grid_rows.is_empty() && !m_should_show_empty) {
-    return output;
-  }
+  if (m_grid_rows.is_empty()) return output;
 
   append_report_grid(output, m_columns, m_grid_rows, should_color, indentation,
                      m_should_show_header, m_column_gap_space_count);

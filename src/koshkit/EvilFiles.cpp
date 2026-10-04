@@ -206,19 +206,12 @@ fn load_inode_table(StringView table_path, StringView type,
   if (!contents.has_value()) return;
 
   let const text = contents->view();
-  usize position = 0;
-  bool is_header = true;
-  while (position < text.length) {
-    let const line_start = position;
-    while (position < text.length && text[position] != '\n')
-      position++;
-    let line = text.substring_of_length(line_start, position - line_start);
-    if (position < text.length) position++;
-    if (is_header) {
-      is_header = false;
-      continue;
-    }
+  let const header_end = text.find_character('\n');
+  if (!header_end.has_value()) return;
 
+  usize position = *header_end + 1;
+  while (position < text.length) {
+    let line = text.next_line(position);
     while (!line.is_empty() && line[line.length - 1] == ' ')
       line = line.substring_of_length(0, line.length - 1);
     let const separator = line.find_last_character(' ');
@@ -595,12 +588,13 @@ fn EvilFiles::execute(
         dimensions.has_value() && dimensions->columns > 8)
       line_width_limit = dimensions->columns;
   }
+  let const other_columns_width =
+      2 + widths.pid + 2 + widths.user + 2 + widths.descriptor + 2 +
+      widths.type + 2 + widths.mode + 2 + widths.state + 2 + widths.device + 2 +
+      widths.size + 2 + widths.offset + 2 + widths.node + 2 + widths.endpoint +
+      2;
   if (line_width_limit != SIZE_MAX) {
-    let const fixed_width = 2 + widths.pid + 2 + widths.user + 2 +
-                            widths.descriptor + 2 + widths.type + 2 +
-                            widths.mode + 2 + widths.state + 2 + widths.device +
-                            2 + widths.size + 2 + widths.offset + 2 +
-                            widths.node + 2 + widths.endpoint + 2 + 3;
+    let const fixed_width = other_columns_width + 3;
     if (line_width_limit > fixed_width + 4) {
       let const command_limit = line_width_limit - fixed_width;
       if (widths.command > command_limit) widths.command = command_limit;
@@ -634,11 +628,7 @@ fn EvilFiles::execute(
   table.add_column("NAME", report_table_alignment::Left,
                    colors::ansi::BOLD_CYAN);
 
-  let const used_width = 2 + widths.command + 2 + widths.pid + 2 + widths.user +
-                         2 + widths.descriptor + 2 + widths.type + 2 +
-                         widths.mode + 2 + widths.state + 2 + widths.device +
-                         2 + widths.size + 2 + widths.offset + 2 + widths.node +
-                         2 + widths.endpoint + 2;
+  let const used_width = other_columns_width + 2 + widths.command;
   for (let const &row : rows) {
     let command = String{allocator, row.command.view()};
     if (toiletline::get_display_width(command.view()) > widths.command &&

@@ -155,10 +155,8 @@ LiveView::LiveView(const ExecContext &ec,
           options.sample_interval_seconds *NANOSECONDS_PER_SECOND)),
       m_refresh_interval_nanoseconds(static_cast<u64>(
           options.refresh_interval_seconds *NANOSECONDS_PER_SECOND)),
-      m_raw_input(os::is_fd_a_tty(ec.out_fd.value_or(KOSH_STDOUT))
-                      ? ec.in_fd.value_or(KOSH_STDIN)
-                      : KOSH_INVALID_FD),
-      m_is_terminal(os::is_fd_a_tty(ec.out_fd.value_or(KOSH_STDOUT)))
+      m_raw_input(os::is_fd_a_tty(m_output_fd) ? m_input_fd : KOSH_INVALID_FD),
+      m_is_terminal(os::is_fd_a_tty(m_output_fd))
 {
   if (!m_options.started_at_nanoseconds)
     m_options.started_at_nanoseconds = os::monotonic_nanos();

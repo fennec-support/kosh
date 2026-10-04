@@ -353,6 +353,15 @@ fn EvilDisk::execute(
 
   let output = String{allocator};
   let warnings = ArrayList<String>{allocator};
+  if (skipped_permission_count != 0) {
+    let warning = String{allocator, "Skipped "};
+    warning += String::from(skipped_permission_count, allocator).view();
+    warning += " filesystem";
+    if (skipped_permission_count != 1) warning += "s";
+    warning += " due to permission denied";
+    warnings.push(steal(warning));
+  }
+
   let unavailable_sections = ArrayList<StringView>{allocator};
   let capacity_table = ReportTable{allocator};
   capacity_table.add_column("FILESYSTEM", report_table_alignment::Left,
@@ -624,20 +633,6 @@ fn EvilDisk::execute(
   }
 
   ec.print_to_stdout(output);
-  if (skipped_permission_count != 0) {
-    let warning = String{allocator, "Skipped "};
-    warning += String::from(skipped_permission_count, allocator).view();
-    warning += " filesystem";
-    if (skipped_permission_count != 1) warning += "s";
-    warning += " due to permission denied";
-    let ordered_warnings = ArrayList<String>{allocator};
-    ordered_warnings.push(steal(warning));
-    for (let const &other : warnings)
-      ordered_warnings.push(String{allocator, other.view()});
-    show_report_warnings(ordered_warnings);
-
-    return status;
-  }
   show_report_warnings(warnings);
 
   return status;

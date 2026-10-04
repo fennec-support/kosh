@@ -991,10 +991,9 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             !option_is_available(cxt, SET_OPTIONS[*option_position]))
         {
           let invalid_option = String{heap_allocator()};
-          let const decoded = utils::decode_utf8(arg.view(), c, 0);
-          let const byte_count = decoded.length > 1 ? decoded.length : 1;
           invalid_option += arg[0];
-          invalid_option += arg.view().substring_of_length(c, byte_count);
+          invalid_option += arg.view().substring_of_length(
+              c, utils::decode_utf8(arg.view(), c, 0).length);
           if (!option_position.has_value())
             throw make_error_for_arg(
                 ec, i, StringView{"Unknown option '"} + invalid_option + "'");

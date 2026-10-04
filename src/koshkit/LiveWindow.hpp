@@ -90,21 +90,15 @@ fn update_retained_rows(ArrayList<Row> &retained, Items &observed, u64 now,
 
   for (let &item : observed) {
     let const &value = do_get_value(item);
-    if (let const found = do_find(do_get_key(item)); found.has_value()) {
-      let &row = retained[*found];
-      if (do_is_reset(row.history.back(), value)) {
-        row.history.clear();
-        row.history_nanoseconds.clear();
-      }
-      row.history.push(value);
-      row.history_nanoseconds.push(now);
-      row.last_seen_nanoseconds = now;
-      do_updated(item, row);
-      continue;
+    let const found = do_find(do_get_key(item));
+    if (!found.has_value()) retained.push(do_make_row(item));
+
+    let &row = found.has_value() ? retained[*found] : retained.back();
+    if (found.has_value() && do_is_reset(row.history.back(), value)) {
+      row.history.clear();
+      row.history_nanoseconds.clear();
     }
 
-    retained.push(do_make_row(item));
-    let &row = retained.back();
     row.history.push(value);
     row.history_nanoseconds.push(now);
     row.last_seen_nanoseconds = now;

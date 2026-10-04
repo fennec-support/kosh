@@ -422,10 +422,6 @@ public:
   {
     m_column_gap_space_count = space_count;
   }
-  fn set_empty_visible(bool should_show_empty) wontthrow -> void
-  {
-    m_should_show_empty = should_show_empty;
-  }
   pure fn get_row_count() const wontthrow -> usize
   {
     return m_grid_rows.count();
@@ -439,7 +435,6 @@ private:
   ArrayList<report_table_column> m_columns;
   ArrayList<ArrayList<report_table_cell>> m_grid_rows;
   bool m_should_show_header{true};
-  bool m_should_show_empty{false};
   usize m_column_gap_space_count{2};
 };
 fn append_titled_report_table(String &output, StringView title,

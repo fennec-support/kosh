@@ -967,11 +967,8 @@ fn check_command_word_shape(AnalysisContext &actx,
     if (let const id = OPERATOR_AS_COMMAND.find(*args[1]->raw_view());
         id.has_value())
     {
-      has_explained_resolution_failure |=
-          *id == diagnostic_id::sc2283
-              ? actx.report_diagnostic(*id, args[1]->source_location())
-              : actx.report_diagnostic(*id, args[1]->source_location(),
-                                       {command_literal});
+      has_explained_resolution_failure |= actx.report_diagnostic(
+          *id, args[1]->source_location(), {command_literal});
     }
   }
 

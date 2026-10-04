@@ -46,9 +46,8 @@ fn Eval::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     } else if (lead.length() >= 2 && lead[0] == '-') {
       let invalid_option = String{cxt.scratch_allocator()};
       invalid_option += lead[0];
-      let const decoded = utils::decode_utf8(lead.view(), 1, 0);
-      let const byte_count = decoded.length > 1 ? decoded.length : 1;
-      invalid_option.append(lead.view().substring_of_length(1, byte_count));
+      invalid_option.append(lead.view().substring_of_length(
+          1, utils::decode_utf8(lead.view(), 1, 0).length));
 
       let note = String{cxt.scratch_allocator()};
       note += "Try `";

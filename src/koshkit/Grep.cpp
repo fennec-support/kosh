@@ -423,31 +423,25 @@ struct grep_palette
 enum class grep_color_capability : u8
 {
   SelectedMatch,
-  ContextMatch,
   MatchBoth,
   SelectedLine,
   ContextLine,
   FileName,
   LineNumber,
-  ByteOffset,
   Separator,
   Reverse,
-  NoErase,
 };
 
 static constexpr static_string_entry<grep_color_capability>
     GREP_COLOR_CAPABILITY_ENTRIES[] = {
         {SSK("ms"), grep_color_capability::SelectedMatch},
-        {SSK("mc"), grep_color_capability::ContextMatch },
         {SSK("mt"), grep_color_capability::MatchBoth    },
         {SSK("sl"), grep_color_capability::SelectedLine },
         {SSK("cx"), grep_color_capability::ContextLine  },
         {SSK("fn"), grep_color_capability::FileName     },
         {SSK("ln"), grep_color_capability::LineNumber   },
-        {SSK("bn"), grep_color_capability::ByteOffset   },
         {SSK("se"), grep_color_capability::Separator    },
         {SSK("rv"), grep_color_capability::Reverse      },
-        {SSK("ne"), grep_color_capability::NoErase      },
 };
 static constexpr StaticStringMap GREP_COLOR_CAPABILITIES{
     GREP_COLOR_CAPABILITY_ENTRIES};
@@ -475,7 +469,7 @@ static fn apply_grep_color_capability(grep_palette &palette, StringView name,
   case grep_color_capability::FileName: palette.file_name = value; break;
   case grep_color_capability::LineNumber: palette.line_number = value; break;
   case grep_color_capability::Separator: palette.separator = value; break;
-  default: break;
+  case grep_color_capability::Reverse: break;
   }
 }
 
@@ -615,13 +609,19 @@ public:
         return false;
       }
 
+      if (!m_options.should_ignore_case) {
+        let const start = value.find_substring(needle, from);
+        if (!start.has_value()) return false;
+
+        out_start = *start;
+        out_end = *start + needle.length;
+        return true;
+      }
+
       for (usize start = from; start + needle.length <= value.length; start++) {
         usize offset = 0;
         while (offset < needle.length &&
-               (m_options.should_ignore_case
-                    ? static_cast<char>(tolower(
-                          static_cast<unsigned char>(value[start + offset])))
-                    : value[start + offset]) == needle[offset])
+               utils::ascii_to_lower(value[start + offset]) == needle[offset])
         {
           offset++;
         }
