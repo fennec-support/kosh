@@ -243,7 +243,7 @@ public:
   fn merge(const VariableOccurrenceStateMap &other) throws -> void;
 
 private:
-  static constexpr usize CHANGE_COMPACTION_THRESHOLD = 128;
+  static constexpr usize CHANGE_COMPACTION_THRESHOLD = 16;
 
   fn compact() throws -> void;
   fn retain_base() wontthrow -> void;
