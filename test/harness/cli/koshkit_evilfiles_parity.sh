@@ -22,7 +22,7 @@ printf 'descriptor-markers=%s\n' "$descriptor_markers"
 
 case $(uname -s) in
   Linux)
-    BIN="$BIN" python3 "$(dirname "$0")/koshkit_evilfiles_sockets.py" 2>&1
+    BIN="$BIN" python3 "$(dirname "$0")/koshkit_evilfiles_sockets.py" 2> "$TEST_NULL_DEVICE"
     ;;
   *) printf 'socket-fidelity=skipped-not-linux\n' ;;
 esac

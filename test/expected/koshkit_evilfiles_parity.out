@@ -11,7 +11,7 @@ tcp-listener: TYPE=IPv4 MODE=srwxrwxrwx ENDPOINT=127.0.0.1:PORT (LISTEN)
 tcp-client: TYPE=IPv4 MODE=srwxrwxrwx ENDPOINT=127.0.0.1:PORT->127.0.0.1:PORT (ESTAB)
 tcp-accepted: TYPE=IPv4 MODE=srwxrwxrwx ENDPOINT=127.0.0.1:PORT->127.0.0.1:PORT (ESTAB)
 udp: TYPE=IPv4 MODE=srwxrwxrwx ENDPOINT=127.0.0.1:PORT
-tcp6-listener: TYPE=IPv6 MODE=srwxrwxrwx ENDPOINT=[::1]:PORT (LISTEN)
+tcp6-listener: ipv6=checked
 ss-parity=match
 evilfiles-narrow-150: rows=yes fits=yes ellipsis=yes
 evilfiles-narrow-130: rows=yes fits=yes ellipsis=yes

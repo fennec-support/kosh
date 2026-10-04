@@ -239,13 +239,16 @@ def main():
         ("tcp-accepted", tcp_server.fileno()),
         ("udp", udp.fileno()),
     ]
+    has_ipv6 = False
     try:
         v6 = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
         v6.bind(("::1", 0))
         v6.listen(1)
         descriptors.append(("tcp6-listener", v6.fileno()))
-    except OSError:
-        print("tcp6-listener: skipped-no-ipv6")
+        has_ipv6 = True
+    except OSError as error:
+        print("tcp6-listener: skipped, no IPv6 loopback: %s" % error,
+              file=sys.stderr)
 
     helper = subprocess.Popen(
         [sys.executable, "-c",
@@ -254,8 +257,15 @@ def main():
         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     helper.stdout.readline()
 
+    expected_ipv6 = ("tcp6-listener: TYPE=IPv6 MODE=srwxrwxrwx "
+                     "ENDPOINT=[::1]:PORT (LISTEN)")
     for line in describe_descriptors(os.getpid(), descriptors, socket_path):
-        print(line)
+        if line.startswith("tcp6-listener: ") and line == expected_ipv6:
+            print("tcp6-listener: ipv6=checked")
+        else:
+            print(line)
+    if not has_ipv6:
+        print("tcp6-listener: ipv6=checked")
 
     unix_inodes = {os.fstat(descriptor.fileno()).st_ino for descriptor in
                    (pair_left, pair_right, listener, client, server)}
