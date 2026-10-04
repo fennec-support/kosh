@@ -55,6 +55,11 @@ struct conditional_evaluator
 
   using Kind = conditional_element::Kind;
 
+  fn make_path(StringView text) const throws -> Path
+  {
+    return Path{text, cxt.scratch_allocator()};
+  }
+
   pure fn at_end() const wontthrow -> bool { return pos >= elements.count(); }
   pure fn kind_at(usize i) const wontthrow -> Kind { return elements[i].kind; }
 
@@ -289,31 +294,34 @@ struct conditional_evaluator
       }
       return cxt.get_variable_value(operand).has_value();
     }
-    case UnaryOperatorKind::PathExists: return Path{operand}.exists();
-    case UnaryOperatorKind::RegularFile: return Path{operand}.is_regular_file();
-    case UnaryOperatorKind::Directory: return Path{operand}.is_directory();
-    case UnaryOperatorKind::Readable: return Path{operand}.is_readable();
-    case UnaryOperatorKind::Writable: return Path{operand}.is_writable();
-    case UnaryOperatorKind::Executable: return Path{operand}.is_executable();
+    case UnaryOperatorKind::PathExists: return make_path(operand).exists();
+    case UnaryOperatorKind::RegularFile:
+      return make_path(operand).is_regular_file();
+    case UnaryOperatorKind::Directory: return make_path(operand).is_directory();
+    case UnaryOperatorKind::Readable: return make_path(operand).is_readable();
+    case UnaryOperatorKind::Writable: return make_path(operand).is_writable();
+    case UnaryOperatorKind::Executable:
+      return make_path(operand).is_executable();
     case UnaryOperatorKind::NonemptyFile: {
-      let const path = Path{operand};
+      let const path = make_path(operand);
       let const size = path.file_size();
       return size.has_value() && size.value() > 0;
     }
     case UnaryOperatorKind::SymbolicLink:
-      return Path{operand}.is_symbolic_link();
-    case UnaryOperatorKind::BlockDevice: return Path{operand}.is_block_device();
+      return make_path(operand).is_symbolic_link();
+    case UnaryOperatorKind::BlockDevice:
+      return make_path(operand).is_block_device();
     case UnaryOperatorKind::CharacterDevice:
-      return Path{operand}.is_character_device();
-    case UnaryOperatorKind::Fifo: return Path{operand}.is_fifo();
-    case UnaryOperatorKind::Socket: return Path{operand}.is_socket();
-    case UnaryOperatorKind::Setgid: return Path{operand}.has_setgid_bit();
-    case UnaryOperatorKind::Setuid: return Path{operand}.has_setuid_bit();
-    case UnaryOperatorKind::Sticky: return Path{operand}.has_sticky_bit();
+      return make_path(operand).is_character_device();
+    case UnaryOperatorKind::Fifo: return make_path(operand).is_fifo();
+    case UnaryOperatorKind::Socket: return make_path(operand).is_socket();
+    case UnaryOperatorKind::Setgid: return make_path(operand).has_setgid_bit();
+    case UnaryOperatorKind::Setuid: return make_path(operand).has_setuid_bit();
+    case UnaryOperatorKind::Sticky: return make_path(operand).has_sticky_bit();
     case UnaryOperatorKind::EffectiveUserOwner:
-      return Path{operand}.is_owned_by_effective_user();
+      return make_path(operand).is_owned_by_effective_user();
     case UnaryOperatorKind::EffectiveGroupOwner:
-      return Path{operand}.is_owned_by_effective_group();
+      return make_path(operand).is_owned_by_effective_group();
     case UnaryOperatorKind::Terminal: {
       if (ErrorOr<i64> descriptor = operand.to<i64>(); !descriptor.is_error())
         return os::is_fd_a_tty(
@@ -336,11 +344,11 @@ struct conditional_evaluator
   {
     switch (op) {
     case BinaryOperatorKind::SameFile:
-      return Path{left}.is_same_file_as(Path{right});
+      return make_path(left).is_same_file_as(make_path(right));
     case BinaryOperatorKind::NewerFile:
-      return Path{left}.is_newer_than(Path{right});
+      return make_path(left).is_newer_than(make_path(right));
     case BinaryOperatorKind::OlderFile:
-      return Path{left}.is_older_than(Path{right});
+      return make_path(left).is_older_than(make_path(right));
     default: break;
     }
 

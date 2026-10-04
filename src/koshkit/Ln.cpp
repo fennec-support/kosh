@@ -50,7 +50,8 @@ fn Ln::execute(const ExecContext &ec, EvalContext &cxt,
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
 
   let const destination = operands[operands.count() - 1].view();
-  let const is_destination_directory = Path{destination}.is_directory();
+  let const is_destination_directory =
+      Path{destination, cxt.scratch_allocator()}.is_directory();
 
   if (operands.count() > 2 && !is_destination_directory) {
     throw Error{
@@ -65,8 +66,8 @@ fn Ln::execute(const ExecContext &ec, EvalContext &cxt,
     let const target = operands[i].view();
     let link = String{cxt.scratch_allocator(), destination};
     if (is_destination_directory) {
-      let link_path = Path{destination};
-      link_path.append(Path{target}.filename());
+      let link_path = Path{destination, cxt.scratch_allocator()};
+      link_path.append(Path{target, cxt.scratch_allocator()}.filename());
       link = link_path.text();
     }
 

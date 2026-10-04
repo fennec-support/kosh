@@ -168,7 +168,7 @@ static fn checked_timeout_program(StringView program_name,
                                   const SourceLocation &program_location,
                                   EvalContext &cxt) throws -> Maybe<Path>
 {
-  let const typed_program_path = Path{program_name};
+  let const typed_program_path = Path{program_name, cxt.scratch_allocator()};
   let program_path = resolve_timeout_program(program_name, cxt);
   if (!program_path.has_value()) return None;
 
@@ -210,7 +210,9 @@ fn preflight_timeout_stage(const ExecContext &ec, EvalContext &cxt,
     let[operands, operand_locations] = parse_util_operands(
         FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations, true);
     if (FLAG_HELP.is_enabled() || operands.count() < 2) return None;
-    if (!Path{operands[1].view()}.has_trailing_separator()) return None;
+    if (!Path{operands[1].view(), cxt.scratch_allocator()}
+             .has_trailing_separator())
+      return None;
 
     try {
       unused(parse_koshkit_duration_seconds(

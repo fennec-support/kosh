@@ -127,7 +127,8 @@ fn Man::execute(const ExecContext &ec, EvalContext &cxt,
           let path = String{cxt.scratch_allocator(), manual_directory.view()};
           path += '/';
           path += entry.view();
-          let content = Path{path.view()}.read_entire_file();
+          let content =
+              Path{path.view(), cxt.scratch_allocator()}.read_entire_file();
           if (!content.has_value()) continue;
           let searchable = content->clone();
           searchable.lowercase_ascii();
@@ -174,7 +175,8 @@ fn Man::execute(const ExecContext &ec, EvalContext &cxt,
       status = 1;
       continue;
     }
-    let const content = Path{page->view()}.read_entire_file();
+    let const content =
+        Path{page->view(), cxt.scratch_allocator()}.read_entire_file();
     if (!content.has_value()) {
       status = 1;
       continue;

@@ -122,8 +122,8 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
                     cp_recursive_mode recursive_mode,
                     cp_symlink_mode symlink_mode) throws -> bool
 {
-  let const source_path = Path{source};
-  let const destination_path = Path{destination};
+  let const source_path = Path{source, allocator};
+  let const destination_path = Path{destination, allocator};
   if (destination_path.exists() &&
       source_path.is_same_file_as(destination_path))
   {
@@ -188,9 +188,10 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
           "' is a directory, pass -r to copy it"
       };
 
-    let const source_absolute = Path{source}.to_absolute().normalized();
+    let const source_absolute =
+        Path{source, allocator}.to_absolute().normalized();
     let const destination_absolute =
-        Path{destination}.to_absolute().normalized();
+        Path{destination, allocator}.to_absolute().normalized();
     let source_prefix = source_absolute.text().clone();
     source_prefix.push(os::DIRECTORY_SEPARATOR);
     if (destination_absolute.view() == source_absolute.view() ||
@@ -203,7 +204,8 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
       };
     }
 
-    let const did_destination_exist = Path{destination}.is_directory();
+    let const did_destination_exist =
+        Path{destination, allocator}.is_directory();
     os::make_directory(destination, 0700);
     let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
     defer { cxt.expansion_store().scratch_arena().release(directory_scratch); };
@@ -279,7 +281,7 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
     };
   }
 
-  let const did_destination_exist = Path{destination}.exists();
+  let const did_destination_exist = Path{destination, allocator}.exists();
   let const force_mode =
       should_force ? copy_force_mode::Force : copy_force_mode::Normal;
   copy_file(ec, source, destination, is_verbose, allocator, force_mode);
@@ -353,7 +355,8 @@ fn Cp::execute(const ExecContext &ec, EvalContext &cxt,
                                                   FLAG_CP_FORCE.position());
   let const is_verbose = FLAG_CP_VERBOSE.is_enabled();
   let const destination = operands[operands.count() - 1].view();
-  let const is_destination_directory = Path{destination}.is_directory();
+  let const is_destination_directory =
+      Path{destination, cxt.scratch_allocator()}.is_directory();
 
   if (operands.count() > 2 && !is_destination_directory) {
     throw Error{
@@ -370,14 +373,15 @@ fn Cp::execute(const ExecContext &ec, EvalContext &cxt,
     if (is_destination_directory) {
       /* The Path is held in a named local so the basename view does not dangle
          into a destroyed temporary. */
-      let const source_path = Path{source};
+      let const source_path = Path{source, cxt.scratch_allocator()};
       let const leaf = source_path.filename();
-      let target_path = Path{destination};
+      let target_path = Path{destination, cxt.scratch_allocator()};
       target_path.append(leaf);
       target = target_path.text();
     }
 
-    if (should_prompt && Path{target.view()}.exists() &&
+    if (should_prompt &&
+        Path{target.view(), cxt.scratch_allocator()}.exists() &&
         !confirm_koshkit_action(ec, "overwrite '" + target + "'? "))
       continue;
 

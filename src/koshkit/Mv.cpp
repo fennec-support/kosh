@@ -84,11 +84,11 @@ static fn copy_file_contents(StringView source, StringView destination,
 static fn move_across_devices(StringView source, StringView target,
                               Allocator allocator) throws -> bool
 {
-  let const source_path = Path{source};
+  let const source_path = Path{source, allocator};
   let const is_source_symbolic_link = source_path.is_symbolic_link();
   if (!is_source_symbolic_link && source_path.is_directory()) return false;
 
-  let const target_path = Path{target};
+  let const target_path = Path{target, allocator};
   let temporary_path = os::write_to_named_temp_file(target_path.parent(),
                                                     ".kosh_mv", StringView{});
   if (!temporary_path.has_value())
@@ -167,7 +167,8 @@ fn Mv::execute(const ExecContext &ec, EvalContext &cxt,
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
 
   let const destination = operands[operands.count() - 1].view();
-  let const is_destination_directory = Path{destination}.is_directory();
+  let const is_destination_directory =
+      Path{destination, cxt.scratch_allocator()}.is_directory();
   let const should_prompt =
       FLAG_MV_INTERACTIVE.is_enabled() &&
       (!FLAG_MV_FORCE.is_enabled() ||
@@ -187,12 +188,14 @@ fn Mv::execute(const ExecContext &ec, EvalContext &cxt,
     let const source = operands[i].view();
     let target = String{cxt.scratch_allocator(), destination};
     if (is_destination_directory) {
-      let target_path = Path{destination};
-      target_path.append(Path{source}.filename());
+      let target_path = Path{destination, cxt.scratch_allocator()};
+      target_path.append(Path{source, cxt.scratch_allocator()}.filename());
       target = target_path.text();
     }
 
-    if (Path{source}.is_same_file_as(Path{target.view()})) {
+    if (Path{source, cxt.scratch_allocator()}.is_same_file_as(
+            Path{target.view(), cxt.scratch_allocator()}))
+    {
       report_soft_koshkit_util_error(
           ec, cxt, operand_locations[i], args[0].view(),
           "'" + String{cxt.scratch_allocator(), source} + "' and '" + target +
@@ -201,7 +204,8 @@ fn Mv::execute(const ExecContext &ec, EvalContext &cxt,
       continue;
     }
 
-    if (should_prompt && Path{target.view()}.exists() &&
+    if (should_prompt &&
+        Path{target.view(), cxt.scratch_allocator()}.exists() &&
         !confirm_koshkit_action(ec, "overwrite '" + target + "'? "))
       continue;
 
