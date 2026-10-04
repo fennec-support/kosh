@@ -78,6 +78,17 @@ send_input_when_ready()
   done
   sleep 0.25
 }
+wait_for_prompt_count()
+{
+  wait_count=0
+  while [ "$(($(wc -c < "$ready" 2>/dev/null || echo 0)))" -lt "$1" ] &&
+    [ "$wait_count" -lt 600 ]; do
+    sleep 0.05
+    wait_count=$((wait_count + 1))
+  done
+  [ "$(($(wc -c < "$ready" 2>/dev/null || echo 0)))" -ge "$1" ] || return 1
+  sleep 0.1
+}
 i=1
 while [ "$i" -le 4200 ]; do
   printf 'echo CMD_%05d\n' "$i" >> "$hist"
@@ -127,15 +138,17 @@ printf 'echo BASE_$((6*7))\n' > "$peer_hist"
 rm -f "$ready"
 rm -f "$input_status"
 out=$({
-  send_input_when_ready 'echo LOCAL_$((6*7))\r'
+  send_input_when_ready 'echo LOCAL_$((6*7))\r' &&
+    wait_for_prompt_count 2 || exit 1
   printf 'echo PEER_$((6*7))\n' >> "$peer_hist"
-  send_input_when_ready '\033[A' '\r'
+  send_input_when_ready '\033[A' '\r' &&
+    wait_for_prompt_count 3 || exit 1
   printf 'echo TRUNCATED_$((6*7))\n' > "$peer_hist"
   send_input_when_ready '\033[A' '\033[A' '\r' 'exit\r'
   printf '%s\n' "$?" > "$input_status"
 } |
   BIN="$BIN" READY="$ready" KOSH_HISTORY_FILE="$peer_hist" \
-    PROMPT_COMMAND='printf ready > "$READY"; unset PROMPT_COMMAND' \
+    PROMPT_COMMAND='printf x >> "$READY"' \
     run_interactive \
       'stty cols 120 rows 40; exec "$BIN" -i --rcfile /dev/null') ||
   exit 1
