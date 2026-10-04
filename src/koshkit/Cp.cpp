@@ -112,6 +112,32 @@ static fn copy_file(const ExecContext &ec, StringView source,
                        String{allocator, destination} + "'\n");
 }
 
+static fn join_with_operand_separator(StringView parent, StringView name,
+                                      Allocator allocator) throws -> Path
+{
+  let joined = Path{parent, allocator};
+  if (parent.length == 0 ||
+      os::is_directory_separator(parent[parent.length - 1]))
+  {
+    joined.append_raw(name);
+
+    return joined;
+  }
+
+  let separator = os::DIRECTORY_SEPARATOR;
+  for (usize position = parent.length; position > 0; position--) {
+    if (os::is_directory_separator(parent[position - 1])) {
+      separator = parent[position - 1];
+      break;
+    }
+  }
+
+  joined.append_raw(StringView{&separator, 1});
+  joined.append_raw(name);
+
+  return joined;
+}
+
 static fn source_file_status(StringView source) throws -> Maybe<os::file_status>
 {
   os::file_status status{};
@@ -251,10 +277,10 @@ copy_path(const ExecContext &ec, EvalContext &cxt, StringView utility_name,
       if (os::INTERRUPT_REQUESTED) return false;
       let const child_scratch = cxt.expansion_store().scratch_arena().mark();
       defer { cxt.expansion_store().scratch_arena().release(child_scratch); };
-      let child_source = Path{source, allocator};
-      child_source.append(entry.child.name.view());
-      let child_destination = Path{destination, allocator};
-      child_destination.append(entry.child.name.view());
+      let const child_source = join_with_operand_separator(
+          source, entry.child.name.view(), allocator);
+      let const child_destination = join_with_operand_separator(
+          destination, entry.child.name.view(), allocator);
       try {
         if (!copy_path(ec, cxt, utility_name, child_source.view(),
                        child_destination.view(), should_force, should_preserve,
@@ -411,9 +437,9 @@ fn Cp::execute(const ExecContext &ec, EvalContext &cxt,
          into a destroyed temporary. */
       let const source_path = Path{source, cxt.scratch_allocator()};
       let const leaf = source_path.filename();
-      let target_path = Path{destination, cxt.scratch_allocator()};
-      target_path.append(leaf);
-      target = target_path.text();
+      target = join_with_operand_separator(destination, leaf,
+                                           cxt.scratch_allocator())
+                   .text();
     }
 
     if (should_prompt &&
