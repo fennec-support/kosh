@@ -89,6 +89,9 @@ changes update this file.
   before it reaps a child waiting for a client.
 - Windows named-pipe redirections use OPEN_EXISTING for every shell open mode.
 - Recheck mutable runtime state after any startup file that can change it.
+- `src/koshkit/LiveView` owns every Evil live view. It holds the alternate
+  screen, raw key input, sample and refresh cadence, the styled header, and
+  one write per frame. Redirected frames carry no escape sequences.
 
 ## Platform
 
