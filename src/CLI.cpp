@@ -772,8 +772,8 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
           throw error;
         } else {
           let error_message = String{heap_allocator()};
-          let details = String{
-              "Use `--` before an operand that begins with a dash"};
+          let details =
+              String{"Use `--` before an operand that begins with a dash"};
           error_message += "Unknown flag '-";
 
           if (!is_long) {

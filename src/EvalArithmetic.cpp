@@ -1462,7 +1462,8 @@ public:
                   String{source.substring_of_length(number_start,
                                                     end - number_start)} +
                   "'",
-              "The digit is not valid in base " + String::from(base, bump_allocator(arena)));
+              "The digit is not valid in base " +
+                  String::from(base, bump_allocator(arena)));
   }
 
   fn parse_primary() throws -> ArithmeticValue

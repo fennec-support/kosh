@@ -105,12 +105,12 @@ fn EvalContext::register_function(StringView name,
       let const line_start =
           last_newline.has_value() ? *last_newline + 1 : usize{0};
       let const after_body = defining_view.substring(body_end_position);
-      let const line_length = after_body.find_character('\n').value_or(
-          after_body.length);
-      info.line_prefix = String{
-          heap_allocator(), before_body.substring(line_start)};
-      info.line_suffix = String{
-          heap_allocator(), after_body.substring_of_length(0, line_length)};
+      let const line_length =
+          after_body.find_character('\n').value_or(after_body.length);
+      info.line_prefix =
+          String{heap_allocator(), before_body.substring(line_start)};
+      info.line_suffix = String{heap_allocator(),
+                                after_body.substring_of_length(0, line_length)};
     }
   }
 
@@ -169,8 +169,7 @@ pure fn EvalContext::resolve_render_source(
 
     if (!info->has_render_source) {
       info->render_source = info->line_prefix;
-      info->render_source.append(
-          copy->view().substring(info->header_length));
+      info->render_source.append(copy->view().substring(info->header_length));
       info->render_source.append(info->line_suffix.view());
       info->has_render_source = true;
     }
