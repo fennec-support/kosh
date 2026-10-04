@@ -1,0 +1,107 @@
+--- tree ---
+└─┬ t
+  ├─┬ a
+  │ ├─┬ b
+  │ │ └── big
+  │ └── mid
+  ├── top
+  ├─┬ c
+  │ └── small
+  ├── x1
+  └── x2
+--- tree sizes match the flat listing ---
+tree-root-size=matched
+tree-leaf-size=matched
+--- tree human sizes ---
+└─┬ t
+  ├─┬ a
+  │ ├─┬ b
+  │ │ └── big
+  │ └── mid
+  ├── top
+  ├─┬ c
+  │ └── small
+  ├── x1
+  └── x2
+--- tree summary ---
+└── t
+└── t/c
+--- tree operands ---
+└─┬ t/a
+  ├─┬ b
+  │ └── big
+  └── mid
+└─┬ .
+  ├─┬ a
+  │ ├─┬ b
+  │ │ └── big
+  │ └── mid
+  ├── top
+  ├─┬ c
+  │ └── small
+  ├── x1
+  └── x2
+└─┬ ./a/
+  ├─┬ b
+  │ └── big
+  └── mid
+--- top-largest ---
+└─┬ t
+  ├─┬ a
+  │ ├─┬ b
+  │ │ └── big
+  │ └── mid
+  ├── top
+  ├─┬ c
+  │ └── small
+  ├── x1
+  └── x2
+top-human=yes
+└── t
+--- top-largest default count ---
+top-lines=21
+└─┬ m
+  ├─┬ deep
+  │ └─┬ er
+  │   └─┬ est
+  │     └── huge
+  ├── f30
+  ├── f29
+  ├── f28
+...
+  ├── f17
+  ├── f16
+  └── f15
+top-has-deep=yes
+top-has-er=yes
+top-has-est=yes
+top-has-huge=yes
+top-has-f30=yes
+top-has-f15=yes
+top-has-f14=no
+top-has-f01=no
+--- top-largest orders by name on equal sizes ---
+  ├── n01
+  ├── n02
+  └── n20
+ties-lines=21
+--- top-largest operands ---
+└─┬ .
+  ├─┬ a
+  │ ├─┬ b
+└─┬ t/a
+  ├─┬ b
+  │ └── big
+  └── mid
+└─┬ t/c
+  └── small
+--- top-largest with an unreadable directory ---
+└─┬ locked-tree
+  └─┬ open
+    └── file
+locked-status=1
+locked-errors=1
+--- help ---
+  du [-shT] [--tree] [path ...]
+      --tree                            Print the entries as a tree, largest
+  -T, --top-largest                     Print a human-readable tree of only the

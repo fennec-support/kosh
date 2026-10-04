@@ -1731,8 +1731,19 @@ Symbolic links are not followed. Output is colored on a color terminal. The
 .B \-s
 option prints only each path total. The
 .B \-h
-option prints human-readable sizes. With no path, the current directory is
-used.
+option prints human-readable sizes. The
+.B \-\-tree
+option prints the same entries as a tree with box-drawing branches. Children are
+sorted by size, largest first, then by name, and each line shows the size
+column, the branch, and the last path component, with each path operand shown
+as written. With
+.BR \-s ,
+only the operand lines are printed. The
+.BR \-T ", " \-\-top\-largest
+option prints a human-readable tree of only the largest entries and every
+ancestor of one up to its operand. It keeps 20 entries, or the terminal height
+minus four, at least ten, when standard output is a terminal. With no path, the
+current directory is used.
 .TP
 .B env
 Temporary assignments are applied before a command, or the environment is

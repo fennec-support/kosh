@@ -2,9 +2,9 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the du utility. It recursively totals allocated disk
- * space without following symbolic links and formats byte or human-readable
- * totals.
+ * This file implements the du utility. It totals allocated disk space without
+ * following symbolic links and prints a flat list, or a tree for --tree. The
+ * top-largest mode reuses the tree renderer for the largest entries only.
  */
 
 #include "../CLI.hpp"
@@ -16,16 +16,22 @@
 #include "../base/Arena.hpp"
 #include "../base/HashSet.hpp"
 #include "../base/Path.hpp"
+#include "../base/StringMap.hpp"
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[-sh] [path ...]");
+HELP_SYNOPSIS_DECL("[-shT] [--tree] [path ...]");
 
 HELP_DESCRIPTION_DECL("The du utility prints the disk usage of each path.");
 
 FLAG(DU_SUMMARY, Bool, 's', "", "Print only the total for each path.");
 FLAG(DU_HUMAN, Bool, 'h', "",
      "Print the size in a human-readable form such as 4.0K or 1.5M.");
+FLAG(DU_TREE, Bool, '\0', "tree",
+     "Print the entries as a tree, largest children first.");
+FLAG(DU_TOP, Bool, 'T', "top-largest",
+     "Print a human-readable tree of only the largest entries and their "
+     "ancestors.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Du);
@@ -69,6 +75,52 @@ struct du_stat_work
   const char *name{nullptr};
   usize parent_index{SIZE_MAX};
   os::file_status status{};
+};
+
+struct du_operand_span
+{
+  usize target_index;
+  usize first_row;
+  usize row_count;
+};
+
+struct du_tree_node
+{
+  StringView path;
+  StringView name;
+  u64 size_bytes{0};
+  u64 child_total_bytes{0};
+  usize parent_index{SIZE_MAX};
+  usize first_child{0};
+  usize child_count{0};
+  bool has_size{false};
+  bool is_kept{false};
+};
+
+struct du_tree_order_key
+{
+  usize node_index;
+  usize parent_index;
+  u64 size_bytes;
+  StringView path;
+};
+
+struct du_tree_cursor
+{
+  usize node_index;
+  usize next_position;
+  usize last_shown_position;
+  usize prefix_length;
+};
+
+struct du_tree_request
+{
+  const ArrayList<du_output_row> &rows;
+  const ArrayList<du_operand_span> &spans;
+  const ArrayList<Path> &targets;
+  bool is_human;
+  usize top_count;
+  bool should_color;
 };
 
 fn append_output_row(ArrayList<du_output_row> &rows, u64 size, StringView path,
@@ -381,6 +433,252 @@ fn add_size_row(ReportTable &table, Allocator allocator,
   table.add_row(cells);
 }
 
+static fn build_tree_nodes(const du_tree_request &request, Allocator allocator,
+                           ArrayList<du_tree_node> &nodes,
+                           ArrayList<usize> &root_indices) throws -> bool
+{
+  for (let const &span : request.spans) {
+    let const target = request.targets[span.target_index].view();
+    let const root_index = nodes.count();
+    nodes.push(du_tree_node{target, target});
+    root_indices.push(root_index);
+    let node_by_path = StringMap<usize>{allocator};
+    for (usize offset = 0; offset < span.row_count; offset++) {
+      if (os::INTERRUPT_REQUESTED) return false;
+
+      let const path = request.rows[span.first_row + offset].path.view();
+      usize position =
+          target.length < path.length ? target.length : path.length;
+      usize current_index = root_index;
+      while (true) {
+        let const component = Path::next_component(path, position);
+        if (component.text.is_empty()) break;
+
+        let const key = path.substring_of_length(0, component.end);
+        if (let const found = node_by_path.find(key)) {
+          current_index = **found;
+          continue;
+        }
+
+        let const child_index = nodes.count();
+        nodes.push(du_tree_node{key, component.text});
+        nodes[child_index].parent_index = current_index;
+        node_by_path.insert(key, child_index);
+        current_index = child_index;
+      }
+
+      nodes[current_index].size_bytes =
+          request.rows[span.first_row + offset].size_bytes;
+      nodes[current_index].has_size = true;
+    }
+  }
+
+  for (usize index = nodes.count(); index-- > 0;) {
+    let &node = nodes[index];
+    if (!node.has_size) node.size_bytes = node.child_total_bytes;
+    if (node.parent_index == SIZE_MAX) continue;
+
+    let &parent = nodes[node.parent_index];
+    parent.child_total_bytes =
+        node.size_bytes > UINT64_MAX - parent.child_total_bytes
+            ? UINT64_MAX
+            : parent.child_total_bytes + node.size_bytes;
+  }
+
+  return true;
+}
+
+static fn is_tree_key_before(const du_tree_order_key &left,
+                             const du_tree_order_key &right) wontthrow -> bool
+{
+  if (left.size_bytes != right.size_bytes)
+    return left.size_bytes > right.size_bytes;
+
+  return left.path < right.path;
+}
+
+static fn order_tree_children(ArrayList<du_tree_node> &nodes,
+                              ArrayList<usize> &child_order,
+                              Allocator allocator) throws -> void
+{
+  let keys = ArrayList<du_tree_order_key>{allocator};
+  keys.reserve(nodes.count());
+  for (usize index = 0; index < nodes.count(); index++) {
+    let const &node = nodes[index];
+    if (node.parent_index != SIZE_MAX)
+      keys.push(du_tree_order_key{index, node.parent_index, node.size_bytes,
+                                  node.path});
+  }
+
+  let const sorted = steal(keys).make_sorted(
+      [](const du_tree_order_key &left, const du_tree_order_key &right) {
+        if (left.parent_index != right.parent_index)
+          return left.parent_index < right.parent_index;
+        return is_tree_key_before(left, right);
+      });
+  child_order.reserve(sorted.count());
+  for (let const &key : sorted) {
+    let &parent = nodes[key.parent_index];
+    if (parent.child_count == 0) parent.first_child = child_order.count();
+    parent.child_count++;
+    child_order.push(key.node_index);
+  }
+}
+
+static fn keep_largest_tree_nodes(ArrayList<du_tree_node> &nodes,
+                                  const ArrayList<usize> &root_indices,
+                                  usize top_count, Allocator allocator) throws
+    -> void
+{
+  let keys = ArrayList<du_tree_order_key>{allocator};
+  keys.reserve(nodes.count());
+  for (usize index = 0; index < nodes.count(); index++) {
+    let const &node = nodes[index];
+    if (node.parent_index != SIZE_MAX)
+      keys.push(du_tree_order_key{index, node.parent_index, node.size_bytes,
+                                  node.path});
+  }
+
+  let const sorted = steal(keys).make_sorted(is_tree_key_before);
+  for (let const root_index : root_indices)
+    nodes[root_index].is_kept = true;
+
+  for (usize rank = 0; rank < sorted.count() && rank < top_count; rank++) {
+    usize index = sorted[rank].node_index;
+    while (index != SIZE_MAX && !nodes[index].is_kept) {
+      nodes[index].is_kept = true;
+      index = nodes[index].parent_index;
+    }
+  }
+}
+
+static fn render_tree(const ArrayList<du_tree_node> &nodes,
+                      const ArrayList<usize> &child_order,
+                      const ArrayList<usize> &sorted_roots,
+                      const du_tree_request &request, const ExecContext &ec,
+                      Allocator allocator) throws -> bool
+{
+  let rendered_sizes = ArrayList<String>{allocator};
+  rendered_sizes.reserve(nodes.count());
+  usize size_width = 0;
+  for (let const &node : nodes) {
+    let rendered_size = request.is_human
+                            ? format_human_size(node.size_bytes, allocator)
+                            : String::from(node.size_bytes, allocator);
+    if (node.is_kept && rendered_size.length() > size_width)
+      size_width = rendered_size.length();
+    rendered_sizes.push(steal(rendered_size));
+  }
+
+  let const should_color = request.should_color;
+  let const do_find_last_shown = [&](usize node_index) wontthrow -> usize {
+    let const &node = nodes[node_index];
+    for (usize position = node.child_count; position-- > 0;) {
+      if (nodes[child_order[node.first_child + position]].is_kept)
+        return position;
+    }
+    return SIZE_MAX;
+  };
+
+  let output = String{allocator};
+  let prefix = String{allocator};
+  let cursors = ArrayList<du_tree_cursor>{allocator};
+  let const do_append_line = [&](usize node_index, StringView connector,
+                                 bool has_shown_children) throws -> void {
+    let const size_text = rendered_sizes[node_index].view();
+    for (usize padding = size_text.length; padding < size_width; padding++)
+      output += ' ';
+    append_report_text(output, size_text, colors::ansi::BOLD_GREEN,
+                       should_color);
+    output += ' ';
+    output += prefix;
+    output += connector;
+    output += has_shown_children ? "┬ " : "─ ";
+    append_report_text(output, nodes[node_index].name, colors::ansi::BOLD_CYAN,
+                       should_color);
+    output += '\n';
+    if (output.length() >= 65536) {
+      ec.print_to_stdout(output.view());
+      output.clear();
+    }
+  };
+
+  for (let const root_index : sorted_roots) {
+    if (os::INTERRUPT_REQUESTED) return false;
+
+    let const root_last_shown = do_find_last_shown(root_index);
+    prefix.clear();
+    do_append_line(root_index, "└─", root_last_shown != SIZE_MAX);
+    if (root_last_shown == SIZE_MAX) continue;
+
+    prefix += "  ";
+    cursors.push(
+        du_tree_cursor{root_index, 0, root_last_shown, prefix.length()});
+    while (!cursors.is_empty()) {
+      if (os::INTERRUPT_REQUESTED) return false;
+
+      let &cursor = cursors.back();
+      let const &parent = nodes[cursor.node_index];
+      while (cursor.next_position < parent.child_count &&
+             !nodes[child_order[parent.first_child + cursor.next_position]]
+                  .is_kept)
+        cursor.next_position++;
+      if (cursor.next_position >= parent.child_count) {
+        cursors.pop_back();
+        continue;
+      }
+
+      let const position = cursor.next_position;
+      let const is_last = position == cursor.last_shown_position;
+      let const child_index = child_order[parent.first_child + position];
+      cursor.next_position++;
+      prefix.truncate(cursor.prefix_length);
+      let const child_last_shown = do_find_last_shown(child_index);
+      do_append_line(child_index, is_last ? "└─" : "├─",
+                     child_last_shown != SIZE_MAX);
+      if (child_last_shown == SIZE_MAX) continue;
+
+      prefix += is_last ? "  " : "│ ";
+      cursors.push(
+          du_tree_cursor{child_index, 0, child_last_shown, prefix.length()});
+    }
+  }
+
+  ec.print_to_stdout(output.view());
+  return true;
+}
+
+static fn print_tree_report(const du_tree_request &request,
+                            const ExecContext &ec, Allocator allocator) throws
+    -> bool
+{
+  let nodes = ArrayList<du_tree_node>{allocator};
+  let root_indices = ArrayList<usize>{allocator};
+  let child_order = ArrayList<usize>{allocator};
+  nodes.reserve(request.rows.count() + request.spans.count());
+  if (!build_tree_nodes(request, allocator, nodes, root_indices)) return false;
+
+  order_tree_children(nodes, child_order, allocator);
+  if (request.top_count != 0) {
+    keep_largest_tree_nodes(nodes, root_indices, request.top_count, allocator);
+  } else {
+    for (let &node : nodes)
+      node.is_kept = true;
+  }
+
+  let root_keys = ArrayList<du_tree_order_key>{allocator};
+  for (let const root_index : root_indices)
+    root_keys.push(du_tree_order_key{root_index, SIZE_MAX,
+                                     nodes[root_index].size_bytes,
+                                     nodes[root_index].path});
+  let const sorted_root_keys = steal(root_keys).make_sorted(is_tree_key_before);
+  let sorted_roots = ArrayList<usize>{allocator};
+  for (let const &key : sorted_root_keys)
+    sorted_roots.push(key.node_index);
+
+  return render_tree(nodes, child_order, sorted_roots, request, ec, allocator);
+}
+
 Du::Du() = default;
 
 pure fn Du::kind() const wontthrow -> Utility::Kind { return Kind::Du; }
@@ -421,6 +719,9 @@ fn Du::execute(const ExecContext &ec, EvalContext &cxt,
   for (let const &result : target_results)
     is_target_status_known.push(result.error_number == 0);
 
+  let const is_top = FLAG_DU_TOP.is_enabled();
+  let const is_tree = is_top || FLAG_DU_TREE.is_enabled();
+  let operand_spans = ArrayList<du_operand_span>{allocator};
   let output_rows = ArrayList<du_output_row>{allocator};
   output_rows.reserve(targets.count());
   let seen_links = HashSet{allocator};
@@ -438,6 +739,7 @@ fn Du::execute(const ExecContext &ec, EvalContext &cxt,
       continue;
     }
 
+    let const first_row_index = output_rows.count();
     let const total =
         total_size(ec, cxt, target, has_failure,
                    FLAG_DU_SUMMARY.is_enabled() ? nullptr : &output_rows,
@@ -448,11 +750,34 @@ fn Du::execute(const ExecContext &ec, EvalContext &cxt,
     }
     if (!total.has_value()) {
       status = 1;
-      continue;
-    }
-    if (FLAG_DU_SUMMARY.is_enabled() && total->should_emit)
+    } else if (FLAG_DU_SUMMARY.is_enabled() && total->should_emit) {
       append_output_row(output_rows, total->size_bytes, target.view(),
                         allocator);
+    }
+    if (is_tree && output_rows.count() != first_row_index) {
+      operand_spans.push(du_operand_span{
+          index, first_row_index, output_rows.count() - first_row_index});
+    }
+  }
+
+  if (is_tree) {
+    usize top_count = 0;
+    if (is_top) {
+      top_count = 20;
+      if (let const dimensions =
+              os::get_terminal_dimensions(ec.out_fd.value_or(KOSH_STDOUT)))
+        top_count = dimensions->rows > 14 ? dimensions->rows - 4 : 10;
+    }
+
+    let const request =
+        du_tree_request{output_rows, operand_spans,
+                        targets,     is_top || FLAG_DU_HUMAN.is_enabled(),
+                        top_count,   koshkit_should_color()};
+    if (was_interrupted || !print_tree_report(request, ec, allocator))
+      return 130;
+
+    if (has_failure) status = 1;
+    return status;
   }
 
   usize shared_path_prefix_length = 0;

@@ -31,6 +31,9 @@ mv
 -t
 == du flags through koshkit:
 --help
+--top-largest
+--tree
+-T
 -h
 -s
 == timeout flags through koshkit:
