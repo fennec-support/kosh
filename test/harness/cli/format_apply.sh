@@ -613,6 +613,18 @@ e ||
   # own line
   f
 '
+format_twice comment-after-operator-in-block \
+'if true; then
+  a | # c
+  b
+  c && # c
+  d
+  e || # c
+  f
+  g |
+  h
+fi
+'
 format_twice comment-next-to-heredoc \
 'cat <<EOF
 body \

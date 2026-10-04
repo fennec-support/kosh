@@ -461,6 +461,20 @@ e ||
 # own line
 f
 idempotent=yes
+== comment-after-operator-in-block
+status=0
+if true
+then
+  a | # c
+  b
+  c && # c
+  d
+  e || # c
+  f
+  g |
+  h
+fi
+idempotent=yes
 == comment-next-to-heredoc
 status=0
 cat <<EOF
