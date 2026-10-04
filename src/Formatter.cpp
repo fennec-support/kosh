@@ -288,6 +288,23 @@ fn scan_format_operator_end(StringView source, usize position) wontthrow
   return position + length;
 }
 
+pure fn without_trailing_line_continuation(StringView word) wontthrow
+    -> StringView
+{
+  while (word.length >= 2 && word[word.length - 1] == '\n' &&
+         word[word.length - 2] == '\\')
+  {
+    usize backslash_count = 0;
+    while (backslash_count < word.length - 1 &&
+           word[word.length - 2 - backslash_count] == '\\')
+      backslash_count++;
+    if (backslash_count % 2 == 0) break;
+    word = word.substring_of_length(0, word.length - 2);
+  }
+
+  return word;
+}
+
 fn scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
 {
   let pieces = ArrayList<format_piece>{heap_allocator()};
@@ -480,8 +497,8 @@ fn scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
       end_position++;
       scan_balanced_region(source, end_position, ')');
     }
-    let const text =
-        source.substring_of_length(position, end_position - position);
+    let const text = without_trailing_line_continuation(
+        source.substring_of_length(position, end_position - position));
     if (is_expecting_heredoc_delimiter) {
       pending_heredocs.push(pending_heredoc{
           lexer::unquote_heredoc_delimiter(text, heap_allocator()),
