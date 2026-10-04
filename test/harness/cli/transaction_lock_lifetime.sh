@@ -137,8 +137,10 @@ wrapper_process=$!
 transaction_state=launched
 wait_for_path "$directory/started" || exit 1
 transaction_state=started
-kill -9 "$wrapper_process"
-wait "$wrapper_process" 2>/dev/null || :
+{
+    kill -9 "$wrapper_process"
+    wait "$wrapper_process"
+} 2>/dev/null || :
 wrapper_process=
 
 probe_directory_lock
