@@ -108,6 +108,95 @@ constexpr usize TAIL_OUTPUT_FLUSH_BYTE_COUNT = 64 * 1024;
 constexpr f64 TAIL_DEFAULT_SLEEP_SECONDS = 1.0;
 constexpr f64 TAIL_MINIMUM_WAIT_SECONDS = 0.001;
 
+struct tail_options
+{
+  tail_unit unit{tail_unit::Lines};
+  i64 count{10};
+  count_origin origin{count_origin::FromEnd};
+  bool is_following{false};
+  bool should_follow_name{false};
+  bool should_retry{false};
+  f64 sleep_seconds{TAIL_DEFAULT_SLEEP_SECONDS};
+  i64 watched_process_id{0};
+
+  static fn parse(Allocator allocator) throws -> tail_options
+  {
+    tail_options options;
+
+    /* -c takes precedence over -n when both are given, matching GNU tail. */
+    options.unit =
+        FLAG_TAIL_BYTES.is_set() ? tail_unit::Bytes : tail_unit::Lines;
+    let parsed_count = Maybe<parsed_tail_count>{
+        parsed_tail_count{count_origin::FromEnd, 10}
+    };
+    if (options.unit == tail_unit::Bytes) {
+      parsed_count = parse_tail_count(FLAG_TAIL_BYTES.value());
+      if (!parsed_count.has_value()) {
+        throw ErrorWithDetails{
+            "invalid byte count '" +
+                String{allocator, FLAG_TAIL_BYTES.value()}
+                + "'",
+            "The count must be a non-negative integer"
+        };
+      }
+    } else if (FLAG_TAIL_LINES.is_set()) {
+      parsed_count = parse_tail_count(FLAG_TAIL_LINES.value());
+      if (!parsed_count.has_value()) {
+        throw ErrorWithDetails{
+            "invalid line count '" +
+                String{allocator, FLAG_TAIL_LINES.value()}
+                + "'",
+            "The count must be a non-negative integer"
+        };
+      }
+    }
+    options.origin = parsed_count->origin;
+    options.count = parsed_count->count;
+
+    options.should_follow_name = FLAG_TAIL_FOLLOW_NAME.is_enabled() ||
+                                 (FLAG_TAIL_FOLLOW_MODE.has_value() &&
+                                  FLAG_TAIL_FOLLOW_MODE.value()[0] == 'n');
+    options.is_following = FLAG_TAIL_FOLLOW.is_enabled() ||
+                           FLAG_TAIL_FOLLOW_MODE.is_enabled() ||
+                           FLAG_TAIL_FOLLOW_NAME.is_enabled();
+    options.should_retry =
+        FLAG_TAIL_RETRY.is_enabled() || FLAG_TAIL_FOLLOW_NAME.is_enabled();
+
+    if (FLAG_TAIL_SLEEP.is_set()) {
+      let const parsed_seconds = utils::parse_decimal_f64(
+          String{allocator, FLAG_TAIL_SLEEP.value()});
+      if (parsed_seconds.is_error() || !(parsed_seconds.value() >= 0.0)) {
+        throw ErrorWithDetails{
+            "invalid number of seconds '" +
+                String{allocator, FLAG_TAIL_SLEEP.value()}
+                + "'",
+            "The interval must be a non-negative number"
+        };
+      }
+
+      options.sleep_seconds = parsed_seconds.value();
+    }
+
+    if (FLAG_TAIL_PID.is_set()) {
+      let const parsed_process_id = parse_strict_count(FLAG_TAIL_PID.value());
+      if (parsed_process_id.is_error() ||
+          parsed_process_id.value() > static_cast<u64>(INT32_MAX))
+      {
+        throw ErrorWithDetails{
+            "invalid PID '" +
+                String{allocator, FLAG_TAIL_PID.value()}
+                + "'",
+            "The process identifier must be a non-negative integer"
+        };
+      }
+
+      options.watched_process_id = static_cast<i64>(parsed_process_id.value());
+    }
+
+    return options;
+  }
+};
+
 struct tail_follow_entry
 {
   os::descriptor descriptor{KOSH_INVALID_FD};
@@ -280,78 +369,11 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
 
   KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
 
-  /* -c takes precedence over -n when both are given, matching GNU tail. */
-  let const unit =
-      FLAG_TAIL_BYTES.is_set() ? tail_unit::Bytes : tail_unit::Lines;
-  let parsed_count = Maybe<parsed_tail_count>{
-      parsed_tail_count{count_origin::FromEnd, 10}
-  };
-  if (unit == tail_unit::Bytes) {
-    parsed_count = parse_tail_count(FLAG_TAIL_BYTES.value());
-    if (!parsed_count.has_value()) {
-      throw ErrorWithDetails{
-          "invalid byte count '" +
-              String{cxt.scratch_allocator(), FLAG_TAIL_BYTES.value()}
-              + "'",
-          "The count must be a non-negative integer"
-      };
-    }
-  } else if (FLAG_TAIL_LINES.is_set()) {
-    parsed_count = parse_tail_count(FLAG_TAIL_LINES.value());
-    if (!parsed_count.has_value()) {
-      throw ErrorWithDetails{
-          "invalid line count '" +
-              String{cxt.scratch_allocator(), FLAG_TAIL_LINES.value()}
-              + "'",
-          "The count must be a non-negative integer"
-      };
-    }
-  }
-  let const[origin, count] = *parsed_count;
+  let const options = tail_options::parse(cxt.scratch_allocator());
 
-  let const should_follow_name = FLAG_TAIL_FOLLOW_NAME.is_enabled() ||
-                                 (FLAG_TAIL_FOLLOW_MODE.has_value() &&
-                                  FLAG_TAIL_FOLLOW_MODE.value()[0] == 'n');
-  let const is_following = FLAG_TAIL_FOLLOW.is_enabled() ||
-                           FLAG_TAIL_FOLLOW_MODE.is_enabled() ||
-                           FLAG_TAIL_FOLLOW_NAME.is_enabled();
-  let const should_retry =
-      FLAG_TAIL_RETRY.is_enabled() || FLAG_TAIL_FOLLOW_NAME.is_enabled();
-
-  f64 sleep_seconds = TAIL_DEFAULT_SLEEP_SECONDS;
-  if (FLAG_TAIL_SLEEP.is_set()) {
-    let const parsed_seconds = utils::parse_decimal_f64(
-        String{cxt.scratch_allocator(), FLAG_TAIL_SLEEP.value()});
-    if (parsed_seconds.is_error() || !(parsed_seconds.value() >= 0.0)) {
-      throw ErrorWithDetails{
-          "invalid number of seconds '" +
-              String{cxt.scratch_allocator(), FLAG_TAIL_SLEEP.value()}
-              + "'",
-          "The interval must be a non-negative number"
-      };
-    }
-
-    sleep_seconds = parsed_seconds.value();
-  }
-
-  i64 watched_process_id = 0;
-  if (FLAG_TAIL_PID.is_set()) {
-    let const parsed_process_id = parse_strict_count(FLAG_TAIL_PID.value());
-    if (parsed_process_id.is_error() ||
-        parsed_process_id.value() > static_cast<u64>(INT32_MAX))
-    {
-      throw ErrorWithDetails{
-          "invalid PID '" +
-              String{cxt.scratch_allocator(), FLAG_TAIL_PID.value()}
-              + "'",
-          "The process identifier must be a non-negative integer"
-      };
-    }
-
-    watched_process_id = static_cast<i64>(parsed_process_id.value());
-  }
-
-  if (!is_following && origin == count_origin::FromEnd && count == 0) {
+  if (!options.is_following && options.origin == count_origin::FromEnd &&
+      options.count == 0)
+  {
     return 0;
   }
 
@@ -448,7 +470,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
 
   let follow_entries = ArrayList<tail_follow_entry>{allocator};
   let buffered_byte_counts = ArrayList<u64>{allocator};
-  if (is_following) {
+  if (options.is_following) {
     follow_entries.reserve(sources.count());
     buffered_byte_counts.reserve(sources.count());
     for (usize source_index = 0; source_index < sources.count(); source_index++)
@@ -487,26 +509,26 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
     state.source_index = source_index;
     state.descriptor = *descriptor;
     state.file_size = *file_size;
-    if (unit == tail_unit::Bytes) {
-      if (origin == count_origin::FromEnd)
-        state.start_offset = *file_size > static_cast<u64>(count)
-                                 ? *file_size - static_cast<u64>(count)
+    if (options.unit == tail_unit::Bytes) {
+      if (options.origin == count_origin::FromEnd)
+        state.start_offset = *file_size > static_cast<u64>(options.count)
+                                 ? *file_size - static_cast<u64>(options.count)
                                  : 0;
-      else if (count > 0)
-        state.start_offset = static_cast<u64>(count - 1) < *file_size
-                                 ? static_cast<u64>(count - 1)
+      else if (options.count > 0)
+        state.start_offset = static_cast<u64>(options.count - 1) < *file_size
+                                 ? static_cast<u64>(options.count - 1)
                                  : *file_size;
       state.is_done = true;
-    } else if (origin == count_origin::FromEnd) {
+    } else if (options.origin == count_origin::FromEnd) {
       state.scan_offset = *file_size;
-      state.remaining_newline_count = static_cast<u64>(count);
-      if (*file_size == 0 || count == 0) {
+      state.remaining_newline_count = static_cast<u64>(options.count);
+      if (*file_size == 0 || options.count == 0) {
         state.start_offset = *file_size;
         state.is_done = true;
       }
     } else {
       state.remaining_newline_count =
-          count > 0 ? static_cast<u64>(count - 1) : 0;
+          options.count > 0 ? static_cast<u64>(options.count - 1) : 0;
       state.is_done = state.remaining_newline_count == 0;
     }
     if (!state.is_done) state.buffer.reserve(TAIL_BLOCK_BYTE_COUNT);
@@ -559,18 +581,20 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
     }
 
     do_write_header(source_index);
-    if (is_following) buffered_byte_counts[source_index] = content->length();
+    if (options.is_following)
+      buffered_byte_counts[source_index] = content->length();
 
     let const text = content->view();
-    let const wanted_count = static_cast<usize>(count);
+    let const wanted_count = static_cast<usize>(options.count);
     usize start = 0;
-    if (unit == tail_unit::Bytes) {
-      start = origin == count_origin::FromStart
-                  ? (count == 0 ? 0 : static_cast<usize>(count - 1))
+    if (options.unit == tail_unit::Bytes) {
+      start = options.origin == count_origin::FromStart
+                  ? (options.count == 0 ? 0
+                                        : static_cast<usize>(options.count - 1))
                   : sub_sat(text.length, wanted_count);
       if (start > text.length) start = text.length;
-    } else if (origin == count_origin::FromStart) {
-      usize remaining_newline_count = count > 0 ? wanted_count - 1 : 0;
+    } else if (options.origin == count_origin::FromStart) {
+      usize remaining_newline_count = options.count > 0 ? wanted_count - 1 : 0;
       while (start < text.length && remaining_newline_count > 0) {
         if (text[start] == '\n') remaining_newline_count--;
         start++;
@@ -601,9 +625,11 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
       window_end++;
     }
 
-    if (unit == tail_unit::Lines && origin == count_origin::FromEnd) {
+    if (options.unit == tail_unit::Lines &&
+        options.origin == count_origin::FromEnd)
+    {
       find_tail_starts_from_end(states, allocator);
-    } else if (unit == tail_unit::Lines) {
+    } else if (options.unit == tail_unit::Lines) {
       find_tail_starts_from_start(states, allocator);
     }
     if (os::INTERRUPT_REQUESTED) return 130;
@@ -638,7 +664,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
     }
 
     for (let &state : states) {
-      if (is_following && state.error_number == 0 &&
+      if (options.is_following && state.error_number == 0 &&
           os::seek_descriptor_from_start(state.descriptor, state.file_size))
       {
         follow_entries[state.source_index].descriptor = state.descriptor;
@@ -654,14 +680,14 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   do_flush_output();
-  if (!is_following) return status;
+  if (!options.is_following) return status;
 
   usize active_count = 0;
   usize failed_open_count = 0;
   for (usize source_index = 0; source_index < sources.count(); source_index++) {
     let &entry = follow_entries[source_index];
     if (sources[source_index] == "-") {
-      if (should_follow_name) {
+      if (options.should_follow_name) {
         report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                        "cannot follow '-' by name");
         status = 1;
@@ -687,7 +713,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
       let const descriptor = os::open_file_descriptor(sources[source_index],
                                                       os::file_open_mode::Read);
       if (!descriptor.has_value()) {
-        if (should_retry) {
+        if (options.should_retry) {
           entry.is_active = true;
           active_count++;
         } else {
@@ -810,14 +836,15 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
       watcher.watch(sources[source_index]);
     }
 
-  let const wait_seconds = sleep_seconds < TAIL_MINIMUM_WAIT_SECONDS
+  let const wait_seconds = options.sleep_seconds < TAIL_MINIMUM_WAIT_SECONDS
                                ? TAIL_MINIMUM_WAIT_SECONDS
-                               : sleep_seconds;
+                               : options.sleep_seconds;
   loop
   {
     let const is_watched_process_gone =
-        watched_process_id != 0 &&
-        !os::process_is_running(os::process_from_pid(watched_process_id));
+        options.watched_process_id != 0 &&
+        !os::process_is_running(
+            os::process_from_pid(options.watched_process_id));
 
     for (usize source_index = 0; source_index < sources.count(); source_index++)
     {
@@ -825,13 +852,13 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
       if (!entry.is_active) continue;
 
       let const is_waiting = entry.descriptor == KOSH_INVALID_FD;
-      if (is_waiting || should_follow_name) {
+      if (is_waiting || options.should_follow_name) {
         os::file_status named_status{};
         if (!os::stat_path_following(sources[source_index], named_status)) {
           if (is_waiting) continue;
 
           let const message = os::last_system_error_message();
-          if (should_retry) {
+          if (options.should_retry) {
             do_report_follow_message(do_quote_source(source_index) +
                                      " has become inaccessible: " + message);
             unused(os::close_fd(entry.descriptor));
