@@ -2332,6 +2332,21 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
   return processes;
 }
 
+fn describe_processes(const ArrayList<u32> &pids) throws
+    -> ArrayList<process_entry>
+{
+  ArrayList<process_entry> described{heap_allocator()};
+  if (pids.is_empty()) return described;
+
+  let all = enumerate_processes(process_detail::ResourceStats);
+  for (let &process : all) {
+    if (pids.find(static_cast<u32>(process.pid)).has_value())
+      described.push(steal(process));
+  }
+
+  return described;
+}
+
 fn system_uptime_seconds() wontthrow -> Maybe<u64>
 {
   return static_cast<u64>(GetTickCount64() / 1000);

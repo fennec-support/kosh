@@ -442,7 +442,10 @@ fn EvilFiles::execute(
     }
 
     let const files = os::list_process_open_files(
-        process.pid, allocator, os::process_open_file_detail::Basic);
+        process.pid, allocator,
+        FLAG_EVILFILES_TERSE.is_enabled()
+            ? os::process_open_file_detail::PathsOnly
+            : os::process_open_file_detail::Basic);
     if (files.is_empty()) continue;
 
     if (files.count() == 1 && files[0].is_inaccessible) {

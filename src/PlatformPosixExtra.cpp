@@ -810,6 +810,70 @@ fn enumerate_processes(process_detail) throws -> ArrayList<process_entry>
 
 #endif
 
+#if defined __linux__
+
+fn describe_processes(const ArrayList<u32> &pids) throws
+    -> ArrayList<process_entry>
+{
+  ArrayList<process_entry> described{heap_allocator()};
+  for (let const pid : pids) {
+    const String process_directory = "/proc/" + String::from(pid, heap_allocator()).view();
+    let command_name =
+        Path{(process_directory + "/comm").view()}.read_entire_file();
+    if (!command_name.has_value()) continue;
+    while (!command_name->is_empty() && command_name->back() == '\n')
+      command_name->pop_back();
+
+    process_entry process{};
+    process.pid = static_cast<i64>(pid);
+    process.name = steal(*command_name);
+    if (let const uid = linux_process_real_uid(process_directory.view()))
+      process.owner_id = *uid;
+
+    if (let stat =
+            Path{(process_directory + "/stat").view()}.read_entire_file();
+        stat.has_value())
+    {
+      let const text = stat->view();
+      usize after_name_position = text.length;
+      for (usize position = text.length; position > 0; position--)
+        if (text[position - 1] == ')') {
+          after_name_position = position;
+          break;
+        }
+      if (after_name_position < text.length) {
+        let const fields = text.substring(after_name_position);
+        if (let const start_ticks = nth_space_field(fields, 19).to<i64>();
+            !start_ticks.is_error() && start_ticks.value() >= 0)
+          process.start_token = static_cast<u64>(start_ticks.value());
+      }
+    }
+
+    described.push(steal(process));
+  }
+
+  return described;
+}
+
+#else
+
+fn describe_processes(const ArrayList<u32> &pids) throws
+    -> ArrayList<process_entry>
+{
+  ArrayList<process_entry> described{heap_allocator()};
+  if (pids.is_empty()) return described;
+
+  let all = enumerate_processes(process_detail::ResourceStats);
+  for (let &process : all) {
+    if (pids.find(static_cast<u32>(process.pid)).has_value())
+      described.push(steal(process));
+  }
+
+  return described;
+}
+
+#endif
+
 fn scan_process_file_users(const ArrayList<process_file_query> &queries,
                            ArrayList<process_file_user> &users,
                            Allocator scratch) throws -> Maybe<u32>
@@ -2729,11 +2793,14 @@ fn list_process_open_files(i64 pid, Allocator allocator,
 
     char access = 'u';
     u64 offset = 0;
-    let const info_path = String{process_path} + "/fdinfo/" + String{name};
     char info_buffer[512];
-    if (read_small_file(info_path.c_str(), info_buffer, sizeof(info_buffer)) !=
-        0)
-    {
+    usize info_length = 0;
+    if (detail != process_open_file_detail::PathsOnly) {
+      let const info_path = String{process_path} + "/fdinfo/" + String{name};
+      info_length =
+          read_small_file(info_path.c_str(), info_buffer, sizeof(info_buffer));
+    }
+    if (info_length != 0) {
       let const info_text = StringView{info_buffer};
       usize info_position = 0;
       while (info_position < info_text.length) {

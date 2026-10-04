@@ -154,10 +154,15 @@ fn append_network_socket_report(String &output,
             return left.process_id < right.process_id;
           });
 
-  let const processes =
-      options.should_show_processes
-          ? os::enumerate_processes(os::process_detail::ResourceStats)
-          : ArrayList<os::process_entry>{allocator};
+  let owner_process_ids = ArrayList<u32>{allocator};
+  if (options.should_show_processes) {
+    for (let const &socket : sockets) {
+      if (socket.process_id != 0 && socket.has_owner_start_token &&
+          !owner_process_ids.find(socket.process_id).has_value())
+        owner_process_ids.push(socket.process_id);
+    }
+  }
+  let const processes = os::describe_processes(owner_process_ids);
   let rows = ArrayList<socket_row>{allocator};
   u64 previous_identity = 0;
   u32 previous_process_id = 0;

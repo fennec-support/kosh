@@ -577,6 +577,12 @@ static_assert(sizeof(usize) != 8 || sizeof(process_entry) == 168);
 fn enumerate_processes(process_detail detail = process_detail::Basic) throws
     -> ArrayList<process_entry>;
 
+/* The name, owner uid, and start token of each listed pid that still exists.
+   Linux reads only those processes, other platforms filter one full
+   enumeration. */
+fn describe_processes(const ArrayList<u32> &pids) throws
+    -> ArrayList<process_entry>;
+
 enum class process_file_use : u8
 {
   Cwd = 1u << 0u,
@@ -627,6 +633,7 @@ enum class process_open_file_detail : u8
 {
   Basic,
   IncludeMappings,
+  PathsOnly,
 };
 
 fn has_process_open_file_listing() wontthrow -> bool;
