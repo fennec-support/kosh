@@ -43,6 +43,12 @@ public:
     PackedStringKey key{};
     let const count =
         text.count() < BYTE_CAPACITY ? text.count() : BYTE_CAPACITY;
+#if defined __BYTE_ORDER__ && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    if (count < 8) {
+      key.words[0] = byte_scan::load_partial_word(text.data, count);
+      return key;
+    }
+#endif
     os::pack_little_endian_bytes(key.words, text.data, count);
     return key;
   }

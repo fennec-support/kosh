@@ -33,15 +33,47 @@ hot inline fn load_word(const char *bytes) wontthrow -> u64
   return word;
 }
 
+hot inline fn load_partial_word(const char *bytes, usize byte_count) wontthrow
+    -> u64
+{
+  if (byte_count >= 4) {
+    u32 head;
+    u32 tail;
+    __builtin_memcpy(&head, bytes, 4);
+    __builtin_memcpy(&tail, bytes + byte_count - 4, 4);
+    return static_cast<u64>(head) |
+           (static_cast<u64>(tail) << ((byte_count - 4) * 8));
+  }
+
+  if (byte_count == 0) return 0;
+
+  let const middle = byte_count / 2;
+  let const last = byte_count - 1;
+  return static_cast<u64>(static_cast<u8>(bytes[0])) |
+         (static_cast<u64>(static_cast<u8>(bytes[middle])) << (middle * 8)) |
+         (static_cast<u64>(static_cast<u8>(bytes[last])) << (last * 8));
+}
+
 hot inline fn are_bytes_equal(const char *left, const char *right,
                               usize byte_count) wontthrow -> bool
 {
-  if (byte_count <= 8) {
-    u64 left_word = 0;
-    u64 right_word = 0;
-    __builtin_memcpy(&left_word, left, byte_count);
-    __builtin_memcpy(&right_word, right, byte_count);
-    return left_word == right_word;
+  if (byte_count >= 4 && byte_count <= 8) {
+    u32 left_head;
+    u32 right_head;
+    u32 left_tail;
+    u32 right_tail;
+    __builtin_memcpy(&left_head, left, 4);
+    __builtin_memcpy(&right_head, right, 4);
+    __builtin_memcpy(&left_tail, left + byte_count - 4, 4);
+    __builtin_memcpy(&right_tail, right + byte_count - 4, 4);
+    return ((left_head ^ right_head) | (left_tail ^ right_tail)) == 0;
+  }
+
+  if (byte_count < 4) {
+    let const middle = byte_count / 2;
+    let const last = byte_count - 1;
+    return left[0] == right[0] && left[middle] == right[middle] &&
+           left[last] == right[last];
   }
 
   if (byte_count <= 16) {
@@ -253,8 +285,7 @@ pure alwaysinline fn hash_bytes(StringView view) wontthrow -> u64
     __builtin_memcpy(&chunk, view.data + i, 8);
     hash = (hash ^ chunk) * 0x100000001b3ull;
   }
-  u64 tail = 0;
-  if (view.length > i) __builtin_memcpy(&tail, view.data + i, view.length - i);
+  let const tail = byte_scan::load_partial_word(view.data + i, view.length - i);
   hash = (hash ^ tail) * 0x100000001b3ull;
   hash ^= hash >> 31;
   return hash;
