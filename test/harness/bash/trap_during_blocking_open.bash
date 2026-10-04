@@ -31,6 +31,7 @@ if ! mkfifo "$dir/first" 2> /dev/null; then
 fi
 mkfifo "$dir/second" "$dir/third" "$dir/fourth" "$dir/fifth" "$dir/sixth"
 mkfifo "$dir/seventh" "$dir/eighth" "$dir/ninth"
+mkfifo "$dir/tenth" "$dir/eleventh" "$dir/twelfth"
 
 (
   attempt=0
@@ -39,7 +40,7 @@ mkfifo "$dir/seventh" "$dir/eighth" "$dir/ninth"
     attempt=$((attempt + 1))
   done
   if [ -d "$dir" ]; then
-    for fifo in first second third fourth fifth sixth seventh eighth ninth; do
+    for fifo in first second third fourth fifth sixth seventh eighth ninth tenth eleventh twelfth; do
       echo watchdog-fired > "$dir/$fifo" 2> /dev/null &
     done
   fi
@@ -55,6 +56,31 @@ wait_until_blocked() {
     case "$(cat "/proc/$1/wchan" 2> /dev/null)" in
       *partner* | *fifo*) return 0 ;;
     esac
+    /bin/sleep 0.05
+    attempt=$((attempt + 1))
+  done
+}
+
+list_process_tree() {
+  local child
+  echo "$1"
+  for child in $(pgrep -P "$1" 2> /dev/null); do
+    list_process_tree "$child"
+  done
+}
+
+wait_until_tree_blocked() {
+  local attempt=0 pid
+  if [ ! -r "/proc/$1/wchan" ]; then
+    /bin/sleep 1
+    return 0
+  fi
+  while [ "$attempt" -lt 80 ]; do
+    for pid in $(list_process_tree "$1"); do
+      case "$(cat "/proc/$pid/wchan" 2> /dev/null)" in
+        *partner* | *fifo*) return 0 ;;
+      esac
+    done
     /bin/sleep 0.05
     attempt=$((attempt + 1))
   done
@@ -186,6 +212,52 @@ wait "$notifier" 2> /dev/null
 wait "$writer" 2> /dev/null
 trap - USR1
 echo open-whose-action-breaks-done
+
+echo open-in-a-stage-whose-action-returns
+trap 'echo action-stage-return; return 3' USR1
+return_from_stage() {
+  read -r line < "$dir/tenth" | cat
+  echo "stage-return-case-survived"
+  return 9
+}
+( wait_until_tree_blocked $$; kill -USR1 $$; : > "$dir/stage-return-sent" ) &
+notifier=$!
+( wait_for_marker "$dir/stage-return-sent"; echo stage-payload 1<> "$dir/tenth" ) &
+writer=$!
+return_from_stage
+echo "stage-return-case-status=$?"
+wait "$notifier" 2> /dev/null
+wait "$writer" 2> /dev/null
+trap - USR1
+echo open-in-a-stage-whose-action-returns-done
+
+echo open-in-a-group-stage-whose-action-sets-a-variable
+trap 'stage_marker=action-ran' USR1
+stage_marker=untouched
+( wait_until_tree_blocked $$; kill -USR1 $$; : > "$dir/group-stage-sent" ) &
+notifier=$!
+( wait_for_marker "$dir/group-stage-sent"; echo group-stage-payload > "$dir/eleventh" ) &
+writer=$!
+{ cat < "$dir/eleventh"; } | cat
+echo "group-stage-status=$? marker=$stage_marker"
+wait "$notifier" 2> /dev/null
+wait "$writer" 2> /dev/null
+trap - USR1
+echo open-in-a-group-stage-whose-action-sets-a-variable-done
+
+echo open-in-a-loop-stage-whose-action-sets-a-variable
+trap 'stage_marker=loop-action-ran' USR1
+stage_marker=untouched
+( wait_until_tree_blocked $$; kill -USR1 $$; : > "$dir/loop-stage-sent" ) &
+notifier=$!
+( wait_for_marker "$dir/loop-stage-sent"; printf 'one\ntwo\n' > "$dir/twelfth" ) &
+writer=$!
+while read -r line; do echo "loop-line=$line"; done < "$dir/twelfth" | cat
+echo "loop-stage-status=$? marker=$stage_marker"
+wait "$notifier" 2> /dev/null
+wait "$writer" 2> /dev/null
+trap - USR1
+echo open-in-a-loop-stage-whose-action-sets-a-variable-done
 
 echo open-that-no-signal-reaches
 ( /bin/sleep 1; echo quiet-payload > "$dir/third" ) &
