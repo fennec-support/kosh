@@ -1,0 +1,16 @@
+evilio-pty PASS
+evilnet-pty PASS
+evilss-pty PASS
+evilps-pty PASS
+evilio-quit PASS
+evilnet-quit PASS
+evilss-quit PASS
+evilps-quit PASS
+evilnet-color-pty PASS
+evilnet-plain-pty PASS
+evilss-redirected PASS
+evilio-redirected PASS
+evilnet-redirected PASS
+evilps-redirected PASS
+evilnet-forced-color-redirected PASS
+status=0

@@ -135,7 +135,7 @@ def check(name, result, requirements):
     if failed:
         print("%s FAIL %s result=%r" % (name, ",".join(failed), result))
         return False
-    print("%s PASS %r" % (name, result))
+    print("%s PASS" % name)
     return True
 
 
