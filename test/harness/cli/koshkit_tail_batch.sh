@@ -109,10 +109,42 @@ head -c 4096 large-forward.txt > page.txt
 "$BIN" -c 'koshkit tail -c 5 page.txt | koshkit wc -c; koshkit wc -c page.txt; koshkit head -c -5 page.txt | koshkit wc -c; koshkit tail -n 1 page.txt'
 head -c 8192 large-forward.txt > two-pages.txt
 "$BIN" -c 'koshkit tail -c 5 two-pages.txt | koshkit wc -c; koshkit wc -c two-pages.txt; koshkit head -c -5 two-pages.txt | koshkit wc -c; koshkit tail -c +8190 two-pages.txt | koshkit wc -c'
+drop_from_end()
+{
+  drop_mode=$1
+  drop_count=$2
+  drop_file=$3
+  if [ "$drop_mode" = c ]; then
+    drop_total=$(wc -c < "$drop_file")
+  else
+    drop_total=$(wc -l < "$drop_file")
+    if [ -n "$(tail -c 1 "$drop_file")" ]; then
+      drop_total=$((drop_total + 1))
+    fi
+  fi
+  drop_keep=$((drop_total - drop_count))
+  if [ "$drop_keep" -lt 0 ]; then
+    drop_keep=0
+  fi
+  head -$drop_mode "$drop_keep" "$drop_file"
+}
+drop_from_end_headers()
+{
+  drop_mode=$1
+  drop_count=$2
+  shift 2
+  drop_separator=
+  for drop_source in "$@"; do
+    printf '%s==> %s <==\n' "$drop_separator" "$drop_source"
+    drop_from_end "$drop_mode" "$drop_count" "$drop_source"
+    drop_separator='
+'
+  done
+}
 echo "--- negative head counts across the 64 KiB read boundary ---"
 for negative_count in 65535 65536 65537; do
   for negative_mode in n c; do
-    expected_sum=$(head -$negative_mode -$negative_count large-forward.txt | cksum)
+    expected_sum=$(drop_from_end "$negative_mode" "$negative_count" large-forward.txt | cksum)
     actual_sum=$("$BIN" -c "koshkit head -$negative_mode -$negative_count large-forward.txt | koshkit cksum")
     if [ "$actual_sum" = "$expected_sum" ]; then
       echo "head -$negative_mode -$negative_count: matched"
@@ -124,14 +156,14 @@ done
 echo "head -n -1 without a final newline:"
 "$BIN" -c 'koshkit head -n -1 no-final.txt'
 printf '|\n'
-expected_sum=$(head -n -1 large-forward.txt no-final.txt with-final.txt | cksum)
+expected_sum=$(drop_from_end_headers n 1 large-forward.txt no-final.txt with-final.txt | cksum)
 actual_sum=$("$BIN" -c 'koshkit head -n -1 large-forward.txt no-final.txt with-final.txt | koshkit cksum')
 if [ "$actual_sum" = "$expected_sum" ]; then
   echo "head -n -1 multiple sources: matched"
 else
   echo "head -n -1 multiple sources: wrong [$actual_sum] [$expected_sum]"
 fi
-expected_sum=$(head -c -65536 large-forward.txt bytes.txt large-forward.txt | cksum)
+expected_sum=$(drop_from_end_headers c 65536 large-forward.txt bytes.txt large-forward.txt | cksum)
 actual_sum=$("$BIN" -c 'koshkit head -c -65536 large-forward.txt bytes.txt large-forward.txt | koshkit cksum')
 if [ "$actual_sum" = "$expected_sum" ]; then
   echo "head -c -65536 multiple sources: matched"
