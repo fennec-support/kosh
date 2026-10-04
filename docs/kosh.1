@@ -2336,7 +2336,14 @@ Open files are listed for visible processes. The
 and
 .B \-t
 options filter by process, owner, command prefix, socket descriptor, and terse
-process identifier output.
+process identifier output. On a terminal the command and name columns are
+shortened with an ellipsis to fit the width; the
+.BR \-w " and " \-\-wide
+options keep them whole. Pipes show the FIFO type, and anonymous inodes show
+the a_inode type. On Linux a socket shows its family as unix, IPv4, IPv6,
+netlink, or packet, and the ENDPOINT column holds the local and remote address
+of a TCP or UDP socket, with the TCP state, and the path and peer inode of a
+Unix-domain socket.
 .TP
 .B evilfs
 Mounted filesystem sources, targets, types, and options are printed in a sorted
@@ -2500,6 +2507,10 @@ parents and children beneath it. CPU sorting uses the value shown in the report.
 The
 .B \-NUMBER
 operand limits the output to NUMBER processes.
+On a terminal, in a report and in a live view, command lines are shortened to
+the width of the output; the
+.BR \-w " and " \-\-wide
+options keep them whole.
 The
 .B \-C
 option is shorthand for

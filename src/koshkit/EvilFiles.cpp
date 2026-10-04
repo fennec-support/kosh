@@ -3,7 +3,10 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the evilfiles utility. It lists files held by visible
- * processes and filters them by process, owner, command, and path.
+ * processes and filters them by process, owner, command, and path. Column
+ * widths are measured in display cells. Socket descriptors are described from
+ * one table of every socket inode, read once for the whole run, which gives the
+ * family and the endpoint of each descriptor.
  */
 
 #include "../CLI.hpp"
@@ -101,7 +104,180 @@ pure fn bracketed_type_label(StringView path) wontthrow -> StringView
   let const found = TYPES.find(path);
   if (found.has_value()) return *found;
 
+  constexpr static_string_entry<StringView> KIND_ENTRIES[] = {
+      {SSK("anon_inode"), "a_inode"},
+      {SSK("pipe"),       "FIFO"   },
+      {SSK("socket"),     "sock"   },
+  };
+  constexpr StaticStringMap KINDS{KIND_ENTRIES};
+  let const colon = path.find_character(':');
+  if (colon.has_value()) {
+    let const kind = KINDS.find(path.substring_of_length(0, *colon));
+    if (kind.has_value()) return *kind;
+  }
+
   return "unknown";
+}
+
+struct socket_description
+{
+  u64 inode;
+  StringView type;
+  String endpoint;
+};
+
+struct socket_directory
+{
+  explicit socket_directory(Allocator allocator) : entries(allocator) {}
+
+  ArrayList<socket_description> entries;
+  bool did_load{false};
+};
+
+pure fn parse_bracketed_inode(StringView path, StringView prefix) wontthrow
+    -> Maybe<u64>
+{
+  if (!path.starts_with(prefix)) return None;
+
+  let const rest = path.substring(prefix.length);
+  if (rest.length < 3 || rest[0] != '[' || rest[rest.length - 1] != ']')
+    return None;
+
+  let const parsed = rest.substring_of_length(1, rest.length - 2).to<u64>();
+  if (parsed.is_error()) return None;
+
+  return parsed.value();
+}
+
+fn append_socket_address(String &endpoint, StringView address, u16 port,
+                         os::network_address_family family,
+                         Allocator allocator) throws -> void
+{
+  let const is_wildcard = address == "0.0.0.0" || address == "::";
+  let const should_bracket =
+      family == os::network_address_family::IPv6 && !is_wildcard;
+  if (should_bracket) endpoint += "[";
+  endpoint += is_wildcard || address.is_empty() ? StringView{"*"} : address;
+  if (should_bracket) endpoint += "]";
+  endpoint += ":";
+  if (port == 0)
+    endpoint += "*";
+  else
+    endpoint += String::from(port, allocator).view();
+}
+
+fn describe_network_socket(const os::network_socket_entry &socket,
+                           Allocator allocator) throws -> String
+{
+  let endpoint = String{allocator};
+  if (socket.protocol == os::network_socket_protocol::Unix) {
+    endpoint += socket.local_address.view();
+    if (socket.peer_identity != 0) {
+      endpoint += "->";
+      endpoint += String::from(socket.peer_identity, allocator).view();
+    }
+
+    return endpoint;
+  }
+
+  append_socket_address(endpoint, socket.local_address.view(),
+                        socket.local_port, socket.family, allocator);
+  if (socket.peer_port != 0) {
+    endpoint += "->";
+    append_socket_address(endpoint, socket.peer_address.view(),
+                          socket.peer_port, socket.family, allocator);
+  }
+
+  if (socket.protocol == os::network_socket_protocol::Tcp) {
+    endpoint += " (";
+    endpoint += network_socket_state_name(socket.state);
+    endpoint += ")";
+  }
+
+  return endpoint;
+}
+
+fn load_inode_table(StringView table_path, StringView type,
+                    socket_directory &directory, Allocator allocator) throws
+    -> void
+{
+  let const contents = Path{table_path}.read_entire_file();
+  if (!contents.has_value()) return;
+
+  let const text = contents->view();
+  usize position = 0;
+  bool is_header = true;
+  while (position < text.length) {
+    let const line_start = position;
+    while (position < text.length && text[position] != '\n')
+      position++;
+    let line = text.substring_of_length(line_start, position - line_start);
+    if (position < text.length) position++;
+    if (is_header) {
+      is_header = false;
+      continue;
+    }
+
+    while (!line.is_empty() && line[line.length - 1] == ' ')
+      line = line.substring_of_length(0, line.length - 1);
+    let const separator = line.find_last_character(' ');
+    if (!separator.has_value()) continue;
+
+    let const inode = line.substring(*separator + 1).to<u64>();
+    if (inode.is_error()) continue;
+
+    directory.entries.push(
+        socket_description{inode.value(), type, String{allocator}});
+  }
+}
+
+fn load_socket_directory(socket_directory &directory,
+                         Allocator allocator) throws -> void
+{
+  directory.did_load = true;
+  if (os::has_network_socket_listing()) {
+    let const sockets = os::network_sockets(
+        os::network_socket_process_mode::WithoutProcesses);
+    for (let const &socket : sockets) {
+      let type = StringView{"unix"};
+      if (socket.protocol != os::network_socket_protocol::Unix) {
+        type = socket.family == os::network_address_family::IPv6 ? "IPv6"
+                                                                 : "IPv4";
+      }
+
+      directory.entries.push(
+          socket_description{socket.identity, type,
+                             describe_network_socket(socket, allocator)});
+    }
+  }
+
+  load_inode_table("/proc/net/netlink", "netlink", directory, allocator);
+  load_inode_table("/proc/net/packet", "packet", directory, allocator);
+  directory.entries.sort(
+      [](const socket_description &left, const socket_description &right) {
+        return left.inode < right.inode;
+      });
+}
+
+fn find_socket_description(socket_directory &directory, u64 inode,
+                           Allocator allocator) throws -> Maybe<usize>
+{
+  if (!directory.did_load) load_socket_directory(directory, allocator);
+
+  usize low = 0;
+  usize high = directory.entries.count();
+  while (low < high) {
+    let const middle = low + ((high - low) / 2);
+    if (directory.entries[middle].inode < inode)
+      low = middle + 1;
+    else
+      high = middle;
+  }
+
+  if (low < directory.entries.count() && directory.entries[low].inode == inode)
+    return low;
+
+  return None;
 }
 
 fn device_label(const os::file_status &status, Allocator allocator) throws
@@ -138,7 +314,8 @@ fn descriptor_label(const os::process_open_file &file,
 
 fn widen(usize &width, const String &text) wontthrow -> void
 {
-  if (text.length() > width) width = text.length();
+  let const cell_count = toiletline::get_display_width(text.view());
+  if (cell_count > width) width = cell_count;
 }
 
 fn matches_filters(const os::process_entry &process, i64 wanted_pid,
@@ -254,6 +431,7 @@ fn EvilFiles::execute(
 
   ArrayList<open_file_row> rows{allocator};
   column_widths widths{};
+  socket_directory sockets{allocator};
   let terse_output = String{allocator};
   bool did_match = false;
   usize inaccessible_process_count = 0;
@@ -332,6 +510,15 @@ fn EvilFiles::execute(
       let const &status = file_statuses[position];
       let const did_stat = metadata_results[position].error_number == 0;
 
+      let socket_index = Maybe<usize>{None};
+      if (let const socket_inode =
+              parse_bracketed_inode(file.path.view(), "socket:");
+          socket_inode.has_value())
+      {
+        socket_index =
+            find_socket_description(sockets, *socket_inode, allocator);
+      }
+
       open_file_row row{
           String{allocator, process.name.view()                                                         },
           String::from(static_cast<u64>(process.pid), allocator),
@@ -339,9 +526,13 @@ fn EvilFiles::execute(
                             : String::from(process.owner_id, allocator),
           descriptor_label(file, allocator),
           String{allocator, did_stat ? file_type_label(status.mode)
-                                     : bracketed_type_label(file.path.view())},
+                            : socket_index.has_value()
+                                ? sockets.entries[*socket_index].type
+                                : bracketed_type_label(file.path.view())},
           did_stat ? os::format_mode_string(status.mode)
-                   : String{allocator, "-"                                                                         },
+          : file.mode != 0
+              ? os::format_mode_string(file.mode)
+              : String{allocator, "-"},
           String{allocator, file.is_deleted ? "deleted" : "-"                                           },
           did_stat ? device_label(status, allocator) : String{allocator, "-"                                                                         },
           String::from(file.size != 0 || !did_stat ? file.size : status.size,
@@ -350,7 +541,9 @@ fn EvilFiles::execute(
           String::from(file.file_id != 0 || !did_stat ? file.file_id
                                                       : status.file_id,
                        allocator),
-          file.socket_endpoint,
+          socket_index.has_value()
+              ? String{allocator, sockets.entries[*socket_index].endpoint.view()}
+              : String{allocator},
           String{allocator, file.path.view()                                                            },
       };
 

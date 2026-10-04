@@ -2456,50 +2456,6 @@ static pure fn open_flags_access(int open_flags) wontthrow -> char
 
 #endif
 
-#if defined __linux__
-
-fn linux_socket_endpoint(StringView process_path, u64 inode,
-                         Allocator allocator) throws -> String
-{
-  let const path = String{process_path} + "/net/unix";
-  char buffer[65536];
-  let const length = read_small_file(path.c_str(), buffer, sizeof(buffer));
-  if (length == 0) return String{allocator};
-
-  let const text = StringView{buffer, length};
-  usize position = 0;
-  while (position < text.length) {
-    let const line = each_line(text, position);
-    usize token_position = 0;
-    StringView inode_token;
-    StringView endpoint;
-    for (usize token_index = 0; token_index < 8; token_index++) {
-      while (token_position < line.length &&
-             (line[token_position] == ' ' || line[token_position] == '\t'))
-        token_position++;
-      if (token_position == line.length) break;
-
-      let const token_start = token_position;
-      while (token_position < line.length && line[token_position] != ' ' &&
-             line[token_position] != '\t')
-        token_position++;
-      let const token =
-          line.substring_of_length(token_start, token_position - token_start);
-      if (token_index == 6) inode_token = token;
-      if (token_index == 7) endpoint = token;
-    }
-
-    if (inode_token.is_empty() || endpoint.is_empty()) continue;
-    let const parsed = inode_token.to<u64>();
-    if (!parsed.is_error() && parsed.value() == inode)
-      return String{allocator, endpoint};
-  }
-
-  return String{allocator};
-}
-
-#endif
-
 fn has_process_open_file_listing() wontthrow -> bool
 {
 #if defined __APPLE__ || defined __linux__
@@ -2517,14 +2473,14 @@ fn list_process_open_files(i64 pid, Allocator allocator,
   let const do_push =
       [&files, allocator](StringView path, i64 descriptor_number, u64 size,
                           u64 file_id, u64 offset, u32 mode,
-                          process_file_use use, char access, bool is_deleted,
-                          StringView socket_endpoint) throws -> void {
+                          process_file_use use, char access,
+                          bool is_deleted) throws -> void {
     if (path.is_empty()) return;
 
     files.push(process_open_file{
         String{allocator, path           },
         descriptor_number, size, file_id, offset, mode,
-        use, access, is_deleted, false, String{allocator, socket_endpoint}
+        use, access, is_deleted, false
     });
   };
 
@@ -2533,7 +2489,7 @@ fn list_process_open_files(i64 pid, Allocator allocator,
     files.push(process_open_file{
         String{allocator, "[inaccessible]"},
         -1, 0, 0, 0, 0,
-        process_file_use::Mapped, 'u', false, true, String{allocator}
+        process_file_use::Mapped, 'u', false, true
     });
   }
   let const process_id = static_cast<pid_t>(pid);
@@ -2544,17 +2500,17 @@ fn list_process_open_files(i64 pid, Allocator allocator,
     do_push(StringView{vnode_paths.pvi_cdir.vip_path}, -1, 0,
             static_cast<u64>(vnode_paths.pvi_cdir.vip_vi.vi_stat.vst_ino), 0,
             vnode_paths.pvi_cdir.vip_vi.vi_stat.vst_mode, process_file_use::Cwd,
-            'r', false, {});
+            'r', false);
     do_push(StringView{vnode_paths.pvi_rdir.vip_path}, -1, 0,
             static_cast<u64>(vnode_paths.pvi_rdir.vip_vi.vi_stat.vst_ino), 0,
             vnode_paths.pvi_rdir.vip_vi.vi_stat.vst_mode,
-            process_file_use::Root, 'r', false, {});
+            process_file_use::Root, 'r', false);
   }
 
   char executable_path[PROC_PIDPATHINFO_MAXSIZE];
   if (::proc_pidpath(process_id, executable_path, sizeof(executable_path)) > 0)
     do_push(StringView{executable_path}, -1, 0, 0, 0, 0,
-            process_file_use::Executable, 'r', false, {});
+            process_file_use::Executable, 'r', false);
 
   let descriptor_bytes =
       ::proc_pidinfo(process_id, PROC_PIDLISTFDS, 0, nullptr, 0);
@@ -2587,23 +2543,23 @@ fn list_process_open_files(i64 pid, Allocator allocator,
               static_cast<u64>(vnode.pvip.vip_vi.vi_stat.vst_size),
               static_cast<u64>(vnode.pvip.vip_vi.vi_stat.vst_ino), 0,
               vnode.pvip.vip_vi.vi_stat.vst_mode, process_file_use::File,
-              open_flags_access(vnode.pfi.fi_openflags), false, {});
+              open_flags_access(vnode.pfi.fi_openflags), false);
       break;
     }
 
     case PROX_FDTYPE_SOCKET:
       do_push("[socket]", descriptor_number, 0, 0, 0, 0, process_file_use::File,
-              'u', false, {});
+              'u', false);
       break;
 
     case PROX_FDTYPE_PIPE:
       do_push("[pipe]", descriptor_number, 0, 0, 0, 0, process_file_use::File,
-              'u', false, {});
+              'u', false);
       break;
 
     default:
       do_push("[other]", descriptor_number, 0, 0, 0, 0, process_file_use::File,
-              'u', false, {});
+              'u', false);
       break;
     }
   }
@@ -2643,7 +2599,7 @@ fn list_process_open_files(i64 pid, Allocator allocator,
         path.substring(path.length - DELETED_SUFFIX.length) == DELETED_SUFFIX;
     if (is_deleted)
       path = path.substring_of_length(0, path.length - DELETED_SUFFIX.length);
-    do_push(path, -1, 0, 0, 0, 0, reference.use, 'r', is_deleted, {});
+    do_push(path, -1, 0, 0, 0, 0, reference.use, 'r', is_deleted);
   }
 
   if (detail == process_open_file_detail::IncludeMappings) {
@@ -2720,7 +2676,7 @@ fn list_process_open_files(i64 pid, Allocator allocator,
           if (is_duplicate) continue;
 
           do_push(path, -1, 0, file_id, 0, 0, process_file_use::Mapped, 'r',
-                  is_deleted, {});
+                  is_deleted);
         }
       }
     }
@@ -2728,7 +2684,7 @@ fn list_process_open_files(i64 pid, Allocator allocator,
       files.push(process_open_file{
           String{allocator, "[inaccessible]"},
           -1, 0, 0, 0, 0,
-          process_file_use::Mapped, 'u', false, true, String{allocator}
+          process_file_use::Mapped, 'u', false, true
       });
     }
   }
@@ -2740,7 +2696,7 @@ fn list_process_open_files(i64 pid, Allocator allocator,
       files.push(process_open_file{
           String{allocator, "[inaccessible]"},
           -1, 0, 0, 0, 0,
-          process_file_use::File, 'u', false, true, String{allocator}
+          process_file_use::File, 'u', false, true
       });
     }
     return files;
@@ -2810,22 +2766,8 @@ fn list_process_open_files(i64 pid, Allocator allocator,
         target->view().substring(target->view().length -
                                  deleted_suffix.length) == deleted_suffix;
     let const mode = descriptor_status.st_mode;
-    let socket_endpoint = String{allocator};
-    if (target->view().starts_with("socket:[")) {
-      let const open = target->view().find_character('[');
-      let const close = target->view().find_character(']');
-      if (open.has_value() && close.has_value() && *close > *open + 1) {
-        let const socket_inode = target->view()
-                                     .substring(*open + 1)
-                                     .substring_of_length(0, *close - *open - 1)
-                                     .to<u64>();
-        if (!socket_inode.is_error())
-          socket_endpoint = linux_socket_endpoint(
-              process_path, socket_inode.value(), allocator);
-      }
-    }
     do_push(target->view(), parsed_number.value(), size, file_id, offset, mode,
-            process_file_use::File, access, is_deleted, socket_endpoint.view());
+            process_file_use::File, access, is_deleted);
   }
 
   return files;

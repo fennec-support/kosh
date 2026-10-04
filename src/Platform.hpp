@@ -621,7 +621,6 @@ struct process_open_file
   char access{'u'};
   bool is_deleted{false};
   bool is_inaccessible{false};
-  String socket_endpoint{heap_allocator()};
 };
 
 enum class process_open_file_detail : u8
