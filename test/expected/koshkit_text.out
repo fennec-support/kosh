@@ -607,3 +607,62 @@ kept
 4
 6
 8
+--- grep color always marks matches, names, numbers, and separators ---
+@[32m1@[0m@[36m:@[0malpha @[1;31mfoo@[0m beta
+@[32m3@[0m@[36m:@[0mFOO and @[1;31mfoo@[0m
+@[35mcolor-input.txt@[0m@[36m:@[0malpha @[1;31mfoo@[0m beta
+@[35mcolor-input.txt@[0m@[36m:@[0m@[1;31mFOO@[0m and @[1;31mfoo@[0m
+--- grep color highlights every alternative ---
+al@[1;31mph@[0ma f@[1;31moo@[0m beta
+FOO and f@[1;31moo@[0m
+--- grep color leaves selected lines of -v and -x plain or whole ---
+plain
+@[1;31mplain@[0m
+--- grep color colors -c and -l names but not counts ---
+@[35mcolor-input.txt@[0m@[36m:@[0m2
+@[35mgrep-tree/a.txt@[0m@[36m:@[0m0
+@[35mcolor-input.txt@[0m
+--- grep color never, auto, and redirected default keep bytes ---
+1:alpha foo beta
+3:FOO and foo
+1:alpha foo beta
+3:FOO and foo
+1:alpha foo beta
+3:FOO and foo
+1:14: error: koshkit grep: Invalid value 'sometimes' for '--color'.
+     1 |  koshkit grep --color=sometimes foo color-input.txt
+       |               ^~~~~~~~~~~~~~~~~
+--- diff color marks removed, added, hunk, and header lines ---
+@[36m2c2@[0m
+@[31m< b@[0m
+---
+@[32m> B@[0m
+@[36m3a4@[0m
+@[32m> d@[0m
+@[1m--- left@[0m
+@[1m+++ right@[0m
+@[36m@@ -1,3 +1,4 @@@[0m
+ a
+@[31m-b@[0m
+@[32m+B@[0m
+ c
+@[32m+d@[0m
+--- diff color never and redirected default keep bytes ---
+2c2
+< b
+---
+> B
+3a4
+> d
+--- left
++++ right
+@@ -1,3 +1,4 @@
+ a
+-b
++B
+ c
++d
+--- df human readable header and unit shape ---
+Filesystem Size Used Avail Use% Mounted on
+Filesystem Size Used Avail Use% Mounted on
+malformed-rows=1

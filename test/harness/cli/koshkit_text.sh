@@ -317,3 +317,44 @@ printf 'kept\n' | "$BIN" -c \
 "$BIN" -c 'koshkit cat tee-working.txt'
 echo "--- seq with step ---"
 "$BIN" -c 'koshkit seq 2 2 8'
+printf 'alpha foo beta\nplain\nFOO and foo\n' > color-input.txt
+printf 'a\nb\nc\n' > color-left.txt
+printf 'a\nB\nc\nd\n' > color-right.txt
+echo "--- grep color always marks matches, names, numbers, and separators ---"
+"$BIN" -c 'koshkit grep --color=always -n foo color-input.txt' | tr '\033' '@'
+"$BIN" -c 'koshkit grep --color=always -i foo color-input.txt grep-tree/a.txt' |
+  tr '\033' '@'
+echo "--- grep color highlights every alternative ---"
+"$BIN" -c 'koshkit grep --color=always -E "o+|ph" color-input.txt' |
+  tr '\033' '@'
+echo "--- grep color leaves selected lines of -v and -x plain or whole ---"
+"$BIN" -c 'koshkit grep --color=always -v foo color-input.txt' | tr '\033' '@'
+"$BIN" -c 'koshkit grep --color=always -x plain color-input.txt' |
+  tr '\033' '@'
+echo "--- grep color colors -c and -l names but not counts ---"
+"$BIN" -c 'koshkit grep --color=always -c foo color-input.txt grep-tree/a.txt' |
+  tr '\033' '@'
+"$BIN" -c 'koshkit grep --color=always -l foo color-input.txt' | tr '\033' '@'
+echo "--- grep color never, auto, and redirected default keep bytes ---"
+"$BIN" -c 'koshkit grep --color=never -n foo color-input.txt' | tr '\033' '@'
+"$BIN" -c 'koshkit grep --color -n foo color-input.txt' | tr '\033' '@'
+"$BIN" -c 'koshkit grep -n foo color-input.txt' | tr '\033' '@'
+"$BIN" -c 'koshkit grep --color=sometimes foo color-input.txt' 2>&1 |
+  tr '\033' '@'
+echo "--- diff color marks removed, added, hunk, and header lines ---"
+"$BIN" -c 'koshkit diff --color=always color-left.txt color-right.txt' |
+  tr '\033' '@'
+"$BIN" -c \
+  'koshkit diff --color=always -u -L left -L right color-left.txt color-right.txt' |
+  tr '\033' '@'
+echo "--- diff color never and redirected default keep bytes ---"
+"$BIN" -c 'koshkit diff --color=never color-left.txt color-right.txt' |
+  tr '\033' '@'
+"$BIN" -c 'koshkit diff -u -L left -L right color-left.txt color-right.txt' |
+  tr '\033' '@'
+echo "--- df human readable header and unit shape ---"
+"$BIN" -c 'koshkit df -h . | koshkit head -n 1'
+"$BIN" -c 'koshkit df -H . | koshkit head -n 1'
+"$BIN" -c 'koshkit df -h . | koshkit tail -n 1' |
+  grep -Ev '^[^ ]+ [0-9.]+[KMGTP]? [0-9.]+[KMGTP]? [0-9.]+[KMGTP]? [0-9]+% .+$'
+echo "malformed-rows=$?"

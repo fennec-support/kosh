@@ -1692,8 +1692,26 @@ follows only a link named on the command line. The
 .B \-P
 option restores the default.
 .TP
+.B df
+Mounted filesystems or the filesystems of the operands are reported. The
+.B \-k
+and
+.B \-P
+options select 1024-byte blocks and the POSIX header. The
+.BR \-h ", " \-\-human\-readable
+option prints sizes in powers of 1024 with K, M, G, T, and P suffixes under the
+header
+.BR "Filesystem Size Used Avail Use% Mounted on" ,
+and the
+.BR \-H ", " \-\-si
+option does the same in powers of 1000.
+.TP
 .B diff
 Two files are compared line by line. The
+.BR \-\-color [= \fIWHEN\fR ]
+option colors removed lines red, added lines green, hunk headers cyan, and the
+unified file headers bold. WHEN is auto, always, or never, and a bare option
+means auto. Output is never colored without the option. The
 .BR \-u ,
 .BR \-w ,
 .BR \-a ,
@@ -1829,6 +1847,16 @@ option selects a supported POSIX environment.
 .TP
 .B grep
 Regular-expression matches are printed. The
+.BR \-\-color [= \fIWHEN\fR ]
+option colors matches bold red, file names magenta, line numbers green, and
+separators cyan. WHEN is auto, always, or never, and a bare option means auto.
+Matches are not highlighted with
+.BR \-v ,
+.BR \-c ,
+.BR \-l ,
+or
+.BR \-q .
+Output is never colored without the option. The
 .BR \-i ,
 .BR \-v ,
 .BR \-r ,

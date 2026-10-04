@@ -8,6 +8,7 @@
  */
 
 #include "../CLI.hpp"
+#include "../CLIColors.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
@@ -15,7 +16,7 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[-uwa] [-L label] file1 file2");
+HELP_SYNOPSIS_DECL("[-uwa] [--color[=when]] [-L label] file1 file2");
 
 HELP_DESCRIPTION_DECL("The diff utility compares two files line by line.");
 
@@ -24,6 +25,9 @@ FLAG(DIFF_IGNORE_SPACE, Bool, 'w', "ignore-all-space",
      "Ignore whitespace differences.");
 FLAG(DIFF_TEXT, Bool, 'a', "text", "Treat every file as text.");
 FLAG(DIFF_LABEL, ManyStrings, 'L', "label", "Use this file label.");
+FLAG_OPTIONAL(DIFF_COLOR, '\0', "color",
+              "Color the differences; the default is auto.",
+              koshka::koshkit::is_koshkit_color_when, "auto|always|never");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Diff);
@@ -304,12 +308,32 @@ static fn flush_diff_output(const ExecContext &ec, String &output) throws
   output.clear();
 }
 
-static fn append_diff_line(const ExecContext &ec, String &output,
-                           StringView prefix, StringView line) throws -> void
+struct diff_palette
 {
-  output += prefix;
-  output += line;
-  if (line.is_empty() || line[line.length - 1] != '\n') {
+  StringView removed;
+  StringView added;
+  StringView hunk;
+  StringView header;
+};
+
+static fn append_diff_line(const ExecContext &ec, String &output,
+                           StringView style, StringView prefix,
+                           StringView line) throws -> void
+{
+  let const has_newline =
+      !line.is_empty() && line[line.length - 1] == '\n';
+  if (style.is_empty()) {
+    output += prefix;
+    output += line;
+  } else {
+    output += style;
+    output += prefix;
+    output += has_newline ? line.substring_of_length(0, line.length - 1) : line;
+    output += colors::ansi::RESET;
+    if (has_newline) output += '\n';
+  }
+
+  if (!has_newline) {
     output += '\n';
     output += "\\ No newline at end of file\n";
   }
@@ -329,7 +353,8 @@ static fn append_normal_range(String &output, usize start, usize count) throws
 static fn append_normal_diff(const ExecContext &ec, String &output,
                              const diff_lines &left_lines,
                              const diff_lines &right_lines,
-                             const ArrayList<diff_edit> &edits) throws -> bool
+                             const ArrayList<diff_edit> &edits,
+                             const diff_palette &palette) throws -> bool
 {
   usize edit_position = 0;
   usize left_position = 0;
@@ -361,6 +386,7 @@ static fn append_normal_diff(const ExecContext &ec, String &output,
     let const left_count = left_position - left_start;
     let const right_count = right_position - right_start;
 
+    output += palette.hunk;
     if (left_count == 0)
       append_diff_number(output, left_start);
     else
@@ -370,6 +396,7 @@ static fn append_normal_diff(const ExecContext &ec, String &output,
       append_diff_number(output, right_start);
     else
       append_normal_range(output, right_start, right_count);
+    if (!palette.hunk.is_empty()) output += colors::ansi::RESET;
     output += '\n';
     flush_diff_output(ec, output);
 
@@ -377,14 +404,16 @@ static fn append_normal_diff(const ExecContext &ec, String &output,
     for (usize index = block_start; index < edit_position; index++) {
       if (os::INTERRUPT_REQUESTED) return false;
       if (edits[index] == diff_edit::Delete)
-        append_diff_line(ec, output, "< ", left_lines.get(block_left++));
+        append_diff_line(ec, output, palette.removed, "< ",
+                         left_lines.get(block_left++));
     }
     if (left_count != 0 && right_count != 0) output += "---\n";
     usize block_right = right_start;
     for (usize index = block_start; index < edit_position; index++) {
       if (os::INTERRUPT_REQUESTED) return false;
       if (edits[index] == diff_edit::Insert)
-        append_diff_line(ec, output, "> ", right_lines.get(block_right++));
+        append_diff_line(ec, output, palette.added, "> ",
+                         right_lines.get(block_right++));
     }
   }
 
@@ -428,12 +457,18 @@ static fn append_unified_diff(const ExecContext &ec, String &output,
                               StringView left_label, StringView right_label,
                               const diff_lines &left_lines,
                               const diff_lines &right_lines,
-                              const ArrayList<diff_edit> &edits) throws -> bool
+                              const ArrayList<diff_edit> &edits,
+                              const diff_palette &palette) throws -> bool
 {
+  output += palette.header;
   output += "--- ";
   output += left_label;
-  output += "\n+++ ";
+  if (!palette.header.is_empty()) output += colors::ansi::RESET;
+  output += '\n';
+  output += palette.header;
+  output += "+++ ";
   output += right_label;
+  if (!palette.header.is_empty()) output += colors::ansi::RESET;
   output += '\n';
   flush_diff_output(ec, output);
 
@@ -476,23 +511,29 @@ static fn append_unified_diff(const ExecContext &ec, String &output,
       if (edits[index] != diff_edit::Delete) right_count++;
     }
 
+    output += palette.hunk;
     output += "@@ -";
     append_unified_range(output, left_start, left_count);
     output += " +";
     append_unified_range(output, right_start, right_count);
-    output += " @@\n";
+    output += " @@";
+    if (!palette.hunk.is_empty()) output += colors::ansi::RESET;
+    output += '\n';
     flush_diff_output(ec, output);
     while (current_edit < hunk_end) {
       if (os::INTERRUPT_REQUESTED) return false;
       switch (edits[current_edit]) {
       case diff_edit::Equal:
-        append_diff_line(ec, output, " ", left_lines.get(left_position));
+        append_diff_line(ec, output, StringView{}, " ",
+                         left_lines.get(left_position));
         break;
       case diff_edit::Delete:
-        append_diff_line(ec, output, "-", left_lines.get(left_position));
+        append_diff_line(ec, output, palette.removed, "-",
+                         left_lines.get(left_position));
         break;
       case diff_edit::Insert:
-        append_diff_line(ec, output, "+", right_lines.get(right_position));
+        append_diff_line(ec, output, palette.added, "+",
+                         right_lines.get(right_position));
         break;
       }
       advance_diff_position(edits[current_edit], left_position, right_position);
@@ -605,6 +646,14 @@ fn Diff::execute(const ExecContext &ec, EvalContext &cxt,
   if (!has_difference) return 0;
 
   let output = String{cxt.scratch_allocator()};
+  let palette = diff_palette{};
+  if (resolve_koshkit_color_flag(FLAG_DIFF_COLOR.is_enabled(),
+                                 FLAG_DIFF_COLOR.has_value(),
+                                 FLAG_DIFF_COLOR.value()))
+  {
+    palette = diff_palette{colors::ansi::RED, colors::ansi::GREEN,
+                           colors::ansi::CYAN, colors::ansi::BOLD};
+  }
   if (FLAG_DIFF_UNIFIED.is_enabled()) {
     let const left_name = make_diff_header_name(
         operands[0].view(),
@@ -617,10 +666,11 @@ fn Diff::execute(const ExecContext &ec, EvalContext &cxt,
                                      : None,
         cxt.scratch_allocator());
     if (!append_unified_diff(ec, output, left_name, right_name, left_lines,
-                             right_lines, result.edits))
+                             right_lines, result.edits, palette))
       return 130;
   } else {
-    if (!append_normal_diff(ec, output, left_lines, right_lines, result.edits))
+    if (!append_normal_diff(ec, output, left_lines, right_lines, result.edits,
+                            palette))
       return 130;
   }
 

@@ -186,7 +186,7 @@ _koshkit_util_flags ()
         "-b --bytes -c --characters -f --fields -d --delimiter -n --no-split -s --only-delimited"
     ;;
     diff)
-      echo "-u --unified -w --ignore-all-space -a --text -L --label"
+      echo "-u --unified -w --ignore-all-space -a --text -L --label --color"
     ;;
     file)
       echo \
@@ -325,7 +325,7 @@ _koshkit_util_flags ()
       echo "-c -C -d -s"
     ;;
     grep)
-      echo "-i -v -r -n -h -E -F -e -f -c -l -q -s -x -rnh --recursive --line-number --no-filename --extended-regexp --fixed-strings --regexp --file --count --files-with-matches --quiet --no-messages --line-regexp"
+      echo "-i -v -r -n -h -E -F -e -f -c -l -q -s -x -rnh --recursive --line-number --no-filename --extended-regexp --fixed-strings --regexp --file --count --files-with-matches --quiet --no-messages --line-regexp --color"
     ;;
     sort)
       echo "-b -c -C -d -f -i -k -m -n -o -r -s -t -u"
@@ -374,7 +374,7 @@ _koshkit_util_flags ()
       echo "-u --utc"
     ;;
     df)
-      echo "-k --kilobytes -P --portability"
+      echo "-k --kilobytes -P --portability -h --human-readable -H --si"
     ;;
     expand | unexpand)
       echo "-a --all -t --tabs"
