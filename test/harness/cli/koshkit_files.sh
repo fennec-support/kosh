@@ -244,7 +244,8 @@ else
   ' 2> /dev/null; echo "$?")
   du_interrupt_line_count=$(wc -l < du-interrupt.out)
   if [ "$du_interrupt_status" -eq 130 ] &&
-    [ "$du_interrupt_line_count" -lt "$du_interrupt_expected_count" ]; then
+    [ "$du_interrupt_line_count" -lt "$du_interrupt_expected_count" ] &&
+    ! grep -q 'Interrupted system call' du-interrupt.err; then
     echo "du-interrupt=matched"
   else
     echo "du-interrupt=failed status=$du_interrupt_status lines=$du_interrupt_line_count"

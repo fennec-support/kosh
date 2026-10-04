@@ -1199,6 +1199,8 @@ cold static fn show_soft_koshkit_error(const ExecContext &ec, EvalContext &cxt,
                                        SourceLocation location,
                                        StringView message) throws -> void
 {
+  if (os::INTERRUPT_REQUESTED) return;
+
   const ErrorWithLocation located{steal(location), message};
   if (const String *source = cxt.source_store().current_source();
       source != nullptr)
@@ -1241,6 +1243,8 @@ cold noinline fn report_soft_koshkit_error(const ExecContext &ec,
                                            StringView note) throws -> void
 {
   report_soft_koshkit_error(ec, cxt, message);
+  if (os::INTERRUPT_REQUESTED) return;
+
   show_message(Note{String{note}}.to_string());
 }
 
@@ -1261,6 +1265,8 @@ cold noinline fn report_soft_koshkit_util_error(const ExecContext &ec,
                                                 StringView note) throws -> void
 {
   report_soft_koshkit_util_error(ec, cxt, utility_name, message);
+  if (os::INTERRUPT_REQUESTED) return;
+
   show_message(Note{String{note}}.to_string());
 }
 
@@ -1280,6 +1286,8 @@ cold noinline fn report_soft_koshkit_util_error(
 {
   report_soft_koshkit_util_error(ec, cxt, steal(location), utility_name,
                                  message);
+  if (os::INTERRUPT_REQUESTED) return;
+
   show_message(Note{String{note}}.to_string());
 }
 
