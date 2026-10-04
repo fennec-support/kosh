@@ -576,3 +576,110 @@ KOSH_HISTORY_FILE="$dir/exact-failure" "$BIN" --no-init-files -c \
   'koshkit cat "$1" >/dev/null 2>&1; history -r' history-test \
   "$dir/no-such-file" 2>&1 | \
   grep -c "cannot read history at .*: the file contains invalid data"
+
+printf 'trunc one\ntrunc two\ntrunc three\n' > "$dir/peer-truncate"
+echo "== a peer truncation keeps the private branch and its recall =="
+KOSH_HISTORY_FILE="$dir/peer-truncate" "$BIN" --no-init-files -c \
+  'history >/dev/null; : > "$KOSH_HISTORY_FILE"; history; \
+history -s trunc-local; echo "rc=$?"; history; echo durable; \
+cat "$KOSH_HISTORY_FILE"'
+echo "== a fresh shell after a peer truncation sees only the stored record =="
+KOSH_HISTORY_FILE="$dir/peer-truncate" "$BIN" --no-init-files -c 'history'
+
+printf 'trunc one\ntrunc two\ntrunc three\n' > "$dir/peer-shrink"
+echo "== a peer rewrite to a shorter file keeps the private branch =="
+KOSH_HISTORY_FILE="$dir/peer-shrink" "$BIN" --no-init-files -c \
+  'history >/dev/null; printf "p\n" > "$KOSH_HISTORY_FILE"; history -s after; \
+history; echo durable; cat "$KOSH_HISTORY_FILE"'
+
+printf 'trunc one\ntrunc two\n' > "$dir/peer-grow-replace"
+echo "== a peer rewrite to a longer file keeps the private branch =="
+KOSH_HISTORY_FILE="$dir/peer-grow-replace" "$BIN" --no-init-files -c \
+  'history >/dev/null; \
+printf "peer long record one\npeer long record two\npeer three\n" \
+> "$KOSH_HISTORY_FILE"; history -s after; history; echo durable; \
+cat "$KOSH_HISTORY_FILE"'
+
+printf 'trunc one\ntrunc two\n' > "$dir/peer-truncate-delete"
+echo "== deleting after a peer truncation fails and changes nothing =="
+KOSH_HISTORY_FILE="$dir/peer-truncate-delete" "$BIN" --no-init-files -c \
+  'history >/dev/null; : > "$KOSH_HISTORY_FILE"; history -d 1; \
+echo "rc=$?"; history; echo durable; cat "$KOSH_HISTORY_FILE"' 2>/dev/null
+
+printf 'trunc one\ntrunc two\n' > "$dir/peer-truncate-sync"
+echo "== history -S after a peer truncation adopts the truncated file =="
+KOSH_HISTORY_FILE="$dir/peer-truncate-sync" "$BIN" --no-init-files -c \
+  'history >/dev/null; printf "peer only\n" > "$KOSH_HISTORY_FILE"; \
+history -S; echo "rc=$?"; history'
+
+printf 'read only one\n' > "$dir/read-only"
+"$BIN_DIR/invoke-koshkit" chmod 444 "$dir/read-only"
+if ( : >> "$dir/read-only" ) 2>/dev/null; then
+  echo "== a failed append leaves the branch and the file unchanged =="
+  echo "skipped: the file stays writable for this user"
+else
+  echo "== a failed append leaves the branch and the file unchanged =="
+  KOSH_HISTORY_FILE="$dir/read-only" "$BIN" --no-init-files -c \
+    'history >/dev/null; history -s refused; echo "rc=$?"; \
+history -s refused-again; echo "rc=$?"; history; echo durable; \
+cat "$KOSH_HISTORY_FILE"' 2>/dev/null
+fi
+
+: > "$dir/many-writers"
+echo "== six concurrent writers append whole records in order =="
+writer_count=6
+record_count=25
+writer_index=1
+while [ "$writer_index" -le "$writer_count" ]; do
+  KOSH_HISTORY_FILE="$dir/many-writers" "$BIN" --no-init-files -c \
+    'history >/dev/null; : > "$3-$1"; attempt_count=0; \
+while [ ! -e "$3-go" ] && [ "$attempt_count" -lt 3000 ]; do \
+koshkit sleep 0.01; attempt_count=$((attempt_count + 1)); done; \
+[ -e "$3-go" ] || exit 1; record_index=1; \
+while [ "$record_index" -le "$2" ]; do \
+history -s "writer$1-record$record_index" || exit 1; \
+record_index=$((record_index + 1)); done; \
+own_count=$(history | koshkit grep -c "writer$1-"); \
+all_count=$(history | koshkit grep -c "writer[0-9]-"); \
+printf "writer %s own=%s all=%s\n" "$1" "$own_count" "$all_count"' \
+    history-test "$writer_index" "$record_count" "$dir/many-ready" \
+    > "$dir/many-writers-output-$writer_index" &
+  writer_index=$((writer_index + 1))
+done
+attempt_count=0
+ready_count=0
+while [ "$ready_count" -lt "$writer_count" ] &&
+  [ "$attempt_count" -lt 3000 ]; do
+  ready_count=0
+  writer_index=1
+  while [ "$writer_index" -le "$writer_count" ]; do
+    if [ -e "$dir/many-ready-$writer_index" ]; then
+      ready_count=$((ready_count + 1))
+    fi
+    writer_index=$((writer_index + 1))
+  done
+  if [ "$ready_count" -lt "$writer_count" ]; then
+    sleep 0.01
+    attempt_count=$((attempt_count + 1))
+  fi
+done
+: > "$dir/many-ready-go"
+wait
+cat "$dir"/many-writers-output-?
+echo "-- every line is one whole record --"
+"$BIN" --no-init-files -c \
+  'koshkit wc -l < "$1"; koshkit grep -c -v -E "^writer[0-9]-record[0-9]+$" \
+"$1"' history-test "$dir/many-writers"
+echo "-- each writer keeps its own order --"
+writer_index=1
+while [ "$writer_index" -le "$writer_count" ]; do
+  "$BIN" --no-init-files -c \
+    'koshkit grep "^writer$2-" "$1" > "$3"; record_index=1; \
+while [ "$record_index" -le "$4" ]; do \
+printf "writer%s-record%s\n" "$2" "$record_index"; \
+record_index=$((record_index + 1)); done > "$3.expected"; \
+koshkit cmp "$3" "$3.expected"; echo "writer $2 order rc=$?"' \
+    history-test "$dir/many-writers" "$writer_index" \
+    "$dir/many-writers-order-$writer_index" "$record_count"
+  writer_index=$((writer_index + 1))
+done

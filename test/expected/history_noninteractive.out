@@ -344,3 +344,64 @@ rc=0,0
 rc=0
 == a history read reports its owned failure cause ==
 1
+== a peer truncation keeps the private branch and its recall ==
+    1  trunc one
+    2  trunc two
+    3  trunc three
+rc=0
+    1  trunc one
+    2  trunc two
+    3  trunc three
+    4  trunc-local
+durable
+trunc-local
+== a fresh shell after a peer truncation sees only the stored record ==
+    1  trunc-local
+== a peer rewrite to a shorter file keeps the private branch ==
+    1  trunc one
+    2  trunc two
+    3  trunc three
+    4  after
+durable
+p
+after
+== a peer rewrite to a longer file keeps the private branch ==
+    1  trunc one
+    2  trunc two
+    3  after
+durable
+peer long record one
+peer long record two
+peer three
+after
+== deleting after a peer truncation fails and changes nothing ==
+rc=1
+    1  trunc one
+    2  trunc two
+durable
+== history -S after a peer truncation adopts the truncated file ==
+rc=0
+    1  peer only
+== a failed append leaves the branch and the file unchanged ==
+rc=1
+rc=1
+    1  read only one
+durable
+read only one
+== six concurrent writers append whole records in order ==
+writer 1 own=25 all=25
+writer 2 own=25 all=25
+writer 3 own=25 all=25
+writer 4 own=25 all=25
+writer 5 own=25 all=25
+writer 6 own=25 all=25
+-- every line is one whole record --
+150
+0
+-- each writer keeps its own order --
+writer 1 order rc=0
+writer 2 order rc=0
+writer 3 order rc=0
+writer 4 order rc=0
+writer 5 order rc=0
+writer 6 order rc=0
