@@ -1850,7 +1850,12 @@ Regular-expression matches are printed. The
 .BR \-\-color [= \fIWHEN\fR ]
 option colors matches bold red, file names magenta, line numbers green, and
 separators cyan. WHEN is auto, always, or never, and a bare option means auto.
-Matches are not highlighted with
+When color is on, GREP_COLORS holds colon-separated GNU capabilities such as
+.BR ms=01;31 ,
+with ms, mt, sl, cx, fn, ln, se, and rv taking effect and an unknown name
+ignored. Parsing stops at the first character of a value that is not a digit or
+a semicolon, and an empty value turns that color off. The deprecated GREP_COLOR
+sets the match color below GREP_COLORS. Matches are not highlighted with
 .BR \-v ,
 .BR \-c ,
 .BR \-l ,

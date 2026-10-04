@@ -632,6 +632,29 @@ plain
 1:14: error: koshkit grep: Invalid value 'sometimes' for '--color'.
      1 |  koshkit grep --color=sometimes foo color-input.txt
        |               ^~~~~~~~~~~~~~~~~
+--- grep color honors GREP_COLORS capabilities ---
+@[34mcolor-input.txt@[0m@[31m:@[0m@[33m1@[0m@[31m:@[0malpha @[01;32mfoo@[0m beta
+@[34mcolor-input.txt@[0m@[31m:@[0m@[33m3@[0m@[31m:@[0mFOO and @[01;32mfoo@[0m
+@[34mcolor-input.txt@[0m@[31m:@[0m@[33m1@[0m@[31m:@[0malpha @[01;32mfoo@[0m beta
+@[34mcolor-input.txt@[0m@[31m:@[0m@[33m3@[0m@[31m:@[0mFOO and @[01;32mfoo@[0m
+color-input.txt@[36m:@[0m@[7malpha @[0m@[4mfoo@[0m@[7m beta@[0m
+color-input.txt@[36m:@[0m@[7mFOO and @[0m@[4mfoo@[0m
+color-input.txt@[36m:@[0m@[7malpha @[0m@[4mfoo@[0m@[7m beta@[0m
+color-input.txt@[36m:@[0m@[7mFOO and @[0m@[4mfoo@[0m
+@[1mplain@[0m
+@[2mplain@[0m
+--- grep color ignores unknown names and stops at an invalid value ---
+@[9malpha @[0m@[5mfoo@[0m@[9m beta@[0m
+@[9mFOO and @[0m@[5mfoo@[0m
+@[32m1@[0m@[36m:@[0malpha @[5mfoo@[0m beta
+@[32m3@[0m@[36m:@[0mFOO and @[5mfoo@[0m
+--- grep color reads the deprecated GREP_COLOR below GREP_COLORS ---
+alpha @[4;33mfoo@[0m beta
+FOO and @[4;33mfoo@[0m
+alpha @[7mfoo@[0m beta
+FOO and @[7mfoo@[0m
+alpha foo beta
+FOO and foo
 --- diff color marks removed, added, hunk, and header lines ---
 @[36m2c2@[0m
 @[31m< b@[0m

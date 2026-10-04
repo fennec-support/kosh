@@ -341,6 +341,29 @@ echo "--- grep color never, auto, and redirected default keep bytes ---"
 "$BIN" -c 'koshkit grep -n foo color-input.txt' | tr '\033' '@'
 "$BIN" -c 'koshkit grep --color=sometimes foo color-input.txt' 2>&1 |
   tr '\033' '@'
+echo "--- grep color honors GREP_COLORS capabilities ---"
+GREP_COLORS='ms=01;32:fn=34:ln=33:se=31' "$BIN" -c \
+  'koshkit grep --color=always -n foo color-input.txt color-input.txt' |
+  tr '\033' '@'
+GREP_COLORS='mt=4:sl=7:fn=' "$BIN" -c \
+  'koshkit grep --color=always foo color-input.txt color-input.txt' |
+  tr '\033' '@'
+GREP_COLORS='sl=1:cx=2' "$BIN" -c \
+  'koshkit grep --color=always -v foo color-input.txt' | tr '\033' '@'
+GREP_COLORS='sl=1:cx=2:rv' "$BIN" -c \
+  'koshkit grep --color=always -v foo color-input.txt' | tr '\033' '@'
+echo "--- grep color ignores unknown names and stops at an invalid value ---"
+GREP_COLORS='xx=1:ms=5:bad;x:sl=9' "$BIN" -c \
+  'koshkit grep --color=always foo color-input.txt' | tr '\033' '@'
+GREP_COLORS='ms=5:ln=2x:sl=9' "$BIN" -c \
+  'koshkit grep --color=always -n foo color-input.txt' | tr '\033' '@'
+echo "--- grep color reads the deprecated GREP_COLOR below GREP_COLORS ---"
+GREP_COLOR='4;33' "$BIN" -c \
+  'koshkit grep --color=always foo color-input.txt' | tr '\033' '@'
+GREP_COLOR='4;33' GREP_COLORS='ms=7' "$BIN" -c \
+  'koshkit grep --color=always foo color-input.txt' | tr '\033' '@'
+GREP_COLORS='ms=7' "$BIN" -c \
+  'koshkit grep --color=never foo color-input.txt' | tr '\033' '@'
 echo "--- diff color marks removed, added, hunk, and header lines ---"
 "$BIN" -c 'koshkit diff --color=always color-left.txt color-right.txt' |
   tr '\033' '@'

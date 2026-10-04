@@ -409,6 +409,106 @@ struct grep_options
   bool should_highlight{false};
 };
 
+struct grep_palette
+{
+  StringView selected_match{"1;31"};
+  StringView selected_line{};
+  StringView context_line{};
+  StringView file_name{"35"};
+  StringView line_number{"32"};
+  StringView separator{"36"};
+  bool is_reversed{false};
+};
+
+enum class grep_color_capability : u8
+{
+  SelectedMatch,
+  ContextMatch,
+  MatchBoth,
+  SelectedLine,
+  ContextLine,
+  FileName,
+  LineNumber,
+  ByteOffset,
+  Separator,
+  Reverse,
+  NoErase,
+};
+
+static constexpr static_string_entry<grep_color_capability>
+    GREP_COLOR_CAPABILITY_ENTRIES[] = {
+        {SSK("ms"), grep_color_capability::SelectedMatch},
+        {SSK("mc"), grep_color_capability::ContextMatch },
+        {SSK("mt"), grep_color_capability::MatchBoth    },
+        {SSK("sl"), grep_color_capability::SelectedLine },
+        {SSK("cx"), grep_color_capability::ContextLine  },
+        {SSK("fn"), grep_color_capability::FileName     },
+        {SSK("ln"), grep_color_capability::LineNumber   },
+        {SSK("bn"), grep_color_capability::ByteOffset   },
+        {SSK("se"), grep_color_capability::Separator    },
+        {SSK("rv"), grep_color_capability::Reverse      },
+        {SSK("ne"), grep_color_capability::NoErase      },
+};
+static constexpr StaticStringMap GREP_COLOR_CAPABILITIES{
+    GREP_COLOR_CAPABILITY_ENTRIES};
+
+static fn apply_grep_color_capability(grep_palette &palette, StringView name,
+                                      bool has_value, StringView value) wontthrow
+    -> void
+{
+  let const capability = GREP_COLOR_CAPABILITIES.find(name);
+  if (!capability.has_value()) return;
+
+  if (*capability == grep_color_capability::Reverse) {
+    palette.is_reversed = true;
+    return;
+  }
+  if (!has_value) return;
+
+  switch (*capability) {
+  case grep_color_capability::SelectedMatch:
+  case grep_color_capability::MatchBoth: palette.selected_match = value; break;
+  case grep_color_capability::SelectedLine: palette.selected_line = value; break;
+  case grep_color_capability::ContextLine: palette.context_line = value; break;
+  case grep_color_capability::FileName: palette.file_name = value; break;
+  case grep_color_capability::LineNumber: palette.line_number = value; break;
+  case grep_color_capability::Separator: palette.separator = value; break;
+  default: break;
+  }
+}
+
+static fn parse_grep_colors(grep_palette &palette, StringView specification)
+    wontthrow -> void
+{
+  usize name_start = 0;
+  usize value_start = 0;
+  bool has_value = false;
+  for (usize index = 0;; index++) {
+    let const byte = index < specification.length ? specification[index] : '\0';
+    if (byte == ':' || byte == '\0') {
+      let const name_end = has_value ? value_start - 1 : index;
+      apply_grep_color_capability(
+          palette,
+          specification.substring_of_length(name_start, name_end - name_start),
+          has_value,
+          has_value ? specification.substring_of_length(value_start,
+                                                        index - value_start)
+                    : StringView{});
+      if (byte == '\0') return;
+
+      name_start = index + 1;
+      has_value = false;
+    } else if (byte == '=') {
+      if (index == name_start || has_value) return;
+
+      has_value = true;
+      value_start = index + 1;
+    } else if (has_value && byte != ';' && (byte < '0' || byte > '9')) {
+      return;
+    }
+  }
+}
+
 struct grep_pattern_span
 {
   u32 start{0};
@@ -980,6 +1080,11 @@ public:
   GrepSearch(const GrepSearch &) = delete;
   GrepSearch &operator=(const GrepSearch &) = delete;
 
+  fn set_palette(const grep_palette &palette) wontthrow -> void
+  {
+    m_palette = palette;
+  }
+
   fn find_invalid_pattern() throws -> Maybe<StringView>
   {
     for (let &matcher : m_matchers) {
@@ -1082,13 +1187,32 @@ private:
     return false;
   }
 
+  fn append_sgr_text(StringView sgr, StringView text) throws -> void
+  {
+    if (sgr.is_empty() || text.is_empty()) {
+      m_output += text;
+      return;
+    }
+
+    m_output += "\x1b[";
+    m_output += sgr;
+    m_output += 'm';
+    m_output += text;
+    m_output += colors::ansi::RESET;
+  }
+
+  pure fn get_selected_line_sgr() const wontthrow -> StringView
+  {
+    return m_options.should_invert && m_palette.is_reversed
+               ? m_palette.context_line
+               : m_palette.selected_line;
+  }
+
   fn append_source_name(StringView source) throws -> void
   {
     let const name = source == "-" ? StringView{"(standard input)"} : source;
     if (m_options.should_color) {
-      m_output += colors::ansi::MAGENTA;
-      m_output += name;
-      m_output += colors::ansi::RESET;
+      append_sgr_text(m_palette.file_name, name);
       return;
     }
 
@@ -1098,9 +1222,7 @@ private:
   fn append_separator() throws -> void
   {
     if (m_options.should_color) {
-      m_output += colors::ansi::CYAN;
-      m_output += ':';
-      m_output += colors::ansi::RESET;
+      append_sgr_text(m_palette.separator, ":");
       return;
     }
 
@@ -1113,9 +1235,7 @@ private:
     let const text =
         utils::uint_to_text_into(number, line_number, sizeof(line_number));
     if (m_options.should_color) {
-      m_output += colors::ansi::GREEN;
-      m_output += text;
-      m_output += colors::ansi::RESET;
+      append_sgr_text(m_palette.line_number, text);
       return;
     }
 
@@ -1136,18 +1256,14 @@ private:
     if (m_options.should_highlight)
       append_highlighted_text(value);
     else
-      m_output += value;
+      append_sgr_text(get_selected_line_sgr(), value);
     m_output += '\n';
   }
 
   fn append_highlighted_text(StringView value) throws -> void
   {
     if (m_options.is_whole_line) {
-      if (!value.is_empty()) {
-        m_output += colors::ansi::BOLD_RED;
-        m_output += value;
-        m_output += colors::ansi::RESET;
-      }
+      append_sgr_text(m_palette.selected_match, value);
       return;
     }
 
@@ -1178,16 +1294,17 @@ private:
         continue;
       }
 
-      m_output += value.substring_of_length(plain_start,
-                                            best_start - plain_start);
-      m_output += colors::ansi::BOLD_RED;
-      m_output += value.substring_of_length(best_start, best_end - best_start);
-      m_output += colors::ansi::RESET;
+      append_sgr_text(
+          get_selected_line_sgr(),
+          value.substring_of_length(plain_start, best_start - plain_start));
+      append_sgr_text(
+          m_palette.selected_match,
+          value.substring_of_length(best_start, best_end - best_start));
       position = best_end;
       plain_start = best_end;
     }
 
-    m_output += value.substring(plain_start);
+    append_sgr_text(get_selected_line_sgr(), value.substring(plain_start));
   }
 
   fn flush_output_if_full() throws -> void
@@ -1418,6 +1535,7 @@ private:
   String m_line;
   StringView m_candidate_literal;
   i32 m_status{0};
+  grep_palette m_palette{};
   bool m_is_literal_hit_sufficient{false};
   bool m_has_utf8_regex{false};
   bool m_should_print_names{false};
@@ -1546,6 +1664,21 @@ fn Grep::execute(const ExecContext &ec, EvalContext &cxt,
                           steal(pattern_text),
                           pattern_spans,
                           first_source_index};
+  let color_variable = Maybe<String>{};
+  let legacy_color_variable = Maybe<String>{};
+  if (options.should_color) {
+    grep_palette palette{};
+    legacy_color_variable = cxt.get_variable_value("GREP_COLOR");
+    if (legacy_color_variable.has_value() &&
+        !legacy_color_variable->is_empty())
+    {
+      palette.selected_match = legacy_color_variable->view();
+    }
+    color_variable = cxt.get_variable_value("GREP_COLORS");
+    if (color_variable.has_value())
+      parse_grep_colors(palette, color_variable->view());
+    search.set_palette(palette);
+  }
   let const invalid_pattern = search.find_invalid_pattern();
   if (invalid_pattern.has_value()) {
     report_soft_koshkit_util_error(
