@@ -437,10 +437,9 @@ static fn build_tree_nodes(const du_tree_request &request, Allocator allocator,
       if (os::INTERRUPT_REQUESTED) return false;
 
       let const path = request.rows[span.first_row + offset].path.view();
-      let const do_get_or_create_child = [&](usize parent_index,
-                                             usize component_end,
-                                             usize component_start) throws
-          -> usize {
+      let const do_get_or_create_child =
+          [&](usize parent_index, usize component_end, usize component_start)
+              throws -> usize {
         let const key = path.substring_of_length(0, component_end);
         let &slot = node_by_path.get_or_create(key, SIZE_MAX);
         if (slot != SIZE_MAX) return slot;
@@ -483,9 +482,9 @@ static fn build_tree_nodes(const du_tree_request &request, Allocator allocator,
               let const component = Path::next_component(path, position);
               if (component.text.is_empty()) break;
 
-              parent_index = do_get_or_create_child(
-                  parent_index, component.end,
-                  component.end - component.text.length);
+              parent_index =
+                  do_get_or_create_child(parent_index, component.end,
+                                         component.end - component.text.length);
             }
           }
         }

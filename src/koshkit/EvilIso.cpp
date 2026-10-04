@@ -1176,12 +1176,11 @@ fn append_remote_report(String &output, bool should_color,
     row.protocol =
         socket.protocol == os::network_socket_protocol::Udp ? "UDP" : "TCP";
     row.state = network_socket_state_name(socket.state);
-    row.local = format_socket_endpoint(socket.local_address.view(),
-                                       socket.local_port, socket.family,
-                                       allocator);
-    row.peer = format_socket_endpoint(socket.peer_address.view(),
-                                      socket.peer_port, socket.family,
-                                      allocator);
+    row.local =
+        format_socket_endpoint(socket.local_address.view(), socket.local_port,
+                               socket.family, allocator);
+    row.peer = format_socket_endpoint(
+        socket.peer_address.view(), socket.peer_port, socket.family, allocator);
     row.socket_id = socket.identity == 0
                         ? String{allocator, "-"}
                         : String::from(socket.identity, allocator);

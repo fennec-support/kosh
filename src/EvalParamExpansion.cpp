@@ -1337,8 +1337,7 @@ fn EvalContext::ParameterExpander::expand() throws -> String
   {
     return expand_indirect();
   }
-  if (m_spec.length > 1 && m_spec[0] == '#' &&
-      !is_operator_after_hash(m_spec))
+  if (m_spec.length > 1 && m_spec[0] == '#' && !is_operator_after_hash(m_spec))
   {
     return expand_length();
   }

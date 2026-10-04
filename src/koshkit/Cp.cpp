@@ -51,7 +51,7 @@ struct cp_directory_identity
   u64 file_id;
 };
 
-}
+} // namespace
 
 enum class cp_symlink_mode : u8
 {
@@ -120,15 +120,13 @@ static fn source_file_status(StringView source) throws -> Maybe<os::file_status>
   return status;
 }
 
-static fn copy_path(const ExecContext &ec, EvalContext &cxt,
-                    StringView utility_name, StringView source,
-                    StringView destination, bool should_force,
-                    bool should_preserve, bool is_verbose, Allocator allocator,
-                    const os::file_status *known_lstat,
-                    cp_recursive_mode recursive_mode,
-                    cp_symlink_mode symlink_mode,
-                    ArrayList<cp_directory_identity> &active_directories) throws
-    -> bool
+static fn
+copy_path(const ExecContext &ec, EvalContext &cxt, StringView utility_name,
+          StringView source, StringView destination, bool should_force,
+          bool should_preserve, bool is_verbose, Allocator allocator,
+          const os::file_status *known_lstat, cp_recursive_mode recursive_mode,
+          cp_symlink_mode symlink_mode,
+          ArrayList<cp_directory_identity> &active_directories) throws -> bool
 {
   let const source_path = Path{source, allocator};
   let const destination_path = Path{destination, allocator};
@@ -220,8 +218,9 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
             identity.file_id == source_status->file_id)
         {
           throw Error{
-              "cannot copy cyclic symbolic link '" +
-              String{allocator, source} + "'"
+              "cannot copy cyclic symbolic link '" + String{allocator, source}
+                +
+              "'"
           };
         }
       }

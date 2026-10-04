@@ -162,16 +162,16 @@ fn describe_network_socket(const os::network_socket_entry &socket,
     return endpoint;
   }
 
-  endpoint += format_socket_endpoint(socket.local_address.view(),
-                                     socket.local_port, socket.family,
-                                     allocator)
-                  .view();
+  endpoint +=
+      format_socket_endpoint(socket.local_address.view(), socket.local_port,
+                             socket.family, allocator)
+          .view();
   if (socket.peer_port != 0) {
     endpoint += "->";
-    endpoint += format_socket_endpoint(socket.peer_address.view(),
-                                       socket.peer_port, socket.family,
-                                       allocator)
-                    .view();
+    endpoint +=
+        format_socket_endpoint(socket.peer_address.view(), socket.peer_port,
+                               socket.family, allocator)
+            .view();
   }
 
   if (socket.protocol == os::network_socket_protocol::Tcp) {
