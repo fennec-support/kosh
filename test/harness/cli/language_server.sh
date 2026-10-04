@@ -152,6 +152,8 @@ chmod +x "$act_program" "$man_program" \
   frame '{"jsonrpc":"2.0","id":124,"method":"textDocument/semanticTokens/full","params":{"textDocument":{"uri":"file:///tmp/variable-occurrence-forms.sh"}}}'
   frame '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/nested-expansion.sh","languageId":"bash","version":1,"text":"ret=${bleopt_editor:-${VISUAL:-${EDITOR-}}}"}}}'
   frame '{"jsonrpc":"2.0","id":125,"method":"textDocument/semanticTokens/full","params":{"textDocument":{"uri":"file:///tmp/nested-expansion.sh"}}}'
+  frame '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/substitution-syntax.sh","languageId":"shellscript","version":1,"text":"#!/bin/bash\n\ndiff <(echo one) <(echo two; produce-two --now <S-D-.><><>)\n"}}}'
+  frame '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/substitution-heredoc-syntax.sh","languageId":"shellscript","version":1,"text":"cat <<EOF\nvalue: $(echo <><>)\nEOF\n"}}}'
   frame '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/variable-loops.sh","languageId":"bash","version":1,"text":"items=one\nfor item in \"$items\"; do\n  echo \"$item\"\ndone\necho \"$item\"\nfor empty in; do\n  echo \"$empty\"\ndone\necho \"$empty\"\nselect choice in \"$items\"; do\n  echo \"$choice\"\n  break\ndone\necho \"$choice\"\nwhile test \"$items\"; do\n  loop_value=one\n  echo \"$loop_value\"\n  break\ndone\necho \"$loop_value\"\nuntil test \"$items\"; do\n  until_value=one\n  echo \"$until_value\"\n  break\ndone\necho \"$until_value\"\nfor (( init_value=0; condition_value<1; step_value+=1 )); do\n  body_value=one\n  echo \"$init_value$condition_value$body_value\"\ndone\necho \"$init_value$condition_value$step_value$body_value\"\n"}}}'
   frame '{"jsonrpc":"2.0","id":126,"method":"textDocument/semanticTokens/full","params":{"textDocument":{"uri":"file:///tmp/variable-loops.sh"}}}'
   frame '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/variable-compounds.sh","languageId":"bash","version":1,"text":"left=one\nright=two\n[[ $left == $right ]]\ncase $left in\n\"$right\") echo match ;;\nesac\narray=(\"$left\" \"$right\")\necho \"${array[0]}\"\n"}}}'
@@ -333,6 +335,8 @@ check_contains completion-document-function-before '"label":"document_before","k
 check_contains completion-bare-koshkit '"label":"goodnode","kind":3,"data":{"command":"goodnode"}'
 check_contains document-formatting '"id":137,"result":[{"range":{"start":{"line":0,"character":0},"end":{"line":1,"character":0}},"newText":"if true\nthen\n  echo dash\nfi\n"}]'
 check_contains unchanged-formatting '"id":138,"result":[]'
+check_contains process-substitution-syntax '"uri":"file:///tmp/substitution-syntax.sh","version":1,"diagnostics":[{"range":{"start":{"line":2,"character":54},"end":{"line":2,"character":55}},"severity":1,"source":"kosh","message":"Expected a filename after the redir"}]'
+check_contains heredoc-substitution-syntax '"uri":"file:///tmp/substitution-heredoc-syntax.sh","version":1,"diagnostics":[{"range":{"start":{"line":1,"character":16},"end":{"line":1,"character":17}},"severity":1,"source":"kosh","message":"Expected a filename after '"'"'<>'"'"'"}]'
 formatting_diagnostic_count=$(printf '%s\n' "$output" | grep -o '"method":"textDocument/publishDiagnostics","params":{"uri":"file:///tmp/formatting.sh"' | wc -l | tr -d ' ')
 case $formatting_diagnostic_count in
 3) printf 'unchanged-change-skips-analysis=ok\n' ;;

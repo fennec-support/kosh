@@ -75,6 +75,11 @@ public:
     m_analysis_scope_collection_mode = mode;
     m_lexer.set_analysis_metadata_collection_mode(mode);
   }
+  fn set_substitution_validation_mode(
+      substitution_validation_mode mode) wontthrow -> void
+  {
+    m_lexer.set_substitution_validation_mode(mode);
+  }
   fn set_analysis_scope_collection_mode(
       analysis_metadata_collection_mode mode) wontthrow -> void
   {

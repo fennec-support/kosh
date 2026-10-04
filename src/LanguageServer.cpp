@@ -528,6 +528,8 @@ fn Server::publish_diagnostics(Document &document) throws -> bool
   };
   parser.set_analysis_metadata_collection_mode(
       analysis_metadata_collection_mode::Enabled);
+  parser.set_substitution_validation_mode(
+      substitution_validation_mode::Enabled);
   let rendered_errors = ArrayList<String>{heap_allocator()};
   let diagnostics = ArrayList<source_diagnostic>{heap_allocator()};
   let followed_paths = HashSet{heap_allocator()};

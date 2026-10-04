@@ -427,6 +427,8 @@ static fn run_script_contents(
       };
       scan_parser.set_analysis_metadata_collection_mode(
           analysis_metadata_collection_mode::Enabled);
+      scan_parser.set_substitution_validation_mode(
+          substitution_validation_mode::Enabled);
 
       let const scan_mark = ast_arena.mark();
       loop
@@ -457,6 +459,8 @@ static fn run_script_contents(
           Lexer{script_contents.view(), ast_arena, filename,
                 context.runtime_state().get_mood()}
       };
+      preflight_parser.set_substitution_validation_mode(
+          substitution_validation_mode::Enabled);
       loop
       {
         let const unit_mark = ast_arena.mark();
@@ -486,6 +490,7 @@ static fn run_script_contents(
       p.set_analysis_metadata_collection_mode(
           run_analysis ? analysis_metadata_collection_mode::Enabled
                        : analysis_metadata_collection_mode::Disabled);
+      p.set_substitution_validation_mode(substitution_validation_mode::Enabled);
 
       ast = p.construct_ast(parse_errors, &context, diagnostic_sink);
 

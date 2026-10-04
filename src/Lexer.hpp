@@ -46,6 +46,12 @@ enum class analysis_metadata_collection_mode : u8
   Enabled,
 };
 
+enum class substitution_validation_mode : u8
+{
+  Disabled,
+  Enabled,
+};
+
 enum class shellcheck_directive_collection_mode : u8
 {
   Disabled,
@@ -119,6 +125,18 @@ public:
     m_analysis_metadata_collection_mode = mode;
   }
 
+  pure fn should_validate_substitutions() const wontthrow -> bool
+  {
+    return m_substitution_validation_mode ==
+           substitution_validation_mode::Enabled;
+  }
+
+  fn set_substitution_validation_mode(
+      substitution_validation_mode mode) wontthrow -> void
+  {
+    m_substitution_validation_mode = mode;
+  }
+
   pure fn should_collect_shellcheck_directives() const wontthrow -> bool
   {
     return m_shellcheck_directive_collection_mode ==
@@ -146,6 +164,8 @@ private:
   mimic_mood m_mood{mimic_mood::Default};
   debug_word_collection_mode m_debug_word_collection_mode{
       debug_word_collection_mode::Disabled};
+  substitution_validation_mode m_substitution_validation_mode{
+      substitution_validation_mode::Disabled};
   analysis_metadata_collection_mode m_analysis_metadata_collection_mode{
       analysis_metadata_collection_mode::Disabled};
   shellcheck_directive_collection_mode m_shellcheck_directive_collection_mode{
@@ -169,6 +189,7 @@ struct heredoc_pending
   String delimiter;
   heredoc_tab_policy tab_policy;
   heredoc_contents *contents;
+  bool should_expand;
 };
 
 namespace lexer {
@@ -274,6 +295,16 @@ public:
   {
     m_parse_session.set_analysis_metadata_collection_mode(mode);
   }
+  pure fn should_validate_substitutions() const wontthrow -> bool
+  {
+    return m_parse_session.should_validate_substitutions();
+  }
+  fn set_substitution_validation_mode(substitution_validation_mode mode,
+                                      usize nesting_depth = 0) wontthrow -> void
+  {
+    m_parse_session.set_substitution_validation_mode(mode);
+    m_substitution_nesting_depth = nesting_depth;
+  }
   fn take_shellcheck_directives() throws
       -> ArrayList<shellcheck_directive_span>;
   fn take_shellcheck_directive_spans() throws
@@ -281,9 +312,8 @@ public:
   fn take_heredoc_terminator_misses() throws
       -> ArrayList<heredoc_terminator_miss>;
 
-  fn register_heredoc(StringView delimiter,
-                      heredoc_tab_policy tab_policy) throws
-      -> const heredoc_contents *;
+  fn register_heredoc(StringView delimiter, heredoc_tab_policy tab_policy,
+                      bool should_expand) throws -> const heredoc_contents *;
 
 protected:
   pure alwaysinline fn here(usize position, usize length) const wontthrow
@@ -340,6 +370,14 @@ protected:
   fn lex_identifier() throws -> Token *;
   fn lex_sentinel() throws -> Token *;
   fn lex_process_substitution(char direction) throws -> Token *;
+
+  usize m_substitution_nesting_depth{0};
+
+  fn validate_substitution_body(usize body_position, StringView body,
+                                const SourceLocation &outer_location) throws
+      -> void;
+  fn validate_nested_expansions(usize region_position, usize region_length,
+                                bool is_heredoc) throws -> void;
 };
 
 } /* namespace koshka */

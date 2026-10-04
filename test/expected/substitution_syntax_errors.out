@@ -1,0 +1,75 @@
+== process.sh
+process.sh:3:55: error: Expected a filename after the redir.
+     3 |  diff <(echo one) <(echo two; produce-two --now <S-D-.><><>)
+       |                                                        ^
+status=1
+== command.sh
+command.sh:1:12: error: Expected a filename after '<>'.
+     1 |  x=$(echo <><>)
+       |             ^
+status=1
+== backtick.sh
+backtick.sh:2:11: error: Expected a filename after '<>'.
+     2 |  y=`echo <><>`
+       |            ^
+status=1
+== quoted.sh
+quoted.sh:1:37: error: Expected a filename after '<>'.
+     1 |  echo "quoted $(echo "inner $(echo <><>)")"
+       |                                      ^
+status=1
+== heredoc.sh
+heredoc.sh:3:17: error: Expected a filename after '<>'.
+     3 |  value: $(echo <><>)
+       |                  ^
+status=1
+== heredoc_strip.sh
+heredoc_strip.sh:3:6: error: Expected a filename after '<>'.
+     3 |        <><>)
+       |          ^
+status=1
+== modifier.sh
+modifier.sh:1:20: error: Expected a filename after '<>'.
+     1 |  echo ${x:-$(echo <><>)}
+       |                     ^
+status=1
+== arithmetic.sh
+arithmetic.sh:1:19: error: Expected a filename after '<>'.
+     1 |  echo $(( $(echo <><>) + 1 ))
+       |                    ^
+status=1
+== funsub.sh
+funsub.sh:1:13: error: Expected a filename after '<>'.
+     1 |  x=${ echo <><>; }
+       |              ^
+status=1
+== unterminated_if.sh
+unterminated_if.sh:1:8: error: Unterminated if.
+     1 |  echo $(if true; then echo; )
+       |         ^~
+unterminated_if.sh:1:28: details:
+     1 |  echo $(if true; then echo; )
+       |                             ^ expected 'fi'.
+status=1
+== valid.sh
+0
+== run command.sh
+command.sh:1:12: error: Expected a filename after '<>'.
+     1 |  x=$(echo <><>)
+       |             ^
+status=1
+== run process.sh
+process.sh:3:55: error: Expected a filename after the redir.
+     3 |  diff <(echo one) <(echo two; produce-two --now <S-D-.><><>)
+       |                                                        ^
+status=1
+== run backtick.sh
+backtick.sh:2:11: error: Expected a filename after '<>'.
+     2 |  y=`echo <><>`
+       |            ^
+status=1
+== run -c
+1:28: error: Expected a filename after '<>'.
+     1 |  echo before; echo $(echo <><>)
+       |                             ^
+status=1

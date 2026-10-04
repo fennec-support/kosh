@@ -22,8 +22,9 @@ positional-slice traces=2 errors=1 sites=1
 array-slice traces=2 errors=1 sites=1
 function substitution traces=2 errors=1 parents=2 sites=1
 case assignment copy traces=2 errors=1 sites=1
-substitution parse traces=2 errors=1 sites=1
-nested parse traces=3 errors=1
+static substitution parse traces=0 errors=1
+substitution parse traces=3 errors=2 sites=1
+nested parse traces=4 errors=1
 process substitution traces=2 errors=1 sites=1 order=error-first
 process eval traces=3 errors=1 inner-sites=1
 prefixed process eval traces=3 errors=1 prefixes=1

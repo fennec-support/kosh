@@ -12,6 +12,7 @@
 #include "Lexer.hpp"
 
 #include "Errors.hpp"
+#include "Parser.hpp"
 #include "Toiletline.hpp"
 #include "Tokens.hpp"
 #include "Utils.hpp"
@@ -335,7 +336,8 @@ hot fn Lexer::advance_past_last_peek() throws -> usize
 }
 
 cold fn Lexer::register_heredoc(StringView delimiter,
-                                heredoc_tab_policy tab_policy) throws
+                                heredoc_tab_policy tab_policy,
+                                bool should_expand) throws
     -> const heredoc_contents *
 {
   let &arena = m_parse_session.get_arena();
@@ -348,7 +350,8 @@ cold fn Lexer::register_heredoc(StringView delimiter,
   LOG(Debug, "registering a pending heredoc with delimiter '%.*s'",
       static_cast<int>(delimiter.length), delimiter.data);
 
-  m_pending_heredocs.push({String{delimiter}, tab_policy, contents});
+  m_pending_heredocs.push(
+      {String{delimiter}, tab_policy, contents, should_expand});
 
   return contents;
 }
@@ -470,6 +473,23 @@ cold fn Lexer::collect_pending_heredocs() throws -> void
     LOG(Debug, "capturing a heredoc body of %zu bytes for delimiter '%s'",
         collected.count(), pending.delimiter.c_str());
     pending.contents->text = steal(collected);
+  }
+
+  let const do_validate_bodies = [&]() throws -> void {
+    for (let const &pending : m_pending_heredocs) {
+      if (!pending.should_expand) continue;
+
+      validate_nested_expansions(pending.contents->source_position,
+                                 pending.contents->source_end_position -
+                                     pending.contents->source_position,
+                                 true);
+    }
+  };
+  try {
+    if (should_validate_substitutions()) do_validate_bodies();
+  } catch (...) {
+    m_pending_heredocs.clear();
+    throw;
   }
   m_pending_heredocs.clear();
 }
@@ -1001,6 +1021,11 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
           word.segments.back().set_source_span(
               m_cursor_position + expansion_start + 3,
               word.segments.back().text.count());
+          if (should_validate_substitutions()) {
+            validate_nested_expansions(m_cursor_position + arithmetic_start,
+                                       byte_count - arithmetic_start - 2,
+                                       false);
+          }
           continue;
         }
 
@@ -1023,6 +1048,14 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
                                        steal(inner), is_in_double_quotes});
         word.segments.back().set_source_span(
             m_cursor_position + expansion_start, byte_count - expansion_start);
+        if (should_validate_substitutions()) {
+          validate_substitution_body(
+              inner_start,
+              m_source.substring_of_length(inner_start,
+                                           *substitution_end - inner_start - 1),
+              here(m_cursor_position + expansion_start,
+                   byte_count - expansion_start));
+        }
       } else if (next == '{') {
         byte_count++;
         /* A ${ followed by whitespace is the bash 5.3 funsub, a command body
@@ -1131,6 +1164,18 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
           expansion_segment.set_source_span(m_cursor_position +
                                                 expansion_start + 2,
                                             expansion_segment.text.count());
+        if (should_validate_substitutions()) {
+          if (is_function_substitution) {
+            validate_substitution_body(m_cursor_position + name_start, name,
+                                       here(m_cursor_position + expansion_start,
+                                            byte_count - expansion_start));
+          } else if (name.find_character('$').has_value() ||
+                     name.find_character('`').has_value())
+          {
+            validate_nested_expansions(m_cursor_position + name_start,
+                                       name.length, false);
+          }
+        }
       } else if (lexer::is_variable_name_start(next)) {
         let const name_start = byte_count;
         while (lexer::is_variable_name(chop_character(byte_count)))
@@ -1214,6 +1259,17 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
       word.segments.back().set_source_span(
           m_cursor_position + relative_open_backtick_pos,
           byte_count - relative_open_backtick_pos);
+      if (should_validate_substitutions()) {
+        let const raw_body_position =
+            m_cursor_position + relative_open_backtick_pos + 1;
+        let const raw_body = m_source.substring_of_length(
+            raw_body_position, byte_count - relative_open_backtick_pos - 2);
+        validate_substitution_body(
+            raw_body_position,
+            raw_body.length == inner.count() ? raw_body : inner.view(),
+            here(m_cursor_position + relative_open_backtick_pos,
+                 byte_count - relative_open_backtick_pos));
+      }
       continue;
     }
 
@@ -1467,10 +1523,162 @@ hot alwaysinline fn Lexer::lex_process_substitution(char direction) throws
       false
   });
   word.segments.back().set_source_span(open_position, byte_count);
+  if (should_validate_substitutions()) {
+    validate_substitution_body(inner_start, body,
+                               here(open_position, byte_count));
+  }
   let t = tokens::create_word_token(arena, here(open_position, byte_count),
                                     steal(word));
   m_cached_offset = byte_count;
   return t;
+}
+
+static constexpr usize MAX_SUBSTITUTION_VALIDATION_DEPTH = 64;
+
+cold static fn shift_location(const SourceLocation &location,
+                              usize body_position) wontthrow -> SourceLocation
+{
+  return SourceLocation{location.position + body_position, location.length,
+                        location.source_name_index};
+}
+
+cold fn Lexer::validate_substitution_body(
+    usize body_position, StringView body,
+    const SourceLocation &outer_location) throws -> void
+{
+  if (m_substitution_nesting_depth >= MAX_SUBSTITUTION_VALIDATION_DEPTH) {
+    return;
+  }
+
+  let &arena = m_parse_session.get_arena();
+  let const arena_mark = arena.mark();
+  defer { arena.release(arena_mark); };
+
+  let const is_exact = body.data == m_source.data + body_position;
+  try {
+    let nested_lexer =
+        Lexer{body, arena, source_name_at(m_parse_session.source_name_index()),
+              mood(), m_parse_session.get_allocation_kind()};
+    nested_lexer.set_substitution_validation_mode(
+        substitution_validation_mode::Enabled,
+        m_substitution_nesting_depth + 1);
+    let nested_parser = Parser{steal(nested_lexer)};
+    unused(nested_parser.construct_ast());
+  } catch (const ErrorWithLocationAndDetails &error) {
+    if (!is_exact) {
+      throw ErrorWithLocationAndDetails{outer_location, error.message().view(),
+                                        error.detail_message()};
+    }
+
+    if (error.details_message().is_empty()) {
+      throw ErrorWithLocationAndDetails{
+          shift_location(error.location(), body_position),
+          error.message().view(), error.detail_message()};
+    }
+
+    throw ErrorWithLocationAndDetails{
+        shift_location(error.location(), body_position), error.message().view(),
+        shift_location(error.details_location(), body_position),
+        error.details_message(), error.detail_message()};
+  } catch (const ErrorWithLocation &error) {
+    if (!is_exact) {
+      throw ErrorWithLocation{outer_location, error.message().view()};
+    }
+
+    throw ErrorWithLocation{shift_location(error.location(), body_position),
+                            error.message().view()};
+  }
+}
+
+cold fn Lexer::validate_nested_expansions(usize region_position,
+                                          usize region_length,
+                                          bool is_heredoc) throws -> void
+{
+  let const region =
+      m_source.substring_of_length(region_position, region_length);
+  let is_in_single_quotes = false;
+  let is_in_double_quotes = false;
+  usize offset = 0;
+  while (offset < region.length) {
+    let const c = region[offset];
+    if (c == '\\') {
+      offset += 2;
+      continue;
+    }
+
+    if (!is_heredoc) {
+      if (is_in_single_quotes) {
+        is_in_single_quotes = c != '\'';
+        offset++;
+        continue;
+      }
+
+      if (c == '\'' && !is_in_double_quotes) {
+        is_in_single_quotes = true;
+        offset++;
+        continue;
+      }
+
+      if (c == '"') {
+        is_in_double_quotes = !is_in_double_quotes;
+        offset++;
+        continue;
+      }
+    }
+
+    if (c == '`') {
+      let const body_start = offset + 1;
+      let end = body_start;
+      let has_escape = false;
+      while (end < region.length && region[end] != '`') {
+        if (region[end] == '\\') {
+          has_escape = true;
+          end++;
+        }
+        end++;
+      }
+      if (end >= region.length) return;
+
+      let const outer_location =
+          here(region_position + offset, end + 1 - offset);
+      let const body = region.substring_of_length(body_start, end - body_start);
+      if (!has_escape) {
+        validate_substitution_body(region_position + body_start, body,
+                                   outer_location);
+      } else {
+        let unescaped = String{heap_allocator()};
+        for (usize index = 0; index < body.length; index++) {
+          if (body[index] == '\\' && index + 1 < body.length) index++;
+          unescaped += body[index];
+        }
+        validate_substitution_body(region_position + body_start,
+                                   unescaped.view(), outer_location);
+      }
+      offset = end + 1;
+      continue;
+    }
+
+    if (c != '$' || offset + 1 >= region.length || region[offset + 1] != '(') {
+      offset++;
+      continue;
+    }
+
+    if (offset + 2 < region.length && region[offset + 2] == '(') {
+      offset += 3;
+      continue;
+    }
+
+    let const body_start = region_position + offset + 2;
+    let const body_end =
+        lexer::scan_balanced_shell_region(m_source, body_start, ')');
+    if (!body_end.has_value()) return;
+
+    validate_substitution_body(
+        body_start,
+        m_source.substring_of_length(body_start, *body_end - body_start - 1),
+        here(region_position + offset, *body_end - region_position - offset));
+    offset = *body_end - region_position;
+  }
 }
 
 } /* namespace koshka */

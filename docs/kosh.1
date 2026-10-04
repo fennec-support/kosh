@@ -879,7 +879,11 @@ this suggestion.
 .SS Command substitution
 The forms $(command) and `command` replace a command with its output. A command
 substitution restores runtime state, shell options, directory stack, working
-directory state, and file creation mask when it finishes.
+directory state, and file creation mask when it finishes. A syntax error inside
+a command, process, or function substitution is reported at its place in the
+outer source, and a script or command string containing one does not run. The
+same check covers substitutions in double quotes, here-document bodies, and the
+words of a parameter expansion or arithmetic expansion.
 .SS Process substitution
 The forms <(command) and >(command) supply a descriptor path. The command runs
 in a separate process.

@@ -102,12 +102,17 @@ printf 'case assignment copy traces=%s errors=%s sites=%s\n' \
     "$(printf '%s\n' "$out" | grep -c '^1:8: trace:')"
 
 out=$("$BIN" --no-diagnostics -c 'echo ${X:-$(if)}' 2>&1)
+printf 'static substitution parse traces=%s errors=%s\n' \
+    "$(printf '%s\n' "$out" | grep -Ec 'trace:')" \
+    "$(printf '%s\n' "$out" | grep -c 'error:')"
+
+out=$("$BIN" --no-diagnostics -c "eval 'echo \${X:-\$(if)}'" 2>&1)
 printf 'substitution parse traces=%s errors=%s sites=%s\n' \
     "$(printf '%s\n' "$out" | grep -Ec 'trace:')" \
     "$(printf '%s\n' "$out" | grep -c 'error:')" \
-    "$(printf '%s\n' "$out" | grep -c '^1:11: trace:')"
+    "$(printf '%s\n' "$out" | grep -c '^eval:1:11: trace:')"
 
-out=$("$BIN" --no-diagnostics -c 'echo $(echo ${X:-$(if)})' 2>&1)
+out=$("$BIN" --no-diagnostics -c "eval 'echo \$(echo \${X:-\$(if)})'" 2>&1)
 printf 'nested parse traces=%s errors=%s\n' \
     "$(printf '%s\n' "$out" | grep -Ec 'trace:')" \
     "$(printf '%s\n' "$out" | grep -c 'error:')"

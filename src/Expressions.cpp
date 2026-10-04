@@ -1720,6 +1720,8 @@ fn expressions::internal::analyze_followed_source(
   };
   parser.set_analysis_metadata_collection_mode(
       analysis_metadata_collection_mode::Enabled);
+  parser.set_substitution_validation_mode(
+      substitution_validation_mode::Enabled);
 
   let parse_errors = ArrayList<String>{heap_allocator()};
   let const child_diagnostic_start =
