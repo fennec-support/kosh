@@ -1,220 +1,243 @@
+# Koshka shell installer.
 #
-#    This file is a part of the Koshka shell, (c) toiletbril, 2026
-#    See the top-level LICENSE file for the licensing information.
+# Copyright 2026 toiletbril
 #
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors
+# may be used to endorse or promote products derived from this software without
+# specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
 
 # Run:
 #     irm "https://fennec.support/kosh/install" | iex
 
 & {
-  param([switch]$DryRun, [string]$InstallPath)
-  $ErrorActionPreference = "Stop"
-  $ProgressPreference = "SilentlyContinue"
-  [Net.ServicePointManager]::SecurityProtocol =
+    param(
+        [switch]$DryRun,
+        [string]$InstallPath,
+        [switch]$X,
+        [switch]$Help,
+        [Parameter(ValueFromRemainingArguments = $true)]$Rest
+    )
+    $ErrorActionPreference = "Stop"
+    $ProgressPreference = "SilentlyContinue"
+    [Net.ServicePointManager]::SecurityProtocol =
     [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
-  $RELEASES = "https://github.com/toiletbril/kosh/releases"
-  $WORK = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid())
-  $HERE = (Get-Location).ProviderPath
-  $IS_COLOR = -not $env:NO_COLOR -and -not [Console]::IsOutputRedirected
-  $IS_ERROR_COLOR = -not $env:NO_COLOR -and -not [Console]::IsErrorRedirected
+    $RELEASES = "https://github.com/toiletbril/kosh/releases"
+    $WORK = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid())
+    $HERE = (Get-Location).ProviderPath
+    $IS_COLOR = -not $env:NO_COLOR -and -not [Console]::IsOutputRedirected
+    $IS_ERROR_COLOR = -not $env:NO_COLOR -and -not [Console]::IsErrorRedirected
 
-  function Paint($IsColor, $Code, $Text) {
-    if ($IsColor) {
-      return "$([char]27)[${Code}m$Text$([char]27)[0m"
-    }
-    return "$Text"
-  }
-
-  function Mark($IsColor) {
-    return "$(Paint $IsColor '1;95' ':3c') $(Paint $IsColor '1;97' '+') "
-  }
-
-  function Blue($Text) {
-    return Paint $IS_COLOR "1;34" $Text
-  }
-
-  function Label($Text, $Value) {
-    $Message = "$(Mark $IS_COLOR)$(Paint $IS_COLOR 1 $Text)"
-    if ($null -ne $Value) {
-      $Message += " $Value"
-    }
-    return $Message
-  }
-
-  function Step($Text, $Value) {
-    [Console]::Out.Write("$(Label $Text $Value) ")
-  }
-
-  function Say($Text, $Value) {
-    [Console]::Out.WriteLine((Label $Text $Value))
-  }
-
-  function Line($Text) {
-    [Console]::Out.WriteLine("$(Mark $IS_COLOR)$Text")
-  }
-
-  function Result($Text) {
-    [Console]::Out.WriteLine($Text)
-  }
-
-  function Ask($Question) {
-    if ([Console]::IsInputRedirected -or -not [Environment]::UserInteractive) {
-      return $true
-    }
-    [Console]::Error.Write("$(Mark $IS_ERROR_COLOR)$Question [y/n] ")
-    $Answer = [Console]::In.ReadLine()
-    return $Answer -notmatch "^[Nn]"
-  }
-
-  try {
-    if ($env:KOSH_INSTALL_DRY_RUN) {
-      $DryRun = $true
+    function Paint($Code, $Text, $IsColor = $IS_COLOR) {
+        if ($IsColor) { return "$([char]27)[${Code}m$Text$([char]27)[0m" }
+        return "$Text"
     }
 
-    Say "Hi!"
-    $ARCH = switch ([Runtime.InteropServices.RuntimeInformation, mscorlib]::OSArchitecture) {
-      "X64" { "amd64" }
-      "Arm64" { "aarch64" }
-      default { throw "unsupported processor $_" }
-    }
-    $ARCH_NAME = if ($ARCH -eq "amd64") { "AMD64" } else { "ARM64" }
-    Say "Detecting the system.." "Windows on $ARCH_NAME"
-
-    $VERSION = $env:KOSH_INSTALL_VERSION
-    if (-not $VERSION) {
-      $VERSION = (Invoke-RestMethod "https://api.github.com/repos/toiletbril/kosh/releases/latest").tag_name
-    }
-    if ($VERSION -notmatch "^[A-Za-z0-9._-]+$" -or $VERSION -in "latest", "releases") {
-      throw "invalid release version '$VERSION'"
-    }
-    Say "Looking up the latest release.." $VERSION
-
-    $BIN_DIR = $InstallPath
-    if (-not $BIN_DIR) {
-      $BIN_DIR = $env:KOSH_INSTALL_PATH
-    }
-    if (-not $BIN_DIR) {
-      $BIN_DIR = Join-Path $env:LOCALAPPDATA "kosh\bin"
-    }
-    $BIN_DIR = [IO.Path]::GetFullPath([IO.Path]::Combine($HERE, $BIN_DIR)).TrimEnd("\", "/")
-    $SHARE_DIR = Join-Path (Split-Path -Parent $BIN_DIR) "share"
-
-    $BINARY = "kosh-win32-$ARCH-$VERSION.exe"
-    $FILES = @($BINARY)
-    $IS_EXTRAS_WANTED = $true
-
-    if (-not $DryRun) {
-      if (-not (Ask "Do you want to install Kosh $VERSION to $BIN_DIR?")) {
-        Say "That's a shame. Specify another path via -InstallPath :c"
-        return
-      }
-      $IS_EXTRAS_WANTED = Ask "Do you want to install completions and manpages to $SHARE_DIR?"
+    function Mark($IsColor = $IS_COLOR) {
+        return "$(Paint '1;95' ':3c' -IsColor $IsColor) $(Paint '1;97' '+' -IsColor $IsColor) "
     }
 
-    if ($IS_EXTRAS_WANTED) {
-      $FILES += "kosh.bash"
-      if (Get-Command zstd -ErrorAction SilentlyContinue) {
-        $FILES += "kosh.1.zst", "kosh.5.zst"
-      }
+    function Label($Text, $Value) {
+        $Tail = if ($Value) { " $Value" } else { "" }
+        return "$(Mark)$(Paint 1 $Text)$Tail"
     }
 
-    New-Item -ItemType Directory $WORK | Out-Null
-    Set-Location $WORK
-    $URL = "$RELEASES/download/$VERSION"
-    try {
-      Invoke-WebRequest "$URL/SHA256SUMS" -OutFile SHA256SUMS -UseBasicParsing
-    } catch {
-      throw "release $VERSION has no SHA256SUMS file"
-    }
-    $SUMS = Get-Content SHA256SUMS
-
-    function Find-Sum($File) {
-      return $SUMS | Where-Object { ($_ -split "\s+\*?", 2)[1] -eq $File }
+    function Say($Text, $Value) {
+        [Console]::Out.WriteLine((Label $Text $Value))
     }
 
-    if (-not (Find-Sum $BINARY)) {
-      throw "release $VERSION has no build for win32 on $ARCH"
+    function Step($Text, $Value) {
+        [Console]::Out.Write("$(Label $Text $Value) ")
     }
 
-    if ($DryRun) {
-      foreach ($FILE in $FILES) {
-        Line "Would download $URL/$FILE and verify it against SHA256SUMS"
-      }
-      Line "Would install $(Join-Path $BIN_DIR 'kosh.exe')"
-      Line "Would install completions and manpages to $SHARE_DIR"
-      Line "Dry run: nothing was installed."
-      return
+    function Line($Text) {
+        [Console]::Out.WriteLine("$(Mark)$Text")
     }
 
-    foreach ($FILE in $FILES) {
-      Step "Downloading" "$(Blue $FILE).."
-      try {
-        Invoke-WebRequest "$URL/$FILE" -OutFile $FILE -UseBasicParsing
-      } catch {
-        throw "unable to download $FILE"
-      }
-      Result "100%"
+    function Ask($Question) {
+        if ([Console]::IsInputRedirected) { return $true }
+        [Console]::Error.Write("$(Mark -IsColor $IS_ERROR_COLOR)$Question [y/n] ")
+        return [Console]::In.ReadLine() -notmatch "^[Nn]"
     }
-
-    Step "Verifying the binaries.."
-    foreach ($FILE in $FILES) {
-      $EXPECTED = ((Find-Sum $FILE) -split "\s+")[0]
-      if ((Get-FileHash -Algorithm SHA256 $FILE).Hash -ne $EXPECTED) {
-        Result "not ok"
-        throw "checksum mismatch"
-      }
-    }
-    Result "ok"
 
     try {
-      New-Item -ItemType Directory -Force $BIN_DIR | Out-Null
-    } catch {
-      throw "cannot write to $BIN_DIR"
-    }
-    $EXE = Join-Path $BIN_DIR "kosh.exe"
-    Move-Item -Force $BINARY $EXE
-
-    if ($IS_EXTRAS_WANTED) {
-      $COMPLETIONS = Join-Path $SHARE_DIR "bash-completion\completions"
-      try {
-        New-Item -ItemType Directory -Force $COMPLETIONS | Out-Null
-      } catch {
-        throw "cannot write to $SHARE_DIR"
-      }
-      Move-Item -Force kosh.bash (Join-Path $COMPLETIONS "kosh")
-
-      if ($FILES -contains "kosh.1.zst") {
-        foreach ($PAGE in "kosh.1", "kosh.5") {
-          $MAN = Join-Path $SHARE_DIR "man\man$($PAGE[-1])"
-          New-Item -ItemType Directory -Force $MAN | Out-Null
-          zstd -dqf "$PAGE.zst" -o (Join-Path $MAN $PAGE)
+        foreach ($ARGUMENT in $Rest) {
+            if ($ARGUMENT -in "--help", "-h") { $Help = $true }
+            else { throw "unknown option $ARGUMENT" }
         }
-      }
-    }
+        if ($Help) {
+            Line "Usage: install.ps1 [-DryRun] [-InstallPath DIR] [-X]"
+            Line "  -DryRun           list the downloads, install nothing"
+            Line "  -InstallPath DIR  install to DIR, extras to DIR\..\share"
+            Line "  -X                trace every command"
+            Line "  -Help             print this help"
+            Line "Environment: KOSH_INSTALL_PATH, KOSH_INSTALL_VERSION,"
+            Line "  KOSH_INSTALL_DRY_RUN, NO_COLOR"
+            return
+        }
+        if ($X) { Set-PSDebug -Trace 1 }
+        if ($env:KOSH_INSTALL_DRY_RUN) { $DryRun = $true }
 
-    Say "Meow meow meow (success!)." $EXE
-    $USER_PATH = (Get-Item "HKCU:\Environment").GetValue("Path", "", "DoNotExpandEnvironmentNames")
-    $IS_ON_PATH = (($env:Path -split ";") + ($USER_PATH -split ";")) -contains $BIN_DIR
-    if (-not $IS_ON_PATH -and (Ask "Do you want to add $BIN_DIR to the user PATH?")) {
-      Set-ItemProperty "HKCU:\Environment" Path "$USER_PATH;$BIN_DIR" -Type ExpandString
-      [Environment]::SetEnvironmentVariable("KOSH_INSTALL", "1", "User")
-      [Environment]::SetEnvironmentVariable("KOSH_INSTALL", $null, "User")
-      $env:Path += ";$BIN_DIR"
-      $IS_ON_PATH = $true
+        Say "Hi! This is Koshka Shell installer."
+        Say "You can view the repository and this script at <github.com/toiletbril/kosh>"
+
+        $ARCH, $ARCH_NAME = switch ([Runtime.InteropServices.RuntimeInformation, mscorlib]::OSArchitecture) {
+            "X64" { "amd64", "AMD64" }
+            "Arm64" { "aarch64", "ARM64" }
+            default { throw "unsupported processor $_" }
+        }
+        Say "Detecting the system.." "Windows on $ARCH_NAME"
+
+        $VERSION = $env:KOSH_INSTALL_VERSION
+        if (-not $VERSION) {
+            $VERSION = (Invoke-RestMethod "https://api.github.com/repos/toiletbril/kosh/releases/latest").tag_name
+        }
+        if ($VERSION -notmatch "^[A-Za-z0-9._-]+$" -or $VERSION -in "latest", "releases") {
+            throw "invalid release version '$VERSION'"
+        }
+        Say "Looking up the latest release.." $VERSION
+
+        $BIN_DIR = $InstallPath
+        if (-not $BIN_DIR) { $BIN_DIR = $env:KOSH_INSTALL_PATH }
+        if (-not $BIN_DIR) { $BIN_DIR = Join-Path $env:LOCALAPPDATA "kosh\bin" }
+        $BIN_DIR = [IO.Path]::GetFullPath([IO.Path]::Combine($HERE, $BIN_DIR)).TrimEnd("\", "/")
+        $SHARE_DIR = Join-Path (Split-Path -Parent $BIN_DIR) "share"
+        $BINARY = "kosh-win32-$ARCH-$VERSION.exe"
+        $FILES = @($BINARY, "kosh.bash")
+
+        if (-not $DryRun) {
+            if (-not (Ask "Do you want to install Kosh $VERSION to $BIN_DIR?")) {
+                Say "That's a shame. Specify another path via -InstallPath :c"
+                return
+            }
+            if (-not (Ask "Do you want to install completions and manpages to $SHARE_DIR?")) {
+                $FILES = @($BINARY)
+            }
+        }
+        $IS_EXTRAS_WANTED = $FILES.Count -gt 1
+        if ($IS_EXTRAS_WANTED -and (Get-Command zstd -ErrorAction SilentlyContinue)) {
+            $FILES += "kosh.1.zst", "kosh.5.zst"
+        }
+
+        New-Item -ItemType Directory $WORK | Out-Null
+        Set-Location $WORK
+        $URL = "$RELEASES/download/$VERSION"
+        try {
+            Invoke-WebRequest "$URL/SHA256SUMS" -OutFile SHA256SUMS -UseBasicParsing
+            $SUMS = Get-Content SHA256SUMS
+        }
+        catch {
+            throw "release $VERSION has no SHA256SUMS file"
+        }
+        function Find-Sum($File) {
+            return ($SUMS | Where-Object { ($_ -split "\s+\*?", 2)[1] -eq $File } | Select-Object -First 1) -split "\s+" | Select-Object -First 1
+        }
+        if (-not (Find-Sum $BINARY)) {
+            throw "release $VERSION has no build for win32 on $ARCH"
+        }
+
+        if ($DryRun) {
+            foreach ($FILE in $FILES) {
+                Line "Would download $URL/$FILE and verify it against SHA256SUMS"
+            }
+            Line "Would install $(Join-Path $BIN_DIR 'kosh.exe')"
+            Line "Would install completions and manpages to $SHARE_DIR"
+            Line "Dry run: nothing was installed."
+            return
+        }
+
+        foreach ($FILE in $FILES) {
+            Step "Downloading" "$(Paint '1;34' $FILE).."
+            try {
+                Invoke-WebRequest "$URL/$FILE" -OutFile $FILE -UseBasicParsing
+            }
+            catch {
+                throw "unable to download $FILE"
+            }
+            [Console]::Out.WriteLine("100%")
+        }
+
+        Step "Verifying the binaries.."
+        foreach ($FILE in $FILES) {
+            if ((Get-FileHash -Algorithm SHA256 $FILE).Hash -ne (Find-Sum $FILE)) {
+                [Console]::Out.WriteLine("not ok")
+                throw "checksum mismatch"
+            }
+        }
+        [Console]::Out.WriteLine("ok")
+
+        try {
+            New-Item -ItemType Directory -Force $BIN_DIR | Out-Null
+        }
+        catch {
+            throw "cannot write to $BIN_DIR"
+        }
+        $EXE = Join-Path $BIN_DIR "kosh.exe"
+        Move-Item -Force $BINARY $EXE
+        if ($IS_EXTRAS_WANTED) {
+            $COMPLETIONS = Join-Path $SHARE_DIR "bash-completion\completions"
+            try {
+                New-Item -ItemType Directory -Force $COMPLETIONS | Out-Null
+            }
+            catch {
+                throw "cannot write to $SHARE_DIR"
+            }
+            Move-Item -Force kosh.bash (Join-Path $COMPLETIONS "kosh")
+            if ($FILES -contains "kosh.1.zst") {
+                foreach ($PAGE in "kosh.1", "kosh.5") {
+                    $MAN = Join-Path $SHARE_DIR "man\man$($PAGE[-1])"
+                    New-Item -ItemType Directory -Force $MAN | Out-Null
+                    zstd -dqf "$PAGE.zst" -o (Join-Path $MAN $PAGE)
+                }
+            }
+        }
+
+        Say "Success! Meow meow meow. Your binary is here: " $EXE
+        $USER_PATH = (Get-Item "HKCU:\Environment").GetValue("Path", "", "DoNotExpandEnvironmentNames")
+        $IS_ON_PATH = (($env:Path -split ";") + ($USER_PATH -split ";")) -contains $BIN_DIR
+        if (-not $IS_ON_PATH -and (Ask "Do you want to add $BIN_DIR to the user PATH?")) {
+            Set-ItemProperty -Path "HKCU:\Environment" -Name Path -Value "$USER_PATH;$BIN_DIR" -Type ExpandString
+            [Environment]::SetEnvironmentVariable("KOSH_INSTALL", "1", "User")
+            [Environment]::SetEnvironmentVariable("KOSH_INSTALL", $null, "User")
+            $env:Path += ";$BIN_DIR"
+            $IS_ON_PATH = $true
+        }
+        if ($IS_ON_PATH) {
+            Line "Use $(Paint '1;34' 'kosh') to launch the shell."
+        }
+        else {
+            Line "Use $EXE to launch the shell."
+        }
     }
-    if ($IS_ON_PATH) {
-      Line "Use $(Blue 'kosh') to launch the shell."
-    } else {
-      Line "Use $EXE to launch the shell."
+    catch {
+        [Console]::Error.WriteLine("kosh installer: $(Paint '1;91' 'error:' -IsColor $IS_ERROR_COLOR) $($_.Exception.Message.TrimEnd('.')).")
+        if ($PSCommandPath) { exit 1 }
     }
-  } catch {
-    [Console]::Error.WriteLine("kosh installer: $(Paint $IS_ERROR_COLOR '1;91' 'error:') $($_.Exception.Message.TrimEnd('.')).")
-    if ($PSCommandPath) {
-      exit 1
+    finally {
+        if ($X) { Set-PSDebug -Off }
+        Set-Location $HERE
+        Remove-Item -Recurse -Force $WORK -ErrorAction SilentlyContinue
     }
-  } finally {
-    Set-Location $HERE
-    Remove-Item -Recurse -Force $WORK -ErrorAction SilentlyContinue
-  }
 } @args

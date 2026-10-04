@@ -1,14 +1,9 @@
 #!/bin/sh
+
 #
 #    This file is a part of the Koshka shell, (c) toiletbril, 2026
 #    See the top-level LICENSE file for the licensing information.
 #
-# This file prints the path of the first GNU Bash on PATH whose version is 5.3
-# or newer. The Bash compatibility suite compares against that version.
-# A host commonly installs an older Bash under the name that is found first, and
-# the Koshka shell itself is often installed under that name as well. The
-# version banner of every candidate is inspected. Nothing is printed and the
-# status is nonzero when no suitable interpreter is installed.
 
 is_modern_gnu_bash() {
   BANNER=$("$1" --version 2>/dev/null)
