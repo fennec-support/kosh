@@ -178,6 +178,28 @@ pure fn saturated_sum(u64 left, u64 right) wontthrow -> u64
   return left > UINT64_MAX - right ? UINT64_MAX : left + right;
 }
 
+struct process_io_totals
+{
+  u64 read_bytes{0};
+  u64 written_bytes{0};
+  u64 read_operation_count{0};
+  u64 write_operation_count{0};
+  bool has_operation_counts{false};
+
+  fn add(const io_row &row) wontthrow -> void
+  {
+    read_bytes = saturated_sum(read_bytes, row.status.read_bytes);
+    written_bytes = saturated_sum(written_bytes, row.status.written_bytes);
+    if (row.status.has_operation_counts) {
+      read_operation_count =
+          saturated_sum(read_operation_count, row.status.read_operation_count);
+      write_operation_count = saturated_sum(
+          write_operation_count, row.status.write_operation_count);
+      has_operation_counts = true;
+    }
+  }
+};
+
 pure fn process_sort_value(const io_row &row, evilio_sort_key key) wontthrow
     -> Maybe<u64>
 {
@@ -1119,26 +1141,24 @@ fn add_stall_row(ReportTable &table, StringView name, Maybe<u64> rate,
 }
 
 fn append_process_io_report(String &output, const ArrayList<io_row> &rows,
-                            usize row_limit, u64 total_read_bytes,
-                            u64 total_written_bytes,
-                            u64 total_read_operation_count,
-                            u64 total_write_operation_count,
-                            bool has_operation_counts, Allocator allocator,
-                            bool should_color) throws -> void
+                            usize row_limit, const process_io_totals &totals,
+                            Allocator allocator, bool should_color) throws
+    -> void
 {
+  let const has_operation_counts = totals.has_operation_counts;
   let summary_table = make_metric_table(allocator);
   add_metric_row(summary_table, "Visible processes",
                  String::from(rows.count(), allocator), allocator);
   add_metric_row(summary_table, "Total bytes read",
-                 format_human_size(total_read_bytes, allocator), allocator);
+                 format_human_size(totals.read_bytes, allocator), allocator);
   add_metric_row(summary_table, "Total bytes written",
-                 format_human_size(total_written_bytes, allocator), allocator);
+                 format_human_size(totals.written_bytes, allocator), allocator);
   if (has_operation_counts) {
     add_metric_row(summary_table, "Total read operations",
-                   String::from(total_read_operation_count, allocator),
+                   String::from(totals.read_operation_count, allocator),
                    allocator);
     add_metric_row(summary_table, "Total write operations",
-                   String::from(total_write_operation_count, allocator),
+                   String::from(totals.write_operation_count, allocator),
                    allocator);
   }
   append_titled_report_table(output, "Process I/O summary", summary_table,
@@ -1420,30 +1440,14 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
   if (should_show_processes) {
     let rows =
         read_process_io_rows(allocator, selected_pid, evilio_idle_mode::Omit);
-    u64 total_read_bytes = 0;
-    u64 total_written_bytes = 0;
-    u64 total_read_operation_count = 0;
-    u64 total_write_operation_count = 0;
-    bool has_operation_counts = false;
-    for (let const &row : rows) {
-      total_read_bytes = saturated_sum(total_read_bytes, row.status.read_bytes);
-      total_written_bytes =
-          saturated_sum(total_written_bytes, row.status.written_bytes);
-      if (row.status.has_operation_counts) {
-        total_read_operation_count = saturated_sum(
-            total_read_operation_count, row.status.read_operation_count);
-        total_write_operation_count = saturated_sum(
-            total_write_operation_count, row.status.write_operation_count);
-        has_operation_counts = true;
-      }
-    }
+    process_io_totals totals;
+    for (let const &row : rows)
+      totals.add(row);
     let const sorted_rows = sort_process_rows(steal(rows), sort_key);
 
     let output = String{allocator};
-    append_process_io_report(
-        output, sorted_rows, row_limit, total_read_bytes, total_written_bytes,
-        total_read_operation_count, total_write_operation_count,
-        has_operation_counts, allocator, should_color);
+    append_process_io_report(output, sorted_rows, row_limit, totals, allocator,
+                             should_color);
     ec.print_to_stdout(output);
     return selected_pid.has_value() && sorted_rows.is_empty() ? 1 : 0;
   }
