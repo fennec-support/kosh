@@ -823,21 +823,19 @@ public:
   }
   pure fn has_execution_string() const wontthrow -> bool
   {
-    return m_has_execution_string;
+    return m_execution_string.has_value();
   }
   pure fn get_execution_string() const wontthrow -> StringView
   {
-    return m_execution_string.view();
+    return m_execution_string.has_value() ? m_execution_string->view()
+                                          : StringView{};
   }
   fn set_execution_string(String text) wontthrow -> void
   {
     m_execution_string = steal(text);
-    m_has_execution_string = true;
   }
-  fn restore_execution_string(bool has_execution_string,
-                              String execution_string) wontthrow -> void
+  fn restore_execution_string(Maybe<String> execution_string) wontthrow -> void
   {
-    m_has_execution_string = has_execution_string;
     m_execution_string = steal(execution_string);
   }
   fn set_current_command(String command) wontthrow -> void
@@ -937,8 +935,7 @@ private:
   String m_shell_name{heap_allocator()};
   String m_shell_executable_path{heap_allocator()};
   String m_last_argument{heap_allocator()};
-  String m_execution_string{heap_allocator()};
-  bool m_has_execution_string{false};
+  Maybe<String> m_execution_string{None};
   String m_current_command{heap_allocator()};
   bool m_make_shell_suppressed{false};
   i32 m_last_exit_status{0};

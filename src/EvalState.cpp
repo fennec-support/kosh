@@ -1525,7 +1525,7 @@ fn EvalContext::apply_subshell_bootstrap(
   bool has_execution_string = false;
   if (!read_subshell_bootstrap_bool(reader, has_execution_string))
     invalid_subshell_bootstrap();
-  let execution_string = String{heap_allocator()};
+  let execution_string = Maybe<String>{None};
   if (has_execution_string)
     execution_string = String{heap_allocator(), reader.read_text()};
   let last_argument = String{heap_allocator(), reader.read_text()};
@@ -1806,8 +1806,7 @@ fn EvalContext::apply_subshell_bootstrap(
   if (is_restricted_shell_identity) startup_store().request_restricted_shell();
   runtime.restore(*this);
 
-  execution_store().restore_execution_string(has_execution_string,
-                                             steal(execution_string));
+  execution_store().restore_execution_string(steal(execution_string));
   execution_store().set_last_argument(steal(last_argument));
   job_table_store().last_background_pid() = last_background_pid;
   dynamic_runtime_store().set_clock(clock);
