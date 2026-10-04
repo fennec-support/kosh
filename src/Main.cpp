@@ -1529,10 +1529,9 @@ fn kosh_main(int argc, char **argv) -> int
                                                ast_arena, source_filename,
                                                &lint_diagnostic_totals);
       } else {
-        exit_code = run_script_contents(script_contents, context, ast_arena,
-                                        source_filename, nullptr, nullptr,
-                                        history_event_number, nullptr, nullptr,
-                                        true, false, true, evaluation_mode);
+        exit_code = run_script_contents(
+            script_contents, context, ast_arena, source_filename, nullptr,
+            nullptr, history_event_number, {}, {}, evaluation_mode);
       }
     } else {
       exit_code = EXIT_FAILURE;

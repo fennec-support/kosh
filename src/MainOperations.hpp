@@ -337,17 +337,23 @@ private:
   BumpArena::Mark m_mark{};
 };
 
+struct script_run_options
+{
+  bool should_require_shebang{true};
+  bool should_silence_unresolved_commands{false};
+  bool should_print_ast{true};
+};
+
 static fn run_script_contents(
     const String &script_contents, EvalContext &context, BumpArena &ast_arena,
     Maybe<StringView> filename = None, Expression *precompiled_ast = nullptr,
     Expression **out_ast = nullptr, Maybe<usize> history_event_number = None,
-    analysis_diagnostic_totals *diagnostic_totals = nullptr,
-    ArrayList<source_diagnostic> *diagnostic_sink = nullptr,
-    bool should_require_shebang = true,
-    bool should_silence_unresolved_commands = false,
-    bool should_print_ast = true,
+    const analysis_outputs &diagnostics = {},
+    const script_run_options &run_options = {},
     root_evaluation_mode evaluation_mode = root_evaluation_mode::Normal) -> int
 {
+  let const diagnostic_sink = diagnostics.diagnostic_sink;
+  let const should_print_ast = run_options.should_print_ast;
   i32 exit_code = EXIT_SUCCESS;
 
   try {
@@ -530,20 +536,21 @@ static fn run_script_contents(
       };
       let options = analysis_options::from_runtime(context.runtime_state());
       options.should_silence_unresolved_commands =
-          should_silence_unresolved_commands ||
+          run_options.should_silence_unresolved_commands ||
           (options.warning_level > 0 &&
            context.execution_store().shell_is_interactive());
       options.should_report_optimizer_diagnostics =
           FLAG_OPTIMIZER_DIAGNOSTICS.is_enabled();
-      options.shebang_policy = should_require_shebang && filename.has_value()
-                                   ? missing_shebang_policy::Report
-                                   : missing_shebang_policy::Suppress;
+      options.shebang_policy =
+          run_options.should_require_shebang && filename.has_value()
+              ? missing_shebang_policy::Report
+              : missing_shebang_policy::Suppress;
       let const do_analyze = [&](AnalysisUnitStream *units) throws -> bool {
         return analyze_ast(
             ast, script_contents, context.function_store().names(),
             context.scope_store().alias_names(), &context, options, directives,
-            {&followed_source_paths, &source_effects_cache}, {},
-            {diagnostic_totals, diagnostic_sink, nullptr}, nullptr, units);
+            {&followed_source_paths, &source_effects_cache}, {}, diagnostics,
+            nullptr, units);
       };
 
       if (should_stream_units) {
@@ -716,8 +723,9 @@ static fn run_lint_document_contents(
   }
   if (!document.is_host_format)
     return run_script_contents(source, context, ast_arena, filename, nullptr,
-                               nullptr, None, diagnostic_totals,
-                               diagnostic_sink, true, false, should_print_ast);
+                               nullptr, None,
+                               {diagnostic_totals, diagnostic_sink, nullptr},
+                               {true, false, should_print_ast});
 
   let const saved_mood = context.runtime_state().get_mood();
   let const saved_warning_level = context.runtime_state().get_warning_level();
@@ -734,8 +742,8 @@ static fn run_lint_document_contents(
         fragment.mood == mimic_mood::Default ? 0 : 3);
     let const fragment_status = run_script_contents(
         fragment.analysis_source, context, ast_arena, filename, nullptr,
-        nullptr, None, diagnostic_totals, diagnostic_sink, false,
-        fragment.should_silence_unresolved_commands, should_print_ast);
+        nullptr, None, {diagnostic_totals, diagnostic_sink, nullptr},
+        {false, fragment.should_silence_unresolved_commands, should_print_ast});
     if (fragment_status != EXIT_SUCCESS) status = fragment_status;
   }
 
@@ -807,7 +815,7 @@ static fn run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
   if (cached_ast != nullptr && cached_text.view() == command->view()) {
     status = run_script_contents(cached_text, context, ast_arena,
                                  StringView{"$PROMPT_COMMAND"}, cached_ast,
-                                 nullptr, None, nullptr, nullptr, false);
+                                 nullptr, None, {}, {false});
   } else {
     prompt_arena.reset();
     prompt_store.set_cached_ast(nullptr);
@@ -815,7 +823,7 @@ static fn run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
     Expression *parsed_ast = nullptr;
     status = run_script_contents(cached_text, context, prompt_arena,
                                  StringView{"$PROMPT_COMMAND"}, nullptr,
-                                 &parsed_ast, None, nullptr, nullptr, false);
+                                 &parsed_ast, None, {}, {false});
     prompt_store.set_cached_ast(parsed_ast);
   }
 
