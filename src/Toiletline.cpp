@@ -2076,14 +2076,7 @@ static fn format_prompt_duration(u64 nanos) throws -> String
     out += "ms";
     return out;
   }
-  const u64 tenths = nanos / 100000000ULL;
-  out.append(
-      String::from(static_cast<i64>(tenths / 10), koshka::heap_allocator()));
-  out += '.';
-  out.append(
-      String::from(static_cast<i64>(tenths % 10), koshka::heap_allocator()));
-  out += 's';
-  return out;
+  return utils::format_duration_nanoseconds(nanos, koshka::heap_allocator());
 }
 
 /* localtime runs on the single interactive thread, so its shared static tm is
