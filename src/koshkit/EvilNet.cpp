@@ -8,14 +8,13 @@
 
 #include "../CLI.hpp"
 #include "../CLIColors.hpp"
+#include "../CliLive.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
 #include "../Utils.hpp"
 #include "../base/Arena.hpp"
-#include "LiveView.hpp"
-#include "LiveWindow.hpp"
 
 FLAG_LIST_DECL();
 

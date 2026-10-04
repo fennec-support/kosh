@@ -19,7 +19,7 @@
 
 #include "CLI.hpp"
 #include "Unit.hpp"
-#include "koshkit/LiveWindow.hpp"
+#include "CliLive.hpp"
 
 using namespace koshka;
 using namespace koshka::koshkit;

@@ -3,7 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the terminal and header half of the shared live view
- * driver declared in LiveView.hpp. It enters the alternate screen, hides the
+ * driver declared in CliLive.hpp. It enters the alternate screen, hides the
  * cursor, and switches the active input descriptor to raw no-echo mode only
  * when the active output descriptor is a terminal, and restores all three in
  * the destructor. It waits for the next sample or refresh moment while reading
@@ -16,9 +16,9 @@
  * entries with a vertical bar and put the key before the first space.
  */
 
-#include "LiveView.hpp"
+#include "CliLive.hpp"
 
-#include "../CLIColors.hpp"
+#include "CLIColors.hpp"
 
 namespace koshka::koshkit {
 

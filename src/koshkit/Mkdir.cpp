@@ -13,7 +13,6 @@
 #include "../Utils.hpp"
 #include "../base/Path.hpp"
 #include "../base/Trace.hpp"
-#include "Mode.hpp"
 
 FLAG_LIST_DECL();
 
@@ -87,9 +86,9 @@ fn Mkdir::execute(const ExecContext &ec, EvalContext &cxt,
 
   u32 named_mode = 0777;
   if (FLAG_MKDIR_MODE.is_set()) {
-    let const parsed = parse_file_mode(FLAG_MKDIR_MODE.value(), 0777,
-                                       os::get_file_creation_mask(),
-                                       file_kind_mode::Directory);
+    let const parsed = utils::parse_file_mode(FLAG_MKDIR_MODE.value(), 0777,
+                                              os::get_file_creation_mask(),
+                                              utils::file_kind_mode::Directory);
     if (!parsed.has_value()) {
       throw ErrorWithDetails{
           "invalid mode '" +
