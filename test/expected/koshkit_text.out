@@ -666,3 +666,5 @@ plain
 Filesystem Size Used Avail Use% Mounted on
 Filesystem Size Used Avail Use% Mounted on
 malformed-rows=1
+malformed-si-rows=1
+uppercase-si-kilo=1

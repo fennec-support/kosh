@@ -358,3 +358,8 @@ echo "--- df human readable header and unit shape ---"
 "$BIN" -c 'koshkit df -h . | koshkit tail -n 1' |
   grep -Ev '^[^ ]+ [0-9.]+[KMGTP]? [0-9.]+[KMGTP]? [0-9.]+[KMGTP]? [0-9]+% .+$'
 echo "malformed-rows=$?"
+"$BIN" -c 'koshkit df -H . | koshkit tail -n 1' |
+  grep -Ev '^[^ ]+ [0-9.]+[kMGTP]? [0-9.]+[kMGTP]? [0-9.]+[kMGTP]? [0-9]+% .+$'
+echo "malformed-si-rows=$?"
+"$BIN" -c 'koshkit df -H . | koshkit tail -n 1' | grep -Eq '[0-9]K '
+echo "uppercase-si-kilo=$?"

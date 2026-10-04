@@ -1033,7 +1033,7 @@ fn format_human_size(u64 bytes, Allocator allocator, u64 unit_step) throws
   } else {
     out += String::from(static_cast<u64>(value + 0.5), allocator);
   }
-  out.push(units[unit - 1]);
+  out.push(unit == 1 && unit_step == 1000 ? 'k' : units[unit - 1]);
   return out;
 }
 
