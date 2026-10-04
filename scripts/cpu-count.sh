@@ -1,5 +1,10 @@
 #!/bin/sh
 
+#
+#    This file is a part of the Koshka shell, (c) toiletbril, 2026
+#    See the top-level LICENSE file for the licensing information.
+#
+
 is_positive_count()
 {
     case $1 in
