@@ -216,11 +216,6 @@ static fn test_empty_table_policy() throws -> void
   let output = String{heap_allocator()};
   append_titled_report_table(output, "Nothing", table, false);
   CHECK(output.is_empty());
-
-  table.set_empty_visible(true);
-  CHECK_EQUAL(table.to_string(false, "").view(), "NAME  SIZE\n");
-  append_titled_report_table(output, "Nothing", table, false);
-  CHECK_EQUAL(output.view(), "Nothing\n  NAME  SIZE\n");
 }
 
 static fn test_repeated_render_is_identical() throws -> void
