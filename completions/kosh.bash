@@ -209,7 +209,7 @@ _koshkit_util_flags ()
       echo "-a --all"
     ;;
     evilfiles)
-      echo "-t --terse -p --pid -u --user -c --command -i --network"
+      echo "-t --terse -p --pid -u --user -c --command -i --network -w --wide"
     ;;
     evilfs)
       echo "-a --all"
@@ -288,7 +288,7 @@ _koshkit_util_flags ()
     ;;
     pr)
       echo \
-        "-a --across -d --double-space -F -f -h --header -l --length -m --merge -n --number-lines -o --indent -r --no-file-warnings -t --omit-header -s --separator -w --width"
+        "-a --across -d --double-space -F --form-feed -f --form-feed-alias -h --header -l --length -m --merge -n --number-lines -o --indent -r --no-file-warnings -t --omit-header -s --separator -w --width"
     ;;
     stty)
       echo "-a --all -g --save"
@@ -353,7 +353,75 @@ _koshkit_util_flags ()
       echo "-c -f -u"
     ;;
     readlink)
-      echo "-n"
+      echo "-n --no-newline"
+    ;;
+    chgrp | chown)
+      echo "-H --dereference-arguments -L --dereference -P --physical -R --recursive -h --no-dereference"
+    ;;
+    chmod)
+      echo "-R --recursive"
+    ;;
+    cmp)
+      echo "-l --verbose -s --silent"
+    ;;
+    comm)
+      echo "-1 --hide-first -2 --hide-second -3 --hide-common"
+    ;;
+    csplit)
+      echo "-f --prefix -k --keep-files -n --digits -s --silent"
+    ;;
+    date)
+      echo "-u --utc"
+    ;;
+    df)
+      echo "-k --kilobytes -P --portability"
+    ;;
+    expand | unexpand)
+      echo "-a --all -t --tabs"
+    ;;
+    fold)
+      echo "-b --bytes -s --spaces -w --width"
+    ;;
+    id)
+      echo "-G --groups -g --group -n --name -r --real -u --user"
+    ;;
+    logger)
+      echo "-f --file -i --id -p --priority -s --stderr -t --tag"
+    ;;
+    mkfifo)
+      echo "-m --mode"
+    ;;
+    nice)
+      echo "-n --increment"
+    ;;
+    nl)
+      echo \
+        "-b --body-numbering -d --section-delimiter -f --footer-numbering -h --header-numbering -i --line-increment -l --join-blank-lines -n --number-format -p --no-renumber -s --number-separator -v --starting-line-number -w --number-width"
+    ;;
+    paste)
+      echo "-d --delimiters -s --serial"
+    ;;
+    pathchk)
+      echo "-P --leading-hyphen -p --portable"
+    ;;
+    renice)
+      echo "-g --pgrp -n --increment -p --pid -u --user"
+    ;;
+    sed)
+      echo "-E --extended-regexp -e --expression -f --file -n --quiet"
+    ;;
+    split)
+      echo "-a --suffix-length -b --bytes -l --lines"
+    ;;
+    strings)
+      echo "-a --all -n --bytes -t --radix"
+    ;;
+    tty)
+      echo "-s --silent"
+    ;;
+    uname)
+      echo \
+        "-a --all -m --machine -n --nodename -r --release -s --kernel-name -v --kernel-version"
     ;;
     ps)
       echo "-a -u -x -w"
