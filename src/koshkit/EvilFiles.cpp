@@ -196,33 +196,6 @@ fn describe_network_socket(const os::network_socket_entry &socket,
   return endpoint;
 }
 
-fn load_inode_table(StringView table_path, StringView type,
-                    socket_directory &directory, Allocator allocator) throws
-    -> void
-{
-  let const contents = Path{table_path}.read_entire_file();
-  if (!contents.has_value()) return;
-
-  let const text = contents->view();
-  let const header_end = text.find_character('\n');
-  if (!header_end.has_value()) return;
-
-  usize position = *header_end + 1;
-  while (position < text.length) {
-    let line = text.next_line(position);
-    while (!line.is_empty() && line[line.length - 1] == ' ')
-      line = line.substring_of_length(0, line.length - 1);
-    let const separator = line.find_last_character(' ');
-    if (!separator.has_value()) continue;
-
-    let const inode = line.substring(*separator + 1).to<u64>();
-    if (inode.is_error()) continue;
-
-    directory.entries.push(
-        socket_description{inode.value(), type, String{allocator}});
-  }
-}
-
 fn load_socket_directory(socket_directory &directory,
                          Allocator allocator) throws -> void
 {
@@ -242,8 +215,14 @@ fn load_socket_directory(socket_directory &directory,
     }
   }
 
-  load_inode_table("/proc/net/netlink", "netlink", directory, allocator);
-  load_inode_table("/proc/net/packet", "packet", directory, allocator);
+  for (let const &kernel_socket : os::kernel_sockets()) {
+    let const type = kernel_socket.kind == os::kernel_socket_kind::Netlink
+                         ? StringView{"netlink"}
+                         : StringView{"packet"};
+    directory.entries.push(
+        socket_description{kernel_socket.identity, type, String{allocator}});
+  }
+
   directory.entries.sort(
       [](const socket_description &left, const socket_description &right) {
         return left.inode < right.inode;

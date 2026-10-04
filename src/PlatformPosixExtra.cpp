@@ -5,8 +5,9 @@
  * This routed POSIX source fragment keeps target-specific headers and
  * conditionals out of the common POSIX backend. It implements performance
  * counters, resource statistics, CPU affinity, executable path discovery,
- * process enumeration, and file-user scans, with fallbacks for missing
- * facilities. It also implements the FileWatcher through inotify and kqueue.
+ * process enumeration, kernel socket tables, and file-user scans, with
+ * fallbacks for missing facilities. It also implements the FileWatcher through
+ * inotify and kqueue.
  */
 
 #if defined __APPLE__
@@ -1738,6 +1739,49 @@ fn read_network_interface_statistics() throws
         AVAILABLE,
     });
   }
+#endif
+  return result;
+}
+
+#if defined __linux__
+
+static fn append_kernel_socket_table(StringView table_path,
+                                     kernel_socket_kind kind,
+                                     ArrayList<kernel_socket_entry> &result)
+    throws -> void
+{
+  let const contents = Path{table_path}.read_entire_file();
+  if (!contents.has_value()) return;
+
+  let const text = contents->view();
+  let const header_end = text.find_character('\n');
+  if (!header_end.has_value()) return;
+
+  usize position = *header_end + 1;
+  while (position < text.length) {
+    let line = text.next_line(position);
+    while (!line.is_empty() && line[line.length - 1] == ' ')
+      line = line.substring_of_length(0, line.length - 1);
+    let const separator = line.find_last_character(' ');
+    if (!separator.has_value()) continue;
+
+    let const inode = line.substring(*separator + 1).to<u64>();
+    if (inode.is_error()) continue;
+
+    result.push(kernel_socket_entry{inode.value(), kind});
+  }
+}
+
+#endif
+
+fn kernel_sockets() throws -> ArrayList<kernel_socket_entry>
+{
+  let result = ArrayList<kernel_socket_entry>{heap_allocator()};
+#if defined __linux__
+  append_kernel_socket_table("/proc/net/netlink", kernel_socket_kind::Netlink,
+                             result);
+  append_kernel_socket_table("/proc/net/packet", kernel_socket_kind::Packet,
+                             result);
 #endif
   return result;
 }

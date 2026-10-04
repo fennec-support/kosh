@@ -1891,6 +1891,20 @@ struct network_socket_entry
   bool has_owner_id{false};
 };
 
+enum class kernel_socket_kind : u8
+{
+  Netlink,
+  Packet,
+};
+
+struct kernel_socket_entry
+{
+  u64 identity{0};
+  kernel_socket_kind kind{kernel_socket_kind::Netlink};
+};
+
+fn kernel_sockets() throws -> ArrayList<kernel_socket_entry>;
+
 fn has_network_socket_listing() wontthrow -> bool;
 fn network_sockets(network_socket_process_mode process_mode) throws
     -> ArrayList<network_socket_entry>;

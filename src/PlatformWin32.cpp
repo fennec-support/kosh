@@ -1016,6 +1016,11 @@ fn read_tcp_statistics(tcp_statistics &statistics) wontthrow -> bool
   return has_statistics;
 }
 
+fn kernel_sockets() throws -> ArrayList<kernel_socket_entry>
+{
+  return ArrayList<kernel_socket_entry>{heap_allocator()};
+}
+
 fn has_network_socket_listing() wontthrow -> bool { return false; }
 
 fn network_sockets(network_socket_process_mode process_mode) throws
