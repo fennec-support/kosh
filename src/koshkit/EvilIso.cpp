@@ -527,6 +527,14 @@ fn parse_cgroup_identity(StringView path, Allocator allocator) throws
     -> process_cgroup_snapshot::identity_evidence
 {
   let result = process_cgroup_snapshot::identity_evidence{path, allocator};
+  static constexpr static_string_entry<StringView> RUNTIME_ENTRIES[] = {
+      {SSK("docker"),     "docker"    },
+      {SSK("containerd"), "containerd"},
+      {SSK("crio"),       "cri-o"     },
+      {SSK("libpod"),     "podman"    },
+  };
+  static constexpr StaticStringMap RUNTIME_ROOTS{RUNTIME_ENTRIES};
+
   let previous = StringView{};
   let remaining = path;
   bool has_kubernetes_component = false;
@@ -542,13 +550,8 @@ fn parse_cgroup_identity(StringView path, Allocator allocator) throws
     remaining = separator.has_value() ? remaining.substring(*separator + 1)
                                       : StringView{};
 
-    if (component == "docker" || component == "containerd" ||
-        component == "crio" || component == "libpod")
-    {
-      result.runtime = component == "crio"     ? String{allocator, "cri-o"}
-                       : component == "libpod" ? String{allocator, "podman"}
-                                               : String{allocator, component};
-    }
+    if (let const runtime = RUNTIME_ROOTS.find(component); runtime.has_value())
+      result.runtime = String{allocator, *runtime};
 
     struct scoped_runtime
     {
@@ -569,10 +572,10 @@ fn parse_cgroup_identity(StringView path, Allocator allocator) throws
       break;
     }
     if (result.container_id == "-" && is_hexadecimal_id(component) &&
-        (previous == "docker" || previous == "containerd" ||
-         previous == "crio" || previous == "libpod" ||
-         has_kubernetes_component))
+        (RUNTIME_ROOTS.find(previous).has_value() || has_kubernetes_component))
+    {
       result.container_id = String{allocator, component};
+    }
 
     let pod_uid = normalized_pod_uid(component, allocator);
     let const has_pod_uid = pod_uid != "-";
