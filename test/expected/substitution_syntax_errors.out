@@ -51,6 +51,50 @@ unterminated_if.sh:1:28: details:
      1 |  echo $(if true; then echo; )
        |                             ^ expected 'fi'.
 status=1
+== several_commands.sh
+several_commands.sh:1:12: error: Expected a filename after '<>'.
+     1 |  x=$(echo <><>)
+       |             ^
+several_commands.sh:3:11: error: Expected a filename after '<>'.
+     3 |  y=`echo <><>`
+       |            ^
+several_commands.sh:5:7: error: Unterminated if.
+     5 |    z=$(if)
+       |        ^~
+several_commands.sh:5:9: details:
+     5 |    z=$(if)
+       |          ^ Expected a command for the condition.
+status=1
+== several_words.sh
+several_words.sh:1:15: error: Expected a filename after '<>'.
+     1 |  echo $(echo <><>) "$(echo ok)" $(echo <><>) <(echo <><>)
+       |                ^
+several_words.sh:1:41: error: Expected a filename after '<>'.
+     1 |  echo $(echo <><>) "$(echo ok)" $(echo <><>) <(echo <><>)
+       |                                          ^
+several_words.sh:1:54: error: Expected a filename after '<>'.
+     1 |  echo $(echo <><>) "$(echo ok)" $(echo <><>) <(echo <><>)
+       |                                                       ^
+status=1
+== several_heredoc.sh
+several_heredoc.sh:2:10: error: Expected a filename after '<>'.
+     2 |  $(echo <><>)
+       |           ^
+several_heredoc.sh:3:10: error: Expected a filename after '<>'.
+     3 |  $(echo <><>)
+       |           ^
+several_heredoc.sh:5:15: error: Expected a filename after '<>'.
+     5 |  echo $(echo <><>)
+       |                ^
+status=1
+== several_nested.sh
+several_nested.sh:1:22: error: Expected a filename after '<>'.
+     1 |  echo $(echo $(echo <><>) $(echo <><>))
+       |                       ^
+several_nested.sh:1:35: error: Expected a filename after '<>'.
+     1 |  echo $(echo $(echo <><>) $(echo <><>))
+       |                                    ^
+status=1
 == depth_limit.sh
 0
 == depth_over.sh

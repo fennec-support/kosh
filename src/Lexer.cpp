@@ -475,23 +475,17 @@ cold fn Lexer::collect_pending_heredocs() throws -> void
     pending.contents->text = steal(collected);
   }
 
-  let const do_validate_bodies = [&]() throws -> void {
-    for (let const &pending : m_pending_heredocs) {
-      if (!pending.should_expand) continue;
+  defer { m_pending_heredocs.clear(); };
+  if (!should_validate_substitutions()) return;
 
-      validate_nested_expansions(pending.contents->source_position,
-                                 pending.contents->source_end_position -
-                                     pending.contents->source_position,
-                                 true);
-    }
-  };
-  try {
-    if (should_validate_substitutions()) do_validate_bodies();
-  } catch (...) {
-    m_pending_heredocs.clear();
-    throw;
+  for (let const &pending : m_pending_heredocs) {
+    if (!pending.should_expand) continue;
+
+    validate_nested_expansions(pending.contents->source_position,
+                               pending.contents->source_end_position -
+                                   pending.contents->source_position,
+                               true);
   }
-  m_pending_heredocs.clear();
 }
 
 hot flatten fn Lexer::lex_shell_token() throws -> Token *
@@ -1533,11 +1527,15 @@ hot alwaysinline fn Lexer::lex_process_substitution(char direction) throws
   return t;
 }
 
-cold static fn shift_location(const SourceLocation &location,
-                              usize body_position) wontthrow -> SourceLocation
+cold fn Lexer::record_substitution_error(
+    const ErrorWithLocationAndDetails &error) throws -> void
 {
-  return SourceLocation{location.position + body_position, location.length,
-                        location.source_name_index};
+  let const key = (static_cast<u64>(error.location().position) << 32) |
+                  static_cast<u64>(error.location().length);
+  if (m_reported_substitution_error_keys.find(key).has_value()) return;
+
+  m_reported_substitution_error_keys.push(key);
+  m_substitution_errors.push(error);
 }
 
 cold fn Lexer::validate_substitution_body(
@@ -1545,8 +1543,10 @@ cold fn Lexer::validate_substitution_body(
     const SourceLocation &outer_location) throws -> void
 {
   if (m_substitution_nesting_depth >= lexer::MAX_SUBSTITUTION_NESTING_DEPTH) {
-    throw ErrorWithLocation{outer_location,
-                            "Command substitution nested too deeply"};
+    record_substitution_error(ErrorWithLocationAndDetails{
+        outer_location, "Command substitution nested too deeply",
+        StringView{}});
+    return;
   }
 
   let &arena = m_parse_session.get_arena();
@@ -1554,38 +1554,29 @@ cold fn Lexer::validate_substitution_body(
   defer { arena.release(arena_mark); };
 
   let const is_exact = body.data == m_source.data + body_position;
-  try {
-    let nested_lexer =
-        Lexer{body, arena, source_name_at(m_parse_session.source_name_index()),
-              mood(), m_parse_session.get_allocation_kind()};
-    nested_lexer.set_substitution_validation_mode(
-        substitution_validation_mode::Enabled,
-        m_substitution_nesting_depth + 1);
-    let nested_parser = Parser{steal(nested_lexer)};
-    unused(nested_parser.construct_ast());
-  } catch (const ErrorWithLocationAndDetails &error) {
-    if (!is_exact) {
-      throw ErrorWithLocationAndDetails{outer_location, error.message().view(),
-                                        error.detail_message()};
+  let nested_lexer = Lexer{
+      is_exact ? m_source.substring_of_length(0, body_position + body.length)
+               : body,
+      arena, source_name_at(m_parse_session.source_name_index()), mood(),
+      m_parse_session.get_allocation_kind()};
+  if (is_exact) nested_lexer.set_start_position(body_position);
+  nested_lexer.set_substitution_validation_mode(
+      substitution_validation_mode::Enabled, m_substitution_nesting_depth + 1);
+
+  let nested_parser = Parser{steal(nested_lexer)};
+  let nested_errors = ArrayList<ErrorWithLocationAndDetails>{heap_allocator()};
+  let nested_messages = ArrayList<String>{heap_allocator()};
+  nested_parser.set_error_collection(&nested_errors);
+  unused(nested_parser.construct_ast(nested_messages, nullptr, nullptr));
+
+  for (let const &error : nested_errors) {
+    if (is_exact) {
+      record_substitution_error(error);
+      continue;
     }
 
-    if (error.details_message().is_empty()) {
-      throw ErrorWithLocationAndDetails{
-          shift_location(error.location(), body_position),
-          error.message().view(), error.detail_message()};
-    }
-
-    throw ErrorWithLocationAndDetails{
-        shift_location(error.location(), body_position), error.message().view(),
-        shift_location(error.details_location(), body_position),
-        error.details_message(), error.detail_message()};
-  } catch (const ErrorWithLocation &error) {
-    if (!is_exact) {
-      throw ErrorWithLocation{outer_location, error.message().view()};
-    }
-
-    throw ErrorWithLocation{shift_location(error.location(), body_position),
-                            error.message().view()};
+    record_substitution_error(ErrorWithLocationAndDetails{
+        outer_location, error.message().view(), error.detail_message()});
   }
 }
 

@@ -80,6 +80,11 @@ public:
   {
     m_lexer.set_substitution_validation_mode(mode);
   }
+  fn set_error_collection(
+      ArrayList<ErrorWithLocationAndDetails> *collection) wontthrow -> void
+  {
+    m_error_collection = collection;
+  }
   fn set_analysis_scope_collection_mode(
       analysis_metadata_collection_mode mode) wontthrow -> void
   {
@@ -101,6 +106,7 @@ private:
   u16 m_command_depth{0};
   bool m_should_stop_after_top_level_unit{false};
   bool m_has_parsed_source_command{false};
+  ArrayList<ErrorWithLocationAndDetails> *m_error_collection{nullptr};
   analysis_metadata_collection_mode m_analysis_metadata_collection_mode{
       analysis_metadata_collection_mode::Disabled};
   analysis_metadata_collection_mode m_analysis_scope_collection_mode{
@@ -134,6 +140,9 @@ private:
   cold fn record_parse_error(
       const ErrorWithLocation &error, ArrayList<String> &errors,
       EvalContext *context,
+      ArrayList<source_diagnostic> *diagnostic_sink) throws -> void;
+  cold fn record_substitution_errors(
+      ArrayList<String> &errors, EvalContext *context,
       ArrayList<source_diagnostic> *diagnostic_sink) throws -> void;
 
   fn skip_newlines_after_pipe() throws -> void;

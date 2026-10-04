@@ -359,6 +359,7 @@ cold fn Parser::record_detailed_parse_error(
 {
   LOG(Debug, "recording a detailed parse error and recovering: %s",
       error.message().c_str());
+  if (m_error_collection != nullptr) m_error_collection->push(error);
   errors.push(error.to_string(m_lexer.source(), context));
   errors.push(error.details_to_string(m_lexer.source(), context));
   if (diagnostic_sink == nullptr) return;
@@ -392,6 +393,10 @@ cold fn Parser::record_parse_error(
 {
   LOG(Debug, "recording a parse error and recovering: %s",
       error.message().c_str());
+  if (m_error_collection != nullptr) {
+    m_error_collection->push(ErrorWithLocationAndDetails{
+        error.location(), error.message().view(), error.detail_message()});
+  }
   errors.push(error.to_string(m_lexer.source(), context));
   if (diagnostic_sink == nullptr) return;
 
@@ -405,6 +410,22 @@ cold fn Parser::record_parse_error(
       error.message().clone(), String{error.detail_message()}, None,
       String{heap_allocator()}, String{heap_allocator()},
       ArrayList<source_fix>{heap_allocator()}});
+}
+
+cold fn Parser::record_substitution_errors(
+    ArrayList<String> &errors, EvalContext *context,
+    ArrayList<source_diagnostic> *diagnostic_sink) throws -> void
+{
+  if (!m_lexer.has_substitution_errors()) return;
+
+  let const substitution_errors = m_lexer.take_substitution_errors();
+  for (let const &error : substitution_errors) {
+    if (error.details_message().is_empty()) {
+      record_parse_error(error, errors, context, diagnostic_sink);
+    } else {
+      record_detailed_parse_error(error, errors, context, diagnostic_sink);
+    }
+  }
 }
 
 /* Parse every top-level command and recover after syntax errors. */
@@ -427,14 +448,17 @@ cold fn Parser::construct_ast(
     try {
       token = m_lexer.peek_shell_token();
     } catch (const ErrorWithLocationAndDetails &e) {
+      record_substitution_errors(errors, context, diagnostic_sink);
       record_detailed_parse_error(e, errors, context, diagnostic_sink);
     } catch (const ErrorWithLocation &e) {
+      record_substitution_errors(errors, context, diagnostic_sink);
       record_parse_error(e, errors, context, diagnostic_sink);
     }
     if (m_analysis_metadata_collection_mode ==
         analysis_metadata_collection_mode::Enabled)
       m_lexer.set_shellcheck_directive_collection_mode(
           shellcheck_directive_collection_mode::Disabled);
+    record_substitution_errors(errors, context, diagnostic_sink);
     if (token == nullptr) break;
 
     last_location = token->source_location();
@@ -445,10 +469,13 @@ cold fn Parser::construct_ast(
       Expression *piece = parse_command_list(0);
       ASSERT(piece != nullptr);
       if (first_piece == nullptr) first_piece = piece;
+      record_substitution_errors(errors, context, diagnostic_sink);
     } catch (const ErrorWithLocationAndDetails &e) {
+      record_substitution_errors(errors, context, diagnostic_sink);
       record_detailed_parse_error(e, errors, context, diagnostic_sink);
       did_parse_fail = true;
     } catch (const ErrorWithLocation &e) {
+      record_substitution_errors(errors, context, diagnostic_sink);
       record_parse_error(e, errors, context, diagnostic_sink);
       did_parse_fail = true;
     }
@@ -462,6 +489,7 @@ cold fn Parser::construct_ast(
     } catch (const ErrorWithLocation &) {
       did_recovery_fail = true;
     }
+    record_substitution_errors(errors, context, diagnostic_sink);
     if (did_recovery_fail) break;
   }
 
@@ -488,14 +516,17 @@ cold fn Parser::construct_next_top_level_ast(
     try {
       token = m_lexer.peek_shell_token();
     } catch (const ErrorWithLocationAndDetails &e) {
+      record_substitution_errors(errors, context, diagnostic_sink);
       record_detailed_parse_error(e, errors, context, diagnostic_sink);
     } catch (const ErrorWithLocation &e) {
+      record_substitution_errors(errors, context, diagnostic_sink);
       record_parse_error(e, errors, context, diagnostic_sink);
     }
     if (m_analysis_metadata_collection_mode ==
         analysis_metadata_collection_mode::Enabled)
       m_lexer.set_shellcheck_directive_collection_mode(
           shellcheck_directive_collection_mode::Disabled);
+    record_substitution_errors(errors, context, diagnostic_sink);
 
     if (token == nullptr || token->kind() == Token::Kind::EndOfFile)
       return nullptr;
@@ -503,10 +534,13 @@ cold fn Parser::construct_next_top_level_ast(
     try {
       Expression *piece = parse_command_list(0);
       ASSERT(piece != nullptr);
+      record_substitution_errors(errors, context, diagnostic_sink);
       return piece;
     } catch (const ErrorWithLocationAndDetails &e) {
+      record_substitution_errors(errors, context, diagnostic_sink);
       record_detailed_parse_error(e, errors, context, diagnostic_sink);
     } catch (const ErrorWithLocation &e) {
+      record_substitution_errors(errors, context, diagnostic_sink);
       record_parse_error(e, errors, context, diagnostic_sink);
     }
 
@@ -516,6 +550,7 @@ cold fn Parser::construct_next_top_level_ast(
     } catch (const ErrorWithLocation &) {
       did_recovery_fail = true;
     }
+    record_substitution_errors(errors, context, diagnostic_sink);
     if (did_recovery_fail) return nullptr;
   }
 }

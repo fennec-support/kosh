@@ -11,6 +11,7 @@
 #pragma once
 
 #include "Diagnostics.hpp"
+#include "Errors.hpp"
 #include "MimicMood.hpp"
 #include "Tokens.hpp"
 #include "base/Common.hpp"
@@ -310,6 +311,20 @@ public:
     m_parse_session.set_substitution_validation_mode(mode);
     m_substitution_nesting_depth = nesting_depth;
   }
+  fn set_start_position(usize position) wontthrow -> void
+  {
+    ASSERT(position <= m_source.length);
+    m_cursor_position = position;
+  }
+  pure fn has_substitution_errors() const wontthrow -> bool
+  {
+    return !m_substitution_errors.is_empty();
+  }
+  fn take_substitution_errors() wontthrow
+      -> ArrayList<ErrorWithLocationAndDetails>
+  {
+    return steal(m_substitution_errors);
+  }
   fn take_shellcheck_directives() throws
       -> ArrayList<shellcheck_directive_span>;
   fn take_shellcheck_directive_spans() throws
@@ -377,7 +392,12 @@ protected:
   fn lex_process_substitution(char direction) throws -> Token *;
 
   usize m_substitution_nesting_depth{0};
+  ArrayList<ErrorWithLocationAndDetails> m_substitution_errors{
+      heap_allocator()};
+  ArrayList<u64> m_reported_substitution_error_keys{heap_allocator()};
 
+  fn record_substitution_error(const ErrorWithLocationAndDetails &error) throws
+      -> void;
   fn validate_substitution_body(usize body_position, StringView body,
                                 const SourceLocation &outer_location) throws
       -> void;

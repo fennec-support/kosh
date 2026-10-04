@@ -21,6 +21,14 @@ printf 'echo ${x:-$(echo <><>)}\n' > modifier.sh
 printf 'echo $(( $(echo <><>) + 1 ))\n' > arithmetic.sh
 printf 'x=${ echo <><>; }\n' > funsub.sh
 printf 'echo $(if true; then echo; )\n' > unterminated_if.sh
+printf 'x=$(echo <><>)\necho ok\ny=`echo <><>`\nif true; then\n  z=$(if)\nfi\n' \
+  > several_commands.sh
+printf 'echo $(echo <><>) "$(echo ok)" $(echo <><>) <(echo <><>)\n' \
+  > several_words.sh
+printf 'cat <<EOF\n$(echo <><>)\n$(echo <><>)\nEOF\necho $(echo <><>)\n' \
+  > several_heredoc.sh
+printf 'echo $(echo $(echo <><>) $(echo <><>))\n' > several_nested.sh
+
 nest()
 {
   local depth=$1 body='echo ok' level=0
@@ -52,6 +60,10 @@ check modifier.sh
 check arithmetic.sh
 check funsub.sh
 check unterminated_if.sh
+check several_commands.sh
+check several_words.sh
+check several_heredoc.sh
+check several_nested.sh
 printf '%s\n' '== depth_limit.sh'
 "$BIN" --lint depth_limit.sh 2>&1 | grep -c 'nested too deeply'
 printf '%s\n' '== depth_over.sh'
