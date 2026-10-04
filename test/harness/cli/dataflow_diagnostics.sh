@@ -242,3 +242,19 @@ echo "rc=$?"
 echo '== a command valued prefix keeps its command name:'
 "$BIN" -n -WWW -c 'PAGER=cat true' 2>&1
 echo "rc=$?"
+
+echo '== a conditional assignment beside a similar name is not unassigned:'
+"$BIN" -n -WWW -c 'pms=1
+test -e / && pm=1
+echo "$pm"' 2>&1
+
+echo '== a loop assignment beside a similar name is not unassigned:'
+"$BIN" -n -WWW -c 'pms=1
+for i in "$@"; do pm=1; done
+echo "$pm"' 2>&1
+
+echo '== a chained loop assignment beside a similar name is not unassigned:'
+"$BIN" -n -WWW -c 'pms=("pacman" "apt")
+for i in "${pms[@]}"; do [[ -x "$(command -v ${i})" ]] && pm="${i}" || true; done
+unset i
+echo "pm=$pm"' 2>&1

@@ -1205,6 +1205,15 @@ fn check_unassigned_variable_reads(AnalysisContext &actx) throws -> void
   collect_shell_provided_variable_names(actx, shell_maintained_variable_names);
 
   for (let const &read : reads) {
+    let const has_conditional_assignment =
+        actx.diagnostic_assignment_traces.find(read.name).has_value() ||
+        actx.assigned_names_so_far.find(read.name).has_value() ||
+        actx.global_assigned_names.find(read.name).has_value();
+    if (has_conditional_assignment) {
+      actx.report_diagnostic(diagnostic_id::sc2154, read.location, {read.name});
+      continue;
+    }
+
     resembling_assignment resembled{};
     resembling_assignment misspelled{};
     let const do_match = [&read, &resembled, &misspelled](

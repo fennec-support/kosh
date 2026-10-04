@@ -271,3 +271,23 @@ rc=0
 rc=0
 == a command valued prefix keeps its command name:
 rc=0
+== a conditional assignment beside a similar name is not unassigned:
+3:7: warning: The variable 'pm' is read before any assignment gives it a value. (SC2154)
+     3 |  echo "$pm"
+       |        ^~~
+note: Assign 'pm' before it is read, or set it in the environment.
+== a loop assignment beside a similar name is not unassigned:
+3:7: warning: The variable 'pm' is read before any assignment gives it a value. (SC2154)
+     3 |  echo "$pm"
+       |        ^~~
+note: Assign 'pm' before it is read, or set it in the environment.
+== a chained loop assignment beside a similar name is not unassigned:
+2:69: warning: The `C` command runs whenever `A` or `B` fails. (SC2015)
+     2 |  for i in "${pms[@]}"; do [[ -x "$(command -v ${i})" ]] && pm="${i}" || true; done
+       |                                                                      ^~
+note: Use an `if` statement when C is the else branch.
+4:10: warning: The variable 'pm' is read before any assignment gives it a value. (SC2154)
+     4 |  echo "pm=$pm"
+       |           ^~~
+note: Assign 'pm' before it is read, or set it in the environment.
+Encountered 2 warnings.
