@@ -1610,12 +1610,20 @@ fn RedirectedCommand::evaluate_status_impl(EvalContext &cxt) const throws
 {
   if (is_async()) return {static_cast<i32>(evaluate_async(cxt)), 0};
 
-  return evaluate_redirected(cxt);
+  try {
+    return evaluate_redirected(cxt);
+  } catch (const TrapAbandonedRedirection &) {
+    return {cxt.execution_store().last_exit_status(), 0};
+  }
 }
 
 fn RedirectedCommand::evaluate_async_body(EvalContext &cxt) const throws -> i64
 {
-  return evaluate_redirected(cxt).status;
+  try {
+    return evaluate_redirected(cxt).status;
+  } catch (const TrapAbandonedRedirection &) {
+    return cxt.execution_store().last_exit_status();
+  }
 }
 
 fn RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws

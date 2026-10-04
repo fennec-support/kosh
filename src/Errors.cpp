@@ -473,6 +473,10 @@ cold fn Note::get_severity() const wontthrow -> error_severity
 
 BrokenPipeExit::BrokenPipeExit() : Error("Broken pipe") {}
 
+TrapAbandonedRedirection::TrapAbandonedRedirection()
+    : Error("Redirection abandoned by a trap")
+{}
+
 ErrorWithLocation::ErrorWithLocation(SourceLocation location,
                                      StringView message)
     : Error(message), m_location(steal(location))

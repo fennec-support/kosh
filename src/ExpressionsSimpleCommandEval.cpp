@@ -484,6 +484,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       }
       }
     }
+  } catch (const TrapAbandonedRedirection &) {
+    return cxt.execution_store().last_exit_status();
   } catch (const ErrorWithLocation &redirection_error) {
     /* Only an open or dup failure is caught here. An expansion error in a
        target word stays fatal. */

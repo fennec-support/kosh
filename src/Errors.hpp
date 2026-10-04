@@ -218,6 +218,16 @@ public:
   BrokenPipeExit();
 };
 
+/* Thrown by a redirection whose blocking open was interrupted by a trap action
+   that left a control-flow request pending. The request unwinds the enclosing
+   command silently, the way bash abandons the redirection, so the catching
+   command returns the status the action left behind. */
+class TrapAbandonedRedirection : public Error
+{
+public:
+  TrapAbandonedRedirection();
+};
+
 class ErrorWithLocation : public Error
 {
 public:
