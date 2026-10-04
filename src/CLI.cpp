@@ -385,6 +385,34 @@ static fn prefixed_message(StringView program_name, StringView message) throws
   return program_name + ": " + message;
 }
 
+static fn suggest_long_flag(const FlagList &flags, StringView typed_name) throws
+    -> Maybe<String>
+{
+  if (typed_name.is_empty()) return None;
+
+  let suggestion = utils::NameSuggestion{typed_name};
+  Maybe<String> qualified_match{};
+  for (let const *flag : flags) {
+    let const candidate = flag->long_name();
+    if (candidate.is_empty()) continue;
+
+    suggestion.consider(candidate);
+    if (candidate.length > typed_name.length + 1 &&
+        candidate.substring(candidate.length - typed_name.length) ==
+            typed_name &&
+        candidate[candidate.length - typed_name.length - 1] == '-' &&
+        !qualified_match.has_value())
+    {
+      qualified_match = String{candidate};
+    }
+  }
+
+  if (let close_match = suggestion.take_suggestion(); close_match.has_value())
+    return close_match;
+
+  return qualified_match;
+}
+
 static fn argument_location(
     const char *const *argv, usize argument_index, usize base_position,
     const ArrayList<SourceLocation> *arg_locations) throws -> SourceLocation
@@ -744,6 +772,8 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
           throw error;
         } else {
           let error_message = String{heap_allocator()};
+          let details = String{
+              "Use `--` before an operand that begins with a dash"};
           error_message += "Unknown flag '-";
 
           if (!is_long) {
@@ -757,11 +787,16 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
             const StringView flag_view = flag_offset;
             let const equals_position = flag_view.find_character('=');
 
-            if (equals_position.has_value())
-              error_message +=
-                  flag_view.substring_of_length(0, *equals_position);
-            else
-              error_message += flag_view;
+            let const typed_name =
+                equals_position.has_value()
+                    ? flag_view.substring_of_length(0, *equals_position)
+                    : flag_view;
+            error_message += typed_name;
+            if (let const similar_flag = suggest_long_flag(flags, typed_name);
+                similar_flag.has_value())
+            {
+              details = "Did you mean '--" + *similar_flag + "'?";
+            }
           }
           error_message += "'";
 
@@ -770,8 +805,7 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
           let const arg_index = static_cast<usize>(i);
           let error = ErrorWithLocationAndDetails{
               argument_location(argv, arg_index, base_position, arg_locations),
-              prefixed_message(program_name, error_message),
-              "Use `--` before an operand that begins with a dash"};
+              prefixed_message(program_name, error_message), details};
           error.set_command_status(2);
           throw error;
         }

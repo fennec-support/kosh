@@ -1,2 +1,11 @@
 error: Unknown flag '--zz-bogus-flag'.
 rc=2
+== --mimicry
+note: Did you mean '--enable-mimicry'?
+rc=2
+== --enable-mimicy
+note: Did you mean '--enable-mimicry'?
+rc=2
+== --zz-bogus-flag
+note: Use `--` before an operand that begins with a dash.
+rc=2
