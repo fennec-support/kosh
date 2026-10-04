@@ -49,6 +49,8 @@ struct static_string_prefilter
       return false;
     }
 
+    if (text.length == 0) return true;
+
     let const leading = static_cast<u8>(text.data[0]);
 
     return ((leading_byte_mask[leading >> 6] >> (leading & 63)) & 1) != 0;

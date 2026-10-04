@@ -124,6 +124,24 @@ static fn test_single_entry_table() throws -> void
   CHECK_NONE(SINGLE.find("onlyy"));
 }
 
+static fn test_empty_key_and_query() throws -> void
+{
+  static constexpr static_string_entry<int> ENTRIES[] = {
+      {SSK(""),  1},
+      {SSK("a"), 2},
+  };
+  static constexpr StaticStringMap WITH_EMPTY{ENTRIES};
+  static constexpr static_string_entry<int> OTHER_ENTRIES[] = {
+      {SSK("a"), 2},
+  };
+  static constexpr StaticStringMap WITHOUT_EMPTY{OTHER_ENTRIES};
+
+  CHECK(WITH_EMPTY.find("") == 1);
+  CHECK(WITH_EMPTY.find("a") == 2);
+  CHECK_NONE(WITH_EMPTY.find("b"));
+  CHECK_NONE(WITHOUT_EMPTY.find(""));
+}
+
 static fn test_non_ascii_keys() throws -> void
 {
   static constexpr static_string_entry<int> ENTRIES[] = {
@@ -179,6 +197,7 @@ fn kosh_main(int, char **) -> int
   RUN_TEST(test_padded_query_does_not_alias_shorter_key);
   RUN_TEST(test_key_at_packed_capacity);
   RUN_TEST(test_single_entry_table);
+  RUN_TEST(test_empty_key_and_query);
   RUN_TEST(test_non_ascii_keys);
   RUN_TEST(test_set_membership);
   RUN_TEST(test_set_index_names_the_key);
