@@ -577,7 +577,7 @@ fn EvilFiles::execute(
   }
 
   if (rows.is_empty()) {
-    if (!warnings.is_empty()) show_warning(warnings.view());
+    if (!warnings.is_empty()) show_report_warning(warnings.view());
     return 1;
   }
 
@@ -601,52 +601,40 @@ fn EvilFiles::execute(
       if (widths.command > command_limit) widths.command = command_limit;
     }
   }
-  output += "  ";
-  append_report_text(output, "Open files", colors::ansi::BOLD_BLUE,
-                     should_color);
-  output += '\n';
-  output += "  ";
-  append_report_column(output, "COMMAND", widths.command, false,
-                       colors::ansi::BOLD_CYAN, should_color);
-  output += "  ";
-  append_report_column(output, "PID", widths.pid, true, colors::ansi::BOLD_CYAN,
-                       should_color);
-  output += "  ";
-  append_report_column(output, "USER", widths.user, false,
-                       colors::ansi::BOLD_CYAN, should_color);
-  output += "  ";
-  append_report_column(output, "FD", widths.descriptor, true,
-                       colors::ansi::BOLD_CYAN, should_color);
-  output += "  ";
-  append_report_column(output, "TYPE", widths.type, false,
-                       colors::ansi::BOLD_CYAN, should_color);
-  output += "  ";
-  append_report_column(output, "MODE", widths.mode, false,
-                       colors::ansi::BOLD_CYAN, should_color);
-  output += "  ";
-  append_report_column(output, "STATE", widths.state, false,
-                       colors::ansi::BOLD_CYAN, should_color);
-  output += "  ";
-  append_report_column(output, "DEVICE", widths.device, true,
-                       colors::ansi::BOLD_CYAN, should_color);
-  output += "  ";
-  append_report_column(output, "SIZE/OFF", widths.size, true,
-                       colors::ansi::BOLD_CYAN, should_color);
-  output += "  ";
-  append_report_column(output, "OFFSET", widths.offset, true,
-                       colors::ansi::BOLD_CYAN, should_color);
-  output += "  ";
-  append_report_column(output, "NODE", widths.node, true,
-                       colors::ansi::BOLD_CYAN, should_color);
-  output += "  ";
-  append_report_column(output, "ENDPOINT", widths.endpoint, false,
-                       colors::ansi::BOLD_CYAN, should_color);
-  output += "  ";
-  append_report_text(output, "NAME", colors::ansi::BOLD_CYAN, should_color);
-  output += "\n";
+  let table = ReportTable{allocator};
+  table.add_column("COMMAND", report_table_alignment::Left,
+                   colors::ansi::BOLD_CYAN);
+  table.add_column("PID", report_table_alignment::Right,
+                   colors::ansi::BOLD_CYAN);
+  table.add_column("USER", report_table_alignment::Left,
+                   colors::ansi::BOLD_CYAN);
+  table.add_column("FD", report_table_alignment::Right,
+                   colors::ansi::BOLD_CYAN);
+  table.add_column("TYPE", report_table_alignment::Left,
+                   colors::ansi::BOLD_CYAN);
+  table.add_column("MODE", report_table_alignment::Left,
+                   colors::ansi::BOLD_CYAN);
+  table.add_column("STATE", report_table_alignment::Left,
+                   colors::ansi::BOLD_CYAN);
+  table.add_column("DEVICE", report_table_alignment::Right,
+                   colors::ansi::BOLD_CYAN);
+  table.add_column("SIZE/OFF", report_table_alignment::Right,
+                   colors::ansi::BOLD_CYAN);
+  table.add_column("OFFSET", report_table_alignment::Right,
+                   colors::ansi::BOLD_CYAN);
+  table.add_column("NODE", report_table_alignment::Right,
+                   colors::ansi::BOLD_CYAN);
+  table.add_column("ENDPOINT", report_table_alignment::Left,
+                   colors::ansi::BOLD_CYAN);
+  table.add_column("NAME", report_table_alignment::Left,
+                   colors::ansi::BOLD_CYAN);
 
+  let const used_width = 2 + widths.command + 2 + widths.pid + 2 +
+                         widths.user + 2 + widths.descriptor + 2 + widths.type +
+                         2 + widths.mode + 2 + widths.state + 2 +
+                         widths.device + 2 + widths.size + 2 + widths.offset +
+                         2 + widths.node + 2 + widths.endpoint + 2;
   for (let const &row : rows) {
-    output += "  ";
     let command = String{allocator, row.command.view()};
     if (toiletline::get_display_width(command.view()) > widths.command &&
         widths.command > 3)
@@ -658,72 +646,43 @@ fn EvilFiles::execute(
       command.truncate(kept_bytes);
       command += "...";
     }
-    append_report_column(output, command.view(), widths.command, false,
-                         colors::ansi::BOLD_GREEN, should_color);
-    output += "  ";
-    append_report_column(output, row.pid.view(), widths.pid, true,
-                         colors::ansi::GREEN, should_color);
-    output += "  ";
-    append_report_column(output, row.user.view(), widths.user, false,
-                         colors::ansi::YELLOW, should_color);
-    output += "  ";
-    append_report_column(output, row.descriptor.view(), widths.descriptor, true,
-                         colors::ansi::CYAN, should_color);
-    output += "  ";
-    append_report_column(output, row.type.view(), widths.type, false,
-                         colors::ansi::BOLD_MAGENTA, should_color);
-    output += "  ";
-    append_report_column(output, row.mode.view(), widths.mode, false,
-                         colors::ansi::BOLD_MAGENTA, should_color);
-    output += "  ";
-    append_report_column(output, row.state.view(), widths.state, false,
-                         row.state == "deleted" ? colors::ansi::BOLD_RED
-                                                : colors::ansi::GREEN,
-                         should_color);
-    output += "  ";
-    append_report_column(output, row.device.view(), widths.device, true,
-                         colors::ansi::GREEN, should_color);
-    output += "  ";
-    append_report_column(output, row.size.view(), widths.size, true,
-                         colors::ansi::GREEN, should_color);
-    output += "  ";
-    append_report_column(output, row.offset.view(), widths.offset, true,
-                         colors::ansi::GREEN, should_color);
-    output += "  ";
-    append_report_column(output, row.node.view(), widths.node, true,
-                         colors::ansi::GREEN, should_color);
-    output += "  ";
-    append_report_column(output, row.endpoint.view(), widths.endpoint, false,
-                         colors::ansi::CYAN, should_color);
-    output += "  ";
-    if (line_width_limit != SIZE_MAX) {
-      usize const used_width =
-          2 + widths.command + 2 + widths.pid + 2 + widths.user + 2 +
-          widths.descriptor + 2 + widths.type + 2 + widths.mode + 2 +
-          widths.state + 2 + widths.device + 2 + widths.size + 2 +
-          widths.offset + 2 + widths.node + 2 + widths.endpoint + 2;
-      if (used_width + toiletline::get_display_width(row.name.view()) >
-          line_width_limit)
-      {
-        if (line_width_limit > used_width + 4) {
-          String name = String{allocator, row.name.view()};
-          usize actual_cells = 0;
-          let const kept_bytes =
-              toiletline::get_byte_offset_at_or_before_display_cell(
-                  name.view(), line_width_limit - used_width - 3, actual_cells);
-          name.truncate(kept_bytes);
-          name += "...";
-          output += name.view();
-        } else {
-          output += "...";
-        }
-        output += "\n";
-        continue;
+
+    let name = String{allocator, row.name.view()};
+    if (line_width_limit != SIZE_MAX &&
+        used_width + toiletline::get_display_width(name.view()) >
+            line_width_limit)
+    {
+      if (line_width_limit > used_width + 4) {
+        usize actual_cells = 0;
+        let const kept_bytes =
+            toiletline::get_byte_offset_at_or_before_display_cell(
+                name.view(), line_width_limit - used_width - 3, actual_cells);
+        name.truncate(kept_bytes);
+        name += "...";
+      } else {
+        name = String{allocator, "..."};
       }
     }
-    output += row.name.view();
-    output += "\n";
+
+    let cells = ArrayList<report_table_cell_view>{allocator};
+    cells.push({command.view(), colors::ansi::BOLD_GREEN});
+    cells.push({row.pid.view(), colors::ansi::GREEN});
+    cells.push({row.user.view(), colors::ansi::YELLOW});
+    cells.push({row.descriptor.view(), colors::ansi::CYAN});
+    cells.push({row.type.view(), colors::ansi::BOLD_MAGENTA});
+    cells.push({row.mode.view(), colors::ansi::BOLD_MAGENTA});
+    cells.push({row.state.view(), row.state == "deleted"
+                                      ? colors::ansi::BOLD_RED
+                                      : colors::ansi::GREEN});
+    cells.push({row.device.view(), colors::ansi::GREEN});
+    cells.push({row.size.view(), colors::ansi::GREEN});
+    cells.push({row.offset.view(), colors::ansi::GREEN});
+    cells.push({row.node.view(), colors::ansi::GREEN});
+    cells.push({row.endpoint.view(), colors::ansi::CYAN});
+    cells.push({name.view(), {}});
+    table.add_row(cells);
   }
+  append_titled_report_table(output, "Open files", table, should_color);
 
   ec.print_to_stdout(output);
   if (!warnings.is_empty()) show_report_warning(warnings.view());

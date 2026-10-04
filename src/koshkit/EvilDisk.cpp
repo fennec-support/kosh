@@ -630,12 +630,14 @@ fn EvilDisk::execute(
     warning += " filesystem";
     if (skipped_permission_count != 1) warning += "s";
     warning += " due to permission denied";
-    show_report_warning(warning.view());
-    for (let const &warning : warnings)
-      show_warning(warning.view());
-  } else {
-    show_report_warnings(warnings);
+    let ordered_warnings = ArrayList<String>{allocator};
+    ordered_warnings.push(steal(warning));
+    for (let const &other : warnings)
+      ordered_warnings.push(String{allocator, other.view()});
+    show_report_warnings(ordered_warnings);
+    return status;
   }
+  show_report_warnings(warnings);
 
   return status;
 }
