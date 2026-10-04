@@ -70,9 +70,7 @@ struct eval_state_snapshot
   /* The nesting depth a DEBUG or ERR trap was installed at rides the snapshot
      beside the trap map, because the depth decides which frames the action
      reaches. */
-  usize debug_trap_active_depth;
-  usize err_trap_active_depth;
-  bool did_reset_inherited_signal_traps;
+  trap_install_state trap_install;
   /* Variable attributes ride the snapshot, so a declaration inside a
      subshell does not leak its marks to the parent. */
   StringMap<u8> variable_attributes;

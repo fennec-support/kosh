@@ -1646,19 +1646,27 @@ public:
   pure fn has_err_trap() const wontthrow -> bool { return m_has_err_trap; }
   fn debug_trap_active_depth() wontthrow -> usize &
   {
-    return m_debug_trap_active_depth;
+    return m_install_state.debug_active_depth;
   }
   pure fn debug_trap_active_depth() const wontthrow -> usize
   {
-    return m_debug_trap_active_depth;
+    return m_install_state.debug_active_depth;
   }
   fn err_trap_active_depth() wontthrow -> usize &
   {
-    return m_err_trap_active_depth;
+    return m_install_state.err_active_depth;
   }
   pure fn err_trap_active_depth() const wontthrow -> usize
   {
-    return m_err_trap_active_depth;
+    return m_install_state.err_active_depth;
+  }
+  pure fn get_install_state() const wontthrow -> trap_install_state
+  {
+    return m_install_state;
+  }
+  fn set_install_state(trap_install_state state) wontthrow -> void
+  {
+    m_install_state = state;
   }
   fn is_replaying_inherited_state() wontthrow -> bool &
   {
@@ -1670,21 +1678,13 @@ public:
   }
   fn exit_trap_ran() wontthrow -> bool & { return m_exit_trap_ran; }
   pure fn exit_trap_ran() const wontthrow -> bool { return m_exit_trap_ran; }
-  fn running_trap_conditions() wontthrow -> u8 &
-  {
-    return m_running_trap_conditions;
-  }
-  pure fn running_trap_conditions() const wontthrow -> u8
-  {
-    return m_running_trap_conditions;
-  }
   fn did_reset_inherited_signal_traps() wontthrow -> bool &
   {
-    return m_did_reset_inherited_signal_traps;
+    return m_install_state.did_reset_inherited_signal_traps;
   }
   pure fn did_reset_inherited_signal_traps() const wontthrow -> bool
   {
-    return m_did_reset_inherited_signal_traps;
+    return m_install_state.did_reset_inherited_signal_traps;
   }
   fn startup_ignored_signals() wontthrow -> u64 &
   {
@@ -1702,42 +1702,58 @@ public:
   {
     return m_pending_child_trap_count;
   }
-  fn trap_action_depth() wontthrow -> u32 & { return m_trap_action_depth; }
   pure fn trap_action_depth() const wontthrow -> u32
   {
-    return m_trap_action_depth;
+    return m_action_frame.depth;
   }
-  fn trap_trigger_line_number() wontthrow -> usize &
+  pure fn action_frame() const wontthrow -> const trap_action_frame &
   {
-    return m_trap_trigger_line_number;
+    return m_action_frame;
   }
-  pure fn trap_trigger_line_number() const wontthrow -> usize
+  pure fn is_condition_running(u8 condition_bit) const wontthrow -> bool
   {
-    return m_trap_trigger_line_number;
+    return (m_action_frame.running_conditions & condition_bit) != 0;
   }
-  fn trap_action_source_frame_count() wontthrow -> usize &
+  fn mark_condition_running(u8 condition_bit) wontthrow -> void
   {
-    return m_trap_action_source_frame_count;
+    m_action_frame.running_conditions |= condition_bit;
   }
-  pure fn trap_action_source_frame_count() const wontthrow -> usize
+  fn unmark_condition_running(u8 condition_bit) wontthrow -> void
   {
-    return m_trap_action_source_frame_count;
+    m_action_frame.running_conditions &= static_cast<u8>(~condition_bit);
   }
-  fn trap_action_function_depth() wontthrow -> usize &
+  mustuse fn enter_action(Maybe<i32> saved_exit_status) wontthrow
+      -> trap_action_frame
   {
-    return m_trap_action_function_depth;
+    let previous = m_action_frame;
+    m_action_frame.depth += 1;
+    m_action_frame.saved_exit_status = saved_exit_status;
+    return previous;
   }
-  pure fn trap_action_function_depth() const wontthrow -> usize
+  mustuse fn enter_condition_action(u8 condition_bit, usize trigger_line_number,
+                                    usize source_frame_count,
+                                    usize function_depth,
+                                    i32 saved_exit_status) wontthrow
+      -> trap_action_frame
   {
-    return m_trap_action_function_depth;
+    let previous = enter_action(saved_exit_status);
+    m_action_frame.running_conditions |= condition_bit;
+    m_action_frame.trigger_line_number = trigger_line_number;
+    m_action_frame.source_frame_count = source_frame_count;
+    m_action_frame.function_depth = function_depth;
+    return previous;
   }
-  fn trap_saved_exit_status() wontthrow -> Maybe<i32> &
+  mustuse fn leave_action_for_subshell() wontthrow -> trap_action_frame
   {
-    return m_trap_saved_exit_status;
+    let previous = m_action_frame;
+    m_action_frame.depth = 0;
+    m_action_frame.saved_exit_status = None;
+    m_action_frame.running_conditions = 0;
+    return previous;
   }
-  pure fn trap_saved_exit_status() const wontthrow -> const Maybe<i32> &
+  fn restore_action_frame(const trap_action_frame &previous) wontthrow -> void
   {
-    return m_trap_saved_exit_status;
+    m_action_frame = previous;
   }
   fn last_trap_action_status() wontthrow -> i32 &
   {
@@ -1759,19 +1775,12 @@ public:
 private:
   bool m_has_debug_trap{false};
   bool m_has_err_trap{false};
-  usize m_debug_trap_active_depth{0};
-  usize m_err_trap_active_depth{0};
+  trap_install_state m_install_state{};
   bool m_is_replaying_inherited_state{false};
   bool m_exit_trap_ran{false};
-  u8 m_running_trap_conditions{0};
-  bool m_did_reset_inherited_signal_traps{false};
   u64 m_startup_ignored_signals{0};
   u32 m_pending_child_trap_count{0};
-  u32 m_trap_action_depth{0};
-  usize m_trap_trigger_line_number{0};
-  usize m_trap_action_source_frame_count{0};
-  usize m_trap_action_function_depth{0};
-  Maybe<i32> m_trap_saved_exit_status{None};
+  trap_action_frame m_action_frame{};
   i32 m_last_trap_action_status{0};
   i32 m_status_before_return{0};
   StringMap<String> m_actions{heap_allocator()};
@@ -2835,15 +2844,8 @@ public:
      carries its own lines. The answer is empty there. */
   pure fn trap_trigger_line_number() const wontthrow -> Maybe<usize>
   {
-    if (trap_store().trap_action_depth() == 0) return None;
-    if (source_store().source_frames().count() !=
-        trap_store().trap_action_source_frame_count())
-      return None;
-    if (function_store().call_depth() !=
-        trap_store().trap_action_function_depth())
-      return None;
-
-    return trap_store().trap_trigger_line_number();
+    return trap_store().action_frame().get_trigger_line_number(
+        source_store().source_frames().count(), function_store().call_depth());
   }
 
   /* Run the action of every signal whose flag the handler set, at the command

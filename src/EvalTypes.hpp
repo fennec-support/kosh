@@ -244,6 +244,34 @@ struct trap_definition
   isize line_offset{0};
 };
 
+struct trap_action_frame
+{
+  u32 depth{0};
+  usize trigger_line_number{0};
+  usize source_frame_count{0};
+  usize function_depth{0};
+  Maybe<i32> saved_exit_status{None};
+  u8 running_conditions{0};
+
+  pure fn get_trigger_line_number(usize current_source_frame_count,
+                                  usize current_function_depth) const wontthrow
+      -> Maybe<usize>
+  {
+    if (depth == 0) return None;
+    if (current_source_frame_count != source_frame_count) return None;
+    if (current_function_depth != function_depth) return None;
+
+    return trigger_line_number;
+  }
+};
+
+struct trap_install_state
+{
+  usize debug_active_depth{0};
+  usize err_active_depth{0};
+  bool did_reset_inherited_signal_traps{false};
+};
+
 struct embedded_source
 {
   StringView text;

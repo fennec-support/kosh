@@ -859,9 +859,7 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
       steal(working_directory),
       os::get_file_creation_mask(),
       trap_store().actions(),
-      trap_store().debug_trap_active_depth(),
-      trap_store().err_trap_active_depth(),
-      trap_store().did_reset_inherited_signal_traps(),
+      trap_store().get_install_state(),
       variable_store().variable_attributes(),
       variable_store().exported_names(),
       environment_store().environment_undo_log().count(),
@@ -958,10 +956,7 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
     trap_store().actions() = steal(snapshot.traps);
   }
   refresh_trap_flags();
-  trap_store().debug_trap_active_depth() = snapshot.debug_trap_active_depth;
-  trap_store().err_trap_active_depth() = snapshot.err_trap_active_depth;
-  trap_store().did_reset_inherited_signal_traps() =
-      snapshot.did_reset_inherited_signal_traps;
+  trap_store().set_install_state(snapshot.trap_install);
 
   if (!os::restore_current_directory(snapshot.working_directory))
     LOG(Debug, "the subshell could not restore the working directory");

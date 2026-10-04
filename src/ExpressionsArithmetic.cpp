@@ -1030,19 +1030,8 @@ static fn evaluate_subshell_in_process(const Expression *body,
   /* The trap action that forked this subshell is not running inside it. Bash
      lets the same condition fire again for the commands of the body, and each
      of them publishes its own command text. */
-  let const saved_running_trap_conditions =
-      cxt.trap_store().running_trap_conditions();
-  let const saved_trap_action_depth = cxt.trap_store().trap_action_depth();
-  let const saved_trap_exit_status = cxt.trap_store().trap_saved_exit_status();
-  cxt.trap_store().running_trap_conditions() = 0;
-  cxt.trap_store().trap_action_depth() = 0;
-  cxt.trap_store().trap_saved_exit_status() = Maybe<i32>{};
-  defer
-  {
-    cxt.trap_store().running_trap_conditions() = saved_running_trap_conditions;
-    cxt.trap_store().trap_action_depth() = saved_trap_action_depth;
-    cxt.trap_store().trap_saved_exit_status() = saved_trap_exit_status;
-  };
+  let const outer_action_frame = cxt.trap_store().leave_action_for_subshell();
+  defer { cxt.trap_store().restore_action_frame(outer_action_frame); };
 
   LOG(Debug, "entering the snapshot subshell");
 
