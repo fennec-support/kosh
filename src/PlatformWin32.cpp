@@ -1885,10 +1885,97 @@ fn get_current_process_id() wontthrow -> i64
 
 fn register_platform_flags(FlagList &flags) throws -> void { unused(flags); }
 
-static constexpr u32 SUBSHELL_TRANSPORT_MAGIC = 0x4b535442U;
-static constexpr u32 SUBSHELL_TRANSPORT_VERSION = 2U;
-static constexpr usize SUBSHELL_TRANSPORT_HEADER_LENGTH = 24;
-static constexpr usize MAXIMUM_SUBSHELL_TRANSPORT_LENGTH = 16 * 1024 * 1024;
+static fn decode_subshell_transport_u32(const char *bytes) wontthrow -> u32
+{
+  u32 value = 0;
+  for (usize byte_position = 0; byte_position < sizeof(value); byte_position++)
+    value |= static_cast<u32>(static_cast<u8>(bytes[byte_position]))
+             << (byte_position * 8U);
+  return value;
+}
+
+static fn append_subshell_transport_u32(String &output, u32 value) throws
+    -> void
+{
+  for (usize byte_position = 0; byte_position < sizeof(value); byte_position++)
+    output.push(static_cast<char>((value >> (byte_position * 8U)) & 0xffU));
+}
+
+struct subshell_transport_header
+{
+  static constexpr u32 MAGIC = 0x4b535442U;
+  static constexpr u32 VERSION = 2U;
+  static constexpr usize ENCODED_LENGTH = 24;
+  static constexpr usize MAXIMUM_TRANSPORT_LENGTH = 16 * 1024 * 1024;
+
+  u32 payload_length{0};
+  u32 source_length{0};
+  u32 process_count{0};
+  u32 evaluation_mode{0};
+
+  static fn from_bootstrap(const subshell_bootstrap &bootstrap) wontthrow
+      -> Maybe<subshell_transport_header>
+  {
+    if (bootstrap.payload.count() > MAXIMUM_TRANSPORT_LENGTH ||
+        bootstrap.processes.count() >
+            (MAXIMUM_TRANSPORT_LENGTH - bootstrap.payload.count()) /
+                sizeof(u64))
+    {
+      return None;
+    }
+
+    let const header = subshell_transport_header{
+        .payload_length = static_cast<u32>(bootstrap.payload.count()),
+        .source_length = bootstrap.source_length,
+        .process_count = static_cast<u32>(bootstrap.processes.count()),
+        .evaluation_mode = static_cast<u32>(bootstrap.evaluation_mode),
+    };
+    if (!header.is_valid()) return None;
+
+    return header;
+  }
+
+  static fn decode(const char (&bytes)[ENCODED_LENGTH]) wontthrow
+      -> Maybe<subshell_transport_header>
+  {
+    if (decode_subshell_transport_u32(bytes) != MAGIC ||
+        decode_subshell_transport_u32(bytes + 4) != VERSION)
+    {
+      return None;
+    }
+
+    let const header = subshell_transport_header{
+        .payload_length = decode_subshell_transport_u32(bytes + 8),
+        .source_length = decode_subshell_transport_u32(bytes + 12),
+        .process_count = decode_subshell_transport_u32(bytes + 16),
+        .evaluation_mode = decode_subshell_transport_u32(bytes + 20),
+    };
+    if (!header.is_valid()) return None;
+
+    return header;
+  }
+
+  pure fn is_valid() const wontthrow -> bool
+  {
+    return source_length <= payload_length &&
+           payload_length <= MAXIMUM_TRANSPORT_LENGTH &&
+           evaluation_mode <=
+               static_cast<u32>(root_evaluation_mode::PreparedPipelineStage) &&
+           process_count <=
+               (MAXIMUM_TRANSPORT_LENGTH - payload_length) / sizeof(u64);
+  }
+
+  fn encode(String &output) const throws -> void
+  {
+    append_subshell_transport_u32(output, MAGIC);
+    append_subshell_transport_u32(output, VERSION);
+    append_subshell_transport_u32(output, payload_length);
+    append_subshell_transport_u32(output, source_length);
+    append_subshell_transport_u32(output, process_count);
+    append_subshell_transport_u32(output, evaluation_mode);
+  }
+};
+
 static subshell_bootstrap SUBSHELL_BOOTSTRAP{};
 
 static fn read_subshell_transport_exact(descriptor pipe, opaque *output,
@@ -1902,15 +1989,6 @@ static fn read_subshell_transport_exact(descriptor pipe, opaque *output,
     position += *read_count;
   }
   return true;
-}
-
-static fn decode_subshell_transport_u32(const char *bytes) wontthrow -> u32
-{
-  u32 value = 0;
-  for (usize byte_position = 0; byte_position < sizeof(value); byte_position++)
-    value |= static_cast<u32>(static_cast<u8>(bytes[byte_position]))
-             << (byte_position * 8U);
-  return value;
 }
 
 static fn decode_subshell_transport_u64(const char *bytes) wontthrow -> u64
@@ -1948,30 +2026,22 @@ static fn receive_subshell_bootstrap() wontthrow -> void
     ExitProcess(1);
   }
 
-  char header[SUBSHELL_TRANSPORT_HEADER_LENGTH];
-  if (!read_subshell_transport_exact(pipe, header, sizeof(header))) {
-    CloseHandle(pipe);
-    ExitProcess(1);
-  }
-  let const magic = decode_subshell_transport_u32(header);
-  let const version = decode_subshell_transport_u32(header + 4);
-  let const payload_length =
-      static_cast<usize>(decode_subshell_transport_u32(header + 8));
-  let const source_length = decode_subshell_transport_u32(header + 12);
-  let const process_count =
-      static_cast<usize>(decode_subshell_transport_u32(header + 16));
-  let const evaluation_mode = decode_subshell_transport_u32(header + 20);
-  if (magic != SUBSHELL_TRANSPORT_MAGIC ||
-      version != SUBSHELL_TRANSPORT_VERSION || source_length > payload_length ||
-      payload_length > MAXIMUM_SUBSHELL_TRANSPORT_LENGTH ||
-      evaluation_mode >
-          static_cast<u32>(root_evaluation_mode::PreparedPipelineStage) ||
-      process_count >
-          (MAXIMUM_SUBSHELL_TRANSPORT_LENGTH - payload_length) / sizeof(u64))
+  char header_bytes[subshell_transport_header::ENCODED_LENGTH];
+  if (!read_subshell_transport_exact(pipe, header_bytes,
+                                     sizeof(header_bytes)))
   {
     CloseHandle(pipe);
     ExitProcess(1);
   }
+  let const header = subshell_transport_header::decode(header_bytes);
+  if (!header.has_value()) {
+    CloseHandle(pipe);
+    ExitProcess(1);
+  }
+  let const payload_length = static_cast<usize>(header->payload_length);
+  let const source_length = header->source_length;
+  let const process_count = static_cast<usize>(header->process_count);
+  let const evaluation_mode = header->evaluation_mode;
 
   try {
     SUBSHELL_BOOTSTRAP.payload.reserve(payload_length);

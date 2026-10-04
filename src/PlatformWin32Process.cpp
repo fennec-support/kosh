@@ -1088,13 +1088,6 @@ static fn make_internal_pipe_path() throws -> String
   return path;
 }
 
-static fn append_subshell_transport_u32(String &output, u32 value) throws
-    -> void
-{
-  for (usize byte_position = 0; byte_position < sizeof(value); byte_position++)
-    output.push(static_cast<char>((value >> (byte_position * 8U)) & 0xffU));
-}
-
 static fn append_subshell_transport_u64(String &output, u64 value) throws
     -> void
 {
@@ -1105,24 +1098,11 @@ static fn append_subshell_transport_u64(String &output, u64 value) throws
 static fn make_subshell_transport(const subshell_bootstrap &bootstrap,
                                   process child) throws -> Maybe<String>
 {
-  if (bootstrap.payload.count() > MAXIMUM_SUBSHELL_TRANSPORT_LENGTH ||
-      bootstrap.processes.count() >
-          (MAXIMUM_SUBSHELL_TRANSPORT_LENGTH - bootstrap.payload.count()) /
-              sizeof(u64))
-  {
-    return koshka::None;
-  }
+  let const header = subshell_transport_header::from_bootstrap(bootstrap);
+  if (!header.has_value()) return koshka::None;
 
   let transport = String{heap_allocator()};
-  append_subshell_transport_u32(transport, SUBSHELL_TRANSPORT_MAGIC);
-  append_subshell_transport_u32(transport, SUBSHELL_TRANSPORT_VERSION);
-  append_subshell_transport_u32(transport,
-                                static_cast<u32>(bootstrap.payload.count()));
-  append_subshell_transport_u32(transport, bootstrap.source_length);
-  append_subshell_transport_u32(transport,
-                                static_cast<u32>(bootstrap.processes.count()));
-  append_subshell_transport_u32(transport,
-                                static_cast<u32>(bootstrap.evaluation_mode));
+  header->encode(transport);
   transport.append(bootstrap.payload.view());
 
   for (let const inherited_process : bootstrap.processes) {
