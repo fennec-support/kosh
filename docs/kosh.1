@@ -102,7 +102,8 @@ The
 .B \-\-format
 option separates a declaration block from the following command. It also
 separates a completed fi, done, esac, subshell, or brace group from the next
-independent command.
+independent command. Lines are kept within 78 columns. A word that cannot be
+broken to fit is left whole, and a warning names its file, line, and column.
 .PP
 When both
 .B \-s
