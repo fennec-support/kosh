@@ -139,8 +139,7 @@ static fn find_entry_matches(char type_letter, StringView filename, usize depth,
      remain exact so traversal does not depend on the process locale. */
   if (options.has_case_insensitive_name_pattern) {
     folded_filename.reserve(filename.length);
-    for (usize index = 0; index < filename.length; index++)
-      folded_filename.push(utils::ascii_to_lower(filename[index]));
+    folded_filename.assign_lowercase_ascii(filename);
     filename = folded_filename.view();
   }
 
@@ -751,9 +750,7 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
       if (name_pattern_ignore_case[pattern_index]) {
         String folded{cxt.scratch_allocator()};
         folded.reserve(decoded.text.length());
-        for (usize character_index = 0; character_index < decoded.text.length();
-             character_index++)
-          folded.push(utils::ascii_to_lower(decoded.text[character_index]));
+        folded.assign_lowercase_ascii(decoded.text.view());
         matcher_name_storage.push(steal(folded));
       } else {
         matcher_name_storage.push(steal(decoded.text));

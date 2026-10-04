@@ -429,10 +429,8 @@ public:
     prepare_regex_prefix();
     prepare_candidate_literal();
 
-    if (m_should_use_literal_search && m_options.should_ignore_case) {
-      for (usize index = 0; index < pattern.length; index++)
-        m_folded_pattern.push(utils::ascii_to_lower(pattern[index]));
-    }
+    if (m_should_use_literal_search && m_options.should_ignore_case)
+      m_folded_pattern.assign_lowercase_ascii(pattern);
   }
 
   fn compile_pattern() throws -> bool
