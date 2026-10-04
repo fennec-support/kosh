@@ -1,3 +1,26 @@
 schema=present
 invalid-pid-status=1
 descriptor-markers=present
+pipe-read: TYPE=FIFO MODE=prw------- ENDPOINT=
+pipe-write: TYPE=FIFO MODE=prw------- ENDPOINT=
+socketpair: TYPE=unix MODE=srwxrwxrwx ENDPOINT=->N
+unix-listener: TYPE=unix MODE=srwxrwxrwx ENDPOINT=SOCKPATH
+unix-client: TYPE=unix MODE=srwxrwxrwx ENDPOINT=->N
+unix-accepted: TYPE=unix MODE=srwxrwxrwx ENDPOINT=SOCKPATH->N
+tcp-listener: TYPE=IPv4 MODE=srwxrwxrwx ENDPOINT=127.0.0.1:PORT (LISTEN)
+tcp-client: TYPE=IPv4 MODE=srwxrwxrwx ENDPOINT=127.0.0.1:PORT->127.0.0.1:PORT (ESTAB)
+tcp-accepted: TYPE=IPv4 MODE=srwxrwxrwx ENDPOINT=127.0.0.1:PORT->127.0.0.1:PORT (ESTAB)
+udp: TYPE=IPv4 MODE=srwxrwxrwx ENDPOINT=127.0.0.1:PORT
+tcp6-listener: TYPE=IPv6 MODE=srwxrwxrwx ENDPOINT=[::1]:PORT (LISTEN)
+ss-parity=match
+evilfiles-narrow-150: rows=yes fits=yes ellipsis=yes
+evilfiles-narrow-130: rows=yes fits=yes ellipsis=yes
+evilfiles-wide-terminal: rows=yes fits=yes ellipsis=no
+evilfiles-wide-terminal-whole: yes
+evilfiles-wide-flag-whole: yes
+evilps-narrow-60: rows=yes fits=yes ellipsis=yes
+evilps-narrow-40: rows=yes fits=yes ellipsis=yes
+evilps-wide-terminal-whole: yes
+evilps-wide-flag-whole: yes
+evilps-live-narrow: rows=yes fits=yes
+evilps-live-wide-flag-whole: yes
