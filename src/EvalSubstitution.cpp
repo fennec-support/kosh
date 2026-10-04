@@ -24,6 +24,13 @@
 
 namespace koshka {
 
+static fn mark_substitution_frames_printed(SourceStore &store) wontthrow -> void
+{
+  for (let &frame : store.source_frames()) {
+    if (!frame.does_change_source) frame.was_printed = true;
+  }
+}
+
 fn EvalContext::render_contained_substitution_error(
     const std::exception_ptr &error, StringView source) throws -> void
 {
@@ -266,11 +273,17 @@ fn EvalContext::capture_command_substitution(
   try {
     ast = parser.construct_ast();
   } catch (ErrorWithLocation &error) {
+    if (did_push_source_frame) source_store().source_frames().pop_back();
+    did_push_source_frame = false;
+    mark_substitution_frames_printed(source_store());
     render_contained_substitution_error(std::current_exception(),
                                         normalized_source.view());
     error.set_rendered();
     throw;
   } catch (...) {
+    if (did_push_source_frame) source_store().source_frames().pop_back();
+    did_push_source_frame = false;
+    mark_substitution_frames_printed(source_store());
     render_contained_substitution_error(std::current_exception(),
                                         normalized_source.view());
     throw;
@@ -486,7 +499,7 @@ fn EvalContext::capture_command_substitution(const WordSegment &segment) throws
                         ? arena_store().function_arena()
                         : arena_store().parse_arena();
   ASSERT(cache_arena != nullptr);
-  let const did_push_source_frame = push_substitution_source_frame(
+  let did_push_source_frame = push_substitution_source_frame(
       segment, StringView{"command substitution"});
   defer
   {
@@ -516,11 +529,17 @@ fn EvalContext::capture_command_substitution(const WordSegment &segment) throws
     try {
       cache.substitution_ast = parser.construct_ast();
     } catch (ErrorWithLocation &error) {
+      if (did_push_source_frame) source_store().source_frames().pop_back();
+      did_push_source_frame = false;
+      mark_substitution_frames_printed(source_store());
       render_contained_substitution_error(std::current_exception(),
                                           segment.text.view());
       error.set_rendered();
       throw;
     } catch (...) {
+      if (did_push_source_frame) source_store().source_frames().pop_back();
+      did_push_source_frame = false;
+      mark_substitution_frames_printed(source_store());
       render_contained_substitution_error(std::current_exception(),
                                           segment.text.view());
       throw;
