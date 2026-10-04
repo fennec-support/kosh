@@ -134,6 +134,8 @@ fn FunctionBodyHandle::set_definition(
 
   let owned_source = String{heap_allocator(), source};
   utils::invalidate_line_number_cache_for(m_storage->source.view());
+  utils::invalidate_line_number_cache_for(
+      m_storage->definition_info.render_source.view());
   m_storage->source = steal(owned_source);
   m_storage->definition_info = steal(definition_info);
 }

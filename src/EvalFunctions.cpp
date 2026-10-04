@@ -88,12 +88,30 @@ fn EvalContext::register_function(StringView name,
   info.header_length = name.length + StringView{" () \n"}.length;
   if (source_store().current_source() != nullptr && !definition_text.is_empty())
   {
-    /* The body opens on the copy's second line, because the synthesized header
-       occupies the first one. A body that opens on the defining file's first
-       line therefore shifts back by one. */
-    let const body_line = static_cast<isize>(utils::line_number_at(
-        source_store().current_source()->view(), body_start_position));
-    info.line_offset = body_line - 2;
+    let const defining_view = source_store().current_source()->view();
+    let const body_line = static_cast<isize>(
+        utils::line_number_at(defining_view, body_start_position));
+    info.line_offset = body_line - 1;
+
+    let const body_end_position =
+        body_start_position + definition_text.length - info.header_length;
+    if (body_start_position <= defining_view.length &&
+        body_end_position >= body_start_position &&
+        body_end_position <= defining_view.length)
+    {
+      let const before_body =
+          defining_view.substring_of_length(0, body_start_position);
+      let const last_newline = before_body.find_last_character('\n');
+      let const line_start =
+          last_newline.has_value() ? *last_newline + 1 : usize{0};
+      let const after_body = defining_view.substring(body_end_position);
+      let const line_length = after_body.find_character('\n').value_or(
+          after_body.length);
+      info.line_prefix = String{
+          heap_allocator(), before_body.substring(line_start)};
+      info.line_suffix = String{
+          heap_allocator(), after_body.substring_of_length(0, line_length)};
+    }
   }
 
   if (source_store().current_source() != nullptr &&
@@ -149,10 +167,18 @@ pure fn EvalContext::resolve_render_source(
       continue;
     }
 
-    resolved_source.text = copy;
+    if (!info->has_render_source) {
+      info->render_source = info->line_prefix;
+      info->render_source.append(
+          copy->view().substring(info->header_length));
+      info->render_source.append(info->line_suffix.view());
+      info->has_render_source = true;
+    }
+
+    resolved_source.text = &info->render_source;
     resolved_source.is_windowed = true;
     resolved_source.body_start_position = info->body_start_position;
-    resolved_source.header_length = info->header_length;
+    resolved_source.header_length = info->line_prefix.count();
     resolved_source.line_offset = info->line_offset;
     resolved_source.source_name_index = info->source_name_index;
     return resolved_source;

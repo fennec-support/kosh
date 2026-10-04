@@ -1,0 +1,30 @@
+== brace body ==
+1:12: error: Division by zero.
+     1 |  c() { echo $((1/0)); }; c
+       |             ^~~~~~~~
+note: The right operand evaluated to 0.
+rc=1
+== function keyword ==
+1:19: error: Division by zero.
+     1 |  function d { echo $((1/0)); }; d
+       |                    ^~~~~~~~
+note: The right operand evaluated to 0.
+rc=1
+== subshell body ==
+1:12: error: Division by zero.
+     1 |  e() ( echo $((1/0)) ); e
+       |             ^~~~~~~~
+note: The right operand evaluated to 0.
+rc=1
+== prefixed definition and trailing text ==
+1:18: error: Division by zero.
+     1 |  :; g() { :; echo $((1/0)); } ; g
+       |                   ^~~~~~~~
+note: The right operand evaluated to 0.
+rc=1
+== multiline body ==
+2:8: error: Division by zero.
+     2 |    echo $((1/0))
+       |         ^~~~~~~~
+note: The right operand evaluated to 0.
+rc=1

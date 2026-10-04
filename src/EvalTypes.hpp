@@ -444,7 +444,8 @@ struct subshell_saved_descriptor
    An absolute position rebases by the body start and header length. The
    header occupies the copy's first line, and the line offset restores the
    defining file's numbering. A body that starts on the first line needs a
-   negative offset. */
+   negative offset. An error renders the body between the rest of its first
+   and last defining lines, which render_source builds on first use. */
 struct function_definition_info
 {
   usize body_start_position{0};
@@ -452,6 +453,10 @@ struct function_definition_info
   usize definition_line{0};
   isize line_offset{0};
   u32 source_name_index{0};
+  String line_prefix{heap_allocator()};
+  String line_suffix{heap_allocator()};
+  mutable String render_source{heap_allocator()};
+  mutable bool has_render_source{false};
   RuntimeState defining_runtime;
 };
 
