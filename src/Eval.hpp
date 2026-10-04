@@ -160,6 +160,19 @@ struct inheritable_analysis_state
   fn append_environment_text(String &text) const throws -> void;
 };
 
+struct subshell_bootstrap_reader;
+
+struct shopt_state
+{
+  u64 overrides{0};
+  u64 values{0};
+
+  pure fn is_valid() const wontthrow -> bool
+  {
+    return (values & ~overrides) == 0;
+  }
+};
+
 class RuntimeState
 {
 public:
@@ -179,6 +192,15 @@ private:
     GlobIgnoreAssigned = 1U << 6,
   };
 
+  static constexpr u8 ALL_FLAGS =
+      static_cast<u8>(Flag::DiagnosticsDisabled) |
+      static_cast<u8>(Flag::AnnoyingDiagnosticsEnabled) |
+      static_cast<u8>(Flag::ErrorUnsetExplicit) |
+      static_cast<u8>(Flag::PipefailExplicit) |
+      static_cast<u8>(Flag::FailglobExplicit) |
+      static_cast<u8>(Flag::ExtendedArithmeticExplicit) |
+      static_cast<u8>(Flag::GlobIgnoreAssigned);
+
   u8 m_flags{static_cast<u8>(Flag::AnnoyingDiagnosticsEnabled)};
 
 public:
@@ -186,8 +208,11 @@ public:
                     option_mask(shell_option_id::Failglob) |
                     option_mask(shell_option_id::Hashall) |
                     option_mask(shell_option_id::Braceexpand)};
-  u64 shopt_option_overrides{0};
-  u64 shopt_option_values{0};
+  shopt_state shopt;
+
+  fn append_wire(String &output) const throws -> void;
+  static fn from_wire(subshell_bootstrap_reader &reader,
+                      RuntimeState &runtime) wontthrow -> bool;
 
   pure fn is_diagnostics_disabled() const wontthrow -> bool;
   fn set_diagnostics_disabled(bool enabled) wontthrow -> void;
@@ -300,21 +325,21 @@ public:
   fn set_shopt_option(u8 index, bool enabled) wontthrow -> void
   {
     let const mask = u64{1} << index;
-    shopt_option_overrides |= mask;
+    shopt.overrides |= mask;
     if (enabled)
-      shopt_option_values |= mask;
+      shopt.values |= mask;
     else
-      shopt_option_values &= ~mask;
+      shopt.values &= ~mask;
   }
 
   pure fn is_shopt_option_overridden(u8 index) const wontthrow -> bool
   {
-    return (shopt_option_overrides & (u64{1} << index)) != 0;
+    return (shopt.overrides & (u64{1} << index)) != 0;
   }
 
   pure fn is_shopt_option_enabled(u8 index) const wontthrow -> bool
   {
-    return (shopt_option_values & (u64{1} << index)) != 0;
+    return (shopt.values & (u64{1} << index)) != 0;
   }
 
   pure fn is_shopt_enabled(shopt_option_id option) const wontthrow -> bool;

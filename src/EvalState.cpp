@@ -810,8 +810,8 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
       variable_store().associative_values(),
       variable_store().sparse_array_values(),
       variable_store().sparse_array_names(),
-      runtime_state().shopt_option_overrides,
-      runtime_state().shopt_option_values,
+      runtime_state().shopt.overrides,
+      runtime_state().shopt.values,
       function_store().definitions(),
       scope_store().aliases(),
       variable_store().positional_params(),
@@ -878,8 +878,8 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
   variable_store().associative_values() = steal(snapshot.associative_values);
   variable_store().sparse_array_values() = steal(snapshot.sparse_array_values);
   variable_store().sparse_array_names() = steal(snapshot.sparse_array_names);
-  runtime_state().shopt_option_overrides = snapshot.shopt_option_overrides;
-  runtime_state().shopt_option_values = snapshot.shopt_option_values;
+  runtime_state().shopt.overrides = snapshot.shopt_option_overrides;
+  runtime_state().shopt.values = snapshot.shopt_option_values;
   function_store().definitions() = steal(snapshot.functions);
   scope_store().aliases() = steal(snapshot.aliases);
   variable_store().positional_params() = steal(snapshot.positional_params);
@@ -986,9 +986,8 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
 }
 
 static constexpr u32 SUBSHELL_BOOTSTRAP_MAGIC = 0x4b534842U;
-static constexpr u32 SUBSHELL_BOOTSTRAP_VERSION = 11U;
+static constexpr u32 SUBSHELL_BOOTSTRAP_VERSION = 12U;
 static constexpr u32 NO_BOOTSTRAP_PROCESS = UINT32_MAX;
-static constexpr u8 SUBSHELL_BOOTSTRAP_RUNTIME_FLAGS = 0x3fU;
 
 static fn append_subshell_bootstrap_u32(String &output, u32 value) throws
     -> void
@@ -1028,23 +1027,15 @@ static fn append_subshell_bootstrap_text(String &output, StringView text) throws
   output.append(text);
 }
 
-static fn append_subshell_bootstrap_runtime(String &output,
-                                            const RuntimeState &runtime) throws
-    -> void
+fn RuntimeState::append_wire(String &output) const throws -> void
 {
-  output.push(static_cast<char>(runtime.mood));
-  output.push(static_cast<char>(runtime.warning_level));
-  output.push(static_cast<char>(runtime.tab_selector));
-  u8 flags = 0;
-  if (runtime.is_diagnostics_disabled()) flags |= 1U << 0;
-  if (runtime.is_annoying_diagnostics_enabled()) flags |= 1U << 1;
-  if (runtime.was_error_unset_set_explicitly()) flags |= 1U << 2;
-  if (runtime.was_pipefail_set_explicitly()) flags |= 1U << 3;
-  if (runtime.was_failglob_set_explicitly()) flags |= 1U << 4;
-  if (runtime.was_extended_arithmetic_set_explicitly()) flags |= 1U << 5;
-  if (runtime.was_glob_ignore_assigned()) flags |= 1U << 6;
-  output.push(static_cast<char>(flags));
-  append_subshell_bootstrap_u64(output, runtime.shell_options);
+  output.push(static_cast<char>(mood));
+  output.push(static_cast<char>(warning_level));
+  output.push(static_cast<char>(tab_selector));
+  output.push(static_cast<char>(m_flags));
+  append_subshell_bootstrap_u64(output, shell_options);
+  append_subshell_bootstrap_u64(output, shopt.overrides);
+  append_subshell_bootstrap_u64(output, shopt.values);
 }
 
 struct subshell_bootstrap_reader
@@ -1139,23 +1130,23 @@ static fn read_subshell_bootstrap_bool(subshell_bootstrap_reader &reader,
   return true;
 }
 
-static fn read_subshell_bootstrap_runtime(subshell_bootstrap_reader &reader,
-                                          RuntimeState &runtime) wontthrow
-    -> bool
+fn RuntimeState::from_wire(subshell_bootstrap_reader &reader,
+                           RuntimeState &runtime) wontthrow -> bool
 {
   let const mood = reader.read_u8();
   let const warning_level = reader.read_u8();
   let const tab_selector = reader.read_u8();
   let const flags = reader.read_u8();
   let const shell_options = reader.read_u64();
+  let const shopt = shopt_state{reader.read_u64(), reader.read_u64()};
   static_assert(static_cast<u8>(shell_option_id::Count) < 64);
   let const valid_shell_options =
       (u64{1} << static_cast<u8>(shell_option_id::Count)) - 1U;
   if (!reader.is_valid || mood > static_cast<u8>(mimic_mood::BashPosix) ||
       warning_level > 3 ||
       tab_selector > static_cast<u8>(tab_selector_mode::Plain) ||
-      (flags & ~SUBSHELL_BOOTSTRAP_RUNTIME_FLAGS) != 0 ||
-      (shell_options & ~valid_shell_options) != 0)
+      (flags & ~ALL_FLAGS) != 0 || (shell_options & ~valid_shell_options) != 0 ||
+      !shopt.is_valid())
   {
     return false;
   }
@@ -1163,14 +1154,9 @@ static fn read_subshell_bootstrap_runtime(subshell_bootstrap_reader &reader,
   runtime.mood = static_cast<mimic_mood>(mood);
   runtime.warning_level = warning_level;
   runtime.tab_selector = static_cast<tab_selector_mode>(tab_selector);
+  runtime.m_flags = flags;
   runtime.shell_options = shell_options;
-  runtime.set_diagnostics_disabled((flags & (1U << 0)) != 0);
-  runtime.set_annoying_diagnostics_enabled((flags & (1U << 1)) != 0);
-  runtime.set_error_unset_set_explicitly((flags & (1U << 2)) != 0);
-  runtime.set_pipefail_set_explicitly((flags & (1U << 3)) != 0);
-  runtime.set_failglob_set_explicitly((flags & (1U << 4)) != 0);
-  runtime.set_extended_arithmetic_set_explicitly((flags & (1U << 5)) != 0);
-  runtime.set_glob_ignore_assigned((flags & (1U << 6)) != 0);
+  runtime.shopt = shopt;
   return true;
 }
 
@@ -1338,9 +1324,7 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
       body, static_cast<u64>(expansion_store().getopts_char_index()));
   append_subshell_bootstrap_i64(body, expansion_store().getopts_last_optind());
   append_subshell_bootstrap_i32(body, job_table_store().next_job_id());
-  append_subshell_bootstrap_runtime(body, RuntimeState::capture(*this));
-  append_subshell_bootstrap_u64(body, runtime_state().shopt_option_overrides);
-  append_subshell_bootstrap_u64(body, runtime_state().shopt_option_values);
+  RuntimeState::capture(*this).append_wire(body);
   body.push(static_cast<char>(variable_store().disabled_bash_special_arrays()));
   body.push(static_cast<char>(variable_store().unset_dynamic_readers()));
   body.push(static_cast<char>(startup_store().is_restricted_shell()));
@@ -1387,7 +1371,7 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
     append_subshell_bootstrap_text(body, spec.function_name.view());
     append_subshell_bootstrap_text(body, spec.word_list.view());
     body.push(static_cast<char>(spec.should_use_default));
-    append_subshell_bootstrap_runtime(body, spec.defining_runtime);
+    spec.defining_runtime.append_wire(body);
   };
 
   for (let const &command : completion_names) {
@@ -1482,10 +1466,7 @@ fn EvalContext::apply_subshell_bootstrap(
   let const getopts_last_optind = reader.read_i64();
   let const next_job_id = reader.read_i32();
   let runtime = RuntimeState{};
-  if (!read_subshell_bootstrap_runtime(reader, runtime))
-    invalid_subshell_bootstrap();
-  let const shopt_option_overrides = reader.read_u64();
-  let const shopt_option_values = reader.read_u64();
+  if (!RuntimeState::from_wire(reader, runtime)) invalid_subshell_bootstrap();
   let const disabled_bash_special_arrays = reader.read_u8();
   let const unset_dynamic_readers = reader.read_u8();
   let const is_restricted_shell_identity = reader.read_u8() != 0;
@@ -1545,7 +1526,7 @@ fn EvalContext::apply_subshell_bootstrap(
   constexpr u8 VALID_DYNAMIC_READER_MASK =
       (1U << static_cast<u8>(dynamic_reader_id::Count)) - 1U;
   if (getopts_char_index_bits == 0 || getopts_char_index_bits > SIZE_MAX ||
-      next_job_id < 1 || (shopt_option_values & ~shopt_option_overrides) != 0 ||
+      next_job_id < 1 ||
       (disabled_bash_special_arrays &
        static_cast<u8>(~VALID_BASH_SPECIAL_ARRAY_MASK)) != 0 ||
       (unset_dynamic_readers & static_cast<u8>(~VALID_DYNAMIC_READER_MASK)) !=
@@ -1573,7 +1554,7 @@ fn EvalContext::apply_subshell_bootstrap(
     let const word_list = reader.read_text();
     bool should_use_default = false;
     if (!read_subshell_bootstrap_bool(reader, should_use_default) ||
-        !read_subshell_bootstrap_runtime(reader, spec.defining_runtime))
+        !RuntimeState::from_wire(reader, spec.defining_runtime))
     {
       return false;
     }
@@ -1759,8 +1740,6 @@ fn EvalContext::apply_subshell_bootstrap(
   trap_store().startup_ignored_signals() = startup_ignored_signals;
   expansion_store().set_getopts_char_index(getopts_char_index);
   expansion_store().set_getopts_last_optind(getopts_last_optind);
-  runtime_state().shopt_option_overrides = shopt_option_overrides;
-  runtime_state().shopt_option_values = shopt_option_values;
   reset_bash_argument_arrays();
   if (has_bash_argument_arrays)
     install_bash_argument_arrays(steal(bash_argument_values),
