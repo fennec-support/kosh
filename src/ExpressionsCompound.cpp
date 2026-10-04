@@ -926,7 +926,11 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
       {
         if (!was_unresolved_handed_off) unresolved.close_fds();
       };
-      e->redirect_exec_context(unresolved, cxt);
+      try {
+        e->redirect_exec_context(unresolved, cxt);
+      } catch (const TrapAbandonedRedirection &) {
+        return cxt.execution_store().last_exit_status();
+      }
       was_unresolved_handed_off = true;
       ecs.push(steal(unresolved));
       continue;
@@ -942,6 +946,8 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
     };
     try {
       e->redirect_exec_context(ec, cxt);
+    } catch (const TrapAbandonedRedirection &) {
+      return cxt.execution_store().last_exit_status();
     } catch (const ErrorWithLocation &redirection_error) {
       /* A redirection the stage cannot apply fails that stage alone. The stage
          keeps the redirections written ahead of the failing one. Its diagnostic
