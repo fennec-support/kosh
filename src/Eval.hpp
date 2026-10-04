@@ -2704,6 +2704,9 @@ public:
   fn mark_readonly(StringView name) throws -> void;
   fn unmark_readonly(StringView name) throws -> void;
   fn is_readonly(StringView name) const wontthrow -> bool;
+  fn get_variable_attribute_bits(StringView name) const wontthrow -> u8;
+  fn is_implicitly_readonly(StringView name) const wontthrow -> bool;
+  fn is_implicitly_integer(StringView name) const wontthrow -> bool;
   fn readonly_names() const throws
       -> SortedArrayList<String, order_comparator<String>>;
 

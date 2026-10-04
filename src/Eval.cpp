@@ -315,8 +315,12 @@ fn EvalContext::guard_restricted_path(StringView path,
 hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
     -> void
 {
-  if (is_readonly(name))
+  let const attribute_bits = get_variable_attribute_bits(name);
+  if (is_implicitly_readonly(name) ||
+      (attribute_bits & static_cast<u8>(variable_attribute::Readonly)) != 0)
+  {
     throw Error{"Unable to assign '" + name + "' because it is read only"};
+  }
 
   if (is_write_discarded_dynamic_variable(name)) return;
 
@@ -328,7 +332,9 @@ hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
   }
   if (is_bash_directory_stack_special(name)) return;
 
-  if (is_integer_variable(name)) rarely
+  if (is_implicitly_integer(name) ||
+      (attribute_bits & static_cast<u8>(variable_attribute::Integer)) != 0)
+    rarely
     {
       let const result = value.length == 0 ? String{scratch_allocator(), "0"}
                                            : evaluate_arithmetic_text(value);
@@ -336,7 +342,9 @@ hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
       return;
     }
 
-  if (is_lowercase_variable(name) || is_uppercase_variable(name)) rarely
+  if ((attribute_bits & (static_cast<u8>(variable_attribute::Lowercase) |
+                         static_cast<u8>(variable_attribute::Uppercase))) != 0)
+    rarely
     {
       let adjusted = String{scratch_allocator(), value};
       apply_variable_case(name, adjusted);

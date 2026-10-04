@@ -889,7 +889,14 @@ fn EvalContext::unmark_readonly(StringView name) throws -> void
   set_variable_attribute(name, variable_attribute::Readonly, false);
 }
 
-fn EvalContext::is_readonly(StringView name) const wontthrow -> bool
+fn EvalContext::get_variable_attribute_bits(StringView name) const wontthrow
+    -> u8
+{
+  let const attributes = variable_store().variable_attributes().find(name);
+  return attributes.has_value() ? *attributes.value() : 0;
+}
+
+fn EvalContext::is_implicitly_readonly(StringView name) const wontthrow -> bool
 {
   if (runtime_state().bash_dynamic_variables_enabled() &&
       BASH_IMPLICIT_READONLY_NAMES.contains(name))
@@ -902,8 +909,14 @@ fn EvalContext::is_readonly(StringView name) const wontthrow -> bool
     if (RESTRICTED_READONLY_NAMES.contains(name)) return true;
   }
 
-  let const attributes = variable_store().variable_attributes().find(name);
-  return ((attributes.has_value() ? *attributes.value() : 0) &
+  return false;
+}
+
+fn EvalContext::is_readonly(StringView name) const wontthrow -> bool
+{
+  if (is_implicitly_readonly(name)) return true;
+
+  return (get_variable_attribute_bits(name) &
           static_cast<u8>(variable_attribute::Readonly)) != 0;
 }
 
@@ -968,17 +981,18 @@ fn EvalContext::unmark_integer(StringView name) throws -> void
   set_variable_attribute(name, variable_attribute::Integer, false);
 }
 
+fn EvalContext::is_implicitly_integer(StringView name) const wontthrow -> bool
+{
+  return runtime_state().bash_dynamic_variables_enabled() &&
+         !is_dynamic_reader_unset(name) &&
+         BASH_IMPLICIT_INTEGER_NAMES.contains(name);
+}
+
 fn EvalContext::is_integer_variable(StringView name) const wontthrow -> bool
 {
-  if (runtime_state().bash_dynamic_variables_enabled() &&
-      !is_dynamic_reader_unset(name) &&
-      BASH_IMPLICIT_INTEGER_NAMES.contains(name))
-  {
-    return true;
-  }
+  if (is_implicitly_integer(name)) return true;
 
-  let const attributes = variable_store().variable_attributes().find(name);
-  return ((attributes.has_value() ? *attributes.value() : 0) &
+  return (get_variable_attribute_bits(name) &
           static_cast<u8>(variable_attribute::Integer)) != 0;
 }
 
