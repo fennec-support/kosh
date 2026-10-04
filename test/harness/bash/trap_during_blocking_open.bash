@@ -29,7 +29,8 @@ if ! mkfifo "$dir/first" 2> /dev/null; then
   echo trap-during-blocking-open-done
   exit 0
 fi
-mkfifo "$dir/second" "$dir/third" "$dir/fourth"
+mkfifo "$dir/second" "$dir/third" "$dir/fourth" "$dir/fifth" "$dir/sixth"
+mkfifo "$dir/seventh" "$dir/eighth" "$dir/ninth"
 
 (
   attempt=0
@@ -38,7 +39,7 @@ mkfifo "$dir/second" "$dir/third" "$dir/fourth"
     attempt=$((attempt + 1))
   done
   if [ -d "$dir" ]; then
-    for fifo in first second third fourth; do
+    for fifo in first second third fourth fifth sixth seventh eighth ninth; do
       echo watchdog-fired > "$dir/$fifo" 2> /dev/null &
     done
   fi
@@ -112,6 +113,79 @@ wait "$notifier" 2> /dev/null
 wait "$writer" 2> /dev/null
 trap - USR2
 echo open-whose-writer-waits-for-the-action-done
+
+echo open-whose-action-exits
+(
+  me=$BASHPID
+  trap 'echo exit-trap-ran' EXIT
+  trap 'echo action-exit; exit 7' USR1
+  ( wait_until_blocked "$me"; kill -USR1 "$me" ) &
+  read -r line < "$dir/fifth"
+  echo "exit-case-survived status=$? line=$line"
+)
+echo "exit-case-status=$?"
+echo open-whose-action-exits-done
+
+echo open-whose-action-returns
+trap 'echo action-return; return 3' USR1
+return_from_function() {
+  read -r line < "$dir/sixth"
+  echo "return-case-survived status=$?"
+  return 9
+}
+( wait_until_blocked $$; kill -USR1 $$ ) &
+notifier=$!
+return_from_function
+echo "return-case-status=$?"
+wait "$notifier" 2> /dev/null
+trap - USR1
+echo open-whose-action-returns-done
+
+echo open-whose-action-returns-from-a-group
+trap 'echo action-group-return; return 4' USR1
+return_from_group() {
+  { cat; } < "$dir/seventh"
+  echo "group-case-survived status=$?"
+  return 9
+}
+( wait_until_blocked $$; kill -USR1 $$ ) &
+notifier=$!
+return_from_group
+echo "group-case-status=$?"
+wait "$notifier" 2> /dev/null
+trap - USR1
+echo open-whose-action-returns-from-a-group-done
+
+echo open-whose-action-sets-a-variable
+trap 'marker=action-ran' USR1
+marker=untouched
+( wait_until_blocked $$; kill -USR1 $$; : > "$dir/variable-sent" ) &
+notifier=$!
+( wait_for_marker "$dir/variable-sent"; echo variable-payload > "$dir/ninth" ) &
+writer=$!
+read -r line < "$dir/ninth"
+echo "variable-status=$? variable-line=$line marker=$marker"
+wait "$notifier" 2> /dev/null
+wait "$writer" 2> /dev/null
+trap - USR1
+echo open-whose-action-sets-a-variable-done
+
+echo open-whose-action-breaks
+trap 'echo action-break; break' USR1
+for round in 1 2 3; do
+  echo "round=$round"
+  ( wait_until_blocked $$; kill -USR1 $$; : > "$dir/break-sent" ) &
+  notifier=$!
+  ( wait_for_marker "$dir/break-sent"; echo break-payload > "$dir/eighth" ) &
+  writer=$!
+  read -r line < "$dir/eighth"
+  echo "break-case-survived status=$? line=$line"
+done
+echo "break-case-status=$?"
+wait "$notifier" 2> /dev/null
+wait "$writer" 2> /dev/null
+trap - USR1
+echo open-whose-action-breaks-done
 
 echo open-that-no-signal-reaches
 ( /bin/sleep 1; echo quiet-payload > "$dir/third" ) &
