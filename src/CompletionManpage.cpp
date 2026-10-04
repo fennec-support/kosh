@@ -56,7 +56,6 @@ static fn matches_from_help_entries(const ArrayList<help_entry> &entries,
 /* An empty list is cached too. A command with no manpage is not retried. A
    fork that was killed borrows EMPTY_HELP_ENTRIES for the reference it owes its
    caller until its attempts run out. */
-static StringMap<ArrayList<help_entry>> MANPAGE_OPTION_CACHE{heap_allocator()};
 static const ArrayList<help_entry> EMPTY_HELP_ENTRIES{heap_allocator()};
 
 static fn manpage_name_for(StringView command) throws -> String
@@ -76,12 +75,57 @@ struct cached_subcommand_list
   sorted_subcommand_array values{heap_allocator(), sort_order::ascending};
 };
 
-static StringMap<cached_subcommand_list> MAN_SUBCOMMAND_INDEX{heap_allocator()};
-/* Every stripped section-1 page name mapped to its full file path, the
-   existence gate for the subcommand split. */
-static StringMap<String> MAN_PAGE_FILE_PATHS{heap_allocator()};
-static StringMap<bool> MAN_SUBCOMMAND_PAGE_VALID{heap_allocator()};
-static bool is_man_subcommand_index_built = false;
+class ManpageCache
+{
+public:
+  StringMap<ArrayList<help_entry>> option_entries{heap_allocator()};
+  StringMap<cached_subcommand_list> subcommand_index{heap_allocator()};
+  StringMap<String> page_file_paths{heap_allocator()};
+  StringMap<bool> subcommand_page_validity{heap_allocator()};
+  StringMap<String> text{heap_allocator()};
+  String manpath_output{heap_allocator()};
+  bool is_subcommand_index_built{false};
+  bool was_manpath_settled{false};
+
+  fn clear() -> void
+  {
+    option_entries.clear();
+    subcommand_index.clear();
+    page_file_paths.clear();
+    subcommand_page_validity.clear();
+    text.clear();
+    manpath_output.clear();
+    is_subcommand_index_built = false;
+    was_manpath_settled = false;
+  }
+
+  fn build_subcommand_index(EvalContext &context) throws -> void;
+};
+
+class HelpOutputCache
+{
+public:
+  StringMap<ArrayList<help_entry>> option_entries{heap_allocator()};
+  StringMap<ArrayList<help_entry>> subcommand_entries{heap_allocator()};
+  HashSet parsed_keys{heap_allocator()};
+  StringMap<String> text{heap_allocator()};
+  StringMap<u32> killed_fork_attempts{heap_allocator()};
+
+  fn clear() -> void
+  {
+    option_entries.clear();
+    subcommand_entries.clear();
+    parsed_keys = HashSet{heap_allocator()};
+    text.clear();
+    killed_fork_attempts.clear();
+  }
+
+  fn ensure_parsed(EvalContext &context, StringView command,
+                   StringView subcommand = {}) throws -> void;
+};
+
+static ManpageCache MANPAGE_CACHE{};
+static HelpOutputCache HELP_OUTPUT_CACHE{};
 
 /* A fork that runs past this budget is killed so the prompt never freezes. */
 static constexpr u64 HELP_FORK_TIMEOUT_NANOS = 1'000'000'000;
@@ -94,8 +138,6 @@ static constexpr u64 HELP_FORK_BATCH_TIMEOUT_NANOS = 8'000'000'000;
    runs past the budget stops forking. */
 static constexpr u32 KILLED_FORK_ATTEMPT_LIMIT = 2;
 
-static StringMap<u32> KILLED_FORK_ATTEMPTS{heap_allocator()};
-
 /* The kind separates a help key from a page name so two caches never share one
    attempt count. */
 static fn should_retry_killed_fork(StringView kind, StringView name) throws
@@ -105,12 +147,11 @@ static fn should_retry_killed_fork(StringView kind, StringView name) throws
   key += " ";
   key += name;
 
-  let &attempt_count = KILLED_FORK_ATTEMPTS.get_or_create(key.view(), 0u);
+  let &attempt_count =
+      HELP_OUTPUT_CACHE.killed_fork_attempts.get_or_create(key.view(), 0u);
   attempt_count++;
   return attempt_count < KILLED_FORK_ATTEMPT_LIMIT;
 }
-
-static bool was_manpath_settled = false;
 
 static fn
 capture_completion_program_output(EvalContext &context,
@@ -143,8 +184,8 @@ static fn manpage_section1_directories(EvalContext &context) throws
    is cached for the session. */
 static fn manpath_command_output(EvalContext &context) throws -> StringView
 {
-  static String cached{heap_allocator()};
-  if (was_manpath_settled) return cached.view();
+  let &cached = MANPAGE_CACHE.manpath_output;
+  if (MANPAGE_CACHE.was_manpath_settled) return cached.view();
 
   let &resolver = context.resolution_store().resolver();
   let const man_paths =
@@ -179,14 +220,14 @@ static fn manpath_command_output(EvalContext &context) throws -> StringView
 
       LOG(Debug, "the manpath fork was killed again, settling on the roots "
                  "resolved without it");
-      was_manpath_settled = true;
+      MANPAGE_CACHE.was_manpath_settled = true;
       return cached.view();
     }
 
     cached = steal(*output);
   }
 
-  was_manpath_settled = true;
+  MANPAGE_CACHE.was_manpath_settled = true;
   return cached.view();
 }
 
@@ -290,9 +331,9 @@ static pure fn strip_man1_suffix(StringView entry) wontthrow
 
 /* The tail is a subcommand only when the head page exists too, so xdg-open
    invents no xdg, and a digit-leading version tail is none. */
-static fn build_man_subcommand_index(EvalContext &context) throws -> void
+fn ManpageCache::build_subcommand_index(EvalContext &context) throws -> void
 {
-  MAN_SUBCOMMAND_INDEX.clear();
+  subcommand_index.clear();
   for (let const &directory : manpage_section1_directories(context)) {
     LOG(Info, "scanning man1 directory '%s'", directory.c_str());
     let entries = Path::read_directory(directory);
@@ -300,31 +341,31 @@ static fn build_man_subcommand_index(EvalContext &context) throws -> void
       LOG(Debug, "directory '%s' is unreadable, skipping", directory.c_str());
       continue;
     }
-    MAN_PAGE_FILE_PATHS.reserve(MAN_PAGE_FILE_PATHS.count() + entries->count());
+    page_file_paths.reserve(page_file_paths.count() + entries->count());
     for (let const &entry : *entries) {
       let const stripped = strip_man1_suffix(entry.view());
       if (!stripped.has_value() || stripped->is_empty()) continue;
-      if (MAN_PAGE_FILE_PATHS.find(*stripped).has_value()) continue;
+      if (page_file_paths.find(*stripped).has_value()) continue;
       let file_path = directory.clone();
       file_path.push_component(entry.view());
-      MAN_PAGE_FILE_PATHS.set(*stripped, String{file_path.view()});
+      page_file_paths.set(*stripped, String{file_path.view()});
     }
   }
-  MAN_PAGE_FILE_PATHS.for_each([&](StringView name, const String &) {
+  page_file_paths.for_each([&](StringView name, const String &) {
     let const dash = name.find_character('-');
     if (!dash.has_value() || *dash == 0) return;
     let const head = name.substring_of_length(0, *dash);
     let const tail = name.substring(*dash + 1);
     if (tail.is_empty() || (tail[0] >= '0' && tail[0] <= '9')) return;
-    if (!MAN_PAGE_FILE_PATHS.find(head).has_value()) return;
-    MAN_SUBCOMMAND_INDEX.get_or_create(head, cached_subcommand_list{})
+    if (!page_file_paths.find(head).has_value()) return;
+    subcommand_index.get_or_create(head, cached_subcommand_list{})
         .values.push_managed(tail);
   });
 
   /* A killed manpath fork hides every root the environment leaves out. The
      index is incomplete until that fork settles and is built again. */
-  is_man_subcommand_index_built = was_manpath_settled;
-  LOG(Info, "indexed %zu section-1 pages", MAN_PAGE_FILE_PATHS.count());
+  is_subcommand_index_built = was_manpath_settled;
+  LOG(Info, "indexed %zu section-1 pages", page_file_paths.count());
 }
 
 /* Empty when the page has no synopsis. */
@@ -385,27 +426,28 @@ static fn man_subcommand_page_is_valid(StringView command,
   let page_name = String{command};
   page_name.push('-');
   page_name.append(subcommand);
-  if (let const cached = MAN_SUBCOMMAND_PAGE_VALID.find(page_name.view());
+  if (let const cached =
+          MANPAGE_CACHE.subcommand_page_validity.find(page_name.view());
       cached.has_value())
     return *cached.value();
   if (!is_read_allowed) return false;
 
-  let const file_path = MAN_PAGE_FILE_PATHS.find(page_name.view());
+  let const file_path = MANPAGE_CACHE.page_file_paths.find(page_name.view());
   if (!file_path.has_value()) {
-    MAN_SUBCOMMAND_PAGE_VALID.set(page_name.view(), false);
+    MANPAGE_CACHE.subcommand_page_validity.set(page_name.view(), false);
     return false;
   }
 
   /* A compressed page cannot be scanned without a decompressor. */
   let const path_view = file_path->view();
   if (has_compression_suffix(path_view)) {
-    MAN_SUBCOMMAND_PAGE_VALID.set(page_name.view(), true);
+    MANPAGE_CACHE.subcommand_page_validity.set(page_name.view(), true);
     return true;
   }
 
   let source = Path{file_path->view()}.read_entire_file();
   if (!source.has_value()) {
-    MAN_SUBCOMMAND_PAGE_VALID.set(page_name.view(), true);
+    MANPAGE_CACHE.subcommand_page_validity.set(page_name.view(), true);
     return true;
   }
   /* A page that is one .so redirect reads its target relative to the man root
@@ -420,7 +462,7 @@ static fn man_subcommand_page_is_valid(StringView command,
     target.push_component(rest.substring_of_length(0, target_end));
     source = target.read_entire_file();
     if (!source.has_value()) {
-      MAN_SUBCOMMAND_PAGE_VALID.set(page_name.view(), true);
+      MANPAGE_CACHE.subcommand_page_validity.set(page_name.view(), true);
       return true;
     }
   }
@@ -430,7 +472,7 @@ static fn man_subcommand_page_is_valid(StringView command,
   needle.push(' ');
   needle.append(subcommand);
   let const valid = synopsis.find_substring(needle.view()).has_value();
-  MAN_SUBCOMMAND_PAGE_VALID.set(page_name.view(), valid);
+  MANPAGE_CACHE.subcommand_page_validity.set(page_name.view(), valid);
   return valid;
 }
 
@@ -485,12 +527,12 @@ fn internal::complete_from_man_subcommands(StringView line, StringView token,
       resolve_completion_command(surface_command, context);
   let const command = resolved_name.view();
 
-  if (!is_man_subcommand_index_built) {
+  if (!MANPAGE_CACHE.is_subcommand_index_built) {
     if (!for_listing) return None;
-    build_man_subcommand_index(context);
+    MANPAGE_CACHE.build_subcommand_index(context);
   }
 
-  let const subcommands = MAN_SUBCOMMAND_INDEX.find(command);
+  let const subcommands = MANPAGE_CACHE.subcommand_index.find(command);
   if (!subcommands.has_value() || subcommands->values.is_empty()) return None;
 
   /* Only the token matches are validated, so a typo reads no page. */
@@ -647,7 +689,7 @@ static fn command_directory_is_trusted(StringView absolute_path) throws -> bool;
 static fn manpage_options_for(StringView page_name, EvalContext &context) throws
     -> const ArrayList<help_entry> &
 {
-  if (let const cached = MANPAGE_OPTION_CACHE.find(page_name);
+  if (let const cached = MANPAGE_CACHE.option_entries.find(page_name);
       cached.has_value())
     return *cached.value();
   let parsed_options = ArrayList<help_entry>{heap_allocator()};
@@ -664,7 +706,7 @@ static fn manpage_options_for(StringView page_name, EvalContext &context) throws
     LOG(Debug,
         "skipping the man fork for '%.*s' because man is absent or untrusted",
         static_cast<int>(page_name.length), page_name.data);
-    return *MANPAGE_OPTION_CACHE.set(page_name, steal(parsed_options));
+    return *MANPAGE_CACHE.option_entries.set(page_name, steal(parsed_options));
   }
   let argv = ArrayList<String>{heap_allocator()};
   argv.push(String{man_paths[0].view()});
@@ -679,21 +721,19 @@ static fn manpage_options_for(StringView page_name, EvalContext &context) throws
     if (should_retry_killed_fork("man-options", page_name))
       return EMPTY_HELP_ENTRIES;
 
-    return *MANPAGE_OPTION_CACHE.set(page_name, steal(parsed_options));
+    return *MANPAGE_CACHE.option_entries.set(page_name, steal(parsed_options));
   }
 
   parsed_options = parse_manpage_option_entries(page->view());
-  return *MANPAGE_OPTION_CACHE.set(page_name, steal(parsed_options));
+  return *MANPAGE_CACHE.option_entries.set(page_name, steal(parsed_options));
 }
 
 /* An empty entry records a page that is absent or untrusted, so the fork
    happens once per name for the session. */
-static StringMap<String> MANPAGE_TEXT_CACHE{heap_allocator()};
-
 fn internal::manpage_text_for(StringView page_name, EvalContext &context) throws
     -> StringView
 {
-  if (let const cached = MANPAGE_TEXT_CACHE.find(page_name); cached.has_value())
+  if (let const cached = MANPAGE_CACHE.text.find(page_name); cached.has_value())
     return cached->view();
 
   let text = String{heap_allocator()};
@@ -708,7 +748,7 @@ fn internal::manpage_text_for(StringView page_name, EvalContext &context) throws
         "skipping the man fork for '%.*s' because man is absent or untrusted",
         static_cast<int>(page_name.length), page_name.data);
 
-    return MANPAGE_TEXT_CACHE.set(page_name, steal(text))->view();
+    return MANPAGE_CACHE.text.set(page_name, steal(text))->view();
   }
 
   let locate_argv = ArrayList<String>{heap_allocator()};
@@ -724,11 +764,11 @@ fn internal::manpage_text_for(StringView page_name, EvalContext &context) throws
 
     if (should_retry_killed_fork("man-text", page_name)) return StringView{};
 
-    return MANPAGE_TEXT_CACHE.set(page_name, steal(text))->view();
+    return MANPAGE_CACHE.text.set(page_name, steal(text))->view();
   }
 
   if (!location->view().find_character('/').has_value())
-    return MANPAGE_TEXT_CACHE.set(page_name, steal(text))->view();
+    return MANPAGE_CACHE.text.set(page_name, steal(text))->view();
 
   let argv = ArrayList<String>{heap_allocator()};
   argv.push(String{man_paths[0].view()});
@@ -742,7 +782,7 @@ fn internal::manpage_text_for(StringView page_name, EvalContext &context) throws
 
     if (should_retry_killed_fork("man-text", page_name)) return StringView{};
 
-    return MANPAGE_TEXT_CACHE.set(page_name, steal(text))->view();
+    return MANPAGE_CACHE.text.set(page_name, steal(text))->view();
   }
 
   if (!page->is_empty()) {
@@ -757,7 +797,7 @@ fn internal::manpage_text_for(StringView page_name, EvalContext &context) throws
     }
   }
 
-  return MANPAGE_TEXT_CACHE.set(page_name, steal(text))->view();
+  return MANPAGE_CACHE.text.set(page_name, steal(text))->view();
 }
 
 /* Runs only on an explicit tab and a dash token, so the ghost never forks man.
@@ -788,11 +828,12 @@ fn internal::complete_from_manpage(StringView line, StringView token,
   if (let const subcommand_word = second_word_of(line);
       subcommand_word.has_value())
   {
-    if (!is_man_subcommand_index_built) build_man_subcommand_index(context);
+    if (!MANPAGE_CACHE.is_subcommand_index_built)
+      MANPAGE_CACHE.build_subcommand_index(context);
     let combined = String{command};
     combined.push('-');
     combined.append(*subcommand_word);
-    if (MAN_PAGE_FILE_PATHS.find(combined.view()).has_value())
+    if (MANPAGE_CACHE.page_file_paths.find(combined.view()).has_value())
       page_name = steal(combined);
   }
 
@@ -805,11 +846,9 @@ fn internal::complete_from_manpage(StringView line, StringView token,
 }
 
 /* One fork parses both the option and the subcommand caches so the raw text
-   frees after. HELP_PARSED records a command that ran so it never forks twice.
+   frees after. HELP_OUTPUT_CACHE.parsed_keys records a command that ran so it
+   never forks twice.
  */
-static StringMap<ArrayList<help_entry>> HELP_OPTION_CACHE{heap_allocator()};
-static StringMap<ArrayList<help_entry>> HELP_SUBCOMMAND_CACHE{heap_allocator()};
-static HashSet HELP_PARSED{heap_allocator()};
 
 /* The check is permission-based, so a user tool directory like ~/.cargo/bin is
    trusted while a world-writable one like /tmp is not. */
@@ -881,18 +920,17 @@ static fn help_text_for(EvalContext &context, StringView command,
 
 /* The parsed caches keep entries and free the raw text, so a reader that wants
    the text keeps its own copy. */
-static StringMap<String> HELP_TEXT_CACHE{heap_allocator()};
-
 fn internal::help_text_of(StringView command, EvalContext &context) throws
     -> StringView
 {
-  if (let const cached = HELP_TEXT_CACHE.find(command); cached.has_value())
+  if (let const cached = HELP_OUTPUT_CACHE.text.find(command);
+      cached.has_value())
     return cached->view();
 
   let text = help_text_for(context, command);
   if (!text.has_value()) return StringView{};
 
-  return HELP_TEXT_CACHE.set(command, steal(*text))->view();
+  return HELP_OUTPUT_CACHE.text.set(command, steal(*text))->view();
 }
 
 static fn parse_help_option_entries(StringView text) throws
@@ -936,22 +974,21 @@ static fn help_cache_key(StringView command, StringView subcommand) throws
   return key;
 }
 
-/* HELP_PARSED gates the fork so a second tab reads the parsed caches. A key is
+/* parsed_keys gates the fork so a second tab reads the parsed caches. A key is
    recorded only after the fork settles. */
-static fn ensure_help_parsed(EvalContext &context, StringView command,
-                             StringView subcommand = {}) throws -> void
+fn HelpOutputCache::ensure_parsed(EvalContext &context, StringView command,
+                                  StringView subcommand) throws -> void
 {
   let const key = help_cache_key(command, subcommand);
-  if (HELP_PARSED.contains(key.view())) return;
+  if (parsed_keys.contains(key.view())) return;
   /* A killed fork still fills both caches so the caller has a reference to
      return, and the key stays unparsed while attempts remain. */
   let const text = help_text_for(context, command, subcommand);
   let const parsed = text.has_value() ? text->view() : StringView{};
-  HELP_OPTION_CACHE.set(key.view(), parse_help_option_entries(parsed));
-  HELP_SUBCOMMAND_CACHE.set(key.view(),
-                            parse_help_subcommands(parsed, command));
+  option_entries.set(key.view(), parse_help_option_entries(parsed));
+  subcommand_entries.set(key.view(), parse_help_subcommands(parsed, command));
   if (text.has_value() || !should_retry_killed_fork("help", key.view()))
-    HELP_PARSED.add(key.view());
+    parsed_keys.add(key.view());
 }
 
 static fn help_entries_for(StringMap<ArrayList<help_entry>> &cache,
@@ -959,7 +996,7 @@ static fn help_entries_for(StringMap<ArrayList<help_entry>> &cache,
                            StringView subcommand = {}) throws
     -> const ArrayList<help_entry> &
 {
-  ensure_help_parsed(context, command, subcommand);
+  HELP_OUTPUT_CACHE.ensure_parsed(context, command, subcommand);
   return *cache.find(help_cache_key(command, subcommand).view()).value();
 }
 
@@ -967,7 +1004,8 @@ static fn help_options_for(EvalContext &context, StringView command,
                            StringView subcommand = {}) throws
     -> const ArrayList<help_entry> &
 {
-  return help_entries_for(HELP_OPTION_CACHE, context, command, subcommand);
+  return help_entries_for(HELP_OUTPUT_CACHE.option_entries, context, command,
+                          subcommand);
 }
 
 static fn is_plausible_subcommand_name(StringView name) wontthrow -> bool
@@ -1176,7 +1214,8 @@ static fn help_subcommands_for(EvalContext &context, StringView command,
                                StringView subcommand = {}) throws
     -> const ArrayList<help_entry> &
 {
-  return help_entries_for(HELP_SUBCOMMAND_CACHE, context, command, subcommand);
+  return help_entries_for(HELP_OUTPUT_CACHE.subcommand_entries, context,
+                          command, subcommand);
 }
 
 static fn is_known_help_subcommand(EvalContext &context, StringView command,
