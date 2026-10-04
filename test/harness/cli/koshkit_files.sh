@@ -207,6 +207,49 @@ else
     echo "du-unreadable=failed"
   fi
 fi
+echo "--- du interruption ---"
+if [ "${TARGET:-$(uname -s)}" != Linux ]; then
+  echo "du-interrupt=skipped"
+else
+  mkdir du-interrupt
+  du_interrupt_directory=0
+  while [ "$du_interrupt_directory" -lt 200 ]; do
+    mkdir "du-interrupt/d$du_interrupt_directory"
+    (
+      cd "du-interrupt/d$du_interrupt_directory" || exit 1
+      seq 1 200 | xargs touch
+    )
+    du_interrupt_directory=$((du_interrupt_directory + 1))
+  done
+  du_interrupt_expected_count=$((200 * 200 + 200 + 1))
+  du_interrupt_status=$("$BIN" --no-traces --mood bash -c '
+    shell_pid=$$
+    (
+      : > du-interrupt.ready
+      poll_count=0
+      while [ "$poll_count" -lt 2000 ]; do
+        for descriptor in /proc/$shell_pid/fd/*; do
+          case $(koshkit readlink "$descriptor") in
+            */du-interrupt/*) break 2 ;;
+          esac
+        done
+        poll_count=$((poll_count + 1))
+        /bin/sleep 0.002
+      done
+      kill -INT $shell_pid
+    ) &
+    while [ ! -e du-interrupt.ready ]; do /bin/sleep 0.002; done
+    koshkit du du-interrupt > du-interrupt.out 2> du-interrupt.err
+    wait
+  ' 2> /dev/null; echo "$?")
+  du_interrupt_line_count=$(wc -l < du-interrupt.out)
+  if [ "$du_interrupt_status" -eq 130 ] &&
+    [ "$du_interrupt_line_count" -lt "$du_interrupt_expected_count" ]; then
+    echo "du-interrupt=matched"
+  else
+    echo "du-interrupt=failed status=$du_interrupt_status lines=$du_interrupt_line_count"
+  fi
+fi
 echo "--- basename ---"
 "$BIN" -c 'koshkit basename /usr/local/libfoo.so .so'
 echo "--- dirname ---"
