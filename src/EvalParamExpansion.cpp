@@ -1300,13 +1300,46 @@ fn EvalContext::ParameterExpander::expand_operator() throws -> String
   }
 }
 
+static fn is_operator_after_bang(char character) wontthrow -> bool
+{
+  switch (character) {
+  case ':':
+  case '-':
+  case '=':
+  case '+':
+  case '%':
+  case '/':
+  case '^':
+  case ',': return true;
+  default: return false;
+  }
+}
+
+static fn is_operator_after_hash(StringView spec) wontthrow -> bool
+{
+  switch (spec[1]) {
+  case ':':
+  case '-':
+  case '=':
+  case '+':
+  case '%':
+  case '/': return true;
+  case '?': return spec.length > 2;
+  default: return false;
+  }
+}
+
 fn EvalContext::ParameterExpander::expand() throws -> String
 {
   if (m_spec.is_empty()) return String{m_context.scratch_allocator()};
-  if (m_spec.length > 1 && m_spec[0] == '!') {
+  if (m_spec.length > 1 && m_spec[0] == '!' &&
+      !is_operator_after_bang(m_spec[1]))
+  {
     return expand_indirect();
   }
-  if (m_spec.length > 1 && m_spec[0] == '#') {
+  if (m_spec.length > 1 && m_spec[0] == '#' &&
+      !is_operator_after_hash(m_spec))
+  {
     return expand_length();
   }
 
