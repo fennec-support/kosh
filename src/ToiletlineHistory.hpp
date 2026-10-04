@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "Platform.hpp"
 #include "base/Common.hpp"
 
 namespace toiletline {
@@ -22,10 +23,7 @@ inline constexpr int HISTORY_RACE_ATTEMPT_COUNT = 3;
    read back and is rejected before it reaches a file. The vendored
    ITL_STRING_MAX_LEN holds the same value and is visible only to the editor
    implementation. Toiletline.cpp asserts that the two agree. */
-#if defined _WIN32
-inline constexpr usize HISTORY_RECORD_MAX_DECODED_BYTE_COUNT = 8191;
-#else
-inline constexpr usize HISTORY_RECORD_MAX_DECODED_BYTE_COUNT = 4095;
-#endif
+inline constexpr usize HISTORY_RECORD_MAX_DECODED_BYTE_COUNT =
+    koshka::os::HISTORY_RECORD_MAX_DECODED_BYTE_COUNT;
 
 } /* namespace toiletline */

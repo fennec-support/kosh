@@ -51,14 +51,14 @@ fn Path::is_relative() const wontthrow -> bool { return !is_absolute(); }
 static pure fn filename_offset(StringView text) wontthrow -> usize
 {
   let separator = text.find_last_character('/');
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
-  if (let const backslash = text.find_last_character('\\');
-      backslash.has_value() &&
-      (!separator.has_value() || *backslash > *separator))
-  {
-    separator = backslash;
+  if (os::IS_BACKSLASH_A_SEPARATOR) {
+    if (let const backslash = text.find_last_character('\\');
+        backslash.has_value() &&
+        (!separator.has_value() || *backslash > *separator))
+    {
+      separator = backslash;
+    }
   }
-#endif
   return separator.has_value() ? *separator + 1 : 0;
 }
 
