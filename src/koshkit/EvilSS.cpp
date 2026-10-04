@@ -338,19 +338,11 @@ fn EvilSS::execute(const ExecContext &ec, EvalContext &cxt,
   };
 
   if (FLAG_EVILSS_LIVE.is_enabled()) {
-    f64 live_interval_seconds = 0.5;
-    if (FLAG_EVILSS_LIVE.has_value()) {
-      let const parsed = parse_koshkit_duration_seconds(
-          FLAG_EVILSS_LIVE.value(), FLAG_EVILSS_LIVE.value_location(),
-          allocator);
-      if (parsed <= 0.0) {
-        KOSHKIT_REPORT_ERROR_AT(FLAG_EVILSS_LIVE.value_location(),
-                                "invalid live interval",
-                                "use a positive number of seconds");
-        return 1;
-      }
-      live_interval_seconds = parsed;
-    }
+    let const live_interval = parse_live_interval_seconds(
+        ec, cxt, args[0].view(), FLAG_EVILSS_LIVE, allocator);
+    if (!live_interval.has_value()) return 1;
+
+    let const live_interval_seconds = *live_interval;
 
     let const do_sample = [](u64, Allocator) -> Maybe<i32> { return None; };
     let const do_render = [&](String &frame, const live_view_dimensions &,

@@ -6,7 +6,8 @@
  * a utility supplies its options plus sampler, renderer, and key callbacks.
  * The driver owns terminal handling, cadence, interrupts, and one write per
  * frame. It also declares update_retained_rows, which folds each fresh sample
- * into the retained per-object rows of a live utility.
+ * into the retained rows of a live utility, and parse_live_interval_seconds,
+ * which owns the default, duration suffixes, and positivity of --live.
  */
 
 #pragma once
@@ -113,6 +114,11 @@ private:
   bool m_is_cursor_hidden{false};
   bool m_has_input{false};
 };
+
+fn parse_live_interval_seconds(const ExecContext &ec, EvalContext &cxt,
+                               StringView utility_name,
+                               const FlagOptionalValue &live_flag,
+                               Allocator allocator) throws -> Maybe<f64>;
 
 template <class Sample, class Render, class Key>
 fn run_live_view(const ExecContext &ec, const live_view_options &options,

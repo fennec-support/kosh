@@ -864,19 +864,11 @@ fn EvilNet::execute(const ExecContext &ec, EvalContext &cxt,
                             "--failures cannot be combined with --live");
     return 2;
   }
-  f64 live_interval_seconds = 0.5;
-  if (FLAG_EVILNET_LIVE.has_value()) {
-    let const parsed = parse_koshkit_duration_seconds(
-        FLAG_EVILNET_LIVE.value(), FLAG_EVILNET_LIVE.value_location(),
-        allocator);
-    if (parsed <= 0.0) {
-      KOSHKIT_REPORT_ERROR_AT(FLAG_EVILNET_LIVE.value_location(),
-                              "invalid live interval",
-                              "use a positive number of seconds");
-      return 1;
-    }
-    live_interval_seconds = parsed;
-  }
+  let const live_interval = parse_live_interval_seconds(
+      ec, cxt, args[0].view(), FLAG_EVILNET_LIVE, allocator);
+  if (!live_interval.has_value()) return 1;
+
+  let const live_interval_seconds = *live_interval;
   f64 window_seconds = 1.0;
   if (FLAG_EVILNET_CUMULATIVE.has_value()) {
     window_seconds = parse_koshkit_duration_seconds(

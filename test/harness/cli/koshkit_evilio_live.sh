@@ -36,6 +36,13 @@ case $process_window_report in
     ;;
   *) process_window_shape=wrong ;;
 esac
+run_live_report "$TEST_TEMP_DIRECTORY/evilio-live-suffix-report" \
+  'koshkit --color never evilio --live=1s --cumulative=0.02 --ps -1'
+suffix_live_status=$live_status
+case $live_report in
+  *evilio\ \ LIVE*every\ 1s*PID*COMMAND*) suffix_live_shape=matched ;;
+  *) suffix_live_shape=wrong ;;
+esac
 case $process_live_report in
   *DEVICE*|*MEMORY*|*SWAP*) live_scope=extra ;;
   *) live_scope=only-process-io ;;
@@ -72,6 +79,8 @@ esac
 printf 'status=%s\n' "$process_live_status"
 printf 'shape=%s\n' "$live_shape"
 printf 'process-window-shape=%s\n' "$process_window_shape"
+printf 'suffix-status=%s\n' "$suffix_live_status"
+printf 'suffix-shape=%s\n' "$suffix_live_shape"
 printf 'scope=%s\n' "$live_scope"
 printf 'disk-status=%s\n' "$disk_live_status"
 printf 'disk-shape=%s\n' "$disk_live_shape"

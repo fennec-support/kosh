@@ -3,14 +3,16 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the terminal and header half of the shared live view
- * driver declared in CliLive.hpp. It manages the alternate screen, raw key
- * input, the styled header line, and the single write that delivers each
- * frame. Redirected output receives a plain header without escape sequences.
+ * driver declared in CliLive.hpp and the shared --live interval parser. It
+ * manages the alternate screen, raw key input, the styled header line, and the
+ * single write that delivers each frame. Redirected output receives a plain
+ * header without escape sequences.
  */
 
 #include "CliLive.hpp"
 
 #include "CLIColors.hpp"
+#include "Koshkit.hpp"
 
 namespace koshka::koshkit {
 
@@ -27,6 +29,7 @@ inline const StringView LIVE_INDICATOR = "LIVE";
 inline const StringView SEGMENT_GAP = "  ";
 
 constexpr u64 NANOSECONDS_PER_SECOND = 1000000000ULL;
+constexpr f64 DEFAULT_LIVE_INTERVAL_SECONDS = 0.5;
 
 struct header_fit
 {
@@ -196,6 +199,26 @@ pure fn LiveView::get_wait_nanoseconds(
                                ? m_sample_interval_nanoseconds - sample_elapsed
                                : 0;
   return until_sample < wait_nanoseconds ? until_sample : wait_nanoseconds;
+}
+
+fn parse_live_interval_seconds(const ExecContext &ec, EvalContext &cxt,
+                               StringView utility_name,
+                               const FlagOptionalValue &live_flag,
+                               Allocator allocator) throws -> Maybe<f64>
+{
+  if (!live_flag.has_value()) return DEFAULT_LIVE_INTERVAL_SECONDS;
+
+  let const location = live_flag.value_location();
+  let const seconds =
+      parse_koshkit_duration_seconds(live_flag.value(), location, allocator);
+  if (seconds <= 0.0) {
+    report_soft_koshkit_util_error(ec, cxt, location, utility_name,
+                                   "invalid live interval",
+                                   "use a positive number of seconds");
+    return None;
+  }
+
+  return seconds;
 }
 
 fn LiveView::get_dimensions() const wontthrow -> live_view_dimensions
