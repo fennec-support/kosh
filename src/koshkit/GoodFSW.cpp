@@ -68,6 +68,12 @@ enum class timestamp_timezone : u8
   UTC,
 };
 
+struct watch_timestamp_format
+{
+  usize precision{9};
+  timestamp_timezone timezone{timestamp_timezone::Local};
+};
+
 enum class watch_event : u8
 {
   Created = 1,
@@ -152,12 +158,12 @@ pure fn event_mask(watch_event event) wontthrow -> u8
   return static_cast<u8>(event);
 }
 
-fn format_watch_timestamp(i64 seconds, u32 nanoseconds, usize precision,
-                          timestamp_timezone timezone,
+fn format_watch_timestamp(i64 seconds, u32 nanoseconds,
+                          const watch_timestamp_format &format,
                           Allocator allocator) throws -> String
 {
   let const when = static_cast<time_t>(seconds);
-  let const *broken_down = timezone == timestamp_timezone::UTC
+  let const *broken_down = format.timezone == timestamp_timezone::UTC
                                ? std::gmtime(&when)
                                : std::localtime(&when);
   if (broken_down == nullptr) return String{allocator};
@@ -168,18 +174,18 @@ fn format_watch_timestamp(i64 seconds, u32 nanoseconds, usize precision,
   let text = String{
       allocator, StringView{date_buffer, date_length}
   };
-  if (precision != 0) {
+  if (format.precision != 0) {
     text += ".";
     let const digits = String::from(nanoseconds, allocator);
     let fraction = String{allocator};
     for (usize index = digits.length(); index < 9; index++)
       fraction += "0";
     fraction += digits.view();
-    text += fraction.substring_of_length(0, precision);
+    text += fraction.substring_of_length(0, format.precision);
   }
 
   text += " ";
-  if (timezone == timestamp_timezone::UTC) {
+  if (format.timezone == timestamp_timezone::UTC) {
     text += "+0000";
   } else {
     char zone_buffer[16];
@@ -192,15 +198,14 @@ fn format_watch_timestamp(i64 seconds, u32 nanoseconds, usize precision,
 
 fn report_event(String &output, StringView path, const os::file_status &status,
                 watch_event event, i64 scan_time, u32 scan_nanoseconds,
-                usize timestamp_precision, timestamp_timezone timezone,
+                const watch_timestamp_format &timestamp_format,
                 bool should_color) throws -> void
 {
   let const is_human =
       FLAG_GOODFSW_HUMAN.is_enabled() && !FLAG_GOODFSW_MACHINE.is_enabled();
   if (is_human) {
-    output +=
-        format_watch_timestamp(scan_time, scan_nanoseconds, timestamp_precision,
-                               timezone, output.allocator());
+    output += format_watch_timestamp(scan_time, scan_nanoseconds,
+                                     timestamp_format, output.allocator());
     output += " ";
   } else if (FLAG_GOODFSW_MACHINE.is_enabled() ||
              FLAG_GOODFSW_TIMESTAMP.is_enabled() ||
@@ -325,7 +330,7 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
     if (latency_seconds < 0.05) latency_seconds = 0.05;
   }
 
-  usize timestamp_precision = 9;
+  watch_timestamp_format timestamp_format;
   if (FLAG_GOODFSW_PRECISION.is_set()) {
     let const parsed = utils::parse_decimal_u64(FLAG_GOODFSW_PRECISION.value());
     if (parsed.is_error() || parsed.value() > 9) {
@@ -335,14 +340,13 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
                               "use a number from 0 through 9");
       return 1;
     }
-    timestamp_precision = static_cast<usize>(parsed.value());
+    timestamp_format.precision = static_cast<usize>(parsed.value());
   }
 
-  timestamp_timezone timezone = timestamp_timezone::Local;
   if (FLAG_GOODFSW_TIMEZONE.is_set()) {
     let const value = FLAG_GOODFSW_TIMEZONE.value();
     if (value == "utc") {
-      timezone = timestamp_timezone::UTC;
+      timestamp_format.timezone = timestamp_timezone::UTC;
     } else if (value != "local") {
       KOSHKIT_REPORT_ERROR_AT(FLAG_GOODFSW_TIMEZONE.value_location(),
                               "Invalid timestamp timezone '" + value + "'",
@@ -445,7 +449,7 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
         os::file_status rendered{};
         rendered.mode = entry.mode;
         report_event(output, entry.path.view(), rendered, watch_event::Removed,
-                     scan_time, scan_nanoseconds, timestamp_precision, timezone,
+                     scan_time, scan_nanoseconds, timestamp_format,
                      should_color);
         previous_position++;
         continue;
@@ -459,7 +463,7 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
         os::file_status rendered{};
         rendered.mode = entry.mode;
         report_event(output, entry.path.view(), rendered, watch_event::Created,
-                     scan_time, scan_nanoseconds, timestamp_precision, timezone,
+                     scan_time, scan_nanoseconds, timestamp_format,
                      should_color);
         current_position++;
         continue;
@@ -472,12 +476,11 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
       if (!is_same_content(previous_entry, current_entry)) {
         report_event(output, current_entry.path.view(), rendered,
                      watch_event::Updated, scan_time, scan_nanoseconds,
-                     timestamp_precision, timezone, should_color);
+                     timestamp_format, should_color);
       } else if (!is_same_attributes(previous_entry, current_entry)) {
         report_event(output, current_entry.path.view(), rendered,
                      watch_event::AttributeModified, scan_time,
-                     scan_nanoseconds, timestamp_precision, timezone,
-                     should_color);
+                     scan_nanoseconds, timestamp_format, should_color);
       }
 
       previous_position++;
