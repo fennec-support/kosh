@@ -1,0 +1,5 @@
+evilio-cumulative status=0 heading=True row=True write-ops=nonzero
+evilio-live status=130 heading=True row=True write-ops=nonzero
+evilnet-cumulative status=0 heading=True row=True rx=nonzero tx=nonzero packets=nonzero
+evilnet-live status=130 heading=True row=True rx=nonzero tx=nonzero packets=nonzero
+status=0
