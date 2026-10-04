@@ -54,22 +54,47 @@ static pure fn effective_entry_kind(
   }
 }
 
+static fn should_descend_into(StringView path, Allocator allocator,
+                              removal_mode mode,
+                              Path::entry_kind known_kind) throws -> bool
+{
+  if (mode != removal_mode::Recursive) return false;
+
+  if (known_kind != Path::entry_kind::Unknown)
+    return known_kind == Path::entry_kind::Directory;
+
+  let const target = Path{path, allocator};
+
+  return target.is_directory() && !target.is_symbolic_link();
+}
+
+struct removal_request
+{
+  const ExecContext &ec;
+  EvalContext &cxt;
+  StringView utility_name;
+  Allocator allocator;
+  removal_mode mode;
+  removal_prompt_mode prompt_mode;
+
+  fn should_descend(StringView path, Path::entry_kind known_kind) const throws
+      -> bool
+  {
+    return should_descend_into(path, allocator, mode, known_kind);
+  }
+
+  fn should_decline(StringView path) const throws -> bool
+  {
+    return prompt_mode == removal_prompt_mode::Always &&
+           !confirm_koshkit_action(ec, "rm: remove '" + String{path} + "'? ");
+  }
+};
+
 static fn remove_path_impl(StringView path, Allocator allocator,
                            removal_mode mode,
                            Path::entry_kind known_kind) throws -> bool
 {
-  let const is_recursive = mode == removal_mode::Recursive;
-  let const target = Path{path, allocator};
-  let is_directory = false;
-  let is_symbolic_link = false;
-  if (known_kind == Path::entry_kind::Unknown) {
-    is_directory = target.is_directory();
-    is_symbolic_link = target.is_symbolic_link();
-  } else {
-    is_directory = known_kind == Path::entry_kind::Directory;
-    is_symbolic_link = known_kind == Path::entry_kind::Symlink;
-  }
-  if (is_recursive && is_directory && !is_symbolic_link) {
+  if (should_descend_into(path, allocator, mode, known_kind)) {
     let names = os::list_directory_status(path, allocator);
     if (names.has_value())
       for (let const &entry : *names) {
@@ -92,52 +117,37 @@ fn remove_path(StringView path, Allocator allocator, removal_mode mode) throws
 }
 
 static fn remove_path_with_prompt(
-    const ExecContext &ec, EvalContext &cxt, StringView utility_name,
-    StringView path, Allocator allocator, removal_mode mode,
-    removal_prompt_mode prompt_mode,
+    const removal_request &request, StringView path,
     Path::entry_kind known_kind = Path::entry_kind::Unknown) throws -> bool
 {
-  let const is_recursive = mode == removal_mode::Recursive;
-  let const target = Path{path, allocator};
-  let is_directory = false;
-  let is_symbolic_link = false;
-  if (known_kind == Path::entry_kind::Unknown) {
-    is_directory = target.is_directory();
-    is_symbolic_link = target.is_symbolic_link();
-  } else {
-    is_directory = known_kind == Path::entry_kind::Directory;
-    is_symbolic_link = known_kind == Path::entry_kind::Symlink;
-  }
-  if (is_recursive && is_directory && !is_symbolic_link) {
+  let &cxt = request.cxt;
+  if (request.should_descend(path, known_kind)) {
     bool did_succeed = true;
     let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
     defer { cxt.expansion_store().scratch_arena().release(directory_scratch); };
-    let names = os::list_directory_status(path, allocator);
+    let names = os::list_directory_status(path, request.allocator);
     if (names.has_value()) {
       for (let const &entry : *names) {
         if (os::INTERRUPT_REQUESTED) return false;
         let const child_scratch = cxt.expansion_store().scratch_arena().mark();
         defer { cxt.expansion_store().scratch_arena().release(child_scratch); };
-        let child = Path{path, allocator};
+        let child = Path{path, request.allocator};
         child.append(entry.child.name.view());
-        if (!remove_path_with_prompt(ec, cxt, utility_name, child.view(),
-                                     allocator, mode, prompt_mode,
+        if (!remove_path_with_prompt(request, child.view(),
                                      effective_entry_kind(entry)))
           did_succeed = false;
       }
     } else {
       report_soft_koshkit_util_error(
-          ec, cxt, utility_name,
+          request.ec, cxt, request.utility_name,
           "cannot read directory '" + String{path} +
               "': " + os::last_system_error_message());
       did_succeed = false;
     }
 
-    if (prompt_mode == removal_prompt_mode::Always &&
-        !confirm_koshkit_action(ec, "rm: remove '" + String{path} + "'? "))
-      return did_succeed;
+    if (request.should_decline(path)) return did_succeed;
     if (!os::remove_directory(path)) {
-      report_soft_koshkit_util_error(ec, cxt, utility_name,
+      report_soft_koshkit_util_error(request.ec, cxt, request.utility_name,
                                      "cannot remove '" + String{path} + "': " +
                                          os::last_system_error_message());
       return false;
@@ -145,56 +155,41 @@ static fn remove_path_with_prompt(
 
     return did_succeed;
   }
-  if (prompt_mode == removal_prompt_mode::Always &&
-      !confirm_koshkit_action(ec, "rm: remove '" + String{path} + "'? "))
-    return true;
+  if (request.should_decline(path)) return true;
   if (os::remove_file(path)) return true;
 
-  report_soft_koshkit_util_error(ec, cxt, utility_name,
+  report_soft_koshkit_util_error(request.ec, cxt, request.utility_name,
                                  "cannot remove '" + String{path} +
                                      "': " + os::last_system_error_message());
   return false;
 }
 
 static fn report_dry_run_removal(
-    const ExecContext &ec, EvalContext &cxt, StringView utility_name,
-    StringView path, Allocator allocator, removal_mode mode,
-    removal_prompt_mode prompt_mode,
+    const removal_request &request, StringView path,
     Path::entry_kind known_kind = Path::entry_kind::Unknown) throws -> bool
 {
-  let const is_recursive = mode == removal_mode::Recursive;
-  let const target = Path{path, allocator};
-  let is_directory = false;
-  let is_symbolic_link = false;
-  if (known_kind == Path::entry_kind::Unknown) {
-    is_directory = target.is_directory();
-    is_symbolic_link = target.is_symbolic_link();
-  } else {
-    is_directory = known_kind == Path::entry_kind::Directory;
-    is_symbolic_link = known_kind == Path::entry_kind::Symlink;
-  }
+  let &cxt = request.cxt;
   bool did_succeed = true;
-  if (is_recursive && is_directory && !is_symbolic_link) {
+  if (request.should_descend(path, known_kind)) {
     let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
     defer { cxt.expansion_store().scratch_arena().release(directory_scratch); };
-    if (let names = os::list_directory_status(path, allocator);
+    if (let names = os::list_directory_status(path, request.allocator);
         names.has_value())
     {
       for (let const &entry : *names) {
         if (os::INTERRUPT_REQUESTED) return false;
         let const child_scratch = cxt.expansion_store().scratch_arena().mark();
         defer { cxt.expansion_store().scratch_arena().release(child_scratch); };
-        let child = Path{path, allocator};
+        let child = Path{path, request.allocator};
         child.append(entry.child.name.view());
-        if (!report_dry_run_removal(ec, cxt, utility_name, child.view(),
-                                    allocator, mode, prompt_mode,
+        if (!report_dry_run_removal(request, child.view(),
                                     effective_entry_kind(entry)))
           did_succeed = false;
         if (os::INTERRUPT_REQUESTED) return false;
       }
     } else {
       report_soft_koshkit_util_error(
-          ec, cxt, utility_name,
+          request.ec, cxt, request.utility_name,
           "cannot read directory '" + String{path} +
               "': " + os::last_system_error_message());
       did_succeed = false;
@@ -203,11 +198,9 @@ static fn report_dry_run_removal(
 
   if (os::INTERRUPT_REQUESTED) return false;
 
-  if (prompt_mode == removal_prompt_mode::Always &&
-      !confirm_koshkit_action(ec, "rm: remove '" + String{path} + "'? "))
-    return did_succeed;
+  if (request.should_decline(path)) return did_succeed;
 
-  ec.print_to_stdout("rm: would remove '" +
+  request.ec.print_to_stdout("rm: would remove '" +
                      String{cxt.scratch_allocator(), path} + "'\n");
   return did_succeed;
 }
@@ -263,6 +256,13 @@ fn Rm::execute(const ExecContext &ec, EvalContext &cxt,
       FLAG_RM_RECURSIVE_R.is_enabled() || FLAG_RM_RECURSIVE_UPPER.is_enabled();
   let const is_dry_run = FLAG_RM_DRY_RUN.is_enabled();
   let const allocator = cxt.scratch_allocator();
+  let const request = removal_request{
+      ec,
+      cxt,
+      args[0].view(),
+      allocator,
+      is_recursive ? removal_mode::Recursive : removal_mode::SinglePath,
+      prompt_mode};
 
   if (operands.is_empty() && !should_force) {
     return report_usage_error(ec, cxt, args[0].view());
@@ -299,20 +299,12 @@ fn Rm::execute(const ExecContext &ec, EvalContext &cxt,
       continue;
     }
     if (is_dry_run) {
-      if (!report_dry_run_removal(
-              ec, cxt, args[0].view(), operand.view(), allocator,
-              is_recursive ? removal_mode::Recursive : removal_mode::SinglePath,
-              prompt_mode))
-        status = 1;
+      if (!report_dry_run_removal(request, operand.view())) status = 1;
       if (os::INTERRUPT_REQUESTED) return 130;
       continue;
     }
 
-    if (!remove_path_with_prompt(
-            ec, cxt, args[0].view(), operand.view(), allocator,
-            is_recursive ? removal_mode::Recursive : removal_mode::SinglePath,
-            prompt_mode))
-    {
+    if (!remove_path_with_prompt(request, operand.view())) {
       if (os::INTERRUPT_REQUESTED) return 130;
       status = 1;
     }
