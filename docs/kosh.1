@@ -3044,7 +3044,9 @@ state, and time formatting.
 .TP
 .BR KOSH ", " KOSH_VERSION ", " KOSH_COMMIT ", " KOSH_BUILD_MODE ", " KOSH_OS
 These values identify the invocation path, version, build commit, build mode,
-and build host distribution and kernel.
+and build host distribution and kernel. The invocation path is absolute. A name
+without a slash is found on PATH, and the running executable is used when the
+search finds nothing.
 .TP
 .B KOSH_GIT_BRANCH
 For a working directory inside a repository, the value contains the branch

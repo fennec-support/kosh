@@ -1,0 +1,16 @@
+== a bare name is resolved through the PATH:
+KOSH=D/bin/kosh
+SHELL=D/bin/kosh
+D/bin/kosh
+== a bare name found in a later PATH entry:
+KOSH=D/bin/kosh
+SHELL=D/bin/kosh
+D/bin/kosh
+== a name with a slash is made absolute:
+KOSH=D/bin/kosh
+SHELL=D/bin/kosh
+== the inherited PATH is kept:
+PATH=D/bin:/usr/bin:/bin
+== a clean start resets the PATH and KOSH stays absolute:
+absolute
+PATH=/usr/bin:/bin

@@ -419,6 +419,20 @@ fn kosh_main(int argc, char **argv) -> int
   let executable_path = program_path.clone();
   if (is_login_name && program_path.view().length > 1)
     executable_path = koshka::String{program_path.view().substring(1)};
+  if (!executable_path.is_empty() && executable_path.view() != "<unknown>" &&
+      !koshka::os::has_directory_separator(executable_path.view()))
+  {
+    let const found_paths =
+        koshka::ProgramResolver{koshka::os::get_environment_variable("PATH")}
+            .search(executable_path.view());
+    if (found_paths.count() > 0) {
+      executable_path = koshka::String{found_paths[0].text()};
+    } else if (let running_path = koshka::os::current_executable_path();
+               running_path.has_value())
+    {
+      executable_path = steal(*running_path);
+    }
+  }
   if (!executable_path.is_empty() &&
       !koshka::Path{executable_path.view()}.is_absolute())
     executable_path = koshka::String{koshka::Path{executable_path.view()}
