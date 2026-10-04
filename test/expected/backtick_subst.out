@@ -2,7 +2,7 @@
      2 |  echo `echo hi`
        |  ^~~~
 note: Run the command on its own.
-2:6: warning: A backtick inside a backtick must be escaped with a backslash. (SC2006)
+2:6: warning: Legacy backtick command substitution is hard to nest and to quote. (SC2006)
      2 |  echo `echo hi`
        |       ^~~~~~~~~
 note: Use `$(...)` for command substitution.
@@ -29,7 +29,7 @@ note: Use the text directly without the command substitution.
      6 |  echo `(echo y) 2>/dev/null`
        |  ^~~~
 note: Run the command on its own.
-6:6: warning: A backtick inside a backtick must be escaped with a backslash. (SC2006)
+6:6: warning: Legacy backtick command substitution is hard to nest and to quote. (SC2006)
      6 |  echo `(echo y) 2>/dev/null`
        |       ^~~~~~~~~~~~~~~~~~~~~~
 note: Use `$(...)` for command substitution.
@@ -41,7 +41,7 @@ note: Quote it to keep one argument.
      7 |  echo `echo "a b"`
        |  ^~~~
 note: Run the command on its own.
-7:6: warning: A backtick inside a backtick must be escaped with a backslash. (SC2006)
+7:6: warning: Legacy backtick command substitution is hard to nest and to quote. (SC2006)
      7 |  echo `echo "a b"`
        |       ^~~~~~~~~~~~
 note: Use `$(...)` for command substitution.
@@ -57,7 +57,7 @@ note: Use the text directly without the command substitution.
      9 |  foo=bar; echo `echo \$foo`
        |           ^~~~
 note: Run the command on its own.
-9:15: warning: A backtick inside a backtick must be escaped with a backslash. (SC2006)
+9:15: warning: Legacy backtick command substitution is hard to nest and to quote. (SC2006)
      9 |  foo=bar; echo `echo \$foo`
        |                ^~~~~~~~~~~~
 note: Use `$(...)` for command substitution.

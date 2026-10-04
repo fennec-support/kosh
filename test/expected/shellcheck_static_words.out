@@ -367,7 +367,7 @@ note: Apply one append redirection to a grouped command.
    126 |    echo `date`
        |    ^~~~
 note: Run the command on its own.
-126:8: warning: A backtick inside a backtick must be escaped with a backslash. (SC2006)
+126:8: warning: Legacy backtick command substitution is hard to nest and to quote. (SC2006)
    126 |    echo `date`
        |         ^~~~~~
 note: Use `$(...)` for command substitution.

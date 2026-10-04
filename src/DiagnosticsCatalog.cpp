@@ -202,8 +202,8 @@ const diagnostic_definition DIAGNOSTIC_DEFINITIONS[] = {
       "An `echo` of a command substitution prints what the command already "
       "prints",
       "Run the command on its own", None, Strict, Policy),
-    D(2006, "backticks", "a nested backtick needs a backslash",
-      "A backtick inside a backtick must be escaped with a backslash",
+    D(2006, "backticks", "backtick command substitution is legacy syntax",
+      "Legacy backtick command substitution is hard to nest and to quote",
       "Use `$(...)` for command substitution", None, Annoying, Policy),
     D(2007, "obsolete-arithmetic-expansion",
       "`$[...]` is the obsolete arithmetic expansion spelling",
