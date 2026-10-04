@@ -57,6 +57,12 @@ pure fn parse_arithmetic_operand(StringView text) wontthrow -> i64
   return static_cast<i64>(is_negative ? -magnitude : magnitude);
 }
 
+pure fn is_number_continuation(char c) wontthrow -> bool
+{
+  return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') ||
+         (c >= 'A' && c <= 'Z') || c == '_' || c == '@';
+}
+
 pure alwaysinline fn try_parse_single_integer_literal(StringView text) wontthrow
     -> Maybe<i64>
 {
@@ -1426,6 +1432,39 @@ public:
     unreachable();
   }
 
+  fn reject_invalid_digit(usize number_start) throws -> void
+  {
+    if (pos >= source.length || !is_number_continuation(source[pos])) return;
+
+    let const token = source.substring(number_start);
+    usize base = 10;
+    if (let const hash = token.find_character('#'); hash.has_value()) {
+      base = static_cast<usize>(
+          parse_arithmetic_operand(token.substring_of_length(0, *hash)));
+    } else if (token.length >= 2 && token[0] == '0' &&
+               (token[1] == 'x' || token[1] == 'X'))
+    {
+      base = 16;
+    } else if (token.length >= 2 && token[0] == '0' &&
+               (token[1] == 'b' || token[1] == 'B'))
+    {
+      base = 2;
+    } else if (token[0] == '0') {
+      base = 8;
+    }
+
+    usize end = pos;
+    while (end < source.length && is_number_continuation(source[end]))
+      end++;
+    fail_span(number_start, end,
+              "Invalid digit '" + String{source.substring_of_length(pos, 1)} +
+                  "' in the number '" +
+                  String{source.substring_of_length(number_start,
+                                                    end - number_start)} +
+                  "'",
+              "The digit is not valid in base " + String::from(base, bump_allocator(arena)));
+  }
+
   fn parse_primary() throws -> ArithmeticValue
   {
     depth++;
@@ -1445,13 +1484,16 @@ public:
     if (pos < source.length &&
         (lexer::is_number(source[pos]) || has_leading_decimal_point))
     {
+      let const number_start = pos;
       if (is_exact) {
         let value = ArithmeticValue{};
         pos += lex_exact_arith_number(source.substring(pos), &value, arena);
+        reject_invalid_digit(number_start);
         return value;
       }
       i64 value = 0;
       pos += lex_arith_number(source.substring(pos), &value);
+      reject_invalid_digit(number_start);
       return ArithmeticValue{value};
     }
     if (pos < source.length && lexer::is_variable_name_start(source[pos])) {
@@ -1634,6 +1676,11 @@ static fn tokenize_arithmetic(StringView src,
                            src.substring(i + 1), 10);
       } else {
         consumed = lex_arith_number(src.substring(i), &value);
+        if (i + consumed < src.length &&
+            is_number_continuation(src[i + consumed]))
+        {
+          throw Error{String{"Invalid digit in the number"}};
+        }
         if (i + consumed < src.length && src[i + consumed] == '.') {
           consumed++;
           consumed += arithmetic_internal::count_leading_digits(

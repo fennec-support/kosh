@@ -1,0 +1,40 @@
+2:10: warning: The literal '010' begins with a zero and is read in base eight. (SC2080)
+     2 |  (echo $((010 + 09)))
+       |           ^~~~~~~~
+note: Drop the leading zero, or write `10#010` for base ten.
+14:9: warning: The literal '010' begins with a zero and is read in base eight. (SC2080)
+    14 |  echo $((0x + 010 + 16#ff + 2#101))
+       |          ^~~~~~~~~~~~~~~~~~~~~~~~
+note: Drop the leading zero, or write `10#010` for base ten.
+Encountered 2 warnings.
+2:16: error: Invalid digit '9' in the number '09'.
+     2 |  (echo $((010 + 09)))
+       |                 ^~
+note: The digit is not valid in base 8.
+octal=1
+4:10: error: Invalid digit '2' in the number '2#102'.
+     4 |  (echo $((2#102)))
+       |           ^~~~~
+note: The digit is not valid in base 2.
+base2=1
+6:10: error: Invalid digit 'g' in the number '16#fg'.
+     6 |  (echo $((16#fg)))
+       |           ^~~~~
+note: The digit is not valid in base 16.
+base16=1
+8:10: error: Invalid digit '2' in the number '0b12'.
+     8 |  (echo $((0b12)))
+       |           ^~~~
+note: The digit is not valid in base 2.
+binary=1
+10:10: error: Invalid digit 'Z' in the number '0xZ'.
+    10 |  (echo $((0xZ)))
+       |           ^~~
+note: The digit is not valid in base 16.
+hex=1
+12:10: error: Invalid digit 'a' in the number '1a'.
+    12 |  (echo $((1a)))
+       |           ^~
+note: The digit is not valid in base 10.
+decimal=1
+268

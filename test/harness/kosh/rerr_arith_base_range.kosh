@@ -1,0 +1,14 @@
+#!/bin/env kosh
+(echo $((010 + 09)))
+echo "octal=$?"
+(echo $((2#102)))
+echo "base2=$?"
+(echo $((16#fg)))
+echo "base16=$?"
+(echo $((0b12)))
+echo "binary=$?"
+(echo $((0xZ)))
+echo "hex=$?"
+(echo $((1a)))
+echo "decimal=$?"
+echo $((0x + 010 + 16#ff + 2#101))
