@@ -469,16 +469,16 @@ $(COMMIT_HASH_OBJECTS): $(COMMIT_HASH_STAMP)
 $(OBJECTS): | dirs
 
 $(OBJECT_DIRECTORY)/%.o: %.cpp Makefile
-	printf "\tCompiling %-42s $@... %-12s\r" $< ' '
+	printf "\tCompiling %-12s\033[K\r" $@
 	$(CXX) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
 $(OBJECT_DIRECTORY)/vendor/regex/%.o: ../vendor/regex/%.c Makefile
-	printf "\tCompiling %-42s $@... %-12s\r" $< ' '
+	printf "\tCompiling %-12s\033[K\r" $@
 	$(CXX) $(REGEX_COMPILER_FLAGS) -x c -MMD -MP -c $< -o $@
 
 # Linking.
 $(LINKED_OUTPUT_PATH): $(OBJECTS)
-	printf "\tLinking $(LINKED_OUTPUT_PATH)... %-64s\r" ' '
+	printf "\tLinking $(LINKED_OUTPUT_PATH)... %-64s\033[K\r" ' '
 ifeq ($(TARGET), Windows_NT)
 	cd $(OBJECT_DIRECTORY) && $(CXX) $(CXXFLAGS) $(LINKER_SELECTION_FLAG) \
 		$(patsubst $(OBJECT_DIRECTORY)/%,%,$(OBJECTS)) $(LINK_LIBRARIES) \
