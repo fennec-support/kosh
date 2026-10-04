@@ -177,10 +177,21 @@ enum class id_name_kind : u8
   Group,
 };
 
-static fn cached_id_name(u32 id, id_name_kind kind,
-                         ArrayList<id_name_entry> &cache,
+struct id_name_cache
+{
+  explicit id_name_cache(Allocator allocator)
+      : uid_cache(allocator), gid_cache(allocator)
+  {}
+
+  ArrayList<id_name_entry> uid_cache;
+  ArrayList<id_name_entry> gid_cache;
+};
+
+static fn cached_id_name(u32 id, id_name_kind kind, id_name_cache &id_names,
                          Allocator allocator) throws -> StringView
 {
+  let &cache =
+      kind == id_name_kind::Owner ? id_names.uid_cache : id_names.gid_cache;
   for (let const &entry : cache)
     if (entry.id == id) return entry.name.view();
   let const looked_up = kind == id_name_kind::Owner ? os::uid_to_username(id)
@@ -468,8 +479,7 @@ static fn collect_directory(const Path &directory,
    it. */
 static fn build_long_entry(const listing_entry &entry,
                            const listing_options &options,
-                           ArrayList<id_name_entry> &uid_cache,
-                           ArrayList<id_name_entry> &gid_cache,
+                           id_name_cache &id_names,
                            Allocator allocator) throws -> long_entry
 {
   long_entry row{allocator};
@@ -492,9 +502,9 @@ static fn build_long_entry(const listing_entry &entry,
     row.owner = String::from(status.owner_id, allocator);
     row.group = String::from(status.group_id, allocator);
   } else {
-    row.owner = cached_id_name(status.owner_id, id_name_kind::Owner, uid_cache,
+    row.owner = cached_id_name(status.owner_id, id_name_kind::Owner, id_names,
                                allocator);
-    row.group = cached_id_name(status.group_id, id_name_kind::Group, gid_cache,
+    row.group = cached_id_name(status.group_id, id_name_kind::Group, id_names,
                                allocator);
   }
   row.size = FLAG_LS_HUMAN.is_enabled()
@@ -647,8 +657,7 @@ static fn long_total_blocks(const ArrayList<long_entry> &entries,
 static fn render_entries(const ArrayList<listing_entry> &entries,
                          const listing_options &options,
                          bool should_print_total,
-                         ArrayList<id_name_entry> &uid_cache,
-                         ArrayList<id_name_entry> &gid_cache, String &output,
+                         id_name_cache &id_names, String &output,
                          Allocator allocator) throws -> void
 {
   if (!options.is_long) {
@@ -659,8 +668,7 @@ static fn render_entries(const ArrayList<listing_entry> &entries,
   ArrayList<long_entry> rows{allocator};
   rows.reserve(entries.count());
   for (let const &entry : entries)
-    rows.push(
-        build_long_entry(entry, options, uid_cache, gid_cache, allocator));
+    rows.push(build_long_entry(entry, options, id_names, allocator));
 
   if (should_print_total) {
     output += long_total_blocks(rows, allocator);
@@ -711,33 +719,44 @@ static fn render_tree_level(StringView directory,
   }
 }
 
-static fn render_directory_block(
-    StringView directory, const listing_options &options, usize depth,
-    bool should_print_header, ArrayList<id_name_entry> &uid_cache,
-    ArrayList<id_name_entry> &gid_cache, bool &has_printed_block,
-    String &output, const ExecContext &ec, EvalContext &cxt, i32 &status,
-    Allocator allocator) throws -> void
+struct ls_run
+{
+  ls_run(const ExecContext &ec, EvalContext &cxt, Allocator allocator)
+      : ec(ec), cxt(cxt), id_names(allocator), output(allocator)
+  {}
+
+  const ExecContext &ec;
+  EvalContext &cxt;
+  id_name_cache id_names;
+  String output;
+  i32 status{0};
+  bool has_printed_block{false};
+};
+
+static fn render_directory_block(StringView directory,
+                                 const listing_options &options, usize depth,
+                                 bool should_print_header, ls_run &run,
+                                 Allocator allocator) throws -> void
 {
   if (os::INTERRUPT_REQUESTED) return;
   let const entries =
       collect_directory(Path{directory, allocator}, options, allocator);
   if (!entries.has_value()) {
-    report_soft_koshkit_util_error(ec, cxt, "ls",
+    report_soft_koshkit_util_error(run.ec, run.cxt, "ls",
                                    "cannot open directory '" +
                                        String{allocator, directory} + "'");
-    status = 2;
+    run.status = 2;
     return;
   }
 
   if (should_print_header) {
-    if (has_printed_block) output += '\n';
-    output += directory;
-    output += ":\n";
+    if (run.has_printed_block) run.output += '\n';
+    run.output += directory;
+    run.output += ":\n";
   }
-  has_printed_block = true;
+  run.has_printed_block = true;
 
-  render_entries(*entries, options, true, uid_cache, gid_cache, output,
-                 allocator);
+  render_entries(*entries, options, true, run.id_names, run.output, allocator);
 
   if (!options.is_recursive) return;
 
@@ -751,9 +770,8 @@ static fn render_directory_block(
 
     let child = Path{directory, allocator};
     child.append(entry.name.view());
-    render_directory_block(child.view(), options, depth + 1, true, uid_cache,
-                           gid_cache, has_printed_block, output, ec, cxt,
-                           status, allocator);
+    render_directory_block(child.view(), options, depth + 1, true, run,
+                           allocator);
   }
 }
 
@@ -879,10 +897,7 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
   ArrayList<usize> file_target_indices{allocator};
   ArrayList<usize> symlink_target_indices{allocator};
   ArrayList<StringView> dir_targets{allocator};
-  ArrayList<id_name_entry> uid_cache{allocator};
-  ArrayList<id_name_entry> gid_cache{allocator};
-  let output = String{allocator};
-  i32 status = 0;
+  ls_run run{ec, cxt, allocator};
 
   for (usize index = 0; index < targets.count(); index++) {
     let const target = targets[index];
@@ -891,7 +906,7 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
                                      "cannot access '" +
                                          String{allocator, target} +
                                          "': no such file or directory");
-      status = 2;
+      run.status = 2;
       continue;
     }
 
@@ -956,36 +971,34 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
       options.is_recursive || options.is_tree ||
       file_entries.count() + sorted_dir_targets.count() > 1;
 
-  bool has_printed_block = false;
   if (!file_entries.is_empty()) {
     let const sorted_file_entries = prepare_entries(
         steal(file_entries), options, StringView{}, true, allocator, true);
-    render_entries(sorted_file_entries, options, false, uid_cache, gid_cache,
-                   output, allocator);
-    has_printed_block = true;
+    render_entries(sorted_file_entries, options, false, run.id_names,
+                   run.output, allocator);
+    run.has_printed_block = true;
   }
 
   for (let const &target : sorted_dir_targets) {
     if (os::INTERRUPT_REQUESTED) break;
     if (!options.is_tree) {
-      render_directory_block(target, options, 0, should_print_headers,
-                             uid_cache, gid_cache, has_printed_block, output,
-                             ec, cxt, status, allocator);
+      render_directory_block(target, options, 0, should_print_headers, run,
+                             allocator);
       continue;
     }
 
-    if (has_printed_block) output += '\n';
-    has_printed_block = true;
-    output += target;
-    output += '\n';
+    if (run.has_printed_block) run.output += '\n';
+    run.has_printed_block = true;
+    run.output += target;
+    run.output += '\n';
 
     let prefix = String{allocator};
-    render_tree_level(target, options, 0, prefix, output, allocator);
+    render_tree_level(target, options, 0, prefix, run.output, allocator);
   }
 
-  ec.print_to_stdout(output);
+  ec.print_to_stdout(run.output);
   if (os::INTERRUPT_REQUESTED) return 130;
-  return status;
+  return run.status;
 }
 
 } /* namespace koshkit */
