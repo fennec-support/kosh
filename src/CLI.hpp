@@ -380,11 +380,6 @@ fn append_report_text(String &output, StringView text, StringView style,
 fn append_report_column(String &output, StringView text, usize width,
                         bool is_right_aligned, StringView style,
                         bool should_color) throws -> void;
-fn append_report_field(String &output, StringView name, StringView value,
-                       StringView style, bool should_color) throws -> void;
-fn append_report_inline_field(String &output, StringView name, StringView value,
-                              StringView style, bool should_color) throws
-    -> void;
 enum class report_table_alignment : u8
 {
   Left,
@@ -451,10 +446,6 @@ fn append_report_name_section(String &output, StringView title,
                               const ArrayList<StringView> &names,
                               bool should_color,
                               StringView indentation = {}) throws -> void;
-fn append_indented_report(String &output, StringView report,
-                          StringView indentation = "  ") throws -> void;
-fn append_report_body(String &output, StringView body,
-                      StringView indentation = "  ") throws -> void;
 fn format_cli_help(StringView text, bool should_color) throws -> String;
 fn format_cli_help(StringView text) throws -> String;
 fn enter_alternate_screen(const ExecContext &ec) wontthrow -> bool;

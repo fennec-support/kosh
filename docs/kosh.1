@@ -2241,7 +2241,10 @@ One non-directory path is removed.
 .TP
 .B evil
 System identity, uptime, processor, memory, swap, root filesystem, process,
-filesystem, and network information is printed. The
+filesystem, and network information is printed in titled sections named
+Identity, Session, Accounts, Resources, Limits, Activity, and Anomalies, each
+with its name and value rows indented two spaces beneath the title. A section
+without rows is omitted. The
 .B \-a
 option adds system details that are omitted from the default report. The
 additional activity counters are shown only when the platform provides them;
@@ -2356,7 +2359,8 @@ platform exposes them. The same option adds SMART status, model, and protocol
 data when smartctl or macOS diskutil is available.
 .TP
 .B evilfiles
-Open files are listed for visible processes. The
+Open files are listed for visible processes in a table titled Open files whose
+rows are indented two spaces beneath the title. The
 .BR \-p ,
 .BR \-u ,
 .BR \-c ,
@@ -2458,7 +2462,9 @@ report. Live reports sort the values from the displayed window.
 .TP
 .B evillogs
 Core dump settings, recognized dump reports, and known log directories are
-printed. The
+printed. Each core dump directory and each log directory is a titled table
+with its name, entry count, and total size in the title and its rows indented
+two spaces beneath it. The
 .BR \-\-cores
 and
 .B \-\-logs

@@ -1125,28 +1125,6 @@ fn append_report_column(String &output, StringView text, usize width,
   if (!is_right_aligned) output.append_repeated(' ', padding_length);
 }
 
-fn append_report_field(String &output, StringView name, StringView value,
-                       StringView style, bool should_color) throws -> void
-{
-  if (value.is_empty()) return;
-
-  append_report_text(output, name, style, should_color);
-  output += ": ";
-  output += value;
-  output += '\n';
-}
-
-fn append_report_inline_field(String &output, StringView name, StringView value,
-                              StringView style, bool should_color) throws
-    -> void
-{
-  if (value.is_empty()) return;
-
-  append_report_text(output, name, style, should_color);
-  output += ": ";
-  output += value;
-}
-
 fn ReportTable::add_column(StringView heading, report_table_alignment alignment,
                            StringView style) throws -> void
 {
@@ -1325,41 +1303,6 @@ fn append_report_name_section(String &output, StringView title,
     }
   }
   output += '\n';
-}
-
-fn append_indented_report(String &output, StringView report,
-                          StringView indentation) throws -> void
-{
-  usize line_start = 0;
-  bool is_title = true;
-  while (line_start < report.length) {
-    usize line_end = line_start;
-    while (line_end < report.length && report[line_end] != '\n')
-      line_end++;
-
-    if (!is_title && line_end > line_start) output += indentation;
-    output += report.substring_of_length(line_start, line_end - line_start);
-    if (line_end < report.length) output += '\n';
-
-    is_title = false;
-    line_start = line_end + 1;
-  }
-}
-
-fn append_report_body(String &output, StringView body,
-                      StringView indentation) throws -> void
-{
-  usize line_start = 0;
-  while (line_start < body.length) {
-    usize line_end = line_start;
-    while (line_end < body.length && body[line_end] != '\n')
-      line_end++;
-
-    if (line_end > line_start) output += indentation;
-    output += body.substring_of_length(line_start, line_end - line_start);
-    if (line_end < body.length) output += '\n';
-    line_start = line_end + 1;
-  }
 }
 
 fn format_cli_help(StringView text, bool should_color) throws -> String
