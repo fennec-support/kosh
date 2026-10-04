@@ -847,15 +847,12 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
       runtime_control_store().warning_mutation_revision(),
       runtime_control_store().diagnostics_mutation_revision(),
       runtime_control_store().annoying_diagnostics_mutation_revision(),
-      dynamic_runtime_store().random_state(),
-      dynamic_runtime_store().shell_start_time(),
-      dynamic_runtime_store().seconds_base(),
+      dynamic_runtime_store().get_clock(),
       runtime_control_store().option_mutations(),
       scope_store().local_scopes(),
       scope_store().local_scope_depth(),
       job_table_store().take_snapshot(),
-      expansion_store().getopts_char_index(),
-      expansion_store().getopts_last_optind(),
+      expansion_store().get_getopts_cursor(),
       execution_store().terminal_exec_allowed(),
       subshell_store().coprocess_read_fd(),
       subshell_store().coprocess_write_fd()};
@@ -912,14 +909,11 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
       snapshot.diagnostics_mutation_revision,
       snapshot.annoying_diagnostics_mutation_revision,
       snapshot.option_mutations);
-  dynamic_runtime_store().random_state() = snapshot.random_state;
-  dynamic_runtime_store().shell_start_time() = snapshot.shell_start_time;
-  dynamic_runtime_store().seconds_base() = snapshot.seconds_base;
+  dynamic_runtime_store().set_clock(snapshot.clock);
   scope_store().local_scopes() = steal(snapshot.local_scopes);
   scope_store().local_scope_depth() = snapshot.local_scope_depth;
   job_table_store().restore_snapshot(steal(snapshot.job_state));
-  expansion_store().set_getopts_char_index(snapshot.getopts_char_index);
-  expansion_store().set_getopts_last_optind(snapshot.getopts_last_optind);
+  expansion_store().set_getopts_cursor(snapshot.getopts);
   execution_store().terminal_exec_allowed() = snapshot.terminal_exec_allowed;
   subshell_store().coprocess_read_fd() = snapshot.coprocess_read_fd;
   subshell_store().coprocess_write_fd() = snapshot.coprocess_write_fd;
@@ -1021,6 +1015,19 @@ static fn append_subshell_bootstrap_text(String &output, StringView text) throws
   if (text.length > UINT32_MAX) throw std::bad_alloc{};
   append_subshell_bootstrap_u32(output, static_cast<u32>(text.length));
   output.append(text);
+}
+
+fn dynamic_clock_state::append_wire(String &output) const throws -> void
+{
+  append_subshell_bootstrap_u64(output, random_state);
+  append_subshell_bootstrap_i64(output, shell_start_time);
+  append_subshell_bootstrap_i64(output, seconds_base);
+}
+
+fn getopts_cursor::append_wire(String &output) const throws -> void
+{
+  append_subshell_bootstrap_u64(output, static_cast<u64>(char_index));
+  append_subshell_bootstrap_i64(output, last_optind);
 }
 
 fn RuntimeState::append_wire(String &output) const throws -> void
@@ -1126,6 +1133,27 @@ static fn read_subshell_bootstrap_bool(subshell_bootstrap_reader &reader,
   return true;
 }
 
+fn dynamic_clock_state::from_wire(subshell_bootstrap_reader &reader,
+                                  dynamic_clock_state &clock) wontthrow -> bool
+{
+  clock.random_state = reader.read_u64();
+  clock.shell_start_time = reader.read_i64();
+  clock.seconds_base = reader.read_i64();
+  return reader.is_valid;
+}
+
+fn getopts_cursor::from_wire(subshell_bootstrap_reader &reader,
+                             getopts_cursor &cursor) wontthrow -> bool
+{
+  let const char_index_bits = reader.read_u64();
+  cursor.last_optind = reader.read_i64();
+  if (!reader.is_valid || char_index_bits == 0 || char_index_bits > SIZE_MAX)
+    return false;
+
+  cursor.char_index = static_cast<usize>(char_index_bits);
+  return true;
+}
+
 fn RuntimeState::from_wire(subshell_bootstrap_reader &reader,
                            RuntimeState &runtime) wontthrow -> bool
 {
@@ -1141,8 +1169,8 @@ fn RuntimeState::from_wire(subshell_bootstrap_reader &reader,
   if (!reader.is_valid || mood > static_cast<u8>(mimic_mood::BashPosix) ||
       warning_level > 3 ||
       tab_selector > static_cast<u8>(tab_selector_mode::Plain) ||
-      (flags & ~ALL_FLAGS) != 0 || (shell_options & ~valid_shell_options) != 0 ||
-      !shopt.is_valid())
+      (flags & ~ALL_FLAGS) != 0 ||
+      (shell_options & ~valid_shell_options) != 0 || !shopt.is_valid())
   {
     return false;
   }
@@ -1312,13 +1340,8 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
   if (job_table_store().last_background_pid().has_value())
     append_subshell_bootstrap_i64(body,
                                   *job_table_store().last_background_pid());
-  append_subshell_bootstrap_u64(body, dynamic_runtime_store().random_state());
-  append_subshell_bootstrap_i64(body,
-                                dynamic_runtime_store().shell_start_time());
-  append_subshell_bootstrap_i64(body, dynamic_runtime_store().seconds_base());
-  append_subshell_bootstrap_u64(
-      body, static_cast<u64>(expansion_store().getopts_char_index()));
-  append_subshell_bootstrap_i64(body, expansion_store().getopts_last_optind());
+  dynamic_runtime_store().get_clock().append_wire(body);
+  expansion_store().get_getopts_cursor().append_wire(body);
   append_subshell_bootstrap_i32(body, job_table_store().next_job_id());
   RuntimeState::capture(*this).append_wire(body);
   body.push(static_cast<char>(variable_store().disabled_bash_special_arrays()));
@@ -1455,11 +1478,14 @@ fn EvalContext::apply_subshell_bootstrap(
     invalid_subshell_bootstrap();
   let last_background_pid = Maybe<i64>{None};
   if (has_last_background_pid) last_background_pid = reader.read_i64();
-  let const random_state = reader.read_u64();
-  let const shell_start_time = reader.read_i64();
-  let const seconds_base = reader.read_i64();
-  let const getopts_char_index_bits = reader.read_u64();
-  let const getopts_last_optind = reader.read_i64();
+  let clock = dynamic_clock_state{};
+  let getopts = getopts_cursor{};
+  if (!dynamic_clock_state::from_wire(reader, clock) ||
+      !getopts_cursor::from_wire(reader, getopts))
+  {
+    invalid_subshell_bootstrap();
+  }
+
   let const next_job_id = reader.read_i32();
   let runtime = RuntimeState{};
   if (!RuntimeState::from_wire(reader, runtime)) invalid_subshell_bootstrap();
@@ -1521,8 +1547,7 @@ fn EvalContext::apply_subshell_bootstrap(
   static_assert(static_cast<u8>(dynamic_reader_id::Count) <= 8);
   constexpr u8 VALID_DYNAMIC_READER_MASK =
       (1U << static_cast<u8>(dynamic_reader_id::Count)) - 1U;
-  if (getopts_char_index_bits == 0 || getopts_char_index_bits > SIZE_MAX ||
-      next_job_id < 1 ||
+  if (next_job_id < 1 ||
       (disabled_bash_special_arrays &
        static_cast<u8>(~VALID_BASH_SPECIAL_ARRAY_MASK)) != 0 ||
       (unset_dynamic_readers & static_cast<u8>(~VALID_DYNAMIC_READER_MASK)) !=
@@ -1532,7 +1557,6 @@ fn EvalContext::apply_subshell_bootstrap(
   {
     invalid_subshell_bootstrap();
   }
-  let const getopts_char_index = static_cast<usize>(getopts_char_index_bits);
 
   let completion_specs = StringMap<completion_spec>{heap_allocator()};
   let const completion_spec_count = static_cast<usize>(reader.read_u32());
@@ -1730,12 +1754,9 @@ fn EvalContext::apply_subshell_bootstrap(
                                              steal(execution_string));
   execution_store().set_last_argument(steal(last_argument));
   job_table_store().last_background_pid() = last_background_pid;
-  dynamic_runtime_store().random_state() = random_state;
-  dynamic_runtime_store().shell_start_time() = shell_start_time;
-  dynamic_runtime_store().seconds_base() = seconds_base;
+  dynamic_runtime_store().set_clock(clock);
   trap_store().startup_ignored_signals() = startup_ignored_signals;
-  expansion_store().set_getopts_char_index(getopts_char_index);
-  expansion_store().set_getopts_last_optind(getopts_last_optind);
+  expansion_store().set_getopts_cursor(getopts);
   reset_bash_argument_arrays();
   if (has_bash_argument_arrays)
     install_bash_argument_arrays(steal(bash_argument_values),

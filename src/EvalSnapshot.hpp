@@ -91,15 +91,12 @@ struct eval_state_snapshot
   u64 warning_mutation_revision;
   u64 diagnostics_mutation_revision;
   u64 annoying_diagnostics_mutation_revision;
-  u64 random_state;
-  i64 shell_start_time;
-  i64 seconds_base;
+  dynamic_clock_state clock;
   shell_option_mutations option_mutations;
   ArrayList<ArrayList<local_binding>> local_scopes;
   usize local_scope_depth;
   job_table_snapshot job_state;
-  usize getopts_char_index;
-  i64 getopts_last_optind;
+  getopts_cursor getopts;
   bool terminal_exec_allowed;
   /* The shell descriptors of the live coprocess ride the snapshot, so a
      coprocess started inside a subshell leaves the outer record alone. */

@@ -173,6 +173,27 @@ struct shopt_state
   }
 };
 
+struct dynamic_clock_state
+{
+  u64 random_state{0};
+  i64 shell_start_time{0};
+  i64 seconds_base{0};
+
+  fn append_wire(String &output) const throws -> void;
+  static fn from_wire(subshell_bootstrap_reader &reader,
+                      dynamic_clock_state &clock) wontthrow -> bool;
+};
+
+struct getopts_cursor
+{
+  usize char_index{1};
+  i64 last_optind{0};
+
+  fn append_wire(String &output) const throws -> void;
+  static fn from_wire(subshell_bootstrap_reader &reader,
+                      getopts_cursor &cursor) wontthrow -> bool;
+};
+
 class RuntimeState
 {
 public:
@@ -1798,21 +1819,17 @@ public:
   {
     return m_loop_redirect_fds;
   }
-  pure fn getopts_char_index() const wontthrow -> usize
+  fn get_getopts_cursor() wontthrow -> getopts_cursor &
   {
-    return m_getopts_char_index;
+    return m_getopts_cursor;
   }
-  fn set_getopts_char_index(usize index) wontthrow -> void
+  pure fn get_getopts_cursor() const wontthrow -> const getopts_cursor &
   {
-    m_getopts_char_index = index;
+    return m_getopts_cursor;
   }
-  pure fn getopts_last_optind() const wontthrow -> i64
+  fn set_getopts_cursor(const getopts_cursor &cursor) wontthrow -> void
   {
-    return m_getopts_last_optind;
-  }
-  fn set_getopts_last_optind(i64 optind) wontthrow -> void
-  {
-    m_getopts_last_optind = optind;
+    m_getopts_cursor = cursor;
   }
   fn regex_cache() wontthrow -> StringMap<CompiledRegex> &
   {
@@ -1827,8 +1844,7 @@ private:
   mutable BumpArena m_scratch_arena{};
   usize m_substitution_depth{0};
   usize m_parameter_expansion_depth{0};
-  usize m_getopts_char_index{1};
-  i64 m_getopts_last_optind{0};
+  getopts_cursor m_getopts_cursor{};
   bool m_glob_exempt_for_test{false};
   ArrayList<process_substitution> m_pending_process_substitutions{
       heap_allocator()};
@@ -2073,21 +2089,13 @@ public:
   {
     return m_confined_write_depth;
   }
-  fn confined_seconds_base() wontthrow -> i64 &
+  fn confined_clock() wontthrow -> dynamic_clock_state &
   {
-    return m_confined_seconds_base;
+    return m_confined_clock;
   }
-  pure fn confined_seconds_base() const wontthrow -> i64
+  pure fn confined_clock() const wontthrow -> const dynamic_clock_state &
   {
-    return m_confined_seconds_base;
-  }
-  fn confined_random_state() wontthrow -> u64 &
-  {
-    return m_confined_random_state;
-  }
-  pure fn confined_random_state() const wontthrow -> u64
-  {
-    return m_confined_random_state;
+    return m_confined_clock;
   }
   fn was_confined_ignoreeof_enabled() wontthrow -> bool &
   {
@@ -2100,8 +2108,7 @@ public:
 
 private:
   usize m_confined_write_depth{0};
-  i64 m_confined_seconds_base{0};
-  u64 m_confined_random_state{0};
+  dynamic_clock_state m_confined_clock{};
   bool m_was_confined_ignoreeof_enabled{false};
   ArrayList<environment_undo_entry> m_environment_undo_log{heap_allocator()};
   ArrayList<environment_undo_entry> m_confined_write_log{heap_allocator()};
@@ -2193,17 +2200,25 @@ private:
 class DynamicRuntimeStore
 {
 public:
-  fn shell_start_time() wontthrow -> i64 & { return m_shell_start_time; }
+  fn shell_start_time() wontthrow -> i64 & { return m_clock.shell_start_time; }
   pure fn shell_start_time() const wontthrow -> const i64 &
   {
-    return m_shell_start_time;
+    return m_clock.shell_start_time;
   }
-  fn seconds_base() wontthrow -> i64 & { return m_seconds_base; }
+  fn seconds_base() wontthrow -> i64 & { return m_clock.seconds_base; }
   pure fn seconds_base() const wontthrow -> const i64 &
   {
-    return m_seconds_base;
+    return m_clock.seconds_base;
   }
-  fn random_state() const wontthrow -> u64 & { return m_random_state; }
+  fn random_state() const wontthrow -> u64 & { return m_clock.random_state; }
+  pure fn get_clock() const wontthrow -> const dynamic_clock_state &
+  {
+    return m_clock;
+  }
+  fn set_clock(const dynamic_clock_state &clock) wontthrow -> void
+  {
+    m_clock = clock;
+  }
 #if !defined NDEBUG
   fn debug_variable_name_enumeration_count() const wontthrow -> usize &
   {
@@ -2212,9 +2227,7 @@ public:
 #endif
 
 private:
-  i64 m_shell_start_time{0};
-  i64 m_seconds_base{0};
-  mutable u64 m_random_state{0};
+  mutable dynamic_clock_state m_clock{};
 #if !defined NDEBUG
   mutable usize m_debug_variable_name_enumeration_count{0};
 #endif

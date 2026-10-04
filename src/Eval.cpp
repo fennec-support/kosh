@@ -219,10 +219,7 @@ fn EvalContext::begin_confined_variable_writes() wontthrow -> usize
       environment_store().confined_write_log().count());
 
   if (environment_store().confined_write_depth() == 0) {
-    environment_store().confined_seconds_base() =
-        dynamic_runtime_store().seconds_base();
-    environment_store().confined_random_state() =
-        dynamic_runtime_store().random_state();
+    environment_store().confined_clock() = dynamic_runtime_store().get_clock();
     environment_store().was_confined_ignoreeof_enabled() =
         runtime_state().option_is_enabled(shell_option_id::Ignoreeof);
   }
@@ -266,10 +263,7 @@ fn EvalContext::rollback_confined_variable_writes(usize mark) wontthrow -> void
   }
 
   if (environment_store().confined_write_depth() == 0) {
-    dynamic_runtime_store().seconds_base() =
-        environment_store().confined_seconds_base();
-    dynamic_runtime_store().random_state() =
-        environment_store().confined_random_state();
+    dynamic_runtime_store().set_clock(environment_store().confined_clock());
     runtime_state().set_option(
         shell_option_id::Ignoreeof,
         environment_store().was_confined_ignoreeof_enabled());
