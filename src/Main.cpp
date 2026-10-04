@@ -211,8 +211,8 @@ fn kosh_main(int argc, char **argv) -> int
       let ast_arena = koshka::BumpArena{};
       let function_arena = koshka::BumpArena{};
 
-      let context = koshka::EvalContext{
-          false, false, false, false, false, koshka::String{invocation}};
+      let context = koshka::EvalContext{koshka::startup_options{},
+                                        koshka::String{invocation}};
       context.arena_store().set_parse_arena(&ast_arena);
       context.arena_store().set_function_arena(&function_arena);
 
@@ -301,8 +301,8 @@ fn kosh_main(int argc, char **argv) -> int
                                      &FLAG_COMMAND);
   } catch (const koshka::ErrorWithLocation &e) {
     let const source = koshka::join_command_line(parse_argc, parse_argv);
-    let highlight_context = koshka::EvalContext{
-        false, false, false, false, false, koshka::String{parse_argv[0]}};
+    let highlight_context = koshka::EvalContext{koshka::startup_options{},
+                                                koshka::String{parse_argv[0]}};
     koshka::show_message(e.to_string(source, &highlight_context));
     if (!is_login_invocation) {
       return 2;
@@ -726,13 +726,15 @@ fn kosh_main(int argc, char **argv) -> int
           .has_value();
   koshka::os::unset_environment_variable(koshka::internal::SUPPRESS_ROOT_TRACE);
 
-  let context = koshka::EvalContext{FLAG_DISABLE_EXPANSION.is_enabled(),
-                                    FLAG_VERBOSE.is_enabled(),
-                                    FLAG_EXPAND_VERBOSE.is_enabled(),
-                                    should_be_interactive,
-                                    FLAG_ERROR_EXIT.is_enabled(),
-                                    steal(shell_name),
-                                    steal(positional_params)};
+  koshka::startup_options options{};
+  options.should_disable_path_expansion = FLAG_DISABLE_EXPANSION.is_enabled();
+  options.should_echo = FLAG_VERBOSE.is_enabled();
+  options.should_echo_expanded = FLAG_EXPAND_VERBOSE.is_enabled();
+  options.is_interactive = should_be_interactive;
+  options.should_error_exit = FLAG_ERROR_EXIT.is_enabled();
+
+  let context =
+      koshka::EvalContext{options, steal(shell_name), steal(positional_params)};
 
   koshka::utils::set_quit_context(&context);
 

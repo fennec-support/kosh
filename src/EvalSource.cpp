@@ -100,7 +100,7 @@ fn EvalContext::run_program_fallback(ExecContext &ec, mimic_mood mode,
       os::set_environment_variable(variable.name.view(), variable.value.view());
   };
 
-  let fallback_context = EvalContext{false, false, false, false};
+  let fallback_context = EvalContext{startup_options{}};
   fallback_context.arena_store().set_parse_arena(arena_store().parse_arena());
   fallback_context.arena_store().set_function_arena(
       arena_store().function_arena());

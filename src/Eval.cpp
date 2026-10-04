@@ -38,22 +38,21 @@ static pure fn is_prompt_special_variable(StringView name) wontthrow -> bool
           name[2] >= '0' && name[2] <= '4');
 }
 
-EvalContext::EvalContext(bool should_disable_path_expansion, bool should_echo,
-                         bool should_echo_expanded, bool shell_is_interactive,
-                         bool should_error_exit, String shell_name,
+EvalContext::EvalContext(startup_options options, String shell_name,
                          ArrayList<String> positional_params)
-    : EvalContextState(steal(positional_params), shell_is_interactive,
+    : EvalContextState(steal(positional_params), options.is_interactive,
                        steal(shell_name))
 {
-  runtime_state().set_no_glob(should_disable_path_expansion);
-  runtime_state().set_echo(should_echo);
-  runtime_state().set_echo_expanded(should_echo_expanded);
-  runtime_state().set_error_exit(should_error_exit);
-  runtime_state().set_option(shell_option_id::Emacs, shell_is_interactive);
-  if (shell_is_interactive)
+  runtime_state().set_no_glob(options.should_disable_path_expansion);
+  runtime_state().set_echo(options.should_echo);
+  runtime_state().set_echo_expanded(options.should_echo_expanded);
+  runtime_state().set_error_exit(options.should_error_exit);
+  runtime_state().set_option(shell_option_id::Emacs, options.is_interactive);
+  if (options.is_interactive)
     runtime_state().set_option(shell_option_id::Vi, false);
-  runtime_state().set_option(shell_option_id::History, shell_is_interactive);
-  runtime_state().set_option(shell_option_id::Histexpand, shell_is_interactive);
+  runtime_state().set_option(shell_option_id::History, options.is_interactive);
+  runtime_state().set_option(shell_option_id::Histexpand,
+                             options.is_interactive);
   variable_store().set_field_separators(variable_store().field_separators());
 
   dynamic_runtime_store().shell_start_time() =

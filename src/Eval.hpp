@@ -2475,9 +2475,7 @@ private:
 class EvalContext : public EvalContextState
 {
 public:
-  EvalContext(bool should_disable_path_expansion, bool should_echo,
-              bool should_echo_expanded, bool shell_is_interactive,
-              bool should_error_exit = false,
+  EvalContext(startup_options options,
               String shell_name = String{heap_allocator()},
               ArrayList<String> positional_params = ArrayList<String>{
                   heap_allocator()});

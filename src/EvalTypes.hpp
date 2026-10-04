@@ -265,6 +265,15 @@ struct trap_action_frame
   }
 };
 
+struct startup_options
+{
+  bool should_disable_path_expansion{false};
+  bool should_echo{false};
+  bool should_echo_expanded{false};
+  bool is_interactive{false};
+  bool should_error_exit{false};
+};
+
 struct coprocess_descriptors
 {
   i32 read_fd{-1};
