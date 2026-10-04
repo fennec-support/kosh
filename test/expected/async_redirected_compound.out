@@ -1,0 +1,9 @@
+== a redirected group runs in the background:
+running
+status=143
+== a redirected subshell runs in the background:
+running
+status=143
+== the shell exits without waiting for a redirected background job:
+bash=prompt
+default=prompt

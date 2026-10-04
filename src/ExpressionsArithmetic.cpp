@@ -1608,6 +1608,19 @@ fn RedirectedCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
 fn RedirectedCommand::evaluate_status_impl(EvalContext &cxt) const throws
     -> status_result
 {
+  if (is_async()) return {static_cast<i32>(evaluate_async(cxt)), 0};
+
+  return evaluate_redirected(cxt);
+}
+
+fn RedirectedCommand::evaluate_async_body(EvalContext &cxt) const throws -> i64
+{
+  return evaluate_redirected(cxt).status;
+}
+
+fn RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
+    -> status_result
+{
   ASSERT(m_child != nullptr);
 
   LOG(Debug, "applying %zu redirections around the compound command",

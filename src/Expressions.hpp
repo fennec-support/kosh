@@ -933,7 +933,11 @@ public:
   virtual fn append_to(usize d, String &f, bool duplicate) throws -> void;
   virtual fn redirect_to(usize d, String &f, bool duplicate) throws -> void;
 
+  fn evaluate_async(EvalContext &cxt) const throws -> i64;
+
 protected:
+  virtual fn evaluate_async_body(EvalContext &cxt) const throws -> i64;
+
   fn append_ast_execution_flags(String &label) const throws -> void;
 
   enum class ExecutionFlag : u8
@@ -1273,8 +1277,6 @@ class CompoundCommand : public Command
 {
 public:
   CompoundCommand(SourceLocation location);
-
-  fn evaluate_async(EvalContext &cxt) const throws -> i64;
 
   fn is_compound_command() const wontthrow -> bool override;
 
@@ -1656,6 +1658,9 @@ protected:
   fn evaluate_impl(EvalContext &cxt) const throws -> i64 override;
   fn evaluate_status_impl(EvalContext &cxt) const throws
       -> status_result override;
+  fn evaluate_async_body(EvalContext &cxt) const throws -> i64 override;
+
+  fn evaluate_redirected(EvalContext &cxt) const throws -> status_result;
 
   const Command *m_child;
   SparseList<Redirection> m_redirections{};
