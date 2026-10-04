@@ -810,8 +810,6 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
       variable_store().associative_values(),
       variable_store().sparse_array_values(),
       variable_store().sparse_array_names(),
-      runtime_state().shopt.overrides,
-      runtime_state().shopt.values,
       function_store().definitions(),
       scope_store().aliases(),
       variable_store().positional_params(),
@@ -878,8 +876,6 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
   variable_store().associative_values() = steal(snapshot.associative_values);
   variable_store().sparse_array_values() = steal(snapshot.sparse_array_values);
   variable_store().sparse_array_names() = steal(snapshot.sparse_array_names);
-  runtime_state().shopt.overrides = snapshot.shopt_option_overrides;
-  runtime_state().shopt.values = snapshot.shopt_option_values;
   function_store().definitions() = steal(snapshot.functions);
   scope_store().aliases() = steal(snapshot.aliases);
   variable_store().positional_params() = steal(snapshot.positional_params);
