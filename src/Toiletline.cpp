@@ -771,9 +771,62 @@ static fn resolve_history_path(StringView env_name, StringView default_file)
 
 static constexpr char KOSH_CALC_HISTORY_FILE[] = ".kosh_calc_history";
 
-static os::file_status HISTORY_FILE_STATUS{};
-static bool HAS_HISTORY_FILE_STATUS = false;
-static bool CAN_REWRITE_HISTORY = false;
+struct history_file_tracking
+{
+  os::file_status status{};
+  bool has_status{false};
+  bool can_rewrite{false};
+
+  fn invalidate() -> void
+  {
+    has_status = false;
+    can_rewrite = false;
+  }
+
+  fn refresh_can_rewrite() -> void
+  {
+    can_rewrite = has_status && status.has_file_identity;
+  }
+
+  fn matches_identity(const os::file_status &current) const -> bool
+  {
+    return can_rewrite && has_status && status.has_file_identity &&
+           current.has_file_identity && status.device_id == current.device_id &&
+           status.file_id == current.file_id;
+  }
+
+  fn record(const Path &path, usize expected_size) -> void
+  {
+    has_status = os::stat_path_following(path.view(), status);
+    if (has_status && status.size != expected_size) has_status = false;
+  }
+
+  fn update_after_append(const history_file_tracking &previous,
+                         const os::file_status &appended,
+                         bool was_empty) -> void
+  {
+    if (!appended.has_file_identity) {
+      can_rewrite = false;
+    } else if (previous.has_status && previous.status.has_file_identity) {
+      can_rewrite = can_rewrite &&
+                    previous.status.device_id == appended.device_id &&
+                    previous.status.file_id == appended.file_id;
+    } else {
+      can_rewrite = was_empty;
+    }
+  }
+
+  fn note_append(const Path &path, const history_file_tracking &previous,
+                 bool was_empty, usize expected_size) -> void
+  {
+    let appended = os::file_status{};
+    unused(os::stat_path_following(path.view(), appended));
+    update_after_append(previous, appended, was_empty);
+    record(path, expected_size);
+  }
+};
+
+static history_file_tracking HISTORY_FILE{};
 
 /* A rename that commits leaves the file correct even when the reload that
    follows it fails. A caller that only wrote bytes accepts the second outcome,
@@ -797,7 +850,6 @@ static fn commit_history_replacement(const Path &path, const Path &parent,
 static fn replace_history_file(const Path &path, const Path &parent,
                                StringView name_prefix, StringView contents)
     -> history_replacement;
-static fn record_history_file_status(const Path &path) -> void;
 
 static fn get_history_file_path() -> koshka::Maybe<koshka::Path>
 {
@@ -862,7 +914,7 @@ struct history_snapshot
   String encoded_contents{koshka::heap_allocator()};
   koshka::ArrayList<usize> offsets{koshka::heap_allocator()};
   koshka::ArrayList<usize> durable_offsets{koshka::heap_allocator()};
-  os::file_status file_status{};
+  history_file_tracking file_tracking{};
   usize total_count{0};
   usize last_event_number{0};
   usize file_byte_count{0};
@@ -874,8 +926,6 @@ struct history_snapshot
   bool does_file_end_with_newline{true};
   bool has_buffer{false};
   bool is_buffer_loaded{false};
-  bool has_file_status{false};
-  bool can_rewrite{false};
   bool is_valid{false};
 };
 
@@ -904,7 +954,7 @@ static fn capture_history_snapshot(history_snapshot &snapshot) -> void
     snapshot.offsets.push(::itl_g_history_offsets[slot]);
     snapshot.durable_offsets.push(::itl_g_history_durable_offsets[slot]);
   }
-  snapshot.file_status = HISTORY_FILE_STATUS;
+  snapshot.file_tracking = HISTORY_FILE;
   snapshot.total_count = ::itl_g_history_total_count;
   snapshot.last_event_number = ::itl_g_last_history_event_number;
   snapshot.file_byte_count = ::itl_g_history_file_size;
@@ -915,8 +965,6 @@ static fn capture_history_snapshot(history_snapshot &snapshot) -> void
   snapshot.is_file_bad = ::itl_g_history_file_is_bad;
   snapshot.does_file_end_with_newline = ::itl_g_history_ends_with_newline;
   snapshot.is_buffer_loaded = ::itl_g_history_read_buffer_loaded;
-  snapshot.has_file_status = HAS_HISTORY_FILE_STATUS;
-  snapshot.can_rewrite = CAN_REWRITE_HISTORY;
   snapshot.is_valid = true;
 }
 
@@ -956,9 +1004,7 @@ static fn restore_history_snapshot(const history_snapshot &snapshot) -> void
   ::itl_g_history_read_buffer_offset = snapshot.buffer_byte_offset;
   ::itl_g_history_read_buffer_start = snapshot.buffer_start_byte_offset;
 
-  HISTORY_FILE_STATUS = snapshot.file_status;
-  HAS_HISTORY_FILE_STATUS = snapshot.has_file_status;
-  CAN_REWRITE_HISTORY = snapshot.can_rewrite;
+  HISTORY_FILE = snapshot.file_tracking;
 }
 
 /* Every read and append resolves the file the swap currently points at. A calc
@@ -1064,17 +1110,15 @@ fn write_history() -> koshka::ErrorOr<koshka::Ok>
   }
   ::itl_g_history_file_size = written.count();
   ::itl_g_history_file_is_bad = false;
-  record_history_file_status(*path);
-  CAN_REWRITE_HISTORY =
-      HAS_HISTORY_FILE_STATUS && HISTORY_FILE_STATUS.has_file_identity;
+  HISTORY_FILE.record(*path, ::itl_g_history_file_size);
+  HISTORY_FILE.refresh_can_rewrite();
   return koshka::Success;
 }
 
 static fn load_history(const Path &path, bool should_allow_missing)
     -> koshka::ErrorOr<koshka::Ok>
 {
-  HAS_HISTORY_FILE_STATUS = false;
-  CAN_REWRITE_HISTORY = false;
+  HISTORY_FILE.invalidate();
   for (int attempt_index = 0; attempt_index < HISTORY_RACE_ATTEMPT_COUNT;
        attempt_index++)
   {
@@ -1099,7 +1143,7 @@ static fn load_history(const Path &path, bool should_allow_missing)
           ::itl_g_history_file_size = 0;
           ::itl_g_history_ends_with_newline = true;
           ::itl_g_history_file_is_bad = false;
-          CAN_REWRITE_HISTORY = false;
+          HISTORY_FILE.can_rewrite = false;
           ::itl_g_history_read_buffer = ::itl_char_buf_alloc();
           ::itl_g_history_read_buffer_loaded = true;
           ::itl_g_history_read_buffer_offset = 0;
@@ -1120,9 +1164,9 @@ static fn load_history(const Path &path, bool should_allow_missing)
       continue;
     }
 
-    HISTORY_FILE_STATUS = status_after;
-    HAS_HISTORY_FILE_STATUS = true;
-    CAN_REWRITE_HISTORY = status_after.has_file_identity;
+    HISTORY_FILE.status = status_after;
+    HISTORY_FILE.has_status = true;
+    HISTORY_FILE.refresh_can_rewrite();
     return koshka::Success;
   }
 
@@ -1135,9 +1179,9 @@ static fn sync_history(const Path &path, bool should_allow_missing)
   let status = os::file_status{};
   if (::itl_g_history_path != nullptr &&
       StringView{::itl_g_history_path} == path.view() &&
-      !::itl_g_history_file_is_bad && HAS_HISTORY_FILE_STATUS &&
+      !::itl_g_history_file_is_bad && HISTORY_FILE.has_status &&
       os::stat_path_following(path.view(), status) &&
-      os::file_status_matches(HISTORY_FILE_STATUS, status))
+      os::file_status_matches(HISTORY_FILE.status, status))
   {
     return koshka::Success;
   }
@@ -1183,36 +1227,6 @@ static fn replace_history_file(const Path &path, const Path &parent,
     return history_replacement::NotReloaded;
 
   return history_replacement::Replaced;
-}
-
-/* A session that does not hold the process lock can append between the write
-   and the stat. A size the vendored state does not track leaves the status
-   unrecorded and the next sync loads the file. */
-static fn record_history_file_status(const Path &path) -> void
-{
-  HAS_HISTORY_FILE_STATUS =
-      os::stat_path_following(path.view(), HISTORY_FILE_STATUS);
-  if (HAS_HISTORY_FILE_STATUS &&
-      HISTORY_FILE_STATUS.size != ::itl_g_history_file_size)
-  {
-    HAS_HISTORY_FILE_STATUS = false;
-  }
-}
-
-static fn update_history_rewrite_safety_after_append(
-    bool was_empty, const os::file_status &previous_status,
-    bool had_previous_status, const os::file_status &appended_status) -> void
-{
-  if (!appended_status.has_file_identity) {
-    CAN_REWRITE_HISTORY = false;
-  } else if (had_previous_status && previous_status.has_file_identity) {
-    CAN_REWRITE_HISTORY =
-        CAN_REWRITE_HISTORY &&
-        previous_status.device_id == appended_status.device_id &&
-        previous_status.file_id == appended_status.file_id;
-  } else {
-    CAN_REWRITE_HISTORY = was_empty;
-  }
 }
 
 fn read_history() -> koshka::ErrorOr<koshka::Ok>
@@ -1419,14 +1433,10 @@ fn append_history_event(StringView command) -> koshka::Maybe<usize>
     return koshka::None;
 
   let const was_empty = ::itl_g_history_total_count == 0;
-  let const previous_status = HISTORY_FILE_STATUS;
-  let const had_previous_status = HAS_HISTORY_FILE_STATUS;
+  let const previous_tracking = HISTORY_FILE;
   if (!::itl_history_append_to_file(entry, false, false)) return koshka::None;
-  let appended_status = os::file_status{};
-  unused(os::stat_path_following(path->text().view(), appended_status));
-  update_history_rewrite_safety_after_append(
-      was_empty, previous_status, had_previous_status, appended_status);
-  record_history_file_status(*path);
+  HISTORY_FILE.note_append(*path, previous_tracking, was_empty,
+                           ::itl_g_history_file_size);
 
   return ::itl_g_last_history_event_number;
 }
@@ -1474,14 +1484,7 @@ fn rewrite_history_event(usize number, StringView expected,
   let current_status = os::file_status{};
   if (!os::stat_path_following(path->text().view(), current_status))
     return false;
-  if (!CAN_REWRITE_HISTORY || !HAS_HISTORY_FILE_STATUS ||
-      !HISTORY_FILE_STATUS.has_file_identity ||
-      !current_status.has_file_identity ||
-      HISTORY_FILE_STATUS.device_id != current_status.device_id ||
-      HISTORY_FILE_STATUS.file_id != current_status.file_id)
-  {
-    return false;
-  }
+  if (!HISTORY_FILE.matches_identity(current_status)) return false;
 
   usize durable_end_offset = durable_start_offset;
   bool is_escape_pending = false;
@@ -1653,10 +1656,9 @@ fn rewrite_history_event(usize number, StringView expected,
   ::itl_g_history_read_buffer_loaded = true;
   ::itl_g_history_read_buffer_offset = 0;
   ::itl_g_history_read_buffer_start = 0;
-  record_history_file_status(*path);
-  CAN_REWRITE_HISTORY =
-      HAS_HISTORY_FILE_STATUS && HISTORY_FILE_STATUS.has_file_identity;
-  return CAN_REWRITE_HISTORY;
+  HISTORY_FILE.record(*path, ::itl_g_history_file_size);
+  HISTORY_FILE.refresh_can_rewrite();
+  return HISTORY_FILE.can_rewrite;
 }
 
 static fn strip_ansi_color(StringView text) throws -> String;
@@ -1967,8 +1969,7 @@ fn get_input(const String &prompt) -> input_result
   ::itl_g_last_history_event_number = 0;
   let const previous_history_total_count = ::itl_g_history_total_count;
   let const was_history_empty = previous_history_total_count == 0;
-  let const previous_history_status = HISTORY_FILE_STATUS;
-  let const had_previous_history_status = HAS_HISTORY_FILE_STATUS;
+  let const previous_history_tracking = HISTORY_FILE;
   /* Refresh geometry before every prompt so history keys are not interpreted
      against a stale or zero-width frame after a terminal or tmux resize. */
   ::itl_g_tty_changed_size = 1;
@@ -1976,13 +1977,8 @@ fn get_input(const String &prompt) -> input_result
   if (history_path.has_value() &&
       ::itl_g_history_total_count != previous_history_total_count)
   {
-    let appended_status = os::file_status{};
-    unused(
-        os::stat_path_following(history_path->text().view(), appended_status));
-    update_history_rewrite_safety_after_append(
-        was_history_empty, previous_history_status, had_previous_history_status,
-        appended_status);
-    record_history_file_status(*history_path);
+    HISTORY_FILE.note_append(*history_path, previous_history_tracking,
+                             was_history_empty, ::itl_g_history_file_size);
   }
   COMPLETION_BASE_DIRECTORY = nullptr;
   COMPLETION_RESULT = nullptr;
