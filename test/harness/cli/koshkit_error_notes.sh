@@ -310,6 +310,9 @@ echo "=== evilio invalid sort location ==="
 echo "=== evilio ambiguous sort location ==="
 "$BIN" -c 'koshkit evilio --sort r' 2>&1
 
+echo "=== evilio process ambiguous sort location ==="
+"$BIN" -c 'koshkit evilio --ps --sort w' 2>&1
+
 echo "=== evilio process sort mode location ==="
 "$BIN" -c 'koshkit evilio --ps --sort busy' 2>&1
 

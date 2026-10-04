@@ -9,17 +9,86 @@
  * before the first sample, an idle counter, a burst inside the window, a
  * counter reset, and the three relations between the number of retained samples
  * and the window length: fewer samples than the window holds, exactly as many,
- * and more.
+ * and more. It also drives update_retained_rows, the retained row updater the
+ * evil utilities share, with synthetic observations: the first sample of a
+ * row, an idle row, a burst that ages out of the window, a counter reset, a
+ * row that disappears and expires, a row that reappears before and after it
+ * expires, a reused process id with a new start token, and a window shorter
+ * than, equal to, and longer than the sampling interval.
  */
 
 #include "CLI.hpp"
 #include "Unit.hpp"
+#include "koshkit/LiveWindow.hpp"
 
 using namespace koshka;
+using namespace koshka::koshkit;
 
 static constexpr u64 SECOND = 1000000000ull;
 
 namespace {
+
+struct tracked_row
+{
+  String name{heap_allocator()};
+  live_process_identity identity{};
+  ArrayList<u64> history{heap_allocator()};
+  ArrayList<u64> history_nanoseconds{heap_allocator()};
+  u64 last_seen_nanoseconds{0};
+};
+
+struct observation
+{
+  String name{heap_allocator()};
+  live_process_identity identity{};
+  u64 counter{0};
+};
+
+struct tracker
+{
+  ArrayList<tracked_row> rows{heap_allocator()};
+  u64 window_nanoseconds{0};
+
+  fn sample(u64 now, ArrayList<observation> &observed) throws -> void
+  {
+    update_retained_rows(
+        rows, observed, now, window_nanoseconds, heap_allocator(),
+        [](const auto &item) { return item.identity; },
+        [](const observation &item) -> const u64 & { return item.counter; },
+        [](u64 before, u64 after) { return after < before; },
+        [](const observation &item) {
+          tracked_row row{};
+          row.name = String{heap_allocator(), item.name.view()};
+          row.identity = item.identity;
+          return row;
+        });
+  }
+
+  fn sample_one(u64 now, i64 id, u64 token, u64 counter) throws -> void
+  {
+    let observed = ArrayList<observation>{heap_allocator()};
+    observed.push(observation{String{heap_allocator()},
+                              live_process_identity{id, token}, counter});
+    sample(now, observed);
+  }
+
+  fn sample_none(u64 now) throws -> void
+  {
+    let observed = ArrayList<observation>{heap_allocator()};
+    sample(now, observed);
+  }
+
+  fn find_row(i64 id, u64 token) const throws -> Maybe<usize>
+  {
+    for (usize index = 0; index < rows.count(); index++) {
+      if (rows[index].identity.pid == id &&
+          rows[index].identity.start_token == token)
+        return index;
+    }
+
+    return None;
+  }
+};
 
 struct sample_history
 {
@@ -35,23 +104,37 @@ struct sample_history
 
 } /* namespace */
 
-static fn get_window_delta(const sample_history &history,
-                           u64 window_nanoseconds) throws -> Maybe<u64>
+static fn get_samples_delta(const ArrayList<u64> &timestamps,
+                            const ArrayList<u64> &counters,
+                            u64 window_nanoseconds) throws -> Maybe<u64>
 {
-  let const now = history.timestamps.back();
+  let const now = timestamps.back();
   let const boundary = find_rolling_window_boundary(
-      history.timestamps, rolling_window_start(now, window_nanoseconds));
+      timestamps, rolling_window_start(now, window_nanoseconds));
   let const baseline = interpolate_rolling_counter(
-      history.counters[boundary.before_index],
-      history.counters[boundary.after_index],
-      history.timestamps[boundary.before_index],
-      history.timestamps[boundary.after_index], boundary.timestamp);
+      counters[boundary.before_index], counters[boundary.after_index],
+      timestamps[boundary.before_index], timestamps[boundary.after_index],
+      boundary.timestamp);
   if (!baseline.has_value()) return None;
 
-  let const newest = history.counters.back();
+  let const newest = counters.back();
   if (newest < *baseline) return None;
 
   return newest - *baseline;
+}
+
+static fn get_window_delta(const sample_history &history,
+                           u64 window_nanoseconds) throws -> Maybe<u64>
+{
+  return get_samples_delta(history.timestamps, history.counters,
+                           window_nanoseconds);
+}
+
+static fn get_row_delta(const tracked_row &row,
+                        u64 window_nanoseconds) throws -> Maybe<u64>
+{
+  return get_samples_delta(row.history_nanoseconds, row.history,
+                           window_nanoseconds);
 }
 
 static fn make_steady_history(usize sample_count, u64 per_second_count) throws
@@ -267,6 +350,216 @@ static fn test_unevenly_spaced_samples() throws -> void
   CHECK_EQUAL(get_window_delta(history, 5 * SECOND + SECOND / 2), 550);
 }
 
+static fn test_updater_baseline() throws -> void
+{
+  let t = tracker{};
+  t.window_nanoseconds = 2 * SECOND;
+
+  t.sample_one(0, 1, 1, 100);
+
+  CHECK_EQUAL(t.rows.count(), 1);
+  CHECK_EQUAL(t.rows[0].history.count(), 1);
+  CHECK_EQUAL(t.rows[0].history_nanoseconds[0], 0);
+  CHECK_EQUAL(t.rows[0].last_seen_nanoseconds, 0);
+  CHECK_EQUAL(get_row_delta(t.rows[0], 2 * SECOND), 0);
+}
+
+static fn test_updater_idle() throws -> void
+{
+  let t = tracker{};
+  t.window_nanoseconds = 2 * SECOND;
+
+  for (usize index = 0; index <= 5; index++)
+    t.sample_one(index * SECOND, 1, 1, 100);
+
+  CHECK_EQUAL(t.rows.count(), 1);
+  CHECK_EQUAL(t.rows[0].history.count(), 3);
+  CHECK_EQUAL(get_row_delta(t.rows[0], 2 * SECOND), 0);
+}
+
+static fn test_updater_burst_ages_out() throws -> void
+{
+  let t = tracker{};
+  t.window_nanoseconds = 2 * SECOND;
+
+  for (usize index = 0; index < 5; index++)
+    t.sample_one(index * SECOND, 1, 1, 0);
+
+  t.sample_one(5 * SECOND, 1, 1, 600);
+  CHECK_EQUAL(get_row_delta(t.rows[0], 2 * SECOND), 600);
+
+  t.sample_one(6 * SECOND, 1, 1, 600);
+  CHECK_EQUAL(get_row_delta(t.rows[0], 2 * SECOND), 600);
+
+  t.sample_one(7 * SECOND, 1, 1, 600);
+  CHECK_EQUAL(get_row_delta(t.rows[0], 2 * SECOND), 0);
+
+  t.sample_one(8 * SECOND, 1, 1, 600);
+  CHECK_EQUAL(get_row_delta(t.rows[0], 2 * SECOND), 0);
+  CHECK_EQUAL(t.rows[0].history.count(), 3);
+}
+
+static fn test_updater_counter_reset() throws -> void
+{
+  let t = tracker{};
+  t.window_nanoseconds = 5 * SECOND;
+
+  t.sample_one(0, 1, 1, 1000);
+  t.sample_one(SECOND, 1, 1, 1100);
+  CHECK_EQUAL(get_row_delta(t.rows[0], 5 * SECOND), 100);
+
+  t.sample_one(2 * SECOND, 1, 1, 10);
+  CHECK_EQUAL(t.rows.count(), 1);
+  CHECK_EQUAL(t.rows[0].history.count(), 1);
+  CHECK_EQUAL(get_row_delta(t.rows[0], 5 * SECOND), 0);
+
+  t.sample_one(3 * SECOND, 1, 1, 60);
+  CHECK_EQUAL(get_row_delta(t.rows[0], 5 * SECOND), 50);
+}
+
+static fn test_updater_disappearance_expires() throws -> void
+{
+  let t = tracker{};
+  t.window_nanoseconds = 2 * SECOND;
+
+  t.sample_one(0, 1, 1, 100);
+  t.sample_one(SECOND, 1, 1, 150);
+
+  t.sample_none(2 * SECOND);
+  CHECK_EQUAL(t.rows.count(), 1);
+  CHECK_EQUAL(t.rows[0].history.back(), 150);
+  CHECK_EQUAL(t.rows[0].history_nanoseconds.back(), 2 * SECOND);
+  CHECK_EQUAL(t.rows[0].last_seen_nanoseconds, SECOND);
+  CHECK_EQUAL(get_row_delta(t.rows[0], 2 * SECOND), 50);
+
+  t.sample_none(3 * SECOND);
+  CHECK_EQUAL(t.rows.count(), 0);
+}
+
+static fn test_updater_reappearance_before_expiry() throws -> void
+{
+  let t = tracker{};
+  t.window_nanoseconds = 2 * SECOND;
+
+  t.sample_one(0, 1, 1, 100);
+  t.sample_one(SECOND, 1, 1, 150);
+  t.sample_none(2 * SECOND);
+  t.sample_one(3 * SECOND, 1, 1, 200);
+
+  CHECK_EQUAL(t.rows.count(), 1);
+  CHECK_EQUAL(t.rows[0].last_seen_nanoseconds, 3 * SECOND);
+  CHECK_EQUAL(get_row_delta(t.rows[0], 2 * SECOND), 50);
+}
+
+static fn test_updater_reappearance_after_expiry() throws -> void
+{
+  let t = tracker{};
+  t.window_nanoseconds = 2 * SECOND;
+
+  t.sample_one(0, 1, 1, 100);
+  t.sample_one(SECOND, 1, 1, 150);
+  t.sample_none(2 * SECOND);
+  t.sample_none(3 * SECOND);
+  CHECK_EQUAL(t.rows.count(), 0);
+
+  t.sample_one(4 * SECOND, 1, 1, 400);
+  CHECK_EQUAL(t.rows.count(), 1);
+  CHECK_EQUAL(t.rows[0].history.count(), 1);
+  CHECK_EQUAL(get_row_delta(t.rows[0], 2 * SECOND), 0);
+}
+
+static fn test_updater_process_id_reuse() throws -> void
+{
+  let t = tracker{};
+  t.window_nanoseconds = 2 * SECOND;
+
+  t.sample_one(0, 10, 1, 100);
+  t.sample_one(SECOND, 10, 1, 200);
+  t.sample_one(2 * SECOND, 10, 2, 5);
+
+  CHECK_EQUAL(t.rows.count(), 2);
+  let const old_row = t.find_row(10, 1);
+  let const new_row = t.find_row(10, 2);
+  CHECK(old_row.has_value());
+  CHECK(new_row.has_value());
+  CHECK_EQUAL(t.rows[*old_row].history.back(), 200);
+  CHECK_EQUAL(t.rows[*new_row].history.count(), 1);
+  CHECK_EQUAL(get_row_delta(t.rows[*new_row], 2 * SECOND), 0);
+
+  t.sample_one(3 * SECOND, 10, 2, 25);
+  CHECK_EQUAL(t.rows.count(), 1);
+  CHECK(!t.find_row(10, 1).has_value());
+  CHECK_EQUAL(get_row_delta(t.rows[0], 2 * SECOND), 20);
+}
+
+static fn test_updater_window_shorter_than_interval() throws -> void
+{
+  let t = tracker{};
+  t.window_nanoseconds = SECOND;
+
+  t.sample_one(0, 1, 1, 0);
+  t.sample_one(2 * SECOND, 1, 1, 100);
+  CHECK_EQUAL(get_row_delta(t.rows[0], SECOND), 50);
+
+  t.sample_one(4 * SECOND, 1, 1, 200);
+  CHECK_EQUAL(t.rows[0].history.count(), 2);
+  CHECK_EQUAL(get_row_delta(t.rows[0], SECOND), 50);
+}
+
+static fn test_updater_window_equal_to_interval() throws -> void
+{
+  let t = tracker{};
+  t.window_nanoseconds = 2 * SECOND;
+
+  for (usize index = 0; index < 6; index++)
+    t.sample_one(index * 2 * SECOND, 1, 1, index * 100);
+
+  CHECK_EQUAL(t.rows[0].history.count(), 2);
+  CHECK_EQUAL(get_row_delta(t.rows[0], 2 * SECOND), 100);
+}
+
+static fn test_updater_window_longer_than_interval() throws -> void
+{
+  let t = tracker{};
+  t.window_nanoseconds = 3 * SECOND;
+
+  for (usize index = 0; index <= 10; index++)
+    t.sample_one(index * SECOND, 1, 1, index * 100);
+
+  CHECK_EQUAL(t.rows[0].history.count(), 4);
+  CHECK_EQUAL(get_row_delta(t.rows[0], 3 * SECOND), 300);
+}
+
+static fn test_updater_matches_many_rows() throws -> void
+{
+  let t = tracker{};
+  t.window_nanoseconds = 5 * SECOND;
+  static constexpr usize ROW_COUNT = 300;
+
+  let first = ArrayList<observation>{heap_allocator()};
+  for (usize index = 0; index < ROW_COUNT; index++) {
+    first.push(observation{String{heap_allocator()},
+                           live_process_identity{
+                               static_cast<i64>(ROW_COUNT - index), 7},
+                           index});
+  }
+  t.sample(0, first);
+  CHECK_EQUAL(t.rows.count(), ROW_COUNT);
+
+  let second = ArrayList<observation>{heap_allocator()};
+  for (usize index = 0; index < ROW_COUNT; index++) {
+    second.push(observation{String{heap_allocator()},
+                            live_process_identity{
+                                static_cast<i64>(index + 1), 7},
+                            index + 1000});
+  }
+  t.sample(SECOND, second);
+
+  CHECK_EQUAL(t.rows.count(), ROW_COUNT);
+  for (let const &row : t.rows)
+    CHECK_EQUAL(row.history.count(), 2);
+}
+
 fn kosh_main(int, char **) -> int
 {
   RUN_TEST(test_window_start_saturates);
@@ -283,6 +576,18 @@ fn kosh_main(int, char **) -> int
   RUN_TEST(test_samples_equal_window);
   RUN_TEST(test_more_samples_than_window);
   RUN_TEST(test_unevenly_spaced_samples);
+  RUN_TEST(test_updater_baseline);
+  RUN_TEST(test_updater_idle);
+  RUN_TEST(test_updater_burst_ages_out);
+  RUN_TEST(test_updater_counter_reset);
+  RUN_TEST(test_updater_disappearance_expires);
+  RUN_TEST(test_updater_reappearance_before_expiry);
+  RUN_TEST(test_updater_reappearance_after_expiry);
+  RUN_TEST(test_updater_process_id_reuse);
+  RUN_TEST(test_updater_window_shorter_than_interval);
+  RUN_TEST(test_updater_window_equal_to_interval);
+  RUN_TEST(test_updater_window_longer_than_interval);
+  RUN_TEST(test_updater_matches_many_rows);
 
   return koshka::unit::finish("live_window_test");
 }

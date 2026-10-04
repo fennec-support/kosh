@@ -68,7 +68,9 @@ evilio_ambiguous_sort=$(
   "$BIN" -c 'koshkit evilio --ps --sort r -1' 2>&1
 )
 case $evilio_ambiguous_sort in
-  *'Ambiguous sort key'*) evilio_ambiguous_sort_status=matched ;;
+  *'ambiguous sort key'*'matches read, read-ops; use a longer prefix'*)
+    evilio_ambiguous_sort_status=matched
+    ;;
   *) evilio_ambiguous_sort_status=wrong ;;
 esac
 printf 'evilio-ambiguous-sort=%s\n' "$evilio_ambiguous_sort_status"

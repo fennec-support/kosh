@@ -84,11 +84,11 @@ printf 'rejected-live-status=%s\n' "$?"
 
 help=$($BIN -c 'koshkit evilio --help')
 case $help in
-  *"Refresh live output"*"0.5 seconds"*) live_help=described ;;
+  *"Sample and refresh live output"*"0.5 seconds"*) live_help=described ;;
   *) live_help=missing ;;
 esac
 case $help in
-  *"M-second rolling window"*)
+  *"M-second"*"window"*)
     cumulative_help=described
     ;;
   *) cumulative_help=missing ;;
