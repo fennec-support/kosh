@@ -60,6 +60,28 @@ enum class cp_symlink_mode : u8
   FollowAll,
 };
 
+namespace {
+
+struct cp_options
+{
+  bool should_force;
+  bool should_preserve;
+  bool is_verbose;
+  cp_recursive_mode recursive_mode;
+  cp_symlink_mode symlink_mode;
+
+  fn for_child() const -> cp_options
+  {
+    let child = *this;
+    if (symlink_mode != cp_symlink_mode::FollowAll)
+      child.symlink_mode = cp_symlink_mode::Preserve;
+
+    return child;
+  }
+};
+
+} // namespace
+
 static fn report_copy_error(const ExecContext &ec, EvalContext &cxt,
                             StringView utility_name, const Error &error) throws
     -> void
@@ -75,10 +97,11 @@ static fn report_copy_error(const ExecContext &ec, EvalContext &cxt,
 }
 
 static fn copy_file(const ExecContext &ec, StringView source,
-                    StringView destination, bool is_verbose,
-                    Allocator allocator, copy_force_mode force_mode) throws
-    -> void
+                    StringView destination, const cp_options &options,
+                    Allocator allocator) throws -> void
 {
+  let const force_mode =
+      options.should_force ? copy_force_mode::Force : copy_force_mode::Normal;
   switch (copy_file_contents(source, destination, force_mode)) {
   case copy_file_result::SourceOpenFailed:
     throw Error{
@@ -107,7 +130,7 @@ static fn copy_file(const ExecContext &ec, StringView source,
   case copy_file_result::Success: break;
   }
 
-  if (is_verbose)
+  if (options.is_verbose)
     ec.print_to_stdout("'" + String{allocator, source} + "' -> '" +
                        String{allocator, destination} + "'\n");
 }
@@ -148,10 +171,8 @@ static fn source_file_status(StringView source) throws -> Maybe<os::file_status>
 
 static fn
 copy_path(const ExecContext &ec, EvalContext &cxt, StringView utility_name,
-          StringView source, StringView destination, bool should_force,
-          bool should_preserve, bool is_verbose, Allocator allocator,
-          const os::file_status *known_lstat, cp_recursive_mode recursive_mode,
-          cp_symlink_mode symlink_mode,
+          StringView source, StringView destination, const cp_options &options,
+          Allocator allocator, const os::file_status *known_lstat,
           ArrayList<cp_directory_identity> &active_directories) throws -> bool
 {
   let const source_path = Path{source, allocator};
@@ -167,7 +188,7 @@ copy_path(const ExecContext &ec, EvalContext &cxt, StringView utility_name,
     };
   }
   let const is_source_symlink =
-      symlink_mode == cp_symlink_mode::Preserve &&
+      options.symlink_mode == cp_symlink_mode::Preserve &&
       (known_lstat != nullptr ? os::file_type_letter(known_lstat->mode) == 'l'
                               : source_path.is_symbolic_link());
 
@@ -192,7 +213,7 @@ copy_path(const ExecContext &ec, EvalContext &cxt, StringView utility_name,
         };
       }
 
-      if (is_verbose)
+      if (options.is_verbose)
         ec.print_to_stdout("'" + String{allocator, source} + "' -> '" +
                            String{allocator, destination} + "'\n");
 
@@ -213,7 +234,7 @@ copy_path(const ExecContext &ec, EvalContext &cxt, StringView utility_name,
           ? os::file_type_letter(source_status->mode) == 'd'
           : source_path.is_directory();
   if (is_source_directory && !is_source_symlink) {
-    if (recursive_mode == cp_recursive_mode::SinglePath)
+    if (options.recursive_mode == cp_recursive_mode::SinglePath)
       throw Error{
           "'" + String{allocator, source}
             +
@@ -283,13 +304,8 @@ copy_path(const ExecContext &ec, EvalContext &cxt, StringView utility_name,
           destination, entry.child.name.view(), allocator);
       try {
         if (!copy_path(ec, cxt, utility_name, child_source.view(),
-                       child_destination.view(), should_force, should_preserve,
-                       is_verbose, allocator,
+                       child_destination.view(), options.for_child(), allocator,
                        entry.has_status ? &entry.status : nullptr,
-                       recursive_mode,
-                       symlink_mode == cp_symlink_mode::FollowAll
-                           ? cp_symlink_mode::FollowAll
-                           : cp_symlink_mode::Preserve,
                        active_directories))
           did_succeed = false;
       } catch (const BrokenPipeExit &) {
@@ -302,14 +318,14 @@ copy_path(const ExecContext &ec, EvalContext &cxt, StringView utility_name,
     }
 
     if (source_status.has_value() &&
-        (should_preserve || !did_destination_exist))
+        (options.should_preserve || !did_destination_exist))
     {
-      os::set_file_mode(destination, should_preserve
+      os::set_file_mode(destination, options.should_preserve
                                          ? source_status->mode & 0777
                                          : source_status->mode & 0777 &
                                                ~os::get_file_creation_mask());
     }
-    if (source_status.has_value() && should_preserve &&
+    if (source_status.has_value() && options.should_preserve &&
         !os::set_file_times(destination,
                             {source_status->access_time,
                              source_status->access_nanoseconds,
@@ -338,18 +354,17 @@ copy_path(const ExecContext &ec, EvalContext &cxt, StringView utility_name,
   }
 
   let const did_destination_exist = Path{destination, allocator}.exists();
-  let const force_mode =
-      should_force ? copy_force_mode::Force : copy_force_mode::Normal;
-  copy_file(ec, source, destination, is_verbose, allocator, force_mode);
+  copy_file(ec, source, destination, options, allocator);
 
-  if (source_status.has_value() && (should_preserve || !did_destination_exist))
+  if (source_status.has_value() &&
+      (options.should_preserve || !did_destination_exist))
   {
-    os::set_file_mode(destination, should_preserve
+    os::set_file_mode(destination, options.should_preserve
                                        ? source_status->mode & 0777
                                        : source_status->mode & 0777 &
                                              ~os::get_file_creation_mask());
   }
-  if (source_status.has_value() && should_preserve &&
+  if (source_status.has_value() && options.should_preserve &&
       !os::set_file_times(destination,
                           {source_status->access_time,
                            source_status->access_nanoseconds,
@@ -409,12 +424,14 @@ fn Cp::execute(const ExecContext &ec, EvalContext &cxt,
     symlink_mode = cp_symlink_mode::FollowRoot;
   }
 
-  let const should_force = FLAG_CP_FORCE.is_enabled();
-  let const should_preserve = FLAG_CP_PRESERVE.is_enabled();
-  let const should_prompt = FLAG_CP_INTERACTIVE.is_enabled() &&
-                            (!should_force || FLAG_CP_INTERACTIVE.position() >
-                                                  FLAG_CP_FORCE.position());
-  let const is_verbose = FLAG_CP_VERBOSE.is_enabled();
+  let const options = cp_options{FLAG_CP_FORCE.is_enabled(),
+                                 FLAG_CP_PRESERVE.is_enabled(),
+                                 FLAG_CP_VERBOSE.is_enabled(), recursive_mode,
+                                 symlink_mode};
+  let const should_prompt =
+      FLAG_CP_INTERACTIVE.is_enabled() &&
+      (!options.should_force ||
+       FLAG_CP_INTERACTIVE.position() > FLAG_CP_FORCE.position());
   let const destination = operands[operands.count() - 1].view();
   let const is_destination_directory =
       Path{destination, cxt.scratch_allocator()}.is_directory();
@@ -448,10 +465,8 @@ fn Cp::execute(const ExecContext &ec, EvalContext &cxt,
       continue;
 
     try {
-      if (!copy_path(ec, cxt, args[0].view(), source, target.view(),
-                     should_force, should_preserve, is_verbose,
-                     cxt.scratch_allocator(), nullptr, recursive_mode,
-                     symlink_mode, active_directories))
+      if (!copy_path(ec, cxt, args[0].view(), source, target.view(), options,
+                     cxt.scratch_allocator(), nullptr, active_directories))
         status = 1;
     } catch (const BrokenPipeExit &) {
       throw;
