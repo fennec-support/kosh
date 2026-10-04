@@ -90,31 +90,50 @@ fn format_limit_value(u64 value, Allocator allocator) throws -> String
   return String::from(value, allocator);
 }
 
-fn append_resource_limit(String &output, StringView name, Allocator allocator,
-                         bool should_color, os::resource_kind kind) throws
-    -> void
+struct field_section
+{
+  ReportTable table;
+  Allocator allocator;
+
+  explicit field_section(Allocator section_allocator)
+      : table(section_allocator), allocator(section_allocator)
+  {
+    table.set_header_visible(false);
+    table.add_column("", report_table_alignment::Left, colors::ansi::BOLD_CYAN);
+    table.add_column("");
+  }
+
+  fn add(StringView name, StringView value) throws -> void
+  {
+    if (value.is_empty()) return;
+
+    let cells = ArrayList<report_table_cell_view>{allocator};
+    cells.push({name, {}});
+    cells.push({value, {}});
+    table.add_row(cells);
+  }
+};
+
+fn append_resource_limit(field_section &section, StringView name,
+                         os::resource_kind kind) throws -> void
 {
   os::resource_limit limit{};
   if (!os::get_resource_limit(limit, kind)) return;
 
-  let value = format_limit_value(limit.soft, allocator);
+  let value = format_limit_value(limit.soft, section.allocator);
   value += " soft, ";
-  value += format_limit_value(limit.hard, allocator).view();
+  value += format_limit_value(limit.hard, section.allocator).view();
   value += " hard";
-  append_report_field(output, name, value.view(), colors::ansi::BOLD_CYAN,
-                      should_color);
+  section.add(name, value.view());
 }
 
-fn append_system_configuration(String &output, StringView name,
-                               os::system_configuration_key key,
-                               Allocator allocator, bool should_color) throws
-    -> void
+fn append_system_configuration(field_section &section, StringView name,
+                               os::system_configuration_key key) throws -> void
 {
   let const value = os::system_configuration(key);
   if (!value.has_value()) return;
 
-  append_report_field(output, name, String::from(*value, allocator).view(),
-                      colors::ansi::BOLD_CYAN, should_color);
+  section.add(name, String::from(*value, section.allocator).view());
 }
 
 struct mapped_library_family
@@ -124,19 +143,15 @@ struct mapped_library_family
   bool has_version_mix{false};
 };
 
-fn append_anomaly_report(String &output, EvalContext &cxt,
-                         bool should_color) throws -> void
+fn append_anomaly_report(field_section &section, EvalContext &cxt) throws
+    -> void
 {
   let const allocator = cxt.scratch_allocator();
   let const do_append_unavailable = [&](StringView cost) throws -> void {
-    append_report_field(output, "Mixed library ABIs", "unavailable",
-                        colors::ansi::BOLD_CYAN, should_color);
-    append_report_field(output, "Deleted code mappings", "unavailable",
-                        colors::ansi::BOLD_CYAN, should_color);
-    append_report_field(output, "Finding confidence", "unavailable",
-                        colors::ansi::BOLD_CYAN, should_color);
-    append_report_field(output, "Cost", cost, colors::ansi::BOLD_CYAN,
-                        should_color);
+    section.add("Mixed library ABIs", "unavailable");
+    section.add("Deleted code mappings", "unavailable");
+    section.add("Finding confidence", "unavailable");
+    section.add("Cost", cost);
   };
   if (!os::has_process_open_file_listing()) {
     do_append_unavailable("not probed");
@@ -203,21 +218,17 @@ fn append_anomaly_report(String &output, EvalContext &cxt,
     }
   }
 
-  append_report_field(output, "Mixed library ABIs",
-                      String::from(mixed_family_count, allocator).view(),
-                      colors::ansi::BOLD_CYAN, should_color);
-  append_report_field(output, "Deleted code mappings",
-                      String::from(deleted_mapping_count, allocator).view(),
-                      colors::ansi::BOLD_CYAN, should_color);
-  append_report_field(output, "Finding confidence", "high",
-                      colors::ansi::BOLD_CYAN, should_color);
-  append_report_field(output, "Cost", "process mappings",
-                      colors::ansi::BOLD_CYAN, should_color);
+  section.add("Mixed library ABIs",
+              String::from(mixed_family_count, allocator).view());
+  section.add("Deleted code mappings",
+              String::from(deleted_mapping_count, allocator).view());
+  section.add("Finding confidence", "high");
+  section.add("Cost", "process mappings");
 }
 
-fn append_procfs_report(String &output, bool should_color,
-                        Allocator allocator) throws -> void
+fn append_procfs_report(field_section &section) throws -> void
 {
+  let const allocator = section.allocator;
   os::system_activity_status activity{};
   if (os::read_system_activity_status(activity)) {
     struct activity_metric
@@ -290,23 +301,18 @@ fn append_procfs_report(String &output, bool should_color,
     };
     for (let const &metric : METRICS) {
       if (!activity.has_field(metric.field)) continue;
-      append_report_field(
-          output, metric.label,
-          String::from(activity.*metric.value, allocator).view(),
-          colors::ansi::BOLD_CYAN, should_color);
+      section.add(metric.label,
+                  String::from(activity.*metric.value, allocator).view());
     }
   } else {
-    append_report_field(output, "Activity", "unavailable",
-                        colors::ansi::BOLD_CYAN, should_color);
+    section.add("Activity", "unavailable");
   }
   if (activity.has_isolation_probes) {
     if (!activity.has_field(os::system_activity_field::NamespaceCount)) {
-      append_report_field(output, "Current-process namespaces", "unavailable",
-                          colors::ansi::BOLD_CYAN, should_color);
+      section.add("Current-process namespaces", "unavailable");
     }
     if (!activity.has_field(os::system_activity_field::CgroupMembershipCount)) {
-      append_report_field(output, "Current-process cgroup memberships",
-                          "unavailable", colors::ansi::BOLD_CYAN, should_color);
+      section.add("Current-process cgroup memberships", "unavailable");
     }
   }
 
@@ -323,13 +329,11 @@ fn append_procfs_report(String &output, bool should_color,
     }
     memory_line += String::from(memory.total_kib, allocator).view();
     memory_line += " KiB";
-    append_report_field(output, "Memory", memory_line.view(),
-                        colors::ansi::BOLD_CYAN, should_color);
+    section.add("Memory", memory_line.view());
   }
   let const processors = os::get_processor_counts();
-  append_report_field(output, "Processors",
-                      String::from(processors.online_count, allocator).view(),
-                      colors::ansi::BOLD_CYAN, should_color);
+  section.add("Processors",
+              String::from(processors.online_count, allocator).view());
 }
 
 fn names_text(const ArrayList<String> &names, Allocator allocator) throws
@@ -373,11 +377,16 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
 
   let const allocator = cxt.scratch_allocator();
   let output = String{allocator};
+  let identity = field_section{allocator};
+  let session = field_section{allocator};
+  let accounts = field_section{allocator};
+  let resources = field_section{allocator};
+  let limits = field_section{allocator};
+  let activity = field_section{allocator};
+  let anomalies = field_section{allocator};
 
   let const host = os::get_hostname();
-  append_report_field(output, "Host",
-                      host.has_value() ? host->view() : "unknown",
-                      colors::ansi::BOLD_CYAN, should_color);
+  identity.add("Host", host.has_value() ? host->view() : "unknown");
 
   let system_line = String{allocator, os::executable_system_name().view()};
   let const release = os::system_release_name();
@@ -386,18 +395,12 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
     system_line += release.view();
   }
 
-  append_report_field(output, "Kernel", system_line.view(),
-                      colors::ansi::BOLD_CYAN, should_color);
-  append_report_field(output, "Architecture", os::machine_type().view(),
-                      colors::ansi::BOLD_CYAN, should_color);
+  identity.add("Kernel", system_line.view());
+  identity.add("Architecture", os::machine_type().view());
   if (FLAG_EVIL_ALL.is_enabled()) {
-    append_report_field(output, "System version",
-                        os::system_version_name().view(),
-                        colors::ansi::BOLD_CYAN, should_color);
-    append_report_field(output, "Target", os::machine_target_name().view(),
-                        colors::ansi::BOLD_CYAN, should_color);
-    append_report_field(output, "OS type", os::ostype_name(),
-                        colors::ansi::BOLD_CYAN, should_color);
+    identity.add("System version", os::system_version_name().view());
+    identity.add("Target", os::machine_target_name().view());
+    identity.add("OS type", os::ostype_name());
   }
 
   let const distribution = read_first_line("/etc/os-release", allocator);
@@ -407,80 +410,54 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
     let const unquoted = named.length >= 2 && named[0] == '"'
                              ? named.substring_of_length(1, named.length - 2)
                              : named;
-    append_report_field(output, "Distribution", unquoted,
-                        colors::ansi::BOLD_CYAN, should_color);
+    identity.add("Distribution", unquoted);
   }
 
-  append_report_field(output, "Init", get_init_system_name(allocator).view(),
-                      colors::ansi::BOLD_CYAN, should_color);
+  identity.add("Init", get_init_system_name(allocator).view());
 
   let const container = detect_container(allocator);
-  if (container.has_value()) {
-    append_report_field(output, "Container", container->view(),
-                        colors::ansi::BOLD_CYAN, should_color);
-  }
+  if (container.has_value()) identity.add("Container", container->view());
 
   let const shell = os::get_environment_variable("SHELL");
-  if (shell.has_value()) {
-    append_report_field(output, "Shell", shell->view(), colors::ansi::BOLD_CYAN,
-                        should_color);
-  }
+  if (shell.has_value()) identity.add("Shell", shell->view());
 
   let const user = os::get_current_user();
-  if (user.has_value()) {
-    append_report_field(output, "User", user->view(), colors::ansi::BOLD_CYAN,
-                        should_color);
-  }
+  if (user.has_value()) identity.add("User", user->view());
 
   if (FLAG_EVIL_ALL.is_enabled()) {
     let const login_user = os::get_login_user();
-    if (login_user.has_value()) {
-      append_report_field(output, "Login user", login_user->view(),
-                          colors::ansi::BOLD_CYAN, should_color);
-    }
+    if (login_user.has_value()) identity.add("Login user", login_user->view());
   }
 
-  append_report_field(output, "Kosh", short_version_string(allocator).view(),
-                      colors::ansi::BOLD_CYAN, should_color);
+  identity.add("Kosh", short_version_string(allocator).view());
   if (FLAG_EVIL_ALL.is_enabled()) {
     let const executable = os::current_executable_path();
-    if (executable.has_value()) {
-      append_report_field(output, "Executable", executable->view(),
-                          colors::ansi::BOLD_CYAN, should_color);
-    }
+    if (executable.has_value()) identity.add("Executable", executable->view());
   }
-  append_report_field(output, "Directory", os::read_current_directory().view(),
-                      colors::ansi::BOLD_CYAN, should_color);
+  identity.add("Directory", os::read_current_directory().view());
   if (FLAG_EVIL_ALL.is_enabled()) {
-    append_report_field(
-        output, "Time",
-        os::format_local_time(
-            "%Y-%m-%d %H:%M:%S %z",
-            static_cast<i64>(os::realtime_microseconds() / 1000000))
-            .view(),
-        colors::ansi::BOLD_CYAN, should_color);
-    append_report_field(
-        output, "Process",
-        String::from(os::get_current_process_id(), allocator).view(),
-        colors::ansi::BOLD_CYAN, should_color);
-    append_report_field(
-        output, "Parent process",
-        String::from(os::get_parent_process_id(), allocator).view(),
-        colors::ansi::BOLD_CYAN, should_color);
+    session.add("Time",
+                os::format_local_time(
+                    "%Y-%m-%d %H:%M:%S %z",
+                    static_cast<i64>(os::realtime_microseconds() / 1000000))
+                    .view());
+    session.add("Process",
+                String::from(os::get_current_process_id(), allocator).view());
+    session.add(
+        "Parent process",
+        String::from(os::get_parent_process_id(), allocator).view());
 
     let user_ids = String::from(os::get_real_user_id(), allocator);
     user_ids += " real, ";
     user_ids += String::from(os::get_effective_user_id(), allocator).view();
     user_ids += " effective";
-    append_report_field(output, "User IDs", user_ids.view(),
-                        colors::ansi::BOLD_CYAN, should_color);
+    session.add("User IDs", user_ids.view());
 
     let group_ids = String::from(os::get_real_group_id(), allocator);
     group_ids += " real, ";
     group_ids += String::from(os::get_effective_group_id(), allocator).view();
     group_ids += " effective";
-    append_report_field(output, "Group IDs", group_ids.view(),
-                        colors::ansi::BOLD_CYAN, should_color);
+    session.add("Group IDs", group_ids.view());
 
     let const supplementary_groups = os::get_supplementary_group_ids(allocator);
     let group_list = String{allocator};
@@ -488,40 +465,44 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
       if (index != 0) group_list += ", ";
       group_list += String::from(supplementary_groups[index], allocator).view();
     }
-    append_report_field(output, "Supplementary groups", group_list.view(),
-                        colors::ansi::BOLD_CYAN, should_color);
+    session.add("Supplementary groups", group_list.view());
 
     let const groups = names_text(os::enumerate_groups(), allocator);
-    if (groups.has_value())
-      append_report_field(output, "Groups", groups->view(),
-                          colors::ansi::BOLD_CYAN, should_color);
+    if (groups.has_value()) session.add("Groups", groups->view());
 
     let const terminal = os::terminal_name(KOSH_STDIN);
-    if (terminal.has_value()) {
-      append_report_field(output, "Terminal", terminal->view(),
-                          colors::ansi::BOLD_CYAN, should_color);
-    }
+    if (terminal.has_value()) session.add("Terminal", terminal->view());
   }
 
   if (FLAG_EVIL_USERS.is_enabled()) {
     let const users = names_text(os::enumerate_users(), allocator);
-    if (users.has_value()) {
-      append_report_field(output, "Users", users->view(),
-                          colors::ansi::BOLD_CYAN, should_color);
-    }
+    if (users.has_value()) accounts.add("Users", users->view());
   }
 
-  if (FLAG_EVIL_SHORT.is_enabled()) {
+  let const do_append_report = [&]() throws -> void {
+    append_titled_report_table(output, "Identity", identity.table,
+                               should_color);
+    append_titled_report_table(output, "Session", session.table, should_color);
+    append_titled_report_table(output, "Accounts", accounts.table,
+                               should_color);
+    append_titled_report_table(output, "Resources", resources.table,
+                               should_color);
+    append_titled_report_table(output, "Limits", limits.table, should_color);
+    append_titled_report_table(output, "Activity", activity.table,
+                               should_color);
+    append_titled_report_table(output, "Anomalies", anomalies.table,
+                               should_color);
     ec.print_to_stdout(output);
+  };
+
+  if (FLAG_EVIL_SHORT.is_enabled()) {
+    do_append_report();
     return 0;
   }
 
   let const uptime = os::system_uptime_seconds();
-  if (uptime.has_value()) {
-    append_report_field(output, "Uptime",
-                        format_uptime(*uptime, allocator).view(),
-                        colors::ansi::BOLD_CYAN, should_color);
-  }
+  if (uptime.has_value())
+    resources.add("Uptime", format_uptime(*uptime, allocator).view());
 
   let const processors = os::get_processor_counts();
   let processor_line = String{allocator};
@@ -535,8 +516,7 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
   processor_line += processors.online_count == 1 ? " online thread of "
                                                  : " online threads of ";
   processor_line += String::from(processors.configured_count, allocator).view();
-  append_report_field(output, "Processor", processor_line.view(),
-                      colors::ansi::BOLD_CYAN, should_color);
+  resources.add("Processor", processor_line.view());
 
   os::memory_status memory{};
   if (os::read_memory_status(memory) &&
@@ -553,8 +533,7 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
       memory_line += " used of ";
     }
     memory_line += format_human_size(memory.total_kib * 1024, allocator).view();
-    append_report_field(output, "Memory", memory_line.view(),
-                        colors::ansi::BOLD_CYAN, should_color);
+    resources.add("Memory", memory_line.view());
     if (FLAG_EVIL_ALL.is_enabled()) {
       let const do_append_memory_size =
           [&](StringView name, os::memory_status_field field, u64 value_kib)
@@ -563,22 +542,18 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
 
         let const value_bytes =
             value_kib > UINT64_MAX / 1024 ? UINT64_MAX : value_kib * 1024;
-        append_report_field(output, name,
-                            format_human_size(value_bytes, allocator).view(),
-                            colors::ansi::BOLD_CYAN, should_color);
+        resources.add(name, format_human_size(value_bytes, allocator).view());
       };
 
       if (memory.has_field(os::memory_status_field::Available)) {
-        append_report_field(
-            output, "Memory available",
-            format_human_size(memory.available_kib * 1024, allocator).view(),
-            colors::ansi::BOLD_CYAN, should_color);
+        resources.add(
+            "Memory available",
+            format_human_size(memory.available_kib * 1024, allocator).view());
       }
       if (memory.has_field(os::memory_status_field::Free)) {
-        append_report_field(
-            output, "Memory free",
-            format_human_size(memory.free_kib * 1024, allocator).view(),
-            colors::ansi::BOLD_CYAN, should_color);
+        resources.add(
+            "Memory free",
+            format_human_size(memory.free_kib * 1024, allocator).view());
       }
 
       do_append_memory_size("Memory buffers", os::memory_status_field::Buffers,
@@ -604,16 +579,14 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
                             os::memory_status_field::Committed,
                             memory.committed_kib);
       if (memory.has_field(os::memory_status_field::HugePagesTotal)) {
-        append_report_field(
-            output, "Huge pages total",
-            String::from(memory.huge_page_total_count, allocator).view(),
-            colors::ansi::BOLD_CYAN, should_color);
+        resources.add(
+            "Huge pages total",
+            String::from(memory.huge_page_total_count, allocator).view());
       }
       if (memory.has_field(os::memory_status_field::HugePagesFree)) {
-        append_report_field(
-            output, "Huge pages free",
-            String::from(memory.huge_page_free_count, allocator).view(),
-            colors::ansi::BOLD_CYAN, should_color);
+        resources.add(
+            "Huge pages free",
+            String::from(memory.huge_page_free_count, allocator).view());
       }
     }
 
@@ -629,8 +602,7 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
       swap_line += " used of ";
       swap_line +=
           format_human_size(memory.swap_total_kib * 1024, allocator).view();
-      append_report_field(output, "Swap", swap_line.view(),
-                          colors::ansi::BOLD_CYAN, should_color);
+      resources.add("Swap", swap_line.view());
     }
   }
 
@@ -645,43 +617,33 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
     root_line += StringView{root.type_name}.is_empty()
                      ? StringView{"the root filesystem"}
                      : StringView{root.type_name};
-    append_report_field(output, "Root", root_line.view(),
-                        colors::ansi::BOLD_CYAN, should_color);
+    resources.add("Root", root_line.view());
     if (FLAG_EVIL_ALL.is_enabled()) {
-      append_report_field(
-          output, "Root available",
-          format_human_size(root.available_blocks * unit, allocator).view(),
-          colors::ansi::BOLD_CYAN, should_color);
+      resources.add(
+          "Root available",
+          format_human_size(root.available_blocks * unit, allocator).view());
     }
   }
 
   let const load = read_first_line("/proc/loadavg", allocator);
-  if (load.has_value() && !load->is_empty()) {
-    append_report_field(output, "Load", load->view(), colors::ansi::BOLD_CYAN,
-                        should_color);
-  }
+  if (load.has_value() && !load->is_empty())
+    resources.add("Load", load->view());
 
   let const processes = os::enumerate_processes();
-  append_report_field(output, "Processes",
-                      String::from(processes.count(), allocator).view(),
-                      colors::ansi::BOLD_CYAN, should_color);
+  resources.add("Processes", String::from(processes.count(), allocator).view());
 
   if (FLAG_EVIL_ALL.is_enabled()) {
     let const sessions = os::logged_in_users();
-    append_report_field(output, "Login sessions",
-                        String::from(sessions.count(), allocator).view(),
-                        colors::ansi::BOLD_CYAN, should_color);
+    resources.add("Login sessions",
+                  String::from(sessions.count(), allocator).view());
 
     let const environment = os::environment_names();
-    append_report_field(output, "Environment variables",
-                        String::from(environment.count(), allocator).view(),
-                        colors::ansi::BOLD_CYAN, should_color);
+    resources.add("Environment variables",
+                  String::from(environment.count(), allocator).view());
   }
 
   let const mounts = os::mounted_filesystems();
-  append_report_field(output, "Filesystems",
-                      String::from(mounts.count(), allocator).view(),
-                      colors::ansi::BOLD_CYAN, should_color);
+  resources.add("Filesystems", String::from(mounts.count(), allocator).view());
 
   let const addresses = os::network_interface_addresses();
   let interface_names_unsorted = ArrayList<StringView>{allocator};
@@ -702,36 +664,30 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
   network_line += interface_count == 1 ? " interface, " : " interfaces, ";
   network_line += String::from(addresses.count(), allocator).view();
   network_line += addresses.count() == 1 ? " address" : " addresses";
-  append_report_field(output, "Network", network_line.view(),
-                      colors::ansi::BOLD_CYAN, should_color);
+  resources.add("Network", network_line.view());
 
   if (FLAG_EVIL_ALL.is_enabled()) {
-    append_system_configuration(output, "Argument limit",
-                                os::system_configuration_key::ArgMax, allocator,
-                                should_color);
-    append_system_configuration(output, "Open file maximum",
-                                os::system_configuration_key::OpenMax,
-                                allocator, should_color);
-    append_system_configuration(output, "Child maximum",
-                                os::system_configuration_key::ChildMax,
-                                allocator, should_color);
-    append_system_configuration(output, "Clock ticks per second",
-                                os::system_configuration_key::ClockTicks,
-                                allocator, should_color);
-    append_system_configuration(output, "Page size",
-                                os::system_configuration_key::PageSize,
-                                allocator, should_color);
-    append_resource_limit(output, "Open file limit", allocator, should_color,
+    append_system_configuration(limits, "Argument limit",
+                                os::system_configuration_key::ArgMax);
+    append_system_configuration(limits, "Open file maximum",
+                                os::system_configuration_key::OpenMax);
+    append_system_configuration(limits, "Child maximum",
+                                os::system_configuration_key::ChildMax);
+    append_system_configuration(limits, "Clock ticks per second",
+                                os::system_configuration_key::ClockTicks);
+    append_system_configuration(limits, "Page size",
+                                os::system_configuration_key::PageSize);
+    append_resource_limit(limits, "Open file limit",
                           os::resource_kind::OpenFiles);
-    append_resource_limit(output, "Process limit", allocator, should_color,
+    append_resource_limit(limits, "Process limit",
                           os::resource_kind::Processes);
-    append_resource_limit(output, "Core size limit", allocator, should_color,
+    append_resource_limit(limits, "Core size limit",
                           os::resource_kind::CoreBlocks);
-    append_procfs_report(output, should_color, allocator);
-    append_anomaly_report(output, cxt, should_color);
+    append_procfs_report(activity);
+    append_anomaly_report(anomalies, cxt);
   }
 
-  ec.print_to_stdout(output);
+  do_append_report();
   return 0;
 }
 

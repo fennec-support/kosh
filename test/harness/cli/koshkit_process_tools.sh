@@ -222,8 +222,9 @@ printf 'evilnet-traffic-only=%s\n' "$network_traffic_only"
 
 evil_short_report=$($BIN -c 'koshkit --color never evil --short')
 case $evil_short_report in
-  Host:*) evil_short_indent=none ;;
-  *) evil_short_indent=present ;;
+  'Identity
+  Host '*) evil_short_indent=titled ;;
+  *) evil_short_indent=untitled ;;
 esac
 printf 'evil-short-indent=%s\n' "$evil_short_indent"
 
