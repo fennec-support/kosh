@@ -1027,6 +1027,13 @@ fn AnalysisContext::note_variable_occurrence(
     name = expressions::internal::operand_target_name(name);
   if (name.is_empty()) return;
 
+  note_variable_scope(name);
+  if (kind == variable_occurrence_kind::Assignment &&
+      active_function_definition_index == NO_ACTIVE_FUNCTION_DEFINITION)
+  {
+    top_level_assigned_names.add(name);
+  }
+
   let const function_definition_index = active_function_definition_index;
   let const *current_state = kind == variable_occurrence_kind::Reference
                                  ? variable_occurrence_assignments.find(name)
@@ -1257,6 +1264,28 @@ static pure fn assign_form_target_name(StringView expansion_text) wontthrow
   }
 
   return name;
+}
+
+fn AnalysisContext::note_variable_scope(StringView name) throws -> void
+{
+  let const scope =
+      active_function_definition_index == NO_ACTIVE_FUNCTION_DEFINITION
+          ? usize{0}
+          : active_function_definition_index + 1;
+  let const first_scope = variable_first_scopes.find(name);
+  if (!first_scope.has_value()) {
+    variable_first_scopes.set(name, scope);
+    return;
+  }
+
+  if (**first_scope != scope) shared_scope_variable_names.add(name);
+}
+
+pure fn AnalysisContext::is_posix_mood() const wontthrow -> bool
+{
+  return is_posix_sh_shebang ||
+         (eval_context != nullptr &&
+          eval_context->runtime_state().get_mood() == mimic_mood::Posix);
 }
 
 fn AnalysisContext::note_variable_read(StringView name,
@@ -1963,6 +1992,12 @@ fn analyze_ast(
   expressions::internal::check_command_name_assignments(actx);
   expressions::internal::check_unassigned_variable_reads(actx);
   expressions::internal::check_function_argument_dataflow(actx);
+  for (let const &assignment : actx.function_global_assignments) {
+    if (actx.shared_scope_variable_names.contains(assignment.name.view())) {
+      actx.report_diagnostic(diagnostic_id::function_global_assignment,
+                             assignment.location, {assignment.name.view()});
+    }
+  }
   if (symbol_records != nullptr)
     resolve_function_occurrence_states(*symbol_records);
 

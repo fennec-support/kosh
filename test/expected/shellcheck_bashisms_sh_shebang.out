@@ -46,10 +46,6 @@ note: Use ordinary double quotes under a `sh` shebang.
     19 |    bare_assignment=$"localized bare"
        |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 note: Use ordinary double quotes under a `sh` shebang.
-19:3: warning: This assignment to 'bare_assignment' in a function has no `local`.
-    19 |    bare_assignment=$"localized bare"
-       |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-note: Declare it with `local` to keep it inside the function.
 20:8: warning: The `$"..."` quoting form is a bash extension absent from POSIX sh. (SC3004)
     20 |    echo $'\''$"escaped ansi quote"
        |         ^~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -365,5 +361,9 @@ note: Name the file explicitly under a `sh` shebang.
    114 |    { echo localized; } >$"compound.log"
        |                         ^~~~~~~~~~~~~~~
 note: Use ordinary double quotes under a `sh` shebang.
+117:3: warning: 'shared_result' is set in this function and used outside it.
+   117 |    shared_result=1
+       |    ^~~~~~~~~~~~~~~
+note: Assign it before the function to show the variable is shared.
 Encountered 92 warnings.
 done

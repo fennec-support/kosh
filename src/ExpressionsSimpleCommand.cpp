@@ -213,8 +213,15 @@ fn AssignCommand::analyze(AnalysisContext &actx,
       !(actx.eval_context != nullptr &&
         actx.eval_context->get_variable_value(name.view()).has_value()))
   {
-    actx.report_diagnostic(diagnostic_id::no_local, source_location(),
-                           {name.view()});
+    if (actx.is_posix_mood()) {
+      if (!actx.top_level_assigned_names.contains(name.view())) {
+        actx.function_global_assignments.push(
+            {String{name.view()}, source_location()});
+      }
+    } else {
+      actx.report_diagnostic(diagnostic_id::no_local, source_location(),
+                             {name.view()});
+    }
   }
 
   if (actx.function_scope_depth == 0 && is_unconditional &&
@@ -735,8 +742,8 @@ fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
   }
 
   bool did_signal_arrive = false;
-  let opened =
-      os::open_file_descriptor_until_signal(target_path, mode, did_signal_arrive);
+  let opened = os::open_file_descriptor_until_signal(target_path, mode,
+                                                     did_signal_arrive);
   while (!opened && did_signal_arrive) {
     cxt.run_pending_traps();
     if (cxt.control_flow_store().has_pending() &&

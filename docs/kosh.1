@@ -2886,6 +2886,17 @@ arguments without passing any, or calls a function before defining it. If an
 unassigned name resembles an assigned name, that assignment is shown as a detail
 location.
 .PP
+A function assignment without
+.B local
+is reported because it changes a global variable. Under a
+.B sh
+shebang or in the
+.B sh
+mood there is no
+.BR local ,
+so only a variable that is first set inside a function and also used outside it
+is reported, with a suggestion to assign it before the function.
+.PP
 A comment of the form
 .B # shellcheck disable=SC2086,unquoted-command-substitution
 suppresses the named analysis checks. A numeric code suppresses every variant

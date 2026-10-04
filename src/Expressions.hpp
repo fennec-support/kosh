@@ -255,6 +255,12 @@ private:
 
 /* One function this script defines. The whole-script sweep reads these after
    the walk, so the name is owned and never a slice of the syntax tree. */
+struct function_global_assignment
+{
+  String name;
+  SourceLocation location;
+};
+
 struct function_definition_record
 {
   String name;
@@ -457,6 +463,12 @@ public:
   /* The SC3xxx bashism lints fire only behind this gate, since a kosh or bash
      shebang means the bash extension on purpose. */
   bool is_posix_sh_shebang{false};
+
+  ArrayList<function_global_assignment> function_global_assignments{
+      heap_allocator()};
+  StringMap<usize> variable_first_scopes{heap_allocator()};
+  HashSet shared_scope_variable_names{heap_allocator()};
+  HashSet top_level_assigned_names{heap_allocator()};
 
   /* An interactive -W chunk runs the moment the analysis ends and the runtime
      resolution reports the same missing command, so the analysis copy would
@@ -661,6 +673,8 @@ public:
 
   fn note_variable_read(StringView name, const SourceLocation &location,
                         bool is_top_level_unconditional) throws -> void;
+  fn note_variable_scope(StringView name) throws -> void;
+  pure fn is_posix_mood() const wontthrow -> bool;
   fn trace_optimizer_line(StringView message) const throws -> void;
   fn print_script_backtrace_if_rooted(
       const SourceLocation &location) const throws -> void;
@@ -1143,8 +1157,8 @@ protected:
   };
   mutable Maybe<literal_command_lookup> m_literal_command_lookup{};
 
-  fn get_literal_command_lookup(const ArrayList<String> &program_args) const
-      throws -> const literal_command_lookup *;
+  fn get_literal_command_lookup(const ArrayList<String> &program_args)
+      const throws -> const literal_command_lookup *;
 
   u32 m_full_source_end_position{0};
 

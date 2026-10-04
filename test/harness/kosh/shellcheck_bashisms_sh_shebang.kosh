@@ -113,4 +113,16 @@ compound_redirect_only() {
   { echo globbed; } >prefix*.log
   { echo localized; } >$"compound.log"
 }
+set_shared_and_private() {
+  shared_result=1
+  private_result=2
+  echo "$private_result"
+}
+read_shared() {
+  echo "$shared_result"
+}
+declared_early=
+set_declared_early() {
+  declared_early=3
+}
 echo done

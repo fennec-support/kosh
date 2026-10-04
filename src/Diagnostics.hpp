@@ -352,6 +352,7 @@ enum class diagnostic_id : u16
   external_array_subscript,
   malformed_glob,
   no_local,
+  function_global_assignment,
   optimizer_eliminated_cstyle_for,
   optimizer_eliminated_for,
   optimizer_eliminated_if,
