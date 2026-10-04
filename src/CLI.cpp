@@ -1112,19 +1112,6 @@ fn append_report_text(String &output, StringView text, StringView style,
   if (is_styled) output += colors::ansi::RESET;
 }
 
-fn append_report_column(String &output, StringView text, usize width,
-                        bool is_right_aligned, StringView style,
-                        bool should_color) throws -> void
-{
-  let const text_width = toiletline::get_display_width(text);
-  let const padding_length = text_width < width ? width - text_width : 0;
-  if (is_right_aligned) output.append_repeated(' ', padding_length);
-
-  append_report_text(output, text, style, should_color);
-
-  if (!is_right_aligned) output.append_repeated(' ', padding_length);
-}
-
 fn ReportTable::add_column(StringView heading, report_table_alignment alignment,
                            StringView style) throws -> void
 {

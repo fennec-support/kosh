@@ -377,9 +377,6 @@ pure fn get_tree_connector(bool is_last) wontthrow -> tree_connector;
 
 fn append_report_text(String &output, StringView text, StringView style,
                       bool should_color) throws -> void;
-fn append_report_column(String &output, StringView text, usize width,
-                        bool is_right_aligned, StringView style,
-                        bool should_color) throws -> void;
 enum class report_table_alignment : u8
 {
   Left,

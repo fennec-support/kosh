@@ -53,12 +53,6 @@ struct du_size_result
   bool should_emit;
 };
 
-enum class du_color_mode : u8
-{
-  Plain,
-  Colored,
-};
-
 struct du_directory_frame
 {
   Path path;
@@ -377,17 +371,14 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
   return root_result;
 }
 
-fn append_size_line(String &output, const du_output_row &row,
-                    StringView rendered_size, usize size_width,
-                    du_color_mode color_mode) throws -> void
+fn add_size_row(ReportTable &table, Allocator allocator,
+                const du_output_row &row, StringView rendered_size) throws
+    -> void
 {
-  let const should_color = color_mode == du_color_mode::Colored;
-  append_report_column(output, rendered_size, size_width, true,
-                       colors::ansi::BOLD_GREEN, should_color);
-  output += "  ";
-  append_report_text(output, row.path.view(), colors::ansi::BOLD_CYAN,
-                     should_color);
-  output += '\n';
+  let cells = ArrayList<report_table_cell_view>{allocator};
+  cells.push({rendered_size, {}});
+  cells.push({row.path.view(), {}});
+  table.add_row(cells);
 }
 
 Du::Du() = default;
@@ -501,40 +492,28 @@ fn Du::execute(const ExecContext &ec, EvalContext &cxt,
 
   let const is_human = FLAG_DU_HUMAN.is_enabled();
   let rendered_sizes = ArrayList<String>{allocator};
-  usize size_width = 0;
   if (is_human) {
     rendered_sizes.reserve(output_order.count());
-    for (let const &sort_key : output_order) {
-      let rendered_size = format_human_size(sort_key.size_bytes, allocator);
-      if (rendered_size.length() > size_width)
-        size_width = rendered_size.length();
-      rendered_sizes.push(steal(rendered_size));
-    }
-  } else if (!output_order.is_empty()) {
-    size_width = String::from(output_order[0].size_bytes, allocator).length();
+    for (let const &sort_key : output_order)
+      rendered_sizes.push(format_human_size(sort_key.size_bytes, allocator));
   }
 
-  let output = String{allocator};
-  let const color_mode =
-      koshkit_should_color() ? du_color_mode::Colored : du_color_mode::Plain;
+  let table = ReportTable{allocator};
+  table.set_header_visible(false);
+  table.add_column("", report_table_alignment::Right, colors::ansi::BOLD_GREEN);
+  table.add_column("", report_table_alignment::Left, colors::ansi::BOLD_CYAN);
   for (usize index = 0; index < output_order.count(); index++) {
     let const &sort_key = output_order[index];
     let const &row = output_rows[sort_key.row_index];
     if (is_human) {
-      append_size_line(output, row, rendered_sizes[index].view(), size_width,
-                       color_mode);
+      add_size_row(table, allocator, row, rendered_sizes[index].view());
     } else {
       let const rendered_size = String::from(sort_key.size_bytes, allocator);
-      append_size_line(output, row, rendered_size.view(), size_width,
-                       color_mode);
-    }
-
-    if (output.length() >= 65536) {
-      ec.print_to_stdout(output.view());
-      output.clear();
+      add_size_row(table, allocator, row, rendered_size.view());
     }
   }
 
+  let const output = table.to_string(koshkit_should_color(), "");
   ec.print_to_stdout(output.view());
   if (was_interrupted) return 130;
   if (has_failure) status = 1;
