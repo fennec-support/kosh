@@ -401,7 +401,8 @@ static fn linux_socket_owners(Allocator allocator) throws
     if (parsed_pid.is_error()) continue;
 
     let const process_directory = proc_path + "/" + name;
-    let const start_token = linux_process_start_token(process_directory.view());
+    bool did_read_start_token = false;
+    Maybe<u64> start_token = None;
 
     let const descriptor_path = process_directory + "/fd";
     DIR *descriptor_directory = ::opendir(descriptor_path.c_str());
@@ -433,10 +434,15 @@ static fn linux_socket_owners(Allocator allocator) throws
           break;
         }
       }
-      if (!is_known)
+      if (!is_known) {
+        if (!did_read_start_token) {
+          start_token = linux_process_start_token(process_directory.view());
+          did_read_start_token = true;
+        }
         owners.push(linux_socket_owner{inode.value(), start_token.value_or(0),
                                        parsed_pid.value(),
                                        start_token.has_value()});
+      }
     }
     ::closedir(descriptor_directory);
   }
