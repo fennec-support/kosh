@@ -1,0 +1,24 @@
+#!/bin/bash
+
+BIN_DIR=${0%/*}
+TEST_FILE=$1
+TEST_NAME=${TEST_FILE##*/}
+TEST_NAME=${TEST_NAME%.cpp}
+
+OUTPUT="$TEST_TEMP_DIRECTORY/unit-$TEST_NAME.out"
+mkdir -p "$TEST_TEMP_DIRECTORY"
+env -u MAKEFLAGS -u MAKELEVEL -u MFLAGS \
+  "$BIN_DIR/invoke-koshkit" timeout -k 2s "${TEST_TIMEOUT_SECONDS:-300}" \
+  "$UNIT_MAKE" -s -C ../src "MODE=$MODE" "TARGET=$TARGET" \
+  "NO_TOILETLINE=$NO_TOILETLINE" "UNIT=$TEST_NAME" unit >"$OUTPUT" 2>&1
+STATUS=$?
+
+if [ "$STATUS" -eq 0 ]
+then
+  rm -f "$OUTPUT"
+  exit 0
+fi
+
+cat "$OUTPUT" >&2
+rm -f "$OUTPUT"
+exit 1
