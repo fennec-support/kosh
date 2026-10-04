@@ -20,6 +20,7 @@
  */
 
 #include "../CLI.hpp"
+#include "../CLIColors.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
@@ -31,7 +32,7 @@
 FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL(
-    "[-EFivrnhcqslx] [-e pattern] [-f file] [pattern] [file ...]");
+    "[-EFivrnhcqslx] [--color[=when]] [-e pattern] [-f file] [pattern] [file ...]");
 
 HELP_DESCRIPTION_DECL(
     "The grep utility prints the lines of each file that match a pattern.");
@@ -59,6 +60,10 @@ FLAG(GREP_LINE_NUMBER, Bool, 'n', "line-number",
      "Prefix matching lines with numbers.");
 FLAG(GREP_NO_FILENAME, Bool, 'h', "no-filename",
      "Suppress file-name prefixes.");
+FLAG_OPTIONAL(GREP_COLOR, '\0', "color",
+              "Color matches, names, numbers, and separators; the default is "
+              "auto.",
+              koshka::koshkit::is_koshkit_color_when, "auto|always|never");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Grep);
@@ -400,6 +405,8 @@ struct grep_options
   bool is_extended{false};
   bool is_fixed{false};
   bool is_whole_line{false};
+  bool should_color{false};
+  bool should_highlight{false};
 };
 
 struct grep_pattern_span
@@ -435,8 +442,11 @@ public:
 
   fn compile_pattern() throws -> bool
   {
-    if (m_should_use_literal_search ||
-        (m_has_fast_matcher && !m_has_utf8_wildcard))
+    let const does_need_span_regex =
+        m_options.should_highlight && !m_should_use_literal_search;
+    if (!does_need_span_regex &&
+        (m_should_use_literal_search ||
+         (m_has_fast_matcher && !m_has_utf8_wildcard)))
     {
       return true;
     }
@@ -444,7 +454,9 @@ public:
     let const sensitivity = m_options.should_ignore_case
                                 ? os::case_sensitivity::Insensitive
                                 : os::case_sensitivity::Sensitive;
-    if (!m_has_fast_matcher && (!m_options.is_utf8 || m_is_ascii_pattern)) {
+    if ((!m_has_fast_matcher || does_need_span_regex) &&
+        (!m_options.is_utf8 || m_is_ascii_pattern))
+    {
       if (!compile_regex_into(m_regex, sensitivity)) return false;
     }
 
@@ -488,6 +500,53 @@ public:
     return report.result == os::regex_match_result::Matched &&
            report.spans[0].start == 0 &&
            static_cast<usize>(report.spans[0].end) == value.length;
+  }
+
+  fn find_span(StringView value, usize from, usize &out_start,
+               usize &out_end) throws -> bool
+  {
+    if (m_should_use_literal_search) {
+      let const needle = m_options.should_ignore_case
+                             ? StringView{m_folded_pattern.view()}
+                             : m_options.pattern;
+      if (needle.is_empty() || value.length < needle.length) return false;
+
+      for (usize start = from; start + needle.length <= value.length; start++)
+      {
+        usize offset = 0;
+        while (offset < needle.length &&
+               (m_options.should_ignore_case
+                    ? static_cast<char>(tolower(
+                          static_cast<unsigned char>(value[start + offset])))
+                    : value[start + offset]) == needle[offset])
+        {
+          offset++;
+        }
+        if (offset == needle.length) {
+          out_start = start;
+          out_end = start + needle.length;
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    let &selected = m_utf8_regex.has_value() &&
+                            (!m_is_ascii_pattern || !is_ascii_line(value))
+                        ? *m_utf8_regex
+                        : *m_regex;
+    let const report = os::execute_regex(
+        *selected.get(),
+        os::regex_execution_options{value.substring(from), m_allocator,
+                                    from == 0
+                                        ? os::regex_start_position::Beginning
+                                        : os::regex_start_position::NotBeginning});
+    if (report.result != os::regex_match_result::Matched) return false;
+
+    out_start = from + static_cast<usize>(report.spans[0].start);
+    out_end = from + static_cast<usize>(report.spans[0].end);
+    return true;
   }
 
 private:
@@ -1025,7 +1084,110 @@ private:
 
   fn append_source_name(StringView source) throws -> void
   {
-    m_output += source == "-" ? StringView{"(standard input)"} : source;
+    let const name = source == "-" ? StringView{"(standard input)"} : source;
+    if (m_options.should_color) {
+      m_output += colors::ansi::MAGENTA;
+      m_output += name;
+      m_output += colors::ansi::RESET;
+      return;
+    }
+
+    m_output += name;
+  }
+
+  fn append_separator() throws -> void
+  {
+    if (m_options.should_color) {
+      m_output += colors::ansi::CYAN;
+      m_output += ':';
+      m_output += colors::ansi::RESET;
+      return;
+    }
+
+    m_output += ':';
+  }
+
+  fn append_line_number(usize number) throws -> void
+  {
+    char line_number[20];
+    let const text =
+        utils::uint_to_text_into(number, line_number, sizeof(line_number));
+    if (m_options.should_color) {
+      m_output += colors::ansi::GREEN;
+      m_output += text;
+      m_output += colors::ansi::RESET;
+      return;
+    }
+
+    m_output += text;
+  }
+
+  fn append_colored_line(usize source_index, StringView source,
+                         StringView value) throws -> void
+  {
+    if (m_should_print_names) {
+      append_source_name(source);
+      append_separator();
+    }
+    if (m_options.should_print_line_numbers) {
+      append_line_number(m_source_line_numbers[source_index]);
+      append_separator();
+    }
+    if (m_options.should_highlight)
+      append_highlighted_text(value);
+    else
+      m_output += value;
+    m_output += '\n';
+  }
+
+  fn append_highlighted_text(StringView value) throws -> void
+  {
+    if (m_options.is_whole_line) {
+      if (!value.is_empty()) {
+        m_output += colors::ansi::BOLD_RED;
+        m_output += value;
+        m_output += colors::ansi::RESET;
+      }
+      return;
+    }
+
+    usize position = 0;
+    usize plain_start = 0;
+    while (position <= value.length) {
+      usize best_start = 0;
+      usize best_end = 0;
+      let did_find = false;
+      for (let &matcher : m_matchers) {
+        usize start = 0;
+        usize end = 0;
+        if (!matcher.find_span(value, position, start, end)) continue;
+
+        if (!did_find || start < best_start ||
+            (start == best_start && end > best_end))
+        {
+          best_start = start;
+          best_end = end;
+          did_find = true;
+        }
+      }
+
+      if (!did_find) break;
+
+      if (best_end == best_start) {
+        position = best_start + 1;
+        continue;
+      }
+
+      m_output += value.substring_of_length(plain_start,
+                                            best_start - plain_start);
+      m_output += colors::ansi::BOLD_RED;
+      m_output += value.substring_of_length(best_start, best_end - best_start);
+      m_output += colors::ansi::RESET;
+      position = best_end;
+      plain_start = best_end;
+    }
+
+    m_output += value.substring(plain_start);
   }
 
   fn flush_output_if_full() throws -> void
@@ -1039,16 +1201,21 @@ private:
   fn process_line(usize source_index, StringView source, StringView value,
                   bool is_match) throws -> void
   {
-    char line_number[20];
     if (is_match != m_options.should_invert) {
       m_has_any_match = true;
       switch (m_options.output_mode) {
       case grep_output_mode::Lines:
+        if (m_options.should_color) {
+          append_colored_line(source_index, source, value);
+          flush_output_if_full();
+          break;
+        }
         if (m_should_print_names) {
           append_source_name(source);
           m_output += ':';
         }
         if (m_options.should_print_line_numbers) {
+          char line_number[20];
           m_output +=
               utils::uint_to_text_into(m_source_line_numbers[source_index],
                                        line_number, sizeof(line_number));
@@ -1079,7 +1246,7 @@ private:
     char count_text[20];
     if (m_should_print_names) {
       append_source_name(source);
-      m_output += ':';
+      append_separator();
     }
     m_output += utils::uint_to_text_into(m_source_match_counts[source_index],
                                          count_text, sizeof(count_text));
@@ -1304,6 +1471,11 @@ fn Grep::execute(const ExecContext &ec, EvalContext &cxt,
   options.is_extended = FLAG_GREP_EXTENDED.is_enabled();
   options.is_fixed = FLAG_GREP_FIXED.is_enabled();
   options.is_whole_line = FLAG_GREP_LINE_REGEXP.is_enabled();
+  options.should_color = resolve_koshkit_color_flag(
+      FLAG_GREP_COLOR.is_enabled(), FLAG_GREP_COLOR.has_value(),
+      FLAG_GREP_COLOR.value());
+  options.should_highlight = options.should_color && !options.should_invert &&
+                             options.output_mode == grep_output_mode::Lines;
 
   let pattern_text = String{cxt.scratch_allocator()};
   let pattern_spans = ArrayList<grep_pattern_span>{cxt.scratch_allocator()};
