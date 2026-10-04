@@ -33,10 +33,18 @@ struct opaque_shell_word_range
   usize raw_length;
 };
 
+struct leading_expansion
+{
+  bool is_tilde_active{false};
+  bool is_variable_active{false};
+  usize variable_end{0};
+};
+
 struct decoded_shell_word
 {
   String text;
   Bitset glob_active;
+  leading_expansion leading;
   ArrayList<usize> raw_positions;
   ArrayList<opaque_shell_word_range> opaque_ranges;
   usize raw_directory_end{0};
@@ -44,11 +52,8 @@ struct decoded_shell_word
   usize open_quote_decoded_start{0};
   usize last_quote_content_start{0};
   usize last_quote_decoded_start{0};
-  usize leading_variable_expansion_end{0};
   char quote_character{0};
   char last_quote_character{0};
-  bool is_leading_tilde_active{false};
-  bool is_leading_variable_active{false};
   bool has_shell_syntax{false};
 
   explicit decoded_shell_word(Allocator allocator)

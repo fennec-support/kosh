@@ -1387,7 +1387,7 @@ fn internal::scan_highlight_range(
               highlight_span{mapped_start, word_end, highlight_role::glob});
       } else {
         let has_only_leading_tilde_range =
-            decoded.is_leading_tilde_active &&
+            decoded.leading.is_tilde_active &&
             decoded.opaque_ranges.count() == 1 &&
             decoded.opaque_ranges[0].decoded_start == 0 &&
             decoded.opaque_ranges[0].decoded_length == 1 &&
@@ -1404,7 +1404,7 @@ fn internal::scan_highlight_range(
             ArrayList<highlight_span>{bump_allocator(HIGHLIGHT_ARENA)};
         if (!color_path_argument(0, decoded.text.view(), is_word_terminated,
                                  should_only_include_directories,
-                                 decoded.is_leading_tilde_active,
+                                 decoded.leading.is_tilde_active,
                                  decoded_path_spans))
           return false;
 

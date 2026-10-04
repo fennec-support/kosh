@@ -359,7 +359,7 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
       if (body_end > word.length) body_end = word.length;
 
       if (is_scanning_tilde_prefix) {
-        decoded.is_leading_tilde_active = false;
+        decoded.leading.is_tilde_active = false;
         is_scanning_tilde_prefix = false;
       }
       is_scanning_leading_variable = false;
@@ -399,7 +399,7 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
     if (quote_character == 0 && (byte == '\'' || byte == '"')) {
       decoded.has_shell_syntax = true;
       if (is_scanning_tilde_prefix) {
-        decoded.is_leading_tilde_active = false;
+        decoded.leading.is_tilde_active = false;
         is_scanning_tilde_prefix = false;
       }
       is_scanning_leading_variable = false;
@@ -417,7 +417,7 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
     }
     if (byte == quote_character) {
       if (is_scanning_tilde_prefix) {
-        decoded.is_leading_tilde_active = false;
+        decoded.leading.is_tilde_active = false;
         is_scanning_tilde_prefix = false;
       }
       is_scanning_leading_variable = false;
@@ -437,7 +437,7 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
       {
         decoded.has_shell_syntax = true;
         if (is_scanning_tilde_prefix) {
-          decoded.is_leading_tilde_active = false;
+          decoded.leading.is_tilde_active = false;
           is_scanning_tilde_prefix = false;
         }
         is_scanning_leading_variable = false;
@@ -458,21 +458,20 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
       }
     }
     if (decoded.text.is_empty()) {
-      decoded.is_leading_tilde_active = byte == '~' && quote_character == 0;
-      decoded.is_leading_variable_active =
+      decoded.leading.is_tilde_active = byte == '~' && quote_character == 0;
+      decoded.leading.is_variable_active =
           byte == '$' && quote_character != '\'';
-      is_scanning_tilde_prefix = decoded.is_leading_tilde_active;
-      is_scanning_leading_variable = decoded.is_leading_variable_active;
-      if (is_scanning_leading_variable)
-        decoded.leading_variable_expansion_end = 1;
+      is_scanning_tilde_prefix = decoded.leading.is_tilde_active;
+      is_scanning_leading_variable = decoded.leading.is_variable_active;
+      if (is_scanning_leading_variable) decoded.leading.variable_end = 1;
     } else if (is_scanning_leading_variable) {
       if (decoded.text.length() == 1 && byte == '{') {
         leading_variable_is_braced = true;
-        decoded.leading_variable_expansion_end = decoded.text.length() + 1;
+        decoded.leading.variable_end = decoded.text.length() + 1;
       } else if (lexer::is_variable_name(byte)) {
-        decoded.leading_variable_expansion_end = decoded.text.length() + 1;
+        decoded.leading.variable_end = decoded.text.length() + 1;
       } else if (leading_variable_is_braced && byte == '}') {
-        decoded.leading_variable_expansion_end = decoded.text.length() + 1;
+        decoded.leading.variable_end = decoded.text.length() + 1;
         is_scanning_leading_variable = false;
       } else {
         is_scanning_leading_variable = false;
@@ -521,7 +520,7 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
 
     usize raw_end = raw_start;
     if (raw_start == 0 && byte == '~' && scan_quote == 0 &&
-        decoded.is_leading_tilde_active)
+        decoded.leading.is_tilde_active)
     {
       raw_end = raw_start + 1;
     } else if ((byte == '$' && scan_quote != '\'') ||

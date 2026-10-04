@@ -541,11 +541,8 @@ static fn open_filesystem_listing(const utils::decoded_shell_word &decoded_word,
     -> Maybe<filesystem_listing>
 {
   let const parts = split_path_token(decoded_word.text.view());
-  let directory =
-      resolve_listing_directory(parts.directory_part, base_directory, context,
-                                decoded_word.is_leading_tilde_active,
-                                decoded_word.is_leading_variable_active,
-                                decoded_word.leading_variable_expansion_end);
+  let directory = resolve_listing_directory(
+      parts.directory_part, base_directory, context, decoded_word.leading);
   let const entries = utils::read_directory_cached(
       directory, utils::directory_validation::Cached,
       utils::directory_listing_order::FoldedName);
@@ -640,7 +637,7 @@ build_filesystem_candidate(StringView directory_part,
     if (path_candidate_needs_quoting(entry_name.view()))
       entry_name = quote_path_candidate(entry_name.view());
     candidate += entry_name;
-  } else if (decoded_word.is_leading_tilde_active && !inside_quote) {
+  } else if (decoded_word.leading.is_tilde_active && !inside_quote) {
     candidate = String{completion_allocator(), raw_directory_part};
     if (path_candidate_needs_quoting(entry_name.view()))
       entry_name = quote_path_candidate(entry_name.view());
@@ -1235,9 +1232,9 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       has_open_quote ? decoded_token.quote_character == '"' &&
                            !open_quote_content_token.is_empty() &&
                            open_quote_content_token[0] == '$'
-                     : decoded_token.is_leading_variable_active;
+                     : decoded_token.leading.is_variable_active;
   let const is_leading_tilde_active =
-      !has_open_quote && decoded_token.is_leading_tilde_active;
+      !has_open_quote && decoded_token.leading.is_tilde_active;
 
   /* A command-position token holding a path separator completes against the
      filesystem rather than the command sets. */

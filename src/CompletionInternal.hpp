@@ -22,6 +22,7 @@ namespace koshka {
 
 namespace utils {
 struct decoded_shell_word;
+struct leading_expansion;
 }
 
 namespace completion::internal {
@@ -80,9 +81,7 @@ fn rebuild_shell_syntax_candidate(StringView raw_token,
     -> String;
 fn resolve_listing_directory(StringView directory_part,
                              const Path &base_directory, EvalContext &context,
-                             bool is_leading_tilde_active,
-                             bool is_leading_variable_active,
-                             usize leading_variable_expansion_end) throws
+                             const utils::leading_expansion &leading) throws
     -> Path;
 fn command_word_of(StringView line) wontthrow -> StringView;
 pure fn token_has_glob_metacharacter(StringView token) wontthrow -> bool;

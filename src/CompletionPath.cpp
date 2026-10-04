@@ -195,7 +195,7 @@ fn internal::rebuild_shell_syntax_candidate(
   }
 
   if (decoded_word.last_quote_character == 0) {
-    if (decoded_word.is_leading_tilde_active &&
+    if (decoded_word.leading.is_tilde_active &&
         decoded_candidate.starts_with("~"))
     {
       candidate.push('~');
@@ -203,14 +203,14 @@ fn internal::rebuild_shell_syntax_candidate(
       return candidate;
     }
 
-    if (decoded_word.is_leading_variable_active &&
-        decoded_word.leading_variable_expansion_end <= decoded_candidate.length)
+    if (decoded_word.leading.is_variable_active &&
+        decoded_word.leading.variable_end <= decoded_candidate.length)
     {
-      candidate.append(raw_token.substring_of_length(
-          0, decoded_word.leading_variable_expansion_end));
-      append_candidate_suffix(candidate,
-                              decoded_candidate.substring(
-                                  decoded_word.leading_variable_expansion_end));
+      candidate.append(
+          raw_token.substring_of_length(0, decoded_word.leading.variable_end));
+      append_candidate_suffix(
+          candidate,
+          decoded_candidate.substring(decoded_word.leading.variable_end));
       return candidate;
     }
 
@@ -282,20 +282,19 @@ static fn expand_leading_variable_path(StringView directory_part,
 
 fn internal::resolve_listing_directory(
     StringView directory_part, const Path &base_directory, EvalContext &context,
-    bool is_leading_tilde_active, bool is_leading_variable_active,
-    usize leading_variable_expansion_end) throws -> Path
+    const utils::leading_expansion &leading) throws -> Path
 {
   if (directory_part.is_empty()) return base_directory;
 
-  if (is_leading_tilde_active)
+  if (leading.is_tilde_active)
     if (Maybe<String> expanded =
             utils::expand_leading_tilde_path(directory_part);
         expanded.has_value())
       return Path{expanded->view()};
 
-  if (is_leading_variable_active)
+  if (leading.is_variable_active)
     if (Maybe<String> expanded = expand_leading_variable_path(
-            directory_part, leading_variable_expansion_end, context);
+            directory_part, leading.variable_end, context);
         expanded.has_value())
     {
       let directory = Path{expanded->view()};
