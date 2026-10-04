@@ -916,6 +916,8 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
     let live_input = String{live_allocator};
     let live_search = String{live_allocator};
     usize scroll_offset = 0;
+    usize previous_visible_line_count = 0;
+    bool has_previous_visible_line_count = false;
 
     let const do_sample = [&](u64 now, Allocator) -> Maybe<i32> {
       nodes = read_process_nodes(live_allocator, resource_mode);
@@ -941,6 +943,12 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
                                     ? dimensions.rows - 3
                                     : 0;
       let const body_start_length = frame.length();
+      let const requested_offset = scroll_offset;
+      usize rendered_offset = requested_offset;
+      if (viewport_rows != 0 && has_previous_visible_line_count) {
+        rendered_offset = get_clamped_scroll_offset(
+            requested_offset, previous_visible_line_count, viewport_rows - 1);
+      }
       for (usize pass_count = 0; pass_count < 2; pass_count++) {
         frame.truncate(body_start_length);
         frame += "SORT ";
@@ -967,17 +975,20 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
         usize visible_line_count = 0;
         let const status = render_process_snapshot(
             ec, cxt, frame_allocator, frame, nodes, operands, operand_locations,
-            output_limit, viewport_rows, scroll_offset, live_search.view(),
+            output_limit, viewport_rows, rendered_offset, live_search.view(),
             sort_key, live_line_width_limit, visible_line_count,
             report_sampling_mode::Rolling, color_mode);
         if (status != 0) return status;
         if (viewport_rows == 0) break;
 
+        previous_visible_line_count = visible_line_count;
+        has_previous_visible_line_count = true;
         let const clamped_offset = get_clamped_scroll_offset(
-            scroll_offset, visible_line_count, viewport_rows - 1);
-        if (clamped_offset == scroll_offset) break;
-
+            requested_offset, visible_line_count, viewport_rows - 1);
         scroll_offset = clamped_offset;
+        if (clamped_offset == rendered_offset) break;
+
+        rendered_offset = clamped_offset;
       }
       return None;
     };
