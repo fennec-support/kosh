@@ -132,7 +132,10 @@ def probe_evilnet(binary):
         chunk = b"x" * 65536
         with socket.create_connection(("127.0.0.1", port)) as connection:
             while not is_stopped.is_set():
-                connection.sendall(chunk)
+                try:
+                    connection.sendall(chunk)
+                except OSError:
+                    return
 
     consumer = threading.Thread(target=consume)
     producer = threading.Thread(target=produce)
