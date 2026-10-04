@@ -987,14 +987,20 @@ fn EvalContext::sync_analysis_environment() throws -> void
   if (!runtime.is_annoying_diagnostics_enabled()) text += "no-annoying ";
   if (runtime.is_diagnostics_disabled()) text += "no-diagnostics ";
 
-  record_environment_change(NAME);
+  if (!text.is_empty()) text.pop_back();
 
-  if (text.is_empty()) {
-    if (os::has_environment_variable(NAME)) os::unset_environment_variable(NAME);
+  let const current = os::get_environment_variable(NAME);
+  if (current.has_value() ? current->view() == text.view() : text.is_empty()) {
     return;
   }
 
-  text.pop_back();
+  record_environment_change(NAME);
+
+  if (text.is_empty()) {
+    os::unset_environment_variable(NAME);
+    return;
+  }
+
   os::set_environment_variable(NAME, text.view());
 }
 
