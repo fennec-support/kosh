@@ -150,23 +150,24 @@ static fn parse_sed_delimited(StringView script, usize &position,
                       "close the expression with the delimiter that opened it"};
 }
 
-static fn compile_sed_expression(StringView expression,
-                                 os::compiled_regex &compiled, usize position,
-                                 sed_regex_mode regex_mode) throws -> void
+static fn compile_sed_expression(StringView expression, usize position,
+                                 sed_regex_mode regex_mode) throws
+    -> os::compiled_regex
 {
   let const result =
       regex_mode == sed_regex_mode::Extended
-          ? os::compile_regex(expression, compiled,
-                              os::case_sensitivity::Sensitive)
-          : os::compile_basic_regex(expression, compiled,
+          ? os::compile_regex(expression, os::case_sensitivity::Sensitive)
+          : os::compile_basic_regex(expression,
                                     os::case_sensitivity::Sensitive);
-  if (result != os::regex_compile_result::Ok) {
+  if (!result.has_value()) {
     throw SedParseError{
         position, "invalid regular expression '" + String{expression} + "'",
         regex_mode == sed_regex_mode::Extended
             ? "use a valid extended regular expression"
             : "use a valid basic regular expression"};
   }
+
+  return *result;
 }
 
 static fn parse_sed_address(StringView script, usize &position,
@@ -206,8 +207,8 @@ static fn parse_sed_address(StringView script, usize &position,
     let const expression =
         parse_sed_delimited(script, position, '/', allocator);
     address.kind = sed_address_kind::Regex;
-    compile_sed_expression(expression.view(), address.expression,
-                           expression_position, regex_mode);
+    address.expression = compile_sed_expression(
+        expression.view(), expression_position, regex_mode);
     address.has_expression = true;
     return true;
   }
@@ -332,8 +333,8 @@ static fn parse_sed_script(StringView script, Allocator allocator,
           parse_sed_delimited(script, position, delimiter, allocator);
       command.replacement =
           parse_sed_delimited(script, position, delimiter, allocator);
-      compile_sed_expression(expression.view(), command.expression,
-                             expression_position, regex_mode);
+      command.expression = compile_sed_expression(
+          expression.view(), expression_position, regex_mode);
       command.has_expression = true;
 
       while (position < script.length && script[position] != ';' &&

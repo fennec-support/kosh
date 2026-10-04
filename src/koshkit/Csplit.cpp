@@ -293,15 +293,14 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
 
         offset = parsed_offset.value();
       }
-      os::compiled_regex compiled;
-      if (os::compile_basic_regex(expression.view(), compiled,
-                                  os::case_sensitivity::Sensitive) !=
-          os::regex_compile_result::Ok)
-      {
+      let maybe_compiled = os::compile_basic_regex(
+          expression.view(), os::case_sensitivity::Sensitive);
+      if (!maybe_compiled.has_value()) {
         throw ErrorWithLocationAndDetails{
             pattern_location, "invalid regular expression",
             "use a valid basic regular expression"};
       }
+      let &compiled = *maybe_compiled;
       defer { os::free_regex(compiled); };
 
       let const search_start =

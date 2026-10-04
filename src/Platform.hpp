@@ -1495,12 +1495,6 @@ struct compiled_regex
   regex_t re{};
 };
 
-enum class regex_compile_result : u8
-{
-  Ok,
-  Invalid,
-};
-
 enum class regex_match_result : u8
 {
   Matched,
@@ -1534,11 +1528,10 @@ struct regex_execution_report
   String error_message;
 };
 
-fn compile_regex(StringView pattern, compiled_regex &out,
-                 case_sensitivity sensitivity) throws -> regex_compile_result;
-fn compile_basic_regex(StringView pattern, compiled_regex &out,
-                       case_sensitivity sensitivity) throws
-    -> regex_compile_result;
+fn compile_regex(StringView pattern, case_sensitivity sensitivity) throws
+    -> Maybe<compiled_regex>;
+fn compile_basic_regex(StringView pattern, case_sensitivity sensitivity) throws
+    -> Maybe<compiled_regex>;
 
 fn execute_regex(compiled_regex &compiled,
                  const regex_execution_options &options) throws

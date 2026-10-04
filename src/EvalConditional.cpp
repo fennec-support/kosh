@@ -619,13 +619,11 @@ fn EvalContext::cached_compiled_regex(StringView pattern) throws
   LOG(Debug, "regex cache miss, compiling the pattern '%.*s'",
       static_cast<int>(pattern.length), pattern.data);
   let const pattern_text = String{scratch_allocator(), pattern};
-  os::compiled_regex compiled;
-  if (os::compile_regex(pattern_text.view(), compiled,
-                        is_case_insensitive
-                            ? os::case_sensitivity::Insensitive
-                            : os::case_sensitivity::Sensitive) !=
-      os::regex_compile_result::Ok)
-  {
+  let const compiled =
+      os::compile_regex(pattern_text.view(),
+                        is_case_insensitive ? os::case_sensitivity::Insensitive
+                                            : os::case_sensitivity::Sensitive);
+  if (!compiled.has_value()) {
     let reason = String{scratch_allocator()};
     reason += "The regular expression '";
     reason += pattern;
@@ -634,7 +632,7 @@ fn EvalContext::cached_compiled_regex(StringView pattern) throws
                      "The pattern must be a valid extended regular expression");
   }
   return expansion_store()
-      .store_regex(key.view(), CompiledRegex{compiled})
+      .store_regex(key.view(), CompiledRegex{*compiled})
       ->get();
 }
 

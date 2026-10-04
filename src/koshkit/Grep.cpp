@@ -653,14 +653,13 @@ private:
   fn compile_regex_into(Maybe<CompiledRegex> &target,
                         os::case_sensitivity sensitivity) throws -> bool
   {
-    os::compiled_regex compiled{};
-    let const result =
+    let const compiled =
         m_options.is_extended
-            ? os::compile_regex(m_options.pattern, compiled, sensitivity)
-            : os::compile_basic_regex(m_options.pattern, compiled, sensitivity);
-    if (result != os::regex_compile_result::Ok) return false;
+            ? os::compile_regex(m_options.pattern, sensitivity)
+            : os::compile_basic_regex(m_options.pattern, sensitivity);
+    if (!compiled.has_value()) return false;
 
-    target = CompiledRegex{compiled};
+    target = CompiledRegex{*compiled};
     return true;
   }
 

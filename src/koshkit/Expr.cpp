@@ -200,19 +200,17 @@ private:
       let const pattern = parse_primary();
       String anchored{m_allocator, "^"};
       anchored += pattern.view();
-      os::compiled_regex compiled;
-      if (os::compile_basic_regex(anchored.view(), compiled,
-                                  os::case_sensitivity::Sensitive) !=
-          os::regex_compile_result::Ok)
-      {
+      let compiled = os::compile_basic_regex(anchored.view(),
+                                             os::case_sensitivity::Sensitive);
+      if (!compiled.has_value()) {
         throw ErrorWithLocationAndDetails{
             m_token_locations[pattern_position], "invalid regular expression",
             "use a valid basic regular expression"};
       }
-      defer { os::free_regex(compiled); };
+      defer { os::free_regex(*compiled); };
 
       let const match = os::execute_regex(
-          compiled, os::regex_execution_options{left.view(), m_allocator});
+          *compiled, os::regex_execution_options{left.view(), m_allocator});
       if (match.result == os::regex_match_result::Error)
         throw Error{"" + match.error_message};
       if (match.result == os::regex_match_result::NoMatch) {

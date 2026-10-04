@@ -256,23 +256,23 @@ fn descriptor_is_shell_fd(os::descriptor fd, i32 shell_fd) wontthrow -> bool
   return fd == descriptor_for_shell_fd(shell_fd);
 }
 
-fn compile_regex(StringView pattern, compiled_regex &out,
-                 case_sensitivity sensitivity) throws -> regex_compile_result
+fn compile_regex(StringView pattern, case_sensitivity sensitivity) throws
+    -> Maybe<compiled_regex>
 {
   let const is_case_insensitive = sensitivity == case_sensitivity::Insensitive;
   let const pattern_text = String{heap_allocator(), pattern};
   int compile_flags = REG_EXTENDED;
   if (is_case_insensitive) compile_flags |= REG_ICASE;
 
-  if (regcomp(&out.re, pattern_text.c_str(), compile_flags) != 0)
-    return regex_compile_result::Invalid;
+  compiled_regex compiled{};
+  if (regcomp(&compiled.re, pattern_text.c_str(), compile_flags) != 0)
+    return None;
 
-  return regex_compile_result::Ok;
+  return compiled;
 }
 
-fn compile_basic_regex(StringView pattern, compiled_regex &out,
-                       case_sensitivity sensitivity) throws
-    -> regex_compile_result
+fn compile_basic_regex(StringView pattern, case_sensitivity sensitivity) throws
+    -> Maybe<compiled_regex>
 {
   let const is_case_insensitive = sensitivity == case_sensitivity::Insensitive;
   let const pattern_text = String{heap_allocator(), pattern};
@@ -282,10 +282,11 @@ fn compile_basic_regex(StringView pattern, compiled_regex &out,
 #endif
   if (is_case_insensitive) compile_flags |= REG_ICASE;
 
-  if (regcomp(&out.re, pattern_text.c_str(), compile_flags) != 0)
-    return regex_compile_result::Invalid;
+  compiled_regex compiled{};
+  if (regcomp(&compiled.re, pattern_text.c_str(), compile_flags) != 0)
+    return None;
 
-  return regex_compile_result::Ok;
+  return compiled;
 }
 
 fn execute_regex(compiled_regex &compiled,
