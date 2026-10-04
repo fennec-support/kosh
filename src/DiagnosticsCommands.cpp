@@ -132,7 +132,8 @@ fn check_command_name_lints(AnalysisContext &actx,
       let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
       for (let const &segment : word.segments) {
         if (segment.kind == WordSegment::Kind::VariableReference &&
-            segment.is_split_eligible())
+            segment.is_split_eligible() &&
+            !is_single_word_special_parameter(segment.text.view()))
         {
           let const operand_location = args[i]->source_location();
           actx.report_diagnostic(

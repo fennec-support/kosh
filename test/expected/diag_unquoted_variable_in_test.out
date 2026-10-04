@@ -2,5 +2,13 @@
      3 |  [ $v = x ] && echo equal
        |    ^~
 note: Quote it to avoid an empty or split argument.
+5:3: warning: Testing `$?` checks the exit status indirectly. (SC2181)
+     5 |  [ $? -eq 0 ] && echo zero-status
+       |    ^~
+note: Test the command directly with `if` or `&&`.
+Encountered 2 warnings.
 equal
+no-arguments
+zero-status
+shell-pid
 after

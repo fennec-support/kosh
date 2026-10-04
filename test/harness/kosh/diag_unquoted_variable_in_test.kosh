@@ -1,4 +1,7 @@
 #!/bin/env kosh
 v=x
 [ $v = x ] && echo equal
+[ $# -eq 0 ] && echo no-arguments
+[ $? -eq 0 ] && echo zero-status
+[ $$ -gt 1 ] && echo shell-pid
 echo after

@@ -442,6 +442,8 @@ fn expand_command_aliases(EvalContext &cxt, ArrayList<String> &args,
    script that reads it without assigning it is correct. */
 pure fn is_shell_maintained_variable(StringView name) wontthrow -> bool;
 
+pure fn is_single_word_special_parameter(StringView name) wontthrow -> bool;
+
 /* The assignments holding a bare command name that no command word ever
    expanded. A run of the name may follow the assignment, so the decision waits
    for the end of the walk. */

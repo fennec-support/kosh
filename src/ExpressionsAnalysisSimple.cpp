@@ -176,19 +176,29 @@ fn update_generated_executable_paths(AnalysisContext &actx,
 
 } // namespace
 
-pure fn is_split_exempt_variable_name(StringView name) wontthrow -> bool
+pure fn internal::is_single_word_special_parameter(StringView name) wontthrow
+    -> bool
 {
   if (name.length != 1) return false;
 
   switch (name[0]) {
-  case '@':
-  case '*':
   case '?':
   case '#':
   case '$':
   case '!':
   case '-': return true;
   default: return false;
+  }
+}
+
+pure fn is_split_exempt_variable_name(StringView name) wontthrow -> bool
+{
+  if (name.length != 1) return false;
+
+  switch (name[0]) {
+  case '@':
+  case '*': return true;
+  default: return internal::is_single_word_special_parameter(name);
   }
 }
 

@@ -109,10 +109,6 @@ note: Match the names with a glob or with `find`.
     41 |    grep needle file | wc -l
        |    ^~~~
 note: Use `grep -c` to count the matching lines directly.
-43:5: warning: The unquoted test operand vanishes when the value is empty. (SC2086)
-    43 |    [ $? -eq 0 ] && echo ok
-       |      ^~
-note: Quote it to avoid an empty or split argument.
 43:5: warning: Testing `$?` checks the exit status indirectly. (SC2181)
     43 |    [ $? -eq 0 ] && echo ok
        |      ^~
@@ -513,7 +509,7 @@ note: Use the variable name directly inside arithmetic.
    164 |    ((total = ${counter}))
        |    ^~~~~~~~~~~~~~~~~~~~~~
 note: Use the variable name directly inside arithmetic.
-Encountered 126 warnings.
+Encountered 125 warnings.
 done
 done
 done
