@@ -423,16 +423,6 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
   return root_result;
 }
 
-fn add_size_row(ReportTable &table, Allocator allocator,
-                const du_output_row &row, StringView rendered_size) throws
-    -> void
-{
-  let cells = ArrayList<report_table_cell_view>{allocator};
-  cells.push({rendered_size, {}});
-  cells.push({row.path.view(), {}});
-  table.add_row(cells);
-}
-
 static fn build_tree_nodes(const du_tree_request &request, Allocator allocator,
                            ArrayList<du_tree_node> &nodes,
                            ArrayList<usize> &root_indices) throws -> bool
@@ -831,33 +821,29 @@ fn Du::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   let const should_color = koshkit_should_color();
-  let table = ReportTable{allocator};
-  table.set_header_visible(false);
-  table.add_column("", report_table_alignment::Right, colors::ansi::BOLD_GREEN);
-  table.add_column("", report_table_alignment::Left, colors::ansi::BOLD_CYAN);
-  table.set_column_min_width(0, size_width);
-  usize pending_byte_count = 0;
-  let const do_flush_table = [&]() throws -> void {
-    let const output = table.to_string(should_color, "");
-    ec.print_to_stdout(output.view());
-    table.clear_rows();
-    pending_byte_count = 0;
-  };
+  let output = String{allocator};
   for (usize index = 0; index < output_order.count(); index++) {
     let const &sort_key = output_order[index];
     let const &row = output_rows[sort_key.row_index];
-    if (is_human) {
-      add_size_row(table, allocator, row, rendered_sizes[index].view());
-    } else {
-      let const rendered_size = String::from(sort_key.size_bytes, allocator);
-      add_size_row(table, allocator, row, rendered_size.view());
-    }
+    let rendered_size = String{allocator};
+    if (!is_human) rendered_size = String::from(sort_key.size_bytes, allocator);
 
-    pending_byte_count += size_width + row.path.length() + 3;
-    if (pending_byte_count >= 65536) do_flush_table();
+    let const size_text =
+        is_human ? rendered_sizes[index].view() : rendered_size.view();
+    output.append_repeated(' ', size_width - size_text.length);
+    append_report_text(output, size_text, colors::ansi::BOLD_GREEN,
+                       should_color);
+    output += "  ";
+    append_report_text(output, row.path.view(), colors::ansi::BOLD_CYAN,
+                       should_color);
+    output += '\n';
+    if (output.length() >= 65536) {
+      ec.print_to_stdout(output.view());
+      output.clear();
+    }
   }
 
-  do_flush_table();
+  ec.print_to_stdout(output.view());
   if (was_interrupted) return 130;
   if (has_failure) status = 1;
   return status;
