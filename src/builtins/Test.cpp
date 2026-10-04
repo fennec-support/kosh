@@ -39,6 +39,42 @@ fn parse_integer(StringView text) throws -> Maybe<i64>
   return parsed.value();
 }
 
+enum class binary_operator : u8
+{
+  StringEqual,
+  StringEqualBashism,
+  StringNotEqual,
+  StringLess,
+  StringGreater,
+  SameFile,
+  NewerFile,
+  OlderFile,
+  IntegerEqual,
+  IntegerNotEqual,
+  IntegerLess,
+  IntegerLessOrEqual,
+  IntegerGreater,
+  IntegerGreaterOrEqual,
+};
+
+constexpr static_string_entry<binary_operator> BINARY_OPERATOR_ENTRIES[] = {
+    {SSK("="),   binary_operator::StringEqual          },
+    {SSK("=="),  binary_operator::StringEqualBashism   },
+    {SSK("!="),  binary_operator::StringNotEqual       },
+    {SSK("<"),   binary_operator::StringLess           },
+    {SSK(">"),   binary_operator::StringGreater        },
+    {SSK("-ef"), binary_operator::SameFile             },
+    {SSK("-nt"), binary_operator::NewerFile            },
+    {SSK("-ot"), binary_operator::OlderFile            },
+    {SSK("-eq"), binary_operator::IntegerEqual         },
+    {SSK("-ne"), binary_operator::IntegerNotEqual      },
+    {SSK("-lt"), binary_operator::IntegerLess          },
+    {SSK("-le"), binary_operator::IntegerLessOrEqual   },
+    {SSK("-gt"), binary_operator::IntegerGreater       },
+    {SSK("-ge"), binary_operator::IntegerGreaterOrEqual},
+};
+constexpr StaticStringMap BINARY_OPERATORS{BINARY_OPERATOR_ENTRIES};
+
 /* The window is [pos, end), so the argument-count rules can strip a wrapping
    paren pair by narrowing pos and end before the grammar runs. */
 class TestEvaluator
@@ -117,41 +153,6 @@ public:
   bool evaluate_binary(const String &left, const String &op,
                        const String &right) throws
   {
-    enum class binary_operator : u8
-    {
-      StringEqual,
-      StringEqualBashism,
-      StringNotEqual,
-      StringLess,
-      StringGreater,
-      SameFile,
-      NewerFile,
-      OlderFile,
-      IntegerEqual,
-      IntegerNotEqual,
-      IntegerLess,
-      IntegerLessOrEqual,
-      IntegerGreater,
-      IntegerGreaterOrEqual,
-    };
-    static constexpr static_string_entry<binary_operator> ENTRIES[] = {
-        {SSK("="),   binary_operator::StringEqual          },
-        {SSK("=="),  binary_operator::StringEqualBashism   },
-        {SSK("!="),  binary_operator::StringNotEqual       },
-        {SSK("<"),   binary_operator::StringLess           },
-        {SSK(">"),   binary_operator::StringGreater        },
-        {SSK("-ef"), binary_operator::SameFile             },
-        {SSK("-nt"), binary_operator::NewerFile            },
-        {SSK("-ot"), binary_operator::OlderFile            },
-        {SSK("-eq"), binary_operator::IntegerEqual         },
-        {SSK("-ne"), binary_operator::IntegerNotEqual      },
-        {SSK("-lt"), binary_operator::IntegerLess          },
-        {SSK("-le"), binary_operator::IntegerLessOrEqual   },
-        {SSK("-gt"), binary_operator::IntegerGreater       },
-        {SSK("-ge"), binary_operator::IntegerGreaterOrEqual},
-    };
-    static constexpr StaticStringMap BINARY_OPERATORS{ENTRIES};
-
     let const found = BINARY_OPERATORS.find(op.view());
     if (!found.has_value()) {
       fail(StringView{"'"} + op +
@@ -217,13 +218,7 @@ public:
 
   pure fn is_binary_operator(const String &s) const wontthrow -> bool
   {
-    static constexpr PackedStringKey KEYS[] = {
-        SSK("="),   SSK("=="),  SSK("!="),  SSK("<"),   SSK(">"),
-        SSK("-eq"), SSK("-ne"), SSK("-lt"), SSK("-le"), SSK("-gt"),
-        SSK("-ge"), SSK("-ef"), SSK("-nt"), SSK("-ot"),
-    };
-    static constexpr StaticStringSet BINARY_OPS{KEYS};
-    return BINARY_OPS.contains(s.view());
+    return BINARY_OPERATORS.find(s.view()).has_value();
   }
 
   /* A unary operator at index reads as a plain operand rather than an operator

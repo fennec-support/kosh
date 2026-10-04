@@ -644,12 +644,14 @@ fn kosh_main(int argc, char **argv) -> int
       : should_read_files       ? "the named script file"
                                 : "the interactive prompt");
 
+  let const was_mood_named_on_command_line =
+      FLAG_MOOD.is_set() || FLAG_DUMB.is_enabled() ||
+      FLAG_POSIX_COMPAT.is_enabled() ||
+      invocation_mood != koshka::mimic_mood::Default;
+
   koshka::Maybe<koshka::String> prefetched_script_contents = koshka::None;
   if (should_read_files && !FLAG_LINT.is_enabled() && !file_names.is_empty() &&
-      file_names[0] != "-" &&
-      !(FLAG_MOOD.is_set() || FLAG_DUMB.is_enabled() ||
-        FLAG_POSIX_COMPAT.is_enabled() ||
-        invocation_mood != koshka::mimic_mood::Default))
+      file_names[0] != "-" && !was_mood_named_on_command_line)
   {
     prefetched_script_contents =
         koshka::Path{file_names[0].view()}.read_entire_file();
@@ -1038,11 +1040,6 @@ fn kosh_main(int argc, char **argv) -> int
   usize next_file_index = 0;
   usize ignored_eof_count = 0;
   koshka::analysis_diagnostic_totals lint_diagnostic_totals{};
-
-  let const was_mood_named_on_command_line =
-      FLAG_MOOD.is_set() || FLAG_DUMB.is_enabled() ||
-      FLAG_POSIX_COMPAT.is_enabled() ||
-      invocation_mood != koshka::mimic_mood::Default;
 
   loop
   {
