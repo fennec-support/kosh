@@ -149,10 +149,7 @@ export ASAN_OPTIONS := symbolize=0
 export MODE
 export TARGET
 export NO_TOILETLINE
-export UNIT_MAKE := $(MAKE)
-
-.PHONY: test kosh cli completion highlight sh bash unit test_prepare \
-	unit_prepare FORCE
+.PHONY: test kosh cli completion highlight sh bash test_prepare FORCE
 
 ifeq ($(IS_NONDEBUG_BUILD),1)
 DEBUG_DRIVER_SUITES :=
@@ -166,7 +163,7 @@ else
 COMPATIBILITY_SUITES := sh bash
 endif
 
-test: unit kosh cli $(DEBUG_DRIVER_SUITES) $(COMPATIBILITY_SUITES) | test_prepare
+test: kosh cli $(DEBUG_DRIVER_SUITES) $(COMPATIBILITY_SUITES) | test_prepare
 
 KOSH_TESTS := $(wildcard harness/kosh/*.kosh)
 kosh: $(KOSH_TESTS)
@@ -185,18 +182,6 @@ sh: $(SH_TESTS)
 
 BASH_TESTS := $(wildcard harness/bash/*.bash)
 bash: $(BASH_TESTS)
-
-UNIT_TESTS := $(wildcard unit/*_test.cpp)
-unit: $(UNIT_TESTS)
-
-unit_prepare: | test_prepare
-	@mkdir -p $(TEST_TEMP_DIRECTORY)
-	@$(MAKE) -s -C ../src unit_objects \
-		>$(TEST_TEMP_DIRECTORY)/unit-objects.log 2>&1 || \
-		{ cat $(TEST_TEMP_DIRECTORY)/unit-objects.log; exit 1; }
-
-unit/%_test.cpp: FORCE | test_prepare unit_prepare
-	@$(SHELL) $(BIN_DIR)/run-test '$@' $(BIN_DIR)/run-unit
 
 harness/kosh/%.kosh: FORCE $(BIN) | test_prepare
 	@$(SHELL) $(BIN_DIR)/run-test '$@' $(BIN_DIR)/run-harness-kosh

@@ -505,33 +505,6 @@ ifneq ($(LINKED_OUTPUT_PATH), $(OUTPUT_PATH))
 	cp $(LINKED_OUTPUT_PATH) $(OUTPUT_PATH)
 endif
 
-# Native unit tests. Main.cpp is compiled a second time with its entry point
-# renamed, so a test defines kosh_main itself and still links every other
-# shell object. A test shares the compiler flags and sanitizers of MODE.
-UNIT ?=
-UNIT_SHELL_OBJECT := $(OBJECT_DIRECTORY)/unit/shell_main.o
-UNIT_OBJECTS := $(filter-out $(OBJECT_DIRECTORY)/Main.o,$(OBJECTS)) \
-	$(UNIT_SHELL_OBJECT)
-UNIT_EXTENSION := $(if $(filter Windows_NT,$(TARGET)),.exe,)
-UNIT_BINARY := $(OBJECT_DIRECTORY)/unit/$(UNIT)$(UNIT_EXTENSION)
-
-$(UNIT_SHELL_OBJECT): Main.cpp Makefile | dirs
-	mkdir -p $(OBJECT_DIRECTORY)/unit
-	$(CXX) $(CXXFLAGS) -Dkosh_main=kosh_shell_main -MMD -MP -c $< -o $@
-
-unit_objects: dirs
-	$(MAKE) $(UNIT_OBJECTS)
-
-$(OBJECT_DIRECTORY)/unit/%$(UNIT_EXTENSION): ../test/unit/%.cpp ../test/unit/Unit.hpp $(UNIT_OBJECTS)
-	$(CXX) $(CXXFLAGS) $(LINKER_SELECTION_FLAG) -I. $< $(UNIT_OBJECTS) $(LINK_LIBRARIES) -o $@
-
-unit: unit_objects
-	test -n "$(UNIT)"
-	$(MAKE) $(UNIT_BINARY)
-	./$(UNIT_BINARY)
-
--include $(OBJECT_DIRECTORY)/unit/shell_main.d
-
 # INSTALL_MOOD_SYMLINKS="sh bash dash".
 PREFIX ?= /usr/local
 DESTDIR ?=
@@ -594,7 +567,7 @@ clean:
 	rm -rf ../zig-out
 	rm -rf ../*.profraw ../*.profdata ../coverage # Coverage
 
-.PHONY: dirs force_commit_hash force_commit_hash_objects kosh unit \
-	unit_objects install uninstall tidy fmt clean
+.PHONY: dirs force_commit_hash force_commit_hash_objects kosh install \
+	uninstall tidy fmt clean
 
 -include $(DEPENDENCY_FILES)

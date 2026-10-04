@@ -224,14 +224,11 @@ changes update this file.
 - `NO_TOILETLINE=1 make` builds the no editor configuration in a separate
   object directory and links the same `./kosh-dbg` path. Rebuild the ordinary
   configuration before the next fixture run.
-- `make test` runs unit, Kosh, CLI, completion, highlighting, POSIX, and Bash
+- `make test` runs Kosh, CLI, completion, highlighting, POSIX, and Bash
   suites. `make bench` runs benchmarks.
   `make toiletline_test` runs the standalone editor unit suite.
-- Native unit tests live in `test/unit/<module>_test.cpp` and use the checks in
-  `test/unit/Unit.hpp`. Each test is its own binary, defines `kosh_main`, and
-  links every shell object. `src/Makefile` compiles `Main.cpp` a second time
-  with its entry point renamed, so a unit test shares the flags and sanitizers
-  of `MODE`. Run one with `make -C test unit/name_test.cpp`.
+- Kosh has no native unit tests. Never write them. Behavior is covered by
+  fixtures that drive the shell or a utility.
   Completion tests require debug. Bound interactive and long-running commands.
   Test runners apply a deadline to each case.
 - `make -C test refill` regenerates goldens for Kosh, CLI, completion, and

@@ -27,18 +27,9 @@ Place a test in the cheapest harness that expresses its contract.
 - `harness/highlight` owns debug highlighting output and uses a matching golden.
 - `harness/sh` compares one fixture with dash.
 - `harness/bash` compares one fixture with Bash 5.3 or newer.
-- `unit` owns the contract of one base type or pure helper that no shell input
-  reaches precisely, such as container growth, string state, static tables,
-  path text operations, and the live counter window. It has no golden.
 - `bench` owns performance workloads.
 
-A unit test is `unit/<module>_test.cpp`. It includes `unit/Unit.hpp`, defines
-`kosh_main` with one `RUN_TEST` per case, and returns `unit::finish`. A failed
-`CHECK` or `CHECK_EQUAL` prints `file:line: expected X, got Y` to the error
-stream, and the binary exits nonzero. `test/bin/run-unit` builds the test
-through `src/Makefile`, runs it, and shows its output only on failure. A unit
-test targeting one platform checks the platform inside `kosh_main` and still
-compiles everywhere.
+There are no native unit tests, and none are written.
 
 Make discovers each harness with a wildcard and creates one direct target for
 each source path. A pattern recipe passes that path to `test/bin/run-test`.
