@@ -951,11 +951,14 @@ fn EvalContext::unmark_exported(StringView name) throws -> void
       fold_exported_name(name, folded, spill));
 }
 
-fn parse_analysis_environment(StringView text) throws -> analysis_environment
+fn inheritable_analysis_state::from_environment() throws
+    -> inheritable_analysis_state
 {
-  let result = analysis_environment{};
+  let result = inheritable_analysis_state{};
+  let const text = os::get_environment_variable(ENVIRONMENT_NAME);
+  if (!text.has_value()) return result;
 
-  text.for_each_ascii_whitespace_word([&](StringView token) throws {
+  text->view().for_each_ascii_whitespace_word([&](StringView token) throws {
     if (token == "mimicry") {
       result.is_mimicry_enabled = true;
     } else if (token == "no-annoying") {
@@ -972,22 +975,28 @@ fn parse_analysis_environment(StringView text) throws -> analysis_environment
   return result;
 }
 
-fn EvalContext::sync_analysis_environment() throws -> void
+fn inheritable_analysis_state::append_environment_text(
+    String &text) const throws -> void
 {
-  static constexpr StringView NAME{"KOSH_ANALYSIS"};
-  let const &runtime = runtime_state();
-  let text = String{scratch_allocator()};
-
-  if (runtime.is_mimicry_enabled()) text += "mimicry ";
-  if (runtime.get_warning_level() > 0) {
+  if (is_mimicry_enabled) text += "mimicry ";
+  if (warning_level > 0) {
     text += "warnings=";
-    text += static_cast<char>('0' + runtime.get_warning_level());
+    text += static_cast<char>('0' + warning_level);
     text += " ";
   }
-  if (!runtime.is_annoying_diagnostics_enabled()) text += "no-annoying ";
-  if (runtime.is_diagnostics_disabled()) text += "no-diagnostics ";
+  if (is_annoying_disabled) text += "no-annoying ";
+  if (is_diagnostics_disabled) text += "no-diagnostics ";
 
   if (!text.is_empty()) text.pop_back();
+}
+
+fn EvalContext::sync_analysis_environment() throws -> void
+{
+  static constexpr StringView NAME =
+      inheritable_analysis_state::ENVIRONMENT_NAME;
+  let text = String{scratch_allocator()};
+  runtime_state().get_inheritable_analysis_state().append_environment_text(
+      text);
 
   let const current = os::get_environment_variable(NAME);
   if (current.has_value() ? current->view() == text.view() : text.is_empty()) {

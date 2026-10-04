@@ -776,18 +776,6 @@ fn kosh_main(int argc, char **argv) -> int
   context.runtime_state().set_show_all_exit_codes(
       FLAG_ALL_EXIT_CODES.is_enabled());
   context.runtime_state().set_memory_stats_enabled(FLAG_MEMORY.is_enabled());
-  let const inherited_analysis = koshka::parse_analysis_environment(
-      koshka::os::get_environment_variable("KOSH_ANALYSIS")
-          .value_or(koshka::String{koshka::heap_allocator()})
-          .view());
-  context.runtime_state().set_diagnostics_disabled(
-      (FLAG_SUPPRESS_DIAGNOSTICS.is_enabled() ||
-       inherited_analysis.is_diagnostics_disabled) &&
-      !FLAG_LINT.is_enabled());
-  context.runtime_state().set_annoying_diagnostics_enabled(
-      FLAG_LINT.is_enabled() ||
-      !(FLAG_SUPPRESS_ANNOYING_DIAGNOSTICS.is_enabled() ||
-        inherited_analysis.is_annoying_disabled));
   context.diagnostics_store().set_source_traces_enabled(
       !FLAG_NO_TRACES.is_enabled());
   context.runtime_state().set_option(koshka::shell_option_id::Privileged,
@@ -816,15 +804,26 @@ fn kosh_main(int argc, char **argv) -> int
   context.runtime_state().set_error_unset(FLAG_NOUNSET.is_enabled());
   if (FLAG_NOUNSET.is_enabled())
     context.runtime_state().set_error_unset_set_explicitly(true);
-  let const warnings_specified_count = FLAG_WARNINGS.count();
-  let const specified_warning_level = static_cast<u8>(
-      warnings_specified_count > 3 ? 3 : warnings_specified_count);
-  let warning_level = warnings_specified_count == 0
-                          ? inherited_analysis.warning_level
-                          : specified_warning_level;
-  if (FLAG_LINT.is_enabled())
-    warning_level = session_mood == koshka::mimic_mood::Default ? 0 : 3;
-  context.runtime_state().set_warning_level(warning_level);
+  let analysis = koshka::inheritable_analysis_state::from_environment();
+  analysis.is_mimicry_enabled |= FLAG_MIMICRY.is_enabled();
+  analysis.is_diagnostics_disabled |= FLAG_SUPPRESS_DIAGNOSTICS.is_enabled();
+  analysis.is_annoying_disabled |=
+      FLAG_SUPPRESS_ANNOYING_DIAGNOSTICS.is_enabled();
+  if (let const warnings_specified_count = FLAG_WARNINGS.count();
+      warnings_specified_count != 0)
+  {
+    analysis.warning_level = static_cast<u8>(
+        warnings_specified_count > 3 ? 3 : warnings_specified_count);
+  }
+
+  if (FLAG_LINT.is_enabled()) {
+    analysis.is_diagnostics_disabled = false;
+    analysis.is_annoying_disabled = false;
+    analysis.warning_level =
+        session_mood == koshka::mimic_mood::Default ? 0 : 3;
+  }
+
+  context.runtime_state().set_inheritable_analysis_state(analysis);
   context.runtime_state().set_pipefail(false);
   context.runtime_state().set_no_clobber(FLAG_NO_CLOBBER.is_enabled());
   context.runtime_state().set_export_all(FLAG_EXPORT_ALL.is_enabled());
@@ -832,10 +831,6 @@ fn kosh_main(int argc, char **argv) -> int
                                       FLAG_LINT.is_enabled());
   context.runtime_state().set_koshkit(FLAG_ENABLE_KOSHKIT.is_enabled());
   context.runtime_state().set_failglob(false);
-  /* Mimicry is mirrored onto the context, since the execution path in Utils
-     reads it there rather than the static flag. */
-  context.runtime_state().set_mimicry(FLAG_MIMICRY.is_enabled() ||
-                                      inherited_analysis.is_mimicry_enabled);
   context.runtime_state().set_option(koshka::shell_option_id::Monitor,
                                      should_be_interactive);
 
@@ -1034,7 +1029,8 @@ fn kosh_main(int argc, char **argv) -> int
                                                                           : 3);
   }
 
-  if (koshka::os::has_environment_variable("KOSH_ANALYSIS"))
+  if (koshka::os::has_environment_variable(
+          koshka::inheritable_analysis_state::ENVIRONMENT_NAME))
     context.sync_analysis_environment();
 
   if (!inherited_bootstrap.payload.is_empty()) {

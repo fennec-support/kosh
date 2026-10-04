@@ -147,6 +147,19 @@ constexpr pure fn dynamic_reader_mask(dynamic_reader_id id) wontthrow -> u8
   return static_cast<u8>(1U << static_cast<u8>(id));
 }
 
+struct inheritable_analysis_state
+{
+  static constexpr StringView ENVIRONMENT_NAME{"KOSH_ANALYSIS"};
+
+  bool is_mimicry_enabled{false};
+  u8 warning_level{0};
+  bool is_annoying_disabled{false};
+  bool is_diagnostics_disabled{false};
+
+  static fn from_environment() throws -> inheritable_analysis_state;
+  fn append_environment_text(String &text) const throws -> void;
+};
+
 class RuntimeState
 {
 public:
@@ -253,6 +266,21 @@ public:
 
   fn set_warning_level(u8 level) wontthrow -> void { warning_level = level; }
   pure fn get_warning_level() const wontthrow -> u8 { return warning_level; }
+
+  pure fn get_inheritable_analysis_state() const wontthrow
+      -> inheritable_analysis_state
+  {
+    return {is_mimicry_enabled(), warning_level,
+            !is_annoying_diagnostics_enabled(), is_diagnostics_disabled()};
+  }
+  fn set_inheritable_analysis_state(
+      const inheritable_analysis_state &state) wontthrow -> void
+  {
+    set_mimicry(state.is_mimicry_enabled);
+    warning_level = state.warning_level;
+    set_annoying_diagnostics_enabled(!state.is_annoying_disabled);
+    set_diagnostics_disabled(state.is_diagnostics_disabled);
+  }
   fn set_warnings_enabled(bool enabled) wontthrow -> void
   {
     if (!enabled)
@@ -2315,16 +2343,6 @@ protected:
   ScopeStore m_scope_store{};
   JobTable m_job_table{heap_allocator()};
 };
-
-struct analysis_environment
-{
-  bool is_mimicry_enabled{false};
-  u8 warning_level{0};
-  bool is_annoying_disabled{false};
-  bool is_diagnostics_disabled{false};
-};
-
-fn parse_analysis_environment(StringView text) throws -> analysis_environment;
 
 class EvalContext : public EvalContextState
 {
