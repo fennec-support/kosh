@@ -135,11 +135,17 @@ hot fn SimpleCommand::get_literal_command_lookup(
 
   const Word &command_word =
       static_cast<const tokens::WordToken *>(m_args[0])->word();
-  if (command_word.plain_literal_kind() == Word::PlainLiteral::NotPlain) {
+  StringView literal_name;
+  if (command_word.plain_literal_kind() != Word::PlainLiteral::NotPlain) {
+    literal_name = command_word.constant_value();
+  } else if (command_word.segments.count() == 1 &&
+             command_word.segments[0].kind == WordSegment::Kind::UnquotedText)
+  {
+    literal_name = command_word.segments[0].text.view();
+  } else {
     return nullptr;
   }
 
-  let const literal_name = command_word.constant_value();
   if (program_args[0].view() != literal_name) return nullptr;
 
   if (!m_literal_command_lookup.has_value()) {
