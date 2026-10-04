@@ -594,43 +594,33 @@ public:
 
   fn note_explicit_mood() wontthrow -> void
   {
-    m_was_mood_set_explicitly = true;
-    m_mood_mutation_revision++;
+    m_mutations.reporting.was_mood_set_explicitly = true;
+    m_mutations.reporting.mood++;
   }
 
   pure fn was_mood_set_explicitly() const wontthrow -> bool
   {
-    return m_was_mood_set_explicitly;
+    return m_mutations.reporting.was_mood_set_explicitly;
   }
 
   fn note_warning_option_mutation() wontthrow -> void
   {
-    m_warning_mutation_revision++;
-  }
-
-  pure fn warning_mutation_revision() const wontthrow -> u64
-  {
-    return m_warning_mutation_revision;
+    m_mutations.reporting.warning++;
   }
 
   fn note_diagnostics_option_mutation() wontthrow -> void
   {
-    m_diagnostics_mutation_revision++;
+    m_mutations.reporting.diagnostics++;
   }
 
   pure fn diagnostics_mutation_revision() const wontthrow -> u64
   {
-    return m_diagnostics_mutation_revision;
+    return m_mutations.reporting.diagnostics;
   }
 
   fn note_annoying_diagnostics_option_mutation() wontthrow -> void
   {
-    m_annoying_diagnostics_mutation_revision++;
-  }
-
-  pure fn annoying_diagnostics_mutation_revision() const wontthrow -> u64
-  {
-    return m_annoying_diagnostics_mutation_revision;
+    m_mutations.reporting.annoying++;
   }
 
   fn set_warning_suppressed(suppressible_warning which, bool enabled) wontthrow
@@ -651,17 +641,17 @@ public:
 
   fn option_mutations() wontthrow -> shell_option_mutations &
   {
-    return m_shell_option_mutations;
+    return m_mutations.options;
   }
 
   pure fn option_mutations() const wontthrow -> const shell_option_mutations &
   {
-    return m_shell_option_mutations;
+    return m_mutations.options;
   }
 
-  pure fn mood_mutation_revision() const wontthrow -> u64
+  pure fn get_mutations() const wontthrow -> const control_mutations &
   {
-    return m_mood_mutation_revision;
+    return m_mutations;
   }
 
   pure fn init_moods_sourcing_mask() const wontthrow -> u8
@@ -674,40 +664,19 @@ public:
     return m_initialized_moods;
   }
 
-  pure fn was_mood_set_explicitly_flag() const wontthrow -> bool
-  {
-    return m_was_mood_set_explicitly;
-  }
-
   fn restore_snapshot_state(u8 init_moods_sourcing, u8 initialized_moods,
-                            bool was_mood_set_explicitly,
-                            u64 mood_mutation_revision,
-                            u64 warning_mutation_revision,
-                            u64 diagnostics_mutation_revision,
-                            u64 annoying_diagnostics_mutation_revision,
-                            shell_option_mutations option_mutations) wontthrow
+                            const control_mutations &mutations) wontthrow
       -> void
   {
     m_init_moods_sourcing = init_moods_sourcing;
     m_initialized_moods = initialized_moods;
-    m_was_mood_set_explicitly = was_mood_set_explicitly;
-    m_mood_mutation_revision = mood_mutation_revision;
-    m_warning_mutation_revision = warning_mutation_revision;
-    m_diagnostics_mutation_revision = diagnostics_mutation_revision;
-    m_annoying_diagnostics_mutation_revision =
-        annoying_diagnostics_mutation_revision;
-    m_shell_option_mutations = option_mutations;
+    m_mutations = mutations;
   }
 
 private:
   u8 m_init_moods_sourcing{0};
   u8 m_initialized_moods{0};
-  bool m_was_mood_set_explicitly{false};
-  u64 m_mood_mutation_revision{0};
-  u64 m_warning_mutation_revision{0};
-  u64 m_diagnostics_mutation_revision{0};
-  u64 m_annoying_diagnostics_mutation_revision{0};
-  shell_option_mutations m_shell_option_mutations{};
+  control_mutations m_mutations;
   u32 m_suppressed_warnings{0};
 };
 
@@ -3119,16 +3088,8 @@ public:
     let const previous = RuntimeState::capture(*this);
     defining_state.apply_to(runtime_state());
     apply_strictness_for_mood();
-    return function_runtime_state{
-        previous,
-        RuntimeState::capture(*this),
-        runtime_control_store().option_mutations(),
-        runtime_control_store().option_mutations().revision,
-        runtime_control_store().mood_mutation_revision(),
-        runtime_control_store().warning_mutation_revision(),
-        runtime_control_store().diagnostics_mutation_revision(),
-        runtime_control_store().annoying_diagnostics_mutation_revision(),
-        runtime_control_store().was_mood_set_explicitly()};
+    return function_runtime_state{previous, RuntimeState::capture(*this),
+                                  runtime_control_store().get_mutations()};
   }
 
   fn leave_definition_state(
@@ -3141,17 +3102,19 @@ public:
       runtime_control_store().restore_snapshot_state(
           runtime_control_store().init_moods_sourcing_mask(),
           runtime_control_store().initialized_moods_mask(),
-          state.was_mood_set_explicitly, state.mood_mutation_revision,
-          state.warning_mutation_revision, state.diagnostics_mutation_revision,
-          state.annoying_diagnostics_mutation_revision,
-          state.previous_shell_option_mutations);
+          state.entry_mutations);
       return;
     }
 
     let const finished = RuntimeState::capture(*this);
+    let const changed_reporting =
+        runtime_control_store().get_mutations().reporting.changed_fields_since(
+            state.entry_mutations.reporting);
+    let const &options = runtime_control_store().option_mutations();
+    let const entry_option_revision = state.entry_mutations.options.revision;
     let changed_options = state.entered.shell_options ^ finished.shell_options;
-    if (state.mood_mutation_revision !=
-        runtime_control_store().mood_mutation_revision())
+    if (reporting_revisions::has_field(changed_reporting,
+                                       reporting_field::Mood))
     {
       changed_options |= RuntimeState::option_mask(shell_option_id::Nounset);
       changed_options |= RuntimeState::option_mask(shell_option_id::Pipefail);
@@ -3163,8 +3126,7 @@ public:
          option++)
     {
       let const option_id = static_cast<shell_option_id>(option);
-      if (runtime_control_store().option_mutations().touched_since(
-              option_id, state.shell_option_mutation_revision))
+      if (options.touched_since(option_id, entry_option_revision))
         changed_options |= RuntimeState::option_mask(option_id);
     }
     let const merged_options =
@@ -3173,35 +3135,31 @@ public:
 
     state.previous.restore(*this);
     runtime_state().shell_options = merged_options;
-    if (runtime_control_store().option_mutations().touched_since(
-            shell_option_id::Nounset, state.shell_option_mutation_revision))
+    if (options.touched_since(shell_option_id::Nounset, entry_option_revision))
       runtime_state().set_error_unset_set_explicitly(
           finished.was_error_unset_set_explicitly());
-    if (runtime_control_store().option_mutations().touched_since(
-            shell_option_id::Pipefail, state.shell_option_mutation_revision))
+    if (options.touched_since(shell_option_id::Pipefail, entry_option_revision))
       runtime_state().set_pipefail_set_explicitly(
           finished.was_pipefail_set_explicitly());
-    if (runtime_control_store().option_mutations().touched_since(
-            shell_option_id::Failglob, state.shell_option_mutation_revision))
+    if (options.touched_since(shell_option_id::Failglob, entry_option_revision))
       runtime_state().set_failglob_set_explicitly(
           finished.was_failglob_set_explicitly());
-    if (runtime_control_store().option_mutations().touched_since(
-            shell_option_id::ExtendedArithmetic,
-            state.shell_option_mutation_revision))
+    if (options.touched_since(shell_option_id::ExtendedArithmetic,
+                              entry_option_revision))
       runtime_state().set_extended_arithmetic_set_explicitly(
           finished.was_extended_arithmetic_set_explicitly());
-    if (state.mood_mutation_revision !=
-        runtime_control_store().mood_mutation_revision())
+    if (reporting_revisions::has_field(changed_reporting,
+                                       reporting_field::Mood))
       runtime_state().set_mood(finished.mood);
-    if (state.warning_mutation_revision !=
-        runtime_control_store().warning_mutation_revision())
+    if (reporting_revisions::has_field(changed_reporting,
+                                       reporting_field::Warning))
       runtime_state().set_warning_level(finished.warning_level);
-    if (state.diagnostics_mutation_revision !=
-        runtime_control_store().diagnostics_mutation_revision())
+    if (reporting_revisions::has_field(changed_reporting,
+                                       reporting_field::Diagnostics))
       runtime_state().set_diagnostics_disabled(
           finished.is_diagnostics_disabled());
-    if (state.annoying_diagnostics_mutation_revision !=
-        runtime_control_store().annoying_diagnostics_mutation_revision())
+    if (reporting_revisions::has_field(changed_reporting,
+                                       reporting_field::Annoying))
       runtime_state().set_annoying_diagnostics_enabled(
           finished.is_annoying_diagnostics_enabled());
   }

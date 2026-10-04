@@ -559,6 +559,49 @@ struct shell_option_mutations
   }
 };
 
+enum class reporting_field : u8
+{
+  Mood = 1U << 0,
+  Warning = 1U << 1,
+  Diagnostics = 1U << 2,
+  Annoying = 1U << 3,
+};
+
+struct reporting_revisions
+{
+  bool was_mood_set_explicitly{false};
+  u64 mood{0};
+  u64 warning{0};
+  u64 diagnostics{0};
+  u64 annoying{0};
+
+  pure fn changed_fields_since(const reporting_revisions &prior) const wontthrow
+      -> u8
+  {
+    u8 fields = 0;
+    if (mood != prior.mood) fields |= static_cast<u8>(reporting_field::Mood);
+    if (warning != prior.warning)
+      fields |= static_cast<u8>(reporting_field::Warning);
+    if (diagnostics != prior.diagnostics)
+      fields |= static_cast<u8>(reporting_field::Diagnostics);
+    if (annoying != prior.annoying)
+      fields |= static_cast<u8>(reporting_field::Annoying);
+    return fields;
+  }
+
+  static constexpr pure fn has_field(u8 fields, reporting_field field) wontthrow
+      -> bool
+  {
+    return (fields & static_cast<u8>(field)) != 0;
+  }
+};
+
+struct control_mutations
+{
+  reporting_revisions reporting;
+  shell_option_mutations options;
+};
+
 enum class definition_state_exit : u8
 {
   PropagateMutations,
@@ -569,13 +612,7 @@ struct function_runtime_state
 {
   RuntimeState previous;
   RuntimeState entered;
-  shell_option_mutations previous_shell_option_mutations;
-  u64 shell_option_mutation_revision;
-  u64 mood_mutation_revision;
-  u64 warning_mutation_revision;
-  u64 diagnostics_mutation_revision;
-  u64 annoying_diagnostics_mutation_revision;
-  bool was_mood_set_explicitly;
+  control_mutations entry_mutations;
 };
 
 /* The DEBUG or ERR action a function call takes away from its body, held with

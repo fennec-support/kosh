@@ -842,13 +842,8 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
       runtime_control_store().initialized_moods_mask(),
       variable_store().disabled_bash_special_arrays(),
       variable_store().unset_dynamic_readers(),
-      runtime_control_store().was_mood_set_explicitly_flag(),
-      runtime_control_store().mood_mutation_revision(),
-      runtime_control_store().warning_mutation_revision(),
-      runtime_control_store().diagnostics_mutation_revision(),
-      runtime_control_store().annoying_diagnostics_mutation_revision(),
+      runtime_control_store().get_mutations(),
       dynamic_runtime_store().get_clock(),
-      runtime_control_store().option_mutations(),
       scope_store().local_scopes(),
       scope_store().local_scope_depth(),
       job_table_store().take_snapshot(),
@@ -904,11 +899,7 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
   variable_store().unset_dynamic_readers() = snapshot.unset_dynamic_readers;
   runtime_control_store().restore_snapshot_state(
       snapshot.init_moods_sourcing, snapshot.initialized_moods,
-      snapshot.was_mood_set_explicitly, snapshot.mood_mutation_revision,
-      snapshot.warning_mutation_revision,
-      snapshot.diagnostics_mutation_revision,
-      snapshot.annoying_diagnostics_mutation_revision,
-      snapshot.option_mutations);
+      snapshot.mutations);
   dynamic_runtime_store().set_clock(snapshot.clock);
   scope_store().local_scopes() = steal(snapshot.local_scopes);
   scope_store().local_scope_depth() = snapshot.local_scope_depth;
