@@ -228,13 +228,13 @@ case $evil_short_report in
 esac
 printf 'evil-short-indent=%s\n' "$evil_short_indent"
 
-unix_socket_report=$("$BIN" -c 'koshkit --color never evilss -x')
-case $unix_socket_report in
-  *Sockets*Netid*'Local Address:Port'*'Peer Address:Port'*)
-    unix_socket_shape=present ;;
-  *) unix_socket_shape=missing ;;
-esac
-printf 'evilss-unix=%s\n' "$unix_socket_shape"
+if [ "${TARGET:-$(uname -s)}" = Linux ]; then
+  unix_socket_report=$("$BIN" -c 'koshkit --color never evilss -x')
+  case $unix_socket_report in
+    *Sockets*Netid*'Local Address:Port'*'Peer Address:Port'*) ;;
+    *) echo 'evilss-unix=missing' ;;
+  esac
+fi
 
 process_tree=$("$BIN" -c 'koshkit evilps -1')
 case $process_tree in

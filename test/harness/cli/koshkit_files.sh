@@ -207,10 +207,7 @@ else
     echo "du-unreadable=failed"
   fi
 fi
-echo "--- du interruption ---"
-if [ "${TARGET:-$(uname -s)}" != Linux ]; then
-  echo "du-interrupt=skipped"
-else
+if [ "${TARGET:-$(uname -s)}" = Linux ]; then
   mkdir du-interrupt
   du_interrupt_directory=0
   while [ "$du_interrupt_directory" -lt 200 ]; do
@@ -246,7 +243,7 @@ else
   if [ "$du_interrupt_status" -eq 130 ] &&
     [ "$du_interrupt_line_count" -lt "$du_interrupt_expected_count" ] &&
     ! grep -q 'Interrupted system call' du-interrupt.err; then
-    echo "du-interrupt=matched"
+    :
   else
     echo "du-interrupt=failed status=$du_interrupt_status lines=$du_interrupt_line_count"
   fi

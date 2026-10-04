@@ -63,8 +63,6 @@ du-multiple-roots=matched
 du-equal-roots=matched
 du-hardlinks=matched
 du-unreadable=ok
---- du interruption ---
-du-interrupt=matched
 --- basename ---
 libfoo
 --- dirname ---

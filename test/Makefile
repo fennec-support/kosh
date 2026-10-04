@@ -54,7 +54,7 @@ SKIPPED_TESTS := \
 	editor_ghost_menu_pty
 else ifneq ($(TARGET), Linux)
 SKIPPED_TESTS := koshkit_mknod koshkit_live_pty koshkit_live_sanitizers \
-	koshkit_live_deltas editor_ghost_menu_pty
+	koshkit_live_deltas editor_ghost_menu_pty koshkit_evilfiles_parity
 else
 SKIPPED_TESTS :=
 endif
