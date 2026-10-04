@@ -5,7 +5,7 @@ setu.sh:2:7: error: Unable to expand 'undefined_variable' because the parameter 
 note: Replace it with ${undefined_variable-} if empty expansion is desired.
 rc=1
 == a bash-mood ${name:?} abort exits 1 like a bash script ==
-report.sh:1:6: error: is gone.
+report.sh:1:6: error: missing: is gone.
      1 |  echo "${missing:?is gone}"
        |       ^~~~~~~~~~~~~~~~~~~~~
 rc=1

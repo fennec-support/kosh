@@ -1,12 +1,20 @@
-2:7: error: custom message.
+2:7: error: nope: custom message.
      2 |  (echo "${nope:?custom message}")
        |        ^~~~~~~~~~~~~~~~~~~~~~~~~
 default=2
-5:7: error: bash message.
+5:7: error: nope: bash message.
      5 |  (echo "${nope:?bash message}")
        |        ^~~~~~~~~~~~~~~~~~~~~~~
 bash=1
-8:7: error: posix message.
+8:7: error: nope: posix message.
      8 |  (echo "${nope?posix message}")
        |        ^~~~~~~~~~~~~~~~~~~~~~~
 posix=2
+12:7: error: table[b]: missing key b.
+    12 |  (echo "${table[b]:?missing key b}")
+       |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+assoc=1
+15:7: error: list[3]: no such slot.
+    15 |  (echo "${list[3]:?no such slot}")
+       |        ^~~~~~~~~~~~~~~~~~~~~~~~~~
+indexed=1

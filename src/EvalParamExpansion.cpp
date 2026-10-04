@@ -1069,7 +1069,7 @@ fn EvalContext::ParameterExpander::expand_element_test(
       if (word.is_empty())
         throw_script_fatal("Unable to expand '" + m_name + "[" + subscript +
                            "]' because the element is not set or is empty");
-      throw_script_fatal(expand_word(word));
+      throw_script_fatal(m_name + "[" + subscript + "]: " + expand_word(word));
     }
     return value;
   default: break;
@@ -1241,7 +1241,7 @@ fn EvalContext::ParameterExpander::raise_unset_error(StringView word) throws
   if (word.is_empty())
     throw_script_fatal("Unable to expand '" + m_name +
                        "' because the parameter is not set or is empty");
-  throw_script_fatal(expand_word(word));
+  throw_script_fatal(m_name + ": " + expand_word(word));
 }
 
 fn EvalContext::ParameterExpander::expand_trim_operator(

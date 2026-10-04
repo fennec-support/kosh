@@ -7,3 +7,10 @@ echo "bash=$?"
 set --mood sh
 (echo "${nope?posix message}")
 echo "posix=$?"
+set --mood bash
+declare -A table
+(echo "${table[b]:?missing key b}")
+echo "assoc=$?"
+list=(a)
+(echo "${list[3]:?no such slot}")
+echo "indexed=$?"
