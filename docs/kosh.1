@@ -2469,7 +2469,12 @@ their average processor utilization.
 .B evilss
 Visible TCP, UDP, and Unix-domain sockets are printed in a table. Address
 family, protocol, listening state, process identifiers, and the header can be
-selected with ss-compatible options.
+selected with ss-compatible options. The
+.B \-\-live
+option, which has no short form because
+.B \-l
+selects listening sockets, reads the sockets again and refreshes the same table
+every optional number of seconds until interrupted; the default is 0.5 seconds.
 .TP
 .B goodstat
 File metadata is printed as a labeled report. Its type uses the same classifier

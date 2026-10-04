@@ -275,6 +275,36 @@ else
 fi
 printf 'evilps-live-window=%s\n' "$evilps_live_window"
 
+evilss_live_path=$TEST_TEMP_DIRECTORY/evilss-live-report
+"$BIN" -c \
+  '(attempt=0; while [ "$attempt" -lt 250 ]; do
+      if [ "$(koshkit grep -c "evilss  LIVE" "$1")" -ge 2 ]; then break; fi
+      koshkit sleep 0.02
+      attempt=$((attempt + 1))
+    done
+    kill -INT "$$") &
+   koshkit --color never evilss --live=0.05' \
+  live "$evilss_live_path" > "$evilss_live_path"
+printf 'evilss-live-status=%s\n' "$?"
+evilss_live_report=$(cat "$evilss_live_path")
+evilss_escape=$(printf '\033')
+case $evilss_live_report in
+  *"$evilss_escape"*) evilss_live_plain=escapes ;;
+  *) evilss_live_plain=plain ;;
+esac
+printf 'evilss-live-plain=%s\n' "$evilss_live_plain"
+case $evilss_live_report in
+  *'evilss  LIVE'*'every 0.05s'*'Netid'*'evilss  LIVE'*'Netid'*)
+    evilss_live_refresh=matched
+    ;;
+  *) evilss_live_refresh=wrong ;;
+esac
+printf 'evilss-live-refresh=%s\n' "$evilss_live_refresh"
+$BIN -c 'koshkit evilss --live=0' > /dev/null 2>&1
+printf 'evilss-invalid-live=%s\n' "$?"
+$BIN -c 'koshkit evilss --live=bad' > /dev/null 2>&1
+printf 'evilss-rejected-live=%s\n' "$?"
+
 fs_report=$($BIN -c 'koshkit --color never evilfs --all' 2> "$TEST_NULL_DEVICE")
 case $fs_report in
   *'Filesystems'*'SOURCE'*'VOLUME'*'UUID'*'FILESYSTEM ID'*) fs_detail=matched ;;

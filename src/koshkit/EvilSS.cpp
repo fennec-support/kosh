@@ -4,7 +4,8 @@
  *
  * This file implements the evilss utility. It filters the native socket
  * inventory and presents protocol, state, queues, endpoints, and optional
- * process owners.
+ * process owners. With --live it reads the inventory again for each frame of
+ * the shared live view driver and renders the same table as a single report.
  */
 
 #include "../CLI.hpp"
@@ -13,10 +14,11 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
+#include "LiveView.hpp"
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[-46aHlnptux]");
+HELP_SYNOPSIS_DECL("[-46aHlnptux] [--live [seconds]]");
 
 HELP_DESCRIPTION_DECL("The evilss utility reports visible network sockets.");
 
@@ -31,6 +33,16 @@ FLAG(EVILSS_NUMERIC, Bool, 'n', "numeric", "Keep addresses and ports numeric.");
 FLAG(EVILSS_IPV4, Bool, '4', "ipv4", "Show IPv4 sockets.");
 FLAG(EVILSS_IPV6, Bool, '6', "ipv6", "Show IPv6 sockets.");
 FLAG(EVILSS_NO_HEADER, Bool, 'H', "no-header", "Omit the header row.");
+static pure fn is_evilss_live_duration(koshka::StringView value) wontthrow
+    -> bool
+{
+  return !value.is_empty() &&
+         ((value[0] >= '0' && value[0] <= '9') || value[0] == '.');
+}
+FLAG_OPTIONAL(EVILSS_LIVE, '\0', "live", Live,
+              "Read the sockets again and refresh the table every N seconds "
+              "until interrupted; the default is 0.5 seconds.",
+              is_evilss_live_duration, "seconds");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(EvilSS);
@@ -340,22 +352,52 @@ fn EvilSS::execute(const ExecContext &ec, EvalContext &cxt,
 
   unused(FLAG_EVILSS_NUMERIC);
   let const allocator = cxt.scratch_allocator();
-  let output = String{allocator};
   let const should_color = koshkit_should_color();
-  append_network_socket_report(
-      output,
-      network_socket_report_options{
-          .is_listening_only = FLAG_EVILSS_LISTENING.is_enabled(),
-          .should_include_listening = FLAG_EVILSS_ALL.is_enabled(),
-          .should_show_tcp = FLAG_EVILSS_TCP.is_enabled(),
-          .should_show_udp = FLAG_EVILSS_UDP.is_enabled(),
-          .should_show_unix = FLAG_EVILSS_UNIX.is_enabled(),
-          .should_show_ipv4 = FLAG_EVILSS_IPV4.is_enabled(),
-          .should_show_ipv6 = FLAG_EVILSS_IPV6.is_enabled(),
-          .should_show_processes = FLAG_EVILSS_PROCESSES.is_enabled(),
-          .should_show_header = !FLAG_EVILSS_NO_HEADER.is_enabled(),
-      },
-      allocator, should_color);
+  let const report_options = network_socket_report_options{
+      .is_listening_only = FLAG_EVILSS_LISTENING.is_enabled(),
+      .should_include_listening = FLAG_EVILSS_ALL.is_enabled(),
+      .should_show_tcp = FLAG_EVILSS_TCP.is_enabled(),
+      .should_show_udp = FLAG_EVILSS_UDP.is_enabled(),
+      .should_show_unix = FLAG_EVILSS_UNIX.is_enabled(),
+      .should_show_ipv4 = FLAG_EVILSS_IPV4.is_enabled(),
+      .should_show_ipv6 = FLAG_EVILSS_IPV6.is_enabled(),
+      .should_show_processes = FLAG_EVILSS_PROCESSES.is_enabled(),
+      .should_show_header = !FLAG_EVILSS_NO_HEADER.is_enabled(),
+  };
+
+  if (FLAG_EVILSS_LIVE.is_enabled()) {
+    f64 live_interval_seconds = 0.5;
+    if (FLAG_EVILSS_LIVE.has_value()) {
+      let const parsed = parse_koshkit_duration_seconds(
+          FLAG_EVILSS_LIVE.value(), FLAG_EVILSS_LIVE.value_location(),
+          allocator);
+      if (parsed <= 0.0) {
+        KOSHKIT_REPORT_ERROR_AT(FLAG_EVILSS_LIVE.value_location(),
+                                "invalid live interval",
+                                "use a positive number of seconds");
+        return 1;
+      }
+      live_interval_seconds = parsed;
+    }
+
+    let const do_sample = [](u64, Allocator) -> Maybe<i32> { return None; };
+    let const do_render = [&](String &frame, const live_view_dimensions &,
+                              Allocator frame_allocator) -> Maybe<i32> {
+      append_network_socket_report(frame, report_options, frame_allocator,
+                                   should_color);
+      return None;
+    };
+
+    live_view_options options{};
+    options.title = "evilss";
+    options.refresh_interval_seconds = live_interval_seconds;
+    options.should_color = should_color;
+
+    return run_live_view(ec, options, do_sample, do_render);
+  }
+
+  let output = String{allocator};
+  append_network_socket_report(output, report_options, allocator, should_color);
 
   ec.print_to_stdout(output);
   return 0;

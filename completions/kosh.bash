@@ -431,7 +431,7 @@ _koshkit_util_flags ()
     ;;
     evilss)
       echo \
-        "-4 --ipv4 -6 --ipv6 -a --all -H --no-header -l --listening -n --numeric -p --processes -t --tcp -u --udp -x --unix"
+        "-4 --ipv4 -6 --ipv6 -a --all -H --no-header -l --listening --live -n --numeric -p --processes -t --tcp -u --udp -x --unix"
     ;;
     stat)
       echo "-L --dereference -f --file-system -t --terse -c --format --printf"

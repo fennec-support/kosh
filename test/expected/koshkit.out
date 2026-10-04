@@ -154,6 +154,7 @@ mv
 --ipv4
 --ipv6
 --listening
+--live
 --no-header
 --numeric
 --processes

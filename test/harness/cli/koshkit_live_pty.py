@@ -154,6 +154,7 @@ def main():
          "--cumulative=0.1", ()),
         ("evilnet-pty", "koshkit --color never evilnet --traffic --live=0.05 "
          "--cumulative=0.1", ()),
+        ("evilss-pty", "koshkit --color never evilss --live=0.05", ()),
         ("evilps-pty", "koshkit --color never evilps --cpu --live=0.05 "
          "--cumulative=0.1 -1",
          ((b"s", b"SORT name"), (b"s", b"SORT pid"), (b"s", b"SORT cpu"),
@@ -182,6 +183,7 @@ def main():
          "--cumulative=0.1"),
         ("evilnet-quit", "koshkit --color never evilnet --traffic "
          "--live=0.05 --cumulative=0.1"),
+        ("evilss-quit", "koshkit --color never evilss --live=0.05"),
         ("evilps-quit", "koshkit --color never evilps --cpu --live=0.05 "
          "--cumulative=0.1 -1"),
     ):
@@ -202,6 +204,7 @@ def main():
                 {"status": 130, "styled_header": False, "hints": True})
 
     for name, command in (
+        ("evilss-redirected", "koshkit --color never evilss --live=0.05"),
         ("evilio-redirected", "koshkit --color never evilio --ps --live=0.05 "
          "--cumulative=0.1"),
         ("evilnet-redirected", "koshkit --color never evilnet --traffic "
