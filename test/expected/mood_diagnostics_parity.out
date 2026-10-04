@@ -1,0 +1,135 @@
+eval.sh bash: same
+eval.sh sh: same
+eval.sh bash-posix: same
+eval.sh dumb: same
+-- reference
+before
+eval:1:6: error: Division by zero.
+     1 |  echo $((1/0))
+       |       ^~~~~~~~
+note: The right operand evaluated to 0.
+eval.sh:2:1: trace:
+     2 |  eval 'echo $((1/0))'
+       |  ^~~~~~~~~~~~~~~~~~~~
+heredoc.sh bash: same
+heredoc.sh sh: same
+heredoc.sh bash-posix: same
+heredoc.sh dumb: same
+-- reference
+heredoc.sh:2:12: error: Division by zero.
+     2 |  value $((1/0))
+       |             ^
+note: The right operand evaluated to 0.
+function.sh bash: same
+function.sh sh: same
+function.sh bash-posix: same
+function.sh dumb: same
+-- reference
+function.sh:3:8: error: Division by zero.
+     3 |    echo $((1/0))
+       |         ^~~~~~~~
+note: The right operand evaluated to 0.
+5:1: trace:
+     5 |  f
+       |  ^
+source.sh bash: same
+source.sh sh: same
+source.sh bash-posix: same
+source.sh dumb: same
+-- reference
+start
+lib
+./lib.sh:2:6: error: Division by zero.
+     2 |  echo $((1/0))
+       |       ^~~~~~~~
+note: The right operand evaluated to 0.
+source.sh:2:3: trace:
+     2 |  . ./lib.sh
+       |    ^~~~~~~~
+trap.sh bash: same
+trap.sh sh: same
+trap.sh bash-posix: same
+trap.sh dumb: same
+-- reference
+body
+1:6: error: Division by zero.
+     1 |  echo $((1/0))
+       |       ^~~~~~~~
+note: The right operand evaluated to 0.
+trap.sh:1:1: trace:
+     1 |  trap 'echo $((1/0))' EXIT
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~
+subshell.sh bash: same
+subshell.sh sh: same
+subshell.sh bash-posix: same
+subshell.sh dumb: same
+-- reference
+before
+subshell.sh:2:8: error: Division by zero.
+     2 |  ( echo $((1/0)) )
+       |         ^~~~~~~~
+note: The right operand evaluated to 0.
+2:1: trace:
+     2 |  ( echo $((1/0)) )
+       |  ^
+substitution.sh bash: same
+substitution.sh sh: same
+substitution.sh bash-posix: same
+substitution.sh dumb: same
+-- reference
+substitution.sh:1:14: error: Division by zero.
+     1 |  value=$(echo $((1/0)))
+       |               ^~~~~~~~
+note: The right operand evaluated to 0.
+1:7: trace:
+     1 |  value=$(echo $((1/0)))
+       |        ^~~~~~~~~~~~~~~~
+process.sh bash: same
+process.sh sh: same
+process.sh bash-posix: same
+process.sh dumb: same
+-- reference
+process.sh:1:12: error: Division by zero.
+     1 |  cat <(echo $((1/0)))
+       |             ^~~~~~~~
+note: The right operand evaluated to 0.
+1:5: trace:
+     1 |  cat <(echo $((1/0)))
+       |      ^~~~~~~~~~~~~~~~
+unbound.sh bash: same
+unbound.sh sh: same
+unbound.sh bash-posix: same
+unbound.sh dumb: same
+-- reference
+unbound.sh:3:6: error: Unable to expand 'undefined_name' because the parameter is not set.
+     3 |  echo "${!ref}"
+       |       ^~~~~~~~~
+note: Replace it with ${undefined_name-} if empty expansion is desired.
+readonly.sh bash: same
+readonly.sh sh: same
+readonly.sh bash-posix: same
+readonly.sh dumb: same
+-- reference
+readonly.sh:2:1: error: Unable to assign 'fixed' because it is read only.
+     2 |  fixed=2
+       |  ^~~~~~~
+cd.sh bash: same
+cd.sh sh: same
+cd.sh bash-posix: same
+cd.sh dumb: same
+-- reference
+cd.sh:1:5: error: The directory '/no' does not exist.
+     1 |  cd /no/such/directory_zz
+       |      ^~
+note: Check the spelling or create it with `mkdir -p`.
+glob.sh bash: same
+glob.sh sh: same
+glob.sh bash-posix: same
+-- reference
+glob.sh:2:14: warning: The glob pattern '*.nomatch' matched no file, it expands to its literal text, which is rarely intended.
+     2 |  files=$(echo *.nomatch)
+       |               ^~~~~~~~~
+note: Probe for matches with compgen -G '*.nomatch' or relax with set +o failglob.
+2:7: trace:
+     2 |  files=$(echo *.nomatch)
+       |        ^~~~~~~~~~~~~~~~~
