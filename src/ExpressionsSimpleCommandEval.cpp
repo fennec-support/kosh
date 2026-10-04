@@ -123,6 +123,33 @@ static fn command_word_is_glob(const Word &word) wontthrow -> bool
 
 } /* namespace */
 
+hot fn SimpleCommand::get_literal_command_lookup(
+    const ArrayList<String> &program_args) const throws
+    -> const literal_command_lookup *
+{
+  if (program_args.is_empty() || m_args.is_empty() ||
+      m_args[0]->kind() != Token::Kind::Word)
+  {
+    return nullptr;
+  }
+
+  const Word &command_word =
+      static_cast<const tokens::WordToken *>(m_args[0])->word();
+  if (command_word.plain_literal_kind() == Word::PlainLiteral::NotPlain) {
+    return nullptr;
+  }
+
+  let const literal_name = command_word.constant_value();
+  if (program_args[0].view() != literal_name) return nullptr;
+
+  if (!m_literal_command_lookup.has_value()) {
+    m_literal_command_lookup = literal_command_lookup{
+        search_builtin(literal_name), is_special_builtin_name(literal_name)};
+  }
+
+  return &*m_literal_command_lookup;
+}
+
 hot fn SimpleCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
 {
   return evaluate_root_impl(cxt, root_evaluation_mode::Normal);
@@ -254,9 +281,12 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   /* A POSIX special builtin not shadowed by a function exits the shell on a
      redirection error and keeps a prefix assignment, so it is computed once and
      read on both paths. */
+  let const *const literal_lookup = get_literal_command_lookup(program_args);
   const bool is_command_special_builtin =
       !program_args.is_empty() && command_word_function == nullptr &&
-      is_special_builtin_name(program_args[0].view());
+      (literal_lookup != nullptr
+           ? literal_lookup->is_special
+           : is_special_builtin_name(program_args[0].view()));
 
   /* A heredoc on the standard input passes its staged descriptor through this
      slot, and the guard closes it on any path that does not hand it off. */
@@ -949,24 +979,44 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     SET_AND_RETURN_EXIT_STATUS(cxt, function_ret);
   }
 
-  Maybe<ExecContext> resolved_ec;
-  try {
-    let const *source = cxt.source_store().current_source();
-    resolved_ec = ExecContext::make_from(
-        source_location(), source != nullptr ? source->view() : StringView{},
-        steal(program_args),
-        cxt.runtime_state().koshkit_utilities_are_reachable(),
-        cxt.runtime_state().is_shopt_enabled(shopt_option_id::Checkhash),
-        cxt.resolution_store().resolver(), steal(program_arg_locations),
-        cxt.runtime_state().get_mood(), cxt.is_shopt_enabled("autocd"));
-  } catch (const CommandResolutionErrorWithLocation &e) {
-    report_command_resolution_error(cxt, e);
-    let const status = e.command_status();
-    cxt.execution_store().set_last_exit_status(static_cast<i32>(status));
-    cxt.publish_single_pipe_status(static_cast<i32>(status));
-    return status;
+  let did_resolution_fail = false;
+  i64 resolution_failure_status = 0;
+  let const do_resolve_context = [&]() throws -> ExecContext {
+    if (literal_lookup != nullptr && literal_lookup->builtin.has_value() &&
+        !builtin_is_hidden_by_mood(*literal_lookup->builtin,
+                                   cxt.runtime_state().get_mood()))
+    {
+      return ExecContext::make_from_resolved(
+          source_location(),
+          ResolvedCommand::from_builtin(*literal_lookup->builtin),
+          steal(program_args), steal(program_arg_locations));
+    }
+
+    try {
+      let const *source = cxt.source_store().current_source();
+      return ExecContext::make_from(
+          source_location(), source != nullptr ? source->view() : StringView{},
+          steal(program_args),
+          cxt.runtime_state().koshkit_utilities_are_reachable(),
+          cxt.runtime_state().is_shopt_enabled(shopt_option_id::Checkhash),
+          cxt.resolution_store().resolver(), steal(program_arg_locations),
+          cxt.runtime_state().get_mood(), cxt.is_shopt_enabled("autocd"));
+    } catch (const CommandResolutionErrorWithLocation &e) {
+      report_command_resolution_error(cxt, e);
+      did_resolution_fail = true;
+      resolution_failure_status = e.command_status();
+      return ExecContext::make_from_unresolved(
+          source_location(), static_cast<i32>(resolution_failure_status),
+          StringView{});
+    }
+  };
+  let ec = do_resolve_context();
+  if (did_resolution_fail) {
+    cxt.execution_store().set_last_exit_status(
+        static_cast<i32>(resolution_failure_status));
+    cxt.publish_single_pipe_status(static_cast<i32>(resolution_failure_status));
+    return resolution_failure_status;
   }
-  let ec = resolved_ec.take();
   ec.has_stripped_array_operands = !m_array_args.is_empty();
 
   /* The exec context now owns and closes the staged input descriptor. The

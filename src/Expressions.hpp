@@ -1136,6 +1136,16 @@ protected:
 
   mutable Maybe<bool> m_command_word_is_glob{};
 
+  struct literal_command_lookup
+  {
+    Maybe<Builtin::Kind> builtin{};
+    bool is_special{false};
+  };
+  mutable Maybe<literal_command_lookup> m_literal_command_lookup{};
+
+  fn get_literal_command_lookup(const ArrayList<String> &program_args) const
+      throws -> const literal_command_lookup *;
+
   u32 m_full_source_end_position{0};
 
   SparseList<Redirection> m_redirections{};
