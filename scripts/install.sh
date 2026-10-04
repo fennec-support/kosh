@@ -123,6 +123,29 @@
     curl --proto '=https' --tlsv1.2 --retry 3 -fsSL "$@"
   }
 
+  progress ()
+  {
+    if [ -f "$1" ] && [ "$2" -gt 0 ]
+    then
+      set -- "$(($(wc -c <"$1") * 100 / $2))"
+    else
+      set -- 0
+    fi
+
+    if [ "$1" -gt 99 ]
+    then
+      set -- 99
+    fi
+
+    printf '%3d%%\b\b\b\b' "$1"
+  }
+
+  content_length ()
+  {
+    fetch -I "$1" | tr -d '\r' | sed -n 's/^[Cc]ontent-[Ll]ength: *//p' |
+    tail -n 1
+  }
+
   while [ "$#" -gt 0 ]
   do
     case $1 in
@@ -159,9 +182,9 @@
     shift
   done
 
-  say "Hi! This is Koshka Shell installer <github.com/toiletbril/kosh>"
-  say "You can view the repository and this script at <github.com/toiletbril/kosh>"
-
+  say "Hi! This is Koshka Shell installer."
+  say \
+    "You can view the repository and this script at <github.com/toiletbril/kosh>"
   command -v curl >/dev/null || fail "curl is required"
   EXT=
 
@@ -259,7 +282,7 @@
 
   WORK=$(mktemp -d)
 
-  trap 'rm -rf "$WORK"' EXIT
+  trap 'kill ${PID:-} 2>/dev/null; rm -rf "$WORK"' EXIT
   trap 'exit 130' INT TERM
   cd "$WORK" || fail "cannot enter $WORK"
   URL=$RELEASES/download/$VERSION
@@ -284,7 +307,24 @@
   for FILE in $FILES
   do
     step Downloading "$(paint "$IS_COLOR" '1;34' "$FILE").."
-    fetch -o "$FILE" "$URL/$FILE" || fail "unable to download $FILE"
+    if [ -t 1 ]
+    then
+      SIZE=$(content_length "$URL/$FILE")
+
+      fetch -o "$FILE" "$URL/$FILE" &
+      PID=$!
+
+      while kill -0 "$PID" 2>/dev/null
+      do
+        progress "$FILE" "${SIZE:-0}"
+        sleep 0.1
+      done
+
+      wait "$PID" || fail "unable to download $FILE"
+    else
+      fetch -o "$FILE" "$URL/$FILE" || fail "unable to download $FILE"
+    fi
+
     printf '100%%\n'
     grep " \*\{0,1\}$FILE\$" SHA256SUMS >>expected
   done
@@ -320,7 +360,7 @@
     fi
   fi
 
-  say "Success! Meow meow meow. Your binary is here: " "$BIN_DIR/kosh$EXT"
+  say "Success! Meow meow meow. Your binary is here:" "$BIN_DIR/kosh$EXT"
   case ":$PATH:" in
     *":$BIN_DIR:"*)
       line "Use $(paint "$IS_COLOR" '1;34' kosh) to launch the shell."

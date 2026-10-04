@@ -76,6 +76,36 @@
         [Console]::Out.WriteLine("$(Mark)$Text")
     }
 
+    function Show-Progress($Percent) {
+        if (-not [Console]::IsOutputRedirected) {
+            [Console]::Out.Write("{0,3}%`b`b`b`b" -f [Math]::Min(99, $Percent))
+        }
+    }
+
+    function Get-File($Address, $Path) {
+        $Response = [Net.WebRequest]::Create($Address).GetResponse()
+        $In = $Response.GetResponseStream()
+        $Out = [IO.File]::Create($Path)
+        try {
+            $Total = $Response.ContentLength
+            $Buffer = New-Object byte[] 65536
+            $Done = 0
+            Show-Progress 0
+            while (($Read = $In.Read($Buffer, 0, $Buffer.Length)) -gt 0) {
+                $Out.Write($Buffer, 0, $Read)
+                $Done += $Read
+                if ($Total -gt 0) {
+                    Show-Progress ([int][Math]::Floor($Done * 100 / $Total))
+                }
+            }
+        }
+        finally {
+            $Out.Dispose()
+            $In.Dispose()
+            $Response.Dispose()
+        }
+    }
+
     function Ask($Question) {
         if ([Console]::IsInputRedirected) { return $true }
         [Console]::Error.Write("$(Mark -IsColor $IS_ERROR_COLOR)$Question [y/n] ")
@@ -171,7 +201,7 @@
         foreach ($FILE in $FILES) {
             Step "Downloading" "$(Paint '1;34' $FILE).."
             try {
-                Invoke-WebRequest "$URL/$FILE" -OutFile $FILE -UseBasicParsing
+                Get-File "$URL/$FILE" (Join-Path $WORK $FILE)
             }
             catch {
                 throw "unable to download $FILE"
@@ -214,7 +244,7 @@
             }
         }
 
-        Say "Success! Meow meow meow. Your binary is here: " $EXE
+        Say "Success! Meow meow meow. Your binary is here:" $EXE
         $USER_PATH = (Get-Item "HKCU:\Environment").GetValue("Path", "", "DoNotExpandEnvironmentNames")
         $IS_ON_PATH = (($env:Path -split ";") + ($USER_PATH -split ";")) -contains $BIN_DIR
         if (-not $IS_ON_PATH -and (Ask "Do you want to add $BIN_DIR to the user PATH?")) {
