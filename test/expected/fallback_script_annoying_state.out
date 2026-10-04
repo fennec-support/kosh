@@ -1,0 +1,4 @@
+default: script-annoying-on
+runtime off: script-annoying-off
+flag off: script-annoying-off
+restored: script-annoying-on

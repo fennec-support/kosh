@@ -114,12 +114,8 @@ fn EvalContext::run_program_fallback(ExecContext &ec, mimic_mood mode,
   fallback_context.execution_store().set_shell_executable_path(
       String{execution_store().get_shell_executable_path()});
   fallback_context.runtime_state().set_koshkit(runtime_state().koshkit());
-  fallback_context.runtime_state().set_mimicry(
-      runtime_state().is_mimicry_enabled());
-  fallback_context.runtime_state().set_warning_level(
-      runtime_state().get_warning_level());
-  fallback_context.runtime_state().set_diagnostics_disabled(
-      runtime_state().is_diagnostics_disabled());
+  fallback_context.runtime_state().set_inheritable_analysis_state(
+      runtime_state().get_inheritable_analysis_state());
   fallback_context.diagnostics_store().set_source_traces_enabled(
       diagnostics_store().source_traces_enabled());
   fallback_context.source_store().source_frames().reserve(
