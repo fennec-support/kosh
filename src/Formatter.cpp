@@ -841,27 +841,53 @@ pure fn has_prior_test_shadow(Maybe<usize> first_shadow_position,
 fn first_test_shadow_position(const ArrayList<format_piece> &pieces) throws
     -> Maybe<usize>
 {
+  enum class shadow_introducer : u8
+  {
+    Function,
+    Alias,
+    Test,
+  };
+  static constexpr static_string_entry<shadow_introducer> INTRODUCERS[] = {
+      {SSK("function"), shadow_introducer::Function},
+      {SSK("alias"),    shadow_introducer::Alias   },
+      {SSK("test"),     shadow_introducer::Test    },
+  };
+  static constexpr StaticStringMap SHADOW_INTRODUCERS{INTRODUCERS};
+
   for (usize index = 0; index < pieces.count(); index++) {
     let const &piece = pieces[index];
     if (piece.kind != format_piece_kind::Word) continue;
-    if (piece.text == "function" && index + 1 < pieces.count() &&
-        pieces[index + 1].kind == format_piece_kind::Word &&
-        pieces[index + 1].text == "test")
-    {
-      return piece.source_position;
+    let const introducer = SHADOW_INTRODUCERS.find(piece.text);
+    if (!introducer.has_value()) continue;
+
+    switch (*introducer) {
+    case shadow_introducer::Function:
+      if (index + 1 < pieces.count() &&
+          pieces[index + 1].kind == format_piece_kind::Word &&
+          pieces[index + 1].text == "test")
+      {
+        return piece.source_position;
+      }
+      break;
+    case shadow_introducer::Alias:
+      if (index + 1 < pieces.count() &&
+          pieces[index + 1].kind == format_piece_kind::Word &&
+          pieces[index + 1].text.starts_with("test="))
+      {
+        return piece.source_position;
+      }
+      break;
+    case shadow_introducer::Test:
+      if (index + 2 < pieces.count() &&
+          pieces[index + 1].kind == format_piece_kind::Operator &&
+          pieces[index + 1].text == "(" &&
+          pieces[index + 2].kind == format_piece_kind::Operator &&
+          pieces[index + 2].text == ")")
+      {
+        return piece.source_position;
+      }
+      break;
     }
-    if (piece.text == "alias" && index + 1 < pieces.count() &&
-        pieces[index + 1].kind == format_piece_kind::Word &&
-        pieces[index + 1].text.starts_with("test="))
-    {
-      return piece.source_position;
-    }
-    if (piece.text == "test" && index + 2 < pieces.count() &&
-        pieces[index + 1].kind == format_piece_kind::Operator &&
-        pieces[index + 1].text == "(" &&
-        pieces[index + 2].kind == format_piece_kind::Operator &&
-        pieces[index + 2].text == ")")
-      return piece.source_position;
   }
 
   return None;
@@ -1451,12 +1477,29 @@ fn render_format_pieces(const ArrayList<format_piece> &pieces,
       if ((keyword_flags & formatter_keyword_case) != 0)
         is_expecting_case_in = true;
       if (is_bash && is_reserved_position) {
-        if (rendered_text == "while" || rendered_text == "until") {
-          loop_do_join_states.push(true);
-        } else if (rendered_text == "for" || rendered_text == "select") {
-          loop_do_join_states.push(false);
-        } else if (rendered_text == "if") {
-          pending_fi_counts.push(0);
+        enum class block_opener : u8
+        {
+          JoinedLoop,
+          SplitLoop,
+          Conditional,
+        };
+        static constexpr static_string_entry<block_opener> OPENERS[] = {
+            {SSK("while"),  block_opener::JoinedLoop },
+            {SSK("until"),  block_opener::JoinedLoop },
+            {SSK("for"),    block_opener::SplitLoop  },
+            {SSK("select"), block_opener::SplitLoop  },
+            {SSK("if"),     block_opener::Conditional},
+        };
+        static constexpr StaticStringMap BLOCK_OPENERS{OPENERS};
+
+        if (let const opener = BLOCK_OPENERS.find(rendered_text);
+            opener.has_value())
+        {
+          switch (*opener) {
+          case block_opener::JoinedLoop: loop_do_join_states.push(true); break;
+          case block_opener::SplitLoop: loop_do_join_states.push(false); break;
+          case block_opener::Conditional: pending_fi_counts.push(0); break;
+          }
         }
       }
       let should_rewrite_test =

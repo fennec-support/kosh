@@ -167,8 +167,10 @@ fn check_command_name_lints(AnalysisContext &actx,
                            ->word()
                            .to_literal_string();
       let const view = flag.view();
-      if (view == "-e" || view == "-n" || view == "-E" || view == "-ne" ||
-          view == "-en")
+      static constexpr PackedStringKey ECHO_FLAG_KEYS[] = {
+          SSK("-e"), SSK("-n"), SSK("-E"), SSK("-ne"), SSK("-en")};
+      static constexpr StaticStringSet ECHO_FLAGS{ECHO_FLAG_KEYS};
+      if (ECHO_FLAGS.contains(view))
         actx.report_diagnostic(diagnostic_id::sc3037,
                                args[1]->source_location(), {view});
     }

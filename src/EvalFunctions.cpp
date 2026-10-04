@@ -506,13 +506,34 @@ fn EvalContext::set_trap(StringView condition, StringView action) throws -> void
   /* A trap installed inside a function, a subshell, or a substitution traces
      that frame without functrace or errtrace. An inherited trap needs the
      option to reach the frame. */
-  if (condition == "DEBUG")
-    trap_store().debug_trap_active_depth() = nesting_depth();
-  if (condition == "ERR")
-    trap_store().err_trap_active_depth() = nesting_depth();
-  /* EXIT runs at the shell's end and needs no OS handler. An empty action
-     installs the ignore disposition the way trap "" SIG asks. */
-  if (condition == "EXIT") return;
+  enum class pseudo_condition : u8
+  {
+    Debug,
+    Error,
+    Exit,
+  };
+  static constexpr static_string_entry<pseudo_condition> PSEUDO_ENTRIES[] = {
+      {SSK("DEBUG"), pseudo_condition::Debug},
+      {SSK("ERR"),   pseudo_condition::Error},
+      {SSK("EXIT"),  pseudo_condition::Exit },
+  };
+  static constexpr StaticStringMap PSEUDO_CONDITIONS{PSEUDO_ENTRIES};
+  if (let const pseudo = PSEUDO_CONDITIONS.find(condition); pseudo.has_value())
+  {
+    switch (*pseudo) {
+    case pseudo_condition::Debug:
+      trap_store().debug_trap_active_depth() = nesting_depth();
+      break;
+    case pseudo_condition::Error:
+      trap_store().err_trap_active_depth() = nesting_depth();
+      break;
+    case pseudo_condition::Exit:
+      /* EXIT runs at the shell's end and needs no OS handler. */
+      return;
+    }
+  }
+  /* An empty action installs the ignore disposition the way trap "" SIG
+     asks. */
   if (let const number = os::signal_number_from_name(condition)) {
     if (action.is_empty())
       os::set_trap_ignore(*number);

@@ -382,11 +382,22 @@ fn internal::complete_from_process_arguments(StringView line, StringView token,
   if (!for_listing) return None;
 
   let const command = command_word_of(line);
-  let const is_by_pid = command == "kill" || command == "wait";
-  let const is_by_name = command == "pkill" || command == "killall";
-  if (!is_by_pid && !is_by_name) {
+  static constexpr static_string_entry<bool> PROCESS_COMMAND_ENTRIES[] = {
+      {SSK("kill"),    true },
+      {SSK("wait"),    true },
+      {SSK("pkill"),   false},
+      {SSK("killall"), false},
+  };
+  static constexpr StaticStringMap PROCESS_COMMANDS{PROCESS_COMMAND_ENTRIES};
+  static constexpr PackedStringKey SIGNAL_FLAG_KEYS[] = {SSK("-s"), SSK("-n"),
+                                                         SSK("--signal")};
+  static constexpr StaticStringSet SIGNAL_FLAGS{SIGNAL_FLAG_KEYS};
+
+  let const process_command = PROCESS_COMMANDS.find(command);
+  if (!process_command.has_value()) {
     return None;
   }
+  let const is_by_name = !*process_command;
 
   if (!token.is_empty() && token[0] == '-') {
     return None;
@@ -394,9 +405,7 @@ fn internal::complete_from_process_arguments(StringView line, StringView token,
 
   /* A signal operand is not a process, so the flag scan answers instead. */
   let const previous_word = previous_settled_word(line, token_start);
-  if (previous_word == "-s" || previous_word == "-n" ||
-      previous_word == "--signal")
-  {
+  if (SIGNAL_FLAGS.contains(previous_word)) {
     return None;
   }
 
@@ -861,9 +870,11 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
       return None;
     }
 
-    if (previous_word == "--mood" || previous_word == "-M" ||
-        previous_word == "--init-moods" || previous_word == "-L")
-    {
+    static constexpr PackedStringKey MOOD_FLAG_KEYS[] = {
+        SSK("--mood"), SSK("-M"), SSK("--init-moods"), SSK("-L")};
+    static constexpr StaticStringSet MOOD_FLAGS{MOOD_FLAG_KEYS};
+
+    if (MOOD_FLAGS.contains(previous_word)) {
       for (mimic_mood mood : {mimic_mood::Default, mimic_mood::Bash,
                               mimic_mood::Posix, mimic_mood::BashPosix})
         do_push_matching(mood_name(mood));

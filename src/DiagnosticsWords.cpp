@@ -956,19 +956,23 @@ fn check_command_word_shape(AnalysisContext &actx,
                            args.back()->source_location());
   }
 
-  if (args.count() >= 2 && args[1]->raw_view() == StringView{"="}) {
-    has_explained_resolution_failure |= actx.report_diagnostic(
-        diagnostic_id::sc2283, args[1]->source_location());
-  }
+  static constexpr static_string_entry<diagnostic_id> OPERATOR_ENTRIES[] = {
+      {SSK("="),  diagnostic_id::sc2283},
+      {SSK("=="), diagnostic_id::sc2284},
+      {SSK("+="), diagnostic_id::sc2285},
+  };
+  static constexpr StaticStringMap OPERATOR_AS_COMMAND{OPERATOR_ENTRIES};
 
-  if (args.count() >= 2 && args[1]->raw_view() == StringView{"=="}) {
-    has_explained_resolution_failure |= actx.report_diagnostic(
-        diagnostic_id::sc2284, args[1]->source_location(), {command_literal});
-  }
-
-  if (args.count() >= 2 && args[1]->raw_view() == StringView{"+="}) {
-    has_explained_resolution_failure |= actx.report_diagnostic(
-        diagnostic_id::sc2285, args[1]->source_location(), {command_literal});
+  if (args.count() >= 2 && args[1]->raw_view().has_value()) {
+    if (let const id = OPERATOR_AS_COMMAND.find(*args[1]->raw_view());
+        id.has_value())
+    {
+      has_explained_resolution_failure |=
+          *id == diagnostic_id::sc2283
+              ? actx.report_diagnostic(*id, args[1]->source_location())
+              : actx.report_diagnostic(*id, args[1]->source_location(),
+                                       {command_literal});
+    }
   }
 
   return has_explained_resolution_failure;

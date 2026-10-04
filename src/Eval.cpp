@@ -825,15 +825,25 @@ fn EvalContext::force_unset_shell_variable(StringView name) throws -> void
   record_environment_change(name);
   os::unset_environment_variable(name);
   unmark_exported(name);
-  if (name == "IFS") variable_store().set_field_separators(" \t\n");
-  if (utils::environment_name_is_path(name))
-    resolution_store().resolver().assign_path(
-        os::get_environment_variable("PATH"));
-  if (name == "IGNOREEOF")
-    runtime_state().set_option(shell_option_id::Ignoreeof, false);
-  if (name == "GLOBIGNORE") {
-    runtime_state().set_glob_ignore_assigned(false);
-    set_shopt_option("dotglob", false);
+  switch (name.is_empty() ? '\0' : name[0]) {
+  case 'I':
+    if (name == "IFS") variable_store().set_field_separators(" \t\n");
+    if (name == "IGNOREEOF")
+      runtime_state().set_option(shell_option_id::Ignoreeof, false);
+    break;
+  case 'G':
+    if (name == "GLOBIGNORE") {
+      runtime_state().set_glob_ignore_assigned(false);
+      set_shopt_option("dotglob", false);
+    }
+    break;
+  case 'P':
+  case 'p':
+    if (utils::environment_name_is_path(name))
+      resolution_store().resolver().assign_path(
+          os::get_environment_variable("PATH"));
+    break;
+  default: break;
   }
 }
 
