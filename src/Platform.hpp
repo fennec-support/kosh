@@ -481,6 +481,12 @@ enum class file_open_mode : u8
 
 fn open_file_descriptor(StringView path, file_open_mode mode) throws
     -> Maybe<descriptor>;
+/* Returns None with did_signal_arrive set when a signal with a trap action
+   interrupted a blocked open, so the caller can run the action and open again.
+   A Ctrl-C returns None with the flag clear. */
+fn open_file_descriptor_until_signal(StringView path, file_open_mode mode,
+                                     bool &did_signal_arrive) throws
+    -> Maybe<descriptor>;
 fn acquire_process_lock(StringView path) throws -> Maybe<descriptor>;
 fn release_process_lock(descriptor lock) wontthrow -> void;
 

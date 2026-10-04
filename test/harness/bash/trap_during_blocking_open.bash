@@ -12,6 +12,10 @@
 # where the kernel reports it, and otherwise falls back to a sleep. A watchdog
 # feeds every pipe after a bounded time, so a lost signal or writer fails the
 # comparison with a visible marker line instead of hanging the run.
+#
+# The action case reverses the dependency. Its writer waits for a marker that
+# only the trap action creates, so the action must run while the open is still
+# blocked and the open must resume afterwards.
 
 dir=$(mktemp -d)
 if [ ! -d "$dir" ]; then
@@ -25,7 +29,7 @@ if ! mkfifo "$dir/first" 2> /dev/null; then
   echo trap-during-blocking-open-done
   exit 0
 fi
-mkfifo "$dir/second" "$dir/third"
+mkfifo "$dir/second" "$dir/third" "$dir/fourth"
 
 (
   attempt=0
@@ -34,7 +38,7 @@ mkfifo "$dir/second" "$dir/third"
     attempt=$((attempt + 1))
   done
   if [ -d "$dir" ]; then
-    for fifo in first second third; do
+    for fifo in first second third fourth; do
       echo watchdog-fired > "$dir/$fifo" 2> /dev/null &
     done
   fi
@@ -88,6 +92,26 @@ wait "$notifier" 2> /dev/null
 wait "$writer" 2> /dev/null
 trap - INT
 echo open-under-a-trapped-interrupt-done
+
+echo open-whose-writer-waits-for-the-action
+trap 'echo action-marker; : > "$dir/action-ran"' USR2
+( wait_until_blocked $$; kill -USR2 $$ ) &
+notifier=$!
+(
+  wait_for_marker "$dir/action-ran"
+  if [ -e "$dir/action-ran" ]; then
+    echo action-payload > "$dir/fourth"
+  else
+    echo action-never-ran > "$dir/fourth"
+  fi
+) &
+writer=$!
+read -r line < "$dir/fourth"
+echo "action-status=$? action-line=$line"
+wait "$notifier" 2> /dev/null
+wait "$writer" 2> /dev/null
+trap - USR2
+echo open-whose-writer-waits-for-the-action-done
 
 echo open-that-no-signal-reaches
 ( /bin/sleep 1; echo quiet-payload > "$dir/third" ) &

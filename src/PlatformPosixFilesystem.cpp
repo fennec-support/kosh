@@ -503,10 +503,12 @@ fn directory_is_trusted_for_exec(const Path &directory) wontthrow -> bool
   return true;
 }
 
-fn open_file_descriptor(StringView path, file_open_mode mode) throws
-    -> Maybe<descriptor>
+static fn open_with_flags(StringView path, file_open_mode mode,
+                          bool should_return_on_signal,
+                          bool &did_signal_arrive) throws -> Maybe<descriptor>
 {
   LOG(Debug, "opening '%.*s'", static_cast<int>(path.length), path.data);
+  did_signal_arrive = false;
 
   /* Left inheritable on purpose, exec 3>file keeps the fd open across an exec.
    */
@@ -529,15 +531,34 @@ fn open_file_descriptor(StringView path, file_open_mode mode) throws
   {
     const int fd = ::open(path_string.c_str(), flags, 0666);
     /* An open of a named pipe blocks until its peer arrives. A Ctrl-C returns
-       to the caller. Any other interrupting signal retries the open. */
+       to the caller. A trapped signal returns to a caller that runs the action
+       and opens again. Any other interrupting signal retries the open. */
     if (fd < 0 && errno == EINTR) {
       if (INTERRUPT_REQUESTED) return koshka::None;
+      if (should_return_on_signal && SIGNAL_PENDING) {
+        did_signal_arrive = true;
+        return koshka::None;
+      }
       continue;
     }
 
     if (fd < 0) return koshka::None;
     return fd;
   }
+}
+
+fn open_file_descriptor(StringView path, file_open_mode mode) throws
+    -> Maybe<descriptor>
+{
+  bool did_signal_arrive = false;
+  return open_with_flags(path, mode, false, did_signal_arrive);
+}
+
+fn open_file_descriptor_until_signal(StringView path, file_open_mode mode,
+                                     bool &did_signal_arrive) throws
+    -> Maybe<descriptor>
+{
+  return open_with_flags(path, mode, true, did_signal_arrive);
 }
 
 fn acquire_process_lock(StringView path) throws -> Maybe<descriptor>

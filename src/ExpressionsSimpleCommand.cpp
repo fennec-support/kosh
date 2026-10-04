@@ -734,7 +734,20 @@ fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
                                   cached.value(), -1, /*is_cached=*/true};
   }
 
-  let opened = os::open_file_descriptor(target_path, mode);
+  bool did_signal_arrive = false;
+  let opened =
+      os::open_file_descriptor_until_signal(target_path, mode, did_signal_arrive);
+  while (!opened && did_signal_arrive) {
+    cxt.run_pending_traps();
+    if (cxt.control_flow_store().has_pending()) {
+      if (open_or_stage_failed != nullptr) *open_or_stage_failed = true;
+      throw ErrorWithLocation{redir.target->source_location(),
+                              "Could not open '" + target_path +
+                                  "': interrupted by a trap"};
+    }
+    opened = os::open_file_descriptor_until_signal(target_path, mode,
+                                                   did_signal_arrive);
+  }
   if (!opened) {
     if (open_or_stage_failed != nullptr) *open_or_stage_failed = true;
 

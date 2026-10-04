@@ -736,6 +736,14 @@ fn open_file_descriptor(StringView path, file_open_mode mode)
   return handle;
 }
 
+fn open_file_descriptor_until_signal(StringView path, file_open_mode mode,
+                                     bool &did_signal_arrive) throws
+    -> Maybe<descriptor>
+{
+  did_signal_arrive = false;
+  return open_file_descriptor(path, mode);
+}
+
 fn acquire_process_lock(StringView path) throws -> Maybe<descriptor>
 {
   let const wide_path = utf8_to_wide(path, heap_allocator());
