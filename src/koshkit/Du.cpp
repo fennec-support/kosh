@@ -437,24 +437,61 @@ static fn build_tree_nodes(const du_tree_request &request, Allocator allocator,
       if (os::INTERRUPT_REQUESTED) return false;
 
       let const path = request.rows[span.first_row + offset].path.view();
-      usize position =
-          target.length < path.length ? target.length : path.length;
-      usize current_index = root_index;
-      while (true) {
-        let const component = Path::next_component(path, position);
-        if (component.text.is_empty()) break;
-
-        let const key = path.substring_of_length(0, component.end);
-        if (let const found = node_by_path.find(key)) {
-          current_index = **found;
-          continue;
-        }
+      let const do_get_or_create_child = [&](usize parent_index,
+                                             usize component_end,
+                                             usize component_start) throws
+          -> usize {
+        let const key = path.substring_of_length(0, component_end);
+        let &slot = node_by_path.get_or_create(key, SIZE_MAX);
+        if (slot != SIZE_MAX) return slot;
 
         let const child_index = nodes.count();
-        nodes.push(du_tree_node{key, component.text});
-        nodes[child_index].parent_index = current_index;
-        node_by_path.insert(key, child_index);
-        current_index = child_index;
+        nodes.push(du_tree_node{
+            key, path.substring_of_length(component_start,
+                                          component_end - component_start)});
+        nodes[child_index].parent_index = parent_index;
+        slot = child_index;
+        return child_index;
+      };
+
+      usize last_end = path.length;
+      while (last_end > target.length &&
+             os::is_directory_separator(path[last_end - 1]))
+        last_end--;
+
+      usize current_index = root_index;
+      if (last_end > target.length) {
+        usize last_start = last_end;
+        while (last_start > target.length &&
+               !os::is_directory_separator(path[last_start - 1]))
+          last_start--;
+
+        usize parent_end = last_start;
+        while (parent_end > target.length &&
+               os::is_directory_separator(path[parent_end - 1]))
+          parent_end--;
+
+        usize parent_index = root_index;
+        if (parent_end > target.length) {
+          if (let const found =
+                  node_by_path.find(path.substring_of_length(0, parent_end)))
+          {
+            parent_index = **found;
+          } else {
+            usize position = target.length;
+            while (position < parent_end) {
+              let const component = Path::next_component(path, position);
+              if (component.text.is_empty()) break;
+
+              parent_index = do_get_or_create_child(
+                  parent_index, component.end,
+                  component.end - component.text.length);
+            }
+          }
+        }
+
+        current_index =
+            do_get_or_create_child(parent_index, last_end, last_start);
       }
 
       nodes[current_index].size_bytes =
