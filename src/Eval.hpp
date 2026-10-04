@@ -3254,49 +3254,7 @@ public:
 
   fn make_stats_string() const throws -> String;
 
-  /* The granular memory report at exit, requested by --show-memory. */
-
 protected:
-  /* An indexed array element whose subscript is past the dense limit, held by
-     its name and decimal index so a sparse far subscript does not pad a huge
-     dense gap. The name still reads as indexed. */
-  /* The compiled form of each [[ =~ ]] pattern, keyed by the pattern text, so a
-     hot loop with a constant regex compiles it once and reuses it. */
-  /* The cached value of IFS, kept current by set_shell_variable, so word
-     splitting does not look it up per word. */
-  /* The status the shell held when the return builtin last ran. The RETURN trap
-     action reads this status, and the frame it leaves takes the status the
-     return supplied only after the action has finished. */
-
-  /* One pointer keeps unused Bash argument arrays out of every EvalContext.
-     The lazily allocated object stores flattened values and one count per
-     frame. */
-  /* The shell descriptors the live coprocess is reached through, -1 when no
-     coprocess runs. Only one coprocess is live at a time, the way bash counts
-     them. */
-  /* Coprocess descriptors and bare-exec backups are owned by the subshell
-     store; the context only coordinates their lifecycle with snapshots. */
-  /* The names currently in the process environment, kept in step with every
-     environment write. An assignment tests membership in O(1). A key is the
-     ASCII lowercase form of the name where the environment ignores case. */
-
-  /* The nesting depth of dot-source and eval runs, and of function calls, each
-     bounded so a runaway recursion errors with a located message rather than
-     growing the native stack until the process is killed. */
-
-  /* Set once the startup files finish, so the per-command title is quiet while
-     they run. */
-
-  /* The pending non-local jump, Normal when none is pending. */
-
-  /* The mood and the diagnostic and strictness toggles, grouped as one runtime
-     state so a scope that swaps them saves and restores the whole set with one
-     RuntimeState copy. failglob defaults on, the other toggles default off. */
-  /* Each bit names a dynamic_reader_id whose reader an unset has taken
-     away. */
-  /* Each bit names a suppressible_warning value. */
-  /* The nesting of mimicked scripts, bounded so a script that mimics another
-     cannot recurse without limit. */
   fn install_trap_dispositions() throws -> void;
 
   fn option_flags_string() const throws -> String;
