@@ -104,6 +104,8 @@ struct linux_unix_socket_peer
 {
   u64 identity{0};
   u64 peer_identity{0};
+  u32 receive_queue_bytes{0};
+  u32 send_queue_bytes{0};
 };
 
 struct linux_unix_socket_peer_comparator
@@ -160,7 +162,7 @@ static fn linux_unix_socket_peers(Allocator allocator) throws
   message.header.nlmsg_seq = 1;
   message.request.sdiag_family = AF_UNIX;
   message.request.udiag_states = UINT32_MAX;
-  message.request.udiag_show = UDIAG_SHOW_PEER;
+  message.request.udiag_show = UDIAG_SHOW_PEER | UDIAG_SHOW_RQLEN;
   struct sockaddr_nl kernel{};
   kernel.nl_family = AF_NETLINK;
   if (::sendto(descriptor, &message, message.header.nlmsg_len, 0,
@@ -222,17 +224,32 @@ static fn linux_unix_socket_peers(Allocator allocator) throws
       int attribute_length = static_cast<int>(
           header->nlmsg_len - NLMSG_LENGTH(sizeof(*diagnostic)));
       let *attribute = reinterpret_cast<struct rtattr *>(diagnostic + 1);
+      linux_unix_socket_peer peer{diagnostic->udiag_ino, 0, 0, 0};
       for (; RTA_OK(attribute, attribute_length);
            attribute = RTA_NEXT(attribute, attribute_length))
       {
-        if (attribute->rta_type != UNIX_DIAG_PEER ||
-            RTA_PAYLOAD(attribute) < sizeof(u32))
-          continue;
-        u32 peer_identity = 0;
-        std::memcpy(&peer_identity, RTA_DATA(attribute), sizeof(peer_identity));
-        if (peer_identity != 0)
-          peers.push(
-              linux_unix_socket_peer{diagnostic->udiag_ino, peer_identity});
+        if (attribute->rta_type == UNIX_DIAG_PEER &&
+            RTA_PAYLOAD(attribute) >= sizeof(u32))
+        {
+          u32 peer_identity = 0;
+          std::memcpy(&peer_identity, RTA_DATA(attribute),
+                      sizeof(peer_identity));
+          peer.peer_identity = peer_identity;
+        }
+        if (attribute->rta_type == UNIX_DIAG_RQLEN &&
+            RTA_PAYLOAD(attribute) >= sizeof(struct unix_diag_rqlen))
+        {
+          struct unix_diag_rqlen queue_lengths{};
+          std::memcpy(&queue_lengths, RTA_DATA(attribute),
+                      sizeof(queue_lengths));
+          peer.receive_queue_bytes = queue_lengths.udiag_rqueue;
+          peer.send_queue_bytes = queue_lengths.udiag_wqueue;
+        }
+      }
+      if (peer.peer_identity != 0 || peer.receive_queue_bytes != 0 ||
+          peer.send_queue_bytes != 0)
+      {
+        peers.push(peer);
       }
     }
   }
@@ -242,12 +259,13 @@ static fn linux_unix_socket_peers(Allocator allocator) throws
   return steal(peers).make_sorted(linux_unix_socket_peer_comparator{});
 }
 
-static pure fn linux_unix_peer_identity(
-    const linux_unix_socket_peer_list &peers, u64 identity) wontthrow -> u64
+static pure fn linux_unix_peer_record(
+    const linux_unix_socket_peer_list &peers, u64 identity) wontthrow
+    -> linux_unix_socket_peer
 {
   if (let const index = peers.find(identity); index.has_value())
-    return peers[*index].peer_identity;
-  return 0;
+    return peers[*index];
+  return linux_unix_socket_peer{identity, 0, 0, 0};
 }
 
 static fn linux_process_start_token(StringView process_directory) throws
@@ -296,12 +314,11 @@ static fn linux_unix_sockets(const ArrayList<linux_socket_owner> *owners,
 {
   let result = ArrayList<network_socket_entry>{allocator};
   let const peers = linux_unix_socket_peers(allocator);
-  char buffer[1024 * 1024];
   let const path = linux_socket_proc_path("/net/unix", allocator);
-  let const length = read_small_file(path.c_str(), buffer, sizeof(buffer));
-  if (length == 0) return result;
+  let const contents = Path{path.view()}.read_entire_file();
+  if (!contents.has_value() || contents->is_empty()) return result;
 
-  let const text = StringView{buffer, length};
+  let const text = contents->view();
   usize position = 0;
   bool is_header = true;
   while (position < text.length) {
@@ -328,15 +345,16 @@ static fn linux_unix_sockets(const ArrayList<linux_socket_owner> *owners,
         is_listener ? network_socket_state::Listen
                     : (state == "03" ? network_socket_state::Established
                                      : network_socket_state::Unconnected);
+    let const peer = linux_unix_peer_record(peers, inode.value());
     let const do_push_socket = [&](u32 process_id, u64 start_token,
                                    bool has_start_token) throws {
       let socket = network_socket_entry{
           String{allocator, path},
           String{allocator},
           inode.value(),
-          linux_unix_peer_identity(peers, inode.value()),
-          0,
-          0,
+          peer.peer_identity,
+          peer.receive_queue_bytes,
+          peer.send_queue_bytes,
           0,
           process_id,
           0,
@@ -434,13 +452,10 @@ static fn linux_network_sockets_from_file(
     -> ArrayList<network_socket_entry>
 {
   let result = ArrayList<network_socket_entry>{allocator};
-  const String path_string{path};
-  char buffer[1024 * 1024];
-  let const length =
-      read_small_file(path_string.c_str(), buffer, sizeof(buffer));
-  if (length == 0) return result;
+  let const contents = Path{path}.read_entire_file();
+  if (!contents.has_value() || contents->is_empty()) return result;
 
-  let const text = StringView{buffer, length};
+  let const text = contents->view();
   usize position = 0;
   bool is_header = true;
   while (position < text.length) {

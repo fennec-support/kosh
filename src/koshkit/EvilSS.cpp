@@ -115,8 +115,7 @@ fn unix_endpoint(StringView path, u64 identity, Allocator allocator) throws
 {
   let result = String{allocator, path.is_empty() ? StringView{"*"} : path};
   result += ":";
-  result += identity == 0 ? StringView{"*"}
-                          : String::from(identity, allocator).view();
+  result += String::from(identity, allocator).view();
   return result;
 }
 
