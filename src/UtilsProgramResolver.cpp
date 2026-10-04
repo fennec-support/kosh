@@ -277,42 +277,61 @@ static fn read_directory_cached_after_status(
     if (child.kind == Path::entry_kind::Unknown) unknown_count++;
 
   if (unknown_count != 0) {
+    constexpr usize UNKNOWN_STAT_WAVE_COUNT = 512;
+    let const wave_capacity = unknown_count < UNKNOWN_STAT_WAVE_COUNT
+                                  ? unknown_count
+                                  : UNKNOWN_STAT_WAVE_COUNT;
     let unknown_paths = ArrayList<Path>{heap_allocator()};
     let unknown_statuses = ArrayList<os::file_status>{heap_allocator()};
+    let unknown_indices = ArrayList<usize>{heap_allocator()};
     let batch = os::Batch{heap_allocator()};
-    unknown_paths.reserve(unknown_count);
-    unknown_statuses.reserve(unknown_count);
-    batch.reserve(unknown_count);
+    unknown_paths.reserve(wave_capacity);
+    unknown_statuses.reserve(wave_capacity);
+    unknown_indices.reserve(wave_capacity);
+    batch.reserve(wave_capacity);
 
-    for (let const &child : *entries) {
+    let do_resolve_wave = [&]() {
+      if (unknown_indices.is_empty()) return;
+
+      batch.clear();
+      for (usize index = 0; index < unknown_indices.count(); index++)
+        batch.add(os::batch_operation::stat(unknown_paths[index],
+                                            unknown_statuses[index]));
+
+      let const results = batch.execute();
+      for (usize index = 0; index < unknown_indices.count(); index++) {
+        let &kind = (*entries)[unknown_indices[index]].kind;
+        if (results[index].error_number != 0) {
+          kind = Path::entry_kind::Other;
+          continue;
+        }
+
+        switch (os::file_type_letter(unknown_statuses[index].mode)) {
+        case 'd': kind = Path::entry_kind::Directory; break;
+        case '-': kind = Path::entry_kind::Regular; break;
+        default: kind = Path::entry_kind::Other; break;
+        }
+      }
+
+      batch.clear();
+      unknown_paths.clear();
+      unknown_statuses.clear();
+      unknown_indices.clear();
+    };
+
+    for (usize index = 0; index < entries->count(); index++) {
+      let const &child = (*entries)[index];
       if (child.kind != Path::entry_kind::Unknown) continue;
 
       let full_path = directory.clone();
       full_path.push_component(child.name.view());
       unknown_paths.push(steal(full_path));
       unknown_statuses.push({});
+      unknown_indices.push(index);
+      if (unknown_indices.count() == UNKNOWN_STAT_WAVE_COUNT) do_resolve_wave();
     }
 
-    for (usize index = 0; index < unknown_count; index++)
-      batch.add(os::batch_operation::stat(unknown_paths[index],
-                                          unknown_statuses[index]));
-
-    let const results = batch.execute();
-    usize result_index = 0;
-    for (let &child : *entries) {
-      if (child.kind != Path::entry_kind::Unknown) continue;
-
-      if (results[result_index].error_number != 0) {
-        child.kind = Path::entry_kind::Other;
-      } else {
-        switch (os::file_type_letter(unknown_statuses[result_index].mode)) {
-        case 'd': child.kind = Path::entry_kind::Directory; break;
-        case '-': child.kind = Path::entry_kind::Regular; break;
-        default: child.kind = Path::entry_kind::Other; break;
-        }
-      }
-      result_index++;
-    }
+    do_resolve_wave();
   }
 
   cached_directory_listing fresh{};
