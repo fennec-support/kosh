@@ -822,167 +822,184 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         throw ErrorWithLocation{source_location(), "Bad file descriptor"};
     }
 
-    let call_params = ArrayList<String>{heap_allocator()};
-    call_params.reserve(program_args.count() - 1);
-    for (usize i = 1; i < program_args.count(); i++)
-      call_params.push_managed(program_args[i]);
-    let bash_argument_frame_context = EvalContext::BashArgumentFrameContext{};
-    cxt.enter_bash_function_argument_frame(bash_argument_frame_context,
-                                           call_params);
-    defer { cxt.leave_bash_argument_frame(bash_argument_frame_context); };
-    let saved_params = steal(cxt.variable_store().positional_params());
-    cxt.variable_store().positional_params() = steal(call_params);
-    defer { cxt.variable_store().positional_params() = steal(saved_params); };
+    let const do_call_function = [&]() throws -> i64 {
+      let call_params = ArrayList<String>{heap_allocator()};
+      call_params.reserve(program_args.count() - 1);
+      for (usize i = 1; i < program_args.count(); i++)
+        call_params.push_managed(program_args[i]);
+      let bash_argument_frame_context = EvalContext::BashArgumentFrameContext{};
+      cxt.enter_bash_function_argument_frame(bash_argument_frame_context,
+                                             call_params);
+      defer { cxt.leave_bash_argument_frame(bash_argument_frame_context); };
+      let saved_params = steal(cxt.variable_store().positional_params());
+      cxt.variable_store().positional_params() = steal(call_params);
+      defer { cxt.variable_store().positional_params() = steal(saved_params); };
 
-    /* Registered before the frame is entered so the restore runs after the
-       frame is left. Once the frame is left, the depth the caller installed
-       the action at is reachable again. */
-    let saved_debug_action = cxt.save_untraced_debug_trap();
-    defer { cxt.restore_untraced_debug_trap(steal(saved_debug_action)); };
-    let saved_err_action = cxt.save_untraced_err_trap();
-    defer { cxt.restore_untraced_err_trap(steal(saved_err_action)); };
-    let saved_return_action = cxt.save_untraced_return_trap();
-    defer { cxt.restore_untraced_return_trap(steal(saved_return_action)); };
+      /* Registered before the frame is entered so the restore runs after the
+         frame is left. Once the frame is left, the depth the caller installed
+         the action at is reachable again. */
+      let saved_debug_action = cxt.save_untraced_debug_trap();
+      defer { cxt.restore_untraced_debug_trap(steal(saved_debug_action)); };
+      let saved_err_action = cxt.save_untraced_err_trap();
+      defer { cxt.restore_untraced_err_trap(steal(saved_err_action)); };
+      let saved_return_action = cxt.save_untraced_return_trap();
+      defer { cxt.restore_untraced_return_trap(steal(saved_return_action)); };
 
-    /* Bound the call nesting so a function that recurses without a base case
-       errors with a caret here rather than exhausting the native stack. */
-    cxt.enter_function_call(source_location());
-    defer { cxt.leave_function_call(); };
+      /* Bound the call nesting so a function that recurses without a base case
+         errors with a caret here rather than exhausting the native stack. */
+      cxt.enter_function_call(source_location());
+      defer { cxt.leave_function_call(); };
 
-    /* A loop in the caller is not the body's to break, so the body starts with
-       a fresh loop count. */
-    let const saved_loop_depth = cxt.execution_store().loop_depth();
-    cxt.execution_store().loop_depth() = 0;
-    defer { cxt.execution_store().loop_depth() = saved_loop_depth; };
+      /* A loop in the caller is not the body's to break, so the body starts
+         with a fresh loop count. */
+      let const saved_loop_depth = cxt.execution_store().loop_depth();
+      cxt.execution_store().loop_depth() = 0;
+      defer { cxt.execution_store().loop_depth() = saved_loop_depth; };
 
-    /* Registered first so it runs last, after the scope pop restores the
-       locals. */
-    let const call_mark = cxt.expansion_store().scratch_arena().mark();
-    defer { cxt.expansion_store().scratch_arena().release(call_mark); };
+      /* Registered first so it runs last, after the scope pop restores the
+         locals. */
+      let const call_mark = cxt.expansion_store().scratch_arena().mark();
+      defer { cxt.expansion_store().scratch_arena().release(call_mark); };
 
-    cxt.enter_function_scope();
-    cxt.push_function_call_name(program_name.view(), command_function_storage);
-    defer
-    {
-      cxt.pop_function_call_name();
-      cxt.leave_function_scope();
-    };
-
-    /* A command at the tail of the body must not exec the shell in place, since
-       the call's cleanup has to run after the body. */
-    let const saved_terminal_exec =
-        cxt.execution_store().terminal_exec_allowed();
-    cxt.execution_store().terminal_exec_allowed() = false;
-    defer
-    {
-      cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec;
-    };
-
-    /* The body runs in the mood and diagnostics state the function was defined
-       in, so a function defined in bash mood runs bash even after a later set
-       --mood. The swap only happens when the defining state differs from the
-       live state. */
-    let const *const definition_info =
-        command_function_storage.get_definition_info();
-    let const needs_state_swap =
-        definition_info != nullptr &&
-        (definition_info->defining_runtime.mood !=
-             cxt.runtime_state().get_mood() ||
-         definition_info->defining_runtime.warning_level !=
-             cxt.runtime_state().get_warning_level() ||
-         definition_info->defining_runtime.is_diagnostics_disabled() !=
-             cxt.runtime_state().is_diagnostics_disabled() ||
-         definition_info->defining_runtime.is_annoying_diagnostics_enabled() !=
-             cxt.runtime_state().is_annoying_diagnostics_enabled());
-    Maybe<function_runtime_state> saved_runtime_state = None;
-    if (needs_state_swap) {
-      saved_runtime_state =
-          cxt.enter_definition_state(definition_info->defining_runtime);
-    }
-    defer
-    {
-      if (saved_runtime_state.has_value())
-        cxt.leave_definition_state(*saved_runtime_state);
-    };
-
-    /* A located error thrown from the body is rendered here while the stack
-       still names the function, since the top-level handler cannot reach the
-       definition file once this frame unwinds. window_function_body_error
-       rebases the position onto the definition copy. The error is marked
-       rendered so the top-level handler keeps the status without printing it
-       twice. */
-    /* Bash traces the entry into the frame as a second DEBUG fire. The depth
-       gate reaches that fire only while functrace is on. LINENO names the line
-       the body opens on, and the call site is already behind the frame. */
-    if (cxt.should_run_debug_trap()) {
-      let const saved_call_location = cxt.source_store().current_location();
-      let const was_control_flow_pending =
-          cxt.control_flow_store().has_pending();
-
-      cxt.source_store().set_current_location(function_body->source_location());
-      cxt.run_named_trap(StringView{"DEBUG", 5});
-      cxt.source_store().set_current_location(saved_call_location);
-
-      /* An action that leaves an exit, a return, a break, or a continue
-         abandons the body the entry traced. */
-      if (!was_control_flow_pending && cxt.control_flow_store().has_pending()) {
-        return cxt.execution_store().last_exit_status();
-      }
-    }
-
-    i64 function_ret = 0;
-    try {
-      function_ret = function_body->evaluate(cxt);
-      if (cxt.should_run_return_trap()) {
-        let const pending_kind = cxt.control_flow_store().has_pending()
-                                     ? cxt.control_flow_store().pending().kind
-                                     : control_flow::Kind::Normal;
-
-        if (pending_kind != control_flow::Kind::Exit) {
-          cxt.run_return_trap(pending_kind == control_flow::Kind::Return
-                                  ? cxt.trap_store().status_before_return()
-                                  : cxt.execution_store().last_exit_status());
-        }
-      }
-    } catch (ErrorWithLocationAndDetails &error) {
-      if (!error.was_rendered())
-        if (let const windowed = window_function_body_error(cxt, error);
-            windowed.has_value())
-        {
-          show_message(error.to_string(*windowed, &cxt));
-          show_message(error.details_to_string(*windowed, &cxt));
-          error.set_rendered();
-        }
-      throw;
-    } catch (ErrorWithLocation &error) {
-      if (!error.was_rendered())
-        if (let const windowed = window_function_body_error(cxt, error);
-            windowed.has_value())
-        {
-          show_message(error.to_string(*windowed, &cxt));
-          error.set_rendered();
-        }
-      throw;
-    }
-
-    /* A return supplies the status. A break or continue is scoped to a loop
-       inside this function and is consumed here. An exit stays pending for the
-       shell. */
-    if (cxt.control_flow_store().has_pending()) {
-      let const kind = cxt.control_flow_store().pending().kind;
-      if (kind == control_flow::Kind::Return) {
-        function_ret = cxt.control_flow_store().pending().value;
-        cxt.control_flow_store().clear();
-      } else if (kind == control_flow::Kind::Break ||
-                 kind == control_flow::Kind::Continue)
+      cxt.enter_function_scope();
+      cxt.push_function_call_name(program_name.view(),
+                                  command_function_storage);
+      defer
       {
-        cxt.control_flow_store().clear();
-      }
-    }
+        cxt.pop_function_call_name();
+        cxt.leave_function_scope();
+      };
 
-    cxt.execution_store().set_last_argument(String{last_argument.view()});
-    cxt.publish_single_pipe_status(static_cast<i32>(function_ret));
-    SET_AND_RETURN_EXIT_STATUS(cxt, function_ret);
+      /* A command at the tail of the body must not exec the shell in place,
+         since the call's cleanup has to run after the body. */
+      let const saved_terminal_exec =
+          cxt.execution_store().terminal_exec_allowed();
+      cxt.execution_store().terminal_exec_allowed() = false;
+      defer
+      {
+        cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec;
+      };
+
+      /* The body runs in the mood and diagnostics state the function was
+         defined in, so a function defined in bash mood runs bash even after a
+         later set --mood. The swap only happens when the defining state
+         differs from the live state. */
+      let const *const definition_info =
+          command_function_storage.get_definition_info();
+      let const needs_state_swap =
+          definition_info != nullptr &&
+          (definition_info->defining_runtime.mood !=
+               cxt.runtime_state().get_mood() ||
+           definition_info->defining_runtime.warning_level !=
+               cxt.runtime_state().get_warning_level() ||
+           definition_info->defining_runtime.is_diagnostics_disabled() !=
+               cxt.runtime_state().is_diagnostics_disabled() ||
+           definition_info->defining_runtime
+                   .is_annoying_diagnostics_enabled() !=
+               cxt.runtime_state().is_annoying_diagnostics_enabled());
+      Maybe<function_runtime_state> saved_runtime_state = None;
+      if (needs_state_swap) {
+        saved_runtime_state =
+            cxt.enter_definition_state(definition_info->defining_runtime);
+      }
+      defer
+      {
+        if (saved_runtime_state.has_value())
+          cxt.leave_definition_state(*saved_runtime_state);
+      };
+
+      /* A located error thrown from the body is rendered here while the stack
+         still names the function, since the top-level handler cannot reach the
+         definition file once this frame unwinds. window_function_body_error
+         rebases the position onto the definition copy. The error is marked
+         rendered so the top-level handler keeps the status without printing it
+         twice. */
+      /* Bash traces the entry into the frame as a second DEBUG fire. The depth
+         gate reaches that fire only while functrace is on. LINENO names the
+         line the body opens on, and the call site is already behind the
+         frame. */
+      if (cxt.should_run_debug_trap()) {
+        let const saved_call_location = cxt.source_store().current_location();
+        let const was_control_flow_pending =
+            cxt.control_flow_store().has_pending();
+
+        cxt.source_store().set_current_location(
+            function_body->source_location());
+        cxt.run_named_trap(StringView{"DEBUG", 5});
+        cxt.source_store().set_current_location(saved_call_location);
+
+        /* An action that leaves an exit, a return, a break, or a continue
+           abandons the body the entry traced. */
+        if (!was_control_flow_pending && cxt.control_flow_store().has_pending())
+        {
+          return cxt.execution_store().last_exit_status();
+        }
+      }
+
+      i64 function_ret = 0;
+      try {
+        function_ret = function_body->evaluate(cxt);
+        if (cxt.should_run_return_trap()) {
+          let const pending_kind = cxt.control_flow_store().has_pending()
+                                       ? cxt.control_flow_store().pending().kind
+                                       : control_flow::Kind::Normal;
+
+          if (pending_kind != control_flow::Kind::Exit) {
+            cxt.run_return_trap(pending_kind == control_flow::Kind::Return
+                                    ? cxt.trap_store().status_before_return()
+                                    : cxt.execution_store().last_exit_status());
+          }
+        }
+      } catch (ErrorWithLocationAndDetails &error) {
+        if (!error.was_rendered())
+          if (let const windowed = window_function_body_error(cxt, error);
+              windowed.has_value())
+          {
+            show_message(error.to_string(*windowed, &cxt));
+            show_message(error.details_to_string(*windowed, &cxt));
+            error.set_rendered();
+          }
+        throw;
+      } catch (ErrorWithLocation &error) {
+        if (!error.was_rendered())
+          if (let const windowed = window_function_body_error(cxt, error);
+              windowed.has_value())
+          {
+            show_message(error.to_string(*windowed, &cxt));
+            error.set_rendered();
+          }
+        throw;
+      }
+
+      /* A return supplies the status. A break or continue is scoped to a loop
+         inside this function and is consumed here. An exit stays pending for
+         the shell. */
+      if (cxt.control_flow_store().has_pending()) {
+        let const kind = cxt.control_flow_store().pending().kind;
+        if (kind == control_flow::Kind::Return) {
+          function_ret = cxt.control_flow_store().pending().value;
+          cxt.control_flow_store().clear();
+        } else if (kind == control_flow::Kind::Break ||
+                   kind == control_flow::Kind::Continue)
+        {
+          cxt.control_flow_store().clear();
+        }
+      }
+
+      cxt.execution_store().set_last_argument(String{last_argument.view()});
+      cxt.publish_single_pipe_status(static_cast<i32>(function_ret));
+      SET_AND_RETURN_EXIT_STATUS(cxt, function_ret);
+    };
+
+    if (!is_async()) return do_call_function();
+
+    let const do_run_in_child = [](void *context, EvalContext &) -> i64 {
+      return (*static_cast<decltype(do_call_function) *>(context))();
+    };
+
+    return evaluate_async_with(
+        cxt, do_run_in_child,
+        const_cast<void *>(static_cast<const void *>(&do_call_function)));
   }
 
   let did_resolution_fail = false;

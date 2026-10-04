@@ -950,7 +950,11 @@ public:
   fn evaluate_async(EvalContext &cxt) const throws -> i64;
 
 protected:
+  using async_body = i64 (*)(void *context, EvalContext &cxt);
+
   virtual fn evaluate_async_body(EvalContext &cxt) const throws -> i64;
+  fn evaluate_async_with(EvalContext &cxt, async_body body,
+                         void *context) const throws -> i64;
 
   fn append_ast_execution_flags(String &label) const throws -> void;
 

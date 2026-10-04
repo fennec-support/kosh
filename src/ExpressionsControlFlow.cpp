@@ -78,6 +78,17 @@ fn Command::evaluate_async_body(EvalContext &cxt) const throws -> i64
 
 fn Command::evaluate_async(EvalContext &cxt) const throws -> i64
 {
+  let const do_evaluate_body = [](void *context, EvalContext &body_cxt) -> i64 {
+    return static_cast<const Command *>(context)->evaluate_async_body(body_cxt);
+  };
+
+  return evaluate_async_with(cxt, do_evaluate_body,
+                             const_cast<Command *>(this));
+}
+
+fn Command::evaluate_async_with(EvalContext &cxt, async_body body,
+                                void *context) const throws -> i64
+{
   let const source = cxt.source_store().current_source();
   let command_text = StringView{};
   if (source != nullptr) {
@@ -111,7 +122,7 @@ fn Command::evaluate_async(EvalContext &cxt) const throws -> i64
     try {
       cxt.enter_subshell();
       cxt.hide_coprocess_descriptors();
-      status = static_cast<i32>(evaluate_async_body(cxt));
+      status = static_cast<i32>(body(context, cxt));
       if (cxt.control_flow_store().has_pending() &&
           cxt.control_flow_store().pending().kind == control_flow::Kind::Exit)
       {
