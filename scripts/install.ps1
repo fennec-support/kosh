@@ -127,6 +127,10 @@
             Line "  KOSH_INSTALL_DRY_RUN, NO_COLOR"
             return
         }
+        if ($PSBoundParameters.ContainsKey("InstallPath")) {
+            if (-not $InstallPath) { throw "-InstallPath needs a path" }
+            if ($InstallPath.StartsWith("-")) { throw "-InstallPath needs a path, not '$InstallPath'" }
+        }
         if ($X) { Set-PSDebug -Trace 1 }
         if ($env:KOSH_INSTALL_DRY_RUN) { $DryRun = $true }
 
@@ -186,6 +190,11 @@
         }
         if (-not (Find-Sum $BINARY)) {
             throw "release $VERSION has no build for win32 on $ARCH"
+        }
+        foreach ($FILE in $FILES) {
+            if (-not (Find-Sum $FILE)) {
+                throw "release $VERSION has no checksum for $FILE"
+            }
         }
 
         if ($DryRun) {

@@ -154,9 +154,18 @@
       ;;
       --install-path=*)
         BIN_DIR=${1#*=}
+        [ -n "$BIN_DIR" ] || fail "--install-path needs a path"
       ;;
       --install-path)
         [ "$#" -ge 2 ] || fail "--install-path needs a path"
+        case $2 in
+          '' | -*)
+            fail "--install-path needs a path, not '$2'"
+          ;;
+          *)
+          ;;
+        esac
+
         BIN_DIR=$2
 
         shift
@@ -291,6 +300,13 @@
   fail "release $VERSION has no SHA256SUMS file"
   grep -q " \*\{0,1\}$BINARY\$" SHA256SUMS ||
   fail "release $VERSION has no build for $SYSTEM on $ARCH"
+
+  for FILE in $FILES
+  do
+    grep -q " \*\{0,1\}$FILE\$" SHA256SUMS ||
+    fail "release $VERSION has no checksum for $FILE"
+  done
+
   if [ -n "$IS_DRY_RUN" ]
   then
     for FILE in $FILES
