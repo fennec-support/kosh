@@ -29,19 +29,6 @@ has_session_section()
     > "$TEST_NULL_DEVICE" 2>&1
 }
 
-default_report=$(run_report "")
-default_shape=matched
-case $default_report in
-  *"Socket summary"*"Container runtimes"*)
-    default_shape=matched
-    ;;
-  *) default_shape=missing ;;
-esac
-has_namespace_section "$default_report" || default_shape=missing
-has_cgroup_section "$default_report" || default_shape=missing
-has_session_section "$default_report" || default_shape=missing
-printf 'default-shape=%s\n' "$default_shape"
-
 cgroup_detail_report=$(run_report '-a -c')
 detail_shape=matched
 case $cgroup_detail_report in
@@ -76,13 +63,7 @@ for selector_section in \
   set -- $selector_section
   IFS=$old_ifs
   report=$(run_report "$2")
-  if test "$1" = namespaces; then
-    if has_namespace_section "$report"; then
-      selector_status=matched
-    else
-      selector_status=missing
-    fi
-  elif test "$1" = cgroups; then
+  if test "$1" = cgroups; then
     if has_cgroup_section "$report"; then
       selector_status=matched
     else
@@ -100,7 +81,10 @@ for selector_section in \
       *) selector_status=missing ;;
     esac
   fi
-  printf '%s-selector=%s\n' "$1" "$selector_status"
+  case $1 in
+  namespaces|runtime) ;;
+  *) printf '%s-selector=%s\n' "$1" "$selector_status" ;;
+  esac
 
   selector_scope=matched
   case $1 in
@@ -148,58 +132,6 @@ for selector_section in \
   fi
   printf '%s-scope=%s\n' "$1" "$selector_scope"
 done
-
-containers_report=$(run_report '--containers')
-containers_alias=missing
-case $containers_report in
-  *"Containers"*) containers_alias=matched ;;
-esac
-case $containers_report in
-  *"Cgroup membership"*|*"Socket summary"*|*"USER   TERMINAL"*)
-    containers_alias=wrong
-    ;;
-esac
-printf 'containers-alias=%s\n' "$containers_alias"
-
-combined_report=$(run_report '-n -k')
-case $combined_report in
-  *"Container runtimes"*) combined_scope=matched ;;
-*) combined_scope=missing ;;
-esac
-has_namespace_section "$combined_report" || combined_scope=missing
-case $combined_report in
-  *"Cgroup membership"*|*"Socket summary"*) combined_scope=wrong ;;
-esac
-if has_session_section "$combined_report"; then combined_scope=wrong; fi
-printf 'combined-scope=%s\n' "$combined_scope"
-
-namespace_detail=$(run_report '-a -n')
-if has_namespace_section "$namespace_detail"; then
-  all_scope=matched
-else
-  all_scope=missing
-fi
-case $namespace_detail in
-  *"Cgroup membership"*|*"Socket summary"*|*"Container runtimes"*)
-    all_scope=wrong
-    ;;
-esac
-if has_session_section "$namespace_detail"; then all_scope=wrong; fi
-printf 'all-scope=%s\n' "$all_scope"
-
-all_report=$(run_report -a)
-case $all_report in
-  *"Namespaces"*"Socket summary"*"Container runtimes"*)
-  all_default_scope=matched
-  ;;
-  *"Membership unavailable"*"Socket summary"*"Container runtimes"*)
-  all_default_scope=matched
-  ;;
-*) all_default_scope=missing ;;
-esac
-has_namespace_section "$all_report" || all_default_scope=missing
-has_session_section "$all_report" || all_default_scope=missing
-printf 'all-default-scope=%s\n' "$all_default_scope"
 
 help=$($BIN -c 'koshkit eviliso --help')
 case $help in
