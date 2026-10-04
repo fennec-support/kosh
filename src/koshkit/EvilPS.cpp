@@ -19,6 +19,7 @@
 #include "../base/Arena.hpp"
 #include "../base/StaticStringMap.hpp"
 #include "LiveView.hpp"
+#include "LiveWindow.hpp"
 
 FLAG_LIST_DECL();
 
@@ -51,13 +52,13 @@ static pure fn is_evilps_sample_duration(koshka::StringView value) wontthrow
          ((value[0] >= '0' && value[0] <= '9') || value[0] == '.');
 }
 FLAG_OPTIONAL(EVILPS_LIVE, 'l', "live", Live,
-              "Refresh the process tree every N seconds until interrupted; "
-              "the default is 0.5 seconds. Sampling stays independent of "
-              "this refresh rate.",
+              "Sample and refresh the process tree every N seconds until "
+              "interrupted; the default is 0.5 seconds.",
               is_evilps_sample_duration, "seconds");
 FLAG_OPTIONAL(EVILPS_CUMULATIVE, 'C', "cumulative", Live,
-              "Average counters over an M-second sliding window; the default "
-              "is one second. Without --live, compare snapshots across M "
+              "Average CPU use over an M-second window; the default is one "
+              "second. With --live the window rolls and does not set the "
+              "refresh rate. Without --live, compare snapshots across M "
               "seconds.",
               is_evilps_sample_duration, "seconds");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
@@ -145,12 +146,12 @@ struct tree_node
 struct live_process_cpu_row
 {
   explicit live_process_cpu_row(Allocator allocator)
-      : history_milliseconds(allocator), history_nanoseconds(allocator)
+      : history(allocator), history_nanoseconds(allocator)
   {}
 
   i64 pid{0};
   u64 start_token{0};
-  ArrayList<u64> history_milliseconds;
+  ArrayList<u64> history;
   ArrayList<u64> history_nanoseconds;
   u64 last_seen_nanoseconds{0};
 };
@@ -164,13 +165,13 @@ fn set_cpu_percentage(tree_node &node, const live_process_cpu_row &history,
   let const boundary = find_rolling_window_boundary(history.history_nanoseconds,
                                                     window_start_nanoseconds);
   let const baseline = interpolate_rolling_counter(
-      history.history_milliseconds[boundary.before_index],
-      history.history_milliseconds[boundary.after_index],
+      history.history[boundary.before_index],
+      history.history[boundary.after_index],
       history.history_nanoseconds[boundary.before_index],
       history.history_nanoseconds[boundary.after_index], boundary.timestamp);
   if (!baseline.has_value()) return;
 
-  let const current_milliseconds = history.history_milliseconds.back();
+  let const current_milliseconds = history.history.back();
   if (current_milliseconds < *baseline || now_nanoseconds <= boundary.timestamp)
   {
     return;
@@ -188,47 +189,27 @@ fn update_cpu_history(ArrayList<tree_node> &nodes,
     -> void
 {
   let const window_start_nanoseconds =
-      now_nanoseconds > window_nanoseconds
-          ? now_nanoseconds - window_nanoseconds
-          : 0;
-  for (let &node : nodes) {
-    let row_index = Maybe<usize>{None};
-    for (usize index = 0; index < history.count(); index++) {
-      if (history[index].pid != node.pid ||
-          history[index].start_token != node.start_token)
-        continue;
-      row_index = index;
-      break;
-    }
-
-    if (!row_index.has_value()) {
-      live_process_cpu_row fresh{history.allocator()};
-      fresh.pid = node.pid;
-      fresh.start_token = node.start_token;
-      fresh.history_milliseconds.push(node.cpu_milliseconds);
-      fresh.history_nanoseconds.push(now_nanoseconds);
-      fresh.last_seen_nanoseconds = now_nanoseconds;
-      history.push(steal(fresh));
-      continue;
-    }
-
-    let &row = history[*row_index];
-    if (node.cpu_milliseconds < row.history_milliseconds.back()) {
-      row.history_milliseconds.clear();
-      row.history_nanoseconds.clear();
-    }
-    row.history_milliseconds.push(node.cpu_milliseconds);
-    row.history_nanoseconds.push(now_nanoseconds);
-    row.last_seen_nanoseconds = now_nanoseconds;
-    trim_rolling_history(row.history_milliseconds, row.history_nanoseconds,
-                         window_start_nanoseconds);
+      rolling_window_start(now_nanoseconds, window_nanoseconds);
+  let const allocator = history.allocator();
+  let const do_get_key = [](const auto &item) {
+    return live_process_identity{item.pid, item.start_token};
+  };
+  let const do_get_value = [](const tree_node &node) -> const u64 & {
+    return node.cpu_milliseconds;
+  };
+  let const do_is_reset = [](u64 before, u64 after) { return after < before; };
+  let const do_make_row = [&](const tree_node &node) {
+    live_process_cpu_row fresh{allocator};
+    fresh.pid = node.pid;
+    fresh.start_token = node.start_token;
+    return fresh;
+  };
+  let const do_updated = [&](tree_node &node, live_process_cpu_row &row) {
     set_cpu_percentage(node, row, window_start_nanoseconds, now_nanoseconds);
-  }
-
-  for (usize index = history.count(); index > 0; index--) {
-    if (history[index - 1].last_seen_nanoseconds != now_nanoseconds)
-      history.remove(index - 1);
-  }
+  };
+  update_retained_rows(history, nodes, now_nanoseconds, window_nanoseconds,
+                       allocator, do_get_key, do_get_value, do_is_reset,
+                       do_make_row, do_updated);
 }
 
 fn compare_nodes(const tree_node &left, const tree_node &right,
@@ -1008,7 +989,7 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
     options.title = "evilps";
     options.extra_key_hints = "s sort|j/k scroll|/ search";
     options.window_seconds = cumulative_interval_seconds;
-    options.sample_interval_seconds = DEFAULT_LIVE_SAMPLE_INTERVAL_SECONDS;
+    options.sample_interval_seconds = live_interval_seconds;
     options.refresh_interval_seconds = live_interval_seconds;
     options.started_at_nanoseconds = started_at_nanoseconds;
     options.should_color = color_mode == evilps_color_mode::Colored;

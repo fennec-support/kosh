@@ -16,6 +16,7 @@
 #include "../base/Arena.hpp"
 #include "../base/StaticStringMap.hpp"
 #include "LiveView.hpp"
+#include "LiveWindow.hpp"
 
 FLAG_LIST_DECL();
 
@@ -37,13 +38,14 @@ FLAG(EVILIO_ALL, Bool, 'a', "all", "Include sampled system activity.");
 FLAG(EVILIO_HUMAN, Bool, 'h', "human-readable",
      "Print byte values with compact binary units such as 4.0K or 1.5M.");
 FLAG_OPTIONAL(EVILIO_CUMULATIVE, 'C', "cumulative", Live,
-              "Use an M-second rolling window for sampled activity; the "
-              "default is one second.",
+              "Report sampled activity over an M-second window; the default "
+              "is one second. Without --live, wait M seconds first. With "
+              "--live the window rolls and does not set the refresh rate.",
               is_evilio_sample_duration, "seconds");
 FLAG(EVILIO_PS, Bool, '\0', "ps", "Show every visible process.");
 FLAG_OPTIONAL(EVILIO_LIVE, 'l', "live", Live,
-              "Refresh live output every N seconds; the default is 0.5 "
-              "seconds. Sampling stays independent of this refresh rate.",
+              "Sample and refresh live output every N seconds; the default is "
+              "0.5 seconds.",
               is_evilio_sample_duration, "seconds");
 FLAG(EVILIO_COUNT, String, 'n', "count", "Show this many processes.");
 FLAG(EVILIO_PID, String, 'p', "pid", "Show only this process.");
@@ -128,8 +130,8 @@ struct evilio_sort_resolution
   String matches{heap_allocator()};
 };
 
-fn resolve_sort_key(StringView value, Allocator allocator) throws
-    -> evilio_sort_resolution
+fn resolve_sort_key(StringView value, bool should_show_processes,
+                    Allocator allocator) throws -> evilio_sort_resolution
 {
   evilio_sort_resolution result{};
   result.matches = String{allocator};
@@ -140,12 +142,21 @@ fn resolve_sort_key(StringView value, Allocator allocator) throws
     return result;
   }
 
-  for (let const &entry : SORT_KEY_ENTRIES) {
-    if (!StringView{entry.value.name}.starts_with(value)) continue;
-    if (!result.matches.is_empty()) result.matches += ", ";
-    result.matches += entry.value.name;
-    result.key = entry.value.key;
-    result.match_count++;
+  for (usize pass_count = 0; pass_count < 2; pass_count++) {
+    let const is_scoped = pass_count == 0;
+    for (let const &entry : SORT_KEY_ENTRIES) {
+      if (!StringView{entry.value.name}.starts_with(value)) continue;
+      if (is_scoped && !(should_show_processes ? entry.value.is_process_metric
+                                               : entry.value.is_disk_metric))
+      {
+        continue;
+      }
+      if (!result.matches.is_empty()) result.matches += ", ";
+      result.matches += entry.value.name;
+      result.key = entry.value.key;
+      result.match_count++;
+    }
+    if (result.match_count != 0) break;
   }
 
   return result;
@@ -319,11 +330,10 @@ fn read_process_io_rows(Allocator allocator, Maybe<i64> selected_pid,
 
 fn sample_process_io_rows(const ArrayList<io_row> &before_rows,
                           const ArrayList<io_row> &after_rows,
-                          u64 elapsed_nanoseconds, Allocator allocator,
+                          Allocator allocator,
                           Maybe<evilio_sort_key> sort_key) throws
     -> SortedArrayList<io_row, process_row_comparator>
 {
-  unused(elapsed_nanoseconds);
   let sampled_rows = ArrayList<io_row>{allocator};
   usize before_position = 0;
   for (let const &after : after_rows) {
@@ -442,11 +452,9 @@ fn get_process_window_status(const live_process_row &row,
 fn append_process_io_rate_report(String &output, const ArrayList<io_row> &rows,
                                  usize row_limit, Allocator allocator,
                                  StringView duration_suffix,
-                                 const ArrayList<u64> *idle_nanoseconds_list,
                                  evilio_color_mode color_mode) throws -> void
 {
   let const should_color = color_mode == evilio_color_mode::Colored;
-  unused(idle_nanoseconds_list);
   let table = ReportTable{allocator};
   table.add_column("PID", report_table_alignment::Right,
                    colors::ansi::BOLD_CYAN);
@@ -893,18 +901,30 @@ fn append_disk_io_report(String &output, const ArrayList<disk_io_row> &rows,
 }
 fn run_live_process_io(const ExecContext &ec, Maybe<i64> selected_pid,
                        usize row_limit, f64 window_seconds,
-                       f64 sample_interval_seconds,
-                       f64 refresh_interval_seconds,
-                       StringView sample_duration_label,
+                       f64 interval_seconds, StringView sample_duration_label,
                        Maybe<evilio_sort_key> sort_key,
                        evilio_color_mode color_mode) throws -> i32
 {
   let const allocator = heap_allocator();
   let retained = ArrayList<live_process_row>{allocator};
-  let const falloff_nanoseconds =
+  let const window_nanoseconds =
       static_cast<u64>(window_seconds * 1000000000.0);
   u64 last_sample_nanoseconds = os::monotonic_nanos();
   let const started_at_nanoseconds = last_sample_nanoseconds;
+  let const do_get_key = [](const auto &row) {
+    return live_process_identity{row.pid, row.start_token};
+  };
+  let const do_get_value =
+      [](const io_row &row) -> const os::process_io_status & {
+    return row.status;
+  };
+  let const do_make_row = [&](const io_row &row) {
+    live_process_row entry{};
+    entry.pid = row.pid;
+    entry.start_token = row.start_token;
+    entry.name = String{allocator, row.name.view()};
+    return entry;
+  };
   let baseline_rows =
       read_process_io_rows(allocator, selected_pid, evilio_idle_mode::Include);
   if (os::INTERRUPT_REQUESTED != 0) {
@@ -912,16 +932,9 @@ fn run_live_process_io(const ExecContext &ec, Maybe<i64> selected_pid,
     return 130;
   }
   if (selected_pid.has_value() && baseline_rows.is_empty()) return 1;
-  for (let const &row : baseline_rows) {
-    live_process_row entry{};
-    entry.pid = row.pid;
-    entry.start_token = row.start_token;
-    entry.name = String{allocator, row.name.view()};
-    entry.history.push(row.status);
-    entry.history_nanoseconds.push(last_sample_nanoseconds);
-    entry.last_seen_nanoseconds = last_sample_nanoseconds;
-    retained.push(steal(entry));
-  }
+  update_retained_rows(retained, baseline_rows, last_sample_nanoseconds,
+                       window_nanoseconds, allocator, do_get_key,
+                       do_get_value, process_io_counter_reset, do_make_row);
 
   let const do_sample = [&](u64 now, Allocator frame_allocator) -> Maybe<i32> {
     let after_rows = read_process_io_rows(frame_allocator, selected_pid,
@@ -932,50 +945,9 @@ fn run_live_process_io(const ExecContext &ec, Maybe<i64> selected_pid,
     }
     if (selected_pid.has_value() && after_rows.is_empty()) return 1;
 
-    for (let const &row : after_rows) {
-      bool is_known = false;
-      for (usize index = 0; index < retained.count(); index++) {
-        if (retained[index].pid != row.pid ||
-            retained[index].start_token != row.start_token)
-          continue;
-        if (process_io_counter_reset(retained[index].history.back(),
-                                     row.status))
-        {
-          retained[index].history.clear();
-          retained[index].history_nanoseconds.clear();
-        }
-        retained[index].history.push(row.status);
-        retained[index].history_nanoseconds.push(now);
-        retained[index].last_seen_nanoseconds = now;
-        is_known = true;
-        break;
-      }
-      if (!is_known) {
-        live_process_row entry{};
-        entry.pid = row.pid;
-        entry.start_token = row.start_token;
-        entry.name = String{allocator, row.name.view()};
-        entry.history.push(row.status);
-        entry.history_nanoseconds.push(now);
-        entry.last_seen_nanoseconds = now;
-        retained.push(steal(entry));
-      }
-    }
-    for (usize index = retained.count(); index > 0; index--) {
-      let const position = index - 1;
-      if (retained[position].history_nanoseconds.back() != now) {
-        retained[position].history.push(retained[position].history.back());
-        retained[position].history_nanoseconds.push(now);
-      }
-      if (now - retained[position].last_seen_nanoseconds >= falloff_nanoseconds)
-      {
-        retained.remove(position);
-        continue;
-      }
-      trim_rolling_history(retained[position].history,
-                           retained[position].history_nanoseconds,
-                           rolling_window_start(now, falloff_nanoseconds));
-    }
+    update_retained_rows(retained, after_rows, now, window_nanoseconds,
+                         frame_allocator, do_get_key, do_get_value,
+                         process_io_counter_reset, do_make_row);
     last_sample_nanoseconds = now;
     return None;
   };
@@ -984,7 +956,7 @@ fn run_live_process_io(const ExecContext &ec, Maybe<i64> selected_pid,
     let rows = ArrayList<io_row>{frame_allocator};
     rows.reserve(retained.count());
     let const window_start =
-        rolling_window_start(last_sample_nanoseconds, falloff_nanoseconds);
+        rolling_window_start(last_sample_nanoseconds, window_nanoseconds);
     for (let const &row : retained) {
       rows.push(io_row{
           String{frame_allocator, row.name.view()},
@@ -995,15 +967,15 @@ fn run_live_process_io(const ExecContext &ec, Maybe<i64> selected_pid,
     let const sorted_rows = sort_process_rows(steal(rows), sort_key);
     append_process_io_rate_report(output, sorted_rows, row_limit,
                                   frame_allocator, sample_duration_label,
-                                  nullptr, color_mode);
+                                  color_mode);
     return None;
   };
 
   live_view_options options{};
   options.title = "evilio";
   options.window_seconds = window_seconds;
-  options.sample_interval_seconds = sample_interval_seconds;
-  options.refresh_interval_seconds = refresh_interval_seconds;
+  options.sample_interval_seconds = interval_seconds;
+  options.refresh_interval_seconds = interval_seconds;
   options.started_at_nanoseconds = started_at_nanoseconds;
   options.should_color = color_mode == evilio_color_mode::Colored;
 
@@ -1073,74 +1045,44 @@ fn make_disk_window_row(const live_disk_row &row, u64 window_start_nanoseconds,
 }
 
 fn run_live_disk_io(const ExecContext &ec, f64 window_seconds,
-                    f64 sample_interval_seconds, f64 refresh_interval_seconds,
-                    StringView sample_duration_label,
+                    f64 interval_seconds, StringView sample_duration_label,
                     Maybe<evilio_sort_key> sort_key,
                     evilio_color_mode color_mode) throws -> i32
 {
   let const allocator = heap_allocator();
   let retained = ArrayList<live_disk_row>{allocator};
-  let const falloff_nanoseconds =
+  let const window_nanoseconds =
       static_cast<u64>(window_seconds * 1000000000.0);
   u64 last_sample_nanoseconds = os::monotonic_nanos();
   let const started_at_nanoseconds = last_sample_nanoseconds;
-  let baseline_snapshot = os::read_disk_io_snapshot(allocator);
-  for (let const &disk : baseline_snapshot.disks) {
+  let const do_get_key = [](const auto &row) { return row.name.view(); };
+  let const do_get_value =
+      [](const os::disk_io_status &disk) -> const os::disk_io_status & {
+    return disk;
+  };
+  let const do_make_row = [&](const os::disk_io_status &disk) {
     live_disk_row entry{};
     entry.name = String{allocator, disk.name.view()};
-    entry.history.push(disk);
-    entry.history_nanoseconds.push(last_sample_nanoseconds);
-    entry.last_seen_nanoseconds = last_sample_nanoseconds;
-    retained.push(steal(entry));
-  }
+    return entry;
+  };
+  let baseline_snapshot = os::read_disk_io_snapshot(allocator);
+  update_retained_rows(retained, baseline_snapshot.disks,
+                       last_sample_nanoseconds, window_nanoseconds, allocator,
+                       do_get_key, do_get_value, disk_io_counter_reset,
+                       do_make_row);
 
-  let const do_sample = [&](u64 now, Allocator) -> Maybe<i32> {
+  let const do_sample = [&](u64 now, Allocator frame_allocator) -> Maybe<i32> {
     let after_snapshot = os::read_disk_io_snapshot(allocator);
-    for (let const &disk : after_snapshot.disks) {
-      bool is_known = false;
-      for (usize index = 0; index < retained.count(); index++) {
-        if (retained[index].name != disk.name) continue;
-        if (disk_io_counter_reset(retained[index].history.back(), disk)) {
-          retained[index].history.clear();
-          retained[index].history_nanoseconds.clear();
-        }
-        retained[index].history.push(disk);
-        retained[index].history_nanoseconds.push(now);
-        retained[index].last_seen_nanoseconds = now;
-        is_known = true;
-        break;
-      }
-      if (!is_known) {
-        live_disk_row entry{};
-        entry.name = String{allocator, disk.name.view()};
-        entry.history.push(disk);
-        entry.history_nanoseconds.push(now);
-        entry.last_seen_nanoseconds = now;
-        retained.push(steal(entry));
-      }
-    }
-    for (usize index = retained.count(); index > 0; index--) {
-      let const position = index - 1;
-      if (retained[position].history_nanoseconds.back() != now) {
-        retained[position].history.push(retained[position].history.back());
-        retained[position].history_nanoseconds.push(now);
-      }
-      if (now - retained[position].last_seen_nanoseconds >= falloff_nanoseconds)
-      {
-        retained.remove(position);
-        continue;
-      }
-      trim_rolling_history(retained[position].history,
-                           retained[position].history_nanoseconds,
-                           rolling_window_start(now, falloff_nanoseconds));
-    }
+    update_retained_rows(retained, after_snapshot.disks, now,
+                         window_nanoseconds, frame_allocator, do_get_key,
+                         do_get_value, disk_io_counter_reset, do_make_row);
     last_sample_nanoseconds = now;
     return None;
   };
   let const do_render = [&](String &output, const live_view_dimensions &,
                             Allocator frame_allocator) -> Maybe<i32> {
     let const window_start =
-        rolling_window_start(last_sample_nanoseconds, falloff_nanoseconds);
+        rolling_window_start(last_sample_nanoseconds, window_nanoseconds);
     let rows = ArrayList<disk_io_row>{frame_allocator};
     rows.reserve(retained.count());
     for (let const &row : retained)
@@ -1155,8 +1097,8 @@ fn run_live_disk_io(const ExecContext &ec, f64 window_seconds,
   live_view_options options{};
   options.title = "evilio";
   options.window_seconds = window_seconds;
-  options.sample_interval_seconds = sample_interval_seconds;
-  options.refresh_interval_seconds = refresh_interval_seconds;
+  options.sample_interval_seconds = interval_seconds;
+  options.refresh_interval_seconds = interval_seconds;
   options.started_at_nanoseconds = started_at_nanoseconds;
   options.should_color = color_mode == evilio_color_mode::Colored;
 
@@ -1406,27 +1348,27 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
     sample_duration_label =
         String{allocator, "/"} +
         format_live_duration(sample_duration_seconds, allocator).view();
-  let const refresh_interval_seconds = live_interval_seconds;
   let const should_show_processes =
       FLAG_EVILIO_PS.is_enabled() || FLAG_EVILIO_COUNT.is_set() ||
       selected_pid.has_value() || process_limit_operand.has_value();
 
   Maybe<evilio_sort_key> sort_key{};
   if (FLAG_EVILIO_SORT.is_set()) {
-    let const resolved = resolve_sort_key(FLAG_EVILIO_SORT.value(), allocator);
+    let const resolved = resolve_sort_key(FLAG_EVILIO_SORT.value(),
+                                          should_show_processes, allocator);
     if (resolved.match_count == 0) {
       KOSHKIT_REPORT_ERROR_AT(
-          FLAG_EVILIO_SORT.value_location(), "Invalid sort key",
-          "Use pid, read, write, read-ops, write-ops, busy, read-latency, "
+          FLAG_EVILIO_SORT.value_location(), "invalid sort key",
+          "use pid, read, write, read-ops, write-ops, busy, read-latency, "
           "write-latency, average-queue, queue, errors, or retries");
       return 1;
     }
     if (resolved.match_count > 1) {
-      let note = String{allocator, "Matches "};
+      let note = String{allocator, "matches "};
       note += resolved.matches.view();
       note += "; use a longer prefix";
       KOSHKIT_REPORT_ERROR_AT(FLAG_EVILIO_SORT.value_location(),
-                              "Ambiguous sort key", note.view());
+                              "ambiguous sort key", note.view());
       return 1;
     }
 
@@ -1435,15 +1377,15 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
     if (should_show_processes && (spec == nullptr || !spec->is_process_metric))
     {
       KOSHKIT_REPORT_ERROR_AT(FLAG_EVILIO_SORT.value_location(),
-                              "Sort key is unavailable for process reports",
-                              "Use pid, read, write, read-ops, or write-ops");
+                              "sort key is unavailable for process reports",
+                              "use pid, read, write, read-ops, or write-ops");
       return 1;
     }
     if (!should_show_processes && (spec == nullptr || !spec->is_disk_metric)) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_EVILIO_SORT.value_location(),
-          "Sort key is unavailable for disk reports",
-          "Use read, write, read-ops, write-ops, busy, read-latency, "
+          "sort key is unavailable for disk reports",
+          "use read, write, read-ops, write-ops, busy, read-latency, "
           "write-latency, average-queue, queue, errors, or retries");
       return 1;
     }
@@ -1453,8 +1395,8 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
     {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_EVILIO_SORT.value_location(),
-          "Sort key is unavailable without sampling",
-          "Use --all, --cumulative, or --live with busy, read-latency, "
+          "sort key is unavailable without sampling",
+          "use --all, --cumulative, or --live with busy, read-latency, "
           "write-latency, or average-queue");
       return 1;
     }
@@ -1480,21 +1422,19 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
     if (should_show_processes) {
       return run_live_process_io(
           ec, selected_pid, row_limit, sample_duration_seconds,
-          DEFAULT_LIVE_SAMPLE_INTERVAL_SECONDS, refresh_interval_seconds,
-          sample_duration_label.view(), sort_key,
+          live_interval_seconds, sample_duration_label.view(), sort_key,
           should_color ? evilio_color_mode::Colored : evilio_color_mode::Plain);
     }
 
     return run_live_disk_io(
-        ec, sample_duration_seconds, DEFAULT_LIVE_SAMPLE_INTERVAL_SECONDS,
-        refresh_interval_seconds, sample_duration_label.view(), sort_key,
+        ec, sample_duration_seconds, live_interval_seconds,
+        sample_duration_label.view(), sort_key,
         should_color ? evilio_color_mode::Colored : evilio_color_mode::Plain);
   }
 
   if (FLAG_EVILIO_CUMULATIVE.is_enabled() && should_show_processes) {
     let const before_rows = read_process_io_rows(allocator, selected_pid,
                                                  evilio_idle_mode::Include);
-    let const started_at_nanoseconds = os::monotonic_nanos();
     os::sleep_for_seconds(cumulative_duration_seconds);
     if (os::INTERRUPT_REQUESTED != 0) {
       os::INTERRUPT_REQUESTED = 0;
@@ -1502,13 +1442,11 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
     }
     let const after_rows = read_process_io_rows(allocator, selected_pid,
                                                 evilio_idle_mode::Include);
-    let const elapsed_nanoseconds =
-        os::monotonic_nanos() - started_at_nanoseconds;
-    let const sampled_rows = sample_process_io_rows(
-        before_rows, after_rows, elapsed_nanoseconds, allocator, sort_key);
+    let const sampled_rows =
+        sample_process_io_rows(before_rows, after_rows, allocator, sort_key);
     let output = String{allocator};
     append_process_io_rate_report(output, sampled_rows, row_limit, allocator,
-                                  sample_duration_label.view(), nullptr,
+                                  sample_duration_label.view(),
                                   should_color ? evilio_color_mode::Colored
                                                : evilio_color_mode::Plain);
     ec.print_to_stdout(output);

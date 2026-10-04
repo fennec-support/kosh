@@ -15,6 +15,7 @@
 #include "../Utils.hpp"
 #include "../base/Arena.hpp"
 #include "LiveView.hpp"
+#include "LiveWindow.hpp"
 
 FLAG_LIST_DECL();
 
@@ -36,12 +37,13 @@ static pure fn is_evilnet_sample_duration(koshka::StringView value) wontthrow
          ((value[0] >= '0' && value[0] <= '9') || value[0] == '.');
 }
 FLAG_OPTIONAL(EVILNET_LIVE, 'l', "live", Live,
-              "Refresh live traffic every N seconds; the default is 0.5 "
-              "seconds. Sampling stays independent of this refresh rate.",
+              "Sample and refresh live traffic every N seconds; the default "
+              "is 0.5 seconds.",
               is_evilnet_sample_duration, "seconds");
 FLAG_OPTIONAL(EVILNET_CUMULATIVE, 'C', "cumulative", Live,
-              "Measure traffic over an M-second rolling window; the default is "
-              "one second.",
+              "Report traffic over an M-second window; the default is one "
+              "second. Without --live, wait M seconds first. With --live the "
+              "window rolls and does not set the refresh rate.",
               is_evilnet_sample_duration, "seconds");
 FLAG(EVILNET_FAILURES, Bool, 'f', "failures",
      "Show TCP failure and packet-loss telemetry only.");
@@ -729,14 +731,13 @@ fn get_network_window_status(const live_network_row &row,
 }
 
 fn run_live_network_traffic(const ExecContext &ec, Allocator allocator,
-                            f64 window_seconds, f64 sample_interval_seconds,
-                            f64 refresh_interval_seconds,
+                            f64 window_seconds, f64 interval_seconds,
                             Maybe<evilnet_sort_key> sort_key,
                             evilnet_color_mode color_mode) throws -> i32
 {
   let const should_color = color_mode == evilnet_color_mode::Colored;
   let retained = ArrayList<live_network_row>{allocator};
-  let const falloff_nanoseconds =
+  let const window_nanoseconds =
       static_cast<u64>(window_seconds * 1000000000.0);
   u64 last_sample_nanoseconds = os::monotonic_nanos();
   let const started_at_nanoseconds = last_sample_nanoseconds;
@@ -744,58 +745,27 @@ fn run_live_network_traffic(const ExecContext &ec, Allocator allocator,
   let const default_interface = os::default_network_interface(allocator);
   let duration_suffix = String{allocator, "/"};
   duration_suffix += sample_label.view();
+  let const do_get_key = [](const auto &row) {
+    return row.interface_name.view();
+  };
+  let const do_get_value = [](const os::network_interface_statistics_entry
+                                  &entry)
+      -> const os::network_interface_statistics_entry & { return entry; };
+  let const do_make_row =
+      [&](const os::network_interface_statistics_entry &entry) {
+        live_network_row row{};
+        row.interface_name = String{allocator, entry.interface_name.view()};
+        return row;
+      };
   let baseline = os::read_network_interface_statistics();
-  for (let const &entry : baseline) {
-    live_network_row row{};
-    row.interface_name = String{allocator, entry.interface_name.view()};
-    row.history.push(entry);
-    row.history_nanoseconds.push(last_sample_nanoseconds);
-    row.last_seen_nanoseconds = last_sample_nanoseconds;
-    retained.push(steal(row));
-  }
-  let const do_sample = [&](u64 now, Allocator) -> Maybe<i32> {
-    let const current = os::read_network_interface_statistics();
-    for (let const &entry : current) {
-      bool is_known = false;
-      for (usize index = 0; index < retained.count(); index++) {
-        if (retained[index].interface_name.view() !=
-            entry.interface_name.view())
-          continue;
-        if (network_counter_reset(retained[index].history.back(), entry)) {
-          retained[index].history.clear();
-          retained[index].history_nanoseconds.clear();
-        }
-        retained[index].history.push(entry);
-        retained[index].history_nanoseconds.push(now);
-        retained[index].last_seen_nanoseconds = now;
-        is_known = true;
-        break;
-      }
-      if (!is_known) {
-        live_network_row row_entry{};
-        row_entry.interface_name =
-            String{allocator, entry.interface_name.view()};
-        row_entry.history.push(entry);
-        row_entry.history_nanoseconds.push(now);
-        row_entry.last_seen_nanoseconds = now;
-        retained.push(steal(row_entry));
-      }
-    }
-    for (usize index = retained.count(); index > 0; index--) {
-      let const position = index - 1;
-      if (retained[position].history_nanoseconds.back() != now) {
-        retained[position].history.push(retained[position].history.back());
-        retained[position].history_nanoseconds.push(now);
-      }
-      if (now - retained[position].last_seen_nanoseconds >= falloff_nanoseconds)
-      {
-        retained.remove(position);
-        continue;
-      }
-      trim_rolling_history(retained[position].history,
-                           retained[position].history_nanoseconds,
-                           rolling_window_start(now, falloff_nanoseconds));
-    }
+  update_retained_rows(retained, baseline, last_sample_nanoseconds,
+                       window_nanoseconds, allocator, do_get_key, do_get_value,
+                       network_counter_reset, do_make_row);
+  let const do_sample = [&](u64 now, Allocator frame_allocator) -> Maybe<i32> {
+    let current = os::read_network_interface_statistics();
+    update_retained_rows(retained, current, now, window_nanoseconds,
+                         frame_allocator, do_get_key, do_get_value,
+                         network_counter_reset, do_make_row);
     last_sample_nanoseconds = now;
     return None;
   };
@@ -805,7 +775,7 @@ fn run_live_network_traffic(const ExecContext &ec, Allocator allocator,
         ArrayList<os::network_interface_statistics_entry>{frame_allocator};
     statistics.reserve(retained.count());
     let const window_start =
-        rolling_window_start(last_sample_nanoseconds, falloff_nanoseconds);
+        rolling_window_start(last_sample_nanoseconds, window_nanoseconds);
     for (let const &row : retained) {
       statistics.push(
           get_network_window_status(row, window_start, frame_allocator));
@@ -827,8 +797,8 @@ fn run_live_network_traffic(const ExecContext &ec, Allocator allocator,
   live_view_options options{};
   options.title = "evilnet";
   options.window_seconds = window_seconds;
-  options.sample_interval_seconds = sample_interval_seconds;
-  options.refresh_interval_seconds = refresh_interval_seconds;
+  options.sample_interval_seconds = interval_seconds;
+  options.refresh_interval_seconds = interval_seconds;
   options.started_at_nanoseconds = started_at_nanoseconds;
   options.should_color = should_color;
 
@@ -879,7 +849,7 @@ fn EvilNet::execute(const ExecContext &ec, EvalContext &cxt,
       return 1;
     }
     if (resolved.match_count > 1) {
-      let note = String{allocator, "Matches "};
+      let note = String{allocator, "matches "};
       note += resolved.matches.view();
       note += "; use a longer prefix";
       KOSHKIT_REPORT_ERROR_AT(FLAG_EVILNET_SORT.value_location(),
@@ -921,7 +891,6 @@ fn EvilNet::execute(const ExecContext &ec, EvalContext &cxt,
   }
   if (FLAG_EVILNET_LIVE.is_enabled()) {
     return run_live_network_traffic(ec, heap_allocator(), window_seconds,
-                                    DEFAULT_LIVE_SAMPLE_INTERVAL_SECONDS,
                                     live_interval_seconds, sort_key,
                                     color_mode);
   }
