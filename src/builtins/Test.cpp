@@ -117,46 +117,91 @@ public:
   bool evaluate_binary(const String &left, const String &op,
                        const String &right) throws
   {
+    enum class binary_operator : u8
+    {
+      StringEqual,
+      StringEqualBashism,
+      StringNotEqual,
+      StringLess,
+      StringGreater,
+      SameFile,
+      NewerFile,
+      OlderFile,
+      IntegerEqual,
+      IntegerNotEqual,
+      IntegerLess,
+      IntegerLessOrEqual,
+      IntegerGreater,
+      IntegerGreaterOrEqual,
+    };
+    static constexpr static_string_entry<binary_operator> ENTRIES[] = {
+        {SSK("="),   binary_operator::StringEqual          },
+        {SSK("=="),  binary_operator::StringEqualBashism   },
+        {SSK("!="),  binary_operator::StringNotEqual       },
+        {SSK("<"),   binary_operator::StringLess           },
+        {SSK(">"),   binary_operator::StringGreater        },
+        {SSK("-ef"), binary_operator::SameFile             },
+        {SSK("-nt"), binary_operator::NewerFile            },
+        {SSK("-ot"), binary_operator::OlderFile            },
+        {SSK("-eq"), binary_operator::IntegerEqual         },
+        {SSK("-ne"), binary_operator::IntegerNotEqual      },
+        {SSK("-lt"), binary_operator::IntegerLess          },
+        {SSK("-le"), binary_operator::IntegerLessOrEqual   },
+        {SSK("-gt"), binary_operator::IntegerGreater       },
+        {SSK("-ge"), binary_operator::IntegerGreaterOrEqual},
+    };
+    static constexpr StaticStringMap BINARY_OPERATORS{ENTRIES};
+
+    let const found = BINARY_OPERATORS.find(op.view());
+    if (!found.has_value()) {
+      fail(StringView{"'"} + op +
+           "' is not a known binary operator, expected one of = != < > -eq "
+           "-ne -lt -le -gt -ge -ef -nt -ot");
+      return false;
+    }
+
+    switch (*found) {
     /* == is a bashism for string equality. bash accepts it, so the bash mood
        treats it as =, while the default and POSIX moods reject it the way dash
        does. The analysis stage also warns on it as SC3014. */
-    if (op == "=" || (op == "==" && is_bash_compatible)) {
-      return left == right;
-    }
-    if (op == "==") {
-      fail("'==' is a bashism, use = for string equality in POSIX mode");
-      return false;
-    }
-    if (op == "!=") return left != right;
-    if (op == "<") return left < right;
-    if (op == ">") return right < left;
-
-    if (op == "-ef") return Path{left}.is_same_file_as(Path{right});
-    if (op == "-nt") return Path{left}.is_newer_than(Path{right});
-    if (op == "-ot") return Path{left}.is_older_than(Path{right});
-
-    if (op == "-eq" || op == "-ne" || op == "-lt" || op == "-le" ||
-        op == "-gt" || op == "-ge")
-    {
-      let const left_number = parse_integer(left);
-      let const right_number = parse_integer(right);
-      if (!left_number.has_value() || !right_number.has_value()) {
-        let const &not_a_number = left_number.has_value() ? right : left;
-        fail(StringView{"Cannot compare with '"} + op + "', '" + not_a_number +
-             "' is not an integer");
+    case binary_operator::StringEqualBashism:
+      if (!is_bash_compatible) {
+        fail("'==' is a bashism, use = for string equality in POSIX mode");
         return false;
       }
-      if (op == "-eq") return *left_number == *right_number;
-      if (op == "-ne") return *left_number != *right_number;
-      if (op == "-lt") return *left_number < *right_number;
-      if (op == "-le") return *left_number <= *right_number;
-      if (op == "-gt") return *left_number > *right_number;
-      return *left_number >= *right_number;
+      return left == right;
+    case binary_operator::StringEqual: return left == right;
+    case binary_operator::StringNotEqual: return left != right;
+    case binary_operator::StringLess: return left < right;
+    case binary_operator::StringGreater: return right < left;
+    case binary_operator::SameFile:
+      return Path{left}.is_same_file_as(Path{right});
+    case binary_operator::NewerFile:
+      return Path{left}.is_newer_than(Path{right});
+    case binary_operator::OlderFile:
+      return Path{left}.is_older_than(Path{right});
+    default: break;
     }
-    fail(StringView{"'"} + op +
-         "' is not a known binary operator, expected one of = != < > -eq -ne "
-         "-lt -le -gt -ge -ef -nt -ot");
-    return false;
+
+    let const left_number = parse_integer(left);
+    let const right_number = parse_integer(right);
+    if (!left_number.has_value() || !right_number.has_value()) {
+      let const &not_a_number = left_number.has_value() ? right : left;
+      fail(StringView{"Cannot compare with '"} + op + "', '" + not_a_number +
+           "' is not an integer");
+      return false;
+    }
+
+    switch (*found) {
+    case binary_operator::IntegerEqual: return *left_number == *right_number;
+    case binary_operator::IntegerNotEqual:
+      return *left_number != *right_number;
+    case binary_operator::IntegerLess: return *left_number < *right_number;
+    case binary_operator::IntegerLessOrEqual:
+      return *left_number <= *right_number;
+    case binary_operator::IntegerGreater: return *left_number > *right_number;
+    default: return *left_number >= *right_number;
+    }
   }
 
   pure fn is_unary_operator(const String &s) const wontthrow -> bool
