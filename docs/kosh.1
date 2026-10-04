@@ -2266,7 +2266,38 @@ selectors select only their corresponding sections.
 The plural
 .B \-\-containers
 spelling is an equivalent alias for
-.B \-\-container .
+.BR \-\-container .
+Selectors combine, and only the selected sections are printed.
+The remote section starts with a socket summary of remote and total socket
+counts.
+.PP
+The runtime section prints runtime, source, and evidence columns. Evidence is
+a cgroup path or an existing container marker file such as
+.BR /.dockerenv .
+With
+.BR \-\-all ,
+it adds process ID, process name, and self, other, or host role columns.
+The container section prints runtime, container identifier, and process count
+columns. With
+.BR \-\-all ,
+each process has its own row with process ID, name, role, and cgroup columns
+in place of the count. The Kubernetes section prints an evidence table with
+source, host, namespace, and evidence columns. Evidence comes from the
+.B KUBERNETES_SERVICE_HOST
+variable, the service-account namespace file, and
+.B kubepods
+cgroup components. Values read from the environment or the file are limited to
+one line of 256 bytes with control bytes replaced by spaces. A second table
+lists workloads with pod UID, QoS class, runtime, container, and process count
+columns. The QoS class is
+.BR guaranteed ,
+.BR burstable ,
+or
+.BR besteffort .
+With
+.BR \-\-all ,
+the process count is replaced by process ID, name, role, and cgroup columns for
+each process.
 .TP
 .B evildisk
 The utility prints capacity and filesystem identity for each named path or
