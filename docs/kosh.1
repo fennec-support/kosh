@@ -1121,6 +1121,20 @@ and
 .B \-\-duration
 options control output, direct execution, sample count, and the millisecond
 budget.
+.IP
+With
+.BR \-\-extended ,
+each command also reports user and system time, voluntary and involuntary
+context switches, minor and major page faults, block input and output
+operations, read and write system calls, and bytes read and written. The
+times, switches, faults, and block counts cover the sampled process and the
+children it waited for. The call and byte counts cover the sampled process
+alone, so
+.B \-\-no\-shell
+measures the command itself. Read and write counts are available on Linux.
+Windows reports a single page fault total, and it has no switch or block
+counts. A row the platform cannot report is omitted, never printed as zero.
+Without the option no extra rows or system calls are added.
 .TP
 .B z
 The current directory is changed to one selected from the frecency store.

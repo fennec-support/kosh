@@ -1459,9 +1459,92 @@ fn spawn_measured_child(const ArrayList<String> &argv, measured_output output,
   return true;
 }
 
-fn wait_for_measured_child(pid_t child_pid, i64 &status_out,
-                           u64 &peak_rss_out) wontthrow -> bool
+fn timeval_nanos(const timeval &value) wontthrow -> u64
 {
+  return static_cast<u64>(value.tv_sec) * 1000000000ULL +
+         static_cast<u64>(value.tv_usec) * 1000ULL;
+}
+
+fn fill_usage_from_rusage(const struct rusage &usage,
+                          process_resource_usage &resources) wontthrow -> void
+{
+  resources.user_nanos = timeval_nanos(usage.ru_utime);
+  resources.system_nanos = timeval_nanos(usage.ru_stime);
+  resources.peak_rss_bytes = platform_peak_rss_bytes(usage.ru_maxrss);
+  resources.voluntary_context_switch_count = static_cast<u64>(usage.ru_nvcsw);
+  resources.involuntary_context_switch_count =
+      static_cast<u64>(usage.ru_nivcsw);
+  resources.minor_fault_count = static_cast<u64>(usage.ru_minflt);
+  resources.major_fault_count = static_cast<u64>(usage.ru_majflt);
+  resources.block_input_count = static_cast<u64>(usage.ru_inblock);
+  resources.block_output_count = static_cast<u64>(usage.ru_oublock);
+}
+
+#if defined __linux__
+fn open_proc_io_descriptor(pid_t pid) wontthrow -> int
+{
+  char path[64];
+  std::snprintf(path, sizeof(path), "/proc/%lld/io",
+                static_cast<long long>(pid));
+  return ::open(path, O_RDONLY | O_CLOEXEC);
+}
+
+fn fill_usage_from_proc_io(int io_descriptor,
+                           process_resource_usage &resources) wontthrow -> void
+{
+  struct io_field
+  {
+    StringView name;
+    Maybe<u64> process_resource_usage::*field;
+  };
+  static constexpr io_field FIELDS[] = {
+      {"rchar:", &process_resource_usage::read_byte_count   },
+      {"wchar:", &process_resource_usage::written_byte_count},
+      {"syscr:", &process_resource_usage::read_call_count   },
+      {"syscw:", &process_resource_usage::write_call_count  },
+  };
+
+  if (io_descriptor < 0) return;
+
+  char buffer[2048];
+  ssize_t length;
+  do {
+    length = ::pread(io_descriptor, buffer, sizeof(buffer), 0);
+  } while (length == -1 && errno == EINTR);
+  if (length <= 0) return;
+
+  let const text = StringView{buffer, static_cast<usize>(length)};
+  usize position = 0;
+  while (position < text.length) {
+    let const line = each_line(text, position);
+    for (let const &known : FIELDS) {
+      if (!line.starts_with(known.name)) continue;
+      if (let const parsed = leading_digits(line, known.name.length).to<u64>();
+          !parsed.is_error())
+        resources.*known.field = parsed.value();
+      break;
+    }
+  }
+}
+#endif
+
+fn wait_for_measured_child(pid_t child_pid, i64 &status_out, u64 &peak_rss_out,
+                           process_resource_usage *resources,
+                           int io_descriptor) wontthrow -> bool
+{
+#if defined __linux__
+  if (resources != nullptr) {
+    siginfo_t info{};
+    int wait_result;
+    do {
+      wait_result =
+          waitid(P_PID, static_cast<id_t>(child_pid), &info, WEXITED | WNOWAIT);
+    } while (wait_result == -1 && errno == EINTR);
+    if (wait_result == 0) fill_usage_from_proc_io(io_descriptor, *resources);
+  }
+#else
+  unused(io_descriptor);
+#endif
 
   int status = 0;
   struct rusage usage{};
@@ -1491,14 +1574,30 @@ fn wait_for_measured_child(pid_t child_pid, i64 &status_out,
     status_out = -1;
 
   peak_rss_out = platform_peak_rss_bytes(usage.ru_maxrss);
+  if (resources != nullptr) fill_usage_from_rusage(usage, *resources);
 
   return true;
 }
 
 } /* namespace */
 
+fn read_own_resource_usage() wontthrow -> process_resource_usage
+{
+  process_resource_usage resources{};
+  struct rusage usage{};
+  if (getrusage(RUSAGE_SELF, &usage) == 0)
+    fill_usage_from_rusage(usage, resources);
+#if defined __linux__
+  let const io_descriptor = open_proc_io_descriptor(getpid());
+  fill_usage_from_proc_io(io_descriptor, resources);
+  if (io_descriptor >= 0) ::close(io_descriptor);
+#endif
+  return resources;
+}
+
 fn run_measured(const ArrayList<String> &argv, const Maybe<descriptor> &,
-                measured_output output) throws -> Maybe<measured_result>
+                measured_output output, bool should_collect_resources) throws
+    -> Maybe<measured_result>
 {
   if (argv.is_empty()) return None;
 
@@ -1506,6 +1605,16 @@ fn run_measured(const ArrayList<String> &argv, const Maybe<descriptor> &,
 
   measured_child child{};
   if (!spawn_measured_child(argv, output, child)) return None;
+
+  int io_descriptor = -1;
+#if defined __linux__
+  if (should_collect_resources)
+    io_descriptor = open_proc_io_descriptor(child.pid);
+#endif
+  defer
+  {
+    if (io_descriptor >= 0) ::close(io_descriptor);
+  };
 
   PlatformPerfSession perf_session;
   bool has_perf = perf_session.prepare(child.pid);
@@ -1522,8 +1631,10 @@ fn run_measured(const ArrayList<String> &argv, const Maybe<descriptor> &,
     return None;
   }
 
-  if (!wait_for_measured_child(child.pid, result.exit_status,
-                               result.peak_rss_bytes))
+  if (!wait_for_measured_child(
+          child.pid, result.exit_status, result.peak_rss_bytes,
+          should_collect_resources ? &result.resources : nullptr,
+          io_descriptor))
     return None;
   result.wall_nanos = monotonic_nanos() - start_nanos;
 

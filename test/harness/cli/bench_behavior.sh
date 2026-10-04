@@ -89,6 +89,33 @@ if [ "$(uname -s)" = Linux ]; then
     esac
 fi
 echo "counter fallback passed"
+echo "== --extended adds resource rows and the default output omits them:"
+extended_labels='user time|system time|voluntary switches|involuntary switches|minor faults|major faults|page faults|block input|block output|read calls|write calls|bytes read|bytes written'
+plain_output=$("$BIN" -c 'bench --runs 2 --no-shell "$BENCH_ECHO plain"' 2>&1)
+plain_extended_count=$(printf '%s\n' "$plain_output" |
+    grep -Ec "^  ($extended_labels)  ")
+test "$plain_extended_count" -eq 0 || { echo "plain output has extended rows"; exit 1; }
+extended_output=$("$BIN" -c \
+    'bench --runs 2 --extended --no-shell "$BENCH_ECHO extended"' 2>&1)
+extended_labels_found=$(printf '%s\n' "$extended_output" |
+    grep -E "^  ($extended_labels)  " | sed 's/^  //; s/  .*//' | tr '\n' ',')
+case "$extended_labels_found" in
+    user\ time,*) ;;
+    *) echo "missing extended rows: $extended_labels_found"; exit 1 ;;
+esac
+if [ "$(uname -s)" = Linux ]; then
+    test "$extended_labels_found" = 'user time,system time,voluntary switches,involuntary switches,minor faults,major faults,block input,block output,read calls,write calls,bytes read,bytes written,' ||
+        { echo "unexpected extended rows: $extended_labels_found"; exit 1; }
+fi
+extended_row_count=$(printf '%s\n' "$extended_output" |
+    grep -Ec '^  [a-z ]+  +[0-9.]+[A-Za-z]* +\+/- ')
+plain_row_count=$(printf '%s\n' "$plain_output" |
+    grep -Ec '^  [a-z ]+  +[0-9.]+[A-Za-z]* +\+/- ')
+test "$extended_row_count" -gt "$plain_row_count" ||
+    { echo "extended adds no rows"; exit 1; }
+echo "extended rows passed"
+echo "== --extended is documented in the builtin help:"
+"$BIN" -c 'bench --help' 2>&1 | grep -q -e '^      --extended ' && echo "help lists --extended"
 echo "== a failed later sample clears terminal progress:"
 cat > "$d/vanishing-environment" <<'SH'
 koshkit sleep 0.03 || exit 1

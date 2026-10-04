@@ -2070,6 +2070,26 @@ struct perf_counts
   u64 branch_misses{0};
 };
 
+struct process_resource_usage
+{
+  Maybe<u64> user_nanos{};
+  Maybe<u64> system_nanos{};
+  Maybe<u64> peak_rss_bytes{};
+  Maybe<u64> voluntary_context_switch_count{};
+  Maybe<u64> involuntary_context_switch_count{};
+  Maybe<u64> minor_fault_count{};
+  Maybe<u64> major_fault_count{};
+  Maybe<u64> page_fault_count{};
+  Maybe<u64> block_input_count{};
+  Maybe<u64> block_output_count{};
+  Maybe<u64> read_call_count{};
+  Maybe<u64> write_call_count{};
+  Maybe<u64> read_byte_count{};
+  Maybe<u64> written_byte_count{};
+};
+
+fn read_own_resource_usage() wontthrow -> process_resource_usage;
+
 /* The perf counts are filled only when has_perf is true. */
 struct measured_result
 {
@@ -2079,11 +2099,13 @@ struct measured_result
   bool has_perf{false};
   bool is_perf_system_wide{false};
   perf_counts perf{};
+  process_resource_usage resources{};
 };
 
 fn run_measured(const ArrayList<String> &argv,
                 const Maybe<descriptor> &inherited_handle = {},
-                measured_output output = measured_output::Inherit) throws
+                measured_output output = measured_output::Inherit,
+                bool should_collect_resources = false) throws
     -> Maybe<measured_result>;
 fn get_priority(i64 id, priority_target target) wontthrow -> Maybe<i32>;
 fn set_priority(i64 id, i32 priority, priority_target target) wontthrow -> bool;

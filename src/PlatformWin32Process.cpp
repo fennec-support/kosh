@@ -49,6 +49,7 @@ static fn priority_from_windows_class(DWORD priority_class) wontthrow
 struct windows_measured_launch_options
 {
   DWORD creation_flags{};
+  bool should_collect_resources{false};
   Maybe<descriptor> inherited_handle;
   Maybe<descriptor> input;
   Maybe<descriptor> output;
@@ -189,6 +190,48 @@ static fn filetime_ticks(FILETIME time) wontthrow -> u64
   ticks.LowPart = time.dwLowDateTime;
   ticks.HighPart = time.dwHighDateTime;
   return ticks.QuadPart;
+}
+
+static fn fill_resource_usage(HANDLE process_handle,
+                              process_resource_usage &resources) wontthrow
+    -> void
+{
+  FILETIME creation_time{};
+  FILETIME exit_time{};
+  FILETIME kernel_time{};
+  FILETIME user_time{};
+  if (GetProcessTimes(process_handle, &creation_time, &exit_time, &kernel_time,
+                      &user_time) != FALSE)
+  {
+    resources.user_nanos = filetime_ticks(user_time) * 100ULL;
+    resources.system_nanos = filetime_ticks(kernel_time) * 100ULL;
+  }
+
+  PROCESS_MEMORY_COUNTERS memory_counters{};
+  memory_counters.cb = sizeof(memory_counters);
+  if (GetProcessMemoryInfo(process_handle, &memory_counters,
+                           sizeof(memory_counters)) != FALSE)
+  {
+    resources.peak_rss_bytes =
+        static_cast<u64>(memory_counters.PeakWorkingSetSize);
+    resources.page_fault_count =
+        static_cast<u64>(memory_counters.PageFaultCount);
+  }
+
+  IO_COUNTERS io_counters{};
+  if (GetProcessIoCounters(process_handle, &io_counters) != FALSE) {
+    resources.read_call_count = io_counters.ReadOperationCount;
+    resources.write_call_count = io_counters.WriteOperationCount;
+    resources.read_byte_count = io_counters.ReadTransferCount;
+    resources.written_byte_count = io_counters.WriteTransferCount;
+  }
+}
+
+fn read_own_resource_usage() wontthrow -> process_resource_usage
+{
+  process_resource_usage resources{};
+  fill_resource_usage(GetCurrentProcess(), resources);
+  return resources;
 }
 
 static fn record_child_process_usage(process child) wontthrow -> void
@@ -2206,15 +2249,20 @@ run_measured_with_options(const ArrayList<String> &argv, measured_output output,
     result.peak_rss_bytes =
         static_cast<u64>(memory_counters.PeakWorkingSetSize);
 
+  if (options.should_collect_resources)
+    fill_resource_usage(process_info.hProcess, result.resources);
+
   return result;
 }
 
 fn run_measured(const ArrayList<String> &argv,
                 const Maybe<descriptor> &inherited_handle,
-                measured_output output) throws -> Maybe<measured_result>
+                measured_output output, bool should_collect_resources) throws
+    -> Maybe<measured_result>
 {
   windows_measured_launch_options options{};
   options.inherited_handle = inherited_handle;
+  options.should_collect_resources = should_collect_resources;
   return run_measured_with_options(argv, output, options);
 }
 fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>

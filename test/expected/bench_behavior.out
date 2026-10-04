@@ -42,5 +42,9 @@ rc=1
 counter capability passed
 == counter fallback keeps one complete sample:
 counter fallback passed
+== --extended adds resource rows and the default output omits them:
+extended rows passed
+== --extended is documented in the builtin help:
+help lists --extended
 == a failed later sample clears terminal progress:
 progress clear check complete

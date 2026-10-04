@@ -27,10 +27,14 @@ FLAG(BENCH_SHOW_OUTPUT, Bool, '\0', "show-output",
      "Show the command's output instead of suppressing it.");
 FLAG(BENCH_NO_SHELL, Bool, '\0', "no-shell",
      "Fork the command directly, without wrapping it in a shell.");
+FLAG(BENCH_EXTENDED, Bool, '\0', "extended",
+     "Also report CPU time, context switches, page faults, block operations, "
+     "system calls, and bytes transferred by each command.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 HELP_SYNOPSIS_DECL("[--runs n] [--duration ms] [--ignore-exit-code] "
-                   "[--show-output] [--no-shell] command [command ...]");
+                   "[--show-output] [--no-shell] [--extended] "
+                   "command [command ...]");
 
 HELP_DESCRIPTION_DECL(
     "The bench builtin measures and compares the runtime of each command.");
@@ -60,6 +64,44 @@ struct metric_stats
   double max{0};
 };
 
+struct extended_metric
+{
+  StringView name;
+  metric_unit unit;
+  Maybe<u64> os::process_resource_usage::*field;
+};
+
+constexpr usize EXTENDED_METRIC_COUNT = 13;
+
+constexpr extended_metric EXTENDED_METRICS[EXTENDED_METRIC_COUNT] = {
+    {"user time",            metric_unit::Nanoseconds,
+     &os::process_resource_usage::user_nanos                      },
+    {"system time",          metric_unit::Nanoseconds,
+     &os::process_resource_usage::system_nanos                    },
+    {"voluntary switches",   metric_unit::Count,
+     &os::process_resource_usage::voluntary_context_switch_count  },
+    {"involuntary switches", metric_unit::Count,
+     &os::process_resource_usage::involuntary_context_switch_count},
+    {"minor faults",         metric_unit::Count,
+     &os::process_resource_usage::minor_fault_count               },
+    {"major faults",         metric_unit::Count,
+     &os::process_resource_usage::major_fault_count               },
+    {"page faults",          metric_unit::Count,
+     &os::process_resource_usage::page_fault_count                },
+    {"block input",          metric_unit::Count,
+     &os::process_resource_usage::block_input_count               },
+    {"block output",         metric_unit::Count,
+     &os::process_resource_usage::block_output_count              },
+    {"read calls",           metric_unit::Count,
+     &os::process_resource_usage::read_call_count                 },
+    {"write calls",          metric_unit::Count,
+     &os::process_resource_usage::write_call_count                },
+    {"bytes read",           metric_unit::Bytes,
+     &os::process_resource_usage::read_byte_count                 },
+    {"bytes written",        metric_unit::Bytes,
+     &os::process_resource_usage::written_byte_count              },
+};
+
 struct bench_sample
 {
   double wall_nanos{0};
@@ -69,6 +111,7 @@ struct bench_sample
   double cache_references{0};
   double cache_misses{0};
   double branch_misses{0};
+  double extended_values[EXTENDED_METRIC_COUNT]{};
 };
 
 class CommandResult
@@ -79,6 +122,8 @@ public:
   usize sample_count{0};
   bool has_perf{false};
   bool is_perf_system_wide{false};
+  bool has_extended[EXTENDED_METRIC_COUNT]{};
+  metric_stats extended_stats[EXTENDED_METRIC_COUNT]{};
   metric_stats wall_time{};
   metric_stats peak_rss{};
   metric_stats cpu_cycles{};
@@ -324,9 +369,9 @@ fn sample_command(StringView shell_binary, StringView command,
                   Maybe<u64> run_limit, u64 duration_millis,
                   bool should_show_progress, bool should_suppress_output,
                   bool should_ignore_exit_code, bool should_use_shell,
-                  bool &was_interrupted, bool &did_command_fail,
-                  i64 &failure_status, Allocator allocator) throws
-    -> CommandResult
+                  bool should_collect_extended, bool &was_interrupted,
+                  bool &did_command_fail, i64 &failure_status,
+                  Allocator allocator) throws -> CommandResult
 {
   defer
   {
@@ -364,6 +409,9 @@ fn sample_command(StringView shell_binary, StringView command,
   u64 last_progress_nanos = 0;
   bool has_perf = true;
   bool is_perf_system_wide = false;
+  bool is_extended_available[EXTENDED_METRIC_COUNT];
+  for (usize k = 0; k < EXTENDED_METRIC_COUNT; k++)
+    is_extended_available[k] = should_collect_extended;
 
   for (usize i = 0;; i++) {
     if (os::INTERRUPT_REQUESTED) {
@@ -402,7 +450,8 @@ fn sample_command(StringView shell_binary, StringView command,
     let const measured =
         os::run_measured(child_argv, {},
                          should_suppress_output ? os::measured_output::Suppress
-                                                : os::measured_output::Inherit);
+                                                : os::measured_output::Inherit,
+                         should_collect_extended);
     if (!measured.has_value())
       throw Error{StringView{"Unable to run '"} + command +
                   "': " + os::last_system_error_message()};
@@ -431,7 +480,24 @@ fn sample_command(StringView shell_binary, StringView command,
       sample.cache_misses = static_cast<double>(measured->perf.cache_misses);
       sample.branch_misses = static_cast<double>(measured->perf.branch_misses);
     }
+    if (should_collect_extended) {
+      for (usize k = 0; k < EXTENDED_METRIC_COUNT; k++) {
+        let const &value = measured->resources.*(EXTENDED_METRICS[k].field);
+        if (value.has_value())
+          sample.extended_values[k] = static_cast<double>(*value);
+        else
+          is_extended_available[k] = false;
+      }
+    }
     samples.push(sample);
+  }
+
+  for (usize k = 0; k < EXTENDED_METRIC_COUNT; k++) {
+    result.has_extended[k] = !samples.is_empty() && is_extended_available[k];
+    if (result.has_extended[k]) {
+      result.extended_stats[k] = compute_stats(
+          samples, [k](const bench_sample &s) { return s.extended_values[k]; });
+    }
   }
 
   result.sample_count = samples.count();
@@ -506,6 +572,13 @@ fn append_summary(String &out, const CommandResult &result, bool should_color,
                               metric_unit::Count, allocator));
     rows.push(make_metric_row(branch_misses_name, result.branch_misses,
                               metric_unit::Count, allocator));
+  }
+  for (usize k = 0; k < EXTENDED_METRIC_COUNT; k++) {
+    if (result.has_extended[k]) {
+      rows.push(make_metric_row(EXTENDED_METRICS[k].name,
+                                result.extended_stats[k],
+                                EXTENDED_METRICS[k].unit, allocator));
+    }
   }
 
   usize mean_width = 0;
@@ -593,6 +666,7 @@ cold fn Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const should_ignore_exit_code = FLAG_BENCH_IGNORE_EXIT.is_enabled();
   let const should_suppress_output = !FLAG_BENCH_SHOW_OUTPUT.is_enabled();
   let const should_use_shell = !FLAG_BENCH_NO_SHELL.is_enabled();
+  let const should_collect_extended = FLAG_BENCH_EXTENDED.is_enabled();
 
   let shell_binary = String{cxt.scratch_allocator(),
                             cxt.execution_store().get_shell_executable_path()};
@@ -616,8 +690,8 @@ cold fn Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     results.push(sample_command(
         shell_binary.view(), arguments[i].view(), run_limit, duration_millis,
         should_show_progress, should_suppress_output, should_ignore_exit_code,
-        should_use_shell, was_interrupted, did_command_fail, failure_status,
-        cxt.scratch_allocator()));
+        should_use_shell, should_collect_extended, was_interrupted,
+        did_command_fail, failure_status, cxt.scratch_allocator()));
 
     if (was_interrupted) {
       os::INTERRUPT_REQUESTED = 0;
