@@ -951,6 +951,53 @@ fn EvalContext::unmark_exported(StringView name) throws -> void
       fold_exported_name(name, folded, spill));
 }
 
+fn parse_analysis_environment(StringView text) throws -> analysis_environment
+{
+  let result = analysis_environment{};
+
+  text.for_each_ascii_whitespace_word([&](StringView token) throws {
+    if (token == "mimicry") {
+      result.is_mimicry_enabled = true;
+    } else if (token == "no-annoying") {
+      result.is_annoying_disabled = true;
+    } else if (token == "no-diagnostics") {
+      result.is_diagnostics_disabled = true;
+    } else if (token.length == 10 && token.starts_with("warnings=") &&
+               token[9] >= '1' && token[9] <= '3')
+    {
+      result.warning_level = static_cast<u8>(token[9] - '0');
+    }
+  });
+
+  return result;
+}
+
+fn EvalContext::sync_analysis_environment() throws -> void
+{
+  static constexpr StringView NAME{"KOSH_ANALYSIS"};
+  let const &runtime = runtime_state();
+  let text = String{scratch_allocator()};
+
+  if (runtime.is_mimicry_enabled()) text += "mimicry ";
+  if (runtime.get_warning_level() > 0) {
+    text += "warnings=";
+    text += static_cast<char>('0' + runtime.get_warning_level());
+    text += " ";
+  }
+  if (!runtime.is_annoying_diagnostics_enabled()) text += "no-annoying ";
+  if (runtime.is_diagnostics_disabled()) text += "no-diagnostics ";
+
+  record_environment_change(NAME);
+
+  if (text.is_empty()) {
+    if (os::has_environment_variable(NAME)) os::unset_environment_variable(NAME);
+    return;
+  }
+
+  text.pop_back();
+  os::set_environment_variable(NAME, text.view());
+}
+
 fn EvalContext::unexport_shell_variable(StringView name) throws -> void
 {
   let const has_shell_binding =

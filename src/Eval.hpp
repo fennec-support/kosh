@@ -2316,6 +2316,16 @@ protected:
   JobTable m_job_table{heap_allocator()};
 };
 
+struct analysis_environment
+{
+  bool is_mimicry_enabled{false};
+  u8 warning_level{0};
+  bool is_annoying_disabled{false};
+  bool is_diagnostics_disabled{false};
+};
+
+fn parse_analysis_environment(StringView text) throws -> analysis_environment;
+
 class EvalContext : public EvalContextState
 {
 public:
@@ -2447,6 +2457,7 @@ public:
   fn record_environment_change(StringView name) throws -> void;
 
   fn mark_exported(StringView name) throws -> void;
+  fn sync_analysis_environment() throws -> void;
   fn unmark_exported(StringView name) throws -> void;
   fn unexport_shell_variable(StringView name) throws -> void;
   fn is_exported(StringView name) const throws -> bool;

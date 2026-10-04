@@ -1,0 +1,11 @@
+plain: 0
+bash shebang: 7
+kosh shebang: 4
+operand: 7
+nested -c: warnings=3
+explicit -W: 5
+reset: 0
+unset: []
+mimicry: mimicry warnings=3
+mimicry off: warnings=3
+explicit resync: warnings=1

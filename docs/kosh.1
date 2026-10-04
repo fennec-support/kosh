@@ -313,6 +313,10 @@ option. A recognized shell invocation name, an explicit
 or
 .B \-\-posix
 takes precedence over the shebang. The current diagnostic setting is retained.
+When
+.B set
+changes the option, launched shells inherit it through
+.BR KOSH_ANALYSIS .
 .TP
 .B \-\-dumb
 The options
@@ -487,7 +491,11 @@ also enables lenient diagnostics, and
 .B \-WWW
 also enables annoying diagnostics. An explicit
 .B set \-\-mood
-change clears the active level.
+change clears the active level. A level changed with
+.B set
+is inherited by launched shells through
+.BR KOSH_ANALYSIS ,
+and an explicit level on the command line replaces it.
 .TP
 .B \-\-list\-diagnostics
 The available analysis checks and their metadata are listed. The shell then
@@ -2940,6 +2948,32 @@ printed frame begins with
 .TP
 .B KOSH_FLAGS
 The value supplies default command-line options.
+.TP
+.B KOSH_ANALYSIS
+The variable carries the analysis settings changed with
+.B set
+to the shells it launches. Each use of
+.B set
+rewrites it from the current state as whitespace-separated words:
+.B mimicry
+for
+.BR \-I ,
+.BI warnings= N
+for the level of
+.BR \-W ,
+.B no\-annoying
+for
+.BR "+o annoying\-diagnostics" ,
+and
+.B no\-diagnostics
+for
+.BR "\-o no\-diagnostics" .
+The variable is removed when no word remains. A shell reads it at startup, and
+an explicit
+.B \-W
+level replaces the inherited level, and the other options add to the inherited
+words. A shell that starts with the variable
+rewrites it from its own settings.
 .TP
 .B KOSH_HISTORY_FILE
 The value names the command history file. The default is ~/.kosh_history.

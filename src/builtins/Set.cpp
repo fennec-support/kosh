@@ -1018,6 +1018,8 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     cxt.variable_store().positional_params() = steal(operands);
   }
 
+  cxt.sync_analysis_environment();
+
   return 0;
 }
 
