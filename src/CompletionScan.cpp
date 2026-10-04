@@ -1166,7 +1166,9 @@ static fn mark_spec_directory_candidates(ArrayList<String> &candidates,
       continue;
     }
 
-    if (!Path{candidate.view()}.is_directory()) continue;
+    if (!Path{candidate.view(), completion_allocator()}.is_directory()) {
+      continue;
+    }
 
     LOG(Debug, "marking the spec candidate '%s' as a directory",
         candidate.c_str());

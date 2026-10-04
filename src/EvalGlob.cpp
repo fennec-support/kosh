@@ -463,7 +463,7 @@ fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
     let literal_paths = ArrayList<Path>{scratch};
     literal_paths.reserve(fields.count());
     for (let const &field : fields)
-      literal_paths.push(Path{field.text.view()});
+      literal_paths.push(Path{field.text.view(), scratch});
 
     let literal_batch = os::Batch{scratch};
     literal_batch.reserve(fields.count());
@@ -489,7 +489,7 @@ fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
     if (!glob_index) {
       /* This field is a literal suffix appended after an earlier glob, so keep
          it only when it exists. */
-      if (Path{field.text.view()}.exists()) result.push(steal(field));
+      if (Path{field.text.view(), scratch}.exists()) result.push(steal(field));
       continue;
     }
 
@@ -922,7 +922,7 @@ fn EvalContext::expand_glob_lenient(StringView pattern) throws
   {
     LOG(Debug, "compgen -G probe of '%.*s' has no glob, checking existence",
         static_cast<int>(pattern.length), pattern.data);
-    if (Path{pattern}.exists()) values.push(String{scratch, pattern});
+    if (Path{pattern, scratch}.exists()) values.push(String{scratch, pattern});
     return steal(values).make_sorted(sort_order::ascending);
   }
 
