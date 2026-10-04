@@ -48,16 +48,16 @@ static fn parse_touch_pair(StringView text, usize position,
   return true;
 }
 
-static fn parse_touch_time(StringView text, i64 &parsed_time) throws -> bool
+static fn parse_touch_time(StringView text) throws -> Maybe<i64>
 {
   let main_length = text.length;
   i32 second = 0;
   if (main_length >= 3 && text[main_length - 3] == '.') {
-    if (!parse_touch_pair(text, main_length - 2, second)) return false;
+    if (!parse_touch_pair(text, main_length - 2, second)) return None;
 
     main_length -= 3;
   }
-  if (main_length != 8 && main_length != 10 && main_length != 12) return false;
+  if (main_length != 8 && main_length != 10 && main_length != 12) return None;
 
   let const now = std::time(nullptr);
   let const *current = std::localtime(&now);
@@ -71,14 +71,14 @@ static fn parse_touch_time(StringView text, i64 &parsed_time) throws -> bool
     if (!parse_touch_pair(text, position, century) ||
         !parse_touch_pair(text, position + 2, year))
     {
-      return false;
+      return None;
     }
 
     value.tm_year = century * 100 + year - 1900;
     position += 4;
   } else if (main_length == 10) {
     i32 year;
-    if (!parse_touch_pair(text, position, year)) return false;
+    if (!parse_touch_pair(text, position, year)) return None;
 
     value.tm_year = year >= 69 ? year : year + 100;
     position += 2;
@@ -92,13 +92,13 @@ static fn parse_touch_time(StringView text, i64 &parsed_time) throws -> bool
       !parse_touch_pair(text, position + 4, hour) ||
       !parse_touch_pair(text, position + 6, minute))
   {
-    return false;
+    return None;
   }
 
   if (month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 ||
       minute > 59 || second > 60)
   {
-    return false;
+    return None;
   }
 
   value.tm_mon = month - 1;
@@ -112,11 +112,10 @@ static fn parse_touch_time(StringView text, i64 &parsed_time) throws -> bool
       value.tm_mday != day || value.tm_hour != hour || value.tm_min != minute ||
       value.tm_sec != second)
   {
-    return false;
+    return None;
   }
 
-  parsed_time = static_cast<i64>(timestamp);
-  return true;
+  return static_cast<i64>(timestamp);
 }
 
 Touch::Touch() = default;
@@ -157,16 +156,14 @@ fn Touch::execute(const ExecContext &ec, EvalContext &cxt,
 
   Maybe<i64> requested_time;
   if (FLAG_TOUCH_TIME.is_set()) {
-    i64 parsed_time;
-    if (!parse_touch_time(FLAG_TOUCH_TIME.value(), parsed_time)) {
+    requested_time = parse_touch_time(FLAG_TOUCH_TIME.value());
+    if (!requested_time.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_TOUCH_TIME.value_location(),
           "invalid time '" + FLAG_TOUCH_TIME.value() + "'",
           "use a valid local calendar time in [[CC]YY]MMDDhhmm[.SS] format");
       return 1;
     }
-
-    requested_time = parsed_time;
   }
 
   let const should_change_access =

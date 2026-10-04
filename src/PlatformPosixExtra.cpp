@@ -1248,21 +1248,20 @@ static fn each_line(StringView text, usize &position) wontthrow -> StringView
   return line;
 }
 
-static fn parse_decimal_word(StringView word, u64 &value) wontthrow -> bool
+static fn parse_decimal_word(StringView word) wontthrow -> Maybe<u64>
 {
-  if (word.is_empty()) return false;
+  if (word.is_empty()) return None;
 
   u64 parsed = 0;
   for (usize index = 0; index < word.length; index++) {
     let const character = word[index];
-    if (character < '0' || character > '9') return false;
+    if (character < '0' || character > '9') return None;
     let const digit = static_cast<u64>(character - '0');
-    if (parsed > (UINT64_MAX - digit) / 10) return false;
+    if (parsed > (UINT64_MAX - digit) / 10) return None;
     parsed = parsed * 10 + digit;
   }
 
-  value = parsed;
-  return true;
+  return parsed;
 }
 
 static fn parse_decimal_words(StringView text, u64 *values,
@@ -1273,7 +1272,9 @@ static fn parse_decimal_words(StringView text, u64 *values,
   while (position < text.length && value_count < value_capacity) {
     let const word = text.next_ascii_whitespace_word(position);
     if (word.is_empty()) continue;
-    if (!parse_decimal_word(word, values[value_count])) break;
+    let const parsed = parse_decimal_word(word);
+    if (!parsed.has_value()) break;
+    values[value_count] = *parsed;
     value_count++;
   }
 
@@ -1793,8 +1794,9 @@ fn read_tcp_statistics(tcp_statistics &statistics) wontthrow -> bool
     while (name_position < header.length && value_position < line.length) {
       let const name = header.next_ascii_whitespace_word(name_position);
       let const value_word = line.next_ascii_whitespace_word(value_position);
-      u64 value = 0;
-      if (!parse_decimal_word(value_word, value)) continue;
+      let const parsed_value = parse_decimal_word(value_word);
+      if (!parsed_value.has_value()) continue;
+      let const value = *parsed_value;
       struct tcp_field
       {
         StringView name;
@@ -1858,8 +1860,9 @@ fn read_tcp_statistics(tcp_statistics &statistics) wontthrow -> bool
       let const name =
           tcp_extended_header.next_ascii_whitespace_word(name_position);
       let const value_word = line.next_ascii_whitespace_word(value_position);
-      u64 value = 0;
-      if (!parse_decimal_word(value_word, value)) continue;
+      let const parsed_value = parse_decimal_word(value_word);
+      if (!parsed_value.has_value()) continue;
+      let const value = *parsed_value;
       struct tcp_extended_field
       {
         StringView name;
