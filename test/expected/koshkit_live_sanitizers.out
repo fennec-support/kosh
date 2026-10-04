@@ -1,0 +1,5 @@
+evilio-process status=130 diagnostics=none frames=printed
+evilio-disk status=130 diagnostics=none frames=printed
+evilnet status=130 diagnostics=none frames=printed
+evilps status=130 diagnostics=none frames=printed
+evilss status=130 diagnostics=none frames=printed
