@@ -2312,6 +2312,14 @@ options collect and refresh the rate report until interrupted. Their optional
 value sets the refresh cadence in seconds and defaults to 0.5 seconds.
 Output uses
 the alternate screen and restores the previous contents on exit.
+Every frame of a live utility starts with a header line that names the utility,
+shows a LIVE indicator, the local time, the rolling window and the refresh
+interval, and, on a terminal, the keys the utility accepts. The header
+is shortened to fit the terminal width and is colored only when color is
+enabled. The terminal reads keys without echo and without Enter: q quits with
+status 0, and an interrupt quits with status 130. Each frame is written with one
+write and follows the terminal size at the time of the frame. Output
+that is not a terminal carries a plain header and no escape sequences.
 When both options are present,
 .B \-\-cumulative
 sets the rolling window and
@@ -2434,7 +2442,19 @@ option is shorthand for
 and
 .B \-\-live
 options sample and refresh the process tree until interrupted. An optional
-duration sets both intervals, which default to 0.5 seconds. The
+duration sets both intervals, which default to 0.5 seconds. On a terminal,
+.BR j ,
+.BR k ,
+and the arrow keys scroll, the page keys scroll by ten lines,
+.B g
+and
+.B G
+jump to the top and bottom, and
+.B s
+cycles the sort key. The
+.B /
+key starts a search; the typed text is edited with Backspace, Enter applies it,
+and Escape clears it. The
 .B \-\-cumulative
 option accepts an optional sliding window. With
 .BR \-\-live ,

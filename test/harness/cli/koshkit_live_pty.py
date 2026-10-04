@@ -15,6 +15,7 @@ import time
 
 
 FRAME_MARKER = b"  LIVE"
+HEADER_BAR_STYLE = b"\x1b[0;48;5;236;38;5;252m"
 
 
 def run_pty(binary, command, keys=()):
@@ -92,6 +93,7 @@ def run_pty(binary, command, keys=()):
         "frames": bytes(output).count(FRAME_MARKER),
         "controls": FRAME_MARKER in output,
         "hints": b"q quit" in output,
+        "styled_header": HEADER_BAR_STYLE in output,
         "ansi": b"\x1b[" in output,
         "alternate_enter": b"\x1b[?1049h" in output,
         "alternate_leave": b"\x1b[?1049l" in output,
@@ -123,6 +125,7 @@ def run_redirected(binary, command):
         "ansi": b"\x1b[" in data,
         "controls": FRAME_MARKER in data,
         "hints": b"q quit" in data,
+        "plain_header": b"\x1b" not in data.split(b"\n", 1)[0],
     }
 
 
@@ -189,6 +192,15 @@ def main():
                                    "cursor_hide": True,
                                    "cursor_show": True})
 
+    result = run_pty(binary, "koshkit --color always evilnet --traffic "
+                     "--live=0.05 --cumulative=0.1")
+    ok &= check("evilnet-color-pty", result,
+                {"status": 130, "styled_header": True, "hints": False})
+    result = run_pty(binary, "koshkit --color never evilnet --traffic "
+                     "--live=0.05 --cumulative=0.1")
+    ok &= check("evilnet-plain-pty", result,
+                {"status": 130, "styled_header": False, "hints": True})
+
     for name, command in (
         ("evilio-redirected", "koshkit --color never evilio --ps --live=0.05 "
          "--cumulative=0.1"),
@@ -203,6 +215,11 @@ def main():
         if result["lines"] < 2:
             print("%s FAIL fewer than two redirected frames" % name)
             ok = False
+
+    result = run_redirected(binary, "koshkit --color always evilnet --traffic "
+                            "--live=0.05 --cumulative=0.1")
+    ok &= check("evilnet-forced-color-redirected", result,
+                {"status": 130, "plain_header": True, "hints": False})
     return 0 if ok else 1
 
 
