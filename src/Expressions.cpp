@@ -4,9 +4,10 @@
  *
  * This file implements common expression and command bases, analysis
  * diagnostics, variable dataflow, assignment indexes, source-following
- * analysis, and shared syntax helpers. It also provides analyze_ast and the
- * common command execution flags. The split keeps behavior shared by every
- * syntax node outside the specialized expression sources.
+ * analysis, substitution body analysis, and shared syntax helpers. It also
+ * provides analyze_ast and the common command execution flags. The split keeps
+ * behavior shared by every syntax node outside the specialized expression
+ * sources.
  */
 
 #include "Expressions.hpp"
@@ -2111,6 +2112,196 @@ fn internal::note_variable_reference(AnalysisContext &actx,
   actx.note_variable_occurrence(segment.text.view(), expansion_location,
                                 variable_occurrence_kind::Reference);
   actx.note_positional_reference(segment.text.view(), expansion_location);
+}
+
+static fn body_is_bare_file_read(const Expression *ast) wontthrow -> bool
+{
+  let const *list = ast->as_compound_list();
+  let const *command =
+      list != nullptr ? list->single_unconditional_command() : nullptr;
+  let const *simple =
+      command != nullptr ? command->as_simple_command() : nullptr;
+  if (simple == nullptr || !simple->args().is_empty() ||
+      !simple->local_vars().is_empty() || simple->redirections().count() != 1)
+  {
+    return false;
+  }
+
+  return simple->redirections()[0].kind == Redirection::Kind::ReadInput;
+}
+
+static fn analyze_substitution_body(AnalysisContext &actx,
+                                    const lexer::nested_substitution &body,
+                                    const SourceLocation &location,
+                                    bool is_subshell,
+                                    bool is_unconditional) throws -> void
+{
+  if (!body.is_exact ||
+      actx.substitution_analysis_depth >= lexer::MAX_SUBSTITUTION_NESTING_DEPTH)
+  {
+    return;
+  }
+
+  let &arena = actx.substitution_arena;
+  let const arena_mark = arena.mark();
+  defer { arena.release(arena_mark); };
+  actx.substitution_analysis_depth++;
+  defer { actx.substitution_analysis_depth--; };
+
+  let const mood = actx.eval_context != nullptr
+                       ? actx.eval_context->runtime_state().get_mood()
+                       : mimic_mood::Default;
+  let nested_lexer = Lexer{
+      actx.source.substring_of_length(0, body.body_position + body.body_length),
+      arena, source_name_at(location.source_name_index), mood};
+  nested_lexer.set_start_position(body.body_position);
+  let nested_parser = Parser{steal(nested_lexer)};
+  let parse_errors = ArrayList<String>{heap_allocator()};
+  let const *ast = nested_parser.construct_ast(parse_errors, nullptr, nullptr);
+  if (!parse_errors.is_empty()) return;
+
+  let const was_direct_pipeline_stage = actx.is_direct_pipeline_stage;
+  let const was_analyzing_condition = actx.is_analyzing_condition;
+  let const was_bare_read_substitution = actx.is_bare_read_substitution;
+  let const was_inside_substitution_subshell =
+      actx.is_inside_substitution_subshell;
+  let const saved_getopts = actx.active_getopts;
+  top_level_sibling_carry *const saved_carry = actx.stream_sibling_carry;
+  actx.is_direct_pipeline_stage = false;
+  actx.is_analyzing_condition = false;
+  actx.stream_sibling_carry = nullptr;
+  actx.is_bare_read_substitution = body_is_bare_file_read(ast);
+  actx.is_inside_substitution_subshell =
+      is_subshell || was_inside_substitution_subshell;
+
+  if (is_subshell) {
+    let scope = SubshellAnalysisScope{actx};
+    ast->analyze(actx, is_unconditional);
+    scope.leave();
+  } else {
+    ast->analyze(actx, is_unconditional);
+  }
+
+  actx.is_inside_substitution_subshell = was_inside_substitution_subshell;
+  actx.is_bare_read_substitution = was_bare_read_substitution;
+  actx.stream_sibling_carry = saved_carry;
+  actx.active_getopts = saved_getopts;
+  actx.is_analyzing_condition = was_analyzing_condition;
+  actx.is_direct_pipeline_stage = was_direct_pipeline_stage;
+}
+
+fn internal::analyze_region_substitutions(AnalysisContext &actx,
+                                          const SourceLocation &location,
+                                          usize region_position,
+                                          usize region_length, bool is_heredoc,
+                                          bool is_unconditional) throws -> void
+{
+  if (region_position > actx.source.length ||
+      region_length > actx.source.length - region_position)
+  {
+    return;
+  }
+
+  let const found = lexer::find_nested_substitutions(
+      actx.source, region_position, region_length, is_heredoc, false);
+  for (let const &body : found)
+    analyze_substitution_body(actx, body, location, true, is_unconditional);
+}
+
+fn internal::analyze_word_substitutions(AnalysisContext &actx, const Word &word,
+                                        const SourceLocation &location,
+                                        bool is_unconditional) throws -> void
+{
+  for (let const &segment : word.segments) {
+    switch (segment.kind) {
+    case WordSegment::Kind::CommandSubstitution:
+    case WordSegment::Kind::ProcessSubstitution:
+    case WordSegment::Kind::FunctionSubstitution: {
+      let const body = lexer::find_segment_substitution(actx.source, segment);
+      if (!body.has_value()) break;
+
+      analyze_substitution_body(
+          actx, *body, location,
+          segment.kind != WordSegment::Kind::FunctionSubstitution,
+          is_unconditional);
+      break;
+    }
+
+    case WordSegment::Kind::VariableReference:
+    case WordSegment::Kind::ArithmeticExpansion: {
+      let const text = segment.text.view();
+      if (!text.find_character('$').has_value() &&
+          !text.find_character('`').has_value())
+      {
+        break;
+      }
+
+      let const position = static_cast<usize>(segment.source_position);
+      if (text.length > actx.source.length ||
+          position > actx.source.length - text.length ||
+          actx.source.substring_of_length(position, text.length) != text)
+      {
+        break;
+      }
+
+      let const found = lexer::find_nested_substitutions(
+          actx.source, position, text.length, false,
+          segment.is_in_double_quotes != 0);
+      for (let const &body : found)
+        analyze_substitution_body(actx, body, location, true, is_unconditional);
+      break;
+    }
+
+    default: break;
+    }
+  }
+}
+
+fn internal::analyze_token_substitutions(AnalysisContext &actx,
+                                         const Token *token,
+                                         bool is_unconditional) throws -> void
+{
+  if (token == nullptr) return;
+
+  if (token->kind() == Token::Kind::Assignment) {
+    analyze_word_substitutions(
+        actx, static_cast<const tokens::Assignment *>(token)->value_word(),
+        token->source_location(), is_unconditional);
+    return;
+  }
+
+  if (token->kind() != Token::Kind::Word) return;
+
+  analyze_word_substitutions(
+      actx, static_cast<const tokens::WordToken *>(token)->word(),
+      token->source_location(), is_unconditional);
+}
+
+fn internal::analyze_token_list_substitutions(
+    AnalysisContext &actx, const ArrayList<const Token *> &tokens,
+    bool is_unconditional) throws -> void
+{
+  for (let const *token : tokens)
+    analyze_token_substitutions(actx, token, is_unconditional);
+}
+
+fn internal::analyze_redirection_substitutions(
+    AnalysisContext &actx, const Redirection &redirection,
+    const SourceLocation &node_location, bool is_unconditional) throws -> void
+{
+  analyze_token_substitutions(actx, redirection.target, is_unconditional);
+  if (redirection.heredoc == nullptr || !redirection.should_expand_heredoc ||
+      redirection.heredoc->source_end_position <=
+          redirection.heredoc->source_position)
+  {
+    return;
+  }
+
+  analyze_region_substitutions(actx, node_location,
+                               redirection.heredoc->source_position,
+                               redirection.heredoc->source_end_position -
+                                   redirection.heredoc->source_position,
+                               true, is_unconditional);
 }
 
 fn internal::merge_variable_occurrence_states(

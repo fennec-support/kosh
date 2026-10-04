@@ -214,7 +214,8 @@ conditional_element_ends_operand(const conditional_element &element) wontthrow
 fn ConditionalCommand::analyze(AnalysisContext &actx,
                                bool is_unconditional) const throws -> void
 {
-  unused(is_unconditional);
+  for (let const &element : m_elements)
+    analyze_token_substitutions(actx, element.word, is_unconditional);
 
   using Kind = conditional_element::Kind;
   for (usize i = 0; i < m_elements.count(); i++) {
@@ -631,6 +632,11 @@ fn ArithmeticCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
 fn ArithmeticCommand::analyze(AnalysisContext &actx,
                               bool is_unconditional) const throws -> void
 {
+  analyze_region_substitutions(
+      actx, source_location(), source_location().position,
+      source_end_position() - source_location().position, false,
+      is_unconditional);
+
   if (arithmetic_reads_external_input(actx, m_expression))
     actx.report_diagnostic(diagnostic_id::external_arithmetic_input,
                            source_location());
@@ -653,6 +659,8 @@ fn SelectLoop::analyze(AnalysisContext &actx,
                        bool is_unconditional) const throws -> void
 {
   ASSERT(m_body != nullptr);
+
+  analyze_token_list_substitutions(actx, m_words, is_unconditional);
 
   let loop_entry_occurrence_assignments =
       actx.variable_occurrence_assignments.snapshot();
@@ -877,6 +885,11 @@ fn CStyleForLoop::analyze(AnalysisContext &actx,
   let const condition_position = init_position + m_init.length + 1;
   let const step_position = condition_position + m_condition.length + 1;
   let const location = source_location();
+
+  analyze_region_substitutions(
+      actx, location, init_position,
+      m_init.length + m_condition.length + m_step.length + 2, false,
+      is_unconditional);
 
   if (!m_init.is_empty()) {
     check_arithmetic_expression_lints(actx, m_init, location, init_position,
@@ -1311,53 +1324,61 @@ fn Subshell::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     }
   }
 
-  /* An assignment in the body never changes a parent variable, so the body
-     starts from an empty table and the outer constants are restored after. */
-  let saved_constants = steal(actx.constant_variables);
-  actx.constant_variables = StringMap<String>{heap_allocator()};
-  let saved_occurrence_assignments =
-      actx.variable_occurrence_assignments.snapshot();
-  let saved_inherited_occurrence_assignments =
-      actx.inherited_variable_occurrence_assignments.snapshot();
-  let const function_definition_count = actx.function_definitions.count();
-  let const defined_function_insertion_count =
-      actx.defined_function_insertions.count();
-  let const known_alias_insertion_count = actx.known_alias_insertions.count();
-  let const saved_has_seen_runtime_definer = actx.has_seen_runtime_definer;
-  let const saved_has_unknown_path = actx.has_unknown_path;
-  let const saved_has_unknown_working_directory =
-      actx.has_unknown_working_directory;
-  let const saved_should_silence_unresolved_commands =
-      actx.should_silence_unresolved_commands;
-  let saved_inherited_assigned_names = actx.inherited_assigned_names.clone();
-  let saved_inherited_global_assigned_names =
-      actx.inherited_global_assigned_names.clone();
-  let saved_array_valued_names = actx.array_valued_names.clone();
-  let *saved_source_effects = actx.current_source_effects;
-  actx.current_source_effects = nullptr;
-  let const was_inside_subshell_analysis = actx.is_inside_subshell_analysis;
-  actx.is_inside_subshell_analysis = true;
+  let scope = SubshellAnalysisScope{actx};
   actx.apply_scope_definitions(m_analysis_scope_definitions);
   m_body->analyze(actx, is_unconditional);
-  actx.current_source_effects = saved_source_effects;
-  actx.is_inside_subshell_analysis = was_inside_subshell_analysis;
-  actx.has_unknown_working_directory = saved_has_unknown_working_directory;
-  actx.has_unknown_path = saved_has_unknown_path;
-  actx.has_seen_runtime_definer = saved_has_seen_runtime_definer;
-  actx.should_silence_unresolved_commands =
-      saved_should_silence_unresolved_commands;
-  actx.array_valued_names = steal(saved_array_valued_names);
-  actx.inherited_global_assigned_names =
-      steal(saved_inherited_global_assigned_names);
-  actx.inherited_assigned_names = steal(saved_inherited_assigned_names);
-  actx.constant_variables = steal(saved_constants);
-  actx.variable_occurrence_assignments = steal(saved_occurrence_assignments);
-  actx.inherited_variable_occurrence_assignments =
-      steal(saved_inherited_occurrence_assignments);
-  actx.rollback_latest_function_definitions(function_definition_count);
-  actx.rollback_defined_functions(defined_function_insertion_count);
-  actx.rollback_known_aliases(known_alias_insertion_count);
+  scope.leave();
   actx.is_analyzing_condition = was_analyzing_condition;
+}
+
+/* An assignment in the body never changes a parent variable, so the body
+   starts from an empty table and the outer constants are restored after. */
+SubshellAnalysisScope::SubshellAnalysisScope(AnalysisContext &actx)
+    : m_actx{actx}, m_constants{steal(actx.constant_variables)},
+      m_occurrence_assignments{actx.variable_occurrence_assignments.snapshot()},
+      m_inherited_occurrence_assignments{
+          actx.inherited_variable_occurrence_assignments.snapshot()},
+      m_function_definition_count{actx.function_definitions.count()},
+      m_defined_function_insertion_count{
+          actx.defined_function_insertions.count()},
+      m_known_alias_insertion_count{actx.known_alias_insertions.count()},
+      m_inherited_assigned_names{actx.inherited_assigned_names.clone()},
+      m_inherited_global_assigned_names{
+          actx.inherited_global_assigned_names.clone()},
+      m_array_valued_names{actx.array_valued_names.clone()},
+      m_source_effects{actx.current_source_effects},
+      m_has_seen_runtime_definer{actx.has_seen_runtime_definer},
+      m_has_unknown_path{actx.has_unknown_path},
+      m_has_unknown_working_directory{actx.has_unknown_working_directory},
+      m_should_silence_unresolved_commands{
+          actx.should_silence_unresolved_commands},
+      m_was_inside_subshell_analysis{actx.is_inside_subshell_analysis}
+{
+  actx.constant_variables = StringMap<String>{heap_allocator()};
+  actx.current_source_effects = nullptr;
+  actx.is_inside_subshell_analysis = true;
+}
+
+fn SubshellAnalysisScope::leave() throws -> void
+{
+  m_actx.current_source_effects = m_source_effects;
+  m_actx.is_inside_subshell_analysis = m_was_inside_subshell_analysis;
+  m_actx.has_unknown_working_directory = m_has_unknown_working_directory;
+  m_actx.has_unknown_path = m_has_unknown_path;
+  m_actx.has_seen_runtime_definer = m_has_seen_runtime_definer;
+  m_actx.should_silence_unresolved_commands =
+      m_should_silence_unresolved_commands;
+  m_actx.array_valued_names = steal(m_array_valued_names);
+  m_actx.inherited_global_assigned_names =
+      steal(m_inherited_global_assigned_names);
+  m_actx.inherited_assigned_names = steal(m_inherited_assigned_names);
+  m_actx.constant_variables = steal(m_constants);
+  m_actx.variable_occurrence_assignments = steal(m_occurrence_assignments);
+  m_actx.inherited_variable_occurrence_assignments =
+      steal(m_inherited_occurrence_assignments);
+  m_actx.rollback_latest_function_definitions(m_function_definition_count);
+  m_actx.rollback_defined_functions(m_defined_function_insertion_count);
+  m_actx.rollback_known_aliases(m_known_alias_insertion_count);
 }
 
 FunctionDefinition::FunctionDefinition(SourceLocation location, StringView name,
@@ -1577,6 +1598,10 @@ fn RedirectedCommand::analyze(AnalysisContext &actx,
 {
   ASSERT(m_child != nullptr);
 
+  for (let const &redirection : m_redirections) {
+    analyze_redirection_substitutions(actx, redirection, source_location(),
+                                      is_unconditional);
+  }
   m_child->analyze(actx, is_unconditional);
 
   if (m_redirections.is_empty()) return;

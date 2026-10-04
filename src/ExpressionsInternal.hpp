@@ -457,4 +457,50 @@ fn check_unassigned_variable_reads(AnalysisContext &actx) throws -> void;
    only agree once both are known, so the comparison waits for the end. */
 fn check_function_argument_dataflow(AnalysisContext &actx) throws -> void;
 
+class SubshellAnalysisScope
+{
+public:
+  explicit SubshellAnalysisScope(AnalysisContext &actx);
+  SubshellAnalysisScope(const SubshellAnalysisScope &) = delete;
+  SubshellAnalysisScope &operator=(const SubshellAnalysisScope &) = delete;
+
+  fn leave() throws -> void;
+
+private:
+  AnalysisContext &m_actx;
+  StringMap<String> m_constants;
+  VariableOccurrenceStateMap m_occurrence_assignments;
+  VariableOccurrenceStateMap m_inherited_occurrence_assignments;
+  usize m_function_definition_count;
+  usize m_defined_function_insertion_count;
+  usize m_known_alias_insertion_count;
+  HashSet m_inherited_assigned_names;
+  HashSet m_inherited_global_assigned_names;
+  HashSet m_array_valued_names;
+  followed_source_effects *m_source_effects;
+  bool m_has_seen_runtime_definer;
+  bool m_has_unknown_path;
+  bool m_has_unknown_working_directory;
+  bool m_should_silence_unresolved_commands;
+  bool m_was_inside_subshell_analysis;
+};
+
+fn analyze_word_substitutions(AnalysisContext &actx, const Word &word,
+                              const SourceLocation &location,
+                              bool is_unconditional) throws -> void;
+fn analyze_token_substitutions(AnalysisContext &actx, const Token *token,
+                               bool is_unconditional) throws -> void;
+fn analyze_token_list_substitutions(AnalysisContext &actx,
+                                    const ArrayList<const Token *> &tokens,
+                                    bool is_unconditional) throws -> void;
+fn analyze_redirection_substitutions(AnalysisContext &actx,
+                                     const Redirection &redirection,
+                                     const SourceLocation &node_location,
+                                     bool is_unconditional) throws -> void;
+fn analyze_region_substitutions(AnalysisContext &actx,
+                                const SourceLocation &location,
+                                usize region_position, usize region_length,
+                                bool is_heredoc, bool is_unconditional) throws
+    -> void;
+
 } /* namespace koshka::expressions::internal */

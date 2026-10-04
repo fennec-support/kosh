@@ -376,6 +376,41 @@ cold fn find_echo_escape_sequence(StringView view) wontthrow -> StringView
   return {};
 }
 
+cold fn find_echo_escape_sequence_outside_substitutions(
+    StringView operand_text, const Token *token) wontthrow -> StringView
+{
+  if (token->kind() != Token::Kind::Word) {
+    return find_echo_escape_sequence(operand_text);
+  }
+
+  let const base = token->source_location().position;
+  usize cursor = 0;
+  for (let const &segment :
+       static_cast<const tokens::WordToken *>(token)->word().segments)
+  {
+    switch (segment.kind) {
+    case WordSegment::Kind::CommandSubstitution:
+    case WordSegment::Kind::ProcessSubstitution:
+    case WordSegment::Kind::FunctionSubstitution: break;
+    default: continue;
+    }
+
+    if (segment.source_position < base) continue;
+
+    let const start = segment.source_position - base;
+    let const end = start + segment.source_length;
+    if (start < cursor || end > operand_text.length) continue;
+
+    let const found = find_echo_escape_sequence(
+        operand_text.substring_of_length(cursor, start - cursor));
+    if (!found.is_empty()) return found;
+
+    cursor = end;
+  }
+
+  return find_echo_escape_sequence(operand_text.substring(cursor));
+}
+
 /* An echo option bundle that names the escape handling, so the operand text is
    written the way the author intends. */
 cold fn view_settles_echo_escapes(StringView view) wontthrow -> bool

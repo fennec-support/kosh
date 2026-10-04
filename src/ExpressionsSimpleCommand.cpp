@@ -98,6 +98,9 @@ fn AssignCommand::analyze(AnalysisContext &actx,
 {
   ASSERT(m_assignment != nullptr);
 
+  analyze_word_substitutions(actx, m_assignment->value_word(),
+                             source_location(), is_unconditional);
+
   if (actx.is_posix_sh_shebang &&
       m_assignment->get_update_mode() == assignment_update_mode::Append)
   {
@@ -207,6 +210,7 @@ fn AssignCommand::analyze(AnalysisContext &actx,
 
   if (actx.function_scope_depth > 0 &&
       m_assignment->get_update_mode() != assignment_update_mode::Append &&
+      !actx.is_inside_substitution_subshell &&
       !actx.function_local_names.find(name.view()).has_value() &&
       !actx.global_assigned_names.find(name.view()).has_value() &&
       !actx.inherited_global_assigned_names.contains(name.view()) &&
@@ -225,7 +229,7 @@ fn AssignCommand::analyze(AnalysisContext &actx,
   }
 
   if (actx.function_scope_depth == 0 && is_unconditional &&
-      !actx.has_seen_runtime_definer)
+      !actx.has_seen_runtime_definer && !actx.is_inside_substitution_subshell)
   {
     actx.add_global_assigned_name(name.view(), source_location());
   }

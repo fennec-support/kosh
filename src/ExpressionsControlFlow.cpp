@@ -907,6 +907,8 @@ fn ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 {
   ASSERT(m_body != nullptr);
 
+  analyze_token_list_substitutions(actx, m_words, is_unconditional);
+
   let loop_entry_occurrence_assignments =
       actx.variable_occurrence_assignments.snapshot();
   let loop_entry_inherited_occurrence_assignments =
@@ -1249,7 +1251,11 @@ fn CaseClause::evaluate_status_impl(EvalContext &cxt) const throws
 fn CaseClause::analyze(AnalysisContext &actx,
                        bool is_unconditional) const throws -> void
 {
-  unused(is_unconditional);
+  analyze_token_substitutions(actx, m_word, is_unconditional);
+  for (let const &item : m_items) {
+    analyze_token_list_substitutions(actx, item.patterns, is_unconditional);
+  }
+
   let const common_occurrence_assignments =
       actx.variable_occurrence_assignments.snapshot();
   let const common_inherited_occurrence_assignments =

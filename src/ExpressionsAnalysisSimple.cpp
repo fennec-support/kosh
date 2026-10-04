@@ -470,6 +470,19 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
 {
   optimizer::optimize_node(this, actx);
 
+  for (let const &var : m_local_vars) {
+    analyze_word_substitutions(actx, var.get_value(), var.get_location(),
+                               is_unconditional);
+  }
+  for (let const &assignment : m_array_args)
+    analyze_token_list_substitutions(actx, assignment.elements,
+                                     is_unconditional);
+  analyze_token_list_substitutions(actx, m_args, is_unconditional);
+  for (let const &redirection : m_redirections) {
+    analyze_redirection_substitutions(actx, redirection, source_location(),
+                                      is_unconditional);
+  }
+
   let const is_command_prefix = !m_args.is_empty();
   let const leading_command_word =
       is_command_prefix ? m_args[0]->raw_view() : Maybe<StringView>{};
@@ -582,7 +595,7 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
        shellcheck SC2188 and SC2189. An assignment-only command is the SC2036
        shape and is reported by the pipeline. */
     if (!m_redirections.is_empty() && m_local_vars.is_empty() &&
-        m_array_args.is_empty())
+        m_array_args.is_empty() && !actx.is_bare_read_substitution)
     {
       let const id = actx.is_direct_pipeline_stage ? diagnostic_id::sc2189
                                                    : diagnostic_id::sc2188;

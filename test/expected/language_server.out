@@ -23,6 +23,7 @@ completion-bare-koshkit=ok
 document-formatting=ok
 unchanged-formatting=ok
 process-substitution-syntax=ok
+substitution-scope-tokens=ok
 several-substitution-syntax=ok
 heredoc-substitution-syntax=ok
 unchanged-change-skips-analysis=ok

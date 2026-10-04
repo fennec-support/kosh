@@ -887,6 +887,15 @@ same check covers substitutions in double quotes, here-document bodies, and the
 words of a parameter expansion or arithmetic expansion, and the subscript of
 an array assignment. A substitution nested
 more than 64 levels deep is reported as a syntax error, as it is at run time.
+.PP
+Analysis diagnostics apply to the commands inside command, process, and
+function substitutions, and to substitutions in parameter expansion words,
+arithmetic expansions, here-document bodies, arithmetic commands, and C-style
+for headers. The inner findings use the file's own line and column. The body of a
+command, backtick, or process substitution is analyzed as a subshell, so a
+variable it assigns is not visible after it, and a read inside it counts as a
+read of the parent variable. A function substitution shares the current shell.
+A backtick body whose escapes change its text is not analyzed.
 .SS Process substitution
 The forms <(command) and >(command) supply a descriptor path. The command runs
 in a separate process.

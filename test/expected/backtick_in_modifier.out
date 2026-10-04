@@ -1,3 +1,7 @@
+4:25: warning: An unquoted variable can split into words and expand globs. (SC2086)
+     4 |  y=foo; echo "${z:-`echo $y`}"
+       |                          ^~
+note: Quote the expansion to keep one argument.
 bt
 set
 foo

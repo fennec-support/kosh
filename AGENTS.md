@@ -63,10 +63,14 @@ changes update this file.
   `AnalysisUnitStream` and `analyze_ast`, then releases the arena span.
   `top_level_sibling_carry` keeps cross-unit data. `FUNCTION_ARENA` stays null.
 - Substitution bodies parse lazily at run time. A parser in substitution
-  validation mode makes the lexer parse each body once in a nested parser and
-  rethrow its error in outer source coordinates. The mode covers the scan pass,
-  the syntax preflight, the whole-file parse, the language server, and followed
-  sources. The streamed analysis pass and the executing parser leave it off.
+  validation mode makes the lexer parse each body once in a nested parser over
+  the outer source from the body offset, so every location is in outer
+  coordinates. The lexer records each body error and keeps lexing, and the
+  parser reports all of them. The mode covers the scan pass, the syntax
+  preflight, the whole-file parse, the language server, and followed sources.
+  The streamed analysis pass and the executing parser leave it off. Analysis
+  parses each exact body again in a scratch arena when it reaches the owning
+  node, and walks it in a subshell scope unless it is a function substitution.
 - Runtime state owns moods, diagnostics, strictness marks, and shell options.
   Explicit nounset, pipefail, failglob, and extended-arithmetic states survive
   mood changes. Explicit `set --mood` clears the level from `-W`, `-WW`, or

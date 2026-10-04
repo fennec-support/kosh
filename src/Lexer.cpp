@@ -4,9 +4,10 @@
  *
  * This file tokenizes shell source, including quotes, expansions,
  * assignments, redirections, process substitutions, and heredocs. It owns
- * the lexer cursor, token lookahead, source locations, and analysis metadata
- * collection. LexerScan provides the allocation-light balanced scanner shared
- * by tokenization, formatting, and highlighting.
+ * the lexer cursor, token lookahead, source locations, analysis metadata
+ * collection, and the nested syntax check of substitution bodies. LexerScan
+ * provides the allocation-light balanced scanner shared by tokenization,
+ * formatting, and highlighting.
  */
 
 #include "Lexer.hpp"
@@ -1589,8 +1590,36 @@ cold fn Lexer::validate_nested_expansions(
     usize region_position, usize region_length, bool is_heredoc,
     bool is_region_in_double_quotes) throws -> void
 {
-  let const region =
-      m_source.substring_of_length(region_position, region_length);
+  let const found = lexer::find_nested_substitutions(
+      m_source, region_position, region_length, is_heredoc,
+      is_region_in_double_quotes);
+  for (let const &entry : found) {
+    let const outer_location = here(entry.outer_position, entry.outer_length);
+    if (entry.is_exact) {
+      validate_substitution_body(entry.body_position,
+                                 m_source.substring_of_length(
+                                     entry.body_position, entry.body_length),
+                                 outer_location);
+    } else {
+      validate_substitution_body(entry.body_position,
+                                 entry.unescaped_body.view(), outer_location);
+    }
+  }
+}
+
+cold fn lexer::find_nested_substitutions(
+    StringView source, usize region_position, usize region_length,
+    bool is_heredoc, bool is_region_in_double_quotes) throws
+    -> ArrayList<nested_substitution>
+{
+  let found = ArrayList<nested_substitution>{heap_allocator()};
+  let const region = source.substring_of_length(region_position, region_length);
+  if (!region.find_character('`').has_value() &&
+      !region.find_character('$').has_value())
+  {
+    return found;
+  }
+
   let is_in_single_quotes = false;
   let is_in_double_quotes = is_region_in_double_quotes;
   usize offset = 0;
@@ -1632,23 +1661,22 @@ cold fn Lexer::validate_nested_expansions(
         }
         end++;
       }
-      if (end >= region.length) return;
+      if (end >= region.length) return found;
 
-      let const outer_location =
-          here(region_position + offset, end + 1 - offset);
       let const body = region.substring_of_length(body_start, end - body_start);
-      if (!has_escape) {
-        validate_substitution_body(region_position + body_start, body,
-                                   outer_location);
-      } else {
-        let unescaped = String{heap_allocator()};
+      let entry = nested_substitution{};
+      entry.body_position = region_position + body_start;
+      entry.body_length = body.length;
+      entry.outer_position = region_position + offset;
+      entry.outer_length = end + 1 - offset;
+      entry.is_exact = !has_escape;
+      if (has_escape) {
         for (usize index = 0; index < body.length; index++) {
           if (body[index] == '\\' && index + 1 < body.length) index++;
-          unescaped += body[index];
+          entry.unescaped_body += body[index];
         }
-        validate_substitution_body(region_position + body_start,
-                                   unescaped.view(), outer_location);
       }
+      found.push(steal(entry));
       offset = end + 1;
       continue;
     }
@@ -1665,15 +1693,78 @@ cold fn Lexer::validate_nested_expansions(
 
     let const body_start = region_position + offset + 2;
     let const body_end =
-        lexer::scan_balanced_shell_region(m_source, body_start, ')');
-    if (!body_end.has_value()) return;
+        lexer::scan_balanced_shell_region(source, body_start, ')');
+    if (!body_end.has_value()) return found;
 
-    validate_substitution_body(
-        body_start,
-        m_source.substring_of_length(body_start, *body_end - body_start - 1),
-        here(region_position + offset, *body_end - region_position - offset));
+    let entry = nested_substitution{};
+    entry.body_position = body_start;
+    entry.body_length = *body_end - body_start - 1;
+    entry.outer_position = region_position + offset;
+    entry.outer_length = *body_end - region_position - offset;
+    found.push(steal(entry));
     offset = *body_end - region_position;
   }
+
+  return found;
+}
+
+cold fn lexer::find_segment_substitution(StringView source,
+                                         const WordSegment &segment) throws
+    -> Maybe<nested_substitution>
+{
+  let const position = static_cast<usize>(segment.source_position);
+  let const length = static_cast<usize>(segment.source_length);
+  if (length == 0 || position > source.length ||
+      length > source.length - position)
+  {
+    return None;
+  }
+
+  let const text = segment.text.view();
+  let entry = nested_substitution{};
+  entry.outer_position = position;
+  entry.outer_length = length;
+  let body_text = text;
+  switch (segment.kind) {
+  case WordSegment::Kind::CommandSubstitution:
+    if (source[position] == '`') {
+      if (length < 2) return None;
+
+      entry.body_position = position + 1;
+      entry.body_length = length - 2;
+    } else {
+      if (length < 3) return None;
+
+      entry.body_position = position + 2;
+      entry.body_length = length - 3;
+    }
+    break;
+
+  case WordSegment::Kind::ProcessSubstitution:
+    if (length < 3 || text.is_empty()) return None;
+
+    entry.body_position = position + 2;
+    entry.body_length = length - 3;
+    body_text = text.substring(1);
+    break;
+
+  case WordSegment::Kind::FunctionSubstitution:
+    if (text.length + 1 > length) return None;
+
+    entry.body_position = position + length - 1 - text.length;
+    entry.body_length = text.length;
+    break;
+
+  default: return None;
+  }
+
+  entry.is_exact =
+      entry.body_length == body_text.length &&
+      source.substring_of_length(entry.body_position, entry.body_length) ==
+          body_text;
+  if (!entry.is_exact) entry.unescaped_body = String{body_text};
+
+  return entry;
 }
 
 } /* namespace koshka */

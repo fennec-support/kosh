@@ -1,3 +1,16 @@
+7:17: warning: An `echo` of a command substitution prints what the command already prints. (SC2005)
+     7 |  echo "nested=${ echo $(echo inner); }"
+       |                  ^~~~
+note: Run the command on its own.
+7:22: warning: An unquoted command substitution splits its output into words and expands globs. (SC2046)
+     7 |  echo "nested=${ echo $(echo inner); }"
+       |                       ^~~~~~~~~~~~~
+note: Quote it to keep one argument.
+7:22: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
+     7 |  echo "nested=${ echo $(echo inner); }"
+       |                       ^~~~~~~~~~~~~
+note: Use the text directly without the command substitution.
+Encountered 3 warnings.
 simple=one
 persist=42
 nested=inner

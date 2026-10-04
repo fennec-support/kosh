@@ -282,6 +282,10 @@ note: Assign 'pm' before it is read, or set it in the environment.
        |        ^~~
 note: Assign 'pm' before it is read, or set it in the environment.
 == a chained loop assignment beside a similar name is not unassigned:
+2:46: warning: An unquoted variable can split into words and expand globs. (SC2086)
+     2 |  for i in "${pms[@]}"; do [[ -x "$(command -v ${i})" ]] && pm="${i}" || true; done
+       |                                               ^~~~
+note: Quote the expansion to keep one argument.
 2:69: warning: The `C` command runs whenever `A` or `B` fails. (SC2015)
      2 |  for i in "${pms[@]}"; do [[ -x "$(command -v ${i})" ]] && pm="${i}" || true; done
        |                                                                      ^~
@@ -290,4 +294,4 @@ note: Use an `if` statement when C is the else branch.
      4 |  echo "pm=$pm"
        |           ^~~
 note: Assign 'pm' before it is read, or set it in the environment.
-Encountered 2 warnings.
+Encountered 3 warnings.

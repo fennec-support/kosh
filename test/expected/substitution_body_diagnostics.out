@@ -1,0 +1,213 @@
+== command.sh
+command.sh:2:9: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
+     2 |  echo "$(cat f | grep a)"
+       |          ^~~
+note: Give the file to the next command directly.
+command.sh:2:1: error: An `echo` of a command substitution prints what the command already prints. (SC2005)
+     2 |  echo "$(cat f | grep a)"
+       |  ^~~~
+note: Run the command on its own.
+command.sh:3:8: warning: A bare glob can expand to a filename that begins with `-`. (SC2035)
+     3 |  x=$(ls *.txt)
+       |         ^~~~~
+note: Prefix the glob with a directory or place `--` before it.
+Encountered 2 warnings and 1 error.
+status=1
+== backtick.sh
+backtick.sh:2:4: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
+     2 |  y=`cat f | grep a`
+       |     ^~~
+note: Give the file to the next command directly.
+status=0
+== process.sh
+process.sh:2:8: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
+     2 |  diff <(cat a | sort) >(cat b | sort)
+       |         ^~~
+note: Give the file to the next command directly.
+process.sh:2:24: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
+     2 |  diff <(cat a | sort) >(cat b | sort)
+       |                         ^~~
+note: Give the file to the next command directly.
+Encountered 2 warnings.
+status=0
+== funsub.sh
+funsub.sh:2:6: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
+     2 |  x=${ cat f | grep a; }
+       |       ^~~
+note: Give the file to the next command directly.
+status=0
+== heredoc.sh
+heredoc.sh:3:10: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
+     3 |  value: $(cat f | grep a)
+       |           ^~~
+note: Give the file to the next command directly.
+status=0
+== modifier.sh
+modifier.sh:2:14: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
+     2 |  echo "${x:-$(cat f | grep a)}"
+       |               ^~~
+note: Give the file to the next command directly.
+status=0
+== arithmetic.sh
+arithmetic.sh:2:12: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
+     2 |  echo $(( $(cat f | wc -l) + 1 ))
+       |             ^~~
+note: Give the file to the next command directly.
+status=0
+== arithmetic_command.sh
+arithmetic_command.sh:2:14: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
+     2 |  (( total = $(cat f | wc -l) ))
+       |               ^~~
+note: Give the file to the next command directly.
+status=0
+== cstyle_for.sh
+cstyle_for.sh:2:20: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
+     2 |  for ((i = 0; i < $(cat f | wc -l); i++)); do :; done
+       |                     ^~~
+note: Give the file to the next command directly.
+status=0
+== case.sh
+case.sh:2:6: warning: This `case` has no default `*)` branch. (SC2249)
+     2 |  case "$(cat f | head -1)" in a) : ;; esac
+       |       ^~~~~~~~~~~~~~~~~~~~
+case.sh:2:9: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
+     2 |  case "$(cat f | head -1)" in a) : ;; esac
+       |          ^~~
+note: Give the file to the next command directly.
+Encountered 2 warnings.
+status=0
+== conditional.sh
+conditional.sh:2:7: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
+     2 |  [[ "$(cat f | head -1)" == a ]]
+       |        ^~~
+note: Give the file to the next command directly.
+status=0
+== for_words.sh
+for_words.sh:2:12: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
+     2 |  for i in $(cat f | head -1); do : "$i"; done
+       |             ^~~
+note: Give the file to the next command directly.
+for_words.sh:2:10: error: A `for` loop over the `cat` output iterates IFS-split words. (SC2013)
+     2 |  for i in $(cat f | head -1); do : "$i"; done
+       |           ^~~~~~~~~~~~~~~~~~
+note: Read the lines with `while IFS= read -r line`.
+Encountered 1 warning and 1 error.
+status=1
+== nested.sh
+nested.sh:2:17: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
+     2 |  echo "$(echo "$(cat f | grep a)")"
+       |                  ^~~
+note: Give the file to the next command directly.
+nested.sh:2:9: error: An `echo` of a command substitution prints what the command already prints. (SC2005)
+     2 |  echo "$(echo "$(cat f | grep a)")"
+       |          ^~~~
+note: Run the command on its own.
+nested.sh:2:1: error: An `echo` of a command substitution prints what the command already prints. (SC2005)
+     2 |  echo "$(echo "$(cat f | grep a)")"
+       |  ^~~~
+note: Run the command on its own.
+Encountered 1 warning and 2 errors.
+status=1
+== redirect.sh
+redirect.sh:2:14: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
+     2 |  echo hi > "$(cat f | head -1)"
+       |               ^~~
+note: Give the file to the next command directly.
+status=0
+== disabled_file.sh
+disabled_file.sh:3:1: error: An `echo` of a command substitution prints what the command already prints. (SC2005)
+     3 |  echo "$(cat f | grep a)"
+       |  ^~~~
+note: Run the command on its own.
+status=1
+== disabled_next.sh
+disabled_next.sh:5:5: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
+     5 |  y=$(cat f | grep a)
+       |      ^~~
+note: Give the file to the next command directly.
+status=0
+== declaration.sh
+declaration.sh:3:13: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
+     3 |    local z=$(cat f | grep a)
+       |              ^~~
+note: Give the file to the next command directly.
+declaration.sh:3:9: error: Declaring and assigning from a command substitution in one command masks the command's exit status. (SC2155)
+     3 |    local z=$(cat f | grep a)
+       |          ^~~~~~~~~~~~~~~~~~~
+note: Split the declaration and the assignment so a failure is seen.
+declaration.sh:4:14: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
+     4 |    export y=$(cat f | grep b)
+       |               ^~~
+note: Give the file to the next command directly.
+declaration.sh:4:10: error: Declaring and assigning from a command substitution in one command masks the command's exit status. (SC2155)
+     4 |    export y=$(cat f | grep b)
+       |           ^~~~~~~~~~~~~~~~~~~
+note: Split the declaration and the assignment so a failure is seen.
+declaration.sh:5:18: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
+     5 |    declare -r w=$(cat f | grep c)
+       |                   ^~~
+note: Give the file to the next command directly.
+declaration.sh:5:14: error: Declaring and assigning from a command substitution in one command masks the command's exit status. (SC2155)
+     5 |    declare -r w=$(cat f | grep c)
+       |               ^~~~~~~~~~~~~~~~~~~
+note: Split the declaration and the assignment so a failure is seen.
+declaration.sh:6:7: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
+     6 |    v=$(cat f | grep d) true
+       |        ^~~
+note: Give the file to the next command directly.
+declaration.sh:7:10: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
+     7 |    arr=($(cat f | grep e))
+       |           ^~~
+note: Give the file to the next command directly.
+declaration.sh:7:8: error: An array built from command output splits words and expands globs. (SC2207)
+     7 |    arr=($(cat f | grep e))
+       |         ^~~~~~~~~~~~~~~~~
+note: Use `mapfile` or `readarray` to preserve output records.
+Encountered 5 warnings and 4 errors.
+status=1
+== scope.sh
+scope.sh:3:1: error: An `echo` of a command substitution prints what the command already prints. (SC2005)
+     3 |  echo "$(echo "$parent")"
+       |  ^~~~
+note: Run the command on its own.
+scope.sh:3:6: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
+     3 |  echo "$(echo "$parent")"
+       |       ^~~~~~~~~~~~~~~~~~~
+note: Use the text directly without the command substitution.
+scope.sh:4:1: error: An `echo` of a command substitution prints what the command already prints. (SC2005)
+     4 |  echo "$(echo "$missing")"
+       |  ^~~~
+note: Run the command on its own.
+scope.sh:4:6: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
+     4 |  echo "$(echo "$missing")"
+       |       ^~~~~~~~~~~~~~~~~~~~
+note: Use the text directly without the command substitution.
+scope.sh:4:15: error: The variable 'missing' is read before any assignment gives it a value. (SC2154)
+     4 |  echo "$(echo "$missing")"
+       |                ^~~~~~~~
+note: Assign 'missing' before it is read, or set it in the environment.
+scope.sh:6:7: error: The variable 'inner' is read before any assignment gives it a value. (SC2154)
+     6 |  echo "$inner"
+       |        ^~~~~~
+note: Assign 'inner' before it is read, or set it in the environment.
+Encountered 2 warnings and 4 errors.
+status=1
+== function_call.sh
+status=0
+== bare_read.sh
+status=0
+== escapes.sh
+2:19: warning: The escape `\n` is read by the shell as a plain 'n'. (SC1012)
+     2 |  echo "$(printf "%s\n" a)"
+       |                    ^~
+note: Build the byte with `printf`, or write it inside `$'...'`.
+escapes.sh:2:1: error: An `echo` of a command substitution prints what the command already prints. (SC2005)
+     2 |  echo "$(printf "%s\n" a)"
+       |  ^~~~
+note: Run the command on its own.
+escapes.sh:3:26: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
+     3 |  echo "$(printf %s "x" )" "$(echo y)"
+       |                           ^~~~~~~~~~~
+note: Use the text directly without the command substitution.
+Encountered 2 warnings and 1 error.
+status=1

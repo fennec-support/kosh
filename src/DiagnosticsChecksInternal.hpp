@@ -41,6 +41,8 @@ cold fn view_repeats_a_letter(StringView view) wontthrow -> bool;
 cold fn view_is_glob_shaped_pattern(StringView view) wontthrow -> bool;
 cold fn view_is_plain_substitution_script(StringView view) wontthrow -> bool;
 cold fn find_echo_escape_sequence(StringView view) wontthrow -> StringView;
+cold fn find_echo_escape_sequence_outside_substitutions(
+    StringView operand_text, const Token *token) wontthrow -> StringView;
 cold fn view_settles_echo_escapes(StringView view) wontthrow -> bool;
 cold fn substitution_runs_pattern_matcher(StringView body) throws -> bool;
 cold fn word_is_fully_literal(const Word &word) wontthrow -> bool;

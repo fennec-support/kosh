@@ -778,7 +778,8 @@ fn check_operand_lints_before_scan(AnalysisContext &actx,
       if (escape_location.has_value()) continue;
       if (token_has_ansi_c_quote(args[i])) continue;
 
-      escape_sequence = find_echo_escape_sequence(operand_text);
+      escape_sequence = find_echo_escape_sequence_outside_substitutions(
+          operand_text, args[i]);
       if (!escape_sequence.is_empty())
         escape_location = args[i]->source_location();
     }

@@ -196,8 +196,7 @@ struct heredoc_pending
 namespace lexer {
 
 /* Command substitution spends the most native frames per level, a sanitizer
-   build overflows past two hundred so the cap stays well below. The syntax
-   check and the evaluator enforce the same cap. */
+   build overflows past two hundred so the cap stays well below. */
 static constexpr usize MAX_SUBSTITUTION_NESTING_DEPTH = 64;
 
 pure fn is_whitespace(char ch) wontthrow -> bool;
@@ -214,6 +213,25 @@ pure fn is_extglob_operator(char ch) wontthrow -> bool;
 
 fn scan_balanced_shell_region(StringView source, usize position,
                               char closing_byte) throws -> Maybe<usize>;
+
+struct nested_substitution
+{
+  usize body_position{0};
+  usize body_length{0};
+  usize outer_position{0};
+  usize outer_length{0};
+  String unescaped_body{heap_allocator()};
+  bool is_exact{true};
+};
+
+fn find_nested_substitutions(StringView source, usize region_position,
+                             usize region_length, bool is_heredoc,
+                             bool is_region_in_double_quotes) throws
+    -> ArrayList<nested_substitution>;
+
+fn find_segment_substitution(StringView source,
+                             const WordSegment &segment) throws
+    -> Maybe<nested_substitution>;
 
 /* The quotes and the escapes of a heredoc delimiter word, so <<\EOF and <<'EOF'
    both terminate on EOF. */

@@ -558,6 +558,11 @@ public:
      value, so an ordinary run pays one null test per assignment. */
   analysis_symbol_records *symbol_records{nullptr};
 
+  BumpArena substitution_arena;
+  usize substitution_analysis_depth{0};
+  bool is_bare_read_substitution{false};
+  bool is_inside_substitution_subshell{false};
+
   AnalysisContext(StringView source_view, const analysis_options &analysis)
       : source(source_view), options(analysis),
         should_silence_unresolved_commands(

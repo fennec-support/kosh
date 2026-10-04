@@ -5,6 +5,7 @@ unset KOSH_FLAGS
 script=$(mktemp)
 cat > "$script" <<'EOF'
 #!/bin/bash
+# shellcheck disable=SC2015
 echo "match=$([ "${BASH_SOURCE:-}" = "$0" ] && echo yes || echo no)"
 echo "scalar_empty=$([ -z "${BASH_SOURCE:-}" ] && echo yes || echo no)"
 EOF
