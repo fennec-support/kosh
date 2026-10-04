@@ -1533,8 +1533,6 @@ hot alwaysinline fn Lexer::lex_process_substitution(char direction) throws
   return t;
 }
 
-static constexpr usize MAX_SUBSTITUTION_VALIDATION_DEPTH = 64;
-
 cold static fn shift_location(const SourceLocation &location,
                               usize body_position) wontthrow -> SourceLocation
 {
@@ -1546,8 +1544,9 @@ cold fn Lexer::validate_substitution_body(
     usize body_position, StringView body,
     const SourceLocation &outer_location) throws -> void
 {
-  if (m_substitution_nesting_depth >= MAX_SUBSTITUTION_VALIDATION_DEPTH) {
-    return;
+  if (m_substitution_nesting_depth >= lexer::MAX_SUBSTITUTION_NESTING_DEPTH) {
+    throw ErrorWithLocation{outer_location,
+                            "Command substitution nested too deeply"};
   }
 
   let &arena = m_parse_session.get_arena();

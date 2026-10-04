@@ -476,9 +476,6 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
    the thread stack on Windows, and derive the caps from it. */
 static constexpr usize MAX_SOURCE_DEPTH = 400;
 static constexpr usize MAX_FUNCTION_CALL_DEPTH = 900;
-/* Command substitution spends the most native frames per level, a sanitizer
-   build overflows past two hundred so the cap stays well below. */
-static constexpr usize MAX_SUBSTITUTION_DEPTH = 64;
 static constexpr usize MAX_PARAMETER_EXPANSION_DEPTH = 256;
 
 static fn guard_located_depth(usize current_depth, usize cap,
@@ -524,9 +521,12 @@ fn EvalContext::leave_function_call() wontthrow -> void
 
 fn EvalContext::enter_substitution() throws -> void
 {
-  if (expansion_store().substitution_depth() >= MAX_SUBSTITUTION_DEPTH) {
+  if (expansion_store().substitution_depth() >=
+      lexer::MAX_SUBSTITUTION_NESTING_DEPTH)
+  {
     LOG(Debug, "substitution depth %zu exceeds cap %zu",
-        expansion_store().substitution_depth(), MAX_SUBSTITUTION_DEPTH);
+        expansion_store().substitution_depth(),
+        lexer::MAX_SUBSTITUTION_NESTING_DEPTH);
     throw Error{"Command substitution nested too deeply"};
   }
   expansion_store().substitution_depth()++;

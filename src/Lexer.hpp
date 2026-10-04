@@ -194,6 +194,11 @@ struct heredoc_pending
 
 namespace lexer {
 
+/* Command substitution spends the most native frames per level, a sanitizer
+   build overflows past two hundred so the cap stays well below. The syntax
+   check and the evaluator enforce the same cap. */
+static constexpr usize MAX_SUBSTITUTION_NESTING_DEPTH = 64;
+
 pure fn is_whitespace(char ch) wontthrow -> bool;
 pure fn is_number(char ch) wontthrow -> bool;
 pure fn is_shell_sentinel(char ch) wontthrow -> bool;

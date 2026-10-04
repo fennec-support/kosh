@@ -51,6 +51,10 @@ unterminated_if.sh:1:28: details:
      1 |  echo $(if true; then echo; )
        |                             ^ expected 'fi'.
 status=1
+== depth_limit.sh
+0
+== depth_over.sh
+1
 == valid.sh
 0
 == run command.sh

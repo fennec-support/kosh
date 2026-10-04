@@ -883,7 +883,8 @@ directory state, and file creation mask when it finishes. A syntax error inside
 a command, process, or function substitution is reported at its place in the
 outer source, and a script or command string containing one does not run. The
 same check covers substitutions in double quotes, here-document bodies, and the
-words of a parameter expansion or arithmetic expansion.
+words of a parameter expansion or arithmetic expansion. A substitution nested
+more than 64 levels deep is reported as a syntax error, as it is at run time.
 .SS Process substitution
 The forms <(command) and >(command) supply a descriptor path. The command runs
 in a separate process.

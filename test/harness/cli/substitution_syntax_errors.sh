@@ -21,6 +21,17 @@ printf 'echo ${x:-$(echo <><>)}\n' > modifier.sh
 printf 'echo $(( $(echo <><>) + 1 ))\n' > arithmetic.sh
 printf 'x=${ echo <><>; }\n' > funsub.sh
 printf 'echo $(if true; then echo; )\n' > unterminated_if.sh
+nest()
+{
+  local depth=$1 body='echo ok' level=0
+  while [ "$level" -lt "$depth" ]; do
+    body="echo \$($body)"
+    level=$((level + 1))
+  done
+  printf '%s\n' "$body"
+}
+nest 64 > depth_limit.sh
+nest 65 > depth_over.sh
 {
   printf 'x=$(< /etc/hostname)\n'
   printf 'y=$(case a in a) echo;; esac)\n'
@@ -41,6 +52,10 @@ check modifier.sh
 check arithmetic.sh
 check funsub.sh
 check unterminated_if.sh
+printf '%s\n' '== depth_limit.sh'
+"$BIN" --lint depth_limit.sh 2>&1 | grep -c 'nested too deeply'
+printf '%s\n' '== depth_over.sh'
+"$BIN" --lint depth_over.sh 2>&1 | grep -c 'nested too deeply'
 printf '%s\n' '== valid.sh'
 "$BIN" --lint valid.sh 2>&1 | grep -c 'Expected a filename'
 
