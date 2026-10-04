@@ -87,18 +87,6 @@ public:
   bool is_subcommand_index_built{false};
   bool was_manpath_settled{false};
 
-  fn clear() -> void
-  {
-    option_entries.clear();
-    subcommand_index.clear();
-    page_file_paths.clear();
-    subcommand_page_validity.clear();
-    text.clear();
-    manpath_output.clear();
-    is_subcommand_index_built = false;
-    was_manpath_settled = false;
-  }
-
   fn build_subcommand_index(EvalContext &context) throws -> void;
 };
 
@@ -110,15 +98,6 @@ public:
   HashSet parsed_keys{heap_allocator()};
   StringMap<String> text{heap_allocator()};
   StringMap<u32> killed_fork_attempts{heap_allocator()};
-
-  fn clear() -> void
-  {
-    option_entries.clear();
-    subcommand_entries.clear();
-    parsed_keys = HashSet{heap_allocator()};
-    text.clear();
-    killed_fork_attempts.clear();
-  }
 
   fn ensure_parsed(EvalContext &context, StringView command,
                    StringView subcommand = {}) throws -> void;
