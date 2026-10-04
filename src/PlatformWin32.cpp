@@ -1556,12 +1556,11 @@ fn path_component_length(StringView component) wontthrow -> Maybe<usize>
   return static_cast<usize>(wide_length);
 }
 
-fn get_resource_limit(resource_limit &out, resource_kind kind) wontthrow -> bool
+fn get_resource_limit(resource_kind kind) wontthrow -> Maybe<resource_limit>
 {
   unused(kind);
-  unused(out);
   SetLastError(ERROR_NOT_SUPPORTED);
-  return false;
+  return None;
 }
 
 fn set_resource_limit(const resource_limit &limit, resource_kind kind) wontthrow

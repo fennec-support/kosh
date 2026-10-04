@@ -793,12 +793,12 @@ static fn highest_free_shell_fd() wontthrow -> int
   const int prior_errno = errno;
   int ceiling_fd = SHELL_HIDDEN_FD_CEILING;
 
-  resource_limit open_file_limit{};
-  if (get_resource_limit(open_file_limit, resource_kind::OpenFiles) &&
-      open_file_limit.soft != RESOURCE_UNLIMITED &&
-      open_file_limit.soft <= static_cast<u64>(ceiling_fd))
+  let const open_file_limit = get_resource_limit(resource_kind::OpenFiles);
+  if (open_file_limit.has_value() &&
+      open_file_limit->soft != RESOURCE_UNLIMITED &&
+      open_file_limit->soft <= static_cast<u64>(ceiling_fd))
   {
-    ceiling_fd = static_cast<int>(open_file_limit.soft) - 1;
+    ceiling_fd = static_cast<int>(open_file_limit->soft) - 1;
   }
 
   int placement_fd = SHELL_BACKUP_FD_FLOOR;
@@ -1711,19 +1711,22 @@ static fn rlimit_resource_of(resource_kind kind) wontthrow -> Maybe<int>
   }
 }
 
-fn get_resource_limit(resource_limit &out, resource_kind kind) wontthrow -> bool
+fn get_resource_limit(resource_kind kind) wontthrow -> Maybe<resource_limit>
 {
   let const which = rlimit_resource_of(kind);
-  if (!which.has_value()) return false;
+  if (!which.has_value()) return None;
 
   struct rlimit limit{};
-  if (getrlimit(*which, &limit) != 0) return false;
+  if (getrlimit(*which, &limit) != 0) return None;
 
-  out.soft = limit.rlim_cur == RLIM_INFINITY ? RESOURCE_UNLIMITED
-                                             : static_cast<u64>(limit.rlim_cur);
-  out.hard = limit.rlim_max == RLIM_INFINITY ? RESOURCE_UNLIMITED
-                                             : static_cast<u64>(limit.rlim_max);
-  return true;
+  resource_limit result{};
+  result.soft = limit.rlim_cur == RLIM_INFINITY
+                    ? RESOURCE_UNLIMITED
+                    : static_cast<u64>(limit.rlim_cur);
+  result.hard = limit.rlim_max == RLIM_INFINITY
+                    ? RESOURCE_UNLIMITED
+                    : static_cast<u64>(limit.rlim_max);
+  return result;
 }
 
 fn set_resource_limit(const resource_limit &limit, resource_kind kind) wontthrow

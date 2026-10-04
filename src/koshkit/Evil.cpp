@@ -117,12 +117,12 @@ struct field_section
 fn append_resource_limit(field_section &section, StringView name,
                          os::resource_kind kind) throws -> void
 {
-  os::resource_limit limit{};
-  if (!os::get_resource_limit(limit, kind)) return;
+  let const limit = os::get_resource_limit(kind);
+  if (!limit.has_value()) return;
 
-  let value = format_limit_value(limit.soft, section.allocator);
+  let value = format_limit_value(limit->soft, section.allocator);
   value += " soft, ";
-  value += format_limit_value(limit.hard, section.allocator).view();
+  value += format_limit_value(limit->hard, section.allocator).view();
   value += " hard";
   section.add(name, value.view());
 }

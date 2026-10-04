@@ -169,13 +169,13 @@ cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (FLAG_ALL.is_enabled()) {
     let out = String{cxt.scratch_allocator()};
     for (let const &entry : RESOURCE_TABLE) {
-      os::resource_limit limit{};
-      if (!os::get_resource_limit(limit, entry.kind)) continue;
+      let const limit = os::get_resource_limit(entry.kind);
+      if (!limit.has_value()) continue;
       let const label = String{cxt.scratch_allocator(), entry.label};
       out += label;
       out.append_repeated(' ', label.count() < 20 ? 20 - label.count() : 0);
       out.push(' ');
-      out += render_limit(limit,
+      out += render_limit(*limit,
                           block_factor(entry, cxt.runtime_state().get_mood()),
                           cxt.scratch_allocator());
       out.push('\n');
@@ -200,10 +200,12 @@ cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                            "with `ulimit -p`"};
   }
 
-  os::resource_limit limit{};
-  if (!os::get_resource_limit(limit, resource.kind))
+  let current_limit = os::get_resource_limit(resource.kind);
+  if (!current_limit.has_value())
     throw Error{"Unable to read the resource limit: " +
                 os::last_system_error_message()};
+
+  let limit = *current_limit;
 
   if (args.count() < 2) {
     LOG(Debug, "ulimit reading the '%s' limit", resource.label);

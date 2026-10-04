@@ -1637,9 +1637,8 @@ struct resource_limit
   u64 hard{RESOURCE_UNLIMITED};
 };
 
-/* False when the platform carries no such limit. */
-fn get_resource_limit(resource_limit &out, resource_kind kind) wontthrow
-    -> bool;
+/* None when the platform carries no such limit. */
+fn get_resource_limit(resource_kind kind) wontthrow -> Maybe<resource_limit>;
 fn set_resource_limit(const resource_limit &limit, resource_kind kind) wontthrow
     -> bool;
 
