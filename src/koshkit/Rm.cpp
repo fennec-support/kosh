@@ -184,7 +184,8 @@ remove_path_with_prompt(const removal_request &request, StringView path,
       did_succeed = false;
     }
 
-    if (request.should_decline(path)) return did_succeed;
+    if (!did_succeed) return false;
+    if (request.should_decline(path)) return true;
     if (!os::remove_directory(path)) {
       report_soft_koshkit_util_error(request.ec, cxt, request.utility_name,
                                      "cannot remove '" + String{path} + "': " +
@@ -192,7 +193,7 @@ remove_path_with_prompt(const removal_request &request, StringView path,
       return false;
     }
 
-    return did_succeed;
+    return true;
   }
   if (request.should_decline(path)) return true;
   if (os::remove_file(path)) return true;
@@ -243,12 +244,12 @@ report_dry_run_removal(const removal_request &request, StringView path,
   }
 
   if (os::INTERRUPT_REQUESTED) return false;
-
-  if (request.should_decline(path)) return did_succeed;
+  if (!did_succeed) return false;
+  if (request.should_decline(path)) return true;
 
   request.ec.print_to_stdout("rm: would remove '" +
                              String{cxt.scratch_allocator(), path} + "'\n");
-  return did_succeed;
+  return true;
 }
 
 /* POSIX requires rm to refuse a . or .. operand even under -f. */

@@ -44,6 +44,10 @@ if [ "${TARGET:-$(uname -s)}" = Linux ] && [ -d /dev/pts ] &&
     echo "rm -x did not report /dev/pts"
   ! grep -q "would remove '/dev/pts" device.out ||
     echo "rm -x descended into /dev/pts"
+  ! grep -q "would remove '/dev'$" device.out ||
+    echo "rm -x listed the parent of a skipped directory"
+  ! grep -q "Directory not empty" device.err ||
+    echo "rm -x reported a parent of a skipped directory"
 fi
 cd "$initial_directory" || exit 1
 [ -n "$d" ] && rm -rf "$d"
