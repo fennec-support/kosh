@@ -138,12 +138,192 @@ struct client_capabilities
   }
 };
 
+enum class server_lifecycle : u8
+{
+  Uninitialized,
+  Serving,
+  ShutDown,
+  ShutDownUninitialized,
+};
+
+pure fn lifecycle_is_initialized(server_lifecycle lifecycle) wontthrow -> bool
+{
+  return lifecycle == server_lifecycle::Serving ||
+         lifecycle == server_lifecycle::ShutDown;
+}
+
+pure fn lifecycle_has_shut_down(server_lifecycle lifecycle) wontthrow -> bool
+{
+  return lifecycle == server_lifecycle::ShutDown ||
+         lifecycle == server_lifecycle::ShutDownUninitialized;
+}
+
+pure fn lifecycle_after_initialize(server_lifecycle lifecycle) wontthrow
+    -> server_lifecycle
+{
+  if (lifecycle == server_lifecycle::Uninitialized)
+    return server_lifecycle::Serving;
+  if (lifecycle == server_lifecycle::ShutDownUninitialized)
+    return server_lifecycle::ShutDown;
+
+  return lifecycle;
+}
+
+pure fn lifecycle_after_shutdown(server_lifecycle lifecycle) wontthrow
+    -> server_lifecycle
+{
+  return lifecycle_is_initialized(lifecycle)
+             ? server_lifecycle::ShutDown
+             : server_lifecycle::ShutDownUninitialized;
+}
+
+class DocumentStore
+{
+public:
+  DocumentStore() : m_documents(heap_allocator()) {}
+
+  pure fn documents() wontthrow -> ArrayList<Document> & { return m_documents; }
+  pure fn find(StringView uri) wontthrow -> Document *;
+  fn find_by_canonical_path(const Path &canonical_path) throws -> Document *;
+  fn open(StringView uri, StringView language_id, StringView text,
+          i64 version) throws -> Document *;
+  fn change(StringView uri, StringView text, Maybe<i64> version) throws
+      -> Document *;
+  fn close(StringView uri) throws -> void;
+
+private:
+  ArrayList<Document> m_documents;
+};
+
+pure fn DocumentStore::find(StringView uri) wontthrow -> Document *
+{
+  for (let &document : m_documents)
+    if (document.uri == uri) return &document;
+
+  return nullptr;
+}
+
+fn DocumentStore::find_by_canonical_path(const Path &canonical_path) throws
+    -> Document *
+{
+  for (let &document : m_documents) {
+    if (document.canonical_path.has_value() &&
+        document.canonical_path->text() == canonical_path.text())
+      return &document;
+  }
+
+  return nullptr;
+}
+
+fn DocumentStore::open(StringView uri, StringView language_id, StringView text,
+                       i64 version) throws -> Document *
+{
+  if (let *existing = find(uri); existing != nullptr) {
+    existing->language_id = String{language_id};
+    existing->replace_source(text, version);
+    existing->mood = mood_for(*existing);
+    return existing;
+  }
+  let document_path = decode_file_uri(uri);
+  let document =
+      Document{uri, language_id, text, version, steal(document_path)};
+  if (document.path.has_value())
+    document.canonical_path = os::canonical_path(*document.path);
+  document.mood = mood_for(document);
+  m_documents.push(steal(document));
+
+  return &m_documents.back();
+}
+
+fn DocumentStore::change(StringView uri, StringView text,
+                         Maybe<i64> version) throws -> Document *
+{
+  let *document = find(uri);
+  if (document == nullptr) return nullptr;
+
+  let const did_change =
+      document->replace_source(text, version.value_or(document->version + 1));
+  if (!did_change) return nullptr;
+
+  document->mood = mood_for(*document);
+
+  return document;
+}
+
+fn DocumentStore::close(StringView uri) throws -> void
+{
+  for (usize index = 0; index < m_documents.count(); index++) {
+    if (m_documents[index].uri != uri) continue;
+    m_documents.remove(index);
+    break;
+  }
+}
+
+class AuxiliaryDiagnostics
+{
+public:
+  fn begin_round() throws -> void
+  {
+    m_round_uris.clear();
+    m_diagnostics.clear();
+  }
+
+  fn collect(const ArrayList<source_diagnostic> &diagnostics) throws -> void
+  {
+    for (let const &diagnostic : diagnostics)
+      m_diagnostics.push(diagnostic);
+  }
+
+  pure fn diagnostics() const wontthrow -> const ArrayList<source_diagnostic> &
+  {
+    return m_diagnostics;
+  }
+
+  fn is_published_this_round(const String &uri) throws -> bool
+  {
+    return m_round_uris.find(uri).has_value();
+  }
+
+  fn mark_published(String uri) throws -> void
+  {
+    m_round_uris.push(steal(uri));
+  }
+
+  fn for_source(const String &source_name) const throws
+      -> ArrayList<source_diagnostic>
+  {
+    let source_diagnostics = ArrayList<source_diagnostic>{heap_allocator()};
+    for (let const &candidate : m_diagnostics)
+      if (candidate.source_name == source_name)
+        source_diagnostics.push(candidate);
+
+    return source_diagnostics;
+  }
+
+  template <class Retire>
+  fn retire_stale(Retire &&do_retire) throws -> bool
+  {
+    for (let const &uri : m_published_uris) {
+      if (m_round_uris.find(uri).has_value()) continue;
+      if (!do_retire(uri.view())) return false;
+    }
+
+    return true;
+  }
+
+  fn end_round() throws -> void { m_published_uris = steal(m_round_uris); }
+
+private:
+  ArrayList<source_diagnostic> m_diagnostics{heap_allocator()};
+  sorted_uri_list m_published_uris{heap_allocator(), sort_order::ascending};
+  sorted_uri_list m_round_uris{heap_allocator(), sort_order::ascending};
+};
+
 class Server : public AnalysisSourceProvider
 {
 public:
   Server(EvalContext &context, BumpArena &ast_arena)
       : m_context(context), m_ast_arena(ast_arena),
-        m_documents(heap_allocator()),
         m_workspace_root(Path::current_directory())
   {}
 
@@ -182,7 +362,6 @@ private:
   fn publish_auxiliary_diagnostics() throws -> bool;
   fn send_empty_diagnostics(StringView uri) throws -> bool;
   fn validate_all(Document *changed_document = nullptr) throws -> bool;
-  pure fn find_document(StringView uri) wontthrow -> Document *;
   pure fn request_document(const JsonValue *params) wontthrow -> Document *;
   fn request_positioned_document(const JsonValue *params) throws
       -> Maybe<positioned_document>;
@@ -221,19 +400,13 @@ private:
 
   EvalContext &m_context;
   BumpArena &m_ast_arena;
-  ArrayList<Document> m_documents;
-  ArrayList<source_diagnostic> m_current_auxiliary_diagnostics{
-      heap_allocator()};
-  sorted_uri_list m_published_auxiliary_uris{heap_allocator(),
-                                             sort_order::ascending};
-  sorted_uri_list m_current_auxiliary_uris{heap_allocator(),
-                                           sort_order::ascending};
+  DocumentStore m_documents;
+  AuxiliaryDiagnostics m_auxiliary_diagnostics;
   StringMap<String> m_builtin_information_cache{heap_allocator()};
   completion::shell_highlight_cache m_highlight_cache;
   Path m_workspace_root;
   client_capabilities m_client{};
-  bool m_is_initialized{false};
-  bool m_is_shutdown{false};
+  server_lifecycle m_lifecycle{server_lifecycle::Uninitialized};
 };
 
 static constexpr u32 SEMANTIC_DECLARATION = 1u << 0;
@@ -285,21 +458,13 @@ pure fn semantic_style(highlight_role role) wontthrow -> semantic_token_style
   return STYLES[static_cast<usize>(role)];
 }
 
-pure fn Server::find_document(StringView uri) wontthrow -> Document *
-{
-  for (let &document : m_documents)
-    if (document.uri == uri) return &document;
-
-  return nullptr;
-}
-
 pure fn Server::request_document(const JsonValue *params) wontthrow
     -> Document *
 {
   let const *text_document =
       params != nullptr ? params->get("textDocument") : nullptr;
   let const uri = string_field(text_document, "uri");
-  return uri.has_value() ? find_document(*uri) : nullptr;
+  return uri.has_value() ? m_documents.find(*uri) : nullptr;
 }
 
 fn Server::request_positioned_document(const JsonValue *params) throws
@@ -323,13 +488,10 @@ fn Server::select_document_mood(const Document &document) wontthrow -> void
 
 fn Server::read_source(const Path &canonical_path) throws -> Maybe<String>
 {
-  for (let const &document : m_documents) {
-    if (document.canonical_path.has_value() &&
-        document.canonical_path->text() == canonical_path.text())
-      return document.normalized_source.clone();
-  }
+  let const *document = m_documents.find_by_canonical_path(canonical_path);
+  if (document == nullptr) return None;
 
-  return None;
+  return document->normalized_source.clone();
 }
 
 fn Server::initialize(const JsonValue *id, const JsonValue *params) throws
@@ -344,7 +506,7 @@ fn Server::initialize(const JsonValue *id, const JsonValue *params) throws
     }
   }
   m_client = client_capabilities::from_initialize_params(params);
-  m_is_initialized = true;
+  m_lifecycle = lifecycle_after_initialize(m_lifecycle);
   let const encoding =
       m_client.encoding == position_encoding::Utf8 ? "utf-8" : "utf-16";
   let result = String{"{\"capabilities\":{\"positionEncoding\":"};
@@ -387,23 +549,9 @@ fn Server::open_document(const JsonValue *params) throws -> Document *
   let const version = integer_field(text_document, "version");
   if (!uri.has_value() || !language_id.has_value() || !text.has_value())
     return nullptr;
-  let const document_version = version.value_or(0);
   m_highlight_cache = completion::shell_highlight_cache{};
-  if (let *existing = find_document(*uri); existing != nullptr) {
-    existing->language_id = String{*language_id};
-    existing->replace_source(*text, document_version);
-    existing->mood = mood_for(*existing);
-    return existing;
-  }
-  let document_path = decode_file_uri(*uri);
-  let document = Document{*uri, *language_id, *text, document_version,
-                          steal(document_path)};
-  if (document.path.has_value())
-    document.canonical_path = os::canonical_path(*document.path);
-  document.mood = mood_for(document);
-  m_documents.push(steal(document));
 
-  return &m_documents.back();
+  return m_documents.open(*uri, *language_id, *text, version.value_or(0));
 }
 
 fn Server::change_document(const JsonValue *params) throws -> Document *
@@ -417,16 +565,12 @@ fn Server::change_document(const JsonValue *params) throws -> Document *
   if (!uri.has_value() || changes == nullptr ||
       changes->kind != json_kind::Array || changes->array.is_empty())
     return nullptr;
-  let *document = find_document(*uri);
-  if (document == nullptr) return nullptr;
   let const text = string_field(changes->array.back(), "text");
   if (!text.has_value()) return nullptr;
-  let const did_change =
-      document->replace_source(*text, version.value_or(document->version + 1));
-  if (!did_change) return nullptr;
+  let *document = m_documents.change(*uri, *text, version);
+  if (document == nullptr) return nullptr;
 
   m_highlight_cache = completion::shell_highlight_cache{};
-  document->mood = mood_for(*document);
 
   return document;
 }
@@ -450,11 +594,8 @@ fn Server::close_document(const JsonValue *params) throws -> bool
   if (!uri.has_value()) return true;
   if (!send_empty_diagnostics(*uri)) return false;
 
-  for (usize index = 0; index < m_documents.count(); index++) {
-    if (m_documents[index].uri != *uri) continue;
-    m_documents.remove(index);
-    break;
-  }
+  m_documents.close(*uri);
+
   return true;
 }
 
@@ -632,22 +773,16 @@ fn Server::send_diagnostics(
 
 fn Server::publish_auxiliary_diagnostics() throws -> bool
 {
-  for (let const &diagnostic : m_current_auxiliary_diagnostics) {
+  for (let const &diagnostic : m_auxiliary_diagnostics.diagnostics()) {
     let const source_path = Path{diagnostic.source_name.view()};
     let source_uri = file_uri_for_path(source_path);
-    if (m_current_auxiliary_uris.find(source_uri).has_value()) continue;
-    bool is_open_source = find_document(source_uri.view()) != nullptr;
+    if (m_auxiliary_diagnostics.is_published_this_round(source_uri)) continue;
+    bool is_open_source = m_documents.find(source_uri.view()) != nullptr;
     if (!is_open_source) {
       let const canonical_source = os::canonical_path(source_path);
-      for (let const &document : m_documents) {
-        if (!canonical_source.has_value() ||
-            !document.canonical_path.has_value())
-          continue;
-        if (document.canonical_path->text() == canonical_source->text()) {
-          is_open_source = true;
-          break;
-        }
-      }
+      is_open_source =
+          canonical_source.has_value() &&
+          m_documents.find_by_canonical_path(*canonical_source) != nullptr;
     }
     if (is_open_source) continue;
     let source = read_source(source_path);
@@ -656,12 +791,10 @@ fn Server::publish_auxiliary_diagnostics() throws -> bool
     let auxiliary =
         Document{source_uri.view(), "shellscript", source->view(), -1};
     auxiliary.path = source_path;
-    let source_diagnostics = ArrayList<source_diagnostic>{heap_allocator()};
-    for (let const &candidate : m_current_auxiliary_diagnostics)
-      if (candidate.source_name == diagnostic.source_name)
-        source_diagnostics.push(candidate);
+    let const source_diagnostics =
+        m_auxiliary_diagnostics.for_source(diagnostic.source_name);
     if (!send_diagnostics(auxiliary, source_diagnostics)) return false;
-    m_current_auxiliary_uris.push(steal(source_uri));
+    m_auxiliary_diagnostics.mark_published(steal(source_uri));
   }
 
   return true;
@@ -669,9 +802,8 @@ fn Server::publish_auxiliary_diagnostics() throws -> bool
 
 fn Server::validate_all(Document *changed_document) throws -> bool
 {
-  m_current_auxiliary_uris.clear();
-  m_current_auxiliary_diagnostics.clear();
-  for (let &document : m_documents) {
+  m_auxiliary_diagnostics.begin_round();
+  for (let &document : m_documents.documents()) {
     let should_reanalyze =
         changed_document == nullptr || &document == changed_document;
     if (!should_reanalyze && changed_document != nullptr &&
@@ -682,16 +814,15 @@ fn Server::validate_all(Document *changed_document) throws -> bool
     }
     if (should_reanalyze && !publish_diagnostics(document)) return false;
 
-    for (let const &diagnostic : document.auxiliary_diagnostics)
-      m_current_auxiliary_diagnostics.push(diagnostic);
+    m_auxiliary_diagnostics.collect(document.auxiliary_diagnostics);
   }
   if (!publish_auxiliary_diagnostics()) return false;
 
-  for (let const &uri : m_published_auxiliary_uris) {
-    if (m_current_auxiliary_uris.find(uri).has_value()) continue;
-    if (!send_empty_diagnostics(uri.view())) return false;
-  }
-  m_published_auxiliary_uris = steal(m_current_auxiliary_uris);
+  let const do_retire = [this](StringView uri) throws -> bool {
+    return send_empty_diagnostics(uri);
+  };
+  if (!m_auxiliary_diagnostics.retire_stale(do_retire)) return false;
+  m_auxiliary_diagnostics.end_round();
 
   return true;
 }
@@ -2112,15 +2243,15 @@ fn Server::dispatch(const JsonValue &message) throws -> bool
   if (*request == request_method::Initialize) return initialize(id, params);
   if (*request == request_method::Initialized) return true;
   if (*request == request_method::Shutdown) {
-    m_is_shutdown = true;
+    m_lifecycle = lifecycle_after_shutdown(m_lifecycle);
     return send_result(id, "null");
   }
   if (*request == request_method::Exit) return false;
-  if (!m_is_initialized) {
+  if (!lifecycle_is_initialized(m_lifecycle)) {
     if (id != nullptr) return send_error(id, -32002, "Server not initialized");
     return true;
   }
-  if (m_is_shutdown) {
+  if (lifecycle_has_shut_down(m_lifecycle)) {
     if (id != nullptr) return send_error(id, -32600, "Server has shut down");
     return true;
   }
@@ -2162,14 +2293,15 @@ fn Server::run() throws -> int
   loop
   {
     let message = reader.read_message();
-    if (!message.has_value()) return m_is_shutdown ? 0 : 1;
+    if (!message.has_value())
+      return lifecycle_has_shut_down(m_lifecycle) ? 0 : 1;
     let parser = JsonParser{*message};
     let *root = parser.parse();
     if (root == nullptr) {
       if (!send_error(nullptr, -32700, "Parse error")) return 1;
       continue;
     }
-    if (!dispatch(*root)) return m_is_shutdown ? 0 : 1;
+    if (!dispatch(*root)) return lifecycle_has_shut_down(m_lifecycle) ? 0 : 1;
   }
 }
 
