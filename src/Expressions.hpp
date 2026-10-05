@@ -296,20 +296,20 @@ struct function_global_assignment
 struct function_definition_record
 {
   String name;
-  SourceLocation location;
   usize occurrence_start{0};
   usize occurrence_end{0};
   HashSet affected_names{heap_allocator()};
   HashSet local_names{heap_allocator()};
   VariableOccurrenceStateMap exit_states;
   String first_positional_read;
-  SourceLocation first_positional_read_location;
-  bool has_been_called{false};
-  bool is_analysis_complete{false};
   Maybe<usize> previous_definition_index{};
-  SourceLocation first_recursive_call_location{};
   usize recursive_call_count{0};
   usize async_recursive_call_count{0};
+  SourceLocation location;
+  SourceLocation first_positional_read_location{};
+  SourceLocation first_recursive_call_location{};
+  bool has_been_called{false};
+  bool is_analysis_complete{false};
 };
 
 struct analysis_function_mark

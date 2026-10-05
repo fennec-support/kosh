@@ -238,11 +238,11 @@ struct control_flow
     Exit,
   };
 
-  Kind kind{Kind::Normal};
   i64 value{0};
-  SourceLocation location{0, 0};
   const String *source{nullptr};
   String origin{heap_allocator()};
+  SourceLocation location{0, 0};
+  Kind kind{Kind::Normal};
 };
 
 static constexpr u64 EXTERNAL_SOURCE_GENERATION = UINT64_MAX;
@@ -271,11 +271,11 @@ struct trap_definition
 
 struct trap_action_frame
 {
-  u32 depth{0};
   usize trigger_line_number{0};
   usize source_frame_count{0};
   usize function_depth{0};
   Maybe<i32> saved_exit_status{None};
+  u32 depth{0};
   u8 running_conditions{0};
 
   pure fn get_trigger_line_number(usize current_source_frame_count,
@@ -330,26 +330,26 @@ struct source_frame
   source_frame(String origin, SourceLocation call_site,
                const String *parent_source, u64 parent_source_generation,
                String source_path, source_frame_kind kind)
-      : origin(steal(origin)), call_site(steal(call_site)),
+      : origin(steal(origin)), source_path(steal(source_path)),
         parent_source(parent_source),
         parent_source_generation(parent_source_generation),
-        source_path(steal(source_path)), kind(kind)
+        call_site(steal(call_site)), kind(kind)
   {}
 
   String origin;
-  SourceLocation call_site;
+  String source_path;
   const String *parent_source;
   u64 parent_source_generation;
-  String source_path;
-  usize function_call_depth{0};
-  source_frame_kind kind;
   const trap_definition *definition{nullptr};
-  bool is_source_changing{true};
+  usize function_call_depth{0};
+  SourceLocation call_site;
+  Maybe<SourceLocation> deferred_trace_location;
+  source_frame_kind kind;
   bool was_printed{false};
   bool was_definition_printed{false};
-  bool should_defer_trace{false};
-  bool has_deferred_trace{false};
-  Maybe<SourceLocation> deferred_trace_location;
+  bool is_source_changing : 1 {true};
+  bool should_defer_trace : 1 {false};
+  bool has_deferred_trace : 1 {false};
 };
 
 /* A variable binding saved when a local shadows it. A None previous value means

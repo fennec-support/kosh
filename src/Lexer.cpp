@@ -369,7 +369,7 @@ cold fn Lexer::register_heredoc(StringView delimiter,
       static_cast<int>(delimiter.length), delimiter.data);
 
   m_pending_heredocs.push(
-      {String{delimiter}, tab_policy, contents, should_expand});
+      {String{delimiter}, contents, tab_policy, should_expand});
 
   return contents;
 }

@@ -870,7 +870,8 @@ fn CStyleForLoop::analyze(AnalysisContext &actx,
 
   optimizer::optimize_node(this, actx);
 
-  let const is_conditional = !is_unconditional || actx.effects.has_seen_runtime_definer;
+  let const is_conditional =
+      !is_unconditional || actx.effects.has_seen_runtime_definer;
   let const init_position = m_header_position;
   let const condition_position = init_position + m_init.length + 1;
   let const step_position = condition_position + m_condition.length + 1;
@@ -1408,13 +1409,16 @@ fn FunctionDefinition::analyze(AnalysisContext &actx,
     actx.active_function_definition_index = function_definition_index;
     actx.functions.records.push(function_definition_record{
         String{heap_allocator(), m_name.view()},
-        source_location(), 0, 0,
+        0, 0,
         HashSet{heap_allocator()},
         HashSet{heap_allocator()},
         VariableOccurrenceStateMap{},
         String{heap_allocator()},
+        Maybe<usize>{},
+        0, 0, source_location(), SourceLocation{},
         SourceLocation{},
-        false, false
+        false,
+        false
     });
     actx.functions.records[function_definition_index].occurrence_start =
         actx.symbol_records != nullptr

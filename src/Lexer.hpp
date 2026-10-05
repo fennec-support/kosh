@@ -188,8 +188,8 @@ struct heredoc_contents
 struct heredoc_pending
 {
   String delimiter;
-  heredoc_tab_policy tab_policy;
   heredoc_contents *contents;
+  heredoc_tab_policy tab_policy;
   bool should_expand;
 };
 

@@ -39,10 +39,10 @@ public:
     Unresolved,
   };
 
-  Kind kind{Kind::Program};
-  Builtin::Kind builtin_kind{};
   Path program_path{};
   i32 unresolved_status{127};
+  Kind kind{Kind::Program};
+  Builtin::Kind builtin_kind{};
 
   mustuse static ResolvedCommand from_builtin(Builtin::Kind chosen_builtin)
   {
@@ -676,8 +676,8 @@ public:
 private:
   u8 m_init_moods_sourcing{0};
   u8 m_initialized_moods{0};
-  control_mutations m_mutations;
   u32 m_suppressed_warnings{0};
+  control_mutations m_mutations;
 };
 
 class ScopeStore
@@ -937,13 +937,13 @@ private:
   String m_last_argument{heap_allocator()};
   Maybe<String> m_execution_string{None};
   String m_current_command{heap_allocator()};
-  bool m_make_shell_suppressed{false};
-  i32 m_last_exit_status{0};
   u64 m_last_command_duration_nanos{0};
   usize m_subshell_depth{0};
   usize m_condition_depth{0};
   usize m_loop_depth{0};
+  i32 m_last_exit_status{0};
   u32 m_pending_subshell_end_position{0};
+  bool m_make_shell_suppressed{false};
   bool m_should_elide_pending_subshell_fork{false};
   bool m_terminal_exec_allowed{false};
   bool m_is_completion_function_running{false};
@@ -1105,19 +1105,19 @@ public:
     if (static_cast<usize>(level) > loop_depth)
       level = static_cast<i64>(loop_depth);
     if (level < 1) level = 1;
-    set(control_flow{kind, level, location, source, String{origin}});
+    set(control_flow{level, source, String{origin}, location, kind});
   }
   fn request_return(i64 status, SourceLocation location, const String *source,
                     StringView origin) throws -> void
   {
-    set(control_flow{control_flow::Kind::Return, status, location, source,
-                     String{origin}});
+    set(control_flow{status, source, String{origin}, location,
+                     control_flow::Kind::Return});
   }
   fn request_exit(i64 status, SourceLocation location, const String *source,
                   StringView origin) throws -> void
   {
-    set(control_flow{control_flow::Kind::Exit, status, location, source,
-                     String{origin}});
+    set(control_flow{status, source, String{origin}, location,
+                     control_flow::Kind::Exit});
   }
   fn set(control_flow value) throws -> void { m_pending = steal(value); }
   fn pending() wontthrow -> control_flow & { return m_pending; }
@@ -1623,7 +1623,6 @@ private:
   u64 m_field_separator_bits[4]{(u64{1} << ' ') | (u64{1} << '\t') |
                                 (u64{1} << '\n')};
   StringMap<String> m_shell_variables{heap_allocator()};
-  bool m_is_pipestatus_scalar_possible{true};
   StringMap<SourceLocation> m_special_variable_definition_locations{
       heap_allocator()};
   StringMap<ArrayList<String>> m_indexed_arrays{heap_allocator()};
@@ -1636,6 +1635,7 @@ private:
   mutable BashArgumentStack m_bash_arguments;
   u8 m_disabled_bash_special_arrays{0};
   u8 m_unset_dynamic_readers{0};
+  bool m_is_pipestatus_scalar_possible{true};
 };
 
 class CompletionStore
@@ -1681,8 +1681,8 @@ struct function_call_frame
 {
   String name;
   FunctionBodyHandle storage;
-  SourceLocation location;
   const String *source;
+  SourceLocation location;
   bool was_printed{false};
 };
 
@@ -2203,6 +2203,7 @@ private:
   StringView m_history_recording_source{};
   ArrayList<ArrayList<String> *> m_history_transaction_stack{heap_allocator()};
   SourceLocation m_current_location{};
+  bool m_is_script_run{false};
   ArrayList<source_frame> m_source_frames{heap_allocator()};
   ArrayList<substitution_line_base> m_substitution_line_bases{heap_allocator()};
   ArrayList<embedded_source> m_embedded_sources{heap_allocator()};
@@ -2212,7 +2213,6 @@ private:
   u64 m_current_source_generation{EXTERNAL_SOURCE_GENERATION};
   usize m_source_depth{0};
   usize m_rejected_return_source_frames{0};
-  bool m_is_script_run{false};
   usize m_mimicry_depth{0};
 };
 
