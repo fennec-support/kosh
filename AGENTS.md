@@ -233,7 +233,10 @@ changes update this file.
 - Prefer make targets. The top Makefile delegates to `src/Makefile` and supplies
   the processor count. `make MODE=rel` builds `./kosh`. `make MODE=dbg` builds
   `./kosh-dbg` with AddressSanitizer and UndefinedBehaviorSanitizer.
-  `make MODE=cov` builds `./kosh-cov`. Debug is the default. `make clean` owns
+  `make MODE=cov` builds `./kosh-cov`. `make MODE=tinyrel` builds
+  `./kosh-tinyrel` with size flags and section garbage collection; only that
+  mode takes extreme size options, and rel stays speed oriented. Debug is the
+  default. `make clean` owns
   removal. Never remove `./kosh` directly.
 - `NO_TOILETLINE=1 make` builds the no editor configuration in a separate
   object directory and links the same `./kosh-dbg` path. Rebuild the ordinary

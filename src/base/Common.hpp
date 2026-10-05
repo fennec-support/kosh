@@ -128,7 +128,7 @@ using opaque = void;
 #define t__used               __attribute__((used))
 #define t__pure               __attribute__((pure))
 #if defined KOSH_TINYREL
-#define t__forceinline inline t__used
+#define t__forceinline inline
 #else
 #define t__forceinline inline __attribute__((always_inline))
 #endif

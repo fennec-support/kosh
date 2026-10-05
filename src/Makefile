@@ -302,8 +302,12 @@ endif
 else ifeq ($(MODE), tinyrel)
 CXXFLAGS += \
 	-DNDEBUG \
-	-Os \
+	-Oz \
 	-fno-unroll-loops \
+	-ffunction-sections \
+	-fdata-sections \
+	-fno-asynchronous-unwind-tables \
+	-fmerge-all-constants \
 	-U_FORTIFY_SOURCE \
 	-D_FORTIFY_SOURCE=2
 ifneq ($(TARGET), Windows_NT)
@@ -312,6 +316,11 @@ CXXFLAGS += -flto
 else ifeq ($(HOST_OPERATING_SYSTEM), Darwin)
 CXXFLAGS += -flto
 endif
+endif
+ifeq ($(TARGET), Darwin)
+LINK_LIBRARIES += -Wl,-dead_strip
+else
+LINK_LIBRARIES += -Wl,--gc-sections -s
 endif
 ifeq ($(TARGET), Linux)
 ifeq ($(IS_LINUX_CROSS_COMPILATION), 1)
