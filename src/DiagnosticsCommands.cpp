@@ -661,7 +661,7 @@ fn check_command_value_lints(AnalysisContext &actx,
         continue;
       }
 
-      if (actx.defined_functions.contains(view)) {
+      if (actx.functions.defined.contains(view)) {
         actx.report_diagnostic(diagnostic_id::sc2033,
                                args[i]->source_location(), {view});
       }

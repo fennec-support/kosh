@@ -312,6 +312,72 @@ struct function_definition_record
   usize async_recursive_call_count{0};
 };
 
+struct analysis_function_mark
+{
+  usize definition_count{0};
+  usize function_insertion_count{0};
+  usize alias_insertion_count{0};
+};
+
+/* The definitions and names a scope may add and later take back. One mark
+   covers the records, the latest-definition index, the function names, and the
+   alias names, so a rollback needs no counter of its own. */
+struct analysis_function_table
+{
+  HashSet defined{heap_allocator()};
+  HashSet aliases{heap_allocator()};
+  ArrayList<function_definition_record> records{heap_allocator()};
+  StringMap<usize> latest_indices{heap_allocator()};
+  ArrayList<String> function_insertions{heap_allocator()};
+  ArrayList<String> alias_insertions{heap_allocator()};
+
+  fn add_function(StringView name) throws -> void
+  {
+    if (!defined.add(name)) return;
+
+    function_insertions.push(String{name});
+  }
+
+  fn add_alias(StringView name) throws -> void
+  {
+    if (!aliases.add(name)) return;
+
+    alias_insertions.push(String{name});
+  }
+
+  pure fn get_mark() const wontthrow -> analysis_function_mark
+  {
+    return analysis_function_mark{records.count(), function_insertions.count(),
+                                  alias_insertions.count()};
+  }
+
+  fn rollback(const analysis_function_mark &mark) throws -> void
+  {
+    for (usize index = records.count(); index > mark.definition_count; index--)
+    {
+      let const &definition = records[index - 1];
+      if (!definition.is_analysis_complete) continue;
+
+      if (definition.previous_definition_index.has_value()) {
+        latest_indices.set(definition.name.view(),
+                           *definition.previous_definition_index);
+      } else {
+        latest_indices.erase(definition.name.view());
+      }
+    }
+
+    while (function_insertions.count() > mark.function_insertion_count) {
+      defined.remove(function_insertions.back().view());
+      function_insertions.pop_back();
+    }
+
+    while (alias_insertions.count() > mark.alias_insertion_count) {
+      aliases.remove(alias_insertions.back().view());
+      alias_insertions.pop_back();
+    }
+  }
+};
+
 /* One function definition a reader may ask about. The body span is recovered
    from the document source, in the shape declare -f prints. */
 struct function_body_record
@@ -470,10 +536,7 @@ public:
   bool are_koshkit_utilities_reachable{true};
   const ArrayList<shellcheck_suppression> *shellcheck_suppressions{nullptr};
   bool has_seen_runtime_definer{false};
-  HashSet defined_functions{heap_allocator()};
-  HashSet known_aliases{heap_allocator()};
-  ArrayList<String> defined_function_insertions{heap_allocator()};
-  ArrayList<String> known_alias_insertions{heap_allocator()};
+  analysis_function_table functions;
   /* The table is cleared at a conditional branch, a loop body, a function body,
      a subshell, and on any runtime definer, since a value recorded before such
      a boundary is no longer proven to hold past it. */
@@ -515,10 +578,8 @@ public:
       heap_allocator()};
   HashSet command_position_names{heap_allocator()};
 
-  /* Every function the script defines and every call of one, gathered during
-     the walk and swept once it ends. */
-  ArrayList<function_definition_record> function_definitions{heap_allocator()};
-  StringMap<usize> latest_function_definition_indices{heap_allocator()};
+  /* Every call of a function the script defines, gathered during the walk and
+     swept once it ends. */
   ArrayList<function_call_record> function_calls{heap_allocator()};
 
   static constexpr usize NO_ACTIVE_FUNCTION_DEFINITION = ~usize{0};
@@ -606,16 +667,14 @@ public:
   {
     if (current_source_effects != nullptr)
       current_source_effects->defined_functions.add(name);
-    if (!defined_functions.add(name)) return;
-    defined_function_insertions.push(String{name});
+    functions.add_function(name);
   }
 
   fn add_known_alias(StringView name) throws -> void
   {
     if (current_source_effects != nullptr)
       current_source_effects->known_aliases.add(name);
-    if (!known_aliases.add(name)) return;
-    known_alias_insertions.push(String{name});
+    functions.add_alias(name);
   }
 
   fn add_array_valued_name(StringView name) throws -> void
@@ -676,39 +735,6 @@ public:
     }
   }
 
-  fn rollback_defined_functions(usize insertion_count) throws -> void
-  {
-    while (defined_function_insertions.count() > insertion_count) {
-      defined_functions.remove(defined_function_insertions.back().view());
-      defined_function_insertions.pop_back();
-    }
-  }
-
-  fn rollback_latest_function_definitions(usize definition_count) throws -> void
-  {
-    for (usize index = function_definitions.count(); index > definition_count;
-         index--)
-    {
-      let const &definition = function_definitions[index - 1];
-      if (!definition.is_analysis_complete) continue;
-
-      if (definition.previous_definition_index.has_value()) {
-        latest_function_definition_indices.set(
-            definition.name.view(), *definition.previous_definition_index);
-      } else {
-        latest_function_definition_indices.erase(definition.name.view());
-      }
-    }
-  }
-
-  fn rollback_known_aliases(usize insertion_count) throws -> void
-  {
-    while (known_alias_insertions.count() > insertion_count) {
-      known_aliases.remove(known_alias_insertions.back().view());
-      known_alias_insertions.pop_back();
-    }
-  }
-
   /* The result is true when the message was delivered. A suppressed code must
      not suppress a later check. */
   fn report_diagnostic(
@@ -760,7 +786,7 @@ public:
       return;
     if (!reference_names_positional(name)) return;
 
-    let &definition = function_definitions[active_function_definition_index];
+    let &definition = functions.records[active_function_definition_index];
     if (!definition.first_positional_read.is_empty()) return;
 
     let spelling = location.get_source_text(source).value_or(name);

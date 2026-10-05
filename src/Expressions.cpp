@@ -1097,7 +1097,7 @@ fn AnalysisContext::note_variable_occurrence(
     occurrences.assigned.set(name, steal(state));
     occurrence_is_unused = true;
     if (function_definition_index != NO_ACTIVE_FUNCTION_DEFINITION)
-      function_definitions[function_definition_index].affected_names.add(name);
+      functions.records[function_definition_index].affected_names.add(name);
   } else if (kind == variable_occurrence_kind::Reference) {
     let const *state = occurrences.find(name);
     if (state != nullptr && symbol_records != nullptr) {
@@ -1121,7 +1121,7 @@ fn AnalysisContext::note_variable_occurrence(
     unset_state.has_unset_path = true;
     occurrences.replace(name, steal(unset_state));
     if (function_definition_index != NO_ACTIVE_FUNCTION_DEFINITION)
-      function_definitions[function_definition_index].affected_names.add(name);
+      functions.records[function_definition_index].affected_names.add(name);
   }
 
   if (symbol_records == nullptr) return;
@@ -1136,29 +1136,29 @@ fn AnalysisContext::apply_called_function(
     StringView name, const SourceLocation &call_location) throws -> void
 {
   if (active_function_definition_index != NO_ACTIVE_FUNCTION_DEFINITION &&
-      function_definitions[active_function_definition_index].name.view() ==
+      functions.records[active_function_definition_index].name.view() ==
           name)
   {
     return;
   }
 
   let const selected_definition_index =
-      latest_function_definition_indices.find(name);
+      functions.latest_indices.find(name);
   if (!selected_definition_index.has_value()) return;
 
   let const &selected_definition =
-      function_definitions[*selected_definition_index.value()];
+      functions.records[*selected_definition_index.value()];
   if (!selected_definition.is_analysis_complete ||
       selected_definition.location.position > call_location.position)
   {
     return;
   }
 
-  let &definition = function_definitions[*selected_definition_index.value()];
+  let &definition = functions.records[*selected_definition_index.value()];
   definition.has_been_called = true;
   if (active_function_definition_index != NO_ACTIVE_FUNCTION_DEFINITION) {
     let &active_definition =
-        function_definitions[active_function_definition_index];
+        functions.records[active_function_definition_index];
     definition.affected_names.for_each([&](StringView affected_name) {
       if (!definition.local_names.contains(affected_name))
         active_definition.affected_names.add(affected_name);
@@ -1746,7 +1746,7 @@ fn expressions::internal::analyze_followed_source(
   child_options.should_silence_unresolved_commands =
       actx.should_silence_unresolved_commands;
   let const analyzed = analyze_ast(
-      ast, contents->view(), actx.defined_functions, actx.known_aliases,
+      ast, contents->view(), actx.functions.defined, actx.functions.aliases,
       actx.eval_context, child_options, directives,
       {actx.followed_source_paths, actx.followed_source_effects_cache},
       {&actx, should_merge_parent_state, should_merge_parent_uncertainty,

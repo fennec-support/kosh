@@ -82,9 +82,7 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
         actx.has_unknown_working_directory;
     let const saved_should_silence_unresolved_commands =
         actx.should_silence_unresolved_commands;
-    let const defined_function_insertion_count =
-        actx.defined_function_insertions.count();
-    let const known_alias_insertion_count = actx.known_alias_insertions.count();
+    let const function_mark = actx.functions.get_mark();
     let saved_inherited_assigned_names = actx.inherited_assigned_names.clone();
     let saved_inherited_global_assigned_names =
         actx.inherited_global_assigned_names.clone();
@@ -107,8 +105,7 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
         steal(saved_inherited_global_assigned_names);
     actx.inherited_assigned_names = steal(saved_inherited_assigned_names);
     actx.occurrences = steal(saved_occurrences);
-    actx.rollback_defined_functions(defined_function_insertion_count);
-    actx.rollback_known_aliases(known_alias_insertion_count);
+    actx.functions.rollback(function_mark);
   }
 
   /* cat feeding a single named file into the next stage runs an extra process,
@@ -147,8 +144,8 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
             cat_args[1]->kind() == Token::Kind::Word &&
             !raw_operand.is_empty() && raw_operand[0] != '-';
         if (name.has_value() && *name == "cat" &&
-            !actx.defined_functions.contains(*name) &&
-            !actx.known_aliases.contains(*name) && file_is_plain_operand)
+            !actx.functions.defined.contains(*name) &&
+            !actx.functions.aliases.contains(*name) && file_is_plain_operand)
         {
           actx.report_diagnostic(diagnostic_id::sc2002,
                                  cat_args[0]->source_location());
@@ -191,10 +188,10 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     if (!stage_name.has_value() || !next_name.has_value()) {
       continue;
     }
-    let const next_is_user = actx.defined_functions.contains(*next_name) ||
-                             actx.known_aliases.contains(*next_name);
-    let const stage_is_user = actx.defined_functions.contains(*stage_name) ||
-                              actx.known_aliases.contains(*stage_name);
+    let const next_is_user = actx.functions.defined.contains(*next_name) ||
+                             actx.functions.aliases.contains(*next_name);
+    let const stage_is_user = actx.functions.defined.contains(*stage_name) ||
+                              actx.functions.aliases.contains(*stage_name);
     let const stage_info = get_analysis_command_info(*stage_name);
     let const next_info = get_analysis_command_info(*next_name);
     let const next_is_pattern_matcher =
@@ -491,8 +488,8 @@ fn CompoundList::analyze(AnalysisContext &actx,
     let const simple = command->as_simple_command();
     if (simple != nullptr && !simple->args().is_empty()) {
       let const name = static_command_name(simple->args()[0]);
-      if (name.has_value() && !actx.defined_functions.contains(*name) &&
-          !actx.known_aliases.contains(*name))
+      if (name.has_value() && !actx.functions.defined.contains(*name) &&
+          !actx.functions.aliases.contains(*name))
       {
         if (*name == "cd") {
           if (i + 1 < m_nodes.count() &&

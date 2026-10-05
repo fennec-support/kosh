@@ -471,9 +471,7 @@ private:
   AnalysisContext &m_actx;
   StringMap<String> m_constants;
   variable_occurrence_pair m_occurrences;
-  usize m_function_definition_count;
-  usize m_defined_function_insertion_count;
-  usize m_known_alias_insertion_count;
+  analysis_function_mark m_function_mark;
   HashSet m_inherited_assigned_names;
   HashSet m_inherited_global_assigned_names;
   HashSet m_array_valued_names;

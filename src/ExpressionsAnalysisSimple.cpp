@@ -745,9 +745,9 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
                                   ? *borrowed_command_literal
                                   : command_literal_storage.view();
   let const command_is_defined_function =
-      actx.defined_functions.contains(command_literal);
+      actx.functions.defined.contains(command_literal);
   let const is_command_shadowed = command_is_defined_function ||
-                                  actx.known_aliases.contains(command_literal);
+                                  actx.functions.aliases.contains(command_literal);
 
   if (command_is_defined_function) {
     let const call_location = m_args[0]->source_location();
@@ -758,16 +758,16 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
     });
     let const active_index = actx.active_function_definition_index;
     let const latest_index =
-        actx.latest_function_definition_indices.find(command_literal);
+        actx.functions.latest_indices.find(command_literal);
     let const was_redefined_in_body =
         latest_index.has_value() && *latest_index.value() > active_index;
     if (active_index != AnalysisContext::NO_ACTIVE_FUNCTION_DEFINITION &&
-        actx.function_definitions[active_index].name.view() ==
+        actx.functions.records[active_index].name.view() ==
             command_literal &&
         actx.conditional_branch_depth == 0 && !was_redefined_in_body)
     {
       let &definition =
-          actx.function_definitions[actx.active_function_definition_index];
+          actx.functions.records[actx.active_function_definition_index];
       if (definition.recursive_call_count == 0)
         definition.first_recursive_call_location = call_location;
       definition.recursive_call_count++;
@@ -803,7 +803,7 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
       if (actx.active_function_definition_index !=
           AnalysisContext::NO_ACTIVE_FUNCTION_DEFINITION)
       {
-        actx.function_definitions[actx.active_function_definition_index]
+        actx.functions.records[actx.active_function_definition_index]
             .local_names.add(target_name);
       }
     }
@@ -1552,10 +1552,10 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
     let suggestion = Maybe<String>{};
     if (!is_missing_directory) {
       let local_names = ArrayList<String>{heap_allocator()};
-      actx.defined_functions.for_each(
+      actx.functions.defined.for_each(
           [&](StringView n) throws { local_names.push(String{n}); });
-      actx.known_aliases.for_each([&](StringView n)
-                                      throws { local_names.push(String{n}); });
+      actx.functions.aliases.for_each([&](StringView n)
+                                          throws { local_names.push(String{n}); });
       suggestion = utils::suggest_command(*name, local_names);
     }
 
@@ -1581,8 +1581,8 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
   /* A neutral builtin shadowed by a function or alias is really a call into
      user code, so it forgets the table too. */
   if (!should_clear_constants &&
-      (actx.defined_functions.contains(command_literal) ||
-       actx.known_aliases.contains(command_literal)))
+      (actx.functions.defined.contains(command_literal) ||
+       actx.functions.aliases.contains(command_literal)))
   {
     should_clear_constants = true;
   }
@@ -1659,8 +1659,8 @@ fn SimpleCommand::append_presence_tested_command_names(
     if (!raw_name.has_value() || *raw_name != "[") return;
     name = *raw_name;
   }
-  if (actx.defined_functions.contains(*name) ||
-      actx.known_aliases.contains(*name))
+  if (actx.functions.defined.contains(*name) ||
+      actx.functions.aliases.contains(*name))
   {
     return;
   }

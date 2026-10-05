@@ -1863,7 +1863,7 @@ fn SimpleCommand::always_exits(const AnalysisContext &actx) const wontthrow
 
   if (actx.always_exiting_function_names.contains(*name)) return true;
 
-  return *name == StringView{"exit"} && !actx.defined_functions.contains(*name);
+  return *name == StringView{"exit"} && !actx.functions.defined.contains(*name);
 }
 
 cold fn SimpleCommand::to_string() const throws -> String

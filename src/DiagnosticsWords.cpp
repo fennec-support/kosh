@@ -1120,7 +1120,7 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
       let const view = literal.view();
       if (is_command_value_next) {
         let const command_word = leading_command_word(view);
-        if (actx.defined_functions.contains(command_word)) {
+        if (actx.functions.defined.contains(command_word)) {
           actx.report_diagnostic(diagnostic_id::sc2032,
                                  args[i]->source_location(), {command_word});
         }
@@ -1137,7 +1137,7 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
         continue;
       }
 
-      if (actx.defined_functions.contains(view)) {
+      if (actx.functions.defined.contains(view)) {
         actx.report_diagnostic(diagnostic_id::sc2032,
                                args[i]->source_location(), {view});
       } else {
@@ -1251,7 +1251,7 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
         /* find launches the action itself, so a shell function is never found,
            shellcheck SC2033. */
         let const action = args[i + 1]->raw_string();
-        if (actx.defined_functions.contains(action.view())) {
+        if (actx.functions.defined.contains(action.view())) {
           actx.report_diagnostic(diagnostic_id::sc2033,
                                  args[i + 1]->source_location(),
                                  {action.view()});

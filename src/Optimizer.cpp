@@ -366,12 +366,12 @@ fn simple_command_static_verdict(const ArrayList<const Token *> &args,
   let const name = command_word_literal(args[0]);
   if (!name.has_value()) return None;
 
-  if (actx.defined_functions.contains(name->view())) {
+  if (actx.functions.defined.contains(name->view())) {
     LOG(All, "declining the static verdict, a function shadows '%s'",
         name->c_str());
     return None;
   }
-  if (actx.known_aliases.contains(name->view())) {
+  if (actx.functions.aliases.contains(name->view())) {
     LOG(All, "declining the static verdict, an alias shadows '%s'",
         name->c_str());
     return None;

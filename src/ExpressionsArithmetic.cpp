@@ -1316,10 +1316,7 @@ fn Subshell::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 SubshellAnalysisScope::SubshellAnalysisScope(AnalysisContext &actx)
     : m_actx{actx}, m_constants{steal(actx.constant_variables)},
       m_occurrences{actx.occurrences.snapshot()},
-      m_function_definition_count{actx.function_definitions.count()},
-      m_defined_function_insertion_count{
-          actx.defined_function_insertions.count()},
-      m_known_alias_insertion_count{actx.known_alias_insertions.count()},
+      m_function_mark{actx.functions.get_mark()},
       m_inherited_assigned_names{actx.inherited_assigned_names.clone()},
       m_inherited_global_assigned_names{
           actx.inherited_global_assigned_names.clone()},
@@ -1352,9 +1349,7 @@ fn SubshellAnalysisScope::leave() throws -> void
   m_actx.inherited_assigned_names = steal(m_inherited_assigned_names);
   m_actx.constant_variables = steal(m_constants);
   m_actx.occurrences = steal(m_occurrences);
-  m_actx.rollback_latest_function_definitions(m_function_definition_count);
-  m_actx.rollback_defined_functions(m_defined_function_insertion_count);
-  m_actx.rollback_known_aliases(m_known_alias_insertion_count);
+  m_actx.functions.rollback(m_function_mark);
 }
 
 FunctionDefinition::FunctionDefinition(SourceLocation location, StringView name,
@@ -1446,10 +1441,7 @@ fn FunctionDefinition::analyze(AnalysisContext &actx,
   let saved_constants = steal(actx.constant_variables);
   actx.constant_variables = StringMap<String>{heap_allocator()};
   let saved_occurrences = actx.occurrences.snapshot();
-  let const function_definition_count = actx.function_definitions.count();
-  let const defined_function_insertion_count =
-      actx.defined_function_insertions.count();
-  let const known_alias_insertion_count = actx.known_alias_insertions.count();
+  let const function_mark = actx.functions.get_mark();
   let saved_inherited_assigned_names = actx.inherited_assigned_names.clone();
   let saved_inherited_global_assigned_names =
       actx.inherited_global_assigned_names.clone();
@@ -1465,8 +1457,8 @@ fn FunctionDefinition::analyze(AnalysisContext &actx,
   let const saved_conditional_branch_depth = actx.conditional_branch_depth;
   actx.conditional_branch_depth = 0;
   let const saved_active_function = actx.active_function_definition_index;
-  actx.active_function_definition_index = actx.function_definitions.count();
-  actx.function_definitions.push(function_definition_record{
+  actx.active_function_definition_index = actx.functions.records.count();
+  actx.functions.records.push(function_definition_record{
       String{heap_allocator(), m_name.view()},
       source_location(), 0, 0,
       HashSet{heap_allocator()},
@@ -1477,7 +1469,7 @@ fn FunctionDefinition::analyze(AnalysisContext &actx,
       false, false
   });
   let const function_definition_index = actx.active_function_definition_index;
-  actx.function_definitions[function_definition_index].occurrence_start =
+  actx.functions.records[function_definition_index].occurrence_start =
       actx.symbol_records != nullptr
           ? actx.symbol_records->variable_occurrences.count()
           : 0;
@@ -1491,8 +1483,7 @@ fn FunctionDefinition::analyze(AnalysisContext &actx,
   else
     actx.always_exiting_function_names.remove(m_name.view());
 
-  let &function_definition =
-      actx.function_definitions[function_definition_index];
+  let &function_definition = actx.functions.records[function_definition_index];
   if (function_definition.recursive_call_count > 0) {
     let const diagnostic =
         function_definition.recursive_call_count >= 2 &&
@@ -1510,13 +1501,12 @@ fn FunctionDefinition::analyze(AnalysisContext &actx,
   function_definition.exit_states = actx.occurrences.assigned.snapshot();
   function_definition.is_analysis_complete = true;
   let const previous_definition_index =
-      actx.latest_function_definition_indices.find(m_name.view());
+      actx.functions.latest_indices.find(m_name.view());
   if (previous_definition_index.has_value()) {
     function_definition.previous_definition_index =
         *previous_definition_index.value();
   }
-  actx.latest_function_definition_indices.set(m_name.view(),
-                                              function_definition_index);
+  actx.functions.latest_indices.set(m_name.view(), function_definition_index);
   actx.current_source_effects = saved_source_effects;
   actx.function_scope_depth--;
   actx.active_function_definition_index = saved_active_function;
@@ -1529,11 +1519,8 @@ fn FunctionDefinition::analyze(AnalysisContext &actx,
   actx.function_local_names = steal(saved_locals);
   actx.constant_variables = steal(saved_constants);
   actx.occurrences = steal(saved_occurrences);
-  actx.rollback_latest_function_definitions(function_definition_count);
-  actx.latest_function_definition_indices.set(m_name.view(),
-                                              function_definition_index);
-  actx.rollback_defined_functions(defined_function_insertion_count);
-  actx.rollback_known_aliases(known_alias_insertion_count);
+  actx.functions.rollback(function_mark);
+  actx.functions.latest_indices.set(m_name.view(), function_definition_index);
 }
 
 RedirectedCommand::RedirectedCommand(SourceLocation location,

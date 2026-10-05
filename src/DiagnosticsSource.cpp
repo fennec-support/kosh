@@ -1292,10 +1292,10 @@ fn build_function_name_summaries(const AnalysisContext &actx) throws
     -> StringMap<function_name_summary>
 {
   StringMap<function_name_summary> summaries{heap_allocator()};
-  summaries.reserve(actx.function_definitions.count());
+  summaries.reserve(actx.functions.records.count());
 
-  for (usize index = 0; index < actx.function_definitions.count(); index++) {
-    let const &definition = actx.function_definitions[index];
+  for (usize index = 0; index < actx.functions.records.count(); index++) {
+    let const &definition = actx.functions.records[index];
     let &summary = summaries.get_or_create(definition.name.view(), {});
     if (summary.first_definition_index != NO_DEFINITION_INDEX) continue;
 
@@ -1359,7 +1359,7 @@ fn check_call_before_definition(
 
     actx.report_diagnostic(
         diagnostic_id::sc2218, call.location, {call.name.view()},
-        actx.function_definitions[summary->first_definition_index].location);
+        actx.functions.records[summary->first_definition_index].location);
   }
 }
 
@@ -1367,7 +1367,7 @@ fn check_call_before_definition(
 
 fn check_function_argument_dataflow(AnalysisContext &actx) throws -> void
 {
-  if (actx.function_definitions.is_empty()) return;
+  if (actx.functions.records.is_empty()) return;
 
   let const should_check_argument_use =
       actx.should_report(diagnostic_id::sc2119) ||
@@ -1384,8 +1384,8 @@ fn check_function_argument_dataflow(AnalysisContext &actx) throws -> void
   let const summaries = build_function_name_summaries(actx);
 
   if (should_check_argument_use) {
-    for (usize index = 0; index < actx.function_definitions.count(); index++) {
-      let const &definition = actx.function_definitions[index];
+    for (usize index = 0; index < actx.functions.records.count(); index++) {
+      let const &definition = actx.functions.records[index];
       if (definition.first_positional_read.is_empty()) continue;
 
       /* A redefinition is judged by the first body the file gives the name. */
