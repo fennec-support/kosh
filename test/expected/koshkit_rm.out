@@ -18,6 +18,7 @@ tree still present
 -c:1:1: error: koshkit rm: refusing to remove the root directory: skipping '/'.
      1 |  koshkit rm --dry-run /
        |  ^~~~~~~~~~~~~~~~~~~~~~
+== -x and --one-file-system change nothing inside one file system:
 == rm -rf . is refused (count of the refusal):
 1
 == rm -rf .. is refused (count):

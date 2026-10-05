@@ -15,7 +15,7 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[-fHiLPpRrv] source ... destination");
+HELP_SYNOPSIS_DECL("[-fHiLPpRrvx] source ... destination");
 
 HELP_DESCRIPTION_DECL("The cp utility copies each source to the destination.");
 
@@ -29,6 +29,8 @@ FLAG(CP_FOLLOW_ROOT, Bool, 'H', "",
      "Follow a symbolic link named on the command line.");
 FLAG(CP_FOLLOW_ALL, Bool, 'L', "", "Follow every symbolic link.");
 FLAG(CP_FOLLOW_NONE, Bool, 'P', "", "Copy symbolic links as links.");
+FLAG(CP_ONE_FILE_SYSTEM, Bool, 'x', "one-file-system",
+     "Do not copy the contents of a directory on another file system.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Cp);
@@ -69,6 +71,8 @@ struct cp_options
   bool is_verbose;
   cp_recursive_mode recursive_mode;
   cp_symlink_mode symlink_mode;
+  bool is_one_file_system;
+  Maybe<u64> root_device_id;
 
   fn for_child() const -> cp_options
   {
@@ -286,36 +290,49 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
     os::make_directory(destination, 0700);
     let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
     defer { cxt.expansion_store().scratch_arena().release(directory_scratch); };
-    let names = os::list_directory_status(source, allocator);
-    if (!names.has_value())
-      throw Error{
-          "unable to read the directory '" + String{allocator, source}
-            +
-          "': " + os::last_system_error_message()
-      };
+
+    let child_options = options.for_child();
+    let is_other_file_system = false;
+    if (options.is_one_file_system && source_status.has_value()) {
+      if (!options.root_device_id.has_value())
+        child_options.root_device_id = source_status->device_id;
+      else
+        is_other_file_system =
+            source_status->device_id != *options.root_device_id;
+    }
 
     bool did_succeed = true;
-    for (let const &entry : *names) {
-      if (os::INTERRUPT_REQUESTED) return false;
-      let const child_scratch = cxt.expansion_store().scratch_arena().mark();
-      defer { cxt.expansion_store().scratch_arena().release(child_scratch); };
-      let const child_source = join_with_operand_separator(
-          source, entry.child.name.view(), allocator);
-      let const child_destination = join_with_operand_separator(
-          destination, entry.child.name.view(), allocator);
-      try {
-        if (!copy_path(ec, cxt, utility_name, child_source.view(),
-                       child_destination.view(), options.for_child(), allocator,
-                       entry.has_status ? &entry.status : nullptr,
-                       active_directories))
+    if (!is_other_file_system) {
+      let names = os::list_directory_status(source, allocator);
+      if (!names.has_value())
+        throw Error{
+            "unable to read the directory '" + String{allocator, source}
+              +
+            "': " + os::last_system_error_message()
+        };
+
+      for (let const &entry : *names) {
+        if (os::INTERRUPT_REQUESTED) return false;
+        let const child_scratch = cxt.expansion_store().scratch_arena().mark();
+        defer { cxt.expansion_store().scratch_arena().release(child_scratch); };
+        let const child_source = join_with_operand_separator(
+            source, entry.child.name.view(), allocator);
+        let const child_destination = join_with_operand_separator(
+            destination, entry.child.name.view(), allocator);
+        try {
+          if (!copy_path(ec, cxt, utility_name, child_source.view(),
+                         child_destination.view(), child_options, allocator,
+                         entry.has_status ? &entry.status : nullptr,
+                         active_directories))
+            did_succeed = false;
+        } catch (const BrokenPipeExit &) {
+          throw;
+        } catch (const Error &error) {
+          report_copy_error(ec, cxt, utility_name, error);
           did_succeed = false;
-      } catch (const BrokenPipeExit &) {
-        throw;
-      } catch (const Error &error) {
-        report_copy_error(ec, cxt, utility_name, error);
-        did_succeed = false;
+        }
+        if (os::INTERRUPT_REQUESTED) return false;
       }
-      if (os::INTERRUPT_REQUESTED) return false;
     }
 
     if (source_status.has_value() &&
@@ -425,9 +442,13 @@ fn Cp::execute(const ExecContext &ec, EvalContext &cxt,
     symlink_mode = cp_symlink_mode::FollowRoot;
   }
 
-  let const options =
-      cp_options{FLAG_CP_FORCE.is_enabled(), FLAG_CP_PRESERVE.is_enabled(),
-                 FLAG_CP_VERBOSE.is_enabled(), recursive_mode, symlink_mode};
+  let const options = cp_options{FLAG_CP_FORCE.is_enabled(),
+                                 FLAG_CP_PRESERVE.is_enabled(),
+                                 FLAG_CP_VERBOSE.is_enabled(),
+                                 recursive_mode,
+                                 symlink_mode,
+                                 FLAG_CP_ONE_FILE_SYSTEM.is_enabled(),
+                                 Maybe<u64>{}};
   let const should_prompt =
       FLAG_CP_INTERACTIVE.is_enabled() &&
       (!options.should_force ||

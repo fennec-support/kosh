@@ -106,3 +106,8 @@ sub/
 cp-links/loop-l/sub:
 rc=0
 up@
+--- one-file-system options change nothing inside one file system ---
+chgrp-short=0
+chgrp-long=0
+chown-short=0
+chown-long=0

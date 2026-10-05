@@ -179,7 +179,7 @@ _koshkit_util_flags ()
       echo "-i --interactive -p --pipe"
     ;;
     cp)
-      echo "-r -R -f -H -i -L -P -p -v"
+      echo "-r -R -f -H -i -L -P -p -v -x --one-file-system"
     ;;
     cut)
       echo \
@@ -261,7 +261,7 @@ _koshkit_util_flags ()
         "-c --clear -e --exit -i --ignore-case -s --squeeze -u --plain -n --lines -p --command -t --tag"
     ;;
     rm)
-      echo "-r -R -f -i --dry-run"
+      echo "-r -R -f -i -x --one-file-system --dry-run"
     ;;
     rmdir)
       echo "-p"
@@ -356,7 +356,7 @@ _koshkit_util_flags ()
       echo "-n --no-newline"
     ;;
     chgrp | chown)
-      echo "-H --dereference-arguments -L --dereference -P --physical -R --recursive -h --no-dereference"
+      echo "-H --dereference-arguments -L --dereference -P --physical -R --recursive -h --no-dereference -x --one-file-system"
     ;;
     chmod)
       echo "-R --recursive"

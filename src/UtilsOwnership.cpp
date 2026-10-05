@@ -46,11 +46,11 @@ static fn change_path_ownership_recursive(
     ownership_traversal_mode traversal_mode =
         ownership_traversal_mode::Recursive,
     ownership_symlink_mode symlink_mode = ownership_symlink_mode::Follow,
-    ownership_symlink_mode nested_symlink_mode =
-        ownership_symlink_mode::Follow) throws -> bool
+    ownership_symlink_mode nested_symlink_mode = ownership_symlink_mode::Follow,
+    Maybe<u64> root_device_id = {}) throws -> bool
 {
   let const is_recursive =
-      traversal_mode == ownership_traversal_mode::Recursive;
+      traversal_mode != ownership_traversal_mode::SinglePath;
   let const should_follow_symlink =
       symlink_mode == ownership_symlink_mode::Follow;
   let const should_follow_nested_symlinks =
@@ -93,6 +93,13 @@ static fn change_path_ownership_recursive(
     followed_status = path_status;
   }
   if (os::file_type_letter(followed_status.mode) != 'd') return true;
+
+  if (traversal_mode == ownership_traversal_mode::RecursiveOneFileSystem) {
+    if (!root_device_id.has_value())
+      root_device_id = followed_status.device_id;
+    else if (followed_status.device_id != *root_device_id)
+      return true;
+  }
 
   if (followed_status.has_file_identity) {
     for (let const &identity : active_directories) {
@@ -188,11 +195,12 @@ static fn change_path_ownership_recursive(
             ec, cxt, utility_name, child_paths[child_position], owner_id,
             group_id, active_directories, child_status,
             known_child_followed_status, was_child_followed_status_queried,
-            ownership_traversal_mode::Recursive,
+            traversal_mode,
             should_follow_nested_symlinks ? ownership_symlink_mode::Follow
                                           : ownership_symlink_mode::NoFollow,
             should_follow_nested_symlinks ? ownership_symlink_mode::Follow
-                                          : ownership_symlink_mode::NoFollow))
+                                          : ownership_symlink_mode::NoFollow,
+            root_device_id))
       did_succeed = false;
   }
 
@@ -225,7 +233,7 @@ fn change_path_ownership(const ExecContext &ec, EvalContext &cxt,
     -> bool
 {
   let const is_recursive =
-      traversal_mode == ownership_traversal_mode::Recursive;
+      traversal_mode != ownership_traversal_mode::SinglePath;
   let traversal_position = command_line_follow_position;
   if (follow_position > traversal_position)
     traversal_position = follow_position;

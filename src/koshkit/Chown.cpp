@@ -15,7 +15,7 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[-hR] [-H|-L|-P] owner[:group] file ...");
+HELP_SYNOPSIS_DECL("[-hRx] [-H|-L|-P] owner[:group] file ...");
 
 HELP_DESCRIPTION_DECL("The chown utility changes file owner and group.");
 
@@ -29,6 +29,8 @@ FLAG(CHOWN_FOLLOW, Bool, 'L', "dereference",
      "Follow every symbolic link during recursion.");
 FLAG(CHOWN_PHYSICAL, Bool, 'P', "physical",
      "Do not follow symbolic links during recursion.");
+FLAG(CHOWN_ONE_FILE_SYSTEM, Bool, 'x', "one-file-system",
+     "Do not descend into a directory on another file system.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Chown);
@@ -96,6 +98,12 @@ fn Chown::execute(const ExecContext &ec, EvalContext &cxt,
     group_id = *resolved;
   }
 
+  let const traversal_mode =
+      !FLAG_CHOWN_RECURSIVE.is_enabled()
+          ? utils::ownership_traversal_mode::SinglePath
+      : FLAG_CHOWN_ONE_FILE_SYSTEM.is_enabled()
+          ? utils::ownership_traversal_mode::RecursiveOneFileSystem
+          : utils::ownership_traversal_mode::Recursive;
   i32 status = 0;
 
   for (usize index = 1; index < operands.count(); index++) {
@@ -105,9 +113,7 @@ fn Chown::execute(const ExecContext &ec, EvalContext &cxt,
             Path{operands[index].view(), cxt.scratch_allocator()}, owner_id,
             group_id, FLAG_CHOWN_COMMAND_LINE_FOLLOW.position(),
             FLAG_CHOWN_FOLLOW.position(), FLAG_CHOWN_PHYSICAL.position(),
-            FLAG_CHOWN_RECURSIVE.is_enabled()
-                ? utils::ownership_traversal_mode::Recursive
-                : utils::ownership_traversal_mode::SinglePath,
+            traversal_mode,
             FLAG_CHOWN_NO_DEREFERENCE.is_enabled()
                 ? utils::ownership_symlink_mode::NoFollow
                 : utils::ownership_symlink_mode::Follow))

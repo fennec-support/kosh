@@ -281,3 +281,19 @@ echo "--- cp links without recursion and cycles ---"
 "$BIN" -c 'koshkit cp cp-links/link cp-links/copy-default; echo "rc=$?"; koshkit ls -F cp-links/copy-default'
 "$BIN" -c 'koshkit cp -rL cp-links/loop cp-links/loop-l 2>&1; echo "rc=$?"; koshkit ls -F cp-links/loop-l cp-links/loop-l/sub'
 "$BIN" -c 'koshkit cp -rP cp-links/loop cp-links/loop-p; echo "rc=$?"; koshkit ls -F cp-links/loop-p/sub'
+echo "--- one-file-system options change nothing inside one file system ---"
+mkdir -p ofs-src/sub
+printf one > ofs-src/a
+printf two > ofs-src/sub/b
+"$BIN" -c 'koshkit cp -r ofs-src ofs-plain; koshkit cp -rx ofs-src ofs-short; koshkit cp -r --one-file-system ofs-src ofs-long'
+for ofs_copy in ofs-short ofs-long; do
+  if [ "$(cat "$ofs_copy/a" "$ofs_copy/sub/b")" != "$(cat ofs-plain/a ofs-plain/sub/b)" ]; then
+    echo "cp-one-file-system=failed $ofs_copy"
+  fi
+done
+if [ "${OS-}" != Windows_NT ]; then
+  ofs_group=$(id -g)
+  ofs_user=$(id -u)
+  "$BIN" -c "koshkit chgrp -R -x $ofs_group ofs-src; echo chgrp-short=\$?; koshkit chgrp -R --one-file-system $ofs_group ofs-src; echo chgrp-long=\$?"
+  "$BIN" -c "koshkit chown -R -x $ofs_user:$ofs_group ofs-src; echo chown-short=\$?; koshkit chown -R --one-file-system $ofs_user ofs-src; echo chown-long=\$?"
+fi

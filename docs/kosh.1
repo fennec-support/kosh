@@ -1699,6 +1699,21 @@ option colors recognized shell source when standard output is a terminal. A
 file containing a null byte is written without highlighting. Line numbering
 continues across file and standard input boundaries.
 .TP
+.BR chgrp ", " chown
+The group, or the owner and optional group, of each file is changed. The
+.B \-R
+option recurses, and
+.BR \-H ,
+.BR \-L ,
+and
+.B \-P
+select how symbolic links are followed. The
+.B \-h
+option changes a link instead of its target. The
+.BR \-x ", " \-\-one\-file\-system
+option stops a recursion from descending into a directory on a file system
+other than the one of its operand. The directory itself is still changed.
+.TP
 .B cp
 Files and directory trees are copied. The
 .BR \-r ,
@@ -1721,7 +1736,10 @@ A copy without
 or
 .B \-P
 follows links. A symbolic link that leads back into a directory being copied is
-reported as cyclic and skipped, and the status is 1.
+reported as cyclic and skipped, and the status is 1. The
+.BR \-x ", " \-\-one\-file\-system
+option copies a directory on a file system other than the one of its source
+operand as an empty directory, without its contents.
 .TP
 .B df
 Mounted filesystems or the filesystems of the operands are reported. The
@@ -2182,7 +2200,10 @@ Paths are removed with
 .BR \-i ,
 and
 .BR \-\-dry\-run .
-Root, dot, and dot-dot are refused.
+Root, dot, and dot-dot are refused. The
+.BR \-x ", " \-\-one\-file\-system
+option skips a directory on a file system other than the one of its path
+operand, reports it as being on a different device, and makes the status 1.
 .TP
 .B rmdir
 Empty directories are removed. The

@@ -24,6 +24,7 @@ enum class ownership_traversal_mode : u8
 {
   SinglePath,
   Recursive,
+  RecursiveOneFileSystem,
 };
 
 enum class ownership_symlink_mode : u8

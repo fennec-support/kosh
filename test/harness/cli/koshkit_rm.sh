@@ -29,6 +29,22 @@ mkdir -p tree/sub
 echo "== rm refuses '.' and the root directory, before any removal:"
 "$BIN" -c 'koshkit rm --dry-run .' 2>&1
 "$BIN" -c 'koshkit rm --dry-run /' 2>&1
+echo "== -x and --one-file-system change nothing inside one file system:"
+"$BIN" -c 'koshkit rm -r --dry-run tree' > plain.out 2>&1
+"$BIN" -c 'koshkit rm -rx --dry-run tree' > short.out 2>&1
+"$BIN" -c 'koshkit rm -r --one-file-system --dry-run tree' > long.out 2>&1
+cmp -s plain.out short.out || echo "rm -x differs"
+cmp -s plain.out long.out || echo "rm --one-file-system differs"
+if [ "${TARGET:-$(uname -s)}" = Linux ] && [ -d /dev/pts ] &&
+  grep -q ' /dev/pts ' /proc/self/mountinfo; then
+  "$BIN" -c 'koshkit rm -r -x --dry-run /dev' > device.out 2> device.err
+  device_status=$?
+  [ "$device_status" -eq 1 ] || echo "rm -x device status=$device_status"
+  grep -q "skipping '/dev/pts', since it's on a different device" device.err ||
+    echo "rm -x did not report /dev/pts"
+  ! grep -q "would remove '/dev/pts" device.out ||
+    echo "rm -x descended into /dev/pts"
+fi
 cd "$initial_directory" || exit 1
 [ -n "$d" ] && rm -rf "$d"
 

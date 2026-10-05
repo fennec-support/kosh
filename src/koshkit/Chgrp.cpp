@@ -15,7 +15,7 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[-hR] [-H|-L|-P] group file ...");
+HELP_SYNOPSIS_DECL("[-hRx] [-H|-L|-P] group file ...");
 
 HELP_DESCRIPTION_DECL("The chgrp utility changes file group ownership.");
 
@@ -29,6 +29,8 @@ FLAG(CHGRP_FOLLOW, Bool, 'L', "dereference",
      "Follow every symbolic link during recursion.");
 FLAG(CHGRP_PHYSICAL, Bool, 'P', "physical",
      "Do not follow symbolic links during recursion.");
+FLAG(CHGRP_ONE_FILE_SYSTEM, Bool, 'x', "one-file-system",
+     "Do not descend into a directory on another file system.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Chgrp);
@@ -59,6 +61,12 @@ fn Chgrp::execute(const ExecContext &ec, EvalContext &cxt,
     return 1;
   }
 
+  let const traversal_mode =
+      !FLAG_CHGRP_RECURSIVE.is_enabled()
+          ? utils::ownership_traversal_mode::SinglePath
+      : FLAG_CHGRP_ONE_FILE_SYSTEM.is_enabled()
+          ? utils::ownership_traversal_mode::RecursiveOneFileSystem
+          : utils::ownership_traversal_mode::Recursive;
   i32 status = 0;
 
   for (usize index = 1; index < operands.count(); index++) {
@@ -68,9 +76,7 @@ fn Chgrp::execute(const ExecContext &ec, EvalContext &cxt,
             Path{operands[index].view(), cxt.scratch_allocator()}, -1,
             *group_id, FLAG_CHGRP_COMMAND_LINE_FOLLOW.position(),
             FLAG_CHGRP_FOLLOW.position(), FLAG_CHGRP_PHYSICAL.position(),
-            FLAG_CHGRP_RECURSIVE.is_enabled()
-                ? utils::ownership_traversal_mode::Recursive
-                : utils::ownership_traversal_mode::SinglePath,
+            traversal_mode,
             FLAG_CHGRP_NO_DEREFERENCE.is_enabled()
                 ? utils::ownership_symlink_mode::NoFollow
                 : utils::ownership_symlink_mode::Follow))
