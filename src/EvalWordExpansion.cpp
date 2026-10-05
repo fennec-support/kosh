@@ -33,38 +33,16 @@ static fn clone_word_segments(const Word &word, Allocator allocator) throws
   return segments;
 }
 
-struct modifier_array_word
+static fn is_field_sensitive_word(StringView word) wontthrow -> bool
 {
-  StringView array_name;
-  bool is_star;
-  bool is_quoted;
-};
+  for (usize i = 0; i < word.length; i++) {
+    let const byte = word[i];
+    if (byte == '"' || byte == '\'' || byte == '\\' || byte == '@') {
+      return true;
+    }
+  }
 
-static fn parse_modifier_array_word(StringView word) wontthrow
-    -> Maybe<modifier_array_word>
-{
-  let inner_word = word;
-  let const is_quoted = inner_word.length >= 2 && inner_word[0] == '"' &&
-                        inner_word[inner_word.length - 1] == '"';
-  if (is_quoted)
-    inner_word = inner_word.substring_of_length(1, inner_word.length - 2);
-  if (inner_word.length < 6 || inner_word[0] != '$' || inner_word[1] != '{' ||
-      inner_word[inner_word.length - 1] != '}')
-  {
-    return None;
-  }
-  let const inner = inner_word.substring_of_length(2, inner_word.length - 3);
-  usize name_end = 0;
-  while (name_end < inner.length && lexer::is_variable_name(inner[name_end]))
-    name_end++;
-  if (name_end == 0 || name_end + 3 != inner.length || inner[name_end] != '[' ||
-      (inner[name_end + 1] != '@' && inner[name_end + 1] != '*') ||
-      inner[name_end + 2] != ']')
-  {
-    return None;
-  }
-  return modifier_array_word{inner.substring_of_length(0, name_end),
-                             inner[name_end + 1] == '*', is_quoted};
+  return false;
 }
 
 hot fn EvalContext::expand_word(const Word &word) throws
@@ -173,6 +151,54 @@ hot fn EvalContext::expand_word(const Word &word) throws
         do_append_run(values[i].view(), false);
       else
         do_append_split_run(values[i].view(), true);
+    }
+  };
+
+  let const do_emit_modifier_word = [&](StringView word,
+                                        const SourceLocation *word_location,
+                                        bool is_quoted) throws {
+    if (!is_field_sensitive_word(word)) {
+      let const expanded =
+          expand_modifier_word(word, true, true, word_location);
+      if (is_quoted)
+        do_append_run(expanded.view(), false);
+      else
+        do_append_split_run(expanded.view(), true);
+      return;
+    }
+
+    let active = Bitset{scratch};
+    let break_offsets = ArrayList<usize>{scratch};
+    let forced = Bitset{scratch};
+    let const text = expand_modifier_word_fields(
+        word, is_quoted, active, break_offsets, forced, word_location);
+    usize piece_start = 0;
+    for (usize piece = 0; piece <= break_offsets.count(); piece++) {
+      let const piece_end =
+          piece < break_offsets.count() ? break_offsets[piece] : text.count();
+      if (piece > 0) do_flush();
+      if (is_quoted || forced[piece]) {
+        do_append_run(StringView{}, false);
+      }
+
+      usize run_start = piece_start;
+      while (run_start < piece_end) {
+        let const is_active = active[run_start] && !is_quoted;
+        usize run_end = run_start + 1;
+        while (run_end < piece_end &&
+               (active[run_end] && !is_quoted) == is_active)
+        {
+          run_end++;
+        }
+
+        let const run = StringView{text.data() + run_start, run_end - run_start};
+        if (is_active)
+          do_append_split_run(run, true);
+        else
+          do_append_run(run, false);
+        run_start = run_end;
+      }
+      piece_start = piece_end;
     }
   };
 
@@ -296,22 +322,10 @@ hot fn EvalContext::expand_word(const Word &word) throws
                            segment.is_in_double_quotes, is_star);
         };
         let const do_emit_word = [&]() throws {
-          if (let const array_word = parse_modifier_array_word(word);
-              array_word.has_value())
-          {
-            do_emit_elements(collect_array_elements(array_word->array_name),
-                             array_word->is_quoted ||
-                                 segment.is_in_double_quotes,
-                             array_word->is_star);
-            return;
-          }
           let word_location = SourceLocation{};
-          let const expanded = expand_modifier_word(
-              word, true, true, do_source_location_for(word, word_location));
-          if (segment.is_in_double_quotes)
-            do_append_run(expanded.view(), false);
-          else
-            do_append_split_run(expanded.view(), true);
+          do_emit_modifier_word(word,
+                                do_source_location_for(word, word_location),
+                                segment.is_in_double_quotes);
         };
 
         switch (op) {
@@ -630,57 +644,51 @@ hot fn EvalContext::expand_word(const Word &word) throws
               break;
             }
 
-            /* The inner word's own quoting governs the split, so a quoted
-               "${arr[@]}" keeps each element whole even though the outer
-               modifier here is unquoted. */
-            if (let const array_word = parse_modifier_array_word(modifier_word);
-                array_word.has_value())
-            {
-              do_emit_elements(collect_array_elements(array_word->array_name),
-                               array_word->is_quoted ||
-                                   segment.is_in_double_quotes,
-                               array_word->is_star);
-              break;
-            }
             let modifier_word_location = SourceLocation{};
-            let const value = expand_modifier_word(
-                modifier_word, true, true,
-                do_source_location_for(modifier_word, modifier_word_location));
-            if (segment.is_in_double_quotes)
-              do_append_run(value, false);
-            else
-              do_append_split_run(value, true);
+            do_emit_modifier_word(
+                modifier_word,
+                do_source_location_for(modifier_word, modifier_word_location),
+                segment.is_in_double_quotes);
             break;
           }
         }
-        let const rest = segment_text.substring(name_end);
-        let const is_colon_form = !rest.is_empty() && rest[0] == ':';
+      }
+      usize alternate_name_end = 0;
+      while (alternate_name_end < segment_text.length &&
+             lexer::is_variable_name(segment_text[alternate_name_end]))
+      {
+        alternate_name_end++;
+      }
+      if (alternate_name_end > 0 && alternate_name_end < segment_text.length) {
+        let const rest = segment_text.substring(alternate_name_end);
+        let const is_colon_form = rest[0] == ':';
         let const op_index = is_colon_form ? usize{1} : usize{0};
         if (op_index < rest.length &&
-            (rest[op_index] == '+' || rest[op_index] == '-'))
+            (rest[op_index] == '+' || rest[op_index] == '-') &&
+            is_field_sensitive_word(rest.substring(op_index + 1)))
         {
-          if (let const array_word =
-                  parse_modifier_array_word(rest.substring(op_index + 1));
-              array_word.has_value())
-          {
-            let const subject_elements = collect_array_elements(
-                segment_text.substring_of_length(0, name_end));
-            let const treat_as_unset = is_colon_form
-                                           ? (subject_elements.is_empty() ||
-                                              subject_elements[0].is_empty())
-                                           : subject_elements.is_empty();
-            let const modifier_op = rest[op_index];
-            let const should_expand_word =
-                modifier_op == '+' ? !treat_as_unset : treat_as_unset;
-            if (should_expand_word) {
-              let const values = collect_array_elements(array_word->array_name);
-              let const emit_quoted =
-                  array_word->is_quoted || segment.is_in_double_quotes;
-              do_emit_elements(values, emit_quoted, array_word->is_star);
-              break;
-            }
-            if (modifier_op == '+') break;
+          let const subject = get_variable_value(
+              segment_text.substring_of_length(0, alternate_name_end));
+          let const is_unset =
+              !subject.has_value() || (is_colon_form && subject->is_empty());
+          let const should_expand_word =
+              rest[op_index] == '+' ? !is_unset : is_unset;
+          if (should_expand_word) {
+            let const modifier_word = rest.substring(op_index + 1);
+            let modifier_word_location = SourceLocation{};
+            do_emit_modifier_word(
+                modifier_word,
+                do_source_location_for(modifier_word, modifier_word_location),
+                segment.is_in_double_quotes);
+          } else if (rest[op_index] == '-') {
+            if (segment.is_in_double_quotes)
+              do_append_run(subject->view(), false);
+            else
+              do_append_split_run(subject->view(), true);
+          } else if (segment.is_in_double_quotes) {
+            do_append_run(StringView{}, false);
           }
+          break;
         }
       }
       if (!segment_text.is_empty() &&

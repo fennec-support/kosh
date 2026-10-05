@@ -365,21 +365,43 @@ public:
 
   fn expand() throws -> String;
 
+  fn enable_fields(ArrayList<usize> &break_out, Bitset &forced_out,
+                   bool is_outer_quoted) throws -> void
+  {
+    m_break_out = &break_out;
+    m_forced_out = &forced_out;
+    m_is_outer_quoted = is_outer_quoted;
+    forced_out.push(false);
+  }
+
 private:
   EvalContext &m_context;
   StringView m_word;
   Bitset *m_active_out;
   String m_out;
   const SourceLocation *m_source_location;
+  ArrayList<usize> *m_break_out = nullptr;
+  Bitset *m_forced_out = nullptr;
   usize m_index = 0;
   bool m_remove_quotes;
   bool m_is_pattern_word;
   bool m_strip_escaped_literals;
   bool m_is_in_single_quote = false;
   bool m_is_in_double_quote = false;
+  bool m_is_outer_quoted = false;
+  bool m_did_quoted_emit = false;
+  bool m_did_quoted_at = false;
 
   fn emit_byte(char byte, bool is_active) throws -> void;
   fn emit_run(StringView bytes, bool is_active) throws -> void;
+  fn is_quoted() const wontthrow -> bool
+  {
+    return m_is_in_double_quote || m_is_outer_quoted;
+  }
+  fn mark_quoted_emit() wontthrow -> void;
+  fn start_field() throws -> void;
+  fn emit_field_elements(const ArrayList<String> &values) throws -> void;
+  fn expand_field_reference(StringView inner) throws -> bool;
   fn toggle_quote_state() wontthrow -> bool;
   fn expand_backslash() throws -> void;
   fn expand_backquote() throws -> void;
@@ -403,13 +425,66 @@ private:
 fn EvalContext::ModifierWordExpander::emit_byte(char byte,
                                                 bool is_active) throws -> void
 {
+  mark_quoted_emit();
   m_out += byte;
   if (m_active_out != nullptr) m_active_out->push(is_active);
+}
+
+fn EvalContext::ModifierWordExpander::mark_quoted_emit() wontthrow -> void
+{
+  if (m_forced_out == nullptr || !is_quoted()) {
+    return;
+  }
+
+  m_did_quoted_emit = true;
+  m_forced_out->set(m_forced_out->count() - 1);
+}
+
+fn EvalContext::ModifierWordExpander::start_field() throws -> void
+{
+  m_break_out->push(m_out.count());
+  m_forced_out->push(false);
+}
+
+fn EvalContext::ModifierWordExpander::emit_field_elements(
+    const ArrayList<String> &values) throws -> void
+{
+  if (is_quoted()) m_did_quoted_at = true;
+
+  for (usize i = 0; i < values.count(); i++) {
+    if (i > 0) start_field();
+    emit_run(values[i].view(), !is_quoted());
+  }
+}
+
+fn EvalContext::ModifierWordExpander::expand_field_reference(
+    StringView inner) throws -> bool
+{
+  if (m_forced_out == nullptr) return false;
+
+  if (inner == "@") {
+    emit_field_elements(m_context.variable_store().positional_params());
+    return true;
+  }
+
+  let const name_length = inner.length < 3 ? usize{0} : inner.length - 3;
+  if (name_length == 0 || inner[name_length] != '[' ||
+      inner[name_length + 1] != '@' || inner[name_length + 2] != ']')
+  {
+    return false;
+  }
+  for (usize i = 0; i < name_length; i++)
+    if (!lexer::is_variable_name(inner[i])) return false;
+
+  emit_field_elements(
+      m_context.collect_array_elements(inner.substring_of_length(0, name_length)));
+  return true;
 }
 
 fn EvalContext::ModifierWordExpander::emit_run(StringView bytes,
                                                bool is_active) throws -> void
 {
+  mark_quoted_emit();
   if (m_is_pattern_word && is_active) {
     for (usize k = 0; k < bytes.length; k++) {
       if (bytes[k] == '\\' && k + 1 < bytes.length) {
@@ -434,6 +509,15 @@ fn EvalContext::ModifierWordExpander::toggle_quote_state() wontthrow -> bool
   /* A heredoc body passes remove_quotes as false, so its quotes stay. */
   if (m_remove_quotes && !m_is_in_single_quote && m_word[m_index] == '"') {
     m_is_in_double_quote = !m_is_in_double_quote;
+    if (m_is_in_double_quote) {
+      m_did_quoted_emit = false;
+      m_did_quoted_at = false;
+    } else if (m_forced_out != nullptr && !m_did_quoted_emit &&
+               !m_did_quoted_at)
+    {
+      m_forced_out->set(m_forced_out->count() - 1);
+    }
+
     return true;
   }
   if (m_remove_quotes && !m_is_in_double_quote && m_word[m_index] == '\'') {
@@ -643,6 +727,11 @@ fn EvalContext::ModifierWordExpander::expand_braced_parameter() throws -> void
 {
   usize j = 0;
   let const inner = scan_braced_body(j);
+  if (expand_field_reference(inner.view())) {
+    m_index = j;
+    return;
+  }
+
   let inner_location = SourceLocation{};
   const SourceLocation *inner_location_pointer = nullptr;
   if (m_source_location != nullptr &&
@@ -764,6 +853,11 @@ fn EvalContext::ModifierWordExpander::expand_special_parameter(char name) throws
   let const special_name = StringView{&name, 1};
   if (!m_context.get_variable_value(special_name).has_value())
     m_context.report_unset_reference(special_name);
+  if (name == '@' && expand_field_reference(special_name)) {
+    m_index++;
+    return;
+  }
+
   emit_run(m_context.expand_variable(special_name), !m_is_in_double_quote);
   m_index++;
 }
@@ -844,6 +938,18 @@ fn EvalContext::expand_modifier_word_worker(
                                       active_out,      remove_quotes,
                                       is_pattern_word, strip_escaped_literals,
                                       source_location};
+
+  return expander.expand();
+}
+
+fn EvalContext::expand_modifier_word_fields(
+    StringView word, bool is_outer_quoted, Bitset &active_out,
+    ArrayList<usize> &break_out, Bitset &forced_out,
+    const SourceLocation *source_location) throws -> String
+{
+  let expander = ModifierWordExpander{*this, word,  &active_out, true,
+                                      false, true, source_location};
+  expander.enable_fields(break_out, forced_out, is_outer_quoted);
 
   return expander.expand();
 }
