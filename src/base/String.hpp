@@ -159,10 +159,7 @@ public:
     return StringView{m_data, m_length};
   }
   operator StringView() const wontthrow { return StringView{m_data, m_length}; }
-  hot mustuse pure fn c_str() const wontthrow -> const char *
-  {
-    return m_data != nullptr ? m_data : "";
-  }
+  hot mustuse pure fn c_str() const wontthrow -> const char * { return m_data; }
 
   fn clear() wontthrow -> void;
 
@@ -171,7 +168,6 @@ public:
      null slot, so the fit test is length + count < capacity. */
   hot fn push(char c) throws -> void
   {
-    if (m_length == SIZE_MAX) rarely throw std::bad_alloc{};
     m_ascii_state = AsciiState::Unknown;
     let const new_length = m_length + 1;
     if (new_length < m_capacity) usually

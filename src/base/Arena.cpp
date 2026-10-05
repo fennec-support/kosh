@@ -47,7 +47,7 @@ hot fn bump_arena_allocate(BumpArena *arena, usize length,
 fn bump_arena_owns(const BumpArena *arena, const opaque *pointer) wontthrow
     -> bool
 {
-  return arena != nullptr && arena->owns(pointer);
+  return arena->owns(pointer);
 }
 
 BumpArena::BumpArena()
@@ -179,7 +179,6 @@ cold fn BumpArena::add_block(usize minimum_size, usize preferred_size) throws
   if (minimum_size > size) size = minimum_size;
 
   let const base = heap_allocator().alloc_array<u8>(size);
-  if (base == nullptr) throw std::bad_alloc{};
 
   ASSERT(size >= minimum_size, "fresh block must fit the requested allocation");
 
@@ -199,8 +198,6 @@ cold fn BumpArena::add_block(usize minimum_size, usize preferred_size) throws
 
 hot fn BumpArena::allocate(usize size, usize alignment) throws -> opaque *
 {
-  if (size > SIZE_MAX - alignment) throw std::bad_alloc{};
-
   loop
   {
     while (m_current_index < m_blocks.count()) {
@@ -219,6 +216,8 @@ hot fn BumpArena::allocate(usize size, usize alignment) throws -> opaque *
 
       m_current_index++;
     }
+
+    if (size > SIZE_MAX - alignment) throw std::bad_alloc{};
 
     add_block(size + alignment, DEFAULT_BLOCK_SIZE);
     m_current_index = m_blocks.count() - 1;

@@ -140,9 +140,7 @@ private:
     let const size = length <= (usize{1} << MIN_CLASS_SHIFT)
                          ? (usize{1} << MIN_CLASS_SHIFT)
                          : length;
-    let shift = static_cast<usize>(64 - __builtin_clzll(size - 1));
-    if (shift < MIN_CLASS_SHIFT) shift = MIN_CLASS_SHIFT;
-    return shift;
+    return static_cast<usize>(64 - __builtin_clzll(size - 1));
   }
 };
 

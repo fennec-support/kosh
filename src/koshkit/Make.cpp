@@ -3774,8 +3774,6 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
         if (!runtime_flags.should_keep_going) return 2;
       }
     }
-  } catch (const InterruptErrorWithLocation &) {
-    throw;
   } catch (const ErrorWithLocation &) {
     throw;
   } catch (Error &error) {

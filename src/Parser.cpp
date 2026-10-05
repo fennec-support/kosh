@@ -813,7 +813,7 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
           /* An ampersand glued to the pipe under POSIX mode is the bash |&
              stderr pipe read as | then &. */
           Token *after = m_lexer.peek_shell_token();
-          if (m_lexer.is_posix_mode() && after != nullptr &&
+          if (m_lexer.is_posix_mode() &&
               after->kind() == Token::Kind::Ampersand &&
               after->source_location().position ==
                   last_pipe_token->source_location().position + 1)

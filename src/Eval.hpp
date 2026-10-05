@@ -2514,8 +2514,6 @@ public:
       -> void;
   fn publish_single_pipe_status(i32 status) throws -> void;
   fn publish_pipe_statuses(ArrayList<String> values) throws -> void;
-  fn append_indexed_array(StringView name, ArrayList<String> values) throws
-      -> void;
   fn set_array_element(StringView name, usize index, StringView value) throws
       -> void;
 
@@ -2691,7 +2689,6 @@ public:
                               usize end_position) const wontthrow -> StringView;
   pure fn function_storage_stats() const wontthrow -> function_arena_stats;
   fn unset_function(StringView name) throws -> void;
-  fn clear_functions() wontthrow -> void;
   fn mark_function_readonly(StringView name) throws -> void;
   /* out_exit_status receives the function's return status, so the engine sees
      the 124 a dynamic loader returns to request a retry. */
@@ -2856,10 +2853,6 @@ public:
   fn reset_inherited_signal_traps() wontthrow -> void;
   pure fn did_reset_inherited_signal_traps() const wontthrow -> bool;
 
-  fn set_startup_ignored_signals(u64 signals) wontthrow -> void
-  {
-    trap_store().startup_ignored_signals() = signals;
-  }
   pure fn is_signal_ignored_at_startup(StringView condition) const wontthrow
       -> bool;
   fn note_subshell_child_exit() wontthrow -> void;
@@ -3052,9 +3045,8 @@ public:
   fn warn_or_throw(bool fatal, bool explicitly_requested,
                    const SourceLocation &location, StringView message,
                    StringView note = {}) throws -> void;
-  /* Renders a located runtime warning at the command being evaluated. The _at
-     form takes a finer location inside that command. */
-  cold fn show_runtime_warning(StringView message) wontthrow -> void;
+  /* Renders a runtime warning at a location inside the command being
+     evaluated. */
   cold fn show_runtime_warning_at(SourceLocation location, StringView message,
                                   StringView note = {},
                                   bool should_ignore_disabled = false) wontthrow
@@ -3277,18 +3269,10 @@ public:
   fn evaluate_arithmetic_cached_text(const WordSegment &segment) throws
       -> String;
 
-  /* The same value as evaluate_arithmetic, but a substitution-free expression
-     lexes its tokens once onto the segment and re-evaluates from them. */
-  fn evaluate_arithmetic_cached(const WordSegment &segment) throws -> i64;
-
-  /* The same value as evaluate_arithmetic, but it lexes the clause once into
-     the caller-owned token store and re-evaluates from it. A complex clause or
-     a lexing failure falls back to the char parser, and a clause holding a
-     substitution skips the cache. */
-  fn evaluate_arithmetic_cached_clause(
-      StringView expression, ArrayList<arith_token> &tokens, bool &is_tokenized,
-      bool &is_simple, const SourceLocation *source_location = nullptr) throws
-      -> i64;
+  /* The same truth value as evaluate_arithmetic, but it lexes the clause once
+     into the caller-owned token store and re-evaluates from it. A complex
+     clause or a lexing failure falls back to the char parser, and a clause
+     holding a substitution skips the cache. */
   fn evaluate_arithmetic_cached_clause_nonzero(
       StringView expression, ArrayList<arith_token> &tokens, bool &is_tokenized,
       bool &is_simple, const SourceLocation *source_location = nullptr) throws
@@ -3391,8 +3375,6 @@ public:
   fn leave_parameter_expansion() wontthrow -> void;
 
   fn clear_retained_sources() wontthrow -> void;
-
-  fn retain_ast(Expression *ast) throws -> void;
 
   fn expand_heredoc_body(StringView body,
                          const SourceLocation *source_location = nullptr) throws

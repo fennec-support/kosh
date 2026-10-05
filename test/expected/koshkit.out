@@ -31,11 +31,13 @@ mv
 -t
 == du flags through koshkit:
 --help
+--one-file-system
 --top-largest
 --tree
 -T
 -h
 -s
+-x
 == timeout flags through koshkit:
 --help
 --kill-after

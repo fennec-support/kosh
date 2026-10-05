@@ -917,7 +917,7 @@ hot fn Parser::parse_conditional_command() throws -> Command *
 
       if (is_unquoted_word(t, "=~")) {
         Token *peek = m_lexer.peek_shell_token();
-        if (peek != nullptr && !is_unquoted_word(peek, "]]") &&
+        if (!is_unquoted_word(peek, "]]") &&
             peek->kind() != Token::Kind::EndOfFile &&
             peek->kind() != Token::Kind::DoubleAmpersand &&
             peek->kind() != Token::Kind::DoublePipe &&
@@ -958,7 +958,7 @@ hot fn Parser::parse_conditional_command() throws -> Command *
           loop
           {
             Token *next = m_lexer.peek_shell_token();
-            if (next == nullptr || is_unquoted_word(next, "]]") ||
+            if (is_unquoted_word(next, "]]") ||
                 next->kind() == Token::Kind::EndOfFile)
             {
               break;

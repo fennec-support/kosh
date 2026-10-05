@@ -833,11 +833,6 @@ pure fn EvalContext::borrowed_frame_source(
   return frame.parent_source;
 }
 
-fn EvalContext::retain_ast(Expression *ast) throws -> void
-{
-  source_store().retained_source_asts().push(ast);
-}
-
 fn EvalContext::expand_heredoc_body(
     StringView body, const SourceLocation *source_location) throws -> String
 {

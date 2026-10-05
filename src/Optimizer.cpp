@@ -714,13 +714,6 @@ fn rule_fold_cstyle_for(const Expression *node, AnalysisContext &actx) throws
   /* A condition that reads the counter would freeze the loop at its first
      verdict. Only a condition built entirely from constant arithmetic bytes
      folds. */
-  for (usize i = 0; i < trimmed.length; i++) {
-    if (!is_constant_arithmetic_byte(trimmed[i])) {
-      LOG(All, "the c-style-for fold declines, the condition is not constant");
-      return false;
-    }
-  }
-
   let const value = try_fold_constant_arithmetic(trimmed);
   if (!value.has_value()) return false;
   bool is_exact_nonzero;

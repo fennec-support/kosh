@@ -811,11 +811,6 @@ fn EvalContext::sorted_variable_assignments() const throws
   return steal(assignments).make_sorted(sort_order::ascending);
 }
 
-fn EvalContext::clear_functions() wontthrow -> void
-{
-  function_store().definitions().clear();
-}
-
 fn EvalContext::snapshot_state() throws -> eval_state_snapshot
 {
   let working_directory = os::reference_current_directory();

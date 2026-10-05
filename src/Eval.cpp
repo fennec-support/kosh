@@ -569,28 +569,6 @@ fn EvalContext::publish_single_pipe_status(i32 status) throws -> void
   values.push(String::from(status, values.allocator()));
 }
 
-fn EvalContext::append_indexed_array(StringView name,
-                                     ArrayList<String> values) throws -> void
-{
-  if (is_write_discarded_dynamic_variable(name)) return;
-
-  if (let existing = variable_store().indexed_arrays().find(name);
-      existing.has_value())
-  {
-    LOG(All, "appending %zu elements to the existing array '%.*s'",
-        values.count(), static_cast<int>(name.length), name.data);
-    if (is_readonly(name))
-      throw Error{"Unable to assign '" + name + "' because it is read only"};
-    if (is_lowercase_variable(name) || is_uppercase_variable(name))
-      rarely for (let &value : values) apply_variable_case(name, value);
-    variable_store().shell_variables().erase(name);
-    for (let &element : values)
-      existing->push(steal(element));
-    return;
-  }
-  set_indexed_array(name, steal(values));
-}
-
 /* The script-fatal mark aborts the whole run, unlike the command-level errors
    the bash mood continues past. */
 wontreturn fn throw_script_fatal(StringView message, StringView note) throws
@@ -605,11 +583,6 @@ wontreturn fn throw_script_fatal(StringView message, StringView note) throws
   ErrorWithDetails error{message, note};
   error.set_script_fatal();
   throw steal(error);
-}
-
-cold fn EvalContext::show_runtime_warning(StringView message) wontthrow -> void
-{
-  show_runtime_warning_at(source_store().current_location(), message);
 }
 
 cold fn EvalContext::show_runtime_warning_at(

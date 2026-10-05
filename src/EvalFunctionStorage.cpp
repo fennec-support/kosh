@@ -140,15 +140,6 @@ fn FunctionBodyHandle::set_definition(
   m_storage->definition_info = steal(definition_info);
 }
 
-pure fn FunctionBodyHandle::get_stats() const wontthrow -> function_arena_stats
-{
-  if (m_storage == nullptr) return {};
-
-  let const &arena = *m_storage->arena;
-  return {arena.bytes_used(), arena.bytes_capacity(), arena.block_count(),
-          arena.destructor_count(), arena.destructor_capacity()};
-}
-
 pure fn live_function_storage_stats() wontthrow -> function_arena_stats
 {
   function_arena_stats total{};

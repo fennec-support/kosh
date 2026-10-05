@@ -252,7 +252,9 @@ private:
     let index = static_cast<usize>(hash) & mask;
     let first_tombstone = NO_INDEX;
 
-    for (usize probe_count = 0; probe_count < m_capacity; probe_count++) {
+    ASSERT(m_count + m_tombstones < m_capacity);
+    loop
+    {
       let const &candidate = m_slots[index];
       if (candidate.state == slot::Empty) {
         return {NO_INDEX,
@@ -266,8 +268,6 @@ private:
       }
       index = (index + 1) & mask;
     }
-
-    return {NO_INDEX, first_tombstone};
   }
 
   hot fn prepare_insertion(StringView key, u64 hash) throws -> probe_result

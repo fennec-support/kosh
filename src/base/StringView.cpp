@@ -108,7 +108,6 @@ KOSH_STRINGVIEW_TO(hu64)
 
 fn StringView::find_character(char wanted) const wontthrow -> Maybe<usize>
 {
-  if (length == 0) return None;
   let const found =
       byte_scan::find_byte(data, length, static_cast<unsigned char>(wanted));
   if (found == nullptr) return None;
@@ -118,7 +117,6 @@ fn StringView::find_character(char wanted) const wontthrow -> Maybe<usize>
 
 fn StringView::find_last_character(char wanted) const wontthrow -> Maybe<usize>
 {
-  if (length == 0) return None;
   let const found = byte_scan::find_last_byte(
       data, length, static_cast<unsigned char>(wanted));
   if (found == nullptr) return None;

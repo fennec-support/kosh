@@ -258,13 +258,6 @@ fn JobTable::wait_for_job_processes(job &job, bool *was_stopped) throws -> i32
   }
 }
 
-fn JobTable::find_job(i32 id) wontthrow -> job *
-{
-  for (job &job : m_jobs)
-    if (job.id == id) return &job;
-  return nullptr;
-}
-
 fn JobTable::find_job_index_by_spec(StringView spec) throws -> Maybe<usize>
 {
   if (m_jobs.is_empty()) return koshka::None;

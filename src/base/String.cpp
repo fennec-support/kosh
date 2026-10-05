@@ -119,7 +119,7 @@ fn String::clear() wontthrow -> void
 {
   m_length = 0;
   m_ascii_state = AsciiState::Ascii;
-  if (m_data != nullptr) m_data[0] = '\0';
+  m_data[0] = '\0';
 }
 
 cold fn String::reserve(usize needed) throws -> void
@@ -205,9 +205,7 @@ fn String::find_last_character(char wanted) const wontthrow -> Maybe<usize>
 cold fn String::free_storage() wontthrow -> void
 {
   /* The inline buffer is part of the object and is never freed. */
-  if (m_data != nullptr && m_data != m_inline) {
-    m_allocator.free_array(m_data, m_capacity);
-  }
+  if (m_data != m_inline) m_allocator.free_array(m_data, m_capacity);
   reset_to_inline();
 }
 

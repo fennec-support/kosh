@@ -2318,48 +2318,6 @@ fn EvalContext::evaluate_arithmetic_cached_text(
   return result;
 }
 
-fn EvalContext::evaluate_arithmetic_cached(const WordSegment &segment) throws
-    -> i64
-{
-  let const source_location = segment.get_source_location(
-      source_store().current_location().source_name_index);
-
-  let cache_arena = segment.is_substitution_cache_in_function_arena
-                        ? arena_store().function_arena()
-                        : arena_store().parse_arena();
-  if (cache_arena == nullptr) {
-    return evaluate_arithmetic(segment.text.view(), source_location.has_value()
-                                                        ? &*source_location
-                                                        : nullptr);
-  }
-
-  let &cache = segment.get_eval_cache(cache_arena);
-  if (cache.arith == nullptr ||
-      !cache_arena->is_lifetime_valid(cache.arithmetic_lifetime))
-  {
-    cache.arith = cache_arena->create<arith_token_cache>();
-    cache.arithmetic_lifetime = cache_arena->register_lifetime();
-  }
-
-  return evaluate_arithmetic_cached_clause(
-      segment.text.view(), cache.arith->tokens, cache.arith->is_tokenized,
-      cache.arith->is_simple,
-      source_location.has_value() ? &*source_location : nullptr);
-}
-
-fn EvalContext::evaluate_arithmetic_cached_clause(
-    StringView expression, ArrayList<arith_token> &tokens, bool &is_tokenized,
-    bool &is_simple, const SourceLocation *source_location) throws -> i64
-{
-  let const scratch = expansion_store().scratch_arena().mark();
-  defer { expansion_store().scratch_arena().release(scratch); };
-  let const is_exact = runtime_state().is_extended_arithmetic_enabled();
-  let const value = evaluate_arithmetic_cached_value(
-      this, expression, tokens, is_tokenized, is_simple, source_location,
-      is_exact, expansion_store().scratch_arena());
-  return is_exact ? value.checked_i64() : value.wrapped_i64();
-}
-
 fn EvalContext::evaluate_arithmetic_cached_clause_nonzero(
     StringView expression, ArrayList<arith_token> &tokens, bool &is_tokenized,
     bool &is_simple, const SourceLocation *source_location) throws -> bool

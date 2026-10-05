@@ -402,7 +402,6 @@ public:
   fn update_jobs() throws -> void;
   fn wait_for_job_processes(job &entry, bool *was_stopped = nullptr) throws
       -> i32;
-  fn find_job(i32 id) wontthrow -> job *;
   fn find_job_index_by_spec(StringView spec) throws -> Maybe<usize>;
   fn find_job_by_spec(StringView spec) throws -> job *;
   fn most_recent_job() wontthrow -> job *;
@@ -574,7 +573,6 @@ public:
   fn set_definition(StringView source,
                     function_definition_info definition_info) const throws
       -> void;
-  pure fn get_stats() const wontthrow -> function_arena_stats;
 
 private:
   explicit FunctionBodyHandle(function_body_storage *storage)

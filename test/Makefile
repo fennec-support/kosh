@@ -135,7 +135,7 @@ FAILED_LIST := failed.diff
 export FAILED_LIST
 
 export TEST_SHELL := $(SHELL)
-unexport KOSH_IDENTITY
+unexport KOSH_IDENTITY KOSH_ANALYSIS KOSH_FLAGS
 
 export KOSH_HISTORY_FILE := $(CURDIR)/.test_history
 export KOSH_DIRECTORY_HISTORY := $(CURDIR)/.test_directory_history
