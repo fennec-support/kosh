@@ -66,48 +66,48 @@ file-link
 --- find a long path ---
 long/abcdefghijklmnopqrstuvwxyz/segment/leaf
 --- find unknown predicate ---
-1:16: error: koshkit find: unknown predicate '-bogus'.
+-c:1:16: error: koshkit find: unknown predicate '-bogus'.
      1 |  koshkit find . -bogus
        |                 ^~~~~~
 note: Use `-name`, `-iname`, `-type`, `-maxdepth`, `-mindepth`, or `-print`.
 --- find missing -name argument ---
-1:16: error: koshkit find: -name expects a pattern.
+-c:1:16: error: koshkit find: -name expects a pattern.
      1 |  koshkit find . -name
        |                 ^~~~~
 note: Pass a glob after `-name`, e.g. `-name '*.c'`.
 --- find invalid -type argument ---
-1:22: error: koshkit find: -type expects one of f, d, or l.
+-c:1:22: error: koshkit find: -type expects one of f, d, or l.
      1 |  koshkit find . -type x
        |                       ^
 note: Pass `f`, `d`, or `l` after `-type`.
 --- find missing -type argument ---
-1:16: error: koshkit find: -type expects one of f, d, or l.
+-c:1:16: error: koshkit find: -type expects one of f, d, or l.
      1 |  koshkit find . -type
        |                 ^~~~~
 note: Pass `f`, `d`, or `l` after `-type`.
 --- find negative -maxdepth argument ---
-1:26: error: koshkit find: -maxdepth expects a non-negative number, got '-1'.
+-c:1:26: error: koshkit find: -maxdepth expects a non-negative number, got '-1'.
      1 |  koshkit find . -maxdepth -1
        |                           ^~
 note: Depth must be a whole number greater than or equal to zero.
 --- find out of range -maxdepth argument ---
-1:26: error: koshkit find: -maxdepth expects a non-negative number, got '99999999999999999999'.
+-c:1:26: error: koshkit find: -maxdepth expects a non-negative number, got '99999999999999999999'.
      1 |  koshkit find . -maxdepth 99999999999999999999
        |                           ^~~~~~~~~~~~~~~~~~~~
 note: Depth must be a whole number greater than or equal to zero.
 status=1
-1:26: error: koshkit find: -mindepth expects a non-negative number, got '99999999999999999999'.
+-c:1:26: error: koshkit find: -mindepth expects a non-negative number, got '99999999999999999999'.
      1 |  koshkit find . -mindepth 99999999999999999999
        |                           ^~~~~~~~~~~~~~~~~~~~
 note: Depth must be a whole number greater than or equal to zero.
 status=1
 --- find invalid -mindepth argument ---
-1:26: error: koshkit find: -mindepth expects a non-negative number, got 'many'.
+-c:1:26: error: koshkit find: -mindepth expects a non-negative number, got 'many'.
      1 |  koshkit find . -mindepth many
        |                           ^~~~
 note: Depth must be a whole number greater than or equal to zero.
 --- find missing -maxdepth argument ---
-1:16: error: koshkit find: -maxdepth expects a number.
+-c:1:16: error: koshkit find: -maxdepth expects a number.
      1 |  koshkit find . -maxdepth
        |                 ^~~~~~~~~
 note: Pass a whole number greater than or equal to zero.
@@ -168,12 +168,12 @@ a/one.txt
 --- find -print0 separates paths with null bytes ---
 a/b/c/three.txt a/literal[bracket].txt a/one.txt
 --- find -exec without a terminator ---
-1:16: error: koshkit find: -exec expects a command ended by `;` or `+`.
+-c:1:16: error: koshkit find: -exec expects a command ended by `;` or `+`.
      1 |  koshkit find a -exec echo {}; printf "status=%s\\n" "$?"
        |                 ^~~~~
 note: Write `-exec command {} \;` or `-exec command {} +`.
 status=1
-1:27: error: koshkit find: -exec with `+` expects `{}` before it.
+-c:1:27: error: koshkit find: -exec with `+` expects `{}` before it.
      1 |  koshkit find a -exec echo \+; printf "status=%s\\n" "$?"
        |                            ^~
 note: Put `{}` as the last command argument.

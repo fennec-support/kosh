@@ -1,4 +1,4 @@
-1:7: error: Interrupted.
+-c:1:7: error: Interrupted.
      1 |  n=$1; echo $((n ** 100000000))
        |        ^~~~~~~~~~~~~~~~~~~~~~~~
 arithmetic-exit=130

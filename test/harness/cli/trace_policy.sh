@@ -92,7 +92,7 @@ printf 'function substitution traces=%s errors=%s parents=%s sites=%s\n' \
     "$(printf '%s\n' "$out" | grep -c 'error:')" \
     "$(printf '%s\n' "$out" |
         grep -Fc 'echo ${ no_such_function_substitution_xyz; }')" \
-    "$(printf '%s\n' "$out" | grep -c '^1:6: trace:')"
+    "$(printf '%s\n' "$out" | grep -c '^-c:1:6: trace:')"
 
 out=$("$BIN" --no-diagnostics \
     -c 'case X=$(no_such_case_copy_xyz) in *) :;; esac' 2>&1)
@@ -134,7 +134,7 @@ out=$("$BIN" --no-diagnostics \
 printf 'process eval traces=%s errors=%s inner-sites=%s\n' \
     "$(printf '%s\n' "$out" | grep -Ec 'trace:')" \
     "$(printf '%s\n' "$out" | grep -c 'error:')" \
-    "$(printf '%s\n' "$out" | grep -c '^1:15: trace:')"
+    "$(printf '%s\n' "$out" | grep -c '^-c:1:15: trace:')"
 
 out=$("$BIN" --no-diagnostics \
     -c 'koshkit cat <(echo prefix >&2; eval no_such_prefixed_process_eval_xyz)' \

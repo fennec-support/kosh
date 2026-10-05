@@ -708,8 +708,8 @@ static fn run_lint_document_contents(
     Maybe<StringView> filename,
     analysis_diagnostic_totals *diagnostic_totals = nullptr,
     ArrayList<source_diagnostic> *diagnostic_sink = nullptr,
-    bool *is_format_recognized = nullptr, bool should_print_ast = true) throws
-    -> int
+    bool *is_format_recognized = nullptr, bool should_print_ast = true,
+    Maybe<StringView> shell_source_name = None) throws -> int
 {
   let const document =
       parse_format_document(parser_format_input{source.view(), filename, None});
@@ -721,11 +721,15 @@ static fn run_lint_document_contents(
 
     return EXIT_FAILURE;
   }
-  if (!document.is_host_format)
-    return run_script_contents(source, context, ast_arena, filename, nullptr,
-                               nullptr, None,
-                               {diagnostic_totals, diagnostic_sink, nullptr},
-                               {true, false, should_print_ast});
+  if (!document.is_host_format) {
+    let const has_shell_source_name = shell_source_name.has_value();
+
+    return run_script_contents(
+        source, context, ast_arena,
+        has_shell_source_name ? shell_source_name : filename, nullptr, nullptr,
+        None, {diagnostic_totals, diagnostic_sink, nullptr},
+        {!has_shell_source_name, false, should_print_ast});
+  }
 
   let const saved_mood = context.runtime_state().get_mood();
   let const saved_warning_level = context.runtime_state().get_warning_level();

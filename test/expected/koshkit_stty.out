@@ -1,4 +1,4 @@
-3:14: error: koshkit stty: invalid terminal setting.
+-c:3:14: error: koshkit stty: invalid terminal setting.
      3 |  koshkit stty KOSH_MISSING_SETTING 2>&1
        |               ^~~~~~~~~~~~~~~~~~~~
 note: read the current terminal settings with `stty -a`.

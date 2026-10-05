@@ -17,7 +17,7 @@
 === variable read ===
 42
 === obvious xor power hint ===
-1:17: warning: The `^` operator performs bitwise XOR in Bash arithmetic.
+-c:1:17: warning: The `^` operator performs bitwise XOR in Bash arithmetic.
      1 |  koshkit calc "2 ^ 8"
        |                  ^
 note: Use `**`, the Bash power operator, if you meant exponentiation.
@@ -64,80 +64,80 @@ note: Use `**`, the Bash power operator, if you meant exponentiation.
 22026.46579
 0.00000000
 === decimal function errors ===
-2:18: error: Logarithm operand is not positive.
+-c:2:18: error: Logarithm operand is not positive.
      2 |  koshkit calc "ln(0)"
        |                   ^
 note: ln requires a value greater than 0.
-3:20: error: Square root operand is negative.
+-c:3:20: error: Square root operand is negative.
      3 |  koshkit calc "sqrt(-1)"
        |                     ^~
 note: sqrt requires a value greater than or equal to 0.
-4:22: error: Invalid scale for 'sin'.
+-c:4:22: error: Invalid scale for 'sin'.
      4 |  koshkit calc "sin(1, -1)"
        |                       ^~
 note: The scale must be between 0 and 100000.
-5:22: error: Arithmetic value is out of range.
+-c:5:22: error: Arithmetic value is out of range.
      5 |  koshkit calc "sin(1, 999999999999999999999999)"
        |                       ^~~~~~~~~~~~~~~~~~~~~~~~
 note: This operation requires a signed 64-bit value.
 === function errors ===
-2:20: error: The argument to 'fact' is negative.
+-c:2:20: error: The argument to 'fact' is negative.
      2 |  koshkit calc "fact(-1)"
        |                     ^~
 note: Factorial requires a non-negative integer.
-3:19: error: The argument to 'fib' is not an integer.
+-c:3:19: error: The argument to 'fib' is not an integer.
      3 |  koshkit calc "fib(1.5)"
        |                    ^~~
 note: This function requires an integer value.
-4:15: error: Wrong number of arguments for 'gcd'.
+-c:4:15: error: Wrong number of arguments for 'gcd'.
      4 |  koshkit calc "gcd()"
        |                ^~~
 note: The function accepts at least 1 argument.
-5:15: error: Wrong number of arguments for 'cmp'.
+-c:5:15: error: Wrong number of arguments for 'cmp'.
      5 |  koshkit calc "cmp(1)"
        |                ^~~
 note: The function accepts 2 arguments.
-6:27: error: Unexpected character in the arithmetic expression.
+-c:6:27: error: Unexpected character in the arithmetic expression.
      6 |  koshkit calc "min(1, 2, 3,)"
        |                            ^
 note: This is not a valid operator or operand.
-7:15: error: Unknown calculator function 'unknown'.
+-c:7:15: error: Unknown calculator function 'unknown'.
      7 |  koshkit calc "unknown(1)"
        |                ^~~~~~~
 note: Use a supported numeric function name.
 === located parse error ===
-1:18: error: Unfinished expression.
+-c:1:18: error: Unfinished expression.
      1 |  koshkit calc "1 +"
        |                   ^
 note: An operand is missing.
 === located division by zero ===
-1:19: error: Division by zero.
+-c:1:19: error: Division by zero.
      1 |  koshkit calc "5 / 0"
        |                    ^
 note: The right operand evaluated to 0.
-1:18: error: Division by zero.
+-c:1:18: error: Division by zero.
      1 |  koshkit calc 5 / 0
        |                   ^
 note: The right operand evaluated to 0.
-1:20: error: Division by zero.
+-c:1:20: error: Division by zero.
      1 |  koshkit calc "10 % (3 - 3)"
        |                     ^~~~~~~
 note: The right operand evaluated to 0.
 === oversized decimal power ===
-1:22: error: Exponent is too large.
+-c:1:22: error: Exponent is too large.
      1 |  koshkit calc "0.1 ** 4294967296"
        |                       ^~~~~~~~~~
 note: The result cannot fit in addressable memory.
-1:20: error: Exponent is too large.
+-c:1:20: error: Exponent is too large.
      1 |  koshkit calc "3 ** 18446744073709551615"
        |                     ^~~~~~~~~~~~~~~~~~~~
 note: The result cannot fit in addressable memory.
-1:25: error: Exponent is too large.
+-c:1:25: error: Exponent is too large.
      1 |  koshkit calc "x=3, x**= 18446744073709551615"
        |                          ^~~~~~~~~~~~~~~~~~~~
 note: The result cannot fit in addressable memory.
 === no expression ===
-1:1: error: calc has no expression to evaluate.
+-c:1:1: error: calc has no expression to evaluate.
      1 |  koshkit calc
        |  ^~~~~~~~~~~~
 note: Pass an expression such as `calc '2 + 2'`, read a pipe with `-p`, or enter the interactive prompt with `-i`.
@@ -192,7 +192,7 @@ error: The variable 'base' is not set.
 == --pipe is the long form:
 42
 == no expression off a pipe reports a verbose error:
-1:1: error: calc has no expression to evaluate.
+-c:1:1: error: calc has no expression to evaluate.
      1 |  koshkit calc
        |  ^~~~~~~~~~~~
 note: Pass an expression such as `calc '2 + 2'`, read a pipe with `-p`, or enter the interactive prompt with `-i`.

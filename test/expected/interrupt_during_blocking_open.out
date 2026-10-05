@@ -1,5 +1,5 @@
 == an untrapped interrupt ends a blocking read open:
-3:16: error: Interrupted.
+-c:3:16: error: Interrupted.
      3 |  read -r line < "$fifo"
        |                 ^~~~~~~
 1:1: error: Interrupted.
@@ -7,7 +7,7 @@
        |  ^
 rc=130
 == an untrapped interrupt ends a blocking write open:
-3:16: error: Interrupted.
+-c:3:16: error: Interrupted.
      3 |  echo payload > "$fifo"
        |                 ^~~~~~~
 1:1: error: Interrupted.
@@ -15,7 +15,7 @@ rc=130
        |  ^
 rc=130
 == an exec redirection reports the interrupt once:
-3:9: error: Interrupted.
+-c:3:9: error: Interrupted.
      3 |  exec 9< "$fifo"
        |          ^~~~~~~
 rc=130
@@ -35,7 +35,7 @@ grep-status=143
 grep-first=printed
 grep-interrupt=preserved
 == diff stops after a first error before opening a later pipe:
-3:1: error: koshkit diff: cannot read 'missing': No such file or directory.
+-c:3:1: error: koshkit diff: cannot read 'missing': No such file or directory.
      3 |  koshkit diff missing diff
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~
 diff-status=2

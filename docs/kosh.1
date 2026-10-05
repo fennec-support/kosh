@@ -2960,7 +2960,16 @@ A diagnostic names the file, line, and column of the failing command, quotes
 its source line, and puts a caret under it. Text inside command substitution,
 backticks, process substitution, and here-document bodies is part of the file,
 so its diagnostics use the file's own line and column. Text built at run time,
-such as an eval string or a trap action, is its own source.
+such as an eval string or a trap action, is its own source. A
+.B \-c
+string is named
+.BR \-c ,
+so a location in it reads
+.BR \-c:1:5: .
+Every
+.B \-c
+string uses that name, and the caret under the command line frame tells them
+apart. Standard input and interactive lines have no name.
 .PP
 Every level of indirection between the top level and the failing command adds
 one backtrace frame at the construct that entered it. The levels are a function

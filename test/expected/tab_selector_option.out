@@ -18,7 +18,7 @@ external
 == a mood change keeps the selector:
 plain
 == an unknown set value is rejected:
-1:20: error: Builtin `set`: Unknown --tab-selector value 'bogus', expected 'interactive', 'external', or 'plain'.
+-c:1:20: error: Builtin `set`: Unknown --tab-selector value 'bogus', expected 'interactive', 'external', or 'plain'.
      1 |  set --tab-selector bogus
        |                     ^~~~~
 status=1

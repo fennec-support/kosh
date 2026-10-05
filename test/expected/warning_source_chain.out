@@ -9,7 +9,7 @@ note: Replace it with ${UNSET_CHAIN_SECOND-} if empty expansion is desired.
 OUTER:2:3: trace:
      2 |  . INNER
        |    ^~~~
-1:0: trace:
+-c:1:3: trace:
      1 |  . OUTER
        |    ^~~~
 INNER:1:7: warning: The variable 'MIMIC_CHAIN_FIRST' is not set, it expands to empty.
@@ -22,7 +22,7 @@ INNER:2:7: warning: The variable 'MIMIC_CHAIN_SECOND' is not set, it expands to 
        |        ^~~~~~~~~~~~~~~~~~~
 note: Replace it with ${MIMIC_CHAIN_SECOND-} if empty expansion is desired.
 
-1:0: trace:
+-c:1:1: trace:
      1 |  "$1"
        |  ^~~~
 0

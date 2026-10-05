@@ -29,16 +29,16 @@ calc
 == type skips a blocked candidate before a runnable candidate:
 runnable
 == a missing name reports not found:
-1:1: error: Builtin `type`: The command 'missing_xyz' was not found.
+-c:1:1: error: Builtin `type`: The command 'missing_xyz' was not found.
      1 |  type missing_xyz
        |  ^~~~~~~~~~~~~~~~
 rc=1
 == -V prints a function body:
-f is a shell function on line 1
+f is a shell function defined in -c on line 1
 f () 
 { :; }
 == -V reports the line a later definition starts on:
-g is a shell function on line 2
+g is a shell function defined in -c on line 2
 g () 
 {
   echo body

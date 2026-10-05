@@ -1,22 +1,22 @@
 == default argument location ==
-1:6: warning: The `let` builtin evaluates its argument as arithmetic. (SC2219)
+-c:1:6: warning: The `let` builtin evaluates its argument as arithmetic. (SC2219)
      1 |  a=0; let a = 2; echo unreached
        |       ^~~
 note: Write `(( ... ))` for the arithmetic.
-1:12: error: Builtin `let`: Unexpected character in the arithmetic expression.
+-c:1:12: error: Builtin `let`: Unexpected character in the arithmetic expression.
      1 |  a=0; let a = 2; echo unreached
        |             ^
 note: This is not a valid operator or operand.
 rc=1
 == bash soft argument location ==
-1:12: error: Builtin `let`: Unexpected character in the arithmetic expression.
+-c:1:12: error: Builtin `let`: Unexpected character in the arithmetic expression.
      1 |  a=0; let a = 2; echo "status=$? after"
        |             ^
 note: This is not a valid operator or operand.
 status=1 after
 rc=0
 == later argument location ==
-1:22: error: Builtin `let`: Unfinished expression.
+-c:1:22: error: Builtin `let`: Unfinished expression.
      1 |  let "first=1" "bad=1 +" "later=3"; echo "status=$? later=${later-unset}"
        |                       ^
 note: An operand is missing.

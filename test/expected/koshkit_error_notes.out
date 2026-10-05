@@ -1,897 +1,897 @@
 === killall arg count ===
-1:19: error: koshkit killall: expects one process name.
+-c:1:19: error: koshkit killall: expects one process name.
      1 |  koshkit killall a b
        |                    ^
 note: pass one name, e.g. `killall firefox`.
 === seq zero increment ===
-1:15: error: koshkit seq: the increment must not be zero.
+-c:1:15: error: koshkit seq: the increment must not be zero.
      1 |  koshkit seq 1 0 10
        |                ^
 note: use a nonzero step, such as `seq 1 2 10`.
 === seq integer location ===
-1:13: error: koshkit seq: invalid integer argument 'nope'.
+-c:1:13: error: koshkit seq: invalid integer argument 'nope'.
      1 |  koshkit seq nope
        |              ^~~~
 note: use a decimal integer from -9223372036854775808 through 9223372036854775807.
 === seq negative location preservation ===
-1:16: error: koshkit seq: invalid integer argument 'nope'.
+-c:1:16: error: koshkit seq: invalid integer argument 'nope'.
      1 |  koshkit seq -2 nope
        |                 ^~~~
 note: use a decimal integer from -9223372036854775808 through 9223372036854775807.
 === seq extra operand location ===
-1:19: error: koshkit seq: extra operand '4'.
+-c:1:19: error: koshkit seq: extra operand '4'.
      1 |  koshkit seq 1 2 3 4
        |                    ^
 note: use `seq LAST`, `seq FIRST LAST`, or `seq FIRST STEP LAST`.
 === touch time location ===
-1:18: error: koshkit touch: invalid time 'nope'.
+-c:1:18: error: koshkit touch: invalid time 'nope'.
      1 |  koshkit touch -t nope target
        |                   ^~~~
 note: use a valid local calendar time in [[CC]YY]MMDDhhmm[.SS] format.
 === touch time digit validation ===
-1:18: error: koshkit touch: invalid time '2026aa010101'.
+-c:1:18: error: koshkit touch: invalid time '2026aa010101'.
      1 |  koshkit touch -t 2026aa010101 target
        |                   ^~~~~~~~~~~~
 note: use a valid local calendar time in [[CC]YY]MMDDhhmm[.SS] format.
 === touch calendar validation ===
-1:18: error: koshkit touch: invalid time '202602300101'.
+-c:1:18: error: koshkit touch: invalid time '202602300101'.
      1 |  koshkit touch -t 202602300101 target
        |                   ^~~~~~~~~~~~
 note: use a valid local calendar time in [[CC]YY]MMDDhhmm[.SS] format.
 === touch seconds validation ===
-1:18: error: koshkit touch: invalid time '200102030405.61'.
+-c:1:18: error: koshkit touch: invalid time '200102030405.61'.
      1 |  koshkit touch -t 200102030405.61 target
        |                   ^~~~~~~~~~~~~~~
 note: use a valid local calendar time in [[CC]YY]MMDDhhmm[.SS] format.
 === touch later time location ===
-1:31: error: koshkit touch: -r and -t cannot be used together.
+-c:1:31: error: koshkit touch: -r and -t cannot be used together.
      1 |  koshkit touch -r reference -t 200102030405.06 target
        |                                ^~~~~~~~~~~~~~~
 === touch later reference location ===
-1:37: error: koshkit touch: -r and -t cannot be used together.
+-c:1:37: error: koshkit touch: -r and -t cannot be used together.
      1 |  koshkit touch -t 200102030405.06 -r reference target
        |                                      ^~~~~~~~~
 === touch reference location ===
-1:18: error: koshkit touch: cannot stat 'KOSH_MISSING_REFERENCE': No such file or directory.
+-c:1:18: error: koshkit touch: cannot stat 'KOSH_MISSING_REFERENCE': No such file or directory.
      1 |  koshkit touch -r KOSH_MISSING_REFERENCE target
        |                   ^~~~~~~~~~~~~~~~~~~~~~
 === ln without -s ===
-1:1: error: koshkit ln: cannot create link 'b': No such file or directory.
+-c:1:1: error: koshkit ln: cannot create link 'b': No such file or directory.
      1 |  koshkit ln a b
        |  ^~~~~~~~~~~~~~
 === tr one set ===
-1:1: error: tr expects two sets unless -d is given.
+-c:1:1: error: tr expects two sets unless -d is given.
      1 |  koshkit tr abc
        |  ^~~~~~~~~~~~~~
 note: Supply SET1 and SET2, or use `-d` with one set.
 === find bad -type ===
-1:22: error: koshkit find: -type expects one of f, d, or l.
+-c:1:22: error: koshkit find: -type expects one of f, d, or l.
      1 |  koshkit find . -type x
        |                       ^
 note: Pass `f`, `d`, or `l` after `-type`.
 === readlink extra operand location ===
-1:24: error: koshkit readlink: extra operand 'second'.
+-c:1:24: error: koshkit readlink: extra operand 'second'.
      1 |  koshkit readlink first second
        |                         ^~~~~~
 === fuser conflicting flags location ===
-1:17: error: koshkit fuser: -c and -f cannot be used together.
+-c:1:17: error: koshkit fuser: -c and -f cannot be used together.
      1 |  koshkit fuser -cf file
        |                  ^
 === whoami operand location ===
-1:16: error: koshkit whoami: unexpected operand 'extra'.
+-c:1:16: error: koshkit whoami: unexpected operand 'extra'.
      1 |  koshkit whoami extra
        |                 ^~~~~
 === logname operand location ===
-1:17: error: koshkit logname: unexpected operand 'extra'.
+-c:1:17: error: koshkit logname: unexpected operand 'extra'.
      1 |  koshkit logname extra
        |                  ^~~~~
 === nice increment location ===
-1:17: error: koshkit nice: invalid increment 'nope'.
+-c:1:17: error: koshkit nice: invalid increment 'nope'.
      1 |  koshkit nice -n nope true
        |                  ^~~~
 note: use a decimal integer from -2147483648 through 2147483647.
 === nice increment range ===
-1:17: error: koshkit nice: invalid increment '2147483648'.
+-c:1:17: error: koshkit nice: invalid increment '2147483648'.
      1 |  koshkit nice -n 2147483648 true
        |                  ^~~~~~~~~~
 note: use a decimal integer from -2147483648 through 2147483647.
 === nice command location ===
-1:14: error: koshkit nice: cannot run 'KOSH_MISSING_COMMAND': No such file or directory.
+-c:1:14: error: koshkit nice: cannot run 'KOSH_MISSING_COMMAND': No such file or directory.
      1 |  koshkit nice KOSH_MISSING_COMMAND
        |               ^~~~~~~~~~~~~~~~~~~~
 === nl body style location ===
-1:15: error: koshkit nl: unsupported numbering style 'invalid'.
+-c:1:15: error: koshkit nl: unsupported numbering style 'invalid'.
      1 |  koshkit nl -b invalid
        |                ^~~~~~~
 note: use a for all lines, t for nonempty lines, or n for no lines.
 === nl header style location ===
-1:15: error: koshkit nl: unsupported numbering style 'invalid'.
+-c:1:15: error: koshkit nl: unsupported numbering style 'invalid'.
      1 |  koshkit nl -h invalid
        |                ^~~~~~~
 note: use a for all lines, t for nonempty lines, or n for no lines.
 === nl footer style location ===
-1:15: error: koshkit nl: unsupported numbering style 'invalid'.
+-c:1:15: error: koshkit nl: unsupported numbering style 'invalid'.
      1 |  koshkit nl -f invalid
        |                ^~~~~~~
 note: use a for all lines, t for nonempty lines, or n for no lines.
 === nl number format location ===
-1:15: error: koshkit nl: invalid number format 'invalid'.
+-c:1:15: error: koshkit nl: invalid number format 'invalid'.
      1 |  koshkit nl -n invalid
        |                ^~~~~~~
 note: use ln, rn, or rz.
 === nl increment location ===
-1:15: error: koshkit nl: invalid increment 'invalid'.
+-c:1:15: error: koshkit nl: invalid increment 'invalid'.
      1 |  koshkit nl -i invalid
        |                ^~~~~~~
 note: use a decimal integer from 0 through 9223372036854775807.
 === nl increment limit ===
-1:15: error: koshkit nl: invalid increment '9223372036854775808'.
+-c:1:15: error: koshkit nl: invalid increment '9223372036854775808'.
      1 |  koshkit nl -i 9223372036854775808
        |                ^~~~~~~~~~~~~~~~~~~
 note: use a decimal integer from 0 through 9223372036854775807.
 === nl blank group location ===
-1:15: error: koshkit nl: invalid blank group '0'.
+-c:1:15: error: koshkit nl: invalid blank group '0'.
      1 |  koshkit nl -l 0
        |                ^
 note: use a positive decimal integer.
 === nl width location ===
-1:15: error: koshkit nl: invalid width '0'.
+-c:1:15: error: koshkit nl: invalid width '0'.
      1 |  koshkit nl -w 0
        |                ^
 note: use a positive decimal integer within the platform size limit.
 === nl start limit ===
-1:15: error: koshkit nl: invalid starting line number '9223372036854775808'.
+-c:1:15: error: koshkit nl: invalid starting line number '9223372036854775808'.
      1 |  koshkit nl -v 9223372036854775808
        |                ^~~~~~~~~~~~~~~~~~~
 note: use a decimal integer from 0 through 9223372036854775807.
 === nl delimiter location ===
-1:15: error: koshkit nl: the section delimiter must be two bytes.
+-c:1:15: error: koshkit nl: the section delimiter must be two bytes.
      1 |  koshkit nl -d :
        |                ^
 === od address radix location ===
-1:15: error: koshkit od: the address radix must be d, o, x, or n.
+-c:1:15: error: koshkit od: the address radix must be d, o, x, or n.
      1 |  koshkit od -A invalid
        |                ^~~~~~~
 === od skip count location ===
-1:15: error: koshkit od: invalid skip count 'invalid'.
+-c:1:15: error: koshkit od: invalid skip count 'invalid'.
      1 |  koshkit od -j invalid
        |                ^~~~~~~
 note: use decimal, leading-zero octal, or 0x hexadecimal, with optional b, k, or m units.
 === od byte count location ===
-1:15: error: koshkit od: invalid byte count 'invalid'.
+-c:1:15: error: koshkit od: invalid byte count 'invalid'.
      1 |  koshkit od -N invalid
        |                ^~~~~~~
 note: use decimal, leading-zero octal, or 0x hexadecimal bytes.
 === od octal skip location ===
-1:15: error: koshkit od: invalid skip count '08'.
+-c:1:15: error: koshkit od: invalid skip count '08'.
      1 |  koshkit od -j 08
        |                ^~
 note: use decimal, leading-zero octal, or 0x hexadecimal, with optional b, k, or m units.
 === od hexadecimal byte count location ===
-1:15: error: koshkit od: invalid byte count '0xg'.
+-c:1:15: error: koshkit od: invalid byte count '0xg'.
      1 |  koshkit od -N 0xg
        |                ^~~
 note: use decimal, leading-zero octal, or 0x hexadecimal bytes.
 === od legacy offset location ===
-1:12: error: koshkit od: invalid legacy offset '+8q'.
+-c:1:12: error: koshkit od: invalid legacy offset '+8q'.
      1 |  koshkit od +8q
        |             ^~~
 note: use [+]OCTAL, [+]DECIMAL., or either form followed by b.
 === od output type location ===
-1:15: error: koshkit od: unsupported output type 'invalid'.
+-c:1:15: error: koshkit od: unsupported output type 'invalid'.
      1 |  koshkit od -t invalid
        |                ^~~~~~~
 note: use c, d, o, u, or x with an optional width of 1, 2, 4, 8, C, S, I, or L.
 === od trailing output type location ===
-1:15: error: koshkit od: unsupported output type 'x12'.
+-c:1:15: error: koshkit od: unsupported output type 'x12'.
      1 |  koshkit od -t x12
        |                ^~~
 note: use c, d, o, u, or x with an optional width of 1, 2, 4, 8, C, S, I, or L.
 === od integer width location ===
-1:15: error: koshkit od: unsupported integer width in 'x3'.
+-c:1:15: error: koshkit od: unsupported integer width in 'x3'.
      1 |  koshkit od -t x3
        |                ^~
 note: use 1, 2, 4, 8, C, S, I, or L.
 === od repeated output type location ===
-1:21: error: koshkit od: unsupported output type 'invalid'.
+-c:1:21: error: koshkit od: unsupported output type 'invalid'.
      1 |  koshkit od -t x1 -t invalid
        |                      ^~~~~~~
 note: use c, d, o, u, or x with an optional width of 1, 2, 4, 8, C, S, I, or L.
 === pr page number location ===
-1:12: error: koshkit pr: invalid page number '+0'.
+-c:1:12: error: koshkit pr: invalid page number '+0'.
      1 |  koshkit pr +0
        |             ^~
 note: use + followed by a positive decimal integer within the platform size limit.
 === pr column count location ===
-1:12: error: koshkit pr: invalid column count '-2x'.
+-c:1:12: error: koshkit pr: invalid column count '-2x'.
      1 |  koshkit pr -2x
        |             ^~~
 note: use - followed by a positive decimal integer within the platform size limit.
 === pr page length location ===
-1:15: error: koshkit pr: invalid page length 'invalid'.
+-c:1:15: error: koshkit pr: invalid page length 'invalid'.
      1 |  koshkit pr -l invalid
        |                ^~~~~~~
 note: use a nonnegative decimal integer within the platform size limit.
 === pr page width location ===
-1:15: error: koshkit pr: invalid page width 'invalid'.
+-c:1:15: error: koshkit pr: invalid page width 'invalid'.
      1 |  koshkit pr -w invalid
        |                ^~~~~~~
 note: use a nonnegative decimal integer within the platform size limit.
 === pr indentation location ===
-1:15: error: koshkit pr: invalid indentation 'invalid'.
+-c:1:15: error: koshkit pr: invalid indentation 'invalid'.
      1 |  koshkit pr -o invalid
        |                ^~~~~~~
 note: use a nonnegative decimal integer within the platform size limit.
 === pr header capacity location ===
-1:15: error: koshkit pr: the page length leaves no room for headers.
+-c:1:15: error: koshkit pr: the page length leaves no room for headers.
      1 |  koshkit pr -l 9
        |                ^
 note: use a length of at least 10 or omit headers with -t.
 === pr output capacity location ===
-1:18: error: koshkit pr: the page length leaves no room for output.
+-c:1:18: error: koshkit pr: the page length leaves no room for output.
      1 |  koshkit pr -t -l 0
        |                   ^
 note: use a positive page length when headers are omitted.
 === pr column capacity location ===
-1:20: error: koshkit pr: the column count exceeds the page capacity.
+-c:1:20: error: koshkit pr: the column count exceeds the page capacity.
      1 |  koshkit pr -t -l 2 -18446744073709551615
        |                     ^~~~~~~~~~~~~~~~~~~~~
 note: reduce the column count.
 === grep pattern location ===
-1:14: error: koshkit grep: the pattern '[' is not a valid regex.
+-c:1:14: error: koshkit grep: the pattern '[' is not a valid regex.
      1 |  koshkit grep '['
        |               ^~~
 === grep file location ===
-1:20: error: koshkit grep: KOSH_MISSING_FILE: No such file or directory.
+-c:1:20: error: koshkit grep: KOSH_MISSING_FILE: No such file or directory.
      1 |  koshkit grep value KOSH_MISSING_FILE
        |                     ^~~~~~~~~~~~~~~~~
 === mv source location ===
-1:12: error: koshkit mv: unable to move 'KOSH_MISSING_SOURCE' to 'KOSH_MISSING_DESTINATION' because No such file or directory.
+-c:1:12: error: koshkit mv: unable to move 'KOSH_MISSING_SOURCE' to 'KOSH_MISSING_DESTINATION' because No such file or directory.
      1 |  koshkit mv KOSH_MISSING_SOURCE KOSH_MISSING_DESTINATION
        |             ^~~~~~~~~~~~~~~~~~~
 === renice identifier location ===
-1:21: error: koshkit renice: invalid identifier 'nope'.
+-c:1:21: error: koshkit renice: invalid identifier 'nope'.
      1 |  koshkit renice -n 1 nope
        |                      ^~~~
 note: use a nonnegative decimal identifier.
 === renice user location ===
-1:24: error: koshkit renice: invalid identifier 'KOSH_MISSING_USER'.
+-c:1:24: error: koshkit renice: invalid identifier 'KOSH_MISSING_USER'.
      1 |  koshkit renice -n 1 -u KOSH_MISSING_USER
        |                         ^~~~~~~~~~~~~~~~~
 note: use a user name or a nonnegative decimal user id.
 === renice increment location ===
-1:19: error: koshkit renice: invalid increment 'nope'.
+-c:1:19: error: koshkit renice: invalid increment 'nope'.
      1 |  koshkit renice -n nope 1
        |                    ^~~~
 note: use a decimal integer from -2147483648 through 2147483647.
 === renice increment range ===
-1:19: error: koshkit renice: invalid increment '2147483648'.
+-c:1:19: error: koshkit renice: invalid increment '2147483648'.
      1 |  koshkit renice -n 2147483648 1
        |                    ^~~~~~~~~~
 note: use a decimal integer from -2147483648 through 2147483647.
 === paste delimiter location ===
-1:18: error: koshkit paste: delimiter list is empty.
+-c:1:18: error: koshkit paste: delimiter list is empty.
      1 |  koshkit paste -d ''
        |                   ^~
 note: provide one or more delimiter characters.
 === split suffix location ===
-1:18: error: koshkit split: invalid suffix length 'nope'.
+-c:1:18: error: koshkit split: invalid suffix length 'nope'.
      1 |  koshkit split -a nope
        |                   ^~~~
 note: use a decimal integer from 1 through 64.
 === split suffix limit ===
-1:18: error: koshkit split: invalid suffix length '65'.
+-c:1:18: error: koshkit split: invalid suffix length '65'.
      1 |  koshkit split -a 65
        |                   ^~
 note: use a decimal integer from 1 through 64.
 === split byte count location ===
-1:18: error: koshkit split: invalid byte count '0'.
+-c:1:18: error: koshkit split: invalid byte count '0'.
      1 |  koshkit split -b 0
        |                   ^
 note: use a positive decimal integer.
 === split line count location ===
-1:18: error: koshkit split: invalid line count 'nope'.
+-c:1:18: error: koshkit split: invalid line count 'nope'.
      1 |  koshkit split -l nope
        |                   ^~~~
 note: use a positive decimal integer.
 === strings minimum location ===
-1:20: error: koshkit strings: invalid minimum length.
+-c:1:20: error: koshkit strings: invalid minimum length.
      1 |  koshkit strings -n 0
        |                     ^
 note: use a positive decimal integer within the platform size limit.
 === strings radix location ===
-1:20: error: koshkit strings: invalid offset radix.
+-c:1:20: error: koshkit strings: invalid offset radix.
      1 |  koshkit strings -t decimal
        |                     ^~~~~~~
 note: use d for decimal, o for octal, or x for hexadecimal.
 === tput row location ===
-1:18: error: koshkit tput: invalid row 'nope'.
+-c:1:18: error: koshkit tput: invalid row 'nope'.
      1 |  koshkit tput cup nope 1
        |                   ^~~~
 note: use a decimal integer from 0 through 18446744073709551614.
 === tput column limit ===
-1:20: error: koshkit tput: invalid column '18446744073709551615'.
+-c:1:20: error: koshkit tput: invalid column '18446744073709551615'.
      1 |  koshkit tput cup 1 18446744073709551615
        |                     ^~~~~~~~~~~~~~~~~~~~
 note: use a decimal integer from 0 through 18446744073709551614.
 === unexpand tab list location ===
-1:21: error: koshkit unexpand: invalid tab list.
+-c:1:21: error: koshkit unexpand: invalid tab list.
      1 |  koshkit unexpand -t 8,4
        |                      ^~~
 note: use increasing positive columns separated by commas or blanks.
 === date operand location ===
-1:14: error: koshkit date: setting the system clock is unsupported.
+-c:1:14: error: koshkit date: setting the system clock is unsupported.
      1 |  koshkit date 2026
        |               ^~~~
 === getconf variable location ===
-1:17: error: koshkit getconf: Unknown variable 'KOSH_MISSING_CONFIGURATION'.
+-c:1:17: error: koshkit getconf: Unknown variable 'KOSH_MISSING_CONFIGURATION'.
      1 |  koshkit getconf KOSH_MISSING_CONFIGURATION
        |                  ^~~~~~~~~~~~~~~~~~~~~~~~~~
 === locale name location ===
-1:16: error: koshkit locale: unknown name 'KOSH_MISSING_LOCALE'.
+-c:1:16: error: koshkit locale: unknown name 'KOSH_MISSING_LOCALE'.
      1 |  koshkit locale KOSH_MISSING_LOCALE
        |                 ^~~~~~~~~~~~~~~~~~~
 === id user location ===
-1:12: error: koshkit id: unknown user 'KOSH_MISSING_USER'.
+-c:1:12: error: koshkit id: unknown user 'KOSH_MISSING_USER'.
      1 |  koshkit id KOSH_MISSING_USER
        |             ^~~~~~~~~~~~~~~~~
 === stty setting location ===
-1:1: error: koshkit stty: standard input is not a terminal.
+-c:1:1: error: koshkit stty: standard input is not a terminal.
      1 |  koshkit stty KOSH_MISSING_SETTING
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 === stty conflicting flag location ===
-1:17: error: koshkit stty: -a and -g cannot be used together.
+-c:1:17: error: koshkit stty: -a and -g cannot be used together.
      1 |  koshkit stty -a -g
        |                  ^~
 === logger priority location ===
-1:19: error: koshkit logger: invalid priority 'KOSH_MISSING_PRIORITY'.
+-c:1:19: error: koshkit logger: invalid priority 'KOSH_MISSING_PRIORITY'.
      1 |  koshkit logger -p KOSH_MISSING_PRIORITY message
        |                    ^~~~~~~~~~~~~~~~~~~~~
 === nohup command location ===
-1:15: error: koshkit nohup: cannot run 'KOSH_MISSING_COMMAND': No such file or directory.
+-c:1:15: error: koshkit nohup: cannot run 'KOSH_MISSING_COMMAND': No such file or directory.
      1 |  koshkit nohup KOSH_MISSING_COMMAND
        |                ^~~~~~~~~~~~~~~~~~~~
 === evil operand location ===
-1:14: error: koshkit evil: unexpected operand.
+-c:1:14: error: koshkit evil: unexpected operand.
      1 |  koshkit evil extra
        |               ^~~~~
 note: this utility reads no operand.
 === evil color value location ===
-1:17: error: koshkit: invalid color mode 'invalid'.
+-c:1:17: error: koshkit: invalid color mode 'invalid'.
      1 |  koshkit --color invalid evil
        |                  ^~~~~~~
 === evilfs operand location ===
-1:16: error: koshkit evilfs: unexpected operand.
+-c:1:16: error: koshkit evilfs: unexpected operand.
      1 |  koshkit evilfs extra
        |                 ^~~~~
 note: this utility accepts no operands.
 === evillogs operand location ===
-1:18: error: koshkit evillogs: unexpected operand.
+-c:1:18: error: koshkit evillogs: unexpected operand.
      1 |  koshkit evillogs extra
        |                   ^~~~~
 note: this utility reads no operand.
 === evilnet operand location ===
-1:17: error: koshkit evilnet: unexpected operand.
+-c:1:17: error: koshkit evilnet: unexpected operand.
      1 |  koshkit evilnet extra
        |                  ^~~~~
 note: this utility accepts no operands.
 === evilss operand location ===
-1:16: error: koshkit evilss: unexpected operand.
+-c:1:16: error: koshkit evilss: unexpected operand.
      1 |  koshkit evilss extra
        |                 ^~~~~
 note: this utility accepts no operands.
 === evilps limit location ===
-1:16: error: koshkit evilps: invalid process limit.
+-c:1:16: error: koshkit evilps: invalid process limit.
      1 |  koshkit evilps -0
        |                 ^~
 note: the limit must be a positive integer.
 === evilps extra operand location ===
-1:18: error: koshkit evilps: too many operands.
+-c:1:18: error: koshkit evilps: too many operands.
      1 |  koshkit evilps 1 2
        |                   ^
 note: name at most one process id.
 === evilps sort value location ===
-1:23: error: koshkit evilps: invalid sort key.
+-c:1:23: error: koshkit evilps: invalid sort key.
      1 |  koshkit evilps --sort invalid
        |                        ^~~~~~~
 note: use name, pid, cpu, or memory.
 === evilps process location ===
-1:16: error: koshkit evilps: invalid process id 'invalid'.
+-c:1:16: error: koshkit evilps: invalid process id 'invalid'.
      1 |  koshkit evilps invalid
        |                 ^~~~~~~
 note: provide a decimal process id.
 === evilps absent process location ===
-1:16: error: koshkit evilps: no process has the id 9223372036854775807.
+-c:1:16: error: koshkit evilps: no process has the id 9223372036854775807.
      1 |  koshkit evilps 9223372036854775807
        |                 ^~~~~~~~~~~~~~~~~~~
 note: read the current identifiers with ps.
 === evilio extra operand location ===
-1:18: error: koshkit evilio: unexpected operand.
+-c:1:18: error: koshkit evilio: unexpected operand.
      1 |  koshkit evilio 1 2
        |                   ^
 note: use at most one sample duration and one -NUMBER limit.
 === evilio duration mode location ===
-1:16: error: koshkit evilio: unexpected operand.
+-c:1:16: error: koshkit evilio: unexpected operand.
      1 |  koshkit evilio 1
        |                 ^
 note: a sample duration requires --cumulative.
 === evilio duration value location ===
-1:29: error: koshkit evilio: invalid duration.
+-c:1:29: error: koshkit evilio: invalid duration.
      1 |  koshkit evilio --cumulative=0
        |                              ^
 note: the duration must be greater than zero.
 === evilio separate duration value location ===
-1:29: error: koshkit evilio: invalid duration.
+-c:1:29: error: koshkit evilio: invalid duration.
      1 |  koshkit evilio --cumulative 0
        |                              ^
 note: the duration must be greater than zero.
 === evilio rejected duration value location ===
-1:16: error: koshkit evilio: Invalid value 'bad' for '--cumulative'.
+-c:1:16: error: koshkit evilio: Invalid value 'bad' for '--cumulative'.
      1 |  koshkit evilio --cumulative=bad
        |                 ^~~~~~~~~~~~~~~~
 === make rejected optional value location ===
-1:14: error: koshkit make: Invalid value 'x' for '--jobs'.
+-c:1:14: error: koshkit make: Invalid value 'x' for '--jobs'.
      1 |  koshkit make --jobs=x
        |               ^~~~~~~~
 === make rejected bundled optional value location ===
-1:14: error: koshkit make: Unknown flag '-x'.
+-c:1:14: error: koshkit make: Unknown flag '-x'.
      1 |  koshkit make -jx
        |               ^~~
 note: Use `--` before an operand that begins with a dash.
 === evilio process limit location ===
-1:16: error: koshkit evilio: invalid count.
+-c:1:16: error: koshkit evilio: invalid count.
      1 |  koshkit evilio -0
        |                 ^~
 note: the count must be from 1 through 100000.
 === evilio later count location ===
-1:27: error: koshkit evilio: conflicting process limits.
+-c:1:27: error: koshkit evilio: conflicting process limits.
      1 |  koshkit evilio -5 --count 2
        |                            ^
 note: use either -NUMBER or --count.
 === evilio later compact limit location ===
-1:26: error: koshkit evilio: conflicting process limits.
+-c:1:26: error: koshkit evilio: conflicting process limits.
      1 |  koshkit evilio --count 2 -5
        |                           ^~
 note: use either -NUMBER or --count.
 === evilio count value location ===
-1:24: error: koshkit evilio: invalid count.
+-c:1:24: error: koshkit evilio: invalid count.
      1 |  koshkit evilio --count 0
        |                         ^
 note: the count must be from 1 through 100000.
 === evilio process value location ===
-1:22: error: koshkit evilio: invalid process id.
+-c:1:22: error: koshkit evilio: invalid process id.
      1 |  koshkit evilio --pid 0
        |                       ^
 note: the process id must be a positive integer.
 === evilio color value location ===
-1:17: error: koshkit: invalid color mode 'invalid'.
+-c:1:17: error: koshkit: invalid color mode 'invalid'.
      1 |  koshkit --color invalid evilio
        |                  ^~~~~~~
 === evilio report mode location ===
-1:22: error: koshkit evilio: conflicting report modes.
+-c:1:22: error: koshkit evilio: conflicting report modes.
      1 |  koshkit evilio --all --cumulative
        |                       ^~~~~~~~~~~~
 note: use --all without --cumulative or --live.
 === evilio later all location ===
-1:29: error: koshkit evilio: conflicting report modes.
+-c:1:29: error: koshkit evilio: conflicting report modes.
      1 |  koshkit evilio --cumulative --all
        |                              ^~~~~
 note: use --all without --cumulative or --live.
 === evilio live mode location ===
-1:22: error: koshkit evilio: conflicting report modes.
+-c:1:22: error: koshkit evilio: conflicting report modes.
      1 |  koshkit evilio --all --live
        |                       ^~~~~~
 note: use --all without --cumulative or --live.
 === evilio invalid sort location ===
-1:23: error: koshkit evilio: invalid sort key.
+-c:1:23: error: koshkit evilio: invalid sort key.
      1 |  koshkit evilio --sort nowhere
        |                        ^~~~~~~
 note: use pid, read, write, read-ops, write-ops, busy, read-latency, write-latency, average-queue, queue, errors, or retries.
 === evilio ambiguous sort location ===
-1:23: error: koshkit evilio: ambiguous sort key.
+-c:1:23: error: koshkit evilio: ambiguous sort key.
      1 |  koshkit evilio --sort r
        |                        ^
 note: matches read, read-latency, read-ops, retries; use a longer prefix.
 === evilio process ambiguous sort location ===
-1:28: error: koshkit evilio: ambiguous sort key.
+-c:1:28: error: koshkit evilio: ambiguous sort key.
      1 |  koshkit evilio --ps --sort w
        |                             ^
 note: matches write, write-ops; use a longer prefix.
 === evilio process sort mode location ===
-1:28: error: koshkit evilio: sort key is unavailable for process reports.
+-c:1:28: error: koshkit evilio: sort key is unavailable for process reports.
      1 |  koshkit evilio --ps --sort busy
        |                             ^~~~
 note: use pid, read, write, read-ops, or write-ops.
 === evilio disk sort mode location ===
-1:23: error: koshkit evilio: sort key is unavailable for disk reports.
+-c:1:23: error: koshkit evilio: sort key is unavailable for disk reports.
      1 |  koshkit evilio --sort pid
        |                        ^~~
 note: use read, write, read-ops, write-ops, busy, read-latency, write-latency, average-queue, queue, errors, or retries.
 === evilio sampled sort mode location ===
-1:23: error: koshkit evilio: sort key is unavailable without sampling.
+-c:1:23: error: koshkit evilio: sort key is unavailable without sampling.
      1 |  koshkit evilio --sort busy
        |                        ^~~~
 note: use --all, --cumulative, or --live with busy, read-latency, write-latency, or average-queue.
 === basename extra operand location ===
-1:30: error: koshkit basename: extra operand 'extra'.
+-c:1:30: error: koshkit basename: extra operand 'extra'.
      1 |  koshkit basename path suffix extra
        |                               ^~~~~
 note: basename takes a path and an optional suffix, e.g. `basename a.c .c`.
 === bc register ranges ===
-1:42: error: koshkit bc: invalid ibase.
+-c:1:42: error: koshkit bc: invalid ibase.
      1 |  printf 'ibase=1\nobase=17\nscale=-1\n' | koshkit bc
        |                                           ^~~~~~~~~~
 note: ibase must evaluate to an integer from 2 through 16.
-1:42: error: koshkit bc: invalid obase.
+-c:1:42: error: koshkit bc: invalid obase.
      1 |  printf 'ibase=1\nobase=17\nscale=-1\n' | koshkit bc
        |                                           ^~~~~~~~~~
 note: obase must evaluate to an integer from 2 through 16.
-1:42: error: koshkit bc: invalid scale.
+-c:1:42: error: koshkit bc: invalid scale.
      1 |  printf 'ibase=1\nobase=17\nscale=-1\n' | koshkit bc
        |                                           ^~~~~~~~~~
 note: scale must evaluate to an integer from 0 through 100000.
 === cal extra operand location ===
-1:20: error: koshkit cal: extra operand 'extra'.
+-c:1:20: error: koshkit cal: extra operand 'extra'.
      1 |  koshkit cal 1 2024 extra
        |                     ^~~~~
 note: use `cal [-a] [month] year`.
 === cal month location ===
-1:13: error: koshkit cal: invalid month '13'.
+-c:1:13: error: koshkit cal: invalid month '13'.
      1 |  koshkit cal 13 2024
        |              ^~
 note: use a month from 1 through 12.
 === cal year location ===
-1:15: error: koshkit cal: invalid year '0'.
+-c:1:15: error: koshkit cal: invalid year '0'.
      1 |  koshkit cal 1 0
        |                ^
 note: use a positive decimal year no greater than 9223372036854775807.
 === chgrp group location ===
-1:15: error: koshkit chgrp: invalid group 'KOSH_MISSING_GROUP'.
+-c:1:15: error: koshkit chgrp: invalid group 'KOSH_MISSING_GROUP'.
      1 |  koshkit chgrp KOSH_MISSING_GROUP LICENSE
        |                ^~~~~~~~~~~~~~~~~~
 note: use a group name or an unsigned decimal group id.
 === chmod mode location ===
-1:15: error: koshkit chmod: invalid mode 'u=rz'.
+-c:1:15: error: koshkit chmod: invalid mode 'u=rz'.
      1 |  koshkit chmod u=rz LICENSE
        |                ^~~~
 note: use one to four octal digits or symbolic clauses such as u+x,g-w.
 === chown owner location ===
-1:15: error: koshkit chown: invalid owner 'KOSH_MISSING_USER'.
+-c:1:15: error: koshkit chown: invalid owner 'KOSH_MISSING_USER'.
      1 |  koshkit chown KOSH_MISSING_USER LICENSE
        |                ^~~~~~~~~~~~~~~~~
 note: use an owner name or an unsigned decimal user id.
 === chown specification location ===
-1:15: error: koshkit chown: invalid specification '0:'.
+-c:1:15: error: koshkit chown: invalid specification '0:'.
      1 |  koshkit chown 0: LICENSE
        |                ^~
 note: use owner, owner:group, or :group.
 === chown group location ===
-1:15: error: koshkit chown: invalid group 'KOSH_MISSING_GROUP'.
+-c:1:15: error: koshkit chown: invalid group 'KOSH_MISSING_GROUP'.
      1 |  koshkit chown :KOSH_MISSING_GROUP LICENSE
        |                ^~~~~~~~~~~~~~~~~~~
 note: use a group name or an unsigned decimal group id.
 === mknod major value location ===
-1:31: error: koshkit mknod: Invalid major device number 'not-a-major'.
+-c:1:31: error: koshkit mknod: Invalid major device number 'not-a-major'.
      1 |  koshkit mknod --block --major not-a-major --minor 2 node
        |                                ^~~~~~~~~~~
 note: use an unsigned decimal integer.
 === mknod minor value location ===
-1:24: error: koshkit mknod: Invalid minor device number 'not-a-minor'.
+-c:1:24: error: koshkit mknod: Invalid minor device number 'not-a-minor'.
      1 |  koshkit mknod node b 1 not-a-minor
        |                         ^~~~~~~~~~~
 note: use an unsigned decimal integer.
 === mknod unused operand location ===
-1:48: error: koshkit mknod: Too many operands.
+-c:1:48: error: koshkit mknod: Too many operands.
      1 |  koshkit mknod --major 1 --minor 2 --block node extra
        |                                                 ^~~~~
 note: provide one name and one node specification.
 === mknod major range location ===
-1:35: error: koshkit mknod: Major device number '4096' is out of range.
+-c:1:35: error: koshkit mknod: Major device number '4096' is out of range.
      1 |  koshkit mknod --character --major 4096 --minor 2 node
        |                                    ^~~~
 note: use a major device number that fits 12 bits.
 === mknod large major range location ===
-1:35: error: koshkit mknod: Major device number '4294967296' is out of range.
+-c:1:35: error: koshkit mknod: Major device number '4294967296' is out of range.
      1 |  koshkit mknod --character --major 4294967296 --minor 2 node
        |                                    ^~~~~~~~~~
 note: use a major device number that fits 12 bits.
 === mknod minor range location ===
-1:24: error: koshkit mknod: Minor device number '1048576' is out of range.
+-c:1:24: error: koshkit mknod: Minor device number '1048576' is out of range.
      1 |  koshkit mknod node c 1 1048576
        |                         ^~~~~~~
 note: use a minor device number that fits 20 bits.
 === cut position list location ===
-1:16: error: koshkit cut: invalid position list '0'.
+-c:1:16: error: koshkit cut: invalid position list '0'.
      1 |  koshkit cut -b 0
        |                 ^
 note: positions start at 1 and use N, N-M, -M, or N- separated by commas or blanks.
 === cut delimiter location ===
-1:21: error: koshkit cut: the delimiter must be one byte.
+-c:1:21: error: koshkit cut: the delimiter must be one byte.
      1 |  koshkit cut -f 1 -d ::
        |                      ^~
 === expand tab list location ===
-1:19: error: koshkit expand: invalid tab list.
+-c:1:19: error: koshkit expand: invalid tab list.
      1 |  koshkit expand -t 8,4
        |                    ^~~
 note: use increasing positive columns separated by commas or blanks.
 === fold width location ===
-1:17: error: koshkit fold: invalid width '0'.
+-c:1:17: error: koshkit fold: invalid width '0'.
      1 |  koshkit fold -w 0
        |                  ^
 note: use a positive decimal width.
 === nproc ignore count location ===
-1:24: error: koshkit nproc: invalid number '-1'.
+-c:1:24: error: koshkit nproc: invalid number '-1'.
      1 |  koshkit nproc --ignore=-1
        |                         ^~
 note: use an unsigned decimal count.
 === nproc operand location ===
-1:15: error: koshkit nproc: unexpected operand 'extra'.
+-c:1:15: error: koshkit nproc: unexpected operand 'extra'.
      1 |  koshkit nproc extra
        |                ^~~~~
 note: nproc accepts flags without operands.
 === evildisk color value location ===
-1:17: error: koshkit: invalid color mode 'invalid'.
+-c:1:17: error: koshkit: invalid color mode 'invalid'.
      1 |  koshkit --color invalid evildisk
        |                  ^~~~~~~
 === evildisk path location ===
-1:18: error: koshkit evildisk: cannot read 'KOSH_MISSING_FILESYSTEM': No such file or directory.
+-c:1:18: error: koshkit evildisk: cannot read 'KOSH_MISSING_FILESYSTEM': No such file or directory.
      1 |  koshkit evildisk KOSH_MISSING_FILESYSTEM
        |                   ^~~~~~~~~~~~~~~~~~~~~~~
 === evilfiles process value location ===
-1:25: error: koshkit evilfiles: invalid process id 'invalid'.
+-c:1:25: error: koshkit evilfiles: invalid process id 'invalid'.
      1 |  koshkit evilfiles --pid invalid
        |                          ^~~~~~~
 note: provide a decimal process id.
 === evilfiles user value location ===
-1:26: error: koshkit evilfiles: no such user 'KOSH_MISSING_USER'.
+-c:1:26: error: koshkit evilfiles: no such user 'KOSH_MISSING_USER'.
      1 |  koshkit evilfiles --user KOSH_MISSING_USER
        |                           ^~~~~~~~~~~~~~~~~
 note: provide a user name or numeric uid.
 === goodfsw path location ===
-1:17: error: koshkit goodfsw: cannot watch 'KOSH_MISSING_PATH': No such file or directory.
+-c:1:17: error: koshkit goodfsw: cannot watch 'KOSH_MISSING_PATH': No such file or directory.
      1 |  koshkit goodfsw KOSH_MISSING_PATH
        |                  ^~~~~~~~~~~~~~~~~
 === goodstat color value location ===
-1:17: error: koshkit: invalid color mode 'invalid'.
+-c:1:17: error: koshkit: invalid color mode 'invalid'.
      1 |  koshkit --color invalid goodstat LICENSE
        |                  ^~~~~~~
 === goodstat path location ===
-1:18: error: koshkit goodstat: cannot stat 'KOSH_MISSING_PATH': No such file or directory.
+-c:1:18: error: koshkit goodstat: cannot stat 'KOSH_MISSING_PATH': No such file or directory.
      1 |  koshkit goodstat KOSH_MISSING_PATH
        |                   ^~~~~~~~~~~~~~~~~
 === sync later filesystem flag location ===
-1:17: error: koshkit sync: cannot combine -d with -f.
+-c:1:17: error: koshkit sync: cannot combine -d with -f.
      1 |  koshkit sync -d -f LICENSE
        |                  ^~
 note: select one of the two modes.
 === sync later data flag location ===
-1:17: error: koshkit sync: cannot combine -d with -f.
+-c:1:17: error: koshkit sync: cannot combine -d with -f.
      1 |  koshkit sync -f -d LICENSE
        |                  ^~
 note: select one of the two modes.
 === sync path location ===
-1:14: error: koshkit sync: cannot flush 'KOSH_MISSING_PATH': No such file or directory.
+-c:1:14: error: koshkit sync: cannot flush 'KOSH_MISSING_PATH': No such file or directory.
      1 |  koshkit sync KOSH_MISSING_PATH
        |               ^~~~~~~~~~~~~~~~~
 === unlink extra operand location ===
-1:22: error: koshkit unlink: extra operand 'second'.
+-c:1:22: error: koshkit unlink: extra operand 'second'.
      1 |  koshkit unlink first second
        |                       ^~~~~~
 === unlink missing path location ===
-1:16: error: koshkit unlink: cannot unlink 'KOSH_MISSING_PATH': No such file or directory.
+-c:1:16: error: koshkit unlink: cannot unlink 'KOSH_MISSING_PATH': No such file or directory.
      1 |  koshkit unlink KOSH_MISSING_PATH
        |                 ^~~~~~~~~~~~~~~~~
 === unlink directory location ===
-1:16: error: koshkit unlink: cannot unlink '.': it is a directory.
+-c:1:16: error: koshkit unlink: cannot unlink '.': it is a directory.
      1 |  koshkit unlink .
        |                 ^
 === tty operand location ===
-1:13: error: koshkit tty: unexpected operand 'extra'.
+-c:1:13: error: koshkit tty: unexpected operand 'extra'.
      1 |  koshkit tty extra
        |              ^~~~~
 === uname operand location ===
-1:15: error: koshkit uname: unexpected operand 'extra'.
+-c:1:15: error: koshkit uname: unexpected operand 'extra'.
      1 |  koshkit uname extra
        |                ^~~~~
 === who first operand location ===
-1:13: error: koshkit who: unexpected operand 'wrong'.
+-c:1:13: error: koshkit who: unexpected operand 'wrong'.
      1 |  koshkit who wrong
        |              ^~~~~
 note: the only operand form is `am i`.
 === who missing second operand location ===
-1:13: error: koshkit who: expected 'i' after 'am'.
+-c:1:13: error: koshkit who: expected 'i' after 'am'.
      1 |  koshkit who am
        |              ^~
 === who second operand location ===
-1:16: error: koshkit who: expected 'i' after 'am'.
+-c:1:16: error: koshkit who: expected 'i' after 'am'.
      1 |  koshkit who am wrong
        |                 ^~~~~
 === who extra operand location ===
-1:18: error: koshkit who: unexpected operand 'extra'.
+-c:1:18: error: koshkit who: unexpected operand 'extra'.
      1 |  koshkit who am i extra
        |                   ^~~~~
 note: the only operand form is `am i`.
 === killall missing process location ===
-1:17: error: koshkit killall: KOSH_MISSING_PROCESS: no process found.
+-c:1:17: error: koshkit killall: KOSH_MISSING_PROCESS: no process found.
      1 |  koshkit killall KOSH_MISSING_PROCESS
        |                  ^~~~~~~~~~~~~~~~~~~~
 === pkill extra pattern location ===
-1:21: error: koshkit pkill: expects one pattern.
+-c:1:21: error: koshkit pkill: expects one pattern.
      1 |  koshkit pkill first second
        |                      ^~~~~~
 note: pass one pattern, e.g. `pkill ssh`.
 === pkill empty pattern location ===
-1:15: error: koshkit pkill: requires a non-empty pattern.
+-c:1:15: error: koshkit pkill: requires a non-empty pattern.
      1 |  koshkit pkill ""
        |                ^~
 note: pass a pattern, e.g. `pkill ssh`.
 === link extra operand location ===
-1:27: error: koshkit link: extra operand 'third'.
+-c:1:27: error: koshkit link: extra operand 'third'.
      1 |  koshkit link first second third
        |                            ^~~~~
 === link destination location ===
-1:34: error: koshkit link: cannot create 'KOSH_MISSING_DESTINATION': No such file or directory.
+-c:1:34: error: koshkit link: cannot create 'KOSH_MISSING_DESTINATION': No such file or directory.
      1 |  koshkit link KOSH_MISSING_SOURCE KOSH_MISSING_DESTINATION
        |                                   ^~~~~~~~~~~~~~~~~~~~~~~~
 === realpath operand location ===
-1:18: error: koshkit realpath: 'KOSH_MISSING_PATH': No such file or directory.
+-c:1:18: error: koshkit realpath: 'KOSH_MISSING_PATH': No such file or directory.
      1 |  koshkit realpath KOSH_MISSING_PATH
        |                   ^~~~~~~~~~~~~~~~~
 === rmdir operand location ===
-1:15: error: koshkit rmdir: failed to remove 'KOSH_MISSING_DIRECTORY': No such file or directory.
+-c:1:15: error: koshkit rmdir: failed to remove 'KOSH_MISSING_DIRECTORY': No such file or directory.
      1 |  koshkit rmdir KOSH_MISSING_DIRECTORY
        |                ^~~~~~~~~~~~~~~~~~~~~~
 === sleep duration location ===
-1:15: error: koshkit sleep: invalid duration 'invalid'.
+-c:1:15: error: koshkit sleep: invalid duration 'invalid'.
      1 |  koshkit sleep invalid
        |                ^~~~~~~
 note: Use a non-negative number with an optional `s`, `m`, `h`, or `d` suffix, such as `5` or `0.25s`.
 === watch interval location ===
-1:26: error: koshkit watch: invalid duration 'invalid'.
+-c:1:26: error: koshkit watch: invalid duration 'invalid'.
      1 |  koshkit watch --interval invalid true
        |                           ^~~~~~~
 note: Use a non-negative number with an optional `s`, `m`, `h`, or `d` suffix, such as `5` or `0.25s`.
 === goodfsw latency location ===
-1:27: error: koshkit goodfsw: invalid duration 'invalid'.
+-c:1:27: error: koshkit goodfsw: invalid duration 'invalid'.
      1 |  koshkit goodfsw --latency invalid .
        |                            ^~~~~~~
 note: Use a non-negative number with an optional `s`, `m`, `h`, or `d` suffix, such as `5` or `0.25s`.
 === retry delay location ===
-1:23: error: koshkit retry: invalid duration 'invalid'.
+-c:1:23: error: koshkit retry: invalid duration 'invalid'.
      1 |  koshkit retry --delay invalid true
        |                        ^~~~~~~
 note: Use a non-negative number with an optional `s`, `m`, `h`, or `d` suffix, such as `5` or `0.25s`.
 === timeout duration location ===
-1:17: error: koshkit timeout: invalid duration 'invalid'.
+-c:1:17: error: koshkit timeout: invalid duration 'invalid'.
      1 |  koshkit timeout invalid true
        |                  ^~~~~~~
 note: Use a non-negative number with an optional `s`, `m`, `h`, or `d` suffix, such as `5` or `0.25s`.
 === timeout signal location ===
-1:26: error: koshkit timeout: unknown signal 'KOSH_MISSING_SIGNAL'.
+-c:1:26: error: koshkit timeout: unknown signal 'KOSH_MISSING_SIGNAL'.
      1 |  koshkit timeout --signal KOSH_MISSING_SIGNAL 1 true
        |                           ^~~~~~~~~~~~~~~~~~~
 note: Use a signal name such as TERM or a number such as 15.
 === timeout signal range location ===
-1:26: error: koshkit timeout: signal number is out of range.
+-c:1:26: error: koshkit timeout: signal number is out of range.
      1 |  koshkit timeout --signal 999999999999999999999 1 true
        |                           ^~~~~~~~~~~~~~~~~~~~~
 note: Use a signal name such as TERM or a number such as 15.
 === timeout command location ===
-1:19: error: koshkit timeout: command 'KOSH_MISSING_COMMAND' was not found.
+-c:1:19: error: koshkit timeout: command 'KOSH_MISSING_COMMAND' was not found.
      1 |  koshkit timeout 1 KOSH_MISSING_COMMAND
        |                    ^~~~~~~~~~~~~~~~~~~~
 === killall signal location ===
-1:26: error: koshkit killall: unknown signal 'KOSH_MISSING_SIGNAL'.
+-c:1:26: error: koshkit killall: unknown signal 'KOSH_MISSING_SIGNAL'.
      1 |  koshkit killall --signal KOSH_MISSING_SIGNAL process
        |                           ^~~~~~~~~~~~~~~~~~~
 note: Use a signal name such as TERM or a number such as 15.
 === pkill signal location ===
-1:24: error: koshkit pkill: unknown signal 'KOSH_MISSING_SIGNAL'.
+-c:1:24: error: koshkit pkill: unknown signal 'KOSH_MISSING_SIGNAL'.
      1 |  koshkit pkill --signal KOSH_MISSING_SIGNAL process
        |                         ^~~~~~~~~~~~~~~~~~~
 note: Use a signal name such as TERM or a number such as 15.
 === pkill signal range location ===
-1:24: error: koshkit pkill: signal number is out of range.
+-c:1:24: error: koshkit pkill: signal number is out of range.
      1 |  koshkit pkill --signal 999999999999999999999 process
        |                         ^~~~~~~~~~~~~~~~~~~~~
 note: Use a signal name such as TERM or a number such as 15.
 === sed implicit script location ===
-1:13: error: koshkit sed: unterminated delimited expression.
+-c:1:13: error: koshkit sed: unterminated delimited expression.
      1 |  koshkit sed 's/a'
        |              ^~~~~
 note: close the expression with the delimiter that opened it.
 === sed expression location ===
-1:21: error: koshkit sed: unsupported command 'Z'.
+-c:1:21: error: koshkit sed: unsupported command 'Z'.
      1 |  koshkit sed -e p -e Z
        |                      ^
 note: use a, c, d, i, p, q, s, y, =, or a supported address.
 === sed expression boundary location ===
-1:16: error: koshkit sed: missing command.
+-c:1:16: error: koshkit sed: missing command.
      1 |  koshkit sed -e '1' -e p
        |                 ^~~
 note: write a sed command after the address.
 === sed regular expression location ===
-1:13: error: koshkit sed: invalid regular expression '['.
+-c:1:13: error: koshkit sed: invalid regular expression '['.
      1 |  koshkit sed -e's/[//'
        |              ^~~~~~~~~
 note: use a valid basic regular expression.
 === sed line address limit ===
-1:16: error: koshkit sed: line address is too large.
+-c:1:16: error: koshkit sed: line address is too large.
      1 |  koshkit sed -e 18446744073709551616p
        |                 ^~~~~~~~~~~~~~~~~~~~~
 note: use a decimal line number from 1 through 18446744073709551615.
 === sed zero line address ===
-1:16: error: koshkit sed: line addresses begin at one.
+-c:1:16: error: koshkit sed: line addresses begin at one.
      1 |  koshkit sed -e 0p
        |                 ^~
 note: use a positive decimal line number.
 === sed second address location ===
-1:16: error: koshkit sed: missing second address.
+-c:1:16: error: koshkit sed: missing second address.
      1 |  koshkit sed -e 1,p
        |                 ^~~
 note: write an address after the comma.
 === sed translation delimiter location ===
-1:16: error: koshkit sed: translation lacks a delimiter.
+-c:1:16: error: koshkit sed: translation lacks a delimiter.
      1 |  koshkit sed -e y
        |                 ^
 note: write a delimiter and two translation strings after y.
 === sed translation length location ===
-1:16: error: koshkit sed: translation strings have different lengths.
+-c:1:16: error: koshkit sed: translation strings have different lengths.
      1 |  koshkit sed -e y/a/bc/
        |                 ^~~~~~~
 note: use translation strings with the same number of bytes.
 === sed substitution delimiter location ===
-1:16: error: koshkit sed: substitution lacks a delimiter.
+-c:1:16: error: koshkit sed: substitution lacks a delimiter.
      1 |  koshkit sed -e s
        |                 ^
 note: write a delimiter, a pattern, and a replacement after s.
 === sed substitution flag location ===
-1:16: error: koshkit sed: unsupported substitution flag 'x'.
+-c:1:16: error: koshkit sed: unsupported substitution flag 'x'.
      1 |  koshkit sed -e s/a/b/x
        |                 ^~~~~~~
 note: use g to replace every match or p to print changed lines.
 === sed script file location ===
-1:16: error: koshkit sed: cannot read script file 'KOSH_MISSING_SCRIPT': No such file or directory.
+-c:1:16: error: koshkit sed: cannot read script file 'KOSH_MISSING_SCRIPT': No such file or directory.
      1 |  koshkit sed -f KOSH_MISSING_SCRIPT
        |                 ^~~~~~~~~~~~~~~~~~~
 note: pass a readable sed script file after -f.
 === tabs interval location ===
-1:14: error: koshkit tabs: invalid tab interval '-0'.
+-c:1:14: error: koshkit tabs: invalid tab interval '-0'.
      1 |  koshkit tabs -0
        |               ^~
 note: use - followed by a decimal interval from 1 through 160.
 === tabs stop location ===
-1:14: error: koshkit tabs: invalid tab stop in '4,nope'.
+-c:1:14: error: koshkit tabs: invalid tab stop in '4,nope'.
      1 |  koshkit tabs 4,nope
        |               ^~~~~~
 note: use a named template or comma-separated positive decimal columns, with + for relative stops.
 === tabs descending stop location ===
-1:14: error: koshkit tabs: tab stops do not increase within column 160 in '4,3'.
+-c:1:14: error: koshkit tabs: tab stops do not increase within column 160 in '4,3'.
      1 |  koshkit tabs 4,3
        |               ^~~
 note: list each stop after the previous stop and no later than column 160.
 === tabs relative stop limit ===
-1:14: error: koshkit tabs: tab stops do not increase within column 160 in '4,+18446744073709551615'.
+-c:1:14: error: koshkit tabs: tab stops do not increase within column 160 in '4,+18446744073709551615'.
      1 |  koshkit tabs 4,+18446744073709551615
        |               ^~~~~~~~~~~~~~~~~~~~~~~
 note: list each stop after the previous stop and no later than column 160.
 === tabs extra operand location ===
-1:18: error: koshkit tabs: extra operand 'extra'.
+-c:1:18: error: koshkit tabs: extra operand 'extra'.
      1 |  koshkit tabs 4,8 extra
        |                   ^~~~~
 note: pass one tab interval, stop list, or named template.
 === xargs argument count location ===
-1:18: error: koshkit xargs: invalid argument count 'nope'.
+-c:1:18: error: koshkit xargs: invalid argument count 'nope'.
      1 |  koshkit xargs -n nope
        |                   ^~~~
 note: use a positive decimal integer for the maximum arguments per command.
 === xargs line count location ===
-1:18: error: koshkit xargs: invalid line count '18446744073709551616'.
+-c:1:18: error: koshkit xargs: invalid line count '18446744073709551616'.
      1 |  koshkit xargs -L 18446744073709551616
        |                   ^~~~~~~~~~~~~~~~~~~~
 note: use a positive decimal integer for the maximum input lines per command.
 === xargs byte count location ===
-1:18: error: koshkit xargs: invalid byte count '0'.
+-c:1:18: error: koshkit xargs: invalid byte count '0'.
      1 |  koshkit xargs -s 0
        |                   ^
 note: use a positive decimal integer for the maximum command size in bytes.

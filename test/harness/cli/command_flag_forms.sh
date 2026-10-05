@@ -19,14 +19,14 @@ echo "show-exit-code help describes diagnostics"
 continued_output=$("$BIN" --no-diagnostics --show-exit-code -c 'false; echo after' 2>&1)
 [ "$?" -eq 0 ] || exit 1
 [ "$(printf '%s\n' "$continued_output" | grep -c 'warning: Non-zero exit code (1)')" -eq 1 ] || exit 1
-printf '%s\n' "$continued_output" | grep -Eq '^[0-9]+:[0-9]+: warning: Non-zero exit code \(1\)$' || exit 1
+printf '%s\n' "$continued_output" | grep -Eq '^-c:[0-9]+:[0-9]+: warning: Non-zero exit code \(1\)$' || exit 1
 echo "show-exit-code reports a located continued failure"
 
 errexit_output=$("$BIN" --no-diagnostics --show-exit-code -e -c 'false; echo never' 2>&1)
 errexit_status=$?
 [ "$errexit_status" -eq 1 ] || exit 1
 [ "$(printf '%s\n' "$errexit_output" | grep -c 'error: Non-zero exit code (1)')" -eq 1 ] || exit 1
-printf '%s\n' "$errexit_output" | grep -Eq '^[0-9]+:[0-9]+: error: Non-zero exit code \(1\)$' || exit 1
+printf '%s\n' "$errexit_output" | grep -Eq '^-c:[0-9]+:[0-9]+: error: Non-zero exit code \(1\)$' || exit 1
 echo "show-exit-code reports before errexit"
 
 guarded_output=$("$BIN" --no-diagnostics --show-exit-code -e -c 'false || true; ! false; if false; then :; fi; echo after' 2>&1)

@@ -1496,7 +1496,7 @@ pure fn EvalContext::bash_source_frame_at(usize index) const wontthrow
                           .get_definition_info();
     if (info != nullptr) {
       if (let const name = source_name_at(info->source_name_index);
-          name.has_value())
+          name.has_value() && *name != COMMAND_STRING_SOURCE_NAME)
       {
         return *name;
       }

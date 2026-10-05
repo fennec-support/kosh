@@ -11,11 +11,11 @@ du-human=scaled
 --- mv -v names the move ---
 renamed 'copy.txt' -> 'moved.txt'
 --- utility error is located in the bash mood ---
-1:1: error: cp: Not enough arguments.
+-c:1:1: error: cp: Not enough arguments.
      1 |  koshkit cp
        |  ^~~~~~~~~~
 note: Try `cp --help` for more info.
 --- and a missing operand is located in the bash mood ---
-1:1: error: koshkit ls: cannot access '/no/such/path': no such file or directory.
+-c:1:1: error: koshkit ls: cannot access '/no/such/path': no such file or directory.
      1 |  koshkit ls /no/such/path
        |  ^~~~~~~~~~~~~~~~~~~~~~~~

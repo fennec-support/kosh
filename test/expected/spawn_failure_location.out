@@ -1,15 +1,15 @@
 == direct command:
-1:1: error: Unable to execute `TMPDIR/notexec`: Permission denied.
+-c:1:1: error: Unable to execute `TMPDIR/notexec`: Permission denied.
      1 |  ./notexec; printf "rc=%s\n" "$?"
        |  ^~~~~~~~~
 rc=126
 == pipeline stage:
-1:1: error: Unable to execute `TMPDIR/notexec`: Permission denied.
+-c:1:1: error: Unable to execute `TMPDIR/notexec`: Permission denied.
      1 |  ./notexec | koshkit cat; printf "pipeline=%s first=%s\n" "$?" "${PIPESTATUS[0]}"
        |  ^~~~~~~~~
 pipeline=0 first=126
 == exec command:
-1:6: error: Unable to execute `TMPDIR/notexec`: Permission denied.
+-c:1:6: error: Unable to execute `TMPDIR/notexec`: Permission denied.
      1 |  exec ./notexec
        |       ^~~~~~~~~
 rc=126

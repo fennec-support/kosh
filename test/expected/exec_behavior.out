@@ -1,15 +1,15 @@
 == a missing command with a slash exits 127:
-1:7: error: The directory '/nonexistent' does not exist.
+-c:1:7: error: The directory '/nonexistent' does not exist.
      1 |  exec /nonexistent/cmd
        |        ^~~~~~~~~~~
 rc=127
 == a missing command on the PATH exits 127:
-1:6: error: The command 'nonexistent_cmd_xyz' was not found.
+-c:1:6: error: The command 'nonexistent_cmd_xyz' was not found.
      1 |  exec nonexistent_cmd_xyz
        |       ^~~~~~~~~~~~~~~~~~~
 rc=127
 == a non-executable file exits 126:
-1:6: error: Unable to execute `./notexec`: Permission denied.
+-c:1:6: error: Unable to execute `./notexec`: Permission denied.
      1 |  exec ./notexec
        |       ^~~~~~~~~
 rc=126

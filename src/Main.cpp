@@ -1045,8 +1045,10 @@ fn kosh_main(int argc, char **argv) -> int
 
     let script_contents = koshka::String{koshka::heap_allocator()};
     /* The named script file flows into the diagnostics so an error reads
-       path:line:col. A -c or interactive line carries no path. */
+       path:line:col. An interactive line carries no path, and a -c string
+       carries the name -c. */
     koshka::Maybe<koshka::StringView> source_filename = koshka::None;
+    koshka::Maybe<koshka::StringView> command_string_name = koshka::None;
     /* The root frame caret underlines the operand that produced the script
        body, the -c flag and its argument for a command string, the file name
        for a script file. Stdin and interactive runs leave it empty. */
@@ -1069,6 +1071,7 @@ fn kosh_main(int argc, char **argv) -> int
         should_quit = true;
       } else if (should_execute_commands && !FLAG_COMMAND.at_end()) {
         script_contents = FLAG_COMMAND.take_next();
+        command_string_name = koshka::COMMAND_STRING_SOURCE_NAME;
         context.execution_store().set_execution_string(
             koshka::String{koshka::heap_allocator(), script_contents.view()});
         LOG(Info, "taking the next -c command string, %zu bytes",
@@ -1497,7 +1500,12 @@ fn kosh_main(int argc, char **argv) -> int
       if (FLAG_LINT.is_enabled()) {
         exit_code = run_lint_document_contents(script_contents, context,
                                                ast_arena, source_filename,
-                                               &lint_diagnostic_totals);
+                                               &lint_diagnostic_totals, nullptr,
+                                               nullptr, true, command_string_name);
+      } else if (command_string_name.has_value()) {
+        exit_code = run_script_contents(
+            script_contents, context, ast_arena, command_string_name, nullptr,
+            nullptr, history_event_number, {}, {false}, evaluation_mode);
       } else {
         exit_code = run_script_contents(
             script_contents, context, ast_arena, source_filename, nullptr,

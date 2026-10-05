@@ -95,33 +95,33 @@ q
 ==> no-final.txt <==
 c
 --- missing source preserves later output and status ---
-1:1: error: koshkit tail: cannot open 'missing.txt': No such file or directory.
+-c:1:1: error: koshkit tail: cannot open 'missing.txt': No such file or directory.
      1 |  koshkit tail -n 1 missing.txt with-final.txt
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ==> with-final.txt <==
 c
 status=1
 --- counts accept only plain decimal digits ---
-tail -n [1:1: error: invalid line count '99999999999999999999'.] status=1
-tail -c [1:1: error: invalid byte count '99999999999999999999'.] status=1
-head -n [1:1: error: invalid line count '99999999999999999999'.] status=1
-head -c [1:1: error: invalid byte count '99999999999999999999'.] status=1
-tail -n [1:1: error: invalid line count '1 '.] status=1
-tail -c [1:1: error: invalid byte count '1 '.] status=1
-head -n [1:1: error: invalid line count '1 '.] status=1
-head -c [1:1: error: invalid byte count '1 '.] status=1
-tail -n [1:1: error: invalid line count '++1'.] status=1
-tail -c [1:1: error: invalid byte count '++1'.] status=1
-head -n [1:1: error: invalid line count '++1'.] status=1
-head -c [1:1: error: invalid byte count '++1'.] status=1
-tail -n [1:1: error: invalid line count '+99999999999999999999'.] status=1
-tail -c [1:1: error: invalid byte count '+99999999999999999999'.] status=1
-head -n [1:1: error: invalid line count '+99999999999999999999'.] status=1
-head -c [1:1: error: invalid byte count '+99999999999999999999'.] status=1
-tail -n [1:1: error: invalid line count ''.] status=1
-tail -c [1:1: error: invalid byte count ''.] status=1
-head -n [1:1: error: invalid line count ''.] status=1
-head -c [1:1: error: invalid byte count ''.] status=1
+tail -n [-c:1:1: error: invalid line count '99999999999999999999'.] status=1
+tail -c [-c:1:1: error: invalid byte count '99999999999999999999'.] status=1
+head -n [-c:1:1: error: invalid line count '99999999999999999999'.] status=1
+head -c [-c:1:1: error: invalid byte count '99999999999999999999'.] status=1
+tail -n [-c:1:1: error: invalid line count '1 '.] status=1
+tail -c [-c:1:1: error: invalid byte count '1 '.] status=1
+head -n [-c:1:1: error: invalid line count '1 '.] status=1
+head -c [-c:1:1: error: invalid byte count '1 '.] status=1
+tail -n [-c:1:1: error: invalid line count '++1'.] status=1
+tail -c [-c:1:1: error: invalid byte count '++1'.] status=1
+head -n [-c:1:1: error: invalid line count '++1'.] status=1
+head -c [-c:1:1: error: invalid byte count '++1'.] status=1
+tail -n [-c:1:1: error: invalid line count '+99999999999999999999'.] status=1
+tail -c [-c:1:1: error: invalid byte count '+99999999999999999999'.] status=1
+head -n [-c:1:1: error: invalid line count '+99999999999999999999'.] status=1
+head -c [-c:1:1: error: invalid byte count '+99999999999999999999'.] status=1
+tail -n [-c:1:1: error: invalid line count ''.] status=1
+tail -c [-c:1:1: error: invalid byte count ''.] status=1
+head -n [-c:1:1: error: invalid line count ''.] status=1
+head -c [-c:1:1: error: invalid byte count ''.] status=1
 c
 a
 c
@@ -173,7 +173,7 @@ tail -n +0 keeps every header:
 ==> empty.txt <==
 a directory operand keeps its header and error:
 ==> dir <==
-1:1: error: koshkit tail: cannot read 'dir': Is a directory.
+-c:1:1: error: koshkit tail: cannot read 'dir': Is a directory.
      1 |  koshkit tail -n 1 dir with-final.txt; echo "status=$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -181,7 +181,7 @@ a directory operand keeps its header and error:
 c
 status=1
 ==> dir <==
-1:1: error: koshkit head: cannot read 'dir': Is a directory.
+-c:1:1: error: koshkit head: cannot read 'dir': Is a directory.
      1 |  koshkit head -n 1 dir with-final.txt; echo "status=$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -189,7 +189,7 @@ status=1
 a
 status=1
 ==> dir <==
-1:1: error: koshkit head: cannot read 'dir': Is a directory.
+-c:1:1: error: koshkit head: cannot read 'dir': Is a directory.
      1 |  koshkit head -n -1 dir with-final.txt; echo "status=$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

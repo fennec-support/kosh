@@ -52,7 +52,7 @@ R-src
 after=0
 rc=0
 == the sh mood rejects RETURN for a sourced file:
-1:19: error: Builtin `trap`: RETURN: invalid signal specification.
+-c:1:19: error: Builtin `trap`: RETURN: invalid signal specification.
      1 |  trap "echo R-src" RETURN; . "$1"; echo "after=$?"
        |                    ^~~~~~
 note: List the signal names with `trap -l`.

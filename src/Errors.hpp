@@ -47,6 +47,8 @@ pure inline fn get_error_severity_word(error_severity severity) wontthrow
 fn intern_source_name(StringView name) throws -> u32;
 fn source_name_at(u32 source_name_index) wontthrow -> Maybe<StringView>;
 
+inline constexpr StringView COMMAND_STRING_SOURCE_NAME{"-c", 2};
+
 /* The offsets are 32-bit because one shell source is far below four gigabytes,
    and every token and every syntax node carries one of these. The constructor
    accepts usize so the many call sites that compute an offset need no cast. */

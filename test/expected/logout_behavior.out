@@ -1,11 +1,11 @@
 == logout in a non-login shell is refused:
-1:1: error: Builtin `logout`: Cannot use 'logout' in a non-login shell.
+-c:1:1: error: Builtin `logout`: Cannot use 'logout' in a non-login shell.
      1 |  logout
        |  ^~~~~~
 note: `exit` may be used instead.
 rc=1
 == logout with a non-numeric operand is a located error:
-1:1: error: Builtin `logout`: Cannot use 'logout' in a non-login shell.
+-c:1:1: error: Builtin `logout`: Cannot use 'logout' in a non-login shell.
      1 |  logout abc
        |  ^~~~~~~~~~
 note: `exit` may be used instead.

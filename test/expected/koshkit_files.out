@@ -7,13 +7,13 @@ b
 nums.txt: text
 stamp: empty
 sym: text
-1:33: error: koshkit file: cannot open 'missing.txt': No such file or directory.
+-c:1:33: error: koshkit file: cannot open 'missing.txt': No such file or directory.
      1 |  koshkit file nums.txt stamp sym missing.txt
        |                                  ^~~~~~~~~~~
 file-status=1
 --- custom file samples preserve merged-stream operand order ---
 magic-good-a: batch-match
-1:42: error: koshkit file: cannot open 'missing-magic': No such file or directory.
+-c:1:42: error: koshkit file: cannot open 'missing-magic': No such file or directory.
      1 |  koshkit file -M magic-batch magic-good-a missing-magic magic-good-b
        |                                           ^~~~~~~~~~~~~
 magic-good-b: batch-match
@@ -75,7 +75,7 @@ rmdir-parents=missing
 unlink rc=0
 0
 --- unlink a directory fails ---
-1:16: error: koshkit unlink: cannot unlink 'a': it is a directory.
+-c:1:16: error: koshkit unlink: cannot unlink 'a': it is a directory.
      1 |  koshkit unlink a
        |                 ^
 rc=1
@@ -95,7 +95,7 @@ rc=0
 cp-links/copy-dangling@
 rc=0
 cp-links/copy-default
-1:1: error: koshkit cp: cannot copy cyclic symbolic link 'cp-links/loop/sub/up'.
+-c:1:1: error: koshkit cp: cannot copy cyclic symbolic link 'cp-links/loop/sub/up'.
      1 |  koshkit cp -rL cp-links/loop cp-links/loop-l 2>&1; echo "rc=$?"; koshkit ls -F cp-links/loop-l cp-links/loop-l/sub
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 rc=1

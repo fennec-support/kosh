@@ -140,7 +140,7 @@ backtick.sh:2:11: error: Expected a filename after '<>'.
        |            ^
 status=1
 == run -c
-1:28: error: Expected a filename after '<>'.
+-c:1:28: error: Expected a filename after '<>'.
      1 |  echo before; echo $(echo <><>)
        |                             ^
 status=1

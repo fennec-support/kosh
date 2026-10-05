@@ -16,7 +16,7 @@ shopt -u nullglob
 == -p prints the replayable form when on:
 shopt -s nullglob
 == an unknown name is an error:
-1:7: error: Builtin `shopt`: 'bogusopt' is not a valid shell option name.
+-c:1:7: error: Builtin `shopt`: 'bogusopt' is not a valid shell option name.
      1 |  shopt bogusopt
        |        ^~~~~~~~
 rc=1
@@ -48,7 +48,7 @@ declare -x exported
 array=one two
 == checkhash controls cached command validation:
 first
-4:1: error: Unable to execute `.test-work/checkhash-first/checkhash-probe`: No such file or directory.
+-c:4:1: error: Unable to execute `.test-work/checkhash-first/checkhash-probe`: No such file or directory.
      4 |  checkhash-probe
        |  ^~~~~~~~~~~~~~~
 off=127

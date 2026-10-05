@@ -7,7 +7,7 @@ b<end>
 --- script from standard input ---
 ALPHA
 --- multiple data files with a missing operand ---
-1:1: error: koshkit sed: cannot read 'missing.txt': No such file or directory.
+-c:1:1: error: koshkit sed: cannot read 'missing.txt': No such file or directory.
      1 |  koshkit sed -n "2,3p" "$1" missing.txt "$2"; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 second

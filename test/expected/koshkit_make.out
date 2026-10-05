@@ -6,15 +6,15 @@ finished
 echo hello from make
 hello from make
 --- missing target ---
-1:14: error: koshkit make: There is no rule to make the target 'nope'.
+-c:1:14: error: koshkit make: There is no rule to make the target 'nope'.
      1 |  koshkit make nope
        |               ^~~~
 rc=2
-1:17: error: koshkit make: unable to change to the directory 'KOSH_MISSING_DIRECTORY': No such file or directory.
+-c:1:17: error: koshkit make: unable to change to the directory 'KOSH_MISSING_DIRECTORY': No such file or directory.
      1 |  koshkit make -C KOSH_MISSING_DIRECTORY
        |                  ^~~~~~~~~~~~~~~~~~~~~~
 missing-directory=2
-1:17: error: koshkit make: unable to read the makefile 'KOSH_MISSING_MAKEFILE': No such file or directory.
+-c:1:17: error: koshkit make: unable to read the makefile 'KOSH_MISSING_MAKEFILE': No such file or directory.
      1 |  koshkit make -f KOSH_MISSING_MAKEFILE
        |                  ^~~~~~~~~~~~~~~~~~~~~
 missing-makefile=2
@@ -142,7 +142,7 @@ visible
 touch touched
 touched=yes
 --- failing recipe aborts ---
-1:14: error: koshkit make: The recipe for the target 'broken' failed with status 1.
+-c:1:14: error: koshkit make: The recipe for the target 'broken' failed with status 1.
      1 |  koshkit make broken
        |               ^~~~~~
 rc=2
