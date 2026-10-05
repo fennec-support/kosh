@@ -125,6 +125,8 @@ static_assert(toiletline::HISTORY_RECORD_MAX_DECODED_BYTE_COUNT ==
 
 namespace {
 
+enum class selector_outcome : u8;
+
 struct completion_session
 {
   koshka::EvalContext *context{nullptr};
@@ -150,6 +152,16 @@ struct completion_session
     base_directory = nullptr;
     result = nullptr;
   }
+
+  pure fn is_enabled() const wontthrow -> bool { return context != nullptr; }
+  fn run_selector(koshka::completion::completion_result &out_result,
+                  usize token_codepoint_count) throws -> selector_outcome;
+  fn select_history(const char *const *entries, size_t count,
+                    const char **out_selected) -> int;
+  fn complete(const char *buffer, size_t cursor, tl_completion *out,
+              int for_listing) -> int;
+  fn highlight(const char *buffer, tl_highlight *out) const -> int;
+  fn validate_ghost(const char *entry) const -> int;
 };
 
 completion_session COMPLETION_SESSION{};
@@ -441,12 +453,11 @@ fn run_selector_program(koshka::EvalContext &context, koshka::StringView input,
   return selector_outcome::Selected;
 }
 
-fn run_completion_selector(koshka::EvalContext &context,
-                           koshka::completion::completion_result &result,
-                           usize token_codepoint_count) throws
-    -> selector_outcome
+fn completion_session::run_selector(
+    koshka::completion::completion_result &result,
+    usize token_codepoint_count) throws -> selector_outcome
 {
-  if (COMPLETION_SESSION.tab_selector != koshka::tab_selector_mode::External)
+  if (tab_selector != koshka::tab_selector_mode::External)
     return selector_outcome::NotRun;
 
   if (::tl_utf8_strlen(result.longest_common_prefix.c_str()) >
@@ -459,7 +470,7 @@ fn run_completion_selector(koshka::EvalContext &context,
 
   let selected = koshka::ArrayList<koshka::String>{koshka::heap_allocator()};
   let const outcome =
-      run_selector_program(context, build_selector_input(result).view(),
+      run_selector_program(*context, build_selector_input(result).view(),
                            result.descriptions.count() > 0, selected);
   if (outcome != selector_outcome::Selected) return outcome;
 
@@ -489,12 +500,11 @@ koshka::String SELECTED_HISTORY_ENTRY{koshka::heap_allocator()};
    matching history entries as its records. A picker that runs and is dismissed
    answers the key on its own, and every other path hands ctrl-R back to the
    editor. */
-fn kosh_history_select_callback(const char *const *entries, size_t count,
-                                const char **out_selected) -> int
+fn completion_session::select_history(const char *const *entries, size_t count,
+                                      const char **out_selected) -> int
 {
-  if (COMPLETION_SESSION.context == nullptr) return 0;
-  if (COMPLETION_SESSION.tab_selector != koshka::tab_selector_mode::External)
-    return 0;
+  if (context == nullptr) return 0;
+  if (tab_selector != koshka::tab_selector_mode::External) return 0;
   if (entries == nullptr || count == 0) return 0;
 
   /* Toiletline calls this through a C function pointer. A throw unwinding past
@@ -507,8 +517,8 @@ fn kosh_history_select_callback(const char *const *entries, size_t count,
     }
 
     let selected = koshka::ArrayList<koshka::String>{koshka::heap_allocator()};
-    let const outcome = run_selector_program(*COMPLETION_SESSION.context,
-                                             input.view(), false, selected);
+    let const outcome =
+        run_selector_program(*context, input.view(), false, selected);
     if (outcome == selector_outcome::NotRun) return 0;
     if (outcome == selector_outcome::Dismissed) return -1;
     if (selected.is_empty()) return 0;
@@ -523,16 +533,17 @@ fn kosh_history_select_callback(const char *const *entries, size_t count,
   }
 }
 
-/* Toiletline edits in codepoints while the completion engine works in bytes. */
-fn kosh_completion_callback(const char *buffer, size_t cursor,
-                            tl_completion *out, int for_listing) -> int
+fn kosh_history_select_callback(const char *const *entries, size_t count,
+                                const char **out_selected) -> int
 {
-  if (COMPLETION_SESSION.context == nullptr ||
-      COMPLETION_SESSION.base_directory == nullptr ||
-      COMPLETION_SESSION.result == nullptr)
-  {
-    return 0;
-  }
+  return COMPLETION_SESSION.select_history(entries, count, out_selected);
+}
+
+/* Toiletline edits in codepoints while the completion engine works in bytes. */
+fn completion_session::complete(const char *buffer, size_t cursor,
+                                tl_completion *out, int for_listing) -> int
+{
+  if (context == nullptr || result == nullptr) return 0;
 
   /* Toiletline calls this through a C function pointer. A throw unwinding past
      this frame is undefined behavior. The body is guarded and any throw is
@@ -540,17 +551,13 @@ fn kosh_completion_callback(const char *buffer, size_t cursor,
   try {
     let const is_explicit_completion = for_listing != 0;
     if (is_explicit_completion) {
-      COMPLETION_SESSION.context->resolution_store()
-          .resolver()
-          .begin_explicit_completion(
-              koshka::ProgramResolver::CompletionRefresh::Cached);
+      context->resolution_store().resolver().begin_explicit_completion(
+          koshka::ProgramResolver::CompletionRefresh::Cached);
     }
     defer
     {
       if (is_explicit_completion)
-        COMPLETION_SESSION.context->resolution_store()
-            .resolver()
-            .end_explicit_completion();
+        context->resolution_store().resolver().end_explicit_completion();
     };
 
     /* A completion spec can shell out, and a command talking to an unreachable
@@ -577,15 +584,14 @@ fn kosh_completion_callback(const char *buffer, size_t cursor,
     /* A completion diagnostic is armed to break onto its own line, then
        disarmed so a later command's message is unaffected. */
     koshka::arm_message_leading_newline(true);
-    COMPLETION_SESSION.result->candidates.clear();
-    COMPLETION_SESSION.result->descriptions.clear();
-    COMPLETION_SESSION.result->longest_common_prefix.clear();
-    *COMPLETION_SESSION.result = koshka::completion::complete(
-        line, byte_cursor, *COMPLETION_SESSION.context,
-        *COMPLETION_SESSION.base_directory, nullptr, false,
+    result->candidates.clear();
+    result->descriptions.clear();
+    result->longest_common_prefix.clear();
+    *result = koshka::completion::complete(
+        line, byte_cursor, *context, *base_directory, nullptr, false,
         for_listing != 0 ? koshka::completion::completion_mode::Listing
                          : koshka::completion::completion_mode::Ghost);
-    let const &result = *COMPLETION_SESSION.result;
+    let const &completions = *result;
     koshka::arm_message_leading_newline(false);
 
     /* An abandoned completion offers nothing, so the key leaves the line as it
@@ -595,53 +601,48 @@ fn kosh_completion_callback(const char *buffer, size_t cursor,
     /* An explicit tab may route the candidates through a filtering picker
        first. The ghost never does, since it draws no list and must not fork. */
     let const token_start_codepoint =
-        ::tl_utf8_strnlen(buffer, result.token_start);
+        ::tl_utf8_strnlen(buffer, completions.token_start);
     let const token_codepoint_count =
         cursor >= token_start_codepoint ? cursor - token_start_codepoint : 0;
     if (is_explicit_completion &&
-        run_completion_selector(
-            *COMPLETION_SESSION.context, *COMPLETION_SESSION.result,
-            token_codepoint_count) == selector_outcome::Dismissed)
+        run_selector(*result, token_codepoint_count) ==
+            selector_outcome::Dismissed)
     {
       return 0;
     }
 
-    if (result.candidate_count == 0) return 0;
+    if (completions.candidate_count == 0) return 0;
 
-    COMPLETION_SESSION.candidate_pointers.clear();
+    candidate_pointers.clear();
     if (for_listing != 0) {
-      COMPLETION_SESSION.candidate_pointers.reserve(result.candidates.count());
-      for (let const &candidate : result.candidates)
-        COMPLETION_SESSION.candidate_pointers.push(candidate.c_str());
+      candidate_pointers.reserve(completions.candidates.count());
+      for (let const &candidate : completions.candidates)
+        candidate_pointers.push(candidate.c_str());
     }
 
     /* The candidate text keys the description lookup, and the build is skipped
        when none was produced. */
-    COMPLETION_SESSION.description_pointers.clear();
+    description_pointers.clear();
     out->descriptions = nullptr;
-    if (for_listing != 0 && result.descriptions.count() > 0) {
-      COMPLETION_SESSION.description_pointers.reserve(
-          result.candidates.count());
-      for (let const &candidate : result.candidates) {
+    if (for_listing != 0 && completions.descriptions.count() > 0) {
+      description_pointers.reserve(completions.candidates.count());
+      for (let const &candidate : completions.candidates) {
         if (let const found_description =
-                result.descriptions.find(candidate.view());
+                completions.descriptions.find(candidate.view());
             found_description.has_value())
-          COMPLETION_SESSION.description_pointers.push(
-              found_description->c_str());
+          description_pointers.push(found_description->c_str());
         else
-          COMPLETION_SESSION.description_pointers.push("");
+          description_pointers.push("");
       }
-      out->descriptions = COMPLETION_SESSION.description_pointers.begin();
+      out->descriptions = description_pointers.begin();
     }
 
-    out->candidates = for_listing != 0
-                          ? COMPLETION_SESSION.candidate_pointers.begin()
-                          : nullptr;
-    out->count = result.candidate_count;
-    out->longest_common_prefix = result.longest_common_prefix.c_str();
+    out->candidates = for_listing != 0 ? candidate_pointers.begin() : nullptr;
+    out->count = completions.candidate_count;
+    out->longest_common_prefix = completions.longest_common_prefix.c_str();
     /* The engine reports the span in bytes, converted to codepoint indices. */
-    out->token_start = ::tl_utf8_strnlen(buffer, result.token_start);
-    out->token_end = ::tl_utf8_strnlen(buffer, result.token_end);
+    out->token_start = ::tl_utf8_strnlen(buffer, completions.token_start);
+    out->token_end = ::tl_utf8_strnlen(buffer, completions.token_end);
 
     return 1;
   } catch (koshka::ErrorBase &error) {
@@ -656,19 +657,26 @@ fn kosh_completion_callback(const char *buffer, size_t cursor,
   }
 }
 
-/* The body is guarded since toiletline calls through a C function pointer. */
-fn kosh_highlight_callback(const char *buffer, tl_highlight *out) -> int
+fn kosh_completion_callback(const char *buffer, size_t cursor,
+                            tl_completion *out, int for_listing) -> int
 {
-  if (COMPLETION_SESSION.context == nullptr) return 0;
-  if (!COMPLETION_SESSION.is_highlight_color_enabled) return 0;
+  return COMPLETION_SESSION.complete(buffer, cursor, out, for_listing);
+}
+
+/* The body is guarded since toiletline calls through a C function pointer. */
+fn completion_session::highlight(const char *buffer, tl_highlight *out) const
+    -> int
+{
+  if (context == nullptr) return 0;
+  if (!is_highlight_color_enabled) return 0;
 
   try {
     const usize byte_length = std::strlen(buffer);
     let line = koshka::StringView{buffer, byte_length};
 
     koshka::ArrayList<koshka::highlight_span> result =
-        koshka::completion::highlight_line(line, *COMPLETION_SESSION.context);
-    let const &theme = COMPLETION_SESSION.is_highlight_styled_underlines_enabled
+        koshka::completion::highlight_line(line, *context);
+    let const &theme = is_highlight_styled_underlines_enabled
                            ? koshka::colors::SHELL_HIGHLIGHT_THEME
                            : koshka::colors::NONINTERACTIVE_HIGHLIGHT_THEME;
 
@@ -699,6 +707,11 @@ fn kosh_highlight_callback(const char *buffer, tl_highlight *out) -> int
   } catch (...) {
     return 0;
   }
+}
+
+fn kosh_highlight_callback(const char *buffer, tl_highlight *out) -> int
+{
+  return COMPLETION_SESSION.highlight(buffer, out);
 }
 
 koshka::EvalContext *JOB_CONTEXT = nullptr;
@@ -732,19 +745,23 @@ fn kosh_wake_callback(int phase) -> int
 
 /* An entry whose command word no longer resolves is rejected. A throw accepts
    the entry. */
-fn kosh_ghost_validate_callback(const char *entry) -> int
+fn completion_session::validate_ghost(const char *entry) const -> int
 {
-  if (COMPLETION_SESSION.context == nullptr) return 1;
+  if (context == nullptr) return 1;
   try {
     const usize byte_length = std::strlen(entry);
     return koshka::completion::command_word_resolves(
-               koshka::StringView{entry, byte_length},
-               *COMPLETION_SESSION.context)
+               koshka::StringView{entry, byte_length}, *context)
                ? 1
                : 0;
   } catch (...) {
     return 1;
   }
+}
+
+fn kosh_ghost_validate_callback(const char *entry) -> int
+{
+  return COMPLETION_SESSION.validate_ghost(entry);
 }
 
 } /* namespace */
@@ -927,8 +944,6 @@ static fn provide_history_search_snapshot(const char **out_contents,
   return 0;
 }
 
-static bool IS_CALC_HISTORY_ACTIVE = false;
-
 struct history_snapshot
 {
   String path{koshka::heap_allocator()};
@@ -949,9 +964,6 @@ struct history_snapshot
   bool is_buffer_loaded{false};
   bool is_valid{false};
 };
-
-static history_snapshot SHELL_HISTORY_SNAPSHOT{};
-static history_snapshot CALC_HISTORY_SNAPSHOT{};
 
 static fn capture_history_snapshot(history_snapshot &snapshot) -> void
 {
@@ -1030,40 +1042,61 @@ static fn restore_history_snapshot(const history_snapshot &snapshot) -> void
 
 /* Every read and append resolves the file the swap currently points at. A calc
    prompt never reloads the shell file over the calc entries. */
+class CalcHistorySwap
+{
+public:
+  pure fn is_active() const wontthrow -> bool { return m_is_active; }
+
+  fn enter() -> void
+  {
+    let const did_restore_calc = exchange(m_shell, m_calc);
+    m_is_active = true;
+
+    if (did_restore_calc) return;
+
+    if (koshka::Maybe<koshka::Path> calc = get_calc_history_file_path();
+        calc.has_value())
+    {
+      unused(load_history(*calc, true));
+    }
+  }
+
+  fn leave() -> void
+  {
+    m_is_active = false;
+    unused(exchange(m_calc, m_shell));
+  }
+
+private:
+  static fn exchange(history_snapshot &saved, history_snapshot &incoming)
+      -> bool
+  {
+    capture_history_snapshot(saved);
+    if (!incoming.is_valid) return false;
+
+    restore_history_snapshot(incoming);
+    incoming = history_snapshot{};
+
+    return true;
+  }
+
+  history_snapshot m_shell{};
+  history_snapshot m_calc{};
+  bool m_is_active{false};
+};
+
+static CalcHistorySwap CALC_HISTORY_SWAP{};
+
 static fn get_active_history_file_path() -> koshka::Maybe<koshka::Path>
 {
-  if (IS_CALC_HISTORY_ACTIVE) return get_calc_history_file_path();
+  if (CALC_HISTORY_SWAP.is_active()) return get_calc_history_file_path();
 
   return get_history_file_path();
 }
 
-fn enter_calc_history() -> void
-{
-  capture_history_snapshot(SHELL_HISTORY_SNAPSHOT);
+fn enter_calc_history() -> void { CALC_HISTORY_SWAP.enter(); }
 
-  IS_CALC_HISTORY_ACTIVE = true;
-
-  if (CALC_HISTORY_SNAPSHOT.is_valid) {
-    restore_history_snapshot(CALC_HISTORY_SNAPSHOT);
-    CALC_HISTORY_SNAPSHOT = history_snapshot{};
-  } else if (koshka::Maybe<koshka::Path> calc = get_calc_history_file_path();
-             calc.has_value())
-  {
-    unused(load_history(*calc, true));
-  }
-}
-
-fn leave_calc_history() -> void
-{
-  capture_history_snapshot(CALC_HISTORY_SNAPSHOT);
-
-  IS_CALC_HISTORY_ACTIVE = false;
-
-  if (SHELL_HISTORY_SNAPSHOT.is_valid) {
-    restore_history_snapshot(SHELL_HISTORY_SNAPSHOT);
-    SHELL_HISTORY_SNAPSHOT = history_snapshot{};
-  }
-}
+fn leave_calc_history() -> void { CALC_HISTORY_SWAP.leave(); }
 
 fn get_history_path() -> koshka::Maybe<koshka::Path>
 {
@@ -2463,6 +2496,46 @@ static fn strip_ansi_color(StringView text) throws -> String
   return out;
 }
 
+static fn render_prompt_escapes(StringView expanded, StringView user,
+                                StringView working_directory,
+                                EvalContext &context) throws -> String
+{
+  String rendered =
+      expand_prompt_escapes(expanded, user, working_directory, context);
+  if (!colors::stdout_wants_color()) return strip_ansi_color(rendered.view());
+
+  return rendered;
+}
+
+static fn expand_prompt_variable(EvalContext &context, StringView name,
+                                 StringView template_string) throws
+    -> Maybe<String>
+{
+  const i32 saved_status = context.execution_store().last_exit_status();
+  String guarded = guard_prompt_backslashes(template_string);
+  Maybe<String> expanded = koshka::None;
+  try {
+    let source_text = String{"$"};
+    source_text.append(name);
+    let const source_name = koshka::intern_source_name(source_text.view());
+    let const source_location =
+        koshka::SourceLocation{0, guarded.count(), source_name};
+    expanded = unguard_prompt_backslashes(
+        context.expand_heredoc_body(guarded.view(), &source_location).view());
+  } catch (const koshka::ErrorBase &error) {
+    /* A prompt draw error leaves the template standing rather than taking down
+       the shell. */
+    koshka::show_message(error.to_string(guarded.view(), &context));
+    if (let const definition =
+            context.special_variable_definition_location(name);
+        definition.has_value())
+      context.print_source_backtrace(definition);
+  }
+  context.execution_store().set_last_exit_status(saved_status);
+
+  return expanded;
+}
+
 fn expand_prompt_template(StringView prompt, EvalContext &context) throws
     -> String
 {
@@ -2500,35 +2573,14 @@ fn build_prompt(EvalContext &context) -> String
   let const is_cacheable =
       scan_prompt_template_inputs(ps1_template.view(), scanned_inputs);
   if (is_cacheable && PROMPT_CACHE.matches(ps1_template.view(), context)) {
-    String rendered =
-        expand_prompt_escapes(PROMPT_CACHE.expansion.view(), CACHED_USER.view(),
-                              full_pwd.view(), context);
-    if (!colors::stdout_wants_color()) return strip_ansi_color(rendered.view());
-    return rendered;
+    return render_prompt_escapes(PROMPT_CACHE.expansion.view(),
+                                 CACHED_USER.view(), full_pwd.view(), context);
   }
 
-  const i32 saved_status = context.execution_store().last_exit_status();
-  String guarded = guard_prompt_backslashes(ps1_template.view());
-  String expanded{koshka::heap_allocator()};
-  try {
-    let const source_name = koshka::intern_source_name("$PS1");
-    let const source_location =
-        koshka::SourceLocation{0, guarded.count(), source_name};
-    expanded = unguard_prompt_backslashes(
-        context.expand_heredoc_body(guarded.view(), &source_location).view());
-  } catch (const koshka::ErrorBase &error) {
-    /* A prompt draw error leaves the template standing rather than taking down
-       the shell. */
-    koshka::show_message(error.to_string(guarded.view(), &context));
-    if (let const definition =
-            context.special_variable_definition_location("PS1");
-        definition.has_value())
-      context.print_source_backtrace(definition);
-    expanded = ps1_template;
-  }
-  context.execution_store().set_last_exit_status(saved_status);
+  String expanded = expand_prompt_variable(context, "PS1", ps1_template.view())
+                        .value_or(ps1_template.clone());
 
-  String rendered = expand_prompt_escapes(expanded.view(), CACHED_USER.view(),
+  String rendered = render_prompt_escapes(expanded.view(), CACHED_USER.view(),
                                           full_pwd.view(), context);
 
   PROMPT_CACHE.invalidate();
@@ -2536,7 +2588,6 @@ fn build_prompt(EvalContext &context) -> String
     PROMPT_CACHE.store(ps1_template, steal(scanned_inputs), steal(expanded),
                        context);
 
-  if (!colors::stdout_wants_color()) return strip_ansi_color(rendered.view());
   return rendered;
 }
 
@@ -2547,32 +2598,14 @@ fn render_ps0(EvalContext &context) -> String
     return String{koshka::heap_allocator()};
   }
 
-  const i32 saved_status = context.execution_store().last_exit_status();
-  String guarded = guard_prompt_backslashes(ps0->view());
-  String expanded{koshka::heap_allocator()};
-  try {
-    let const source_name = koshka::intern_source_name("$PS0");
-    let const source_location =
-        koshka::SourceLocation{0, guarded.count(), source_name};
-    expanded = unguard_prompt_backslashes(
-        context.expand_heredoc_body(guarded.view(), &source_location).view());
-  } catch (const koshka::ErrorBase &error) {
-    koshka::show_message(error.to_string(guarded.view(), &context));
-    if (let const definition =
-            context.special_variable_definition_location("PS0");
-        definition.has_value())
-      context.print_source_backtrace(definition);
-    context.execution_store().set_last_exit_status(saved_status);
-    return String{koshka::heap_allocator()};
-  }
-  context.execution_store().set_last_exit_status(saved_status);
+  Maybe<String> expanded = expand_prompt_variable(context, "PS0", ps0->view());
+  if (!expanded.has_value()) return String{koshka::heap_allocator()};
 
   let const working_directory = Path::current_directory().text();
   let const user = os::get_current_user().value_or(String{"???"});
-  String rendered = expand_prompt_escapes(expanded.view(), user.view(),
-                                          working_directory.view(), context);
-  if (!colors::stdout_wants_color()) return strip_ansi_color(rendered.view());
-  return rendered;
+
+  return render_prompt_escapes(expanded->view(), user.view(),
+                               working_directory.view(), context);
 }
 
 } /* namespace toiletline */
