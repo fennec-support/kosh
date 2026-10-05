@@ -686,8 +686,8 @@ fn get_network_window_status(const live_network_row &row,
           sampled.available_fields &= ~static_cast<u32>(field);
           return;
         }
-        let const baseline = row.history.interpolate(
-            boundary, before.*member, after_boundary.*member);
+        let const baseline = row.history.interpolate(boundary, before.*member,
+                                                     after_boundary.*member);
         if (!baseline.has_value()) {
           sampled.available_fields &= ~static_cast<u32>(field);
           return;
@@ -778,8 +778,8 @@ fn run_live_network_traffic(const ExecContext &ec, Allocator allocator,
   };
 
   return run_live_view(ec,
-                       report_options.make_view_options(
-                           "evilnet", should_color, started_at_nanoseconds),
+                       report_options.make_view_options("evilnet", should_color,
+                                                        started_at_nanoseconds),
                        do_sample, do_render);
 }
 
@@ -840,9 +840,9 @@ fn EvilNet::execute(const ExecContext &ec, EvalContext &cxt,
                             "--failures cannot be combined with --live");
     return 2;
   }
-  let const report_options = live_report_options::parse(
-      ec, cxt, args[0].view(), FLAG_EVILNET_LIVE, FLAG_EVILNET_CUMULATIVE,
-      allocator);
+  let const report_options =
+      live_report_options::parse(ec, cxt, args[0].view(), FLAG_EVILNET_LIVE,
+                                 FLAG_EVILNET_CUMULATIVE, allocator);
   if (!report_options.has_value()) return 1;
 
   if (report_options->is_live) {

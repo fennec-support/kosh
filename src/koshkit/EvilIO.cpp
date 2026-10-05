@@ -193,8 +193,8 @@ struct process_io_totals
     if (row.status.has_operation_counts) {
       read_operation_count =
           saturated_sum(read_operation_count, row.status.read_operation_count);
-      write_operation_count = saturated_sum(
-          write_operation_count, row.status.write_operation_count);
+      write_operation_count = saturated_sum(write_operation_count,
+                                            row.status.write_operation_count);
       has_operation_counts = true;
     }
   }
@@ -981,11 +981,10 @@ fn run_live_process_io(const ExecContext &ec, Maybe<i64> selected_pid,
     return None;
   };
 
-  return run_live_view(
-      ec,
-      report_options.make_view_options("evilio", should_color,
-                                       started_at_nanoseconds),
-      do_sample, do_render);
+  return run_live_view(ec,
+                       report_options.make_view_options("evilio", should_color,
+                                                        started_at_nanoseconds),
+                       do_sample, do_render);
 }
 
 struct live_disk_row
@@ -1048,8 +1047,8 @@ fn make_disk_window_row(const live_disk_row &row, u64 window_start_nanoseconds,
 fn run_live_disk_io(const ExecContext &ec,
                     const live_report_options &report_options,
                     StringView sample_duration_label,
-                    Maybe<evilio_sort_key> sort_key,
-                    bool should_color) throws -> i32
+                    Maybe<evilio_sort_key> sort_key, bool should_color) throws
+    -> i32
 {
   let const allocator = heap_allocator();
   let retained = ArrayList<live_disk_row>{allocator};
@@ -1097,11 +1096,10 @@ fn run_live_disk_io(const ExecContext &ec,
     return None;
   };
 
-  return run_live_view(
-      ec,
-      report_options.make_view_options("evilio", should_color,
-                                       started_at_nanoseconds),
-      do_sample, do_render);
+  return run_live_view(ec,
+                       report_options.make_view_options("evilio", should_color,
+                                                        started_at_nanoseconds),
+                       do_sample, do_render);
 }
 
 fn make_metric_table(Allocator allocator) throws -> ReportTable
@@ -1411,9 +1409,9 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
 
   if (report_options->is_live) {
     if (should_show_processes) {
-      return run_live_process_io(
-          ec, selected_pid, row_limit, *report_options,
-          sample_duration_label.view(), sort_key, should_color);
+      return run_live_process_io(ec, selected_pid, row_limit, *report_options,
+                                 sample_duration_label.view(), sort_key,
+                                 should_color);
     }
 
     return run_live_disk_io(ec, *report_options, sample_duration_label.view(),

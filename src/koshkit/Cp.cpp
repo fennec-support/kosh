@@ -169,11 +169,12 @@ static fn source_file_status(StringView source) throws -> Maybe<os::file_status>
   return status;
 }
 
-static fn
-copy_path(const ExecContext &ec, EvalContext &cxt, StringView utility_name,
-          StringView source, StringView destination, const cp_options &options,
-          Allocator allocator, const os::file_status *known_lstat,
-          ArrayList<cp_directory_identity> &active_directories) throws -> bool
+static fn copy_path(const ExecContext &ec, EvalContext &cxt,
+                    StringView utility_name, StringView source,
+                    StringView destination, const cp_options &options,
+                    Allocator allocator, const os::file_status *known_lstat,
+                    ArrayList<cp_directory_identity> &active_directories) throws
+    -> bool
 {
   let const source_path = Path{source, allocator};
   let const destination_path = Path{destination, allocator};
@@ -424,10 +425,9 @@ fn Cp::execute(const ExecContext &ec, EvalContext &cxt,
     symlink_mode = cp_symlink_mode::FollowRoot;
   }
 
-  let const options = cp_options{FLAG_CP_FORCE.is_enabled(),
-                                 FLAG_CP_PRESERVE.is_enabled(),
-                                 FLAG_CP_VERBOSE.is_enabled(), recursive_mode,
-                                 symlink_mode};
+  let const options =
+      cp_options{FLAG_CP_FORCE.is_enabled(), FLAG_CP_PRESERVE.is_enabled(),
+                 FLAG_CP_VERBOSE.is_enabled(), recursive_mode, symlink_mode};
   let const should_prompt =
       FLAG_CP_INTERACTIVE.is_enabled() &&
       (!options.should_force ||

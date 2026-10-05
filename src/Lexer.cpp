@@ -1172,8 +1172,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
                      name.find_character('`').has_value())
           {
             validate_nested_expansions(m_cursor_position + name_start,
-                                       name.length, false,
-                                       is_in_double_quotes);
+                                       name.length, false, is_in_double_quotes);
           }
         }
       } else if (lexer::is_variable_name_start(next)) {
@@ -1590,16 +1589,16 @@ cold fn Lexer::validate_nested_expansions(
     usize region_position, usize region_length, bool is_heredoc,
     bool is_region_in_double_quotes) throws -> void
 {
-  let const found = lexer::find_nested_substitutions(
-      m_source, region_position, region_length, is_heredoc,
-      is_region_in_double_quotes);
+  let const found =
+      lexer::find_nested_substitutions(m_source, region_position, region_length,
+                                       is_heredoc, is_region_in_double_quotes);
   for (let const &entry : found) {
     let const outer_location = here(entry.outer_position, entry.outer_length);
     if (entry.is_exact) {
-      validate_substitution_body(entry.body_position,
-                                 m_source.substring_of_length(
-                                     entry.body_position, entry.body_length),
-                                 outer_location);
+      validate_substitution_body(
+          entry.body_position,
+          m_source.substring_of_length(entry.body_position, entry.body_length),
+          outer_location);
     } else {
       validate_substitution_body(entry.body_position,
                                  entry.unescaped_body.view(), outer_location);
@@ -1607,9 +1606,10 @@ cold fn Lexer::validate_nested_expansions(
   }
 }
 
-cold fn lexer::find_nested_substitutions(
-    StringView source, usize region_position, usize region_length,
-    bool is_heredoc, bool is_region_in_double_quotes) throws
+cold fn lexer::find_nested_substitutions(StringView source,
+                                         usize region_position,
+                                         usize region_length, bool is_heredoc,
+                                         bool is_region_in_double_quotes) throws
     -> ArrayList<nested_substitution>
 {
   let found = ArrayList<nested_substitution>{heap_allocator()};
@@ -1758,10 +1758,9 @@ cold fn lexer::find_segment_substitution(StringView source,
   default: return None;
   }
 
-  entry.is_exact =
-      entry.body_length == body_text.length &&
-      source.substring_of_length(entry.body_position, entry.body_length) ==
-          body_text;
+  entry.is_exact = entry.body_length == body_text.length &&
+                   source.substring_of_length(entry.body_position,
+                                              entry.body_length) == body_text;
   if (!entry.is_exact) entry.unescaped_body = String{body_text};
 
   return entry;

@@ -541,8 +541,8 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
     let const argument = StringView{argv[i]};
     let const is_negative_number_operand =
         parse_options.should_accept_negative_number_operand &&
-        argument.length > 1 &&
-        argument[0] == '-' && argument.substring(1).is_all_decimal_digits();
+        argument.length > 1 && argument[0] == '-' &&
+        argument.substring(1).is_all_decimal_digits();
     if (should_ignore_rest || argv[i][0] != '-' || i == 0 ||
         is_negative_number_operand)
     {

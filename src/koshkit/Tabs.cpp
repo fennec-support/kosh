@@ -34,10 +34,9 @@ fn Tabs::execute(const ExecContext &ec, EvalContext &cxt,
                  const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] =
-      parse_util_operands(FLAG_LIST, args, cxt.scratch_allocator(),
-                          &arg_locations,
-                          {.should_accept_unknown_flag_operand = true});
+  let const[operands, operand_locations] = parse_util_operands(
+      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations,
+      {.should_accept_unknown_flag_operand = true});
   defer { reset_flags(FLAG_LIST); };
 
   if (FLAG_HELP.is_enabled()) {

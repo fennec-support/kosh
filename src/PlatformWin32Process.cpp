@@ -1073,11 +1073,13 @@ fn execute_program(ExecContext &ec, const program_execution_options &options)
   return process_info.hProcess;
 }
 
-static fn spawn_subshell_stage(
-    StringView source, Maybe<descriptor> in_fd, Maybe<descriptor> out_fd,
-    Maybe<descriptor> err_fd, bool source_traces_enabled,
-    const child_evaluator_state &evaluator,
-    process_group_mode process_group) throws -> Maybe<process>;
+static fn spawn_subshell_stage(StringView source, Maybe<descriptor> in_fd,
+                               Maybe<descriptor> out_fd,
+                               Maybe<descriptor> err_fd,
+                               bool source_traces_enabled,
+                               const child_evaluator_state &evaluator,
+                               process_group_mode process_group) throws
+    -> Maybe<process>;
 
 static fn make_internal_pipe_path() throws -> String
 {
@@ -1255,11 +1257,13 @@ fn release_unused_process_substitution(opaque *cleanup) wontthrow -> void
   }
 }
 
-static fn spawn_subshell_stage(
-    StringView source, Maybe<descriptor> in_fd, Maybe<descriptor> out_fd,
-    Maybe<descriptor> err_fd, bool source_traces_enabled,
-    const child_evaluator_state &evaluator,
-    process_group_mode process_group) throws -> Maybe<process>
+static fn spawn_subshell_stage(StringView source, Maybe<descriptor> in_fd,
+                               Maybe<descriptor> out_fd,
+                               Maybe<descriptor> err_fd,
+                               bool source_traces_enabled,
+                               const child_evaluator_state &evaluator,
+                               process_group_mode process_group) throws
+    -> Maybe<process>
 {
   let const bootstrap = evaluator.bootstrap;
   let const mood = evaluator.mood;
@@ -1393,9 +1397,9 @@ fn launch_compound_stage(const compound_stage_options &options) throws
         "A compound command in a pipeline is not supported on this platform"};
 
   unused(options.process_group_id);
-  let child = spawn_subshell_stage(
-      options.source, options.in_fd, options.out_fd, options.err_fd, true,
-      options.evaluator, options.process_group);
+  let child = spawn_subshell_stage(options.source, options.in_fd,
+                                   options.out_fd, options.err_fd, true,
+                                   options.evaluator, options.process_group);
   if (!child.has_value())
     throw ErrorWithLocation{steal(options.location),
                             "Could not spawn the compound pipeline stage"};

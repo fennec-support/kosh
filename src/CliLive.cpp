@@ -203,8 +203,8 @@ pure fn LiveView::get_wait_nanoseconds(
 
 fn live_report_options::parse_window_seconds(
     const ExecContext &ec, EvalContext &cxt, StringView utility_name,
-    StringView text, SourceLocation location, StringView title,
-    StringView note, Allocator allocator) throws -> Maybe<f64>
+    StringView text, SourceLocation location, StringView title, StringView note,
+    Allocator allocator) throws -> Maybe<f64>
 {
   let const seconds = parse_koshkit_duration_seconds(text, location, allocator);
   if (seconds <= 0.0) {

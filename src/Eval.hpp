@@ -153,7 +153,7 @@ struct reporting_state
   bool is_annoying_disabled{false};
   bool is_diagnostics_disabled{false};
 
-  pure fn operator==(const reporting_state &other) const wontthrow -> bool
+  pure fn operator==(const reporting_state &other) const wontthrow->bool
   {
     return warning_level == other.warning_level &&
            is_annoying_disabled == other.is_annoying_disabled &&
@@ -458,7 +458,7 @@ struct definition_state
     runtime.set_reporting_state(reporting);
   }
 
-  pure fn operator==(const definition_state &other) const wontthrow -> bool
+  pure fn operator==(const definition_state &other) const wontthrow->bool
   {
     return mood == other.mood && reporting == other.reporting;
   }
@@ -2455,10 +2455,7 @@ public:
   ~SourceScope() { restore(); }
 
   fn restore() wontthrow -> void;
-  pure fn get_source() const wontthrow -> const String *
-  {
-    return m_source;
-  }
+  pure fn get_source() const wontthrow -> const String * { return m_source; }
   pure fn get_location() const wontthrow -> const SourceLocation &
   {
     return m_location;

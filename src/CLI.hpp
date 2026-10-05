@@ -488,9 +488,9 @@ struct rolling_history
     timestamps.clear();
   }
 
-  pure fn get_newest() const wontthrow->const T & { return samples.back(); }
+  pure fn get_newest() const wontthrow -> const T & { return samples.back(); }
 
-  pure fn get_newest_timestamp() const wontthrow->u64
+  pure fn get_newest_timestamp() const wontthrow -> u64
   {
     return timestamps.back();
   }
@@ -498,8 +498,7 @@ struct rolling_history
   fn trim(u64 window_start_nanoseconds) throws -> void
   {
     ASSERT(samples.count() == timestamps.count());
-    while (timestamps.count() > 2 &&
-           timestamps[1] <= window_start_nanoseconds)
+    while (timestamps.count() > 2 && timestamps[1] <= window_start_nanoseconds)
     {
       samples.remove(0);
       timestamps.remove(0);
@@ -536,9 +535,9 @@ struct rolling_history
 
     let const elapsed = after_timestamp - before_timestamp;
     let const passed = boundary.timestamp - before_timestamp;
-    return before_value + static_cast<u64>(
-                              static_cast<u128>(after_value - before_value) *
-                              passed / elapsed);
+    return before_value +
+           static_cast<u64>(static_cast<u128>(after_value - before_value) *
+                            passed / elapsed);
   }
 };
 

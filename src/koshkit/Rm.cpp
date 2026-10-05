@@ -201,7 +201,7 @@ static fn report_dry_run_removal(
   if (request.should_decline(path)) return did_succeed;
 
   request.ec.print_to_stdout("rm: would remove '" +
-                     String{cxt.scratch_allocator(), path} + "'\n");
+                             String{cxt.scratch_allocator(), path} + "'\n");
   return did_succeed;
 }
 
@@ -256,13 +256,13 @@ fn Rm::execute(const ExecContext &ec, EvalContext &cxt,
       FLAG_RM_RECURSIVE_R.is_enabled() || FLAG_RM_RECURSIVE_UPPER.is_enabled();
   let const is_dry_run = FLAG_RM_DRY_RUN.is_enabled();
   let const allocator = cxt.scratch_allocator();
-  let const request = removal_request{
-      ec,
-      cxt,
-      args[0].view(),
-      allocator,
-      is_recursive ? removal_mode::Recursive : removal_mode::SinglePath,
-      prompt_mode};
+  let const request = removal_request{ec,
+                                      cxt,
+                                      args[0].view(),
+                                      allocator,
+                                      is_recursive ? removal_mode::Recursive
+                                                   : removal_mode::SinglePath,
+                                      prompt_mode};
 
   if (operands.is_empty() && !should_force) {
     return report_usage_error(ec, cxt, args[0].view());

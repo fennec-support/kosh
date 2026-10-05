@@ -479,8 +479,8 @@ static fn collect_directory(const Path &directory,
    it. */
 static fn build_long_entry(const listing_entry &entry,
                            const listing_options &options,
-                           id_name_cache &id_names,
-                           Allocator allocator) throws -> long_entry
+                           id_name_cache &id_names, Allocator allocator) throws
+    -> long_entry
 {
   long_entry row{allocator};
   append_decorated_name(row.name, entry, options);
@@ -656,9 +656,8 @@ static fn long_total_blocks(const ArrayList<long_entry> &entries,
 
 static fn render_entries(const ArrayList<listing_entry> &entries,
                          const listing_options &options,
-                         bool should_print_total,
-                         id_name_cache &id_names, String &output,
-                         Allocator allocator) throws -> void
+                         bool should_print_total, id_name_cache &id_names,
+                         String &output, Allocator allocator) throws -> void
 {
   if (!options.is_long) {
     render_columns(entries, options, output, allocator);

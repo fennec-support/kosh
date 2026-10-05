@@ -197,8 +197,7 @@ fn Cal::execute(const ExecContext &ec, EvalContext &cxt,
 
   if (FLAG_CAL_TODAY.is_enabled()) {
     output += '\n';
-    append_report_text(output, "Today", colors::ansi::BOLD_GREEN,
-                       should_color);
+    append_report_text(output, "Today", colors::ansi::BOLD_GREEN, should_color);
     output += " is ";
     output += CAL_WEEKDAY_NAMES[static_cast<usize>(current_date.tm_wday)];
     output += ", ";

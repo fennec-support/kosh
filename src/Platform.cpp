@@ -195,9 +195,7 @@ fn inherited_subshell_state::take_from_environment() throws
   if (status.is_error() || process_id.is_error() || depth.is_error()) {
     return None;
   }
-  if (process_id.value() <= 0 ||
-      depth.value() > static_cast<u64>(SIZE_MAX))
-  {
+  if (process_id.value() <= 0 || depth.value() > static_cast<u64>(SIZE_MAX)) {
     return None;
   }
 

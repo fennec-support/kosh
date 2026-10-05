@@ -2220,10 +2220,10 @@ fn internal::analyze_word_substitutions(AnalysisContext &actx, const Word &word,
       let const body = lexer::find_segment_substitution(actx.source, segment);
       if (!body.has_value()) break;
 
-      analyze_substitution_body(
-          actx, *body, location,
-          segment.kind != WordSegment::Kind::FunctionSubstitution,
-          is_unconditional);
+      analyze_substitution_body(actx, *body, location,
+                                segment.kind !=
+                                    WordSegment::Kind::FunctionSubstitution,
+                                is_unconditional);
       break;
     }
 

@@ -94,8 +94,8 @@ static fn write_csplit_part(const ExecContext &ec, EvalContext &cxt,
                             usize last, ArrayList<String> &output_paths,
                             csplit_write_policy policy) throws -> bool
 {
-  let const name = csplit_output_name(name_format, output_index,
-                                      cxt.scratch_allocator());
+  let const name =
+      csplit_output_name(name_format, output_index, cxt.scratch_allocator());
   let const descriptor =
       os::open_file_descriptor(name.view(), os::file_open_mode::Truncate);
   if (!descriptor.has_value()) {

@@ -998,8 +998,8 @@ fn kosh_main(int argc, char **argv) -> int
                           ? context.runtime_state().get_mood()
                           : session_mood);
   if (FLAG_LINT.is_enabled()) {
-    context.runtime_state().set_warning_level(koshka::warning_level_for_mood(
-        context.runtime_state().get_mood()));
+    context.runtime_state().set_warning_level(
+        koshka::warning_level_for_mood(context.runtime_state().get_mood()));
   }
 
   if (koshka::os::has_environment_variable(

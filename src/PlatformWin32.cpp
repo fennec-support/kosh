@@ -2027,8 +2027,7 @@ static fn receive_subshell_bootstrap() wontthrow -> void
   }
 
   char header_bytes[subshell_transport_header::ENCODED_LENGTH];
-  if (!read_subshell_transport_exact(pipe, header_bytes,
-                                     sizeof(header_bytes)))
+  if (!read_subshell_transport_exact(pipe, header_bytes, sizeof(header_bytes)))
   {
     CloseHandle(pipe);
     ExitProcess(1);

@@ -375,8 +375,8 @@ fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
     enter_subshell();
     hide_coprocess_descriptors();
     i32 status = 0;
-    let const source_scope = enter_source_scope(
-        &substitution_source, String{"process substitution"});
+    let const source_scope = enter_source_scope(&substitution_source,
+                                                String{"process substitution"});
     try {
       ast->evaluate(*this);
       status = execution_store().last_exit_status();
@@ -593,8 +593,8 @@ fn EvalContext::run_captured_substitution(
   {
     if (did_register_embedded) unregister_embedded_source();
   };
-  let const source_scope = enter_source_scope(
-      &source, String{source_store().current_origin()});
+  let const source_scope =
+      enter_source_scope(&source, String{source_store().current_origin()});
   let const previous_source = source_scope.get_source();
   let const previous_location = source_scope.get_location();
   let const did_push_line_base = call_site.has_value();

@@ -202,14 +202,14 @@ fn EvalContext::set_fresh_source(const String *source, String origin) wontthrow
 }
 
 SourceScope::SourceScope(EvalContext &context) wontthrow
-    : m_context(&context), m_source(context.source_store().current_source()),
+    : m_context(&context),
+      m_source(context.source_store().current_source()),
       m_origin(context.source_store().current_origin()),
       m_location(context.source_store().current_location())
 {}
 
 SourceScope::SourceScope(EvalContext &context, const String *source,
-                         String origin) wontthrow
-    : SourceScope(context)
+                         String origin) wontthrow : SourceScope(context)
 {
   context.set_current_source(source, steal(origin));
 }
@@ -916,9 +916,9 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
   variable_store().disabled_bash_special_arrays() =
       snapshot.disabled_bash_special_arrays;
   variable_store().unset_dynamic_readers() = snapshot.unset_dynamic_readers;
-  runtime_control_store().restore_snapshot_state(
-      snapshot.init_moods_sourcing, snapshot.initialized_moods,
-      snapshot.mutations);
+  runtime_control_store().restore_snapshot_state(snapshot.init_moods_sourcing,
+                                                 snapshot.initialized_moods,
+                                                 snapshot.mutations);
   dynamic_runtime_store().set_clock(snapshot.clock);
   scope_store().local_scopes() = steal(snapshot.local_scopes);
   scope_store().local_scope_depth() = snapshot.local_scope_depth;
@@ -1485,8 +1485,7 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
 }
 
 fn EvalContext::make_child_evaluator_state(
-    os::subshell_bootstrap &bootstrap) const throws
-    -> os::child_evaluator_state
+    os::subshell_bootstrap &bootstrap) const throws -> os::child_evaluator_state
 {
   let const should_launch_fresh_evaluator = !os::can_fork_evaluator();
   if (should_launch_fresh_evaluator && bootstrap.payload.is_empty())
@@ -1497,10 +1496,10 @@ fn EvalContext::make_child_evaluator_state(
       .shell_name = execution_store().get_shell_name(),
       .inherited =
           os::inherited_subshell_state{
-              .previous_exit_status = execution_store().last_exit_status(),
-              .shell_process_id = os::get_shell_process_id(),
-              .subshell_depth = execution_store().subshell_depth() + 1,
-          },
+                                       .previous_exit_status = execution_store().last_exit_status(),
+                                       .shell_process_id = os::get_shell_process_id(),
+                                       .subshell_depth = execution_store().subshell_depth() + 1,
+                                       },
       .mood = runtime_state().get_mood(),
   };
 }

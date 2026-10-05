@@ -886,10 +886,10 @@ fn CStyleForLoop::analyze(AnalysisContext &actx,
   let const step_position = condition_position + m_condition.length + 1;
   let const location = source_location();
 
-  analyze_region_substitutions(
-      actx, location, init_position,
-      m_init.length + m_condition.length + m_step.length + 2, false,
-      is_unconditional);
+  analyze_region_substitutions(actx, location, init_position,
+                               m_init.length + m_condition.length +
+                                   m_step.length + 2,
+                               false, is_unconditional);
 
   if (!m_init.is_empty()) {
     check_arithmetic_expression_lints(actx, m_init, location, init_position,

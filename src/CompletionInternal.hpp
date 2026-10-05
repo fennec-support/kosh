@@ -23,7 +23,7 @@ namespace koshka {
 namespace utils {
 struct decoded_shell_word;
 struct leading_expansion;
-}
+} // namespace utils
 
 namespace completion::internal {
 

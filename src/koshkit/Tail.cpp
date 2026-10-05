@@ -163,8 +163,8 @@ struct tail_options
         FLAG_TAIL_RETRY.is_enabled() || FLAG_TAIL_FOLLOW_NAME.is_enabled();
 
     if (FLAG_TAIL_SLEEP.is_set()) {
-      let const parsed_seconds = utils::parse_decimal_f64(
-          String{allocator, FLAG_TAIL_SLEEP.value()});
+      let const parsed_seconds =
+          utils::parse_decimal_f64(String{allocator, FLAG_TAIL_SLEEP.value()});
       if (parsed_seconds.is_error() || !(parsed_seconds.value() >= 0.0)) {
         throw ErrorWithDetails{
             "invalid number of seconds '" +
@@ -183,9 +183,8 @@ struct tail_options
           parsed_process_id.value() > static_cast<u64>(INT32_MAX))
       {
         throw ErrorWithDetails{
-            "invalid PID '" +
-                String{allocator, FLAG_TAIL_PID.value()}
-                + "'",
+            "invalid PID '" + String{allocator, FLAG_TAIL_PID.value()}
+              + "'",
             "The process identifier must be a non-negative integer"
         };
       }
@@ -588,10 +587,10 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
     let const wanted_count = static_cast<usize>(options.count);
     usize start = 0;
     if (options.unit == tail_unit::Bytes) {
-      start = options.origin == count_origin::FromStart
-                  ? (options.count == 0 ? 0
-                                        : static_cast<usize>(options.count - 1))
-                  : sub_sat(text.length, wanted_count);
+      start =
+          options.origin == count_origin::FromStart
+              ? (options.count == 0 ? 0 : static_cast<usize>(options.count - 1))
+              : sub_sat(text.length, wanted_count);
       if (start > text.length) start = text.length;
     } else if (options.origin == count_origin::FromStart) {
       usize remaining_newline_count = options.count > 0 ? wanted_count - 1 : 0;
