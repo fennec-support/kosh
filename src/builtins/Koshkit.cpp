@@ -96,11 +96,11 @@ fn Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     koshkit::set_koshkit_color_mode(*selected);
   }
 
-  if (utility_index < ec.args().count()) {
-    if (let const chosen = koshkit::find_util(ec.args()[utility_index].view());
-        chosen.has_value())
-      return koshkit::dispatch(ec, cxt, utility_index, chosen);
-  }
+  let const chosen = utility_index < ec.args().count()
+                         ? koshkit::find_util(ec.args()[utility_index].view())
+                         : Maybe<koshkit::Utility::Kind>{};
+  if (chosen.has_value())
+    return koshkit::dispatch(ec, cxt, utility_index, chosen);
 
   let const &sorted_names = koshkit::sorted_util_names();
 
@@ -182,7 +182,7 @@ fn Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   }
 
-  return koshkit::dispatch(ec, cxt, 1);
+  return koshkit::dispatch(ec, cxt, 1, chosen);
 }
 
 } // namespace koshka

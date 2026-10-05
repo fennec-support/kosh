@@ -334,10 +334,10 @@ fn makefile_shell_analysis_source(StringView source,
 /* The koshkit builtin passes 1 for `koshkit ls` and 0 for a bare-name
    invocation. */
 fn dispatch(const ExecContext &ec, EvalContext &cxt, usize name_index,
-            Maybe<Utility::Kind> chosen = {}) throws -> i32;
+            Maybe<Utility::Kind> chosen) throws -> i32;
 
-fn run_as_multicall(StringView util_name, ArrayList<String> operands,
-                    EvalContext &cxt) throws -> i32;
+fn run_as_multicall(StringView util_name, Utility::Kind chosen,
+                    ArrayList<String> operands, EvalContext &cxt) throws -> i32;
 
 fn run_util(Utility::Kind chosen, const ExecContext &ec, EvalContext &cxt,
             const ArrayList<String> &args,

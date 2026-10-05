@@ -196,7 +196,9 @@ fn kosh_main(int argc, char **argv) -> int
     invocation =
         invocation_name.substring_of_length(0, invocation_info.stem_length);
 
-    if (koshka::koshkit::find_util(invocation).has_value()) {
+    if (let const chosen_utility = koshka::koshkit::find_util(invocation);
+        chosen_utility.has_value())
+    {
       if (koshka::os::is_running_setuid() &&
           !koshka::os::drop_elevated_identity())
       {
@@ -222,7 +224,7 @@ fn kosh_main(int argc, char **argv) -> int
         operands.push(koshka::String{koshka::StringView{argv[i]}});
 
       return static_cast<int>(koshka::koshkit::run_as_multicall(
-          invocation, steal(operands), context));
+          invocation, *chosen_utility, steal(operands), context));
     }
   }
 

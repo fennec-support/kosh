@@ -225,7 +225,6 @@ fn dispatch(const ExecContext &ec, EvalContext &cxt, usize name_index,
 {
   ASSERT(name_index < ec.args().count());
   let const name = ec.args()[name_index].view();
-  if (!chosen.has_value()) chosen = find_util(name);
   if (!chosen.has_value())
     throw ErrorWithLocation{ec.arg_location_at(name_index),
                             "koshkit has no utility named '" + String{name} +
@@ -253,12 +252,9 @@ fn dispatch(const ExecContext &ec, EvalContext &cxt, usize name_index,
   }
 }
 
-fn run_as_multicall(StringView util_name, ArrayList<String> operands,
-                    EvalContext &cxt) throws -> i32
+fn run_as_multicall(StringView util_name, Utility::Kind chosen,
+                    ArrayList<String> operands, EvalContext &cxt) throws -> i32
 {
-  let const chosen = find_util(util_name);
-  ASSERT(chosen.has_value());
-
   /* The scan stops at --, where a later --version is an operand. */
   for (let const &operand : operands) {
     if (operand == "--") break;
@@ -289,7 +285,7 @@ fn run_as_multicall(StringView util_name, ArrayList<String> operands,
   ec.is_multicall = true;
 
   try {
-    return run_util(*chosen, ec, cxt, ec.args(), ec.arg_locations());
+    return run_util(chosen, ec, cxt, ec.args(), ec.arg_locations());
   } catch (const BrokenPipeExit &) {
     return 141;
   } catch (const ErrorWithLocation &e) {
