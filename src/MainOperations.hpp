@@ -344,6 +344,322 @@ struct script_run_options
   bool should_print_ast{true};
 };
 
+static fn exit_status_for(const Error &error, EvalContext &context) wontthrow
+    -> i32
+{
+  if (error.command_status() != 1) {
+    return static_cast<i32>(error.command_status());
+  }
+
+  return context.runtime_state().is_posix_mode() ? 2 : EXIT_FAILURE;
+}
+
+struct script_run_plan
+{
+  bool should_analyze;
+  bool should_stream_units;
+  bool should_stream_execution;
+  bool should_preflight_syntax;
+};
+
+struct script_run_input
+{
+  const String &contents;
+  Maybe<StringView> filename;
+  EvalContext &context;
+  BumpArena &arena;
+  ArrayList<source_diagnostic> *diagnostic_sink;
+};
+
+/* The default mood and noexec run analysis. Compatibility moods require enabled
+   warnings. The live context is read so a mood or diagnostic switch changes the
+   next command. A run that only lints holds one top-level command at a time,
+   so the peak memory of a large script is the memory of its widest command. */
+static fn make_script_run_plan(EvalContext &context, bool has_precompiled_ast,
+                               bool has_out_ast, bool should_print_ast) wontthrow
+    -> script_run_plan
+{
+  let &state = context.runtime_state();
+  let const should_analyze =
+      !has_precompiled_ast &&
+      (FLAG_OPTIMIZER_DIAGNOSTICS.is_enabled() ||
+       ((state.no_exec() ||
+         !(state.is_bash_compatible() || state.is_posix_mode()) ||
+         state.get_warning_level() > 0) &&
+        !state.is_diagnostics_disabled()));
+  let const needs_whole_tree = has_out_ast ||
+                               (should_print_ast && state.show_ast()) ||
+                               state.show_lexed_words();
+  let const should_stream_execution =
+      !has_precompiled_ast && !state.no_exec() && !needs_whole_tree;
+
+  return script_run_plan{should_analyze,
+                         should_analyze && state.no_exec() && !needs_whole_tree,
+                         should_stream_execution,
+                         should_stream_execution && !should_analyze};
+}
+
+/* A file with any parse error must not run, so every error is collected and
+   reported at once. */
+static fn report_parse_errors(const script_run_input &input,
+                              const ArrayList<String> &parse_errors) throws
+    -> bool
+{
+  if (parse_errors.is_empty()) return false;
+
+  if (input.diagnostic_sink == nullptr)
+    for (let const &e : parse_errors)
+      show_message(e);
+  input.context.execution_store().set_last_exit_status(EXIT_FAILURE);
+
+  return true;
+}
+
+/* The whole file is scanned first, because analysis resolves a call to a
+   function the source defines further down. */
+static fn scan_analysis_metadata(const script_run_input &input,
+                                 ArrayList<String> &parse_errors,
+                                 analysis_directives &directives) throws -> bool
+{
+  LOG(Debug, "scanning a chunk of %zu bytes for analysis scopes",
+      input.contents.count());
+
+  let scan_parser = Parser{
+      Lexer{input.contents.view(), input.arena, input.filename,
+            input.context.runtime_state().get_mood()}
+  };
+  scan_parser.set_analysis_metadata_collection_mode(
+      analysis_metadata_collection_mode::Enabled);
+  scan_parser.set_substitution_validation_mode(
+      substitution_validation_mode::Enabled);
+
+  let const scan_mark = input.arena.mark();
+  loop
+  {
+    let const unit_mark = input.arena.mark();
+    let const *unit = scan_parser.construct_next_top_level_ast(
+        parse_errors, &input.context, input.diagnostic_sink);
+    if (unit == nullptr) break;
+
+    scan_parser.drop_lexer_peek_cache();
+    input.arena.release(unit_mark);
+  }
+  input.arena.release(scan_mark);
+
+  directives = scan_parser.take_analysis_directives();
+
+  return report_parse_errors(input, parse_errors);
+}
+
+static fn preflight_syntax(const script_run_input &input,
+                           ArrayList<String> &parse_errors) throws -> bool
+{
+  LOG(Debug, "checking a chunk of %zu bytes before streamed execution",
+      input.contents.count());
+
+  let preflight_parser = Parser{
+      Lexer{input.contents.view(), input.arena, input.filename,
+            input.context.runtime_state().get_mood()}
+  };
+  preflight_parser.set_substitution_validation_mode(
+      substitution_validation_mode::Enabled);
+  loop
+  {
+    let const unit_mark = input.arena.mark();
+    let const *unit = preflight_parser.construct_next_top_level_ast(
+        parse_errors, &input.context, input.diagnostic_sink);
+    if (unit == nullptr) {
+      input.arena.release(unit_mark);
+      break;
+    }
+
+    preflight_parser.drop_lexer_peek_cache();
+    input.arena.release(unit_mark);
+  }
+
+  return report_parse_errors(input, parse_errors);
+}
+
+static fn parse_whole_script(const script_run_input &input,
+                             const script_run_plan &plan,
+                             bool should_print_ast,
+                             ArrayList<String> &parse_errors,
+                             analysis_directives &directives,
+                             Expression *&ast) throws -> bool
+{
+  EvalContext &context = input.context;
+  LOG(Debug, "parsing a chunk of %zu bytes", input.contents.count());
+
+  let p = Parser{
+      Lexer{input.contents.view(), input.arena, input.filename,
+            context.runtime_state().get_mood(),
+            ParseSession::AllocationKind::Syntax,
+            context.runtime_state().show_lexed_words()
+                ? debug_word_collection_mode::Enabled
+                : debug_word_collection_mode::Disabled}
+  };
+  p.set_analysis_metadata_collection_mode(
+      plan.should_analyze ? analysis_metadata_collection_mode::Enabled
+                          : analysis_metadata_collection_mode::Disabled);
+  p.set_substitution_validation_mode(substitution_validation_mode::Enabled);
+
+  ast = p.construct_ast(parse_errors, &context, input.diagnostic_sink);
+
+  if (report_parse_errors(input, parse_errors)) return true;
+
+  if (should_print_ast && context.runtime_state().show_ast()) {
+    print(ast->to_ast_string());
+    print("\n");
+  }
+
+  if (context.runtime_state().show_lexed_words()) {
+    for (let const &word : p.debug_words()) {
+      print(word.to_pretty_string());
+      print("\n");
+    }
+  }
+  directives = p.take_analysis_directives();
+
+  return false;
+}
+
+static fn analyze_script(const script_run_input &input,
+                         const script_run_plan &plan, Expression *ast,
+                         ArrayList<String> &parse_errors,
+                         const analysis_directives &directives,
+                         const analysis_outputs &diagnostics,
+                         const script_run_options &run_options) throws -> bool
+{
+  EvalContext &context = input.context;
+  let followed_source_paths = HashSet{heap_allocator()};
+  let source_effects_cache =
+      StringMap<followed_source_effects>{heap_allocator()};
+  if (input.filename.has_value()) {
+    if (let canonical_root = os::canonical_path(Path{*input.filename});
+        canonical_root.has_value())
+    {
+      followed_source_paths.add(canonical_root->text().view());
+    }
+  }
+  let highlight_cache = completion::shell_highlight_cache{};
+  let *previous_highlight_cache =
+      context.set_diagnostic_highlight_cache(&highlight_cache);
+  defer { context.set_diagnostic_highlight_cache(previous_highlight_cache); };
+  let options = analysis_options::from_runtime(context.runtime_state());
+  options.should_silence_unresolved_commands =
+      run_options.should_silence_unresolved_commands ||
+      (options.warning_level > 0 &&
+       context.execution_store().shell_is_interactive());
+  options.should_report_optimizer_diagnostics =
+      FLAG_OPTIMIZER_DIAGNOSTICS.is_enabled();
+  options.shebang_policy =
+      run_options.should_require_shebang && input.filename.has_value()
+          ? missing_shebang_policy::Report
+          : missing_shebang_policy::Suppress;
+  let const do_analyze = [&](AnalysisUnitStream *units) throws -> bool {
+    return analyze_ast(ast, input.contents, context.function_store().names(),
+                       context.scope_store().alias_names(), &context, options,
+                       directives, {&followed_source_paths, &source_effects_cache},
+                       {}, diagnostics, nullptr, units);
+  };
+
+  if (!plan.should_stream_units) return do_analyze(nullptr);
+
+  let unit_parser = Parser{
+      Lexer{input.contents.view(), input.arena, input.filename,
+            context.runtime_state().get_mood()}
+  };
+  /* A function body and a subshell carry their own definitions on the node, and
+     the walk seeds them when it enters. */
+  unit_parser.set_analysis_scope_collection_mode(
+      analysis_metadata_collection_mode::Enabled);
+
+  let units = StreamedAnalysisUnits{unit_parser, input.arena, parse_errors,
+                                    context, input.diagnostic_sink};
+
+  return do_analyze(&units);
+}
+
+static fn evaluate_script(const script_run_input &input,
+                          const script_run_plan &plan, Expression *ast,
+                          BumpArena::Mark preflight_mark,
+                          Maybe<usize> history_event_number,
+                          root_evaluation_mode evaluation_mode) throws -> i32
+{
+  EvalContext &context = input.context;
+  i32 exit_code = EXIT_SUCCESS;
+
+  LOG(Debug, "evaluating the chunk");
+  let previous_history_event_number =
+      context.source_store().get_current_history_event_number();
+  context.source_store().set_current_history_event_number(
+      steal(history_event_number));
+  defer
+  {
+    context.source_store().set_current_history_event_number(
+        steal(previous_history_event_number));
+  };
+  context.set_current_source(&input.contents, "the script");
+  let const command_start_nanos = koshka::os::monotonic_nanos();
+  if (plan.should_stream_execution) {
+    input.arena.release(preflight_mark);
+    let execution_parser = Parser{
+        Lexer{input.contents.view(), input.arena, input.filename,
+              context.runtime_state().get_mood()}
+    };
+    let const was_terminal_exec_allowed =
+        context.execution_store().terminal_exec_allowed();
+    defer
+    {
+      context.execution_store().terminal_exec_allowed() =
+          was_terminal_exec_allowed;
+    };
+
+    loop
+    {
+      let const unit_mark = input.arena.mark();
+      let const *unit = execution_parser.construct_next_top_level_ast();
+      if (unit == nullptr) {
+        input.arena.release(unit_mark);
+        break;
+      }
+      defer
+      {
+        context.clear_retained_sources();
+        context.set_current_source(&input.contents, "the script");
+        execution_parser.drop_lexer_peek_cache();
+        input.arena.release(unit_mark);
+      };
+
+      context.execution_store().terminal_exec_allowed() =
+          was_terminal_exec_allowed && execution_parser.is_at_end();
+      exit_code =
+          static_cast<int>(unit->evaluate_root(context, evaluation_mode));
+      evaluation_mode = root_evaluation_mode::Normal;
+      if (context.control_flow_store().has_pending() ||
+          (context.runtime_state().option_is_enabled(shell_option_id::Onecmd) &&
+           !context.execution_store().has_execution_string()))
+      {
+        break;
+      }
+    }
+  } else {
+    exit_code = static_cast<int>(ast->evaluate_root(context, evaluation_mode));
+  }
+  context.execution_store().set_last_command_duration_nanos(
+      koshka::os::monotonic_nanos() - command_start_nanos);
+  LOG(Debug, "the chunk finished with exit code %d", exit_code);
+  /* A signal trapped during the last command has no following node to trigger
+     its action, so the pending traps drain here. */
+  if (koshka::os::SIGNAL_PENDING) context.run_pending_traps();
+  report_escaped_control_flow(context, input.contents);
+  /* The source is local to the caller, so the frame is dropped before it
+     dangles. */
+  context.set_current_source(nullptr, "");
+
+  return exit_code;
+}
+
 static fn run_script_contents(
     const String &script_contents, EvalContext &context, BumpArena &ast_arena,
     Maybe<StringView> filename = None, Expression *precompiled_ast = nullptr,
@@ -366,146 +682,31 @@ static fn run_script_contents(
     ast_arena.reset();
     context.expansion_store().scratch_arena().reset();
 
+    let const plan = make_script_run_plan(
+        context, precompiled_ast != nullptr, out_ast != nullptr,
+        should_print_ast);
+    let const input = script_run_input{script_contents, filename, context,
+                                       ast_arena, diagnostic_sink};
+    let parse_errors = ArrayList<String>{heap_allocator()};
     let directives = analysis_directives{};
-
-    /* The default mood and noexec run analysis. Compatibility moods require
-       enabled warnings. The live context is read so a mood or diagnostic
-       switch changes the next command. */
-    let const run_analysis =
-        precompiled_ast == nullptr &&
-        (FLAG_OPTIMIZER_DIAGNOSTICS.is_enabled() ||
-         ((context.runtime_state().no_exec() ||
-           !(context.runtime_state().is_bash_compatible() ||
-             context.runtime_state().is_posix_mode()) ||
-           context.runtime_state().get_warning_level() > 0) &&
-          !context.runtime_state().is_diagnostics_disabled()));
-
-    /* A run that only lints holds one top-level command at a time, so the peak
-       memory of a large script is the memory of its widest command. */
-    let const should_stream_units =
-        run_analysis && precompiled_ast == nullptr &&
-        context.runtime_state().no_exec() && out_ast == nullptr &&
-        !(should_print_ast && context.runtime_state().show_ast()) &&
-        !context.runtime_state().show_lexed_words();
-    let const should_stream_execution =
-        precompiled_ast == nullptr && !context.runtime_state().no_exec() &&
-        out_ast == nullptr &&
-        !(should_print_ast && context.runtime_state().show_ast()) &&
-        !context.runtime_state().show_lexed_words();
-    let const should_stream_syntax_preflight =
-        should_stream_execution && !run_analysis;
-
-    /* A file with any parse error must not run, so every error is collected
-       and reported at once. */
-    let parse_errors = ArrayList<koshka::String>{heap_allocator()};
-
-    let const do_report_parse_errors = [&]() throws -> bool {
-      if (parse_errors.is_empty()) return false;
-
-      if (diagnostic_sink == nullptr)
-        for (let const &e : parse_errors)
-          show_message(e);
-      context.execution_store().set_last_exit_status(EXIT_FAILURE);
-
-      return true;
-    };
 
     /* A precompiled tree lives in a caller-owned arena that outlives this call.
      */
     let const preflight_mark = ast_arena.mark();
     Expression *ast = precompiled_ast;
-    if (should_stream_units) {
-      LOG(Debug, "scanning a chunk of %zu bytes for analysis scopes",
-          script_contents.count());
-
-      /* The whole file is scanned first, because analysis resolves a call to a
-         function the source defines further down. */
-      let scan_parser = Parser{
-          Lexer{script_contents.view(), ast_arena, filename,
-                context.runtime_state().get_mood()}
-      };
-      scan_parser.set_analysis_metadata_collection_mode(
-          analysis_metadata_collection_mode::Enabled);
-      scan_parser.set_substitution_validation_mode(
-          substitution_validation_mode::Enabled);
-
-      let const scan_mark = ast_arena.mark();
-      loop
-      {
-        let const unit_mark = ast_arena.mark();
-        let const *unit = scan_parser.construct_next_top_level_ast(
-            parse_errors, &context, diagnostic_sink);
-        if (unit == nullptr) break;
-
-        scan_parser.drop_lexer_peek_cache();
-        ast_arena.release(unit_mark);
-      }
-      ast_arena.release(scan_mark);
-
-      directives = scan_parser.take_analysis_directives();
-
-      if (do_report_parse_errors()) return EXIT_FAILURE;
-    } else if (should_stream_syntax_preflight) {
-      LOG(Debug, "checking a chunk of %zu bytes before streamed execution",
-          script_contents.count());
-
-      let preflight_parser = Parser{
-          Lexer{script_contents.view(), ast_arena, filename,
-                context.runtime_state().get_mood()}
-      };
-      preflight_parser.set_substitution_validation_mode(
-          substitution_validation_mode::Enabled);
-      loop
-      {
-        let const unit_mark = ast_arena.mark();
-        let const *unit = preflight_parser.construct_next_top_level_ast(
-            parse_errors, &context, diagnostic_sink);
-        if (unit == nullptr) {
-          ast_arena.release(unit_mark);
-          break;
-        }
-
-        preflight_parser.drop_lexer_peek_cache();
-        ast_arena.release(unit_mark);
-      }
-
-      if (do_report_parse_errors()) return EXIT_FAILURE;
+    if (plan.should_stream_units) {
+      if (scan_analysis_metadata(input, parse_errors, directives))
+        return EXIT_FAILURE;
+    } else if (plan.should_preflight_syntax) {
+      if (preflight_syntax(input, parse_errors)) return EXIT_FAILURE;
     } else if (precompiled_ast == nullptr) {
-      LOG(Debug, "parsing a chunk of %zu bytes", script_contents.count());
-
-      let p = Parser{
-          Lexer{script_contents.view(), ast_arena, filename,
-                context.runtime_state().get_mood(),
-                ParseSession::AllocationKind::Syntax,
-                context.runtime_state().show_lexed_words()
-                    ? debug_word_collection_mode::Enabled
-                    : debug_word_collection_mode::Disabled}
-      };
-      p.set_analysis_metadata_collection_mode(
-          run_analysis ? analysis_metadata_collection_mode::Enabled
-                       : analysis_metadata_collection_mode::Disabled);
-      p.set_substitution_validation_mode(substitution_validation_mode::Enabled);
-
-      ast = p.construct_ast(parse_errors, &context, diagnostic_sink);
-
-      if (do_report_parse_errors()) return EXIT_FAILURE;
-
-      if (should_print_ast && context.runtime_state().show_ast()) {
-        print(ast->to_ast_string());
-        print("\n");
-      }
-
-      if (context.runtime_state().show_lexed_words()) {
-        for (let const &word : p.debug_words()) {
-          print(word.to_pretty_string());
-          print("\n");
-        }
-      }
-      directives = p.take_analysis_directives();
+      if (parse_whole_script(input, plan, should_print_ast, parse_errors,
+                             directives, ast))
+        return EXIT_FAILURE;
     }
 
     LOG(Debug, "the analysis stage %s for this chunk",
-        run_analysis ? "runs" : "is skipped");
+        plan.should_analyze ? "runs" : "is skipped");
     /* An interactive -W chunk runs right away and the runtime reports a missing
        command itself, so the analysis copy stays quiet to avoid a doubled
        error. */
@@ -516,59 +717,9 @@ static fn run_script_contents(
     let const diagnostic_lexical_scan_bytes_before =
         completion::debug_shell_lexical_scan_byte_count();
 #endif
-    if (run_analysis) {
-      let followed_source_paths = HashSet{heap_allocator()};
-      let source_effects_cache =
-          StringMap<followed_source_effects>{heap_allocator()};
-      if (filename.has_value()) {
-        if (let canonical_root = os::canonical_path(Path{*filename});
-            canonical_root.has_value())
-        {
-          followed_source_paths.add(canonical_root->text().view());
-        }
-      }
-      let highlight_cache = completion::shell_highlight_cache{};
-      let *previous_highlight_cache =
-          context.set_diagnostic_highlight_cache(&highlight_cache);
-      defer
-      {
-        context.set_diagnostic_highlight_cache(previous_highlight_cache);
-      };
-      let options = analysis_options::from_runtime(context.runtime_state());
-      options.should_silence_unresolved_commands =
-          run_options.should_silence_unresolved_commands ||
-          (options.warning_level > 0 &&
-           context.execution_store().shell_is_interactive());
-      options.should_report_optimizer_diagnostics =
-          FLAG_OPTIMIZER_DIAGNOSTICS.is_enabled();
-      options.shebang_policy =
-          run_options.should_require_shebang && filename.has_value()
-              ? missing_shebang_policy::Report
-              : missing_shebang_policy::Suppress;
-      let const do_analyze = [&](AnalysisUnitStream *units) throws -> bool {
-        return analyze_ast(
-            ast, script_contents, context.function_store().names(),
-            context.scope_store().alias_names(), &context, options, directives,
-            {&followed_source_paths, &source_effects_cache}, {}, diagnostics,
-            nullptr, units);
-      };
-
-      if (should_stream_units) {
-        let unit_parser = Parser{
-            Lexer{script_contents.view(), ast_arena, filename,
-                  context.runtime_state().get_mood()}
-        };
-        /* A function body and a subshell carry their own definitions on the
-           node, and the walk seeds them when it enters. */
-        unit_parser.set_analysis_scope_collection_mode(
-            analysis_metadata_collection_mode::Enabled);
-
-        let units = StreamedAnalysisUnits{unit_parser, ast_arena, parse_errors,
-                                          context, diagnostic_sink};
-        did_analysis_fail = !do_analyze(&units);
-      } else {
-        did_analysis_fail = !do_analyze(nullptr);
-      }
+    if (plan.should_analyze) {
+      did_analysis_fail = !analyze_script(input, plan, ast, parse_errors,
+                                          directives, diagnostics, run_options);
     }
 #if !defined NDEBUG
     LOG(All, "diagnostic highlighting consumed %zu source bytes",
@@ -587,75 +738,8 @@ static fn run_script_contents(
     } else if (context.runtime_state().no_exec()) {
       exit_code = EXIT_SUCCESS;
     } else {
-      LOG(Debug, "evaluating the chunk");
-      let previous_history_event_number =
-          context.source_store().get_current_history_event_number();
-      context.source_store().set_current_history_event_number(
-          steal(history_event_number));
-      defer
-      {
-        context.source_store().set_current_history_event_number(
-            steal(previous_history_event_number));
-      };
-      context.set_current_source(&script_contents, "the script");
-      let const command_start_nanos = koshka::os::monotonic_nanos();
-      if (should_stream_execution) {
-        ast_arena.release(preflight_mark);
-        ast = nullptr;
-        let execution_parser = Parser{
-            Lexer{script_contents.view(), ast_arena, filename,
-                  context.runtime_state().get_mood()}
-        };
-        let const was_terminal_exec_allowed =
-            context.execution_store().terminal_exec_allowed();
-        defer
-        {
-          context.execution_store().terminal_exec_allowed() =
-              was_terminal_exec_allowed;
-        };
-
-        loop
-        {
-          let const unit_mark = ast_arena.mark();
-          let const *unit = execution_parser.construct_next_top_level_ast();
-          if (unit == nullptr) {
-            ast_arena.release(unit_mark);
-            break;
-          }
-          defer
-          {
-            context.clear_retained_sources();
-            context.set_current_source(&script_contents, "the script");
-            execution_parser.drop_lexer_peek_cache();
-            ast_arena.release(unit_mark);
-          };
-
-          context.execution_store().terminal_exec_allowed() =
-              was_terminal_exec_allowed && execution_parser.is_at_end();
-          exit_code =
-              static_cast<int>(unit->evaluate_root(context, evaluation_mode));
-          evaluation_mode = root_evaluation_mode::Normal;
-          if (context.control_flow_store().has_pending() ||
-              (context.runtime_state().option_is_enabled(
-                   shell_option_id::Onecmd) &&
-               !context.execution_store().has_execution_string()))
-          {
-            break;
-          }
-        }
-      } else {
-        exit_code =
-            static_cast<int>(ast->evaluate_root(context, evaluation_mode));
-      }
-      context.execution_store().set_last_command_duration_nanos(
-          koshka::os::monotonic_nanos() - command_start_nanos);
-      LOG(Debug, "the chunk finished with exit code %d", exit_code);
-      /* A signal trapped during the last command has no following node to
-         trigger its action, so the pending traps drain here. */
-      if (koshka::os::SIGNAL_PENDING) context.run_pending_traps();
-      report_escaped_control_flow(context, script_contents);
-      /* script_contents is local, so the frame is dropped before it dangles. */
-      context.set_current_source(nullptr, "");
+      exit_code = evaluate_script(input, plan, ast, preflight_mark,
+                                  steal(history_event_number), evaluation_mode);
     }
     context.execution_store().set_last_exit_status(static_cast<i32>(exit_code));
 
@@ -670,22 +754,13 @@ static fn run_script_contents(
       show_message(e.to_string(script_contents, &context));
       show_message(e.details_to_string(script_contents, &context));
     }
-    exit_code =
-        e.command_status() != 1
-            ? static_cast<i32>(e.command_status())
-            : (context.runtime_state().is_posix_mode() ? 2 : EXIT_FAILURE);
+    exit_code = exit_status_for(e, context);
   } catch (const ErrorWithLocation &e) {
     if (!e.was_rendered()) show_message(e.to_string(script_contents, &context));
-    exit_code =
-        e.command_status() != 1
-            ? static_cast<i32>(e.command_status())
-            : (context.runtime_state().is_posix_mode() ? 2 : EXIT_FAILURE);
+    exit_code = exit_status_for(e, context);
   } catch (const Error &e) {
     show_message(e.to_string());
-    exit_code =
-        e.command_status() != 1
-            ? static_cast<i32>(e.command_status())
-            : (context.runtime_state().is_posix_mode() ? 2 : EXIT_FAILURE);
+    exit_code = exit_status_for(e, context);
   } catch (const std::exception &e) {
     exit_code = EXIT_FAILURE;
     show_message(
