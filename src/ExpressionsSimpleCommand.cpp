@@ -180,10 +180,10 @@ fn AssignCommand::analyze(AnalysisContext &actx,
     actx.note_variable_assignment(base, source_location(),
                                   is_unconditional &&
                                       !actx.effects.has_seen_runtime_definer);
-    actx.note_variable_assignment_record(base, nullptr, source_location(),
-                                         !is_unconditional ||
-                                             actx.effects.has_seen_runtime_definer,
-                                         m_assignment->get_update_mode());
+    actx.note_variable_assignment_record(
+        base, nullptr, source_location(),
+        !is_unconditional || actx.effects.has_seen_runtime_definer,
+        m_assignment->get_update_mode());
     actx.add_array_valued_name(base);
     LOG(All,
         "forgetting the constant for the array base '%.*s' after an element "
@@ -229,7 +229,8 @@ fn AssignCommand::analyze(AnalysisContext &actx,
   }
 
   if (actx.function_scope_depth == 0 && is_unconditional &&
-      !actx.effects.has_seen_runtime_definer && !actx.walk.is_inside_substitution_subshell)
+      !actx.effects.has_seen_runtime_definer &&
+      !actx.walk.is_inside_substitution_subshell)
   {
     actx.add_global_assigned_name(name.view(), source_location());
   }
@@ -339,10 +340,8 @@ hot fn AssignCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
     if (!value_ran_substitution) cxt.execution_store().set_last_exit_status(0);
     cxt.publish_single_pipe_status(cxt.execution_store().last_exit_status());
     return cxt.execution_store().last_exit_status();
-  } catch (const ErrorWithLocation &) {
-    throw;
   } catch (const Error &e) {
-    relocate_error(e, source_location());
+    relocate_if_unlocated(e, source_location());
   }
 }
 

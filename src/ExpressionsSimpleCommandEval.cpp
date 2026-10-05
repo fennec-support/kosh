@@ -714,10 +714,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     let expanded_value = String{cxt.scratch_allocator()};
     try {
       expanded_value = cxt.expand_word_for_assignment(assignment.value_word());
-    } catch (const ErrorWithLocation &) {
-      throw;
     } catch (const Error &e) {
-      relocate_error(e, source_location());
+      relocate_if_unlocated(e, source_location());
     }
     do_trace_assignment(name, assignment.get_update_mode(),
                         expanded_value.view());

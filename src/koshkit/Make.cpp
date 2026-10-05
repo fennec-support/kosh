@@ -2473,10 +2473,8 @@ static fn parse_makefile_into(EvalContext &cxt, makefile &mk,
         current_pattern_indices.clear();
       }
     }
-  } catch (const ErrorWithLocation &) {
-    throw;
   } catch (const ErrorBase &error) {
-    relocate_error(error, active_source_span);
+    relocate_if_unlocated(error, active_source_span);
   }
 }
 

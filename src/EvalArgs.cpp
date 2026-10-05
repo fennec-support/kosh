@@ -789,10 +789,8 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
       } else {
         do_expand_one_word(*word);
       }
-    } catch (const ErrorWithLocation &) {
-      throw;
     } catch (const Error &e) {
-      relocate_error(e, location);
+      relocate_if_unlocated(e, location);
     }
   }
 

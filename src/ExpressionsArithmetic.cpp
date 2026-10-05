@@ -517,13 +517,11 @@ fn ConditionalCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
   i64 status;
   try {
     status = cxt.evaluate_conditional(m_elements) ? 0 : 1;
-  } catch (const ErrorWithLocation &) {
-    throw;
   } catch (const Error &e) {
     SourceLocation span = source_location();
     if (source_end_position() > span.position)
       span.length = static_cast<u32>(source_end_position() - span.position);
-    relocate_error(e, span);
+    relocate_if_unlocated(e, span);
   }
   LOG(Debug, "the [[ ]] conditional yielded status %lld",
       static_cast<long long>(status));
@@ -619,10 +617,8 @@ fn ArithmeticCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
     const SourceLocation body_base{source_location().position + 2, 0,
                                    source_location().source_name_index};
     is_nonzero = cxt.evaluate_arithmetic_nonzero(m_expression, &body_base);
-  } catch (const ErrorWithLocation &) {
-    throw;
   } catch (const Error &e) {
-    relocate_error(e, source_location());
+    relocate_if_unlocated(e, source_location());
   }
   const i64 status = is_nonzero ? 0 : 1;
   cxt.publish_single_pipe_status(static_cast<i32>(status));

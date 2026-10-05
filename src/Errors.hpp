@@ -394,4 +394,17 @@ wontreturn inline fn relocate_error(const ErrorBase &error,
   throw relocated;
 }
 
+wontreturn inline fn
+relocate_if_unlocated(const ErrorBase &error,
+                      const SourceLocation &location) throws -> void
+{
+  try {
+    throw;
+  } catch (const ErrorWithLocation &) {
+    throw;
+  } catch (const ErrorBase &) {
+    relocate_error(error, location);
+  }
+}
+
 } /* namespace koshka */
