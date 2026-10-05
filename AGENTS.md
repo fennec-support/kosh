@@ -187,11 +187,7 @@ changes update this file.
   are served from the master branch. `scripts/install.sh` and
   `scripts/install.ps1` resolve the latest release,
   verify every file against `SHA256SUMS`, and install with the `make install`
-  layout. `Formula/kosh.rb` makes the repository a Homebrew tap over the same
-  release assets. It reads its version from the numeric `KOSH_VER_` macros in
-  `src/base/Common.hpp`, and each release updates its checksums from
-  `SHA256SUMS`. Users tap it with
-  `brew tap toiletbril/kosh https://github.com/toiletbril/kosh`.
+  layout.
 
 ## Diagnostics and storage
 
