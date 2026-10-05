@@ -238,6 +238,13 @@ changes update this file.
 - `NO_TOILETLINE=1 make` builds the no editor configuration in a separate
   object directory and links the same `./kosh-dbg` path. Rebuild the ordinary
   configuration before the next fixture run.
+- `NO_KOSHKIT=1 make` leaves out `src/koshkit`, `src/CliLive.cpp`, and
+  `src/UtilsOwnership.cpp`, defines `KOSH_NO_KOSHKIT`, and links the same
+  path from its own object directory. `Koshkit.cpp` keeps signal and size
+  helpers and stubs the lookup, so no utility name resolves and the `koshkit`
+  builtin reports an error. The test Makefile skips fixtures that need the
+  utilities, and the harness helpers need `KOSHKIT_BIN` set to an ordinary
+  build.
 - `make test` runs Kosh, CLI, completion, highlighting, POSIX, and Bash
   suites. `make bench` runs benchmarks.
   `make toiletline_test` runs the standalone editor unit suite.

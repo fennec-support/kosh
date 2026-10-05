@@ -66,6 +66,7 @@ export SKIPPED_TESTS
 MODE ?= dbg
 ARCH ?= $(shell uname -m)
 NO_TOILETLINE ?= 0
+NO_KOSHKIT ?= 0
 IS_NONDEBUG_BUILD := 1
 ifeq ($(MODE),dbg)
 IS_NONDEBUG_BUILD := 0
@@ -76,6 +77,25 @@ export IS_NONDEBUG_BUILD
 
 ifeq ($(IS_NONDEBUG_BUILD),1)
 SKIPPED_TESTS += koshkit_live_sanitizers
+endif
+ifeq ($(NO_KOSHKIT),1)
+ifeq ($(KOSHKIT_BIN),)
+$(error NO_KOSHKIT=1 needs KOSHKIT_BIN set to a build that bundles koshkit)
+endif
+export KOSHKIT_BIN
+SKIPPED_TESTS += alias_unalias arith_decimal ast_process_substitution \
+	bash_operators_default bash_source_stack builtin_list cd_dash \
+	cd_fail_file cd_paths command compound_redirect \
+	debug_err_return_traps fc glob_dot_slash_prefix \
+	koshkit_compare_posix koshkit_csplit koshkit_diff koshkit_evillogs \
+	koshkit_expr koshkit_filesystem_portable koshkit_filesystem_posix \
+	koshkit_getconf koshkit_goodfsw koshkit_inspect_posix \
+	koshkit_numeric_posix koshkit_process_posix koshkit_readlink \
+	koshkit_retry koshkit_stat koshkit_stream_posix koshkit_sync \
+	koshkit_system_posix koshkit_terminal_posix koshkit_text_posix \
+	koshkit_watch koshkit_whoami mood_arithmetic read_builtin \
+	redirect_dynamic_fd redirection_truncate_append_input \
+	rerr_redirect_to_directory subshell_isolates_state test_builtin trap
 endif
 ifeq ($(shell command -v python3),)
 SKIPPED_TESTS += koshkit_live_pty koshkit_live_deltas editor_ghost_menu_pty

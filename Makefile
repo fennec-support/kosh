@@ -23,6 +23,7 @@ AUTO_JOBS = $(if $(strip $(CALLER_JOBS)),,-j$(CPU_COUNT))
 
 MODE ?= dbg
 NO_TOILETLINE ?= 0
+NO_KOSHKIT ?= 0
 
 ifeq ($(OS), Windows_NT)
 TARGET ?= Windows_NT
@@ -32,6 +33,7 @@ endif
 
 export MODE
 export NO_TOILETLINE
+export NO_KOSHKIT
 export TARGET
 
 TEST_TARGET := $(if $(filter 1,$(NO_TOILETLINE)),cli_history_noninteractive,test)

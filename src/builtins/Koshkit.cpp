@@ -42,6 +42,23 @@ pure fn Koshkit::kind() const wontthrow -> Builtin::Kind
   return Kind::Koshkit;
 }
 
+#if defined KOSH_NO_KOSHKIT
+
+fn Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+{
+  parse_until_subcommand(FLAG_LIST, ec.args(), &ec.arg_locations(), nullptr,
+                         ec.program());
+  defer { reset_flags(FLAG_LIST); };
+
+  if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
+
+  report_soft_builtin_error(
+      ec, cxt, "The bundled utilities are not included in this build");
+  return 1;
+}
+
+#else /* KOSH_NO_KOSHKIT */
+
 enum class utility_section : u8
 {
   Posix,
@@ -184,5 +201,7 @@ fn Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   return koshkit::dispatch(ec, cxt, 1, chosen);
 }
+
+#endif /* KOSH_NO_KOSHKIT */
 
 } // namespace koshka

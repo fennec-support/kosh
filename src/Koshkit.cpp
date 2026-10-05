@@ -22,6 +22,8 @@ namespace koshka {
 
 namespace koshkit {
 
+#if !defined KOSH_NO_KOSHKIT
+
 Utility::Utility() = default;
 
 flatten fn find_util(StringView name) throws -> Maybe<Utility::Kind>
@@ -931,6 +933,70 @@ fn parse_strict_count(StringView text) throws -> ErrorOr<u64>
   return utils::parse_decimal_u64(digits);
 }
 
+#else /* KOSH_NO_KOSHKIT */
+
+fn find_util(StringView) throws -> Maybe<Utility::Kind>
+{
+  return {};
+}
+
+fn koshkit_util_flag_list(Utility::Kind) wontthrow -> const FlagList *
+{
+  return nullptr;
+}
+
+fn util_names() throws -> const ArrayList<String> &
+{
+  static const ArrayList<String> names{heap_allocator()};
+  return names;
+}
+
+fn sorted_util_names() throws -> const ArrayList<String> &
+{
+  return util_names();
+}
+
+fn collect_makefile_targets(EvalContext &cxt, const Path &) throws
+    -> ArrayList<String>
+{
+  return ArrayList<String>{cxt.scratch_allocator()};
+}
+
+fn parse_makefile_shell_sources(StringView, Allocator allocator) throws
+    -> SortedArrayList<make_shell_source_range,
+                       order_comparator<make_shell_source_range>>
+{
+  return ArrayList<make_shell_source_range>{allocator}.make_sorted(
+      sort_order::ascending);
+}
+
+fn makefile_shell_analysis_source(StringView,
+                                  const make_shell_source_range &) throws
+    -> String
+{
+  return String{heap_allocator()};
+}
+
+fn dispatch(const ExecContext &, EvalContext &, usize,
+            Maybe<Utility::Kind>) throws -> i32
+{
+  return 127;
+}
+
+fn run_as_multicall(StringView, Utility::Kind, ArrayList<String>,
+                    EvalContext &) throws -> i32
+{
+  return 127;
+}
+
+fn preflight_timeout_stage(const ExecContext &, EvalContext &, usize,
+                           SourceLocation &, String &) throws -> Maybe<i32>
+{
+  return {};
+}
+
+#endif /* KOSH_NO_KOSHKIT */
+
 struct signal_number_comparator
 {
   pure fn operator()(const utils::signal_pair &left,
@@ -974,6 +1040,8 @@ fn format_signal_list() throws -> String
   return out;
 }
 
+#if !defined KOSH_NO_KOSHKIT
+
 pure fn network_socket_state_name(os::network_socket_state state) wontthrow
     -> StringView
 {
@@ -1014,6 +1082,8 @@ fn format_socket_endpoint(StringView address, u16 port,
   return result;
 }
 
+#endif /* KOSH_NO_KOSHKIT */
+
 fn format_human_size(u64 bytes, Allocator allocator, u64 unit_step) throws
     -> String
 {
@@ -1048,6 +1118,8 @@ fn format_human_size(u64 bytes, Allocator allocator, u64 unit_step) throws
   out.push(unit == 1 && unit_step == 1000 ? 'k' : units[unit - 1]);
   return out;
 }
+
+#if !defined KOSH_NO_KOSHKIT
 
 fn scaled_filesystem_blocks(u64 block_count, u64 block_size,
                             u64 output_unit) wontthrow -> u64
@@ -1302,6 +1374,8 @@ cold noinline fn report_soft_koshkit_util_error(
 
   show_message(Note{String{note}}.to_string());
 }
+
+#endif /* KOSH_NO_KOSHKIT */
 
 } /* namespace koshkit */
 
