@@ -1063,7 +1063,7 @@ fn AnalysisContext::note_variable_occurrence(
 
   let const function_definition_index = active_function_definition_index;
   let const *current_state = kind == variable_occurrence_kind::Reference
-                                 ? variable_occurrence_assignments.find(name)
+                                 ? occurrences.assigned.find(name)
                                  : nullptr;
   let const has_inherited_function_path =
       function_definition_index != NO_ACTIVE_FUNCTION_DEFINITION &&
@@ -1079,9 +1079,7 @@ fn AnalysisContext::note_variable_occurrence(
     if (update_mode == assignment_update_mode::Append &&
         symbol_records != nullptr)
     {
-      let const *prior_state = variable_occurrence_assignments.find(name);
-      if (prior_state == nullptr)
-        prior_state = inherited_variable_occurrence_assignments.find(name);
+      let const *prior_state = occurrences.find(name);
       if (prior_state != nullptr) {
         for (let const assignment_index : prior_state->assignment_indices)
           symbol_records->variable_occurrences[assignment_index].is_unused =
@@ -1096,23 +1094,16 @@ fn AnalysisContext::note_variable_occurrence(
     state.is_definitely_set = true;
     state.is_definitely_unset = false;
     state.has_inherited_path = false;
-    variable_occurrence_assignments.set(name, steal(state));
+    occurrences.assigned.set(name, steal(state));
     occurrence_is_unused = true;
     if (function_definition_index != NO_ACTIVE_FUNCTION_DEFINITION)
       function_definitions[function_definition_index].affected_names.add(name);
   } else if (kind == variable_occurrence_kind::Reference) {
-    let const *state = variable_occurrence_assignments.find(name);
+    let const *state = occurrences.find(name);
     if (state != nullptr && symbol_records != nullptr) {
       for (let const assignment_index : state->assignment_indices)
         symbol_records->variable_occurrences[assignment_index].is_unused =
             false;
-    } else {
-      state = inherited_variable_occurrence_assignments.find(name);
-      if (state != nullptr && symbol_records != nullptr) {
-        for (let const assignment_index : state->assignment_indices)
-          symbol_records->variable_occurrences[assignment_index].is_unused =
-              false;
-      }
     }
 
     occurrence_is_unresolved =
@@ -1122,16 +1113,13 @@ fn AnalysisContext::note_variable_occurrence(
          !(eval_context != nullptr && eval_context->has_variable_name(name)) &&
          !os::get_environment_variable(name).has_value());
   } else {
-    let const *state = variable_occurrence_assignments.find(name);
-    if (state == nullptr)
-      state = inherited_variable_occurrence_assignments.find(name);
+    let const *state = occurrences.find(name);
     occurrence_is_unresolved = state == nullptr || !state->is_definitely_set;
 
     let unset_state = variable_occurrence_state{};
     unset_state.is_definitely_unset = true;
     unset_state.has_unset_path = true;
-    variable_occurrence_assignments.set(name, steal(unset_state));
-    inherited_variable_occurrence_assignments.erase(name);
+    occurrences.replace(name, steal(unset_state));
     if (function_definition_index != NO_ACTIVE_FUNCTION_DEFINITION)
       function_definitions[function_definition_index].affected_names.add(name);
   }
@@ -1194,11 +1182,7 @@ fn AnalysisContext::apply_called_function(
         continue;
       }
 
-      let const *state =
-          variable_occurrence_assignments.find(occurrence.name.view());
-      if (state == nullptr)
-        state = inherited_variable_occurrence_assignments.find(
-            occurrence.name.view());
+      let const *state = occurrences.find(occurrence.name.view());
       if (state != nullptr && state->is_definitely_set) {
         occurrence.has_resolved_function_path = true;
         for (let const assignment_index : state->assignment_indices)
@@ -1217,21 +1201,13 @@ fn AnalysisContext::apply_called_function(
     if (exit_state == nullptr) return;
 
     if (exit_state->is_definitely_set || exit_state->is_definitely_unset) {
-      variable_occurrence_assignments.set(affected_name, *exit_state);
-      inherited_variable_occurrence_assignments.erase(affected_name);
+      occurrences.replace(affected_name, *exit_state);
       return;
     }
 
-    let const *caller_state =
-        variable_occurrence_assignments.find(affected_name);
+    let const *caller_state = occurrences.find(affected_name);
     if (caller_state == nullptr) {
-      caller_state =
-          inherited_variable_occurrence_assignments.find(affected_name);
-    }
-
-    if (caller_state == nullptr) {
-      variable_occurrence_assignments.set(affected_name, *exit_state);
-      inherited_variable_occurrence_assignments.erase(affected_name);
+      occurrences.replace(affected_name, *exit_state);
       return;
     }
 
@@ -1244,8 +1220,7 @@ fn AnalysisContext::apply_called_function(
         merged_state.has_unset_path || exit_state->has_unset_path;
     merged_state.has_inherited_path =
         merged_state.has_inherited_path || exit_state->has_inherited_path;
-    variable_occurrence_assignments.set(affected_name, steal(merged_state));
-    inherited_variable_occurrence_assignments.erase(affected_name);
+    occurrences.replace(affected_name, steal(merged_state));
   });
 }
 
@@ -1328,17 +1303,14 @@ fn AnalysisContext::note_variable_read(StringView name,
     if (!assigned.is_empty()) {
       let state = variable_occurrence_state{};
       state.is_definitely_set = true;
-      variable_occurrence_assignments.set(assigned, steal(state));
-      inherited_variable_occurrence_assignments.erase(assigned);
+      occurrences.replace(assigned, steal(state));
       note_variable_assignment(assigned, location, true);
     }
 
     return;
   }
 
-  let const *assignment_state = variable_occurrence_assignments.find(name);
-  if (assignment_state == nullptr)
-    assignment_state = inherited_variable_occurrence_assignments.find(name);
+  let const *assignment_state = occurrences.find(name);
   if (assignment_state != nullptr && assignment_state->is_definitely_set)
     return;
   if (inherited_assigned_names.contains(name)) return;
@@ -2313,13 +2285,6 @@ fn internal::analyze_redirection_substitutions(
                                redirection.heredoc->source_end_position -
                                    redirection.heredoc->source_position,
                                true, is_unconditional);
-}
-
-fn internal::merge_variable_occurrence_states(
-    VariableOccurrenceStateMap &merged_states,
-    const VariableOccurrenceStateMap &exit_states) throws -> void
-{
-  merged_states.merge(exit_states);
 }
 
 pure fn internal::location_spanning(SourceLocation first,

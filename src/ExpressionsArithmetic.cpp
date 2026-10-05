@@ -662,10 +662,7 @@ fn SelectLoop::analyze(AnalysisContext &actx,
 
   analyze_token_list_substitutions(actx, m_words, is_unconditional);
 
-  let loop_entry_occurrence_assignments =
-      actx.variable_occurrence_assignments.snapshot();
-  let loop_entry_inherited_occurrence_assignments =
-      actx.inherited_variable_occurrence_assignments.snapshot();
+  let loop_entry_occurrences = actx.occurrences.snapshot();
 
   for (let const t : m_words) {
     if (t->kind() != Token::Kind::Word) continue;
@@ -697,15 +694,8 @@ fn SelectLoop::analyze(AnalysisContext &actx,
   actx.conditional_branch_depth--;
   actx.loop_body_depth--;
 
-  merge_variable_occurrence_states(loop_entry_occurrence_assignments,
-                                   actx.variable_occurrence_assignments);
-  merge_variable_occurrence_states(
-      loop_entry_inherited_occurrence_assignments,
-      actx.inherited_variable_occurrence_assignments);
-  actx.variable_occurrence_assignments =
-      steal(loop_entry_occurrence_assignments);
-  actx.inherited_variable_occurrence_assignments =
-      steal(loop_entry_inherited_occurrence_assignments);
+  loop_entry_occurrences.merge(actx.occurrences);
+  actx.occurrences = steal(loop_entry_occurrences);
 }
 
 CStyleForLoop::CStyleForLoop(SourceLocation location, usize header_position,
@@ -905,10 +895,7 @@ fn CStyleForLoop::analyze(AnalysisContext &actx,
       check_posix_arithmetic_operators(actx, m_condition, location);
   }
 
-  let condition_occurrence_assignments =
-      actx.variable_occurrence_assignments.snapshot();
-  let condition_inherited_occurrence_assignments =
-      actx.inherited_variable_occurrence_assignments.snapshot();
+  let condition_occurrences = actx.occurrences.snapshot();
 
   actx.constant_variables.clear();
   actx.loop_body_depth++;
@@ -924,15 +911,8 @@ fn CStyleForLoop::analyze(AnalysisContext &actx,
       check_posix_arithmetic_operators(actx, m_step, location);
   }
 
-  merge_variable_occurrence_states(condition_occurrence_assignments,
-                                   actx.variable_occurrence_assignments);
-  merge_variable_occurrence_states(
-      condition_inherited_occurrence_assignments,
-      actx.inherited_variable_occurrence_assignments);
-  actx.variable_occurrence_assignments =
-      steal(condition_occurrence_assignments);
-  actx.inherited_variable_occurrence_assignments =
-      steal(condition_inherited_occurrence_assignments);
+  condition_occurrences.merge(actx.occurrences);
+  actx.occurrences = steal(condition_occurrences);
 }
 
 pure fn CStyleForLoop::condition_clause() const wontthrow -> StringView
@@ -1335,9 +1315,7 @@ fn Subshell::analyze(AnalysisContext &actx, bool is_unconditional) const throws
    starts from an empty table and the outer constants are restored after. */
 SubshellAnalysisScope::SubshellAnalysisScope(AnalysisContext &actx)
     : m_actx{actx}, m_constants{steal(actx.constant_variables)},
-      m_occurrence_assignments{actx.variable_occurrence_assignments.snapshot()},
-      m_inherited_occurrence_assignments{
-          actx.inherited_variable_occurrence_assignments.snapshot()},
+      m_occurrences{actx.occurrences.snapshot()},
       m_function_definition_count{actx.function_definitions.count()},
       m_defined_function_insertion_count{
           actx.defined_function_insertions.count()},
@@ -1373,9 +1351,7 @@ fn SubshellAnalysisScope::leave() throws -> void
       steal(m_inherited_global_assigned_names);
   m_actx.inherited_assigned_names = steal(m_inherited_assigned_names);
   m_actx.constant_variables = steal(m_constants);
-  m_actx.variable_occurrence_assignments = steal(m_occurrence_assignments);
-  m_actx.inherited_variable_occurrence_assignments =
-      steal(m_inherited_occurrence_assignments);
+  m_actx.occurrences = steal(m_occurrences);
   m_actx.rollback_latest_function_definitions(m_function_definition_count);
   m_actx.rollback_defined_functions(m_defined_function_insertion_count);
   m_actx.rollback_known_aliases(m_known_alias_insertion_count);
@@ -1469,10 +1445,7 @@ fn FunctionDefinition::analyze(AnalysisContext &actx,
      directory, and runtime-definer effects outlive the body. */
   let saved_constants = steal(actx.constant_variables);
   actx.constant_variables = StringMap<String>{heap_allocator()};
-  let saved_occurrence_assignments =
-      actx.variable_occurrence_assignments.snapshot();
-  let saved_inherited_occurrence_assignments =
-      actx.inherited_variable_occurrence_assignments.snapshot();
+  let saved_occurrences = actx.occurrences.snapshot();
   let const function_definition_count = actx.function_definitions.count();
   let const defined_function_insertion_count =
       actx.defined_function_insertions.count();
@@ -1485,8 +1458,7 @@ fn FunctionDefinition::analyze(AnalysisContext &actx,
   actx.current_source_effects = nullptr;
   let saved_locals = steal(actx.function_local_names);
   actx.function_local_names = StringMap<SourceLocation>{heap_allocator()};
-  actx.inherited_variable_occurrence_assignments = VariableOccurrenceStateMap{};
-  actx.variable_occurrence_assignments = VariableOccurrenceStateMap{};
+  actx.occurrences = variable_occurrence_pair{};
   actx.apply_scope_definitions(m_analysis_scope_definitions);
   let const saved_loop_body_depth = actx.loop_body_depth;
   actx.loop_body_depth = 0;
@@ -1535,8 +1507,7 @@ fn FunctionDefinition::analyze(AnalysisContext &actx,
       actx.symbol_records != nullptr
           ? actx.symbol_records->variable_occurrences.count()
           : 0;
-  function_definition.exit_states =
-      actx.variable_occurrence_assignments.snapshot();
+  function_definition.exit_states = actx.occurrences.assigned.snapshot();
   function_definition.is_analysis_complete = true;
   let const previous_definition_index =
       actx.latest_function_definition_indices.find(m_name.view());
@@ -1557,9 +1528,7 @@ fn FunctionDefinition::analyze(AnalysisContext &actx,
   actx.inherited_assigned_names = steal(saved_inherited_assigned_names);
   actx.function_local_names = steal(saved_locals);
   actx.constant_variables = steal(saved_constants);
-  actx.variable_occurrence_assignments = steal(saved_occurrence_assignments);
-  actx.inherited_variable_occurrence_assignments =
-      steal(saved_inherited_occurrence_assignments);
+  actx.occurrences = steal(saved_occurrences);
   actx.rollback_latest_function_definitions(function_definition_count);
   actx.latest_function_definition_indices.set(m_name.view(),
                                               function_definition_index);

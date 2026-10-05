@@ -254,6 +254,37 @@ private:
   variable_occurrence_map_storage *m_base{nullptr};
 };
 
+struct variable_occurrence_pair
+{
+  VariableOccurrenceStateMap assigned;
+  VariableOccurrenceStateMap inherited;
+
+  fn snapshot() throws -> variable_occurrence_pair
+  {
+    return variable_occurrence_pair{assigned.snapshot(), inherited.snapshot()};
+  }
+
+  fn merge(const variable_occurrence_pair &other) throws -> void
+  {
+    assigned.merge(other.assigned);
+    inherited.merge(other.inherited);
+  }
+
+  pure fn find(StringView name) const wontthrow
+      -> const variable_occurrence_state *
+  {
+    let const *state = assigned.find(name);
+
+    return state != nullptr ? state : inherited.find(name);
+  }
+
+  fn replace(StringView name, variable_occurrence_state state) throws -> void
+  {
+    assigned.set(name, steal(state));
+    inherited.erase(name);
+  }
+};
+
 struct function_global_assignment
 {
   String name;
@@ -460,8 +491,7 @@ public:
      names a near miss. */
   StringMap<SourceLocation> function_local_names{heap_allocator()};
 
-  VariableOccurrenceStateMap variable_occurrence_assignments;
-  VariableOccurrenceStateMap inherited_variable_occurrence_assignments;
+  variable_occurrence_pair occurrences;
 
   /* An assignment inside a function to one of these updates an existing global
      rather than leaking a new binding, so the no-local warning stays quiet. */

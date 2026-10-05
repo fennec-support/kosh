@@ -75,9 +75,6 @@ pure fn expansion_location_with_sigil(const AnalysisContext &actx,
     -> SourceLocation;
 fn note_variable_reference(AnalysisContext &actx, const WordSegment &segment,
                            SourceLocation fallback_location) throws -> void;
-fn merge_variable_occurrence_states(
-    VariableOccurrenceStateMap &merged_states,
-    const VariableOccurrenceStateMap &exit_states) throws -> void;
 
 /* One span reaching from the start of the first location to the end of the
    last. An empty location contributes nothing. */
@@ -473,8 +470,7 @@ public:
 private:
   AnalysisContext &m_actx;
   StringMap<String> m_constants;
-  VariableOccurrenceStateMap m_occurrence_assignments;
-  VariableOccurrenceStateMap m_inherited_occurrence_assignments;
+  variable_occurrence_pair m_occurrences;
   usize m_function_definition_count;
   usize m_defined_function_insertion_count;
   usize m_known_alias_insertion_count;
