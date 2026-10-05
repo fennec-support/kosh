@@ -48,10 +48,10 @@ public:
 
     rehash(other.m_capacity);
     for (usize i = 0; i < other.m_capacity; i++) {
-      if (other.m_slots[i].state == slot::Occupied)
+      if (other.m_slots[i].get_state() == slot::Occupied)
         set_value_with_hash(other.m_slots[i].key.view(),
                             Value{other.m_slots[i].value},
-                            other.m_slots[i].hash);
+                            other.m_slots[i].get_hash());
     }
   }
 
@@ -197,7 +197,7 @@ public:
     let &slot = m_slots[found];
     slot.key = String{m_allocator};
     slot.value = Value{};
-    slot.state = slot::Tombstone;
+    slot.set_state(slot::Tombstone);
     m_count--;
     m_tombstones++;
   }
@@ -206,7 +206,7 @@ public:
   fn for_each(Fn callback) const throws -> void
   {
     for (usize i = 0; i < m_capacity; i++) {
-      if (m_slots[i].state == slot::Occupied)
+      if (m_slots[i].get_state() == slot::Occupied)
         callback(m_slots[i].key.view(), m_slots[i].value);
     }
   }
@@ -215,7 +215,7 @@ public:
   fn for_each(Fn callback) throws -> void
   {
     for (usize i = 0; i < m_capacity; i++) {
-      if (m_slots[i].state == slot::Occupied)
+      if (m_slots[i].get_state() == slot::Occupied)
         callback(m_slots[i].key.view(), m_slots[i].value);
     }
   }
@@ -231,10 +231,29 @@ private:
       Occupied,
       Tombstone,
     };
-    u64 hash{0};
+    static constexpr u64 STATE_SHIFT = 62;
+    static constexpr u64 HASH_MASK = (u64{1} << STATE_SHIFT) - 1;
+
+    u64 packed{0};
     String key{};
     notunique Value value{};
-    State state{Empty};
+
+    static constexpr fn pack(State state, u64 hash) wontthrow -> u64
+    {
+      return (static_cast<u64>(state) << STATE_SHIFT) | (hash & HASH_MASK);
+    }
+
+    pure fn get_state() const wontthrow -> State
+    {
+      return static_cast<State>(packed >> STATE_SHIFT);
+    }
+
+    pure fn get_hash() const wontthrow -> u64 { return packed & HASH_MASK; }
+
+    fn set_state(State state) wontthrow -> void
+    {
+      packed = pack(state, packed);
+    }
   };
 
   static constexpr usize NO_INDEX = static_cast<usize>(-1);
@@ -251,19 +270,22 @@ private:
     let const mask = m_capacity - 1;
     let index = static_cast<usize>(hash) & mask;
     let first_tombstone = NO_INDEX;
+    let const wanted = slot::pack(slot::Occupied, hash);
 
     ASSERT(m_count + m_tombstones < m_capacity);
     loop
     {
       let const &candidate = m_slots[index];
-      if (candidate.state == slot::Empty) {
+      if (candidate.packed == wanted && candidate.key.view() == key) usually
+        {
+          return {index, index};
+        }
+      let const state = candidate.get_state();
+      if (state == slot::Empty) {
         return {NO_INDEX,
                 first_tombstone != NO_INDEX ? first_tombstone : index};
       }
-      if (candidate.state == slot::Occupied && candidate.hash == hash &&
-          candidate.key.view() == key)
-        usually { return {index, index}; }
-      if (candidate.state == slot::Tombstone && first_tombstone == NO_INDEX) {
+      if (state == slot::Tombstone && first_tombstone == NO_INDEX) {
         first_tombstone = index;
       }
       index = (index + 1) & mask;
@@ -280,7 +302,7 @@ private:
     let result = probe(key, hash);
     ASSERT(result.insertion != NO_INDEX);
     if (result.found != NO_INDEX ||
-        m_slots[result.insertion].state == slot::Tombstone)
+        m_slots[result.insertion].get_state() == slot::Tombstone)
     {
       return result;
     }
@@ -318,12 +340,11 @@ private:
   fn place(usize index, StringView key, u64 hash, Value value) throws -> Value *
   {
     let &slot = m_slots[index];
-    let const was_tombstone = slot.state == slot::Tombstone;
+    let const was_tombstone = slot.get_state() == slot::Tombstone;
     slot.key = String{m_allocator, key};
-    slot.hash = hash;
     slot.value = steal(value);
     if (was_tombstone) m_tombstones--;
-    slot.state = slot::Occupied;
+    slot.packed = slot::pack(slot::Occupied, hash);
     m_count++;
     return &slot.value;
   }
@@ -350,24 +371,22 @@ private:
     let const mask = new_capacity - 1;
     try {
       for (usize i = 0; i < old_capacity; i++) {
-        if (old_slots[i].state != slot::Occupied) continue;
+        if (old_slots[i].get_state() != slot::Occupied) continue;
 
-        let index = static_cast<usize>(old_slots[i].hash) & mask;
-        while (fresh_slots[index].state == slot::Occupied)
+        let index = static_cast<usize>(old_slots[i].get_hash()) & mask;
+        while (fresh_slots[index].get_state() == slot::Occupied)
           index = (index + 1) & mask;
         let &destination = fresh_slots[index];
-        destination.hash = old_slots[i].hash;
         destination.key = old_slots[i].key;
-        destination.state = slot::Occupied;
+        destination.packed = old_slots[i].packed;
         fresh_count++;
       }
 
       for (usize i = 0; i < old_capacity; i++) {
-        if (old_slots[i].state != slot::Occupied) continue;
+        if (old_slots[i].get_state() != slot::Occupied) continue;
 
-        let index = static_cast<usize>(old_slots[i].hash) & mask;
-        while (fresh_slots[index].state != slot::Occupied ||
-               fresh_slots[index].hash != old_slots[i].hash ||
+        let index = static_cast<usize>(old_slots[i].get_hash()) & mask;
+        while (fresh_slots[index].packed != old_slots[i].packed ||
                fresh_slots[index].key.view() != old_slots[i].key.view())
           index = (index + 1) & mask;
 
