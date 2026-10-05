@@ -1498,6 +1498,15 @@ private:
   Maybe<completion_spec> m_default_spec{};
 };
 
+struct function_call_frame
+{
+  String name;
+  FunctionBodyHandle storage;
+  SourceLocation location;
+  const String *source;
+  bool was_printed{false};
+};
+
 class FunctionStore
 {
 public:
@@ -1567,54 +1576,21 @@ public:
   pure fn readonly() const wontthrow -> const HashSet & { return m_readonly; }
   fn call_depth() wontthrow -> usize & { return m_call_depth; }
   pure fn call_depth() const wontthrow -> const usize & { return m_call_depth; }
-  fn call_names() wontthrow -> ArrayList<String> & { return m_call_names; }
-  pure fn call_names() const wontthrow -> const ArrayList<String> &
+  fn call_frames() wontthrow -> ArrayList<function_call_frame> &
   {
-    return m_call_names;
+    return m_call_frames;
   }
-  fn call_storages() wontthrow -> ArrayList<FunctionBodyHandle> &
+  pure fn call_frames() const wontthrow
+      -> const ArrayList<function_call_frame> &
   {
-    return m_call_storages;
-  }
-  pure fn call_storages() const wontthrow
-      -> const ArrayList<FunctionBodyHandle> &
-  {
-    return m_call_storages;
-  }
-  fn call_locations() wontthrow -> ArrayList<SourceLocation> &
-  {
-    return m_call_locations;
-  }
-  pure fn call_locations() const wontthrow -> const ArrayList<SourceLocation> &
-  {
-    return m_call_locations;
-  }
-  fn call_sources() wontthrow -> ArrayList<const String *> &
-  {
-    return m_call_sources;
-  }
-  pure fn call_sources() const wontthrow -> const ArrayList<const String *> &
-  {
-    return m_call_sources;
-  }
-  fn call_was_printed() wontthrow -> ArrayList<bool> &
-  {
-    return m_call_was_printed;
-  }
-  pure fn call_was_printed() const wontthrow -> const ArrayList<bool> &
-  {
-    return m_call_was_printed;
+    return m_call_frames;
   }
 
 private:
   StringMap<FunctionBodyHandle> m_definitions{heap_allocator()};
   HashSet m_readonly{heap_allocator()};
   usize m_call_depth{0};
-  ArrayList<String> m_call_names{heap_allocator()};
-  ArrayList<FunctionBodyHandle> m_call_storages{heap_allocator()};
-  ArrayList<SourceLocation> m_call_locations{heap_allocator()};
-  ArrayList<const String *> m_call_sources{heap_allocator()};
-  ArrayList<bool> m_call_was_printed{heap_allocator()};
+  ArrayList<function_call_frame> m_call_frames{heap_allocator()};
 };
 
 class TrapStore

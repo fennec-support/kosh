@@ -280,7 +280,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
                    String{script_filename}, source_frame_kind::Ordinary});
   source_store().source_frames().back().should_defer_trace = true;
   source_store().source_frames().back().function_call_depth =
-      function_store().call_names().count();
+      function_store().call_frames().count();
   defer
   {
     let &frame = source_store().source_frames().back();
@@ -596,7 +596,7 @@ fn EvalContext::run_source(StringView source, StringView origin,
   source_store().source_frames().back().should_defer_trace =
       frame_is_sourced_file;
   source_store().source_frames().back().function_call_depth =
-      function_store().call_names().count();
+      function_store().call_frames().count();
   if (reject_return)
     source_store().set_rejected_return_source_frames(
         source_store().rejected_return_source_frames() + 1);

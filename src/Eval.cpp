@@ -1245,38 +1245,15 @@ fn EvalContext::leave_function_scope() throws -> void
 fn EvalContext::push_function_call_name(
     StringView name, const FunctionBodyHandle &body_storage) throws -> void
 {
-  let owned_name = String{heap_allocator(), name};
-  function_store().call_names().reserve(function_store().call_names().count() +
-                                        1);
-  function_store().call_storages().reserve(
-      function_store().call_storages().count() + 1);
-  function_store().call_locations().reserve(
-      function_store().call_locations().count() + 1);
-  function_store().call_sources().reserve(
-      function_store().call_sources().count() + 1);
-  function_store().call_was_printed().reserve(
-      function_store().call_was_printed().count() + 1);
-  function_store().call_was_printed().push(false);
-  function_store().call_names().push(steal(owned_name));
-  function_store().call_storages().push(body_storage);
-  function_store().call_locations().push(source_store().current_location());
-  function_store().call_sources().push(source_store().current_source());
+  function_store().call_frames().push(function_call_frame{
+      String{heap_allocator(), name}, body_storage,
+      source_store().current_location(), source_store().current_source(),
+      false});
 }
 
 fn EvalContext::pop_function_call_name() wontthrow -> void
 {
-  if (!function_store().call_names().is_empty()) {
-    function_store().call_names().remove(function_store().call_names().count() -
-                                         1);
-    function_store().call_storages().remove(
-        function_store().call_storages().count() - 1);
-    function_store().call_locations().remove(
-        function_store().call_locations().count() - 1);
-    function_store().call_sources().remove(
-        function_store().call_sources().count() - 1);
-    function_store().call_was_printed().remove(
-        function_store().call_was_printed().count() - 1);
-  }
+  function_store().call_frames().pop_back();
 }
 
 pure fn EvalContext::script_source_frame_index() const wontthrow -> Maybe<usize>
@@ -1309,7 +1286,7 @@ pure fn EvalContext::merged_frame_at(
     emitted_count = 1;
   }
 
-  let const function_count = function_store().call_names().count();
+  let const function_count = function_store().call_frames().count();
   usize function_index = 0;
   usize source_index = 0;
 
@@ -1365,7 +1342,7 @@ pure fn EvalContext::merged_frame_at(usize index) const wontthrow -> MergedFrame
 
 fn EvalContext::funcname_frame_count() const wontthrow -> usize
 {
-  if (function_store().call_names().is_empty()) return 0;
+  if (function_store().call_frames().is_empty()) return 0;
   return bash_source_frame_count();
 }
 
@@ -1374,7 +1351,7 @@ fn EvalContext::funcname_frame_at(usize index) const wontthrow -> StringView
   let const frame = merged_frame_at(index);
   switch (frame.kind) {
   case MergedFrame::Kind::Function:
-    return function_store().call_names()[frame.storage_index].view();
+    return function_store().call_frames()[frame.storage_index].name.view();
   case MergedFrame::Kind::Source: return StringView{"source"};
   case MergedFrame::Kind::Main: break;
   }
@@ -1396,7 +1373,7 @@ fn EvalContext::line_number_at_location(
                         : source_store().current_source();
   let site_depth = fallback_source != nullptr
                        ? Maybe<usize>{None}
-                       : Maybe<usize>{function_store().call_names().count()};
+                       : Maybe<usize>{function_store().call_frames().count()};
   usize preceding_line_count = 0;
   usize search_limit = line_bases.count();
   while (search_limit > 0) {
@@ -1439,10 +1416,10 @@ fn EvalContext::funcname_line_at(usize index) const throws -> usize
 {
   let const frame = merged_frame_at(index);
   switch (frame.kind) {
-  case MergedFrame::Kind::Function:
-    return line_number_at_location(
-        function_store().call_locations()[frame.storage_index],
-        function_store().call_sources()[frame.storage_index]);
+  case MergedFrame::Kind::Function: {
+    let const &call_frame = function_store().call_frames()[frame.storage_index];
+    return line_number_at_location(call_frame.location, call_frame.source);
+  }
   case MergedFrame::Kind::Source: {
     let const &source = source_store().source_frames()[frame.storage_index];
     return line_number_at_location(source.call_site,
@@ -1465,8 +1442,8 @@ pure fn EvalContext::bash_source_frame_at(usize index) const wontthrow
   switch (frame.kind) {
   case MergedFrame::Kind::Function: {
     let const *info = function_store()
-                          .call_storages()[frame.storage_index]
-                          .get_definition_info();
+                          .call_frames()[frame.storage_index]
+                          .storage.get_definition_info();
     if (info != nullptr) {
       if (let const name = source_name_at(info->source_name_index);
           name.has_value() && *name != COMMAND_STRING_SOURCE_NAME)
@@ -1490,7 +1467,7 @@ pure fn EvalContext::bash_source_frame_at(usize index) const wontthrow
 pure fn EvalContext::bash_source_frame_count(
     Maybe<usize> script_source_index) const wontthrow -> usize
 {
-  usize frame_count = function_store().call_names().count();
+  usize frame_count = function_store().call_frames().count();
 
   for (usize i = 0; i < source_store().source_frames().count(); i++) {
     if (!source_store().source_frames()[i].source_path.is_empty())
@@ -1518,7 +1495,7 @@ fn EvalContext::dynamic_array_element_count(DynamicArray which) const throws
         variable_store().bash_argument_frame_context() != nullptr
             ? variable_store().bash_argument_frame_context()->has_flag(
                   BashArgumentFrameFlag::IsSource)
-            : function_store().call_names().is_empty();
+            : function_store().call_frames().is_empty();
     initialize_bash_argument_arrays(should_include_current_frame);
     ASSERT(variable_store().bash_argument_arrays() != nullptr);
     return which == DynamicArray::ArgumentCount

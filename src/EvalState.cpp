@@ -263,7 +263,7 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
 {
   if (!diagnostics_store().source_traces_enabled()) return;
   if (source_store().source_frames().is_empty() &&
-      function_store().call_names().is_empty())
+      function_store().call_frames().is_empty())
   {
     return;
   }
@@ -334,7 +334,7 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
 
   usize deferral_index = static_cast<usize>(-1);
   usize frame_index = source_store().source_frames().count();
-  usize call_index = function_store().call_names().count();
+  usize call_index = function_store().call_frames().count();
   while (frame_index > 0 || call_index > 0) {
     let const is_call_next =
         call_index > 0 &&
@@ -343,7 +343,8 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
                                               .function_call_depth);
     if (is_call_next) {
       call_index--;
-      let const call_site = function_store().call_locations()[call_index];
+      let &call_frame = function_store().call_frames()[call_index];
+      let const call_site = call_frame.location;
       if (error_location.has_value() &&
           do_location_match(call_site, *error_location))
       {
@@ -353,11 +354,10 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
       let entry = backtrace_entry{};
       entry.location = call_site;
       entry.call_index = call_index;
-      entry.was_printed = &function_store().call_was_printed()[call_index];
+      entry.was_printed = &call_frame.was_printed;
       do_add_site(entry,
-                  resolve_render_source(
-                      call_site, function_store().call_sources()[call_index],
-                      call_index, do_find_floor(frame_index)));
+                  resolve_render_source(call_site, call_frame.source,
+                                        call_index, do_find_floor(frame_index)));
       continue;
     }
 
@@ -1401,9 +1401,9 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
   append_subshell_bootstrap_u64(
       body, static_cast<u64>(scope_store().local_scope_depth()));
   append_subshell_bootstrap_u32(
-      body, static_cast<u32>(function_store().call_names().count()));
-  for (let const &name : function_store().call_names())
-    append_subshell_bootstrap_text(body, name.view());
+      body, static_cast<u32>(function_store().call_frames().count()));
+  for (let const &call_frame : function_store().call_frames())
+    append_subshell_bootstrap_text(body, call_frame.name.view());
 
   let collected_completion_names = ArrayList<String>{heap_allocator()};
   completion_store().specs().for_each(

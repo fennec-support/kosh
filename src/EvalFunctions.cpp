@@ -147,11 +147,11 @@ pure fn EvalContext::resolve_render_source(
                              ? fallback_source
                              : source_store().current_source();
 
-  if (function_store().call_names().is_empty()) return resolved_source;
+  if (function_store().call_frames().is_empty()) return resolved_source;
 
   let const first_depth =
-      function_store().call_storages().count() < call_depth_limit
-          ? function_store().call_storages().count()
+      function_store().call_frames().count() < call_depth_limit
+          ? function_store().call_frames().count()
           : call_depth_limit;
   usize lowest_depth = call_depth_floor;
   if (lowest_depth == static_cast<usize>(-1)) {
@@ -167,7 +167,7 @@ pure fn EvalContext::resolve_render_source(
     }
   }
   for (usize depth = first_depth; depth > lowest_depth; depth--) {
-    let const &storage = function_store().call_storages()[depth - 1];
+    let const &storage = function_store().call_frames()[depth - 1].storage;
     let const *info = storage.get_definition_info();
     if (info == nullptr) continue;
 

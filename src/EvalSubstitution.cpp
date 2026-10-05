@@ -567,7 +567,7 @@ fn EvalContext::push_substitution_source_frame(const SourceLocation &location,
       source_frame_kind::Ordinary
   });
   source_store().source_frames().back().function_call_depth =
-      function_store().call_names().count();
+      function_store().call_frames().count();
   source_store().source_frames().back().is_source_changing = false;
   return true;
 }
@@ -601,7 +601,7 @@ fn EvalContext::run_captured_substitution(
   if (did_push_line_base) {
     source_store().substitution_line_bases().push(
         substitution_line_base{&source, previous_source, *call_site,
-                               function_store().call_names().count()});
+                               function_store().call_frames().count()});
   }
   defer
   {
