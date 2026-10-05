@@ -10,6 +10,7 @@ mv
 --classify
 --help
 --level
+--one-file-system
 --recursive
 --tree
 -1
@@ -313,6 +314,7 @@ mv
 --classify
 --help
 --level
+--one-file-system
 --recursive
 --tree
 -1
