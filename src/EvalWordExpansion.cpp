@@ -40,6 +40,9 @@ static fn is_field_sensitive_word(StringView word) wontthrow -> bool
     if (byte == '"' || byte == '\'' || byte == '\\' || byte == '@') {
       return true;
     }
+    if (byte == '*' && i > 0 && (word[i - 1] == '{' || word[i - 1] == '[')) {
+      return true;
+    }
   }
 
   return false;
@@ -393,41 +396,17 @@ hot fn EvalContext::expand_word(const Word &word) throws
                            .view();
         };
 
-        let const sep = find_substring_length_separator(slice);
-        let const offset_text = slice.substring_of_length(0, sep);
-        let offset_location = SourceLocation{};
-        const i64 offset =
-            offset_text.is_empty()
-                ? 0
-                : evaluate_arithmetic(
-                      offset_text,
-                      do_source_location_for(offset_text, offset_location));
-        Maybe<i64> requested_length = None;
-        if (sep < slice.length) {
-          let const length_text = slice.substring(sep + 1);
-          let length_location = SourceLocation{};
-          requested_length =
-              length_text.is_empty()
-                  ? 0
-                  : evaluate_arithmetic(
-                        length_text,
-                        do_source_location_for(length_text, length_location));
-        }
-        let const bounds = compute_substring_bounds(
-            total, offset, requested_length, substring_subject::List);
+        let slice_location = SourceLocation{};
+        let const bounds = compute_list_slice_bounds(
+            slice, total, do_source_location_for(slice, slice_location));
         let const start = bounds.start;
         let const end = bounds.end;
 
         if (segment.is_in_double_quotes && is_star) {
-          let const ifs = variable_store().field_separators();
-          let joined = String{scratch_allocator()};
-          for (i64 j = start; j < end; j++) {
-            if (j > start && !ifs.is_empty()) {
-              joined.push(ifs[0]);
-            }
-            joined.append(do_positional_at(j));
-          }
-          do_append_run(joined, false);
+          do_append_run(
+              join_list_slice(bounds, variable_store().positional_params(),
+                              execution_store().get_shell_name(), true),
+              false);
         } else if (segment.is_in_double_quotes) {
           for (i64 j = start; j < end; j++) {
             if (j > start) do_flush();
@@ -518,41 +497,14 @@ hot fn EvalContext::expand_word(const Word &word) throws
           let const elements = collect_array_elements(array_name);
           let const total = static_cast<i64>(elements.count());
 
-          let const sep = find_substring_length_separator(slice);
-          let const offset_text = slice.substring_of_length(0, sep);
-          let offset_location = SourceLocation{};
-          const i64 offset =
-              offset_text.is_empty()
-                  ? 0
-                  : evaluate_arithmetic(
-                        offset_text,
-                        do_source_location_for(offset_text, offset_location));
-          Maybe<i64> requested_length = None;
-          if (sep < slice.length) {
-            let const length_text = slice.substring(sep + 1);
-            let length_location = SourceLocation{};
-            requested_length =
-                length_text.is_empty()
-                    ? 0
-                    : evaluate_arithmetic(
-                          length_text,
-                          do_source_location_for(length_text, length_location));
-          }
-          let const bounds = compute_substring_bounds(
-              total, offset, requested_length, substring_subject::List);
+          let slice_location = SourceLocation{};
+          let const bounds = compute_list_slice_bounds(
+              slice, total, do_source_location_for(slice, slice_location));
           let const start = bounds.start;
           let const end = bounds.end;
 
           if (segment.is_in_double_quotes && is_star) {
-            let const ifs = variable_store().field_separators();
-            let joined = String{scratch_allocator()};
-            for (i64 j = start; j < end; j++) {
-              if (j > start && !ifs.is_empty()) {
-                joined.push(ifs[0]);
-              }
-              joined.append(elements[static_cast<usize>(j)].view());
-            }
-            do_append_run(joined, false);
+            do_append_run(join_list_slice(bounds, elements, None, true), false);
           } else if (segment.is_in_double_quotes) {
             for (i64 j = start; j < end; j++) {
               if (j > start) do_flush();

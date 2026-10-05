@@ -29,6 +29,39 @@ slice_array_default() { show ${missing-"${arr[@]:1}"}; }
 slice_array_outer_quoted() { x=1; show "${x+"${arr[@]:1}"}"; }
 slice_array_affixed() { x=1; show ${x+pre"${arr[@]:1}"post}; }
 slice_both() { x=1; show ${x+"${@:2}" "${arr[@]:1}"}; }
+star_quoted() { x=1; show ${x+"${*:2}"}; }
+star_default() { show ${missing-"${*:2}"}; }
+star_affixed() { x=1; show ${x+pre"${*:2}"post}; }
+star_length() { x=1; show ${x+"${*:1:2}"}; }
+star_unquoted() { x=1; show ${x+${*:2}}; }
+star_outer_quoted() { x=1; show "${x+"${*:2}"}"; }
+star_outer_mixed() { x=1; show "${x+${*:2}}"; }
+star_after_field() { x=1; show ${x+"${*:2}" "${*:1:1}"}; }
+star_array() { x=1; show ${x+"${arr[*]:1}"}; }
+star_array_length() { x=1; show ${x+"${arr[*]:1:1}"}; }
+star_array_unquoted() { x=1; show ${x+${arr[*]:1}}; }
+star_array_outer_mixed() { x=1; show "${x+${arr[*]:1}}"; }
+star_colon_quoted() { local IFS=:; x=1; show ${x+"${*:2}"}; }
+star_colon_length() { local IFS=:; x=1; show ${x+"${*:1:2}"}; }
+star_colon_unquoted() { local IFS=:; x=1; show ${x+${*:2}}; }
+star_colon_outer_mixed() { local IFS=:; x=1; show "${x+${*:2}}"; }
+star_colon_array() { local IFS=:; x=1; show ${x+"${arr[*]:1}"}; }
+star_colon_array_unquoted() { local IFS=:; x=1; show ${x+${arr[*]:1}}; }
+star_empty_quoted() { local IFS=; x=1; show ${x+"${*:2}"}; }
+star_empty_length() { local IFS=; x=1; show ${x+"${*:1:2}"}; }
+star_empty_unquoted() { local IFS=; x=1; show ${x+${*:2}}; }
+star_empty_array() { local IFS=; x=1; show ${x+"${arr[*]:1}"}; }
+star_empty_array_unquoted() { local IFS=; x=1; show ${x+${arr[*]:1}}; }
+scalar_star() { local y=${*:2}; show "$y"; }
+scalar_at() { local y=${@:2}; show "$y"; }
+scalar_array_star() { local y=${arr[*]:1}; show "$y"; }
+scalar_array_at() { local y=${arr[@]:1:1}; show "$y"; }
+scalar_colon_star() { local IFS=:; local y=${*:2}; show "$y"; }
+scalar_colon_at() { local IFS=:; local y=${@:2}; show "$y"; }
+scalar_colon_array_star() { local IFS=:; local y=${arr[*]:1}; show "$y"; }
+scalar_colon_array_at() { local IFS=:; local y=${arr[@]:1}; show "$y"; }
+scalar_operator_star() { local y=${x-${*:2}}; show "$y"; }
+scalar_operator_array() { local IFS=:; local y=${x-${arr[*]:1}}; show "$y"; }
 hash_plus() { show ${#+"$@"}; }
 hash_colon_plus() { show ${#:+"$@"}; }
 hash_outer_quoted() { show "${#+"$@"}"; }
@@ -57,6 +90,16 @@ cases="$cases slice_at_empty_length slice_at_unquoted slice_at_outer_quoted"
 cases="$cases slice_at_outer_mixed slice_at_after_field slice_array"
 cases="$cases slice_array_length slice_array_negative slice_array_unquoted"
 cases="$cases slice_array_default slice_array_outer_quoted slice_array_affixed"
+cases="$cases star_quoted star_default star_affixed star_length star_unquoted"
+cases="$cases star_outer_quoted star_outer_mixed star_after_field star_array"
+cases="$cases star_array_length star_array_unquoted star_array_outer_mixed"
+cases="$cases star_colon_quoted star_colon_length star_colon_unquoted"
+cases="$cases star_colon_outer_mixed star_colon_array star_colon_array_unquoted"
+cases="$cases star_empty_quoted star_empty_length star_empty_unquoted"
+cases="$cases star_empty_array star_empty_array_unquoted scalar_star scalar_at"
+cases="$cases scalar_array_star scalar_array_at scalar_colon_star"
+cases="$cases scalar_colon_at scalar_colon_array_star scalar_colon_array_at"
+cases="$cases scalar_operator_star scalar_operator_array"
 cases="$cases slice_both hash_plus hash_colon_plus hash_outer_quoted"
 cases="$cases hash_affixed hash_mixed hash_minus hash_literal status_plus"
 cases="$cases status_colon_minus unused_positional used_positional"

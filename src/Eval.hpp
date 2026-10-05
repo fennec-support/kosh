@@ -3477,6 +3477,12 @@ protected:
   fn apply_substring_to_value(
       StringView value, StringView body,
       const SourceLocation *source_location = nullptr) throws -> String;
+  fn compute_list_slice_bounds(StringView slice, i64 value_count,
+                               const SourceLocation *source_location =
+                                   nullptr) throws -> substring_bounds;
+  fn join_list_slice(substring_bounds bounds, const ArrayList<String> &values,
+                     Maybe<StringView> leading, bool is_star) const throws
+      -> String;
 
   fn apply_pattern_replacement(
       StringView name, StringView spec,

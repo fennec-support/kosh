@@ -72,6 +72,43 @@ static fn source_location_for_subview(
                                            source_location_offset);
 }
 
+struct substring_operands
+{
+  i64 offset;
+  Maybe<i64> length;
+};
+
+static fn parse_substring_operands(EvalContext &context, StringView body,
+                                   const SourceLocation *source_location) throws
+    -> substring_operands
+{
+  let const separator = find_substring_length_separator(body);
+  let const offset_text = body.substring_of_length(0, separator);
+  let offset_location = SourceLocation{};
+  let const offset =
+      offset_text.is_empty()
+          ? i64{0}
+          : context.evaluate_arithmetic(
+                offset_text,
+                source_location_for_subview(source_location, body, offset_text,
+                                            offset_location));
+
+  Maybe<i64> requested_length = None;
+  if (separator < body.length) {
+    let const length_text = body.substring(separator + 1);
+    let length_location = SourceLocation{};
+    requested_length =
+        length_text.is_empty()
+            ? i64{0}
+            : context.evaluate_arithmetic(
+                  length_text,
+                  source_location_for_subview(source_location, body,
+                                              length_text, length_location));
+  }
+
+  return substring_operands{offset, requested_length};
+}
+
 enum class trim_end : u8
 {
   Prefix,
@@ -403,7 +440,7 @@ private:
   fn start_field() throws -> void;
   fn emit_field_elements(const ArrayList<String> &values) throws -> void;
   fn emit_field_slice(StringView slice, const ArrayList<String> &values,
-                      Maybe<StringView> leading) throws -> void;
+                      Maybe<StringView> leading, bool is_star) throws -> void;
   fn expand_field_reference(StringView inner) throws -> bool;
   fn toggle_quote_state() throws -> bool;
   fn expand_backslash() throws -> void;
@@ -465,24 +502,17 @@ fn EvalContext::ModifierWordExpander::emit_field_elements(
 
 fn EvalContext::ModifierWordExpander::emit_field_slice(
     StringView slice, const ArrayList<String> &values,
-    Maybe<StringView> leading) throws -> void
+    Maybe<StringView> leading, bool is_star) throws -> void
 {
   let const leading_count = leading.has_value() ? usize{1} : usize{0};
   let const total = static_cast<i64>(values.count() + leading_count);
-  let const separator = find_substring_length_separator(slice);
-  let const offset_text = slice.substring_of_length(0, separator);
-  let const offset = offset_text.is_empty()
-                         ? i64{0}
-                         : m_context.evaluate_arithmetic(offset_text);
-  Maybe<i64> requested_length = None;
-  if (separator < slice.length) {
-    let const length_text = slice.substring(separator + 1);
-    requested_length = length_text.is_empty()
-                           ? i64{0}
-                           : m_context.evaluate_arithmetic(length_text);
+  let const bounds = m_context.compute_list_slice_bounds(slice, total);
+
+  if (is_star && is_quoted()) {
+    emit_run(m_context.join_list_slice(bounds, values, leading, true).view(),
+             false);
+    return;
   }
-  let const bounds = compute_substring_bounds(total, offset, requested_length,
-                                              substring_subject::List);
 
   if (is_quoted()) m_did_quoted_at = true;
 
@@ -504,12 +534,12 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
     emit_field_elements(m_context.variable_store().positional_params());
     return true;
   }
-  if (inner.length > 2 && inner[0] == '@' && inner[1] == ':' &&
-      !is_colon_modifier_operator(inner[2]))
+  if (inner.length > 2 && (inner[0] == '@' || inner[0] == '*') &&
+      inner[1] == ':' && !is_colon_modifier_operator(inner[2]))
   {
-    emit_field_slice(inner.substring(2),
-                     m_context.variable_store().positional_params(),
-                     m_context.execution_store().get_shell_name());
+    emit_field_slice(
+        inner.substring(2), m_context.variable_store().positional_params(),
+        m_context.execution_store().get_shell_name(), inner[0] == '*');
     return true;
   }
 
@@ -520,22 +550,24 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
     name_length++;
   }
   if (name_length == 0 || name_length + 3 > inner.length ||
-      inner[name_length] != '[' || inner[name_length + 1] != '@' ||
+      inner[name_length] != '[' ||
+      (inner[name_length + 1] != '@' && inner[name_length + 1] != '*') ||
       inner[name_length + 2] != ']')
   {
     return false;
   }
 
+  let const is_star = inner[name_length + 1] == '*';
   let const rest = inner.substring(name_length + 3);
   let const name = inner.substring_of_length(0, name_length);
-  if (rest.is_empty()) {
+  if (rest.is_empty() && !is_star) {
     emit_field_elements(m_context.collect_array_elements(name));
     return true;
   }
   if (rest.length > 1 && rest[0] == ':' && !is_colon_modifier_operator(rest[1]))
   {
     emit_field_slice(rest.substring(1), m_context.collect_array_elements(name),
-                     None);
+                     None, is_star);
     return true;
   }
 
@@ -1058,6 +1090,7 @@ private:
   fn expand_bare_reference() throws -> String;
   fn expand_operator() throws -> String;
   fn expand_substring_form() throws -> String;
+  fn expand_positional_slice() throws -> String;
   fn expand_leading_form() throws -> Maybe<String>;
   fn take_value(Maybe<String> &current) wontthrow -> String;
   fn assign_word(StringView word) throws -> String;
@@ -1311,6 +1344,18 @@ fn EvalContext::ParameterExpander::expand_subscripted() throws -> Maybe<String>
     return expand_element_operator(subscript, subscript_location_pointer,
                                    modifier, modifier_op);
   }
+  if (modifier.length > 1 && modifier_op == ':' &&
+      !is_colon_modifier_operator(modifier[1]))
+  {
+    let const slice = modifier.substring(1);
+    let slice_location = SourceLocation{};
+    let const elements = m_context.collect_array_elements(m_name);
+    let const bounds = m_context.compute_list_slice_bounds(
+        slice, static_cast<i64>(elements.count()),
+        get_location_for(slice, slice_location));
+
+    return m_context.join_list_slice(bounds, elements, None, subscript == "*");
+  }
 
   return None;
 }
@@ -1339,6 +1384,20 @@ fn EvalContext::ParameterExpander::expand_substring_form() throws -> String
   return m_context.apply_substring_expansion(
       m_name, substring_body,
       get_location_for(substring_body, substring_location));
+}
+
+fn EvalContext::ParameterExpander::expand_positional_slice() throws -> String
+{
+  let const slice = m_rest.substring(1);
+  let slice_location = SourceLocation{};
+  let const &params = m_context.variable_store().positional_params();
+  let const bounds = m_context.compute_list_slice_bounds(
+      slice, static_cast<i64>(params.count() + 1),
+      get_location_for(slice, slice_location));
+
+  return m_context.join_list_slice(bounds, params,
+                                   m_context.execution_store().get_shell_name(),
+                                   m_name == "*");
 }
 
 fn EvalContext::ParameterExpander::expand_leading_form() throws -> Maybe<String>
@@ -1436,8 +1495,9 @@ fn EvalContext::ParameterExpander::expand_operator() throws -> String
 
   if (is_colon_form) {
     let const after_colon = m_rest[op_index];
-    if (!is_colon_modifier_operator(after_colon) && !is_all_parameters) {
-      return expand_substring_form();
+    if (!is_colon_modifier_operator(after_colon)) {
+      return is_all_parameters ? expand_positional_slice()
+                               : expand_substring_form();
     }
   }
 
@@ -1596,28 +1656,9 @@ fn EvalContext::apply_substring_to_value(
 {
   LOG(All, "taking the substring '%.*s' of a value of %zu bytes",
       static_cast<int>(body.length), body.data, value.length);
-  let const separator = find_substring_length_separator(body);
-  let const offset_text = body.substring_of_length(0, separator);
-  let offset_location = SourceLocation{};
-  const i64 offset =
-      offset_text.is_empty()
-          ? 0
-          : evaluate_arithmetic(offset_text, source_location_for_subview(
-                                                 source_location, body,
-                                                 offset_text, offset_location));
-
-  Maybe<i64> requested_length = None;
-  if (separator < body.length) {
-    let const length_text = body.substring(separator + 1);
-    let length_location = SourceLocation{};
-    requested_length =
-        length_text.is_empty()
-            ? 0
-            : evaluate_arithmetic(length_text,
-                                  source_location_for_subview(source_location,
-                                                              body, length_text,
-                                                              length_location));
-  }
+  let const operands = parse_substring_operands(*this, body, source_location);
+  let const offset = operands.offset;
+  let const requested_length = operands.length;
 
   let const is_forward_window =
       offset >= 0 && (!requested_length.has_value() || *requested_length >= 0);
@@ -1672,6 +1713,38 @@ fn EvalContext::apply_substring_to_value(
       scratch_allocator(),
       value.substring_of_length(static_cast<usize>(bounds.start),
                                 static_cast<usize>(bounds.end - bounds.start))};
+}
+
+fn EvalContext::compute_list_slice_bounds(
+    StringView slice, i64 value_count,
+    const SourceLocation *source_location) throws -> substring_bounds
+{
+  let const operands = parse_substring_operands(*this, slice, source_location);
+
+  return compute_substring_bounds(value_count, operands.offset, operands.length,
+                                  substring_subject::List);
+}
+
+fn EvalContext::join_list_slice(substring_bounds bounds,
+                                const ArrayList<String> &values,
+                                Maybe<StringView> leading,
+                                bool is_star) const throws -> String
+{
+  let const leading_count = leading.has_value() ? usize{1} : usize{0};
+  let const ifs = variable_store().field_separators();
+  let const has_separator = !is_star || !ifs.is_empty();
+  let const separator = is_star && !ifs.is_empty() ? ifs[0] : ' ';
+
+  let joined = String{scratch_allocator()};
+  for (i64 index = bounds.start; index < bounds.end; index++) {
+    if (index > bounds.start && has_separator) joined.push(separator);
+    let const position = static_cast<usize>(index);
+    joined.append(position < leading_count
+                      ? *leading
+                      : values[position - leading_count].view());
+  }
+
+  return joined;
 }
 
 /* A slash inside a quote run or behind a backslash belongs to the pattern, the
