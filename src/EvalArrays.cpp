@@ -114,11 +114,11 @@ static fn collect_sparse_array_entries(const StringMap<String> &sparse,
 
 fn EvalContext::clear_sparse_array(StringView name) throws -> void
 {
-  if (!variable_store().sparse_array_names().contains(name)) return;
+  if (!variable_store().sparse_arrays().has(name)) return;
 
   /* The erase runs after the scan so the map is not mutated while walked. */
   let indices = ArrayList<usize>{scratch_allocator()};
-  for_each_sparse_index(variable_store().sparse_array_values(), name,
+  for_each_sparse_index(variable_store().sparse_arrays().values(), name,
                         scratch_allocator(),
                         [&](usize index, const String &value) throws {
                           unused(value);
@@ -126,9 +126,9 @@ fn EvalContext::clear_sparse_array(StringView name) throws -> void
                         });
 
   for (let const index : indices)
-    variable_store().sparse_array_values().erase(
+    variable_store().sparse_arrays().values().erase(
         sparse_array_key(name, index, scratch_allocator()).view());
-  variable_store().sparse_array_names().remove(name);
+  variable_store().sparse_arrays().forget(name);
 }
 
 static fn parse_explicit_array_index(StringView element,
@@ -192,8 +192,8 @@ fn EvalContext::assign_indexed_array_elements(
     if (let const array = variable_store().indexed_arrays().find(name);
         array.has_value())
       running_index = array->count();
-    if (variable_store().sparse_array_names().contains(name))
-      for_each_sparse_index(variable_store().sparse_array_values(), name,
+    if (variable_store().sparse_arrays().has(name))
+      for_each_sparse_index(variable_store().sparse_arrays().values(), name,
                             scratch_allocator(),
                             [&](usize index, const String &value) throws {
                               unused(value);
@@ -276,21 +276,21 @@ fn EvalContext::set_array_element(StringView name, usize index,
       let const key =
           sparse_array_key(name, dense->count(), scratch_allocator());
       let const migrated =
-          variable_store().sparse_array_values().find(key.view());
+          variable_store().sparse_arrays().values().find(key.view());
       if (!migrated.has_value()) break;
       dense->push(String{heap_allocator(), migrated->view()});
-      variable_store().sparse_array_values().erase(key.view());
+      variable_store().sparse_arrays().values().erase(key.view());
     }
-    if (variable_store().sparse_array_names().contains(name) &&
-        !sparse_array_has_entries(variable_store().sparse_array_values(), name,
-                                  scratch_allocator()))
-      variable_store().sparse_array_names().remove(name);
+    if (variable_store().sparse_arrays().has(name) &&
+        !sparse_array_has_entries(variable_store().sparse_arrays().values(),
+                                  name, scratch_allocator()))
+      variable_store().sparse_arrays().forget(name);
     return;
   }
   LOG(All, "holding element %zu of '%.*s' sparsely past the dense run of %zu",
       index, static_cast<int>(name.length), name.data, dense_count);
-  variable_store().sparse_array_names().add(name);
-  variable_store().sparse_array_values().set(
+  variable_store().sparse_arrays().declare(name);
+  variable_store().sparse_arrays().values().set(
       sparse_array_key(name, index, scratch_allocator()).view(), value);
 }
 
@@ -393,11 +393,11 @@ fn EvalContext::assign_array_element(StringView name, StringView subscript,
         array.has_value() && resolved_index < array->count())
       return String{array->operator[](resolved_index).view()};
 
-    if (variable_store().sparse_array_names().contains(name)) {
+    if (variable_store().sparse_arrays().has(name)) {
       let const key =
           sparse_array_key(name, resolved_index, scratch_allocator());
       if (let const sparse =
-              variable_store().sparse_array_values().find(key.view());
+              variable_store().sparse_arrays().values().find(key.view());
           sparse.has_value())
         return String{sparse->view()};
     }
@@ -443,7 +443,7 @@ fn EvalContext::declare_associative_array(StringView name) throws -> void
   if (let const stored = variable_store().shell_variables().find(name);
       stored.has_value())
     scalar = *stored.value();
-  variable_store().associative_names().add(name);
+  variable_store().associative_arrays().declare(name);
   variable_store().shell_variables().erase(name);
   if (scalar.has_value()) set_associative_element(name, "0", scalar->view());
 }
@@ -467,10 +467,10 @@ fn EvalContext::set_associative_element(StringView name, StringView key,
     }
 
   if (!is_associative_array(name)) {
-    variable_store().associative_names().add(name);
+    variable_store().associative_arrays().declare(name);
     variable_store().shell_variables().erase(name);
   }
-  variable_store().associative_values().set(
+  variable_store().associative_arrays().values().set(
       associative_composite_key(name, key, scratch_allocator()).view(), value);
 }
 
@@ -480,7 +480,7 @@ fn EvalContext::lookup_associative_element(StringView name,
 {
   if (is_bash_aliases_special(name)) return scope_store().get_alias(key);
 
-  if (let const value = variable_store().associative_values().find(
+  if (let const value = variable_store().associative_arrays().values().find(
           associative_composite_key(name, key, scratch_allocator()).view());
       value.has_value())
     return *value.value();
@@ -502,7 +502,7 @@ fn EvalContext::associative_keys(StringView name) const throws
 
   const String prefix =
       associative_composite_key(name, "", scratch_allocator());
-  variable_store().associative_values().for_each(
+  variable_store().associative_arrays().values().for_each(
       [&](StringView composite, const String &value) {
         unused(value);
         if (composite.starts_with(prefix.view()))
@@ -526,7 +526,7 @@ fn EvalContext::associative_values(StringView name) const throws
 
   const String prefix =
       associative_composite_key(name, "", scratch_allocator());
-  variable_store().associative_values().for_each(
+  variable_store().associative_arrays().values().for_each(
       [&](StringView composite, const String &value) {
         if (composite.starts_with(prefix.view()))
           values.push_managed(value.view());
@@ -543,14 +543,14 @@ fn EvalContext::clear_associative_array(StringView name) throws -> void
   const String prefix =
       associative_composite_key(name, "", scratch_allocator());
   let to_erase = ArrayList<String>{heap_allocator()};
-  variable_store().associative_values().for_each(
+  variable_store().associative_arrays().values().for_each(
       [&](StringView composite, const String &) {
         if (composite.starts_with(prefix.view()))
           to_erase.push_managed(composite);
       });
   for (let const &composite : to_erase)
-    variable_store().associative_values().erase(composite.view());
-  variable_store().associative_names().remove(name);
+    variable_store().associative_arrays().values().erase(composite.view());
+  variable_store().associative_arrays().forget(name);
 }
 
 fn EvalContext::unset_array_element(StringView name,
@@ -573,7 +573,7 @@ fn EvalContext::unset_array_element(StringView name,
   if (is_associative_array(name)) {
     let const key = expand_modifier_word(subscript);
     if (is_bash_aliases_special(name)) return;
-    variable_store().associative_values().erase(
+    variable_store().associative_arrays().values().erase(
         associative_composite_key(name, key.view(), scratch_allocator())
             .view());
     return;
@@ -593,23 +593,23 @@ fn EvalContext::unset_array_element(StringView name,
        indices. */
     if (resolved < array_count) {
       if (static_cast<usize>(resolved) + 1 < array->count())
-        variable_store().sparse_array_names().add(name);
+        variable_store().sparse_arrays().declare(name);
       for (usize i = static_cast<usize>(resolved) + 1;
            i < static_cast<usize>(array_count); i++)
-        variable_store().sparse_array_values().set(
+        variable_store().sparse_arrays().values().set(
             sparse_array_key(name, i, scratch_allocator()).view(),
             (*array.value())[i].view());
       while (array->count() > static_cast<usize>(resolved))
         array->remove(array->count() - 1);
     } else {
-      variable_store().sparse_array_values().erase(
+      variable_store().sparse_arrays().values().erase(
           sparse_array_key(name, static_cast<usize>(resolved),
                            scratch_allocator())
               .view());
-      if (variable_store().sparse_array_names().contains(name) &&
-          !sparse_array_has_entries(variable_store().sparse_array_values(),
+      if (variable_store().sparse_arrays().has(name) &&
+          !sparse_array_has_entries(variable_store().sparse_arrays().values(),
                                     name, scratch_allocator()))
-        variable_store().sparse_array_names().remove(name);
+        variable_store().sparse_arrays().forget(name);
     }
   }
 }
@@ -660,9 +660,9 @@ fn EvalContext::declare_local(StringView name, bool should_inherit_value) throws
 
   let previous_sparse_indices = ArrayList<usize>{heap_allocator()};
   let previous_sparse_values = ArrayList<String>{heap_allocator()};
-  if (variable_store().sparse_array_names().contains(name)) {
+  if (variable_store().sparse_arrays().has(name)) {
     let previous_sparse_entries = collect_sparse_array_entries(
-        variable_store().sparse_array_values(), name, heap_allocator());
+        variable_store().sparse_arrays().values(), name, heap_allocator());
     for (sparse_array_entry &entry : previous_sparse_entries) {
       previous_sparse_indices.push(entry.index);
       previous_sparse_values.push(steal(entry.value));
@@ -742,9 +742,9 @@ fn EvalContext::array_negative_index_base(StringView name) const throws -> i64
       array.has_value())
     base = static_cast<i64>(array->count());
 
-  if (variable_store().sparse_array_names().contains(name)) {
+  if (variable_store().sparse_arrays().has(name)) {
     for_each_sparse_index(
-        variable_store().sparse_array_values(), name, scratch_allocator(),
+        variable_store().sparse_arrays().values(), name, scratch_allocator(),
         [&](usize index, const String &value) throws {
           unused(value);
           let const past_index = index >= static_cast<usize>(INT64_MAX)
@@ -772,7 +772,7 @@ fn EvalContext::array_element_count(StringView name) const throws -> usize
   if (is_associative_array(name)) {
     usize element_count = 0;
     let const prefix = associative_composite_key(name, "", scratch_allocator());
-    variable_store().associative_values().for_each(
+    variable_store().associative_arrays().values().for_each(
         [&](StringView composite, const String &value) {
           unused(value);
           if (composite.starts_with(prefix.view())) element_count++;
@@ -786,8 +786,8 @@ fn EvalContext::array_element_count(StringView name) const throws -> usize
       array.has_value())
     element_count = array->count();
 
-  if (variable_store().sparse_array_names().contains(name)) {
-    for_each_sparse_index(variable_store().sparse_array_values(), name,
+  if (variable_store().sparse_arrays().has(name)) {
+    for_each_sparse_index(variable_store().sparse_arrays().values(), name,
                           scratch_allocator(),
                           [&](usize index, const String &value) throws {
                             unused(index);
@@ -952,7 +952,7 @@ fn EvalContext::apply_array_subscript(
       let const probe = sparse_array_key(name, static_cast<usize>(index),
                                          scratch_allocator());
       if (let const sparse =
-              variable_store().sparse_array_values().find(probe.view());
+              variable_store().sparse_arrays().values().find(probe.view());
           sparse.has_value())
       {
         return String{scratch_allocator(), sparse->view()};
@@ -1003,9 +1003,9 @@ fn EvalContext::collect_array_elements(StringView name) const throws
     out.reserve(array->count());
     for (let const &element : *array.value())
       out.push_managed(element.view());
-    if (variable_store().sparse_array_names().contains(name)) {
+    if (variable_store().sparse_arrays().has(name)) {
       let sparse = collect_sparse_array_entries(
-          variable_store().sparse_array_values(), name, scratch_allocator());
+          variable_store().sparse_arrays().values(), name, scratch_allocator());
       for (sparse_array_entry &entry : sparse)
         out.push(steal(entry.value));
     }
@@ -1057,7 +1057,8 @@ fn EvalContext::array_element_is_set(StringView name,
     }
     return resolved >= 0 &&
            variable_store()
-               .sparse_array_values()
+               .sparse_arrays()
+               .values()
                .find(sparse_array_key(name, static_cast<usize>(resolved),
                                       scratch_allocator())
                          .view())
@@ -1118,9 +1119,9 @@ fn EvalContext::collect_array_subscripts(StringView name) const throws
     out.reserve(array->count());
     for (usize i = 0; i < array->count(); i++)
       out.push(String::from(i, heap_allocator()));
-    if (variable_store().sparse_array_names().contains(name)) {
+    if (variable_store().sparse_arrays().has(name)) {
       let collected_sparse_indices = ArrayList<usize>{scratch_allocator()};
-      for_each_sparse_index(variable_store().sparse_array_values(), name,
+      for_each_sparse_index(variable_store().sparse_arrays().values(), name,
                             scratch_allocator(),
                             [&](usize index, const String &value) throws {
                               unused(value);

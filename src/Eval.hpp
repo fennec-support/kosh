@@ -1465,34 +1465,21 @@ public:
   {
     return m_indexed_arrays;
   }
-  fn associative_names() wontthrow -> HashSet & { return m_associative_names; }
-  pure fn associative_names() const wontthrow -> const HashSet &
+  fn associative_arrays() wontthrow -> CompositeKeyArrays &
   {
-    return m_associative_names;
+    return m_associative_arrays;
   }
-  fn associative_values() wontthrow -> StringMap<String> &
+  pure fn associative_arrays() const wontthrow -> const CompositeKeyArrays &
   {
-    return m_associative_values;
+    return m_associative_arrays;
   }
-  pure fn associative_values() const wontthrow -> const StringMap<String> &
+  fn sparse_arrays() wontthrow -> CompositeKeyArrays &
   {
-    return m_associative_values;
+    return m_sparse_arrays;
   }
-  fn sparse_array_values() wontthrow -> StringMap<String> &
+  pure fn sparse_arrays() const wontthrow -> const CompositeKeyArrays &
   {
-    return m_sparse_array_values;
-  }
-  pure fn sparse_array_values() const wontthrow -> const StringMap<String> &
-  {
-    return m_sparse_array_values;
-  }
-  fn sparse_array_names() wontthrow -> HashSet &
-  {
-    return m_sparse_array_names;
-  }
-  pure fn sparse_array_names() const wontthrow -> const HashSet &
-  {
-    return m_sparse_array_names;
+    return m_sparse_arrays;
   }
   fn exported_names() wontthrow -> StringMap<exported_name_value> &
   {
@@ -1578,10 +1565,8 @@ private:
   StringMap<SourceLocation> m_special_variable_definition_locations{
       heap_allocator()};
   StringMap<ArrayList<String>> m_indexed_arrays{heap_allocator()};
-  HashSet m_associative_names{heap_allocator()};
-  StringMap<String> m_associative_values{heap_allocator()};
-  StringMap<String> m_sparse_array_values{heap_allocator()};
-  HashSet m_sparse_array_names{heap_allocator()};
+  CompositeKeyArrays m_associative_arrays;
+  CompositeKeyArrays m_sparse_arrays;
   StringMap<exported_name_value> m_exported_names{heap_allocator()};
   VariableAttributes m_attributes;
   ArrayList<String> m_positional_params{heap_allocator()};
@@ -2645,7 +2630,7 @@ public:
   fn declare_associative_array(StringView name) throws -> void;
   pure fn is_associative_array(StringView name) const wontthrow -> bool
   {
-    return m_variable_store.associative_names().contains(name) ||
+    return m_variable_store.associative_arrays().has(name) ||
            is_bash_aliases_special(name);
   }
   pure fn is_bash_special_array_active(bash_special_array_id id) const wontthrow
@@ -2755,7 +2740,7 @@ public:
   {
     return m_variable_store.shell_variables().find(name).has_value() ||
            m_variable_store.indexed_arrays().find(name).has_value() ||
-           m_variable_store.associative_names().contains(name) ||
+           m_variable_store.associative_arrays().has(name) ||
            is_exported(name) || variable_requires_dynamic_lookup(name);
   }
 

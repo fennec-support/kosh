@@ -355,9 +355,9 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
       entry.location = call_site;
       entry.call_index = call_index;
       entry.was_printed = &call_frame.was_printed;
-      do_add_site(entry,
-                  resolve_render_source(call_site, call_frame.source,
-                                        call_index, do_find_floor(frame_index)));
+      do_add_site(entry, resolve_render_source(call_site, call_frame.source,
+                                               call_index,
+                                               do_find_floor(frame_index)));
       continue;
     }
 
@@ -772,7 +772,7 @@ fn EvalContext::suggest_similar_variable_name(StringView name) const throws
   variable_store().indexed_arrays().for_each(
       [&suggestion](StringView candidate, const ArrayList<String> &)
           throws -> void { suggestion.consider(candidate); });
-  variable_store().associative_names().for_each(
+  variable_store().associative_arrays().names().for_each(
       [&suggestion](StringView candidate)
           throws -> void { suggestion.consider(candidate); });
   /* A case-sensitive environment types the value as Nothing. The generic
@@ -823,10 +823,8 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
       variable_store().indexed_arrays(),
       completion_store().specs(),
       completion_store().default_spec(),
-      variable_store().associative_names(),
-      variable_store().associative_values(),
-      variable_store().sparse_array_values(),
-      variable_store().sparse_array_names(),
+      variable_store().associative_arrays(),
+      variable_store().sparse_arrays(),
       function_store().definitions(),
       scope_store().aliases(),
       variable_store().positional_params(),
@@ -878,10 +876,8 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
   variable_store().indexed_arrays() = steal(snapshot.indexed_arrays);
   completion_store().specs() = steal(snapshot.completion_specs);
   completion_store().default_spec() = steal(snapshot.default_completion_spec);
-  variable_store().associative_names() = steal(snapshot.associative_names);
-  variable_store().associative_values() = steal(snapshot.associative_values);
-  variable_store().sparse_array_values() = steal(snapshot.sparse_array_values);
-  variable_store().sparse_array_names() = steal(snapshot.sparse_array_names);
+  variable_store().associative_arrays() = steal(snapshot.associative_arrays);
+  variable_store().sparse_arrays() = steal(snapshot.sparse_arrays);
   function_store().definitions() = steal(snapshot.functions);
   scope_store().aliases() = steal(snapshot.aliases);
   variable_store().positional_params() = steal(snapshot.positional_params);

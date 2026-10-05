@@ -51,10 +51,8 @@ struct eval_state_snapshot
   StringMap<ArrayList<String>> indexed_arrays;
   StringMap<completion_spec> completion_specs;
   Maybe<completion_spec> default_completion_spec;
-  HashSet associative_names;
-  StringMap<String> associative_values;
-  StringMap<String> sparse_array_values;
-  HashSet sparse_array_names;
+  CompositeKeyArrays associative_arrays;
+  CompositeKeyArrays sparse_arrays;
   StringMap<FunctionBodyHandle> functions;
   StringMap<String> aliases;
   ArrayList<String> positional_params;

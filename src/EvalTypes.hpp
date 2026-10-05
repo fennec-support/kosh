@@ -5,8 +5,9 @@
  * This file defines lightweight evaluator enums and value records for
  * argument lifetimes, execution modes, status propagation, restrictions, and
  * glob fields. It also names the value the exported set stores beside each
- * name and owns the grouped job state kept by EvalContext. It prevents common
- * evaluator types from depending on Eval.hpp.
+ * name and owns the grouped job state and the composite-key array storage kept
+ * by EvalContext. It prevents common evaluator types from depending on
+ * Eval.hpp.
  */
 
 #pragma once
@@ -35,6 +36,28 @@ enum class assignment_update_mode : u8
    holds the original spelling when folding changed it. */
 using exported_name_value =
     std::conditional_t<os::ENVIRONMENT_IS_CASE_SENSITIVE, Nothing, String>;
+
+class CompositeKeyArrays
+{
+public:
+  pure fn has(StringView name) const wontthrow -> bool
+  {
+    return m_names.contains(name);
+  }
+  fn declare(StringView name) throws -> void { m_names.add(name); }
+  fn forget(StringView name) throws -> void { m_names.remove(name); }
+  fn names() wontthrow -> HashSet & { return m_names; }
+  pure fn names() const wontthrow -> const HashSet & { return m_names; }
+  fn values() wontthrow -> StringMap<String> & { return m_values; }
+  pure fn values() const wontthrow -> const StringMap<String> &
+  {
+    return m_values;
+  }
+
+private:
+  HashSet m_names{heap_allocator()};
+  StringMap<String> m_values{heap_allocator()};
+};
 
 enum class argument_lifetime : u8
 {

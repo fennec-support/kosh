@@ -547,8 +547,8 @@ fn EvalContext::publish_single_pipe_status(i32 status) throws -> void
   if (!existing.has_value() && is_readonly("PIPESTATUS")) return;
 
   if (existing.has_value() && existing->count() == 1 &&
-      (variable_store().sparse_array_names().count() == 0 ||
-       !variable_store().sparse_array_names().contains("PIPESTATUS")))
+      (variable_store().sparse_arrays().names().count() == 0 ||
+       !variable_store().sparse_arrays().has("PIPESTATUS")))
   {
     if (variable_store().is_pipestatus_scalar_possible()) {
       variable_store().shell_variables().erase("PIPESTATUS");
@@ -984,7 +984,7 @@ fn EvalContext::unexport_shell_variable(StringView name) throws -> void
   let const has_shell_binding =
       variable_store().shell_variables().find(name).has_value() ||
       variable_store().indexed_arrays().find(name).has_value() ||
-      variable_store().associative_names().contains(name) ||
+      variable_store().associative_arrays().has(name) ||
       scope_store().has_current_local(name) ||
       variable_requires_dynamic_lookup(name);
   let const environment_value =
@@ -1247,9 +1247,11 @@ fn EvalContext::push_function_call_name(
     StringView name, const FunctionBodyHandle &body_storage) throws -> void
 {
   function_store().call_frames().push(function_call_frame{
-      String{heap_allocator(), name}, body_storage,
+      String{heap_allocator(), name},
+      body_storage,
       source_store().current_location(), source_store().current_source(),
-      false});
+      false
+  });
 }
 
 fn EvalContext::pop_function_call_name() wontthrow -> void

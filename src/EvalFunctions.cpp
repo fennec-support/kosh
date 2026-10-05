@@ -291,7 +291,7 @@ fn EvalContext::variable_names(Allocator result_allocator) const throws
         unused(value);
         names.add(name);
       });
-  variable_store().associative_names().for_each(
+  variable_store().associative_arrays().names().for_each(
       [&](StringView name) { names.add(name); });
   if (runtime_state().bash_dynamic_variables_enabled()) {
     names.add(BASH_ARGUMENT_COUNT_VARIABLE);
