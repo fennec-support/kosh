@@ -40,17 +40,21 @@ fn Unset::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const should_unset_function = FLAG_UNSET_FUNCTION.is_enabled();
   let has_error = false;
+  let const do_try_unset = [&](usize index, auto &&attempt) -> void {
+    try {
+      attempt();
+    } catch (const Error &error) {
+      LOG(All, "unset swallowed an error: %s", error.message().c_str());
+      report_soft_builtin_error(ec, cxt, ec.arg_location_at(index),
+                                error.message().view());
+      has_error = true;
+    }
+  };
   for (usize i = 1; i < names.count(); i++) {
     let const &name = names[i];
     if (should_unset_function) {
       LOG(All, "unset removing function '%s'", name.c_str());
-      try {
-        cxt.unset_function(name);
-      } catch (const Error &error) {
-        report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
-                                  error.message().view());
-        has_error = true;
-      }
+      do_try_unset(i, [&] { cxt.unset_function(name); });
     } else if (let const bracket = name.view().find_character('[');
                bracket.has_value() && name.view()[name.count() - 1] == ']')
     {
@@ -82,26 +86,14 @@ fn Unset::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     {
       LOG(All, "unset removing function '%s' since no variable is set",
           name.c_str());
-      try {
-        cxt.unset_function(name);
-      } catch (const Error &error) {
-        report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
-                                  error.message().view());
-        has_error = true;
-      }
+      do_try_unset(i, [&] { cxt.unset_function(name); });
     } else {
       /* A read-only name throws, the rest are still unset, matching dash. */
       LOG(All, "unset removing variable '%s'", name.c_str());
-      try {
+      do_try_unset(i, [&] {
         cxt.unset_shell_variable(name);
         cxt.unset_dynamic_reader(name.view());
-      } catch (const Error &error) {
-        LOG(All, "unset swallowed a read-only variable error: %s",
-            error.message().c_str());
-        report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
-                                  error.message().view());
-        has_error = true;
-      }
+      });
     }
   }
 
