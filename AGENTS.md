@@ -44,6 +44,12 @@ changes update this file.
 - `src/Main.cpp` owns flags, startup, scripts, and the interactive loop.
   `src/Lexer.cpp` creates tokens. `src/Parser.cpp` creates the syntax tree.
   `src/Optimizer.cpp` folds constants and dead branches.
+- `kosh_main` builds `command_line`, `invocation_identity`, `input_plan`,
+  `inherited_shell`, and `session_config` in that order, seeds the session
+  variables, then calls `run_startup` and `finish_startup`. The chunk loop is
+  driven by `script_cursor`, `interactive_session`, and `lint_run`.
+  `run_script_contents` computes one `script_run_plan`, then runs its parse,
+  analysis, and evaluation phases.
 - Evaluation is split across `src/Eval.cpp` and the `Eval` sources. Expression
   families live in the `Expressions` sources. Shared helpers are declared in
   `src/ExpressionsInternal.hpp`.

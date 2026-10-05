@@ -44,8 +44,8 @@ wontreturn fn throw_script_fatal(StringView message,
    reads /etc/koshrc and ~/.koshrc, a bash flavor the bash rc and completion, a
    posix flavor the ENV file, and each adds its login profiles when is_login is
    set. */
-fn source_init_moods(EvalContext &context, BumpArena &ast_arena,
-                     const ArrayList<mimic_mood> &moods, bool is_login_shell,
-                     bool should_be_interactive) throws -> void;
+fn source_init_moods(EvalContext &context, const ArrayList<mimic_mood> &moods,
+                     bool is_login_shell, bool should_be_interactive) throws
+    -> void;
 
 } /* namespace koshka */

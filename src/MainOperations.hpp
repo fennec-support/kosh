@@ -1717,7 +1717,7 @@ enum class startup_file_requirement : u8
 };
 
 static fn source_file(
-    const Path &path, EvalContext &context, BumpArena &ast_arena,
+    const Path &path, EvalContext &context,
     startup_file_requirement requirement = startup_file_requirement::Optional)
     -> bool
 {
@@ -1739,7 +1739,6 @@ static fn source_file(
   /* run_source keeps the active arena because a sourced rc may run
      set --init-moods while its syntax tree is still in use. Resetting the arena
      then would free the current node. */
-  unused(ast_arena);
   context.run_source(*contents, path.view(), /*call_site=*/None, path.view(),
                      nullptr, nullptr, return_handling::Consume);
   return true;
@@ -1757,20 +1756,18 @@ static pure fn selected_rcfile() wontthrow -> Maybe<StringView>
   return FLAG_RCFILE.value();
 }
 
-static fn source_custom_rcfile(StringView name, EvalContext &context,
-                               BumpArena &ast_arena) throws -> void
+static fn source_custom_rcfile(StringView name, EvalContext &context) throws
+    -> void
 {
   let path = String{context.scratch_allocator(), name};
   if (let home_expanded = utils::expand_leading_tilde_path(path.view());
       home_expanded.has_value())
     path = home_expanded.take();
-  source_file(Path{path.view()}, context, ast_arena,
-              startup_file_requirement::Explicit);
+  source_file(Path{path.view()}, context, startup_file_requirement::Explicit);
 }
 
 static fn source_environment_file(StringView variable_name,
-                                  EvalContext &context,
-                                  BumpArena &ast_arena) throws -> void
+                                  EvalContext &context) throws -> void
 {
   let const value = context.get_variable_value(variable_name);
   if (!value.has_value() || value->is_empty()) {
@@ -1782,59 +1779,54 @@ static fn source_environment_file(StringView variable_name,
   if (let home_expanded = utils::expand_leading_tilde_path(expanded.view());
       home_expanded.has_value())
     expanded = home_expanded.take();
-  source_file(Path{expanded.view()}, context, ast_arena,
+  source_file(Path{expanded.view()}, context,
               startup_file_requirement::Explicit);
 }
 
-static fn source_home_file(StringView name, EvalContext &context,
-                           BumpArena &ast_arena) throws -> void
+static fn source_home_file(StringView name, EvalContext &context) throws -> void
 {
   if (Maybe<Path> home = os::get_home_directory(); home.has_value()) {
     Path path = home->clone();
     path.append(name);
-    source_file(path, context, ast_arena);
+    source_file(path, context);
   }
 }
 
 /* The dash login files in POSIX order, /etc/profile then ~/.profile. */
-static fn source_posix_login_files(EvalContext &context,
-                                   BumpArena &ast_arena) throws -> void
+static fn source_posix_login_files(EvalContext &context) throws -> void
 {
   LOG(Info, "sourcing the posix login files");
-  source_file(Path{"/etc/profile"}, context, ast_arena);
-  source_home_file(".profile", context, ast_arena);
+  source_file(Path{"/etc/profile"}, context);
+  source_home_file(".profile", context);
 }
 
 /* The bash login files in bash order, /etc/profile then the first existing of
    ~/.bash_profile, ~/.bash_login, ~/.profile. */
-static fn source_bash_login_files(EvalContext &context,
-                                  BumpArena &ast_arena) throws -> void
+static fn source_bash_login_files(EvalContext &context) throws -> void
 {
   LOG(Info, "sourcing the bash login files in bash order");
-  source_file(Path{"/etc/profile"}, context, ast_arena);
+  source_file(Path{"/etc/profile"}, context);
   if (Maybe<Path> home = os::get_home_directory(); home.has_value()) {
     for (let const name : {".bash_profile", ".bash_login", ".profile"}) {
       Path candidate = home->clone();
       candidate.append(name);
-      if (source_file(candidate, context, ast_arena)) break;
+      if (source_file(candidate, context)) break;
     }
   }
 }
 
 /* The system bashrc the way bash compiled with SYS_BASHRC reads it, the Void
    /etc/bash/bashrc or the Debian /etc/bash.bashrc, whichever exists first. */
-static fn source_bash_system_rc(EvalContext &context,
-                                BumpArena &ast_arena) throws -> void
+static fn source_bash_system_rc(EvalContext &context) throws -> void
 {
   LOG(Info, "looking for the system bashrc");
   for (let const path : {"/etc/bash/bashrc", "/etc/bash.bashrc"})
-    if (source_file(Path{path}, context, ast_arena)) break;
+    if (source_file(Path{path}, context)) break;
 }
 
 /* The default spec and the guard variable are probed so an already-loaded chain
    is not sourced twice. */
-static fn ensure_bash_completion_loaded(EvalContext &context,
-                                        BumpArena &ast_arena) throws -> void
+static fn ensure_bash_completion_loaded(EvalContext &context) throws -> void
 {
   if (context.completion_store().default_spec_ptr() != nullptr) {
     LOG(Info, "skipping the bash-completion bootstrap because a "
@@ -1856,13 +1848,12 @@ static fn ensure_bash_completion_loaded(EvalContext &context,
     context.leave_definition_state(saved_runtime_state,
                                    definition_state_exit::RestoreCaller);
   };
-  source_file(Path{"/usr/share/bash-completion/bash_completion"}, context,
-              ast_arena);
+  source_file(Path{"/usr/share/bash-completion/bash_completion"}, context);
 }
 
-fn source_init_moods(EvalContext &context, BumpArena &ast_arena,
-                     const ArrayList<mimic_mood> &moods, bool is_login_shell,
-                     bool should_be_interactive) throws -> void
+fn source_init_moods(EvalContext &context, const ArrayList<mimic_mood> &moods,
+                     bool is_login_shell, bool should_be_interactive) throws
+    -> void
 {
   /* Each mood sources under its own grammar, so a bash rc parses with the bash
      grammar and a posix profile with the dash grammar. */
@@ -1903,47 +1894,47 @@ fn source_init_moods(EvalContext &context, BumpArena &ast_arena,
     switch (flavor) {
     case mimic_mood::Default:
       /* A --rcfile replaces the kosh rc with the named file. */
-      if (is_login_shell) source_posix_login_files(context, ast_arena);
+      if (is_login_shell) source_posix_login_files(context);
       if (should_be_interactive) {
         if (let const rcfile = selected_rcfile(); rcfile.has_value()) {
-          source_custom_rcfile(*rcfile, context, ast_arena);
+          source_custom_rcfile(*rcfile, context);
         } else {
-          source_file(Path{"/etc/koshrc"}, context, ast_arena);
-          source_home_file(".koshrc", context, ast_arena);
+          source_file(Path{"/etc/koshrc"}, context);
+          source_home_file(".koshrc", context);
         }
       }
       break;
     case mimic_mood::Posix:
-      if (is_login_shell) source_posix_login_files(context, ast_arena);
+      if (is_login_shell) source_posix_login_files(context);
       if (should_be_interactive && !context.runtime_state().option_is_enabled(
                                        shell_option_id::Privileged))
       {
         if (Maybe<String> env = context.get_variable_value("ENV");
             env.has_value() && !env->is_empty())
-          source_file(Path{env->view()}, context, ast_arena);
+          source_file(Path{env->view()}, context);
       }
       break;
     case mimic_mood::Bash:
     case mimic_mood::BashPosix:
       /* bash runs the system rc first even under --rcfile, so the order mirrors
          that. BashPosix falls through so --posix finds the bash integration. */
-      if (is_login_shell) source_bash_login_files(context, ast_arena);
+      if (is_login_shell) source_bash_login_files(context);
       if (flavor == mimic_mood::Bash &&
           !context.runtime_state().option_is_enabled(
               shell_option_id::Privileged) &&
           !should_be_interactive &&
           !context.startup_store().startup_finished() && !did_source_bash_env)
       {
-        source_environment_file("BASH_ENV", context, ast_arena);
+        source_environment_file("BASH_ENV", context);
         did_source_bash_env = true;
       }
       if (should_be_interactive && !is_login_shell && !FLAG_NORC.is_enabled()) {
         did_source_bash_rc = true;
-        source_bash_system_rc(context, ast_arena);
+        source_bash_system_rc(context);
         if (let const rcfile = selected_rcfile(); rcfile.has_value())
-          source_custom_rcfile(*rcfile, context, ast_arena);
+          source_custom_rcfile(*rcfile, context);
         else
-          source_home_file(".bashrc", context, ast_arena);
+          source_home_file(".bashrc", context);
       }
       break;
     }
@@ -1956,7 +1947,7 @@ fn source_init_moods(EvalContext &context, BumpArena &ast_arena,
      parses under the bash grammar. */
   if (did_source_bash_rc && !FLAG_NO_COMPLETION.is_enabled()) {
     LOG(Info, "bootstrapping the bash programmable completion");
-    ensure_bash_completion_loaded(context, ast_arena);
+    ensure_bash_completion_loaded(context);
   }
 }
 

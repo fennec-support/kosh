@@ -927,11 +927,8 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                   name + "', expected 'kosh', 'bash', 'sh', or 'bash-posix'");
         moods.push(*parsed);
       }
-      if (cxt.arena_store().parse_arena() == nullptr)
-        throw Error{"Unable to source the init moods outside of a parse"};
       let const previous_mood = cxt.runtime_state().get_mood();
-      source_init_moods(cxt, *cxt.arena_store().parse_arena(), moods,
-                        cxt.startup_store().is_login_shell(),
+      source_init_moods(cxt, moods, cxt.startup_store().is_login_shell(),
                         cxt.execution_store().shell_is_interactive());
       cxt.select_mood(previous_mood);
       continue;
