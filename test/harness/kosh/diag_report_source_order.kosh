@@ -1,5 +1,5 @@
 #!/bin/env kosh
 ech hi
-cd /tmp
+cd ..
 echo $x
 ech2 ho

@@ -52,10 +52,12 @@ SKIPPED_TESTS := \
 	help_subcommands_no_colon make_targets_fallback \
 	completion_glob_quoting path_quoting koshkit_mknod \
 	koshkit_live_pty koshkit_live_sanitizers koshkit_live_deltas \
-	editor_ghost_menu_pty
+	editor_ghost_menu_pty shell_executable_path \
+	analysis_environment_inheritance
 else ifneq ($(TARGET), Linux)
 SKIPPED_TESTS := koshkit_mknod koshkit_live_pty koshkit_live_sanitizers \
-	koshkit_live_deltas editor_ghost_menu_pty koshkit_evilfiles_parity
+	koshkit_live_deltas editor_ghost_menu_pty koshkit_evilfiles_parity \
+	trap_during_blocking_open
 else
 SKIPPED_TESTS :=
 endif

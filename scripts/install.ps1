@@ -56,7 +56,7 @@
     }
 
     function Mark($IsColor = $IS_COLOR) {
-        return "$(Paint '1;95' ':3c' -IsColor $IsColor) $(Paint '1;97' '+' -IsColor $IsColor) "
+        return "$(Paint '1;95' ':3c' -IsColor $IsColor) "
     }
 
     function Label($Text, $Value) {
@@ -267,7 +267,7 @@
             Line "Use $(Paint '1;34' 'kosh') to launch the shell."
         }
         else {
-            Line "Use $EXE to launch the shell."
+            Line "The install path is not in the PATH. Use $(Paint '1;34' $EXE) to launch the shell."
         }
     }
     catch {

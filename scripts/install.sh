@@ -66,7 +66,7 @@
 
   mark ()
   {
-    printf '%s %s ' "$(paint "$1" '1;95' ':3c')" "$(paint "$1" '1;97' +)"
+    printf '%s ' "$(paint "$1" '1;95' ':3c') "
   }
 
   label ()
@@ -382,7 +382,9 @@
       line "Use $(paint "$IS_COLOR" '1;34' kosh) to launch the shell."
     ;;
     *)
-      line "Use $BIN_DIR/kosh$EXT to launch the shell."
+      line "Install prefix is not in the PATH. Use $(paint "$IS_COLOR" '1;34' $BIN_DIR/kosh$EXT) to launch the shell."
     ;;
   esac
 }
+
+

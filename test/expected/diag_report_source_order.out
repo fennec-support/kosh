@@ -3,7 +3,7 @@
        |  ^~~
 note: Did you mean 'echo'?
 3:1: warning: This `cd` is unchecked. (SC2164)
-     3 |  cd /tmp
+     3 |  cd ..
        |  ^~
 note: Stop or return when `cd` fails.
 4:6: warning: An unquoted variable can split into words and expand globs. (SC2086)

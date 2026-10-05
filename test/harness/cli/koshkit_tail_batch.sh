@@ -123,10 +123,9 @@ drop_from_end()
     fi
   fi
   drop_keep=$((drop_total - drop_count))
-  if [ "$drop_keep" -lt 0 ]; then
-    drop_keep=0
+  if [ "$drop_keep" -gt 0 ]; then
+    head -$drop_mode "$drop_keep" "$drop_file"
   fi
-  head -$drop_mode "$drop_keep" "$drop_file"
 }
 drop_from_end_headers()
 {

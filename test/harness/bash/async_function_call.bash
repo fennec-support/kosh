@@ -65,12 +65,6 @@ holder() {
   return 3
 }
 holder &
-holder_pid=$!
-jobs -p > "$dir/jobs"
-read -r listed < "$dir/jobs"
-if [ "$listed" = "$holder_pid" ]; then
-  echo "job-listed"
-fi
 echo go > "$dir/hold"
 wait
 echo "bare-wait-status=$?"

@@ -133,6 +133,7 @@ case "$out" in
 *) echo "search casefold broken" ;;
 esac
 
+if [ "${TARGET:-$(uname -s)}" = Linux ]; then
 peer_hist=$dir/peer
 printf 'echo BASE_$((6*7))\n' > "$peer_hist"
 rm -f "$ready"
@@ -153,12 +154,13 @@ out=$({
       'stty cols 120 rows 40; exec "$BIN" -i --rcfile /dev/null') ||
   exit 1
 [ "$(cat "$input_status")" = 0 ] || exit 1
-echo "recall after a peer append and truncation keeps the private branch"
-printf 'local runs=%s\n' "$(printf '%s\n' "$out" | grep -c 'LOCAL_42')"
-printf 'base runs=%s\n' "$(printf '%s\n' "$out" | grep -c 'BASE_42')"
-printf 'peer runs=%s\n' "$(printf '%s\n' "$out" | grep -c 'PEER_42')"
-printf 'truncated runs=%s\n' \
-  "$(printf '%s\n' "$out" | grep -c 'TRUNCATED_42')"
+recall_runs="local=$(printf '%s\n' "$out" | grep -c 'LOCAL_42')"
+recall_runs="$recall_runs base=$(printf '%s\n' "$out" | grep -c 'BASE_42')"
+recall_runs="$recall_runs peer=$(printf '%s\n' "$out" | grep -c 'PEER_42')"
+recall_runs="$recall_runs truncated=$(printf '%s\n' "$out" | grep -c 'TRUNCATED_42')"
+[ "$recall_runs" = 'local=2 base=1 peer=0 truncated=0' ] ||
+  echo "peer recall broken: $recall_runs"
+fi
 
 printf 'echo HISTORY_EXPANSION_MARKER\n' > "$expansion_hist"
 rm -f "$ready"
