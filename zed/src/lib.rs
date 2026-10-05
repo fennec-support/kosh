@@ -5,7 +5,7 @@ use zed_extension_api::{
 
 const BINARY_NAME: &str = "kosh";
 const SERVER_ARGUMENT: &str = "--as-language-server";
-const RELEASE_REPOSITORY: &str = "toiletbril/kosh";
+const RELEASE_REPOSITORY: &str = "fennec-support/kosh";
 
 struct KoshExtension {
     downloaded_binary_path: Option<String>,

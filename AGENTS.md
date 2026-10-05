@@ -185,7 +185,7 @@ changes update this file.
   own log directory.
 - A client resolves the shell from its configured path, then PATH, then its own
   storage. A missing shell is downloaded from the newest release of
-  `toiletbril/kosh`. Drafts and prereleases are skipped. An asset is named
+  `fennec-support/kosh`. Drafts and prereleases are skipped. An asset is named
   `kosh-<platform>-<processor>-<tag>`. The platform is `darwin`, `linux`, or
   `win32`. The processor is `aarch64` for arm64 and `amd64` for x86-64. A
   Windows asset ends in `.exe`. Each release also carries `kosh.1.zst`,

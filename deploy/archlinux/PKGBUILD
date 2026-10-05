@@ -5,7 +5,7 @@ pkgver=0.1.0
 pkgrel=1
 pkgdesc="Fast, portable, Bash-compatible interactive shell, interpreter and diagnostic tool"
 arch=('x86_64' 'aarch64')
-url="https://github.com/toiletbril/kosh"
+url="https://github.com/fennec-support/kosh"
 license=('BSD-3-Clause AND MIT')
 depends=('glibc')
 makedepends=('clang' 'git')
@@ -17,7 +17,7 @@ _source_directory="toiletbril-kosh-c2731c4"
 _toiletline_commit="024fa036a7306ed07751fe90fbd583c9a6c2086c"
 export SOURCE_DATE_EPOCH="$_release_epoch"
 source=(
-  "$_upstream_name-$pkgver.tar.gz::https://api.github.com/repos/toiletbril/kosh/tarball/$pkgver"
+  "$_upstream_name-$pkgver.tar.gz::https://api.github.com/repos/fennec-support/kosh/tarball/$pkgver"
   "toiletline-$_toiletline_commit.tar.gz::https://github.com/toiletbril/toiletline/archive/$_toiletline_commit.tar.gz"
 )
 sha512sums=(

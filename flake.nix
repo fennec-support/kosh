@@ -69,7 +69,7 @@
 
           meta = with pkgs.lib; {
             description = "The fastest cross-platform Bash and POSIX-compatible shell";
-            homepage = "https://github.com/toiletbril/kosh";
+            homepage = "https://github.com/fennec-support/kosh";
             license = licenses.bsd3;
             mainProgram = "kosh";
             platforms = platforms.unix;

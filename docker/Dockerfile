@@ -4,7 +4,7 @@
 #
 
 # Run:
-#     docker run --rm -it ghcr.io/toiletbril/kosh
+#     docker run --rm -it ghcr.io/fennec-support/kosh
 
 FROM alpine:latest
 

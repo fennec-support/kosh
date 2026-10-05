@@ -227,7 +227,7 @@ static fn print_help_or_version_status(const String &program_path) -> Maybe<int>
     h += '\n';
     h += '\n';
     h += "Report bugs and suggest features at "
-         "<https://github.com/toiletbril/kosh>";
+         "<https://github.com/fennec-support/kosh>";
     h += '\n';
     print_error(format_cli_help(h.view(), should_color));
     return EXIT_SUCCESS;

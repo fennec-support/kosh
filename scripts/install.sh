@@ -35,7 +35,7 @@
 
 {
   set -eu
-  RELEASES=https://github.com/toiletbril/kosh/releases
+  RELEASES=https://github.com/fennec-support/kosh/releases
   BIN_DIR=${KOSH_INSTALL_PATH:-}
   IS_DRY_RUN=${KOSH_INSTALL_DRY_RUN:+1}
   IS_COLOR=
@@ -193,7 +193,7 @@
 
   say "Hi! This is Koshka Shell installer."
   say \
-    "You can view the repository and this script at <github.com/toiletbril/kosh>"
+    "You can view the repository and this script at <github.com/fennec-support/kosh>"
   command -v curl >/dev/null || fail "curl is required"
   EXT=
 

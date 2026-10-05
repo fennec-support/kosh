@@ -13,7 +13,7 @@ const SERVER_ARGUMENT = "--as-language-server";
 const CONFIGURATION_SECTION = "kosh";
 const DEFAULT_BINARY_NAME = "kosh";
 const RELEASES_URL =
-  "https://api.github.com/repos/toiletbril/kosh/releases?per_page=10";
+  "https://api.github.com/repos/fennec-support/kosh/releases?per_page=10";
 const SKIP_PROMPT_KEY = "kosh.skipDownloadPrompt";
 
 /*

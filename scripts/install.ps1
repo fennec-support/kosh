@@ -44,7 +44,7 @@
     [Net.ServicePointManager]::SecurityProtocol =
     [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
-    $RELEASES = "https://github.com/toiletbril/kosh/releases"
+    $RELEASES = "https://github.com/fennec-support/kosh/releases"
     $WORK = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid())
     $HERE = (Get-Location).ProviderPath
     $IS_COLOR = -not $env:NO_COLOR -and -not [Console]::IsOutputRedirected
@@ -135,7 +135,7 @@
         if ($env:KOSH_INSTALL_DRY_RUN) { $DryRun = $true }
 
         Say "Hi! This is Koshka Shell installer."
-        Say "You can view the repository and this script at <github.com/toiletbril/kosh>"
+        Say "You can view the repository and this script at <github.com/fennec-support/kosh>"
 
         $ARCH, $ARCH_NAME = switch ([Runtime.InteropServices.RuntimeInformation, mscorlib]::OSArchitecture) {
             "X64" { "amd64", "AMD64" }
@@ -146,7 +146,7 @@
 
         $VERSION = $env:KOSH_INSTALL_VERSION
         if (-not $VERSION) {
-            $VERSION = (Invoke-RestMethod "https://api.github.com/repos/toiletbril/kosh/releases/latest").tag_name
+            $VERSION = (Invoke-RestMethod "https://api.github.com/repos/fennec-support/kosh/releases/latest").tag_name
         }
         if ($VERSION -notmatch "^[A-Za-z0-9._-]+$" -or $VERSION -in "latest", "releases") {
             throw "invalid release version '$VERSION'"

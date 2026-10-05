@@ -1003,7 +1003,7 @@ cold fn show_version() throws -> void
   s += "(c) toiletbril <https://github.com/toiletbril>";
   s += '\n';
   s += '\n';
-  s += "Report bugs at <https://github.com/toiletbril/kosh>";
+  s += "Report bugs at <https://github.com/fennec-support/kosh>";
   s += '\n';
 
   print(s);
