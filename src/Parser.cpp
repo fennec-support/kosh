@@ -429,6 +429,21 @@ cold fn Parser::record_substitution_errors(
   }
 }
 
+cold fn Parser::record_error(
+    ArrayList<String> &errors, EvalContext *context,
+    ArrayList<source_diagnostic> *diagnostic_sink) throws -> void
+{
+  record_substitution_errors(errors, context, diagnostic_sink);
+
+  try {
+    throw;
+  } catch (const ErrorWithLocationAndDetails &e) {
+    record_detailed_parse_error(e, errors, context, diagnostic_sink);
+  } catch (const ErrorWithLocation &e) {
+    record_parse_error(e, errors, context, diagnostic_sink);
+  }
+}
+
 /* Parse every top-level command and recover after syntax errors. */
 cold fn Parser::construct_ast(
     ArrayList<String> &errors, EvalContext *context,
@@ -448,12 +463,8 @@ cold fn Parser::construct_ast(
           shellcheck_directive_collection_mode::Enabled);
     try {
       token = m_lexer.peek_shell_token();
-    } catch (const ErrorWithLocationAndDetails &e) {
-      record_substitution_errors(errors, context, diagnostic_sink);
-      record_detailed_parse_error(e, errors, context, diagnostic_sink);
-    } catch (const ErrorWithLocation &e) {
-      record_substitution_errors(errors, context, diagnostic_sink);
-      record_parse_error(e, errors, context, diagnostic_sink);
+    } catch (const ErrorWithLocation &) {
+      record_error(errors, context, diagnostic_sink);
     }
     if (m_analysis_metadata_collection_mode ==
         analysis_metadata_collection_mode::Enabled)
@@ -471,13 +482,8 @@ cold fn Parser::construct_ast(
       ASSERT(piece != nullptr);
       if (first_piece == nullptr) first_piece = piece;
       record_substitution_errors(errors, context, diagnostic_sink);
-    } catch (const ErrorWithLocationAndDetails &e) {
-      record_substitution_errors(errors, context, diagnostic_sink);
-      record_detailed_parse_error(e, errors, context, diagnostic_sink);
-      did_parse_fail = true;
-    } catch (const ErrorWithLocation &e) {
-      record_substitution_errors(errors, context, diagnostic_sink);
-      record_parse_error(e, errors, context, diagnostic_sink);
+    } catch (const ErrorWithLocation &) {
+      record_error(errors, context, diagnostic_sink);
       did_parse_fail = true;
     }
     if (!did_parse_fail) continue;
@@ -516,12 +522,8 @@ cold fn Parser::construct_next_top_level_ast(
           shellcheck_directive_collection_mode::Enabled);
     try {
       token = m_lexer.peek_shell_token();
-    } catch (const ErrorWithLocationAndDetails &e) {
-      record_substitution_errors(errors, context, diagnostic_sink);
-      record_detailed_parse_error(e, errors, context, diagnostic_sink);
-    } catch (const ErrorWithLocation &e) {
-      record_substitution_errors(errors, context, diagnostic_sink);
-      record_parse_error(e, errors, context, diagnostic_sink);
+    } catch (const ErrorWithLocation &) {
+      record_error(errors, context, diagnostic_sink);
     }
     if (m_analysis_metadata_collection_mode ==
         analysis_metadata_collection_mode::Enabled)
@@ -537,12 +539,8 @@ cold fn Parser::construct_next_top_level_ast(
       ASSERT(piece != nullptr);
       record_substitution_errors(errors, context, diagnostic_sink);
       return piece;
-    } catch (const ErrorWithLocationAndDetails &e) {
-      record_substitution_errors(errors, context, diagnostic_sink);
-      record_detailed_parse_error(e, errors, context, diagnostic_sink);
-    } catch (const ErrorWithLocation &e) {
-      record_substitution_errors(errors, context, diagnostic_sink);
-      record_parse_error(e, errors, context, diagnostic_sink);
+    } catch (const ErrorWithLocation &) {
+      record_error(errors, context, diagnostic_sink);
     }
 
     let did_recovery_fail = false;

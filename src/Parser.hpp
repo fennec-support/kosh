@@ -144,6 +144,9 @@ private:
   cold fn record_substitution_errors(
       ArrayList<String> &errors, EvalContext *context,
       ArrayList<source_diagnostic> *diagnostic_sink) throws -> void;
+  cold fn record_error(ArrayList<String> &errors, EvalContext *context,
+                       ArrayList<source_diagnostic> *diagnostic_sink) throws
+      -> void;
 
   fn skip_newlines_after_pipe() throws -> void;
   fn skip_semicolons_and_newlines() throws -> void;
