@@ -195,7 +195,7 @@ fn resolve_selector_program(koshka::EvalContext &context) throws
   let const command_name =
       configured.has_value() ? configured->view() : DEFAULT_SELECTOR_COMMAND;
 
-  let const resolved = context.resolution_store().resolver().search(
+  let const resolved = context.program_resolver().search(
       command_name, koshka::ProgramResolver::SearchMode::First,
       koshka::ProgramResolver::Requirement::Execution,
       koshka::ProgramResolver::CachePolicy::ReadOnly);
@@ -551,13 +551,13 @@ fn completion_session::complete(const char *buffer, size_t cursor,
   try {
     let const is_explicit_completion = for_listing != 0;
     if (is_explicit_completion) {
-      context->resolution_store().resolver().begin_explicit_completion(
+      context->program_resolver().begin_explicit_completion(
           koshka::ProgramResolver::CompletionRefresh::Cached);
     }
     defer
     {
       if (is_explicit_completion)
-        context->resolution_store().resolver().end_explicit_completion();
+        context->program_resolver().end_explicit_completion();
     };
 
     /* A completion spec can shell out, and a command talking to an unreachable

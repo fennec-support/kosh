@@ -186,11 +186,11 @@ fn infer_binary(EvalContext &cxt, StringView core, Allocator allocator) throws
     if (Path{candidate, allocator}.is_regular_file())
       return String{allocator, candidate};
 
-    let const matches = cxt.resolution_store().resolver().search(
-        Path{candidate, allocator}.filename(),
-        ProgramResolver::SearchMode::First,
-        ProgramResolver::Requirement::Runnable,
-        ProgramResolver::CachePolicy::Bypass);
+    let const matches =
+        cxt.program_resolver().search(Path{candidate, allocator}.filename(),
+                                      ProgramResolver::SearchMode::First,
+                                      ProgramResolver::Requirement::Runnable,
+                                      ProgramResolver::CachePolicy::Bypass);
     if (!matches.is_empty()) return matches[0].text().clone();
   }
 

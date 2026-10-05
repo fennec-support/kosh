@@ -56,7 +56,7 @@ fn kosh_binary_flag_list() wontthrow -> const FlagList & { return FLAG_LIST; }
 static fn run_debug_completion_driver(StringView driver_line,
                                       EvalContext &context) throws -> i32
 {
-  context.resolution_store().resolver().initialize_path_map();
+  context.program_resolver().initialize_path_map();
   let const driver_result = completion::complete(
       driver_line, driver_line.length, context, Path::current_directory(),
       nullptr, false, completion::completion_mode::Listing);
@@ -79,9 +79,9 @@ static fn run_debug_highlight_driver(StringView driver_line,
   let const variable_name_visit_count_before =
       context.dynamic_runtime_store().debug_variable_name_enumeration_count();
   let const directory_read_count_before = utils::debug_directory_read_count();
-  context.resolution_store().resolver().begin_explicit_completion(
+  context.program_resolver().begin_explicit_completion(
       ProgramResolver::CompletionRefresh::Fresh);
-  defer { context.resolution_store().resolver().end_explicit_completion(); };
+  defer { context.program_resolver().end_explicit_completion(); };
   let const spans = completion::highlight_line(driver_line, context);
   let listing = String{heap_allocator()};
   for (let const &span : spans) {
@@ -109,7 +109,7 @@ static fn run_debug_ghost_driver(StringView driver_line,
 {
   let const directory_stat_count_before = utils::debug_directory_stat_count();
   let const directory_read_count_before = utils::debug_directory_read_count();
-  context.resolution_store().resolver().initialize_path_map();
+  context.program_resolver().initialize_path_map();
   let const result = completion::complete(
       driver_line, driver_line.length, context, Path::current_directory(),
       nullptr, false, completion::completion_mode::Ghost);

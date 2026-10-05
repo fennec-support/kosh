@@ -42,7 +42,7 @@ fn Newgrp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   /* The group change must outlive this command, so it re-execs system newgrp.
    */
-  let const found = cxt.resolution_store().resolver().search(
+  let const found = cxt.program_resolver().search(
       "newgrp", ProgramResolver::SearchMode::First,
       ProgramResolver::Requirement::Runnable,
       ProgramResolver::CachePolicy::Bypass);

@@ -40,11 +40,11 @@ fn Hash::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (FLAG_REHASH.is_enabled()) {
     LOG(Info, "hash rebuilding the PATH command cache");
-    cxt.resolution_store().resolver().invalidate();
-    cxt.resolution_store().resolver().initialize_path_map();
+    cxt.program_resolver().invalidate();
+    cxt.program_resolver().initialize_path_map();
   } else if (FLAG_RESET.is_enabled()) {
     LOG(Info, "hash forgetting every remembered command location");
-    cxt.resolution_store().resolver().invalidate();
+    cxt.program_resolver().invalidate();
   }
 
   if (FLAG_PATHNAME.is_set()) {
@@ -52,8 +52,8 @@ fn Hash::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                               FLAG_PATHNAME.value_location(),
                               restricted_path_use::Hash);
     for (usize i = 1; i < args.count(); i++)
-      cxt.resolution_store().resolver().remember_path(
-          args[i].view(), Path{FLAG_PATHNAME.value()});
+      cxt.program_resolver().remember_path(args[i].view(),
+                                           Path{FLAG_PATHNAME.value()});
     return 0;
   }
 
@@ -65,8 +65,7 @@ fn Hash::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (os::has_directory_separator(name.view())) continue;
 
-    if (cxt.resolution_store()
-            .resolver()
+    if (cxt.program_resolver()
             .search(name, ProgramResolver::SearchMode::First,
                     ProgramResolver::Requirement::Runnable,
                     ProgramResolver::CachePolicy::Remember)

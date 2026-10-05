@@ -53,7 +53,6 @@ EvalContext::EvalContext(startup_options options, String shell_name,
   runtime_state().set_option(shell_option_id::History, options.is_interactive);
   runtime_state().set_option(shell_option_id::Histexpand,
                              options.is_interactive);
-  variable_store().set_field_separators(variable_store().field_separators());
 
   dynamic_runtime_store().shell_start_time() =
       static_cast<i64>(std::time(nullptr));
@@ -170,7 +169,7 @@ hot fn EvalContext::assign_variable(StringView name, StringView value) throws
   if (is_field_separator_name) variable_store().set_field_separators(value);
   if (write_dynamic_variable(name, value)) return;
 
-  if (is_path_name) resolution_store().resolver().assign_path(String{value});
+  if (is_path_name) program_resolver().assign_path(String{value});
   if (is_ignoreeof_name) {
     runtime_state().set_option(shell_option_id::Ignoreeof, true);
   }
@@ -245,7 +244,7 @@ fn EvalContext::rollback_confined_variable_writes(usize mark) wontthrow -> void
 
       if (name == "IFS") variable_store().set_field_separators(restored);
       if (utils::environment_name_is_path(name))
-        resolution_store().resolver().assign_path(String{restored});
+        program_resolver().assign_path(String{restored});
       if (is_exported(name)) {
         if (entry.previous_value.has_value())
           os::set_environment_variable(name, restored);
@@ -822,8 +821,7 @@ fn EvalContext::force_unset_shell_variable(StringView name) throws -> void
   case 'P':
   case 'p':
     if (utils::environment_name_is_path(name))
-      resolution_store().resolver().assign_path(
-          os::get_environment_variable("PATH"));
+      program_resolver().assign_path(os::get_environment_variable("PATH"));
     break;
   default: break;
   }

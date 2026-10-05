@@ -86,7 +86,7 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     LOG(Debug, "type classifying '%s' in resolution order", name.c_str());
 
     if (should_force_path) {
-      let const paths = cxt.resolution_store().resolver().search(
+      let const paths = cxt.program_resolver().search(
           name,
           FLAG_TYPE_ALL.is_enabled() ? ProgramResolver::SearchMode::All
                                      : ProgramResolver::SearchMode::First,
@@ -143,7 +143,7 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     } else if ((cxt.runtime_state().koshkit() ||
                 cxt.runtime_state().get_mood() == mimic_mood::Default) &&
                koshkit::find_util(name.view()).has_value() &&
-               cxt.resolution_store().resolver().get_status(
+               cxt.program_resolver().get_status(
                    name, ProgramResolver::StatusLookup::Authoritative) ==
                    ProgramResolver::Status::Missing)
     {
@@ -243,10 +243,10 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           do_describe_resolution(word);
         }
       }
-      for (let const &path : cxt.resolution_store().resolver().search(
-               name, ProgramResolver::SearchMode::All,
-               ProgramResolver::Requirement::Runnable,
-               ProgramResolver::CachePolicy::Bypass))
+      for (let const &path :
+           cxt.program_resolver().search(name, ProgramResolver::SearchMode::All,
+                                         ProgramResolver::Requirement::Runnable,
+                                         ProgramResolver::CachePolicy::Bypass))
       {
         has_any = true;
         if (should_print_word) {
@@ -280,7 +280,7 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       continue;
     }
 
-    if (let const paths = cxt.resolution_store().resolver().search(
+    if (let const paths = cxt.program_resolver().search(
             name, ProgramResolver::SearchMode::First,
             ProgramResolver::Requirement::Execution,
             ProgramResolver::CachePolicy::ReadOnly);

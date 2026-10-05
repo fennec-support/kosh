@@ -70,8 +70,7 @@ static fn first_word_resolves(StringView word, EvalContext &context) throws
   if (context.function_store().find_function(word).has_value()) return true;
   if (context.scope_store().get_alias(word).has_value()) return true;
 
-  let const path_status =
-      context.resolution_store().resolver().get_status(word);
+  let const path_status = context.program_resolver().get_status(word);
   let const resolves = path_status == ProgramResolver::Status::Runnable;
   LOG(All, "the path search resolves '%.*s' to %s",
       static_cast<int>(word.length), word.data, resolves ? "yes" : "no");
@@ -106,8 +105,7 @@ static fn command_word_prefixes_any(StringView word,
   });
   if (was_found) return true;
 
-  if (context.resolution_store().resolver().command_name_has_prefix(word))
-    return true;
+  if (context.program_resolver().command_name_has_prefix(word)) return true;
 
   if (context.runtime_state().koshkit_utilities_are_reachable()) {
     for (let const &util_name : koshkit::util_names())

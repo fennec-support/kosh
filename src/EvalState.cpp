@@ -843,7 +843,7 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
       variable_store().exported_names(),
       environment_store().environment_undo_log().count(),
       RuntimeState::capture(*this),
-      resolution_store().resolver(),
+      program_resolver(),
       runtime_control_store().init_moods_sourcing_mask(),
       runtime_control_store().initialized_moods_mask(),
       variable_store().disabled_bash_special_arrays(),
@@ -887,7 +887,7 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
   variable_store().directory_stack() = steal(snapshot.directory_stack);
 
   snapshot.runtime.restore(*this);
-  resolution_store().resolver() = steal(snapshot.program_resolver);
+  program_resolver() = steal(snapshot.program_resolver);
   variable_store().disabled_bash_special_arrays() =
       snapshot.disabled_bash_special_arrays;
   variable_store().unset_dynamic_readers() = snapshot.unset_dynamic_readers;

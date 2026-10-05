@@ -347,9 +347,9 @@ static fn run_compgen_actions(EvalContext &cxt, u32 action_mask,
   }
 
   if (do_wants(compgen_action::Command)) {
-    cxt.resolution_store().resolver().begin_explicit_completion(
+    cxt.program_resolver().begin_explicit_completion(
         ProgramResolver::CompletionRefresh::Fresh);
-    defer { cxt.resolution_store().resolver().end_explicit_completion(); };
+    defer { cxt.program_resolver().end_explicit_completion(); };
     let const scratch = completion::ScopedCompletionScratch{};
 
     for (let const &candidate :
@@ -360,9 +360,9 @@ static fn run_compgen_actions(EvalContext &cxt, u32 action_mask,
   }
 
   if (do_wants(compgen_action::Directory) || do_wants(compgen_action::File)) {
-    cxt.resolution_store().resolver().begin_explicit_completion(
+    cxt.program_resolver().begin_explicit_completion(
         ProgramResolver::CompletionRefresh::Fresh);
-    defer { cxt.resolution_store().resolver().end_explicit_completion(); };
+    defer { cxt.program_resolver().end_explicit_completion(); };
 
     if (do_wants(compgen_action::Directory)) {
       let const scratch = completion::ScopedCompletionScratch{};

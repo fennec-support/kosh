@@ -905,7 +905,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
           source != nullptr ? source->view() : StringView{}, steal(stage_args),
           cxt.runtime_state().koshkit_utilities_are_reachable(),
           cxt.runtime_state().is_shopt_enabled(shopt_option_id::Checkhash),
-          cxt.resolution_store().resolver(), steal(stage_arg_locations),
+          cxt.program_resolver(), steal(stage_arg_locations),
           cxt.runtime_state().get_mood(), cxt.is_shopt_enabled("autocd"));
     } catch (CommandResolutionErrorWithLocation &resolution_error) {
       /* The stage still applies its own redirections. A > onto its stdout takes

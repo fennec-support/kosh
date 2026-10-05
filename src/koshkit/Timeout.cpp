@@ -156,7 +156,7 @@ static fn resolve_timeout_program(StringView program_name,
     return Path::canonicalize(program_name);
   }
 
-  let const matches = cxt.resolution_store().resolver().search(
+  let const matches = cxt.program_resolver().search(
       program_name, ProgramResolver::SearchMode::First,
       ProgramResolver::Requirement::Runnable,
       ProgramResolver::CachePolicy::Bypass);

@@ -455,7 +455,7 @@ fn internal::resolve_completion_command(StringView command,
                                         EvalContext &context) throws -> String
 {
   let name = resolve_completion_alias(command, context);
-  let const located = context.resolution_store().resolver().search(
+  let const located = context.program_resolver().search(
       name.view(), ProgramResolver::SearchMode::First,
       ProgramResolver::Requirement::Runnable,
       ProgramResolver::CachePolicy::Bypass);

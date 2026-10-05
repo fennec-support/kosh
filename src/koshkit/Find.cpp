@@ -430,7 +430,7 @@ private:
           m_ec.source_location(),
           source != nullptr ? source->view() : StringView{}, steal(command),
           m_cxt.runtime_state().koshkit(), m_cxt.is_shopt_enabled("checkhash"),
-          m_cxt.resolution_store().resolver(), steal(command_locations),
+          m_cxt.program_resolver(), steal(command_locations),
           m_cxt.runtime_state().get_mood());
     } catch (const CommandResolutionErrorWithLocation &resolution_error) {
       let const *source = m_cxt.source_store().current_source();

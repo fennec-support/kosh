@@ -194,7 +194,7 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
     program_path = resolved.take();
   } else {
-    let const found = cxt.resolution_store().resolver().search(
+    let const found = cxt.program_resolver().search(
         command_name, ProgramResolver::SearchMode::First,
         ProgramResolver::Requirement::Execution,
         ProgramResolver::CachePolicy::ReadOnly);

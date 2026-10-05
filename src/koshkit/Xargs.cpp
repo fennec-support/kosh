@@ -351,7 +351,7 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
           ec.source_location(),
           source != nullptr ? source->view() : StringView{}, steal(command),
           cxt.runtime_state().koshkit(), cxt.is_shopt_enabled("checkhash"),
-          cxt.resolution_store().resolver(), steal(command_locations),
+          cxt.program_resolver(), steal(command_locations),
           cxt.runtime_state().get_mood());
     } catch (const CommandResolutionErrorWithLocation &resolution_error) {
       let const *source = cxt.source_store().current_source();

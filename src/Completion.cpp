@@ -415,12 +415,11 @@ collect_command_names(StringView token, EvalContext &context,
   context.function_store().for_each_name(do_add);
   context.scope_store().for_each_alias_name(do_add);
 
-  let const &path_names =
-      context.resolution_store().resolver().get_command_names(
-          token_is_glob ? StringView{} : normalized_path_token.view(),
-          token_is_glob || token.is_empty()
-              ? ProgramResolver::ValidationScope::All
-              : ProgramResolver::ValidationScope::Prefix);
+  let const &path_names = context.program_resolver().get_command_names(
+      token_is_glob ? StringView{} : normalized_path_token.view(),
+      token_is_glob || token.is_empty()
+          ? ProgramResolver::ValidationScope::All
+          : ProgramResolver::ValidationScope::Prefix);
   if (!token_is_glob &&
       (!token.is_empty() || collector.wants_empty_token_listing()))
   {
@@ -433,7 +432,7 @@ collect_command_names(StringView token, EvalContext &context,
 
   if (collector.allows_fuzzy_fallback() && !collector.has_prefix()) {
     let const &fallback_path_names =
-        context.resolution_store().resolver().get_command_names(
+        context.program_resolver().get_command_names(
             {}, ProgramResolver::ValidationScope::All);
     for (let const &entry : fallback_path_names)
       do_add_path(entry.view());

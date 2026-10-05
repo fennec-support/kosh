@@ -679,7 +679,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
                                       restore.previous_value.has_value());
     }
     if (saved_program_resolver.has_value())
-      cxt.resolution_store().resolver() = steal(*saved_program_resolver);
+      cxt.program_resolver() = steal(*saved_program_resolver);
     if (was_ifs_assigned)
       cxt.variable_store().set_field_separators(saved_ifs_separators.view());
     if (previous_ignoreeof_state.has_value())
@@ -702,93 +702,88 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
                  cxt.runtime_state().is_posix_option_on());
   /* The assignments apply left to right, each committed before the next is
      expanded, so a later value reads an earlier same-line one. */
-  let const do_apply_environment_assignment =
-      [&](const tokens::Assignment &assignment) throws {
-        let const name = assignment.key().view();
-        if (cxt.is_readonly(name))
-          throw Error{"Unable to assign '" + name +
-                      "' because it is read only"};
-        const bool is_read_field_separator =
-            name == "IFS" && command_word_function == nullptr &&
-            !program_args.is_empty() && program_args[0] == "read";
-        Maybe<String> previous;
-        if (!is_read_field_separator)
-          previous = os::get_environment_variable(name);
-        let expanded_value = String{cxt.scratch_allocator()};
-        try {
-          expanded_value =
-              cxt.expand_word_for_assignment(assignment.value_word());
-        } catch (const ErrorWithLocation &) {
-          throw;
-        } catch (const Error &e) {
-          relocate_error(e, source_location());
-        }
-        do_trace_assignment(name, assignment.get_update_mode(),
-                            expanded_value.view());
-        if (assignment.get_update_mode() == assignment_update_mode::Append)
-          do_apply_append(name, expanded_value);
+  let const do_apply_environment_assignment = [&](const tokens::Assignment
+                                                      &assignment) throws {
+    let const name = assignment.key().view();
+    if (cxt.is_readonly(name))
+      throw Error{"Unable to assign '" + name + "' because it is read only"};
+    const bool is_read_field_separator =
+        name == "IFS" && command_word_function == nullptr &&
+        !program_args.is_empty() && program_args[0] == "read";
+    Maybe<String> previous;
+    if (!is_read_field_separator) previous = os::get_environment_variable(name);
+    let expanded_value = String{cxt.scratch_allocator()};
+    try {
+      expanded_value = cxt.expand_word_for_assignment(assignment.value_word());
+    } catch (const ErrorWithLocation &) {
+      throw;
+    } catch (const Error &e) {
+      relocate_error(e, source_location());
+    }
+    do_trace_assignment(name, assignment.get_update_mode(),
+                        expanded_value.view());
+    if (assignment.get_update_mode() == assignment_update_mode::Append)
+      do_apply_append(name, expanded_value);
 
-        /* A special builtin keeps the assignment outside the bash mood, so it
-           commits to the store. The bash mood drops it after the command, so it
-           falls to the temporary path instead. */
-        if (is_prefix_assignment_persistent) {
-          cxt.set_shell_variable(name, expanded_value);
-          if (cxt.runtime_state().export_all()) {
-            cxt.record_environment_change(name);
-            os::set_environment_variable(name, expanded_value.view());
-            cxt.mark_exported(name);
-          }
-          return;
-        }
+    /* A special builtin keeps the assignment outside the bash mood, so it
+       commits to the store. The bash mood drops it after the command, so it
+       falls to the temporary path instead. */
+    if (is_prefix_assignment_persistent) {
+      cxt.set_shell_variable(name, expanded_value);
+      if (cxt.runtime_state().export_all()) {
+        cxt.record_environment_change(name);
+        os::set_environment_variable(name, expanded_value.view());
+        cxt.mark_exported(name);
+      }
+      return;
+    }
 
-        if (name == "IFS" && !was_ifs_assigned) {
-          was_ifs_assigned = true;
-          saved_ifs_separators =
-              cxt.get_variable_value("IFS").value_or(String{" \t\n"});
-        }
+    if (name == "IFS" && !was_ifs_assigned) {
+      was_ifs_assigned = true;
+      saved_ifs_separators =
+          cxt.get_variable_value("IFS").value_or(String{" \t\n"});
+    }
 
-        if (!is_read_field_separator) {
-          Maybe<String> previous_shell_value;
-          Maybe<SourceLocation> previous_special_definition_location;
-          let const did_overlay_shell_value =
-              command_word_function != nullptr || is_source_evaluating_builtin;
-          if (did_overlay_shell_value) {
-            if (let const stored =
-                    cxt.variable_store().shell_variables().find(name);
-                stored.has_value())
-            {
-              previous_shell_value =
-                  String{cxt.scratch_allocator(), stored->view()};
-            }
-            previous_special_definition_location =
-                cxt.special_variable_definition_location(name);
-            if (name == "IGNOREEOF" && !previous_ignoreeof_state.has_value()) {
-              previous_ignoreeof_state = cxt.runtime_state().option_is_enabled(
-                  shell_option_id::Ignoreeof);
-            }
-            cxt.set_shell_variable(name, expanded_value.view());
-          }
-          saved_env.push(saved_env_var{
-              String{cxt.scratch_allocator(), name},
-              steal(previous),
-              steal(previous_shell_value), previous_special_definition_location,
-              did_overlay_shell_value
-          });
-          os::set_environment_variable(name, expanded_value.view());
-          cxt.mark_exported(name);
+    if (!is_read_field_separator) {
+      Maybe<String> previous_shell_value;
+      Maybe<SourceLocation> previous_special_definition_location;
+      let const did_overlay_shell_value =
+          command_word_function != nullptr || is_source_evaluating_builtin;
+      if (did_overlay_shell_value) {
+        if (let const stored =
+                cxt.variable_store().shell_variables().find(name);
+            stored.has_value())
+        {
+          previous_shell_value =
+              String{cxt.scratch_allocator(), stored->view()};
         }
-        /* The resolver reads its own MAYBE_PATH, so a prefix PATH=... must
-           update it for the environment write to change the search order. */
-        if (utils::environment_name_is_path(name)) {
-          if (!saved_program_resolver.has_value())
-            saved_program_resolver =
-                Maybe<ProgramResolver>{cxt.resolution_store().resolver()};
-          cxt.resolution_store().resolver().assign_path(
-              String{expanded_value.view()});
+        previous_special_definition_location =
+            cxt.special_variable_definition_location(name);
+        if (name == "IGNOREEOF" && !previous_ignoreeof_state.has_value()) {
+          previous_ignoreeof_state =
+              cxt.runtime_state().option_is_enabled(shell_option_id::Ignoreeof);
         }
-        if (name == "IFS")
-          cxt.variable_store().set_field_separators(expanded_value.view());
-      };
+        cxt.set_shell_variable(name, expanded_value.view());
+      }
+      saved_env.push(saved_env_var{
+          String{cxt.scratch_allocator(), name},
+          steal(previous),
+          steal(previous_shell_value), previous_special_definition_location,
+          did_overlay_shell_value
+      });
+      os::set_environment_variable(name, expanded_value.view());
+      cxt.mark_exported(name);
+    }
+    /* The resolver reads its own MAYBE_PATH, so a prefix PATH=... must
+       update it for the environment write to change the search order. */
+    if (utils::environment_name_is_path(name)) {
+      if (!saved_program_resolver.has_value())
+        saved_program_resolver = Maybe<ProgramResolver>{cxt.program_resolver()};
+      cxt.program_resolver().assign_path(String{expanded_value.view()});
+    }
+    if (name == "IFS")
+      cxt.variable_store().set_field_separators(expanded_value.view());
+  };
   for (let const &var : m_local_vars)
     do_apply_environment_assignment(*var.token);
   for (let const assignment : keyword_assignments)
@@ -1037,7 +1032,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
           steal(program_args),
           cxt.runtime_state().koshkit_utilities_are_reachable(),
           cxt.runtime_state().is_shopt_enabled(shopt_option_id::Checkhash),
-          cxt.resolution_store().resolver(), steal(program_arg_locations),
+          cxt.program_resolver(), steal(program_arg_locations),
           cxt.runtime_state().get_mood(), cxt.is_shopt_enabled("autocd"));
     } catch (CommandResolutionErrorWithLocation &e) {
       report_command_resolution_error(cxt, e);

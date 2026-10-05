@@ -742,10 +742,10 @@ fn EvalContext::resolve_source_path(
   if (!runtime_state().is_shopt_enabled(shopt_option_id::Sourcepath))
     return source_path;
 
-  let const path_matches = resolution_store().resolver().search(
-      path, ProgramResolver::SearchMode::First,
-      ProgramResolver::Requirement::Regular,
-      ProgramResolver::CachePolicy::Bypass);
+  let const path_matches =
+      program_resolver().search(path, ProgramResolver::SearchMode::First,
+                                ProgramResolver::Requirement::Regular,
+                                ProgramResolver::CachePolicy::Bypass);
   if (!path_matches.is_empty()) return path_matches[0].clone();
   if (runtime_state().is_posix_mode()) return None;
 

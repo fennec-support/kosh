@@ -1620,7 +1620,8 @@ public:
 
 private:
   String m_field_separators{" \t\n"};
-  u64 m_field_separator_bits[4]{};
+  u64 m_field_separator_bits[4]{(u64{1} << ' ') | (u64{1} << '\t') |
+                                (u64{1} << '\n')};
   StringMap<String> m_shell_variables{heap_allocator()};
   bool m_is_pipestatus_scalar_possible{true};
   StringMap<SourceLocation> m_special_variable_definition_locations{
@@ -2375,19 +2376,6 @@ private:
       nullptr};
 };
 
-class ResolutionStore
-{
-public:
-  fn resolver() wontthrow -> ProgramResolver & { return m_resolver; }
-  pure fn resolver() const wontthrow -> const ProgramResolver &
-  {
-    return m_resolver;
-  }
-
-private:
-  ProgramResolver m_resolver{};
-};
-
 class DynamicRuntimeStore
 {
 public:
@@ -2468,13 +2456,13 @@ public:
   {
     return m_diagnostics_store;
   }
-  fn resolution_store() wontthrow -> ResolutionStore &
+  fn program_resolver() wontthrow -> ProgramResolver &
   {
-    return m_resolution_store;
+    return m_program_resolver;
   }
-  pure fn resolution_store() const wontthrow -> const ResolutionStore &
+  pure fn program_resolver() const wontthrow -> const ProgramResolver &
   {
-    return m_resolution_store;
+    return m_program_resolver;
   }
   fn dynamic_runtime_store() wontthrow -> DynamicRuntimeStore &
   {
@@ -2603,7 +2591,7 @@ protected:
   SourceStore m_source_store{};
   RuntimeState m_runtime{};
   RuntimeControlStore m_runtime_control_store{};
-  ResolutionStore m_resolution_store{};
+  ProgramResolver m_program_resolver{};
   TrapStore m_trap_store{};
   PromptCommandStore m_prompt_command_store{};
   ScopeStore m_scope_store{};
