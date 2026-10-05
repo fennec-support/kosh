@@ -1376,7 +1376,7 @@ fn check_function_argument_dataflow(AnalysisContext &actx) throws -> void
   /* An interactive chunk runs against a live shell whose functions the file
      never defines, so the order the file states is not the order that runs. */
   let const should_check_definition_order =
-      !actx.should_silence_unresolved_commands &&
+      !actx.effects.should_silence_unresolved_commands &&
       actx.should_report(diagnostic_id::sc2218);
 
   if (!should_check_argument_use && !should_check_definition_order) return;

@@ -643,7 +643,7 @@ fn ArithmeticCommand::analyze(AnalysisContext &actx,
 
   check_arithmetic_expression_lints(
       actx, m_expression, source_location(), source_location().position + 2,
-      !is_unconditional || actx.has_seen_runtime_definer);
+      !is_unconditional || actx.effects.has_seen_runtime_definer);
 
   if (actx.is_posix_sh_shebang) {
     actx.report_diagnostic(diagnostic_id::sc3006, source_location());
@@ -678,7 +678,7 @@ fn SelectLoop::analyze(AnalysisContext &actx,
   }
 
   let const is_conditional = !is_unconditional ||
-                             actx.has_seen_runtime_definer ||
+                             actx.effects.has_seen_runtime_definer ||
                              (m_has_in_clause && m_words.is_empty());
   actx.note_variable_occurrence(m_variable_name, m_variable_location,
                                 variable_occurrence_kind::Assignment,
@@ -870,7 +870,7 @@ fn CStyleForLoop::analyze(AnalysisContext &actx,
 
   optimizer::optimize_node(this, actx);
 
-  let const is_conditional = !is_unconditional || actx.has_seen_runtime_definer;
+  let const is_conditional = !is_unconditional || actx.effects.has_seen_runtime_definer;
   let const init_position = m_header_position;
   let const condition_position = init_position + m_init.length + 1;
   let const step_position = condition_position + m_condition.length + 1;
@@ -1322,11 +1322,7 @@ SubshellAnalysisScope::SubshellAnalysisScope(AnalysisContext &actx)
           actx.inherited_global_assigned_names.clone()},
       m_array_valued_names{actx.array_valued_names.clone()},
       m_source_effects{actx.current_source_effects},
-      m_has_seen_runtime_definer{actx.has_seen_runtime_definer},
-      m_has_unknown_path{actx.has_unknown_path},
-      m_has_unknown_working_directory{actx.has_unknown_working_directory},
-      m_should_silence_unresolved_commands{
-          actx.should_silence_unresolved_commands},
+      m_effects{actx.effects},
       m_was_inside_subshell_analysis{actx.is_inside_subshell_analysis}
 {
   actx.constant_variables = StringMap<String>{heap_allocator()};
@@ -1338,11 +1334,7 @@ fn SubshellAnalysisScope::leave() throws -> void
 {
   m_actx.current_source_effects = m_source_effects;
   m_actx.is_inside_subshell_analysis = m_was_inside_subshell_analysis;
-  m_actx.has_unknown_working_directory = m_has_unknown_working_directory;
-  m_actx.has_unknown_path = m_has_unknown_path;
-  m_actx.has_seen_runtime_definer = m_has_seen_runtime_definer;
-  m_actx.should_silence_unresolved_commands =
-      m_should_silence_unresolved_commands;
+  m_actx.effects = m_effects;
   m_actx.array_valued_names = steal(m_array_valued_names);
   m_actx.inherited_global_assigned_names =
       steal(m_inherited_global_assigned_names);

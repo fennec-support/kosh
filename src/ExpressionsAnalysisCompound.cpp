@@ -76,12 +76,7 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
       continue;
     }
 
-    let const saved_has_seen_runtime_definer = actx.has_seen_runtime_definer;
-    let const saved_has_unknown_path = actx.has_unknown_path;
-    let const saved_has_unknown_working_directory =
-        actx.has_unknown_working_directory;
-    let const saved_should_silence_unresolved_commands =
-        actx.should_silence_unresolved_commands;
+    let const saved_effects = actx.effects;
     let const function_mark = actx.functions.get_mark();
     let saved_inherited_assigned_names = actx.inherited_assigned_names.clone();
     let saved_inherited_global_assigned_names =
@@ -95,11 +90,7 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
     actx.current_source_effects = saved_source_effects;
     actx.is_direct_pipeline_stage = was_direct_pipeline_stage;
-    actx.has_unknown_working_directory = saved_has_unknown_working_directory;
-    actx.has_unknown_path = saved_has_unknown_path;
-    actx.has_seen_runtime_definer = saved_has_seen_runtime_definer;
-    actx.should_silence_unresolved_commands =
-        saved_should_silence_unresolved_commands;
+    actx.effects = saved_effects;
     actx.array_valued_names = steal(saved_array_valued_names);
     actx.inherited_global_assigned_names =
         steal(saved_inherited_global_assigned_names);

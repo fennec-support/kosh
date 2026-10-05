@@ -804,7 +804,7 @@ pure fn AnalysisContext::should_report(diagnostic_tier tier) const wontthrow
 pure fn AnalysisContext::should_silence_unresolved_command_at(
     usize position) const wontthrow -> bool
 {
-  if (should_silence_unresolved_commands) return true;
+  if (effects.should_silence_unresolved_commands) return true;
   if (format_document == nullptr) return false;
   let const fragment_index =
       parser_format_fragment_at(*format_document, position);
@@ -1296,7 +1296,7 @@ fn AnalysisContext::note_variable_read(StringView name,
     -> void
 {
   if (!is_top_level_unconditional) return;
-  if (has_seen_runtime_definer) return;
+  if (effects.has_seen_runtime_definer) return;
 
   if (!lexer::word_is_variable_name(name)) {
     let const assigned = assign_form_target_name(name);
@@ -1576,37 +1576,40 @@ fn expressions::internal::wrapped_command_index(
 }
 
 fn expressions::internal::apply_followed_source_effects(
-    AnalysisContext &actx, const followed_source_effects &effects,
+    AnalysisContext &actx, const followed_source_effects &followed,
     bool should_merge_parent_state, bool should_merge_parent_uncertainty) throws
     -> void
 {
   if (should_merge_parent_state) {
-    effects.defined_functions.for_each(
+    followed.defined_functions.for_each(
         [&actx](StringView name) { actx.add_defined_function(name); });
-    effects.known_aliases.for_each(
+    followed.known_aliases.for_each(
         [&actx](StringView name) { actx.add_known_alias(name); });
-    effects.assigned_names.for_each([&actx](StringView name) {
+    followed.assigned_names.for_each([&actx](StringView name) {
       actx.inherited_assigned_names.add(name);
       if (actx.current_source_effects != nullptr)
         actx.current_source_effects->assigned_names.add(name);
     });
-    effects.global_assigned_names.for_each([&actx](StringView name) {
+    followed.global_assigned_names.for_each([&actx](StringView name) {
       actx.inherited_global_assigned_names.add(name);
       if (actx.current_source_effects != nullptr)
         actx.current_source_effects->global_assigned_names.add(name);
     });
-    effects.array_valued_names.for_each(
+    followed.array_valued_names.for_each(
         [&actx](StringView name) { actx.add_array_valued_name(name); });
   }
 
   if (should_merge_parent_uncertainty) {
-    if (effects.has_seen_runtime_definer) actx.mark_runtime_definer_seen();
-    if (effects.has_unknown_path)
-      actx.mark_path_unknown(effects.should_silence_unresolved_commands);
-    if (effects.has_unknown_working_directory)
+    if (followed.effects.has_seen_runtime_definer)
+      actx.mark_runtime_definer_seen();
+    if (followed.effects.has_unknown_path) {
+      actx.mark_path_unknown(
+          followed.effects.should_silence_unresolved_commands);
+    }
+    if (followed.effects.has_unknown_working_directory)
       actx.mark_working_directory_unknown();
   }
-  actx.has_fatal = actx.has_fatal || effects.has_fatal;
+  actx.has_fatal = actx.has_fatal || followed.has_fatal;
 }
 
 fn expressions::internal::analyze_followed_source(
@@ -1653,7 +1656,7 @@ fn expressions::internal::analyze_followed_source(
     }
   }
   if (tilde_expansion == source_tilde_expansion::Enabled &&
-      actx.has_unknown_working_directory)
+      actx.effects.has_unknown_working_directory)
   {
     return false;
   }
@@ -1662,8 +1665,10 @@ fn expressions::internal::analyze_followed_source(
       !source_path.is_absolute())
   {
     if (os::has_directory_separator(*literal_path)) {
-      if (actx.has_unknown_working_directory) return false;
-    } else if (actx.has_unknown_path || actx.has_unknown_working_directory) {
+      if (actx.effects.has_unknown_working_directory) return false;
+    } else if (actx.effects.has_unknown_path ||
+               actx.effects.has_unknown_working_directory)
+    {
       return false;
     }
   }
@@ -1739,12 +1744,13 @@ fn expressions::internal::analyze_followed_source(
   /* A child that skips its own nested sources records partial effects, wrong
      for a later visit that carries no uncertainty. */
   let const was_analyzed_under_uncertainty =
-      actx.has_unknown_path || actx.has_unknown_working_directory;
+      actx.effects.has_unknown_path ||
+      actx.effects.has_unknown_working_directory;
 
   followed_source_effects effects{};
   let child_options = actx.options;
   child_options.should_silence_unresolved_commands =
-      actx.should_silence_unresolved_commands;
+      actx.effects.should_silence_unresolved_commands;
   let const analyzed = analyze_ast(
       ast, contents->view(), actx.functions.defined, actx.functions.aliases,
       actx.eval_context, child_options, directives,
@@ -1906,11 +1912,12 @@ fn analyze_ast(const Expression *root, StringView source,
      source string. */
   actx.symbol_records = symbol_records;
   if (parent_analysis_context != nullptr) {
-    actx.has_seen_runtime_definer =
-        parent_analysis_context->has_seen_runtime_definer;
-    actx.has_unknown_path = parent_analysis_context->has_unknown_path;
-    actx.has_unknown_working_directory =
-        parent_analysis_context->has_unknown_working_directory;
+    actx.effects.has_seen_runtime_definer =
+        parent_analysis_context->effects.has_seen_runtime_definer;
+    actx.effects.has_unknown_path =
+        parent_analysis_context->effects.has_unknown_path;
+    actx.effects.has_unknown_working_directory =
+        parent_analysis_context->effects.has_unknown_working_directory;
     parent_analysis_context->inherited_assigned_names.for_each(
         [&actx](StringView name) { actx.inherited_assigned_names.add(name); });
     parent_analysis_context->assigned_names_so_far.for_each(

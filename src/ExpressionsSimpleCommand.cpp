@@ -176,13 +176,13 @@ fn AssignCommand::analyze(AnalysisContext &actx,
     let const name_location = source_location().subspan(0, base.length);
     actx.note_variable_occurrence(
         base, name_location, variable_occurrence_kind::Assignment,
-        !is_unconditional || actx.has_seen_runtime_definer);
+        !is_unconditional || actx.effects.has_seen_runtime_definer);
     actx.note_variable_assignment(base, source_location(),
                                   is_unconditional &&
-                                      !actx.has_seen_runtime_definer);
+                                      !actx.effects.has_seen_runtime_definer);
     actx.note_variable_assignment_record(base, nullptr, source_location(),
                                          !is_unconditional ||
-                                             actx.has_seen_runtime_definer,
+                                             actx.effects.has_seen_runtime_definer,
                                          m_assignment->get_update_mode());
     actx.add_array_valued_name(base);
     LOG(All,
@@ -196,16 +196,16 @@ fn AssignCommand::analyze(AnalysisContext &actx,
   let const name_location = source_location().subspan(0, name.count());
   actx.note_variable_occurrence(
       name.view(), name_location, variable_occurrence_kind::Assignment,
-      !is_unconditional || actx.has_seen_runtime_definer,
+      !is_unconditional || actx.effects.has_seen_runtime_definer,
       m_assignment->get_update_mode());
   actx.note_variable_assignment(name.view(), source_location(),
                                 is_unconditional &&
-                                    !actx.has_seen_runtime_definer);
+                                    !actx.effects.has_seen_runtime_definer);
   /* The record is taken before the constant table gives up on this name. A
      conditional or appending assignment stays answerable. */
   actx.note_variable_assignment_record(
       name.view(), &m_assignment->value_word(), source_location(),
-      !is_unconditional || actx.has_seen_runtime_definer,
+      !is_unconditional || actx.effects.has_seen_runtime_definer,
       m_assignment->get_update_mode());
 
   if (actx.function_scope_depth > 0 &&
@@ -229,7 +229,7 @@ fn AssignCommand::analyze(AnalysisContext &actx,
   }
 
   if (actx.function_scope_depth == 0 && is_unconditional &&
-      !actx.has_seen_runtime_definer && !actx.is_inside_substitution_subshell)
+      !actx.effects.has_seen_runtime_definer && !actx.is_inside_substitution_subshell)
   {
     actx.add_global_assigned_name(name.view(), source_location());
   }
@@ -237,7 +237,7 @@ fn AssignCommand::analyze(AnalysisContext &actx,
   /* A conditional or nested assignment may not run, a runtime definer may have
      changed the name out of view, and NAME+=VALUE depends on the untracked
      prior value, so each forgets the name. */
-  if (!is_unconditional || actx.has_seen_runtime_definer ||
+  if (!is_unconditional || actx.effects.has_seen_runtime_definer ||
       m_assignment->get_update_mode() == assignment_update_mode::Append)
   {
     LOG(All,

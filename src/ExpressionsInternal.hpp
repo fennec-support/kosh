@@ -476,10 +476,7 @@ private:
   HashSet m_inherited_global_assigned_names;
   HashSet m_array_valued_names;
   followed_source_effects *m_source_effects;
-  bool m_has_seen_runtime_definer;
-  bool m_has_unknown_path;
-  bool m_has_unknown_working_directory;
-  bool m_should_silence_unresolved_commands;
+  analysis_effects m_effects;
   bool m_was_inside_subshell_analysis;
 };
 

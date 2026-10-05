@@ -408,6 +408,29 @@ struct analysis_diagnostic_totals
   usize error_count{0};
 };
 
+struct analysis_effects
+{
+  bool has_seen_runtime_definer{false};
+  bool has_unknown_path{false};
+  bool has_unknown_working_directory{false};
+  bool should_silence_unresolved_commands{false};
+
+  fn raise(const analysis_effects &delta, analysis_effects *mirror) wontthrow
+      -> void
+  {
+    has_seen_runtime_definer =
+        has_seen_runtime_definer || delta.has_seen_runtime_definer;
+    has_unknown_path = has_unknown_path || delta.has_unknown_path;
+    has_unknown_working_directory =
+        has_unknown_working_directory || delta.has_unknown_working_directory;
+    should_silence_unresolved_commands =
+        should_silence_unresolved_commands ||
+        delta.should_silence_unresolved_commands;
+
+    if (mirror != nullptr) mirror->raise(delta, nullptr);
+  }
+};
+
 struct followed_source_effects
 {
   HashSet defined_functions{heap_allocator()};
@@ -415,10 +438,7 @@ struct followed_source_effects
   HashSet assigned_names{heap_allocator()};
   HashSet global_assigned_names{heap_allocator()};
   HashSet array_valued_names{heap_allocator()};
-  bool has_seen_runtime_definer{false};
-  bool has_unknown_path{false};
-  bool has_unknown_working_directory{false};
-  bool should_silence_unresolved_commands{false};
+  analysis_effects effects;
   bool has_fatal{false};
 };
 
@@ -535,7 +555,6 @@ public:
   const analysis_options options;
   bool are_koshkit_utilities_reachable{true};
   const ArrayList<shellcheck_suppression> *shellcheck_suppressions{nullptr};
-  bool has_seen_runtime_definer{false};
   analysis_function_table functions;
   /* The table is cleared at a conditional branch, a loop body, a function body,
      a subshell, and on any runtime definer, since a value recorded before such
@@ -623,10 +642,8 @@ public:
   /* An interactive -W chunk runs the moment the analysis ends and the runtime
      resolution reports the same missing command, so the analysis copy would
      double the report. A script run keeps the check. */
-  bool should_silence_unresolved_commands{false};
+  analysis_effects effects;
   const parsed_format_document *format_document{nullptr};
-  bool has_unknown_path{false};
-  bool has_unknown_working_directory{false};
   bool is_inside_subshell_analysis{false};
 
   HashSet generated_relative_executable_paths{heap_allocator()};
@@ -658,10 +675,11 @@ public:
   bool is_inside_substitution_subshell{false};
 
   AnalysisContext(StringView source_view, const analysis_options &analysis)
-      : source(source_view), options(analysis),
-        should_silence_unresolved_commands(
-            analysis.should_silence_unresolved_commands)
-  {}
+      : source(source_view), options(analysis)
+  {
+    effects.should_silence_unresolved_commands =
+        analysis.should_silence_unresolved_commands;
+  }
 
   fn add_defined_function(StringView name) throws -> void
   {
@@ -694,30 +712,25 @@ public:
 
   fn mark_path_unknown(bool should_silence_commands) wontthrow -> void
   {
-    has_unknown_path = true;
-    should_silence_unresolved_commands =
-        should_silence_unresolved_commands || should_silence_commands;
-    if (current_source_effects != nullptr) {
-      current_source_effects->has_unknown_path = true;
-      current_source_effects->should_silence_unresolved_commands =
-          current_source_effects->should_silence_unresolved_commands ||
-          should_silence_commands;
-    }
+    let delta = analysis_effects{};
+    delta.has_unknown_path = true;
+    delta.should_silence_unresolved_commands = should_silence_commands;
+    raise_effects(delta);
   }
 
   fn mark_working_directory_unknown() wontthrow -> void
   {
-    has_unknown_working_directory = true;
+    let delta = analysis_effects{};
+    delta.has_unknown_working_directory = true;
     generated_relative_executable_paths = HashSet{heap_allocator()};
-    if (current_source_effects != nullptr)
-      current_source_effects->has_unknown_working_directory = true;
+    raise_effects(delta);
   }
 
   fn mark_runtime_definer_seen() wontthrow -> void
   {
-    has_seen_runtime_definer = true;
-    if (current_source_effects != nullptr)
-      current_source_effects->has_seen_runtime_definer = true;
+    let delta = analysis_effects{};
+    delta.has_seen_runtime_definer = true;
+    raise_effects(delta);
   }
 
   template <class Definitions>
@@ -805,6 +818,13 @@ public:
       -> bool;
 
 private:
+  fn raise_effects(const analysis_effects &delta) wontthrow -> void
+  {
+    effects.raise(delta, current_source_effects != nullptr
+                             ? &current_source_effects->effects
+                             : nullptr);
+  }
+
   pure fn should_report(diagnostic_tier tier) const wontthrow -> bool;
   fn warn(diagnostic_id id, const SourceLocation &location, StringView message,
           StringView suggestion, diagnostic_tier tier,

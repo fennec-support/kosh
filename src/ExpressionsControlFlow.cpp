@@ -321,12 +321,12 @@ fn IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     let const is_dead_branch =
         has_folded_branch() && folded_branch_index() != i;
     let condition_failure_occurrences = actx.occurrences.snapshot();
-    let const was_silenced = actx.should_silence_unresolved_commands;
-    if (is_dead_branch) actx.should_silence_unresolved_commands = true;
+    let const was_silenced = actx.effects.should_silence_unresolved_commands;
+    if (is_dead_branch) actx.effects.should_silence_unresolved_commands = true;
     actx.conditional_branch_depth++;
     body->analyze(actx, false);
     actx.conditional_branch_depth--;
-    actx.should_silence_unresolved_commands = was_silenced;
+    actx.effects.should_silence_unresolved_commands = was_silenced;
 
     let const is_exiting_branch = !is_dead_branch && body->always_exits(actx);
     if (is_exiting_branch) did_skip_exiting_branch = true;
@@ -351,13 +351,13 @@ fn IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
   let const else_is_dead =
       has_folded_branch() && folded_branch_index() != m_branches.count();
-  let const was_else_silenced = actx.should_silence_unresolved_commands;
-  if (else_is_dead) actx.should_silence_unresolved_commands = true;
+  let const was_else_silenced = actx.effects.should_silence_unresolved_commands;
+  if (else_is_dead) actx.effects.should_silence_unresolved_commands = true;
   actx.tested_command_names = steal(condition_failure_names);
   actx.conditional_branch_depth++;
   if (m_otherwise != nullptr) m_otherwise->analyze(actx, false);
   actx.conditional_branch_depth--;
-  actx.should_silence_unresolved_commands = was_else_silenced;
+  actx.effects.should_silence_unresolved_commands = was_else_silenced;
   actx.tested_command_names = steal(saved_tested_command_names);
 
   let const is_exiting_else =
@@ -576,10 +576,10 @@ fn WhileLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
   }
 
   let condition_occurrences = actx.occurrences.snapshot();
-  let const was_silenced = actx.should_silence_unresolved_commands;
+  let const was_silenced = actx.effects.should_silence_unresolved_commands;
   let const was_inside_read_loop = actx.is_inside_read_loop;
   if (has_input_reading_loop_condition) actx.is_inside_read_loop = true;
-  if (is_folded_to_skip()) actx.should_silence_unresolved_commands = true;
+  if (is_folded_to_skip()) actx.effects.should_silence_unresolved_commands = true;
   actx.loop_body_depth++;
   actx.conditional_branch_depth++;
   m_body->analyze(actx, false);
@@ -589,7 +589,7 @@ fn WhileLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
   condition_occurrences.merge(actx.occurrences);
   actx.occurrences = steal(condition_occurrences);
   actx.is_inside_read_loop = was_inside_read_loop;
-  actx.should_silence_unresolved_commands = was_silenced;
+  actx.effects.should_silence_unresolved_commands = was_silenced;
   actx.tested_command_names = steal(saved_tested_command_names);
   actx.active_getopts = saved_getopts;
 }
@@ -992,7 +992,7 @@ fn ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
   }
 
   let const is_conditional = !is_unconditional ||
-                             actx.has_seen_runtime_definer ||
+                             actx.effects.has_seen_runtime_definer ||
                              (m_has_in_clause && m_words.is_empty());
   actx.note_variable_occurrence(m_variable_name, m_variable_location,
                                 variable_occurrence_kind::Assignment,

@@ -585,14 +585,14 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
           var.get_location().subspan(0, var.get_name().length);
       actx.note_variable_occurrence(
           var.get_name(), name_location, variable_occurrence_kind::Assignment,
-          !is_unconditional || actx.has_seen_runtime_definer,
+          !is_unconditional || actx.effects.has_seen_runtime_definer,
           var.get_update_mode());
       actx.note_variable_assignment(var.get_name(), var.get_location(),
                                     is_unconditional &&
-                                        !actx.has_seen_runtime_definer);
+                                        !actx.effects.has_seen_runtime_definer);
       actx.note_variable_assignment_record(
           var.get_name(), &var.get_value(), var.get_location(),
-          !is_unconditional || actx.has_seen_runtime_definer,
+          !is_unconditional || actx.effects.has_seen_runtime_definer,
           var.get_update_mode());
     }
   }
@@ -603,13 +603,13 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
     actx.note_variable_occurrence(assignment.name.view(), name_location,
                                   variable_occurrence_kind::Assignment,
                                   !is_unconditional ||
-                                      actx.has_seen_runtime_definer);
+                                      actx.effects.has_seen_runtime_definer);
     actx.note_variable_assignment(assignment.name.view(), assignment.location,
                                   is_unconditional &&
-                                      !actx.has_seen_runtime_definer);
+                                      !actx.effects.has_seen_runtime_definer);
     actx.note_variable_assignment_record(
         assignment.name.view(), nullptr, assignment.location,
-        !is_unconditional || actx.has_seen_runtime_definer,
+        !is_unconditional || actx.effects.has_seen_runtime_definer,
         assignment.update_mode);
     actx.add_array_valued_name(assignment.name.view());
     actx.constant_variables.erase(assignment.name.view());
@@ -817,14 +817,14 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
                          command_literal,
                          command_info,
                          is_command_shadowed,
-                         !is_unconditional || actx.has_seen_runtime_definer};
+                         !is_unconditional || actx.effects.has_seen_runtime_definer};
 
   /* A declare-family builtin writes its NAME=value operands, and those reach
      analysis as command arguments rather than as prefix assignments. */
   if (command_is_assignment_builtin && !is_command_shadowed) {
     let const should_record_readonly_name =
         command_id == command_name_id::Readonly && is_unconditional &&
-        !actx.has_seen_runtime_definer;
+        !actx.effects.has_seen_runtime_definer;
     /* A -f, -F, or -p operand asks the builtin to report a name, so nothing on
        that command line is declared. */
     let is_reporting_form = false;
@@ -873,11 +873,11 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
           actx.note_variable_occurrence(
               declared->view(), m_args[i]->source_location(),
               variable_occurrence_kind::Assignment,
-              !is_unconditional || actx.has_seen_runtime_definer);
+              !is_unconditional || actx.effects.has_seen_runtime_definer);
           actx.note_variable_binding_record(
               declared->view(), m_args[i]->source_location(),
               assignment_binder::Declaration,
-              !is_unconditional || actx.has_seen_runtime_definer);
+              !is_unconditional || actx.effects.has_seen_runtime_definer);
           if (should_record_readonly_name)
             actx.readonly_assigned_names.add(declared->view());
 
@@ -911,10 +911,10 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
 
       actx.note_variable_occurrence(
           recorded_name, name_location, variable_occurrence_kind::Assignment,
-          !is_unconditional || actx.has_seen_runtime_definer, update_mode);
+          !is_unconditional || actx.effects.has_seen_runtime_definer, update_mode);
       actx.note_variable_assignment_record(
           recorded_name, recorded_value, m_args[i]->source_location(),
-          !is_unconditional || actx.has_seen_runtime_definer, update_mode);
+          !is_unconditional || actx.effects.has_seen_runtime_definer, update_mode);
       if (should_record_readonly_name)
         actx.readonly_assigned_names.add(recorded_name);
     }
@@ -1504,7 +1504,7 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
   }
 
   let const resolution_diagnostic =
-      actx.has_seen_runtime_definer
+      actx.effects.has_seen_runtime_definer
           ? diagnostic_id::unresolved_command_uncertain
           : diagnostic_id::unresolved_command;
   /* The resolution scan reads PATH and the filesystem, so it is skipped when
@@ -1603,7 +1603,7 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
   {
     note_variable_target_operands(
         actx, command_id, m_args, is_top_level_unconditional,
-        !is_unconditional || actx.has_seen_runtime_definer);
+        !is_unconditional || actx.effects.has_seen_runtime_definer);
   }
 
   if (!is_top_level_unconditional || is_command_shadowed) return;
