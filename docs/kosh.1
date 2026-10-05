@@ -495,7 +495,13 @@ change clears the active level. A level changed with
 .B set
 is inherited by launched shells through
 .BR KOSH_ANALYSIS ,
-and an explicit level on the command line replaces it.
+and an explicit level on the command line replaces it. In the Bash and POSIX
+moods no analysis runs for the script or the files it sources until a level is
+set, and an inherited
+.BI warnings= N
+counts as set. The
+.B mimicry
+word alone sets no level. Runtime diagnostics do not depend on the level.
 .TP
 .B \-\-list\-diagnostics
 The available analysis checks and their metadata are listed. The shell then

@@ -8,4 +8,11 @@ reset: 0
 unset: []
 mimicry: mimicry warnings=3
 mimicry off: warnings=3
+sourced plain: 0
+sourced -WW: 1
+sourced inherited level: 1
+sourced inherited mimicry only: 0
+script plain: 0
+script -WW: 1
+sourced default mood: 1
 explicit resync: warnings=1
