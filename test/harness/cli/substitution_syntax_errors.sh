@@ -57,6 +57,12 @@ nest 65 > depth_over.sh
   printf 'values[$(echo 1)]=2\n'
   printf "echo '\$(echo <><>)' \${x:-'a\"\$(echo <><>)\"'}\n"
 } > valid.sh
+{
+  printf 'cat <<EOF\n`echo \\'"'"'a`\nEOF\n'
+  printf 'a[`echo \\'"'"'a`]=1\n'
+  printf 'echo "${x:-`echo \\'"'"'a`}"\n'
+  printf 'echo "`echo \\"oops`"\n'
+} > escaped.sh
 
 check process.sh
 check command.sh
@@ -82,6 +88,8 @@ printf '%s\n' '== depth_over.sh'
 "$BIN" --lint depth_over.sh 2>&1 | grep -c 'nested too deeply'
 printf '%s\n' '== valid.sh'
 "$BIN" --lint valid.sh 2>&1 | grep -c 'Expected a filename'
+printf '%s\n' '== escaped.sh'
+"$BIN" --lint escaped.sh 2>&1 | grep -c 'Unterminated string literal'
 
 printf '%s\n' '== run command.sh'
 "$BIN" command.sh 2>&1

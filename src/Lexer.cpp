@@ -185,6 +185,18 @@ hot pure fn is_extglob_operator(char ch) wontthrow -> bool
   }
 }
 
+pure fn is_backtick_escape_stripped(char escaped,
+                                    bool is_in_double_quotes) wontthrow -> bool
+{
+  switch (escaped) {
+  case '`':
+  case '$':
+  case '\\': return true;
+  case '"': return is_in_double_quotes;
+  default: return false;
+  }
+}
+
 hot pure fn is_special_parameter_char(char ch) wontthrow -> bool
 {
   switch (ch) {
@@ -244,6 +256,11 @@ hot fn Lexer::next_shell_token() throws -> Token *
 }
 
 pure fn Lexer::source() const wontthrow -> StringView { return m_source; }
+
+pure fn Lexer::source_name_index() const wontthrow -> u32
+{
+  return m_parse_session.source_name_index();
+}
 
 pure fn Lexer::cursor_position() const wontthrow -> usize
 {
@@ -1232,16 +1249,8 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
         }
         if (c == '\\') {
           let const escaped = chop_character(byte_count + 1);
-          bool is_stripped_escape = false;
-          switch (escaped) {
-          case '`':
-          case '$':
-          case '\\': is_stripped_escape = true; break;
-          case '"': is_stripped_escape = is_in_double_quotes; break;
-          default: break;
-          }
-
-          if (is_stripped_escape) {
+          if (lexer::is_backtick_escape_stripped(escaped, is_in_double_quotes))
+          {
             inner += escaped;
             byte_count += 2;
             continue;
@@ -1535,8 +1544,10 @@ hot alwaysinline fn Lexer::lex_process_substitution(char direction) throws
 cold fn Lexer::record_substitution_error(
     const ErrorWithLocationAndDetails &error) throws -> void
 {
-  let const key = (static_cast<u64>(error.location().position) << 32) |
-                  static_cast<u64>(error.location().length);
+  let const key = lexer::substitution_error_key{
+      (static_cast<u64>(error.location().position) << 32) |
+          static_cast<u64>(error.location().length),
+      hash_bytes(error.message().view())};
   if (m_reported_substitution_error_keys.find(key).has_value()) return;
 
   m_reported_substitution_error_keys.push(key);
@@ -1653,10 +1664,16 @@ cold fn lexer::find_nested_substitutions(StringView source,
     if (c == '`') {
       let const body_start = offset + 1;
       let end = body_start;
-      let has_escape = false;
+      let const is_escape_in_double_quotes = !is_heredoc && is_in_double_quotes;
+      let has_stripped_escape = false;
       while (end < region.length && region[end] != '`') {
         if (region[end] == '\\') {
-          has_escape = true;
+          if (end + 1 < region.length &&
+              lexer::is_backtick_escape_stripped(region[end + 1],
+                                                 is_escape_in_double_quotes))
+          {
+            has_stripped_escape = true;
+          }
           end++;
         }
         end++;
@@ -1669,10 +1686,15 @@ cold fn lexer::find_nested_substitutions(StringView source,
       entry.body_length = body.length;
       entry.outer_position = region_position + offset;
       entry.outer_length = end + 1 - offset;
-      entry.is_exact = !has_escape;
-      if (has_escape) {
+      entry.is_exact = !has_stripped_escape;
+      if (has_stripped_escape) {
         for (usize index = 0; index < body.length; index++) {
-          if (body[index] == '\\' && index + 1 < body.length) index++;
+          if (body[index] == '\\' && index + 1 < body.length &&
+              lexer::is_backtick_escape_stripped(body[index + 1],
+                                                 is_escape_in_double_quotes))
+          {
+            index++;
+          }
           entry.unescaped_body += body[index];
         }
       }

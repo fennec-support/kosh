@@ -197,7 +197,7 @@ status=0
 == bare_read.sh
 status=0
 == escapes.sh
-2:19: warning: The escape `\n` is read by the shell as a plain 'n'. (SC1012)
+escapes.sh:2:19: warning: The escape `\n` is read by the shell as a plain 'n'. (SC1012)
      2 |  echo "$(printf "%s\n" a)"
        |                    ^~
 note: Build the byte with `printf`, or write it inside `$'...'`.

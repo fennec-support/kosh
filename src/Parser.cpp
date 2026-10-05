@@ -73,6 +73,7 @@ fn Parser::take_analysis_directives() throws -> analysis_directives
   directives.scope_definitions = take_analysis_scope_definitions();
   directives.directive_spans = take_shellcheck_directive_spans();
   directives.heredoc_misses = take_heredoc_terminator_misses();
+  directives.source_name_index = m_lexer.source_name_index();
 
   return directives;
 }

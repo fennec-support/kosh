@@ -124,6 +124,8 @@ status=1
 1
 == valid.sh
 0
+== escaped.sh
+1
 == run command.sh
 command.sh:1:12: error: Expected a filename after '<>'.
      1 |  x=$(echo <><>)

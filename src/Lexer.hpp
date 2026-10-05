@@ -210,6 +210,8 @@ pure fn is_variable_name(char ch) wontthrow -> bool;
 pure fn word_is_variable_name(StringView word) wontthrow -> bool;
 pure fn word_looks_like_assignment(StringView word) wontthrow -> bool;
 pure fn is_extglob_operator(char ch) wontthrow -> bool;
+pure fn is_backtick_escape_stripped(char escaped,
+                                    bool is_in_double_quotes) wontthrow -> bool;
 
 fn scan_balanced_shell_region(StringView source, usize position,
                               char closing_byte) throws -> Maybe<usize>;
@@ -222,6 +224,17 @@ struct nested_substitution
   usize outer_length{0};
   String unescaped_body{heap_allocator()};
   bool is_exact{true};
+};
+
+struct substitution_error_key
+{
+  u64 span{0};
+  u64 message_hash{0};
+
+  pure fn operator==(const substitution_error_key &other) const wontthrow->bool
+  {
+    return span == other.span && message_hash == other.message_hash;
+  }
 };
 
 fn find_nested_substitutions(StringView source, usize region_position,
@@ -296,6 +309,7 @@ public:
   mustuse fn next_shell_token() throws -> Token *;
 
   pure fn source() const wontthrow -> StringView;
+  pure fn source_name_index() const wontthrow -> u32;
   pure fn cursor_position() const wontthrow -> usize;
   pure fn is_at_source_end() const wontthrow -> bool;
   pure fn debug_words() const wontthrow -> const ArrayList<Word> &;
@@ -412,7 +426,8 @@ protected:
   usize m_substitution_nesting_depth{0};
   ArrayList<ErrorWithLocationAndDetails> m_substitution_errors{
       heap_allocator()};
-  ArrayList<u64> m_reported_substitution_error_keys{heap_allocator()};
+  ArrayList<lexer::substitution_error_key> m_reported_substitution_error_keys{
+      heap_allocator()};
 
   fn record_substitution_error(const ErrorWithLocationAndDetails &error) throws
       -> void;

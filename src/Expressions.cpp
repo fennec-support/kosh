@@ -294,7 +294,13 @@ fn VariableOccurrenceStateMap::operator=(
 
 fn VariableOccurrenceStateMap::snapshot() throws -> VariableOccurrenceStateMap
 {
-  if (m_changes.count() >= CHANGE_COMPACTION_THRESHOLD) compact();
+  let const base_count = m_base != nullptr ? m_base->states.count() : 0;
+  let const base_threshold = base_count / BASE_COMPACTION_DIVISOR;
+  let const compaction_threshold = base_threshold > CHANGE_COMPACTION_THRESHOLD
+                                       ? base_threshold
+                                       : CHANGE_COMPACTION_THRESHOLD;
+  if (m_changes.count() >= compaction_threshold) compact();
+
   return VariableOccurrenceStateMap{*this};
 }
 
@@ -816,6 +822,10 @@ fn AnalysisContext::report_diagnostic(
   if (!should_report(id)) return false;
   if (is_diagnostic_suppressed(id, location)) return false;
 
+  let named_location = location;
+  if (named_location.source_name_index == 0)
+    named_location.source_name_index = source_name_index;
+
   let const &definition = get_diagnostic_definition(id);
   let message =
       format_diagnostic_template(definition.message_template, arguments);
@@ -835,11 +845,11 @@ fn AnalysisContext::report_diagnostic(
 
   switch (definition.delivery) {
   case diagnostic_delivery::Policy:
-    fail(id, location, message.view(), suggestion.view(), definition.tier,
+    fail(id, named_location, message.view(), suggestion.view(), definition.tier,
          related_location, related_message.view());
     break;
   case diagnostic_delivery::Warning:
-    warn(id, location, message.view(), suggestion.view(), definition.tier,
+    warn(id, named_location, message.view(), suggestion.view(), definition.tier,
          related_location, related_message.view());
     break;
   }
@@ -1913,6 +1923,7 @@ fn analyze_ast(const Expression *root, StringView source,
           ? eval_context->runtime_state().koshkit_utilities_are_reachable()
           : options.is_default_mood;
   actx.shellcheck_suppressions = &directives.shellcheck_suppressions;
+  actx.source_name_index = directives.source_name_index;
   actx.format_document = format_document;
   actx.eval_context = eval_context;
   actx.followed_source_paths = followed_sources.paths;

@@ -244,6 +244,7 @@ public:
 
 private:
   static constexpr usize CHANGE_COMPACTION_THRESHOLD = 16;
+  static constexpr usize BASE_COMPACTION_DIVISOR = 8;
 
   fn compact() throws -> void;
   fn retain_base() wontthrow -> void;
@@ -400,6 +401,7 @@ struct analysis_directives
   ArrayList<analysis_scope_definition> scope_definitions{heap_allocator()};
   ArrayList<shellcheck_directive_span> directive_spans{heap_allocator()};
   ArrayList<heredoc_terminator_miss> heredoc_misses{heap_allocator()};
+  u32 source_name_index{0};
 };
 
 struct analysis_followed_sources
@@ -429,6 +431,7 @@ class AnalysisContext
 {
 public:
   StringView source;
+  u32 source_name_index{0};
   bool has_fatal{false};
   usize reported_warning_count{0};
   usize reported_error_count{0};

@@ -717,8 +717,12 @@ fn kosh_main(int argc, char **argv) -> int
   {
     inherited_state =
         koshka::os::inherited_subshell_state::take_from_environment();
-    if (inherited_state.has_value())
-      koshka::os::set_shell_process_id(inherited_state->shell_process_id);
+    if (!inherited_state.has_value()) {
+      koshka::show_message("Invalid inherited shell state");
+      return 1;
+    }
+
+    koshka::os::set_shell_process_id(inherited_state->shell_process_id);
   }
   let const should_suppress_root_source_trace =
       koshka::os::get_environment_variable(
@@ -1498,10 +1502,10 @@ fn kosh_main(int argc, char **argv) -> int
     if (should_analyze_input) {
       script_contents.normalize_crlf_line_endings();
       if (FLAG_LINT.is_enabled()) {
-        exit_code = run_lint_document_contents(script_contents, context,
-                                               ast_arena, source_filename,
-                                               &lint_diagnostic_totals, nullptr,
-                                               nullptr, true, command_string_name);
+        exit_code = run_lint_document_contents(
+            script_contents, context, ast_arena, source_filename,
+            &lint_diagnostic_totals, nullptr, nullptr, true,
+            command_string_name);
       } else if (command_string_name.has_value()) {
         exit_code = run_script_contents(
             script_contents, context, ast_arena, command_string_name, nullptr,
