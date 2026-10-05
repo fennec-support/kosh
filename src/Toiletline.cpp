@@ -803,7 +803,7 @@ static fn resolve_history_path(StringView env_name, StringView default_file)
   let home = koshka::os::get_home_directory();
   if (!home.has_value()) return koshka::None;
   let path = home->clone();
-  path.push_component(default_file);
+  path.append(default_file);
   return path;
 }
 

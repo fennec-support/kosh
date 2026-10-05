@@ -193,7 +193,7 @@ fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
       position++;
 
     let candidate = resolved.clone();
-    candidate.push_component(
+    candidate.append(
         text.substring_of_length(component_start, position - component_start));
     let component_resolved = do_resolve_direct(candidate);
     if (!component_resolved.has_value()) return koshka::None;
@@ -292,7 +292,7 @@ fn resolve_drive_relative_path(StringView path) throws -> Maybe<Path>
                                 heap_allocator());
   if (!text.has_value()) return None;
   let result = Path{text->view()};
-  if (path.length > 2) result.push_component(path.substring(2));
+  if (path.length > 2) result.append(path.substring(2));
   return result;
 }
 

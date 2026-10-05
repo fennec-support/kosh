@@ -115,7 +115,7 @@ static fn make_target_is_artifact(StringView name, const Path &directory) throws
   if (MAKEFILE_NAMES.contains(name)) return true;
 
   let candidate = directory.clone();
-  candidate.push_component(name);
+  candidate.append(name);
   return candidate.exists();
 }
 
@@ -287,7 +287,7 @@ static fn collect_ssh_hosts() throws -> ArrayList<String>
   };
 
   let config_path = home->clone();
-  config_path.push_component(".ssh/config");
+  config_path.append(".ssh/config");
   if (Maybe<String> config = config_path.read_entire_file(); config.has_value())
   {
     let const text = config->view();
@@ -323,7 +323,7 @@ static fn collect_ssh_hosts() throws -> ArrayList<String>
   }
 
   let known_hosts_path = home->clone();
-  known_hosts_path.push_component(".ssh/known_hosts");
+  known_hosts_path.append(".ssh/known_hosts");
   if (Maybe<String> known = known_hosts_path.read_entire_file();
       known.has_value())
   {
@@ -484,7 +484,7 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
             StringView{"Makefile"}})
       {
         let probe = Path{directory.view()};
-        probe.push_component(candidate);
+        probe.append(candidate);
         if (probe.exists()) {
           makefile_name = String{candidate};
           break;
@@ -493,7 +493,7 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
       if (!makefile_name.has_value()) return None;
     }
     let makefile_path = Path{directory.view()};
-    makefile_path.push_component(makefile_name->view());
+    makefile_path.append(makefile_name->view());
     if (!makefile_path.exists()) return None;
     let const make_directory = Path{directory.view()};
     cached_targets = cached_targets_for(makefile_path, [&]() throws {
@@ -526,9 +526,9 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
     let const directory =
         settled_option_value(line, "-C").value_or(String{"."});
     let build_file = Path{directory.view()};
-    build_file.push_component(settled_option_value(line, "-f")
-                                  .value_or(String{"build.ninja"})
-                                  .view());
+    build_file.append(settled_option_value(line, "-f")
+                          .value_or(String{"build.ninja"})
+                          .view());
     cached_targets = cached_targets_for(build_file, [&]() throws {
       let probe = ArrayList<String>{heap_allocator()};
       probe.push(String{"ninja"});
@@ -545,7 +545,7 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
     let const build_directory = settled_option_value(line, "--build");
     if (!build_directory.has_value()) return None;
     let cache_file = Path{build_directory->view()};
-    cache_file.push_component("CMakeCache.txt");
+    cache_file.append("CMakeCache.txt");
     cached_targets = cached_targets_for(cache_file, [&]() throws {
       let probe = ArrayList<String>{heap_allocator()};
       probe.push(String{"cmake"});

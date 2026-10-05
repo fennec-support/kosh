@@ -714,7 +714,7 @@ fn expand_leading_tilde_path(StringView name) throws -> Maybe<String>
   if (!home.has_value()) return None;
 
   let expanded = home.take();
-  if (slash.has_value()) expanded.push_component(name.substring(*slash + 1));
+  if (slash.has_value()) expanded.append(name.substring(*slash + 1));
   return String{expanded.view()};
 }
 

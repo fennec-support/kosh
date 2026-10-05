@@ -1787,7 +1787,7 @@ fn ExecContext::make_from(const SourceLocation &location, StringView source,
       let directory_path = Path{"..", heap_allocator()};
 
       for (usize i = 1; i < *parent_step_count; i++)
-        directory_path.push_component("..");
+        directory_path.append("..");
 
       if (!directory_path.is_directory()) {
         let const directory_message = StringView{"The directory '"} +

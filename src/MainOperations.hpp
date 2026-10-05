@@ -1716,7 +1716,7 @@ static fn source_home_file(StringView name, EvalContext &context,
 {
   if (Maybe<Path> home = os::get_home_directory(); home.has_value()) {
     Path path = home->clone();
-    path.push_component(name);
+    path.append(name);
     source_file(path, context, ast_arena);
   }
 }
@@ -1740,7 +1740,7 @@ static fn source_bash_login_files(EvalContext &context,
   if (Maybe<Path> home = os::get_home_directory(); home.has_value()) {
     for (let const name : {".bash_profile", ".bash_login", ".profile"}) {
       Path candidate = home->clone();
-      candidate.push_component(name);
+      candidate.append(name);
       if (source_file(candidate, context, ast_arena)) break;
     }
   }

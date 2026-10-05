@@ -324,7 +324,7 @@ static fn read_directory_cached_after_status(
       if (child.kind != Path::entry_kind::Unknown) continue;
 
       let full_path = directory.clone();
-      full_path.push_component(child.name.view());
+      full_path.append(child.name.view());
       unknown_paths.push(steal(full_path));
       unknown_statuses.push({});
       unknown_indices.push(index);
@@ -396,7 +396,7 @@ fn directory_entry_kind(const Path &directory,
   if (entry.kind != Path::entry_kind::Symlink) return entry.kind;
 
   let full_path = directory.clone();
-  full_path.push_component(entry.name.view());
+  full_path.append(entry.name.view());
   if (full_path.is_directory()) return Path::entry_kind::Directory;
   if (full_path.is_regular_file()) return Path::entry_kind::Regular;
   return Path::entry_kind::Other;
@@ -673,7 +673,7 @@ fn ProgramResolver::rebuild_path_command_index(CompletionRefresh refresh) throws
       if (entry.kind != Path::entry_kind::Symlink) continue;
 
       let full_path = directory.clone();
-      full_path.push_component(entry.name.view());
+      full_path.append(entry.name.view());
       symlink_paths.push(steal(full_path));
       symlink_statuses.push({});
     }
@@ -698,7 +698,7 @@ fn ProgramResolver::rebuild_path_command_index(CompletionRefresh refresh) throws
 
       if (!full_path.has_value()) {
         full_path = directory.clone();
-        full_path->push_component(entry.name.view());
+        full_path->append(entry.name.view());
       }
 
       let normalized_name = entry.name.clone();
@@ -841,7 +841,7 @@ fn ProgramResolver::revalidate_command_prefix(StringView prefix) throws -> void
       if (!full_name_matches && !stem_matches) continue;
 
       let full_path = directory.clone();
-      full_path.push_component(entry.name.view());
+      full_path.append(entry.name.view());
       symlink_paths.push(steal(full_path));
       symlink_statuses.push({});
     }
@@ -877,7 +877,7 @@ fn ProgramResolver::revalidate_command_prefix(StringView prefix) throws -> void
 
       if (!full_path.has_value()) {
         full_path = directory.clone();
-        full_path->push_component(entry.name.view());
+        full_path->append(entry.name.view());
       }
 
       if (stem_matches) regular_names.push(String{stem});
@@ -1077,7 +1077,7 @@ fn ProgramResolver::resolve_along_path(StringView program_name,
 
     for (let const &dir_string : *directories) {
       let full_path = Path{dir_string.view()};
-      full_path.push_component(program_name);
+      full_path.append(program_name);
       if (name_info.extension != os::program_extension::None) {
         candidate_paths.push(steal(full_path));
         candidate_statuses.push({});
@@ -1123,7 +1123,7 @@ fn ProgramResolver::resolve_along_path(StringView program_name,
 
   for (let const &dir_string : *directories) {
     let full_path = Path{dir_string.view()};
-    full_path.push_component(program_name);
+    full_path.append(program_name);
 
     candidate_paths.clear();
     candidate_statuses.clear();

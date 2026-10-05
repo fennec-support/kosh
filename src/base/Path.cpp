@@ -125,12 +125,6 @@ static fn append_path_component(String &text, StringView component) throws
   text.append(component);
 }
 
-fn Path::push_component(StringView component) throws -> Path &
-{
-  append_path_component(m_text, component);
-  return *this;
-}
-
 fn Path::append(StringView component) throws -> Path &
 {
   append_path_component(m_text, component);
@@ -284,7 +278,7 @@ fn Path::to_absolute_without_normalizing() const throws -> Path
     while (relative.length >= 2 && relative[0] == '.' &&
            os::is_directory_separator(relative[1]))
       relative = relative.substring(2);
-    if (!relative.is_empty()) result.push_component(relative);
+    if (!relative.is_empty()) result.append(relative);
   }
   result.m_text.move_to_allocator(allocator());
 

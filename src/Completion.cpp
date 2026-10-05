@@ -500,7 +500,7 @@ static fn entry_is_executable(const Path &directory, StringView name) throws
     -> bool
 {
   let full = directory.clone();
-  full.push_component(name);
+  full.append(name);
   return full.is_executable();
 }
 
@@ -699,7 +699,7 @@ static fn collect_filesystem_matches(
           if (entry.kind != Path::entry_kind::Symlink) continue;
 
           let path = listing->directory.clone();
-          path.push_component(entry.name.view());
+          path.append(entry.name.view());
           result_positions.back() = paths.count();
           paths.push(steal(path));
           statuses.push({});
@@ -921,7 +921,7 @@ static fn complete_glob(StringView token, const Path &base_directory,
     if (entry.kind != Path::entry_kind::Symlink) continue;
 
     let path = listing->directory.clone();
-    path.push_component(entry.name.view());
+    path.append(entry.name.view());
     result_positions.back() = paths.count();
     paths.push(steal(path));
     statuses.push({});

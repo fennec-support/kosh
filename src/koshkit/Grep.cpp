@@ -320,7 +320,7 @@ collect_recursive_sources(const ExecContext &ec, EvalContext &cxt,
   usize unknown_count = 0;
   for (let const &child : *children) {
     let child_path = path.clone();
-    child_path.push_component(child.name.view());
+    child_path.append(child.name.view());
     child_paths.push(steal(child_path));
     if (child.kind == Path::entry_kind::Unknown) unknown_count++;
   }

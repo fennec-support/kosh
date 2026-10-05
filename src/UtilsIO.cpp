@@ -297,7 +297,7 @@ fn resolve_git_directory(StringView ceiling_directories) throws -> Path
   loop
   {
     let head = dir.clone();
-    head.push_component(".git");
+    head.append(".git");
     let git_dir = head.clone();
     if (let const dot_git = head.read_entire_file()) {
       let const pointer = dot_git->view();
@@ -312,7 +312,7 @@ fn resolve_git_directory(StringView ceiling_directories) throws -> Path
         let resolved_gitdir = Path{line};
         if (!resolved_gitdir.is_absolute()) {
           resolved_gitdir = dir;
-          resolved_gitdir.push_component(line);
+          resolved_gitdir.append(line);
         }
         git_dir = steal(resolved_gitdir);
       }
@@ -320,7 +320,7 @@ fn resolve_git_directory(StringView ceiling_directories) throws -> Path
     if (git_dir.is_directory()) return git_dir;
 
     let parent = dir.clone();
-    parent.push_component("..");
+    parent.append("..");
     let normalized = parent.to_absolute().normalized();
     if (normalized.text() == dir.text()) break;
 
@@ -350,7 +350,7 @@ fn current_git_branch(StringView ceiling_directories) throws -> String
   if (git_dir.text().is_empty()) return String{heap_allocator()};
 
   let git_head = git_dir.clone();
-  git_head.push_component("HEAD");
+  git_head.append("HEAD");
   if (let const content = git_head.read_entire_file()) {
     let text = content->view();
     while (!text.is_empty() &&
@@ -370,7 +370,7 @@ fn current_git_branch(StringView ceiling_directories) throws -> String
 fn read_git_ref_sha(const Path &git_dir, StringView ref_name) throws -> String
 {
   let ref_path = git_dir.clone();
-  ref_path.push_component(ref_name);
+  ref_path.append(ref_name);
   if (let const content = ref_path.read_entire_file()) {
     let text = content->view();
     while (!text.is_empty() &&
@@ -382,7 +382,7 @@ fn read_git_ref_sha(const Path &git_dir, StringView ref_name) throws -> String
   }
 
   let packed_path = git_dir.clone();
-  packed_path.push_component("packed-refs");
+  packed_path.append("packed-refs");
   if (let const packed = packed_path.read_entire_file()) {
     let remainder = packed->view();
     while (!remainder.is_empty()) {
@@ -408,7 +408,7 @@ fn git_upstream_ref(const Path &git_dir, StringView branch_name) throws
     -> String
 {
   let config_path = git_dir.clone();
-  config_path.push_component("config");
+  config_path.append("config");
   if (!config_path.exists()) return String{heap_allocator()};
 
   let const content = config_path.read_entire_file();
@@ -494,7 +494,7 @@ fn git_status(StringView ceiling_directories, Allocator allocator) throws
   if (git_dir.text().is_empty()) return result;
 
   let git_head = git_dir.clone();
-  git_head.push_component("HEAD");
+  git_head.append("HEAD");
   let const head_content = git_head.read_entire_file();
   if (!head_content.has_value()) return result;
 

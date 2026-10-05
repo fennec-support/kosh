@@ -236,7 +236,7 @@ fn EvalContext::expand_path_once(const glob_field &field,
     }
 
     let full_path = parent_dir.clone();
-    full_path.push_component(entry.name.view());
+    full_path.append(entry.name.view());
     uncertain_positions.push(index);
     uncertain_paths.push(steal(full_path));
     uncertain_statuses.push({});
@@ -367,7 +367,7 @@ fn collect_globstar_paths(const Path &dir, StringView relative,
     }
 
     let child_path = dir;
-    child_path.push_component(name);
+    child_path.append(name);
     uncertain_positions.push(index);
     uncertain_paths.push(steal(child_path));
     uncertain_statuses.push({});
@@ -418,7 +418,7 @@ fn collect_globstar_paths(const Path &dir, StringView relative,
     }
 
     let child_dir = dir;
-    child_dir.push_component(name);
+    child_dir.append(name);
 
     let child_relative = String{allocator};
     child_relative.reserve(relative.length + name.length + 1);

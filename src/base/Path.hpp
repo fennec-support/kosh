@@ -80,7 +80,6 @@ public:
 
   fn append(StringView component) throws -> Path &;
   fn append_raw(StringView bytes) throws -> Path &;
-  fn push_component(StringView component) throws -> Path &;
 
   mustuse fn with_extension(StringView new_extension) const throws -> Path;
 

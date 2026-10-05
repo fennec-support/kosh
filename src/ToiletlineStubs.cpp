@@ -95,7 +95,7 @@ static fn resolve_no_editor_history_path() -> Maybe<Path>
   let home = os::get_home_directory();
   if (!home.has_value()) return None;
   let path = home->clone();
-  path.push_component(NO_EDITOR_HISTORY_FILE);
+  path.append(NO_EDITOR_HISTORY_FILE);
   return path;
 }
 

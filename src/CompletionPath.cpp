@@ -300,7 +300,7 @@ fn internal::resolve_listing_directory(
       let directory = Path{expanded->view()};
       if (directory.is_absolute()) return directory;
       let resolved_path = base_directory.clone();
-      resolved_path.push_component(expanded->view());
+      resolved_path.append(expanded->view());
       return resolved_path;
     }
 
@@ -308,7 +308,7 @@ fn internal::resolve_listing_directory(
   if (directory.is_absolute()) return directory;
 
   let resolved_path = base_directory.clone();
-  resolved_path.push_component(directory_part);
+  resolved_path.append(directory_part);
   return resolved_path;
 }
 

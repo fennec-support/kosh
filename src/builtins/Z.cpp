@@ -51,7 +51,7 @@ static fn frecency_store_path() throws -> Maybe<Path>
   let home = os::get_home_directory();
   if (!home) return None;
   let path = *home;
-  path.push_component(".kosh_directory_history");
+  path.append(".kosh_directory_history");
   return path;
 }
 

@@ -219,7 +219,7 @@ static fn manpage_section1_directories(EvalContext &context) throws
   let const do_push_man1_of_root = [&](StringView root) {
     if (!seen_roots.add(root)) return;
     let directory = Path{root};
-    directory.push_component("man1");
+    directory.append("man1");
     directories.push(steal(directory));
   };
   let const do_push_default_roots = [&]() {
@@ -326,7 +326,7 @@ fn ManpageCache::build_subcommand_index(EvalContext &context) throws -> void
       if (!stripped.has_value() || stripped->is_empty()) continue;
       if (page_file_paths.find(*stripped).has_value()) continue;
       let file_path = directory.clone();
-      file_path.push_component(entry.view());
+      file_path.append(entry.view());
       page_file_paths.set(*stripped, String{file_path.view()});
     }
   }
@@ -438,7 +438,7 @@ static fn man_subcommand_page_is_valid(StringView command,
            rest[target_end] != ' ')
       target_end++;
     let target = Path{file_path->view()}.parent().parent();
-    target.push_component(rest.substring_of_length(0, target_end));
+    target.append(rest.substring_of_length(0, target_end));
     source = target.read_entire_file();
     if (!source.has_value()) {
       MANPAGE_CACHE.subcommand_page_validity.set(page_name.view(), true);
