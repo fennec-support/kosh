@@ -3397,10 +3397,12 @@ public:
       StringView word, Bitset &active_out, bool remove_quotes = true,
       const SourceLocation *source_location = nullptr) throws -> String;
 
-  fn expand_modifier_word_fields(
-      StringView word, bool is_outer_quoted, Bitset &active_out,
-      ArrayList<usize> &break_out, ArrayList<quoted_empty_mark> &mark_out,
-      const SourceLocation *source_location) throws -> String;
+  fn expand_modifier_word_fields(StringView word, bool is_outer_quoted,
+                                 Bitset &active_out,
+                                 ArrayList<usize> &break_out,
+                                 ArrayList<quoted_empty_mark> &mark_out,
+                                 const SourceLocation *source_location) throws
+      -> String;
 
   class ModifierWordExpander;
   class ParameterExpander;

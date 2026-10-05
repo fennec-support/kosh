@@ -471,8 +471,9 @@ fn EvalContext::ModifierWordExpander::emit_field_slice(
   let const total = static_cast<i64>(values.count() + leading_count);
   let const separator = find_substring_length_separator(slice);
   let const offset_text = slice.substring_of_length(0, separator);
-  let const offset =
-      offset_text.is_empty() ? i64{0} : m_context.evaluate_arithmetic(offset_text);
+  let const offset = offset_text.is_empty()
+                         ? i64{0}
+                         : m_context.evaluate_arithmetic(offset_text);
   Maybe<i64> requested_length = None;
   if (separator < slice.length) {
     let const length_text = slice.substring(separator + 1);
@@ -531,7 +532,8 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
     emit_field_elements(m_context.collect_array_elements(name));
     return true;
   }
-  if (rest.length > 1 && rest[0] == ':' && !is_colon_modifier_operator(rest[1])) {
+  if (rest.length > 1 && rest[0] == ':' && !is_colon_modifier_operator(rest[1]))
+  {
     emit_field_slice(rest.substring(1), m_context.collect_array_elements(name),
                      None);
     return true;
@@ -574,8 +576,7 @@ fn EvalContext::ModifierWordExpander::toggle_quote_state() throws -> bool
     if (m_is_in_double_quote) {
       m_did_quoted_emit = false;
       m_did_quoted_at = false;
-    } else if (m_break_out != nullptr && !m_did_quoted_emit &&
-               !m_did_quoted_at)
+    } else if (m_break_out != nullptr && !m_did_quoted_emit && !m_did_quoted_at)
     {
       mark_quoted_empty();
     }
@@ -1009,7 +1010,7 @@ fn EvalContext::expand_modifier_word_fields(
     ArrayList<usize> &break_out, ArrayList<quoted_empty_mark> &mark_out,
     const SourceLocation *source_location) throws -> String
 {
-  let expander = ModifierWordExpander{*this, word,  &active_out, true,
+  let expander = ModifierWordExpander{*this, word, &active_out,    true,
                                       false, true, source_location};
   expander.enable_fields(break_out, mark_out, is_outer_quoted);
 
