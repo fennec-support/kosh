@@ -1246,10 +1246,96 @@ struct BashArgumentFrameContext
   }
 };
 
-struct BashArgumentArrayStorage
+class BashArgumentStack
 {
-  ArrayList<String> values{heap_allocator()};
-  ArrayList<u32> frame_counts{heap_allocator()};
+public:
+  pure fn is_active() const wontthrow -> bool { return m_is_active; }
+  pure fn values() const wontthrow -> const ArrayList<String> &
+  {
+    return m_values;
+  }
+  pure fn frame_counts() const wontthrow -> const ArrayList<u32> &
+  {
+    return m_frame_counts;
+  }
+  pure fn get_context() const wontthrow -> BashArgumentFrameContext *
+  {
+    return m_context;
+  }
+  fn set_context(BashArgumentFrameContext *context) wontthrow -> void
+  {
+    m_context = context;
+  }
+
+  fn activate(ArrayList<String> values, ArrayList<u32> frame_counts) wontthrow
+      -> void
+  {
+    ASSERT(!m_is_active);
+    m_values = steal(values);
+    m_frame_counts = steal(frame_counts);
+    m_is_active = true;
+  }
+
+  fn reset() wontthrow -> void
+  {
+    m_values = ArrayList<String>{heap_allocator()};
+    m_frame_counts = ArrayList<u32>{heap_allocator()};
+    m_is_active = false;
+  }
+
+  fn push_frame(const ArrayList<String> &arguments) throws -> void
+  {
+    ASSERT(m_is_active);
+    let const previous_value_count = m_values.count();
+    m_values.reserve(previous_value_count + arguments.count());
+    m_frame_counts.reserve(m_frame_counts.count() + 1);
+    try {
+      for (let const &argument : arguments)
+        m_values.push_managed(argument.view());
+    } catch (...) {
+      while (m_values.count() > previous_value_count)
+        m_values.pop_back();
+      throw;
+    }
+    m_frame_counts.push(static_cast<u32>(arguments.count()));
+  }
+
+  fn push_frame(StringView argument) throws -> void
+  {
+    ASSERT(m_is_active);
+    m_values.reserve(m_values.count() + 1);
+    m_frame_counts.reserve(m_frame_counts.count() + 1);
+    m_values.push_managed(argument);
+    m_frame_counts.push(1);
+  }
+
+  fn pop_frame() wontthrow -> void
+  {
+    ASSERT(m_is_active);
+    ASSERT(!m_frame_counts.is_empty());
+    let const argument_count = m_frame_counts.back();
+    m_frame_counts.pop_back();
+    ASSERT(argument_count <= m_values.count());
+    for (u32 index = 0; index < argument_count; index++)
+      m_values.pop_back();
+  }
+
+  fn truncate_to(usize value_count, usize frame_count) wontthrow -> void
+  {
+    ASSERT(m_is_active);
+    ASSERT(m_values.count() >= value_count);
+    ASSERT(m_frame_counts.count() >= frame_count);
+    while (m_values.count() > value_count)
+      m_values.pop_back();
+    while (m_frame_counts.count() > frame_count)
+      m_frame_counts.pop_back();
+  }
+
+private:
+  ArrayList<String> m_values{heap_allocator()};
+  ArrayList<u32> m_frame_counts{heap_allocator()};
+  BashArgumentFrameContext *m_context{nullptr};
+  bool m_is_active{false};
 };
 
 class VariableAttributes
@@ -1511,34 +1597,9 @@ public:
   {
     return m_directory_stack;
   }
-  fn bash_argument_arrays_ref() wontthrow -> BashArgumentArrayStorage *&
+  fn bash_arguments() const wontthrow -> BashArgumentStack &
   {
-    return m_bash_argument_arrays;
-  }
-  fn bash_argument_arrays_ref() const wontthrow -> BashArgumentArrayStorage *&
-  {
-    return m_bash_argument_arrays;
-  }
-  pure fn bash_argument_arrays() const wontthrow -> BashArgumentArrayStorage *
-  {
-    return m_bash_argument_arrays;
-  }
-  fn bash_argument_arrays() wontthrow -> BashArgumentArrayStorage *
-  {
-    return m_bash_argument_arrays;
-  }
-  fn bash_argument_frame_context_ref() wontthrow -> BashArgumentFrameContext *&
-  {
-    return m_bash_argument_frame_context;
-  }
-  pure fn bash_argument_frame_context() const wontthrow
-      -> BashArgumentFrameContext *
-  {
-    return m_bash_argument_frame_context;
-  }
-  fn bash_argument_frame_context() wontthrow -> BashArgumentFrameContext *
-  {
-    return m_bash_argument_frame_context;
+    return m_bash_arguments;
   }
   fn disabled_bash_special_arrays() wontthrow -> u8 &
   {
@@ -1571,8 +1632,7 @@ private:
   VariableAttributes m_attributes;
   ArrayList<String> m_positional_params{heap_allocator()};
   ArrayList<String> m_directory_stack{heap_allocator()};
-  mutable BashArgumentArrayStorage *m_bash_argument_arrays{nullptr};
-  BashArgumentFrameContext *m_bash_argument_frame_context{nullptr};
+  mutable BashArgumentStack m_bash_arguments;
   u8 m_disabled_bash_special_arrays{0};
   u8 m_unset_dynamic_readers{0};
 };
@@ -2283,6 +2343,12 @@ private:
 class DiagnosticsStore
 {
 public:
+  DiagnosticsStore() = default;
+  DiagnosticsStore(const DiagnosticsStore &) = delete;
+  DiagnosticsStore &operator=(const DiagnosticsStore &) = delete;
+  ~DiagnosticsStore();
+
+  fn reset_runtime_highlight_cache() wontthrow -> void;
   fn source_traces_enabled() const wontthrow -> bool
   {
     return m_source_traces_enabled;
@@ -2576,8 +2642,6 @@ public:
               String shell_name = String{heap_allocator()},
               ArrayList<String> positional_params = ArrayList<String>{
                   heap_allocator()});
-  ~EvalContext();
-
   fn end_command() wontthrow -> void;
 
   /* Variable expand, tilde expand, field split, and glob each token. The
@@ -3514,14 +3578,7 @@ protected:
 
   fn initialize_bash_argument_arrays(
       bool should_include_current_frame) const throws -> void;
-  fn append_bash_argument_frame(const ArrayList<String> &arguments) const throws
-      -> void;
-  fn append_bash_argument_frame(StringView argument) const throws -> void;
   fn append_current_bash_argument_frame() const throws -> void;
-  fn install_bash_argument_arrays(ArrayList<String> values,
-                                  ArrayList<u32> frame_counts) const throws
-      -> void;
-  fn reset_bash_argument_arrays() const wontthrow -> void;
 
   fn expand_variable(StringView name) const throws -> String;
 

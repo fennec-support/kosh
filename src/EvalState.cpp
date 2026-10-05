@@ -40,15 +40,13 @@ fn EvalContext::set_shopt_option(StringView name, bool is_enabled) throws
   if (*index == shopt_option_index(shopt_option_id::Extdebug) && is_enabled &&
       !was_enabled && runtime_state().bash_dynamic_variables_enabled())
   {
-    if (variable_store().bash_argument_arrays() == nullptr &&
-        variable_store().bash_argument_frame_context() != nullptr &&
-        !variable_store().bash_argument_frame_context()->has_flag(
-            BashArgumentFrameFlag::DidEnter))
+    let const context = variable_store().bash_arguments().get_context();
+    if (!variable_store().bash_arguments().is_active() && context != nullptr &&
+        !context->has_flag(BashArgumentFrameFlag::DidEnter))
     {
       initialize_bash_argument_arrays(false);
       append_current_bash_argument_frame();
-      variable_store().bash_argument_frame_context()->set_flag(
-          BashArgumentFrameFlag::DidEnter);
+      context->set_flag(BashArgumentFrameFlag::DidEnter);
     } else {
       initialize_bash_argument_arrays(true);
     }
@@ -828,17 +826,12 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
       function_store().definitions(),
       scope_store().aliases(),
       variable_store().positional_params(),
-      variable_store().bash_argument_arrays() != nullptr
-          ? static_cast<u32>(
-                variable_store().bash_argument_arrays()->values.count())
-          : u32{0},
-      variable_store().bash_argument_arrays() != nullptr
-          ? static_cast<u32>(
-                variable_store().bash_argument_arrays()->frame_counts.count())
-          : u32{0},
-      variable_store().bash_argument_arrays() != nullptr,
-      variable_store().bash_argument_frame_context() != nullptr
-          ? variable_store().bash_argument_frame_context()->flags
+      static_cast<u32>(variable_store().bash_arguments().values().count()),
+      static_cast<u32>(
+          variable_store().bash_arguments().frame_counts().count()),
+      variable_store().bash_arguments().is_active(),
+      variable_store().bash_arguments().get_context() != nullptr
+          ? variable_store().bash_arguments().get_context()->flags
           : u8{0},
       execution_store().get_last_argument(),
       variable_store().directory_stack(),
@@ -882,22 +875,13 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
   scope_store().aliases() = steal(snapshot.aliases);
   variable_store().positional_params() = steal(snapshot.positional_params);
   if (!snapshot.had_bash_argument_arrays) {
-    reset_bash_argument_arrays();
+    variable_store().bash_arguments().reset();
   } else {
-    ASSERT(variable_store().bash_argument_arrays() != nullptr);
-    ASSERT(variable_store().bash_argument_arrays()->values.count() >=
-           snapshot.bash_argument_value_count);
-    ASSERT(variable_store().bash_argument_arrays()->frame_counts.count() >=
-           snapshot.bash_argument_frame_count);
-    while (variable_store().bash_argument_arrays()->values.count() >
-           snapshot.bash_argument_value_count)
-      variable_store().bash_argument_arrays()->values.pop_back();
-    while (variable_store().bash_argument_arrays()->frame_counts.count() >
-           snapshot.bash_argument_frame_count)
-      variable_store().bash_argument_arrays()->frame_counts.pop_back();
+    variable_store().bash_arguments().truncate_to(
+        snapshot.bash_argument_value_count, snapshot.bash_argument_frame_count);
   }
-  if (variable_store().bash_argument_frame_context() != nullptr)
-    variable_store().bash_argument_frame_context()->flags =
+  if (variable_store().bash_arguments().get_context() != nullptr)
+    variable_store().bash_arguments().get_context()->flags =
         snapshot.bash_argument_frame_context_flags;
   execution_store().set_last_argument(steal(snapshot.last_argument));
   variable_store().directory_stack() = steal(snapshot.directory_stack);
@@ -1374,20 +1358,18 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
   body.push(static_cast<char>(variable_store().disabled_bash_special_arrays()));
   body.push(static_cast<char>(variable_store().unset_dynamic_readers()));
   body.push(static_cast<char>(startup_store().is_restricted_shell()));
-  body.push(
-      static_cast<char>(variable_store().bash_argument_arrays() != nullptr));
-  if (variable_store().bash_argument_arrays() != nullptr) {
-    append_subshell_bootstrap_u32(
-        body,
-        static_cast<u32>(
-            variable_store().bash_argument_arrays()->frame_counts.count()));
-    for (let const argument_count :
-         variable_store().bash_argument_arrays()->frame_counts)
-      append_subshell_bootstrap_u32(body, argument_count);
+  body.push(static_cast<char>(variable_store().bash_arguments().is_active()));
+  if (variable_store().bash_arguments().is_active()) {
     append_subshell_bootstrap_u32(
         body, static_cast<u32>(
-                  variable_store().bash_argument_arrays()->values.count()));
-    for (let const &argument : variable_store().bash_argument_arrays()->values)
+                  variable_store().bash_arguments().frame_counts().count()));
+    for (let const argument_count :
+         variable_store().bash_arguments().frame_counts())
+      append_subshell_bootstrap_u32(body, argument_count);
+    append_subshell_bootstrap_u32(
+        body,
+        static_cast<u32>(variable_store().bash_arguments().values().count()));
+    for (let const &argument : variable_store().bash_arguments().values())
       append_subshell_bootstrap_text(body, argument.view());
   } else {
     append_subshell_bootstrap_u32(body, 0);
@@ -1803,10 +1785,10 @@ fn EvalContext::apply_subshell_bootstrap(
   dynamic_runtime_store().set_clock(clock);
   trap_store().startup_ignored_signals() = startup_ignored_signals;
   expansion_store().set_getopts_cursor(getopts);
-  reset_bash_argument_arrays();
+  variable_store().bash_arguments().reset();
   if (has_bash_argument_arrays)
-    install_bash_argument_arrays(steal(bash_argument_values),
-                                 steal(bash_argument_frame_counts));
+    variable_store().bash_arguments().activate(
+        steal(bash_argument_values), steal(bash_argument_frame_counts));
   function_store().call_depth() = static_cast<usize>(function_call_depth);
   lower_trap_depths_to_current();
   for (usize scope = 0; scope < static_cast<usize>(local_scope_depth); scope++)
