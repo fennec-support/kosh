@@ -108,9 +108,8 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
               status =
                   cxt.run_mimicked_script(ec, *mode, script_isolation::Shared);
             } catch (const ErrorBase &error) {
-              const String *source = cxt.source_store().current_source();
               show_message(error.to_string(
-                  source != nullptr ? source->view() : StringView{}, &cxt));
+                  cxt.source_store().current_source_view(), &cxt));
               status = static_cast<i32>(error.command_status());
             } catch (...) {}
             os::exit_process_immediately(status);
@@ -162,16 +161,14 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
       os::replace_process(steal(ec));
     } catch (const ErrorWithLocation &error) {
       /* Resolved but unexecutable exits 126, missing exits 127. */
-      const String *source = cxt.source_store().current_source();
-      show_message(error.to_string(
-          source != nullptr ? source->view() : StringView{}, &cxt));
+      show_message(
+          error.to_string(cxt.source_store().current_source_view(), &cxt));
       quit(126, farewell_policy::Silent);
     } catch (const Error &error) {
-      const String *source = cxt.source_store().current_source();
       let located = ErrorWithLocation{ec.source_location(), error.message()};
       located.set_command_status(error.command_status());
-      show_message(located.to_string(
-          source != nullptr ? source->view() : StringView{}, &cxt));
+      show_message(
+          located.to_string(cxt.source_store().current_source_view(), &cxt));
       quit(127, farewell_policy::Silent);
     }
     LOG(Debug, "running the file as a shell script in place");
@@ -207,11 +204,11 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
   cxt.evaluation_metrics_store().add_external_command_run(
       cxt.runtime_state().stats_enabled());
 
-  let const source = cxt.source_store().current_source();
+  let const source_view = cxt.source_store().current_source_view();
   unused(cxt.materialize_kosh_identity());
   os::process p = os::execute_program(
       ec, os::program_execution_options{
-              .source = source != nullptr ? source->view() : StringView{},
+              .source = source_view,
               .fallback = is_async ? os::script_fallback_policy::Reject
                                    : os::script_fallback_policy::Allow,
               .process_group = is_async ? os::process_group_mode::NewBackground
@@ -461,14 +458,13 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
     } else if (!ec.is_builtin()) {
       cxt.evaluation_metrics_store().add_external_command_run(
           cxt.runtime_state().stats_enabled());
-      let const source = cxt.source_store().current_source();
       unused(cxt.materialize_kosh_identity());
       let const process_group =
           !is_async ? os::process_group_mode::Inherit
                     : os::background_process_group_mode(process_group_id);
       let const child = os::execute_program(
           ec, os::program_execution_options{
-                  .source = source != nullptr ? source->view() : StringView{},
+                  .source = cxt.source_store().current_source_view(),
                   .process_group_id = process_group_id,
                   .fallback = os::script_fallback_policy::Reject,
                   .process_group = process_group});
@@ -479,20 +475,18 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
       child_stage.push(stage_index);
       last_child = child;
     } else if (!is_last || is_async || should_fork_last_builtin) {
-      let const source = cxt.source_store().current_source();
+      let const source_view = cxt.source_store().current_source_view();
       let const process_group =
           !is_async ? os::process_group_mode::Inherit
                     : os::background_process_group_mode(process_group_id);
-      let forked_child =
-          os::try_fork_compound_stage(os::fork_compound_stage_options{
-              .in_fd = ec.in_fd,
-              .out_fd = ec.out_fd,
-              .err_fd = ec.err_fd,
-              .location = ec.source_location(),
-              .diagnostic_source =
-                  source != nullptr ? source->view() : StringView{},
-              .process_group_id = process_group_id,
-              .process_group = process_group});
+      let forked_child = os::try_fork_compound_stage(
+          os::fork_compound_stage_options{.in_fd = ec.in_fd,
+                                          .out_fd = ec.out_fd,
+                                          .err_fd = ec.err_fd,
+                                          .location = ec.source_location(),
+                                          .diagnostic_source = source_view,
+                                          .process_group_id = process_group_id,
+                                          .process_group = process_group});
       let preflight_status = Maybe<i32>{};
       let preflight_location = SourceLocation{};
       let preflight_message = String{cxt.scratch_allocator()};
@@ -573,8 +567,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
                     .out_fd = stage_out,
                     .err_fd = stage_err,
                     .location = ec.source_location(),
-                    .diagnostic_source =
-                        source != nullptr ? source->view() : StringView{},
+                    .diagnostic_source = source_view,
                     .process_group_id = process_group_id,
                     .evaluator = cxt.make_child_evaluator_state(bootstrap),
                     .process_group = process_group});
@@ -592,8 +585,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
         let const error =
             ErrorWithLocation{preflight_location, preflight_message.view()};
         let diagnostic = String{cxt.scratch_allocator()};
-        diagnostic += error.to_string(
-            source != nullptr ? source->view() : StringView{}, &cxt);
+        diagnostic += error.to_string(source_view, &cxt);
         diagnostic.push('\n');
         let diagnostic_out = Maybe<os::descriptor>{};
         let diagnostic_err = Maybe<os::descriptor>{};
@@ -642,10 +634,9 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
           } catch (const BrokenPipeExit &) {
             child_status = KOSH_BROKEN_PIPE_EXIT_STATUS;
           } catch (const ErrorWithLocation &e) {
-            const String *source = cxt.source_store().current_source();
             if (!e.was_rendered()) {
-              koshka::show_message(e.to_string(
-                  source != nullptr ? source->view() : StringView{}, &cxt));
+              koshka::show_message(
+                  e.to_string(cxt.source_store().current_source_view(), &cxt));
             }
             child_status = static_cast<i32>(e.command_status());
           } catch (const Error &e) {

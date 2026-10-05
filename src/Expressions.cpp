@@ -624,9 +624,9 @@ fn analysis_reporter::warn(diagnostic_id id, const SourceLocation &location,
 
   totals.warning_count++;
 
-  pending.push(pending_analysis_warning{
-      id, location, String{message}, String{suggestion}, related_location,
-      String{related_message}});
+  pending.push(pending_analysis_warning{id, location, String{message},
+                                        String{suggestion}, related_location,
+                                        String{related_message}});
 }
 
 fn analysis_reporter::flush(const analysis_report_site &site) throws -> void
@@ -1138,14 +1138,12 @@ fn AnalysisContext::apply_called_function(
     StringView name, const SourceLocation &call_location) throws -> void
 {
   if (active_function_definition_index != NO_ACTIVE_FUNCTION_DEFINITION &&
-      functions.records[active_function_definition_index].name.view() ==
-          name)
+      functions.records[active_function_definition_index].name.view() == name)
   {
     return;
   }
 
-  let const selected_definition_index =
-      functions.latest_indices.find(name);
+  let const selected_definition_index = functions.latest_indices.find(name);
   if (!selected_definition_index.has_value()) return;
 
   let const &selected_definition =
@@ -1335,11 +1333,10 @@ cold fn expressions::internal::report_command_resolution_error(
     EvalContext &cxt, CommandResolutionErrorWithLocation &e) throws -> void
 {
   let const trace_location = e.location();
-  const String *source = cxt.source_store().current_source();
   let const windowed = window_function_body_error(cxt, e);
-  show_message(e.to_string(windowed.has_value() ? *windowed
-                           : source != nullptr  ? source->view()
-                                                : StringView{},
+  show_message(e.to_string(windowed.has_value()
+                               ? *windowed
+                               : cxt.source_store().current_source_view(),
                            &cxt));
   cxt.print_source_backtrace(trace_location);
 }
@@ -1719,8 +1716,8 @@ fn expressions::internal::analyze_followed_source(
   let parse_errors = ArrayList<String>{heap_allocator()};
   let const child_diagnostic_start =
       actx.reporter.sink != nullptr ? actx.reporter.sink->count() : 0;
-  let const ast = parser.construct_ast(parse_errors, actx.eval_context,
-                                       actx.reporter.sink);
+  let const ast =
+      parser.construct_ast(parse_errors, actx.eval_context, actx.reporter.sink);
   if (!parse_errors.is_empty()) {
     if (actx.reporter.sink != nullptr) {
       for (usize index = child_diagnostic_start;
@@ -2015,7 +2012,8 @@ fn analyze_ast(const Expression *root, StringView source,
                                   parent.should_merge_state,
                                   parent.should_merge_uncertainty);
   } else if (outputs.deferred_totals != nullptr) {
-    outputs.deferred_totals->warning_count += actx.reporter.totals.warning_count;
+    outputs.deferred_totals->warning_count +=
+        actx.reporter.totals.warning_count;
     outputs.deferred_totals->error_count += actx.reporter.totals.error_count;
   } else if (outputs.diagnostic_sink == nullptr) {
     actx.print_diagnostic_summary();

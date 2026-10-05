@@ -425,17 +425,14 @@ private:
 
     Maybe<ExecContext> sub;
     try {
-      let const *source = m_cxt.source_store().current_source();
       sub = ExecContext::make_from(
-          m_ec.source_location(),
-          source != nullptr ? source->view() : StringView{}, steal(command),
-          m_cxt.runtime_state().koshkit(), m_cxt.is_shopt_enabled("checkhash"),
-          m_cxt.program_resolver(), steal(command_locations),
-          m_cxt.runtime_state().get_mood());
+          m_ec.source_location(), m_cxt.source_store().current_source_view(),
+          steal(command), m_cxt.runtime_state().koshkit(),
+          m_cxt.is_shopt_enabled("checkhash"), m_cxt.program_resolver(),
+          steal(command_locations), m_cxt.runtime_state().get_mood());
     } catch (const CommandResolutionErrorWithLocation &resolution_error) {
-      let const *source = m_cxt.source_store().current_source();
       show_message(resolution_error.to_string(
-          source != nullptr ? source->view() : StringView{}, &m_cxt));
+          m_cxt.source_store().current_source_view(), &m_cxt));
       return static_cast<i32>(resolution_error.command_status());
     }
 

@@ -190,18 +190,16 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
 
   Maybe<ExecContext> sub;
   try {
-    let const *source = cxt.source_store().current_source();
     sub = ExecContext::make_from(
-        ec.source_location(), source != nullptr ? source->view() : StringView{},
+        ec.source_location(), cxt.source_store().current_source_view(),
         steal(operand_args), cxt.runtime_state().koshkit(),
         cxt.is_shopt_enabled("checkhash"), *resolver,
         steal(operand_arg_locations), cxt.runtime_state().get_mood());
   } catch (const CommandResolutionErrorWithLocation &resolution_error) {
     LOG(Debug, "command handled a resolution error: %s",
         resolution_error.message().c_str());
-    const String *source = cxt.source_store().current_source();
     show_message(resolution_error.to_string(
-        source != nullptr ? source->view() : StringView{}, &cxt));
+        cxt.source_store().current_source_view(), &cxt));
     return static_cast<i32>(resolution_error.command_status());
   }
   return utils::execute_context(steal(*sub), cxt, execution_mode::Foreground);

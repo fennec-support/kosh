@@ -306,7 +306,7 @@ fn Timeout::execute(const ExecContext &ec, EvalContext &cxt,
   let command = ExecContext::make_from_resolved(
       ec.source_location(), ResolvedCommand::from_program(*program_path),
       steal(command_args), steal(command_locations));
-  let const source = cxt.source_store().current_source();
+  let const source_view = cxt.source_store().current_source_view();
   let const has_controlling_terminal =
       cxt.execution_store().shell_is_interactive() &&
       os::shell_has_controlling_terminal();
@@ -318,7 +318,7 @@ fn Timeout::execute(const ExecContext &ec, EvalContext &cxt,
 
   os::process child = os::execute_program(
       command, os::program_execution_options{
-                   .source = source != nullptr ? source->view() : StringView{},
+                   .source = source_view,
                    .fallback = os::script_fallback_policy::Allow,
                    .handoff = has_controlling_terminal
                                   ? os::terminal_handoff::BeforeStart
@@ -347,14 +347,13 @@ fn Timeout::execute(const ExecContext &ec, EvalContext &cxt,
         ResolvedCommand::from_program(Path{shell_path->view()}),
         steal(fallback_args), steal(fallback_locations));
     child = os::execute_program(
-        fallback,
-        os::program_execution_options{
-            .source = source != nullptr ? source->view() : StringView{},
-            .fallback = os::script_fallback_policy::Reject,
-            .handoff = has_controlling_terminal
-                           ? os::terminal_handoff::BeforeStart
-                           : os::terminal_handoff::Keep,
-            .process_group = os::process_group_mode::New});
+        fallback, os::program_execution_options{
+                      .source = source_view,
+                      .fallback = os::script_fallback_policy::Reject,
+                      .handoff = has_controlling_terminal
+                                     ? os::terminal_handoff::BeforeStart
+                                     : os::terminal_handoff::Keep,
+                      .process_group = os::process_group_mode::New});
   }
 
   os::process process_group = KOSH_INVALID_PROCESS;

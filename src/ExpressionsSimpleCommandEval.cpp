@@ -530,9 +530,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
        it is not recovered. The defers above put the partial redirections
        back. */
     if (is_command_special_builtin) throw;
-    const String *source = cxt.source_store().current_source();
     show_message(redirection_error.to_string(
-        source != nullptr ? source->view() : StringView{}, &cxt));
+        cxt.source_store().current_source_view(), &cxt));
     /* bash reports a redirection failure with status 1 and dash with 2. */
     let const redirection_status =
         cxt.runtime_state().is_bash_compatible() ? 1 : 2;
@@ -942,10 +941,9 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         if (!error.was_rendered()) {
           let const trace_location = error.location();
           let const windowed = window_function_body_error(cxt, error);
-          let const *current = cxt.source_store().current_source();
-          let const rendered_source = windowed.has_value() ? *windowed
-                                      : current != nullptr ? current->view()
-                                                           : StringView{};
+          let const rendered_source =
+              windowed.has_value() ? *windowed
+                                   : cxt.source_store().current_source_view();
           show_message(error.to_string(rendered_source, &cxt));
           show_message(error.details_to_string(rendered_source, &cxt));
           cxt.print_source_backtrace(trace_location);
@@ -956,10 +954,9 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         if (!error.was_rendered()) {
           let const trace_location = error.location();
           let const windowed = window_function_body_error(cxt, error);
-          let const *current = cxt.source_store().current_source();
-          let const rendered_source = windowed.has_value() ? *windowed
-                                      : current != nullptr ? current->view()
-                                                           : StringView{};
+          let const rendered_source =
+              windowed.has_value() ? *windowed
+                                   : cxt.source_store().current_source_view();
           show_message(error.to_string(rendered_source, &cxt));
           cxt.print_source_backtrace(trace_location);
           error.set_rendered();
@@ -1026,9 +1023,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     }
 
     try {
-      let const *source = cxt.source_store().current_source();
       return ExecContext::make_from(
-          source_location(), source != nullptr ? source->view() : StringView{},
+          source_location(), cxt.source_store().current_source_view(),
           steal(program_args),
           cxt.runtime_state().koshkit_utilities_are_reachable(),
           cxt.runtime_state().is_shopt_enabled(shopt_option_id::Checkhash),
@@ -1079,9 +1075,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       {
         show_message(error.to_string(*windowed, &cxt));
       } else {
-        const String *source = cxt.source_store().current_source();
-        show_message(error.to_string(
-            source != nullptr ? source->view() : StringView{}, &cxt));
+        show_message(
+            error.to_string(cxt.source_store().current_source_view(), &cxt));
       }
       cxt.print_source_backtrace(trace_location, false);
       error.set_rendered();

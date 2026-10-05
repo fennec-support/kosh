@@ -2097,6 +2097,11 @@ public:
   {
     return m_current_source;
   }
+  pure fn current_source_view() const wontthrow -> StringView
+  {
+    return m_current_source != nullptr ? m_current_source->view()
+                                       : StringView{};
+  }
   fn embedded_sources() wontthrow -> ArrayList<embedded_source> &
   {
     return m_embedded_sources;

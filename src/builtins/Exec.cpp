@@ -45,9 +45,7 @@ static fn report_exec_resolution_error(ExecContext &ec, EvalContext &cxt,
 {
   let error = ErrorWithLocation{steal(location), message};
   error.set_command_status(command_status);
-  const String *source = cxt.source_store().current_source();
-  show_message(
-      error.to_string(source != nullptr ? source->view() : StringView{}, &cxt));
+  show_message(error.to_string(cxt.source_store().current_source_view(), &cxt));
 
   if (cxt.in_subshell() || cxt.job_table_store().is_in_pipeline_stage()) {
     if (cxt.in_subshell())

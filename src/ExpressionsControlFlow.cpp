@@ -92,6 +92,7 @@ fn Command::evaluate_async_with(EvalContext &cxt, async_body body,
     -> i64
 {
   let const source = cxt.source_store().current_source();
+  let const source_view = cxt.source_store().current_source_view();
   let command_text = StringView{};
   if (source != nullptr) {
     let command_end_position =
@@ -108,7 +109,7 @@ fn Command::evaluate_async_with(EvalContext &cxt, async_body body,
       .source = expanded_child_source.is_empty() ? command_text
                                                  : expanded_child_source,
       .location = source_location(),
-      .diagnostic_source = source != nullptr ? source->view() : StringView{},
+      .diagnostic_source = source_view,
       .evaluator = cxt.make_child_evaluator_state(bootstrap),
       .process_group = os::process_group_mode::NewBackground});
   let const child = launch.child;
@@ -128,8 +129,7 @@ fn Command::evaluate_async_with(EvalContext &cxt, async_body body,
       status = KOSH_BROKEN_PIPE_EXIT_STATUS;
     } catch (const ErrorWithLocation &e) {
       if (!e.was_rendered()) {
-        koshka::show_message(e.to_string(
-            source != nullptr ? source->view() : StringView{}, &cxt));
+        koshka::show_message(e.to_string(source_view, &cxt));
       }
       status = static_cast<i32>(e.command_status());
     } catch (const Error &e) {
@@ -570,7 +570,8 @@ fn WhileLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
   let condition_occurrences = actx.occurrences.snapshot();
   let const was_silenced = actx.effects.should_silence_unresolved_commands;
   if (has_input_reading_loop_condition) actx.walk.is_inside_read_loop = true;
-  if (is_folded_to_skip()) actx.effects.should_silence_unresolved_commands = true;
+  if (is_folded_to_skip())
+    actx.effects.should_silence_unresolved_commands = true;
   actx.loop_body_depth++;
   actx.conditional_branch_depth++;
   m_body->analyze(actx, false);
@@ -1474,6 +1475,7 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
   ASSERT(m_body != nullptr);
 
   let const source = cxt.source_store().current_source();
+  let const source_view = cxt.source_store().current_source_view();
   let command_text = StringView{};
   if (source != nullptr) {
     let command_end_position =
@@ -1511,7 +1513,7 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
       .in_fd = toward_child->in,
       .out_fd = away_from_child->out,
       .location = source_location(),
-      .diagnostic_source = source != nullptr ? source->view() : StringView{},
+      .diagnostic_source = source_view,
       .evaluator = cxt.make_child_evaluator_state(bootstrap),
       .process_group = os::process_group_mode::NewBackground});
   let const child = launch.child;
@@ -1535,8 +1537,7 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
       status = KOSH_BROKEN_PIPE_EXIT_STATUS;
     } catch (const ErrorWithLocation &e) {
       if (!e.was_rendered()) {
-        koshka::show_message(e.to_string(
-            source != nullptr ? source->view() : StringView{}, &cxt));
+        koshka::show_message(e.to_string(source_view, &cxt));
       }
       status = static_cast<i32>(e.command_status());
     } catch (const Error &e) {

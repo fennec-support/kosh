@@ -215,14 +215,11 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
     details += "Use `";
     details += file_command;
     details += "` to check the file type.";
-    let const source = source_store().current_source();
     show_message(ErrorWithLocationAndDetails{
         ec.source_location(),
         "Cannot execute `" + ec.program_path().text() + "` as a shell script.",
         steal(details)}
-                     .to_string(source != nullptr ? source->view()
-                                                  : StringView{},
-                                this));
+                     .to_string(source_store().current_source_view(), this));
     return 126;
   }
 

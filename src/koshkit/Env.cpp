@@ -139,16 +139,14 @@ fn Env::execute(const ExecContext &ec, EvalContext &cxt,
       ProgramResolver{os::get_environment_variable("PATH")};
   Maybe<ExecContext> sub;
   try {
-    let const *source = cxt.source_store().current_source();
     sub = ExecContext::make_from(
-        ec.source_location(), source != nullptr ? source->view() : StringView{},
+        ec.source_location(), cxt.source_store().current_source_view(),
         steal(env_args), cxt.runtime_state().koshkit(),
         cxt.is_shopt_enabled("checkhash"), environment_resolver,
         steal(env_arg_locations), cxt.runtime_state().get_mood());
   } catch (const CommandResolutionErrorWithLocation &resolution_error) {
-    const String *source = cxt.source_store().current_source();
     show_message(resolution_error.to_string(
-        source != nullptr ? source->view() : StringView{}, &cxt));
+        cxt.source_store().current_source_view(), &cxt));
     return static_cast<i32>(resolution_error.command_status());
   }
 
