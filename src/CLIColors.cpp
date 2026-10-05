@@ -153,6 +153,50 @@ fn terminal_wants_color(bool output_is_terminal) throws -> bool
 
 fn terminal_supports_styled_underlines() throws -> bool { return false; }
 
+pure fn file_entry_type_of_mode(u32 mode) wontthrow -> file_entry_type
+{
+  switch (os::file_type_letter(mode)) {
+  case 'd': return file_entry_type::Directory;
+
+  case 'l': return file_entry_type::Symlink;
+
+  case 'p': return file_entry_type::Fifo;
+
+  case 's': return file_entry_type::Socket;
+
+  case 'c':
+  case 'b': return file_entry_type::Device;
+
+  default: break;
+  }
+
+  return (mode & 0111u) != 0 ? file_entry_type::Executable
+                             : file_entry_type::Regular;
+}
+
+pure fn file_entry_color(file_entry_type type) wontthrow -> StringView
+{
+  switch (type) {
+  case file_entry_type::Directory: return ansi::BOLD_BLUE;
+
+  case file_entry_type::Symlink: return ansi::BOLD_CYAN;
+
+  case file_entry_type::BrokenSymlink: return ansi::BOLD_RED;
+
+  case file_entry_type::Executable: return ansi::BOLD_GREEN;
+
+  case file_entry_type::Fifo: return ansi::YELLOW;
+
+  case file_entry_type::Socket: return ansi::BOLD_MAGENTA;
+
+  case file_entry_type::Device: return ansi::BOLD_YELLOW;
+
+  case file_entry_type::Regular: break;
+  }
+
+  return StringView{};
+}
+
 } /* namespace colors */
 
 pure fn highlight_role_name(highlight_role role) wontthrow -> StringView

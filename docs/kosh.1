@@ -1763,6 +1763,9 @@ Symbolic links are not followed. Output is colored on a color terminal. The
 option prints only each path total. The
 .B \-h
 option prints human-readable sizes. The
+.BR \-x ", " \-\-one\-file\-system
+option skips every entry on a file system other than the one of its path
+operand. The
 .B \-\-tree
 option prints the same entries as a tree with box-drawing branches. Children are
 sorted by size, largest first, then by name, and each line shows the size
@@ -1772,9 +1775,11 @@ as written. With
 only the operand lines are printed. The
 .BR \-T ", " \-\-top\-largest
 option prints a human-readable tree of only the largest entries and every
-ancestor of one up to its operand. It keeps 20 entries, or the terminal height
-minus four, at least ten, when standard output is a terminal. With no path, the
-current directory is used.
+ancestor of one up to its operand. The tree takes at most 36 lines, or the
+terminal height minus four, at least ten, when that is smaller. Names are
+colored by file type as in
+.BR ls .
+With no path, the current directory is used.
 .TP
 .B env
 Temporary assignments are applied before a command, or the environment is

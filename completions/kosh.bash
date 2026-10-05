@@ -310,7 +310,7 @@ _koshkit_util_flags ()
         "-a --all -b --boot -d --dead -H --heading -l --login -m --current -p --process -q --quick -r --runlevel -s --short -t --time -T --terminal-state -u --idle"
     ;;
     du)
-      echo "-s -h -T --tree --top-largest"
+      echo "-s -h -x -T --one-file-system --tree --top-largest"
     ;;
     head)
       echo "-n -c"

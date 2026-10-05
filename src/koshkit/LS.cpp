@@ -64,18 +64,6 @@ namespace koshkit {
 
 static constexpr usize COLUMN_GAP = 2;
 
-enum class entry_type : u8
-{
-  Regular,
-  Directory,
-  Symlink,
-  BrokenSymlink,
-  Executable,
-  Fifo,
-  Socket,
-  Device,
-};
-
 enum class sort_key : u8
 {
   Name,
@@ -111,7 +99,7 @@ struct listing_entry
   explicit listing_entry(Allocator allocator) : name(allocator) {}
   String name;
   os::file_status status{};
-  entry_type type{entry_type::Regular};
+  colors::file_entry_type type{colors::file_entry_type::Regular};
   bool has_status{false};
 };
 
@@ -210,51 +198,28 @@ static fn append_padded(String &output, StringView field, usize width,
   if (!should_pad_on_left) output.append_repeated(' ', width - field.length);
 }
 
-static pure fn entry_color(entry_type type) wontthrow -> StringView
+static pure fn classify_suffix(colors::file_entry_type type) wontthrow -> char
 {
   switch (type) {
-  case entry_type::Directory: return colors::ansi::BOLD_BLUE;
+  case colors::file_entry_type::Directory: return '/';
 
-  case entry_type::Symlink: return colors::ansi::BOLD_CYAN;
+  case colors::file_entry_type::Symlink:
+  case colors::file_entry_type::BrokenSymlink: return '@';
 
-  case entry_type::BrokenSymlink: return colors::ansi::BOLD_RED;
+  case colors::file_entry_type::Executable: return '*';
 
-  case entry_type::Executable: return colors::ansi::BOLD_GREEN;
+  case colors::file_entry_type::Fifo: return '|';
 
-  case entry_type::Fifo: return colors::ansi::YELLOW;
+  case colors::file_entry_type::Socket: return '=';
 
-  case entry_type::Socket: return colors::ansi::BOLD_MAGENTA;
-
-  case entry_type::Device: return colors::ansi::BOLD_YELLOW;
-
-  case entry_type::Regular: break;
-  }
-
-  return StringView{};
-}
-
-static pure fn classify_suffix(entry_type type) wontthrow -> char
-{
-  switch (type) {
-  case entry_type::Directory: return '/';
-
-  case entry_type::Symlink:
-  case entry_type::BrokenSymlink: return '@';
-
-  case entry_type::Executable: return '*';
-
-  case entry_type::Fifo: return '|';
-
-  case entry_type::Socket: return '=';
-
-  case entry_type::Device:
-  case entry_type::Regular: break;
+  case colors::file_entry_type::Device:
+  case colors::file_entry_type::Regular: break;
   }
 
   return '\0';
 }
 
-static pure fn listing_suffix(entry_type type,
+static pure fn listing_suffix(colors::file_entry_type type,
                               const listing_options &options) wontthrow -> char
 {
   let const suffix = classify_suffix(type);
@@ -266,8 +231,8 @@ static pure fn listing_suffix(entry_type type,
 static fn append_decorated_name(String &output, const listing_entry &entry,
                                 const listing_options &options) throws -> void
 {
-  let const color =
-      options.should_color ? entry_color(entry.type) : StringView{};
+  let const color = options.should_color ? colors::file_entry_color(entry.type)
+                                         : StringView{};
   if (!color.is_empty()) {
     output += color;
     output += entry.name.view();
@@ -291,33 +256,12 @@ static pure fn decorated_width(const listing_entry &entry,
   return entry.name.count() + (has_suffix ? 1 : 0);
 }
 
-static fn classify_status(const os::file_status &status) wontthrow -> entry_type
-{
-  switch (os::file_type_letter(status.mode)) {
-  case 'd': return entry_type::Directory;
-
-  case 'l': return entry_type::Symlink;
-
-  case 'p': return entry_type::Fifo;
-
-  case 's': return entry_type::Socket;
-
-  case 'c':
-  case 'b': return entry_type::Device;
-
-  default: break;
-  }
-
-  return (status.mode & 0111u) != 0 ? entry_type::Executable
-                                    : entry_type::Regular;
-}
-
 static fn set_entry_status(listing_entry &entry,
                            const os::file_status &status) wontthrow -> void
 {
   entry.status = status;
   entry.has_status = true;
-  entry.type = classify_status(entry.status);
+  entry.type = colors::file_entry_type_of_mode(entry.status.mode);
 }
 
 static fn
@@ -333,11 +277,11 @@ make_entry(const Path &path, StringView name, const listing_options &options,
     if (!options.needs_type) return entry;
 
     if (kind == Path::entry_kind::Directory) {
-      entry.type = entry_type::Directory;
+      entry.type = colors::file_entry_type::Directory;
       return entry;
     }
     if (kind == Path::entry_kind::Symlink) {
-      entry.type = entry_type::Symlink;
+      entry.type = colors::file_entry_type::Symlink;
       return entry;
     }
     if (!options.should_classify && !options.should_color) return entry;
@@ -366,7 +310,7 @@ static fn prepare_entries(ArrayList<listing_entry> entries,
     let symlink_paths = ArrayList<Path>{allocator};
     let symlink_statuses = ArrayList<os::file_status>{allocator};
     for (let const &entry : entries) {
-      if (entry.type != entry_type::Symlink) continue;
+      if (entry.type != colors::file_entry_type::Symlink) continue;
 
       if (is_name_path) {
         symlink_paths.push(Path{entry.name.view(), allocator});
@@ -389,10 +333,10 @@ static fn prepare_entries(ArrayList<listing_entry> entries,
       let const results = batch.execute(os::batch_deduplication::Disabled);
       usize symlink_index = 0;
       for (listing_entry &entry : entries) {
-        if (entry.type != entry_type::Symlink) continue;
+        if (entry.type != colors::file_entry_type::Symlink) continue;
 
         if (results[symlink_index].error_number != 0) {
-          entry.type = entry_type::BrokenSymlink;
+          entry.type = colors::file_entry_type::BrokenSymlink;
         }
         symlink_index++;
       }
@@ -704,7 +648,7 @@ static fn render_tree_level(StringView directory,
     output += '\n';
 
     let const is_descending =
-        entry.type == entry_type::Directory &&
+        entry.type == colors::file_entry_type::Directory &&
         (!options.has_depth_limit || depth + 1 < options.max_depth);
     if (!is_descending) continue;
 
@@ -763,7 +707,7 @@ static fn render_directory_block(StringView directory,
 
   for (let const &entry : *entries) {
     if (os::INTERRUPT_REQUESTED) return;
-    if (entry.type != entry_type::Directory) continue;
+    if (entry.type != colors::file_entry_type::Directory) continue;
 
     if (is_dot_or_dotdot(entry.name.view())) continue;
 
@@ -962,7 +906,7 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
     entry.name = String{allocator, targets[target_index]};
     set_entry_status(entry, target_statuses[target_index]);
     if (target_is_broken_symlink[target_index])
-      entry.type = entry_type::BrokenSymlink;
+      entry.type = colors::file_entry_type::BrokenSymlink;
     file_entries.push(steal(entry));
   }
 

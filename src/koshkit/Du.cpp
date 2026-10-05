@@ -17,10 +17,11 @@
 #include "../base/HashSet.hpp"
 #include "../base/Path.hpp"
 #include "../base/StringMap.hpp"
+#include "../base/Trace.hpp"
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[-shT] [--tree] [path ...]");
+HELP_SYNOPSIS_DECL("[-shxT] [--tree] [path ...]");
 
 HELP_DESCRIPTION_DECL("The du utility prints the disk usage of each path.");
 
@@ -29,9 +30,11 @@ FLAG(DU_HUMAN, Bool, 'h', "",
      "Print the size in a human-readable form such as 4.0K or 1.5M.");
 FLAG(DU_TREE, Bool, '\0', "tree",
      "Print the entries as a tree, largest children first.");
+FLAG(DU_ONE_FILE_SYSTEM, Bool, 'x', "one-file-system",
+     "Skip entries on file systems other than the one of each path.");
 FLAG(DU_TOP, Bool, 'T', "top-largest",
      "Print a human-readable tree of only the largest entries and their "
-     "ancestors.");
+     "ancestors in at most 36 lines.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Du);
@@ -40,10 +43,13 @@ namespace koshka {
 
 namespace koshkit {
 
+static constexpr usize TOP_ROW_LIMIT = 36;
+
 struct du_output_row
 {
   u64 size_bytes;
   String path;
+  colors::file_entry_type type;
 };
 
 struct du_sort_key
@@ -93,6 +99,7 @@ struct du_tree_node
   usize parent_index{SIZE_MAX};
   usize first_child{0};
   usize child_count{0};
+  colors::file_entry_type type{colors::file_entry_type::Directory};
   bool has_size{false};
   bool is_kept{false};
 };
@@ -119,15 +126,17 @@ struct du_tree_request
   const ArrayList<du_operand_span> &spans;
   const ArrayList<Path> &targets;
   bool is_human;
-  usize top_count;
+  usize row_limit;
   bool should_color;
 };
 
 fn append_output_row(ArrayList<du_output_row> &rows, u64 size, StringView path,
-                     Allocator allocator) throws -> void
+                     colors::file_entry_type type, Allocator allocator) throws
+    -> void
 {
   rows.push({
-      size, String{allocator, path}
+      size, String{allocator, path},
+       type
   });
 }
 
@@ -150,6 +159,8 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
     known_status = &queried_status;
   }
 
+  let const root_device_id = known_status->device_id;
+  let const is_one_file_system = FLAG_DU_ONE_FILE_SYSTEM.is_enabled();
   let const type_letter = os::file_type_letter(known_status->mode);
   if (type_letter != 'd' && known_status->has_file_identity &&
       known_status->link_count > 1)
@@ -172,6 +183,7 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
   if (type_letter != 'd') {
     if (output_rows != nullptr)
       append_output_row(*output_rows, allocated_size_bytes, path.view(),
+                        colors::file_entry_type_of_mode(known_status->mode),
                         allocator);
 
     return du_size_result{allocated_size_bytes, true};
@@ -222,7 +234,7 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
       } else {
         if (output_rows != nullptr)
           append_output_row(*output_rows, frame.total_bytes, frame.path.view(),
-                            allocator);
+                            colors::file_entry_type::Directory, allocator);
         if (frame.parent_index == SIZE_MAX) {
           is_root_complete = true;
           root_result = du_size_result{frame.total_bytes, true};
@@ -278,6 +290,11 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
     }
 
     let const &status = work.status;
+    if (is_one_file_system && status.device_id != root_device_id) {
+      LOG(Debug, "du skips '%s', which is on another file system", work.name);
+      return;
+    }
+
     let const type = os::file_type_letter(status.mode);
     if (type != 'd' && status.has_file_identity && status.link_count > 1) {
       const u64 identity[] = {status.device_id, status.file_id};
@@ -333,6 +350,7 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
     if (output_rows != nullptr) {
       let child_path = make_child_path();
       append_output_row(*output_rows, allocated_size_bytes, child_path.view(),
+                        colors::file_entry_type_of_mode(status.mode),
                         allocator);
     }
   };
@@ -493,8 +511,9 @@ static fn build_tree_nodes(const du_tree_request &request, Allocator allocator,
             do_get_or_create_child(parent_index, last_end, last_start);
       }
 
-      nodes[current_index].size_bytes =
-          request.rows[span.first_row + offset].size_bytes;
+      let const &row = request.rows[span.first_row + offset];
+      nodes[current_index].size_bytes = row.size_bytes;
+      nodes[current_index].type = row.type;
       nodes[current_index].has_size = true;
     }
   }
@@ -553,9 +572,11 @@ static fn order_tree_children(ArrayList<du_tree_node> &nodes,
 
 static fn keep_largest_tree_nodes(ArrayList<du_tree_node> &nodes,
                                   const ArrayList<usize> &root_indices,
-                                  usize top_count, Allocator allocator) throws
+                                  usize row_limit, Allocator allocator) throws
     -> void
 {
+  let const top_count =
+      row_limit > root_indices.count() ? row_limit - root_indices.count() : 0;
   let heap = ArrayList<du_tree_order_key>{allocator};
   heap.reserve(top_count);
   let const do_sift_down = [&]() wontthrow -> void {
@@ -599,11 +620,24 @@ static fn keep_largest_tree_nodes(ArrayList<du_tree_node> &nodes,
   for (let const root_index : root_indices)
     nodes[root_index].is_kept = true;
 
-  for (let const &selected : heap) {
-    usize index = selected.node_index;
-    while (index != SIZE_MAX && !nodes[index].is_kept) {
+  usize kept_row_count = root_indices.count();
+  let const selected_keys = steal(heap).make_sorted(is_tree_key_before);
+  for (let const &selected : selected_keys) {
+    usize added_row_count = 0;
+    for (usize index = selected.node_index;
+         index != SIZE_MAX && !nodes[index].is_kept;
+         index = nodes[index].parent_index)
+    {
+      added_row_count++;
+    }
+    if (kept_row_count + added_row_count > row_limit) continue;
+
+    kept_row_count += added_row_count;
+    for (usize index = selected.node_index;
+         index != SIZE_MAX && !nodes[index].is_kept;
+         index = nodes[index].parent_index)
+    {
       nodes[index].is_kept = true;
-      index = nodes[index].parent_index;
     }
   }
 }
@@ -655,7 +689,8 @@ static fn render_tree(const ArrayList<du_tree_node> &nodes,
     output += prefix;
     output += connector;
     output += has_shown_children ? "┬ " : "─ ";
-    append_report_text(output, nodes[node_index].name, colors::ansi::BOLD_CYAN,
+    append_report_text(output, nodes[node_index].name,
+                       colors::file_entry_color(nodes[node_index].type),
                        should_color);
     output += '\n';
     if (output.length() >= 65536) {
@@ -719,8 +754,8 @@ static fn print_tree_report(const du_tree_request &request,
   nodes.reserve(request.rows.count() + request.spans.count());
   if (!build_tree_nodes(request, allocator, nodes, root_indices)) return false;
 
-  if (request.top_count != 0) {
-    keep_largest_tree_nodes(nodes, root_indices, request.top_count, allocator);
+  if (request.row_limit != 0) {
+    keep_largest_tree_nodes(nodes, root_indices, request.row_limit, allocator);
   } else {
     for (let &node : nodes)
       node.is_kept = true;
@@ -813,8 +848,10 @@ fn Du::execute(const ExecContext &ec, EvalContext &cxt,
     if (!total.has_value()) {
       status = 1;
     } else if (FLAG_DU_SUMMARY.is_enabled() && total->should_emit) {
-      append_output_row(output_rows, total->size_bytes, target.view(),
-                        allocator);
+      append_output_row(
+          output_rows, total->size_bytes, target.view(),
+          colors::file_entry_type_of_mode(target_statuses[index].mode),
+          allocator);
     }
     if (is_tree && output_rows.count() != first_row_index) {
       operand_spans.push(du_operand_span{
@@ -823,18 +860,22 @@ fn Du::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   if (is_tree) {
-    usize top_count = 0;
+    usize row_limit = 0;
     if (is_top) {
-      top_count = 20;
+      row_limit = TOP_ROW_LIMIT;
       if (let const dimensions =
               os::get_terminal_dimensions(ec.out_fd.value_or(KOSH_STDOUT)))
-        top_count = dimensions->rows > 14 ? dimensions->rows - 4 : 10;
+      {
+        let const terminal_row_limit =
+            dimensions->rows > 14 ? dimensions->rows - 4 : 10;
+        if (terminal_row_limit < row_limit) row_limit = terminal_row_limit;
+      }
     }
 
     let const request =
         du_tree_request{output_rows, operand_spans,
                         targets,     is_top || FLAG_DU_HUMAN.is_enabled(),
-                        top_count,   koshkit_should_color()};
+                        row_limit,   koshkit_should_color()};
     if (was_interrupted || !print_tree_report(request, ec, allocator))
       return 130;
 

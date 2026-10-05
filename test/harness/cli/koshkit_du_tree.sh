@@ -61,7 +61,7 @@ fi
 
 mkdir -p m/deep/er/est
 i=1
-while [ "$i" -le 30 ]; do
+while [ "$i" -le 40 ]; do
   name=$(printf 'f%02d' "$i")
   make_file "m/$name" "$((i * 5))"
   i=$((i + 1))
@@ -73,14 +73,14 @@ printf 'top-lines=%s\n' "$(wc -l < top-m.out | tr -d ' ')"
 head -n 8 top-m.out
 echo "..."
 tail -n 3 top-m.out
-for kept in deep er est huge f30 f15; do
+for kept in deep er est huge f40 f10; do
   if grep -q " $kept\$" top-m.out; then
     echo "top-has-$kept=yes"
   else
     echo "top-has-$kept=no"
   fi
 done
-for dropped in f14 f01; do
+for dropped in f09 f01; do
   if grep -q " $dropped\$" top-m.out; then
     echo "top-has-$dropped=yes"
   else
@@ -120,6 +120,21 @@ else
     [ "$locked_errors" != 1 ]; then
     echo "locked-failed: status=$locked_status errors=$locked_errors"
     printf '%s\n' "$locked_tree"
+  fi
+fi
+
+echo "--- one file system ---"
+"$BIN" -c 'koshkit du -x t' | mask_sizes > one-fs.out
+"$BIN" -c 'koshkit du t' | mask_sizes > all-fs.out
+if cmp -s one-fs.out all-fs.out; then
+  echo "one-fs-local=same"
+else
+  echo "one-fs-local=different"
+fi
+if [ "${TARGET:-$(uname -s)}" = Linux ] && [ -d /dev/pts ] &&
+  "$BIN" -c 'koshkit du /dev' 2>/dev/null | grep -q ' /dev/pts$'; then
+  if "$BIN" -c 'koshkit du -x /dev' 2>/dev/null | grep -q ' /dev/pts'; then
+    echo "one-fs-mount=crossed"
   fi
 fi
 

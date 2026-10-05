@@ -59,32 +59,32 @@ tree-leaf-size=matched
 top-human=yes
 └── t
 --- top-largest default count ---
-top-lines=21
+top-lines=36
 └─┬ m
   ├─┬ deep
   │ └─┬ er
   │   └─┬ est
   │     └── huge
-  ├── f30
-  ├── f29
-  ├── f28
+  ├── f40
+  ├── f39
+  ├── f38
 ...
-  ├── f17
-  ├── f16
-  └── f15
+  ├── f12
+  ├── f11
+  └── f10
 top-has-deep=yes
 top-has-er=yes
 top-has-est=yes
 top-has-huge=yes
-top-has-f30=yes
-top-has-f15=yes
-top-has-f14=no
+top-has-f40=yes
+top-has-f10=yes
+top-has-f09=no
 top-has-f01=no
 --- top-largest orders by name on equal sizes ---
   ├── n01
   ├── n02
-  └── n20
-ties-lines=21
+  ├── n20
+ties-lines=26
 --- top-largest operands ---
 └─┬ .
   ├─┬ a
@@ -96,7 +96,9 @@ ties-lines=21
 └─┬ t/c
   └── small
 --- top-largest with an unreadable directory ---
+--- one file system ---
+one-fs-local=same
 --- help ---
-  du [-shT] [--tree] [path ...]
+  du [-shxT] [--tree] [path ...]
       --tree                            Print the entries as a tree, largest
   -T, --top-largest                     Print a human-readable tree of only the
