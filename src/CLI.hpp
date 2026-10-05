@@ -295,6 +295,7 @@ struct flag_parse_options
   bool should_accept_negative_number_operand{false};
   bool should_allow_options_after_operands{false};
   bool should_accept_unknown_flag_operand{false};
+  bool should_omit_program_name{false};
 };
 
 /* operand_value_flag names the one flag whose value is read from the first

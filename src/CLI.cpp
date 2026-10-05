@@ -548,7 +548,9 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
     {
       /* The next operand is the script, after which every argument is a
          positional parameter for the script, the way `sh script -x` does. */
-      let const is_program_name = args.is_empty();
+      let const is_program_name = i == 0;
+      if (is_program_name && parse_options.should_omit_program_name) continue;
+
       LOG(Debug, "taking '%s' as an operand", argv[i]);
       args.push_managed(StringView{argv[i]});
       do_record_operand(static_cast<usize>(i));
@@ -829,15 +831,13 @@ fn parse_util_operands(const FlagList &flags, const ArrayList<String> &args,
     -> util_operands_result
 {
   let operand_locations = ArrayList<SourceLocation>{allocator};
+  parse_options.should_omit_program_name = true;
   let operands =
       parse_flags_vec(flags, args, 0, nullptr, arg_locations,
                       &operand_locations, {}, parse_options, allocator);
   ASSERT(operands.allocator() == allocator);
   ASSERT(operand_locations.allocator() == allocator);
   ASSERT(operands.count() == operand_locations.count());
-
-  if (!operands.is_empty()) operands.remove(0);
-  if (!operand_locations.is_empty()) operand_locations.remove(0);
 
   return util_operands_result{steal(operands), steal(operand_locations)};
 }
