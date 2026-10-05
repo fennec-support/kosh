@@ -433,9 +433,9 @@ CXXFLAGS += \
 		-static \
 		-static-libgcc \
 		-static-libstdc++
-LINK_LIBRARIES += -municode
+LINK_LIBRARIES += -municode -Wl,--stack,8388608
 else
-LINK_LIBRARIES += -Wl,/entry:wmainCRTStartup
+LINK_LIBRARIES += -Wl,/entry:wmainCRTStartup -Wl,/STACK:8388608
 endif
 endif
 
