@@ -1304,44 +1304,15 @@ fn Subshell::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     }
   }
 
-  let scope = SubshellAnalysisScope{actx};
-  actx.apply_scope_definitions(m_analysis_scope_definitions);
-  m_body->analyze(actx, is_unconditional);
-  scope.leave();
+  /* An assignment in the body never changes a parent variable, so the body
+     starts from an empty table and the outer constants are restored after. */
+  {
+    let scope = AnalysisScopeGuard{actx, analysis_scope_mode::Subshell};
+    actx.apply_scope_definitions(m_analysis_scope_definitions);
+    m_body->analyze(actx, is_unconditional);
+  }
+
   actx.is_analyzing_condition = was_analyzing_condition;
-}
-
-/* An assignment in the body never changes a parent variable, so the body
-   starts from an empty table and the outer constants are restored after. */
-SubshellAnalysisScope::SubshellAnalysisScope(AnalysisContext &actx)
-    : m_actx{actx}, m_constants{steal(actx.constant_variables)},
-      m_occurrences{actx.occurrences.snapshot()},
-      m_function_mark{actx.functions.get_mark()},
-      m_inherited_assigned_names{actx.inherited_assigned_names.clone()},
-      m_inherited_global_assigned_names{
-          actx.inherited_global_assigned_names.clone()},
-      m_array_valued_names{actx.array_valued_names.clone()},
-      m_source_effects{actx.current_source_effects},
-      m_effects{actx.effects},
-      m_was_inside_subshell_analysis{actx.is_inside_subshell_analysis}
-{
-  actx.constant_variables = StringMap<String>{heap_allocator()};
-  actx.current_source_effects = nullptr;
-  actx.is_inside_subshell_analysis = true;
-}
-
-fn SubshellAnalysisScope::leave() throws -> void
-{
-  m_actx.current_source_effects = m_source_effects;
-  m_actx.is_inside_subshell_analysis = m_was_inside_subshell_analysis;
-  m_actx.effects = m_effects;
-  m_actx.array_valued_names = steal(m_array_valued_names);
-  m_actx.inherited_global_assigned_names =
-      steal(m_inherited_global_assigned_names);
-  m_actx.inherited_assigned_names = steal(m_inherited_assigned_names);
-  m_actx.constant_variables = steal(m_constants);
-  m_actx.occurrences = steal(m_occurrences);
-  m_actx.functions.rollback(m_function_mark);
 }
 
 FunctionDefinition::FunctionDefinition(SourceLocation location, StringView name,
@@ -1430,88 +1401,60 @@ fn FunctionDefinition::analyze(AnalysisContext &actx,
      empty constant table with the outer constants restored after. A called
      function edits the caller's own shell, and its search path, working
      directory, and runtime-definer effects outlive the body. */
-  let saved_constants = steal(actx.constant_variables);
-  actx.constant_variables = StringMap<String>{heap_allocator()};
-  let saved_occurrences = actx.occurrences.snapshot();
-  let const function_mark = actx.functions.get_mark();
-  let saved_inherited_assigned_names = actx.inherited_assigned_names.clone();
-  let saved_inherited_global_assigned_names =
-      actx.inherited_global_assigned_names.clone();
-  let saved_array_valued_names = actx.array_valued_names.clone();
-  let *saved_source_effects = actx.current_source_effects;
-  actx.current_source_effects = nullptr;
-  let saved_locals = steal(actx.function_local_names);
-  actx.function_local_names = StringMap<SourceLocation>{heap_allocator()};
-  actx.occurrences = variable_occurrence_pair{};
-  actx.apply_scope_definitions(m_analysis_scope_definitions);
-  let const saved_loop_body_depth = actx.loop_body_depth;
-  actx.loop_body_depth = 0;
-  let const saved_conditional_branch_depth = actx.conditional_branch_depth;
-  actx.conditional_branch_depth = 0;
-  let const saved_active_function = actx.active_function_definition_index;
-  actx.active_function_definition_index = actx.functions.records.count();
-  actx.functions.records.push(function_definition_record{
-      String{heap_allocator(), m_name.view()},
-      source_location(), 0, 0,
-      HashSet{heap_allocator()},
-      HashSet{heap_allocator()},
-      VariableOccurrenceStateMap{},
-      String{heap_allocator()},
-      SourceLocation{},
-      false, false
-  });
-  let const function_definition_index = actx.active_function_definition_index;
-  actx.functions.records[function_definition_index].occurrence_start =
-      actx.symbol_records != nullptr
-          ? actx.symbol_records->variable_occurrences.count()
-          : 0;
-  actx.note_function_body_record(m_name.view(), source_location().position,
-                                 m_body->source_location().position,
-                                 m_body->source_end_position());
-  actx.function_scope_depth++;
-  m_body->analyze(actx, false);
-  if (m_body->always_exits(actx))
-    actx.always_exiting_function_names.add(m_name.view());
-  else
-    actx.always_exiting_function_names.remove(m_name.view());
+  let const function_definition_index = actx.functions.records.count();
+  {
+    let scope = AnalysisScopeGuard{actx, analysis_scope_mode::Function};
+    actx.apply_scope_definitions(m_analysis_scope_definitions);
+    actx.active_function_definition_index = function_definition_index;
+    actx.functions.records.push(function_definition_record{
+        String{heap_allocator(), m_name.view()},
+        source_location(), 0, 0,
+        HashSet{heap_allocator()},
+        HashSet{heap_allocator()},
+        VariableOccurrenceStateMap{},
+        String{heap_allocator()},
+        SourceLocation{},
+        false, false
+    });
+    actx.functions.records[function_definition_index].occurrence_start =
+        actx.symbol_records != nullptr
+            ? actx.symbol_records->variable_occurrences.count()
+            : 0;
+    actx.note_function_body_record(m_name.view(), source_location().position,
+                                   m_body->source_location().position,
+                                   m_body->source_end_position());
+    m_body->analyze(actx, false);
+    if (m_body->always_exits(actx))
+      actx.always_exiting_function_names.add(m_name.view());
+    else
+      actx.always_exiting_function_names.remove(m_name.view());
 
-  let &function_definition = actx.functions.records[function_definition_index];
-  if (function_definition.recursive_call_count > 0) {
-    let const diagnostic =
-        function_definition.recursive_call_count >= 2 &&
-                function_definition.async_recursive_call_count >= 2
-            ? diagnostic_id::fork_bomb
-            : diagnostic_id::sc2264;
-    actx.report_diagnostic(diagnostic,
-                           function_definition.first_recursive_call_location,
-                           {m_name.view()}, source_location());
+    let &function_definition =
+        actx.functions.records[function_definition_index];
+    if (function_definition.recursive_call_count > 0) {
+      let const diagnostic =
+          function_definition.recursive_call_count >= 2 &&
+                  function_definition.async_recursive_call_count >= 2
+              ? diagnostic_id::fork_bomb
+              : diagnostic_id::sc2264;
+      actx.report_diagnostic(diagnostic,
+                             function_definition.first_recursive_call_location,
+                             {m_name.view()}, source_location());
+    }
+    function_definition.occurrence_end =
+        actx.symbol_records != nullptr
+            ? actx.symbol_records->variable_occurrences.count()
+            : 0;
+    function_definition.exit_states = actx.occurrences.assigned.snapshot();
+    function_definition.is_analysis_complete = true;
+    let const previous_definition_index =
+        actx.functions.latest_indices.find(m_name.view());
+    if (previous_definition_index.has_value()) {
+      function_definition.previous_definition_index =
+          *previous_definition_index.value();
+    }
   }
-  function_definition.occurrence_end =
-      actx.symbol_records != nullptr
-          ? actx.symbol_records->variable_occurrences.count()
-          : 0;
-  function_definition.exit_states = actx.occurrences.assigned.snapshot();
-  function_definition.is_analysis_complete = true;
-  let const previous_definition_index =
-      actx.functions.latest_indices.find(m_name.view());
-  if (previous_definition_index.has_value()) {
-    function_definition.previous_definition_index =
-        *previous_definition_index.value();
-  }
-  actx.functions.latest_indices.set(m_name.view(), function_definition_index);
-  actx.current_source_effects = saved_source_effects;
-  actx.function_scope_depth--;
-  actx.active_function_definition_index = saved_active_function;
-  actx.loop_body_depth = saved_loop_body_depth;
-  actx.conditional_branch_depth = saved_conditional_branch_depth;
-  actx.array_valued_names = steal(saved_array_valued_names);
-  actx.inherited_global_assigned_names =
-      steal(saved_inherited_global_assigned_names);
-  actx.inherited_assigned_names = steal(saved_inherited_assigned_names);
-  actx.function_local_names = steal(saved_locals);
-  actx.constant_variables = steal(saved_constants);
-  actx.occurrences = steal(saved_occurrences);
-  actx.functions.rollback(function_mark);
+
   actx.functions.latest_indices.set(m_name.view(), function_definition_index);
 }
 

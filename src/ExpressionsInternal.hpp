@@ -458,18 +458,28 @@ fn check_unassigned_variable_reads(AnalysisContext &actx) throws -> void;
    only agree once both are known, so the comparison waits for the end. */
 fn check_function_argument_dataflow(AnalysisContext &actx) throws -> void;
 
-class SubshellAnalysisScope
+enum class analysis_scope_mode : u8
+{
+  Subshell,
+  Function,
+  Pipeline,
+};
+
+class AnalysisScopeGuard
 {
 public:
-  explicit SubshellAnalysisScope(AnalysisContext &actx);
-  SubshellAnalysisScope(const SubshellAnalysisScope &) = delete;
-  SubshellAnalysisScope &operator=(const SubshellAnalysisScope &) = delete;
-
-  fn leave() throws -> void;
+  AnalysisScopeGuard(AnalysisContext &actx, analysis_scope_mode mode);
+  ~AnalysisScopeGuard();
+  AnalysisScopeGuard(const AnalysisScopeGuard &) = delete;
+  AnalysisScopeGuard &operator=(const AnalysisScopeGuard &) = delete;
 
 private:
+  fn leave() throws -> void;
+
   AnalysisContext &m_actx;
-  StringMap<String> m_constants;
+  analysis_scope_mode m_mode;
+  StringMap<String> m_constants{heap_allocator()};
+  StringMap<SourceLocation> m_function_local_names{heap_allocator()};
   variable_occurrence_pair m_occurrences;
   analysis_function_mark m_function_mark;
   HashSet m_inherited_assigned_names;
@@ -478,6 +488,9 @@ private:
   followed_source_effects *m_source_effects;
   analysis_effects m_effects;
   bool m_was_inside_subshell_analysis;
+  usize m_loop_body_depth{0};
+  usize m_conditional_branch_depth{0};
+  usize m_active_function_definition_index{0};
 };
 
 fn analyze_word_substitutions(AnalysisContext &actx, const Word &word,

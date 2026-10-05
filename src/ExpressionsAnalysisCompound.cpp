@@ -70,33 +70,14 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
         has_multiple_stages && (command->as_simple_command() != nullptr ||
                                 command->as_assign_command() != nullptr);
 
-    if (!has_multiple_stages) {
+    if (has_multiple_stages) {
+      let scope = AnalysisScopeGuard{actx, analysis_scope_mode::Pipeline};
       command->analyze(actx, stage_is_unconditional);
-      actx.is_direct_pipeline_stage = was_direct_pipeline_stage;
-      continue;
+    } else {
+      command->analyze(actx, stage_is_unconditional);
     }
 
-    let const saved_effects = actx.effects;
-    let const function_mark = actx.functions.get_mark();
-    let saved_inherited_assigned_names = actx.inherited_assigned_names.clone();
-    let saved_inherited_global_assigned_names =
-        actx.inherited_global_assigned_names.clone();
-    let saved_array_valued_names = actx.array_valued_names.clone();
-    let saved_occurrences = actx.occurrences.snapshot();
-    let *saved_source_effects = actx.current_source_effects;
-    actx.current_source_effects = nullptr;
-
-    command->analyze(actx, stage_is_unconditional);
-
-    actx.current_source_effects = saved_source_effects;
     actx.is_direct_pipeline_stage = was_direct_pipeline_stage;
-    actx.effects = saved_effects;
-    actx.array_valued_names = steal(saved_array_valued_names);
-    actx.inherited_global_assigned_names =
-        steal(saved_inherited_global_assigned_names);
-    actx.inherited_assigned_names = steal(saved_inherited_assigned_names);
-    actx.occurrences = steal(saved_occurrences);
-    actx.functions.rollback(function_mark);
   }
 
   /* cat feeding a single named file into the next stage runs an extra process,

@@ -2104,6 +2104,77 @@ fn internal::note_variable_reference(AnalysisContext &actx,
   actx.note_positional_reference(segment.text.view(), expansion_location);
 }
 
+internal::AnalysisScopeGuard::AnalysisScopeGuard(AnalysisContext &actx,
+                                                 analysis_scope_mode mode)
+    : m_actx{actx}, m_mode{mode}, m_occurrences{actx.occurrences.snapshot()},
+      m_function_mark{actx.functions.get_mark()},
+      m_inherited_assigned_names{actx.inherited_assigned_names.clone()},
+      m_inherited_global_assigned_names{
+          actx.inherited_global_assigned_names.clone()},
+      m_array_valued_names{actx.array_valued_names.clone()},
+      m_source_effects{actx.current_source_effects}, m_effects{actx.effects},
+      m_was_inside_subshell_analysis{actx.is_inside_subshell_analysis}
+{
+  actx.current_source_effects = nullptr;
+
+  switch (mode) {
+  case analysis_scope_mode::Pipeline: break;
+
+  case analysis_scope_mode::Subshell:
+    m_constants = steal(actx.constant_variables);
+    actx.constant_variables = StringMap<String>{heap_allocator()};
+    actx.is_inside_subshell_analysis = true;
+    break;
+
+  case analysis_scope_mode::Function:
+    m_constants = steal(actx.constant_variables);
+    actx.constant_variables = StringMap<String>{heap_allocator()};
+    m_function_local_names = steal(actx.function_local_names);
+    actx.function_local_names = StringMap<SourceLocation>{heap_allocator()};
+    actx.occurrences = variable_occurrence_pair{};
+    m_loop_body_depth = actx.loop_body_depth;
+    actx.loop_body_depth = 0;
+    m_conditional_branch_depth = actx.conditional_branch_depth;
+    actx.conditional_branch_depth = 0;
+    m_active_function_definition_index = actx.active_function_definition_index;
+    actx.function_scope_depth++;
+    break;
+  }
+}
+
+internal::AnalysisScopeGuard::~AnalysisScopeGuard() { leave(); }
+
+fn internal::AnalysisScopeGuard::leave() throws -> void
+{
+  m_actx.current_source_effects = m_source_effects;
+  m_actx.array_valued_names = steal(m_array_valued_names);
+  m_actx.inherited_global_assigned_names =
+      steal(m_inherited_global_assigned_names);
+  m_actx.inherited_assigned_names = steal(m_inherited_assigned_names);
+  m_actx.occurrences = steal(m_occurrences);
+  m_actx.functions.rollback(m_function_mark);
+
+  switch (m_mode) {
+  case analysis_scope_mode::Pipeline: m_actx.effects = m_effects; break;
+
+  case analysis_scope_mode::Subshell:
+    m_actx.effects = m_effects;
+    m_actx.is_inside_subshell_analysis = m_was_inside_subshell_analysis;
+    m_actx.constant_variables = steal(m_constants);
+    break;
+
+  case analysis_scope_mode::Function:
+    m_actx.function_scope_depth--;
+    m_actx.active_function_definition_index =
+        m_active_function_definition_index;
+    m_actx.loop_body_depth = m_loop_body_depth;
+    m_actx.conditional_branch_depth = m_conditional_branch_depth;
+    m_actx.function_local_names = steal(m_function_local_names);
+    m_actx.constant_variables = steal(m_constants);
+    break;
+  }
+}
+
 static fn body_is_bare_file_read(const Expression *ast) wontthrow -> bool
 {
   let const *list = ast->as_compound_list();
@@ -2165,9 +2236,8 @@ static fn analyze_substitution_body(AnalysisContext &actx,
       is_subshell || was_inside_substitution_subshell;
 
   if (is_subshell) {
-    let scope = SubshellAnalysisScope{actx};
+    let scope = AnalysisScopeGuard{actx, analysis_scope_mode::Subshell};
     ast->analyze(actx, is_unconditional);
-    scope.leave();
   } else {
     ast->analyze(actx, is_unconditional);
   }
