@@ -1183,12 +1183,18 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       if (is_local || is_function_local) {
         cxt.declare_local(assignment.name, true);
       }
-      if (should_mark_integer) cxt.mark_integer(assignment.name);
-      if (should_unmark_integer) cxt.unmark_integer(assignment.name);
-      if (should_unmark_lowercase) cxt.unmark_lowercase(assignment.name);
-      if (should_unmark_uppercase) cxt.unmark_uppercase(assignment.name);
-      if (should_mark_lowercase) cxt.mark_lowercase(assignment.name);
-      if (should_mark_uppercase) cxt.mark_uppercase(assignment.name);
+      if (should_mark_integer)
+        cxt.variable_store().attributes().mark_integer(assignment.name);
+      if (should_unmark_integer)
+        cxt.variable_store().attributes().unmark_integer(assignment.name);
+      if (should_unmark_lowercase)
+        cxt.variable_store().attributes().unmark_lowercase(assignment.name);
+      if (should_unmark_uppercase)
+        cxt.variable_store().attributes().unmark_uppercase(assignment.name);
+      if (should_mark_lowercase)
+        cxt.variable_store().attributes().mark_lowercase(assignment.name);
+      if (should_mark_uppercase)
+        cxt.variable_store().attributes().mark_uppercase(assignment.name);
       ArrayList<String> values = cxt.process_args(
           assignment.elements, nullptr, argument_lifetime::Persistent,
           argument_context::ArrayLiteral);
@@ -1217,7 +1223,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
                                           assignment.update_mode);
       }
       if (is_export) cxt.mark_exported(assignment.name);
-      if (is_readonly_request) cxt.mark_readonly(assignment.name);
+      if (is_readonly_request)
+        cxt.variable_store().attributes().mark_readonly(assignment.name);
 
       if (should_print_declaration) {
         let line = String{cxt.scratch_allocator()};

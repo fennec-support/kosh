@@ -186,14 +186,17 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     cxt.declare_local(name, !cxt.runtime_state().is_bash_compatible() ||
                                 cxt.runtime_state().is_shopt_enabled(
                                     shopt_option_id::LocalvarInherit));
-    if (should_mark_integer) cxt.mark_integer(name);
-    if (should_mark_lowercase) cxt.mark_lowercase(name);
-    if (should_mark_uppercase) cxt.mark_uppercase(name);
+    if (should_mark_integer)
+      cxt.variable_store().attributes().mark_integer(name);
+    if (should_mark_lowercase)
+      cxt.variable_store().attributes().mark_lowercase(name);
+    if (should_mark_uppercase)
+      cxt.variable_store().attributes().mark_uppercase(name);
 
     if (!equals_position.has_value() && !should_make_associative &&
         !should_make_indexed)
     {
-      cxt.mark_declared(name);
+      cxt.variable_store().attributes().mark_declared(name);
     }
 
     if (should_make_associative) {
@@ -227,7 +230,8 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                        .view());
     }
 
-    if (should_mark_readonly) cxt.mark_readonly(name);
+    if (should_mark_readonly)
+      cxt.variable_store().attributes().mark_readonly(name);
   }
 
   return status;

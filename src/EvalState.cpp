@@ -848,7 +848,7 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
       os::get_file_creation_mask(),
       trap_store().actions(),
       trap_store().get_install_state(),
-      variable_store().variable_attributes(),
+      variable_store().attributes().entries(),
       variable_store().exported_names(),
       environment_store().environment_undo_log().count(),
       RuntimeState::capture(*this),
@@ -922,7 +922,8 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
   execution_store().terminal_exec_allowed() = snapshot.terminal_exec_allowed;
   subshell_store().coprocess() = snapshot.coprocess;
 
-  variable_store().variable_attributes() = steal(snapshot.variable_attributes);
+  variable_store().attributes().set_entries(
+      steal(snapshot.variable_attributes));
   variable_store().exported_names() = steal(snapshot.exported_names);
 
   /* A signal the subshell trapped that the parent does not is returned to
@@ -1246,8 +1247,8 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
       continue;
     }
     let const is_integer = is_integer_variable(name);
-    let const is_lowercase = is_lowercase_variable(name);
-    let const is_uppercase = is_uppercase_variable(name);
+    let const is_lowercase = variable_store().attributes().is_lowercase(name);
+    let const is_uppercase = variable_store().attributes().is_uppercase(name);
     let const is_read_only = is_readonly(name);
     let const is_exported_value = is_exported(name);
     let const indexed = variable_store().indexed_arrays().find(name);

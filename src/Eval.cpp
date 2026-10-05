@@ -308,7 +308,7 @@ fn EvalContext::guard_restricted_path(StringView path,
 hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
     -> void
 {
-  let const attribute_bits = get_variable_attribute_bits(name);
+  let const attribute_bits = variable_store().attributes().get_bits(name);
   if (is_implicitly_readonly(name) ||
       (attribute_bits & static_cast<u8>(variable_attribute::Readonly)) != 0)
   {
@@ -340,7 +340,7 @@ hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
     rarely
     {
       let adjusted = String{scratch_allocator(), value};
-      apply_variable_case(name, adjusted);
+      variable_store().attributes().apply_case(name, adjusted);
       assign_variable(name, adjusted.view());
       return;
     }
@@ -416,13 +416,13 @@ fn EvalContext::unset_shell_variable(StringView name) throws -> void
     disable_bash_special_array(bash_special_array_id::Aliases);
   if (should_disable_bash_directory_stack)
     disable_bash_special_array(bash_special_array_id::DirectoryStack);
-  variable_store().variable_attributes().erase(name);
+  variable_store().attributes().erase(name);
 }
 
 fn EvalContext::disable_ignoreeof() throws -> void
 {
   force_unset_shell_variable("IGNOREEOF");
-  variable_store().variable_attributes().erase("IGNOREEOF");
+  variable_store().attributes().erase("IGNOREEOF");
 }
 
 fn EvalContext::peel_caller_local_binding(StringView name) throws -> bool
@@ -474,15 +474,15 @@ fn EvalContext::restore_local_binding(local_binding &binding) throws -> void
   let const was_restricted =
       runtime_state().option_is_enabled(shell_option_id::Restricted);
   runtime_state().set_option(shell_option_id::Restricted, false);
-  variable_store().variable_attributes().erase(binding.name.view());
+  variable_store().attributes().erase(binding.name.view());
   defer
   {
     runtime_state().set_option(shell_option_id::Restricted, was_restricted);
     if (binding.previous_attributes != 0)
-      variable_store().variable_attributes().set(binding.name.view(),
-                                                 binding.previous_attributes);
+      variable_store().attributes().set_bits(binding.name.view(),
+                                             binding.previous_attributes);
     else
-      variable_store().variable_attributes().erase(binding.name.view());
+      variable_store().attributes().erase(binding.name.view());
   };
   clear_sparse_array(binding.name.view());
   for (usize i = 0; i < binding.previous_sparse_indices.count(); i++)
@@ -517,8 +517,9 @@ fn EvalContext::set_indexed_array(StringView name,
       set_bash_directory_stack_element(index, values[index].view());
     return;
   }
-  if (is_lowercase_variable(name) || is_uppercase_variable(name))
-    rarely for (let &value : values) apply_variable_case(name, value);
+  if (variable_store().attributes().has_case(name))
+    rarely for (let &value : values) variable_store().attributes().apply_case(
+        name, value);
   variable_store().shell_variables().erase(name);
   clear_sparse_array(name);
   variable_store().indexed_arrays().set(name, steal(values));

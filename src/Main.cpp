@@ -818,7 +818,7 @@ fn kosh_main(int argc, char **argv) -> int
   let const shell_executable_path =
       context.execution_store().get_shell_executable_path();
   context.mark_exported("KOSH_IDENTITY");
-  context.mark_readonly("KOSH_IDENTITY");
+  context.variable_store().attributes().mark_readonly("KOSH_IDENTITY");
   /* SHELL is owned by login, getty, or the display manager, so an inherited
      value is left untouched. Only a shell that received no SHELL seeds its own
      invocation path. */

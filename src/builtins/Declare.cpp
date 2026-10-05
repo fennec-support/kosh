@@ -228,10 +228,14 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       if (should_mark_integer_attribute && !cxt.is_integer_variable(name)) {
         return false;
       }
-      if (should_mark_lowercase_attribute && !cxt.is_lowercase_variable(name)) {
+      if (should_mark_lowercase_attribute &&
+          !cxt.variable_store().attributes().is_lowercase(name))
+      {
         return false;
       }
-      if (should_mark_uppercase_attribute && !cxt.is_uppercase_variable(name)) {
+      if (should_mark_uppercase_attribute &&
+          !cxt.variable_store().attributes().is_uppercase(name))
+      {
         return false;
       }
       if (should_make_indexed &&
@@ -253,7 +257,8 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let names = cxt.variable_names(cxt.scratch_allocator());
     for (let const &environment_name : os::environment_names())
       names.add(environment_name.view());
-    cxt.append_attributed_names(names);
+    cxt.variable_store().attributes().for_each_name(
+        [&](StringView attributed_name) { names.add(attributed_name); });
 
     let collected_names = ArrayList<String>{cxt.scratch_allocator()};
     names.for_each(
@@ -370,17 +375,23 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     /* The attribute applies before the assignment, so declare -i x+=3 already
        adds on this command the way bash applies the integer mark first. */
-    if (should_mark_integer_attribute) cxt.mark_integer(name);
-    if (should_unmark_integer_attribute) cxt.unmark_integer(name);
-    if (should_unmark_lowercase_attribute) cxt.unmark_lowercase(name);
-    if (should_unmark_uppercase_attribute) cxt.unmark_uppercase(name);
-    if (should_mark_lowercase_attribute) cxt.mark_lowercase(name);
-    if (should_mark_uppercase_attribute) cxt.mark_uppercase(name);
+    if (should_mark_integer_attribute)
+      cxt.variable_store().attributes().mark_integer(name);
+    if (should_unmark_integer_attribute)
+      cxt.variable_store().attributes().unmark_integer(name);
+    if (should_unmark_lowercase_attribute)
+      cxt.variable_store().attributes().unmark_lowercase(name);
+    if (should_unmark_uppercase_attribute)
+      cxt.variable_store().attributes().unmark_uppercase(name);
+    if (should_mark_lowercase_attribute)
+      cxt.variable_store().attributes().mark_lowercase(name);
+    if (should_mark_uppercase_attribute)
+      cxt.variable_store().attributes().mark_uppercase(name);
 
     if (!equals.has_value() && !has_subscript && !should_make_associative &&
         !should_make_indexed)
     {
-      cxt.mark_declared(name);
+      cxt.variable_store().attributes().mark_declared(name);
     }
 
     LOG(All, "declare applying attributes to '%.*s'",
@@ -437,7 +448,8 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     /* The read-only mark applies after the assignment, so declare -r v=1 stores
        the value first and then locks it, the way bash rejects only a later
        write rather than the declaration's own assignment. */
-    if (should_mark_readonly) cxt.mark_readonly(name);
+    if (should_mark_readonly)
+      cxt.variable_store().attributes().mark_readonly(name);
   }
 
   return status;

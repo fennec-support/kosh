@@ -1252,6 +1252,142 @@ struct BashArgumentArrayStorage
   ArrayList<u32> frame_counts{heap_allocator()};
 };
 
+class VariableAttributes
+{
+public:
+  pure fn get_bits(StringView name) const wontthrow -> u8
+  {
+    let const entry = m_bits.find(name);
+    return entry.has_value() ? *entry.value() : u8{0};
+  }
+  fn set_bits(StringView name, u8 bits) throws -> void
+  {
+    m_bits.set(name, bits);
+  }
+  fn erase(StringView name) throws -> void { m_bits.erase(name); }
+
+  pure fn has(StringView name, variable_attribute attribute) const wontthrow
+      -> bool
+  {
+    return (get_bits(name) & static_cast<u8>(attribute)) != 0;
+  }
+  fn set(StringView name, variable_attribute attribute, bool is_enabled) throws
+      -> void
+  {
+    let const mask = static_cast<u8>(attribute);
+
+    if (is_enabled) {
+      m_bits.get_or_create(name, u8{0}) |= mask;
+      return;
+    }
+
+    let entry = m_bits.find(name);
+    if (!entry.has_value()) return;
+
+    *entry.value() &= static_cast<u8>(~mask);
+    if (*entry.value() == 0) m_bits.erase(name);
+  }
+
+  pure fn is_readonly(StringView name) const wontthrow -> bool
+  {
+    return has(name, variable_attribute::Readonly);
+  }
+  pure fn is_declared(StringView name) const wontthrow -> bool
+  {
+    return has(name, variable_attribute::Declared);
+  }
+  pure fn is_integer(StringView name) const wontthrow -> bool
+  {
+    return has(name, variable_attribute::Integer);
+  }
+  pure fn is_lowercase(StringView name) const wontthrow -> bool
+  {
+    return has(name, variable_attribute::Lowercase);
+  }
+  pure fn is_uppercase(StringView name) const wontthrow -> bool
+  {
+    return has(name, variable_attribute::Uppercase);
+  }
+  pure fn has_case(StringView name) const wontthrow -> bool
+  {
+    return (get_bits(name) &
+            (static_cast<u8>(variable_attribute::Lowercase) |
+             static_cast<u8>(variable_attribute::Uppercase))) != 0;
+  }
+
+  fn mark_readonly(StringView name) throws -> void
+  {
+    set(name, variable_attribute::Readonly, true);
+  }
+  fn unmark_readonly(StringView name) throws -> void
+  {
+    set(name, variable_attribute::Readonly, false);
+  }
+  fn mark_declared(StringView name) throws -> void
+  {
+    set(name, variable_attribute::Declared, true);
+  }
+  fn mark_integer(StringView name) throws -> void
+  {
+    set(name, variable_attribute::Integer, true);
+  }
+  fn unmark_integer(StringView name) throws -> void
+  {
+    set(name, variable_attribute::Integer, false);
+  }
+  fn mark_lowercase(StringView name) throws -> void
+  {
+    set(name, variable_attribute::Uppercase, false);
+    set(name, variable_attribute::Lowercase, true);
+  }
+  fn unmark_lowercase(StringView name) throws -> void
+  {
+    set(name, variable_attribute::Lowercase, false);
+  }
+  fn mark_uppercase(StringView name) throws -> void
+  {
+    set(name, variable_attribute::Lowercase, false);
+    set(name, variable_attribute::Uppercase, true);
+  }
+  fn unmark_uppercase(StringView name) throws -> void
+  {
+    set(name, variable_attribute::Uppercase, false);
+  }
+
+  fn apply_case(StringView name, String &value) const wontthrow -> void
+  {
+    let const bits = get_bits(name);
+    if ((bits & static_cast<u8>(variable_attribute::Lowercase)) != 0)
+      value.lowercase_ascii();
+    else if ((bits & static_cast<u8>(variable_attribute::Uppercase)) != 0)
+      value.uppercase_ascii();
+  }
+
+  template <typename Callback>
+  fn for_each_marked(variable_attribute attribute,
+                     Callback do_callback) const throws -> void
+  {
+    m_bits.for_each([&](StringView name, u8 bits) throws {
+      if ((bits & static_cast<u8>(attribute)) != 0) do_callback(name);
+    });
+  }
+  template <typename Callback>
+  fn for_each_name(Callback do_callback) const throws -> void
+  {
+    m_bits.for_each([&](StringView name, u8) throws { do_callback(name); });
+  }
+
+  pure fn count() const wontthrow -> usize { return m_bits.count(); }
+  pure fn entries() const wontthrow -> const StringMap<u8> & { return m_bits; }
+  fn set_entries(StringMap<u8> entries) wontthrow -> void
+  {
+    m_bits = steal(entries);
+  }
+
+private:
+  StringMap<u8> m_bits{heap_allocator()};
+};
+
 class VariableStore
 {
 public:
@@ -1367,13 +1503,10 @@ public:
   {
     return m_exported_names;
   }
-  fn variable_attributes() wontthrow -> StringMap<u8> &
+  fn attributes() wontthrow -> VariableAttributes & { return m_attributes; }
+  pure fn attributes() const wontthrow -> const VariableAttributes &
   {
-    return m_variable_attributes;
-  }
-  pure fn variable_attributes() const wontthrow -> const StringMap<u8> &
-  {
-    return m_variable_attributes;
+    return m_attributes;
   }
   fn positional_params() wontthrow -> ArrayList<String> &
   {
@@ -1450,7 +1583,7 @@ private:
   StringMap<String> m_sparse_array_values{heap_allocator()};
   HashSet m_sparse_array_names{heap_allocator()};
   StringMap<exported_name_value> m_exported_names{heap_allocator()};
-  StringMap<u8> m_variable_attributes{heap_allocator()};
+  VariableAttributes m_attributes;
   ArrayList<String> m_positional_params{heap_allocator()};
   ArrayList<String> m_directory_stack{heap_allocator()};
   mutable BashArgumentArrayStorage *m_bash_argument_arrays{nullptr};
@@ -2839,28 +2972,13 @@ public:
       -> bool;
   fn note_subshell_child_exit() wontthrow -> void;
 
-  fn mark_readonly(StringView name) throws -> void;
-  fn unmark_readonly(StringView name) throws -> void;
   fn is_readonly(StringView name) const wontthrow -> bool;
-  fn get_variable_attribute_bits(StringView name) const wontthrow -> u8;
   fn is_implicitly_readonly(StringView name) const wontthrow -> bool;
   fn is_implicitly_integer(StringView name) const wontthrow -> bool;
   fn readonly_names() const throws
       -> SortedArrayList<String, order_comparator<String>>;
 
-  fn mark_declared(StringView name) throws -> void;
-  fn is_declared(StringView name) const wontthrow -> bool;
-  fn append_attributed_names(HashSet &out) const throws -> void;
-
-  fn mark_integer(StringView name) throws -> void;
-  fn unmark_integer(StringView name) throws -> void;
   fn is_integer_variable(StringView name) const wontthrow -> bool;
-  fn mark_lowercase(StringView name) throws -> void;
-  fn unmark_lowercase(StringView name) throws -> void;
-  fn is_lowercase_variable(StringView name) const wontthrow -> bool;
-  fn mark_uppercase(StringView name) throws -> void;
-  fn unmark_uppercase(StringView name) throws -> void;
-  fn is_uppercase_variable(StringView name) const wontthrow -> bool;
   /* The appended expression is parenthesized so its precedence stays
      self-contained. */
   fn append_integer_expression(String &joined,
@@ -3426,11 +3544,6 @@ protected:
      local on function return where a throw from a noexcept defer would
      terminate the shell. */
   fn assign_variable(StringView name, StringView value) throws -> void;
-
-  fn set_variable_attribute(StringView name, variable_attribute attribute,
-                            bool is_enabled) throws -> void;
-  fn apply_variable_case(StringView name, String &value) const wontthrow
-      -> void;
 
   fn force_unset_shell_variable(StringView name) throws -> void;
   /* The unset peel, the bash upvar semantics. A local declared by a caller

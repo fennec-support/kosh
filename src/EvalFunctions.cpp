@@ -982,23 +982,6 @@ cold fn EvalContext::run_subshell_exit_trap() throws -> Maybe<i32>
   return requested_status;
 }
 
-fn EvalContext::mark_readonly(StringView name) throws -> void
-{
-  set_variable_attribute(name, variable_attribute::Readonly, true);
-}
-
-fn EvalContext::unmark_readonly(StringView name) throws -> void
-{
-  set_variable_attribute(name, variable_attribute::Readonly, false);
-}
-
-fn EvalContext::get_variable_attribute_bits(StringView name) const wontthrow
-    -> u8
-{
-  let const attributes = variable_store().variable_attributes().find(name);
-  return attributes.has_value() ? *attributes.value() : 0;
-}
-
 fn EvalContext::is_implicitly_readonly(StringView name) const wontthrow -> bool
 {
   if (runtime_state().bash_dynamic_variables_enabled() &&
@@ -1019,30 +1002,24 @@ fn EvalContext::is_readonly(StringView name) const wontthrow -> bool
 {
   if (is_implicitly_readonly(name)) return true;
 
-  return (get_variable_attribute_bits(name) &
-          static_cast<u8>(variable_attribute::Readonly)) != 0;
+  return variable_store().attributes().is_readonly(name);
 }
 
 fn EvalContext::readonly_names() const throws
     -> SortedArrayList<String, order_comparator<String>>
 {
   let out = ArrayList<String>{heap_allocator()};
-  out.reserve(variable_store().variable_attributes().count() +
+  out.reserve(variable_store().attributes().count() +
               countof(RESTRICTED_READONLY_KEYS) +
               countof(BASH_IMPLICIT_READONLY_KEYS));
-  variable_store().variable_attributes().for_each(
-      [&](StringView name, u8 attributes) {
-        if ((attributes & static_cast<u8>(variable_attribute::Readonly)) != 0)
-          out.push_managed(name);
-      });
+  variable_store().attributes().for_each_marked(
+      variable_attribute::Readonly,
+      [&](StringView name) { out.push_managed(name); });
 
   let const do_push_implicit = [&](const PackedStringKey &key) throws {
     let name = key.to_string();
-    if ((get_variable_attribute_bits(name.view()) &
-         static_cast<u8>(variable_attribute::Readonly)) == 0)
-    {
+    if (!variable_store().attributes().is_readonly(name.view()))
       out.push(steal(name));
-    }
   };
 
   if (runtime_state().bash_dynamic_variables_enabled())
@@ -1056,33 +1033,6 @@ fn EvalContext::readonly_names() const throws
   return steal(out).make_sorted(sort_order::ascending);
 }
 
-fn EvalContext::mark_declared(StringView name) throws -> void
-{
-  set_variable_attribute(name, variable_attribute::Declared, true);
-}
-
-fn EvalContext::is_declared(StringView name) const wontthrow -> bool
-{
-  return (get_variable_attribute_bits(name) &
-          static_cast<u8>(variable_attribute::Declared)) != 0;
-}
-
-fn EvalContext::append_attributed_names(HashSet &out) const throws -> void
-{
-  variable_store().variable_attributes().for_each(
-      [&](StringView name, u8) { out.add(name); });
-}
-
-fn EvalContext::mark_integer(StringView name) throws -> void
-{
-  set_variable_attribute(name, variable_attribute::Integer, true);
-}
-
-fn EvalContext::unmark_integer(StringView name) throws -> void
-{
-  set_variable_attribute(name, variable_attribute::Integer, false);
-}
-
 fn EvalContext::is_implicitly_integer(StringView name) const wontthrow -> bool
 {
   return runtime_state().bash_dynamic_variables_enabled() &&
@@ -1094,73 +1044,7 @@ fn EvalContext::is_integer_variable(StringView name) const wontthrow -> bool
 {
   if (is_implicitly_integer(name)) return true;
 
-  return (get_variable_attribute_bits(name) &
-          static_cast<u8>(variable_attribute::Integer)) != 0;
-}
-
-fn EvalContext::mark_lowercase(StringView name) throws -> void
-{
-  set_variable_attribute(name, variable_attribute::Uppercase, false);
-  set_variable_attribute(name, variable_attribute::Lowercase, true);
-}
-
-fn EvalContext::unmark_lowercase(StringView name) throws -> void
-{
-  set_variable_attribute(name, variable_attribute::Lowercase, false);
-}
-
-fn EvalContext::is_lowercase_variable(StringView name) const wontthrow -> bool
-{
-  return (get_variable_attribute_bits(name) &
-          static_cast<u8>(variable_attribute::Lowercase)) != 0;
-}
-
-fn EvalContext::mark_uppercase(StringView name) throws -> void
-{
-  set_variable_attribute(name, variable_attribute::Lowercase, false);
-  set_variable_attribute(name, variable_attribute::Uppercase, true);
-}
-
-fn EvalContext::unmark_uppercase(StringView name) throws -> void
-{
-  set_variable_attribute(name, variable_attribute::Uppercase, false);
-}
-
-fn EvalContext::is_uppercase_variable(StringView name) const wontthrow -> bool
-{
-  return (get_variable_attribute_bits(name) &
-          static_cast<u8>(variable_attribute::Uppercase)) != 0;
-}
-
-fn EvalContext::set_variable_attribute(StringView name,
-                                       variable_attribute attribute,
-                                       bool is_enabled) throws -> void
-{
-  let const mask = static_cast<u8>(attribute);
-
-  if (is_enabled) {
-    variable_store().variable_attributes().get_or_create(name, u8{0}) |= mask;
-    return;
-  }
-
-  let attributes = variable_store().variable_attributes().find(name);
-  if (!attributes.has_value()) return;
-
-  *attributes.value() &= static_cast<u8>(~mask);
-  if (*attributes.value() == 0)
-    variable_store().variable_attributes().erase(name);
-}
-
-fn EvalContext::apply_variable_case(StringView name,
-                                    String &value) const wontthrow -> void
-{
-  let const attribute_entry = variable_store().variable_attributes().find(name);
-  let const attributes =
-      attribute_entry.has_value() ? *attribute_entry.value() : 0;
-  if ((attributes & static_cast<u8>(variable_attribute::Lowercase)) != 0)
-    value.lowercase_ascii();
-  else if ((attributes & static_cast<u8>(variable_attribute::Uppercase)) != 0)
-    value.uppercase_ascii();
+  return variable_store().attributes().is_integer(name);
 }
 
 fn EvalContext::append_integer_expression(String &joined,

@@ -378,9 +378,9 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
   if (elements.has_value() || is_directory_stack || is_argument_array) {
     let line = String{cxt.scratch_allocator(), "declare -a"};
     if (cxt.is_integer_variable(name)) line += 'i';
-    if (cxt.is_lowercase_variable(name)) line += 'l';
+    if (cxt.variable_store().attributes().is_lowercase(name)) line += 'l';
     if (cxt.is_readonly(name)) line += 'r';
-    if (cxt.is_uppercase_variable(name)) line += 'u';
+    if (cxt.variable_store().attributes().is_uppercase(name)) line += 'u';
     line += ' ';
     line.append(name);
     line += "=(";
@@ -436,9 +436,9 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
     let const values = cxt.associative_values(name);
     let line = String{cxt.scratch_allocator(), "declare -A"};
     if (cxt.is_integer_variable(name)) line += 'i';
-    if (cxt.is_lowercase_variable(name)) line += 'l';
+    if (cxt.variable_store().attributes().is_lowercase(name)) line += 'l';
     if (cxt.is_readonly(name)) line += 'r';
-    if (cxt.is_uppercase_variable(name)) line += 'u';
+    if (cxt.variable_store().attributes().is_uppercase(name)) line += 'u';
     line += ' ';
     line.append(name);
     line += "=(";
@@ -460,9 +460,9 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
   if (const Maybe<String> value = cxt.get_variable_value(name)) {
     let attribute = String{cxt.scratch_allocator(), "-"};
     if (cxt.is_integer_variable(name)) attribute += 'i';
-    if (cxt.is_lowercase_variable(name)) attribute += 'l';
+    if (cxt.variable_store().attributes().is_lowercase(name)) attribute += 'l';
     if (cxt.is_readonly(name)) attribute += 'r';
-    if (cxt.is_uppercase_variable(name)) attribute += 'u';
+    if (cxt.variable_store().attributes().is_uppercase(name)) attribute += 'u';
     if (os::get_environment_variable(name).has_value()) attribute += 'x';
     if (attribute.count() == 1) attribute += '-';
 
@@ -478,15 +478,18 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
     return true;
   }
 
-  if (cxt.is_integer_variable(name) || cxt.is_lowercase_variable(name) ||
-      cxt.is_uppercase_variable(name) || cxt.is_readonly(name) ||
-      cxt.is_declared(name) || cxt.scope_store().has_current_local(name))
+  if (cxt.is_integer_variable(name) ||
+      cxt.variable_store().attributes().is_lowercase(name) ||
+      cxt.variable_store().attributes().is_uppercase(name) ||
+      cxt.is_readonly(name) ||
+      cxt.variable_store().attributes().is_declared(name) ||
+      cxt.scope_store().has_current_local(name))
   {
     let attribute = String{cxt.scratch_allocator(), "-"};
     if (cxt.is_integer_variable(name)) attribute += 'i';
-    if (cxt.is_lowercase_variable(name)) attribute += 'l';
+    if (cxt.variable_store().attributes().is_lowercase(name)) attribute += 'l';
     if (cxt.is_readonly(name)) attribute += 'r';
-    if (cxt.is_uppercase_variable(name)) attribute += 'u';
+    if (cxt.variable_store().attributes().is_uppercase(name)) attribute += 'u';
     if (cxt.is_exported(name)) attribute += 'x';
     if (attribute.count() == 1) attribute += '-';
 

@@ -240,10 +240,10 @@ fn EvalContext::set_array_element(StringView name, usize index,
   }
 
   let adjusted = String{scratch_allocator()};
-  if (is_lowercase_variable(name) || is_uppercase_variable(name)) rarely
+  if (variable_store().attributes().has_case(name)) rarely
     {
       adjusted.append(value);
-      apply_variable_case(name, adjusted);
+      variable_store().attributes().apply_case(name, adjusted);
       value = adjusted.view();
     }
 
@@ -459,10 +459,10 @@ fn EvalContext::set_associative_element(StringView name, StringView key,
   }
 
   let adjusted = String{scratch_allocator()};
-  if (is_lowercase_variable(name) || is_uppercase_variable(name)) rarely
+  if (variable_store().attributes().has_case(name)) rarely
     {
       adjusted.append(value);
-      apply_variable_case(name, adjusted);
+      variable_store().attributes().apply_case(name, adjusted);
       value = adjusted.view();
     }
 
@@ -669,13 +669,11 @@ fn EvalContext::declare_local(StringView name, bool should_inherit_value) throws
     }
   }
 
-  let const attributes = variable_store().variable_attributes().find(name);
-  let const previous_attributes =
-      attributes.has_value() ? *attributes.value() : u8{0};
+  let const previous_attributes = variable_store().attributes().get_bits(name);
   let const previous_special_definition_location =
       special_variable_definition_location(name);
-  if (!should_inherit_value) variable_store().variable_attributes().erase(name);
-  unmark_readonly(name);
+  if (!should_inherit_value) variable_store().attributes().erase(name);
+  variable_store().attributes().unmark_readonly(name);
 
   /* The export mark is left in place, so a plain local keeps any inherited
      export until the body reassigns the name. */

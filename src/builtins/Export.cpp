@@ -210,7 +210,8 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     LOG(All, "export moving '%s' into the environment", name.c_str());
     let const environment_name = os::get_environment_spelling(name.view());
     cxt.unset_shell_variable(name);
-    if (is_integer_name) cxt.mark_integer(name.view());
+    if (is_integer_name)
+      cxt.variable_store().attributes().mark_integer(name.view());
     cxt.record_environment_change(environment_name.view());
     os::set_environment_variable(environment_name.view(), value);
     cxt.mark_exported(environment_name.view());

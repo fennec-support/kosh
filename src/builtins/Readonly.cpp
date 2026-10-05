@@ -141,9 +141,9 @@ fn Readonly::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (parts.get_value().has_value()) {
       cxt.set_shell_variable(parts.get_name(), *parts.get_value());
-      cxt.mark_readonly(parts.get_name());
+      cxt.variable_store().attributes().mark_readonly(parts.get_name());
     } else {
-      cxt.mark_readonly(arg);
+      cxt.variable_store().attributes().mark_readonly(arg);
     }
   }
 
