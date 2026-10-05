@@ -1181,6 +1181,12 @@ struct substring_bounds
   i64 end;
 };
 
+struct quoted_empty_mark
+{
+  usize piece;
+  usize offset;
+};
+
 fn compute_substring_bounds(i64 value_count, i64 offset, Maybe<i64> length,
                             substring_subject subject) throws
     -> substring_bounds;
@@ -3393,7 +3399,7 @@ public:
 
   fn expand_modifier_word_fields(
       StringView word, bool is_outer_quoted, Bitset &active_out,
-      ArrayList<usize> &break_out, Bitset &forced_out,
+      ArrayList<usize> &break_out, ArrayList<quoted_empty_mark> &mark_out,
       const SourceLocation *source_location) throws -> String;
 
   class ModifierWordExpander;

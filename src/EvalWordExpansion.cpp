@@ -169,34 +169,49 @@ hot fn EvalContext::expand_word(const Word &word) throws
 
     let active = Bitset{scratch};
     let break_offsets = ArrayList<usize>{scratch};
-    let forced = Bitset{scratch};
+    let marks = ArrayList<quoted_empty_mark>{scratch};
     let const text = expand_modifier_word_fields(
-        word, is_quoted, active, break_offsets, forced, word_location);
+        word, is_quoted, active, break_offsets, marks, word_location);
     usize piece_start = 0;
+    usize mark_index = 0;
     for (usize piece = 0; piece <= break_offsets.count(); piece++) {
       let const piece_end =
           piece < break_offsets.count() ? break_offsets[piece] : text.count();
       if (piece > 0) do_flush();
-      if (is_quoted || forced[piece]) {
-        do_append_run(StringView{}, false);
-      }
+      if (is_quoted) do_append_run(StringView{}, false);
 
-      usize run_start = piece_start;
-      while (run_start < piece_end) {
-        let const is_active = active[run_start] && !is_quoted;
-        usize run_end = run_start + 1;
-        while (run_end < piece_end &&
-               (active[run_end] && !is_quoted) == is_active)
+      usize position = piece_start;
+      for (;;) {
+        while (mark_index < marks.count() && marks[mark_index].piece == piece &&
+               marks[mark_index].offset == position)
         {
-          run_end++;
+          do_append_run(StringView{}, false);
+          mark_index++;
         }
+        if (position >= piece_end) break;
 
-        let const run = StringView{text.data() + run_start, run_end - run_start};
-        if (is_active)
-          do_append_split_run(run, true);
-        else
-          do_append_run(run, false);
-        run_start = run_end;
+        let const has_mark =
+            mark_index < marks.count() && marks[mark_index].piece == piece;
+        let const run_limit = has_mark ? marks[mark_index].offset : piece_end;
+        usize run_start = position;
+        while (run_start < run_limit) {
+          let const is_active = active[run_start] && !is_quoted;
+          usize run_end = run_start + 1;
+          while (run_end < run_limit &&
+                 (active[run_end] && !is_quoted) == is_active)
+          {
+            run_end++;
+          }
+
+          let const run =
+              StringView{text.data() + run_start, run_end - run_start};
+          if (is_active)
+            do_append_split_run(run, true);
+          else
+            do_append_run(run, false);
+          run_start = run_end;
+        }
+        position = run_limit;
       }
       piece_start = piece_end;
     }
@@ -654,10 +669,16 @@ hot fn EvalContext::expand_word(const Word &word) throws
         }
       }
       usize alternate_name_end = 0;
-      while (alternate_name_end < segment_text.length &&
-             lexer::is_variable_name(segment_text[alternate_name_end]))
+      if (segment_text[0] == '#' || segment_text[0] == '?' ||
+          segment_text[0] == '-' || segment_text[0] == '$')
       {
-        alternate_name_end++;
+        alternate_name_end = 1;
+      } else {
+        while (alternate_name_end < segment_text.length &&
+               lexer::is_variable_name(segment_text[alternate_name_end]))
+        {
+          alternate_name_end++;
+        }
       }
       if (alternate_name_end > 0 && alternate_name_end < segment_text.length) {
         let const rest = segment_text.substring(alternate_name_end);
