@@ -20,8 +20,8 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[-EFivrnhcqslx] [--color[=when]] [-e pattern] [-f file] "
-                   "[pattern] [file ...]");
+HELP_SYNOPSIS_DECL("[-EFivrnhcqslx] [--color[=when]] [--one-file-system] "
+                   "[-e pattern] [-f file] [pattern] [file ...]");
 
 HELP_DESCRIPTION_DECL(
     "The grep utility prints the lines of each file that match a pattern.");
@@ -45,6 +45,8 @@ FLAG(GREP_LINE_REGEXP, Bool, 'x', "line-regexp",
 FLAG(GREP_IGNORE_CASE, Bool, 'i', "", "Match without regard to letter case.");
 FLAG(GREP_INVERT, Bool, 'v', "", "Print the lines that do not match.");
 FLAG(GREP_RECURSIVE, Bool, 'r', "recursive", "Search directories recursively.");
+FLAG(GREP_ONE_FILE_SYSTEM, Bool, '\0', "one-file-system",
+     "Do not descend into directories on other file systems with -r.");
 FLAG(GREP_LINE_NUMBER, Bool, 'n', "line-number",
      "Prefix matching lines with numbers.");
 FLAG(GREP_NO_FILENAME, Bool, 'h', "no-filename",
@@ -246,15 +248,17 @@ static fn find_required_regex_literal(StringView pattern,
   return required_literal;
 }
 
-static fn collect_recursive_sources(const ExecContext &ec, EvalContext &cxt,
-                                    const Path &path,
-                                    Path::entry_kind path_kind,
-                                    Allocator allocator,
-                                    ArrayList<Path> &storage, i32 &status,
-                                    bool should_report_errors) throws -> void
+static fn
+collect_recursive_sources(const ExecContext &ec, EvalContext &cxt,
+                          const Path &path, Path::entry_kind path_kind,
+                          Allocator allocator, ArrayList<Path> &storage,
+                          i32 &status, bool should_report_errors,
+                          const u64 *operand_device_id = nullptr) throws -> void
 {
+  let const is_one_file_system = FLAG_GREP_ONE_FILE_SYSTEM.is_enabled();
+  os::file_status file_status{};
+  bool has_file_status = false;
   if (path_kind == Path::entry_kind::Unknown) {
-    os::file_status file_status{};
     if (!os::stat_path(path.view(), file_status)) {
       if (should_report_errors) {
         report_soft_koshkit_util_error(ec, cxt, "grep",
@@ -264,6 +268,8 @@ static fn collect_recursive_sources(const ExecContext &ec, EvalContext &cxt,
       status = 2;
       return;
     }
+
+    has_file_status = true;
 
     switch (os::file_type_letter(file_status.mode)) {
     case 'd': path_kind = Path::entry_kind::Directory; break;
@@ -275,6 +281,21 @@ static fn collect_recursive_sources(const ExecContext &ec, EvalContext &cxt,
   if (path_kind != Path::entry_kind::Directory) {
     if (path_kind == Path::entry_kind::Regular) storage.push(path.clone());
     return;
+  }
+
+  u64 current_device_id = 0;
+  if (is_one_file_system) {
+    if (!has_file_status)
+      has_file_status = os::stat_path(path.view(), file_status);
+
+    if (has_file_status) {
+      if (operand_device_id != nullptr &&
+          file_status.device_id != *operand_device_id)
+        return;
+
+      current_device_id = file_status.device_id;
+      if (operand_device_id == nullptr) operand_device_id = &current_device_id;
+    }
   }
 
   let children = Path::read_directory_typed(path, allocator);
@@ -359,7 +380,8 @@ static fn collect_recursive_sources(const ExecContext &ec, EvalContext &cxt,
     let const kind = (*children)[index].kind;
     if (kind == Path::entry_kind::Directory)
       collect_recursive_sources(ec, cxt, child_paths[index], kind, allocator,
-                                storage, status, should_report_errors);
+                                storage, status, should_report_errors,
+                                operand_device_id);
     else if (kind == Path::entry_kind::Regular)
       storage.push(steal(child_paths[index]));
   }

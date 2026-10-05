@@ -89,6 +89,36 @@ echo "--- recursive bounded to one level ---"
 "$BIN" -c 'koshkit ls -R -L 1 sub'
 echo "--- recursive reaches an empty directory ---"
 "$BIN" -c 'koshkit ls -R empty'
+echo "--- one file system changes nothing on one file system ---"
+"$BIN" -c 'koshkit ls -R --one-file-system sub'
+"$BIN" -c 'koshkit ls --tree --one-file-system sub'
+echo "--- chmod one file system changes nothing on one file system ---"
+mkdir -p chmod-tree/inner
+: > chmod-tree/a
+: > chmod-tree/inner/b
+chmod 644 chmod-tree/a chmod-tree/inner/b
+"$BIN" -c 'koshkit chmod -R --one-file-system go-rwx chmod-tree'
+"$BIN" -c 'koshkit ls -l chmod-tree/a chmod-tree/inner/b | koshkit cut -d " " -f 1'
+if [ "${TARGET:-$(uname -s)}" = Linux ] && [ -d /dev/pts ]; then
+  plain_tree=$("$BIN" -c 'koshkit ls --tree -L 2 /dev' 2>/dev/null)
+  bounded_tree=$("$BIN" -c 'koshkit ls --tree -L 2 --one-file-system /dev' 2>/dev/null)
+  plain_recursive=$("$BIN" -c 'koshkit ls -R -L 2 /dev' 2>/dev/null)
+  bounded_recursive=$("$BIN" -c 'koshkit ls -R -L 2 --one-file-system /dev' 2>/dev/null)
+  case $plain_recursive in
+    */dev/pts:*) ;;
+    *) echo "ls-one-file-system=plain-recursive-missing-pts" ;;
+  esac
+  case $bounded_recursive in
+    */dev/pts:*) echo "ls-one-file-system=recursive-entered-pts" ;;
+  esac
+  case $bounded_recursive in
+    */dev:*) ;;
+    *) echo "ls-one-file-system=recursive-lost-operand" ;;
+  esac
+  if [ "$plain_tree" = "$bounded_tree" ]; then
+    echo "ls-one-file-system=tree-not-bounded"
+  fi
+fi
 echo "--- invalid level ---"
 "$BIN" -c 'koshkit ls -L 0 sub' 2>/dev/null
 echo "rc=$?"

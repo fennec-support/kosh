@@ -20,7 +20,8 @@
 FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[path ...] [-name glob] [-iname glob] [-type fdl] "
-                   "[-maxdepth n] [-mindepth n] [-print] [-print0] "
+                   "[-maxdepth n] [-mindepth n] [-xdev] [-mount] [-print] "
+                   "[-print0] "
                    "[-exec command [argument ...] {} ;|+]");
 
 HELP_DESCRIPTION_DECL(
@@ -44,6 +45,7 @@ struct find_options
   char type_filter{0};
   i64 max_depth{-1};
   i64 min_depth{0};
+  bool should_stay_on_device{false};
 };
 
 enum class find_action_kind : uchar
@@ -74,6 +76,7 @@ enum class find_predicate_kind : uchar
   Type,
   MaximumDepth,
   MinimumDepth,
+  StayOnDevice,
 };
 
 static constexpr static_string_entry<find_predicate_kind>
@@ -87,6 +90,8 @@ static constexpr static_string_entry<find_predicate_kind>
         {SSK("-type"),     find_predicate_kind::Type        },
         {SSK("-maxdepth"), find_predicate_kind::MaximumDepth},
         {SSK("-mindepth"), find_predicate_kind::MinimumDepth},
+        {SSK("-xdev"),     find_predicate_kind::StayOnDevice},
+        {SSK("-mount"),    find_predicate_kind::StayOnDevice},
 };
 static constexpr StaticStringMap FIND_PREDICATES{FIND_PREDICATE_ENTRIES};
 constexpr usize FIND_OUTPUT_BUFFER_BYTE_COUNT = 64 * 1024;
@@ -214,6 +219,9 @@ public:
       return;
     }
 
+    if (m_options.should_stay_on_device && !is_on_root_device(path_text, depth))
+      return;
+
     let children =
         Path::read_directory_typed(Path{path_text, m_allocator}, m_allocator);
     if (!children.has_value()) {
@@ -281,6 +289,16 @@ public:
   }
 
 private:
+  fn is_on_root_device(StringView path_text, usize depth) wontthrow -> bool
+  {
+    os::file_status status{};
+    if (!os::stat_path(path_text, status)) return true;
+
+    if (depth == 0) m_root_device_id = status.device_id;
+
+    return status.device_id == m_root_device_id;
+  }
+
   static pure fn get_filename(StringView path_text) wontthrow -> StringView
   {
     usize filename_end = path_text.length;
@@ -565,6 +583,7 @@ private:
   String &m_output;
   i32 &m_exit_status;
   Allocator m_allocator;
+  u64 m_root_device_id{0};
   ArrayList<Path> m_unknown_paths{heap_allocator()};
   ArrayList<os::file_status> m_unknown_statuses{heap_allocator()};
   ArrayList<usize> m_unknown_indices{heap_allocator()};
@@ -613,7 +632,7 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
                                   String{cxt.scratch_allocator(), predicate} +
                                   "'",
                               "Use `-name`, `-iname`, `-type`, `-maxdepth`, "
-                              "`-mindepth`, or `-print`");
+                              "`-mindepth`, `-xdev`, or `-print`");
       return 1;
     }
 
@@ -735,6 +754,9 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
       index++;
       break;
     }
+    case find_predicate_kind::StayOnDevice:
+      options.should_stay_on_device = true;
+      break;
     }
   }
 

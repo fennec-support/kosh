@@ -21,7 +21,7 @@
 FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-aA1dgFhklnoprRSt] [-L level] [--tree] "
-                   "[path ...]");
+                   "[--one-file-system] [path ...]");
 
 HELP_DESCRIPTION_DECL("The ls utility lists the names in each directory.");
 
@@ -54,6 +54,9 @@ FLAG(LS_TREE, Bool, '\0', "tree",
      "Draw every reached subdirectory as an indented tree.");
 FLAG(LS_LEVEL, String, 'L', "level",
      "Descend at most this many levels with -R and --tree.");
+FLAG(LS_ONE_FILE_SYSTEM, Bool, '\0', "one-file-system",
+     "Do not descend into directories on other file systems with -R and "
+     "--tree.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(LS);
@@ -626,10 +629,23 @@ static pure fn is_dot_or_dotdot(StringView name) wontthrow -> bool
   return name == StringView{"."} || name == StringView{".."};
 }
 
+static fn is_on_operand_device(const Path &path, const listing_entry &entry,
+                               const u64 *operand_device_id) wontthrow -> bool
+{
+  if (operand_device_id == nullptr) return true;
+
+  if (entry.has_status) return entry.status.device_id == *operand_device_id;
+
+  os::file_status status{};
+  if (!os::stat_path(path.view(), status)) return true;
+
+  return status.device_id == *operand_device_id;
+}
+
 static fn render_tree_level(StringView directory,
                             const listing_options &options, usize depth,
-                            String &prefix, String &output,
-                            Allocator allocator) throws -> void
+                            const u64 *operand_device_id, String &prefix,
+                            String &output, Allocator allocator) throws -> void
 {
   if (os::INTERRUPT_REQUESTED) return;
   let const entries =
@@ -652,12 +668,14 @@ static fn render_tree_level(StringView directory,
         (!options.has_depth_limit || depth + 1 < options.max_depth);
     if (!is_descending) continue;
 
-    let const kept_length = prefix.count();
-    prefix += connector.continuation;
     let child = Path{directory, allocator};
     child.append(entry.name.view());
-    render_tree_level(child.view(), options, depth + 1, prefix, output,
-                      allocator);
+    if (!is_on_operand_device(child, entry, operand_device_id)) continue;
+
+    let const kept_length = prefix.count();
+    prefix += connector.continuation;
+    render_tree_level(child.view(), options, depth + 1, operand_device_id,
+                      prefix, output, allocator);
     prefix.truncate(kept_length);
   }
 }
@@ -678,6 +696,7 @@ struct ls_run
 
 static fn render_directory_block(StringView directory,
                                  const listing_options &options, usize depth,
+                                 const u64 *operand_device_id,
                                  bool should_print_header, ls_run &run,
                                  Allocator allocator) throws -> void
 {
@@ -713,8 +732,10 @@ static fn render_directory_block(StringView directory,
 
     let child = Path{directory, allocator};
     child.append(entry.name.view());
-    render_directory_block(child.view(), options, depth + 1, true, run,
-                           allocator);
+    if (!is_on_operand_device(child, entry, operand_device_id)) continue;
+
+    render_directory_block(child.view(), options, depth + 1, operand_device_id,
+                           true, run, allocator);
   }
 }
 
@@ -924,9 +945,15 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
 
   for (let const &target : sorted_dir_targets) {
     if (os::INTERRUPT_REQUESTED) break;
+    os::file_status operand_status{};
+    let const has_operand_device =
+        FLAG_LS_ONE_FILE_SYSTEM.is_enabled() &&
+        os::stat_path_following(target, operand_status);
+    let const *operand_device_id =
+        has_operand_device ? &operand_status.device_id : nullptr;
     if (!options.is_tree) {
-      render_directory_block(target, options, 0, should_print_headers, run,
-                             allocator);
+      render_directory_block(target, options, 0, operand_device_id,
+                             should_print_headers, run, allocator);
       continue;
     }
 
@@ -936,7 +963,8 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
     run.output += '\n';
 
     let prefix = String{allocator};
-    render_tree_level(target, options, 0, prefix, run.output, allocator);
+    render_tree_level(target, options, 0, operand_device_id, prefix, run.output,
+                      allocator);
   }
 
   ec.print_to_stdout(run.output);

@@ -181,6 +181,8 @@ echo "--- grep -rn ---"
 "$BIN" -c 'koshkit grep -rn hello grep-tree'
 echo "--- grep long recursive flags ---"
 "$BIN" -c 'koshkit grep --recursive --line-number --no-filename hello grep-tree'
+echo "--- grep one file system changes nothing on one file system ---"
+"$BIN" -c 'koshkit grep -rn --one-file-system hello grep-tree'
 echo "--- grep stdin ---"
 printf 'pear\nplum\n' | "$BIN" -c 'koshkit grep plum'
 echo "--- grep repeated stdin ---"

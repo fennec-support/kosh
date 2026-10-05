@@ -16,12 +16,14 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[-R] mode file ...");
+HELP_SYNOPSIS_DECL("[-R] [--one-file-system] mode file ...");
 
 HELP_DESCRIPTION_DECL("The chmod utility changes file permission modes.");
 
 FLAG(CHMOD_RECURSIVE, Bool, 'R', "recursive",
      "Change directories and their contents recursively.");
+FLAG(CHMOD_ONE_FILE_SYSTEM, Bool, '\0', "one-file-system",
+     "Skip directories on file systems other than the one of each operand.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Chmod);
@@ -37,7 +39,8 @@ enum class chmod_traversal_mode : u8
 static fn change_mode(const ExecContext &ec, EvalContext &cxt, const Path &path,
                       StringView expression,
                       const os::file_status *known_status,
-                      chmod_traversal_mode traversal_mode) throws -> bool
+                      chmod_traversal_mode traversal_mode,
+                      const u64 *operand_device_id) throws -> bool
 {
   os::file_status status{};
   if (known_status != nullptr) {
@@ -48,6 +51,9 @@ static fn change_mode(const ExecContext &ec, EvalContext &cxt, const Path &path,
                                        "': " + os::last_system_error_message());
     return false;
   }
+
+  if (operand_device_id != nullptr && status.device_id != *operand_device_id)
+    return true;
 
   let const parsed = utils::parse_file_mode(
       expression, status.mode, os::get_file_creation_mask(),
@@ -80,6 +86,10 @@ static fn change_mode(const ExecContext &ec, EvalContext &cxt, const Path &path,
     return false;
   }
 
+  let const root_device_id =
+      operand_device_id != nullptr ? *operand_device_id : status.device_id;
+  let const *children_device_id =
+      FLAG_CHMOD_ONE_FILE_SYSTEM.is_enabled() ? &root_device_id : nullptr;
   for (let const &child_entry : *children) {
     if (os::INTERRUPT_REQUESTED) return did_succeed;
     let const child_scratch = cxt.expansion_store().scratch_arena().mark();
@@ -98,7 +108,7 @@ static fn change_mode(const ExecContext &ec, EvalContext &cxt, const Path &path,
             ? &child_entry.status
             : nullptr;
     if (!change_mode(ec, cxt, child, expression, child_status,
-                     chmod_traversal_mode::Recursive))
+                     chmod_traversal_mode::Recursive, children_device_id))
       did_succeed = false;
   }
 
@@ -140,7 +150,8 @@ fn Chmod::execute(const ExecContext &ec, EvalContext &cxt,
                      expression, nullptr,
                      FLAG_CHMOD_RECURSIVE.is_enabled()
                          ? chmod_traversal_mode::Recursive
-                         : chmod_traversal_mode::SinglePath))
+                         : chmod_traversal_mode::SinglePath,
+                     nullptr))
       status = 1;
     if (os::INTERRUPT_REQUESTED) return 130;
   }

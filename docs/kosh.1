@@ -1714,6 +1714,18 @@ option changes a link instead of its target. The
 option stops a recursion from descending into a directory on a file system
 other than the one of its operand. The directory itself is still changed.
 .TP
+.B chmod
+Symbolic or octal modes are applied to each file. The
+.BR \-R ", " \-\-recursive
+option changes directories and their contents without following symbolic
+links. The
+.B \-\-one\-file\-system
+option skips every directory below an operand that is on a file system other
+than the one of that operand, together with its contents. It has no short form
+because
+.B \-x
+is a mode operand.
+.TP
 .B cp
 Files and directory trees are copied. The
 .BR \-r ,
@@ -1872,6 +1884,10 @@ Sorted trees are walked with
 and
 .BR \-print0 .
 The
+.BR \-xdev " and " \-mount
+primaries are always true and keep the walk from descending into a directory on
+a file system other than the one of its starting point. The directory itself is
+still matched. The
 .B \-exec
 action runs a command that ends at a
 .B ;
@@ -1934,7 +1950,14 @@ Output is never colored without the option. The
 and
 .BR \-h
 options ignore case, invert matches, recurse into directories, show line
-numbers, and suppress file-name prefixes. The combined
+numbers, and suppress file-name prefixes. The
+.B \-\-one\-file\-system
+option makes
+.B \-r
+skip every directory on a file system other than the one of its operand. It has
+no short form because
+.B \-x
+matches whole lines. The combined
 .B \-rnh
 form is accepted, and options may follow the operands.
 A pattern is a basic regular expression. The
@@ -2090,7 +2113,16 @@ option lists every subdirectory that is reached, and
 .B \-\-tree
 prints an indented directory tree. The
 .B \-L
-option sets the maximum recursion depth. Names are colored by file
+option sets the maximum recursion depth. The
+.B \-\-one\-file\-system
+option keeps
+.B \-R
+and
+.B \-\-tree
+from descending into a directory on a file system other than the one of its
+operand, and the directory is still listed. It has no short form because
+.B \-x
+lists entries across. Names are colored by file
 type when the standard output is a terminal. The
 .B \-\-color
 option accepts always, auto, and never.

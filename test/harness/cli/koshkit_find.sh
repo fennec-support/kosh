@@ -139,3 +139,25 @@ echo "--- find -print0 separates paths with null bytes ---"
 echo "--- find -exec without a terminator ---"
 "$BIN" -c 'koshkit find a -exec echo {}; printf "status=%s\\n" "$?"' 2>&1
 "$BIN" -c 'koshkit find a -exec echo \+; printf "status=%s\\n" "$?"' 2>&1
+echo "--- find -xdev and -mount change nothing on one file system ---"
+"$BIN" -c 'koshkit find a -xdev'
+"$BIN" -c 'koshkit find a -mount -type f -name "*.txt"'
+if [ "${TARGET:-$(uname -s)}" = Linux ] && [ -d /dev/pts ]; then
+  plain_output=$("$BIN" -c 'koshkit find /dev' 2>/dev/null)
+  xdev_output=$("$BIN" -c 'koshkit find /dev -xdev' 2>/dev/null)
+  mount_output=$("$BIN" -c 'koshkit find /dev -mount' 2>/dev/null)
+  case $plain_output in
+    */dev/pts/?*) ;;
+    *) echo "find-xdev-device=plain-missing-pts" ;;
+  esac
+  case $xdev_output in
+    */dev/pts/?*) echo "find-xdev-device=xdev-entered-pts" ;;
+  esac
+  case $mount_output in
+    */dev/pts/?*) echo "find-xdev-device=mount-entered-pts" ;;
+  esac
+  case $xdev_output in
+    */dev/pts*) ;;
+    *) echo "find-xdev-device=xdev-lost-mount-point" ;;
+  esac
+fi

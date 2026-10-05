@@ -241,7 +241,7 @@ _koshkit_util_flags ()
     ;;
     ls)
       echo \
-        "-a -A -1 -d -g -k -l -h -n -o -p -F -t -S -r -R -L --classify --recursive --level --tree"
+        "-a -A -1 -d -g -k -l -h -n -o -p -F -t -S -r -R -L --classify --recursive --level --one-file-system --tree"
     ;;
     nproc)
       echo "--all --ignore="
@@ -325,7 +325,7 @@ _koshkit_util_flags ()
       echo "-c -C -d -s"
     ;;
     grep)
-      echo "-i -v -r -n -h -E -F -e -f -c -l -q -s -x -rnh --recursive --line-number --no-filename --extended-regexp --fixed-strings --regexp --file --count --files-with-matches --quiet --no-messages --line-regexp --color"
+      echo "-i -v -r -n -h -E -F -e -f -c -l -q -s -x -rnh --recursive --line-number --no-filename --extended-regexp --fixed-strings --regexp --file --count --files-with-matches --quiet --no-messages --line-regexp --one-file-system --color"
     ;;
     sort)
       echo "-b -c -C -d -f -i -k -m -n -o -r -s -t -u"
@@ -344,7 +344,7 @@ _koshkit_util_flags ()
         "-f --file -C --directory -B --always-make -k --keep-going -e --environment-overrides -i --ignore-errors -S --stop -n --just-print -j --jobs -p --print-data-base -q --question -r --no-builtin-rules -s --silent -t --touch"
     ;;
     find)
-      echo "-name -iname -type -maxdepth -mindepth -print -print0 -exec"
+      echo "-name -iname -type -maxdepth -mindepth -xdev -mount -print -print0 -exec"
     ;;
     flock)
       echo "--transaction-held-lock"
@@ -359,7 +359,7 @@ _koshkit_util_flags ()
       echo "-H --dereference-arguments -L --dereference -P --physical -R --recursive -h --no-dereference -x --one-file-system"
     ;;
     chmod)
-      echo "-R --recursive"
+      echo "-R --recursive --one-file-system"
     ;;
     cmp)
       echo "-l --verbose -s --silent"

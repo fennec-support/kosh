@@ -69,7 +69,7 @@ long/abcdefghijklmnopqrstuvwxyz/segment/leaf
 -c:1:16: error: koshkit find: unknown predicate '-bogus'.
      1 |  koshkit find . -bogus
        |                 ^~~~~~
-note: Use `-name`, `-iname`, `-type`, `-maxdepth`, `-mindepth`, or `-print`.
+note: Use `-name`, `-iname`, `-type`, `-maxdepth`, `-mindepth`, `-xdev`, or `-print`.
 --- find missing -name argument ---
 -c:1:16: error: koshkit find: -name expects a pattern.
      1 |  koshkit find . -name
@@ -178,3 +178,17 @@ status=1
        |                            ^~
 note: Put `{}` as the last command argument.
 status=1
+--- find -xdev and -mount change nothing on one file system ---
+a
+a/MiXeD.TxT
+a/b
+a/b/c
+a/b/c/three.txt
+a/b/two.log
+a/literal[bracket].txt
+a/one.txt
+a/private
+a/private/entry
+a/b/c/three.txt
+a/literal[bracket].txt
+a/one.txt

@@ -157,6 +157,20 @@ deep
 inner.txt
 --- recursive reaches an empty directory ---
 empty:
+--- one file system changes nothing on one file system ---
+sub:
+deep
+inner.txt
+
+sub/deep:
+leaf.txt
+sub
+├── deep
+│   └── leaf.txt
+└── inner.txt
+--- chmod one file system changes nothing on one file system ---
+-rw-------
+-rw-------
 --- invalid level ---
 rc=2
 --- invalid color ---

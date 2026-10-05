@@ -230,6 +230,9 @@ grep-tree/sub/b.txt:1:hello-again
 --- grep long recursive flags ---
 1:hello
 1:hello-again
+--- grep one file system changes nothing on one file system ---
+grep-tree/a.txt:1:hello
+grep-tree/sub/b.txt:1:hello-again
 --- grep stdin ---
 plum
 --- grep repeated stdin ---
