@@ -77,7 +77,8 @@ pure fn is_plain_integer_literal(StringView text) wontthrow -> bool
    verdict must not fold from it. A quoted "$name" still folds. */
 pure fn is_split_eligible_variable_operand(const Token *token) wontthrow -> bool
 {
-  if (token == nullptr) return false;
+  ASSERT(token != nullptr);
+
   if (token->kind() != Token::Kind::Word) return false;
 
   let const &word = static_cast<const tokens::WordToken *>(token)->word();
@@ -174,7 +175,8 @@ fn literal_word_value(const Word &word) throws -> Maybe<String>
 
 fn literal_word_value(const Token *token) throws -> Maybe<String>
 {
-  if (token == nullptr) return None;
+  ASSERT(token != nullptr);
+
   if (token->kind() != Token::Kind::Word) return None;
   return literal_word_value(
       static_cast<const tokens::WordToken *>(token)->word());
@@ -186,7 +188,8 @@ namespace {
    the bracket word [ reads as its two-byte name. */
 fn command_word_literal(const Token *token) throws -> Maybe<String>
 {
-  if (token == nullptr) return None;
+  ASSERT(token != nullptr);
+
   if (token->kind() != Token::Kind::Word) return None;
 
   let const &word = static_cast<const tokens::WordToken *>(token)->word();
@@ -208,7 +211,8 @@ fn command_word_literal(const Token *token) throws -> Maybe<String>
 fn plain_variable_reference_name(const Token *token) wontthrow
     -> Maybe<StringView>
 {
-  if (token == nullptr) return None;
+  ASSERT(token != nullptr);
+
   if (token->kind() != Token::Kind::Word) return None;
 
   let const &word = static_cast<const tokens::WordToken *>(token)->word();
@@ -536,7 +540,8 @@ fn fold_constant_arithmetic_in_word(
 fn fold_constant_arithmetic_in_token(const Token *token,
                                      AnalysisContext &actx) throws -> bool
 {
-  if (token == nullptr) return false;
+  ASSERT(token != nullptr);
+
   if (token->kind() != Token::Kind::Word) return false;
   return fold_constant_arithmetic_in_word(
       static_cast<const tokens::WordToken *>(token)->word(), actx,
