@@ -116,18 +116,12 @@ fn BumpArena::owns_live_pointer(const opaque *pointer) wontthrow -> bool
 fn BumpArena::push_destructor(pending_destructor pending) throws -> void
 {
   usize chunk_index = 0;
-  usize position_in_chunk = m_destructor_count;
-  if (m_destructor_count >= FIRST_DESTRUCTOR_CHUNK_COUNT) {
-    let const later_position =
-        m_destructor_count - FIRST_DESTRUCTOR_CHUNK_COUNT;
-    chunk_index = 1 + later_position / DESTRUCTORS_PER_CHUNK;
-    position_in_chunk = later_position % DESTRUCTORS_PER_CHUNK;
-  }
+  usize position_in_chunk = 0;
+  locate_destructor(m_destructor_count, chunk_index, position_in_chunk);
 
   if (chunk_index == m_destructor_chunks.count()) rarely
     {
-      let const chunk_count = chunk_index == 0 ? FIRST_DESTRUCTOR_CHUNK_COUNT
-                                               : DESTRUCTORS_PER_CHUNK;
+      let const chunk_count = destructor_chunk_capacity(chunk_index);
       let const chunk =
           heap_allocator().alloc_array<pending_destructor>(chunk_count);
       try {
@@ -147,13 +141,8 @@ fn BumpArena::run_destructors_down_to(usize first) wontthrow -> void
   while (m_destructor_count > first) {
     m_destructor_count--;
     usize chunk_index = 0;
-    usize position_in_chunk = m_destructor_count;
-    if (m_destructor_count >= FIRST_DESTRUCTOR_CHUNK_COUNT) {
-      let const later_position =
-          m_destructor_count - FIRST_DESTRUCTOR_CHUNK_COUNT;
-      chunk_index = 1 + later_position / DESTRUCTORS_PER_CHUNK;
-      position_in_chunk = later_position % DESTRUCTORS_PER_CHUNK;
-    }
+    usize position_in_chunk = 0;
+    locate_destructor(m_destructor_count, chunk_index, position_in_chunk);
     let const &pending = m_destructor_chunks[chunk_index][position_in_chunk];
     pending.run(pending.object);
   }
@@ -164,9 +153,8 @@ cold fn BumpArena::release_destructor_chunks(usize kept_chunk_count) wontthrow
     -> void
 {
   while (m_destructor_chunks.count() > kept_chunk_count) {
-    let const chunk_count = m_destructor_chunks.count() == 1
-                                ? FIRST_DESTRUCTOR_CHUNK_COUNT
-                                : DESTRUCTORS_PER_CHUNK;
+    let const chunk_count =
+        destructor_chunk_capacity(m_destructor_chunks.count() - 1);
     heap_allocator().free_array(m_destructor_chunks.back(), chunk_count);
     m_destructor_chunks.pop_back();
   }
@@ -219,7 +207,11 @@ hot fn BumpArena::allocate(usize size, usize alignment) throws -> opaque *
 
     if (size > SIZE_MAX - alignment) throw std::bad_alloc{};
 
-    add_block(size + alignment, DEFAULT_BLOCK_SIZE);
+    let const grown_size =
+        m_blocks.is_empty() ? DEFAULT_BLOCK_SIZE : m_blocks.back().size * 4;
+    add_block(size + alignment, grown_size < DEFAULT_BLOCK_SIZE
+                                    ? grown_size
+                                    : DEFAULT_BLOCK_SIZE);
     m_current_index = m_blocks.count() - 1;
   }
 }
@@ -330,7 +322,7 @@ cold fn BumpArena::reset() wontthrow -> void
       m_blocks.count(), bytes_used());
 
   run_destructors_down_to(0);
-  release_destructor_chunks(1);
+  release_destructor_chunks(KEPT_CHUNK_COUNT_ON_RESET);
   m_reset_generation++;
 
   for (let const slot_position : m_active_lifetime_slots) {

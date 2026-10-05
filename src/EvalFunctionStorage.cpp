@@ -16,7 +16,7 @@
 namespace koshka {
 
 static function_body_storage *LIVE_EVAL_FUNCTION_STORAGES = nullptr;
-static constexpr usize INITIAL_FUNCTION_ARENA_SIZE = 16 * 1024;
+static constexpr usize INITIAL_FUNCTION_ARENA_SIZE = 2 * 1024;
 
 function_body_storage::function_body_storage(BumpArena *owned_arena)
     : arena(owned_arena)

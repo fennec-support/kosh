@@ -60,10 +60,10 @@ public:
   fn destructor_count() const wontthrow -> usize { return m_destructor_count; }
   fn destructor_capacity() const wontthrow -> usize
   {
-    if (m_destructor_chunks.is_empty()) return 0;
-
-    return FIRST_DESTRUCTOR_CHUNK_COUNT +
-           (m_destructor_chunks.count() - 1) * DESTRUCTORS_PER_CHUNK;
+    usize total = 0;
+    for (usize i = 0; i < m_destructor_chunks.count(); i++)
+      total += destructor_chunk_capacity(i);
+    return total;
   }
   fn bytes_capacity() const wontthrow -> usize
   {
@@ -141,11 +141,46 @@ private:
   };
 
   static constexpr usize DEFAULT_BLOCK_SIZE = 64 * 1024;
-  static constexpr usize FIRST_DESTRUCTOR_CHUNK_COUNT = 128;
-  /* Later chunks are 64 KiB, the largest block the heap pool keeps on a free
-     list. The first chunk holds 128 records for small arenas. */
+  static constexpr usize FIRST_DESTRUCTOR_CHUNK_COUNT = 32;
+  /* The chunks double from the 32 records of the first one until they reach 64
+     KiB, the largest block the heap pool keeps on a free list. Every later
+     chunk is 64 KiB. */
   static constexpr usize DESTRUCTORS_PER_CHUNK =
       DEFAULT_BLOCK_SIZE / sizeof(pending_destructor);
+  static_assert(DESTRUCTORS_PER_CHUNK % FIRST_DESTRUCTOR_CHUNK_COUNT == 0 &&
+                    (DESTRUCTORS_PER_CHUNK / FIRST_DESTRUCTOR_CHUNK_COUNT &
+                     (DESTRUCTORS_PER_CHUNK / FIRST_DESTRUCTOR_CHUNK_COUNT -
+                      1)) == 0,
+                "the chunk sizes double up to a power of two ratio");
+  static constexpr usize DOUBLING_CHUNK_COUNT = static_cast<usize>(
+      __builtin_ctzll(DESTRUCTORS_PER_CHUNK / FIRST_DESTRUCTOR_CHUNK_COUNT));
+  static constexpr usize DOUBLED_DESTRUCTOR_COUNT =
+      FIRST_DESTRUCTOR_CHUNK_COUNT * ((usize{1} << DOUBLING_CHUNK_COUNT) - 1);
+  static constexpr usize KEPT_CHUNK_COUNT_ON_RESET = 3;
+
+  static fn destructor_chunk_capacity(usize chunk_index) wontthrow -> usize
+  {
+    return chunk_index >= DOUBLING_CHUNK_COUNT
+               ? DESTRUCTORS_PER_CHUNK
+               : FIRST_DESTRUCTOR_CHUNK_COUNT << chunk_index;
+  }
+
+  static fn locate_destructor(usize position, usize &chunk_index,
+                              usize &position_in_chunk) wontthrow -> void
+  {
+    if (position >= DOUBLED_DESTRUCTOR_COUNT) {
+      let const later_position = position - DOUBLED_DESTRUCTOR_COUNT;
+      chunk_index =
+          DOUBLING_CHUNK_COUNT + later_position / DESTRUCTORS_PER_CHUNK;
+      position_in_chunk = later_position % DESTRUCTORS_PER_CHUNK;
+      return;
+    }
+
+    let const scaled = position / FIRST_DESTRUCTOR_CHUNK_COUNT + 1;
+    chunk_index = static_cast<usize>(63 - __builtin_clzll(scaled));
+    position_in_chunk = position - FIRST_DESTRUCTOR_CHUNK_COUNT *
+                                       ((usize{1} << chunk_index) - 1);
+  }
 
   ArrayList<block> m_blocks{heap_allocator()};
   /* Every block above this index is empty, so a release rewinds the index and
