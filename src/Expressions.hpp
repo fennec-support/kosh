@@ -529,6 +529,53 @@ struct analysis_followed_sources
 
 class AnalysisContext;
 
+struct analysis_report_site
+{
+  StringView source;
+  EvalContext *eval_context;
+};
+
+/* The reporting state of one analysis run: which codes reach the output, which
+   source ranges silence them, the warnings held until a flush, the totals, and
+   where a finished diagnostic goes. */
+struct analysis_reporter
+{
+  const analysis_options &options;
+  const ArrayList<shellcheck_suppression> *suppressions{nullptr};
+  u32 source_name_index{0};
+  analysis_diagnostic_totals totals{};
+  ArrayList<pending_analysis_warning> pending{heap_allocator()};
+  ArrayList<source_diagnostic> *sink{nullptr};
+  bool has_fatal{false};
+
+  explicit analysis_reporter(const analysis_options &analysis)
+      : options(analysis)
+  {}
+
+  /* The result is true when the message was delivered. A suppressed code must
+     not suppress a later check. */
+  fn report(const analysis_report_site &site, diagnostic_id id,
+            const SourceLocation &location,
+            std::initializer_list<StringView> arguments,
+            const Maybe<SourceLocation> &related_location) throws -> bool;
+  fn flush(const analysis_report_site &site) throws -> void;
+  pure fn should_report(diagnostic_id id) const wontthrow -> bool;
+  pure fn should_report(diagnostic_tier tier) const wontthrow -> bool;
+  pure fn is_suppressed(const analysis_report_site &site, diagnostic_id id,
+                        const SourceLocation &location) const wontthrow -> bool;
+
+private:
+  fn warn(diagnostic_id id, const SourceLocation &location, StringView message,
+          StringView suggestion, diagnostic_tier tier,
+          const Maybe<SourceLocation> &related_location,
+          StringView related_message) throws -> void;
+  fn fail(const analysis_report_site &site, diagnostic_id id,
+          const SourceLocation &location, StringView message,
+          StringView suggestion, diagnostic_tier tier,
+          const Maybe<SourceLocation> &related_location,
+          StringView related_message) throws -> void;
+};
+
 struct analysis_parent_link
 {
   AnalysisContext *context{nullptr};
@@ -548,13 +595,9 @@ class AnalysisContext
 {
 public:
   StringView source;
-  u32 source_name_index{0};
-  bool has_fatal{false};
-  usize reported_warning_count{0};
-  usize reported_error_count{0};
   const analysis_options options;
+  analysis_reporter reporter;
   bool are_koshkit_utilities_reachable{true};
-  const ArrayList<shellcheck_suppression> *shellcheck_suppressions{nullptr};
   analysis_function_table functions;
   /* The table is cleared at a conditional branch, a loop body, a function body,
      a subshell, and on any runtime definer, since a value recorded before such
@@ -661,8 +704,6 @@ public:
      takes it so a nested list keeps its own sibling state. */
   top_level_sibling_carry *stream_sibling_carry{nullptr};
 
-  ArrayList<pending_analysis_warning> pending_warnings{heap_allocator()};
-  ArrayList<source_diagnostic> *diagnostic_sink{nullptr};
   AnalysisSourceProvider *source_provider{nullptr};
 
   /* Null outside the language server. A record costs an owned name and a folded
@@ -675,11 +716,14 @@ public:
   bool is_inside_substitution_subshell{false};
 
   AnalysisContext(StringView source_view, const analysis_options &analysis)
-      : source(source_view), options(analysis)
+      : source(source_view), options(analysis), reporter(options)
   {
     effects.should_silence_unresolved_commands =
         analysis.should_silence_unresolved_commands;
   }
+
+  AnalysisContext(const AnalysisContext &) = delete;
+  AnalysisContext &operator=(const AnalysisContext &) = delete;
 
   fn add_defined_function(StringView name) throws -> void
   {
@@ -748,22 +792,25 @@ public:
     }
   }
 
-  /* The result is true when the message was delivered. A suppressed code must
-     not suppress a later check. */
   fn report_diagnostic(
       diagnostic_id id, const SourceLocation &location,
       std::initializer_list<StringView> arguments = {},
-      const Maybe<SourceLocation> &related_location = None) throws -> bool;
-  fn flush_warnings() throws -> void;
+      const Maybe<SourceLocation> &related_location = None) throws -> bool
+  {
+    return reporter.report(get_report_site(), id, location, arguments,
+                           related_location);
+  }
+  fn flush_warnings() throws -> void { reporter.flush(get_report_site()); }
   fn print_diagnostic_summary() const throws -> void;
   fn print_optimizer_summary() const throws -> void;
-  pure fn is_diagnostic_suppressed(
-      diagnostic_id id, const SourceLocation &location) const wontthrow -> bool;
 
   /* Whether the mood and the warning level let this code reach the output. A
      check that costs more than a comparison asks first, and the reporting
      funnel asks before it formats anything. */
-  pure fn should_report(diagnostic_id id) const wontthrow -> bool;
+  pure fn should_report(diagnostic_id id) const wontthrow -> bool
+  {
+    return reporter.should_report(id);
+  }
   fn note_variable_assignment(StringView name, const SourceLocation &location,
                               bool is_proven_unconditional) throws -> void;
 
@@ -812,8 +859,6 @@ public:
   fn note_variable_scope(StringView name) throws -> void;
   pure fn is_posix_mood() const wontthrow -> bool;
   fn trace_optimizer_line(StringView message) const throws -> void;
-  fn print_script_backtrace_if_rooted(
-      const SourceLocation &location) const throws -> void;
   pure fn should_silence_unresolved_command_at(usize position) const wontthrow
       -> bool;
 
@@ -825,15 +870,10 @@ private:
                              : nullptr);
   }
 
-  pure fn should_report(diagnostic_tier tier) const wontthrow -> bool;
-  fn warn(diagnostic_id id, const SourceLocation &location, StringView message,
-          StringView suggestion, diagnostic_tier tier,
-          const Maybe<SourceLocation> &related_location,
-          StringView related_message) throws -> void;
-  fn fail(diagnostic_id id, const SourceLocation &location, StringView message,
-          StringView suggestion, diagnostic_tier tier,
-          const Maybe<SourceLocation> &related_location,
-          StringView related_message) throws -> void;
+  pure fn get_report_site() const wontthrow -> analysis_report_site
+  {
+    return analysis_report_site{source, eval_context};
+  }
 };
 
 fn analyze_ast(const Expression *root, StringView source,

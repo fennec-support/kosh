@@ -614,29 +614,32 @@ fn Expression::operator delete(opaque *pointer) wontthrow -> void
   ::operator delete(pointer);
 }
 
-fn AnalysisContext::warn(diagnostic_id id, const SourceLocation &location,
-                         StringView message, StringView suggestion,
-                         diagnostic_tier tier,
-                         const Maybe<SourceLocation> &related_location,
-                         StringView related_message) throws -> void
+fn analysis_reporter::warn(diagnostic_id id, const SourceLocation &location,
+                           StringView message, StringView suggestion,
+                           diagnostic_tier tier,
+                           const Maybe<SourceLocation> &related_location,
+                           StringView related_message) throws -> void
 {
   if (!should_report(tier)) return;
 
-  reported_warning_count++;
+  totals.warning_count++;
 
-  pending_warnings.push(pending_analysis_warning{
+  pending.push(pending_analysis_warning{
       id, location, String{message}, String{suggestion}, related_location,
       String{related_message}});
 }
 
-fn AnalysisContext::flush_warnings() throws -> void
+fn analysis_reporter::flush(const analysis_report_site &site) throws -> void
 {
-  if (pending_warnings.is_empty()) return;
+  if (pending.is_empty()) return;
+
+  let const source = site.source;
+  let *const eval_context = site.eval_context;
 
   if (eval_context != nullptr && colors::stderr_wants_color()) {
     let collected_positions = ArrayList<usize>{heap_allocator()};
-    collected_positions.reserve(pending_warnings.count() * 2);
-    for (let const &warning : pending_warnings) {
+    collected_positions.reserve(pending.count() * 2);
+    for (let const &warning : pending) {
       if (warning.location.position <= source.length)
         collected_positions.push(warning.location.position);
       if (warning.related_location.has_value() &&
@@ -663,12 +666,12 @@ fn AnalysisContext::flush_warnings() throws -> void
   }
 
   let report_order = ArrayList<usize>{heap_allocator()};
-  report_order.reserve(pending_warnings.count());
-  for (usize index = 0; index < pending_warnings.count(); index++)
+  report_order.reserve(pending.count());
+  for (usize index = 0; index < pending.count(); index++)
     report_order.push(index);
   report_order.sort([this](const usize &left, const usize &right) {
-    let const &left_location = pending_warnings[left].location;
-    let const &right_location = pending_warnings[right].location;
+    let const &left_location = pending[left].location;
+    let const &right_location = pending[right].location;
     if (left_location.source_name_index != right_location.source_name_index)
       return left_location.source_name_index < right_location.source_name_index;
     if (left_location.position != right_location.position)
@@ -677,8 +680,8 @@ fn AnalysisContext::flush_warnings() throws -> void
   });
 
   for (let const report_index : report_order) {
-    let const &warning = pending_warnings[report_index];
-    if (diagnostic_sink != nullptr) {
+    let const &warning = pending[report_index];
+    if (sink != nullptr) {
       let source_name = String{heap_allocator()};
       if (let const name = warning.location.get_filename(); name.has_value())
         source_name = String{*name};
@@ -690,7 +693,7 @@ fn AnalysisContext::flush_warnings() throws -> void
           related_source_name = String{*related_name};
         }
       }
-      diagnostic_sink->push(source_diagnostic{
+      sink->push(source_diagnostic{
           warning.id, error_severity::warning, warning.location,
           steal(source_name), warning.message.clone(),
           warning.suggestion.clone(), warning.related_location,
@@ -714,9 +717,10 @@ fn AnalysisContext::flush_warnings() throws -> void
           warning.location, warning.message, warning.suggestion};
       show_message(located.to_string(source, eval_context));
     }
-    print_script_backtrace_if_rooted(warning.location);
+    if (eval_context != nullptr)
+      eval_context->print_source_backtrace(warning.location);
   }
-  pending_warnings.clear();
+  pending.clear();
 }
 
 cold fn print_analysis_diagnostic_summary(
@@ -757,8 +761,7 @@ cold fn print_analysis_diagnostic_summary(
 
 cold fn AnalysisContext::print_diagnostic_summary() const throws -> void
 {
-  print_analysis_diagnostic_summary(
-      {reported_warning_count, reported_error_count});
+  print_analysis_diagnostic_summary(reporter.totals);
 }
 
 cold fn AnalysisContext::print_optimizer_summary() const throws -> void
@@ -778,12 +781,13 @@ cold fn AnalysisContext::print_optimizer_summary() const throws -> void
   show_message(summary.view());
 }
 
-pure fn AnalysisContext::should_report(diagnostic_id id) const wontthrow -> bool
+pure fn analysis_reporter::should_report(diagnostic_id id) const wontthrow
+    -> bool
 {
   return should_report(get_diagnostic_definition(id).tier);
 }
 
-pure fn AnalysisContext::should_report(diagnostic_tier tier) const wontthrow
+pure fn analysis_reporter::should_report(diagnostic_tier tier) const wontthrow
     -> bool
 {
   if (tier == diagnostic_tier::Annoying && !options.should_emit_annoying) {
@@ -814,13 +818,13 @@ pure fn AnalysisContext::should_silence_unresolved_command_at(
       .should_silence_unresolved_commands;
 }
 
-fn AnalysisContext::report_diagnostic(
-    diagnostic_id id, const SourceLocation &location,
-    std::initializer_list<StringView> arguments,
+fn analysis_reporter::report(
+    const analysis_report_site &site, diagnostic_id id,
+    const SourceLocation &location, std::initializer_list<StringView> arguments,
     const Maybe<SourceLocation> &related_location) throws -> bool
 {
   if (!should_report(id)) return false;
-  if (is_diagnostic_suppressed(id, location)) return false;
+  if (is_suppressed(site, id, location)) return false;
 
   let named_location = location;
   if (named_location.source_name_index == 0)
@@ -845,8 +849,8 @@ fn AnalysisContext::report_diagnostic(
 
   switch (definition.delivery) {
   case diagnostic_delivery::Policy:
-    fail(id, named_location, message.view(), suggestion.view(), definition.tier,
-         related_location, related_message.view());
+    fail(site, id, named_location, message.view(), suggestion.view(),
+         definition.tier, related_location, related_message.view());
     break;
   case diagnostic_delivery::Warning:
     warn(id, named_location, message.view(), suggestion.view(), definition.tier,
@@ -866,18 +870,15 @@ cold fn AnalysisContext::trace_optimizer_line(StringView message) const throws
   print_error("\n");
 }
 
-cold fn AnalysisContext::print_script_backtrace_if_rooted(
-    const SourceLocation &location) const throws -> void
+fn analysis_reporter::fail(const analysis_report_site &site, diagnostic_id id,
+                           const SourceLocation &location, StringView message,
+                           StringView suggestion, diagnostic_tier tier,
+                           const Maybe<SourceLocation> &related_location,
+                           StringView related_message) throws -> void
 {
-  if (eval_context != nullptr) eval_context->print_source_backtrace(location);
-}
+  let const source = site.source;
+  let *const eval_context = site.eval_context;
 
-fn AnalysisContext::fail(diagnostic_id id, const SourceLocation &location,
-                         StringView message, StringView suggestion,
-                         diagnostic_tier tier,
-                         const Maybe<SourceLocation> &related_location,
-                         StringView related_message) throws -> void
-{
   if (!options.is_default_mood) {
     if (should_report(tier))
       warn(id, location, message, suggestion, tier, related_location,
@@ -904,10 +905,10 @@ fn AnalysisContext::fail(diagnostic_id id, const SourceLocation &location,
     return;
   }
 
-  flush_warnings();
-  reported_error_count++;
+  flush(site);
+  totals.error_count++;
 
-  if (diagnostic_sink != nullptr) {
+  if (sink != nullptr) {
     let source_name = String{heap_allocator()};
     if (let const name = location.get_filename(); name.has_value())
       source_name = String{*name};
@@ -919,7 +920,7 @@ fn AnalysisContext::fail(diagnostic_id id, const SourceLocation &location,
         related_source_name = String{*related_name};
       }
     }
-    diagnostic_sink->push(source_diagnostic{
+    sink->push(source_diagnostic{
         id, error_severity::error, location, steal(source_name),
         String{message}, String{suggestion}, related_location,
         steal(related_source_name), String{related_message},
@@ -940,16 +941,17 @@ fn AnalysisContext::fail(diagnostic_id id, const SourceLocation &location,
         ErrorWithLocationAndDetails{location, message, suggestion};
     show_message(located.to_string(source, eval_context));
   }
-  print_script_backtrace_if_rooted(location);
+  if (eval_context != nullptr) eval_context->print_source_backtrace(location);
   has_fatal = true;
 }
 
-pure fn AnalysisContext::is_diagnostic_suppressed(
-    diagnostic_id id, const SourceLocation &location) const wontthrow -> bool
+pure fn analysis_reporter::is_suppressed(
+    const analysis_report_site &site, diagnostic_id id,
+    const SourceLocation &location) const wontthrow -> bool
 {
-  if (shellcheck_suppressions == nullptr) return false;
+  if (suppressions == nullptr) return false;
 
-  for (let const &suppression : *shellcheck_suppressions) {
+  for (let const &suppression : *suppressions) {
     if (location.position < suppression.start_position ||
         location.position >= suppression.end_position)
     {
@@ -957,7 +959,7 @@ pure fn AnalysisContext::is_diagnostic_suppressed(
     }
 
     for (let const &selector : suppression.selectors) {
-      if (shellcheck_selector_disables(selector, source, id)) return true;
+      if (shellcheck_selector_disables(selector, site.source, id)) return true;
     }
   }
 
@@ -1609,7 +1611,7 @@ fn expressions::internal::apply_followed_source_effects(
     if (followed.effects.has_unknown_working_directory)
       actx.mark_working_directory_unknown();
   }
-  actx.has_fatal = actx.has_fatal || followed.has_fatal;
+  actx.reporter.has_fatal = actx.reporter.has_fatal || followed.has_fatal;
 }
 
 fn expressions::internal::analyze_followed_source(
@@ -1716,23 +1718,23 @@ fn expressions::internal::analyze_followed_source(
 
   let parse_errors = ArrayList<String>{heap_allocator()};
   let const child_diagnostic_start =
-      actx.diagnostic_sink != nullptr ? actx.diagnostic_sink->count() : 0;
+      actx.reporter.sink != nullptr ? actx.reporter.sink->count() : 0;
   let const ast = parser.construct_ast(parse_errors, actx.eval_context,
-                                       actx.diagnostic_sink);
+                                       actx.reporter.sink);
   if (!parse_errors.is_empty()) {
-    if (actx.diagnostic_sink != nullptr) {
+    if (actx.reporter.sink != nullptr) {
       for (usize index = child_diagnostic_start;
-           index < actx.diagnostic_sink->count(); index++)
+           index < actx.reporter.sink->count(); index++)
       {
-        let &diagnostic = (*actx.diagnostic_sink)[index];
+        let &diagnostic = (*actx.reporter.sink)[index];
         if (diagnostic.source_name.is_empty())
           diagnostic.source_name = canonical_path->text();
       }
     }
-    if (actx.diagnostic_sink == nullptr)
+    if (actx.reporter.sink == nullptr)
       for (let const &error : parse_errors)
         show_message(error);
-    actx.has_fatal = true;
+    actx.reporter.has_fatal = true;
     followed_source_effects effects{};
     effects.has_fatal = true;
     actx.followed_source_effects_cache->set(canonical_path->text().view(),
@@ -1757,17 +1759,17 @@ fn expressions::internal::analyze_followed_source(
       {actx.followed_source_paths, actx.followed_source_effects_cache},
       {&actx, should_merge_parent_state, should_merge_parent_uncertainty,
        &effects},
-      {nullptr, actx.diagnostic_sink, nullptr}, actx.source_provider);
-  if (actx.diagnostic_sink != nullptr) {
+      {nullptr, actx.reporter.sink, nullptr}, actx.source_provider);
+  if (actx.reporter.sink != nullptr) {
     for (usize index = child_diagnostic_start;
-         index < actx.diagnostic_sink->count(); index++)
+         index < actx.reporter.sink->count(); index++)
     {
-      let &diagnostic = (*actx.diagnostic_sink)[index];
+      let &diagnostic = (*actx.reporter.sink)[index];
       if (diagnostic.source_name.is_empty())
         diagnostic.source_name = canonical_path->text();
     }
   }
-  if (!analyzed) actx.has_fatal = true;
+  if (!analyzed) actx.reporter.has_fatal = true;
   if (!was_analyzed_under_uncertainty) {
     actx.followed_source_effects_cache->set(canonical_path->text().view(),
                                             steal(effects));
@@ -1900,13 +1902,13 @@ fn analyze_ast(const Expression *root, StringView source,
       eval_context != nullptr
           ? eval_context->runtime_state().koshkit_utilities_are_reachable()
           : options.is_default_mood;
-  actx.shellcheck_suppressions = &directives.shellcheck_suppressions;
-  actx.source_name_index = directives.source_name_index;
+  actx.reporter.suppressions = &directives.shellcheck_suppressions;
+  actx.reporter.source_name_index = directives.source_name_index;
   actx.format_document = format_document;
   actx.eval_context = eval_context;
   actx.followed_source_paths = followed_sources.paths;
   actx.followed_source_effects_cache = followed_sources.effects_cache;
-  actx.diagnostic_sink = outputs.diagnostic_sink;
+  actx.reporter.sink = outputs.diagnostic_sink;
   actx.source_provider = source_provider;
   /* A followed source file is left out. Its byte positions index another
      source string. */
@@ -2003,24 +2005,25 @@ fn analyze_ast(const Expression *root, StringView source,
   actx.flush_warnings();
 
   if (parent_analysis_context != nullptr) {
-    parent_analysis_context->reported_warning_count +=
-        actx.reported_warning_count;
-    parent_analysis_context->reported_error_count += actx.reported_error_count;
+    parent_analysis_context->reporter.totals.warning_count +=
+        actx.reporter.totals.warning_count;
+    parent_analysis_context->reporter.totals.error_count +=
+        actx.reporter.totals.error_count;
     ASSERT(source_effects != nullptr);
-    source_effects->has_fatal = actx.has_fatal;
+    source_effects->has_fatal = actx.reporter.has_fatal;
     apply_followed_source_effects(*parent_analysis_context, *source_effects,
                                   parent.should_merge_state,
                                   parent.should_merge_uncertainty);
   } else if (outputs.deferred_totals != nullptr) {
-    outputs.deferred_totals->warning_count += actx.reported_warning_count;
-    outputs.deferred_totals->error_count += actx.reported_error_count;
+    outputs.deferred_totals->warning_count += actx.reporter.totals.warning_count;
+    outputs.deferred_totals->error_count += actx.reporter.totals.error_count;
   } else if (outputs.diagnostic_sink == nullptr) {
     actx.print_diagnostic_summary();
   }
 
   actx.print_optimizer_summary();
 
-  return !actx.has_fatal;
+  return !actx.reporter.has_fatal;
 }
 
 namespace expressions {
