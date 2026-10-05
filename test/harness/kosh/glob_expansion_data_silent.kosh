@@ -1,0 +1,8 @@
+#!/bin/env kosh
+# shellcheck disable=SC2086
+pattern=$(printf 'zzz_data_*')
+echo $pattern
+echo zzz_literal_*
+set -o failglob
+echo $pattern
+echo not-reached

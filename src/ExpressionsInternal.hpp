@@ -444,6 +444,10 @@ pure fn is_shell_maintained_variable(StringView name) wontthrow -> bool;
 
 pure fn is_single_word_special_parameter(StringView name) wontthrow -> bool;
 
+/* An alternate-value reference whose word is empty or wholly double-quoted, so
+   the expansion keeps its words intact the way ${1+"$@"} does. */
+pure fn reference_has_quoted_alternate_word(StringView spec) wontthrow -> bool;
+
 /* The assignments holding a bare command name that no command word ever
    expanded. A run of the name may follow the assignment, so the decision waits
    for the end of the walk. */

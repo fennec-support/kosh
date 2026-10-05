@@ -153,6 +153,14 @@ annoying_safety_diagnostics() {
   esac
 }
 
+quoted_alternate_and_ansi_c_words() {
+  eval $'defined_by_eval () \n{ \n    echo hi;\n}'
+  eval 'echo {1..3}' $'a..b {c} $d'
+  command find ${1+"$@"}
+  echo ${values[@]+"${values[@]}"} ${1:+"a $2"} ${1+}
+  echo ${1+$2} ${1+"a"$2}
+}
+
 special_parameter_arithmetic() {
   echo $((1 + $?))
 }

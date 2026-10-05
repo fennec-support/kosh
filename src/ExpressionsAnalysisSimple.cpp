@@ -191,6 +191,67 @@ pure fn internal::is_single_word_special_parameter(StringView name) wontthrow
   }
 }
 
+pure fn internal::reference_has_quoted_alternate_word(StringView spec) wontthrow
+    -> bool
+{
+  usize position = 0;
+  if (!spec.is_empty() && (spec[0] == '@' || spec[0] == '*')) {
+    position = 1;
+  } else {
+    while (position < spec.length && lexer::is_variable_name(spec[position]))
+      position++;
+  }
+
+  if (position == 0) return false;
+
+  if (position < spec.length && spec[position] == '[') {
+    while (position < spec.length && spec[position] != ']')
+      position++;
+
+    if (position == spec.length) return false;
+    position++;
+  }
+
+  if (position < spec.length && spec[position] == ':') position++;
+  if (position >= spec.length || spec[position] != '+') return false;
+  position++;
+
+  while (position < spec.length) {
+    if (spec[position] != '"') return false;
+    position++;
+
+    usize nesting_depth = 0;
+    let is_closed = false;
+    while (position < spec.length && !is_closed) {
+      let const byte = spec[position];
+      if (byte == '\\') {
+        position += 2;
+        continue;
+      }
+
+      if (byte == '$' && position + 1 < spec.length &&
+          (spec[position + 1] == '{' || spec[position + 1] == '('))
+      {
+        nesting_depth++;
+        position += 2;
+        continue;
+      }
+
+      if (nesting_depth > 0 && (byte == '}' || byte == ')')) {
+        nesting_depth--;
+      } else if (nesting_depth == 0 && byte == '"') {
+        is_closed = true;
+      }
+
+      position++;
+    }
+
+    if (!is_closed) return false;
+  }
+
+  return true;
+}
+
 pure fn is_split_exempt_variable_name(StringView name) wontthrow -> bool
 {
   if (name.length != 1) return false;
@@ -1000,14 +1061,21 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
         is_in_double_quote = !is_in_double_quote;
       }
 
+      let const is_unquoted_byte = !was_quote_escape_pending &&
+                                   !is_in_single_quote && !is_in_ansi_c_quote &&
+                                   !is_in_double_quote &&
+                                   !was_in_parameter_expansion;
+
       if (byte == '{') {
-        has_open_brace = true;
+        if (is_unquoted_byte) has_open_brace = true;
       } else if (byte == '.') {
-        if (position + 1 < source_text.length &&
+        if (is_unquoted_byte && position + 1 < source_text.length &&
             source_text[position + 1] == '.')
+        {
           has_double_dot = true;
+        }
       } else if (byte == '$') {
-        has_dollar_byte = true;
+        if (is_unquoted_byte) has_dollar_byte = true;
         if (position + 1 < source_text.length &&
             source_text[position + 1] == '[')
         {
@@ -1182,7 +1250,8 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
             lost_pipeline_name = referenced;
           }
           if (!has_split_eligible_variable && segment.is_split_eligible() &&
-              !is_split_exempt_variable_name(referenced))
+              !is_split_exempt_variable_name(referenced) &&
+              !internal::reference_has_quoted_alternate_word(referenced))
           {
             has_split_eligible_variable = true;
             split_eligible_location = expansion_location_with_sigil(

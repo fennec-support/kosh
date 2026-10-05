@@ -186,6 +186,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
       break;
     case WordSegment::Kind::UnquotedText:
       do_append_run(segment_text, true);
+      if (segment.has_glob_metacharacter()) current.has_literal_glob = true;
       break;
     case WordSegment::Kind::VariableReference: {
       if (segment.text == "@" && segment.is_in_double_quotes) {

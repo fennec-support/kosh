@@ -825,6 +825,7 @@ hot fn EvalContext::expand_path(glob_field field,
   /* The pattern is kept so a glob that matches None falls back to it. */
   let pattern = String{scratch};
   pattern.append(field.text.view());
+  let const has_literal_glob = field.has_literal_glob;
 
   let input = ArrayList<glob_field>{scratch};
   input.push(steal(field));
@@ -884,13 +885,20 @@ hot fn EvalContext::expand_path(glob_field field,
     let const failglob_is_explicit =
         runtime_state().was_failglob_set_explicitly() ||
         is_shopt_enabled("failglob");
-    if (!expansion_store().glob_exempt_for_test())
+    let const is_failglob_fatal =
+        failglob_is_on &&
+        (failglob_is_explicit || !strict_diagnostics_are_warnings());
+    if (!expansion_store().glob_exempt_for_test() &&
+        (is_failglob_fatal || has_literal_glob))
+    {
       warn_or_throw(failglob_is_on, failglob_is_explicit, location,
                     "The glob pattern '" + pattern +
                         "' matched no file, it expands to its literal text, "
                         "which is rarely intended",
                     "Probe for matches with compgen -G '" + pattern +
                         "' or relax with set +o failglob");
+    }
+
     /* nullglob drops a no-match glob entirely, while the default and a test
        probe keep its literal text. */
     if (expansion_store().glob_exempt_for_test() ||

@@ -509,15 +509,23 @@ note: Move the specific pattern before the broader pattern.
 152:3: warning: The pattern 'prefix-value' cannot match the `case` word 'value'. (SC2195)
    152 |    prefix-value) : ;;
        |    ^~~~~~~~~~~~
-163:3: warning: A dollar sign expands the value before the arithmetic runs. (SC2004)
-   163 |    ((total = $counter))
+161:8: warning: An unquoted variable can split into words and expand globs. (SC2086)
+   161 |    echo ${1+$2} ${1+"a"$2}
+       |         ^~~~~~~
+note: Quote the expansion to keep one argument.
+161:16: warning: An unquoted variable can split into words and expand globs. (SC2086)
+   161 |    echo ${1+$2} ${1+"a"$2}
+       |                 ^~~~~~~~~~
+note: Quote the expansion to keep one argument.
+171:3: warning: A dollar sign expands the value before the arithmetic runs. (SC2004)
+   171 |    ((total = $counter))
        |    ^~~~~~~~~~~~~~~~~~~~
 note: Use the variable name directly inside arithmetic.
-164:3: warning: A dollar sign expands the value before the arithmetic runs. (SC2004)
-   164 |    ((total = ${counter}))
+172:3: warning: A dollar sign expands the value before the arithmetic runs. (SC2004)
+   172 |    ((total = ${counter}))
        |    ^~~~~~~~~~~~~~~~~~~~~~
 note: Use the variable name directly inside arithmetic.
-Encountered 127 warnings.
+Encountered 129 warnings.
 done
 done
 done

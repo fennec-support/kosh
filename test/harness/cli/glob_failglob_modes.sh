@@ -10,4 +10,9 @@ echo "== a matching glob expands to the sorted names:"; "$BIN" -c 'echo real_*'
 echo "== the default mood aborts on no match:"; "$BIN" -c 'echo no_match_*'; echo "rc=$?"
 echo "== the bash mood leaves it literal:"; "$BIN" --mood bash -c 'echo no_match_*'
 echo "== the sh mood leaves it literal:"; "$BIN" --mood sh -c 'echo no_match_*'
+data_source='# shellcheck disable=SC2086
+pattern=$(printf "data_*"); echo $pattern; echo literal_*'
+echo "== a glob made by an expansion is data and warns nothing:"
+"$BIN" -WWW -c "$data_source" 2>&1
+"$BIN" --mood bash -WWW -c "$data_source" 2>&1
 cd /; rm -rf "$d"

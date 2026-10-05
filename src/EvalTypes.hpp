@@ -127,7 +127,8 @@ enum class variable_attribute : u8
 };
 
 /* A candidate argument after variable expansion and field splitting. The
-   parallel mask marks which characters may act as glob metacharacters. */
+   parallel mask marks which characters may act as glob metacharacters, and the
+   flag records whether the source word itself wrote one. */
 struct glob_field
 {
   explicit glob_field(Allocator allocator)
@@ -136,6 +137,7 @@ struct glob_field
 
   String text;
   Bitset glob_active;
+  bool has_literal_glob{false};
 };
 
 enum class glob_expansion_mode : u8

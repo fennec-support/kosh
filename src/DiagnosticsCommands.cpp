@@ -133,7 +133,8 @@ fn check_command_name_lints(AnalysisContext &actx,
       for (let const &segment : word.segments) {
         if (segment.kind == WordSegment::Kind::VariableReference &&
             segment.is_split_eligible() &&
-            !is_single_word_special_parameter(segment.text.view()))
+            !is_single_word_special_parameter(segment.text.view()) &&
+            !reference_has_quoted_alternate_word(segment.text.view()))
         {
           let const operand_location = args[i]->source_location();
           actx.report_diagnostic(
