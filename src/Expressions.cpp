@@ -2123,15 +2123,12 @@ internal::AnalysisScopeGuard::AnalysisScopeGuard(AnalysisContext &actx,
 
   case analysis_scope_mode::Subshell:
     m_constants = steal(actx.constant_variables);
-    actx.constant_variables = StringMap<String>{heap_allocator()};
     actx.walk.is_inside_subshell_analysis = true;
     break;
 
   case analysis_scope_mode::Function:
     m_constants = steal(actx.constant_variables);
-    actx.constant_variables = StringMap<String>{heap_allocator()};
     m_function_local_names = steal(actx.function_local_names);
-    actx.function_local_names = StringMap<SourceLocation>{heap_allocator()};
     actx.occurrences = variable_occurrence_pair{};
     m_loop_body_depth = actx.loop_body_depth;
     actx.loop_body_depth = 0;
