@@ -65,8 +65,8 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
   let const stage_is_unconditional = is_unconditional && !has_multiple_stages;
   for (let const command : m_commands) {
     ASSERT(command != nullptr);
-    let const was_direct_pipeline_stage = actx.is_direct_pipeline_stage;
-    actx.is_direct_pipeline_stage =
+    let const was_direct_pipeline_stage = actx.walk.is_direct_pipeline_stage;
+    actx.walk.is_direct_pipeline_stage =
         has_multiple_stages && (command->as_simple_command() != nullptr ||
                                 command->as_assign_command() != nullptr);
 
@@ -77,7 +77,7 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
       command->analyze(actx, stage_is_unconditional);
     }
 
-    actx.is_direct_pipeline_stage = was_direct_pipeline_stage;
+    actx.walk.is_direct_pipeline_stage = was_direct_pipeline_stage;
   }
 
   /* cat feeding a single named file into the next stage runs an extra process,
@@ -668,7 +668,7 @@ fn CompoundList::analyze(AnalysisContext &actx,
 
     /* A negated command outside a condition inhibits errexit and leaves its
        status unread, shellcheck SC2251. */
-    if (!actx.is_analyzing_condition && node->is_negated() &&
+    if (!actx.walk.is_analyzing_condition && node->is_negated() &&
         node->kind() == CompoundListCondition::Kind::None && !next_node_joins &&
         node->command() != nullptr)
     {
@@ -686,13 +686,14 @@ fn CompoundList::analyze(AnalysisContext &actx,
         is_unconditional && node->kind() == CompoundListCondition::Kind::None;
     let const is_conditional_node =
         node->kind() != CompoundListCondition::Kind::None;
-    let const was_command_status_observed = actx.is_command_status_observed;
-    actx.is_command_status_observed =
+    let const was_command_status_observed =
+        actx.walk.is_command_status_observed;
+    actx.walk.is_command_status_observed =
         was_command_status_observed || next_node_joins;
     if (is_conditional_node) actx.conditional_branch_depth++;
     node->analyze(actx, node_unconditional);
     if (is_conditional_node) actx.conditional_branch_depth--;
-    actx.is_command_status_observed = was_command_status_observed;
+    actx.walk.is_command_status_observed = was_command_status_observed;
     previous_node = node;
   }
   if (has_conditional_chain) {
@@ -700,7 +701,7 @@ fn CompoundList::analyze(AnalysisContext &actx,
     actx.generated_relative_executable_paths =
         steal(conditional_chain_entry_generated_paths);
   }
-  if (!actx.should_retain_tested_command_names)
+  if (!actx.walk.should_retain_tested_command_names)
     actx.tested_command_names = steal(saved_tested_command_names);
 }
 

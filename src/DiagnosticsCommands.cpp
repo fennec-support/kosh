@@ -199,7 +199,7 @@ fn check_command_name_lints(AnalysisContext &actx,
 
   case command_name_id::Local:
     if (is_posix) actx.report_diagnostic(diagnostic_id::sc3043, location);
-    if (actx.function_scope_depth == 0 && !actx.is_command_status_observed)
+    if (actx.function_scope_depth == 0 && !actx.walk.is_command_status_observed)
       actx.report_diagnostic(diagnostic_id::sc2168, location);
     break;
 
@@ -291,7 +291,7 @@ fn check_command_name_lints(AnalysisContext &actx,
                                  ? diagnostic_id::sc2104
                                  : diagnostic_id::sc2105,
                              location, {input.command_literal});
-    } else if (actx.is_direct_pipeline_stage) {
+    } else if (actx.walk.is_direct_pipeline_stage) {
       actx.report_diagnostic(diagnostic_id::sc2106, location,
                              {input.command_literal});
     }

@@ -408,6 +408,22 @@ struct analysis_diagnostic_totals
   usize error_count{0};
 };
 
+/* The booleans that describe where the walk currently stands. A scope that
+   changes some of them saves the whole value and restores it on the way out. */
+struct analysis_walk_flags
+{
+  bool is_direct_pipeline_stage{false};
+  bool is_inside_loop_condition{false};
+  bool is_command_status_observed{false};
+  bool has_input_reading_loop_condition{false};
+  bool is_inside_read_loop{false};
+  bool is_inside_subshell_analysis{false};
+  bool should_retain_tested_command_names{false};
+  bool is_analyzing_condition{false};
+  bool is_bare_read_substitution{false};
+  bool is_inside_substitution_subshell{false};
+};
+
 struct analysis_effects
 {
   bool has_seen_runtime_definer{false};
@@ -647,11 +663,7 @@ public:
   static constexpr usize NO_ACTIVE_FUNCTION_DEFINITION = ~usize{0};
   usize active_function_definition_index{NO_ACTIVE_FUNCTION_DEFINITION};
 
-  bool is_direct_pipeline_stage{false};
-  bool is_inside_loop_condition{false};
-  bool is_command_status_observed{false};
-  bool has_input_reading_loop_condition{false};
-  bool is_inside_read_loop{false};
+  analysis_walk_flags walk;
   HashSet pipeline_lost_names{heap_allocator()};
   HashSet external_input_names{heap_allocator()};
 
@@ -687,13 +699,10 @@ public:
      double the report. A script run keeps the check. */
   analysis_effects effects;
   const parsed_format_document *format_document{nullptr};
-  bool is_inside_subshell_analysis{false};
 
   HashSet generated_relative_executable_paths{heap_allocator()};
 
   HashSet tested_command_names{heap_allocator()};
-  bool should_retain_tested_command_names{false};
-  bool is_analyzing_condition{false};
 
   usize optimizer_eliminated_count{0};
   HashSet *followed_source_paths{nullptr};
@@ -712,8 +721,6 @@ public:
 
   BumpArena substitution_arena;
   usize substitution_analysis_depth{0};
-  bool is_bare_read_substitution{false};
-  bool is_inside_substitution_subshell{false};
 
   AnalysisContext(StringView source_view, const analysis_options &analysis)
       : source(source_view), options(analysis), reporter(options)

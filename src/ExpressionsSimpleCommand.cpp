@@ -148,7 +148,7 @@ fn AssignCommand::analyze(AnalysisContext &actx,
 
   let const &name = m_assignment->key();
 
-  if (actx.is_direct_pipeline_stage) {
+  if (actx.walk.is_direct_pipeline_stage) {
     actx.report_diagnostic(diagnostic_id::sc2030_assignment, source_location());
     actx.pipeline_lost_names.add(name.view());
   }
@@ -165,7 +165,7 @@ fn AssignCommand::analyze(AnalysisContext &actx,
   if (let const bracket = name.view().find_character('['); bracket.has_value())
   {
     let const base = name.view().substring_of_length(0, *bracket);
-    if (actx.is_direct_pipeline_stage) actx.pipeline_lost_names.add(base);
+    if (actx.walk.is_direct_pipeline_stage) actx.pipeline_lost_names.add(base);
     if (name.length() > *bracket + 1 && name[name.length() - 1] == ']') {
       let const subscript = name.view().substring_of_length(
           *bracket + 1, name.length() - *bracket - 2);
@@ -210,7 +210,7 @@ fn AssignCommand::analyze(AnalysisContext &actx,
 
   if (actx.function_scope_depth > 0 &&
       m_assignment->get_update_mode() != assignment_update_mode::Append &&
-      !actx.is_inside_substitution_subshell &&
+      !actx.walk.is_inside_substitution_subshell &&
       !actx.function_local_names.find(name.view()).has_value() &&
       !actx.global_assigned_names.find(name.view()).has_value() &&
       !actx.inherited_global_assigned_names.contains(name.view()) &&
@@ -229,7 +229,7 @@ fn AssignCommand::analyze(AnalysisContext &actx,
   }
 
   if (actx.function_scope_depth == 0 && is_unconditional &&
-      !actx.effects.has_seen_runtime_definer && !actx.is_inside_substitution_subshell)
+      !actx.effects.has_seen_runtime_definer && !actx.walk.is_inside_substitution_subshell)
   {
     actx.add_global_assigned_name(name.view(), source_location());
   }

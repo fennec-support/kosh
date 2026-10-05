@@ -308,15 +308,15 @@ fn IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
     actx.tested_command_names = condition_failure_names.clone();
     let const was_retaining_tested_command_names =
-        actx.should_retain_tested_command_names;
-    actx.should_retain_tested_command_names = true;
-    let const was_analyzing_condition = actx.is_analyzing_condition;
-    actx.is_analyzing_condition = true;
+        actx.walk.should_retain_tested_command_names;
+    actx.walk.should_retain_tested_command_names = true;
+    let const was_analyzing_condition = actx.walk.is_analyzing_condition;
+    actx.walk.is_analyzing_condition = true;
     if (!is_first_branch) actx.conditional_branch_depth++;
     condition->analyze(actx, is_unconditional && is_first_branch);
     if (!is_first_branch) actx.conditional_branch_depth--;
-    actx.is_analyzing_condition = was_analyzing_condition;
-    actx.should_retain_tested_command_names =
+    actx.walk.is_analyzing_condition = was_analyzing_condition;
+    actx.walk.should_retain_tested_command_names =
         was_retaining_tested_command_names;
     let const is_dead_branch =
         has_folded_branch() && folded_branch_index() != i;
@@ -544,30 +544,22 @@ fn WhileLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
   optimizer::optimize_node(this, actx);
 
-  let const was_inside_loop_condition = actx.is_inside_loop_condition;
-  let const prior_loop_condition_reads_input =
-      actx.has_input_reading_loop_condition;
+  let const saved_walk = actx.walk;
   let saved_tested_command_names = actx.tested_command_names.clone();
-  let const was_retaining_tested_command_names =
-      actx.should_retain_tested_command_names;
-  actx.is_inside_loop_condition = true;
-  actx.has_input_reading_loop_condition = false;
-  actx.should_retain_tested_command_names = true;
-  let const was_analyzing_condition = actx.is_analyzing_condition;
+  actx.walk.is_inside_loop_condition = true;
+  actx.walk.has_input_reading_loop_condition = false;
+  actx.walk.should_retain_tested_command_names = true;
   let const saved_getopts = actx.active_getopts;
   actx.active_getopts = {};
-  actx.is_analyzing_condition = true;
+  actx.walk.is_analyzing_condition = true;
   /* The loop is already entered when its condition list runs, so a break or a
      continue there leaves this loop. */
   actx.loop_body_depth++;
   m_condition->analyze(actx, is_unconditional);
   actx.loop_body_depth--;
-  actx.is_analyzing_condition = was_analyzing_condition;
-  actx.should_retain_tested_command_names = was_retaining_tested_command_names;
   let const has_input_reading_loop_condition =
-      actx.has_input_reading_loop_condition;
-  actx.is_inside_loop_condition = was_inside_loop_condition;
-  actx.has_input_reading_loop_condition = prior_loop_condition_reads_input;
+      actx.walk.has_input_reading_loop_condition;
+  actx.walk = saved_walk;
 
   if (is_until()) {
     actx.tested_command_names = saved_tested_command_names.clone();
@@ -577,8 +569,7 @@ fn WhileLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
   let condition_occurrences = actx.occurrences.snapshot();
   let const was_silenced = actx.effects.should_silence_unresolved_commands;
-  let const was_inside_read_loop = actx.is_inside_read_loop;
-  if (has_input_reading_loop_condition) actx.is_inside_read_loop = true;
+  if (has_input_reading_loop_condition) actx.walk.is_inside_read_loop = true;
   if (is_folded_to_skip()) actx.effects.should_silence_unresolved_commands = true;
   actx.loop_body_depth++;
   actx.conditional_branch_depth++;
@@ -588,7 +579,7 @@ fn WhileLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
   condition_occurrences.merge(actx.occurrences);
   actx.occurrences = steal(condition_occurrences);
-  actx.is_inside_read_loop = was_inside_read_loop;
+  actx.walk.is_inside_read_loop = saved_walk.is_inside_read_loop;
   actx.effects.should_silence_unresolved_commands = was_silenced;
   actx.tested_command_names = steal(saved_tested_command_names);
   actx.active_getopts = saved_getopts;

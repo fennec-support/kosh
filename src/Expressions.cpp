@@ -2116,7 +2116,7 @@ internal::AnalysisScopeGuard::AnalysisScopeGuard(AnalysisContext &actx,
           actx.inherited_global_assigned_names.clone()},
       m_array_valued_names{actx.array_valued_names.clone()},
       m_source_effects{actx.current_source_effects}, m_effects{actx.effects},
-      m_was_inside_subshell_analysis{actx.is_inside_subshell_analysis}
+      m_was_inside_subshell_analysis{actx.walk.is_inside_subshell_analysis}
 {
   actx.current_source_effects = nullptr;
 
@@ -2126,7 +2126,7 @@ internal::AnalysisScopeGuard::AnalysisScopeGuard(AnalysisContext &actx,
   case analysis_scope_mode::Subshell:
     m_constants = steal(actx.constant_variables);
     actx.constant_variables = StringMap<String>{heap_allocator()};
-    actx.is_inside_subshell_analysis = true;
+    actx.walk.is_inside_subshell_analysis = true;
     break;
 
   case analysis_scope_mode::Function:
@@ -2162,7 +2162,7 @@ fn internal::AnalysisScopeGuard::leave() throws -> void
 
   case analysis_scope_mode::Subshell:
     m_actx.effects = m_effects;
-    m_actx.is_inside_subshell_analysis = m_was_inside_subshell_analysis;
+    m_actx.walk.is_inside_subshell_analysis = m_was_inside_subshell_analysis;
     m_actx.constant_variables = steal(m_constants);
     break;
 
@@ -2224,18 +2224,18 @@ static fn analyze_substitution_body(AnalysisContext &actx,
   let const *ast = nested_parser.construct_ast(parse_errors, nullptr, nullptr);
   if (!parse_errors.is_empty()) return;
 
-  let const was_direct_pipeline_stage = actx.is_direct_pipeline_stage;
-  let const was_analyzing_condition = actx.is_analyzing_condition;
-  let const was_bare_read_substitution = actx.is_bare_read_substitution;
+  let const was_direct_pipeline_stage = actx.walk.is_direct_pipeline_stage;
+  let const was_analyzing_condition = actx.walk.is_analyzing_condition;
+  let const was_bare_read_substitution = actx.walk.is_bare_read_substitution;
   let const was_inside_substitution_subshell =
-      actx.is_inside_substitution_subshell;
+      actx.walk.is_inside_substitution_subshell;
   let const saved_getopts = actx.active_getopts;
   top_level_sibling_carry *const saved_carry = actx.stream_sibling_carry;
-  actx.is_direct_pipeline_stage = false;
-  actx.is_analyzing_condition = false;
+  actx.walk.is_direct_pipeline_stage = false;
+  actx.walk.is_analyzing_condition = false;
   actx.stream_sibling_carry = nullptr;
-  actx.is_bare_read_substitution = body_is_bare_file_read(ast);
-  actx.is_inside_substitution_subshell =
+  actx.walk.is_bare_read_substitution = body_is_bare_file_read(ast);
+  actx.walk.is_inside_substitution_subshell =
       is_subshell || was_inside_substitution_subshell;
 
   if (is_subshell) {
@@ -2245,12 +2245,12 @@ static fn analyze_substitution_body(AnalysisContext &actx,
     ast->analyze(actx, is_unconditional);
   }
 
-  actx.is_inside_substitution_subshell = was_inside_substitution_subshell;
-  actx.is_bare_read_substitution = was_bare_read_substitution;
+  actx.walk.is_inside_substitution_subshell = was_inside_substitution_subshell;
+  actx.walk.is_bare_read_substitution = was_bare_read_substitution;
   actx.stream_sibling_carry = saved_carry;
   actx.active_getopts = saved_getopts;
-  actx.is_analyzing_condition = was_analyzing_condition;
-  actx.is_direct_pipeline_stage = was_direct_pipeline_stage;
+  actx.walk.is_analyzing_condition = was_analyzing_condition;
+  actx.walk.is_direct_pipeline_stage = was_direct_pipeline_stage;
 }
 
 fn internal::analyze_region_substitutions(AnalysisContext &actx,

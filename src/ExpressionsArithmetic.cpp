@@ -1246,8 +1246,8 @@ fn Subshell::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 {
   ASSERT(m_body != nullptr);
 
-  let const was_analyzing_condition = actx.is_analyzing_condition;
-  actx.is_analyzing_condition = false;
+  let const was_analyzing_condition = actx.walk.is_analyzing_condition;
+  actx.walk.is_analyzing_condition = false;
 
   let const end_position = source_end_position();
   if (end_position > source_location().position + 1 &&
@@ -1312,7 +1312,7 @@ fn Subshell::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     m_body->analyze(actx, is_unconditional);
   }
 
-  actx.is_analyzing_condition = was_analyzing_condition;
+  actx.walk.is_analyzing_condition = was_analyzing_condition;
 }
 
 FunctionDefinition::FunctionDefinition(SourceLocation location, StringView name,

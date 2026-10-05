@@ -656,9 +656,9 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
        shellcheck SC2188 and SC2189. An assignment-only command is the SC2036
        shape and is reported by the pipeline. */
     if (!m_redirections.is_empty() && m_local_vars.is_empty() &&
-        m_array_args.is_empty() && !actx.is_bare_read_substitution)
+        m_array_args.is_empty() && !actx.walk.is_bare_read_substitution)
     {
-      let const id = actx.is_direct_pipeline_stage ? diagnostic_id::sc2189
+      let const id = actx.walk.is_direct_pipeline_stage ? diagnostic_id::sc2189
                                                    : diagnostic_id::sc2188;
       let const target = m_redirections[0].target;
       actx.report_diagnostic(id, target != nullptr ? target->source_location()
@@ -945,22 +945,22 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
   if (source_command_index < m_args.count()) {
     let const should_merge_source_state = is_unconditional;
     let const should_merge_source_uncertainty =
-        actx.function_scope_depth == 0 && !actx.is_direct_pipeline_stage &&
-        !actx.is_inside_subshell_analysis;
+        actx.function_scope_depth == 0 && !actx.walk.is_direct_pipeline_stage &&
+        !actx.walk.is_inside_subshell_analysis;
     did_analyze_source = analyze_followed_source(
         actx, m_args, source_command_index, should_merge_source_state,
         should_merge_source_uncertainty);
   }
 
-  if (!is_command_shadowed && actx.is_inside_loop_condition &&
+  if (!is_command_shadowed && actx.walk.is_inside_loop_condition &&
       command_id == command_name_id::Read)
   {
-    actx.has_input_reading_loop_condition = true;
+    actx.walk.has_input_reading_loop_condition = true;
   }
 
   append_presence_tested_command_names(actx, actx.tested_command_names, true);
 
-  if (!is_command_shadowed && actx.is_inside_read_loop &&
+  if (!is_command_shadowed && actx.walk.is_inside_read_loop &&
       command_id == command_name_id::Ssh)
   {
     actx.report_diagnostic(diagnostic_id::sc2095, m_args[0]->source_location());
