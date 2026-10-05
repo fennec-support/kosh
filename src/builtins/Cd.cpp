@@ -60,9 +60,6 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());
 
-  if (ec.args().count() > 1 && ec.args()[1] == "--help") {
-    SHOW_BUILTIN_HELP_AND_RETURN(ec);
-  }
   if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted))
     throw ErrorWithLocation{ec.source_location(),
                             "cd is forbidden in a restricted shell"};

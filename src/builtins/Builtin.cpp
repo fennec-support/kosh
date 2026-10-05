@@ -148,8 +148,6 @@ fn BuiltinBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
   }
 
   let const &name = ec.args()[1];
-  if (name == "--help") SHOW_BUILTIN_HELP_AND_RETURN(ec);
-
   if (name == "--list") {
     let const &sorted = sorted_builtin_names();
     let out = String{cxt.scratch_allocator()};

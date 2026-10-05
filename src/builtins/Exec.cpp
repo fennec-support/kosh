@@ -63,10 +63,6 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const &args = ec.args();
   ASSERT(!args.is_empty());
 
-  if (args.count() > 1 && args[1] == "--help") {
-    SHOW_BUILTIN_HELP_AND_RETURN(ec);
-  }
-
   let should_be_login_shell = false;
   let should_use_empty_environment = false;
   let has_custom_argv0 = false;

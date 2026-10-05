@@ -36,10 +36,6 @@ fn Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const &args = ec.args();
   ASSERT(!args.is_empty());
 
-  if (args.count() > 1 && args[1] == "--help") {
-    SHOW_BUILTIN_HELP_AND_RETURN(ec);
-  }
-
   /* Checked before the signal parsing so -l is not read as a signal named l. */
   if (args.count() > 1 && (args[1] == "-l" || args[1] == "--list")) {
     if (args.count() == 2) {

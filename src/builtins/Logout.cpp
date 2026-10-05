@@ -32,10 +32,6 @@ fn Logout::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());
 
-  if (ec.args().count() > 1 && ec.args()[1] == "--help") {
-    SHOW_BUILTIN_HELP_AND_RETURN(ec);
-  }
-
   if (!cxt.startup_store().is_login_shell()) {
     report_soft_builtin_error(ec, cxt, ec.source_location(),
                               "Cannot use 'logout' in a non-login shell",

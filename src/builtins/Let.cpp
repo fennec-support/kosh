@@ -32,10 +32,6 @@ pure fn Let::kind() const wontthrow -> Builtin::Kind { return Kind::Let; }
 
 fn Let::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
-  if (ec.args().count() > 1 && ec.args()[1] == "--help") {
-    SHOW_BUILTIN_HELP_AND_RETURN(ec);
-  }
-
   /* An empty let reports status 1, not usage status 2, matching bash. */
   if (ec.args().count() < 2) {
     report_soft_builtin_error(ec, cxt, ec.arg_location_at(0),

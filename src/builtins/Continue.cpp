@@ -35,10 +35,6 @@ fn Continue::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());
 
-  if (ec.args().count() > 1 && ec.args()[1] == "--help") {
-    SHOW_BUILTIN_HELP_AND_RETURN(ec);
-  }
-
   if (cxt.execution_store().loop_depth() == 0) {
     LOG(All, "continue outside a loop does nothing");
     report_loop_control_without_loop(ec, cxt);

@@ -143,10 +143,6 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const &args = ec.args();
   ASSERT(!args.is_empty());
 
-  if (args.count() > 1 && args[1] == "--help") {
-    SHOW_BUILTIN_HELP_AND_RETURN(ec);
-  }
-
   /* Dash accepts no trap option at all. A leading operand that opens with a
      dash and carries more than that dash is an illegal option there, and the
      special builtin ends a non-interactive shell with status 2. A lone dash and

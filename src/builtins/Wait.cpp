@@ -35,10 +35,6 @@ fn Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const &args = ec.args();
   ASSERT(!args.is_empty());
 
-  if (args.count() > 1 && args[1] == "--help") {
-    SHOW_BUILTIN_HELP_AND_RETURN(ec);
-  }
-
   i32 status = 0;
 
   /* A trapped signal that arrives while the wait blocks ends it, and its

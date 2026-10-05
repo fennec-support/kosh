@@ -56,10 +56,6 @@ fn Bg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const &args = ec.args();
   ASSERT(!args.is_empty());
 
-  if (args.count() > 1 && args[1] == "--help") {
-    SHOW_BUILTIN_HELP_AND_RETURN(ec);
-  }
-
   if (args.count() <= 1) {
     job *job = cxt.job_table_store().most_recent_job();
     if (job == nullptr)

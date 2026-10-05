@@ -31,10 +31,6 @@ fn Exit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());
 
-  if (ec.args().count() > 1 && ec.args()[1] == "--help") {
-    SHOW_BUILTIN_HELP_AND_RETURN(ec);
-  }
-
   let status = static_cast<i64>(cxt.execution_store().last_exit_status());
 
   /* Bash keeps the status the shell had reached when a trap action began. An

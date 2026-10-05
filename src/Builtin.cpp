@@ -133,6 +133,40 @@ fn builtin_names() throws -> const ArrayList<String> &
   return names;
 }
 
+/* A builtin outside this switch either parses a registered help flag, answers
+   --help only in some moods, adds help sections, or reads --help as data. */
+pure static fn should_dispatch_show_help(Builtin::Kind kind) wontthrow -> bool
+{
+  switch (kind) {
+  case Builtin::Kind::Cd:
+  case Builtin::Kind::Exit:
+  case Builtin::Kind::Break:
+  case Builtin::Kind::Continue:
+  case Builtin::Kind::Return:
+  case Builtin::Kind::True:
+  case Builtin::Kind::Source:
+  case Builtin::Kind::Eval:
+  case Builtin::Kind::Shift:
+  case Builtin::Kind::Printf:
+  case Builtin::Kind::Getopts:
+  case Builtin::Kind::Trap:
+  case Builtin::Kind::Exec:
+  case Builtin::Kind::BuiltinBuiltin:
+  case Builtin::Kind::Local:
+  case Builtin::Kind::Declare:
+  case Builtin::Kind::Times:
+  case Builtin::Kind::Let:
+  case Builtin::Kind::Fg:
+  case Builtin::Kind::Bg:
+  case Builtin::Kind::Wait:
+  case Builtin::Kind::Kill:
+  case Builtin::Kind::Newgrp:
+  case Builtin::Kind::Compopt:
+  case Builtin::Kind::Logout: return true;
+  default: return false;
+  }
+}
+
 fn execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
 {
   ASSERT(!ec.args().is_empty());
@@ -219,6 +253,15 @@ fn execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
   LOG(Debug, "dispatching builtin '%s' with %zu arguments",
       ec.program().c_str(), ec.args().count());
   try {
+    if (ec.args().count() > 1 && ec.args()[1] == "--help" &&
+        should_dispatch_show_help(ec.builtin_kind()))
+    {
+      show_builtin_help_impl(ec, builtin_help_description(ec.builtin_kind()),
+                             *builtin_help_synopsis(ec.builtin_kind()),
+                             *builtin_flag_list(ec.builtin_kind()));
+      return 0;
+    }
+
     switch (ec.builtin_kind()) {
       BUILTIN_SWITCH_CASES();
     default:
