@@ -886,12 +886,12 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
          differs from the live state. */
       let const *const definition_info =
           command_function_storage.get_definition_info();
-      let const needs_state_swap =
+      let const should_swap_state =
           definition_info != nullptr &&
           !(definition_info->defining_state ==
             definition_state::from(cxt.runtime_state()));
       Maybe<function_runtime_state> saved_runtime_state = None;
-      if (needs_state_swap) {
+      if (should_swap_state) {
         saved_runtime_state =
             cxt.enter_definition_state(definition_info->defining_state);
       }

@@ -571,10 +571,8 @@ fn kosh_main(int argc, char **argv) -> int
   }
 
   /* A shell with unequal ids skips config controlled by the real user. */
-  let const is_privileged =
-      FLAG_PRIVILEGED.is_enabled() || has_elevated_identity;
-  LOG(Info, "privileged mode is %s", is_privileged ? "on" : "off");
-  unused(is_privileged);
+  LOG(Info, "privileged mode is %s",
+      FLAG_PRIVILEGED.is_enabled() || has_elevated_identity ? "on" : "off");
 
   if (FLAG_STDIN.is_enabled() && FLAG_INTERACTIVE.is_enabled()) {
     let const should_use_interactive =
@@ -1274,9 +1272,7 @@ fn kosh_main(int argc, char **argv) -> int
         /* The working directory is indexed before the first keystroke so a
            ghost path suggestion is ready without a tab. A directory that cannot
            be read leaves the index empty. */
-        if (should_be_interactive && !is_rescue_mode &&
-            !FLAG_NO_COMPLETION.is_enabled())
-        {
+        if (!is_rescue_mode && !FLAG_NO_COMPLETION.is_enabled()) {
           try {
             koshka::utils::warm_directory_index(
                 koshka::Path::current_directory());
@@ -1287,29 +1283,27 @@ fn kosh_main(int argc, char **argv) -> int
            the first column. A marker, spaces to the line width, and a carriage
            return push the prompt to a fresh line, and on a clean line the
            prompt overwrites the marker so nothing shows. */
-        if (should_be_interactive) {
-          if (let const dimensions = koshka::os::get_terminal_dimensions();
-              dimensions.has_value() && dimensions->columns > 0)
-          {
-            koshka::String eol_marker{koshka::heap_allocator()};
-            /* One allocation holds the glyph, the fill spaces, and the controls
-               so the fill loop never regrows the buffer. */
-            eol_marker.reserve(dimensions->columns + 12);
-            if (koshka::colors::stdout_wants_color()) {
-              eol_marker += koshka::colors::ansi::INVERSE;
-              eol_marker += "\\n";
-              eol_marker += koshka::colors::ansi::RESET;
-            } else {
-              eol_marker += "\\n";
-            }
-            /* The marker is the two-column \n glyph, so the fill starts at
-               column two. */
-            for (u32 column = 2; column < dimensions->columns; column++)
-              eol_marker.push(' ');
-            eol_marker.push('\r');
-            koshka::print(eol_marker);
-            koshka::flush();
+        if (let const dimensions = koshka::os::get_terminal_dimensions();
+            dimensions.has_value() && dimensions->columns > 0)
+        {
+          koshka::String eol_marker{koshka::heap_allocator()};
+          /* One allocation holds the glyph, the fill spaces, and the controls
+             so the fill loop never regrows the buffer. */
+          eol_marker.reserve(dimensions->columns + 12);
+          if (koshka::colors::stdout_wants_color()) {
+            eol_marker += koshka::colors::ansi::INVERSE;
+            eol_marker += "\\n";
+            eol_marker += koshka::colors::ansi::RESET;
+          } else {
+            eol_marker += "\\n";
           }
+          /* The marker is the two-column \n glyph, so the fill starts at
+             column two. */
+          for (u32 column = 2; column < dimensions->columns; column++)
+            eol_marker.push(' ');
+          eol_marker.push('\r');
+          koshka::print(eol_marker);
+          koshka::flush();
         }
 
         koshka::String prompt = toiletline::build_prompt(context);

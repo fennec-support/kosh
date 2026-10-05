@@ -584,7 +584,7 @@ fn launch_process_substitution(const process_substitution_options &options)
     throws -> process_substitution_launch
 {
   unused(options.source);
-  unused(options.source_traces_enabled);
+  unused(options.should_trace_sources);
   unused(options.evaluator);
 
   let const command_writes_pipe =

@@ -246,7 +246,6 @@ public:
     m_line_offset = offset;
     m_is_rebased = true;
   }
-  pure fn is_rebased() const wontthrow -> bool { return m_is_rebased; }
   fn hide_filename() wontthrow -> void { m_is_filename_hidden = true; }
 
   pure fn location() const wontthrow -> SourceLocation { return m_location; }

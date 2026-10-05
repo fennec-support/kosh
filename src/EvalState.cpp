@@ -327,7 +327,7 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
   let const do_find_floor = [&](usize frame_limit) {
     for (usize index = frame_limit; index > 0; index--) {
       let const &candidate = source_store().source_frames()[index - 1];
-      if (candidate.does_change_source) return candidate.function_call_depth;
+      if (candidate.is_source_changing) return candidate.function_call_depth;
     }
     return usize{0};
   };

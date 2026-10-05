@@ -1076,7 +1076,7 @@ fn execute_program(ExecContext &ec, const program_execution_options &options)
 static fn spawn_subshell_stage(StringView source, Maybe<descriptor> in_fd,
                                Maybe<descriptor> out_fd,
                                Maybe<descriptor> err_fd,
-                               bool source_traces_enabled,
+                               bool should_trace_sources,
                                const child_evaluator_state &evaluator,
                                process_group_mode process_group) throws
     -> Maybe<process>;
@@ -1201,7 +1201,7 @@ fn launch_process_substitution(const process_substitution_options &options)
       unset_environment_variable(internal::CONNECT_NAMED_PIPE);
   };
   let const child = spawn_subshell_stage(
-      options.source, None, None, None, options.source_traces_enabled,
+      options.source, None, None, None, options.should_trace_sources,
       options.evaluator, process_group_mode::Inherit);
   if (!child.has_value())
     throw Error{"Unable to run the process substitution because the inner "
@@ -1260,7 +1260,7 @@ fn release_unused_process_substitution(opaque *cleanup) wontthrow -> void
 static fn spawn_subshell_stage(StringView source, Maybe<descriptor> in_fd,
                                Maybe<descriptor> out_fd,
                                Maybe<descriptor> err_fd,
-                               bool source_traces_enabled,
+                               bool should_trace_sources,
                                const child_evaluator_state &evaluator,
                                process_group_mode process_group) throws
     -> Maybe<process>
@@ -1283,7 +1283,7 @@ static fn spawn_subshell_stage(StringView source, Maybe<descriptor> in_fd,
     arguments.push(String{heap_allocator(), mood_name(mood)});
   }
   arguments.push(String{heap_allocator(), StringView{"--no-diagnostics"}});
-  if (!source_traces_enabled)
+  if (!should_trace_sources)
     arguments.push(String{heap_allocator(), StringView{"--no-traces"}});
   arguments.push(String{heap_allocator(), StringView{"-c"}});
   arguments.push(String{heap_allocator(), source});

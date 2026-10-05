@@ -708,8 +708,7 @@ struct evilps_live_state
   String input;
   String search;
   usize scroll_offset{0};
-  usize previous_visible_line_count{0};
-  bool has_previous_visible_line_count{false};
+  Maybe<usize> previous_visible_line_count;
   Maybe<evilps_sort_key> sort_key;
   bool should_sample_cpu;
   evilps_resource_mode resource_mode;
@@ -945,9 +944,9 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
       let const body_start_length = frame.length();
       let const requested_offset = state.scroll_offset;
       render_options.scroll_offset = requested_offset;
-      if (viewport_rows != 0 && state.has_previous_visible_line_count) {
+      if (viewport_rows != 0 && state.previous_visible_line_count.has_value()) {
         render_options.scroll_offset = get_clamped_scroll_offset(
-            requested_offset, state.previous_visible_line_count,
+            requested_offset, *state.previous_visible_line_count,
             viewport_rows - 1);
       }
       for (usize pass_count = 0; pass_count < 2; pass_count++) {
@@ -981,7 +980,6 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
         if (viewport_rows == 0) break;
 
         state.previous_visible_line_count = visible_line_count;
-        state.has_previous_visible_line_count = true;
         let const clamped_offset = get_clamped_scroll_offset(
             requested_offset, visible_line_count, viewport_rows - 1);
         state.scroll_offset = clamped_offset;

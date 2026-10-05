@@ -71,7 +71,7 @@ struct live_view_input
 {
   static constexpr usize CAPACITY = 64;
   live_view_key keys[CAPACITY];
-  usize count{0};
+  usize key_count{0};
 };
 
 class LiveView
@@ -203,7 +203,7 @@ fn run_live_view(const ExecContext &ec, const live_view_options &options,
       return 130;
     }
 
-    for (usize index = 0; index < input.count; index++) {
+    for (usize index = 0; index < input.key_count; index++) {
       let action = do_key(input.keys[index]);
       if (action == live_view_key_action::Unhandled)
         action = view.get_default_key_action(input.keys[index]);
@@ -212,25 +212,26 @@ fn run_live_view(const ExecContext &ec, const live_view_options &options,
       if (action == live_view_key_action::Redraw) should_force_refresh = true;
     }
 
-    let const now = os::monotonic_nanos();
+    let const now_nanoseconds = os::monotonic_nanos();
     if (sample_interval_nanoseconds != 0 &&
-        now - last_sample_nanoseconds >= sample_interval_nanoseconds)
+        now_nanoseconds - last_sample_nanoseconds >=
+            sample_interval_nanoseconds)
     {
-      if (let const status = do_sample(now, frame_allocator);
+      if (let const status = do_sample(now_nanoseconds, frame_allocator);
           status.has_value())
       {
         return *status;
       }
-      last_sample_nanoseconds = now;
+      last_sample_nanoseconds = now_nanoseconds;
     }
 
-    if (!should_force_refresh &&
-        now - last_refresh_nanoseconds < refresh_interval_nanoseconds)
+    if (!should_force_refresh && now_nanoseconds - last_refresh_nanoseconds <
+                                     refresh_interval_nanoseconds)
     {
       continue;
     }
     should_force_refresh = false;
-    last_refresh_nanoseconds = now;
+    last_refresh_nanoseconds = now_nanoseconds;
 
     let const dimensions = view.get_dimensions();
     let frame = String{frame_allocator};
@@ -273,11 +274,12 @@ struct no_retained_update
 
 template <class Row, class Items, class DoGetKey, class DoGetValue,
           class DoIsReset, class DoMakeRow, class DoUpdated>
-fn update_retained_rows(ArrayList<Row> &retained, Items &observed, u64 now,
-                        u64 window_nanoseconds, Allocator index_allocator,
-                        DoGetKey do_get_key, DoGetValue do_get_value,
-                        DoIsReset do_is_reset, DoMakeRow do_make_row,
-                        DoUpdated do_updated) throws -> void
+fn update_retained_rows(ArrayList<Row> &retained, Items &observed,
+                        u64 now_nanoseconds, u64 window_nanoseconds,
+                        Allocator index_allocator, DoGetKey do_get_key,
+                        DoGetValue do_get_value, DoIsReset do_is_reset,
+                        DoMakeRow do_make_row, DoUpdated do_updated) throws
+    -> void
 {
   using key_type = std::decay_t<decltype(do_get_key(retained[0]))>;
   struct index_entry
@@ -322,22 +324,25 @@ fn update_retained_rows(ArrayList<Row> &retained, Items &observed, u64 now,
     if (found.has_value() && do_is_reset(row.history.get_newest(), value))
       row.history.clear();
 
-    row.history.push(value, now);
-    row.history.last_seen_nanoseconds = now;
+    row.history.push(value, now_nanoseconds);
+    row.history.last_seen_nanoseconds = now_nanoseconds;
     do_updated(item, row);
   }
 
-  let const window_start = rolling_window_start(now, window_nanoseconds);
+  let const window_start =
+      rolling_window_start(now_nanoseconds, window_nanoseconds);
   for (usize remaining = retained.count(); remaining > 0; remaining--) {
     let const position = remaining - 1;
     let &row = retained[position];
-    if (now - row.history.last_seen_nanoseconds >= window_nanoseconds) {
+    if (now_nanoseconds - row.history.last_seen_nanoseconds >=
+        window_nanoseconds)
+    {
       retained.remove(position);
       continue;
     }
 
-    if (row.history.get_newest_timestamp() != now)
-      row.history.push(row.history.get_newest(), now);
+    if (row.history.get_newest_timestamp() != now_nanoseconds)
+      row.history.push(row.history.get_newest(), now_nanoseconds);
 
     row.history.trim(window_start);
   }
@@ -345,13 +350,13 @@ fn update_retained_rows(ArrayList<Row> &retained, Items &observed, u64 now,
 
 template <class Row, class Items, class DoGetKey, class DoGetValue,
           class DoIsReset, class DoMakeRow>
-fn update_retained_rows(ArrayList<Row> &retained, Items &observed, u64 now,
-                        u64 window_nanoseconds, Allocator index_allocator,
-                        DoGetKey do_get_key, DoGetValue do_get_value,
-                        DoIsReset do_is_reset, DoMakeRow do_make_row) throws
-    -> void
+fn update_retained_rows(ArrayList<Row> &retained, Items &observed,
+                        u64 now_nanoseconds, u64 window_nanoseconds,
+                        Allocator index_allocator, DoGetKey do_get_key,
+                        DoGetValue do_get_value, DoIsReset do_is_reset,
+                        DoMakeRow do_make_row) throws -> void
 {
-  update_retained_rows(retained, observed, now, window_nanoseconds,
+  update_retained_rows(retained, observed, now_nanoseconds, window_nanoseconds,
                        index_allocator, do_get_key, do_get_value, do_is_reset,
                        do_make_row, no_retained_update{});
 }

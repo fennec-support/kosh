@@ -160,7 +160,7 @@ pure fn EvalContext::resolve_render_source(
          index--)
     {
       let const &frame = source_store().source_frames()[index - 1];
-      if (!frame.does_change_source) continue;
+      if (!frame.is_source_changing) continue;
 
       lowest_depth = frame.function_call_depth;
       break;
@@ -1038,11 +1038,11 @@ fn EvalContext::readonly_names() const throws
 
   let const do_push_implicit = [&](const PackedStringKey &key) throws {
     let name = key.to_string();
-    let const attributes =
-        variable_store().variable_attributes().find(name.view());
-    if (((attributes.has_value() ? *attributes.value() : 0) &
+    if ((get_variable_attribute_bits(name.view()) &
          static_cast<u8>(variable_attribute::Readonly)) == 0)
+    {
       out.push(steal(name));
+    }
   };
 
   if (runtime_state().bash_dynamic_variables_enabled())
@@ -1063,8 +1063,7 @@ fn EvalContext::mark_declared(StringView name) throws -> void
 
 fn EvalContext::is_declared(StringView name) const wontthrow -> bool
 {
-  let const attributes = variable_store().variable_attributes().find(name);
-  return ((attributes.has_value() ? *attributes.value() : 0) &
+  return (get_variable_attribute_bits(name) &
           static_cast<u8>(variable_attribute::Declared)) != 0;
 }
 
@@ -1112,8 +1111,7 @@ fn EvalContext::unmark_lowercase(StringView name) throws -> void
 
 fn EvalContext::is_lowercase_variable(StringView name) const wontthrow -> bool
 {
-  let const attributes = variable_store().variable_attributes().find(name);
-  return ((attributes.has_value() ? *attributes.value() : 0) &
+  return (get_variable_attribute_bits(name) &
           static_cast<u8>(variable_attribute::Lowercase)) != 0;
 }
 
@@ -1130,8 +1128,7 @@ fn EvalContext::unmark_uppercase(StringView name) throws -> void
 
 fn EvalContext::is_uppercase_variable(StringView name) const wontthrow -> bool
 {
-  let const attributes = variable_store().variable_attributes().find(name);
-  return ((attributes.has_value() ? *attributes.value() : 0) &
+  return (get_variable_attribute_bits(name) &
           static_cast<u8>(variable_attribute::Uppercase)) != 0;
 }
 

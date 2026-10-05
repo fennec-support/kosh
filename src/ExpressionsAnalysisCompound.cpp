@@ -313,29 +313,24 @@ fn Pipeline::append_presence_tested_command_names(
     const AnalysisContext &actx, HashSet &names,
     bool status_is_success) const throws -> void
 {
-  if (m_commands.count() != 1 || m_commands[0] == nullptr) {
-    return;
-  }
+  if (m_commands.count() != 1) return;
+
   m_commands[0]->append_presence_tested_command_names(
       actx, names, status_is_success != is_negated());
 }
 
 fn Pipeline::as_simple_command() const wontthrow -> const SimpleCommand *
 {
-  if (m_commands.count() != 1 || m_commands[0] == nullptr) {
-    return nullptr;
-  }
+  if (m_commands.count() != 1) return nullptr;
+
   return m_commands[0]->as_simple_command();
 }
 
 fn CompoundList::has_single_test_command() const throws -> bool
 {
-  if (m_nodes.count() != 1 || m_nodes[0] == nullptr) return false;
+  if (m_nodes.count() != 1) return false;
 
-  let const command = m_nodes[0]->command();
-  if (command == nullptr) return false;
-
-  let const simple = command->as_simple_command();
+  let const simple = m_nodes[0]->command()->as_simple_command();
   if (simple == nullptr || simple->args().is_empty()) return false;
 
   let const name_token = simple->args()[0];
@@ -357,10 +352,7 @@ fn CompoundList::always_exits(const AnalysisContext &actx) const wontthrow
     if (node->kind() != CompoundListCondition::Kind::None) continue;
     if (node->is_negated()) continue;
 
-    let const command = node->command();
-    if (command != nullptr && command->always_exits(actx)) {
-      return true;
-    }
+    if (node->command()->always_exits(actx)) return true;
   }
 
   return false;
@@ -372,10 +364,7 @@ cold static fn
 node_unclosed_test_bracket(const CompoundListCondition *node) wontthrow
     -> const Token *
 {
-  const Command *held = node->command();
-  if (held == nullptr) return nullptr;
-
-  const SimpleCommand *command = held->as_simple_command();
+  const SimpleCommand *command = node->command()->as_simple_command();
   if (command == nullptr) return nullptr;
 
   let const &args = command->args();
@@ -427,10 +416,7 @@ cold static fn
 node_inequality_left_operand(const CompoundListCondition *node) wontthrow
     -> const Token *
 {
-  const Command *held = node->command();
-  if (held == nullptr) return nullptr;
-
-  const SimpleCommand *command = held->as_simple_command();
+  const SimpleCommand *command = node->command()->as_simple_command();
   if (command == nullptr) return nullptr;
 
   let const &args = command->args();
@@ -501,14 +487,13 @@ fn CompoundList::analyze(AnalysisContext &actx,
 
     /* POSIX sh reads time as a utility, so it receives the compound keyword as
        an operand and the report covers nothing, shellcheck SC2177. */
-    if (actx.is_posix_sh_shebang && command != nullptr && command->is_timed() &&
+    if (actx.is_posix_sh_shebang && command->is_timed() &&
         command->is_compound_command())
     {
       actx.report_diagnostic(diagnostic_id::sc2177, command->time_location());
     }
 
-    let const simple =
-        command != nullptr ? command->as_simple_command() : nullptr;
+    let const simple = command->as_simple_command();
     if (simple != nullptr && !simple->args().is_empty()) {
       let const name = static_command_name(simple->args()[0]);
       if (name.has_value() && !actx.defined_functions.contains(*name) &&
@@ -565,10 +550,7 @@ fn CompoundList::analyze(AnalysisContext &actx,
         m_nodes[i]->kind() == CompoundListCondition::Kind::And &&
         m_nodes[i + 1]->kind() == CompoundListCondition::Kind::Or)
     {
-      let const middle_command = m_nodes[i]->command();
-      let const middle_simple = middle_command != nullptr
-                                    ? middle_command->as_simple_command()
-                                    : nullptr;
+      let const middle_simple = m_nodes[i]->command()->as_simple_command();
       let is_test_command = false;
       if (middle_simple != nullptr && !middle_simple->args().is_empty()) {
         let const middle_token = middle_simple->args()[0];
@@ -604,9 +586,7 @@ fn CompoundList::analyze(AnalysisContext &actx,
   };
 
   for (let const node : m_nodes) {
-    let const command = node->command();
-    let const simple =
-        command != nullptr ? command->as_simple_command() : nullptr;
+    let const simple = node->command()->as_simple_command();
     String current_target{heap_allocator()};
     SourceLocation current_location{};
     if (simple != nullptr) {

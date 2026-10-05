@@ -353,14 +353,16 @@ hot fn CompoundList::evaluate_root_status_impl(
 CompoundListCondition::CompoundListCondition(SourceLocation location, Kind kind,
                                              const Command *expr)
     : Expression(steal(location)), m_kind(kind), m_cmd(expr)
-{}
+{
+  ASSERT(m_cmd != nullptr);
+}
 
 CompoundListCondition::~CompoundListCondition() = default;
 
 fn CompoundListCondition::can_evaluate_in_process_substitution(
     const EvalContext &cxt, HashSet &active_functions) const throws -> bool
 {
-  return m_cmd != nullptr && !m_cmd->is_async() &&
+  return !m_cmd->is_async() &&
          m_cmd->can_evaluate_in_process_substitution(cxt, active_functions);
 }
 
@@ -504,10 +506,7 @@ fn Pipeline::append_command(const Command *node) throws -> void
 fn Pipeline::error_report_location() const wontthrow -> SourceLocation
 {
   for (usize index = m_commands.count(); index > 0; index--) {
-    let const *stage = m_commands[index - 1];
-    if (stage == nullptr) continue;
-
-    let const *simple = stage->as_simple_command();
+    let const *simple = m_commands[index - 1]->as_simple_command();
     if (simple != nullptr) return simple->source_location();
   }
 

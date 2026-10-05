@@ -293,7 +293,7 @@ fn LiveView::get_default_key_action(live_view_key key) const wontthrow
 fn LiveView::wait_for_input(u64 wait_nanoseconds,
                             live_view_input &input) wontthrow -> bool
 {
-  input.count = 0;
+  input.key_count = 0;
   if (os::INTERRUPT_REQUESTED != 0) return false;
 
   if (!m_has_input) {
@@ -324,20 +324,20 @@ fn LiveView::wait_for_input(u64 wait_nanoseconds,
   }
 
   usize index = 0;
-  while (index < *read_count && input.count < live_view_input::CAPACITY) {
+  while (index < *read_count && input.key_count < live_view_input::CAPACITY) {
     let const byte = buffer[index];
     index++;
     live_view_key key{};
     if (byte != 27) {
       key.character = byte;
-      input.keys[input.count++] = key;
+      input.keys[input.key_count++] = key;
       continue;
     }
 
     if (index >= *read_count || (buffer[index] != '[' && buffer[index] != 'O'))
     {
       key.special = live_view_special_key::Escape;
-      input.keys[input.count++] = key;
+      input.keys[input.key_count++] = key;
       continue;
     }
 
@@ -362,7 +362,7 @@ fn LiveView::wait_for_input(u64 wait_nanoseconds,
       key.special = live_view_special_key::PageDown;
     }
     if (key.special != live_view_special_key::None)
-      input.keys[input.count++] = key;
+      input.keys[input.key_count++] = key;
   }
 
   return true;

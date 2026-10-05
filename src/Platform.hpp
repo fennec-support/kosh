@@ -2276,7 +2276,7 @@ struct child_evaluator_state
 struct process_substitution_options
 {
   StringView source{};
-  bool source_traces_enabled{true};
+  bool should_trace_sources{true};
   child_evaluator_state evaluator{};
   process_substitution_direction direction{
       process_substitution_direction::CommandReads};

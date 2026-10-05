@@ -27,7 +27,7 @@ namespace koshka {
 static fn mark_substitution_frames_printed(SourceStore &store) wontthrow -> void
 {
   for (let &frame : store.source_frames()) {
-    if (!frame.does_change_source) frame.was_printed = true;
+    if (!frame.is_source_changing) frame.was_printed = true;
   }
 }
 
@@ -347,7 +347,7 @@ fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
     try {
       return os::launch_process_substitution(os::process_substitution_options{
           .source = substitution_source.view(),
-          .source_traces_enabled = diagnostics_store().source_traces_enabled(),
+          .should_trace_sources = diagnostics_store().source_traces_enabled(),
           .evaluator = make_child_evaluator_state(bootstrap),
           .direction = command_writes_the_pipe
                            ? os::process_substitution_direction::CommandWrites
@@ -568,7 +568,7 @@ fn EvalContext::push_substitution_source_frame(const SourceLocation &location,
   });
   source_store().source_frames().back().function_call_depth =
       function_store().call_names().count();
-  source_store().source_frames().back().does_change_source = false;
+  source_store().source_frames().back().is_source_changing = false;
   return true;
 }
 

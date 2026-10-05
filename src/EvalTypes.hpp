@@ -319,7 +319,7 @@ struct source_frame
   usize function_call_depth{0};
   source_frame_kind kind;
   const trap_definition *definition{nullptr};
-  bool does_change_source{true};
+  bool is_source_changing{true};
   bool was_printed{false};
   bool was_definition_printed{false};
   bool should_defer_trace{false};

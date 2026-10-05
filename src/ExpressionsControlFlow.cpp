@@ -1462,14 +1462,13 @@ BraceGroup::~BraceGroup() = default;
 
 fn BraceGroup::always_exits(const AnalysisContext &actx) const wontthrow -> bool
 {
-  return m_body != nullptr && m_body->always_exits(actx);
+  return m_body->always_exits(actx);
 }
 
 fn BraceGroup::can_evaluate_in_process_substitution(
     const EvalContext &cxt, HashSet &active_functions) const throws -> bool
 {
-  return m_body != nullptr &&
-         m_body->can_evaluate_in_process_substitution(cxt, active_functions);
+  return m_body->can_evaluate_in_process_substitution(cxt, active_functions);
 }
 
 cold fn BraceGroup::to_string() const throws -> String
