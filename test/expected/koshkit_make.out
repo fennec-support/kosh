@@ -258,6 +258,9 @@ jobs=[S]
 jobs=[k]
 jobs=[S]
 jobs=[k]
+jobs=[]
+gnu-only-inherited-status=0
+inherited-macro=afterend inherited-environment=unset
 optional-jobs-help=yes
 recursive-print=yes
 .SUFFIXES: .o .c .y .l .a .sh .f .c~ .y~ .l~ .sh~ .f~

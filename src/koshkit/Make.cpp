@@ -3434,26 +3434,55 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
     parse_arguments.push(args[0].clone());
     parse_locations.push(do_argument_location(0));
   }
+  let const do_push_inherited_option = [&](String option) -> bool {
+    ArrayList<String> probe{cxt.scratch_allocator()};
+    probe.push(String{cxt.scratch_allocator(), StringView{"make"}});
+    probe.push(option.clone());
+    let const probe_result =
+        parse_util_operands(FLAG_LIST, probe, cxt.scratch_allocator(), nullptr,
+                            {.should_accept_unknown_flag_operand = true});
+    reset_flags(FLAG_LIST);
+    if (!probe_result.operands.is_empty()) return false;
+
+    parse_arguments.push(steal(option));
+    parse_locations.push(ec.source_location());
+    return true;
+  };
+  bool was_option_end_seen = false;
   if (let inherited_makeflags = os::get_environment_variable("MAKEFLAGS");
       inherited_makeflags.has_value())
     for (let const &word : split_makeflags_words(inherited_makeflags->view(),
                                                  cxt.scratch_allocator()))
     {
       if (word.is_empty()) continue;
-      if (is_command_line_assignment(word.view())) {
+
+      let letters = word.view();
+      if (letters == "--") {
+        was_option_end_seen = true;
+        continue;
+      }
+
+      if (!was_option_end_seen && letters[0] == '-') {
+        do_push_inherited_option(word.clone());
+        continue;
+      }
+
+      if (is_command_line_assignment(letters)) {
         command_assignments.push(word.clone());
         continue;
       }
-      let letters = word.view();
-      if (letters == "--") break;
-      if (letters[0] == '-') {
-        parse_arguments.push(word.clone());
-      } else {
-        let inherited_options = String{cxt.scratch_allocator(), "-"};
-        inherited_options += letters;
-        parse_arguments.push(steal(inherited_options));
+
+      if (was_option_end_seen) continue;
+
+      let inherited_options = String{cxt.scratch_allocator(), "-"};
+      inherited_options += letters;
+      if (do_push_inherited_option(steal(inherited_options))) continue;
+
+      for (usize i = 0; i < letters.length; i++) {
+        let inherited_option = String{cxt.scratch_allocator(), "-"};
+        inherited_option.push(letters[i]);
+        do_push_inherited_option(steal(inherited_option));
       }
-      parse_locations.push(ec.source_location());
     }
 
   for (usize argument_position = 1; argument_position < args.count();
