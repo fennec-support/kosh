@@ -712,6 +712,18 @@ public:
     m_mutations = mutations;
   }
 
+  pure fn snapshot() const wontthrow -> runtime_control_snapshot
+  {
+    return runtime_control_snapshot{m_init_moods_sourcing, m_initialized_moods,
+                                    m_mutations};
+  }
+
+  fn restore(const runtime_control_snapshot &snapshot) wontthrow -> void
+  {
+    restore_snapshot_state(snapshot.init_moods_sourcing,
+                           snapshot.initialized_moods, snapshot.mutations);
+  }
+
 private:
   u8 m_init_moods_sourcing{0};
   u8 m_initialized_moods{0};
@@ -821,6 +833,20 @@ public:
     });
   }
 
+  fn snapshot() const throws -> scope_snapshot
+  {
+    return scope_snapshot{m_aliases, m_local_scopes, m_local_scope_depth};
+  }
+  fn restore(scope_snapshot snapshot) throws -> void
+  {
+    m_aliases = steal(snapshot.aliases);
+    m_local_scopes = steal(snapshot.local_scopes);
+    m_local_scope_depth = snapshot.local_scope_depth;
+  }
+  fn append_wire(String &output) const throws -> void;
+  static fn from_wire(subshell_bootstrap_reader &reader,
+                      usize &local_scope_depth) wontthrow -> bool;
+
 private:
   StringMap<String> m_aliases{heap_allocator()};
   ArrayList<ArrayList<local_binding>> m_local_scopes{heap_allocator()};
@@ -884,6 +910,23 @@ public:
   pure fn get_current_command() const wontthrow -> StringView
   {
     return m_current_command.view();
+  }
+  fn snapshot() const throws -> execution_snapshot
+  {
+    return execution_snapshot{m_last_argument, m_terminal_exec_allowed};
+  }
+  fn restore(execution_snapshot snapshot) wontthrow -> void
+  {
+    m_last_argument = steal(snapshot.last_argument);
+    m_terminal_exec_allowed = snapshot.terminal_exec_allowed;
+  }
+  fn append_wire(String &output) const throws -> void;
+  static fn from_wire(subshell_bootstrap_reader &reader,
+                      execution_wire &wire) throws -> bool;
+  fn apply_wire(execution_wire wire) wontthrow -> void
+  {
+    m_execution_string = steal(wire.execution_string);
+    m_last_argument = steal(wire.last_argument);
   }
   fn set_make_shell_suppressed(bool suppressed) wontthrow -> void
   {
@@ -1657,6 +1700,24 @@ public:
     return m_unset_dynamic_readers;
   }
 
+  fn snapshot() const throws -> variable_snapshot;
+  fn restore(variable_snapshot snapshot) throws -> void;
+  fn append_wire(String &output) const throws -> void;
+  static fn from_wire(subshell_bootstrap_reader &reader,
+                      variable_wire &wire) throws -> bool;
+  fn apply_wire_masks(const variable_wire &wire) wontthrow -> void
+  {
+    m_disabled_bash_special_arrays = wire.disabled_bash_special_arrays;
+    m_unset_dynamic_readers = wire.unset_dynamic_readers;
+  }
+  fn apply_wire(variable_wire wire) wontthrow -> void
+  {
+    m_bash_arguments.reset();
+    if (wire.has_bash_argument_arrays)
+      m_bash_arguments.activate(steal(wire.bash_argument_values),
+                                steal(wire.bash_argument_frame_counts));
+  }
+
 private:
   String m_field_separators{" \t\n"};
   u64 m_field_separator_bits[4]{(u64{1} << ' ') | (u64{1} << '\t') |
@@ -1710,6 +1771,19 @@ public:
   {
     return m_default_spec;
   }
+
+  fn snapshot() const throws -> completion_snapshot
+  {
+    return completion_snapshot{m_specs, m_default_spec};
+  }
+  fn restore(completion_snapshot snapshot) wontthrow -> void
+  {
+    m_specs = steal(snapshot.specs);
+    m_default_spec = steal(snapshot.default_spec);
+  }
+  fn append_wire(String &output) const throws -> void;
+  static fn from_wire(subshell_bootstrap_reader &reader,
+                      completion_snapshot &wire) throws -> bool;
 
 private:
   StringMap<completion_spec> m_specs{heap_allocator()};
@@ -1804,6 +1878,22 @@ public:
     return m_call_frames;
   }
 
+  fn snapshot() const throws -> StringMap<FunctionBodyHandle>
+  {
+    return m_definitions;
+  }
+  fn restore(StringMap<FunctionBodyHandle> definitions) wontthrow -> void
+  {
+    m_definitions = steal(definitions);
+  }
+  fn append_wire(String &output) const throws -> void;
+  static fn from_wire(subshell_bootstrap_reader &reader,
+                      function_wire &wire) throws -> bool;
+  fn apply_wire_depth(const function_wire &wire) wontthrow -> void
+  {
+    m_call_depth = wire.call_depth;
+  }
+
 private:
   StringMap<FunctionBodyHandle> m_definitions{heap_allocator()};
   HashSet m_readonly{heap_allocator()};
@@ -1882,12 +1972,19 @@ public:
 
     refresh_flags();
   }
-  fn snapshot() const throws -> StringMap<trap_definition> { return m_traps; }
-  fn replace(StringMap<trap_definition> traps) throws -> void
+  fn snapshot() const throws -> trap_snapshot
   {
-    m_traps = steal(traps);
+    return trap_snapshot{m_traps, m_install_state};
+  }
+  fn restore(trap_snapshot snapshot) throws -> void
+  {
+    m_traps = steal(snapshot.traps);
+    m_install_state = snapshot.install;
     refresh_flags();
   }
+  fn append_wire(String &output) const throws -> void;
+  static fn from_wire(subshell_bootstrap_reader &reader,
+                      u64 &startup_ignored_signals) wontthrow -> bool;
   fn cached_bodies() wontthrow -> StringMap<FunctionBodyHandle> &
   {
     return m_cached_bodies;
@@ -1915,14 +2012,6 @@ public:
   pure fn err_trap_active_depth() const wontthrow -> usize
   {
     return m_install_state.err_active_depth;
-  }
-  pure fn get_install_state() const wontthrow -> trap_install_state
-  {
-    return m_install_state;
-  }
-  fn set_install_state(trap_install_state state) wontthrow -> void
-  {
-    m_install_state = state;
   }
   fn is_replaying_inherited_state() wontthrow -> bool &
   {
@@ -2437,6 +2526,12 @@ public:
     return m_was_confined_ignoreeof_enabled;
   }
 
+  pure fn snapshot() const wontthrow -> usize
+  {
+    return m_environment_undo_log.count();
+  }
+  fn restore(usize undo_mark) wontthrow -> void;
+
 private:
   usize m_confined_write_depth{0};
   dynamic_clock_state m_confined_clock{};
@@ -2478,6 +2573,9 @@ public:
   {
     m_is_restricted_shell = enabled;
   }
+  fn append_wire(String &output) const throws -> void;
+  static fn from_wire(subshell_bootstrap_reader &reader,
+                      bool &is_restricted_shell) wontthrow -> bool;
 
 private:
   bool m_is_login_shell{false};

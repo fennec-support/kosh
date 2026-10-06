@@ -82,8 +82,10 @@ changes update this file.
   mood changes. Explicit `set --mood` clears the level from `-W`, `-WW`, or
   `-WWW`.
 - Eval snapshots keep shell and shopt state, directories, the working directory,
-  and the file creation mask. A fresh evaluator receives replayable shell source
-  and framed structured state. Windows duplicates live process handles into the
+  and the file creation mask. Each store snapshots, restores, and writes its own
+  section of the bootstrap. A fresh evaluator receives replayable shell source
+  and one framed section per store under a shared section header. Windows
+  duplicates live process handles into the
   authenticated child. The bootstrap owns received handles until evaluator state
   adopts them. Restricted behavior uses one context state. BASHPID identifies
   forked evaluators. `$$` identifies the original shell.

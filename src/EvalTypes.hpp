@@ -402,6 +402,19 @@ struct job_table_snapshot
   i32 next_job_id;
 };
 
+struct subshell_bootstrap_reader;
+
+struct job_table_wire
+{
+  Maybe<i64> last_background_pid{None};
+  i32 next_job_id{1};
+  ArrayList<job> jobs{heap_allocator()};
+  ArrayList<os::process> detached_processes{heap_allocator()};
+  ArrayList<u32> process_references{heap_allocator()};
+
+  fn bind_processes(const os::subshell_bootstrap &bootstrap) wontthrow -> bool;
+};
+
 class JobTable
 {
   friend class EvalContext;
@@ -431,6 +444,11 @@ public:
   fn format_done_job_notifications(StringView line_ending) throws -> String;
   fn take_snapshot() throws -> job_table_snapshot;
   fn restore_snapshot(job_table_snapshot snapshot) throws -> void;
+  fn append_wire(String &output, os::subshell_bootstrap &bootstrap) const throws
+      -> void;
+  static fn from_wire(subshell_bootstrap_reader &reader,
+                      job_table_wire &wire) throws -> bool;
+  fn apply_wire(job_table_wire wire) wontthrow -> void;
 
   fn last_background_pid() wontthrow -> Maybe<i64> &
   {
