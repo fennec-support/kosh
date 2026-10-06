@@ -2880,7 +2880,8 @@ it is disabled by default.
 .PP
 The interactive selector draws a menu of the candidates below the line. The
 completion menu starts under the token being completed, and starts at the left
-edge when its widest row does not fit to the right of that column. The history
+edge when its widest row, the description column included, does not fit to the
+right of that column. The history
 menu always starts at the left edge. The
 down arrow moves to the next row, the up arrow moves back, and Tab accepts the
 highlighted row. In the completion menu, Escape closes the menu with the current
@@ -2892,7 +2893,9 @@ for the candidates of a token and
 .B incremental history search
 for a stable snapshot of the shared history file. Opening the search does not
 replace or merge the session's private history. The terminal height bounds the
-number of rows, and a count row names the part that is drawn.
+number of rows, and a count row names the part that is drawn. A first row too
+long for the width wraps onto further rows between its items, each starting at
+the column of the menu rows.
 .PP
 A printable key is inserted into the token, and the menu is drawn again from the
 candidates that still match. A candidate matches when the token opens it, when
@@ -2924,7 +2927,8 @@ plain listing.
 .PP
 The plain selector prints the candidates below the prompt as a static column
 list. The list starts under the token being completed, and starts at the left
-edge when its widest candidate does not fit to the right of that column. A terminal without decoration support always receives the plain listing.
+edge when its widest candidate, and its widest description when it shows any,
+does not fit to the right of that column. A terminal without decoration support always receives the plain listing.
 .PP
 Ctrl\-R searches the history through the same selector. The line is the search
 query, and the entries it matches are offered by the same three kinds, with the

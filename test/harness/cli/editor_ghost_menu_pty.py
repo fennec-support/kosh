@@ -209,7 +209,7 @@ class Screen:
 
 
 class Session:
-    def __init__(self, binary, directory, command_directory):
+    def __init__(self, binary, directory, command_directory, columns=COLUMNS):
         environment = {
             "PATH": command_directory,
             "HOME": directory,
@@ -223,7 +223,7 @@ class Session:
             os.chdir(directory)
             os.execve(binary, [binary, "-i", "--rcfile", "/dev/null"], environment)
         fcntl.ioctl(self.fd, termios.TIOCSWINSZ,
-                    struct.pack("HHHH", ROWS, COLUMNS, 0, 0))
+                    struct.pack("HHHH", ROWS, columns, 0, 0))
         self.is_closed = False
 
     def pump(self, seconds):
@@ -689,6 +689,49 @@ def run_checks(binary, directory, command_directory, report):
         session.close()
 
 
+def get_help_rows(screen):
+    row = screen.get_prompt_row()
+    if row < 0:
+        return None
+    rows = []
+    for line in screen.get_lines()[row + 1:]:
+        if line.strip().startswith("menu/"):
+            return rows
+        rows.append(line)
+    return None
+
+
+def is_help_wrapped(columns):
+    def do_check(screen):
+        rows = get_help_rows(screen)
+        if rows is None or len(rows) < 2 or MENU_HEADER not in rows[0]:
+            return False
+        if any(len(line) >= columns or line.strip().startswith(",") for line in rows):
+            return False
+        words = " ".join(line.strip() for line in rows)
+        return words == ("selecting completions, enter to run, tab to accept, "
+                         "esc to close, ctrl-g to restore")
+    return do_check
+
+
+def run_narrow_checks(binary, directory, command_directory, report):
+    columns = 60
+    session = Session(binary, directory, command_directory, columns)
+    try:
+        if not report.record("narrow-startup-prompt", session, is_line("")):
+            return
+
+        session.send(b"cat menu/m\t")
+        report.record("narrow-menu-help-wraps-between-items", session,
+                      is_help_wrapped(columns))
+        session.send(ESCAPE)
+        report.record("narrow-menu-escape-closes", session,
+                      lambda screen: screen.get_menu() is None
+                      and get_help_rows(screen) is None)
+    finally:
+        session.close()
+
+
 def main():
     if sys.platform != "linux":
         print("editor ghost and menu PTY probes: skipped (requires Linux)")
@@ -715,6 +758,8 @@ def main():
                 handle.write("#!/bin/sh\n")
             os.chmod(path, 0o755)
         run_checks(binary, directory, os.path.join(directory, "bin"), report)
+        run_narrow_checks(binary, directory, os.path.join(directory, "bin"),
+                          report)
     finally:
         shutil.rmtree(directory, ignore_errors=True)
     return 0 if report.is_ok else 1

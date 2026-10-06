@@ -78,4 +78,7 @@ diagnostic-absent-after-backslash PASS
 diagnostic-clears-when-quote-closes PASS
 option-off-hides-hint PASS
 option-off-hides-diagnostic PASS
+narrow-startup-prompt PASS
+narrow-menu-help-wraps-between-items PASS
+narrow-menu-escape-closes PASS
 status=0
