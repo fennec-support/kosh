@@ -1,7 +1,7 @@
 # Contributor: Alexey Andreyev <dev@aa13q.ru>
 pkgname=kosh-shell
 _upstream_name=kosh
-pkgver=0.1.0
+pkgver=0.3.0
 pkgrel=1
 pkgdesc="Fast, portable, Bash-compatible interactive shell, interpreter and diagnostic tool"
 arch=('x86_64' 'aarch64')
@@ -11,18 +11,18 @@ depends=('glibc')
 makedepends=('clang' 'git')
 conflicts=('kosh')
 install=kosh-shell.install
-_release_commit="c2731c40d2cb3770f5fd3f6f7bfdc68d55f05483"
-_release_epoch=1785870591
-_source_directory="toiletbril-kosh-c2731c4"
-_toiletline_commit="024fa036a7306ed07751fe90fbd583c9a6c2086c"
+_release_commit="951f3550cacc4684c6e50ff41c6ea8b40a8b5232"
+_release_epoch=1791053686
+_source_directory="$_upstream_name-$pkgver"
+_toiletline_commit="ee504b4823a85c30e8a6e11c9539932ed85c8282"
 export SOURCE_DATE_EPOCH="$_release_epoch"
 source=(
-  "$_upstream_name-$pkgver.tar.gz::https://api.github.com/repos/fennec-support/kosh/tarball/$pkgver"
+  "$_upstream_name-$pkgver.tar.gz::https://github.com/fennec-support/kosh/archive/refs/tags/$pkgver.tar.gz"
   "toiletline-$_toiletline_commit.tar.gz::https://github.com/toiletbril/toiletline/archive/$_toiletline_commit.tar.gz"
 )
 sha512sums=(
-  '387f835c2fda2e2fe03f89779197e8c5658ca4c0c573a8641d2771371097dfcc6d8df3f66be517fd1628928fcb52a0509770cc80e9861777ddd10659832fca27'
-  'c53820b0ed058776c213ecf4c7bdf11fb095d9b24c261bd503f4a655b7417ddef943cbc732c6b6aa4883fa89cd677b90b8a7ac29cef6a5d2ae9449606cf81763'
+  '5215255b6483986427a97bf2c0384d6e1e8e70f88e9f79268b06fac8b57aa824f7bfd650ba22ef73cc65fd8d93f0b97ad65bd88e73d03a642ab6f9ab4a5efe0f'
+  '6d1691bec35f7e5e0e64eb8aefad6dbe575ca190f8f8dcb989551f9509c33955c4e5e7752415cceb5059358946bb711d61644502c4f413e52a2783ff7a972192'
 )
 
 prepare() {
@@ -33,7 +33,10 @@ prepare() {
 
 build() {
   cd "$srcdir/$_source_directory"
-  make MODE=rel ENVCXXFLAGS="$CXXFLAGS $LDFLAGS" \
+  # Releases up to 0.3.0 define _FORTIFY_SOURCE=2 themselves under -Werror,
+  # which clashes with the makepkg level. Drop this once a release keeps it.
+  local _cxxflags="${CXXFLAGS//-Wp,-D_FORTIFY_SOURCE=3/}"
+  make MODE=rel ENVCXXFLAGS="$_cxxflags $LDFLAGS" \
     COMMIT_HASH="$_release_commit" OS_INFO="Arch Linux"
 }
 

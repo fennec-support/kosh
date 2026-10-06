@@ -238,6 +238,10 @@ changes update this file.
   layout. They exit without installing when the kosh at the target or on PATH
   is at least that release, or exactly a pinned `KOSH_INSTALL_VERSION`, unless
   forced.
+- `docs/RELEASING.md` is the release checklist for this repository and every
+  client and packaging repository. `scripts/update-package-recipes.sh` pins the
+  Arch and Alpine recipes in `deploy/` to a release; recipes stay static
+  because package builds may not query the network.
 
 ## Diagnostics and storage
 
