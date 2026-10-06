@@ -169,7 +169,6 @@ struct completion_session
       const koshka::ArrayList<koshka::highlight_span> &spans) throws -> void;
 
   koshka::String hint_row{koshka::heap_allocator()};
-  koshka::String syntax_problem{koshka::heap_allocator()};
   koshka::String highlighted_line{koshka::heap_allocator()};
   koshka::ArrayList<koshka::highlight_span> highlighted_spans{
       koshka::heap_allocator()};
@@ -980,8 +979,6 @@ fn kosh_ghost_validate_callback(const char *entry) -> int
   return COMPLETION_SESSION.validate_ghost(entry);
 }
 
-constexpr koshka::StringView UPCOMING_ERROR_PREFIX{"upcoming error: "};
-
 fn completion_session::hint(const char *buffer, size_t cursor) -> const char *
 {
   if (context == nullptr) return nullptr;
@@ -993,11 +990,8 @@ fn completion_session::hint(const char *buffer, size_t cursor) -> const char *
         has_invalid_span && highlighted_line.view() == line;
     if (koshka::completion::describe_syntax_problem(
             line, cursor, is_highlight_current ? &first_invalid_span : nullptr,
-            syntax_problem))
+            hint_row))
     {
-      hint_row.clear();
-      hint_row.append(UPCOMING_ERROR_PREFIX);
-      hint_row.append(syntax_problem.view());
       return hint_row.c_str();
     }
 

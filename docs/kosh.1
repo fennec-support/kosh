@@ -2863,9 +2863,8 @@ command turns the hint row off, and the option is on by default.
 .PP
 When the line has a syntax problem that running it would report, the same row
 shows that problem in place of the synopsis, in the words of the parse error
-after the prefix
-.BR "upcoming error: " ,
-in the same dim style as the synopsis. Examples are an unterminated quote, an unclosed
+and in the same dim style as the synopsis. Examples are an unterminated quote,
+an unclosed
 .BR $( ,
 .BR $(( ,
 backtick, subshell or
@@ -2996,8 +2995,8 @@ Syntax highlighting distinguishes syntax, commands, flags, variables, paths,
 globs, and invalid input.
 .PP
 When the caret is on a parenthesis, bracket, or brace, or just after one, that
-bracket and its partner are drawn bold and underlined. A caret on the dollar
-sign of
+bracket and its partner are drawn bold on a bright background. A caret on the
+dollar sign of
 .B $(
 or
 .B ${
