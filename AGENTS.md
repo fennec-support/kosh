@@ -89,6 +89,12 @@ changes update this file.
   authenticated child. The bootstrap owns received handles until evaluator state
   adopts them. Restricted behavior uses one context state. BASHPID identifies
   forked evaluators. `$$` identifies the original shell.
+- Each store owns its state and operations. The trap store keeps one map of
+  trap definitions, the history recorder and source retention are separate from
+  the source store, and runtime state keeps its fields private. A scope that
+  saves state restores it through a guard such as `RuntimeStateScope`,
+  `DefinitionStateScope`, `TrapActionScope`, `UntracedTrapScope`,
+  `SubstitutionFrame`, or `os::ScopedEnvironment`.
 - An asynchronous pipeline job owns and reaps every stage. POSIX stages share a
   process group. The last stage owns status and job output. Stream writes retry
   partial writes and reject zero-length writes while bytes remain.
