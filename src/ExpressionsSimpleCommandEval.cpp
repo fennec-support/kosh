@@ -744,8 +744,10 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     if (!is_read_field_separator) {
       Maybe<String> previous_shell_value;
       Maybe<SourceLocation> previous_special_definition_location;
-      let const did_overlay_shell_value =
-          command_word_function != nullptr || is_source_evaluating_builtin;
+      let const is_locale_name = name.starts_with("LC_") || name == "LANG";
+      let const did_overlay_shell_value = command_word_function != nullptr ||
+                                          is_source_evaluating_builtin ||
+                                          is_locale_name;
       if (did_overlay_shell_value) {
         if (let const stored =
                 cxt.variable_store().shell_variables().find(name);

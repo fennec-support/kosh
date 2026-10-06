@@ -18,7 +18,8 @@ HELP_SYNOPSIS_DECL("[-n] file ...");
 HELP_DESCRIPTION_DECL(
     "The readlink utility prints the target of a symbolic link.");
 
-FLAG(READLINK_NO_NEWLINE, Bool, 'n', "", "Do not print a trailing newline after a single file.");
+FLAG(READLINK_NO_NEWLINE, Bool, 'n', "",
+     "Do not print a trailing newline after a single file.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Readlink);

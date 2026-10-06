@@ -858,6 +858,8 @@ MAKEFLAGS=S "$BIN" -c 'koshkit make -k -f jobs.mk all'
 MAKEFLAGS='w --no-print-directory --jobserver-auth=3,4' \
   "$BIN" -c 'koshkit make -f jobs.mk all'
 echo "gnu-only-inherited-status=$?"
+MAKEFLAGS='k -C' "$BIN" -c 'koshkit make -f jobs.mk all'
+echo "valueless-inherited-status=$?"
 MAKEFLAGS='kw -- HIDDEN=afterend' \
   "$BIN" -c 'koshkit make -f inherited-assignment.mk show'
 make_help=$("$BIN" -c 'koshkit make --help')

@@ -28,6 +28,10 @@ if [ "${1-}" = numeric-locale ]; then
   }
   scoped
   printf "%'.1f\n" 9876543.25
+  LC_ALL=xx_XX
+  LC_ALL=C printf "%.2f|%'d\n" 3.14 1234567
+  printf "%.2f|%'d\n" 3,14 1234567
+  unset LC_ALL
   exit 0
 fi
 

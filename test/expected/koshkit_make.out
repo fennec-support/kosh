@@ -260,6 +260,8 @@ jobs=[S]
 jobs=[k]
 jobs=[]
 gnu-only-inherited-status=0
+jobs=[k]
+valueless-inherited-status=0
 inherited-macro=afterend inherited-environment=afterend
 optional-jobs-help=yes
 recursive-print=yes

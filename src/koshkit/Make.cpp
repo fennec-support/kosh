@@ -3443,11 +3443,15 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
     ArrayList<String> probe{cxt.scratch_allocator()};
     probe.push(String{cxt.scratch_allocator(), StringView{"make"}});
     probe.push(option.clone());
-    let const probe_result =
-        parse_util_operands(FLAG_LIST, probe, cxt.scratch_allocator(), nullptr,
-                            {.should_accept_unknown_flag_operand = true});
-    reset_flags(FLAG_LIST);
-    if (!probe_result.operands.is_empty()) return false;
+    defer { reset_flags(FLAG_LIST); };
+    try {
+      let const probe_result = parse_util_operands(
+          FLAG_LIST, probe, cxt.scratch_allocator(), nullptr,
+          {.should_accept_unknown_flag_operand = true});
+      if (!probe_result.operands.is_empty()) return false;
+    } catch (const ErrorBase &) {
+      return false;
+    }
 
     parse_arguments.push(steal(option));
     parse_locations.push(ec.source_location());

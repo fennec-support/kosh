@@ -3468,7 +3468,12 @@ every mood.
 .BR BASHPID ", " PPID ", " UID ", " EUID ", " GROUPS ", " HOSTNAME ", " HOSTTYPE ", " MACHTYPE ", " OSTYPE
 These dynamic values identify the current shell process, parent, ids,
 groups, host, and platform. The value of $$ remains the original shell process
-id. These names are unavailable in the
+id. A subshell that is the last command of an already forked substitution,
+subshell, pipeline stage, or background job runs in that process without
+another fork, so
+.B BASHPID
+inside it repeats the value of the process around it. These names are
+unavailable in the
 .B sh
 mood.
 .TP
