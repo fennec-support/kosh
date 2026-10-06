@@ -1,0 +1,33 @@
+#!/bin/env kosh
+
+# A background job and a pipeline stage start a fresh evaluator on Windows, so
+# the call frame of a function that unset itself, a caller's shadowed global,
+# and a remembered command path must reach it. A fork platform copies them.
+set --mood bash
+
+f() {
+  unset -f f
+  echo x | ( read -r v; echo "pipe=${FUNCNAME[0]} $v" )
+  ( echo "background=${FUNCNAME[0]}" ) &
+  wait "$!"
+  echo "background-status=$?"
+}
+f
+
+x=global
+inner() {
+  ( unset x; echo "revealed=${x-unset}" ) &
+  wait "$!"
+}
+outer() {
+  local x=local
+  inner
+  echo "outer=$x"
+}
+outer
+
+name=remembered
+hash -p "$KOSH" "$name"
+( "$name" -c 'echo remembered-ran' ) &
+wait "$!"
+echo "remembered-status=$?"
