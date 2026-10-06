@@ -461,18 +461,16 @@ fn append_conversion(String &out, String &spec, char conv,
       let const printed = value.find_character('\0').value_or(value.length);
       out.append(value.substring_of_length(0, printed));
     } else {
-      String with_s = spec.clone();
-      with_s.push('s');
-      do_append_formatted(with_s.c_str(), arg.c_str());
+      spec.push('s');
+      do_append_formatted(spec.c_str(), arg.c_str());
     }
   } break;
   case 'c': {
     if (spec == "%") {
       out += arg.is_empty() ? '\0' : arg[0];
     } else {
-      String with_c = spec.clone();
-      with_c.push('c');
-      do_append_formatted(with_c.c_str(), arg.is_empty() ? '\0' : arg[0]);
+      spec.push('c');
+      do_append_formatted(spec.c_str(), arg.is_empty() ? '\0' : arg[0]);
     }
   } break;
   case 'd':
