@@ -353,7 +353,8 @@ fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
   let const segment_location = segment.get_source_location(
       source_store().current_location().source_name_index);
   if (segment_location.has_value())
-    frame.register_embedded(substitution_source.view(), *segment_location);
+    frame.register_embedded(substitution_source.view(), *segment_location,
+                            &substitution_source);
   let parser = Parser{
       Lexer{substitution_source.view(), *arena_store().parse_arena(), None,
             runtime_state().get_mood()}

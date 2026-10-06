@@ -1,8 +1,8 @@
 #!/bin/env kosh
 
-# A background job and a pipeline stage run in a fresh evaluator on Windows.
-# Its runtime diagnostics, traces, and LINENO must name the lines and columns of
-# this source, as a forked child does, and it must not analyze its body again.
+# A background job, a pipeline stage, and a process substitution run in a fresh
+# evaluator on Windows. Its diagnostics, traces, and LINENO name the lines and
+# columns of this source, as a forked child does, without a second analysis.
 echo start; ( echo "background"; echo "$unset_in_background" ) &
 wait "$!"
 
@@ -19,3 +19,11 @@ report() {
   wait "$!"
 }
 report
+
+cat <(echo "input=$LINENO")
+cat <(
+  echo "multi=$LINENO"
+  echo "after=$LINENO"
+)
+collected=$(echo "output=$LINENO" > >(cat); wait)
+echo "$collected"

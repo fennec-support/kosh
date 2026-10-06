@@ -30,3 +30,7 @@ note: Replace it with ${unset_in_nested-} if empty expansion is desired.
        |                  ^
 
 function=18
+input=23
+multi=25
+after=26
+output=28
