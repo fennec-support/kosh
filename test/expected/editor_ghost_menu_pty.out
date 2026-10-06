@@ -85,7 +85,7 @@ diagnostic-stray-case-terminator PASS
 diagnostic-if-subshell-condition PASS
 diagnostic-empty-subshell PASS
 diagnostic-empty-brace-group PASS
-diagnostic-absent-while-typing-word PASS
+diagnostic-shown-at-word-end PASS
 diagnostic-shown-after-word PASS
 diagnostic-stray-closer PASS
 diagnostic-stray-done PASS

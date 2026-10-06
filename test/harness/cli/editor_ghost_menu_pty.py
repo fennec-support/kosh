@@ -690,10 +690,8 @@ def run_checks(binary, directory, command_directory, report):
                           "'{' and '}' is empty, a command is required")
 
         type_text(session, b"echo hi; fi")
-        session.wait_until(is_line("echo hi; fi"))
-        session.pump(0.3)
-        report.record("diagnostic-absent-while-typing-word", session,
-                      is_hint(""))
+        report.record("diagnostic-shown-at-word-end", session,
+                      is_hint("'fi' has no matching 'if'"))
         session.send(b" ")
         report.record("diagnostic-shown-after-word", session,
                       is_hint("'fi' has no matching 'if'"))
