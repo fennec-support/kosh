@@ -147,7 +147,8 @@ hot fn CompoundList::evaluate_root_status_impl(
     ASSERT(n != nullptr);
 
     if (n->kind() == CompoundListCondition::Kind::None) {
-      if (let const history_source = cxt.history_recording_source_for(this);
+      if (let const history_source =
+              cxt.history_recorder().find_source_for(this);
           history_source.has_value())
       {
         usize history_end_index = index;

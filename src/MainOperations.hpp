@@ -376,7 +376,8 @@ struct script_run_input
    next command. A run that only lints holds one top-level command at a time,
    so the peak memory of a large script is the memory of its widest command. */
 static fn make_script_run_plan(EvalContext &context, bool has_precompiled_ast,
-                               bool has_out_ast, bool should_print_ast) wontthrow
+                               bool has_out_ast,
+                               bool should_print_ast) wontthrow
     -> script_run_plan
 {
   let &state = context.runtime_state();
@@ -393,10 +394,9 @@ static fn make_script_run_plan(EvalContext &context, bool has_precompiled_ast,
   let const should_stream_execution =
       !has_precompiled_ast && !state.no_exec() && !needs_whole_tree;
 
-  return script_run_plan{should_analyze,
-                         should_analyze && state.no_exec() && !needs_whole_tree,
-                         should_stream_execution,
-                         should_stream_execution && !should_analyze};
+  return script_run_plan{
+      should_analyze, should_analyze && state.no_exec() && !needs_whole_tree,
+      should_stream_execution, should_stream_execution && !should_analyze};
 }
 
 /* A file with any parse error must not run, so every error is collected and
@@ -481,8 +481,7 @@ static fn preflight_syntax(const script_run_input &input,
 }
 
 static fn parse_whole_script(const script_run_input &input,
-                             const script_run_plan &plan,
-                             bool should_print_ast,
+                             const script_run_plan &plan, bool should_print_ast,
                              ArrayList<String> &parse_errors,
                              analysis_directives &directives,
                              Expression *&ast) throws -> bool
@@ -559,8 +558,9 @@ static fn analyze_script(const script_run_input &input,
   let const do_analyze = [&](AnalysisUnitStream *units) throws -> bool {
     return analyze_ast(ast, input.contents, context.function_store().names(),
                        context.scope_store().alias_names(), &context, options,
-                       directives, {&followed_source_paths, &source_effects_cache},
-                       {}, diagnostics, nullptr, units);
+                       directives,
+                       {&followed_source_paths, &source_effects_cache}, {},
+                       diagnostics, nullptr, units);
   };
 
   if (!plan.should_stream_units) return do_analyze(nullptr);
@@ -591,12 +591,11 @@ static fn evaluate_script(const script_run_input &input,
 
   LOG(Debug, "evaluating the chunk");
   let previous_history_event_number =
-      context.source_store().get_current_history_event_number();
-  context.source_store().set_current_history_event_number(
-      steal(history_event_number));
+      context.history_recorder().get_event_number();
+  context.history_recorder().set_event_number(steal(history_event_number));
   defer
   {
-    context.source_store().set_current_history_event_number(
+    context.history_recorder().set_event_number(
         steal(previous_history_event_number));
   };
   context.set_current_source(&input.contents, "the script");
@@ -682,9 +681,8 @@ static fn run_script_contents(
     ast_arena.reset();
     context.expansion_store().scratch_arena().reset();
 
-    let const plan = make_script_run_plan(
-        context, precompiled_ast != nullptr, out_ast != nullptr,
-        should_print_ast);
+    let const plan = make_script_run_plan(context, precompiled_ast != nullptr,
+                                          out_ast != nullptr, should_print_ast);
     let const input = script_run_input{script_contents, filename, context,
                                        ast_arena, diagnostic_sink};
     let parse_errors = ArrayList<String>{heap_allocator()};
@@ -1716,10 +1714,9 @@ enum class startup_file_requirement : u8
   Explicit,
 };
 
-static fn source_file(
-    const Path &path, EvalContext &context,
-    startup_file_requirement requirement = startup_file_requirement::Optional)
-    -> bool
+static fn source_file(const Path &path, EvalContext &context,
+                      startup_file_requirement requirement =
+                          startup_file_requirement::Optional) -> bool
 {
   Maybe<String> contents = path.read_entire_file();
   if (!contents) {

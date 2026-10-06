@@ -253,14 +253,6 @@ enum class source_frame_kind : u8
   CliRoot,
 };
 
-struct substitution_line_base
-{
-  const String *source;
-  const String *parent_source;
-  SourceLocation call_site;
-  usize function_call_depth;
-};
-
 struct trap_definition
 {
   String action_text;
@@ -324,6 +316,9 @@ struct embedded_source
   const String *parent;
   SourceLocation parent_location;
   usize inner_offset;
+  const String *body{nullptr};
+  usize function_call_depth{0};
+  bool is_mapped{true};
 };
 
 struct source_frame

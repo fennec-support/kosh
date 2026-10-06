@@ -2106,6 +2106,124 @@ private:
   StringMap<CompiledRegex> m_regex_cache{heap_allocator()};
 };
 
+struct history_recording_mark
+{
+  const Expression *root{nullptr};
+  StringView source{};
+};
+
+class HistoryRecorder
+{
+public:
+  fn set_event_number(Maybe<usize> number) wontthrow -> void
+  {
+    m_event_number = steal(number);
+  }
+  pure fn get_event_number() const wontthrow -> Maybe<usize>
+  {
+    return m_event_number;
+  }
+  fn begin_transaction(ArrayList<String> &commands) throws -> void
+  {
+    m_transaction_stack.push(&commands);
+  }
+  fn end_transaction() wontthrow -> void
+  {
+    ASSERT(!m_transaction_stack.is_empty());
+    m_transaction_stack.pop_back();
+  }
+  pure fn has_transaction() const wontthrow -> bool
+  {
+    return !m_transaction_stack.is_empty();
+  }
+  fn append_to_transaction(StringView command) throws -> void
+  {
+    ASSERT(!m_transaction_stack.is_empty());
+    m_transaction_stack.back()->push(String{heap_allocator(), command});
+  }
+  pure fn get_mark() const wontthrow -> history_recording_mark
+  {
+    return m_mark;
+  }
+  fn begin_recording(const Expression *root, StringView source) wontthrow
+      -> void
+  {
+    m_mark = history_recording_mark{root, source};
+  }
+  fn restore_mark(history_recording_mark mark) wontthrow -> void
+  {
+    m_mark = mark;
+  }
+  pure fn find_source_for(const Expression *root) const wontthrow
+      -> Maybe<StringView>
+  {
+    if (root != m_mark.root) return None;
+    return m_mark.source;
+  }
+
+private:
+  Maybe<usize> m_event_number{None};
+  history_recording_mark m_mark{};
+  ArrayList<ArrayList<String> *> m_transaction_stack{heap_allocator()};
+};
+
+struct source_retention_mark
+{
+  usize ast_count{0};
+  usize source_count{0};
+};
+
+class SourceRetention
+{
+public:
+  pure fn get_mark() const wontthrow -> source_retention_mark
+  {
+    return source_retention_mark{m_asts.count(), m_sources.count()};
+  }
+  pure fn count() const wontthrow -> usize { return m_sources.count(); }
+  fn reserve_one_more() throws -> void
+  {
+    m_asts.reserve(m_asts.count() + 1);
+    m_sources.reserve(m_sources.count() + 1);
+  }
+  fn retain(String *source, Expression *ast) throws -> void
+  {
+    m_sources.push(source);
+    m_asts.push(ast);
+  }
+  pure fn owns(const String *source) const wontthrow -> bool
+  {
+    for (let const *retained : m_sources) {
+      if (retained == source) return true;
+    }
+
+    return false;
+  }
+  pure fn generation_of(const String *source) const wontthrow -> u64
+  {
+    return owns(source) ? m_generation : EXTERNAL_SOURCE_GENERATION;
+  }
+  pure fn get_generation() const wontthrow -> u64 { return m_generation; }
+  fn set_generation(u64 generation) wontthrow -> void
+  {
+    m_generation = generation;
+  }
+  pure fn is_stale_generation(u64 generation) const wontthrow -> bool
+  {
+    return generation != EXTERNAL_SOURCE_GENERATION &&
+           generation != m_generation;
+  }
+  fn release_to(source_retention_mark mark) wontthrow -> void;
+  fn clear() wontthrow -> void;
+
+private:
+  fn free_sources_from(usize first) wontthrow -> void;
+
+  ArrayList<Expression *> m_asts{heap_allocator()};
+  ArrayList<String *> m_sources{heap_allocator()};
+  u64 m_generation{0};
+};
+
 class SourceStore
 {
 public:
@@ -2115,27 +2233,6 @@ public:
     m_current_source = source;
     m_current_source_generation = source_generation;
     m_current_origin = steal(origin);
-  }
-  fn set_current_history_event_number(Maybe<usize> number) wontthrow -> void
-  {
-    m_current_history_event_number = steal(number);
-  }
-  pure fn get_current_history_event_number() const wontthrow -> Maybe<usize>
-  {
-    return m_current_history_event_number;
-  }
-  fn begin_history_transaction(ArrayList<String> &commands) throws -> void
-  {
-    m_history_transaction_stack.push(&commands);
-  }
-  fn end_history_transaction() wontthrow -> void
-  {
-    ASSERT(!m_history_transaction_stack.is_empty());
-    m_history_transaction_stack.pop_back();
-  }
-  pure fn has_history_transaction() const wontthrow -> bool
-  {
-    return !m_history_transaction_stack.is_empty();
   }
   fn set_current_location(SourceLocation location) wontthrow -> void
   {
@@ -2172,53 +2269,20 @@ public:
     return m_current_source != nullptr ? m_current_source->view()
                                        : StringView{};
   }
-  fn embedded_sources() wontthrow -> ArrayList<embedded_source> &
+  fn push_embedded_source(embedded_source source) throws -> void
   {
-    return m_embedded_sources;
+    m_embedded_sources.push(steal(source));
   }
+  fn pop_embedded_source() wontthrow -> void { m_embedded_sources.pop_back(); }
   pure fn embedded_sources() const wontthrow
       -> const ArrayList<embedded_source> &
   {
     return m_embedded_sources;
   }
-  fn substitution_line_bases() wontthrow -> ArrayList<substitution_line_base> &
-  {
-    return m_substitution_line_bases;
-  }
-  pure fn substitution_line_bases() const wontthrow
-      -> const ArrayList<substitution_line_base> &
-  {
-    return m_substitution_line_bases;
-  }
   fn current_origin() wontthrow -> String & { return m_current_origin; }
   pure fn current_origin() const wontthrow -> const String &
   {
     return m_current_origin;
-  }
-  fn history_recording_root() wontthrow -> const Expression *&
-  {
-    return m_history_recording_root;
-  }
-  pure fn history_recording_root() const wontthrow -> const Expression *
-  {
-    return m_history_recording_root;
-  }
-  fn history_recording_source() wontthrow -> StringView &
-  {
-    return m_history_recording_source;
-  }
-  pure fn history_recording_source() const wontthrow -> StringView
-  {
-    return m_history_recording_source;
-  }
-  fn history_transaction_stack() wontthrow -> ArrayList<ArrayList<String> *> &
-  {
-    return m_history_transaction_stack;
-  }
-  pure fn history_transaction_stack() const wontthrow
-      -> const ArrayList<ArrayList<String> *> &
-  {
-    return m_history_transaction_stack;
   }
   fn current_location() wontthrow -> SourceLocation &
   {
@@ -2236,31 +2300,6 @@ public:
   {
     return m_source_frames;
   }
-  fn retained_source_asts() wontthrow -> ArrayList<Expression *> &
-  {
-    return m_retained_source_asts;
-  }
-  pure fn retained_source_asts() const wontthrow
-      -> const ArrayList<Expression *> &
-  {
-    return m_retained_source_asts;
-  }
-  fn retained_sources() wontthrow -> ArrayList<String *> &
-  {
-    return m_retained_sources;
-  }
-  pure fn retained_sources() const wontthrow -> const ArrayList<String *> &
-  {
-    return m_retained_sources;
-  }
-  fn retained_source_generation() wontthrow -> u64 &
-  {
-    return m_retained_source_generation;
-  }
-  pure fn retained_source_generation() const wontthrow -> u64
-  {
-    return m_retained_source_generation;
-  }
   fn current_source_generation() wontthrow -> u64 &
   {
     return m_current_source_generation;
@@ -2273,18 +2312,10 @@ public:
 private:
   const String *m_current_source{nullptr};
   String m_current_origin{heap_allocator()};
-  Maybe<usize> m_current_history_event_number{None};
-  const Expression *m_history_recording_root{nullptr};
-  StringView m_history_recording_source{};
-  ArrayList<ArrayList<String> *> m_history_transaction_stack{heap_allocator()};
   SourceLocation m_current_location{};
   bool m_is_script_run{false};
   ArrayList<source_frame> m_source_frames{heap_allocator()};
-  ArrayList<substitution_line_base> m_substitution_line_bases{heap_allocator()};
   ArrayList<embedded_source> m_embedded_sources{heap_allocator()};
-  ArrayList<Expression *> m_retained_source_asts{heap_allocator()};
-  ArrayList<String *> m_retained_sources{heap_allocator()};
-  u64 m_retained_source_generation{0};
   u64 m_current_source_generation{EXTERNAL_SOURCE_GENERATION};
   usize m_source_depth{0};
   usize m_rejected_return_source_frames{0};
@@ -2560,6 +2591,22 @@ public:
   {
     return m_expansion_store;
   }
+  fn history_recorder() wontthrow -> HistoryRecorder &
+  {
+    return m_history_recorder;
+  }
+  pure fn history_recorder() const wontthrow -> const HistoryRecorder &
+  {
+    return m_history_recorder;
+  }
+  fn source_retention() wontthrow -> SourceRetention &
+  {
+    return m_source_retention;
+  }
+  pure fn source_retention() const wontthrow -> const SourceRetention &
+  {
+    return m_source_retention;
+  }
   fn source_store() wontthrow -> SourceStore & { return m_source_store; }
   pure fn source_store() const wontthrow -> const SourceStore &
   {
@@ -2664,6 +2711,8 @@ protected:
   DiagnosticsStore m_diagnostics_store{};
   ControlFlowStore m_control_flow_store{};
   SourceStore m_source_store{};
+  HistoryRecorder m_history_recorder{};
+  SourceRetention m_source_retention{};
   RuntimeState m_runtime{};
   RuntimeControlStore m_runtime_control_store{};
   ProgramResolver m_program_resolver{};
@@ -2902,8 +2951,8 @@ public:
       usize call_depth_floor = static_cast<usize>(-1)) const wontthrow
       -> resolved_render_source;
   fn register_embedded_source(StringView inner,
-                              const SourceLocation &parent_location) throws
-      -> bool;
+                              const SourceLocation &parent_location,
+                              const String *body = nullptr) throws -> bool;
   fn unregister_embedded_source() wontthrow -> void;
   pure fn embedded_source_name_index() const wontthrow -> Maybe<u32>;
   fn map_embedded_site(StringView &rendered_source,
@@ -3196,12 +3245,6 @@ public:
       -> SourceScope
   {
     return SourceScope{*this, source, steal(origin)};
-  }
-  pure fn history_recording_source_for(const Expression *root) const wontthrow
-      -> Maybe<StringView>
-  {
-    if (root != source_store().history_recording_root()) return None;
-    return source_store().history_recording_source();
   }
   fn record_history_event(StringView command) throws -> bool;
   /* A frame at error_location is dropped. Consecutive frames in one file print

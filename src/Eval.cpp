@@ -121,9 +121,8 @@ fn EvalContext::end_command() wontthrow -> void
 
 fn EvalContext::record_history_event(StringView command) throws -> bool
 {
-  if (!source_store().history_transaction_stack().is_empty()) {
-    source_store().history_transaction_stack().back()->push(
-        String{heap_allocator(), command});
+  if (history_recorder().has_transaction()) {
+    history_recorder().append_to_transaction(command);
     return true;
   }
 
@@ -1301,7 +1300,7 @@ fn EvalContext::line_number_at_location(
   /* A substitution body is its own source, so its line count restarts. The
      lines before the enclosing site add up through every substitution the
      site is itself nested in. */
-  let const &line_bases = source_store().substitution_line_bases();
+  let const &line_bases = source_store().embedded_sources();
   let site = location;
   let site_source = fallback_source != nullptr
                         ? fallback_source
@@ -1315,7 +1314,7 @@ fn EvalContext::line_number_at_location(
     usize found = search_limit;
     for (usize index = search_limit; index > 0; index--) {
       let const &base = line_bases[index - 1];
-      if (base.source == site_source &&
+      if (base.body != nullptr && base.body == site_source &&
           (!site_depth.has_value() || base.function_call_depth == *site_depth))
       {
         found = index - 1;
@@ -1327,8 +1326,8 @@ fn EvalContext::line_number_at_location(
     let const &base = line_bases[found];
     preceding_line_count +=
         utils::line_number_at(site_source->view(), site.position) - 1;
-    site = base.call_site;
-    site_source = base.parent_source;
+    site = base.parent_location;
+    site_source = base.parent;
     site_depth = base.function_call_depth;
     search_limit = found;
   }

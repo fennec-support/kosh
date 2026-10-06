@@ -109,8 +109,8 @@ fn EvalContext::run_program_fallback(ExecContext &ec, mimic_mood mode,
       String{heap_allocator(), source_store().current_origin().view()});
   fallback_context.source_store().set_mimicry_depth(
       source_store().mimicry_depth());
-  fallback_context.source_store().retained_source_generation() =
-      source_store().retained_source_generation();
+  fallback_context.source_retention().set_generation(
+      source_retention().get_generation());
   fallback_context.execution_store().set_shell_executable_path(
       String{execution_store().get_shell_executable_path()});
   fallback_context.runtime_state().set_koshkit(runtime_state().koshkit());
@@ -527,8 +527,7 @@ fn EvalContext::run_source(StringView source, StringView origin,
 
   let *parse_arena = arena_store().parse_arena();
   let const parse_mark = parse_arena->mark();
-  let const retained_ast_count = source_store().retained_source_asts().count();
-  let const retained_source_count = source_store().retained_sources().count();
+  let const retention_mark = source_retention().get_mark();
   let const process_substitution_count =
       expansion_store().pending_process_substitutions().count();
   bool did_complete_source = false;
@@ -541,23 +540,9 @@ fn EvalContext::run_source(StringView source, StringView origin,
       return;
     }
 
-    source_store().retained_source_asts().truncate(retained_ast_count);
     parse_arena->release(parse_mark);
-
-    let &retained_sources = source_store().retained_sources();
-    for (usize index = retained_source_count; index < retained_sources.count();
-         index++)
-    {
-      String *retained = retained_sources[index];
-      utils::invalidate_line_number_cache_for(retained->view());
-      retained->~String();
-      heap_allocator().free_array(retained, 1);
-    }
-
-    retained_sources.truncate(retained_source_count);
+    source_retention().release_to(retention_mark);
     reset_runtime_diagnostic_highlight_cache();
-    if (retained_source_count == 0)
-      source_store().retained_source_generation()++;
   };
 
   LOG(Debug, "running source '%.*s' of %zu bytes at depth %zu",
@@ -628,10 +613,7 @@ fn EvalContext::run_source(StringView source, StringView origin,
 
       let const parsed_ast = parser.construct_ast();
       ASSERT(parsed_ast != nullptr);
-      source_store().retained_source_asts().reserve(
-          source_store().retained_source_asts().count() + 1);
-      source_store().retained_sources().reserve(
-          source_store().retained_sources().count() + 1);
+      source_retention().reserve_one_more();
 
       /* Keep a copy of the source alive for as long as the AST, so a
          control-flow jump made inside it can point a caret at the right text
@@ -644,27 +626,16 @@ fn EvalContext::run_source(StringView source, StringView origin,
         heap_allocator().free_array(owned_source, 1);
         throw;
       }
-      source_store().retained_sources().push(owned_source);
-      source_store().retained_source_asts().push(parsed_ast);
+      source_retention().retain(owned_source, parsed_ast);
       ast = parsed_ast;
       retained_source = owned_source;
     }
     source = retained_source->view();
 
-    let const previous_history_recording_root =
-        source_store().history_recording_root();
-    let const previous_history_recording_source =
-        source_store().history_recording_source();
-    if (history == history_recording::Enabled) {
-      source_store().history_recording_root() = ast;
-      source_store().history_recording_source() = source;
-    }
-    defer
-    {
-      source_store().history_recording_root() = previous_history_recording_root;
-      source_store().history_recording_source() =
-          previous_history_recording_source;
-    };
+    let const previous_recording_mark = history_recorder().get_mark();
+    if (history == history_recording::Enabled)
+      history_recorder().begin_recording(ast, source);
+    defer { history_recorder().restore_mark(previous_recording_mark); };
 
     let const source_scope = capture_source_scope();
     set_fresh_source(retained_source, String{origin});
@@ -751,21 +722,16 @@ fn EvalContext::resolve_source_path(
 
 fn EvalContext::clear_retained_sources() wontthrow -> void
 {
-  LOG(All, "dropping %zu retained sources and %zu retained asts",
-      source_store().retained_sources().count(),
-      source_store().retained_source_asts().count());
+  LOG(All, "dropping %zu retained sources and their asts",
+      source_retention().count());
 
 #if !defined NDEBUG
   for (let const &frame : source_store().source_frames()) {
     if (frame.parent_source == nullptr) continue;
-    for (let const *retained : source_store().retained_sources()) {
-      ASSERT(retained != frame.parent_source,
-             "a live source frame still borrows a dropped source");
-    }
+    ASSERT(!source_retention().owns(frame.parent_source),
+           "a live source frame still borrows a dropped source");
   }
 #endif
-
-  source_store().retained_source_asts().clear();
 
   /* A stashed source view or location may index a buffer freed just below, so
      both drop to the unlocated rendering. */
@@ -781,31 +747,45 @@ fn EvalContext::clear_retained_sources() wontthrow -> void
     control_flow_store().pending().location = SourceLocation{};
   }
 
-  for (String *source : source_store().retained_sources()) {
-    utils::invalidate_line_number_cache_for(source->view());
-    source->~String();
-    heap_allocator().free_array(source, 1);
-  }
-  source_store().retained_sources().clear();
+  source_retention().clear();
 
   reset_runtime_diagnostic_highlight_cache();
 
   source_store().current_source() = nullptr;
   source_store().current_source_generation() = EXTERNAL_SOURCE_GENERATION;
   source_store().current_origin().clear();
-  source_store().retained_source_generation()++;
+}
+
+fn SourceRetention::free_sources_from(usize first) wontthrow -> void
+{
+  for (usize index = first; index < m_sources.count(); index++) {
+    String *retained = m_sources[index];
+    utils::invalidate_line_number_cache_for(retained->view());
+    retained->~String();
+    heap_allocator().free_array(retained, 1);
+  }
+
+  m_sources.truncate(first);
+}
+
+fn SourceRetention::release_to(source_retention_mark mark) wontthrow -> void
+{
+  m_asts.truncate(mark.ast_count);
+  free_sources_from(mark.source_count);
+  if (mark.source_count == 0) m_generation++;
+}
+
+fn SourceRetention::clear() wontthrow -> void
+{
+  m_asts.clear();
+  free_sources_from(0);
+  m_generation++;
 }
 
 pure fn
 EvalContext::scan_source_generation(const String *source) const wontthrow -> u64
 {
-  if (source == nullptr) return EXTERNAL_SOURCE_GENERATION;
-
-  for (let const *retained : source_store().retained_sources()) {
-    if (retained == source) return source_store().retained_source_generation();
-  }
-
-  return EXTERNAL_SOURCE_GENERATION;
+  return source_retention().generation_of(source);
 }
 
 pure fn EvalContext::source_generation_for(const String *source) const wontthrow
@@ -820,12 +800,8 @@ pure fn EvalContext::source_generation_for(const String *source) const wontthrow
 pure fn EvalContext::borrowed_frame_source(
     const source_frame &frame) const wontthrow -> const String *
 {
-  if (frame.parent_source_generation != EXTERNAL_SOURCE_GENERATION &&
-      frame.parent_source_generation !=
-          source_store().retained_source_generation())
-  {
+  if (source_retention().is_stale_generation(frame.parent_source_generation))
     return nullptr;
-  }
 
   return frame.parent_source;
 }

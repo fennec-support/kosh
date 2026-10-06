@@ -53,39 +53,42 @@ fn EvalContext::render_contained_substitution_error(
   }
 }
 
-fn EvalContext::register_embedded_source(
-    StringView inner, const SourceLocation &parent_location) throws -> bool
+fn EvalContext::register_embedded_source(StringView inner,
+                                         const SourceLocation &parent_location,
+                                         const String *body) throws -> bool
 {
   let const *parent = source_store().current_source();
-  if (parent == nullptr || parent_location.length == 0 || inner.is_empty() ||
-      parent_location.position > parent->count() ||
-      parent_location.length > parent->count() - parent_location.position)
+  Maybe<usize> inner_offset = None;
+  if (parent != nullptr && parent_location.length != 0 && !inner.is_empty() &&
+      parent_location.position <= parent->count() &&
+      parent_location.length <= parent->count() - parent_location.position)
   {
+    let const span = parent->view().substring_of_length(
+        parent_location.position, parent_location.length);
+    static constexpr usize PREFIX_LENGTHS[] = {2, 1, 0};
+    for (let const prefix_length : PREFIX_LENGTHS) {
+      if (span.length >= prefix_length &&
+          span.substring(prefix_length).starts_with(inner))
+      {
+        inner_offset = prefix_length;
+        break;
+      }
+    }
+  }
+  if (!inner_offset.has_value() && body == nullptr) {
     return false;
   }
 
-  let const span = parent->view().substring_of_length(parent_location.position,
-                                                      parent_location.length);
-  Maybe<usize> inner_offset = None;
-  static constexpr usize PREFIX_LENGTHS[] = {2, 1, 0};
-  for (let const prefix_length : PREFIX_LENGTHS) {
-    if (span.length >= prefix_length &&
-        span.substring(prefix_length).starts_with(inner))
-    {
-      inner_offset = prefix_length;
-      break;
-    }
-  }
-  if (!inner_offset.has_value()) return false;
-
-  source_store().embedded_sources().push(
-      embedded_source{inner, parent, parent_location, *inner_offset});
+  source_store().push_embedded_source(embedded_source{
+      inner_offset.has_value() ? inner : StringView{}, parent, parent_location,
+      inner_offset.has_value() ? *inner_offset : 0, body,
+      function_store().call_frames().count(), inner_offset.has_value()});
   return true;
 }
 
 fn EvalContext::unregister_embedded_source() wontthrow -> void
 {
-  source_store().embedded_sources().pop_back();
+  source_store().pop_embedded_source();
 }
 
 fn EvalContext::map_embedded_site(StringView &rendered_source,
@@ -100,7 +103,7 @@ fn EvalContext::map_embedded_site(StringView &rendered_source,
          index--)
     {
       let const &candidate = source_store().embedded_sources()[index - 1];
-      if (candidate.text.data == rendered_source.data &&
+      if (candidate.is_mapped && candidate.text.data == rendered_source.data &&
           candidate.text.length == rendered_source.length)
       {
         match = &candidate;
@@ -122,14 +125,18 @@ fn EvalContext::map_embedded_site(StringView &rendered_source,
 
 pure fn EvalContext::embedded_source_name_index() const wontthrow -> Maybe<u32>
 {
-  if (source_store().embedded_sources().is_empty()) return None;
+  const embedded_source *entry = nullptr;
+  for (let const &candidate : source_store().embedded_sources()) {
+    if (candidate.is_mapped) entry = &candidate;
+  }
+  if (entry == nullptr) return None;
 
-  let const *entry = &source_store().embedded_sources().back();
   for (usize step = 0; step < source_store().embedded_sources().count(); step++)
   {
     const embedded_source *outer = nullptr;
     for (let const &candidate : source_store().embedded_sources()) {
-      if (candidate.text.data == entry->parent->view().data &&
+      if (candidate.is_mapped &&
+          candidate.text.data == entry->parent->view().data &&
           candidate.text.length == entry->parent->view().length)
       {
         outer = &candidate;
@@ -588,7 +595,7 @@ fn EvalContext::run_captured_substitution(
 
   let const did_register_embedded =
       call_site.has_value() &&
-      register_embedded_source(source.view(), *call_site);
+      register_embedded_source(source.view(), *call_site, &source);
   defer
   {
     if (did_register_embedded) unregister_embedded_source();
@@ -597,16 +604,6 @@ fn EvalContext::run_captured_substitution(
       enter_source_scope(&source, String{source_store().current_origin()});
   let const previous_source = source_scope.get_source();
   let const previous_location = source_scope.get_location();
-  let const did_push_line_base = call_site.has_value();
-  if (did_push_line_base) {
-    source_store().substitution_line_bases().push(
-        substitution_line_base{&source, previous_source, *call_site,
-                               function_store().call_frames().count()});
-  }
-  defer
-  {
-    if (did_push_line_base) source_store().substitution_line_bases().pop_back();
-  };
 
   Maybe<eval_state_snapshot> in_process_snapshot;
   let active_functions = HashSet{scratch_allocator()};

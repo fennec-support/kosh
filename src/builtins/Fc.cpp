@@ -184,8 +184,7 @@ static fn remember_fc_command(
   {
     return false;
   }
-  if (active_index.has_value())
-    cxt.source_store().set_current_history_event_number(None);
+  if (active_index.has_value()) cxt.history_recorder().set_event_number(None);
 
   return true;
 }
@@ -272,7 +271,7 @@ static fn execute_fc_command(const ExecContext &ec, EvalContext &cxt,
 
   ec.print_to_stderr(command.view());
   ec.print_to_stderr("\n");
-  if (!cxt.source_store().has_history_transaction() &&
+  if (!cxt.history_recorder().has_transaction() &&
       !remember_fc_command(cxt, events, active_index, command.view()))
   {
     report_soft_builtin_error(ec, cxt, ec.source_location(),
@@ -401,20 +400,20 @@ static fn edit_fc_commands(const ExecContext &ec, EvalContext &cxt,
 
   let recorded_commands = ArrayList<String>{heap_allocator()};
   let const should_replace_active =
-      active_index.has_value() && !cxt.source_store().has_history_transaction();
+      active_index.has_value() && !cxt.history_recorder().has_transaction();
   let should_end_transaction = should_replace_active;
   if (should_end_transaction)
-    cxt.source_store().begin_history_transaction(recorded_commands);
+    cxt.history_recorder().begin_transaction(recorded_commands);
   defer
   {
-    if (should_end_transaction) cxt.source_store().end_history_transaction();
+    if (should_end_transaction) cxt.history_recorder().end_transaction();
   };
 
   let const status = cxt.run_source(
       edited->view(), "fc", ec.source_location(), StringView{"fc"}, nullptr,
       nullptr, return_handling::Consume, history_recording::Enabled);
   if (should_end_transaction) {
-    cxt.source_store().end_history_transaction();
+    cxt.history_recorder().end_transaction();
     should_end_transaction = false;
   }
 
@@ -427,7 +426,7 @@ static fn edit_fc_commands(const ExecContext &ec, EvalContext &cxt,
                                 "Unable to replace the active history event");
       return 1;
     }
-    cxt.source_store().set_current_history_event_number(None);
+    cxt.history_recorder().set_event_number(None);
   }
 
   return status;
@@ -464,8 +463,8 @@ fn Fc::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let const &events = read_events.value();
-  let const active_index = active_event_index(
-      events, cxt.source_store().get_current_history_event_number());
+  let const active_index =
+      active_event_index(events, cxt.history_recorder().get_event_number());
 
   if (options.should_execute)
     return execute_fc_command(ec, cxt, args, operand_locations, events,
