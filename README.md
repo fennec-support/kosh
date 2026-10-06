@@ -26,6 +26,9 @@ and Linux.
 # on Linux, macOS, or any system with a POSIX shell:
 curl -fsSL "https://fennec.support/kosh/install" | sh
 
+# same platforms, via Homebrew:
+brew tap fennec-support/kosh
+
 # on Windows, Powershell:
 irm "https://fennec.support/kosh/install" | iex
 
@@ -40,9 +43,9 @@ source, see [Development](#development).
 To set up the universal language server and formatter in an editor, follow its
 guide:
 
-- [VS Code](vscode/README.md)
-- [Zed](zed/README.md)
-- [Neovim](nvim/lsp.lua)
+- [VS Code](https://github.com/fennec-support/kosh-vscode)
+- [Zed](https://github.com/fennec-support/kosh-zed)
+- [Neovim](https://github.com/fennec-support/kosh.nvim)
 
 ## Quick look
 

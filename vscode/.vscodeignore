@@ -1,9 +1,0 @@
-.vscodeignore
-tsconfig.json
-src/**
-out/**/*.map
-*.vsix
-node_modules/.bin/**
-node_modules/**/*.md
-node_modules/**/*.map
-node_modules/**/test/**

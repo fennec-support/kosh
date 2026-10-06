@@ -162,10 +162,11 @@ changes update this file.
 
 ## Editor integrations
 
-- `nvim/lsp.lua` is a paste-in snippet. `vscode` holds a TypeScript extension
-  built with npm. `zed` holds a Rust extension built for `wasm32-wasip2`. Each
-  directory owns its own install document. None of them is installed by
-  `src/Makefile` or packaged by a release workflow.
+- The editor clients live in their own repositories:
+  `fennec-support/kosh.nvim`, `fennec-support/kosh-vscode`, and
+  `fennec-support/kosh-zed`. Homebrew installs from
+  `fennec-support/homebrew-kosh`, whose formula reads the newest release tag
+  and its `SHA256SUMS` each time Homebrew loads it.
 - Formatting reaches every client through `textDocument/formatting`. The
   `kosh --format` command is the documented fallback for a setup without the
   server.
