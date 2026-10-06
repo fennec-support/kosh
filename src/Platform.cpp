@@ -122,23 +122,27 @@ fn subshell_bootstrap::operator=(subshell_bootstrap &&other) noexcept
   return *this;
 }
 
-static fn restore_environment_variable(StringView key,
-                                       const Maybe<String> &previous) wontthrow
-    -> void
+fn ScopedEnvironment::set(StringView key, StringView value) throws -> void
 {
-  try {
-    if (previous.has_value())
-      set_environment_variable(key, previous->view());
-    else
-      unset_environment_variable(key);
-  } catch (...) {}
+  m_saved.reserve(m_saved.count() + 1);
+  m_saved.push(SavedVariable{
+      String{heap_allocator(), key},
+      get_environment_variable(key)
+  });
+  set_environment_variable(key, value);
 }
 
-static fn replace_environment_variable(StringView key, StringView value,
-                                       Maybe<String> &previous) throws -> void
+ScopedEnvironment::~ScopedEnvironment()
 {
-  previous = get_environment_variable(key);
-  set_environment_variable(key, value);
+  for (usize index = m_saved.count(); index > 0; index--) {
+    let const &saved = m_saved[index - 1];
+    try {
+      if (saved.previous.has_value())
+        set_environment_variable(saved.key.view(), saved.previous->view());
+      else
+        unset_environment_variable(saved.key.view());
+    } catch (...) {}
+  }
 }
 
 static fn take_environment_variable(StringView key) throws -> Maybe<String>
@@ -148,31 +152,15 @@ static fn take_environment_variable(StringView key) throws -> Maybe<String>
   return text;
 }
 
-inherited_subshell_state::EnvironmentScope::EnvironmentScope(
-    const inherited_subshell_state &state) throws
+fn inherited_subshell_state::apply_to(
+    ScopedEnvironment &environment) const throws -> void
 {
-  replace_environment_variable(
-      internal::PREVIOUS_EXIT_STATUS,
-      String::from(state.previous_exit_status, heap_allocator()).view(),
-      m_previous_exit_status);
-  replace_environment_variable(
-      internal::SHELL_PROCESS_ID,
-      String::from(state.shell_process_id, heap_allocator()).view(),
-      m_previous_shell_process_id);
-  replace_environment_variable(
-      internal::SUBSHELL_DEPTH,
-      String::from(state.subshell_depth, heap_allocator()).view(),
-      m_previous_subshell_depth);
-}
-
-inherited_subshell_state::EnvironmentScope::~EnvironmentScope()
-{
-  restore_environment_variable(internal::SUBSHELL_DEPTH,
-                               m_previous_subshell_depth);
-  restore_environment_variable(internal::SHELL_PROCESS_ID,
-                               m_previous_shell_process_id);
-  restore_environment_variable(internal::PREVIOUS_EXIT_STATUS,
-                               m_previous_exit_status);
+  environment.set(internal::PREVIOUS_EXIT_STATUS,
+                  String::from(previous_exit_status, heap_allocator()).view());
+  environment.set(internal::SHELL_PROCESS_ID,
+                  String::from(shell_process_id, heap_allocator()).view());
+  environment.set(internal::SUBSHELL_DEPTH,
+                  String::from(subshell_depth, heap_allocator()).view());
 }
 
 fn inherited_subshell_state::take_from_environment() throws

@@ -2235,31 +2235,33 @@ private:
   fn close_owned_processes() wontthrow -> void;
 };
 
-struct inherited_subshell_state
+class ScopedEnvironment
 {
-  class EnvironmentScope
+public:
+  ScopedEnvironment() = default;
+  ScopedEnvironment(const ScopedEnvironment &) = delete;
+  fn operator=(const ScopedEnvironment &)->ScopedEnvironment & = delete;
+  ~ScopedEnvironment();
+
+  fn set(StringView key, StringView value) throws -> void;
+
+private:
+  struct SavedVariable
   {
-  public:
-    explicit EnvironmentScope(const inherited_subshell_state &state) throws;
-    ~EnvironmentScope();
-
-    EnvironmentScope(const EnvironmentScope &) = delete;
-    fn operator=(const EnvironmentScope &)->EnvironmentScope & = delete;
-
-  private:
-    Maybe<String> m_previous_exit_status{};
-    Maybe<String> m_previous_shell_process_id{};
-    Maybe<String> m_previous_subshell_depth{};
+    String key;
+    Maybe<String> previous;
   };
 
+  ArrayList<SavedVariable> m_saved{heap_allocator()};
+};
+
+struct inherited_subshell_state
+{
   i32 previous_exit_status{0};
   i64 shell_process_id{0};
   usize subshell_depth{0};
 
-  fn apply_to_environment() const throws -> EnvironmentScope
-  {
-    return EnvironmentScope{*this};
-  }
+  fn apply_to(ScopedEnvironment &environment) const throws -> void;
 
   static fn take_from_environment() throws -> Maybe<inherited_subshell_state>;
   static fn clear_environment() throws -> void;

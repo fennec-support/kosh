@@ -1187,19 +1187,10 @@ fn launch_process_substitution(const process_substitution_options &options)
     cleanup->~String();
     heap_allocator().free_array(cleanup, 1);
   };
-  let const previous_connection =
-      get_environment_variable(internal::CONNECT_NAMED_PIPE);
   let connection = String{command_writes_pipe ? "stdout:" : "stdin:"};
   connection += path;
-  set_environment_variable(internal::CONNECT_NAMED_PIPE, connection.view());
-  defer
-  {
-    if (previous_connection.has_value())
-      set_environment_variable(internal::CONNECT_NAMED_PIPE,
-                               previous_connection->view());
-    else
-      unset_environment_variable(internal::CONNECT_NAMED_PIPE);
-  };
+  ScopedEnvironment connection_environment;
+  connection_environment.set(internal::CONNECT_NAMED_PIPE, connection.view());
   let const child = spawn_subshell_stage(
       options.source, None, None, None, options.should_trace_sources,
       options.evaluator, process_group_mode::Inherit);
@@ -1291,21 +1282,11 @@ static fn spawn_subshell_stage(StringView source, Maybe<descriptor> in_fd,
     arguments.push(String{heap_allocator(), shell_name});
   let command_line = make_os_args(arguments);
 
-  let const inherited_scope = evaluator.inherited.apply_to_environment();
-
-  let const previous_parent_process_id =
-      get_environment_variable(internal::PARENT_PROCESS_ID);
-  set_environment_variable(
+  ScopedEnvironment child_environment;
+  evaluator.inherited.apply_to(child_environment);
+  child_environment.set(
       internal::PARENT_PROCESS_ID,
       String::from(GetCurrentProcessId(), heap_allocator()).view());
-  defer
-  {
-    if (previous_parent_process_id.has_value())
-      set_environment_variable(internal::PARENT_PROCESS_ID,
-                               previous_parent_process_id->view());
-    else
-      unset_environment_variable(internal::PARENT_PROCESS_ID);
-  };
 
   STARTUPINFOW startup_info{};
   startup_info.cb = sizeof(startup_info);
@@ -1321,25 +1302,12 @@ static fn spawn_subshell_stage(StringView source, Maybe<descriptor> in_fd,
   if (!ensure_valid_standard_handles(startup_info, null_handle)) return None;
 
   let bootstrap_pipe_path = String{heap_allocator()};
-  let previous_bootstrap_pipe = Maybe<String>{};
   let const has_bootstrap = bootstrap != nullptr;
   if (has_bootstrap) {
     bootstrap_pipe_path = make_internal_pipe_path();
-    previous_bootstrap_pipe =
-        get_environment_variable(internal::STATE_NAMED_PIPE);
-    set_environment_variable(internal::STATE_NAMED_PIPE,
-                             bootstrap_pipe_path.view());
+    child_environment.set(internal::STATE_NAMED_PIPE,
+                          bootstrap_pipe_path.view());
   }
-  defer
-  {
-    if (has_bootstrap) {
-      if (previous_bootstrap_pipe.has_value())
-        set_environment_variable(internal::STATE_NAMED_PIPE,
-                                 previous_bootstrap_pipe->view());
-      else
-        unset_environment_variable(internal::STATE_NAMED_PIPE);
-    }
-  };
 
   PROCESS_INFORMATION process_info{};
   let const creation_flags = process_group == process_group_mode::Inherit
