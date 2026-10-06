@@ -286,13 +286,8 @@ fn Calc::execute(const ExecContext &ec, EvalContext &cxt,
   KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
 
   /* calc prints only errors, an unset variable is a calc error instead. */
-  let const were_diagnostics_disabled =
-      cxt.runtime_state().is_diagnostics_disabled();
+  let const runtime_scope = RuntimeStateScope{cxt};
   cxt.runtime_state().set_diagnostics_disabled(true);
-  defer
-  {
-    cxt.runtime_state().set_diagnostics_disabled(were_diagnostics_disabled);
-  };
 
   /* A piped run with no expression keeps the usage error so it does not hang.
    */

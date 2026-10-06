@@ -1020,13 +1020,13 @@ fn definition_state::append_wire(String &output) const throws -> void
 
 fn RuntimeState::append_wire(String &output) const throws -> void
 {
-  output.push(static_cast<char>(mood));
-  output.push(static_cast<char>(warning_level));
-  output.push(static_cast<char>(tab_selector));
-  output.push(static_cast<char>(m_flags));
-  append_subshell_bootstrap_u64(output, shell_options);
-  append_subshell_bootstrap_u64(output, shopt.overrides);
-  append_subshell_bootstrap_u64(output, shopt.values);
+  output.push(static_cast<char>(m_mood));
+  output.push(static_cast<char>(m_reporting.warning_level));
+  output.push(static_cast<char>(m_tab_selector));
+  output.push(static_cast<char>(get_wire_flags()));
+  append_subshell_bootstrap_u64(output, m_shell_options);
+  append_subshell_bootstrap_u64(output, m_shopt.overrides);
+  append_subshell_bootstrap_u64(output, m_shopt.values);
 }
 
 struct subshell_bootstrap_reader
@@ -1184,12 +1184,12 @@ fn RuntimeState::from_wire(subshell_bootstrap_reader &reader,
     return false;
   }
 
-  runtime.mood = static_cast<mimic_mood>(mood);
-  runtime.warning_level = warning_level;
-  runtime.tab_selector = static_cast<tab_selector_mode>(tab_selector);
-  runtime.m_flags = flags;
-  runtime.shell_options = shell_options;
-  runtime.shopt = shopt;
+  runtime.m_mood = static_cast<mimic_mood>(mood);
+  runtime.m_reporting.warning_level = warning_level;
+  runtime.m_tab_selector = static_cast<tab_selector_mode>(tab_selector);
+  runtime.set_wire_flags(flags);
+  runtime.m_shell_options = shell_options;
+  runtime.m_shopt = shopt;
   return true;
 }
 

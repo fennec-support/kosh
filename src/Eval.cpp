@@ -111,6 +111,12 @@ fn RuntimeState::restore(EvalContext &context) const wontthrow -> void
   context.runtime_state() = *this;
 }
 
+RuntimeStateScope::RuntimeStateScope(EvalContext &context)
+    : m_context(context), m_saved(RuntimeState::capture(context))
+{}
+
+RuntimeStateScope::~RuntimeStateScope() { m_saved.restore(m_context); }
+
 fn EvalContext::end_command() wontthrow -> void
 {
   let const used = arena_store().parse_arena() != nullptr

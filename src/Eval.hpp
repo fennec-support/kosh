@@ -209,40 +209,6 @@ struct getopts_cursor
 class RuntimeState
 {
 public:
-  mimic_mood mood{mimic_mood::Default};
-  u8 warning_level{0};
-  tab_selector_mode tab_selector{tab_selector_mode::Interactive};
-
-private:
-  enum class Flag : u8
-  {
-    DiagnosticsDisabled = 1U << 0,
-    AnnoyingDiagnosticsEnabled = 1U << 1,
-    ErrorUnsetExplicit = 1U << 2,
-    PipefailExplicit = 1U << 3,
-    FailglobExplicit = 1U << 4,
-    ExtendedArithmeticExplicit = 1U << 5,
-    GlobIgnoreAssigned = 1U << 6,
-  };
-
-  static constexpr u8 ALL_FLAGS =
-      static_cast<u8>(Flag::DiagnosticsDisabled) |
-      static_cast<u8>(Flag::AnnoyingDiagnosticsEnabled) |
-      static_cast<u8>(Flag::ErrorUnsetExplicit) |
-      static_cast<u8>(Flag::PipefailExplicit) |
-      static_cast<u8>(Flag::FailglobExplicit) |
-      static_cast<u8>(Flag::ExtendedArithmeticExplicit) |
-      static_cast<u8>(Flag::GlobIgnoreAssigned);
-
-  u8 m_flags{static_cast<u8>(Flag::AnnoyingDiagnosticsEnabled)};
-
-public:
-  u64 shell_options{option_mask(shell_option_id::ExtendedArithmetic) |
-                    option_mask(shell_option_id::Failglob) |
-                    option_mask(shell_option_id::Hashall) |
-                    option_mask(shell_option_id::Braceexpand)};
-  shopt_state shopt;
-
   fn append_wire(String &output) const throws -> void;
   static fn from_wire(subshell_bootstrap_reader &reader,
                       RuntimeState &runtime) wontthrow -> bool;
@@ -269,23 +235,29 @@ public:
 
   pure fn option_is_enabled(shell_option_id option) const wontthrow -> bool
   {
-    return (shell_options & option_mask(option)) != 0;
+    return (m_shell_options & option_mask(option)) != 0;
+  }
+
+  pure fn get_shell_options() const wontthrow -> u64 { return m_shell_options; }
+  fn set_shell_options(u64 options) wontthrow -> void
+  {
+    m_shell_options = options;
   }
 
   pure fn koshkit_utilities_are_reachable() const wontthrow -> bool
   {
     return option_is_enabled(shell_option_id::Koshkit) ||
-           mood == mimic_mood::Default;
+           m_mood == mimic_mood::Default;
   }
 
   pure fn is_bash_compatible() const wontthrow -> bool
   {
-    return mood == mimic_mood::Bash || mood == mimic_mood::BashPosix;
+    return m_mood == mimic_mood::Bash || m_mood == mimic_mood::BashPosix;
   }
 
   pure fn is_posix_mode() const wontthrow -> bool
   {
-    return mood == mimic_mood::Posix;
+    return m_mood == mimic_mood::Posix;
   }
   pure fn bash_dynamic_variables_enabled() const wontthrow -> bool
   {
@@ -298,19 +270,19 @@ public:
 
   pure fn is_posix_option_on() const wontthrow -> bool
   {
-    return mood == mimic_mood::Posix || mood == mimic_mood::BashPosix;
+    return m_mood == mimic_mood::Posix || m_mood == mimic_mood::BashPosix;
   }
 
-  fn set_mood(mimic_mood value) wontthrow -> void { mood = value; }
-  pure fn get_mood() const wontthrow -> mimic_mood { return mood; }
+  fn set_mood(mimic_mood value) wontthrow -> void { m_mood = value; }
+  pure fn get_mood() const wontthrow -> mimic_mood { return m_mood; }
 
   fn set_tab_selector(tab_selector_mode selector) wontthrow -> void
   {
-    tab_selector = selector;
+    m_tab_selector = selector;
   }
   pure fn get_tab_selector() const wontthrow -> tab_selector_mode
   {
-    return tab_selector;
+    return m_tab_selector;
   }
 
   fn set_mimicry(bool enabled) wontthrow -> void
@@ -322,8 +294,14 @@ public:
     return option_is_enabled(shell_option_id::Mimicry);
   }
 
-  fn set_warning_level(u8 level) wontthrow -> void { warning_level = level; }
-  pure fn get_warning_level() const wontthrow -> u8 { return warning_level; }
+  fn set_warning_level(u8 level) wontthrow -> void
+  {
+    m_reporting.warning_level = level;
+  }
+  pure fn get_warning_level() const wontthrow -> u8
+  {
+    return m_reporting.warning_level;
+  }
 
   pure fn get_inheritable_analysis_state() const wontthrow
       -> inheritable_analysis_state
@@ -338,49 +316,46 @@ public:
   }
   pure fn get_reporting_state() const wontthrow -> reporting_state
   {
-    return {warning_level, !is_annoying_diagnostics_enabled(),
-            is_diagnostics_disabled()};
+    return m_reporting;
   }
   fn set_reporting_state(const reporting_state &state) wontthrow -> void
   {
-    warning_level = state.warning_level;
-    set_annoying_diagnostics_enabled(!state.is_annoying_disabled);
-    set_diagnostics_disabled(state.is_diagnostics_disabled);
+    m_reporting = state;
   }
   fn set_warnings_enabled(bool enabled) wontthrow -> void
   {
     if (!enabled)
-      warning_level = 0;
-    else if (warning_level < 3)
-      warning_level++;
+      m_reporting.warning_level = 0;
+    else if (m_reporting.warning_level < 3)
+      m_reporting.warning_level++;
   }
 
   fn set_option(shell_option_id option, bool enabled) wontthrow -> void
   {
     if (enabled)
-      shell_options |= option_mask(option);
+      m_shell_options |= option_mask(option);
     else
-      shell_options &= ~option_mask(option);
+      m_shell_options &= ~option_mask(option);
   }
 
   fn set_shopt_option(u8 index, bool enabled) wontthrow -> void
   {
     let const mask = u64{1} << index;
-    shopt.overrides |= mask;
+    m_shopt.overrides |= mask;
     if (enabled)
-      shopt.values |= mask;
+      m_shopt.values |= mask;
     else
-      shopt.values &= ~mask;
+      m_shopt.values &= ~mask;
   }
 
   pure fn is_shopt_option_overridden(u8 index) const wontthrow -> bool
   {
-    return (shopt.overrides & (u64{1} << index)) != 0;
+    return (m_shopt.overrides & (u64{1} << index)) != 0;
   }
 
   pure fn is_shopt_option_enabled(u8 index) const wontthrow -> bool
   {
-    return (shopt.values & (u64{1} << index)) != 0;
+    return (m_shopt.values & (u64{1} << index)) != 0;
   }
 
   pure fn is_shopt_enabled(shopt_option_id option) const wontthrow -> bool;
@@ -427,6 +402,46 @@ public:
   fn restore(EvalContext &context) const wontthrow -> void;
 
 private:
+  enum class Flag : u8
+  {
+    DiagnosticsDisabled = 1U << 0,
+    AnnoyingDiagnosticsEnabled = 1U << 1,
+    ErrorUnsetExplicit = 1U << 2,
+    PipefailExplicit = 1U << 3,
+    FailglobExplicit = 1U << 4,
+    ExtendedArithmeticExplicit = 1U << 5,
+    GlobIgnoreAssigned = 1U << 6,
+  };
+
+  static constexpr u8 REPORTING_FLAGS =
+      static_cast<u8>(Flag::DiagnosticsDisabled) |
+      static_cast<u8>(Flag::AnnoyingDiagnosticsEnabled);
+  static constexpr u8 ALL_FLAGS =
+      REPORTING_FLAGS | static_cast<u8>(Flag::ErrorUnsetExplicit) |
+      static_cast<u8>(Flag::PipefailExplicit) |
+      static_cast<u8>(Flag::FailglobExplicit) |
+      static_cast<u8>(Flag::ExtendedArithmeticExplicit) |
+      static_cast<u8>(Flag::GlobIgnoreAssigned);
+
+  pure fn get_wire_flags() const wontthrow -> u8
+  {
+    let const reporting_flags =
+        (m_reporting.is_diagnostics_disabled
+             ? static_cast<u8>(Flag::DiagnosticsDisabled)
+             : u8{0}) |
+        (m_reporting.is_annoying_disabled
+             ? u8{0}
+             : static_cast<u8>(Flag::AnnoyingDiagnosticsEnabled));
+    return static_cast<u8>((m_flags & ~REPORTING_FLAGS) | reporting_flags);
+  }
+  fn set_wire_flags(u8 flags) wontthrow -> void
+  {
+    m_flags = static_cast<u8>(flags & ~REPORTING_FLAGS);
+    m_reporting.is_diagnostics_disabled =
+        (flags & static_cast<u8>(Flag::DiagnosticsDisabled)) != 0;
+    m_reporting.is_annoying_disabled =
+        (flags & static_cast<u8>(Flag::AnnoyingDiagnosticsEnabled)) == 0;
+  }
   pure fn has_flag(Flag flag) const wontthrow -> bool
   {
     return (m_flags & static_cast<u8>(flag)) != 0;
@@ -438,9 +453,32 @@ private:
     else
       m_flags &= static_cast<u8>(~static_cast<u8>(flag));
   }
+
+  mimic_mood m_mood{mimic_mood::Default};
+  tab_selector_mode m_tab_selector{tab_selector_mode::Interactive};
+  u8 m_flags{0};
+  reporting_state m_reporting{};
+  u64 m_shell_options{option_mask(shell_option_id::ExtendedArithmetic) |
+                      option_mask(shell_option_id::Failglob) |
+                      option_mask(shell_option_id::Hashall) |
+                      option_mask(shell_option_id::Braceexpand)};
+  shopt_state m_shopt;
 };
 
 static_assert(sizeof(RuntimeState) == 32);
+
+class RuntimeStateScope
+{
+public:
+  explicit RuntimeStateScope(EvalContext &context);
+  RuntimeStateScope(const RuntimeStateScope &) = delete;
+  fn operator=(const RuntimeStateScope &) = delete;
+  ~RuntimeStateScope();
+
+private:
+  EvalContext &m_context;
+  RuntimeState m_saved;
+};
 
 struct definition_state
 {
@@ -470,24 +508,24 @@ struct definition_state
 
 inline pure fn RuntimeState::is_diagnostics_disabled() const wontthrow -> bool
 {
-  return has_flag(Flag::DiagnosticsDisabled);
+  return m_reporting.is_diagnostics_disabled;
 }
 
 inline fn RuntimeState::set_diagnostics_disabled(bool enabled) wontthrow -> void
 {
-  set_flag(Flag::DiagnosticsDisabled, enabled);
+  m_reporting.is_diagnostics_disabled = enabled;
 }
 
 inline pure fn RuntimeState::is_annoying_diagnostics_enabled() const wontthrow
     -> bool
 {
-  return has_flag(Flag::AnnoyingDiagnosticsEnabled);
+  return !m_reporting.is_annoying_disabled;
 }
 
 inline fn RuntimeState::set_annoying_diagnostics_enabled(bool enabled) wontthrow
     -> void
 {
-  set_flag(Flag::AnnoyingDiagnosticsEnabled, enabled);
+  m_reporting.is_annoying_disabled = !enabled;
 }
 
 inline pure fn RuntimeState::was_error_unset_set_explicitly() const wontthrow
@@ -3381,7 +3419,8 @@ public:
             state.entry_mutations.reporting);
     let const &options = runtime_control_store().option_mutations();
     let const entry_option_revision = state.entry_mutations.options.revision;
-    let changed_options = state.entered.shell_options ^ finished.shell_options;
+    let changed_options =
+        state.entered.get_shell_options() ^ finished.get_shell_options();
     if (reporting_revisions::has_field(changed_reporting,
                                        reporting_field::Mood))
     {
@@ -3399,11 +3438,11 @@ public:
         changed_options |= RuntimeState::option_mask(option_id);
     }
     let const merged_options =
-        (state.previous.shell_options & ~changed_options) |
-        (finished.shell_options & changed_options);
+        (state.previous.get_shell_options() & ~changed_options) |
+        (finished.get_shell_options() & changed_options);
 
     state.previous.restore(*this);
-    runtime_state().shell_options = merged_options;
+    runtime_state().set_shell_options(merged_options);
     if (options.touched_since(shell_option_id::Nounset, entry_option_revision))
       runtime_state().set_error_unset_set_explicitly(
           finished.was_error_unset_set_explicitly());
@@ -3419,10 +3458,10 @@ public:
           finished.was_extended_arithmetic_set_explicitly());
     if (reporting_revisions::has_field(changed_reporting,
                                        reporting_field::Mood))
-      runtime_state().set_mood(finished.mood);
+      runtime_state().set_mood(finished.get_mood());
     if (reporting_revisions::has_field(changed_reporting,
                                        reporting_field::Warning))
-      runtime_state().set_warning_level(finished.warning_level);
+      runtime_state().set_warning_level(finished.get_warning_level());
     if (reporting_revisions::has_field(changed_reporting,
                                        reporting_field::Diagnostics))
       runtime_state().set_diagnostics_disabled(

@@ -3099,15 +3099,12 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
 
     /* A recipe runs with the strict toggles off so an unmatched glob or an
        unset variable does not abort the build. */
-    let const saved_runtime = RuntimeState::capture(cxt);
-    RuntimeState recipe_runtime = saved_runtime;
-    recipe_runtime.mood = mimic_mood::Posix;
-    recipe_runtime.set_option(shell_option_id::Failglob, false);
-    recipe_runtime.set_option(shell_option_id::Nounset, false);
-    recipe_runtime.set_option(shell_option_id::Errexit, false);
-    recipe_runtime.warning_level = 0;
-    recipe_runtime.restore(cxt);
-    defer { saved_runtime.restore(cxt); };
+    let const runtime_scope = RuntimeStateScope{cxt};
+    cxt.runtime_state().set_mood(mimic_mood::Posix);
+    cxt.runtime_state().set_option(shell_option_id::Failglob, false);
+    cxt.runtime_state().set_option(shell_option_id::Nounset, false);
+    cxt.runtime_state().set_option(shell_option_id::Errexit, false);
+    cxt.runtime_state().set_warning_level(0);
 
     /* Each recipe line runs in its own subshell, the way GNU make spawns a
        shell per line. The parentheses also keep the tail-command exec
