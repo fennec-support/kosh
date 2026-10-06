@@ -495,7 +495,7 @@ cold fn printf_consumed_argument_count(StringView format,
 
     while (i < format.length &&
            (format[i] == '-' || format[i] == '+' || format[i] == ' ' ||
-            format[i] == '#' || format[i] == '0'))
+            format[i] == '#' || format[i] == '0' || format[i] == '\''))
       i++;
     if (i >= format.length) break;
     if (format[i] == '*') {

@@ -79,6 +79,7 @@
 #endif
 #if defined KOSH_HAS_ADDRESS_SANITIZER
 extern "C" void __lsan_disable(void);
+extern "C" void __lsan_enable(void);
 #endif
 #if defined __COSMOPOLITAN__
 #include <libc/dce.h>
@@ -1474,6 +1475,36 @@ fn code_point_to_lower(u32 code_point) wontthrow -> u32;
 /* Whether the platform can select the named locale, as newlocale does. */
 fn locale_is_available(StringView locale_name) wontthrow -> bool;
 
+class numeric_locale_scope
+{
+public:
+  numeric_locale_scope(StringView locale_name, bool is_grouping) wontthrow
+  {
+    if (locale_name.is_empty() || locale_name == "C" || locale_name == "POSIX")
+    {
+      return;
+    }
+
+    activate(locale_name, is_grouping);
+  }
+  ~numeric_locale_scope()
+  {
+    if (m_is_active) deactivate();
+  }
+
+  numeric_locale_scope(const numeric_locale_scope &) = delete;
+  fn operator=(const numeric_locale_scope &)->numeric_locale_scope & = delete;
+
+  pure fn is_active() const wontthrow -> bool { return m_is_active; }
+
+private:
+  fn activate(StringView locale_name, bool is_grouping) wontthrow -> void;
+  fn deactivate() wontthrow -> void;
+
+  maybeunused opaque *m_previous{nullptr};
+  bool m_is_active{false};
+};
+
 /* One capture group's byte span in the subject. A group that did not
    participate carries a negative start. */
 struct regex_span
@@ -1642,6 +1673,7 @@ fn has_environment_variable(StringView key) throws -> bool;
 fn get_environment_variable(StringView key) throws -> Maybe<String>;
 fn set_environment_variable(StringView key, StringView value) throws -> void;
 fn unset_environment_variable(StringView key) throws -> void;
+pure fn get_environment_epoch() wontthrow -> u64;
 fn get_environment_spelling(StringView key) throws -> String;
 fn signal_internal_diagnostic() wontthrow -> void;
 

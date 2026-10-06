@@ -1668,6 +1668,90 @@ regex_utf8_scope::~regex_utf8_scope()
   if (m_is_active) uselocale(static_cast<locale_t>(m_previous));
 }
 
+struct numeric_locale_entry
+{
+  char name[64];
+  u8 name_length;
+  bool has_dot_decimal_point;
+  locale_t numeric_locale;
+};
+
+static fn locale_has_dot_decimal_point(locale_t numeric_locale) wontthrow
+    -> bool
+{
+  let const previous = uselocale(numeric_locale);
+  if (previous == nullptr) return false;
+
+  char half[8];
+  let const length = std::snprintf(half, sizeof(half), "%.1f", 0.5);
+  uselocale(previous);
+
+  return length == 3 && half[1] == '.';
+}
+
+static fn get_numeric_locale(StringView locale_name) wontthrow
+    -> const numeric_locale_entry *
+{
+  constexpr usize CACHE_ENTRY_COUNT = 4;
+  static thread_local numeric_locale_entry cache[CACHE_ENTRY_COUNT]{};
+  static thread_local usize next_slot = 0;
+
+  if (locale_name.length >= sizeof(cache[0].name)) return nullptr;
+
+  for (let const &entry : cache) {
+    if (entry.name_length == locale_name.length &&
+        std::memcmp(entry.name, locale_name.data, locale_name.length) == 0)
+    {
+      return &entry;
+    }
+  }
+
+  let &slot = cache[next_slot];
+  next_slot = (next_slot + 1) % CACHE_ENTRY_COUNT;
+  if (slot.numeric_locale != nullptr) freelocale(slot.numeric_locale);
+
+  std::memcpy(slot.name, locale_name.data, locale_name.length);
+  slot.name[locale_name.length] = '\0';
+  slot.name_length = static_cast<u8>(locale_name.length);
+
+#if defined KOSH_HAS_ADDRESS_SANITIZER
+  __lsan_disable();
+#endif
+  slot.numeric_locale = newlocale(LC_NUMERIC_MASK, slot.name, nullptr);
+#if defined KOSH_HAS_ADDRESS_SANITIZER
+  __lsan_enable();
+#endif
+  slot.has_dot_decimal_point =
+      slot.numeric_locale == nullptr ||
+      locale_has_dot_decimal_point(slot.numeric_locale);
+
+  return &slot;
+}
+
+fn numeric_locale_scope::activate(StringView locale_name,
+                                  bool is_grouping) wontthrow -> void
+{
+  let const entry = get_numeric_locale(locale_name);
+  if (entry == nullptr || entry->numeric_locale == nullptr) {
+    return;
+  }
+
+  if (entry->has_dot_decimal_point && !is_grouping) {
+    return;
+  }
+
+  let const previous = uselocale(entry->numeric_locale);
+  if (previous == nullptr) return;
+
+  m_previous = previous;
+  m_is_active = true;
+}
+
+fn numeric_locale_scope::deactivate() wontthrow -> void
+{
+  uselocale(static_cast<locale_t>(m_previous));
+}
+
 fn read_process_cpu_times() wontthrow -> cpu_times
 {
   cpu_times result{};
@@ -2280,6 +2364,7 @@ fn set_environment_variable(StringView key, StringView value) throws -> void
   const String key_string{key};
   const String value_string{value};
   setenv(key_string.c_str(), value_string.c_str(), 1);
+  ENVIRONMENT_EPOCH++;
 }
 
 fn unset_environment_variable(StringView key) throws -> void
@@ -2288,6 +2373,7 @@ fn unset_environment_variable(StringView key) throws -> void
       static_cast<int>(key.length), key.data);
   const String key_string{key};
   unsetenv(key_string.c_str());
+  ENVIRONMENT_EPOCH++;
 }
 
 fn get_environment_spelling(StringView key) throws -> String

@@ -5,8 +5,8 @@
  * This file is the single platform translation unit. It selects and includes
  * the POSIX or Win32 source fragments so the build compiles one native backend.
  * It also implements shared process ownership, pending signal state,
- * descriptor epochs and complete reads, regular expressions, wide-integer
- * division, file creation masks, and CRC32C dispatch.
+ * descriptor and environment epochs, complete reads, regular expressions,
+ * wide-integer division, file creation masks, and CRC32C dispatch.
  */
 
 #include "Platform.hpp"
@@ -60,6 +60,10 @@ fn string_configuration(string_configuration_key key,
 }
 
 static fn is_trappable_signal(i32 signal_number) wontthrow -> bool;
+
+static u64 ENVIRONMENT_EPOCH = 0;
+
+pure fn get_environment_epoch() wontthrow -> u64 { return ENVIRONMENT_EPOCH; }
 
 } /* namespace os */
 } /* namespace koshka */

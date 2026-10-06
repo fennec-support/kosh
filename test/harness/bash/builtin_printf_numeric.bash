@@ -2,6 +2,35 @@
 # Bash printf numeric conversions with field width and precision, checked
 # byte-for-byte against bash. Covers signed and unsigned bases, padding,
 # alignment, and a floating conversion.
+
+# The numeric locale cases at the end of the file run here in a shell that
+# starts with LOCPATH naming the generated locale.
+if [ "${1-}" = numeric-locale ]; then
+  printf "%.2f|%'d\n" 3.14 1234567
+  LC_ALL=xx_XX printf "%.2f|%.1f|%'d|%'.2f|%'g|%'u\n" \
+    3,14 2,5 1234567 1234567,891 1234567,5 1234567
+  LC_ALL=xx_XX printf '%.2f\n' 3.14
+  echo "point_status=$?"
+  printf "%.2f|%'d\n" 3.14 1234567
+  export LC_NUMERIC=xx_XX
+  printf "%.2f|%'d\n" 3,14 1234567
+  printf -v stored '%.3f' 0,125
+  echo "stored=$stored"
+  echo "arithmetic=$((7 / 2)) $((10 * 3))"
+  LC_ALL=C printf '%.2f\n' 3.14
+  unset LC_NUMERIC
+  LANG=xx_XX
+  printf '%.2f\n' 4,5
+  LANG=C
+  scoped() {
+    local LC_ALL=xx_XX
+    printf "%'.1f\n" 9876543,25
+  }
+  scoped
+  printf "%'.1f\n" 9876543.25
+  exit 0
+fi
+
 printf '%d\n' 42
 printf '%5d\n' 42
 printf '%-5d|\n' 42
@@ -145,3 +174,38 @@ printf '%d %d %d\n' 1 2 3 4 5
 echo "recycle_status=$?"
 printf '%d\n' '' 2>/dev/null
 echo "empty_status=$?"
+
+# The ' flag groups thousands only where the numeric locale defines a
+# separator, so the C locale prints the digits plainly and a conversion without
+# grouping ignores the flag. A floating operand must be consumed whole, a
+# leading quote supplies the code point of the next character, and %F prints
+# like %f.
+LC_ALL=C printf "%'d|%'.2f|%'i|%'u|%'s|%'x|%F\n" \
+  1234567 1234567.5 -1234567 1234567 abc 255 1.5
+LC_ALL=C printf '%.2f|' 3x ' 3.5' "'a" 1e3 .5
+echo "float_status=$?"
+printf '[%.1f]\n' '' 2>/dev/null
+echo "empty_float_status=$?"
+
+# printf reads the numeric locale from the first nonempty of LC_ALL,
+# LC_NUMERIC, and LANG for the decimal point of a floating operand and for the
+# decimal point and grouping of its output. Arithmetic expansion stays in the C
+# locale. localedef builds a comma locale in a temporary directory, and a shell
+# started with LOCPATH runs the cases at the top of the file. The -c run covers
+# the default kosh mood. A host without localedef takes the same skip branch in
+# both shells.
+locale_dir=$(mktemp -d)
+if command -v localedef > /dev/null 2>&1; then
+  printf 'LC_NUMERIC\ndecimal_point ","\nthousands_sep "."\ngrouping 3;3\nEND LC_NUMERIC\n' \
+    > "$locale_dir/source"
+  localedef -c -i "$locale_dir/source" "$locale_dir/xx_XX" > /dev/null 2>&1
+fi
+if [ -f "$locale_dir/xx_XX/LC_NUMERIC" ]; then
+  LOCPATH=$locale_dir LANG=C LC_ALL= LC_NUMERIC= "$BASH" "$0" numeric-locale
+  echo "numeric_locale_status=$?"
+  LOCPATH=$locale_dir LANG=C LC_ALL=xx_XX LC_NUMERIC= \
+    "$BASH" -c 'printf "%.2f\n" 2,5'
+else
+  echo numeric-locale-unavailable
+fi
+rm -rf "$locale_dir"

@@ -124,6 +124,131 @@ fn parse_printf_integer(const String &arg) throws -> i64
   return parse_printf_number(arg).value;
 }
 
+struct printf_float
+{
+  double value;
+  bool is_valid;
+};
+
+fn parse_printf_float(const String &arg) throws -> printf_float
+{
+  if (!arg.is_empty() && (arg[0] == '\'' || arg[0] == '"')) {
+    return {arg.count() > 1
+                ? static_cast<double>(decode_utf8_code_point(arg, 1))
+                : 0.0,
+            true};
+  }
+
+  let const *const start = arg.c_str();
+  char *end = nullptr;
+  let const value = std::strtod(start, &end);
+
+  return {value, end != start && end == start + arg.count()};
+}
+
+constexpr StringView NUMERIC_LOCALE_VARIABLE_NAMES[] = {"LC_ALL", "LC_NUMERIC",
+                                                        "LANG"};
+
+struct numeric_locale_environment
+{
+  u64 epoch;
+  bool is_filled;
+  u8 value_lengths[countof(NUMERIC_LOCALE_VARIABLE_NAMES)];
+  char values[countof(NUMERIC_LOCALE_VARIABLE_NAMES)][128];
+  StringView inherited_name;
+};
+
+struct printf_numeric_locale
+{
+  StringView name;
+  bool is_resolved{false};
+};
+
+fn get_numeric_locale_environment() throws -> const numeric_locale_environment &
+{
+  static thread_local numeric_locale_environment environment{};
+
+  let const epoch = os::get_environment_epoch();
+  if (!environment.is_filled || environment.epoch != epoch) {
+    environment.inherited_name = {};
+    for (usize name_index = countof(NUMERIC_LOCALE_VARIABLE_NAMES);
+         name_index-- > 0;)
+    {
+      let const value = os::get_environment_variable(
+          NUMERIC_LOCALE_VARIABLE_NAMES[name_index]);
+      let text = StringView{};
+      if (value.has_value()) {
+        text = value->count() < sizeof(environment.values[0]) ? value->view()
+                                                              : StringView{"C"};
+      }
+
+      environment.value_lengths[name_index] = static_cast<u8>(text.length);
+      if (!text.is_empty()) {
+        std::memcpy(environment.values[name_index], text.data, text.length);
+        environment.inherited_name =
+            StringView{environment.values[name_index], text.length};
+      }
+    }
+
+    environment.epoch = epoch;
+    environment.is_filled = true;
+  }
+
+  return environment;
+}
+
+fn find_numeric_locale_name(const EvalContext &cxt) throws -> StringView
+{
+  let const &environment = get_numeric_locale_environment();
+  let const &store = cxt.variable_store();
+  if (!store.is_locale_scalar_possible()) return environment.inherited_name;
+
+  for (usize name_index = 0;
+       name_index < countof(NUMERIC_LOCALE_VARIABLE_NAMES); name_index++)
+  {
+    let const name = NUMERIC_LOCALE_VARIABLE_NAMES[name_index];
+    if (let const stored = store.shell_variables().find(name);
+        stored.has_value())
+    {
+      if (!stored.value()->is_empty()) return stored.value()->view();
+
+      continue;
+    }
+
+    if (cxt.scope_store().has_current_local(name)) continue;
+
+    if (environment.value_lengths[name_index] != 0) {
+      return StringView{environment.values[name_index],
+                        environment.value_lengths[name_index]};
+    }
+  }
+
+  return {};
+}
+
+fn get_numeric_locale_name(printf_numeric_locale &numeric_locale,
+                           const EvalContext &cxt) throws -> StringView
+{
+  if (!numeric_locale.is_resolved) {
+    numeric_locale.name = find_numeric_locale_name(cxt);
+    numeric_locale.is_resolved = true;
+  }
+
+  return numeric_locale.name;
+}
+
+fn complete_numeric_format(String &spec, bool is_grouped, StringView conversion,
+                           Allocator allocator) throws -> void
+{
+  if (is_grouped) {
+    let grouped = String{allocator, "%'"};
+    grouped.append(spec.view().substring(1));
+    spec = steal(grouped);
+  }
+
+  spec.append(conversion);
+}
+
 fn append_simple_escape(String &out, char e,
                         bool should_use_bash_escapes) throws -> void
 {
@@ -300,9 +425,11 @@ fn report_out_of_range(ExecContext &ec, EvalContext &cxt, const String &arg,
   exit_status = 1;
 }
 
-fn append_conversion(String &out, const String &spec, char conv,
-                     const String &arg, bool is_missing_argument,
-                     ExecContext &ec, EvalContext &cxt, i32 &exit_status,
+fn append_conversion(String &out, String &spec, char conv,
+                     bool has_grouping_flag, const String &arg,
+                     bool is_missing_argument,
+                     printf_numeric_locale &numeric_locale, ExecContext &ec,
+                     EvalContext &cxt, i32 &exit_status,
                      Allocator allocator) throws -> void
 {
   char buffer[256];
@@ -356,8 +483,12 @@ fn append_conversion(String &out, const String &spec, char conv,
                             allocator);
     else if (number.is_out_of_range && !is_missing_argument)
       report_out_of_range(ec, cxt, arg, exit_status, allocator);
-    let const with_ll = spec + "lld";
-    do_append_formatted(with_ll.c_str(), static_cast<long long>(number.value));
+    let const scope = os::numeric_locale_scope{
+        has_grouping_flag ? get_numeric_locale_name(numeric_locale, cxt)
+                          : StringView{},
+        true};
+    complete_numeric_format(spec, scope.is_active(), "lld", allocator);
+    do_append_formatted(spec.c_str(), static_cast<long long>(number.value));
   } break;
   case 'x':
   case 'X':
@@ -369,20 +500,39 @@ fn append_conversion(String &out, const String &spec, char conv,
                             allocator);
     else if (number.is_out_of_range && !is_missing_argument)
       report_out_of_range(ec, cxt, arg, exit_status, allocator);
-    String with_ll = spec + "ll";
-    with_ll.push(conv);
-    do_append_formatted(with_ll.c_str(),
+    let const should_group = has_grouping_flag && conv == 'u';
+    let const scope = os::numeric_locale_scope{
+        should_group ? get_numeric_locale_name(numeric_locale, cxt)
+                     : StringView{},
+        true};
+    const char conversion[] = {'l', 'l', conv};
+    complete_numeric_format(spec, scope.is_active(),
+                            StringView{conversion, sizeof(conversion)},
+                            allocator);
+    do_append_formatted(spec.c_str(),
                         static_cast<unsigned long long>(number.value));
   } break;
   case 'f':
+  case 'F':
   case 'e':
   case 'E':
   case 'g':
   case 'G': {
-    String with_conv = spec.clone();
-    with_conv.push(conv);
-    let const value = std::strtod(arg.c_str(), nullptr);
-    do_append_formatted(with_conv.c_str(), value);
+    let is_valid = true;
+    {
+      let const should_group = has_grouping_flag && conv != 'e' && conv != 'E';
+      let const scope = os::numeric_locale_scope{
+          get_numeric_locale_name(numeric_locale, cxt), should_group};
+      let const number = parse_printf_float(arg);
+      is_valid = number.is_valid;
+      complete_numeric_format(spec, should_group && scope.is_active(),
+                              StringView{&conv, 1}, allocator);
+      do_append_formatted(spec.c_str(), number.value);
+    }
+
+    if (!is_valid && !is_missing_argument) {
+      report_invalid_number(ec, cxt, arg, false, exit_status, allocator);
+    }
   } break;
   default:
     out += spec;
@@ -447,6 +597,7 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   };
 
   let const should_use_bash_escapes = !cxt.runtime_state().is_posix_mode();
+  printf_numeric_locale numeric_locale;
 
   do {
     has_consumed_a_conversion = false;
@@ -464,8 +615,16 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       String spec{cxt.scratch_allocator(), "%"};
       i++;
 
-      while (i < fmt.length() && std::strchr("-+ 0#", fmt[i]) != nullptr)
+      bool has_grouping_flag = false;
+      while (i < fmt.length() && std::strchr("-+ 0#'", fmt[i]) != nullptr) {
+        if (fmt[i] == '\'') {
+          has_grouping_flag = true;
+          i++;
+          continue;
+        }
+
         spec.push(fmt[i++]);
+      }
       if (i < fmt.length() && fmt[i] == '*') {
         do_consume_star(spec);
         i++;
@@ -504,8 +663,9 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           if (spec == "%")
             out += formatted;
           else
-            append_conversion(out, spec, 's', formatted, false, ec, cxt,
-                              exit_status, cxt.scratch_allocator());
+            append_conversion(out, spec, 's', false, formatted, false,
+                              numeric_locale, ec, cxt, exit_status,
+                              cxt.scratch_allocator());
           operand_index++;
           has_consumed_a_conversion = true;
           i = close + 1;
@@ -539,7 +699,8 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         if (should_stop) break;
         continue;
       }
-      append_conversion(out, spec, conv, arg, is_missing_argument, ec, cxt,
+      append_conversion(out, spec, conv, has_grouping_flag, arg,
+                        is_missing_argument, numeric_locale, ec, cxt,
                         exit_status, cxt.scratch_allocator());
       operand_index++;
       has_consumed_a_conversion = true;

@@ -171,6 +171,11 @@ hot fn EvalContext::assign_variable(StringView name, StringView value) throws
     break;
   case 'P':
   case 'p': is_path_name = utils::environment_name_is_path(name); break;
+  case 'L':
+    if (name.starts_with("LC_") || name == "LANG") {
+      variable_store().set_locale_scalar_possible();
+    }
+    break;
   default: break;
   }
   let const is_pipestatus_name = first_byte == 'P' && name == "PIPESTATUS";

@@ -1307,6 +1307,10 @@ regex_utf8_scope::regex_utf8_scope(bool) wontthrow {}
 
 regex_utf8_scope::~regex_utf8_scope() {}
 
+fn numeric_locale_scope::activate(StringView, bool) wontthrow -> void {}
+
+fn numeric_locale_scope::deactivate() wontthrow -> void {}
+
 fn code_point_to_upper(u32 code_point) wontthrow -> u32
 {
   if (code_point > 0xffff) return code_point;
@@ -1757,6 +1761,7 @@ fn set_environment_variable(StringView key, StringView value) -> void
                               ? existing_spelling->begin()
                               : wide_key->begin(),
                           wide_value->begin());
+  ENVIRONMENT_EPOCH++;
 }
 
 fn get_environment_spelling(StringView key) -> String
@@ -1779,6 +1784,7 @@ fn unset_environment_variable(StringView key) -> void
   if (!wide_key.has_value()) return;
 
   SetEnvironmentVariableW(wide_key->begin(), nullptr);
+  ENVIRONMENT_EPOCH++;
 }
 
 fn signal_internal_diagnostic() wontthrow -> void

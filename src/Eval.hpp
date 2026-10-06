@@ -1605,6 +1605,14 @@ public:
   {
     m_is_pipestatus_scalar_possible = is_possible;
   }
+  pure fn is_locale_scalar_possible() const wontthrow -> bool
+  {
+    return m_is_locale_scalar_possible;
+  }
+  fn set_locale_scalar_possible() wontthrow -> void
+  {
+    m_is_locale_scalar_possible = true;
+  }
   fn history_limit(StringView name, usize fallback) const wontthrow -> usize
   {
     let const value = m_shell_variables.find(name);
@@ -1742,6 +1750,7 @@ private:
   u8 m_disabled_bash_special_arrays{0};
   u8 m_unset_dynamic_readers{0};
   bool m_is_pipestatus_scalar_possible{true};
+  bool m_is_locale_scalar_possible{false};
 };
 
 class CompletionStore

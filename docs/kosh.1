@@ -1573,6 +1573,26 @@ option sets that quantum. The default quantum is 5000 records.
 The
 .B \-v
 option assigns the formatted result to a variable.
+The numeric locale is selected by the first nonempty value of LC_ALL,
+LC_NUMERIC, and LANG in every mood. These variables are read from the shell at
+each call, and an assignment, an unset, an export, a local, and a prefix
+assignment all take effect. A floating operand is read with the decimal point
+of that locale, and an operand that is not consumed whole is an invalid number.
+The floating conversions print that decimal point. The
+.B \(aq
+flag groups the digits of the
+.BR d ,
+.BR i ,
+.BR u ,
+.BR f ,
+.BR F ,
+.BR g ,
+and
+.B G
+conversions with the thousands separator of the locale. The C and POSIX
+locales, no value, and a locale that the platform cannot select use a dot and
+no grouping, and so does every locale on Windows. Arithmetic expansion does
+not use the locale.
 .TP
 .B read
 The
