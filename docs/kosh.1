@@ -2922,12 +2922,9 @@ with no name, a bad
 variable, and an empty subshell, brace group or loop body. The editor submits
 the whole buffer on Enter and has no continuation prompt, so an open construct
 is an error even when a later line would close it, except after a trailing
-backslash, which joins the next row and shows nothing. While the caret ends a
-word where the error starts, as in a
-.B fi
-that may still become
-.BR find ,
-the row waits for the next key. A line over 2048 bytes shows nothing. The row
+backslash, which joins the next row and shows nothing. The error shows with the
+caret anywhere, including at the end of the word it starts in. A line over 2048
+bytes shows nothing. The row
 follows
 .BR inline-hints .
 .PP
@@ -3060,8 +3057,8 @@ Syntax highlighting distinguishes syntax, commands, flags, variables, paths,
 globs, and invalid input.
 .PP
 When the caret is on a parenthesis, bracket, or brace, or just after one, that
-bracket and its partner are drawn bold on a bright background. A caret on the
-dollar sign of
+bracket and its partner are drawn bold black on a bright background. A caret on
+the dollar sign of
 .B $(
 or
 .B ${

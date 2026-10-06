@@ -45,12 +45,13 @@ if ( ) => Unable to parse the subshell, the body between '(' and ')' is empty, a
 f() ( ) => Unable to parse the subshell, the body between '(' and ')' is empty, a command is required
 f() { } => Unable to parse the brace group, the body between '{' and '}' is empty, a command is required
 while true; do done  => Unable to parse the loop, the body between 'do' and 'done' is empty, a command is required
-== word still being typed
-fi => 
-echo; esac => 
-case x => 
-function => 
-if => 
+== caret at the end of the erroneous word
+fi => 'fi' has no matching 'if'
+echo; esac => 'esac' has no matching 'case'
+case x => Expected an unquoted 'in' after the case word
+function => Expected a name after the 'function' keyword
+if => Unterminated if, expected a command for the condition
+while :; do done => Unable to parse the loop, the body between 'do' and 'done' is empty, a command is required
 == continued on enter
 echo \ => echo [-neE] [arg ...]
 echo "abc\ => echo [-neE] [arg ...]

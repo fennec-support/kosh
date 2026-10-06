@@ -1849,16 +1849,6 @@ namespace {
 
 constexpr usize SYNTAX_HINT_BYTE_LIMIT = 2048;
 
-pure fn is_caret_word_in_error(StringView line, usize cursor,
-                               const SourceLocation &location) wontthrow -> bool
-{
-  let const bounds = find_token_bounds(line, cursor);
-  if (bounds.end != cursor || bounds.start >= cursor) return false;
-  if (!lexer::is_variable_name_start(line[bounds.start])) return false;
-
-  return location.position >= bounds.start && location.position <= cursor;
-}
-
 fn append_sentence_tail(String &out, StringView sentence) throws -> void
 {
   if (sentence.length > 0 && sentence[sentence.length - 1] == '.')
@@ -1899,8 +1889,6 @@ fn describe_syntax_problem(StringView line, usize cursor, mimic_mood mood,
   if (errors.is_empty()) return false;
 
   let const &error = errors[0];
-  if (is_caret_word_in_error(line, cursor, error.location())) return false;
-
   out.append(error.message().view());
   append_sentence_tail(out, error.details_message().is_empty()
                                 ? error.detail_message()

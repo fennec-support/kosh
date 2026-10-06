@@ -45,7 +45,7 @@ static fn make_shell_highlight_theme() wontthrow -> highlight_theme
   theme.set_style(highlight_role::url, ansi::BOLD_WHITE);
   theme.set_style(highlight_role::glob, ansi::YELLOW);
   theme.set_style(highlight_role::matching_bracket,
-                  ansi::BOLD_ON_BRIGHT_BLACK);
+                  ansi::BOLD_BLACK_ON_BRIGHT_BLACK);
   return theme;
 }
 

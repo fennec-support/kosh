@@ -162,8 +162,8 @@ changes update this file.
   substitution validation mode, in the session mood, inside a completion
   scratch mark, and shows the first error with its detail. Hand-written
   wording would drift from what Enter reports. The parse costs about as much
-  as the highlight pass. An error starting in the word that ends at the caret
-  waits for the next key. The editor has no continuation prompt, so an open
+  as the highlight pass. The error shows wherever the caret is. The editor
+  has no continuation prompt, so an open
   construct counts as an error, but a trailing backslash continues the line.
 - Static koshkit completion names stay alphabetically sorted.
 - The inline hint row is `compose_command_hint` in
