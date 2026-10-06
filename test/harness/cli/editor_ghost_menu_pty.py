@@ -12,7 +12,9 @@
 # down to an empty line, Escape and Ctrl-C afterwards, and session functions and
 # aliases in ghost and Tab completion. It also covers word-wise ghost
 # acceptance through Ctrl-Right and Alt-F, and prefix history search on Up and
-# Down with its option switched off. Every wait polls for the expected final
+# Down with its option switched off, and the inline hint row for a command and
+# a flag, its absence inside the command word and for an uncached command, its
+# yielding to the menu, its erasure on submit, and its option. Every wait polls for the expected final
 # state under a deadline, so a failure reports the last screen instead of
 # hanging. Each check prints one stable PASS line for the golden output.
 
@@ -194,6 +196,13 @@ class Screen:
     def count_lines(self, text):
         return sum(1 for line in self.get_lines() if line.strip() == text)
 
+    def get_hint(self):
+        row = self.get_prompt_row()
+        lines = self.get_lines()
+        if row < 0 or row + 1 >= len(lines) or MENU_HEADER in lines[row + 1]:
+            return ""
+        return lines[row + 1].strip()
+
 
 class Session:
     def __init__(self, binary, directory, command_directory):
@@ -295,6 +304,16 @@ def is_all_commands_menu(screen):
 
 def is_menu_closed(screen):
     return screen.get_menu() is None and get_state(screen) is not None
+
+
+def has_hint(text):
+    return lambda screen: text in screen.get_hint()
+
+
+def is_without_hint(typed):
+    return lambda screen: (get_state(screen) is not None
+                           and get_state(screen)[0] == typed
+                           and screen.get_hint() == "")
 
 
 class Report:
@@ -521,6 +540,52 @@ def run_checks(binary, directory, command_directory, report):
         session.send(UP)
         report.record("option-off-up-recalls-newest-entry", session,
                       is_line("set +o history-prefix-search"))
+        clear_line(session)
+
+        session.send(b"cat ")
+        report.record("hint-shows-command-synopsis", session,
+                      has_hint("cat ["))
+        session.send(b"-n")
+        report.record("hint-shows-flag-description", session,
+                      has_hint("Number every output line"))
+        session.send(BACKSPACE * 3)
+        report.record("hint-clears-inside-command-word", session,
+                      is_without_hint("cat"))
+        clear_line(session)
+
+        session.send(b"zzprobe-one ")
+        session.wait_until(is_line("zzprobe-one"))
+        session.pump(0.3)
+        report.record("hint-absent-for-uncached-command", session,
+                      is_without_hint("zzprobe-one"))
+        clear_line(session)
+
+        session.send(b"cat menu/menu-")
+        session.wait_until(has_hint("cat ["))
+        session.send(b"\t")
+        report.record("hint-yields-to-menu", session, is_menu(names))
+        session.send(ESCAPE)
+        report.record("hint-returns-after-menu-closes", session,
+                      lambda screen: is_menu_closed(screen)
+                      and "cat [" in screen.get_hint())
+        clear_line(session)
+
+        session.send(b"cat -n sub/alpha-beta.txt")
+        session.wait_until(has_hint("Number every output line"))
+        session.send(b"\r")
+        report.record("hint-erased-on-submit", session,
+                      lambda screen: get_state(screen) == ("", "")
+                      and any("ALPHA-CONTENT" in line
+                              for line in screen.get_lines()[:-1])
+                      and not any("Number every" in line
+                                  for line in screen.get_lines()))
+
+        session.send(b"set +o inline-hints\r")
+        session.wait_until(is_line(""))
+        session.send(b"cat ")
+        session.wait_until(is_line("cat"))
+        session.pump(0.3)
+        report.record("option-off-hides-hint", session, is_without_hint("cat"))
         clear_line(session)
 
         session.send(CTRL_D)

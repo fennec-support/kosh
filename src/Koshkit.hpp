@@ -273,14 +273,16 @@ inline constexpr usize KOSHKIT_UTIL_COUNT =
     static_cast<usize>(Utility::Kind::GoodCore) + 1;
 
 /* A utility with no registration reads back null. */
-fn register_koshkit_util_flags(Utility::Kind chosen,
-                               const FlagList *flags) wontthrow -> void;
+fn register_koshkit_util_flags(Utility::Kind chosen, const FlagList *flags,
+                               const SynopsisList *synopsis) wontthrow -> void;
 fn koshkit_util_flag_list(Utility::Kind chosen) wontthrow -> const FlagList *;
+fn koshkit_util_synopsis(Utility::Kind chosen) wontthrow
+    -> const SynopsisList *;
 
 #define REGISTER_KOSHKIT_UTIL_FLAGS(util)                                      \
   static uchar t__koshkit_flag_registrar =                                     \
       (koshka::koshkit::register_koshkit_util_flags(                           \
-           koshka::koshkit::Utility::Kind::util, &FLAG_LIST),                  \
+           koshka::koshkit::Utility::Kind::util, &FLAG_LIST, &HELP_SYNOPSIS),  \
        0)
 
 fn find_util(StringView name) throws -> Maybe<Utility::Kind>;

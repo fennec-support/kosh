@@ -153,6 +153,12 @@ changes update this file.
   operand reads the same catalog. Only the listing mode accepts an empty
   operand.
 - Static koshkit completion names stay alphabetically sorted.
+- The inline hint row is `compose_command_hint` in
+  `src/CompletionManpage.cpp`. It runs on every keystroke and reads only
+  builtin and koshkit registrations and the manpage and help caches that an
+  explicit flag completion filled. It never forks, searches PATH, or reads a
+  file. The editor draws the row under the last input row without counting it
+  in the block rows, and holds it away while a menu or search is open.
 - The language server wraps completion in `begin_explicit_completion` and loads
   command documentation lazily. Mood selection checks the shebang, language
   identifier, then extension. `shellscript` selects bash.

@@ -162,6 +162,9 @@ struct completion_session
               int for_listing) -> int;
   fn highlight(const char *buffer, tl_highlight *out) const -> int;
   fn validate_ghost(const char *entry) const -> int;
+  fn hint(const char *buffer, size_t cursor) -> const char *;
+
+  koshka::String hint_row{koshka::heap_allocator()};
 };
 
 completion_session COMPLETION_SESSION{};
@@ -762,6 +765,30 @@ fn completion_session::validate_ghost(const char *entry) const -> int
 fn kosh_ghost_validate_callback(const char *entry) -> int
 {
   return COMPLETION_SESSION.validate_ghost(entry);
+}
+
+fn completion_session::hint(const char *buffer, size_t cursor) -> const char *
+{
+  if (context == nullptr) return nullptr;
+
+  try {
+    let const byte_length = std::strlen(buffer);
+    if (!koshka::completion::compose_command_hint(
+            koshka::StringView{buffer, byte_length}, cursor, *context,
+            hint_row))
+      return nullptr;
+
+    return hint_row.c_str();
+  } catch (...) {
+    return nullptr;
+  }
+}
+
+fn kosh_hint_callback(const char *buffer, size_t cursor, const char **sgr)
+    -> const char *
+{
+  unused(sgr);
+  return COMPLETION_SESSION.hint(buffer, cursor);
 }
 
 } /* namespace */
@@ -1894,6 +1921,11 @@ fn set_space_after_completion(bool enabled) -> void
 fn set_history_prefix_search(bool enabled) -> void
 {
   ::tl_set_history_prefix_search(enabled ? 1 : 0);
+}
+
+fn set_inline_hints(bool enabled) -> void
+{
+  ::tl_set_hint_callback(enabled ? kosh_hint_callback : nullptr);
 }
 
 fn set_highlight_enabled(bool enabled) -> void

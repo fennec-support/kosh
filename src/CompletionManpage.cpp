@@ -83,6 +83,8 @@ public:
   StringMap<String> page_file_paths{heap_allocator()};
   StringMap<bool> subcommand_page_validity{heap_allocator()};
   StringMap<String> text{heap_allocator()};
+  StringMap<String> synopses{heap_allocator()};
+  StringMap<String> hint_pages{heap_allocator()};
   String manpath_output{heap_allocator()};
   bool is_subcommand_index_built{false};
   bool was_manpath_settled{false};
@@ -97,6 +99,7 @@ public:
   StringMap<ArrayList<help_entry>> subcommand_entries{heap_allocator()};
   HashSet parsed_keys{heap_allocator()};
   StringMap<String> text{heap_allocator()};
+  StringMap<String> usages{heap_allocator()};
   StringMap<u32> killed_fork_attempts{heap_allocator()};
 
   fn ensure_parsed(EvalContext &context, StringView command,
@@ -394,6 +397,67 @@ static fn cleaned_synopsis_of_page(StringView source) throws -> String
     synopsis.push(' ');
   }
   return synopsis;
+}
+
+static constexpr usize HINT_SYNOPSIS_MAX_BYTES = 400;
+
+static fn rendered_synopsis_of_page(StringView text) throws -> String
+{
+  let clean = String{heap_allocator()};
+  clean.reserve(text.length);
+  for (usize i = 0; i < text.length; i++) {
+    if (text[i] == '\b') {
+      if (!clean.is_empty()) clean.pop_back();
+      continue;
+    }
+    clean += text[i];
+  }
+
+  let synopsis = String{heap_allocator()};
+  let is_inside_synopsis = false;
+  usize position = 0;
+  while (position < clean.length()) {
+    let const raw = clean.view().next_line(position);
+    let const indent = skip_blanks(raw, 0);
+    if (indent >= raw.length) continue;
+    if (indent == 0) {
+      if (is_inside_synopsis) break;
+      is_inside_synopsis = raw.trim_blanks() == "SYNOPSIS";
+      continue;
+    }
+    if (!is_inside_synopsis) continue;
+    raw.for_each_ascii_whitespace_word([&](StringView word) throws {
+      if (!synopsis.is_empty()) synopsis += ' ';
+      synopsis.append(word);
+    });
+    if (synopsis.length() >= HINT_SYNOPSIS_MAX_BYTES) break;
+  }
+  if (synopsis.length() > HINT_SYNOPSIS_MAX_BYTES)
+    synopsis.truncate(HINT_SYNOPSIS_MAX_BYTES);
+  return synopsis;
+}
+
+static fn usage_line_of_help(StringView text) throws -> String
+{
+  usize position = 0;
+  while (position < text.length) {
+    let const line = text.next_line(position).trim_blanks();
+    if (line.length < 7) continue;
+    let const label = line.substring_of_length(0, 6);
+    if (label != StringView{"Usage:"} && label != StringView{"usage:"}) {
+      continue;
+    }
+    let usage = String{heap_allocator()};
+    line.substring(6).trim_blanks().for_each_ascii_whitespace_word(
+        [&](StringView word) throws {
+          if (!usage.is_empty()) usage += ' ';
+          usage.append(word);
+        });
+    if (usage.length() > HINT_SYNOPSIS_MAX_BYTES)
+      usage.truncate(HINT_SYNOPSIS_MAX_BYTES);
+    return usage;
+  }
+  return String{heap_allocator()};
 }
 
 /* is_read_allowed is false on the ghost path, which trusts a cached verdict
@@ -703,6 +767,7 @@ static fn manpage_options_for(StringView page_name, EvalContext &context) throws
     return *MANPAGE_CACHE.option_entries.set(page_name, steal(parsed_options));
   }
 
+  MANPAGE_CACHE.synopses.set(page_name, rendered_synopsis_of_page(page->view()));
   parsed_options = parse_manpage_option_entries(page->view());
   return *MANPAGE_CACHE.option_entries.set(page_name, steal(parsed_options));
 }
@@ -804,6 +869,7 @@ fn internal::complete_from_manpage(StringView line, StringView token,
   /* git commit -<tab> reads the git-commit subcommand page when the index
      knows it. */
   let page_name = manpage_name_for(command);
+  let hint_key = resolve_completion_alias(surface_command, context);
   if (let const subcommand_word = second_word_of(line);
       subcommand_word.has_value())
   {
@@ -812,12 +878,16 @@ fn internal::complete_from_manpage(StringView line, StringView token,
     let combined = String{command};
     combined.push('-');
     combined.append(*subcommand_word);
-    if (MANPAGE_CACHE.page_file_paths.find(combined.view()).has_value())
+    if (MANPAGE_CACHE.page_file_paths.find(combined.view()).has_value()) {
       page_name = steal(combined);
+      hint_key.push(' ');
+      hint_key.append(*subcommand_word);
+    }
   }
 
   let const &options = manpage_options_for(page_name.view(), context);
   if (options.is_empty()) return None;
+  MANPAGE_CACHE.hint_pages.set(hint_key.view(), String{page_name.view()});
 
   let matches = matches_from_help_entries(options, token, descriptions);
   if (matches.is_empty()) return None;
@@ -966,6 +1036,7 @@ fn HelpOutputCache::ensure_parsed(EvalContext &context, StringView command,
   let const parsed = text.has_value() ? text->view() : StringView{};
   option_entries.set(key.view(), parse_help_option_entries(parsed));
   subcommand_entries.set(key.view(), parse_help_subcommands(parsed, command));
+  usages.set(key.view(), usage_line_of_help(parsed));
   if (text.has_value() || !should_retry_killed_fork("help", key.view()))
     parsed_keys.add(key.view());
 }
@@ -1322,6 +1393,257 @@ fn internal::complete_from_help_subcommands(StringView line, StringView token,
   let matches = matches_from_help_entries(subcommands, token, descriptions);
   if (matches.is_empty()) return None;
   return matches;
+}
+
+static StringMap<String> HINT_SYNOPSIS_ROWS{heap_allocator()};
+
+static fn synopsis_row_of(StringView key, StringView display_name,
+                          const SynopsisList *synopsis) throws -> StringView
+{
+  if (let const cached = HINT_SYNOPSIS_ROWS.find(key); cached.has_value())
+    return cached->view();
+  if (synopsis == nullptr || synopsis->count() == 0) {
+    return StringView{};
+  }
+
+  let row = String{display_name};
+  row += ' ';
+  row.append((*synopsis)[0]);
+  return HINT_SYNOPSIS_ROWS.set(key, steal(row))->view();
+}
+
+static fn append_flag_row(String &out, StringView flag_forms,
+                          StringView description) throws -> void
+{
+  out.append(flag_forms);
+  out.append(StringView{": "});
+  out.append(description);
+}
+
+static fn describe_registered_flag(const FlagList &flags, StringView flag,
+                                   String &out) throws -> bool
+{
+  for (let const *candidate : flags) {
+    let const is_short = flag.length == 2 && flag[1] != '-' &&
+                         candidate->short_name() == flag[1];
+    let const is_long = flag.length > 2 && flag[1] == '-' &&
+                        !candidate->long_name().is_empty() &&
+                        candidate->long_name() == flag.substring(2);
+    if (!is_short && !is_long) {
+      continue;
+    }
+    if (candidate->description().is_empty()) return false;
+
+    let forms = String{heap_allocator()};
+    if (candidate->short_name() != '\0') {
+      forms.push('-');
+      forms.push(candidate->short_name());
+    }
+    if (!candidate->long_name().is_empty()) {
+      if (!forms.is_empty()) forms.append(StringView{", "});
+      forms.append(StringView{"--"});
+      forms.append(candidate->long_name());
+    }
+    append_flag_row(out, forms.view(), candidate->description());
+    return true;
+  }
+  return false;
+}
+
+static fn describe_cached_flag(const ArrayList<help_entry> &entries,
+                               StringView flag, String &out) throws -> bool
+{
+  for (let const &entry : entries) {
+    if (entry.name.view() != flag || entry.description.is_empty()) {
+      continue;
+    }
+    append_flag_row(out, flag, entry.description.view());
+    return true;
+  }
+  return false;
+}
+
+struct hint_source
+{
+  StringView synopsis{};
+  const FlagList *flags{nullptr};
+  const ArrayList<help_entry> *manpage_entries{nullptr};
+  const ArrayList<help_entry> *help_entries{nullptr};
+};
+
+static fn flag_under_caret(StringView token, usize cursor_in_token,
+                           String &whole, String &letter) throws -> void
+{
+  let const equals = token.find_character('=');
+  whole = String{equals.has_value() ? token.substring_of_length(0, *equals)
+                                    : token};
+  if (token.length > 2 && token[1] != '-' && cursor_in_token >= 2 &&
+      cursor_in_token <= token.length)
+  {
+    letter.push('-');
+    letter.push(token[cursor_in_token - 1]);
+  }
+}
+
+fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
+                        String &out) throws -> bool
+{
+  out.clear();
+  if (cursor > line.length) cursor = line.length;
+
+  let const segment_start = command_segment_start(line, cursor);
+  let const segment = line.substring(segment_start);
+  let const cursor_in_segment = cursor - segment_start;
+  let const command =
+      command_word_of(segment.substring_of_length(0, cursor_in_segment));
+  if (command.is_empty() || os::has_directory_separator(command)) {
+    return false;
+  }
+
+  let const command_end =
+      static_cast<usize>(command.data - segment.data) + command.length;
+  if (cursor_in_segment <= command_end) return false;
+
+  let const bounds = find_token_bounds(segment, cursor_in_segment);
+  if (bounds.start < command_end) return false;
+  let const token =
+      segment.substring_of_length(bounds.start, bounds.end - bounds.start);
+  let const between =
+      segment.substring_of_length(command_end, bounds.start - command_end);
+  usize between_position = 0;
+  let const first_word = between.next_ascii_whitespace_word(between_position);
+  let const has_subcommand_word =
+      !first_word.is_empty() && first_word[0] != '-';
+
+  let const is_flag = token.length >= 2 && token[0] == '-';
+  let whole_flag = String{heap_allocator()};
+  let letter_flag = String{heap_allocator()};
+  if (is_flag)
+    flag_under_caret(token, cursor_in_segment - bounds.start, whole_flag,
+                     letter_flag);
+
+  let const name = resolve_completion_alias(command, context);
+  let source = hint_source{};
+
+  if (let const builtin_kind = search_builtin(name.view());
+      builtin_kind.has_value())
+  {
+    let const is_koshkit_dispatch =
+        *builtin_kind == Builtin::Kind::Koshkit && has_subcommand_word;
+    let const bundled = is_koshkit_dispatch ? koshkit::find_util(first_word)
+                                            : Maybe<koshkit::Utility::Kind>{};
+    if (bundled.has_value()) {
+      let key = String{"k:"};
+      key.append(first_word);
+      source.synopsis =
+          synopsis_row_of(key.view(), first_word,
+                          koshkit::koshkit_util_synopsis(*bundled));
+      source.flags = koshkit::koshkit_util_flag_list(*bundled);
+    } else {
+      let key = String{"b:"};
+      key.append(name.view());
+      source.synopsis = synopsis_row_of(key.view(), name.view(),
+                                        builtin_help_synopsis(*builtin_kind));
+      source.flags = builtin_flag_list(*builtin_kind);
+    }
+  } else {
+    let page_key = String{name.view()};
+    let has_manpage = false;
+    if (has_subcommand_word) {
+      let subcommand_key = String{name.view()};
+      subcommand_key.push(' ');
+      subcommand_key.append(first_word);
+      if (MANPAGE_CACHE.hint_pages.find(subcommand_key.view()).has_value())
+        page_key = steal(subcommand_key);
+    }
+    if (let const page = MANPAGE_CACHE.hint_pages.find(page_key.view());
+        page.has_value())
+    {
+      has_manpage = true;
+      if (let const synopsis = MANPAGE_CACHE.synopses.find(page->view());
+          synopsis.has_value())
+        source.synopsis = synopsis->view();
+      if (let const entries = MANPAGE_CACHE.option_entries.find(page->view());
+          entries.has_value() && !entries.value()->is_empty())
+      {
+        source.manpage_entries = entries.value();
+      }
+    }
+
+    let chain = String{heap_allocator()};
+    usize chain_position = 0;
+    usize depth_count = 0;
+    while (depth_count < MAX_SUBCOMMAND_DEPTH) {
+      let const word = between.next_ascii_whitespace_word(chain_position);
+      if (word.is_empty() || word[0] == '-') {
+        break;
+      }
+      let extended = String{chain.view()};
+      if (!extended.is_empty()) extended += ' ';
+      extended.append(word);
+      if (!HELP_OUTPUT_CACHE.parsed_keys.contains(
+              help_cache_key(name.view(), extended.view()).view()))
+        break;
+      chain = steal(extended);
+      depth_count++;
+    }
+    let const help_key = help_cache_key(name.view(), chain.view());
+    if (HELP_OUTPUT_CACHE.parsed_keys.contains(help_key.view())) {
+      if (let const entries =
+              HELP_OUTPUT_CACHE.option_entries.find(help_key.view());
+          entries.has_value() && !entries.value()->is_empty())
+      {
+        source.help_entries = entries.value();
+      }
+      if (!has_manpage || source.synopsis.is_empty()) {
+        if (let const usage = HELP_OUTPUT_CACHE.usages.find(help_key.view());
+            usage.has_value() && !usage->is_empty())
+        {
+          source.synopsis = usage->view();
+        }
+      }
+    }
+
+    if (source.synopsis.is_empty() && source.manpage_entries == nullptr &&
+        source.help_entries == nullptr &&
+        context.runtime_state().koshkit_utilities_are_reachable())
+    {
+      if (let const bundled = koshkit::find_util(name.view());
+          bundled.has_value())
+      {
+        let key = String{"k:"};
+        key.append(name.view());
+        source.synopsis = synopsis_row_of(
+            key.view(), name.view(), koshkit::koshkit_util_synopsis(*bundled));
+        source.flags = koshkit::koshkit_util_flag_list(*bundled);
+      }
+    }
+  }
+
+  if (is_flag) {
+    for (let const *flag : {&whole_flag, &letter_flag}) {
+      if (flag->is_empty()) continue;
+      if (source.flags != nullptr &&
+          describe_registered_flag(*source.flags, flag->view(), out))
+      {
+        return true;
+      }
+      if (source.manpage_entries != nullptr &&
+          describe_cached_flag(*source.manpage_entries, flag->view(), out))
+      {
+        return true;
+      }
+      if (source.help_entries != nullptr &&
+          describe_cached_flag(*source.help_entries, flag->view(), out))
+      {
+        return true;
+      }
+    }
+  }
+
+  if (source.synopsis.is_empty()) return false;
+  out.append(source.synopsis);
+  return true;
 }
 
 } /* namespace completion */

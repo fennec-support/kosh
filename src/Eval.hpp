@@ -112,6 +112,7 @@ enum class shell_option_id : u8
   Onecmd,
   SpaceAfterCompletion,
   HistoryPrefixSearch,
+  InlineHints,
   Count,
 };
 
@@ -464,6 +465,7 @@ private:
                       option_mask(shell_option_id::Failglob) |
                       option_mask(shell_option_id::Hashall) |
                       option_mask(shell_option_id::HistoryPrefixSearch) |
+                      option_mask(shell_option_id::InlineHints) |
                       option_mask(shell_option_id::Braceexpand)};
   shopt_state m_shopt;
 };

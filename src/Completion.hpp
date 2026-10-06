@@ -253,6 +253,9 @@ fn debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool;
 /* The verdicts are cached per word and the cache drops when PATH changes. */
 fn command_word_resolves(StringView line, EvalContext &context) throws -> bool;
 
+fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
+                        String &out) throws -> bool;
+
 } /* namespace completion */
 
 } /* namespace koshka */

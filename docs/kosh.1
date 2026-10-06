@@ -2819,6 +2819,20 @@ restores the typed text. An empty line steps through the whole history. The
 .B set \+o history-prefix-search
 command turns this off, and the option is on by default.
 .PP
+Once the cursor is past the command word, the row directly below the input
+shows a dimmed hint for the command. The hint is the synopsis of a builtin, of
+a bundled koshkit utility, or of an external program, and it becomes the
+description of the flag under the cursor when the cursor is inside a flag. The
+row is cut with an ellipsis at the terminal width, never wraps, and is hidden
+while a completion menu or history search is open and erased when the line is
+submitted. The hint reads only data already loaded, and it never runs
+.BR man
+or the command. The synopsis and flag descriptions of an external program
+appear after a Tab completion of its flags has loaded its manual page or help
+output. The
+.B set \+o inline-hints
+command turns the hint row off, and the option is on by default.
+.PP
 The interactive terminal title shows the current user and directory. While a
 foreground program runs, the title shows its command line. Output from
 PROMPT_COMMAND or PS1 can replace the idle title.

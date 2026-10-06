@@ -67,15 +67,24 @@ fn resolve_koshkit_color_flag(bool is_enabled, bool has_value,
    utility's registrar. */
 static const FlagList *KOSHKIT_UTIL_FLAG_LISTS[KOSHKIT_UTIL_COUNT] = {};
 
-fn register_koshkit_util_flags(Utility::Kind chosen,
-                               const FlagList *flags) wontthrow -> void
+static const SynopsisList *KOSHKIT_UTIL_SYNOPSES[KOSHKIT_UTIL_COUNT] = {};
+
+fn register_koshkit_util_flags(Utility::Kind chosen, const FlagList *flags,
+                               const SynopsisList *synopsis) wontthrow -> void
 {
   KOSHKIT_UTIL_FLAG_LISTS[static_cast<usize>(chosen)] = flags;
+  KOSHKIT_UTIL_SYNOPSES[static_cast<usize>(chosen)] = synopsis;
 }
 
 fn koshkit_util_flag_list(Utility::Kind chosen) wontthrow -> const FlagList *
 {
   return KOSHKIT_UTIL_FLAG_LISTS[static_cast<usize>(chosen)];
+}
+
+fn koshkit_util_synopsis(Utility::Kind chosen) wontthrow
+    -> const SynopsisList *
+{
+  return KOSHKIT_UTIL_SYNOPSES[static_cast<usize>(chosen)];
 }
 
 fn util_names() throws -> const ArrayList<String> &
@@ -941,6 +950,11 @@ fn find_util(StringView) throws -> Maybe<Utility::Kind>
 }
 
 fn koshkit_util_flag_list(Utility::Kind) wontthrow -> const FlagList *
+{
+  return nullptr;
+}
+
+fn koshkit_util_synopsis(Utility::Kind) wontthrow -> const SynopsisList *
 {
   return nullptr;
 }

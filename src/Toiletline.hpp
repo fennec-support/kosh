@@ -104,6 +104,8 @@ void set_space_after_completion(bool enabled);
 
 void set_history_prefix_search(bool enabled);
 
+void set_inline_hints(bool enabled);
+
 void set_highlight_enabled(bool enabled);
 
 void set_colors_enabled(bool enabled);

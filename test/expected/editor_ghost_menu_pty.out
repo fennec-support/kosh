@@ -50,4 +50,12 @@ prefix-down-walks-back PASS
 prefix-down-restores-typed-text PASS
 empty-line-up-keeps-plain-history PASS
 option-off-up-recalls-newest-entry PASS
+hint-shows-command-synopsis PASS
+hint-shows-flag-description PASS
+hint-clears-inside-command-word PASS
+hint-absent-for-uncached-command PASS
+hint-yields-to-menu PASS
+hint-returns-after-menu-closes PASS
+hint-erased-on-submit PASS
+option-off-hides-hint PASS
 status=0
