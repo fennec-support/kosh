@@ -655,6 +655,7 @@ struct inherited_shell
   Maybe<os::inherited_subshell_state> state = None;
   bool has_invalid_state = false;
   bool should_suppress_root_source_trace = false;
+  bool was_source_analyzed_by_parent = false;
 
   /* Only the first chunk stands in for the pipeline stage the parent prepared.
      The mode is spent whichever branch consumes it. */
@@ -676,6 +677,8 @@ static fn take_inherited_shell() throws -> inherited_shell
   let bootstrap = os::take_subshell_bootstrap();
   let const evaluation_mode = bootstrap.evaluation_mode;
   let inherited = inherited_shell{steal(bootstrap), evaluation_mode};
+  inherited.was_source_analyzed_by_parent =
+      !inherited.bootstrap.payload.is_empty();
   if (!os::can_fork_evaluator() && !inherited.bootstrap.payload.is_empty()) {
     inherited.state = os::inherited_subshell_state::take_from_environment();
     if (!inherited.state.has_value()) {
@@ -1597,23 +1600,28 @@ struct lint_run
 
 static fn run_chunk(script_chunk &chunk, EvalContext &context,
                     BumpArena &ast_arena, lint_run &lint,
-                    root_evaluation_mode evaluation_mode) throws -> i32
+                    root_evaluation_mode evaluation_mode,
+                    bool was_source_analyzed_by_parent) throws -> i32
 {
   if (!chunk.should_analyze) return EXIT_FAILURE;
 
   chunk.contents.normalize_crlf_line_endings();
   if (FLAG_LINT.is_enabled()) return lint.analyze(chunk, context, ast_arena);
 
+  let run_options = script_run_options{};
+  run_options.should_analyze = !was_source_analyzed_by_parent;
   if (chunk.command_string_name.has_value()) {
+    run_options.should_require_shebang = false;
+
     return run_script_contents(chunk.contents, context, ast_arena,
                                chunk.command_string_name, nullptr, nullptr,
-                               chunk.history_event_number, {}, {false},
+                               chunk.history_event_number, {}, run_options,
                                evaluation_mode);
   }
 
   return run_script_contents(chunk.contents, context, ast_arena, chunk.filename,
                              nullptr, nullptr, chunk.history_event_number, {},
-                             {}, evaluation_mode);
+                             run_options, evaluation_mode);
 }
 
 /* On the final chunk a terminal external command may replace the shell process
@@ -1982,7 +1990,8 @@ fn kosh_main(int argc, char **argv) -> int
     };
 
     exit_code = koshka::run_chunk(chunk, context, ast_arena, lint,
-                                  inherited.take_evaluation_mode());
+                                  inherited.take_evaluation_mode(),
+                                  inherited.was_source_analyzed_by_parent);
     if (FLAG_LINT.is_enabled())
       exit_code = lint.record(exit_code, cursor.should_quit);
 

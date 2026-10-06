@@ -3,5 +3,6 @@ background=f
 background-status=0
 revealed=global
 outer=local
+a b
 remembered-ran
 remembered-status=0

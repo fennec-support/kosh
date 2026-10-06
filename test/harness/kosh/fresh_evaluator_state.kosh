@@ -3,6 +3,8 @@
 # A background job and a pipeline stage start a fresh evaluator on Windows, so
 # the call frame of a function that unset itself, a caller's shadowed global,
 # and a remembered command path must reach it. A fork platform copies them.
+# The child runs source its parent already analyzed, so a suppressed warning
+# stays suppressed there.
 set --mood bash
 
 f() {
@@ -25,6 +27,11 @@ outer() {
   echo "outer=$x"
 }
 outer
+
+split="a b"
+# shellcheck disable=SC2086
+( echo $split ) &
+wait "$!"
 
 name=remembered
 hash -p "$KOSH" "$name"
