@@ -64,7 +64,7 @@ struct eval_state_snapshot
   ArrayList<String> directory_stack;
   os::DirectoryReference working_directory;
   u32 file_creation_mask;
-  StringMap<String> traps;
+  StringMap<trap_definition> traps;
   /* The nesting depth a DEBUG or ERR trap was installed at rides the snapshot
      beside the trap map, because the depth decides which frames the action
      reaches. */

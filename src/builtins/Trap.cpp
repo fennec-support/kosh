@@ -258,9 +258,9 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           continue;
         }
 
-        let const action = cxt.trap_store().actions().find(condition.view());
-        if (action.has_value())
-          do_append_listing(condition.view(), action->view());
+        let const trap = cxt.trap_store().find(condition.view());
+        if (trap.has_value())
+          do_append_listing(condition.view(), trap->action_text.view());
       }
 
       ec.print_to_stdout(out);
@@ -268,10 +268,10 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
 
     let collected = ArrayList<listed_trap>{cxt.scratch_allocator()};
-    cxt.trap_store().actions().for_each(
-        [&](StringView condition, const String &action) {
+    cxt.trap_store().list(
+        [&](StringView condition, const trap_definition &trap) {
           collected.push(listed_trap{trap_listing_order(condition), condition,
-                                     action.view()});
+                                     trap.action_text.view()});
         });
 
     let const ignored_signals = cxt.runtime_state().is_bash_compatible()
@@ -286,7 +286,7 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
         let name = os::signal_name_from_number(number);
         if (!name.has_value()) continue;
-        if (cxt.trap_store().actions().find(name->view()).has_value()) continue;
+        if (cxt.trap_store().find(name->view()).has_value()) continue;
 
         ignored_names.push(String{cxt.scratch_allocator(), name->view()});
         collected.push(listed_trap{static_cast<i64>(number),

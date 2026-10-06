@@ -837,7 +837,7 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
       variable_store().directory_stack(),
       steal(working_directory),
       os::get_file_creation_mask(),
-      trap_store().actions(),
+      trap_store().snapshot(),
       trap_store().get_install_state(),
       variable_store().attributes().entries(),
       variable_store().exported_names(),
@@ -908,21 +908,19 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
 
   /* A signal the subshell trapped that the parent does not is returned to
      default before the parent's dispositions are reinstalled. */
-  if (trap_store().actions().count() != 0 || snapshot.traps.count() != 0) {
-    trap_store().actions().for_each(
-        [&](StringView condition, const String &action) {
-          unused(action);
-          if (condition == "EXIT") return;
-          if (snapshot.traps.find(condition).has_value()) return;
-          if (let const number = os::signal_number_from_name(condition))
-            os::clear_trap_handler(*number);
-        });
-    trap_store().actions() = steal(snapshot.traps);
+  if (trap_store().count() != 0 || snapshot.traps.count() != 0) {
+    trap_store().list([&](StringView condition, const trap_definition &trap) {
+      unused(trap);
+      if (condition == "EXIT") return;
+      if (snapshot.traps.find(condition).has_value()) return;
+      if (let const number = os::signal_number_from_name(condition))
+        os::clear_trap_handler(*number);
+    });
+    trap_store().replace(steal(snapshot.traps));
     install_trap_dispositions();
   } else {
-    trap_store().actions() = steal(snapshot.traps);
+    trap_store().replace(steal(snapshot.traps));
   }
-  refresh_trap_flags();
   trap_store().set_install_state(snapshot.trap_install);
 
   if (!os::restore_current_directory(snapshot.working_directory))
@@ -1284,11 +1282,11 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
     source.append(definition.view());
     source.push('\n');
   }
-  trap_store().actions().for_each(
-      [&](StringView condition, const String &action) throws {
+  trap_store().list(
+      [&](StringView condition, const trap_definition &trap) throws {
         if (condition == "EXIT") return;
         source += "trap -- ";
-        append_shell_quoted_arg(source, action.view());
+        append_shell_quoted_arg(source, trap.action_text.view());
         source.push(' ');
         append_shell_quoted_arg(source, condition);
         source.push('\n');

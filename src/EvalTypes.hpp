@@ -267,6 +267,7 @@ struct trap_definition
   String line_source;
   SourceLocation location;
   isize line_offset{0};
+  bool has_location{false};
 };
 
 struct trap_action_frame
@@ -691,7 +692,7 @@ struct function_runtime_state
    trap in place. */
 struct saved_frame_trap
 {
-  Maybe<String> action;
+  Maybe<trap_definition> definition;
   usize active_depth{0};
 };
 

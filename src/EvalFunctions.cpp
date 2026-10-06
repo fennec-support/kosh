@@ -355,10 +355,10 @@ fn EvalContext::run_named_trap(StringView condition,
 
   let const condition_bit = running_trap_bit(condition);
   if (trap_store().is_condition_running(condition_bit)) return;
-  let const action = trap_store().actions().find(condition);
-  if (!action.has_value() || action->count() == 0) {
-    return;
-  }
+  let const trap = trap_store().find_active(condition);
+  if (!trap.has_value()) return;
+
+  let const action = trap->action_text.view();
 
   let const was_terminal_exec_allowed =
       execution_store().terminal_exec_allowed();
@@ -409,12 +409,11 @@ fn EvalContext::run_named_trap(StringView condition,
      The action's own frame neither consumes it nor counts as a return scope.
      The triggering command is the call site. A diagnostic raised inside the
      action is traced back to the line that fired the trap. */
-  let const cached_action = cached_trap_body(condition, action->view());
+  let const cached_action = cached_trap_body(condition, action);
 
-  let const definition = find_trap_definition(condition, action->view());
+  let const definition = trap_store().find_definition(condition);
 
-  run_source(action->view(),
-             "the " + String{heap_allocator(), condition} + " trap",
+  run_source(action, "the " + String{heap_allocator(), condition} + " trap",
              trigger_site, None, nullptr,
              cached_action.has_value() ? &cached_action : nullptr,
              return_handling::Reject, history_recording::Disabled,
@@ -505,20 +504,8 @@ fn EvalContext::discard_inherited_signal_traps() throws -> void
 
   trap_store().did_reset_inherited_signal_traps() = false;
 
-  ArrayList<String> discarded{heap_allocator()};
-  trap_store().actions().for_each(
-      [&](StringView condition, const String &action) {
-        unused(action);
-        if (!os::signal_number_from_name(condition).has_value()) return;
-        discarded.push(String{heap_allocator(), condition});
-      });
-
-  LOG(Info, "the subshell discarded %zu inherited signal actions",
-      discarded.count());
-  for (let const &condition : discarded)
-    trap_store().actions().erase(condition.view());
-
-  refresh_trap_flags();
+  LOG(Info, "the subshell discards its inherited signal actions");
+  trap_store().discard_signal_traps();
 }
 
 pure fn EvalContext::is_signal_ignored_at_startup(
@@ -543,7 +530,8 @@ fn EvalContext::capture_trap_definition(const SourceLocation &location,
   let definition = trap_definition{
       String{heap_allocator(), action},
       String{heap_allocator()},
-      location, 0
+      location, 0,
+      true
   };
   let const resolved_source = resolve_render_source(location);
   if (resolved_source.text == nullptr) return definition;
@@ -572,21 +560,6 @@ fn EvalContext::capture_trap_definition(const SourceLocation &location,
   return definition;
 }
 
-fn EvalContext::find_trap_definition(StringView condition,
-                                     StringView action) const wontthrow
-    -> Maybe<trap_definition>
-{
-  let const definition = trap_store().definitions().find(condition);
-  if (!definition.has_value() || definition->action_text.view() != action)
-    return None;
-
-  try {
-    return trap_definition{*definition.value()};
-  } catch (...) {
-    return None;
-  }
-}
-
 fn EvalContext::set_trap(StringView condition, StringView action,
                          Maybe<SourceLocation> definition_location) throws
     -> void
@@ -600,14 +573,13 @@ fn EvalContext::set_trap(StringView condition, StringView action,
   LOG(Info, "setting a trap for '%.*s' with a %zu byte action",
       static_cast<int>(condition.length), condition.data, action.length);
   discard_inherited_signal_traps();
-  trap_store().actions().set(condition, action);
   if (definition_location.has_value()) {
-    trap_store().definitions().set(
-        condition, capture_trap_definition(*definition_location, action));
+    trap_store().set(condition,
+                     capture_trap_definition(*definition_location, action));
   } else {
-    trap_store().definitions().erase(condition);
+    trap_store().set_action(condition, action);
   }
-  refresh_trap_flags();
+
   /* A trap installed inside a function, a subshell, or a substitution traces
      that frame without functrace or errtrace. An inherited trap needs the
      option to reach the frame. */
@@ -654,9 +626,7 @@ fn EvalContext::remove_trap(StringView condition) throws -> void
   LOG(Info, "removing the trap for '%.*s'", static_cast<int>(condition.length),
       condition.data);
   discard_inherited_signal_traps();
-  trap_store().actions().erase(condition);
-  trap_store().definitions().erase(condition);
-  refresh_trap_flags();
+  trap_store().reset(condition);
   if (condition == "EXIT") return;
   if (let const number = os::signal_number_from_name(condition))
     os::clear_trap_handler(*number);
@@ -672,14 +642,14 @@ fn EvalContext::save_untraced_trap(StringView condition,
 
   if (runtime_state().option_is_enabled(trace_option)) return saved;
 
-  let const action = trap_store().actions().find(condition);
-  if (!action.has_value()) return saved;
+  let const trap = trap_store().find(condition);
+  if (!trap.has_value()) return saved;
 
   LOG(Info, "taking a %zu byte '%.*s' action away from an untraced body",
-      action->length(), static_cast<int>(condition.length), condition.data);
-  saved.action = String{heap_allocator(), action->view()};
-  trap_store().actions().erase(condition);
-  refresh_trap_flags();
+      trap->action_text.count(), static_cast<int>(condition.length),
+      condition.data);
+  saved.definition = trap_definition{*trap.value()};
+  trap_store().reset(condition);
 
   return saved;
 }
@@ -688,16 +658,15 @@ fn EvalContext::restore_untraced_trap(StringView condition,
                                       saved_frame_trap &&saved,
                                       usize *active_depth) wontthrow -> void
 {
-  if (!saved.action.has_value()) return;
+  if (!saved.definition.has_value()) return;
   /* A trap the body installed for itself stands, the way bash keeps the one it
      finds on the return. */
-  if (trap_store().actions().find(condition).has_value()) return;
+  if (trap_store().find(condition).has_value()) return;
 
   LOG(Info, "restoring the '%.*s' action an untraced body ran without",
       static_cast<int>(condition.length), condition.data);
   try {
-    trap_store().actions().set(condition, saved.action->view());
-    refresh_trap_flags();
+    trap_store().set(condition, steal(*saved.definition));
   } catch (...) {
     LOG(Info, "the '%.*s' action of an untraced body could not be restored",
         static_cast<int>(condition.length), condition.data);
@@ -709,18 +678,16 @@ fn EvalContext::restore_untraced_trap(StringView condition,
 
 fn EvalContext::install_trap_dispositions() throws -> void
 {
-  LOG(Info, "reinstalling the dispositions of %zu traps",
-      trap_store().actions().count());
-  trap_store().actions().for_each(
-      [&](StringView condition, const String &action) {
-        if (condition == "EXIT") return;
-        if (let const number = os::signal_number_from_name(condition)) {
-          if (action.is_empty())
-            os::set_trap_ignore(*number);
-          else
-            os::set_trap_handler(*number);
-        }
-      });
+  LOG(Info, "reinstalling the dispositions of %zu traps", trap_store().count());
+  trap_store().list([&](StringView condition, const trap_definition &trap) {
+    if (condition == "EXIT") return;
+    if (let const number = os::signal_number_from_name(condition)) {
+      if (trap.action_text.is_empty())
+        os::set_trap_ignore(*number);
+      else
+        os::set_trap_handler(*number);
+    }
+  });
 }
 
 /* A signal an action sends to the shell is drained at the next boundary inside
@@ -749,9 +716,7 @@ fn EvalContext::run_pending_traps() throws -> void
   let const reaped_child_count = os::take_reaped_child_count();
   if (trap_store().did_reset_inherited_signal_traps()) {
     os::clear_reaped_child_arrival();
-  } else if (let const queued = trap_store().actions().find(child_condition);
-             queued.has_value() && queued->count() > 0)
-  {
+  } else if (trap_store().find_active(child_condition).has_value()) {
     trap_store().pending_child_trap_count() += reaped_child_count;
   } else {
     os::clear_reaped_child_arrival();
@@ -783,24 +748,24 @@ fn EvalContext::run_pending_traps() throws -> void
     if (name->view() == "CHLD") continue;
     if (trap_store().did_reset_inherited_signal_traps()) continue;
 
-    if (let const action = trap_store().actions().find(name->view());
-        action.has_value())
-      if (action->count() > 0) {
-        LOG(Info, "running the trap action for signal '%s'", name->c_str());
-        /* A return in the action belongs to the function the signal
-           interrupted. The action's own frame is no return scope of its own. */
-        let const cached_action =
-            cached_trap_body(name->view(), action->view());
+    if (let const trap = trap_store().find_active(name->view());
+        trap.has_value())
+    {
+      let const action = trap->action_text.view();
 
-        let const definition =
-            find_trap_definition(name->view(), action->view());
+      LOG(Info, "running the trap action for signal '%s'", name->c_str());
+      /* A return in the action belongs to the function the signal
+         interrupted. The action's own frame is no return scope of its own. */
+      let const cached_action = cached_trap_body(name->view(), action);
 
-        run_source(action->view(), "the " + *name + " trap",
-                   source_store().current_location(), None, nullptr,
-                   cached_action.has_value() ? &cached_action : nullptr,
-                   return_handling::Reject, history_recording::Disabled,
-                   definition.has_value() ? &*definition : nullptr);
-      }
+      let const definition = trap_store().find_definition(name->view());
+
+      run_source(action, "the " + *name + " trap",
+                 source_store().current_location(), None, nullptr,
+                 cached_action.has_value() ? &cached_action : nullptr,
+                 return_handling::Reject, history_recording::Disabled,
+                 definition.has_value() ? &*definition : nullptr);
+    }
 
     /* A return, a break, or an exit the action requested leaves the remaining
        arrivals for the next boundary. */
@@ -813,17 +778,18 @@ fn EvalContext::run_pending_traps() throws -> void
       !trap_store().is_condition_running(child_bit) &&
       os::has_reaped_child_arrival())
   {
-    if (let const installed = trap_store().actions().find(child_condition);
-        installed.has_value() && installed->count() > 0)
+    if (let const installed = trap_store().find_active(child_condition);
+        installed.has_value())
     {
-      let const action = String{heap_allocator(), installed->view()};
+      let const action =
+          String{heap_allocator(), installed->action_text.view()};
       let const fire_count = trap_store().pending_child_trap_count();
 
       trap_store().mark_condition_running(child_bit);
       defer { trap_store().unmark_condition_running(child_bit); };
 
       let const child_definition =
-          find_trap_definition(child_condition, action.view());
+          trap_store().find_definition(child_condition);
       let const child_body = cached_trap_body(child_condition, action.view());
       let const *cached_child_body =
           child_body.has_value() ? &child_body : nullptr;
@@ -893,17 +859,16 @@ cold fn EvalContext::run_exit_trap(Maybe<i32> final_status) throws -> void
     }
   };
 
-  if (let const action = trap_store().actions().find(StringView{"EXIT", 4});
-      action.has_value())
-    if (action->count() > 0) {
-      LOG(Info, "running the EXIT trap action at shell exit");
-      let const definition =
-          find_trap_definition(StringView{"EXIT", 4}, action->view());
+  if (let const trap = trap_store().find_active(StringView{"EXIT", 4});
+      trap.has_value())
+  {
+    LOG(Info, "running the EXIT trap action at shell exit");
+    let const definition = trap_store().find_definition(StringView{"EXIT", 4});
 
-      run_source(action->view(), "the EXIT trap", None, None, nullptr, nullptr,
-                 return_handling::Reject, history_recording::Disabled,
-                 definition.has_value() ? &*definition : nullptr);
-    }
+    run_source(trap->action_text.view(), "the EXIT trap", None, None, nullptr,
+               nullptr, return_handling::Reject, history_recording::Disabled,
+               definition.has_value() ? &*definition : nullptr);
+  }
 
   restore_trap_pipe_statuses(has_saved_pipe_statuses,
                              steal(saved_pipe_statuses));
@@ -912,15 +877,12 @@ cold fn EvalContext::run_exit_trap(Maybe<i32> final_status) throws -> void
 
 fn EvalContext::has_exit_trap() const wontthrow -> bool
 {
-  if (let const action = trap_store().actions().find(StringView{"EXIT", 4});
-      action.has_value())
-    return action->count() > 0;
-  return false;
+  return trap_store().find_active(StringView{"EXIT", 4}).has_value();
 }
 
 fn EvalContext::clear_inherited_exit_trap() throws -> void
 {
-  trap_store().actions().erase(StringView{"EXIT", 4});
+  trap_store().reset(StringView{"EXIT", 4});
 }
 
 cold fn EvalContext::run_subshell_exit_trap() throws -> Maybe<i32>
@@ -955,25 +917,23 @@ cold fn EvalContext::run_subshell_exit_trap() throws -> Maybe<i32>
   /* Only an EXIT action the subshell itself set is present, since the boundary
      cleared the inherited one on entry. It runs before restore_state returns
      the parent's traps. */
-  if (let const action = trap_store().actions().find(StringView{"EXIT", 4});
-      action.has_value())
-    if (action->count() > 0) {
-      LOG(Info, "running the EXIT trap action the subshell set at its end");
-      let const definition =
-          find_trap_definition(StringView{"EXIT", 4}, action->view());
+  if (let const trap = trap_store().find_active(StringView{"EXIT", 4});
+      trap.has_value())
+  {
+    LOG(Info, "running the EXIT trap action the subshell set at its end");
+    let const definition = trap_store().find_definition(StringView{"EXIT", 4});
 
-      run_source(action->view(), "the EXIT trap", None, None, nullptr, nullptr,
-                 return_handling::Reject, history_recording::Disabled,
-                 definition.has_value() ? &*definition : nullptr);
+    run_source(trap->action_text.view(), "the EXIT trap", None, None, nullptr,
+               nullptr, return_handling::Reject, history_recording::Disabled,
+               definition.has_value() ? &*definition : nullptr);
 
-      if (control_flow_store().has_pending() &&
-          control_flow_store().pending().kind == control_flow::Kind::Exit)
-      {
-        requested_status =
-            static_cast<i32>(control_flow_store().pending().value);
-        control_flow_store().clear();
-      }
+    if (control_flow_store().has_pending() &&
+        control_flow_store().pending().kind == control_flow::Kind::Exit)
+    {
+      requested_status = static_cast<i32>(control_flow_store().pending().value);
+      control_flow_store().clear();
     }
+  }
 
   restore_trap_pipe_statuses(has_saved_pipe_statuses,
                              steal(saved_pipe_statuses));

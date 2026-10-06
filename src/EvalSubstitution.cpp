@@ -613,7 +613,7 @@ fn EvalContext::run_captured_substitution(
   bool should_evaluate_in_process =
       !execution_store().shell_is_interactive() &&
       expansion_store().substitution_depth() <= 16 &&
-      trap_store().actions().count() == 0 &&
+      trap_store().count() == 0 &&
       ast->can_evaluate_in_process_substitution(*this, active_functions);
   if (should_evaluate_in_process) {
     try {

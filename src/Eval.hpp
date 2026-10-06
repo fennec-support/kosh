@@ -1775,18 +1775,79 @@ private:
 class TrapStore
 {
 public:
-  fn actions() wontthrow -> StringMap<String> & { return m_actions; }
-  pure fn actions() const wontthrow -> const StringMap<String> &
+  fn set(StringView condition, trap_definition definition) throws -> void
   {
-    return m_actions;
+    m_traps.set(condition, steal(definition));
+    refresh_flags();
   }
-  fn definitions() wontthrow -> StringMap<trap_definition> &
+  fn set_action(StringView condition, StringView action) throws -> void
   {
-    return m_definitions;
+    set(condition, trap_definition{
+                       String{heap_allocator(), action},
+                       String{heap_allocator()},
+                       SourceLocation{},
+                       0
+    });
   }
-  pure fn definitions() const wontthrow -> const StringMap<trap_definition> &
+  fn reset(StringView condition) throws -> void
   {
-    return m_definitions;
+    m_traps.erase(condition);
+    refresh_flags();
+  }
+  pure fn find(StringView condition) const wontthrow
+      -> Maybe<const trap_definition *>
+  {
+    return m_traps.find(condition);
+  }
+  pure fn find_active(StringView condition) const wontthrow
+      -> Maybe<const trap_definition *>
+  {
+    let const found = m_traps.find(condition);
+    if (found.has_value() && found.value()->action_text.count() > 0) {
+      return found;
+    }
+
+    return None;
+  }
+  pure fn find_definition(StringView condition) const wontthrow
+      -> Maybe<trap_definition>
+  {
+    let const found = m_traps.find(condition);
+    if (!found.has_value() || !found.value()->has_location) {
+      return None;
+    }
+
+    try {
+      return trap_definition{*found.value()};
+    } catch (...) {
+      return None;
+    }
+  }
+  pure fn count() const wontthrow -> usize { return m_traps.count(); }
+  template <class Fn>
+  fn list(Fn callback) const throws -> void
+  {
+    m_traps.for_each(callback);
+  }
+  fn discard_signal_traps() throws -> void
+  {
+    ArrayList<String> discarded{heap_allocator()};
+    m_traps.for_each([&](StringView condition, const trap_definition &trap) {
+      unused(trap);
+      if (!os::signal_number_from_name(condition).has_value()) return;
+      discarded.push(String{heap_allocator(), condition});
+    });
+
+    for (let const &condition : discarded)
+      m_traps.erase(condition.view());
+
+    refresh_flags();
+  }
+  fn snapshot() const throws -> StringMap<trap_definition> { return m_traps; }
+  fn replace(StringMap<trap_definition> traps) throws -> void
+  {
+    m_traps = steal(traps);
+    refresh_flags();
   }
   fn cached_bodies() wontthrow -> StringMap<FunctionBodyHandle> &
   {
@@ -1798,9 +1859,7 @@ public:
     return m_cached_bodies;
   }
 
-  fn has_debug_trap() wontthrow -> bool & { return m_has_debug_trap; }
   pure fn has_debug_trap() const wontthrow -> bool { return m_has_debug_trap; }
-  fn has_err_trap() wontthrow -> bool & { return m_has_err_trap; }
   pure fn has_err_trap() const wontthrow -> bool { return m_has_err_trap; }
   fn debug_trap_active_depth() wontthrow -> usize &
   {
@@ -1931,6 +1990,18 @@ public:
   }
 
 private:
+  fn refresh_flags() wontthrow -> void
+  {
+    m_has_debug_trap = m_traps.find(StringView{"DEBUG", 5}).has_value();
+    m_has_err_trap = m_traps.find(StringView{"ERR", 3}).has_value();
+
+    let const child_action = find_active(StringView{"CHLD", 4});
+    let const arming = child_action.has_value()
+                           ? os::child_trap_arming::Armed
+                           : os::child_trap_arming::Disarmed;
+    os::set_child_trap_armed(arming);
+  }
+
   bool m_has_debug_trap{false};
   bool m_has_err_trap{false};
   trap_install_state m_install_state{};
@@ -1941,8 +2012,7 @@ private:
   trap_action_frame m_action_frame{};
   i32 m_last_trap_action_status{0};
   i32 m_status_before_return{0};
-  StringMap<String> m_actions{heap_allocator()};
-  StringMap<trap_definition> m_definitions{heap_allocator()};
+  StringMap<trap_definition> m_traps{heap_allocator()};
   StringMap<FunctionBodyHandle> m_cached_bodies{heap_allocator()};
 };
 
@@ -2884,22 +2954,6 @@ public:
   fn restore_trap_pipe_statuses(bool has_saved_pipe_statuses,
                                 ArrayList<String> saved_pipe_statuses) wontthrow
       -> void;
-  /* The two hot conditions carry a flag beside the map. Every write to the map
-     refreshes the flag. The child wake is armed from the same place, because
-     the CHLD action is the only reader of a reaped child. */
-  fn refresh_trap_flags() wontthrow -> void
-  {
-    trap_store().has_debug_trap() =
-        trap_store().actions().find(StringView{"DEBUG", 5}).has_value();
-    trap_store().has_err_trap() =
-        trap_store().actions().find(StringView{"ERR", 3}).has_value();
-
-    let const child_action = trap_store().actions().find(StringView{"CHLD", 4});
-    let const arming = child_action.has_value() && child_action->count() > 0
-                           ? os::child_trap_arming::Armed
-                           : os::child_trap_arming::Disarmed;
-    os::set_child_trap_armed(arming);
-  }
   /* A trap a frame installs for itself traces that frame without errtrace. An
      inherited trap needs errtrace to reach the frame. The subshell bootstrap
      emits the trap dispositions ahead of the state it replays. A failing replay
@@ -3498,9 +3552,6 @@ public:
                 return_handling handling = return_handling::Consume,
                 history_recording history = history_recording::Disabled,
                 const trap_definition *definition = nullptr) throws -> i32;
-  fn find_trap_definition(StringView condition,
-                          StringView action) const wontthrow
-      -> Maybe<trap_definition>;
   fn resolve_source_path(StringView path,
                          source_tilde_expansion tilde_expansion =
                              source_tilde_expansion::Disabled) throws
