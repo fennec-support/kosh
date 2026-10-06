@@ -478,8 +478,9 @@ private:
 
   AnalysisContext &m_actx;
   analysis_scope_mode m_mode;
-  StringMap<String> m_constants{heap_allocator()};
-  StringMap<SourceLocation> m_function_local_names{heap_allocator()};
+  StringMap<String> m_constants{heap_allocator(), SMALL_MAP_FIRST_CAPACITY};
+  StringMap<SourceLocation> m_function_local_names{heap_allocator(),
+                                                   SMALL_MAP_FIRST_CAPACITY};
   variable_occurrence_pair m_occurrences;
   analysis_function_mark m_function_mark;
   HashSet m_inherited_assigned_names;

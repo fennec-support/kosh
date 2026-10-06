@@ -161,7 +161,8 @@ fn update_generated_executable_paths(AnalysisContext &actx,
       command_id == command_name_id::Unlink)
   {
     if (args.count() != 2) {
-      actx.generated_relative_executable_paths = HashSet{heap_allocator()};
+      actx.generated_relative_executable_paths =
+          HashSet{heap_allocator(), SMALL_MAP_FIRST_CAPACITY};
       return;
     }
 
@@ -169,7 +170,8 @@ fn update_generated_executable_paths(AnalysisContext &actx,
     if (target.has_value()) {
       actx.generated_relative_executable_paths.remove(target->view());
     } else {
-      actx.generated_relative_executable_paths = HashSet{heap_allocator()};
+      actx.generated_relative_executable_paths =
+          HashSet{heap_allocator(), SMALL_MAP_FIRST_CAPACITY};
     }
   }
 }

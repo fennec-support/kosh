@@ -23,6 +23,10 @@ class HashSet
 public:
   explicit HashSet(Allocator allocator) : m_map(allocator) {}
 
+  HashSet(Allocator allocator, usize first_capacity)
+      : m_map(allocator, first_capacity)
+  {}
+
   pure fn allocator() const wontthrow -> Allocator { return m_map.allocator(); }
 
   hot fn add(StringView key) throws -> bool

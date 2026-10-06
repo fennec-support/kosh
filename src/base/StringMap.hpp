@@ -17,16 +17,27 @@
 
 namespace koshka {
 
+inline constexpr usize DEFAULT_MAP_FIRST_CAPACITY = 16;
+inline constexpr usize SMALL_MAP_FIRST_CAPACITY = 4;
+
 template <class Value = String>
 class StringMap
 {
 public:
   explicit StringMap(Allocator allocator) : m_allocator(allocator) {}
 
-  cold StringMap(const StringMap &other) : StringMap(other.m_allocator)
+  StringMap(Allocator allocator, usize first_capacity)
+      : m_allocator(allocator),
+        m_first_capacity(static_cast<u32>(first_capacity))
+  {}
+
+  cold StringMap(const StringMap &other)
+      : StringMap(other.m_allocator, other.m_first_capacity)
   {
     if (other.m_count == 0) return;
-    let const fitted_slot_count = fitted_capacity(other.m_count);
+    let const fitted_slot_count = m_first_capacity == DEFAULT_MAP_FIRST_CAPACITY
+                                      ? static_cast<usize>(other.m_capacity)
+                                      : fitted_capacity(other.m_count);
     if (other.m_tombstones == 0 && fitted_slot_count == other.m_capacity) {
       let const fresh_slots = m_allocator.alloc_array<slot>(other.m_capacity);
       usize constructed_count = 0;
@@ -61,7 +72,8 @@ public:
   StringMap(StringMap &&other) noexcept
       : m_allocator(other.m_allocator), m_slots(other.m_slots),
         m_capacity(other.m_capacity), m_count(other.m_count),
-        m_tombstones(other.m_tombstones)
+        m_tombstones(other.m_tombstones),
+        m_first_capacity(other.m_first_capacity)
   {
     other.m_slots = nullptr;
     other.m_capacity = 0;
@@ -77,6 +89,7 @@ public:
       m_capacity = other.m_capacity;
       m_count = other.m_count;
       m_tombstones = other.m_tombstones;
+      m_first_capacity = other.m_first_capacity;
       other.m_slots = nullptr;
       other.m_capacity = 0;
       other.m_count = 0;
@@ -102,7 +115,7 @@ public:
     let const third = expected_count / 3;
     if (expected_count > SIZE_MAX - third - 1) rarely throw std::bad_alloc{};
     let const needed = expected_count + third + 1;
-    usize new_capacity = m_capacity == 0 ? INITIAL_CAPACITY : m_capacity;
+    usize new_capacity = m_capacity == 0 ? m_first_capacity : m_capacity;
     while (new_capacity < needed) {
       if (new_capacity > SIZE_MAX / 2) rarely throw std::bad_alloc{};
       new_capacity *= 2;
@@ -258,11 +271,10 @@ private:
   };
 
   static constexpr usize NO_INDEX = static_cast<usize>(-1);
-  static constexpr usize INITIAL_CAPACITY = 4;
 
-  static constexpr fn fitted_capacity(usize count) wontthrow -> usize
+  fn fitted_capacity(usize count) const wontthrow -> usize
   {
-    usize fitted = INITIAL_CAPACITY;
+    usize fitted = m_first_capacity;
     while (count > (fitted >> 1) + (fitted >> 2))
       fitted *= 2;
 
@@ -306,7 +318,7 @@ private:
   hot fn prepare_insertion(StringView key, u64 hash) throws -> probe_result
   {
     if (m_capacity == 0) {
-      rehash(INITIAL_CAPACITY);
+      rehash(m_first_capacity);
     }
 
     ASSERT(m_slots != nullptr);
@@ -441,6 +453,7 @@ private:
   u32 m_capacity{0};
   u32 m_count{0};
   u32 m_tombstones{0};
+  u32 m_first_capacity{DEFAULT_MAP_FIRST_CAPACITY};
 };
 
 } /* namespace koshka */

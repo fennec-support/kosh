@@ -334,7 +334,8 @@ fn VariableOccurrenceStateMap::clear() wontthrow -> void
 
 fn VariableOccurrenceStateMap::compact() throws -> void
 {
-  let states = StringMap<variable_occurrence_state>{heap_allocator()};
+  let states = StringMap<variable_occurrence_state>{heap_allocator(),
+                                                    SMALL_MAP_FIRST_CAPACITY};
   if (m_base != nullptr) states = m_base->states.clone();
   m_changes.for_each(
       [&](StringView name, const variable_occurrence_map_entry &change) {

@@ -250,7 +250,8 @@ private:
   fn retain_base() wontthrow -> void;
   fn release_base() wontthrow -> void;
 
-  StringMap<variable_occurrence_map_entry> m_changes{heap_allocator()};
+  StringMap<variable_occurrence_map_entry> m_changes{heap_allocator(),
+                                                     SMALL_MAP_FIRST_CAPACITY};
   variable_occurrence_map_storage *m_base{nullptr};
 };
 
@@ -298,8 +299,8 @@ struct function_definition_record
   String name;
   usize occurrence_start{0};
   usize occurrence_end{0};
-  HashSet affected_names{heap_allocator()};
-  HashSet local_names{heap_allocator()};
+  HashSet affected_names{heap_allocator(), SMALL_MAP_FIRST_CAPACITY};
+  HashSet local_names{heap_allocator(), SMALL_MAP_FIRST_CAPACITY};
   VariableOccurrenceStateMap exit_states;
   String first_positional_read;
   Maybe<usize> previous_definition_index{};
@@ -324,10 +325,10 @@ struct analysis_function_mark
    alias names, so a rollback needs no counter of its own. */
 struct analysis_function_table
 {
-  HashSet defined{heap_allocator()};
-  HashSet aliases{heap_allocator()};
+  HashSet defined{heap_allocator(), SMALL_MAP_FIRST_CAPACITY};
+  HashSet aliases{heap_allocator(), SMALL_MAP_FIRST_CAPACITY};
   ArrayList<function_definition_record> records{heap_allocator()};
-  StringMap<usize> latest_indices{heap_allocator()};
+  StringMap<usize> latest_indices{heap_allocator(), SMALL_MAP_FIRST_CAPACITY};
   ArrayList<String> function_insertions{heap_allocator()};
   ArrayList<String> alias_insertions{heap_allocator()};
 
@@ -618,7 +619,8 @@ public:
   /* The table is cleared at a conditional branch, a loop body, a function body,
      a subshell, and on any runtime definer, since a value recorded before such
      a boundary is no longer proven to hold past it. */
-  StringMap<String> constant_variables{heap_allocator()};
+  StringMap<String> constant_variables{heap_allocator(),
+                                       SMALL_MAP_FIRST_CAPACITY};
 
   usize function_scope_depth{0};
 
@@ -630,19 +632,21 @@ public:
   /* Saved and cleared on entry to a function body and restored on exit. Each
      name carries the assignment that recorded it, read by the diagnostic that
      names a near miss. */
-  StringMap<SourceLocation> function_local_names{heap_allocator()};
+  StringMap<SourceLocation> function_local_names{heap_allocator(),
+                                                 SMALL_MAP_FIRST_CAPACITY};
 
   variable_occurrence_pair occurrences;
 
   /* An assignment inside a function to one of these updates an existing global
      rather than leaking a new binding, so the no-local warning stays quiet. */
   StringMap<SourceLocation> global_assigned_names{heap_allocator()};
-  HashSet inherited_global_assigned_names{heap_allocator()};
+  HashSet inherited_global_assigned_names{heap_allocator(),
+                                          SMALL_MAP_FIRST_CAPACITY};
 
   HashSet always_exiting_function_names{heap_allocator()};
 
   StringMap<SourceLocation> assigned_names_so_far{heap_allocator()};
-  HashSet inherited_assigned_names{heap_allocator()};
+  HashSet inherited_assigned_names{heap_allocator(), SMALL_MAP_FIRST_CAPACITY};
 
   StringMap<SourceLocation> reads_before_assignment{heap_allocator()};
   StringMap<diagnostic_assignment_trace> diagnostic_assignment_traces{
@@ -669,7 +673,7 @@ public:
 
   /* A name proven to hold an array, so a bare expansion of it reads one element
      and a scalar assignment to it drops the rest. */
-  HashSet array_valued_names{heap_allocator()};
+  HashSet array_valued_names{heap_allocator(), SMALL_MAP_FIRST_CAPACITY};
 
   /* Where a name whose literal value carries quote bytes was assigned, read
      when that name is expanded as a command word. */
@@ -700,9 +704,10 @@ public:
   analysis_effects effects;
   const parsed_format_document *format_document{nullptr};
 
-  HashSet generated_relative_executable_paths{heap_allocator()};
+  HashSet generated_relative_executable_paths{heap_allocator(),
+                                              SMALL_MAP_FIRST_CAPACITY};
 
-  HashSet tested_command_names{heap_allocator()};
+  HashSet tested_command_names{heap_allocator(), SMALL_MAP_FIRST_CAPACITY};
 
   usize optimizer_eliminated_count{0};
   HashSet *followed_source_paths{nullptr};
@@ -773,7 +778,8 @@ public:
   {
     let delta = analysis_effects{};
     delta.has_unknown_working_directory = true;
-    generated_relative_executable_paths = HashSet{heap_allocator()};
+    generated_relative_executable_paths =
+        HashSet{heap_allocator(), SMALL_MAP_FIRST_CAPACITY};
     raise_effects(delta);
   }
 
