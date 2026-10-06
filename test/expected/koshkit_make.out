@@ -202,7 +202,7 @@ ordinary-ran=no
 recursive-value=[one two]
 koshkit make -f recursive-child.mk dry
 echo recursive-child-dry
-inherited-macro=fromflags inherited-environment=unset
+inherited-macro=fromflags inherited-environment=fromflags
 --- forced query and touch recipes ---
 query-status=1
 query-ran=yes
@@ -260,7 +260,7 @@ jobs=[S]
 jobs=[k]
 jobs=[]
 gnu-only-inherited-status=0
-inherited-macro=afterend inherited-environment=unset
+inherited-macro=afterend inherited-environment=afterend
 optional-jobs-help=yes
 recursive-print=yes
 .SUFFIXES: .o .c .y .l .a .sh .f .c~ .y~ .l~ .sh~ .f~

@@ -3586,6 +3586,10 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
   ArrayList<String> goals{cxt.scratch_allocator()};
   ArrayList<SourceLocation> goal_locations{cxt.scratch_allocator()};
   StringMap<bool> command_line_variable_names{cxt.scratch_allocator()};
+  for (let const &inherited_assignment : command_assignments)
+    command_line_variable_names.set(
+        assignment_variable_name(inherited_assignment.view()), true);
+
   for (usize operand_position = 0; operand_position < operands.count();
        operand_position++)
   {
