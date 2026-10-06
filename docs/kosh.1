@@ -2828,7 +2828,10 @@ The optional
 setting inserts one space after a complete non-directory candidate is accepted;
 it is disabled by default.
 .PP
-The interactive selector draws a menu of the candidates below the prompt. The
+The interactive selector draws a menu of the candidates below the line. The
+completion menu starts under the token being completed, and starts at the left
+edge when its widest row does not fit to the right of that column. The history
+menu always starts at the left edge. The
 down arrow moves to the next row, the up arrow moves back, and Tab accepts the
 highlighted row. In the completion menu, Escape closes the menu with the current
 edit, and Ctrl\-G restores the line that opened it. Enter closes the completion
@@ -2870,7 +2873,8 @@ other than 0, 1, or 130 each report a message above the prompt and keep the
 plain listing.
 .PP
 The plain selector prints the candidates below the prompt as a static column
-list. A terminal without decoration support always receives the plain listing.
+list. The list starts under the token being completed, and starts at the left
+edge when its widest candidate does not fit to the right of that column. A terminal without decoration support always receives the plain listing.
 .PP
 Ctrl\-R searches the history through the same selector. The line is the search
 query, and the entries it matches are offered by the same three kinds, with the
