@@ -12,6 +12,8 @@ menu-narrows-on-second-letter PASS
 menu-widens-on-backspace PASS
 menu-widens-to-all-on-backspace PASS
 menu-escape-closes PASS
+common-prefix-tab-opens-menu PASS
+menu-starts-under-the-token PASS
 menu-ctrl-w-drops-partial-word PASS
 menu-alt-backspace-drops-dash PASS
 menu-alt-backspace-drops-name PASS

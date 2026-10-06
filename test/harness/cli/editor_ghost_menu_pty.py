@@ -270,6 +270,16 @@ def has_typed_menu(typed, names):
                            and is_menu(names)(screen))
 
 
+def is_menu_under_token(token):
+    def do_check(screen):
+        row = screen.get_prompt_row()
+        lines = screen.get_lines()
+        if row < 0 or row + 1 >= len(lines) or MENU_HEADER not in lines[row + 1]:
+            return False
+        return lines[row + 1].index(MENU_HEADER) == lines[row].index(token)
+    return do_check
+
+
 def is_all_commands_menu(screen):
     menu = screen.get_menu()
     return (get_state(screen) is not None and get_state(screen)[0] == ""
@@ -360,6 +370,15 @@ def run_checks(binary, directory, command_directory, report):
         report.record("menu-widens-to-all-on-backspace", session, is_menu(names))
         session.send(ESCAPE)
         report.record("menu-escape-closes", session, is_menu_closed)
+        clear_line(session)
+
+        session.send(b"cat menu/m\t")
+        report.record("common-prefix-tab-opens-menu", session,
+                      has_typed_menu("cat menu/menu-", names))
+        report.record("menu-starts-under-the-token", session,
+                      is_menu_under_token("menu/menu-"))
+        session.send(ESCAPE)
+        session.wait_until(is_menu_closed)
         clear_line(session)
 
         session.send(b"cat menu/menu-ap")
