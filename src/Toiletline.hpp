@@ -37,6 +37,15 @@ String expand_prompt_template(StringView prompt, koshka::EvalContext &context);
 
 String render_ps0(koshka::EvalContext &context);
 
+void emit_command_end_mark(koshka::EvalContext &context, i32 exit_status);
+
+void emit_prompt_start_marks(koshka::EvalContext &context);
+
+void append_prompt_end_mark(koshka::EvalContext &context, String &prompt);
+
+void emit_command_start_marks(koshka::EvalContext &context,
+                              StringView command_line);
+
 /* Called only on the interactive path, so a non-interactive run never enables
    it. */
 void enable_completion(koshka::EvalContext &context);

@@ -1373,6 +1373,7 @@ static fn configure_line_editor(EvalContext &context) throws -> void
 struct interactive_session
 {
   bool did_seed_path_map = false;
+  bool did_prompt = false;
   usize ignored_eof_count = 0;
   history_expansion_state expansion_state{};
 
@@ -1391,9 +1392,13 @@ struct interactive_session
     run_prompt_command(context, ast_arena);
 
     prepare_completion(context, line);
+    if (did_prompt) toiletline::emit_command_end_mark(context, exit_code);
+    did_prompt = true;
     emit_prompt_line_break();
+    toiletline::emit_prompt_start_marks(context);
 
     String prompt = toiletline::build_prompt(context);
+    toiletline::append_prompt_end_mark(context, prompt);
     configure_line_editor(context);
     read_accepted_line(context, prompt, exit_code, chunk);
 
@@ -1923,6 +1928,7 @@ fn kosh_main(int argc, char **argv) -> int
         koshka::print(ps0);
         koshka::flush();
       }
+      toiletline::emit_command_start_marks(context, chunk.contents.view());
     }
 
     let const has_multiple_root_sources =

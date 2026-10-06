@@ -980,6 +980,30 @@ fn render_ps0(koshka::EvalContext &context) -> String
   return String{koshka::heap_allocator()};
 }
 
+fn emit_command_end_mark(koshka::EvalContext &context, i32 exit_status) -> void
+{
+  unused(context);
+  unused(exit_status);
+}
+
+fn emit_prompt_start_marks(koshka::EvalContext &context) -> void
+{
+  unused(context);
+}
+
+fn append_prompt_end_mark(koshka::EvalContext &context, String &prompt) -> void
+{
+  unused(context);
+  unused(prompt);
+}
+
+fn emit_command_start_marks(koshka::EvalContext &context,
+                            StringView command_line) -> void
+{
+  unused(context);
+  unused(command_line);
+}
+
 } /* namespace toiletline */
 
 #endif /* KOSH_NO_TOILETLINE */

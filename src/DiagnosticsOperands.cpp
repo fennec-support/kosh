@@ -712,6 +712,7 @@ pure fn is_shell_maintained_variable(StringView name) wontthrow -> bool
       SSK("KOSH_HISTORY_FILE"),
       SSK("KOSH_HISTORY_SIZE"),
       SSK("KOSH_OS"),
+      SSK("KOSH_SHELL_INTEGRATION"),
       SSK("KOSH_VERSION"),
       SSK("KOSH_WELCOME"),
   };

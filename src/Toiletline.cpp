@@ -2608,6 +2608,137 @@ fn render_ps0(EvalContext &context) -> String
                                working_directory.view(), context);
 }
 
+static constexpr StringView SHELL_INTEGRATION_VARIABLE{
+    "KOSH_SHELL_INTEGRATION"};
+static constexpr StringView OSC_END{"\a"};
+
+static fn is_shell_integration_enabled(EvalContext &context) throws -> bool
+{
+  if (!colors::stdout_is_a_terminal()) return false;
+
+  if (let const term = os::get_environment_variable("TERM");
+      term.has_value() && term->view() == StringView{"dumb"})
+  {
+    return false;
+  }
+
+  if (let const value = context.get_variable_value(SHELL_INTEGRATION_VARIABLE);
+      value.has_value() && value->view() == StringView{"0"})
+  {
+    return false;
+  }
+
+  return true;
+}
+
+static fn is_vscode_terminal() throws -> bool
+{
+  let const program = os::get_environment_variable("TERM_PROGRAM");
+  return program.has_value() && program->view() == StringView{"vscode"};
+}
+
+static fn append_hex_byte(String &output, unsigned char byte) throws -> void
+{
+  static constexpr StringView DIGITS{"0123456789abcdef"};
+  output.push(DIGITS[byte >> 4]);
+  output.push(DIGITS[byte & 0x0f]);
+}
+
+static fn append_file_uri_path(String &output, StringView directory) throws
+    -> void
+{
+  let const is_drive_path = directory.count() >= 2 && directory[1] == ':';
+  if (is_drive_path || (directory.count() > 0 && directory[0] == '\\'))
+    output.push('/');
+
+  for (usize index = 0; index < directory.count(); index++) {
+    let const byte = static_cast<unsigned char>(directory[index]);
+    let const is_plain = (byte >= 'a' && byte <= 'z') ||
+                         (byte >= 'A' && byte <= 'Z') ||
+                         (byte >= '0' && byte <= '9') || byte == '-' ||
+                         byte == '.' || byte == '_' || byte == '~' ||
+                         byte == '/' || byte == ':';
+    if (is_plain) {
+      output.push(static_cast<char>(byte));
+    } else if (byte == '\\' && is_drive_path) {
+      output.push('/');
+    } else {
+      output.push('%');
+      append_hex_byte(output, byte);
+    }
+  }
+}
+
+fn emit_command_end_mark(EvalContext &context, i32 exit_status) -> void
+{
+  if (!is_shell_integration_enabled(context)) return;
+
+  let sequence = String{koshka::heap_allocator()};
+  sequence += "\x1b]133;D;";
+  sequence += String::from(exit_status, koshka::heap_allocator());
+  sequence += OSC_END;
+  koshka::print(sequence);
+  koshka::flush();
+}
+
+fn emit_prompt_start_marks(EvalContext &context) -> void
+{
+  if (!is_shell_integration_enabled(context)) return;
+
+  let const directory = Path::current_directory().text();
+  let const host = os::get_hostname().value_or(String{""});
+
+  let sequence = String{koshka::heap_allocator()};
+  sequence += "\x1b]7;file://";
+  sequence += host;
+  append_file_uri_path(sequence, directory.view());
+  sequence += OSC_END;
+  if (is_vscode_terminal()) {
+    sequence += "\x1b]633;P;Cwd=";
+    sequence += directory;
+    sequence += OSC_END;
+  }
+  sequence += "\x1b]133;A";
+  sequence += OSC_END;
+  koshka::print(sequence);
+  koshka::flush();
+}
+
+fn append_prompt_end_mark(EvalContext &context, String &prompt) -> void
+{
+  if (!is_shell_integration_enabled(context)) return;
+
+  prompt += "\x1b]133;B";
+  prompt += OSC_END;
+}
+
+fn emit_command_start_marks(EvalContext &context, StringView command_line)
+    -> void
+{
+  if (!is_shell_integration_enabled(context)) return;
+
+  let sequence = String{koshka::heap_allocator()};
+  if (is_vscode_terminal()) {
+    sequence += "\x1b]633;E;";
+    for (usize index = 0; index < command_line.count(); index++) {
+      let const byte = static_cast<unsigned char>(command_line[index]);
+      if (byte == '\\') {
+        sequence += "\\\\";
+      } else if (byte < 0x20 || byte == ';' || byte == 0x7f) {
+        sequence += "\\x";
+        append_hex_byte(sequence, byte);
+      } else {
+        sequence.push(static_cast<char>(byte));
+      }
+    }
+    sequence += OSC_END;
+  }
+  sequence += "\x1b]133;C";
+  sequence += OSC_END;
+  koshka::print(sequence);
+  koshka::flush();
+}
+
 } /* namespace toiletline */
 
 #endif /* KOSH_NO_TOILETLINE */

@@ -1,0 +1,7 @@
+PASS mark order
+PASS prompt end follows in the prompt
+PASS directory is a file uri
+PASS cd reports directory
+PASS opt out writes nothing
+PASS dumb terminal writes nothing
+status=0

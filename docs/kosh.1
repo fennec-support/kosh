@@ -2927,6 +2927,20 @@ selected line.
 Ctrl\-V enters multi\-cursor mode in emacs mode. Up and Down extend the span. A
 typed byte is inserted at every cursor. Backspace erases at every cursor.
 Ctrl\-G leaves the mode.
+.SS Terminal shell integration
+An interactive shell whose standard output is a terminal writes semantic marks
+that terminals read to find prompts, commands, exit statuses, and the working
+directory. Every mark ends with BEL. Each prompt is preceded by the end of the
+previous command as ESC ] 133 ; D ; status, the working directory as
+ESC ] 7 ; file://host/path, and the prompt start as ESC ] 133 ; A.
+The prompt ends with ESC ] 133 ; B. A submitted command is announced by
+ESC ] 133 ; C after PS0 is printed. The first prompt carries no D mark.
+The marks occupy no columns in the prompt width. When TERM_PROGRAM is vscode,
+the shell also writes ESC ] 633 ; P ; Cwd= and ESC ] 633 ; E ; command line for
+VS Code. No mark is written when standard output is not a terminal, when TERM
+is dumb, or when
+.B KOSH_SHELL_INTEGRATION
+is 0.
 .SH JOB CONTROL
 Every stage of an asynchronous pipeline belongs to one job. POSIX stages share
 one process group. The final stage determines $!, the ordinary pipeline status,
@@ -3097,6 +3111,13 @@ The value names the command history file. The default is ~/.kosh_history.
 The value bounds the number of history events retained for recall, listing, and
 storage. The default is 4096. A value of zero disables history retention and
 storage.
+.TP
+.B KOSH_SHELL_INTEGRATION
+An interactive shell on a terminal marks each prompt, command, exit status, and
+working directory with OSC 133 and OSC 7 sequences that terminals and IDE
+terminals read. A value of 0 turns the marks off. They are never written when
+standard output is not a terminal or TERM is dumb. See
+.BR "Terminal shell integration" .
 .TP
 .BR FCEDIT ", " EDITOR
 These variables select the editor used by
