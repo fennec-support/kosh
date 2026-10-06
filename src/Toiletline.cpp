@@ -954,7 +954,7 @@ fn completion_session::highlight(const char *buffer, tl_highlight *out) -> int
       let &slot = bracket_styles[bracket_style_count];
       if (style.length + emphasis.length >= sizeof(slot)) return fallback;
 
-      std::memcpy(slot, style.data, style.length);
+      if (!style.is_empty()) std::memcpy(slot, style.data, style.length);
       std::memcpy(slot + style.length, emphasis.data, emphasis.length);
       slot[style.length + emphasis.length] = '\0';
       bracket_style_count++;

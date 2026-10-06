@@ -427,6 +427,14 @@ def run_checks(binary, directory, command_directory, report):
                                   "echo kept"))
         clear_line(session)
 
+        mark = len(session.raw)
+        session.send(b"echo $((2 + 3))")
+        session.wait_until(is_line("echo $((2 + 3))"))
+        session.send(b"\r")
+        report.record("arithmetic-brackets-highlight-cleanly", session,
+                      lambda screen: has_output("5", 1)(screen)
+                      and b"runtime error" not in bytes(session.raw[mark:]))
+
         run_extended_key_checks(session, report)
     finally:
         session.close()
