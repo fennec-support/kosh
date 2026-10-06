@@ -652,10 +652,10 @@ struct inherited_shell
 {
   decltype(os::take_subshell_bootstrap()) bootstrap;
   root_evaluation_mode evaluation_mode;
+  String source_origin{heap_allocator()};
   Maybe<os::inherited_subshell_state> state = None;
   bool has_invalid_state = false;
   bool should_suppress_root_source_trace = false;
-  bool was_source_analyzed_by_parent = false;
 
   /* Only the first chunk stands in for the pipeline stage the parent prepared.
      The mode is spent whichever branch consumes it. */
@@ -677,8 +677,7 @@ static fn take_inherited_shell() throws -> inherited_shell
   let bootstrap = os::take_subshell_bootstrap();
   let const evaluation_mode = bootstrap.evaluation_mode;
   let inherited = inherited_shell{steal(bootstrap), evaluation_mode};
-  inherited.was_source_analyzed_by_parent =
-      !inherited.bootstrap.payload.is_empty();
+  inherited.source_origin = steal(inherited.bootstrap.source_origin);
   if (!os::can_fork_evaluator() && !inherited.bootstrap.payload.is_empty()) {
     inherited.state = os::inherited_subshell_state::take_from_environment();
     if (!inherited.state.has_value()) {
@@ -1126,6 +1125,7 @@ struct script_chunk
   Maybe<SourceLocation> root_frame_call_site = None;
   Maybe<usize> history_event_number = None;
   bool should_analyze = true;
+  bool is_fresh_evaluator_command = false;
 };
 
 /* The consumed command is the Nth command option, where N is how many commands
@@ -1600,8 +1600,7 @@ struct lint_run
 
 static fn run_chunk(script_chunk &chunk, EvalContext &context,
                     BumpArena &ast_arena, lint_run &lint,
-                    root_evaluation_mode evaluation_mode,
-                    bool was_source_analyzed_by_parent) throws -> i32
+                    root_evaluation_mode evaluation_mode) throws -> i32
 {
   if (!chunk.should_analyze) return EXIT_FAILURE;
 
@@ -1609,10 +1608,9 @@ static fn run_chunk(script_chunk &chunk, EvalContext &context,
   if (FLAG_LINT.is_enabled()) return lint.analyze(chunk, context, ast_arena);
 
   let run_options = script_run_options{};
-  run_options.should_analyze = !was_source_analyzed_by_parent;
+  run_options.should_analyze = !chunk.is_fresh_evaluator_command;
   if (chunk.command_string_name.has_value()) {
     run_options.should_require_shebang = false;
-
     return run_script_contents(chunk.contents, context, ast_arena,
                                chunk.command_string_name, nullptr, nullptr,
                                chunk.history_event_number, {}, run_options,
@@ -1924,12 +1922,23 @@ fn kosh_main(int argc, char **argv) -> int
            !koshka::os::is_child_process());
 
     let chunk = koshka::script_chunk{};
+    let origin_window = koshka::String{koshka::heap_allocator()};
+    bool did_register_origin = false;
+    defer
+    {
+      if (did_register_origin) context.unregister_embedded_source();
+    };
 
     try {
       if (input.should_read_stdin) {
         cursor.read_standard_input(chunk);
       } else if (input.should_execute_commands && !FLAG_COMMAND.at_end()) {
         cursor.read_next_command(context, chunk);
+        chunk.is_fresh_evaluator_command = inherited.state.has_value();
+        did_register_origin = context.register_inherited_source_origin(
+            inherited.source_origin.view(), chunk.contents, origin_window,
+            chunk.command_string_name);
+        inherited.source_origin.clear();
       } else if (input.should_read_files) {
         cursor.read_next_file(context, chunk);
       } else if (input.should_be_interactive) {
@@ -1990,8 +1999,7 @@ fn kosh_main(int argc, char **argv) -> int
     };
 
     exit_code = koshka::run_chunk(chunk, context, ast_arena, lint,
-                                  inherited.take_evaluation_mode(),
-                                  inherited.was_source_analyzed_by_parent);
+                                  inherited.take_evaluation_mode());
     if (FLAG_LINT.is_enabled())
       exit_code = lint.record(exit_code, cursor.should_quit);
 

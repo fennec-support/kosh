@@ -129,6 +129,17 @@ struct SourceLocation
   }
 };
 
+struct rendered_site
+{
+  StringView source;
+  SourceLocation location;
+  isize line_offset;
+};
+
+fn resolve_rendered_site(StringView source, const SourceLocation &location,
+                         isize line_offset, bool is_rebased,
+                         const EvalContext *context) wontthrow -> rendered_site;
+
 class ErrorBase
 {
 public:

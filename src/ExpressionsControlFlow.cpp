@@ -104,13 +104,17 @@ fn Command::evaluate_async_with(EvalContext &cxt, async_body body,
         command_end_position - source_location().position);
   }
 
+  let const child_source =
+      expanded_child_source.is_empty() ? command_text : expanded_child_source;
   let bootstrap = os::subshell_bootstrap{};
+  let const evaluator = cxt.make_child_evaluator_state(bootstrap);
+  cxt.set_child_source_origin(bootstrap, child_source,
+                              source_location().source_name_index);
   let const launch = os::launch_compound_stage(os::compound_stage_options{
-      .source = expanded_child_source.is_empty() ? command_text
-                                                 : expanded_child_source,
+      .source = child_source,
       .location = source_location(),
       .diagnostic_source = source_view,
-      .evaluator = cxt.make_child_evaluator_state(bootstrap),
+      .evaluator = evaluator,
       .process_group = os::process_group_mode::NewBackground});
   let const child = launch.child;
 
@@ -1504,6 +1508,9 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
       m_name.data);
 
   let bootstrap = os::subshell_bootstrap{};
+  let const evaluator = cxt.make_child_evaluator_state(bootstrap);
+  cxt.set_child_source_origin(bootstrap, command_text,
+                              source_location().source_name_index);
 
   let const launch = os::launch_compound_stage(os::compound_stage_options{
       .source = command_text,
@@ -1511,7 +1518,7 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
       .out_fd = away_from_child->out,
       .location = source_location(),
       .diagnostic_source = source_view,
-      .evaluator = cxt.make_child_evaluator_state(bootstrap),
+      .evaluator = evaluator,
       .process_group = os::process_group_mode::NewBackground});
   let const child = launch.child;
 

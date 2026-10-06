@@ -651,6 +651,8 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
           !is_async() ? os::process_group_mode::Inherit
                       : os::background_process_group_mode(process_group_id);
       bootstrap.evaluation_mode = stage_mode;
+      cxt.set_child_source_origin(bootstrap, stage_text,
+                                  stage_location.source_name_index);
       let const launch = os::launch_compound_stage(os::compound_stage_options{
           .source = stage_text,
           .in_fd = stage_in,

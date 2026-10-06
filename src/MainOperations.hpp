@@ -429,13 +429,14 @@ struct script_run_input
    A fresh evaluator skips analysis because its parent analyzed the whole
    source, with its suppressions, before running it. */
 static fn make_script_run_plan(EvalContext &context, bool has_precompiled_ast,
-                               bool has_out_ast, bool should_print_ast,
-                               bool is_analysis_requested) wontthrow
+                               bool has_out_ast,
+                               const script_run_options &run_options) wontthrow
     -> script_run_plan
 {
   let &state = context.runtime_state();
+  let const should_print_ast = run_options.should_print_ast;
   let const should_analyze =
-      is_analysis_requested && !has_precompiled_ast &&
+      run_options.should_analyze && !has_precompiled_ast &&
       (FLAG_OPTIMIZER_DIAGNOSTICS.is_enabled() ||
        ((state.no_exec() ||
          !(state.is_bash_compatible() || state.is_posix_mode()) ||
@@ -734,10 +735,8 @@ static fn run_script_contents(
     ast_arena.reset();
     context.expansion_store().scratch_arena().reset();
 
-    let const plan =
-        make_script_run_plan(context, precompiled_ast != nullptr,
-                             out_ast != nullptr, should_print_ast,
-                             run_options.should_analyze);
+    let const plan = make_script_run_plan(context, precompiled_ast != nullptr,
+                                          out_ast != nullptr, run_options);
     let const input = script_run_input{script_contents, filename, context,
                                        ast_arena, diagnostic_sink};
     let parse_errors = ArrayList<String>{heap_allocator()};

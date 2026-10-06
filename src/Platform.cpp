@@ -97,8 +97,8 @@ namespace koshka {
 namespace os {
 
 subshell_bootstrap::subshell_bootstrap(subshell_bootstrap &&other) noexcept
-    : payload(steal(other.payload)), processes(steal(other.processes)),
-      source_length(other.source_length),
+    : payload(steal(other.payload)), source_origin(steal(other.source_origin)),
+      processes(steal(other.processes)), source_length(other.source_length),
       evaluation_mode(other.evaluation_mode),
       owns_processes(other.owns_processes)
 {
@@ -116,6 +116,7 @@ fn subshell_bootstrap::operator=(subshell_bootstrap &&other) noexcept
 
   close_owned_processes();
   payload = steal(other.payload);
+  source_origin = steal(other.source_origin);
   processes = steal(other.processes);
   source_length = other.source_length;
   evaluation_mode = other.evaluation_mode;

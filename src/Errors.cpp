@@ -503,20 +503,12 @@ ErrorWithLocation::ErrorWithLocation(SourceLocation location,
       m_location.position, m_location.length);
 }
 
-struct rendered_site
-{
-  StringView source;
-  SourceLocation location;
-  isize line_offset;
-};
-
 /* A location inside a function body names the defining file, while the caller
    renders against whatever source is current. The stored definition copy is
    the text the position belongs to. */
-cold static fn resolve_rendered_site(StringView source,
-                                     const SourceLocation &location,
-                                     isize line_offset, bool is_rebased,
-                                     EvalContext *context) wontthrow
+cold fn resolve_rendered_site(StringView source, const SourceLocation &location,
+                              isize line_offset, bool is_rebased,
+                              const EvalContext *context) wontthrow
     -> rendered_site
 {
   if (context == nullptr) return rendered_site{source, location, line_offset};

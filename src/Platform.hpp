@@ -2302,6 +2302,7 @@ struct subshell_bootstrap
   fn release_process_ownership() wontthrow -> void;
 
   String payload{heap_allocator()};
+  String source_origin{heap_allocator()};
   ArrayList<process> processes{heap_allocator()};
   u32 source_length{0};
   root_evaluation_mode evaluation_mode{root_evaluation_mode::Normal};

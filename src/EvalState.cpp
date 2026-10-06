@@ -348,6 +348,7 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
       call_index--;
       let &call_frame = function_store().call_frames()[call_index];
       let const call_site = call_frame.location;
+      if (call_frame.source == nullptr) continue;
       if (error_location.has_value() &&
           do_location_match(call_site, *error_location))
       {
@@ -1011,6 +1012,7 @@ enum class wire_section : u8
   Traps,
   Control,
   Programs,
+  Origin,
 };
 
 enum class local_binding_wire_flag : u8
@@ -2229,6 +2231,142 @@ fn EvalContext::make_child_evaluator_state(
                                        },
       .mood = runtime_state().get_mood(),
   };
+}
+
+fn EvalContext::set_child_source_origin(os::subshell_bootstrap &bootstrap,
+                                        StringView child_source,
+                                        u32 source_name_index) const throws
+    -> void
+{
+  bootstrap.source_origin.clear();
+  if (bootstrap.payload.is_empty() || child_source.is_empty()) return;
+
+  let rendered_source = child_source;
+  let location = SourceLocation{0, child_source.length};
+  bool is_inside_current_source = false;
+  if (let const *current = source_store().current_source(); current != nullptr)
+  {
+    let const current_view = current->view();
+    if (child_source.data >= current_view.data &&
+        child_source.data + child_source.length <=
+            current_view.data + current_view.length)
+    {
+      rendered_source = current_view;
+      location = SourceLocation{
+          static_cast<usize>(child_source.data - current_view.data),
+          child_source.length, source_name_index};
+      is_inside_current_source = true;
+    }
+  }
+
+  let const site =
+      resolve_rendered_site(rendered_source, location, 0, false, this);
+  if (!is_inside_current_source && site.source.data == child_source.data) {
+    return;
+  }
+
+  let const site_text = site.location.get_source_text(site.source);
+  if (!site_text.has_value() || *site_text != child_source) {
+    return;
+  }
+
+  let const body_position = usize{site.location.position};
+  let const before_body = site.source.substring_of_length(0, body_position);
+  let const last_newline = before_body.find_last_character('\n');
+  let const line_start =
+      last_newline.has_value() ? *last_newline + 1 : usize{0};
+  let const after_body =
+      site.source.substring(body_position + child_source.length);
+  let const suffix_length =
+      after_body.find_character('\n').value_or(after_body.length);
+  let const line_number =
+      static_cast<isize>(utils::line_number_at(site.source, body_position)) +
+      site.line_offset;
+  if (line_number < 1 || line_number > static_cast<isize>(UINT32_MAX)) {
+    return;
+  }
+
+  let const name_index = site.location.source_name_index;
+  let const name = source_name_at(name_index);
+  append_wire_section(
+      bootstrap.source_origin, wire_section::Origin, [&](String &payload) {
+        payload.push(static_cast<char>(name.has_value()));
+        if (name.has_value()) {
+          let const kind = source_identity_kind_at(name_index);
+          payload.push(static_cast<char>(kind));
+          if (kind == source_identity_kind::File)
+            append_subshell_bootstrap_text(payload, *name);
+        }
+        append_subshell_bootstrap_u32(payload, static_cast<u32>(line_number));
+        append_subshell_bootstrap_text(payload,
+                                       before_body.substring(line_start));
+        append_subshell_bootstrap_text(
+            payload, after_body.substring_of_length(0, suffix_length));
+      });
+}
+
+fn EvalContext::register_inherited_source_origin(
+    StringView origin, const String &contents, String &window,
+    Maybe<StringView> &source_name) throws -> bool
+{
+  if (origin.is_empty()) return false;
+
+  let reader = subshell_bootstrap_reader{origin};
+  let payload = subshell_bootstrap_reader{StringView{}};
+  bool has_name = false;
+  if (!reader.read_section(wire_section::Origin, payload) ||
+      !reader.is_fully_read() ||
+      !read_subshell_bootstrap_bool(payload, has_name))
+  {
+    invalid_subshell_bootstrap();
+  }
+
+  u32 name_index = 0;
+  source_name = None;
+  if (has_name) {
+    let const kind = payload.read_u8();
+    if (kind == static_cast<u8>(source_identity_kind::CommandString)) {
+      name_index = intern_source_name(COMMAND_STRING_SOURCE_NAME);
+      source_name = COMMAND_STRING_SOURCE_NAME;
+    } else if (kind == static_cast<u8>(source_identity_kind::File)) {
+      let const name = payload.read_text();
+      if (!payload.is_valid || name.is_empty()) {
+        invalid_subshell_bootstrap();
+      }
+      name_index = intern_source_name(name);
+      source_name = source_name_at(name_index);
+    } else {
+      invalid_subshell_bootstrap();
+    }
+  }
+  let const line_number = payload.read_u32();
+  let const line_prefix = payload.read_text();
+  let const line_suffix = payload.read_text();
+  if (!payload.is_fully_read() || line_number == 0) {
+    invalid_subshell_bootstrap();
+  }
+
+  window.clear();
+  window.reserve(usize{line_number} - 1 + line_prefix.length +
+                 contents.count() + line_suffix.length);
+  for (u32 line = 1; line < line_number; line++) {
+    window.push('\n');
+  }
+
+  window.append(line_prefix);
+  let const body_position = window.count();
+  window.append(contents.view());
+  window.append(line_suffix);
+
+  source_store().push_embedded_source(embedded_source{
+      contents.view(), &window,
+      SourceLocation{body_position, contents.count(), name_index},
+      0, &contents,
+      function_store().call_frames().count(),
+      source_depth_floor(source_store().source_frames().count())
+  });
+
+  return true;
 }
 
 fn EvalContext::apply_subshell_bootstrap(

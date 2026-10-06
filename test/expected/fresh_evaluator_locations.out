@@ -1,0 +1,32 @@
+6:40: warning: The variable 'unset_in_background' is read before any assignment gives it a value. (SC2154)
+     6 |  echo start; ( echo "background"; echo "$unset_in_background" ) &
+       |                                         ^~~~~~~~~~~~~~~~~~~~
+note: Assign 'unset_in_background' before it is read, or set it in the environment.
+start
+background
+6:40: warning: The variable 'unset_in_background' is not set, it expands to empty.
+     6 |  echo start; ( echo "background"; echo "$unset_in_background" ) &
+       |                                         ^~~~~~~~~~~~~~~~~~~~
+note: Replace it with ${unset_in_background-} if empty expansion is desired.
+6:13: trace:
+     6 |  echo start; ( echo "background"; echo "$unset_in_background" ) &
+       |              ^
+
+first=9
+second=10
+piped 13
+13:60: warning: The variable 'unset_in_stage' is not set, it expands to empty.
+    13 |  echo piped | { read -r value; echo "$value $LINENO"; echo "$unset_in_stage"; }
+       |                                                             ^~~~~~~~~~~~~~~
+note: Replace it with ${unset_in_stage-} if empty expansion is desired.
+
+nested=15
+15:48: warning: The variable 'unset_in_nested' is not set, it expands to empty.
+    15 |  echo nested | { ( echo "nested=$LINENO"; echo "$unset_in_nested" ) & wait; }
+       |                                                 ^~~~~~~~~~~~~~~~
+note: Replace it with ${unset_in_nested-} if empty expansion is desired.
+15:17: trace:
+    15 |  echo nested | { ( echo "nested=$LINENO"; echo "$unset_in_nested" ) & wait; }
+       |                  ^
+
+function=18

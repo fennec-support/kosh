@@ -1,0 +1,21 @@
+#!/bin/env kosh
+
+# A background job and a pipeline stage run in a fresh evaluator on Windows.
+# Its runtime diagnostics, traces, and LINENO must name the lines and columns of
+# this source, as a forked child does, and it must not analyze its body again.
+echo start; ( echo "background"; echo "$unset_in_background" ) &
+wait "$!"
+
+( echo "first=$LINENO"
+  echo "second=$LINENO" ) &
+wait "$!"
+
+echo piped | { read -r value; echo "$value $LINENO"; echo "$unset_in_stage"; }
+
+echo nested | { ( echo "nested=$LINENO"; echo "$unset_in_nested" ) & wait; }
+
+report() {
+  ( echo "function=$LINENO" ) &
+  wait "$!"
+}
+report

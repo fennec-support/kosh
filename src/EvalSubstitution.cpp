@@ -371,10 +371,12 @@ fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
   let bootstrap = os::subshell_bootstrap{};
   let const do_launch = [&]() throws -> os::process_substitution_launch {
     try {
+      let const evaluator = make_child_evaluator_state(bootstrap);
+      set_child_source_origin(bootstrap, substitution_source.view(), 0);
       return os::launch_process_substitution(os::process_substitution_options{
           .source = substitution_source.view(),
           .should_trace_sources = diagnostics_store().source_traces_enabled(),
-          .evaluator = make_child_evaluator_state(bootstrap),
+          .evaluator = evaluator,
           .direction = command_writes_the_pipe
                            ? os::process_substitution_direction::CommandWrites
                            : os::process_substitution_direction::CommandReads});

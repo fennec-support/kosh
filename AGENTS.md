@@ -93,6 +93,12 @@ changes update this file.
   adopts them. Restricted behavior uses one context state. BASHPID identifies
   forked evaluators. `$$` identifies the original shell, and `PPID` names its parent in every
   forked or fresh evaluator.
+- Each launch of a fresh evaluator also sends the origin of its command text:
+  the source name, the starting line, and the rest of the first and last
+  lines. The child maps its command onto a window padded to that line through
+  an embedded source, so diagnostics, traces, and LINENO use the parent's
+  coordinates. The child skips analysis, because the parent analyzed the text.
+  Frames above the launch site stay in the parent.
 - Each store owns its state and operations. The trap store keeps one map of
   trap definitions, the history recorder and source retention are separate from
   the source store, and runtime state keeps its fields private. A scope that

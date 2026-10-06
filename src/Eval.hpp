@@ -3503,6 +3503,13 @@ public:
   fn make_child_evaluator_state(os::subshell_bootstrap &bootstrap) const throws
       -> os::child_evaluator_state;
   fn apply_subshell_bootstrap(os::subshell_bootstrap bootstrap) throws -> void;
+  fn set_child_source_origin(os::subshell_bootstrap &bootstrap,
+                             StringView child_source,
+                             u32 source_name_index) const throws -> void;
+  fn register_inherited_source_origin(StringView origin, const String &contents,
+                                      String &window,
+                                      Maybe<StringView> &source_name) throws
+      -> bool;
 
   fn enter_subshell() wontthrow -> void;
   fn leave_subshell() wontthrow -> void;

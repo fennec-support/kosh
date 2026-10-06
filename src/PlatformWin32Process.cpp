@@ -1153,6 +1153,7 @@ static fn make_subshell_transport(const subshell_bootstrap &bootstrap,
   let transport = String{heap_allocator()};
   header->encode(transport);
   transport.append(bootstrap.payload.view());
+  transport.append(bootstrap.source_origin.view());
 
   for (let const inherited_process : bootstrap.processes) {
     if (inherited_process == nullptr ||

@@ -1912,12 +1912,13 @@ static fn append_subshell_transport_u32(String &output, u32 value) throws
 struct subshell_transport_header
 {
   static constexpr u32 MAGIC = 0x4b535442U;
-  static constexpr u32 VERSION = 2U;
-  static constexpr usize ENCODED_LENGTH = 24;
+  static constexpr u32 VERSION = 3U;
+  static constexpr usize ENCODED_LENGTH = 28;
   static constexpr usize MAXIMUM_TRANSPORT_LENGTH = 16 * 1024 * 1024;
 
   u32 payload_length{0};
   u32 source_length{0};
+  u32 origin_length{0};
   u32 process_count{0};
   u32 evaluation_mode{0};
 
@@ -1925,8 +1926,11 @@ struct subshell_transport_header
       -> Maybe<subshell_transport_header>
   {
     if (bootstrap.payload.count() > MAXIMUM_TRANSPORT_LENGTH ||
+        bootstrap.source_origin.count() >
+            MAXIMUM_TRANSPORT_LENGTH - bootstrap.payload.count() ||
         bootstrap.processes.count() >
-            (MAXIMUM_TRANSPORT_LENGTH - bootstrap.payload.count()) /
+            (MAXIMUM_TRANSPORT_LENGTH - bootstrap.payload.count() -
+             bootstrap.source_origin.count()) /
                 sizeof(u64))
     {
       return None;
@@ -1935,6 +1939,7 @@ struct subshell_transport_header
     let const header = subshell_transport_header{
         .payload_length = static_cast<u32>(bootstrap.payload.count()),
         .source_length = bootstrap.source_length,
+        .origin_length = static_cast<u32>(bootstrap.source_origin.count()),
         .process_count = static_cast<u32>(bootstrap.processes.count()),
         .evaluation_mode = static_cast<u32>(bootstrap.evaluation_mode),
     };
@@ -1955,8 +1960,9 @@ struct subshell_transport_header
     let const header = subshell_transport_header{
         .payload_length = decode_subshell_transport_u32(bytes + 8),
         .source_length = decode_subshell_transport_u32(bytes + 12),
-        .process_count = decode_subshell_transport_u32(bytes + 16),
-        .evaluation_mode = decode_subshell_transport_u32(bytes + 20),
+        .origin_length = decode_subshell_transport_u32(bytes + 16),
+        .process_count = decode_subshell_transport_u32(bytes + 20),
+        .evaluation_mode = decode_subshell_transport_u32(bytes + 24),
     };
     if (!header.is_valid()) return None;
 
@@ -1967,10 +1973,12 @@ struct subshell_transport_header
   {
     return source_length <= payload_length &&
            payload_length <= MAXIMUM_TRANSPORT_LENGTH &&
+           origin_length <= MAXIMUM_TRANSPORT_LENGTH - payload_length &&
            evaluation_mode <=
                static_cast<u32>(root_evaluation_mode::PreparedPipelineStage) &&
            process_count <=
-               (MAXIMUM_TRANSPORT_LENGTH - payload_length) / sizeof(u64);
+               (MAXIMUM_TRANSPORT_LENGTH - payload_length - origin_length) /
+                   sizeof(u64);
   }
 
   fn encode(String &output) const throws -> void
@@ -1979,6 +1987,7 @@ struct subshell_transport_header
     append_subshell_transport_u32(output, VERSION);
     append_subshell_transport_u32(output, payload_length);
     append_subshell_transport_u32(output, source_length);
+    append_subshell_transport_u32(output, origin_length);
     append_subshell_transport_u32(output, process_count);
     append_subshell_transport_u32(output, evaluation_mode);
   }
@@ -2047,24 +2056,29 @@ static fn receive_subshell_bootstrap() wontthrow -> void
   }
   let const payload_length = static_cast<usize>(header->payload_length);
   let const source_length = header->source_length;
+  let const origin_length = static_cast<usize>(header->origin_length);
   let const process_count = static_cast<usize>(header->process_count);
   let const evaluation_mode = header->evaluation_mode;
 
   try {
-    SUBSHELL_BOOTSTRAP.payload.reserve(payload_length);
-    char buffer[4096];
-    usize remaining_payload_length = payload_length;
-    while (remaining_payload_length > 0) {
-      let const requested_length = remaining_payload_length < sizeof(buffer)
-                                       ? remaining_payload_length
-                                       : sizeof(buffer);
-      if (!read_subshell_transport_exact(pipe, buffer, requested_length)) {
-        CloseHandle(pipe);
-        ExitProcess(1);
+    let const do_read_bytes = [&](String &output, usize length) throws {
+      output.reserve(length);
+      char buffer[4096];
+      usize remaining_length = length;
+      while (remaining_length > 0) {
+        let const requested_length = remaining_length < sizeof(buffer)
+                                         ? remaining_length
+                                         : sizeof(buffer);
+        if (!read_subshell_transport_exact(pipe, buffer, requested_length)) {
+          CloseHandle(pipe);
+          ExitProcess(1);
+        }
+        output.append(StringView{buffer, requested_length});
+        remaining_length -= requested_length;
       }
-      SUBSHELL_BOOTSTRAP.payload.append(StringView{buffer, requested_length});
-      remaining_payload_length -= requested_length;
-    }
+    };
+    do_read_bytes(SUBSHELL_BOOTSTRAP.payload, payload_length);
+    do_read_bytes(SUBSHELL_BOOTSTRAP.source_origin, origin_length);
 
     SUBSHELL_BOOTSTRAP.processes.reserve(process_count);
     for (usize process_index = 0; process_index < process_count;
