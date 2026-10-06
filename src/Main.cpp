@@ -1306,6 +1306,8 @@ struct script_cursor
 static fn start_line_editor(EvalContext &context,
                             const invocation_identity &identity) throws -> void
 {
+  toiletline::set_extended_keys(context.runtime_state().option_is_enabled(
+      shell_option_id::ExtendedKeys));
   if (toiletline::is_active()) {
     toiletline::enter_raw_mode();
     return;

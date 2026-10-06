@@ -15,9 +15,15 @@
 # its chords on the hint row until the next key resolves it, and Ctrl-X before
 # an arrow keeps the arrow. Ctrl-Z undoes at the prompt and still stops a
 # running program, Ctrl-Shift-Z in its kitty and xterm encodings redoes, and
-# Alt-T keeps trailing blanks in place. The terminal model and session come
-# from the ghost and menu probe. Each check prints one stable PASS line for the
-# golden output.
+# Alt-T keeps trailing blanks in place. The prompt asks for the kitty and
+# xterm extended keys and withdraws them before a command's output and around
+# the external editor, and the option turns the request off. Kitty-encoded
+# Enter, Ctrl-C, Ctrl-A, Ctrl-D, Ctrl-W, Ctrl-X, Ctrl-U, Ctrl-Z, Alt-B, and
+# Escape act as their legacy bytes in the line, the menu, the chord, and vi
+# mode, a bracketed paste still arrives, and Ctrl-D on an empty line ends the
+# shell after the withdrawal. The terminal model and session come from the
+# ghost and menu probe. Each check prints one stable PASS line for the golden
+# output.
 
 import os
 import shutil
@@ -43,6 +49,19 @@ CTRL_X_HINT = "pressed ctrl-x. waiting for ctrl-e (edit in $VISUAL)"
 ALT_DOT = b"\x1b."
 ALT_T = b"\x1bt"
 ALT_Y = b"\x1by"
+EXTENDED_KEYS_ON = b"\x1b[>1u\x1b[>4;1m"
+EXTENDED_KEYS_OFF = b"\x1b[<u\x1b[>4m"
+KITTY_ALT_B = b"\x1b[98;3u"
+KITTY_CTRL_A = b"\x1b[97;5u"
+KITTY_CTRL_C = b"\x1b[99;5u"
+KITTY_CTRL_D = b"\x1b[100;5u"
+KITTY_CTRL_U = b"\x1b[117;5u"
+KITTY_CTRL_W = b"\x1b[119;5u"
+KITTY_CTRL_X = b"\x1b[120;5u"
+KITTY_CTRL_Z = b"\x1b[122;5u"
+KITTY_ENTER = b"\x1b[13u"
+KITTY_ESCAPE = b"\x1b[27u"
+VI_COMMAND_CURSOR = b"\x1b[2 q"
 
 
 def read_bytes(path):
@@ -78,11 +97,137 @@ def submit(session, report, name, text, count=1):
     report.record(name, session, has_output(text, count))
 
 
+def get_raw_since(session, mark):
+    return bytes(session.raw[mark:])
+
+
+def is_withdrawn_around(session, mark, output):
+    def do_check(screen):
+        raw = get_raw_since(session, mark)
+        withdrawn = raw.find(EXTENDED_KEYS_OFF)
+        shown = raw.find(output)
+        return (0 <= withdrawn < shown
+                and raw.find(EXTENDED_KEYS_ON, shown) > shown)
+    return do_check
+
+
+def has_exited(session):
+    def do_check(screen):
+        try:
+            with open("/proc/%d/stat" % session.pid) as handle:
+                return handle.read().rsplit(")", 1)[1].split()[0] == "Z"
+        except OSError:
+            return True
+    return do_check
+
+
+def run_extended_key_checks(session, report):
+    mark = len(session.raw)
+    session.send(b"printf 'kitty-%s\\n' 42" + KITTY_ENTER)
+    report.record("kitty-enter-runs-the-line", session,
+                  has_output("kitty-42", 1))
+    report.record("extended-keys-withdrawn-before-output", session,
+                  is_withdrawn_around(session, mark, b"kitty-42\r\n"))
+
+    session.send(b"echo doomed")
+    session.wait_until(is_line("echo doomed"))
+    session.send(KITTY_CTRL_C)
+    report.record("kitty-ctrl-c-interrupts-the-line", session, is_line(""))
+
+    session.send(b"echo one two")
+    session.wait_until(is_line("echo one two"))
+    session.send(KITTY_ALT_B)
+    session.send(b"X")
+    report.record("kitty-alt-b-moves-a-word", session,
+                  is_line("echo one Xtwo"))
+    clear_line(session)
+
+    session.send(b"echo abc")
+    session.wait_until(is_line("echo abc"))
+    session.send(KITTY_CTRL_A + KITTY_CTRL_D)
+    report.record("kitty-ctrl-a-and-ctrl-d-edit", session,
+                  is_line("cho abc"))
+    session.send(KITTY_CTRL_C)
+    session.wait_until(is_line(""))
+
+    session.send(b"echo ab")
+    session.wait_until(is_line("echo ab"))
+    session.send(KITTY_CTRL_W)
+    session.wait_until(is_line("echo"))
+    session.send(KITTY_CTRL_Z)
+    report.record("kitty-ctrl-z-undoes", session, is_line("echo ab"))
+    session.send(CTRL_SHIFT_Z_KITTY)
+    report.record("kitty-ctrl-shift-z-redoes", session, is_line("echo"))
+    session.send(KITTY_CTRL_Z)
+    session.wait_until(is_line("echo ab"))
+    session.send(KITTY_CTRL_W)
+    session.wait_until(is_line("echo"))
+    session.send(KITTY_CTRL_X)
+    report.record("kitty-ctrl-x-shows-what-it-waits-for", session,
+                  has_hint(CTRL_X_HINT))
+    session.send(KITTY_CTRL_U)
+    report.record("kitty-ctrl-x-ctrl-u-undoes", session,
+                  lambda screen: is_line("echo ab")(screen)
+                  and CTRL_X_HINT not in screen.get_hint())
+    session.send(KITTY_CTRL_C)
+    session.wait_until(is_line(""))
+
+    session.send(b"s\t")
+    session.wait_until(lambda screen: screen.get_menu() is not None)
+    session.send(KITTY_ESCAPE)
+    report.record("kitty-escape-closes-the-menu", session,
+                  lambda screen: screen.get_menu() is None
+                  and is_line("s")(screen))
+    session.send(KITTY_CTRL_C)
+    session.wait_until(is_line(""))
+
+    session.send(b"\x1b[200~echo pasted\x1b[201~")
+    report.record("paste-arrives-under-extended-keys", session,
+                  is_line("echo pasted"))
+    session.send(KITTY_CTRL_C)
+    session.wait_until(is_line(""))
+
+    session.send(b"set -o vi; echo vi-on\r")
+    session.wait_until(has_output("vi-on", 1))
+    session.send(b"echo abc")
+    session.wait_until(is_line("echo abc"))
+    mark = len(session.raw)
+    session.send(KITTY_ESCAPE)
+    session.wait_until(lambda screen: VI_COMMAND_CURSOR
+                       in get_raw_since(session, mark))
+    session.send(b"x")
+    report.record("kitty-escape-enters-vi-command-mode", session,
+                  is_line("echo ab"))
+    session.send(KITTY_CTRL_C)
+    session.wait_until(is_line(""))
+    session.send(b"set -o emacs; echo emacs-on\r")
+    session.wait_until(has_output("emacs-on", 1))
+
+    session.send(b"set +o extended-keys; echo option-off\r")
+    session.wait_until(has_output("option-off", 1))
+    mark = bytes(session.raw).rfind(b"option-off\r\n")
+    session.send(b"echo plain-keys\r")
+    session.wait_until(has_output("plain-keys", 1))
+    report.record("option-off-sends-no-request", session,
+                  lambda screen: EXTENDED_KEYS_ON
+                  not in get_raw_since(session, mark))
+    session.send(b"set -o extended-keys; echo option-on\r")
+    session.wait_until(has_output("option-on", 1))
+
+    mark = len(session.raw)
+    session.send(KITTY_CTRL_D)
+    report.record("kitty-ctrl-d-ends-the-shell", session,
+                  lambda screen: has_exited(session)(screen)
+                  and EXTENDED_KEYS_OFF in get_raw_since(session, mark))
+
+
 def run_checks(binary, directory, command_directory, report):
     session = Session(binary, directory, command_directory)
     try:
         if not report.record("startup-prompt", session, is_line("")):
             return
+        report.record("extended-keys-requested-at-the-prompt", session,
+                      lambda screen: EXTENDED_KEYS_ON in bytes(session.raw))
 
         session.send(b"alpha beta gamma")
         session.wait_until(is_line("alpha beta gamma"))
@@ -143,10 +288,15 @@ def run_checks(binary, directory, command_directory, report):
         session.wait_until(is_line(""))
         session.send(b"echo draft")
         session.wait_until(is_line("echo draft"))
+        mark = len(session.raw)
         session.send(CTRL_X_CTRL_E)
         report.record("ctrl-x-ctrl-e-replaces-the-line", session,
                       lambda screen: is_line("echo draft EDITED")(screen)
                       and screen.count_lines("draft EDITED") == 0)
+        report.record("extended-keys-withdrawn-for-the-editor", session,
+                      lambda screen: 0 <= get_raw_since(session, mark).find(
+                          EXTENDED_KEYS_OFF)
+                      < get_raw_since(session, mark).find(EXTENDED_KEYS_ON))
         submit(session, report, "edited-line-runs-on-enter", "draft EDITED")
 
         stopping_script = os.path.join(command_directory, "stopping-visual")
@@ -276,6 +426,8 @@ def run_checks(binary, directory, command_directory, report):
                       has_message("The editor 'zz-missing-editor' was not found",
                                   "echo kept"))
         clear_line(session)
+
+        run_extended_key_checks(session, report)
     finally:
         session.close()
 

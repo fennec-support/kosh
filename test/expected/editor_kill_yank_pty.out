@@ -1,4 +1,5 @@
 startup-prompt PASS
+extended-keys-requested-at-the-prompt PASS
 ctrl-k-kills-the-line PASS
 ctrl-y-yanks-the-kill PASS
 yanked-line-runs PASS
@@ -15,6 +16,7 @@ alt-dot-walks-back PASS
 alt-dot-walks-further-back PASS
 last-word-line-runs PASS
 ctrl-x-ctrl-e-replaces-the-line PASS
+extended-keys-withdrawn-for-the-editor PASS
 edited-line-runs-on-enter PASS
 stopped-editor-is-continued PASS
 stopped-editor-temp-file-is-removed PASS
@@ -37,4 +39,18 @@ ctrl-x-before-an-arrow-keeps-the-arrow PASS
 alt-t-keeps-trailing-blanks PASS
 alt-t-leaves-the-caret-before-the-blank PASS
 missing-editor-keeps-the-line PASS
+kitty-enter-runs-the-line PASS
+extended-keys-withdrawn-before-output PASS
+kitty-ctrl-c-interrupts-the-line PASS
+kitty-alt-b-moves-a-word PASS
+kitty-ctrl-a-and-ctrl-d-edit PASS
+kitty-ctrl-z-undoes PASS
+kitty-ctrl-shift-z-redoes PASS
+kitty-ctrl-x-shows-what-it-waits-for PASS
+kitty-ctrl-x-ctrl-u-undoes PASS
+kitty-escape-closes-the-menu PASS
+paste-arrives-under-extended-keys PASS
+kitty-escape-enters-vi-command-mode PASS
+option-off-sends-no-request PASS
+kitty-ctrl-d-ends-the-shell PASS
 status=0

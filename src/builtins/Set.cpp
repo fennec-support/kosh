@@ -222,6 +222,8 @@ constexpr set_option_descriptor SET_OPTIONS[] = {
      "auto-pair", "Insert the closer after a typed bracket, brace, or quote."},
     {shell_option_id::TransientPrompt, set_option_behavior::Stored, '\0',
      "transient-prompt", "Redraw a submitted line after PS1_TRANSIENT and without RPS1."},
+    {shell_option_id::ExtendedKeys, set_option_behavior::Stored, '\0',
+     "extended-keys", "Ask the terminal to report modified keys such as Ctrl-Shift-Z apart while a line is read."},
     {shell_option_id::Vi,
      set_option_behavior::Vi,
      '\0', "vi",

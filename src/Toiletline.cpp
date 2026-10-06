@@ -2276,6 +2276,11 @@ fn set_inline_hints(bool enabled) -> void
 
 fn set_auto_pair(bool enabled) -> void { ::tl_set_auto_pair(enabled ? 1 : 0); }
 
+fn set_extended_keys(bool enabled) -> void
+{
+  ::tl_set_extended_keys(enabled ? 1 : 0);
+}
+
 fn set_highlight_enabled(bool enabled) -> void
 {
   ::tl_set_highlight_callback(enabled ? kosh_highlight_callback : nullptr);

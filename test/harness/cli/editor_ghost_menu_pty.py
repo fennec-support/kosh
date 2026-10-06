@@ -65,7 +65,7 @@ CTRL_D = b"\x04"
 ALT_BACKSPACE = b"\x1b\x7f"
 BACKSPACE = b"\x7f"
 ESCAPE = b"\x1b"
-CSI_PATTERN = re.compile(rb"\x1b\[([0-9;?]*)([ -/]*[@-~])")
+CSI_PATTERN = re.compile(rb"\x1b\[([0-9;<=>?]*)([ -/]*[@-~])")
 
 
 class Screen:
@@ -107,7 +107,7 @@ class Screen:
             index += 1
 
     def apply_csi(self, parameter_text, final):
-        if parameter_text.startswith("?"):
+        if parameter_text[:1] in ("<", "=", ">", "?"):
             return
         parameters = [int(part) if part else 0
                       for part in parameter_text.split(";")] if parameter_text else []

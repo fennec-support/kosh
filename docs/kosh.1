@@ -2942,15 +2942,36 @@ turns these off too.
 Ctrl\-Z undoes while the editor reads a line, the same as Ctrl\-_. A program
 that runs in the foreground has the terminal in its usual mode, so Ctrl\-Z
 stops it and the shell reports the stopped job. Ctrl\-Shift\-Z redoes when the
-terminal reports it apart from Ctrl\-Z, as the kitty keyboard protocol
-.RB ( "ESC [ 122 ; 6 u"
+terminal reports it apart from Ctrl\-Z. While the editor reads a line, it asks
+the terminal for such reports through the disambiguate flag of the kitty
+keyboard protocol
+.RB ( "ESC [ > 1 u" )
+and xterm modifyOtherKeys level 1
+.RB ( "ESC [ > 4 ; 1 m" ).
+It withdraws both
+.RB ( "ESC [ < u" " and " "ESC [ > 4 m" )
+whenever it hands the terminal back: before a command runs, around the
+Ctrl\-X Ctrl\-E editor and the external selector, while an explicit completion
+runs, on suspend, and on exit. Ctrl\-Shift\-Z then arrives as
+.B "ESC [ 122 ; 6 u"
 or
-.BR "ESC [ 90 ; 6 u" )
-and xterm modifyOtherKeys
-.RB ( "ESC [ 27 ; 6 ; 90 ~" )
-do. Kosh turns neither mode on. Most terminals send the Ctrl\-Z byte for both
-keys, and the Windows console reports no shift state for it, so there both
-keys undo and Ctrl\-^ redoes.
+.BR "ESC [ 27 ; 6 ; 90 ~" ,
+and
+.B "ESC [ 90 ; 6 u"
+and
+.B "ESC [ 27 ; 6 ; 122 ~"
+also redo. Every other key in either encoding, such as Ctrl\-C, Ctrl\-D,
+Escape, an Alt key, or a keypad key, is read as the bytes a legacy terminal
+sends for it, so each binding acts the same. A terminal that supports neither
+protocol ignores the requests. Inside tmux the modifyOtherKeys request takes
+effect when the tmux
+.B extended\-keys
+option is on, and GNU screen discards both. The
+.B set +o extended\-keys
+command stops the requests from the next prompt on, and the option is on by
+default. Without these modes most terminals send the Ctrl\-Z byte for both
+keys, and the Windows console reports no shift state for it and receives no
+request, so there both keys undo and Ctrl\-^ redoes.
 .PP
 A control character in the line, a ghost suggestion, or a menu entry is drawn
 in caret notation, such as ^[ for ESC and ^? for DEL, and a C1 control as a hex
@@ -3232,7 +3253,11 @@ mode does nothing there unless its subsection says otherwise. An unrecognized
 key is a control key or an escape sequence the editor reads as no key at all,
 such as Ctrl\-G, Ctrl\-O, a bare Escape, or a function key. The Windows
 console also reports the arrows, Ctrl\-Left, Ctrl\-Right, Home, End, Delete,
-Ctrl\-Delete, and Shift\-Tab as legacy scan codes, which act the same.
+Ctrl\-Delete, and Shift\-Tab as legacy scan codes, which act the same. A key a
+terminal reports through the kitty keyboard protocol or xterm modifyOtherKeys
+acts as the key it names, as described for the
+.B extended\-keys
+option above.
 .SS Emacs mode keys
 .TP
 .BR Ctrl\-A ", " Home

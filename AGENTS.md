@@ -186,6 +186,11 @@ changes update this file.
 - `src/Toiletline.cpp` defines `TL_NO_SUSPEND` and `TL_CTRL_Z_UNDO`, so
   Ctrl-Z undoes while a line is read. A foreground program runs with the
   terminal in its usual mode and receives Ctrl-Z as a stop signal.
+- Raw mode requests the kitty disambiguate flag and xterm modifyOtherKeys
+  level 1 when the `extended-keys` option is on. Leaving raw mode and turning
+  signal keys on withdraw both. The editor byte reader turns each key reported
+  in either form into its legacy bytes before any key loop reads it, and leaves
+  a key without a legacy form, such as Ctrl-Shift-Z, to the parser.
 - The editor calls an idle hook after 250 ms without a key. The hook fills
   the hint caches through `step_idle_documentation`, which starts one
   `os::ProgramCapture` child under the man and help trust rules and reads it

@@ -115,6 +115,7 @@ enum class shell_option_id : u8
   InlineHints,
   AutoPair,
   TransientPrompt,
+  ExtendedKeys,
   Count,
 };
 
@@ -469,6 +470,7 @@ private:
                       option_mask(shell_option_id::Hashall) |
                       option_mask(shell_option_id::HistoryPrefixSearch) |
                       option_mask(shell_option_id::InlineHints) |
+                      option_mask(shell_option_id::ExtendedKeys) |
                       option_mask(shell_option_id::Braceexpand)};
   shopt_state m_shopt;
 };
