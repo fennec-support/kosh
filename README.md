@@ -232,6 +232,8 @@ the Cosmopolitan modes.
 The `MODE` variable controls the build type.
 
 * `rel` is an optimized build.
+* `tinyrel` is a size-optimized build. It is up to 40% smaller on disk
+  than `rel` and uses about 15% less memory, at cost of some speed.
 * `prof` is an optimized build with debug symbols for profiling.
 * `cov` is an optimized build with debug symbols for collecting coverage.
 * `dbg` includes all symbols, AddressSanitizer, and UndefinedBehaviorSanitizer.
@@ -245,10 +247,14 @@ A non-Windows host cross-compiles `TARGET=Windows_NT` with MinGW. A non-Darwin
 host cross-compiles `TARGET=Darwin ARCH=arm64` with osxcross. Linux is a native
 target.
 
+`NO_KOSHKIT=1` leaves out the bundled Koshkit utilities, which makes the binary
+about 20% smaller. It combines with any mode, for example
+`make MODE=tinyrel NO_KOSHKIT=1`.
+
 The `CXXFLAGS` environment variable appends flags to the build commands.
 
 ```bash
-$ make MODE=<rel/prof/dbg/cov/cosmo/cosmo_dbg>
+$ make MODE=<rel/tinyrel/prof/dbg/cov/cosmo/cosmo_dbg>
 $ make MODE=rel TARGET=Windows_NT
 $ make MODE=rel TARGET=Darwin ARCH=arm64
 $ ./kosh --help
