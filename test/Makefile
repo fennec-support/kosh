@@ -172,7 +172,7 @@ export ASAN_OPTIONS := symbolize=0
 export MODE
 export TARGET
 export NO_TOILETLINE
-.PHONY: test kosh cli completion highlight sh bash test_prepare FORCE
+.PHONY: test test_suites kosh cli completion highlight sh bash test_prepare FORCE
 
 ifeq ($(IS_NONDEBUG_BUILD),1)
 DEBUG_DRIVER_SUITES :=
@@ -186,7 +186,7 @@ else
 COMPATIBILITY_SUITES := sh bash
 endif
 
-test: kosh cli $(DEBUG_DRIVER_SUITES) $(COMPATIBILITY_SUITES) | test_prepare
+test_suites: kosh cli $(DEBUG_DRIVER_SUITES) $(COMPATIBILITY_SUITES) | test_prepare
 
 KOSH_TESTS := $(wildcard harness/kosh/*.kosh)
 kosh: $(KOSH_TESTS)
@@ -235,9 +235,18 @@ test_prepare:
 	@$(BIN_DIR)/invoke-koshkit touch '$(FAILED_LIST)'
 	@$(BIN_DIR)/invoke-koshkit rm -rf '$(CURDIR)/$(TEST_TEMP_DIRECTORY)'
 
-test: | test_prepare
-	@if test -s '$(FAILED_LIST)'; then \
+test:
+	@SUITES_STATUS=0; \
+	$(MAKE) -k test_suites || SUITES_STATUS=$$?; \
+	if test -s '$(FAILED_LIST)'; then \
 		cat -n '$(FAILED_LIST)'; \
+	fi; \
+	if test "$$SUITES_STATUS" -ne 0; then \
+		printf 'test: the suites stopped with status %s\n' \
+			"$$SUITES_STATUS" >&2; \
+		exit "$$SUITES_STATUS"; \
+	fi; \
+	if test -s '$(FAILED_LIST)'; then \
 		exit 1; \
 	fi
 
