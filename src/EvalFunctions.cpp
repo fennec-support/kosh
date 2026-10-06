@@ -122,6 +122,7 @@ fn EvalContext::register_function(StringView name,
   }
 
   info.source_name_index = definition_location.source_name_index;
+  info.body_name_index = definition_location.source_name_index;
   info.defining_state = definition_state::from(runtime_state());
   body_storage.set_definition(definition_text, info);
 
@@ -176,7 +177,7 @@ pure fn EvalContext::resolve_render_source(
     let const *copy = storage.get_source();
     if (copy == nullptr || copy->count() <= info->header_length) continue;
 
-    if (location.source_name_index != info->source_name_index) continue;
+    if (location.source_name_index != info->body_name_index) continue;
 
     let const body_length = copy->count() - info->header_length;
     if (location.position < info->body_start_position ||

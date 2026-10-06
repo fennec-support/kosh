@@ -27,3 +27,26 @@ cat <(
 )
 collected=$(echo "output=$LINENO" > >(cat); wait)
 echo "$collected"
+
+# The frames above the launch site, the callers of a function, an enclosing
+# subshell, and a process substitution, appear in the trace of the child.
+report_unset() {
+  ( echo "$unset_in_report" ) &
+  wait "$!"
+}
+outer_report() { report_unset; }
+outer_report
+
+( ( echo "$unset_in_inner" ) & wait )
+
+cat <(echo "$unset_in_input")
+
+eval 'cat <(echo "eval=$LINENO")'
+
+# A function defined before the launch keeps its own lines and call stack.
+show_frames() {
+  echo "show=$LINENO ${BASH_LINENO[*]} ${FUNCNAME[*]} $unset_in_show"
+}
+cat <(show_frames)
+call_show() { cat <(show_frames); }
+call_show

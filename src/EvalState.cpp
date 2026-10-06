@@ -429,7 +429,12 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
   Maybe<u32> last_name_index = None;
   if (!is_replay && error_location.has_value()) {
     last_name_index = error_location->source_name_index;
-    if (error_location->source_name_index == 0) {
+    if (let const resolved = resolve_render_source(*error_location);
+        resolved.is_windowed &&
+        resolved.source_name_index != error_location->source_name_index)
+    {
+      last_name_index = resolved.source_name_index;
+    } else if (error_location->source_name_index == 0) {
       if (let const embedded_name = embedded_source_name_index();
           embedded_name.has_value())
       {
@@ -955,7 +960,7 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
 }
 
 static constexpr u32 SUBSHELL_BOOTSTRAP_MAGIC = 0x4b534842U;
-static constexpr u32 SUBSHELL_BOOTSTRAP_VERSION = 17U;
+static constexpr u32 SUBSHELL_BOOTSTRAP_VERSION = 18U;
 static constexpr u32 NO_BOOTSTRAP_PROCESS = UINT32_MAX;
 static constexpr u32 NO_BARE_PROGRAM_PATH = UINT32_MAX;
 
@@ -1025,6 +1030,16 @@ enum class local_binding_wire_flag : u8
 
 static constexpr u8 ALL_LOCAL_BINDING_WIRE_FLAGS = (1U << 4) - 1U;
 
+enum class inherited_frame_wire_flag : u8
+{
+  HasSite = 1U << 0,
+  WasPrinted = 1U << 1,
+  IsSourceChanging = 1U << 2,
+  ShouldDeferTrace = 1U << 3,
+};
+
+static constexpr u8 ALL_INHERITED_FRAME_WIRE_FLAGS = (1U << 4) - 1U;
+
 template <class WriteFn>
 static fn append_wire_section(String &output, wire_section section,
                               WriteFn do_write) throws -> void
@@ -1035,6 +1050,31 @@ static fn append_wire_section(String &output, wire_section section,
   output.push(static_cast<char>(section));
   append_subshell_bootstrap_u32(output, static_cast<u32>(payload.count()));
   output.append(payload.view());
+}
+
+static fn find_wire_source_name(ArrayList<u32> &names, u32 name_index) throws
+    -> u32
+{
+  if (name_index == 0) return 0;
+  if (let const found = names.find(name_index); found.has_value()) {
+    return static_cast<u32>(*found + 1);
+  }
+
+  names.push(name_index);
+  return static_cast<u32>(names.count());
+}
+
+static fn append_wire_source_names(String &output,
+                                   const ArrayList<u32> &names) throws -> void
+{
+  append_subshell_bootstrap_u32(output, static_cast<u32>(names.count()));
+  for (let const name_index : names) {
+    let const kind = source_identity_kind_at(name_index);
+    output.push(static_cast<char>(kind));
+    if (kind == source_identity_kind::File)
+      append_subshell_bootstrap_text(
+          output, source_name_at(name_index).value_or(StringView{}));
+  }
 }
 
 fn dynamic_clock_state::append_wire(String &output) const throws -> void
@@ -1147,6 +1187,35 @@ fn FunctionStore::append_wire(String &output) const throws -> void
                                   static_cast<u32>(m_call_frames.count()));
     for (let const &call_frame : m_call_frames)
       append_subshell_bootstrap_text(payload, call_frame.name.view());
+
+    let names = ArrayList<u32>{heap_allocator()};
+    let records = String{heap_allocator()};
+    u32 record_count = 0;
+    m_definitions.for_each([&](StringView name,
+                               const FunctionBodyHandle &storage) throws {
+      let const *info = storage.get_definition_info();
+      let const *source = storage.get_source();
+      if (info == nullptr || source == nullptr || source->is_empty() ||
+          info->line_offset < 0 || info->line_offset > INT32_MAX ||
+          info->definition_line > UINT32_MAX)
+      {
+        return;
+      }
+
+      append_subshell_bootstrap_text(records, name);
+      append_subshell_bootstrap_u32(
+          records, find_wire_source_name(names, info->source_name_index));
+      append_subshell_bootstrap_u32(records,
+                                    static_cast<u32>(info->line_offset));
+      append_subshell_bootstrap_u32(records,
+                                    static_cast<u32>(info->definition_line));
+      append_subshell_bootstrap_text(records, info->line_prefix.view());
+      append_subshell_bootstrap_text(records, info->line_suffix.view());
+      record_count++;
+    });
+    append_wire_source_names(payload, names);
+    append_subshell_bootstrap_u32(payload, record_count);
+    payload.append(records.view());
   });
 }
 
@@ -1438,6 +1507,48 @@ static fn read_subshell_bootstrap_bool(subshell_bootstrap_reader &reader,
   return true;
 }
 
+static fn read_wire_source_names(subshell_bootstrap_reader &reader,
+                                 ArrayList<u32> &names) throws -> bool
+{
+  let const name_count = static_cast<usize>(reader.read_u32());
+  if (!reader.is_valid || name_count > reader.get_remaining_length()) {
+    return false;
+  }
+
+  names.reserve(name_count);
+  for (usize index = 0; index < name_count; index++) {
+    let const kind = reader.read_u8();
+    if (kind == static_cast<u8>(source_identity_kind::CommandString)) {
+      names.push(intern_source_name(COMMAND_STRING_SOURCE_NAME));
+      continue;
+    }
+
+    let const name = reader.read_text();
+    if (kind != static_cast<u8>(source_identity_kind::File) ||
+        !reader.is_valid || name.is_empty())
+    {
+      return false;
+    }
+
+    names.push(intern_source_name(name));
+  }
+
+  return reader.is_valid;
+}
+
+static fn read_wire_source_name(subshell_bootstrap_reader &reader,
+                                const ArrayList<u32> &names,
+                                u32 &name_index) wontthrow -> bool
+{
+  let const position = static_cast<usize>(reader.read_u32());
+  if (!reader.is_valid || position > names.count()) {
+    return false;
+  }
+
+  name_index = position == 0 ? 0 : names[position - 1];
+  return true;
+}
+
 fn dynamic_clock_state::from_wire(subshell_bootstrap_reader &reader,
                                   dynamic_clock_state &clock) wontthrow -> bool
 {
@@ -1658,7 +1769,62 @@ fn FunctionStore::from_wire(subshell_bootstrap_reader &reader,
   for (usize index = 0; index < call_name_count; index++)
     wire.call_names.push(String{heap_allocator(), payload.read_text()});
 
+  let names = ArrayList<u32>{heap_allocator()};
+  if (!payload.is_valid || !read_wire_source_names(payload, names)) {
+    return false;
+  }
+
+  let const record_count = static_cast<usize>(payload.read_u32());
+  if (!payload.is_valid ||
+      record_count > payload.get_remaining_length() / (6 * sizeof(u32)))
+  {
+    return false;
+  }
+
+  for (usize index = 0; index < record_count; index++) {
+    let const name = payload.read_text();
+    let info = function_definition_info{};
+    if (!read_wire_source_name(payload, names, info.source_name_index)) {
+      return false;
+    }
+
+    let const line_offset = payload.read_u32();
+    let const definition_line = payload.read_u32();
+    let const line_prefix = payload.read_text();
+    let const line_suffix = payload.read_text();
+    if (!payload.is_valid || name.is_empty() || line_offset > INT32_MAX) {
+      return false;
+    }
+
+    info.line_offset = static_cast<isize>(line_offset);
+    info.definition_line = usize{definition_line};
+    info.line_prefix = String{heap_allocator(), line_prefix};
+    info.line_suffix = String{heap_allocator(), line_suffix};
+    wire.definition_origins.set(name, steal(info));
+  }
+
   return payload.is_fully_read();
+}
+
+fn FunctionStore::apply_wire_definitions(function_wire &wire) throws -> void
+{
+  wire.definition_origins.for_each(
+      [&](StringView name, function_definition_info &origin) throws {
+        let const storage = m_definitions.find(name);
+        if (!storage.has_value()) return;
+
+        let const *replayed = storage->get_definition_info();
+        let const *source = storage->get_source();
+        if (replayed == nullptr || source == nullptr) {
+          return;
+        }
+
+        origin.body_start_position = replayed->body_start_position;
+        origin.header_length = replayed->header_length;
+        origin.body_name_index = replayed->body_name_index;
+        origin.defining_state = replayed->defining_state;
+        storage->set_definition(source->view(), steal(origin));
+      });
 }
 
 fn ScopeStore::from_wire(
@@ -2251,130 +2417,398 @@ fn EvalContext::set_child_source_origin(os::subshell_bootstrap &bootstrap,
     -> void
 {
   bootstrap.source_origin.clear();
-  if (bootstrap.payload.is_empty() || child_source.is_empty()) return;
+  if (bootstrap.payload.is_empty()) return;
 
-  let rendered_source = child_source;
-  let location = SourceLocation{0, child_source.length};
-  bool is_inside_current_source = false;
-  if (let const *current = source_store().current_source(); current != nullptr)
-  {
-    let const current_view = current->view();
-    if (child_source.data >= current_view.data &&
-        child_source.data + child_source.length <=
-            current_view.data + current_view.length)
-    {
-      rendered_source = current_view;
-      location = SourceLocation{
-          static_cast<usize>(child_source.data - current_view.data),
-          child_source.length, source_name_index};
-      is_inside_current_source = true;
+  let names = ArrayList<u32>{heap_allocator()};
+  let const do_append_line = [&](String &output, u32 name_index,
+                                 isize line_number, Maybe<usize> counted_line)
+                                 throws -> bool {
+    if (line_number < 1 || line_number > static_cast<isize>(UINT32_MAX)) {
+      return false;
     }
+
+    let const line = static_cast<usize>(line_number);
+    let const counted = counted_line.value_or(line);
+    let const extra_line_count =
+        counted > line && counted - line <= UINT32_MAX ? counted - line : 0;
+    append_subshell_bootstrap_u32(output,
+                                  find_wire_source_name(names, name_index));
+    append_subshell_bootstrap_u32(output, static_cast<u32>(line));
+    append_subshell_bootstrap_u32(output, static_cast<u32>(extra_line_count));
+    return true;
+  };
+
+  let const do_append_origin = [&](String &output) throws -> bool {
+    if (child_source.is_empty()) return false;
+
+    let rendered_source = child_source;
+    let location = SourceLocation{0, child_source.length};
+    let counted_line = Maybe<usize>{None};
+    let const *current = source_store().current_source();
+    let const is_inside_current_source =
+        current != nullptr && child_source.data >= current->view().data &&
+        child_source.data + child_source.length <=
+            current->view().data + current->view().length;
+    if (is_inside_current_source) {
+      rendered_source = current->view();
+      location = SourceLocation{
+          static_cast<usize>(child_source.data - current->view().data),
+          child_source.length, source_name_index};
+      counted_line = line_number_at_location(
+          location, current, function_store().call_frames().count());
+    } else {
+      for (usize index = source_store().embedded_sources().count(); index > 0;
+           index--)
+      {
+        let const &base = source_store().embedded_sources()[index - 1];
+        if (base.body == nullptr || base.body->view().data != child_source.data)
+        {
+          continue;
+        }
+
+        counted_line = line_number_at_location(location, base.body,
+                                               base.function_call_depth);
+        break;
+      }
+    }
+
+    let const site =
+        resolve_rendered_site(rendered_source, location, 0, false, this);
+    if (!is_inside_current_source && site.source.data == child_source.data) {
+      return false;
+    }
+
+    let const site_text = site.location.get_source_text(site.source);
+    if (!site_text.has_value() || *site_text != child_source) {
+      return false;
+    }
+
+    let const body_position = usize{site.location.position};
+    let const before_body = site.source.substring_of_length(0, body_position);
+    let const last_newline = before_body.find_last_character('\n');
+    let const line_start =
+        last_newline.has_value() ? *last_newline + 1 : usize{0};
+    let const after_body =
+        site.source.substring(body_position + child_source.length);
+    let const suffix_length =
+        after_body.find_character('\n').value_or(after_body.length);
+    let const line_number =
+        static_cast<isize>(utils::line_number_at(site.source, body_position)) +
+        site.line_offset;
+    if (!do_append_line(output, site.location.source_name_index, line_number,
+                        counted_line))
+    {
+      return false;
+    }
+
+    append_subshell_bootstrap_text(output, before_body.substring(line_start));
+    append_subshell_bootstrap_text(
+        output, after_body.substring_of_length(0, suffix_length));
+    return true;
+  };
+
+  let const do_append_frame_site =
+      [&](String &output, const SourceLocation &call_site, const String *source,
+          usize call_depth, usize depth_floor, Maybe<usize> counted_line)
+          throws -> bool {
+    if (source == nullptr) return false;
+
+    let const resolved =
+        resolve_render_source(call_site, source, call_depth, depth_floor);
+    if (resolved.text == nullptr) return false;
+
+    let const location = resolved.rebase(call_site);
+    if (location.position > resolved.text->count()) return false;
+
+    let const site = resolve_rendered_site(
+        resolved.text->view(), location,
+        resolved.is_windowed ? resolved.line_offset : 0, true, this);
+    let const text = site.source;
+    usize position = site.location.position;
+    if (text.data == nullptr || position > text.count()) {
+      return false;
+    }
+
+    if (position + 2 < text.count() && text[position] == '\\' &&
+        text[position + 1] == '\n')
+    {
+      position += 2;
+    } else if (position + 1 < text.count() && text[position] == '\n') {
+      position++;
+    }
+
+    let const line_position = utils::source_line_position_at(text, position);
+    let const line_number =
+        static_cast<isize>(line_position.line_number + 1) + site.line_offset;
+    if (!do_append_line(output, site.location.source_name_index, line_number,
+                        counted_line))
+    {
+      return false;
+    }
+
+    let const column = position - line_position.line_start;
+    let const line_end = line_position.line_end - line_position.line_start;
+    let const length = usize{site.location.length} < line_end - column
+                           ? usize{site.location.length}
+                           : line_end - column;
+    append_subshell_bootstrap_u32(output, static_cast<u32>(column));
+    append_subshell_bootstrap_u32(output, static_cast<u32>(length));
+    append_subshell_bootstrap_text(
+        output, text.substring_of_length(line_position.line_start, line_end));
+    return true;
+  };
+
+  let origin = String{heap_allocator()};
+  let const has_origin = do_append_origin(origin);
+
+  let const &call_frames = function_store().call_frames();
+  let const &source_frames = source_store().source_frames();
+  let frames = String{heap_allocator()};
+  append_subshell_bootstrap_u32(frames, static_cast<u32>(call_frames.count()));
+  append_subshell_bootstrap_u32(frames,
+                                static_cast<u32>(source_frames.count()));
+  for (usize call_index = 0; call_index < call_frames.count(); call_index++) {
+    let const &call_frame = call_frames[call_index];
+    usize frame_limit = 0;
+    while (frame_limit < source_frames.count() &&
+           source_frames[frame_limit].function_call_depth <= call_index)
+    {
+      frame_limit++;
+    }
+
+    let site = String{heap_allocator()};
+    let const has_site =
+        call_frame.source != nullptr &&
+        do_append_frame_site(site, call_frame.location, call_frame.source,
+                             call_index, source_depth_floor(frame_limit),
+                             line_number_at_location(call_frame.location,
+                                                     call_frame.source,
+                                                     call_index));
+    u8 flags = 0;
+    if (call_frame.was_printed)
+      flags |= static_cast<u8>(inherited_frame_wire_flag::WasPrinted);
+    if (has_site) flags |= static_cast<u8>(inherited_frame_wire_flag::HasSite);
+    frames.push(static_cast<char>(flags));
+    frames.append(site.view());
   }
 
-  let const site =
-      resolve_rendered_site(rendered_source, location, 0, false, this);
-  if (!is_inside_current_source && site.source.data == child_source.data) {
-    return;
+  for (usize frame_index = 0; frame_index < source_frames.count();
+       frame_index++)
+  {
+    let const &frame = source_frames[frame_index];
+    let const *frame_source = borrowed_frame_source(frame);
+    let site = String{heap_allocator()};
+    let const has_site =
+        frame_source != nullptr &&
+        do_append_frame_site(
+            site, frame.call_site, frame_source, frame.function_call_depth,
+            source_depth_floor(frame_index),
+            frame.has_bash_source_row()
+                ? Maybe<usize>{line_number_at_location(
+                      frame.call_site, frame_source, frame.function_call_depth)}
+                : Maybe<usize>{None});
+    u8 flags = 0;
+    if (frame.was_printed)
+      flags |= static_cast<u8>(inherited_frame_wire_flag::WasPrinted);
+    if (has_site) flags |= static_cast<u8>(inherited_frame_wire_flag::HasSite);
+    if (frame.is_source_changing)
+      flags |= static_cast<u8>(inherited_frame_wire_flag::IsSourceChanging);
+    if (frame.should_defer_trace)
+      flags |= static_cast<u8>(inherited_frame_wire_flag::ShouldDeferTrace);
+    frames.push(static_cast<char>(flags));
+    frames.push(static_cast<char>(frame.kind));
+    append_subshell_bootstrap_u32(frames,
+                                  static_cast<u32>(frame.function_call_depth));
+    append_subshell_bootstrap_text(frames, frame.origin.view());
+    append_subshell_bootstrap_text(frames, frame.source_path.view());
+    frames.append(site.view());
   }
 
-  let const site_text = site.location.get_source_text(site.source);
-  if (!site_text.has_value() || *site_text != child_source) {
-    return;
-  }
-
-  let const body_position = usize{site.location.position};
-  let const before_body = site.source.substring_of_length(0, body_position);
-  let const last_newline = before_body.find_last_character('\n');
-  let const line_start =
-      last_newline.has_value() ? *last_newline + 1 : usize{0};
-  let const after_body =
-      site.source.substring(body_position + child_source.length);
-  let const suffix_length =
-      after_body.find_character('\n').value_or(after_body.length);
-  let const line_number =
-      static_cast<isize>(utils::line_number_at(site.source, body_position)) +
-      site.line_offset;
-  if (line_number < 1 || line_number > static_cast<isize>(UINT32_MAX)) {
-    return;
-  }
-
-  let const name_index = site.location.source_name_index;
-  let const name = source_name_at(name_index);
   append_wire_section(
       bootstrap.source_origin, wire_section::Origin, [&](String &payload) {
-        payload.push(static_cast<char>(name.has_value()));
-        if (name.has_value()) {
-          let const kind = source_identity_kind_at(name_index);
-          payload.push(static_cast<char>(kind));
-          if (kind == source_identity_kind::File)
-            append_subshell_bootstrap_text(payload, *name);
-        }
-        append_subshell_bootstrap_u32(payload, static_cast<u32>(line_number));
-        append_subshell_bootstrap_text(payload,
-                                       before_body.substring(line_start));
-        append_subshell_bootstrap_text(
-            payload, after_body.substring_of_length(0, suffix_length));
+        append_wire_source_names(payload, names);
+        payload.push(static_cast<char>(source_store().is_script_run()));
+        payload.push(static_cast<char>(has_origin));
+        payload.append(origin.view());
+        payload.append(frames.view());
       });
 }
 
 fn EvalContext::register_inherited_source_origin(
-    StringView origin, const String &contents, String &window,
+    StringView origin, const String &contents, ArrayList<String> &windows,
     Maybe<StringView> &source_name) throws -> bool
 {
   if (origin.is_empty()) return false;
 
   let reader = subshell_bootstrap_reader{origin};
   let payload = subshell_bootstrap_reader{StringView{}};
-  bool has_name = false;
+  let names = ArrayList<u32>{heap_allocator()};
+  bool is_script_run = false;
+  bool has_origin = false;
   if (!reader.read_section(wire_section::Origin, payload) ||
-      !reader.is_fully_read() ||
-      !read_subshell_bootstrap_bool(payload, has_name))
+      !reader.is_fully_read() || !read_wire_source_names(payload, names) ||
+      !read_subshell_bootstrap_bool(payload, is_script_run) ||
+      !read_subshell_bootstrap_bool(payload, has_origin))
   {
     invalid_subshell_bootstrap();
   }
 
-  u32 name_index = 0;
-  source_name = None;
-  if (has_name) {
-    let const kind = payload.read_u8();
-    if (kind == static_cast<u8>(source_identity_kind::CommandString)) {
-      name_index = intern_source_name(COMMAND_STRING_SOURCE_NAME);
-      source_name = COMMAND_STRING_SOURCE_NAME;
-    } else if (kind == static_cast<u8>(source_identity_kind::File)) {
-      let const name = payload.read_text();
-      if (!payload.is_valid || name.is_empty()) {
-        invalid_subshell_bootstrap();
-      }
-      name_index = intern_source_name(name);
-      source_name = source_name_at(name_index);
-    } else {
+  u32 origin_name_index = 0;
+  u32 origin_line_number = 0;
+  u32 origin_extra_line_count = 0;
+  let origin_prefix = StringView{};
+  let origin_suffix = StringView{};
+  if (has_origin) {
+    if (!read_wire_source_name(payload, names, origin_name_index)) {
       invalid_subshell_bootstrap();
     }
+
+    origin_line_number = payload.read_u32();
+    origin_extra_line_count = payload.read_u32();
+    origin_prefix = payload.read_text();
+    origin_suffix = payload.read_text();
   }
-  let const line_number = payload.read_u32();
-  let const line_prefix = payload.read_text();
-  let const line_suffix = payload.read_text();
-  if (!payload.is_fully_read() || line_number == 0) {
+
+  let const call_count = static_cast<usize>(payload.read_u32());
+  let const source_frame_count = static_cast<usize>(payload.read_u32());
+  if (!payload.is_valid || (has_origin && origin_line_number == 0) ||
+      call_count > function_store().call_frames().count() ||
+      source_frame_count > payload.get_remaining_length() / 14)
+  {
     invalid_subshell_bootstrap();
   }
 
-  window.clear();
-  window.reserve(usize{line_number} - 1 + line_prefix.length +
-                 contents.count() + line_suffix.length);
-  for (u32 line = 1; line < line_number; line++) {
-    window.push('\n');
+  ASSERT(windows.is_empty());
+  windows.reserve(call_count + source_frame_count + 2);
+  windows.push(String{heap_allocator()});
+  let &extra_lines = windows.back();
+  let const do_register_extra_lines = [&](const String &window,
+                                          u32 extra_line_count, u32 name_index,
+                                          usize call_depth) throws -> void {
+    if (extra_line_count == 0) return;
+
+    if (extra_lines.count() < extra_line_count) {
+      extra_lines.append_repeated('\n', extra_line_count - extra_lines.count());
+    }
+
+    let const extra_lines_end = SourceLocation{extra_line_count, 0, name_index};
+    source_store().push_embedded_source(
+        embedded_source{StringView{}, &extra_lines, extra_lines_end, 0, &window,
+                        call_depth, call_depth, false});
+  };
+
+  let const do_read_site = [&](usize call_depth, SourceLocation &location)
+                               throws -> const String * {
+    u32 name_index = 0;
+    if (!read_wire_source_name(payload, names, name_index)) {
+      invalid_subshell_bootstrap();
+    }
+
+    let const line_number = payload.read_u32();
+    let const extra_line_count = payload.read_u32();
+    let const column = payload.read_u32();
+    let const length = payload.read_u32();
+    let const line_text = payload.read_text();
+    if (!payload.is_valid || line_number == 0 || column > line_text.length ||
+        length > line_text.length - column)
+    {
+      invalid_subshell_bootstrap();
+    }
+
+    windows.push(String{heap_allocator()});
+    let &window = windows.back();
+    window.reserve(usize{line_number} - 1 + line_text.length);
+    window.append_repeated('\n', usize{line_number} - 1);
+    location = SourceLocation{window.count() + column, length, name_index};
+    window.append(line_text);
+    do_register_extra_lines(window, extra_line_count, name_index, call_depth);
+    return &window;
+  };
+
+  let const do_read_flags = [&]() throws -> u8 {
+    let const flags = payload.read_u8();
+    if (!payload.is_valid || (flags & ~ALL_INHERITED_FRAME_WIRE_FLAGS) != 0) {
+      invalid_subshell_bootstrap();
+    }
+
+    return flags;
+  };
+
+  for (usize call_index = 0; call_index < call_count; call_index++) {
+    let const flags = do_read_flags();
+    let &call_frame = function_store().call_frames()[call_index];
+    call_frame.was_printed =
+        (flags & static_cast<u8>(inherited_frame_wire_flag::WasPrinted)) != 0;
+    if ((flags & static_cast<u8>(inherited_frame_wire_flag::HasSite)) != 0)
+      call_frame.source = do_read_site(call_index, call_frame.location);
   }
 
-  window.append(line_prefix);
+  for (usize frame_index = 0; frame_index < source_frame_count; frame_index++) {
+    let const flags = do_read_flags();
+    let const kind = payload.read_u8();
+    let const function_call_depth = static_cast<usize>(payload.read_u32());
+    let const frame_origin = payload.read_text();
+    let const source_path = payload.read_text();
+    let const previous_depth =
+        source_store().source_frames().is_empty()
+            ? usize{0}
+            : source_store().source_frames().back().function_call_depth;
+    if (!payload.is_valid ||
+        kind > static_cast<u8>(source_frame_kind::SourcedFile) ||
+        function_call_depth > function_store().call_frames().count() ||
+        function_call_depth < previous_depth)
+    {
+      invalid_subshell_bootstrap();
+    }
+
+    let call_site = SourceLocation{};
+    const String *parent_source = nullptr;
+    if ((flags & static_cast<u8>(inherited_frame_wire_flag::HasSite)) != 0)
+      parent_source = do_read_site(function_call_depth, call_site);
+
+    let const parent_source_generation = source_generation_for(parent_source);
+    let frame_origin_text = String{heap_allocator(), frame_origin};
+    let frame_source_path = String{heap_allocator(), source_path};
+    source_store().source_frames().push(
+        source_frame{steal(frame_origin_text), call_site, parent_source,
+                     parent_source_generation, steal(frame_source_path),
+                     static_cast<source_frame_kind>(kind)});
+    let &frame = source_store().source_frames().back();
+    frame.function_call_depth = function_call_depth;
+    frame.was_printed =
+        (flags & static_cast<u8>(inherited_frame_wire_flag::WasPrinted)) != 0;
+    frame.is_source_changing =
+        (flags &
+         static_cast<u8>(inherited_frame_wire_flag::IsSourceChanging)) != 0;
+    frame.should_defer_trace =
+        (flags &
+         static_cast<u8>(inherited_frame_wire_flag::ShouldDeferTrace)) != 0;
+  }
+
+  if (!payload.is_fully_read()) invalid_subshell_bootstrap();
+
+  source_store().set_script_run(is_script_run);
+  if (!has_origin) return false;
+
+  source_name = source_name_at(origin_name_index);
+  windows.push(String{heap_allocator()});
+  let &window = windows.back();
+  window.reserve(usize{origin_line_number} - 1 + origin_prefix.length +
+                 contents.count() + origin_suffix.length);
+  window.append_repeated('\n', usize{origin_line_number} - 1);
+  window.append(origin_prefix);
   let const body_position = window.count();
   window.append(contents.view());
-  window.append(line_suffix);
+  window.append(origin_suffix);
 
+  let const call_depth = function_store().call_frames().count();
+  do_register_extra_lines(window, origin_extra_line_count, origin_name_index,
+                          call_depth);
   source_store().push_embedded_source(embedded_source{
       contents.view(), &window,
-      SourceLocation{body_position, contents.count(), name_index},
-      0, &contents,
-      function_store().call_frames().count(),
+      SourceLocation{body_position, contents.count(), origin_name_index},
+      0,
+      &contents, call_depth,
       source_depth_floor(source_store().source_frames().count())
   });
 
@@ -2453,6 +2887,7 @@ fn EvalContext::apply_subshell_bootstrap(
                    0, static_cast<usize>(bootstrap.source_length)),
                "inherited shell state");
   }
+  function_store().apply_wire_definitions(functions);
   if (is_restricted_shell_identity) startup_store().request_restricted_shell();
   runtime.restore(*this);
 

@@ -277,6 +277,7 @@ struct function_wire
 {
   usize call_depth{0};
   ArrayList<String> call_names{heap_allocator()};
+  StringMap<function_definition_info> definition_origins{heap_allocator()};
 };
 
 /* Owns one compiled regex and frees it on destruction, so the regex cache

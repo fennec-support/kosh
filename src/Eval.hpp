@@ -1955,6 +1955,7 @@ public:
   {
     m_call_depth = wire.call_depth;
   }
+  fn apply_wire_definitions(function_wire &wire) throws -> void;
 
 private:
   StringMap<FunctionBodyHandle> m_definitions{heap_allocator()};
@@ -3509,7 +3510,7 @@ public:
                              StringView child_source,
                              u32 source_name_index) const throws -> void;
   fn register_inherited_source_origin(StringView origin, const String &contents,
-                                      String &window,
+                                      ArrayList<String> &windows,
                                       Maybe<StringView> &source_name) throws
       -> bool;
 

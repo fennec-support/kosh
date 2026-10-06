@@ -556,7 +556,9 @@ struct subshell_saved_descriptor
    header occupies the copy's first line, and the line offset restores the
    defining file's numbering. A body that starts on the first line needs a
    negative offset. An error renders the body between the rest of its first
-   and last defining lines, which render_source builds on first use. */
+   and last defining lines, which render_source builds on first use. A fresh
+   evaluator parses an inherited body from its bootstrap, so the body positions
+   carry the name of that text while the rest names the defining file. */
 struct function_definition_info
 {
   usize body_start_position{0};
@@ -564,6 +566,7 @@ struct function_definition_info
   usize definition_line{0};
   isize line_offset{0};
   u32 source_name_index{0};
+  u32 body_name_index{0};
   String line_prefix{heap_allocator()};
   String line_suffix{heap_allocator()};
   mutable String render_source{heap_allocator()};

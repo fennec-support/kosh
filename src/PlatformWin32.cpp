@@ -1912,7 +1912,7 @@ static fn append_subshell_transport_u32(String &output, u32 value) throws
 struct subshell_transport_header
 {
   static constexpr u32 MAGIC = 0x4b535442U;
-  static constexpr u32 VERSION = 3U;
+  static constexpr u32 VERSION = 4U;
   static constexpr usize ENCODED_LENGTH = 28;
   static constexpr usize MAXIMUM_TRANSPORT_LENGTH = 16 * 1024 * 1024;
 

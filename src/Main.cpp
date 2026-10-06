@@ -653,6 +653,7 @@ struct inherited_shell
   decltype(os::take_subshell_bootstrap()) bootstrap;
   root_evaluation_mode evaluation_mode;
   String source_origin{heap_allocator()};
+  ArrayList<String> source_windows{heap_allocator()};
   Maybe<os::inherited_subshell_state> state = None;
   bool has_invalid_state = false;
   bool should_suppress_root_source_trace = false;
@@ -1920,7 +1921,6 @@ fn kosh_main(int argc, char **argv) -> int
            !koshka::os::is_child_process());
 
     let chunk = koshka::script_chunk{};
-    let origin_window = koshka::String{koshka::heap_allocator()};
     bool did_register_origin = false;
     defer
     {
@@ -1934,8 +1934,8 @@ fn kosh_main(int argc, char **argv) -> int
         cursor.read_next_command(context, chunk);
         chunk.is_fresh_evaluator_command = inherited.state.has_value();
         did_register_origin = context.register_inherited_source_origin(
-            inherited.source_origin.view(), chunk.contents, origin_window,
-            chunk.command_string_name);
+            inherited.source_origin.view(), chunk.contents,
+            inherited.source_windows, chunk.command_string_name);
         inherited.source_origin.clear();
       } else if (input.should_read_files) {
         cursor.read_next_file(context, chunk);

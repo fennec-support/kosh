@@ -98,7 +98,11 @@ changes update this file.
   lines. The child maps its command onto a window padded to that line through
   an embedded source, so diagnostics, traces, and LINENO use the parent's
   coordinates. The child skips analysis, because the parent analyzed the text.
-  Frames above the launch site stay in the parent.
+  The origin also carries the rendered call site of every function and source
+  frame above the launch site, each on its own padded window, and the lines
+  LINENO counts beyond a rendered line, such as those before an eval. The
+  bootstrap carries the defining name, lines, and edges of each function, which
+  the child applies to the definitions it replays.
 - Each store owns its state and operations. The trap store keeps one map of
   trap definitions, the history recorder and source retention are separate from
   the source store, and runtime state keeps its fields private. A scope that

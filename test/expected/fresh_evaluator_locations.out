@@ -2,6 +2,15 @@
      6 |  echo start; ( echo "background"; echo "$unset_in_background" ) &
        |                                         ^~~~~~~~~~~~~~~~~~~~
 note: Assign 'unset_in_background' before it is read, or set it in the environment.
+40:11: warning: The variable 'unset_in_inner' is read before any assignment gives it a value. (SC2154)
+    40 |  ( ( echo "$unset_in_inner" ) & wait )
+       |            ^~~~~~~~~~~~~~~
+note: Assign 'unset_in_inner' before it is read, or set it in the environment.
+42:13: warning: The variable 'unset_in_input' is read before any assignment gives it a value. (SC2154)
+    42 |  cat <(echo "$unset_in_input")
+       |              ^~~~~~~~~~~~~~~
+note: Assign 'unset_in_input' before it is read, or set it in the environment.
+Encountered 3 warnings.
 start
 background
 6:40: warning: The variable 'unset_in_background' is not set, it expands to empty.
@@ -34,3 +43,62 @@ input=23
 multi=25
 after=26
 output=28
+34:11: warning: The variable 'unset_in_report' is not set, it expands to empty.
+    34 |    ( echo "$unset_in_report" ) &
+       |            ^~~~~~~~~~~~~~~~
+note: Replace it with ${unset_in_report-} if empty expansion is desired.
+34:3: trace:
+    34 |    ( echo "$unset_in_report" ) &
+       |    ^
+37:18: trace:
+    37 |  outer_report() { report_unset; }
+       |                   ^~~~~~~~~~~~
+38:1: trace:
+    38 |  outer_report
+       |  ^~~~~~~~~~~~
+
+40:11: warning: The variable 'unset_in_inner' is not set, it expands to empty.
+    40 |  ( ( echo "$unset_in_inner" ) & wait )
+       |            ^~~~~~~~~~~~~~~
+note: Replace it with ${unset_in_inner-} if empty expansion is desired.
+40:3: trace:
+    40 |  ( ( echo "$unset_in_inner" ) & wait )
+       |    ^
+40:1: trace:
+    40 |  ( ( echo "$unset_in_inner" ) & wait )
+       |  ^
+
+42:13: warning: The variable 'unset_in_input' is not set, it expands to empty.
+    42 |  cat <(echo "$unset_in_input")
+       |              ^~~~~~~~~~~~~~~
+note: Replace it with ${unset_in_input-} if empty expansion is desired.
+42:5: trace:
+    42 |  cat <(echo "$unset_in_input")
+       |      ^~~~~~~~~~~~~~~~~~~~~~~~~
+
+eval=44
+48:55: warning: The variable 'unset_in_show' is not set, it expands to empty.
+    48 |    echo "show=$LINENO ${BASH_LINENO[*]} ${FUNCNAME[*]} $unset_in_show"
+       |                                                        ^~~~~~~~~~~~~~
+note: Replace it with ${unset_in_show-} if empty expansion is desired.
+50:7: trace:
+    50 |  cat <(show_frames)
+       |        ^~~~~~~~~~~
+50:5: trace:
+    50 |  cat <(show_frames)
+       |      ^~~~~~~~~~~~~~
+show=48 50 show_frames 
+48:55: warning: The variable 'unset_in_show' is not set, it expands to empty.
+    48 |    echo "show=$LINENO ${BASH_LINENO[*]} ${FUNCNAME[*]} $unset_in_show"
+       |                                                        ^~~~~~~~~~~~~~
+note: Replace it with ${unset_in_show-} if empty expansion is desired.
+51:21: trace:
+    51 |  call_show() { cat <(show_frames); }
+       |                      ^~~~~~~~~~~
+51:19: trace:
+    51 |  call_show() { cat <(show_frames); }
+       |                    ^~~~~~~~~~~~~~
+52:1: trace:
+    52 |  call_show
+       |  ^~~~~~~~~
+show=48 51 52 show_frames call_show 
