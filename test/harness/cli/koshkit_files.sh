@@ -224,7 +224,7 @@ if [ "${TARGET:-$(uname -s)}" = Linux ]; then
     (
       : > du-interrupt.ready
       poll_count=0
-      while [ "$poll_count" -lt 2000 ]; do
+      while [ "$poll_count" -lt 2000 ] && [ ! -e du-interrupt.done ]; do
         for descriptor in /proc/$shell_pid/fd/*; do
           case $(koshkit readlink "$descriptor") in
             */du-interrupt/*) break 2 ;;
@@ -237,6 +237,7 @@ if [ "${TARGET:-$(uname -s)}" = Linux ]; then
     ) &
     while [ ! -e du-interrupt.ready ]; do /bin/sleep 0.002; done
     koshkit du du-interrupt > du-interrupt.out 2> du-interrupt.err
+    : > du-interrupt.done
     wait
   ' 2> /dev/null; echo "$?")
   du_interrupt_line_count=$(wc -l < du-interrupt.out)
