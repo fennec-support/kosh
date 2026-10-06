@@ -164,19 +164,10 @@ pure fn EvalContext::resolve_render_source(
       function_store().call_frames().count() < call_depth_limit
           ? function_store().call_frames().count()
           : call_depth_limit;
-  usize lowest_depth = call_depth_floor;
-  if (lowest_depth == static_cast<usize>(-1)) {
-    lowest_depth = 0;
-    for (usize index = source_store().source_frames().count(); index > 0;
-         index--)
-    {
-      let const &frame = source_store().source_frames()[index - 1];
-      if (!frame.is_source_changing) continue;
-
-      lowest_depth = frame.function_call_depth;
-      break;
-    }
-  }
+  let const lowest_depth =
+      call_depth_floor == static_cast<usize>(-1)
+          ? source_depth_floor(source_store().source_frames().count())
+          : call_depth_floor;
   for (usize depth = first_depth; depth > lowest_depth; depth--) {
     let const &storage = function_store().call_frames()[depth - 1].storage;
     let const *info = storage.get_definition_info();

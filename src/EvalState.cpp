@@ -312,22 +312,10 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
 
     entry.text = resolved.text;
     entry.line_offset = resolved.is_windowed ? resolved.line_offset : 0;
-    if (resolved.is_windowed) {
-      entry.location.position = static_cast<u32>(
-          resolved.to_render_position(entry.location.position));
-      entry.location.source_name_index = resolved.source_name_index;
-    }
+    entry.location = resolved.rebase(entry.location);
     if (entry.location.position > resolved.text->count()) return;
 
     entries.push(entry);
-  };
-
-  let const do_find_floor = [&](usize frame_limit) {
-    for (usize index = frame_limit; index > 0; index--) {
-      let const &candidate = source_store().source_frames()[index - 1];
-      if (candidate.is_source_changing) return candidate.function_call_depth;
-    }
-    return usize{0};
   };
 
   usize deferral_index = static_cast<usize>(-1);
@@ -353,9 +341,9 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
       entry.location = call_site;
       entry.call_index = call_index;
       entry.was_printed = &call_frame.was_printed;
-      do_add_site(entry, resolve_render_source(call_site, call_frame.source,
-                                               call_index,
-                                               do_find_floor(frame_index)));
+      do_add_site(
+          entry, resolve_render_source(call_site, call_frame.source, call_index,
+                                       source_depth_floor(frame_index)));
       continue;
     }
 
@@ -380,9 +368,10 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
       entry.location = frame.call_site;
       entry.frame = &frame;
       entry.was_printed = &frame.was_printed;
-      do_add_site(entry, resolve_render_source(frame.call_site, frame_source,
-                                               frame.function_call_depth,
-                                               do_find_floor(frame_index)));
+      do_add_site(entry,
+                  resolve_render_source(frame.call_site, frame_source,
+                                        frame.function_call_depth,
+                                        source_depth_floor(frame_index)));
     }
   }
 

@@ -530,11 +530,8 @@ cold static fn resolve_rendered_site(StringView source,
     let const parent_site = context->resolve_render_source(
         mapped_location, parent, static_cast<usize>(-1), 0);
     if (parent_site.is_windowed && parent_site.text != nullptr) {
-      mapped_location.position = static_cast<u32>(
-          parent_site.to_render_position(mapped_location.position));
-      mapped_location.source_name_index = parent_site.source_name_index;
-
-      return rendered_site{parent_site.text->view(), mapped_location,
+      return rendered_site{parent_site.text->view(),
+                           parent_site.rebase(mapped_location),
                            parent_site.line_offset};
     }
 
@@ -548,12 +545,8 @@ cold static fn resolve_rendered_site(StringView source,
   if (!resolved.is_windowed || resolved.text == nullptr)
     return rendered_site{source, location, line_offset};
 
-  let rebased = location;
-  rebased.position =
-      static_cast<u32>(resolved.to_render_position(location.position));
-  rebased.source_name_index = resolved.source_name_index;
-
-  return rendered_site{resolved.text->view(), rebased, resolved.line_offset};
+  return rendered_site{resolved.text->view(), resolved.rebase(location),
+                       resolved.line_offset};
 }
 
 fn ErrorWithLocation::to_string(StringView source,

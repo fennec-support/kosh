@@ -3187,6 +3187,17 @@ public:
                  ? absolute_position - body_start_position + header_length
                  : absolute_position;
     }
+
+    pure fn rebase(SourceLocation location) const wontthrow -> SourceLocation
+    {
+      if (!is_windowed) return location;
+
+      location.position =
+          static_cast<u32>(to_render_position(location.position));
+      location.source_name_index = source_name_index;
+
+      return location;
+    }
   };
   pure fn source_depth_floor(usize frame_limit) const wontthrow -> usize;
   pure fn resolve_render_source(

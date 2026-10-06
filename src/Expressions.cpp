@@ -1349,10 +1349,7 @@ fn expressions::internal::window_function_body_error(
     return None;
   }
 
-  let rebased = error.location();
-  rebased.position =
-      static_cast<u32>(resolved.to_render_position(rebased.position));
-  rebased.source_name_index = resolved.source_name_index;
+  let const rebased = resolved.rebase(error.location());
   if (rebased.position > resolved.text->count()) return None;
 
   error.set_location(rebased);

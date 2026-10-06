@@ -615,13 +615,9 @@ cold fn EvalContext::show_runtime_warning_at(
      filename. */
   try {
     let const resolved_source = resolve_render_source(location);
-    isize line_offset = 0;
-    if (resolved_source.is_windowed) {
-      location.position = static_cast<u32>(
-          resolved_source.to_render_position(location.position));
-      location.source_name_index = resolved_source.source_name_index;
-      line_offset = resolved_source.line_offset;
-    }
+    let const line_offset =
+        resolved_source.is_windowed ? resolved_source.line_offset : isize{0};
+    location = resolved_source.rebase(location);
     if (resolved_source.text == nullptr ||
         location.position > resolved_source.text->count())
     {
@@ -643,13 +639,9 @@ cold fn EvalContext::show_runtime_error_at(SourceLocation location,
   let const trace_location = location;
   try {
     let const resolved_source = resolve_render_source(location);
-    isize line_offset = 0;
-    if (resolved_source.is_windowed) {
-      location.position = static_cast<u32>(
-          resolved_source.to_render_position(location.position));
-      location.source_name_index = resolved_source.source_name_index;
-      line_offset = resolved_source.line_offset;
-    }
+    let const line_offset =
+        resolved_source.is_windowed ? resolved_source.line_offset : isize{0};
+    location = resolved_source.rebase(location);
     if (resolved_source.text == nullptr ||
         location.position > resolved_source.text->count())
     {
