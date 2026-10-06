@@ -113,6 +113,7 @@ enum class shell_option_id : u8
   SpaceAfterCompletion,
   HistoryPrefixSearch,
   InlineHints,
+  AutoPair,
   Count,
 };
 

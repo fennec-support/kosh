@@ -451,6 +451,7 @@ pure fn semantic_style(highlight_role role) wontthrow -> semantic_token_style
       {2, PATH | INVALID               },
       {2, URL                          },
       {7, 0                            },
+      {1, 0                            },
   };
   static_assert(countof(STYLES) == static_cast<usize>(highlight_role::count));
   if (role == highlight_role::count) return {1, 0};

@@ -76,6 +76,15 @@ diagnostic-absent-when-closed PASS
 diagnostic-absent-in-comment PASS
 diagnostic-absent-after-backslash PASS
 diagnostic-clears-when-quote-closes PASS
+bracket-caret-move-keeps-line PASS
+bracket-caret-insert-lands PASS
+bracket-caret-home-end-keeps-line PASS
+bracket-caret-line-runs PASS
+auto-pair-off-by-default PASS
+auto-pair-inserts-closer PASS
+auto-pair-steps-over-closer PASS
+auto-pair-backspace-deletes-pair PASS
+auto-pair-quote-after-word-stays-single PASS
 option-off-hides-hint PASS
 option-off-hides-diagnostic PASS
 narrow-startup-prompt PASS

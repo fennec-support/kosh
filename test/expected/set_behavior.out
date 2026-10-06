@@ -39,6 +39,7 @@ koshkit        	off
 space-after-completion	off
 history-prefix-search	on
 inline-hints   	on
+auto-pair      	off
 vi             	off
 emacs          	off
 posix          	off

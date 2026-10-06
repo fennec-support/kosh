@@ -18,7 +18,9 @@
 # names an unterminated quote or substitution, an open subshell, conditional,
 # if, loop or function, a misplaced closing keyword, and a bad for variable,
 # and it stays on the synopsis for closed text, a comment, and a trailing
-# backslash. Every wait polls for the expected final
+# backslash. Caret moves onto matched brackets keep the line and the caret,
+# so a key typed there lands in place. The auto-pair option inserts, steps
+# over, and erases closers. Every wait polls for the expected final
 # state under a deadline, so a failure reports the last screen instead of
 # hanging. Each check prints one stable PASS line for the golden output.
 
@@ -42,6 +44,8 @@ WAIT_SECONDS = 8.0
 MENU_HEADER = "selecting completions"
 MENU_FOOTER = "showing "
 RIGHT = b"\x1b[C"
+LEFT = b"\x1b[D"
+HOME = b"\x1b[H"
 END = b"\x1b[F"
 UP = b"\x1b[A"
 DOWN = b"\x1b[B"
@@ -657,6 +661,45 @@ def run_checks(binary, directory, command_directory, report):
         report.record("diagnostic-clears-when-quote-closes", session,
                       is_hint("echo [-neE] [arg ...]"))
         clear_line(session)
+
+        type_text(session, b"echo $((1+(2*3)))")
+        session.wait_until(is_line("echo $((1+(2*3)))"))
+        for _ in range(3):
+            session.send(LEFT)
+            session.pump(0.05)
+        report.record("bracket-caret-move-keeps-line", session,
+                      is_line("echo $((1+(2*3)))"))
+        session.send(b"0")
+        report.record("bracket-caret-insert-lands", session,
+                      is_line("echo $((1+(2*30)))"))
+        session.send(HOME)
+        session.pump(0.05)
+        session.send(END)
+        report.record("bracket-caret-home-end-keeps-line", session,
+                      is_line("echo $((1+(2*30)))"))
+        run_command(session, report, "bracket-caret-line-runs", b"", "61", 1)
+
+        type_text(session, b"echo (")
+        report.record("auto-pair-off-by-default", session, is_line("echo ("))
+        clear_line(session)
+        session.send(b"set -o auto-pair\r")
+        session.wait_until(is_line(""))
+        type_text(session, b"echo (")
+        report.record("auto-pair-inserts-closer", session, is_line("echo ()"))
+        type_text(session, b"a)")
+        report.record("auto-pair-steps-over-closer", session,
+                      is_line("echo (a)"))
+        type_text(session, b" [")
+        session.wait_until(is_line("echo (a) []"))
+        session.send(BACKSPACE)
+        report.record("auto-pair-backspace-deletes-pair", session,
+                      is_line("echo (a)"))
+        type_text(session, b"don'")
+        report.record("auto-pair-quote-after-word-stays-single", session,
+                      is_line("echo (a) don'"))
+        clear_line(session)
+        session.send(b"set +o auto-pair\r")
+        session.wait_until(is_line(""))
 
         session.send(b"set +o inline-hints\r")
         session.wait_until(is_line(""))

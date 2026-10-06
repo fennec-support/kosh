@@ -44,6 +44,7 @@ static fn make_shell_highlight_theme() wontthrow -> highlight_theme
                   ansi::RED_CURLY_YELLOW_UNDERLINE);
   theme.set_style(highlight_role::url, ansi::BOLD_WHITE);
   theme.set_style(highlight_role::glob, ansi::YELLOW);
+  theme.set_style(highlight_role::matching_bracket, ansi::BOLD_UNDERLINE);
   return theme;
 }
 
@@ -222,6 +223,7 @@ pure fn highlight_role_name(highlight_role role) wontthrow -> StringView
   case highlight_role::invalid_path: return "invalid-path";
   case highlight_role::url: return "url";
   case highlight_role::glob: return "glob";
+  case highlight_role::matching_bracket: return "matching-bracket";
   case highlight_role::count: break;
   }
 

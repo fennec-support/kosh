@@ -167,6 +167,10 @@ changes update this file.
   explicit flag completion filled. It never forks, searches PATH, or reads a
   file. The editor draws the row under the last input row without counting it
   in the block rows, and holds it away while a menu or search is open.
+- The highlight callback receives the caret and follows it. It reuses the
+  spans of an unchanged line within one prompt, and on a caret move it only
+  overlays the pair from `find_matching_bracket`, which reads the highlight
+  spans to skip quoted, commented, and here-document brackets.
 - The language server wraps completion in `begin_explicit_completion` and loads
   command documentation lazily. Mood selection checks the shebang, language
   identifier, then extension. `shellscript` selects bash.

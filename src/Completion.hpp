@@ -236,6 +236,10 @@ private:
 fn highlight_line(StringView line, EvalContext &context) throws
     -> ArrayList<highlight_span>;
 
+pure fn find_matching_bracket(StringView line,
+                              const ArrayList<highlight_span> &spans,
+                              usize cursor) wontthrow -> Maybe<bracket_pair>;
+
 fn append_highlighted_range(String &output, StringView text,
                             const ArrayList<highlight_span> &spans,
                             usize range_start, usize range_end,

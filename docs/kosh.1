@@ -614,6 +614,10 @@ available only in a debug build.
 The ghost completion result and operation counts for LINE are printed. The
 shell then exits. This option is available only in a debug build.
 .TP
+.BR \-\-debug\-brackets\-at =\fILINE\fR
+The bracket pair matched at each caret offset of LINE is printed. The shell
+then exits. This option is available only in a debug build.
+.TP
 .B \-\-debug\-arena\-lifetimes
 Arena lifetime identities are checked across every release and reset. This
 option is available only in a debug build.
@@ -2883,6 +2887,20 @@ it needs the highlighter, so it is absent when highlighting is off. A line over
 2048 bytes and an open here-document show nothing. The row follows
 .BR inline-hints .
 .PP
+The
+.B set \-o auto-pair
+command makes a typed
+.BR ( ,
+.BR [ ,
+.BR { ,
+double quote, or single quote insert its closer after the caret. The closer
+is added only at the line end or before a blank or a closing bracket, never
+after a backslash, and a quote is left single after a letter, a digit, or the
+same quote. Typing the closer over an inserted one steps over it, and
+Backspace between an empty inserted pair deletes both. Any other key, such as
+an arrow, keeps the inserted closers as plain text. The option is off by
+default.
+.PP
 The interactive terminal title shows the current user and directory. While a
 foreground program runs, the title shows its command line. Output from
 PROMPT_COMMAND or PS1 can replace the idle title.
@@ -2974,6 +2992,22 @@ that use quotes, escapes, variables, or tildes retain their typed form. An
 explicit Tab at command position offers executable files and directories.
 Syntax highlighting distinguishes syntax, commands, flags, variables, paths,
 globs, and invalid input.
+.PP
+When the caret is on a parenthesis, bracket, or brace, or just after one, that
+bracket and its partner are drawn bold and underlined. A caret on the dollar
+sign of
+.B $(
+or
+.B ${
+counts as a caret on its bracket. The doubled forms
+.BR [[ ,
+.BR ]] ,
+.BR ((
+and
+.B ))
+are marked whole. A bracket inside quotes, a comment, or a here-document body,
+or one escaped with a backslash, never pairs. An unmatched bracket keeps its
+usual color.
 .PP
 Each vi line begins in insert mode. Escape enters command mode. Command mode
 supports motions, counted operators, named registers, change repeat, and visual

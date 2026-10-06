@@ -176,6 +176,9 @@ FLAG(DEBUG_HIGHLIGHT_AT, String, '\0', "debug-highlight-at", Debug,
      "test driver.");
 FLAG(DEBUG_GHOST_AT, String, '\0', "debug-ghost-at", Debug,
      "Print the ghost completion result and operation counts, then exit.");
+FLAG(DEBUG_BRACKETS_AT, String, '\0', "debug-brackets-at", Debug,
+     "Print the bracket pair matched at each caret offset of the given line, "
+     "then exit. The bracket matching test driver.");
 #endif
 
 #include "MainOperations.hpp"
@@ -392,7 +395,7 @@ static fn is_debug_driver_run() wontthrow -> bool
 {
 #if !defined NDEBUG
   return FLAG_DEBUG_COMPLETE_AT.is_set() || FLAG_DEBUG_HIGHLIGHT_AT.is_set() ||
-         FLAG_DEBUG_GHOST_AT.is_set();
+         FLAG_DEBUG_GHOST_AT.is_set() || FLAG_DEBUG_BRACKETS_AT.is_set();
 #else
   return false;
 #endif
@@ -1372,6 +1375,8 @@ static fn configure_line_editor(EvalContext &context) throws -> void
           shell_option_id::HistoryPrefixSearch));
   toiletline::set_inline_hints(
       context.runtime_state().option_is_enabled(shell_option_id::InlineHints));
+  toiletline::set_auto_pair(
+      context.runtime_state().option_is_enabled(shell_option_id::AutoPair));
   toiletline::set_history_limit(
       context.variable_store().history_limit("KOSH_HISTORY_SIZE", 4096));
 }
@@ -1642,6 +1647,10 @@ wontreturn static fn exit_after_final_chunk(EvalContext &context,
   }
   if (FLAG_DEBUG_GHOST_AT.is_set() && !os::is_child_process()) {
     exit_code = run_debug_ghost_driver(FLAG_DEBUG_GHOST_AT.value(), context);
+  }
+  if (FLAG_DEBUG_BRACKETS_AT.is_set() && !os::is_child_process()) {
+    exit_code =
+        run_debug_bracket_driver(FLAG_DEBUG_BRACKETS_AT.value(), context);
   }
 #endif
   LOG(Info, "exiting after the final chunk with code %d", exit_code);

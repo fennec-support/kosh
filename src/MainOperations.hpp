@@ -104,6 +104,34 @@ static fn run_debug_highlight_driver(StringView driver_line,
   return 0;
 }
 
+static fn run_debug_bracket_driver(StringView driver_line,
+                                   EvalContext &context) throws -> i32
+{
+  let const spans = completion::highlight_line(driver_line, context);
+  let listing = String{heap_allocator()};
+  let const do_append_range = [&](usize start, usize end) throws -> void {
+    listing += driver_line.substring_of_length(start, end - start);
+    listing += '@';
+    listing += String::from(start, heap_allocator());
+  };
+  for (usize cursor = 0; cursor <= driver_line.length; cursor++) {
+    let const pair =
+        completion::find_matching_bracket(driver_line, spans, cursor);
+    if (!pair.has_value()) continue;
+
+    listing += String::from(cursor, heap_allocator());
+    listing += '\t';
+    do_append_range(pair->open_start, pair->open_end);
+    listing += '\t';
+    do_append_range(pair->close_start, pair->close_end);
+    listing += '\n';
+  }
+  print(listing);
+  flush();
+
+  return 0;
+}
+
 static fn run_debug_ghost_driver(StringView driver_line,
                                  EvalContext &context) throws -> i32
 {

@@ -218,6 +218,8 @@ constexpr set_option_descriptor SET_OPTIONS[] = {
      "history-prefix-search", "Recall only history entries that begin with the typed text on Up and Down."},
     {shell_option_id::InlineHints, set_option_behavior::Stored, '\0',
      "inline-hints", "Show the synopsis or flag description of the command under the cursor below the input."},
+    {shell_option_id::AutoPair, set_option_behavior::Stored, '\0',
+     "auto-pair", "Insert the closer after a typed bracket, brace, or quote."},
     {shell_option_id::Vi,
      set_option_behavior::Vi,
      '\0', "vi",

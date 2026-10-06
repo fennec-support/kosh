@@ -35,6 +35,7 @@ enum class highlight_role : u8
   invalid_path,
   url,
   glob,
+  matching_bracket,
   count,
 };
 
@@ -43,6 +44,14 @@ struct highlight_span
   usize start;
   usize end;
   highlight_role role;
+};
+
+struct bracket_pair
+{
+  usize open_start;
+  usize open_end;
+  usize close_start;
+  usize close_end;
 };
 
 struct highlight_theme

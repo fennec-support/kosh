@@ -530,6 +530,8 @@ fn set_history_prefix_search(bool enabled) -> void { unused(enabled); }
 
 fn set_inline_hints(bool enabled) -> void { unused(enabled); }
 
+fn set_auto_pair(bool enabled) -> void { unused(enabled); }
+
 fn enter_calc_history() -> void {}
 
 fn leave_calc_history() -> void {}

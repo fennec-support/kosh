@@ -145,6 +145,7 @@ struct completion_session
   {
     base_directory = directory;
     result = storage;
+    has_highlighted_spans = false;
   }
 
   fn detach_prompt() -> void
@@ -169,9 +170,14 @@ struct completion_session
 
   koshka::String hint_row{koshka::heap_allocator()};
   koshka::String highlighted_line{koshka::heap_allocator()};
+  koshka::ArrayList<koshka::highlight_span> highlighted_spans{
+      koshka::heap_allocator()};
+  bool has_highlighted_spans{false};
   koshka::highlight_span first_invalid_span{
       0, 0, koshka::highlight_role::invalid_syntax};
   bool has_invalid_span{false};
+  char bracket_styles[4][48]{};
+  usize bracket_style_count{0};
 };
 
 completion_session COMPLETION_SESSION{};
@@ -815,35 +821,102 @@ fn completion_session::highlight(const char *buffer, tl_highlight *out) -> int
     const usize byte_length = std::strlen(buffer);
     let line = koshka::StringView{buffer, byte_length};
 
-    koshka::ArrayList<koshka::highlight_span> result =
-        koshka::completion::highlight_line(line, *context);
-    remember_invalid_span(line, result);
+    if (!has_highlighted_spans || highlighted_line.view() != line) {
+      let const result = koshka::completion::highlight_line(line, *context);
+      remember_invalid_span(line, result);
+      highlighted_spans.clear();
+      for (let const &span : result)
+        highlighted_spans.push(span);
+      has_highlighted_spans = true;
+    }
+
     let const &theme = is_highlight_styled_underlines_enabled
                            ? koshka::colors::SHELL_HIGHLIGHT_THEME
                            : koshka::colors::NONINTERACTIVE_HIGHLIGHT_THEME;
+    let const emphasis =
+        theme.style_for(koshka::highlight_role::matching_bracket);
+    let const bracket = koshka::completion::find_matching_bracket(
+        line, highlighted_spans, out->cursor);
+    usize range_starts[2] = {0, 0};
+    usize range_ends[2] = {0, 0};
+    usize range_count = 0;
+    if (bracket.has_value() && !emphasis.is_empty()) {
+      range_starts[0] = bracket->open_start;
+      range_ends[0] = bracket->open_end;
+      range_starts[1] = bracket->close_start;
+      range_ends[1] = bracket->close_end;
+      range_count = 2;
+    }
+    bracket_style_count = 0;
 
     size_t filled = 0;
     usize byte_position = 0;
     usize codepoint_position = 0;
-    for (let const &span : result) {
-      if (filled >= out->capacity) break;
-      while (byte_position < span.start) {
+    let const do_advance = [&](usize target) -> void {
+      while (byte_position < target) {
         if ((static_cast<unsigned char>(buffer[byte_position]) & 0xC0) != 0x80)
           codepoint_position++;
         byte_position++;
       }
+    };
+    let const do_push = [&](usize start, usize end, const char *sgr) -> void {
+      if (start >= end || sgr == nullptr || filled >= out->capacity) {
+        return;
+      }
+
+      do_advance(start);
       out->spans[filled].start = codepoint_position;
-      while (byte_position < span.end) {
-        if ((static_cast<unsigned char>(buffer[byte_position]) & 0xC0) != 0x80)
-          codepoint_position++;
-        byte_position++;
-      }
+      do_advance(end);
       out->spans[filled].end = codepoint_position;
-      let const style = theme.style_for(span.role);
-      if (style.is_empty()) continue;
-      out->spans[filled].sgr = style.data;
+      out->spans[filled].sgr = sgr;
       filled++;
+    };
+    let const do_emphasize = [&](koshka::StringView style) -> const char * {
+      let const fallback = style.is_empty() ? nullptr : style.data;
+      if (bracket_style_count == countof(bracket_styles)) return fallback;
+
+      let &slot = bracket_styles[bracket_style_count];
+      if (style.length + emphasis.length >= sizeof(slot)) return fallback;
+
+      std::memcpy(slot, style.data, style.length);
+      std::memcpy(slot + style.length, emphasis.data, emphasis.length);
+      slot[style.length + emphasis.length] = '\0';
+      bracket_style_count++;
+      return slot;
+    };
+    usize range_index = 0;
+    let const do_push_styled = [&](usize start, usize end,
+                                   koshka::StringView style) -> void {
+      let const sgr = style.is_empty() ? nullptr : style.data;
+      while (start < end) {
+        while (range_index < range_count && range_ends[range_index] <= start) {
+          range_index++;
+        }
+
+        if (range_index == range_count || range_starts[range_index] >= end) {
+          do_push(start, end, sgr);
+          return;
+        }
+
+        let const piece_start = range_starts[range_index] > start
+                                    ? range_starts[range_index]
+                                    : start;
+        let const piece_end =
+            range_ends[range_index] < end ? range_ends[range_index] : end;
+        do_push(start, piece_start, sgr);
+        do_push(piece_start, piece_end, do_emphasize(style));
+        start = piece_end;
+      }
+    };
+
+    usize covered_end = 0;
+    for (let const &span : highlighted_spans) {
+      do_push_styled(covered_end, span.start, koshka::StringView{});
+      do_push_styled(span.start, span.end, theme.style_for(span.role));
+      covered_end = span.end;
     }
+    do_push_styled(covered_end, byte_length, koshka::StringView{});
+
     out->count = filled;
     return filled > 0 ? 1 : 0;
   } catch (...) {
@@ -2029,6 +2102,7 @@ fn enable_completion(koshka::EvalContext &context) -> void
   COMPLETION_SESSION.context = &context;
   ::tl_set_complete_callback(kosh_completion_callback);
   ::tl_set_highlight_callback(kosh_highlight_callback);
+  ::tl_set_highlight_follows_cursor(1);
   ::tl_set_ghost_validate_callback(kosh_ghost_validate_callback);
   ::tl_set_history_select_callback(kosh_history_select_callback);
   ::tl_set_edit_callback(kosh_edit_callback);
@@ -2049,6 +2123,7 @@ fn disable_completion() -> void
   COMPLETION_SESSION.context = nullptr;
   ::tl_set_complete_callback(nullptr);
   ::tl_set_highlight_callback(nullptr);
+  ::tl_set_highlight_follows_cursor(0);
   ::tl_set_ghost_validate_callback(nullptr);
   ::tl_set_history_select_callback(nullptr);
   ::tl_set_edit_callback(nullptr);
@@ -2085,6 +2160,8 @@ fn set_inline_hints(bool enabled) -> void
 {
   ::tl_set_hint_callback(enabled ? kosh_hint_callback : nullptr);
 }
+
+fn set_auto_pair(bool enabled) -> void { ::tl_set_auto_pair(enabled ? 1 : 0); }
 
 fn set_highlight_enabled(bool enabled) -> void
 {

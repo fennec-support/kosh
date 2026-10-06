@@ -3,8 +3,9 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file converts semantic scans into highlight spans and maintains
- * checkpoints for incremental multiline rescanning. It also renders ranges
- * and validates cached diagnostics after source changes. The split confines
+ * checkpoints for incremental multiline rescanning. It also renders ranges,
+ * pairs the code bracket at the caret with its partner, and validates cached
+ * diagnostics after source changes. The split confines
  * mutable cache state and rendering above the semantic classifier.
  */
 
@@ -210,6 +211,181 @@ fn highlight_line(StringView line, EvalContext &context) throws
     -> ArrayList<highlight_span>
 {
   return highlight_line_with_lexical_state(line, context, nullptr);
+}
+
+struct bracket_byte
+{
+  usize kind;
+  bool is_opening;
+};
+
+static pure fn classify_bracket(char byte) wontthrow -> Maybe<bracket_byte>
+{
+  switch (byte) {
+  case '(': return bracket_byte{0, true};
+  case ')': return bracket_byte{0, false};
+  case '[': return bracket_byte{1, true};
+  case ']': return bracket_byte{1, false};
+  case '{': return bracket_byte{2, true};
+  case '}': return bracket_byte{2, false};
+  default: return None;
+  }
+}
+
+static pure fn role_is_literal(highlight_role role) wontthrow -> bool
+{
+  switch (role) {
+  case highlight_role::comment:
+  case highlight_role::string:
+  case highlight_role::heredoc:
+  case highlight_role::heredoc_delimiter: return true;
+  default: return false;
+  }
+}
+
+static pure fn byte_is_escaped(StringView line, usize position) wontthrow
+    -> bool
+{
+  usize backslash_count = 0;
+  while (backslash_count < position &&
+         line[position - backslash_count - 1] == '\\')
+  {
+    backslash_count++;
+  }
+
+  return backslash_count % 2 == 1;
+}
+
+static pure fn find_bracket_partner(StringView line,
+                                    const ArrayList<highlight_span> &spans,
+                                    usize position) wontthrow -> Maybe<usize>
+{
+  let const origin = classify_bracket(line[position]);
+  if (!origin.has_value()) return None;
+
+  usize depths[3] = {0, 0, 0};
+  let const do_is_closing_partner = [&](usize scan, bracket_byte bracket,
+                                        bool is_literal) wontthrow -> bool {
+    if (is_literal || byte_is_escaped(line, scan)) return false;
+
+    if (bracket.is_opening == origin->is_opening) {
+      depths[bracket.kind]++;
+      return false;
+    }
+
+    if (depths[bracket.kind] > 0) {
+      depths[bracket.kind]--;
+      return false;
+    }
+
+    return bracket.kind == origin->kind;
+  };
+
+  if (origin->is_opening) {
+    usize span_index = 0;
+    for (usize scan = position + 1; scan < line.length; scan++) {
+      let const bracket = classify_bracket(line[scan]);
+      if (!bracket.has_value()) continue;
+
+      while (span_index < spans.count() && spans[span_index].end <= scan) {
+        span_index++;
+      }
+
+      let const is_literal = span_index < spans.count() &&
+                             spans[span_index].start <= scan &&
+                             role_is_literal(spans[span_index].role);
+      if (do_is_closing_partner(scan, *bracket, is_literal)) return scan;
+    }
+
+    return None;
+  }
+
+  usize span_index = spans.count();
+  for (usize scan = position; scan > 0; scan--) {
+    let const at = scan - 1;
+    let const bracket = classify_bracket(line[at]);
+    if (!bracket.has_value()) continue;
+
+    while (span_index > 0 && spans[span_index - 1].start > at) {
+      span_index--;
+    }
+
+    let const is_literal = span_index > 0 && spans[span_index - 1].end > at &&
+                           role_is_literal(spans[span_index - 1].role);
+    if (do_is_closing_partner(at, *bracket, is_literal)) return at;
+  }
+
+  return None;
+}
+
+pure fn find_matching_bracket(StringView line,
+                              const ArrayList<highlight_span> &spans,
+                              usize cursor) wontthrow -> Maybe<bracket_pair>
+{
+  if (cursor > line.length) return None;
+
+  let const do_is_code_bracket = [&](usize position) wontthrow -> bool {
+    if (position >= line.length ||
+        !classify_bracket(line[position]).has_value())
+    {
+      return false;
+    }
+
+    if (byte_is_escaped(line, position)) return false;
+
+    for (let const &span : spans) {
+      if (span.start > position) break;
+      if (span.end > position) return !role_is_literal(span.role);
+    }
+
+    return true;
+  };
+  let const do_pairs_with = [&](usize open, usize close) wontthrow -> bool {
+    if (!do_is_code_bracket(open)) return false;
+
+    let const partner = find_bracket_partner(line, spans, open);
+    return partner.has_value() && *partner == close;
+  };
+
+  usize candidates[2];
+  usize candidate_count = 0;
+  if (cursor < line.length) {
+    let const is_dollar_opener =
+        line[cursor] == '$' && cursor + 1 < line.length &&
+        (line[cursor + 1] == '(' || line[cursor + 1] == '{');
+    candidates[candidate_count++] = is_dollar_opener ? cursor + 1 : cursor;
+  }
+  if (cursor > 0) candidates[candidate_count++] = cursor - 1;
+
+  for (usize candidate_index = 0; candidate_index < candidate_count;
+       candidate_index++)
+  {
+    let const position = candidates[candidate_index];
+    if (!do_is_code_bracket(position)) continue;
+
+    let const partner = find_bracket_partner(line, spans, position);
+    if (!partner.has_value()) continue;
+
+    let const open = position < *partner ? position : *partner;
+    let const close = position < *partner ? *partner : position;
+    let const is_doubled_form = line[open] != '{';
+    if (is_doubled_form && open + 2 < close && line[open + 1] == line[open] &&
+        line[close - 1] == line[close] && do_pairs_with(open + 1, close - 1))
+    {
+      return bracket_pair{open, open + 2, close - 1, close + 1};
+    }
+
+    if (is_doubled_form && open > 0 && close + 1 < line.length &&
+        line[open - 1] == line[open] && line[close + 1] == line[close] &&
+        do_pairs_with(open - 1, close + 1))
+    {
+      return bracket_pair{open - 1, open + 1, close, close + 2};
+    }
+
+    return bracket_pair{open, open + 1, close, close + 1};
+  }
+
+  return None;
 }
 
 fn append_highlighted_range(String &output, StringView text,
