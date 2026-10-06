@@ -55,6 +55,8 @@ hint 'if ( )'
 hint 'f() ( )'
 hint 'f() { }'
 hint 'while true; do done '
+hint 'if true; then fi'
+hint 'if :; then :; else fi'
 
 printf '== caret at the end of the erroneous word\n'
 hint 'fi'

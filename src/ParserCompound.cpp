@@ -39,6 +39,13 @@ hot fn Parser::parse_if() throws -> Command *
   let branches = ArrayList<if_branch>{heap_allocator()};
   const Expression *otherwise = nullptr;
   usize end_position = 0;
+  let const do_reject_empty = [](const Expression *part, const Token *next,
+                                 const char *details) throws -> void {
+    if (!part->is_dummy()) return;
+
+    throw ErrorWithLocationAndDetails{next->source_location(),
+                                      "Unable to parse the if", details};
+  };
 
   loop
   {
@@ -54,12 +61,23 @@ hot fn Parser::parse_if() throws -> Command *
                                         then_token->source_location(), detail};
     }
 
+    do_reject_empty(condition, then_token,
+                    "The condition before 'then' is empty, a command is "
+                    "required");
     Expression *body = parse_command_list(
         token_kind_mask(Token::Kind::Elif, Token::Kind::Else, Token::Kind::Fi));
     branches.push(if_branch{condition, body});
 
     Token *after = m_lexer.next_shell_token();
     ASSERT(after != nullptr);
+    let const is_body_closed = after->kind() == Token::Kind::Elif ||
+                               after->kind() == Token::Kind::Else ||
+                               after->kind() == Token::Kind::Fi;
+    if (is_body_closed) {
+      do_reject_empty(body, after,
+                      "The body after 'then' is empty, a command is required");
+    }
+
     switch (after->kind()) {
     case Token::Kind::Elif: continue;
     case Token::Kind::Else: {
@@ -70,6 +88,8 @@ hot fn Parser::parse_if() throws -> Command *
         throw_unterminated(location, "Unterminated if", m_lexer.source(), "fi",
                            fi_token->source_location());
       }
+      do_reject_empty(otherwise, fi_token,
+                      "The body after 'else' is empty, a command is required");
       end_position = fi_token->source_location().position +
                      fi_token->source_location().length;
       break;
