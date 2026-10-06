@@ -145,6 +145,18 @@ inline constexpr static_string_entry<shell_variable_description>
          {"The value is the xtrace prefix, and its first byte is repeated once "
           "per enclosing subshell.",
           shell_variable_fact::Plain}                                         },
+        {SSK("RPS1"),
+         {"The value is the right prompt, drawn at the right edge of the "
+          "first input row while the input leaves room for it.",
+          shell_variable_fact::NotPosix}                                      },
+        {SSK("RPROMPT"),
+         {"The value is the right prompt when RPS1 is unset or empty.",
+          shell_variable_fact::NotPosix}                                      },
+        {SSK("PS1_TRANSIENT"),
+         {"The value is the prompt a submitted line is redrawn with under the "
+          "transient-prompt option, and the default is \"$ \", or \"# \" for "
+          "root.",
+          shell_variable_fact::NotPosix}                                      },
         {SSK("PROMPT_COMMAND"),
          {"The command runs before each interactive prompt, and its status "
           "does not replace the previous status.",

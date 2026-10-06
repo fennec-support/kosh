@@ -40,6 +40,7 @@ space-after-completion	off
 history-prefix-search	on
 inline-hints   	on
 auto-pair      	off
+transient-prompt	off
 vi             	off
 emacs          	off
 posix          	off

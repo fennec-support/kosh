@@ -58,6 +58,9 @@ changes update this file.
 - `src/Toiletline.cpp` defines the vendored editor configuration macros itself
   and cannot include `src/Toiletline.hpp`. Declarations needed by that source
   belong in a light header such as `src/ToiletlineHistory.hpp`.
+- RPS1 and PS1_TRANSIENT expand once per prompt beside PS1 in
+  `src/Toiletline.cpp`. The editor measures the right prompt once, and each
+  keystroke only compares the first input row against that width.
 - Each shell loads history once at startup and then keeps a private branch with
   session-local event numbers. Normal prompts and accepted-command appends do
   not import peer records. Only explicit history synchronization replaces the

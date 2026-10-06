@@ -33,6 +33,10 @@ String get_default_prompt_template();
 
 String build_prompt(koshka::EvalContext &context);
 
+String build_right_prompt(koshka::EvalContext &context);
+
+String build_transient_prompt(koshka::EvalContext &context);
+
 String expand_prompt_template(StringView prompt, koshka::EvalContext &context);
 
 String render_ps0(koshka::EvalContext &context);
@@ -153,6 +157,8 @@ struct input_result
 };
 
 input_result get_input(const String &prompt);
+input_result get_input(const String &prompt, const String &right_prompt,
+                       const String &transient_prompt);
 
 void set_input(const String &input);
 

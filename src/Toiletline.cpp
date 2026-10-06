@@ -2263,8 +2263,14 @@ fn exit(usize history_size_limit) -> void
   WAKE_NOTIFICATION_STASH.clear();
 }
 
-fn get_input(const String &prompt) -> input_result
+fn get_input(const String &prompt, const String &right_prompt,
+             const String &transient_prompt) -> input_result
 {
+  ::tl_set_right_prompt(right_prompt.is_empty() ? nullptr
+                                                : right_prompt.c_str());
+  ::tl_set_transient_prompt(
+      transient_prompt.is_empty() ? nullptr : transient_prompt.c_str());
+
   let completion_base_directory = koshka::Maybe<Path>{};
   let completion_storage =
       koshka::Maybe<koshka::completion::completion_result>{};
@@ -2298,6 +2304,8 @@ fn get_input(const String &prompt) -> input_result
      against a stale or zero-width frame after a terminal or tmux resize. */
   ::itl_g_tty_changed_size = 1;
   i32 code = ::tl_get_input(TL_BUFFER, sizeof(TL_BUFFER), prompt.c_str());
+  ::tl_set_right_prompt(nullptr);
+  ::tl_set_transient_prompt(nullptr);
   if (history_path.has_value() &&
       ::itl_g_history_total_count != previous_history_total_count)
   {
@@ -2316,6 +2324,12 @@ fn get_input(const String &prompt) -> input_result
           ? koshka::Maybe<usize>{koshka::None}
           : koshka::Maybe<usize>{::itl_g_last_history_event_number};
   return input_result{code, String{TL_BUFFER}, history_event_number};
+}
+
+fn get_input(const String &prompt) -> input_result
+{
+  let const no_prompt = String{koshka::heap_allocator()};
+  return get_input(prompt, no_prompt, no_prompt);
 }
 
 fn set_input(const String &input) -> void
@@ -2811,17 +2825,23 @@ fn expand_prompt_template(StringView prompt, EvalContext &context) throws
                                context);
 }
 
-fn build_prompt(EvalContext &context) -> String
+/* The user is stable for the session, so it is resolved once and reused. */
+static fn get_cached_user() throws -> const String &
 {
-  let const full_pwd = Path::current_directory().text().clone();
-
-  /* The user is stable for the session, so it is resolved once and reused. */
   static String CACHED_USER{koshka::heap_allocator()};
   static bool was_user_resolved = false;
   if (!was_user_resolved) {
     CACHED_USER = os::get_current_user().value_or("???");
     was_user_resolved = true;
   }
+
+  return CACHED_USER;
+}
+
+fn build_prompt(EvalContext &context) -> String
+{
+  let const full_pwd = Path::current_directory().text().clone();
+  let const &cached_user = get_cached_user();
 
   String ps1_template{koshka::heap_allocator()};
   if (Maybe<String> ps1 = context.get_variable_value("PS1");
@@ -2840,13 +2860,13 @@ fn build_prompt(EvalContext &context) -> String
       scan_prompt_template_inputs(ps1_template.view(), scanned_inputs);
   if (is_cacheable && PROMPT_CACHE.matches(ps1_template.view(), context)) {
     return render_prompt_escapes(PROMPT_CACHE.expansion.view(),
-                                 CACHED_USER.view(), full_pwd.view(), context);
+                                 cached_user.view(), full_pwd.view(), context);
   }
 
   String expanded = expand_prompt_variable(context, "PS1", ps1_template.view())
                         .value_or(ps1_template.clone());
 
-  String rendered = render_prompt_escapes(expanded.view(), CACHED_USER.view(),
+  String rendered = render_prompt_escapes(expanded.view(), cached_user.view(),
                                           full_pwd.view(), context);
 
   PROMPT_CACHE.invalidate();
@@ -2855,6 +2875,40 @@ fn build_prompt(EvalContext &context) -> String
                        context);
 
   return rendered;
+}
+
+static fn render_prompt_variable(EvalContext &context, StringView name,
+                                 StringView template_string) throws -> String
+{
+  let const expanded = expand_prompt_variable(context, name, template_string)
+                           .value_or(String{template_string});
+  let const working_directory = Path::current_directory().text();
+  return render_prompt_escapes(expanded.view(), get_cached_user().view(),
+                               working_directory.view(), context);
+}
+
+fn build_right_prompt(EvalContext &context) -> String
+{
+  for (let const name : {StringView{"RPS1"}, StringView{"RPROMPT"}}) {
+    Maybe<String> right_template = context.get_variable_value(name);
+    if (right_template.has_value() && !right_template->is_empty()) {
+      return render_prompt_variable(context, name, right_template->view());
+    }
+  }
+
+  return String{koshka::heap_allocator()};
+}
+
+fn build_transient_prompt(EvalContext &context) -> String
+{
+  Maybe<String> transient_template =
+      context.get_variable_value("PS1_TRANSIENT");
+  if (transient_template.has_value() && !transient_template->is_empty()) {
+    return render_prompt_variable(context, "PS1_TRANSIENT",
+                                  transient_template->view());
+  }
+
+  return render_prompt_escapes("\\$ ", get_cached_user().view(), {}, context);
 }
 
 fn render_ps0(EvalContext &context) -> String

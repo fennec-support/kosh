@@ -2906,6 +2906,28 @@ The interactive terminal title shows the current user and directory. While a
 foreground program runs, the title shows its command line. Output from
 PROMPT_COMMAND or PS1 can replace the idle title.
 .PP
+RPS1, or RPROMPT when RPS1 is unset or empty, is a right prompt. It is expanded
+with PS1 before each prompt and drawn right-aligned on the first input row,
+ending one column short of the right edge. Escape sequences take no columns.
+The right prompt is hidden while the text and ghost on that row would come
+within one column of it, while the terminal is too narrow for it, while PS1 is
+cut to fit the row, and when its expansion holds a line break. Rows after the
+first input row never carry it. It is never part of the submitted line, and
+without
+.B transient\-prompt
+it stays in the scrollback after Enter.
+.PP
+The
+.B set \-o transient\-prompt
+command makes Enter redraw the submitted line after a short prompt so the
+scrollback stays compact. Everything from the first row of PS1 down is erased,
+including the right prompt, the ghost, the hint row, and any menu rows, and the
+line is drawn again after the expansion of PS1_TRANSIENT. When PS1_TRANSIENT is
+unset or empty, the short prompt is "$ ", or "# " for root, the expansion of
+the \\$ escape and a space. The line keeps its highlighting, and a multi-row
+PS1 collapses to the short prompt. Ctrl\-C and the other keys that end a line
+leave it as drawn. The option is off by default.
+.PP
 Ghost text uses prefix matches from completion and history. Tab also offers
 smart-case and subsequence matches. An empty command position includes
 keywords, builtins, functions, aliases, koshkit utilities, and programs from
@@ -3049,7 +3071,11 @@ previous command as ESC ] 133 ; D ; status, the working directory as
 ESC ] 7 ; file://host/path, and the prompt start as ESC ] 133 ; A.
 The prompt ends with ESC ] 133 ; B. A submitted command is announced by
 ESC ] 133 ; C after PS0 is printed. The first prompt carries no D mark.
-The marks occupy no columns in the prompt width. When TERM_PROGRAM is vscode,
+The marks occupy no columns in the prompt width. Under
+.BR transient\-prompt ,
+the short prompt drawn over a submitted line starts on the row the A mark
+named and ends with its own ESC ] 133 ; B, so the terminal finds the command
+after it. When TERM_PROGRAM is vscode,
 the shell also writes ESC ] 633 ; P ; Cwd= and ESC ] 633 ; E ; command line for
 VS Code. No mark is written when standard output is not a terminal, when TERM
 is dumb, or when
@@ -3301,6 +3327,18 @@ backslash escapes \\u,
 \\d, \\s, \\v, \\V, \\!, \\#, \\n, \\r, \\e, \\a, \\[, and \\] are expanded.
 The \\. escape emits a bullet, plain when the last exit status is zero and
 bold red when it is not.
+.TP
+.BR RPS1 ", " RPROMPT
+RPS1 is the right prompt drawn at the right edge of the first input row.
+RPROMPT is read when RPS1 is unset or empty. The value expands like PS1. See
+.BR "LINE EDITING" .
+.TP
+.B PS1_TRANSIENT
+The value is the prompt a submitted line is redrawn after when the
+.B transient\-prompt
+option is on. It expands like PS1. When it is unset or empty, the prompt is
+"$ ", or "# " for root. See
+.BR "LINE EDITING" .
 .TP
 .B BASH_XTRACEFD
 The value selects the xtrace descriptor. Standard error is used when it is unset

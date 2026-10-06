@@ -114,6 +114,7 @@ enum class shell_option_id : u8
   HistoryPrefixSearch,
   InlineHints,
   AutoPair,
+  TransientPrompt,
   Count,
 };
 

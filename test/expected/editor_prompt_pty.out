@@ -1,0 +1,12 @@
+startup-prompt PASS
+right-prompt-at-the-edge PASS
+right-prompt-keeps-one-free-column PASS
+right-prompt-leaves-on-overlap PASS
+right-prompt-returns-when-text-shrinks PASS
+right-prompt-stays-on-the-first-row PASS
+right-prompt-is-not-submitted PASS
+right-prompt-leaves-a-narrow-terminal PASS
+right-prompt-returns-at-full-width PASS
+transient-prompt-redraws-the-line PASS
+transient-prompt-collapses-prompt-rows PASS
+status=0
