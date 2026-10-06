@@ -14,7 +14,11 @@
 # acceptance through Ctrl-Right and Alt-F, and prefix history search on Up and
 # Down with its option switched off, and the inline hint row for a command and
 # a flag, its absence inside the command word and for an uncached command, its
-# yielding to the menu, its erasure on submit, and its option. Every wait polls for the expected final
+# yielding to the menu, its erasure on submit, and its option. The same row
+# names an unterminated quote or substitution, an open subshell, conditional,
+# if, loop or function, a misplaced closing keyword, and a bad for variable,
+# and it stays on the synopsis for closed text, a comment, and a trailing
+# backslash. Every wait polls for the expected final
 # state under a deadline, so a failure reports the last screen instead of
 # hanging. Each check prints one stable PASS line for the golden output.
 
@@ -337,6 +341,22 @@ def clear_line(session):
     session.wait_until(is_line(""))
 
 
+def type_text(session, text):
+    for byte in text:
+        session.send(bytes([byte]))
+        session.pump(0.02)
+
+
+def is_hint(text):
+    return lambda screen: screen.get_hint() == text
+
+
+def record_diagnostic(report, session, name, typed, expected):
+    type_text(session, typed)
+    report.record(name, session, is_hint(expected))
+    clear_line(session)
+
+
 def run_command(session, report, name, keys, expected_text, expected_count):
     session.send(keys)
     session.send(b"\r")
@@ -580,12 +600,77 @@ def run_checks(binary, directory, command_directory, report):
                       and not any("Number every" in line
                                   for line in screen.get_lines()))
 
+        record_diagnostic(report, session, "diagnostic-double-quote",
+                          b'echo "abc',
+                          'Unterminated string literal, expected "')
+        record_diagnostic(report, session, "diagnostic-single-quote",
+                          b"echo 'abc",
+                          "Unterminated string literal, expected '")
+        record_diagnostic(report, session, "diagnostic-ansi-c-quote",
+                          b"echo $'abc",
+                          "Unterminated $'...' string, expected '")
+        record_diagnostic(report, session, "diagnostic-command-substitution",
+                          b"echo $(ls",
+                          "Unterminated command substitution, expected )")
+        record_diagnostic(report, session, "diagnostic-arithmetic",
+                          b"echo $((1+",
+                          "Unterminated arithmetic expansion, expected ))")
+        record_diagnostic(report, session, "diagnostic-backtick",
+                          b"echo `ls",
+                          "Unterminated command substitution, expected `")
+        record_diagnostic(report, session, "diagnostic-subshell",
+                          b"(echo hi", "Unterminated subshell, expected ')'")
+        record_diagnostic(report, session, "diagnostic-conditional",
+                          b"[[ a == b",
+                          "Unterminated '[[', expected ']]'")
+        record_diagnostic(report, session, "diagnostic-if-condition",
+                          b"if true", "Unterminated if, expected 'then'")
+        record_diagnostic(report, session, "diagnostic-if-body",
+                          b"if true; then echo hi",
+                          "Unterminated if, expected 'fi'")
+        record_diagnostic(report, session, "diagnostic-loop-body",
+                          b"while true; do :",
+                          "Unterminated loop, expected 'done'")
+        record_diagnostic(report, session, "diagnostic-nested-construct",
+                          b"echo $(if true; then",
+                          "Unterminated if, expected 'fi'")
+        record_diagnostic(report, session, "diagnostic-bad-for-variable",
+                          b"for 1x in a; do",
+                          "Bad for loop variable, '1x' is not a plain name")
+        record_diagnostic(report, session, "diagnostic-stray-closer",
+                          b"echo hi; fi ",
+                          "'fi' has no matching 'if'")
+        record_diagnostic(report, session, "diagnostic-stray-done",
+                          b"if true; then echo; done ",
+                          "'done' has no matching 'while', 'until', or 'for'")
+        record_diagnostic(report, session, "diagnostic-absent-when-closed",
+                          b'echo "abc" $(ls) ${x}',
+                          "echo [-neE] [arg ...]")
+        record_diagnostic(report, session, "diagnostic-absent-in-comment",
+                          b'echo hi # "abc', "echo [-neE] [arg ...]")
+        record_diagnostic(report, session, "diagnostic-absent-after-backslash",
+                          b"echo \\", "echo [-neE] [arg ...]")
+
+        type_text(session, b'echo "abc')
+        session.wait_until(is_hint('Unterminated string literal, expected "'))
+        session.send(b'"')
+        report.record("diagnostic-clears-when-quote-closes", session,
+                      is_hint("echo [-neE] [arg ...]"))
+        clear_line(session)
+
         session.send(b"set +o inline-hints\r")
         session.wait_until(is_line(""))
         session.send(b"cat ")
         session.wait_until(is_line("cat"))
         session.pump(0.3)
         report.record("option-off-hides-hint", session, is_without_hint("cat"))
+        clear_line(session)
+
+        type_text(session, b'echo "abc')
+        session.wait_until(is_line('echo "abc'))
+        session.pump(0.3)
+        report.record("option-off-hides-diagnostic", session,
+                      is_without_hint('echo "abc'))
         clear_line(session)
 
         session.send(CTRL_D)

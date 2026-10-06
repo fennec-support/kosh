@@ -57,5 +57,25 @@ hint-absent-for-uncached-command PASS
 hint-yields-to-menu PASS
 hint-returns-after-menu-closes PASS
 hint-erased-on-submit PASS
+diagnostic-double-quote PASS
+diagnostic-single-quote PASS
+diagnostic-ansi-c-quote PASS
+diagnostic-command-substitution PASS
+diagnostic-arithmetic PASS
+diagnostic-backtick PASS
+diagnostic-subshell PASS
+diagnostic-conditional PASS
+diagnostic-if-condition PASS
+diagnostic-if-body PASS
+diagnostic-loop-body PASS
+diagnostic-nested-construct PASS
+diagnostic-bad-for-variable PASS
+diagnostic-stray-closer PASS
+diagnostic-stray-done PASS
+diagnostic-absent-when-closed PASS
+diagnostic-absent-in-comment PASS
+diagnostic-absent-after-backslash PASS
+diagnostic-clears-when-quote-closes PASS
 option-off-hides-hint PASS
+option-off-hides-diagnostic PASS
 status=0

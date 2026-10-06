@@ -154,6 +154,12 @@ changes update this file.
   aliases, and PATH. `KEYWORD_ENTRIES` is the sole keyword catalog. A `type`
   operand reads the same catalog. Only the listing mode accepts an empty
   operand.
+- The inline hint row shows a syntax problem before the synopsis.
+  `describe_syntax_problem` words what the tolerant scan leaves open at the end
+  of the line with the headline of the parse error. A misplaced keyword comes
+  from the last highlight pass over the same text, so the hint adds no pass.
+  The editor has no continuation prompt, so an open construct counts as an
+  error.
 - Static koshkit completion names stay alphabetically sorted.
 - The inline hint row is `compose_command_hint` in
   `src/CompletionManpage.cpp`. It runs on every keystroke and reads only

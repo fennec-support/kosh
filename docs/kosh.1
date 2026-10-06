@@ -2833,6 +2833,32 @@ output. The
 .B set \+o inline-hints
 command turns the hint row off, and the option is on by default.
 .PP
+When the line has a syntax problem that running it would report, the same row
+shows that problem in place of the synopsis, in the words of the parse error.
+Examples are an unterminated quote, an unclosed
+.BR $( ,
+.BR $(( ,
+backtick, subshell or
+.BR [[ ,
+an
+.BR if ,
+loop, case or function body with no closing keyword, a stray
+.BR fi ,
+.BR done ,
+.BR esac ,
+.BR then
+or
+.BR do ,
+and a bad
+.B for
+variable. The editor submits the whole buffer on Enter and has no continuation
+prompt, so an open construct is an error even when a later line would close
+it, except after a trailing backslash, which joins the next row and shows
+nothing. A misplaced keyword is named only once the caret leaves the word, and
+it needs the highlighter, so it is absent when highlighting is off. A line over
+2048 bytes and an open here-document show nothing. The row follows
+.BR inline-hints .
+.PP
 The interactive terminal title shows the current user and directory. While a
 foreground program runs, the title shows its command line. Output from
 PROMPT_COMMAND or PS1 can replace the idle title.

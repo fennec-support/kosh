@@ -256,6 +256,10 @@ fn command_word_resolves(StringView line, EvalContext &context) throws -> bool;
 fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
                         String &out) throws -> bool;
 
+fn describe_syntax_problem(StringView line, usize cursor,
+                           const highlight_span *invalid_span,
+                           String &out) throws -> bool;
+
 } /* namespace completion */
 
 } /* namespace koshka */

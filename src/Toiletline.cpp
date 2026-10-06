@@ -160,11 +160,18 @@ struct completion_session
                     const char **out_selected) -> int;
   fn complete(const char *buffer, size_t cursor, tl_completion *out,
               int for_listing) -> int;
-  fn highlight(const char *buffer, tl_highlight *out) const -> int;
+  fn highlight(const char *buffer, tl_highlight *out) -> int;
   fn validate_ghost(const char *entry) const -> int;
-  fn hint(const char *buffer, size_t cursor) -> const char *;
+  fn hint(const char *buffer, size_t cursor, const char **sgr) -> const char *;
+  fn remember_invalid_span(
+      koshka::StringView line,
+      const koshka::ArrayList<koshka::highlight_span> &spans) throws -> void;
 
   koshka::String hint_row{koshka::heap_allocator()};
+  koshka::String highlighted_line{koshka::heap_allocator()};
+  koshka::highlight_span first_invalid_span{
+      0, 0, koshka::highlight_role::invalid_syntax};
+  bool has_invalid_span{false};
 };
 
 completion_session COMPLETION_SESSION{};
@@ -666,9 +673,24 @@ fn kosh_completion_callback(const char *buffer, size_t cursor,
   return COMPLETION_SESSION.complete(buffer, cursor, out, for_listing);
 }
 
+fn completion_session::remember_invalid_span(
+    koshka::StringView line,
+    const koshka::ArrayList<koshka::highlight_span> &spans) throws -> void
+{
+  highlighted_line.clear();
+  highlighted_line.append(line);
+  has_invalid_span = false;
+  for (let const &span : spans) {
+    if (span.role == koshka::highlight_role::invalid_syntax) {
+      first_invalid_span = span;
+      has_invalid_span = true;
+      break;
+    }
+  }
+}
+
 /* The body is guarded since toiletline calls through a C function pointer. */
-fn completion_session::highlight(const char *buffer, tl_highlight *out) const
-    -> int
+fn completion_session::highlight(const char *buffer, tl_highlight *out) -> int
 {
   if (context == nullptr) return 0;
   if (!is_highlight_color_enabled) return 0;
@@ -679,6 +701,7 @@ fn completion_session::highlight(const char *buffer, tl_highlight *out) const
 
     koshka::ArrayList<koshka::highlight_span> result =
         koshka::completion::highlight_line(line, *context);
+    remember_invalid_span(line, result);
     let const &theme = is_highlight_styled_underlines_enabled
                            ? koshka::colors::SHELL_HIGHLIGHT_THEME
                            : koshka::colors::NONINTERACTIVE_HIGHLIGHT_THEME;
@@ -767,16 +790,34 @@ fn kosh_ghost_validate_callback(const char *entry) -> int
   return COMPLETION_SESSION.validate_ghost(entry);
 }
 
-fn completion_session::hint(const char *buffer, size_t cursor) -> const char *
+fn completion_session::hint(const char *buffer, size_t cursor, const char **sgr)
+    -> const char *
 {
   if (context == nullptr) return nullptr;
 
   try {
     let const byte_length = std::strlen(buffer);
-    if (!koshka::completion::compose_command_hint(
-            koshka::StringView{buffer, byte_length}, cursor, *context,
+    let const line = koshka::StringView{buffer, byte_length};
+    let const is_highlight_current =
+        has_invalid_span && highlighted_line.view() == line;
+    if (koshka::completion::describe_syntax_problem(
+            line, cursor, is_highlight_current ? &first_invalid_span : nullptr,
             hint_row))
+    {
+      if (is_highlight_color_enabled) {
+        let const style =
+            koshka::colors::NONINTERACTIVE_HIGHLIGHT_THEME.style_for(
+                koshka::highlight_role::invalid_syntax);
+        if (!style.is_empty()) *sgr = style.data;
+      }
+      return hint_row.c_str();
+    }
+
+    if (!koshka::completion::compose_command_hint(line, cursor, *context,
+                                                  hint_row))
+    {
       return nullptr;
+    }
 
     return hint_row.c_str();
   } catch (...) {
@@ -787,8 +828,7 @@ fn completion_session::hint(const char *buffer, size_t cursor) -> const char *
 fn kosh_hint_callback(const char *buffer, size_t cursor, const char **sgr)
     -> const char *
 {
-  unused(sgr);
-  return COMPLETION_SESSION.hint(buffer, cursor);
+  return COMPLETION_SESSION.hint(buffer, cursor, sgr);
 }
 
 } /* namespace */

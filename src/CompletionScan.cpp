@@ -5,7 +5,8 @@
  * This file implements contextual completion for process arguments, tool
  * targets, builtin flags, and programmable specifications. Its tolerant scan
  * locates active substitutions and maintains construct state without invoking
- * the full parser.
+ * the full parser. It also words the syntax problem the scan leaves open at
+ * the end of a line.
  */
 
 #include "Builtin.hpp"
@@ -1840,6 +1841,178 @@ fn internal::command_substitution_range(StringView line, usize cursor) throws
   advance_shell_lexical_state(line, line.length, state, &target);
 
   return target.range;
+}
+
+namespace {
+
+constexpr static_string_entry<StringView> MISPLACED_KEYWORD_ENTRIES[] = {
+    {SSK("then"), StringView{"has no matching 'if'"}                      },
+    {SSK("else"), StringView{"has no matching 'if'"}                      },
+    {SSK("elif"), StringView{"has no matching 'if'"}                      },
+    {SSK("fi"),   StringView{"has no matching 'if'"}                      },
+    {SSK("do"),   StringView{"has no matching 'while', 'until', or 'for'"}},
+    {SSK("done"), StringView{"has no matching 'while', 'until', or 'for'"}},
+    {SSK("esac"), StringView{"has no matching 'case'"}                    },
+};
+constexpr StaticStringMap MISPLACED_KEYWORDS{MISPLACED_KEYWORD_ENTRIES};
+
+constexpr usize SYNTAX_HINT_BYTE_LIMIT = 2048;
+
+fn append_unterminated(String &out, StringView what, StringView expected) throws
+    -> bool
+{
+  out.append(StringView{"Unterminated "});
+  out.append(what);
+  out.append(StringView{", expected "});
+  out.append(expected);
+  return true;
+}
+
+fn describe_invalid_word(StringView line, const highlight_span &span,
+                         String &out) throws -> bool
+{
+  let const word = line.substring_of_length(span.start, span.end - span.start);
+  if (let const reason = MISPLACED_KEYWORDS.find(word); reason.has_value()) {
+    out.push('\'');
+    out.append(word);
+    out.append(StringView{"' "});
+    out.append(*reason);
+    return true;
+  }
+
+  if (word == "in") return false;
+
+  usize previous_end = span.start;
+  while (previous_end > 0 && is_blank(line[previous_end - 1]))
+    previous_end--;
+  usize previous_start = previous_end;
+  while (previous_start > 0 && !is_blank(line[previous_start - 1]) &&
+         line[previous_start - 1] != '\n' && line[previous_start - 1] != ';')
+  {
+    previous_start--;
+  }
+  let const previous =
+      line.substring_of_length(previous_start, previous_end - previous_start);
+
+  if (previous == "for") {
+    out.append(StringView{"Bad for loop variable, '"});
+    out.append(word);
+    out.append(StringView{"' is not a plain name"});
+    return true;
+  }
+
+  if (previous == "function") return false;
+  return append_unterminated(out, StringView{"for loop"}, StringView{"'do'"});
+}
+
+fn describe_open_construct(const shell_lexical_construct &construct,
+                           String &out) throws -> bool
+{
+  let const is_body = construct.phase == highlight_construct_phase::body;
+  switch (construct.kind) {
+  case highlight_construct::if_:
+    return append_unterminated(out, StringView{"if"},
+                               is_body ? StringView{"'fi'"}
+                                       : StringView{"'then'"});
+  case highlight_construct::while_until:
+    return append_unterminated(out, StringView{"loop"},
+                               is_body ? StringView{"'done'"}
+                                       : StringView{"'do'"});
+  case highlight_construct::for_:
+    return append_unterminated(out, StringView{"for loop"},
+                               is_body ? StringView{"'done'"}
+                                       : StringView{"'do'"});
+  case highlight_construct::conditional:
+    return append_unterminated(out, StringView{"'[['"}, StringView{"']]'"});
+  case highlight_construct::function:
+    if (!is_body) return false;
+    return append_unterminated(out, StringView{"brace group"},
+                               StringView{"'}'"});
+  case highlight_construct::case_: return false;
+  }
+
+  return false;
+}
+
+fn describe_open_frame(const shell_lexical_frame &frame, String &out) throws
+    -> bool
+{
+  switch (frame.kind) {
+  case shell_lexical_frame_kind::command:
+    return append_unterminated(out, StringView{"command substitution"},
+                               StringView{")"});
+  case shell_lexical_frame_kind::backtick:
+    return append_unterminated(out, StringView{"command substitution"},
+                               StringView{"`"});
+  case shell_lexical_frame_kind::arithmetic:
+    return append_unterminated(out, StringView{"arithmetic expansion"},
+                               StringView{"))"});
+  case shell_lexical_frame_kind::parameter:
+    return append_unterminated(out, StringView{"variable expansion"},
+                               StringView{"}"});
+  }
+
+  return false;
+}
+
+} /* namespace */
+
+fn describe_syntax_problem(StringView line, usize cursor,
+                           const highlight_span *invalid_span,
+                           String &out) throws -> bool
+{
+  out.clear();
+  if (line.length > SYNTAX_HINT_BYTE_LIMIT) return false;
+
+  if (invalid_span != nullptr && invalid_span->end <= line.length &&
+      (cursor <= invalid_span->start || cursor > invalid_span->end) &&
+      describe_invalid_word(line, *invalid_span, out))
+  {
+    return true;
+  }
+  out.clear();
+
+  let state = shell_lexical_state{heap_allocator()};
+  advance_shell_lexical_state(line, line.length, state);
+  if (state.is_in_heredoc) return false;
+
+  if (state.quote != 0) {
+    if (state.is_in_ansi_c_quote) {
+      return append_unterminated(out, StringView{"$'...' string"},
+                                 StringView{"'"});
+    }
+
+    let const quote = StringView{&state.quote, 1};
+    return append_unterminated(out, StringView{"string literal"}, quote);
+  }
+
+  let const depth = state.frames.count();
+  let const &frame = depth == 0 ? state.root_frame : state.frames.back();
+  let const is_command_frame =
+      depth == 0 || frame.kind == shell_lexical_frame_kind::command ||
+      frame.kind == shell_lexical_frame_kind::backtick;
+  if (is_command_frame && frame.is_in_array_value) {
+    return append_unterminated(out, StringView{"array assignment"},
+                               StringView{"')'"});
+  }
+
+  if (is_command_frame && frame.group_depth > 0) {
+    return append_unterminated(out, StringView{"subshell"}, StringView{"')'"});
+  }
+
+  if (!state.constructs.is_empty() &&
+      state.constructs.back().frame_depth == depth &&
+      describe_open_construct(state.constructs.back(), out))
+  {
+    return true;
+  }
+
+  if (is_command_frame && frame.case_depth > 0) {
+    return append_unterminated(out, StringView{"case"}, StringView{"'esac'"});
+  }
+
+  if (depth > 0) return describe_open_frame(frame, out);
+  return false;
 }
 
 } /* namespace completion */
