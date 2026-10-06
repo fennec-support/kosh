@@ -3448,7 +3448,9 @@ An assignment to
 .B SECONDS
 moves the base the elapsed count is measured from. An assignment to
 .B RANDOM
-seeds the generator, and a repeated seed repeats the sequence. A
+seeds the generator, and a repeated seed repeats the sequence. Each subshell
+and command substitution reseeds its own generator, so its numbers differ from
+the ones the parent draws next. A
 .B local
 declaration of either name freezes it for the length of the call. An
 .B unset

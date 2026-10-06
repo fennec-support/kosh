@@ -119,6 +119,7 @@ fn Command::evaluate_async_with(EvalContext &cxt, async_body body,
     try {
       cxt.enter_subshell();
       cxt.hide_coprocess_descriptors();
+      cxt.execution_store().allow_terminal_exec_at_current_depth();
       status = static_cast<i32>(body(context, cxt));
       if (cxt.control_flow_store().has_pending() &&
           cxt.control_flow_store().pending().kind == control_flow::Kind::Exit)

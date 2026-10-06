@@ -677,6 +677,7 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
           cxt.enter_subshell();
           cxt.hide_coprocess_descriptors();
           cxt.reset_inherited_signal_traps();
+          cxt.execution_store().allow_terminal_exec_at_current_depth();
           stage_status =
               static_cast<i32>(stage->evaluate_root(cxt, stage_mode));
           if (cxt.control_flow_store().has_pending() &&

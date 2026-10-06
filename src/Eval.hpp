@@ -195,6 +195,7 @@ struct dynamic_clock_state
   u64 random_state{0};
   i64 shell_start_time{0};
   i64 seconds_base{0};
+  bool is_random_reseed_pending{false};
 
   fn append_wire(String &output) const throws -> void;
   static fn from_wire(subshell_bootstrap_reader &reader,
@@ -919,11 +920,13 @@ public:
   }
   fn snapshot() const throws -> execution_snapshot
   {
-    return execution_snapshot{m_last_argument, m_terminal_exec_allowed};
+    return execution_snapshot{m_last_argument, m_terminal_exec_subshell_depth,
+                              m_terminal_exec_allowed};
   }
   fn restore(execution_snapshot snapshot) wontthrow -> void
   {
     m_last_argument = steal(snapshot.last_argument);
+    m_terminal_exec_subshell_depth = snapshot.terminal_exec_subshell_depth;
     m_terminal_exec_allowed = snapshot.terminal_exec_allowed;
   }
   fn append_wire(String &output) const throws -> void;
@@ -978,6 +981,15 @@ public:
   {
     return m_terminal_exec_allowed;
   }
+  pure fn get_terminal_exec_subshell_depth() const wontthrow -> usize
+  {
+    return m_terminal_exec_subshell_depth;
+  }
+  fn allow_terminal_exec_at_current_depth() wontthrow -> void
+  {
+    m_terminal_exec_subshell_depth = m_subshell_depth;
+    m_terminal_exec_allowed = true;
+  }
   fn completion_function_running() wontthrow -> bool &
   {
     return m_is_completion_function_running;
@@ -1029,6 +1041,7 @@ private:
   usize m_subshell_depth{0};
   usize m_condition_depth{0};
   usize m_loop_depth{0};
+  usize m_terminal_exec_subshell_depth{0};
   i32 m_last_exit_status{0};
   u32 m_pending_subshell_end_position{0};
   bool m_make_shell_suppressed{false};
@@ -2692,6 +2705,14 @@ public:
     return m_clock.seconds_base;
   }
   fn random_state() const wontthrow -> u64 & { return m_clock.random_state; }
+  fn is_random_reseed_pending() const wontthrow -> bool &
+  {
+    return m_clock.is_random_reseed_pending;
+  }
+  fn get_random_reseed_count() const wontthrow -> u64 &
+  {
+    return m_random_reseed_count;
+  }
   pure fn get_clock() const wontthrow -> const dynamic_clock_state &
   {
     return m_clock;
@@ -2709,6 +2730,7 @@ public:
 
 private:
   mutable dynamic_clock_state m_clock{};
+  mutable u64 m_random_reseed_count{0};
 #if !defined NDEBUG
   mutable usize m_debug_variable_name_enumeration_count{0};
 #endif
@@ -3453,6 +3475,7 @@ public:
   fn leave_subshell() wontthrow -> void;
   fn set_subshell_depth(usize depth) wontthrow -> void;
   pure fn in_subshell() const wontthrow -> bool;
+  pure fn can_replace_process() const wontthrow -> bool;
   /* Back the descriptor up before a bare exec moves it inside an in-process
      subshell, so leave_subshell restores it. The first backup per subshell
      wins. */

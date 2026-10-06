@@ -673,6 +673,7 @@ fn EvalContext::run_captured_substitution(
         }
         clear_inherited_exit_trap();
         reset_inherited_signal_traps();
+        execution_store().allow_terminal_exec_at_current_depth();
         std::exception_ptr error;
         try {
           ast->evaluate(*this);

@@ -1006,7 +1006,9 @@ cold fn Subshell::to_ast_string(usize layer) const throws -> String
 }
 
 static fn evaluate_subshell_in_process(const Expression *body,
-                                       EvalContext &cxt) throws -> i64
+                                       EvalContext &cxt,
+                                       bool should_allow_terminal_exec) throws
+    -> i64
 {
   ASSERT(body != nullptr);
 
@@ -1039,6 +1041,8 @@ static fn evaluate_subshell_in_process(const Expression *body,
        subshell's end. An EXIT action the body sets survives this clear. */
     cxt.clear_inherited_exit_trap();
     cxt.reset_inherited_signal_traps();
+    if (should_allow_terminal_exec)
+      cxt.execution_store().allow_terminal_exec_at_current_depth();
     try {
       ret = body->evaluate(cxt);
     } catch (const ErrorBase &error) {
@@ -1104,11 +1108,13 @@ fn Subshell::evaluate_impl(EvalContext &cxt) const throws -> i64
     cxt.execution_store().pending_subshell_end_position() = 0;
     return end_position;
   }();
+  let const is_terminal_in_forked_child =
+      cxt.in_subshell() && cxt.can_replace_process();
   let const should_elide_fork = [&] {
     let const should_elide =
         cxt.execution_store().should_elide_pending_subshell_fork();
     cxt.execution_store().should_elide_pending_subshell_fork() = false;
-    return should_elide;
+    return should_elide || is_terminal_in_forked_child;
   }();
   let const end_position = pending_end_position != 0
                                ? static_cast<usize>(pending_end_position)
@@ -1122,7 +1128,7 @@ fn Subshell::evaluate_impl(EvalContext &cxt) const throws -> i64
       redirected_body != nullptr && redirected_body->child() != nullptr &&
       redirected_body->child()->as_subshell() != nullptr;
 
-  let const do_run_body = [&]() throws -> i64 {
+  let const do_run_body = [&](bool should_allow_terminal_exec) throws -> i64 {
     if (should_elide_body_fork)
       cxt.execution_store().should_elide_pending_subshell_fork() = true;
 
@@ -1130,7 +1136,8 @@ fn Subshell::evaluate_impl(EvalContext &cxt) const throws -> i64
     frame.push_source_frame(source_location(), "a subshell");
 
     try {
-      return evaluate_subshell_in_process(body, cxt);
+      return evaluate_subshell_in_process(body, cxt,
+                                          should_allow_terminal_exec);
     } catch (ErrorWithLocation &error) {
       if (error.is_script_fatal() || error.was_rendered()) throw;
 
@@ -1166,7 +1173,7 @@ fn Subshell::evaluate_impl(EvalContext &cxt) const throws -> i64
   if (!forked_child.has_value()) {
     i32 status = 1;
     try {
-      status = static_cast<i32>(do_run_body());
+      status = static_cast<i32>(do_run_body(is_terminal_in_forked_child));
     } catch (const ErrorBase &error) {
       if (!error.was_rendered()) {
         show_message(
@@ -1185,7 +1192,7 @@ fn Subshell::evaluate_impl(EvalContext &cxt) const throws -> i64
   if (os::process_id_of(child) == 0) {
     i32 status = 1;
     try {
-      status = static_cast<i32>(do_run_body());
+      status = static_cast<i32>(do_run_body(true));
     } catch (const ErrorBase &error) {
       if (!error.was_rendered()) {
         show_message(

@@ -3107,11 +3107,8 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
     cxt.runtime_state().set_warning_level(0);
 
     /* Each recipe line runs in its own subshell, the way GNU make spawns a
-       shell per line. The parentheses also keep the tail-command exec
-       optimization from replacing the make process when the recipe is a single
-       external command, which would otherwise abandon the remaining recipe
-       lines and targets. The newlines guard the closing paren against a
-       trailing comment in the line. */
+       shell per line. The newlines guard the closing paren against a trailing
+       comment in the line. */
     let recipe_source = command.clone();
     if (const String *shell_value = mk.find_variable("SHELL");
         shell_value != nullptr)
@@ -3128,6 +3125,14 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
     let subshell_command = String{cxt.scratch_allocator(), "(\n"};
     subshell_command += recipe_source.view();
     subshell_command += "\n)";
+    let const saved_terminal_exec =
+        cxt.execution_store().terminal_exec_allowed();
+    cxt.execution_store().terminal_exec_allowed() = false;
+    defer
+    {
+      cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec;
+    };
+
     i32 status = 0;
     try {
       status = cxt.run_source(subshell_command.view(), "make",

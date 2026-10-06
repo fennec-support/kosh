@@ -61,6 +61,19 @@ fn EvalContext::next_random_u32() const wontthrow -> u32
       dynamic_runtime_store().random_state() = 0x9e3779b97f4a7c15ULL;
   }
 
+  if (dynamic_runtime_store().is_random_reseed_pending()) {
+    dynamic_runtime_store().is_random_reseed_pending() = false;
+    let &reseed_count = dynamic_runtime_store().get_random_reseed_count();
+    reseed_count++;
+    dynamic_runtime_store().random_state() ^=
+        (os::realtime_microseconds() ^
+         (static_cast<u64>(os::get_current_process_id()) << 32) ^
+         reseed_count) *
+        0x9e3779b97f4a7c15ULL;
+    if (dynamic_runtime_store().random_state() == 0)
+      dynamic_runtime_store().random_state() = 0x9e3779b97f4a7c15ULL;
+  }
+
   dynamic_runtime_store().random_state() ^=
       dynamic_runtime_store().random_state() >> 12;
   dynamic_runtime_store().random_state() ^=
@@ -218,7 +231,7 @@ constexpr static_string_entry<dynamic_variable_info> BASH_DYNAMIC_ENTRIES[] = {
     DYNAMIC_VARIABLE("MACHTYPE", MACHTYPE, false, Settable),
     DYNAMIC_VARIABLE("OSTYPE", OSTYPE, false, Settable),
     DYNAMIC_VARIABLE("PPID", PPID, false, Settable),
-    DYNAMIC_VARIABLE("RANDOM", RANDOM, true, Settable),
+    DYNAMIC_VARIABLE("RANDOM", RANDOM, false, Settable),
     DYNAMIC_VARIABLE("SECONDS", SECONDS, false, Settable),
     DYNAMIC_VARIABLE("SHELLOPTS", SHELLOPTS, false, Settable),
     DYNAMIC_VARIABLE("SRANDOM", SRANDOM, false, Discarded),
@@ -378,6 +391,7 @@ hot fn EvalContext::write_dynamic_variable(StringView name,
     dynamic_runtime_store().random_state() =
         (static_cast<u64>(assigned) + 0x9e3779b97f4a7c15ULL) *
         0x2545f4914f6cdd1dULL;
+    dynamic_runtime_store().is_random_reseed_pending() = false;
     /* A zero state reads as unseeded and would draw a fresh seed from the
        clock. */
     if (dynamic_runtime_store().random_state() == 0)

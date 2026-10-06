@@ -56,6 +56,7 @@ fn EvalContext::set_shopt_option(StringView name, bool is_enabled) throws
 fn EvalContext::enter_subshell() wontthrow -> void
 {
   execution_store().subshell_depth()++;
+  dynamic_runtime_store().is_random_reseed_pending() = true;
   LOG(Debug, "entered a subshell, depth now %zu",
       execution_store().subshell_depth());
 }
@@ -63,6 +64,7 @@ fn EvalContext::enter_subshell() wontthrow -> void
 fn EvalContext::set_subshell_depth(usize depth) wontthrow -> void
 {
   execution_store().subshell_depth() = depth;
+  if (depth > 0) dynamic_runtime_store().is_random_reseed_pending() = true;
   lower_trap_depths_to_current();
 }
 
@@ -139,6 +141,21 @@ fn EvalContext::hide_coprocess_descriptors() throws -> void
 pure fn EvalContext::in_subshell() const wontthrow -> bool
 {
   return execution_store().subshell_depth() > 0;
+}
+
+pure fn EvalContext::can_replace_process() const wontthrow -> bool
+{
+  let const has_trap_to_run =
+      trap_store().count() > 0 &&
+      (!trap_store().did_reset_inherited_signal_traps() || has_exit_trap() ||
+       trap_store().has_err_trap());
+
+  return execution_store().terminal_exec_allowed() &&
+         execution_store().subshell_depth() ==
+             execution_store().get_terminal_exec_subshell_depth() &&
+         !has_trap_to_run && !runtime_state().show_exit_code() &&
+         !runtime_state().stats_enabled() &&
+         !runtime_state().memory_stats_enabled();
 }
 
 fn EvalContext::request_loop_control(control_flow::Kind kind, i64 level,

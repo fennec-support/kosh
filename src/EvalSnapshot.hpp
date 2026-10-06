@@ -81,6 +81,7 @@ struct scope_snapshot
 struct execution_snapshot
 {
   String last_argument;
+  usize terminal_exec_subshell_depth;
   bool terminal_exec_allowed;
 };
 
