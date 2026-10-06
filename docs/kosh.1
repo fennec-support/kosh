@@ -2223,9 +2223,12 @@ The
 option is accepted without effect.
 .TP
 .B readlink
-The target of one symbolic link is printed. The
+The target of each symbolic link is printed on its own line. A file that is not
+a link is reported, the remaining files are still read, and the status is 1.
+The
 .B \-n
-option suppresses the trailing newline.
+option suppresses the trailing newline of a single file and is ignored for
+several.
 .TP
 .B realpath
 The canonical absolute form of each path is printed.

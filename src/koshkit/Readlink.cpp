@@ -2,7 +2,7 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the readlink utility. It reads one symbolic-link target
+ * This file implements the readlink utility. It reads each symbolic-link target
  * through the platform interface and controls the trailing newline.
  */
 
@@ -13,12 +13,12 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[-n] file");
+HELP_SYNOPSIS_DECL("[-n] file ...");
 
 HELP_DESCRIPTION_DECL(
     "The readlink utility prints the target of a symbolic link.");
 
-FLAG(READLINK_NO_NEWLINE, Bool, 'n', "", "Do not print a trailing newline.");
+FLAG(READLINK_NO_NEWLINE, Bool, 'n', "", "Do not print a trailing newline after a single file.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Readlink);
@@ -45,24 +45,25 @@ fn Readlink::execute(
   KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
-  if (operands.count() > 1) {
-    report_soft_koshkit_util_error(ec, cxt, operand_locations[1],
-                                   args[0].view(),
-                                   "extra operand '" + operands[1] + "'");
-    return 1;
+
+  let const should_end_lines =
+      operands.count() > 1 || !FLAG_READLINK_NO_NEWLINE.is_enabled();
+  i32 status = 0;
+  for (usize i = 0; i < operands.count(); i++) {
+    let target = os::read_symlink(operands[i].view(), cxt.scratch_allocator());
+    if (!target.has_value()) {
+      report_soft_koshkit_util_error(
+          ec, cxt, operand_locations[i], args[0].view(),
+          "'" + operands[i] + "': " + os::last_system_error_message());
+      status = 1;
+      continue;
+    }
+
+    if (should_end_lines) target->push('\n');
+    ec.print_to_stdout(target->view());
   }
 
-  let target = os::read_symlink(operands[0].view(), cxt.scratch_allocator());
-  if (!target.has_value()) {
-    report_soft_koshkit_util_error(
-        ec, cxt, operand_locations[0], args[0].view(),
-        "'" + operands[0] + "': " + os::last_system_error_message());
-    return 1;
-  }
-
-  if (!FLAG_READLINK_NO_NEWLINE.is_enabled()) target->push('\n');
-  ec.print_to_stdout(target->view());
-  return 0;
+  return status;
 }
 
 } /* namespace koshkit */

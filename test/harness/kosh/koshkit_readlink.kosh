@@ -26,8 +26,12 @@ koshkit readlink missing 2> "$TEST_NULL_DEVICE"
 echo "missing=$?"
 koshkit readlink 2> "$TEST_NULL_DEVICE"
 echo "no-operand=$?"
-koshkit readlink readlink-link readlink-chain 2> "$TEST_NULL_DEVICE"
-echo "extra-operand=$?"
+printf 'several=['
+koshkit readlink -n readlink-link readlink-chain
+printf ']\n'
+printf 'several-failing=['
+koshkit readlink readlink-link regular readlink-chain 2> "$TEST_NULL_DEVICE"
+printf '] status=%s\n' "$?"
 
 koshkit ln -sf -- option-target -n
 printf 'option='

@@ -10,7 +10,12 @@ chain=readlink-link
 nonlink=1
 missing=1
 no-operand=2
-extra-operand=1
+several=[relative-target
+readlink-link
+]
+several-failing=[relative-target
+readlink-link
+] status=1
 option=option-target
 unicode=[цель
 ] no-newline=[цель]

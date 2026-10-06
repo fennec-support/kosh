@@ -69,8 +69,11 @@ note: Supply SET1 and SET2, or use `-d` with one set.
      1 |  koshkit find . -type x
        |                       ^
 note: Pass `f`, `d`, or `l` after `-type`.
-=== readlink extra operand location ===
--c:1:24: error: koshkit readlink: extra operand 'second'.
+=== readlink failing operand locations ===
+-c:1:18: error: koshkit readlink: 'first': No such file or directory.
+     1 |  koshkit readlink first second
+       |                   ^~~~~
+-c:1:24: error: koshkit readlink: 'second': No such file or directory.
      1 |  koshkit readlink first second
        |                         ^~~~~~
 === fuser conflicting flags location ===

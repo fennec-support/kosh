@@ -48,7 +48,7 @@ echo "=== tr one set ==="
 echo "=== find bad -type ==="
 "$BIN" -c 'koshkit find . -type x' 2>&1
 
-echo "=== readlink extra operand location ==="
+echo "=== readlink failing operand locations ==="
 "$BIN" -c 'koshkit readlink first second' 2>&1
 
 echo "=== fuser conflicting flags location ==="
