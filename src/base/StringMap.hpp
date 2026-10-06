@@ -26,7 +26,8 @@ public:
   cold StringMap(const StringMap &other) : StringMap(other.m_allocator)
   {
     if (other.m_count == 0) return;
-    if (other.m_tombstones == 0) {
+    let const fitted_slot_count = fitted_capacity(other.m_count);
+    if (other.m_tombstones == 0 && fitted_slot_count == other.m_capacity) {
       let const fresh_slots = m_allocator.alloc_array<slot>(other.m_capacity);
       usize constructed_count = 0;
       try {
@@ -46,7 +47,7 @@ public:
       return;
     }
 
-    rehash(other.m_capacity);
+    rehash(fitted_slot_count);
     for (usize i = 0; i < other.m_capacity; i++) {
       if (other.m_slots[i].get_state() == slot::Occupied)
         set_value_with_hash(other.m_slots[i].key.view(),
@@ -101,7 +102,7 @@ public:
     let const third = expected_count / 3;
     if (expected_count > SIZE_MAX - third - 1) rarely throw std::bad_alloc{};
     let const needed = expected_count + third + 1;
-    usize new_capacity = m_capacity == 0 ? 16 : m_capacity;
+    usize new_capacity = m_capacity == 0 ? INITIAL_CAPACITY : m_capacity;
     while (new_capacity < needed) {
       if (new_capacity > SIZE_MAX / 2) rarely throw std::bad_alloc{};
       new_capacity *= 2;
@@ -257,6 +258,16 @@ private:
   };
 
   static constexpr usize NO_INDEX = static_cast<usize>(-1);
+  static constexpr usize INITIAL_CAPACITY = 4;
+
+  static constexpr fn fitted_capacity(usize count) wontthrow -> usize
+  {
+    usize fitted = INITIAL_CAPACITY;
+    while (count > (fitted >> 1) + (fitted >> 2))
+      fitted *= 2;
+
+    return fitted;
+  }
 
   struct probe_result
   {
@@ -295,7 +306,7 @@ private:
   hot fn prepare_insertion(StringView key, u64 hash) throws -> probe_result
   {
     if (m_capacity == 0) {
-      rehash(16);
+      rehash(INITIAL_CAPACITY);
     }
 
     ASSERT(m_slots != nullptr);
