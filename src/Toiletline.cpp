@@ -2653,16 +2653,16 @@ static fn append_file_uri_path(String &output, StringView directory) throws
     -> void
 {
   let const is_drive_path = directory.count() >= 2 && directory[1] == ':';
-  if (is_drive_path || (directory.count() > 0 && directory[0] == '\\'))
+  if (is_drive_path || (directory.count() > 0 && directory[0] == '\\')) {
     output.push('/');
+  }
 
   for (usize index = 0; index < directory.count(); index++) {
     let const byte = static_cast<unsigned char>(directory[index]);
-    let const is_plain = (byte >= 'a' && byte <= 'z') ||
-                         (byte >= 'A' && byte <= 'Z') ||
-                         (byte >= '0' && byte <= '9') || byte == '-' ||
-                         byte == '.' || byte == '_' || byte == '~' ||
-                         byte == '/' || byte == ':';
+    let const is_plain =
+        (byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z') ||
+        (byte >= '0' && byte <= '9') || byte == '-' || byte == '.' ||
+        byte == '_' || byte == '~' || byte == '/' || byte == ':';
     if (is_plain) {
       output.push(static_cast<char>(byte));
     } else if (byte == '\\' && is_drive_path) {
@@ -2670,6 +2670,38 @@ static fn append_file_uri_path(String &output, StringView directory) throws
     } else {
       output.push('%');
       append_hex_byte(output, byte);
+    }
+  }
+}
+
+static fn append_uri_host(String &output, StringView host) throws -> void
+{
+  for (usize index = 0; index < host.count(); index++) {
+    let const byte = static_cast<unsigned char>(host[index]);
+    let const is_plain =
+        (byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z') ||
+        (byte >= '0' && byte <= '9') || byte == '-' || byte == '.';
+    if (is_plain) {
+      output.push(static_cast<char>(byte));
+    } else {
+      output.push('%');
+      append_hex_byte(output, byte);
+    }
+  }
+}
+
+static fn append_vscode_property(String &output, StringView value) throws
+    -> void
+{
+  for (usize index = 0; index < value.count(); index++) {
+    let const byte = static_cast<unsigned char>(value[index]);
+    if (byte == '\\') {
+      output += "\\\\";
+    } else if (byte < 0x20 || byte == ';' || byte == 0x7f) {
+      output += "\\x";
+      append_hex_byte(output, byte);
+    } else {
+      output.push(static_cast<char>(byte));
     }
   }
 }
@@ -2695,12 +2727,12 @@ fn emit_prompt_start_marks(EvalContext &context) -> void
 
   let sequence = String{koshka::heap_allocator()};
   sequence += "\x1b]7;file://";
-  sequence += host;
+  append_uri_host(sequence, host.view());
   append_file_uri_path(sequence, directory.view());
   sequence += OSC_END;
   if (is_vscode_terminal()) {
     sequence += "\x1b]633;P;Cwd=";
-    sequence += directory;
+    append_vscode_property(sequence, directory.view());
     sequence += OSC_END;
   }
   sequence += "\x1b]133;A";
@@ -2725,17 +2757,7 @@ fn emit_command_start_marks(EvalContext &context, StringView command_line)
   let sequence = String{koshka::heap_allocator()};
   if (is_vscode_terminal()) {
     sequence += "\x1b]633;E;";
-    for (usize index = 0; index < command_line.count(); index++) {
-      let const byte = static_cast<unsigned char>(command_line[index]);
-      if (byte == '\\') {
-        sequence += "\\\\";
-      } else if (byte < 0x20 || byte == ';' || byte == 0x7f) {
-        sequence += "\\x";
-        append_hex_byte(sequence, byte);
-      } else {
-        sequence.push(static_cast<char>(byte));
-      }
-    }
+    append_vscode_property(sequence, command_line);
     sequence += OSC_END;
   }
   sequence += "\x1b]133;C";
