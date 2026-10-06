@@ -3016,7 +3016,15 @@ leave it as drawn. The option is off by default.
 Ghost text uses prefix matches from completion and history. Tab also offers
 smart-case and subsequence matches. An empty command position includes
 keywords, builtins, functions, aliases, koshkit utilities, and programs from
-PATH. An exact prefix ranks before a subsequence match.
+PATH. An exact prefix ranks before a subsequence match. A directory candidate
+always ends in a slash, and so do
+.B .
+and
+.BR .. .
+The operand of
+.B cd
+completes only directories, and when it is neither absolute nor led by a dot
+or a tilde, also the directories under each CDPATH entry.
 .PP
 An explicit Tab first replaces the token with the longest common prefix. When
 that prefix does not extend the token and more than one candidate remains, the

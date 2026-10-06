@@ -744,6 +744,20 @@ static fn collect_filesystem_matches(
         }
       };
 
+  let const is_dot_basename =
+      parts.basename_part == "." || parts.basename_part == "..";
+  if (is_dot_basename) {
+    for (let const dot_name : {StringView{"."}, StringView{".."}}) {
+      if (!dot_name.starts_with(parts.basename_part)) continue;
+
+      collector.note_source_candidate();
+      let const candidate = build_filesystem_candidate(
+          parts.directory_part, raw_directory_part, dot_name, true, token,
+          decoded_word, suffix_mode, text_mode);
+      collector.add(candidate.view(), match_tier::exact_prefix);
+    }
+  }
+
   let matches = ArrayList<matched_entry>{completion_allocator()};
   let entry_position = utils::directory_entry_name_lower_bound(
       *listing->entries, parts.basename_part);
@@ -834,6 +848,43 @@ fn complete_filesystem_names_by_prefix(StringView token, EvalContext &context,
       token, base_directory, context, PrefixListCollector{}, nullptr,
       path_text_mode::Literal, filter, directory_suffix_mode::Bare);
   return collector.take();
+}
+
+/* A cd operand that is neither absolute nor led by a dot also completes the
+   directories under each CDPATH entry, the ones cd would reach through it. */
+static fn append_cdpath_candidates(ArrayList<String> &candidates,
+                                   StringView token,
+                                   const utils::decoded_shell_word &decoded,
+                                   EvalContext &context) throws -> void
+{
+  let const operand = decoded.text.view();
+  if (os::path_is_absolute(operand) || os::path_is_drive_relative(operand) ||
+      operand.starts_with(".") || operand.starts_with("~"))
+  {
+    return;
+  }
+
+  let const cdpath = context.get_variable_value("CDPATH");
+  if (!cdpath.has_value()) return;
+
+  let const entries = cdpath->view();
+  usize start = 0;
+  while (start < entries.length) {
+    usize end = start;
+    while (end < entries.length && entries.data[end] != os::PATH_DELIMITER)
+      end++;
+    let const entry = entries.substring_of_length(start, end - start);
+    start = end + 1;
+    if (entry.is_empty()) continue;
+
+    let const found = complete_filesystem(
+        token, Path{entry}, context, &decoded, path_text_mode::ShellSyntax,
+        filesystem_entry_filter::DirectoriesOnly);
+    for (let const &candidate : found) {
+      let const is_known = candidates.find(candidate).has_value();
+      if (!is_known) candidates.push(candidate.clone());
+    }
+  }
 }
 
 ScopedCompletionScratch::ScopedCompletionScratch()
@@ -1380,6 +1431,9 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       candidates =
           complete_filesystem(token, base_directory, context, &decoded_token,
                               path_text_mode::ShellSyntax, filesystem_filter);
+      if (command_word == "cd") {
+        append_cdpath_candidates(candidates, token, decoded_token, context);
+      }
       should_close_generated_prefix_quote = decoded_token.quote_character == 0;
     } else if (!decoded_token.text.is_empty()) {
       /* A token ending in a slash names a directory the ghost has not read yet,
