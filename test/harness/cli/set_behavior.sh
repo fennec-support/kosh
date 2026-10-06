@@ -49,3 +49,13 @@ echo "== set +o posix from posix mood steps to bash:"
 echo "== brew's two failing lines now pass:"
 "$BIN" -M bash -c 'set +o posix; builtin enable compgen unset; echo ok'
 echo "rc-done"
+
+unset KOSH_FLAGS
+# A login shell marks its mood initialized, and set --init-moods lists the
+# same moods inside a background subshell as in the shell that started it.
+home=$(mktemp -d)
+trap '[ -n "$home" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$home"' EXIT
+echo "== a background subshell lists the initialized moods:"
+HOME="$home" "$BIN" -l -c 'set --init-moods; ( set --init-moods ) & wait "$!"' \
+  2>/dev/null
+echo "rc=$?"

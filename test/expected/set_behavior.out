@@ -70,3 +70,7 @@ posix          	off
 == brew's two failing lines now pass:
 ok
 rc-done
+== a background subshell lists the initialized moods:
+kosh
+kosh
+rc=0

@@ -731,6 +731,16 @@ public:
                            snapshot.initialized_moods, snapshot.mutations);
   }
 
+  fn append_wire(String &output) const throws -> void;
+  static fn from_wire(subshell_bootstrap_reader &reader,
+                      runtime_control_wire &wire) wontthrow -> bool;
+  fn apply_wire(const runtime_control_wire &wire) wontthrow -> void
+  {
+    m_init_moods_sourcing = wire.init_moods_sourcing;
+    m_initialized_moods = wire.initialized_moods;
+    m_suppressed_warnings = wire.suppressed_warnings;
+  }
+
 private:
   u8 m_init_moods_sourcing{0};
   u8 m_initialized_moods{0};
@@ -852,7 +862,14 @@ public:
   }
   fn append_wire(String &output) const throws -> void;
   static fn from_wire(subshell_bootstrap_reader &reader,
-                      usize &local_scope_depth) wontthrow -> bool;
+                      ArrayList<ArrayList<local_binding>> &local_scopes) throws
+      -> bool;
+  fn apply_wire(ArrayList<ArrayList<local_binding>> local_scopes) wontthrow
+      -> void
+  {
+    m_local_scope_depth = local_scopes.count();
+    m_local_scopes = steal(local_scopes);
+  }
 
 private:
   StringMap<String> m_aliases{heap_allocator()};
@@ -1367,6 +1384,15 @@ public:
   {
     m_context = context;
   }
+  fn adopt_inherited_context(u8 flags, String source_path) wontthrow -> void
+  {
+    ASSERT(m_context == nullptr);
+    m_inherited_source_path = steal(source_path);
+    m_inherited_context.previous = nullptr;
+    m_inherited_context.source_path = m_inherited_source_path.view();
+    m_inherited_context.flags = flags;
+    m_context = &m_inherited_context;
+  }
 
   fn activate(ArrayList<String> values, ArrayList<u32> frame_counts) wontthrow
       -> void
@@ -1436,6 +1462,8 @@ private:
   ArrayList<String> m_values{heap_allocator()};
   ArrayList<u32> m_frame_counts{heap_allocator()};
   BashArgumentFrameContext *m_context{nullptr};
+  BashArgumentFrameContext m_inherited_context{};
+  String m_inherited_source_path{heap_allocator()};
   bool m_is_active{false};
 };
 
@@ -1743,6 +1771,10 @@ public:
     if (wire.has_bash_argument_arrays)
       m_bash_arguments.activate(steal(wire.bash_argument_values),
                                 steal(wire.bash_argument_frame_counts));
+    if (wire.has_bash_argument_context)
+      m_bash_arguments.adopt_inherited_context(
+          wire.bash_argument_context_flags,
+          steal(wire.bash_argument_source_path));
   }
 
 private:

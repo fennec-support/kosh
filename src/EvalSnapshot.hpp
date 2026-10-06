@@ -101,6 +101,13 @@ struct runtime_control_snapshot
   control_mutations mutations;
 };
 
+struct runtime_control_wire
+{
+  u8 init_moods_sourcing{0};
+  u8 initialized_moods{0};
+  u32 suppressed_warnings{0};
+};
+
 struct eval_state_snapshot
 {
   variable_snapshot variables;
@@ -132,6 +139,9 @@ struct variable_wire
   bool has_bash_argument_arrays{false};
   ArrayList<u32> bash_argument_frame_counts{heap_allocator()};
   ArrayList<String> bash_argument_values{heap_allocator()};
+  bool has_bash_argument_context{false};
+  u8 bash_argument_context_flags{0};
+  String bash_argument_source_path{heap_allocator()};
 };
 
 struct execution_wire

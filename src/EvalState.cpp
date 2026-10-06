@@ -954,8 +954,9 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
 }
 
 static constexpr u32 SUBSHELL_BOOTSTRAP_MAGIC = 0x4b534842U;
-static constexpr u32 SUBSHELL_BOOTSTRAP_VERSION = 14U;
+static constexpr u32 SUBSHELL_BOOTSTRAP_VERSION = 15U;
 static constexpr u32 NO_BOOTSTRAP_PROCESS = UINT32_MAX;
+static constexpr u32 NO_BARE_PROGRAM_PATH = UINT32_MAX;
 
 static fn append_subshell_bootstrap_u32(String &output, u32 value) throws
     -> void
@@ -1008,7 +1009,19 @@ enum class wire_section : u8
   Scopes,
   Completion,
   Traps,
+  Control,
+  Programs,
 };
+
+enum class local_binding_wire_flag : u8
+{
+  HasValue = 1U << 0,
+  HasIndexedArray = 1U << 1,
+  WasAssociative = 1U << 2,
+  WasExported = 1U << 3,
+};
+
+static constexpr u8 ALL_LOCAL_BINDING_WIRE_FLAGS = (1U << 4) - 1U;
 
 template <class WriteFn>
 static fn append_wire_section(String &output, wire_section section,
@@ -1060,6 +1073,24 @@ fn RuntimeState::append_wire(String &output) const throws -> void
   });
 }
 
+static constexpr u8 VALID_MOOD_MASK =
+    static_cast<u8>((1U << (static_cast<u8>(mimic_mood::BashPosix) + 1U)) - 1U);
+static constexpr u32 VALID_SUPPRESSED_WARNING_MASK =
+    (u32{1} << (static_cast<u32>(suppressible_warning::UnsetTestOperand) +
+                1U)) -
+    1U;
+static_assert(VALID_SUPPRESSED_WARNING_MASK <= UINT8_MAX);
+
+fn RuntimeControlStore::append_wire(String &output) const throws -> void
+{
+  ASSERT((m_suppressed_warnings & ~VALID_SUPPRESSED_WARNING_MASK) == 0);
+  append_wire_section(output, wire_section::Control, [&](String &payload) {
+    payload.push(static_cast<char>(m_init_moods_sourcing));
+    payload.push(static_cast<char>(m_initialized_moods));
+    payload.push(static_cast<char>(m_suppressed_warnings));
+  });
+}
+
 fn ExecutionStore::append_wire(String &output) const throws -> void
 {
   append_wire_section(output, wire_section::Execution, [&](String &payload) {
@@ -1089,6 +1120,13 @@ fn VariableStore::append_wire(String &output) const throws -> void
       append_subshell_bootstrap_u32(payload, 0);
       append_subshell_bootstrap_u32(payload, 0);
     }
+
+    let const *context = m_bash_arguments.get_context();
+    payload.push(static_cast<char>(context != nullptr));
+    if (context != nullptr) {
+      payload.push(static_cast<char>(context->flags));
+      append_subshell_bootstrap_text(payload, context->source_path);
+    }
   });
 }
 
@@ -1113,8 +1151,65 @@ fn FunctionStore::append_wire(String &output) const throws -> void
 fn ScopeStore::append_wire(String &output) const throws -> void
 {
   append_wire_section(output, wire_section::Scopes, [&](String &payload) {
-    append_subshell_bootstrap_u64(payload,
-                                  static_cast<u64>(m_local_scope_depth));
+    append_subshell_bootstrap_u32(payload,
+                                  static_cast<u32>(m_local_scope_depth));
+    for (usize depth = 0; depth < m_local_scope_depth; depth++) {
+      let const &frame = m_local_scopes[depth];
+      append_subshell_bootstrap_u32(payload, static_cast<u32>(frame.count()));
+      for (let const &binding : frame) {
+        u8 flags = 0;
+        if (binding.previous_value.has_value())
+          flags |= static_cast<u8>(local_binding_wire_flag::HasValue);
+        if (binding.previous_indexed_array.has_value())
+          flags |= static_cast<u8>(local_binding_wire_flag::HasIndexedArray);
+        if (binding.previous_was_associative)
+          flags |= static_cast<u8>(local_binding_wire_flag::WasAssociative);
+        if (binding.previous_was_exported)
+          flags |= static_cast<u8>(local_binding_wire_flag::WasExported);
+
+        append_subshell_bootstrap_text(payload, binding.name.view());
+        payload.push(static_cast<char>(flags));
+        payload.push(static_cast<char>(binding.previous_attributes));
+        if (binding.previous_value.has_value())
+          append_subshell_bootstrap_text(payload,
+                                         binding.previous_value->view());
+        if (binding.previous_indexed_array.has_value()) {
+          append_subshell_bootstrap_u32(
+              payload,
+              static_cast<u32>(binding.previous_indexed_array->count()));
+          for (let const &element : *binding.previous_indexed_array)
+            append_subshell_bootstrap_text(payload, element.view());
+        }
+        if (binding.previous_was_associative) {
+          ASSERT(binding.previous_associative_keys.count() ==
+                 binding.previous_associative_values.count());
+          append_subshell_bootstrap_u32(
+              payload,
+              static_cast<u32>(binding.previous_associative_keys.count()));
+          for (usize index = 0;
+               index < binding.previous_associative_keys.count(); index++)
+          {
+            append_subshell_bootstrap_text(
+                payload, binding.previous_associative_keys[index].view());
+            append_subshell_bootstrap_text(
+                payload, binding.previous_associative_values[index].view());
+          }
+        }
+        ASSERT(binding.previous_sparse_indices.count() ==
+               binding.previous_sparse_values.count());
+        append_subshell_bootstrap_u32(
+            payload, static_cast<u32>(binding.previous_sparse_indices.count()));
+        for (usize index = 0; index < binding.previous_sparse_indices.count();
+             index++)
+        {
+          append_subshell_bootstrap_u64(
+              payload,
+              static_cast<u64>(binding.previous_sparse_indices[index]));
+          append_subshell_bootstrap_text(
+              payload, binding.previous_sparse_values[index].view());
+        }
+      }
+    }
   });
 }
 
@@ -1122,6 +1217,28 @@ fn TrapStore::append_wire(String &output) const throws -> void
 {
   append_wire_section(output, wire_section::Traps, [&](String &payload) {
     append_subshell_bootstrap_u64(payload, m_startup_ignored_signals);
+  });
+}
+
+fn ProgramResolver::append_wire(String &output) const throws -> void
+{
+  append_wire_section(output, wire_section::Programs, [&](String &payload) {
+    append_subshell_bootstrap_u32(payload,
+                                  static_cast<u32>(m_execution_cache.count()));
+    m_execution_cache.for_each(
+        [&](StringView name, const CacheEntry &entry) throws {
+          append_subshell_bootstrap_text(payload, name);
+          append_subshell_bootstrap_u32(
+              payload, entry.bare_path_position.has_value()
+                           ? static_cast<u32>(*entry.bare_path_position)
+                           : NO_BARE_PROGRAM_PATH);
+          append_subshell_bootstrap_u32(payload,
+                                        static_cast<u32>(entry.paths.count()));
+          for (let const &cached : entry.paths) {
+            payload.push(static_cast<char>(cached.extension));
+            append_subshell_bootstrap_text(payload, cached.path.view());
+          }
+        });
   });
 }
 
@@ -1398,6 +1515,21 @@ fn RuntimeState::from_wire(subshell_bootstrap_reader &reader,
   return true;
 }
 
+fn RuntimeControlStore::from_wire(subshell_bootstrap_reader &reader,
+                                  runtime_control_wire &wire) wontthrow -> bool
+{
+  subshell_bootstrap_reader payload;
+  if (!reader.read_section(wire_section::Control, payload)) return false;
+
+  wire.init_moods_sourcing = payload.read_u8();
+  wire.initialized_moods = payload.read_u8();
+  wire.suppressed_warnings = payload.read_u8();
+  return payload.is_fully_read() &&
+         (wire.init_moods_sourcing & ~VALID_MOOD_MASK) == 0 &&
+         (wire.initialized_moods & ~VALID_MOOD_MASK) == 0 &&
+         (wire.suppressed_warnings & ~VALID_SUPPRESSED_WARNING_MASK) == 0;
+}
+
 fn ExecutionStore::from_wire(subshell_bootstrap_reader &reader,
                              execution_wire &wire) throws -> bool
 {
@@ -1470,6 +1602,23 @@ fn VariableStore::from_wire(subshell_bootstrap_reader &reader,
     return false;
   }
 
+  if (!read_subshell_bootstrap_bool(payload, wire.has_bash_argument_context))
+    return false;
+  if (wire.has_bash_argument_context) {
+    constexpr u8 VALID_FRAME_FLAG_MASK =
+        static_cast<u8>(BashArgumentFrameFlag::DidEnter) |
+        static_cast<u8>(BashArgumentFrameFlag::IsSource) |
+        static_cast<u8>(BashArgumentFrameFlag::HasSourceArguments);
+    wire.bash_argument_context_flags = payload.read_u8();
+    let const source_path = payload.read_text();
+    if (!payload.is_valid || (wire.bash_argument_context_flags &
+                              static_cast<u8>(~VALID_FRAME_FLAG_MASK)) != 0)
+    {
+      return false;
+    }
+    wire.bash_argument_source_path = String{heap_allocator(), source_path};
+  }
+
   return payload.is_fully_read();
 }
 
@@ -1505,19 +1654,134 @@ fn FunctionStore::from_wire(subshell_bootstrap_reader &reader,
   return payload.is_fully_read();
 }
 
-fn ScopeStore::from_wire(subshell_bootstrap_reader &reader,
-                         usize &local_scope_depth) wontthrow -> bool
+fn ScopeStore::from_wire(
+    subshell_bootstrap_reader &reader,
+    ArrayList<ArrayList<local_binding>> &local_scopes) throws -> bool
 {
   subshell_bootstrap_reader payload;
   if (!reader.read_section(wire_section::Scopes, payload)) return false;
 
-  let const depth = payload.read_u64();
-  if (!payload.is_fully_read() || depth > MAX_FUNCTION_CALL_DEPTH) {
+  let const depth = static_cast<usize>(payload.read_u32());
+  if (!payload.is_valid || depth > MAX_FUNCTION_CALL_DEPTH ||
+      depth > payload.get_remaining_length() / sizeof(u32))
+  {
     return false;
   }
 
-  local_scope_depth = static_cast<usize>(depth);
-  return true;
+  constexpr usize MINIMUM_LOCAL_BINDING_BYTES = 10;
+  constexpr usize MINIMUM_SPARSE_ELEMENT_BYTES = 12;
+  constexpr u8 VALID_ATTRIBUTE_MASK =
+      static_cast<u8>(variable_attribute::Readonly) |
+      static_cast<u8>(variable_attribute::Integer) |
+      static_cast<u8>(variable_attribute::Lowercase) |
+      static_cast<u8>(variable_attribute::Uppercase) |
+      static_cast<u8>(variable_attribute::Declared);
+  let const do_read_texts = [&](ArrayList<String> &texts, usize text_count)
+                                throws -> void {
+    texts.reserve(text_count);
+    for (usize index = 0; index < text_count; index++)
+      texts.push(String{heap_allocator(), payload.read_text()});
+  };
+
+  local_scopes.reserve(depth);
+  for (usize frame_index = 0; frame_index < depth; frame_index++) {
+    let const binding_count = static_cast<usize>(payload.read_u32());
+    if (!payload.is_valid || binding_count > payload.get_remaining_length() /
+                                                 MINIMUM_LOCAL_BINDING_BYTES)
+    {
+      return false;
+    }
+
+    let frame = ArrayList<local_binding>{heap_allocator()};
+    frame.reserve(binding_count);
+    for (usize binding_index = 0; binding_index < binding_count;
+         binding_index++)
+    {
+      let binding = local_binding{
+          .name = String{heap_allocator(), payload.read_text()},
+          .previous_value = None,
+          .previous_special_definition_location = None,
+          .previous_indexed_array = None,
+          .previous_associative_keys = ArrayList<String>{heap_allocator()},
+          .previous_associative_values = ArrayList<String>{heap_allocator()},
+          .previous_sparse_indices = ArrayList<usize>{heap_allocator()},
+          .previous_sparse_values = ArrayList<String>{heap_allocator()},
+          .previous_attributes = 0,
+          .previous_was_associative = false,
+          .previous_was_exported = false,
+      };
+      let const flags = payload.read_u8();
+      binding.previous_attributes = payload.read_u8();
+      if (!payload.is_valid ||
+          (flags & static_cast<u8>(~ALL_LOCAL_BINDING_WIRE_FLAGS)) != 0 ||
+          (binding.previous_attributes &
+           static_cast<u8>(~VALID_ATTRIBUTE_MASK)) != 0)
+      {
+        return false;
+      }
+      let const do_has_flag = [&](local_binding_wire_flag flag) {
+        return (flags & static_cast<u8>(flag)) != 0;
+      };
+      binding.previous_was_associative =
+          do_has_flag(local_binding_wire_flag::WasAssociative);
+      binding.previous_was_exported =
+          do_has_flag(local_binding_wire_flag::WasExported);
+
+      if (do_has_flag(local_binding_wire_flag::HasValue))
+        binding.previous_value = String{heap_allocator(), payload.read_text()};
+
+      if (do_has_flag(local_binding_wire_flag::HasIndexedArray)) {
+        let const element_count = static_cast<usize>(payload.read_u32());
+        if (!payload.is_valid ||
+            element_count > payload.get_remaining_length() / sizeof(u32))
+        {
+          return false;
+        }
+        let elements = ArrayList<String>{heap_allocator()};
+        do_read_texts(elements, element_count);
+        binding.previous_indexed_array = steal(elements);
+      }
+
+      if (binding.previous_was_associative) {
+        let const pair_count = static_cast<usize>(payload.read_u32());
+        if (!payload.is_valid ||
+            pair_count > payload.get_remaining_length() / (2 * sizeof(u32)))
+        {
+          return false;
+        }
+        binding.previous_associative_keys.reserve(pair_count);
+        binding.previous_associative_values.reserve(pair_count);
+        for (usize index = 0; index < pair_count; index++) {
+          binding.previous_associative_keys.push(
+              String{heap_allocator(), payload.read_text()});
+          binding.previous_associative_values.push(
+              String{heap_allocator(), payload.read_text()});
+        }
+      }
+
+      let const sparse_count = static_cast<usize>(payload.read_u32());
+      if (!payload.is_valid || sparse_count > payload.get_remaining_length() /
+                                                  MINIMUM_SPARSE_ELEMENT_BYTES)
+      {
+        return false;
+      }
+      binding.previous_sparse_indices.reserve(sparse_count);
+      binding.previous_sparse_values.reserve(sparse_count);
+      for (usize index = 0; index < sparse_count; index++) {
+        let const sparse_index = payload.read_u64();
+        if (sparse_index > SIZE_MAX) return false;
+        binding.previous_sparse_indices.push(static_cast<usize>(sparse_index));
+        binding.previous_sparse_values.push(
+            String{heap_allocator(), payload.read_text()});
+      }
+
+      if (!payload.is_valid) return false;
+      frame.push(steal(binding));
+    }
+    local_scopes.push(steal(frame));
+  }
+
+  return payload.is_fully_read();
 }
 
 fn TrapStore::from_wire(subshell_bootstrap_reader &reader,
@@ -1527,6 +1791,56 @@ fn TrapStore::from_wire(subshell_bootstrap_reader &reader,
   if (!reader.read_section(wire_section::Traps, payload)) return false;
 
   startup_ignored_signals = payload.read_u64();
+  return payload.is_fully_read();
+}
+
+fn ProgramResolver::from_wire(subshell_bootstrap_reader &reader,
+                              StringMap<CacheEntry> &execution_cache) throws
+    -> bool
+{
+  subshell_bootstrap_reader payload;
+  if (!reader.read_section(wire_section::Programs, payload)) return false;
+
+  let const entry_count = static_cast<usize>(payload.read_u32());
+  constexpr usize MINIMUM_CACHE_ENTRY_BYTES = 12;
+  constexpr usize MINIMUM_CACHED_PATH_BYTES = 5;
+  if (!payload.is_valid ||
+      entry_count > payload.get_remaining_length() / MINIMUM_CACHE_ENTRY_BYTES)
+  {
+    return false;
+  }
+
+  for (usize entry_index = 0; entry_index < entry_count; entry_index++) {
+    let const name = payload.read_text();
+    let const bare_path_position = payload.read_u32();
+    let const path_count = static_cast<usize>(payload.read_u32());
+    if (!payload.is_valid ||
+        path_count >
+            payload.get_remaining_length() / MINIMUM_CACHED_PATH_BYTES ||
+        (bare_path_position != NO_BARE_PROGRAM_PATH &&
+         bare_path_position >= path_count))
+    {
+      return false;
+    }
+
+    let entry = CacheEntry{};
+    if (bare_path_position != NO_BARE_PROGRAM_PATH)
+      entry.bare_path_position = static_cast<usize>(bare_path_position);
+    entry.paths.reserve(path_count);
+    for (usize path_index = 0; path_index < path_count; path_index++) {
+      let const extension = payload.read_u8();
+      let const path = payload.read_text();
+      if (!payload.is_valid ||
+          extension > static_cast<u8>(os::program_extension::Bat))
+      {
+        return false;
+      }
+      entry.paths.push(CachedPath{
+          Path{path}, static_cast<os::program_extension>(extension)});
+    }
+    if (!execution_cache.insert(name, steal(entry))) return false;
+  }
+
   return payload.is_fully_read();
 }
 
@@ -1879,6 +2193,8 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
   scope_store().append_wire(body);
   completion_store().append_wire(body);
   trap_store().append_wire(body);
+  runtime_control_store().append_wire(body);
+  program_resolver().append_wire(body);
 
   if (body.count() > UINT32_MAX) throw std::bad_alloc{};
   append_subshell_bootstrap_u32(source, SUBSHELL_BOOTSTRAP_MAGIC);
@@ -1936,10 +2252,13 @@ fn EvalContext::apply_subshell_bootstrap(
   let variables = variable_wire{};
   bool is_restricted_shell_identity = false;
   let functions = function_wire{};
-  usize local_scope_depth = 0;
+  let local_scopes = ArrayList<ArrayList<local_binding>>{heap_allocator()};
   let completion =
       completion_snapshot{StringMap<completion_spec>{heap_allocator()}, None};
   u64 startup_ignored_signals = 0;
+  let control = runtime_control_wire{};
+  let execution_cache =
+      StringMap<ProgramResolver::CacheEntry>{heap_allocator()};
   if (!ExecutionStore::from_wire(reader, execution) ||
       !JobTable::from_wire(reader, jobs) ||
       !dynamic_clock_state::from_wire(reader, clock) ||
@@ -1948,9 +2267,11 @@ fn EvalContext::apply_subshell_bootstrap(
       !VariableStore::from_wire(reader, variables) ||
       !StartupStore::from_wire(reader, is_restricted_shell_identity) ||
       !FunctionStore::from_wire(reader, functions) ||
-      !ScopeStore::from_wire(reader, local_scope_depth) ||
+      !ScopeStore::from_wire(reader, local_scopes) ||
       !CompletionStore::from_wire(reader, completion) ||
-      !TrapStore::from_wire(reader, startup_ignored_signals))
+      !TrapStore::from_wire(reader, startup_ignored_signals) ||
+      !RuntimeControlStore::from_wire(reader, control) ||
+      !ProgramResolver::from_wire(reader, execution_cache))
   {
     invalid_subshell_bootstrap();
   }
@@ -1988,8 +2309,9 @@ fn EvalContext::apply_subshell_bootstrap(
   variable_store().apply_wire(steal(variables));
   function_store().apply_wire_depth(functions);
   lower_trap_depths_to_current();
-  for (usize scope = 0; scope < local_scope_depth; scope++)
-    enter_function_scope();
+  scope_store().apply_wire(steal(local_scopes));
+  runtime_control_store().apply_wire(control);
+  program_resolver().apply_wire(steal(execution_cache));
   for (let const &name : functions.call_names) {
     let const *storage = function_store().find_storage(name.view());
     push_function_call_name(name.view(), storage != nullptr

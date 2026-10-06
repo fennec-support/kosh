@@ -3,9 +3,10 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file defines command resolution and PATH caches. It tracks executable
- * directory indexes, remembered commands, invalidation, and forced cache
- * rebuilding. EvalContext and ExecContext store this type directly. The
- * standalone header gives them the complete type through a narrow dependency.
+ * directory indexes, remembered commands and their bootstrap section,
+ * invalidation, and forced cache rebuilding. EvalContext and ExecContext store
+ * this type directly. The standalone header gives them the complete type
+ * through a narrow dependency.
  */
 
 #pragma once
@@ -22,6 +23,8 @@
 #include "base/Path.hpp"
 
 namespace koshka {
+
+struct subshell_bootstrap_reader;
 
 namespace utils {
 
@@ -99,8 +102,28 @@ public:
     Fresh,
   };
 
+  struct CachedPath
+  {
+    Path path;
+    os::program_extension extension{os::program_extension::None};
+  };
+
+  struct CacheEntry
+  {
+    ArrayList<CachedPath> paths{heap_allocator()};
+    Maybe<usize> bare_path_position{};
+  };
+
   ProgramResolver();
   explicit ProgramResolver(Maybe<String> path);
+
+  fn append_wire(String &output) const throws -> void;
+  static fn from_wire(subshell_bootstrap_reader &reader,
+                      StringMap<CacheEntry> &execution_cache) throws -> bool;
+  fn apply_wire(StringMap<CacheEntry> execution_cache) wontthrow -> void
+  {
+    m_execution_cache = steal(execution_cache);
+  }
 
   fn assign_path(Maybe<String> path) throws -> void;
   fn restore_path(Maybe<String> path) throws -> void;
@@ -132,18 +155,6 @@ public:
   }
 
 private:
-  struct CachedPath
-  {
-    Path path;
-    os::program_extension extension{os::program_extension::None};
-  };
-
-  struct CacheEntry
-  {
-    ArrayList<CachedPath> paths{heap_allocator()};
-    Maybe<usize> bare_path_position{};
-  };
-
   fn mark_command_name_indexes_stale() wontthrow -> void;
   fn clear_command_name_indexes() wontthrow -> void;
   fn mark_derived_indexes_stale() wontthrow -> void;
