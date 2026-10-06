@@ -850,8 +850,9 @@ fn complete_filesystem_names_by_prefix(StringView token, EvalContext &context,
   return collector.take();
 }
 
-/* A cd operand that is neither absolute nor led by a dot also completes the
-   directories under each CDPATH entry, the ones cd would reach through it. */
+/* A cd or pushd operand that is neither absolute nor led by a dot or a tilde
+   also completes the directories under each CDPATH entry, the ones the builtin
+   would reach through it. */
 static fn append_cdpath_candidates(ArrayList<String> &candidates,
                                    StringView token,
                                    const utils::decoded_shell_word &decoded,
@@ -1302,10 +1303,12 @@ fn complete(StringView line, usize cursor, EvalContext &context,
   let const command_word =
       is_command ? StringView{}
                  : command_word_of(line.substring_of_length(0, cursor));
+  let const is_directory_change_command =
+      command_word == "cd" || command_word == "pushd";
   let const filesystem_filter =
-      is_command             ? filesystem_entry_filter::RunnableOrDirectories
-      : command_word == "cd" ? filesystem_entry_filter::DirectoriesOnly
-                             : filesystem_entry_filter::All;
+      is_command ? filesystem_entry_filter::RunnableOrDirectories
+      : is_directory_change_command ? filesystem_entry_filter::DirectoriesOnly
+                                    : filesystem_entry_filter::All;
   let const extension_hint =
       is_command ? Maybe<StringView>{} : file_extension_hint(command_word);
 
@@ -1431,7 +1434,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       candidates =
           complete_filesystem(token, base_directory, context, &decoded_token,
                               path_text_mode::ShellSyntax, filesystem_filter);
-      if (command_word == "cd") {
+      if (is_directory_change_command) {
         append_cdpath_candidates(candidates, token, decoded_token, context);
       }
       should_close_generated_prefix_quote = decoded_token.quote_character == 0;

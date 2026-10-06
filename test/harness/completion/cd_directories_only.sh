@@ -20,5 +20,8 @@ echo "== dot and dot-dot complete with a slash:"
 echo "== a CDPATH directory completes with a slash:"
 mkdir -p "$dir/elsewhere/gamma_dir"
 CDPATH="$dir/elsewhere" "$BIN" --debug-complete-at 'cd gam' </dev/null
+echo "== pushd completes like cd:"
+CDPATH="$dir/elsewhere" "$BIN" --debug-complete-at 'pushd a' </dev/null
+CDPATH="$dir/elsewhere" "$BIN" --debug-complete-at 'pushd gam' </dev/null
 echo "== a dot-led operand skips CDPATH:"
 CDPATH="$dir/elsewhere" "$BIN" --debug-complete-at 'cd ./gam' </dev/null

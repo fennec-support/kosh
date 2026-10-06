@@ -11,4 +11,7 @@ alpha_file
 alpha_dir/../
 == a CDPATH directory completes with a slash:
 gamma_dir/
+== pushd completes like cd:
+alpha_dir/
+gamma_dir/
 == a dot-led operand skips CDPATH:
