@@ -214,6 +214,8 @@ constexpr set_option_descriptor SET_OPTIONS[] = {
      "Resolve the bundled koshkit utility names directly as commands."},
     {shell_option_id::SpaceAfterCompletion, set_option_behavior::Stored, '\0',
      "space-after-completion", "Insert a space after an accepted non-directory completion."},
+    {shell_option_id::HistoryPrefixSearch, set_option_behavior::Stored, '\0',
+     "history-prefix-search", "Recall only history entries that begin with the typed text on Up and Down."},
     {shell_option_id::Vi,
      set_option_behavior::Vi,
      '\0', "vi",

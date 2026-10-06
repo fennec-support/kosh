@@ -526,6 +526,8 @@ fn is_completion_enabled() -> bool { return false; }
 
 fn set_space_after_completion(bool enabled) -> void { unused(enabled); }
 
+fn set_history_prefix_search(bool enabled) -> void { unused(enabled); }
+
 fn enter_calc_history() -> void {}
 
 fn leave_calc_history() -> void {}

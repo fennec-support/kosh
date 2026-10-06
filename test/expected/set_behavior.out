@@ -37,6 +37,7 @@ failglob       	on
 extended-arithmetic	on
 koshkit        	off
 space-after-completion	off
+history-prefix-search	on
 vi             	off
 emacs          	off
 posix          	off

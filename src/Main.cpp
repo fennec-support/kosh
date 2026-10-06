@@ -1366,6 +1366,9 @@ static fn configure_line_editor(EvalContext &context) throws -> void
   toiletline::set_space_after_completion(
       context.runtime_state().option_is_enabled(
           shell_option_id::SpaceAfterCompletion));
+  toiletline::set_history_prefix_search(
+      context.runtime_state().option_is_enabled(
+          shell_option_id::HistoryPrefixSearch));
   toiletline::set_history_limit(
       context.variable_store().history_limit("KOSH_HISTORY_SIZE", 4096));
 }

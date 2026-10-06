@@ -34,4 +34,20 @@ alias-in-ghost PASS
 alias-ghost-runs PASS
 function-alias-in-tab-menu PASS
 function-narrowed-in-tab-menu PASS
+history-seed-alpha PASS
+history-seed-beta PASS
+history-seed-gamma PASS
+history-seed-true PASS
+word-ghost-shown PASS
+ctrl-right-accepts-one-word PASS
+alt-f-accepts-next-word PASS
+right-still-accepts-whole-ghost PASS
+prefix-up-recalls-newest-match PASS
+prefix-up-skips-other-commands PASS
+prefix-up-reaches-oldest-match PASS
+prefix-up-stays-at-oldest-match PASS
+prefix-down-walks-back PASS
+prefix-down-restores-typed-text PASS
+empty-line-up-keeps-plain-history PASS
+option-off-up-recalls-newest-entry PASS
 status=0

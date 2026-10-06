@@ -10,7 +10,9 @@
 # without Tab, its acceptance through Right, End, and Ctrl-E, menu narrowing and
 # widening on every keystroke, Ctrl-W and Alt-Backspace refreshing an open menu
 # down to an empty line, Escape and Ctrl-C afterwards, and session functions and
-# aliases in ghost and Tab completion. Every wait polls for the expected final
+# aliases in ghost and Tab completion. It also covers word-wise ghost
+# acceptance through Ctrl-Right and Alt-F, and prefix history search on Up and
+# Down with its option switched off. Every wait polls for the expected final
 # state under a deadline, so a failure reports the last screen instead of
 # hanging. Each check prints one stable PASS line for the golden output.
 
@@ -35,6 +37,10 @@ MENU_HEADER = "selecting completions"
 MENU_FOOTER = "showing "
 RIGHT = b"\x1b[C"
 END = b"\x1b[F"
+UP = b"\x1b[A"
+DOWN = b"\x1b[B"
+CTRL_RIGHT = b"\x1b[1;5C"
+ALT_F = b"\x1bf"
 CTRL_E = b"\x05"
 CTRL_W = b"\x17"
 CTRL_C = b"\x03"
@@ -453,6 +459,70 @@ def run_checks(binary, directory, command_directory, report):
         report.record("function-narrowed-in-tab-menu", session,
                       is_menu(["zzfunc"]))
         clear_line(session)
+
+        run_command(session, report, "history-seed-alpha",
+                    b"echo hist-alpha", "hist-alpha", 1)
+        run_command(session, report, "history-seed-beta",
+                    b"echo hist-beta word", "hist-beta word", 1)
+        run_command(session, report, "history-seed-gamma",
+                    b"echo hist-gamma", "hist-gamma", 1)
+        run_command(session, report, "history-seed-true", b"true", "true", 0)
+
+        session.send(b"echo hist-b")
+        report.record("word-ghost-shown", session,
+                      is_line("echo hist-b", "eta word"))
+        session.send(CTRL_RIGHT)
+        report.record("ctrl-right-accepts-one-word", session,
+                      is_line("echo hist-beta", " word"))
+        session.send(ALT_F)
+        report.record("alt-f-accepts-next-word", session,
+                      is_line("echo hist-beta word"))
+        clear_line(session)
+
+        session.send(b"echo hist-b")
+        session.wait_until(is_line("echo hist-b", "eta word"))
+        session.send(RIGHT)
+        report.record("right-still-accepts-whole-ghost", session,
+                      is_line("echo hist-beta word"))
+        clear_line(session)
+
+        session.send(b"echo hist-")
+        session.wait_until(is_line("echo hist-", "gamma"))
+        session.send(UP)
+        report.record("prefix-up-recalls-newest-match", session,
+                      is_line("echo hist-gamma"))
+        session.send(UP)
+        report.record("prefix-up-skips-other-commands", session,
+                      is_line("echo hist-beta word"))
+        session.send(UP)
+        report.record("prefix-up-reaches-oldest-match", session,
+                      is_line("echo hist-alpha"))
+        session.send(UP)
+        report.record("prefix-up-stays-at-oldest-match", session,
+                      is_line("echo hist-alpha"))
+        session.send(DOWN)
+        report.record("prefix-down-walks-back", session,
+                      is_line("echo hist-beta word"))
+        session.send(DOWN)
+        session.send(DOWN)
+        report.record("prefix-down-restores-typed-text", session,
+                      is_line("echo hist-"))
+        clear_line(session)
+
+        session.send(UP)
+        report.record("empty-line-up-keeps-plain-history", session,
+                      is_line("true"))
+        clear_line(session)
+
+        session.send(b"set +o history-prefix-search\r")
+        session.wait_until(is_line(""))
+        session.send(b"echo hist-")
+        session.wait_until(is_line("echo hist-", "gamma"))
+        session.send(UP)
+        report.record("option-off-up-recalls-newest-entry", session,
+                      is_line("set +o history-prefix-search"))
+        clear_line(session)
+
         session.send(CTRL_D)
         try:
             deadline = time.monotonic() + WAIT_SECONDS

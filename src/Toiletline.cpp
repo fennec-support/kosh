@@ -1891,6 +1891,11 @@ fn set_space_after_completion(bool enabled) -> void
   ::tl_set_space_after_completion(enabled ? 1 : 0);
 }
 
+fn set_history_prefix_search(bool enabled) -> void
+{
+  ::tl_set_history_prefix_search(enabled ? 1 : 0);
+}
+
 fn set_highlight_enabled(bool enabled) -> void
 {
   ::tl_set_highlight_callback(enabled ? kosh_highlight_callback : nullptr);

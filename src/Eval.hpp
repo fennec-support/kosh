@@ -111,6 +111,7 @@ enum class shell_option_id : u8
   ShowMemory,
   Onecmd,
   SpaceAfterCompletion,
+  HistoryPrefixSearch,
   Count,
 };
 
@@ -462,6 +463,7 @@ private:
   u64 m_shell_options{option_mask(shell_option_id::ExtendedArithmetic) |
                       option_mask(shell_option_id::Failglob) |
                       option_mask(shell_option_id::Hashall) |
+                      option_mask(shell_option_id::HistoryPrefixSearch) |
                       option_mask(shell_option_id::Braceexpand)};
   shopt_state m_shopt;
 };

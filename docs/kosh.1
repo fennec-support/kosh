@@ -2809,6 +2809,16 @@ selects vi mode. The command
 .B set \-o emacs
 restores emacs mode.
 .PP
+When a ghost suggestion is shown at the end of the line, the right arrow and
+End accept all of it. Ctrl\-Right and Alt\-F accept only its next word.
+.PP
+On a non-empty line, the up arrow recalls only the history entries that begin
+with the text typed before the first up arrow. Each further up arrow moves to
+an older match and the down arrow moves back. Stepping past the newest match
+restores the typed text. An empty line steps through the whole history. The
+.B set \+o history-prefix-search
+command turns this off, and the option is on by default.
+.PP
 The interactive terminal title shows the current user and directory. While a
 foreground program runs, the title shows its command line. Output from
 PROMPT_COMMAND or PS1 can replace the idle title.
