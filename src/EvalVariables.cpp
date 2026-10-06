@@ -217,11 +217,11 @@ constexpr static_string_entry<dynamic_variable_info> BASH_DYNAMIC_ENTRIES[] = {
     DYNAMIC_VARIABLE("HOSTTYPE", HOSTTYPE, false, Settable),
     DYNAMIC_VARIABLE("MACHTYPE", MACHTYPE, false, Settable),
     DYNAMIC_VARIABLE("OSTYPE", OSTYPE, false, Settable),
-    DYNAMIC_VARIABLE("PPID", PPID, true, Settable),
+    DYNAMIC_VARIABLE("PPID", PPID, false, Settable),
     DYNAMIC_VARIABLE("RANDOM", RANDOM, true, Settable),
     DYNAMIC_VARIABLE("SECONDS", SECONDS, false, Settable),
     DYNAMIC_VARIABLE("SHELLOPTS", SHELLOPTS, false, Settable),
-    DYNAMIC_VARIABLE("SRANDOM", SRANDOM, true, Discarded),
+    DYNAMIC_VARIABLE("SRANDOM", SRANDOM, false, Discarded),
     DYNAMIC_VARIABLE("UID", UID, false, Settable),
 };
 constexpr StaticStringMap BASH_DYNAMIC{BASH_DYNAMIC_ENTRIES};
@@ -635,7 +635,8 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
                           execution_store().get_current_command()};
           break;
         case dynamic_var::PPID:
-          return String::from(os::get_parent_process_id(), heap_allocator());
+          return String::from(os::get_shell_parent_process_id(),
+                              heap_allocator());
         case dynamic_var::UID:
           return String::from(os::get_real_user_id(), heap_allocator());
         case dynamic_var::HISTCMD: {

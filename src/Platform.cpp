@@ -159,6 +159,9 @@ fn inherited_subshell_state::apply_to(
                   String::from(previous_exit_status, heap_allocator()).view());
   environment.set(internal::SHELL_PROCESS_ID,
                   String::from(shell_process_id, heap_allocator()).view());
+  environment.set(
+      internal::SHELL_PARENT_PROCESS_ID,
+      String::from(shell_parent_process_id, heap_allocator()).view());
   environment.set(internal::SUBSHELL_DEPTH,
                   String::from(subshell_depth, heap_allocator()).view());
 }
@@ -170,17 +173,22 @@ fn inherited_subshell_state::take_from_environment() throws
       take_environment_variable(internal::PREVIOUS_EXIT_STATUS);
   let const process_id_text =
       take_environment_variable(internal::SHELL_PROCESS_ID);
+  let const parent_process_id_text =
+      take_environment_variable(internal::SHELL_PARENT_PROCESS_ID);
   let const depth_text = take_environment_variable(internal::SUBSHELL_DEPTH);
   if (!status_text.has_value() || !process_id_text.has_value() ||
-      !depth_text.has_value())
+      !parent_process_id_text.has_value() || !depth_text.has_value())
   {
     return None;
   }
 
   let const status = status_text->view().to<i32>();
   let const process_id = process_id_text->view().to<i64>();
+  let const parent_process_id = parent_process_id_text->view().to<i64>();
   let const depth = depth_text->view().to<u64>();
-  if (status.is_error() || process_id.is_error() || depth.is_error()) {
+  if (status.is_error() || process_id.is_error() ||
+      parent_process_id.is_error() || depth.is_error())
+  {
     return None;
   }
   if (process_id.value() <= 0 || depth.value() > static_cast<u64>(SIZE_MAX)) {
@@ -190,6 +198,7 @@ fn inherited_subshell_state::take_from_environment() throws
   return inherited_subshell_state{
       .previous_exit_status = status.value(),
       .shell_process_id = process_id.value(),
+      .shell_parent_process_id = parent_process_id.value(),
       .subshell_depth = static_cast<usize>(depth.value()),
   };
 }
@@ -198,6 +207,7 @@ fn inherited_subshell_state::clear_environment() throws -> void
 {
   unset_environment_variable(internal::PREVIOUS_EXIT_STATUS);
   unset_environment_variable(internal::SHELL_PROCESS_ID);
+  unset_environment_variable(internal::SHELL_PARENT_PROCESS_ID);
   unset_environment_variable(internal::SUBSHELL_DEPTH);
 }
 
@@ -320,6 +330,16 @@ fn get_shell_process_id() wontthrow -> i64
 fn set_shell_process_id(i64 pid) wontthrow -> void
 {
   PARENT_SHELL_PID = static_cast<decltype(PARENT_SHELL_PID)>(pid);
+}
+
+fn get_shell_parent_process_id() wontthrow -> i64
+{
+  return static_cast<i64>(PARENT_SHELL_PARENT_PID);
+}
+
+fn set_shell_parent_process_id(i64 pid) wontthrow -> void
+{
+  PARENT_SHELL_PARENT_PID = static_cast<decltype(PARENT_SHELL_PARENT_PID)>(pid);
 }
 
 fn get_file_creation_mask() wontthrow -> u32

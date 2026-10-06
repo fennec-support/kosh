@@ -20,6 +20,8 @@ inline constexpr StringView PREVIOUS_EXIT_STATUS{
 inline constexpr StringView PARENT_PROCESS_ID{
     "KOSH_INTERNAL_PARENT_PROCESS_ID"};
 inline constexpr StringView SHELL_PROCESS_ID{"KOSH_INTERNAL_SHELL_PROCESS_ID"};
+inline constexpr StringView SHELL_PARENT_PROCESS_ID{
+    "KOSH_INTERNAL_SHELL_PARENT_PROCESS_ID"};
 inline constexpr StringView STATE_NAMED_PIPE{"KOSH_INTERNAL_STATE_NAMED_PIPE"};
 inline constexpr StringView SUBSHELL_DEPTH{"KOSH_INTERNAL_SUBSHELL_DEPTH"};
 inline constexpr StringView SUPPRESS_ROOT_TRACE{

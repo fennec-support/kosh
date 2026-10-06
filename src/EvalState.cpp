@@ -1885,6 +1885,7 @@ fn EvalContext::make_child_evaluator_state(
           os::inherited_subshell_state{
                                        .previous_exit_status = execution_store().last_exit_status(),
                                        .shell_process_id = os::get_shell_process_id(),
+                                       .shell_parent_process_id = os::get_shell_parent_process_id(),
                                        .subshell_depth = execution_store().subshell_depth() + 1,
                                        },
       .mood = runtime_state().get_mood(),

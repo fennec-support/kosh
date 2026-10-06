@@ -1216,6 +1216,8 @@ fn enumerate_groups() throws -> ArrayList<String>
 }
 
 static DWORD PARENT_SHELL_PID = GetCurrentProcessId();
+static DWORD PARENT_SHELL_PARENT_PID =
+    static_cast<DWORD>(get_parent_process_id());
 static constexpr uintptr PROCESS_REFERENCE_MASK = 3u;
 static constexpr uintptr PID_REFERENCE_TAG = 1u;
 static constexpr uintptr PROCESS_GROUP_REFERENCE_TAG = 3u;

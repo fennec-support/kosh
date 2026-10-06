@@ -1500,6 +1500,7 @@ fn enumerate_groups() throws -> ArrayList<String>
 }
 
 static pid_t PARENT_SHELL_PID = getpid();
+static pid_t PARENT_SHELL_PARENT_PID = getppid();
 
 fn is_stdin_a_tty() wontthrow -> bool { return isatty(KOSH_STDIN); }
 

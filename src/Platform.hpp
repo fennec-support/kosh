@@ -1655,6 +1655,8 @@ fn is_child_process() wontthrow -> bool;
 fn get_shell_process_id() wontthrow -> i64;
 fn set_shell_process_id(i64 pid) wontthrow -> void;
 fn get_current_process_id() wontthrow -> i64;
+fn get_shell_parent_process_id() wontthrow -> i64;
+fn set_shell_parent_process_id(i64 pid) wontthrow -> void;
 
 fn get_parent_process_id() wontthrow -> i64;
 fn get_real_user_id() wontthrow -> i64;
@@ -2259,6 +2261,7 @@ struct inherited_subshell_state
 {
   i32 previous_exit_status{0};
   i64 shell_process_id{0};
+  i64 shell_parent_process_id{0};
   usize subshell_depth{0};
 
   fn apply_to(ScopedEnvironment &environment) const throws -> void;

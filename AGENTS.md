@@ -88,7 +88,8 @@ changes update this file.
   duplicates live process handles into the
   authenticated child. The bootstrap owns received handles until evaluator state
   adopts them. Restricted behavior uses one context state. BASHPID identifies
-  forked evaluators. `$$` identifies the original shell.
+  forked evaluators. `$$` identifies the original shell, and `PPID` names its parent in every
+  forked or fresh evaluator.
 - Each store owns its state and operations. The trap store keeps one map of
   trap definitions, the history recorder and source retention are separate from
   the source store, and runtime state keeps its fields private. A scope that

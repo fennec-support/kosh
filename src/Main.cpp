@@ -679,6 +679,7 @@ static fn take_inherited_shell() throws -> inherited_shell
     }
 
     os::set_shell_process_id(inherited.state->shell_process_id);
+    os::set_shell_parent_process_id(inherited.state->shell_parent_process_id);
   }
   inherited.should_suppress_root_source_trace =
       os::get_environment_variable(internal::SUPPRESS_ROOT_TRACE).has_value();
