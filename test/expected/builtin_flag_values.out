@@ -22,6 +22,12 @@ echo
 bashdefault
 default
 dirnames
+filenames
+fullquote
+noquote
+nosort
+nospace
+plusdirs
 == compgen -o joined form:
 default
 dirnames

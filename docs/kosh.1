@@ -1634,6 +1634,58 @@ options add text to each candidate after word prefix matching and
 .B \-X
 filtering.
 .TP
+.B complete
+A registered spec offers the candidates of its actions, its
+.B \-G
+glob, its
+.B \-W
+word list, and, on an explicit Tab, the COMPREPLY of its
+.B \-F
+function, in that order. The actions
+.BR \-a ,
+.BR \-b ,
+.BR \-c ,
+.BR \-d ,
+.BR \-e ,
+.BR \-f ,
+.BR \-g ,
+.BR \-j ,
+.BR \-k ,
+.BR \-s ,
+.BR \-u ,
+.BR \-v ,
+and
+.BI "\-A " action
+list what
+.B compgen
+lists for the same action, and the glob keeps the matches that start with the
+word. The
+.B \-X
+filter then removes candidates the way
+.B compgen \-X
+does, and
+.B \-P
+and
+.B \-S
+add their text to each remaining candidate. The
+.B \-o dirnames
+option adds the directory names that start with the word when nothing else
+matched, and
+.B \-o plusdirs
+adds them always. A spec with a directory or file action, a glob, dirnames,
+or plusdirs ends each candidate that names a directory with a slash. A dash
+candidate is offered only when the word starts with a dash. An empty result
+falls through to filename completion. The
+.B \-p
+option prints each spec with its options, actions, and arguments in the order
+Bash prints them. The
+.BR \-C ,
+.BR \-E ,
+.BR \-I ,
+and
+.B \-r
+options are accepted without effect.
+.TP
 .B type
 The
 .B \-V
@@ -4017,8 +4069,15 @@ COMP_WORDS contains the words on the line. COMP_CWORD is the index of the word
 under the cursor. COMP_LINE contains the complete line. COMP_POINT is the
 cursor byte offset. COMP_WORDBREAKS contains the bytes that split a word.
 Trailing spaces are removed from each COMPREPLY entry, and the space after an
-accepted candidate is controlled by the space-after-completion option. When the
-spec was registered with
+accepted candidate is controlled by the space-after-completion option. The
+spec's
+.B \-X
+filter and its
+.B \-P
+and
+.B \-S
+text apply to COMPREPLY entries as they do to the spec's other candidates. When
+the spec was registered with
 .B complete -o filenames
 or
 .B compopt -o filenames
@@ -4027,7 +4086,8 @@ directory, and to each such word of a
 .B \-W
 list.
 .B compopt +o filenames
-turns the slash off for the current completion.
+turns the slash off for the current completion unless the spec also has a
+directory or file action, a glob, dirnames, or plusdirs.
 .SH EXIT STATUS
 The shell exits with the status of the last command it ran. A command path that
 names a directory, or has a trailing separator whose target is not a directory,

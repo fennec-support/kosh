@@ -23,24 +23,145 @@
 #include "base/Containers.hpp"
 #include "base/Maybe.hpp"
 #include "base/Path.hpp"
+#include "base/StaticStringMap.hpp"
 
 namespace koshka {
+
+enum class compgen_action : u8
+{
+  Alias,
+  ArrayVar,
+  Binding,
+  Builtin,
+  Command,
+  Directory,
+  Disabled,
+  Enabled,
+  Export,
+  File,
+  Function,
+  Group,
+  HelpTopic,
+  Hostname,
+  Job,
+  Keyword,
+  Running,
+  Service,
+  SetOpt,
+  ShOpt,
+  Signal,
+  Stopped,
+  User,
+  Variable,
+};
+
+inline constexpr u32 COMPGEN_ACTION_COUNT =
+    static_cast<u32>(compgen_action::Variable) + 1;
+
+inline constexpr static_string_entry<compgen_action> COMPGEN_ACTION_ENTRIES[] =
+    {
+        {SSK("alias"),     compgen_action::Alias    },
+        {SSK("arrayvar"),  compgen_action::ArrayVar },
+        {SSK("binding"),   compgen_action::Binding  },
+        {SSK("builtin"),   compgen_action::Builtin  },
+        {SSK("command"),   compgen_action::Command  },
+        {SSK("directory"), compgen_action::Directory},
+        {SSK("disabled"),  compgen_action::Disabled },
+        {SSK("enabled"),   compgen_action::Enabled  },
+        {SSK("export"),    compgen_action::Export   },
+        {SSK("file"),      compgen_action::File     },
+        {SSK("function"),  compgen_action::Function },
+        {SSK("group"),     compgen_action::Group    },
+        {SSK("helptopic"), compgen_action::HelpTopic},
+        {SSK("hostname"),  compgen_action::Hostname },
+        {SSK("job"),       compgen_action::Job      },
+        {SSK("keyword"),   compgen_action::Keyword  },
+        {SSK("running"),   compgen_action::Running  },
+        {SSK("service"),   compgen_action::Service  },
+        {SSK("setopt"),    compgen_action::SetOpt   },
+        {SSK("shopt"),     compgen_action::ShOpt    },
+        {SSK("signal"),    compgen_action::Signal   },
+        {SSK("stopped"),   compgen_action::Stopped  },
+        {SSK("user"),      compgen_action::User     },
+        {SSK("variable"),  compgen_action::Variable },
+};
+
+inline constexpr StaticStringMap COMPGEN_ACTIONS{COMPGEN_ACTION_ENTRIES};
+
+inline pure fn compgen_action_bit(compgen_action action) wontthrow -> u32
+{
+  return 1U << static_cast<u32>(action);
+}
+
+enum class completion_option : u8
+{
+  BashDefault,
+  Default,
+  DirNames,
+  FileNames,
+  FullQuote,
+  NoQuote,
+  NoSort,
+  NoSpace,
+  PlusDirs,
+};
+
+inline constexpr u32 COMPLETION_OPTION_COUNT =
+    static_cast<u32>(completion_option::PlusDirs) + 1;
+
+inline constexpr static_string_entry<completion_option>
+    COMPLETION_OPTION_ENTRIES[] = {
+        {SSK("bashdefault"), completion_option::BashDefault},
+        {SSK("default"),     completion_option::Default    },
+        {SSK("dirnames"),    completion_option::DirNames   },
+        {SSK("filenames"),   completion_option::FileNames  },
+        {SSK("fullquote"),   completion_option::FullQuote  },
+        {SSK("noquote"),     completion_option::NoQuote    },
+        {SSK("nosort"),      completion_option::NoSort     },
+        {SSK("nospace"),     completion_option::NoSpace    },
+        {SSK("plusdirs"),    completion_option::PlusDirs   },
+};
+
+inline constexpr StaticStringMap COMPLETION_OPTIONS{COMPLETION_OPTION_ENTRIES};
+
+inline pure fn completion_option_bit(completion_option option) wontthrow -> u32
+{
+  return 1U << static_cast<u32>(option);
+}
 
 struct completion_spec
 {
   String function_name{heap_allocator()};
   String word_list{heap_allocator()};
-  bool should_use_default{false};
-  bool should_mark_directories{false};
+  String glob_pattern{heap_allocator()};
+  String filter_pattern{heap_allocator()};
+  String prefix{heap_allocator()};
+  String suffix{heap_allocator()};
+  u32 action_mask{0};
+  u32 option_mask{0};
   definition_state defining_state;
+
+  pure fn has_action(compgen_action action) const wontthrow -> bool
+  {
+    return (action_mask & compgen_action_bit(action)) != 0;
+  }
+
+  pure fn has_option(completion_option option) const wontthrow -> bool
+  {
+    return (option_mask & completion_option_bit(option)) != 0;
+  }
 
   fn clone(Allocator allocator) const throws -> completion_spec
   {
     let copy = completion_spec{};
     copy.function_name = String{allocator, function_name.view()};
     copy.word_list = String{allocator, word_list.view()};
-    copy.should_use_default = should_use_default;
-    copy.should_mark_directories = should_mark_directories;
+    copy.glob_pattern = String{allocator, glob_pattern.view()};
+    copy.filter_pattern = String{allocator, filter_pattern.view()};
+    copy.prefix = String{allocator, prefix.view()};
+    copy.suffix = String{allocator, suffix.view()};
+    copy.action_mask = action_mask;
+    copy.option_mask = option_mask;
     copy.defining_state = defining_state;
     return copy;
   }

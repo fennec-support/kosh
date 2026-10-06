@@ -120,6 +120,13 @@ fn complete_filesystem_names_by_prefix(
     completion_filesystem_mode mode = completion_filesystem_mode::Files) throws
     -> ArrayList<String>;
 
+fn collect_compgen_candidates(EvalContext &context, u32 action_mask,
+                              Maybe<StringView> glob_pattern,
+                              StringView word) throws -> ArrayList<String>;
+fn remove_compgen_filtered(EvalContext &context, StringView filter_pattern,
+                           StringView word,
+                           ArrayList<String> &candidates) throws -> void;
+
 class ScopedCompletionScratch
 {
 public:

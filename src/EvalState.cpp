@@ -955,7 +955,7 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
 }
 
 static constexpr u32 SUBSHELL_BOOTSTRAP_MAGIC = 0x4b534842U;
-static constexpr u32 SUBSHELL_BOOTSTRAP_VERSION = 16U;
+static constexpr u32 SUBSHELL_BOOTSTRAP_VERSION = 17U;
 static constexpr u32 NO_BOOTSTRAP_PROCESS = UINT32_MAX;
 static constexpr u32 NO_BARE_PROGRAM_PATH = UINT32_MAX;
 
@@ -1257,8 +1257,12 @@ fn CompletionStore::append_wire(String &output) const throws -> void
     let const do_append_spec = [&](const completion_spec &spec) throws -> void {
       append_subshell_bootstrap_text(payload, spec.function_name.view());
       append_subshell_bootstrap_text(payload, spec.word_list.view());
-      payload.push(static_cast<char>(spec.should_use_default));
-      payload.push(static_cast<char>(spec.should_mark_directories));
+      append_subshell_bootstrap_text(payload, spec.glob_pattern.view());
+      append_subshell_bootstrap_text(payload, spec.filter_pattern.view());
+      append_subshell_bootstrap_text(payload, spec.prefix.view());
+      append_subshell_bootstrap_text(payload, spec.suffix.view());
+      append_subshell_bootstrap_u32(payload, spec.action_mask);
+      append_subshell_bootstrap_u32(payload, spec.option_mask);
       spec.defining_state.append_wire(payload);
     };
 
@@ -1854,7 +1858,7 @@ fn CompletionStore::from_wire(subshell_bootstrap_reader &reader,
   if (!reader.read_section(wire_section::Completion, payload)) return false;
 
   let const spec_count = static_cast<usize>(payload.read_u32());
-  constexpr usize MINIMUM_COMPLETION_SPEC_BYTES = 18;
+  constexpr usize MINIMUM_COMPLETION_SPEC_BYTES = 40;
   if (!payload.is_valid || spec_count > payload.get_remaining_length() /
                                             MINIMUM_COMPLETION_SPEC_BYTES)
   {
@@ -1864,18 +1868,26 @@ fn CompletionStore::from_wire(subshell_bootstrap_reader &reader,
   let const do_read_spec = [&](completion_spec &spec) throws -> bool {
     let const function_name = payload.read_text();
     let const word_list = payload.read_text();
-    bool should_use_default = false;
-    bool should_mark_directories = false;
-    if (!read_subshell_bootstrap_bool(payload, should_use_default) ||
-        !read_subshell_bootstrap_bool(payload, should_mark_directories) ||
+    let const glob_pattern = payload.read_text();
+    let const filter_pattern = payload.read_text();
+    let const prefix = payload.read_text();
+    let const suffix = payload.read_text();
+    let const action_mask = payload.read_u32();
+    let const option_mask = payload.read_u32();
+    if (!payload.is_valid || (action_mask >> COMPGEN_ACTION_COUNT) != 0 ||
+        (option_mask >> COMPLETION_OPTION_COUNT) != 0 ||
         !definition_state::from_wire(payload, spec.defining_state))
     {
       return false;
     }
     spec.function_name = String{heap_allocator(), function_name};
     spec.word_list = String{heap_allocator(), word_list};
-    spec.should_use_default = should_use_default;
-    spec.should_mark_directories = should_mark_directories;
+    spec.glob_pattern = String{heap_allocator(), glob_pattern};
+    spec.filter_pattern = String{heap_allocator(), filter_pattern};
+    spec.prefix = String{heap_allocator(), prefix};
+    spec.suffix = String{heap_allocator(), suffix};
+    spec.action_mask = action_mask;
+    spec.option_mask = option_mask;
     return true;
   };
 
@@ -2456,9 +2468,8 @@ fn EvalContext::apply_subshell_bootstrap(
   program_resolver().apply_wire(steal(execution_cache));
   for (let const &name : functions.call_names) {
     let const *storage = function_store().find_storage(name.view());
-    push_function_call_name(name.view(), storage != nullptr
-                                             ? *storage
-                                             : FunctionBodyHandle{});
+    push_function_call_name(
+        name.view(), storage != nullptr ? *storage : FunctionBodyHandle{});
   }
   completion_store().restore(steal(completion));
   job_table_store().apply_wire(steal(jobs));

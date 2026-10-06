@@ -1049,8 +1049,8 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
        *builtin_kind == Builtin::Kind::Compgen) &&
       previous_word == "-o")
   {
-    for (let const option : {"bashdefault", "default", "dirnames"})
-      do_push_matching(option);
+    for (let const &entry : COMPLETION_OPTION_ENTRIES)
+      do_push_matching(entry.key.to_string().view());
     if (!candidates.is_empty()) return candidates;
     return None;
   }
@@ -1250,7 +1250,7 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
     let const reply = context.run_completion_function(
         default_spec.function_name.view(), do_completion_words(),
         completion_cword, line, cursor, &status,
-        default_spec.should_mark_directories);
+        default_spec.has_option(completion_option::FileNames));
     if (status != 124) {
       let const wants_dash_entries = !token.is_empty() && token[0] == '-';
       let loaded = ArrayList<String>{completion_allocator()};
@@ -1276,6 +1276,29 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
 
   let const should_offer_dash_words = !token.is_empty() && token[0] == '-';
 
+  let const do_push_generated = [&](u32 action_mask,
+                                    Maybe<StringView> glob_pattern) throws {
+    context.program_resolver().begin_explicit_completion(
+        ProgramResolver::CompletionRefresh::Cached);
+    defer { context.program_resolver().end_explicit_completion(); };
+
+    for (let const &entry :
+         collect_compgen_candidates(context, action_mask, glob_pattern, token))
+    {
+      if (entry_is_unrequested_dash_word(entry.view(), should_offer_dash_words))
+        continue;
+      candidates.push(String{completion_allocator(), entry.view()});
+    }
+  };
+
+  let const glob_pattern =
+      active_spec.glob_pattern.is_empty()
+          ? Maybe<StringView>{None}
+          : Maybe<StringView>{active_spec.glob_pattern.view()};
+  if (active_spec.action_mask != 0 || glob_pattern.has_value()) {
+    do_push_generated(active_spec.action_mask, glob_pattern);
+  }
+
   if (!active_spec.word_list.is_empty()) {
     /* The -W list expands through the same shared path compgen -W reads. */
     let const definition_scope =
@@ -1294,18 +1317,59 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
 
   /* COMPREPLY is already filtered to the current word, so its entries are taken
      as they are under the same dash gate. */
+  let const should_mark_file_names =
+      active_spec.has_option(completion_option::FileNames);
   context.execution_store().should_mark_completion_directories() =
-      active_spec.should_mark_directories;
+      should_mark_file_names;
   if (for_listing && !active_spec.function_name.is_empty()) {
     let const reply = context.run_completion_function(
         active_spec.function_name.view(), do_completion_words(),
-        completion_cword, line, cursor, nullptr,
-        active_spec.should_mark_directories);
+        completion_cword, line, cursor, nullptr, should_mark_file_names);
     for (let const &entry : reply) {
       if (entry_is_unrequested_dash_word(entry.view(), should_offer_dash_words))
         continue;
       push_spec_candidate(entry.view(), candidates, descriptions);
     }
+  }
+
+  if (!active_spec.filter_pattern.is_empty()) {
+    remove_compgen_filtered(context, active_spec.filter_pattern.view(), token,
+                            candidates);
+  }
+
+  if (!active_spec.prefix.is_empty() || !active_spec.suffix.is_empty()) {
+    for (let &candidate : candidates) {
+      let affixed = String{completion_allocator()};
+      affixed.reserve(active_spec.prefix.length() + candidate.length() +
+                      active_spec.suffix.length());
+      affixed.append(active_spec.prefix.view());
+      affixed.append(candidate.view());
+      affixed.append(active_spec.suffix.view());
+
+      let const description = descriptions.find(candidate.view());
+      if (description.has_value()) {
+        let const description_text =
+            String{completion_allocator(), description.value()->view()};
+        descriptions.set(affixed.view(), description_text.view());
+      }
+
+      candidate = steal(affixed);
+    }
+  }
+
+  let const should_add_directories =
+      (active_spec.has_option(completion_option::DirNames) &&
+       candidates.is_empty()) ||
+      active_spec.has_option(completion_option::PlusDirs);
+  if (should_add_directories) {
+    do_push_generated(compgen_action_bit(compgen_action::Directory), None);
+  }
+
+  if (should_add_directories || glob_pattern.has_value() ||
+      active_spec.has_action(compgen_action::Directory) ||
+      active_spec.has_action(compgen_action::File))
+  {
+    context.execution_store().should_mark_completion_directories() = true;
   }
   mark_spec_directory_candidates(candidates, descriptions, context);
 

@@ -2,11 +2,11 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements and is responsible for the compgen builtin. The
- * compgen builtin writes the completion candidates for a word. Each requested
- * action contributes its own candidates in the bash action order, and the glob
- * and the word list are appended after them. The action names are resolved
- * through one static table.
+ * This file implements and is responsible for the compgen builtin and the
+ * action, glob, and filter generators that complete specs share with it. Each
+ * requested action contributes its own candidates in the bash action order,
+ * and the glob and the word list are appended after them. The generators
+ * either print for compgen or collect the candidates for a completion spec.
  */
 
 #include "../Builtin.hpp"
@@ -64,69 +64,6 @@ REGISTER_BUILTIN_FLAGS(Compgen);
 namespace koshka {
 
 Compgen::Compgen() = default;
-
-enum class compgen_action : u8
-{
-  Alias,
-  ArrayVar,
-  Binding,
-  Builtin,
-  Command,
-  Directory,
-  Disabled,
-  Enabled,
-  Export,
-  File,
-  Function,
-  Group,
-  HelpTopic,
-  Hostname,
-  Job,
-  Keyword,
-  Running,
-  Service,
-  SetOpt,
-  ShOpt,
-  Signal,
-  Stopped,
-  User,
-  Variable,
-};
-
-static constexpr static_string_entry<compgen_action> COMPGEN_ACTION_ENTRIES[] =
-    {
-        {SSK("alias"),     compgen_action::Alias    },
-        {SSK("arrayvar"),  compgen_action::ArrayVar },
-        {SSK("binding"),   compgen_action::Binding  },
-        {SSK("builtin"),   compgen_action::Builtin  },
-        {SSK("command"),   compgen_action::Command  },
-        {SSK("directory"), compgen_action::Directory},
-        {SSK("disabled"),  compgen_action::Disabled },
-        {SSK("enabled"),   compgen_action::Enabled  },
-        {SSK("export"),    compgen_action::Export   },
-        {SSK("file"),      compgen_action::File     },
-        {SSK("function"),  compgen_action::Function },
-        {SSK("group"),     compgen_action::Group    },
-        {SSK("helptopic"), compgen_action::HelpTopic},
-        {SSK("hostname"),  compgen_action::Hostname },
-        {SSK("job"),       compgen_action::Job      },
-        {SSK("keyword"),   compgen_action::Keyword  },
-        {SSK("running"),   compgen_action::Running  },
-        {SSK("service"),   compgen_action::Service  },
-        {SSK("setopt"),    compgen_action::SetOpt   },
-        {SSK("shopt"),     compgen_action::ShOpt    },
-        {SSK("signal"),    compgen_action::Signal   },
-        {SSK("stopped"),   compgen_action::Stopped  },
-        {SSK("user"),      compgen_action::User     },
-        {SSK("variable"),  compgen_action::Variable },
-};
-
-static constexpr StaticStringMap COMPGEN_ACTIONS{COMPGEN_ACTION_ENTRIES};
-
-static pure fn action_bit(compgen_action action) wontthrow -> u32
-{
-  return 1U << static_cast<u32>(action);
-}
 
 struct compgen_filter
 {
@@ -188,19 +125,25 @@ static fn candidate_is_excluded(StringView candidate,
   return filter.is_negated ? !matches : matches;
 }
 
+enum class compgen_sink_mode : u8
+{
+  Print,
+  Collect,
+};
+
 struct compgen_sink
 {
-  compgen_sink(Allocator text_allocator, Maybe<StringView> variable_name,
+  compgen_sink(Allocator text_allocator, compgen_sink_mode mode,
                StringView prefix, StringView suffix)
-      : text(text_allocator), values(heap_allocator()),
-        variable_name(variable_name), prefix(prefix), suffix(suffix)
+      : text(text_allocator), values(heap_allocator()), mode(mode),
+        prefix(prefix), suffix(suffix)
   {}
 
   fn push_candidate(StringView candidate) throws -> void
   {
     has_any_matched = true;
 
-    if (variable_name.has_value()) {
+    if (mode == compgen_sink_mode::Collect) {
       let value = String{heap_allocator()};
       value.reserve(prefix.length + candidate.length + suffix.length);
       value.append(prefix);
@@ -219,19 +162,9 @@ struct compgen_sink
     text.push('\n');
   }
 
-  fn publish(ExecContext &ec, EvalContext &cxt) throws -> i32
-  {
-    if (variable_name.has_value())
-      cxt.set_indexed_array(*variable_name, steal(values));
-    else if (has_any_matched)
-      ec.print_to_stdout(text.view());
-
-    return has_any_matched ? 0 : 1;
-  }
-
   String text;
   ArrayList<String> values;
-  Maybe<StringView> variable_name;
+  compgen_sink_mode mode;
   StringView prefix;
   StringView suffix;
   bool has_any_matched{false};
@@ -308,7 +241,7 @@ static fn run_compgen_actions(EvalContext &cxt, u32 action_mask,
                               compgen_emitter &emitter) throws -> void
 {
   let const do_wants = [&](compgen_action action) wontthrow -> bool {
-    return (action_mask & action_bit(action)) != 0;
+    return (action_mask & compgen_action_bit(action)) != 0;
   };
   let const do_push_name = [&](StringView name)
                                throws -> void { emitter.push_prefixed(name); };
@@ -473,6 +406,68 @@ static fn run_compgen_actions(EvalContext &cxt, u32 action_mask,
   }
 }
 
+static fn run_compgen_generators(EvalContext &cxt, u32 action_mask,
+                                 Maybe<StringView> glob_pattern,
+                                 compgen_emitter &emitter) throws -> void
+{
+  if (action_mask != 0) {
+    LOG(Debug, "compgen collecting actions 0x%x for prefix '%.*s'", action_mask,
+        static_cast<int>(emitter.word.length), emitter.word.data);
+    run_compgen_actions(cxt, action_mask, emitter);
+  }
+
+  if (glob_pattern.has_value()) {
+    LOG(All, "compgen expanding glob '%.*s' for prefix '%.*s'",
+        static_cast<int>(glob_pattern->length), glob_pattern->data,
+        static_cast<int>(emitter.word.length), emitter.word.data);
+
+    for (let const &match : cxt.expand_glob_lenient(*glob_pattern))
+      emitter.push_prefixed(match.view());
+  }
+}
+
+fn completion::collect_compgen_candidates(EvalContext &context, u32 action_mask,
+                                          Maybe<StringView> glob_pattern,
+                                          StringView word) throws
+    -> ArrayList<String>
+{
+  let const scratch = context.expansion_store().scratch_arena().mark();
+  defer { context.expansion_store().scratch_arena().release(scratch); };
+
+  let const no_filter = Maybe<compgen_filter>{None};
+  let sink =
+      compgen_sink{context.scratch_allocator(), compgen_sink_mode::Collect,
+                   StringView{}, StringView{}};
+  let emitter = compgen_emitter{sink, word, no_filter};
+  run_compgen_generators(context, action_mask, glob_pattern, emitter);
+
+  return steal(sink.values);
+}
+
+fn completion::remove_compgen_filtered(EvalContext &context,
+                                       StringView filter_pattern,
+                                       StringView word,
+                                       ArrayList<String> &candidates) throws
+    -> void
+{
+  let const scratch = context.expansion_store().scratch_arena().mark();
+  defer { context.expansion_store().scratch_arena().release(scratch); };
+
+  let const filter =
+      compile_filter(filter_pattern, word, context.scratch_allocator(),
+                     context.get_extglob_mode(), context.get_glob_charset());
+
+  usize kept_count = 0;
+  for (usize i = 0; i < candidates.count(); i++) {
+    if (candidate_is_excluded(candidates[i].view(), filter)) continue;
+
+    if (kept_count != i) candidates[kept_count] = steal(candidates[i]);
+    kept_count++;
+  }
+
+  candidates.truncate(kept_count);
+}
+
 pure fn Compgen::kind() const wontthrow -> Builtin::Kind
 {
   return Kind::Compgen;
@@ -521,40 +516,40 @@ fn Compgen::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   u32 action_mask = 0;
   if (FLAG_COMPGEN_ALIAS.is_enabled()) {
-    action_mask |= action_bit(compgen_action::Alias);
+    action_mask |= compgen_action_bit(compgen_action::Alias);
   }
   if (FLAG_COMPGEN_BUILTIN.is_enabled()) {
-    action_mask |= action_bit(compgen_action::Builtin);
+    action_mask |= compgen_action_bit(compgen_action::Builtin);
   }
   if (FLAG_COMPGEN_COMMANDS.is_enabled()) {
-    action_mask |= action_bit(compgen_action::Command);
+    action_mask |= compgen_action_bit(compgen_action::Command);
   }
   if (FLAG_COMPGEN_DIRECTORY.is_enabled()) {
-    action_mask |= action_bit(compgen_action::Directory);
+    action_mask |= compgen_action_bit(compgen_action::Directory);
   }
   if (FLAG_COMPGEN_EXPORT.is_enabled()) {
-    action_mask |= action_bit(compgen_action::Export);
+    action_mask |= compgen_action_bit(compgen_action::Export);
   }
   if (FLAG_COMPGEN_FILE.is_enabled()) {
-    action_mask |= action_bit(compgen_action::File);
+    action_mask |= compgen_action_bit(compgen_action::File);
   }
   if (FLAG_COMPGEN_GROUP.is_enabled()) {
-    action_mask |= action_bit(compgen_action::Group);
+    action_mask |= compgen_action_bit(compgen_action::Group);
   }
   if (FLAG_COMPGEN_JOB.is_enabled()) {
-    action_mask |= action_bit(compgen_action::Job);
+    action_mask |= compgen_action_bit(compgen_action::Job);
   }
   if (FLAG_COMPGEN_KEYWORD.is_enabled()) {
-    action_mask |= action_bit(compgen_action::Keyword);
+    action_mask |= compgen_action_bit(compgen_action::Keyword);
   }
   if (FLAG_COMPGEN_SERVICE.is_enabled()) {
-    action_mask |= action_bit(compgen_action::Service);
+    action_mask |= compgen_action_bit(compgen_action::Service);
   }
   if (FLAG_COMPGEN_USER.is_enabled()) {
-    action_mask |= action_bit(compgen_action::User);
+    action_mask |= compgen_action_bit(compgen_action::User);
   }
   if (FLAG_COMPGEN_VARIABLE.is_enabled()) {
-    action_mask |= action_bit(compgen_action::Variable);
+    action_mask |= compgen_action_bit(compgen_action::Variable);
   }
 
   if (FLAG_COMPGEN_ACTION.is_set()) {
@@ -568,7 +563,7 @@ fn Compgen::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       return 2;
     }
 
-    action_mask |= action_bit(*resolved);
+    action_mask |= compgen_action_bit(*resolved);
   }
 
   let const wordlist = FLAG_COMPGEN_WORDLIST.is_set()
@@ -596,24 +591,12 @@ fn Compgen::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       FLAG_COMPGEN_PREFIX.is_set() ? FLAG_COMPGEN_PREFIX.value() : StringView{};
   let const suffix =
       FLAG_COMPGEN_SUFFIX.is_set() ? FLAG_COMPGEN_SUFFIX.value() : StringView{};
-  let sink =
-      compgen_sink{cxt.scratch_allocator(), variable_name, prefix, suffix};
+  let const sink_mode = variable_name.has_value() ? compgen_sink_mode::Collect
+                                                  : compgen_sink_mode::Print;
+  let sink = compgen_sink{cxt.scratch_allocator(), sink_mode, prefix, suffix};
   let emitter = compgen_emitter{sink, word, filter};
 
-  if (action_mask != 0) {
-    LOG(Debug, "compgen collecting actions 0x%x for prefix '%.*s'", action_mask,
-        static_cast<int>(word.length), word.data);
-    run_compgen_actions(cxt, action_mask, emitter);
-  }
-
-  if (glob_pattern.has_value()) {
-    LOG(All, "compgen expanding glob '%.*s' for prefix '%.*s'",
-        static_cast<int>(glob_pattern->length), glob_pattern->data,
-        static_cast<int>(word.length), word.data);
-
-    for (let const &match : cxt.expand_glob_lenient(*glob_pattern))
-      emitter.push_prefixed(match.view());
-  }
+  run_compgen_generators(cxt, action_mask, glob_pattern, emitter);
 
   if (wordlist.has_value()) {
     LOG(Debug, "compgen filtering word list for prefix '%.*s'",
@@ -623,7 +606,13 @@ fn Compgen::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       emitter.push_prefixed(candidate.view());
   }
 
-  return sink.publish(ec, cxt);
+  if (variable_name.has_value()) {
+    cxt.set_indexed_array(*variable_name, steal(sink.values));
+  } else if (sink.has_any_matched) {
+    ec.print_to_stdout(sink.text.view());
+  }
+
+  return sink.has_any_matched ? 0 : 1;
 }
 
 } /* namespace koshka */

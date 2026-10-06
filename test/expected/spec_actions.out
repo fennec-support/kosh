@@ -1,0 +1,42 @@
+== -d offers only directories:
+real_dir/
+== -f offers files and marks directories:
+readme.txt
+real_dir/
+== -A directory descends into a directory:
+real_dir/sub/
+== -k offers keywords:
+elif
+else
+== -b offers builtins:
+compopt
+== -v offers shell variables:
+probe_var_one
+probe_var_two
+== -G offers the glob matches:
+notes.txt
+readme.txt
+== -X removes matching candidates:
+alpha
+== -X with ! keeps only matching candidates:
+alpine
+== -X with & matches the completion word:
+alpha
+== -P and -S wrap each candidate:
+pre_alpha_suf
+pre_alpine_suf
+== -W and -A directory combine:
+real_dir/
+real_word
+== -o dirnames adds directories when nothing matched:
+real_dir/
+== -o dirnames adds nothing beside a match:
+real_word
+== -o plusdirs adds directories beside a match:
+real_dir/
+real_word
+== complete -p prints the bash order and round-trips:
+complete -o filenames -o nospace -d -A function -G '*.c' -W 'x y' -P 'pre' -S 'suf' -X '!*.h' -F fn foo
+complete -b -e -A arrayvar -A setopt bar
+complete -o dirnames -o plusdirs -a -c -d -k -v -A shopt -A signal baz
+round-trip-ok
