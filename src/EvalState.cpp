@@ -396,13 +396,13 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
     {
       return false;
     }
-    if (left.text != right.text && left.text->view() != right.text->view())
+    if (left.frame != nullptr && right.frame != nullptr) {
+      if (!do_frame_identity_match(*left.frame, *right.frame)) return false;
+    } else if (left.frame != right.frame) {
       return false;
+    }
 
-    if (left.frame != nullptr && right.frame != nullptr)
-      return do_frame_identity_match(*left.frame, *right.frame);
-
-    return left.frame == right.frame;
+    return left.text == right.text || left.text->view() == right.text->view();
   };
 
   for (usize i = 0; i < entries.count(); i++) {
