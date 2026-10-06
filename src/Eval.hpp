@@ -168,8 +168,9 @@ struct inheritable_analysis_state
   bool is_mimicry_enabled{false};
   reporting_state reporting;
 
+  static fn decode(StringView text) throws -> inheritable_analysis_state;
   static fn from_environment() throws -> inheritable_analysis_state;
-  fn append_environment_text(String &text) const throws -> void;
+  fn encode(String &text) const throws -> void;
 };
 
 struct subshell_bootstrap_reader;

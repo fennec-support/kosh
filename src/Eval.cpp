@@ -918,41 +918,101 @@ fn EvalContext::unmark_exported(StringView name) throws -> void
       fold_exported_name(name, folded, spill));
 }
 
-fn inheritable_analysis_state::from_environment() throws
+enum class analysis_word : u8
+{
+  Mimicry,
+  Warnings,
+  NoAnnoying,
+  NoDiagnostics,
+};
+
+static constexpr static_string_entry<analysis_word> ANALYSIS_WORD_ENTRIES[] = {
+    {SSK("mimicry"),        analysis_word::Mimicry      },
+    {SSK("warnings"),       analysis_word::Warnings     },
+    {SSK("no-annoying"),    analysis_word::NoAnnoying   },
+    {SSK("no-diagnostics"), analysis_word::NoDiagnostics},
+};
+static constexpr StaticStringMap ANALYSIS_WORDS{ANALYSIS_WORD_ENTRIES};
+
+static pure fn analysis_word_name(analysis_word word) wontthrow -> StringView
+{
+  switch (word) {
+  case analysis_word::Mimicry: return StringView{"mimicry"};
+  case analysis_word::Warnings: return StringView{"warnings"};
+  case analysis_word::NoAnnoying: return StringView{"no-annoying"};
+  case analysis_word::NoDiagnostics: return StringView{"no-diagnostics"};
+  }
+
+  return StringView{};
+}
+
+fn inheritable_analysis_state::decode(StringView text) throws
     -> inheritable_analysis_state
 {
   let result = inheritable_analysis_state{};
-  let const text = os::get_environment_variable(ENVIRONMENT_NAME);
-  if (!text.has_value()) return result;
 
-  text->view().for_each_ascii_whitespace_word([&](StringView token) throws {
-    if (token == "mimicry") {
-      result.is_mimicry_enabled = true;
-    } else if (token == "no-annoying") {
-      result.reporting.is_annoying_disabled = true;
-    } else if (token == "no-diagnostics") {
-      result.reporting.is_diagnostics_disabled = true;
-    } else if (token.length == 10 && token.starts_with("warnings=") &&
-               token[9] >= '1' && token[9] <= '3')
-    {
-      result.reporting.warning_level = static_cast<u8>(token[9] - '0');
+  text.for_each_ascii_whitespace_word([&](StringView token) throws {
+    let const separator = token.find_character('=');
+    let const name = separator.has_value()
+                         ? token.substring_of_length(0, *separator)
+                         : token;
+    let const word = ANALYSIS_WORDS.find(name);
+    if (!word.has_value()) return;
+
+    switch (*word) {
+    case analysis_word::Mimicry:
+      if (!separator.has_value()) result.is_mimicry_enabled = true;
+      break;
+    case analysis_word::NoAnnoying:
+      if (!separator.has_value()) result.reporting.is_annoying_disabled = true;
+      break;
+    case analysis_word::NoDiagnostics:
+      if (!separator.has_value())
+        result.reporting.is_diagnostics_disabled = true;
+      break;
+    case analysis_word::Warnings:
+      if (separator.has_value() && token.length == *separator + 2 &&
+          token[*separator + 1] >= '1' && token[*separator + 1] <= '3')
+      {
+        result.reporting.warning_level =
+            static_cast<u8>(token[*separator + 1] - '0');
+      }
+      break;
     }
   });
 
   return result;
 }
 
-fn inheritable_analysis_state::append_environment_text(
-    String &text) const throws -> void
+fn inheritable_analysis_state::from_environment() throws
+    -> inheritable_analysis_state
 {
-  if (is_mimicry_enabled) text += "mimicry ";
+  let const text = os::get_environment_variable(ENVIRONMENT_NAME);
+  if (!text.has_value()) return inheritable_analysis_state{};
+
+  return decode(text->view());
+}
+
+fn inheritable_analysis_state::encode(String &text) const throws -> void
+{
+  if (is_mimicry_enabled) {
+    text += analysis_word_name(analysis_word::Mimicry);
+    text += " ";
+  }
   if (reporting.warning_level > 0) {
-    text += "warnings=";
+    text += analysis_word_name(analysis_word::Warnings);
+    text += "=";
     text += static_cast<char>('0' + reporting.warning_level);
     text += " ";
   }
-  if (reporting.is_annoying_disabled) text += "no-annoying ";
-  if (reporting.is_diagnostics_disabled) text += "no-diagnostics ";
+  if (reporting.is_annoying_disabled) {
+    text += analysis_word_name(analysis_word::NoAnnoying);
+    text += " ";
+  }
+  if (reporting.is_diagnostics_disabled) {
+    text += analysis_word_name(analysis_word::NoDiagnostics);
+    text += " ";
+  }
 
   if (!text.is_empty()) text.pop_back();
 }
@@ -962,8 +1022,7 @@ fn EvalContext::sync_analysis_environment() throws -> void
   static constexpr StringView NAME =
       inheritable_analysis_state::ENVIRONMENT_NAME;
   let text = String{scratch_allocator()};
-  runtime_state().get_inheritable_analysis_state().append_environment_text(
-      text);
+  runtime_state().get_inheritable_analysis_state().encode(text);
 
   let const current = os::get_environment_variable(NAME);
   if (current.has_value() ? current->view() == text.view() : text.is_empty()) {
