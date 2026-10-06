@@ -1,0 +1,20 @@
+startup-prompt PASS
+ctrl-k-kills-the-line PASS
+ctrl-y-yanks-the-kill PASS
+yanked-line-runs PASS
+ctrl-w-kills-words PASS
+ctrl-y-yanks-the-joined-kills PASS
+alt-y-cycles-to-the-older-kill PASS
+alt-y-wraps-to-the-newest-kill PASS
+cycled-line-runs PASS
+ctrl-t-transposes-characters PASS
+alt-t-transposes-words PASS
+transposed-line-runs PASS
+alt-dot-inserts-the-last-word PASS
+alt-dot-walks-back PASS
+alt-dot-walks-further-back PASS
+last-word-line-runs PASS
+ctrl-x-ctrl-e-replaces-the-line PASS
+edited-line-runs-on-enter PASS
+missing-editor-keeps-the-line PASS
+status=0

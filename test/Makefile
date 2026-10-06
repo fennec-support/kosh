@@ -52,12 +52,12 @@ SKIPPED_TESTS := \
 	help_subcommands_no_colon make_targets_fallback \
 	completion_glob_quoting path_quoting koshkit_mknod \
 	koshkit_live_pty koshkit_live_sanitizers koshkit_live_deltas \
-	editor_ghost_menu_pty shell_executable_path \
+	editor_ghost_menu_pty editor_kill_yank_pty shell_executable_path \
 	analysis_environment_inheritance
 else ifneq ($(TARGET), Linux)
 SKIPPED_TESTS := koshkit_mknod koshkit_live_pty koshkit_live_sanitizers \
-	koshkit_live_deltas editor_ghost_menu_pty koshkit_evilfiles_parity \
-	trap_during_blocking_open
+	koshkit_live_deltas editor_ghost_menu_pty editor_kill_yank_pty \
+	koshkit_evilfiles_parity trap_during_blocking_open
 else
 SKIPPED_TESTS :=
 endif
@@ -98,7 +98,8 @@ SKIPPED_TESTS += alias_unalias arith_decimal ast_process_substitution \
 	rerr_redirect_to_directory subshell_isolates_state test_builtin trap
 endif
 ifeq ($(shell command -v python3),)
-SKIPPED_TESTS += koshkit_live_pty koshkit_live_deltas editor_ghost_menu_pty
+SKIPPED_TESTS += koshkit_live_pty koshkit_live_deltas editor_ghost_menu_pty \
+	editor_kill_yank_pty
 endif
 
 ifeq ($(OS), Windows_NT)

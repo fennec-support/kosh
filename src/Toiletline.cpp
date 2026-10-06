@@ -549,6 +549,122 @@ fn kosh_history_select_callback(const char *const *entries, size_t count,
   return COMPLETION_SESSION.select_history(entries, count, out_selected);
 }
 
+constexpr koshka::StringView LINE_EDITOR_NOTE{
+    "Ctrl-X Ctrl-E runs VISUAL, then EDITOR, then vi"};
+constexpr koshka::StringView LINE_EDITOR_VARIABLES[] = {"VISUAL", "EDITOR"};
+
+fn get_line_editor_words(koshka::EvalContext &context) throws
+    -> koshka::ArrayList<koshka::String>
+{
+  for (let const name : LINE_EDITOR_VARIABLES) {
+    let const value = context.get_variable_value(name);
+    if (!value.has_value() || value->is_empty()) continue;
+
+    let words = context.expand_wordlist_to_fields(value->view(), false);
+    if (!words.is_empty()) return words;
+  }
+
+  let words = koshka::ArrayList<koshka::String>{koshka::heap_allocator()};
+  words.push(koshka::String{"vi"});
+
+  return words;
+}
+
+fn run_line_editor(koshka::EvalContext &context, koshka::StringView line,
+                   koshka::String &out_edited) throws -> bool
+{
+  if (!::itl_g_is_active) return false;
+  if (!koshka::os::shell_has_controlling_terminal()) return false;
+
+  let words = get_line_editor_words(context);
+  let const resolved = context.program_resolver().search(
+      words[0].view(), koshka::ProgramResolver::SearchMode::First,
+      koshka::ProgramResolver::Requirement::Execution,
+      koshka::ProgramResolver::CachePolicy::ReadOnly);
+  if (resolved.is_empty()) {
+    report_selector_failure(koshka::StringView{"The editor '"} +
+                                words[0].view() + "' was not found",
+                            LINE_EDITOR_NOTE, true);
+    return false;
+  }
+
+  let const temp_path = koshka::os::write_to_named_temp_file(
+      koshka::Path::temp_directory(), "kosh-edit", line);
+  if (!temp_path.has_value()) return false;
+  defer { unused(koshka::os::remove_file(temp_path->text().view())); };
+
+  let const program = koshka::Path{resolved[0].text()};
+  words[0] = koshka::String{program.view()};
+  words.push(koshka::String{temp_path->text().view()});
+
+  let arg_locations =
+      koshka::ArrayList<koshka::SourceLocation>{koshka::heap_allocator()};
+  let editor = koshka::ExecContext::make_from_resolved(
+      koshka::SourceLocation{},
+      koshka::ResolvedCommand::from_program(koshka::Path{program.text()}),
+      steal(words), steal(arg_locations));
+
+  koshka::flush();
+  if (::tl_begin_external_screen() != TL_SUCCESS) return false;
+  bool is_editor_suspended = true;
+  defer
+  {
+    if (is_editor_suspended) unused(::tl_end_external_screen());
+  };
+
+  let const child = koshka::os::execute_program(
+      editor, koshka::os::program_execution_options{
+                  .fallback = koshka::os::script_fallback_policy::Reject,
+                  .handoff = koshka::os::terminal_handoff::BeforeStart});
+  let const status = koshka::os::wait_and_monitor_process(child);
+  koshka::os::reclaim_controlling_terminal();
+  koshka::os::INTERRUPT_REQUESTED = 0;
+
+  is_editor_suspended = false;
+  if (::tl_end_external_screen() != TL_SUCCESS) return false;
+
+  if (status != 0) {
+    report_selector_failure(
+        koshka::StringView{"The editor '"} + program.view() +
+            "' exited with status " +
+            koshka::String::from(status, koshka::heap_allocator()),
+        LINE_EDITOR_NOTE, false);
+    return false;
+  }
+
+  let edited = temp_path->read_entire_file();
+  if (!edited.has_value()) return false;
+
+  edited->normalize_crlf_line_endings();
+  while (!edited->is_empty() && edited->back() == '\n')
+    edited->pop_back();
+
+  out_edited = steal(*edited);
+
+  return true;
+}
+
+koshka::String EDITED_LINE{koshka::heap_allocator()};
+
+fn kosh_edit_callback(const char *buffer, const char **out_edited) -> int
+{
+  if (COMPLETION_SESSION.context == nullptr) return 0;
+
+  try {
+    if (!run_line_editor(*COMPLETION_SESSION.context,
+                         koshka::StringView{buffer, std::strlen(buffer)},
+                         EDITED_LINE))
+    {
+      return 0;
+    }
+
+    *out_edited = EDITED_LINE.c_str();
+    return 1;
+  } catch (...) {
+    return 0;
+  }
+}
+
 /* Toiletline edits in codepoints while the completion engine works in bytes. */
 fn completion_session::complete(const char *buffer, size_t cursor,
                                 tl_completion *out, int for_listing) -> int
@@ -1915,6 +2031,7 @@ fn enable_completion(koshka::EvalContext &context) -> void
   ::tl_set_highlight_callback(kosh_highlight_callback);
   ::tl_set_ghost_validate_callback(kosh_ghost_validate_callback);
   ::tl_set_history_select_callback(kosh_history_select_callback);
+  ::tl_set_edit_callback(kosh_edit_callback);
 
   /* The selector configuration is seeded after the startup files have run. A
      value they set wins and an unset one becomes visible and editable. */
@@ -1934,6 +2051,7 @@ fn disable_completion() -> void
   ::tl_set_highlight_callback(nullptr);
   ::tl_set_ghost_validate_callback(nullptr);
   ::tl_set_history_select_callback(nullptr);
+  ::tl_set_edit_callback(nullptr);
 }
 
 fn is_completion_enabled() -> bool
