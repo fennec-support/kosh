@@ -31,6 +31,7 @@ struct completion_spec
   String function_name{heap_allocator()};
   String word_list{heap_allocator()};
   bool should_use_default{false};
+  bool should_mark_directories{false};
   definition_state defining_state;
 
   fn clone(Allocator allocator) const throws -> completion_spec
@@ -39,6 +40,7 @@ struct completion_spec
     copy.function_name = String{allocator, function_name.view()};
     copy.word_list = String{allocator, word_list.view()};
     copy.should_use_default = should_use_default;
+    copy.should_mark_directories = should_mark_directories;
     copy.defining_state = defining_state;
     return copy;
   }

@@ -27,7 +27,8 @@ FLAG(COMPLETE_FUNCTION, String, 'F', "",
      "Register the function to run on an explicit tab, COMPREPLY style.");
 FLAG(COMPLETE_OPTION, ManyStrings, 'o', "",
      "default, bashdefault, and dirnames fall back to filename completion, "
-     "any other option is accepted without effect.");
+     "filenames gives directory candidates a trailing slash, and any other "
+     "option is accepted without effect.");
 FLAG(COMPLETE_PRINT, Bool, 'p', "",
      "Print the named specs, or every spec, in a replayable form.");
 FLAG(COMPLETE_DEFAULT, Bool, 'D', "",
@@ -66,6 +67,7 @@ append_completion_specification_line(String &output, StringView command,
 {
   output += "complete ";
   if (spec.should_use_default) output += "-o default ";
+  if (spec.should_mark_directories) output += "-o filenames ";
   if (!spec.word_list.is_empty()) {
     output += "-W ";
     append_shell_quoted_arg(output, spec.word_list.view(), true);
@@ -127,12 +129,14 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                           ? FLAG_COMPLETE_WORDLIST.value()
                                           : StringView{}};
   let should_use_default = false;
+  let should_mark_directories = false;
   for (usize i = 0; i < FLAG_COMPLETE_OPTION.count(); i++) {
     let const option = FLAG_COMPLETE_OPTION.get(i);
     if (option == "default" || option == "bashdefault" || option == "dirnames")
     {
       should_use_default = true;
     }
+    if (option == "filenames") should_mark_directories = true;
   }
   let const is_default_completion = FLAG_COMPLETE_DEFAULT.is_enabled();
   let const should_print_specs = FLAG_COMPLETE_PRINT.is_enabled();
@@ -181,6 +185,7 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     spec.function_name = String{heap_allocator(), function_name};
     spec.word_list = String{heap_allocator(), word_list};
     spec.should_use_default = should_use_default;
+    spec.should_mark_directories = should_mark_directories;
     spec.defining_state = definition_state::from(cxt.runtime_state());
     return spec;
   };

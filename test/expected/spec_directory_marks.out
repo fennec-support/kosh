@@ -1,0 +1,13 @@
+== a plain function reply keeps its text:
+probe_dir
+probe_file
+== -o filenames marks the directory reply:
+probe_dir/
+probe_file
+== compopt +o filenames turns the mark off:
+probe_dir
+== -o filenames marks a word list directory:
+probe_dir/
+probe_file
+== complete -p prints the option:
+complete -o filenames -W 'probe_dir' cp

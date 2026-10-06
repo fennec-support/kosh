@@ -1249,7 +1249,8 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
     i32 status = 0;
     let const reply = context.run_completion_function(
         default_spec.function_name.view(), do_completion_words(),
-        completion_cword, line, cursor, &status);
+        completion_cword, line, cursor, &status,
+        default_spec.should_mark_directories);
     if (status != 124) {
       let const wants_dash_entries = !token.is_empty() && token[0] == '-';
       let loaded = ArrayList<String>{completion_allocator()};
@@ -1293,18 +1294,20 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
 
   /* COMPREPLY is already filtered to the current word, so its entries are taken
      as they are under the same dash gate. */
+  context.execution_store().should_mark_completion_directories() =
+      active_spec.should_mark_directories;
   if (for_listing && !active_spec.function_name.is_empty()) {
     let const reply = context.run_completion_function(
         active_spec.function_name.view(), do_completion_words(),
-        completion_cword, line, cursor);
+        completion_cword, line, cursor, nullptr,
+        active_spec.should_mark_directories);
     for (let const &entry : reply) {
       if (entry_is_unrequested_dash_word(entry.view(), should_offer_dash_words))
         continue;
       push_spec_candidate(entry.view(), candidates, descriptions);
     }
-
-    mark_spec_directory_candidates(candidates, descriptions, context);
   }
+  mark_spec_directory_candidates(candidates, descriptions, context);
 
   if (candidates.is_empty()) return None;
   return candidates;

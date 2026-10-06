@@ -3636,10 +3636,17 @@ COMP_WORDS contains the words on the line. COMP_CWORD is the index of the word
 under the cursor. COMP_LINE contains the complete line. COMP_POINT is the
 cursor byte offset. COMP_WORDBREAKS contains the bytes that split a word.
 Trailing spaces are removed from each COMPREPLY entry, and the space after an
-accepted candidate is controlled by the space-after-completion option. When
+accepted candidate is controlled by the space-after-completion option. When the
+spec was registered with
+.B complete -o filenames
+or
 .B compopt -o filenames
 is run inside the function, a slash is appended to each entry that names a
-directory.
+directory, and to each such word of a
+.B \-W
+list.
+.B compopt +o filenames
+turns the slash off for the current completion.
 .SH EXIT STATUS
 The shell exits with the status of the last command it ran. A command path that
 names a directory, or has a trailing separator whose target is not a directory,

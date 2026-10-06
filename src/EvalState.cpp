@@ -954,7 +954,7 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
 }
 
 static constexpr u32 SUBSHELL_BOOTSTRAP_MAGIC = 0x4b534842U;
-static constexpr u32 SUBSHELL_BOOTSTRAP_VERSION = 15U;
+static constexpr u32 SUBSHELL_BOOTSTRAP_VERSION = 16U;
 static constexpr u32 NO_BOOTSTRAP_PROCESS = UINT32_MAX;
 static constexpr u32 NO_BARE_PROGRAM_PATH = UINT32_MAX;
 
@@ -1256,6 +1256,7 @@ fn CompletionStore::append_wire(String &output) const throws -> void
       append_subshell_bootstrap_text(payload, spec.function_name.view());
       append_subshell_bootstrap_text(payload, spec.word_list.view());
       payload.push(static_cast<char>(spec.should_use_default));
+      payload.push(static_cast<char>(spec.should_mark_directories));
       spec.defining_state.append_wire(payload);
     };
 
@@ -1851,7 +1852,7 @@ fn CompletionStore::from_wire(subshell_bootstrap_reader &reader,
   if (!reader.read_section(wire_section::Completion, payload)) return false;
 
   let const spec_count = static_cast<usize>(payload.read_u32());
-  constexpr usize MINIMUM_COMPLETION_SPEC_BYTES = 17;
+  constexpr usize MINIMUM_COMPLETION_SPEC_BYTES = 18;
   if (!payload.is_valid || spec_count > payload.get_remaining_length() /
                                             MINIMUM_COMPLETION_SPEC_BYTES)
   {
@@ -1862,7 +1863,9 @@ fn CompletionStore::from_wire(subshell_bootstrap_reader &reader,
     let const function_name = payload.read_text();
     let const word_list = payload.read_text();
     bool should_use_default = false;
+    bool should_mark_directories = false;
     if (!read_subshell_bootstrap_bool(payload, should_use_default) ||
+        !read_subshell_bootstrap_bool(payload, should_mark_directories) ||
         !definition_state::from_wire(payload, spec.defining_state))
     {
       return false;
@@ -1870,6 +1873,7 @@ fn CompletionStore::from_wire(subshell_bootstrap_reader &reader,
     spec.function_name = String{heap_allocator(), function_name};
     spec.word_list = String{heap_allocator(), word_list};
     spec.should_use_default = should_use_default;
+    spec.should_mark_directories = should_mark_directories;
     return true;
   };
 

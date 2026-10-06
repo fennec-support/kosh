@@ -3295,7 +3295,8 @@ public:
   fn run_completion_function(StringView function_name,
                              const ArrayList<String> &words, usize cword,
                              StringView line, usize point,
-                             i32 *out_exit_status = nullptr) throws
+                             i32 *out_exit_status = nullptr,
+                             bool should_mark_directories = false) throws
       -> ArrayList<String>;
   /* allow_expansion off keeps the plain split with no shell expansion. */
   fn expand_wordlist_to_fields(StringView wordlist,

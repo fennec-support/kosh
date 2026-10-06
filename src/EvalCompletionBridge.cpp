@@ -20,8 +20,8 @@ namespace koshka {
 fn EvalContext::run_completion_function(StringView function_name,
                                         const ArrayList<String> &words,
                                         usize cword, StringView line,
-                                        usize point,
-                                        i32 *out_exit_status) throws
+                                        usize point, i32 *out_exit_status,
+                                        bool should_mark_directories) throws
     -> ArrayList<String>
 {
   FunctionBodyHandle body_storage{};
@@ -42,7 +42,8 @@ fn EvalContext::run_completion_function(StringView function_name,
       cword);
 
   execution_store().completion_function_running() = true;
-  execution_store().should_mark_completion_directories() = false;
+  execution_store().should_mark_completion_directories() =
+      should_mark_directories;
   defer { execution_store().completion_function_running() = false; };
 
   let defining_state = definition_state::from(runtime_state());
