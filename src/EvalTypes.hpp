@@ -607,7 +607,7 @@ public:
   fn operator=(const FunctionBodyHandle &other)->FunctionBodyHandle &;
   fn operator=(FunctionBodyHandle &&other) noexcept -> FunctionBodyHandle &;
 
-  static fn create() throws -> FunctionBodyHandle;
+  static fn create(usize source_length_hint) throws -> FunctionBodyHandle;
 
   pure fn has_value() const wontthrow -> bool { return m_storage != nullptr; }
   pure fn get_arena() const wontthrow -> BumpArena *;

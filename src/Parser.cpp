@@ -1605,7 +1605,10 @@ fn Parser::finish_function_body(const SourceLocation &location,
                                    analysis_scope_definition_kind::Function);
   let const scope_mark = open_analysis_scope();
 
-  let body_storage = FunctionBodyHandle::create();
+  let const rest_of_source = m_lexer.source().substring(location.position);
+  let const line_length = rest_of_source.find_character('\n');
+  let body_storage = FunctionBodyHandle::create(
+      line_length.has_value() ? line_length.value() : rest_of_source.length);
   let &previous_arena = m_lexer.arena();
   let const previous_arena_kind = m_lexer.arena_kind();
   Command *body = nullptr;

@@ -329,7 +329,7 @@ fn EvalContext::cached_trap_body(StringView condition, StringView action) throws
   LOG(Debug, "parsing the '%.*s' trap action of %zu bytes for reuse",
       static_cast<int>(condition.length), condition.data, action.length);
 
-  let body_storage = FunctionBodyHandle::create();
+  let body_storage = FunctionBodyHandle::create(action.length);
   body_storage.set_definition(action, function_definition_info{});
 
   let const *stored_action = body_storage.get_source();

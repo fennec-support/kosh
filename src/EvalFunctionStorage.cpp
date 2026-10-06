@@ -16,7 +16,10 @@
 namespace koshka {
 
 static function_body_storage *LIVE_EVAL_FUNCTION_STORAGES = nullptr;
-static constexpr usize INITIAL_FUNCTION_ARENA_SIZE = 2 * 1024;
+static constexpr usize MINIMUM_FUNCTION_ARENA_SIZE = 1024;
+static constexpr usize MAXIMUM_FUNCTION_ARENA_SIZE = 4 * 1024;
+static constexpr usize FUNCTION_ARENA_FIXED_SIZE = 512;
+static constexpr usize FUNCTION_ARENA_BYTES_PER_SOURCE_BYTE = 24;
 
 function_body_storage::function_body_storage(BumpArena *owned_arena)
     : arena(owned_arena)
@@ -76,11 +79,23 @@ fn FunctionBodyHandle::operator=(FunctionBodyHandle &&other) noexcept
   return *this;
 }
 
-fn FunctionBodyHandle::create() throws -> FunctionBodyHandle
+fn FunctionBodyHandle::create(usize source_length_hint) throws
+    -> FunctionBodyHandle
 {
+  let const wanted_size = FUNCTION_ARENA_FIXED_SIZE +
+                          (source_length_hint < MAXIMUM_FUNCTION_ARENA_SIZE
+                               ? source_length_hint
+                               : MAXIMUM_FUNCTION_ARENA_SIZE) *
+                              FUNCTION_ARENA_BYTES_PER_SOURCE_BYTE;
+  let const arena_size = wanted_size < MINIMUM_FUNCTION_ARENA_SIZE
+                             ? MINIMUM_FUNCTION_ARENA_SIZE
+                             : (wanted_size > MAXIMUM_FUNCTION_ARENA_SIZE
+                                    ? MAXIMUM_FUNCTION_ARENA_SIZE
+                                    : wanted_size);
+
   let const arena_storage = heap_allocator().alloc_array<BumpArena>(1);
   try {
-    new (arena_storage) BumpArena{INITIAL_FUNCTION_ARENA_SIZE};
+    new (arena_storage) BumpArena{arena_size};
   } catch (...) {
     heap_allocator().free_array(arena_storage, 1);
     throw;
