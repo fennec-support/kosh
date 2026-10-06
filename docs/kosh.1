@@ -58,6 +58,9 @@ escape on Windows. A native Windows path uses a quoted backslash, an escaped
 backslash, or a forward slash. After quote removal, Windows path
 operations accept both slash forms and recognize drive and UNC roots. POSIX
 path operations accept only a forward slash.
+.PP
+On Windows, the shell switches an attached console to the UTF-8 input and
+output code pages and restores the previous code pages when it exits normally.
 .SH INVOCATION
 The input source is selected in this order. The
 .B \-s

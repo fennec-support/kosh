@@ -1863,6 +1863,48 @@ static constexpr u32 SUBSHELL_TRANSPORT_VERSION = 2U;
 static constexpr usize SUBSHELL_TRANSPORT_HEADER_LENGTH = 24;
 static constexpr usize MAXIMUM_SUBSHELL_TRANSPORT_LENGTH = 16 * 1024 * 1024;
 static subshell_bootstrap SUBSHELL_BOOTSTRAP{};
+static UINT SAVED_CONSOLE_INPUT_CODEPAGE = 0;
+static UINT SAVED_CONSOLE_OUTPUT_CODEPAGE = 0;
+
+static fn restore_console_codepages() wontthrow -> void
+{
+  if (SAVED_CONSOLE_INPUT_CODEPAGE != 0) {
+    unused(SetConsoleCP(SAVED_CONSOLE_INPUT_CODEPAGE));
+    SAVED_CONSOLE_INPUT_CODEPAGE = 0;
+  }
+
+  if (SAVED_CONSOLE_OUTPUT_CODEPAGE != 0) {
+    unused(SetConsoleOutputCP(SAVED_CONSOLE_OUTPUT_CODEPAGE));
+    SAVED_CONSOLE_OUTPUT_CODEPAGE = 0;
+  }
+}
+
+static fn switch_console_codepages_to_utf8() wontthrow -> void
+{
+  let const input_codepage = GetConsoleCP();
+  if (input_codepage != 0 && input_codepage != CP_UTF8 &&
+      SetConsoleCP(CP_UTF8) != FALSE)
+  {
+    SAVED_CONSOLE_INPUT_CODEPAGE = input_codepage;
+  }
+
+  let const output_codepage = GetConsoleOutputCP();
+  if (output_codepage != 0 && output_codepage != CP_UTF8 &&
+      SetConsoleOutputCP(CP_UTF8) != FALSE)
+  {
+    SAVED_CONSOLE_OUTPUT_CODEPAGE = output_codepage;
+  }
+
+  if (SAVED_CONSOLE_INPUT_CODEPAGE == 0 &&
+      SAVED_CONSOLE_OUTPUT_CODEPAGE == 0)
+  {
+    return;
+  }
+
+  if (std::atexit(restore_console_codepages) != 0) {
+    restore_console_codepages();
+  }
+}
 
 static fn read_subshell_transport_exact(descriptor pipe, opaque *output,
                                         usize length) wontthrow -> bool
@@ -1994,6 +2036,8 @@ static fn receive_subshell_bootstrap() wontthrow -> void
 
 fn initialize_platform_runtime() wontthrow -> void
 {
+  switch_console_codepages_to_utf8();
+
   bool is_internal_child = false;
   try {
     let const parent_text =
