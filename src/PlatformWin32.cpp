@@ -282,8 +282,8 @@ fn write_system_log(const system_log_options &options) wontthrow -> bool
   return was_reported;
 }
 
-fn write_fd(os::descriptor fd, const opaque *buf, usize size) wontthrow
-    -> Maybe<usize>
+static fn write_fd_raw(os::descriptor fd, const opaque *buf,
+                       usize size) wontthrow -> Maybe<usize>
 {
   let const requested_size =
       size > MAXDWORD ? MAXDWORD : static_cast<DWORD>(size);
@@ -300,6 +300,64 @@ fn write_fd(os::descriptor fd, const opaque *buf, usize size) wontthrow
     return koshka::None;
   }
   return static_cast<usize>(written_size);
+}
+
+static fn write_console_span(os::descriptor fd, const u8 *data,
+                             usize size) wontthrow -> bool
+{
+  usize sent_count = 0;
+  while (sent_count < size) {
+    let const wrote = write_fd_raw(fd, data + sent_count, size - sent_count);
+    if (!wrote.has_value() || *wrote == 0) return false;
+    sent_count += *wrote;
+  }
+  return true;
+}
+
+fn write_fd(os::descriptor fd, const opaque *buf, usize size) wontthrow
+    -> Maybe<usize>
+{
+  DWORD console_mode = 0;
+  if (GetConsoleMode(fd, &console_mode) == FALSE)
+    return write_fd_raw(fd, buf, size);
+
+  static constexpr u8 CRLF_BYTES[]{0x0D, 0x0A};
+  static constexpr u8 LF_BYTES[]{0x0A};
+
+  let const bytes = static_cast<const u8 *>(buf);
+  let const logical_end = size > MAXDWORD ? MAXDWORD : size;
+  usize consumed_count = 0;
+
+  while (consumed_count < logical_end) {
+    usize run_end = consumed_count;
+    while (run_end < logical_end && bytes[run_end] != 0x0A) {
+      run_end++;
+    }
+
+    if (run_end > consumed_count &&
+        !write_console_span(fd, bytes + consumed_count,
+                            run_end - consumed_count))
+    {
+      return koshka::None;
+    }
+
+    if (run_end == logical_end) {
+      consumed_count = logical_end;
+      break;
+    }
+
+    let const has_prior_carriage = run_end > 0 && bytes[run_end - 1] == 0x0D;
+    let const newline_bytes = has_prior_carriage ? LF_BYTES : CRLF_BYTES;
+    let const newline_size = has_prior_carriage ? usize{1} : usize{2};
+
+    if (!write_console_span(fd, newline_bytes, newline_size)) {
+      return koshka::None;
+    }
+
+    consumed_count = run_end + 1;
+  }
+
+  return consumed_count;
 }
 
 fn write_to_numbered_fd(i64 fd_number, const opaque *buf, usize size) wontthrow
@@ -1992,8 +2050,24 @@ static fn receive_subshell_bootstrap() wontthrow -> void
   if (!trailing_length.has_value() || *trailing_length != 0) ExitProcess(1);
 }
 
+static fn enable_console_escapes() wontthrow -> void
+{
+  for (let const stream_id : {STD_OUTPUT_HANDLE, STD_ERROR_HANDLE}) {
+    let const handle = GetStdHandle(stream_id);
+    if (handle == INVALID_HANDLE_VALUE) continue;
+
+    DWORD console_mode = 0;
+    if (GetConsoleMode(handle, &console_mode) == FALSE) continue;
+
+    unused(SetConsoleMode(handle,
+                          console_mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING));
+  }
+}
+
 fn initialize_platform_runtime() wontthrow -> void
 {
+  enable_console_escapes();
+
   bool is_internal_child = false;
   try {
     let const parent_text =
