@@ -2442,6 +2442,10 @@ public:
     m_embedded_sources.push(steal(source));
   }
   fn pop_embedded_source() wontthrow -> void { m_embedded_sources.pop_back(); }
+  fn set_embedded_depth_floor(usize floor) wontthrow -> void
+  {
+    m_embedded_sources.back().call_depth_floor = floor;
+  }
   pure fn embedded_sources() const wontthrow
       -> const ArrayList<embedded_source> &
   {
@@ -3184,6 +3188,7 @@ public:
                  : absolute_position;
     }
   };
+  pure fn source_depth_floor(usize frame_limit) const wontthrow -> usize;
   pure fn resolve_render_source(
       const SourceLocation &location, const String *fallback_source = nullptr,
       usize call_depth_limit = static_cast<usize>(-1),
@@ -3400,8 +3405,8 @@ public:
       -> bool;
 
   mustuse fn line_number_at_location(
-      const SourceLocation &location,
-      const String *fallback_source = nullptr) const throws -> usize;
+      const SourceLocation &location, const String *fallback_source = nullptr,
+      Maybe<usize> fallback_call_depth = None) const throws -> usize;
   fn push_root_source_frame(const String *parent_source,
                             SourceLocation call_site,
                             source_frame_kind kind) throws -> void;

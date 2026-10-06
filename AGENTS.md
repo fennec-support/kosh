@@ -222,7 +222,10 @@ changes update this file.
   slug suppresses one. Parser and runtime errors remain enabled.
 - `SourceLocation` stores 32-bit position, length, and interned source index.
   Syntax nodes store end positions separately. Diagnostics and LINENO share a
-  line index.
+  line index. Each interned source name records whether it names a file or the
+  command string, so a file called `-c` stays a file. Only a sourced file or
+  mimicked script frame owns a BASH_SOURCE row. An eval has none, and a line
+  number inside an eval counts from the line of the eval command.
 - Small types stay in light headers. Shared behavior stays on the value type.
   `ArrayList::find` returns `Maybe<usize>`. Membership uses
   `find().has_value()`.

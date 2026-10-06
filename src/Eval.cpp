@@ -1275,10 +1275,11 @@ pure fn EvalContext::script_source_frame_index() const wontthrow -> Maybe<usize>
   if (!source_store().is_script_run()) return None;
 
   for (usize i = 0; i < source_store().source_frames().count(); i++) {
-    let const &path = source_store().source_frames()[i].source_path;
-    if (path.is_empty()) continue;
+    let const &frame = source_store().source_frames()[i];
+    if (!frame.has_bash_source_row()) continue;
 
-    if (path.view() == execution_store().get_shell_name()) return i;
+    if (frame.source_path.view() == execution_store().get_shell_name())
+      return i;
 
     return None;
   }
@@ -1307,7 +1308,7 @@ pure fn EvalContext::merged_frame_at(
   loop
   {
     while (source_index < source_store().source_frames().count() &&
-           source_store().source_frames()[source_index].source_path.is_empty())
+           !source_store().source_frames()[source_index].has_bash_source_row())
     {
       source_index++;
     }
@@ -1374,8 +1375,8 @@ fn EvalContext::funcname_frame_at(usize index) const wontthrow -> StringView
 }
 
 fn EvalContext::line_number_at_location(
-    const SourceLocation &location, const String *fallback_source) const throws
-    -> usize
+    const SourceLocation &location, const String *fallback_source,
+    Maybe<usize> fallback_call_depth) const throws -> usize
 {
   /* A substitution body is its own source, so its line count restarts. The
      lines before the enclosing site add up through every substitution the
@@ -1386,8 +1387,9 @@ fn EvalContext::line_number_at_location(
                         ? fallback_source
                         : source_store().current_source();
   let site_depth = fallback_source != nullptr
-                       ? Maybe<usize>{None}
+                       ? fallback_call_depth
                        : Maybe<usize>{function_store().call_frames().count()};
+  Maybe<usize> site_depth_floor = None;
   usize preceding_line_count = 0;
   usize search_limit = line_bases.count();
   while (search_limit > 0) {
@@ -1409,10 +1411,28 @@ fn EvalContext::line_number_at_location(
     site = base.parent_location;
     site_source = base.parent;
     site_depth = base.function_call_depth;
+    site_depth_floor = base.call_depth_floor;
     search_limit = found;
   }
 
-  let const resolved_source = resolve_render_source(site, site_source);
+  if (!site_depth_floor.has_value() && fallback_source != nullptr &&
+      site_depth.has_value())
+  {
+    usize frame_limit = 0;
+    while (frame_limit < source_store().source_frames().count() &&
+           source_store().source_frames()[frame_limit].function_call_depth <=
+               *site_depth)
+    {
+      frame_limit++;
+    }
+    site_depth_floor = source_depth_floor(frame_limit);
+  }
+
+  let const resolved_source =
+      site_depth_floor.has_value()
+          ? resolve_render_source(site, site_source, *site_depth,
+                                  *site_depth_floor)
+          : resolve_render_source(site, site_source);
   usize line = 1;
   if (resolved_source.text != nullptr) {
     const usize render_position =
@@ -1432,12 +1452,14 @@ fn EvalContext::funcname_line_at(usize index) const throws -> usize
   switch (frame.kind) {
   case MergedFrame::Kind::Function: {
     let const &call_frame = function_store().call_frames()[frame.storage_index];
-    return line_number_at_location(call_frame.location, call_frame.source);
+    return line_number_at_location(call_frame.location, call_frame.source,
+                                   frame.storage_index);
   }
   case MergedFrame::Kind::Source: {
     let const &source = source_store().source_frames()[frame.storage_index];
     return line_number_at_location(source.call_site,
-                                   borrowed_frame_source(source));
+                                   borrowed_frame_source(source),
+                                   source.function_call_depth);
   }
   case MergedFrame::Kind::Main: break;
   }
@@ -1460,7 +1482,9 @@ pure fn EvalContext::bash_source_frame_at(usize index) const wontthrow
                           .storage.get_definition_info();
     if (info != nullptr) {
       if (let const name = source_name_at(info->source_name_index);
-          name.has_value() && *name != COMMAND_STRING_SOURCE_NAME)
+          name.has_value() &&
+          source_identity_kind_at(info->source_name_index) ==
+              source_identity_kind::File)
       {
         return *name;
       }
@@ -1484,8 +1508,7 @@ pure fn EvalContext::bash_source_frame_count(
   usize frame_count = function_store().call_frames().count();
 
   for (usize i = 0; i < source_store().source_frames().count(); i++) {
-    if (!source_store().source_frames()[i].source_path.is_empty())
-      frame_count++;
+    if (source_store().source_frames()[i].has_bash_source_row()) frame_count++;
   }
 
   if (source_store().is_script_run() && !script_source_index.has_value())

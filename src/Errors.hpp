@@ -47,7 +47,21 @@ pure inline fn get_error_severity_word(error_severity severity) wontthrow
 fn intern_source_name(StringView name) throws -> u32;
 fn source_name_at(u32 source_name_index) wontthrow -> Maybe<StringView>;
 
-inline constexpr StringView COMMAND_STRING_SOURCE_NAME{"-c", 2};
+/* A command string and a file can share a spelling, so each row also records
+   which of the two it names. The command string constant below is the only
+   spelling that interns as a command string, and its address identifies it. */
+enum class source_identity_kind : u8
+{
+  File,
+  CommandString,
+};
+
+fn source_identity_kind_at(u32 source_name_index) wontthrow
+    -> source_identity_kind;
+
+inline constexpr char COMMAND_STRING_SOURCE_TEXT[] = "-c";
+inline constexpr StringView COMMAND_STRING_SOURCE_NAME{
+    COMMAND_STRING_SOURCE_TEXT, 2};
 
 /* The offsets are 32-bit because one shell source is far below four gigabytes,
    and every token and every syntax node carries one of these. The constructor

@@ -1,0 +1,10 @@
+== function defined in a file called -c ==
+file_function: -c file_function
+rc=0
+== function defined in a command string ==
+shell name
+rc=0
+== type -V names the file and the command string ==
+file_function is a function defined in -c on line 1
+string_function is a function defined in -c on line 1
+rc=0

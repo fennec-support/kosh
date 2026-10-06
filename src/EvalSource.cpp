@@ -274,7 +274,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
       source_frame{String{ec.program().view()}, ec.source_location(),
                    source_store().current_source(),
                    source_generation_for(source_store().current_source()),
-                   String{script_filename}, source_frame_kind::Ordinary});
+                   String{script_filename}, source_frame_kind::SourcedFile});
   source_store().source_frames().back().should_defer_trace = true;
   source_store().source_frames().back().function_call_depth =
       function_store().call_frames().count();
@@ -571,7 +571,8 @@ fn EvalContext::run_source(StringView source, StringView origin,
       parent_source, source_generation_for(parent_source),
       filename.has_value() ? String{*filename}
       : String{heap_allocator()},
-      source_frame_kind::Ordinary
+      frame_is_sourced_file ? source_frame_kind::SourcedFile
+                            : source_frame_kind::Ordinary
   });
   source_store().source_frames().back().definition = definition;
   source_store().source_frames().back().should_defer_trace =
@@ -637,6 +638,18 @@ fn EvalContext::run_source(StringView source, StringView origin,
     defer { history_recorder().restore_mark(previous_recording_mark); };
 
     let const source_scope = capture_source_scope();
+    let const did_register_line_base =
+        call_site.has_value() && !frame_is_sourced_file &&
+        cached_body == nullptr &&
+        register_embedded_source(StringView{}, *call_site, retained_source);
+    if (did_register_line_base) {
+      source_store().set_embedded_depth_floor(
+          source_depth_floor(source_store().source_frames().count() - 1));
+    }
+    defer
+    {
+      if (did_register_line_base) unregister_embedded_source();
+    };
     set_fresh_source(retained_source, String{origin});
 
     ast->evaluate(*this);

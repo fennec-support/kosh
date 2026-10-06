@@ -25,11 +25,14 @@ struct interned_source_name
 {
   char *data;
   u32 length;
+  source_identity_kind kind;
 
-  interned_source_name(char *data, u32 length) : data{data}, length{length} {}
+  interned_source_name(char *data, u32 length, source_identity_kind kind)
+      : data{data}, length{length}, kind{kind}
+  {}
   interned_source_name(const interned_source_name &) = delete;
   interned_source_name(interned_source_name &&other) noexcept
-      : data{other.data}, length{other.length}
+      : data{other.data}, length{other.length}, kind{other.kind}
   {
     other.data = nullptr;
   }
@@ -55,10 +58,13 @@ cold fn intern_source_name(StringView name) throws -> u32
 {
   if (name.is_empty()) return 0;
 
+  let const kind = name.data == COMMAND_STRING_SOURCE_NAME.data
+                       ? source_identity_kind::CommandString
+                       : source_identity_kind::File;
   let &table = get_source_name_table();
   for (usize row_index = 0; row_index < table.count(); row_index++) {
     let const &row = table[row_index];
-    if (row.length == name.length &&
+    if (row.kind == kind && row.length == name.length &&
         std::memcmp(row.data, name.data, name.length) == 0)
     {
       return static_cast<u32>(row_index + 1);
@@ -68,9 +74,19 @@ cold fn intern_source_name(StringView name) throws -> u32
   let const copy = heap_allocator().alloc_array<char>(name.length + 1);
   std::memcpy(copy, name.data, name.length);
   copy[name.length] = '\0';
-  table.push(interned_source_name{copy, static_cast<u32>(name.length)});
+  table.push(interned_source_name{copy, static_cast<u32>(name.length), kind});
 
   return static_cast<u32>(table.count());
+}
+
+fn source_identity_kind_at(u32 source_name_index) wontthrow
+    -> source_identity_kind
+{
+  let const &table = get_source_name_table();
+  if (source_name_index == 0 || source_name_index > table.count())
+    return source_identity_kind::File;
+
+  return table[source_name_index - 1].kind;
 }
 
 fn source_name_at(u32 source_name_index) wontthrow -> Maybe<StringView>
@@ -80,6 +96,8 @@ fn source_name_at(u32 source_name_index) wontthrow -> Maybe<StringView>
   let const &table = get_source_name_table();
   if (source_name_index > table.count()) return None;
   let const &row = table[source_name_index - 1];
+  if (row.kind == source_identity_kind::CommandString)
+    return COMMAND_STRING_SOURCE_NAME;
 
   return StringView{row.data, row.length};
 }

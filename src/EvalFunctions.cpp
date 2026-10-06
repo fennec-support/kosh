@@ -137,6 +137,17 @@ fn EvalContext::function_definition_info_of(StringView name) const wontthrow
   return storage.has_value() ? storage->get_definition_info() : nullptr;
 }
 
+pure fn EvalContext::source_depth_floor(usize frame_limit) const wontthrow
+    -> usize
+{
+  for (usize index = frame_limit; index > 0; index--) {
+    let const &candidate = source_store().source_frames()[index - 1];
+    if (candidate.is_source_changing) return candidate.function_call_depth;
+  }
+
+  return 0;
+}
+
 pure fn EvalContext::resolve_render_source(
     const SourceLocation &location, const String *fallback_source,
     usize call_depth_limit, usize call_depth_floor) const wontthrow

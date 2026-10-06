@@ -251,6 +251,7 @@ enum class source_frame_kind : u8
 {
   Ordinary,
   CliRoot,
+  SourcedFile,
 };
 
 struct trap_definition
@@ -318,6 +319,7 @@ struct embedded_source
   usize inner_offset;
   const String *body{nullptr};
   usize function_call_depth{0};
+  usize call_depth_floor{0};
   bool is_mapped{true};
 };
 
@@ -331,6 +333,11 @@ struct source_frame
         parent_source_generation(parent_source_generation),
         call_site(steal(call_site)), kind(kind)
   {}
+
+  pure fn has_bash_source_row() const wontthrow -> bool
+  {
+    return kind == source_frame_kind::SourcedFile;
+  }
 
   String origin;
   String source_path;

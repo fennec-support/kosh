@@ -82,7 +82,9 @@ fn EvalContext::register_embedded_source(StringView inner,
   source_store().push_embedded_source(embedded_source{
       inner_offset.has_value() ? inner : StringView{}, parent, parent_location,
       inner_offset.has_value() ? *inner_offset : 0, body,
-      function_store().call_frames().count(), inner_offset.has_value()});
+      function_store().call_frames().count(),
+      source_depth_floor(source_store().source_frames().count()),
+      inner_offset.has_value()});
   return true;
 }
 
