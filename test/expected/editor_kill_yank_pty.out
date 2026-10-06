@@ -22,6 +22,9 @@ continued-edit-runs-on-enter PASS
 control-bytes-in-the-line-draw-visibly PASS
 history-keeps-working-after-control-bytes PASS
 history-file-holds-no-control-bytes PASS
+quoted-continuation-keeps-the-backslash PASS
+continuation-joins-in-the-shell PASS
+history-file-keeps-continuation-lines PASS
 ctrl-x-before-an-arrow-keeps-the-arrow PASS
 alt-t-keeps-trailing-blanks PASS
 alt-t-leaves-the-caret-before-the-blank PASS

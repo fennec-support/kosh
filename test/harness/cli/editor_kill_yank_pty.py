@@ -10,8 +10,10 @@
 # VISUAL script that rewrites the line without running it. A VISUAL script that
 # stops itself is continued and its temporary file removed, and one that writes
 # control bytes leaves them drawn in caret notation and out of the history
-# file. Ctrl-X before an arrow keeps the arrow, and Alt-T keeps trailing blanks
-# in place. The terminal model
+# file. A trailing backslash continues the line, the shell joins it only
+# outside quotes, and history keeps both physical lines. Ctrl-X before an
+# arrow keeps the arrow, and Alt-T keeps trailing blanks in place. The terminal
+# model
 # and session come from the ghost and menu probe. Each check prints one stable
 # PASS line for the golden output.
 
@@ -173,6 +175,20 @@ def run_checks(binary, directory, command_directory, report):
         report.record("history-file-holds-no-control-bytes", session,
                       lambda screen: b"\x1b" not in read_bytes(history_path)
                       and b"echo after-control" in read_bytes(history_path))
+
+        session.send(b"echo 'quoted\\\r")
+        session.send(b"tail'\r")
+        report.record("quoted-continuation-keeps-the-backslash", session,
+                      has_output("quoted\\", 1))
+        session.send(b"echo plain \\\r")
+        session.send(b"joined\r")
+        report.record("continuation-joins-in-the-shell", session,
+                      has_output("plain joined", 1))
+        report.record("history-file-keeps-continuation-lines", session,
+                      lambda screen: b"echo 'quoted\\\\\\ntail'"
+                      in read_bytes(history_path)
+                      and b"echo plain \\\\\\njoined"
+                      in read_bytes(history_path))
 
         session.send(b"echo ab")
         session.wait_until(is_line("echo ab"))
