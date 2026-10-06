@@ -2863,6 +2863,43 @@ does nothing under
 Ctrl\-X Ctrl\-U undoes the last edit. Ctrl\-X before any other key is ignored,
 and that key runs as usual.
 .PP
+A key that waits for another key before it acts names itself and what it waits
+for on the hint row below the input, in place of the command hint, until the
+next key resolves it. Ctrl\-X shows
+.BR "pressed ctrl\-x. waiting for ctrl\-e (edit in $VISUAL), ctrl\-u (undo)" .
+In vi command mode a pending operator shows the keys typed so far and its
+motions, such as
+.B "pressed d. waiting for a motion: w, b, e, $, 0, ^, d (line), ..."
+or
+.BR "pressed \(dqa2d. waiting for ..." ,
+and so do a pending count, a pending register, the register key
+.BR \(dq ,
+the find keys
+.BR f ,
+.BR F ,
+.B t
+and
+.BR T ,
+the replace key
+.BR r ,
+and the colon command line. A key typed fast enough to arrive with the prefix
+is read at once without drawing the row. The row is the inline hint row, so
+.B set +o inline-hints
+turns these off too.
+.PP
+Ctrl\-Z undoes while the editor reads a line, the same as Ctrl\-_. A program
+that runs in the foreground has the terminal in its usual mode, so Ctrl\-Z
+stops it and the shell reports the stopped job. Ctrl\-Shift\-Z redoes when the
+terminal reports it apart from Ctrl\-Z, as the kitty keyboard protocol
+.RB ( "ESC [ 122 ; 6 u"
+or
+.BR "ESC [ 90 ; 6 u" )
+and xterm modifyOtherKeys
+.RB ( "ESC [ 27 ; 6 ; 90 ~" )
+do. Kosh turns neither mode on. Most terminals send the Ctrl\-Z byte for both
+keys, and the Windows console reports no shift state for it, so there both
+keys undo and Ctrl\-^ redoes.
+.PP
 A control character in the line, a ghost suggestion, or a menu entry is drawn
 in caret notation, such as ^[ for ESC and ^? for DEL, and a C1 control as a hex
 escape such as \e\ex9b, so it never reaches the terminal raw. A tab and a line
@@ -3128,35 +3165,377 @@ usual color.
 .PP
 Each vi line begins in insert mode. Escape enters command mode. Command mode
 supports motions, counted operators, named registers, change repeat, and visual
-selection. The
-.B v
-key selects characters. The
-.B V
-key selects whole lines.
-.PP
-The
-.B u
-key undoes the last edit in command mode. Ctrl\-_ undoes it in either mode.
-Ctrl\-^ redoes the edit in either mode. Ctrl\-R redoes it in command mode.
-Ctrl\-R opens the history search in insert mode. The slash key opens the same
-search in command mode.
-.PP
-The colon key opens an ex command. The commands q, q!, wq, wq!, x, and quit
-exit the shell. The cursor is a bar in insert mode, a block in command mode,
-and an underline in visual mode or while an operator awaits a motion.
+selection. The cursor is a bar in insert mode, a block in command mode, and an
+underline in visual mode or while an operator awaits a motion.
 .PP
 In command mode, arrow keys move between buffer rows without recalling history.
 Insert-mode arrow keys recall history. With an operator pending, Up or Down
 operates on the current line and the adjacent line. The dk and dj commands
 perform the corresponding linewise operations.
 .PP
-Ctrl\-V enters rectangular selection in vi command mode. The d and x keys delete
-the rectangle. The I, c, and C keys insert text at the left column of every
-selected line.
-.PP
-Ctrl\-V enters multi\-cursor mode in emacs mode. Up and Down extend the span. A
-typed byte is inserted at every cursor. Backspace erases at every cursor.
-Ctrl\-G leaves the mode.
+The subsections below list every key the editor binds. A key not listed for a
+mode does nothing there unless its subsection says otherwise. An unrecognized
+key is a control key or an escape sequence the editor reads as no key at all,
+such as Ctrl\-G, Ctrl\-O, a bare Escape, or a function key. The Windows
+console also reports the arrows, Ctrl\-Left, Ctrl\-Right, Home, End, Delete,
+Ctrl\-Delete, and Shift\-Tab as legacy scan codes, which act the same.
+.SS Emacs mode keys
+.TP
+.BR Ctrl\-A ", " Home
+Move to the start of the current line of the buffer.
+.TP
+.BR Ctrl\-E ", " End
+Move to the end of the current line, or accept the whole ghost suggestion at
+the end of the buffer.
+.TP
+.BR Ctrl\-B ", " Left
+Move one character left.
+.TP
+.B Right
+Move one character right, or accept the whole ghost suggestion at the end of
+the buffer.
+.TP
+.BR Alt\-B ", " Ctrl\-Left ", " Alt\-Left
+Move to the start of the previous word.
+.TP
+.BR Alt\-F ", " Ctrl\-Right ", " Alt\-Right
+Move past the next word, or accept the next word of the ghost suggestion.
+.TP
+.BR Ctrl\-P ", " Up
+Move up a row, or recall an older history entry from the first row.
+.TP
+.BR Ctrl\-N ", " Down
+Move down a row, or recall a newer history entry from the last row.
+.TP
+.BR Alt\-< ", " Alt\-,
+Recall the oldest history entry.
+.TP
+.B Alt\->
+Recall the newest history entry.
+.TP
+.BR Enter ", " Ctrl\-J ", " Ctrl\-M
+Run the line, or continue it on a new row after a trailing backslash.
+.TP
+.B Alt\-Enter
+Insert a line break.
+.TP
+.BR Tab ", " Shift\-Tab ", " Ctrl\-Space
+Complete the token under the cursor. Ctrl\-Space acts as Tab on a POSIX system
+only.
+.TP
+.BR Backspace ", " Ctrl\-H
+Delete the character before the cursor.
+.TP
+.B Delete
+Delete the character under the cursor.
+.TP
+.B Ctrl\-D
+Delete the character under the cursor, or end the shell on an empty line.
+.TP
+.BR Ctrl\-W ", " Alt\-Backspace ", " Alt\-H
+Kill the word before the cursor.
+.TP
+.BR Alt\-D ", " Ctrl\-Delete
+Kill the word after the cursor.
+.TP
+.B Ctrl\-K
+Kill to the end of the current line.
+.TP
+.B Ctrl\-U
+Kill to the start of the current line.
+.TP
+.B Ctrl\-Y
+Yank the newest kill.
+.TP
+.B Alt\-Y
+Replace the yank with the next older kill.
+.TP
+.B Ctrl\-T
+Swap the characters around the cursor.
+.TP
+.B Alt\-T
+Swap the words around the cursor.
+.TP
+.BR Alt\-. ", " Alt\-_
+Insert the last word of a history entry, an older one on each press.
+.TP
+.BR Ctrl\-_ ", " Ctrl\-Z ", " "Ctrl\-X Ctrl\-U"
+Undo.
+.TP
+.BR Ctrl\-^ ", " Ctrl\-Shift\-Z
+Redo.
+.TP
+.B Ctrl\-X Ctrl\-E
+Edit the line in the editor that VISUAL or EDITOR names.
+.TP
+.B Ctrl\-R
+Search the history.
+.TP
+.B Ctrl\-F
+Search the history, the same as Ctrl\-R.
+.TP
+.B Ctrl\-L
+Clear the screen and draw the line again.
+.TP
+.B Ctrl\-C
+Abandon the line and show a new prompt.
+.TP
+.B Ctrl\-V
+Enter multi-cursor mode.
+.TP
+.B Paste
+A bracketed paste inserts its text with its line breaks and tabs, drops other
+control characters, and runs nothing.
+.SS Vi insert mode keys
+Every emacs mode key above works in insert mode except Ctrl\-V, which does
+nothing.
+.TP
+.B Escape
+Enter command mode with the cursor one character left.
+.SS Vi command mode keys
+.TP
+.BR 1 \- 9 ", then " 0 \- 9
+Count for the next command or motion.
+.TP
+.BI \(dq x
+Use register
+.I x
+from a to z, where an upper case letter names the same register, for the next
+delete, change, yank, or paste.
+.TP
+.BR h ", " Left ", " Backspace ", " Ctrl\-B
+Move one character left.
+.TP
+.BR l ", " Space ", " Right ", " Ctrl\-F
+Move one character right.
+.TP
+.BR w ", " W
+Move to the start of the next word, or the next blank-separated word.
+.TP
+.BR b ", " B
+Move to the start of the previous word, or blank-separated word.
+.TP
+.BR e ", " E
+Move to the end of the word, or blank-separated word.
+.TP
+.BR 0 ", " Home ", " Ctrl\-A
+Move to the start of the current line.
+.TP
+.B ^
+Move to the first non-blank character of the current line.
+.TP
+.BR $ ", " End ", " Ctrl\-E
+Move to the end of the current line.
+.TP
+.BI f x ", " F x
+Move to the next or previous
+.IR x .
+.TP
+.BI t x ", " T x
+Move to just before the next, or just after the previous,
+.IR x .
+.TP
+.BR ; ", " ,
+Repeat the last find in the same or the opposite direction.
+.TP
+.BR Up ", " Down ", " Ctrl\-P ", " Ctrl\-N
+Move between buffer rows.
+.TP
+.BR k ", " j
+Recall an older or a newer history entry.
+.TP
+.BR d ", " c ", " y
+Delete, change, or yank over the next motion. Doubling the key, or j, k, Up,
+or Down, acts on whole lines.
+.TP
+.BR x ", " X
+Delete the character under or before the cursor.
+.TP
+.BR D ", " C
+Delete, or change, to the end of the line.
+.TP
+.BR s ", " S
+Change the character under the cursor, or the whole line.
+.TP
+.BI r x
+Replace the character under the cursor with
+.IR x .
+.TP
+.B ~
+Toggle the case of the character under the cursor and move right.
+.TP
+.BR p ", " P
+Paste after or before the cursor.
+.TP
+.BR i ", " a
+Insert before or after the cursor.
+.TP
+.BR I ", " A
+Insert at the first non-blank character or at the end of the line.
+.TP
+.B R
+Enter insert mode. Typed text is inserted, not written over.
+.TP
+.B .
+Repeat the last change.
+.TP
+.BR u ", " Ctrl\-_ ", " Ctrl\-Z ", " "Ctrl\-X Ctrl\-U"
+Undo.
+.TP
+.BR Ctrl\-R ", " Ctrl\-^ ", " Ctrl\-Shift\-Z
+Redo.
+.TP
+.B /
+Search the history.
+.TP
+.B :
+Open the colon command line.
+.TP
+.BR v ", " V
+Select characters, or whole lines.
+.TP
+.B Ctrl\-V
+Select a rectangle.
+.TP
+.BR Enter ", " Ctrl\-D ", " Ctrl\-C ", " Ctrl\-L
+Act as in emacs mode.
+.SS Vi visual mode keys
+.TP
+.BR h ", " l ", " w ", " W ", " b ", " B ", " e ", " E ", " 0 ", " ^ ", " $ ", " f ", " F ", " t ", " T ", " ; ", " ,
+Move the end of the selection, without a count.
+.TP
+.BR Left ", " Right ", " Home ", " End ", " Up ", " Down
+Move the end of the selection by character, line end, or buffer row. Ctrl\-B,
+Ctrl\-F, Ctrl\-A, Ctrl\-E, Ctrl\-P, and Ctrl\-N act as these keys.
+.TP
+.BR d ", " x
+Delete the selection.
+.TP
+.B c
+Change the selection.
+.TP
+.B y
+Yank the selection.
+.TP
+.BR Escape ", " v
+Leave the selection. Any other unrecognized key leaves it too.
+.TP
+.BR Enter ", " Ctrl\-D ", " Ctrl\-C
+Leave the selection and act as in emacs mode.
+.SS Vi rectangle selection keys
+.TP
+.BR h ", " l ", " w ", " W ", " b ", " B ", " e ", " E ", " 0 ", " ^ ", " $ ", " f ", " F ", " t ", " T ", " ; ", " ,
+Move the corner within its line.
+.TP
+.BR j ", " k ", " Up ", " Down ", " Left ", " Right ", " Home ", " End
+Move the corner between rows and columns. Ctrl\-P, Ctrl\-N, Ctrl\-B, Ctrl\-F,
+Ctrl\-A, and Ctrl\-E act as the arrow, Home, and End keys.
+.TP
+.BR d ", " x
+Delete the rectangle.
+.TP
+.BR I ", " c ", " C
+Insert text at the left column of every selected line, applied when insert
+mode ends.
+.TP
+.BR Escape ", " Ctrl\-V
+Leave the selection. Any other unrecognized key leaves it too.
+.TP
+.BR Enter ", " Ctrl\-D ", " Ctrl\-C
+Leave the selection and act as in emacs mode.
+.SS Vi colon commands
+The colon key in command mode opens a command line under the buffer. Printable
+keys type the command, Backspace erases its last character, and Backspace on
+an empty command, Escape, Ctrl\-C, Ctrl\-D, or any other unrecognized key
+closes it. Other keys do nothing. Enter runs it. The line is left as it was in
+every case.
+.TP
+.BR :q ", " :q! ", " :quit ", " :wq ", " :wq! ", " :x
+Leave the shell with the status of the last command.
+.TP
+.I other
+Any other command, ranges and arguments included, does nothing and reports
+nothing.
+.SS Emacs multi-cursor keys
+.TP
+.BR Up ", " Down ", " Ctrl\-P ", " Ctrl\-N
+Extend the cursors to the row above or below.
+.TP
+.BR Left ", " Right ", " Home ", " End ", " Ctrl\-B ", " Ctrl\-F ", " Ctrl\-A ", " Ctrl\-E
+Move every cursor within its line.
+.TP
+.I character
+Insert the character at every cursor.
+.TP
+.B Backspace
+Delete the character before every cursor.
+.TP
+.BR Ctrl\-G ", " Escape
+Leave the mode. Any other unrecognized key leaves it too.
+.TP
+.BR Enter ", " Ctrl\-D ", " Ctrl\-C
+Leave the mode and act as in emacs mode.
+.SS Completion menu keys
+.TP
+.BR Down ", " Ctrl\-N
+Highlight the next row, wrapping to the first.
+.TP
+.BR Up ", " Ctrl\-P ", " Shift\-Tab
+Highlight the previous row, wrapping to the last.
+.TP
+.B Tab
+Accept the highlighted row, and open the entries of a directory.
+.TP
+.B Right
+Accept the highlighted row and offer the completions that follow it.
+.TP
+.B Enter
+Close the menu and run the line as it stands.
+.TP
+.I character
+Type into the token and narrow the rows.
+.TP
+.B Backspace
+Erase from the token and widen the rows.
+.TP
+.B Escape
+Close the menu and keep the line as edited.
+.TP
+.B Ctrl\-G
+Close the menu and restore the line that opened it. Any other unrecognized key
+does the same.
+.TP
+.I other
+Close the menu, then act on the line.
+.SS History search keys
+The interactive selector shows the history in the menu, where Enter and Tab
+accept the highlighted entry without running it, and Escape, Ctrl\-G, or any
+other unrecognized key cancels and restores the line. The other menu keys act
+as in the completion menu. The plain selector reads these keys:
+.TP
+.BR Down ", " Ctrl\-N ", " Ctrl\-R
+Step to an older match.
+.TP
+.BR Up ", " Ctrl\-P ", " Ctrl\-F ", " Shift\-Tab
+Step to a newer match.
+.TP
+.I character
+Extend the query.
+.TP
+.B Backspace
+Erase the last character of the query.
+.TP
+.BR Enter ", " Tab
+Accept the match without running it.
+.TP
+.BR Escape ", " Ctrl\-G
+Cancel and restore the line. Any other unrecognized key does the same.
+.TP
+.BR Ctrl\-C ", " Ctrl\-D
+Cancel, restore the line, and act on it.
+.TP
+.I other
+Accept the match, then act on the line.
 .SS Terminal shell integration
 An interactive shell whose standard output is a terminal writes semantic marks
 that terminals read to find prompts, commands, exit statuses, and the working

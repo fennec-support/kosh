@@ -1511,10 +1511,6 @@ struct interactive_session
         print("^C");
         flush();
         break;
-      case TL_PRESSED_SUSPEND:
-        print("^Z");
-        flush();
-        break;
       default:;
       }
 

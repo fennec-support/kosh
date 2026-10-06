@@ -11,18 +11,21 @@
 # stops itself is continued and its temporary file removed, and one that writes
 # control bytes leaves them drawn in caret notation and out of the history
 # file. A trailing backslash continues the line, the shell joins it only
-# outside quotes, and history keeps both physical lines. Ctrl-X before an
-# arrow keeps the arrow, and Alt-T keeps trailing blanks in place. The terminal
-# model
-# and session come from the ghost and menu probe. Each check prints one stable
-# PASS line for the golden output.
+# outside quotes, and history keeps both physical lines. A lone Ctrl-X names
+# its chords on the hint row until the next key resolves it, and Ctrl-X before
+# an arrow keeps the arrow. Ctrl-Z undoes at the prompt and still stops a
+# running program, Ctrl-Shift-Z in its kitty and xterm encodings redoes, and
+# Alt-T keeps trailing blanks in place. The terminal model and session come
+# from the ghost and menu probe. Each check prints one stable PASS line for the
+# golden output.
 
 import os
 import shutil
 import sys
 import tempfile
 
-from editor_ghost_menu_pty import LEFT, Report, Session, clear_line, is_line
+from editor_ghost_menu_pty import (LEFT, Report, Session, clear_line, has_hint,
+                                   is_line)
 
 
 CTRL_A = b"\x01"
@@ -32,6 +35,11 @@ CTRL_W = b"\x17"
 CTRL_X = b"\x18"
 CTRL_X_CTRL_E = b"\x18\x05"
 CTRL_Y = b"\x19"
+CTRL_U = b"\x15"
+CTRL_Z = b"\x1a"
+CTRL_SHIFT_Z_KITTY = b"\x1b[122;6u"
+CTRL_SHIFT_Z_XTERM = b"\x1b[27;6;90~"
+CTRL_X_HINT = "pressed ctrl-x. waiting for ctrl-e (edit in $VISUAL)"
 ALT_DOT = b"\x1b."
 ALT_T = b"\x1bt"
 ALT_Y = b"\x1by"
@@ -192,6 +200,58 @@ def run_checks(binary, directory, command_directory, report):
 
         session.send(b"echo ab")
         session.wait_until(is_line("echo ab"))
+        session.send(CTRL_X)
+        report.record("ctrl-x-shows-what-it-waits-for", session,
+                      lambda screen: is_line("echo ab")(screen)
+                      and has_hint(CTRL_X_HINT)(screen))
+        session.send(LEFT)
+        session.send(b"Z")
+        report.record("ctrl-x-hint-leaves-with-the-arrow", session,
+                      lambda screen: is_line("echo aZb")(screen)
+                      and CTRL_X_HINT not in screen.get_hint())
+        clear_line(session)
+
+        session.send(b"echo ab")
+        session.wait_until(is_line("echo ab"))
+        session.send(CTRL_W)
+        session.wait_until(is_line("echo"))
+        session.send(CTRL_X)
+        session.wait_until(has_hint(CTRL_X_HINT))
+        session.send(CTRL_U)
+        report.record("ctrl-x-ctrl-u-undoes-and-drops-the-hint", session,
+                      lambda screen: is_line("echo ab")(screen)
+                      and CTRL_X_HINT not in screen.get_hint())
+        clear_line(session)
+
+        session.send(b"echo ab")
+        session.wait_until(is_line("echo ab"))
+        session.send(CTRL_W)
+        session.wait_until(is_line("echo"))
+        session.send(CTRL_Z)
+        report.record("ctrl-z-undoes-at-the-prompt", session,
+                      is_line("echo ab"))
+        session.send(CTRL_SHIFT_Z_KITTY)
+        report.record("ctrl-shift-z-redoes", session, is_line("echo"))
+        session.send(CTRL_Z + CTRL_SHIFT_Z_XTERM)
+        report.record("ctrl-shift-z-redoes-from-modify-other-keys", session,
+                      is_line("echo"))
+        clear_line(session)
+        session.send(b"echo still-here\r")
+        report.record("ctrl-z-leaves-the-shell-running", session,
+                      has_output("still-here", 1))
+
+        session.send(b"slow-program\r")
+        session.wait_until(lambda screen: screen.count_lines("started") == 1)
+        session.send(CTRL_Z)
+        report.record("ctrl-z-stops-a-running-program", session,
+                      lambda screen: any("Stopped" in line
+                                         for line in screen.get_lines())
+                      and is_line("")(screen))
+        session.send(b"kill -9 %1\r")
+        session.wait_until(is_line(""))
+
+        session.send(b"echo ab")
+        session.wait_until(is_line("echo ab"))
         session.send(CTRL_X + LEFT + LEFT + b"Z")
         report.record("ctrl-x-before-an-arrow-keeps-the-arrow", session,
                       is_line("echo Zab"))
@@ -243,6 +303,9 @@ def main():
                      "kill -STOP $$\n"
                      "IFS= read -r line < \"$1\"\n"
                      "printf '%s RESUMED\\n' \"$line\" > \"$1\"\n")
+        write_script(os.path.join(command_directory, "slow-program"),
+                     "echo started\n"
+                     "exec /bin/sleep 30\n")
         write_script(os.path.join(command_directory, "control-visual"),
                      "printf ': a\\033]0;PWN\\007b\\n' > \"$1\"\n")
         run_checks(binary, directory, command_directory, report)

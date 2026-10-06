@@ -225,10 +225,6 @@ fn run_repl(const ExecContext &ec, EvalContext &cxt,
         koshka::print("^C");
         koshka::flush();
         break;
-      case TL_PRESSED_SUSPEND:
-        koshka::print("^Z");
-        koshka::flush();
-        break;
       default:;
       }
 

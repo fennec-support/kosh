@@ -101,6 +101,7 @@ fn tl_arena_realloc(opaque *pointer, usize length) -> opaque *
 #define TL_ABORT() std::abort()
 
 #define TL_NO_SUSPEND
+#define TL_CTRL_Z_UNDO
 #define TL_ASSERT           ASSERT
 #define TL_HISTORY_MAX_SIZE (1024 * 4)
 

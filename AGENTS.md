@@ -179,7 +179,13 @@ changes update this file.
   builtin and koshkit registrations, aliases, function definitions, and the
   manpage and help caches. It never forks, searches PATH, or reads a file.
   The editor draws the row under the last input row without counting it in
-  the block rows, and holds it away while a menu or search is open.
+  the block rows, and holds it away while a menu or search is open. While a
+  prefix key such as Ctrl-X, a vi operator, or a vi find key waits for its
+  next key, the editor writes its own waiting text on the row without calling
+  the callback, so the row option also governs it.
+- `src/Toiletline.cpp` defines `TL_NO_SUSPEND` and `TL_CTRL_Z_UNDO`, so
+  Ctrl-Z undoes while a line is read. A foreground program runs with the
+  terminal in its usual mode and receives Ctrl-Z as a stop signal.
 - The editor calls an idle hook after 250 ms without a key. The hook fills
   the hint caches through `step_idle_documentation`, which starts one
   `os::ProgramCapture` child under the man and help trust rules and reads it
