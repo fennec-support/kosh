@@ -2884,6 +2884,30 @@ private:
   bool m_is_armed{true};
 };
 
+class SubstitutionFrame
+{
+public:
+  explicit SubstitutionFrame(EvalContext &context) wontthrow
+      : m_context(context)
+  {}
+  SubstitutionFrame(const SubstitutionFrame &) = delete;
+  fn operator=(const SubstitutionFrame &)->SubstitutionFrame & = delete;
+  ~SubstitutionFrame();
+
+  fn push_source_frame(const WordSegment &segment, StringView origin) throws
+      -> void;
+  fn push_source_frame(const SourceLocation &location, StringView origin) throws
+      -> void;
+  fn register_embedded(StringView inner, const SourceLocation &parent_location,
+                       const String *body = nullptr) throws -> void;
+  fn pop_source_frame() wontthrow -> void;
+
+private:
+  EvalContext &m_context;
+  bool m_did_push_source_frame{false};
+  bool m_did_register_embedded{false};
+};
+
 class EvalContext : public EvalContextState
 {
 public:

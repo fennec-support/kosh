@@ -91,6 +91,45 @@ fn EvalContext::unregister_embedded_source() wontthrow -> void
   source_store().pop_embedded_source();
 }
 
+SubstitutionFrame::~SubstitutionFrame()
+{
+  if (m_did_register_embedded) m_context.unregister_embedded_source();
+  pop_source_frame();
+}
+
+fn SubstitutionFrame::push_source_frame(const WordSegment &segment,
+                                        StringView origin) throws -> void
+{
+  ASSERT(!m_did_push_source_frame);
+  m_did_push_source_frame =
+      m_context.push_substitution_source_frame(segment, origin);
+}
+
+fn SubstitutionFrame::push_source_frame(const SourceLocation &location,
+                                        StringView origin) throws -> void
+{
+  ASSERT(!m_did_push_source_frame);
+  m_did_push_source_frame =
+      m_context.push_substitution_source_frame(location, origin);
+}
+
+fn SubstitutionFrame::register_embedded(StringView inner,
+                                        const SourceLocation &parent_location,
+                                        const String *body) throws -> void
+{
+  ASSERT(!m_did_register_embedded);
+  m_did_register_embedded =
+      m_context.register_embedded_source(inner, parent_location, body);
+}
+
+fn SubstitutionFrame::pop_source_frame() wontthrow -> void
+{
+  if (!m_did_push_source_frame) return;
+
+  m_context.source_store().source_frames().pop_back();
+  m_did_push_source_frame = false;
+}
+
 fn EvalContext::map_embedded_site(StringView &rendered_source,
                                   SourceLocation &location) const wontthrow
     -> const String *
@@ -256,22 +295,11 @@ fn EvalContext::capture_command_substitution(
   let normalized_source = source.clone();
   normalized_source.normalize_crlf_line_endings();
 
-  let did_push_source_frame = false;
-  if (call_site != nullptr)
-    did_push_source_frame = push_substitution_source_frame(
-        *call_site, StringView{"command substitution"});
-  defer
-  {
-    if (did_push_source_frame) source_store().source_frames().pop_back();
-  };
-
-  let const did_register_embedded =
-      call_site != nullptr &&
-      register_embedded_source(normalized_source.view(), *call_site);
-  defer
-  {
-    if (did_register_embedded) unregister_embedded_source();
-  };
+  let frame = SubstitutionFrame{*this};
+  if (call_site != nullptr) {
+    frame.push_source_frame(*call_site, StringView{"command substitution"});
+    frame.register_embedded(normalized_source.view(), *call_site);
+  }
   let parser = Parser{
       Lexer{normalized_source.view(), *arena_store().parse_arena(),
             steal(filename), runtime_state().get_mood()}
@@ -280,16 +308,14 @@ fn EvalContext::capture_command_substitution(
   try {
     ast = parser.construct_ast();
   } catch (ErrorWithLocation &error) {
-    if (did_push_source_frame) source_store().source_frames().pop_back();
-    did_push_source_frame = false;
+    frame.pop_source_frame();
     mark_substitution_frames_printed(source_store());
     render_contained_substitution_error(std::current_exception(),
                                         normalized_source.view());
     error.set_rendered();
     throw;
   } catch (...) {
-    if (did_push_source_frame) source_store().source_frames().pop_back();
-    did_push_source_frame = false;
+    frame.pop_source_frame();
     mark_substitution_frames_printed(source_store());
     render_contained_substitution_error(std::current_exception(),
                                         normalized_source.view());
@@ -320,21 +346,12 @@ fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
   let const ast_mark = arena_store().parse_arena()->mark();
   defer { arena_store().parse_arena()->release(ast_mark); };
   let const substitution_source = String{heap_allocator(), text.substring(1)};
-  let const did_push_source_frame = push_substitution_source_frame(
-      segment, StringView{"process substitution"});
-  defer
-  {
-    if (did_push_source_frame) source_store().source_frames().pop_back();
-  };
+  let frame = SubstitutionFrame{*this};
+  frame.push_source_frame(segment, StringView{"process substitution"});
   let const segment_location = segment.get_source_location(
       source_store().current_location().source_name_index);
-  let const did_register_embedded =
-      segment_location.has_value() &&
-      register_embedded_source(substitution_source.view(), *segment_location);
-  defer
-  {
-    if (did_register_embedded) unregister_embedded_source();
-  };
+  if (segment_location.has_value())
+    frame.register_embedded(substitution_source.view(), *segment_location);
   let parser = Parser{
       Lexer{substitution_source.view(), *arena_store().parse_arena(), None,
             runtime_state().get_mood()}
@@ -492,12 +509,8 @@ fn EvalContext::capture_command_substitution(const WordSegment &segment) throws
                         ? arena_store().function_arena()
                         : arena_store().parse_arena();
   ASSERT(cache_arena != nullptr);
-  let did_push_source_frame = push_substitution_source_frame(
-      segment, StringView{"command substitution"});
-  defer
-  {
-    if (did_push_source_frame) source_store().source_frames().pop_back();
-  };
+  let frame = SubstitutionFrame{*this};
+  frame.push_source_frame(segment, StringView{"command substitution"});
   let &cache = segment.get_eval_cache(cache_arena);
   if (cache.substitution_ast == nullptr ||
       !cache_arena->is_lifetime_valid(cache.substitution_lifetime))
@@ -505,13 +518,9 @@ fn EvalContext::capture_command_substitution(const WordSegment &segment) throws
     LOG(Debug, "command substitution ast cache miss, reparsing");
     let const segment_location = segment.get_source_location(
         source_store().current_location().source_name_index);
-    let const did_register_embedded =
-        segment_location.has_value() &&
-        register_embedded_source(segment.text.view(), *segment_location);
-    defer
-    {
-      if (did_register_embedded) unregister_embedded_source();
-    };
+    let reparse_frame = SubstitutionFrame{*this};
+    if (segment_location.has_value())
+      reparse_frame.register_embedded(segment.text.view(), *segment_location);
     let const allocation_kind = segment.is_substitution_cache_in_function_arena
                                     ? ParseSession::AllocationKind::FunctionBody
                                     : ParseSession::AllocationKind::Syntax;
@@ -522,16 +531,14 @@ fn EvalContext::capture_command_substitution(const WordSegment &segment) throws
     try {
       cache.substitution_ast = parser.construct_ast();
     } catch (ErrorWithLocation &error) {
-      if (did_push_source_frame) source_store().source_frames().pop_back();
-      did_push_source_frame = false;
+      frame.pop_source_frame();
       mark_substitution_frames_printed(source_store());
       render_contained_substitution_error(std::current_exception(),
                                           segment.text.view());
       error.set_rendered();
       throw;
     } catch (...) {
-      if (did_push_source_frame) source_store().source_frames().pop_back();
-      did_push_source_frame = false;
+      frame.pop_source_frame();
       mark_substitution_frames_printed(source_store());
       render_contained_substitution_error(std::current_exception(),
                                           segment.text.view());
@@ -593,13 +600,9 @@ fn EvalContext::run_captured_substitution(
   let const substitution_mark = expansion_store().scratch_arena().mark();
   defer { expansion_store().scratch_arena().release(substitution_mark); };
 
-  let const did_register_embedded =
-      call_site.has_value() &&
-      register_embedded_source(source.view(), *call_site, &source);
-  defer
-  {
-    if (did_register_embedded) unregister_embedded_source();
-  };
+  let frame = SubstitutionFrame{*this};
+  if (call_site.has_value())
+    frame.register_embedded(source.view(), *call_site, &source);
   let const source_scope =
       enter_source_scope(&source, String{source_store().current_origin()});
   let const previous_source = source_scope.get_source();
@@ -901,12 +904,8 @@ fn EvalContext::capture_function_substitution(const WordSegment &segment) throws
                         ? arena_store().function_arena()
                         : arena_store().parse_arena();
   ASSERT(cache_arena != nullptr);
-  let const did_push_source_frame = push_substitution_source_frame(
-      segment, StringView{"function substitution"});
-  defer
-  {
-    if (did_push_source_frame) source_store().source_frames().pop_back();
-  };
+  let frame = SubstitutionFrame{*this};
+  frame.push_source_frame(segment, StringView{"function substitution"});
   let &cache = segment.get_eval_cache(cache_arena);
   if (cache.substitution_ast == nullptr ||
       !cache_arena->is_lifetime_valid(cache.substitution_lifetime))

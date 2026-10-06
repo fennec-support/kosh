@@ -1126,12 +1126,8 @@ fn Subshell::evaluate_impl(EvalContext &cxt) const throws -> i64
     if (should_elide_body_fork)
       cxt.execution_store().should_elide_pending_subshell_fork() = true;
 
-    let const did_push_source_frame =
-        cxt.push_substitution_source_frame(source_location(), "a subshell");
-    defer
-    {
-      if (did_push_source_frame) cxt.source_store().source_frames().pop_back();
-    };
+    let frame = SubstitutionFrame{cxt};
+    frame.push_source_frame(source_location(), "a subshell");
 
     try {
       return evaluate_subshell_in_process(body, cxt);
