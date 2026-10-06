@@ -1891,6 +1891,8 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
 fn EvalContext::make_child_evaluator_state(
     os::subshell_bootstrap &bootstrap) const throws -> os::child_evaluator_state
 {
+  unused(materialize_kosh_identity());
+
   let const should_launch_fresh_evaluator = !os::can_fork_evaluator();
   if (should_launch_fresh_evaluator && bootstrap.payload.is_empty())
     bootstrap = make_subshell_bootstrap();

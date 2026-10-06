@@ -1165,6 +1165,8 @@ fn Subshell::evaluate_impl(EvalContext &cxt) const throws -> i64
       cxt.execution_store().set_current_command(steal(text));
   };
 
+  if (!should_elide_fork) unused(cxt.materialize_kosh_identity());
+
   koshka::flush();
   let const forked_child =
       should_elide_fork
