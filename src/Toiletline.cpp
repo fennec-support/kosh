@@ -163,12 +163,13 @@ struct completion_session
               int for_listing) -> int;
   fn highlight(const char *buffer, tl_highlight *out) -> int;
   fn validate_ghost(const char *entry) const -> int;
-  fn hint(const char *buffer, size_t cursor, const char **sgr) -> const char *;
+  fn hint(const char *buffer, size_t cursor) -> const char *;
   fn remember_invalid_span(
       koshka::StringView line,
       const koshka::ArrayList<koshka::highlight_span> &spans) throws -> void;
 
   koshka::String hint_row{koshka::heap_allocator()};
+  koshka::String syntax_problem{koshka::heap_allocator()};
   koshka::String highlighted_line{koshka::heap_allocator()};
   koshka::ArrayList<koshka::highlight_span> highlighted_spans{
       koshka::heap_allocator()};
@@ -979,8 +980,9 @@ fn kosh_ghost_validate_callback(const char *entry) -> int
   return COMPLETION_SESSION.validate_ghost(entry);
 }
 
-fn completion_session::hint(const char *buffer, size_t cursor, const char **sgr)
-    -> const char *
+constexpr koshka::StringView UPCOMING_ERROR_PREFIX{"upcoming error: "};
+
+fn completion_session::hint(const char *buffer, size_t cursor) -> const char *
 {
   if (context == nullptr) return nullptr;
 
@@ -991,14 +993,11 @@ fn completion_session::hint(const char *buffer, size_t cursor, const char **sgr)
         has_invalid_span && highlighted_line.view() == line;
     if (koshka::completion::describe_syntax_problem(
             line, cursor, is_highlight_current ? &first_invalid_span : nullptr,
-            hint_row))
+            syntax_problem))
     {
-      if (is_highlight_color_enabled) {
-        let const style =
-            koshka::colors::NONINTERACTIVE_HIGHLIGHT_THEME.style_for(
-                koshka::highlight_role::invalid_syntax);
-        if (!style.is_empty()) *sgr = style.data;
-      }
+      hint_row.clear();
+      hint_row.append(UPCOMING_ERROR_PREFIX);
+      hint_row.append(syntax_problem.view());
       return hint_row.c_str();
     }
 
@@ -1017,7 +1016,8 @@ fn completion_session::hint(const char *buffer, size_t cursor, const char **sgr)
 fn kosh_hint_callback(const char *buffer, size_t cursor, const char **sgr)
     -> const char *
 {
-  return COMPLETION_SESSION.hint(buffer, cursor, sgr);
+  unused(sgr);
+  return COMPLETION_SESSION.hint(buffer, cursor);
 }
 
 } /* namespace */

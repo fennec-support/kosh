@@ -2862,8 +2862,10 @@ output. The
 command turns the hint row off, and the option is on by default.
 .PP
 When the line has a syntax problem that running it would report, the same row
-shows that problem in place of the synopsis, in the words of the parse error.
-Examples are an unterminated quote, an unclosed
+shows that problem in place of the synopsis, in the words of the parse error
+after the prefix
+.BR "upcoming error: " ,
+in the same dim style as the synopsis. Examples are an unterminated quote, an unclosed
 .BR $( ,
 .BR $(( ,
 backtick, subshell or

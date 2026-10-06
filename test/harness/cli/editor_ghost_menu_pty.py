@@ -355,10 +355,18 @@ def is_hint(text):
     return lambda screen: screen.get_hint() == text
 
 
+UPCOMING_ERROR_PREFIX = "upcoming error: "
+
+
 def record_diagnostic(report, session, name, typed, expected):
     type_text(session, typed)
     report.record(name, session, is_hint(expected))
     clear_line(session)
+
+
+def record_upcoming_error(report, session, name, typed, message):
+    record_diagnostic(report, session, name, typed,
+                      UPCOMING_ERROR_PREFIX + message)
 
 
 def run_command(session, report, name, keys, expected_text, expected_count):
@@ -604,49 +612,53 @@ def run_checks(binary, directory, command_directory, report):
                       and not any("Number every" in line
                                   for line in screen.get_lines()))
 
-        record_diagnostic(report, session, "diagnostic-double-quote",
-                          b'echo "abc',
-                          'Unterminated string literal, expected "')
-        record_diagnostic(report, session, "diagnostic-single-quote",
-                          b"echo 'abc",
-                          "Unterminated string literal, expected '")
-        record_diagnostic(report, session, "diagnostic-ansi-c-quote",
-                          b"echo $'abc",
-                          "Unterminated $'...' string, expected '")
-        record_diagnostic(report, session, "diagnostic-command-substitution",
-                          b"echo $(ls",
-                          "Unterminated command substitution, expected )")
-        record_diagnostic(report, session, "diagnostic-arithmetic",
-                          b"echo $((1+",
-                          "Unterminated arithmetic expansion, expected ))")
-        record_diagnostic(report, session, "diagnostic-backtick",
-                          b"echo `ls",
-                          "Unterminated command substitution, expected `")
-        record_diagnostic(report, session, "diagnostic-subshell",
-                          b"(echo hi", "Unterminated subshell, expected ')'")
-        record_diagnostic(report, session, "diagnostic-conditional",
-                          b"[[ a == b",
-                          "Unterminated '[[', expected ']]'")
-        record_diagnostic(report, session, "diagnostic-if-condition",
-                          b"if true", "Unterminated if, expected 'then'")
-        record_diagnostic(report, session, "diagnostic-if-body",
-                          b"if true; then echo hi",
-                          "Unterminated if, expected 'fi'")
-        record_diagnostic(report, session, "diagnostic-loop-body",
-                          b"while true; do :",
-                          "Unterminated loop, expected 'done'")
-        record_diagnostic(report, session, "diagnostic-nested-construct",
-                          b"echo $(if true; then",
-                          "Unterminated if, expected 'fi'")
-        record_diagnostic(report, session, "diagnostic-bad-for-variable",
-                          b"for 1x in a; do",
-                          "Bad for loop variable, '1x' is not a plain name")
-        record_diagnostic(report, session, "diagnostic-stray-closer",
-                          b"echo hi; fi ",
-                          "'fi' has no matching 'if'")
-        record_diagnostic(report, session, "diagnostic-stray-done",
-                          b"if true; then echo; done ",
-                          "'done' has no matching 'while', 'until', or 'for'")
+        record_upcoming_error(report, session, "diagnostic-double-quote",
+                              b'echo "abc',
+                              'Unterminated string literal, expected "')
+        record_upcoming_error(report, session, "diagnostic-single-quote",
+                              b"echo 'abc",
+                              "Unterminated string literal, expected '")
+        record_upcoming_error(report, session, "diagnostic-ansi-c-quote",
+                              b"echo $'abc",
+                              "Unterminated $'...' string, expected '")
+        record_upcoming_error(report, session,
+                              "diagnostic-command-substitution",
+                              b"echo $(ls",
+                              "Unterminated command substitution, expected )")
+        record_upcoming_error(report, session, "diagnostic-arithmetic",
+                              b"echo $((1+",
+                              "Unterminated arithmetic expansion, expected ))")
+        record_upcoming_error(report, session, "diagnostic-backtick",
+                              b"echo `ls",
+                              "Unterminated command substitution, expected `")
+        record_upcoming_error(report, session, "diagnostic-subshell",
+                              b"(echo hi",
+                              "Unterminated subshell, expected ')'")
+        record_upcoming_error(report, session, "diagnostic-conditional",
+                              b"[[ a == b",
+                              "Unterminated '[[', expected ']]'")
+        record_upcoming_error(report, session, "diagnostic-if-condition",
+                              b"if true",
+                              "Unterminated if, expected 'then'")
+        record_upcoming_error(report, session, "diagnostic-if-body",
+                              b"if true; then echo hi",
+                              "Unterminated if, expected 'fi'")
+        record_upcoming_error(report, session, "diagnostic-loop-body",
+                              b"while true; do :",
+                              "Unterminated loop, expected 'done'")
+        record_upcoming_error(report, session, "diagnostic-nested-construct",
+                              b"echo $(if true; then",
+                              "Unterminated if, expected 'fi'")
+        record_upcoming_error(report, session, "diagnostic-bad-for-variable",
+                              b"for 1x in a; do",
+                              "Bad for loop variable, '1x' is not a plain name")
+        record_upcoming_error(report, session, "diagnostic-stray-closer",
+                              b"echo hi; fi ",
+                              "'fi' has no matching 'if'")
+        record_upcoming_error(report, session, "diagnostic-stray-done",
+                              b"if true; then echo; done ",
+                              "'done' has no matching 'while', 'until', "
+                              "or 'for'")
         record_diagnostic(report, session, "diagnostic-absent-when-closed",
                           b'echo "abc" $(ls) ${x}',
                           "echo [-neE] [arg ...]")
@@ -656,7 +668,8 @@ def run_checks(binary, directory, command_directory, report):
                           b"echo \\", "echo [-neE] [arg ...]")
 
         type_text(session, b'echo "abc')
-        session.wait_until(is_hint('Unterminated string literal, expected "'))
+        session.wait_until(is_hint(UPCOMING_ERROR_PREFIX +
+                                   'Unterminated string literal, expected "'))
         session.send(b'"')
         report.record("diagnostic-clears-when-quote-closes", session,
                       is_hint("echo [-neE] [arg ...]"))
