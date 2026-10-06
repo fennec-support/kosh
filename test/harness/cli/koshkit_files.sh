@@ -294,6 +294,8 @@ done
 if [ "${OS-}" != Windows_NT ]; then
   ofs_group=$(id -g)
   ofs_user=$(id -u)
-  "$BIN" -c "koshkit chgrp -R -x $ofs_group ofs-src; echo chgrp-short=\$?; koshkit chgrp -R --one-file-system $ofs_group ofs-src; echo chgrp-long=\$?"
-  "$BIN" -c "koshkit chown -R -x $ofs_user:$ofs_group ofs-src; echo chown-short=\$?; koshkit chown -R --one-file-system $ofs_user ofs-src; echo chown-long=\$?"
+  "$BIN" -c "koshkit chgrp -R -x $ofs_group ofs-src && koshkit chgrp -R --one-file-system $ofs_group ofs-src" ||
+    echo "chgrp-one-file-system=failed"
+  "$BIN" -c "koshkit chown -R -x $ofs_user:$ofs_group ofs-src && koshkit chown -R --one-file-system $ofs_user ofs-src" ||
+    echo "chown-one-file-system=failed"
 fi

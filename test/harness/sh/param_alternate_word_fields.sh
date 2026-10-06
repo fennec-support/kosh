@@ -2,7 +2,9 @@
 # The word of a ${name+word} or ${name-word} operator keeps its own quoting when
 # the expansion splits into fields, checked byte-for-byte against dash. A quoted
 # "$@" inside the word yields one field per positional parameter, a quoted
-# literal or "$*" stays one field, and an unquoted $@ splits.
+# literal or "$*" stays one field, and an unquoted $@ splits. Calls without
+# operands live in bash/param_alternate_word_no_operands.bash, since dash 0.5.13
+# expands a quoted "$@" with no positional parameters to one empty field.
 show() {
   printf '%s:' "$#"
   for a in "$@"; do printf '[%s]' "$a"; done
@@ -33,7 +35,6 @@ cases="$cases outer_quoted unset_plus empty_colon_plus set_minus tail_minus"
 for case_name in $cases; do
   printf '== %s\n' "$case_name"
   "$case_name" "a b" "c d"
-  "$case_name"
   "$case_name" "x  y"
   "$case_name" "" "z"
 done

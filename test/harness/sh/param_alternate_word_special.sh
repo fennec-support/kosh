@@ -1,7 +1,9 @@
 #!/bin/sh
 # The word of an alternate operator on the # and ? parameters keeps its quoted
 # fields, and a positional parameter named inside the word stays silent when
-# it is unset, checked byte-for-byte against dash.
+# it is unset, checked byte-for-byte against dash. Calls without operands live
+# in bash/param_alternate_word_no_operands.bash, since dash 0.5.13 expands a
+# quoted "$@" with no positional parameters to one empty field.
 show() {
   printf '%s:' "$#"
   for a in "$@"; do printf '[%s]' "$a"; done
@@ -38,7 +40,6 @@ cases="$cases empty_pair field_then_empty at_then_empty empty_then_at"
 for case_name in $cases; do
   printf '== %s\n' "$case_name"
   "$case_name" "a b" "c d" "e"
-  "$case_name"
   "$case_name" "x  y"
   "$case_name" "" "z"
 done
