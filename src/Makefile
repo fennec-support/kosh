@@ -191,6 +191,9 @@ COMMIT_HASH := $(shell git rev-parse HEAD || echo "<no git>")
 # Remember CXXFLAGS passed to us from CLI.
 ENVCXXFLAGS := $(CXXFLAGS)
 USER_CXXFLAGS := $(ENVCXXFLAGS)
+# A distribution that sets its own fortify level, as Arch's makepkg does with
+# -Wp,-D_FORTIFY_SOURCE=3, keeps it; otherwise release builds use level 2.
+FORTIFY_FLAGS := $(if $(findstring _FORTIFY_SOURCE,$(USER_CXXFLAGS)),,-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2)
 CXXFLAGS := # nothing
 
 encode_build_metadata = $(1)
@@ -279,8 +282,7 @@ CXXFLAGS += \
 	-DNDEBUG \
 	-O3 \
 	-funroll-loops \
-	-U_FORTIFY_SOURCE \
-	-D_FORTIFY_SOURCE=2
+	$(FORTIFY_FLAGS)
 ifneq ($(TARGET), Windows_NT)
 ifneq ($(TARGET), Darwin)
 CXXFLAGS += -flto
@@ -308,8 +310,7 @@ CXXFLAGS += \
 	-fdata-sections \
 	-fno-asynchronous-unwind-tables \
 	-fmerge-all-constants \
-	-U_FORTIFY_SOURCE \
-	-D_FORTIFY_SOURCE=2
+	$(FORTIFY_FLAGS)
 ifneq ($(TARGET), Windows_NT)
 ifneq ($(TARGET), Darwin)
 CXXFLAGS += -flto
@@ -380,8 +381,7 @@ CXXFLAGS += \
 ifneq ($(TARGET), Windows_NT)
 CXXFLAGS += \
 	-O3 \
-	-U_FORTIFY_SOURCE \
-	-D_FORTIFY_SOURCE=2
+	$(FORTIFY_FLAGS)
 ifeq ($(SHOULD_LINK_STATIC_LINUX), 1)
 CXXFLAGS += -static-pie
 endif
