@@ -2856,9 +2856,18 @@ names, else EDITOR, else vi. The value is split on blanks without expansion.
 When the editor exits with status 0, the saved text replaces the line with its
 trailing newlines removed, and nothing runs until Enter is pressed. An editor
 that is not found or that exits with another status leaves the line alone and
-reports a message above the prompt. The key does nothing under
+reports a message above the prompt. An editor that stops, such as after
+Ctrl\-Z, is continued at once, since the line waits for it to exit. The key
+does nothing under
 .BR \-T .
-Ctrl\-X Ctrl\-U undoes the last edit.
+Ctrl\-X Ctrl\-U undoes the last edit. Ctrl\-X before any other key is ignored,
+and that key runs as usual.
+.PP
+A control character in the line, a ghost suggestion, or a menu entry is drawn
+in caret notation, such as ^[ for ESC and ^? for DEL, and a C1 control as a hex
+escape such as \e\ex9b, so it never reaches the terminal raw. A tab and a line
+break in the line keep their layout. A file name with a control character
+completes in the $'...' form with escapes.
 .PP
 On a non-empty line, the up arrow recalls only the history entries that begin
 with the text typed before the first up arrow. Each further up arrow moves to
@@ -2983,12 +2992,13 @@ PROMPT_COMMAND or PS1 can replace the idle title.
 .PP
 RPS1, or RPROMPT when RPS1 is unset or empty, is a right prompt. It is expanded
 with PS1 before each prompt and drawn right-aligned on the first input row,
-ending one column short of the right edge. Escape sequences take no columns.
+ending one column short of the right edge. Color sequences take no columns.
 The right prompt is hidden while the text and ghost on that row would come
 within one column of it, while the terminal is too narrow for it, while PS1 is
-cut to fit the row, and when its expansion holds a line break. Rows after the
-first input row never carry it. It is never part of the submitted line, and
-without
+cut to fit the row, and when its expansion holds a control character other
+than a color sequence, such as a line break, a tab, or a title sequence. Rows
+after the first input row never carry it. It is never part of the submitted
+line, and without
 .B transient\-prompt
 it stays in the scrollback after Enter.
 .PP
@@ -3055,8 +3065,9 @@ key is pressed. That key then acts on the line.
 The external selector passes the candidates to the program named by
 .B KOSH_FZF_COMPLETION_COMMAND
 and its output replaces the token. Raw mode is left while the selector program
-runs, and the prompt is repainted afterwards. A selector that reports no
-match or is dismissed leaves the line alone and prints nothing. A single
+runs, and the prompt is repainted afterwards. A selector program that stops is
+continued at once. A selector that reports no match or is dismissed leaves the
+line alone and prints nothing. A single
 remaining candidate keeps the plain listing. A session without a controlling
 terminal keeps it too.
 .PP

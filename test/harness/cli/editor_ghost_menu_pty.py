@@ -25,7 +25,9 @@
 # and it stays on the synopsis for closed text, a comment, and a trailing
 # backslash. Caret moves onto matched brackets keep the line and the caret,
 # so a key typed there lands in place. The auto-pair option inserts, steps
-# over, and erases closers. Every wait polls for the expected final
+# over, and erases closers. A file name with control bytes completes in the
+# $'...' form, and neither the ghost nor the menu writes those bytes raw to the
+# terminal. Every wait polls for the expected final
 # state under a deadline, so a failure reports the last screen instead of
 # hanging. Each check prints one stable PASS line for the golden output.
 
@@ -227,6 +229,7 @@ class Session:
             "LANG": "C.UTF-8",
         }
         self.screen = Screen()
+        self.raw = bytearray()
         self.pid, self.fd = pty.fork()
         if self.pid == 0:
             os.chdir(directory)
@@ -245,6 +248,7 @@ class Session:
             return False
         if not chunk:
             return False
+        self.raw.extend(chunk)
         self.screen.feed(chunk)
         return True
 
@@ -910,7 +914,7 @@ def run_narrow_checks(binary, directory, command_directory, report):
         session.close()
 
 
-HELP_PROBE = """#!/bin/sh
+HELP_PROBE ="""#!/bin/sh
 echo forked >> '%s'
 if [ "$1" = run ]; then
   echo "Usage: act run [--job NAME]"
@@ -931,6 +935,38 @@ def write_help_probe(path, marker):
     with open(path, "w") as handle:
         handle.write(HELP_PROBE % marker)
     os.chmod(path, 0o755)
+
+
+def has_raw_control_name(session, mark):
+    written = bytes(session.raw[mark:])
+    return b"PWN\x07" in written or b"\xc2\x9b" in written
+
+
+def run_control_name_checks(binary, directory, command_directory, report):
+    session = Session(binary, directory, command_directory)
+    try:
+        if not report.record("control-startup-prompt", session, is_line("")):
+            return
+
+        mark = len(session.raw)
+        session.send(b"cat ctl/ZQa")
+        session.send(b"\t")
+        report.record("control-name-completes-ansi-c-quoted", session,
+                      is_line("cat ctl/$'ZQa\\e]0;PWN\\ax'"))
+        clear_line(session)
+
+        session.send(b"cat ctl/ZQ")
+        session.send(b"\t")
+        report.record("control-name-menu-opens", session,
+                      lambda screen: screen.get_menu() is not None
+                      and len(screen.get_menu()[0]) == 2)
+        session.send(ESCAPE)
+        session.wait_until(is_menu_closed)
+        clear_line(session)
+        report.record("control-name-never-reaches-the-terminal-raw", session,
+                      lambda screen: not has_raw_control_name(session, mark))
+    finally:
+        session.close()
 
 
 def main():
@@ -970,6 +1006,12 @@ def main():
                    report)
         run_narrow_checks(binary, directory, os.path.join(directory, "bin"),
                           report)
+        control_directory = os.path.join(directory.encode(), b"ctl")
+        os.makedirs(control_directory)
+        for name in (b"ZQa\x1b]0;PWN\x07x", b"ZQb\xc2\x9by"):
+            open(os.path.join(control_directory, name), "w").close()
+        run_control_name_checks(binary, directory,
+                                os.path.join(directory, "bin"), report)
     finally:
         shutil.rmtree(directory, ignore_errors=True)
     return 0 if report.is_ok else 1

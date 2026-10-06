@@ -346,6 +346,80 @@ enum class selector_outcome : u8
   Dismissed,
 };
 
+constexpr i64 STOPPED_PROGRAM_POLL_NANOS = 100'000'000;
+
+fn get_continue_signal() throws -> koshka::Maybe<i32>
+{
+  let const continue_signal = koshka::os::signal_number_from_name("CONT");
+  if (!continue_signal.has_value() ||
+      !koshka::os::is_process_signal_supported(*continue_signal))
+  {
+    return koshka::None;
+  }
+
+  return continue_signal;
+}
+
+fn continue_stopped_program(koshka::os::process child) throws -> bool
+{
+  let const continue_signal = get_continue_signal();
+  if (!continue_signal.has_value()) return false;
+
+  let const group = koshka::os::process_group_of(child);
+  defer { koshka::os::close_process_reference(group); };
+
+  return koshka::os::signal_process(group, *continue_signal);
+}
+
+fn wait_for_continued_program(koshka::os::process child) throws -> i32
+{
+  loop
+  {
+    bool was_stopped = false;
+    let const status =
+        koshka::os::wait_and_monitor_process(child, &was_stopped);
+    if (!was_stopped || !continue_stopped_program(child)) return status;
+  }
+}
+
+fn read_while_continuing_program(koshka::os::descriptor fd,
+                                 koshka::os::process child,
+                                 koshka::Maybe<i32> &out_exit_status) throws
+    -> koshka::Maybe<koshka::String>
+{
+  if (!get_continue_signal().has_value()) {
+    return koshka::os::read_fd_to_string(fd, koshka::heap_allocator());
+  }
+
+  let captured = koshka::String{koshka::heap_allocator()};
+  char buffer[4096];
+  loop
+  {
+    let const readiness =
+        koshka::os::wait_for_fd_readable(fd, STOPPED_PROGRAM_POLL_NANOS);
+    if (readiness < 0) return koshka::None;
+
+    if (readiness == 0) {
+      if (out_exit_status.has_value()) continue;
+
+      i32 status = 0;
+      let const state = koshka::os::poll_process(child, status);
+      if (state == koshka::os::process_state::Stopped) {
+        unused(continue_stopped_program(child));
+      } else if (state == koshka::os::process_state::Exited) {
+        out_exit_status = status;
+      }
+      continue;
+    }
+
+    let const read_count = koshka::os::read_fd(fd, buffer, sizeof(buffer));
+    if (!read_count.has_value()) return koshka::None;
+    if (*read_count == 0) return koshka::Maybe<koshka::String>{steal(captured)};
+
+    captured.append(koshka::StringView{buffer, *read_count});
+  }
+}
+
 /* Handing the editor screen back erases every row below the prompt. A message
    survives only after that. A failure that happens before the picker starts
    cycles the screen itself to reach the same place. The message is left above
@@ -430,13 +504,23 @@ fn run_selector_program(koshka::EvalContext &context, koshka::StringView input,
                     .fallback = koshka::os::script_fallback_policy::Reject,
                     .handoff = koshka::os::terminal_handoff::BeforeStart});
 
+  bool is_terminal_lent = true;
+  defer
+  {
+    if (is_terminal_lent) koshka::os::reclaim_controlling_terminal();
+  };
+
+  koshka::Maybe<i32> exit_status = koshka::None;
   let const captured =
-      koshka::os::read_fd_to_string(output_pipe->in, koshka::heap_allocator());
+      read_while_continuing_program(output_pipe->in, child, exit_status);
   koshka::os::close_fd(output_pipe->in);
   is_read_end_open = false;
 
-  let const status = koshka::os::wait_and_monitor_process(child);
+  let const status = exit_status.has_value()
+                         ? *exit_status
+                         : wait_for_continued_program(child);
   koshka::os::reclaim_controlling_terminal();
+  is_terminal_lent = false;
   /* A cancelled picker exits nonzero, and its own SIGINT must not abort the
      next command the way an interrupted prompt would. */
   koshka::os::INTERRUPT_REQUESTED = 0;
@@ -622,8 +706,14 @@ fn run_line_editor(koshka::EvalContext &context, koshka::StringView line,
       editor, koshka::os::program_execution_options{
                   .fallback = koshka::os::script_fallback_policy::Reject,
                   .handoff = koshka::os::terminal_handoff::BeforeStart});
-  let const status = koshka::os::wait_and_monitor_process(child);
+  bool is_terminal_lent = true;
+  defer
+  {
+    if (is_terminal_lent) koshka::os::reclaim_controlling_terminal();
+  };
+  let const status = wait_for_continued_program(child);
   koshka::os::reclaim_controlling_terminal();
+  is_terminal_lent = false;
   koshka::os::INTERRUPT_REQUESTED = 0;
 
   is_editor_suspended = false;
@@ -3041,8 +3131,16 @@ static fn append_vscode_property(String &output, StringView value) throws
 {
   for (usize index = 0; index < value.count(); index++) {
     let const byte = static_cast<unsigned char>(value[index]);
+    let const next_byte = static_cast<unsigned char>(
+        index + 1 < value.count() ? value[index + 1] : '\0');
+    let const is_c1_control =
+        byte == 0xc2 && next_byte >= 0x80 && next_byte < 0xa0;
     if (byte == '\\') {
       output += "\\\\";
+    } else if (is_c1_control) {
+      output += "\\x";
+      append_hex_byte(output, next_byte);
+      index++;
     } else if (byte < 0x20 || byte == ';' || byte == 0x7f) {
       output += "\\x";
       append_hex_byte(output, byte);

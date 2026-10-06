@@ -75,13 +75,32 @@ static pure fn byte_needs_quoting(char byte) wontthrow -> bool
   }
 }
 
+static pure fn control_sequence_length(StringView text,
+                                       usize position) wontthrow -> usize
+{
+  let const byte = static_cast<u8>(text[position]);
+  if (byte < 0x20 || byte == 0x7f) return 1;
+  if (byte != 0xc2 || position + 1 >= text.length) return 0;
+
+  let const next_byte = static_cast<u8>(text[position + 1]);
+  return next_byte >= 0x80 && next_byte < 0xa0 ? 2 : 0;
+}
+
+static pure fn has_control_sequence(StringView text) wontthrow -> bool
+{
+  for (usize i = 0; i < text.length; i++)
+    if (control_sequence_length(text, i) != 0) return true;
+
+  return false;
+}
+
 pure fn internal::path_candidate_needs_quoting(StringView candidate) wontthrow
     -> bool
 {
   for (usize i = 0; i < candidate.length; i++)
     if (byte_needs_quoting(candidate[i])) return true;
 
-  return false;
+  return has_control_sequence(candidate);
 }
 
 static pure fn byte_needs_double_quote_escape(char byte) wontthrow -> bool
@@ -89,9 +108,55 @@ static pure fn byte_needs_double_quote_escape(char byte) wontthrow -> bool
   return byte == '"' || byte == '\\' || byte == '$' || byte == '`';
 }
 
+static fn append_ansi_c_control_byte(String &quoted, char byte) throws -> void
+{
+  static constexpr StringView HEX_DIGITS{"0123456789abcdef"};
+  switch (byte) {
+  case '\a': quoted += "\\a"; return;
+  case '\b': quoted += "\\b"; return;
+  case '\t': quoted += "\\t"; return;
+  case '\n': quoted += "\\n"; return;
+  case '\v': quoted += "\\v"; return;
+  case '\f': quoted += "\\f"; return;
+  case '\r': quoted += "\\r"; return;
+  case '\x1b': quoted += "\\e"; return;
+  default: break;
+  }
+
+  let const value = static_cast<u8>(byte);
+  quoted += "\\x";
+  quoted.push(HEX_DIGITS[value >> 4]);
+  quoted.push(HEX_DIGITS[value & 0x0f]);
+}
+
+static fn append_ansi_c_quoted(String &quoted, StringView text) throws -> void
+{
+  quoted += "$'";
+  for (usize position = 0; position < text.length; position++) {
+    let const sequence_length = control_sequence_length(text, position);
+    for (usize offset = 0; offset < sequence_length; offset++)
+      append_ansi_c_control_byte(quoted, text[position + offset]);
+
+    if (sequence_length != 0) {
+      position += sequence_length - 1;
+      continue;
+    }
+
+    let const byte = text[position];
+    if (byte == '\'' || byte == '\\') quoted.push('\\');
+    quoted.push(byte);
+  }
+  quoted.push('\'');
+}
+
 fn internal::quote_path_candidate(StringView candidate) throws -> String
 {
   let quoted = String{completion_allocator()};
+  if (has_control_sequence(candidate)) {
+    append_ansi_c_quoted(quoted, candidate);
+    return quoted;
+  }
+
   quoted.push('\'');
   for (usize position = 0; position < candidate.length; position++) {
     if (candidate[position] == '\'') {
@@ -109,6 +174,15 @@ static fn append_open_quote_candidate(String &candidate, StringView text,
 {
   for (usize position = 0; position < text.length; position++) {
     let const byte = text[position];
+    let const sequence_length = control_sequence_length(text, position);
+    if (sequence_length != 0) {
+      candidate.push(quote_character);
+      append_ansi_c_quoted(candidate,
+                           text.substring_of_length(position, sequence_length));
+      candidate.push(quote_character);
+      position += sequence_length - 1;
+      continue;
+    }
     if (quote_character == '\'' && byte == '\'') {
       candidate += "'\"'\"'";
       continue;

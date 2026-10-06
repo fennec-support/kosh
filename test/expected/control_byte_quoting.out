@@ -1,0 +1,12 @@
+== an escape and a bell complete as escapes:
+$'osc\e]0;title\ax'
+== a C1 control completes as hex escapes:
+$'csi\xc2\x9by'
+== a quote, a backslash, and DEL are escaped together:
+$'mix\'q\\b\x7fz'
+== an open single quote splices each control run:
+'osc'$'\e'']0;title'$'\a''x
+== an open double quote splices each control run:
+"csi"$'\xc2\x9b'"y
+== the completed word names the file:
+found

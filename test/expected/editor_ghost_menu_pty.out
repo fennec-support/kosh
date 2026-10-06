@@ -118,4 +118,8 @@ option-off-hides-diagnostic PASS
 narrow-startup-prompt PASS
 narrow-menu-help-wraps-between-items PASS
 narrow-menu-escape-closes PASS
+control-startup-prompt PASS
+control-name-completes-ansi-c-quoted PASS
+control-name-menu-opens PASS
+control-name-never-reaches-the-terminal-raw PASS
 status=0

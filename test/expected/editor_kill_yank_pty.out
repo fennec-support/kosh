@@ -16,5 +16,14 @@ alt-dot-walks-further-back PASS
 last-word-line-runs PASS
 ctrl-x-ctrl-e-replaces-the-line PASS
 edited-line-runs-on-enter PASS
+stopped-editor-is-continued PASS
+stopped-editor-temp-file-is-removed PASS
+continued-edit-runs-on-enter PASS
+control-bytes-in-the-line-draw-visibly PASS
+history-keeps-working-after-control-bytes PASS
+history-file-holds-no-control-bytes PASS
+ctrl-x-before-an-arrow-keeps-the-arrow PASS
+alt-t-keeps-trailing-blanks PASS
+alt-t-leaves-the-caret-before-the-blank PASS
 missing-editor-keeps-the-line PASS
 status=0
