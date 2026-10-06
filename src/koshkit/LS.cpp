@@ -67,7 +67,7 @@ namespace koshkit {
 
 static constexpr usize COLUMN_GAP = 2;
 
-enum class sort_key : u8
+enum class ls_sort_key : u8
 {
   Name,
   Time,
@@ -77,7 +77,7 @@ enum class sort_key : u8
 struct listing_options
 {
   Maybe<os::terminal_dimensions> terminal_dimensions{};
-  sort_key key{sort_key::Name};
+  ls_sort_key key{ls_sort_key::Name};
   usize max_depth{0};
   bool has_depth_limit{false};
   bool is_reversed{false};
@@ -108,23 +108,23 @@ struct listing_entry
 
 struct listing_entry_comparator
 {
-  sort_key key;
+  ls_sort_key key;
   sort_order order;
 
   pure fn is_less(const listing_entry &left,
                   const listing_entry &right) const wontthrow -> bool
   {
     switch (key) {
-    case sort_key::Time:
+    case ls_sort_key::Time:
       if (left.status.modification_time != right.status.modification_time) {
         return left.status.modification_time > right.status.modification_time;
       }
       break;
-    case sort_key::Size:
+    case ls_sort_key::Size:
       if (left.status.size != right.status.size)
         return left.status.size > right.status.size;
       break;
-    case sort_key::Name: break;
+    case ls_sort_key::Name: break;
     }
 
     return left.name.view() < right.name.view();
@@ -806,12 +806,12 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
 
   if (FLAG_LS_SORT_TIME.is_enabled() && FLAG_LS_SORT_SIZE.is_enabled()) {
     options.key = FLAG_LS_SORT_TIME.position() > FLAG_LS_SORT_SIZE.position()
-                      ? sort_key::Time
-                      : sort_key::Size;
+                      ? ls_sort_key::Time
+                      : ls_sort_key::Size;
   } else if (FLAG_LS_SORT_TIME.is_enabled()) {
-    options.key = sort_key::Time;
+    options.key = ls_sort_key::Time;
   } else if (FLAG_LS_SORT_SIZE.is_enabled()) {
-    options.key = sort_key::Size;
+    options.key = ls_sort_key::Size;
   }
 
   let const is_showing_all =
@@ -821,7 +821,7 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
   options.is_showing_dot_names =
       is_showing_all || FLAG_LS_ALMOST_ALL.is_enabled();
   options.is_listing_dot_and_dotdot = is_showing_all && !options.is_tree;
-  options.needs_full_status = options.is_long || options.key != sort_key::Name;
+  options.needs_full_status = options.is_long || options.key != ls_sort_key::Name;
   options.needs_type = options.should_color || options.should_classify ||
                        options.is_recursive || options.is_tree;
   if (!options.is_long && !options.is_one_per_line && !options.is_tree)

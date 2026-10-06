@@ -69,7 +69,7 @@ jobs:
         shell: bash
         run: |
           ./scripts/llvm-tool.sh llvm-profdata merge -sparse \
-            coverage/profraw/*.profraw \
+            -failure-mode=all coverage/profraw/*.profraw \
             -o coverage/kosh.profdata
           {
             echo '## Coverage'
@@ -232,4 +232,13 @@ jobs:
 
       - name: Run golden tests
         shell: pwsh
-        run: make.exe test
+        run: |
+          make.exe test
+          $makeStatus = $LASTEXITCODE
+          Write-Host "make.exe test finished with status $makeStatus"
+          if ($makeStatus -ne 0) {
+            if (Test-Path test/failed.diff) {
+              Write-Host "failed.diff holds $((Get-Item test/failed.diff).Length) bytes"
+            }
+            exit $makeStatus
+          }
