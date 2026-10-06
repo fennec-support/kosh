@@ -132,6 +132,27 @@ static fn run_debug_bracket_driver(StringView driver_line,
   return 0;
 }
 
+static fn run_debug_hint_driver(StringView driver_line,
+                                EvalContext &context) throws -> i32
+{
+  let row = String{heap_allocator()};
+  if (!completion::describe_syntax_problem(driver_line, driver_line.length,
+                                           context.runtime_state().get_mood(),
+                                           row))
+  {
+    if (!completion::compose_command_hint(driver_line, driver_line.length,
+                                          context, row))
+    {
+      row.clear();
+    }
+  }
+  row += '\n';
+  print(row);
+  flush();
+
+  return 0;
+}
+
 static fn run_debug_ghost_driver(StringView driver_line,
                                  EvalContext &context) throws -> i32
 {

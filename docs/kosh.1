@@ -2862,30 +2862,53 @@ output. The
 command turns the hint row off, and the option is on by default.
 .PP
 When the line has a syntax problem that running it would report, the same row
-shows that problem in place of the synopsis, in the words of the parse error
-and in the same dim style as the synopsis. Examples are an unterminated quote,
+shows that problem in place of the synopsis, in the same dim style. The line is
+parsed as Enter would parse it in the current mood, and the row shows the first
+parse error followed by its detail, such as
+.BR "Unterminated if, expected 'fi'" .
+This covers every error the parser reports, among them an unterminated quote,
 an unclosed
 .BR $( ,
 .BR $(( ,
-backtick, subshell or
+.BR ${ ,
+.BR <( ,
+backtick, subshell, brace group, array or
 .BR [[ ,
 an
 .BR if ,
-loop, case or function body with no closing keyword, a stray
+loop, case or function with no closing keyword, a stray
+.BR ) ,
+.BR ;; ,
 .BR fi ,
 .BR done ,
-.BR esac ,
-.BR then
+.B esac
 or
-.BR do ,
-and a bad
+.BR then ,
+a pipe or
+.BR && ,
+.B ||
+or
+.B |&
+with no command on one side, a redirection with no target, a
+.B <<
+with no delimiter, a
+.B case
+with no
+.BR in ,
+a
+.B function
+with no name, a bad
 .B for
-variable. The editor submits the whole buffer on Enter and has no continuation
-prompt, so an open construct is an error even when a later line would close
-it, except after a trailing backslash, which joins the next row and shows
-nothing. A misplaced keyword is named only once the caret leaves the word, and
-it needs the highlighter, so it is absent when highlighting is off. A line over
-2048 bytes and an open here-document show nothing. The row follows
+variable, and an empty subshell, brace group or loop body. The editor submits
+the whole buffer on Enter and has no continuation prompt, so an open construct
+is an error even when a later line would close it, except after a trailing
+backslash, which joins the next row and shows nothing. While the caret ends a
+word where the error starts, as in a
+.B fi
+that may still become
+.BR find ,
+the row waits for the next key. A line over 2048 bytes shows nothing. The row
+follows
 .BR inline-hints .
 .PP
 The

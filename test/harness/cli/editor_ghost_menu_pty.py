@@ -606,41 +606,98 @@ def run_checks(binary, directory, command_directory, report):
 
         record_diagnostic(report, session, "diagnostic-double-quote",
                           b'echo "abc',
-                          'Unterminated string literal, expected "')
+                          'Unterminated string literal, expected " here')
         record_diagnostic(report, session, "diagnostic-single-quote",
                           b"echo 'abc",
-                          "Unterminated string literal, expected '")
+                          "Unterminated string literal, expected ' here")
         record_diagnostic(report, session, "diagnostic-ansi-c-quote",
                           b"echo $'abc",
-                          "Unterminated $'...' string, expected '")
+                          "Unterminated $'...' string, expected ' here")
         record_diagnostic(report, session, "diagnostic-command-substitution",
                           b"echo $(ls",
-                          "Unterminated command substitution, expected )")
+                          "Unterminated command substitution, expected ) here")
         record_diagnostic(report, session, "diagnostic-arithmetic",
                           b"echo $((1+",
-                          "Unterminated arithmetic expansion, expected ))")
+                          "Unterminated arithmetic expansion, expected )) here")
         record_diagnostic(report, session, "diagnostic-backtick",
                           b"echo `ls",
-                          "Unterminated command substitution, expected `")
+                          "Unterminated command substitution, expected ` here")
         record_diagnostic(report, session, "diagnostic-subshell",
                           b"(echo hi", "Unterminated subshell, expected ')'")
         record_diagnostic(report, session, "diagnostic-conditional",
                           b"[[ a == b",
                           "Unterminated '[[', expected ']]'")
         record_diagnostic(report, session, "diagnostic-if-condition",
-                          b"if true", "Unterminated if, expected 'then'")
+                          b"if true",
+                          "Unterminated if, expected 'then' after the "
+                          "condition")
         record_diagnostic(report, session, "diagnostic-if-body",
                           b"if true; then echo hi",
                           "Unterminated if, expected 'fi'")
         record_diagnostic(report, session, "diagnostic-loop-body",
                           b"while true; do :",
                           "Unterminated loop, expected 'done'")
+        record_diagnostic(report, session, "diagnostic-empty-loop-open",
+                          b"for x in a; do ",
+                          "Unterminated for loop, expected 'done'")
         record_diagnostic(report, session, "diagnostic-nested-construct",
                           b"echo $(if true; then",
-                          "Unterminated if, expected 'fi'")
+                          "Unterminated command substitution, expected ) here")
         record_diagnostic(report, session, "diagnostic-bad-for-variable",
                           b"for 1x in a; do",
-                          "Bad for loop variable, '1x' is not a plain name")
+                          "Bad for loop variable, '1x' is not a plain name, "
+                          "drop the '$' and any quotes")
+        record_diagnostic(report, session, "diagnostic-process-substitution",
+                          b"cat <(ls",
+                          "Unterminated process substitution, expected ) "
+                          "here")
+        record_diagnostic(report, session, "diagnostic-brace-group",
+                          b"f() {", "Unterminated brace group, expected '}'")
+        record_diagnostic(report, session, "diagnostic-trailing-pipe",
+                          b"ls |",
+                          "Unable to build the pipeline because no command "
+                          "follows the pipe to receive the output")
+        record_diagnostic(report, session, "diagnostic-trailing-and",
+                          b"ls &&", "Expected a command after an operator")
+        record_diagnostic(report, session, "diagnostic-leading-pipe",
+                          b"| ls", "Expected a command before the pipe")
+        record_diagnostic(report, session, "diagnostic-redirection-target",
+                          b"echo >", "Expected a filename after the redir")
+        record_diagnostic(report, session, "diagnostic-heredoc-delimiter",
+                          b"cat <<", "Expected a heredoc delimiter")
+        record_diagnostic(report, session, "diagnostic-case-without-in",
+                          b"case x ",
+                          "Expected an unquoted 'in' after the case word")
+        record_diagnostic(report, session, "diagnostic-function-name",
+                          b"function ",
+                          "Expected a name after the 'function' keyword")
+        record_diagnostic(report, session, "diagnostic-stray-paren",
+                          b"echo )", "')' has no matching '('")
+        record_diagnostic(report, session, "diagnostic-stray-case-terminator",
+                          b"echo ;;",
+                          "';;' is only valid between the arms of a 'case'")
+        record_diagnostic(report, session, "diagnostic-if-subshell-condition",
+                          b"if (true)",
+                          "Unterminated if, expected 'then' after the "
+                          "condition")
+        record_diagnostic(report, session, "diagnostic-empty-subshell",
+                          b"if ( )",
+                          "Unable to parse the subshell, the body between "
+                          "'(' and ')' is empty, a command is required")
+        record_diagnostic(report, session, "diagnostic-empty-brace-group",
+                          b"f() { }",
+                          "Unable to parse the brace group, the body between "
+                          "'{' and '}' is empty, a command is required")
+
+        type_text(session, b"echo hi; fi")
+        session.wait_until(is_line("echo hi; fi"))
+        session.pump(0.3)
+        report.record("diagnostic-absent-while-typing-word", session,
+                      is_hint(""))
+        session.send(b" ")
+        report.record("diagnostic-shown-after-word", session,
+                      is_hint("'fi' has no matching 'if'"))
+        clear_line(session)
         record_diagnostic(report, session, "diagnostic-stray-closer",
                           b"echo hi; fi ",
                           "'fi' has no matching 'if'")
@@ -654,9 +711,13 @@ def run_checks(binary, directory, command_directory, report):
                           b'echo hi # "abc', "echo [-neE] [arg ...]")
         record_diagnostic(report, session, "diagnostic-absent-after-backslash",
                           b"echo \\", "echo [-neE] [arg ...]")
+        record_diagnostic(report, session,
+                          "diagnostic-absent-after-escaped-quote",
+                          b'echo \\"abc', "echo [-neE] [arg ...]")
 
         type_text(session, b'echo "abc')
-        session.wait_until(is_hint('Unterminated string literal, expected "'))
+        session.wait_until(
+            is_hint('Unterminated string literal, expected " here'))
         session.send(b'"')
         report.record("diagnostic-clears-when-quote-closes", session,
                       is_hint("echo [-neE] [arg ...]"))

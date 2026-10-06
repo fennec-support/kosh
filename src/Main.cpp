@@ -179,6 +179,9 @@ FLAG(DEBUG_GHOST_AT, String, '\0', "debug-ghost-at", Debug,
 FLAG(DEBUG_BRACKETS_AT, String, '\0', "debug-brackets-at", Debug,
      "Print the bracket pair matched at each caret offset of the given line, "
      "then exit. The bracket matching test driver.");
+FLAG(DEBUG_HINT_AT, String, '\0', "debug-hint-at", Debug,
+     "Print the inline hint row for the given line with the caret at its end, "
+     "then exit. The hint row test driver.");
 #endif
 
 #include "MainOperations.hpp"
@@ -395,7 +398,8 @@ static fn is_debug_driver_run() wontthrow -> bool
 {
 #if !defined NDEBUG
   return FLAG_DEBUG_COMPLETE_AT.is_set() || FLAG_DEBUG_HIGHLIGHT_AT.is_set() ||
-         FLAG_DEBUG_GHOST_AT.is_set() || FLAG_DEBUG_BRACKETS_AT.is_set();
+         FLAG_DEBUG_GHOST_AT.is_set() || FLAG_DEBUG_BRACKETS_AT.is_set() ||
+         FLAG_DEBUG_HINT_AT.is_set();
 #else
   return false;
 #endif
@@ -1662,6 +1666,9 @@ wontreturn static fn exit_after_final_chunk(EvalContext &context,
   if (FLAG_DEBUG_BRACKETS_AT.is_set() && !os::is_child_process()) {
     exit_code =
         run_debug_bracket_driver(FLAG_DEBUG_BRACKETS_AT.value(), context);
+  }
+  if (FLAG_DEBUG_HINT_AT.is_set() && !os::is_child_process()) {
+    exit_code = run_debug_hint_driver(FLAG_DEBUG_HINT_AT.value(), context);
   }
 #endif
   LOG(Info, "exiting after the final chunk with code %d", exit_code);

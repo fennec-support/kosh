@@ -1,0 +1,76 @@
+set -e
+
+hint() {
+  printf '%s => ' "$1"
+  "$BIN" --debug-hint-at "$1"
+}
+
+printf '== open constructs\n'
+hint 'echo "abc'
+hint "echo 'abc"
+hint 'echo $(ls'
+hint 'echo `ls'
+hint 'echo ${x'
+hint 'echo $((1 +'
+hint 'cat <(ls'
+hint 'a=(1 2'
+hint '(echo hi'
+hint '{ echo hi'
+hint 'f() {'
+hint '[[ a == b'
+hint 'if true'
+hint 'if (true)'
+hint 'if true; then'
+hint 'while true'
+hint 'for x in a b'
+hint 'for x in a; do '
+hint 'case x in'
+hint 'echo $(if true; then'
+
+printf '== operators and redirections\n'
+hint 'ls |'
+hint 'ls |&'
+hint 'ls &&'
+hint 'ls ||'
+hint '| ls'
+hint '&& ls'
+hint 'echo >'
+hint 'cat <'
+hint 'cat <<'
+
+printf '== stray and misplaced words\n'
+hint 'echo )'
+hint 'echo ;;'
+hint 'fi '
+hint 'echo; done '
+hint 'case x '
+hint 'function '
+hint 'for 1x in a; do'
+hint 'if true; then echo fi'
+
+printf '== empty bodies\n'
+hint '( )'
+hint '{ }'
+hint 'if ( )'
+hint 'f() ( )'
+hint 'f() { }'
+hint 'while true; do done '
+
+printf '== word still being typed\n'
+hint 'fi'
+hint 'echo; esac'
+hint 'case x'
+hint 'function'
+hint 'if'
+
+printf '== continued on enter\n'
+hint 'echo \'
+hint 'echo "abc\'
+
+printf '== clean lines\n'
+hint 'echo "abc" $(ls) ${x}'
+hint 'echo hi # "abc'
+hint 'echo \"abc'
+hint 'read x <<EOF'
+hint 'if true; then echo; fi'
+hint 'f() { :; }'

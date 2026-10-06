@@ -653,6 +653,12 @@ hot fn Parser::parse_brace_group() throws -> Command *
                        m_lexer.source(), "}", close->source_location());
   }
 
+  if (body->is_dummy()) {
+    throw ErrorWithLocationAndDetails{
+        close->source_location(), "Unable to parse the brace group",
+        "The body between '{' and '}' is empty, a command is required"};
+  }
+
   BraceGroup *group =
       m_lexer.arena().create<BraceGroup>(open->source_location(), body);
   let const close_location = close->source_location();
@@ -701,6 +707,12 @@ hot fn Parser::parse_subshell(Token *open) throws -> Command *
     throw ErrorWithLocationAndDetails{open->source_location(),
                                       "Unterminated subshell",
                                       close->source_location(), "expected ')'"};
+  }
+
+  if (body->is_dummy()) {
+    throw ErrorWithLocationAndDetails{
+        close->source_location(), "Unable to parse the subshell",
+        "The body between '(' and ')' is empty, a command is required"};
   }
 
   let subshell =
@@ -843,13 +855,15 @@ fn Parser::parse_loop_body(const SourceLocation &location,
     -> parsed_loop_body
 {
   Expression *body = parse_command_list(token_kind_mask(Token::Kind::Done));
-  reject_empty_loop_body(body);
-  Token *done_token = m_lexer.next_shell_token();
+  Token *done_token = m_lexer.peek_shell_token();
   ASSERT(done_token != nullptr);
   if (done_token->kind() != Token::Kind::Done) {
     throw_unterminated(location, unterminated_message, m_lexer.source(), "done",
                        done_token->source_location());
   }
+
+  reject_empty_loop_body(body);
+  m_lexer.advance_past_last_peek();
 
   return parsed_loop_body{body, done_token->source_location()};
 }

@@ -158,11 +158,13 @@ changes update this file.
   operand reads the same catalog. Only the listing mode accepts an empty
   operand.
 - The inline hint row shows a syntax problem before the synopsis.
-  `describe_syntax_problem` words what the tolerant scan leaves open at the end
-  of the line with the headline of the parse error. A misplaced keyword comes
-  from the last highlight pass over the same text, so the hint adds no pass.
-  The editor has no continuation prompt, so an open construct counts as an
-  error.
+  `describe_syntax_problem` parses the line with the real parser in
+  substitution validation mode, in the session mood, inside a completion
+  scratch mark, and shows the first error with its detail. Hand-written
+  wording would drift from what Enter reports. The parse costs about as much
+  as the highlight pass. An error starting in the word that ends at the caret
+  waits for the next key. The editor has no continuation prompt, so an open
+  construct counts as an error, but a trailing backslash continues the line.
 - Static koshkit completion names stay alphabetically sorted.
 - The inline hint row is `compose_command_hint` in
   `src/CompletionManpage.cpp`. It runs on every keystroke and reads only

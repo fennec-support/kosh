@@ -164,18 +164,11 @@ struct completion_session
   fn highlight(const char *buffer, tl_highlight *out) -> int;
   fn validate_ghost(const char *entry) const -> int;
   fn hint(const char *buffer, size_t cursor) -> const char *;
-  fn remember_invalid_span(
-      koshka::StringView line,
-      const koshka::ArrayList<koshka::highlight_span> &spans) throws -> void;
-
   koshka::String hint_row{koshka::heap_allocator()};
   koshka::String highlighted_line{koshka::heap_allocator()};
   koshka::ArrayList<koshka::highlight_span> highlighted_spans{
       koshka::heap_allocator()};
   bool has_highlighted_spans{false};
-  koshka::highlight_span first_invalid_span{
-      0, 0, koshka::highlight_role::invalid_syntax};
-  bool has_invalid_span{false};
   char bracket_styles[4][48]{};
   usize bracket_style_count{0};
 };
@@ -795,22 +788,6 @@ fn kosh_completion_callback(const char *buffer, size_t cursor,
   return COMPLETION_SESSION.complete(buffer, cursor, out, for_listing);
 }
 
-fn completion_session::remember_invalid_span(
-    koshka::StringView line,
-    const koshka::ArrayList<koshka::highlight_span> &spans) throws -> void
-{
-  highlighted_line.clear();
-  highlighted_line.append(line);
-  has_invalid_span = false;
-  for (let const &span : spans) {
-    if (span.role == koshka::highlight_role::invalid_syntax) {
-      first_invalid_span = span;
-      has_invalid_span = true;
-      break;
-    }
-  }
-}
-
 /* The body is guarded since toiletline calls through a C function pointer. */
 fn completion_session::highlight(const char *buffer, tl_highlight *out) -> int
 {
@@ -823,7 +800,8 @@ fn completion_session::highlight(const char *buffer, tl_highlight *out) -> int
 
     if (!has_highlighted_spans || highlighted_line.view() != line) {
       let const result = koshka::completion::highlight_line(line, *context);
-      remember_invalid_span(line, result);
+      highlighted_line.clear();
+      highlighted_line.append(line);
       highlighted_spans.clear();
       for (let const &span : result)
         highlighted_spans.push(span);
@@ -986,11 +964,8 @@ fn completion_session::hint(const char *buffer, size_t cursor) -> const char *
   try {
     let const byte_length = std::strlen(buffer);
     let const line = koshka::StringView{buffer, byte_length};
-    let const is_highlight_current =
-        has_invalid_span && highlighted_line.view() == line;
     if (koshka::completion::describe_syntax_problem(
-            line, cursor, is_highlight_current ? &first_invalid_span : nullptr,
-            hint_row))
+            line, cursor, context->runtime_state().get_mood(), hint_row))
     {
       return hint_row.c_str();
     }

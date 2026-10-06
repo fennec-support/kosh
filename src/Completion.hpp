@@ -11,6 +11,7 @@
 #pragma once
 
 #include "Highlight.hpp"
+#include "MimicMood.hpp"
 #include "base/Arena.hpp"
 #include "base/Common.hpp"
 #include "base/HashSet.hpp"
@@ -260,8 +261,7 @@ fn command_word_resolves(StringView line, EvalContext &context) throws -> bool;
 fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
                         String &out) throws -> bool;
 
-fn describe_syntax_problem(StringView line, usize cursor,
-                           const highlight_span *invalid_span,
+fn describe_syntax_problem(StringView line, usize cursor, mimic_mood mood,
                            String &out) throws -> bool;
 
 } /* namespace completion */
