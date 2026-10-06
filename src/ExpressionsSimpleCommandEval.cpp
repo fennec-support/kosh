@@ -830,12 +830,12 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       /* Registered before the frame is entered so the restore runs after the
          frame is left. Once the frame is left, the depth the caller installed
          the action at is reachable again. */
-      let saved_debug_action = cxt.save_untraced_debug_trap();
-      defer { cxt.restore_untraced_debug_trap(steal(saved_debug_action)); };
-      let saved_err_action = cxt.save_untraced_err_trap();
-      defer { cxt.restore_untraced_err_trap(steal(saved_err_action)); };
-      let saved_return_action = cxt.save_untraced_return_trap();
-      defer { cxt.restore_untraced_return_trap(steal(saved_return_action)); };
+      let const untraced_debug_scope =
+          UntracedTrapScope{cxt, UntracedTrapScope::Kind::Debug};
+      let const untraced_err_scope =
+          UntracedTrapScope{cxt, UntracedTrapScope::Kind::Err};
+      let const untraced_return_scope =
+          UntracedTrapScope{cxt, UntracedTrapScope::Kind::Return};
 
       /* Bound the call nesting so a function that recurses without a base case
          errors with a caret here rather than exhausting the native stack. */
@@ -882,16 +882,11 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
           definition_info != nullptr &&
           !(definition_info->defining_state ==
             definition_state::from(cxt.runtime_state()));
-      Maybe<function_runtime_state> saved_runtime_state = None;
-      if (should_swap_state) {
-        saved_runtime_state =
-            cxt.enter_definition_state(definition_info->defining_state);
-      }
-      defer
-      {
-        if (saved_runtime_state.has_value())
-          cxt.leave_definition_state(*saved_runtime_state);
-      };
+      let const definition_scope = DefinitionStateScope{
+          cxt,
+          should_swap_state ? definition_info->defining_state
+                            : definition_state::from(cxt.runtime_state()),
+          definition_state_exit::PropagateMutations, should_swap_state};
 
       /* A located error thrown from the body is rendered here while the stack
          still names the function, since the top-level handler cannot reach the

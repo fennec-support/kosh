@@ -1020,8 +1020,8 @@ static fn evaluate_subshell_in_process(const Expression *body,
   /* The trap action that forked this subshell is not running inside it. Bash
      lets the same condition fire again for the commands of the body, and each
      of them publishes its own command text. */
-  let const outer_action_frame = cxt.trap_store().leave_action_for_subshell();
-  defer { cxt.trap_store().restore_action_frame(outer_action_frame); };
+  let const action_scope =
+      TrapActionScope::leave_for_subshell(cxt.trap_store());
 
   LOG(Debug, "entering the snapshot subshell");
 

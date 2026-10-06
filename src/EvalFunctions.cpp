@@ -376,11 +376,10 @@ fn EvalContext::run_named_trap(StringView condition,
                                ? *trigger_location
                                : source_store().current_location();
   let const saved_exit_status = execution_store().last_exit_status();
-  let const outer_action_frame = trap_store().enter_condition_action(
-      condition_bit, line_number_at_location(trigger_site),
+  let const action_scope = TrapActionScope::enter_condition(
+      trap_store(), condition_bit, line_number_at_location(trigger_site),
       source_store().source_frames().count() + 1, function_store().call_depth(),
       saved_exit_status);
-  defer { trap_store().restore_action_frame(outer_action_frame); };
 
   let const current_pipe_statuses =
       variable_store().indexed_arrays().find("PIPESTATUS");
@@ -676,6 +675,53 @@ fn EvalContext::restore_untraced_trap(StringView condition,
   if (active_depth != nullptr) *active_depth = saved.active_depth;
 }
 
+UntracedTrapScope::UntracedTrapScope(EvalContext &context, Kind kind,
+                                     bool should_apply) throws
+    : m_context(context),
+      m_kind(kind)
+{
+  if (!should_apply) return;
+
+  switch (kind) {
+  case Kind::Debug:
+    m_saved = context.save_untraced_trap(
+        StringView{"DEBUG", 5}, shell_option_id::Functrace,
+        &context.trap_store().debug_trap_active_depth());
+    break;
+  case Kind::Err:
+    m_saved = context.save_untraced_trap(
+        StringView{"ERR", 3}, shell_option_id::Errtrace,
+        &context.trap_store().err_trap_active_depth());
+    break;
+  case Kind::Return:
+    if (context.runtime_state().is_bash_compatible()) {
+      m_saved = context.save_untraced_trap(StringView{"RETURN", 6},
+                                           shell_option_id::Functrace, nullptr);
+    }
+    break;
+  }
+}
+
+UntracedTrapScope::~UntracedTrapScope()
+{
+  switch (m_kind) {
+  case Kind::Debug:
+    m_context.restore_untraced_trap(
+        StringView{"DEBUG", 5}, steal(m_saved),
+        &m_context.trap_store().debug_trap_active_depth());
+    break;
+  case Kind::Err:
+    m_context.restore_untraced_trap(
+        StringView{"ERR", 3}, steal(m_saved),
+        &m_context.trap_store().err_trap_active_depth());
+    break;
+  case Kind::Return:
+    m_context.restore_untraced_trap(StringView{"RETURN", 6}, steal(m_saved),
+                                    nullptr);
+    break;
+  }
+}
+
 fn EvalContext::install_trap_dispositions() throws -> void
 {
   LOG(Info, "reinstalling the dispositions of %zu traps", trap_store().count());
@@ -696,8 +742,8 @@ fn EvalContext::install_trap_dispositions() throws -> void
 fn EvalContext::run_pending_traps() throws -> void
 {
   let const saved_exit_status = execution_store().last_exit_status();
-  let const outer_action_frame = trap_store().enter_action(saved_exit_status);
-  defer { trap_store().restore_action_frame(outer_action_frame); };
+  let const action_scope =
+      TrapActionScope::enter(trap_store(), saved_exit_status);
 
   let const was_terminal_exec_allowed =
       execution_store().terminal_exec_allowed();
@@ -836,8 +882,8 @@ cold fn EvalContext::run_exit_trap(Maybe<i32> final_status) throws -> void
   os::INTERRUPT_REQUESTED = 0;
 
   let const saved_exit_status = execution_store().last_exit_status();
-  let const outer_action_frame = trap_store().enter_action(saved_exit_status);
-  defer { trap_store().restore_action_frame(outer_action_frame); };
+  let const action_scope =
+      TrapActionScope::enter(trap_store(), saved_exit_status);
 
   let const current_pipe_statuses =
       variable_store().indexed_arrays().find("PIPESTATUS");
@@ -890,8 +936,8 @@ cold fn EvalContext::run_subshell_exit_trap() throws -> Maybe<i32>
   /* The action keeps the command that triggered it in BASH_COMMAND. The depth
      reports it to every publisher the action reaches. */
   let const saved_exit_status = execution_store().last_exit_status();
-  let const outer_action_frame = trap_store().enter_action(saved_exit_status);
-  defer { trap_store().restore_action_frame(outer_action_frame); };
+  let const action_scope =
+      TrapActionScope::enter(trap_store(), saved_exit_status);
 
   let const current_pipe_statuses =
       variable_store().indexed_arrays().find("PIPESTATUS");

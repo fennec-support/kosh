@@ -1274,13 +1274,9 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
 
   if (!active_spec.word_list.is_empty()) {
     /* The -W list expands through the same shared path compgen -W reads. */
-    let const saved_runtime_state =
-        context.enter_definition_state(active_spec.defining_state);
-    defer
-    {
-      context.leave_definition_state(saved_runtime_state,
-                                     definition_state_exit::RestoreCaller);
-    };
+    let const definition_scope =
+        DefinitionStateScope{context, active_spec.defining_state,
+                             definition_state_exit::RestoreCaller};
     for (let const &word : context.expand_wordlist_to_fields(
              active_spec.word_list.view(), for_listing))
     {

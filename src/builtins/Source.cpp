@@ -84,8 +84,8 @@ fn Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   /* The RETURN action of a sourced file belongs to the frame the file ran in.
      Functrace is required before the caller DEBUG action reaches it. The frame
      is already left where the action runs, and this window covers it. */
-  let saved_debug_action = cxt.save_untraced_debug_trap();
-  defer { cxt.restore_untraced_debug_trap(steal(saved_debug_action)); };
+  let const untraced_debug_scope =
+      UntracedTrapScope{cxt, UntracedTrapScope::Kind::Debug};
 
   /* Bash reports the source invocation in BASH_COMMAND while the RETURN action
      runs. The commands of the file publish their own text over it. */

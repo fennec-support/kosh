@@ -51,12 +51,8 @@ fn EvalContext::run_completion_function(StringView function_name,
     defining_state = definition_info->defining_state;
   else
     defining_state.mood = mimic_mood::Bash;
-  let const saved_runtime_state = enter_definition_state(defining_state);
-  defer
-  {
-    leave_definition_state(saved_runtime_state,
-                           definition_state_exit::RestoreCaller);
-  };
+  let const definition_scope = DefinitionStateScope{
+      *this, defining_state, definition_state_exit::RestoreCaller};
 
   let const do_reset_array = [&](StringView name)
                                  throws -> ArrayList<String> & {

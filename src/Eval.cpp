@@ -117,6 +117,21 @@ RuntimeStateScope::RuntimeStateScope(EvalContext &context)
 
 RuntimeStateScope::~RuntimeStateScope() { m_saved.restore(m_context); }
 
+DefinitionStateScope::DefinitionStateScope(EvalContext &context,
+                                           const definition_state &state,
+                                           definition_state_exit exit,
+                                           bool should_enter) wontthrow
+    : m_context(context),
+      m_exit(exit)
+{
+  if (should_enter) m_saved = context.enter_definition_state(state);
+}
+
+DefinitionStateScope::~DefinitionStateScope()
+{
+  if (m_saved.has_value()) m_context.leave_definition_state(*m_saved, m_exit);
+}
+
 fn EvalContext::end_command() wontthrow -> void
 {
   let const used = arena_store().parse_arena() != nullptr

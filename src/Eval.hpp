@@ -2067,6 +2067,26 @@ public:
   {
     m_action_frame.running_conditions &= static_cast<u8>(~condition_bit);
   }
+  fn last_trap_action_status() wontthrow -> i32 &
+  {
+    return m_last_trap_action_status;
+  }
+  pure fn last_trap_action_status() const wontthrow -> i32
+  {
+    return m_last_trap_action_status;
+  }
+  fn status_before_return() wontthrow -> i32 &
+  {
+    return m_status_before_return;
+  }
+  pure fn status_before_return() const wontthrow -> i32
+  {
+    return m_status_before_return;
+  }
+
+private:
+  friend class TrapActionScope;
+
   mustuse fn enter_action(Maybe<i32> saved_exit_status) wontthrow
       -> trap_action_frame
   {
@@ -2100,24 +2120,6 @@ public:
   {
     m_action_frame = previous;
   }
-  fn last_trap_action_status() wontthrow -> i32 &
-  {
-    return m_last_trap_action_status;
-  }
-  pure fn last_trap_action_status() const wontthrow -> i32
-  {
-    return m_last_trap_action_status;
-  }
-  fn status_before_return() wontthrow -> i32 &
-  {
-    return m_status_before_return;
-  }
-  pure fn status_before_return() const wontthrow -> i32
-  {
-    return m_status_before_return;
-  }
-
-private:
   fn refresh_flags() wontthrow -> void
   {
     m_has_debug_trap = m_traps.find(StringView{"DEBUG", 5}).has_value();
@@ -2142,6 +2144,44 @@ private:
   i32 m_status_before_return{0};
   StringMap<trap_definition> m_traps{heap_allocator()};
   StringMap<FunctionBodyHandle> m_cached_bodies{heap_allocator()};
+};
+
+class TrapActionScope
+{
+public:
+  mustuse static fn enter(TrapStore &store,
+                          Maybe<i32> saved_exit_status) wontthrow
+      -> TrapActionScope
+  {
+    return TrapActionScope{store, store.enter_action(saved_exit_status)};
+  }
+  mustuse static fn
+  enter_condition(TrapStore &store, u8 condition_bit, usize trigger_line_number,
+                  usize source_frame_count, usize function_depth,
+                  i32 saved_exit_status) wontthrow -> TrapActionScope
+  {
+    return TrapActionScope{
+        store, store.enter_condition_action(condition_bit, trigger_line_number,
+                                            source_frame_count, function_depth,
+                                            saved_exit_status)};
+  }
+  mustuse static fn leave_for_subshell(TrapStore &store) wontthrow
+      -> TrapActionScope
+  {
+    return TrapActionScope{store, store.leave_action_for_subshell()};
+  }
+
+  TrapActionScope(const TrapActionScope &) = delete;
+  fn operator=(const TrapActionScope &)->TrapActionScope & = delete;
+  ~TrapActionScope() { m_store.restore_action_frame(m_previous); }
+
+private:
+  TrapActionScope(TrapStore &store, const trap_action_frame &previous)
+      : m_store(store), m_previous(previous)
+  {}
+
+  TrapStore &m_store;
+  trap_action_frame m_previous;
 };
 
 class ExpansionStore
@@ -2908,6 +2948,44 @@ private:
   bool m_did_register_embedded{false};
 };
 
+class UntracedTrapScope
+{
+public:
+  enum class Kind : u8
+  {
+    Debug,
+    Err,
+    Return,
+  };
+
+  UntracedTrapScope(EvalContext &context, Kind kind,
+                    bool should_apply = true) throws;
+  UntracedTrapScope(const UntracedTrapScope &) = delete;
+  fn operator=(const UntracedTrapScope &)->UntracedTrapScope & = delete;
+  ~UntracedTrapScope();
+
+private:
+  EvalContext &m_context;
+  saved_frame_trap m_saved;
+  Kind m_kind;
+};
+
+class DefinitionStateScope
+{
+public:
+  DefinitionStateScope(EvalContext &context, const definition_state &state,
+                       definition_state_exit exit,
+                       bool should_enter = true) wontthrow;
+  DefinitionStateScope(const DefinitionStateScope &) = delete;
+  fn operator=(const DefinitionStateScope &)->DefinitionStateScope & = delete;
+  ~DefinitionStateScope();
+
+private:
+  EvalContext &m_context;
+  Maybe<function_runtime_state> m_saved;
+  definition_state_exit m_exit;
+};
+
 class EvalContext : public EvalContextState
 {
 public:
@@ -3202,38 +3280,6 @@ public:
   /* A function call the trace option does not follow runs its body without the
      trap the caller installed. The body sees no trap listed and can install one
      of its own. The saved action returns when the body left none behind. */
-  mustuse fn save_untraced_debug_trap() throws -> saved_frame_trap
-  {
-    return save_untraced_trap(StringView{"DEBUG", 5},
-                              shell_option_id::Functrace,
-                              &trap_store().debug_trap_active_depth());
-  }
-  fn restore_untraced_debug_trap(saved_frame_trap &&saved) wontthrow -> void
-  {
-    restore_untraced_trap(StringView{"DEBUG", 5}, steal(saved),
-                          &trap_store().debug_trap_active_depth());
-  }
-  mustuse fn save_untraced_err_trap() throws -> saved_frame_trap
-  {
-    return save_untraced_trap(StringView{"ERR", 3}, shell_option_id::Errtrace,
-                              &trap_store().err_trap_active_depth());
-  }
-  fn restore_untraced_err_trap(saved_frame_trap &&saved) wontthrow -> void
-  {
-    restore_untraced_trap(StringView{"ERR", 3}, steal(saved),
-                          &trap_store().err_trap_active_depth());
-  }
-  mustuse fn save_untraced_return_trap() throws -> saved_frame_trap
-  {
-    if (!runtime_state().is_bash_compatible()) return saved_frame_trap{};
-
-    return save_untraced_trap(StringView{"RETURN", 6},
-                              shell_option_id::Functrace, nullptr);
-  }
-  fn restore_untraced_return_trap(saved_frame_trap &&saved) wontthrow -> void
-  {
-    restore_untraced_trap(StringView{"RETURN", 6}, steal(saved), nullptr);
-  }
   mustuse fn save_untraced_trap(StringView condition,
                                 shell_option_id trace_option,
                                 usize *active_depth) throws -> saved_frame_trap;
