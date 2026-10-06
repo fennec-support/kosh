@@ -1992,8 +1992,9 @@ fn EvalContext::apply_subshell_bootstrap(
     enter_function_scope();
   for (let const &name : functions.call_names) {
     let const *storage = function_store().find_storage(name.view());
-    if (storage == nullptr) invalid_subshell_bootstrap();
-    push_function_call_name(name.view(), *storage);
+    push_function_call_name(name.view(), storage != nullptr
+                                             ? *storage
+                                             : FunctionBodyHandle{});
   }
   completion_store().restore(steal(completion));
   job_table_store().apply_wire(steal(jobs));
