@@ -126,7 +126,8 @@ changes update this file.
   value is part of the requested behavior change.
 - Linux static PIE uses the system linker without `-Bsymbolic`. Binding libc
   locale symbols in the executable corrupts the locale state used by
-  `localeconv()`.
+  `localeconv()`. MODE=tinyrel links a non-PIE static executable, so the loader
+  applies no relocations and the image pages stay clean.
 - Descriptor-rebinding wrappers increment the descriptor epoch. Cached color
   decisions refresh against it. Forks, process groups, filesystems, and processor
   counts also use platform wrappers.

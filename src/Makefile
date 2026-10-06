@@ -327,7 +327,9 @@ ifeq ($(IS_LINUX_CROSS_COMPILATION), 1)
 CXXFLAGS += -static
 else ifeq ($(SHOULD_LINK_STATIC_LINUX), 1)
 CXXFLAGS += \
-	-static-pie \
+	-static \
+	-fno-pie \
+	-no-pie \
 	-nostdlib++
 LINK_LIBRARIES += -lsupc++
 endif
