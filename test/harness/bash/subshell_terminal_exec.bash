@@ -1,23 +1,13 @@
 #!/bin/bash
 
-# A forked substitution, subshell, pipeline stage, or background subshell runs
-# its last external command in place, so that command's parent is the shell
-# itself. A trap that has to run after the command keeps the fork, and the
-# status and the missing-command status still reach the parent.
+# The last command of a forked substitution, subshell, pipeline stage, or
+# background subshell keeps its traps, status, and missing-command status.
 
-self=$$
+(/bin/sh -c 'echo subshell ran')
 
-sub=$(/bin/sh -c 'echo "$PPID"')
-[ "$sub" = "$self" ] && echo "substitution execs in place"
+echo x | (/bin/sh -c 'cat > /dev/null; echo pipeline subshell stage ran')
 
-list=$(cd / && /bin/sh -c 'echo "$PPID"')
-[ "$list" = "$self" ] && echo "substitution list execs its last command"
-
-(/bin/sh -c '[ "$PPID" = "$1" ] && echo "subshell execs in place"' sh "$self")
-
-echo x | (/bin/sh -c 'cat > /dev/null; [ "$PPID" = "$1" ] && echo "pipeline subshell stage execs in place"' sh "$self")
-
-(/bin/sh -c '[ "$PPID" = "$1" ] && echo "background subshell execs in place"' sh "$self") &
+(/bin/sh -c 'echo background subshell ran') &
 wait
 
 trapped=$(trap 'echo exit-trap' EXIT; /bin/sh -c 'echo ran')

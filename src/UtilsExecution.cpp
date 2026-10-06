@@ -63,7 +63,8 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
     return execute_builtin(steal(ec), cxt);
   }
 
-  let const can_replace_shell = cxt.can_replace_process();
+  let const can_replace_shell =
+      cxt.can_replace_process() && !cxt.in_subshell();
 
   /* Mimicry runs the script in-process, a background command keeps its fork.
    */
@@ -145,9 +146,10 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
   }
 
   /* The terminal external command replaces the shell in place, the way dash
-     execs the last command under EV_EXIT. A forked subshell child replaces
-     itself the same way. The traps are rechecked at run time here, since one
-     set earlier in this chunk must still run. */
+     execs the last command under EV_EXIT. A forked subshell child spawns it
+     instead, since replacing a forked copy of the shell measured slower than
+     spawning from it. The traps are rechecked at run time here, since one set
+     earlier in this chunk must still run. */
   if (!is_async && can_replace_shell) {
     LOG(Debug,
         "execute_context replacing the shell with the terminal command '%s'",
