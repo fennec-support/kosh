@@ -38,6 +38,7 @@
   RELEASES=https://github.com/fennec-support/kosh/releases
   BIN_DIR=${KOSH_INSTALL_PATH:-}
   IS_DRY_RUN=${KOSH_INSTALL_DRY_RUN:+1}
+  IS_FORCE=${KOSH_INSTALL_FORCE:+1}
   IS_COLOR=
   IS_ERROR_COLOR=
 
@@ -146,11 +147,43 @@
     tail -n 1
   }
 
+  installed_kosh ()
+  {
+    if [ -x "$BIN_DIR/kosh$EXT" ]
+    then
+      printf '%s' "$BIN_DIR/kosh$EXT"
+    else
+      command -v kosh || :
+    fi
+  }
+
+  installed_version ()
+  {
+    "$1" --version 2>/dev/null | sed -n '1s/^Koshka Shell //p'
+  }
+
+  is_at_least ()
+  {
+    awk -v HAVE="$1" -v WANT="$2" 'BEGIN {
+      split(HAVE, H, /[^0-9]+/)
+      split(WANT, W, /[^0-9]+/)
+      for (I = 1; I <= 3; I++) {
+        if (H[I] + 0 != W[I] + 0) {
+          exit !(H[I] + 0 > W[I] + 0)
+        }
+      }
+      exit (HAVE ~ /-/ && WANT !~ /-/)
+    }'
+  }
+
   while [ "$#" -gt 0 ]
   do
     case $1 in
       --dry-run)
         IS_DRY_RUN=1
+      ;;
+      --force)
+        IS_FORCE=1
       ;;
       --install-path=*)
         BIN_DIR=${1#*=}
@@ -174,13 +207,14 @@
         set -x
       ;;
       -h | --help)
-        line "Usage: install.sh [--dry-run] [--install-path DIR] [-x]"
+        line "Usage: install.sh [--dry-run] [--force] [--install-path DIR] [-x]"
         line "  --dry-run           list the downloads, install nothing"
+        line "  --force             install even when kosh is up to date"
         line "  --install-path DIR  install to DIR, extras to DIR/../share"
         line "  -x                  trace every command"
         line "  --help              print this help"
         line "Environment: KOSH_INSTALL_PATH, KOSH_INSTALL_VERSION,"
-        line "  KOSH_INSTALL_DRY_RUN, NO_COLOR"
+        line "  KOSH_INSTALL_DRY_RUN, KOSH_INSTALL_FORCE, NO_COLOR"
         exit 0
       ;;
       *)
@@ -269,6 +303,34 @@
   SHARE_DIR=${BIN_DIR%/*}/share
   BINARY=kosh-$SYSTEM-$ARCH-$VERSION$EXT
   FILES="$BINARY kosh.bash"
+  INSTALLED=$(installed_kosh)
+
+  if [ -n "$INSTALLED" ] && [ -z "$IS_FORCE" ]
+  then
+    INSTALLED_VERSION=$(installed_version "$INSTALLED")
+
+    if [ -n "$INSTALLED_VERSION" ]
+    then
+      if [ -n "${KOSH_INSTALL_VERSION:-}" ]
+      then
+        if [ "$INSTALLED_VERSION" = "$VERSION" ]
+        then
+          IS_CURRENT=1
+        fi
+      elif is_at_least "$INSTALLED_VERSION" "$VERSION"
+      then
+        IS_CURRENT=1
+      fi
+    fi
+
+    if [ -n "${IS_CURRENT:-}" ]
+    then
+      say "Kosh $INSTALLED_VERSION is already installed:" "$INSTALLED"
+      line "*pats you gently* You are up to date with $VERSION. Nothing to do."
+      line "Pass --force to install it again."
+      exit 0
+    fi
+  fi
 
   if [ -z "$IS_DRY_RUN" ]
   then

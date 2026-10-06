@@ -34,6 +34,7 @@
 & {
     param(
         [switch]$DryRun,
+        [switch]$Force,
         [string]$InstallPath,
         [switch]$X,
         [switch]$Help,
@@ -106,6 +107,28 @@
         }
     }
 
+    function Get-InstalledVersion($Path) {
+        try {
+            $FIRST = & $Path --version 2>$null | Select-Object -First 1
+        }
+        catch {
+            return $null
+        }
+        if ("$FIRST" -match "^Koshka Shell (\S+)") { return $Matches[1] }
+        return $null
+    }
+
+    function Test-AtLeast($Have, $Want) {
+        $H = $Have -split "[^0-9]+"
+        $W = $Want -split "[^0-9]+"
+        for ($I = 0; $I -lt 3; $I++) {
+            $A = [int]$H[$I]
+            $B = [int]$W[$I]
+            if ($A -ne $B) { return $A -gt $B }
+        }
+        return -not ($Have -match "-" -and $Want -notmatch "-")
+    }
+
     function Ask($Question) {
         if ([Console]::IsInputRedirected) { return $true }
         [Console]::Error.Write("$(Mark -IsColor $IS_ERROR_COLOR)$Question [y/n] ")
@@ -118,13 +141,14 @@
             else { throw "unknown option $ARGUMENT" }
         }
         if ($Help) {
-            Line "Usage: install.ps1 [-DryRun] [-InstallPath DIR] [-X]"
+            Line "Usage: install.ps1 [-DryRun] [-Force] [-InstallPath DIR] [-X]"
             Line "  -DryRun           list the downloads, install nothing"
+            Line "  -Force            install even when kosh is up to date"
             Line "  -InstallPath DIR  install to DIR, extras to DIR\..\share"
             Line "  -X                trace every command"
             Line "  -Help             print this help"
             Line "Environment: KOSH_INSTALL_PATH, KOSH_INSTALL_VERSION,"
-            Line "  KOSH_INSTALL_DRY_RUN, NO_COLOR"
+            Line "  KOSH_INSTALL_DRY_RUN, KOSH_INSTALL_FORCE, NO_COLOR"
             return
         }
         if ($PSBoundParameters.ContainsKey("InstallPath")) {
@@ -133,6 +157,7 @@
         }
         if ($X) { Set-PSDebug -Trace 1 }
         if ($env:KOSH_INSTALL_DRY_RUN) { $DryRun = $true }
+        if ($env:KOSH_INSTALL_FORCE) { $Force = $true }
 
         Say "Hi! This is Koshka Shell installer."
         Say "You can view the repository and this script at <github.com/fennec-support/kosh>"
@@ -160,6 +185,26 @@
         $SHARE_DIR = Join-Path (Split-Path -Parent $BIN_DIR) "share"
         $BINARY = "kosh-win32-$ARCH-$VERSION.exe"
         $FILES = @($BINARY, "kosh.bash")
+
+        $INSTALLED = Join-Path $BIN_DIR "kosh.exe"
+        if (-not (Test-Path $INSTALLED)) {
+            $FOUND = Get-Command kosh -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+            $INSTALLED = if ($FOUND) { $FOUND.Source } else { $null }
+        }
+        if ($INSTALLED -and -not $Force) {
+            $INSTALLED_VERSION = Get-InstalledVersion $INSTALLED
+            $IS_CURRENT = $false
+            if ($INSTALLED_VERSION) {
+                if ($env:KOSH_INSTALL_VERSION) { $IS_CURRENT = $INSTALLED_VERSION -eq $VERSION }
+                else { $IS_CURRENT = Test-AtLeast $INSTALLED_VERSION $VERSION }
+            }
+            if ($IS_CURRENT) {
+                Say "Kosh $INSTALLED_VERSION is already installed:" $INSTALLED
+                Line "*pats you gently* You are up to date with $VERSION. Nothing to do."
+                Line "Pass -Force to install it again."
+                return
+            }
+        }
 
         if (-not $DryRun) {
             if (-not (Ask "Do you want to install Kosh $VERSION to $BIN_DIR?")) {

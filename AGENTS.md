@@ -194,7 +194,9 @@ changes update this file.
   are served from the master branch. `scripts/install.sh` and
   `scripts/install.ps1` resolve the latest release,
   verify every file against `SHA256SUMS`, and install with the `make install`
-  layout.
+  layout. They exit without installing when the kosh at the target or on PATH
+  is at least that release, or exactly a pinned `KOSH_INSTALL_VERSION`, unless
+  forced.
 
 ## Diagnostics and storage
 
