@@ -36,6 +36,7 @@ struct help_entry
 {
   String name;
   String description;
+  String forms{heap_allocator()};
 };
 
 static fn matches_from_help_entries(const ArrayList<help_entry> &entries,
@@ -104,6 +105,8 @@ public:
 
   fn ensure_parsed(EvalContext &context, StringView command,
                    StringView subcommand = {}) throws -> void;
+  fn store(StringView command, StringView key, const Maybe<String> &text) throws
+      -> void;
 };
 
 static ManpageCache MANPAGE_CACHE{};
@@ -634,9 +637,11 @@ static fn parse_manpage_option_entries(StringView text) throws
   let const view = clean.view();
 
   let descriptions = StringMap<String>{heap_allocator()};
+  let forms = StringMap<String>{heap_allocator()};
   let pending_flags = ArrayList<String>{heap_allocator()};
   usize pending_indent = 0;
   let pending_description = String{heap_allocator()};
+  let pending_forms = StringView{};
 
   let const do_finalize_pending = [&]() throws -> void {
     if (pending_flags.is_empty()) return;
@@ -644,6 +649,7 @@ static fn parse_manpage_option_entries(StringView text) throws
     for (let const &flag : pending_flags)
       if (!desc.is_empty() && !descriptions.find(flag.view()).has_value()) {
         descriptions.set(flag.view(), String{desc});
+        forms.set(flag.view(), String{pending_forms});
       }
     pending_flags.clear();
     pending_description.clear();
@@ -679,6 +685,7 @@ static fn parse_manpage_option_entries(StringView text) throws
     let const gap = double_space_gap(raw, indent);
     let const option_part = raw.substring_of_length(indent, gap - indent);
     pending_flags = extract_dash_flags(option_part);
+    pending_forms = option_part.trim_blanks();
     pending_indent = indent;
     pending_description = String{heap_allocator()};
     if (gap < raw.length)
@@ -707,9 +714,13 @@ static fn parse_manpage_option_entries(StringView text) throws
       }
     if (flag.length >= 2 && has_letter && seen.add(flag)) {
       let const description = descriptions.find(flag);
-      entries.push(help_entry{String{flag}, description.has_value()
-                                                ? String{description->view()}
-                                                : String{heap_allocator()}});
+      let const flag_forms = forms.find(flag);
+      entries.push(
+          help_entry{String{flag},
+                     description.has_value() ? String{description->view()}
+                                             : String{heap_allocator()},
+                     flag_forms.has_value() ? String{flag_forms->view()}
+                                            : String{heap_allocator()}});
     }
     j = end;
   }
@@ -729,16 +740,12 @@ static fn command_prefers_help_over_manpage(StringView command) throws -> bool
 
 static fn command_directory_is_trusted(StringView absolute_path) throws -> bool;
 
-static fn manpage_options_for(StringView page_name, EvalContext &context) throws
-    -> const ArrayList<help_entry> &
+/* man forks only when it resolves into a trusted directory, so an alias or a
+   planted man is never run. The resolved absolute path runs in place of the
+   bare name so PATH cannot reresolve it. None means the page is not read. */
+static fn manpage_argv_for(StringView page_name, EvalContext &context) throws
+    -> Maybe<ArrayList<String>>
 {
-  if (let const cached = MANPAGE_CACHE.option_entries.find(page_name);
-      cached.has_value())
-    return *cached.value();
-  let parsed_options = ArrayList<help_entry>{heap_allocator()};
-  /* man forks only when it resolves into a trusted directory, so an alias or a
-     planted man is never run. The resolved absolute path runs in place of the
-     bare name so PATH cannot reresolve it. */
   let const man_paths = context.program_resolver().search(
       "man", ProgramResolver::SearchMode::First,
       ProgramResolver::Requirement::Runnable,
@@ -749,12 +756,34 @@ static fn manpage_options_for(StringView page_name, EvalContext &context) throws
     LOG(Debug,
         "skipping the man fork for '%.*s' because man is absent or untrusted",
         static_cast<int>(page_name.length), page_name.data);
-    return *MANPAGE_CACHE.option_entries.set(page_name, steal(parsed_options));
+    return None;
   }
+
   let argv = ArrayList<String>{heap_allocator()};
   argv.push(String{man_paths[0].view()});
   argv.push(String{page_name});
-  Maybe<String> page = capture_completion_program_output(context, argv);
+  return argv;
+}
+
+static fn store_manpage_options(StringView page_name, StringView page) throws
+    -> const ArrayList<help_entry> &
+{
+  MANPAGE_CACHE.synopses.set(page_name, rendered_synopsis_of_page(page));
+  return *MANPAGE_CACHE.option_entries.set(page_name,
+                                           parse_manpage_option_entries(page));
+}
+
+static fn manpage_options_for(StringView page_name, EvalContext &context) throws
+    -> const ArrayList<help_entry> &
+{
+  if (let const cached = MANPAGE_CACHE.option_entries.find(page_name);
+      cached.has_value())
+    return *cached.value();
+  let parsed_options = ArrayList<help_entry>{heap_allocator()};
+  let const argv = manpage_argv_for(page_name, context);
+  if (!argv.has_value())
+    return *MANPAGE_CACHE.option_entries.set(page_name, steal(parsed_options));
+  Maybe<String> page = capture_completion_program_output(context, *argv);
   if (!page.has_value()) {
     LOG(Debug,
         "the man fork for '%.*s' was killed or failed to start, leaving the "
@@ -767,9 +796,7 @@ static fn manpage_options_for(StringView page_name, EvalContext &context) throws
     return *MANPAGE_CACHE.option_entries.set(page_name, steal(parsed_options));
   }
 
-  MANPAGE_CACHE.synopses.set(page_name, rendered_synopsis_of_page(page->view()));
-  parsed_options = parse_manpage_option_entries(page->view());
-  return *MANPAGE_CACHE.option_entries.set(page_name, steal(parsed_options));
+  return store_manpage_options(page_name, page->view());
 }
 
 /* An empty entry records a page that is absent or untrusted, so the fork
@@ -909,17 +936,18 @@ static fn command_directory_is_trusted(StringView absolute_path) throws -> bool
 /* The fork passes two gates, the command is on the allowlist and resolves into
    a trusted directory. The resolved absolute path runs as the only argv entry,
    not through a shell, so no alias shadows it. */
-static fn help_text_for(EvalContext &context, StringView command,
-                        StringView subcommand = {}) throws -> Maybe<String>
+static fn help_argv_for(EvalContext &context, StringView command,
+                        StringView subcommand) throws
+    -> Maybe<ArrayList<String>>
 {
   let help_argument = HELP_ALLOWLIST.find(command);
+  if (!help_argument.has_value()) return None;
+
   let const paths = context.program_resolver().search(
       command, ProgramResolver::SearchMode::First,
       ProgramResolver::Requirement::Runnable,
       ProgramResolver::CachePolicy::Bypass);
-  if (help_argument.has_value() && !paths.is_empty() &&
-      command_directory_is_trusted(paths[0].view()))
-  {
+  if (!paths.is_empty() && command_directory_is_trusted(paths[0].view())) {
     LOG(Debug,
         "the help allowlist lists '%.*s' and the directory is trusted, "
         "preparing the --help fork",
@@ -933,9 +961,33 @@ static fn help_text_for(EvalContext &context, StringView command,
         [&](StringView word) throws { argv.push(String{word}); });
     StringView{*help_argument}.for_each_ascii_whitespace_word(
         [&](StringView word) throws { argv.push(String{word}); });
+    return argv;
+  }
+
+  if (paths.is_empty()) {
+    LOG(Debug,
+        "the help allowlist lists '%.*s' but the program is not on the "
+        "path, skipping the --help fork",
+        static_cast<int>(command.length), command.data);
+  } else {
+    LOG(Debug,
+        "the help allowlist lists '%.*s' but the directory '%.*s' is "
+        "not trusted, skipping the --help fork",
+        static_cast<int>(command.length), command.data,
+        static_cast<int>(paths[0].view().length), paths[0].view().data);
+  }
+
+  return None;
+}
+
+static fn help_text_for(EvalContext &context, StringView command,
+                        StringView subcommand = {}) throws -> Maybe<String>
+{
+  let const argv = help_argv_for(context, command, subcommand);
+  if (argv.has_value()) {
     LOG(Debug, "forking '%.*s' for its --help text",
         static_cast<int>(command.length), command.data);
-    Maybe<String> output = capture_completion_program_output(context, argv);
+    Maybe<String> output = capture_completion_program_output(context, *argv);
     if (!output.has_value()) {
       LOG(Debug,
           "the --help fork for '%.*s' was killed or failed to start, leaving "
@@ -949,19 +1001,6 @@ static fn help_text_for(EvalContext &context, StringView command,
         static_cast<int>(command.length), command.data, output->length());
 
     return steal(*output);
-  }
-
-  if (help_argument.has_value() && paths.is_empty()) {
-    LOG(Debug,
-        "the help allowlist lists '%.*s' but the program is not on the "
-        "path, skipping the --help fork",
-        static_cast<int>(command.length), command.data);
-  } else if (help_argument.has_value()) {
-    LOG(Debug,
-        "the help allowlist lists '%.*s' but the directory '%.*s' is "
-        "not trusted, skipping the --help fork",
-        static_cast<int>(command.length), command.data,
-        static_cast<int>(paths[0].view().length), paths[0].view().data);
   }
 
   return String{heap_allocator()};
@@ -1004,7 +1043,8 @@ static fn parse_help_option_entries(StringView text) throws
 
     for (let const &flag : extract_dash_flags(option_part))
       if (seen.add(flag.view())) {
-        entries.push(help_entry{String{flag.view()}, String{description}});
+        entries.push(help_entry{String{flag.view()}, String{description},
+                                String{option_part.trim_blanks()}});
       }
   }
   return entries;
@@ -1030,15 +1070,20 @@ fn HelpOutputCache::ensure_parsed(EvalContext &context, StringView command,
 {
   let const key = help_cache_key(command, subcommand);
   if (parsed_keys.contains(key.view())) return;
-  /* A killed fork still fills both caches so the caller has a reference to
-     return, and the key stays unparsed while attempts remain. */
-  let const text = help_text_for(context, command, subcommand);
+  store(command, key.view(), help_text_for(context, command, subcommand));
+}
+
+/* A killed fork still fills both caches so the caller has a reference to
+   return, and the key stays unparsed while attempts remain. */
+fn HelpOutputCache::store(StringView command, StringView key,
+                          const Maybe<String> &text) throws -> void
+{
   let const parsed = text.has_value() ? text->view() : StringView{};
-  option_entries.set(key.view(), parse_help_option_entries(parsed));
-  subcommand_entries.set(key.view(), parse_help_subcommands(parsed, command));
-  usages.set(key.view(), usage_line_of_help(parsed));
-  if (text.has_value() || !should_retry_killed_fork("help", key.view()))
-    parsed_keys.add(key.view());
+  option_entries.set(key, parse_help_option_entries(parsed));
+  subcommand_entries.set(key, parse_help_subcommands(parsed, command));
+  usages.set(key, usage_line_of_help(parsed));
+  if (text.has_value() || !should_retry_killed_fork("help", key))
+    parsed_keys.add(key);
 }
 
 static fn help_entries_for(StringMap<ArrayList<help_entry>> &cache,
@@ -1444,6 +1489,25 @@ static fn describe_registered_flag(const FlagList &flags, StringView flag,
       forms.append(StringView{"--"});
       forms.append(candidate->long_name());
     }
+    switch (candidate->kind()) {
+    case Flag::Kind::String:
+      forms.append(candidate->long_name().is_empty() ? StringView{" <...>"}
+                                                     : StringView{"=<...>"});
+      break;
+    case Flag::Kind::ManyStrings:
+      forms.append(candidate->long_name().is_empty() ? StringView{" <.., ..>"}
+                                                     : StringView{"=<.., ..>"});
+      break;
+    case Flag::Kind::OptionalValue:
+      forms.append(StringView{"[=<"});
+      forms.append(
+          static_cast<const FlagOptionalValue *>(candidate)->value_name());
+      forms.push('>');
+      forms.push(']');
+      break;
+    case Flag::Kind::Bool:
+    case Flag::Kind::RepeatedBool: break;
+    }
     append_flag_row(out, forms.view(), candidate->description());
     return true;
   }
@@ -1457,7 +1521,8 @@ static fn describe_cached_flag(const ArrayList<help_entry> &entries,
     if (entry.name.view() != flag || entry.description.is_empty()) {
       continue;
     }
-    append_flag_row(out, flag, entry.description.view());
+    append_flag_row(out, entry.forms.is_empty() ? flag : entry.forms.view(),
+                    entry.description.view());
     return true;
   }
   return false;
@@ -1485,11 +1550,27 @@ static fn flag_under_caret(StringView token, usize cursor_in_token,
   }
 }
 
-fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
-                        String &out) throws -> bool
+/* The command the caret's arguments belong to. A command substitution under
+   the caret is its own line, and a pipe, a list operator, or a closing paren
+   starts a new segment. The caller holds the completion scratch. */
+struct hint_target
 {
-  out.clear();
+  StringView command;
+  StringView token;
+  StringView between;
+  StringView first_word;
+  usize cursor_in_token{0};
+};
+
+static fn locate_hint_target(StringView line, usize cursor) throws
+    -> Maybe<hint_target>
+{
   if (cursor > line.length) cursor = line.length;
+
+  let const substitution = command_substitution_range(line, cursor);
+  line = line.substring_of_length(substitution.start,
+                                  substitution.end - substitution.start);
+  cursor -= substitution.start;
 
   let const segment_start = command_segment_start(line, cursor);
   let const segment = line.substring(segment_start);
@@ -1497,21 +1578,81 @@ fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
   let const command =
       command_word_of(segment.substring_of_length(0, cursor_in_segment));
   if (command.is_empty() || os::has_directory_separator(command)) {
-    return false;
+    return None;
   }
 
   let const command_end =
       static_cast<usize>(command.data - segment.data) + command.length;
-  if (cursor_in_segment <= command_end) return false;
+  if (cursor_in_segment <= command_end) return None;
 
   let const bounds = find_token_bounds(segment, cursor_in_segment);
-  if (bounds.start < command_end) return false;
-  let const token =
+  if (bounds.start < command_end) return None;
+
+  let target = hint_target{};
+  target.command = command;
+  target.token =
       segment.substring_of_length(bounds.start, bounds.end - bounds.start);
-  let const between =
+  target.between =
       segment.substring_of_length(command_end, bounds.start - command_end);
   usize between_position = 0;
-  let const first_word = between.next_ascii_whitespace_word(between_position);
+  target.first_word =
+      target.between.next_ascii_whitespace_word(between_position);
+  target.cursor_in_token = cursor_in_segment - bounds.start;
+  return target;
+}
+
+/* A function has no synopsis, so the row names where it was defined. */
+static fn describe_function(StringView name, EvalContext &context,
+                            String &out) throws -> bool
+{
+  if (context.function_store().find_storage(name) == nullptr) return false;
+
+  let const *info = context.function_definition_info_of(name);
+  let const source_name = info != nullptr
+                              ? source_name_at(info->source_name_index)
+                              : Maybe<StringView>{None};
+  if (!source_name.has_value() || source_name->is_empty() ||
+      source_identity_kind_at(info->source_name_index) !=
+          source_identity_kind::File)
+  {
+    let const *source = context.function_store().find_source(name);
+    if (source != nullptr && !source->view().trim_blanks().is_empty()) {
+      source->view().for_each_ascii_whitespace_word([&](StringView word) {
+        if (!out.is_empty()) out.push(' ');
+        out.append(word);
+      });
+      return true;
+    }
+    out.append(name);
+    out.append(StringView{" ()"});
+    return true;
+  }
+
+  out.append(name);
+  out.append(StringView{" ()"});
+
+  out.append(StringView{" \xc2\xb7 "});
+  out.append(*source_name);
+  if (info->definition_line != 0) {
+    out.push(':');
+    out.append(String::from(info->definition_line, heap_allocator()));
+  }
+  return true;
+}
+
+fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
+                        String &out) throws -> bool
+{
+  out.clear();
+
+  let const scratch = ScopedCompletionScratch{};
+  let const target = locate_hint_target(line, cursor);
+  if (!target.has_value()) return false;
+
+  let const command = target->command;
+  let const token = target->token;
+  let const between = target->between;
+  let const first_word = target->first_word;
   let const has_subcommand_word =
       !first_word.is_empty() && first_word[0] != '-';
 
@@ -1519,10 +1660,11 @@ fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
   let whole_flag = String{heap_allocator()};
   let letter_flag = String{heap_allocator()};
   if (is_flag)
-    flag_under_caret(token, cursor_in_segment - bounds.start, whole_flag,
-                     letter_flag);
+    flag_under_caret(token, target->cursor_in_token, whole_flag, letter_flag);
 
   let const name = resolve_completion_alias(command, context);
+  if (describe_function(name.view(), context, out)) return true;
+
   let source = hint_source{};
 
   if (let const builtin_kind = search_builtin(name.view());
@@ -1641,9 +1783,240 @@ fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
     }
   }
 
+  /* An alias shows what it expands to before the synopsis of its target. */
+  if (let const expansion = context.scope_store().get_alias(command);
+      expansion.has_value() && !expansion->view().trim_blanks().is_empty())
+  {
+    out.append(expansion->view().trim_blanks());
+    if (!source.synopsis.is_empty()) {
+      out.append(StringView{" \xc2\xb7 "});
+      out.append(source.synopsis);
+    }
+    return true;
+  }
+
   if (source.synopsis.is_empty()) return false;
   out.append(source.synopsis);
   return true;
+}
+
+enum class idle_load_kind : u8
+{
+  Manpage,
+  Help,
+};
+
+struct idle_load
+{
+  idle_load_kind kind;
+  String key;
+  String command;
+  String hint_key;
+  os::ProgramCapture capture;
+};
+
+static Maybe<idle_load> IDLE_LOAD{};
+
+static fn finish_idle_load(idle_load &load,
+                           os::ProgramCapture::State state) throws -> void
+{
+  let const did_finish = state == os::ProgramCapture::State::Finished;
+  if (load.kind == idle_load_kind::Help) {
+    HELP_OUTPUT_CACHE.store(load.command.view(), load.key.view(),
+                            did_finish
+                                ? Maybe<String>{load.capture.take_output()}
+                                : Maybe<String>{None});
+    return;
+  }
+
+  if (!did_finish) {
+    if (!should_retry_killed_fork("man-options", load.key.view()))
+      MANPAGE_CACHE.option_entries.set(load.key.view(),
+                                       ArrayList<help_entry>{heap_allocator()});
+    return;
+  }
+
+  let const page = load.capture.take_output();
+  let const &options = store_manpage_options(load.key.view(), page.view());
+  let const synopsis = MANPAGE_CACHE.synopses.find(load.key.view());
+  if (!options.is_empty() || (synopsis.has_value() && !synopsis->is_empty()))
+    MANPAGE_CACHE.hint_pages.set(load.hint_key.view(), String{load.key.view()});
+}
+
+static fn start_idle_load(idle_load_kind kind, StringView key,
+                          StringView command, StringView hint_key,
+                          const ArrayList<String> &argv) throws -> bool
+{
+  let capture = os::ProgramCapture::start(argv, HELP_FORK_BATCH_TIMEOUT_NANOS);
+  if (!capture.has_value()) return false;
+
+  LOG(Debug, "idle documentation load of '%.*s' started",
+      static_cast<int>(key.length), key.data);
+  IDLE_LOAD = idle_load{kind, String{key}, String{command}, String{hint_key},
+                        steal(*capture)};
+  return true;
+}
+
+/* The loads run in the order an explicit flag completion would read them, and
+   the first one the caches do not hold yet starts. A missing or untrusted
+   program records its miss at once, so it is never asked again. */
+static fn start_next_idle_load(StringView line, usize cursor,
+                               EvalContext &context) throws -> bool
+{
+  let const scratch = ScopedCompletionScratch{};
+  let const target = locate_hint_target(line, cursor);
+  if (!target.has_value()) return false;
+
+  let const name = resolve_completion_alias(target->command, context);
+  if (search_builtin(name.view()).has_value()) return false;
+  if (context.function_store().find_storage(name.view()) != nullptr)
+    return false;
+  if (context.runtime_state().koshkit_utilities_are_reachable() &&
+      koshkit::find_util(name.view()).has_value())
+  {
+    return false;
+  }
+  if (context.program_resolver()
+          .search(name.view(), ProgramResolver::SearchMode::First,
+                  ProgramResolver::Requirement::Runnable,
+                  ProgramResolver::CachePolicy::Bypass)
+          .is_empty())
+  {
+    return false;
+  }
+
+  let const command = resolve_completion_command(name.view(), context);
+  let const first_word = target->first_word;
+  let const has_subcommand_word =
+      !first_word.is_empty() && first_word[0] != '-';
+
+  let const prefers_help = command_prefers_help_over_manpage(command.view());
+  let const page_name = manpage_name_for(command.view());
+  if (!prefers_help &&
+      !MANPAGE_CACHE.option_entries.find(page_name.view()).has_value())
+  {
+    let const argv = manpage_argv_for(page_name.view(), context);
+    if (argv.has_value() &&
+        start_idle_load(idle_load_kind::Manpage, page_name.view(),
+                        command.view(), name.view(), *argv))
+    {
+      return true;
+    }
+    MANPAGE_CACHE.option_entries.set(page_name.view(),
+                                     ArrayList<help_entry>{heap_allocator()});
+  }
+
+  let subcommand_key = String{name.view()};
+  subcommand_key.push(' ');
+  subcommand_key.append(first_word);
+  if (has_subcommand_word && !prefers_help) {
+    if (!MANPAGE_CACHE.is_subcommand_index_built)
+      MANPAGE_CACHE.build_subcommand_index(context);
+
+    let combined = String{command.view()};
+    combined.push('-');
+    combined.append(first_word);
+    if (MANPAGE_CACHE.page_file_paths.find(combined.view()).has_value() &&
+        !MANPAGE_CACHE.option_entries.find(combined.view()).has_value())
+    {
+      let const argv = manpage_argv_for(combined.view(), context);
+      if (argv.has_value() &&
+          start_idle_load(idle_load_kind::Manpage, combined.view(),
+                          command.view(), subcommand_key.view(), *argv))
+      {
+        return true;
+      }
+      MANPAGE_CACHE.option_entries.set(combined.view(),
+                                       ArrayList<help_entry>{heap_allocator()});
+    }
+  }
+
+  if (!HELP_ALLOWLIST.find(name.view()).has_value()) return false;
+
+  let const has_base_page =
+      MANPAGE_CACHE.hint_pages.find(name.view()).has_value();
+  if (!has_base_page && !HELP_OUTPUT_CACHE.parsed_keys.contains(name.view())) {
+    let const argv = help_argv_for(context, name.view(), StringView{});
+    if (argv.has_value() && start_idle_load(idle_load_kind::Help, name.view(),
+                                            name.view(), name.view(), *argv))
+    {
+      return true;
+    }
+    HELP_OUTPUT_CACHE.store(name.view(), name.view(),
+                            Maybe<String>{String{heap_allocator()}});
+  }
+
+  if (!has_subcommand_word ||
+      MANPAGE_CACHE.hint_pages.find(subcommand_key.view()).has_value() ||
+      !HELP_OUTPUT_CACHE.parsed_keys.contains(name.view()) ||
+      HELP_OUTPUT_CACHE.parsed_keys.contains(subcommand_key.view()))
+  {
+    return false;
+  }
+
+  let const subcommands =
+      HELP_OUTPUT_CACHE.subcommand_entries.find(name.view());
+  if (!subcommands.has_value()) return false;
+  let is_known_subcommand = false;
+  for (let const &entry : *subcommands.value())
+    if (entry.name.view() == first_word) is_known_subcommand = true;
+  if (!is_known_subcommand) return false;
+
+  let const argv = help_argv_for(context, name.view(), first_word);
+  if (argv.has_value() &&
+      start_idle_load(idle_load_kind::Help, subcommand_key.view(), name.view(),
+                      subcommand_key.view(), *argv))
+  {
+    return true;
+  }
+  HELP_OUTPUT_CACHE.store(name.view(), subcommand_key.view(),
+                          Maybe<String>{String{heap_allocator()}});
+  return false;
+}
+
+fn step_idle_documentation(StringView line, usize cursor,
+                           EvalContext &context) throws
+    -> idle_documentation_progress
+{
+  let progress = idle_documentation_progress{};
+  if (!IDLE_LOAD.has_value()) {
+    progress.is_loading = start_next_idle_load(line, cursor, context);
+    return progress;
+  }
+
+  let const state = IDLE_LOAD->capture.step();
+  if (state == os::ProgramCapture::State::Running) {
+    progress.is_loading = true;
+    return progress;
+  }
+
+  LOG(Debug, "idle documentation load of '%.*s' %s",
+      static_cast<int>(IDLE_LOAD->key.length()), IDLE_LOAD->key.c_str(),
+      state == os::ProgramCapture::State::Finished ? "finished" : "failed");
+  finish_idle_load(*IDLE_LOAD, state);
+  IDLE_LOAD = None;
+
+  progress.did_finish_load = true;
+  progress.is_loading = start_next_idle_load(line, cursor, context);
+  return progress;
+}
+
+/* A load cut short by a submitted line is tried again on a later pause until
+   its attempts run out, and then its miss is recorded. */
+fn abandon_idle_documentation() throws -> void
+{
+  if (!IDLE_LOAD.has_value()) return;
+
+  if (!should_retry_killed_fork("idle", IDLE_LOAD->key.view())) {
+    if (IDLE_LOAD->kind == idle_load_kind::Help) {
+      HELP_OUTPUT_CACHE.store(IDLE_LOAD->command.view(), IDLE_LOAD->key.view(),
+                              Maybe<String>{String{heap_allocator()}});
+    } else {
+      MANPAGE_CACHE.option_entries.set(IDLE_LOAD->key.view(),
+                                       ArrayList<help_entry>{heap_allocator()});
+    }
+  }
+  IDLE_LOAD = None;
 }
 
 } /* namespace completion */

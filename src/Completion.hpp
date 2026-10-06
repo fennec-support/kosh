@@ -261,8 +261,29 @@ fn command_word_resolves(StringView line, EvalContext &context) throws -> bool;
 fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
                         String &out) throws -> bool;
 
+struct idle_documentation_progress
+{
+  bool did_finish_load{false};
+  bool is_loading{false};
+};
+
+/* Called while the editor is idle. It reads the man page or the --help text
+   the hint row would show for the command under the caret, one bounded child
+   at a time, and never waits on that child. A finished load may change the
+   row. */
+fn step_idle_documentation(StringView line, usize cursor,
+                           EvalContext &context) throws
+    -> idle_documentation_progress;
+
+/* Kills a load still running when the line is submitted. */
+fn abandon_idle_documentation() throws -> void;
+
 fn describe_syntax_problem(StringView line, usize cursor, mimic_mood mood,
                            String &out) throws -> bool;
+
+/* The first analysis finding of a line that parses, for an idle editor. */
+fn describe_analysis_finding(StringView line, EvalContext &context,
+                             String &out) throws -> bool;
 
 } /* namespace completion */
 

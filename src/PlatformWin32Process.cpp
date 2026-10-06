@@ -294,8 +294,8 @@ create_process_utf8(StringView application_path, StringView command_line,
                     PROCESS_INFORMATION &process_info,
                     const ExecContext *stage_context = nullptr) throws -> bool;
 
-fn capture_program_output(const ArrayList<String> &argv,
-                          u64 timeout_nanos) wontthrow -> Maybe<String>
+fn ProgramCapture::start(const ArrayList<String> &argv,
+                         u64 timeout_nanos) wontthrow -> Maybe<ProgramCapture>
 {
   if (argv.is_empty()) return None;
 
@@ -303,8 +303,15 @@ fn capture_program_output(const ArrayList<String> &argv,
   HANDLE read_end = INVALID_HANDLE_VALUE;
   HANDLE write_end = INVALID_HANDLE_VALUE;
   if (CreatePipe(&read_end, &write_end, &inheritable, 0) == FALSE) return None;
-  defer { CloseHandle(read_end); };
-  defer { CloseHandle(write_end); };
+  bool is_read_end_owned = true;
+  defer
+  {
+    if (is_read_end_owned) CloseHandle(read_end);
+  };
+  defer
+  {
+    if (write_end != INVALID_HANDLE_VALUE) CloseHandle(write_end);
+  };
   if (SetHandleInformation(read_end, HANDLE_FLAG_INHERIT, 0) == FALSE)
     return None;
 
@@ -367,67 +374,107 @@ fn capture_program_output(const ArrayList<String> &argv,
   {
     return None;
   }
-  defer { CloseHandle(process_info.hProcess); };
-  defer { CloseHandle(process_info.hThread); };
+  CloseHandle(process_info.hThread);
   CloseHandle(write_end);
   write_end = INVALID_HANDLE_VALUE;
 
-  let captured = String{heap_allocator()};
-  const u64 deadline_nanos = monotonic_nanos() + timeout_nanos;
-  bool was_timed_out = false;
-  bool has_pipe_closed = false;
-  loop
+  let capture = ProgramCapture{};
+  capture.m_child = process_info.hProcess;
+  capture.m_output = read_end;
+  is_read_end_owned = false;
+  capture.m_deadline_nanos = monotonic_nanos() + timeout_nanos;
+  return capture;
+}
+
+fn ProgramCapture::step() wontthrow -> State
+{
+  if (m_child == KOSH_INVALID_PROCESS) return State::Failed;
+
+  let const do_close_output = [this]() wontthrow -> void {
+    CloseHandle(m_output);
+    m_output = KOSH_INVALID_FD;
+  };
+
+  for (u32 step_read_count = 0;
+       m_output != KOSH_INVALID_FD && step_read_count < 16; step_read_count++)
   {
-    if (monotonic_nanos() >= deadline_nanos) {
-      was_timed_out = true;
+    DWORD available_byte_count = 0;
+    if (PeekNamedPipe(m_output, nullptr, 0, nullptr, &available_byte_count,
+                      nullptr) == FALSE)
+    {
+      if (GetLastError() != ERROR_BROKEN_PIPE) {
+        abandon();
+        return State::Failed;
+      }
+      do_close_output();
       break;
     }
+    if (available_byte_count == 0) break;
 
-    if (!has_pipe_closed) {
-      DWORD available_byte_count = 0;
-      if (PeekNamedPipe(read_end, nullptr, 0, nullptr, &available_byte_count,
-                        nullptr) == FALSE)
-      {
-        if (GetLastError() != ERROR_BROKEN_PIPE) return None;
-        has_pipe_closed = true;
+    char buffer[4096];
+    let const requested_count = available_byte_count < sizeof(buffer)
+                                    ? available_byte_count
+                                    : sizeof(buffer);
+    DWORD read_count = 0;
+    if (ReadFile(m_output, buffer, requested_count, &read_count, nullptr) ==
+        FALSE)
+    {
+      if (GetLastError() != ERROR_BROKEN_PIPE) {
+        abandon();
+        return State::Failed;
       }
-
-      if (available_byte_count != 0) {
-        char buffer[4096];
-        let const requested_count = available_byte_count < sizeof(buffer)
-                                        ? available_byte_count
-                                        : sizeof(buffer);
-        DWORD read_count = 0;
-        if (ReadFile(read_end, buffer, requested_count, &read_count, nullptr) ==
-            FALSE)
-        {
-          if (GetLastError() != ERROR_BROKEN_PIPE) return None;
-          has_pipe_closed = true;
-        } else {
-          captured.append(StringView{buffer, static_cast<usize>(read_count)});
-          continue;
-        }
-      }
-    }
-
-    if (WaitForSingleObject(process_info.hProcess, 0) == WAIT_OBJECT_0) {
-      /* The pipe can report empty just before the final child write arrives. */
-      if (!has_pipe_closed && WaitForSingleObject(read_end, 1) == WAIT_OBJECT_0)
-        continue;
+      do_close_output();
       break;
     }
-    Sleep(1);
+    m_captured.append(StringView{buffer, static_cast<usize>(read_count)});
   }
 
-  if (was_timed_out) {
-    TerminateProcess(process_info.hProcess, 1);
-    WaitForSingleObject(process_info.hProcess, INFINITE);
-    record_child_process_usage(process_info.hProcess);
-    return None;
+  if (WaitForSingleObject(m_child, 0) == WAIT_OBJECT_0) {
+    /* The pipe can report empty just before the final child write arrives. */
+    DWORD remaining_byte_count = 0;
+    if (m_output != KOSH_INVALID_FD &&
+        ((PeekNamedPipe(m_output, nullptr, 0, nullptr, &remaining_byte_count,
+                        nullptr) != FALSE &&
+          remaining_byte_count != 0) ||
+         WaitForSingleObject(m_output, 1) == WAIT_OBJECT_0))
+    {
+      return State::Running;
+    }
+    if (m_output != KOSH_INVALID_FD) do_close_output();
+    record_child_process_usage(m_child);
+    CloseHandle(m_child);
+    m_child = KOSH_INVALID_PROCESS;
+    m_captured.normalize_crlf_line_endings();
+    return State::Finished;
   }
-  record_child_process_usage(process_info.hProcess);
-  captured.normalize_crlf_line_endings();
-  return captured;
+
+  if (monotonic_nanos() >= m_deadline_nanos) {
+    abandon();
+    return State::Failed;
+  }
+
+  return State::Running;
+}
+
+fn ProgramCapture::wait(u64 wait_nanos) const wontthrow -> void
+{
+  unused(wait_nanos);
+  Sleep(1);
+}
+
+fn ProgramCapture::abandon() wontthrow -> void
+{
+  if (m_output != KOSH_INVALID_FD) {
+    CloseHandle(m_output);
+    m_output = KOSH_INVALID_FD;
+  }
+  if (m_child == KOSH_INVALID_PROCESS) return;
+
+  TerminateProcess(m_child, 1);
+  WaitForSingleObject(m_child, INFINITE);
+  record_child_process_usage(m_child);
+  CloseHandle(m_child);
+  m_child = KOSH_INVALID_PROCESS;
 }
 static pure fn process_is_pid_reference(process p) wontthrow -> bool
 {

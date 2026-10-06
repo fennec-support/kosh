@@ -126,6 +126,53 @@ fn subshell_bootstrap::operator=(subshell_bootstrap &&other) noexcept
   return *this;
 }
 
+ProgramCapture::ProgramCapture(ProgramCapture &&other) noexcept
+    : m_child(other.m_child), m_output(other.m_output),
+      m_deadline_nanos(other.m_deadline_nanos),
+      m_captured(steal(other.m_captured))
+{
+  other.m_child = KOSH_INVALID_PROCESS;
+  other.m_output = KOSH_INVALID_FD;
+}
+
+fn ProgramCapture::operator=(ProgramCapture &&other) noexcept
+    -> ProgramCapture &
+{
+  if (this == &other) return *this;
+
+  abandon();
+  m_child = other.m_child;
+  m_output = other.m_output;
+  m_deadline_nanos = other.m_deadline_nanos;
+  m_captured = steal(other.m_captured);
+  other.m_child = KOSH_INVALID_PROCESS;
+  other.m_output = KOSH_INVALID_FD;
+  return *this;
+}
+
+ProgramCapture::~ProgramCapture() { abandon(); }
+
+fn ProgramCapture::take_output() wontthrow -> String
+{
+  return steal(m_captured);
+}
+
+fn capture_program_output(const ArrayList<String> &argv,
+                          u64 timeout_nanos) wontthrow -> Maybe<String>
+{
+  let capture = ProgramCapture::start(argv, timeout_nanos);
+  if (!capture.has_value()) return None;
+
+  loop
+  {
+    switch (capture->step()) {
+    case ProgramCapture::State::Finished: return capture->take_output();
+    case ProgramCapture::State::Failed: return None;
+    case ProgramCapture::State::Running: capture->wait(timeout_nanos); break;
+    }
+  }
+}
+
 fn ScopedEnvironment::set(StringView key, StringView value) throws -> void
 {
   m_saved.reserve(m_saved.count() + 1);

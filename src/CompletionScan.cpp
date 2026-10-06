@@ -1896,6 +1896,59 @@ fn describe_syntax_problem(StringView line, usize cursor, mimic_mood mood,
   return true;
 }
 
+/* The analysis runs where a submitted line would run it, and it neither
+   follows sourced files nor resolves command names, so it reads no file and
+   searches no PATH. */
+fn describe_analysis_finding(StringView line, EvalContext &context,
+                             String &out) throws -> bool
+{
+  out.clear();
+  if (line.length > SYNTAX_HINT_BYTE_LIMIT) return false;
+
+  let const &state = context.runtime_state();
+  let const is_analyzed_on_submit =
+      (state.no_exec() ||
+       !(state.is_bash_compatible() || state.is_posix_mode()) ||
+       state.get_warning_level() > 0) &&
+      !state.is_diagnostics_disabled();
+  if (!is_analyzed_on_submit) return false;
+
+  let const scratch = ScopedCompletionScratch{};
+  let parser = Parser{
+      Lexer{line, COMPLETION_ARENA, None, state.get_mood()}
+  };
+  parser.set_analysis_metadata_collection_mode(
+      analysis_metadata_collection_mode::Enabled);
+  parser.set_substitution_validation_mode(
+      substitution_validation_mode::Enabled);
+  let rendered_errors = ArrayList<String>{heap_allocator()};
+  let diagnostics = ArrayList<source_diagnostic>{heap_allocator()};
+  let const *ast =
+      parser.construct_ast(rendered_errors, &context, &diagnostics);
+  if (!rendered_errors.is_empty() || ast == nullptr) return false;
+
+  let const directives = parser.take_analysis_directives();
+  let options = analysis_options::from_runtime(state);
+  options.should_silence_unresolved_commands = true;
+  analyze_ast(ast, line, context.function_store().names(),
+              context.scope_store().alias_names(), &context, options,
+              directives, {}, {}, {nullptr, &diagnostics, nullptr});
+
+  const source_diagnostic *first = nullptr;
+  for (let const &diagnostic : diagnostics) {
+    if (diagnostic.message.is_empty()) continue;
+    if (first == nullptr ||
+        diagnostic.location.position < first->location.position)
+    {
+      first = &diagnostic;
+    }
+  }
+  if (first == nullptr) return false;
+
+  out.append(first->message.view());
+  return true;
+}
+
 } /* namespace completion */
 
 } /* namespace koshka */

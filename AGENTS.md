@@ -168,11 +168,20 @@ changes update this file.
   construct counts as an error, but a trailing backslash continues the line.
 - Static koshkit completion names stay alphabetically sorted.
 - The inline hint row is `compose_command_hint` in
-  `src/CompletionManpage.cpp`. It runs on every keystroke and reads only
-  builtin and koshkit registrations and the manpage and help caches that an
-  explicit flag completion filled. It never forks, searches PATH, or reads a
-  file. The editor draws the row under the last input row without counting it
-  in the block rows, and holds it away while a menu or search is open.
+  `src/CompletionManpage.cpp`. It runs on every keystroke for the command of
+  the segment or command substitution under the caret, and reads only
+  builtin and koshkit registrations, aliases, function definitions, and the
+  manpage and help caches. It never forks, searches PATH, or reads a file.
+  The editor draws the row under the last input row without counting it in
+  the block rows, and holds it away while a menu or search is open.
+- The editor calls an idle hook after 250 ms without a key. The hook fills
+  the hint caches through `step_idle_documentation`, which starts one
+  `os::ProgramCapture` child under the man and help trust rules and reads it
+  without blocking on each repeat, so a key is served while the child runs.
+  Every load, miss, and timeout lands in the same caches explicit flag
+  completion uses, and a submitted line kills a running load. The hook also
+  keeps `describe_analysis_finding` for the paused line, which analyzes with
+  unresolved commands silenced and no followed sources, so it reads no file.
 - The highlight callback receives the caret and follows it. It reuses the
   spans of an unchanged line within one prompt, and on a caret move it only
   overlays the pair from `find_matching_bracket`, which reads the highlight

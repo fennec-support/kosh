@@ -2225,6 +2225,48 @@ fn directory_is_trusted_for_exec(const Path &directory) wontthrow -> bool;
 fn capture_program_output(const ArrayList<String> &argv,
                           u64 timeout_nanos) wontthrow -> Maybe<String>;
 
+/* A program whose output is collected a step at a time, so a caller that must
+   stay responsive reads it between other work. The program reads the null
+   device and writes standard output and error into one pipe. It is killed when
+   its deadline passes, and a capture dropped before it finished kills and reaps
+   it. */
+class ProgramCapture
+{
+public:
+  enum class State : u8
+  {
+    Running,
+    Finished,
+    Failed,
+  };
+
+  static fn start(const ArrayList<String> &argv, u64 timeout_nanos) wontthrow
+      -> Maybe<ProgramCapture>;
+
+  ProgramCapture(ProgramCapture &&other) noexcept;
+  fn operator=(ProgramCapture &&other) noexcept -> ProgramCapture &;
+  ProgramCapture(const ProgramCapture &) = delete;
+  fn operator=(const ProgramCapture &)->ProgramCapture & = delete;
+  ~ProgramCapture();
+
+  /* Reads what the program wrote so far without blocking. Finished leaves the
+     whole output for take_output, and Failed means the program timed out or
+     the pipe broke, with the program already gone. */
+  fn step() wontthrow -> State;
+  /* Blocks for at most wait_nanos until the program writes or exits. */
+  fn wait(u64 wait_nanos) const wontthrow -> void;
+  fn take_output() wontthrow -> String;
+
+private:
+  ProgramCapture() = default;
+  fn abandon() wontthrow -> void;
+
+  process m_child{KOSH_INVALID_PROCESS};
+  descriptor m_output{KOSH_INVALID_FD};
+  u64 m_deadline_nanos{0};
+  String m_captured{heap_allocator()};
+};
+
 /* Ignores SIGTTOU across the change. A no-op without a controlling terminal. */
 fn give_controlling_terminal_to(process p) wontthrow -> void;
 fn give_controlling_terminal_to_process_group(i64 process_group_id) wontthrow

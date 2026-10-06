@@ -14,7 +14,12 @@
 # acceptance through Ctrl-Right and Alt-F, and prefix history search on Up and
 # Down with its option switched off, and the inline hint row for a command and
 # a flag, its absence inside the command word and for an uncached command, its
-# yielding to the menu, its erasure on submit, and its option. The same row
+# yielding to the menu, its erasure on submit, and its option. A pause loads
+# the --help usage, flag forms, and subcommand usage of a trusted allowlisted
+# command once per key and never runs one from a world-writable directory. The
+# row shows an alias expansion before its target synopsis, a function
+# definition, the first analysis finding of a paused line, and the command of
+# the pipeline segment or command substitution under the caret. The same row
 # names an unterminated quote or substitution, an open subshell, conditional,
 # if, loop or function, a misplaced closing keyword, and a bad for variable,
 # and it stays on the synopsis for closed text, a comment, and a trailing
@@ -370,6 +375,75 @@ def run_command(session, report, name, keys, expected_text, expected_count):
         and get_state(screen) == ("", ""))
 
 
+def count_marker_lines(directory, name):
+    path = os.path.join(directory, name)
+    if not os.path.exists(path):
+        return 0
+    with open(path) as handle:
+        return len(handle.read().splitlines())
+
+
+def run_idle_hint_checks(session, report, directory):
+    session.send(b"act ")
+    report.record("idle-hint-loads-help-usage", session,
+                  is_hint("act [command] [flags]"))
+    session.send(b"-f")
+    report.record("idle-hint-names-flag-value", session,
+                  is_hint("-f, --file=FILE: read the workflow from FILE"))
+    clear_line(session)
+
+    session.send(b"act run ")
+    report.record("idle-hint-loads-subcommand-usage", session,
+                  is_hint("act run [--job NAME]"))
+    clear_line(session)
+
+    session.send(b"act ")
+    session.wait_until(is_hint("act [command] [flags]"))
+    session.pump(0.6)
+    report.record("idle-hint-loads-each-key-once", session,
+                  lambda screen: count_marker_lines(directory, "act-marker")
+                  == 2)
+    clear_line(session)
+
+    session.send(b"adb ")
+    session.wait_until(is_line("adb"))
+    session.pump(0.6)
+    report.record("idle-hint-skips-untrusted-directory", session,
+                  lambda screen: is_without_hint("adb")(screen)
+                  and count_marker_lines(directory, "adb-marker") == 0)
+    clear_line(session)
+
+    session.send(b"alias zzcat='cat -n'\r")
+    session.wait_until(is_line(""))
+    session.send(b"zzcat ")
+    report.record("hint-shows-alias-expansion", session,
+                  lambda screen: screen.get_hint().startswith("cat -n · cat ["))
+    clear_line(session)
+
+    session.send(b"zzfunc ")
+    report.record("hint-shows-function-definition", session,
+                  is_hint("zzfunc () { echo FUNC-RAN; }"))
+    clear_line(session)
+
+    session.send(b"echo $zzvalue")
+    report.record("idle-hint-shows-analysis-finding", session,
+                  is_hint("An unquoted variable can split into words and "
+                          "expand globs. (SC2086)"))
+    clear_line(session)
+
+    session.send(b"echo hi | cat -n")
+    report.record("hint-follows-pipeline-segment", session,
+                  has_hint("Number every output line"))
+    clear_line(session)
+
+    session.send(b"echo $(cat -n)")
+    session.wait_until(is_line("echo $(cat -n)"))
+    session.send(LEFT)
+    report.record("hint-follows-command-substitution", session,
+                  has_hint("Number every output line"))
+    clear_line(session)
+
+
 def run_checks(binary, directory, command_directory, report):
     session = Session(binary, directory, command_directory)
     try:
@@ -604,6 +678,8 @@ def run_checks(binary, directory, command_directory, report):
                       and not any("Number every" in line
                                   for line in screen.get_lines()))
 
+        run_idle_hint_checks(session, report, directory)
+
         record_diagnostic(report, session, "diagnostic-double-quote",
                           b'echo "abc',
                           'Unterminated string literal, expected " here')
@@ -703,7 +779,7 @@ def run_checks(binary, directory, command_directory, report):
                           b"if true; then echo; done ",
                           "'done' has no matching 'while', 'until', or 'for'")
         record_diagnostic(report, session, "diagnostic-absent-when-closed",
-                          b'echo "abc" $(ls) ${x}',
+                          b'echo "abc" "$(ls)" "${HOME}"',
                           "echo [-neE] [arg ...]")
         record_diagnostic(report, session, "diagnostic-absent-in-comment",
                           b'echo hi # "abc', "echo [-neE] [arg ...]")
@@ -834,6 +910,29 @@ def run_narrow_checks(binary, directory, command_directory, report):
         session.close()
 
 
+HELP_PROBE = """#!/bin/sh
+echo forked >> '%s'
+if [ "$1" = run ]; then
+  echo "Usage: act run [--job NAME]"
+  echo "  -j, --job=NAME   the job to run"
+  exit 0
+fi
+echo "Usage: act [command] [flags]"
+echo
+echo "Commands:"
+echo "  run      run a workflow"
+echo
+echo "Flags:"
+echo "  -f, --file=FILE   read the workflow from FILE"
+"""
+
+
+def write_help_probe(path, marker):
+    with open(path, "w") as handle:
+        handle.write(HELP_PROBE % marker)
+    os.chmod(path, 0o755)
+
+
 def main():
     if sys.platform != "linux":
         print("editor ghost and menu PTY probes: skipped (requires Linux)")
@@ -859,7 +958,16 @@ def main():
             with open(path, "w") as handle:
                 handle.write("#!/bin/sh\n")
             os.chmod(path, 0o755)
-        run_checks(binary, directory, os.path.join(directory, "bin"), report)
+        open_directory = os.path.join(directory, "open")
+        os.makedirs(open_directory)
+        os.chmod(open_directory, 0o777)
+        write_help_probe(os.path.join(directory, "bin", "act"),
+                         os.path.join(directory, "act-marker"))
+        write_help_probe(os.path.join(open_directory, "adb"),
+                         os.path.join(directory, "adb-marker"))
+        run_checks(binary, directory,
+                   os.path.join(directory, "bin") + os.pathsep + open_directory,
+                   report)
         run_narrow_checks(binary, directory, os.path.join(directory, "bin"),
                           report)
     finally:

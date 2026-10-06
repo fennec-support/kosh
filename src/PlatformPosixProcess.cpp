@@ -336,8 +336,8 @@ fn shell_has_controlling_terminal() wontthrow -> bool
   return isatty(STDIN_FILENO) == 1;
 }
 
-fn capture_program_output(const ArrayList<String> &argv,
-                          u64 timeout_nanos) wontthrow -> Maybe<String>
+fn ProgramCapture::start(const ArrayList<String> &argv,
+                         u64 timeout_nanos) wontthrow -> Maybe<ProgramCapture>
 {
   if (argv.is_empty()) return None;
 
@@ -345,6 +345,9 @@ fn capture_program_output(const ArrayList<String> &argv,
   if (pipe(pipe_fds) != 0) return None;
   const int read_end = pipe_fds[0];
   const int write_end = pipe_fds[1];
+  /* The read end outlives this call, so a command the shell runs meanwhile
+     must not inherit it. */
+  fcntl(read_end, F_SETFD, FD_CLOEXEC);
 
   const int devnull_fd = open("/dev/null", O_RDONLY);
   if (devnull_fd < 0) {
@@ -389,64 +392,104 @@ fn capture_program_output(const ArrayList<String> &argv,
     return None;
   }
 
-  let captured = String{heap_allocator()};
-  const u64 deadline_nanos = monotonic_nanos() + timeout_nanos;
-  bool was_timed_out = false;
-  loop
-  {
-    const u64 now_nanos = monotonic_nanos();
-    if (now_nanos >= deadline_nanos) {
-      was_timed_out = true;
-      break;
-    }
-    int remaining_millis =
-        static_cast<int>((deadline_nanos - now_nanos) / 1'000'000);
-    if (remaining_millis <= 0) remaining_millis = 1;
+  let capture = ProgramCapture{};
+  capture.m_child = child_pid;
+  capture.m_output = read_end;
+  capture.m_deadline_nanos = monotonic_nanos() + timeout_nanos;
+  return capture;
+}
 
+fn ProgramCapture::step() wontthrow -> State
+{
+  if (m_child == KOSH_INVALID_PROCESS) return State::Failed;
+
+  for (u32 step_read_count = 0;
+       m_output != KOSH_INVALID_FD && step_read_count < 16; step_read_count++)
+  {
     struct pollfd watch;
-    watch.fd = read_end;
+    watch.fd = m_output;
     watch.events = POLLIN;
     watch.revents = 0;
-    const int ready = poll(&watch, 1, remaining_millis);
+    const int ready = poll(&watch, 1, 0);
+    if (ready < 0 && errno == EINTR) continue;
     if (ready < 0) {
-      if (errno == EINTR) continue;
-      break;
+      abandon();
+      return State::Failed;
     }
-    if (ready == 0) {
-      was_timed_out = true;
-      break;
-    }
+    if (ready == 0) break;
 
     char buffer[4096];
-    const ssize_t read_count = read(read_end, buffer, sizeof(buffer));
+    const ssize_t read_count = read(m_output, buffer, sizeof(buffer));
+    if (read_count < 0 && errno == EINTR) continue;
     if (read_count < 0) {
-      if (errno == EINTR) continue;
+      abandon();
+      return State::Failed;
+    }
+    if (read_count == 0) {
+      close(m_output);
+      m_output = KOSH_INVALID_FD;
       break;
     }
-    if (read_count == 0) break;
-    captured.append(StringView{buffer, static_cast<usize>(read_count)});
+    m_captured.append(StringView{buffer, static_cast<usize>(read_count)});
   }
-  close(read_end);
 
-  int wait_status = 0;
-  while (!was_timed_out) {
-    let const waited_pid = waitpid(child_pid, &wait_status, WNOHANG);
-    if (waited_pid == child_pid) return captured;
+  if (m_output == KOSH_INVALID_FD) {
+    int wait_status = 0;
+    pid_t waited_pid;
+    do {
+      waited_pid = waitpid(m_child, &wait_status, WNOHANG);
+    } while (waited_pid < 0 && errno == EINTR);
+    if (waited_pid == m_child) {
+      m_child = KOSH_INVALID_PROCESS;
+      return State::Finished;
+    }
     if (waited_pid < 0) {
-      if (errno == EINTR) continue;
-      return None;
+      m_child = KOSH_INVALID_PROCESS;
+      return State::Failed;
     }
-
-    if (monotonic_nanos() >= deadline_nanos) {
-      was_timed_out = true;
-      break;
-    }
-    poll(nullptr, 0, 1);
   }
 
-  signal_process(child_pid, SIGKILL);
-  while (waitpid(child_pid, &wait_status, 0) < 0 && errno == EINTR) {}
-  return None;
+  if (monotonic_nanos() >= m_deadline_nanos) {
+    abandon();
+    return State::Failed;
+  }
+
+  return State::Running;
+}
+
+fn ProgramCapture::wait(u64 wait_nanos) const wontthrow -> void
+{
+  let const now_nanos = monotonic_nanos();
+  let limit_nanos =
+      m_deadline_nanos > now_nanos ? m_deadline_nanos - now_nanos : u64{0};
+  if (wait_nanos < limit_nanos) limit_nanos = wait_nanos;
+  int wait_millis = static_cast<int>(limit_nanos / 1'000'000);
+  if (wait_millis <= 0) wait_millis = 1;
+
+  if (m_output == KOSH_INVALID_FD) {
+    poll(nullptr, 0, 1);
+    return;
+  }
+
+  struct pollfd watch;
+  watch.fd = m_output;
+  watch.events = POLLIN;
+  watch.revents = 0;
+  poll(&watch, 1, wait_millis);
+}
+
+fn ProgramCapture::abandon() wontthrow -> void
+{
+  if (m_output != KOSH_INVALID_FD) {
+    close(m_output);
+    m_output = KOSH_INVALID_FD;
+  }
+  if (m_child == KOSH_INVALID_PROCESS) return;
+
+  signal_process(m_child, SIGKILL);
+  int wait_status = 0;
+  while (waitpid(m_child, &wait_status, 0) < 0 && errno == EINTR) {}
+  m_child = KOSH_INVALID_PROCESS;
 }
 
 fn give_controlling_terminal_to(process p) wontthrow -> void

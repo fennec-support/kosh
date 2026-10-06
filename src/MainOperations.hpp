@@ -138,7 +138,8 @@ static fn run_debug_hint_driver(StringView driver_line,
   let row = String{heap_allocator()};
   if (!completion::describe_syntax_problem(driver_line, driver_line.length,
                                            context.runtime_state().get_mood(),
-                                           row))
+                                           row) &&
+      !completion::describe_analysis_finding(driver_line, context, row))
   {
     if (!completion::compose_command_hint(driver_line, driver_line.length,
                                           context, row))

@@ -152,6 +152,9 @@ struct completion_session
   {
     base_directory = nullptr;
     result = nullptr;
+    has_analyzed_line = false;
+    analyzed_line.clear();
+    analysis_finding.clear();
   }
 
   pure fn is_enabled() const wontthrow -> bool { return context != nullptr; }
@@ -164,7 +167,11 @@ struct completion_session
   fn highlight(const char *buffer, tl_highlight *out) -> int;
   fn validate_ghost(const char *entry) const -> int;
   fn hint(const char *buffer, size_t cursor) -> const char *;
+  fn idle(const char *buffer, size_t cursor) -> int;
   koshka::String hint_row{koshka::heap_allocator()};
+  koshka::String analyzed_line{koshka::heap_allocator()};
+  koshka::String analysis_finding{koshka::heap_allocator()};
+  bool has_analyzed_line{false};
   koshka::String highlighted_line{koshka::heap_allocator()};
   koshka::ArrayList<koshka::highlight_span> highlighted_spans{
       koshka::heap_allocator()};
@@ -970,6 +977,12 @@ fn completion_session::hint(const char *buffer, size_t cursor) -> const char *
       return hint_row.c_str();
     }
 
+    if (has_analyzed_line && !analysis_finding.is_empty() &&
+        analyzed_line.view() == line)
+    {
+      return analysis_finding.c_str();
+    }
+
     if (!koshka::completion::compose_command_hint(line, cursor, *context,
                                                   hint_row))
     {
@@ -987,6 +1000,44 @@ fn kosh_hint_callback(const char *buffer, size_t cursor, const char **sgr)
 {
   unused(sgr);
   return COMPLETION_SESSION.hint(buffer, cursor);
+}
+
+/* A pause longer than the gap between keys of a word, so documentation loads
+   while the user reads the line rather than while a word is typed. */
+constexpr int IDLE_DELAY_MS = 250;
+/* How often a running documentation child is read while the pause lasts. */
+constexpr int IDLE_REPEAT_MS = 20;
+
+fn completion_session::idle(const char *buffer, size_t cursor) -> int
+{
+  if (context == nullptr) return 0;
+
+  try {
+    let const line = koshka::StringView{buffer, std::strlen(buffer)};
+    let outcome = 0;
+    if (!has_analyzed_line || analyzed_line.view() != line) {
+      let const had_finding = !analysis_finding.is_empty();
+      analyzed_line = koshka::String{line};
+      has_analyzed_line = true;
+      unused(koshka::completion::describe_analysis_finding(line, *context,
+                                                           analysis_finding));
+      if (had_finding || !analysis_finding.is_empty())
+        outcome |= TL_IDLE_REFRESH;
+    }
+
+    let const progress =
+        koshka::completion::step_idle_documentation(line, cursor, *context);
+    if (progress.did_finish_load) outcome |= TL_IDLE_REFRESH;
+    if (progress.is_loading) outcome |= TL_IDLE_AGAIN;
+    return outcome;
+  } catch (...) {
+    return 0;
+  }
+}
+
+fn kosh_idle_callback(const char *buffer, size_t cursor) -> int
+{
+  return COMPLETION_SESSION.idle(buffer, cursor);
 }
 
 } /* namespace */
@@ -2128,6 +2179,8 @@ fn set_history_prefix_search(bool enabled) -> void
 fn set_inline_hints(bool enabled) -> void
 {
   ::tl_set_hint_callback(enabled ? kosh_hint_callback : nullptr);
+  ::tl_set_idle_callback(enabled ? kosh_idle_callback : nullptr, IDLE_DELAY_MS,
+                         IDLE_REPEAT_MS);
 }
 
 fn set_auto_pair(bool enabled) -> void { ::tl_set_auto_pair(enabled ? 1 : 0); }
@@ -2279,6 +2332,9 @@ fn get_input(const String &prompt, const String &right_prompt,
      against a stale or zero-width frame after a terminal or tmux resize. */
   ::itl_g_tty_changed_size = 1;
   i32 code = ::tl_get_input(TL_BUFFER, sizeof(TL_BUFFER), prompt.c_str());
+  try {
+    koshka::completion::abandon_idle_documentation();
+  } catch (...) {}
   ::tl_set_right_prompt(nullptr);
   ::tl_set_transient_prompt(nullptr);
   if (history_path.has_value() &&

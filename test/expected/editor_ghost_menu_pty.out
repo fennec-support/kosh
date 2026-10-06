@@ -57,6 +57,16 @@ hint-absent-for-uncached-command PASS
 hint-yields-to-menu PASS
 hint-returns-after-menu-closes PASS
 hint-erased-on-submit PASS
+idle-hint-loads-help-usage PASS
+idle-hint-names-flag-value PASS
+idle-hint-loads-subcommand-usage PASS
+idle-hint-loads-each-key-once PASS
+idle-hint-skips-untrusted-directory PASS
+hint-shows-alias-expansion PASS
+hint-shows-function-definition PASS
+idle-hint-shows-analysis-finding PASS
+hint-follows-pipeline-segment PASS
+hint-follows-command-substitution PASS
 diagnostic-double-quote PASS
 diagnostic-single-quote PASS
 diagnostic-ansi-c-quote PASS

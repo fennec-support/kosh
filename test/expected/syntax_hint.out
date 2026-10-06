@@ -60,9 +60,20 @@ while :; do done => Unable to parse the loop, the body between 'do' and 'done' i
 echo \ => echo [-neE] [arg ...]
 echo "abc\ => echo [-neE] [arg ...]
 == clean lines
-echo "abc" $(ls) ${x} => echo [-neE] [arg ...]
+echo "abc" "$(ls)" "${HOME}" => echo [-neE] [arg ...]
 echo hi # "abc => echo [-neE] [arg ...]
 echo \"abc => echo [-neE] [arg ...]
-read x <<EOF => read [-ers] [-a name] [-d delim] [-n count] [-p prompt] [-t timeout] [-u fd] [-q] [name ...]
+read x <<EOF => A `read` without `-r` treats a backslash in the input as an escape. (SC2162)
 if true; then echo; fi => 
 f() { :; } => 
+== analysis findings of a paused line
+echo $x => An unquoted variable can split into words and expand globs. (SC2086)
+cat file | grep x => The `cat` writes its file unchanged into the pipe. (SC2002)
+x = 1 => An assignment with spaces around equals is read as a command and its arguments. (SC2283)
+zzunknown-command arg => 
+source ./zz-missing-file.sh => source file
+== alias, function, and segment under the caret
+ls -a · ls [-aA1dgFhklnoprRSt] [-L level] [--tree] [--one-file-system] [path ...]
+zzf () { echo hi; }
+echo hi | cat -n => -n: Number every output line, starting at one.
+echo hi && cat -n => -n: Number every output line, starting at one.

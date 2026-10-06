@@ -2868,18 +2868,52 @@ restores the typed text. An empty line steps through the whole history. The
 command turns this off, and the option is on by default.
 .PP
 Once the cursor is past the command word, the row directly below the input
-shows a dimmed hint for the command. The hint is the synopsis of a builtin, of
-a bundled koshkit utility, or of an external program, and it becomes the
-description of the flag under the cursor when the cursor is inside a flag. The
-row is cut with an ellipsis at the terminal width, never wraps, and is hidden
-while a completion menu or history search is open and erased when the line is
-submitted. The hint reads only data already loaded, and it never runs
+shows a dimmed hint for the command. The command is the one of the pipeline
+segment, list element, or command substitution under the cursor, not only the
+first one on the line. The hint is the synopsis of a builtin, of a bundled
+koshkit utility, or of an external program, and of a subcommand such as
+.B git commit
+when its own manual page or help output is known. It becomes the description
+of the flag under the cursor when the cursor is inside a flag, led by the flag
+forms with their value name, such as
+.BR "\-f, \-\-file=FILE" .
+An alias shows its expansion and then the synopsis of the command it runs,
+separated by a middle dot. A function shows where it was defined as
+.IR file : line ,
+or its definition on one line when it was defined at the prompt. The row is
+cut with an ellipsis at the terminal width, never wraps, and is hidden while a
+completion menu or history search is open and erased when the line is
+submitted. A keystroke reads only data already loaded, and it never runs
 .BR man
-or the command. The synopsis and flag descriptions of an external program
-appear after a Tab completion of its flags has loaded its manual page or help
-output. The
+or the command.
+.PP
+When no key arrives for 250 milliseconds, the editor loads what the row of an
+external program needs: its section 1 manual page through
+.BR man ,
+a subcommand page such as
+.BR git\-commit (1),
+and, for a command on the help allowlist, the output of its help flag and of
+the subcommand under the cursor. The same trust rules as flag completion
+apply, so
+.B man
+and the program run only from a directory owned by the user or root that no
+group or other user can write. Each load runs in a child process that the
+editor reads between keys and never waits on, so typing stays responsive while
+it runs, and the hint updates in place when it finishes. A load is killed
+after 8 seconds or when the line is submitted, and a later pause tries it once
+more before it counts as missing. Every other manual page and help output is
+loaded at most once per session, and a missing page or an untrusted program
+is remembered as missing. The
 .B set \+o inline-hints
-command turns the hint row off, and the option is on by default.
+command turns the hint row off and stops the loads, and the option is on by
+default.
+.PP
+In the same pause, a line that parses is analyzed as Enter would analyze it in
+the current mood and warning level, and the row shows the wording of the first
+finding, such as
+.BR "An unquoted variable can split into words and expand globs. (SC2086)" ,
+in place of the synopsis until the line changes. This analysis follows no sourced
+file and resolves no command name, so it reads no file and searches no PATH.
 .PP
 When the line has a syntax problem that running it would report, the same row
 shows that problem in place of the synopsis, in the same dim style. The line is
