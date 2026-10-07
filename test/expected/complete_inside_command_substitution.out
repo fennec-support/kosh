@@ -4,6 +4,10 @@ alpha
 beta
 == inside a for-head substitution:
 gamma
+== inside a process substitution:
+alpha
+== inside a process substitution in an assignment value:
+beta
 == filesystem still completes inside a substitution:
 onlyfile
 == arithmetic is not a command body:

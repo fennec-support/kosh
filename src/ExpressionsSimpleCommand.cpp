@@ -290,6 +290,8 @@ hot fn AssignCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
      the prior command's status. */
   let const value_ran_substitution =
       m_assignment->value_word().runs_substitution();
+  let const substitution_mark = cxt.mark_process_substitutions();
+  defer { cxt.cleanup_process_substitutions(substitution_mark); };
 
   try {
     let value = cxt.expand_word_for_assignment(m_assignment->value_word());

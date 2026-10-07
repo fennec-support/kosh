@@ -1719,6 +1719,18 @@ fn internal::advance_shell_lexical_state(
       continue;
     }
 
+    if (state.quote == 0 && (c == '<' || c == '>') && i + 1 < end &&
+        source[i + 1] == '(' &&
+        (state.frames.is_empty() ||
+         state.frames.back().kind == shell_lexical_frame_kind::command ||
+         state.frames.back().kind == shell_lexical_frame_kind::backtick))
+    {
+      state.frames.push(shell_lexical_frame{
+          i + 2, 0, 0, 0, shell_lexical_frame_kind::command, state.quote});
+      i += 2;
+      continue;
+    }
+
     if (c == '$' && i + 1 < end && source[i + 1] == '{') {
       state.frames.push(shell_lexical_frame{
           i + 2, 0, 0, 0, shell_lexical_frame_kind::parameter, state.quote});

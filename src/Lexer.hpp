@@ -421,7 +421,7 @@ protected:
 
   fn lex_identifier() throws -> Token *;
   fn lex_sentinel() throws -> Token *;
-  fn lex_process_substitution(char direction) throws -> Token *;
+  fn lex_process_substitution(Word &word, usize offset) throws -> usize;
 
   usize m_substitution_nesting_depth{0};
   ArrayList<ErrorWithLocationAndDetails> m_substitution_errors{

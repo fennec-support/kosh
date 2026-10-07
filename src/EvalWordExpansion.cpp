@@ -785,6 +785,9 @@ hot fn EvalContext::expand_word_for_assignment(const Word &word) throws
     case WordSegment::Kind::ArithmeticExpansion: {
       result += evaluate_arithmetic_cached_text(segment).view();
     } break;
+    case WordSegment::Kind::ProcessSubstitution:
+      result += setup_process_substitution(segment);
+      break;
     default: result += segment_text; break;
     }
   }

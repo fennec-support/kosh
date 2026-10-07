@@ -172,11 +172,16 @@ hot fn Word::to_literal_string() const throws -> String
       result += segment.text;
       result += "))";
       continue;
+    case WordSegment::Kind::ProcessSubstitution:
+      result += segment.text.view().substring_of_length(0, 1);
+      result += '(';
+      result += segment.text.view().substring(1);
+      result += ')';
+      continue;
     case WordSegment::Kind::VariableReference: result += '$'; break;
     case WordSegment::Kind::LiteralText:
     case WordSegment::Kind::UnquotedText:
-    case WordSegment::Kind::DoubleQuotedText:
-    case WordSegment::Kind::ProcessSubstitution: break;
+    case WordSegment::Kind::DoubleQuotedText: break;
     }
     result += segment.text;
   }
@@ -727,7 +732,6 @@ pure fn borrowed_word_literal(const Word &word) wontthrow -> Maybe<StringView>
   case WordSegment::Kind::LiteralText:
   case WordSegment::Kind::UnquotedText:
   case WordSegment::Kind::DoubleQuotedText:
-  case WordSegment::Kind::ProcessSubstitution:
     return word.segments.front().text.view();
   default: return None;
   }

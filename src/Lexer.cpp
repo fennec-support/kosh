@@ -517,8 +517,7 @@ hot flatten fn Lexer::lex_shell_token() throws -> Token *
     break;
   case '<':
   case '>':
-    token = chop_character(1) == '(' ? lex_process_substitution(ch)
-                                     : lex_sentinel();
+    token = chop_character(1) == '(' ? lex_identifier() : lex_sentinel();
     break;
   case '\n':
   case '|':
@@ -700,6 +699,13 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
 
     let const is_inside_quote_or_escape =
         quote_char.has_value() || should_escape;
+    if (!is_inside_quote_or_escape && extglob_depth == 0 &&
+        (ch == '<' || ch == '>') && chop_character(byte_count + 1) == '(')
+    {
+      byte_count = lex_process_substitution(word, byte_count);
+      continue;
+    }
+
     if (!(is_inside_quote_or_escape && ch != lexer::CEOF) &&
         !lexer::is_part_of_identifier(ch))
     {
@@ -1501,10 +1507,12 @@ hot alwaysinline fn Lexer::lex_sentinel() throws -> Token *
   return token;
 }
 
-hot alwaysinline fn Lexer::lex_process_substitution(char direction) throws
-    -> Token *
+hot alwaysinline fn Lexer::lex_process_substitution(Word &word,
+                                                    usize offset) throws
+    -> usize
 {
-  let const open_position = m_cursor_position;
+  let const open_position = m_cursor_position + offset;
+  let const direction = m_source[open_position];
   let const inner_start = open_position + 2;
   let const substitution_end =
       lexer::scan_balanced_shell_region(m_source, inner_start, ')');
@@ -1520,14 +1528,12 @@ hot alwaysinline fn Lexer::lex_process_substitution(char direction) throws
       inner_start, *substitution_end - inner_start - 1);
 
   LOG(Debug, "capturing a process substitution of %zu bytes", byte_count);
-  let &arena = m_parse_session.get_arena();
 
   /* The direction byte leads the segment text so the evaluator reads the pipe
      direction without a second field. */
-  let word = Word{};
   word.segments.push(WordSegment{
       WordSegment::Kind::ProcessSubstitution,
-      SegmentText{bump_allocator(arena), direction, body},
+      SegmentText{bump_allocator(arena()), direction, body},
       false
   });
   word.segments.back().set_source_span(open_position, byte_count);
@@ -1535,10 +1541,8 @@ hot alwaysinline fn Lexer::lex_process_substitution(char direction) throws
     validate_substitution_body(inner_start, body,
                                here(open_position, byte_count));
   }
-  let t = tokens::create_word_token(arena, here(open_position, byte_count),
-                                    steal(word));
-  m_cached_offset = byte_count;
-  return t;
+
+  return offset + byte_count;
 }
 
 cold fn Lexer::record_substitution_error(

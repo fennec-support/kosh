@@ -1,0 +1,16 @@
+#!/bin/env kosh
+reader() { koshkit cat "$src"; }
+src=<(printf 'prefix-read\n') reader
+printf 'prefix-status=%s\n' "$?"
+src=<(printf 'eval-read\n') eval 'koshkit cat "$src"'
+joined=x<(printf 'a\n')y<(printf 'b\n')z
+case $joined in
+  x?*y?*z) printf 'concatenated\n' ;;
+  *) printf 'not-concatenated=%s\n' "$joined" ;;
+esac
+late=<(printf 'late\n')
+koshkit cat "$late" 2>/dev/null
+printf 'next-command-status=%s\n' "$?"
+writer() { printf 'written\n' > "$dst"; }
+dst=>(koshkit cat) writer
+printf 'writer-status=%s\n' "$?"
