@@ -1956,6 +1956,7 @@ fn describe_syntax_problem(StringView line, usize cursor, mimic_mood mood,
   if (errors.is_empty()) return false;
 
   let const &error = errors[0];
+  out.append(StringView{"syntax error\n"});
   out.append(error.message().view());
   append_sentence_tail(out, error.details_message().is_empty()
                                 ? error.detail_message()
@@ -2012,6 +2013,8 @@ fn describe_analysis_finding(StringView line, EvalContext &context,
   }
   if (first == nullptr) return false;
 
+  out.append(get_error_severity_word(first->severity));
+  out.push('\n');
   out.append(first->message.view());
   return true;
 }

@@ -12,9 +12,12 @@
 # down to an empty line, Escape and Ctrl-C afterwards, and session functions and
 # aliases in ghost and Tab completion. It also covers word-wise ghost
 # acceptance through Ctrl-Right and Alt-F, and prefix history search on Up and
-# Down with its option switched off, and the inline hint row for a command and
-# a flag, its absence inside the command word and for an uncached command, its
-# yielding to the menu, its erasure on submit, and its option. A pause loads
+# Down with its option switched off, and the inline hint rows for a command and
+# a flag, their header naming the kind and the two-column indent, their absence
+# inside the command word and for an uncached command, their yielding to the
+# menu, their erasure on submit, and their option. A narrow terminal wraps a
+# long synopsis onto several indented rows that a submit erases, and a short
+# terminal keeps the input on screen with fewer rows. A pause loads
 # the --help usage, flag forms, and subcommand usage of a trusted allowlisted
 # command once per key and never runs one from a world-writable directory. The
 # row shows an alias expansion before its target synopsis, a function
@@ -211,16 +214,31 @@ class Screen:
     def count_lines(self, text):
         return sum(1 for line in self.get_lines() if line.strip() == text)
 
-    def get_hint(self):
+    def get_hint_rows(self):
         row = self.get_prompt_row()
         lines = self.get_lines()
         if row < 0 or row + 1 >= len(lines) or MENU_HEADER in lines[row + 1]:
-            return ""
-        return lines[row + 1].strip()
+            return []
+        rows = []
+        for line in lines[row + 1:]:
+            if not line:
+                break
+            rows.append(line)
+        return rows
+
+    def get_hint_header(self):
+        rows = self.get_hint_rows()
+        return rows[0].strip() if len(rows) > 1 else ""
+
+    def get_hint(self):
+        rows = self.get_hint_rows()
+        body = rows[1:] if len(rows) > 1 else rows
+        return " ".join(line.strip() for line in body)
 
 
 class Session:
-    def __init__(self, binary, directory, command_directory, columns=COLUMNS):
+    def __init__(self, binary, directory, command_directory, columns=COLUMNS,
+                 rows=ROWS):
         environment = {
             "PATH": command_directory,
             "HOME": directory,
@@ -235,7 +253,7 @@ class Session:
             os.chdir(directory)
             os.execve(binary, [binary, "-i", "--rcfile", "/dev/null"], environment)
         fcntl.ioctl(self.fd, termios.TIOCSWINSZ,
-                    struct.pack("HHHH", ROWS, columns, 0, 0))
+                    struct.pack("HHHH", rows, columns, 0, 0))
         self.is_closed = False
 
     def pump(self, seconds):
@@ -327,6 +345,21 @@ def has_hint(text):
     return lambda screen: text in screen.get_hint()
 
 
+def has_hint_header(header):
+    return lambda screen: screen.get_hint_header() == header
+
+
+def is_hint_under(header, text):
+    return lambda screen: (screen.get_hint_header() == header
+                           and screen.get_hint() == text)
+
+
+def are_hint_rows_indented(screen):
+    rows = screen.get_hint_rows()
+    return len(rows) > 1 and all(line.startswith("  ") and line[2] != " "
+                                 for line in rows)
+
+
 def is_without_hint(typed):
     return lambda screen: (get_state(screen) is not None
                            and get_state(screen)[0] == typed
@@ -364,9 +397,10 @@ def is_hint(text):
     return lambda screen: screen.get_hint() == text
 
 
-def record_diagnostic(report, session, name, typed, expected):
+def record_diagnostic(report, session, name, typed, expected,
+                      header="syntax error"):
     type_text(session, typed)
-    report.record(name, session, is_hint(expected))
+    report.record(name, session, is_hint_under(header, expected))
     clear_line(session)
 
 
@@ -390,15 +424,16 @@ def count_marker_lines(directory, name):
 def run_idle_hint_checks(session, report, directory):
     session.send(b"act ")
     report.record("idle-hint-loads-help-usage", session,
-                  is_hint("act [command] [flags]"))
+                  is_hint_under("command synopsis", "act [command] [flags]"))
     session.send(b"-f")
     report.record("idle-hint-names-flag-value", session,
-                  is_hint("-f, --file=FILE: read the workflow from FILE"))
+                  is_hint_under("flag",
+                                "-f, --file=FILE: read the workflow from FILE"))
     clear_line(session)
 
     session.send(b"act run ")
     report.record("idle-hint-loads-subcommand-usage", session,
-                  is_hint("act run [--job NAME]"))
+                  is_hint_under("subcommand synopsis", "act run [--job NAME]"))
     clear_line(session)
 
     session.send(b"act ")
@@ -421,18 +456,31 @@ def run_idle_hint_checks(session, report, directory):
     session.wait_until(is_line(""))
     session.send(b"zzcat ")
     report.record("hint-shows-alias-expansion", session,
-                  lambda screen: screen.get_hint().startswith("cat -n · cat ["))
+                  lambda screen: has_hint_header("alias synopsis")(screen)
+                  and screen.get_hint().startswith("zzcat='cat -n' · cat ["))
     clear_line(session)
 
     session.send(b"zzfunc ")
     report.record("hint-shows-function-definition", session,
-                  is_hint("zzfunc () { echo FUNC-RAN; }"))
+                  is_hint_under("function synopsis",
+                                "zzfunc () { echo FUNC-RAN; }"))
+    clear_line(session)
+
+    with open(os.path.join(directory, "zzdefs.sh"), "w") as handle:
+        handle.write("true\nzzfile() { echo FILE-RAN; }\n")
+    session.send(b"source ./zzdefs.sh\r")
+    session.wait_until(is_line(""))
+    session.send(b"zzfile ")
+    report.record("hint-names-function-file", session,
+                  is_hint_under("function synopsis",
+                                "zzfile, defined at ./zzdefs.sh:2"))
     clear_line(session)
 
     session.send(b"echo $zzvalue")
     report.record("idle-hint-shows-analysis-finding", session,
-                  is_hint("An unquoted variable can split into words and "
-                          "expand globs. (SC2086)"))
+                  is_hint_under("error",
+                                "An unquoted variable can split into words "
+                                "and expand globs. (SC2086)"))
     clear_line(session)
 
     session.send(b"echo hi | cat -n")
@@ -647,12 +695,25 @@ def run_checks(binary, directory, command_directory, report):
         session.send(b"cat ")
         report.record("hint-shows-command-synopsis", session,
                       has_hint("cat ["))
+        report.record("hint-names-utility-header", session,
+                      is_hint_under("utility synopsis",
+                                    "cat [-nu] [--syntax-highlighting] "
+                                    "[file ...]"))
+        report.record("hint-rows-indented", session, are_hint_rows_indented)
         session.send(b"-n")
         report.record("hint-shows-flag-description", session,
                       has_hint("Number every output line"))
+        report.record("hint-names-flag-header", session,
+                      lambda screen: has_hint_header("flag")(screen)
+                      and screen.get_hint().startswith("-n"))
         session.send(BACKSPACE * 3)
         report.record("hint-clears-inside-command-word", session,
                       is_without_hint("cat"))
+        clear_line(session)
+
+        session.send(b"echo ")
+        report.record("hint-names-builtin-header", session,
+                      is_hint_under("builtin synopsis", "echo [-neE] [arg ...]"))
         clear_line(session)
 
         session.send(b"zzprobe-one ")
@@ -680,6 +741,7 @@ def run_checks(binary, directory, command_directory, report):
                       and any("ALPHA-CONTENT" in line
                               for line in screen.get_lines()[:-1])
                       and not any("Number every" in line
+                                  or line.strip() == "flag"
                                   for line in screen.get_lines()))
 
         run_idle_hint_checks(session, report, directory)
@@ -784,21 +846,25 @@ def run_checks(binary, directory, command_directory, report):
                           "'done' has no matching 'while', 'until', or 'for'")
         record_diagnostic(report, session, "diagnostic-absent-when-closed",
                           b'echo "abc" "$(ls)" "${HOME}"',
-                          "echo [-neE] [arg ...]")
+                          "echo [-neE] [arg ...]", "builtin synopsis")
         record_diagnostic(report, session, "diagnostic-absent-in-comment",
-                          b'echo hi # "abc', "echo [-neE] [arg ...]")
+                          b'echo hi # "abc', "echo [-neE] [arg ...]",
+                          "builtin synopsis")
         record_diagnostic(report, session, "diagnostic-absent-after-backslash",
-                          b"echo \\", "echo [-neE] [arg ...]")
+                          b"echo \\", "echo [-neE] [arg ...]",
+                          "builtin synopsis")
         record_diagnostic(report, session,
                           "diagnostic-absent-after-escaped-quote",
-                          b'echo \\"abc', "echo [-neE] [arg ...]")
+                          b'echo \\"abc', "echo [-neE] [arg ...]",
+                          "builtin synopsis")
 
         type_text(session, b'echo "abc')
         session.wait_until(
             is_hint('Unterminated string literal, expected " here'))
         session.send(b'"')
         report.record("diagnostic-clears-when-quote-closes", session,
-                      is_hint("echo [-neE] [arg ...]"))
+                      is_hint_under("builtin synopsis",
+                                    "echo [-neE] [arg ...]"))
         clear_line(session)
 
         type_text(session, b"echo $((1+(2*3)))")
@@ -912,6 +978,19 @@ def is_help_wrapped(columns):
     return do_check
 
 
+LS_SYNOPSIS = ("ls [-aA1dgFhklnoprRSt] [-L level] [--tree] "
+               "[--one-file-system] [path ...]")
+
+
+def is_hint_wrapped(columns, header, text):
+    def do_check(screen):
+        rows = screen.get_hint_rows()
+        return (len(rows) > 2 and screen.get_hint_header() == header
+                and screen.get_hint() == text
+                and all(len(line) < columns for line in rows))
+    return do_check
+
+
 def run_narrow_checks(binary, directory, command_directory, report):
     columns = 60
     session = Session(binary, directory, command_directory, columns)
@@ -926,6 +1005,38 @@ def run_narrow_checks(binary, directory, command_directory, report):
         report.record("narrow-menu-escape-closes", session,
                       lambda screen: screen.get_menu() is None
                       and get_help_rows(screen) is None)
+        clear_line(session)
+
+        session.send(b"ls ")
+        report.record("narrow-hint-wraps-long-synopsis", session,
+                      is_hint_wrapped(columns, "utility synopsis",
+                                      LS_SYNOPSIS))
+        report.record("narrow-hint-rows-indented", session,
+                      are_hint_rows_indented)
+        session.send(b"-d sub\r")
+        report.record("narrow-hint-rows-erased-on-submit", session,
+                      lambda screen: get_state(screen) == ("", "")
+                      and screen.get_hint_rows() == []
+                      and not any("[--one-file-system]" in line
+                                  or line.strip() == "utility synopsis"
+                                  for line in screen.get_lines()))
+    finally:
+        session.close()
+
+
+def run_short_checks(binary, directory, command_directory, report):
+    session = Session(binary, directory, command_directory, 60, 3)
+    try:
+        if not report.record("short-startup-prompt", session, is_line("")):
+            return
+
+        session.send(b"ls ")
+        report.record("short-hint-keeps-the-input-on-screen", session,
+                      lambda screen: get_state(screen) is not None
+                      and get_state(screen)[0] == "ls"
+                      and len(screen.get_hint_rows()) == 2
+                      and screen.get_hint_header() == "utility synopsis"
+                      and screen.get_hint().endswith("..."))
     finally:
         session.close()
 
@@ -1022,6 +1133,8 @@ def main():
                    report)
         run_narrow_checks(binary, directory, os.path.join(directory, "bin"),
                           report)
+        run_short_checks(binary, directory, os.path.join(directory, "bin"),
+                         report)
         control_directory = os.path.join(directory.encode(), b"ctl")
         os.makedirs(control_directory)
         for name in (b"ZQa\x1b]0;PWN\x07x", b"ZQb\xc2\x9by"):

@@ -2927,14 +2927,21 @@ Ctrl\-X Ctrl\-U undoes the last edit. Ctrl\-X before any other key is ignored,
 and that key runs as usual.
 .PP
 A key that waits for another key before it acts names itself and what it waits
-for on the hint row below the input, in place of the command hint, until the
-next key resolves it. Ctrl\-X shows
-.BR "pressed ctrl\-x. waiting for ctrl\-e (edit in $VISUAL), ctrl\-u (undo)" .
+for on the hint rows below the input, in place of the command hint, until the
+next key resolves it. The header row names the keys pressed so far and the
+body names the keys that complete them. Ctrl\-X shows the header
+.B "pressed ctrl\-x"
+over
+.BR "waiting for ctrl\-e (edit in $VISUAL), ctrl\-u (undo)" .
 In vi command mode a pending operator shows the keys typed so far and its
 motions, such as
-.B "pressed d. waiting for a motion: w, b, e, $, 0, ^, d (line), ..."
+.B "pressed d"
+over
+.B "waiting for a motion: w, b, e, $, 0, ^, d (line), ..."
 or
-.BR "pressed \(dqa2d. waiting for ..." ,
+.B "pressed \(dqa2d"
+over
+.BR "waiting for ..." ,
 and so do a pending count, a pending register, the register key
 .BR \(dq ,
 the find keys
@@ -2946,8 +2953,8 @@ and
 the replace key
 .BR r ,
 and the colon command line. A key typed fast enough to arrive with the prefix
-is read at once without drawing the row. The row is the hint row, so turning
-off both
+is read at once without drawing the rows. The rows are the hint rows, so
+turning off both
 .B interactive-hints
 and
 .B interactive-diagnostics
@@ -3000,27 +3007,48 @@ restores the typed text. An empty line steps through the whole history. The
 .B set \+o history-prefix-search
 command turns this off, and the option is on by default.
 .PP
-Once the cursor is past the command word, the row directly below the input
-shows a dimmed hint for the command. The command is the one of the pipeline
+Once the cursor is past the command word, the rows directly below the input
+show a dimmed hint for the command. The command is the one of the pipeline
 segment, list element, or command substitution under the cursor, not only the
-first one on the line. The hint is the synopsis of a builtin, of a bundled
-koshkit utility, or of an external program, and of a subcommand such as
+first one on the line. A hint is a header row that names its kind and a body
+under it. The body is the synopsis of a builtin under
+.BR "builtin synopsis" ,
+of a bundled koshkit utility under
+.BR "utility synopsis" ,
+or of an external program under
+.BR "command synopsis" ,
+and of a subcommand such as
 .B git commit
+under
+.B "subcommand synopsis"
 when its own manual page or help output is known. It becomes the description
-of the flag under the cursor when the cursor is inside a flag, led by the flag
-forms with their value name, such as
+of the flag under the cursor, under
+.BR flag ,
+when the cursor is inside a flag, led by the flag forms with their value name,
+such as
 .BR "\-f, \-\-file=FILE" .
-An alias shows its expansion and then the synopsis of the command it runs,
-separated by a middle dot. A function shows where it was defined as
-.IR file : line ,
-or its definition on one line when it was defined at the prompt. The row is
-cut with an ellipsis at the terminal width, never wraps, and is hidden while a
-completion menu or history search is open and erased when the line is
-submitted. A keystroke reads only data already loaded, and it never runs
+An alias shows its definition as
+.IR name =\(aq expansion \(aq
+and then the synopsis of the command it runs, separated by a middle dot, under
+.BR "alias synopsis" .
+A function shows
+.IR name ,
+.B defined at
+.IR file : line
+under
+.BR "function synopsis" ,
+or its definition on one line when it was defined at the prompt. Every row is
+indented by two columns. The header is cut with an ellipsis at the terminal
+width, and the body wraps at spaces onto at most three rows, the last of which
+is cut with an ellipsis. The input never scrolls off the screen for a hint: a
+terminal too short for the input and every row shows fewer body rows, then the
+body alone on one row, then no hint. The rows are hidden while a completion
+menu or history search is open and erased when the line is submitted. A
+keystroke reads only data already loaded, and it never runs
 .BR man
 or the command.
 .PP
-When no key arrives for 250 milliseconds, the editor loads what the row of an
+When no key arrives for 250 milliseconds, the editor loads what the hint of an
 external program needs: its section 1 manual page through
 .BR man ,
 a subcommand page such as
@@ -3042,9 +3070,14 @@ command turns these hints off and stops the loads, and the option is on by
 default.
 .PP
 In the same pause, a line that parses is analyzed as Enter would analyze it in
-the current mood and warning level, and the row shows the wording of the first
+the current mood and warning level, and the rows show the wording of the first
 finding, such as
 .BR "An unquoted variable can split into words and expand globs. (SC2086)" ,
+under its severity,
+.BR error ,
+.BR warning ,
+or
+.BR note ,
 in place of the synopsis until the line changes. This analysis follows no sourced
 file and resolves no command name, so it reads no file and searches no PATH.
 The finding and the syntax problem below follow
@@ -3054,10 +3087,11 @@ which
 turns off; the option is on by default and is independent of
 .BR interactive-hints .
 .PP
-When the line has a syntax problem that running it would report, the same row
-shows that problem in place of the synopsis, in the same dim style. The line is
-parsed as Enter would parse it in the current mood, and the row shows the first
-parse error followed by its detail, such as
+When the line has a syntax problem that running it would report, the same rows
+show that problem in place of the synopsis, in the same dim style, under
+.BR "syntax error" .
+The line is parsed as Enter would parse it in the current mood, and the body
+is the first parse error followed by its detail, such as
 .BR "Unterminated if, expected 'fi'" .
 This covers every error the parser reports, among them an unterminated quote,
 an unclosed
@@ -3136,7 +3170,7 @@ The
 .B set \-o transient\-prompt
 command makes Enter redraw the submitted line after a short prompt so the
 scrollback stays compact. Everything from the first row of PS1 down is erased,
-including the right prompt, the ghost, the hint row, and any menu rows, and the
+including the right prompt, the ghost, the hint rows, and any menu rows, and the
 line is drawn again after the expansion of PS1_TRANSIENT. When PS1_TRANSIENT is
 unset or empty, the short prompt is "$ ", or "# " for root, the expansion of
 the \\$ escape and a space. The line keeps its highlighting, and a multi-row

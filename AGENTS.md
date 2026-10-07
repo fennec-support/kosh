@@ -168,7 +168,7 @@ changes update this file.
   aliases, and PATH. `KEYWORD_ENTRIES` is the sole keyword catalog. A `type`
   operand reads the same catalog. Only the listing mode accepts an empty
   operand.
-- The inline hint row shows a syntax problem before the synopsis.
+- The inline hint rows show a syntax problem before the synopsis.
   `describe_syntax_problem` parses the line with the real parser in
   substitution validation mode, in the session mood, inside a completion
   scratch mark, and shows the first error with its detail. Hand-written
@@ -177,16 +177,26 @@ changes update this file.
   has no continuation prompt, so an open
   construct counts as an error, but a trailing backslash continues the line.
 - Static koshkit completion names stay alphabetically sorted.
-- The inline hint row is `compose_command_hint` in
+- The inline hint is `compose_command_hint` in
   `src/CompletionManpage.cpp`. It runs on every keystroke for the command of
   the segment or command substitution under the caret, and reads only
   builtin and koshkit registrations, aliases, function definitions, and the
   manpage and help caches. It never forks, searches PATH, or reads a file.
-  The editor draws the row under the last input row without counting it in
-  the block rows, and holds it away while a menu or search is open. While a
+- Every hint is a header naming its kind, a line break, and a body. The
+  headers are `builtin synopsis`, `utility synopsis`, `command synopsis`,
+  `subcommand synopsis`, `alias synopsis`, `function synopsis`, `flag`,
+  `syntax error`, and the severity word of an analysis finding.
+  The editor owns the layout because it knows the width: a two-column
+  indent on every row, the header cut to one row, and the body wrapped at
+  spaces onto at most three rows with an ellipsis on the last. The rows
+  under the input are never more than the terminal rows the block leaves
+  free, so a short terminal drops body rows, then the header, then the
+  hint. The rows are drawn under the last input row without counting them
+  in the block rows, every frame erases rows a shorter hint left behind,
+  and the editor holds them away while a menu or search is open. While a
   prefix key such as Ctrl-X, a vi operator, or a vi find key waits for its
-  next key, the editor writes its own waiting text on the row without calling
-  the callback, so the row option also governs it.
+  next key, the editor writes its own pressed keys and waiting text in the
+  rows without calling the callback, so the row options also govern it.
 - `src/Toiletline.cpp` defines `TL_NO_SUSPEND` and `TL_CTRL_Z_UNDO`, so
   Ctrl-Z undoes while a line is read. A foreground program runs with the
   terminal in its usual mode and receives Ctrl-Z as a stop signal.

@@ -1530,6 +1530,7 @@ static fn describe_cached_flag(const ArrayList<help_entry> &entries,
 
 struct hint_source
 {
+  StringView header{};
   StringView synopsis{};
   const FlagList *flags{nullptr};
   const ArrayList<help_entry> *manpage_entries{nullptr};
@@ -1601,12 +1602,23 @@ static fn locate_hint_target(StringView line, usize cursor) throws
   return target;
 }
 
-/* A function has no synopsis, so the row names where it was defined. */
+/* The header row of each hint, which names the kind of word the body below it
+   describes. The editor puts the header before the first line break. */
+static constexpr StringView FUNCTION_HINT_HEADER{"function synopsis\n"};
+static constexpr StringView ALIAS_HINT_HEADER{"alias synopsis\n"};
+static constexpr StringView FLAG_HINT_HEADER{"flag\n"};
+static constexpr StringView BUILTIN_HINT_HEADER{"builtin synopsis\n"};
+static constexpr StringView UTILITY_HINT_HEADER{"utility synopsis\n"};
+static constexpr StringView COMMAND_HINT_HEADER{"command synopsis\n"};
+static constexpr StringView SUBCOMMAND_HINT_HEADER{"subcommand synopsis\n"};
+
+/* A function has no synopsis, so the body names where it was defined. */
 static fn describe_function(StringView name, EvalContext &context,
                             String &out) throws -> bool
 {
   if (context.function_store().find_storage(name) == nullptr) return false;
 
+  out.append(FUNCTION_HINT_HEADER);
   let const *info = context.function_definition_info_of(name);
   let const source_name = info != nullptr
                               ? source_name_at(info->source_name_index)
@@ -1617,8 +1629,10 @@ static fn describe_function(StringView name, EvalContext &context,
   {
     let const *source = context.function_store().find_source(name);
     if (source != nullptr && !source->view().trim_blanks().is_empty()) {
+      let is_first_word = true;
       source->view().for_each_ascii_whitespace_word([&](StringView word) {
-        if (!out.is_empty()) out.push(' ');
+        if (!is_first_word) out.push(' ');
+        is_first_word = false;
         out.append(word);
       });
       return true;
@@ -1629,14 +1643,16 @@ static fn describe_function(StringView name, EvalContext &context,
   }
 
   out.append(name);
-  out.append(StringView{" ()"});
-
-  out.append(StringView{" \xc2\xb7 "});
-  out.append(*source_name);
-  if (info->definition_line != 0) {
-    out.push(':');
-    out.append(String::from(info->definition_line, heap_allocator()));
+  if (info->definition_line == 0) {
+    out.append(StringView{", defined in "});
+    out.append(*source_name);
+    return true;
   }
+
+  out.append(StringView{", defined at "});
+  out.append(*source_name);
+  out.push(':');
+  out.append(String::from(info->definition_line, heap_allocator()));
   return true;
 }
 
@@ -1677,13 +1693,14 @@ fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
     if (bundled.has_value()) {
       let key = String{"k:"};
       key.append(first_word);
-      source.synopsis =
-          synopsis_row_of(key.view(), first_word,
-                          koshkit::koshkit_util_synopsis(*bundled));
+      source.header = UTILITY_HINT_HEADER;
+      source.synopsis = synopsis_row_of(
+          key.view(), first_word, koshkit::koshkit_util_synopsis(*bundled));
       source.flags = koshkit::koshkit_util_flag_list(*bundled);
     } else {
       let key = String{"b:"};
       key.append(name.view());
+      source.header = BUILTIN_HINT_HEADER;
       source.synopsis = synopsis_row_of(key.view(), name.view(),
                                         builtin_help_synopsis(*builtin_kind));
       source.flags = builtin_flag_list(*builtin_kind);
@@ -1691,12 +1708,15 @@ fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
   } else {
     let page_key = String{name.view()};
     let has_manpage = false;
+    let is_subcommand_page = false;
     if (has_subcommand_word) {
       let subcommand_key = String{name.view()};
       subcommand_key.push(' ');
       subcommand_key.append(first_word);
-      if (MANPAGE_CACHE.hint_pages.find(subcommand_key.view()).has_value())
+      if (MANPAGE_CACHE.hint_pages.find(subcommand_key.view()).has_value()) {
         page_key = steal(subcommand_key);
+        is_subcommand_page = true;
+      }
     }
     if (let const page = MANPAGE_CACHE.hint_pages.find(page_key.view());
         page.has_value())
@@ -1704,7 +1724,11 @@ fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
       has_manpage = true;
       if (let const synopsis = MANPAGE_CACHE.synopses.find(page->view());
           synopsis.has_value())
+      {
+        source.header =
+            is_subcommand_page ? SUBCOMMAND_HINT_HEADER : COMMAND_HINT_HEADER;
         source.synopsis = synopsis->view();
+      }
       if (let const entries = MANPAGE_CACHE.option_entries.find(page->view());
           entries.has_value() && !entries.value()->is_empty())
       {
@@ -1741,6 +1765,8 @@ fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
         if (let const usage = HELP_OUTPUT_CACHE.usages.find(help_key.view());
             usage.has_value() && !usage->is_empty())
         {
+          source.header =
+              chain.is_empty() ? COMMAND_HINT_HEADER : SUBCOMMAND_HINT_HEADER;
           source.synopsis = usage->view();
         }
       }
@@ -1755,6 +1781,7 @@ fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
       {
         let key = String{"k:"};
         key.append(name.view());
+        source.header = UTILITY_HINT_HEADER;
         source.synopsis = synopsis_row_of(
             key.view(), name.view(), koshkit::koshkit_util_synopsis(*bundled));
         source.flags = koshkit::koshkit_util_flag_list(*bundled);
@@ -1763,6 +1790,7 @@ fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
   }
 
   if (is_flag) {
+    out.append(FLAG_HINT_HEADER);
     for (let const *flag : {&whole_flag, &letter_flag}) {
       if (flag->is_empty()) continue;
       if (source.flags != nullptr &&
@@ -1781,13 +1809,28 @@ fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
         return true;
       }
     }
+    out.clear();
   }
 
-  /* An alias shows what it expands to before the synopsis of its target. */
+  /* An alias shows its definition before the synopsis of its target. */
   if (let const expansion = context.scope_store().get_alias(command);
       expansion.has_value() && !expansion->view().trim_blanks().is_empty())
   {
-    out.append(expansion->view().trim_blanks());
+    out.append(ALIAS_HINT_HEADER);
+    out.append(command);
+    out.append(StringView{"='"});
+    let const value = expansion->view();
+
+    for (usize position = 0; position < value.length; position++) {
+      let const character = value[position];
+      if (character == '\'') {
+        out.append(StringView{"'\\''"});
+      } else {
+        out.push(character);
+      }
+    }
+
+    out.push('\'');
     if (!source.synopsis.is_empty()) {
       out.append(StringView{" \xc2\xb7 "});
       out.append(source.synopsis);
@@ -1796,6 +1839,7 @@ fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
   }
 
   if (source.synopsis.is_empty()) return false;
+  out.append(source.header);
   out.append(source.synopsis);
   return true;
 }

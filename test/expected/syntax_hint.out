@@ -1,79 +1,79 @@
 == open constructs
-echo "abc => Unterminated string literal, expected " here
-echo 'abc => Unterminated string literal, expected ' here
-echo $(ls => Unterminated command substitution, expected ) here
-echo `ls => Unterminated command substitution, expected ` here
-echo ${x => Unterminated variable expansion, expected } here
-echo $((1 + => Unterminated arithmetic expansion, expected )) here
-cat <(ls => Unterminated process substitution, expected ) here
-a=(1 2 => Unterminated array assignment, expected ')'
-(echo hi => Unterminated subshell, expected ')'
-{ echo hi => Unterminated brace group, expected '}'
-f() { => Unterminated brace group, expected '}'
-[[ a == b => Unterminated '[[', expected ']]'
-if true => Unterminated if, expected 'then' after the condition
-if (true) => Unterminated if, expected 'then' after the condition
-if true; then => Unterminated if, expected 'fi'
-while true => Unterminated loop, expected 'do'
-for x in a b => Unterminated for loop, expected 'do'
-for x in a; do  => Unterminated for loop, expected 'done'
-case x in => Unterminated case, expected a pattern to start an arm, or 'esac' to end the case
-echo $(if true; then => Unterminated command substitution, expected ) here
+echo "abc => [syntax error] Unterminated string literal, expected " here
+echo 'abc => [syntax error] Unterminated string literal, expected ' here
+echo $(ls => [syntax error] Unterminated command substitution, expected ) here
+echo `ls => [syntax error] Unterminated command substitution, expected ` here
+echo ${x => [syntax error] Unterminated variable expansion, expected } here
+echo $((1 + => [syntax error] Unterminated arithmetic expansion, expected )) here
+cat <(ls => [syntax error] Unterminated process substitution, expected ) here
+a=(1 2 => [syntax error] Unterminated array assignment, expected ')'
+(echo hi => [syntax error] Unterminated subshell, expected ')'
+{ echo hi => [syntax error] Unterminated brace group, expected '}'
+f() { => [syntax error] Unterminated brace group, expected '}'
+[[ a == b => [syntax error] Unterminated '[[', expected ']]'
+if true => [syntax error] Unterminated if, expected 'then' after the condition
+if (true) => [syntax error] Unterminated if, expected 'then' after the condition
+if true; then => [syntax error] Unterminated if, expected 'fi'
+while true => [syntax error] Unterminated loop, expected 'do'
+for x in a b => [syntax error] Unterminated for loop, expected 'do'
+for x in a; do  => [syntax error] Unterminated for loop, expected 'done'
+case x in => [syntax error] Unterminated case, expected a pattern to start an arm, or 'esac' to end the case
+echo $(if true; then => [syntax error] Unterminated command substitution, expected ) here
 == operators and redirections
-ls | => Unable to build the pipeline because no command follows the pipe to receive the output
-ls |& => Unable to build the pipeline because no command follows the pipe to receive the output
-ls && => Expected a command after an operator
-ls || => Expected a command after an operator
-| ls => Expected a command before the pipe
-&& ls => Expected a command before operator, found '&&'
-echo a; ; echo b => Expected a command before ';'
-{ :; ; } => Expected a command before ';'
-echo > => Expected a filename after the redir
-cat < => Expected a filename after the redir
-cat << => Expected a heredoc delimiter
+ls | => [syntax error] Unable to build the pipeline because no command follows the pipe to receive the output
+ls |& => [syntax error] Unable to build the pipeline because no command follows the pipe to receive the output
+ls && => [syntax error] Expected a command after an operator
+ls || => [syntax error] Expected a command after an operator
+| ls => [syntax error] Expected a command before the pipe
+&& ls => [syntax error] Expected a command before operator, found '&&'
+echo a; ; echo b => [syntax error] Expected a command before ';'
+{ :; ; } => [syntax error] Expected a command before ';'
+echo > => [syntax error] Expected a filename after the redir
+cat < => [syntax error] Expected a filename after the redir
+cat << => [syntax error] Expected a heredoc delimiter
 == stray and misplaced words
-echo ) => ')' has no matching '('
-echo ;; => ';;' is only valid between the arms of a 'case'
-fi  => 'fi' has no matching 'if'
-echo; done  => 'done' has no matching 'while', 'until', or 'for'
-case x  => Expected an unquoted 'in' after the case word
-function  => Expected a name after the 'function' keyword
-for 1x in a; do => Bad for loop variable, '1x' is not a plain name, drop the '$' and any quotes
-if true; then echo fi => Unterminated if, this 'fi' was read as an argument, so put a ';' or a newline before it
+echo ) => [syntax error] ')' has no matching '('
+echo ;; => [syntax error] ';;' is only valid between the arms of a 'case'
+fi  => [syntax error] 'fi' has no matching 'if'
+echo; done  => [syntax error] 'done' has no matching 'while', 'until', or 'for'
+case x  => [syntax error] Expected an unquoted 'in' after the case word
+function  => [syntax error] Expected a name after the 'function' keyword
+for 1x in a; do => [syntax error] Bad for loop variable, '1x' is not a plain name, drop the '$' and any quotes
+if true; then echo fi => [syntax error] Unterminated if, this 'fi' was read as an argument, so put a ';' or a newline before it
 == empty bodies
-( ) => Unable to parse the subshell, the body between '(' and ')' is empty, a command is required
-{ } => Unable to parse the brace group, the body between '{' and '}' is empty, a command is required
-if ( ) => Unable to parse the subshell, the body between '(' and ')' is empty, a command is required
-f() ( ) => Unable to parse the subshell, the body between '(' and ')' is empty, a command is required
-f() { } => Unable to parse the brace group, the body between '{' and '}' is empty, a command is required
-while true; do done  => Unable to parse the loop, the body between 'do' and 'done' is empty, a command is required
-if true; then fi => Unable to parse the if, the body after 'then' is empty, a command is required
-if :; then :; else fi => Unable to parse the if, the body after 'else' is empty, a command is required
+( ) => [syntax error] Unable to parse the subshell, the body between '(' and ')' is empty, a command is required
+{ } => [syntax error] Unable to parse the brace group, the body between '{' and '}' is empty, a command is required
+if ( ) => [syntax error] Unable to parse the subshell, the body between '(' and ')' is empty, a command is required
+f() ( ) => [syntax error] Unable to parse the subshell, the body between '(' and ')' is empty, a command is required
+f() { } => [syntax error] Unable to parse the brace group, the body between '{' and '}' is empty, a command is required
+while true; do done  => [syntax error] Unable to parse the loop, the body between 'do' and 'done' is empty, a command is required
+if true; then fi => [syntax error] Unable to parse the if, the body after 'then' is empty, a command is required
+if :; then :; else fi => [syntax error] Unable to parse the if, the body after 'else' is empty, a command is required
 == caret at the end of the erroneous word
-fi => 'fi' has no matching 'if'
-echo; esac => 'esac' has no matching 'case'
-case x => Expected an unquoted 'in' after the case word
-function => Expected a name after the 'function' keyword
-if => Unterminated if, expected a command for the condition
-while :; do done => Unable to parse the loop, the body between 'do' and 'done' is empty, a command is required
+fi => [syntax error] 'fi' has no matching 'if'
+echo; esac => [syntax error] 'esac' has no matching 'case'
+case x => [syntax error] Expected an unquoted 'in' after the case word
+function => [syntax error] Expected a name after the 'function' keyword
+if => [syntax error] Unterminated if, expected a command for the condition
+while :; do done => [syntax error] Unable to parse the loop, the body between 'do' and 'done' is empty, a command is required
 == continued on enter
-echo \ => echo [-neE] [arg ...]
-echo "abc\ => echo [-neE] [arg ...]
+echo \ => [builtin synopsis] echo [-neE] [arg ...]
+echo "abc\ => [builtin synopsis] echo [-neE] [arg ...]
 == clean lines
-echo "abc" "$(ls)" "${HOME}" => echo [-neE] [arg ...]
-echo hi # "abc => echo [-neE] [arg ...]
-echo \"abc => echo [-neE] [arg ...]
-read x <<EOF => A `read` without `-r` treats a backslash in the input as an escape. (SC2162)
+echo "abc" "$(ls)" "${HOME}" => [builtin synopsis] echo [-neE] [arg ...]
+echo hi # "abc => [builtin synopsis] echo [-neE] [arg ...]
+echo \"abc => [builtin synopsis] echo [-neE] [arg ...]
+read x <<EOF => [error] A `read` without `-r` treats a backslash in the input as an escape. (SC2162)
 if true; then echo; fi => 
 f() { :; } => 
 == analysis findings of a paused line
-echo $x => An unquoted variable can split into words and expand globs. (SC2086)
-cat file | grep x => The `cat` writes its file unchanged into the pipe. (SC2002)
-x = 1 => An assignment with spaces around equals is read as a command and its arguments. (SC2283)
+echo $x => [error] An unquoted variable can split into words and expand globs. (SC2086)
+cat file | grep x => [warning] The `cat` writes its file unchanged into the pipe. (SC2002)
+x = 1 => [error] An assignment with spaces around equals is read as a command and its arguments. (SC2283)
 zzunknown-command arg => 
-source ./zz-missing-file.sh => source file
+source ./zz-missing-file.sh => [builtin synopsis] source file
 == alias, function, and segment under the caret
-ls -a · ls [-aA1dgFhklnoprRSt] [-L level] [--tree] [--one-file-system] [path ...]
-zzf () { echo hi; }
-echo hi | cat -n => -n: Number every output line, starting at one.
-echo hi && cat -n => -n: Number every output line, starting at one.
+[alias synopsis] zzl='ls -a' · ls [-aA1dgFhklnoprRSt] [-L level] [--tree] [--one-file-system] [path ...]
+[function synopsis] zzf () { echo hi; }
+echo hi | cat -n => [flag] -n: Number every output line, starting at one.
+echo hi && cat -n => [flag] -n: Number every output line, starting at one.

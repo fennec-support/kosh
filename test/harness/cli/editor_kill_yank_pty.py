@@ -12,7 +12,7 @@
 # control bytes leaves them drawn in caret notation and out of the history
 # file. A trailing backslash continues the line, the shell joins it only
 # outside quotes, and history keeps both physical lines. A lone Ctrl-X names
-# its chords on the hint row until the next key resolves it, and Ctrl-X before
+# its chords on the hint rows until the next key resolves it, and Ctrl-X before
 # an arrow keeps the arrow. Ctrl-Z undoes at the prompt and still stops a
 # running program, Ctrl-Shift-Z in its kitty and xterm encodings redoes, and
 # Alt-T keeps trailing blanks in place. The prompt asks for the kitty and
@@ -31,7 +31,7 @@ import sys
 import tempfile
 
 from editor_ghost_menu_pty import (LEFT, Report, Session, clear_line, has_hint,
-                                   is_line)
+                                   has_hint_header, is_line)
 
 
 CTRL_A = b"\x01"
@@ -45,7 +45,8 @@ CTRL_U = b"\x15"
 CTRL_Z = b"\x1a"
 CTRL_SHIFT_Z_KITTY = b"\x1b[122;6u"
 CTRL_SHIFT_Z_XTERM = b"\x1b[27;6;90~"
-CTRL_X_HINT = "pressed ctrl-x. waiting for ctrl-e (edit in $VISUAL)"
+CTRL_X_HEADER = "pressed ctrl-x"
+CTRL_X_HINT = "waiting for ctrl-e (edit in $VISUAL)"
 ALT_DOT = b"\x1b."
 ALT_T = b"\x1bt"
 ALT_Y = b"\x1by"
@@ -353,12 +354,14 @@ def run_checks(binary, directory, command_directory, report):
         session.send(CTRL_X)
         report.record("ctrl-x-shows-what-it-waits-for", session,
                       lambda screen: is_line("echo ab")(screen)
+                      and has_hint_header(CTRL_X_HEADER)(screen)
                       and has_hint(CTRL_X_HINT)(screen))
         session.send(LEFT)
         session.send(b"Z")
         report.record("ctrl-x-hint-leaves-with-the-arrow", session,
                       lambda screen: is_line("echo aZb")(screen)
-                      and CTRL_X_HINT not in screen.get_hint())
+                      and CTRL_X_HINT not in screen.get_hint()
+                      and screen.get_hint_header() != CTRL_X_HEADER)
         clear_line(session)
 
         session.send(b"echo ab")

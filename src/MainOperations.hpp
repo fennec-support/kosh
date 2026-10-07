@@ -147,8 +147,20 @@ static fn run_debug_hint_driver(StringView driver_line,
       row.clear();
     }
   }
-  row += '\n';
-  print(row);
+
+  let printed = String{heap_allocator()};
+  if (let const line_break = row.view().find_character('\n');
+      line_break.has_value())
+  {
+    printed += '[';
+    printed.append(row.view().substring_of_length(0, *line_break));
+    printed.append(StringView{"] "});
+    printed.append(row.view().substring(*line_break + 1));
+  } else {
+    printed.append(row.view());
+  }
+  printed += '\n';
+  print(printed);
   flush();
 
   return 0;

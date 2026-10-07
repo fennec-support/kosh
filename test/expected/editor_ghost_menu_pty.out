@@ -51,8 +51,12 @@ prefix-down-restores-typed-text PASS
 empty-line-up-keeps-plain-history PASS
 option-off-up-recalls-newest-entry PASS
 hint-shows-command-synopsis PASS
+hint-names-utility-header PASS
+hint-rows-indented PASS
 hint-shows-flag-description PASS
+hint-names-flag-header PASS
 hint-clears-inside-command-word PASS
+hint-names-builtin-header PASS
 hint-absent-for-uncached-command PASS
 hint-yields-to-menu PASS
 hint-returns-after-menu-closes PASS
@@ -64,6 +68,7 @@ idle-hint-loads-each-key-once PASS
 idle-hint-skips-untrusted-directory PASS
 hint-shows-alias-expansion PASS
 hint-shows-function-definition PASS
+hint-names-function-file PASS
 idle-hint-shows-analysis-finding PASS
 hint-follows-pipeline-segment PASS
 hint-follows-command-substitution PASS
@@ -120,6 +125,11 @@ diagnostics-off-keeps-hint PASS
 narrow-startup-prompt PASS
 narrow-menu-help-wraps-between-items PASS
 narrow-menu-escape-closes PASS
+narrow-hint-wraps-long-synopsis PASS
+narrow-hint-rows-indented PASS
+narrow-hint-rows-erased-on-submit PASS
+short-startup-prompt PASS
+short-hint-keeps-the-input-on-screen PASS
 control-startup-prompt PASS
 control-name-completes-ansi-c-quoted PASS
 control-name-menu-opens PASS
