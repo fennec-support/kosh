@@ -45,20 +45,17 @@ fi
 cat <(echo beside-redirection) 3</dev/null
 
 # A process substitution sets $! to its process, and wait reads its status
-# after the command reaped it, also for an older one and a second time. jobs
-# does not list one, a later background job replaces $!, and wait with no
-# operand forgets them.
+# after the command reaped it, also a second time. jobs does not list one, a
+# later background job replaces $!, and wait with no operand forgets them.
+# Bash may prune the status of an older one depending on when it reaps it,
+# so process_substitution_wait.kosh covers that case.
 cat <(exit 3)
 wait "$!"
 echo "input=$?"
 : > >(exit 4)
 wait "$!"
 echo "output=$?"
-cat <(exit 5)
-older=$!
 cat <(exit 6) <(exit 7)
-wait "$older"
-echo "older=$?"
 wait "$!"
 echo "last=$?"
 wait "$!"
