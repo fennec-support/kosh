@@ -56,24 +56,24 @@ note: Replace it with ${unset_in_library-} if empty expansion is desired.
        |  ^~~~~~~~~~~~~~~~~
 
 evaluated=45
-eval:45:37: warning: The variable 'unset_in_eval' is not set, it expands to empty.
-    45 |    ( echo "evaluated=$LINENO"; echo "$unset_in_eval" ) &
+eval:2:37: warning: The variable 'unset_in_eval' is not set, it expands to empty.
+     2 |    ( echo "evaluated=$LINENO"; echo "$unset_in_eval" ) &
        |                                      ^~~~~~~~~~~~~~
 note: Replace it with ${unset_in_eval-} if empty expansion is desired.
-45:3: trace:
-    45 |    ( echo "evaluated=$LINENO"; echo "$unset_in_eval" ) &
+2:3: trace:
+     2 |    ( echo "evaluated=$LINENO"; echo "$unset_in_eval" ) &
        |    ^
 48:1: trace:
     48 |  evaluated
        |  ^~~~~~~~~
 
 evaluated=45
-eval:45:37: warning: The variable 'unset_in_eval' is not set, it expands to empty.
-    45 |    ( echo "evaluated=$LINENO"; echo "$unset_in_eval" ) &
+eval:2:37: warning: The variable 'unset_in_eval' is not set, it expands to empty.
+     2 |    ( echo "evaluated=$LINENO"; echo "$unset_in_eval" ) &
        |                                      ^~~~~~~~~~~~~~
 note: Replace it with ${unset_in_eval-} if empty expansion is desired.
-45:3: trace:
-    45 |    ( echo "evaluated=$LINENO"; echo "$unset_in_eval" ) &
+2:3: trace:
+     2 |    ( echo "evaluated=$LINENO"; echo "$unset_in_eval" ) &
        |    ^
 49:3: trace:
     49 |  ( evaluated ) &

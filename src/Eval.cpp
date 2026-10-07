@@ -1436,9 +1436,10 @@ fn EvalContext::line_number_at_location(
         resolved_source.to_render_position(site.position);
     let const render_line = static_cast<isize>(
         utils::line_number_at(resolved_source.text->view(), render_position));
-    line = static_cast<usize>(render_line + (resolved_source.is_windowed
-                                                 ? resolved_source.line_offset
-                                                 : 0));
+    line = resolved_source.is_windowed
+               ? static_cast<usize>(render_line + resolved_source.line_offset) +
+                     resolved_source.enclosing_line_count
+               : static_cast<usize>(render_line);
   }
   return line + preceding_line_count;
 }

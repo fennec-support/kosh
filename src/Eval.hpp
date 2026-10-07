@@ -3294,6 +3294,7 @@ public:
     usize body_start_position{0};
     usize header_length{0};
     isize line_offset{0};
+    usize enclosing_line_count{0};
     u32 source_name_index{0};
 
     pure fn to_render_position(usize absolute_position) const wontthrow -> usize

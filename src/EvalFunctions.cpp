@@ -89,10 +89,21 @@ fn EvalContext::register_function(StringView name,
   if (source_store().current_source() != nullptr && !definition_text.is_empty())
   {
     let const defining_view = source_store().current_source()->view();
-    let const body_line =
-        static_cast<isize>(line_number_at_location(SourceLocation{
-            body_start_position, 0, definition_location.source_name_index}));
-    info.line_offset = body_line - 1;
+    let const body_location = SourceLocation{
+        body_start_position, 0, definition_location.source_name_index};
+    let const body_site =
+        resolve_rendered_site(defining_view, body_location, 0, false, this);
+    let const rendered_body_line =
+        static_cast<isize>(utils::line_number_at(body_site.source,
+                                                 body_site.location.position)) +
+        body_site.line_offset;
+    let const counted_body_line =
+        static_cast<isize>(line_number_at_location(body_location));
+    info.line_offset = rendered_body_line - 1;
+    info.enclosing_line_count =
+        counted_body_line > rendered_body_line
+            ? static_cast<usize>(counted_body_line - rendered_body_line)
+            : usize{0};
 
     let const body_end_position =
         body_start_position + definition_text.length - info.header_length;
@@ -208,6 +219,7 @@ pure fn EvalContext::resolve_render_source(
     resolved_source.body_start_position = info->body_start_position;
     resolved_source.header_length = info->line_prefix.count();
     resolved_source.line_offset = info->line_offset;
+    resolved_source.enclosing_line_count = info->enclosing_line_count;
     resolved_source.source_name_index = info->source_name_index;
     return resolved_source;
   }

@@ -1,0 +1,79 @@
+#!/bin/env kosh
+
+# A diagnostic in eval text names eval and the line of that text, and its excerpt
+# shows that text. A function defined by an eval keeps that numbering when it is
+# called later, also from a background job or a pipeline stage that runs in a
+# fresh evaluator on Windows. LINENO and BASH_LINENO count from the file.
+library_directory="${TEST_MKTEMP_DIRECTORY:-${TEMP:-${TMPDIR:-/tmp}}}/fresh-evaluator-eval-locations-$$"
+koshkit mkdir -p "$library_directory"
+cd "$library_directory" || exit 1
+printf '%s\n' \
+  '# The library starts its eval below this line.' \
+  'eval '"'"'echo "library=$LINENO"' \
+  'echo "$unset_in_library_eval"'"'" \
+  'eval '"'"'library_defined() {' \
+  '  echo "library_defined=$LINENO"' \
+  '  koshkit cat --unknown-in-library' \
+  '}'"'" >library.sh
+
+eval 'echo "top=$LINENO"
+echo "$unset_in_top_eval"
+koshkit cat --unknown-in-top-eval'
+
+eval 'eval "echo nested=\$LINENO
+echo \"\$unset_in_nested_eval\""'
+
+source ./library.sh
+( library_defined )
+
+wrapper() {
+  eval 'echo "wrapped=$LINENO"
+  echo "$unset_in_wrapped_eval"'
+}
+wrapper
+
+eval '
+evaluated() {
+  echo "evaluated=$LINENO ${BASH_LINENO[*]} ${FUNCNAME[*]}"
+  echo "$unset_in_evaluated"
+}
+evaluated_caller() {
+  evaluated
+}
+evaluated_failing() {
+  koshkit cat --unknown-in-evaluated
+}'
+evaluated
+evaluated_caller
+( evaluated ) &
+wait "$!"
+echo piped | { read -r value; evaluated_caller; }
+( evaluated_failing )
+( evaluated_failing ) &
+wait "$!"
+
+definitions='quoted() {
+  echo "quoted=$LINENO"; echo "$unset_in_quoted"
+}'
+eval "$definitions"
+quoted
+( quoted ) &
+wait "$!"
+
+define_inside() {
+  eval 'inside() {
+    echo "inside=$LINENO"; echo "$unset_in_inside"
+  }'
+}
+define_inside
+inside
+
+eval 'eval "nested_defined() {
+  echo \"nested_defined=\$LINENO\"; echo \"\$unset_in_nested_defined\"
+}"'
+nested_defined
+( nested_defined ) &
+wait "$!"
+
+cd / || exit 1
+[ -n "$library_directory" ] && koshkit rm -r "$library_directory"

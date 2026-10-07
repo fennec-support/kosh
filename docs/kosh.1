@@ -3830,7 +3830,16 @@ A diagnostic names the file, line, and column of the failing command, quotes
 its source line, and puts a caret under it. Text inside command substitution,
 backticks, process substitution, and here-document bodies is part of the file,
 so its diagnostics use the file's own line and column. Text built at run time,
-such as an eval string or a trap action, is its own source. A
+such as an eval string or a trap action, is its own source. A location in an
+eval string reads
+.BR eval:2:7: ,
+counted from the start of that string, and the quoted line and caret come from
+it. A function defined by an eval keeps that numbering wherever it is called,
+including from a background job, while
+.B LINENO
+and
+.B BASH_LINENO
+inside it count from the file line of the eval command, as Bash does. A
 .B \-c
 string is named
 .BR \-c ,

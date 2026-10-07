@@ -960,7 +960,7 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
 }
 
 static constexpr u32 SUBSHELL_BOOTSTRAP_MAGIC = 0x4b534842U;
-static constexpr u32 SUBSHELL_BOOTSTRAP_VERSION = 19U;
+static constexpr u32 SUBSHELL_BOOTSTRAP_VERSION = 20U;
 static constexpr u32 NO_BOOTSTRAP_PROCESS = UINT32_MAX;
 static constexpr u32 NO_BARE_PROGRAM_PATH = UINT32_MAX;
 
@@ -1197,6 +1197,7 @@ fn FunctionStore::append_wire(String &output) const throws -> void
       let const *source = storage.get_source();
       if (info == nullptr || source == nullptr || source->is_empty() ||
           info->line_offset < 0 || info->line_offset > INT32_MAX ||
+          info->enclosing_line_count > INT32_MAX ||
           info->definition_line > UINT32_MAX)
       {
         return;
@@ -1207,6 +1208,8 @@ fn FunctionStore::append_wire(String &output) const throws -> void
           records, find_wire_source_name(names, info->source_name_index));
       append_subshell_bootstrap_u32(records,
                                     static_cast<u32>(info->line_offset));
+      append_subshell_bootstrap_u32(
+          records, static_cast<u32>(info->enclosing_line_count));
       append_subshell_bootstrap_u32(records,
                                     static_cast<u32>(info->definition_line));
       append_subshell_bootstrap_text(records, info->line_prefix.view());
@@ -1782,7 +1785,7 @@ fn FunctionStore::from_wire(subshell_bootstrap_reader &reader,
 
   let const record_count = static_cast<usize>(payload.read_u32());
   if (!payload.is_valid ||
-      record_count > payload.get_remaining_length() / (6 * sizeof(u32)))
+      record_count > payload.get_remaining_length() / (7 * sizeof(u32)))
   {
     return false;
   }
@@ -1795,14 +1798,18 @@ fn FunctionStore::from_wire(subshell_bootstrap_reader &reader,
     }
 
     let const line_offset = payload.read_u32();
+    let const enclosing_line_count = payload.read_u32();
     let const definition_line = payload.read_u32();
     let const line_prefix = payload.read_text();
     let const line_suffix = payload.read_text();
-    if (!payload.is_valid || name.is_empty() || line_offset > INT32_MAX) {
+    if (!payload.is_valid || name.is_empty() || line_offset > INT32_MAX ||
+        enclosing_line_count > INT32_MAX)
+    {
       return false;
     }
 
     info.line_offset = static_cast<isize>(line_offset);
+    info.enclosing_line_count = usize{enclosing_line_count};
     info.definition_line = usize{definition_line};
     info.line_prefix = String{heap_allocator(), line_prefix};
     info.line_suffix = String{heap_allocator(), line_suffix};

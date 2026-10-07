@@ -1,0 +1,213 @@
+27:3: warning: The command 'library_defined' could not be verified after runtime code.
+    27 |  ( library_defined )
+       |    ^~~~~~~~~~~~~~~
+46:1: warning: The command 'evaluated' could not be verified after runtime code.
+    46 |  evaluated
+       |  ^~~~~~~~~
+47:1: warning: The command 'evaluated_caller' could not be verified after runtime code.
+    47 |  evaluated_caller
+       |  ^~~~~~~~~~~~~~~~
+48:3: warning: The command 'evaluated' could not be verified after runtime code.
+    48 |  ( evaluated ) &
+       |    ^~~~~~~~~
+50:31: warning: The command 'evaluated_caller' could not be verified after runtime code.
+    50 |  echo piped | { read -r value; evaluated_caller; }
+       |                                ^~~~~~~~~~~~~~~~
+51:3: warning: The command 'evaluated_failing' could not be verified after runtime code.
+    51 |  ( evaluated_failing )
+       |    ^~~~~~~~~~~~~~~~~
+52:3: warning: The command 'evaluated_failing' could not be verified after runtime code.
+    52 |  ( evaluated_failing ) &
+       |    ^~~~~~~~~~~~~~~~~
+59:1: warning: The command 'quoted' could not be verified after runtime code.
+    59 |  quoted
+       |  ^~~~~~
+60:3: warning: The command 'quoted' could not be verified after runtime code.
+    60 |  ( quoted ) &
+       |    ^~~~~~
+69:1: warning: The command 'inside' could not be verified after runtime code.
+    69 |  inside
+       |  ^~~~~~
+74:1: warning: The command 'nested_defined' could not be verified after runtime code.
+    74 |  nested_defined
+       |  ^~~~~~~~~~~~~~
+75:3: warning: The command 'nested_defined' could not be verified after runtime code.
+    75 |  ( nested_defined ) &
+       |    ^~~~~~~~~~~~~~
+Encountered 12 warnings.
+top=19
+eval:2:7: warning: The variable 'unset_in_top_eval' is not set, it expands to empty.
+     2 |  echo "$unset_in_top_eval"
+       |        ^~~~~~~~~~~~~~~~~~
+note: Replace it with ${unset_in_top_eval-} if empty expansion is desired.
+19:1: trace:
+    19 |  eval 'echo "top=$LINENO"
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~
+
+eval:3:13: error: koshkit cat: Unknown flag '--unknown-in-top-eval'.
+     3 |  koshkit cat --unknown-in-top-eval
+       |              ^~~~~~~~~~~~~~~~~~~~~
+note: Use `--` before an operand that begins with a dash.
+nested=23
+eval:2:7: warning: The variable 'unset_in_nested_eval' is not set, it expands to empty.
+     2 |  echo "$unset_in_nested_eval"
+       |        ^~~~~~~~~~~~~~~~~~~~~
+note: Replace it with ${unset_in_nested_eval-} if empty expansion is desired.
+1:1: trace:
+     1 |  eval "echo nested=\$LINENO
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~
+23:1: trace:
+    23 |  eval 'eval "echo nested=\$LINENO
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+library=2
+eval:2:7: warning: The variable 'unset_in_library_eval' is not set, it expands to empty.
+     2 |  echo "$unset_in_library_eval"
+       |        ^~~~~~~~~~~~~~~~~~~~~~
+note: Replace it with ${unset_in_library_eval-} if empty expansion is desired.
+./library.sh:2:1: trace:
+     2 |  eval 'echo "library=$LINENO"
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+26:8: trace:
+    26 |  source ./library.sh
+       |         ^~~~~~~~~~~~
+
+library_defined=5
+eval:3:15: error: koshkit cat: Unknown flag '--unknown-in-library'.
+     3 |    koshkit cat --unknown-in-library
+       |                ^~~~~~~~~~~~~~~~~~~~
+note: Use `--` before an operand that begins with a dash.
+27:3: trace:
+    27 |  ( library_defined )
+       |    ^~~~~~~~~~~~~~~
+27:1: trace:
+    27 |  ( library_defined )
+       |  ^
+wrapped=30
+eval:2:9: warning: The variable 'unset_in_wrapped_eval' is not set, it expands to empty.
+     2 |    echo "$unset_in_wrapped_eval"
+       |          ^~~~~~~~~~~~~~~~~~~~~~
+note: Replace it with ${unset_in_wrapped_eval-} if empty expansion is desired.
+30:3: trace:
+    30 |    eval 'echo "wrapped=$LINENO"
+       |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+33:1: trace:
+    33 |  wrapper
+       |  ^~~~~~~
+
+evaluated=37 46 evaluated
+eval:4:9: warning: The variable 'unset_in_evaluated' is not set, it expands to empty.
+     4 |    echo "$unset_in_evaluated"
+       |          ^~~~~~~~~~~~~~~~~~~
+note: Replace it with ${unset_in_evaluated-} if empty expansion is desired.
+46:1: trace:
+    46 |  evaluated
+       |  ^~~~~~~~~
+
+evaluated=37 41 47 evaluated evaluated_caller
+eval:4:9: warning: The variable 'unset_in_evaluated' is not set, it expands to empty.
+     4 |    echo "$unset_in_evaluated"
+       |          ^~~~~~~~~~~~~~~~~~~
+note: Replace it with ${unset_in_evaluated-} if empty expansion is desired.
+7:3: trace:
+     7 |    evaluated
+       |    ^~~~~~~~~
+47:1: trace:
+    47 |  evaluated_caller
+       |  ^~~~~~~~~~~~~~~~
+
+evaluated=37 48 evaluated
+eval:4:9: warning: The variable 'unset_in_evaluated' is not set, it expands to empty.
+     4 |    echo "$unset_in_evaluated"
+       |          ^~~~~~~~~~~~~~~~~~~
+note: Replace it with ${unset_in_evaluated-} if empty expansion is desired.
+48:3: trace:
+    48 |  ( evaluated ) &
+       |    ^~~~~~~~~
+48:1: trace:
+    48 |  ( evaluated ) &
+       |  ^
+
+evaluated=37 41 50 evaluated evaluated_caller
+eval:4:9: warning: The variable 'unset_in_evaluated' is not set, it expands to empty.
+     4 |    echo "$unset_in_evaluated"
+       |          ^~~~~~~~~~~~~~~~~~~
+note: Replace it with ${unset_in_evaluated-} if empty expansion is desired.
+7:3: trace:
+     7 |    evaluated
+       |    ^~~~~~~~~
+50:31: trace:
+    50 |  echo piped | { read -r value; evaluated_caller; }
+       |                                ^~~~~~~~~~~~~~~~
+
+eval:10:15: error: koshkit cat: Unknown flag '--unknown-in-evaluated'.
+    10 |    koshkit cat --unknown-in-evaluated
+       |                ^~~~~~~~~~~~~~~~~~~~~~
+note: Use `--` before an operand that begins with a dash.
+51:3: trace:
+    51 |  ( evaluated_failing )
+       |    ^~~~~~~~~~~~~~~~~
+51:1: trace:
+    51 |  ( evaluated_failing )
+       |  ^
+eval:10:15: error: koshkit cat: Unknown flag '--unknown-in-evaluated'.
+    10 |    koshkit cat --unknown-in-evaluated
+       |                ^~~~~~~~~~~~~~~~~~~~~~
+note: Use `--` before an operand that begins with a dash.
+52:3: trace:
+    52 |  ( evaluated_failing ) &
+       |    ^~~~~~~~~~~~~~~~~
+52:1: trace:
+    52 |  ( evaluated_failing ) &
+       |  ^
+quoted=59
+eval:2:32: warning: The variable 'unset_in_quoted' is not set, it expands to empty.
+     2 |    echo "quoted=$LINENO"; echo "$unset_in_quoted"
+       |                                 ^~~~~~~~~~~~~~~~
+note: Replace it with ${unset_in_quoted-} if empty expansion is desired.
+59:1: trace:
+    59 |  quoted
+       |  ^~~~~~
+
+quoted=59
+eval:2:32: warning: The variable 'unset_in_quoted' is not set, it expands to empty.
+     2 |    echo "quoted=$LINENO"; echo "$unset_in_quoted"
+       |                                 ^~~~~~~~~~~~~~~~
+note: Replace it with ${unset_in_quoted-} if empty expansion is desired.
+60:3: trace:
+    60 |  ( quoted ) &
+       |    ^~~~~~
+60:1: trace:
+    60 |  ( quoted ) &
+       |  ^
+
+inside=65
+eval:2:34: warning: The variable 'unset_in_inside' is not set, it expands to empty.
+     2 |      echo "inside=$LINENO"; echo "$unset_in_inside"
+       |                                   ^~~~~~~~~~~~~~~~
+note: Replace it with ${unset_in_inside-} if empty expansion is desired.
+69:1: trace:
+    69 |  inside
+       |  ^~~~~~
+
+nested_defined=72
+eval:2:40: warning: The variable 'unset_in_nested_defined' is not set, it expands to empty.
+     2 |    echo "nested_defined=$LINENO"; echo "$unset_in_nested_defined"
+       |                                         ^~~~~~~~~~~~~~~~~~~~~~~~
+note: Replace it with ${unset_in_nested_defined-} if empty expansion is desired.
+74:1: trace:
+    74 |  nested_defined
+       |  ^~~~~~~~~~~~~~
+
+nested_defined=72
+eval:2:40: warning: The variable 'unset_in_nested_defined' is not set, it expands to empty.
+     2 |    echo "nested_defined=$LINENO"; echo "$unset_in_nested_defined"
+       |                                         ^~~~~~~~~~~~~~~~~~~~~~~~
+note: Replace it with ${unset_in_nested_defined-} if empty expansion is desired.
+75:3: trace:
+    75 |  ( nested_defined ) &
+       |    ^~~~~~~~~~~~~~
+75:1: trace:
+    75 |  ( nested_defined ) &
+       |  ^
+

@@ -554,7 +554,9 @@ struct subshell_saved_descriptor
    definition copy. The copy holds a "name () " header then the body verbatim.
    An absolute position rebases by the body start and header length. The
    header occupies the copy's first line, and the line offset restores the
-   defining file's numbering. A body that starts on the first line needs a
+   numbering of the defining text, which diagnostics show. The enclosing line
+   count adds the lines above an eval text, so LINENO counts from the file
+   the way bash does. A body that starts on the first line needs a
    negative offset. An error renders the body between the rest of its first
    and last defining lines, which render_source builds on first use. A fresh
    evaluator parses an inherited body from its bootstrap, so the body positions
@@ -565,6 +567,7 @@ struct function_definition_info
   usize header_length{0};
   usize definition_line{0};
   isize line_offset{0};
+  usize enclosing_line_count{0};
   u32 source_name_index{0};
   u32 body_name_index{0};
   String line_prefix{heap_allocator()};
