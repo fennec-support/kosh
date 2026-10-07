@@ -6,9 +6,9 @@ note: Assign 'unset_in_background' before it is read, or set it in the environme
     40 |  ( ( echo "$unset_in_inner" ) & wait )
        |            ^~~~~~~~~~~~~~~
 note: Assign 'unset_in_inner' before it is read, or set it in the environment.
-42:13: warning: The variable 'unset_in_input' is read before any assignment gives it a value. (SC2154)
-    42 |  cat <(echo "$unset_in_input")
-       |              ^~~~~~~~~~~~~~~
+42:21: warning: The variable 'unset_in_input' is read before any assignment gives it a value. (SC2154)
+    42 |  koshkit cat <(echo "$unset_in_input")
+       |                      ^~~~~~~~~~~~~~~
 note: Assign 'unset_in_input' before it is read, or set it in the environment.
 Encountered 3 warnings.
 start
@@ -68,36 +68,36 @@ note: Replace it with ${unset_in_inner-} if empty expansion is desired.
     40 |  ( ( echo "$unset_in_inner" ) & wait )
        |  ^
 
-42:13: warning: The variable 'unset_in_input' is not set, it expands to empty.
-    42 |  cat <(echo "$unset_in_input")
-       |              ^~~~~~~~~~~~~~~
+42:21: warning: The variable 'unset_in_input' is not set, it expands to empty.
+    42 |  koshkit cat <(echo "$unset_in_input")
+       |                      ^~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_input-} if empty expansion is desired.
-42:5: trace:
-    42 |  cat <(echo "$unset_in_input")
-       |      ^~~~~~~~~~~~~~~~~~~~~~~~~
+42:13: trace:
+    42 |  koshkit cat <(echo "$unset_in_input")
+       |              ^~~~~~~~~~~~~~~~~~~~~~~~~
 
 eval=44
 48:55: warning: The variable 'unset_in_show' is not set, it expands to empty.
     48 |    echo "show=$LINENO ${BASH_LINENO[*]} ${FUNCNAME[*]} $unset_in_show"
        |                                                        ^~~~~~~~~~~~~~
 note: Replace it with ${unset_in_show-} if empty expansion is desired.
-50:7: trace:
-    50 |  cat <(show_frames)
-       |        ^~~~~~~~~~~
-50:5: trace:
-    50 |  cat <(show_frames)
-       |      ^~~~~~~~~~~~~~
+50:15: trace:
+    50 |  koshkit cat <(show_frames)
+       |                ^~~~~~~~~~~
+50:13: trace:
+    50 |  koshkit cat <(show_frames)
+       |              ^~~~~~~~~~~~~~
 show=48 50 show_frames 
 48:55: warning: The variable 'unset_in_show' is not set, it expands to empty.
     48 |    echo "show=$LINENO ${BASH_LINENO[*]} ${FUNCNAME[*]} $unset_in_show"
        |                                                        ^~~~~~~~~~~~~~
 note: Replace it with ${unset_in_show-} if empty expansion is desired.
-51:21: trace:
-    51 |  call_show() { cat <(show_frames); }
-       |                      ^~~~~~~~~~~
-51:19: trace:
-    51 |  call_show() { cat <(show_frames); }
-       |                    ^~~~~~~~~~~~~~
+51:29: trace:
+    51 |  call_show() { koshkit cat <(show_frames); }
+       |                              ^~~~~~~~~~~
+51:27: trace:
+    51 |  call_show() { koshkit cat <(show_frames); }
+       |                            ^~~~~~~~~~~~~~
 52:1: trace:
     52 |  call_show
        |  ^~~~~~~~~

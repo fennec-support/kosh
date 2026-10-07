@@ -53,7 +53,7 @@ SKIPPED_TESTS := \
 	completion_glob_quoting path_quoting control_byte_quoting koshkit_mknod \
 	koshkit_live_pty koshkit_live_sanitizers koshkit_live_deltas \
 	editor_ghost_menu_pty editor_kill_yank_pty editor_prompt_pty \
-	shell_executable_path \
+	shell_integration_marks_pty shell_executable_path \
 	analysis_environment_inheritance
 else ifneq ($(TARGET), Linux)
 SKIPPED_TESTS := koshkit_mknod koshkit_live_pty koshkit_live_sanitizers \
@@ -100,7 +100,7 @@ SKIPPED_TESTS += alias_unalias arith_decimal ast_process_substitution \
 endif
 ifeq ($(shell command -v python3),)
 SKIPPED_TESTS += koshkit_live_pty koshkit_live_deltas editor_ghost_menu_pty \
-	editor_kill_yank_pty editor_prompt_pty
+	editor_kill_yank_pty editor_prompt_pty shell_integration_marks_pty
 endif
 
 ifeq ($(OS), Windows_NT)

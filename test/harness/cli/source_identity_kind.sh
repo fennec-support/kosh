@@ -3,7 +3,7 @@ unset KOSH_FLAGS
 # differently. A function defined in a command string reports the shell name, as
 # Bash does, and a function defined in a file called -c reports that file.
 d=$(mktemp -d)
-trap '[ -n "$d" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$d"' EXIT
+trap 'cd / && [ -n "$d" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$d"' EXIT
 cd "$d" || exit 1
 
 cat > ./-c <<'EOF'
