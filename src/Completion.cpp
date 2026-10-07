@@ -852,21 +852,25 @@ fn complete_filesystem_names_by_prefix(StringView token, EvalContext &context,
 
 /* A cd or pushd operand that is neither absolute nor led by a dot or a tilde
    also completes the directories under each CDPATH entry, the ones the builtin
-   would reach through it. */
-static fn append_cdpath_candidates(ArrayList<String> &candidates,
-                                   StringView token,
-                                   const utils::decoded_shell_word &decoded,
-                                   EvalContext &context) throws -> void
+   would reach through it. One collector ranks them with the working directory,
+   so only the best match tier across every directory is kept. */
+static fn complete_directory_change_operand(
+    StringView token, const Path &base_directory, EvalContext &context,
+    const utils::decoded_shell_word &decoded) throws -> ArrayList<String>
 {
+  let collector = complete_filesystem_with<CommandListCollector>(
+      token, base_directory, context, CommandListCollector{}, &decoded,
+      path_text_mode::ShellSyntax, filesystem_entry_filter::DirectoriesOnly);
+
   let const operand = decoded.text.view();
   if (os::path_is_absolute(operand) || os::path_is_drive_relative(operand) ||
       operand.starts_with(".") || operand.starts_with("~"))
   {
-    return;
+    return collector.take();
   }
 
   let const cdpath = context.get_variable_value("CDPATH");
-  if (!cdpath.has_value()) return;
+  if (!cdpath.has_value()) return collector.take();
 
   let const entries = cdpath->view();
   usize start = 0;
@@ -878,14 +882,12 @@ static fn append_cdpath_candidates(ArrayList<String> &candidates,
     start = end + 1;
     if (entry.is_empty()) continue;
 
-    let const found = complete_filesystem(
-        token, Path{entry}, context, &decoded, path_text_mode::ShellSyntax,
-        filesystem_entry_filter::DirectoriesOnly);
-    for (let const &candidate : found) {
-      let const is_known = candidates.find(candidate).has_value();
-      if (!is_known) candidates.push(candidate.clone());
-    }
+    collector = complete_filesystem_with<CommandListCollector>(
+        token, Path{entry}, context, steal(collector), &decoded,
+        path_text_mode::ShellSyntax, filesystem_entry_filter::DirectoriesOnly);
   }
+
+  return collector.take();
 }
 
 ScopedCompletionScratch::ScopedCompletionScratch()
@@ -1446,11 +1448,12 @@ fn complete(StringView line, usize cursor, EvalContext &context,
                                    !utils::token_has_uppercase(basename));
       is_tier_ranked = true;
       candidates =
-          complete_filesystem(token, base_directory, context, &decoded_token,
-                              path_text_mode::ShellSyntax, filesystem_filter);
-      if (is_directory_change_command) {
-        append_cdpath_candidates(candidates, token, decoded_token, context);
-      }
+          is_directory_change_command
+              ? complete_directory_change_operand(token, base_directory,
+                                                  context, decoded_token)
+              : complete_filesystem(token, base_directory, context,
+                                    &decoded_token, path_text_mode::ShellSyntax,
+                                    filesystem_filter);
       should_close_generated_prefix_quote = decoded_token.quote_character == 0;
     } else if (!decoded_token.text.is_empty()) {
       /* A token ending in a slash names a directory the ghost has not read yet,

@@ -15,3 +15,7 @@ gamma_dir/
 alpha_dir/
 gamma_dir/
 == a dot-led operand skips CDPATH:
+== the working directory and CDPATH rank by one match tier:
+delta_two/
+== a name in both the working directory and CDPATH is listed once:
+alpha_dir/

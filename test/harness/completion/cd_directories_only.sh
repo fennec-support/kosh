@@ -1,7 +1,9 @@
 # The cd builtin completes only directories, never files, while another command
 # still completes both. Every directory candidate ends in a slash, including
-# dot-dot and the directories cd reaches through CDPATH. A hermetic temp
-# directory keeps the candidates stable.
+# dot-dot and the directories cd reaches through CDPATH. The working directory
+# and the CDPATH entries are ranked together, so only the best match tier
+# across them is offered, and a name found in several is offered once. A
+# hermetic temp directory keeps the candidates stable.
 dir=$(mktemp -d)
 trap 'rm -rf "$dir"' EXIT
 mkdir "$dir/alpha_dir" "$dir/beta_dir"
@@ -25,3 +27,9 @@ CDPATH="$dir/elsewhere" "$BIN" --debug-complete-at 'pushd a' </dev/null
 CDPATH="$dir/elsewhere" "$BIN" --debug-complete-at 'pushd gam' </dev/null
 echo "== a dot-led operand skips CDPATH:"
 CDPATH="$dir/elsewhere" "$BIN" --debug-complete-at 'cd ./gam' </dev/null
+echo "== the working directory and CDPATH rank by one match tier:"
+mkdir "$dir/Delta_dir" "$dir/elsewhere/delta_two"
+CDPATH="$dir/elsewhere" "$BIN" --debug-complete-at 'cd delta' </dev/null
+echo "== a name in both the working directory and CDPATH is listed once:"
+mkdir "$dir/elsewhere/alpha_dir"
+CDPATH="$dir/elsewhere" "$BIN" --debug-complete-at 'cd alpha' </dev/null
