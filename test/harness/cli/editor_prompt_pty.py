@@ -10,9 +10,10 @@
 # rows after the first, leave a terminal too narrow for it, stay out of the
 # submitted command, and stay in the scrollback without the transient prompt.
 # With the transient-prompt option, Enter must redraw the submitted line after
-# "$ " or PS1_TRANSIENT with no right prompt, no hint row, and no rows of a
-# multi-row PS1. The terminal model and session come from the ghost and menu
-# probe. Each check prints one stable PASS line for the golden output.
+# "$ ", "# " for root, or PS1_TRANSIENT with no right prompt, no hint row, and
+# no rows of a multi-row PS1. The terminal model and session come from the
+# ghost and menu probe. Each check prints one stable PASS line for the golden
+# output.
 
 import fcntl
 import os
@@ -32,6 +33,7 @@ ALT_ENTER = b"\x1b\r"
 BACKSPACE = b"\x7f"
 CTRL_C = b"\x03"
 BULLET = "•"
+SHORT_PROMPT = "# " if os.geteuid() == 0 else "$ "
 
 
 def with_right_prompt(text):
@@ -118,7 +120,8 @@ def run_checks(binary, directory, command_directory, report):
             empty_prompt))
         session.send(b"echo three\r")
         report.record("transient-prompt-redraws-the-line", session,
-                      is_submitted(["$ echo three", "three"], empty_prompt))
+                      is_submitted([SHORT_PROMPT + "echo three", "three"],
+                                   empty_prompt))
 
         session.send(b"PS1=$'top\\n\\\\. '; PS1_TRANSIENT='T> '\r")
         session.wait_until(lambda screen: is_prompt_line(empty_prompt)(screen)
