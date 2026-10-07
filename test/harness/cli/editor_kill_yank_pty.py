@@ -20,7 +20,10 @@
 # running program, Ctrl-Shift-Z in its kitty and xterm encodings redoes, and
 # Alt-T keeps trailing blanks in place. The prompt asks for the kitty and
 # xterm extended keys and withdraws them before a command's output and around
-# the external editor, and the option turns the request off. PROMPT_COMMAND
+# the external editor, and the option turns the request off. Every editing
+# Ctrl and Alt key in the table acts the same in its legacy bytes, which a
+# terminal that ignores the request sends, its kitty form, and its
+# modifyOtherKeys form, with Ctrl-^ as the legacy redo. PROMPT_COMMAND
 # sees the terminal in its usual mode, and the request follows its output.
 # Kitty-encoded
 # Enter, Ctrl-C, Ctrl-A, Ctrl-D, Ctrl-W, Ctrl-X, Ctrl-U, Ctrl-Z, Alt-B, and
@@ -160,6 +163,83 @@ def has_exited(session):
             time.sleep(0.01)
         return True
     return do_check
+
+
+def kitty_key(code, modifier):
+    return b"\x1b[%d;%du" % (code, modifier)
+
+
+def xterm_key(code, modifier):
+    return b"\x1b[27;%d;%d~" % (modifier, code)
+
+
+CTRL = 5
+ALT = 3
+CTRL_SHIFT = 6
+
+
+def same_code(name, prelude, legacy, code, modifier):
+    return (name, prelude, legacy, kitty_key(code, modifier),
+            xterm_key(code, modifier))
+
+
+KEY_TABLE = (
+    same_code("ctrl-a", b"", b"\x01", 97, CTRL),
+    same_code("ctrl-b", b"", b"\x02", 98, CTRL),
+    same_code("ctrl-d", b"", b"\x04", 100, CTRL),
+    same_code("ctrl-e", b"", b"\x05", 101, CTRL),
+    same_code("ctrl-f", b"", b"\x06", 102, CTRL),
+    same_code("ctrl-h", b"", b"\x08", 104, CTRL),
+    same_code("ctrl-k", b"", CTRL_K, 107, CTRL),
+    same_code("ctrl-t", b"", CTRL_T, 116, CTRL),
+    same_code("ctrl-u", b"", CTRL_U, 117, CTRL),
+    same_code("ctrl-w", b"", CTRL_W, 119, CTRL),
+    same_code("ctrl-y", CTRL_W, CTRL_Y, 121, CTRL),
+    same_code("ctrl-z", CTRL_W, CTRL_Z, 122, CTRL),
+    ("ctrl-underscore", CTRL_W, b"\x1f", kitty_key(45, CTRL_SHIFT),
+     xterm_key(95, CTRL_SHIFT)),
+    ("ctrl-shift-z", CTRL_W + CTRL_Z, b"\x1e", kitty_key(122, CTRL_SHIFT),
+     xterm_key(90, CTRL_SHIFT)),
+    ("ctrl-backspace", b"", b"\x08", kitty_key(127, CTRL),
+     xterm_key(8, CTRL)),
+    same_code("alt-b", b"", b"\x1bb", 98, ALT),
+    same_code("alt-f", b"", b"\x1bf", 102, ALT),
+    same_code("alt-d", b"", b"\x1bd", 100, ALT),
+    same_code("alt-t", b"", ALT_T, 116, ALT),
+    same_code("alt-y", CTRL_W + CTRL_Y, ALT_Y, 121, ALT),
+    same_code("alt-dot", b"", ALT_DOT, 46, ALT),
+    ("alt-backspace", b"", b"\x1b\x7f", kitty_key(127, ALT),
+     xterm_key(127, ALT)),
+)
+
+
+def get_typed(screen):
+    state = screen.get_typed_and_ghost()
+    return None if state is None else state[0]
+
+
+def run_key_table_checks(session, report):
+    def do_apply(prelude, key):
+        session.send(b"echo one two three" + LEFT * 4)
+        session.wait_until(is_line("echo one two three"))
+        session.send(prelude + key + b"X")
+        session.wait_until(lambda screen: "X" in (get_typed(screen) or ""))
+        session.pump(0.1)
+        typed = get_typed(session.screen)
+        clear_line(session)
+        return typed
+
+    for name, prelude, legacy, kitty, xterm in KEY_TABLE:
+        if legacy == ALT_Y:
+            do_apply(prelude, legacy)
+        expected = do_apply(prelude, legacy)
+        typed = [do_apply(prelude, kitty), do_apply(prelude, xterm)]
+        if expected is None or typed != [expected, expected]:
+            sys.stderr.write("%s: legacy %r, kitty and xterm %r\n"
+                             % (name, expected, typed))
+        report.record("%s-acts-the-same-in-every-encoding" % name, session,
+                      lambda screen: expected is not None
+                      and typed == [expected, expected])
 
 
 def run_extended_key_checks(session, report, directory):
@@ -506,6 +586,7 @@ def run_checks(binary, directory, command_directory, report):
                       lambda screen: has_output("5", 1)(screen)
                       and b"runtime error" not in bytes(session.raw[mark:]))
 
+        run_key_table_checks(session, report)
         run_extended_key_checks(session, report, directory)
     finally:
         session.close()
