@@ -59,6 +59,8 @@ enum class source_identity_kind : u8
 fn source_identity_kind_at(u32 source_name_index) wontthrow
     -> source_identity_kind;
 
+inline constexpr i32 SYNTAX_ERROR_STATUS = 2;
+
 inline constexpr char COMMAND_STRING_SOURCE_TEXT[] = "-c";
 inline constexpr StringView COMMAND_STRING_SOURCE_NAME{
     COMMAND_STRING_SOURCE_TEXT, 2};

@@ -611,7 +611,13 @@ fn EvalContext::run_source(StringView source, StringView origin,
                 runtime_state().get_mood()}
       };
 
-      let const parsed_ast = parser.construct_ast();
+      Expression *parsed_ast = nullptr;
+      try {
+        parsed_ast = parser.construct_ast();
+      } catch (ErrorWithLocation &syntax_error) {
+        syntax_error.set_command_status(SYNTAX_ERROR_STATUS);
+        throw;
+      }
       ASSERT(parsed_ast != nullptr);
       source_retention().reserve_one_more();
 

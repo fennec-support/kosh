@@ -130,19 +130,19 @@ status=1
 command.sh:1:12: error: Expected a filename after '<>'.
      1 |  x=$(echo <><>)
        |             ^
-status=1
+status=2
 == run process.sh
 process.sh:3:55: error: Expected a filename after the redir.
      3 |  diff <(echo one) <(echo two; produce-two --now <S-D-.><><>)
        |                                                        ^
-status=1
+status=2
 == run backtick.sh
 backtick.sh:2:11: error: Expected a filename after '<>'.
      2 |  y=`echo <><>`
        |            ^
-status=1
+status=2
 == run -c
 -c:1:28: error: Expected a filename after '<>'.
      1 |  echo before; echo $(echo <><>)
        |                             ^
-status=1
+status=2

@@ -760,13 +760,13 @@ static fn run_script_contents(
     Expression *ast = precompiled_ast;
     if (plan.should_stream_units) {
       if (scan_analysis_metadata(input, parse_errors, directives))
-        return EXIT_FAILURE;
+        return SYNTAX_ERROR_STATUS;
     } else if (plan.should_preflight_syntax) {
-      if (preflight_syntax(input, parse_errors)) return EXIT_FAILURE;
+      if (preflight_syntax(input, parse_errors)) return SYNTAX_ERROR_STATUS;
     } else if (precompiled_ast == nullptr) {
       if (parse_whole_script(input, plan, should_print_ast, parse_errors,
                              directives, ast))
-        return EXIT_FAILURE;
+        return SYNTAX_ERROR_STATUS;
     }
 
     LOG(Debug, "the analysis stage %s for this chunk",
