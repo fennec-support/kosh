@@ -880,11 +880,9 @@ hot fn EvalContext::expand_path(glob_field field,
      literal fallback with failglob off. A test or [ command is exempt so a glob
      probing for a file keeps its literal text. */
   if (values.count() == 0) {
-    let const failglob_is_on =
-        runtime_state().failglob() || is_shopt_enabled("failglob");
+    let const failglob_is_on = runtime_state().failglob();
     let const failglob_is_explicit =
-        runtime_state().was_failglob_set_explicitly() ||
-        is_shopt_enabled("failglob");
+        runtime_state().was_failglob_set_explicitly();
     let const is_failglob_fatal =
         failglob_is_on &&
         (failglob_is_explicit || !strict_diagnostics_are_warnings());

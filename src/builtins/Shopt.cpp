@@ -2,18 +2,16 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements shopt option lookup, compact bit indexes, reusable
- * status output, and the shopt builtin. The canonical name table remains here
- * because parsing, BASHOPTS, and runtime option changes must share one order.
+ * This file implements the shopt builtin, its status and reusable output, and
+ * the BASHOPTS listing. The option names, their order, and their storage come
+ * from the option registry.
  */
 
 #include "../Builtin.hpp"
 #include "../Eval.hpp"
+#include "../Options.hpp"
 #include "../Utils.hpp"
 #include "../base/Trace.hpp"
-
-/* An option whose pattern engine is not yet wired still records its state so a
-   later query reads it back. */
 
 FLAG_LIST_DECL();
 
@@ -38,72 +36,6 @@ namespace koshka {
 
 namespace {
 
-const StringView SHOPT_OPTION_NAMES[] = {
-    "autocd",          "assoc_expand_once",
-    "cdable_vars",     "cdspell",
-    "checkhash",       "checkjobs",
-    "checkwinsize",    "complete_fullquote",
-    "direxpand",       "dirspell",
-    "dotglob",         "execfail",
-    "expand_aliases",  "extdebug",
-    "extglob",         "extquote",
-    "failglob",        "force_fignore",
-    "globasciiranges", "globskipdots",
-    "globstar",        "gnu_errfmt",
-    "histreedit",      "histverify",
-    "hostcomplete",    "huponexit",
-    "inherit_errexit", "interactive_comments",
-    "lastpipe",        "localvar_inherit",
-    "localvar_unset",  "login_shell",
-    "mailwarn",        "no_empty_cmd_completion",
-    "nocaseglob",      "nocasematch",
-    "nullglob",        "patsub_replacement",
-    "progcomp",        "progcomp_alias",
-    "promptvars",      "restricted_shell",
-    "shift_verbose",   "sourcepath",
-    "varredir_close",  "xpg_echo",
-};
-
-constexpr PackedStringKey SHOPT_OPTION_KEYS[] = {
-    SSK("autocd"),          SSK("assoc_expand_once"),
-    SSK("cdable_vars"),     SSK("cdspell"),
-    SSK("checkhash"),       SSK("checkjobs"),
-    SSK("checkwinsize"),    SSK("complete_fullquote"),
-    SSK("direxpand"),       SSK("dirspell"),
-    SSK("dotglob"),         SSK("execfail"),
-    SSK("expand_aliases"),  SSK("extdebug"),
-    SSK("extglob"),         SSK("extquote"),
-    SSK("failglob"),        SSK("force_fignore"),
-    SSK("globasciiranges"), SSK("globskipdots"),
-    SSK("globstar"),        SSK("gnu_errfmt"),
-    SSK("histreedit"),      SSK("histverify"),
-    SSK("hostcomplete"),    SSK("huponexit"),
-    SSK("inherit_errexit"), SSK("interactive_comments"),
-    SSK("lastpipe"),        SSK("localvar_inherit"),
-    SSK("localvar_unset"),  SSK("login_shell"),
-    SSK("mailwarn"),        SSK("no_empty_cmd_completion"),
-    SSK("nocaseglob"),      SSK("nocasematch"),
-    SSK("nullglob"),        SSK("patsub_replacement"),
-    SSK("progcomp"),        SSK("progcomp_alias"),
-    SSK("promptvars"),      SSK("restricted_shell"),
-    SSK("shift_verbose"),   SSK("sourcepath"),
-    SSK("varredir_close"),  SSK("xpg_echo"),
-};
-constexpr StaticStringSet SHOPT_OPTIONS{SHOPT_OPTION_KEYS};
-static_assert(countof(SHOPT_OPTION_KEYS) <= 64);
-
-consteval fn compact_shopt_option_index(PackedStringKey key) wontthrow -> u8
-{
-  for (usize index = 0; index < countof(SHOPT_OPTION_KEYS); index++)
-    if (SHOPT_OPTIONS.keys[index] == key) return static_cast<u8>(index);
-  return 0;
-}
-
-pure fn is_known_shopt_option(StringView name) wontthrow -> bool
-{
-  return SHOPT_OPTIONS.contains(name);
-}
-
 fn shopt_status_line(StringView name, bool on, Allocator allocator) throws
     -> String
 {
@@ -118,9 +50,9 @@ fn shopt_status_line(StringView name, bool on, Allocator allocator) throws
 fn format_option_names_help(Allocator allocator) throws -> String
 {
   let section = String{allocator, "OPTION NAMES\n"};
-  let const total = countof(SHOPT_OPTION_NAMES);
-  utils::append_name_columns(
-      section, total, [](usize index) { return SHOPT_OPTION_NAMES[index]; });
+  let const &names = shopt_option_name_list();
+  utils::append_name_columns(section, names.count(),
+                             [&](usize index) { return names[index]; });
   return section;
 }
 
@@ -146,55 +78,20 @@ fn shopt_reusable_line(StringView name, bool on, Allocator allocator,
   return line;
 }
 
+fn shopt_is_on(const EvalContext &cxt, const option_descriptor &option) throws
+    -> bool
+{
+  return read_option_number(cxt, option) != 0;
+}
+
 } /* namespace */
-
-pure fn shopt_option_index(StringView name) wontthrow -> Maybe<u8>
-{
-  let const index = SHOPT_OPTIONS.find_index(name);
-  if (!index.has_value()) return None;
-  return Maybe<u8>{static_cast<u8>(*index)};
-}
-
-pure fn shopt_option_index(shopt_option_id option) wontthrow -> u8
-{
-  switch (option) {
-  case shopt_option_id::Autocd:
-    return compact_shopt_option_index(SSK("autocd"));
-  case shopt_option_id::Checkhash:
-    return compact_shopt_option_index(SSK("checkhash"));
-  case shopt_option_id::ExpandAliases:
-    return compact_shopt_option_index(SSK("expand_aliases"));
-  case shopt_option_id::Extdebug:
-    return compact_shopt_option_index(SSK("extdebug"));
-  case shopt_option_id::Extglob:
-    return compact_shopt_option_index(SSK("extglob"));
-  case shopt_option_id::InheritErrexit:
-    return compact_shopt_option_index(SSK("inherit_errexit"));
-  case shopt_option_id::Lastpipe:
-    return compact_shopt_option_index(SSK("lastpipe"));
-  case shopt_option_id::LocalvarInherit:
-    return compact_shopt_option_index(SSK("localvar_inherit"));
-  case shopt_option_id::PatsubReplacement:
-    return compact_shopt_option_index(SSK("patsub_replacement"));
-  case shopt_option_id::Progcomp:
-    return compact_shopt_option_index(SSK("progcomp"));
-  case shopt_option_id::ProgcompAlias:
-    return compact_shopt_option_index(SSK("progcomp_alias"));
-  case shopt_option_id::RestrictedShell:
-    return compact_shopt_option_index(SSK("restricted_shell"));
-  case shopt_option_id::Sourcepath:
-    return compact_shopt_option_index(SSK("sourcepath"));
-  }
-  return 0;
-}
 
 fn shopt_option_name_list() throws -> const ArrayList<StringView> &
 {
   static ArrayList<StringView> names = [] throws {
     let collected = ArrayList<StringView>{heap_allocator()};
-    collected.reserve(countof(SHOPT_OPTION_NAMES));
-    for (let const &name : SHOPT_OPTION_NAMES)
-      collected.push(name);
+    for (let const &option : get_option_registry())
+      if (!option.shopt_name.is_empty()) collected.push(option.shopt_name);
     return collected;
   }();
   return names;
@@ -203,10 +100,10 @@ fn shopt_option_name_list() throws -> const ArrayList<StringView> &
 fn enabled_shopt_option_names(const EvalContext &cxt) throws -> String
 {
   let joined = String{heap_allocator()};
-  for (let const name : SHOPT_OPTION_NAMES) {
-    if (!cxt.is_shopt_enabled(name)) continue;
+  for (let const &option : get_option_registry()) {
+    if (option.shopt_name.is_empty() || !shopt_is_on(cxt, option)) continue;
     if (!joined.is_empty()) joined.push(':');
-    joined.append(name);
+    joined.append(option.shopt_name);
   }
   return joined;
 }
@@ -247,15 +144,17 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   };
 
   i32 status = 0;
-  let const do_reject_unknown =
-      [&](StringView name, const SourceLocation &location) throws -> bool {
-    if (is_known_shopt_option(name)) return false;
+  let const do_find_or_reject =
+      [&](StringView name, const SourceLocation &location)
+          throws -> const option_descriptor * {
+    let const *option = find_option_by_shopt_name(name);
+    if (option != nullptr) return option;
     status = 1;
     if (!is_quiet)
       report_soft_builtin_error(ec, cxt, location,
                                 StringView{"'"} + name +
                                     "' is not a valid shell option name");
-    return true;
+    return nullptr;
   };
 
   /* shopt -o operates on the set -o options, the bridge bash provides so the
@@ -309,8 +208,9 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (should_enable || should_disable) {
     if (names.is_empty()) {
       if (!is_quiet) {
-        for (let const &name : SHOPT_OPTION_NAMES) {
-          let const is_on = cxt.is_shopt_enabled(name);
+        for (let const &option : get_option_registry()) {
+          if (option.shopt_name.is_empty()) continue;
+          let const is_on = shopt_is_on(cxt, option);
           if (should_enable && !is_on) {
             continue;
           }
@@ -318,20 +218,20 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             continue;
           }
 
-          ec.print_to_stdout(do_format_status_line(name, is_on).view());
+          ec.print_to_stdout(
+              do_format_status_line(option.shopt_name, is_on).view());
         }
       }
       return 0;
     }
 
     for (usize n = 0; n < names.count(); n++) {
-      let const &name = names[n];
-      let const &location = name_locations[n];
-      if (do_reject_unknown(name, location)) continue;
-      if (name == "restricted_shell") continue;
-      LOG(Info, "shopt setting '%.*s' to %s", static_cast<int>(name.length),
-          name.data, should_enable ? "on" : "off");
-      cxt.set_shopt_option(name, should_enable);
+      let const *option = do_find_or_reject(names[n], name_locations[n]);
+      if (option == nullptr || option->is_read_only) continue;
+      LOG(Info, "shopt setting '%.*s' to %s", static_cast<int>(names[n].length),
+          names[n].data, should_enable ? "on" : "off");
+      write_option_number(cxt, *option, should_enable ? 1 : 0,
+                          option_origin::Shopt);
     }
     return status;
   }
@@ -340,21 +240,22 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
      -q form relies on. */
   if (names.is_empty()) {
     if (!is_quiet) {
-      for (let const &name : SHOPT_OPTION_NAMES)
-        ec.print_to_stdout(
-            do_format_status_line(name, cxt.is_shopt_enabled(name)).view());
+      for (let const &option : get_option_registry())
+        if (!option.shopt_name.is_empty())
+          ec.print_to_stdout(
+              do_format_status_line(option.shopt_name, shopt_is_on(cxt, option))
+                  .view());
     }
     return 0;
   }
 
   for (usize n = 0; n < names.count(); n++) {
-    let const &name = names[n];
-    let const &location = name_locations[n];
-    if (do_reject_unknown(name, location)) continue;
-    let const is_on = cxt.is_shopt_enabled(name);
+    let const *option = do_find_or_reject(names[n], name_locations[n]);
+    if (option == nullptr) continue;
+    let const is_on = shopt_is_on(cxt, *option);
     if (!is_on) status = 1;
     if (!is_quiet)
-      ec.print_to_stdout(do_format_status_line(name, is_on).view());
+      ec.print_to_stdout(do_format_status_line(names[n], is_on).view());
   }
   return status;
 }

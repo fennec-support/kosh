@@ -11,9 +11,9 @@
 #include "../CLI.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
+#include "../Options.hpp"
 #include "../Platform.hpp"
 #include "../Utils.hpp"
-#include "../base/StaticStringMap.hpp"
 #include "../base/Trace.hpp"
 
 FLAG_LIST_DECL();
@@ -45,568 +45,47 @@ namespace koshka {
 
 namespace {
 
-enum class set_option_behavior : u8
+fn is_set_option(const option_descriptor &option) wontthrow -> bool
 {
-  Stored,
-  InteractiveComments,
-  Posix,
-  Vi,
-  Emacs,
-  WarningLevel,
-  AnnoyingDiagnostics,
-  NoDiagnostics,
-  Login,
-  Rcfile,
-};
-
-struct option_text
-{
-  const char *data{nullptr};
-  usize length{0};
-
-  constexpr option_text() = default;
-  template <usize Count>
-  consteval option_text(const char (&text)[Count])
-      : data(text), length(Count - 1)
-  {}
-  constexpr operator StringView() const wontthrow
-  {
-    return StringView{data, length};
-  }
-  constexpr fn is_empty() const wontthrow -> bool { return length == 0; }
-};
-
-struct set_option_descriptor
-{
-  consteval set_option_descriptor(shell_option_id option_id,
-                                  set_option_behavior option_behavior,
-                                  char short_name, option_text long_name,
-                                  option_text description,
-                                  option_text alias_name = {},
-                                  bool should_list_in_shellopts = false,
-                                  bool should_list = true)
-      : name(long_name), help(description), alias(alias_name), id(option_id),
-        behavior(option_behavior), letter(short_name),
-        is_in_shellopts(should_list_in_shellopts), is_listed(should_list)
-  {}
-
-  option_text name;
-  option_text help;
-  option_text alias{};
-  shell_option_id id;
-  set_option_behavior behavior;
-  char letter;
-  bool is_in_shellopts{false};
-  bool is_listed{true};
-};
-
-constexpr set_option_descriptor SET_OPTIONS[] = {
-    {shell_option_id::Allexport, set_option_behavior::Stored, 'a', "allexport",
-     "Mark every assigned variable for the environment.", "export-all", true},
-    {shell_option_id::Notify,
-     set_option_behavior::Stored,
-     'b', "notify",
-     "Report a background job's completion immediately when it finishes.", {},
-     true},
-    {shell_option_id::Errexit, set_option_behavior::Stored, 'e', "errexit",
-     "Exit on the first command that fails.", "error-exit", true},
-    {shell_option_id::Noglob, set_option_behavior::Stored, 'f', "noglob",
-     "Disable pathname expansion.", "no-glob", true},
-    {shell_option_id::Hashall,
-     set_option_behavior::Stored,
-     'h', "hashall",
-     "Retain command hashing mode for compatible option queries.", {},
-     true},
-    {shell_option_id::Keyword,
-     set_option_behavior::Stored,
-     'k', "keyword",
-     "Place assignment arguments in the command environment.", {},
-     true},
-    {shell_option_id::Monitor,
-     set_option_behavior::Stored,
-     'm', "monitor",
-     "Run background jobs in their own process group with notifications.", {},
-     true},
-    {shell_option_id::Noexec, set_option_behavior::Stored, 'n', "noexec",
-     "Read and parse commands but do not run them.", "no-exec", true},
-    {shell_option_id::Onecmd,
-     set_option_behavior::Stored,
-     't', "onecmd",
-     "Exit after reading and executing one top-level command.", {},
-     true},
-    {shell_option_id::Privileged,
-     set_option_behavior::Stored,
-     'p', "privileged",
-     "Retain elevated ids and suppress environment startup files.", {},
-     true},
-    {shell_option_id::Nounset, set_option_behavior::Stored, 'u', "nounset",
-     "Treat an unset variable as an error.", "no-unset", true},
-    {shell_option_id::Verbose,
-     set_option_behavior::Stored,
-     'v', "verbose",
-     "Write input to standard error as it is read.", {},
-     true},
-    {shell_option_id::Xtrace,
-     set_option_behavior::Stored,
-     'x', "xtrace",
-     "Print each command after expansion before it runs.", {},
-     true},
-    {shell_option_id::Braceexpand,
-     set_option_behavior::Stored,
-     'B', "braceexpand",
-     "Enable brace expansion.", {},
-     true},
-    {shell_option_id::Noclobber, set_option_behavior::Stored, 'C', "noclobber",
-     "Refuse to overwrite an existing file through '>'.", "no-clobber", true},
-    {shell_option_id::Errtrace,
-     set_option_behavior::Stored,
-     'E', "errtrace",
-     "Retain ERR trap inheritance mode for compatible option queries.", {},
-     true},
-    {shell_option_id::Histexpand,
-     set_option_behavior::Stored,
-     'H', "histexpand",
-     "Expand history references introduced by an exclamation mark.", {},
-     true},
-    {shell_option_id::Physical,
-     set_option_behavior::Stored,
-     'P', "physical",
-     "Resolve symbolic links while changing directories.", {},
-     true},
-    {shell_option_id::Functrace,
-     set_option_behavior::Stored,
-     'T', "functrace",
-     "Retain DEBUG and RETURN inheritance mode for compatible option queries.", {},
-     true},
-    {shell_option_id::Count,
-     set_option_behavior::InteractiveComments,
-     '\0', "interactive-comments",
-     "Allow comments in interactive shell input.", {},
-     true},
-    {shell_option_id::Pipefail,
-     set_option_behavior::Stored,
-     '\0', "pipefail",
-     "Report a pipeline's status as the rightmost stage that failed.", {},
-     true},
-    {shell_option_id::History,
-     set_option_behavior::Stored,
-     '\0', "history",
-     "Store commands in the history list.", {},
-     true},
-    {shell_option_id::Ignoreeof,
-     set_option_behavior::Stored,
-     '\0', "ignoreeof",
-     "Require repeated end-of-file input before an interactive shell exits.", {},
-     true},
-    {shell_option_id::Nolog,
-     set_option_behavior::Stored,
-     '\0', "nolog",
-     "Accept the Bash compatibility option without changing execution.", {},
-     true},
-    {shell_option_id::Failglob,
-     set_option_behavior::Stored,
-     '\0', "failglob",
-     "Fail a command whose glob matches nothing.", {},
-     true},
-    {shell_option_id::ExtendedArithmetic, set_option_behavior::Stored, '\0',
-     "extended-arithmetic", "Use arbitrary-precision integers and finite decimal values."},
-    {shell_option_id::Koshkit, set_option_behavior::Stored, '\0', "koshkit",
-     "Resolve the bundled koshkit utility names directly as commands."},
-    {shell_option_id::SpaceAfterCompletion, set_option_behavior::Stored, '\0',
-     "space-after-completion", "Insert a space after an accepted non-directory completion."},
-    {shell_option_id::HistoryPrefixSearch, set_option_behavior::Stored, '\0',
-     "history-prefix-search", "Recall only history entries that begin with the typed text on Up and Down."},
-    {shell_option_id::InteractiveHints, set_option_behavior::Stored, '\0',
-     "interactive-hints", "Show the synopsis or flag description of the command under the cursor below the input."},
-    {shell_option_id::InteractiveDiagnostics, set_option_behavior::Stored, '\0',
-     "interactive-diagnostics", "Show the syntax problem or analysis finding of the line below the input."},
-    {shell_option_id::AutoPair, set_option_behavior::Stored, '\0',
-     "auto-pair", "Insert the closer after a typed bracket, brace, or quote."},
-    {shell_option_id::TransientPrompt, set_option_behavior::Stored, '\0',
-     "transient-prompt", "Redraw a submitted line after PS1_TRANSIENT and without RPS1."},
-    {shell_option_id::ExtendedKeys, set_option_behavior::Stored, '\0',
-     "extended-keys", "Ask the terminal to report modified keys such as Ctrl-Shift-Z apart while a line is read."},
-    {shell_option_id::Vi,
-     set_option_behavior::Vi,
-     '\0', "vi",
-     "Use vi-style command-line editing.", {},
-     true},
-    {shell_option_id::Emacs,
-     set_option_behavior::Emacs,
-     '\0', "emacs",
-     "Use emacs-style command-line editing.", {},
-     true},
-    {shell_option_id::Count,
-     set_option_behavior::Posix,
-     '\0', "posix",
-     "Switch to the bash posix mood.", {},
-     true},
-    {shell_option_id::ShowAst,
-     set_option_behavior::Stored,
-     'A', "show-ast",
-     "Print the AST before each command runs.", {},
-     false, false},
-    {shell_option_id::ShowLexedWords,
-     set_option_behavior::Stored,
-     'R', "show-lexed-words",
-     "Print the escape bitmap after each parse.", {},
-     false, false},
-    {shell_option_id::ShowExitCode,
-     set_option_behavior::Stored,
-     '\0', "show-exit-code",
-     "Show diagnostics for every non-zero exit code.", {},
-     false, false},
-    {shell_option_id::ShowAllExitCodes,
-     set_option_behavior::Stored,
-     'N', "show-all-exit-codes",
-     "Show diagnostics for every exit code, including a successful zero.", {},
-     false, false},
-    {shell_option_id::Count,
-     set_option_behavior::WarningLevel,
-     'W', {},
-     "Step through the diagnostic tiers with -W, -WW, and -WWW.", {},
-     false, false},
-    {shell_option_id::Mimicry, set_option_behavior::Stored, 'I', "mimicry",
-     "Mimic the shell named by a script's shebang."},
-    {shell_option_id::Count, set_option_behavior::AnnoyingDiagnostics, '\0',
-     "annoying-diagnostics", "Report the annoying diagnostic tier."},
-    {shell_option_id::ShowStats,
-     set_option_behavior::Stored,
-     'S', "show-stats",
-     "Print evaluation statistics after each run.", {},
-     false, false},
-    {shell_option_id::Count, set_option_behavior::NoDiagnostics, '\0',
-     "no-diagnostics", "Skip the analysis stage before each chunk runs."},
-    {shell_option_id::ShowMemory,
-     set_option_behavior::Stored,
-     'G', "show-memory",
-     "Print a granular memory report at exit.", {},
-     false, false},
-    {shell_option_id::Count,
-     set_option_behavior::Login,
-     '\0', "login",
-     "Whether the shell started as a login shell, fixed at startup.", {},
-     false, false},
-    {shell_option_id::Count,
-     set_option_behavior::Rcfile,
-     '\0', "rcfile",
-     "Whether a custom rc file was named at startup, fixed at startup.", {},
-     false, false},
-};
-
-consteval fn set_option_name_count() wontthrow -> usize
-{
-  usize result = 0;
-  for (let const &option : SET_OPTIONS) {
-    if (!option.name.is_empty()) result++;
-    if (!option.alias.is_empty()) result++;
-  }
-  return result;
+  return !option.set_name.is_empty() ||
+         option.storage == option_storage::WarningLevel;
 }
 
-template <usize Count>
-struct set_option_name_table
-{
-  static_string_entry<u8> entries[Count]{};
-};
-
-consteval fn make_set_option_name_table() wontthrow
-    -> set_option_name_table<set_option_name_count()>
-{
-  set_option_name_table<set_option_name_count()> result{};
-  usize entry_position = 0;
-  for (usize option_position = 0; option_position < countof(SET_OPTIONS);
-       option_position++)
-  {
-    let const &option = SET_OPTIONS[option_position];
-    if (!option.name.is_empty())
-      result.entries[entry_position++] = {
-          PackedStringKey::from_literal(option.name.data),
-          static_cast<u8>(option_position)};
-    if (!option.alias.is_empty())
-      result.entries[entry_position++] = {
-          PackedStringKey::from_literal(option.alias.data),
-          static_cast<u8>(option_position)};
-  }
-  return result;
-}
-
-consteval fn set_option_descriptors_are_valid() wontthrow -> bool
-{
-  if (countof(SET_OPTIONS) > 0xff) return false;
-  for (usize left = 0; left < countof(SET_OPTIONS); left++) {
-    let const &left_option = SET_OPTIONS[left];
-    if (left_option.name.is_empty() &&
-        (left_option.behavior != set_option_behavior::WarningLevel ||
-         left_option.letter == '\0'))
-    {
-      return false;
-    }
-    if (left_option.name.length > PackedStringKey::BYTE_CAPACITY) return false;
-    if (!left_option.alias.is_empty() &&
-        left_option.alias.length > PackedStringKey::BYTE_CAPACITY)
-    {
-      return false;
-    }
-    for (usize right = left + 1; right < countof(SET_OPTIONS); right++)
-      if (left_option.letter != '\0' &&
-          left_option.letter == SET_OPTIONS[right].letter)
-      {
-        return false;
-      }
-  }
-  let const names = make_set_option_name_table();
-  for (usize left = 0; left < countof(names.entries); left++)
-    for (usize right = left + 1; right < countof(names.entries); right++)
-      if (names.entries[left].key == names.entries[right].key) return false;
-  return true;
-}
-
-static_assert(set_option_descriptors_are_valid());
-constexpr auto SET_OPTION_NAMES = make_set_option_name_table();
-constexpr StaticStringMap SET_OPTION_BY_NAME{SET_OPTION_NAMES.entries};
-
-consteval fn shellopts_position_count() wontthrow -> usize
-{
-  usize result = 0;
-  for (let const &option : SET_OPTIONS)
-    if (option.is_in_shellopts) result++;
-  return result;
-}
-
-template <usize Count>
-struct shellopts_position_table
-{
-  u8 positions[Count]{};
-};
-
-consteval fn option_text_is_before(option_text left,
-                                   option_text right) wontthrow -> bool
-{
-  let const shared_length =
-      left.length < right.length ? left.length : right.length;
-  for (usize byte_position = 0; byte_position < shared_length; byte_position++)
-    if (left.data[byte_position] != right.data[byte_position])
-      return left.data[byte_position] < right.data[byte_position];
-  return left.length < right.length;
-}
-
-consteval fn make_shellopts_positions() wontthrow
-    -> shellopts_position_table<shellopts_position_count()>
-{
-  shellopts_position_table<shellopts_position_count()> result{};
-  usize output_position = 0;
-  for (usize option_position = 0; option_position < countof(SET_OPTIONS);
-       option_position++)
-    if (SET_OPTIONS[option_position].is_in_shellopts)
-      result.positions[output_position++] = static_cast<u8>(option_position);
-
-  for (usize position = 1; position < countof(result.positions); position++) {
-    let const moved = result.positions[position];
-    usize slot = position;
-    while (slot > 0 &&
-           option_text_is_before(SET_OPTIONS[moved].name,
-                                 SET_OPTIONS[result.positions[slot - 1]].name))
-    {
-      result.positions[slot] = result.positions[slot - 1];
-      slot--;
-    }
-    result.positions[slot] = moved;
-  }
-  return result;
-}
-
-constexpr auto SHELLOPTS_POSITIONS = make_shellopts_positions();
-
-consteval fn shellopts_positions_are_valid() wontthrow -> bool
-{
-  for (usize left = 0; left < countof(SHELLOPTS_POSITIONS.positions); left++) {
-    let const left_position = SHELLOPTS_POSITIONS.positions[left];
-    if (left_position >= countof(SET_OPTIONS) ||
-        !SET_OPTIONS[left_position].is_in_shellopts)
-      return false;
-    if (left > 0 &&
-        !option_text_is_before(
-            SET_OPTIONS[SHELLOPTS_POSITIONS.positions[left - 1]].name,
-            SET_OPTIONS[left_position].name))
-    {
-      return false;
-    }
-    for (usize right = left + 1; right < countof(SHELLOPTS_POSITIONS.positions);
-         right++)
-      if (left_position == SHELLOPTS_POSITIONS.positions[right]) return false;
-  }
-  return true;
-}
-
-static_assert(shellopts_positions_are_valid());
-
-struct set_option_letter_table
-{
-  u8 positions[256];
-};
-
-consteval fn make_set_option_letter_table() wontthrow -> set_option_letter_table
-{
-  set_option_letter_table result{};
-  for (usize position = 0; position < countof(result.positions); position++)
-    result.positions[position] = 0xff;
-  for (usize position = 0; position < countof(SET_OPTIONS); position++) {
-    let const letter = SET_OPTIONS[position].letter;
-    if (letter != '\0')
-      result.positions[static_cast<u8>(letter)] = static_cast<u8>(position);
-  }
-  return result;
-}
-
-constexpr auto SET_OPTION_BY_LETTER = make_set_option_letter_table();
-
-fn find_option_by_letter(char letter) wontthrow -> Maybe<usize>
-{
-  let const position = SET_OPTION_BY_LETTER.positions[static_cast<u8>(letter)];
-  return position == 0xff ? None : Maybe<usize>{position};
-}
-
-fn find_option_by_name(StringView name) throws -> Maybe<usize>
-{
-  let const position = SET_OPTION_BY_NAME.find(name);
-  return position.has_value() ? Maybe<usize>{*position} : None;
-}
-
-fn option_is_available(const EvalContext &cxt,
-                       const set_option_descriptor &option) wontthrow -> bool
-{
-  return option.id != shell_option_id::Physical ||
-         !cxt.runtime_state().is_posix_mode();
-}
-
-fn option_is_on(const EvalContext &cxt,
-                const set_option_descriptor &option) throws -> bool
+fn option_is_on(const EvalContext &cxt, const option_descriptor &option) throws
+    -> bool
 {
   if (!option_is_available(cxt, option)) return false;
-  switch (option.behavior) {
-  case set_option_behavior::Stored:
-    return cxt.runtime_state().option_is_enabled(option.id);
-  case set_option_behavior::InteractiveComments:
-    return cxt.is_shopt_enabled("interactive_comments");
-  case set_option_behavior::Posix:
-    return cxt.runtime_state().is_posix_option_on();
-  case set_option_behavior::Vi:
-    return cxt.runtime_state().option_is_enabled(shell_option_id::Vi);
-  case set_option_behavior::Emacs:
-    return cxt.runtime_state().option_is_enabled(shell_option_id::Emacs);
-  case set_option_behavior::WarningLevel:
+  if (option.storage == option_storage::WarningLevel)
     return cxt.runtime_state().get_warning_level() > 0;
-  case set_option_behavior::AnnoyingDiagnostics:
-    return cxt.runtime_state().is_annoying_diagnostics_enabled();
-  case set_option_behavior::NoDiagnostics:
-    return cxt.runtime_state().is_diagnostics_disabled();
-  case set_option_behavior::Login: return cxt.startup_store().is_login_shell();
-  case set_option_behavior::Rcfile:
-    return cxt.startup_store().has_custom_rcfile();
-  }
-  unreachable("Unhandled set option behavior");
+  return (read_option_number(cxt, option) != 0) != option.is_set_name_inverted;
 }
 
-fn option_is_startup_fact(const set_option_descriptor &option) throws -> bool
-{
-  return option.behavior == set_option_behavior::Login ||
-         option.behavior == set_option_behavior::Rcfile;
-}
-
-fn apply_or_reject_option(EvalContext &cxt, const set_option_descriptor &option,
+fn apply_or_reject_option(EvalContext &cxt, const option_descriptor &option,
                           bool enable,
                           bool should_step_warning_level = false) throws -> void
 {
   if (!option_is_available(cxt, option))
-    throw Error{
-        "Unknown option '" + String{cxt.scratch_allocator(), option.name}
-          +
-        "'"
-    };
-  if (option_is_startup_fact(option))
-    throw Error{
-        "Unable to change '" + String{cxt.scratch_allocator(), option.name}
-          +
-        "' because it is fixed at shell startup"
-    };
-  LOG(Info, "set flipping option '%.*s' to %s",
-      static_cast<int>(option.name.length), option.name.data,
-      enable ? "on" : "off");
-  switch (option.behavior) {
-  case set_option_behavior::Stored:
-    if (option.id == shell_option_id::Privileged && !enable &&
-        os::is_running_setuid() && !os::drop_elevated_identity())
-    {
-      throw Error{"Unable to drop elevated ids: " +
-                  os::last_system_error_message()};
-    }
-    if (option.id == shell_option_id::Ignoreeof) {
-      let const value = cxt.get_variable_value("IGNOREEOF");
-      if (enable && !value.has_value())
-        cxt.set_shell_variable("IGNOREEOF", "10");
-      else if (!enable && value.has_value())
-        cxt.disable_ignoreeof();
-    }
-    cxt.runtime_control_store().option_mutations().note(option.id);
-    cxt.runtime_state().set_option(option.id, enable);
-    break;
-  case set_option_behavior::InteractiveComments:
-    cxt.set_shopt_option("interactive_comments", enable);
-    break;
-  case set_option_behavior::Posix: cxt.set_posix_mode_via_option(enable); break;
-  case set_option_behavior::Vi:
-    cxt.runtime_state().set_option(shell_option_id::Vi, enable);
-    if (enable) cxt.runtime_state().set_option(shell_option_id::Emacs, false);
-    break;
-  case set_option_behavior::Emacs:
-    cxt.runtime_state().set_option(shell_option_id::Emacs, enable);
-    if (enable) cxt.runtime_state().set_option(shell_option_id::Vi, false);
-    break;
-  case set_option_behavior::WarningLevel:
-    cxt.runtime_control_store().note_warning_option_mutation();
+    throw Error{StringView{"Unknown option '"} + option.set_name + "'"};
+  if (option.storage == option_storage::WarningLevel) {
     if (should_step_warning_level)
-      cxt.runtime_state().set_warnings_enabled(enable);
+      step_warning_level(cxt, enable);
     else
-      cxt.runtime_state().set_warning_level(enable ? 1 : 0);
-    break;
-  case set_option_behavior::AnnoyingDiagnostics:
-    cxt.runtime_control_store().note_annoying_diagnostics_option_mutation();
-    cxt.runtime_state().set_annoying_diagnostics_enabled(enable);
-    break;
-  case set_option_behavior::NoDiagnostics:
-    cxt.runtime_control_store().note_diagnostics_option_mutation();
-    cxt.runtime_state().set_diagnostics_disabled(enable);
-    break;
-  case set_option_behavior::Login:
-  case set_option_behavior::Rcfile: unreachable("Startup fact was applied");
+      write_option_number(cxt, option, enable ? 1 : 0, option_origin::Set);
+    return;
   }
-  switch (option.id) {
-  case shell_option_id::Nounset:
-    cxt.runtime_state().set_error_unset_set_explicitly(enable);
-    break;
-  case shell_option_id::Failglob:
-    cxt.runtime_state().set_failglob_set_explicitly(enable);
-    break;
-  case shell_option_id::Pipefail:
-    cxt.runtime_state().set_pipefail_set_explicitly(enable);
-    break;
-  case shell_option_id::ExtendedArithmetic:
-    cxt.runtime_state().set_extended_arithmetic_set_explicitly(enable);
-    break;
-  default: break;
-  }
+  write_option_number(cxt, option, enable != option.is_set_name_inverted,
+                      option_origin::Set);
 }
 
 fn list_options(const EvalContext &cxt) throws -> String
 {
   let out = String{heap_allocator()};
-  for (let const &option : SET_OPTIONS) {
-    if (!option.is_listed || !option_is_available(cxt, option)) {
+  for (let const &option : get_set_listing_order()) {
+    if (!option.is_listed_by_set || !option_is_available(cxt, option)) {
       continue;
     }
     out += option_is_on(cxt, option) ? "set -o " : "set +o ";
-    out += option.name;
+    out += option.set_name;
     out += '\n';
   }
   return out;
@@ -616,13 +95,13 @@ fn list_options_columnar(const EvalContext &cxt) throws -> String
 {
   const usize name_field_width = 15;
   let out = String{heap_allocator()};
-  for (let const &option : SET_OPTIONS) {
-    if (!option.is_listed || !option_is_available(cxt, option)) {
+  for (let const &option : get_set_listing_order()) {
+    if (!option.is_listed_by_set || !option_is_available(cxt, option)) {
       continue;
     }
-    out += option.name;
-    out.append_repeated(' ', option.name.length < name_field_width
-                                 ? name_field_width - option.name.length
+    out += option.set_name;
+    out.append_repeated(' ', option.set_name.length < name_field_width
+                                 ? name_field_width - option.set_name.length
                                  : 0);
     out.push('\t');
     out += option_is_on(cxt, option) ? "on" : "off";
@@ -640,18 +119,17 @@ fn apply_long_option_by_name(const ExecContext &ec, EvalContext &cxt,
     return;
   }
   let const &name = args[++i];
-  let const option_position = find_option_by_name(name);
-  if (!option_position.has_value())
+  let const *option = find_option_by_set_name(name);
+  if (option == nullptr)
     throw make_error_for_arg(ec, i,
                              StringView{"Unknown -o option '"} + name + "'");
-  let const &option = SET_OPTIONS[*option_position];
-  if (!option_is_available(cxt, option)) {
+  if (!option_is_available(cxt, *option)) {
     let error = make_error_for_arg(
         ec, i, StringView{"Unknown -o option '"} + name + "'");
     error.set_command_status(2);
     throw error;
   }
-  apply_or_reject_option(cxt, option, enable);
+  apply_or_reject_option(cxt, *option, enable);
 }
 
 fn format_option_table(const EvalContext *cxt,
@@ -659,7 +137,8 @@ fn format_option_table(const EvalContext *cxt,
 {
   const usize name_field_width = include_alias_spellings ? 30 : 18;
   let out = String{heap_allocator()};
-  for (let const &option : SET_OPTIONS) {
+  for (let const &option : get_option_registry()) {
+    if (!is_set_option(option)) continue;
     if (cxt != nullptr && !option_is_available(*cxt, option)) {
       continue;
     }
@@ -671,10 +150,10 @@ fn format_option_table(const EvalContext *cxt,
     } else {
       out += "    ";
     }
-    let name_cell = String{option.name};
-    if (include_alias_spellings && !option.alias.is_empty()) {
+    let name_cell = String{StringView{option.set_name}};
+    if (include_alias_spellings && !option.set_alias.is_empty()) {
       name_cell += ", ";
-      name_cell += option.alias;
+      name_cell += option.set_alias;
     }
     out += name_cell.view();
     out.append_repeated(' ', name_cell.count() < name_field_width
@@ -696,13 +175,13 @@ fn format_option_switches_help() throws -> String
   section += format_option_table(nullptr, true);
   section += "\n  The -o long names:\n";
   let listed_names = String{heap_allocator()};
-  for (let const &option : SET_OPTIONS) {
-    if (option.name.is_empty()) continue;
+  for (let const &option : get_option_registry()) {
+    if (option.set_name.is_empty()) continue;
     if (!listed_names.is_empty()) listed_names += ", ";
-    listed_names += option.name;
-    if (!option.alias.is_empty()) {
+    listed_names += option.set_name;
+    if (!option.set_alias.is_empty()) {
       listed_names += ", ";
-      listed_names += option.alias;
+      listed_names += option.set_alias;
     }
   }
   section += wrap_text(listed_names.view(), 4, HELP_WRAP_WIDTH);
@@ -715,9 +194,9 @@ fn format_option_switches_help() throws -> String
 fn query_shell_option(const EvalContext &cxt, StringView name) throws
     -> Maybe<bool>
 {
-  let const option_position = find_option_by_name(name);
-  if (!option_position.has_value()) return None;
-  return option_is_on(cxt, SET_OPTIONS[*option_position]);
+  let const *option = find_option_by_set_name(name);
+  if (option == nullptr) return None;
+  return option_is_on(cxt, *option);
 }
 
 fn shell_option_names(bool include_alias_spellings) throws
@@ -725,15 +204,15 @@ fn shell_option_names(bool include_alias_spellings) throws
 {
   static ArrayList<StringView> canonical = [] throws {
     let names = ArrayList<StringView>{heap_allocator()};
-    for (let const &option : SET_OPTIONS)
-      if (!option.name.is_empty()) names.push(option.name);
+    for (let const &option : get_option_registry())
+      if (!option.set_name.is_empty()) names.push(option.set_name);
     return names;
   }();
   static ArrayList<StringView> with_aliases = [] throws {
     let names = ArrayList<StringView>{heap_allocator()};
-    for (let const &option : SET_OPTIONS) {
-      if (!option.name.is_empty()) names.push(option.name);
-      if (!option.alias.is_empty()) names.push(option.alias);
+    for (let const &option : get_option_registry()) {
+      if (!option.set_name.is_empty()) names.push(option.set_name);
+      if (!option.set_alias.is_empty()) names.push(option.set_alias);
     }
     return names;
   }();
@@ -744,9 +223,11 @@ fn shell_option_letters() throws -> const String &
 {
   static String letters = [] throws {
     let collected = String{heap_allocator()};
-    for (let const &option : SET_OPTIONS) {
-      if (option.letter != '\0') collected.push(option.letter);
-      if (option.letter == 'h') collected.push('r');
+    let const order = get_shell_flag_letter_order();
+    for (usize position = 0; position < order.count(); position++) {
+      let const letter = order[position];
+      collected.push(letter);
+      if (letter == 'h') collected.push('r');
     }
     return collected;
   }();
@@ -756,13 +237,14 @@ fn shell_option_letters() throws -> const String &
 fn enabled_shell_option_names(const EvalContext &cxt) throws -> String
 {
   let joined = String{heap_allocator()};
-  let const do_append = [&](StringView name) throws {
+  for (let const &option : get_set_listing_order()) {
+    if (!option.is_listed_by_set || !option.is_legacy() ||
+        !option_is_on(cxt, option))
+    {
+      continue;
+    }
     if (!joined.is_empty()) joined.push(':');
-    joined.append(name);
-  };
-  for (let const position : SHELLOPTS_POSITIONS.positions) {
-    let const &option = SET_OPTIONS[position];
-    if (option_is_on(cxt, option)) do_append(option.name);
+    joined.append(option.set_name);
   }
   return joined;
 }
@@ -770,25 +252,26 @@ fn enabled_shell_option_names(const EvalContext &cxt) throws -> String
 fn enabled_shell_option_letters(const EvalContext &cxt) throws -> String
 {
   let letters = String{heap_allocator()};
-  for (let const &option : SET_OPTIONS) {
-    if (option.letter == 'h') {
-      if (option_is_on(cxt, option)) letters.push('h');
+  let const order = get_shell_flag_letter_order();
+  for (usize position = 0; position < order.count(); position++) {
+    let const letter = order[position];
+    let const *option = find_option_by_letter(letter);
+    ASSERT(option != nullptr);
+    if (letter == 'h') {
+      if (option_is_on(cxt, *option)) letters.push('h');
       if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted))
         letters.push('r');
       if (cxt.execution_store().shell_is_interactive()) letters.push('i');
       continue;
     }
-    if (option.behavior == set_option_behavior::WarningLevel) {
+    if (option->storage == option_storage::WarningLevel) {
       for (u8 warning_level = 0;
            warning_level < cxt.runtime_state().get_warning_level();
            warning_level++)
         letters.push('W');
       continue;
     }
-    if (option.letter == '\0' || !option_is_on(cxt, option)) {
-      continue;
-    }
-    letters.push(option.letter);
+    if (option_is_on(cxt, *option)) letters.push(letter);
   }
   if (cxt.execution_store().has_execution_string()) letters.push('c');
   return letters;
@@ -797,13 +280,9 @@ fn enabled_shell_option_letters(const EvalContext &cxt) throws -> String
 fn apply_shell_option(EvalContext &cxt, StringView name, bool enable) throws
     -> bool
 {
-  let const option_position = find_option_by_name(name);
-  if (!option_position.has_value() ||
-      !option_is_available(cxt, SET_OPTIONS[*option_position]))
-  {
-    return false;
-  }
-  apply_or_reject_option(cxt, SET_OPTIONS[*option_position], enable);
+  let const *option = find_option_by_set_name(name);
+  if (option == nullptr || !option_is_available(cxt, *option)) return false;
+  apply_or_reject_option(cxt, *option, enable);
   return true;
 }
 
@@ -875,10 +354,10 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             ec, i,
             String{cxt.scratch_allocator(), "Unknown --mood value '"} + *value +
                 "', expected 'kosh', 'bash', 'sh', or 'bash-posix'");
-      cxt.select_mood(*parsed);
-      cxt.runtime_control_store().note_warning_option_mutation();
-      cxt.runtime_state().set_warning_level(0);
-      cxt.runtime_control_store().note_explicit_mood();
+      let const *mood_option = find_option_by_letter('M');
+      ASSERT(mood_option != nullptr);
+      write_option_number(cxt, *mood_option, static_cast<u32>(*parsed),
+                          option_origin::Set);
       continue;
     }
 
@@ -958,11 +437,11 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (arg == "-" || arg == "+") {
       if (arg[0] == '-') {
-        let const x_position = find_option_by_letter('x');
-        let const v_position = find_option_by_letter('v');
-        ASSERT(x_position.has_value() && v_position.has_value());
-        apply_or_reject_option(cxt, SET_OPTIONS[*x_position], false);
-        apply_or_reject_option(cxt, SET_OPTIONS[*v_position], false);
+        let const *xtrace = find_option_by_letter('x');
+        let const *verbose = find_option_by_letter('v');
+        ASSERT(xtrace != nullptr && verbose != nullptr);
+        apply_or_reject_option(cxt, *xtrace, false);
+        apply_or_reject_option(cxt, *verbose, false);
       }
 
       is_collecting_operands = true;
@@ -993,15 +472,17 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           continue;
         }
 
-        let const option_position = find_option_by_letter(letter);
-        if (!option_position.has_value() ||
-            !option_is_available(cxt, SET_OPTIONS[*option_position]))
-        {
+        let const *option = find_option_by_letter(letter);
+        let const is_letter_flag =
+            option != nullptr &&
+            (option->type == option_type::Boolean ||
+             option->storage == option_storage::WarningLevel);
+        if (!is_letter_flag || !option_is_available(cxt, *option)) {
           let invalid_option = String{heap_allocator()};
           invalid_option += arg[0];
           invalid_option += arg.view().substring_of_length(
               c, utils::decode_utf8(arg.view(), c, 0).length);
-          if (!option_position.has_value())
+          if (!is_letter_flag)
             throw make_error_for_arg(
                 ec, i, StringView{"Unknown option '"} + invalid_option + "'");
           let unavailable_error = make_error_for_arg(
@@ -1009,8 +490,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           unavailable_error.set_command_status(2);
           throw unavailable_error;
         }
-        apply_or_reject_option(cxt, SET_OPTIONS[*option_position], enable,
-                               true);
+        apply_or_reject_option(cxt, *option, enable, true);
       }
       continue;
     }

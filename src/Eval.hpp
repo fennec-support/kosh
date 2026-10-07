@@ -1324,10 +1324,10 @@ enum class shopt_option_id : u8
   InheritErrexit,
   Lastpipe,
   LocalvarInherit,
+  Nullglob,
   PatsubReplacement,
   Progcomp,
   ProgcompAlias,
-  RestrictedShell,
   Sourcepath,
 };
 pure fn shopt_option_index(shopt_option_id option) wontthrow -> u8;
@@ -3814,8 +3814,6 @@ public:
   {
     let const index = shopt_option_index(name);
     if (!index.has_value()) return false;
-    if (*index == shopt_option_index(shopt_option_id::RestrictedShell))
-      return startup_store().is_restricted_shell();
     if (runtime_state().is_shopt_option_overridden(*index))
       return runtime_state().is_shopt_option_enabled(*index);
     if (*index == shopt_option_index(shopt_option_id::Extglob))

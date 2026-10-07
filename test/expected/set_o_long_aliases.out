@@ -1,5 +1,5 @@
-noglob         	on
 failglob       	on
+noglob         	on
 errexit        	on
 noclobber      	on
 done
