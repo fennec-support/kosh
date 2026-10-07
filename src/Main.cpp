@@ -230,9 +230,11 @@ static fn make_invocation_identity(String program_path) throws
   if (!executable_path.is_empty() && executable_path.view() != "<unknown>" &&
       !os::has_directory_separator(executable_path.view()))
   {
-    let const found_paths =
-        ProgramResolver{os::get_environment_variable("PATH")}.search(
-            executable_path.view());
+    let inherited_path = os::get_environment_variable("PATH");
+    let const found_paths = inherited_path.has_value()
+                                ? ProgramResolver{steal(inherited_path)}.search(
+                                      executable_path.view())
+                                : ArrayList<Path>{heap_allocator()};
     if (found_paths.count() > 0) {
       executable_path = String{found_paths[0].text()};
     } else if (let running_path = os::current_executable_path();

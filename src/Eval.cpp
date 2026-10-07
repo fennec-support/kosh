@@ -268,9 +268,15 @@ fn EvalContext::rollback_confined_variable_writes(usize mark) wontthrow -> void
                                ? entry.previous_value->view()
                                : StringView{};
 
-      if (name == "IFS") variable_store().set_field_separators(restored);
-      if (utils::environment_name_is_path(name))
-        program_resolver().assign_path(String{restored});
+      if (name == "IFS") {
+        variable_store().set_field_separators(
+            entry.previous_value.has_value() ? restored : " \t\n");
+      }
+      if (utils::environment_name_is_path(name)) {
+        program_resolver().assign_path(entry.previous_value.has_value()
+                                           ? Maybe<String>{String{restored}}
+                                           : Maybe<String>{});
+      }
       if (is_exported(name)) {
         if (entry.previous_value.has_value())
           os::set_environment_variable(name, restored);

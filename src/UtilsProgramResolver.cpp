@@ -496,8 +496,8 @@ fn ProgramResolver::assign_path(Maybe<String> path) throws -> void
     return;
   }
 
-  let path_dirs = path.has_value() ? split_path_dirs(path->view())
-                                   : ArrayList<String>{heap_allocator()};
+  let path_dirs =
+      split_path_dirs(path.has_value() ? path->view() : StringView{});
   let index_path_dirs = deduplicate_path_dirs(path_dirs);
   let const path_search_changed = get_index_path_dirs() != index_path_dirs;
   m_path = steal(path);
@@ -567,8 +567,8 @@ fn ProgramResolver::get_path_dirs() throws -> const ArrayList<String> &
 {
   if (m_path_dirs_are_valid) return m_path_dirs;
 
-  m_path_dirs = m_path.has_value() ? split_path_dirs(m_path->view())
-                                   : ArrayList<String>{heap_allocator()};
+  m_path_dirs =
+      split_path_dirs(m_path.has_value() ? m_path->view() : StringView{});
   m_index_path_dirs = deduplicate_path_dirs(m_path_dirs);
   m_path_dirs_are_valid = true;
 
@@ -713,14 +713,6 @@ fn ProgramResolver::rebuild_path_command_index(CompletionRefresh refresh) throws
   } else {
     ASSERT(m_path_directory_generations_are_valid);
     clear_command_name_indexes();
-  }
-  if (!m_path.has_value()) {
-    m_command_names_are_valid = true;
-    m_command_names_validation_epoch = DIRECTORY_VALIDATION_EPOCH;
-    m_path_directories_validation_epoch = DIRECTORY_VALIDATION_EPOCH;
-    m_prefix_validation_epoch = 0;
-    m_validated_prefix.clear();
-    return;
   }
 
   if (refresh == CompletionRefresh::Fresh) refresh_path_directory_generations();
@@ -1126,10 +1118,6 @@ fn ProgramResolver::resolve_along_path(StringView program_name,
                                        Maybe<StringView> path_override) throws
     -> ArrayList<Path>
 {
-  if (!path_override.has_value() && !m_path.has_value()) {
-    return ArrayList<Path>{heap_allocator()};
-  }
-
   LOG(Debug, "statting candidates for '%.*s' along PATH%s",
       static_cast<int>(program_name.length), program_name.data,
       search_mode == SearchMode::All ? ", collecting every match" : "");

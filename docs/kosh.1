@@ -4768,7 +4768,8 @@ These variables select startup files under the conditions in
 .BR "STARTUP FILES" .
 .TP
 .B PATH
-The value is a colon-separated command search path. The
+The value is a colon-separated command search path. An empty element, an
+empty value, and an unset PATH search the current directory. The
 .B \-\-no\-init\-files
 option resets it to /usr/bin:/bin.
 .TP

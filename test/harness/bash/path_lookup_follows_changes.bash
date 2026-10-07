@@ -96,3 +96,27 @@ echo "empty status: $?"
 PATH=$B:$dir/a:$B
 echo "duplicate entries: $(pathprobe)"
 type -a -P pathprobe | sed "s|$dir|DIR|"
+
+cd "$dir/a" || exit 1
+unset PATH
+pathprobe
+command -v pathprobe
+echo "unset in directory: $(pathprobe)"
+PATH=
+echo "empty in directory: $(pathprobe)"
+PATH=:
+echo "colon in directory: $(pathprobe)"
+PATH=/nonexistent:
+echo "trailing colon: $(pathprobe)"
+PATH=:/nonexistent
+echo "leading colon: $(pathprobe)"
+PATH=/nonexistent::/nonexistent
+echo "inner empty: $(pathprobe)"
+PATH=/nonexistent
+pathprobe 2>/dev/null
+echo "no directory status: $?"
+unset PATH
+{ PATH=/nonexistent; } | :
+echo "after stage over unset: $(pathprobe)"
+PATH=$sys
+cd / || exit 1

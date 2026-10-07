@@ -115,3 +115,27 @@ echo "export_prefix=[$foo][$baz]"
 true > /no/such/directory/file 2>/dev/null
 echo "after_bad_redirect=$?"
 echo still_running
+
+# An empty PATH and an empty PATH element search the working directory.
+path_dir=$(mktemp -d)
+printf '#!/bin/sh\necho here\n' > "$path_dir/hereprobe"
+chmod +x "$path_dir/hereprobe"
+saved_path=$PATH
+cd "$path_dir" || exit 1
+PATH=
+hereprobe
+echo "empty_path=$?"
+PATH=:
+hereprobe
+echo "colon_path=$?"
+PATH=/nonexistent:
+hereprobe
+echo "trailing_colon=$?"
+PATH=:/nonexistent
+hereprobe
+echo "leading_colon=$?"
+PATH=/nonexistent
+hereprobe 2>/dev/null
+echo "no_directory=$?"
+PATH=$saved_path
+cd / && rm -rf "$path_dir"
