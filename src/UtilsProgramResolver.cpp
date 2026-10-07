@@ -1146,7 +1146,8 @@ fn ProgramResolver::resolve_along_path(StringView program_name,
     override_directories = split_path_dirs(*path_override);
     directories = &override_directories;
   } else {
-    directories = &get_path_dirs();
+    directories = search_mode == SearchMode::All ? &get_path_dirs()
+                                                 : &get_index_path_dirs();
   }
 
   if (search_mode == SearchMode::All) {

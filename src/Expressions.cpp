@@ -1816,15 +1816,20 @@ fn expressions::internal::command_resolves(
     return false;
   }
 
-  let resolver =
-      ProgramResolver{actx.eval_context != nullptr
-                          ? actx.eval_context->get_variable_value("PATH")
-                          : os::get_environment_variable("PATH")};
+  let environment_resolver = Maybe<ProgramResolver>{};
+  ProgramResolver *resolver = nullptr;
+  if (actx.eval_context != nullptr) {
+    resolver = &actx.eval_context->program_resolver();
+  } else {
+    environment_resolver =
+        ProgramResolver{os::get_environment_variable("PATH")};
+    resolver = &*environment_resolver;
+  }
   const bool was_resolved =
       resolver
-          .search(name, ProgramResolver::SearchMode::First,
-                  ProgramResolver::Requirement::Regular,
-                  ProgramResolver::CachePolicy::Bypass)
+          ->search(name, ProgramResolver::SearchMode::First,
+                   ProgramResolver::Requirement::Regular,
+                   ProgramResolver::CachePolicy::Bypass)
           .count() != 0;
   LOG(Debug, "scanning PATH for '%.*s', the command was %s",
       static_cast<int>(name.length), name.data,
