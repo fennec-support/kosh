@@ -26,6 +26,7 @@ history-keeps-working-after-control-bytes PASS
 history-file-holds-no-control-bytes PASS
 quoted-continuation-keeps-the-backslash PASS
 continuation-joins-in-the-shell PASS
+escaped-trailing-backslash-submits PASS
 history-file-keeps-continuation-lines PASS
 ctrl-x-shows-what-it-waits-for PASS
 ctrl-x-hint-leaves-with-the-arrow PASS

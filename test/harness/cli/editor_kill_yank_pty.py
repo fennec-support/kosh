@@ -12,7 +12,8 @@
 # terminal read or stopped again more times than the shell continues is ended
 # with its stop status, and one that writes
 # control bytes leaves them drawn in caret notation and out of the history
-# file. A trailing backslash continues the line, the shell joins it only
+# file. A trailing backslash continues the line unless it is itself escaped,
+# the shell joins it only
 # outside quotes, and history keeps both physical lines. A lone Ctrl-X names
 # its chords on the hint rows until the next key resolves it, and Ctrl-X before
 # an arrow keeps the arrow. Ctrl-Z undoes at the prompt and still stops a
@@ -393,6 +394,9 @@ def run_checks(binary, directory, command_directory, report):
         session.send(b"joined\r")
         report.record("continuation-joins-in-the-shell", session,
                       has_output("plain joined", 1))
+        session.send(b"echo escaped-end\\\\\r")
+        report.record("escaped-trailing-backslash-submits", session,
+                      has_output("escaped-end\\", 1))
         report.record("history-file-keeps-continuation-lines", session,
                       lambda screen: b"echo 'quoted\\\\\\ntail'"
                       in read_bytes(history_path)
