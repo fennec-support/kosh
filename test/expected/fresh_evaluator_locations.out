@@ -102,3 +102,17 @@ note: Replace it with ${unset_in_show-} if empty expansion is desired.
     52 |  call_show
        |  ^~~~~~~~~
 show=48 51 52 show_frames call_show 
+inside=58 61
+59:11: warning: The variable 'unset_in_defined_inside' is not set, it expands to empty.
+    59 |      echo "$unset_in_defined_inside" >&2
+       |            ^~~~~~~~~~~~~~~~~~~~~~~~
+note: Replace it with ${unset_in_defined_inside-} if empty expansion is desired.
+61:3: trace:
+    61 |    defined_inside
+       |    ^~~~~~~~~~~~~~
+56:13: trace:
+    56 |  koshkit cat <(
+       |              ^~
+
+defined_inside is a shell function on line 57
+captured=66

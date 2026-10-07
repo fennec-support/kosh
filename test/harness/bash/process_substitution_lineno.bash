@@ -16,3 +16,17 @@ report
 
 collected=$(echo "output at $LINENO" > >(cat); wait)
 echo "$collected"
+
+# A function defined inside a process substitution or an eval counts its lines
+# from the file even while the text that defined it is still running.
+cat <(
+  defined_inside() {
+    echo "defined inside at $LINENO"
+  }
+  defined_inside
+)
+eval 'evaluated() {
+  echo "evaluated at $LINENO"
+}
+evaluated'
+evaluated

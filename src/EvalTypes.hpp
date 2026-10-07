@@ -557,7 +557,9 @@ struct subshell_saved_descriptor
    numbering of the defining text, which diagnostics show. The enclosing line
    count adds the lines above an eval text, so LINENO counts from the file
    the way bash does. A body that starts on the first line needs a
-   negative offset. An error renders the body between the rest of its first
+   negative offset. A body defined in a substitution or an eval is numbered
+   apart from the text that defines it, so it renders through its window even
+   while that text runs. An error renders the body between the rest of its first
    and last defining lines, which render_source builds on first use. A fresh
    evaluator parses an inherited body from its bootstrap, so the body positions
    carry the name of that text while the rest names the defining file. */
@@ -574,6 +576,7 @@ struct function_definition_info
   String line_suffix{heap_allocator()};
   mutable String render_source{heap_allocator()};
   mutable bool has_render_source{false};
+  bool is_numbered_apart{false};
   definition_state defining_state;
 };
 

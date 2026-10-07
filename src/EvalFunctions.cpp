@@ -86,6 +86,7 @@ fn EvalContext::register_function(StringView name,
   let info = function_definition_info{};
   info.body_start_position = body_start_position;
   info.header_length = name.length + StringView{" () \n"}.length;
+  info.source_name_index = definition_location.source_name_index;
   if (source_store().current_source() != nullptr && !definition_text.is_empty())
   {
     let const defining_view = source_store().current_source()->view();
@@ -104,6 +105,12 @@ fn EvalContext::register_function(StringView name,
         counted_body_line > rendered_body_line
             ? static_cast<usize>(counted_body_line - rendered_body_line)
             : usize{0};
+    let const in_place_body_line = static_cast<isize>(
+        utils::line_number_at(defining_view, body_start_position));
+    info.is_numbered_apart = info.enclosing_line_count != 0 ||
+                             in_place_body_line != rendered_body_line;
+    if (body_site.location.source_name_index != 0)
+      info.source_name_index = body_site.location.source_name_index;
 
     let const body_end_position =
         body_start_position + definition_text.length - info.header_length;
@@ -132,7 +139,6 @@ fn EvalContext::register_function(StringView name,
     info.definition_line = line_number_at_location(definition_location);
   }
 
-  info.source_name_index = definition_location.source_name_index;
   info.body_name_index = definition_location.source_name_index;
   info.defining_state = definition_state::from(runtime_state());
   body_storage.set_definition(definition_text, info);
@@ -198,7 +204,7 @@ pure fn EvalContext::resolve_render_source(
     }
 
     let const *rendered_source = resolved_source.text;
-    if (rendered_source != nullptr &&
+    if (!info->is_numbered_apart && rendered_source != nullptr &&
         rendered_source->count() >= info->body_start_position + body_length &&
         rendered_source->view().substring_of_length(info->body_start_position,
                                                     body_length) ==

@@ -50,3 +50,21 @@ show_frames() {
 koshkit cat <(show_frames)
 call_show() { koshkit cat <(show_frames); }
 call_show
+
+# A function defined inside a substitution counts its lines from this file,
+# and its diagnostics and traces name this file.
+koshkit cat <(
+  defined_inside() {
+    echo "inside=$LINENO ${BASH_LINENO[*]}" >&2
+    echo "$unset_in_defined_inside" >&2
+  }
+  defined_inside
+  type -V defined_inside | koshkit head -n 1 >&2
+)
+captured=$(
+  defined_captured() {
+    echo "captured=$LINENO"
+  }
+  defined_captured
+)
+echo "$captured"
