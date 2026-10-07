@@ -1218,6 +1218,32 @@ static fn mark_spec_directory_candidates(ArrayList<String> &candidates,
   }
 }
 
+static constexpr u32 GHOST_ACTION_MASK =
+    compgen_action_bit(compgen_action::Alias) |
+    compgen_action_bit(compgen_action::ArrayVar) |
+    compgen_action_bit(compgen_action::Binding) |
+    compgen_action_bit(compgen_action::Builtin) |
+    compgen_action_bit(compgen_action::Disabled) |
+    compgen_action_bit(compgen_action::Enabled) |
+    compgen_action_bit(compgen_action::Export) |
+    compgen_action_bit(compgen_action::Function) |
+    compgen_action_bit(compgen_action::HelpTopic) |
+    compgen_action_bit(compgen_action::Job) |
+    compgen_action_bit(compgen_action::Keyword) |
+    compgen_action_bit(compgen_action::Running) |
+    compgen_action_bit(compgen_action::SetOpt) |
+    compgen_action_bit(compgen_action::ShOpt) |
+    compgen_action_bit(compgen_action::Signal) |
+    compgen_action_bit(compgen_action::Stopped) |
+    compgen_action_bit(compgen_action::Variable);
+
+static pure fn spec_has_ghost_generators(const completion_spec &spec) wontthrow
+    -> bool
+{
+  return (spec.action_mask & GHOST_ACTION_MASK) != 0 ||
+         !spec.word_list.is_empty();
+}
+
 static fn
 generate_spec_candidates(const completion_spec &active_spec,
                          Maybe<StringView> slot_command_name, StringView line,
@@ -1261,11 +1287,14 @@ generate_spec_candidates(const completion_spec &active_spec,
   };
 
   let const glob_pattern =
-      active_spec.glob_pattern.is_empty()
+      !for_listing || active_spec.glob_pattern.is_empty()
           ? Maybe<StringView>{None}
           : Maybe<StringView>{active_spec.glob_pattern.view()};
-  if (active_spec.action_mask != 0 || glob_pattern.has_value()) {
-    do_push_generated(active_spec.action_mask, glob_pattern);
+  let const action_mask = for_listing
+                              ? active_spec.action_mask
+                              : active_spec.action_mask & GHOST_ACTION_MASK;
+  if (action_mask != 0 || glob_pattern.has_value()) {
+    do_push_generated(action_mask, glob_pattern);
   }
 
   if (!active_spec.word_list.is_empty()) {
@@ -1362,6 +1391,8 @@ generate_spec_candidates(const completion_spec &active_spec,
     }
   }
 
+  if (!for_listing) return candidates;
+
   let const should_add_directories =
       (active_spec.has_option(completion_option::DirNames) &&
        candidates.is_empty()) ||
@@ -1440,7 +1471,8 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
 }
 
 fn internal::complete_from_initial_word_spec(StringView line, StringView token,
-                                             usize cursor, EvalContext &context,
+                                             usize cursor, bool is_line_empty,
+                                             EvalContext &context,
                                              StringMap<String> &descriptions,
                                              completion_mode mode) throws
     -> Maybe<ArrayList<String>>
@@ -1450,7 +1482,7 @@ fn internal::complete_from_initial_word_spec(StringView line, StringView token,
 
   const completion_spec *spec = nullptr;
   let command_name = StringView{};
-  if (cursor == 0) {
+  if (is_line_empty) {
     spec =
         context.completion_store().get_slot_spec(completion_spec_slot::Empty);
     command_name = "_EmptycmD_";
@@ -1464,12 +1496,15 @@ fn internal::complete_from_initial_word_spec(StringView line, StringView token,
 
   if (spec == nullptr) return None;
 
+  let const for_listing = mode == completion_mode::Listing;
+  if (!for_listing && !spec_has_ghost_generators(*spec)) return None;
+
   LOG(Debug, "completing the command word from the %.*s spec",
       static_cast<int>(command_name.length), command_name.data);
   let const active_spec = spec->clone(completion_allocator());
-  let candidates = generate_spec_candidates(
-      active_spec, command_name, line, token, cursor, context, descriptions,
-      mode == completion_mode::Listing, nullptr);
+  let candidates =
+      generate_spec_candidates(active_spec, command_name, line, token, cursor,
+                               context, descriptions, for_listing, nullptr);
   if (candidates.is_empty() &&
       (active_spec.has_option(completion_option::BashDefault) ||
        active_spec.has_option(completion_option::Default)))

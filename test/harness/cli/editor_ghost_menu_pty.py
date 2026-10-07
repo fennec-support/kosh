@@ -11,7 +11,9 @@
 # widening on every keystroke, Ctrl-W and Alt-Backspace refreshing an open menu
 # down to an empty line, Escape and Ctrl-C afterwards, and session functions and
 # aliases in ghost and Tab completion. A complete -C command runs once while a
-# filter narrows and widens its menu, and again below the gathered token. It
+# filter narrows and widens its menu, and again below the gathered token.
+# complete -E serves only a line that holds nothing, and -I serves a command
+# word with the caret at its start. It
 # also covers word-wise ghost
 # acceptance through Ctrl-Right and Alt-F, and prefix history search on Up and
 # Down with its option switched off, and the inline hint rows for a command and
@@ -65,6 +67,7 @@ UP = b"\x1b[A"
 DOWN = b"\x1b[B"
 CTRL_RIGHT = b"\x1b[1;5C"
 ALT_F = b"\x1bf"
+CTRL_A = b"\x01"
 CTRL_E = b"\x05"
 CTRL_W = b"\x17"
 CTRL_C = b"\x03"
@@ -543,6 +546,21 @@ def run_cached_filter_checks(session, report, directory):
                                                 ["tool-alpha"])(screen)
                   and count_marker_lines(directory, "grow-runs") == 1)
     clear_line(session)
+
+    session.send(b"complete -E -W zzempty; complete -I -W zzinitial\r")
+    session.wait_until(is_line(""))
+    session.send(b"ls" + CTRL_A + b"\t")
+    report.record("empty-slot-needs-an-empty-line", session,
+                  lambda screen: get_state(screen) is not None
+                  and get_state(screen)[0].startswith("zzinitial"))
+    clear_line(session)
+    session.send(b"\t")
+    report.record("empty-slot-serves-an-empty-line", session,
+                  lambda screen: get_state(screen) is not None
+                  and get_state(screen)[0].startswith("zzempty"))
+    clear_line(session)
+    session.send(b"complete -r -E; complete -r -I\r")
+    session.wait_until(is_line(""))
 
 
 def run_checks(binary, directory, command_directory, report):

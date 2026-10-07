@@ -1,0 +1,15 @@
+== the table actions offer no ghost:
+count=0
+prefix=
+== the word list still fills the ghost beside a table action:
+count=1
+prefix=alpha
+== the alias action still fills the ghost:
+count=1
+prefix=myalias
+== a -I spec with only a function keeps the command-name ghost:
+count=1
+prefix=complete
+== a -I spec with a word list fills the ghost:
+count=1
+prefix=initial_one

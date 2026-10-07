@@ -44,6 +44,8 @@ command-spec-menu-reruns-below-gathered-token PASS
 command-spec-prefix-grows-into-menu PASS
 command-spec-prefix-menu-runs-once PASS
 command-spec-prefix-menu-narrows-without-rerun PASS
+empty-slot-needs-an-empty-line PASS
+empty-slot-serves-an-empty-line PASS
 history-seed-alpha PASS
 history-seed-beta PASS
 history-seed-gamma PASS

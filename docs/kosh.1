@@ -1993,7 +1993,13 @@ command runs as a command substitution with the command name, the word, and
 the previous word appended as quoted arguments, and with COMP_LINE,
 COMP_POINT, COMP_KEY, and COMP_TYPE exported. Each nonempty line of its output
 is one candidate, taken without word prefix matching. The ghost suggestion
-never runs a function or a command. The actions
+never runs a function or a command, never expands the glob, and never adds
+directory names. Of the actions it offers only those the shell answers from
+memory, so the user, group, hostname, service, command, file, and directory
+actions wait for a Tab. A
+.B \-I
+spec that has none of the generators the ghost reads leaves the ghost of the
+command names in place. The actions
 .BR \-a ,
 .BR \-b ,
 .BR \-c ,
@@ -2037,7 +2043,8 @@ default spec, which generates candidates the same way. When its function
 returns 124, completion restarts with the spec the function registered for the
 command. The
 .B \-E
-spec serves an explicit Tab on an empty line, and the
+spec serves an explicit Tab on a line that holds nothing, not even a blank,
+and the
 .B \-I
 spec serves the command word in place of the command names, including an
 empty line with no

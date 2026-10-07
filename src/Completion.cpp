@@ -1210,6 +1210,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
   let const arena = completion_allocator();
 
   if (cursor > line.length) cursor = line.length;
+  let const is_line_empty = line.is_empty();
 
   /* When the cursor sits inside a command substitution, completion re-roots to
      the substitution's own command line. The offset maps the replaced token
@@ -1366,7 +1367,8 @@ fn complete(StringView line, usize cursor, EvalContext &context,
     let from_initial_word = Maybe<ArrayList<String>>{None};
     if (!is_posix_completion && (!stage_token.is_empty() || for_listing)) {
       from_initial_word = complete_from_initial_word_spec(
-          line, stage_token, cursor, context, descriptions, mode);
+          line, stage_token, cursor, is_line_empty, context, descriptions,
+          mode);
     }
 
     if (from_initial_word.has_value()) {

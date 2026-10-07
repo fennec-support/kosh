@@ -88,7 +88,8 @@ inline constexpr static_string_entry<compgen_action> COMPGEN_ACTION_ENTRIES[] =
 
 inline constexpr StaticStringMap COMPGEN_ACTIONS{COMPGEN_ACTION_ENTRIES};
 
-inline pure fn compgen_action_bit(compgen_action action) wontthrow -> u32
+inline constexpr pure fn compgen_action_bit(compgen_action action) wontthrow
+    -> u32
 {
   return 1U << static_cast<u32>(action);
 }

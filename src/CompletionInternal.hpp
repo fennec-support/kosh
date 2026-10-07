@@ -145,7 +145,8 @@ fn complete_from_spec(StringView line, StringView token, usize cursor,
                       completion::completion_mode mode) throws
     -> Maybe<ArrayList<String>>;
 fn complete_from_initial_word_spec(StringView line, StringView token,
-                                   usize cursor, EvalContext &context,
+                                   usize cursor, bool is_line_empty,
+                                   EvalContext &context,
                                    StringMap<String> &descriptions,
                                    completion::completion_mode mode) throws
     -> Maybe<ArrayList<String>>;
