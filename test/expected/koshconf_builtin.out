@@ -22,6 +22,10 @@ debug.report_nonzero_exit_codes=off         interactive
 debug.report_every_exit_code=off            interactive
 debug.print_evaluation_statistics=off       interactive
 debug.print_memory_report_at_exit=off       interactive
+editor.complete_on_tab=on                   interactive
+editor.highlight_syntax_and_show_ghost_text=on interactive
+diagnostics.show_source_traces=on           interactive
+startup.init_moods=                         semantic
 legacy.export_every_assigned_variable=off   semantic
 legacy.jobs_report_status_immediately=off   interactive
 legacy.exit_on_command_failure=off          semantic
@@ -115,6 +119,11 @@ editor.transient_prompt_after_submit=off
 # Ask the terminal to report modified keys such as Ctrl-Shift-Z separately while
 # a line is read.
 editor.request_extended_key_reports=on
+# Complete the word under the cursor on Tab. Turning this off also turns off the
+# ghost suggestion and the syntax colors.
+editor.complete_on_tab=on
+# Color the input by syntax and suggest the rest of the word in ghost text.
+editor.highlight_syntax_and_show_ghost_text=on
 
 # Recall only history entries that begin with the typed text on Up and Down.
 history.arrow_keys_search_by_typed_prefix=on
@@ -134,6 +143,9 @@ diagnostics.warning_level=0
 diagnostics.show_annoying_tier=on
 # Analyze each chunk before it runs.
 diagnostics.analyze_before_running=on
+# Show the backtrace of sourced files and function calls below an error or
+# warning.
+diagnostics.show_source_traces=on
 
 # Resolve the bundled koshkit utility names directly as commands.
 koshkit.run_utilities_as_plain_commands=off
@@ -156,6 +168,10 @@ debug.report_every_exit_code=off
 debug.print_evaluation_statistics=off
 # Print a detailed memory report at exit.
 debug.print_memory_report_at_exit=off
+
+# Source the startup files of each listed mood, comma separated, when the shell
+# is interactive or a login shell. Empty selects the session mood.
+# startup.init_moods=
 
 # Expand aliases in commands. (shopt expand_aliases)
 legacy.aliases_expand=on
@@ -474,7 +490,7 @@ warning: Skipping an invalid value of 'history.max_entries' in KOSHCONF.
 on
 4096
 == KOSHCONF carries the mood and interactive options to another shell:
-AQECAgEBAwEBBAEBBQEABgEABwEBCAEBCgI3NwsBAQwBAA0BAQ4BAQ8BABEBABIBABMBABQBABUBABYBABcBAEEBAFUBAFcBAIABAQGDAQEAhQEBAIYBAQGHAQEBiAEBAIkBAQCRAQEBlQEBAJYBAQCXAQEAmAEBAZkBAQCbAQEBoAEBAKEBAQCmAQEBpwEBAKgBAQE=
+AQECAgEBAwEBBAEBBQEABgEABwEBCAEBCgI3NwsBAQwBAA0BAQ4BAQ8BABEBABIBABMBABQBABUBABYBABcBABgBARkBARoBAUEBAFUBAFcBAIABAQGDAQEAhQEBAIYBAQGHAQEBiAEBAIkBAQCRAQEBlQEBAJYBAQCXAQEAmAEBAZkBAQCbAQEBoAEBAKEBAQCmAQEBpwEBAKgBAQE=
 bash
 external
 77

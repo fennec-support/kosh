@@ -10,7 +10,9 @@ kosh
 sh
 == koshconf get option prefix:
 editor.auto_close_brackets_and_quotes
+editor.complete_on_tab
 editor.completion_menu_style
+editor.highlight_syntax_and_show_ghost_text
 editor.request_extended_key_reports
 editor.show_command_synopsis
 editor.show_live_diagnostics

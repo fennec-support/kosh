@@ -83,3 +83,35 @@ warning: The kosh mood keeps 'legacy.unset_variable_is_error' on, so the configu
 on
 == a command-line flag wins over a semantic option from the file:
 on
+== the editor and trace options apply from the file:
+off
+off
+off
+== KOSHCONF carries them:
+off
+off
+== a file without traces drops the trace rows:
+0
+2
+== the command-line flags win over the file:
+off
+off
+off
+off
+== startup.init_moods selects the startup files of an interactive shell:
+bash
+kosh
+1
+== a script ignores it and keeps the kosh identity:
+bash version: unset
+== -L wins over the file:
+0
+sh,bash
+== an unknown mood in the list is a warning:
+HOME/.config/kosh/kosh.conf:1:20: warning: Invalid value 'bash,zsh' for 'startup.init_moods', expected a comma-separated list of 'kosh', 'sh', 'bash', and 'bash-posix', skipping it.
+     1 |  startup.init_moods=bash,zsh
+       |                     ^~~~~~~~
+
+== koshconf set validates the list:
+sh,bash-posix
+-c:2:33: error: Builtin `koshconf`: Invalid value 'ksh' for 'startup.init_moods', expected a comma-separated list of 'kosh', 'sh', 'bash', and 'bash-posix'.

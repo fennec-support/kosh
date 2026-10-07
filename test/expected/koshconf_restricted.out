@@ -65,12 +65,15 @@ warning: A restricted shell ignores 'mood' from the configuration files.
 warning: A restricted shell ignores 'koshkit.run_utilities_as_plain_commands' from the configuration files.
 warning: A restricted shell ignores 'history.file_path' from the configuration files.
 warning: A restricted shell ignores 'legacy.glob_includes_dotfiles' from the configuration files.
+warning: A restricted shell ignores 'startup.init_moods' from the configuration files.
 kosh
 off
 off
 /history
 on
+
 0
+1
 == a subshell of a restricted shell keeps the restrictions:
 warning: A restricted shell ignores the KOSHCONF environment variable.
 -c:1:3: error: cd is forbidden in a restricted shell.

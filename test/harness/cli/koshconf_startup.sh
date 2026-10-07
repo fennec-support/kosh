@@ -96,3 +96,39 @@ printf 'legacy.unset_variable_is_error=off\nlegacy.glob_no_match_expands_to_noth
 echo "== a command-line flag wins over a semantic option from the file:"
 printf 'mood=bash\nlegacy.unset_variable_is_error=off\n' >"$conf"
 "$BIN" -u -c 'koshconf get legacy.unset_variable_is_error'
+
+echo "== the editor and trace options apply from the file:"
+printf 'editor.complete_on_tab=off\neditor.highlight_syntax_and_show_ghost_text=off\ndiagnostics.show_source_traces=off\n' >"$conf"
+"$BIN" -c 'koshconf get editor.complete_on_tab
+koshconf get editor.highlight_syntax_and_show_ghost_text
+koshconf get diagnostics.show_source_traces'
+echo "== KOSHCONF carries them:"
+"$BIN" -c 'export KOSHCONF; XDG_CONFIG_HOME="$1" "$KOSH" -c "koshconf get editor.complete_on_tab; koshconf get diagnostics.show_source_traces"' \
+  sh "$home/elsewhere"
+echo "== a file without traces drops the trace rows:"
+printf 'f() { missing_command_xyz; }\nf\n' >"$home/lib.sh"
+"$BIN" -c '. "$1"' sh "$home/lib.sh" 2>&1 | grep -c 'trace:'
+"$BIN" -Q -c '. "$1"' sh "$home/lib.sh" 2>&1 | grep -c 'trace:'
+echo "== the command-line flags win over the file:"
+printf 'editor.complete_on_tab=on\neditor.highlight_syntax_and_show_ghost_text=on\ndiagnostics.show_source_traces=on\n' >"$conf"
+"$BIN" -T --no-syntax-highlighting --no-traces -c 'koshconf get editor.complete_on_tab
+koshconf get editor.highlight_syntax_and_show_ghost_text
+koshconf get diagnostics.show_source_traces'
+"$BIN" --dumb -c 'koshconf get editor.complete_on_tab'
+
+echo "== startup.init_moods selects the startup files of an interactive shell:"
+printf 'startup.init_moods=bash\n' >"$conf"
+"$BIN" -c 'koshconf get startup.init_moods; koshconf get mood'
+"$BIN" -i <"$TEST_NULL_DEVICE" 2>/dev/null | grep -c bashrc-ran
+echo "== a script ignores it and keeps the kosh identity:"
+"$BIN" -c 'echo "bash version: ${BASH_VERSION:-unset}"'
+echo "== -L wins over the file:"
+"$BIN" -L kosh -i <"$TEST_NULL_DEVICE" 2>/dev/null | grep -c bashrc-ran
+"$BIN" -L sh,bash -c 'koshconf get startup.init_moods'
+echo "== an unknown mood in the list is a warning:"
+printf 'startup.init_moods=bash,zsh\n' >"$conf"
+"$BIN" -c 'koshconf get startup.init_moods' 2>&1 | sed "s|$home|HOME|"
+echo "== koshconf set validates the list:"
+: >"$conf"
+"$BIN" -c 'koshconf set startup.init_moods sh,bash-posix; koshconf get startup.init_moods
+koshconf set startup.init_moods ksh' 2>&1 | grep -v '^ '

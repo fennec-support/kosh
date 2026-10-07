@@ -55,7 +55,10 @@ changes update this file.
   directory that anyone but root or the Windows administrators could change,
   then the user `kosh.conf`, and an
   inherited `KOSHCONF`, removes `KOSHCONF` from the environment, and settles a
-  configured mood before the input plan. An option the command line or
+  configured mood before the input plan and the configured
+  `startup.init_moods` of an interactive or login shell after it. A debug
+  build lets KOSH_DEBUG_SYSTEM_KOSHCONF name the system file; a release build
+  has no such override. An option the command line or
   `KOSH_ANALYSIS` names keeps its value. A restricted or privileged invocation
   ignores `KOSHCONF`, and a restricted one keeps only presentation and
   diagnostic options from the files. The kosh mood sources no shell startup
@@ -473,7 +476,10 @@ changes update this file.
   fixtures run with `-WWW` and keep all diagnostics in their output. The test
   Makefile points XDG_CONFIG_HOME at a missing directory and unexports
   KOSHCONF, so no user `kosh.conf` reaches a fixture; a fixture that needs one
-  sets XDG_CONFIG_HOME or HOME itself. A host `/etc/kosh.conf` is still read.
+  sets XDG_CONFIG_HOME or HOME itself. It also points
+  KOSH_DEBUG_SYSTEM_KOSHCONF at a missing file. Only a debug build reads that
+  variable, so a debug run never reads a host `/etc/kosh.conf`, and a release
+  run still does. A fixture that tests the system file unsets it.
 - Koshkit rm tests use `--dry-run`. Cleanup uses koshkit rm after a nonempty
   path check. Bashdiff and mimicrydiff need Bash 5.3 or newer.
   `scripts/find-modern-bash.sh` selects one from PATH, and `BASHP` overrides that

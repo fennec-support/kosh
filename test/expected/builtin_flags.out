@@ -41,6 +41,7 @@ nounset
 == koshconf offers the diagnostics names:
 diagnostics.analyze_before_running
 diagnostics.show_annoying_tier
+diagnostics.show_source_traces
 diagnostics.warning_level
 == kosh no-traces flag:
 --no-traces

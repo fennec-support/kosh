@@ -35,7 +35,10 @@ or
 .B sh
 mood listed under FILES. The
 .B kosh
-mood sources no shell startup file.
+mood sources no shell startup file. The startup.init_moods option names the
+moods whose startup files an interactive or login shell sources, so a
+.B kosh
+mood session can still source ~/.bashrc; see STARTUP MOODS.
 .SH FILES
 .TP
 .IR /etc/kosh.conf " or " %ProgramData%\kosh\kosh.conf
@@ -131,7 +134,9 @@ line, blanks included. A value cannot span lines.
 A boolean is written as on or off and is also read as true, false, 1, or 0. An
 enumeration is written by name. A string is taken as written, and must be valid
 UTF-8 without a NUL byte. history.max_entries is a non-negative decimal
-integer.
+integer. startup.init_moods is a comma-separated list of the mood names
+.B \-L
+accepts, such as kosh, sh, bash, and bash-posix. An empty name is skipped.
 .B koshconf
 quotes a written value that starts with a quote or starts or ends with a blank.
 A value containing a newline cannot be written to a file. A value containing
@@ -172,9 +177,12 @@ on and legacy.glob_no_match_expands_to_nothing stays off; a file that sets
 another value gets a warning that identifies the option and
 .BR "set \-M bash" ,
 and the line is skipped. An option specified on the command line, such as
-.B \-u
-or
+.BR \-u ,
 .BR \-e ,
+.BR \-T ,
+.BR \-\-no\-traces ,
+or
+.BR \-L ,
 keeps the command-line value. A later line replaces an earlier one, and the
 user file and KOSHCONF replace the system file.
 .PP
@@ -192,6 +200,53 @@ written commented out. The
 preset writes the values the
 .B kosh
 mood keeps, so reading it back never warns.
+.SH STARTUP MOODS
+startup.init_moods lists the moods whose startup files an interactive or login
+shell sources, in order, with each file parsed under the grammar of its mood.
+It is empty by default, which sources the files of the session mood, and so
+nothing in the
+.B kosh
+mood. It is the configured form of
+.BR \-L ,
+and
+.B \-L
+on the command line replaces it. A shell that is neither interactive nor a
+login shell ignores it, so scripts keep their own startup rules. A restricted
+shell ignores it with a warning, as it does the mood, because it would choose
+which files run before the restrictions take effect. KOSHCONF never carries
+it. Changing it with
+.B koshconf set
+in a running shell sources nothing; use
+.B set \-L
+for that.
+.PP
+To keep the
+.B kosh
+mood for the session and still source ~/.bashrc, write
+.PP
+.RS
+.EX
+startup.init_moods=bash
+.EE
+.RE
+.PP
+in the user file. Every mood sets KOSH and never exports it, so a line in
+~/.bashrc guarded with
+.B test \-z \(dq$KOSH\(dq
+runs only in another shell, and one guarded with
+.B test \-n \(dq$KOSH\(dq
+runs only in Koshka:
+.PP
+.RS
+.EX
+test \-z "$KOSH" && source /usr/share/bash\-completion/bash_completion
+test \-n "$KOSH" && alias ll='ls \-l'
+.EE
+.RE
+.PP
+Listing bash also sets BASH_VERSION in that session, as
+.B \-L bash
+does, so a ~/.bashrc that checks it proceeds.
 .SH KOSHCONF
 .B KOSHCONF
 is a dynamic shell variable that always holds the current settings in a binary
@@ -257,7 +312,9 @@ with
 .I option value
 .BR \-\-persist ,
 and move shell code into ~/.bashrc with
-.B mood=bash
+.BR mood=bash ,
+with
+.BR startup.init_moods=bash ,
 or with
 .B \-L bash
 on the command line. Guard Koshka-only lines with

@@ -153,6 +153,8 @@ arithmetic.use_big_integers_and_decimals compat.mimic_shell_named_by_shebang \
 debug.print_syntax_tree debug.print_lexed_word_escapes \
 debug.report_nonzero_exit_codes debug.report_every_exit_code \
 debug.print_evaluation_statistics debug.print_memory_report_at_exit \
+editor.complete_on_tab editor.highlight_syntax_and_show_ghost_text \
+diagnostics.show_source_traces startup.init_moods \
 legacy.export_every_assigned_variable legacy.jobs_report_status_immediately \
 legacy.exit_on_command_failure legacy.glob_disabled \
 legacy.assignments_anywhere_in_command \
@@ -215,7 +217,9 @@ legacy.echo_interprets_backslash_escapes"
       if [[ ${operands[0]} == set ]]
       then
         case ${operands[1]} in
-          mood) _kosh_compgen -W "kosh sh bash bash-posix" -- "$current_word" ;;
+          mood | startup.init_moods)
+            _kosh_compgen -W "kosh sh bash bash-posix" -- "$current_word"
+          ;;
           editor.completion_menu_style)
             _kosh_compgen -W "interactive external plain" -- "$current_word"
           ;;

@@ -44,6 +44,8 @@ fn apply_koshconf_settings(EvalContext &cxt,
                            const ArrayList<koshconf_setting> &settings,
                            option_origin origin,
                            ArrayList<String> &warnings) throws -> void;
+fn parse_mood_list(StringView list, ArrayList<mimic_mood> &moods) throws
+    -> Maybe<StringView>;
 fn find_koshconf_value_problem(const option_descriptor &option,
                                StringView value) throws -> Maybe<String>;
 fn format_koshconf_line(const option_descriptor &option,

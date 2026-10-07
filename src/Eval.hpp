@@ -118,6 +118,8 @@ enum class shell_option_id : u8
   TransientPrompt,
   ExtendedKeys,
   SpaceAfterDirectoryCompletion,
+  TabCompletion,
+  SyntaxHighlighting,
   Count,
 };
 
@@ -474,6 +476,8 @@ private:
                       option_mask(shell_option_id::InteractiveHints) |
                       option_mask(shell_option_id::InteractiveDiagnostics) |
                       option_mask(shell_option_id::ExtendedKeys) |
+                      option_mask(shell_option_id::TabCompletion) |
+                      option_mask(shell_option_id::SyntaxHighlighting) |
                       option_mask(shell_option_id::Braceexpand)};
   shopt_state m_shopt;
 };
@@ -2814,11 +2818,20 @@ public:
   {
     m_is_restricted_shell = enabled;
   }
+  pure fn get_init_moods() const wontthrow -> StringView
+  {
+    return m_init_moods.view();
+  }
+  fn set_init_moods(StringView moods) throws -> void
+  {
+    m_init_moods = String{moods};
+  }
   fn append_wire(String &output) const throws -> void;
   static fn from_wire(subshell_bootstrap_reader &reader,
                       bool &is_restricted_shell) wontthrow -> bool;
 
 private:
+  String m_init_moods{heap_allocator()};
   bool m_is_login_shell{false};
   bool m_has_custom_rcfile{false};
   bool m_is_restricted_shell{false};

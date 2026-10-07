@@ -2037,7 +2037,9 @@ fn source_init_moods(EvalContext &context, const ArrayList<mimic_mood> &moods,
 
   /* The bash programmable completion loads once after a bash rc sourced, so it
      parses under the bash grammar. */
-  if (did_source_bash_rc && !FLAG_NO_COMPLETION.is_enabled()) {
+  if (did_source_bash_rc &&
+      context.runtime_state().option_is_enabled(shell_option_id::TabCompletion))
+  {
     LOG(Info, "bootstrapping the bash programmable completion");
     ensure_bash_completion_loaded(context);
   }

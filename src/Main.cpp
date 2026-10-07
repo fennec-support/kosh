@@ -93,7 +93,8 @@ FLAG(MOOD, String, 'M', "mood", Compat,
      "'bash-posix' is bash with the posix identity reached by --posix.");
 FLAG(INIT_MOODS, ManyStrings, 'L', "init-moods", Compat,
      "Source the startup files for each listed mood, in order, comma separated "
-     "or by repeating the flag. Defaults to --mood.");
+     "or by repeating the flag. Defaults to startup.init_moods in an "
+     "interactive or login shell, then to --mood.");
 FLAG(MIMICRY, Bool, 'I', "enable-mimicry", Compat,
      "Mimic the shell specified by a script's shebang, running a known shell shebang "
      "in-process in the matching mode.");
@@ -127,7 +128,7 @@ FLAG(SUPPRESS_INIT_DIAGNOSTICS, Bool, '\0', "no-init-diagnostics", Kosh,
 FLAG(NO_TRACES, Bool, '\0', "no-traces", Kosh,
      "Suppress source backtraces for errors and warnings.");
 FLAG(NO_COMPLETION, Bool, 'T', "no-completion", Kosh,
-     "Disable interactive tab completion and ghost-text.");
+     "Disable interactive tab completion, ghost-text, and syntax coloring.");
 FLAG(NO_SYNTAX_HIGHLIGHTING, Bool, '\0', "no-syntax-highlighting", Kosh,
      "Disable the syntax coloring and the ghost suggestion, leaving tab "
      "completion working.");
@@ -430,25 +431,13 @@ static fn show_unknown_flag_value(StringView flag_prefix, StringView value,
 static fn parse_init_moods(ArrayList<mimic_mood> &moods) throws -> Maybe<int>
 {
   for (usize i = 0; i < FLAG_INIT_MOODS.count(); i++) {
-    StringView entry = FLAG_INIT_MOODS.get(i);
-    /* A single --init-moods value may itself be comma-separated. */
-    usize name_start = 0;
-    for (usize j = 0; j <= entry.length; j++) {
-      if (j != entry.length && entry[j] != ',') {
-        continue;
-      }
-      StringView name = entry.substring_of_length(name_start, j - name_start);
-      name_start = j + 1;
-      if (name.is_empty()) continue;
-      Maybe<mimic_mood> parsed_mood = parse_mood_name(name);
-      if (!parsed_mood.has_value()) {
-        show_unknown_flag_value(
-            "--init-moods ", name,
-            "Unknown --init-moods value, expected one of 'kosh', 'bash', or "
-            "'sh'");
-        return 2;
-      }
-      moods.push(*parsed_mood);
+    let const unknown_name = parse_mood_list(FLAG_INIT_MOODS.get(i), moods);
+    if (unknown_name.has_value()) {
+      show_unknown_flag_value(
+          "--init-moods ", *unknown_name,
+          "Unknown --init-moods value, expected one of 'kosh', 'bash', or "
+          "'sh'");
+      return 2;
     }
   }
 
@@ -758,6 +747,20 @@ static fn keep_restricted_settings(koshconf_reading &reading) throws -> void
   reading.settings = steal(kept);
 }
 
+static fn find_system_koshconf_path() throws -> Maybe<Path>
+{
+#if !defined NDEBUG
+  if (let const debug_path =
+          os::get_environment_variable("KOSH_DEBUG_SYSTEM_KOSHCONF");
+      debug_path.has_value() && !debug_path->is_empty())
+  {
+    return Path{debug_path->view()};
+  }
+#endif
+
+  return os::get_system_koshconf_path();
+}
+
 static fn read_startup_configuration(const command_line &line,
                                      const inherited_shell &inherited,
                                      const invocation_identity &identity,
@@ -790,7 +793,7 @@ static fn read_startup_configuration(const command_line &line,
     return reading;
   }
 
-  if (let const system_path = os::get_system_koshconf_path();
+  if (let const system_path = find_system_koshconf_path();
       system_path.has_value())
   {
     unused(read_system_koshconf_file(*system_path, reading));
@@ -824,6 +827,33 @@ static fn apply_configured_mood(invocation_identity &identity,
   }
 }
 
+static fn apply_configured_init_moods(ArrayList<mimic_mood> &init_moods,
+                                      const koshconf_reading &reading,
+                                      bool should_source_session_files) throws
+    -> void
+{
+  if (FLAG_INIT_MOODS.count() != 0 || !should_source_session_files) return;
+
+  for (let const &setting : reading.settings) {
+    if (setting.option->storage != option_storage::InitMoods) continue;
+
+    init_moods.clear();
+    unused(parse_mood_list(setting.value.view(), init_moods));
+  }
+}
+
+static fn describe_init_moods(const ArrayList<mimic_mood> &init_moods) throws
+    -> String
+{
+  let text = String{heap_allocator()};
+  for (let const mood : init_moods) {
+    if (!text.is_empty()) text += ',';
+    text += mood_name(mood);
+  }
+
+  return text;
+}
+
 static fn is_pinned_by_invocation(const option_descriptor &option) wontthrow
     -> bool
 {
@@ -840,6 +870,8 @@ static fn is_pinned_by_invocation(const option_descriptor &option) wontthrow
            is_analysis_inherited;
   case option_storage::Analysis:
     return FLAG_SUPPRESS_DIAGNOSTICS.is_enabled() || is_analysis_inherited;
+  case option_storage::SourceTraces: return FLAG_NO_TRACES.is_enabled();
+  case option_storage::InitMoods: return FLAG_INIT_MOODS.count() != 0;
   case option_storage::ShellOption: break;
   default: return false;
   }
@@ -864,6 +896,9 @@ static fn is_pinned_by_invocation(const option_descriptor &option) wontthrow
     return FLAG_ALL_EXIT_CODES.is_enabled();
   case shell_option_id::ShowStats: return FLAG_STATS.is_enabled();
   case shell_option_id::ShowMemory: return FLAG_MEMORY.is_enabled();
+  case shell_option_id::TabCompletion: return FLAG_NO_COMPLETION.is_enabled();
+  case shell_option_id::SyntaxHighlighting:
+    return FLAG_NO_SYNTAX_HIGHLIGHTING.is_enabled();
   default: return false;
   }
 }
@@ -922,6 +957,8 @@ struct session_config
   bool should_show_all_exit_codes;
   bool is_memory_stats_enabled;
   bool has_source_traces;
+  bool is_tab_completion_enabled;
+  bool is_syntax_highlighting_enabled;
   bool is_privileged;
   bool is_one_command;
   bool is_extended_arithmetic_enabled;
@@ -979,6 +1016,8 @@ static fn read_session_config(const invocation_identity &identity,
                         FLAG_ALL_EXIT_CODES.is_enabled(),
                         FLAG_MEMORY.is_enabled(),
                         !FLAG_NO_TRACES.is_enabled(),
+                        !FLAG_NO_COMPLETION.is_enabled(),
+                        !FLAG_NO_SYNTAX_HIGHLIGHTING.is_enabled(),
                         FLAG_PRIVILEGED.is_enabled(),
                         FLAG_ONE_COMMAND.is_enabled(),
                         identity.session_mood == mimic_mood::Default ||
@@ -1007,6 +1046,10 @@ static fn apply_session_config(EvalContext &context,
   state.set_memory_stats_enabled(config.is_memory_stats_enabled);
   context.diagnostics_store().set_source_traces_enabled(
       config.has_source_traces);
+  state.set_option(shell_option_id::TabCompletion,
+                   config.is_tab_completion_enabled);
+  state.set_option(shell_option_id::SyntaxHighlighting,
+                   config.is_syntax_highlighting_enabled);
   state.set_option(shell_option_id::Privileged, config.is_privileged);
   state.set_option(shell_option_id::Onecmd, config.is_one_command);
   if (config.has_execution_string) {
@@ -1489,12 +1532,6 @@ static fn start_line_editor(EvalContext &context,
   /* The set -b wake hook registers even under -T, since job reporting is not
      completion. */
   toiletline::enable_job_notifications(context);
-  if (!FLAG_NO_COMPLETION.is_enabled()) toiletline::enable_completion(context);
-
-  let const should_highlight = !FLAG_NO_COMPLETION.is_enabled() &&
-                               !FLAG_NO_SYNTAX_HIGHLIGHTING.is_enabled();
-  toiletline::set_highlight_enabled(should_highlight);
-  toiletline::set_ghost_enabled(should_highlight);
   /* The editor reads no environment of its own. NO_COLOR and a dumb terminal
      reach it through this switch. */
   toiletline::set_colors_enabled(colors::stdout_wants_color());
@@ -1543,6 +1580,20 @@ static fn emit_prompt_line_break() throws -> void
 
 static fn configure_line_editor(EvalContext &context) throws -> void
 {
+  let const is_tab_completion_enabled =
+      context.runtime_state().option_is_enabled(shell_option_id::TabCompletion);
+  if (is_tab_completion_enabled && !toiletline::is_completion_enabled()) {
+    toiletline::enable_completion(context);
+  } else if (!is_tab_completion_enabled && toiletline::is_completion_enabled())
+  {
+    toiletline::disable_completion();
+  }
+
+  let const should_highlight =
+      is_tab_completion_enabled && context.runtime_state().option_is_enabled(
+                                       shell_option_id::SyntaxHighlighting);
+  toiletline::set_highlight_enabled(should_highlight);
+  toiletline::set_ghost_enabled(should_highlight);
   toiletline::set_edit_mode(
       context.runtime_state().option_is_enabled(shell_option_id::Vi)
           ? toiletline::edit_mode::Vi
@@ -1619,10 +1670,13 @@ struct interactive_session
   fn prepare_completion(EvalContext &context, const command_line &line) throws
       -> void
   {
+    let const &state = context.runtime_state();
+    let const is_tab_completion_enabled =
+        state.option_is_enabled(shell_option_id::TabCompletion);
     if (did_seed_path_map) {
       context.program_resolver().revalidate_for_prompt();
-    } else if (!line.is_rescue_mode && !FLAG_NO_COMPLETION.is_enabled() &&
-               !FLAG_NO_SYNTAX_HIGHLIGHTING.is_enabled())
+    } else if (!line.is_rescue_mode && is_tab_completion_enabled &&
+               state.option_is_enabled(shell_option_id::SyntaxHighlighting))
     {
       context.program_resolver().initialize_path_map();
       did_seed_path_map = true;
@@ -1631,7 +1685,7 @@ struct interactive_session
     /* The working directory is indexed before the first keystroke so a ghost
        path suggestion is ready without a tab. A directory that cannot be read
        leaves the index empty. */
-    if (!line.is_rescue_mode && !FLAG_NO_COMPLETION.is_enabled()) {
+    if (!line.is_rescue_mode && is_tab_completion_enabled) {
       try {
         utils::warm_directory_index(Path::current_directory());
       } catch (const Error &) {}
@@ -2040,6 +2094,9 @@ fn kosh_main(int argc, char **argv) -> int
   koshka::apply_configured_mood(identity, configuration);
 
   let const input = koshka::resolve_input_plan(file_names);
+  koshka::apply_configured_init_moods(init_moods, configuration,
+                                      input.should_be_interactive ||
+                                          identity.is_login_shell);
   let prefetched_script_contents =
       koshka::prefetch_script_shebang(identity, input, file_names);
   let operands = koshka::take_script_operands(steal(identity.program_path),
@@ -2057,6 +2114,10 @@ fn kosh_main(int argc, char **argv) -> int
 
   koshka::apply_session_config(context,
                                koshka::read_session_config(identity, input));
+  if (FLAG_INIT_MOODS.count() != 0) {
+    context.startup_store().set_init_moods(
+        koshka::describe_init_moods(init_moods).view());
+  }
   koshka::seed_session_variables(context, identity, init_moods, inherited,
                                  input.should_be_interactive);
   koshka::apply_startup_configuration(context, configuration);

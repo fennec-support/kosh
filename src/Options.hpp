@@ -46,6 +46,8 @@ enum class option_storage : u8
   WarningLevel,
   AnnoyingDiagnostics,
   Analysis,
+  SourceTraces,
+  InitMoods,
   Login,
   RestrictedShell,
   Variable,

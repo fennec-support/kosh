@@ -259,11 +259,29 @@ fn preset_group_of(const option_descriptor &option) wontthrow -> StringView
       0, topic_start + (underscore.has_value() ? *underscore : topic.count()));
 }
 
+fn get_preset_group_first_id(const option_descriptor &option) wontthrow -> u16
+{
+  let const group = preset_group_of(option);
+  let first_id = option.id;
+  for (let const &other : get_option_registry()) {
+    if (other.is_legacy() || other.id >= first_id) continue;
+    if (preset_group_of(other) == group) first_id = other.id;
+  }
+
+  return first_id;
+}
+
 fn preset_sorts_before(const option_descriptor &left,
                        const option_descriptor &right) wontthrow -> bool
 {
   if (left.is_legacy() != right.is_legacy()) return right.is_legacy();
-  if (!left.is_legacy()) return left.id < right.id;
+  if (!left.is_legacy()) {
+    let const left_group_id = get_preset_group_first_id(left);
+    let const right_group_id = get_preset_group_first_id(right);
+    if (left_group_id != right_group_id) return left_group_id < right_group_id;
+
+    return left.id < right.id;
+  }
 
   return StringView{left.koshconf_name} < StringView{right.koshconf_name};
 }
@@ -370,6 +388,27 @@ fn get_user_koshconf_path() throws -> Maybe<Path>
   return config_home;
 }
 
+fn parse_mood_list(StringView list, ArrayList<mimic_mood> &moods) throws
+    -> Maybe<StringView>
+{
+  usize name_start = 0;
+  for (usize position = 0; position <= list.count(); position++) {
+    if (position != list.count() && list[position] != ',') continue;
+
+    let const name =
+        list.substring_of_length(name_start, position - name_start);
+    name_start = position + 1;
+    if (name.is_empty()) continue;
+
+    let const mood = parse_mood_name(name);
+    if (!mood.has_value()) return name;
+
+    moods.push(*mood);
+  }
+
+  return None;
+}
+
 fn find_koshconf_value_problem(const option_descriptor &option,
                                StringView value) throws -> Maybe<String>
 {
@@ -395,6 +434,13 @@ fn find_koshconf_value_problem(const option_descriptor &option,
       StringView{option.koshconf_name} == HISTORY_MAX_ENTRIES_NAME;
   if (is_count && !is_decimal_count(value)) {
     return do_describe("a non-negative decimal integer");
+  }
+  if (option.storage == option_storage::InitMoods) {
+    let moods = ArrayList<mimic_mood>{heap_allocator()};
+    if (parse_mood_list(value, moods).has_value()) {
+      return do_describe("a comma-separated list of 'kosh', 'sh', 'bash', "
+                         "and 'bash-posix'");
+    }
   }
 
   return None;

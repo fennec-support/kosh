@@ -390,6 +390,42 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
         shell_option_id::ShowMemory,
         entry_shape{{}, {}, {}, "Print a detailed memory report at exit.", 'G'},
         false)),
+    flag(24, "editor.complete_on_tab", INTERACTIVE,
+         shell_option_id::TabCompletion,
+         entry_shape{{},
+                     {},
+                     {},
+                     "Complete the word under the cursor on Tab. Turning "
+                     "this off also turns off the ghost suggestion and the "
+                     "syntax colors."},
+         true),
+    flag(25, "editor.highlight_syntax_and_show_ghost_text", INTERACTIVE,
+         shell_option_id::SyntaxHighlighting,
+         entry_shape{{},
+                     {},
+                     {},
+                     "Color the input by syntax and suggest the rest of the "
+                     "word in ghost text."},
+         true),
+    special(flag(26, "diagnostics.show_source_traces", INTERACTIVE,
+                 NO_SHELL_OPTION,
+                 entry_shape{{},
+                             {},
+                             {},
+                             "Show the backtrace of sourced files and "
+                             "function calls below an error or warning."},
+                 true),
+            option_storage::SourceTraces),
+    make_entry(27, "startup.init_moods", option_type::String, SEMANTIC,
+               option_storage::InitMoods, NO_SHELL_OPTION,
+               entry_shape{{},
+                           {},
+                           {},
+                           "Source the startup files of each listed mood, "
+                           "comma separated, when the shell is interactive "
+                           "or a login shell. Empty selects the session "
+                           "mood."},
+               0, 0),
 
     flag(64, "legacy.export_every_assigned_variable", SEMANTIC,
          shell_option_id::Allexport,
@@ -1051,9 +1087,12 @@ fn read_boolean(const EvalContext &cxt, const option_descriptor &option) throws
   case option_storage::AnnoyingDiagnostics:
     return state.is_annoying_diagnostics_enabled();
   case option_storage::Analysis: return !state.is_diagnostics_disabled();
+  case option_storage::SourceTraces:
+    return cxt.diagnostics_store().source_traces_enabled();
   case option_storage::Login: return cxt.startup_store().is_login_shell();
   case option_storage::RestrictedShell:
     return cxt.startup_store().is_restricted_shell();
+  case option_storage::InitMoods:
   case option_storage::Mood:
   case option_storage::TabSelector:
   case option_storage::WarningLevel:
@@ -1130,8 +1169,12 @@ fn write_boolean(EvalContext &cxt, const option_descriptor &option,
     cxt.runtime_control_store().note_diagnostics_option_mutation();
     state.set_diagnostics_disabled(!is_enabled);
     return;
+  case option_storage::SourceTraces:
+    cxt.diagnostics_store().set_source_traces_enabled(is_enabled);
+    return;
   case option_storage::Login:
   case option_storage::RestrictedShell:
+  case option_storage::InitMoods:
   case option_storage::Mood:
   case option_storage::TabSelector:
   case option_storage::WarningLevel:
@@ -1258,7 +1301,8 @@ fn read_option_number(const EvalContext &cxt,
   case option_storage::TabSelector:
     return static_cast<u32>(state.get_tab_selector());
   case option_storage::WarningLevel: return state.get_warning_level();
-  case option_storage::Variable: return 0;
+  case option_storage::Variable:
+  case option_storage::InitMoods: return 0;
   case option_storage::EditorMode:
     if (option.is_set_alias) return read_boolean(cxt, option) ? 1 : 0;
 
@@ -1291,6 +1335,9 @@ fn read_option_text(const EvalContext &cxt,
     let value = cxt.get_variable_value(option.variable_name);
     return value.has_value() ? steal(*value) : String{heap_allocator()};
   }
+  if (option.storage == option_storage::InitMoods)
+    return String{cxt.startup_store().get_init_moods()};
+
   return format_option_number(option, read_option_number(cxt, option));
 }
 
@@ -1377,6 +1424,7 @@ fn write_option_number(EvalContext &cxt, const option_descriptor &option,
     state.set_warning_level(static_cast<u8>(value));
     return;
   case option_storage::Variable:
+  case option_storage::InitMoods:
     unreachable("A string option was written as a number");
   case option_storage::EditorMode:
     if (option.is_set_alias) break;
@@ -1407,6 +1455,11 @@ fn write_option_text(EvalContext &cxt, const option_descriptor &option,
     cxt.set_shell_variable(option.variable_name, text);
     return;
   }
+  if (option.storage == option_storage::InitMoods) {
+    cxt.startup_store().set_init_moods(text);
+    return;
+  }
+
   let const value = parse_option_number(option, text);
   if (!value.has_value())
     throw Error{StringView{"Invalid value '"} + text + "' for '" +

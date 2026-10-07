@@ -1,4 +1,4 @@
-unset KOSH_FLAGS KOSHCONF
+unset KOSH_FLAGS KOSHCONF KOSH_DEBUG_SYSTEM_KOSHCONF
 # The system kosh.conf applies only when the file and its directory belong to
 # root and neither is writable by a group or by others. A user namespace maps
 # the test user to root and mounts a private /etc, so each case can set the

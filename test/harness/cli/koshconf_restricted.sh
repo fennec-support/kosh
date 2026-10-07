@@ -40,13 +40,15 @@ mkdir -p "$home" "$config/kosh"
 printf 'echo bashrc-ran\n' >"$home/.bashrc"
 printf 'mood=bash\nkoshkit.run_utilities_as_plain_commands=on\nhistory.file_path=/elsewhere\neditor.auto_close_brackets_and_quotes=on\n' \
   >"$config/kosh/kosh.conf"
-printf 'legacy.glob_includes_dotfiles=on\n' >>"$config/kosh/kosh.conf"
+printf 'legacy.glob_includes_dotfiles=on\nstartup.init_moods=bash\n' >>"$config/kosh/kosh.conf"
 HOME="$home" KOSH_HISTORY_FILE=/history "$BIN" -r -c 'koshconf get mood
 koshconf get koshkit.run_utilities_as_plain_commands
 koshconf get legacy.glob_includes_dotfiles
 koshconf get history.file_path
-koshconf get editor.auto_close_brackets_and_quotes'
+koshconf get editor.auto_close_brackets_and_quotes
+koshconf get startup.init_moods'
 HOME="$home" "$BIN" -r -i <"$TEST_NULL_DEVICE" 2>/dev/null | grep -c bashrc-ran
+HOME="$home" "$BIN" -i <"$TEST_NULL_DEVICE" 2>/dev/null | grep -c bashrc-ran
 "$BIN_DIR/invoke-koshkit" rm -rf -- "$config/kosh"
 
 echo "== a subshell of a restricted shell keeps the restrictions:"
