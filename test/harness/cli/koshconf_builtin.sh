@@ -36,6 +36,14 @@ echo "rc=$?"
 grep '^mood=' "$conf"
 echo "== the bash preset matches a fresh bash session:"
 do_compare_preset bash
+echo "== the sh preset matches a fresh sh session:"
+"$BIN" -c 'koshconf create --force sh'
+do_compare_preset sh
+echo "== create writes every file option with its help and Bash name:"
+grep -c '^legacy\.glob' "$conf"
+grep -B2 '^legacy.glob_includes_dotfiles=' "$conf"
+grep -c '^# history.file_path=$' "$conf"
+grep -c '^legacy.privileged_mode=' "$conf"
 
 echo "== set changes the session, and --persist rewrites one line:"
 "$BIN" -c 'koshconf set editor.auto_close_brackets_and_quotes true; koshconf get editor.auto_close_brackets_and_quotes'
@@ -52,8 +60,12 @@ echo "== --persist creates the file and its directory:"
 "$BIN_DIR/invoke-koshkit" rm -rf -- "$XDG_CONFIG_HOME"
 "$BIN" -c 'koshconf set completion.add_space_after_completed_word on --persist'
 cat "$conf"
-echo "== --persist rejects an option that changes evaluation:"
-"$BIN" -c 'koshconf set legacy.exit_on_command_failure on --persist'
+echo "== --persist writes an option that changes evaluation:"
+"$BIN" -c 'koshconf set legacy.glob_includes_dotfiles on --persist'
+echo "rc=$?"
+grep '^legacy.glob_includes_dotfiles=' "$conf"
+echo "== --persist rejects an option fixed by how the shell started:"
+"$BIN" -c 'koshconf set legacy.privileged_mode off --persist'
 echo "rc=$?"
 echo "== a value the file cannot hold changes neither the session nor the file:"
 KOSH_HISTORY_FILE=/history "$BIN" -c 'koshconf set history.file_path $'"'"'a\nb'"'"' --persist

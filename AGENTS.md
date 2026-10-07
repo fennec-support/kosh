@@ -110,8 +110,12 @@ changes update this file.
   Explicit states survive changes between the other moods. An explicit mood
   change clears the level from `-W`, `-WW`, or `-WWW`.
 - `src/Koshconf.cpp` owns the `kosh.conf` reader and writer, the presets, and
-  the base64 TLV form of `KOSHCONF`. Only the mood and the interactive options
-  reach a file or `KOSHCONF`. `find_koshconf_value_problem` checks every value
+  the base64 TLV form of `KOSHCONF`. A file holds every option except
+  read-only, invocation-only, and session-dependent ones, and `koshconf create`
+  writes them all with help comments. The startup applies the mood first and
+  skips a file value that the kosh mood holds fixed; a restricted shell keeps
+  only interactive options. Only the mood and the interactive options reach
+  `KOSHCONF`. `find_koshconf_value_problem` checks every value
   from a file, a blob, or `koshconf set`, and the decoder accepts only the
   canonical encoding. A write resolves a symlinked file to its target, keeps
   the target's mode, flushes a temporary file beside it, renames it over the

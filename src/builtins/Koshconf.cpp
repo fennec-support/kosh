@@ -164,8 +164,9 @@ fn run_set(const ExecContext &ec, EvalContext &cxt,
     report_soft_builtin_error(
         ec, cxt, operands.locations[2],
         StringView{"The '"} + option->koshconf_name +
-            "' option changes evaluation, so --persist cannot write it",
-        "Only interactive options and the mood belong in the file");
+            "' option depends on how the shell started, so --persist cannot "
+            "write it",
+        "Read-only, invocation, and session options stay out of the file");
     return 1;
   }
 

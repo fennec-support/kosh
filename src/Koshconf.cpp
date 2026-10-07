@@ -242,6 +242,30 @@ fn declared_name(StringView line) wontthrow -> Maybe<StringView>
   return line.substring_of_length(0, *equals).trim_blanks();
 }
 
+fn preset_group_of(const option_descriptor &option) wontthrow -> StringView
+{
+  let const name = StringView{option.koshconf_name};
+  if (!option.is_legacy()) {
+    let const dot = name.find_character('.');
+    return dot.has_value() ? name.substring_of_length(0, *dot) : name;
+  }
+
+  let const topic_start = StringView{"legacy."}.count();
+  let const topic = name.substring(topic_start);
+  let const underscore = topic.find_character('_');
+  return name.substring_of_length(
+      0, topic_start + (underscore.has_value() ? *underscore : topic.count()));
+}
+
+fn preset_sorts_before(const option_descriptor &left,
+                       const option_descriptor &right) wontthrow -> bool
+{
+  if (left.is_legacy() != right.is_legacy()) return right.is_legacy();
+  if (!left.is_legacy()) return left.id < right.id;
+
+  return StringView{left.koshconf_name} < StringView{right.koshconf_name};
+}
+
 fn resolve_koshconf_target(const Path &path) throws -> Path
 {
   if (let resolved = os::canonical_path(path); resolved.has_value()) {
@@ -620,19 +644,73 @@ fn make_koshconf_preset(mimic_mood preset) throws -> String
 {
   let contents = String{"# Koshka settings written by koshconf create "};
   contents += mood_name(preset);
-  contents += ".\n# Each line is name=value. kosh(5) describes the format.\n";
+  contents += ".\n# Each line is name=value. kosh(5) describes the format.\n"
+              "# Every shell reads this file, including the ones that run "
+              "scripts.\n";
+
+  let ordered = ArrayList<const option_descriptor *>{heap_allocator()};
   for (let const &option : get_option_registry()) {
-    if (!option.is_serialized() || option.type == option_type::String) {
+    if (!option.is_configurable()) continue;
+
+    ordered.push(&option);
+  }
+  for (usize position = 1; position < ordered.count(); position++) {
+    let const *moved = ordered[position];
+    usize slot = position;
+    while (slot > 0 && preset_sorts_before(*moved, *ordered[slot - 1])) {
+      ordered[slot] = ordered[slot - 1];
+      slot--;
+    }
+    ordered[slot] = moved;
+  }
+
+  let previous_group = StringView{};
+  for (let const *option : ordered) {
+    let const group = preset_group_of(*option);
+    if (group != previous_group) {
+      contents += "\n# ";
+      contents += group;
+      contents += '\n';
+      previous_group = group;
+    }
+
+    contents += "# ";
+    contents += option->help;
+    if (!option->set_name.is_empty()) {
+      contents += " (set -o ";
+      contents += option->set_name;
+      contents += ')';
+    } else if (!option->shopt_name.is_empty()) {
+      contents += " (shopt ";
+      contents += option->shopt_name;
+      contents += ')';
+    }
+    contents += '\n';
+
+    if (option->type == option_type::String) {
+      if (option->default_text.is_empty()) {
+        contents += "# ";
+        contents += option->koshconf_name;
+        contents += "=\n";
+        continue;
+      }
+
+      contents += format_koshconf_line(*option, option->default_text);
+      contents += '\n';
       continue;
     }
+
     let const value =
-        option.storage == option_storage::Mood ? static_cast<u32>(preset)
-        : preset == mimic_mood::Default        ? option.default_value
-                                               : option.bash_default_value;
+        option->storage == option_storage::Mood ? static_cast<u32>(preset)
+        : preset == mimic_mood::Posix           ? option->posix_default_value
+        : preset != mimic_mood::Default         ? option->bash_default_value
+        : option->is_fixed_in_kosh_mood         ? option->strict_value
+                                                : option->default_value;
     contents += format_koshconf_line(
-        option, format_option_number(option, value).view());
+        *option, format_option_number(*option, value).view());
     contents += '\n';
   }
+
   return contents;
 }
 

@@ -98,6 +98,7 @@ struct option_descriptor
   char letter;
   u8 default_value;
   u8 bash_default_value;
+  u8 posix_default_value;
   u8 strict_value;
   bool is_fixed_in_kosh_mood;
   bool is_read_only;
@@ -118,14 +119,14 @@ struct option_descriptor
   }
   pure fn is_configurable() const wontthrow -> bool
   {
-    return !is_set_alias && !is_read_only &&
-           (category == option_class::Interactive ||
-            storage == option_storage::Mood);
+    return !is_set_alias && !is_read_only && !is_invocation_only &&
+           !is_session_dependent;
   }
   pure fn is_serialized() const wontthrow -> bool
   {
-    return is_configurable() && !is_session_dependent &&
-           !is_kept_out_of_koshconf;
+    return is_configurable() && !is_kept_out_of_koshconf &&
+           (category == option_class::Interactive ||
+            storage == option_storage::Mood);
   }
 };
 

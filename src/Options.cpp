@@ -74,6 +74,7 @@ consteval fn make_entry(u16 id, option_text koshconf_name, option_type type,
   entry.letter = shape.letter;
   entry.default_value = default_value;
   entry.bash_default_value = bash_default_value;
+  entry.posix_default_value = bash_default_value;
   entry.strict_value = default_value;
   entry.is_listed_by_set = !shape.set_name.is_empty();
   return entry;
@@ -113,6 +114,7 @@ consteval fn set_alias(option_text set_name, shell_option_id shell_option,
   entry.shell_option = shell_option;
   entry.default_value = is_on;
   entry.bash_default_value = is_on;
+  entry.posix_default_value = is_on;
   entry.strict_value = is_on;
   entry.is_set_alias = true;
   entry.is_listed_by_set = true;
@@ -130,6 +132,13 @@ consteval fn kept_out_of_koshconf(option_descriptor entry) wontthrow
     -> option_descriptor
 {
   entry.is_kept_out_of_koshconf = true;
+  return entry;
+}
+
+consteval fn with_posix_default(option_descriptor entry, u8 value) wontthrow
+    -> option_descriptor
+{
+  entry.posix_default_value = value;
   return entry;
 }
 
@@ -608,8 +617,10 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                "Keep a non-interactive shell running when exec cannot run "
                "its command.",
                false, false),
-    shopt_flag(140, "legacy.aliases_expand", SEMANTIC, "expand_aliases",
-               "Expand aliases in commands.", true, false),
+    with_posix_default(shopt_flag(140, "legacy.aliases_expand", SEMANTIC,
+                                  "expand_aliases",
+                                  "Expand aliases in commands.", true, false),
+                       1),
     shopt_flag(141, "legacy.debugger_support", SEMANTIC, "extdebug",
                "Enable the behavior Bash provides for debuggers.", false,
                false),

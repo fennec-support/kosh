@@ -728,6 +728,8 @@ static fn apply_inherited_shell(inherited_shell &inherited,
 static pure fn
 is_kept_in_restricted_shell(const option_descriptor &option) wontthrow -> bool
 {
+  if (option.category == option_class::Semantic) return false;
+
   switch (option.storage) {
   case option_storage::Mood:
   case option_storage::Variable: return false;
@@ -841,6 +843,15 @@ static fn is_pinned_by_invocation(const option_descriptor &option) wontthrow
   }
 
   switch (option.shell_option) {
+  case shell_option_id::Errexit: return FLAG_ERROR_EXIT.is_enabled();
+  case shell_option_id::Noglob: return FLAG_DISABLE_EXPANSION.is_enabled();
+  case shell_option_id::Verbose: return FLAG_VERBOSE.is_enabled();
+  case shell_option_id::Xtrace: return FLAG_EXPAND_VERBOSE.is_enabled();
+  case shell_option_id::Allexport: return FLAG_EXPORT_ALL.is_enabled();
+  case shell_option_id::Noclobber: return FLAG_NO_CLOBBER.is_enabled();
+  case shell_option_id::Nounset: return FLAG_NOUNSET.is_enabled();
+  case shell_option_id::ExtendedArithmetic:
+    return FLAG_EXTENDED_ARITHMETIC.is_enabled();
   case shell_option_id::Koshkit: return FLAG_ENABLE_KOSHKIT.is_enabled();
   case shell_option_id::Mimicry:
     return FLAG_MIMICRY.is_enabled() || is_analysis_inherited;
@@ -858,10 +869,31 @@ static fn is_pinned_by_invocation(const option_descriptor &option) wontthrow
 static fn apply_startup_configuration(EvalContext &context,
                                       koshconf_reading &reading) throws -> void
 {
+  let const is_kosh_mood =
+      context.runtime_state().get_mood() == mimic_mood::Default;
   let unpinned = ArrayList<koshconf_setting>{heap_allocator()};
-  for (let &setting : reading.settings)
-    if (!is_pinned_by_invocation(*setting.option))
-      unpinned.push(steal(setting));
+  for (let &setting : reading.settings) {
+    if (is_pinned_by_invocation(*setting.option)) continue;
+
+    let const &option = *setting.option;
+    let const value = option.type == option_type::String
+                          ? Maybe<u32>{}
+                          : parse_option_number(option, setting.value.view());
+    let const is_held_by_kosh_mood =
+        is_kosh_mood && option.is_fixed_in_kosh_mood && value.has_value() &&
+        *value != option.strict_value;
+    if (is_held_by_kosh_mood) {
+      reading.warnings.push(
+          Warning{StringView{"The kosh mood keeps '"} + option.koshconf_name +
+                  "' " + format_option_number(option, option.strict_value) +
+                  ", so the configured value is skipped; set mood=bash or "
+                  "run `set -M bash` to change it"}
+              .to_string());
+      continue;
+    }
+
+    unpinned.push(steal(setting));
+  }
   reading.settings.clear();
 
   apply_koshconf_settings(context, unpinned, option_origin::Startup,

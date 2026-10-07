@@ -755,17 +755,17 @@ with a descriptive name.
 .B koshconf list
 shows the current value and class of each.
 .PP
-Only the mood and the interactive options are written to a configuration file
-or carried by
-.BR KOSHCONF .
-The options history.file_path, legacy.job_control, legacy.history_recording,
-and legacy.history_bang_expansion depend on the session, so a configuration
-file may set them but
+A configuration file may set every option except the ones fixed by how the
+shell started and the ones that depend on the session. legacy.login_shell and
+legacy.restricted_shell are read-only. legacy.privileged_mode,
+legacy.parse_without_executing, and legacy.exit_after_one_command come from the
+command line. legacy.job_control, legacy.history_recording,
+legacy.history_bang_expansion, and legacy.posix_mode follow the session and the
+mood. history.file_path may appear in a file, but
 .B KOSHCONF
-and
-.B koshconf create
-leave them out. legacy.login_shell and legacy.restricted_shell are fixed at
-startup.
+leaves it out.
+.B KOSHCONF
+carries only the mood and the interactive options.
 .PP
 legacy.base_editor_mode is one option behind the Bash names emacs and vi. Its
 value is vi while
@@ -1174,10 +1174,11 @@ or the name rbash ignores and removes a
 .B KOSHCONF
 environment variable with a warning. From the configuration files, which are
 read before the restrictions take effect, it applies only the options that
-change presentation or diagnostics and warns about the mood,
-koshkit.run_utilities_as_plain_commands, compat.mimic_shell_named_by_shebang,
-history.file_path, and history.max_entries, so a configuration file cannot
-choose the startup files, the command resolution, or a history path. A child shell or a fresh evaluator inherits the restrictions.
+change presentation or diagnostics and warns about the mood, every semantic
+option, koshkit.run_utilities_as_plain_commands,
+compat.mimic_shell_named_by_shebang, history.file_path, and
+history.max_entries, so a configuration file cannot choose the startup files,
+the evaluation rules, the command resolution, or a history path. A child shell or a fresh evaluator inherits the restrictions.
 .PP
 A sourced script retains the restrictions. A shell script found through PATH
 and executed as a command runs without them.
@@ -1660,8 +1661,10 @@ is given.
 changes the option in the current session. With
 .BR \-\-persist ,
 it also rewrites that option's line in the user configuration file, through a
-temporary file and a rename, and leaves every other line in place. Only the
-mood and the interactive options can be persisted. The value is checked before
+temporary file and a rename, and leaves every other line in place. Every
+option a file may hold can be persisted; see
+.BR kosh (5).
+The value is checked before
 the session changes, so a value that the file cannot hold changes nothing.
 .B get
 prints the current value.

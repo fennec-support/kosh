@@ -11,15 +11,13 @@ HOME/.config/kosh/kosh.conf:8:1: warning: Unknown option 'unknown.option', skipp
 HOME/.config/kosh/kosh.conf:9:30: warning: Invalid value 'maybe' for 'editor.show_command_synopsis', expected 'on', 'off', 'true', 'false', '1', or '0', skipping it.
      9 |  editor.show_command_synopsis=maybe
        |                               ^~~~~
-HOME/.config/kosh/kosh.conf:10:1: warning: The 'legacy.unset_variable_is_error' option cannot be set from a configuration file, skipping it.
-    10 |  legacy.unset_variable_is_error=off
-       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 HOME/.config/kosh/kosh.conf:11:19: warning: The quoted value has no closing quote, skipping it.
     11 |  history.file_path="unterminated
        |                    ^~~~~~~~~~~~~
 HOME/.config/kosh/kosh.conf:12:13: warning: Unexpected text after the closing quote, skipping the line.
     12 |  mood='bash' trailing
        |              ^~~~~~~~
+warning: The kosh mood keeps 'legacy.unset_variable_is_error' on, so the configured value is skipped; set mood=bash or run `set -M bash` to change it.
 editor.auto_close_brackets_and_quotes=on
 koshkit.run_utilities_as_plain_commands=off
 history.max_entries=128
@@ -76,3 +74,12 @@ warning: 'HOME/.koshrc' is no longer read; see MIGRATION in kosh(5)
 on
 0
 off
+== semantic options from the file apply to scripts, after the mood:
+rc=1
+dotglob             	on
+bash
+== a kosh mood value that conflicts with a fixed option is skipped:
+warning: The kosh mood keeps 'legacy.unset_variable_is_error' on, so the configured value is skipped; set mood=bash or run `set -M bash` to change it.
+on
+== a command-line flag wins over a semantic option from the file:
+on

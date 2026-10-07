@@ -64,7 +64,9 @@ off
 warning: A restricted shell ignores 'mood' from the configuration files.
 warning: A restricted shell ignores 'koshkit.run_utilities_as_plain_commands' from the configuration files.
 warning: A restricted shell ignores 'history.file_path' from the configuration files.
+warning: A restricted shell ignores 'legacy.glob_includes_dotfiles' from the configuration files.
 kosh
+off
 off
 /history
 on

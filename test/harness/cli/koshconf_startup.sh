@@ -84,3 +84,15 @@ printf 'editor.auto_close_brackets_and_quotes=on\n' >"$conf"
 KOSHCONF=BQEA "$BIN" -p -c 'koshconf get editor.auto_close_brackets_and_quotes
 env | grep -c "^KOSHCONF="'
 KOSHCONF=BQEA "$BIN" -c 'koshconf get editor.auto_close_brackets_and_quotes'
+echo "== semantic options from the file apply to scripts, after the mood:"
+printf 'legacy.exit_on_command_failure=on\nlegacy.glob_includes_dotfiles=on\nmood=bash\n' >"$conf"
+printf 'false\necho unreached\n' >"$home/script.sh"
+"$BIN" "$home/script.sh"
+echo "rc=$?"
+"$BIN" -c 'shopt dotglob; set -M'
+echo "== a kosh mood value that conflicts with a fixed option is skipped:"
+printf 'legacy.unset_variable_is_error=off\nlegacy.glob_no_match_expands_to_nothing=off\n' >"$conf"
+"$BIN" -c 'koshconf get legacy.unset_variable_is_error'
+echo "== a command-line flag wins over a semantic option from the file:"
+printf 'mood=bash\nlegacy.unset_variable_is_error=off\n' >"$conf"
+"$BIN" -u -c 'koshconf get legacy.unset_variable_is_error'

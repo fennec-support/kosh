@@ -40,8 +40,10 @@ mkdir -p "$home" "$config/kosh"
 printf 'echo bashrc-ran\n' >"$home/.bashrc"
 printf 'mood=bash\nkoshkit.run_utilities_as_plain_commands=on\nhistory.file_path=/elsewhere\neditor.auto_close_brackets_and_quotes=on\n' \
   >"$config/kosh/kosh.conf"
+printf 'legacy.glob_includes_dotfiles=on\n' >>"$config/kosh/kosh.conf"
 HOME="$home" KOSH_HISTORY_FILE=/history "$BIN" -r -c 'koshconf get mood
 koshconf get koshkit.run_utilities_as_plain_commands
+koshconf get legacy.glob_includes_dotfiles
 koshconf get history.file_path
 koshconf get editor.auto_close_brackets_and_quotes'
 HOME="$home" "$BIN" -r -i <"$TEST_NULL_DEVICE" 2>/dev/null | grep -c bashrc-ran

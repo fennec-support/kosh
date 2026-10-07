@@ -139,14 +139,56 @@ shows such a value, and any value with a control byte or invalid UTF-8, in the
 .B $\(aq...\(aq
 form of the shell.
 .PP
-Only the mood and the interactive options may appear in a file. The options
-that change evaluation are set for a session with
+A file may set every option except the ones fixed by how the shell started,
+such as legacy.login_shell, legacy.restricted_shell, legacy.privileged_mode,
+legacy.parse_without_executing, and legacy.exit_after_one_command, and the ones
+that follow the session, legacy.job_control, legacy.history_recording,
+legacy.history_bang_expansion, and legacy.posix_mode. The OPTION REGISTRY
+section of
+.BR kosh (1)
+lists them.
+.PP
+.B A semantic option in a file changes every shell that reads it, including
+.B each script run by kosh, not only the interactive session.
+For example, legacy.exit_on_command_failure=on makes every script exit on its
+first failing command, and legacy.glob_includes_dotfiles=on changes what every
+glob matches. Put such a setting in a file only when every script should run
+with it; otherwise set it for a session with
 .BR set ,
 .BR shopt ,
 or
 .BR "koshconf set" .
-A later line replaces an earlier one, and the user file and KOSHCONF replace the
-system file.
+.PP
+The mood is applied first, wherever it appears in the file, so the other lines
+are read under it. In the
+.B kosh
+mood, legacy.unset_variable_is_error, legacy.pipeline_fails_on_any_stage,
+legacy.glob_no_match_is_error, and arithmetic.use_big_integers_and_decimals stay
+on and legacy.glob_no_match_expands_to_nothing stays off; a file that sets
+another value gets a warning that names the option and
+.BR "set \-M bash" ,
+and the line is skipped. An option named on the command line, such as
+.B \-u
+or
+.BR \-e ,
+keeps the command-line value. A later line replaces an earlier one, and the
+user file and KOSHCONF replace the system file.
+.PP
+.B koshconf create
+writes every option a file may hold, grouped by topic under a
+.RI # " group"
+header, each after a
+.RI # " help"
+comment that also names its
+.B set \-o
+or
+.B shopt
+spelling. A string option without a default, such as history.file_path, is
+written commented out. The
+.B kosh
+preset writes the values the
+.B kosh
+mood keeps, so reading it back never warns.
 .SH KOSHCONF
 .B KOSHCONF
 is a dynamic shell variable that always holds the current settings in a binary
@@ -174,7 +216,10 @@ a varint holding the value's position in its list. A string is its UTF-8 bytes.
 The ids are listed by
 .BR kosh (1)
 and never change meaning. Only the mood and the interactive options are
-written.
+written: a child shell reads the settings files itself, and carrying semantic
+options such as exit_on_command_failure through the environment would change
+how every script below the shell runs, which bash avoids by exporting
+SHELLOPTS only on request.
 .PP
 A reader skips a record with an unknown id, an option it never carries, or a
 value that a settings file would reject, and reports a warning. Only the
@@ -186,7 +231,7 @@ truncated, is rejected as a whole with a warning.
 A missing settings file is skipped. An unreadable one, and a system file that
 fails the ownership check under FILES, produce a warning. A line
 without an equals sign, an unknown option name, an invalid value, an unclosed
-quote, text after a closing quote, and an option that changes evaluation each
+quote, text after a closing quote, and an option a file cannot hold each
 produce a warning that names the file and line, and the line is skipped. A
 warning writes a control byte or an invalid UTF-8 byte of the file as an escape
 in its message and as a question mark in its source excerpt. A settings file
@@ -217,5 +262,38 @@ on the command line. Guard Koshka-only lines with
 and lines for other shells with
 .BR "test \-z \(dq$KOSH\(dq" .
 KOSH is set in every mood and never exported.
+.SH EXAMPLES
+A user file that keeps the bash grammar, edits with vi keys, and lets globs
+match dotfiles in every script:
+.PP
+.RS
+.EX
+# mood
+mood=bash
+
+# editor
+editor.auto_close_brackets_and_quotes=on
+editor.completion_menu_style=plain
+
+# history
+history.max_entries=20000
+
+# legacy.base
+legacy.base_editor_mode=vi
+
+# legacy.glob
+legacy.glob_includes_dotfiles=on
+.EE
+.RE
+.PP
+The same lines are written by
+.B koshconf set
+.I option value
+.BR \-\-persist ,
+and
+.B grep glob ~/.config/kosh/kosh.conf
+finds every globbing setting in a file
+.B koshconf create
+wrote.
 .SH SEE ALSO
 .BR kosh (1)
