@@ -43,3 +43,47 @@ fi
 
 # A redirection of another descriptor leaves the substitution path readable.
 cat <(echo beside-redirection) 3</dev/null
+
+# A process substitution sets $! to its process, and wait reads its status
+# after the command reaped it, also for an older one and a second time. jobs
+# does not list one, a later background job replaces $!, and wait with no
+# operand forgets them.
+cat <(exit 3)
+wait "$!"
+echo "input=$?"
+: > >(exit 4)
+wait "$!"
+echo "output=$?"
+cat <(exit 5)
+older=$!
+cat <(exit 6) <(exit 7)
+wait "$older"
+echo "older=$?"
+wait "$!"
+echo "last=$?"
+wait "$!"
+echo "again=$?"
+assigned=<(exit 8)
+wait "$!"
+echo "assigned=$?"
+for code in 1 2 9; do cat <(exit "$code"); done
+wait "$!"
+echo "loop=$?"
+[[ -e <(exit 10) ]]
+wait "$!"
+echo "conditional=$?"
+exec 3< <(sleep 0.2; exit 11)
+jobs
+wait "$!"
+echo "held=$?"
+exec 3<&-
+cat <(exit 12)
+substituted=$!
+sleep 0 &
+[ "$!" != "$substituted" ] && echo "background-replaces"
+wait "$substituted"
+echo "before-background=$?"
+wait
+echo "no-operand=$?"
+wait "$substituted" 2>/dev/null
+echo "forgotten=$?"

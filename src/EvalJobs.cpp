@@ -22,6 +22,40 @@ fn JobTable::set_last_background_pid(i64 pid) wontthrow -> void
   m_last_background_pid = pid;
 }
 
+fn JobTable::remember_process_substitution_status(i64 process_id,
+                                                  i32 status) wontthrow -> void
+{
+  m_process_substitution_statuses[m_next_process_substitution_slot] =
+      finished_process_status{process_id, status};
+  m_next_process_substitution_slot = (m_next_process_substitution_slot + 1) %
+                                     REMEMBERED_PROCESS_SUBSTITUTION_COUNT;
+  if (m_process_substitution_status_count <
+      REMEMBERED_PROCESS_SUBSTITUTION_COUNT)
+  {
+    m_process_substitution_status_count++;
+  }
+}
+
+pure fn JobTable::find_process_substitution_status(
+    i64 process_id) const wontthrow -> Maybe<i32>
+{
+  for (usize age = 1; age <= m_process_substitution_status_count; age++) {
+    let const slot = (m_next_process_substitution_slot +
+                      REMEMBERED_PROCESS_SUBSTITUTION_COUNT - age) %
+                     REMEMBERED_PROCESS_SUBSTITUTION_COUNT;
+    let const &entry = m_process_substitution_statuses[slot];
+    if (entry.process_id == process_id) return entry.status;
+  }
+
+  return None;
+}
+
+fn JobTable::forget_process_substitution_statuses() wontthrow -> void
+{
+  m_process_substitution_status_count = 0;
+  m_next_process_substitution_slot = 0;
+}
+
 fn JobTable::take_snapshot() throws -> job_table_snapshot
 {
   let snapshot =

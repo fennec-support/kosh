@@ -3939,6 +3939,7 @@ public:
   fn hold_process_substitutions(process_substitution_mark mark) wontthrow
       -> void;
   fn release_finished_held_process_substitutions() wontthrow -> void;
+  fn wait_for_process_substitution(i64 process_id) wontthrow -> Maybe<i32>;
 
   mustuse fn mark_loop_redirect_fds() const wontthrow -> loop_redirect_fd_mark;
   fn cleanup_loop_redirect_fds(loop_redirect_fd_mark mark) wontthrow -> void;

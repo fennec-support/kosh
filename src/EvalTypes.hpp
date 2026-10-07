@@ -401,6 +401,12 @@ struct job
   bool has_unreported_state_change{false};
 };
 
+struct finished_process_status
+{
+  i64 process_id{0};
+  i32 status{0};
+};
+
 struct job_table_snapshot
 {
   Maybe<i64> last_background_pid;
@@ -432,6 +438,11 @@ public:
   {}
 
   fn set_last_background_pid(i64 pid) wontthrow -> void;
+  fn remember_process_substitution_status(i64 process_id, i32 status) wontthrow
+      -> void;
+  pure fn find_process_substitution_status(i64 process_id) const wontthrow
+      -> Maybe<i32>;
+  fn forget_process_substitution_statuses() wontthrow -> void;
   fn register_job(os::process pid, StringView command,
                   i64 process_group_id) throws -> i32;
   fn register_pipeline_job(const ArrayList<os::process> &processes,
@@ -501,7 +512,13 @@ public:
   }
 
 private:
+  static constexpr usize REMEMBERED_PROCESS_SUBSTITUTION_COUNT = 16;
+
   Maybe<i64> m_last_background_pid{};
+  finished_process_status
+      m_process_substitution_statuses[REMEMBERED_PROCESS_SUBSTITUTION_COUNT]{};
+  usize m_process_substitution_status_count{0};
+  usize m_next_process_substitution_slot{0};
   ArrayList<job> m_jobs;
   ArrayList<os::process> m_detached_job_processes;
   i32 m_next_job_id{1};
@@ -521,6 +538,7 @@ struct process_substitution
 {
   os::descriptor shell_fd;
   os::process child;
+  i64 process_id;
   opaque *platform_cleanup;
   SourceLocation location;
   StringView source;

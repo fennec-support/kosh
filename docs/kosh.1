@@ -1192,15 +1192,17 @@ word. A pattern or replacement word keeps the form as text.
 The path stays open until the command that expanded it finishes, and a path in
 the word list of a for loop stays open until the loop finishes. The shell then
 closes it and waits for the process, while Bash leaves the process running.
-A process substitution does not set
-.BR $! ,
-so
-.B wait
-cannot name it. Bash sets
+A process substitution sets
 .B $!
-to its process and lets
+to its process. The shell remembers the status of the sixteen most recent
+process substitutions, and
 .B wait
-collect its status.
+with that process returns it, waiting first when the process still runs.
+.B wait
+without an operand waits for the process that
+.B $!
+names when it is a process substitution, then forgets every remembered
+status. Bash remembers more of them.
 A later command cannot open the path. An
 .B exec
 command without a program keeps the process for as long as its redirections

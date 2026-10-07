@@ -1,0 +1,37 @@
+#!/bin/env kosh
+koshkit cat <(exit 3)
+wait "$!"
+printf 'input=%s\n' "$?"
+: > >(exit 4)
+wait "$!"
+printf 'output=%s\n' "$?"
+koshkit cat <(exit 5)
+older=$!
+koshkit cat <(exit 6) <(exit 7)
+wait "$older"
+printf 'older=%s\n' "$?"
+wait "$!"
+printf 'last=%s\n' "$?"
+wait "$!"
+printf 'again=%s\n' "$?"
+assigned=<(exit 8)
+wait "$!"
+printf 'assigned=%s\n' "$?"
+for code in 1 2 9; do koshkit cat <(exit "$code"); done
+wait "$!"
+printf 'loop=%s\n' "$?"
+exec 3< <(koshkit sleep 0.2; exit 11)
+jobs
+wait "$!"
+printf 'held=%s\n' "$?"
+exec 3<&-
+koshkit cat <(exit 12)
+substituted=$!
+koshkit sleep 0 &
+if [ "$!" != "$substituted" ]; then printf 'background-replaces\n'; fi
+wait "$substituted"
+printf 'before-background=%s\n' "$?"
+wait
+printf 'no-operand=%s\n' "$?"
+wait "$substituted"
+printf 'forgotten=%s\n' "$?"

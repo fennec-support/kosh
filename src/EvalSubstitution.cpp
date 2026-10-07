@@ -433,8 +433,11 @@ fn EvalContext::setup_process_substitution(
   let const source = source_store().current_source() != nullptr
                          ? source_store().current_source()->view()
                          : StringView{};
-  expansion_store().pending_process_substitutions().push(process_substitution{
-      *launch.retained_fd, launch.child, launch.cleanup, location, source});
+  let const process_id = os::process_id_of(launch.child);
+  expansion_store().pending_process_substitutions().push(
+      process_substitution{*launch.retained_fd, launch.child, process_id,
+                           launch.cleanup, location, source});
+  job_table_store().set_last_background_pid(process_id);
 
   LOG(Debug, "the process substitution is reachable at '%s'",
       launch.path.c_str());
@@ -479,6 +482,8 @@ fn EvalContext::release_finished_held_process_substitutions() wontthrow -> void
       if (os::poll_process(sub.child, status) != os::process_state::Exited)
         continue;
       sub.child = KOSH_INVALID_PROCESS;
+      job_table_store().remember_process_substitution_status(sub.process_id,
+                                                             status);
     }
 
     if (!os::release_finished_process_substitution(sub.platform_cleanup))
@@ -486,6 +491,50 @@ fn EvalContext::release_finished_held_process_substitutions() wontthrow -> void
 
     held.remove(i - 1);
   }
+}
+
+fn EvalContext::wait_for_process_substitution(i64 process_id) wontthrow
+    -> Maybe<i32>
+{
+  let const do_reap_matching = [&](process_substitution &sub)
+                                   wontthrow -> bool {
+    if (sub.process_id != process_id || sub.child == KOSH_INVALID_PROCESS) {
+      return false;
+    }
+
+    i32 status = 127;
+    try {
+      status = os::reap_process_quietly(sub.child);
+    } catch (...) {
+      LOG(Debug, "waiting for a process substitution failed");
+    }
+    sub.child = KOSH_INVALID_PROCESS;
+    job_table_store().remember_process_substitution_status(process_id, status);
+
+    return true;
+  };
+
+  bool was_pending = false;
+  for (process_substitution &sub :
+       expansion_store().pending_process_substitutions())
+  {
+    if (do_reap_matching(sub)) {
+      was_pending = true;
+      break;
+    }
+  }
+
+  let &held = expansion_store().held_process_substitutions();
+  for (usize i = held.count(); !was_pending && i > 0; i--) {
+    if (!do_reap_matching(held[i - 1])) continue;
+
+    if (os::release_finished_process_substitution(held[i - 1].platform_cleanup))
+      held.remove(i - 1);
+
+    break;
+  }
+
+  return job_table_store().find_process_substitution_status(process_id);
 }
 
 fn EvalContext::cleanup_process_substitutions(
@@ -505,8 +554,11 @@ fn EvalContext::cleanup_process_substitutions(
     /* Closing the shell end first sends SIGPIPE to a producer that still has
        output queued, so it ends rather than blocking the wait below. */
     if (sub.shell_fd != KOSH_INVALID_FD) os::close_fd(sub.shell_fd);
+    if (sub.child == KOSH_INVALID_PROCESS) continue;
+
     try {
-      os::reap_process_quietly(sub.child);
+      job_table_store().remember_process_substitution_status(
+          sub.process_id, os::reap_process_quietly(sub.child));
     } catch (const Error &e) {
       LOG(Debug, "a process substitution reap failed and was swallowed: %s",
           e.message().c_str());

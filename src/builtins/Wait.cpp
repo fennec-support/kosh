@@ -57,6 +57,12 @@ fn Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
     }
 
+    let const &last_background_pid =
+        cxt.job_table_store().last_background_pid();
+    if (last_background_pid.has_value())
+      unused(cxt.wait_for_process_substitution(*last_background_pid));
+
+    cxt.job_table_store().forget_process_substitution_statuses();
     cxt.job_table_store().forget_done_jobs();
 
     return 0;
@@ -99,9 +105,12 @@ fn Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             break;
           }
         }
-        status = matched != nullptr
-                     ? cxt.job_table_store().wait_for_job_processes(*matched)
-                     : 127;
+        if (matched != nullptr) {
+          status = cxt.job_table_store().wait_for_job_processes(*matched);
+        } else {
+          status =
+              cxt.wait_for_process_substitution(parsed.value()).value_or(127);
+        }
       }
     }
 

@@ -1,0 +1,12 @@
+input=3
+output=4
+older=5
+last=7
+again=7
+assigned=8
+loop=9
+held=11
+background-replaces
+before-background=12
+no-operand=0
+forgotten=127
