@@ -55,6 +55,30 @@ cat "$conf"
 echo "== --persist rejects an option that changes evaluation:"
 "$BIN" -c 'koshconf set legacy.exit_on_error on --persist'
 echo "rc=$?"
+echo "== a value the file cannot hold changes neither the session nor the file:"
+KOSH_HISTORY_FILE=/history "$BIN" -c 'koshconf set history.file $'"'"'a\nb'"'"' --persist
+echo "rc=$?"
+koshconf get history.file'
+grep -c '^history.file=' "$conf"
+echo "== a failed write is a soft error that || can catch:"
+chmod 500 "$XDG_CONFIG_HOME/kosh"
+"$BIN" -c 'koshconf set editor.hints off --persist || echo "rc=$?"
+koshconf get editor.hints
+koshconf create --force kosh || echo "rc=$?"' 2>&1 | sed "s|$config|CONFIG|"
+chmod 700 "$XDG_CONFIG_HOME/kosh"
+echo "== string values are validated:"
+"$BIN" -c 'koshconf set history.size 12x
+echo "rc=$?"
+koshconf set history.size -- -1
+echo "rc=$?"
+koshconf set history.file $'"'"'a\xffb'"'"'
+echo "rc=$?"
+koshconf set history.size 0
+koshconf get history.size'
+echo "== list escapes a value the file cannot hold:"
+KOSH_HISTORY_FILE=$'a\nb\x01"\'' "$BIN" -c 'koshconf list |
+  grep "^history.file="
+echo "rc=$?"'
 
 echo "== enumerations and booleans:"
 "$BIN" -c 'koshconf set editor.tab_selector plain
@@ -87,6 +111,9 @@ echo "rc=$?"
 echo "rc=$?"
 "$BIN" -c 'koshconf load BQ=='
 echo "rc=$?"
+echo "== load skips an invalid string value and keeps the rest:"
+"$BIN" -c 'koshconf load BQEBCgF4; koshconf get editor.auto_pair
+koshconf get history.size'
 
 echo "== KOSHCONF carries the mood and interactive options to another shell:"
 encoded=$("$BIN" -c 'koshconf set mood bash

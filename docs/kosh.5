@@ -83,9 +83,9 @@ moods. See
 .BR kosh (1)
 for their conditions and expansion rules.
 .SH SYNTAX
-A settings file is a sequence of lines. LF and CRLF end a line. A line that is
-empty, holds only blanks, or starts with a number sign after optional blanks is
-ignored.
+A settings file is a sequence of lines. LF and CRLF end a line. A UTF-8 byte
+order mark at the start of the file is skipped. A line that is empty, holds only
+blanks, or starts with a number sign after optional blanks is ignored.
 .PP
 Every other line has the form
 .IR name = value .
@@ -95,9 +95,18 @@ Otherwise the value is everything after the equals sign up to the end of the
 line, blanks included. A value cannot span lines.
 .PP
 A boolean is written as on or off and is also read as true, false, 1, or 0. An
-enumeration is written by name. A string is taken as written.
+enumeration is written by name. A string is taken as written, and must be valid
+UTF-8 without a NUL byte. history.size is a non-negative decimal integer.
 .B koshconf
 quotes a written value that starts with a quote or starts or ends with a blank.
+A value that holds a newline, or both quote characters and a reason to quote,
+cannot be written to a file, so
+.B koshconf set \-\-persist
+rejects it before changing the session.
+.B koshconf list
+shows such a value, and any value with a control byte or invalid UTF-8, in the
+.B $\(aq...\(aq
+form of the shell.
 .PP
 Only the mood and the interactive options may appear in a file. The options
 that change evaluation are set for a session with
@@ -133,15 +142,17 @@ The ids are listed by
 and never change meaning. Only the mood and the interactive options are
 written.
 .PP
-A reader skips a record with an unknown id, an option it never carries, or an
-unknown value, and reports a warning. A blob that is not base64, or whose
+A reader skips a record with an unknown id, an option it never carries, or a
+value that a settings file would reject, and reports a warning. A blob that is not base64, or whose
 records are truncated, is rejected as a whole.
 .SH ERRORS
 A missing settings file is skipped. An unreadable one produces a warning. A line
 without an equals sign, an unknown option name, an invalid value, an unclosed
 quote, text after a closing quote, and an option that changes evaluation each
 produce a warning that names the file and line, and the line is skipped. A
-settings file never stops the shell.
+warning writes a control byte or an invalid UTF-8 byte of the file as an escape
+in its message and as a question mark in its source excerpt. A settings file
+never stops the shell.
 .PP
 Shell startup files produce the ordinary shell diagnostics described in
 .BR kosh (1).

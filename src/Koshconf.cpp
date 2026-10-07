@@ -24,6 +24,16 @@ constexpr u32 KOSHCONF_DIRECTORY_MODE = 0755;
 constexpr u32 KOSHCONF_FILE_MODE = 0644;
 constexpr u32 KOSHCONF_PERMISSION_BITS = 07777;
 constexpr usize KOSHCONF_LINK_LIMIT = 40;
+constexpr u32 MAX_CODEPOINT = 0x10ffff;
+constexpr u32 INVALID_CODEPOINT = MAX_CODEPOINT + 1;
+constexpr StringView UTF8_BYTE_ORDER_MARK{"\xef\xbb\xbf"};
+constexpr StringView HISTORY_SIZE_NAME{"history.size"};
+
+enum class escape_style : u8
+{
+  Message,
+  AnsiC,
+};
 
 fn quote_for_value(StringView value) wontthrow -> Maybe<char>
 {
@@ -34,6 +44,126 @@ fn quote_for_value(StringView value) wontthrow -> Maybe<char>
                            first == '\t' || last == ' ' || last == '\t';
   if (!needs_quotes) return None;
   return value.find_character('"').has_value() ? '\'' : '"';
+}
+
+fn decode_strict_utf8(StringView text, usize position) wontthrow
+    -> utils::decoded_codepoint
+{
+  let const decoded = utils::decode_utf8(text, position, INVALID_CODEPOINT);
+  let const is_overlong = (decoded.length == 2 && decoded.value < 0x80) ||
+                          (decoded.length == 3 && decoded.value < 0x800) ||
+                          (decoded.length == 4 && decoded.value < 0x10000);
+  let const is_surrogate = decoded.value >= 0xd800 && decoded.value <= 0xdfff;
+  if (is_overlong || is_surrogate || decoded.value > MAX_CODEPOINT) {
+    return {INVALID_CODEPOINT, 1};
+  }
+
+  return decoded;
+}
+
+fn is_valid_utf8(StringView text) wontthrow -> bool
+{
+  for (usize position = 0; position < text.count();) {
+    let const decoded = decode_strict_utf8(text, position);
+    if (decoded.value == INVALID_CODEPOINT) return false;
+    position += decoded.length;
+  }
+
+  return true;
+}
+
+fn is_decimal_count(StringView text) wontthrow -> bool
+{
+  if (text.is_empty()) return false;
+  for (usize position = 0; position < text.count(); position++) {
+    if (text[position] < '0' || text[position] > '9') return false;
+  }
+
+  return !text.to<i64>().is_error();
+}
+
+fn append_escaped_text(String &out, StringView text, escape_style style) throws
+    -> void
+{
+  static constexpr char HEX_DIGITS[] = "0123456789abcdef";
+  for (usize position = 0; position < text.count();) {
+    let const byte = static_cast<u8>(text[position]);
+    let const decoded = decode_strict_utf8(text, position);
+    if (byte >= 0x80 && decoded.value != INVALID_CODEPOINT) {
+      out += text.substring_of_length(position, decoded.length);
+      position += decoded.length;
+      continue;
+    }
+
+    position++;
+    let const is_quoting_byte = byte == '\\' || byte == '\'';
+    if (style == escape_style::AnsiC && is_quoting_byte) {
+      out.push('\\');
+      out.push(static_cast<char>(byte));
+      continue;
+    }
+    switch (byte) {
+    case '\n': out += "\\n"; continue;
+    case '\r': out += "\\r"; continue;
+    case '\t': out += "\\t"; continue;
+    default: break;
+    }
+    if (byte >= 0x20 && byte < 0x7f) {
+      out.push(static_cast<char>(byte));
+      continue;
+    }
+
+    out += "\\x";
+    out.push(HEX_DIGITS[byte >> 4]);
+    out.push(HEX_DIGITS[byte & 0xf]);
+  }
+}
+
+fn is_crlf_carriage_return(StringView text, usize position) wontthrow -> bool
+{
+  return text[position] == '\r' && position + 1 < text.count() &&
+         text[position + 1] == '\n';
+}
+
+fn printable_offset(StringView text, usize offset) wontthrow -> usize
+{
+  usize removed_count = 0;
+  for (usize position = 0; position < offset; position++) {
+    if (is_crlf_carriage_return(text, position)) removed_count++;
+  }
+
+  return offset - removed_count;
+}
+
+fn make_printable_copy(StringView text) throws -> String
+{
+  let copy = String{heap_allocator()};
+  copy.reserve(text.count());
+  for (usize position = 0; position < text.count();) {
+    let const byte = static_cast<u8>(text[position]);
+    let const decoded = decode_strict_utf8(text, position);
+    let const is_control =
+        (byte < 0x20 && byte != '\t' && byte != '\n') || byte == 0x7f;
+    if (is_crlf_carriage_return(text, position)) {
+      position++;
+      continue;
+    }
+    if (decoded.value == INVALID_CODEPOINT || is_control) {
+      copy.push('?');
+    } else {
+      copy += text.substring_of_length(position, decoded.length);
+    }
+    position += decoded.length;
+  }
+
+  return copy;
+}
+
+fn escape_for_message(StringView text) throws -> String
+{
+  let escaped = String{heap_allocator()};
+  append_escaped_text(escaped, text, escape_style::Message);
+  return escaped;
 }
 
 fn append_varint(String &output, u32 value) throws -> void
@@ -91,7 +221,9 @@ fn decode_value(const option_descriptor &option, StringView bytes) throws
     }
     return format_option_number(option, *number);
   }
-  case option_type::String: return String{bytes};
+  case option_type::String:
+    if (find_koshconf_value_problem(option, bytes).has_value()) return None;
+    return String{bytes};
   }
   return None;
 }
@@ -207,20 +339,76 @@ fn get_user_koshconf_path() throws -> Maybe<Path>
   return config_home;
 }
 
+fn find_koshconf_value_problem(const option_descriptor &option,
+                               StringView value) throws -> Maybe<String>
+{
+  let const do_describe = [&](StringView expectation) throws -> String {
+    let message = String{"Invalid value '"};
+    append_escaped_text(message, value, escape_style::Message);
+    message += "' for '";
+    message += option.koshconf_name;
+    message += "', expected ";
+    message += expectation;
+    return message;
+  };
+
+  if (option.type != option_type::String) {
+    if (parse_option_number(option, value).has_value()) return None;
+    return do_describe(describe_option_values(option).view());
+  }
+  if (value.find_character('\0').has_value()) {
+    return do_describe("text without a NUL byte");
+  }
+  if (!is_valid_utf8(value)) return do_describe("valid UTF-8 text");
+  let const is_count = StringView{option.koshconf_name} == HISTORY_SIZE_NAME;
+  if (is_count && !is_decimal_count(value)) {
+    return do_describe("a non-negative decimal integer");
+  }
+
+  return None;
+}
+
+fn format_koshconf_display_line(const option_descriptor &option,
+                                StringView value) throws -> String
+{
+  let const quote = quote_for_value(value);
+  let const has_both_quotes = quote.has_value() && *quote == '\'' &&
+                              value.find_character('\'').has_value();
+  let is_plain = !has_both_quotes && is_valid_utf8(value);
+  for (usize position = 0; is_plain && position < value.count(); position++) {
+    let const byte = static_cast<u8>(value[position]);
+    if (byte < 0x20 || byte == 0x7f) is_plain = false;
+  }
+  if (is_plain) return format_koshconf_line(option, value);
+
+  let line = String{StringView{option.koshconf_name}};
+  line += "=$'";
+  append_escaped_text(line, value, escape_style::AnsiC);
+  line += '\'';
+  return line;
+}
+
 fn read_koshconf_text(StringView text, StringView origin_name,
                       koshconf_reading &reading) throws -> void
 {
-  let const source_index = intern_source_name(origin_name);
+  let source_index = Maybe<u32>{};
+  let printable_text = Maybe<String>{};
   let const do_warn = [&](StringView span, StringView message) throws {
-    let const offset = static_cast<usize>(span.data - text.data);
+    if (!source_index.has_value()) {
+      source_index = intern_source_name(origin_name);
+      printable_text = make_printable_copy(text);
+    }
+    let const offset =
+        printable_offset(text, static_cast<usize>(span.data - text.data));
     reading.warnings.push(WarningWithLocation{
-        SourceLocation{offset, span.count(), source_index},
+        SourceLocation{offset, span.count(), *source_index},
         message
     }
-                              .to_string(text));
+                              .to_string(printable_text->view()));
   };
 
-  usize position = 0;
+  usize position =
+      text.starts_with(UTF8_BYTE_ORDER_MARK) ? UTF8_BYTE_ORDER_MARK.count() : 0;
   while (position < text.count()) {
     let line = text.next_line(position);
     if (!line.is_empty() && line[line.count() - 1] == '\r') {
@@ -237,8 +425,9 @@ fn read_koshconf_text(StringView text, StringView origin_name,
     let const name = line.substring_of_length(0, *equals).trim_blanks();
     let const *option = find_option_by_koshconf_name(name);
     if (option == nullptr) {
-      do_warn(name.is_empty() ? trimmed : name,
-              StringView{"Unknown option '"} + name + "', skipping it");
+      do_warn(name.is_empty() ? trimmed : name, StringView{"Unknown option '"} +
+                                                    escape_for_message(name) +
+                                                    "', skipping it");
       continue;
     }
 
@@ -267,15 +456,14 @@ fn read_koshconf_text(StringView text, StringView origin_name,
                         "skipping it");
       continue;
     }
-    if (option->type != option_type::String &&
-        !parse_option_number(*option, value).has_value())
+    if (let const problem = find_koshconf_value_problem(*option, value);
+        problem.has_value())
     {
       do_warn(raw_value.is_empty() ? name : raw_value,
-              StringView{"Invalid value '"} + value + "' for '" + name +
-                  "', expected " + describe_option_values(*option) +
-                  ", skipping it");
+              *problem + ", skipping it");
       continue;
     }
+
     reading.settings.push(koshconf_setting{option, String{value}});
   }
 }
@@ -346,7 +534,7 @@ fn read_koshconf_blob(StringView encoded, koshconf_reading &reading) throws
     }
     let value = decode_value(*option, value_bytes);
     if (!value.has_value()) {
-      warnings.push(Warning{StringView{"Skipping an unknown value of '"} +
+      warnings.push(Warning{StringView{"Skipping an invalid value of '"} +
                             option->koshconf_name + "' in KOSHCONF"}
                         .to_string());
       continue;

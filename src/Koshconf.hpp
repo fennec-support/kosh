@@ -43,8 +43,12 @@ fn apply_koshconf_settings(EvalContext &cxt,
                            const ArrayList<koshconf_setting> &settings,
                            option_origin origin,
                            ArrayList<String> &warnings) throws -> void;
+fn find_koshconf_value_problem(const option_descriptor &option,
+                               StringView value) throws -> Maybe<String>;
 fn format_koshconf_line(const option_descriptor &option,
                         StringView value) throws -> String;
+fn format_koshconf_display_line(const option_descriptor &option,
+                                StringView value) throws -> String;
 fn make_koshconf_preset(mimic_mood preset) throws -> String;
 fn write_koshconf_file(const Path &path, StringView contents) throws -> void;
 fn persist_koshconf_setting(const Path &path, const option_descriptor &option,

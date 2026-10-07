@@ -26,6 +26,20 @@ history.size=128
 diagnostics.level=1
 mood=kosh
 rc=0
+== a byte order mark is skipped, and raw bytes are escaped in warnings:
+0
+HOME/.config/kosh/kosh.conf:2:14: warning: Invalid value '-5' for 'history.size', expected a non-negative decimal integer, skipping it.
+     2 |  history.size=-5
+       |               ^~
+HOME/.config/kosh/kosh.conf:3:14: warning: Invalid value 'a\xffb' for 'history.file', expected valid UTF-8 text, skipping it.
+     3 |  history.file=a?b
+       |               ^~~
+HOME/.config/kosh/kosh.conf:4:1: warning: Unknown option 'bad\x1b[1mname', skipping it.
+     4 |  bad?[1mname=on
+       |  ^~~~~~~~~~~
+on
+4096
+rc=0
 == a configured mood selects the session mood:
 bash
 bash identity

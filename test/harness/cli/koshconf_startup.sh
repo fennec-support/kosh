@@ -28,8 +28,20 @@ EOF
 echo "== the file applies with a warning per malformed line:"
 "$BIN" -c 'for name in editor.auto_pair koshkit.commands history.size diagnostics.level mood; do
   printf "%s=%s\n" "$name" "$(koshconf get "$name")"
-done' 2>&1 | sed "s|$home|HOME|"
-echo "rc=$?"
+done' >"$home/out" 2>&1
+status=$?
+sed "s|$home|HOME|" "$home/out"
+echo "rc=$status"
+
+echo "== a byte order mark is skipped, and raw bytes are escaped in warnings:"
+printf '\357\273\277editor.auto_pair=on\r\nhistory.size=-5\r\n' >"$conf"
+printf 'history.file=a\377b\nbad\033[1mname=on\n' >>"$conf"
+"$BIN" -c 'koshconf get editor.auto_pair; koshconf get history.size' \
+  >"$home/out" 2>&1
+status=$?
+sed "s|$home|HOME|" "$home/out" | od -An -c | grep -c '033'
+sed "s|$home|HOME|" "$home/out"
+echo "rc=$status"
 
 printf 'mood=bash\neditor.auto_pair=on\nkoshkit.commands=off\ndiagnostics.level=2\n' >"$conf"
 echo "== a configured mood selects the session mood:"

@@ -79,6 +79,19 @@ fn report_usage(const ExecContext &ec, EvalContext &cxt,
   return 2;
 }
 
+fn report_caught_error(const ExecContext &ec, EvalContext &cxt,
+                       SourceLocation location, const Error &error) throws
+    -> void
+{
+  if (error.detail_message().is_empty()) {
+    report_soft_builtin_error(ec, cxt, location, error.message().view());
+    return;
+  }
+
+  report_soft_builtin_error(ec, cxt, location, error.message().view(),
+                            error.detail_message());
+}
+
 fn find_named_option(const ExecContext &ec, EvalContext &cxt,
                      const koshconf_operands &operands, usize index) throws
     -> const option_descriptor *
@@ -126,7 +139,13 @@ fn run_create(const ExecContext &ec, EvalContext &cxt,
     return 1;
   }
 
-  write_koshconf_file(*path, make_koshconf_preset(*preset).view());
+  try {
+    write_koshconf_file(*path, make_koshconf_preset(*preset).view());
+  } catch (const Error &error) {
+    report_caught_error(ec, cxt, ec.source_location(), error);
+    return 1;
+  }
+
   return 0;
 }
 
@@ -150,22 +169,45 @@ fn run_set(const ExecContext &ec, EvalContext &cxt,
     return 1;
   }
 
+  if (let const problem = find_koshconf_value_problem(*option, value);
+      problem.has_value())
+  {
+    report_soft_builtin_error(ec, cxt, operands.locations[3], problem->view());
+    return 1;
+  }
+
+  let persisted_value = String{heap_allocator()};
+  if (should_persist) {
+    persisted_value = option->type == option_type::String
+                          ? String{value}
+                          : format_option_number(
+                                *option, *parse_option_number(*option, value));
+    try {
+      unused(format_koshconf_line(*option, persisted_value.view()));
+    } catch (const Error &error) {
+      report_soft_builtin_error(ec, cxt, operands.locations[3],
+                                error.message().view());
+      return 1;
+    }
+  }
+
   try {
     write_option_text(cxt, *option, value, option_origin::Koshconf);
   } catch (const Error &error) {
-    if (error.detail_message().is_empty())
-      report_soft_builtin_error(ec, cxt, operands.locations[3],
-                                error.message().view());
-    else
-      report_soft_builtin_error(ec, cxt, operands.locations[3],
-                                error.message().view(), error.detail_message());
+    report_caught_error(ec, cxt, operands.locations[3], error);
     return 1;
   }
 
   if (!should_persist) return 0;
   let const path = require_user_path(ec, cxt);
   if (!path.has_value()) return 1;
-  persist_koshconf_setting(*path, *option, read_option_text(cxt, *option));
+  try {
+    persist_koshconf_setting(*path, *option, persisted_value.view());
+  } catch (const Error &error) {
+    report_caught_error(ec, cxt, ec.source_location(), error);
+    return 1;
+  }
+
   return 0;
 }
 
@@ -193,8 +235,8 @@ fn run_list(const ExecContext &ec, EvalContext &cxt,
 
   let out = String{cxt.scratch_allocator()};
   for (let const &option : get_option_registry()) {
-    let const line =
-        format_koshconf_line(option, read_option_text(cxt, option).view());
+    let const line = format_koshconf_display_line(
+        option, read_option_text(cxt, option).view());
     out += line.view();
     out.append_repeated(' ', line.count() < LIST_VALUE_COLUMN
                                  ? LIST_VALUE_COLUMN - line.count()
