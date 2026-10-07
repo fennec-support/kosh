@@ -72,11 +72,13 @@ fn is_valid_utf8(StringView text) wontthrow -> bool
   return true;
 }
 
-fn is_decimal_count(StringView text) wontthrow -> bool
+fn is_decimal_count(StringView text) throws -> bool
 {
   if (text.is_empty()) return false;
   for (usize position = 0; position < text.count(); position++) {
-    if (text[position] < '0' || text[position] > '9') return false;
+    if (text[position] < '0' || text[position] > '9') {
+      return false;
+    }
   }
 
   return !text.to<i64>().is_error();
@@ -182,7 +184,9 @@ fn read_varint(StringView bytes, usize &position) wontthrow -> Maybe<u32>
     if (position >= bytes.count()) return None;
     let const byte = static_cast<u8>(bytes[position++]);
     if (shift == 28 && (byte & 0x70) != 0) return None;
-    if (shift > 0 && byte == 0) return None;
+    if (shift > 0 && byte == 0) {
+      return None;
+    }
     value |= static_cast<u32>(byte & 0x7f) << shift;
     if ((byte & 0x80) == 0) return value;
   }
@@ -378,7 +382,9 @@ fn format_koshconf_display_line(const option_descriptor &option,
   let is_plain = !has_both_quotes && is_valid_utf8(value);
   for (usize position = 0; is_plain && position < value.count(); position++) {
     let const byte = static_cast<u8>(value[position]);
-    if (byte < 0x20 || byte == 0x7f) is_plain = false;
+    if (byte < 0x20 || byte == 0x7f) {
+      is_plain = false;
+    }
   }
   if (is_plain) return format_koshconf_line(option, value);
 
@@ -472,9 +478,10 @@ fn read_koshconf_text(StringView text, StringView origin_name,
 fn read_koshconf_file(const Path &path, koshconf_reading &reading) throws
     -> bool
 {
-  if (!os::path_exists(path.text().view())) return false;
   let const contents = path.read_entire_file();
   if (!contents.has_value()) {
+    if (os::last_system_error_is_missing_file()) return false;
+
     reading.warnings.push(Warning{"Unable to read '" + path.text() +
                                   "': " + os::last_system_error_message()}
                               .to_string());
