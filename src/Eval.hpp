@@ -3926,6 +3926,9 @@ public:
      end open and returns its /dev/fd path. The descriptor and the child are
      recorded for later cleanup. */
   fn setup_process_substitution(const WordSegment &segment) throws -> String;
+  fn setup_process_substitution(StringView text,
+                                Maybe<SourceLocation> segment_location) throws
+      -> String;
   /* Close the descriptors and reap the children of the process substitutions a
      command opened. Closing first sends SIGPIPE to a producer that has more to
      write, so it ends rather than blocking the reap. */
@@ -3987,7 +3990,8 @@ public:
   fn expand_modifier_word(
       StringView word, bool remove_quotes = true,
       bool strip_escaped_literals = true,
-      const SourceLocation *source_location = nullptr) throws -> String;
+      const SourceLocation *source_location = nullptr,
+      bool should_expand_process_substitution = false) throws -> String;
 
   /* active_out marks which output bytes may act as glob metacharacters, so
      ${x#pat} and ${x%pat} match literally. */
@@ -4052,10 +4056,10 @@ protected:
      the integer mark, shared by the scope pop and the unset peel. */
   fn restore_local_binding(local_binding &binding) throws -> void;
 
-  fn apply_parameter_expansion(StringView spec,
-                               const SourceLocation *source_location = nullptr,
-                               usize source_location_offset = 0) throws
-      -> String;
+  fn apply_parameter_expansion(
+      StringView spec, const SourceLocation *source_location = nullptr,
+      usize source_location_offset = 0,
+      bool should_expand_process_substitution = false) throws -> String;
 
   fn apply_substring_expansion(
       StringView name, StringView body,

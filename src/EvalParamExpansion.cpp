@@ -367,14 +367,6 @@ static fn trim_value_with_modifier(EvalContext &cxt, StringView value,
 
 } /* namespace */
 
-fn EvalContext::expand_modifier_word(
-    StringView word, bool remove_quotes, bool strip_escaped_literals,
-    const SourceLocation *source_location) throws -> String
-{
-  return expand_modifier_word_worker(word, nullptr, remove_quotes, false,
-                                     strip_escaped_literals, source_location);
-}
-
 fn EvalContext::expand_modifier_word_masked(
     StringView word, Bitset &active_out, bool remove_quotes,
     const SourceLocation *source_location) throws -> String
@@ -411,6 +403,11 @@ public:
     m_is_outer_quoted = is_outer_quoted;
   }
 
+  fn enable_process_substitution() wontthrow -> void
+  {
+    m_should_expand_process_substitution = true;
+  }
+
 private:
   EvalContext &m_context;
   StringView m_word;
@@ -428,6 +425,7 @@ private:
   bool m_is_outer_quoted = false;
   bool m_did_quoted_emit = false;
   bool m_did_quoted_at = false;
+  bool m_should_expand_process_substitution = false;
 
   fn emit_byte(char byte, bool is_active) throws -> void;
   fn emit_run(StringView bytes, bool is_active) throws -> void;
@@ -451,6 +449,8 @@ private:
   fn expand_plain_parameter() throws -> void;
   fn expand_arithmetic() throws -> void;
   fn expand_command_substitution() throws -> void;
+  fn is_process_substitution_start() const wontthrow -> bool;
+  fn expand_process_substitution() throws -> void;
   fn expand_special_parameter(char name) throws -> void;
   fn emit_command_substitution(StringView body, usize end_index) throws -> void;
   fn scan_braced_body(usize &position) throws -> String;
@@ -836,9 +836,10 @@ fn EvalContext::ModifierWordExpander::expand_braced_parameter() throws -> void
     inner_location = m_source_location->subspan(m_index + 2, inner.count());
     inner_location_pointer = &inner_location;
   }
-  emit_run(
-      m_context.apply_parameter_expansion(inner.view(), inner_location_pointer),
-      !m_is_in_double_quote);
+  emit_run(m_context.apply_parameter_expansion(
+               inner.view(), inner_location_pointer, 0,
+               m_should_expand_process_substitution && !m_is_in_double_quote),
+           !m_is_in_double_quote);
   m_index = j;
 }
 
@@ -942,6 +943,37 @@ fn EvalContext::ModifierWordExpander::expand_command_substitution() throws
   emit_command_substitution(inner.view(), j);
 }
 
+fn EvalContext::ModifierWordExpander::is_process_substitution_start()
+    const wontthrow -> bool
+{
+  let const byte = m_word[m_index];
+  return m_should_expand_process_substitution && !m_is_in_double_quote &&
+         (byte == '<' || byte == '>') && m_index + 1 < m_word.length &&
+         m_word[m_index + 1] == '(';
+}
+
+fn EvalContext::ModifierWordExpander::expand_process_substitution() throws
+    -> void
+{
+  usize j = 0;
+  let const body = scan_command_body(m_index + 2, j);
+  let text = String{m_context.scratch_allocator()};
+  text.push(m_word[m_index]);
+  text.append(body.view());
+
+  let body_location = Maybe<SourceLocation>{};
+  if (m_source_location != nullptr &&
+      m_index + 2 <= m_source_location->length &&
+      body.count() <= m_source_location->length - (m_index + 2))
+  {
+    body_location = m_source_location->subspan(m_index + 2, body.count());
+  }
+
+  emit_run(m_context.setup_process_substitution(text.view(), body_location),
+           false);
+  m_index = j;
+}
+
 fn EvalContext::ModifierWordExpander::expand_special_parameter(char name) throws
     -> void
 {
@@ -1008,6 +1040,10 @@ fn EvalContext::ModifierWordExpander::expand() throws -> String
       expand_backquote();
       continue;
     }
+    if (is_process_substitution_start()) {
+      expand_process_substitution();
+      continue;
+    }
     if (byte != '$') {
       emit_byte(byte, !m_is_in_double_quote);
       continue;
@@ -1037,6 +1073,21 @@ fn EvalContext::expand_modifier_word_worker(
   return expander.expand();
 }
 
+fn EvalContext::expand_modifier_word(
+    StringView word, bool remove_quotes, bool strip_escaped_literals,
+    const SourceLocation *source_location,
+    bool should_expand_process_substitution) throws -> String
+{
+  let expander =
+      ModifierWordExpander{*this,          word,  nullptr,
+                           remove_quotes,  false, strip_escaped_literals,
+                           source_location};
+  if (should_expand_process_substitution)
+    expander.enable_process_substitution();
+
+  return expander.expand();
+}
+
 fn EvalContext::expand_modifier_word_fields(
     StringView word, bool is_outer_quoted, Bitset &active_out,
     ArrayList<usize> &break_out, ArrayList<quoted_empty_mark> &mark_out,
@@ -1045,6 +1096,7 @@ fn EvalContext::expand_modifier_word_fields(
   let expander = ModifierWordExpander{*this, word, &active_out,    true,
                                       false, true, source_location};
   expander.enable_fields(break_out, mark_out, is_outer_quoted);
+  if (!is_outer_quoted) expander.enable_process_substitution();
 
   return expander.expand();
 }
@@ -1054,11 +1106,13 @@ class EvalContext::ParameterExpander
 public:
   ParameterExpander(EvalContext &context, StringView spec,
                     const SourceLocation *source_location,
-                    usize source_location_offset) wontthrow
+                    usize source_location_offset,
+                    bool should_expand_process_substitution) wontthrow
       : m_context(context),
         m_spec(spec),
         m_source_location(source_location),
-        m_source_location_offset(source_location_offset)
+        m_source_location_offset(source_location_offset),
+        m_should_expand_process_substitution(should_expand_process_substitution)
   {}
 
   fn expand() throws -> String;
@@ -1068,6 +1122,7 @@ private:
   StringView m_spec;
   const SourceLocation *m_source_location;
   usize m_source_location_offset;
+  bool m_should_expand_process_substitution;
   StringView m_name;
   StringView m_rest;
 
@@ -1127,7 +1182,8 @@ fn EvalContext::ParameterExpander::expand_word(StringView word) throws -> String
 {
   let word_location = SourceLocation{};
   return m_context.expand_modifier_word(word, true, true,
-                                        get_location_for(word, word_location));
+                                        get_location_for(word, word_location),
+                                        m_should_expand_process_substitution);
 }
 
 fn EvalContext::ParameterExpander::expand_indirect() throws -> String
@@ -1155,7 +1211,8 @@ fn EvalContext::ParameterExpander::expand_indirect() throws -> String
     let const *suffix_location_pointer =
         get_location_for(suffix, suffix_location);
     return m_context.apply_parameter_expansion(
-        rewritten.view(), suffix_location_pointer, target_name.length);
+        rewritten.view(), suffix_location_pointer, target_name.length,
+        m_should_expand_process_substitution);
   }
 
   return m_context.apply_indirect_or_name_listing(body);
@@ -1588,7 +1645,8 @@ fn EvalContext::ParameterExpander::expand() throws -> String
 
 hot fn EvalContext::apply_parameter_expansion(
     StringView spec, const SourceLocation *source_location,
-    usize source_location_offset) throws -> String
+    usize source_location_offset,
+    bool should_expand_process_substitution) throws -> String
 {
   LOG(All, "applying the parameter expansion '${%.*s}'",
       static_cast<int>(spec.length), spec.data);
@@ -1599,7 +1657,8 @@ hot fn EvalContext::apply_parameter_expansion(
   defer { leave_parameter_expansion(); };
 
   let expander =
-      ParameterExpander{*this, spec, source_location, source_location_offset};
+      ParameterExpander{*this, spec, source_location, source_location_offset,
+                        should_expand_process_substitution};
 
   return expander.expand();
 }

@@ -162,7 +162,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
                                         bool is_quoted) throws {
     if (!is_field_sensitive_word(word)) {
       let const expanded =
-          expand_modifier_word(word, true, true, word_location);
+          expand_modifier_word(word, true, true, word_location, !is_quoted);
       if (is_quoted)
         do_append_run(expanded.view(), false);
       else
@@ -689,7 +689,8 @@ hot fn EvalContext::expand_word(const Word &word) throws
           source_store().current_location().source_name_index);
       let const value = apply_parameter_expansion(
           segment.text.view(),
-          source_location.has_value() ? &*source_location : nullptr);
+          source_location.has_value() ? &*source_location : nullptr, 0,
+          !segment.is_in_double_quotes);
       if (segment.is_in_double_quotes)
         do_append_run(value, false);
       else
@@ -774,7 +775,8 @@ hot fn EvalContext::expand_word_for_assignment(const Word &word) throws
           source_store().current_location().source_name_index);
       result += apply_parameter_expansion(
           segment_text,
-          source_location.has_value() ? &*source_location : nullptr);
+          source_location.has_value() ? &*source_location : nullptr, 0,
+          !segment.is_in_double_quotes);
     } break;
     case WordSegment::Kind::CommandSubstitution:
       result += capture_command_substitution(segment);
@@ -847,7 +849,8 @@ fn EvalContext::expand_case_pattern_masked(const Word &word,
           source_store().current_location().source_name_index);
       let const value = apply_parameter_expansion(
           segment_text,
-          source_location.has_value() ? &*source_location : nullptr);
+          source_location.has_value() ? &*source_location : nullptr, 0,
+          !segment.is_in_double_quotes);
       do_emit_expansion_run(value.view(), !segment.is_in_double_quotes);
     } break;
     case WordSegment::Kind::CommandSubstitution: {

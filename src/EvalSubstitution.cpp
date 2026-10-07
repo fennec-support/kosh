@@ -332,9 +332,17 @@ fn EvalContext::capture_command_substitution(
 fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
     -> String
 {
+  return setup_process_substitution(
+      segment.text.view(),
+      segment.get_source_location(
+          source_store().current_location().source_name_index));
+}
+
+fn EvalContext::setup_process_substitution(
+    StringView text, Maybe<SourceLocation> segment_location) throws -> String
+{
   if (arena_store().parse_arena() == nullptr)
     throw Error{"Process substitution outside of a parse"};
-  let const text = segment.text.view();
   ASSERT(!text.is_empty());
 
   /* The first byte is the direction marker the lexer wrote. */
@@ -347,12 +355,12 @@ fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
   defer { arena_store().parse_arena()->release(ast_mark); };
   let const substitution_source = String{heap_allocator(), text.substring(1)};
   let frame = SubstitutionFrame{*this};
-  frame.push_source_frame(segment, StringView{"process substitution"});
-  let const segment_location = segment.get_source_location(
-      source_store().current_location().source_name_index);
-  if (segment_location.has_value())
+  if (segment_location.has_value()) {
+    frame.push_source_frame(*segment_location,
+                            StringView{"process substitution"});
     frame.register_embedded(substitution_source.view(), *segment_location,
                             &substitution_source);
+  }
   let parser = Parser{
       Lexer{substitution_source.view(), *arena_store().parse_arena(), None,
             runtime_state().get_mood()}
@@ -381,14 +389,14 @@ fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
                            ? os::process_substitution_direction::CommandWrites
                            : os::process_substitution_direction::CommandReads});
     } catch (const ErrorBase &error) {
-      let const location = segment.get_source_location(
-          source_store().current_location().source_name_index);
-      if (!location.has_value() || source_store().current_source() == nullptr) {
+      if (!segment_location.has_value() ||
+          source_store().current_source() == nullptr)
+      {
         throw;
       }
 
       try {
-        relocate_error(error, *location);
+        relocate_error(error, *segment_location);
       } catch (...) {
         render_contained_substitution_error(
             std::current_exception(), source_store().current_source()->view());
