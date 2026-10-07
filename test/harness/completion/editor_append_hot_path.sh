@@ -158,24 +158,30 @@ chmod +x "$d/path/probe-alpha" "$d/path/probe-beta"
 
 send_typing_input()
 {
-    wait_for_editor "$d/typing-ready" || fail "$LINENO"
+    wait_for_prompt_count "$d/typing-ready" 1 || fail "$LINENO"
     for character in e c h o ' ' h e l l o; do
         printf %s "$character"
         sleep 0.02
     done
     printf '\n'
+    wait_for_prompt_count "$d/typing-ready" 2 || fail "$LINENO"
     for character in p r o b e; do
         printf %s "$character"
         sleep 0.02
     done
     printf '\n'
-    sleep 0.2
+    wait_for_prompt_count "$d/typing-ready" 3 || fail "$LINENO"
     finish_editor_input || fail "$LINENO"
 }
 
+printf '%s\n' \
+    "PS1='> '" \
+    "PROMPT_COMMAND='printf \"ready\\\\n\" >> \"\$EDITOR_READY_FILE\"'" \
+    "trap 'echo exited >> \"\$EDITOR_EXIT_FILE\"' EXIT" \
+    > "$d/typing-rc"
 send_typing_input | TERM=xterm-256color PATH="$d/path" \
     EDITOR_READY_FILE="$d/typing-ready" \
-    KOSH_HISTORY_FILE="$d/typing-history" BIN="$BIN" \
+    KOSH_HISTORY_FILE="$d/typing-history" RCFILE="$d/typing-rc" BIN="$BIN" \
     run_editor "$d/typing-typescript" || fail "$LINENO"
 
 strings "$d/typing-typescript" | grep -q '^hello$' || fail "$LINENO"
@@ -273,10 +279,7 @@ chmod +x "$d/menu-bin/tailscale"
 send_menu_input()
 {
     wait_for_editor "$d/menu-ready" || fail "$LINENO"
-    printf 'tailscale \t'
-    sleep 0.5
-    printf '\003'
-    sleep 0.2
+    printf 'tailscale \t\025'
     finish_editor_input || fail "$LINENO"
 }
 
@@ -318,6 +321,7 @@ send_help_retry_input()
 
 printf '%s\n' \
   "set --tab-selector=plain" \
+  "set +o interactive-hints" \
   "PS1='> '" \
   "PROMPT_COMMAND='printf \"ready\\\\n\" >> \"\$EDITOR_READY_FILE\"'" \
   > "$d/help-retry-rc"

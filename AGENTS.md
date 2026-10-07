@@ -349,6 +349,10 @@ changes update this file.
   fixtures that drive the shell or a utility.
   Completion tests require debug. Bound interactive and long-running commands.
   Test runners apply a deadline to each case.
+- An editor fixture types the next line only after the prompt hook reports
+  the next prompt. Bytes that arrive while a command runs meet the cooked
+  terminal, which echoes them into the command output. An explicit TAB
+  completion turns Ctrl-C into a signal while its program runs.
 - `make -C test refill` regenerates goldens for Kosh, CLI, completion, and
   highlight fixtures. `REFILL` selects source stems. POSIX and Bash fixtures
   compare against their reference shells and do not use repository goldens.
