@@ -1,0 +1,24 @@
+== a symlinked file stays a link and its target is updated:
+rc=0
+link-kept
+mood=kosh
+editor.auto_pair=on
+== create --force also writes through the link:
+rc=0
+link-kept
+mood=sh
+== a dangling link gets its target created:
+rc=0
+link-kept
+editor.hints=off
+== no temporary file is left in either directory:
+kosh.conf
+kosh.conf
+== an existing mode is kept:
+600
+640
+== a new file is 0644 less the umask:
+644
+600
+== concurrent persists of different options both survive:
+lost=0

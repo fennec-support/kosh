@@ -28,8 +28,19 @@ an absolute path.
 .B koshconf create
 and
 .B koshconf set \-\-persist
-write this file through a temporary file in the same directory and a rename,
-creating the directory when it is missing.
+write this file. When the path is a symbolic link, as a dotfile manager such as
+stow leaves it, the link is kept and its final target is written instead. The
+new text goes to a temporary file in the target's directory, which is flushed
+to disk and renamed over the target, so a reader sees either the old or the new
+file. The directory is created when it is missing. The written file keeps the
+permission bits of the file it replaces, and a new file is created with mode
+0644 less the file creation mask. Each write holds an advisory lock on the
+target's directory while it reads and replaces the file, so concurrent
+.B koshconf set \-\-persist
+commands that change different options all take effect. On Windows the lock is
+a hidden
+.I .kosh\-flock.lock
+file in that directory, and only the owner write bit of the mode is kept.
 .TP
 .I /etc/profile
 The system login file of the

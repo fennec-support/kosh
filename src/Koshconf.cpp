@@ -21,6 +21,9 @@ namespace koshka {
 namespace {
 
 constexpr u32 KOSHCONF_DIRECTORY_MODE = 0755;
+constexpr u32 KOSHCONF_FILE_MODE = 0644;
+constexpr u32 KOSHCONF_PERMISSION_BITS = 07777;
+constexpr usize KOSHCONF_LINK_LIMIT = 40;
 
 fn quote_for_value(StringView value) wontthrow -> Maybe<char>
 {
@@ -100,6 +103,88 @@ fn declared_name(StringView line) wontthrow -> Maybe<StringView>
   let const equals = line.find_character('=');
   if (!equals.has_value()) return None;
   return line.substring_of_length(0, *equals).trim_blanks();
+}
+
+fn resolve_koshconf_target(const Path &path) throws -> Path
+{
+  if (let resolved = os::canonical_path(path); resolved.has_value()) {
+    return steal(*resolved);
+  }
+
+  let target = Path{path.view()};
+  for (usize depth = 0;
+       depth < KOSHCONF_LINK_LIMIT && os::path_is_symbolic_link(target.view());
+       depth++)
+  {
+    let const link = os::read_symlink(target.view(), heap_allocator());
+    if (!link.has_value()) break;
+
+    let next = Path{link->view()};
+    if (!next.is_absolute()) {
+      next = target.parent_or_current();
+      next.append(link->view());
+    }
+    target = steal(next);
+  }
+
+  return target;
+}
+
+fn prepare_koshconf_target(const Path &path) throws -> Path
+{
+  let target = resolve_koshconf_target(path);
+  let const directory = target.parent_or_current();
+  if (!koshkit::make_directories(directory, KOSHCONF_DIRECTORY_MODE)) {
+    throw Error{"Unable to create the directory '" + directory.text() +
+                "': " + os::last_system_error_message()};
+  }
+
+  return target;
+}
+
+fn lock_koshconf_directory(const Path &target) throws -> os::descriptor
+{
+  let const directory = target.parent_or_current();
+  let const lock = os::acquire_process_lock(directory.view());
+  if (!lock.has_value()) {
+    throw Error{"Unable to lock the directory '" + directory.text() +
+                "': " + os::last_system_error_message()};
+  }
+
+  return *lock;
+}
+
+fn replace_koshconf_target(const Path &target, StringView contents) throws
+    -> void
+{
+  let status = os::file_status{};
+  let const mode = os::stat_path_following(target.view(), status)
+                       ? status.mode & KOSHCONF_PERMISSION_BITS
+                       : KOSHCONF_FILE_MODE & ~os::get_file_creation_mask();
+  let const directory = target.parent_or_current();
+  let const temporary =
+      os::write_to_named_temp_file(directory, ".kosh.conf", contents);
+  if (!temporary.has_value()) {
+    throw Error{"Unable to write a file in '" + directory.text() +
+                "': " + os::last_system_error_message()};
+  }
+
+  let const do_discard = [&](StringView action) throws {
+    let const message = os::last_system_error_message();
+    unused(os::remove_file(temporary->view()));
+    throw Error{StringView{"Unable to "} + action + " '" + target.text() +
+                "': " + message};
+  };
+  if (!os::set_file_mode(temporary->view(), mode))
+    do_discard("set the mode of");
+  if (!os::sync_path(temporary->view(), os::sync_mode::All)) {
+    do_discard("flush the replacement of");
+  }
+  if (!os::rename_path(temporary->view(), target.view())) {
+    do_discard("replace");
+  }
+
+  LOG(Info, "wrote the koshconf file '%s'", target.text().c_str());
 }
 
 } /* namespace */
@@ -338,33 +423,29 @@ fn make_koshconf_preset(mimic_mood preset) throws -> String
 
 fn write_koshconf_file(const Path &path, StringView contents) throws -> void
 {
-  let const directory = path.parent_or_current();
-  if (!koshkit::make_directories(directory, KOSHCONF_DIRECTORY_MODE))
-    throw Error{"Unable to create the directory '" + directory.text() +
-                "': " + os::last_system_error_message()};
-  let const temporary =
-      os::write_to_named_temp_file(directory, ".kosh.conf", contents);
-  if (!temporary.has_value())
-    throw Error{"Unable to write a file in '" + directory.text() +
-                "': " + os::last_system_error_message()};
-  if (!os::rename_path(temporary->text().view(), path.text().view())) {
-    let const message = os::last_system_error_message();
-    unused(os::remove_file(temporary->text().view()));
-    throw Error{"Unable to replace '" + path.text() + "': " + message};
-  }
-  LOG(Info, "wrote the koshconf file '%s'", path.text().c_str());
+  let const target = prepare_koshconf_target(path);
+  let const lock = lock_koshconf_directory(target);
+  defer { os::release_process_lock(lock); };
+
+  replace_koshconf_target(target, contents);
 }
 
 fn persist_koshconf_setting(const Path &path, const option_descriptor &option,
                             StringView value) throws -> void
 {
   let const replacement = format_koshconf_line(option, value);
-  let const existing = os::path_exists(path.text().view())
-                           ? path.read_entire_file()
-                           : Maybe<String>{String{heap_allocator()}};
-  if (!existing.has_value())
-    throw Error{"Unable to read '" + path.text() +
-                "': " + os::last_system_error_message()};
+  let const target = prepare_koshconf_target(path);
+  let const lock = lock_koshconf_directory(target);
+  defer { os::release_process_lock(lock); };
+
+  let existing = target.read_entire_file();
+  if (!existing.has_value()) {
+    if (!os::last_system_error_is_missing_file()) {
+      throw Error{"Unable to read '" + target.text() +
+                  "': " + os::last_system_error_message()};
+    }
+    existing = String{heap_allocator()};
+  }
 
   let contents = String{heap_allocator()};
   let did_replace = false;
@@ -390,7 +471,7 @@ fn persist_koshconf_setting(const Path &path, const option_descriptor &option,
     contents += replacement.view();
     contents += '\n';
   }
-  write_koshconf_file(path, contents.view());
+  replace_koshconf_target(target, contents.view());
 }
 
 } /* namespace koshka */
