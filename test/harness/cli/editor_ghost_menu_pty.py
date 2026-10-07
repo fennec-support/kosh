@@ -617,26 +617,31 @@ def run_cached_filter_checks(session, report, directory):
 
 def run_compopt_checks(session, report):
     session.send(
-        b"koshconf set completion.add_space_after_completed_word on\r")
+        b"koshconf set completion.add_space_after_completed_word on; "
+        b"koshconf set editor.completion_menu_style plain\r")
     session.wait_until(is_line(""))
     session.send(b"_zzw() { [ \"$COMP_CWORD\" = 1 ] && COMPREPLY=(zzword); }; "
                  b"complete -F _zzw zzspaced; "
                  b"complete -o nospace -F _zzw zztight\r")
     session.wait_until(is_line(""))
     session.send(b"zzspaced zz\t")
-    session.pump(0.2)
+    session.wait_until(lambda screen: get_state(screen) is not None
+                       and get_state(screen)[0].startswith("zzspaced zzword"))
     session.send(b"Q")
     report.record("spec-completion-takes-a-space", session,
                   lambda screen: get_state(screen) is not None
                   and get_state(screen)[0] == "zzspaced zzword Q")
     clear_line(session)
     session.send(b"zztight zz\t")
-    session.pump(0.2)
+    session.wait_until(lambda screen: get_state(screen) is not None
+                       and get_state(screen)[0].startswith("zztight zzword"))
     session.send(b"Q")
     report.record("nospace-spec-keeps-the-caret-on-the-word", session,
                   lambda screen: get_state(screen) is not None
                   and get_state(screen)[0] == "zztight zzwordQ")
     clear_line(session)
+    session.send(b"koshconf set editor.completion_menu_style interactive\r")
+    session.wait_until(is_line(""))
     session.send(b"_zzo() { COMPREPLY=(zeta alpha mid); }; "
                  b"complete -o nosort -F _zzo zzorder\r")
     session.wait_until(is_line(""))
