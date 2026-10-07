@@ -274,9 +274,9 @@ const diagnostic_definition DIAGNOSTIC_DEFINITIONS[] = {
       "Run a shell under `sudo` or pipe through `sudo tee`", None, Strict,
       Policy),
     D(2025, "prompt-display-guards",
-      "`PS1` control escapes need display guards",
-      "The `PS1` value holds a control escape without a `\\[` and `\\]` guard "
-      "pair",
+      "Prompt control escapes need display guards",
+      "The prompt value holds a control escape without a `\\[` and `\\]` "
+      "guard pair",
       "Wrap nonprinting prompt escapes in `\\[` and `\\]`", None, Annoying,
       Policy),
     D(2028, "echo-escape-sequence",

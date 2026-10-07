@@ -3915,14 +3915,14 @@ it stays in the scrollback after Enter.
 .PP
 The
 .B koshconf set editor.transient_prompt_after_submit on
-command makes Enter redraw the submitted line after a short prompt so the
-scrollback stays compact. Everything from the first row of PS1 down is erased,
+command makes Enter redraw the submitted line, and Ctrl\-C the interrupted
+line before its ^C, after a short prompt so the scrollback stays compact. Everything from the first row of PS1 down is erased,
 including the right prompt, the ghost, the hint rows, and any menu rows, and the
 line is drawn again after the expansion of PS1_TRANSIENT. When PS1_TRANSIENT is
 unset or empty, the short prompt is "$ ", or "# " for root, the expansion of
 the \\$ escape and a space. The line keeps its highlighting, and a multi-row
-PS1 collapses to the short prompt. Ctrl\-C and the other keys that end a line
-leave it as drawn. The option is off by default.
+PS1 collapses to the short prompt. The other keys that end a line leave it as
+drawn. The option is off by default.
 .PP
 Ghost text uses prefix matches from completion and history. Tab also offers
 smart-case and subsequence matches. An empty command position includes

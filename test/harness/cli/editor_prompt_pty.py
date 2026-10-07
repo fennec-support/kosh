@@ -11,7 +11,8 @@
 # submitted command, and stay in the scrollback without the transient prompt.
 # With the transient-prompt option, Enter must redraw the submitted line after
 # "$ ", "# " for root, or PS1_TRANSIENT with no right prompt, no hint row, and
-# no rows of a multi-row PS1. A working directory named with control bytes
+# no rows of a multi-row PS1, and Ctrl-C must redraw the interrupted line the
+# same way before its ^C. A working directory named with control bytes
 # reaches the prompt through \w in caret notation and never as raw bytes. The
 # terminal model and session come from the
 # ghost and menu probe. Each check prints one stable PASS line for the golden
@@ -126,6 +127,13 @@ def run_checks(binary, directory, command_directory, report):
         session.send(b"echo three\r")
         report.record("transient-prompt-redraws-the-line", session,
                       is_submitted([SHORT_PROMPT + "echo three", "three"],
+                                   empty_prompt))
+        session.send(b"echo dropped")
+        session.wait_until(is_prompt_line(with_right_prompt(
+            BULLET + " echo dropped")))
+        session.send(CTRL_C)
+        report.record("transient-prompt-redraws-an-interrupted-line", session,
+                      is_submitted([SHORT_PROMPT + "echo dropped^C"],
                                    empty_prompt))
 
         session.send(b"PS1=$'top\\n\\\\. '; PS1_TRANSIENT='T> '\r")

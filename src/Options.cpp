@@ -252,8 +252,8 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
          entry_shape{{},
                      {},
                      {},
-                     "Redraw a submitted line after PS1_TRANSIENT and "
-                     "without RPS1."},
+                     "Redraw a submitted or interrupted line after "
+                     "PS1_TRANSIENT and without RPS1."},
          false),
     flag(7, "editor.request_extended_key_reports", INTERACTIVE,
          shell_option_id::ExtendedKeys,

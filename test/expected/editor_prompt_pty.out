@@ -8,6 +8,7 @@ right-prompt-is-not-submitted PASS
 right-prompt-leaves-a-narrow-terminal PASS
 right-prompt-returns-at-full-width PASS
 transient-prompt-redraws-the-line PASS
+transient-prompt-redraws-an-interrupted-line PASS
 transient-prompt-collapses-prompt-rows PASS
 prompt-directory-draws-control-bytes PASS
 prompt-directory-writes-no-raw-control PASS

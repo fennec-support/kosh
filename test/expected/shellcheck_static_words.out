@@ -395,7 +395,7 @@ note: Use the variable name directly inside arithmetic.
    128 |    [ x"$value" = xvalue ]
        |      ^~~~~~~~~
 note: Quote the variable directly.
-129:3: warning: The `PS1` value holds a control escape without a `\[` and `\]` guard pair. (SC2025)
+129:3: warning: The prompt value holds a control escape without a `\[` and `\]` guard pair. (SC2025)
    129 |    PS1='\e[31m> '
        |    ^~~~~~~~~~~~~~
 note: Wrap nonprinting prompt escapes in `\[` and `\]`.
@@ -525,7 +525,19 @@ note: Use the variable name directly inside arithmetic.
    172 |    ((total = ${counter}))
        |    ^~~~~~~~~~~~~~~~~~~~~~
 note: Use the variable name directly inside arithmetic.
-Encountered 129 warnings.
+180:1: warning: The prompt value holds a control escape without a `\[` and `\]` guard pair. (SC2025)
+   180 |  RPS1='\e[2m<R>'
+       |  ^~~~~~~~~~~~~~~
+note: Wrap nonprinting prompt escapes in `\[` and `\]`.
+181:1: warning: The prompt value holds a control escape without a `\[` and `\]` guard pair. (SC2025)
+   181 |  RPROMPT='\033[2m<R>'
+       |  ^~~~~~~~~~~~~~~~~~~~
+note: Wrap nonprinting prompt escapes in `\[` and `\]`.
+182:1: warning: The prompt value holds a control escape without a `\[` and `\]` guard pair. (SC2025)
+   182 |  PS1_TRANSIENT='\x1b[1m> '
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~
+note: Wrap nonprinting prompt escapes in `\[` and `\]`.
+Encountered 132 warnings.
 done
 done
 done

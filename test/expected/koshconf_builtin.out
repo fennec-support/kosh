@@ -114,7 +114,7 @@ editor.show_command_synopsis=on
 editor.show_live_diagnostics=on
 # Insert the closer after a typed bracket, brace, or quote.
 editor.auto_close_brackets_and_quotes=off
-# Redraw a submitted line after PS1_TRANSIENT and without RPS1.
+# Redraw a submitted or interrupted line after PS1_TRANSIENT and without RPS1.
 editor.transient_prompt_after_submit=off
 # Ask the terminal to report modified keys such as Ctrl-Shift-Z separately while
 # a line is read.

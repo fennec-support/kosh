@@ -136,8 +136,15 @@ fn AssignCommand::analyze(AnalysisContext &actx,
   let const prompt_has_display_guards =
       view_contains(raw_assignment.view(), StringView{"\\["}) &&
       view_contains(raw_assignment.view(), StringView{"\\]"});
-  if (m_assignment->key().view() == "PS1" && prompt_has_control_escape &&
-      !prompt_has_display_guards)
+  constexpr PackedStringKey GUARDED_PROMPT_KEYS[] = {
+      SSK("PS1"),
+      SSK("PS1_TRANSIENT"),
+      SSK("RPROMPT"),
+      SSK("RPS1"),
+  };
+  constexpr StaticStringSet GUARDED_PROMPTS{GUARDED_PROMPT_KEYS};
+  if (prompt_has_control_escape && !prompt_has_display_guards &&
+      GUARDED_PROMPTS.contains(m_assignment->key().view()))
   {
     actx.report_diagnostic(diagnostic_id::sc2025, source_location());
   }
