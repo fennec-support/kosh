@@ -27,13 +27,30 @@ if script -qec true /dev/null >/dev/null 2>&1; then
 elif script -q /dev/null /usr/bin/true </dev/null >/dev/null 2>&1; then
   script_mode=bsd
 fi
+editor_tty=$dir/editor-tty
 run_interactive()
 {
   if [ "$script_mode" = gnu ]; then
-    script -qec "$1" /dev/null 2>/dev/null
+    script -qec "/usr/bin/tty > '$editor_tty'; $1" /dev/null 2>/dev/null
   else
-    script -q /dev/null /bin/sh -c "$1" 2>/dev/null
+    script -q /dev/null /bin/sh -c "/usr/bin/tty > '$editor_tty'; $1" \
+      2>/dev/null
   fi
+}
+wait_for_raw_terminal()
+{
+  wait_count=0
+  while [ "$wait_count" -lt 600 ]; do
+    terminal=$(cat "$editor_tty" 2>/dev/null)
+    if [ -n "$terminal" ] &&
+      /bin/stty -a < "$terminal" 2>/dev/null | grep -q -- -icanon
+    then
+      return 0
+    fi
+    sleep 0.05
+    wait_count=$((wait_count + 1))
+  done
+  return 1
 }
 if [ -z "$script_mode" ] || ! BIN="$BIN" run_interactive \
   'exec "$BIN" -c "test -t 0 && test -t 1"' >/dev/null 2>&1; then
@@ -68,6 +85,7 @@ send_input_when_ready()
     wait_count=$((wait_count + 1))
   done
   [ -s "$ready" ] || return 1
+  wait_for_raw_terminal || return 1
   sleep 0.25
   for key_sequence in "$@"; do
     if ! printf '%b' "$key_sequence"; then
@@ -87,6 +105,7 @@ wait_for_prompt_count()
     wait_count=$((wait_count + 1))
   done
   [ "$(($(wc -c < "$ready" 2>/dev/null || echo 0)))" -ge "$1" ] || return 1
+  wait_for_raw_terminal || return 1
   sleep 0.1
 }
 i=1
