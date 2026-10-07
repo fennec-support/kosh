@@ -67,3 +67,7 @@ rc=0
 == an inherited KOSH_HISTORY_SIZE is the history.size option:
 77
 77
+== privileged mode ignores and removes KOSHCONF and still reads the file:
+on
+0
+off

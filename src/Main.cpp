@@ -770,6 +770,10 @@ static fn read_startup_configuration(const command_line &line,
                      .view());
     encoded = None;
   }
+  if (encoded.has_value() && FLAG_PRIVILEGED.is_enabled()) {
+    LOG(Info, "privileged mode ignores the KOSHCONF environment variable");
+    encoded = None;
+  }
 
   let const should_skip =
       has_elevated_identity || line.is_rescue_mode || FLAG_CLEAN.is_enabled() ||

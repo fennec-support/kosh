@@ -246,8 +246,10 @@ completion script is not loaded.
 The shell becomes restricted after the startup files finish.
 .TP
 .BR \-p ", " \-\-privileged
-Privileged mode is enabled. BASH_ENV is not sourced. When the real and
-effective ids differ, every startup file is skipped. Elevated ids are retained
+Privileged mode is enabled. BASH_ENV is not sourced, and a KOSHCONF variable in
+the environment is ignored and removed, the way bash ignores SHELLOPTS and
+BASHOPTS. The settings files are still read. When the real and effective ids
+differ, every startup file and settings file is skipped. Elevated ids are retained
 only when this option is present. The state is exposed through
 .BR $\- ,
 .BR SHELLOPTS ,

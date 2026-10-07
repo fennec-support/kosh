@@ -73,3 +73,8 @@ printf 'mood=bash\n' >"$conf"
 echo "== an inherited KOSH_HISTORY_SIZE is the history.size option:"
 printf 'mood=kosh\n' >"$conf"
 KOSH_HISTORY_SIZE=77 "$BIN" -c 'koshconf get history.size; (koshconf get history.size) & wait "$!"'
+echo "== privileged mode ignores and removes KOSHCONF and still reads the file:"
+printf 'editor.auto_pair=on\n' >"$conf"
+KOSHCONF=BQEA "$BIN" -p -c 'koshconf get editor.auto_pair
+env | grep -c "^KOSHCONF="'
+KOSHCONF=BQEA "$BIN" -c 'koshconf get editor.auto_pair'
