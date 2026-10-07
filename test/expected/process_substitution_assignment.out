@@ -3,5 +3,8 @@ prefix-status=0
 eval-read
 concatenated
 next-command-status=1
+argument-reopen-status=1
+looped
+loop-reopen-status=1
 written
 writer-status=0

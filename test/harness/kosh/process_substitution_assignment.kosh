@@ -11,6 +11,14 @@ esac
 late=<(printf 'late\n')
 koshkit cat "$late" 2>/dev/null
 printf 'next-command-status=%s\n' "$?"
+set -- <(printf 'argument\n')
+koshkit cat "$1" 2>/dev/null
+printf 'argument-reopen-status=%s\n' "$?"
+set --
+remembered=
+for looped in <(printf 'looped\n'); do koshkit cat "$looped"; remembered=$looped; done
+koshkit cat "$remembered" 2>/dev/null
+printf 'loop-reopen-status=%s\n' "$?"
 writer() { printf 'written\n' > "$dst"; }
 dst=>(koshkit cat) writer
 printf 'writer-status=%s\n' "$?"

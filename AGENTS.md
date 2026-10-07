@@ -147,7 +147,8 @@ changes update this file.
   quota so only consumed bytes leave the queue, and a failed write is sent
   again to the next reader. Writes stay one line long until a write completes
   at once. Input from several writers reaches the child in connection order.
-  Cleanup only signals the relay. The relay stops listening, serves connected
+  Cleanup signals the relay and waits until it has closed every listening
+  instance, so a later open of the path fails. The relay then serves connected
   clients until they leave, closes the private pipe, and frees itself.
 - Every internal Windows named pipe has a random name, rejects remote clients,
   creates its first instance exclusively, and carries a DACL that admits only

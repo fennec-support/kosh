@@ -1241,6 +1241,7 @@ static constexpr DWORD SUBSTITUTION_RELAY_INBOUND_BYTES = 65536;
 static constexpr DWORD SUBSTITUTION_RELAY_BODY_BYTES = 262144;
 static constexpr usize SUBSTITUTION_RELAY_PATH_LENGTH = 128;
 static constexpr ULONG_PTR SUBSTITUTION_RELAY_FINISH_KEY = 1;
+static constexpr DWORD SUBSTITUTION_RELAY_FINISH_WAIT_MS = 5000;
 
 enum class relay_client_state : u8
 {
@@ -1297,6 +1298,7 @@ struct substitution_relay
   wchar_t body_path[SUBSTITUTION_RELAY_PATH_LENGTH]{};
   HANDLE port{nullptr};
   HANDLE body{INVALID_HANDLE_VALUE};
+  HANDLE listeners_closed{nullptr};
   relay_operation body_read{};
   thread worker{};
   u64 head{0};
@@ -1893,6 +1895,31 @@ static fn relay_is_finished(substitution_relay &relay) wontthrow -> bool
   return true;
 }
 
+static fn signal_relay_listeners_closed(substitution_relay &relay) wontthrow
+    -> void
+{
+  if (relay.listeners_closed == nullptr) return;
+
+  SetEvent(relay.listeners_closed);
+  relay.listeners_closed = nullptr;
+}
+
+static fn note_relay_listeners_closed(substitution_relay &relay) wontthrow
+    -> void
+{
+  if (!relay.is_finishing) return;
+
+  for (let const &client : relay.clients) {
+    if (client.state == relay_client_state::Idle ||
+        client.state == relay_client_state::Listening)
+    {
+      return;
+    }
+  }
+
+  signal_relay_listeners_closed(relay);
+}
+
 static fn advance_substitution_relay(substitution_relay &relay) wontthrow
     -> bool
 {
@@ -1904,6 +1931,7 @@ static fn advance_substitution_relay(substitution_relay &relay) wontthrow
     close_connected_relay_clients(relay);
   }
   reap_relay_clients(relay);
+  note_relay_listeners_closed(relay);
 
   return !relay_is_finished(relay);
 }
@@ -1936,7 +1964,10 @@ static fn run_substitution_relay(opaque *context) wontthrow -> void
       continue;
     }
 
-    if (was_dequeued == FALSE) return;
+    if (was_dequeued == FALSE) {
+      signal_relay_listeners_closed(relay);
+      return;
+    }
 
     if (key == SUBSTITUTION_RELAY_FINISH_KEY) start_relay_finish(relay);
   }
@@ -2068,8 +2099,19 @@ fn finish_process_substitution(opaque *cleanup) wontthrow -> void
 
   let const relay = static_cast<substitution_relay *>(cleanup);
   let const worker = relay->worker;
-  PostQueuedCompletionStatus(relay->port, 0, SUBSTITUTION_RELAY_FINISH_KEY,
-                             nullptr);
+  let const listeners_closed = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+  relay->listeners_closed = listeners_closed;
+  let const was_posted = PostQueuedCompletionStatus(
+      relay->port, 0, SUBSTITUTION_RELAY_FINISH_KEY, nullptr);
+  if (was_posted == FALSE) relay->listeners_closed = nullptr;
+
+  if (listeners_closed != nullptr) {
+    let const did_close =
+        was_posted == FALSE ||
+        WaitForSingleObject(listeners_closed,
+                            SUBSTITUTION_RELAY_FINISH_WAIT_MS) == WAIT_OBJECT_0;
+    if (did_close) CloseHandle(listeners_closed);
+  }
   CloseHandle(worker.handle);
 }
 
