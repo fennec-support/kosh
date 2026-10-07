@@ -8,5 +8,11 @@ $'mix\'q\\b\x7fz'
 'osc'$'\e'']0;title'$'\a''x
 == an open double quote splices each control run:
 "csi"$'\xc2\x9b'"y
+== noquote keeps blanks raw and still splices each control run:
+nq a$'\e'b
+== a spec word splices each control run:
+w$'\e'x
+== compgen lists the names raw:
+osc^[]0;title^Gx
 == the completed word names the file:
 found

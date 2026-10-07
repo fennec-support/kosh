@@ -514,6 +514,7 @@ enum class path_text_mode : u8
 {
   ShellSyntax,
   Literal,
+  Raw,
 };
 
 enum class directory_suffix_mode : u8
@@ -592,9 +593,13 @@ build_filesystem_candidate(StringView directory_part,
                            directory_suffix_mode suffix_mode,
                            path_text_mode text_mode) throws -> String
 {
-  let const inside_quote = text_mode == path_text_mode::Literal;
+  let const inside_quote = text_mode != path_text_mode::ShellSyntax;
   let const preserve_directory_spelling = raw_directory_part != directory_part;
-  let entry_name = String{completion_allocator(), name};
+  let entry_name = String{completion_allocator()};
+  if (text_mode == path_text_mode::Literal)
+    append_with_quoted_controls(entry_name, name);
+  else
+    entry_name.append(name);
   char directory_separator = 0;
   if (is_directory && suffix_mode == directory_suffix_mode::Marked) {
     directory_separator = '/';
@@ -658,7 +663,7 @@ static fn collect_filesystem_matches(
     path_text_mode text_mode, filesystem_entry_filter filter,
     directory_suffix_mode suffix_mode) throws -> void
 {
-  let const inside_quote = text_mode == path_text_mode::Literal;
+  let const inside_quote = text_mode != path_text_mode::ShellSyntax;
   let listing = open_filesystem_listing(decoded_word, base_directory, context);
   if (!listing.has_value()) return;
   let const &parts = listing->parts;
@@ -802,7 +807,7 @@ static fn complete_filesystem_with(
 {
   let decoded_storage = utils::decoded_shell_word{completion_allocator()};
   if (decoded == nullptr) {
-    if (text_mode == path_text_mode::Literal)
+    if (text_mode != path_text_mode::ShellSyntax)
       decoded_storage.text.append(token);
     else
       decoded_storage = utils::decode_shell_word(token, completion_allocator());
@@ -832,8 +837,7 @@ fn complete_filesystem_names(StringView token, EvalContext &context,
     -> ArrayList<String>
 {
   return complete_filesystem(token, base_directory, context, nullptr,
-                             path_text_mode::Literal,
-                             filesystem_entry_filter::All);
+                             path_text_mode::Raw, filesystem_entry_filter::All);
 }
 
 fn complete_filesystem_names_by_prefix(StringView token, EvalContext &context,
@@ -846,7 +850,7 @@ fn complete_filesystem_names_by_prefix(StringView token, EvalContext &context,
                          : filesystem_entry_filter::All;
   let collector = complete_filesystem_with<PrefixListCollector>(
       token, base_directory, context, PrefixListCollector{}, nullptr,
-      path_text_mode::Literal, filter, directory_suffix_mode::Bare);
+      path_text_mode::Raw, filter, directory_suffix_mode::Bare);
   return collector.take();
 }
 

@@ -75,6 +75,8 @@ pure fn command_segment_start(StringView line, usize cursor) wontthrow -> usize;
 pure fn split_path_token(StringView token) wontthrow -> path_token;
 pure fn path_candidate_needs_quoting(StringView candidate) wontthrow -> bool;
 fn quote_path_candidate(StringView candidate) throws -> String;
+fn append_with_quoted_controls(String &candidate, StringView text) throws
+    -> void;
 fn rebuild_shell_syntax_candidate(StringView raw_token,
                                   const utils::decoded_shell_word &decoded_word,
                                   StringView decoded_candidate,

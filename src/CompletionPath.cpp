@@ -169,6 +169,30 @@ fn internal::quote_path_candidate(StringView candidate) throws -> String
   return quoted;
 }
 
+fn internal::append_with_quoted_controls(String &candidate,
+                                         StringView text) throws -> void
+{
+  for (usize position = 0; position < text.length; position++) {
+    usize run_length = 0;
+    while (position + run_length < text.length) {
+      let const sequence_length =
+          control_sequence_length(text, position + run_length);
+      if (sequence_length == 0) break;
+
+      run_length += sequence_length;
+    }
+
+    if (run_length == 0) {
+      candidate.push(text[position]);
+      continue;
+    }
+
+    append_ansi_c_quoted(candidate,
+                         text.substring_of_length(position, run_length));
+    position += run_length - 1;
+  }
+}
+
 static fn append_open_quote_candidate(String &candidate, StringView text,
                                       char quote_character) throws -> void
 {
@@ -224,7 +248,7 @@ static fn append_candidate_suffix(String &candidate, StringView suffix,
                                   bool should_quote_words) throws -> void
 {
   if (!should_quote_words) {
-    candidate.append(suffix);
+    append_with_quoted_controls(candidate, suffix);
     return;
   }
 

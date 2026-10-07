@@ -3732,7 +3732,9 @@ A control character in the line, a ghost suggestion, or a menu entry is drawn
 in caret notation, such as ^[ for ESC and ^? for DEL, and a C1 control as a hex
 escape such as \e\ex9b, so it never reaches the terminal raw. A tab and a line
 break in the line keep their layout. A file name with a control character
-completes in the $'...' form with escapes.
+completes in the $'...' form with escapes. A command name, a spec word, or a
+noquote file name keeps its other bytes and has each control run spliced in
+as $'...', while compgen prints names raw.
 .PP
 On a non-empty line, the up arrow recalls only the history entries that begin
 with the text typed before the first up arrow. Each further up arrow moves to
