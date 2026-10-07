@@ -2035,7 +2035,11 @@ candidate that names a directory with a slash unless its function runs
 .BR "compopt +o filenames" ,
 and dirnames and plusdirs mark the directories they add after the function.
 A dash candidate is offered only when the word starts with a dash. An empty
-result falls through to the next completion source.
+result falls through to the next completion source. An unknown
+.B \-o
+option name or
+.B \-A
+action name is an error with status 2, and nothing is registered.
 .IP
 A command with no spec of its own uses the
 .B \-D

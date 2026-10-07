@@ -32,7 +32,8 @@ FLAG(COMPLETE_OPTION, ManyStrings, 'o', "",
      "dirnames adds directory names when nothing else matched, plusdirs adds "
      "them always, filenames gives directory candidates a trailing slash, "
      "default and bashdefault leave an empty result to filename completion, "
-     "and any other option is recorded without effect.");
+     "and fullquote, noquote, nosort, and nospace are recorded without "
+     "effect. Any other name is an error.");
 FLAG(COMPLETE_PRINT, Bool, 'p', "",
      "Print the named specs, or every spec, in a replayable form.");
 FLAG(COMPLETE_DEFAULT, Bool, 'D', "",
@@ -250,8 +251,17 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                           : StringView{}};
   u32 option_mask = 0;
   for (usize i = 0; i < FLAG_COMPLETE_OPTION.count(); i++) {
-    let const option = COMPLETION_OPTIONS.find(FLAG_COMPLETE_OPTION.get(i));
-    if (option.has_value()) option_mask |= completion_option_bit(*option);
+    let const name = FLAG_COMPLETE_OPTION.get(i);
+    let const option = COMPLETION_OPTIONS.find(name);
+    if (!option.has_value()) {
+      report_soft_builtin_error(ec, cxt, FLAG_COMPLETE_OPTION.value_location(),
+                                StringView{"'"} + name +
+                                    "' is not a valid option name");
+
+      return 2;
+    }
+
+    option_mask |= completion_option_bit(*option);
   }
 
   u32 action_mask = 0;
