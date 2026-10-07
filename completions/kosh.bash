@@ -225,6 +225,10 @@ legacy.echo_interprets_backslash_escapes"
           legacy.base_editor_mode)
             _kosh_compgen -W "emacs vi" -- "$current_word"
           ;;
+          completion.add_space_after_completed_word)
+            _kosh_compgen -W "off on on-excluding-trailing-slash" -- \
+              "$current_word"
+          ;;
           history.file_path | history.max_entries) ;;
           *) _kosh_compgen -W "on off" -- "$current_word" ;;
         esac

@@ -2266,8 +2266,8 @@ unquoted when that result falls through, unless fullquote is on.
 keeps the candidates in the order the spec generated them and drops only a
 candidate equal to the one before it.
 .B \-o nospace
-inserts no space after an accepted candidate when
-completion.add_space_after_completed_word is on.
+inserts no space after an accepted candidate whatever
+completion.add_space_after_completed_word chooses.
 A dash candidate is offered only when the word starts with a dash. An empty
 result falls through to the next completion source. An unknown
 .B \-o
@@ -3884,10 +3884,15 @@ that prefix does not extend the token and more than one candidate remains, the
 candidates are presented by the selector chosen by
 .B \-\-tab\-selector
 or editor.completion_menu_style. Ctrl\-Space acts as Tab on a POSIX system.
-The optional
-.B koshconf set completion.add_space_after_completed_word on
-setting inserts one space after a complete non-directory candidate is accepted;
-it is disabled by default.
+The completion.add_space_after_completed_word setting chooses whether an accepted
+complete candidate takes one space after it:
+.B off
+never, the default,
+.B on
+always, even after a directory's slash, so the menu does not descend into it,
+and
+.B on\-excluding\-trailing\-slash
+unless the candidate ends in a slash.
 .PP
 The interactive selector draws a menu of the candidates below the line. The
 completion menu starts under the token being completed, and starts at the left

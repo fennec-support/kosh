@@ -124,7 +124,8 @@ history.arrow_keys_search_by_typed_prefix=on
 # and 0 keeps none.
 history.max_entries=4096
 
-# Insert a space after an accepted non-directory completion.
+# Insert a space after an accepted completion: never, always, or unless it ends
+# in a slash.
 completion.add_space_after_completed_word=off
 
 # Step through the diagnostic tiers with -W, -WW, and -WWW.

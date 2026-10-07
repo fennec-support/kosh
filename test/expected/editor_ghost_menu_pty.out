@@ -55,6 +55,9 @@ argument-inside-word-replaces-the-word PASS
 spec-completion-takes-a-space PASS
 nospace-spec-keeps-the-caret-on-the-word PASS
 nosort-menu-keeps-the-reply-order PASS
+space-after-completion-on-follows-a-slash PASS
+space-after-completion-skips-a-trailing-slash PASS
+space-after-completion-still-follows-a-word PASS
 history-seed-alpha PASS
 history-seed-beta PASS
 history-seed-gamma PASS

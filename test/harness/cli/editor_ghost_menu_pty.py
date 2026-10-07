@@ -405,7 +405,6 @@ def clear_line(session):
     session.send(CTRL_C)
     session.wait_until(is_line(""))
 
-
 def type_text(session, text):
     for byte in text:
         session.send(bytes([byte]))
@@ -642,8 +641,37 @@ def run_compopt_checks(session, report):
     report.record("nosort-menu-keeps-the-reply-order", session,
                   is_menu_in_order(["zeta", "alpha", "mid"]))
     clear_line(session)
+    session.send(b"complete -W zzpath/ zzslash; "
+                 b"koshconf set editor.completion_menu_style plain\r")
+    session.wait_until(is_line(""))
+    for mode, line, name in (
+            (b"on", "zzslash zzpath/ Q",
+             "space-after-completion-on-follows-a-slash"),
+            (b"on-excluding-trailing-slash", "zzslash zzpath/Q",
+             "space-after-completion-skips-a-trailing-slash")):
+        session.send(b"koshconf set completion.add_space_after_completed_word "
+                     + mode + b"\r")
+        session.wait_until(is_line(""))
+        session.send(b"zzslash zz\t")
+        session.wait_until(lambda screen: get_state(screen) is not None
+                           and get_state(screen)[0].startswith(
+                               "zzslash zzpath/"))
+        session.send(b"Q")
+        report.record(name, session,
+                      lambda screen, line=line: get_state(screen) is not None
+                      and get_state(screen)[0] == line)
+        clear_line(session)
+    session.send(b"zzspaced zz\t")
+    session.wait_until(lambda screen: get_state(screen) is not None
+                       and get_state(screen)[0].startswith("zzspaced zzword"))
+    session.send(b"Q")
+    report.record("space-after-completion-still-follows-a-word", session,
+                  lambda screen: get_state(screen) is not None
+                  and get_state(screen)[0] == "zzspaced zzword Q")
+    clear_line(session)
     session.send(
-        b"koshconf set completion.add_space_after_completed_word off\r")
+        b"koshconf set completion.add_space_after_completed_word off; "
+        b"koshconf set editor.completion_menu_style interactive\r")
     session.wait_until(is_line(""))
 
 

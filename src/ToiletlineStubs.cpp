@@ -524,7 +524,7 @@ fn disable_completion() -> void {}
 
 fn is_completion_enabled() -> bool { return false; }
 
-fn set_space_after_completion(bool enabled) -> void { unused(enabled); }
+fn set_space_after_completion(u8 mode) -> void { unused(mode); }
 
 fn set_history_prefix_search(bool enabled) -> void { unused(enabled); }
 

@@ -104,7 +104,7 @@ void enable_job_notifications(koshka::EvalContext &context);
 
 void set_ghost_enabled(bool enabled);
 
-void set_space_after_completion(bool enabled);
+void set_space_after_completion(u8 mode);
 
 void set_history_prefix_search(bool enabled);
 

@@ -40,6 +40,7 @@ enum class option_storage : u8
   Failglob,
   Posix,
   EditorMode,
+  SpaceAfterCompletion,
   Mood,
   TabSelector,
   WarningLevel,

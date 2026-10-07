@@ -1548,9 +1548,14 @@ static fn configure_line_editor(EvalContext &context) throws -> void
           ? toiletline::edit_mode::Vi
           : toiletline::edit_mode::Emacs);
   toiletline::set_tab_selector(context.runtime_state().get_tab_selector());
-  toiletline::set_space_after_completion(
-      context.runtime_state().option_is_enabled(
-          shell_option_id::SpaceAfterCompletion));
+  let const &state = context.runtime_state();
+  let const should_space_after_completion =
+      state.option_is_enabled(shell_option_id::SpaceAfterCompletion);
+  let const should_space_after_directory =
+      state.option_is_enabled(shell_option_id::SpaceAfterDirectoryCompletion);
+  toiletline::set_space_after_completion(!should_space_after_completion ? 0
+                                         : should_space_after_directory ? 1
+                                                                        : 2);
   toiletline::set_history_prefix_search(
       context.runtime_state().option_is_enabled(
           shell_option_id::HistoryPrefixSearch));

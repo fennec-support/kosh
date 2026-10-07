@@ -117,6 +117,7 @@ enum class shell_option_id : u8
   AutoPair,
   TransientPrompt,
   ExtendedKeys,
+  SpaceAfterDirectoryCompletion,
   Count,
 };
 

@@ -2317,9 +2317,9 @@ fn set_ghost_enabled(bool enabled) -> void
   ::tl_set_ghost_enabled(enabled ? 1 : 0);
 }
 
-fn set_space_after_completion(bool enabled) -> void
+fn set_space_after_completion(u8 mode) -> void
 {
-  ::tl_set_space_after_completion(enabled ? 1 : 0);
+  ::tl_set_space_after_completion(static_cast<tl_space_after_completion>(mode));
 }
 
 fn set_history_prefix_search(bool enabled) -> void

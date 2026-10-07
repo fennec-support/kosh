@@ -26,6 +26,8 @@ constexpr option_text TAB_SELECTOR_VALUE_NAMES[] = {"interactive", "external",
                                                     "plain"};
 constexpr option_text WARNING_LEVEL_VALUE_NAMES[] = {"0", "1", "2", "3"};
 constexpr option_text EDITOR_MODE_VALUE_NAMES[] = {"emacs", "vi"};
+constexpr option_text SPACE_AFTER_COMPLETION_VALUE_NAMES[] = {
+    "off", "on", "on-excluding-trailing-slash"};
 
 static_assert(static_cast<u8>(mimic_mood::Default) == 0);
 static_assert(static_cast<u8>(mimic_mood::Posix) == 1);
@@ -289,14 +291,16 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                                "keeps none."},
                    0, 0),
         "4096"),
-    flag(11, "completion.add_space_after_completed_word", INTERACTIVE,
-         shell_option_id::SpaceAfterCompletion,
-         entry_shape{{},
-                     {},
-                     {},
-                     "Insert a space after an accepted non-directory "
-                     "completion."},
-         false),
+    with_enum(
+        make_entry(11, "completion.add_space_after_completed_word",
+                   option_type::Enum, INTERACTIVE,
+                   option_storage::SpaceAfterCompletion,
+                   shell_option_id::SpaceAfterCompletion,
+                   entry_shape{.help = "Insert a space after an accepted "
+                                       "completion: never, always, or unless "
+                                       "it ends in a slash."},
+                   0, 0),
+        enum_values(SPACE_AFTER_COMPLETION_VALUE_NAMES)),
     with_enum(make_entry(12, "diagnostics.warning_level", option_type::Enum,
                          INTERACTIVE, option_storage::WarningLevel,
                          NO_SHELL_OPTION,
@@ -1053,6 +1057,7 @@ fn read_boolean(const EvalContext &cxt, const option_descriptor &option) throws
   case option_storage::Mood:
   case option_storage::TabSelector:
   case option_storage::WarningLevel:
+  case option_storage::SpaceAfterCompletion:
   case option_storage::Variable: break;
   }
   unreachable("A non-boolean option was read as a boolean");
@@ -1130,6 +1135,7 @@ fn write_boolean(EvalContext &cxt, const option_descriptor &option,
   case option_storage::Mood:
   case option_storage::TabSelector:
   case option_storage::WarningLevel:
+  case option_storage::SpaceAfterCompletion:
   case option_storage::Variable: break;
   }
   unreachable("A non-boolean option was written as a boolean");
@@ -1257,6 +1263,15 @@ fn read_option_number(const EvalContext &cxt,
     if (option.is_set_alias) return read_boolean(cxt, option) ? 1 : 0;
 
     return state.option_is_enabled(shell_option_id::Vi) ? 1 : 0;
+  case option_storage::SpaceAfterCompletion:
+    if (!state.option_is_enabled(shell_option_id::SpaceAfterCompletion)) {
+      return 0;
+    }
+
+    return state.option_is_enabled(
+               shell_option_id::SpaceAfterDirectoryCompletion)
+               ? 1
+               : 2;
   default: return read_boolean(cxt, option) ? 1 : 0;
   }
 }
@@ -1373,6 +1388,11 @@ fn write_option_number(EvalContext &cxt, const option_descriptor &option,
       state.set_option(shell_option_id::Vi, false);
       state.set_option(shell_option_id::Emacs, true);
     }
+    return;
+  case option_storage::SpaceAfterCompletion:
+    state.set_option(shell_option_id::SpaceAfterCompletion, value != 0);
+    state.set_option(shell_option_id::SpaceAfterDirectoryCompletion,
+                     value == 1);
     return;
   default: break;
   }
