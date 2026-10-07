@@ -3631,7 +3631,8 @@ text they erase in a kill ring of 16 entries that lasts for the session, and
 consecutive kills join into one entry. Ctrl\-Y inserts the newest entry. Alt\-Y
 right after a yank replaces the inserted text with the next older entry and
 wraps around after the oldest. Ctrl\-T swaps the character before the cursor
-with the one under it, or the last two characters at the end of the line. Alt\-T
+with the one under it, or the last two characters at the end of the line, and
+a combining mark moves with its base character. Alt\-T
 swaps the word before the cursor with the word after it, or the last two words
 at the end of the line. Alt\-. and Alt\-_ insert the last word of the newest
 history entry, and each further press replaces it with the last word of an
@@ -4276,7 +4277,7 @@ Insert at the first non-blank character or at the end of the line.
 Enter insert mode. Typed text is inserted, not written over.
 .TP
 .B .
-Repeat the last change.
+Repeat the last change. A yank is not a change, so it is never repeated.
 .TP
 .BR u ", " Ctrl\-_ ", " Ctrl\-Z ", " "Ctrl\-X Ctrl\-U"
 Undo.
