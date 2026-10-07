@@ -18,4 +18,14 @@ echo "== the inherited PATH is kept:"
 env -i HOME="$HOME" PATH="$real_d/bin:/usr/bin:/bin" "$real_d/bin/kosh" -c 'echo "PATH=$PATH"' | sed "s#$real_d#D#g"
 echo "== a clean start resets the PATH and KOSH stays absolute:"
 (cd "$real_d/work" && env -i HOME="$HOME" PATH="$real_d/bin:/usr/bin:/bin" kosh --no-init-files -c 'case $KOSH in /*) echo absolute;; *) echo "relative:$KOSH";; esac; echo "PATH=$PATH"')
+echo "== KOSH is set in every mood, after a mood switch, and under a bash name:"
+ln -s "$BIN" "$real_d/bin/bash"
+for mood in kosh bash sh bash-posix; do
+  "$BIN" --mood "$mood" -c 'printf "%s " "${KOSH:+set}"'
+done
+"$BIN" -c 'set --mood sh; printf "%s " "${KOSH:+set}"'
+"$real_d/bin/bash" -c 'printf "%s\n" "${KOSH:+set}"'
+echo "== KOSH replaces an inherited value and is not exported:"
+KOSH=inherited "$BIN" --mood bash -c 'case $KOSH in inherited) echo kept;; *) echo replaced;; esac'
+"$BIN" --mood bash -c 'env | grep -c "^KOSH="'
 [ -n "$d" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$d"

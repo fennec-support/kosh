@@ -14,3 +14,8 @@ PATH=D/bin:/usr/bin:/bin
 == a clean start resets the PATH and KOSH stays absolute:
 absolute
 PATH=/usr/bin:/bin
+== KOSH is set in every mood, after a mood switch, and under a bash name:
+set set set set set set
+== KOSH replaces an inherited value and is not exported:
+replaced
+0
