@@ -89,8 +89,9 @@ fn EvalContext::register_function(StringView name,
   if (source_store().current_source() != nullptr && !definition_text.is_empty())
   {
     let const defining_view = source_store().current_source()->view();
-    let const body_line = static_cast<isize>(
-        utils::line_number_at(defining_view, body_start_position));
+    let const body_line =
+        static_cast<isize>(line_number_at_location(SourceLocation{
+            body_start_position, 0, definition_location.source_name_index}));
     info.line_offset = body_line - 1;
 
     let const body_end_position =
@@ -117,8 +118,7 @@ fn EvalContext::register_function(StringView name,
   if (source_store().current_source() != nullptr &&
       definition_location.position < source_store().current_source()->count())
   {
-    info.definition_line = utils::line_number_at(
-        source_store().current_source()->view(), definition_location.position);
+    info.definition_line = line_number_at_location(definition_location);
   }
 
   info.source_name_index = definition_location.source_name_index;
