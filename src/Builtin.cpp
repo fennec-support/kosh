@@ -181,6 +181,26 @@ pure static fn should_dispatch_show_help(Builtin::Kind kind) wontthrow -> bool
   }
 }
 
+static constexpr i32 STAGE_ASSIGNMENT_FAILURE_STATUS = 4;
+
+fn declaration_assignment_failure_status(const EvalContext &cxt) wontthrow
+    -> i32
+{
+  return cxt.job_table_store().is_in_pipeline_stage()
+             ? STAGE_ASSIGNMENT_FAILURE_STATUS
+             : 1;
+}
+
+static pure fn is_declaration_builtin_kind(Builtin::Kind kind) wontthrow -> bool
+{
+  switch (kind) {
+  case Builtin::Kind::Declare:
+  case Builtin::Kind::Export:
+  case Builtin::Kind::Readonly: return true;
+  default: return false;
+  }
+}
+
 fn execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
 {
   ASSERT(!ec.args().is_empty());
@@ -293,6 +313,8 @@ fn execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
         report_soft_builtin_error(ec, cxt, e.message(), e.detail_message());
       else
         report_soft_builtin_error(ec, cxt, e.message());
+      if (is_declaration_builtin_kind(ec.builtin_kind()))
+        return declaration_assignment_failure_status(cxt);
       return static_cast<i32>(e.command_status());
     }
 

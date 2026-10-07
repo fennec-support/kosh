@@ -338,7 +338,7 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
                                 StringView{"'"} + operand +
                                     "' is not a valid identifier");
-      status = 1;
+      status = declaration_assignment_failure_status(cxt);
       continue;
     }
 

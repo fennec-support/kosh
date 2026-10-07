@@ -928,12 +928,17 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
           (next == '(' && chop_character(byte_count + 1) == '('))
       {
         byte_count += is_bracket_arithmetic ? 1 : 2;
-        let const arithmetic_start = byte_count;
-        let const closing_length = is_bracket_arithmetic ? 1 : 2;
+        let arithmetic_start = byte_count;
+        let closing_length = is_bracket_arithmetic ? usize{1} : usize{2};
         usize group_depth = 0;
         loop
         {
           let const c = chop_character(byte_count);
+          if (is_bracket_arithmetic && is_in_double_quotes && c == '"') {
+            arithmetic_start--;
+            closing_length = 0;
+            break;
+          }
           if (c == lexer::CEOF) rarely
             {
               throw ErrorWithLocationAndDetails{

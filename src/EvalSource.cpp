@@ -664,12 +664,16 @@ fn EvalContext::run_source(StringView source, StringView origin,
         execution_store().line_discard_root();
     let const previous_line_discard_source =
         execution_store().line_discard_source();
+    let const previous_line_discard_status =
+        execution_store().line_discard_status();
     execution_store().line_discard_root() = ast;
     execution_store().line_discard_source() = source;
+    execution_store().line_discard_status() = i64{1};
     defer
     {
       execution_store().line_discard_root() = previous_line_discard_root;
       execution_store().line_discard_source() = previous_line_discard_source;
+      execution_store().line_discard_status() = previous_line_discard_status;
     };
 
     ast->evaluate(*this);

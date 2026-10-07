@@ -430,6 +430,9 @@ fn report_soft_builtin_error(const ExecContext &ec, EvalContext &cxt,
                              StringView message, StringView note) throws
     -> void;
 
+fn declaration_assignment_failure_status(const EvalContext &cxt) wontthrow
+    -> i32;
+
 /* The span-aware forms caret the specific argument whose SourceLocation is
    passed, rather than the whole command. A builtin that has identified the bad
    argument passes its span here. */

@@ -47,4 +47,9 @@ v=$[ 1 + ] echo prefix; echo same
 echo "prefix=$?"
 ( echo $[ 1 / 0 ]; echo after ); echo "subshell=$?"
 ( set -o posix; echo $[ 1 + ]; echo same ); echo "posix=$?"
+echo $[ "3" ] "$[ 4 ]"
+echo "quoted $[ "3" ]"; echo same
+echo "quoted=$?"
+echo "word" "$[ "1" ] tail"; echo same
+echo "word=$?"
 echo end

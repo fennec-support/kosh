@@ -300,6 +300,11 @@ hot fn CompoundList::evaluate_root_status_impl(
         if (error.is_line_discarding() && !is_async_node) {
           if (cxt.execution_store().line_discard_root() != this) throw;
           did_discard_line = true;
+
+          return {static_cast<i32>(set_and_return_exit_status(
+                      cxt, cxt.execution_store().line_discard_status().value_or(
+                               error.command_status()))),
+                  0};
         }
 
         return {static_cast<i32>(set_and_return_exit_status(
@@ -323,6 +328,11 @@ hot fn CompoundList::evaluate_root_status_impl(
         if (error.is_line_discarding() && !is_async_node) {
           if (cxt.execution_store().line_discard_root() != this) throw;
           did_discard_line = true;
+
+          return {static_cast<i32>(set_and_return_exit_status(
+                      cxt, cxt.execution_store().line_discard_status().value_or(
+                               error.command_status()))),
+                  0};
         }
 
         return {static_cast<i32>(set_and_return_exit_status(
@@ -574,6 +584,19 @@ pure fn Pipeline::is_empty() const wontthrow -> bool
   return m_commands.is_empty();
 }
 
+static pure fn pipeline_stage_error_status(const EvalContext &cxt,
+                                           const ErrorBase &error) wontthrow
+    -> i32
+{
+  if (cxt.runtime_state().is_bash_compatible() && error.is_line_discarding() &&
+      !error.is_script_fatal())
+  {
+    return static_cast<i32>(error.command_status());
+  }
+
+  return 1;
+}
+
 fn Pipeline::append_command(const Command *node) throws -> void
 {
   ASSERT(node != nullptr);
@@ -765,10 +788,10 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
             koshka::show_message(
                 e.to_string(cxt.source_store().current_source_view(), &cxt));
           }
-          stage_status = 1;
+          stage_status = pipeline_stage_error_status(cxt, e);
         } catch (const Error &e) {
           koshka::show_message(e.to_string());
-          stage_status = 1;
+          stage_status = pipeline_stage_error_status(cxt, e);
         } catch (...) {
           LOG(Debug, "swallowed an unknown error in the pipeline stage child");
           stage_status = 1;

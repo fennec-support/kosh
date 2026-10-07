@@ -1121,6 +1121,12 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
      in this frame put them back. A located error from a builtin is rendered
      here while its own standard error still holds, and the list handler keeps
      the status without a second render. */
+  let const was_in_pipeline_stage =
+      cxt.job_table_store().is_in_pipeline_stage();
+  if (mode == root_evaluation_mode::PreparedAsyncCommand && ec.is_builtin())
+    cxt.job_table_store().set_in_pipeline_stage(true);
+  defer { cxt.job_table_store().set_in_pipeline_stage(was_in_pipeline_stage); };
+
   i32 ret = 0;
   try {
     ret = utils::execute_context(steal(ec), cxt,

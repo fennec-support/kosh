@@ -1310,6 +1310,8 @@ The forms ${v^^}, ${v,,}, ${v^}, and ${v,} change case with an optional pattern.
 The transforms ${v@Q}, ${v@E}, ${v@A}, ${v@P}, and ${v@a} produce a quoted
 value, expanded escapes, an assignment, a prompt expansion, or attributes. The
 forms ${v@U}, ${v@L}, and ${v@u} apply the corresponding case conversion.
+Any other operator after @ on a set parameter is a bad substitution that ends
+the script, and on an unset one it expands to nothing.
 .PP
 The form ${!ref} reads the variable named by ref. The forms ${!pre*} and
 ${!pre@} list names beginning with pre.
@@ -1346,7 +1348,9 @@ Outside the sh mood, $[expression] is the obsolete Bash spelling of
 $((expression)). It ends at the ] that balances its brackets, so $[ a[1] + 1 ]
 is one expansion, and it expands, nests, and fails as $(( )) does, inside
 double quotes, here-document bodies, and the words of a parameter expansion
-too. The sh mood keeps $[ literal, as dash does. Analysis reports the spelling
+too. Inside double quotes a double quote ends the string even within $[, as in
+Bash, so "$[ "3" ]" fails as an unterminated expansion and abandons the line.
+The sh mood keeps $[ literal, as dash does. Analysis reports the spelling
 as SC2007.
 .PP
 An arithmetic error in the bash and bash-posix moods abandons the rest of the

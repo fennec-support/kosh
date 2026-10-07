@@ -58,4 +58,31 @@ echo "true=$?"
 false &
 wait $!
 echo "false=$?"
+readonly locked=1
+declare locked=2 2>/dev/null &
+wait $!
+echo "declare-readonly=$?"
+typeset locked=2 2>/dev/null &
+wait $!
+echo "typeset-readonly=$?"
+readonly locked=2 2>/dev/null &
+wait $!
+echo "readonly-readonly=$?"
+export locked=2 2>/dev/null &
+wait $!
+echo "export-readonly=$?"
+declare 1x=2 2>/dev/null &
+wait $!
+echo "declare-invalid=$?"
+declare -p no_such_name 2>/dev/null &
+wait $!
+echo "declare-missing=$?"
+declare locked=2 2>/dev/null | cat
+echo "declare-stage=${PIPESTATUS[0]}"
+true | declare locked=2 2>/dev/null
+echo "declare-last-stage=${PIPESTATUS[1]}"
+(declare locked=2) 2>/dev/null
+echo "declare-subshell=$?"
+declare locked=2 2>/dev/null
+echo "declare-foreground=$?"
 echo end

@@ -153,6 +153,7 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let has_error = false;
+  let has_assignment_error = false;
   for (usize i = 1; i < args.count(); i++) {
     let const &arg = args[i];
     let const parts = NameValueArg::from(arg);
@@ -189,6 +190,7 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         report_soft_builtin_error(ec, cxt, loc,
                                   StringView{"'"} + name + "' is read-only");
         has_error = true;
+        has_assignment_error = true;
         continue;
       }
       cxt.record_environment_change(name);
@@ -225,6 +227,8 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (utils::environment_name_is_path(name.view()))
       cxt.program_resolver().assign_path(String{value.view()});
   }
+
+  if (has_assignment_error) return declaration_assignment_failure_status(cxt);
 
   return has_error ? 1 : 0;
 }

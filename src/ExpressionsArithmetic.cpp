@@ -1063,7 +1063,12 @@ static fn evaluate_subshell_in_process(const Expression *body, EvalContext &cxt,
         }
         error.set_rendered();
       }
-      ret = cxt.runtime_state().is_bash_compatible() ? 1 : 2;
+      ret = 2;
+      if (cxt.runtime_state().is_bash_compatible()) {
+        ret = error.is_line_discarding() && !error.is_script_fatal()
+                  ? error.command_status()
+                  : 1;
+      }
       cxt.execution_store().set_last_exit_status(static_cast<i32>(ret));
       cxt.control_flow_store().clear();
     };

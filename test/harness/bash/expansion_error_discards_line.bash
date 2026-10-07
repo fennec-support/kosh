@@ -80,6 +80,20 @@ echo "posix-for-eval=$?"
 ( set -o posix; : ${unset_readonly:=2}; echo same ); echo "posix-default=$?"
 ( set -u; echo $unset_name; echo same ); echo "nounset=$?"
 ( echo ${unset_name:?gone}; echo same ); echo "question=$?"
+(: ${unset_readonly:=2}; echo same); echo "readonly-default-subshell=$?"
+eval ': ${unset_readonly:=2}; echo same'; echo "readonly-default-eval=$?"
+eval $': ${unset_readonly:=2}\necho "readonly-default-eval-line=$?"'
+{ : ${unset_readonly:=2}; echo same; } | cat
+echo "readonly-default-stage=${PIPESTATUS[0]}"
+y=$(: ${unset_readonly:=2}; echo same); echo "readonly-default-substitution=$? [$y]"
+( (: ${unset_readonly:=2}); echo "readonly-default-nested=$?" )
+(echo "${x@Z}"; echo same); echo "transform=$?"
+(echo "${x@}"; echo same); echo "transform-empty=$?"
+(echo "${x@QQ}"; echo same); echo "transform-long=$?"
+(eval 'echo "${x@Z}"'; echo same); echo "transform-eval=$?"
+nums=(1 2)
+(echo "${nums[@]@Z}"; echo same); echo "transform-array=$?"
+echo "transform-unset=[${unset_name@Z}] [${unset_list[@]@Z}]"
 echo end
 r=2
 echo not reached

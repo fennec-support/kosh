@@ -1210,6 +1210,23 @@ private:
                           const Maybe<String> &current) throws -> String;
 };
 
+static pure fn is_transform_operator(char op) wontthrow -> bool
+{
+  switch (op) {
+  case 'A':
+  case 'E':
+  case 'K':
+  case 'L':
+  case 'P':
+  case 'Q':
+  case 'U':
+  case 'a':
+  case 'k':
+  case 'u': return true;
+  default: return false;
+  }
+}
+
 static pure fn find_balanced_subscript_close(
     StringView subscript_text) wontthrow -> Maybe<usize>
 {
@@ -1469,6 +1486,16 @@ fn EvalContext::ParameterExpander::expand_subscripted() throws -> Maybe<String>
   let const *modifier_location_pointer =
       get_location_for(modifier, modifier_location);
   let const modifier_op = modifier.is_empty() ? '\0' : modifier[0];
+  if (modifier_op == '@' &&
+      m_context.runtime_state().get_mood() != mimic_mood::Posix &&
+      (modifier.length != 2 || !is_transform_operator(modifier[1])))
+  {
+    if (!m_context.array_element_is_set(m_name, subscript))
+      return String{m_context.scratch_allocator()};
+
+    throw_script_fatal("Unable to expand '${" + m_spec +
+                       "}' because it is a bad substitution");
+  }
   if (subscript != "@" && subscript != "*" &&
       (modifier_op == '/' || modifier_op == '#' || modifier_op == '%' ||
        modifier_op == '^' || modifier_op == ','))
@@ -1551,13 +1578,17 @@ fn EvalContext::ParameterExpander::expand_leading_form() throws -> Maybe<String>
         m_name, m_rest, get_location_for(m_rest, rest_location));
   }
   case '@':
-    if (m_rest.length >= 2 &&
-        m_context.runtime_state().get_mood() != mimic_mood::Posix)
-    {
-      return m_context.apply_parameter_transform(m_name, m_rest[1]);
+    if (m_context.runtime_state().get_mood() == mimic_mood::Posix) break;
+
+    if (m_rest.length != 2 || !is_transform_operator(m_rest[1])) {
+      if (!m_context.get_variable_value(m_name).has_value())
+        return String{m_context.scratch_allocator()};
+
+      throw_script_fatal("Unable to expand '${" + m_spec +
+                         "}' because it is a bad substitution");
     }
 
-    break;
+    return m_context.apply_parameter_transform(m_name, m_rest[1]);
   default: break;
   }
 
