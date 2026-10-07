@@ -540,6 +540,30 @@ fn render_process_snapshot(const ExecContext &ec, EvalContext &cxt,
   let const output_limit = options.output_limit;
   let const viewport_rows = options.viewport_rows;
   let const scroll_offset = options.scroll_offset;
+  let const body_start = output.length();
+  let const do_window_body = [&]() throws -> void {
+    let const body = String{allocator, output.view().substring(body_start)};
+    output.truncate(body_start);
+    usize line_number = 0;
+    usize position = 0;
+    while (position < body.length()) {
+      let const relative_end =
+          body.view().substring(position).find_character('\n');
+      let const line_end =
+          relative_end.has_value() ? position + *relative_end : body.length();
+      let const line =
+          body.view().substring_of_length(position, line_end - position);
+      if (line_number >= scroll_offset &&
+          line_number - scroll_offset < viewport_rows - 1)
+      {
+        output += line;
+        output += "\n";
+      }
+      line_number++;
+      position = relative_end.has_value() ? line_end + 1 : body.length();
+    }
+    visible_line_count = line_number;
+  };
   let hide_options = options;
   hide_options.parent_mode = evilps_parent_display_mode::HideAncestors;
   let follow_options = options;
@@ -547,6 +571,8 @@ fn render_process_snapshot(const ExecContext &ec, EvalContext &cxt,
 
   let nodes = sort_nodes(steal(unordered_nodes), options);
   defer { unordered_nodes = steal(nodes).into_array_list(); };
+  for (let &node : nodes)
+    node.was_rendered = false;
   mark_search_visibility(nodes, search);
 
   i64 root_pid = 1;
@@ -588,32 +614,7 @@ fn render_process_snapshot(const ExecContext &ec, EvalContext &cxt,
                                allocator, rendered_count, hide_options);
     }
     visible_line_count = 1;
-    if (viewport_rows != 0) {
-      let const full_output = String{allocator, output.view()};
-      output.clear();
-      usize line_number = 0;
-      usize position = 0;
-      while (position < full_output.length()) {
-        let const relative_end =
-            full_output.view().substring(position).find_character('\n');
-        let const line_end = relative_end.has_value() ? position + *relative_end
-                                                      : full_output.length();
-        let const line = full_output.view().substring_of_length(
-            position, line_end - position);
-        {
-          if (line_number >= scroll_offset &&
-              line_number - scroll_offset < viewport_rows - 1)
-          {
-            output += line;
-            output += "\n";
-          }
-          line_number++;
-        }
-        position =
-            relative_end.has_value() ? line_end + 1 : full_output.length();
-      }
-      visible_line_count = line_number;
-    }
+    if (viewport_rows != 0) do_window_body();
     return 0;
   }
 
@@ -664,31 +665,7 @@ fn render_process_snapshot(const ExecContext &ec, EvalContext &cxt,
   }
 
   visible_line_count = rendered_count;
-  if (viewport_rows != 0) {
-    let const full_output = String{allocator, output.view()};
-    output.clear();
-    usize line_number = 0;
-    usize position = 0;
-    while (position < full_output.length()) {
-      let const relative_end =
-          full_output.view().substring(position).find_character('\n');
-      let const line_end = relative_end.has_value() ? position + *relative_end
-                                                    : full_output.length();
-      let const line =
-          full_output.view().substring_of_length(position, line_end - position);
-      {
-        if (line_number >= scroll_offset &&
-            line_number - scroll_offset < viewport_rows - 1)
-        {
-          output += line;
-          output += "\n";
-        }
-        line_number++;
-      }
-      position = relative_end.has_value() ? line_end + 1 : full_output.length();
-    }
-    visible_line_count = line_number;
-  }
+  if (viewport_rows != 0) do_window_body();
   return 0;
 }
 

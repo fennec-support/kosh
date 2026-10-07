@@ -87,6 +87,8 @@ def run_pty(binary, command, keys=()):
     # The final part contains terminal cleanup after the last frame, not a frame.
     frame_parts = all_parts[1:-1]
     blank_counts = [part.count(b"\r\n\r\n") for part in frame_parts]
+    tree_frames = [tree_rows(part) for part in frame_parts if tree_rows(part)]
+    small_frames = [rows for rows in tree_frames if len(rows) <= 10]
     return {
         "status": os.waitstatus_to_exitcode(status),
         "resized": resized,
@@ -107,7 +109,22 @@ def run_pty(binary, command, keys=()):
             b"SORT memory")),
         "search_query": b"SEARCH /1" in output,
         "search_cleared": bool(frame_parts) and b"SEARCH" not in frame_parts[-1],
+        "debug_trap": b"Encountered a debug trap" in output,
+        "scroll_room": bool(tree_frames) and len(tree_frames[0]) > 10,
+        "scroll_moved": len(small_frames) > 1
+        and small_frames[0][0] != small_frames[-1][0],
+        "steady_rows": len({len(rows) for rows in small_frames}) == 1,
     }
+
+
+def tree_rows(part):
+    """The process rows of an evilps tree frame, after its SORT tree line."""
+    marker = b"SORT tree\r\n"
+    start = part.find(marker)
+    if start < 0:
+        return []
+    body = part[start + len(marker):].split(b"\r\n\r\n")[0]
+    return [row for row in body.split(b"\r\n") if row.strip()]
 
 
 def run_redirected(binary, command):
@@ -198,6 +215,14 @@ def main():
                                    "alternate_leave": True,
                                    "cursor_hide": True,
                                    "cursor_show": True})
+
+    result = run_pty(binary, "koshkit --color never evilps --live=0.5",
+                     ((b"j", None), (b"j", None)))
+    scroll_requirements = {"status": 130, "debug_trap": False}
+    if result["scroll_room"]:
+        scroll_requirements["scroll_moved"] = True
+        scroll_requirements["steady_rows"] = True
+    ok &= check("evilps-scroll", result, scroll_requirements)
 
     result = run_pty(binary, "koshkit --color always evilnet --traffic "
                      "--live=0.05 --cumulative=0.1")
