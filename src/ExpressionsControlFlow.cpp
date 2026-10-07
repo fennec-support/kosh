@@ -785,6 +785,8 @@ hot fn ForLoop::evaluate_status_impl(EvalContext &cxt) const throws
   }
 
   cxt.source_store().set_current_location(source_location());
+  let const substitution_mark = cxt.mark_process_substitutions();
+  defer { cxt.cleanup_process_substitutions(substitution_mark); };
   let const values = m_has_in_clause ? cxt.process_args(m_words)
                                      : cxt.variable_store().positional_params();
 

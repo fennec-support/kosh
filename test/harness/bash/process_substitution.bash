@@ -30,3 +30,16 @@ while read -r n; do
   total=$((total + n))
 done < <(printf '10\n20\n30\n')
 echo "total=$total"
+
+# A process substitution in a for word list stays open through the loop and
+# closes when the loop finishes, so its path no longer opens afterwards.
+for path in <(echo one) <(echo two); do
+  cat "$path"
+  last_path=$path
+done
+if cat "$last_path" 2>/dev/null; then echo "loop path open"; else
+  echo "loop path closed"
+fi
+
+# A redirection of another descriptor leaves the substitution path readable.
+cat <(echo beside-redirection) 3</dev/null

@@ -1183,7 +1183,8 @@ p=<(command) assigns the path and x<(command) joins it to the text around it.
 The word of an unquoted ${v:\-word}, ${v:+word}, ${v:=word}, or ${v:?word}
 expansion, with or without the colon, expands a form outside quotes in the
 word. A pattern or replacement word keeps the form as text.
-The path stays open until the command that expanded it finishes. The shell then
+The path stays open until the command that expanded it finishes, and a path in
+the word list of a for loop stays open until the loop finishes. The shell then
 closes it and waits for the process, while Bash leaves the process running.
 A later command cannot open the path. An
 .B exec
