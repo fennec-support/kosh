@@ -1421,7 +1421,8 @@ fn EvalContext::line_number_at_location(
 
     let const &base = line_bases[found];
     preceding_line_count +=
-        utils::line_number_at(site_source->view(), site.position) - 1;
+        utils::line_number_at(site_source->view(), site.position) - 1 +
+        source_store().preceding_line_count_of(site_source);
     site = base.parent_location;
     site_source = base.parent;
     site_depth = base.function_call_depth;
@@ -1453,10 +1454,8 @@ fn EvalContext::line_number_at_location(
         resolved_source.to_render_position(site.position);
     let const render_line = static_cast<isize>(
         utils::line_number_at(resolved_source.text->view(), render_position));
-    line = resolved_source.is_windowed
-               ? static_cast<usize>(render_line + resolved_source.line_offset) +
-                     resolved_source.enclosing_line_count
-               : static_cast<usize>(render_line);
+    line = static_cast<usize>(render_line + resolved_source.line_offset) +
+           resolved_source.enclosing_line_count;
   }
   return line + preceding_line_count;
 }

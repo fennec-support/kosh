@@ -2633,6 +2633,19 @@ public:
   {
     return m_embedded_sources;
   }
+  fn push_line_base(const String *source, usize preceding_line_count) throws
+      -> void
+  {
+    m_line_bases.push(source_line_base{source, preceding_line_count});
+  }
+  pure fn preceding_line_count_of(const String *source) const wontthrow -> usize
+  {
+    for (let const &base : m_line_bases) {
+      if (base.source == source) return base.preceding_line_count;
+    }
+
+    return 0;
+  }
   fn current_origin() wontthrow -> String & { return m_current_origin; }
   pure fn current_origin() const wontthrow -> const String &
   {
@@ -2670,6 +2683,7 @@ private:
   bool m_is_script_run{false};
   ArrayList<source_frame> m_source_frames{heap_allocator()};
   ArrayList<embedded_source> m_embedded_sources{heap_allocator()};
+  ArrayList<source_line_base> m_line_bases{heap_allocator()};
   u64 m_current_source_generation{EXTERNAL_SOURCE_GENERATION};
   usize m_source_depth{0};
   usize m_rejected_return_source_frames{0};

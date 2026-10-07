@@ -328,7 +328,7 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
     if (resolved.text == nullptr) return;
 
     entry.text = resolved.text;
-    entry.line_offset = resolved.is_windowed ? resolved.line_offset : 0;
+    entry.line_offset = resolved.line_offset;
     entry.location = resolved.rebase(entry.location);
     if (entry.location.position > resolved.text->count()) return;
 
@@ -2551,9 +2551,8 @@ fn EvalContext::set_child_source_origin(
     let const location = resolved.rebase(call_site);
     if (location.position > resolved.text->count()) return false;
 
-    let const site = resolve_rendered_site(
-        resolved.text->view(), location,
-        resolved.is_windowed ? resolved.line_offset : 0, true, this);
+    let const site = resolve_rendered_site(resolved.text->view(), location,
+                                           resolved.line_offset, true, this);
     let const text = site.source;
     usize position = site.location.position;
     if (text.data == nullptr || position > text.count()) {
@@ -2741,18 +2740,15 @@ fn EvalContext::register_inherited_source_origin(
     let const length = payload.read_u32();
     let const line_text = payload.read_text();
     if (!payload.is_valid || line_number == 0 || column > line_text.length ||
-        length > line_text.length - column ||
-        usize{line_number} - 1 + line_text.length > UINT32_MAX)
+        length > line_text.length - column)
     {
       invalid_subshell_bootstrap();
     }
 
-    windows.push(String{heap_allocator()});
+    windows.push(String{heap_allocator(), line_text});
     let &window = windows.back();
-    window.reserve(usize{line_number} - 1 + line_text.length);
-    window.append_repeated('\n', usize{line_number} - 1);
-    location = SourceLocation{window.count() + column, length, name_index};
-    window.append(line_text);
+    source_store().push_line_base(&window, usize{line_number} - 1);
+    location = SourceLocation{column, length, name_index};
     do_register_extra_lines(window, extra_line_count, name_index, call_depth);
     return &window;
   };
@@ -2822,16 +2818,15 @@ fn EvalContext::register_inherited_source_origin(
   source_store().set_script_run(is_script_run);
   if (!has_origin) return false;
 
-  let const window_length = usize{origin_line_number} - 1 +
-                            origin_prefix.length + contents.count() +
-                            origin_suffix.length;
+  let const window_length =
+      origin_prefix.length + contents.count() + origin_suffix.length;
   if (window_length > UINT32_MAX) invalid_subshell_bootstrap();
 
   source_name = source_name_at(origin_name_index);
   windows.push(String{heap_allocator()});
   let &window = windows.back();
+  source_store().push_line_base(&window, usize{origin_line_number} - 1);
   window.reserve(window_length);
-  window.append_repeated('\n', usize{origin_line_number} - 1);
   window.append(origin_prefix);
   let const body_position = window.count();
   window.append(contents.view());

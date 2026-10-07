@@ -134,11 +134,12 @@ changes update this file.
   forked or fresh evaluator.
 - Each launch of a fresh evaluator also sends the origin of its command text:
   the source name, the starting line, and the rest of the first and last
-  lines. The child maps its command onto a window padded to that line through
-  an embedded source, so diagnostics, traces, and LINENO use the parent's
-  coordinates. The child skips analysis, because the parent analyzed the text.
+  lines. The child maps its command onto a window of those lines through an
+  embedded source. The source store records the lines before each window, so
+  diagnostics, traces, and LINENO use the parent's coordinates without padding
+  bytes. The child skips analysis, because the parent analyzed the text.
   The origin also carries the rendered call site of every function and source
-  frame above the launch site, each on its own padded window, and the lines
+  frame above the launch site, each on its own one-line window, and the lines
   LINENO counts beyond a rendered line, such as those before an eval. The
   bootstrap carries the defining name, lines, and edges of each function, which
   the child applies to the definitions it replays.

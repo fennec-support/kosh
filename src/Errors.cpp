@@ -527,7 +527,8 @@ cold fn resolve_rendered_site(StringView source, const SourceLocation &location,
                            parent_site.line_offset};
     }
 
-    return rendered_site{mapped_source, mapped_location, 0};
+    return rendered_site{mapped_source, mapped_location,
+                         parent_site.line_offset};
   }
 
   if (is_rebased) return rendered_site{source, location, line_offset};

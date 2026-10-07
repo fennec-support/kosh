@@ -175,6 +175,8 @@ pure fn EvalContext::resolve_render_source(
   resolved_source.text = fallback_source != nullptr
                              ? fallback_source
                              : source_store().current_source();
+  resolved_source.line_offset = static_cast<isize>(
+      source_store().preceding_line_count_of(resolved_source.text));
 
   if (function_store().call_frames().is_empty()) return resolved_source;
 
@@ -573,9 +575,8 @@ fn EvalContext::capture_trap_definition(const SourceLocation &location,
       location.length < available_length ? location.length : available_length,
       resolved_source.is_windowed ? resolved_source.source_name_index
                                   : location.source_name_index};
-  definition.line_offset =
-      static_cast<isize>(line_position.line_number) +
-      (resolved_source.is_windowed ? resolved_source.line_offset : 0);
+  definition.line_offset = static_cast<isize>(line_position.line_number) +
+                           resolved_source.line_offset;
 
   return definition;
 }

@@ -323,6 +323,12 @@ struct embedded_source
   bool is_mapped{true};
 };
 
+struct source_line_base
+{
+  const String *source;
+  usize preceding_line_count;
+};
+
 struct source_frame
 {
   source_frame(String origin, SourceLocation call_site,
