@@ -81,8 +81,7 @@ fn koshkit_util_flag_list(Utility::Kind chosen) wontthrow -> const FlagList *
   return KOSHKIT_UTIL_FLAG_LISTS[static_cast<usize>(chosen)];
 }
 
-fn koshkit_util_synopsis(Utility::Kind chosen) wontthrow
-    -> const SynopsisList *
+fn koshkit_util_synopsis(Utility::Kind chosen) wontthrow -> const SynopsisList *
 {
   return KOSHKIT_UTIL_SYNOPSES[static_cast<usize>(chosen)];
 }
@@ -865,10 +864,7 @@ fn parse_strict_count(StringView text) throws -> ErrorOr<u64>
 
 #else /* KOSH_NO_KOSHKIT */
 
-fn find_util(StringView) throws -> Maybe<Utility::Kind>
-{
-  return {};
-}
+fn find_util(StringView) throws -> Maybe<Utility::Kind> { return {}; }
 
 fn koshkit_util_flag_list(Utility::Kind) wontthrow -> const FlagList *
 {

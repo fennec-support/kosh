@@ -821,7 +821,8 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
   options.is_showing_dot_names =
       is_showing_all || FLAG_LS_ALMOST_ALL.is_enabled();
   options.is_listing_dot_and_dotdot = is_showing_all && !options.is_tree;
-  options.needs_full_status = options.is_long || options.key != ls_sort_key::Name;
+  options.needs_full_status =
+      options.is_long || options.key != ls_sort_key::Name;
   options.needs_type = options.should_color || options.should_classify ||
                        options.is_recursive || options.is_tree;
   if (!options.is_long && !options.is_one_per_line && !options.is_tree)

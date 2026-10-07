@@ -315,8 +315,7 @@ static fn splice_environment_flags(command_line &line) throws -> void
   {
     static constexpr PackedStringKey IGNORED_KOSH_FLAG_KEYS[] = {
         SSK("--apply"), SSK("--format"), SSK("--as-language-server")};
-    static constexpr StaticStringSet IGNORED_KOSH_FLAGS{
-        IGNORED_KOSH_FLAG_KEYS};
+    static constexpr StaticStringSet IGNORED_KOSH_FLAGS{IGNORED_KOSH_FLAG_KEYS};
     let const view = kosh_flags->view();
     /* A -c in KOSH_FLAGS is dropped with the command word after it, since the
        variable must not splice a command into every invocation. */
@@ -421,9 +420,11 @@ static fn show_unknown_flag_value(StringView flag_prefix, StringView value,
   String source = flag_prefix;
   let const value_position = source.count();
   source += value;
-  show_message(
-      ErrorWithLocation{SourceLocation{value_position, value.length}, message}
-          .to_string(source.view()));
+  show_message(ErrorWithLocation{
+      SourceLocation{value_position, value.length},
+      message
+  }
+                   .to_string(source.view()));
 }
 
 static fn parse_init_moods(ArrayList<mimic_mood> &moods) throws -> Maybe<int>
@@ -619,8 +620,9 @@ static fn prefetch_script_shebang(invocation_identity &identity,
     -> Maybe<String>
 {
   Maybe<String> contents = None;
-  if (!input.should_read_files || FLAG_LINT.is_enabled() || operands.is_empty() ||
-      operands[0] == "-" || identity.was_mood_named_on_command_line)
+  if (!input.should_read_files || FLAG_LINT.is_enabled() ||
+      operands.is_empty() || operands[0] == "-" ||
+      identity.was_mood_named_on_command_line)
   {
     return contents;
   }
@@ -962,32 +964,31 @@ static fn read_analysis_state(const invocation_identity &identity) throws
 static fn read_session_config(const invocation_identity &identity,
                               const input_plan &input) throws -> session_config
 {
-  return session_config{
-      identity.session_mood,
-      resolve_session_tab_selector(),
-      read_analysis_state(identity),
-      input.should_be_interactive,
-      identity.is_login_shell,
-      identity.is_restricted_shell,
-      selected_rcfile().has_value(),
-      input.should_execute_commands,
-      FLAG_STATS.is_enabled(),
-      FLAG_AST.is_enabled(),
-      FLAG_ESCAPE_MAP.is_enabled(),
-      FLAG_EXIT_CODE.is_enabled(),
-      FLAG_ALL_EXIT_CODES.is_enabled(),
-      FLAG_MEMORY.is_enabled(),
-      !FLAG_NO_TRACES.is_enabled(),
-      FLAG_PRIVILEGED.is_enabled(),
-      FLAG_ONE_COMMAND.is_enabled(),
-      identity.session_mood == mimic_mood::Default ||
-          FLAG_EXTENDED_ARITHMETIC.is_enabled(),
-      FLAG_EXTENDED_ARITHMETIC.is_enabled(),
-      FLAG_NOUNSET.is_enabled(),
-      FLAG_NO_CLOBBER.is_enabled(),
-      FLAG_EXPORT_ALL.is_enabled(),
-      FLAG_NO_EXEC.is_enabled() || FLAG_LINT.is_enabled(),
-      FLAG_ENABLE_KOSHKIT.is_enabled()};
+  return session_config{identity.session_mood,
+                        resolve_session_tab_selector(),
+                        read_analysis_state(identity),
+                        input.should_be_interactive,
+                        identity.is_login_shell,
+                        identity.is_restricted_shell,
+                        selected_rcfile().has_value(),
+                        input.should_execute_commands,
+                        FLAG_STATS.is_enabled(),
+                        FLAG_AST.is_enabled(),
+                        FLAG_ESCAPE_MAP.is_enabled(),
+                        FLAG_EXIT_CODE.is_enabled(),
+                        FLAG_ALL_EXIT_CODES.is_enabled(),
+                        FLAG_MEMORY.is_enabled(),
+                        !FLAG_NO_TRACES.is_enabled(),
+                        FLAG_PRIVILEGED.is_enabled(),
+                        FLAG_ONE_COMMAND.is_enabled(),
+                        identity.session_mood == mimic_mood::Default ||
+                            FLAG_EXTENDED_ARITHMETIC.is_enabled(),
+                        FLAG_EXTENDED_ARITHMETIC.is_enabled(),
+                        FLAG_NOUNSET.is_enabled(),
+                        FLAG_NO_CLOBBER.is_enabled(),
+                        FLAG_EXPORT_ALL.is_enabled(),
+                        FLAG_NO_EXEC.is_enabled() || FLAG_LINT.is_enabled(),
+                        FLAG_ENABLE_KOSHKIT.is_enabled()};
 }
 
 /* Startup files run with strictness off because /etc/profile may read unset
@@ -1123,7 +1124,8 @@ static fn seed_session_variables(EvalContext &context,
   context.mark_exported("SHLVL");
 
   if (is_interactive && !os::has_environment_variable("PS1")) {
-    context.set_shell_variable("PS1", toiletline::get_default_prompt_template());
+    context.set_shell_variable("PS1",
+                               toiletline::get_default_prompt_template());
   }
   if (!os::has_environment_variable("PS2"))
     context.set_shell_variable("PS2", "> ");
@@ -1216,11 +1218,12 @@ static fn run_startup(EvalContext &context, ArrayList<mimic_mood> &init_moods,
    the idle prompt. */
 static fn finish_startup(EvalContext &context,
                          const invocation_identity &identity,
-                         inherited_shell &inherited,
-                         bool is_interactive) throws -> Maybe<int>
+                         inherited_shell &inherited, bool is_interactive) throws
+    -> Maybe<int>
 {
   if (is_interactive && !context.get_variable_value("PS1").has_value()) {
-    context.set_shell_variable("PS1", toiletline::get_default_prompt_template());
+    context.set_shell_variable("PS1",
+                               toiletline::get_default_prompt_template());
   }
 
   context.set_startup_finished();
@@ -1257,8 +1260,7 @@ struct script_operands
 /* A script file or a -c run takes its first operand as $0 and the rest as the
    arguments, while an interactive or -s shell keeps the shell name as $0 and
    takes every operand as a positional parameter. */
-static fn take_script_operands(String program_name,
-                               ArrayList<String> &operands,
+static fn take_script_operands(String program_name, ArrayList<String> &operands,
                                const input_plan &input) throws
     -> script_operands
 {
@@ -1404,10 +1406,9 @@ struct script_cursor
     if (script_path.is_directory()) {
       let const verb = FLAG_LINT.is_enabled() ? StringView{"analyze"}
                                               : StringView{"execute"};
-      show_message(ErrorWithLocation{operand_location,
-                                     "Unable to " + verb + " `" +
-                                         file_name.view() +
-                                         "` because the file is a directory"}
+      show_message(ErrorWithLocation{
+          operand_location, "Unable to " + verb + " `" + file_name.view() +
+                                "` because the file is a directory"}
                        .to_string(cli_invocation.view(), &context));
       if (!FLAG_LINT.is_enabled()) {
         utils::quit(126, utils::farewell_policy::Goodbye);
@@ -1502,8 +1503,8 @@ static fn start_line_editor(EvalContext &context,
   toiletline::enable_job_notifications(context);
   if (!FLAG_NO_COMPLETION.is_enabled()) toiletline::enable_completion(context);
 
-  let const should_highlight =
-      !FLAG_NO_COMPLETION.is_enabled() && !FLAG_NO_SYNTAX_HIGHLIGHTING.is_enabled();
+  let const should_highlight = !FLAG_NO_COMPLETION.is_enabled() &&
+                               !FLAG_NO_SYNTAX_HIGHLIGHTING.is_enabled();
   toiletline::set_highlight_enabled(should_highlight);
   toiletline::set_ghost_enabled(should_highlight);
   /* The editor reads no environment of its own. NO_COLOR and a dumb terminal
@@ -1723,13 +1724,14 @@ struct interactive_session
     let const is_interactive = context.execution_store().shell_is_interactive();
     bool should_execute = true;
     if (is_interactive &&
-        context.runtime_state().option_is_enabled(shell_option_id::Histexpand) &&
+        context.runtime_state().option_is_enabled(
+            shell_option_id::Histexpand) &&
         !chunk.contents.is_empty())
     {
       try {
-        let expanded = expand_interactive_history(
-            chunk.contents.view(), chunk.history_event_number, expansion_state,
-            context);
+        let expanded = expand_interactive_history(chunk.contents.view(),
+                                                  chunk.history_event_number,
+                                                  expansion_state, context);
         if (expanded.has_value()) {
           show_message(expanded->command.view());
           chunk.contents = steal(expanded->command);
@@ -1761,9 +1763,9 @@ struct lint_run
   fn analyze(const script_chunk &chunk, EvalContext &context,
              BumpArena &ast_arena) throws -> i32
   {
-    return run_lint_document_contents(
-        chunk.contents, context, ast_arena, chunk.filename, &totals, nullptr,
-        nullptr, true, chunk.command_string_name);
+    return run_lint_document_contents(chunk.contents, context, ast_arena,
+                                      chunk.filename, &totals, nullptr, nullptr,
+                                      true, chunk.command_string_name);
   }
 
   fn record(i32 exit_code, bool should_quit) wontthrow -> i32
@@ -1812,8 +1814,7 @@ static fn run_chunk(script_chunk &chunk, EvalContext &context,
    EV_EXIT. An interactive prompt, an EXIT trap, or a pending trailer keeps the
    fork to regain control. */
 static fn allow_terminal_exec_on_final_chunk(EvalContext &context,
-                                             bool should_quit) wontthrow
-    -> void
+                                             bool should_quit) wontthrow -> void
 {
   let const should_print_post_run_trailer =
       context.runtime_state().show_exit_code() ||
@@ -1836,8 +1837,7 @@ static fn should_exit_after_chunk(EvalContext &context,
           exit_code != 0);
 }
 
-wontreturn static fn exit_after_final_chunk(EvalContext &context,
-                                            i32 exit_code,
+wontreturn static fn exit_after_final_chunk(EvalContext &context, i32 exit_code,
                                             lint_run &lint) throws -> void
 {
 #if !defined NDEBUG
@@ -2071,9 +2071,8 @@ fn kosh_main(int argc, char **argv) -> int
   /* The path map starts empty because eager scanning helps only in interactive
      mode. */
   koshka::os::set_default_signal_handlers(
-      input.should_be_interactive
-          ? koshka::os::signal_profile::Interactive
-          : koshka::os::signal_profile::NonInteractive);
+      input.should_be_interactive ? koshka::os::signal_profile::Interactive
+                                  : koshka::os::signal_profile::NonInteractive);
   LOG(Info, "installed the default signal handlers");
 
   /* The parse arena holds the AST and its tokens for one command, reset between
@@ -2107,14 +2106,14 @@ fn kosh_main(int argc, char **argv) -> int
 
   /* A plain return must not be used past this point, since toiletline needs its
      own cleanup that utils::quit() runs. */
-  let cursor = koshka::script_cursor{
-      line,
-      file_names,
-      input,
-      identity,
-      cli_invocation,
-      prefetched_script_contents,
-      FLAG_ONE_COMMAND.is_enabled() && !FLAG_LINT.is_enabled()};
+  let cursor = koshka::script_cursor{line,
+                                     file_names,
+                                     input,
+                                     identity,
+                                     cli_invocation,
+                                     prefetched_script_contents,
+                                     FLAG_ONE_COMMAND.is_enabled() &&
+                                         !FLAG_LINT.is_enabled()};
   let session = koshka::interactive_session{};
   let lint = koshka::lint_run{};
   i32 exit_code = EXIT_SUCCESS;

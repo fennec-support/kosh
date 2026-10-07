@@ -1052,7 +1052,9 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
         actx.report_diagnostic(diagnostic_id::sc2229,
                                args[i]->source_location());
 
-      if (actx.walk.is_direct_pipeline_stage && !literal.view().starts_with("-")) {
+      if (actx.walk.is_direct_pipeline_stage &&
+          !literal.view().starts_with("-"))
+      {
         let const target = operand_target_name(literal.view());
         if (!target.is_empty()) {
           actx.report_diagnostic(diagnostic_id::sc2030_read,

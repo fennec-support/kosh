@@ -661,7 +661,7 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
         m_array_args.is_empty() && !actx.walk.is_bare_read_substitution)
     {
       let const id = actx.walk.is_direct_pipeline_stage ? diagnostic_id::sc2189
-                                                   : diagnostic_id::sc2188;
+                                                        : diagnostic_id::sc2188;
       let const target = m_redirections[0].target;
       actx.report_diagnostic(id, target != nullptr ? target->source_location()
                                                    : source_location());
@@ -681,8 +681,9 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
                                   : command_literal_storage.view();
   let const command_is_defined_function =
       actx.functions.defined.contains(command_literal);
-  let const is_command_shadowed = command_is_defined_function ||
-                                  actx.functions.aliases.contains(command_literal);
+  let const is_command_shadowed =
+      command_is_defined_function ||
+      actx.functions.aliases.contains(command_literal);
 
   if (command_is_defined_function) {
     let const call_location = m_args[0]->source_location();
@@ -697,8 +698,7 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
     let const was_redefined_in_body =
         latest_index.has_value() && *latest_index.value() > active_index;
     if (active_index != AnalysisContext::NO_ACTIVE_FUNCTION_DEFINITION &&
-        actx.functions.records[active_index].name.view() ==
-            command_literal &&
+        actx.functions.records[active_index].name.view() == command_literal &&
         actx.conditional_branch_depth == 0 && !was_redefined_in_body)
     {
       let &definition =
@@ -744,15 +744,15 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
     }
   }
 
-  let const lint_input =
-      command_lint_input{m_args,
-                         m_redirections,
-                         m_local_vars,
-                         source_location(),
-                         command_literal,
-                         command_info,
-                         is_command_shadowed,
-                         !is_unconditional || actx.effects.has_seen_runtime_definer};
+  let const lint_input = command_lint_input{
+      m_args,
+      m_redirections,
+      m_local_vars,
+      source_location(),
+      command_literal,
+      command_info,
+      is_command_shadowed,
+      !is_unconditional || actx.effects.has_seen_runtime_definer};
 
   /* A declare-family builtin writes its NAME=value operands, and those reach
      analysis as command arguments rather than as prefix assignments. */
@@ -846,10 +846,12 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
 
       actx.note_variable_occurrence(
           recorded_name, name_location, variable_occurrence_kind::Assignment,
-          !is_unconditional || actx.effects.has_seen_runtime_definer, update_mode);
+          !is_unconditional || actx.effects.has_seen_runtime_definer,
+          update_mode);
       actx.note_variable_assignment_record(
           recorded_name, recorded_value, m_args[i]->source_location(),
-          !is_unconditional || actx.effects.has_seen_runtime_definer, update_mode);
+          !is_unconditional || actx.effects.has_seen_runtime_definer,
+          update_mode);
       if (should_record_readonly_name)
         actx.readonly_assigned_names.add(recorded_name);
     }
@@ -1489,8 +1491,8 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
       let local_names = ArrayList<String>{heap_allocator()};
       actx.functions.defined.for_each(
           [&](StringView n) throws { local_names.push(String{n}); });
-      actx.functions.aliases.for_each([&](StringView n)
-                                          throws { local_names.push(String{n}); });
+      actx.functions.aliases.for_each(
+          [&](StringView n) throws { local_names.push(String{n}); });
       suggestion = utils::suggest_command(*name, local_names);
     }
 

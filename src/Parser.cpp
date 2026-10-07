@@ -751,8 +751,8 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
       let const is_stray_semicolon = token->kind() == Token::Kind::Semicolon &&
                                      lhs == nullptr && !should_time_pending;
       if (is_stray_semicolon) {
-        throw koshka::ErrorWithLocation{
-            token->source_location(), "Expected a command before ';'"};
+        throw koshka::ErrorWithLocation{token->source_location(),
+                                        "Expected a command before ';'"};
       }
 
       if (token->kind() != Token::Kind::DoublePipe &&

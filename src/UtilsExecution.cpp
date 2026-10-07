@@ -63,8 +63,7 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
     return execute_builtin(steal(ec), cxt);
   }
 
-  let const can_replace_shell =
-      cxt.can_replace_process() && !cxt.in_subshell();
+  let const can_replace_shell = cxt.can_replace_process() && !cxt.in_subshell();
 
   /* Mimicry runs the script in-process, a background command keeps its fork.
    */

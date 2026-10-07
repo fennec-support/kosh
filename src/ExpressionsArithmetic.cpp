@@ -1007,8 +1007,7 @@ cold fn Subshell::to_ast_string(usize layer) const throws -> String
          m_body->to_ast_string(layer + 1);
 }
 
-static fn evaluate_subshell_in_process(const Expression *body,
-                                       EvalContext &cxt,
+static fn evaluate_subshell_in_process(const Expression *body, EvalContext &cxt,
                                        bool should_allow_terminal_exec) throws
     -> i64
 {
