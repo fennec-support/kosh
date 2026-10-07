@@ -2596,6 +2596,45 @@ static fn collapse_home_prefix(StringView path) throws -> String
   return shown;
 }
 
+static fn append_prompt_notation(String &out, u32 value) throws -> void
+{
+  static constexpr StringView HEX_DIGITS{"0123456789abcdef"};
+  if (value < 0x80) {
+    out.push('^');
+    out.push(static_cast<char>(value ^ 0x40));
+    return;
+  }
+
+  out += "\\x";
+  out.push(HEX_DIGITS[(value >> 4) & 0x0f]);
+  out.push(HEX_DIGITS[value & 0x0f]);
+}
+
+static fn append_prompt_data(String &out, StringView data) throws -> void
+{
+  static constexpr u32 INVALID_CODEPOINT = 0xffffffffu;
+  usize position = 0;
+  while (position < data.length) {
+    let const byte = static_cast<u8>(data[position]);
+    if (byte < 0x20 || byte == 0x7f) {
+      append_prompt_notation(out, byte);
+      position++;
+      continue;
+    }
+
+    let const decoded = utils::decode_utf8(data, position, INVALID_CODEPOINT);
+    if (decoded.value == INVALID_CODEPOINT) {
+      append_prompt_notation(out, byte);
+    } else if (decoded.value >= 0x80 && decoded.value < 0xa0) {
+      append_prompt_notation(out, decoded.value);
+    } else {
+      out.append(data.substring_of_length(position, decoded.length));
+    }
+
+    position += decoded.length;
+  }
+}
+
 static fn expand_prompt_escapes(StringView prompt, StringView user,
                                 StringView working_directory,
                                 EvalContext &context) throws -> String
@@ -2624,16 +2663,23 @@ static fn expand_prompt_escapes(StringView prompt, StringView user,
 
     i++;
     switch (escaped) {
-    case 'u': out += user; break;
-    case 'h': out += prompt_hostname(false); break;
-    case 'H': out += prompt_hostname(true); break;
-    case 'w': out += collapse_home_prefix(working_directory); break;
-    case 'W': out += Path{working_directory}.filename(); break;
-    case 'P':
-      out += shorten_path_with_ellipsis(
-          collapse_home_prefix(working_directory).view(), PROMPT_PWD_LENGTH);
+    case 'u': append_prompt_data(out, user); break;
+    case 'h': append_prompt_data(out, prompt_hostname(false).view()); break;
+    case 'H': append_prompt_data(out, prompt_hostname(true).view()); break;
+    case 'w':
+      append_prompt_data(out, collapse_home_prefix(working_directory).view());
       break;
-    case 'g': out += git_branch(); break;
+    case 'W':
+      append_prompt_data(out, Path{working_directory}.filename());
+      break;
+    case 'P':
+      append_prompt_data(
+          out,
+          shorten_path_with_ellipsis(
+              collapse_home_prefix(working_directory).view(), PROMPT_PWD_LENGTH)
+              .view());
+      break;
+    case 'g': append_prompt_data(out, git_branch().view()); break;
     case '$': out += (user == "root") ? '#' : '$'; break;
     case 'n': out += '\n'; break;
     case 'r': out += '\r'; break;
@@ -2651,13 +2697,13 @@ static fn expand_prompt_escapes(StringView prompt, StringView user,
     case 's': {
       if (Maybe<String> argv0 = context.get_variable_value("0");
           argv0.has_value())
-        out += Path{argv0->view()}.filename();
+        append_prompt_data(out, Path{argv0->view()}.filename());
     } break;
     case 'v':
     case 'V':
       if (Maybe<String> version = context.get_variable_value("BASH_VERSION");
           version.has_value())
-        out += *version;
+        append_prompt_data(out, version->view());
       break;
     case '?': {
       const i32 status = context.execution_store().last_exit_status();

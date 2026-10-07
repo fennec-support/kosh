@@ -4343,7 +4343,11 @@ backslash escapes \\u,
 \\h, \\H, \\w, \\W, \\P, \\g, \\$, \\?, \\j, \\D, \\., \\t, \\T, \\@, \\A,
 \\d, \\s, \\v, \\V, \\!, \\#, \\n, \\r, \\e, \\a, \\[, and \\] are expanded.
 The \\. escape emits a bullet, plain when the last exit status is zero and
-bold red when it is not.
+bold red when it is not. The user, host, directory, branch, shell name, and
+version that \\u, \\h, \\H, \\w, \\W, \\P, \\g, \\s, \\v, and \\V insert draw a C0
+control byte or DEL in caret notation, such as ^[ for escape, and a C1 control
+or a byte that is not UTF-8 as \\xHH, so a directory name cannot write escape
+sequences to the terminal.
 .TP
 .BR RPS1 ", " RPROMPT
 RPS1 is the right prompt drawn at the right edge of the first input row.

@@ -11,7 +11,9 @@
 # submitted command, and stay in the scrollback without the transient prompt.
 # With the transient-prompt option, Enter must redraw the submitted line after
 # "$ ", "# " for root, or PS1_TRANSIENT with no right prompt, no hint row, and
-# no rows of a multi-row PS1. The terminal model and session come from the
+# no rows of a multi-row PS1. A working directory named with control bytes
+# reaches the prompt through \w in caret notation and never as raw bytes. The
+# terminal model and session come from the
 # ghost and menu probe. Each check prints one stable PASS line for the golden
 # output.
 
@@ -34,6 +36,9 @@ BACKSPACE = b"\x7f"
 CTRL_C = b"\x03"
 BULLET = "•"
 SHORT_PROMPT = "# " if os.geteuid() == 0 else "$ "
+CONTROL_DIRECTORY = b"d\x07\x1b[31mRED\x1b]2;PWNED\x07z"
+CONTROL_DIRECTORY_VISIBLE = "d^G^[[31mRED^[]2;PWNED^Gz"
+CONTROL_DIRECTORY_SEQUENCES = (b"\x1b[31mRED", b"\x1b]2;PWNED", b"\x07z")
 
 
 def with_right_prompt(text):
@@ -132,6 +137,17 @@ def run_checks(binary, directory, command_directory, report):
                           ["T> echo four", "   echo five", "four", "five",
                            "top"], empty_prompt)(screen)
                       and screen.count_lines("top") == 1)
+
+        os.makedirs(os.path.join(directory.encode(), CONTROL_DIRECTORY))
+        mark = len(session.raw)
+        session.send(b"PS1='\\w \\. '; RPS1=; cd ./d*z\r")
+        report.record("prompt-directory-draws-control-bytes", session,
+                      is_prompt_line("~/" + CONTROL_DIRECTORY_VISIBLE + " "
+                                     + BULLET))
+        report.record("prompt-directory-writes-no-raw-control", session,
+                      lambda screen: not any(
+                          sequence in bytes(session.raw[mark:])
+                          for sequence in CONTROL_DIRECTORY_SEQUENCES))
     finally:
         session.close()
 
