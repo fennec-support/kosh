@@ -868,6 +868,7 @@ fn completion_session::complete(const char *buffer, size_t cursor,
     /* The engine reports the span in bytes, converted to codepoint indices. */
     out->token_start = ::tl_utf8_strnlen(buffer, completions.token_start);
     out->token_end = ::tl_utf8_strnlen(buffer, completions.token_end);
+    out->is_tier_ranked = completions.is_tier_ranked ? 1 : 0;
 
     return 1;
   } catch (koshka::ErrorBase &error) {

@@ -1322,6 +1322,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
   let should_rebuild_shell_syntax_candidates = false;
   let should_close_generated_prefix_quote = false;
   let should_ignore_common_prefix_case = false;
+  let is_tier_ranked = false;
 
   let const is_posix_completion =
       context.runtime_state().get_mood() == mimic_mood::Posix;
@@ -1379,6 +1380,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
         should_ignore_common_prefix_case =
             !stage_token.is_empty() && !token_is_glob &&
             !utils::token_has_uppercase(stage_token);
+        is_tier_ranked = !token_is_glob;
         candidates =
             complete_command_names(stage_token, context, extra_command_names,
                                    token_is_glob ? command_match_mode::Glob
@@ -1442,6 +1444,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       should_ignore_common_prefix_case =
           !basename.is_empty() && (!os::FILESYSTEM_IS_CASE_SENSITIVE ||
                                    !utils::token_has_uppercase(basename));
+      is_tier_ranked = true;
       candidates =
           complete_filesystem(token, base_directory, context, &decoded_token,
                               path_text_mode::ShellSyntax, filesystem_filter);
@@ -1538,6 +1541,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       token_start + completion_offset,
       replacement_token_end + completion_offset,
       is_command,
+      is_tier_ranked,
   };
 }
 

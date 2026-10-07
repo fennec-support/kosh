@@ -95,6 +95,7 @@ struct completion_result
   usize token_end;
   /* Argument position completes against the filesystem instead. */
   bool is_command_position;
+  bool is_tier_ranked{false};
 };
 
 fn complete(StringView line, usize cursor, EvalContext &context,

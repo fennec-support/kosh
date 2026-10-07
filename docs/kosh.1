@@ -3624,7 +3624,11 @@ A printable key is inserted into the token, and the menu is drawn again from the
 candidates that still match. A candidate matches when the token opens it, when
 the token appears inside it whole, or when the bytes of the token appear inside
 it in order. The three kinds are drawn in that order, and each kind keeps the
-order the candidates arrived in. Letters are compared without case. Narrowing
+order the candidates arrived in. Letters are compared without case. The
+completion menu narrows a list of command names or paths instead to the best of
+the exact prefix, smart-case prefix, and subsequence matches, the way Tab ranks
+them, and any other list, such as the reply of a completion spec, to every
+candidate the token opens in either case. Narrowing
 filters the most recent search results. The file system and history are not
 searched again. Backspace erases the last character of the token
 and widens the list again. A search that matches nothing keeps the menu open on

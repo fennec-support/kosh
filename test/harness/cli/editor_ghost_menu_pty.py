@@ -11,9 +11,10 @@
 # widening on every keystroke, Ctrl-W and Alt-Backspace refreshing an open menu
 # down to an empty line, Escape and Ctrl-C afterwards, and session functions and
 # aliases in ghost and Tab completion. A complete -C command runs once while a
-# filter narrows and widens its menu, and again below the gathered token.
-# complete -E serves only a line that holds nothing, and -I serves a command
-# word with the caret at its start. It
+# filter narrows and widens its menu, and again below the gathered token. A
+# -C reply the shell does not rank narrows to every row the token opens in
+# either case. complete -E serves only a line that holds nothing, and -I serves
+# a command word with the caret at its start. It
 # also covers word-wise ghost
 # acceptance through Ctrl-Right and Alt-F, and prefix history search on Up and
 # Down with its option switched off, and the inline hint rows for a command and
@@ -545,6 +546,20 @@ def run_cached_filter_checks(session, report, directory):
                   lambda screen: has_typed_menu("zzgrow tool-a",
                                                 ["tool-alpha"])(screen)
                   and count_marker_lines(directory, "grow-runs") == 1)
+    clear_line(session)
+
+    session.send(b"complete -C %s zzcase\r"
+                 % os.path.join(directory, "case-words").encode())
+    session.wait_until(is_line(""))
+    session.send(b"zzcase a\t")
+    report.record("command-spec-unranked-menu-opens", session,
+                  has_typed_menu("zzcase a", ["apple", "Apricot", "avocado"]))
+    session.send(b"p")
+    report.record("command-spec-unranked-menu-keeps-every-prefix-row",
+                  session,
+                  lambda screen: has_typed_menu("zzcase ap",
+                                                ["apple", "Apricot"])(screen)
+                  and count_marker_lines(directory, "case-runs") == 1)
     clear_line(session)
 
     session.send(b"complete -E -W zzempty; complete -I -W zzinitial\r")
@@ -1214,9 +1229,17 @@ done
 """
 
 
-def write_counting_words(path, counter, words):
+LISTING_WORDS = """#!/bin/sh
+echo run >> '%s'
+for word in %s; do
+  echo "$word"
+done
+"""
+
+
+def write_counting_words(path, counter, words, template=COUNTING_WORDS):
     with open(path, "w") as handle:
-        handle.write(COUNTING_WORDS % (counter, words))
+        handle.write(template % (counter, words))
     os.chmod(path, 0o755)
 
 
@@ -1286,6 +1309,9 @@ def main():
         write_counting_words(os.path.join(directory, "grow-words"),
                              os.path.join(directory, "grow-runs"),
                              "tool-alpha tool-beta other")
+        write_counting_words(os.path.join(directory, "case-words"),
+                             os.path.join(directory, "case-runs"),
+                             "apple Apricot avocado", LISTING_WORDS)
         write_help_probe(os.path.join(directory, "bin", "act"),
                          os.path.join(directory, "act-marker"))
         write_help_probe(os.path.join(open_directory, "adb"),

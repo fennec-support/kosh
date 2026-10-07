@@ -192,8 +192,11 @@ changes update this file.
   `utils::warm_directory_index`. The ghost suggestion needs no tab. The ghost
   runs for any non-empty token. A directory is indexed as soon as its slash is
   typed.
-- An open completion menu narrows the gathered candidates in the editor by the
-  same exact, smart-case, and subsequence tiers as `match_tier`. The callback,
+- An open completion menu narrows the gathered candidates in the editor. A
+  command-name or path list, which `match_tier` ranked, narrows by the same
+  exact, smart-case, and subsequence tiers, with the subsequence tier held to
+  the same two-byte, name-like guard. Any other list, such as a spec reply,
+  keeps every row the longer token opens in either case. The callback,
   and with it a `complete -F` function or `-C` command, runs again only for the
   first byte of a word or path component, a blank, quote, equals sign, or
   slash, an erase below the gathered token, or a change of the best tier.
