@@ -7,7 +7,8 @@
 # ghost suggestion and the completion menu from parsed terminal state. A small
 # terminal model replays the escape sequences the editor writes and tracks which
 # cells are drawn in the dim ghost color. The checks cover the ghost appearing
-# without Tab, its acceptance through Right, End, and Ctrl-E, menu narrowing and
+# without Tab, its acceptance through Right, End, and Ctrl-E, a cd operand
+# found under CDPATH once a pause has indexed it, menu narrowing and
 # widening on every keystroke, Ctrl-W and Alt-Backspace refreshing an open menu
 # down to an empty line, Escape and Ctrl-C afterwards, and session functions and
 # aliases in ghost and Tab completion. A complete -C command runs once while a
@@ -708,6 +709,18 @@ def run_checks(binary, directory, command_directory, report):
         run_command(session, report, "ghost-ctrl-e-runs", b"",
                     "ALPHA-CONTENT", 3)
 
+        session.send(b"CDPATH=%s\r"
+                     % os.path.join(directory, "cdpath").encode())
+        session.wait_until(is_line(""))
+        time.sleep(0.6)
+        session.pump(0.05)
+        type_text(session, b"cd cdpath-t")
+        report.record("ghost-reads-cdpath-after-a-pause", session,
+                      is_line("cd cdpath-t", "arget/"))
+        clear_line(session)
+        session.send(b"unset CDPATH\r")
+        session.wait_until(is_line(""))
+
         session.send(b"cat menu/menu-")
         session.send(b"\t")
         names = ["menu/menu-apple", "menu/menu-apricot",
@@ -1405,6 +1418,7 @@ def main():
     try:
         os.makedirs(os.path.join(directory, "sub"))
         os.makedirs(os.path.join(directory, "menu"))
+        os.makedirs(os.path.join(directory, "cdpath", "cdpath-target"))
         os.makedirs(os.path.join(directory, "bin"))
         with open(os.path.join(directory, "sub", "alpha-beta.txt"), "w") as handle:
             handle.write("ALPHA-CONTENT\n")

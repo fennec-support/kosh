@@ -3945,7 +3945,9 @@ The operand of
 or
 .B pushd
 completes only directories, and when it is neither absolute nor led by a dot
-or a tilde, also the directories under each CDPATH entry.
+or a tilde, also the directories under each CDPATH entry. The ghost suggestion
+reads a CDPATH directory only once the editor has indexed it during a pause of
+a quarter second, so a keystroke never waits on it.
 .PP
 An explicit Tab first replaces the token with the longest common prefix. When
 that prefix does not extend the token and more than one candidate remains, the

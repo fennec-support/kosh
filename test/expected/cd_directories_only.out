@@ -19,3 +19,6 @@ gamma_dir/
 delta_two/
 == a name in both the working directory and CDPATH is listed once:
 alpha_dir/
+== the ghost reads no CDPATH directory the index lacks:
+count=0
+prefix=

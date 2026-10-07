@@ -304,10 +304,16 @@ changes update this file.
   and waits for it no longer than its own fork budget. The hook also
   keeps `describe_analysis_finding` for the paused line, which analyzes with
   unresolved commands silenced and no followed sources, so it reads no file.
+  The hook runs whatever the hint rows show and indexes each CDPATH
+  directory, and the ghost of a cd or pushd operand reads CDPATH directories
+  only from the index.
 - The highlight callback receives the caret and follows it. It reuses the
   spans of an unchanged line within one prompt, and on a caret move it only
   overlays the pair from `find_matching_bracket`, which reads the highlight
-  spans to skip quoted, commented, and here-document brackets.
+  spans to skip quoted, commented, and here-document brackets and the
+  tolerant scanner to skip case pattern ends. Auto-pair asks
+  `classify_typed_pair_byte` through the editor's pair role callback, which
+  reads the same scanner state at the caret.
 - The language server wraps completion in `begin_explicit_completion` and loads
   command documentation lazily. Mood selection checks the shebang, language
   identifier, then extension. `shellscript` selects bash.

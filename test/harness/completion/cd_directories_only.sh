@@ -2,7 +2,8 @@
 # still completes both. Every directory candidate ends in a slash, including
 # dot-dot and the directories cd reaches through CDPATH. The working directory
 # and the CDPATH entries are ranked together, so only the best match tier
-# across them is offered, and a name found in several is offered once. A
+# across them is offered, and a name found in several is offered once. The
+# ghost reads a CDPATH directory only from the index the idle hook fills. A
 # hermetic temp directory keeps the candidates stable.
 dir=$(mktemp -d)
 trap 'rm -rf "$dir"' EXIT
@@ -33,3 +34,6 @@ CDPATH="$dir/elsewhere" "$BIN" --debug-complete-at 'cd delta' </dev/null
 echo "== a name in both the working directory and CDPATH is listed once:"
 mkdir "$dir/elsewhere/alpha_dir"
 CDPATH="$dir/elsewhere" "$BIN" --debug-complete-at 'cd alpha' </dev/null
+echo "== the ghost reads no CDPATH directory the index lacks:"
+CDPATH="$dir/elsewhere" "$BIN" --debug-ghost-at 'cd gam' </dev/null |
+  grep -E '^(count|prefix)='

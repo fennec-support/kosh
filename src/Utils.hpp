@@ -486,6 +486,7 @@ private:
 
 enum class directory_validation : u8
 {
+  IndexOnly,
   Cached,
   Validate,
 };

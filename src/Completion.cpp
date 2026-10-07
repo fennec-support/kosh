@@ -537,15 +537,15 @@ struct eligible_filesystem_entry
 
 static fn open_filesystem_listing(const utils::decoded_shell_word &decoded_word,
                                   const Path &base_directory,
-                                  EvalContext &context) throws
+                                  EvalContext &context,
+                                  utils::directory_validation validation) throws
     -> Maybe<filesystem_listing>
 {
   let const parts = split_path_token(decoded_word.text.view());
   let directory = resolve_listing_directory(
       parts.directory_part, base_directory, context, decoded_word.leading);
   let const entries = utils::read_directory_cached(
-      directory, utils::directory_validation::Cached,
-      utils::directory_listing_order::FoldedName);
+      directory, validation, utils::directory_listing_order::FoldedName);
   if (entries == nullptr) return None;
 
   return filesystem_listing{parts, steal(directory), entries};
@@ -661,10 +661,12 @@ static fn collect_filesystem_matches(
     StringView token, const utils::decoded_shell_word &decoded_word,
     const Path &base_directory, EvalContext &context, Collector &collector,
     path_text_mode text_mode, filesystem_entry_filter filter,
-    directory_suffix_mode suffix_mode) throws -> void
+    directory_suffix_mode suffix_mode,
+    utils::directory_validation validation) throws -> void
 {
   let const inside_quote = text_mode != path_text_mode::ShellSyntax;
-  let listing = open_filesystem_listing(decoded_word, base_directory, context);
+  let listing = open_filesystem_listing(decoded_word, base_directory, context,
+                                        validation);
   if (!listing.has_value()) return;
   let const &parts = listing->parts;
   let raw_directory_part = parts.directory_part;
@@ -802,8 +804,9 @@ static fn complete_filesystem_with(
     Collector collector, const utils::decoded_shell_word *decoded = nullptr,
     path_text_mode text_mode = path_text_mode::ShellSyntax,
     filesystem_entry_filter filter = filesystem_entry_filter::All,
-    directory_suffix_mode suffix_mode = directory_suffix_mode::Marked) throws
-    -> Collector
+    directory_suffix_mode suffix_mode = directory_suffix_mode::Marked,
+    utils::directory_validation validation =
+        utils::directory_validation::Cached) throws -> Collector
 {
   let decoded_storage = utils::decoded_shell_word{completion_allocator()};
   if (decoded == nullptr) {
@@ -814,7 +817,8 @@ static fn complete_filesystem_with(
     decoded = &decoded_storage;
   }
   collect_filesystem_matches(token, *decoded, base_directory, context,
-                             collector, text_mode, filter, suffix_mode);
+                             collector, text_mode, filter, suffix_mode,
+                             validation);
 
   return collector;
 }
@@ -854,27 +858,12 @@ fn complete_filesystem_names_by_prefix(StringView token, EvalContext &context,
   return collector.take();
 }
 
-/* A cd or pushd operand that is neither absolute nor led by a dot or a tilde
-   also completes the directories under each CDPATH entry, the ones the builtin
-   would reach through it. One collector ranks them with the working directory,
-   so only the best match tier across every directory is kept. */
-static fn complete_directory_change_operand(
-    StringView token, const Path &base_directory, EvalContext &context,
-    const utils::decoded_shell_word &decoded) throws -> ArrayList<String>
+template <typename Visitor>
+static fn visit_cdpath_directories(EvalContext &context,
+                                   Visitor &&do_visit) throws -> void
 {
-  let collector = complete_filesystem_with<CommandListCollector>(
-      token, base_directory, context, CommandListCollector{}, &decoded,
-      path_text_mode::ShellSyntax, filesystem_entry_filter::DirectoriesOnly);
-
-  let const operand = decoded.text.view();
-  if (os::path_is_absolute(operand) || os::path_is_drive_relative(operand) ||
-      operand.starts_with(".") || operand.starts_with("~"))
-  {
-    return collector.take();
-  }
-
   let const cdpath = context.get_variable_value("CDPATH");
-  if (!cdpath.has_value()) return collector.take();
+  if (!cdpath.has_value()) return;
 
   let const entries = cdpath->view();
   usize start = 0;
@@ -886,12 +875,50 @@ static fn complete_directory_change_operand(
     start = end + 1;
     if (entry.is_empty()) continue;
 
-    collector = complete_filesystem_with<CommandListCollector>(
-        token, Path{entry}, context, steal(collector), &decoded,
-        path_text_mode::ShellSyntax, filesystem_entry_filter::DirectoriesOnly);
+    do_visit(Path{entry});
+  }
+}
+
+/* A cd or pushd operand that is neither absolute nor led by a dot or a tilde
+   also completes the directories under each CDPATH entry, the ones the builtin
+   would reach through it. One collector ranks them with the working directory,
+   so only the best match tier across every directory is kept. The ghost reads
+   only the CDPATH directories already in the index, which the idle hook
+   fills. */
+template <typename Collector>
+static fn collect_directory_change_operand(
+    StringView token, const Path &base_directory, EvalContext &context,
+    const utils::decoded_shell_word &decoded, Collector collector,
+    utils::directory_validation cdpath_validation) throws -> Collector
+{
+  collector = complete_filesystem_with<Collector>(
+      token, base_directory, context, steal(collector), &decoded,
+      path_text_mode::ShellSyntax, filesystem_entry_filter::DirectoriesOnly);
+
+  let const operand = decoded.text.view();
+  if (os::path_is_absolute(operand) || os::path_is_drive_relative(operand) ||
+      operand.starts_with(".") || operand.starts_with("~"))
+  {
+    return collector;
   }
 
-  return collector.take();
+  visit_cdpath_directories(context, [&](const Path &directory) throws {
+    collector = complete_filesystem_with<Collector>(
+        token, directory, context, steal(collector), &decoded,
+        path_text_mode::ShellSyntax, filesystem_entry_filter::DirectoriesOnly,
+        directory_suffix_mode::Marked, cdpath_validation);
+  });
+
+  return collector;
+}
+
+fn warm_cdpath_indexes(EvalContext &context) throws -> void
+{
+  visit_cdpath_directories(context, [](const Path &directory) throws {
+    unused(utils::read_directory_cached(
+        directory, utils::directory_validation::Cached,
+        utils::directory_listing_order::FoldedName));
+  });
 }
 
 ScopedCompletionScratch::ScopedCompletionScratch()
@@ -924,7 +951,8 @@ static fn complete_glob(StringView token, const Path &base_directory,
     -> ArrayList<String>
 {
   let candidates = ArrayList<String>{completion_allocator()};
-  let listing = open_filesystem_listing(decoded_word, base_directory, context);
+  let listing = open_filesystem_listing(decoded_word, base_directory, context,
+                                        utils::directory_validation::Cached);
   if (!listing.has_value()) return candidates;
   let const &parts = listing->parts;
 
@@ -1472,8 +1500,10 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       is_tier_ranked = true;
       candidates =
           is_directory_change_command
-              ? complete_directory_change_operand(token, base_directory,
-                                                  context, decoded_token)
+              ? collect_directory_change_operand(
+                    token, base_directory, context, decoded_token,
+                    CommandListCollector{}, utils::directory_validation::Cached)
+                    .take()
               : complete_filesystem(token, base_directory, context,
                                     &decoded_token, file_name_text_mode,
                                     filesystem_filter);
@@ -1482,9 +1512,16 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       /* A token ending in a slash names a directory the ghost has not read yet,
          and the collector indexes it and suggests its first entry. An empty
          token names nothing and gets no suggestion. */
-      let collector = complete_filesystem_prefix(
-          token, base_directory, context, &decoded_token, file_name_text_mode,
-          filesystem_filter);
+      let collector =
+          is_directory_change_command
+              ? collect_directory_change_operand(
+                    token, base_directory, context, decoded_token,
+                    GhostPrefixCollector{
+                        GhostPrefixCollector::Selection::FirstMatch},
+                    utils::directory_validation::IndexOnly)
+              : complete_filesystem_prefix(token, base_directory, context,
+                                           &decoded_token, file_name_text_mode,
+                                           filesystem_filter);
       ghost_candidate_count = collector.count();
       source_candidate_scan_count = collector.source_scans();
       materialized_candidate_count = collector.materialized();

@@ -1179,6 +1179,7 @@ fn completion_session::idle(const char *buffer, size_t cursor) -> int
   try {
     let const line = koshka::StringView{buffer, std::strlen(buffer)};
     let outcome = 0;
+    koshka::completion::warm_cdpath_indexes(*context);
     let const should_analyze =
         should_show_diagnostics &&
         (!has_analyzed_line || analyzed_line.view() != line);
@@ -2352,8 +2353,7 @@ fn set_hint_row(bool should_show_hints, bool should_show_diagnostics) -> void
   COMPLETION_SESSION.should_show_diagnostics = should_show_diagnostics;
   let const is_row_shown = should_show_hints || should_show_diagnostics;
   ::tl_set_hint_callback(is_row_shown ? kosh_hint_callback : nullptr);
-  ::tl_set_idle_callback(is_row_shown ? kosh_idle_callback : nullptr,
-                         IDLE_DELAY_MS, IDLE_REPEAT_MS);
+  ::tl_set_idle_callback(kosh_idle_callback, IDLE_DELAY_MS, IDLE_REPEAT_MS);
 }
 
 fn set_auto_pair(bool enabled) -> void { ::tl_set_auto_pair(enabled ? 1 : 0); }

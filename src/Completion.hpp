@@ -114,6 +114,8 @@ fn complete_filesystem_names(StringView token, EvalContext &context,
                              const Path &base_directory) throws
     -> ArrayList<String>;
 
+fn warm_cdpath_indexes(EvalContext &context) throws -> void;
+
 fn complete_command_names_by_prefix(StringView token,
                                     EvalContext &context) throws
     -> ArrayList<String>;

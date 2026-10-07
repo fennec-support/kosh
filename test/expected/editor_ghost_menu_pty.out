@@ -6,6 +6,7 @@ ghost-end-accepts PASS
 ghost-end-runs PASS
 ghost-ctrl-e-accepts PASS
 ghost-ctrl-e-runs PASS
+ghost-reads-cdpath-after-a-pause PASS
 menu-opens-with-all-candidates PASS
 menu-narrows-on-first-letter PASS
 menu-narrows-on-second-letter PASS

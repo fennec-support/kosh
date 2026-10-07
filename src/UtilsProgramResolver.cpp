@@ -370,6 +370,18 @@ fn read_directory_cached(const Path &directory, directory_validation validation,
 {
   let const key = directory.view();
   let alias = DIR_LISTING_ALIASES.find(key);
+  if (validation == directory_validation::IndexOnly) {
+    if (!alias.has_value() ||
+        alias->observed_generation !=
+            DIR_LISTINGS[alias->listing_position].generation)
+    {
+      return nullptr;
+    }
+
+    return apply_directory_listing_order(DIR_LISTINGS[alias->listing_position],
+                                         order);
+  }
+
   if (validation == directory_validation::Cached && alias.has_value() &&
       alias->validation_epoch == DIRECTORY_VALIDATION_EPOCH &&
       alias->observed_generation ==
