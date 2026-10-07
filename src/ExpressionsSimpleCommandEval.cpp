@@ -540,6 +540,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     return redirection_status;
   }
 
+  if (is_bare_exec) cxt.hold_process_substitutions(substitution_mark);
+
   /* The append form reads the current value from the shell store first so a
      non-exported shell variable still contributes. An integer name evaluates
      the join to its decimal here. */

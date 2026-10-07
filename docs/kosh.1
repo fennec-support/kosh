@@ -1178,7 +1178,12 @@ in a separate process. A form expands anywhere in an unquoted word, so
 p=<(command) assigns the path and x<(command) joins it to the text around it.
 The path stays open until the command that expanded it finishes. The shell then
 closes it and waits for the process, while Bash leaves the process running.
-A later command cannot open the path. On Windows the path names a named pipe, and the stream
+A later command cannot open the path. An
+.B exec
+command without a program keeps the process for as long as its redirections
+hold the descriptor, closes the path, and reaps the process after it ends
+without waiting for it. On POSIX the path is /dev/fd/63 or the next free
+descriptor above it. On Windows the path names a named pipe, and the stream
 goes to the first client that reads from it or writes to it, so a program may
 open or inspect the path before it reads or writes.
 .SS Brace expansion

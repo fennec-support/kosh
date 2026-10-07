@@ -1783,6 +1783,18 @@ fn release_unused_process_substitution(opaque *cleanup) wontthrow -> void
   destroy_substitution_relay(relay);
 }
 
+fn release_finished_process_substitution(opaque *cleanup) wontthrow -> bool
+{
+  if (cleanup == nullptr) return true;
+
+  let const relay = static_cast<substitution_relay *>(cleanup);
+  if (WaitForSingleObject(relay->worker.handle, 0) != WAIT_OBJECT_0)
+    return false;
+
+  release_unused_process_substitution(cleanup);
+  return true;
+}
+
 static fn spawn_subshell_stage(StringView source, Maybe<descriptor> in_fd,
                                Maybe<descriptor> out_fd,
                                Maybe<descriptor> err_fd,

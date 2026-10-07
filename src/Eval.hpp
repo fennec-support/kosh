@@ -2338,6 +2338,10 @@ public:
   {
     return m_pending_process_substitutions;
   }
+  fn held_process_substitutions() wontthrow -> ArrayList<process_substitution> &
+  {
+    return m_held_process_substitutions;
+  }
   fn loop_redirect_fds() wontthrow -> ArrayList<loop_redirect_fd> &
   {
     return m_loop_redirect_fds;
@@ -2375,6 +2379,8 @@ private:
   getopts_cursor m_getopts_cursor{};
   bool m_glob_exempt_for_test{false};
   ArrayList<process_substitution> m_pending_process_substitutions{
+      heap_allocator()};
+  ArrayList<process_substitution> m_held_process_substitutions{
       heap_allocator()};
   ArrayList<loop_redirect_fd> m_loop_redirect_fds{heap_allocator()};
   StringMap<CompiledRegex> m_regex_cache{heap_allocator()};
@@ -3927,6 +3933,9 @@ public:
       -> process_substitution_mark;
   fn cleanup_process_substitutions(process_substitution_mark mark) wontthrow
       -> void;
+  fn hold_process_substitutions(process_substitution_mark mark) wontthrow
+      -> void;
+  fn release_finished_held_process_substitutions() wontthrow -> void;
 
   mustuse fn mark_loop_redirect_fds() const wontthrow -> loop_redirect_fd_mark;
   fn cleanup_loop_redirect_fds(loop_redirect_fd_mark mark) wontthrow -> void;

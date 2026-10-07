@@ -623,6 +623,8 @@ fn try_fork_job_process() throws -> Maybe<process>
 
 fn can_fork_evaluator() wontthrow -> bool { return true; }
 
+static constexpr i32 PROCESS_SUBSTITUTION_FD_FLOOR = 63;
+
 fn launch_process_substitution(const process_substitution_options &options)
     throws -> process_substitution_launch
 {
@@ -661,8 +663,14 @@ fn launch_process_substitution(const process_substitution_options &options)
     };
   }
 
-  const descriptor retained_fd = command_writes_pipe ? pipe->in : pipe->out;
+  descriptor retained_fd = command_writes_pipe ? pipe->in : pipe->out;
   close_fd(command_writes_pipe ? pipe->out : pipe->in);
+  if (let const moved_fd = move_descriptor_to_free_shell_fd(
+          retained_fd, PROCESS_SUBSTITUTION_FD_FLOOR);
+      moved_fd != -1)
+  {
+    retained_fd = moved_fd;
+  }
   make_fd_inheritable(retained_fd);
 
   let path = String{"/dev/fd/"};
@@ -677,6 +685,12 @@ fn launch_process_substitution(const process_substitution_options &options)
 fn release_unused_process_substitution(opaque *cleanup) wontthrow -> void
 {
   unused(cleanup);
+}
+
+fn release_finished_process_substitution(opaque *cleanup) wontthrow -> bool
+{
+  unused(cleanup);
+  return true;
 }
 
 fn launch_compound_stage(const compound_stage_options &options) throws

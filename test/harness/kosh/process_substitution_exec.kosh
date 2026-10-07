@@ -1,0 +1,24 @@
+#!/bin/env kosh
+exec 3< <(printf 'from-three\n')
+koshkit cat <&3
+printf 'read-status=%s\n' "$?"
+exec 3<&-
+exec 5< <(printf 'l1\nl2\n')
+read -r first <&5
+read -r second <&5
+printf 'first=%s second=%s\n' "$first" "$second"
+exec 5<&-
+exec 6< <(printf 'six\n') 7< <(printf 'seven\n')
+koshkit cat <&7
+koshkit cat <&6
+exec 6<&- 7<&-
+opener() { exec 8< <(printf 'in-function\n'); }
+opener
+koshkit cat <&8
+exec 8<&-
+exec 4> >(koshkit cat >/dev/null)
+printf 'to-four\n' >&4
+printf 'write-status=%s\n' "$?"
+exec 4>&-
+exec 9< <(printf 'left-open\n')
+printf 'done\n'

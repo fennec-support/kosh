@@ -439,9 +439,53 @@ fn EvalContext::mark_process_substitutions() const wontthrow
   return {expansion_store().pending_process_substitutions().count()};
 }
 
+fn EvalContext::hold_process_substitutions(
+    process_substitution_mark mark) wontthrow -> void
+{
+  let &pending = expansion_store().pending_process_substitutions();
+  let &held = expansion_store().held_process_substitutions();
+  for (usize i = mark.pending; i < pending.count(); i++) {
+    process_substitution &sub = pending[i];
+    if (sub.shell_fd != KOSH_INVALID_FD) os::close_fd(sub.shell_fd);
+    sub.shell_fd = KOSH_INVALID_FD;
+    sub.source = StringView{};
+    sub.location = SourceLocation{};
+    try {
+      held.push(sub);
+    } catch (...) {
+      LOG(Debug, "holding a process substitution failed, it is left unreaped");
+    }
+  }
+
+  while (pending.count() > mark.pending)
+    pending.remove(pending.count() - 1);
+}
+
+fn EvalContext::release_finished_held_process_substitutions() wontthrow -> void
+{
+  let &held = expansion_store().held_process_substitutions();
+  for (usize i = held.count(); i > 0; i--) {
+    process_substitution &sub = held[i - 1];
+    if (sub.child != KOSH_INVALID_PROCESS) {
+      i32 status = 0;
+      if (os::poll_process(sub.child, status) != os::process_state::Exited)
+        continue;
+      sub.child = KOSH_INVALID_PROCESS;
+    }
+
+    if (!os::release_finished_process_substitution(sub.platform_cleanup))
+      continue;
+
+    held.remove(i - 1);
+  }
+}
+
 fn EvalContext::cleanup_process_substitutions(
     process_substitution_mark mark) wontthrow -> void
 {
+  if (!expansion_store().held_process_substitutions().is_empty())
+    release_finished_held_process_substitutions();
+
   LOG(Debug, "cleaning up %zu pending process substitutions",
       expansion_store().pending_process_substitutions().count() - mark.pending);
   for (usize i = mark.pending;
