@@ -33,6 +33,7 @@ help
 history
 jobs
 kill
+koshconf
 koshkit
 let
 local
@@ -65,7 +66,7 @@ unalias
 unset
 wait
 z
-Koshka has 67 builtins:
+Koshka has 68 builtins:
 
 POSIX
   .         :         [         alias     bg        break     cd
@@ -82,7 +83,7 @@ BASH
   suspend    time       typeset
 
 Koshka
-  assimilate  bench       koshkit     z
+  assimilate  bench       koshconf    koshkit     z
 
 DESCRIPTION
   The koshkit builtin runs a bundled utility.

@@ -256,6 +256,9 @@ fn split_lines(StringView text, Allocator allocator = heap_allocator(),
                line_terminator_mode terminators = line_terminator_mode::Discard)
     throws -> ArrayList<StringView>;
 
+fn encode_base64(StringView bytes) throws -> String;
+fn decode_base64(StringView text) throws -> Maybe<String>;
+
 fn format_unix_timestamp(i64 unix_time, const char *format) throws -> String;
 
 /* It matches dash's set, not the lexer's, so a shell-specific token such as

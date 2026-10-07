@@ -90,6 +90,7 @@ public:
     Suspend,
     Bind,
     Enable,
+    Koshconf,
   };
 
   pure virtual Kind kind() const wontthrow = 0;
@@ -169,6 +170,7 @@ inline constexpr static_string_entry<Builtin::Kind> BUILTIN_ENTRIES[] = {
     {SSK("suspend"),    Builtin::Kind::Suspend       },
     {SSK("bind"),       Builtin::Kind::Bind          },
     {SSK("enable"),     Builtin::Kind::Enable        },
+    {SSK("koshconf"),   Builtin::Kind::Koshconf      },
 };
 
 inline constexpr StaticStringMap BUILTINS{BUILTIN_ENTRIES};
@@ -241,7 +243,8 @@ inline constexpr StaticStringMap BUILTINS{BUILTIN_ENTRIES};
   B_CASE(Logout);                                                              \
   B_CASE(Suspend);                                                             \
   B_CASE(Bind);                                                                \
-  B_CASE(Enable)
+  B_CASE(Enable);                                                              \
+  B_CASE(Koshconf)
 
 #define BUILTIN_STRUCT(b)                                                      \
   class b : public Builtin                                                     \
@@ -314,6 +317,7 @@ BUILTIN_STRUCT(Logout);
 BUILTIN_STRUCT(Suspend);
 BUILTIN_STRUCT(Bind);
 BUILTIN_STRUCT(Enable);
+BUILTIN_STRUCT(Koshconf);
 
 class Exit : public Builtin
 {
@@ -338,7 +342,7 @@ fn is_special_builtin_name(StringView name) wontthrow -> bool;
 const ArrayList<String> &builtin_names() throws;
 
 inline constexpr usize BUILTIN_KIND_COUNT =
-    static_cast<usize>(Builtin::Kind::Enable) + 1;
+    static_cast<usize>(Builtin::Kind::Koshconf) + 1;
 
 /* The FLAG_LIST of a builtin, registered at static-init time by the
    REGISTER_BUILTIN_FLAGS line in its file. A kind with no registration reads

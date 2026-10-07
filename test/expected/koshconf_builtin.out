@@ -1,0 +1,216 @@
+== list prints every option with its class:
+mood=kosh                                   semantic
+editor.tab_selector=interactive             interactive
+editor.hints=on                             interactive
+editor.diagnostics=on                       interactive
+editor.auto_pair=off                        interactive
+editor.transient_prompt=off                 interactive
+editor.extended_keys=on                     interactive
+history.prefix_search=on                    interactive
+history.file=/history                       interactive
+history.size=4096                           interactive
+completion.space_after=off                  interactive
+diagnostics.level=0                         interactive
+diagnostics.annoying=on                     interactive
+diagnostics.analysis=on                     interactive
+koshkit.commands=off                        interactive
+arithmetic.extended=on                      semantic
+compat.mimicry=off                          interactive
+debug.show_ast=off                          interactive
+debug.show_lexed_words=off                  interactive
+debug.show_exit_code=off                    interactive
+debug.show_all_exit_codes=off               interactive
+debug.show_stats=off                        interactive
+debug.show_memory=off                       interactive
+startup.rcfile=off                          interactive
+legacy.export_all=off                       semantic
+legacy.notify_jobs=off                      interactive
+legacy.exit_on_error=off                    semantic
+legacy.no_glob=off                          semantic
+legacy.hash_commands=on                     semantic
+legacy.keyword_assignments=off              semantic
+legacy.job_control=off                      interactive
+legacy.no_exec=off                          semantic
+legacy.one_command=off                      semantic
+legacy.privileged=off                       semantic
+legacy.unset_is_error=on                    semantic
+legacy.echo_input=off                       semantic
+legacy.trace_commands=off                   semantic
+legacy.brace_expansion=on                   semantic
+legacy.no_clobber=off                       semantic
+legacy.err_trap_inherit=off                 semantic
+legacy.history_expansion=off                interactive
+legacy.physical_paths=off                   semantic
+legacy.debug_trap_inherit=off               semantic
+legacy.pipe_fail=on                         semantic
+legacy.history=off                          interactive
+legacy.ignore_eof=off                       interactive
+legacy.no_log=off                           interactive
+legacy.vi_editing=off                       interactive
+legacy.emacs_editing=off                    interactive
+legacy.posix=off                            semantic
+legacy.bare_dir_is_cd=on                    interactive
+legacy.assoc_expand_once=off                semantic
+legacy.cd_to_variable=off                   semantic
+legacy.cd_spelling=off                      interactive
+legacy.check_hash=off                       semantic
+legacy.check_jobs_on_exit=off               interactive
+legacy.check_window_size=on                 interactive
+legacy.complete_full_quote=on               interactive
+legacy.dir_expand=off                       interactive
+legacy.dir_spelling=off                     interactive
+legacy.glob_dotfiles=off                    semantic
+legacy.exec_failure_continues=off           semantic
+legacy.expand_aliases=on                    semantic
+legacy.extended_debug=off                   semantic
+legacy.extended_glob=on                     semantic
+legacy.extended_quote=on                    semantic
+legacy.empty_glob_is_error=on               semantic
+legacy.force_fignore=on                     interactive
+legacy.glob_ascii_ranges=on                 semantic
+legacy.glob_skip_dots=on                    semantic
+legacy.glob_star=off                        semantic
+legacy.gnu_error_format=off                 interactive
+legacy.history_reedit=off                   interactive
+legacy.history_verify=off                   interactive
+legacy.host_completion=on                   interactive
+legacy.hup_on_exit=off                      interactive
+legacy.inherit_exit_on_error=off            semantic
+legacy.interactive_comments=on              interactive
+legacy.last_pipe_in_shell=off               semantic
+legacy.local_inherits_value=off             semantic
+legacy.local_unset=off                      semantic
+legacy.login_shell=off                      interactive
+legacy.mail_warn=off                        interactive
+legacy.no_empty_command_completion=off      interactive
+legacy.glob_ignore_case=off                 semantic
+legacy.match_ignore_case=off                semantic
+legacy.empty_glob_is_removed=off            semantic
+legacy.patsub_replacement=on                semantic
+legacy.programmable_completion=on           interactive
+legacy.programmable_completion_alias=off    interactive
+legacy.prompt_expansion=on                  interactive
+legacy.restricted_shell=off                 semantic
+legacy.shift_verbose=off                    semantic
+legacy.source_uses_path=on                  semantic
+legacy.varredir_close=off                   semantic
+legacy.echo_escapes=off                     semantic
+== the kosh preset matches a fresh kosh session:
+rc=0
+# Koshka settings written by koshconf create kosh.
+# Each line is name=value. kosh(5) describes the format.
+mood=kosh
+editor.tab_selector=interactive
+editor.hints=on
+editor.diagnostics=on
+editor.auto_pair=off
+editor.transient_prompt=off
+editor.extended_keys=on
+history.prefix_search=on
+completion.space_after=off
+diagnostics.level=0
+diagnostics.annoying=on
+diagnostics.analysis=on
+koshkit.commands=off
+compat.mimicry=off
+debug.show_ast=off
+debug.show_lexed_words=off
+debug.show_exit_code=off
+debug.show_all_exit_codes=off
+debug.show_stats=off
+debug.show_memory=off
+legacy.notify_jobs=off
+legacy.ignore_eof=off
+legacy.no_log=off
+legacy.vi_editing=off
+legacy.bare_dir_is_cd=on
+legacy.cd_spelling=off
+legacy.check_jobs_on_exit=off
+legacy.check_window_size=on
+legacy.complete_full_quote=on
+legacy.dir_expand=off
+legacy.dir_spelling=off
+legacy.force_fignore=on
+legacy.gnu_error_format=off
+legacy.history_reedit=off
+legacy.history_verify=off
+legacy.host_completion=on
+legacy.hup_on_exit=off
+legacy.interactive_comments=on
+legacy.mail_warn=off
+legacy.no_empty_command_completion=off
+legacy.programmable_completion=on
+legacy.programmable_completion_alias=off
+legacy.prompt_expansion=on
+== create refuses an existing file without --force:
+-c:1:1: error: Builtin `koshconf`: The configuration file 'CONFIG/user/kosh/kosh.conf' already exists.
+     1 |  koshconf create bash
+       |  ^~~~~~~~~~~~~~~~~~~~
+note: Pass --force to replace it.
+rc=1
+rc=0
+mood=bash
+== the bash preset matches a fresh bash session:
+== set changes the session, and --persist rewrites one line:
+on
+editor.auto_pair=on
+same line count
+== --persist appends a missing option and quotes a padded value:
+# kept
+mood=kosh
+history.file=" padded "
+== --persist creates the file and its directory:
+completion.space_after=on
+== --persist rejects an option that changes evaluation:
+-c:1:14: error: Builtin `koshconf`: The 'legacy.exit_on_error' option changes evaluation, so --persist cannot write it.
+     1 |  koshconf set legacy.exit_on_error on --persist
+       |               ^~~~~~~~~~~~~~~~~~~~
+note: Only interactive options and the mood belong in the file.
+rc=1
+== enumerations and booleans:
+plain
+huBWWc
+errexit        	on
+off
+== malformed forms and unknown names:
+-c:1:1: error: Builtin `koshconf`: A subcommand is required.
+     1 |  koshconf
+       |  ^~~~~~~~
+note: Run `koshconf --help` for the forms.
+rc=2
+-c:1:10: error: Builtin `koshconf`: Unknown subcommand 'bogus', expected 'create', 'set', 'get', 'list', or 'load'.
+     1 |  koshconf bogus
+       |           ^~~~~
+note: Run `koshconf --help` for the forms.
+rc=2
+-c:1:14: error: Builtin `koshconf`: Unknown option 'nope'.
+     1 |  koshconf get nope
+       |               ^~~~
+note: Run `koshconf list` for the option names.
+rc=1
+-c:1:19: error: Builtin `koshconf`: Invalid value 'weird' for 'mood', expected 'kosh', 'sh', 'bash', or 'bash-posix'.
+     1 |  koshconf set mood weird
+       |                    ^~~~~
+rc=1
+-c:1:1: error: Builtin `koshconf`: Only the create form accepts --force.
+     1 |  koshconf get mood --force
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~
+note: Run `koshconf --help` for the forms.
+rc=2
+-c:1:17: error: Builtin `koshconf`: Unknown preset 'fish', expected 'bash', 'sh', or 'kosh'.
+     1 |  koshconf create fish
+       |                  ^~~~
+note: Run `koshconf --help` for the forms.
+rc=2
+== load applies an encoded form and skips an unknown id:
+warning: Skipping the unknown option id 200 in KOSHCONF.
+on
+rc=0
+-c:1:15: error: Builtin `koshconf`: The value is not a valid KOSHCONF encoding.
+     1 |  koshconf load "not base64"
+       |                ^~~~~~~~~~~~
+rc=1
+-c:1:15: error: Builtin `koshconf`: The value is not a valid KOSHCONF encoding.
+     1 |  koshconf load BQ==
+       |                ^~~~
+rc=1

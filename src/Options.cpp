@@ -273,7 +273,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                      {},
                      "Mimic the shell named by a script's shebang.",
                      'I'},
-         true),
+         false),
     unlisted(flag(
         18, "debug.show_ast", INTERACTIVE, shell_option_id::ShowAst,
         entry_shape{
@@ -527,8 +527,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                  false),
             option_storage::Posix),
 
-    shopt_flag(128, "legacy.bare_dir_is_cd", INTERACTIVE, "autocd", true,
-               false),
+    shopt_flag(128, "legacy.bare_dir_is_cd", INTERACTIVE, "autocd", true, true),
     shopt_flag(129, "legacy.assoc_expand_once", SEMANTIC, "assoc_expand_once",
                false, false),
     shopt_flag(130, "legacy.cd_to_variable", SEMANTIC, "cdable_vars", false,

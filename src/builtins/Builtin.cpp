@@ -66,6 +66,7 @@ static pure fn get_builtin_section(Builtin::Kind kind,
   switch (kind) {
   case Builtin::Kind::Assimilate:
   case Builtin::Kind::Bench:
+  case Builtin::Kind::Koshconf:
   case Builtin::Kind::Koshkit:
   case Builtin::Kind::Z: return builtin_section::Koshka;
   case Builtin::Kind::Alias:

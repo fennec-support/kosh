@@ -1058,7 +1058,8 @@ follow the active compatibility mood unless a difference is stated here.
 With no operand,
 .B builtin
 groups the names under POSIX, BASH, and Koshka headings. The Koshka section
-contains assimilate, bench, koshkit, and z. The headings are colored when
+contains assimilate, bench, koshconf, koshkit, and z. The headings are colored
+when
 standard output is a color terminal.
 .PP
 .BR : ,
@@ -1174,6 +1175,53 @@ measures the command itself. Read and write counts are available on Linux.
 Windows reports a single page fault total, and it has no switch or block
 counts. A row the platform cannot report is omitted, never printed as zero.
 Without the option no extra rows or system calls are added.
+.TP
+.BI "koshconf create " "PRESET " "\fR[\fB\-\-force\fR]"
+.PD 0
+.TP
+.BI "koshconf set " "OPTION VALUE " "\fR[\fB\-\-persist\fR]"
+.TP
+.BI "koshconf get " OPTION
+.TP
+.B koshconf list
+.TP
+.BI "koshconf load " ENCODED
+.PD
+The koshconf builtin is the only interface to the settings Koshka owns.
+.B koshconf list
+prints every option name.
+.IP
+.B create
+writes the default file of the
+.BR kosh ,
+.BR bash ,
+or
+.B sh
+preset to the user configuration file that
+.BR kosh (5)
+names. It refuses to replace an existing file unless
+.B \-\-force
+is given.
+.B set
+changes the option in the current session. With
+.BR \-\-persist ,
+it also rewrites that option's line in the user configuration file, through a
+temporary file and a rename, and leaves every other line in place. Only the
+mood and the interactive options can be persisted.
+.B get
+prints the current value.
+.B list
+prints every option in registry order as
+.IR name = value ,
+followed by its class.
+.B load
+applies a value of
+.B KOSHCONF
+to the current session.
+.IP
+A boolean is written as on or off and is also read as true, false, 1, or 0. An
+enumeration is written by name. An unknown option or value is an error with
+status 1, and a malformed form exits with status 2.
 .TP
 .B z
 The current directory is changed to one selected from the frecency store.

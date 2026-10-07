@@ -4,7 +4,7 @@
  *
  * This file implements shared utility behavior that has no narrower owner,
  * including word decoding, missing-path source spans, executable and signal
- * classification, UTF-8 conversion, line splitting, and timestamp formatting.
+ * classification, UTF-8 conversion, base64, line splitting, and timestamps.
  * Process, input, glob, numeric, and resolver helpers live in the other Utils
  * sources.
  */
@@ -950,6 +950,70 @@ fn split_lines(StringView text, Allocator allocator,
   }
 
   return lines;
+}
+
+static constexpr char BASE64_ALPHABET[] =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+fn encode_base64(StringView bytes) throws -> String
+{
+  let encoded = String{heap_allocator()};
+  encoded.reserve((bytes.count() + 2) / 3 * 4);
+  for (usize position = 0; position < bytes.count(); position += 3) {
+    let const remaining_count = bytes.count() - position;
+    u32 group = static_cast<u32>(static_cast<u8>(bytes[position])) << 16;
+    if (remaining_count > 1)
+      group |= static_cast<u32>(static_cast<u8>(bytes[position + 1])) << 8;
+    if (remaining_count > 2)
+      group |= static_cast<u32>(static_cast<u8>(bytes[position + 2]));
+    encoded.push(BASE64_ALPHABET[(group >> 18) & 0x3f]);
+    encoded.push(BASE64_ALPHABET[(group >> 12) & 0x3f]);
+    encoded.push(remaining_count > 1 ? BASE64_ALPHABET[(group >> 6) & 0x3f]
+                                     : '=');
+    encoded.push(remaining_count > 2 ? BASE64_ALPHABET[group & 0x3f] : '=');
+  }
+  return encoded;
+}
+
+static pure fn decode_base64_digit(char digit) wontthrow -> i32
+{
+  if (digit >= 'A' && digit <= 'Z') return digit - 'A';
+  if (digit >= 'a' && digit <= 'z') return digit - 'a' + 26;
+  if (digit >= '0' && digit <= '9') return digit - '0' + 52;
+  if (digit == '+') return 62;
+  if (digit == '/') return 63;
+  return -1;
+}
+
+fn decode_base64(StringView text) throws -> Maybe<String>
+{
+  if (text.count() % 4 != 0) return None;
+
+  let decoded = String{heap_allocator()};
+  decoded.reserve(text.count() / 4 * 3);
+  for (usize position = 0; position < text.count(); position += 4) {
+    let const is_last_group = position + 4 == text.count();
+    usize padding_count = 0;
+    u32 group = 0;
+    for (usize offset = 0; offset < 4; offset++) {
+      let const digit = text[position + offset];
+      if (digit == '=') {
+        if (!is_last_group || offset < 2) return None;
+        padding_count++;
+        group <<= 6;
+        continue;
+      }
+      let const value = decode_base64_digit(digit);
+      if (value < 0 || padding_count > 0) return None;
+      group = (group << 6) | static_cast<u32>(value);
+    }
+    decoded.push(static_cast<char>((group >> 16) & 0xff));
+    if (padding_count < 2) decoded.push(static_cast<char>((group >> 8) & 0xff));
+    if (padding_count < 1) decoded.push(static_cast<char>(group & 0xff));
+    if (padding_count > 0 && (group & ((1U << (8 * padding_count)) - 1)) != 0)
+      return None;
+  }
+  return decoded;
 }
 
 fn format_unix_timestamp(i64 unix_time, const char *format) throws -> String

@@ -1,0 +1,30 @@
+== koshconf form:
+create
+get
+list
+load
+set
+== koshconf create preset:
+bash
+kosh
+sh
+== koshconf get option prefix:
+editor.auto_pair
+editor.diagnostics
+editor.extended_keys
+editor.hints
+editor.tab_selector
+editor.transient_prompt
+== koshconf set option prefix after a flag:
+legacy.empty_glob_is_error
+legacy.empty_glob_is_removed
+== koshconf set enumeration value:
+bash
+bash-posix
+kosh
+sh
+== koshconf set boolean value:
+off
+on
+== koshconf flags:
+--persist

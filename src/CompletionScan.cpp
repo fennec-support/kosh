@@ -18,6 +18,7 @@
 #include "Koshkit.hpp"
 #include "Lexer.hpp"
 #include "MimicMood.hpp"
+#include "Options.hpp"
 #include "Parser.hpp"
 #include "Platform.hpp"
 #include "Tokens.hpp"
@@ -904,6 +905,41 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
       return None;
     }
 #endif
+  }
+
+  if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Koshconf &&
+      wants_operand)
+  {
+    usize cword = 0;
+    let const words = split_completion_words(
+        line.substring_of_length(0, token_start), token_start, cword);
+    let operands = ArrayList<StringView>{heap_allocator()};
+    for (usize i = 1; i < words.count(); i++)
+      if (!words[i].is_empty() && !words[i].view().starts_with(StringView{"-"}))
+      {
+        operands.push(words[i].view());
+      }
+
+    if (operands.is_empty()) {
+      for (let const form : {"create", "get", "list", "load", "set"})
+        do_push_matching(form);
+    } else if (operands.count() == 1 && operands[0] == "create") {
+      for (let const preset : {"bash", "kosh", "sh"})
+        do_push_matching(preset);
+    } else if (operands.count() == 1 &&
+               (operands[0] == "set" || operands[0] == "get"))
+    {
+      for (let const &option : get_option_registry())
+        do_push_matching(option.koshconf_name);
+    } else if (operands.count() == 2 && operands[0] == "set") {
+      let const *option = find_option_by_koshconf_name(operands[1]);
+      if (option != nullptr)
+        for (u8 value = 0; value < option->enum_values.count; value++)
+          do_push_matching(option->enum_values.names[value]);
+    }
+
+    if (!candidates.is_empty()) return candidates;
+    return None;
   }
 
   /* A shopt operand is an option name, no dash required. */

@@ -140,6 +140,82 @@ show-stats no-diagnostics show-memory login rcfile"
 }
 
 complete -F _kosh_set_complete set
+_kosh_koshconf_complete ()
+{
+  local current_word=${COMP_WORDS[COMP_CWORD]}
+  local -a operands=()
+  local word index
+  for ((index = 1; index < COMP_CWORD; index++))
+  do
+    word=${COMP_WORDS[index]}
+    [[ $word == -* ]] || operands+=("$word")
+  done
+  local \
+    option_names="mood editor.tab_selector editor.hints editor.diagnostics \
+editor.auto_pair editor.transient_prompt editor.extended_keys \
+history.prefix_search history.file history.size completion.space_after \
+diagnostics.level diagnostics.annoying diagnostics.analysis koshkit.commands \
+arithmetic.extended compat.mimicry debug.show_ast debug.show_lexed_words \
+debug.show_exit_code debug.show_all_exit_codes debug.show_stats \
+debug.show_memory legacy.export_all legacy.notify_jobs legacy.exit_on_error \
+legacy.no_glob legacy.hash_commands legacy.keyword_assignments \
+legacy.job_control legacy.no_exec legacy.one_command legacy.privileged \
+legacy.unset_is_error legacy.echo_input legacy.trace_commands \
+legacy.brace_expansion legacy.no_clobber legacy.err_trap_inherit \
+legacy.history_expansion legacy.physical_paths legacy.debug_trap_inherit \
+legacy.pipe_fail legacy.history legacy.ignore_eof legacy.no_log \
+legacy.vi_editing legacy.emacs_editing legacy.posix legacy.bare_dir_is_cd \
+legacy.assoc_expand_once legacy.cd_to_variable legacy.cd_spelling \
+legacy.check_hash legacy.check_jobs_on_exit legacy.check_window_size \
+legacy.complete_full_quote legacy.dir_expand legacy.dir_spelling \
+legacy.glob_dotfiles legacy.exec_failure_continues legacy.expand_aliases \
+legacy.extended_debug legacy.extended_glob legacy.extended_quote \
+legacy.empty_glob_is_error legacy.force_fignore legacy.glob_ascii_ranges \
+legacy.glob_skip_dots legacy.glob_star legacy.gnu_error_format \
+legacy.history_reedit legacy.history_verify legacy.host_completion \
+legacy.hup_on_exit legacy.inherit_exit_on_error legacy.interactive_comments \
+legacy.last_pipe_in_shell legacy.local_inherits_value legacy.local_unset \
+legacy.login_shell legacy.mail_warn legacy.no_empty_command_completion \
+legacy.glob_ignore_case legacy.match_ignore_case legacy.empty_glob_is_removed \
+legacy.patsub_replacement legacy.programmable_completion \
+legacy.programmable_completion_alias legacy.prompt_expansion \
+legacy.restricted_shell legacy.shift_verbose legacy.source_uses_path \
+legacy.varredir_close legacy.echo_escapes"
+
+  if [[ $current_word == -* ]]
+  then
+    _kosh_compgen -W "--help --persist --force" -- "$current_word"
+    return
+  fi
+
+  case ${#operands[@]} in
+    0)
+      _kosh_compgen -W "create get list load set" -- "$current_word"
+    ;;
+    1)
+      case ${operands[0]} in
+        create) _kosh_compgen -W "bash kosh sh" -- "$current_word" ;;
+        set | get) _kosh_compgen -W "$option_names" -- "$current_word" ;;
+      esac
+    ;;
+    2)
+      if [[ ${operands[0]} == set ]]
+      then
+        case ${operands[1]} in
+          mood) _kosh_compgen -W "kosh sh bash bash-posix" -- "$current_word" ;;
+          editor.tab_selector)
+            _kosh_compgen -W "interactive external plain" -- "$current_word"
+          ;;
+          diagnostics.level) _kosh_compgen -W "0 1 2 3" -- "$current_word" ;;
+          history.file | history.size) ;;
+          *) _kosh_compgen -W "on off" -- "$current_word" ;;
+        esac
+      fi
+    ;;
+  esac
+}
+
+complete -F _kosh_koshconf_complete koshconf
 _kosh_fc_complete ()
 {
   local current_word=${COMP_WORDS[COMP_CWORD]}

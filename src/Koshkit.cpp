@@ -389,22 +389,6 @@ fn copy_file_contents(StringView source, StringView destination,
   }
 }
 
-fn make_directories(const Path &directory, u32 mode) wontthrow -> bool
-{
-  let const text = directory.view();
-  let const root_length = os::path_root_length(text);
-  for (usize position = root_length; position <= text.length; position++) {
-    if (position < text.length && !os::is_directory_separator(text[position]))
-      continue;
-
-    let const prefix = text.substring_of_length(0, position);
-    if (prefix.is_empty() || Path{prefix}.is_directory()) continue;
-    if (!os::make_directory(prefix, mode)) return false;
-  }
-
-  return true;
-}
-
 fn confirm_koshkit_action(const ExecContext &ec, StringView prompt) throws
     -> bool
 {
@@ -1010,6 +994,22 @@ fn preflight_timeout_stage(const ExecContext &, EvalContext &, usize,
 }
 
 #endif /* KOSH_NO_KOSHKIT */
+
+fn make_directories(const Path &directory, u32 mode) wontthrow -> bool
+{
+  let const text = directory.view();
+  let const root_length = os::path_root_length(text);
+  for (usize position = root_length; position <= text.length; position++) {
+    if (position < text.length && !os::is_directory_separator(text[position]))
+      continue;
+
+    let const prefix = text.substring_of_length(0, position);
+    if (prefix.is_empty() || Path{prefix}.is_directory()) continue;
+    if (!os::make_directory(prefix, mode)) return false;
+  }
+
+  return true;
+}
 
 struct signal_number_comparator
 {
