@@ -9,15 +9,15 @@ mkdir "$real_d/bin" "$real_d/work"
 ln -s "$BIN" "$real_d/bin/kosh"
 show='echo "KOSH=$KOSH"; echo "SHELL=$SHELL"; command -v kosh'
 echo "== a bare name is resolved through the PATH:"
-(cd "$real_d/work" && env -i HOME="$HOME" PATH="$real_d/bin:/usr/bin:/bin" kosh -c "$show") | sed "s#$real_d#D#g"
+(cd "$real_d/work" && env -i HOME="$real_d" PATH="$real_d/bin:/usr/bin:/bin" kosh -c "$show") | sed "s#$real_d#D#g"
 echo "== a bare name found in a later PATH entry:"
-(cd "$real_d/work" && env -i HOME="$HOME" PATH="/usr/bin:$real_d/bin:/bin" kosh -c "$show") | sed "s#$real_d#D#g"
+(cd "$real_d/work" && env -i HOME="$real_d" PATH="/usr/bin:$real_d/bin:/bin" kosh -c "$show") | sed "s#$real_d#D#g"
 echo "== a name with a slash is made absolute:"
-(cd "$real_d/bin" && env -i HOME="$HOME" PATH="/usr/bin:/bin" ./kosh -c "$show") | sed "s#$real_d#D#g"
+(cd "$real_d/bin" && env -i HOME="$real_d" PATH="/usr/bin:/bin" ./kosh -c "$show") | sed "s#$real_d#D#g"
 echo "== the inherited PATH is kept:"
-env -i HOME="$HOME" PATH="$real_d/bin:/usr/bin:/bin" "$real_d/bin/kosh" -c 'echo "PATH=$PATH"' | sed "s#$real_d#D#g"
+env -i HOME="$real_d" PATH="$real_d/bin:/usr/bin:/bin" "$real_d/bin/kosh" -c 'echo "PATH=$PATH"' | sed "s#$real_d#D#g"
 echo "== a clean start resets the PATH and KOSH stays absolute:"
-(cd "$real_d/work" && env -i HOME="$HOME" PATH="$real_d/bin:/usr/bin:/bin" kosh --no-init-files -c 'case $KOSH in /*) echo absolute;; *) echo "relative:$KOSH";; esac; echo "PATH=$PATH"')
+(cd "$real_d/work" && env -i HOME="$real_d" PATH="$real_d/bin:/usr/bin:/bin" kosh --no-init-files -c 'case $KOSH in /*) echo absolute;; *) echo "relative:$KOSH";; esac; echo "PATH=$PATH"')
 echo "== KOSH is set in every mood, after a mood switch, and under a bash name:"
 ln -s "$BIN" "$real_d/bin/bash"
 for mood in kosh bash sh bash-posix; do
