@@ -287,6 +287,8 @@ pure alwaysinline fn hash_bytes(StringView view) wontthrow -> u64
   }
   let const tail = byte_scan::load_partial_word(view.data + i, view.length - i);
   hash = (hash ^ tail) * 0x100000001b3ull;
+  hash ^= hash >> 32;
+  hash *= 0xff51afd7ed558ccdull;
   hash ^= hash >> 31;
   return hash;
 }
