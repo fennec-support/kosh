@@ -466,6 +466,7 @@ enum class analysis_scope_mode : u8
   Subshell,
   Function,
   Pipeline,
+  Substitution,
 };
 
 class AnalysisScopeGuard

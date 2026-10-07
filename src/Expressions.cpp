@@ -2105,19 +2105,37 @@ fn internal::note_variable_reference(AnalysisContext &actx,
 
 internal::AnalysisScopeGuard::AnalysisScopeGuard(AnalysisContext &actx,
                                                  analysis_scope_mode mode)
-    : m_actx{actx}, m_mode{mode}, m_occurrences{actx.occurrences.snapshot()},
+    : m_actx{actx}, m_mode{mode},
+      m_occurrences{mode == analysis_scope_mode::Substitution
+                        ? variable_occurrence_pair{}
+                        : actx.occurrences.snapshot()},
       m_function_mark{actx.functions.get_mark()},
-      m_inherited_assigned_names{actx.inherited_assigned_names.clone()},
+      m_inherited_assigned_names{mode == analysis_scope_mode::Substitution
+                                     ? HashSet{heap_allocator()}
+                                     : actx.inherited_assigned_names.clone()},
       m_inherited_global_assigned_names{
-          actx.inherited_global_assigned_names.clone()},
-      m_array_valued_names{actx.array_valued_names.clone()},
+          mode == analysis_scope_mode::Substitution
+              ? HashSet{heap_allocator()}
+              : actx.inherited_global_assigned_names.clone()},
+      m_array_valued_names{mode == analysis_scope_mode::Substitution
+                               ? HashSet{heap_allocator()}
+                               : actx.array_valued_names.clone()},
       m_source_effects{actx.current_source_effects}, m_effects{actx.effects},
       m_was_inside_subshell_analysis{actx.walk.is_inside_subshell_analysis}
 {
+  if (mode == analysis_scope_mode::Substitution) {
+    m_constants = steal(actx.constant_variables);
+    actx.constant_variables = StringMap<String>{heap_allocator()};
+    actx.walk.is_inside_subshell_analysis = true;
+
+    return;
+  }
+
   actx.current_source_effects = nullptr;
 
   switch (mode) {
-  case analysis_scope_mode::Pipeline: break;
+  case analysis_scope_mode::Pipeline:
+  case analysis_scope_mode::Substitution: break;
 
   case analysis_scope_mode::Subshell:
     m_constants = steal(actx.constant_variables);
@@ -2142,6 +2160,13 @@ internal::AnalysisScopeGuard::~AnalysisScopeGuard() { leave(); }
 
 fn internal::AnalysisScopeGuard::leave() throws -> void
 {
+  if (m_mode == analysis_scope_mode::Substitution) {
+    m_actx.walk.is_inside_subshell_analysis = m_was_inside_subshell_analysis;
+    m_actx.constant_variables = steal(m_constants);
+
+    return;
+  }
+
   m_actx.current_source_effects = m_source_effects;
   m_actx.array_valued_names = steal(m_array_valued_names);
   m_actx.inherited_global_assigned_names =
@@ -2151,7 +2176,8 @@ fn internal::AnalysisScopeGuard::leave() throws -> void
   m_actx.functions.rollback(m_function_mark);
 
   switch (m_mode) {
-  case analysis_scope_mode::Pipeline: m_actx.effects = m_effects; break;
+  case analysis_scope_mode::Pipeline:
+  case analysis_scope_mode::Substitution: m_actx.effects = m_effects; break;
 
   case analysis_scope_mode::Subshell:
     m_actx.effects = m_effects;
@@ -2185,6 +2211,100 @@ static fn body_is_bare_file_read(const Expression *ast) wontthrow -> bool
   }
 
   return simple->redirections()[0].kind == Redirection::Kind::ReadInput;
+}
+
+static fn is_plain_substitution_word(const Token *token) throws -> bool
+{
+  if (token == nullptr || token->kind() != Token::Kind::Word) return false;
+
+  let const &word = static_cast<const tokens::WordToken *>(token)->word();
+  for (let const &segment : word.segments) {
+    switch (segment.kind) {
+    case WordSegment::Kind::LiteralText:
+    case WordSegment::Kind::UnquotedText:
+    case WordSegment::Kind::DoubleQuotedText:
+    case WordSegment::Kind::CommandSubstitution: break;
+
+    case WordSegment::Kind::VariableReference:
+      if (!lexer::word_is_variable_name(segment.text.view())) return false;
+      break;
+
+    default: return false;
+    }
+  }
+
+  return true;
+}
+
+static fn is_trivial_substitution_body(const AnalysisContext &actx,
+                                       const Expression *ast) throws -> bool
+{
+  let const *list = ast->as_compound_list();
+  let const *command =
+      list != nullptr ? list->single_unconditional_command() : nullptr;
+  let const *simple =
+      command != nullptr ? command->as_simple_command() : nullptr;
+  if (simple == nullptr || !simple->local_vars().is_empty()) return false;
+
+  let const &args = simple->args();
+  if (args.is_empty()) return false;
+
+  let const name = static_command_name(args[0]);
+  if (!name.has_value()) return false;
+
+  if (actx.functions.defined.contains(*name) ||
+      actx.functions.aliases.contains(*name))
+  {
+    return false;
+  }
+
+  let const info = get_analysis_command_info(*name);
+  switch (info.id) {
+  case command_name_id::Cd:
+  case command_name_id::Unset:
+  case command_name_id::Eval:
+  case command_name_id::Dot:
+  case command_name_id::Source:
+  case command_name_id::Alias:
+  case command_name_id::Command:
+  case command_name_id::Builtin: return false;
+
+  default: break;
+  }
+
+  constexpr u32 STATE_GROUPS =
+      COMMAND_GROUP_RUNTIME_DEFINER | COMMAND_GROUP_ASSIGNMENT_BUILTIN |
+      COMMAND_GROUP_DECLARATION_BUILTIN | COMMAND_GROUP_VARIABLE_TARGET;
+  if (info.is_in_group(STATE_GROUPS)) return false;
+
+  if (search_builtin(*name).has_value()) {
+    let const is_neutral = info.is_in_group(COMMAND_GROUP_ENVIRONMENT_NEUTRAL);
+    if (!is_neutral && info.id != command_name_id::Printf) return false;
+  } else if (args.count() == 1) {
+    return false;
+  }
+
+  for (usize index = 0; index < args.count(); index++) {
+    if (!is_plain_substitution_word(args[index])) return false;
+
+    if (info.id == command_name_id::Printf && index > 0) {
+      let const operand = static_command_name(args[index]);
+      if (!operand.has_value() || operand->starts_with("-v")) return false;
+    }
+  }
+
+  for (let const &redirection : simple->redirections()) {
+    if (redirection.fd_allocation_name_token != nullptr ||
+        redirection.kind == Redirection::Kind::Heredoc ||
+        redirection.kind == Redirection::Kind::HereString ||
+        (redirection.target != nullptr &&
+         !is_plain_substitution_word(redirection.target)))
+    {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 static fn analyze_substitution_body(AnalysisContext &actx,
@@ -2232,7 +2352,10 @@ static fn analyze_substitution_body(AnalysisContext &actx,
       is_subshell || was_inside_substitution_subshell;
 
   if (is_subshell) {
-    let scope = AnalysisScopeGuard{actx, analysis_scope_mode::Subshell};
+    let const mode = is_trivial_substitution_body(actx, ast)
+                         ? analysis_scope_mode::Substitution
+                         : analysis_scope_mode::Subshell;
+    let scope = AnalysisScopeGuard{actx, mode};
     ast->analyze(actx, is_unconditional);
   } else {
     ast->analyze(actx, is_unconditional);
