@@ -1404,8 +1404,9 @@ hot fn Parser::parse_simple_command(const Token *leading_token) throws
         break;
       case command_position_word::Coproc:
         /* Coproc is not a reserved word in the lexer either, so it is matched
-           on the text in bash mode. */
-        if (m_lexer.is_bash_compatible())
+           on the text in every mood but POSIX, the way the highlighter reads
+           it. */
+        if (m_lexer.bash_additions_enabled())
           return attach_trailing_redirections(parse_coproc());
         break;
       case command_position_word::None: break;

@@ -1,0 +1,14 @@
+elements:2 pid:set
+bang matches
+reply:unnamed:one
+unnamed wait:0
+reply:two!
+reply:three!
+named wait:0
+reply:subshell:four
+subshell wait:3
+reply:five
+simple wait:0
+line=50 caller=52 name=evalfn
+line=50 caller=53 name=evalfn
+line=50 caller=54 name=evalfn

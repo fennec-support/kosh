@@ -799,9 +799,9 @@ This rule also applies at the end of a sourced file.
 coproc [NAME] command [redirections]
 .EE
 .PP
-The
-.B bash
-mood accepts a coprocess. The command runs asynchronously and two pipes connect
+Every mood but
+.B sh
+accepts a coprocess. The command runs asynchronously and two pipes connect
 it to the shell. NAME[0] is read from, NAME[1] is written to, and NAME_PID holds
 the process id. The default name is COPROC.
 .PP

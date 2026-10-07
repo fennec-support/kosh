@@ -1469,6 +1469,22 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
   let const command_text =
       cxt.source_text_in_span(source_location(), source_end_position());
 
+  let const body_location = m_body->source_location();
+  let body_span = SourceLocation{body_location.position, 0,
+                                 body_location.source_name_index};
+  let body_end_position =
+      usize{body_location.position} + usize{body_location.length};
+  if (m_body->source_end_position() > body_end_position)
+    body_end_position = m_body->source_end_position();
+
+  if (let const *simple = m_body->as_simple_command(); simple != nullptr) {
+    body_span.position = static_cast<u32>(simple->full_source_start_position());
+    if (simple->full_source_end_position() > body_end_position)
+      body_end_position = simple->full_source_end_position();
+  }
+
+  let const body_text = cxt.source_text_in_span(body_span, body_end_position);
+
   /* One pipe carries what the shell writes to the coprocess, the other carries
      what the coprocess writes back. */
   let toward_child = os::make_pipe();
@@ -1490,13 +1506,13 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
 
   let bootstrap = os::subshell_bootstrap{};
   let const evaluator = cxt.make_child_evaluator_state(bootstrap);
-  cxt.set_child_source_origin(bootstrap, command_text, source_location());
+  cxt.set_child_source_origin(bootstrap, body_text, body_location);
 
   let const launch = os::launch_compound_stage(os::compound_stage_options{
-      .source = command_text,
+      .source = body_text,
       .in_fd = toward_child->in,
       .out_fd = away_from_child->out,
-      .location = source_location(),
+      .location = body_location,
       .diagnostic_source = source_view,
       .evaluator = evaluator,
       .process_group = os::process_group_mode::NewBackground});

@@ -1,0 +1,55 @@
+#!/bin/env kosh
+# shellcheck disable=unresolved-command-uncertain
+
+# A coprocess starts a fresh evaluator on Windows. The child receives only the
+# body, so it never launches another coprocess, and a fork platform runs the
+# same body. A function defined through eval reports lines of this file, both
+# here and in a fresh evaluator that replays it.
+coproc { read -r line; printf 'unnamed:%s\n' "$line"; }
+unnamed_pid=$COPROC_PID
+printf '%s\n' "elements:${#COPROC[@]} pid:${COPROC_PID:+set}"
+if [ "$!" = "$unnamed_pid" ]; then
+  echo "bang matches"
+fi
+printf 'one\n' >&"${COPROC[1]}"
+read -r reply <&"${COPROC[0]}"
+printf '%s\n' "reply:$reply"
+wait "$unnamed_pid"
+printf '%s\n' "unnamed wait:$?"
+
+coproc UPPER { while read -r line; do printf '%s!\n' "$line"; done; }
+upper_pid=$UPPER_PID
+printf 'two\n' >&"${UPPER[1]}"
+read -r reply <&"${UPPER[0]}"
+printf '%s\n' "reply:$reply"
+printf 'three\n' >&"${UPPER[1]}"
+read -r reply <&"${UPPER[0]}"
+printf '%s\n' "reply:$reply"
+exec {UPPER[1]}>&-
+wait "$upper_pid"
+printf '%s\n' "named wait:$?"
+
+coproc ( read -r line; printf 'subshell:%s\n' "$line"; exit 3 )
+subshell_pid=$COPROC_PID
+printf 'four\n' >&"${COPROC[1]}"
+read -r reply <&"${COPROC[0]}"
+printf '%s\n' "reply:$reply"
+wait "$subshell_pid"
+printf '%s\n' "subshell wait:$?"
+
+coproc cat
+cat_pid=$COPROC_PID
+printf 'five\n' >&"${COPROC[1]}"
+read -r reply <&"${COPROC[0]}"
+printf '%s\n' "reply:$reply"
+exec {COPROC[1]}>&-
+wait "$cat_pid"
+printf '%s\n' "simple wait:$?"
+
+eval 'evalfn() {
+  echo "line=$LINENO caller=${BASH_LINENO[0]} name=${FUNCNAME[0]}"
+}'
+evalfn
+evalfn | cat
+( evalfn ) &
+wait "$!"
