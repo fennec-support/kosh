@@ -10,12 +10,12 @@ echo "== --no-init-diagnostics silences init:"
 HOME="$home" "$BIN" -WWW --no-init-diagnostics -L bash -i </dev/null 2>&1 | grep -c "is not set"
 echo "== -WWW stays active for the session:"
 "$BIN" -WWW --no-init-diagnostics -c 'echo "[${UNSET_AT_PROMPT}]"' 2>&1 | grep -c "is not set"
-printf 'koshconf set diagnostics.analysis off\n[ "$(koshconf get diagnostics.analysis)" = off ] && echo diagnostics-disabled=1\n' \
+printf 'koshconf set diagnostics.analyze_before_running off\n[ "$(koshconf get diagnostics.analyze_before_running)" = off ] && echo diagnostics-disabled=1\n' \
   > "$home/.bashrc"
 echo "== a startup diagnostics change survives suppression:"
 HOME="$home" "$BIN" --no-init-diagnostics -L bash -i </dev/null 2>&1 | \
   grep -c '^diagnostics-disabled=1$'
-printf 'set -W\n[ "$(koshconf get diagnostics.analysis)" = off ] && echo diagnostics-still-suppressed=1\n' \
+printf 'set -W\n[ "$(koshconf get diagnostics.analyze_before_running)" = off ] && echo diagnostics-still-suppressed=1\n' \
   > "$home/.bashrc"
 echo "== a startup warning change does not end suppression:"
 HOME="$home" "$BIN" --no-init-diagnostics -L bash -i </dev/null 2>&1 | \

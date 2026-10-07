@@ -9,15 +9,18 @@ bash
 kosh
 sh
 == koshconf get option prefix:
-editor.auto_pair
-editor.diagnostics
-editor.extended_keys
-editor.hints
-editor.tab_selector
-editor.transient_prompt
+editor.auto_close_brackets_and_quotes
+editor.completion_menu_style
+editor.request_extended_key_reports
+editor.show_command_synopsis
+editor.show_live_diagnostics
+editor.transient_prompt_after_submit
 == koshconf set option prefix after a flag:
-legacy.empty_glob_is_error
-legacy.empty_glob_is_removed
+legacy.glob_no_match_expands_to_nothing
+legacy.glob_no_match_is_error
+== koshconf set editor mode value:
+emacs
+vi
 == koshconf set enumeration value:
 bash
 bash-posix

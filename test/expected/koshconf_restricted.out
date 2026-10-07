@@ -1,37 +1,37 @@
 == kosh -r: koshconf create kosh
 -c:1:1: error: Changing settings with koshconf is forbidden in a restricted shell.
-     1 |  koshconf create kosh; koshconf get editor.auto_pair
+     1 |  koshconf create kosh; koshconf get editor.auto_close_brackets_and_quotes
        |  ^~~~~~~~~~~~~~~~~~~~
 rc=1
 == kosh -r: koshconf create --force bash
 -c:1:1: error: Changing settings with koshconf is forbidden in a restricted shell.
-     1 |  koshconf create --force bash; koshconf get editor.auto_pair
+     1 |  koshconf create --force bash; koshconf get editor.auto_close_brackets_and_quotes
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
 rc=1
-== kosh -r: koshconf set editor.auto_pair on --persist
+== kosh -r: koshconf set editor.auto_close_brackets_and_quotes on --persist
 -c:1:1: error: Changing settings with koshconf is forbidden in a restricted shell.
-     1 |  koshconf set editor.auto_pair on --persist; koshconf get editor.auto_pair
-       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     1 |  koshconf set editor.auto_close_brackets_and_quotes on --persist; koshconf get editor.auto_close_brackets_and_quotes
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 rc=1
-== kosh -r: koshconf set editor.auto_pair on
+== kosh -r: koshconf set editor.auto_close_brackets_and_quotes on
 -c:1:1: error: Changing settings with koshconf is forbidden in a restricted shell.
-     1 |  koshconf set editor.auto_pair on; koshconf get editor.auto_pair
-       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     1 |  koshconf set editor.auto_close_brackets_and_quotes on; koshconf get editor.auto_close_brackets_and_quotes
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 rc=1
 == kosh -r: koshconf set mood bash
 -c:1:1: error: Changing settings with koshconf is forbidden in a restricted shell.
-     1 |  koshconf set mood bash; koshconf get editor.auto_pair
+     1 |  koshconf set mood bash; koshconf get editor.auto_close_brackets_and_quotes
        |  ^~~~~~~~~~~~~~~~~~~~~~
 rc=1
 == kosh -r: koshconf load BQEB
 -c:1:1: error: Changing settings with koshconf is forbidden in a restricted shell.
-     1 |  koshconf load BQEB; koshconf get editor.auto_pair
+     1 |  koshconf load BQEB; koshconf get editor.auto_close_brackets_and_quotes
        |  ^~~~~~~~~~~~~~~~~~
 rc=1
 == set -r refuses a later change:
 -c:1:9: error: Changing settings with koshconf is forbidden in a restricted shell.
-     1 |  set -r; koshconf set editor.auto_pair on
-       |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     1 |  set -r; koshconf set editor.auto_close_brackets_and_quotes on
+       |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 rc=1
 == set refuses the mood and mimicry but keeps -o posix:
 -c:1:8: error: Builtin `set`: Changing the mood is forbidden in a restricted shell.
@@ -62,8 +62,8 @@ off
 0
 == a restricted shell keeps only harmless settings from the files:
 warning: A restricted shell ignores 'mood' from the configuration files.
-warning: A restricted shell ignores 'koshkit.commands' from the configuration files.
-warning: A restricted shell ignores 'history.file' from the configuration files.
+warning: A restricted shell ignores 'koshkit.run_utilities_as_plain_commands' from the configuration files.
+warning: A restricted shell ignores 'history.file_path' from the configuration files.
 kosh
 off
 /history

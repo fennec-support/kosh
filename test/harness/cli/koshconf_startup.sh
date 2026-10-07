@@ -14,19 +14,19 @@ mkdir -p "$home/.config/kosh"
 cat >"$conf" <<'EOF'
 # a comment and a blank line
 
-editor.auto_pair=on
-koshkit.commands = true
-history.size="128"
-diagnostics.level=1
+editor.auto_close_brackets_and_quotes=on
+koshkit.run_utilities_as_plain_commands = true
+history.max_entries="128"
+diagnostics.warning_level=1
 no equals sign
 unknown.option=on
-editor.hints=maybe
-legacy.unset_is_error=off
-history.file="unterminated
+editor.show_command_synopsis=maybe
+legacy.unset_variable_is_error=off
+history.file_path="unterminated
 mood='bash' trailing
 EOF
 echo "== the file applies with a warning per malformed line:"
-"$BIN" -c 'for name in editor.auto_pair koshkit.commands history.size diagnostics.level mood; do
+"$BIN" -c 'for name in editor.auto_close_brackets_and_quotes koshkit.run_utilities_as_plain_commands history.max_entries diagnostics.warning_level mood; do
   printf "%s=%s\n" "$name" "$(koshconf get "$name")"
 done' >"$home/out" 2>&1
 status=$?
@@ -34,29 +34,29 @@ sed "s|$home|HOME|" "$home/out"
 echo "rc=$status"
 
 echo "== a byte order mark is skipped, and raw bytes are escaped in warnings:"
-printf '\357\273\277editor.auto_pair=on\r\nhistory.size=-5\r\n' >"$conf"
-printf 'history.file=a\377b\nbad\033[1mname=on\n' >>"$conf"
-"$BIN" -c 'koshconf get editor.auto_pair; koshconf get history.size' \
+printf '\357\273\277editor.auto_close_brackets_and_quotes=on\r\nhistory.max_entries=-5\r\n' >"$conf"
+printf 'history.file_path=a\377b\nbad\033[1mname=on\n' >>"$conf"
+"$BIN" -c 'koshconf get editor.auto_close_brackets_and_quotes; koshconf get history.max_entries' \
   >"$home/out" 2>&1
 status=$?
 sed "s|$home|HOME|" "$home/out" | od -An -c | grep -c '033'
 sed "s|$home|HOME|" "$home/out"
 echo "rc=$status"
 
-printf 'mood=bash\neditor.auto_pair=on\nkoshkit.commands=off\ndiagnostics.level=2\n' >"$conf"
+printf 'mood=bash\neditor.auto_close_brackets_and_quotes=on\nkoshkit.run_utilities_as_plain_commands=off\ndiagnostics.warning_level=2\n' >"$conf"
 echo "== a configured mood selects the session mood:"
 "$BIN" -c 'koshconf get mood; echo "${BASH_VERSION:+bash identity}"'
 echo "== a command-line flag wins over the file:"
 "$BIN" --mood kosh --enable-koshkit -W -c 'koshconf get mood
-koshconf get koshkit.commands
-koshconf get diagnostics.level'
+koshconf get koshkit.run_utilities_as_plain_commands
+koshconf get diagnostics.warning_level'
 echo "== -Q skips the configuration files:"
-"$BIN" -Q -c 'koshconf get mood; koshconf get editor.auto_pair'
+"$BIN" -Q -c 'koshconf get mood; koshconf get editor.auto_close_brackets_and_quotes'
 echo "== XDG_CONFIG_HOME replaces the default directory:"
 XDG_CONFIG_HOME="$home/elsewhere" "$BIN" -c 'koshconf get mood'
 
 echo "== KOSHCONF applies after the file and leaves the environment:"
-KOSHCONF=AQEBBQEA "$BIN" -c 'koshconf get mood; koshconf get editor.auto_pair
+KOSHCONF=AQEBBQEA "$BIN" -c 'koshconf get mood; koshconf get editor.auto_close_brackets_and_quotes
 env | grep -c "^KOSHCONF="'
 echo "== an invalid KOSHCONF is a warning:"
 KOSHCONF='%%%' "$BIN" -c 'koshconf get mood'
@@ -76,11 +76,11 @@ echo "== a configured bash mood sources the bash rc:"
 printf 'echo bashrc-ran\n' >"$home/.bashrc"
 printf 'mood=bash\n' >"$conf"
 "$BIN" -i <"$TEST_NULL_DEVICE" 2>/dev/null | grep -c bashrc-ran
-echo "== an inherited KOSH_HISTORY_SIZE is the history.size option:"
+echo "== an inherited KOSH_HISTORY_SIZE is the history.max_entries option:"
 printf 'mood=kosh\n' >"$conf"
-KOSH_HISTORY_SIZE=77 "$BIN" -c 'koshconf get history.size; (koshconf get history.size) & wait "$!"'
+KOSH_HISTORY_SIZE=77 "$BIN" -c 'koshconf get history.max_entries; (koshconf get history.max_entries) & wait "$!"'
 echo "== privileged mode ignores and removes KOSHCONF and still reads the file:"
-printf 'editor.auto_pair=on\n' >"$conf"
-KOSHCONF=BQEA "$BIN" -p -c 'koshconf get editor.auto_pair
+printf 'editor.auto_close_brackets_and_quotes=on\n' >"$conf"
+KOSHCONF=BQEA "$BIN" -p -c 'koshconf get editor.auto_close_brackets_and_quotes
 env | grep -c "^KOSHCONF="'
-KOSHCONF=BQEA "$BIN" -c 'koshconf get editor.auto_pair'
+KOSHCONF=BQEA "$BIN" -c 'koshconf get editor.auto_close_brackets_and_quotes'

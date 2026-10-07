@@ -101,7 +101,11 @@ changes update this file.
   value of every option. `set`, `shopt`, `koshconf`, the `-o` test,
   SHELLOPTS, BASHOPTS, and `$-` read and write through it. `set` and `shopt`
   accept only Bash names; Koshka settings without a letter belong to
-  `koshconf`. The kosh mood holds nounset, pipefail, failglob, and extended
+  `koshconf`. A koshconf name is full English words with the topic first, and
+  a boolean reads as a statement true when on. `legacy.base_editor_mode` is
+  one enumeration behind the set-only alias entries `emacs` and `vi`, which
+  have id 0 and no koshconf name; id 88 is retired. The kosh mood holds
+  nounset, pipefail, failglob, and extended
   arithmetic on and nullglob off, and a write of another value is an error.
   Explicit states survive changes between the other moods. An explicit mood
   change clears the level from `-W`, `-WW`, or `-WWW`.

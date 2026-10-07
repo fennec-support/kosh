@@ -235,6 +235,8 @@ fn run_list(const ExecContext &ec, EvalContext &cxt,
 
   let out = String{cxt.scratch_allocator()};
   for (let const &option : get_option_registry()) {
+    if (option.is_set_alias) continue;
+
     let const line = format_koshconf_display_line(
         option, read_option_text(cxt, option).view());
     out += line.view();

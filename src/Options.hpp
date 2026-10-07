@@ -39,8 +39,7 @@ enum class option_storage : u8
   Shopt,
   Failglob,
   Posix,
-  Vi,
-  Emacs,
+  EditorMode,
   Mood,
   TabSelector,
   WarningLevel,
@@ -89,6 +88,7 @@ struct option_descriptor
   option_text shopt_name;
   option_text variable_name;
   option_text help;
+  option_text default_text;
   option_enum_values enum_values;
   u16 id;
   option_type type;
@@ -102,6 +102,9 @@ struct option_descriptor
   bool is_fixed_in_kosh_mood;
   bool is_read_only;
   bool is_session_dependent;
+  bool is_invocation_only;
+  bool is_kept_out_of_koshconf;
+  bool is_set_alias;
   bool is_listed_by_set;
 
   pure fn is_bash_option() const wontthrow -> bool
@@ -110,16 +113,19 @@ struct option_descriptor
   }
   pure fn is_legacy() const wontthrow -> bool
   {
-    return StringView{koshconf_name}.starts_with(StringView{"legacy."});
+    return is_set_alias ||
+           StringView{koshconf_name}.starts_with(StringView{"legacy."});
   }
   pure fn is_configurable() const wontthrow -> bool
   {
-    return !is_read_only && (category == option_class::Interactive ||
-                             storage == option_storage::Mood);
+    return !is_set_alias && !is_read_only &&
+           (category == option_class::Interactive ||
+            storage == option_storage::Mood);
   }
   pure fn is_serialized() const wontthrow -> bool
   {
-    return is_configurable() && !is_session_dependent;
+    return is_configurable() && !is_session_dependent &&
+           !is_kept_out_of_koshconf;
   }
 };
 

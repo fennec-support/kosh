@@ -1,39 +1,39 @@
 == the file applies with a warning per malformed line:
-HOME/.config/kosh/kosh.conf:4:19: warning: Invalid value ' true' for 'koshkit.commands', expected 'on', 'off', 'true', 'false', '1', or '0', skipping it.
-     4 |  koshkit.commands = true
-       |                    ^~~~~
+HOME/.config/kosh/kosh.conf:4:42: warning: Invalid value ' true' for 'koshkit.run_utilities_as_plain_commands', expected 'on', 'off', 'true', 'false', '1', or '0', skipping it.
+     4 |  koshkit.run_utilities_as_plain_commands = true
+       |                                           ^~~~~
 HOME/.config/kosh/kosh.conf:7:1: warning: Expected a 'name=value' line, skipping it.
      7 |  no equals sign
        |  ^~~~~~~~~~~~~~
 HOME/.config/kosh/kosh.conf:8:1: warning: Unknown option 'unknown.option', skipping it.
      8 |  unknown.option=on
        |  ^~~~~~~~~~~~~~
-HOME/.config/kosh/kosh.conf:9:14: warning: Invalid value 'maybe' for 'editor.hints', expected 'on', 'off', 'true', 'false', '1', or '0', skipping it.
-     9 |  editor.hints=maybe
-       |               ^~~~~
-HOME/.config/kosh/kosh.conf:10:1: warning: The 'legacy.unset_is_error' option cannot be set from a configuration file, skipping it.
-    10 |  legacy.unset_is_error=off
-       |  ^~~~~~~~~~~~~~~~~~~~~
-HOME/.config/kosh/kosh.conf:11:14: warning: The quoted value has no closing quote, skipping it.
-    11 |  history.file="unterminated
-       |               ^~~~~~~~~~~~~
+HOME/.config/kosh/kosh.conf:9:30: warning: Invalid value 'maybe' for 'editor.show_command_synopsis', expected 'on', 'off', 'true', 'false', '1', or '0', skipping it.
+     9 |  editor.show_command_synopsis=maybe
+       |                               ^~~~~
+HOME/.config/kosh/kosh.conf:10:1: warning: The 'legacy.unset_variable_is_error' option cannot be set from a configuration file, skipping it.
+    10 |  legacy.unset_variable_is_error=off
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+HOME/.config/kosh/kosh.conf:11:19: warning: The quoted value has no closing quote, skipping it.
+    11 |  history.file_path="unterminated
+       |                    ^~~~~~~~~~~~~
 HOME/.config/kosh/kosh.conf:12:13: warning: Unexpected text after the closing quote, skipping the line.
     12 |  mood='bash' trailing
        |              ^~~~~~~~
-editor.auto_pair=on
-koshkit.commands=off
-history.size=128
-diagnostics.level=1
+editor.auto_close_brackets_and_quotes=on
+koshkit.run_utilities_as_plain_commands=off
+history.max_entries=128
+diagnostics.warning_level=1
 mood=kosh
 rc=0
 == a byte order mark is skipped, and raw bytes are escaped in warnings:
 0
-HOME/.config/kosh/kosh.conf:2:14: warning: Invalid value '-5' for 'history.size', expected a non-negative decimal integer, skipping it.
-     2 |  history.size=-5
-       |               ^~
-HOME/.config/kosh/kosh.conf:3:14: warning: Invalid value 'a\xffb' for 'history.file', expected valid UTF-8 text, skipping it.
-     3 |  history.file=a?b
-       |               ^~~
+HOME/.config/kosh/kosh.conf:2:21: warning: Invalid value '-5' for 'history.max_entries', expected a non-negative decimal integer, skipping it.
+     2 |  history.max_entries=-5
+       |                      ^~
+HOME/.config/kosh/kosh.conf:3:19: warning: Invalid value 'a\xffb' for 'history.file_path', expected valid UTF-8 text, skipping it.
+     3 |  history.file_path=a?b
+       |                    ^~~
 HOME/.config/kosh/kosh.conf:4:1: warning: Unknown option 'bad\x1b[1mname', skipping it.
      4 |  bad?[1mname=on
        |  ^~~~~~~~~~~
@@ -69,7 +69,7 @@ warning: 'HOME/.koshrc' is no longer read; see MIGRATION in kosh(5)
 0
 == a configured bash mood sources the bash rc:
 1
-== an inherited KOSH_HISTORY_SIZE is the history.size option:
+== an inherited KOSH_HISTORY_SIZE is the history.max_entries option:
 77
 77
 == privileged mode ignores and removes KOSHCONF and still reads the file:

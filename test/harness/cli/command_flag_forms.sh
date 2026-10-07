@@ -46,13 +46,13 @@ pipefail_errexit_output=$("$BIN" --no-diagnostics --show-exit-code -e -c 'set -o
 [ "$(printf '%s\n' "$pipefail_errexit_output" | grep -c 'error: Non-zero exit code (1)')" -eq 1 ] || exit 1
 echo "show-exit-code reports fatal pipefail as an error"
 
-runtime_option_output=$("$BIN" --no-diagnostics -c 'koshconf set debug.show_exit_code on; "$1" --no-diagnostics -c "exit 7"' kosh-test "$BIN" 2>&1)
+runtime_option_output=$("$BIN" --no-diagnostics -c 'koshconf set debug.report_nonzero_exit_codes on; "$1" --no-diagnostics -c "exit 7"' kosh-test "$BIN" 2>&1)
 [ "$?" -eq 7 ] || exit 1
 [ "$(printf '%s\n' "$runtime_option_output" | grep -c 'warning: Non-zero exit code (7)')" -eq 1 ] || exit 1
 echo "runtime show-exit-code survives the terminal command"
 
 runtime_errexit_output=$(
-  "$BIN" --no-diagnostics -c 'koshconf set debug.show_exit_code on; set -e; false' 2>&1
+  "$BIN" --no-diagnostics -c 'koshconf set debug.report_nonzero_exit_codes on; set -e; false' 2>&1
 )
 runtime_errexit_status=$?
 [ "$runtime_errexit_status" -eq 1 ] || exit 1
@@ -70,7 +70,7 @@ clustered_all_codes_output=$("$BIN" --no-diagnostics -Ne -c 'true; echo after' 2
 [ "$(printf '%s\n' "$clustered_all_codes_output" | grep -c 'warning: Exit code (0)')" -eq 2 ] || exit 1
 echo "the clustered short form reports every exit code"
 
-quiet_option_output=$("$BIN" --no-diagnostics -c 'koshconf set debug.show_exit_code on; true' 2>&1)
+quiet_option_output=$("$BIN" --no-diagnostics -c 'koshconf set debug.report_nonzero_exit_codes on; true' 2>&1)
 [ "$?" -eq 0 ] || exit 1
 [ "$(printf '%s\n' "$quiet_option_output" | grep -c 'Exit code (0)')" -eq 0 ] || exit 1
 echo "the non-zero level stays quiet on a success"
@@ -87,7 +87,7 @@ errtrace_letter_output=$("$BIN" --no-diagnostics -N -c 'set +E; false; echo afte
 [ "$(printf '%s\n' "$errtrace_letter_output" | grep -c 'warning: Non-zero exit code (1)')" -eq 1 ] || exit 1
 echo "set +E leaves the exit code diagnostic alone"
 
-runtime_stats_output=$("$BIN" --no-diagnostics -c 'koshconf set debug.show_stats on; "$1" --no-diagnostics -c ":"' kosh-test "$BIN" 2>&1)
+runtime_stats_output=$("$BIN" --no-diagnostics -c 'koshconf set debug.print_evaluation_statistics on; "$1" --no-diagnostics -c ":"' kosh-test "$BIN" 2>&1)
 [ "$?" -eq 0 ] || exit 1
 printf '%s\n' "$runtime_stats_output" | grep -F '[Stats' >/dev/null || exit 1
 stats_breadth_output=$("$BIN" --no-diagnostics --show-stats -c 'f() { :; }; f; f' 2>&1)
@@ -101,7 +101,7 @@ if [ "$(uname -s)" = Linux ]; then
   done
 fi
 echo "stats report counts, transfers, and resource usage"
-runtime_memory_output=$("$BIN" --no-diagnostics -c 'koshconf set debug.show_memory on; "$1" --no-diagnostics -c ":"' kosh-test "$BIN" 2>&1)
+runtime_memory_output=$("$BIN" --no-diagnostics -c 'koshconf set debug.print_memory_report_at_exit on; "$1" --no-diagnostics -c ":"' kosh-test "$BIN" 2>&1)
 [ "$?" -eq 0 ] || exit 1
 printf '%s\n' "$runtime_memory_output" | grep -F 'AST arena:' >/dev/null || exit 1
 echo "runtime reports survive the terminal command"

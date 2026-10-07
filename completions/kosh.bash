@@ -141,36 +141,59 @@ _kosh_koshconf_complete ()
     [[ $word == -* ]] || operands+=("$word")
   done
   local \
-    option_names="mood editor.tab_selector editor.hints editor.diagnostics \
-editor.auto_pair editor.transient_prompt editor.extended_keys \
-history.prefix_search history.file history.size completion.space_after \
-diagnostics.level diagnostics.annoying diagnostics.analysis koshkit.commands \
-arithmetic.extended compat.mimicry debug.show_ast debug.show_lexed_words \
-debug.show_exit_code debug.show_all_exit_codes debug.show_stats \
-debug.show_memory legacy.export_all legacy.notify_jobs legacy.exit_on_error \
-legacy.no_glob legacy.hash_commands legacy.keyword_assignments \
-legacy.job_control legacy.no_exec legacy.one_command legacy.privileged \
-legacy.unset_is_error legacy.echo_input legacy.trace_commands \
-legacy.brace_expansion legacy.no_clobber legacy.err_trap_inherit \
-legacy.history_expansion legacy.physical_paths legacy.debug_trap_inherit \
-legacy.pipe_fail legacy.history legacy.ignore_eof legacy.no_log \
-legacy.vi_editing legacy.emacs_editing legacy.posix legacy.bare_dir_is_cd \
-legacy.assoc_expand_once legacy.cd_to_variable legacy.cd_spelling \
-legacy.check_hash legacy.check_jobs_on_exit legacy.check_window_size \
-legacy.complete_full_quote legacy.dir_expand legacy.dir_spelling \
-legacy.glob_dotfiles legacy.exec_failure_continues legacy.expand_aliases \
-legacy.extended_debug legacy.extended_glob legacy.extended_quote \
-legacy.empty_glob_is_error legacy.force_fignore legacy.glob_ascii_ranges \
-legacy.glob_skip_dots legacy.glob_star legacy.gnu_error_format \
-legacy.history_reedit legacy.history_verify legacy.host_completion \
-legacy.hup_on_exit legacy.inherit_exit_on_error legacy.interactive_comments \
-legacy.last_pipe_in_shell legacy.local_inherits_value legacy.local_unset \
-legacy.login_shell legacy.mail_warn legacy.no_empty_command_completion \
-legacy.glob_ignore_case legacy.match_ignore_case legacy.empty_glob_is_removed \
-legacy.patsub_replacement legacy.programmable_completion \
-legacy.programmable_completion_alias legacy.prompt_expansion \
-legacy.restricted_shell legacy.shift_verbose legacy.source_uses_path \
-legacy.varredir_close legacy.echo_escapes"
+    option_names="mood editor.completion_menu_style \
+editor.show_command_synopsis editor.show_live_diagnostics \
+editor.auto_close_brackets_and_quotes editor.transient_prompt_after_submit \
+editor.request_extended_key_reports history.arrow_keys_search_by_typed_prefix \
+history.file_path history.max_entries \
+completion.add_space_after_completed_word diagnostics.warning_level \
+diagnostics.show_annoying_tier diagnostics.analyze_before_running \
+koshkit.run_utilities_as_plain_commands \
+arithmetic.use_big_integers_and_decimals compat.mimic_shell_named_by_shebang \
+debug.print_syntax_tree debug.print_lexed_word_escapes \
+debug.report_nonzero_exit_codes debug.report_every_exit_code \
+debug.print_evaluation_statistics debug.print_memory_report_at_exit \
+legacy.export_every_assigned_variable legacy.jobs_report_status_immediately \
+legacy.exit_on_command_failure legacy.glob_disabled \
+legacy.remember_command_paths legacy.assignments_anywhere_in_command \
+legacy.job_control legacy.parse_without_executing \
+legacy.exit_after_one_command legacy.privileged_mode \
+legacy.unset_variable_is_error legacy.trace_print_input_lines \
+legacy.trace_print_expanded_commands legacy.brace_expansion \
+legacy.redirect_refuses_to_overwrite_files \
+legacy.trap_err_inherited_by_functions legacy.history_bang_expansion \
+legacy.cd_resolves_symlinks \
+legacy.trap_debug_and_return_inherited_by_functions \
+legacy.pipeline_fails_on_any_stage legacy.history_recording \
+legacy.ctrl_d_does_not_exit legacy.history_skip_function_definitions \
+legacy.base_editor_mode legacy.posix_mode legacy.cd_by_typing_directory_name \
+legacy.array_subscripts_expand_once legacy.cd_to_variable_value \
+legacy.cd_fix_typos legacy.verify_remembered_command_paths \
+legacy.jobs_check_before_exit legacy.update_columns_and_lines \
+legacy.completion_quote_all_special_characters \
+legacy.completion_expand_directory_names \
+legacy.completion_fix_directory_typos legacy.glob_includes_dotfiles \
+legacy.exec_failure_keeps_shell legacy.aliases_expand \
+legacy.debugger_support legacy.glob_extended_patterns \
+legacy.quote_dollar_strings_in_parameter_expansion \
+legacy.glob_no_match_is_error legacy.completion_always_apply_fignore \
+legacy.glob_ranges_use_ascii_order legacy.glob_never_matches_dot_and_dotdot \
+legacy.glob_double_star_recurses legacy.errors_use_gnu_format \
+legacy.history_reedit_failed_substitution \
+legacy.history_verify_expansion_before_running \
+legacy.completion_hostnames_after_at legacy.jobs_hangup_on_exit \
+legacy.command_substitution_inherits_exit_on_failure \
+legacy.interactive_comments legacy.pipeline_last_stage_runs_in_shell \
+legacy.local_inherits_outer_value legacy.local_unset_hides_outer \
+legacy.login_shell legacy.mail_warn_when_read legacy.completion_skip_empty_line \
+legacy.glob_ignores_case legacy.match_ignores_case \
+legacy.glob_no_match_expands_to_nothing \
+legacy.pattern_substitution_ampersand_is_match legacy.completion_programmable \
+legacy.completion_programmable_follows_aliases \
+legacy.prompt_expands_parameters legacy.restricted_shell \
+legacy.shift_reports_overflow legacy.source_searches_path \
+legacy.redirect_variable_fd_closed_after_command \
+legacy.echo_interprets_backslash_escapes"
 
   if [[ $current_word == -* ]]
   then
@@ -193,11 +216,16 @@ legacy.varredir_close legacy.echo_escapes"
       then
         case ${operands[1]} in
           mood) _kosh_compgen -W "kosh sh bash bash-posix" -- "$current_word" ;;
-          editor.tab_selector)
+          editor.completion_menu_style)
             _kosh_compgen -W "interactive external plain" -- "$current_word"
           ;;
-          diagnostics.level) _kosh_compgen -W "0 1 2 3" -- "$current_word" ;;
-          history.file | history.size) ;;
+          diagnostics.warning_level)
+            _kosh_compgen -W "0 1 2 3" -- "$current_word"
+          ;;
+          legacy.base_editor_mode)
+            _kosh_compgen -W "emacs vi" -- "$current_word"
+          ;;
+          history.file_path | history.max_entries) ;;
           *) _kosh_compgen -W "on off" -- "$current_word" ;;
         esac
       fi

@@ -38,57 +38,61 @@ echo "== the bash preset matches a fresh bash session:"
 do_compare_preset bash
 
 echo "== set changes the session, and --persist rewrites one line:"
-"$BIN" -c 'koshconf set editor.auto_pair true; koshconf get editor.auto_pair'
+"$BIN" -c 'koshconf set editor.auto_close_brackets_and_quotes true; koshconf get editor.auto_close_brackets_and_quotes'
 line_count=$(grep -c . "$conf")
-"$BIN" -c 'koshconf set editor.auto_pair 1 --persist'
-grep '^editor.auto_pair=' "$conf"
+"$BIN" -c 'koshconf set editor.auto_close_brackets_and_quotes 1 --persist'
+grep '^editor.auto_close_brackets_and_quotes=' "$conf"
 [ "$(grep -c . "$conf")" = "$line_count" ] && echo "same line count"
 echo "== --persist appends a missing option and quotes a padded value:"
 printf '# kept\nmood=bash\nmood=sh\n' >"$conf"
-"$BIN" -c "koshconf set history.file ' padded ' --persist"
+"$BIN" -c "koshconf set history.file_path ' padded ' --persist"
 "$BIN" -c 'koshconf set mood kosh --persist'
 cat "$conf"
 echo "== --persist creates the file and its directory:"
 "$BIN_DIR/invoke-koshkit" rm -rf -- "$XDG_CONFIG_HOME"
-"$BIN" -c 'koshconf set completion.space_after on --persist'
+"$BIN" -c 'koshconf set completion.add_space_after_completed_word on --persist'
 cat "$conf"
 echo "== --persist rejects an option that changes evaluation:"
-"$BIN" -c 'koshconf set legacy.exit_on_error on --persist'
+"$BIN" -c 'koshconf set legacy.exit_on_command_failure on --persist'
 echo "rc=$?"
 echo "== a value the file cannot hold changes neither the session nor the file:"
-KOSH_HISTORY_FILE=/history "$BIN" -c 'koshconf set history.file $'"'"'a\nb'"'"' --persist
+KOSH_HISTORY_FILE=/history "$BIN" -c 'koshconf set history.file_path $'"'"'a\nb'"'"' --persist
 echo "rc=$?"
-koshconf get history.file'
-grep -c '^history.file=' "$conf"
+koshconf get history.file_path'
+grep -c '^history.file_path=' "$conf"
 echo "== a failed write is a soft error that || can catch:"
 chmod 500 "$XDG_CONFIG_HOME/kosh"
-"$BIN" -c 'koshconf set editor.hints off --persist || echo "rc=$?"
-koshconf get editor.hints
+"$BIN" -c 'koshconf set editor.show_command_synopsis off --persist || echo "rc=$?"
+koshconf get editor.show_command_synopsis
 koshconf create --force kosh || echo "rc=$?"' 2>&1 | sed "s|$config|CONFIG|"
 chmod 700 "$XDG_CONFIG_HOME/kosh"
 echo "== string values are validated:"
-"$BIN" -c 'koshconf set history.size 12x
+"$BIN" -c 'koshconf set history.max_entries 12x
 echo "rc=$?"
-koshconf set history.size -- -1
+koshconf set history.max_entries -- -1
 echo "rc=$?"
-koshconf set history.file $'"'"'a\xffb'"'"'
+koshconf set history.file_path $'"'"'a\xffb'"'"'
 echo "rc=$?"
-koshconf set history.size 0
-koshconf get history.size'
+koshconf set history.max_entries 0
+koshconf get history.max_entries'
 echo "== list escapes a value the file cannot hold:"
 KOSH_HISTORY_FILE=$'a\nb\x01"\'' "$BIN" -c 'koshconf list |
-  grep "^history.file="
+  grep "^history.file_path="
 echo "rc=$?"'
 
 echo "== enumerations and booleans:"
-"$BIN" -c 'koshconf set editor.tab_selector plain
-koshconf get editor.tab_selector
-koshconf set diagnostics.level 2
+"$BIN" -c 'koshconf set editor.completion_menu_style plain
+koshconf get editor.completion_menu_style
+koshconf set diagnostics.warning_level 2
 echo "$-"
-koshconf set legacy.exit_on_error on
+koshconf set legacy.exit_on_command_failure on
 set -o | grep errexit
-koshconf set legacy.vi_editing off
-koshconf get legacy.vi_editing'
+koshconf set legacy.base_editor_mode vi
+koshconf get legacy.base_editor_mode
+set -o | grep -E "^(emacs|vi) "
+koshconf set legacy.base_editor_mode emacs
+koshconf get legacy.base_editor_mode
+set -o | grep -E "^(emacs|vi) "'
 
 echo "== malformed forms and unknown names:"
 "$BIN" -c 'koshconf'
@@ -105,7 +109,7 @@ echo "rc=$?"
 echo "rc=$?"
 
 echo "== load applies an encoded form and skips an unknown id:"
-"$BIN" -c 'koshconf load BQEByAEBAQ==; koshconf get editor.auto_pair'
+"$BIN" -c 'koshconf load BQEByAEBAQ==; koshconf get editor.auto_close_brackets_and_quotes'
 echo "rc=$?"
 "$BIN" -c 'koshconf load "not base64"'
 echo "rc=$?"
@@ -114,24 +118,24 @@ echo "rc=$?"
 echo "== load rejects a non-canonical encoding as a whole:"
 for blob in hQABAQ== BYEAAQ== BQEBBQEA BgEABQEB BQEBBg; do
   "$BIN" -c "koshconf load $blob 2>/dev/null; echo \"$blob rc=\$?\"
-koshconf get editor.auto_pair"
+koshconf get editor.auto_close_brackets_and_quotes"
 done
 echo "== load skips an invalid string value and keeps the rest:"
-"$BIN" -c 'koshconf load BQEBCgF4; koshconf get editor.auto_pair
-koshconf get history.size'
+"$BIN" -c 'koshconf load BQEBCgF4; koshconf get editor.auto_close_brackets_and_quotes
+koshconf get history.max_entries'
 
 echo "== KOSHCONF carries the mood and interactive options to another shell:"
 encoded=$("$BIN" -c 'koshconf set mood bash
-koshconf set editor.tab_selector external
-koshconf set history.size 77
-koshconf set legacy.exit_on_error on
+koshconf set editor.completion_menu_style external
+koshconf set history.max_entries 77
+koshconf set legacy.exit_on_command_failure on
 printf %s "$KOSHCONF"')
 printf '%s\n' "$encoded"
 KOSHCONF=$encoded "$BIN" -c 'koshconf get mood
-koshconf get editor.tab_selector
-koshconf get history.size
-koshconf get legacy.exit_on_error'
-"$BIN" -c "koshconf load '$encoded'; koshconf get editor.tab_selector"
+koshconf get editor.completion_menu_style
+koshconf get history.max_entries
+koshconf get legacy.exit_on_command_failure'
+"$BIN" -c "koshconf load '$encoded'; koshconf get editor.completion_menu_style"
 echo "== KOSHCONF is never exported and a subshell sees the same value:"
 "$BIN" -c 'env | grep -c "^KOSHCONF="
 [ "$KOSHCONF" = "$( (printf %s "$KOSHCONF") & wait)" ] && echo same
@@ -141,7 +145,7 @@ echo "== an exported KOSHCONF carries the settings current at each child:"
 "$BIN" -c 'export KOSHCONF
 koshconf set mood bash
 "$BIN" -c "koshconf get mood"
-koshconf set editor.auto_pair on
-"$BIN" -c "koshconf get editor.auto_pair" &
+koshconf set editor.auto_close_brackets_and_quotes on
+"$BIN" -c "koshconf get editor.auto_close_brackets_and_quotes" &
 wait "$!"
 [ "$(printenv KOSHCONF)" = "$KOSHCONF" ] && echo current'

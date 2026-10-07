@@ -15,7 +15,7 @@ fi
 printf '%s\n' "$completion_output"
 
 echo "== callback keeps definition annoying state:"
-"$BIN" -c 'koshconf set diagnostics.annoying off; _f(){ COMPREPLY=("$(koshconf get diagnostics.annoying)"); }; complete -F _f annoyingcmd; koshconf set diagnostics.annoying on' --debug-complete-at 'annoyingcmd ' </dev/null
+"$BIN" -c 'koshconf set diagnostics.show_annoying_tier off; _f(){ COMPREPLY=("$(koshconf get diagnostics.show_annoying_tier)"); }; complete -F _f annoyingcmd; koshconf set diagnostics.show_annoying_tier on' --debug-complete-at 'annoyingcmd ' </dev/null
 
 echo "== callback keeps definition mood:"
 "$BIN" -c '_f(){ COMPREPLY=("$(set -M)"); }; complete -F _f moodcmd; set -M bash' --debug-complete-at 'moodcmd ' </dev/null

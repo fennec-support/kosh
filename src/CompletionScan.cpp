@@ -932,8 +932,11 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     } else if (operands.count() == 1 &&
                (operands[0] == "set" || operands[0] == "get"))
     {
-      for (let const &option : get_option_registry())
+      for (let const &option : get_option_registry()) {
+        if (option.is_set_alias) continue;
+
         do_push_matching(option.koshconf_name);
+      }
     } else if (operands.count() == 2 && operands[0] == "set") {
       let const *option = find_option_by_koshconf_name(operands[1]);
       if (option != nullptr)

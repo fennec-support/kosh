@@ -137,10 +137,11 @@ FLAG(TAB_SELECTOR, String, '\0', "tab-selector", Kosh,
      "program, and 'plain' lists the candidates. --dumb selects 'plain'.");
 FLAG(ENABLE_KOSHKIT, Bool, '\0', "enable-koshkit", Kosh,
      "Resolve the bundled koshkit utility names such as ls and mkdir directly "
-     "as commands, the same as koshconf set koshkit.commands on.");
+     "as commands, the same as koshconf set "
+     "koshkit.run_utilities_as_plain_commands on.");
 FLAG(EXTENDED_ARITHMETIC, Bool, '\0', "enable-extended-arithmetic", Kosh,
      "Use arbitrary-precision integers and finite decimal values, the same as "
-     "koshconf set arithmetic.extended on.");
+     "koshconf set arithmetic.use_big_integers_and_decimals on.");
 
 FLAG(AST, Bool, 'A', "show-ast", Debug,
      "Print syntax trees before execution and during formatting or linting.");

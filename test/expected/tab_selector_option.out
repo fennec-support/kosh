@@ -18,9 +18,9 @@ external
 == a mood change keeps the selector:
 plain
 == an unknown koshconf value is rejected:
--c:1:34: error: Builtin `koshconf`: Invalid value 'bogus' for 'editor.tab_selector', expected 'interactive', 'external', or 'plain'.
-     1 |  koshconf set editor.tab_selector bogus
-       |                                   ^~~~~
+-c:1:43: error: Builtin `koshconf`: Invalid value 'bogus' for 'editor.completion_menu_style', expected 'interactive', 'external', or 'plain'.
+     1 |  koshconf set editor.completion_menu_style bogus
+       |                                            ^~~~~
 status=1
 == set no longer accepts the long form:
 -c:1:5: error: Builtin `set`: Unknown option '--tab-selector'.

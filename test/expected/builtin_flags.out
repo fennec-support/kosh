@@ -39,9 +39,9 @@ notify
 nounset
 == set -o offers no Koshka name:
 == koshconf offers the diagnostics names:
-diagnostics.analysis
-diagnostics.annoying
-diagnostics.level
+diagnostics.analyze_before_running
+diagnostics.show_annoying_tier
+diagnostics.warning_level
 == kosh no-traces flag:
 --no-traces
 == kosh no-annoying flag:

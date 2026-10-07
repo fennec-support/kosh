@@ -27,7 +27,7 @@ constexpr usize KOSHCONF_LINK_LIMIT = 40;
 constexpr u32 MAX_CODEPOINT = 0x10ffff;
 constexpr u32 INVALID_CODEPOINT = MAX_CODEPOINT + 1;
 constexpr StringView UTF8_BYTE_ORDER_MARK{"\xef\xbb\xbf"};
-constexpr StringView HISTORY_SIZE_NAME{"history.size"};
+constexpr StringView HISTORY_MAX_ENTRIES_NAME{"history.max_entries"};
 
 enum class escape_style : u8
 {
@@ -365,7 +365,8 @@ fn find_koshconf_value_problem(const option_descriptor &option,
     return do_describe("text without a NUL byte");
   }
   if (!is_valid_utf8(value)) return do_describe("valid UTF-8 text");
-  let const is_count = StringView{option.koshconf_name} == HISTORY_SIZE_NAME;
+  let const is_count =
+      StringView{option.koshconf_name} == HISTORY_MAX_ENTRIES_NAME;
   if (is_count && !is_decimal_count(value)) {
     return do_describe("a non-negative decimal integer");
   }
