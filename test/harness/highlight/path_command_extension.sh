@@ -57,3 +57,23 @@ mkdir "$dir/existing"
 "$BIN" --debug-highlight-at './kos' |
     grep -E "${tab}(existing-path|partial-path)$"
 "$BIN" --debug-highlight-at '~' | grep -Fx "~${tab}partial-path"
+
+if [ "${OS-}" != Windows_NT ]; then
+    mkdir "$dir/between"
+    printf '#!/bin/sh\n' > "$dir/between/gone-probe"
+    printf '#!/bin/sh\n' > "$dir/between/blocked-probe"
+    chmod +x "$dir/between/gone-probe" "$dir/between/blocked-probe"
+    BETWEEN_DIRECTORY="$dir/between" \
+        PATH="$dir/between" "$BIN" -c '
+        compgen -c >/dev/null
+        : > "$BETWEEN_DIRECTORY/appear-probe"
+        /bin/chmod +x "$BETWEEN_DIRECTORY/appear-probe"
+        /bin/rm "$BETWEEN_DIRECTORY/gone-probe"
+        /bin/chmod -x "$BETWEEN_DIRECTORY/blocked-probe"
+        :' --debug-highlight-at 'appear-probe; gone-probe; blocked-probe' |
+        grep -E "${tab}(resolved-command|unknown-command)$"
+else
+    printf 'appear-probe\tresolved-command\n'
+    printf 'gone-probe\tunknown-command\n'
+    printf 'blocked-probe\tunknown-command\n'
+fi

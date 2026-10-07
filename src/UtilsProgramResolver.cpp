@@ -447,6 +447,7 @@ ProgramResolver::ProgramResolver(Maybe<String> path) : m_path(steal(path)) {}
 fn ProgramResolver::mark_command_name_indexes_stale() wontthrow -> void
 {
   m_validated_prefix.clear();
+  m_command_statuses.clear();
   m_command_names_are_valid = false;
   m_command_names_validation_epoch = 0;
   m_prefix_validation_epoch = 0;
@@ -630,6 +631,68 @@ fn ProgramResolver::refresh_path_directory_generations() throws -> void
   m_path_directories_validation_epoch = DIRECTORY_VALIDATION_EPOCH;
 }
 
+fn ProgramResolver::probe_directory_entries(
+    const Path &directory, const ArrayList<Path::directory_child> &entries,
+    DirectoryProbe &probe) throws -> void
+{
+  usize symlink_count = 0;
+  for (let const &entry : entries)
+    if (entry.kind == Path::entry_kind::Symlink) symlink_count++;
+
+  let symlink_paths = ArrayList<Path>{heap_allocator()};
+  let symlink_statuses = ArrayList<os::file_status>{heap_allocator()};
+  let symlink_batch = os::Batch{heap_allocator()};
+  symlink_paths.reserve(symlink_count);
+  symlink_statuses.reserve(symlink_count);
+  symlink_batch.reserve(symlink_count);
+  for (let const &entry : entries) {
+    if (entry.kind != Path::entry_kind::Symlink) continue;
+
+    let full_path = directory.clone();
+    full_path.append(entry.name.view());
+    symlink_paths.push(steal(full_path));
+    symlink_statuses.push({});
+  }
+  for (usize position = 0; position < symlink_count; position++)
+    symlink_batch.add(os::batch_operation::stat(symlink_paths[position],
+                                                symlink_statuses[position]));
+  let symlink_results = ArrayList<os::batch_result>{heap_allocator()};
+  if (symlink_count != 0) symlink_batch.execute(symlink_results);
+
+  probe.regular_entries.reserve(entries.count());
+  probe.executable_entries.reserve(entries.count());
+  usize symlink_position = 0;
+  for (let const &entry : entries) {
+    Maybe<Path> full_path;
+    if (entry.kind == Path::entry_kind::Symlink) {
+      let const position = symlink_position++;
+      if (symlink_results[position].error_number != 0 ||
+          os::file_type_letter(symlink_statuses[position].mode) != '-')
+      {
+        probe.regular_entries.push(false);
+        probe.executable_entries.push(false);
+        continue;
+      }
+      full_path = steal(symlink_paths[position]);
+    } else if (entry.kind != Path::entry_kind::Regular) {
+      probe.regular_entries.push(false);
+      probe.executable_entries.push(false);
+      continue;
+    }
+
+    if (!full_path.has_value()) {
+      full_path = directory.clone();
+      full_path->append(entry.name.view());
+    }
+
+#if !defined NDEBUG
+    DEBUG_EXECUTABLE_PROBE_COUNT++;
+#endif
+    probe.regular_entries.push(true);
+    probe.executable_entries.push(full_path->is_executable());
+  }
+}
+
 fn ProgramResolver::rebuild_path_command_index(CompletionRefresh refresh) throws
     -> void
 {
@@ -650,57 +713,49 @@ fn ProgramResolver::rebuild_path_command_index(CompletionRefresh refresh) throws
 
   if (refresh == CompletionRefresh::Fresh) refresh_path_directory_generations();
 
+  let previous_probes = steal(m_directory_probes);
+  m_directory_probes = ArrayList<DirectoryProbe>{heap_allocator()};
+  if (refresh == CompletionRefresh::Fresh) previous_probes.clear();
+
   let command_names = ArrayList<String>{heap_allocator()};
   let regular_names = ArrayList<String>{heap_allocator()};
 
   for (let const &directory_text : get_index_path_dirs()) {
     let const directory = Path{directory_text.view()};
     let const entries =
-        read_directory_cached(directory, directory_validation::Cached);
+        read_directory_cached(directory, directory_validation::Cached,
+                              directory_listing_order::FoldedName);
     if (entries == nullptr) continue;
 
-    usize symlink_count = 0;
-    for (let const &entry : *entries)
-      if (entry.kind == Path::entry_kind::Symlink) symlink_count++;
+    let const generation = directory_listing_generation(directory);
+    let is_listed_twice = false;
+    for (let const &listed : m_directory_probes)
+      if (listed.generation == generation) is_listed_twice = true;
 
-    let symlink_paths = ArrayList<Path>{heap_allocator()};
-    let symlink_statuses = ArrayList<os::file_status>{heap_allocator()};
-    let symlink_batch = os::Batch{heap_allocator()};
-    symlink_paths.reserve(symlink_count);
-    symlink_statuses.reserve(symlink_count);
-    symlink_batch.reserve(symlink_count);
-    for (let const &entry : *entries) {
-      if (entry.kind != Path::entry_kind::Symlink) continue;
+    if (is_listed_twice) continue;
 
-      let full_path = directory.clone();
-      full_path.append(entry.name.view());
-      symlink_paths.push(steal(full_path));
-      symlink_statuses.push({});
-    }
-    for (usize position = 0; position < symlink_count; position++)
-      symlink_batch.add(os::batch_operation::stat(symlink_paths[position],
-                                                  symlink_statuses[position]));
-    let symlink_results = ArrayList<os::batch_result>{heap_allocator()};
-    if (symlink_count != 0) symlink_batch.execute(symlink_results);
-
-    usize symlink_position = 0;
-    for (let const &entry : *entries) {
-      Maybe<Path> full_path;
-      if (entry.kind == Path::entry_kind::Symlink) {
-        let const position = symlink_position++;
-        if (symlink_results[position].error_number != 0 ||
-            os::file_type_letter(symlink_statuses[position].mode) != '-')
-          continue;
-        full_path = steal(symlink_paths[position]);
-      } else if (entry.kind != Path::entry_kind::Regular) {
+    let probe = DirectoryProbe{};
+    probe.directory = String{directory_text.view()};
+    probe.generation = generation;
+    let was_reused = false;
+    for (let &previous : previous_probes) {
+      if (previous.generation != probe.generation ||
+          previous.regular_entries.count() != entries->count() ||
+          previous.directory.view() != probe.directory.view())
+      {
         continue;
       }
 
-      if (!full_path.has_value()) {
-        full_path = directory.clone();
-        full_path->append(entry.name.view());
-      }
+      probe = steal(previous);
+      was_reused = true;
+      break;
+    }
+    if (!was_reused) probe_directory_entries(directory, *entries, probe);
 
+    for (usize position = 0; position < entries->count(); position++) {
+      if (!probe.regular_entries[position]) continue;
+
+      let const &entry = (*entries)[position];
       let normalized_name = entry.name.clone();
       let const name_info = os::normalize_program_name(normalized_name);
       let const stem =
@@ -709,13 +764,11 @@ fn ProgramResolver::rebuild_path_command_index(CompletionRefresh refresh) throws
       if (stem.length != normalized_name.length())
         regular_names.push(String{stem});
 
-#if !defined NDEBUG
-      DEBUG_EXECUTABLE_PROBE_COUNT++;
-#endif
-      if (!full_path->is_executable()) continue;
+      if (!probe.executable_entries[position]) continue;
       if (stem.length != entry.name.length()) command_names.push(String{stem});
       command_names.push(steal(normalized_name));
     }
+    m_directory_probes.push(steal(probe));
   }
 
   m_command_names = sort_and_deduplicate_names(steal(command_names));
@@ -732,6 +785,18 @@ fn ProgramResolver::initialize_path_map() throws -> void
   LOG(Info, "scanning %zu unique PATH directories to seed the program cache",
       get_index_path_dirs().count());
   rebuild_path_command_index(CompletionRefresh::Fresh);
+}
+
+fn ProgramResolver::revalidate_for_prompt() throws -> void
+{
+  begin_directory_validation_epoch();
+  let const did_change = validate_path_directory_generations();
+  if (!did_change && m_command_names_are_valid) {
+    return;
+  }
+
+  LOG(Info, "rebuilding the command names before the prompt");
+  rebuild_path_command_index(CompletionRefresh::Cached);
 }
 
 fn ProgramResolver::begin_explicit_completion(CompletionRefresh refresh) throws
@@ -1017,6 +1082,14 @@ fn ProgramResolver::get_status(StringView name, StatusLookup lookup) throws
       m_regular_names.find(normalized_name.view()).has_value();
   if (!is_cached_runnable && !is_cached_regular) return Status::Missing;
 
+  if (m_statuses_validation_epoch != DIRECTORY_VALIDATION_EPOCH) {
+    m_command_statuses.clear();
+    m_statuses_validation_epoch = DIRECTORY_VALIDATION_EPOCH;
+  }
+  if (let const known = m_command_statuses.find(normalized_name.view());
+      known.has_value())
+    return *known.value();
+
   let const cached_status =
       is_cached_runnable ? Status::Runnable : Status::Blocked;
   let const paths = search(normalized_name.view(), SearchMode::First,
@@ -1025,7 +1098,11 @@ fn ProgramResolver::get_status(StringView name, StatusLookup lookup) throws
       paths.is_empty()
           ? Status::Missing
           : (paths[0].is_executable() ? Status::Runnable : Status::Blocked);
-  if (current_status != cached_status) mark_command_name_indexes_stale();
+  if (current_status != cached_status) {
+    mark_command_name_indexes_stale();
+    m_directory_probes.clear();
+  }
+  m_command_statuses.set(normalized_name.view(), current_status);
 
   return current_status;
 }

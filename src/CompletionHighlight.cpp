@@ -467,8 +467,34 @@ static fn word_names_existing_path(StringView word) throws -> bool
       return Path{expanded->view()}.exists();
     return false;
   }
+  if (word == "." || word == "..") {
+    return true;
+  }
 
-  return Path{word}.exists();
+  let const listing_directory = Path{"."};
+  let const entries = utils::read_directory_cached(
+      listing_directory, utils::directory_validation::Cached,
+      utils::directory_listing_order::FoldedName);
+  if (entries == nullptr) return Path{word}.exists();
+
+  let entry_position = utils::directory_entry_name_lower_bound(*entries, word);
+  for (; entry_position < entries->count(); entry_position++) {
+    let const &entry = (*entries)[entry_position];
+    if (entry.name.length() != word.length ||
+        !utils::directory_entry_name_has_casefold_prefix(entry.name.view(),
+                                                         word))
+    {
+      return false;
+    }
+
+    if (os::FILESYSTEM_IS_CASE_SENSITIVE && entry.name.view() != word) {
+      continue;
+    }
+    if (entry.kind == Path::entry_kind::Symlink) return Path{word}.exists();
+    return true;
+  }
+
+  return false;
 }
 
 static fn path_partial_prefixes_entry(StringView word, usize existing_end,

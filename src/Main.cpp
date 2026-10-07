@@ -1625,9 +1625,10 @@ struct interactive_session
   fn prepare_completion(EvalContext &context, const command_line &line) throws
       -> void
   {
-    if (!did_seed_path_map && !line.is_rescue_mode &&
-        !FLAG_NO_COMPLETION.is_enabled() &&
-        !FLAG_NO_SYNTAX_HIGHLIGHTING.is_enabled())
+    if (did_seed_path_map) {
+      context.program_resolver().revalidate_for_prompt();
+    } else if (!line.is_rescue_mode && !FLAG_NO_COMPLETION.is_enabled() &&
+               !FLAG_NO_SYNTAX_HIGHLIGHTING.is_enabled())
     {
       context.program_resolver().initialize_path_map();
       did_seed_path_map = true;

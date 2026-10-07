@@ -215,6 +215,12 @@ changes update this file.
   `utils::warm_directory_index`. The ghost suggestion needs no tab. The ghost
   runs for any non-empty token. A directory is indexed as soon as its slash is
   typed.
+- `revalidate_for_prompt` starts one directory validation epoch before each
+  prompt. It stats every PATH directory and rebuilds the command names when
+  one changed, probing only the directories whose listing changed. Within the
+  epoch the highlighter reads the command names, remembers the status of each
+  command word after one PATH search, and looks plain operands up in the
+  working directory listing, so a keystroke reads no file for a name it saw.
 - An open completion menu narrows the gathered candidates in the editor. A
   command-name or path list, which `match_tier` ranked, narrows by the same
   exact, smart-case, and subsequence tiers, with the subsequence tier held to

@@ -131,6 +131,7 @@ public:
   fn remember_path(StringView name, const Path &path) throws -> void;
   fn working_directory_changed() throws -> void;
   fn initialize_path_map() throws -> void;
+  fn revalidate_for_prompt() throws -> void;
   fn begin_explicit_completion(CompletionRefresh refresh) throws -> void;
   fn end_explicit_completion() wontthrow -> void;
   fn search(StringView program_name, SearchMode search_mode = SearchMode::First,
@@ -155,6 +156,14 @@ public:
   }
 
 private:
+  struct DirectoryProbe
+  {
+    String directory{heap_allocator()};
+    u64 generation{0};
+    Bitset regular_entries{heap_allocator()};
+    Bitset executable_entries{heap_allocator()};
+  };
+
   fn mark_command_name_indexes_stale() wontthrow -> void;
   fn clear_command_name_indexes() wontthrow -> void;
   fn mark_derived_indexes_stale() wontthrow -> void;
@@ -165,6 +174,10 @@ private:
   fn get_path_dirs() throws -> const ArrayList<String> &;
   fn get_index_path_dirs() throws -> const ArrayList<String> &;
   fn refresh_path_directory_generations() throws -> void;
+  static fn
+  probe_directory_entries(const Path &directory,
+                          const ArrayList<Path::directory_child> &entries,
+                          DirectoryProbe &probe) throws -> void;
   fn rebuild_path_command_index(CompletionRefresh refresh) throws -> void;
   fn prepare_complete_path_cache(StringView validation_prefix,
                                  ValidationScope validation_scope) throws
@@ -182,6 +195,8 @@ private:
       const CacheEntry &entry,
       os::program_extension wanted_extension) const wontthrow -> const Path *;
   StringMap<CacheEntry> m_execution_cache{heap_allocator()};
+  StringMap<Status> m_command_statuses{heap_allocator()};
+  ArrayList<DirectoryProbe> m_directory_probes{heap_allocator()};
   SortedArrayList<String, program_name_comparator> m_command_names{
       heap_allocator(), program_name_comparator{}};
   SortedArrayList<String, program_name_comparator> m_regular_names{
@@ -197,6 +212,7 @@ private:
   u64 m_path_directories_validation_epoch{0};
   u64 m_command_names_validation_epoch{0};
   u64 m_prefix_validation_epoch{0};
+  u64 m_statuses_validation_epoch{0};
   usize m_explicit_completion_depth{0};
 };
 

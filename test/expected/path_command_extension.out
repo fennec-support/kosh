@@ -13,3 +13,6 @@ ech	unknown-command
 out	invalid-path
 ./	existing-path
 ~	partial-path
+appear-probe	resolved-command
+gone-probe	unknown-command
+blocked-probe	unknown-command

@@ -79,6 +79,8 @@ static fn run_debug_highlight_driver(StringView driver_line,
   let const variable_name_visit_count_before =
       context.dynamic_runtime_store().debug_variable_name_enumeration_count();
   let const directory_read_count_before = utils::debug_directory_read_count();
+  if (context.program_resolver().has_valid_command_names())
+    context.program_resolver().revalidate_for_prompt();
   context.program_resolver().begin_explicit_completion(
       ProgramResolver::CompletionRefresh::Fresh);
   defer { context.program_resolver().end_explicit_completion(); };
