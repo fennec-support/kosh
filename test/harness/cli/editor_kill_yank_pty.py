@@ -29,9 +29,11 @@ import os
 import shutil
 import sys
 import tempfile
+import time
 
-from editor_ghost_menu_pty import (LEFT, Report, Session, clear_line, has_hint,
-                                   has_hint_header, is_line)
+from editor_ghost_menu_pty import (LEFT, WAIT_SECONDS, Report, Session,
+                                   clear_line, has_hint, has_hint_header,
+                                   is_line)
 
 
 CTRL_A = b"\x01"
@@ -112,13 +114,22 @@ def is_withdrawn_around(session, mark, output):
     return do_check
 
 
+def is_zombie(pid):
+    try:
+        with open("/proc/%d/stat" % pid) as handle:
+            return handle.read().rsplit(")", 1)[1].split()[0] == "Z"
+    except OSError:
+        return True
+
+
 def has_exited(session):
     def do_check(screen):
-        try:
-            with open("/proc/%d/stat" % session.pid) as handle:
-                return handle.read().rsplit(")", 1)[1].split()[0] == "Z"
-        except OSError:
-            return True
+        deadline = time.monotonic() + WAIT_SECONDS
+        while not is_zombie(session.pid):
+            if time.monotonic() >= deadline:
+                return False
+            time.sleep(0.01)
+        return True
     return do_check
 
 
