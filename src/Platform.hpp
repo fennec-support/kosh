@@ -2364,7 +2364,7 @@ struct process_substitution_options
 
 fn launch_process_substitution(const process_substitution_options &options)
     throws -> process_substitution_launch;
-fn release_unused_process_substitution(opaque *cleanup) wontthrow -> void;
+fn finish_process_substitution(opaque *cleanup) wontthrow -> void;
 fn release_finished_process_substitution(opaque *cleanup) wontthrow -> bool;
 
 struct fork_compound_stage_options

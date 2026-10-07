@@ -682,7 +682,7 @@ fn launch_process_substitution(const process_substitution_options &options)
   };
 }
 
-fn release_unused_process_substitution(opaque *cleanup) wontthrow -> void
+fn finish_process_substitution(opaque *cleanup) wontthrow -> void
 {
   unused(cleanup);
 }

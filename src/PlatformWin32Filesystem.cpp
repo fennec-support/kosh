@@ -715,8 +715,8 @@ fn open_file_descriptor(StringView path, file_open_mode mode)
   case file_open_mode::ReadNonblocking: disposition = OPEN_EXISTING; break;
   case file_open_mode::ReadWrite: disposition = OPEN_ALWAYS; break;
   }
-  if (path.starts_with(StringView{"\\\\.\\pipe\\"}))
-    disposition = OPEN_EXISTING;
+  let const is_named_pipe = path.starts_with(StringView{"\\\\.\\pipe\\"});
+  if (is_named_pipe) disposition = OPEN_EXISTING;
 
   /* Non-inheritable, execute_program flips it only while spawning the child. */
   SECURITY_ATTRIBUTES att{};
@@ -728,12 +728,25 @@ fn open_file_descriptor(StringView path, file_open_mode mode)
       path == StringView{"/dev/null"} ? StringView{"NUL"} : path;
   let const wide_path = utf8_to_wide(path_text, heap_allocator());
   if (!wide_path.has_value()) return koshka::None;
-  HANDLE handle = CreateFileW(wide_path->begin(), access,
-                              FILE_SHARE_READ | FILE_SHARE_WRITE, &att,
-                              disposition, FILE_ATTRIBUTE_NORMAL, nullptr);
-  if (handle == INVALID_HANDLE_VALUE) return koshka::None;
+  let const deadline_milliseconds = GetTickCount64() + 2000;
+  loop
+  {
+    HANDLE handle = CreateFileW(wide_path->begin(), access,
+                                FILE_SHARE_READ | FILE_SHARE_WRITE, &att,
+                                disposition, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (handle != INVALID_HANDLE_VALUE) return handle;
 
-  return handle;
+    if (!is_named_pipe || GetLastError() != ERROR_PIPE_BUSY) {
+      return koshka::None;
+    }
+
+    let const now_milliseconds = GetTickCount64();
+    if (now_milliseconds >= deadline_milliseconds) return koshka::None;
+
+    WaitNamedPipeW(
+        wide_path->begin(),
+        static_cast<DWORD>(deadline_milliseconds - now_milliseconds));
+  }
 }
 
 fn open_file_descriptor_until_signal(StringView path, file_open_mode mode,

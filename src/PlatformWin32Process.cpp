@@ -1212,6 +1212,15 @@ static fn send_internal_pipe(StringView path, StringView content,
       let const client = CreateFileW(wide_path->begin(), GENERIC_WRITE, 0,
                                      nullptr, OPEN_EXISTING, 0, nullptr);
       if (client == INVALID_HANDLE_VALUE) return false;
+
+      ULONG server_process_id = 0;
+      if (GetNamedPipeServerProcessId(client, &server_process_id) == FALSE ||
+          server_process_id != GetProcessId(child))
+      {
+        CloseHandle(client);
+        return false;
+      }
+
       let const was_written = write_all(client, content.data, content.length);
       CloseHandle(client);
       return was_written;
@@ -1222,52 +1231,89 @@ static fn send_internal_pipe(StringView path, StringView content,
   }
 }
 
-static constexpr usize SUBSTITUTION_RELAY_INSTANCE_COUNT = 16;
-static constexpr usize SUBSTITUTION_RELAY_LISTENER_COUNT = 4;
-static constexpr DWORD SUBSTITUTION_RELAY_BUFFER_BYTES = 262144;
-static constexpr DWORD SUBSTITUTION_RELAY_PROBE_BYTES = 4096;
+static constexpr usize SUBSTITUTION_RELAY_CLIENT_COUNT = 64;
+static constexpr usize SUBSTITUTION_RELAY_SPARE_LISTENER_COUNT = 4;
+static constexpr usize SUBSTITUTION_RELAY_WRITE_COUNT = 16;
+static constexpr u64 SUBSTITUTION_RELAY_RING_BYTES = 262144;
+static constexpr u64 SUBSTITUTION_RELAY_CHUNK_BYTES = 65536;
+static constexpr DWORD SUBSTITUTION_RELAY_CLIENT_BYTES = 4096;
+static constexpr DWORD SUBSTITUTION_RELAY_INBOUND_BYTES = 65536;
+static constexpr DWORD SUBSTITUTION_RELAY_BODY_BYTES = 262144;
 static constexpr usize SUBSTITUTION_RELAY_PATH_LENGTH = 128;
-static constexpr usize SUBSTITUTION_RELAY_WRITE_COUNT = 3;
+static constexpr ULONG_PTR SUBSTITUTION_RELAY_FINISH_KEY = 1;
 
-enum class relay_instance_state : u8
+enum class relay_client_state : u8
 {
   Closed,
   Idle,
   Listening,
   Connected,
-  Probing,
+  Offering,
+  Active,
+  Closing,
 };
 
-struct substitution_relay_instance
+enum class relay_operation_kind : u8
+{
+  Connect,
+  Read,
+  Transfer,
+  Write,
+  BodyRead,
+};
+
+struct relay_operation
+{
+  OVERLAPPED overlapped{};
+  relay_operation_kind kind{relay_operation_kind::Read};
+  bool is_pending{false};
+  bool was_immediate{false};
+  usize owner{0};
+};
+
+struct substitution_relay_client
 {
   HANDLE pipe{INVALID_HANDLE_VALUE};
-  OVERLAPPED control{};
-  relay_instance_state state{relay_instance_state::Closed};
-  char probe_bytes[SUBSTITUTION_RELAY_PROBE_BYTES];
+  relay_operation link{};
+  relay_operation transfer{};
+  u64 offer_position{0};
+  u64 sequence{0};
+  DWORD held_byte_count{0};
+  relay_client_state state{relay_client_state::Closed};
+  char bytes[SUBSTITUTION_RELAY_CLIENT_BYTES];
 };
 
 struct substitution_relay_write
 {
-  OVERLAPPED control{};
-  DWORD byte_count{0};
-  bool is_pending{false};
-  char bytes[SUBSTITUTION_RELAY_BUFFER_BYTES];
+  relay_operation operation{};
+  u64 end{0};
+  bool is_done{false};
+  bool did_succeed{false};
 };
 
 struct substitution_relay
 {
   wchar_t path[SUBSTITUTION_RELAY_PATH_LENGTH]{};
   wchar_t body_path[SUBSTITUTION_RELAY_PATH_LENGTH]{};
+  HANDLE port{nullptr};
   HANDLE body{INVALID_HANDLE_VALUE};
-  OVERLAPPED body_control{};
-  HANDLE done_event{nullptr};
+  relay_operation body_read{};
   thread worker{};
+  u64 head{0};
+  u64 posted{0};
+  u64 tail{0};
+  u64 next_sequence{0};
+  usize active_client{SUBSTITUTION_RELAY_CLIENT_COUNT};
+  usize oldest_write{0};
+  usize write_count{0};
   bool is_command_writes{false};
-  bool is_body_reading{false};
+  bool is_finishing{false};
   bool is_body_finished{false};
-  DWORD buffered_byte_count{0};
-  substitution_relay_instance instances[SUBSTITUTION_RELAY_INSTANCE_COUNT];
+  bool is_bulk{false};
+  bool has_active_failed{false};
+  substitution_relay_client clients[SUBSTITUTION_RELAY_CLIENT_COUNT];
   substitution_relay_write writes[SUBSTITUTION_RELAY_WRITE_COUNT];
+  char ring[SUBSTITUTION_RELAY_RING_BYTES];
 };
 
 static fn copy_relay_pipe_name(
@@ -1279,6 +1325,7 @@ static fn copy_relay_pipe_name(
   for (usize position = 0; position < name.length; position++)
     output[position] = static_cast<wchar_t>(static_cast<u8>(name[position]));
   output[name.length] = L'\0';
+
   return true;
 }
 
@@ -1286,404 +1333,639 @@ static fn create_relay_instance(const substitution_relay &relay,
                                 bool is_first) wontthrow -> HANDLE
 {
   let const access =
-      relay.is_command_writes ? PIPE_ACCESS_OUTBOUND : PIPE_ACCESS_INBOUND;
+      relay.is_command_writes ? PIPE_ACCESS_DUPLEX : PIPE_ACCESS_INBOUND;
   let const first_flag =
       is_first ? static_cast<DWORD>(FILE_FLAG_FIRST_PIPE_INSTANCE) : 0;
-  let const inbound_bytes =
-      relay.is_command_writes ? 0 : SUBSTITUTION_RELAY_BUFFER_BYTES;
-  return create_private_pipe(relay.path,
-                             access | FILE_FLAG_OVERLAPPED | first_flag,
-                             PIPE_UNLIMITED_INSTANCES, 0, inbound_bytes);
+  let const inbound_bytes = relay.is_command_writes
+                                ? SUBSTITUTION_RELAY_CLIENT_BYTES
+                                : SUBSTITUTION_RELAY_INBOUND_BYTES;
+  let const pipe = create_private_pipe(
+      relay.path, access | FILE_FLAG_OVERLAPPED | first_flag,
+      PIPE_UNLIMITED_INSTANCES, 0, inbound_bytes);
+  if (pipe == INVALID_HANDLE_VALUE) return pipe;
+
+  if (CreateIoCompletionPort(pipe, relay.port, 0, 0) == nullptr) {
+    let const error = GetLastError();
+    CloseHandle(pipe);
+    SetLastError(error);
+    return INVALID_HANDLE_VALUE;
+  }
+
+  return pipe;
 }
 
-static fn close_relay_instance(substitution_relay_instance &instance) wontthrow
+static fn note_relay_operation(relay_operation &operation,
+                               BOOL was_started) wontthrow -> bool
+{
+  operation.was_immediate = was_started != FALSE;
+  operation.is_pending =
+      was_started != FALSE || GetLastError() == ERROR_IO_PENDING;
+
+  return operation.is_pending;
+}
+
+static fn prepare_relay_operation(relay_operation &operation,
+                                  relay_operation_kind kind,
+                                  usize owner) wontthrow -> OVERLAPPED *
+{
+  operation = relay_operation{};
+  operation.kind = kind;
+  operation.owner = owner;
+
+  return &operation.overlapped;
+}
+
+static fn relay_client_is_busy(const substitution_relay &relay,
+                               usize position) wontthrow -> bool
+{
+  let const &client = relay.clients[position];
+  if (client.link.is_pending || client.transfer.is_pending) {
+    return true;
+  }
+
+  return relay.active_client == position && relay.write_count > 0;
+}
+
+static fn close_relay_client(substitution_relay_client &client) wontthrow
     -> void
 {
-  if (instance.pipe == INVALID_HANDLE_VALUE) return;
-
-  if (instance.state == relay_instance_state::Listening ||
-      instance.state == relay_instance_state::Probing)
+  if (client.state == relay_client_state::Closed ||
+      client.state == relay_client_state::Closing)
   {
-    CancelIoEx(instance.pipe, &instance.control);
-    DWORD ignored_byte_count = 0;
-    GetOverlappedResult(instance.pipe, &instance.control, &ignored_byte_count,
-                        TRUE);
+    return;
   }
-  CloseHandle(instance.pipe);
-  instance.pipe = INVALID_HANDLE_VALUE;
-  instance.state = relay_instance_state::Closed;
+
+  if (client.pipe != INVALID_HANDLE_VALUE) CancelIoEx(client.pipe, nullptr);
+  client.state = relay_client_state::Closing;
 }
 
-static fn listen_relay_instance(substitution_relay_instance &instance) wontthrow
-    -> void
+static fn reap_relay_clients(substitution_relay &relay) wontthrow -> void
 {
-  if (instance.control.hEvent == nullptr)
-    instance.control.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
-  if (instance.control.hEvent == nullptr) {
-    close_relay_instance(instance);
+  for (usize position = 0; position < SUBSTITUTION_RELAY_CLIENT_COUNT;
+       position++)
+  {
+    let &client = relay.clients[position];
+    if (client.state != relay_client_state::Closing ||
+        relay_client_is_busy(relay, position))
+    {
+      continue;
+    }
+
+    CloseHandle(client.pipe);
+    client.pipe = INVALID_HANDLE_VALUE;
+    client.state = relay_client_state::Closed;
+    if (relay.active_client != position) continue;
+
+    relay.active_client = SUBSTITUTION_RELAY_CLIENT_COUNT;
+    relay.posted = relay.head;
+    relay.is_bulk = false;
+    relay.has_active_failed = false;
+  }
+}
+
+static fn start_relay_client_read(substitution_relay &relay,
+                                  usize position) wontthrow -> void
+{
+  let &client = relay.clients[position];
+  let const overlapped = prepare_relay_operation(
+      client.link, relay_operation_kind::Read, position);
+  let const was_started =
+      ReadFile(client.pipe, client.bytes, SUBSTITUTION_RELAY_CLIENT_BYTES,
+               nullptr, overlapped);
+  if (!note_relay_operation(client.link, was_started)) {
+    close_relay_client(client);
+  }
+}
+
+static fn accept_relay_client(substitution_relay &relay,
+                              usize position) wontthrow -> void
+{
+  let &client = relay.clients[position];
+  client.state = relay_client_state::Connected;
+  client.sequence = relay.next_sequence++;
+  client.held_byte_count = 0;
+  start_relay_client_read(relay, position);
+}
+
+static fn start_relay_listen(substitution_relay &relay,
+                             usize position) wontthrow -> void
+{
+  let &client = relay.clients[position];
+  let const overlapped = prepare_relay_operation(
+      client.link, relay_operation_kind::Connect, position);
+  let const was_started = ConnectNamedPipe(client.pipe, overlapped);
+  let const error = GetLastError();
+  if (note_relay_operation(client.link, was_started)) {
+    client.state = relay_client_state::Listening;
     return;
   }
 
-  ResetEvent(instance.control.hEvent);
-  instance.state = relay_instance_state::Idle;
-  if (ConnectNamedPipe(instance.pipe, &instance.control) != FALSE) {
-    instance.state = relay_instance_state::Connected;
+  if (error == ERROR_PIPE_CONNECTED || error == ERROR_NO_DATA) {
+    accept_relay_client(relay, position);
     return;
   }
 
-  switch (GetLastError()) {
-  case ERROR_IO_PENDING:
-    instance.state = relay_instance_state::Listening;
-    break;
-  case ERROR_PIPE_CONNECTED:
-  case ERROR_NO_DATA: instance.state = relay_instance_state::Connected; break;
-  default: close_relay_instance(instance); break;
-  }
+  close_relay_client(client);
 }
 
 static fn ensure_relay_listeners(substitution_relay &relay) wontthrow -> void
 {
+  if (relay.is_finishing) return;
+
   usize listener_count = 0;
-  for (let const &instance : relay.instances)
-    if (instance.state == relay_instance_state::Listening) listener_count++;
+  for (usize position = 0; position < SUBSTITUTION_RELAY_CLIENT_COUNT;
+       position++)
+  {
+    let &client = relay.clients[position];
+    if (client.state == relay_client_state::Idle)
+      start_relay_listen(relay, position);
+    if (client.state == relay_client_state::Listening) listener_count++;
+  }
 
-  for (let &instance : relay.instances) {
-    if (listener_count >= SUBSTITUTION_RELAY_LISTENER_COUNT) return;
+  for (usize position = 0; position < SUBSTITUTION_RELAY_CLIENT_COUNT;
+       position++)
+  {
+    if (listener_count >= SUBSTITUTION_RELAY_SPARE_LISTENER_COUNT) return;
 
-    if (instance.state != relay_instance_state::Closed) continue;
+    let &client = relay.clients[position];
+    if (client.state != relay_client_state::Closed) continue;
 
-    if (instance.pipe == INVALID_HANDLE_VALUE)
-      instance.pipe = create_relay_instance(relay, false);
-    if (instance.pipe == INVALID_HANDLE_VALUE) return;
+    client.pipe = create_relay_instance(relay, false);
+    if (client.pipe == INVALID_HANDLE_VALUE) return;
 
-    listen_relay_instance(instance);
-    if (instance.state == relay_instance_state::Listening) listener_count++;
+    client.state = relay_client_state::Idle;
+    start_relay_listen(relay, position);
+    if (client.state == relay_client_state::Listening) listener_count++;
   }
 }
 
-static fn finish_relay_probe(substitution_relay &relay,
-                             substitution_relay_instance &instance,
-                             BOOL was_completed, DWORD byte_count) wontthrow
-    -> bool
+static fn start_relay_finish(substitution_relay &relay) wontthrow -> void
 {
-  if (was_completed != FALSE && byte_count > 0) return true;
+  relay.is_finishing = true;
+  for (let &client : relay.clients) {
+    if (client.state == relay_client_state::Idle) close_relay_client(client);
+    if (client.state == relay_client_state::Listening)
+      CancelIoEx(client.pipe, &client.link.overlapped);
+  }
+}
 
-  if (was_completed != FALSE && !relay.is_command_writes) {
-    instance.state = relay_instance_state::Connected;
-    return false;
+static fn finish_relay_connect(substitution_relay &relay, usize position,
+                               DWORD error) wontthrow -> void
+{
+  let &client = relay.clients[position];
+  if (client.state != relay_client_state::Listening) return;
+
+  if (error != ERROR_SUCCESS && error != ERROR_PIPE_CONNECTED &&
+      error != ERROR_NO_DATA)
+  {
+    close_relay_client(client);
+    return;
   }
 
-  close_relay_instance(instance);
+  accept_relay_client(relay, position);
+}
+
+static fn start_relay_body_write(substitution_relay &relay, usize position,
+                                 DWORD byte_count) wontthrow -> void
+{
+  let &client = relay.clients[position];
+  let const overlapped = prepare_relay_operation(
+      client.transfer, relay_operation_kind::Transfer, position);
+  let const was_started =
+      WriteFile(relay.body, client.bytes, byte_count, nullptr, overlapped);
+  if (note_relay_operation(client.transfer, was_started)) return;
+
+  relay.is_body_finished = true;
+  close_relay_client(client);
+}
+
+static fn finish_relay_client_read(substitution_relay &relay, usize position,
+                                   DWORD byte_count, DWORD error) wontthrow
+    -> void
+{
+  let &client = relay.clients[position];
+  if (client.state == relay_client_state::Closing) return;
+
+  if (error != ERROR_SUCCESS) {
+    close_relay_client(client);
+    return;
+  }
+
+  if (relay.is_command_writes || byte_count == 0) {
+    start_relay_client_read(relay, position);
+    return;
+  }
+
+  if (relay.is_body_finished) {
+    close_relay_client(client);
+    return;
+  }
+
+  client.held_byte_count = byte_count;
+}
+
+static fn relay_input_is_blocked(const substitution_relay &relay,
+                                 u64 sequence) wontthrow -> bool
+{
+  for (let const &client : relay.clients) {
+    if (client.state != relay_client_state::Connected ||
+        client.sequence >= sequence)
+    {
+      continue;
+    }
+
+    if (client.held_byte_count > 0) return true;
+
+    DWORD available_byte_count = 0;
+    if (PeekNamedPipe(client.pipe, nullptr, 0, nullptr, &available_byte_count,
+                      nullptr) == FALSE ||
+        available_byte_count > 0)
+    {
+      return true;
+    }
+  }
+
   return false;
 }
 
-static fn start_relay_probe(substitution_relay &relay,
-                            substitution_relay_instance &instance) wontthrow
-    -> bool
+static fn forward_relay_input(substitution_relay &relay) wontthrow -> void
 {
-  if (relay.is_command_writes && relay.buffered_byte_count == 0) {
-    if (relay.is_body_finished) close_relay_instance(instance);
-    return false;
-  }
-
-  ResetEvent(instance.control.hEvent);
-  let const was_started = relay.is_command_writes
-                              ? WriteFile(instance.pipe, relay.writes[0].bytes,
-                                          1, nullptr, &instance.control)
-                              : ReadFile(instance.pipe, instance.probe_bytes,
-                                         SUBSTITUTION_RELAY_PROBE_BYTES,
-                                         nullptr, &instance.control);
-  if (was_started == FALSE && GetLastError() == ERROR_IO_PENDING) {
-    instance.state = relay_instance_state::Probing;
-    return false;
-  }
-
-  DWORD byte_count = 0;
-  if (was_started != FALSE)
-    GetOverlappedResult(instance.pipe, &instance.control, &byte_count, FALSE);
-  return finish_relay_probe(relay, instance, was_started, byte_count);
-}
-
-static fn start_relay_body_read(substitution_relay &relay) wontthrow -> void
-{
-  if (relay.is_body_reading || relay.is_body_finished ||
-      relay.buffered_byte_count > 0)
-  {
-    return;
-  }
-
-  ResetEvent(relay.body_control.hEvent);
-  if (ReadFile(relay.body, relay.writes[0].bytes,
-               SUBSTITUTION_RELAY_BUFFER_BYTES, nullptr,
-               &relay.body_control) != FALSE ||
-      GetLastError() == ERROR_IO_PENDING)
-  {
-    relay.is_body_reading = true;
-    return;
-  }
-
-  relay.is_body_finished = true;
-}
-
-static fn finish_relay_body_read(substitution_relay &relay) wontthrow -> void
-{
-  relay.is_body_reading = false;
-  DWORD byte_count = 0;
-  if (GetOverlappedResult(relay.body, &relay.body_control, &byte_count,
-                          FALSE) == FALSE)
-  {
-    relay.is_body_finished = true;
-    return;
-  }
-
-  relay.buffered_byte_count = byte_count;
-}
-
-static fn bind_relay_client(substitution_relay &relay) wontthrow
-    -> substitution_relay_instance *
-{
-  for (;;) {
-    for (let &instance : relay.instances) {
-      if (instance.state != relay_instance_state::Connected) continue;
-
-      if (start_relay_probe(relay, instance)) return &instance;
-    }
-    ensure_relay_listeners(relay);
-    if (relay.is_command_writes) start_relay_body_read(relay);
-
-    HANDLE events[SUBSTITUTION_RELAY_INSTANCE_COUNT + 2];
-    substitution_relay_instance
-        *owners[SUBSTITUTION_RELAY_INSTANCE_COUNT + 2]{};
-    DWORD event_count = 0;
-    events[event_count++] = relay.done_event;
-    if (relay.is_body_reading)
-      events[event_count++] = relay.body_control.hEvent;
-    for (let &instance : relay.instances) {
-      if (instance.state != relay_instance_state::Listening &&
-          instance.state != relay_instance_state::Probing)
+  while (!relay.is_body_finished) {
+    usize oldest = SUBSTITUTION_RELAY_CLIENT_COUNT;
+    for (usize position = 0; position < SUBSTITUTION_RELAY_CLIENT_COUNT;
+         position++)
+    {
+      let const &client = relay.clients[position];
+      if (client.state != relay_client_state::Connected ||
+          client.held_byte_count == 0)
       {
         continue;
       }
 
-      owners[event_count] = &instance;
-      events[event_count++] = instance.control.hEvent;
-    }
-
-    let const signaled =
-        WaitForMultipleObjects(event_count, events, FALSE, INFINITE);
-    if (signaled < WAIT_OBJECT_0 || signaled >= WAIT_OBJECT_0 + event_count)
-      return nullptr;
-
-    let const event_position = signaled - WAIT_OBJECT_0;
-    if (event_position == 0) return nullptr;
-
-    let const instance = owners[event_position];
-    if (instance == nullptr) {
-      finish_relay_body_read(relay);
-      continue;
-    }
-
-    DWORD byte_count = 0;
-    let const was_completed = GetOverlappedResult(
-        instance->pipe, &instance->control, &byte_count, FALSE);
-    if (instance->state == relay_instance_state::Listening) {
-      instance->state = relay_instance_state::Connected;
-      if (was_completed == FALSE) close_relay_instance(*instance);
-      continue;
-    }
-
-    instance->state = relay_instance_state::Connected;
-    if (finish_relay_probe(relay, *instance, was_completed, byte_count))
-      return instance;
-  }
-}
-
-static fn transfer_relay_bytes(HANDLE handle, OVERLAPPED &control, char *bytes,
-                               DWORD byte_count, bool is_write) wontthrow
-    -> Maybe<DWORD>
-{
-  ResetEvent(control.hEvent);
-  let const was_started =
-      is_write ? WriteFile(handle, bytes, byte_count, nullptr, &control)
-               : ReadFile(handle, bytes, byte_count, nullptr, &control);
-  if (was_started == FALSE && GetLastError() != ERROR_IO_PENDING) return None;
-
-  DWORD transferred_byte_count = 0;
-  if (GetOverlappedResult(handle, &control, &transferred_byte_count, TRUE) ==
-      FALSE)
-  {
-    return None;
-  }
-
-  return transferred_byte_count;
-}
-
-static fn write_relay_bytes(HANDLE handle, OVERLAPPED &control, char *bytes,
-                            DWORD byte_count) wontthrow -> bool
-{
-  while (byte_count > 0) {
-    let const written_byte_count =
-        transfer_relay_bytes(handle, control, bytes, byte_count, true);
-    if (!written_byte_count.has_value() || *written_byte_count == 0)
-      return false;
-
-    bytes += *written_byte_count;
-    byte_count -= *written_byte_count;
-  }
-
-  return true;
-}
-
-static fn start_relay_write(HANDLE client,
-                            substitution_relay_write &write) wontthrow -> bool
-{
-  if (write.control.hEvent == nullptr)
-    write.control.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
-  if (write.control.hEvent == nullptr) return false;
-
-  ResetEvent(write.control.hEvent);
-  if (WriteFile(client, write.bytes, write.byte_count, nullptr,
-                &write.control) == FALSE &&
-      GetLastError() != ERROR_IO_PENDING)
-  {
-    return false;
-  }
-
-  write.is_pending = true;
-  return true;
-}
-
-static fn finish_relay_write(HANDLE client, substitution_relay_write &write,
-                             bool should_cancel) wontthrow -> bool
-{
-  if (!write.is_pending) return true;
-
-  write.is_pending = false;
-  if (should_cancel) CancelIoEx(client, &write.control);
-  DWORD written_byte_count = 0;
-  return GetOverlappedResult(client, &write.control, &written_byte_count,
-                             TRUE) != FALSE &&
-         written_byte_count == write.byte_count;
-}
-
-static fn forward_relay_output(substitution_relay &relay,
-                               substitution_relay_instance &client) wontthrow
-    -> void
-{
-  usize next_position = 0;
-  DWORD byte_count = relay.buffered_byte_count - 1;
-  __builtin_memmove(relay.writes[0].bytes, relay.writes[0].bytes + 1,
-                    byte_count);
-  bool is_delivered = true;
-  for (;;) {
-    if (byte_count > 0) {
-      let &write = relay.writes[next_position];
-      write.byte_count = byte_count;
-      if (!start_relay_write(client.pipe, write)) {
-        is_delivered = false;
-        break;
+      if (oldest == SUBSTITUTION_RELAY_CLIENT_COUNT ||
+          client.sequence < relay.clients[oldest].sequence)
+      {
+        oldest = position;
       }
-
-      next_position = (next_position + 1) % SUBSTITUTION_RELAY_WRITE_COUNT;
     }
 
-    let &write = relay.writes[next_position];
-    if (!finish_relay_write(client.pipe, write, false)) {
-      is_delivered = false;
-      break;
-    }
+    if (oldest == SUBSTITUTION_RELAY_CLIENT_COUNT) return;
 
-    if (relay.is_body_finished) break;
+    let &client = relay.clients[oldest];
+    if (relay_input_is_blocked(relay, client.sequence)) return;
 
-    let const read_byte_count =
-        transfer_relay_bytes(relay.body, relay.body_control, write.bytes,
-                             SUBSTITUTION_RELAY_BUFFER_BYTES, false);
-    if (!read_byte_count.has_value()) break;
-
-    byte_count = *read_byte_count;
-  }
-
-  for (usize offset = 0; offset < SUBSTITUTION_RELAY_WRITE_COUNT; offset++) {
-    let &write =
-        relay.writes[(next_position + offset) % SUBSTITUTION_RELAY_WRITE_COUNT];
-    if (!finish_relay_write(client.pipe, write, !is_delivered))
-      is_delivered = false;
+    let const byte_count = client.held_byte_count;
+    client.held_byte_count = 0;
+    start_relay_body_write(relay, oldest, byte_count);
   }
 }
 
-static fn forward_relay_input(substitution_relay &relay,
-                              substitution_relay_instance &client) wontthrow
+static fn start_relay_offer(substitution_relay &relay, usize position) wontthrow
     -> void
 {
-  DWORD byte_count = 0;
-  GetOverlappedResult(client.pipe, &client.control, &byte_count, FALSE);
-  if (!write_relay_bytes(relay.body, relay.body_control, client.probe_bytes,
-                         byte_count))
+  let &client = relay.clients[position];
+  let const overlapped = prepare_relay_operation(
+      client.transfer, relay_operation_kind::Transfer, position);
+  client.offer_position = relay.head;
+  let const was_started = WriteFile(
+      client.pipe, relay.ring + relay.head % SUBSTITUTION_RELAY_RING_BYTES, 1,
+      nullptr, overlapped);
+  if (note_relay_operation(client.transfer, was_started)) {
+    client.state = relay_client_state::Offering;
+    return;
+  }
+
+  close_relay_client(client);
+}
+
+static fn withdraw_relay_offers(substitution_relay &relay) wontthrow -> void
+{
+  for (let &client : relay.clients) {
+    if (client.state != relay_client_state::Offering) continue;
+
+    CancelIoEx(client.pipe, &client.transfer.overlapped);
+  }
+}
+
+static fn finish_relay_offer(substitution_relay &relay, usize position,
+                             DWORD error) wontthrow -> void
+{
+  let &client = relay.clients[position];
+  let const was_offering = client.state == relay_client_state::Offering;
+  if (was_offering) client.state = relay_client_state::Connected;
+
+  if (error != ERROR_SUCCESS) {
+    if (error != ERROR_OPERATION_ABORTED) close_relay_client(client);
+    return;
+  }
+
+  if (relay.active_client != SUBSTITUTION_RELAY_CLIENT_COUNT ||
+      relay.head != client.offer_position)
   {
     return;
   }
 
-  let const bytes = relay.writes[0].bytes;
-  for (;;) {
-    let const read_byte_count =
-        transfer_relay_bytes(client.pipe, client.control, bytes,
-                             SUBSTITUTION_RELAY_BUFFER_BYTES, false);
-    if (!read_byte_count.has_value()) return;
+  relay.head++;
+  relay.posted = relay.head;
+  withdraw_relay_offers(relay);
+  if (!was_offering) return;
 
-    if (!write_relay_bytes(relay.body, relay.body_control, bytes,
-                           *read_byte_count))
-    {
+  client.state = relay_client_state::Active;
+  relay.active_client = position;
+  relay.is_bulk = false;
+  relay.has_active_failed = false;
+}
+
+static fn finish_relay_transfer(substitution_relay &relay, usize position,
+                                DWORD error) wontthrow -> void
+{
+  if (relay.is_command_writes) {
+    finish_relay_offer(relay, position, error);
+    return;
+  }
+
+  let &client = relay.clients[position];
+  if (error != ERROR_SUCCESS) {
+    relay.is_body_finished = true;
+    close_relay_client(client);
+    return;
+  }
+
+  if (client.state != relay_client_state::Connected) return;
+
+  start_relay_client_read(relay, position);
+}
+
+static fn retire_relay_writes(substitution_relay &relay) wontthrow -> void
+{
+  while (relay.write_count > 0) {
+    let &write = relay.writes[relay.oldest_write];
+    if (!write.is_done) return;
+
+    if (write.did_succeed && !relay.has_active_failed) {
+      relay.head = write.end;
+    } else {
+      relay.has_active_failed = true;
+    }
+    relay.oldest_write =
+        (relay.oldest_write + 1) % SUBSTITUTION_RELAY_WRITE_COUNT;
+    relay.write_count--;
+  }
+}
+
+static fn finish_relay_write(substitution_relay &relay, usize slot,
+                             DWORD error) wontthrow -> void
+{
+  let &write = relay.writes[slot];
+  write.is_done = true;
+  write.did_succeed = error == ERROR_SUCCESS;
+  if (!write.did_succeed &&
+      relay.active_client != SUBSTITUTION_RELAY_CLIENT_COUNT)
+  {
+    close_relay_client(relay.clients[relay.active_client]);
+  }
+
+  retire_relay_writes(relay);
+}
+
+static fn next_relay_write_length(const substitution_relay &relay) wontthrow
+    -> DWORD
+{
+  let const start = relay.posted % SUBSTITUTION_RELAY_RING_BYTES;
+  let length = relay.tail - relay.posted;
+  if (length > SUBSTITUTION_RELAY_RING_BYTES - start)
+    length = SUBSTITUTION_RELAY_RING_BYTES - start;
+  if (length > SUBSTITUTION_RELAY_CHUNK_BYTES)
+    length = SUBSTITUTION_RELAY_CHUNK_BYTES;
+  if (relay.is_bulk) return static_cast<DWORD>(length);
+
+  let const line_start = relay.ring + start;
+  let const newline = static_cast<const char *>(
+      std::memchr(line_start, '\n', static_cast<usize>(length)));
+  if (newline == nullptr) return static_cast<DWORD>(length);
+
+  return static_cast<DWORD>(newline - line_start + 1);
+}
+
+static fn start_relay_writes(substitution_relay &relay) wontthrow -> void
+{
+  if (relay.active_client == SUBSTITUTION_RELAY_CLIENT_COUNT) return;
+
+  let &client = relay.clients[relay.active_client];
+  while (client.state == relay_client_state::Active &&
+         relay.write_count < SUBSTITUTION_RELAY_WRITE_COUNT &&
+         relay.posted < relay.tail)
+  {
+    let const length = next_relay_write_length(relay);
+    let const slot = (relay.oldest_write + relay.write_count) %
+                     SUBSTITUTION_RELAY_WRITE_COUNT;
+    let &write = relay.writes[slot];
+    let const overlapped = prepare_relay_operation(
+        write.operation, relay_operation_kind::Write, slot);
+    write.end = relay.posted + length;
+    write.is_done = false;
+    write.did_succeed = false;
+    let const was_started = WriteFile(
+        client.pipe, relay.ring + relay.posted % SUBSTITUTION_RELAY_RING_BYTES,
+        length, nullptr, overlapped);
+    if (!note_relay_operation(write.operation, was_started)) {
+      close_relay_client(client);
       return;
+    }
+
+    if (write.operation.was_immediate && length > 1) {
+      relay.is_bulk = true;
+    }
+
+    relay.write_count++;
+    relay.posted = write.end;
+  }
+}
+
+static fn start_relay_body_read(substitution_relay &relay) wontthrow -> void
+{
+  if (relay.is_body_finished || relay.body_read.is_pending) {
+    return;
+  }
+
+  let const used = relay.tail - relay.head;
+  if (used >= SUBSTITUTION_RELAY_RING_BYTES) return;
+
+  let const start = relay.tail % SUBSTITUTION_RELAY_RING_BYTES;
+  let length = SUBSTITUTION_RELAY_RING_BYTES - used;
+  if (length > SUBSTITUTION_RELAY_RING_BYTES - start)
+    length = SUBSTITUTION_RELAY_RING_BYTES - start;
+  let const overlapped = prepare_relay_operation(
+      relay.body_read, relay_operation_kind::BodyRead, 0);
+  let const was_started =
+      ReadFile(relay.body, relay.ring + start, static_cast<DWORD>(length),
+               nullptr, overlapped);
+  if (!note_relay_operation(relay.body_read, was_started)) {
+    relay.is_body_finished = true;
+  }
+}
+
+static fn finish_relay_body_read(substitution_relay &relay, DWORD byte_count,
+                                 DWORD error) wontthrow -> void
+{
+  if (error != ERROR_SUCCESS) {
+    relay.is_body_finished = true;
+    return;
+  }
+
+  relay.tail += byte_count;
+}
+
+static fn finish_relay_operation(substitution_relay &relay,
+                                 relay_operation &operation, DWORD byte_count,
+                                 DWORD error) wontthrow -> void
+{
+  operation.is_pending = false;
+  switch (operation.kind) {
+  case relay_operation_kind::Connect:
+    finish_relay_connect(relay, operation.owner, error);
+    break;
+  case relay_operation_kind::Read:
+    finish_relay_client_read(relay, operation.owner, byte_count, error);
+    break;
+  case relay_operation_kind::Transfer:
+    finish_relay_transfer(relay, operation.owner, error);
+    break;
+  case relay_operation_kind::Write:
+    finish_relay_write(relay, operation.owner, error);
+    break;
+  case relay_operation_kind::BodyRead:
+    finish_relay_body_read(relay, byte_count, error);
+    break;
+  }
+}
+
+static fn close_connected_relay_clients(substitution_relay &relay) wontthrow
+    -> void
+{
+  for (let &client : relay.clients) {
+    if (client.state == relay_client_state::Connected ||
+        client.state == relay_client_state::Offering ||
+        client.state == relay_client_state::Active)
+    {
+      close_relay_client(client);
     }
   }
 }
 
-static fn run_substitution_relay(opaque *context) wontthrow -> void
+static fn advance_relay_output(substitution_relay &relay) wontthrow -> void
 {
-  let &relay = *static_cast<substitution_relay *>(context);
-  for (let &instance : relay.instances)
-    if (instance.pipe != INVALID_HANDLE_VALUE) listen_relay_instance(instance);
-
-  let const client = bind_relay_client(relay);
-  for (let &instance : relay.instances)
-    if (&instance != client) close_relay_instance(instance);
-
-  if (client != nullptr) {
-    client->state = relay_instance_state::Connected;
-    if (relay.is_command_writes)
-      forward_relay_output(relay, *client);
-    else
-      forward_relay_input(relay, *client);
-    close_relay_instance(*client);
+  start_relay_body_read(relay);
+  if (relay.is_body_finished && !relay.body_read.is_pending &&
+      relay.head == relay.tail)
+  {
+    close_connected_relay_clients(relay);
+    return;
   }
 
-  if (relay.is_body_reading) {
-    CancelIoEx(relay.body, &relay.body_control);
-    DWORD ignored_byte_count = 0;
-    GetOverlappedResult(relay.body, &relay.body_control, &ignored_byte_count,
-                        TRUE);
-    relay.is_body_reading = false;
+  start_relay_writes(relay);
+  if (relay.active_client != SUBSTITUTION_RELAY_CLIENT_COUNT ||
+      relay.head == relay.tail)
+  {
+    return;
   }
-  CloseHandle(relay.body);
-  relay.body = INVALID_HANDLE_VALUE;
+
+  for (usize position = 0; position < SUBSTITUTION_RELAY_CLIENT_COUNT;
+       position++)
+  {
+    if (relay.clients[position].state == relay_client_state::Connected)
+      start_relay_offer(relay, position);
+  }
+}
+
+static fn relay_is_finished(substitution_relay &relay) wontthrow -> bool
+{
+  if (!relay.is_finishing) return false;
+
+  for (let const &client : relay.clients)
+    if (client.state != relay_client_state::Closed) return false;
+
+  if (relay.body_read.is_pending) {
+    CancelIoEx(relay.body, &relay.body_read.overlapped);
+    return false;
+  }
+
+  return true;
+}
+
+static fn advance_substitution_relay(substitution_relay &relay) wontthrow
+    -> bool
+{
+  reap_relay_clients(relay);
+  ensure_relay_listeners(relay);
+  if (relay.is_command_writes) advance_relay_output(relay);
+  if (!relay.is_command_writes) forward_relay_input(relay);
+  if (!relay.is_command_writes && relay.is_body_finished) {
+    close_connected_relay_clients(relay);
+  }
+  reap_relay_clients(relay);
+
+  return !relay_is_finished(relay);
 }
 
 static fn destroy_substitution_relay(substitution_relay *relay) wontthrow
     -> void
 {
-  for (let &instance : relay->instances) {
-    close_relay_instance(instance);
-    if (instance.control.hEvent != nullptr)
-      CloseHandle(instance.control.hEvent);
-  }
-  for (let const &write : relay->writes)
-    if (write.control.hEvent != nullptr) CloseHandle(write.control.hEvent);
+  for (let &client : relay->clients)
+    if (client.pipe != INVALID_HANDLE_VALUE) CloseHandle(client.pipe);
   if (relay->body != INVALID_HANDLE_VALUE) CloseHandle(relay->body);
-  if (relay->body_control.hEvent != nullptr)
-    CloseHandle(relay->body_control.hEvent);
-  if (relay->done_event != nullptr) CloseHandle(relay->done_event);
+  if (relay->port != nullptr) CloseHandle(relay->port);
   relay->~substitution_relay();
-  heap_allocator().free_array(relay, 1);
+  os::free_aligned(relay);
+}
+
+static fn run_substitution_relay(opaque *context) wontthrow -> void
+{
+  let &relay = *static_cast<substitution_relay *>(context);
+  while (advance_substitution_relay(relay)) {
+    DWORD byte_count = 0;
+    ULONG_PTR key = 0;
+    OVERLAPPED *overlapped = nullptr;
+    let const was_dequeued = GetQueuedCompletionStatus(
+        relay.port, &byte_count, &key, &overlapped, INFINITE);
+    let const error = was_dequeued != FALSE ? ERROR_SUCCESS : GetLastError();
+    if (overlapped != nullptr) {
+      finish_relay_operation(relay,
+                             *reinterpret_cast<relay_operation *>(overlapped),
+                             byte_count, error);
+      continue;
+    }
+
+    if (was_dequeued == FALSE) return;
+
+    if (key == SUBSTITUTION_RELAY_FINISH_KEY) start_relay_finish(relay);
+  }
+
+  destroy_substitution_relay(&relay);
+}
+
+static fn create_substitution_relay(bool is_command_writes) throws
+    -> substitution_relay *
+{
+  let const storage = os::allocate_aligned(sizeof(substitution_relay),
+                                           alignof(substitution_relay));
+  if (storage == nullptr)
+    throw Error{"Unable to allocate the process substitution relay"};
+
+  let const relay = new (storage) substitution_relay;
+  relay->is_command_writes = is_command_writes;
+
+  return relay;
+}
+
+static constexpr const char *RELAY_CREATE_ERROR =
+    "Unable to create the process substitution pipe: ";
+static constexpr const char *RELAY_CONNECT_ERROR =
+    "Unable to connect the process substitution pipe: ";
+
+wontreturn static fn throw_relay_error(const char *message) throws -> void
+{
+  throw Error{message + last_system_error_message()};
 }
 
 fn launch_process_substitution(const process_substitution_options &options)
@@ -1693,40 +1975,44 @@ fn launch_process_substitution(const process_substitution_options &options)
       options.direction == process_substitution_direction::CommandWrites;
   let path = make_internal_pipe_path();
   let const body_path = make_internal_pipe_path();
-  let relay = heap_allocator().alloc_array<substitution_relay>(1);
-  new (relay) substitution_relay;
+  let relay = create_substitution_relay(is_command_writes);
   defer
   {
     if (relay != nullptr) destroy_substitution_relay(relay);
   };
-  relay->is_command_writes = is_command_writes;
+
   if (!copy_relay_pipe_name(path.view(), relay->path) ||
       !copy_relay_pipe_name(body_path.view(), relay->body_path))
   {
     throw Error{"Unable to name the process substitution pipe"};
   }
-  relay->done_event = CreateEventW(nullptr, TRUE, FALSE, nullptr);
-  relay->body_control.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
-  if (relay->done_event == nullptr || relay->body_control.hEvent == nullptr)
-    throw Error{"Unable to create the process substitution pipe: " +
-                last_system_error_message()};
-  for (usize position = 0; position < SUBSTITUTION_RELAY_LISTENER_COUNT;
+
+  relay->port = CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1);
+  if (relay->port == nullptr) throw_relay_error(RELAY_CREATE_ERROR);
+
+  for (usize position = 0; position < SUBSTITUTION_RELAY_SPARE_LISTENER_COUNT;
        position++)
   {
-    relay->instances[position].pipe =
-        create_relay_instance(*relay, position == 0);
-    if (relay->instances[position].pipe == INVALID_HANDLE_VALUE)
-      throw Error{"Unable to create the process substitution pipe: " +
-                  last_system_error_message()};
+    let &client = relay->clients[position];
+    client.pipe = create_relay_instance(*relay, position == 0);
+    if (client.pipe == INVALID_HANDLE_VALUE)
+      throw_relay_error(RELAY_CREATE_ERROR);
+
+    client.state = relay_client_state::Idle;
   }
+
   relay->body = create_private_pipe(
       relay->body_path,
       (is_command_writes ? PIPE_ACCESS_INBOUND : PIPE_ACCESS_OUTBOUND) |
           FILE_FLAG_OVERLAPPED | FILE_FLAG_FIRST_PIPE_INSTANCE,
-      1, SUBSTITUTION_RELAY_BUFFER_BYTES, SUBSTITUTION_RELAY_BUFFER_BYTES);
+      1, SUBSTITUTION_RELAY_BODY_BYTES, SUBSTITUTION_RELAY_BODY_BYTES);
   if (relay->body == INVALID_HANDLE_VALUE)
-    throw Error{"Unable to create the process substitution pipe: " +
-                last_system_error_message()};
+    throw_relay_error(RELAY_CREATE_ERROR);
+
+  if (CreateIoCompletionPort(relay->body, relay->port, 0, 0) == nullptr) {
+    throw_relay_error(RELAY_CREATE_ERROR);
+  }
+
   SECURITY_ATTRIBUTES attributes{};
   attributes.nLength = sizeof(attributes);
   attributes.bInheritHandle = FALSE;
@@ -1735,9 +2021,8 @@ fn launch_process_substitution(const process_substitution_options &options)
                   is_command_writes ? GENERIC_WRITE | FILE_READ_ATTRIBUTES
                                     : GENERIC_READ | FILE_WRITE_ATTRIBUTES,
                   0, &attributes, OPEN_EXISTING, 0, nullptr);
-  if (child_end == INVALID_HANDLE_VALUE)
-    throw Error{"Unable to connect the process substitution pipe: " +
-                last_system_error_message()};
+  if (child_end == INVALID_HANDLE_VALUE) throw_relay_error(RELAY_CONNECT_ERROR);
+
   Maybe<process> child = None;
   try {
     child = spawn_subshell_stage(
@@ -1749,11 +2034,13 @@ fn launch_process_substitution(const process_substitution_options &options)
     CloseHandle(child_end);
     throw;
   }
+
   CloseHandle(child_end);
   if (!child.has_value())
     throw Error{"Unable to run the process substitution because the inner "
                 "shell could not be spawned: " +
                 last_system_error_message()};
+
   let const worker = start_thread(run_substitution_relay, relay);
   if (!worker.has_value()) {
     TerminateProcess(*child, 1);
@@ -1762,6 +2049,7 @@ fn launch_process_substitution(const process_substitution_options &options)
     CloseHandle(*child);
     throw Error{"Unable to start the process substitution relay"};
   }
+
   relay->worker = *worker;
   let launch = process_substitution_launch{
       .path = steal(path),
@@ -1770,28 +2058,25 @@ fn launch_process_substitution(const process_substitution_options &options)
       .cleanup = relay,
   };
   relay = nullptr;
+
   return launch;
 }
 
-fn release_unused_process_substitution(opaque *cleanup) wontthrow -> void
+fn finish_process_substitution(opaque *cleanup) wontthrow -> void
 {
   if (cleanup == nullptr) return;
+
   let const relay = static_cast<substitution_relay *>(cleanup);
-  SetEvent(relay->done_event);
-  join_thread(relay->worker);
-  relay->worker = thread{};
-  destroy_substitution_relay(relay);
+  let const worker = relay->worker;
+  PostQueuedCompletionStatus(relay->port, 0, SUBSTITUTION_RELAY_FINISH_KEY,
+                             nullptr);
+  CloseHandle(worker.handle);
 }
 
 fn release_finished_process_substitution(opaque *cleanup) wontthrow -> bool
 {
-  if (cleanup == nullptr) return true;
+  finish_process_substitution(cleanup);
 
-  let const relay = static_cast<substitution_relay *>(cleanup);
-  if (WaitForSingleObject(relay->worker.handle, 0) != WAIT_OBJECT_0)
-    return false;
-
-  release_unused_process_substitution(cleanup);
   return true;
 }
 

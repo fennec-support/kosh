@@ -2088,7 +2088,10 @@ static fn create_private_pipe(const wchar_t *path, DWORD open_mode,
                               DWORD inbound_bytes) wontthrow -> HANDLE
 {
   let const security = get_owner_only_security();
-  if (security == nullptr) return INVALID_HANDLE_VALUE;
+  if (security == nullptr) {
+    SetLastError(ERROR_INVALID_SECURITY_DESCR);
+    return INVALID_HANDLE_VALUE;
+  }
 
   return CreateNamedPipeW(path, open_mode,
                           PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT |

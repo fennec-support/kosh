@@ -1188,9 +1188,14 @@ A later command cannot open the path. An
 command without a program keeps the process for as long as its redirections
 hold the descriptor, closes the path, and reaps the process after it ends
 without waiting for it. On POSIX the path is /dev/fd/63 or the next free
-descriptor above it. On Windows the path names a named pipe, and the stream
-goes to the first client that reads from it or writes to it, so a program may
-open or inspect the path before it reads or writes.
+descriptor above it. On Windows the path names a named pipe that behaves like a
+FIFO. A program may open or inspect the path before it reads or writes, and
+the path may be opened again. Each reader continues where the previous reader
+stopped, a reader that opens the path after the stream ends reads end of file,
+and each writer appends to the same stream. A redirection that finds the pipe
+busy retries for up to two seconds. When a reader that reads in large blocks
+closes the path in the middle of a line, the next reader may receive that whole
+line again.
 .SS Brace expansion
 The form {a,b,c} produces alternatives. The forms {1..10}, {a..z}, and
 {1..10..2} produce ranges. A numeric range such as {001..10} retains its width.

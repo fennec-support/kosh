@@ -140,10 +140,15 @@ changes update this file.
 - A parent closes each unused pipe endpoint after CreateProcess so readers can
   observe EOF when the child exits.
 - A Windows process substitution child uses a private pipe. A relay thread in
-  the shell keeps several instances of the public named pipe listening and
-  binds the first client that reads a byte or writes one, so a client that
-  only opens or probes the path receives no data. Cleanup ends an unbound
-  relay, which closes the private pipe before the child is reaped.
+  the shell serves the public named pipe as a FIFO through one completion
+  port. It arms a spare instance after each connect, and the shell's own
+  redirection open retries a busy pipe. Output goes to one client at a time:
+  a one-byte offer to every connected client picks the reader, writes have no
+  quota so only consumed bytes leave the queue, and a failed write is sent
+  again to the next reader. Writes stay one line long until a write completes
+  at once. Input from several writers reaches the child in connection order.
+  Cleanup only signals the relay. The relay stops listening, serves connected
+  clients until they leave, closes the private pipe, and frees itself.
 - Every internal Windows named pipe has a random name, rejects remote clients,
   creates its first instance exclusively, and carries a DACL that admits only
   the current user and SYSTEM.

@@ -501,7 +501,7 @@ fn EvalContext::cleanup_process_substitutions(
   {
     process_substitution &sub =
         expansion_store().pending_process_substitutions()[i];
-    os::release_unused_process_substitution(sub.platform_cleanup);
+    os::finish_process_substitution(sub.platform_cleanup);
     /* Closing the shell end first sends SIGPIPE to a producer that still has
        output queued, so it ends rather than blocking the wait below. */
     if (sub.shell_fd != KOSH_INVALID_FD) os::close_fd(sub.shell_fd);
