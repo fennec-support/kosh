@@ -143,8 +143,11 @@ and never change meaning. Only the mood and the interactive options are
 written.
 .PP
 A reader skips a record with an unknown id, an option it never carries, or a
-value that a settings file would reject, and reports a warning. A blob that is not base64, or whose
-records are truncated, is rejected as a whole.
+value that a settings file would reject, and reports a warning. Only the
+canonical form is accepted: the base64 text must carry its padding, every varint
+must use the fewest bytes, and the ids must strictly ascend, which is the order
+the writer uses. A blob that breaks any of these rules, or whose records are
+truncated, is rejected as a whole with a warning.
 .SH ERRORS
 A missing settings file is skipped. An unreadable one produces a warning. A line
 without an equals sign, an unknown option name, an invalid value, an unclosed

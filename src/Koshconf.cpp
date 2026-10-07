@@ -182,6 +182,7 @@ fn read_varint(StringView bytes, usize &position) wontthrow -> Maybe<u32>
     if (position >= bytes.count()) return None;
     let const byte = static_cast<u8>(bytes[position++]);
     if (shift == 28 && (byte & 0x70) != 0) return None;
+    if (shift > 0 && byte == 0) return None;
     value |= static_cast<u32>(byte & 0x7f) << shift;
     if ((byte & 0x80) == 0) return value;
   }
@@ -507,9 +508,13 @@ fn read_koshconf_blob(StringView encoded, koshconf_reading &reading) throws
   let warnings = ArrayList<String>{heap_allocator()};
   let const bytes = records->view();
   usize position = 0;
+  u32 previous_id = 0;
   while (position < bytes.count()) {
     let const id = read_varint(bytes, position);
-    if (!id.has_value()) return false;
+    if (!id.has_value() || *id <= previous_id) {
+      return false;
+    }
+    previous_id = *id;
     let const length = read_varint(bytes, position);
     if (!length.has_value() || *length > bytes.count() - position) {
       return false;

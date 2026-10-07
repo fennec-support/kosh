@@ -111,6 +111,11 @@ echo "rc=$?"
 echo "rc=$?"
 "$BIN" -c 'koshconf load BQ=='
 echo "rc=$?"
+echo "== load rejects a non-canonical encoding as a whole:"
+for blob in hQABAQ== BYEAAQ== BQEBBQEA BgEABQEB BQEBBg; do
+  "$BIN" -c "koshconf load $blob 2>/dev/null; echo \"$blob rc=\$?\"
+koshconf get editor.auto_pair"
+done
 echo "== load skips an invalid string value and keeps the rest:"
 "$BIN" -c 'koshconf load BQEBCgF4; koshconf get editor.auto_pair
 koshconf get history.size'

@@ -247,6 +247,17 @@ rc=1
      1 |  koshconf load BQ==
        |                ^~~~
 rc=1
+== load rejects a non-canonical encoding as a whole:
+hQABAQ== rc=1
+off
+BYEAAQ== rc=1
+off
+BQEBBQEA rc=1
+off
+BgEABQEB rc=1
+off
+BQEBBg rc=1
+off
 == load skips an invalid string value and keeps the rest:
 warning: Skipping an invalid value of 'history.size' in KOSHCONF.
 on
