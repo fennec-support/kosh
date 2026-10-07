@@ -62,6 +62,11 @@ bash
 rc=0
 == the kosh mood sources no rc file:
 0
+== an interactive kosh mood warns once about a retired koshrc:
+warning: 'HOME/.koshrc' is no longer read; see MIGRATION in kosh(5)
+== -Q and a non-interactive shell do not warn:
+0
+0
 == a configured bash mood sources the bash rc:
 1
 == an inherited KOSH_HISTORY_SIZE is the history.size option:

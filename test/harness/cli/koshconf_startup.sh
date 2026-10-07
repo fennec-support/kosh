@@ -66,6 +66,12 @@ echo "== the kosh mood sources no rc file:"
 printf 'echo koshrc-ran\n' >"$home/.koshrc"
 printf 'mood=kosh\n' >"$conf"
 "$BIN" -i <"$TEST_NULL_DEVICE" 2>/dev/null | grep -c koshrc-ran
+echo "== an interactive kosh mood warns once about a retired koshrc:"
+printf 'set -L kosh\nset -L kosh\n' | "$BIN" -i 2>&1 |
+  grep 'no longer read' | sed -e "s|$home|HOME|" -e "s|' and '/etc/koshrc'|'|"
+echo "== -Q and a non-interactive shell do not warn:"
+"$BIN" -Q -i <"$TEST_NULL_DEVICE" 2>&1 | grep -c 'no longer read'
+"$BIN" -c : 2>&1 | grep -c 'no longer read'
 echo "== a configured bash mood sources the bash rc:"
 printf 'echo bashrc-ran\n' >"$home/.bashrc"
 printf 'mood=bash\n' >"$conf"

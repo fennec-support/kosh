@@ -165,7 +165,12 @@ Shell startup files produce the ordinary shell diagnostics described in
 .SH MIGRATION
 Earlier releases read /etc/koshrc and ~/.koshrc as shell code in the
 .B kosh
-mood. They are no longer read. Move option settings into
+mood. They are no longer read, and an interactive shell in the
+.B kosh
+mood prints one warning naming them when either exists. A non-interactive shell
+and a shell started with
+.B \-Q
+stay silent. Move option settings into
 .I kosh.conf
 with
 .B "koshconf set"

@@ -1855,6 +1855,27 @@ static fn source_home_file(StringView name, EvalContext &context) throws -> void
   }
 }
 
+static fn warn_about_retired_koshrc() throws -> void
+{
+  let names = String{heap_allocator()};
+  let const do_note = [&](const Path &path) throws {
+    if (!os::path_exists(path.view())) return;
+    if (!names.is_empty()) names += "' and '";
+    names += path.view();
+  };
+  if (let home = os::get_home_directory(); home.has_value()) {
+    home->append(".koshrc");
+    do_note(*home);
+  }
+  do_note(Path{"/etc/koshrc"});
+  if (names.is_empty()) return;
+
+  show_message(
+      Warning{"'" + names + "' is no longer read; see MIGRATION in kosh(5)"}
+          .to_string()
+          .view());
+}
+
 /* The dash login files in POSIX order, /etc/profile then ~/.profile. */
 static fn source_posix_login_files(EvalContext &context) throws -> void
 {
@@ -1954,6 +1975,11 @@ fn source_init_moods(EvalContext &context, const ArrayList<mimic_mood> &moods,
     switch (flavor) {
     case mimic_mood::Default:
       LOG(Info, "the kosh mood sources no shell startup file");
+      if (should_be_interactive &&
+          !context.runtime_control_store().mood_initialized(flavor))
+      {
+        warn_about_retired_koshrc();
+      }
       break;
     case mimic_mood::Posix:
       if (is_login_shell) source_posix_login_files(context);
