@@ -785,7 +785,11 @@ static fn read_startup_configuration(const command_line &line,
     return reading;
   }
 
-  unused(read_koshconf_file(Path{SYSTEM_KOSHCONF_PATH}, reading));
+  if (let const system_path = os::get_system_koshconf_path();
+      system_path.has_value())
+  {
+    unused(read_koshconf_file(*system_path, reading));
+  }
   if (let const user_path = get_user_koshconf_path(); user_path.has_value())
     unused(read_koshconf_file(*user_path, reading));
   if (encoded.has_value() && !read_koshconf_blob(encoded->view(), reading)) {

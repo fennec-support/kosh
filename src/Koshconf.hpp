@@ -16,7 +16,6 @@
 
 namespace koshka {
 
-inline constexpr StringView SYSTEM_KOSHCONF_PATH{"/etc/kosh.conf"};
 inline constexpr StringView KOSHCONF_VARIABLE_NAME{"KOSHCONF"};
 
 struct koshconf_setting

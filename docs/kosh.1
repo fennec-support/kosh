@@ -905,7 +905,8 @@ read; see
 .BR kosh (5).
 .SH STARTUP FILES
 Before any shell startup file, interactive and noninteractive shells apply the
-configuration files /etc/kosh.conf and then $XDG_CONFIG_HOME/kosh/kosh.conf, or
+configuration files /etc/kosh.conf, or %ProgramData%\ekosh\ekosh.conf on
+Windows, and then $XDG_CONFIG_HOME/kosh/kosh.conf, or
 ~/.config/kosh/kosh.conf when XDG_CONFIG_HOME is unset, empty, or relative.
 They are not shell code;
 .BR kosh (5)
@@ -4733,7 +4734,8 @@ This is the default z frecency store.
 This is the default interactive calc history file.
 .TP
 .IR /etc/kosh.conf ", " $XDG_CONFIG_HOME/kosh/kosh.conf ", " ~/.config/kosh/kosh.conf
-These are the system and user settings files.
+These are the system and user settings files. Windows reads the system file
+from %ProgramData%\ekosh\ekosh.conf.
 .PP
 The settings files and the shell startup files are described in
 .BR kosh (5).

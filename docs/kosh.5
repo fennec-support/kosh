@@ -3,8 +3,24 @@
 kosh.conf \- Koshka settings files and the KOSHCONF encoding
 .SH DESCRIPTION
 The settings Koshka owns live in koshconf files. They hold option values, not
-shell commands, and every shell reads them before any shell startup file,
-whether or not it is interactive.
+shell commands. A shell reads them before any shell startup file, whether or
+not it is interactive, with these exceptions: a shell started with
+.BR \-Q ,
+a lint, format, or language server run, rescue mode, a shell whose real and
+effective ids differ, a fresh evaluator that receives its state from its
+parent, and the binary started as a koshkit utility or as
+.B koshkit
+read no settings file and ignore KOSHCONF. Privileged mode,
+.BR \-p ,
+reads the files but ignores KOSHCONF.
+.PP
+The configured mood also applies to
+.B kosh \-c
+and to a script without a shebang, so a file that sets
+.B mood=bash
+runs such code under the bash grammar. Name the mood with
+.B \-\-mood
+or a shebang where the grammar matters.
 .B koshconf
 in
 .BR kosh (1)
@@ -19,8 +35,14 @@ mood listed under FILES. The
 mood sources no shell startup file.
 .SH FILES
 .TP
-.I /etc/kosh.conf
-The system settings file, read first.
+.IR /etc/kosh.conf " or " %ProgramData%\ekosh\ekosh.conf
+The system settings file, read first. Windows reads it under the ProgramData
+directory and skips it when ProgramData is unset or relative, since a path such
+as \eetc\ekosh.conf on the current drive lets any user who can create that
+directory plant settings for everyone. The default ProgramData permissions
+still let an ordinary user create a missing subdirectory, so an administrator
+who wants no system settings on a shared machine should create an empty
+\ekosh directory there that only administrators can write.
 .TP
 .IR $XDG_CONFIG_HOME/kosh/kosh.conf " or " ~/.config/kosh/kosh.conf
 The user settings file, read second. XDG_CONFIG_HOME is used when it is set to

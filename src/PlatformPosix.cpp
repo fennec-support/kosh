@@ -1428,6 +1428,11 @@ fn get_home_directory() throws -> Maybe<Path>
   return koshka::None;
 }
 
+fn get_system_koshconf_path() throws -> Maybe<Path>
+{
+  return Path{StringView{"/etc/kosh.conf"}};
+}
+
 /* The colon field at index of an /etc/passwd line, empty when the line has too
    few fields. The format is name:passwd:uid:gid:gecos:home:shell. The database
    is read directly rather than through getpwnam, which a static build cannot

@@ -48,12 +48,17 @@ changes update this file.
   `inherited_shell`, the startup configuration, `input_plan`, and
   `session_config` in that order, seeds the session variables, applies the
   startup configuration, then calls `run_startup` and `finish_startup`. The
-  startup configuration reads `/etc/kosh.conf`, the user `kosh.conf`, and an
+  startup configuration reads the system file from
+  `os::get_system_koshconf_path`, which is `/etc/kosh.conf` on POSIX and
+  `%ProgramData%\kosh\kosh.conf` on Windows, the user `kosh.conf`, and an
   inherited `KOSHCONF`, removes `KOSHCONF` from the environment, and settles a
   configured mood before the input plan. An option the command line or
-  `KOSH_ANALYSIS` names keeps its value. A restricted invocation ignores
-  `KOSHCONF` and keeps only presentation and diagnostic options from the files.
-  The kosh mood sources no shell startup file. The chunk loop is
+  `KOSH_ANALYSIS` names keeps its value. A restricted or privileged invocation
+  ignores `KOSHCONF`, and a restricted one keeps only presentation and
+  diagnostic options from the files. The kosh mood sources no shell startup
+  file, and an interactive kosh mood warns once about a retired `.koshrc`. A
+  binary started as a koshkit utility or as `koshkit` runs through
+  `run_as_multicall` before any of this startup. The chunk loop is
   driven by `script_cursor`, `interactive_session`, and `lint_run`.
   `run_script_contents` computes one `script_run_plan`, then runs its parse,
   analysis, and evaluation phases.
@@ -99,8 +104,14 @@ changes update this file.
   change clears the level from `-W`, `-WW`, or `-WWW`.
 - `src/Koshconf.cpp` owns the `kosh.conf` reader and writer, the presets, and
   the base64 TLV form of `KOSHCONF`. Only the mood and the interactive options
-  reach a file or `KOSHCONF`. A restricted shell refuses every `koshconf` form
-  that changes a setting.
+  reach a file or `KOSHCONF`. `find_koshconf_value_problem` checks every value
+  from a file, a blob, or `koshconf set`, and the decoder accepts only the
+  canonical encoding. A write resolves a symlinked file to its target, keeps
+  the target's mode, flushes a temporary file beside it, renames it over the
+  target, and holds `os::acquire_process_lock` on the directory. A restricted
+  shell refuses every `koshconf` form that changes a setting, and `set -M` and
+  `set -I`. Every spawn calls `prepare_child_environment`, which also rewrites
+  an exported `KOSHCONF` from the current settings.
 - Eval snapshots keep shell and shopt state, directories, the working directory,
   and the file creation mask. Each store snapshots, restores, and writes its own
   section of the bootstrap. A fresh evaluator receives replayable shell source

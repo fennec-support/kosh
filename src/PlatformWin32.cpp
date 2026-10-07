@@ -1188,6 +1188,19 @@ fn get_home_directory() -> Maybe<Path>
   return koshka::None;
 }
 
+fn get_system_koshconf_path() throws -> Maybe<Path>
+{
+  let const program_data = get_environment_variable("ProgramData");
+  if (!program_data.has_value()) return koshka::None;
+
+  let path = Path{program_data->view()};
+  if (!path.is_absolute()) return koshka::None;
+
+  path.append("kosh");
+  path.append("kosh.conf");
+  return path;
+}
+
 fn get_home_for_user(StringView username) throws -> Maybe<Path>
 {
   let const current_user = get_current_user();

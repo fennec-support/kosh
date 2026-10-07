@@ -1973,6 +1973,7 @@ struct processor_counts
 fn get_processor_counts() wontthrow -> processor_counts;
 
 fn get_home_directory() throws -> Maybe<Path>;
+fn get_system_koshconf_path() throws -> Maybe<Path>;
 
 fn get_home_for_user(StringView username) throws -> Maybe<Path>;
 
