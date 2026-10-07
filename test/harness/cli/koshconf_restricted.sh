@@ -17,6 +17,13 @@ done
 echo "== set -r refuses a later change:"
 "$BIN" -c 'set -r; koshconf set editor.auto_pair on'
 echo "rc=$?"
+echo "== set refuses the mood and mimicry but keeps -o posix:"
+for change in 'set -M kosh' 'set -I' 'set +I' 'set -uI'; do
+  "$BIN" -r --mood bash -c "$change; echo \"$change status=\$?\"" 2>&1 |
+    grep -v '^ '
+done
+"$BIN" -r --mood bash -c 'set -M; set -o posix; echo "posix status=$?"; set -M
+set +o posix; set -M; koshconf get compat.mimicry'
 echo "== get and list stay available:"
 "$BIN" -r -c 'koshconf get mood; koshconf list | grep -c .' | sed 's/^[0-9][0-9]*$/COUNT/'
 echo "== no configuration file was written:"

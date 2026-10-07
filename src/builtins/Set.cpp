@@ -47,6 +47,11 @@ fn is_set_option(const option_descriptor &option) wontthrow -> bool
          (option.letter != '\0' && option.storage != option_storage::Mood);
 }
 
+fn is_restricted(const EvalContext &cxt) wontthrow -> bool
+{
+  return cxt.runtime_state().option_is_enabled(shell_option_id::Restricted);
+}
+
 fn option_is_on(const EvalContext &cxt, const option_descriptor &option) throws
     -> bool
 {
@@ -325,6 +330,10 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             ec, i,
             String{cxt.scratch_allocator(), "Unknown -M value '"} + *value +
                 "', expected 'kosh', 'bash', 'sh', or 'bash-posix'");
+      if (is_restricted(cxt)) {
+        throw make_error_for_arg(
+            ec, i, "Changing the mood is forbidden in a restricted shell");
+      }
       let const *mood_option = find_option_by_letter('M');
       ASSERT(mood_option != nullptr);
       write_option_number(cxt, *mood_option, static_cast<u32>(*parsed),
@@ -437,6 +446,12 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
               ec, i, StringView{"Unknown option '"} + invalid_option + "'");
           unavailable_error.set_command_status(2);
           throw unavailable_error;
+        }
+        let const is_mimicry = option->storage == option_storage::ShellOption &&
+                               option->shell_option == shell_option_id::Mimicry;
+        if (is_mimicry && is_restricted(cxt)) {
+          throw make_error_for_arg(
+              ec, i, "Changing mimicry is forbidden in a restricted shell");
         }
         apply_or_reject_option(cxt, *option, enable, true);
       }

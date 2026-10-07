@@ -33,6 +33,20 @@ rc=1
      1 |  set -r; koshconf set editor.auto_pair on
        |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 rc=1
+== set refuses the mood and mimicry but keeps -o posix:
+-c:1:8: error: Builtin `set`: Changing the mood is forbidden in a restricted shell.
+set -M kosh status=1
+-c:1:5: error: Builtin `set`: Changing mimicry is forbidden in a restricted shell.
+set -I status=1
+-c:1:5: error: Builtin `set`: Changing mimicry is forbidden in a restricted shell.
+set +I status=1
+-c:1:5: error: Builtin `set`: Changing mimicry is forbidden in a restricted shell.
+set -uI status=1
+bash
+posix status=0
+bash-posix
+bash
+off
 == get and list stay available:
 kosh
 COUNT

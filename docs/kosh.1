@@ -1018,6 +1018,16 @@ or
 .B enable \-d
 are rejected. Restricted mode cannot be disabled with
 .BR "set +r" .
+Changing the mood with
+.B set \-M
+and mimicry with
+.B set \-I
+or
+.B set +I
+is rejected, because the mood decides whether the bundled utilities resolve
+without PATH.
+.B set \-o posix
+remains available, as in bash.
 Changes to the restricted_shell shopt value are accepted without effect.
 .PP
 The
