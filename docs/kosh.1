@@ -791,9 +791,14 @@ is on, which a non-interactive shell starts in. Writing vi turns vi on and emacs
 off; writing emacs turns vi off and emacs on when vi was on. The id 88 is
 retired.
 .PP
-legacy.remember_command_paths and legacy.history_skip_function_definitions are
-accepted for Bash scripts that query them; Koshka caches command paths whether
-or not hashall is on, and Bash itself ignores nolog.
+The Bash options hashall and nolog have no koshconf name, since neither changes
+what Koshka does: Koshka caches command paths whether or not hashall is on, and
+Bash itself ignores nolog.
+.B set
+and
+.B \-o
+still accept both for Bash scripts that query them. The ids 68 and 86 are
+retired.
 .PP
 .nf
 .ft CR
@@ -851,8 +856,6 @@ or not hashall is on, and Bash itself ignores nolog.
        set -o errexit, letter e, semantic
  67  legacy.glob_disabled
        set -o noglob, letter f, semantic
- 68  legacy.remember_command_paths
-       set -o hashall, letter h, semantic
  69  legacy.assignments_anywhere_in_command
        set -o keyword, letter k, semantic
  70  legacy.job_control
@@ -887,8 +890,6 @@ or not hashall is on, and Bash itself ignores nolog.
        set -o history, interactive
  85  legacy.ctrl_d_does_not_exit
        set -o ignoreeof, interactive
- 86  legacy.history_skip_function_definitions
-       set -o nolog, interactive
  87  legacy.base_editor_mode
        set -o emacs and set -o vi, interactive
  89  legacy.posix_mode

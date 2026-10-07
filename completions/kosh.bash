@@ -155,7 +155,7 @@ debug.report_nonzero_exit_codes debug.report_every_exit_code \
 debug.print_evaluation_statistics debug.print_memory_report_at_exit \
 legacy.export_every_assigned_variable legacy.jobs_report_status_immediately \
 legacy.exit_on_command_failure legacy.glob_disabled \
-legacy.remember_command_paths legacy.assignments_anywhere_in_command \
+legacy.assignments_anywhere_in_command \
 legacy.job_control legacy.parse_without_executing \
 legacy.exit_after_one_command legacy.privileged_mode \
 legacy.unset_variable_is_error legacy.trace_print_input_lines \
@@ -165,7 +165,7 @@ legacy.trap_err_inherited_by_functions legacy.history_bang_expansion \
 legacy.cd_resolves_symlinks \
 legacy.trap_debug_and_return_inherited_by_functions \
 legacy.pipeline_fails_on_any_stage legacy.history_recording \
-legacy.ctrl_d_does_not_exit legacy.history_skip_function_definitions \
+legacy.ctrl_d_does_not_exit \
 legacy.base_editor_mode legacy.posix_mode legacy.cd_by_typing_directory_name \
 legacy.array_subscripts_expand_once legacy.cd_to_variable_value \
 legacy.cd_fix_typos legacy.verify_remembered_command_paths \

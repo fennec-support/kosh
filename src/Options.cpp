@@ -121,6 +121,14 @@ consteval fn set_alias(option_text set_name, shell_option_id shell_option,
   return entry;
 }
 
+consteval fn set_only(option_descriptor entry) wontthrow -> option_descriptor
+{
+  entry.id = 0;
+  entry.koshconf_name = {};
+  entry.is_set_alias = true;
+  return entry;
+}
+
 consteval fn invocation_only(option_descriptor entry) wontthrow
     -> option_descriptor
 {
@@ -404,15 +412,6 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
     flag(67, "legacy.glob_disabled", SEMANTIC, shell_option_id::Noglob,
          entry_shape{"noglob", {}, {}, "Disable pathname expansion.", 'f'},
          false),
-    flag(68, "legacy.remember_command_paths", SEMANTIC,
-         shell_option_id::Hashall,
-         entry_shape{"hashall",
-                     {},
-                     {},
-                     "Report command path hashing as enabled. Koshka caches "
-                     "command paths whether this option is enabled or disabled.",
-                     'h'},
-         true),
     flag(69, "legacy.assignments_anywhere_in_command", SEMANTIC,
          shell_option_id::Keyword,
          entry_shape{"keyword",
@@ -550,14 +549,6 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                      {},
                      "Require repeated end-of-file input before an "
                      "interactive shell exits."},
-         false),
-    flag(86, "legacy.history_skip_function_definitions", INTERACTIVE,
-         shell_option_id::Nolog,
-         entry_shape{"nolog",
-                     {},
-                     {},
-                     "Accept the Bash option, which Bash itself ignores, "
-                     "without changing execution."},
          false),
     with_enum(make_entry(87, "legacy.base_editor_mode", option_type::Enum,
                          INTERACTIVE, option_storage::EditorMode,
@@ -762,6 +753,24 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                "xpg_echo", "Let echo expand backslash escapes by default.",
                false, false),
 
+    set_only(flag(68, "legacy.remember_command_paths", SEMANTIC,
+                  shell_option_id::Hashall,
+                  entry_shape{"hashall",
+                              {},
+                              {},
+                              "Report command path hashing as enabled. "
+                              "Koshka caches command paths whether this "
+                              "option is enabled or disabled.",
+                              'h'},
+                  true)),
+    set_only(flag(86, "legacy.history_skip_function_definitions", INTERACTIVE,
+                  shell_option_id::Nolog,
+                  entry_shape{"nolog",
+                              {},
+                              {},
+                              "Accept the Bash option, which Bash itself "
+                              "ignores, without changing execution."},
+                  false)),
     set_alias("emacs", shell_option_id::Emacs,
               "Use emacs-style command-line editing.", false),
     set_alias("vi", shell_option_id::Vi, "Use vi-style command-line editing.",

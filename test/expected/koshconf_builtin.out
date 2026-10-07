@@ -26,7 +26,6 @@ legacy.export_every_assigned_variable=off   semantic
 legacy.jobs_report_status_immediately=off   interactive
 legacy.exit_on_command_failure=off          semantic
 legacy.glob_disabled=off                    semantic
-legacy.remember_command_paths=on            semantic
 legacy.assignments_anywhere_in_command=off  semantic
 legacy.job_control=off                      interactive
 legacy.parse_without_executing=off          semantic
@@ -44,7 +43,6 @@ legacy.trap_debug_and_return_inherited_by_functions=off semantic
 legacy.pipeline_fails_on_any_stage=on       semantic
 legacy.history_recording=off                interactive
 legacy.ctrl_d_does_not_exit=off             interactive
-legacy.history_skip_function_definitions=off interactive
 legacy.base_editor_mode=emacs               interactive
 legacy.posix_mode=off                       semantic
 legacy.cd_by_typing_directory_name=on       interactive
@@ -266,8 +264,6 @@ legacy.glob_ranges_use_ascii_order=on
 # legacy.history
 # Return a failed history substitution to the editor. (shopt histreedit)
 legacy.history_reedit_failed_substitution=off
-# Accept the Bash option, which Bash itself ignores, without changing execution. (set -o nolog)
-legacy.history_skip_function_definitions=off
 # Load an expanded history reference into the editor. The shell runs it after the user accepts it. (shopt histverify)
 legacy.history_verify_expansion_before_running=off
 
@@ -320,10 +316,6 @@ legacy.quote_dollar_strings_in_parameter_expansion=on
 legacy.redirect_refuses_to_overwrite_files=off
 # Close a {name}> descriptor when its command finishes. (shopt varredir_close)
 legacy.redirect_variable_fd_closed_after_command=off
-
-# legacy.remember
-# Report command path hashing as enabled. Koshka caches command paths whether this option is enabled or disabled. (set -o hashall)
-legacy.remember_command_paths=on
 
 # legacy.shift
 # Report a shift count larger than the positional parameters. (shopt shift_verbose)
@@ -494,7 +486,7 @@ warning: Skipping an invalid value of 'history.max_entries' in KOSHCONF.
 on
 4096
 == KOSHCONF carries the mood and interactive options to another shell:
-AQECAgEBAwEBBAEBBQEABgEABwEBCAEBCgI3NwsBAQwBAA0BAQ4BAQ8BABEBABIBABMBABQBABUBABYBABcBAEEBAFUBAFYBAFcBAIABAQGDAQEAhQEBAIYBAQGHAQEBiAEBAIkBAQCRAQEBlQEBAJYBAQCXAQEAmAEBAZkBAQCbAQEBoAEBAKEBAQCmAQEBpwEBAKgBAQE=
+AQECAgEBAwEBBAEBBQEABgEABwEBCAEBCgI3NwsBAQwBAA0BAQ4BAQ8BABEBABIBABMBABQBABUBABYBABcBAEEBAFUBAFcBAIABAQGDAQEAhQEBAIYBAQGHAQEBiAEBAIkBAQCRAQEBlQEBAJYBAQCXAQEAmAEBAZkBAQCbAQEBoAEBAKEBAQCmAQEBpwEBAKgBAQE=
 bash
 external
 77

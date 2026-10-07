@@ -1056,24 +1056,12 @@ static fn seed_shell_level() throws -> void
                                String::from(shell_level + 1, heap_allocator()));
 }
 
-/* Seeds the shell variables a session starts with. SHELL is owned by login,
-   getty, or the display manager, so an inherited value is left untouched. PS1
-   is seeded only for an interactive shell, since bash leaves it unset in a
-   non-interactive run and a config that gates on -z "$PS1", such as
-   bash_completion.sh, returns early before sourcing its body. PS2 is the
-   continuation prompt and PS4 prefixes the xtrace lines, and both carry their
-   defaults in every run. PS3 is left unset, since the select loop falls back to
-   its own default. COLUMNS and LINES carry the terminal size so a config that
-   divides by COLUMNS, such as ble.sh, sees a non-zero width. They are seeded
-   once and not tracked across a later resize. */
 static fn seed_session_variables(EvalContext &context,
                                  invocation_identity &identity,
                                  const ArrayList<mimic_mood> &init_moods,
                                  const inherited_shell &inherited,
                                  bool is_interactive) throws -> void
 {
-  /* BASH names the path used to invoke this shell, the symlink spelling such as
-     /usr/local/bin/bash when kosh is symlinked to bash. */
   context.execution_store().set_shell_executable_path(
       steal(identity.executable_path));
   let const shell_executable_path =
