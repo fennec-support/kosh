@@ -889,13 +889,18 @@ hot fn EvalContext::expand_path(glob_field field,
     if (!expansion_store().glob_exempt_for_test() &&
         (is_failglob_fatal || has_literal_glob))
     {
-      warn_or_throw(failglob_is_on, failglob_is_explicit, location,
-                    "The glob pattern '" + pattern +
-                        "' matched no file, it expands to its literal text, "
-                        "which is rarely intended",
-                    "Probe for matches with compgen -G '" + pattern +
-                        "' or relax it with shopt -u failglob outside the "
-                        "kosh mood");
+      try {
+        warn_or_throw(failglob_is_on, failglob_is_explicit, location,
+                      "The glob pattern '" + pattern +
+                          "' matched no file, it expands to its literal text, "
+                          "which is rarely intended",
+                      "Probe for matches with compgen -G '" + pattern +
+                          "' or relax it with shopt -u failglob outside the "
+                          "kosh mood");
+      } catch (ErrorBase &error) {
+        mark_expansion_error(error, expansion_error_reach::Line);
+        throw;
+      }
     }
 
     /* nullglob drops a no-match glob entirely, while the default and a test

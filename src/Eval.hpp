@@ -1349,10 +1349,11 @@ enum class parameter_word_quoting : u8
   HereDocument,
 };
 
-enum class arithmetic_error_source : u8
+enum class expansion_error_reach : u8
 {
-  Expansion,
-  Operand,
+  Line,
+  LineOrPosixScript,
+  CommandOrPosixScript,
 };
 
 enum class arithmetic_text_kind : u8
@@ -3957,9 +3958,8 @@ public:
   fn evaluate_arithmetic(StringView expression,
                          const SourceLocation *expression_base = nullptr) throws
       -> i64;
-  fn mark_arithmetic_error(ErrorBase &error,
-                           arithmetic_error_source source) const wontthrow
-      -> void;
+  fn mark_expansion_error(ErrorBase &error,
+                          expansion_error_reach reach) const wontthrow -> void;
   fn evaluate_arithmetic_text(
       StringView expression, const SourceLocation *expression_base = nullptr,
       arithmetic_text_kind text_kind = arithmetic_text_kind::Value) throws

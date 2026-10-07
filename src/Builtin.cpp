@@ -286,6 +286,8 @@ fn execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
   } catch (const ErrorWithLocation &) {
     throw;
   } catch (const Error &e) {
+    if (e.is_script_fatal()) throw;
+
     if (cxt.runtime_state().is_bash_compatible() && !e.is_line_discarding()) {
       if (!e.detail_message().is_empty())
         report_soft_builtin_error(ec, cxt, e.message(), e.detail_message());

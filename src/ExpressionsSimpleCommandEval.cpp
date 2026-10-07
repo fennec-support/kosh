@@ -581,10 +581,23 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     cxt.write_xtrace(trace.view());
   };
 
+  let const do_reject_readonly_assignment =
+      [&](StringView name, expansion_error_reach reach) throws -> void {
+    let error =
+        ErrorWithLocation{source_location(), "Unable to assign '" + name +
+                                                 "' because it is read only"};
+    cxt.mark_expansion_error(error, reach);
+    throw steal(error);
+  };
+
   let const do_apply_persistent_assignment =
       [&](const tokens::Assignment &assignment) throws {
         let const name = assignment.key().view();
         let value = cxt.expand_word_for_assignment(assignment.value_word());
+        if (cxt.is_readonly(name)) {
+          do_reject_readonly_assignment(
+              name, expansion_error_reach::LineOrPosixScript);
+        }
         do_trace_assignment(name, assignment.get_update_mode(), value.view());
         if (assignment.get_update_mode() == assignment_update_mode::Append)
           do_apply_append(name, value);
@@ -605,9 +618,10 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       do_apply_persistent_assignment(*assignment);
     /* Bare array assignments apply after the scalars in source order. */
     for (let const &assignment : m_array_args) {
-      if (cxt.is_readonly(assignment.name))
-        throw Error{"Unable to assign '" + assignment.name +
-                    "' because it is read only"};
+      if (cxt.is_readonly(assignment.name)) {
+        do_reject_readonly_assignment(assignment.name,
+                                      expansion_error_reach::LineOrPosixScript);
+      }
       ArrayList<String> values = cxt.process_args(
           assignment.elements, nullptr, argument_lifetime::Persistent,
           argument_context::ArrayLiteral);
@@ -706,8 +720,21 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   let const do_apply_environment_assignment = [&](const tokens::Assignment
                                                       &assignment) throws {
     let const name = assignment.key().view();
-    if (cxt.is_readonly(name))
-      throw Error{"Unable to assign '" + name + "' because it is read only"};
+    if (cxt.is_readonly(name)) {
+      if (cxt.runtime_state().is_bash_compatible() &&
+          !cxt.runtime_state().is_posix_option_on())
+      {
+        cxt.show_runtime_error_at(assignment.source_location(),
+                                  "Unable to assign '" + name +
+                                      "' because it is read only");
+        return;
+      }
+
+      do_reject_readonly_assignment(
+          name, is_command_special_builtin
+                    ? expansion_error_reach::LineOrPosixScript
+                    : expansion_error_reach::Line);
+    }
     const bool is_read_field_separator =
         name == "IFS" && command_word_function == nullptr &&
         !program_args.is_empty() && program_args[0] == "read";

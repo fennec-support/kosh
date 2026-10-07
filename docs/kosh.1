@@ -1372,6 +1372,20 @@ interactive shell abandons the line instead. In the kosh mood every arithmetic
 error ends the script with status 1, like any other evaluation error, while an
 eval, a subshell, or a command substitution holds it to a status of 1.
 .PP
+Other expansion errors follow Bash 5.3 the same way. A glob that matches
+nothing under failglob abandons the line in the bash and bash-posix moods. A
+bad substitution, such as ${x!y}, ${x:}, or ${%}, and an assignment to a
+read-only variable by NAME=value, NAME=(...), NAME+=value, NAME[i]=value, or
+${NAME:=value} abandon the line in the bash mood and, like a $(( )) error, end
+a non-interactive shell in the bash-posix and sh moods. A read-only
+${NAME:=value} leaves status 2 in the bash mood. A read-only for loop variable
+fails the loop in the bash mood and ends a non-interactive shell in the
+bash-posix and sh moods. A read-only prefix assignment is reported and skipped
+in the bash mood, so its command still runs, while the bash-posix mood
+abandons the line, or ends the shell before a special builtin. An unset
+parameter under set \-u and ${NAME?word} end the script in every mood. In
+the kosh mood each of these errors ends the script.
+.PP
 The
 .B arithmetic.use_big_integers_and_decimals
 koshconf option uses arbitrary-precision integers and accepts finite base-10

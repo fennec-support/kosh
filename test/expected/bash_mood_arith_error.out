@@ -15,9 +15,8 @@ rc=1
 == bash mood still continues past an ordinary command failure:
 after
 rc=0
-== bash mood still continues past a readonly reassignment, matching bash:
+== bash mood abandons the line after a readonly reassignment, matching bash:
 -c:1:15: error: Unable to assign 'r' because it is read only.
      1 |  readonly r=1; r=2; echo after
        |                ^~~
-after
-rc=0
+rc=1

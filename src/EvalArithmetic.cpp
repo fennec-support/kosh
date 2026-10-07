@@ -2152,26 +2152,6 @@ fn evaluate_arithmetic_value(
 
 } /* namespace */
 
-fn EvalContext::mark_arithmetic_error(
-    ErrorBase &error, arithmetic_error_source source) const wontthrow -> void
-{
-  if (error.is_script_fatal() || error.is_line_discarding()) {
-    return;
-  }
-  if (expansion_store().is_expanding_here_document()) return;
-
-  if (source == arithmetic_error_source::Expansion &&
-      runtime_state().is_posix_option_on() &&
-      !execution_store().shell_is_interactive())
-  {
-    error.set_script_fatal();
-    error.set_line_discarding();
-    return;
-  }
-
-  if (runtime_state().is_bash_compatible()) error.set_line_discarding();
-}
-
 fn EvalContext::evaluate_arithmetic(
     StringView expression, const SourceLocation *expression_base) throws -> i64
 {
@@ -2184,7 +2164,7 @@ fn EvalContext::evaluate_arithmetic(
         expansion_store().scratch_arena(), arithmetic_text_kind::ShellSource);
     return is_exact ? value.checked_i64() : value.wrapped_i64();
   } catch (ErrorBase &error) {
-    mark_arithmetic_error(error, arithmetic_error_source::Operand);
+    mark_expansion_error(error, expansion_error_reach::Line);
     throw;
   }
 }
@@ -2318,7 +2298,7 @@ fn EvalContext::evaluate_arithmetic_cached_text(
           source_location.has_value() ? &*source_location : nullptr,
           arithmetic_text_kind::ShellSource);
     } catch (ErrorBase &error) {
-      mark_arithmetic_error(error, arithmetic_error_source::Expansion);
+      mark_expansion_error(error, expansion_error_reach::LineOrPosixScript);
       throw;
     }
   }
@@ -2346,7 +2326,7 @@ fn EvalContext::evaluate_arithmetic_cached_text(
           source_location.has_value() ? &*source_location : nullptr, is_exact,
           expansion_store().scratch_arena());
     } catch (ErrorBase &error) {
-      mark_arithmetic_error(error, arithmetic_error_source::Expansion);
+      mark_expansion_error(error, expansion_error_reach::LineOrPosixScript);
       throw;
     }
   }();

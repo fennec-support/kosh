@@ -844,7 +844,13 @@ hot fn ForLoop::evaluate_status_impl(EvalContext &cxt) const throws
     }
 
     cxt.write_xtrace(loop_trace.view());
-    cxt.set_shell_variable(m_variable_name, value);
+    try {
+      cxt.set_shell_variable(m_variable_name, value);
+    } catch (ErrorBase &error) {
+      cxt.mark_expansion_error(error,
+                               expansion_error_reach::CommandOrPosixScript);
+      relocate_if_unlocated(error, source_location());
+    }
     result = m_body->evaluate_status(cxt);
     if (cxt.runtime_state().no_exec()) break;
     if (resolve_loop_control(cxt) == loop_disposition::StopLoop) break;

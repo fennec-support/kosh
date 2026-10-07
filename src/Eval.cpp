@@ -357,7 +357,7 @@ hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
         try {
           result = evaluate_arithmetic_text(value);
         } catch (ErrorBase &error) {
-          mark_arithmetic_error(error, arithmetic_error_source::Operand);
+          mark_expansion_error(error, expansion_error_reach::Line);
           throw;
         }
       }
@@ -750,6 +750,30 @@ pure fn EvalContext::locate_variable_reference(StringView name) const wontthrow
     k++;
   }
   return fallback;
+}
+
+fn EvalContext::mark_expansion_error(
+    ErrorBase &error, expansion_error_reach reach) const wontthrow -> void
+{
+  if (error.is_script_fatal() || error.is_line_discarding()) {
+    return;
+  }
+  if (expansion_store().is_expanding_here_document()) return;
+
+  if (reach != expansion_error_reach::Line &&
+      runtime_state().is_posix_option_on() &&
+      !execution_store().shell_is_interactive())
+  {
+    error.set_script_fatal();
+    error.set_line_discarding();
+    return;
+  }
+
+  if (reach != expansion_error_reach::CommandOrPosixScript &&
+      runtime_state().is_bash_compatible())
+  {
+    error.set_line_discarding();
+  }
 }
 
 fn EvalContext::report_unset_reference(StringView name) throws -> void

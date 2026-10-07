@@ -313,9 +313,20 @@ hot fn AssignCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
     }
 
     let const key_view = m_assignment->key().view();
-    if (let const bracket = key_view.find_character('[');
-        bracket.has_value() && key_view[key_view.length - 1] == ']')
-    {
+    let const bracket = key_view.find_character('[');
+    let const is_element_assignment =
+        bracket.has_value() && key_view[key_view.length - 1] == ']';
+    let const assigned_name = is_element_assignment
+                                  ? key_view.substring_of_length(0, *bracket)
+                                  : key_view;
+    if (cxt.is_readonly(assigned_name)) {
+      let error = Error{"Unable to assign '" + assigned_name +
+                        "' because it is read only"};
+      cxt.mark_expansion_error(error, expansion_error_reach::LineOrPosixScript);
+      throw steal(error);
+    }
+
+    if (is_element_assignment) {
       let const array_name = key_view.substring_of_length(0, *bracket);
       let const subscript = key_view.substring_of_length(
           *bracket + 1, key_view.length - *bracket - 2);

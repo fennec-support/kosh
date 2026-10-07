@@ -957,7 +957,8 @@ fn EvalContext::ModifierWordExpander::expand_arithmetic(
                  arithmetic_text_kind::ShellSource),
              false);
   } catch (ErrorBase &error) {
-    m_context.mark_arithmetic_error(error, arithmetic_error_source::Expansion);
+    m_context.mark_expansion_error(error,
+                                   expansion_error_reach::LineOrPosixScript);
     throw;
   }
   m_index = j - 1;
@@ -1202,6 +1203,7 @@ private:
   fn take_value(Maybe<String> &current) wontthrow -> String;
   fn assign_word(StringView word) throws -> String;
   fn raise_unset_error(StringView word) throws -> void;
+  wontreturn fn raise_bad_substitution() const throws -> void;
   fn expand_test_operator(char op, StringView word, Maybe<String> &current,
                           bool treat_as_unset) throws -> String;
   fn expand_trim_operator(char op, StringView word, bool is_doubled,
@@ -1586,8 +1588,29 @@ fn EvalContext::ParameterExpander::take_value(Maybe<String> &current) wontthrow
 fn EvalContext::ParameterExpander::assign_word(StringView word) throws -> String
 {
   let const assigned = expand_word(word, m_quoting);
+  if (m_context.is_readonly(m_name)) {
+    let error =
+        Error{"Unable to assign '" + m_name + "' because it is read only"};
+    m_context.mark_expansion_error(error,
+                                   expansion_error_reach::LineOrPosixScript);
+    if (error.is_line_discarding() && !error.is_script_fatal()) {
+      error.set_command_status(2);
+    }
+    throw steal(error);
+  }
+
   m_context.set_shell_variable(m_name, assigned);
   return assigned;
+}
+
+wontreturn fn
+EvalContext::ParameterExpander::raise_bad_substitution() const throws -> void
+{
+  let error = Error{"Unable to expand '${" + m_spec +
+                    "}' because it is a bad substitution"};
+  m_context.mark_expansion_error(error,
+                                 expansion_error_reach::LineOrPosixScript);
+  throw steal(error);
 }
 
 fn EvalContext::ParameterExpander::raise_unset_error(StringView word) throws
@@ -1617,7 +1640,7 @@ fn EvalContext::ParameterExpander::expand_operator() throws -> String
   /* A leading colon makes the test forms treat an empty value as unset. */
   let const is_colon_form = m_rest[0] == ':';
   const usize op_index = is_colon_form ? 1 : 0;
-  if (op_index >= m_rest.length) return m_context.expand_variable(m_name);
+  if (op_index >= m_rest.length) raise_bad_substitution();
 
   let const is_all_parameters = m_name == "@" || m_name == "*";
 
@@ -1653,7 +1676,7 @@ fn EvalContext::ParameterExpander::expand_operator() throws -> String
   case '?': return expand_test_operator(op, word, current, treat_as_unset);
   case '#':
   case '%': return expand_trim_operator(op, word, is_doubled, current);
-  default: return m_context.expand_variable(m_name);
+  default: raise_bad_substitution();
   }
 }
 
@@ -1700,6 +1723,13 @@ fn EvalContext::ParameterExpander::expand() throws -> String
   }
 
   split_name();
+
+  if (!lexer::is_variable_name_start(m_name[0]) &&
+      !lexer::is_number(m_name[0]) &&
+      !lexer::is_special_parameter_char(m_name[0]))
+  {
+    raise_bad_substitution();
+  }
 
   if (!m_rest.is_empty() && m_rest[0] == '[' && !m_name.is_empty() &&
       lexer::is_variable_name_start(m_name[0]))
