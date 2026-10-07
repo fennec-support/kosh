@@ -35,6 +35,9 @@ fn window_function_body_error(EvalContext &cxt,
                               ErrorWithLocation &error) wontthrow
     -> Maybe<StringView>;
 
+pure fn full_source_text(const EvalContext &cxt,
+                         const Expression &node) wontthrow -> StringView;
+
 fn static_command_name(const Token *token) throws -> Maybe<StringView>;
 fn normalized_relative_executable_path(StringView path) throws -> Maybe<String>;
 

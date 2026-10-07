@@ -1470,24 +1470,8 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
       cxt.source_text_in_span(source_location(), source_end_position());
 
   let const body_location = m_body->source_location();
-  let body_text = StringView{};
-  if (!os::can_fork_evaluator()) {
-    let body_span = SourceLocation{body_location.position, 0,
-                                   body_location.source_name_index};
-    let body_end_position =
-        usize{body_location.position} + usize{body_location.length};
-    if (m_body->source_end_position() > body_end_position)
-      body_end_position = m_body->source_end_position();
-
-    if (let const *simple = m_body->as_simple_command(); simple != nullptr) {
-      body_span.position =
-          static_cast<u32>(simple->full_source_start_position());
-      if (simple->full_source_end_position() > body_end_position)
-        body_end_position = simple->full_source_end_position();
-    }
-
-    body_text = cxt.source_text_in_span(body_span, body_end_position);
-  }
+  let const body_text =
+      os::can_fork_evaluator() ? StringView{} : full_source_text(cxt, *m_body);
 
   /* One pipe carries what the shell writes to the coprocess, the other carries
      what the coprocess writes back. */
