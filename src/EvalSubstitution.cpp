@@ -59,12 +59,10 @@ fn EvalContext::register_embedded_source(StringView inner,
 {
   let const *parent = source_store().current_source();
   Maybe<usize> inner_offset = None;
-  if (parent != nullptr && parent_location.length != 0 && !inner.is_empty() &&
-      parent_location.position <= parent->count() &&
-      parent_location.length <= parent->count() - parent_location.position)
-  {
-    let const span = parent->view().substring_of_length(
-        parent_location.position, parent_location.length);
+  let const span = parent != nullptr && parent_location.length != 0
+                       ? source_text_in_span(parent_location, 0)
+                       : StringView{};
+  if (!span.is_empty() && !inner.is_empty()) {
     static constexpr usize PREFIX_LENGTHS[] = {2, 1, 0};
     for (let const prefix_length : PREFIX_LENGTHS) {
       if (span.length >= prefix_length &&
@@ -373,7 +371,8 @@ fn EvalContext::setup_process_substitution(const WordSegment &segment) throws
   let const do_launch = [&]() throws -> os::process_substitution_launch {
     try {
       let const evaluator = make_child_evaluator_state(bootstrap);
-      set_child_source_origin(bootstrap, substitution_source.view(), 0);
+      set_child_source_origin(bootstrap, substitution_source.view(),
+                              SourceLocation{});
       return os::launch_process_substitution(os::process_substitution_options{
           .source = substitution_source.view(),
           .should_trace_sources = diagnostics_store().source_traces_enabled(),

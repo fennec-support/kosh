@@ -628,31 +628,28 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
       }
 
       let const stage_location = stage->source_location();
-      let const stage_source = cxt.source_store().current_source();
-      let stage_text = StringView{};
-      if (stage_source != nullptr) {
-        let stage_start_position = usize{stage_location.position};
-        let stage_end_position =
-            usize{stage_location.position} + usize{stage_location.length};
-        if (stage->source_end_position() > stage_end_position)
-          stage_end_position = stage->source_end_position();
+      let stage_span = SourceLocation{stage_location.position, 0,
+                                      stage_location.source_name_index};
+      let stage_end_position =
+          usize{stage_location.position} + usize{stage_location.length};
+      if (stage->source_end_position() > stage_end_position)
+        stage_end_position = stage->source_end_position();
 
-        if (simple != nullptr) {
-          stage_start_position = simple->full_source_start_position();
-          if (simple->full_source_end_position() > stage_end_position)
-            stage_end_position = simple->full_source_end_position();
-        }
-
-        stage_text = stage_source->view().substring_of_length(
-            stage_start_position, stage_end_position - stage_start_position);
+      if (simple != nullptr) {
+        stage_span.position =
+            static_cast<u32>(simple->full_source_start_position());
+        if (simple->full_source_end_position() > stage_end_position)
+          stage_end_position = simple->full_source_end_position();
       }
+
+      let const stage_text =
+          cxt.source_text_in_span(stage_span, stage_end_position);
 
       let const process_group =
           !is_async() ? os::process_group_mode::Inherit
                       : os::background_process_group_mode(process_group_id);
       bootstrap.evaluation_mode = stage_mode;
-      cxt.set_child_source_origin(bootstrap, stage_text,
-                                  stage_location.source_name_index);
+      cxt.set_child_source_origin(bootstrap, stage_text, stage_location);
       let const launch = os::launch_compound_stage(os::compound_stage_options{
           .source = stage_text,
           .in_fd = stage_in,

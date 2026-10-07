@@ -3510,7 +3510,8 @@ public:
   fn apply_subshell_bootstrap(os::subshell_bootstrap bootstrap) throws -> void;
   fn set_child_source_origin(os::subshell_bootstrap &bootstrap,
                              StringView child_source,
-                             u32 source_name_index) const throws -> void;
+                             const SourceLocation &launch_location) const throws
+      -> void;
   fn register_inherited_source_origin(StringView origin, const String &contents,
                                       ArrayList<String> &windows,
                                       Maybe<StringView> &source_name) throws

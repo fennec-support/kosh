@@ -91,25 +91,15 @@ fn Command::evaluate_async_with(EvalContext &cxt, async_body body,
                                 StringView expanded_child_source) const throws
     -> i64
 {
-  let const source = cxt.source_store().current_source();
   let const source_view = cxt.source_store().current_source_view();
-  let command_text = StringView{};
-  if (source != nullptr) {
-    let command_end_position =
-        source_location().position + source_location().length;
-    if (source_end_position() > command_end_position)
-      command_end_position = source_end_position();
-    command_text = source->view().substring_of_length(
-        source_location().position,
-        command_end_position - source_location().position);
-  }
+  let const command_text =
+      cxt.source_text_in_span(source_location(), source_end_position());
 
   let const child_source =
       expanded_child_source.is_empty() ? command_text : expanded_child_source;
   let bootstrap = os::subshell_bootstrap{};
   let const evaluator = cxt.make_child_evaluator_state(bootstrap);
-  cxt.set_child_source_origin(bootstrap, child_source,
-                              source_location().source_name_index);
+  cxt.set_child_source_origin(bootstrap, child_source, source_location());
   let const launch = os::launch_compound_stage(os::compound_stage_options{
       .source = child_source,
       .location = source_location(),
@@ -1475,18 +1465,9 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
 {
   ASSERT(m_body != nullptr);
 
-  let const source = cxt.source_store().current_source();
   let const source_view = cxt.source_store().current_source_view();
-  let command_text = StringView{};
-  if (source != nullptr) {
-    let command_end_position =
-        source_location().position + source_location().length;
-    if (source_end_position() > command_end_position)
-      command_end_position = source_end_position();
-    command_text = source->view().substring_of_length(
-        source_location().position,
-        command_end_position - source_location().position);
-  }
+  let const command_text =
+      cxt.source_text_in_span(source_location(), source_end_position());
 
   /* One pipe carries what the shell writes to the coprocess, the other carries
      what the coprocess writes back. */
@@ -1509,8 +1490,7 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
 
   let bootstrap = os::subshell_bootstrap{};
   let const evaluator = cxt.make_child_evaluator_state(bootstrap);
-  cxt.set_child_source_origin(bootstrap, command_text,
-                              source_location().source_name_index);
+  cxt.set_child_source_origin(bootstrap, command_text, source_location());
 
   let const launch = os::launch_compound_stage(os::compound_stage_options{
       .source = command_text,

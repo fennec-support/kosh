@@ -1,0 +1,53 @@
+#!/bin/env kosh
+
+# A function defined by a sourced file or an eval keeps the positions of that
+# text. A background subshell, a pipeline stage, and a process substitution in
+# its body run in a fresh evaluator on Windows, which receives the text and the
+# origin of that source rather than the bytes at those positions in the caller.
+library_directory="${TEST_MKTEMP_DIRECTORY:-${TEMP:-${TMPDIR:-/tmp}}}/fresh-evaluator-function-sources-$$"
+koshkit mkdir -p "$library_directory"
+cd "$library_directory" || exit 1
+printf '%s\n' \
+  '# The functions start below this line.' \
+  'background() {' \
+  '  ( echo "background=$LINENO" ) &' \
+  '  wait "$!"' \
+  '}' \
+  'stage() {' \
+  '  echo piped | { read -r value; echo "$value=$LINENO"; }' \
+  '}' \
+  'substitution() {' \
+  '  read -r value < <(echo "substitution=$LINENO")' \
+  '  echo "$value"' \
+  '}' \
+  'nested() {' \
+  '  ( background ) &' \
+  '  wait "$!"' \
+  '}' \
+  'unset_read() {' \
+  '  ( echo "$unset_in_library" ) &' \
+  '  wait "$!"' \
+  '}' \
+  'nested_unset_read() {' \
+  '  ( unset_read ) &' \
+  '  wait "$!"' \
+  '}' >library.sh
+source ./library.sh
+
+background
+stage
+substitution
+nested
+unset_read
+nested_unset_read
+
+eval 'evaluated() {
+  ( echo "evaluated=$LINENO"; echo "$unset_in_eval" ) &
+  wait "$!"
+}'
+evaluated
+( evaluated ) &
+wait "$!"
+
+cd / || exit 1
+[ -n "$library_directory" ] && koshkit rm -r "$library_directory"

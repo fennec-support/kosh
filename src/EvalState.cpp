@@ -2411,10 +2411,9 @@ fn EvalContext::make_child_evaluator_state(
   };
 }
 
-fn EvalContext::set_child_source_origin(os::subshell_bootstrap &bootstrap,
-                                        StringView child_source,
-                                        u32 source_name_index) const throws
-    -> void
+fn EvalContext::set_child_source_origin(
+    os::subshell_bootstrap &bootstrap, StringView child_source,
+    const SourceLocation &launch_location) const throws -> void
 {
   bootstrap.source_origin.clear();
   if (bootstrap.payload.is_empty()) return;
@@ -2443,19 +2442,27 @@ fn EvalContext::set_child_source_origin(os::subshell_bootstrap &bootstrap,
 
     let rendered_source = child_source;
     let location = SourceLocation{0, child_source.length};
+    let line_offset = isize{0};
     let counted_line = Maybe<usize>{None};
     let const *current = source_store().current_source();
-    let const is_inside_current_source =
-        current != nullptr && child_source.data >= current->view().data &&
+    let const owner = resolve_render_source(launch_location);
+    let const is_inside_owner =
+        owner.text != nullptr && child_source.data >= owner.text->view().data &&
         child_source.data + child_source.length <=
-            current->view().data + current->view().length;
-    if (is_inside_current_source) {
-      rendered_source = current->view();
-      location = SourceLocation{
-          static_cast<usize>(child_source.data - current->view().data),
-          child_source.length, source_name_index};
+            owner.text->view().data + owner.text->view().length;
+    if (is_inside_owner) {
+      rendered_source = owner.text->view();
+      let const render_position =
+          static_cast<usize>(child_source.data - owner.text->view().data);
+      let const body_location = SourceLocation{
+          owner.is_windowed ? render_position - owner.header_length +
+                                  owner.body_start_position
+                            : render_position,
+          child_source.length, launch_location.source_name_index};
+      location = owner.rebase(body_location);
+      if (owner.is_windowed) line_offset = owner.line_offset;
       counted_line = line_number_at_location(
-          location, current, function_store().call_frames().count());
+          body_location, current, function_store().call_frames().count());
     } else {
       for (usize index = source_store().embedded_sources().count(); index > 0;
            index--)
@@ -2472,9 +2479,9 @@ fn EvalContext::set_child_source_origin(os::subshell_bootstrap &bootstrap,
       }
     }
 
-    let const site =
-        resolve_rendered_site(rendered_source, location, 0, false, this);
-    if (!is_inside_current_source && site.source.data == child_source.data) {
+    let const site = resolve_rendered_site(
+        rendered_source, location, line_offset, owner.is_windowed, this);
+    if (!is_inside_owner && site.source.data == child_source.data) {
       return false;
     }
 

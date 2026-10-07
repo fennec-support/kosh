@@ -1,0 +1,84 @@
+37:1: warning: The command 'background' could not be verified after runtime code.
+    37 |  background
+       |  ^~~~~~~~~~
+38:1: warning: The command 'stage' could not be verified after runtime code.
+    38 |  stage
+       |  ^~~~~
+39:1: warning: The command 'substitution' could not be verified after runtime code.
+    39 |  substitution
+       |  ^~~~~~~~~~~~
+40:1: warning: The command 'nested' could not be verified after runtime code.
+    40 |  nested
+       |  ^~~~~~
+41:1: warning: The command 'unset_read' could not be verified after runtime code.
+    41 |  unset_read
+       |  ^~~~~~~~~~
+42:1: warning: The command 'nested_unset_read' could not be verified after runtime code.
+    42 |  nested_unset_read
+       |  ^~~~~~~~~~~~~~~~~
+48:1: warning: The command 'evaluated' could not be verified after runtime code.
+    48 |  evaluated
+       |  ^~~~~~~~~
+49:3: warning: The command 'evaluated' could not be verified after runtime code.
+    49 |  ( evaluated ) &
+       |    ^~~~~~~~~
+Encountered 8 warnings.
+background=3
+piped=7
+substitution=10
+background=3
+./library.sh:18:11: warning: The variable 'unset_in_library' is not set, it expands to empty.
+    18 |    ( echo "$unset_in_library" ) &
+       |            ^~~~~~~~~~~~~~~~~
+note: Replace it with ${unset_in_library-} if empty expansion is desired.
+18:3: trace:
+    18 |    ( echo "$unset_in_library" ) &
+       |    ^
+41:1: trace:
+    41 |  unset_read
+       |  ^~~~~~~~~~
+
+./library.sh:18:11: warning: The variable 'unset_in_library' is not set, it expands to empty.
+    18 |    ( echo "$unset_in_library" ) &
+       |            ^~~~~~~~~~~~~~~~~
+note: Replace it with ${unset_in_library-} if empty expansion is desired.
+18:3: trace:
+    18 |    ( echo "$unset_in_library" ) &
+       |    ^
+22:5: trace:
+    22 |    ( unset_read ) &
+       |      ^~~~~~~~~~
+22:3: trace:
+    22 |    ( unset_read ) &
+       |    ^
+42:1: trace:
+    42 |  nested_unset_read
+       |  ^~~~~~~~~~~~~~~~~
+
+evaluated=2
+eval:2:37: warning: The variable 'unset_in_eval' is not set, it expands to empty.
+     2 |    ( echo "evaluated=$LINENO"; echo "$unset_in_eval" ) &
+       |                                      ^~~~~~~~~~~~~~
+note: Replace it with ${unset_in_eval-} if empty expansion is desired.
+2:3: trace:
+     2 |    ( echo "evaluated=$LINENO"; echo "$unset_in_eval" ) &
+       |    ^
+48:1: trace:
+    48 |  evaluated
+       |  ^~~~~~~~~
+
+evaluated=2
+eval:2:37: warning: The variable 'unset_in_eval' is not set, it expands to empty.
+     2 |    ( echo "evaluated=$LINENO"; echo "$unset_in_eval" ) &
+       |                                      ^~~~~~~~~~~~~~
+note: Replace it with ${unset_in_eval-} if empty expansion is desired.
+2:3: trace:
+     2 |    ( echo "evaluated=$LINENO"; echo "$unset_in_eval" ) &
+       |    ^
+49:3: trace:
+    49 |  ( evaluated ) &
+       |    ^~~~~~~~~
+49:1: trace:
+    49 |  ( evaluated ) &
+       |  ^
+
