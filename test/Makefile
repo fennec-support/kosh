@@ -54,7 +54,7 @@ SKIPPED_TESTS := \
 	koshkit_live_pty koshkit_live_sanitizers koshkit_live_deltas \
 	editor_ghost_menu_pty editor_kill_yank_pty editor_prompt_pty \
 	shell_integration_marks_pty shell_executable_path \
-	analysis_environment_inheritance
+	analysis_environment_inheritance progcomp_alias_ghost
 else ifneq ($(TARGET), Linux)
 SKIPPED_TESTS := koshkit_mknod koshkit_live_pty koshkit_live_sanitizers \
 	koshkit_live_deltas editor_ghost_menu_pty editor_kill_yank_pty \

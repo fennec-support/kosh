@@ -1421,13 +1421,16 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
   if (command.is_empty()) return None;
 
   /* A command's own completion spec takes precedence over specs reached through
-     aliases and symlinks. */
+     aliases and symlinks. The ghost follows aliases only, so a keystroke never
+     searches PATH. */
   const completion_spec *spec = context.completion_store().lookup_spec(command);
   String resolved_command{completion_allocator()};
   if (spec == nullptr &&
       context.runtime_state().is_shopt_enabled(shopt_option_id::ProgcompAlias))
   {
-    resolved_command = resolve_completion_command(command, context);
+    resolved_command = for_listing
+                           ? resolve_completion_command(command, context)
+                           : resolve_completion_alias(command, context);
     if (resolved_command.view() != command)
       spec = context.completion_store().lookup_spec(resolved_command.view());
   }

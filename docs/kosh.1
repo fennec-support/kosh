@@ -2070,7 +2070,12 @@ option name or
 .B \-A
 action name is an error with status 2, and nothing is registered.
 .IP
-A command with no spec of its own uses the
+With
+.B progcomp_alias
+on, a command with no spec of its own uses the spec of the first word of its
+alias. An explicit Tab also follows a command found through PATH to the name
+of its symlink target. The ghost suggestion follows only the alias, so it
+never searches PATH. A command with no spec reached this way uses the
 .B \-D
 default spec, which generates candidates the same way. When its function
 returns 124, completion restarts with the spec the function registered for the

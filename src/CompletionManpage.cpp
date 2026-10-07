@@ -647,14 +647,15 @@ fn internal::complete_from_man_subcommands(StringView line, StringView token,
       os::has_directory_separator(surface_command))
     return None;
 
-  let const resolved_name =
-      resolve_completion_command(surface_command, context);
-  let const command = resolved_name.view();
-
   if (!MANPAGE_CACHE.is_subcommand_index_built) {
     if (!for_listing) return None;
     MANPAGE_CACHE.build_subcommand_index(context);
   }
+
+  let const resolved_name =
+      for_listing ? resolve_completion_command(surface_command, context)
+                  : resolve_completion_alias(surface_command, context);
+  let const command = resolved_name.view();
 
   let const subcommands = MANPAGE_CACHE.subcommand_index.find(command);
   if (!subcommands.has_value() || subcommands->values.is_empty()) return None;
