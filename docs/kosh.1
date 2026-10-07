@@ -4826,7 +4826,18 @@ mood.
 .TP
 .BR IFS ", " LINENO
 The field separator and the line number of the running command are available in
-every mood.
+every mood. Inside a command substitution, backticks, or a process
+substitution,
+.B LINENO
+is the file line of the command that reads it in every mood. Bash differs
+inside a command substitution that spans lines. It starts the count at a line
+between the first and last line of the substitution, which its parser chooses,
+and counts the lines of the body as it prints the body back, without comments
+or blank lines. A command on the second line of
+.B y=$(echo $LINENO
+followed by
+.B echo $LINENO)
+reads 3 in Bash and 2 in kosh when the substitution starts on line 1.
 .TP
 .BR BASHPID ", " PPID ", " UID ", " EUID ", " GROUPS ", " HOSTNAME ", " HOSTTYPE ", " MACHTYPE ", " OSTYPE
 These dynamic values identify the current shell process, parent, ids,
