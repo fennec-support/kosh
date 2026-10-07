@@ -3805,7 +3805,12 @@ Insert a line break.
 .TP
 .BR Tab ", " Shift\-Tab ", " Ctrl\-Space
 Complete the token under the cursor. Ctrl\-Space acts as Tab on a POSIX system
-only.
+only. The candidates match the text of the token before the cursor. A candidate
+replaces the whole token when the cursor is inside it, and is inserted before
+the token when the cursor is at its start. A candidate of the
+.B complete \-I
+spec replaces only the text before the cursor and keeps the rest of the token,
+as Bash does.
 .TP
 .BR Backspace ", " Ctrl\-H
 Delete the character before the cursor.

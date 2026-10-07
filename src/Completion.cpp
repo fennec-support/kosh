@@ -1255,6 +1255,8 @@ fn complete(StringView line, usize cursor, EvalContext &context,
     token_end = cursor;
     token = token_prefix;
   }
+  let const line_end = replacement_token_end;
+  if (cursor == token_start) replacement_token_end = cursor;
 
   /* An option-value word such as --exit-node=host and an assignment word such
      as name=value complete only the value after the equals sign, the way bash
@@ -1273,7 +1275,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       token.data == token_prefix.data && token.length == token_prefix.length
           ? steal(decoded_prefix)
           : utils::decode_shell_word(token, completion_allocator());
-  line = line.substring_of_length(0, replacement_token_end);
+  line = line.substring_of_length(0, line_end);
   let const has_open_quote = decoded_token.quote_character != 0;
   let const open_quote_content_token =
       has_open_quote ? decoded_token.text.view().substring(
@@ -1376,6 +1378,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
 
     if (from_initial_word.has_value()) {
       candidates = steal(*from_initial_word);
+      replacement_token_end = cursor;
       should_rebuild_shell_syntax_candidates = true;
     } else if (!stage_token.is_empty() || for_listing) {
       if (for_listing) {

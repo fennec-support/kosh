@@ -48,6 +48,10 @@ command-spec-unranked-menu-opens PASS
 command-spec-unranked-menu-keeps-every-prefix-row PASS
 empty-slot-needs-an-empty-line PASS
 empty-slot-serves-an-empty-line PASS
+initial-slot-keeps-the-word-after-the-caret PASS
+initial-slot-completes-the-word-at-its-end PASS
+argument-at-word-start-keeps-the-word PASS
+argument-inside-word-replaces-the-word PASS
 history-seed-alpha PASS
 history-seed-beta PASS
 history-seed-gamma PASS

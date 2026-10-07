@@ -14,8 +14,10 @@
 # filter narrows and widens its menu, and again below the gathered token. A
 # -C reply the shell does not rank narrows to every row the token opens in
 # either case. complete -E serves only a line that holds nothing, and -I serves
-# a command word with the caret at its start. It
-# also covers word-wise ghost
+# a command word with the caret at its start, inserting before the word, and
+# keeps the text after the caret inside a word. An argument candidate is
+# inserted before a word with the caret at its start and replaces a word with
+# the caret inside it. It also covers word-wise ghost
 # acceptance through Ctrl-Right and Alt-F, and prefix history search on Up and
 # Down with its option switched off, and the inline hint rows for a command and
 # a flag, their header naming the kind and the two-column indent, their absence
@@ -567,15 +569,39 @@ def run_cached_filter_checks(session, report, directory):
     session.send(b"ls" + CTRL_A + b"\t")
     report.record("empty-slot-needs-an-empty-line", session,
                   lambda screen: get_state(screen) is not None
-                  and get_state(screen)[0].startswith("zzinitial"))
+                  and get_state(screen)[0].rstrip() == "zzinitialls")
     clear_line(session)
     session.send(b"\t")
     report.record("empty-slot-serves-an-empty-line", session,
                   lambda screen: get_state(screen) is not None
                   and get_state(screen)[0].startswith("zzempty"))
     clear_line(session)
+    session.send(b"complete -I -W zzslot\r")
+    session.wait_until(is_line(""))
+    session.send(b"zzsxx" + LEFT + LEFT + b"\t")
+    report.record("initial-slot-keeps-the-word-after-the-caret", session,
+                  lambda screen: get_state(screen) is not None
+                  and get_state(screen)[0].rstrip() == "zzslotxx")
+    clear_line(session)
+    session.send(b"zzs\t")
+    report.record("initial-slot-completes-the-word-at-its-end", session,
+                  lambda screen: get_state(screen) is not None
+                  and get_state(screen)[0].rstrip() == "zzslot")
+    clear_line(session)
     session.send(b"complete -r -E; complete -r -I\r")
     session.wait_until(is_line(""))
+    session.send(b"complete -W zzarg zzone\r")
+    session.wait_until(is_line(""))
+    session.send(b"zzone xx" + LEFT + LEFT + b"\t")
+    report.record("argument-at-word-start-keeps-the-word", session,
+                  lambda screen: get_state(screen) is not None
+                  and get_state(screen)[0].rstrip() == "zzone zzargxx")
+    clear_line(session)
+    session.send(b"zzone zxx" + LEFT + LEFT + b"\t")
+    report.record("argument-inside-word-replaces-the-word", session,
+                  lambda screen: get_state(screen) is not None
+                  and get_state(screen)[0].rstrip() == "zzone zzarg")
+    clear_line(session)
 
 
 def run_checks(binary, directory, command_directory, report):
