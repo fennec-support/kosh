@@ -305,9 +305,28 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
     return left.has_same_source_as(right) && left.position == right.position &&
            left.length == right.length;
   };
-  let const do_frame_repeat_error = [&](const source_frame &frame) {
-    return error_location.has_value() &&
-           do_location_match(frame.call_site, *error_location);
+  let const *error_source = source_store().current_source();
+  let error_site = Maybe<rendered_site>{};
+  if (error_location.has_value() && error_source != nullptr) {
+    error_site = resolve_rendered_site(error_source->view(), *error_location, 0,
+                                       false, this);
+  }
+
+  let const do_site_repeat_error = [&](SourceLocation site,
+                                       const resolved_render_source &resolved) {
+    if (!error_location.has_value()) return false;
+
+    if (!error_site.has_value() || resolved.text == nullptr) {
+      return do_location_match(site, *error_location);
+    }
+
+    let const rendered =
+        resolve_rendered_site(resolved.text->view(), resolved.rebase(site),
+                              resolved.line_offset, true, this);
+
+    return rendered.source.data == error_site->source.data &&
+           rendered.location.position == error_site->location.position &&
+           rendered.location.length == error_site->location.length;
   };
   let const do_frame_identity_match = [&](const source_frame &left,
                                           const source_frame &right) {
@@ -349,19 +368,17 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
       let &call_frame = function_store().call_frames()[call_index];
       let const call_site = call_frame.location;
       if (call_frame.source == nullptr) continue;
-      if (error_location.has_value() &&
-          do_location_match(call_site, *error_location))
-      {
-        continue;
-      }
+
+      let const resolved =
+          resolve_render_source(call_site, call_frame.source, call_index,
+                                source_depth_floor(frame_index));
+      if (do_site_repeat_error(call_site, resolved)) continue;
 
       let entry = backtrace_entry{};
       entry.location = call_site;
       entry.call_index = call_index;
       entry.was_printed = &call_frame.was_printed;
-      do_add_site(
-          entry, resolve_render_source(call_site, call_frame.source, call_index,
-                                       source_depth_floor(frame_index)));
+      do_add_site(entry, resolved);
       continue;
     }
 
@@ -381,16 +398,18 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
     }
 
     let const *frame_source = borrowed_frame_source(frame);
-    if (frame_source != nullptr && !do_frame_repeat_error(frame)) {
-      let entry = backtrace_entry{};
-      entry.location = frame.call_site;
-      entry.frame = &frame;
-      entry.was_printed = &frame.was_printed;
-      do_add_site(entry,
-                  resolve_render_source(frame.call_site, frame_source,
-                                        frame.function_call_depth,
-                                        source_depth_floor(frame_index)));
-    }
+    if (frame_source == nullptr) continue;
+
+    let const resolved = resolve_render_source(frame.call_site, frame_source,
+                                               frame.function_call_depth,
+                                               source_depth_floor(frame_index));
+    if (do_site_repeat_error(frame.call_site, resolved)) continue;
+
+    let entry = backtrace_entry{};
+    entry.location = frame.call_site;
+    entry.frame = &frame;
+    entry.was_printed = &frame.was_printed;
+    do_add_site(entry, resolved);
   }
 
   if (entries.is_empty() && deferring_frame == nullptr) return;

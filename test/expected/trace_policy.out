@@ -34,7 +34,7 @@ multi-root traces=2 errors=2
 multi-root first=4 second=4
 noexec-batch traces=1 warnings=2
 recursive traces=2 errors=1
-runtime-repeat traces=1 warnings=1
+runtime-repeat traces=2 warnings=1
 identity traces=3 errors=1
 disabled-runtime traces=0 errors=1
 disabled-multi-root traces=0 errors=2

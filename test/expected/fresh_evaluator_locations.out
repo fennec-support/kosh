@@ -116,3 +116,14 @@ note: Replace it with ${unset_in_defined_inside-} if empty expansion is desired.
 
 defined_inside is a shell function on line 57
 captured=66
+75:11: warning: The variable 'unset_collide' is not set, it expands to empty.
+    75 |    ( echo "$unset_collide" ) &
+       |            ^~~~~~~~~~~~~~
+note: Replace it with ${unset_collide-} if empty expansion is desired.
+75:3: trace:
+    75 |    ( echo "$unset_collide" ) &
+       |    ^
+78:9: trace:
+    78 |  true && collide_frame1
+       |          ^~~~~~~~~~~~~~
+

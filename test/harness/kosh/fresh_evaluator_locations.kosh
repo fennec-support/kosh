@@ -68,3 +68,11 @@ captured=$(
   defined_captured
 )
 echo "$captured"
+
+# A caller whose call site has the column and length of the error in the child
+# keeps its trace.
+collide_frame1() {
+  ( echo "$unset_collide" ) &
+  wait "$!"
+}
+true && collide_frame1
