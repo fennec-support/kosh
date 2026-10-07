@@ -1309,6 +1309,13 @@ struct quoted_empty_mark
   usize offset;
 };
 
+enum class parameter_word_quoting : u8
+{
+  Unquoted,
+  DoubleQuoted,
+  HereDocument,
+};
+
 fn compute_substring_bounds(i64 value_count, i64 offset, Maybe<i64> length,
                             substring_subject subject) throws
     -> substring_bounds;
@@ -3992,7 +3999,9 @@ public:
       StringView word, bool remove_quotes = true,
       bool strip_escaped_literals = true,
       const SourceLocation *source_location = nullptr,
-      bool should_expand_process_substitution = false) throws -> String;
+      bool should_expand_process_substitution = false,
+      parameter_word_quoting quoting = parameter_word_quoting::Unquoted) throws
+      -> String;
 
   /* active_out marks which output bytes may act as glob metacharacters, so
      ${x#pat} and ${x%pat} match literally. */
@@ -4060,7 +4069,9 @@ protected:
   fn apply_parameter_expansion(
       StringView spec, const SourceLocation *source_location = nullptr,
       usize source_location_offset = 0,
-      bool should_expand_process_substitution = false) throws -> String;
+      bool should_expand_process_substitution = false,
+      parameter_word_quoting quoting = parameter_word_quoting::Unquoted) throws
+      -> String;
 
   fn apply_substring_expansion(
       StringView name, StringView body,

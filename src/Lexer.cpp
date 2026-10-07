@@ -1123,6 +1123,9 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
             if (c == '"') quote = 0;
             continue;
           }
+          if (c == '\'' && is_in_double_quotes && is_posix_option_on()) {
+            continue;
+          }
           if (c == '\'' || c == '"') {
             quote = c;
             continue;

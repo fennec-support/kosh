@@ -1135,11 +1135,16 @@ forms ${v@U}, ${v@L}, and ${v@u} apply the corresponding case conversion.
 The form ${!ref} reads the variable named by ref. The forms ${!pre*} and
 ${!pre@} list names beginning with pre.
 .PP
-The shell removes single quotes and backslashes in the word of
-${v:\-word}, ${v:+word}, ${v:=word}, and ${v:?word} even when the expansion
-sits in double quotes or a here-document. Bash and dash keep them there, so
-"${v:\-'a'}" expands to 'a' with its quotes and "${v:\-\e'a\e'}" keeps both
-backslashes.
+When ${v:\-word}, ${v:+word}, or ${v:=word}, with or without the colon, sits
+in double quotes or a here-document, the word follows double-quote rules.
+Single quotes in it stay literal, so "${v:\-'a'}" expands to 'a' with its
+quotes and "${v:\-\e'a\e'}" keeps both backslashes. A double-quoted part of the
+word loses its quotes, and a backslash before } is removed. A $'...' form in
+the word is decoded inside double quotes but kept literal in a here-document.
+The sh and bash-posix moods also keep it literal inside double quotes, and end
+the word at the first } even inside single quotes. The message of ${v:?word}
+removes the quotes, as Bash does. A pattern word of #, %, or / still treats
+quotes as quoting.
 .SS Arithmetic expansion
 Arithmetic accepts the C operators, ++, \-\-, **, the conditional operator, the
 comma operator, and assignment operators. Literals may use 0x hexadecimal, 0

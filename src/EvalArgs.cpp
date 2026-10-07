@@ -745,7 +745,8 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
                     source_store().current_location().source_name_index);
                 value += apply_parameter_expansion(
                     spec,
-                    source_location.has_value() ? &*source_location : nullptr);
+                    source_location.has_value() ? &*source_location : nullptr,
+                    0, false, parameter_word_quoting::DoubleQuoted);
               } break;
               case WordSegment::Kind::ArithmeticExpansion: {
                 value += evaluate_arithmetic_cached_text(segment).view();

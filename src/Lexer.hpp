@@ -292,6 +292,11 @@ public:
     return mood() == mimic_mood::Posix;
   }
 
+  pure fn is_posix_option_on() const wontthrow -> bool
+  {
+    return mood() == mimic_mood::Posix || mood() == mimic_mood::BashPosix;
+  }
+
   /* The token-level bash additions, $'...' and <<< and |& and &>, ride every
      mood but POSIX under the pure-addition rule. EvalContext holds the same
      predicate for the additions the evaluator gates. */
