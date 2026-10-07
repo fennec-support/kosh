@@ -17,3 +17,21 @@ compopt +o bashdefault +o default +o dirnames -o filenames +o fullquote +o noquo
 probe_dir/
 probe_file
 compopt +o bashdefault +o default +o dirnames +o filenames +o fullquote +o noquote +o nosort -o nospace +o plusdirs cp
+== nosort keeps the reply order and drops only a repeated neighbor:
+zeta
+alpha
+mid
+zeta
+== the reply is sorted and deduplicated without nosort:
+alpha
+mid
+zeta
+== a reply is quoted only as file names or with fullquote:
+a b
+'a b'
+a b
+'a b'
+'a b'
+== noquote leaves the fallback file names unquoted:
+'spaced name'
+spaced name

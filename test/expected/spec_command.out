@@ -1,6 +1,6 @@
 == the output lines are the candidates:
 xa
-x'b c'
+xb c
 zz
 == the command sees its arguments and environment:
 foo ab x|8|9|9|unset
@@ -8,8 +8,8 @@ foo ab x|8|9|9|unset
 [x]
 [ab]
 == -X, -P, and -S apply to the output:
-'<xa>'
-'<xb c>'
+<xa>
+<xb c>
 == the command text takes its own arguments first:
 a
 foo

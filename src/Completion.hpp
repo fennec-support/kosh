@@ -96,6 +96,7 @@ struct completion_result
   /* Argument position completes against the filesystem instead. */
   bool is_command_position;
   bool is_tier_ranked{false};
+  bool is_space_suppressed{false};
 };
 
 fn complete(StringView line, usize cursor, EvalContext &context,

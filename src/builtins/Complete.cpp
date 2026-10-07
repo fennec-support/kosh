@@ -32,8 +32,9 @@ FLAG(COMPLETE_OPTION, ManyStrings, 'o', "",
      "dirnames adds directory names when nothing else matched, plusdirs adds "
      "them always, filenames gives directory candidates a trailing slash, "
      "default and bashdefault leave an empty result to filename completion, "
-     "and fullquote, noquote, nosort, and nospace are recorded without "
-     "effect. Any other name is an error.");
+     "fullquote quotes every candidate, noquote leaves file names unquoted, "
+     "nosort keeps the generated order, and nospace adds no space after an "
+     "accepted candidate. Any other name is an error.");
 FLAG(COMPLETE_PRINT, Bool, 'p', "",
      "Print the named specs, or every spec, in a replayable form.");
 FLAG(COMPLETE_DEFAULT, Bool, 'D', "",

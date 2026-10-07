@@ -52,6 +52,9 @@ initial-slot-keeps-the-word-after-the-caret PASS
 initial-slot-completes-the-word-at-its-end PASS
 argument-at-word-start-keeps-the-word PASS
 argument-inside-word-replaces-the-word PASS
+spec-completion-takes-a-space PASS
+nospace-spec-keeps-the-caret-on-the-word PASS
+nosort-menu-keeps-the-reply-order PASS
 history-seed-alpha PASS
 history-seed-beta PASS
 history-seed-gamma PASS

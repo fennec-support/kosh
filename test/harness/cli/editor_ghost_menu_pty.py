@@ -17,7 +17,9 @@
 # a command word with the caret at its start, inserting before the word, and
 # keeps the text after the caret inside a word. An argument candidate is
 # inserted before a word with the caret at its start and replaces a word with
-# the caret inside it. It also covers word-wise ghost
+# the caret inside it. With the space-after option on, a spec completion takes
+# a space unless the spec has nospace, and a nosort reply keeps its order in
+# the menu. It also covers word-wise ghost
 # acceptance through Ctrl-Right and Alt-F, and prefix history search on Up and
 # Down with its option switched off, and the inline hint rows for a command and
 # a flag, their header naming the kind and the two-column indent, their absence
@@ -324,6 +326,13 @@ def is_menu(names, total_filter=None):
     return do_check
 
 
+def is_menu_in_order(names):
+    def do_check(screen):
+        menu = screen.get_menu()
+        return menu is not None and menu[0] == names
+    return do_check
+
+
 def has_typed_menu(typed, names):
     return lambda screen: (get_state(screen) is not None
                            and get_state(screen)[0] == typed
@@ -604,6 +613,40 @@ def run_cached_filter_checks(session, report, directory):
     clear_line(session)
 
 
+def run_compopt_checks(session, report):
+    session.send(
+        b"koshconf set completion.add_space_after_completed_word on\r")
+    session.wait_until(is_line(""))
+    session.send(b"_zzw() { [ \"$COMP_CWORD\" = 1 ] && COMPREPLY=(zzword); }; "
+                 b"complete -F _zzw zzspaced; "
+                 b"complete -o nospace -F _zzw zztight\r")
+    session.wait_until(is_line(""))
+    session.send(b"zzspaced zz\t")
+    session.pump(0.2)
+    session.send(b"Q")
+    report.record("spec-completion-takes-a-space", session,
+                  lambda screen: get_state(screen) is not None
+                  and get_state(screen)[0] == "zzspaced zzword Q")
+    clear_line(session)
+    session.send(b"zztight zz\t")
+    session.pump(0.2)
+    session.send(b"Q")
+    report.record("nospace-spec-keeps-the-caret-on-the-word", session,
+                  lambda screen: get_state(screen) is not None
+                  and get_state(screen)[0] == "zztight zzwordQ")
+    clear_line(session)
+    session.send(b"_zzo() { COMPREPLY=(zeta alpha mid); }; "
+                 b"complete -o nosort -F _zzo zzorder\r")
+    session.wait_until(is_line(""))
+    session.send(b"zzorder \t")
+    report.record("nosort-menu-keeps-the-reply-order", session,
+                  is_menu_in_order(["zeta", "alpha", "mid"]))
+    clear_line(session)
+    session.send(
+        b"koshconf set completion.add_space_after_completed_word off\r")
+    session.wait_until(is_line(""))
+
+
 def run_checks(binary, directory, command_directory, report):
     session = Session(binary, directory, command_directory)
     try:
@@ -738,6 +781,7 @@ def run_checks(binary, directory, command_directory, report):
         clear_line(session)
 
         run_cached_filter_checks(session, report, directory)
+        run_compopt_checks(session, report)
 
         run_command(session, report, "history-seed-alpha",
                     b"echo hist-alpha", "hist-alpha", 1)

@@ -4,7 +4,7 @@ void.ts.net
 == a value with no description is unchanged:
 plainvalue
 == a parenthesis inside a value is left whole:
-'file(1).txt'
+file(1).txt
 == trailing spaces are trimmed from a value:
 checkout
 clean

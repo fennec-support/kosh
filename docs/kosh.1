@@ -2211,6 +2211,22 @@ adds them always. A spec with a directory or file action or a glob ends each
 candidate that names a directory with a slash unless its function runs
 .BR "compopt +o filenames" ,
 and dirnames and plusdirs mark the directories they add after the function.
+As in Bash, a spec quotes the special characters of the candidates it inserts
+only when it generates file names, through
+.BR "\-o filenames" ,
+a directory or file action, a glob, or directories that dirnames and plusdirs
+added.
+.B \-o fullquote
+quotes every candidate, and
+.B \-o noquote
+leaves file names unquoted, also in the filename completion an empty result
+falls through to, unless fullquote is on as well.
+.B \-o nosort
+keeps the candidates in the order the spec generated them and drops only a
+candidate equal to the one before it.
+.B \-o nospace
+inserts no space after an accepted candidate when
+completion.add_space_after_completed_word is on.
 A dash candidate is offered only when the word starts with a dash. An empty
 result falls through to the next completion source. An unknown
 .B \-o
@@ -4838,7 +4854,9 @@ COMP_WORDS contains the words on the line. COMP_CWORD is the index of the word
 under the cursor. COMP_LINE contains the complete line. COMP_POINT is the
 cursor byte offset. COMP_WORDBREAKS contains the bytes that split a word.
 Trailing spaces are removed from each COMPREPLY entry, and the space after an
-accepted candidate is controlled by the completion.add_space_after_completed_word option. The
+accepted candidate is controlled by the
+completion.add_space_after_completed_word option and the nospace option of
+the completion. The
 spec's
 .B \-X
 filter and its

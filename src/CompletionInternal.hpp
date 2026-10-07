@@ -77,7 +77,8 @@ pure fn path_candidate_needs_quoting(StringView candidate) wontthrow -> bool;
 fn quote_path_candidate(StringView candidate) throws -> String;
 fn rebuild_shell_syntax_candidate(StringView raw_token,
                                   const utils::decoded_shell_word &decoded_word,
-                                  StringView decoded_candidate) throws
+                                  StringView decoded_candidate,
+                                  bool should_quote_words = true) throws
     -> String;
 fn resolve_listing_directory(StringView directory_part,
                              const Path &base_directory, EvalContext &context,
@@ -142,13 +143,14 @@ fn complete_from_builtin_flags(StringView line, StringView token,
     -> Maybe<ArrayList<String>>;
 fn complete_from_spec(StringView line, StringView token, usize cursor,
                       EvalContext &context, StringMap<String> &descriptions,
-                      completion::completion_mode mode) throws
+                      completion::completion_mode mode, u32 &option_mask) throws
     -> Maybe<ArrayList<String>>;
 fn complete_from_initial_word_spec(StringView line, StringView token,
                                    usize cursor, bool is_line_empty,
                                    EvalContext &context,
                                    StringMap<String> &descriptions,
-                                   completion::completion_mode mode) throws
+                                   completion::completion_mode mode,
+                                   u32 &option_mask) throws
     -> Maybe<ArrayList<String>>;
 struct completion_command_range
 {

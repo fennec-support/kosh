@@ -220,9 +220,14 @@ static fn open_quote_candidate_boundary(StringView typed, usize typed_boundary,
   return typed_boundary < candidate.length ? typed_boundary : candidate.length;
 }
 
-static fn append_candidate_suffix(String &candidate, StringView suffix) throws
-    -> void
+static fn append_candidate_suffix(String &candidate, StringView suffix,
+                                  bool should_quote_words) throws -> void
 {
+  if (!should_quote_words) {
+    candidate.append(suffix);
+    return;
+  }
+
   usize component_start = 0;
   for (usize position = 0; position <= suffix.length; position++) {
     let const is_separator = position < suffix.length &&
@@ -243,7 +248,7 @@ static fn append_candidate_suffix(String &candidate, StringView suffix) throws
 
 fn internal::rebuild_shell_syntax_candidate(
     StringView raw_token, const utils::decoded_shell_word &decoded_word,
-    StringView decoded_candidate) throws -> String
+    StringView decoded_candidate, bool should_quote_words) throws -> String
 {
   let candidate = String{completion_allocator()};
   if (decoded_candidate.starts_with(decoded_word.text.view())) {
@@ -263,7 +268,7 @@ fn internal::rebuild_shell_syntax_candidate(
                                   decoded_word.quote_character);
     } else {
       candidate.append(raw_token);
-      append_candidate_suffix(candidate, suffix);
+      append_candidate_suffix(candidate, suffix, should_quote_words);
     }
     return candidate;
   }
@@ -273,7 +278,8 @@ fn internal::rebuild_shell_syntax_candidate(
         decoded_candidate.starts_with("~"))
     {
       candidate.push('~');
-      append_candidate_suffix(candidate, decoded_candidate.substring(1));
+      append_candidate_suffix(candidate, decoded_candidate.substring(1),
+                              should_quote_words);
       return candidate;
     }
 
@@ -284,11 +290,12 @@ fn internal::rebuild_shell_syntax_candidate(
           raw_token.substring_of_length(0, decoded_word.leading.variable_end));
       append_candidate_suffix(
           candidate,
-          decoded_candidate.substring(decoded_word.leading.variable_end));
+          decoded_candidate.substring(decoded_word.leading.variable_end),
+          should_quote_words);
       return candidate;
     }
 
-    append_candidate_suffix(candidate, decoded_candidate);
+    append_candidate_suffix(candidate, decoded_candidate, should_quote_words);
     return candidate;
   }
 
@@ -303,7 +310,7 @@ fn internal::rebuild_shell_syntax_candidate(
     candidate.append(raw_token.substring_of_length(
         0, decoded_word.last_quote_content_start));
   } else {
-    append_candidate_suffix(candidate, candidate_prefix);
+    append_candidate_suffix(candidate, candidate_prefix, should_quote_words);
     candidate.push(decoded_word.last_quote_character);
   }
   append_open_quote_candidate(candidate,

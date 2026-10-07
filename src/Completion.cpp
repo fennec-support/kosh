@@ -1327,6 +1327,11 @@ fn complete(StringView line, usize cursor, EvalContext &context,
   let should_close_generated_prefix_quote = false;
   let should_ignore_common_prefix_case = false;
   let is_tier_ranked = false;
+  let is_spec_candidates = false;
+  u32 spec_option_mask = 0;
+  let const do_has_spec_option = [&](completion_option option) -> bool {
+    return (spec_option_mask & completion_option_bit(option)) != 0;
+  };
 
   let const is_posix_completion =
       context.runtime_state().get_mood() == mimic_mood::Posix;
@@ -1372,12 +1377,13 @@ fn complete(StringView line, usize cursor, EvalContext &context,
     let from_initial_word = Maybe<ArrayList<String>>{None};
     if (!is_posix_completion && (!stage_token.is_empty() || for_listing)) {
       from_initial_word = complete_from_initial_word_spec(
-          line, stage_token, cursor, is_line_empty, context, descriptions,
-          mode);
+          line, stage_token, cursor, is_line_empty, context, descriptions, mode,
+          spec_option_mask);
     }
 
     if (from_initial_word.has_value()) {
       candidates = steal(*from_initial_word);
+      is_spec_candidates = true;
       replacement_token_end = cursor;
       should_rebuild_shell_syntax_candidates = true;
     } else if (!stage_token.is_empty() || for_listing) {
@@ -1417,9 +1423,11 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       if (!from_stage.has_value())
         from_stage = complete_from_builtin_flags(line, stage_token, token_start,
                                                  context, mode);
-      if (!from_stage.has_value())
+      if (!from_stage.has_value()) {
         from_stage = complete_from_spec(line, stage_token, cursor, context,
-                                        descriptions, mode);
+                                        descriptions, mode, spec_option_mask);
+        is_spec_candidates = from_stage.has_value();
+      }
       if (!from_stage.has_value())
         from_stage = complete_from_tools_with_targets(
             line, stage_token, token_start, context, mode);
@@ -1440,6 +1448,11 @@ fn complete(StringView line, usize cursor, EvalContext &context,
         from_stage = complete_from_help(line, stage_token, token_start, context,
                                         descriptions, mode);
     }
+    let const file_name_text_mode =
+        do_has_spec_option(completion_option::NoQuote) &&
+                !do_has_spec_option(completion_option::FullQuote)
+            ? path_text_mode::Literal
+            : path_text_mode::ShellSyntax;
     if (from_stage.has_value()) {
       candidates = steal(*from_stage);
       should_rebuild_shell_syntax_candidates = true;
@@ -1455,7 +1468,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
               ? complete_directory_change_operand(token, base_directory,
                                                   context, decoded_token)
               : complete_filesystem(token, base_directory, context,
-                                    &decoded_token, path_text_mode::ShellSyntax,
+                                    &decoded_token, file_name_text_mode,
                                     filesystem_filter);
       should_close_generated_prefix_quote = decoded_token.quote_character == 0;
     } else if (!decoded_token.text.is_empty()) {
@@ -1463,8 +1476,8 @@ fn complete(StringView line, usize cursor, EvalContext &context,
          and the collector indexes it and suggests its first entry. An empty
          token names nothing and gets no suggestion. */
       let collector = complete_filesystem_prefix(
-          token, base_directory, context, &decoded_token,
-          path_text_mode::ShellSyntax, filesystem_filter);
+          token, base_directory, context, &decoded_token, file_name_text_mode,
+          filesystem_filter);
       ghost_candidate_count = collector.count();
       source_candidate_scan_count = collector.source_scans();
       materialized_candidate_count = collector.materialized();
@@ -1480,24 +1493,30 @@ fn complete(StringView line, usize cursor, EvalContext &context,
     longest_common_prefix = steal(ghost_prefix);
   } else if (!candidates.is_empty()) {
     if (for_listing) {
-      let sorted_candidates =
-          steal(candidates).make_sorted(sort_order::ascending);
+      let const do_drop_repeats = [](auto &listed) throws -> void {
+        usize kept_count = 0;
+        for (usize i = 0; i < listed.count(); i++) {
+          if (kept_count > 0 &&
+              listed[kept_count - 1].view() == listed[i].view())
+          {
+            continue;
+          }
 
-      usize kept_count = 0;
-      for (usize i = 0; i < sorted_candidates.count(); i++) {
-        if (kept_count > 0 && sorted_candidates[kept_count - 1].view() ==
-                                  sorted_candidates[i].view())
-        {
-          continue;
+          if (kept_count != i) listed[kept_count] = steal(listed[i]);
+
+          kept_count++;
         }
+        listed.truncate(kept_count);
+      };
 
-        if (kept_count != i)
-          sorted_candidates[kept_count] = steal(sorted_candidates[i]);
-
-        kept_count++;
+      if (do_has_spec_option(completion_option::NoSort)) {
+        do_drop_repeats(candidates);
+      } else {
+        let sorted_candidates =
+            steal(candidates).make_sorted(sort_order::ascending);
+        do_drop_repeats(sorted_candidates);
+        candidates = steal(sorted_candidates).into_array_list();
       }
-      sorted_candidates.truncate(kept_count);
-      candidates = steal(sorted_candidates).into_array_list();
 
       if (extension_hint.has_value() && stage_token.is_empty()) {
         candidates = keep_hinted_extension(steal(candidates), *extension_hint);
@@ -1513,16 +1532,22 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       longest_common_prefix.push(longest_common_prefix[0]);
     }
     if (should_rebuild_shell_syntax_candidates) {
+      let const should_quote_words =
+          !is_spec_candidates ||
+          do_has_spec_option(completion_option::FullQuote) ||
+          (do_has_spec_option(completion_option::FileNames) &&
+           !do_has_spec_option(completion_option::NoQuote));
       longest_common_prefix = rebuild_shell_syntax_candidate(
-          token, decoded_token, longest_common_prefix.view());
+          token, decoded_token, longest_common_prefix.view(),
+          should_quote_words);
 
       let rebuilt_descriptions = StringMap<String>{arena};
       if (descriptions.count() > 0)
         rebuilt_descriptions.reserve(descriptions.count());
       for (let &candidate : candidates) {
         let const description = descriptions.find(candidate.view());
-        let rebuilt = rebuild_shell_syntax_candidate(token, decoded_token,
-                                                     candidate.view());
+        let rebuilt = rebuild_shell_syntax_candidate(
+            token, decoded_token, candidate.view(), should_quote_words);
         if (description.has_value())
           rebuilt_descriptions.set(rebuilt.view(), description->view());
         candidate = steal(rebuilt);
@@ -1530,7 +1555,9 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       descriptions = steal(rebuilt_descriptions);
     }
 
-    if (for_listing && extension_hint.has_value() && !stage_token.is_empty()) {
+    if (for_listing && extension_hint.has_value() && !stage_token.is_empty() &&
+        !do_has_spec_option(completion_option::NoSort))
+    {
       candidates = partition_by_extension(steal(candidates), *extension_hint);
     }
   }
@@ -1548,6 +1575,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       replacement_token_end + completion_offset,
       is_command,
       is_tier_ranked,
+      do_has_spec_option(completion_option::NoSpace),
   };
 }
 

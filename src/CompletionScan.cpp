@@ -1401,6 +1401,15 @@ generate_spec_candidates(completion_spec &active_spec,
     }
   }
 
+  let const does_generate_file_names =
+      glob_pattern.has_value() ||
+      active_spec.has_action(compgen_action::Directory) ||
+      active_spec.has_action(compgen_action::File);
+  if (does_generate_file_names) {
+    active_spec.option_mask |=
+        completion_option_bit(completion_option::FileNames);
+  }
+
   if (!for_listing) return candidates;
 
   let const should_add_directories =
@@ -1408,8 +1417,13 @@ generate_spec_candidates(completion_spec &active_spec,
        candidates.is_empty()) ||
       active_spec.has_option(completion_option::PlusDirs);
   if (should_add_directories) {
+    let const reply_count = candidates.count();
     do_push_generated(compgen_action_bit(compgen_action::Directory), None);
     context.execution_store().should_mark_completion_directories() = true;
+    if (candidates.count() != reply_count) {
+      active_spec.option_mask |=
+          completion_option_bit(completion_option::FileNames);
+    }
   }
 
   mark_spec_directory_candidates(candidates, descriptions, context);
@@ -1420,7 +1434,7 @@ generate_spec_candidates(completion_spec &active_spec,
 fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
                                 EvalContext &context,
                                 StringMap<String> &descriptions,
-                                completion_mode mode) throws
+                                completion_mode mode, u32 &option_mask) throws
     -> Maybe<ArrayList<String>>
 {
   if (!context.runtime_state().is_shopt_enabled(shopt_option_id::Progcomp))
@@ -1478,6 +1492,7 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
         generate_spec_candidates(active_spec, None, line, token, cursor,
                                  context, descriptions, for_listing, nullptr);
   }
+  option_mask = active_spec.option_mask;
 
   /* An empty result never claims the completion, so the cascade falls to the
      filesystem the way bash-completion's -o default behaves. */
@@ -1485,12 +1500,10 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
   return candidates;
 }
 
-fn internal::complete_from_initial_word_spec(StringView line, StringView token,
-                                             usize cursor, bool is_line_empty,
-                                             EvalContext &context,
-                                             StringMap<String> &descriptions,
-                                             completion_mode mode) throws
-    -> Maybe<ArrayList<String>>
+fn internal::complete_from_initial_word_spec(
+    StringView line, StringView token, usize cursor, bool is_line_empty,
+    EvalContext &context, StringMap<String> &descriptions, completion_mode mode,
+    u32 &option_mask) throws -> Maybe<ArrayList<String>>
 {
   if (!context.runtime_state().is_shopt_enabled(shopt_option_id::Progcomp))
     return None;
@@ -1520,6 +1533,7 @@ fn internal::complete_from_initial_word_spec(StringView line, StringView token,
   let candidates =
       generate_spec_candidates(active_spec, command_name, line, token, cursor,
                                context, descriptions, for_listing, nullptr);
+  option_mask = active_spec.option_mask;
   if (candidates.is_empty() &&
       (active_spec.has_option(completion_option::BashDefault) ||
        active_spec.has_option(completion_option::Default)))
