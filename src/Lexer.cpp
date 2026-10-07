@@ -699,16 +699,16 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
 
     let const is_inside_quote_or_escape =
         quote_char.has_value() || should_escape;
-    if (!is_inside_quote_or_escape && extglob_depth == 0 &&
-        (ch == '<' || ch == '>') && chop_character(byte_count + 1) == '(')
-    {
-      byte_count = lex_process_substitution(word, byte_count);
-      continue;
-    }
-
     if (!(is_inside_quote_or_escape && ch != lexer::CEOF) &&
         !lexer::is_part_of_identifier(ch))
     {
+      if (extglob_depth == 0 && (ch == '<' || ch == '>') &&
+          chop_character(byte_count + 1) == '(')
+      {
+        byte_count = lex_process_substitution(word, byte_count);
+        continue;
+      }
+
       if (extglob_depth == 0 || ch == lexer::CEOF) break;
 
       if (ch == '(')

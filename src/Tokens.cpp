@@ -328,6 +328,15 @@ pure fn Word::runs_substitution() const wontthrow -> bool
   return false;
 }
 
+pure fn Word::has_process_substitution() const wontthrow -> bool
+{
+  for (let const &segment : segments) {
+    if (segment.kind == WordSegment::Kind::ProcessSubstitution) return true;
+  }
+
+  return false;
+}
+
 cold fn Word::to_pretty_string() const throws -> String
 {
   let result = String{"[Word"};

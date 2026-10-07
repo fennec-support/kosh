@@ -560,6 +560,7 @@ public:
       -> Maybe<fd_allocation_target>;
 
   pure fn runs_substitution() const wontthrow -> bool;
+  pure fn has_process_substitution() const wontthrow -> bool;
 
   fn get_assignment_split() const throws -> Maybe<word_assignment_split>;
 
