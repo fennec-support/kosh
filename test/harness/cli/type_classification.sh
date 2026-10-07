@@ -84,3 +84,11 @@ echo "== the bash mood keeps the body under -a:"
 echo "== the bash mood leaves the terse forms alone:"
 "$BIN" --mood bash -c 'f(){ echo hi; }; type -t f'
 "$BIN" --mood bash -c 'f(){ echo hi; }; type -p f'; echo "rc=$?"
+echo "== -V counts an eval-defined function from the eval text:"
+"$BIN" -c ':
+eval "f() { :; }"
+eval "
+
+h() { :; }"
+type -V f | head -n 1
+type -V h | head -n 1'

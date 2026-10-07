@@ -190,10 +190,13 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
               out += *source_name;
             }
 
-            if (info->definition_line != 0) {
+            let const shown_line =
+                info->definition_line > info->enclosing_line_count
+                    ? info->definition_line - info->enclosing_line_count
+                    : info->definition_line;
+            if (shown_line != 0) {
               out += " on line ";
-              out +=
-                  String::from(info->definition_line, cxt.scratch_allocator());
+              out += String::from(shown_line, cxt.scratch_allocator());
             }
           }
         }

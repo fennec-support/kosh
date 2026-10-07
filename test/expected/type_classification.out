@@ -75,3 +75,6 @@ f ()
 == the bash mood leaves the terse forms alone:
 function
 rc=0
+== -V counts an eval-defined function from the eval text:
+f is a shell function defined in eval on line 1
+h is a shell function defined in eval on line 3
