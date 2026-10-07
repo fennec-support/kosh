@@ -139,8 +139,14 @@ changes update this file.
   order is not connection readiness.
 - A parent closes each unused pipe endpoint after CreateProcess so readers can
   observe EOF when the child exits.
-- Process-substitution cleanup connects and closes an unused named-pipe path
-  before it reaps a child waiting for a client.
+- A Windows process substitution child uses a private pipe. A relay thread in
+  the shell keeps several instances of the public named pipe listening and
+  binds the first client that reads a byte or writes one, so a client that
+  only opens or probes the path receives no data. Cleanup ends an unbound
+  relay, which closes the private pipe before the child is reaped.
+- Every internal Windows named pipe has a random name, rejects remote clients,
+  creates its first instance exclusively, and carries a DACL that admits only
+  the current user and SYSTEM.
 - Windows named-pipe redirections use OPEN_EXISTING for every shell open mode.
 - Recheck mutable runtime state after any startup file that can change it.
 - `src/koshkit` holds only utility sources. Code shared by utilities lives in

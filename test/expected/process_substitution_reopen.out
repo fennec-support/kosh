@@ -1,0 +1,29 @@
+== read after an unread open
+hello
+status=0
+== read after two unread opens
+hello
+status=0
+== write after an unwritten open
+written
+after
+status=0
+== unread input
+after
+status=0
+== unwritten output
+after
+status=0
+== empty input
+after
+status=0
+== empty input after an unread open
+after
+status=0
+== large input
+20000
+status=0
+== read builtin
+got a
+got b
+status=0

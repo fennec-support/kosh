@@ -1174,7 +1174,9 @@ read of the parent variable. A function substitution shares the current shell.
 A backtick body whose escapes change its text is not analyzed.
 .SS Process substitution
 The forms <(command) and >(command) supply a descriptor path. The command runs
-in a separate process.
+in a separate process. On Windows the path names a named pipe, and the stream
+goes to the first client that reads from it or writes to it, so a program may
+open or inspect the path before it reads or writes.
 .SS Brace expansion
 The form {a,b,c} produces alternatives. The forms {1..10}, {a..z}, and
 {1..10..2} produce ranges. A numeric range such as {001..10} retains its width.

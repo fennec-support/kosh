@@ -23,6 +23,7 @@
 #include "base/Trace.hpp"
 
 #include <fcntl.h>
+#include <ntsecapi.h>
 #include <wctype.h>
 
 #define KOSH_UMASK(mask) _umask(static_cast<int>(mask))
@@ -2017,6 +2018,85 @@ static fn decode_subshell_transport_u64(const char *bytes) wontthrow -> u64
   return value;
 }
 
+struct owner_only_security
+{
+  SECURITY_DESCRIPTOR descriptor{};
+  SECURITY_ATTRIBUTES attributes{};
+  alignas(DWORD) u8 acl_bytes[256]{};
+  alignas(DWORD) u8 user_bytes[sizeof(TOKEN_USER) + SECURITY_MAX_SID_SIZE]{};
+  alignas(DWORD) u8 system_sid_bytes[SECURITY_MAX_SID_SIZE]{};
+  bool is_ready{false};
+};
+
+static owner_only_security OWNER_ONLY_SECURITY{};
+static INIT_ONCE OWNER_ONLY_SECURITY_ONCE = INIT_ONCE_STATIC_INIT;
+
+static fn build_owner_only_security(PINIT_ONCE, PVOID, PVOID *) -> BOOL
+{
+  let &security = OWNER_ONLY_SECURITY;
+  HANDLE token = nullptr;
+  if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token) == FALSE) {
+    return TRUE;
+  }
+
+  DWORD user_length = 0;
+  let const has_user =
+      GetTokenInformation(token, TokenUser, security.user_bytes,
+                          sizeof(security.user_bytes), &user_length) != FALSE;
+  CloseHandle(token);
+  DWORD system_sid_length = sizeof(security.system_sid_bytes);
+  if (!has_user ||
+      CreateWellKnownSid(WinLocalSystemSid, nullptr, security.system_sid_bytes,
+                         &system_sid_length) == FALSE)
+  {
+    return TRUE;
+  }
+
+  let const user = reinterpret_cast<TOKEN_USER *>(security.user_bytes);
+  let const acl = reinterpret_cast<ACL *>(security.acl_bytes);
+  if (InitializeAcl(acl, sizeof(security.acl_bytes), ACL_REVISION) == FALSE ||
+      AddAccessAllowedAce(acl, ACL_REVISION, FILE_ALL_ACCESS, user->User.Sid) ==
+          FALSE ||
+      AddAccessAllowedAce(acl, ACL_REVISION, FILE_ALL_ACCESS,
+                          security.system_sid_bytes) == FALSE ||
+      InitializeSecurityDescriptor(&security.descriptor,
+                                   SECURITY_DESCRIPTOR_REVISION) == FALSE ||
+      SetSecurityDescriptorDacl(&security.descriptor, TRUE, acl, FALSE) ==
+          FALSE)
+  {
+    return TRUE;
+  }
+
+  security.attributes.nLength = sizeof(security.attributes);
+  security.attributes.lpSecurityDescriptor = &security.descriptor;
+  security.attributes.bInheritHandle = FALSE;
+  security.is_ready = true;
+  return TRUE;
+}
+
+static fn get_owner_only_security() wontthrow -> SECURITY_ATTRIBUTES *
+{
+  InitOnceExecuteOnce(&OWNER_ONLY_SECURITY_ONCE, build_owner_only_security,
+                      nullptr, nullptr);
+  if (!OWNER_ONLY_SECURITY.is_ready) return nullptr;
+
+  return &OWNER_ONLY_SECURITY.attributes;
+}
+
+static fn create_private_pipe(const wchar_t *path, DWORD open_mode,
+                              DWORD instance_count, DWORD outbound_bytes,
+                              DWORD inbound_bytes) wontthrow -> HANDLE
+{
+  let const security = get_owner_only_security();
+  if (security == nullptr) return INVALID_HANDLE_VALUE;
+
+  return CreateNamedPipeW(path, open_mode,
+                          PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT |
+                              PIPE_REJECT_REMOTE_CLIENTS,
+                          instance_count, outbound_bytes, inbound_bytes, 0,
+                          security);
+}
+
 static fn receive_subshell_bootstrap() wontthrow -> void
 {
   wchar_t path[256]{};
@@ -2024,13 +2104,12 @@ static fn receive_subshell_bootstrap() wontthrow -> void
       internal::STATE_NAMED_PIPE_WIDE, path, countof(path));
   if (path_length == 0 || path_length >= countof(path)) return;
   SetEnvironmentVariableW(internal::STATE_NAMED_PIPE_WIDE, nullptr);
-  let const pipe =
-      CreateNamedPipeW(path, PIPE_ACCESS_INBOUND,
-                       PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 1,
-                       65536, 65536, 0, nullptr);
+  let const pipe = create_private_pipe(
+      path, PIPE_ACCESS_INBOUND | FILE_FLAG_FIRST_PIPE_INSTANCE, 1, 65536,
+      65536);
   if (pipe == INVALID_HANDLE_VALUE) ExitProcess(1);
   if (ConnectNamedPipe(pipe, nullptr) == FALSE &&
-      GetLastError() != ERROR_PIPE_CONNECTED)
+      GetLastError() != ERROR_PIPE_CONNECTED && GetLastError() != ERROR_NO_DATA)
   {
     CloseHandle(pipe);
     ExitProcess(1);
@@ -2126,40 +2205,11 @@ fn initialize_platform_runtime() wontthrow -> void
   SetEnvironmentVariableW(internal::PARENT_PROCESS_ID_WIDE, nullptr);
   if (!is_internal_child) {
     SetEnvironmentVariableW(internal::STATE_NAMED_PIPE_WIDE, nullptr);
-    SetEnvironmentVariableW(internal::CONNECT_NAMED_PIPE_WIDE, nullptr);
     inherited_subshell_state::clear_environment();
     return;
   }
 
   receive_subshell_bootstrap();
-  wchar_t connection[256]{};
-  let const connection_length = GetEnvironmentVariableW(
-      internal::CONNECT_NAMED_PIPE_WIDE, connection, countof(connection));
-  if (connection_length == 0 || connection_length >= countof(connection)) {
-    return;
-  }
-  SetEnvironmentVariableW(internal::CONNECT_NAMED_PIPE_WIDE, nullptr);
-  wchar_t *path = connection;
-  while (*path != L'\0' && *path != L':') {
-    path++;
-  }
-  if (*path != L':') return;
-  *path++ = L'\0';
-  let const is_input = lstrcmpW(connection, L"stdin") == 0;
-  if (!is_input && lstrcmpW(connection, L"stdout") != 0) {
-    return;
-  }
-  let const pipe = CreateNamedPipeW(
-      path, is_input ? PIPE_ACCESS_INBOUND : PIPE_ACCESS_OUTBOUND,
-      PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 1, 65536, 65536, 0,
-      nullptr);
-  if (pipe == INVALID_HANDLE_VALUE) ExitProcess(1);
-  SetStdHandle(is_input ? STD_INPUT_HANDLE : STD_OUTPUT_HANDLE, pipe);
-  if (ConnectNamedPipe(pipe, nullptr) == FALSE &&
-      GetLastError() != ERROR_PIPE_CONNECTED)
-  {
-    ExitProcess(1);
-  }
 }
 
 fn take_subshell_bootstrap() wontthrow -> subshell_bootstrap
