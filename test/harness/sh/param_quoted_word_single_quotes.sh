@@ -3,7 +3,10 @@
 # keeps single quotes and a backslash before them, checked against dash. A
 # double-quoted part loses its quotes, $'...' stays literal, a single quote
 # does not hide the closing brace, an unquoted expansion removes the quotes,
-# and the case word and pattern keep the quotes as text.
+# and the case word and pattern keep the quotes as text. A backslash inside a
+# double-quoted part of a quoted word stays before a byte it does not escape,
+# and a single quote in the word of an arithmetic expansion ends the script
+# with a syntax error.
 u=
 s=set
 printf '<%s>\n' "${u:-'x'}" "${u-'x'}" "${s:+'x'}" "${s+'x'}"
@@ -33,3 +36,11 @@ esac
 assigned="${u:-'a b'}"
 plain=${u:-'a b'}
 printf '<%s>\n' "$assigned" "$plain"
+printf '<%s>\n' "${u:-"\x"}" "${u:-"\$"}" "${u:-"\\"}" "${u:-"a\xb"}"
+printf '<%s>\n' "${u:-"\x"y\z}" "${s:+"\x"}" ${u:-"\x"} "${u:-"\""}"
+cat <<EOF
+${u:-"\x"} ${u:-"\\"}
+EOF
+printf '<%s>\n' "$(( ${u:-"1"} + ${u:-1} ))"
+echo "$(( ${u:-'1'} ))"
+echo not-reached

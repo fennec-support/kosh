@@ -658,6 +658,13 @@ fn EvalContext::ModifierWordExpander::expand_backslash() throws -> void
       m_index++;
       return;
     }
+    if (m_strip_escaped_literals && m_remove_quotes && m_is_outer_quoted &&
+        m_is_in_double_quote && !m_context.runtime_state().is_posix_mode())
+    {
+      emit_byte(next, false);
+      m_index++;
+      return;
+    }
     if (next == '$' || next == '`' || next == '\\' ||
         (m_remove_quotes && next == '"') || (is_quoted() && next == '}'))
     {

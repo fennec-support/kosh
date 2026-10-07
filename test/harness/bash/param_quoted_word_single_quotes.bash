@@ -3,8 +3,10 @@
 # keeps single quotes and a backslash before them, checked against bash. A
 # double-quoted part loses its quotes, $'...' decodes only inside double
 # quotes, an unquoted expansion removes the quotes, and the pattern operators
-# keep treating quotes as quoting. Posix mode keeps $'...' literal inside double
-# quotes.
+# keep treating quotes as quoting. A backslash inside a double-quoted part of a
+# quoted word is removed before any byte. Arithmetic expansion treats the word
+# as a here-document does, so a single quote or $'...' there is a syntax
+# error. Posix mode keeps $'...' literal inside double quotes.
 u=
 s=set
 printf '<%s>\n' "${u:-'x'}" "${u-'x'}" "${s:+'x'}" "${s+'x'}"
@@ -41,5 +43,15 @@ declare -a list=("${u:-'x'}")
 printf '<%s>\n' "$assigned" "$plain" "${list[0]}"
 declare -A table=([x]=bare ["'x'"]=quoted)
 printf '<%s>\n' "${table[${u:-'x'}]}" "${table["${u:-'x'}"]}"
+printf '<%s>\n' "${u:-"\x"}" "${u:-"\$"}" "${u:-"\\"}" "${u:-"a\xb"}"
+printf '<%s>\n' "${u:-"\x"y\z}" "${s:+"\x"}" ${u:-"\x"} "${u:-"\""}"
+cat <<EOF
+${u:-"\x"} ${u:-"\\"}
+EOF
+printf '<%s>\n' "$(( ${u:-"1"} + ${u:-1} ))"
+echo "$(( ${u:-'1'} ))"
+echo "arithmetic-single-quote=$?"
+echo "$(( ${u:-$'1'} ))"
+echo "arithmetic-ansi-c=$?"
 set -o posix
-printf '<%s>\n' "${u:-$'a\tb'}" ${u:-$'a\tb'} "${u:-'x'}"
+printf '<%s>\n' "${u:-$'a\tb'}" ${u:-$'a\tb'} "${u:-'x'}" "${u:-"\x"}"

@@ -2136,8 +2136,9 @@ fn evaluate_arithmetic_value(EvalContext *context, StringView expression,
   }
 
   LOG(All, "expanding parameters inside the arithmetic before the parse");
-  let const expanded_word =
-      context->expand_modifier_word(expression, true, true, expression_base);
+  let const expanded_word = context->expand_modifier_word(
+      expression, true, true, expression_base, false,
+      parameter_word_quoting::HereDocument);
   let parser = ArithmeticParser{
       context, expanded_word.view(), is_exact, arena, 0, false, bc_scale};
   parser.should_error_unset = should_error_unset;

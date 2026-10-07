@@ -1276,7 +1276,11 @@ When ${v:\-word}, ${v:+word}, or ${v:=word}, with or without the colon, sits
 in double quotes or a here-document, the word follows double-quote rules.
 Single quotes in it stay literal, so "${v:\-'a'}" expands to 'a' with its
 quotes and "${v:\-\e'a\e'}" keeps both backslashes. A double-quoted part of the
-word loses its quotes, and a backslash before } is removed. A $'...' form in
+word loses its quotes, and a backslash before } is removed. Outside the sh
+mood a backslash inside that double-quoted part is removed before any byte, so
+"${v:\-"\ex"}" expands to x, while the sh mood keeps it as dash does. The
+expression of an arithmetic expansion treats such a word as a here-document
+does, so a single quote or $'...' in it is a syntax error. A $'...' form in
 the word is decoded inside double quotes but kept literal in a here-document.
 The sh and bash-posix moods also keep it literal inside double quotes, and end
 the word at the first } even inside single quotes. The message of ${v:?word}
