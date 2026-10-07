@@ -462,14 +462,15 @@ private:
   fn expand_ansi_c_quote() throws -> void;
   fn expand_braced_parameter() throws -> void;
   fn expand_plain_parameter() throws -> void;
-  fn expand_arithmetic() throws -> void;
+  fn expand_arithmetic(bool is_bracket_form) throws -> void;
   fn expand_command_substitution() throws -> void;
   fn is_process_substitution_start() const wontthrow -> bool;
   fn expand_process_substitution() throws -> void;
   fn expand_special_parameter(char name) throws -> void;
   fn emit_command_substitution(StringView body, usize end_index) throws -> void;
   fn scan_braced_body(usize &position) throws -> String;
-  fn scan_arithmetic_body(usize &position) throws -> String;
+  fn scan_arithmetic_body(bool is_bracket_form, usize &position) throws
+      -> String;
   fn scan_command_body(usize start, usize &position) throws -> String;
   fn copy_braced_backquote(String &inner, usize &position) throws -> void;
   fn copy_braced_command(String &inner, usize &position) throws -> void;
@@ -889,12 +890,13 @@ fn EvalContext::ModifierWordExpander::expand_plain_parameter() throws -> void
 }
 
 fn EvalContext::ModifierWordExpander::scan_arithmetic_body(
-    usize &position) throws -> String
+    bool is_bracket_form, usize &position) throws -> String
 {
-  /* Arithmetic $((...)), scanned to the matching )). A quote run keeps its
-     bytes literal so a ) inside a string does not count. */
+  /* Arithmetic $((...)), scanned to the matching )), or $[...], scanned to the
+     ] that balances its brackets. A quote run keeps its bytes literal so a
+     closing byte inside a string does not count. */
   let inner = String{m_context.scratch_allocator()};
-  position = m_index + 3;
+  position = m_index + (is_bracket_form ? 2 : 3);
   usize depth = 0;
   char quote = 0;
   for (; position < m_word.length; position++) {
@@ -915,6 +917,14 @@ fn EvalContext::ModifierWordExpander::scan_arithmetic_body(
     }
     if (ch == '\'' || ch == '"') {
       quote = ch;
+    } else if (is_bracket_form) {
+      if (ch == ']' && depth == 0) {
+        position++;
+        break;
+      }
+
+      if (ch == '[') depth++;
+      if (ch == ']') depth--;
     } else if (ch == '(') {
       depth++;
     } else if (ch == ')' && depth > 0) {
@@ -931,13 +941,14 @@ fn EvalContext::ModifierWordExpander::scan_arithmetic_body(
   return inner;
 }
 
-fn EvalContext::ModifierWordExpander::expand_arithmetic() throws -> void
+fn EvalContext::ModifierWordExpander::expand_arithmetic(
+    bool is_bracket_form) throws -> void
 {
   usize j = 0;
-  let const inner = scan_arithmetic_body(j);
+  let const inner = scan_arithmetic_body(is_bracket_form, j);
   let inner_location = SourceLocation{};
-  let const inner_source =
-      m_word.substring_of_length(m_index + 3, inner.count());
+  let const inner_source = m_word.substring_of_length(
+      m_index + (is_bracket_form ? 2 : 3), inner.count());
   try {
     emit_run(m_context.evaluate_arithmetic_text(
                  inner,
@@ -1040,7 +1051,9 @@ fn EvalContext::ModifierWordExpander::expand_dollar() throws -> void
   } else if (next == '(' && m_index + 2 < m_word.length &&
              m_word[m_index + 2] == '(')
   {
-    expand_arithmetic();
+    expand_arithmetic(false);
+  } else if (next == '[' && state.bash_additions_enabled()) {
+    expand_arithmetic(true);
   } else if (next == '(') {
     expand_command_substitution();
   } else if (next == '?' || next == '@' || next == '*' || next == '#' ||
@@ -1195,6 +1208,21 @@ private:
                           const Maybe<String> &current) throws -> String;
 };
 
+static pure fn find_balanced_subscript_close(
+    StringView subscript_text) wontthrow -> Maybe<usize>
+{
+  usize depth = 0;
+  for (usize position = 0; position < subscript_text.length; position++) {
+    if (subscript_text[position] == '[') depth++;
+    if (subscript_text[position] != ']') continue;
+    if (depth <= 1) return position;
+
+    depth--;
+  }
+
+  return None;
+}
+
 static fn find_indirect_name_end(StringView body) wontthrow -> usize
 {
   usize name_end = 0;
@@ -1202,7 +1230,8 @@ static fn find_indirect_name_end(StringView body) wontthrow -> usize
     name_end++;
   }
   if (name_end > 0 && name_end < body.length && body[name_end] == '[') {
-    if (let const close = body.substring(name_end).find_character(']'))
+    if (let const close =
+            find_balanced_subscript_close(body.substring(name_end)))
       name_end += *close + 1;
   }
 
@@ -1403,7 +1432,7 @@ fn EvalContext::ParameterExpander::expand_element_operator(
 
 fn EvalContext::ParameterExpander::expand_subscripted() throws -> Maybe<String>
 {
-  let const close = m_rest.find_character(']');
+  let const close = find_balanced_subscript_close(m_rest);
   if (!close.has_value()) return None;
 
   let const subscript = m_rest.substring_of_length(1, *close - 1);

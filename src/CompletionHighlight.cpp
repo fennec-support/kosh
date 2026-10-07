@@ -452,11 +452,12 @@ fn internal::advance_shell_keyword_state(StringView word, usize frame_depth,
   return None;
 }
 
-static fn
-color_arithmetic(StringView line, usize begin, usize end, EvalContext &context,
-                 ArrayList<highlight_span> &spans, HashSet &line_variable_names,
-                 const HashSet *known_function_names,
-                 bool should_stop_at_closing_parentheses) throws -> usize;
+static fn color_arithmetic(StringView line, usize begin, usize end,
+                           EvalContext &context,
+                           ArrayList<highlight_span> &spans,
+                           HashSet &line_variable_names,
+                           const HashSet *known_function_names,
+                           bool is_bracket_form) throws -> usize;
 
 static fn word_names_existing_path(StringView word) throws -> bool
 {
@@ -789,6 +790,13 @@ static fn color_dollar(StringView line, usize i, usize end,
   if (i + 2 < end && line[i + 1] == '(' && line[i + 2] == '(') {
     let const inner_begin = i + 3 < end ? i + 3 : end;
     return color_arithmetic(line, inner_begin, end, context, spans,
+                            line_variable_names, known_function_names, false);
+  }
+
+  if (i + 1 < end && line[i + 1] == '[' &&
+      context.runtime_state().bash_additions_enabled())
+  {
+    return color_arithmetic(line, i + 2, end, context, spans,
                             line_variable_names, known_function_names, true);
   }
 
@@ -810,14 +818,16 @@ static fn color_dollar(StringView line, usize i, usize end,
   return expansion_end;
 }
 
-static fn
-color_arithmetic(StringView line, usize begin, usize end, EvalContext &context,
-                 ArrayList<highlight_span> &spans, HashSet &line_variable_names,
-                 const HashSet *known_function_names,
-                 bool should_stop_at_closing_parentheses) throws -> usize
+static fn color_arithmetic(StringView line, usize begin, usize end,
+                           EvalContext &context,
+                           ArrayList<highlight_span> &spans,
+                           HashSet &line_variable_names,
+                           const HashSet *known_function_names,
+                           bool is_bracket_form) throws -> usize
 {
   usize i = begin;
   usize parenthesis_depth = 0;
+  usize bracket_depth = 0;
   while (i < end) {
     let const c = line[i];
 
@@ -825,6 +835,18 @@ color_arithmetic(StringView line, usize begin, usize end, EvalContext &context,
       let const next = color_dollar(line, i, end, spans, context,
                                     line_variable_names, known_function_names);
       i = next > i ? next : i + 1;
+      continue;
+    }
+
+    if (is_bracket_form && c == ']' && bracket_depth == 0) return i + 1;
+
+    if (is_bracket_form && (c == '[' || c == ']')) {
+      if (c == '[')
+        bracket_depth++;
+      else
+        bracket_depth--;
+      spans.push(highlight_span{i, i + 1, highlight_role::operator_});
+      i++;
       continue;
     }
 
@@ -836,8 +858,8 @@ color_arithmetic(StringView line, usize begin, usize end, EvalContext &context,
     }
 
     if (c == ')') {
-      if (parenthesis_depth == 0 && should_stop_at_closing_parentheses &&
-          i + 1 < end && line[i + 1] == ')')
+      if (parenthesis_depth == 0 && !is_bracket_form && i + 1 < end &&
+          line[i + 1] == ')')
       {
         return i + 2;
       }
@@ -875,7 +897,8 @@ color_arithmetic(StringView line, usize begin, usize end, EvalContext &context,
     while (i < end && line[i] != '$' && !is_highlight_name_start(line[i]) &&
            line[i] != '(' && line[i] != ')' &&
            !(line[i] >= '0' && line[i] <= '9') &&
-           !lexer::is_whitespace(line[i]))
+           !lexer::is_whitespace(line[i]) &&
+           !(is_bracket_form && (line[i] == '[' || line[i] == ']')))
       i++;
     spans.push(highlight_span{operator_start, i, highlight_role::operator_});
   }
@@ -1180,7 +1203,7 @@ fn internal::scan_highlight_range(
     if (is_command_position && c == '(' && i + 1 < end && line[i + 1] == '(') {
       spans.push(highlight_span{i, i + 2, highlight_role::operator_});
       i = color_arithmetic(line, i + 2, end, context, spans,
-                           line_variable_names, known_function_names, true);
+                           line_variable_names, known_function_names, false);
       is_command_position = false;
       continue;
     }

@@ -1783,6 +1783,15 @@ fn internal::advance_shell_lexical_state(
       continue;
     }
 
+    if (c == '$' && i + 1 < end && source[i + 1] == '[') {
+      state.frames.push(shell_lexical_frame{
+          i + 2, 0, 0, 0, shell_lexical_frame_kind::bracket_arithmetic,
+          state.quote});
+      state.quote = 0;
+      i += 2;
+      continue;
+    }
+
     if (state.quote == 0 && (c == '<' || c == '>') && i + 1 < end &&
         source[i + 1] == '(' &&
         (state.frames.is_empty() ||
@@ -1823,6 +1832,22 @@ fn internal::advance_shell_lexical_state(
     {
       if (c == '}') {
         do_pop_frame();
+      }
+      i++;
+      continue;
+    }
+
+    if (!state.frames.is_empty() &&
+        state.frames.back().kind ==
+            shell_lexical_frame_kind::bracket_arithmetic)
+    {
+      let &bracket_frame = state.frames.back();
+      if (c == '[') {
+        bracket_frame.group_depth++;
+      } else if (c == ']' && bracket_frame.group_depth == 0) {
+        do_pop_frame();
+      } else if (c == ']') {
+        bracket_frame.group_depth--;
       }
       i++;
       continue;

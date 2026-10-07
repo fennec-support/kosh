@@ -264,6 +264,21 @@ static fn shell_word_expansion_end(StringView word,
     return word.length;
   }
 
+  if (next_byte == '[') {
+    usize depth = 0;
+    for (usize position = expansion_start + 1; position < word.length;
+         position++)
+    {
+      if (word[position] == '\\' && position + 1 < word.length) {
+        position++;
+        continue;
+      }
+      if (word[position] == '[') depth++;
+      if (word[position] == ']' && --depth == 0) return position + 1;
+    }
+    return word.length;
+  }
+
   usize position = expansion_start + 1;
   if ((next_byte >= 'a' && next_byte <= 'z') ||
       (next_byte >= 'A' && next_byte <= 'Z') || next_byte == '_')
@@ -316,6 +331,7 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
   let leading_variable_is_braced = false;
   let is_after_unconsumed_dollar = false;
   let has_active_bracket = false;
+  usize glob_inert_end = 0;
   for (usize position = 0; position < word.length; position++) {
     let const byte = word[position];
 
@@ -323,6 +339,15 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
        already consumed. It cannot open a locale quote. */
     let const was_after_unconsumed_dollar = is_after_unconsumed_dollar;
     is_after_unconsumed_dollar = false;
+
+    if (byte == '$' && quote_character != '\'' &&
+        !was_after_unconsumed_dollar && position >= glob_inert_end &&
+        position + 1 < word.length &&
+        (word[position + 1] == '(' || word[position + 1] == '{' ||
+         word[position + 1] == '['))
+    {
+      glob_inert_end = shell_word_expansion_end(word, position);
+    }
 
     let const is_unquoted_dollar = byte == '$' && quote_character == 0 &&
                                    !was_after_unconsumed_dollar &&
@@ -478,13 +503,15 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
       }
     }
     decoded.text.push(byte);
-    let const is_unquoted = quote_character == 0;
+    let const is_glob_candidate =
+        quote_character == 0 && position >= glob_inert_end;
     let const is_bracket_syntax =
         has_active_bracket && (byte == ']' || byte == '!' || byte == '^' ||
                                byte == '-' || byte == ':');
-    decoded.glob_active.push(is_unquoted && (byte == '*' || byte == '?' ||
-                                             byte == '[' || is_bracket_syntax));
-    if (is_unquoted && byte == '[') {
+    decoded.glob_active.push(
+        is_glob_candidate &&
+        (byte == '*' || byte == '?' || byte == '[' || is_bracket_syntax));
+    if (is_glob_candidate && byte == '[') {
       has_active_bracket = true;
     }
 

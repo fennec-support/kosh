@@ -169,6 +169,9 @@ static fn highlight_line_with_lexical_state(
       case shell_lexical_frame_kind::arithmetic:
         synthetic_line.append("$((");
         break;
+      case shell_lexical_frame_kind::bracket_arithmetic:
+        synthetic_line.append("$[");
+        break;
       case shell_lexical_frame_kind::parameter:
         synthetic_line.append("${");
         break;

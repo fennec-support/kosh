@@ -1,0 +1,8 @@
+count	unset-variable
+size	unset-variable
+[	operator
+*	operator
+*.c	glob
+echo	resolved-command
+echo	resolved-command
+${list[1]}	variable

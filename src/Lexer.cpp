@@ -920,136 +920,150 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
         continue;
       }
 
-      if (next == '(') {
-        byte_count++;
-
-        /* $(( is arithmetic expansion, a subshell substitution needs the space
-           of $( (cmd) ). */
-        if (chop_character(byte_count) == '(') {
-          byte_count++;
-          let const arithmetic_start = byte_count;
-          usize group_depth = 0;
-          loop
-          {
-            let const c = chop_character(byte_count);
-            if (c == lexer::CEOF) rarely
-              {
-                throw ErrorWithLocationAndDetails{
-                    here(m_cursor_position, byte_count),
-                    "Unterminated arithmetic expansion",
-                    here(m_cursor_position + byte_count, 1),
-                    "expected )) here"};
-              }
-            /* A backslash escape, a quoted span, a backtick run, and a nested
-               $(...) are copied as balanced units so a ) inside them is text.
-             */
-            if (c == '\\') {
-              byte_count++;
-              let const escaped = chop_character(byte_count);
-              if (escaped != lexer::CEOF) {
-                byte_count++;
-              }
-            } else if (c == '\'' || c == '"') {
-              let const quote = c;
-              byte_count++;
-              loop
-              {
-                let const q = chop_character(byte_count);
-                if (q == lexer::CEOF) break;
-                byte_count++;
-                if (quote == '"' && q == '\\') {
-                  let const escaped = chop_character(byte_count);
-                  if (escaped != lexer::CEOF) {
-                    byte_count++;
-                  }
-                  continue;
-                }
-                if (q == quote) break;
-              }
-            } else if (c == '`') {
-              byte_count++;
-              loop
-              {
-                let const b = chop_character(byte_count);
-                if (b == lexer::CEOF) break;
-                byte_count++;
-                if (b == '\\') {
-                  let const escaped = chop_character(byte_count);
-                  if (escaped != lexer::CEOF) {
-                    byte_count++;
-                  }
-                  continue;
-                }
-                if (b == '`') break;
-              }
-            } else if (c == '$' && chop_character(byte_count + 1) == '(') {
-              byte_count++;
-              byte_count++;
-              usize paren_depth = 1;
-              char nested_quote = 0;
-              loop
-              {
-                let const p = chop_character(byte_count);
-                if (p == lexer::CEOF) break;
-                byte_count++;
-                if (nested_quote != 0) {
-                  if (nested_quote == '"' && p == '\\') {
-                    let const escaped = chop_character(byte_count);
-                    if (escaped != lexer::CEOF) {
-                      byte_count++;
-                    }
-                    continue;
-                  }
-                  if (p == nested_quote) nested_quote = 0;
-                  continue;
-                }
-                if (p == '\\') {
-                  let const escaped = chop_character(byte_count);
-                  if (escaped != lexer::CEOF) {
-                    byte_count++;
-                  }
-                  continue;
-                }
-                if (p == '\'' || p == '"') {
-                  nested_quote = p;
-                } else if (p == '(') {
-                  paren_depth++;
-                } else if (p == ')') {
-                  paren_depth--;
-                  if (paren_depth == 0) break;
-                }
-              }
-            } else if (c == '(') {
-              group_depth++;
-              byte_count++;
-            } else if (c == ')' && group_depth > 0) {
-              group_depth--;
-              byte_count++;
-            } else if (c == ')' && chop_character(byte_count + 1) == ')') {
-              byte_count += 2;
-              break;
-            } else {
+      /* $(( is arithmetic expansion, a subshell substitution needs the space
+         of $( (cmd) ). The obsolete $[ spelling is the same expansion outside
+         the POSIX mood, closed by the ] that balances its brackets. */
+      let const is_bracket_arithmetic = next == '[' && bash_additions_enabled();
+      if (is_bracket_arithmetic ||
+          (next == '(' && chop_character(byte_count + 1) == '('))
+      {
+        byte_count += is_bracket_arithmetic ? 1 : 2;
+        let const arithmetic_start = byte_count;
+        let const closing_length = is_bracket_arithmetic ? 1 : 2;
+        usize group_depth = 0;
+        loop
+        {
+          let const c = chop_character(byte_count);
+          if (c == lexer::CEOF) rarely
+            {
+              throw ErrorWithLocationAndDetails{
+                  here(m_cursor_position, byte_count),
+                  "Unterminated arithmetic expansion",
+                  here(m_cursor_position + byte_count, 1),
+                  is_bracket_arithmetic ? "expected ] here"
+                                        : "expected )) here"};
+            }
+          /* A backslash escape, a quoted span, a backtick run, and a nested
+             $(...) are copied as balanced units so a ) inside them is text.
+           */
+          if (c == '\\') {
+            byte_count++;
+            let const escaped = chop_character(byte_count);
+            if (escaped != lexer::CEOF) {
               byte_count++;
             }
+          } else if (c == '\'' || c == '"') {
+            let const quote = c;
+            byte_count++;
+            loop
+            {
+              let const q = chop_character(byte_count);
+              if (q == lexer::CEOF) break;
+              byte_count++;
+              if (quote == '"' && q == '\\') {
+                let const escaped = chop_character(byte_count);
+                if (escaped != lexer::CEOF) {
+                  byte_count++;
+                }
+                continue;
+              }
+              if (q == quote) break;
+            }
+          } else if (c == '`') {
+            byte_count++;
+            loop
+            {
+              let const b = chop_character(byte_count);
+              if (b == lexer::CEOF) break;
+              byte_count++;
+              if (b == '\\') {
+                let const escaped = chop_character(byte_count);
+                if (escaped != lexer::CEOF) {
+                  byte_count++;
+                }
+                continue;
+              }
+              if (b == '`') break;
+            }
+          } else if (c == '$' && chop_character(byte_count + 1) == '(') {
+            byte_count++;
+            byte_count++;
+            usize paren_depth = 1;
+            char nested_quote = 0;
+            loop
+            {
+              let const p = chop_character(byte_count);
+              if (p == lexer::CEOF) break;
+              byte_count++;
+              if (nested_quote != 0) {
+                if (nested_quote == '"' && p == '\\') {
+                  let const escaped = chop_character(byte_count);
+                  if (escaped != lexer::CEOF) {
+                    byte_count++;
+                  }
+                  continue;
+                }
+                if (p == nested_quote) nested_quote = 0;
+                continue;
+              }
+              if (p == '\\') {
+                let const escaped = chop_character(byte_count);
+                if (escaped != lexer::CEOF) {
+                  byte_count++;
+                }
+                continue;
+              }
+              if (p == '\'' || p == '"') {
+                nested_quote = p;
+              } else if (p == '(') {
+                paren_depth++;
+              } else if (p == ')') {
+                paren_depth--;
+                if (paren_depth == 0) break;
+              }
+            }
+          } else if (is_bracket_arithmetic && c == '[') {
+            group_depth++;
+            byte_count++;
+          } else if (is_bracket_arithmetic && c == ']') {
+            byte_count++;
+            if (group_depth == 0) break;
+            group_depth--;
+          } else if (is_bracket_arithmetic) {
+            byte_count++;
+          } else if (c == '(') {
+            group_depth++;
+            byte_count++;
+          } else if (c == ')' && group_depth > 0) {
+            group_depth--;
+            byte_count++;
+          } else if (c == ')' && chop_character(byte_count + 1) == ')') {
+            byte_count += 2;
+            break;
+          } else {
+            byte_count++;
           }
-          word.segments.push(WordSegment{
-              WordSegment::Kind::ArithmeticExpansion,
-              SegmentText{bump_allocator(arena()),
-                          m_source.substring_of_length(
-                              m_cursor_position + arithmetic_start,
-                          byte_count - arithmetic_start - 2)},
-              is_in_double_quotes
-          });
-          word.segments.back().set_source_span(
-              m_cursor_position + expansion_start + 3,
-              word.segments.back().text.count());
-          if (should_validate_substitutions()) {
-            validate_nested_expansions(m_cursor_position + arithmetic_start,
-                                       byte_count - arithmetic_start - 2,
-                                       false);
-          }
-          continue;
         }
+        let const body_length = byte_count - arithmetic_start - closing_length;
+        word.segments.push(WordSegment{
+            WordSegment::Kind::ArithmeticExpansion,
+            SegmentText{bump_allocator(arena()),
+                        m_source.substring_of_length(
+                            m_cursor_position + arithmetic_start, body_length)},
+            is_in_double_quotes
+        });
+        word.segments.back().set_source_span(m_cursor_position +
+                                                 arithmetic_start,
+                                             word.segments.back().text.count());
+        if (should_validate_substitutions()) {
+          validate_nested_expansions(m_cursor_position + arithmetic_start,
+                                     body_length, false);
+        }
+        continue;
+      }
+
+      if (next == '(') {
+        byte_count++;
 
         let const inner_start = m_cursor_position + byte_count;
         let const substitution_end =

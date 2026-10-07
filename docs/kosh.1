@@ -1342,6 +1342,13 @@ double quote in a
 .B let
 operand stay an error. The sh mood rejects every quote, as dash does.
 .PP
+Outside the sh mood, $[expression] is the obsolete Bash spelling of
+$((expression)). It ends at the ] that balances its brackets, so $[ a[1] + 1 ]
+is one expansion, and it expands, nests, and fails as $(( )) does, inside
+double quotes, here-document bodies, and the words of a parameter expansion
+too. The sh mood keeps $[ literal, as dash does. Analysis reports the spelling
+as SC2007.
+.PP
 An arithmetic error in the bash and bash-posix moods abandons the rest of the
 input line, as Bash does. A $(( )) expansion, a subscript, a substring offset,
 and an assignment to an integer variable stop every command left on that line,

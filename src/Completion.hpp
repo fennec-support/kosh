@@ -148,6 +148,7 @@ enum class shell_lexical_frame_kind : u8
   command,
   backtick,
   arithmetic,
+  bracket_arithmetic,
   parameter,
 };
 
