@@ -191,6 +191,8 @@ struct shell_lexical_frame
   bool is_case_pattern_expected{false};
   bool is_command_position{true};
   bool is_in_array_value{false};
+  u8 case_pattern_group_depth{0};
+  bool is_case_pattern_parenthesized{false};
 };
 
 static_assert(sizeof(usize) != 8 || sizeof(shell_lexical_frame) == 40);
@@ -247,9 +249,19 @@ private:
 fn highlight_line(StringView line, EvalContext &context) throws
     -> ArrayList<highlight_span>;
 
-pure fn find_matching_bracket(StringView line,
-                              const ArrayList<highlight_span> &spans,
-                              usize cursor) wontthrow -> Maybe<bracket_pair>;
+enum class typed_pair_role : u8
+{
+  none,
+  opens,
+  closes,
+};
+
+fn classify_typed_pair_byte(StringView line, usize cursor, char byte) throws
+    -> typed_pair_role;
+
+fn find_matching_bracket(StringView line,
+                         const ArrayList<highlight_span> &spans,
+                         usize cursor) throws -> Maybe<bracket_pair>;
 
 fn append_highlighted_range(String &output, StringView text,
                             const ArrayList<highlight_span> &spans,

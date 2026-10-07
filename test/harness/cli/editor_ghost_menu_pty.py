@@ -39,7 +39,9 @@
 # and it stays on the synopsis for closed text, a comment, and a trailing
 # backslash. Caret moves onto matched brackets keep the line and the caret,
 # so a key typed there lands in place. The auto-pair option inserts, steps
-# over, and erases closers. A file name with control bytes completes in the
+# over, and erases closers, leaves brackets and quotes plain inside quoted
+# text, and types a case pattern end before the closer of its subshell while a
+# parenthesized pattern steps over its own. A file name with control bytes completes in the
 # $'...' form, and neither the ghost nor the menu writes those bytes raw to the
 # terminal. Every wait polls for the expected final
 # state under a deadline, so a failure reports the last screen instead of
@@ -1084,6 +1086,21 @@ def run_checks(binary, directory, command_directory, report):
         type_text(session, b"don'")
         report.record("auto-pair-quote-after-word-stays-single", session,
                       is_line("echo (a) don'"))
+        type_text(session, b" (\" [")
+        report.record("auto-pair-single-quoted-text-stays-plain", session,
+                      is_line("echo (a) don' (\" ["))
+        clear_line(session)
+        type_text(session, b'echo "a (')
+        report.record("auto-pair-double-quoted-text-stays-plain", session,
+                      is_line('echo "a ("'))
+        clear_line(session)
+        type_text(session, b"(case x in a)")
+        report.record("auto-pair-case-pattern-keeps-subshell-closer", session,
+                      is_line("(case x in a))"))
+        clear_line(session)
+        type_text(session, b"echo $(case x in (a)")
+        report.record("auto-pair-parenthesized-pattern-steps-over", session,
+                      is_line("echo $(case x in (a))"))
         clear_line(session)
         session.send(b"koshconf set editor.auto_close_brackets_and_quotes off\r")
         session.wait_until(is_line(""))

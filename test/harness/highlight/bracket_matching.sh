@@ -18,6 +18,9 @@ printf '== heredoc body\n'
 E
 )'
 
+printf '== case patterns\n'
+"$BIN" --debug-brackets-at '(case x in a) :;; (b) :;; esac)'
+
 printf '== unmatched\n'
 "$BIN" --debug-brackets-at 'echo ( ] } [ x'
 printf 'status=%s\n' "$?"

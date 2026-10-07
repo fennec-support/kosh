@@ -142,6 +142,10 @@ auto-pair-inserts-closer PASS
 auto-pair-steps-over-closer PASS
 auto-pair-backspace-deletes-pair PASS
 auto-pair-quote-after-word-stays-single PASS
+auto-pair-single-quoted-text-stays-plain PASS
+auto-pair-double-quoted-text-stays-plain PASS
+auto-pair-case-pattern-keeps-subshell-closer PASS
+auto-pair-parenthesized-pattern-steps-over PASS
 option-off-hides-hint PASS
 hints-off-keeps-diagnostic PASS
 option-off-hides-diagnostic PASS

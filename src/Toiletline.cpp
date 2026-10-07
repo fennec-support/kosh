@@ -1149,6 +1149,23 @@ fn kosh_hint_callback(const char *buffer, size_t cursor, const char **sgr)
   return COMPLETION_SESSION.hint(buffer, cursor);
 }
 
+fn kosh_pair_role_callback(const char *buffer, size_t cursor, int byte) -> int
+{
+  try {
+    let const line = koshka::StringView{buffer, std::strlen(buffer)};
+    switch (koshka::completion::classify_typed_pair_byte(
+        line, cursor, static_cast<char>(byte)))
+    {
+    case koshka::completion::typed_pair_role::opens: return TL_PAIR_OPENS;
+    case koshka::completion::typed_pair_role::closes: return TL_PAIR_CLOSES;
+    case koshka::completion::typed_pair_role::none: return TL_PAIR_NONE;
+    }
+    return TL_PAIR_NONE;
+  } catch (...) {
+    return TL_PAIR_NONE;
+  }
+}
+
 /* A pause longer than the gap between keys of a word, so documentation loads
    while the user reads the line rather than while a word is typed. */
 constexpr int IDLE_DELAY_MS = 250;
@@ -2277,6 +2294,7 @@ fn enable_completion(koshka::EvalContext &context) -> void
   ::tl_set_ghost_validate_callback(kosh_ghost_validate_callback);
   ::tl_set_history_select_callback(kosh_history_select_callback);
   ::tl_set_edit_callback(kosh_edit_callback);
+  ::tl_set_pair_role_callback(kosh_pair_role_callback);
 
   /* The selector configuration is seeded after the startup files have run. A
      value they set wins and an unset one becomes visible and editable. */
@@ -2298,6 +2316,7 @@ fn disable_completion() -> void
   ::tl_set_ghost_validate_callback(nullptr);
   ::tl_set_history_select_callback(nullptr);
   ::tl_set_edit_callback(nullptr);
+  ::tl_set_pair_role_callback(nullptr);
 }
 
 fn is_completion_enabled() -> bool

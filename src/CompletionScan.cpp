@@ -1560,6 +1560,13 @@ static fn consider_shell_lexical_frame(
   target->frame_depth = depth;
 }
 
+static pure fn frame_is_at_case_pattern_level(
+    const shell_lexical_frame &frame) wontthrow -> bool
+{
+  return frame.case_depth > 0 && frame.is_case_pattern_expected &&
+         frame.group_depth <= frame.case_pattern_group_depth;
+}
+
 static fn collect_shell_heredoc(StringView source, usize &position, usize end,
                                 shell_lexical_state &state) throws -> void
 {
@@ -1642,6 +1649,19 @@ fn internal::advance_shell_lexical_state(
     {
       frame.is_in_array_value = false;
     }
+  };
+  let const do_expect_case_pattern = [](shell_lexical_frame &frame)
+                                         wontthrow -> void {
+    frame.is_case_pattern_expected = true;
+    frame.is_case_pattern_parenthesized = false;
+    frame.case_pattern_group_depth =
+        frame.group_depth < 0xFF ? static_cast<u8>(frame.group_depth) : 0xFF;
+  };
+  let const do_end_case_pattern = [](shell_lexical_frame &frame)
+                                      wontthrow -> void {
+    frame.is_case_pattern_expected = false;
+    frame.is_case_pattern_parenthesized = false;
+    frame.is_command_position = true;
   };
 
   while (i < end) {
@@ -1965,13 +1985,14 @@ fn internal::advance_shell_lexical_state(
       } else if (frame.has_seen_case_keyword && do_word_matches("in")) {
         frame.has_seen_case_keyword = false;
         frame.case_depth++;
-        frame.is_case_pattern_expected = true;
+        do_expect_case_pattern(frame);
         frame.is_command_position = false;
       } else if (frame.is_command_position && frame.case_depth > 0 &&
                  do_word_matches("esac"))
       {
         frame.case_depth--;
         frame.is_case_pattern_expected = false;
+        frame.is_case_pattern_parenthesized = false;
         frame.is_command_position = false;
       } else if (frame.is_command_position &&
                  lexer::word_looks_like_assignment(word))
@@ -2008,7 +2029,7 @@ fn internal::advance_shell_lexical_state(
           (source[i + 1] == ';' || source[i + 1] == '&') &&
           frame.case_depth > 0)
       {
-        frame.is_case_pattern_expected = true;
+        do_expect_case_pattern(frame);
       }
       if (c == '\n' && !state.pending_heredocs.is_empty()) {
         state.is_in_heredoc = true;
@@ -2027,17 +2048,22 @@ fn internal::advance_shell_lexical_state(
       continue;
     }
 
+    let const is_case_pattern_level = frame_is_at_case_pattern_level(frame);
+    if (c == '(' && is_case_pattern_level &&
+        !frame.is_case_pattern_parenthesized && do_is_word_start())
+    {
+      frame.is_case_pattern_parenthesized = true;
+      i++;
+      continue;
+    }
+
     if (state.frames.is_empty()) {
       if (c == '(')
         frame.group_depth++;
+      else if (c == ')' && is_case_pattern_level)
+        do_end_case_pattern(frame);
       else if (c == ')' && frame.group_depth > 0)
         do_close_group(frame);
-      else if (c == ')' && frame.case_depth > 0 &&
-               frame.is_case_pattern_expected)
-      {
-        frame.is_case_pattern_expected = false;
-        frame.is_command_position = true;
-      }
       i++;
       continue;
     }
@@ -2062,14 +2088,13 @@ fn internal::advance_shell_lexical_state(
     }
 
     if (c == ')' && frame.kind == shell_lexical_frame_kind::command) {
-      if (frame.group_depth > 0) {
-        do_close_group(frame);
+      if (is_case_pattern_level) {
+        do_end_case_pattern(frame);
         i++;
         continue;
       }
-      if (frame.case_depth > 0 && frame.is_case_pattern_expected) {
-        frame.is_case_pattern_expected = false;
-        frame.is_command_position = true;
+      if (frame.group_depth > 0) {
+        do_close_group(frame);
         i++;
         continue;
       }
@@ -2114,6 +2139,74 @@ fn internal::command_substitution_range(StringView line, usize cursor) throws
   advance_shell_lexical_state(line, line.length, state, &target);
 
   return target.range;
+}
+
+fn internal::collect_case_pattern_ends(StringView line,
+                                       ArrayList<usize> &positions) throws
+    -> void
+{
+  let state = shell_lexical_state{heap_allocator()};
+  for (usize position = 0; position < line.length; position++) {
+    if (line[position] != ')') continue;
+
+    advance_shell_lexical_state(line, position, state);
+    if (state.source_position != position || state.quote != 0 ||
+        state.is_in_comment || state.is_in_heredoc)
+    {
+      continue;
+    }
+
+    let const &frame =
+        state.frames.is_empty() ? state.root_frame : state.frames.back();
+    if (frame_is_at_case_pattern_level(frame) &&
+        !frame.is_case_pattern_parenthesized)
+    {
+      positions.push(position);
+    }
+  }
+}
+
+fn classify_typed_pair_byte(StringView line, usize cursor, char byte) throws
+    -> typed_pair_role
+{
+  if (cursor > line.length) return typed_pair_role::none;
+
+  let const scratch = ScopedCompletionScratch{};
+  let state = shell_lexical_state{completion_allocator()};
+  advance_shell_lexical_state(line, cursor, state);
+  if (state.is_in_heredoc || state.is_in_comment) return typed_pair_role::none;
+
+  if (state.quote != 0) {
+    if (byte == state.quote) return typed_pair_role::closes;
+
+    let const is_substitution_opener = state.quote == '"' &&
+                                       (byte == '(' || byte == '{') &&
+                                       cursor > 0 && line[cursor - 1] == '$';
+    return is_substitution_opener ? typed_pair_role::opens
+                                  : typed_pair_role::none;
+  }
+
+  switch (byte) {
+  case '"':
+  case '\'':
+  case '(':
+  case '[':
+  case '{': return typed_pair_role::opens;
+  case ']':
+  case '}': return typed_pair_role::closes;
+  case ')': {
+    let const &frame =
+        state.frames.is_empty() ? state.root_frame : state.frames.back();
+    if (frame_is_at_case_pattern_level(frame) &&
+        !frame.is_case_pattern_parenthesized)
+    {
+      return typed_pair_role::none;
+    }
+
+    return typed_pair_role::closes;
+  }
+  default: return typed_pair_role::none;
+  }
 }
 
 namespace {

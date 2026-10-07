@@ -3885,8 +3885,14 @@ command makes a typed
 double quote, or single quote insert its closer after the caret. The closer
 is added only at the line end or before a blank or a closing bracket, never
 after a backslash, and a quote is left single after a letter, a digit, or the
-same quote. Typing the closer over an inserted one steps over it, and
-Backspace between an empty inserted pair deletes both. Any other key, such as
+same quote. Inside a quoted string, a comment, or a here-document body a
+bracket or quote is typed alone, except that
+.B $(
+and
+.B ${
+still pair inside double quotes. Typing the closer over an inserted one steps
+over it, unless it ends a case pattern, which is typed before the inserted
+closer. Backspace between an empty inserted pair deletes both. Any other key, such as
 an arrow, keeps the inserted closers as plain text. The option is off by
 default.
 .PP

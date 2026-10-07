@@ -173,6 +173,9 @@ fn advance_shell_lexical_state(
 fn command_substitution_range(StringView line, usize cursor) throws
     -> completion_command_range;
 
+fn collect_case_pattern_ends(StringView line,
+                             ArrayList<usize> &positions) throws -> void;
+
 } /* namespace completion::internal */
 
 } /* namespace koshka */
