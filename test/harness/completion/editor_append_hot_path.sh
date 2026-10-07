@@ -11,6 +11,8 @@ printf '%s\n' \
     > "$RCFILE"
 EDITOR_EXIT_FILE="$d/editor-exits"
 export EDITOR_EXIT_FILE
+EDITOR_TTY_FILE="$d/editor-tty"
+export EDITOR_TTY_FILE
 
 fail()
 {
@@ -34,7 +36,7 @@ run_editor()
     recorder_status=0
     if [ "$script_style" = gnu ]; then
         "$script_command" -q -c \
-            "/bin/stty cols $columns rows 24; ENV=\"\$RCFILE\" exec \"\$BIN\" -i -L sh \${EDITOR_OPTIONS-}" \
+            "/bin/stty cols $columns rows 24; /usr/bin/tty > \"\$EDITOR_TTY_FILE\"; ENV=\"\$RCFILE\" exec \"\$BIN\" -i -L sh \${EDITOR_OPTIONS-}" \
             "$transcript" >/dev/null 2>"$script_error" || recorder_status=$?
     elif [ -n "$expect_command" ]; then
         TRANSCRIPT="$transcript" COLUMNS="$columns" "$expect_command" -c '
@@ -46,7 +48,7 @@ run_editor()
             set timeout $idle_seconds
             log_user 0
             log_file -noappend $env(TRANSCRIPT)
-            spawn -noecho /bin/sh -c "/bin/stty cols $env(COLUMNS) rows 24; ENV=\"$env(RCFILE)\" exec \"$env(BIN)\" -i -L sh $env(EDITOR_OPTIONS)"
+            spawn -noecho /bin/sh -c "/bin/stty cols $env(COLUMNS) rows 24; /usr/bin/tty > \"$env(EDITOR_TTY_FILE)\"; ENV=\"$env(RCFILE)\" exec \"$env(BIN)\" -i -L sh $env(EDITOR_OPTIONS)"
             set editor_pid [exp_pid]
             set wall_timeout [after [expr {$wall_seconds * 1000}] {
                 puts stderr "editor recorder exceeded $wall_seconds seconds"
@@ -88,7 +90,7 @@ run_editor()
         ' >/dev/null 2>"$script_error" || recorder_status=$?
     else
         "$script_command" -q /dev/null /bin/sh -c \
-            "/bin/stty cols $columns rows 24; ENV=\"\$RCFILE\" exec \"\$BIN\" -i -L sh \${EDITOR_OPTIONS-}" \
+            "/bin/stty cols $columns rows 24; /usr/bin/tty > \"\$EDITOR_TTY_FILE\"; ENV=\"\$RCFILE\" exec \"\$BIN\" -i -L sh \${EDITOR_OPTIONS-}" \
             >"$transcript" 2>"$script_error" || recorder_status=$?
     fi
     if [ "$recorder_status" -ne 0 ]; then
@@ -97,6 +99,22 @@ run_editor()
     fi
 
     return 0
+}
+
+wait_for_raw_terminal()
+{
+    attempt_count=0
+    while :; do
+        editor_tty=$(cat "$EDITOR_TTY_FILE" 2>/dev/null)
+        if [ -n "$editor_tty" ] &&
+            /bin/stty -a < "$editor_tty" 2>/dev/null | grep -q -- -icanon
+        then
+            return 0
+        fi
+        [ "$attempt_count" -lt 1000 ] || return 1
+        sleep 0.01
+        attempt_count=$((attempt_count + 1))
+    done
 }
 
 wait_for_editor()
@@ -108,6 +126,7 @@ wait_for_editor()
         sleep 0.01
         attempt_count=$((attempt_count + 1))
     done
+    wait_for_raw_terminal
 }
 
 wait_for_prompt_count()
@@ -121,6 +140,7 @@ wait_for_prompt_count()
         sleep 0.01
         attempt_count=$((attempt_count + 1))
     done
+    wait_for_raw_terminal
 }
 
 wait_for_marker_count()

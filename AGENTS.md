@@ -239,6 +239,9 @@ changes update this file.
 - `src/Toiletline.cpp` defines `TL_NO_SUSPEND` and `TL_CTRL_Z_UNDO`, so
   Ctrl-Z undoes while a line is read. A foreground program runs with the
   terminal in its usual mode and receives Ctrl-Z as a stop signal.
+- The interactive loop enters raw mode after the job report, PROMPT_COMMAND,
+  and the prompt expansions, just before the editor reads, so the programs
+  they run see the terminal in its usual mode.
 - Raw mode requests the kitty disambiguate flag and xterm modifyOtherKeys
   level 1 when the `extended-keys` option is on. Leaving raw mode and turning
   signal keys on withdraw both. The editor byte reader turns each key reported
@@ -388,8 +391,9 @@ changes update this file.
   Completion tests require debug. Bound interactive and long-running commands.
   Test runners apply a deadline to each case.
 - An editor fixture types the next line only after the prompt hook reports
-  the next prompt. Bytes that arrive while a command runs meet the cooked
-  terminal, which echoes them into the command output. An explicit TAB
+  the next prompt. Bytes that arrive while a command, PROMPT_COMMAND, or a
+  prompt expansion runs meet the cooked terminal, which echoes them into the
+  output. An explicit TAB
   completion turns Ctrl-C into a signal while its program runs.
 - `make -C test refill` regenerates goldens for Kosh, CLI, completion, and
   highlight fixtures. `REFILL` selects source stems. POSIX and Bash fixtures

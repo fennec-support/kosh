@@ -1440,15 +1440,17 @@ struct script_cursor
   }
 };
 
-static fn start_line_editor(EvalContext &context,
-                            const invocation_identity &identity) throws -> void
+static fn enter_line_editor(EvalContext &context) throws -> void
 {
   toiletline::set_extended_keys(
       context.runtime_state().option_is_enabled(shell_option_id::ExtendedKeys));
-  if (toiletline::is_active()) {
-    toiletline::enter_raw_mode();
-    return;
-  }
+  toiletline::enter_raw_mode();
+}
+
+static fn start_line_editor(EvalContext &context,
+                            const invocation_identity &identity) throws -> void
+{
+  if (toiletline::is_active()) return;
 
   LOG(Info, "initializing the line editor");
   toiletline::initialize();
@@ -1476,6 +1478,8 @@ static fn start_line_editor(EvalContext &context,
                      ? "Bash me harder!"
                      : "Welcome :3");
   }
+
+  toiletline::exit_raw_mode();
 }
 
 /* A command whose output did not end in a newline leaves the cursor off the
@@ -1566,6 +1570,7 @@ struct interactive_session
       transient_prompt = toiletline::build_transient_prompt(context);
       toiletline::append_prompt_end_mark(context, transient_prompt);
     }
+    enter_line_editor(context);
     configure_line_editor(context);
     read_accepted_line(context, prompt, right_prompt, transient_prompt,
                        exit_code, chunk);

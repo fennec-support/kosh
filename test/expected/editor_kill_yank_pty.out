@@ -53,5 +53,7 @@ kitty-escape-closes-the-menu PASS
 paste-arrives-under-extended-keys PASS
 kitty-escape-enters-vi-command-mode PASS
 option-off-sends-no-request PASS
+prompt-command-sees-the-usual-terminal PASS
+extended-keys-requested-after-the-prompt-command PASS
 kitty-ctrl-d-ends-the-shell PASS
 status=0

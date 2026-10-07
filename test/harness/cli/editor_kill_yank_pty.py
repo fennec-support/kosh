@@ -17,7 +17,9 @@
 # running program, Ctrl-Shift-Z in its kitty and xterm encodings redoes, and
 # Alt-T keeps trailing blanks in place. The prompt asks for the kitty and
 # xterm extended keys and withdraws them before a command's output and around
-# the external editor, and the option turns the request off. Kitty-encoded
+# the external editor, and the option turns the request off. PROMPT_COMMAND
+# sees the terminal in its usual mode, and the request follows its output.
+# Kitty-encoded
 # Enter, Ctrl-C, Ctrl-A, Ctrl-D, Ctrl-W, Ctrl-X, Ctrl-U, Ctrl-Z, Alt-B, and
 # Escape act as their legacy bytes in the line, the menu, the chord, and vi
 # mode, a bracketed paste still arrives, and Ctrl-D on an empty line ends the
@@ -114,6 +116,25 @@ def is_withdrawn_around(session, mark, output):
     return do_check
 
 
+def is_requested_after(session, mark, output):
+    def do_check(screen):
+        raw = get_raw_since(session, mark)
+        shown = raw.find(output)
+        return (shown >= 0
+                and raw.rfind(EXTENDED_KEYS_ON, 0, shown)
+                < raw.rfind(EXTENDED_KEYS_OFF, 0, shown)
+                and raw.find(EXTENDED_KEYS_ON, shown) > shown)
+    return do_check
+
+
+def has_usual_modes(path):
+    def do_check(screen):
+        modes = read_text(path).split()
+        return ("icanon" in modes and "isig" in modes
+                and "-icanon" not in modes and "-isig" not in modes)
+    return do_check
+
+
 def is_zombie(pid):
     try:
         with open("/proc/%d/stat" % pid) as handle:
@@ -133,7 +154,7 @@ def has_exited(session):
     return do_check
 
 
-def run_extended_key_checks(session, report):
+def run_extended_key_checks(session, report, directory):
     mark = len(session.raw)
     session.send(b"printf 'kitty-%s\\n' 42" + KITTY_ENTER)
     report.record("kitty-enter-runs-the-line", session,
@@ -225,6 +246,17 @@ def run_extended_key_checks(session, report):
                   not in get_raw_since(session, mark))
     session.send(b"koshconf set editor.extended_keys on; echo option-on\r")
     session.wait_until(has_output("option-on", 1))
+
+    mark = len(session.raw)
+    session.send(b"PROMPT_COMMAND='tty-modes > \"$HOME/tty-modes\"; "
+                 b"echo prompt-command-$((40 + 2))'\r")
+    report.record("prompt-command-sees-the-usual-terminal", session,
+                  has_usual_modes(os.path.join(directory, "tty-modes")))
+    report.record("extended-keys-requested-after-the-prompt-command",
+                  session,
+                  is_requested_after(session, mark, b"prompt-command-42\r\n"))
+    session.send(b"unset PROMPT_COMMAND\r")
+    session.wait_until(is_line(""))
 
     mark = len(session.raw)
     session.send(KITTY_CTRL_D)
@@ -449,7 +481,7 @@ def run_checks(binary, directory, command_directory, report):
                       lambda screen: has_output("5", 1)(screen)
                       and b"runtime error" not in bytes(session.raw[mark:]))
 
-        run_extended_key_checks(session, report)
+        run_extended_key_checks(session, report, directory)
     finally:
         session.close()
 
@@ -482,6 +514,8 @@ def main():
                      "exec /bin/sleep 30\n")
         write_script(os.path.join(command_directory, "control-visual"),
                      "printf ': a\\033]0;PWN\\007b\\n' > \"$1\"\n")
+        write_script(os.path.join(command_directory, "tty-modes"),
+                     "exec '%s' -a\n" % shutil.which("stty"))
         run_checks(binary, directory, command_directory, report)
     finally:
         shutil.rmtree(directory, ignore_errors=True)

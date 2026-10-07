@@ -3356,8 +3356,11 @@ turns these off too.
 Ctrl\-Z undoes while the editor reads a line, the same as Ctrl\-_. A program
 that runs in the foreground has the terminal in its usual mode, so Ctrl\-Z
 stops it and the shell reports the stopped job. Ctrl\-Shift\-Z redoes when the
-terminal reports it apart from Ctrl\-Z. While the editor reads a line, it asks
-the terminal for such reports through the disambiguate flag of the kitty
+terminal reports it apart from Ctrl\-Z. PROMPT_COMMAND and the expansion of
+the prompts run with the terminal in its usual mode, so a program they start
+reads plain keys and Ctrl\-C interrupts it. Only then, while the editor reads a
+line, does it ask the terminal for such reports through the disambiguate flag
+of the kitty
 keyboard protocol
 .RB ( "ESC [ > 1 u" )
 and xterm modifyOtherKeys level 1
@@ -3366,7 +3369,7 @@ It withdraws both
 .RB ( "ESC [ < u" " and " "ESC [ > 4 m" )
 whenever it hands the terminal back: before a command runs, around the
 Ctrl\-X Ctrl\-E editor and the external selector, while an explicit completion
-runs, on suspend, and on exit. Ctrl\-Shift\-Z then arrives as
+runs, and on exit. Ctrl\-Shift\-Z then arrives as
 .B "ESC [ 122 ; 6 u"
 or
 .BR "ESC [ 27 ; 6 ; 90 ~" ,
