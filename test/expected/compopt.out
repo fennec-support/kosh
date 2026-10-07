@@ -1,0 +1,21 @@
+1:1: error: Builtin `compopt`: No completion function is running, so a command name or -D, -E, or -I is required.
+     1 |  compopt
+       |  ^~~~~~~
+outside=1
+4:12: error: Builtin `compopt`: 'bogus' is not a valid option name.
+     4 |  compopt -o bogus foo
+       |             ^~~~~
+bad-name=2
+6:9: error: Builtin `compopt`: '+q' is not a valid option.
+     6 |  compopt +q foo
+       |          ^~
+bad-letter=2
+8:24: error: Builtin `compopt`: The command 'missing' has no completion specification.
+     8 |  compopt -o nospace foo missing
+       |                         ^~~~~~~
+missing=1
+compopt +o bashdefault +o default +o dirnames +o filenames +o fullquote +o noquote +o nosort -o nospace +o plusdirs foo
+11:1: error: Builtin `compopt`: The default completion specification was not found.
+    11 |  compopt -D
+       |  ^~~~~~~~~~
+no-default=1

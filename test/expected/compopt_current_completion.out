@@ -1,0 +1,19 @@
+== compopt -o plusdirs adds the directories after the reply:
+probe_dir/
+probe_word
+== compopt -o dirnames adds the directories to an empty reply:
+probe_dir/
+== compopt +o plusdirs drops the directories of the spec:
+probe_word
+== compopt prints the current options under the command name:
+probe_dir/
+probe_file
+compopt +o bashdefault +o default +o dirnames +o filenames +o fullquote +o noquote +o nosort -o nospace +o plusdirs cp
+== the registered spec keeps its options:
+probe_dir/
+probe_file
+compopt +o bashdefault +o default +o dirnames -o filenames +o fullquote +o noquote +o nosort +o nospace +o plusdirs cp
+== a named compopt inside the function changes the spec:
+probe_dir/
+probe_file
+compopt +o bashdefault +o default +o dirnames +o filenames +o fullquote +o noquote +o nosort -o nospace +o plusdirs cp

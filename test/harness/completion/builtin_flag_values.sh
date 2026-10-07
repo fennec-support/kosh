@@ -25,6 +25,9 @@ echo "== enable builtin names:"
 "$BIN" --debug-complete-at 'enable ech' </dev/null
 echo "== complete -o options:"
 "$BIN" --debug-complete-at 'complete -o ' </dev/null
+echo "== compopt -o and +o options:"
+"$BIN" --debug-complete-at 'compopt -o pl' </dev/null
+"$BIN" --debug-complete-at 'compopt +o no' </dev/null
 echo "== compgen -o joined form:"
 "$BIN" --debug-complete-at 'compgen -o=d' </dev/null
 echo "== compgen -V names a variable:"

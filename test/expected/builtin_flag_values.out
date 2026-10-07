@@ -28,6 +28,11 @@ noquote
 nosort
 nospace
 plusdirs
+== compopt -o and +o options:
+plusdirs
+noquote
+nosort
+nospace
 == compgen -o joined form:
 default
 dirnames

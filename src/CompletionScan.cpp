@@ -1082,12 +1082,15 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     return None;
   }
 
-  /* complete -o and compgen -o name a completion option. */
-  if (builtin_kind.has_value() &&
-      (*builtin_kind == Builtin::Kind::Complete ||
-       *builtin_kind == Builtin::Kind::Compgen) &&
-      previous_word == "-o")
-  {
+  /* complete -o, compgen -o, and compopt -o or +o name a completion option. */
+  let const is_option_name_word =
+      builtin_kind.has_value() &&
+      (((*builtin_kind == Builtin::Kind::Complete ||
+         *builtin_kind == Builtin::Kind::Compgen) &&
+        previous_word == "-o") ||
+       (*builtin_kind == Builtin::Kind::Compopt &&
+        (previous_word == "-o" || previous_word == "+o")));
+  if (is_option_name_word) {
     for (let const &entry : COMPLETION_OPTION_ENTRIES)
       do_push_matching(entry.key.to_string().view());
     if (!candidates.is_empty()) return candidates;
@@ -1245,7 +1248,7 @@ static pure fn spec_has_ghost_generators(const completion_spec &spec) wontthrow
 }
 
 static fn
-generate_spec_candidates(const completion_spec &active_spec,
+generate_spec_candidates(completion_spec &active_spec,
                          Maybe<StringView> slot_command_name, StringView line,
                          StringView token, usize cursor, EvalContext &context,
                          StringMap<String> &descriptions, bool for_listing,
@@ -1336,10 +1339,14 @@ generate_spec_candidates(const completion_spec &active_spec,
     };
 
     let const &words = do_completion_words();
+    context.execution_store().set_completion_option_mask(
+        active_spec.option_mask);
     let const reply = context.run_completion_function(
         active_spec.function_name.view(), do_command_name(), words,
         completion_cword, line, cursor, out_function_status,
         should_mark_file_names);
+    active_spec.option_mask =
+        context.execution_store().get_completion_option_mask();
     for (let const &entry : reply) {
       if (entry_is_unrequested_dash_word(entry.view(), should_offer_dash_words))
         continue;
@@ -1455,16 +1462,18 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
   /* The default -D loader sources the per-command file and returns 124 to ask
      for a retry with the spec it registered. */
   i32 function_status = 0;
-  let candidates = generate_spec_candidates(
-      spec->clone(completion_allocator()), None, line, token, cursor, context,
-      descriptions, for_listing, &function_status);
+  let active_spec = spec->clone(completion_allocator());
+  let candidates =
+      generate_spec_candidates(active_spec, None, line, token, cursor, context,
+                               descriptions, for_listing, &function_status);
   if (is_default_spec && function_status == 124) {
     spec = context.completion_store().lookup_spec(command);
     if (spec == nullptr) return None;
 
-    candidates = generate_spec_candidates(spec->clone(completion_allocator()),
-                                          None, line, token, cursor, context,
-                                          descriptions, for_listing, nullptr);
+    active_spec = spec->clone(completion_allocator());
+    candidates =
+        generate_spec_candidates(active_spec, None, line, token, cursor,
+                                 context, descriptions, for_listing, nullptr);
   }
 
   /* An empty result never claims the completion, so the cascade falls to the
@@ -1504,7 +1513,7 @@ fn internal::complete_from_initial_word_spec(StringView line, StringView token,
 
   LOG(Debug, "completing the command word from the %.*s spec",
       static_cast<int>(command_name.length), command_name.data);
-  let const active_spec = spec->clone(completion_allocator());
+  let active_spec = spec->clone(completion_allocator());
   let candidates =
       generate_spec_candidates(active_spec, command_name, line, token, cursor,
                                context, descriptions, for_listing, nullptr);

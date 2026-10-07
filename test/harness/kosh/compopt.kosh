@@ -1,0 +1,12 @@
+compopt
+echo "outside=$?"
+complete -W x foo
+compopt -o bogus foo
+echo "bad-name=$?"
+compopt +q foo
+echo "bad-letter=$?"
+compopt -o nospace foo missing
+echo "missing=$?"
+compopt foo
+compopt -D
+echo "no-default=$?"

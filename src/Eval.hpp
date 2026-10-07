@@ -1027,6 +1027,22 @@ public:
   {
     return m_should_mark_completion_directories;
   }
+  pure fn get_completion_option_mask() const wontthrow -> u32
+  {
+    return m_completion_option_mask;
+  }
+  fn set_completion_option_mask(u32 option_mask) wontthrow -> void
+  {
+    m_completion_option_mask = option_mask;
+  }
+  pure fn get_completion_command_name() const wontthrow -> StringView
+  {
+    return m_completion_command_name.view();
+  }
+  fn set_completion_command_name(StringView command_name) throws -> void
+  {
+    m_completion_command_name = String{heap_allocator(), command_name};
+  }
   fn prompt_command_running() wontthrow -> bool &
   {
     return m_is_prompt_command_running;
@@ -1058,6 +1074,7 @@ private:
   String m_last_argument{heap_allocator()};
   Maybe<String> m_execution_string{None};
   String m_current_command{heap_allocator()};
+  String m_completion_command_name{heap_allocator()};
   u64 m_last_command_duration_nanos{0};
   usize m_subshell_depth{0};
   usize m_condition_depth{0};
@@ -1065,6 +1082,7 @@ private:
   usize m_terminal_exec_subshell_depth{0};
   i32 m_last_exit_status{0};
   u32 m_pending_subshell_end_position{0};
+  u32 m_completion_option_mask{0};
   bool m_make_shell_suppressed{false};
   bool m_should_elide_pending_subshell_fork{false};
   bool m_terminal_exec_allowed{false};
@@ -1826,10 +1844,19 @@ public:
   {
     return m_specs.find(command).value_or(nullptr);
   }
+  fn lookup_spec(StringView command) wontthrow -> completion_spec *
+  {
+    return m_specs.find(command).value_or(nullptr);
+  }
   pure fn get_slot_spec(completion_spec_slot slot) const wontthrow
       -> const completion_spec *
   {
     let const &spec = get_slot(slot);
+    return spec.has_value() ? &*spec : nullptr;
+  }
+  fn get_slot_spec(completion_spec_slot slot) wontthrow -> completion_spec *
+  {
+    let &spec = get_slot(slot);
     return spec.has_value() ? &*spec : nullptr;
   }
   fn remove_spec(StringView command) throws -> bool

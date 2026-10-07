@@ -132,6 +132,7 @@ fn EvalContext::run_completion_function(StringView function_name,
   execution_store().completion_function_running() = true;
   execution_store().should_mark_completion_directories() =
       should_mark_directories;
+  execution_store().set_completion_command_name(command_name);
   defer { execution_store().completion_function_running() = false; };
 
   let defining_state = definition_state::from(runtime_state());

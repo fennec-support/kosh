@@ -2117,6 +2117,34 @@ specs. The
 option removes the named specs or the given slot, and every spec when given
 neither. A name or slot with no spec is an error.
 .TP
+.B compopt
+The
+.BI "\-o " option
+form turns a
+.B complete \-o
+option on and
+.BI "+o " option
+turns it off, and off wins when both name the same option. The change applies
+to the spec of each named command, or to the
+.BR \-D ,
+.BR \-E ,
+or
+.B \-I
+spec, the first in that order, in place of the names. Inside a running
+completion function with neither, it applies to the current completion only,
+and the registered spec keeps its options. Without
+.B \-o
+or
+.BR +o ,
+the options are printed as one
+.B compopt
+line for each spec, with the command name or the slot flag last, and the
+current completion prints under its command name. An unknown option name or
+option letter is an error with status 2 that changes nothing. A name or slot
+with no spec is an error with status 1, and the other names still change.
+Outside a completion function, a call with no name and no slot is an error
+with status 1.
+.TP
 .B type
 The
 .B \-V
@@ -4645,7 +4673,10 @@ list.
 .B compopt +o filenames
 turns the slash off for the current completion, also for the candidates of a
 directory or file action and a glob. The directories that dirnames and
-plusdirs add after the function keep their slash.
+plusdirs add after the function keep their slash, and a
+.B compopt
+run inside the function turns dirnames, plusdirs, default, and bashdefault on
+or off for them.
 .SH EXIT STATUS
 The shell exits with the status of the last command it ran. A command path that
 names a directory, or has a trailing separator whose target is not a directory,
