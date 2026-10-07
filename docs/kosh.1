@@ -3373,7 +3373,9 @@ It withdraws both
 .RB ( "ESC [ < u" " and " "ESC [ > 4 m" )
 whenever it hands the terminal back: before a command runs, around the
 Ctrl\-X Ctrl\-E editor and the external selector, while an explicit completion
-runs, and on exit. Ctrl\-Shift\-Z then arrives as
+runs, and on exit. A shell that dies of SIGABRT, SIGBUS, SIGFPE, SIGILL,
+SIGSEGV, or SIGTRAP while the editor holds the terminal also withdraws them and
+restores the terminal modes first. Ctrl\-Shift\-Z then arrives as
 .B "ESC [ 122 ; 6 u"
 or
 .BR "ESC [ 27 ; 6 ; 90 ~" ,

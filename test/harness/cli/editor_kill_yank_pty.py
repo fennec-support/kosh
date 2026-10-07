@@ -23,14 +23,18 @@
 # Enter, Ctrl-C, Ctrl-A, Ctrl-D, Ctrl-W, Ctrl-X, Ctrl-U, Ctrl-Z, Alt-B, and
 # Escape act as their legacy bytes in the line, the menu, the chord, and vi
 # mode, a bracketed paste still arrives, and Ctrl-D on an empty line ends the
-# shell after the withdrawal. The terminal model and session come from the
+# shell after the withdrawal. A shell that dies of SIGABRT or SIGSEGV at the
+# prompt still withdraws the requests and restores the terminal modes. The
+# terminal model and session come from the
 # ghost and menu probe. Each check prints one stable PASS line for the golden
 # output.
 
 import os
 import shutil
+import signal
 import sys
 import tempfile
+import termios
 import time
 
 from editor_ghost_menu_pty import (LEFT, WAIT_SECONDS, Report, Session,
@@ -67,6 +71,7 @@ KITTY_CTRL_Z = b"\x1b[122;5u"
 KITTY_ENTER = b"\x1b[13u"
 KITTY_ESCAPE = b"\x1b[27u"
 VI_COMMAND_CURSOR = b"\x1b[2 q"
+BRACKETED_PASTE_OFF = b"\x1b[?2004l"
 
 
 def read_bytes(path):
@@ -486,6 +491,37 @@ def run_checks(binary, directory, command_directory, report):
         session.close()
 
 
+def is_restored_after_death(session, mark):
+    def do_check(screen):
+        raw = get_raw_since(session, mark)
+        try:
+            local_modes = termios.tcgetattr(session.fd)[3]
+        except termios.error:
+            return False
+        return (has_exited(session)(screen)
+                and EXTENDED_KEYS_OFF in raw and BRACKETED_PASTE_OFF in raw
+                and (local_modes & termios.ICANON) != 0
+                and (local_modes & termios.ECHO) != 0)
+    return do_check
+
+
+def run_fatal_signal_checks(binary, directory, command_directory, report):
+    for name, signal_number in (("abort", signal.SIGABRT),
+                                ("segfault", signal.SIGSEGV)):
+        session = Session(binary, directory, command_directory)
+        try:
+            if not session.wait_until(is_line("")):
+                report.record("%s-startup-prompt" % name, session,
+                              is_line(""))
+                continue
+            mark = len(session.raw)
+            os.kill(session.pid, signal_number)
+            report.record("%s-at-the-prompt-restores-the-terminal" % name,
+                          session, is_restored_after_death(session, mark))
+        finally:
+            session.close()
+
+
 def main():
     if sys.platform != "linux":
         print("editor kill and yank PTY probes: skipped (requires Linux)")
@@ -517,6 +553,7 @@ def main():
         write_script(os.path.join(command_directory, "tty-modes"),
                      "exec '%s' -a\n" % shutil.which("stty"))
         run_checks(binary, directory, command_directory, report)
+        run_fatal_signal_checks(binary, directory, command_directory, report)
     finally:
         shutil.rmtree(directory, ignore_errors=True)
     return 0 if report.is_ok else 1

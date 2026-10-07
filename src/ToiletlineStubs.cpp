@@ -958,6 +958,8 @@ fn enter_raw_mode() -> void {}
 
 fn exit_raw_mode() -> void {}
 
+fn restore_terminal_for_exit() wontthrow -> void {}
+
 fn emit_newlines(StringView buffer) -> void { unused(buffer); }
 
 fn get_default_prompt_template() -> String

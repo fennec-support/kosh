@@ -2577,6 +2577,58 @@ fn set_default_signal_handlers(signal_profile profile) throws -> void
   check_syscall(sigaction(SIGPIPE, &sp, nullptr));
 }
 
+static constexpr int FATAL_SIGNALS[] = {SIGABRT, SIGBUS,  SIGFPE,
+                                        SIGILL,  SIGSEGV, SIGTRAP};
+static struct sigaction FATAL_PREVIOUS_ACTIONS[countof(FATAL_SIGNALS)];
+static void (*FATAL_EXIT_HOOK)() = nullptr;
+static pid_t FATAL_EXIT_HOOK_OWNER = 0;
+
+static fn run_fatal_exit_hook() wontthrow -> void
+{
+  if (FATAL_EXIT_HOOK != nullptr && getpid() == FATAL_EXIT_HOOK_OWNER) {
+    FATAL_EXIT_HOOK();
+  }
+}
+
+static fn handle_fatal_signal(int signal_number, siginfo_t *siginfo,
+                              opaque *context) wontthrow -> void
+{
+  unused(context);
+  run_fatal_exit_hook();
+
+  for (usize i = 0; i < countof(FATAL_SIGNALS); i++) {
+    if (FATAL_SIGNALS[i] == signal_number) {
+      (void) sigaction(signal_number, &FATAL_PREVIOUS_ACTIONS[i], nullptr);
+    }
+  }
+
+  if (signal_number == SIGTRAP || siginfo == nullptr || siginfo->si_code <= 0) {
+    (void) raise(signal_number);
+  }
+}
+
+fn install_fatal_exit_hook(void (*hook)()) throws -> void
+{
+  let const was_installed = FATAL_EXIT_HOOK != nullptr;
+  FATAL_EXIT_HOOK = hook;
+  FATAL_EXIT_HOOK_OWNER = getpid();
+  if (was_installed) return;
+
+  LOG(Info, "installing the fatal exit hook");
+  if (std::atexit(run_fatal_exit_hook) != 0) {
+    throw Error{"Could not install the exit hook"};
+  }
+
+  struct sigaction action = {};
+  check_syscall(sigemptyset(&action.sa_mask));
+  action.sa_flags = SA_SIGINFO;
+  action.sa_sigaction = handle_fatal_signal;
+  for (usize i = 0; i < countof(FATAL_SIGNALS); i++) {
+    check_syscall(
+        sigaction(FATAL_SIGNALS[i], &action, &FATAL_PREVIOUS_ACTIONS[i]));
+  }
+}
+
 static fn handle_trapped_signal(int signal_number) wontthrow -> void
 {
   if (is_trappable_signal(signal_number))

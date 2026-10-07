@@ -1987,6 +1987,10 @@ fn set_default_signal_handlers(signal_profile profile) throws -> void;
 
 fn reset_signal_handlers() throws -> void;
 
+/* Runs the hook in this process at exit and on a fatal signal before the signal
+   takes its previous action. The hook must be async-signal-safe. */
+fn install_fatal_exit_hook(void (*hook)()) throws -> void;
+
 /* Set to one by the SIGINT handler and polled by the evaluator, so a Ctrl-C
    aborts the running command. The main loop clears it before each interactive
    command. */

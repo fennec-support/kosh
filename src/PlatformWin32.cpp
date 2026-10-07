@@ -1865,6 +1865,8 @@ fn FileWatcher::wait(f64 timeout_seconds) wontthrow -> void
   }
 }
 
+fn install_fatal_exit_hook(void (*hook)()) -> void { unused(hook); }
+
 } /* namespace os */
 
 } /* namespace koshka */

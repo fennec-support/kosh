@@ -1454,6 +1454,7 @@ static fn start_line_editor(EvalContext &context,
 
   LOG(Info, "initializing the line editor");
   toiletline::initialize();
+  os::install_fatal_exit_hook(toiletline::restore_terminal_for_exit);
   toiletline::set_history_enabled(false);
   /* The set -b wake hook registers even under -T, since job reporting is not
      completion. */

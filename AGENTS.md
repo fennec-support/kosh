@@ -244,7 +244,10 @@ changes update this file.
   they run see the terminal in its usual mode.
 - Raw mode requests the kitty disambiguate flag and xterm modifyOtherKeys
   level 1 when the `extended-keys` option is on. Leaving raw mode and turning
-  signal keys on withdraw both. The editor byte reader turns each key reported
+  signal keys on withdraw both, and raw mode entered while signal keys are on
+  keeps them on. `os::install_fatal_exit_hook` restores the terminal at exit
+  and on a fatal signal in the shell process, then lets the signal take its
+  previous action. The editor byte reader turns each key reported
   in either form into its legacy bytes before any key loop reads it, and leaves
   a key without a legacy form, such as Ctrl-Shift-Z, to the parser.
 - The editor calls an idle hook after 250 ms without a key. The hook fills

@@ -168,6 +168,8 @@ void enter_raw_mode();
 
 void exit_raw_mode();
 
+void restore_terminal_for_exit() noexcept;
+
 void emit_newlines(StringView buffer);
 
 } /* namespace toiletline */

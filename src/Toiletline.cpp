@@ -2501,6 +2501,11 @@ fn exit_raw_mode() -> void
   }
 }
 
+fn restore_terminal_for_exit() wontthrow -> void
+{
+  ::tl_restore_terminal_for_exit();
+}
+
 fn emit_newlines(StringView buffer) -> void
 {
   if (::tl_emit_newlines(buffer.data) != TL_SUCCESS)
