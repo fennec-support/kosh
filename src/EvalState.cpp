@@ -452,8 +452,10 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
     let mapped_location = location;
     let mapped_text = entry.text->view();
     unused(map_embedded_site(mapped_text, mapped_location));
+    let const mapped_name = source_name_at(mapped_location.source_name_index);
+    let const is_eval_text = mapped_name.has_value() && *mapped_name == "eval";
     let const should_hide_filename =
-        last_name_index.has_value() &&
+        !is_eval_text && last_name_index.has_value() &&
         *last_name_index == mapped_location.source_name_index;
     last_name_index = mapped_location.source_name_index;
 

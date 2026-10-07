@@ -335,7 +335,7 @@ constructs.sh:3:1: trace:
 eval:1:1: error: The command 'missing_nested_eval' was not found.
      1 |  missing_nested_eval
        |  ^~~~~~~~~~~~~~~~~~~
-1:1: trace:
+eval:1:1: trace:
      1 |  eval "missing_nested_eval"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~
 constructs.sh:4:1: trace:
@@ -361,7 +361,7 @@ eval:1:6: error: Division by zero.
      1 |  echo $((1/0))
        |       ^~~~~~~~
 note: The right operand evaluated to 0.
-1:1: trace:
+eval:1:1: trace:
      1 |  eval "echo \$((1/0))"
        |  ^~~~~~~~~~~~~~~~~~~~~
 nested_eval.sh:2:1: trace:
@@ -373,7 +373,7 @@ eval:1:6: error: Division by zero.
      1 |  echo $((1/0))
        |       ^~~~~~~~
 note: The right operand evaluated to 0.
-1:1: trace:
+eval:1:1: trace:
      1 |  eval "echo \$((1/0))"
        |  ^~~~~~~~~~~~~~~~~~~~~
 nested_eval.sh:2:1: trace:
@@ -385,7 +385,7 @@ eval:1:6: error: Division by zero.
      1 |  echo $((1/0))
        |       ^~~~~~~~
 note: The right operand evaluated to 0.
-1:1: trace:
+eval:1:1: trace:
      1 |  eval "echo \$((1/0))"
        |  ^~~~~~~~~~~~~~~~~~~~~
 nested_eval.sh:2:1: trace:

@@ -53,7 +53,7 @@ eval:2:7: warning: The variable 'unset_in_nested_eval' is not set, it expands to
      2 |  echo "$unset_in_nested_eval"
        |        ^~~~~~~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_nested_eval-} if empty expansion is desired.
-1:1: trace:
+eval:1:1: trace:
      1 |  eval "echo nested=\$LINENO
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~
 23:1: trace:
@@ -109,7 +109,7 @@ eval:4:9: warning: The variable 'unset_in_evaluated' is not set, it expands to e
      4 |    echo "$unset_in_evaluated"
        |          ^~~~~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_evaluated-} if empty expansion is desired.
-7:3: trace:
+eval:7:3: trace:
      7 |    evaluated
        |    ^~~~~~~~~
 47:1: trace:
@@ -133,7 +133,7 @@ eval:4:9: warning: The variable 'unset_in_evaluated' is not set, it expands to e
      4 |    echo "$unset_in_evaluated"
        |          ^~~~~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_evaluated-} if empty expansion is desired.
-7:3: trace:
+eval:7:3: trace:
      7 |    evaluated
        |    ^~~~~~~~~
 50:31: trace:
