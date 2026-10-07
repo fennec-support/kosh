@@ -492,6 +492,20 @@ fn read_koshconf_file(const Path &path, koshconf_reading &reading) throws
   return true;
 }
 
+fn read_system_koshconf_file(const Path &path, koshconf_reading &reading) throws
+    -> bool
+{
+  let system_file = os::read_system_owned_file(path);
+  if (!system_file.rejection.is_empty()) {
+    reading.warnings.push(Warning{system_file.rejection.view()}.to_string());
+  }
+  if (!system_file.contents.has_value()) return false;
+
+  LOG(Info, "reading the system koshconf file '%s'", path.text().c_str());
+  read_koshconf_text(system_file.contents->view(), path.text().view(), reading);
+  return true;
+}
+
 fn encode_koshconf_blob(const EvalContext &cxt) throws -> String
 {
   let records = String{heap_allocator()};

@@ -44,6 +44,147 @@ unc_share_end(StringView path, usize position,
   return position;
 }
 
+static fn is_trusted_owner_sid(PSID sid) wontthrow -> bool
+{
+  if (sid == nullptr || IsValidSid(sid) == FALSE) return false;
+  if (IsWellKnownSid(sid, WinLocalSystemSid) != FALSE) return true;
+  if (IsWellKnownSid(sid, WinBuiltinAdministratorsSid) != FALSE) return true;
+
+  PSID trusted_installer = nullptr;
+  if (ConvertStringSidToSidW(L"S-1-5-80-956008885-3418522649-1831038044-"
+                             L"1853292631-2271478464",
+                             &trusted_installer) == FALSE)
+  {
+    return false;
+  }
+  defer { LocalFree(trusted_installer); };
+
+  return EqualSid(sid, trusted_installer) != FALSE;
+}
+
+static fn find_security_problem(PSID owner, PACL dacl) wontthrow
+    -> Maybe<StringView>
+{
+  constexpr DWORD WRITE_ACCESS_MASK = FILE_WRITE_DATA | FILE_APPEND_DATA |
+                                      FILE_WRITE_EA | FILE_WRITE_ATTRIBUTES |
+                                      FILE_DELETE_CHILD | DELETE | WRITE_DAC |
+                                      WRITE_OWNER | GENERIC_WRITE | GENERIC_ALL;
+
+  if (!is_trusted_owner_sid(owner)) {
+    return StringView{
+        "is not owned by SYSTEM, Administrators, or TrustedInstaller"};
+  }
+  if (dacl == nullptr) {
+    return StringView{"has no access control list, so anyone may write it"};
+  }
+
+  for (DWORD index = 0; index < dacl->AceCount; index++) {
+    void *entry = nullptr;
+    if (GetAce(dacl, index, &entry) == FALSE) {
+      return StringView{"has an access control entry that cannot be read"};
+    }
+
+    let const *header = static_cast<const ACE_HEADER *>(entry);
+    if ((header->AceFlags & INHERIT_ONLY_ACE) != 0) continue;
+
+    switch (header->AceType) {
+    case ACCESS_DENIED_ACE_TYPE:
+    case ACCESS_DENIED_OBJECT_ACE_TYPE:
+    case ACCESS_DENIED_CALLBACK_ACE_TYPE:
+    case ACCESS_DENIED_CALLBACK_OBJECT_ACE_TYPE: continue;
+    case ACCESS_ALLOWED_ACE_TYPE: break;
+    default:
+      return StringView{"has an access control entry kosh cannot interpret"};
+    }
+
+    let const *allowed = static_cast<const ACCESS_ALLOWED_ACE *>(entry);
+    if ((allowed->Mask & WRITE_ACCESS_MASK) == 0) continue;
+
+    let const sid = const_cast<DWORD *>(&allowed->SidStart);
+    if (!is_trusted_owner_sid(sid)) {
+      return StringView{"lets an account other than SYSTEM, Administrators, "
+                        "or TrustedInstaller change it"};
+    }
+  }
+
+  return None;
+}
+
+fn read_system_owned_file(const Path &path) throws -> system_file_reading
+{
+  let reading = system_file_reading{};
+  let const wide_path = utf8_to_wide(path.view(), heap_allocator());
+  if (!wide_path.has_value()) return reading;
+
+  let const handle = CreateFileW(
+      wide_path->begin(), GENERIC_READ | READ_CONTROL, FILE_SHARE_READ, nullptr,
+      OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+  if (handle == INVALID_HANDLE_VALUE) {
+    if (last_system_error_is_missing_file()) return reading;
+
+    reading.rejection =
+        "Unable to read '" + path.text() + "': " + last_system_error_message();
+    return reading;
+  }
+  defer { unused(close_fd(handle)); };
+
+  PSID owner = nullptr;
+  PACL dacl = nullptr;
+  PSECURITY_DESCRIPTOR descriptor = nullptr;
+  let const file_result =
+      GetSecurityInfo(handle, SE_FILE_OBJECT,
+                      OWNER_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION,
+                      &owner, nullptr, &dacl, nullptr, &descriptor);
+  if (file_result != ERROR_SUCCESS) {
+    SetLastError(file_result);
+    reading.rejection = "Unable to inspect '" + path.text() +
+                        "': " + last_system_error_message();
+    return reading;
+  }
+  defer { LocalFree(descriptor); };
+  if (let const problem = find_security_problem(owner, dacl);
+      problem.has_value())
+  {
+    reading.rejection = "Ignoring '" + path.text() + "', which " + *problem;
+    return reading;
+  }
+
+  let const directory = path.parent_or_current();
+  let const wide_directory = utf8_to_wide(directory.view(), heap_allocator());
+  if (!wide_directory.has_value()) return reading;
+
+  PSID directory_owner = nullptr;
+  PACL directory_dacl = nullptr;
+  PSECURITY_DESCRIPTOR directory_descriptor = nullptr;
+  let const directory_result = GetNamedSecurityInfoW(
+      wide_directory->begin(), SE_FILE_OBJECT,
+      OWNER_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION, &directory_owner,
+      nullptr, &directory_dacl, nullptr, &directory_descriptor);
+  if (directory_result != ERROR_SUCCESS) {
+    SetLastError(directory_result);
+    reading.rejection = "Unable to inspect '" + directory.text() +
+                        "': " + last_system_error_message();
+    return reading;
+  }
+  defer { LocalFree(directory_descriptor); };
+  if (let const problem =
+          find_security_problem(directory_owner, directory_dacl);
+      problem.has_value())
+  {
+    reading.rejection = "Ignoring '" + path.text() + "', whose directory '" +
+                        directory.text() + "' " + *problem;
+    return reading;
+  }
+
+  reading.contents = read_fd_to_string(handle, heap_allocator());
+  if (!reading.contents.has_value()) {
+    reading.rejection =
+        "Unable to read '" + path.text() + "': " + last_system_error_message();
+  }
+
+  return reading;
+}
+
 fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
 {
   let const text = path.view();

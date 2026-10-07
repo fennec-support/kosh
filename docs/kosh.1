@@ -908,6 +908,8 @@ Before any shell startup file, interactive and noninteractive shells apply the
 configuration files /etc/kosh.conf, or %ProgramData%\ekosh\ekosh.conf on
 Windows, and then $XDG_CONFIG_HOME/kosh/kosh.conf, or
 ~/.config/kosh/kosh.conf when XDG_CONFIG_HOME is unset, empty, or relative.
+The system file is skipped with a warning unless only the system
+administrator can change it.
 They are not shell code;
 .BR kosh (5)
 describes their format. A

@@ -436,6 +436,9 @@ ifeq ($(TARGET), Windows_NT)
 LINK_LIBRARIES += \
 	-luserenv \
 	-ladvapi32 \
+	-lshell32 \
+	-lole32 \
+	-luuid \
 	-liphlpapi \
 	-lrstrtmgr \
 	-lws2_32

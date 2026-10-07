@@ -54,11 +54,13 @@ SKIPPED_TESTS := \
 	koshkit_live_pty koshkit_live_sanitizers koshkit_live_deltas \
 	editor_ghost_menu_pty editor_kill_yank_pty editor_prompt_pty \
 	shell_integration_marks_pty shell_executable_path \
-	analysis_environment_inheritance progcomp_alias_ghost koshconf_persist
+	analysis_environment_inheritance progcomp_alias_ghost koshconf_persist \
+	koshconf_system_file
 else ifneq ($(TARGET), Linux)
 SKIPPED_TESTS := koshkit_mknod koshkit_live_pty koshkit_live_sanitizers \
 	koshkit_live_deltas editor_ghost_menu_pty editor_kill_yank_pty \
-	editor_prompt_pty koshkit_evilfiles_parity trap_during_blocking_open
+	editor_prompt_pty koshkit_evilfiles_parity trap_during_blocking_open \
+	koshconf_system_file
 else
 SKIPPED_TESTS :=
 endif

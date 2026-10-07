@@ -101,6 +101,10 @@ extern "C" void __lsan_enable(void);
 #define WC_ERR_INVALID_CHARS 0x00000080
 #endif
 #include <winioctl.h>
+#include <aclapi.h>
+#include <sddl.h>
+#include <shlobj.h>
+#include <knownfolders.h>
 #include <direct.h>
 #include <io.h>
 #include <malloc.h>
@@ -1974,6 +1978,14 @@ fn get_processor_counts() wontthrow -> processor_counts;
 
 fn get_home_directory() throws -> Maybe<Path>;
 fn get_system_koshconf_path() throws -> Maybe<Path>;
+
+struct system_file_reading
+{
+  Maybe<String> contents;
+  String rejection{heap_allocator()};
+};
+
+fn read_system_owned_file(const Path &path) throws -> system_file_reading;
 
 fn get_home_for_user(StringView username) throws -> Maybe<Path>;
 

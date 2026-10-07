@@ -1190,10 +1190,17 @@ fn get_home_directory() -> Maybe<Path>
 
 fn get_system_koshconf_path() throws -> Maybe<Path>
 {
-  let const program_data = get_environment_variable("ProgramData");
-  if (!program_data.has_value()) return koshka::None;
+  PWSTR folder = nullptr;
+  let const result = SHGetKnownFolderPath(FOLDERID_ProgramData, KF_FLAG_DEFAULT,
+                                          nullptr, &folder);
+  defer { CoTaskMemFree(folder); };
+  if (FAILED(result) || folder == nullptr) return koshka::None;
 
-  let path = Path{program_data->view()};
+  let const text = wide_to_utf8(folder, static_cast<usize>(lstrlenW(folder)),
+                                heap_allocator());
+  if (!text.has_value()) return koshka::None;
+
+  let path = Path{text->view()};
   if (!path.is_absolute()) return koshka::None;
 
   path.append("kosh");

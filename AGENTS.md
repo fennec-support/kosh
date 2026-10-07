@@ -50,7 +50,10 @@ changes update this file.
   startup configuration, then calls `run_startup` and `finish_startup`. The
   startup configuration reads the system file from
   `os::get_system_koshconf_path`, which is `/etc/kosh.conf` on POSIX and
-  `%ProgramData%\kosh\kosh.conf` on Windows, the user `kosh.conf`, and an
+  `%ProgramData%\kosh\kosh.conf` on Windows through the known folder, and
+  reads it with `os::read_system_owned_file`, which rejects a file or
+  directory that anyone but root or the Windows administrators could change,
+  then the user `kosh.conf`, and an
   inherited `KOSHCONF`, removes `KOSHCONF` from the environment, and settles a
   configured mood before the input plan. An option the command line or
   `KOSH_ANALYSIS` names keeps its value. A restricted or privileged invocation

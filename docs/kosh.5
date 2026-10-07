@@ -36,13 +36,21 @@ mood sources no shell startup file.
 .SH FILES
 .TP
 .IR /etc/kosh.conf " or " %ProgramData%\ekosh\ekosh.conf
-The system settings file, read first. Windows reads it under the ProgramData
-directory and skips it when ProgramData is unset or relative, since a path such
-as \eetc\ekosh.conf on the current drive lets any user who can create that
-directory plant settings for everyone. The default ProgramData permissions
-still let an ordinary user create a missing subdirectory, so an administrator
-who wants no system settings on a shared machine should create an empty
-\ekosh directory there that only administrators can write.
+The system settings file, read first. Because it applies to every user, it is
+read only when nobody else could have written it. On POSIX the open file and
+its directory must be owned by root and must not be writable by their group or
+by others; the file is checked on the descriptor that is then read, so it
+cannot be swapped between the check and the read. On Windows the ProgramData
+directory comes from the system's known folder, not from an environment
+variable, and the file and its
+.I kosh
+directory must be owned by SYSTEM, Administrators, or TrustedInstaller, with
+no access control entry that lets any other account write, append, delete,
+change the permissions of, or take ownership of either. An entry that applies
+only to children, such as the usual CREATOR OWNER entry, is not counted. The
+default ProgramData permissions let any user create a missing subdirectory,
+which this check rejects. A file that fails the check is skipped with a
+warning that names the reason.
 .TP
 .IR $XDG_CONFIG_HOME/kosh/kosh.conf " or " ~/.config/kosh/kosh.conf
 The user settings file, read second. XDG_CONFIG_HOME is used when it is set to
@@ -174,7 +182,8 @@ must use the fewest bytes, and the ids must strictly ascend, which is the order
 the writer uses. A blob that breaks any of these rules, or whose records are
 truncated, is rejected as a whole with a warning.
 .SH ERRORS
-A missing settings file is skipped. An unreadable one produces a warning. A line
+A missing settings file is skipped. An unreadable one, and a system file that
+fails the ownership check under FILES, produce a warning. A line
 without an equals sign, an unknown option name, an invalid value, an unclosed
 quote, text after a closing quote, and an option that changes evaluation each
 produce a warning that names the file and line, and the line is skipped. A

@@ -449,6 +449,67 @@ cold static fn list_directory_status_fallback(StringView dir,
   return entries;
 }
 
+static fn find_ownership_problem(const struct stat &status) wontthrow
+    -> Maybe<StringView>
+{
+  if (status.st_uid != 0) return StringView{"is not owned by root"};
+  if ((status.st_mode & (S_IWGRP | S_IWOTH)) != 0) {
+    return StringView{"is writable by its group or by others"};
+  }
+
+  return None;
+}
+
+fn read_system_owned_file(const Path &path) throws -> system_file_reading
+{
+  let reading = system_file_reading{};
+  let const fd = ::open(path.c_str(), O_RDONLY | O_CLOEXEC);
+  if (fd < 0) {
+    if (errno == ENOENT || errno == ENOTDIR) return reading;
+
+    reading.rejection =
+        "Unable to read '" + path.text() + "': " + last_system_error_message();
+    return reading;
+  }
+  defer { unused(::close(fd)); };
+
+  struct stat file_status{};
+  if (::fstat(fd, &file_status) != 0) {
+    reading.rejection = "Unable to inspect '" + path.text() +
+                        "': " + last_system_error_message();
+    return reading;
+  }
+  if (let const problem = find_ownership_problem(file_status);
+      problem.has_value())
+  {
+    reading.rejection = "Ignoring '" + path.text() + "', which " + *problem;
+    return reading;
+  }
+
+  let const directory = path.parent_or_current();
+  struct stat directory_status{};
+  if (::stat(directory.c_str(), &directory_status) != 0) {
+    reading.rejection = "Unable to inspect '" + directory.text() +
+                        "': " + last_system_error_message();
+    return reading;
+  }
+  if (let const problem = find_ownership_problem(directory_status);
+      problem.has_value())
+  {
+    reading.rejection = "Ignoring '" + path.text() + "', whose directory '" +
+                        directory.text() + "' " + *problem;
+    return reading;
+  }
+
+  reading.contents = read_fd_to_string(fd, heap_allocator());
+  if (!reading.contents.has_value()) {
+    reading.rejection =
+        "Unable to read '" + path.text() + "': " + last_system_error_message();
+  }
+
+  return reading;
+}
+
 fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
 {
   let const allocator = uncached_heap_allocator();

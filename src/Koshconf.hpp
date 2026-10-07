@@ -35,6 +35,8 @@ fn read_koshconf_text(StringView text, StringView origin_name,
                       koshconf_reading &reading) throws -> void;
 fn read_koshconf_file(const Path &path, koshconf_reading &reading) throws
     -> bool;
+fn read_system_koshconf_file(const Path &path, koshconf_reading &reading) throws
+    -> bool;
 fn read_koshconf_blob(StringView encoded, koshconf_reading &reading) throws
     -> bool;
 fn encode_koshconf_blob(const EvalContext &cxt) throws -> String;
