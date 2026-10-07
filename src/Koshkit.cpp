@@ -161,7 +161,7 @@ static fn get_exported_spelling(const Value &value,
 
 fn print_environment(const ExecContext &ec, EvalContext &cxt) throws -> void
 {
-  unused(cxt.materialize_kosh_identity());
+  cxt.prepare_child_environment();
   let output = String{cxt.scratch_allocator()};
   let printed_names = HashSet{cxt.scratch_allocator()};
   for (let const &name : os::environment_names()) {

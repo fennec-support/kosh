@@ -264,7 +264,7 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   try {
-    unused(cxt.materialize_kosh_identity());
+    cxt.prepare_child_environment();
     os::replace_process(steal(command));
   } catch (const ErrorBase &error) {
     return report_exec_resolution_error(

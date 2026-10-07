@@ -155,7 +155,7 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
         "execute_context replacing the shell with the terminal command '%s'",
         ec.program().c_str());
     flush();
-    unused(cxt.materialize_kosh_identity());
+    cxt.prepare_child_environment();
     try {
       os::replace_process(steal(ec));
     } catch (const ErrorWithLocation &error) {
@@ -204,7 +204,7 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
       cxt.runtime_state().stats_enabled());
 
   let const source_view = cxt.source_store().current_source_view();
-  unused(cxt.materialize_kosh_identity());
+  cxt.prepare_child_environment();
   os::process p = os::execute_program(
       ec, os::program_execution_options{
               .source = source_view,
@@ -457,7 +457,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
     } else if (!ec.is_builtin()) {
       cxt.evaluation_metrics_store().add_external_command_run(
           cxt.runtime_state().stats_enabled());
-      unused(cxt.materialize_kosh_identity());
+      cxt.prepare_child_environment();
       let const process_group =
           !is_async ? os::process_group_mode::Inherit
                     : os::background_process_group_mode(process_group_id);

@@ -736,7 +736,7 @@ fn EvalContext::run_captured_substitution(
   }
   if (!should_evaluate_in_process) {
     LOG(Debug, "running the captured substitution in a child process");
-    unused(materialize_kosh_identity());
+    prepare_child_environment();
     let const pipe = os::make_pipe();
     if (!pipe)
       throw ErrorWithLocation{previous_location,

@@ -137,3 +137,11 @@ echo "== KOSHCONF is never exported and a subshell sees the same value:"
 [ "$KOSHCONF" = "$( (printf %s "$KOSHCONF") & wait)" ] && echo same
 KOSHCONF=ignored
 [ "$KOSHCONF" != ignored ] && echo discarded'
+echo "== an exported KOSHCONF carries the settings current at each child:"
+"$BIN" -c 'export KOSHCONF
+koshconf set mood bash
+"$BIN" -c "koshconf get mood"
+koshconf set editor.auto_pair on
+"$BIN" -c "koshconf get editor.auto_pair" &
+wait "$!"
+[ "$(printenv KOSHCONF)" = "$KOSHCONF" ] && echo current'

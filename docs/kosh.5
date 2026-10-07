@@ -120,7 +120,10 @@ system file.
 .B KOSHCONF
 is a dynamic shell variable that always holds the current settings in a binary
 form, encoded as standard base64 with padding. It is never exported by itself.
-Another shell receives it through
+After
+.BR "export KOSHCONF" ,
+each command the shell starts receives the settings current when it starts,
+not a copy taken at the export. Another shell receives it through
 .B koshconf load
 .I value
 or through a KOSHCONF variable in its environment, which is applied after the

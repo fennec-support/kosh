@@ -643,7 +643,7 @@ cold fn Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     throw Error{StringView{"No command given"}};
   }
 
-  unused(cxt.materialize_kosh_identity());
+  cxt.prepare_child_environment();
 
   Maybe<u64> run_limit = None;
   if (FLAG_bench_runs.is_set())

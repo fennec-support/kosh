@@ -310,7 +310,7 @@ fn Timeout::execute(const ExecContext &ec, EvalContext &cxt,
   let const has_controlling_terminal =
       cxt.execution_store().shell_is_interactive() &&
       os::shell_has_controlling_terminal();
-  unused(cxt.materialize_kosh_identity());
+  cxt.prepare_child_environment();
   defer
   {
     if (has_controlling_terminal) os::reclaim_controlling_terminal();

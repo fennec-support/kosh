@@ -47,7 +47,7 @@ fn Nohup::execute(const ExecContext &ec, EvalContext &cxt,
     command.push(operand.clone());
   let const home_value = cxt.get_variable_value("HOME");
   let const home = home_value.has_value() ? home_value->view() : StringView{};
-  unused(cxt.materialize_kosh_identity());
+  cxt.prepare_child_environment();
   let const result = os::run_nohup(
       command, {ec.in_fd.value_or(KOSH_STDIN), ec.out_fd.value_or(KOSH_STDOUT),
                 ec.err_fd.value_or(KOSH_STDERR), home});

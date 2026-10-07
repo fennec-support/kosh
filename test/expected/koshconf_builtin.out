@@ -273,3 +273,7 @@ external
 0
 same
 discarded
+== an exported KOSHCONF carries the settings current at each child:
+bash
+on
+current

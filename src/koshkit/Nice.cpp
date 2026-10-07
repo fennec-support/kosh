@@ -63,7 +63,7 @@ fn Nice::execute(const ExecContext &ec, EvalContext &cxt,
   let command = ArrayList<String>{cxt.scratch_allocator()};
   for (let const &operand : operands)
     command.push(operand.clone());
-  unused(cxt.materialize_kosh_identity());
+  cxt.prepare_child_environment();
   let const result = os::run_nice(command, static_cast<i32>(increment));
   if (!result.has_value()) {
     report_soft_koshkit_util_error(

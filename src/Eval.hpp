@@ -3178,6 +3178,7 @@ public:
       -> void;
 
   fn materialize_kosh_identity() const throws -> Maybe<String>;
+  fn prepare_child_environment() const throws -> void;
   fn next_random_u32() const wontthrow -> u32;
 
   fn unset_shell_variable(StringView name) throws -> void;

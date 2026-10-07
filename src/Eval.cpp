@@ -16,6 +16,7 @@
 #include "Completion.hpp"
 #include "Errors.hpp"
 #include "Expressions.hpp"
+#include "Koshconf.hpp"
 #include "Koshkit.hpp"
 #include "Lexer.hpp"
 #include "Parser.hpp"
@@ -413,6 +414,15 @@ fn EvalContext::materialize_kosh_identity() const throws -> Maybe<String>
       utils::kosh_identity(execution_store().get_shell_executable_path());
   if (identity.has_value()) return String{heap_allocator(), *identity};
   return None;
+}
+
+fn EvalContext::prepare_child_environment() const throws -> void
+{
+  unused(materialize_kosh_identity());
+  if (!is_exported(KOSHCONF_VARIABLE_NAME)) return;
+
+  os::set_environment_variable(KOSHCONF_VARIABLE_NAME,
+                               encode_koshconf_blob(*this).view());
 }
 
 fn EvalContext::unset_shell_variable(StringView name) throws -> void

@@ -47,7 +47,7 @@ fn Printenv::execute(
     return 0;
   }
 
-  unused(cxt.materialize_kosh_identity());
+  cxt.prepare_child_environment();
   let output = String{cxt.scratch_allocator()};
   i32 status = 0;
   for (let const &name : operands) {
