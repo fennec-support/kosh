@@ -47,7 +47,10 @@ top to bottom: each step depends on the ones above it. Repositories live under
 - [ ] `scripts/update-package-recipes.sh` (or with the tag as its operand). It
       pins the release commit and time, the toiletline commit, and both SHA-512
       sums in `deploy/archlinux/PKGBUILD` and `deploy/alpine/APKBUILD`, and
-      resets `pkgrel` when the version changes. Commit the result.
+      resets `pkgrel` when the version changes. The tag goes to `_tag`, and
+      `pkgver` drops a leading `v` and spells a pre-release such as
+      `0.2.0-rc1` as `0.2.0_rc1`; any other hyphenated tag is refused.
+      Commit the result.
 - [ ] Once the release carries the `FORTIFY_FLAGS` change in `src/Makefile`,
       delete the `_FORTIFY_SOURCE` workaround in the PKGBUILD's `build()`.
 - [ ] Once the release runs as `koshkit` from a link of that name, add

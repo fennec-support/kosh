@@ -11,13 +11,14 @@ depends=('glibc')
 makedepends=('clang' 'git')
 conflicts=('kosh')
 install=kosh-shell.install
+_tag=0.3.0
 _release_commit="951f3550cacc4684c6e50ff41c6ea8b40a8b5232"
 _release_epoch=1791053686
-_source_directory="$_upstream_name-$pkgver"
+_source_directory="$_upstream_name-${_tag#v}"
 _toiletline_commit="ee504b4823a85c30e8a6e11c9539932ed85c8282"
 export SOURCE_DATE_EPOCH="$_release_epoch"
 source=(
-  "$_upstream_name-$pkgver.tar.gz::https://github.com/fennec-support/kosh/archive/refs/tags/$pkgver.tar.gz"
+  "$_upstream_name-$pkgver.tar.gz::https://github.com/fennec-support/kosh/archive/refs/tags/$_tag.tar.gz"
   "toiletline-$_toiletline_commit.tar.gz::https://github.com/toiletbril/toiletline/archive/$_toiletline_commit.tar.gz"
 )
 sha512sums=(

@@ -557,7 +557,13 @@ endif
 
 uninstall:
 	rm -f "$(DESTDIR)$(bindir)/kosh"
-	rm -f "$(DESTDIR)$(bindir)/koshkit"
+	link="$(DESTDIR)$(bindir)/koshkit"; \
+	case $$(readlink "$$link" 2>/dev/null) in \
+	kosh | "$(bindir)/kosh") rm -f "$$link" ;; \
+	*) if [ -e "$$link" ] || [ -L "$$link" ]; then \
+		echo "Kept '$$link', which is not a link to kosh."; \
+	fi ;; \
+	esac
 	rm -f "$(DESTDIR)$(mandir)/kosh.1"
 	rm -f "$(DESTDIR)$(man5dir)/kosh.5"
 	rm -f "$(DESTDIR)$(bashcompdir)/kosh"

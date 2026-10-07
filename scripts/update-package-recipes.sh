@@ -66,28 +66,51 @@ replace_checksums()
 command -v curl > /dev/null || fail "curl is required"
 command -v git > /dev/null || fail "git is required"
 
-VERSION=${1:-}
-if [ -z "$VERSION" ]; then
-    VERSION=$(fetch -o /dev/null -w '%{url_effective}' "$REPOSITORY/releases/latest")
-    VERSION=${VERSION##*/}
+TAG=${1:-}
+if [ -z "$TAG" ]; then
+    TAG=$(fetch -o /dev/null -w '%{url_effective}' "$REPOSITORY/releases/latest")
+    TAG=${TAG##*/}
 fi
-case $VERSION in
+case $TAG in
     '' | latest | releases | *[!A-Za-z0-9._-]*) fail "no release tag resolved" ;;
+esac
+
+# pkgver allows no hyphen in either recipe. A pre-release tag such as
+# 0.2.0-rc1 becomes 0.2.0_rc1, which Alpine requires for its suffixes and
+# which pacman also orders before 0.2.0.
+VERSION=${TAG#v}
+case $VERSION in
+    *-*)
+        RELEASE_PART=${VERSION%%-*}
+        SUFFIX_PART=${VERSION#*-}
+        case $SUFFIX_PART in
+            alpha[0-9]* | beta[0-9]* | pre[0-9]* | rc[0-9]*) ;;
+            *) fail "the tag $TAG has a suffix no recipe can express" ;;
+        esac
+        case $SUFFIX_PART in
+            *[!a-z0-9]*) fail "the tag $TAG has a suffix no recipe can express" ;;
+        esac
+        VERSION=${RELEASE_PART}_$SUFFIX_PART
+        ;;
+esac
+case $VERSION in
+    [0-9]*) ;;
+    *) fail "the tag $TAG does not start with a version number" ;;
 esac
 
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT INT TERM
 
 git -C "$WORK" init -q source
-git -C "$WORK/source" fetch -q --depth 1 "$REPOSITORY" "refs/tags/$VERSION" ||
-    fail "the tag $VERSION does not exist"
+git -C "$WORK/source" fetch -q --depth 1 "$REPOSITORY" "refs/tags/$TAG" ||
+    fail "the tag $TAG does not exist"
 RELEASE_COMMIT=$(git -C "$WORK/source" rev-parse 'FETCH_HEAD^{commit}')
 RELEASE_EPOCH=$(git -C "$WORK/source" log -1 --format=%ct FETCH_HEAD)
 TOILETLINE_COMMIT=$(git -C "$WORK/source" ls-tree FETCH_HEAD src/toiletline |
     cut -d ' ' -f 3 | cut -f 1)
 [ -n "$TOILETLINE_COMMIT" ] || fail "the release has no toiletline submodule"
 
-fetch -o "$WORK/kosh.tar.gz" "$REPOSITORY/archive/refs/tags/$VERSION.tar.gz"
+fetch -o "$WORK/kosh.tar.gz" "$REPOSITORY/archive/refs/tags/$TAG.tar.gz"
 fetch -o "$WORK/toiletline.tar.gz" "$TOILETLINE/archive/$TOILETLINE_COMMIT.tar.gz"
 KOSH_SHA512=$(sha512_of "$WORK/kosh.tar.gz")
 TOILETLINE_SHA512=$(sha512_of "$WORK/toiletline.tar.gz")
@@ -100,6 +123,7 @@ for RECIPE in "$PKGBUILD" "$APKBUILD"; do
         esac
     fi
     set_recipe_value pkgver "$VERSION" "$RECIPE"
+    set_recipe_value _tag "$TAG" "$RECIPE"
     set_recipe_value _release_commit "\"$RELEASE_COMMIT\"" "$RECIPE"
     set_recipe_value _release_epoch "$RELEASE_EPOCH" "$RECIPE"
     set_recipe_value _toiletline_commit "\"$TOILETLINE_COMMIT\"" "$RECIPE"
@@ -114,5 +138,5 @@ $KOSH_SHA512  kosh-$VERSION.tar.gz
 $TOILETLINE_SHA512  toiletline-$TOILETLINE_COMMIT.tar.gz
 \""
 
-printf 'Recipes now build %s (%s, toiletline %s).\n' \
-    "$VERSION" "$RELEASE_COMMIT" "$TOILETLINE_COMMIT"
+printf 'Recipes now build %s as %s (%s, toiletline %s).\n' \
+    "$TAG" "$VERSION" "$RELEASE_COMMIT" "$TOILETLINE_COMMIT"

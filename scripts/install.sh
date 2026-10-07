@@ -157,6 +157,23 @@
     fi
   }
 
+  is_free_for_koshkit_link ()
+  {
+    if [ ! -e "$1" ] && [ ! -L "$1" ]
+    then
+      return 0
+    fi
+
+    [ -L "$1" ] || return 1
+    case $(readlink "$1" || :) in
+      kosh | "$BIN_DIR/kosh")
+        return 0
+      ;;
+    esac
+
+    return 1
+  }
+
   installed_version ()
   {
     "$1" --version 2>/dev/null | sed -n '1s/^Koshka Shell //p'
@@ -377,7 +394,15 @@
     done
 
     line "Would install $BIN_DIR/kosh$EXT"
-    [ -n "$EXT" ] || line "Would link $BIN_DIR/koshkit to kosh"
+    if [ -z "$EXT" ]
+    then
+      if is_free_for_koshkit_link "$BIN_DIR/koshkit"
+      then
+        line "Would link $BIN_DIR/koshkit to kosh"
+      else
+        line "Would keep $BIN_DIR/koshkit, which is not a link to kosh"
+      fi
+    fi
     line "Would install completions and manpages to $SHARE_DIR"
     line "Dry run: nothing was installed."
     exit 0
@@ -427,7 +452,12 @@
   install -m 755 "$BINARY" "$BIN_DIR/kosh$EXT"
   if [ -z "$EXT" ]
   then
-    ln -sf kosh "$BIN_DIR/koshkit" || fail "cannot link $BIN_DIR/koshkit"
+    if is_free_for_koshkit_link "$BIN_DIR/koshkit"
+    then
+      ln -sf kosh "$BIN_DIR/koshkit" || fail "cannot link $BIN_DIR/koshkit"
+    else
+      line "Kept $BIN_DIR/koshkit, which is not a link to kosh"
+    fi
   fi
   if [ "$FILES" != "$BINARY" ]
   then
