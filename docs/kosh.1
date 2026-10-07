@@ -1134,6 +1134,12 @@ forms ${v@U}, ${v@L}, and ${v@u} apply the corresponding case conversion.
 .PP
 The form ${!ref} reads the variable named by ref. The forms ${!pre*} and
 ${!pre@} list names beginning with pre.
+.PP
+The shell removes single quotes and backslashes in the word of
+${v:\-word}, ${v:+word}, ${v:=word}, and ${v:?word} even when the expansion
+sits in double quotes or a here-document. Bash and dash keep them there, so
+"${v:\-'a'}" expands to 'a' with its quotes and "${v:\-\e'a\e'}" keeps both
+backslashes.
 .SS Arithmetic expansion
 Arithmetic accepts the C operators, ++, \-\-, **, the conditional operator, the
 comma operator, and assignment operators. Literals may use 0x hexadecimal, 0
@@ -1186,6 +1192,15 @@ word. A pattern or replacement word keeps the form as text.
 The path stays open until the command that expanded it finishes, and a path in
 the word list of a for loop stays open until the loop finishes. The shell then
 closes it and waits for the process, while Bash leaves the process running.
+A process substitution does not set
+.BR $! ,
+so
+.B wait
+cannot name it. Bash sets
+.B $!
+to its process and lets
+.B wait
+collect its status.
 A later command cannot open the path. An
 .B exec
 command without a program keeps the process for as long as its redirections
