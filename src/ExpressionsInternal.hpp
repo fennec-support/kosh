@@ -487,9 +487,7 @@ private:
                                                    SMALL_MAP_FIRST_CAPACITY};
   variable_occurrence_pair m_occurrences;
   analysis_function_mark m_function_mark;
-  HashSet m_inherited_assigned_names;
-  HashSet m_inherited_global_assigned_names;
-  HashSet m_array_valued_names;
+  usize m_scoped_name_mark;
   followed_source_effects *m_source_effects;
   analysis_effects m_effects;
   bool m_was_inside_subshell_analysis;

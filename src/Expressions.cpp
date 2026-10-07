@@ -229,45 +229,84 @@ fn AssignmentIndexSet::release() wontthrow -> void
 
 struct variable_occurrence_map_storage
 {
-  explicit variable_occurrence_map_storage(
-      StringMap<variable_occurrence_state> states)
-      : states(steal(states))
-  {}
-
   usize reference_count{1};
-  StringMap<variable_occurrence_state> states;
+  usize depth{0};
+  variable_occurrence_map_storage *parent{nullptr};
+  StringMap<variable_occurrence_map_entry> entries{heap_allocator(),
+                                                   SMALL_MAP_FIRST_CAPACITY};
 };
 
 static fn create_variable_occurrence_map_storage(
-    StringMap<variable_occurrence_state> states) throws
+    variable_occurrence_map_storage *parent) throws
     -> variable_occurrence_map_storage *
 {
   let *storage =
       heap_allocator().alloc_array<variable_occurrence_map_storage>(1);
-  try {
-    new (storage) variable_occurrence_map_storage{steal(states)};
-  } catch (...) {
-    heap_allocator().free_array(storage, 1);
-    throw;
-  }
+  new (storage) variable_occurrence_map_storage{};
+  storage->parent = parent;
+  storage->depth = parent != nullptr ? parent->depth + 1 : 0;
+
   return storage;
+}
+
+static fn retain_variable_occurrence_map_storage(
+    variable_occurrence_map_storage *storage) wontthrow -> void
+{
+  if (storage == nullptr) return;
+
+  ASSERT(storage->reference_count < SIZE_MAX);
+  storage->reference_count++;
+}
+
+static fn release_variable_occurrence_map_storage(
+    variable_occurrence_map_storage *storage) wontthrow -> void
+{
+  while (storage != nullptr) {
+    ASSERT(storage->reference_count > 0);
+    storage->reference_count--;
+    if (storage->reference_count != 0) return;
+
+    let *const parent = storage->parent;
+    storage->~variable_occurrence_map_storage();
+    heap_allocator().free_array(storage, 1);
+    storage = parent;
+  }
+}
+
+static fn find_common_variable_occurrence_storage(
+    const variable_occurrence_map_storage *left,
+    const variable_occurrence_map_storage *right) wontthrow
+    -> const variable_occurrence_map_storage *
+{
+  while (left != nullptr && right != nullptr && left != right) {
+    if (left->depth >= right->depth) {
+      left = left->parent;
+    } else {
+      right = right->parent;
+    }
+  }
+
+  return left == right ? left : nullptr;
 }
 
 VariableOccurrenceStateMap::VariableOccurrenceStateMap(
     const VariableOccurrenceStateMap &other)
-    : m_changes(other.m_changes), m_base(other.m_base)
+    : m_head(other.m_head)
 {
-  retain_base();
+  retain_variable_occurrence_map_storage(m_head);
 }
 
 VariableOccurrenceStateMap::VariableOccurrenceStateMap(
     VariableOccurrenceStateMap &&other) noexcept
-    : m_changes(steal(other.m_changes)), m_base(other.m_base)
+    : m_head(other.m_head)
 {
-  other.m_base = nullptr;
+  other.m_head = nullptr;
 }
 
-VariableOccurrenceStateMap::~VariableOccurrenceStateMap() { release_base(); }
+VariableOccurrenceStateMap::~VariableOccurrenceStateMap()
+{
+  release_variable_occurrence_map_storage(m_head);
+}
 
 fn VariableOccurrenceStateMap::operator=(
     const VariableOccurrenceStateMap &other) throws
@@ -285,21 +324,15 @@ fn VariableOccurrenceStateMap::operator=(
 {
   if (this == &other) return *this;
 
-  release_base();
-  m_changes = steal(other.m_changes);
-  m_base = other.m_base;
-  other.m_base = nullptr;
+  release_variable_occurrence_map_storage(m_head);
+  m_head = other.m_head;
+  other.m_head = nullptr;
   return *this;
 }
 
 fn VariableOccurrenceStateMap::snapshot() throws -> VariableOccurrenceStateMap
 {
-  let const base_count = m_base != nullptr ? m_base->states.count() : 0;
-  let const base_threshold = base_count / BASE_COMPACTION_DIVISOR;
-  let const compaction_threshold = base_threshold > CHANGE_COMPACTION_THRESHOLD
-                                       ? base_threshold
-                                       : CHANGE_COMPACTION_THRESHOLD;
-  if (m_changes.count() >= compaction_threshold) compact();
+  collapse_exclusive_layers();
 
   return VariableOccurrenceStateMap{*this};
 }
@@ -307,48 +340,78 @@ fn VariableOccurrenceStateMap::snapshot() throws -> VariableOccurrenceStateMap
 pure fn VariableOccurrenceStateMap::find(StringView name) const wontthrow
     -> const variable_occurrence_state *
 {
-  let const change = m_changes.find(name);
-  if (change.has_value()) return change->is_present ? &change->state : nullptr;
-  return m_base != nullptr ? m_base->states.find(name).value_or(nullptr)
-                           : nullptr;
+  let const hash = hash_bytes(name);
+  for (let const *storage = m_head; storage != nullptr;
+       storage = storage->parent)
+  {
+    let const entry = storage->entries.find_hashed(name, hash);
+    if (entry.has_value()) return entry->is_present ? &entry->state : nullptr;
+  }
+
+  return nullptr;
 }
 
 fn VariableOccurrenceStateMap::set(StringView name,
                                    variable_occurrence_state state) throws
     -> void
 {
-  m_changes.set(name, variable_occurrence_map_entry{steal(state), true});
+  get_private_head()->entries.set(
+      name, variable_occurrence_map_entry{steal(state), true});
 }
 
 fn VariableOccurrenceStateMap::erase(StringView name) throws -> void
 {
   if (find(name) == nullptr) return;
-  m_changes.set(name, variable_occurrence_map_entry{});
+  get_private_head()->entries.set(name, variable_occurrence_map_entry{});
 }
 
 fn VariableOccurrenceStateMap::clear() wontthrow -> void
 {
-  m_changes.clear();
-  release_base();
+  release_variable_occurrence_map_storage(m_head);
+  m_head = nullptr;
 }
 
-fn VariableOccurrenceStateMap::compact() throws -> void
+fn VariableOccurrenceStateMap::get_private_head() throws
+    -> variable_occurrence_map_storage *
 {
-  let states = StringMap<variable_occurrence_state>{heap_allocator(),
-                                                    SMALL_MAP_FIRST_CAPACITY};
-  if (m_base != nullptr) states = m_base->states.clone();
-  m_changes.for_each(
-      [&](StringView name, const variable_occurrence_map_entry &change) {
-        if (change.is_present)
-          states.set(name, change.state);
-        else
-          states.erase(name);
-      });
+  if (m_head != nullptr && m_head->reference_count == 1) {
+    collapse_exclusive_layers();
 
-  let *fresh_base = create_variable_occurrence_map_storage(steal(states));
-  release_base();
-  m_base = fresh_base;
-  m_changes.clear();
+    return m_head;
+  }
+
+  m_head = create_variable_occurrence_map_storage(m_head);
+
+  return m_head;
+}
+
+fn VariableOccurrenceStateMap::collapse_exclusive_layers() throws -> void
+{
+  while (m_head != nullptr && m_head->reference_count == 1 &&
+         m_head->parent != nullptr && m_head->parent->reference_count == 1)
+  {
+    let *const upper = m_head;
+    let *const lower = upper->parent;
+    if (upper->entries.count() <= lower->entries.count()) {
+      upper->entries.for_each(
+          [&](StringView name, const variable_occurrence_map_entry &entry) {
+            lower->entries.set(name, entry);
+          });
+      upper->parent = nullptr;
+      release_variable_occurrence_map_storage(upper);
+      m_head = lower;
+      continue;
+    }
+
+    lower->entries.for_each(
+        [&](StringView name, const variable_occurrence_map_entry &entry) {
+          upper->entries.insert(name, entry);
+        });
+    upper->parent = lower->parent;
+    upper->depth = lower->depth;
+    lower->parent = nullptr;
+    release_variable_occurrence_map_storage(lower);
+  }
 }
 
 fn VariableOccurrenceStateMap::merge(
@@ -388,79 +451,21 @@ fn VariableOccurrenceStateMap::merge(
     result.set(name, steal(merged_state));
   };
 
-  if (m_base == other.m_base) {
-    let result = VariableOccurrenceStateMap{*this};
-    m_changes.for_each(
-        [&](StringView name, const variable_occurrence_map_entry &) {
-          do_merge_name(result, name);
-        });
-    other.m_changes.for_each(
-        [&](StringView name, const variable_occurrence_map_entry &) {
-          if (!m_changes.find(name).has_value()) do_merge_name(result, name);
-        });
-    *this = steal(result);
-    return;
-  }
-
-  let do_for_each_logical = [](const VariableOccurrenceStateMap &map,
-                               auto callback) {
-    if (map.m_base != nullptr) {
-      map.m_base->states.for_each(
-          [&](StringView name, const variable_occurrence_state &base_state) {
-            let const change = map.m_changes.find(name);
-            if (!change.has_value())
-              callback(name, base_state);
-            else if (change->is_present)
-              callback(name, change->state);
+  let const *const common_storage =
+      find_common_variable_occurrence_storage(m_head, other.m_head);
+  let result = VariableOccurrenceStateMap{*this};
+  let do_merge_layers = [&](const variable_occurrence_map_storage *storage) {
+    for (; storage != common_storage; storage = storage->parent) {
+      storage->entries.for_each(
+          [&](StringView name, const variable_occurrence_map_entry &) {
+            do_merge_name(result, name);
           });
     }
-    map.m_changes.for_each([&](StringView name,
-                               const variable_occurrence_map_entry &change) {
-      if (!change.is_present) return;
-      if (map.m_base != nullptr && map.m_base->states.find(name).has_value()) {
-        return;
-      }
-      callback(name, change.state);
-    });
   };
 
-  let result = VariableOccurrenceStateMap{};
-  do_for_each_logical(*this,
-                      [&](StringView name, const variable_occurrence_state &) {
-                        do_merge_name(result, name);
-                      });
-  do_for_each_logical(
-      other, [&](StringView name, const variable_occurrence_state &state) {
-        if (find(name) != nullptr) return;
-        let merged_state = state;
-        merged_state.is_definitely_set = false;
-        merged_state.is_definitely_unset = false;
-        merged_state.has_inherited_path = true;
-        result.set(name, steal(merged_state));
-      });
-  result.compact();
+  do_merge_layers(m_head);
+  do_merge_layers(other.m_head);
   *this = steal(result);
-}
-
-fn VariableOccurrenceStateMap::retain_base() wontthrow -> void
-{
-  if (m_base == nullptr) return;
-
-  ASSERT(m_base->reference_count < SIZE_MAX);
-  m_base->reference_count++;
-}
-
-fn VariableOccurrenceStateMap::release_base() wontthrow -> void
-{
-  if (m_base == nullptr) return;
-
-  ASSERT(m_base->reference_count > 0);
-  m_base->reference_count--;
-  if (m_base->reference_count == 0) {
-    m_base->~variable_occurrence_map_storage();
-    heap_allocator().free_array(m_base, 1);
-  }
-  m_base = nullptr;
 }
 
 fn expressions::internal::indent_for_layer(usize layer) throws -> String
@@ -1583,12 +1588,12 @@ fn expressions::internal::apply_followed_source_effects(
     followed.known_aliases.for_each(
         [&actx](StringView name) { actx.add_known_alias(name); });
     followed.assigned_names.for_each([&actx](StringView name) {
-      actx.inherited_assigned_names.add(name);
+      actx.add_scoped_name(actx.inherited_assigned_names, name);
       if (actx.current_source_effects != nullptr)
         actx.current_source_effects->assigned_names.add(name);
     });
     followed.global_assigned_names.for_each([&actx](StringView name) {
-      actx.inherited_global_assigned_names.add(name);
+      actx.add_scoped_name(actx.inherited_global_assigned_names, name);
       if (actx.current_source_effects != nullptr)
         actx.current_source_effects->global_assigned_names.add(name);
     });
@@ -2110,16 +2115,7 @@ internal::AnalysisScopeGuard::AnalysisScopeGuard(AnalysisContext &actx,
                         ? variable_occurrence_pair{}
                         : actx.occurrences.snapshot()},
       m_function_mark{actx.functions.get_mark()},
-      m_inherited_assigned_names{mode == analysis_scope_mode::Substitution
-                                     ? HashSet{heap_allocator()}
-                                     : actx.inherited_assigned_names.clone()},
-      m_inherited_global_assigned_names{
-          mode == analysis_scope_mode::Substitution
-              ? HashSet{heap_allocator()}
-              : actx.inherited_global_assigned_names.clone()},
-      m_array_valued_names{mode == analysis_scope_mode::Substitution
-                               ? HashSet{heap_allocator()}
-                               : actx.array_valued_names.clone()},
+      m_scoped_name_mark{actx.get_scoped_name_mark()},
       m_source_effects{actx.current_source_effects}, m_effects{actx.effects},
       m_was_inside_subshell_analysis{actx.walk.is_inside_subshell_analysis}
 {
@@ -2168,10 +2164,7 @@ fn internal::AnalysisScopeGuard::leave() throws -> void
   }
 
   m_actx.current_source_effects = m_source_effects;
-  m_actx.array_valued_names = steal(m_array_valued_names);
-  m_actx.inherited_global_assigned_names =
-      steal(m_inherited_global_assigned_names);
-  m_actx.inherited_assigned_names = steal(m_inherited_assigned_names);
+  m_actx.rollback_scoped_names(m_scoped_name_mark);
   m_actx.occurrences = steal(m_occurrences);
   m_actx.functions.rollback(m_function_mark);
 

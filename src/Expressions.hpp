@@ -243,16 +243,10 @@ public:
   fn merge(const VariableOccurrenceStateMap &other) throws -> void;
 
 private:
-  static constexpr usize CHANGE_COMPACTION_THRESHOLD = 16;
-  static constexpr usize BASE_COMPACTION_DIVISOR = 8;
+  fn get_private_head() throws -> variable_occurrence_map_storage *;
+  fn collapse_exclusive_layers() throws -> void;
 
-  fn compact() throws -> void;
-  fn retain_base() wontthrow -> void;
-  fn release_base() wontthrow -> void;
-
-  StringMap<variable_occurrence_map_entry> m_changes{heap_allocator(),
-                                                     SMALL_MAP_FIRST_CAPACITY};
-  variable_occurrence_map_storage *m_base{nullptr};
+  variable_occurrence_map_storage *m_head{nullptr};
 };
 
 struct variable_occurrence_pair
@@ -311,6 +305,12 @@ struct function_definition_record
   SourceLocation first_recursive_call_location{};
   bool has_been_called{false};
   bool is_analysis_complete{false};
+};
+
+struct analysis_name_insertion
+{
+  HashSet *names;
+  String name;
 };
 
 struct analysis_function_mark
@@ -674,6 +674,7 @@ public:
   /* A name proven to hold an array, so a bare expansion of it reads one element
      and a scalar assignment to it drops the rest. */
   HashSet array_valued_names{heap_allocator(), SMALL_MAP_FIRST_CAPACITY};
+  ArrayList<analysis_name_insertion> scoped_name_insertions{heap_allocator()};
 
   /* Where a name whose literal value carries quote bytes was assigned, read
      when that name is expanded as a command word. */
@@ -753,9 +754,30 @@ public:
 
   fn add_array_valued_name(StringView name) throws -> void
   {
-    array_valued_names.add(name);
+    add_scoped_name(array_valued_names, name);
     if (current_source_effects != nullptr)
       current_source_effects->array_valued_names.add(name);
+  }
+
+  fn add_scoped_name(HashSet &names, StringView name) throws -> void
+  {
+    if (!names.add(name)) return;
+
+    scoped_name_insertions.push(analysis_name_insertion{&names, String{name}});
+  }
+
+  pure fn get_scoped_name_mark() const wontthrow -> usize
+  {
+    return scoped_name_insertions.count();
+  }
+
+  fn rollback_scoped_names(usize mark) throws -> void
+  {
+    while (scoped_name_insertions.count() > mark) {
+      let const &insertion = scoped_name_insertions.back();
+      insertion.names->remove(insertion.name.view());
+      scoped_name_insertions.pop_back();
+    }
   }
 
   fn add_global_assigned_name(StringView name, SourceLocation location) throws
