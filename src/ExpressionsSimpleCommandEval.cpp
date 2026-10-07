@@ -876,7 +876,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
 
       /* The body runs in the mood and diagnostics state the function was
          defined in, so a function defined in bash mood runs bash even after a
-         later set --mood. The swap only happens when the defining state
+         later set -M. The swap only happens when the defining state
          differs from the live state. */
       let const *const definition_info =
           command_function_storage.get_definition_info();

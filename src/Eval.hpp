@@ -3664,7 +3664,7 @@ public:
      down to bash when already in BashPosix or the dash-like Posix mood. A
      non-posix mood is left alone, since the mood is not a stack and the prior
      mood is not recoverable. The explicit mark and the strictness follow the
-     switch the way set --mood does.
+     switch the way set -M does.
   */
   fn set_posix_mode_via_option(bool enable) wontthrow -> void
   {

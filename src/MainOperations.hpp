@@ -1800,7 +1800,7 @@ static fn source_file(const Path &path, EvalContext &context,
   LOG(Info, "sourcing '%s', %zu bytes", path.c_str(), contents->count());
 
   /* run_source keeps the active arena because a sourced rc may run
-     set --init-moods while its syntax tree is still in use. Resetting the arena
+     set -L while its syntax tree is still in use. Resetting the arena
      then would free the current node. */
   context.run_source(*contents, path.view(), /*call_site=*/None, path.view(),
                      nullptr, nullptr, return_handling::Consume);
@@ -1930,7 +1930,7 @@ fn source_init_moods(EvalContext &context, const ArrayList<mimic_mood> &moods,
       continue;
     }
 
-    /* A mood already on the sourcing stack is skipped, so a set --init-moods
+    /* A mood already on the sourcing stack is skipped, so a set -L
        inside the rc this is sourcing cannot recurse to overflow. */
     if (context.runtime_control_store().init_mood_sourcing(flavor)) {
       LOG(Info, "skipping the %s mood, its startup files are already sourcing",

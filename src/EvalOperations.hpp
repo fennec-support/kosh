@@ -40,7 +40,7 @@ wontreturn fn throw_script_fatal(StringView message,
                                  StringView note = {}) throws -> void;
 
 /* Source the startup files for each mood in the list, in order, the way the
-   --init-moods flag and the set --init-moods builtin both ask. A kosh flavor
+   --init-moods flag and the set -L builtin form both ask. A kosh flavor
    reads nothing, a bash flavor the bash rc and completion, and a posix flavor
    the ENV file. The bash and posix flavors add their login profiles when
    is_login is set. */

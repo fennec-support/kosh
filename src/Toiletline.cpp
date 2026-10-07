@@ -258,7 +258,7 @@ fn selector_variable_note(koshka::EvalContext &context) throws -> koshka::String
   note.append(". Set ");
   note.append(SELECTOR_COMMAND_VARIABLE);
   note.append(" to a program that filters the candidates, or choose another "
-              "presentation with `set --tab-selector`");
+              "presentation with `koshconf set editor.tab_selector`");
 
   return note;
 }

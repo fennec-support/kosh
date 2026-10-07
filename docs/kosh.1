@@ -490,7 +490,9 @@ enables strict diagnostics as warnings,
 also enables lenient diagnostics, and
 .B \-WWW
 also enables annoying diagnostics. An explicit
-.B set \-\-mood
+.B set \-M
+or
+.B koshconf set mood
 change clears the active level. A level changed with
 .B set
 is inherited by launched shells through
@@ -541,12 +543,15 @@ The behavior of each mode is described under
 .TP
 .B \-\-enable\-koshkit
 Bundled utility names resolve directly as commands. The option is equivalent to
-.BR "set \-o koshkit" .
+.BR "koshconf set koshkit.commands on" .
 .TP
 .B \-\-enable\-extended\-arithmetic
 Arbitrary-precision integers and finite decimal values are enabled. The option
 is equivalent to
-.BR "set \-o extended\-arithmetic" .
+.BR "koshconf set arithmetic.extended on" ,
+which the
+.B kosh
+mood always holds.
 .SS Debug options
 .TP
 .BR \-A ", " \-\-show\-ast
@@ -563,7 +568,7 @@ A located diagnostic is printed when a command returns a non-zero status. A
 warning is printed when execution continues. An error is printed before
 errexit exits. A pipeline reports its effective status after pipefail is
 applied. The
-.B "set \-o show\-exit\-code"
+.B "koshconf set debug.show_exit_code on"
 form turns the diagnostic on while the shell runs.
 .TP
 .BR \-N ", " \-\-show\-all\-exit\-codes
@@ -670,13 +675,42 @@ mood follows the supported dash behavior. The
 mood uses Bash syntax with the POSIX option enabled and reads the Bash startup
 files.
 .PP
+The
+.B kosh
+mood holds nounset, pipefail, and failglob on, extended arithmetic on, and
+nullglob off.
+.BR set ,
+.BR shopt ,
+and
+.B koshconf
+report an error that names the mood and suggests
+.B set \-M bash
+when asked for another value, and accept the value the mood already holds, so
+.B set \-euo pipefail
+still runs. A function defined in another mood cannot relax them for a caller
+in the
+.B kosh
+mood. Every other option that changes evaluation stays toggleable in the
+.B kosh
+mood, because it has no stricter value that ordinary scripts can live with:
+errexit aborts on failures that scripts test on purpose, noclobber and noglob
+forbid ordinary file and pattern use, and xtrace, verbose, allexport, and the
+remaining Bash options select behavior rather than strictness. In the
+.BR bash ,
+.BR bash-posix ,
+and
+.B sh
+moods every Bash option is toggleable through
+.B set
+and
+.BR shopt .
 An explicit
 .BR "set \-u" ,
 .BR "set \-o pipefail" ,
-.BR "set \-o failglob" ,
+.BR "shopt \-s failglob" ,
 or
-.B set \-o extended\-arithmetic
-survives a later mood change. The command
+.B koshconf set arithmetic.extended
+in such a mood survives a later change between those moods. The command
 .B set \-o posix
 selects
 .BR bash-posix .
@@ -697,6 +731,176 @@ The
 option enables escape decoding. The
 .B sh
 mood retains dash-style default escape handling.
+.SH OPTION REGISTRY
+.BR set ,
+.BR shopt ,
+.BR koshconf ,
+and the
+.B \-o
+test read and write one registry. Each option has a numeric id that never
+changes meaning, a koshconf name, its Bash spelling when it is a Bash option,
+its letter when it has one, a type, and a class. A boolean is on or off. An
+enumeration is written by name and encoded by position. A string is written as
+it is. An interactive option changes presentation, editing, or diagnostics. A
+semantic option changes evaluation.
+.PP
+Only the mood and the interactive options are written to a configuration file
+or carried by
+.BR KOSHCONF .
+The options history.file, legacy.job_control, legacy.history,
+legacy.history_expansion, and legacy.emacs_editing depend on the session, so
+a configuration file may set them but
+.B KOSHCONF
+and
+.B koshconf create
+leave them out. legacy.login_shell and legacy.restricted_shell are fixed at
+startup. Bash options appear under
+.B legacy.
+with descriptive names, and
+.B koshconf list
+shows the current value and class of each.
+.PP
+.nf
+.ft CR
+ ID  NAME                                BASH NAME                LETTER  CLASS
+  1  mood                                                         M       semantic
+  2  editor.tab_selector                                                  interactive
+  3  editor.hints                                                         interactive
+  4  editor.diagnostics                                                   interactive
+  5  editor.auto_pair                                                     interactive
+  6  editor.transient_prompt                                              interactive
+  7  editor.extended_keys                                                 interactive
+  8  history.prefix_search                                                interactive
+  9  history.file                                                         interactive
+ 10  history.size                                                         interactive
+ 11  completion.space_after                                               interactive
+ 12  diagnostics.level                                            W       interactive
+ 13  diagnostics.annoying                                                 interactive
+ 14  diagnostics.analysis                                                 interactive
+ 15  koshkit.commands                                                     interactive
+ 16  arithmetic.extended                                                  semantic
+ 17  compat.mimicry                                               I       interactive
+ 18  debug.show_ast                                               A       interactive
+ 19  debug.show_lexed_words                                       R       interactive
+ 20  debug.show_exit_code                                                 interactive
+ 21  debug.show_all_exit_codes                                    N       interactive
+ 22  debug.show_stats                                             S       interactive
+ 23  debug.show_memory                                            G       interactive
+ 64  legacy.export_all                   allexport                a       semantic
+ 65  legacy.notify_jobs                  notify                   b       interactive
+ 66  legacy.exit_on_error                errexit                  e       semantic
+ 67  legacy.no_glob                      noglob                   f       semantic
+ 68  legacy.hash_commands                hashall                  h       semantic
+ 69  legacy.keyword_assignments          keyword                  k       semantic
+ 70  legacy.job_control                  monitor                  m       interactive
+ 71  legacy.no_exec                      noexec                   n       semantic
+ 72  legacy.one_command                  onecmd                   t       semantic
+ 73  legacy.privileged                   privileged               p       semantic
+ 74  legacy.unset_is_error               nounset                  u       semantic
+ 75  legacy.echo_input                   verbose                  v       semantic
+ 76  legacy.trace_commands               xtrace                   x       semantic
+ 77  legacy.brace_expansion              braceexpand              B       semantic
+ 78  legacy.no_clobber                   noclobber                C       semantic
+ 79  legacy.err_trap_inherit             errtrace                 E       semantic
+ 80  legacy.history_expansion            histexpand               H       interactive
+ 81  legacy.physical_paths               physical                 P       semantic
+ 82  legacy.debug_trap_inherit           functrace                T       semantic
+ 83  legacy.pipe_fail                    pipefail                         semantic
+ 84  legacy.history                      history                          interactive
+ 85  legacy.ignore_eof                   ignoreeof                        interactive
+ 86  legacy.no_log                       nolog                            interactive
+ 87  legacy.vi_editing                   vi                               interactive
+ 88  legacy.emacs_editing                emacs                            interactive
+ 89  legacy.posix                        posix                            semantic
+128  legacy.bare_dir_is_cd               autocd                           interactive
+129  legacy.assoc_expand_once            assoc_expand_once                semantic
+130  legacy.cd_to_variable               cdable_vars                      semantic
+131  legacy.cd_spelling                  cdspell                          interactive
+132  legacy.check_hash                   checkhash                        semantic
+133  legacy.check_jobs_on_exit           checkjobs                        interactive
+134  legacy.check_window_size            checkwinsize                     interactive
+135  legacy.complete_full_quote          complete_fullquote               interactive
+136  legacy.dir_expand                   direxpand                        interactive
+137  legacy.dir_spelling                 dirspell                         interactive
+138  legacy.glob_dotfiles                dotglob                          semantic
+139  legacy.exec_failure_continues       execfail                         semantic
+140  legacy.expand_aliases               expand_aliases                   semantic
+141  legacy.extended_debug               extdebug                         semantic
+142  legacy.extended_glob                extglob                          semantic
+143  legacy.extended_quote               extquote                         semantic
+144  legacy.empty_glob_is_error          failglob                         semantic
+145  legacy.force_fignore                force_fignore                    interactive
+146  legacy.glob_ascii_ranges            globasciiranges                  semantic
+147  legacy.glob_skip_dots               globskipdots                     semantic
+148  legacy.glob_star                    globstar                         semantic
+149  legacy.gnu_error_format             gnu_errfmt                       interactive
+150  legacy.history_reedit               histreedit                       interactive
+151  legacy.history_verify              histverify                       interactive
+152  legacy.host_completion              hostcomplete                     interactive
+153  legacy.hup_on_exit                  huponexit                        interactive
+154  legacy.inherit_exit_on_error        inherit_errexit                  semantic
+155  legacy.interactive_comments         interactive_comments             interactive
+156  legacy.last_pipe_in_shell           lastpipe                         semantic
+157  legacy.local_inherits_value         localvar_inherit                 semantic
+158  legacy.local_unset                  localvar_unset                   semantic
+159  legacy.login_shell                  login_shell                      interactive
+160  legacy.mail_warn                    mailwarn                         interactive
+161  legacy.no_empty_command_completion  no_empty_cmd_completion          interactive
+162  legacy.glob_ignore_case             nocaseglob                       semantic
+163  legacy.match_ignore_case            nocasematch                      semantic
+164  legacy.empty_glob_is_removed        nullglob                         semantic
+165  legacy.patsub_replacement           patsub_replacement               semantic
+166  legacy.programmable_completion      progcomp                         interactive
+167  legacy.programmable_completion_alias progcomp_alias                  interactive
+168  legacy.prompt_expansion             promptvars                       interactive
+169  legacy.restricted_shell             restricted_shell                 semantic
+170  legacy.shift_verbose                shift_verbose                    semantic
+171  legacy.source_uses_path             sourcepath                       semantic
+172  legacy.varredir_close               varredir_close                   semantic
+173  legacy.echo_escapes                 xpg_echo                         semantic
+.ft R
+.fi
+.PP
+The values are mood, one of kosh, sh, bash, and bash-posix;
+editor.tab_selector, one of interactive, external, and plain; and
+diagnostics.level, one of 0, 1, 2, and 3. history.file and history.size are
+the KOSH_HISTORY_FILE and KOSH_HISTORY_SIZE variables. interactive-comments is
+both a
+.B set \-o
+and a
+.B shopt
+name.
+.SS Migration
+.B set \-\-mood
+is
+.B set \-M
+or
+.BR "koshconf set mood" ,
+.B set \-\-init\-moods
+is
+.BR "set \-L" ,
+and
+.B set \-\-tab\-selector
+is
+.BR "koshconf set editor.tab_selector" .
+Each former Koshka
+.B set \-o
+name is a koshconf option:
+.B set \-o koshkit
+is
+.BR "koshconf set koshkit.commands on" ,
+and interactive-hints, interactive-diagnostics, auto-pair, transient-prompt,
+extended-keys, history-prefix-search, space-after-completion,
+annoying-diagnostics, no-diagnostics, extended-arithmetic, mimicry, and the
+show options are editor.hints, editor.diagnostics, editor.auto_pair,
+editor.transient_prompt, editor.extended_keys, history.prefix_search,
+completion.space_after, diagnostics.annoying, diagnostics.analysis with the
+opposite value, arithmetic.extended, compat.mimicry, and debug.show_*. failglob
+is
+.B shopt \-s failglob
+only. The hyphenated spellings such as no-unset are gone. ~/.koshrc is no longer
+read; see
+.BR kosh (5).
 .SH STARTUP FILES
 Before any shell startup file, interactive and noninteractive shells apply the
 configuration files /etc/kosh.conf and then $XDG_CONFIG_HOME/kosh/kosh.conf, or
@@ -935,9 +1139,10 @@ resolved from the inner expression outward. An empty (( )) command returns one.
 An empty $(( )) expansion produces zero.
 .PP
 The
-.B extended\-arithmetic
-option uses arbitrary-precision integers and accepts finite base-10 decimal
-literals. It is enabled by default only in the default mood. When the option is
+.B arithmetic.extended
+koshconf option uses arbitrary-precision integers and accepts finite base-10
+decimal literals. The default mood always holds it on, and the other moods start
+with it off. When the option is
 disabled, signed 64-bit arithmetic uses wrapping operations. Addition and
 subtraction use the larger operand scale. Multiplication adds the operand
 scales. Division and remainder use the larger operand scale and truncate toward
@@ -1301,13 +1506,16 @@ form keeps the selected entry's full-stack index.
 With no option and no operand, the shell variables are printed as sorted
 assignments. A minus enables an option. A plus disables it. The forms
 .BR "set \-o NAME" " and " "set +o NAME"
-select the option by long name. With no NAME,
+select the option by its Bash name, and only the Bash names are accepted; the
+OPTION REGISTRY section lists them. With no NAME,
 .B set \-o
 prints current states and
 .B set +o
-prints reusable commands. The
-.B set \-\-options
-form prints every option with its state and description. The
+prints reusable commands, both in name order. A long option such as
+.B \-\-mood
+is rejected with a pointer to
+.BR koshconf .
+The
 .BR \-E ,
 .BR \-H ,
 .BR \-P ,
@@ -1323,18 +1531,26 @@ enables at startup, and it reports a successful zero as well. The
 .B \-t
 form and the
 .B onecmd
-option stop input after one top-level command. The custom forms
-.BR "set \-\-mood" " and " "set \-\-init\-moods"
-use the same mood table as the command-line options, and
-.B \-M
+option stop input after one top-level command. The Koshka forms
+.BI "set \-M " MOOD
 and
-.B \-L
-are their short names. Without a value,
-.B set \-\-mood
-prints the active mood name. The custom form
-.B set \-\-tab\-selector
-changes the tab selector for the session, and without a value it prints the
-active name. A mood change leaves the selector alone. The
+.BI "set \-L " MOOD,...
+select the mood and source the startup files of other moods with the same mood
+table as the command-line options. Without a value,
+.B set \-M
+prints the active mood name and
+.B set \-L
+prints the initialized moods. The
+.BR \-I ,
+.BR \-A ,
+.BR \-R ,
+.BR \-S ,
+and
+.B \-G
+letters set compat.mimicry, debug.show_ast, debug.show_lexed_words,
+debug.show_stats, and debug.show_memory. Every other Koshka setting belongs to
+.BR koshconf .
+The
 .BR \-b ,
 .BR \-h ,
 and
@@ -1347,15 +1563,7 @@ removes them from the argument list. The
 .BR \-WW ,
 and
 .B \-WWW
-forms control the diagnostic level. The
-.B annoying\-diagnostics
-option reports the most pedantic diagnostics. The
-.B no\-diagnostics
-option skips analysis, and no diagnostic is reported. The
-.B extended\-arithmetic
-option enables the extended arithmetic operators. The
-.B koshkit
-option resolves a bundled utility from its bare name.
+forms control the diagnostic level, which is diagnostics.level.
 .PP
 The
 .B history
@@ -1921,7 +2129,7 @@ and
 options read expressions interactively or from a pipe.
 Arbitrary precision integers and finite decimal values are accepted in every
 mood, and the
-.B extended\-arithmetic
+.B arithmetic.extended
 option does not narrow a calc result. The abs, atan, ceil, cmp, cos, exp,
 fact, fib, floor, frac, gcd, int, iseven, isint, isodd, length, lcm, ln, max,
 min, scale, sgn, sin, and sqrt functions are available.
@@ -3106,9 +3314,9 @@ the replace key
 and the colon command line. A key typed fast enough to arrive with the prefix
 is read at once without drawing the rows. The rows are the hint rows, so
 turning off both
-.B interactive-hints
+.B editor.hints
 and
-.B interactive-diagnostics
+.B editor.diagnostics
 turns these off too.
 .PP
 Ctrl\-Z undoes while the editor reads a line, the same as Ctrl\-_. A program
@@ -3139,7 +3347,7 @@ protocol ignores the requests. Inside tmux the modifyOtherKeys request takes
 effect when the tmux
 .B extended\-keys
 option is on, and GNU screen discards both. The
-.B set +o extended\-keys
+.B koshconf set editor.extended_keys off
 command stops the requests from the next prompt on, and the option is on by
 default. Without these modes most terminals send the Ctrl\-Z byte for both
 keys, and the Windows console reports no shift state for it and receives no
@@ -3155,7 +3363,7 @@ On a non-empty line, the up arrow recalls only the history entries that begin
 with the text typed before the first up arrow. Each further up arrow moves to
 an older match and the down arrow moves back. Stepping past the newest match
 restores the typed text. An empty line steps through the whole history. The
-.B set \+o history-prefix-search
+.B koshconf set history.prefix_search off
 command turns this off, and the option is on by default.
 .PP
 Once the cursor is past the command word, the rows directly below the input
@@ -3216,7 +3424,7 @@ after 8 seconds or when the line is submitted, and a later pause tries it once
 more before it counts as missing. Every other manual page and help output is
 loaded at most once per session, and a missing page or an untrusted program
 is remembered as missing. The
-.B set +o interactive-hints
+.B koshconf set editor.hints off
 command turns these hints off and stops the loads, and the option is on by
 default.
 .PP
@@ -3232,11 +3440,11 @@ or
 in place of the synopsis until the line changes. This analysis follows no sourced
 file and resolves no command name, so it reads no file and searches no PATH.
 The finding and the syntax problem below follow
-.BR interactive-diagnostics ,
+.BR editor.diagnostics ,
 which
-.B set +o interactive-diagnostics
+.B koshconf set editor.diagnostics off
 turns off; the option is on by default and is independent of
-.BR interactive-hints .
+.BR editor.hints .
 .PP
 When the line has a syntax problem that running it would report, the same rows
 show that problem in place of the synopsis, in the same dim style, under
@@ -3285,10 +3493,10 @@ backslash, which joins the next row and shows nothing. The error shows with the
 caret anywhere, including at the end of the word it starts in. A line over 2048
 bytes shows nothing. The problem
 follows
-.BR interactive-diagnostics .
+.BR editor.diagnostics .
 .PP
 The
-.B set \-o auto-pair
+.B koshconf set editor.auto_pair on
 command makes a typed
 .BR ( ,
 .BR [ ,
@@ -3314,11 +3522,11 @@ cut to fit the row, and when its expansion holds a control character other
 than a color sequence, such as a line break, a tab, or a title sequence. Rows
 after the first input row never carry it. It is never part of the submitted
 line, and without
-.B transient\-prompt
+.B editor.transient_prompt
 it stays in the scrollback after Enter.
 .PP
 The
-.B set \-o transient\-prompt
+.B koshconf set editor.transient_prompt on
 command makes Enter redraw the submitted line after a short prompt so the
 scrollback stays compact. Everything from the first row of PS1 down is erased,
 including the right prompt, the ghost, the hint rows, and any menu rows, and the
@@ -3347,9 +3555,9 @@ An explicit Tab first replaces the token with the longest common prefix. When
 that prefix does not extend the token and more than one candidate remains, the
 candidates are presented by the selector that
 .B \-\-tab\-selector
-names. Ctrl\-Space acts as Tab on a POSIX system.
+or editor.tab_selector names. Ctrl\-Space acts as Tab on a POSIX system.
 The optional
-.B set \-o space-after-completion
+.B koshconf set completion.space_after on
 setting inserts one space after a complete non-directory candidate is accepted;
 it is disabled by default.
 .PP
@@ -3461,7 +3669,7 @@ console also reports the arrows, Ctrl\-Left, Ctrl\-Right, Home, End, Delete,
 Ctrl\-Delete, and Shift\-Tab as legacy scan codes, which act the same. A key a
 terminal reports through the kitty keyboard protocol or xterm modifyOtherKeys
 acts as the key it names, as described for the
-.B extended\-keys
+.B editor.extended_keys
 option above.
 .SS Emacs mode keys
 .TP
@@ -3829,7 +4037,7 @@ ESC ] 7 ; file://host/path, and the prompt start as ESC ] 133 ; A.
 The prompt ends with ESC ] 133 ; B. A submitted command is announced by
 ESC ] 133 ; C after PS0 is printed. The first prompt carries no D mark.
 The marks occupy no columns in the prompt width. Under
-.BR transient\-prompt ,
+.BR editor.transient_prompt ,
 the short prompt drawn over a submitted line starts on the row the A mark
 named and ends with its own ESC ] 133 ; B, so the terminal finds the command
 after it. When TERM_PROGRAM is vscode,
@@ -3997,12 +4205,9 @@ for
 for the level of
 .BR \-W ,
 .B no\-annoying
-for
-.BR "+o annoying\-diagnostics" ,
-and
+for diagnostics.annoying off, and
 .B no\-diagnostics
-for
-.BR "\-o no\-diagnostics" .
+for diagnostics.analysis off.
 The variable is removed when no word remains. A shell reads it at startup, and
 an explicit
 .B \-W
@@ -4101,7 +4306,7 @@ RPROMPT is read when RPS1 is unset or empty. The value expands like PS1. See
 .TP
 .B PS1_TRANSIENT
 The value is the prompt a submitted line is redrawn after when the
-.B transient\-prompt
+.B editor.transient_prompt
 option is on. It expands like PS1. When it is unset or empty, the prompt is
 "$ ", or "# " for root. See
 .BR "LINE EDITING" .
@@ -4320,7 +4525,7 @@ COMP_WORDS contains the words on the line. COMP_CWORD is the index of the word
 under the cursor. COMP_LINE contains the complete line. COMP_POINT is the
 cursor byte offset. COMP_WORDBREAKS contains the bytes that split a word.
 Trailing spaces are removed from each COMPREPLY entry, and the space after an
-accepted candidate is controlled by the space-after-completion option. The
+accepted candidate is controlled by the completion.space_after option. The
 spec's
 .B \-X
 filter and its
@@ -4371,8 +4576,11 @@ This is the default z frecency store.
 .TP
 .I ~/.kosh_calc_history
 This is the default interactive calc history file.
+.TP
+.IR /etc/kosh.conf ", " $XDG_CONFIG_HOME/kosh/kosh.conf ", " ~/.config/kosh/kosh.conf
+These are the system and user settings files.
 .PP
-Startup configuration files are listed in
+The settings files and the shell startup files are described in
 .BR kosh (5).
 .SH COMPATIBILITY
 The

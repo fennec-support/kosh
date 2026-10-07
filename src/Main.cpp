@@ -137,10 +137,10 @@ FLAG(TAB_SELECTOR, String, '\0', "tab-selector", Kosh,
      "program, and 'plain' lists the candidates. --dumb selects 'plain'.");
 FLAG(ENABLE_KOSHKIT, Bool, '\0', "enable-koshkit", Kosh,
      "Resolve the bundled koshkit utility names such as ls and mkdir directly "
-     "as commands, the same as set -o koshkit.");
+     "as commands, the same as koshconf set koshkit.commands on.");
 FLAG(EXTENDED_ARITHMETIC, Bool, '\0', "enable-extended-arithmetic", Kosh,
      "Use arbitrary-precision integers and finite decimal values, the same as "
-     "set -o extended-arithmetic.");
+     "koshconf set arithmetic.extended on.");
 
 FLAG(AST, Bool, 'A', "show-ast", Debug,
      "Print syntax trees before execution and during formatting or linting.");
@@ -1171,7 +1171,7 @@ static fn run_startup(EvalContext &context, ArrayList<mimic_mood> &init_moods,
 
 /* The mutable runtime state is rechecked here because a startup file can change
    it. The session mood takes over and seeds its strictness once the config has
-   loaded, unless the rc picked one with set --mood, which wins the way a
+   loaded, unless the rc picked one with set -M, which wins the way a
    command-line --mood would. Lint recomputes its warning level from the mood
    that won. The rc files retained a heap copy of their text and tree until the
    next top-level command clears them, dropped now rather than carried through

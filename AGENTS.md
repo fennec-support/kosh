@@ -44,9 +44,16 @@ changes update this file.
 - `src/Main.cpp` owns flags, startup, scripts, and the interactive loop.
   `src/Lexer.cpp` creates tokens. `src/Parser.cpp` creates the syntax tree.
   `src/Optimizer.cpp` folds constants and dead branches.
-- `kosh_main` builds `command_line`, `invocation_identity`, `input_plan`,
-  `inherited_shell`, and `session_config` in that order, seeds the session
-  variables, then calls `run_startup` and `finish_startup`. The chunk loop is
+- `kosh_main` builds `command_line`, `invocation_identity`,
+  `inherited_shell`, the startup configuration, `input_plan`, and
+  `session_config` in that order, seeds the session variables, applies the
+  startup configuration, then calls `run_startup` and `finish_startup`. The
+  startup configuration reads `/etc/kosh.conf`, the user `kosh.conf`, and an
+  inherited `KOSHCONF`, removes `KOSHCONF` from the environment, and settles a
+  configured mood before the input plan. An option the command line or
+  `KOSH_ANALYSIS` names keeps its value. A restricted invocation ignores
+  `KOSHCONF` and keeps only presentation and diagnostic options from the files.
+  The kosh mood sources no shell startup file. The chunk loop is
   driven by `script_cursor`, `interactive_session`, and `lint_run`.
   `run_script_contents` computes one `script_run_plan`, then runs its parse,
   analysis, and evaluation phases.
@@ -81,9 +88,19 @@ changes update this file.
   parses each exact body again in a scratch arena when it reaches the owning
   node, and walks it in a subshell scope unless it is a function substitution.
 - Runtime state owns moods, diagnostics, strictness marks, and shell options.
-  Explicit nounset, pipefail, failglob, and extended-arithmetic states survive
-  mood changes. Explicit `set --mood` clears the level from `-W`, `-WW`, or
-  `-WWW`.
+  `src/Options.cpp` owns the option registry: a stable numeric id, a koshconf
+  name, the Bash spellings, the letter, the type, the class, and the kosh mood
+  value of every option. `set`, `shopt`, `koshconf`, the `-o` test,
+  SHELLOPTS, BASHOPTS, and `$-` read and write through it. `set` and `shopt`
+  accept only Bash names; Koshka settings without a letter belong to
+  `koshconf`. The kosh mood holds nounset, pipefail, failglob, and extended
+  arithmetic on and nullglob off, and a write of another value is an error.
+  Explicit states survive changes between the other moods. An explicit mood
+  change clears the level from `-W`, `-WW`, or `-WWW`.
+- `src/Koshconf.cpp` owns the `kosh.conf` reader and writer, the presets, and
+  the base64 TLV form of `KOSHCONF`. Only the mood and the interactive options
+  reach a file or `KOSHCONF`. A restricted shell refuses every `koshconf` form
+  that changes a setting.
 - Eval snapshots keep shell and shopt state, directories, the working directory,
   and the file creation mask. Each store snapshots, restores, and writes its own
   section of the bootstrap. A fresh evaluator receives replayable shell source
@@ -386,7 +403,10 @@ changes update this file.
   `make -C test harness/kosh/name.kosh` or
   `make -C test harness/cli/name.sh`. Pass matching `MODE`, `BIN`, and `TARGET`
   values when a direct invocation needs a different root build. Native Kosh
-  fixtures run with `-WWW` and keep all diagnostics in their output.
+  fixtures run with `-WWW` and keep all diagnostics in their output. The test
+  Makefile points XDG_CONFIG_HOME at a missing directory and unexports
+  KOSHCONF, so no user `kosh.conf` reaches a fixture; a fixture that needs one
+  sets XDG_CONFIG_HOME or HOME itself. A host `/etc/kosh.conf` is still read.
 - Koshkit rm tests use `--dry-run`. Cleanup uses koshkit rm after a nonempty
   path check. Bashdiff and mimicrydiff need Bash 5.3 or newer.
   `scripts/find-modern-bash.sh` selects one from PATH, and `BASHP` overrides that
