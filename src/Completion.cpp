@@ -1363,7 +1363,16 @@ fn complete(StringView line, usize cursor, EvalContext &context,
     /* An empty command token would enumerate every PATH command on each
        keystroke for the ghost, so command completion runs only once a prefix
        is typed. An explicit tab still lists them all. */
-    if (!stage_token.is_empty() || for_listing) {
+    let from_initial_word = Maybe<ArrayList<String>>{None};
+    if (!is_posix_completion && (!stage_token.is_empty() || for_listing)) {
+      from_initial_word = complete_from_initial_word_spec(
+          line, stage_token, cursor, context, descriptions, mode);
+    }
+
+    if (from_initial_word.has_value()) {
+      candidates = steal(*from_initial_word);
+      should_rebuild_shell_syntax_candidates = true;
+    } else if (!stage_token.is_empty() || for_listing) {
       if (for_listing) {
         should_ignore_common_prefix_case =
             !stage_token.is_empty() && !token_is_glob &&

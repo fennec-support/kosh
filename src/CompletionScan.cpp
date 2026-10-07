@@ -1179,55 +1179,13 @@ static fn mark_spec_directory_candidates(ArrayList<String> &candidates,
   }
 }
 
-fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
-                                EvalContext &context,
-                                StringMap<String> &descriptions,
-                                completion_mode mode) throws
-    -> Maybe<ArrayList<String>>
+static fn
+generate_spec_candidates(const completion_spec &active_spec,
+                         Maybe<StringView> slot_command_name, StringView line,
+                         StringView token, usize cursor, EvalContext &context,
+                         StringMap<String> &descriptions, bool for_listing,
+                         i32 *out_function_status) throws -> ArrayList<String>
 {
-  if (!context.runtime_state().is_shopt_enabled(shopt_option_id::Progcomp))
-    return None;
-
-  let const for_listing = mode == completion_mode::Listing;
-  let const command = command_word_of(line.substring_of_length(0, cursor));
-  if (command.is_empty()) return None;
-
-  /* A cobra-style function truncates its description to COLUMNS, so the width
-     is set wide for the run and restored after. The ghost path keeps COLUMNS
-     untouched. */
-  Maybe<String> saved_columns;
-  if (for_listing) {
-    saved_columns = context.get_variable_value("COLUMNS");
-    context.set_shell_variable("COLUMNS", "100000");
-  }
-  defer
-  {
-    if (for_listing) {
-      if (saved_columns.has_value())
-        context.set_shell_variable("COLUMNS", saved_columns->view());
-      else
-        context.unset_shell_variable("COLUMNS");
-    }
-  };
-  /* A command's own completion spec takes precedence over specs reached through
-     aliases and symlinks. */
-  const completion_spec *spec = context.completion_store().lookup_spec(command);
-  String resolved_command{completion_allocator()};
-  if (spec == nullptr &&
-      context.runtime_state().is_shopt_enabled(shopt_option_id::ProgcompAlias))
-  {
-    resolved_command = resolve_completion_command(command, context);
-    if (resolved_command.view() != command)
-      spec = context.completion_store().lookup_spec(resolved_command.view());
-  }
-  LOG(All,
-      "spec lookup for '%.*s' %s, listing %d, function '%s', %zu word-list "
-      "bytes",
-      static_cast<int>(command.length), command.data,
-      spec != nullptr ? "hit" : "missed", for_listing ? 1 : 0,
-      spec != nullptr ? spec->function_name.c_str() : "",
-      spec != nullptr ? spec->word_list.length() : 0);
-
   Maybe<ArrayList<String>> completion_words = None;
   usize completion_cword = 0;
   let const do_completion_words = [&]() throws -> const ArrayList<String> & {
@@ -1237,41 +1195,13 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
 
     return *completion_words;
   };
+  let const do_command_name = [&]() throws -> StringView {
+    if (slot_command_name.has_value()) return *slot_command_name;
 
-  /* No command-specific spec. The default -D loader sources the per-command
-     file and returns 124 to ask for a retry, otherwise it produced the
-     candidates itself. */
-  if (spec == nullptr) {
-    if (!for_listing) return None;
-    const completion_spec *def = context.completion_store().default_spec_ptr();
-    if (def == nullptr || def->function_name.is_empty()) return None;
-    let const default_spec = def->clone(completion_allocator());
-    i32 status = 0;
-    let const reply = context.run_completion_function(
-        default_spec.function_name.view(), do_completion_words(),
-        completion_cword, line, cursor, &status,
-        default_spec.has_option(completion_option::FileNames));
-    if (status != 124) {
-      let const wants_dash_entries = !token.is_empty() && token[0] == '-';
-      let loaded = ArrayList<String>{completion_allocator()};
-      for (let const &entry : reply) {
-        if (entry_is_unrequested_dash_word(entry.view(), wants_dash_entries))
-          continue;
-        push_spec_candidate(entry.view(), loaded, descriptions);
-      }
+    let const &words = do_completion_words();
+    return words.is_empty() ? StringView{} : words[0].view();
+  };
 
-      mark_spec_directory_candidates(loaded, descriptions, context);
-
-      /* An empty reply never claims the completion, so the cascade falls to the
-         filesystem the way bash-completion's -o default behaves. */
-      if (loaded.is_empty()) return None;
-      return loaded;
-    }
-    spec = context.completion_store().lookup_spec(command);
-    if (spec == nullptr) return None;
-  }
-
-  let const active_spec = spec->clone(completion_allocator());
   let candidates = ArrayList<String>{completion_allocator()};
 
   let const should_offer_dash_words = !token.is_empty() && token[0] == '-';
@@ -1318,17 +1248,53 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
   /* COMPREPLY is already filtered to the current word, so its entries are taken
      as they are under the same dash gate. */
   let const should_mark_file_names =
-      active_spec.has_option(completion_option::FileNames);
+      active_spec.has_option(completion_option::FileNames) ||
+      glob_pattern.has_value() ||
+      active_spec.has_action(compgen_action::Directory) ||
+      active_spec.has_action(compgen_action::File);
   context.execution_store().should_mark_completion_directories() =
       should_mark_file_names;
   if (for_listing && !active_spec.function_name.is_empty()) {
+    /* A cobra-style function truncates its description to COLUMNS, so the
+       width is set wide for the run and restored after. */
+    let const saved_columns = context.get_variable_value("COLUMNS");
+    context.set_shell_variable("COLUMNS", "100000");
+    defer
+    {
+      if (saved_columns.has_value())
+        context.set_shell_variable("COLUMNS", saved_columns->view());
+      else
+        context.unset_shell_variable("COLUMNS");
+    };
+
+    let const &words = do_completion_words();
     let const reply = context.run_completion_function(
-        active_spec.function_name.view(), do_completion_words(),
-        completion_cword, line, cursor, nullptr, should_mark_file_names);
+        active_spec.function_name.view(), do_command_name(), words,
+        completion_cword, line, cursor, out_function_status,
+        should_mark_file_names);
     for (let const &entry : reply) {
       if (entry_is_unrequested_dash_word(entry.view(), should_offer_dash_words))
         continue;
       push_spec_candidate(entry.view(), candidates, descriptions);
+    }
+  }
+
+  if (for_listing && !active_spec.command.is_empty()) {
+    let const &words = do_completion_words();
+    let const word = completion_cword < words.count()
+                         ? words[completion_cword].view()
+                         : StringView{};
+    let const previous_index = completion_cword > 0 ? completion_cword - 1 : 0;
+    let const previous_word = previous_index < words.count()
+                                  ? words[previous_index].view()
+                                  : StringView{};
+    for (let const &entry : context.run_completion_command(
+             active_spec.command.view(), do_command_name(), word, previous_word,
+             line, cursor))
+    {
+      if (entry_is_unrequested_dash_word(entry.view(), should_offer_dash_words))
+        continue;
+      candidates.push(String{completion_allocator(), entry.view()});
     }
   }
 
@@ -1363,17 +1329,115 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
       active_spec.has_option(completion_option::PlusDirs);
   if (should_add_directories) {
     do_push_generated(compgen_action_bit(compgen_action::Directory), None);
-  }
-
-  if (should_add_directories || glob_pattern.has_value() ||
-      active_spec.has_action(compgen_action::Directory) ||
-      active_spec.has_action(compgen_action::File))
-  {
     context.execution_store().should_mark_completion_directories() = true;
   }
+
   mark_spec_directory_candidates(candidates, descriptions, context);
 
+  return candidates;
+}
+
+fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
+                                EvalContext &context,
+                                StringMap<String> &descriptions,
+                                completion_mode mode) throws
+    -> Maybe<ArrayList<String>>
+{
+  if (!context.runtime_state().is_shopt_enabled(shopt_option_id::Progcomp))
+    return None;
+
+  let const for_listing = mode == completion_mode::Listing;
+  let const command = command_word_of(line.substring_of_length(0, cursor));
+  if (command.is_empty()) return None;
+
+  /* A command's own completion spec takes precedence over specs reached through
+     aliases and symlinks. */
+  const completion_spec *spec = context.completion_store().lookup_spec(command);
+  String resolved_command{completion_allocator()};
+  if (spec == nullptr &&
+      context.runtime_state().is_shopt_enabled(shopt_option_id::ProgcompAlias))
+  {
+    resolved_command = resolve_completion_command(command, context);
+    if (resolved_command.view() != command)
+      spec = context.completion_store().lookup_spec(resolved_command.view());
+  }
+
+  let const is_default_spec = spec == nullptr;
+  if (is_default_spec) {
+    spec =
+        context.completion_store().get_slot_spec(completion_spec_slot::Default);
+  }
+
+  LOG(All,
+      "spec lookup for '%.*s' %s, listing %d, function '%s', %zu word-list "
+      "bytes",
+      static_cast<int>(command.length), command.data,
+      spec == nullptr   ? "missed"
+      : is_default_spec ? "fell to the default"
+                        : "hit",
+      for_listing ? 1 : 0, spec != nullptr ? spec->function_name.c_str() : "",
+      spec != nullptr ? spec->word_list.length() : 0);
+  if (spec == nullptr) return None;
+
+  /* The default -D loader sources the per-command file and returns 124 to ask
+     for a retry with the spec it registered. */
+  i32 function_status = 0;
+  let candidates = generate_spec_candidates(
+      spec->clone(completion_allocator()), None, line, token, cursor, context,
+      descriptions, for_listing, &function_status);
+  if (is_default_spec && function_status == 124) {
+    spec = context.completion_store().lookup_spec(command);
+    if (spec == nullptr) return None;
+
+    candidates = generate_spec_candidates(spec->clone(completion_allocator()),
+                                          None, line, token, cursor, context,
+                                          descriptions, for_listing, nullptr);
+  }
+
+  /* An empty result never claims the completion, so the cascade falls to the
+     filesystem the way bash-completion's -o default behaves. */
   if (candidates.is_empty()) return None;
+  return candidates;
+}
+
+fn internal::complete_from_initial_word_spec(StringView line, StringView token,
+                                             usize cursor, EvalContext &context,
+                                             StringMap<String> &descriptions,
+                                             completion_mode mode) throws
+    -> Maybe<ArrayList<String>>
+{
+  if (!context.runtime_state().is_shopt_enabled(shopt_option_id::Progcomp))
+    return None;
+
+  const completion_spec *spec = nullptr;
+  let command_name = StringView{};
+  if (cursor == 0) {
+    spec =
+        context.completion_store().get_slot_spec(completion_spec_slot::Empty);
+    command_name = "_EmptycmD_";
+  }
+
+  if (spec == nullptr) {
+    spec =
+        context.completion_store().get_slot_spec(completion_spec_slot::Initial);
+    command_name = "_InitialWorD_";
+  }
+
+  if (spec == nullptr) return None;
+
+  LOG(Debug, "completing the command word from the %.*s spec",
+      static_cast<int>(command_name.length), command_name.data);
+  let const active_spec = spec->clone(completion_allocator());
+  let candidates = generate_spec_candidates(
+      active_spec, command_name, line, token, cursor, context, descriptions,
+      mode == completion_mode::Listing, nullptr);
+  if (candidates.is_empty() &&
+      (active_spec.has_option(completion_option::BashDefault) ||
+       active_spec.has_option(completion_option::Default)))
+  {
+    return None;
+  }
+
   return candidates;
 }
 

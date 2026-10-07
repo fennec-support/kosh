@@ -3,8 +3,9 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements and is responsible for the complete builtin. The
- * complete builtin registers a completion spec for a command and prints the
- * registered specs back in the option order bash uses.
+ * complete builtin registers and removes the completion specs of commands and
+ * of the default, empty-line, and initial-word slots, and prints the registered
+ * specs back in the option order bash uses.
  */
 
 #include "../Builtin.hpp"
@@ -17,9 +18,10 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-abcdefgjksuv] [-o option] [-A action] [-G globpat] "
                    "[-W wordlist] [-F function] [-C command] [-X filterpat] "
-                   "[-P prefix] [-S suffix] [-pr] [name ...]");
+                   "[-P prefix] [-S suffix] [-DEIpr] [name ...]");
 HELP_DESCRIPTION_DECL(
-    "The complete builtin registers a completion spec for a command.");
+    "The complete builtin registers a completion spec for a command, or for "
+    "the default, empty-line, or initial-word slot.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(COMPLETE_WORDLIST, String, 'W', "",
@@ -35,12 +37,16 @@ FLAG(COMPLETE_PRINT, Bool, 'p', "",
      "Print the named specs, or every spec, in a replayable form.");
 FLAG(COMPLETE_DEFAULT, Bool, 'D', "",
      "Register the default spec used for a command with no spec of its own.");
-FLAG(COMPLETE_REMOVE, Bool, 'r', "", "Accepted without effect.");
+FLAG(COMPLETE_REMOVE, Bool, 'r', "",
+     "Remove the named specs or the -D, -E, or -I spec, and every spec when "
+     "given neither.");
 FLAG(COMPLETE_ACTION, ManyStrings, 'A', "",
      "Register the candidates of the named action, as compgen -A lists them.");
 FLAG(COMPLETE_GLOB, String, 'G', "",
      "Register the filenames that match the glob and start with the word.");
-FLAG(COMPLETE_COMMAND, String, 'C', "", "Accepted without effect.");
+FLAG(COMPLETE_COMMAND, String, 'C', "",
+     "Register the command to run on an explicit tab, one candidate per line "
+     "of its output.");
 FLAG(COMPLETE_FILTER, String, 'X', "",
      "Remove matching candidates, with leading ! reversing the filter and "
      "unescaped & expanding to the completion word.");
@@ -48,8 +54,10 @@ FLAG(COMPLETE_PREFIX, String, 'P', "",
      "Prepend the prefix to each candidate after the filter.");
 FLAG(COMPLETE_SUFFIX, String, 'S', "",
      "Append the suffix to each candidate after the filter.");
-FLAG(COMPLETE_EMPTY, Bool, 'E', "", "Accepted without effect.");
-FLAG(COMPLETE_INITIAL, Bool, 'I', "", "Accepted without effect.");
+FLAG(COMPLETE_EMPTY, Bool, 'E', "",
+     "Register the spec used on an empty command line.");
+FLAG(COMPLETE_INITIAL, Bool, 'I', "",
+     "Register the spec used for the command word in place of command names.");
 FLAG(COMPLETE_ALIAS, Bool, 'a', "", "Register alias names.");
 FLAG(COMPLETE_BUILTIN, Bool, 'b', "", "Register builtin names.");
 FLAG(COMPLETE_COMMANDS, Bool, 'c', "", "Register command names.");
@@ -90,10 +98,13 @@ static pure fn action_short_flag(compgen_action action) wontthrow -> char
   }
 }
 
-static fn append_quoted_spec_argument(String &output, StringView flag,
-                                      StringView value) throws -> void
+static fn append_quoted_spec_argument(String &output,
+                                      const completion_spec &spec,
+                                      completion_argument argument,
+                                      StringView flag, StringView value) throws
+    -> void
 {
-  if (value.is_empty()) return;
+  if (!spec.has_argument(argument)) return;
 
   output += flag;
   output += ' ';
@@ -134,12 +145,19 @@ append_completion_specification_line(String &output, StringView command,
     output += ' ';
   }
 
-  append_quoted_spec_argument(output, "-G", spec.glob_pattern.view());
-  append_quoted_spec_argument(output, "-W", spec.word_list.view());
-  append_quoted_spec_argument(output, "-P", spec.prefix.view());
-  append_quoted_spec_argument(output, "-S", spec.suffix.view());
-  append_quoted_spec_argument(output, "-X", spec.filter_pattern.view());
-  if (!spec.function_name.is_empty()) {
+  append_quoted_spec_argument(output, spec, completion_argument::Glob, "-G",
+                              spec.glob_pattern.view());
+  append_quoted_spec_argument(output, spec, completion_argument::WordList, "-W",
+                              spec.word_list.view());
+  append_quoted_spec_argument(output, spec, completion_argument::Prefix, "-P",
+                              spec.prefix.view());
+  append_quoted_spec_argument(output, spec, completion_argument::Suffix, "-S",
+                              spec.suffix.view());
+  append_quoted_spec_argument(output, spec, completion_argument::Filter, "-X",
+                              spec.filter_pattern.view());
+  append_quoted_spec_argument(output, spec, completion_argument::Command, "-C",
+                              spec.command.view());
+  if (spec.has_argument(completion_argument::Function)) {
     output += "-F ";
     output += spec.function_name.view();
     output += ' ';
@@ -147,6 +165,19 @@ append_completion_specification_line(String &output, StringView command,
   append_shell_quoted_arg(output, command);
   output += '\n';
 }
+
+struct completion_slot_name
+{
+  completion_spec_slot slot;
+  StringView flag;
+  StringView description;
+};
+
+static constexpr completion_slot_name COMPLETION_SLOT_NAMES[] = {
+    {completion_spec_slot::Initial, "-I", "initial word"},
+    {completion_spec_slot::Default, "-D", "default"     },
+    {completion_spec_slot::Empty,   "-E", "empty line"  },
+};
 
 static fn completion_specification_reusable_lines(const EvalContext &cxt) throws
     -> String
@@ -165,11 +196,34 @@ static fn completion_specification_reusable_lines(const EvalContext &cxt) throws
     append_completion_specification_line(lines, name.view(), *spec);
   }
 
-  if (let const *spec = cxt.completion_store().default_spec_ptr();
-      spec != nullptr)
-    append_completion_specification_line(lines, "-D", *spec);
+  for (let const &slot_name : COMPLETION_SLOT_NAMES) {
+    if (let const *spec = cxt.completion_store().get_slot_spec(slot_name.slot);
+        spec != nullptr)
+    {
+      append_completion_specification_line(lines, slot_name.flag, *spec);
+    }
+  }
 
   return lines;
+}
+
+static pure fn find_completion_slot_name(completion_spec_slot slot) wontthrow
+    -> const completion_slot_name &
+{
+  for (let const &slot_name : COMPLETION_SLOT_NAMES) {
+    if (slot_name.slot == slot) return slot_name;
+  }
+
+  unreachable();
+}
+
+static fn report_missing_slot_spec(const ExecContext &ec, EvalContext &cxt,
+                                   completion_spec_slot slot) throws -> void
+{
+  report_soft_builtin_error(ec, cxt,
+                            StringView{"The "} +
+                                find_completion_slot_name(slot).description +
+                                " completion specification was not found");
 }
 
 pure fn Complete::kind() const wontthrow -> Builtin::Kind
@@ -242,22 +296,30 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const filter_pattern = do_flag_text(FLAG_COMPLETE_FILTER);
   let const prefix = do_flag_text(FLAG_COMPLETE_PREFIX);
   let const suffix = do_flag_text(FLAG_COMPLETE_SUFFIX);
-  let const is_default_completion = FLAG_COMPLETE_DEFAULT.is_enabled();
+  let slot = Maybe<completion_spec_slot>{None};
+  if (FLAG_COMPLETE_DEFAULT.is_enabled()) {
+    slot = completion_spec_slot::Default;
+  } else if (FLAG_COMPLETE_EMPTY.is_enabled()) {
+    slot = completion_spec_slot::Empty;
+  } else if (FLAG_COMPLETE_INITIAL.is_enabled()) {
+    slot = completion_spec_slot::Initial;
+  }
+
   let const should_print_specs = FLAG_COMPLETE_PRINT.is_enabled();
   let commands = ArrayList<String>{cxt.scratch_allocator()};
   for (usize i = 1; i < args.count(); i++)
     commands.push_managed(args[i].view());
 
   if (should_print_specs) {
-    if (is_default_completion) {
+    if (slot.has_value()) {
       let output = String{cxt.scratch_allocator()};
-      let const *spec = cxt.completion_store().default_spec_ptr();
+      let const *spec = cxt.completion_store().get_slot_spec(*slot);
       if (spec == nullptr) {
-        report_soft_builtin_error(
-            ec, cxt, "The default completion specification was not found");
+        report_missing_slot_spec(ec, cxt, *slot);
         return 1;
       }
-      append_completion_specification_line(output, "-D", *spec);
+      append_completion_specification_line(
+          output, find_completion_slot_name(*slot).flag, *spec);
       ec.print_to_stdout(output.view());
       return 0;
     }
@@ -284,6 +346,45 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return print_status;
   }
 
+  if (FLAG_COMPLETE_REMOVE.is_enabled()) {
+    if (slot.has_value()) {
+      if (cxt.completion_store().remove_slot_spec(*slot)) return 0;
+
+      report_missing_slot_spec(ec, cxt, *slot);
+      return 1;
+    }
+
+    if (commands.is_empty()) {
+      LOG(Debug, "complete removing every spec");
+      cxt.completion_store().remove_all_specs();
+      return 0;
+    }
+
+    i32 remove_status = 0;
+    for (let const &command : commands) {
+      if (cxt.completion_store().remove_spec(command.view())) continue;
+
+      report_soft_builtin_error(ec, cxt,
+                                "The command '" + command +
+                                    "' has no completion specification");
+      remove_status = 1;
+    }
+    return remove_status;
+  }
+
+  u32 argument_mask = 0;
+  let const do_add_argument_if =
+      [&](const auto &flag, completion_argument argument) wontthrow -> void {
+    if (flag.is_set()) argument_mask |= completion_argument_bit(argument);
+  };
+  do_add_argument_if(FLAG_COMPLETE_GLOB, completion_argument::Glob);
+  do_add_argument_if(FLAG_COMPLETE_WORDLIST, completion_argument::WordList);
+  do_add_argument_if(FLAG_COMPLETE_PREFIX, completion_argument::Prefix);
+  do_add_argument_if(FLAG_COMPLETE_SUFFIX, completion_argument::Suffix);
+  do_add_argument_if(FLAG_COMPLETE_FILTER, completion_argument::Filter);
+  do_add_argument_if(FLAG_COMPLETE_COMMAND, completion_argument::Command);
+  do_add_argument_if(FLAG_COMPLETE_FUNCTION, completion_argument::Function);
+
   let const do_make_spec = [&]() throws -> completion_spec {
     let spec = completion_spec{};
     spec.function_name = String{heap_allocator(), function_name};
@@ -292,16 +393,21 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     spec.filter_pattern = String{heap_allocator(), filter_pattern};
     spec.prefix = String{heap_allocator(), prefix};
     spec.suffix = String{heap_allocator(), suffix};
+    spec.command =
+        String{heap_allocator(), do_flag_text(FLAG_COMPLETE_COMMAND)};
     spec.action_mask = action_mask;
     spec.option_mask = option_mask;
+    spec.argument_mask = argument_mask;
     spec.defining_state = definition_state::from(cxt.runtime_state());
     return spec;
   };
 
-  if (is_default_completion) {
-    LOG(Debug, "complete registering the default spec with function '%s'",
+  if (slot.has_value()) {
+    LOG(Debug, "complete registering the %.*s spec with function '%s'",
+        static_cast<int>(find_completion_slot_name(*slot).description.length),
+        find_completion_slot_name(*slot).description.data,
         function_name.c_str());
-    cxt.completion_store().register_default_spec(do_make_spec());
+    cxt.completion_store().register_slot_spec(*slot, do_make_spec());
     return 0;
   }
 

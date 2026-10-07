@@ -960,7 +960,7 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
 }
 
 static constexpr u32 SUBSHELL_BOOTSTRAP_MAGIC = 0x4b534842U;
-static constexpr u32 SUBSHELL_BOOTSTRAP_VERSION = 18U;
+static constexpr u32 SUBSHELL_BOOTSTRAP_VERSION = 19U;
 static constexpr u32 NO_BOOTSTRAP_PROCESS = UINT32_MAX;
 static constexpr u32 NO_BARE_PROGRAM_PATH = UINT32_MAX;
 
@@ -1330,8 +1330,10 @@ fn CompletionStore::append_wire(String &output) const throws -> void
       append_subshell_bootstrap_text(payload, spec.filter_pattern.view());
       append_subshell_bootstrap_text(payload, spec.prefix.view());
       append_subshell_bootstrap_text(payload, spec.suffix.view());
+      append_subshell_bootstrap_text(payload, spec.command.view());
       append_subshell_bootstrap_u32(payload, spec.action_mask);
       append_subshell_bootstrap_u32(payload, spec.option_mask);
+      append_subshell_bootstrap_u32(payload, spec.argument_mask);
       spec.defining_state.append_wire(payload);
     };
 
@@ -1342,8 +1344,12 @@ fn CompletionStore::append_wire(String &output) const throws -> void
       do_append_spec(*spec.value());
     }
 
-    payload.push(static_cast<char>(m_default_spec.has_value()));
-    if (m_default_spec.has_value()) do_append_spec(*m_default_spec);
+    for (let const *slot_spec :
+         {&m_default_spec, &m_empty_spec, &m_initial_spec})
+    {
+      payload.push(static_cast<char>(slot_spec->has_value()));
+      if (slot_spec->has_value()) do_append_spec(**slot_spec);
+    }
   });
 }
 
@@ -2024,7 +2030,7 @@ fn CompletionStore::from_wire(subshell_bootstrap_reader &reader,
   if (!reader.read_section(wire_section::Completion, payload)) return false;
 
   let const spec_count = static_cast<usize>(payload.read_u32());
-  constexpr usize MINIMUM_COMPLETION_SPEC_BYTES = 40;
+  constexpr usize MINIMUM_COMPLETION_SPEC_BYTES = 48;
   if (!payload.is_valid || spec_count > payload.get_remaining_length() /
                                             MINIMUM_COMPLETION_SPEC_BYTES)
   {
@@ -2038,10 +2044,13 @@ fn CompletionStore::from_wire(subshell_bootstrap_reader &reader,
     let const filter_pattern = payload.read_text();
     let const prefix = payload.read_text();
     let const suffix = payload.read_text();
+    let const command = payload.read_text();
     let const action_mask = payload.read_u32();
     let const option_mask = payload.read_u32();
+    let const argument_mask = payload.read_u32();
     if (!payload.is_valid || (action_mask >> COMPGEN_ACTION_COUNT) != 0 ||
         (option_mask >> COMPLETION_OPTION_COUNT) != 0 ||
+        (argument_mask >> COMPLETION_ARGUMENT_COUNT) != 0 ||
         !definition_state::from_wire(payload, spec.defining_state))
     {
       return false;
@@ -2052,8 +2061,10 @@ fn CompletionStore::from_wire(subshell_bootstrap_reader &reader,
     spec.filter_pattern = String{heap_allocator(), filter_pattern};
     spec.prefix = String{heap_allocator(), prefix};
     spec.suffix = String{heap_allocator(), suffix};
+    spec.command = String{heap_allocator(), command};
     spec.action_mask = action_mask;
     spec.option_mask = option_mask;
+    spec.argument_mask = argument_mask;
     return true;
   };
 
@@ -2068,12 +2079,16 @@ fn CompletionStore::from_wire(subshell_bootstrap_reader &reader,
     wire.specs.set(command, steal(spec));
   }
 
-  bool has_default_spec = false;
-  if (!read_subshell_bootstrap_bool(payload, has_default_spec)) return false;
-  if (has_default_spec) {
+  for (let *slot_spec :
+       {&wire.default_spec, &wire.empty_spec, &wire.initial_spec})
+  {
+    bool has_slot_spec = false;
+    if (!read_subshell_bootstrap_bool(payload, has_slot_spec)) return false;
+    if (!has_slot_spec) continue;
+
     let spec = completion_spec{};
     if (!do_read_spec(spec)) return false;
-    wire.default_spec = steal(spec);
+    *slot_spec = steal(spec);
   }
 
   return payload.is_fully_read();
@@ -2848,8 +2863,8 @@ fn EvalContext::apply_subshell_bootstrap(
   bool is_restricted_shell_identity = false;
   let functions = function_wire{};
   let local_scopes = ArrayList<ArrayList<local_binding>>{heap_allocator()};
-  let completion =
-      completion_snapshot{StringMap<completion_spec>{heap_allocator()}, None};
+  let completion = completion_snapshot{
+      StringMap<completion_spec>{heap_allocator()}, None, None, None};
   u64 startup_ignored_signals = 0;
   let control = runtime_control_wire{};
   let execution_cache =

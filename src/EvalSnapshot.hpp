@@ -129,6 +129,33 @@ inline pure fn completion_option_bit(completion_option option) wontthrow -> u32
   return 1U << static_cast<u32>(option);
 }
 
+enum class completion_argument : u8
+{
+  Glob,
+  WordList,
+  Prefix,
+  Suffix,
+  Filter,
+  Command,
+  Function,
+};
+
+inline constexpr u32 COMPLETION_ARGUMENT_COUNT =
+    static_cast<u32>(completion_argument::Function) + 1;
+
+inline pure fn completion_argument_bit(completion_argument argument) wontthrow
+    -> u32
+{
+  return 1U << static_cast<u32>(argument);
+}
+
+enum class completion_spec_slot : u8
+{
+  Default,
+  Empty,
+  Initial,
+};
+
 struct completion_spec
 {
   String function_name{heap_allocator()};
@@ -137,8 +164,10 @@ struct completion_spec
   String filter_pattern{heap_allocator()};
   String prefix{heap_allocator()};
   String suffix{heap_allocator()};
+  String command{heap_allocator()};
   u32 action_mask{0};
   u32 option_mask{0};
+  u32 argument_mask{0};
   definition_state defining_state;
 
   pure fn has_action(compgen_action action) const wontthrow -> bool
@@ -151,6 +180,11 @@ struct completion_spec
     return (option_mask & completion_option_bit(option)) != 0;
   }
 
+  pure fn has_argument(completion_argument argument) const wontthrow -> bool
+  {
+    return (argument_mask & completion_argument_bit(argument)) != 0;
+  }
+
   fn clone(Allocator allocator) const throws -> completion_spec
   {
     let copy = completion_spec{};
@@ -160,8 +194,10 @@ struct completion_spec
     copy.filter_pattern = String{allocator, filter_pattern.view()};
     copy.prefix = String{allocator, prefix.view()};
     copy.suffix = String{allocator, suffix.view()};
+    copy.command = String{allocator, command.view()};
     copy.action_mask = action_mask;
     copy.option_mask = option_mask;
+    copy.argument_mask = argument_mask;
     copy.defining_state = defining_state;
     return copy;
   }
@@ -192,6 +228,8 @@ struct completion_snapshot
 {
   StringMap<completion_spec> specs;
   Maybe<completion_spec> default_spec;
+  Maybe<completion_spec> empty_spec;
+  Maybe<completion_spec> initial_spec;
 };
 
 struct scope_snapshot

@@ -3,11 +3,13 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file connects evaluator-owned completion specifications with
- * completion functions, their Bash argument frames, and COMPREPLY execution.
- * The split exists because completion evaluation needs completion types and
- * callbacks that the evaluator core does not otherwise include.
+ * completion functions, their Bash argument frames, COMPREPLY execution, and
+ * the captured output of a -C completion command. The split exists because
+ * completion evaluation needs completion types and callbacks that the
+ * evaluator core does not otherwise include.
  */
 
+#include "CLI.hpp"
 #include "Errors.hpp"
 #include "Eval.hpp"
 #include "Expressions.hpp"
@@ -17,7 +19,93 @@
 
 namespace koshka {
 
+fn EvalContext::run_completion_command(StringView command,
+                                       StringView command_name, StringView word,
+                                       StringView previous_word,
+                                       StringView line, usize point) throws
+    -> ArrayList<String>
+{
+  LOG(Info, "running the completion command '%.*s' for the word '%.*s'",
+      static_cast<int>(command.length), command.data,
+      static_cast<int>(word.length), word.data);
+
+  let source = String{heap_allocator(), command};
+  for (let const argument : {command_name, word, previous_word}) {
+    source.push(' ');
+    append_shell_quoted_arg(source, argument, true);
+  }
+
+  let const do_export = [&](StringView name, StringView value) throws -> void {
+    force_unset_shell_variable(name);
+    record_environment_change(name);
+    os::set_environment_variable(name, value);
+    mark_exported(name);
+  };
+
+  char number_buffer[32];
+  let snapshot = snapshot_state();
+  let output = String{heap_allocator()};
+  let was_interrupted = false;
+  {
+    enter_subshell();
+    defer { leave_subshell(); };
+
+    try {
+      do_export("COMP_LINE", line);
+      do_export("COMP_POINT",
+                utils::int_to_text_into(static_cast<i64>(point), number_buffer,
+                                        sizeof(number_buffer)));
+      do_export("COMP_KEY", "9");
+      do_export("COMP_TYPE", "9");
+      output = capture_command_substitution(source);
+    } catch (const InterruptErrorWithLocation &) {
+      was_interrupted = true;
+      LOG(Debug, "completion command '%.*s' was interrupted",
+          static_cast<int>(command.length), command.data);
+    } catch (const ErrorBase &error) {
+      LOG(Debug, "completion command '%.*s' threw: %s",
+          static_cast<int>(command.length), command.data,
+          error.message().c_str());
+    }
+  }
+
+  restore_state(steal(snapshot));
+  if (was_interrupted) {
+    os::INTERRUPT_REQUESTED = 1;
+    return ArrayList<String>{heap_allocator()};
+  }
+
+  let candidates = ArrayList<String>{heap_allocator()};
+  let const text = output.view();
+  usize line_start = 0;
+  while (line_start < text.length) {
+    usize line_end = line_start;
+    while (line_end < text.length && text[line_end] != '\n') {
+      if (text[line_end] == '\\' && line_end + 1 < text.length &&
+          text[line_end + 1] == '\n')
+      {
+        line_end++;
+      }
+
+      line_end++;
+    }
+
+    if (line_end > line_start) {
+      candidates.push(
+          String{heap_allocator(),
+                 text.substring_of_length(line_start, line_end - line_start)});
+    }
+
+    line_start = line_end + 1;
+  }
+
+  LOG(Info, "completion command '%.*s' returned %zu candidates",
+      static_cast<int>(command.length), command.data, candidates.count());
+  return candidates;
+}
+
 fn EvalContext::run_completion_function(StringView function_name,
+                                        StringView command_name,
                                         const ArrayList<String> &words,
                                         usize cword, StringView line,
                                         usize point, i32 *out_exit_status,
@@ -91,14 +179,13 @@ fn EvalContext::run_completion_function(StringView function_name,
 
   let call_params = ArrayList<String>{heap_allocator()};
   call_params.reserve(3);
-  call_params.push(words.is_empty()
-                       ? String{heap_allocator()}
-                       : String{heap_allocator(), words[0].view()});
+  call_params.push(String{heap_allocator(), command_name});
   call_params.push(cword < words.count()
                        ? String{heap_allocator(), words[cword].view()}
                        : String{heap_allocator()});
-  call_params.push(cword > 0 && cword - 1 < words.count()
-                       ? String{heap_allocator(), words[cword - 1].view()}
+  let const previous_index = cword > 0 ? cword - 1 : 0;
+  call_params.push(previous_index < words.count()
+                       ? String{heap_allocator(), words[previous_index].view()}
                        : String{heap_allocator()});
 
   let bash_argument_frame_context = BashArgumentFrameContext{};

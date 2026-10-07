@@ -1809,49 +1809,90 @@ public:
   {
     m_specs.set(command, steal(spec));
   }
-  fn register_default_spec(completion_spec spec) throws -> void
+  fn register_slot_spec(completion_spec_slot slot, completion_spec spec) throws
+      -> void
   {
-    m_default_spec = steal(spec);
+    get_slot(slot) = steal(spec);
   }
   pure fn lookup_spec(StringView command) const wontthrow
       -> const completion_spec *
   {
     return m_specs.find(command).value_or(nullptr);
   }
-  pure fn default_spec_ptr() const wontthrow -> const completion_spec *
+  pure fn get_slot_spec(completion_spec_slot slot) const wontthrow
+      -> const completion_spec *
   {
-    return m_default_spec.has_value() ? &*m_default_spec : nullptr;
+    let const &spec = get_slot(slot);
+    return spec.has_value() ? &*spec : nullptr;
   }
-  fn specs() wontthrow -> StringMap<completion_spec> & { return m_specs; }
+  fn remove_spec(StringView command) throws -> bool
+  {
+    if (!m_specs.find(command).has_value()) return false;
+
+    m_specs.erase(command);
+    return true;
+  }
+  fn remove_slot_spec(completion_spec_slot slot) wontthrow -> bool
+  {
+    let &spec = get_slot(slot);
+    if (!spec.has_value()) return false;
+
+    spec.reset();
+    return true;
+  }
+  fn remove_all_specs() wontthrow -> void
+  {
+    m_specs.clear();
+    m_default_spec.reset();
+    m_empty_spec.reset();
+    m_initial_spec.reset();
+  }
   pure fn specs() const wontthrow -> const StringMap<completion_spec> &
   {
     return m_specs;
   }
-  fn default_spec() wontthrow -> Maybe<completion_spec> &
-  {
-    return m_default_spec;
-  }
-  pure fn default_spec() const wontthrow -> const Maybe<completion_spec> &
-  {
-    return m_default_spec;
-  }
 
   fn snapshot() const throws -> completion_snapshot
   {
-    return completion_snapshot{m_specs, m_default_spec};
+    return completion_snapshot{m_specs, m_default_spec, m_empty_spec,
+                               m_initial_spec};
   }
   fn restore(completion_snapshot snapshot) wontthrow -> void
   {
     m_specs = steal(snapshot.specs);
     m_default_spec = steal(snapshot.default_spec);
+    m_empty_spec = steal(snapshot.empty_spec);
+    m_initial_spec = steal(snapshot.initial_spec);
   }
   fn append_wire(String &output) const throws -> void;
   static fn from_wire(subshell_bootstrap_reader &reader,
                       completion_snapshot &wire) throws -> bool;
 
 private:
+  fn get_slot(completion_spec_slot slot) wontthrow -> Maybe<completion_spec> &
+  {
+    switch (slot) {
+    case completion_spec_slot::Default: return m_default_spec;
+    case completion_spec_slot::Empty: return m_empty_spec;
+    case completion_spec_slot::Initial: return m_initial_spec;
+    }
+    unreachable();
+  }
+  pure fn get_slot(completion_spec_slot slot) const wontthrow
+      -> const Maybe<completion_spec> &
+  {
+    switch (slot) {
+    case completion_spec_slot::Default: return m_default_spec;
+    case completion_spec_slot::Empty: return m_empty_spec;
+    case completion_spec_slot::Initial: return m_initial_spec;
+    }
+    unreachable();
+  }
+
   StringMap<completion_spec> m_specs{heap_allocator()};
   Maybe<completion_spec> m_default_spec{};
+  Maybe<completion_spec> m_empty_spec{};
+  Maybe<completion_spec> m_initial_spec{};
 };
 
 struct function_call_frame
@@ -3297,11 +3338,15 @@ public:
   fn mark_function_readonly(StringView name) throws -> void;
   /* out_exit_status receives the function's return status, so the engine sees
      the 124 a dynamic loader returns to request a retry. */
-  fn run_completion_function(StringView function_name,
+  fn run_completion_function(StringView function_name, StringView command_name,
                              const ArrayList<String> &words, usize cword,
                              StringView line, usize point,
                              i32 *out_exit_status = nullptr,
                              bool should_mark_directories = false) throws
+      -> ArrayList<String>;
+  fn run_completion_command(StringView command, StringView command_name,
+                            StringView word, StringView previous_word,
+                            StringView line, usize point) throws
       -> ArrayList<String>;
   /* allow_expansion off keeps the plain split with no shell expansion. */
   fn expand_wordlist_to_fields(StringView wordlist,

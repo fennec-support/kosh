@@ -40,3 +40,8 @@ complete -o filenames -o nospace -d -A function -G '*.c' -W 'x y' -P 'pre' -S 's
 complete -b -e -A arrayvar -A setopt bar
 complete -o dirnames -o plusdirs -a -c -d -k -v -A shopt -A signal baz
 round-trip-ok
+== complete -p prints an empty argument and round-trips:
+complete -G '' -W '' -P '' -S '' -X '' -C '' foo
+round-trip-ok
+== complete -p prints an empty function name bare:
+complete -F  foo

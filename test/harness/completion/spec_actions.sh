@@ -2,7 +2,8 @@
 # compgen lists them, then its word list, and applies -X, -P, and -S to the
 # whole set. Directory actions, the glob, dirnames, and plusdirs end each
 # directory with a slash. complete -p prints the spec back in the bash order,
-# and the printed line registers the same spec again. The probe runs in a temp
+# with an argument given as an empty string still printed, and the printed
+# line registers the same spec again. The probe runs in a temp
 # directory holding one directory with a subdirectory and two files.
 dir=$(mktemp -d)
 mkdir -p "$dir/real_dir/sub"
@@ -46,4 +47,13 @@ printed=\$(complete -p foo bar baz)
 echo \"\$printed\"
 eval \"\$printed\"
 [ \"\$(complete -p foo bar baz)\" = \"\$printed\" ] && echo round-trip-ok"
+echo "== complete -p prints an empty argument and round-trips:"
+"$BIN" -c "complete -G '' -W '' -P '' -S '' -X '' -C '' foo
+printed=\$(complete -p foo)
+echo \"\$printed\"
+complete -r foo
+eval \"\$printed\"
+[ \"\$(complete -p foo)\" = \"\$printed\" ] && echo round-trip-ok"
+echo "== complete -p prints an empty function name bare:"
+"$BIN" -c "complete -F '' foo; complete -p foo"
 rm -rf "$dir"

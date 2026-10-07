@@ -144,6 +144,11 @@ fn complete_from_spec(StringView line, StringView token, usize cursor,
                       EvalContext &context, StringMap<String> &descriptions,
                       completion::completion_mode mode) throws
     -> Maybe<ArrayList<String>>;
+fn complete_from_initial_word_spec(StringView line, StringView token,
+                                   usize cursor, EvalContext &context,
+                                   StringMap<String> &descriptions,
+                                   completion::completion_mode mode) throws
+    -> Maybe<ArrayList<String>>;
 struct completion_command_range
 {
   usize start;

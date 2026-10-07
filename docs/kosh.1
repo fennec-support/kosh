@@ -1641,7 +1641,15 @@ glob, its
 .B \-W
 word list, and, on an explicit Tab, the COMPREPLY of its
 .B \-F
-function, in that order. The actions
+function and the output lines of its
+.B \-C
+command, in that order. The
+.B \-C
+command runs as a command substitution with the command name, the word, and
+the previous word appended as quoted arguments, and with COMP_LINE,
+COMP_POINT, COMP_KEY, and COMP_TYPE exported. Each nonempty line of its output
+is one candidate, taken without word prefix matching. The ghost suggestion
+never runs a function or a command. The actions
 .BR \-a ,
 .BR \-b ,
 .BR \-c ,
@@ -1672,19 +1680,53 @@ add their text to each remaining candidate. The
 option adds the directory names that start with the word when nothing else
 matched, and
 .B \-o plusdirs
-adds them always. A spec with a directory or file action, a glob, dirnames,
-or plusdirs ends each candidate that names a directory with a slash. A dash
-candidate is offered only when the word starts with a dash. An empty result
-falls through to filename completion. The
+adds them always. A spec with a directory or file action or a glob ends each
+candidate that names a directory with a slash unless its function runs
+.BR "compopt +o filenames" ,
+and dirnames and plusdirs mark the directories they add after the function.
+A dash candidate is offered only when the word starts with a dash. An empty
+result falls through to the next completion source.
+.IP
+A command with no spec of its own uses the
+.B \-D
+default spec, which generates candidates the same way. When its function
+returns 124, completion restarts with the spec the function registered for the
+command. The
+.B \-E
+spec serves an explicit Tab on an empty line, and the
+.B \-I
+spec serves the command word in place of the command names, including an
+empty line with no
+.B \-E
+spec. When either offers nothing, the completion stays empty unless the spec
+has
+.B \-o default
+or
+.BR "\-o bashdefault" ,
+which fall back to the command names. Their functions and commands receive
+.B _EmptycmD_
+and
+.B _InitialWorD_
+as the command name. Given more than one of
+.BR \-D ,
+.BR \-E ,
+and
+.BR \-I ,
+the first in that order is used and command names are ignored.
+.IP
+The
 .B \-p
 option prints each spec with its options, actions, and arguments in the order
-Bash prints them. The
-.BR \-C ,
-.BR \-E ,
+Bash prints them, including an argument given as an empty string, followed by
+the
 .BR \-I ,
+.BR \-D ,
 and
+.B \-E
+specs. The
 .B \-r
-options are accepted without effect.
+option removes the named specs or the given slot, and every spec when given
+neither. A name or slot with no spec is an error.
 .TP
 .B type
 The
@@ -4165,8 +4207,9 @@ directory, and to each such word of a
 .B \-W
 list.
 .B compopt +o filenames
-turns the slash off for the current completion unless the spec also has a
-directory or file action, a glob, dirnames, or plusdirs.
+turns the slash off for the current completion, also for the candidates of a
+directory or file action and a glob. The directories that dirnames and
+plusdirs add after the function keep their slash.
 .SH EXIT STATUS
 The shell exits with the status of the last command it ran. A command path that
 names a directory, or has a trailing separator whose target is not a directory,

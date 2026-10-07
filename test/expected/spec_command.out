@@ -1,0 +1,20 @@
+== the output lines are the candidates:
+xa
+x'b c'
+zz
+== the command sees its arguments and environment:
+foo ab x|8|9|9|unset
+[foo]
+[x]
+[ab]
+== -X, -P, and -S apply to the output:
+'<xa>'
+'<xb c>'
+== the command text takes its own arguments first:
+a
+foo
+== the ghost leaves the command alone:
+count=0
+the ghost ran nothing
+== complete -p prints -C between -X and -F:
+complete -W 'w' -X 'x' -C 'printf %s\\n "$1"' -F fn foo

@@ -6,6 +6,18 @@ probe_dir/
 probe_file
 == compopt +o filenames turns the mark off:
 probe_dir
+== compopt +o filenames turns the -d mark off:
+probe_dir
+== compopt +o filenames turns the -f mark off:
+probe_dir
+probe_file
+== compopt +o filenames turns the -G mark off:
+probe_dir
+probe_file
+== -o dirnames marks the directories it adds after the function:
+probe_dir/
+== -o plusdirs marks the directories it adds after the function:
+probe_dir/
 == -o filenames marks a word list directory:
 probe_dir/
 probe_file

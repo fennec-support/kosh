@@ -1,0 +1,48 @@
+== -E completes an empty line:
+empty_one
+empty_two
+== -I completes the command word:
+initial_one
+initial_two
+== -I completes the command word after a separator and an assignment:
+initial_two
+== -I leaves an argument alone:
+slot_file
+== -I with no match offers nothing:
+== -I -o bashdefault with no match falls back to command names:
+compopt
+== the -E and -I functions receive the bash slot names:
+[_EmptycmD_][][]
+from_function
+[_InitialWorD_][ab][ab]
+from_function
+== -D lists its actions:
+slot_dir/
+== -D lists its word list with the prefix:
+pre_alpha
+== a -D loader returning 124 restarts with the loaded spec:
+loaded_one
+loaded_two
+== complete -r removes a named spec:
+slot_file
+== complete -r removes one slot:
+complete -W 'w' cmd
+complete -W 'i' -I
+status 1
+== complete -r with no name removes every spec:
+status 0
+== complete -r reports a missing spec and a missing slot:
+status 1
+status 1
+== -D wins over -E, and -E over -I:
+complete -W 'd' -D
+complete -W 'e' -E
+== complete -p prints the slots and round-trips:
+complete -o nospace -c -I
+complete -o default -F load -D
+complete -W 'e1 e2' -E
+complete -W 'e1 e2' -E
+complete -W 'e1 e2' -E
+round-trip-ok
+== complete -p on a missing slot fails:
+status 1
