@@ -668,8 +668,6 @@ fn make_koshconf_preset(mimic_mood preset) throws -> String
   for (let const *option : ordered) {
     let const group = preset_group_of(*option);
     if (group != previous_group) {
-      contents += "\n# ";
-      contents += group;
       contents += '\n';
       previous_group = group;
     }

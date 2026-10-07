@@ -179,9 +179,8 @@ keeps the command-line value. A later line replaces an earlier one, and the
 user file and KOSHCONF replace the system file.
 .PP
 .B koshconf create
-writes every option a file may hold, grouped by topic under a
-.RI # " group"
-header, each after a
+writes every option a file may hold, with a blank line between topics, each
+after a
 .RI # " help"
 comment that also identifies its
 .B set \-o
@@ -272,20 +271,15 @@ match dotfiles in every script:
 .PP
 .RS
 .EX
-# mood
 mood=bash
 
-# editor
 editor.auto_close_brackets_and_quotes=on
 editor.completion_menu_style=plain
 
-# history
 history.max_entries=20000
 
-# legacy.base
 legacy.base_editor_mode=vi
 
-# legacy.glob
 legacy.glob_includes_dotfiles=on
 .EE
 .RE
