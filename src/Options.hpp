@@ -79,7 +79,7 @@ struct option_text
 struct option_enum_values
 {
   const option_text *names{nullptr};
-  u8 count{0};
+  u8 name_count{0};
 };
 
 struct option_descriptor
@@ -112,11 +112,14 @@ struct option_descriptor
   {
     return StringView{koshconf_name}.starts_with(StringView{"legacy."});
   }
+  pure fn is_configurable() const wontthrow -> bool
+  {
+    return !is_read_only && (category == option_class::Interactive ||
+                             storage == option_storage::Mood);
+  }
   pure fn is_serialized() const wontthrow -> bool
   {
-    return !is_read_only && !is_session_dependent &&
-           (category == option_class::Interactive ||
-            storage == option_storage::Mood);
+    return is_configurable() && !is_session_dependent;
   }
 };
 

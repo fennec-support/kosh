@@ -701,19 +701,27 @@ consteval fn registry_is_valid() wontthrow -> bool
     for (let const name :
          {entry.koshconf_name, entry.set_name, entry.shopt_name})
       if (name.length > PackedStringKey::BYTE_CAPACITY) return false;
-    if (entry.type != option_type::String && entry.enum_values.count == 0)
+    if (entry.type != option_type::String && entry.enum_values.name_count == 0)
+    {
       return false;
+    }
     if (entry.default_value >= 0xff) return false;
     if (entry.storage == option_storage::Variable &&
         entry.variable_name.is_empty())
+    {
       return false;
+    }
     if (entry.storage == option_storage::ShellOption &&
         entry.shell_option == shell_option_id::Count)
+    {
       return false;
+    }
+    if (left > 0 && OPTION_REGISTRY[left - 1].id >= entry.id) return false;
     for (usize right = left + 1; right < countof(OPTION_REGISTRY); right++) {
-      if (entry.id == OPTION_REGISTRY[right].id) return false;
       if (entry.letter != '\0' && entry.letter == OPTION_REGISTRY[right].letter)
+      {
         return false;
+      }
     }
     if (entry.letter != '\0') {
       bool is_ordered = false;
@@ -1044,7 +1052,7 @@ fn read_option_number(const EvalContext &cxt,
 fn format_option_number(const option_descriptor &option, u32 value) throws
     -> String
 {
-  if (value < option.enum_values.count)
+  if (value < option.enum_values.name_count)
     return String{StringView{option.enum_values.names[value]}};
   return String::from(static_cast<i64>(value), heap_allocator());
 }
@@ -1076,7 +1084,7 @@ fn parse_option_number(const option_descriptor &option, StringView text) throws
     if (!parsed.has_value()) return None;
     return Maybe<u32>{*parsed};
   }
-  for (u8 value = 0; value < option.enum_values.count; value++)
+  for (u8 value = 0; value < option.enum_values.name_count; value++)
     if (text == StringView{option.enum_values.names[value]})
       return Maybe<u32>{value};
   if (option.storage == option_storage::Mood) {
@@ -1091,9 +1099,11 @@ fn describe_option_values(const option_descriptor &option) throws -> String
   if (option.type == option_type::Boolean)
     return String{"'on', 'off', 'true', 'false', '1', or '0'"};
   let description = String{heap_allocator()};
-  for (u8 value = 0; value < option.enum_values.count; value++) {
-    if (value > 0)
-      description += value + 1 == option.enum_values.count ? ", or " : ", ";
+  for (u8 value = 0; value < option.enum_values.name_count; value++) {
+    if (value > 0) {
+      description +=
+          value + 1 == option.enum_values.name_count ? ", or " : ", ";
+    }
     description += '\'';
     description += option.enum_values.names[value];
     description += '\'';

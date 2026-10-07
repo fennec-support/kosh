@@ -141,10 +141,7 @@ fn run_set(const ExecContext &ec, EvalContext &cxt,
   let const value = operands.values[3].view();
 
   let const should_persist = FLAG_PERSIST.is_enabled();
-  let const is_persistable =
-      !option->is_read_only && (option->category == option_class::Interactive ||
-                                option->storage == option_storage::Mood);
-  if (should_persist && !is_persistable) {
+  if (should_persist && !option->is_configurable()) {
     report_soft_builtin_error(
         ec, cxt, operands.locations[2],
         StringView{"The '"} + option->koshconf_name +
@@ -262,12 +259,14 @@ fn Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                         StringView{"Unknown subcommand '"} + args[1] +
                             "', expected 'create', 'set', 'get', 'list', or "
                             "'load'");
-  if (FLAG_PERSIST.is_enabled() && *command != koshconf_command::Set)
+  if (FLAG_PERSIST.is_enabled() && *command != koshconf_command::Set) {
     return report_usage(ec, cxt, ec.source_location(),
                         "Only the set form accepts --persist");
-  if (FLAG_FORCE.is_enabled() && *command != koshconf_command::Create)
+  }
+  if (FLAG_FORCE.is_enabled() && *command != koshconf_command::Create) {
     return report_usage(ec, cxt, ec.source_location(),
                         "Only the create form accepts --force");
+  }
 
   let const is_mutation = *command == koshconf_command::Create ||
                           *command == koshconf_command::Set ||

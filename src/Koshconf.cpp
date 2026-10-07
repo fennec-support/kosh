@@ -22,13 +22,6 @@ namespace {
 
 constexpr u32 KOSHCONF_DIRECTORY_MODE = 0755;
 
-fn is_configurable(const option_descriptor &option) wontthrow -> bool
-{
-  return !option.is_read_only &&
-         (option.category == option_class::Interactive ||
-          option.storage == option_storage::Mood);
-}
-
 fn quote_for_value(StringView value) wontthrow -> Maybe<char>
 {
   if (value.is_empty()) return None;
@@ -89,7 +82,7 @@ fn decode_value(const option_descriptor &option, StringView bytes) throws
     usize position = 0;
     let const number = read_varint(bytes, position);
     if (!number.has_value() || position != bytes.count() ||
-        *number >= option.enum_values.count)
+        *number >= option.enum_values.name_count)
     {
       return None;
     }
@@ -145,8 +138,9 @@ fn read_koshconf_text(StringView text, StringView origin_name,
   usize position = 0;
   while (position < text.count()) {
     let line = text.next_line(position);
-    if (!line.is_empty() && line[line.count() - 1] == '\r')
+    if (!line.is_empty() && line[line.count() - 1] == '\r') {
       line = line.substring_of_length(0, line.count() - 1);
+    }
     let const trimmed = line.trim_blanks();
     if (trimmed.is_empty() || trimmed[0] == '#') continue;
 
@@ -182,7 +176,7 @@ fn read_koshconf_text(StringView text, StringView origin_name,
       value = raw_value.substring_of_length(1, *closing);
     }
 
-    if (!is_configurable(*option)) {
+    if (!option->is_configurable()) {
       do_warn(name, StringView{"The '"} + name +
                         "' option cannot be set from a configuration file, "
                         "skipping it");
@@ -244,7 +238,9 @@ fn read_koshconf_blob(StringView encoded, koshconf_reading &reading) throws
     let const id = read_varint(bytes, position);
     if (!id.has_value()) return false;
     let const length = read_varint(bytes, position);
-    if (!length.has_value() || *length > bytes.count() - position) return false;
+    if (!length.has_value() || *length > bytes.count() - position) {
+      return false;
+    }
     let const value_bytes = bytes.substring_of_length(position, *length);
     position += *length;
 
@@ -371,7 +367,7 @@ fn persist_koshconf_setting(const Path &path, const option_descriptor &option,
                 "': " + os::last_system_error_message()};
 
   let contents = String{heap_allocator()};
-  bool did_replace = false;
+  let did_replace = false;
   let const text = existing->view();
   usize position = 0;
   while (position < text.count()) {
@@ -379,7 +375,9 @@ fn persist_koshconf_setting(const Path &path, const option_descriptor &option,
     let const name = declared_name(line.without_trailing_newline());
     let const is_setting_line =
         name.has_value() && *name == StringView{option.koshconf_name};
-    if (is_setting_line && did_replace) continue;
+    if (is_setting_line && did_replace) {
+      continue;
+    }
     if (is_setting_line) {
       contents += replacement.view();
       did_replace = true;

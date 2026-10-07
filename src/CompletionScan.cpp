@@ -937,7 +937,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     } else if (operands.count() == 2 && operands[0] == "set") {
       let const *option = find_option_by_koshconf_name(operands[1]);
       if (option != nullptr)
-        for (u8 value = 0; value < option->enum_values.count; value++)
+        for (u8 value = 0; value < option->enum_values.name_count; value++)
           do_push_matching(option->enum_values.names[value]);
     }
 

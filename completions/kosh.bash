@@ -129,6 +129,7 @@ privileged verbose vi xtrace"
 }
 
 complete -F _kosh_set_complete set
+
 _kosh_koshconf_complete ()
 {
   local current_word=${COMP_WORDS[COMP_CWORD]}
