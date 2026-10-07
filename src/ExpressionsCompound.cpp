@@ -628,22 +628,24 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
       }
 
       let const stage_location = stage->source_location();
-      let stage_span = SourceLocation{stage_location.position, 0,
-                                      stage_location.source_name_index};
-      let stage_end_position =
-          usize{stage_location.position} + usize{stage_location.length};
-      if (stage->source_end_position() > stage_end_position)
-        stage_end_position = stage->source_end_position();
+      let stage_text = StringView{};
+      if (!os::can_fork_evaluator()) {
+        let stage_span = SourceLocation{stage_location.position, 0,
+                                        stage_location.source_name_index};
+        let stage_end_position =
+            usize{stage_location.position} + usize{stage_location.length};
+        if (stage->source_end_position() > stage_end_position)
+          stage_end_position = stage->source_end_position();
 
-      if (simple != nullptr) {
-        stage_span.position =
-            static_cast<u32>(simple->full_source_start_position());
-        if (simple->full_source_end_position() > stage_end_position)
-          stage_end_position = simple->full_source_end_position();
+        if (simple != nullptr) {
+          stage_span.position =
+              static_cast<u32>(simple->full_source_start_position());
+          if (simple->full_source_end_position() > stage_end_position)
+            stage_end_position = simple->full_source_end_position();
+        }
+
+        stage_text = cxt.source_text_in_span(stage_span, stage_end_position);
       }
-
-      let const stage_text =
-          cxt.source_text_in_span(stage_span, stage_end_position);
 
       let const process_group =
           !is_async() ? os::process_group_mode::Inherit

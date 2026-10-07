@@ -1470,20 +1470,24 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
       cxt.source_text_in_span(source_location(), source_end_position());
 
   let const body_location = m_body->source_location();
-  let body_span = SourceLocation{body_location.position, 0,
-                                 body_location.source_name_index};
-  let body_end_position =
-      usize{body_location.position} + usize{body_location.length};
-  if (m_body->source_end_position() > body_end_position)
-    body_end_position = m_body->source_end_position();
+  let body_text = StringView{};
+  if (!os::can_fork_evaluator()) {
+    let body_span = SourceLocation{body_location.position, 0,
+                                   body_location.source_name_index};
+    let body_end_position =
+        usize{body_location.position} + usize{body_location.length};
+    if (m_body->source_end_position() > body_end_position)
+      body_end_position = m_body->source_end_position();
 
-  if (let const *simple = m_body->as_simple_command(); simple != nullptr) {
-    body_span.position = static_cast<u32>(simple->full_source_start_position());
-    if (simple->full_source_end_position() > body_end_position)
-      body_end_position = simple->full_source_end_position();
+    if (let const *simple = m_body->as_simple_command(); simple != nullptr) {
+      body_span.position =
+          static_cast<u32>(simple->full_source_start_position());
+      if (simple->full_source_end_position() > body_end_position)
+        body_end_position = simple->full_source_end_position();
+    }
+
+    body_text = cxt.source_text_in_span(body_span, body_end_position);
   }
-
-  let const body_text = cxt.source_text_in_span(body_span, body_end_position);
 
   /* One pipe carries what the shell writes to the coprocess, the other carries
      what the coprocess writes back. */
@@ -1512,7 +1516,7 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
       .source = body_text,
       .in_fd = toward_child->in,
       .out_fd = away_from_child->out,
-      .location = body_location,
+      .location = source_location(),
       .diagnostic_source = source_view,
       .evaluator = evaluator,
       .process_group = os::process_group_mode::NewBackground});
