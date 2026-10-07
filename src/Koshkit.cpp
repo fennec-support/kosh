@@ -218,19 +218,6 @@ wontreturn fn rethrow_with_prefix(const ErrorWithLocation &error,
   throw rewrapped;
 }
 
-fn render_with_prefix(const ErrorWithLocation &error, StringView prefix,
-                      StringView source, EvalContext &context) throws -> String
-{
-  let const message = prefix + ": " + error.message();
-  if (!error.detail_message().is_empty())
-    return ErrorWithLocationAndDetails{error.location(), message.view(),
-                                       error.detail_message()}
-        .to_string(source, &context);
-
-  return ErrorWithLocation{error.location(), message.view()}.to_string(
-      source, &context);
-}
-
 fn dispatch(const ExecContext &ec, EvalContext &cxt, usize name_index,
             Maybe<Utility::Kind> chosen) throws -> i32
 {
@@ -260,58 +247,6 @@ fn dispatch(const ExecContext &ec, EvalContext &cxt, usize name_index,
     rethrow_with_prefix(e, invocation_name);
   } catch (const Error &error) {
     relocate_error(error, ec.source_location());
-  }
-}
-
-fn run_as_multicall(StringView util_name, Utility::Kind chosen,
-                    ArrayList<String> operands, EvalContext &cxt) throws -> i32
-{
-  /* The scan stops at --, where a later --version is an operand. */
-  for (let const &operand : operands) {
-    if (operand == "--") break;
-    if (operand == "--version") {
-      show_version();
-      return 0;
-    }
-  }
-
-  ArrayList<String> args{heap_allocator()};
-  args.reserve(operands.count() + 1);
-  let arg_locations = ArrayList<SourceLocation>{heap_allocator()};
-  arg_locations.reserve(operands.count() + 1);
-  usize source_length = util_name.length;
-  args.push(String{util_name});
-  arg_locations.push(SourceLocation{0, util_name.length});
-  for (String &operand : operands) {
-    source_length++;
-    arg_locations.push(SourceLocation{source_length, operand.length()});
-    source_length += operand.length();
-    args.push(steal(operand));
-  }
-
-  let ec = ExecContext::make_from_resolved(
-      SourceLocation{0, source_length},
-      ResolvedCommand::from_builtin(Builtin::Kind::Koshkit), steal(args),
-      steal(arg_locations));
-  ec.is_multicall = true;
-
-  try {
-    return run_util(chosen, ec, cxt, ec.args(), ec.arg_locations());
-  } catch (const BrokenPipeExit &) {
-    return 141;
-  } catch (const ErrorWithLocation &e) {
-    show_message(render_with_prefix(
-        e, util_name, utils::merge_args_to_string(ec.args()), cxt));
-    return 1;
-  } catch (const Error &e) {
-    show_message(e.to_string());
-    return 1;
-  } catch (const std::exception &e) {
-    show_message(String{util_name} + ": " + e.what());
-    return 1;
-  } catch (...) {
-    show_message(String{util_name} + ": unexpected error");
-    return 1;
   }
 }
 
@@ -981,8 +916,9 @@ fn dispatch(const ExecContext &, EvalContext &, usize,
   return 127;
 }
 
-fn run_as_multicall(StringView, Utility::Kind, ArrayList<String>,
-                    EvalContext &) throws -> i32
+fn run_util(Utility::Kind, const ExecContext &, EvalContext &,
+            const ArrayList<String> &, const ArrayList<SourceLocation> &) throws
+    -> i32
 {
   return 127;
 }
@@ -994,6 +930,84 @@ fn preflight_timeout_stage(const ExecContext &, EvalContext &, usize,
 }
 
 #endif /* KOSH_NO_KOSHKIT */
+
+static fn render_multicall_error(const ErrorWithLocation &error,
+                                 StringView message, StringView source,
+                                 EvalContext &context) throws -> String
+{
+  if (!error.detail_message().is_empty()) {
+    return ErrorWithLocationAndDetails{error.location(), message,
+                                       error.detail_message()}
+        .to_string(source, &context);
+  }
+
+  return ErrorWithLocation{error.location(), message}.to_string(source,
+                                                                &context);
+}
+
+fn run_as_multicall(StringView util_name, Maybe<Utility::Kind> chosen,
+                    ArrayList<String> operands, EvalContext &cxt) throws -> i32
+{
+  /* The scan stops at --, where a later --version is an operand. */
+  for (let const &operand : operands) {
+    if (operand == "--") break;
+    if (operand == "--version") {
+      show_version();
+      return 0;
+    }
+  }
+
+  ArrayList<String> args{heap_allocator()};
+  args.reserve(operands.count() + 1);
+  let arg_locations = ArrayList<SourceLocation>{heap_allocator()};
+  arg_locations.reserve(operands.count() + 1);
+  usize source_length = util_name.length;
+  args.push(String{util_name});
+  arg_locations.push(SourceLocation{0, util_name.length});
+  for (String &operand : operands) {
+    source_length++;
+    arg_locations.push(SourceLocation{source_length, operand.length()});
+    source_length += operand.length();
+    args.push(steal(operand));
+  }
+
+  let ec = ExecContext::make_from_resolved(
+      SourceLocation{0, source_length},
+      ResolvedCommand::from_builtin(Builtin::Kind::Koshkit), steal(args),
+      steal(arg_locations));
+  ec.is_multicall = true;
+
+  try {
+    if (chosen.has_value()) {
+      return run_util(*chosen, ec, cxt, ec.args(), ec.arg_locations());
+    }
+
+    let const builtin = koshka::Koshkit{};
+    return builtin.execute(ec, cxt);
+  } catch (const BrokenPipeExit &) {
+    return 141;
+  } catch (const ErrorWithLocation &e) {
+    let const source = utils::merge_args_to_string(ec.args());
+    if (!chosen.has_value()) {
+      show_message(
+          render_multicall_error(e, e.message().view(), source.view(), cxt));
+      return static_cast<i32>(e.command_status());
+    }
+
+    let const message = util_name + ": " + e.message();
+    show_message(render_multicall_error(e, message.view(), source.view(), cxt));
+    return 1;
+  } catch (const Error &e) {
+    show_message(e.to_string());
+    return 1;
+  } catch (const std::exception &e) {
+    show_message(String{util_name} + ": " + e.what());
+    return 1;
+  } catch (...) {
+    show_message(String{util_name} + ": unexpected error");
+    return 1;
+  }
+}
 
 fn make_directories(const Path &directory, u32 mode) wontthrow -> bool
 {

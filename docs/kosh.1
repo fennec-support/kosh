@@ -2216,7 +2216,8 @@ it runs the utility its first operand names, such as
 .BR "koshkit ls \-l" ,
 and otherwise acts as the koshkit builtin, so
 .B koshkit \-\-list
-lists the utilities.
+lists the utilities. Either form skips the shell startup: it reads no settings
+or startup file and ignores KOSH_FLAGS.
 .TP
 .B basename
 The final path component is printed. An optional suffix operand is removed.

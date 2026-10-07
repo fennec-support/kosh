@@ -51,6 +51,14 @@ echo "--- a binary named koshkit without a utility acts as the builtin ---"
 ./koshkit --list | grep -c '^seq$'
 ./koshkit no-such-utility > /dev/null 2>&1
 echo "rc=$?"
+echo "--- the builtin form skips the startup and names koshkit in an error ---"
+mkdir -p conf/kosh
+printf 'bogus.option=on\n' > conf/kosh/kosh.conf
+XDG_CONFIG_HOME="$d/conf" KOSH_FLAGS=-x ./koshkit no-such-utility 2>&1
+echo "rc=$?"
+XDG_CONFIG_HOME="$d/conf" KOSH_FLAGS=-x ./koshkit --list 2>&1 | grep -c '^seq$'
+./koshkit --color bogus seq 1 2>&1
+echo "rc=$?"
 
 unset KOSH_FLAGS
 # koshkit --assimilate installs a symlink to the binary named for each utility

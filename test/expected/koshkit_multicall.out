@@ -36,6 +36,16 @@ rc=0
 --- a binary named koshkit without a utility acts as the builtin ---
 1
 rc=1
+--- the builtin form skips the startup and names koshkit in an error ---
+1:9: error: koshkit has no utility named 'no-such-utility'.
+     1 |  koshkit no-such-utility
+       |          ^~~~~~~~~~~~~~~
+rc=1
+1
+1:17: error: koshkit: invalid color mode 'bogus'.
+     1 |  koshkit --color bogus seq 1
+       |                  ^~~~~
+rc=2
 == a symlink was installed for head:
 head-linked
 == a symlinked head routes its own -c flag to the utility:

@@ -338,7 +338,7 @@ fn makefile_shell_analysis_source(StringView source,
 fn dispatch(const ExecContext &ec, EvalContext &cxt, usize name_index,
             Maybe<Utility::Kind> chosen) throws -> i32;
 
-fn run_as_multicall(StringView util_name, Utility::Kind chosen,
+fn run_as_multicall(StringView util_name, Maybe<Utility::Kind> chosen,
                     ArrayList<String> operands, EvalContext &cxt) throws -> i32;
 
 fn run_util(Utility::Kind chosen, const ExecContext &ec, EvalContext &cxt,
