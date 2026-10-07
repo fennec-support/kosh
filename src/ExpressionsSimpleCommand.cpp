@@ -285,6 +285,23 @@ hot fn AssignCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
       });
   if (!should_run_assignment) return cxt.execution_store().last_exit_status();
 
+  if (is_async() && cxt.runtime_state().get_mood() != mimic_mood::Default) {
+    let const do_assign_in_child = [](void *context, EvalContext &child_cxt)
+                                       throws -> i64 {
+      return static_cast<const AssignCommand *>(context)->evaluate_assignment(
+          child_cxt);
+    };
+
+    return evaluate_async_with(
+        cxt, do_assign_in_child,
+        const_cast<void *>(static_cast<const void *>(this)));
+  }
+
+  return evaluate_assignment(cxt);
+}
+
+fn AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
+{
   /* A command substitution in the value leaves the status of the last one, so
      the reset to 0 waits until after the expansion and a $? in the value reads
      the prior command's status. */

@@ -4453,6 +4453,13 @@ one process group. The final stage determines $!, the ordinary pipeline status,
 and the primary job identity. With pipefail, the rightmost failing stage may
 determine the status.
 .PP
+In the bash, bash-posix, and sh moods an asynchronous simple command or
+assignment forks before it expands its words, its prefix assignments, and its
+redirections, as Bash and dash do. An expansion error then fails the job, with
+status 1 in the bash moods and 2 in the sh mood, while $! still names it, and
+a side effect of the expansion, such as $((i++)) or ${v:=word}, stays in the
+job. The kosh mood expands the words in the shell before it starts the job.
+.PP
 A stopped stage is recorded even when it is not the final one. The
 .B wait
 builtin returns that stored status without waiting for the process again. The

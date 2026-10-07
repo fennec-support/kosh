@@ -240,6 +240,7 @@ enum class root_evaluation_mode : u8
 {
   Normal,
   PreparedPipelineStage,
+  PreparedAsyncCommand,
 };
 
 enum class int_base : u8

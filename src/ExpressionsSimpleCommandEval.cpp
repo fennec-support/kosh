@@ -181,6 +181,33 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   let const should_run_command = publish_simple_command(cxt, *this, mode);
   if (!should_run_command) return cxt.execution_store().last_exit_status();
 
+  /* A compatibility mood forks an asynchronous command before it expands its
+     words, as bash does, so an expansion error fails the job and an expansion
+     side effect stays in the child. */
+  let const is_async_command =
+      is_async() && mode != root_evaluation_mode::PreparedAsyncCommand;
+  if (is_async_command && cxt.runtime_state().get_mood() != mimic_mood::Default)
+  {
+    let const do_run_in_child = [](void *context, EvalContext &child_cxt)
+                                    throws -> i64 {
+      return static_cast<const SimpleCommand *>(context)->evaluate_root_impl(
+          child_cxt, root_evaluation_mode::PreparedAsyncCommand);
+    };
+
+    let full_location = source_location();
+    let const full_start_position =
+        static_cast<u32>(full_source_start_position());
+    if (full_start_position < full_location.position) {
+      full_location.length += full_location.position - full_start_position;
+      full_location.position = full_start_position;
+    }
+
+    return evaluate_async_with(
+        cxt, do_run_in_child,
+        const_cast<void *>(static_cast<const void *>(this)),
+        cxt.source_text_in_span(full_location, full_source_end_position()));
+  }
+
   /* The check reads the typed command word before its expansion, so a pattern
      that happens to match a single file is still caught. */
   if (!m_args.is_empty() && m_args[0]->kind() == Token::Kind::Word) {
@@ -242,7 +269,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   defer { cxt.cleanup_process_substitutions(substitution_mark); };
   expand_command_aliases(cxt, program_args, program_arg_locations);
 
-  if (!is_async() && !cxt.job_table_store().is_in_pipeline_stage()) {
+  if (!is_async_command && !cxt.job_table_store().is_in_pipeline_stage()) {
     utils::set_foreground_program_title(program_args, cxt);
   }
 
@@ -1008,7 +1035,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       SET_AND_RETURN_EXIT_STATUS(cxt, function_ret);
     };
 
-    if (!is_async()) return do_call_function();
+    if (!is_async_command) return do_call_function();
 
     let const do_run_in_child = [](void *context, EvalContext &) -> i64 {
       return (*static_cast<decltype(do_call_function) *>(context))();
@@ -1084,8 +1111,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   i32 ret = 0;
   try {
     ret = utils::execute_context(steal(ec), cxt,
-                                 is_async() ? execution_mode::Background
-                                            : execution_mode::Foreground);
+                                 is_async_command ? execution_mode::Background
+                                                  : execution_mode::Foreground);
   } catch (const InterruptErrorWithLocation &) {
     throw;
   } catch (ErrorWithLocation &error) {

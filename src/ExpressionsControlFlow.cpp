@@ -71,6 +71,14 @@ CompoundCommand::CompoundCommand(SourceLocation location)
     : Command(steal(location))
 {}
 
+static fn async_error_status(const EvalContext &cxt,
+                             const ErrorBase &error) wontthrow -> i32
+{
+  if (error.is_script_fatal() && cxt.runtime_state().is_posix_mode()) return 2;
+
+  return static_cast<i32>(error.command_status());
+}
+
 fn Command::evaluate_async_body(EvalContext &cxt) const throws -> i64
 {
   return evaluate_impl(cxt);
@@ -127,10 +135,10 @@ fn Command::evaluate_async_with(EvalContext &cxt, async_body body,
       if (!e.was_rendered()) {
         koshka::show_message(e.to_string(source_view, &cxt));
       }
-      status = static_cast<i32>(e.command_status());
+      status = async_error_status(cxt, e);
     } catch (const Error &e) {
-      koshka::show_message(e.to_string());
-      status = static_cast<i32>(e.command_status());
+      if (!e.was_rendered()) koshka::show_message(e.to_string());
+      status = async_error_status(cxt, e);
     } catch (...) {
       LOG(Debug, "the compound command child swallowed an unknown error");
     }

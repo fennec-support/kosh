@@ -1,0 +1,19 @@
+-c:2:6: error: Unable to expand '${x!y}' because it is a bad substitution.
+     2 |  echo "${x!y}" &
+       |       ^~~~~~~~
+bad-substitution=1 job=yes
+value=1
+i=0
+-c:11:1: error: Unable to assign 'r' because it is read only.
+    11 |  r=2 &
+       |  ^~~
+readonly=1
+plain=unset
+z=7
+n=5
+status=0
+-c:1:6: error: Unfinished expression.
+     1 |  echo $(( 1 + )) &
+       |       ^~~~~~~~~~
+note: An operand is missing.
+sh-arithmetic=2

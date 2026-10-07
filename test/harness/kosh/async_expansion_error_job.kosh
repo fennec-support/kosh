@@ -1,0 +1,27 @@
+#!/bin/env kosh
+"$BIN" --mood bash --no-annoying-diagnostics -c 'x=abc
+echo "${x!y}" &
+p=$!
+wait "$p"
+echo "bad-substitution=$? job=${p:+yes}"
+i=0
+echo "value=$((i += 1))" &
+wait
+echo "i=$i"
+readonly r=1
+r=2 &
+wait $!
+echo "readonly=$?"
+plain=1 &
+wait
+echo "plain=${plain-unset}"
+n=5
+show() { echo "z=$z"; }
+z=7 show &
+wait
+echo "n=$n" &
+wait $!
+echo "status=$?"'
+"$BIN" --mood sh --no-annoying-diagnostics -c 'echo $(( 1 + )) &
+wait $!
+echo "sh-arithmetic=$?"'

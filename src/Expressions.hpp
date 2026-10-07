@@ -1194,6 +1194,7 @@ public:
 
 protected:
   fn evaluate_impl(EvalContext &cxt) const throws -> i64 override;
+  fn evaluate_assignment(EvalContext &cxt) const throws -> i64;
 
   const Assignment *m_assignment;
 };
