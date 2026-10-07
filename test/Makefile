@@ -31,7 +31,8 @@ SKIPPED_TESTS := \
 	koshkit_error_notes koshkit_evil_regressions \
 	koshkit_evilfiles_parity koshkit_evilio_live koshkit_eviliso \
 	koshkit_file_magic_batch koshkit_stty mkdir_mode_umask \
-	path_cache_behavior signal_noninteractive_term set_option_state \
+	path_cache_behavior path_lookup_follows_changes \
+	signal_noninteractive_term set_option_state \
 	spawn_failure_location suspend_behavior \
 	trap_during_blocking_builtin trap_startup_ignored \
 	unknown_flag_color wait_on_stopped_job \

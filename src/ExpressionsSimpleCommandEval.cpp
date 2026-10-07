@@ -797,6 +797,10 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
           cxt.get_variable_value("IFS").value_or(String{" \t\n"});
     }
 
+    let const is_path_name = utils::environment_name_is_path(name);
+    if (is_path_name && !saved_program_resolver.has_value())
+      saved_program_resolver = Maybe<ProgramResolver>{cxt.program_resolver()};
+
     if (!is_read_field_separator) {
       Maybe<String> previous_shell_value;
       Maybe<SourceLocation> previous_special_definition_location;
@@ -831,11 +835,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     }
     /* The resolver reads its own MAYBE_PATH, so a prefix PATH=... must
        update it for the environment write to change the search order. */
-    if (utils::environment_name_is_path(name)) {
-      if (!saved_program_resolver.has_value())
-        saved_program_resolver = Maybe<ProgramResolver>{cxt.program_resolver()};
+    if (is_path_name)
       cxt.program_resolver().assign_path(String{expanded_value.view()});
-    }
     if (name == "IFS")
       cxt.variable_store().set_field_separators(expanded_value.view());
   };
