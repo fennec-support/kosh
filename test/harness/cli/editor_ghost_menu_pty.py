@@ -10,7 +10,9 @@
 # without Tab, its acceptance through Right, End, and Ctrl-E, menu narrowing and
 # widening on every keystroke, Ctrl-W and Alt-Backspace refreshing an open menu
 # down to an empty line, Escape and Ctrl-C afterwards, and session functions and
-# aliases in ghost and Tab completion. It also covers word-wise ghost
+# aliases in ghost and Tab completion. A complete -C command runs once while a
+# filter narrows and widens its menu, and again below the gathered token. It
+# also covers word-wise ghost
 # acceptance through Ctrl-Right and Alt-F, and prefix history search on Up and
 # Down with its option switched off, and the inline hint rows for a command and
 # a flag, their header naming the kind and the two-column indent, their absence
@@ -496,6 +498,35 @@ def run_idle_hint_checks(session, report, directory):
     clear_line(session)
 
 
+def run_cached_filter_checks(session, report, directory):
+    session.send(b"complete -C %s zzgen\r"
+                 % os.path.join(directory, "count-words").encode())
+    session.wait_until(is_line(""))
+    session.send(b"zzgen a\t")
+    words = ["apple", "apricot", "apron", "avocado"]
+    report.record("command-spec-menu-opens", session, is_menu(words))
+    for name, key, typed, expected in (
+        ("command-spec-menu-narrows-first", b"p", "zzgen ap", words[:3]),
+        ("command-spec-menu-narrows-second", b"r", "zzgen apr", words[1:3]),
+        ("command-spec-menu-narrows-third", b"o", "zzgen apro", ["apron"]),
+    ):
+        session.send(key)
+        report.record(name, session, has_typed_menu(typed, expected))
+    report.record("command-spec-filter-runs-once", session,
+                  lambda screen: count_marker_lines(directory,
+                                                    "count-runs") == 1)
+    session.send(BACKSPACE + BACKSPACE)
+    report.record("command-spec-menu-widens-without-rerun", session,
+                  lambda screen: has_typed_menu("zzgen ap", words[:3])(screen)
+                  and count_marker_lines(directory, "count-runs") == 1)
+    session.send(BACKSPACE + BACKSPACE)
+    report.record("command-spec-menu-reruns-below-gathered-token", session,
+                  lambda screen: has_typed_menu("zzgen", words + ["banana"])(
+                      screen)
+                  and count_marker_lines(directory, "count-runs") == 2)
+    clear_line(session)
+
+
 def run_checks(binary, directory, command_directory, report):
     session = Session(binary, directory, command_directory)
     try:
@@ -628,6 +659,8 @@ def run_checks(binary, directory, command_directory, report):
         report.record("function-narrowed-in-tab-menu", session,
                       is_menu(["zzfunc"]))
         clear_line(session)
+
+        run_cached_filter_checks(session, report, directory)
 
         run_command(session, report, "history-seed-alpha",
                     b"echo hist-alpha", "hist-alpha", 1)
@@ -1064,6 +1097,20 @@ def write_help_probe(path, marker):
     os.chmod(path, 0o755)
 
 
+COUNTING_WORDS = """#!/bin/sh
+echo run >> '%s'
+for word in apple apricot apron avocado banana; do
+  case $word in "$2"*) echo "$word" ;; esac
+done
+"""
+
+
+def write_counting_words(path, counter):
+    with open(path, "w") as handle:
+        handle.write(COUNTING_WORDS % counter)
+    os.chmod(path, 0o755)
+
+
 def has_raw_control_name(session, mark):
     written = bytes(session.raw[mark:])
     return b"PWN\x07" in written or b"\xc2\x9b" in written
@@ -1124,6 +1171,8 @@ def main():
         open_directory = os.path.join(directory, "open")
         os.makedirs(open_directory)
         os.chmod(open_directory, 0o777)
+        write_counting_words(os.path.join(directory, "count-words"),
+                             os.path.join(directory, "count-runs"))
         write_help_probe(os.path.join(directory, "bin", "act"),
                          os.path.join(directory, "act-marker"))
         write_help_probe(os.path.join(open_directory, "adb"),

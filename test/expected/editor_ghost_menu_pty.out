@@ -34,6 +34,13 @@ alias-in-ghost PASS
 alias-ghost-runs PASS
 function-alias-in-tab-menu PASS
 function-narrowed-in-tab-menu PASS
+command-spec-menu-opens PASS
+command-spec-menu-narrows-first PASS
+command-spec-menu-narrows-second PASS
+command-spec-menu-narrows-third PASS
+command-spec-filter-runs-once PASS
+command-spec-menu-widens-without-rerun PASS
+command-spec-menu-reruns-below-gathered-token PASS
 history-seed-alpha PASS
 history-seed-beta PASS
 history-seed-gamma PASS
