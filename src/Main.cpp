@@ -1443,8 +1443,8 @@ struct script_cursor
 static fn start_line_editor(EvalContext &context,
                             const invocation_identity &identity) throws -> void
 {
-  toiletline::set_extended_keys(context.runtime_state().option_is_enabled(
-      shell_option_id::ExtendedKeys));
+  toiletline::set_extended_keys(
+      context.runtime_state().option_is_enabled(shell_option_id::ExtendedKeys));
   if (toiletline::is_active()) {
     toiletline::enter_raw_mode();
     return;
@@ -1748,10 +1748,10 @@ static fn run_chunk(script_chunk &chunk, EvalContext &context,
   run_options.should_analyze = !chunk.is_fresh_evaluator_command;
   if (chunk.command_string_name.has_value()) {
     run_options.should_require_shebang = false;
-    return run_script_contents(chunk.contents, context, ast_arena,
-                               chunk.command_string_name, nullptr, nullptr,
-                               chunk.history_event_number, {}, run_options,
-                               evaluation_mode);
+
+    return run_script_contents(
+        chunk.contents, context, ast_arena, chunk.command_string_name, nullptr,
+        nullptr, chunk.history_event_number, {}, run_options, evaluation_mode);
   }
 
   return run_script_contents(chunk.contents, context, ast_arena, chunk.filename,
