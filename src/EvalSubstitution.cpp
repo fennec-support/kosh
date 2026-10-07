@@ -31,6 +31,18 @@ static fn mark_substitution_frames_printed(SourceStore &store) wontthrow -> void
   }
 }
 
+static fn contained_substitution_status(const std::exception_ptr &error,
+                                        bool is_posix_mode) wontthrow -> i32
+{
+  try {
+    std::rethrow_exception(error);
+  } catch (const ErrorBase &caught_error) {
+    return caught_error.is_script_fatal() && is_posix_mode ? 2 : 1;
+  } catch (...) {
+    return 1;
+  }
+}
+
 fn EvalContext::render_contained_substitution_error(
     const std::exception_ptr &error, StringView source) throws -> void
 {
@@ -536,6 +548,23 @@ fn EvalContext::wait_for_process_substitution(i64 process_id) wontthrow
   return job_table_store().find_finished_status(process_id);
 }
 
+pure fn EvalContext::is_pending_process_substitution(
+    i64 process_id) const wontthrow -> bool
+{
+  let const do_matches = [&](const process_substitution &sub)
+                             wontthrow -> bool {
+    return sub.process_id == process_id && sub.child != KOSH_INVALID_PROCESS;
+  };
+
+  for (let const &sub : expansion_store().pending_process_substitutions())
+    if (do_matches(sub)) return true;
+
+  for (let const &sub : expansion_store().held_process_substitutions())
+    if (do_matches(sub)) return true;
+
+  return false;
+}
+
 fn EvalContext::cleanup_process_substitutions(
     process_substitution_mark mark) wontthrow -> void
 {
@@ -715,6 +744,8 @@ fn EvalContext::run_captured_substitution(
   let const previous_source = source_scope.get_source();
   let const previous_location = source_scope.get_location();
 
+  job_table_store().forget_waited_jobs();
+
   Maybe<eval_state_snapshot> in_process_snapshot;
   let active_functions = HashSet{scratch_allocator()};
   bool should_evaluate_in_process =
@@ -749,6 +780,7 @@ fn EvalContext::run_captured_substitution(
       }
     };
 
+    if (!job_table_store().jobs().is_empty()) job_table_store().update_jobs();
     koshka::flush();
     let const forked_child =
         os::try_fork_compound_stage(os::fork_compound_stage_options{
@@ -771,6 +803,7 @@ fn EvalContext::run_captured_substitution(
         execution_store().set_shell_is_interactive(false);
         enter_subshell();
         hide_coprocess_descriptors();
+        job_table_store().inherit_parent_jobs(!runtime_state().is_posix_mode());
         if (runtime_state().get_mood() == mimic_mood::Bash &&
             !is_shopt_enabled("inherit_errexit"))
         {
@@ -802,7 +835,8 @@ fn EvalContext::run_captured_substitution(
         }
         if (error) {
           render_contained_substitution_error(error, source.view());
-          execution_store().set_last_exit_status(1);
+          execution_store().set_last_exit_status(contained_substitution_status(
+              error, runtime_state().is_posix_mode()));
         }
         koshka::flush();
         os::exit_process_immediately(execution_store().last_exit_status());
@@ -976,9 +1010,9 @@ fn EvalContext::run_captured_substitution(
     if (error) {
       /* A throw inside the substitution is contained to its subshell the way
          bash holds a fatal expansion error to the command substitution. */
-      LOG(Debug, "the command substitution failed, containing the error with "
-                 "status 1");
-      execution_store().set_last_exit_status(1);
+      LOG(Debug, "the command substitution failed, containing the error");
+      execution_store().set_last_exit_status(contained_substitution_status(
+          error, runtime_state().is_posix_mode()));
     }
 
     captured.strip_trailing_newlines();

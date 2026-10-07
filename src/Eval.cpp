@@ -352,8 +352,15 @@ hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
       (attribute_bits & static_cast<u8>(variable_attribute::Integer)) != 0)
     rarely
     {
-      let const result = value.length == 0 ? String{scratch_allocator(), "0"}
-                                           : evaluate_arithmetic_text(value);
+      let result = String{scratch_allocator(), "0"};
+      if (value.length != 0) {
+        try {
+          result = evaluate_arithmetic_text(value);
+        } catch (ErrorBase &error) {
+          mark_arithmetic_error(error, arithmetic_error_source::Operand);
+          throw;
+        }
+      }
       assign_variable(name, result.view());
       return;
     }

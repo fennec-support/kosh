@@ -522,6 +522,8 @@ fn EvalContext::run_source(StringView source, StringView origin,
 
   let const consume_return = handling == return_handling::Consume;
   let const reject_return = handling == return_handling::Reject;
+  let const should_propagate_script_fatal =
+      call_site.has_value() && !reject_return;
   if (arena_store().parse_arena() == nullptr)
     throw Error{"Cannot run source outside of a parse"};
 
@@ -658,6 +660,18 @@ fn EvalContext::run_source(StringView source, StringView origin,
     };
     set_fresh_source(retained_source, String{origin});
 
+    let const previous_line_discard_root =
+        execution_store().line_discard_root();
+    let const previous_line_discard_source =
+        execution_store().line_discard_source();
+    execution_store().line_discard_root() = ast;
+    execution_store().line_discard_source() = source;
+    defer
+    {
+      execution_store().line_discard_root() = previous_line_discard_root;
+      execution_store().line_discard_source() = previous_line_discard_source;
+    };
+
     ast->evaluate(*this);
     did_complete_source = true;
     /* A return at the top of a sourced file or an eval returns from that source
@@ -679,24 +693,38 @@ fn EvalContext::run_source(StringView source, StringView origin,
     /* An interrupt ends the whole shell command. It passes through the sourced
        file, the eval, and the trap action that was running. */
     throw;
-  } catch (const ErrorWithLocationAndDetails &detailed_error) {
+  } catch (ErrorWithLocationAndDetails &detailed_error) {
     if (!detailed_error.was_rendered()) {
       show_message(detailed_error.to_string(source, this));
       show_message(detailed_error.details_to_string(source, this));
       print_source_backtrace(detailed_error.location());
+      detailed_error.set_rendered();
+    }
+    if (detailed_error.is_script_fatal() && should_propagate_script_fatal) {
+      throw;
     }
     did_complete_source = true;
     return static_cast<i32>(detailed_error.command_status());
-  } catch (const ErrorWithLocation &located_error) {
+  } catch (ErrorWithLocation &located_error) {
     if (!located_error.was_rendered()) {
       show_message(located_error.to_string(source, this));
       print_source_backtrace(located_error.location());
+      located_error.set_rendered();
+    }
+    if (located_error.is_script_fatal() && should_propagate_script_fatal) {
+      throw;
     }
     did_complete_source = true;
     return static_cast<i32>(located_error.command_status());
-  } catch (const Error &caught_error) {
-    show_message(caught_error.to_string());
-    print_source_backtrace();
+  } catch (Error &caught_error) {
+    if (!caught_error.was_rendered()) {
+      show_message(caught_error.to_string());
+      print_source_backtrace();
+      caught_error.set_rendered();
+    }
+    if (caught_error.is_script_fatal() && should_propagate_script_fatal) {
+      throw;
+    }
     did_complete_source = true;
     return static_cast<i32>(caught_error.command_status());
   }
@@ -828,6 +856,15 @@ fn EvalContext::expand_heredoc_body(
     StringView body, const SourceLocation *source_location) throws -> String
 {
   LOG(Debug, "expanding a heredoc body of %zu bytes", body.length);
+  let const was_expanding_here_document =
+      expansion_store().is_expanding_here_document();
+  expansion_store().is_expanding_here_document() = true;
+  defer
+  {
+    expansion_store().is_expanding_here_document() =
+        was_expanding_here_document;
+  };
+
   return expand_modifier_word(body, false, false, source_location);
 }
 

@@ -286,7 +286,7 @@ fn execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
   } catch (const ErrorWithLocation &) {
     throw;
   } catch (const Error &e) {
-    if (cxt.runtime_state().is_bash_compatible()) {
+    if (cxt.runtime_state().is_bash_compatible() && !e.is_line_discarding()) {
       if (!e.detail_message().is_empty())
         report_soft_builtin_error(ec, cxt, e.message(), e.detail_message());
       else
@@ -298,10 +298,12 @@ fn execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
     if (!e.detail_message().is_empty()) {
       let relocated = ErrorWithLocationAndDetails{
           ec.source_location(), prefixed.view(), e.detail_message()};
+      if (e.is_line_discarding()) relocated.set_line_discarding();
       relocated.set_command_status(e.command_status());
       throw relocated;
     }
     let relocated = ErrorWithLocation{ec.source_location(), prefixed.view()};
+    if (e.is_line_discarding()) relocated.set_line_discarding();
     relocated.set_command_status(e.command_status());
     throw relocated;
   }

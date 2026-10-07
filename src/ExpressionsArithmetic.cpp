@@ -616,7 +616,8 @@ fn ArithmeticCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
   try {
     const SourceLocation body_base{source_location().position + 2, 0,
                                    source_location().source_name_index};
-    is_nonzero = cxt.evaluate_arithmetic_nonzero(m_expression, &body_base);
+    is_nonzero = cxt.evaluate_arithmetic_nonzero(
+        m_expression, &body_base, arithmetic_text_kind::ShellSource);
   } catch (const Error &e) {
     relocate_if_unlocated(e, source_location());
   }
@@ -789,7 +790,8 @@ fn CStyleForLoop::evaluate_status_impl(EvalContext &cxt) const throws
     });
     if (!should_run_init) return {cxt.execution_store().last_exit_status()};
 
-    cxt.evaluate_arithmetic_nonzero(m_init);
+    cxt.evaluate_arithmetic_nonzero(m_init, nullptr,
+                                    arithmetic_text_kind::ShellSource);
   }
 
   let const is_condition_blank = is_blank_clause(m_condition);
@@ -1037,18 +1039,18 @@ static fn evaluate_subshell_in_process(const Expression *body,
     cxt.enter_subshell();
     did_enter_subshell = true;
     cxt.hide_coprocess_descriptors();
+    cxt.job_table_store().inherit_parent_jobs(false);
     /* The inherited EXIT action belongs to the parent and must not fire at the
        subshell's end. An EXIT action the body sets survives this clear. */
     cxt.clear_inherited_exit_trap();
     cxt.reset_inherited_signal_traps();
     if (should_allow_terminal_exec)
       cxt.execution_store().allow_terminal_exec_at_current_depth();
-    try {
-      ret = body->evaluate(cxt);
-    } catch (const ErrorBase &error) {
-      /* A script-fatal error is confined to the subshell in every mood, status
-         1 the way bash answers it and 2 the way dash does. */
-      if (!error.is_script_fatal()) {
+    /* A script-fatal or line discarding error is confined to the subshell in
+       every mood, status 1 the way bash answers it and 2 the way dash does. */
+    let const do_confine_error =
+        [&](ErrorBase &error, Maybe<SourceLocation> location) throws -> void {
+      if (!error.is_script_fatal() && !error.is_line_discarding()) {
         unused(cxt.run_subshell_exit_trap());
         throw;
       }
@@ -1057,10 +1059,21 @@ static fn evaluate_subshell_in_process(const Expression *body,
       if (!error.was_rendered()) {
         show_message(
             error.to_string(cxt.source_store().current_source_view(), &cxt));
+        if (location.has_value() && error.is_line_discarding()) {
+          cxt.print_source_backtrace(*location);
+        }
+        error.set_rendered();
       }
       ret = cxt.runtime_state().is_bash_compatible() ? 1 : 2;
       cxt.execution_store().set_last_exit_status(static_cast<i32>(ret));
       cxt.control_flow_store().clear();
+    };
+    try {
+      ret = body->evaluate(cxt);
+    } catch (ErrorWithLocation &error) {
+      do_confine_error(error, error.location());
+    } catch (ErrorBase &error) {
+      do_confine_error(error, None);
     }
 
     /* Exit and return end only the subshell. A break or continue is scoped to a
@@ -1099,6 +1112,8 @@ static fn evaluate_subshell_in_process(const Expression *body,
 fn Subshell::evaluate_impl(EvalContext &cxt) const throws -> i64
 {
   ASSERT(m_body != nullptr);
+
+  cxt.job_table_store().forget_waited_jobs();
 
   /* A redirected wrapper hands down the span that reaches over its
      redirections, and the bare subshell answers for its own. */

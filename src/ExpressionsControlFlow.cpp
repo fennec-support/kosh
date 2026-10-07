@@ -113,6 +113,7 @@ fn Command::evaluate_async_with(EvalContext &cxt, async_body body,
     try {
       cxt.enter_subshell();
       cxt.hide_coprocess_descriptors();
+      cxt.job_table_store().inherit_parent_jobs(false);
       cxt.execution_store().allow_terminal_exec_at_current_depth();
       status = static_cast<i32>(body(context, cxt));
       if (cxt.control_flow_store().has_pending() &&
@@ -435,6 +436,9 @@ cold fn WhileLoop::to_ast_string(usize layer) const throws -> String
 hot fn internal::resolve_loop_control(EvalContext &cxt) throws
     -> loop_disposition
 {
+  if (!cxt.runtime_state().is_posix_mode())
+    cxt.job_table_store().forget_waited_jobs();
+
   if (!cxt.control_flow_store().has_pending()) return loop_disposition::RunNext;
 
   let &control = cxt.control_flow_store().pending();
@@ -1517,6 +1521,7 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
     i32 status = 1;
     try {
       cxt.enter_subshell();
+      cxt.job_table_store().inherit_parent_jobs(false);
       status = static_cast<i32>(m_body->evaluate(cxt));
       if (cxt.control_flow_store().has_pending() &&
           cxt.control_flow_store().pending().kind == control_flow::Kind::Exit)

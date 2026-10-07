@@ -66,11 +66,29 @@ fn JobTable::forget_finished_statuses() wontthrow -> void
 
 fn JobTable::take_snapshot() throws -> job_table_snapshot
 {
-  let snapshot =
-      job_table_snapshot{m_last_background_pid, steal(m_jobs),
-                         steal(m_detached_job_processes), m_next_job_id};
+  let finished_statuses =
+      ArrayList<finished_process_status>{m_finished_statuses.allocator()};
+  finished_statuses.reserve(m_finished_statuses.count());
+  for (let const &entry : m_finished_statuses)
+    finished_statuses.push(entry);
+
+  let snapshot = job_table_snapshot{
+      m_last_background_pid,           steal(m_jobs),
+      steal(m_detached_job_processes), steal(finished_statuses),
+      m_next_finished_status_slot,     m_next_job_id};
   m_next_job_id = 1;
   return snapshot;
+}
+
+fn JobTable::inherit_parent_jobs(bool should_keep_finished_statuses) wontthrow
+    -> void
+{
+  if (!should_keep_finished_statuses) forget_finished_statuses();
+
+  for (job &entry : m_jobs) {
+    entry.is_inherited =
+        !should_keep_finished_statuses || entry.state != job::State::Done;
+  }
 }
 
 fn JobTable::restore_snapshot(job_table_snapshot snapshot) throws -> void
@@ -91,11 +109,18 @@ fn JobTable::restore_snapshot(job_table_snapshot snapshot) throws -> void
 
   m_jobs = steal(snapshot.jobs);
   m_detached_job_processes = steal(snapshot.detached_job_processes);
+  m_finished_statuses = steal(snapshot.finished_statuses);
+  m_next_finished_status_slot = snapshot.next_finished_status_slot;
   m_next_job_id = snapshot.next_job_id;
+  m_has_waited_jobs = false;
+  for (let const &restored : m_jobs)
+    if (restored.was_waited) m_has_waited_jobs = true;
 }
 
-fn JobTable::claim_job_id() wontthrow -> i32
+fn JobTable::claim_job_id() throws -> i32
 {
+  forget_waited_jobs();
+
   i32 id = 1;
   for (let const &existing : m_jobs)
     if (existing.id >= id) id = existing.id + 1;
@@ -188,7 +213,9 @@ fn JobTable::update_jobs() throws -> void
   unused(poll_owned_processes(m_detached_job_processes));
 
   for (job &job : m_jobs) {
-    if (job.state == job::State::Done) continue;
+    if (job.state == job::State::Done || job.is_inherited) {
+      continue;
+    }
 
     let const earlier_stopped_status =
         poll_owned_processes(job.earlier_pipeline_processes);
@@ -323,7 +350,9 @@ fn JobTable::wait_for_next_job(const ArrayList<i32> &job_ids,
 
     bool has_waitable_job = false;
     for (let const &entry : m_jobs) {
-      if (!job_ids.is_empty() && !job_ids.find(entry.id).has_value()) {
+      if (entry.is_inherited || entry.was_waited ||
+          (!job_ids.is_empty() && !job_ids.find(entry.id).has_value()))
+      {
         continue;
       }
 
@@ -410,8 +439,9 @@ fn JobTable::forget_done_jobs() throws -> void
 {
   let kept = ArrayList<job>{m_jobs.allocator()};
   for (job &job : m_jobs) {
-    if (job.state == job::State::Done) {
-      remember_finished_status(job.process_id, job.last_status);
+    if (job.state == job::State::Done && !job.is_inherited) {
+      if (!job.was_waited)
+        remember_finished_status(job.process_id, job.last_status);
 
       continue;
     }
@@ -421,6 +451,7 @@ fn JobTable::forget_done_jobs() throws -> void
   LOG(Debug, "dropping finished jobs, keeping %zu of %zu", kept.count(),
       m_jobs.count());
   m_jobs = steal(kept);
+  m_has_waited_jobs = false;
 }
 
 fn JobTable::forget_done_job(i32 id) throws -> void
@@ -430,12 +461,41 @@ fn JobTable::forget_done_job(i32 id) throws -> void
 
     if (m_jobs[position].state != job::State::Done) return;
 
-    remember_finished_status(m_jobs[position].process_id,
-                             m_jobs[position].last_status);
+    if (!m_jobs[position].was_waited)
+      remember_finished_status(m_jobs[position].process_id,
+                               m_jobs[position].last_status);
     m_jobs.remove(position);
 
     return;
   }
+}
+
+fn JobTable::mark_job_waited(i32 id, bool should_remember_status) wontthrow
+    -> void
+{
+  for (job &entry : m_jobs) {
+    if (entry.id != id) continue;
+
+    if (entry.state != job::State::Done || entry.was_waited) {
+      return;
+    }
+
+    if (should_remember_status)
+      remember_finished_status(entry.process_id, entry.last_status);
+    entry.was_waited = true;
+    m_has_waited_jobs = true;
+
+    return;
+  }
+}
+
+fn JobTable::forget_marked_waited_jobs() throws -> void
+{
+  for (usize position = m_jobs.count(); position > 0; position--) {
+    if (m_jobs[position - 1].was_waited) m_jobs.remove(position - 1);
+  }
+
+  m_has_waited_jobs = false;
 }
 
 fn JobTable::remove_job(i32 id) throws -> bool
@@ -475,7 +535,9 @@ fn JobTable::format_done_job_notifications(StringView line_ending) throws
   let out = String{heap_allocator()};
   for (usize i = 0; i < m_jobs.count(); i++) {
     let const &job = m_jobs[i];
-    if (job.state != job::State::Done) continue;
+    if (job.state != job::State::Done || job.was_waited) {
+      continue;
+    }
 
     char marker = ' ';
     if (i == m_jobs.count() - 1) {

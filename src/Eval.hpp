@@ -1059,6 +1059,14 @@ public:
   {
     return m_should_elide_pending_subshell_fork;
   }
+  fn line_discard_root() wontthrow -> const Expression *&
+  {
+    return m_line_discard_root;
+  }
+  fn line_discard_source() wontthrow -> StringView &
+  {
+    return m_line_discard_source;
+  }
   pure fn shell_is_interactive() const wontthrow -> bool
   {
     return m_shell_is_interactive;
@@ -1075,6 +1083,8 @@ private:
   Maybe<String> m_execution_string{None};
   String m_current_command{heap_allocator()};
   String m_completion_command_name{heap_allocator()};
+  const Expression *m_line_discard_root{nullptr};
+  StringView m_line_discard_source{};
   u64 m_last_command_duration_nanos{0};
   usize m_subshell_depth{0};
   usize m_condition_depth{0};
@@ -1332,6 +1342,18 @@ enum class parameter_word_quoting : u8
   Unquoted,
   DoubleQuoted,
   HereDocument,
+};
+
+enum class arithmetic_error_source : u8
+{
+  Expansion,
+  Operand,
+};
+
+enum class arithmetic_text_kind : u8
+{
+  Value,
+  ShellSource,
 };
 
 fn compute_substring_bounds(i64 value_count, i64 offset, Maybe<i64> length,
@@ -2362,6 +2384,14 @@ public:
   {
     return m_glob_exempt_for_test;
   }
+  fn is_expanding_here_document() wontthrow -> bool &
+  {
+    return m_is_expanding_here_document;
+  }
+  pure fn is_expanding_here_document() const wontthrow -> bool
+  {
+    return m_is_expanding_here_document;
+  }
   fn pending_process_substitutions() wontthrow
       -> ArrayList<process_substitution> &
   {
@@ -2373,6 +2403,11 @@ public:
     return m_pending_process_substitutions;
   }
   fn held_process_substitutions() wontthrow -> ArrayList<process_substitution> &
+  {
+    return m_held_process_substitutions;
+  }
+  pure fn held_process_substitutions() const wontthrow
+      -> const ArrayList<process_substitution> &
   {
     return m_held_process_substitutions;
   }
@@ -2412,6 +2447,7 @@ private:
   usize m_parameter_expansion_depth{0};
   getopts_cursor m_getopts_cursor{};
   bool m_glob_exempt_for_test{false};
+  bool m_is_expanding_here_document{false};
   ArrayList<process_substitution> m_pending_process_substitutions{
       heap_allocator()};
   ArrayList<process_substitution> m_held_process_substitutions{
@@ -3893,17 +3929,22 @@ public:
   fn evaluate_arithmetic(StringView expression,
                          const SourceLocation *expression_base = nullptr) throws
       -> i64;
+  fn mark_arithmetic_error(ErrorBase &error,
+                           arithmetic_error_source source) const wontthrow
+      -> void;
   fn evaluate_arithmetic_text(
-      StringView expression,
-      const SourceLocation *expression_base = nullptr) throws -> String;
+      StringView expression, const SourceLocation *expression_base = nullptr,
+      arithmetic_text_kind text_kind = arithmetic_text_kind::Value) throws
+      -> String;
   fn evaluate_calculator_arithmetic_text(
       StringView expression,
       const SourceLocation *expression_base = nullptr) throws -> String;
   fn evaluate_bc_arithmetic_text(StringView expression, u32 scale) throws
       -> String;
   fn evaluate_arithmetic_nonzero(
-      StringView expression,
-      const SourceLocation *expression_base = nullptr) throws -> bool;
+      StringView expression, const SourceLocation *expression_base = nullptr,
+      arithmetic_text_kind text_kind = arithmetic_text_kind::Value) throws
+      -> bool;
   fn compare_arithmetic(StringView left, StringView right) throws -> i32;
   fn evaluate_arithmetic_cached_text(const WordSegment &segment) throws
       -> String;
@@ -3975,6 +4016,8 @@ public:
       -> void;
   fn release_finished_held_process_substitutions() wontthrow -> void;
   fn wait_for_process_substitution(i64 process_id) wontthrow -> Maybe<i32>;
+  pure fn is_pending_process_substitution(i64 process_id) const wontthrow
+      -> bool;
 
   mustuse fn mark_loop_redirect_fds() const wontthrow -> loop_redirect_fd_mark;
   fn cleanup_loop_redirect_fds(loop_redirect_fd_mark mark) wontthrow -> void;

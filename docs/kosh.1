@@ -726,6 +726,14 @@ or
 .B sh
 mood.
 .PP
+An error that ends a non-interactive shell in every mood, such as an unset
+parameter read under
+.B set \-u
+or ${name?word} with name unset, passes through an eval, a sourced file, and
+the other commands that run text in the current shell, as it does in Bash and
+dash. A subshell and a command substitution still hold it. A trap action and a
+startup file hold it too, and report the error.
+.PP
 On Windows, the default mood leaves backslashes literal in
 .BR echo .
 The
@@ -1292,7 +1300,36 @@ comma operator, and assignment operators. Literals may use 0x hexadecimal, 0
 octal, 0b binary, or a base prefix such as 16#ff. A variable value is
 re-evaluated as an arithmetic expression. Nested subscripts such as a[b[c]] are
 resolved from the inner expression outward. An empty (( )) command returns one.
-An empty $(( )) expansion produces zero.
+An empty $(( )) expansion produces zero. Outside the sh mood, double quotes in
+the text of $(( )), (( )), a C-style for header, a subscript, or a substring
+offset are removed before the evaluation, as Bash removes them, so
+$(( "1 + 2" * 3 )) is 7. Quotes inside a variable value, a single quote, and a
+double quote in a
+.B let
+operand stay an error. The sh mood rejects every quote, as dash does.
+.PP
+An arithmetic error in the bash and bash-posix moods abandons the rest of the
+input line, as Bash does. A $(( )) expansion, a subscript, a substring offset,
+and an assignment to an integer variable stop every command left on that line,
+including the commands of a function, a loop, or a group it runs inside, and
+$? is 1 on the next line. Neither set \-e nor an ERR trap acts on it. The line
+ends at an unquoted newline, so the rest of a command that spans lines goes
+with it. An eval, a sourced file, a subshell, and a command substitution are
+lines of their own: an eval or a sourced file goes on with its next line, and
+a subshell or command substitution ends with status 1. A pipeline stage or an
+asynchronous command fails alone. An error in the expression of (( )),
+.BR let ,
+a [[ ]] operand, or a C-style for header fails that command with status 1, and
+an error in a here-document body fails the command it feeds, unless the error
+comes from a $(( )) expansion or a subscript inside it.
+.PP
+A $(( )) error ends a non-interactive shell in the bash-posix mood with status
+1 and in the sh mood with status 2, as Bash in POSIX mode and dash do. It passes
+through an eval and a sourced file. A subshell and a command substitution end
+with it alone, with status 1 in the bash-posix mood and 2 in the sh mood. An
+interactive shell abandons the line instead. In the kosh mood every arithmetic
+error ends the script with status 1, like any other evaluation error, while an
+eval, a subshell, or a command substitution holds it to a status of 1.
 .PP
 The
 .B arithmetic.use_big_integers_and_decimals
@@ -4366,11 +4403,39 @@ reports 127 and a diagnostic for a process that is not a child of the shell or
 a job that does not exist, and with several operands the last operand decides
 the status.
 .PP
+A job that
+.B wait
+names by number or process leaves later. It stays in the job table, as Bash
+keeps it, until the next input line, the end of a loop iteration, an eval or sourced command, a
+new child process, or the
+.B jobs
+builtin. A second
+.B wait
+for it before that point finds it by number again. The sh mood keeps it until
+the next child process or
+.B jobs
+builtin, as dash does, and remembers no status once it leaves, so a later
+.B wait
+for its process reports 127. The sh mood also reports no diagnostic for a
+process that is not a child.
+.PP
+A subshell, a pipeline stage, an asynchronous command, and a coprocess cannot
+wait for a job of their parent. They report 127 for its process or number and
+see none of the remembered statuses.
+.B jobs
+there still lists the parent jobs as they were when the child started. A
+command substitution reports 127 for a parent job that is still running, but
+keeps the remembered statuses and the status of a parent job that had
+finished, as Bash does. The sh mood treats a command substitution as a
+subshell, as dash does.
+.PP
 .B wait \-n
 returns the status of the next job to finish among the named jobs and
 processes, or among every job when no operand is given. A job that already
-finished and was not yet waited is returned first. It reports 127 when no
-named or tracked job is left.
+finished and was not yet waited is returned first. A named process whose status
+is remembered is returned at once. Otherwise every named job or process that
+is not known is reported before the wait, and the wait goes on for the known
+ones. It reports 127 when no named or tracked job is left.
 .B wait \-p
 .I var
 stores the process whose status is returned in

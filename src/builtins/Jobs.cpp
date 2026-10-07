@@ -89,6 +89,7 @@ fn Jobs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
+  cxt.job_table_store().forget_waited_jobs();
   cxt.job_table_store().update_jobs();
 
   let const color_mode = should_color_jobs(cxt) ? jobs_color_mode::Colored

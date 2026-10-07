@@ -148,6 +148,15 @@ changes update this file.
   saves state restores it through a guard such as `RuntimeStateScope`,
   `DefinitionStateScope`, `TrapActionScope`, `UntracedTrapScope`,
   `SubstitutionFrame`, or `os::ScopedEnvironment`.
+- An arithmetic error in a bash mood carries a line discarding mark. It
+  unwinds to the root list that `line_discard_root` names, the list of a
+  streamed script line, a whole script, an eval, or a sourced file, and that
+  list skips the rest of the input line. A subshell, a command substitution, a
+  pipeline stage, and an asynchronous command hold it. A $(( )) error in a
+  posix mood is script fatal, which passes through eval and source.
+- A forked child marks the jobs it inherits so `wait` cannot reach them. A job
+  waited by number or process stays in the table until a reap point: a new
+  input line, a loop iteration, a child process, or `jobs`.
 - An asynchronous pipeline job owns and reaps every stage. POSIX stages share a
   process group. The last stage owns status and job output. Stream writes retry
   partial writes and reject zero-length writes while bytes remain.

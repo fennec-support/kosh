@@ -208,12 +208,14 @@ wontreturn fn rethrow_with_prefix(const ErrorWithLocation &error,
     let rewrapped = ErrorWithLocationAndDetails{
         error.location(), message.view(), error.detail_message()};
     if (error.is_script_fatal()) rewrapped.set_script_fatal();
+    if (error.is_line_discarding()) rewrapped.set_line_discarding();
     rewrapped.set_command_status(error.command_status());
     throw rewrapped;
   }
 
   let rewrapped = ErrorWithLocation{error.location(), message.view()};
   if (error.is_script_fatal()) rewrapped.set_script_fatal();
+  if (error.is_line_discarding()) rewrapped.set_line_discarding();
   rewrapped.set_command_status(error.command_status());
   throw rewrapped;
 }

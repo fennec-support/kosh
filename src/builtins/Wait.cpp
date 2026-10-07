@@ -4,8 +4,8 @@
  *
  * This file waits for every tracked job, for named job and process targets, or
  * for the next job to finish, and propagates the waited status. It reports
- * invalid targets, stores the waited process id, and forgets waited jobs while
- * their statuses stay known.
+ * invalid targets, stores the waited process id, and marks waited jobs for the
+ * job table to forget while their statuses stay known.
  */
 
 #include "../Builtin.hpp"
@@ -63,6 +63,7 @@ fn Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   ASSERT(!args.is_empty());
 
   let &table = cxt.job_table_store();
+  let const should_keep_waited_statuses = !cxt.runtime_state().is_posix_mode();
   let const should_wait_for_termination = FLAG_WAIT_FORCE.is_enabled();
   let const has_pid_variable = FLAG_WAIT_PID_VARIABLE.is_set();
   let const pid_variable = FLAG_WAIT_PID_VARIABLE.value();
@@ -111,9 +112,12 @@ fn Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       return 1;
     }
 
-    report_soft_builtin_error(ec, cxt, operand_locations[i],
-                              "pid " + target + " is not a child of this shell",
-                              "List the running jobs with `jobs -l`");
+    if (!cxt.runtime_state().is_posix_mode()) {
+      report_soft_builtin_error(ec, cxt, operand_locations[i],
+                                "pid " + target +
+                                    " is not a child of this shell",
+                                "List the running jobs with `jobs -l`");
+    }
 
     return 127;
   };
@@ -121,14 +125,18 @@ fn Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const do_find_target_job = [&](usize i) throws -> job * {
     let const &target = args[i];
 
+    job *matched = nullptr;
     if (!target.is_empty() && target[0] == '%') {
-      return table.find_job_by_spec(target);
+      matched = table.find_job_by_spec(target);
+    } else if (let const parsed = target.to<i64>(); !parsed.is_error()) {
+      matched = find_job_by_process(table, parsed.value());
     }
 
-    let const parsed = target.to<i64>();
-    if (parsed.is_error()) return nullptr;
+    if (matched != nullptr && matched->is_inherited) {
+      return nullptr;
+    }
 
-    return find_job_by_process(table, parsed.value());
+    return matched;
   };
 
   let const do_finish_next_wait = [&](next_job_wait outcome) throws -> i32 {
@@ -154,6 +162,7 @@ fn Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           table.wait_for_next_job(job_ids, should_wait_for_termination));
 
     let other_pids = ArrayList<i64>{cxt.scratch_allocator()};
+    let unknown_targets = ArrayList<usize>{cxt.scratch_allocator()};
     for (usize i = 1; i < args.count(); i++) {
       if (job *const matched = do_find_target_job(i); matched != nullptr) {
         job_ids.push(matched->id);
@@ -161,21 +170,36 @@ fn Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         continue;
       }
 
-      if (args[i].is_empty() || args[i][0] == '%') {
+      let const parsed = args[i].to<i64>();
+      if (args[i].is_empty() || args[i][0] == '%' || parsed.is_error()) {
+        unknown_targets.push(i);
+
         continue;
       }
 
-      if (let const parsed = args[i].to<i64>(); !parsed.is_error())
-        other_pids.push(parsed.value());
-    }
-
-    for (let const process_id : other_pids) {
-      if (let const status = table.find_finished_status(process_id);
+      if (let const status = table.find_finished_status(parsed.value());
           status.has_value())
       {
-        do_store_pid(process_id);
+        do_store_pid(parsed.value());
 
         return *status;
+      }
+
+      if (cxt.is_pending_process_substitution(parsed.value())) {
+        other_pids.push(parsed.value());
+      } else {
+        unknown_targets.push(i);
+      }
+    }
+
+    for (let const i : unknown_targets) {
+      let const &target = args[i];
+      if (!target.is_empty() && target[0] == '%') {
+        unused(do_report_unknown_target(i));
+      } else {
+        report_soft_builtin_error(ec, cxt, operand_locations[i],
+                                  "'" + target +
+                                      "': not a pid or valid job spec");
       }
     }
 
@@ -193,8 +217,6 @@ fn Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
     }
 
-    for (usize i = 1; i < args.count(); i++)
-      unused(do_report_unknown_target(i));
     do_store_pid(None);
 
     return 127;
@@ -206,6 +228,8 @@ fn Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     do_store_pid(None);
 
     for (job &job : table.jobs()) {
+      if (job.is_inherited) continue;
+
       let const status = table.wait_for_job_processes(
           job, nullptr, should_wait_for_termination);
 
@@ -219,6 +243,13 @@ fn Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let const &last_background_pid = table.last_background_pid();
     if (last_background_pid.has_value())
       unused(cxt.wait_for_process_substitution(*last_background_pid));
+
+    if (!should_keep_waited_statuses) {
+      for (let const &waited : table.jobs())
+        table.mark_job_waited(waited.id, false);
+
+      return 0;
+    }
 
     table.forget_done_jobs();
     table.forget_finished_statuses();
@@ -237,7 +268,7 @@ fn Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       status = table.wait_for_job_processes(*matched, nullptr,
                                             should_wait_for_termination);
       do_store_pid(process_id);
-      table.forget_done_job(job_id);
+      table.mark_job_waited(job_id, should_keep_waited_statuses);
     } else if (let const parsed = args[i].to<i64>();
                args[i].is_empty() || args[i][0] == '%' || parsed.is_error())
     {

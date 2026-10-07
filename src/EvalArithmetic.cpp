@@ -2116,17 +2116,22 @@ fn EvalContext::read_array_element_arithmetic_text(StringView name,
 
 namespace {
 
-fn evaluate_arithmetic_value(EvalContext *context, StringView expression,
-                             const SourceLocation *expression_base,
-                             bool is_exact, BumpArena &arena,
-                             bool should_error_unset = false,
-                             Maybe<u32> bc_scale = {}) throws -> ArithmeticValue
+fn evaluate_arithmetic_value(
+    EvalContext *context, StringView expression,
+    const SourceLocation *expression_base, bool is_exact, BumpArena &arena,
+    arithmetic_text_kind text_kind = arithmetic_text_kind::Value,
+    bool should_error_unset = false, Maybe<u32> bc_scale = {}) throws
+    -> ArithmeticValue
 {
   LOG(All, "evaluating the arithmetic expression of %zu bytes",
       expression.length);
 
+  let const has_removable_quote =
+      text_kind == arithmetic_text_kind::ShellSource &&
+      context->runtime_state().bash_additions_enabled() &&
+      expression.find_character('"').has_value();
   if (!expression.find_character('$').has_value() &&
-      !expression.find_character('`').has_value())
+      !expression.find_character('`').has_value() && !has_removable_quote)
   {
     let parser = ArithmeticParser{context, expression, is_exact, arena,
                                   0,       false,      bc_scale};
@@ -2137,8 +2142,8 @@ fn evaluate_arithmetic_value(EvalContext *context, StringView expression,
 
   LOG(All, "expanding parameters inside the arithmetic before the parse");
   let const expanded_word = context->expand_modifier_word(
-      expression, true, true, expression_base, false,
-      parameter_word_quoting::HereDocument);
+      expression, context->runtime_state().bash_additions_enabled(), true,
+      expression_base, false, parameter_word_quoting::HereDocument);
   let parser = ArithmeticParser{
       context, expanded_word.view(), is_exact, arena, 0, false, bc_scale};
   parser.should_error_unset = should_error_unset;
@@ -2147,20 +2152,46 @@ fn evaluate_arithmetic_value(EvalContext *context, StringView expression,
 
 } /* namespace */
 
+fn EvalContext::mark_arithmetic_error(
+    ErrorBase &error, arithmetic_error_source source) const wontthrow -> void
+{
+  if (error.is_script_fatal() || error.is_line_discarding()) {
+    return;
+  }
+  if (expansion_store().is_expanding_here_document()) return;
+
+  if (source == arithmetic_error_source::Expansion &&
+      runtime_state().is_posix_option_on() &&
+      !execution_store().shell_is_interactive())
+  {
+    error.set_script_fatal();
+    error.set_line_discarding();
+    return;
+  }
+
+  if (runtime_state().is_bash_compatible()) error.set_line_discarding();
+}
+
 fn EvalContext::evaluate_arithmetic(
     StringView expression, const SourceLocation *expression_base) throws -> i64
 {
   let const scratch = expansion_store().scratch_arena().mark();
   defer { expansion_store().scratch_arena().release(scratch); };
   let const is_exact = runtime_state().is_extended_arithmetic_enabled();
-  let const value =
-      evaluate_arithmetic_value(this, expression, expression_base, is_exact,
-                                expansion_store().scratch_arena());
-  return is_exact ? value.checked_i64() : value.wrapped_i64();
+  try {
+    let const value = evaluate_arithmetic_value(
+        this, expression, expression_base, is_exact,
+        expansion_store().scratch_arena(), arithmetic_text_kind::ShellSource);
+    return is_exact ? value.checked_i64() : value.wrapped_i64();
+  } catch (ErrorBase &error) {
+    mark_arithmetic_error(error, arithmetic_error_source::Operand);
+    throw;
+  }
 }
 
-fn EvalContext::evaluate_arithmetic_text(
-    StringView expression, const SourceLocation *expression_base) throws
+fn EvalContext::evaluate_arithmetic_text(StringView expression,
+                                         const SourceLocation *expression_base,
+                                         arithmetic_text_kind text_kind) throws
     -> String
 {
   let const scratch = expansion_store().scratch_arena().mark();
@@ -2168,7 +2199,7 @@ fn EvalContext::evaluate_arithmetic_text(
   let const is_exact = runtime_state().is_extended_arithmetic_enabled();
   let const value =
       evaluate_arithmetic_value(this, expression, expression_base, is_exact,
-                                expansion_store().scratch_arena());
+                                expansion_store().scratch_arena(), text_kind);
   return value.to_string(heap_allocator());
 }
 
@@ -2182,7 +2213,8 @@ fn EvalContext::evaluate_calculator_arithmetic_text(
   let const base =
       expression_base != nullptr ? expression_base : &synthetic_base;
   let const value = evaluate_arithmetic_value(
-      this, expression, base, true, expansion_store().scratch_arena(), true);
+      this, expression, base, true, expansion_store().scratch_arena(),
+      arithmetic_text_kind::Value, true);
   return value.to_string(heap_allocator());
 }
 
@@ -2194,18 +2226,21 @@ fn EvalContext::evaluate_bc_arithmetic_text(StringView expression,
   const SourceLocation expression_base{0, 0};
   let const value =
       evaluate_arithmetic_value(this, expression, &expression_base, true,
-                                expansion_store().scratch_arena(), true, scale);
+                                expansion_store().scratch_arena(),
+                                arithmetic_text_kind::Value, true, scale);
   return value.to_string(heap_allocator());
 }
 
 fn EvalContext::evaluate_arithmetic_nonzero(
-    StringView expression, const SourceLocation *expression_base) throws -> bool
+    StringView expression, const SourceLocation *expression_base,
+    arithmetic_text_kind text_kind) throws -> bool
 {
   let const scratch = expansion_store().scratch_arena().mark();
   defer { expansion_store().scratch_arena().release(scratch); };
   let const is_exact = runtime_state().is_extended_arithmetic_enabled();
   return !evaluate_arithmetic_value(this, expression, expression_base, is_exact,
-                                    expansion_store().scratch_arena())
+                                    expansion_store().scratch_arena(),
+                                    text_kind)
               .is_zero();
 }
 
@@ -2233,10 +2268,13 @@ fn evaluate_arithmetic_cached_value(EvalContext *context, StringView expression,
 {
   if (!is_tokenized) {
     if (expression.find_character('$').has_value() ||
-        expression.find_character('`').has_value())
+        expression.find_character('`').has_value() ||
+        (expression.find_character('"').has_value() &&
+         context->runtime_state().bash_additions_enabled()))
     {
       return evaluate_arithmetic_value(context, expression, source_location,
-                                       is_exact, arena);
+                                       is_exact, arena,
+                                       arithmetic_text_kind::ShellSource);
     }
 
     tokens.clear();
@@ -2247,7 +2285,8 @@ fn evaluate_arithmetic_cached_value(EvalContext *context, StringView expression,
       is_tokenized = true;
       is_simple = false;
       return evaluate_arithmetic_value(context, expression, source_location,
-                                       is_exact, arena);
+                                       is_exact, arena,
+                                       arithmetic_text_kind::ShellSource);
     }
     is_tokenized = true;
     is_simple = arith_tokens_are_simple(tokens);
@@ -2255,7 +2294,8 @@ fn evaluate_arithmetic_cached_value(EvalContext *context, StringView expression,
 
   if (!is_simple)
     return evaluate_arithmetic_value(context, expression, source_location,
-                                     is_exact, arena);
+                                     is_exact, arena,
+                                     arithmetic_text_kind::ShellSource);
 
   ArithmeticTokenEvaluator evaluator{context, tokens, is_exact, arena};
   return evaluator.run();
@@ -2271,10 +2311,17 @@ fn EvalContext::evaluate_arithmetic_cached_text(
   let cache_arena = segment.is_substitution_cache_in_function_arena
                         ? arena_store().function_arena()
                         : arena_store().parse_arena();
-  if (cache_arena == nullptr)
-    return evaluate_arithmetic_text(
-        segment.text.view(),
-        source_location.has_value() ? &*source_location : nullptr);
+  if (cache_arena == nullptr) {
+    try {
+      return evaluate_arithmetic_text(
+          segment.text.view(),
+          source_location.has_value() ? &*source_location : nullptr,
+          arithmetic_text_kind::ShellSource);
+    } catch (ErrorBase &error) {
+      mark_arithmetic_error(error, arithmetic_error_source::Expansion);
+      throw;
+    }
+  }
 
   let &cache = segment.get_eval_cache(cache_arena);
   if (cache.arith == nullptr ||
@@ -2291,11 +2338,18 @@ fn EvalContext::evaluate_arithmetic_cached_text(
   }
   let const scratch = expansion_store().scratch_arena().mark();
   defer { expansion_store().scratch_arena().release(scratch); };
-  let const value = evaluate_arithmetic_cached_value(
-      this, segment.text.view(), cache.arith->tokens, cache.arith->is_tokenized,
-      cache.arith->is_simple,
-      source_location.has_value() ? &*source_location : nullptr, is_exact,
-      expansion_store().scratch_arena());
+  let const value = [&]() throws -> ArithmeticValue {
+    try {
+      return evaluate_arithmetic_cached_value(
+          this, segment.text.view(), cache.arith->tokens,
+          cache.arith->is_tokenized, cache.arith->is_simple,
+          source_location.has_value() ? &*source_location : nullptr, is_exact,
+          expansion_store().scratch_arena());
+    } catch (ErrorBase &error) {
+      mark_arithmetic_error(error, arithmetic_error_source::Expansion);
+      throw;
+    }
+  }();
   let result = value.to_string(heap_allocator());
   if (is_exact && cache.arith->is_tokenized && cache.arith->is_simple) {
     let is_constant = true;

@@ -155,6 +155,10 @@ hot fn CompoundList::evaluate_root_status_impl(
     cxt.execution_store().terminal_exec_allowed() = was_terminal_exec_allowed;
   };
 
+  bool is_discarding_line = false;
+  bool did_discard_line = false;
+  usize discarded_separator_position = 0;
+
   for (usize index = 0; index < m_nodes.count(); index++) {
     if (cxt.runtime_state().no_exec()) break;
 
@@ -164,6 +168,40 @@ hot fn CompoundList::evaluate_root_status_impl(
 
     const CompoundListCondition *n = m_nodes[index];
     ASSERT(n != nullptr);
+
+    let const do_starts_new_line = [&](usize separator_position)
+                                       wontthrow -> bool {
+      let const source = cxt.execution_store().line_discard_source();
+      let const command_position = n->command()->source_location().position;
+      return n->kind() == CompoundListCondition::Kind::None &&
+             separator_position < command_position &&
+             command_position <= source.length &&
+             source
+                 .substring_of_length(separator_position,
+                                      command_position - separator_position)
+                 .find_character('\n')
+                 .has_value();
+    };
+
+    if (cxt.execution_store().line_discard_root() == this &&
+        n->kind() == CompoundListCondition::Kind::None &&
+        !cxt.runtime_state().is_posix_mode())
+    {
+      if (index == 0 ||
+          do_starts_new_line(m_nodes[index - 1]->source_location().position))
+      {
+        cxt.job_table_store().forget_waited_jobs();
+      }
+    }
+
+    if (is_discarding_line) {
+      if (!do_starts_new_line(discarded_separator_position)) {
+        discarded_separator_position = n->source_location().position;
+        continue;
+      }
+
+      is_discarding_line = false;
+    }
 
     if (n->kind() == CompoundListCondition::Kind::None) {
       if (let const history_source =
@@ -213,8 +251,13 @@ hot fn CompoundList::evaluate_root_status_impl(
        installed as the command began. A function that installs one for itself
        leaves its own call untraced. */
     const bool was_err_trapped = cxt.trap_store().has_err_trap();
+    let const is_async_node = n->command()->is_async();
+    let const is_contained_async_node =
+        is_async_node && cxt.runtime_state().get_mood() != mimic_mood::Default;
     /* In bash mood an evaluation error fails the command and the list goes on,
-       while a script-fatal error still aborts the run. */
+       while a script-fatal error still aborts the run. An asynchronous command
+       expands its words before the fork, so its error stays with the command
+       the way it stays in the child bash forks. */
     let const do_run_node = [&]() throws -> status_result {
       if (should_ignore_errexit) cxt.execution_store().condition_depth()++;
       defer
@@ -227,8 +270,9 @@ hot fn CompoundList::evaluate_root_status_impl(
       } catch (const InterruptErrorWithLocation &) {
         throw;
       } catch (ErrorWithLocation &error) {
-        if (!cxt.runtime_state().is_bash_compatible() ||
-            error.is_script_fatal())
+        if (!is_contained_async_node &&
+            (!cxt.runtime_state().is_bash_compatible() ||
+             error.is_script_fatal()))
         {
           throw;
         }
@@ -253,22 +297,36 @@ hot fn CompoundList::evaluate_root_status_impl(
           cxt.print_source_backtrace(trace_location, false);
           error.set_rendered();
         }
-        return {static_cast<i32>(
-                    set_and_return_exit_status(cxt, error.command_status())),
+        if (error.is_line_discarding() && !is_async_node) {
+          if (cxt.execution_store().line_discard_root() != this) throw;
+          did_discard_line = true;
+        }
+
+        return {static_cast<i32>(set_and_return_exit_status(
+                    cxt, is_async_node ? 0 : error.command_status())),
                 0};
-      } catch (const ErrorBase &error) {
-        if (!cxt.runtime_state().is_bash_compatible() ||
-            error.is_script_fatal())
+      } catch (ErrorBase &error) {
+        if (!is_contained_async_node &&
+            (!cxt.runtime_state().is_bash_compatible() ||
+             error.is_script_fatal()))
         {
           throw;
         }
         LOG(Debug, "bash mood converted the error to command status %lld: %s",
             static_cast<long long>(error.command_status()),
             error.message().c_str());
-        show_message(
-            error.to_string(cxt.source_store().current_source_view(), &cxt));
-        return {static_cast<i32>(
-                    set_and_return_exit_status(cxt, error.command_status())),
+        if (!error.was_rendered()) {
+          show_message(
+              error.to_string(cxt.source_store().current_source_view(), &cxt));
+          error.set_rendered();
+        }
+        if (error.is_line_discarding() && !is_async_node) {
+          if (cxt.execution_store().line_discard_root() != this) throw;
+          did_discard_line = true;
+        }
+
+        return {static_cast<i32>(set_and_return_exit_status(
+                    cxt, is_async_node ? 0 : error.command_status())),
                 0};
       }
     };
@@ -291,6 +349,13 @@ hot fn CompoundList::evaluate_root_status_impl(
         did_execute = true;
       }
       break;
+    }
+
+    if (did_discard_line) {
+      did_discard_line = false;
+      is_discarding_line = true;
+      discarded_separator_position = n->source_location().position;
+      continue;
     }
 
     /* POSIX exempts set -e for a command that is an operand of && or || and not
@@ -681,6 +746,7 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
         try {
           cxt.enter_subshell();
           cxt.hide_coprocess_descriptors();
+          cxt.job_table_store().inherit_parent_jobs(false);
           cxt.reset_inherited_signal_traps();
           cxt.execution_store().allow_terminal_exec_at_current_depth();
           stage_status =
@@ -808,6 +874,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
   ASSERT(m_commands.count() > 1);
 
   cxt.execution_store().terminal_exec_allowed() = false;
+  cxt.job_table_store().forget_waited_jobs();
 
   /* A pipeline of only simple commands keeps the fast path. A compound stage
      takes the fork-per-stage path. A simple stage carrying a prefix assignment
@@ -885,11 +952,49 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
     let const stage_write_mark = cxt.begin_confined_variable_writes();
     defer { cxt.rollback_confined_variable_writes(stage_write_mark); };
 
+    let const do_push_unresolved_stage = [&](i32 status, StringView rendered)
+                                             throws -> bool {
+      let unresolved = ExecContext::make_from_unresolved(e->source_location(),
+                                                         status, rendered);
+      bool was_unresolved_handed_off = false;
+      defer
+      {
+        if (!was_unresolved_handed_off) unresolved.close_fds();
+      };
+      try {
+        e->redirect_exec_context(unresolved, cxt);
+      } catch (const TrapAbandonedRedirection &) {
+        return false;
+      }
+      was_unresolved_handed_off = true;
+      ecs.push(steal(unresolved));
+      return true;
+    };
+
     let stage_arg_locations =
         ArrayList<SourceLocation>{cxt.scratch_allocator()};
-    let stage_args = cxt.process_args(e->args(), &stage_arg_locations,
-                                      argument_lifetime::Transient,
-                                      argument_context::Command);
+    let stage_args = ArrayList<String>{cxt.scratch_allocator()};
+    try {
+      stage_args = cxt.process_args(e->args(), &stage_arg_locations,
+                                    argument_lifetime::Transient,
+                                    argument_context::Command);
+    } catch (ErrorWithLocation &expansion_error) {
+      let const is_stage_failure =
+          expansion_error.is_line_discarding() ||
+          (expansion_error.is_script_fatal() &&
+           cxt.runtime_state().get_mood() != mimic_mood::Default);
+      if (!is_stage_failure) throw;
+
+      let const rendered = expansion_error.to_string(
+          cxt.source_store().current_source_view(), &cxt);
+      if (!do_push_unresolved_stage(
+              static_cast<i32>(expansion_error.command_status()),
+              rendered.view()))
+      {
+        return cxt.execution_store().last_exit_status();
+      }
+      continue;
+    }
     expand_command_aliases(cxt, stage_args, stage_arg_locations);
 
     if (stage_args.is_empty()) {
@@ -938,21 +1043,12 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
           windowed.has_value() ? *windowed
                                : cxt.source_store().current_source_view(),
           &cxt);
-      let unresolved = ExecContext::make_from_unresolved(
-          e->source_location(),
-          static_cast<i32>(resolution_error.command_status()), rendered.view());
-      bool was_unresolved_handed_off = false;
-      defer
+      if (!do_push_unresolved_stage(
+              static_cast<i32>(resolution_error.command_status()),
+              rendered.view()))
       {
-        if (!was_unresolved_handed_off) unresolved.close_fds();
-      };
-      try {
-        e->redirect_exec_context(unresolved, cxt);
-      } catch (const TrapAbandonedRedirection &) {
         return cxt.execution_store().last_exit_status();
       }
-      was_unresolved_handed_off = true;
-      ecs.push(steal(unresolved));
       continue;
     }
     let ec = stage_ec.take();

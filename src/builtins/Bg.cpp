@@ -56,6 +56,8 @@ fn Bg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const &args = ec.args();
   ASSERT(!args.is_empty());
 
+  cxt.job_table_store().forget_waited_jobs();
+
   if (args.count() <= 1) {
     job *job = cxt.job_table_store().most_recent_job();
     if (job == nullptr)

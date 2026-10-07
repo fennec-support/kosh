@@ -938,11 +938,17 @@ fn EvalContext::ModifierWordExpander::expand_arithmetic() throws -> void
   let inner_location = SourceLocation{};
   let const inner_source =
       m_word.substring_of_length(m_index + 3, inner.count());
-  emit_run(
-      m_context.evaluate_arithmetic_text(
-          inner, source_location_for_subview(m_source_location, m_word,
-                                             inner_source, inner_location)),
-      false);
+  try {
+    emit_run(m_context.evaluate_arithmetic_text(
+                 inner,
+                 source_location_for_subview(m_source_location, m_word,
+                                             inner_source, inner_location),
+                 arithmetic_text_kind::ShellSource),
+             false);
+  } catch (ErrorBase &error) {
+    m_context.mark_arithmetic_error(error, arithmetic_error_source::Expansion);
+    throw;
+  }
   m_index = j - 1;
 }
 

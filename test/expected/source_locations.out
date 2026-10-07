@@ -379,7 +379,7 @@ eval:1:1: trace:
 nested_eval.sh:2:1: trace:
      2 |  eval "$inner"
        |  ^~~~~~~~~~~~~
-rc=1
+rc=2
 == nested eval, kosh mood
 eval:1:6: error: Division by zero.
      1 |  echo $((1/0))

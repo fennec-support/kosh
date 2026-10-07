@@ -66,6 +66,8 @@ fn Let::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       is_last_nonzero = cxt.evaluate_arithmetic_nonzero(ec.args()[i].view(),
                                                         &expression_base);
     } catch (const ErrorWithLocation &error) {
+      if (error.is_line_discarding()) throw;
+
       let const message = builtin_error_message(ec.program(), error.message());
       if (cxt.runtime_state().is_bash_compatible()) {
         if (error.detail_message().is_empty())
@@ -83,6 +85,8 @@ fn Let::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       throw ErrorWithLocationAndDetails{error.location(), message.view(),
                                         error.detail_message()};
     } catch (const Error &error) {
+      if (error.is_line_discarding()) throw;
+
       if (cxt.runtime_state().is_bash_compatible()) {
         if (error.detail_message().is_empty())
           report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),

@@ -399,6 +399,8 @@ struct job
   State state{State::Running};
   bool is_primary_process_active{true};
   bool has_unreported_state_change{false};
+  bool is_inherited{false};
+  bool was_waited{false};
 };
 
 struct finished_process_status
@@ -420,6 +422,8 @@ struct job_table_snapshot
   Maybe<i64> last_background_pid;
   ArrayList<job> jobs;
   ArrayList<os::process> detached_job_processes;
+  ArrayList<finished_process_status> finished_statuses;
+  usize next_finished_status_slot;
   i32 next_job_id;
 };
 
@@ -470,6 +474,12 @@ public:
   fn most_recent_job() wontthrow -> job *;
   fn forget_done_jobs() throws -> void;
   fn forget_done_job(i32 id) throws -> void;
+  fn mark_job_waited(i32 id, bool should_remember_status) wontthrow -> void;
+  fn forget_waited_jobs() throws -> void
+  {
+    if (m_has_waited_jobs) forget_marked_waited_jobs();
+  }
+  fn inherit_parent_jobs(bool should_keep_finished_statuses) wontthrow -> void;
   fn remove_job(i32 id) throws -> bool;
   fn format_done_job_notifications(StringView line_ending) throws -> String;
   fn take_snapshot() throws -> job_table_snapshot;
@@ -526,7 +536,8 @@ public:
 private:
   static constexpr usize REMEMBERED_FINISHED_STATUS_COUNT = 1024;
 
-  fn claim_job_id() wontthrow -> i32;
+  fn claim_job_id() throws -> i32;
+  fn forget_marked_waited_jobs() throws -> void;
 
   Maybe<i64> m_last_background_pid{};
   ArrayList<finished_process_status> m_finished_statuses;
@@ -537,6 +548,7 @@ private:
   String m_foreground_program_title_buffer{heap_allocator()};
   bool m_is_in_pipeline_stage{false};
   bool m_was_stage_boundary_published{false};
+  bool m_has_waited_jobs{false};
 };
 
 struct environment_undo_entry

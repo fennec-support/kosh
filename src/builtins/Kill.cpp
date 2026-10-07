@@ -127,6 +127,8 @@ fn Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (first_target >= args.count())
     return report_usage_error(ec, cxt, ec.program());
 
+  cxt.job_table_store().forget_waited_jobs();
+
   i32 status = 0;
   for (usize i = first_target; i < args.count(); i++) {
     const String &target = args[i];

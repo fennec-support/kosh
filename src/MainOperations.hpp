@@ -667,6 +667,17 @@ static fn evaluate_script(const script_run_input &input,
         steal(previous_history_event_number));
   };
   context.set_current_source(&input.contents, "the script");
+  let const previous_line_discard_root =
+      context.execution_store().line_discard_root();
+  let const previous_line_discard_source =
+      context.execution_store().line_discard_source();
+  context.execution_store().line_discard_source() = input.contents.view();
+  defer
+  {
+    context.execution_store().line_discard_root() = previous_line_discard_root;
+    context.execution_store().line_discard_source() =
+        previous_line_discard_source;
+  };
   let const command_start_nanos = koshka::os::monotonic_nanos();
   if (plan.should_stream_execution) {
     input.arena.release(preflight_mark);
@@ -700,6 +711,7 @@ static fn evaluate_script(const script_run_input &input,
 
       context.execution_store().terminal_exec_allowed() =
           was_terminal_exec_allowed && execution_parser.is_at_end();
+      context.execution_store().line_discard_root() = unit;
       exit_code =
           static_cast<int>(unit->evaluate_root(context, evaluation_mode));
       evaluation_mode = root_evaluation_mode::Normal;
@@ -711,6 +723,7 @@ static fn evaluate_script(const script_run_input &input,
       }
     }
   } else {
+    context.execution_store().line_discard_root() = ast;
     exit_code = static_cast<int>(ast->evaluate_root(context, evaluation_mode));
   }
   context.execution_store().set_last_command_duration_nanos(
@@ -825,7 +838,7 @@ static fn run_script_contents(
     if (!e.was_rendered()) show_message(e.to_string(script_contents, &context));
     exit_code = exit_status_for(e, context);
   } catch (const Error &e) {
-    show_message(e.to_string());
+    if (!e.was_rendered()) show_message(e.to_string());
     exit_code = exit_status_for(e, context);
   } catch (const std::exception &e) {
     exit_code = EXIT_FAILURE;

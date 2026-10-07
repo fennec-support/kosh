@@ -205,6 +205,7 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
 
   let const source_view = cxt.source_store().current_source_view();
   cxt.prepare_child_environment();
+  cxt.job_table_store().forget_waited_jobs();
   os::process p = os::execute_program(
       ec, os::program_execution_options{
               .source = source_view,
@@ -627,6 +628,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
           cxt.job_table_store().set_in_pipeline_stage(true);
           cxt.enter_subshell();
           cxt.hide_coprocess_descriptors();
+          cxt.job_table_store().inherit_parent_jobs(false);
           i32 child_status = 0;
           try {
             child_status = execute_builtin(steal(ec), cxt);

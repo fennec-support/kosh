@@ -156,12 +156,19 @@ public:
                        EvalContext *context = nullptr) const throws -> String;
 
   /* The command status is 1 for most errors and 2 for a [[ ]] operand error. A
-     relocation that rewraps an error must carry both the fatal mark and the
-     status over. */
+     relocation that rewraps an error must carry the fatal mark, the line
+     discard mark, and the status over. A line discarding error abandons the
+     rest of the input line in a bash mood, the way bash treats an arithmetic
+     expansion error. */
   fn set_script_fatal() wontthrow -> void { m_is_script_fatal = true; }
   pure fn is_script_fatal() const wontthrow -> bool
   {
     return m_is_script_fatal;
+  }
+  fn set_line_discarding() wontthrow -> void { m_is_line_discarding = true; }
+  pure fn is_line_discarding() const wontthrow -> bool
+  {
+    return m_is_line_discarding;
   }
   fn set_command_status(i64 status) wontthrow -> void
   {
@@ -177,6 +184,7 @@ protected:
   fn trailing_details_to_string() const throws -> String;
 
   bool m_is_script_fatal{false};
+  bool m_is_line_discarding{false};
   i64 m_command_status{1};
 };
 
@@ -411,12 +419,14 @@ wontreturn inline fn relocate_error(const ErrorBase &error,
     let relocated = ErrorWithLocationAndDetails{
         location, error.message().view(), error.detail_message()};
     if (error.is_script_fatal()) relocated.set_script_fatal();
+    if (error.is_line_discarding()) relocated.set_line_discarding();
     relocated.set_command_status(error.command_status());
     throw relocated;
   }
 
   let relocated = ErrorWithLocation{location, error.message().view()};
   if (error.is_script_fatal()) relocated.set_script_fatal();
+  if (error.is_line_discarding()) relocated.set_line_discarding();
   relocated.set_command_status(error.command_status());
   throw relocated;
 }
