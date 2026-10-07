@@ -19,25 +19,21 @@
 FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-abefhkmnruvxBCEPTARWISG] [+abefhkmnuvxBCEPTARWISG] "
-                   "[-o name] [+o name] [--options] [-M mood] "
-                   "[-L mood,...] [--tab-selector mode] [--] [arg ...]");
+                   "[-o name] [+o name] [-M mood] [-L mood,...] [--] "
+                   "[arg ...]");
 
 HELP_DESCRIPTION_DECL(
-    "The set builtin sets the shell options and the positional parameters.");
+    "The set builtin sets the Bash shell options, the Koshka options that "
+    "have a letter, and the positional parameters. koshconf owns every other "
+    "Koshka setting.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
-FLAG(OPTIONS, Bool, '\0', "options",
-     "Display every option with its current state and description.");
-/* The mood flags are parsed by hand in execute(), so these declarations only
-   join the set builtin's flag list for completion and the help listing. */
-FLAG(MOOD, String, 'M', "mood",
-     "Set the runtime mood to kosh, bash, or sh, or print it with no value.");
-FLAG(INIT_MOODS, ManyStrings, 'L', "init-moods",
+FLAG(MOOD, String, 'M', "",
+     "Set the runtime mood to kosh, bash, sh, or bash-posix, or print it with "
+     "no value.");
+FLAG(INIT_MOODS, ManyStrings, 'L', "",
      "Source the startup files for the listed moods, or print the loaded ones "
      "with no value.");
-FLAG(TAB_SELECTOR, String, '\0', "tab-selector",
-     "Present several completion candidates as interactive, external, or "
-     "plain, or print the active one with no value.");
 
 REGISTER_BUILTIN_FLAGS(Set);
 
@@ -48,7 +44,7 @@ namespace {
 fn is_set_option(const option_descriptor &option) wontthrow -> bool
 {
   return !option.set_name.is_empty() ||
-         option.storage == option_storage::WarningLevel;
+         (option.letter != '\0' && option.storage != option_storage::Mood);
 }
 
 fn option_is_on(const EvalContext &cxt, const option_descriptor &option) throws
@@ -57,7 +53,7 @@ fn option_is_on(const EvalContext &cxt, const option_descriptor &option) throws
   if (!option_is_available(cxt, option)) return false;
   if (option.storage == option_storage::WarningLevel)
     return cxt.runtime_state().get_warning_level() > 0;
-  return (read_option_number(cxt, option) != 0) != option.is_set_name_inverted;
+  return read_option_number(cxt, option) != 0;
 }
 
 fn apply_or_reject_option(EvalContext &cxt, const option_descriptor &option,
@@ -73,8 +69,7 @@ fn apply_or_reject_option(EvalContext &cxt, const option_descriptor &option,
       write_option_number(cxt, option, enable ? 1 : 0, option_origin::Set);
     return;
   }
-  write_option_number(cxt, option, enable != option.is_set_name_inverted,
-                      option_origin::Set);
+  write_option_number(cxt, option, enable ? 1 : 0, option_origin::Set);
 }
 
 fn list_options(const EvalContext &cxt) throws -> String
@@ -132,16 +127,12 @@ fn apply_long_option_by_name(const ExecContext &ec, EvalContext &cxt,
   apply_or_reject_option(cxt, *option, enable);
 }
 
-fn format_option_table(const EvalContext *cxt,
-                       bool include_alias_spellings) throws -> String
+fn format_option_table() throws -> String
 {
-  const usize name_field_width = include_alias_spellings ? 30 : 18;
+  const usize name_field_width = 30;
   let out = String{heap_allocator()};
   for (let const &option : get_option_registry()) {
     if (!is_set_option(option)) continue;
-    if (cxt != nullptr && !option_is_available(*cxt, option)) {
-      continue;
-    }
     out += "  ";
     if (option.letter != '\0') {
       out.push('-');
@@ -150,16 +141,13 @@ fn format_option_table(const EvalContext *cxt,
     } else {
       out += "    ";
     }
-    let name_cell = String{StringView{option.set_name}};
-    if (include_alias_spellings && !option.set_alias.is_empty()) {
-      name_cell += ", ";
-      name_cell += option.set_alias;
-    }
-    out += name_cell.view();
+    let const name_cell = option.set_name.is_empty()
+                              ? StringView{option.koshconf_name}
+                              : StringView{option.set_name};
+    out += name_cell;
     out.append_repeated(' ', name_cell.count() < name_field_width
                                  ? name_field_width - name_cell.count()
                                  : 0);
-    if (cxt != nullptr) out += option_is_on(*cxt, option) ? "[on]  " : "[off] ";
     out += option.help;
     out.push('\n');
   }
@@ -170,19 +158,14 @@ fn format_option_switches_help() throws -> String
 {
   let section = String{"OPTION SWITCHES\n"};
   section += "  A letter after a minus enables the option and after a plus "
-             "disables it.\n  -o NAME and +o NAME do the same by long "
-             "name.\n\n";
-  section += format_option_table(nullptr, true);
+             "disables it.\n  -o NAME and +o NAME do the same by Bash "
+             "name. A Koshka letter is shown with its koshconf name.\n\n";
+  section += format_option_table();
   section += "\n  The -o long names:\n";
   let listed_names = String{heap_allocator()};
-  for (let const &option : get_option_registry()) {
-    if (option.set_name.is_empty()) continue;
+  for (let const &option : get_set_listing_order()) {
     if (!listed_names.is_empty()) listed_names += ", ";
     listed_names += option.set_name;
-    if (!option.set_alias.is_empty()) {
-      listed_names += ", ";
-      listed_names += option.set_alias;
-    }
   }
   section += wrap_text(listed_names.view(), 4, HELP_WRAP_WIDTH);
   section += '\n';
@@ -199,24 +182,15 @@ fn query_shell_option(const EvalContext &cxt, StringView name) throws
   return option_is_on(cxt, *option);
 }
 
-fn shell_option_names(bool include_alias_spellings) throws
-    -> const ArrayList<StringView> &
+fn shell_option_names() throws -> const ArrayList<StringView> &
 {
-  static ArrayList<StringView> canonical = [] throws {
-    let names = ArrayList<StringView>{heap_allocator()};
-    for (let const &option : get_option_registry())
-      if (!option.set_name.is_empty()) names.push(option.set_name);
-    return names;
+  static ArrayList<StringView> names = [] throws {
+    let collected = ArrayList<StringView>{heap_allocator()};
+    for (let const &option : get_set_listing_order())
+      collected.push(option.set_name);
+    return collected;
   }();
-  static ArrayList<StringView> with_aliases = [] throws {
-    let names = ArrayList<StringView>{heap_allocator()};
-    for (let const &option : get_option_registry()) {
-      if (!option.set_name.is_empty()) names.push(option.set_name);
-      if (!option.set_alias.is_empty()) names.push(option.set_alias);
-    }
-    return names;
-  }();
-  return include_alias_spellings ? with_aliases : canonical;
+  return names;
 }
 
 fn shell_option_letters() throws -> const String &
@@ -337,10 +311,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       continue;
     }
 
-    if (arg == "--mood" || arg == "-M" ||
-        arg.view().starts_with(StringView{"--mood="}) ||
-        arg.view().starts_with(StringView{"-M="}))
-    {
+    if (arg == "-M" || arg.view().starts_with(StringView{"-M="})) {
       let const value = do_read_option_value(arg);
       if (!value.has_value()) {
         ec.print_to_stdout(String{cxt.scratch_allocator(),
@@ -352,7 +323,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       if (!parsed.has_value())
         throw make_error_for_arg(
             ec, i,
-            String{cxt.scratch_allocator(), "Unknown --mood value '"} + *value +
+            String{cxt.scratch_allocator(), "Unknown -M value '"} + *value +
                 "', expected 'kosh', 'bash', 'sh', or 'bash-posix'");
       let const *mood_option = find_option_by_letter('M');
       ASSERT(mood_option != nullptr);
@@ -361,32 +332,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       continue;
     }
 
-    if (arg == "--tab-selector" ||
-        arg.view().starts_with(StringView{"--tab-selector="}))
-    {
-      let const value = do_read_option_value(arg);
-      if (!value.has_value()) {
-        ec.print_to_stdout(
-            String{cxt.scratch_allocator(),
-                   tab_selector_name(cxt.runtime_state().get_tab_selector())} +
-            "\n");
-        continue;
-      }
-      let const parsed = parse_tab_selector_name(*value);
-      if (!parsed.has_value()) {
-        throw make_error_for_arg(
-            ec, i,
-            String{cxt.scratch_allocator(), "Unknown --tab-selector value '"} +
-                *value + "', expected 'interactive', 'external', or 'plain'");
-      }
-      cxt.runtime_state().set_tab_selector(*parsed);
-      continue;
-    }
-
-    if (arg == "--init-moods" || arg == "-L" ||
-        arg.view().starts_with(StringView{"--init-moods="}) ||
-        arg.view().starts_with(StringView{"-L="}))
-    {
+    if (arg == "-L" || arg.view().starts_with(StringView{"-L="})) {
       let const value = do_read_option_value(arg);
       if (!value.has_value()) {
         let out = String{cxt.scratch_allocator()};
@@ -414,8 +360,8 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         if (!parsed.has_value())
           throw make_error_for_arg(
               ec, i,
-              String{cxt.scratch_allocator(), "Unknown --init-moods value '"} +
-                  name + "', expected 'kosh', 'bash', 'sh', or 'bash-posix'");
+              String{cxt.scratch_allocator(), "Unknown -L value '"} + name +
+                  "', expected 'kosh', 'bash', 'sh', or 'bash-posix'");
         moods.push(*parsed);
       }
       let const previous_mood = cxt.runtime_state().get_mood();
@@ -425,13 +371,15 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       continue;
     }
 
-    if (arg == "-o" || arg == "+o") {
-      apply_long_option_by_name(ec, cxt, args, i, arg[0] == '-');
-      continue;
+    if (arg.view().starts_with(StringView{"--"})) {
+      throw make_error_for_arg(ec, i,
+                               StringView{"Unknown option '"} + arg + "'",
+                               "Koshka settings without a letter belong to "
+                               "koshconf, such as `koshconf set mood bash`");
     }
 
-    if (arg == "--options") {
-      ec.print_to_stdout(format_option_table(&cxt, false));
+    if (arg == "-o" || arg == "+o") {
+      apply_long_option_by_name(ec, cxt, args, i, arg[0] == '-');
       continue;
     }
 

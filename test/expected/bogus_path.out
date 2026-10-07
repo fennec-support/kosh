@@ -1,5 +1,5 @@
 2:6: warning: The glob pattern 'data/*/doesnotexist' matched no file, it expands to its literal text, which is rarely intended.
      2 |  echo data/*/doesnotexist
        |       ^~~~~~~~~~~~~~~~~~~
-note: Probe for matches with compgen -G 'data/*/doesnotexist' or relax with set +o failglob.
+note: Probe for matches with compgen -G 'data/*/doesnotexist' or relax it with shopt -u failglob outside the kosh mood.
 data/*/doesnotexist

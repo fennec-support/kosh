@@ -6,10 +6,10 @@ unset KOSH_FLAGS
 directory=$(mktemp -d)
 trap '[ -n "$directory" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$directory"' EXIT
 
-printf '#!/bin/bash\nset --mood\n' > "$directory/bash-script"
-printf '#!/bin/sh\nset --mood\n' > "$directory/sh-script"
-printf '#!/usr/bin/env dash\nset --mood\n' > "$directory/env-script"
-printf 'set --mood\n' > "$directory/plain-script"
+printf '#!/bin/bash\nset -M\n' > "$directory/bash-script"
+printf '#!/bin/sh\nset -M\n' > "$directory/sh-script"
+printf '#!/usr/bin/env dash\nset -M\n' > "$directory/env-script"
+printf 'set -M\n' > "$directory/plain-script"
 printf '#!/bin/bash\necho "[${undefined_name}]"\n' > "$directory/unset-script"
 
 echo "== a bash shebang selects the bash mood:"

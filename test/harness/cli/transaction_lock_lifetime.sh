@@ -161,7 +161,7 @@ LOCK_DIRECTORY=$directory STATE_DIRECTORY=$directory SHELL_BINARY=$BIN \
         "$SHELL_BINARY" -p --mood sh -c \
         '\''koshkit touch "$STATE_DIRECTORY/transaction-acquired"'\''
     koshkit flock "$LOCK_DIRECTORY" "$SHELL_BINARY" -p --mood sh -c \
-        '\''set --mood bash
+        '\''set -M bash
         printf "%s\n" "$PPID" > "$STATE_DIRECTORY/normal-parent-pid"
         koshkit touch "$STATE_DIRECTORY/acquired"'\''
 '

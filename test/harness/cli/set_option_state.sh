@@ -69,7 +69,7 @@ echo "== function option changes survive defining-mood state:"
 "$BIN" -M bash -c '
 function enable_noclobber { set -C; }
 set +C
-set --mood kosh
+set -M kosh
 enable_noclobber
 case $- in *C*) echo function-option-persisted;; *) echo function-option-lost;; esac
 '
@@ -77,30 +77,30 @@ case $- in *C*) echo function-option-persisted;; *) echo function-option-lost;; 
 function enable_strict_options {
     set -u
     set -o pipefail
-    set -o failglob
+    shopt -s failglob
 }
-set --mood bash
+set -M bash
 enable_strict_options
-if [[ -o nounset ]] && [[ -o pipefail ]] && [[ -o failglob ]]; then
+if [[ -o nounset ]] && [[ -o pipefail ]] && shopt -q failglob; then
     echo strict-markers-persisted
 else
     echo strict-markers-lost
 fi
 '
 "$BIN" -M bash -c '
-set -o no-diagnostics
+koshconf set diagnostics.analysis off
 function apply_definition_state {
-    set --mood bash
+    set -M bash
     set +W
-    set -o no-diagnostics
+    koshconf set diagnostics.analysis off
 }
-set +o no-diagnostics
+koshconf set diagnostics.analysis on
 set -W
-set --mood kosh
+set -M kosh
 apply_definition_state
 case $- in *W*) warning_level_clear=no;; *) warning_level_clear=yes;; esac
-if [[ "$(set --mood)" = bash ]] &&
-    [[ "$warning_level_clear" = yes ]] && [[ -o no-diagnostics ]]; then
+if [[ "$(set -M)" = bash ]] &&
+    [[ "$warning_level_clear" = yes ]] && [ "$(koshconf get diagnostics.analysis)" = off ]; then
     echo function-runtime-state-persisted
 else
     echo function-runtime-state-lost
@@ -108,9 +108,9 @@ fi
 '
 "$BIN" -M bash -c '
 function enable_posix_mode { set -o posix; }
-set --mood kosh
+set -M kosh
 enable_posix_mode
-if [[ -o posix ]] && [[ "$(set --mood)" = bash-posix ]]; then
+if [[ -o posix ]] && [[ "$(set -M)" = bash-posix ]]; then
     echo function-posix-persisted
 else
     echo function-posix-lost
@@ -118,29 +118,29 @@ fi
 '
 "$BIN" -M bash -c '
 function disable_posix_noop { set +o posix; }
-set --mood kosh
+set -M kosh
 disable_posix_noop
-if [[ "$(set --mood)" = kosh ]]; then
+if [[ "$(set -M)" = kosh ]]; then
     echo function-posix-noop-stayed
 else
     echo function-posix-noop-leaked
 fi
 '
 "$BIN" -M bash -c '
-function enable_no_diagnostics { set -o no-diagnostics; }
-set +o annoying-diagnostics
+function enable_no_diagnostics { koshconf set diagnostics.analysis off; }
+koshconf set diagnostics.annoying off
 enable_no_diagnostics
-if [[ ! -o annoying-diagnostics ]] && [[ -o no-diagnostics ]]; then
+if [ "$(koshconf get diagnostics.annoying)" = off ] && [ "$(koshconf get diagnostics.analysis)" = off ]; then
     echo diagnostic-options-independent
 else
     echo diagnostic-options-crossed
 fi
 '
 "$BIN" -M bash -c '
-function disable_annoying_diagnostics { set +o annoying-diagnostics; }
-set -o annoying-diagnostics
+function disable_annoying_diagnostics { koshconf set diagnostics.annoying off; }
+koshconf set diagnostics.annoying on
 disable_annoying_diagnostics
-if [[ ! -o annoying-diagnostics ]]; then
+if [ "$(koshconf get diagnostics.annoying)" = off ]; then
     echo annoying-option-persisted
 else
     echo annoying-option-lost
@@ -148,26 +148,26 @@ fi
 '
 "$BIN" -M bash -c '
 function isolate_revision_state {
-    ignored=$(set --mood sh
+    ignored=$(set -M sh
         set -W
-        set -o no-diagnostics)
+        koshconf set diagnostics.analysis off)
 }
-set --mood kosh
+set -M kosh
 set +W
-set +o no-diagnostics
+koshconf set diagnostics.analysis on
 isolate_revision_state
 case $- in *W*) warning_level_clear=no;; *) warning_level_clear=yes;; esac
-if [[ "$(set --mood)" = kosh ]] &&
-    [[ "$warning_level_clear" = yes ]] && [[ ! -o no-diagnostics ]]; then
+if [[ "$(set -M)" = kosh ]] &&
+    [[ "$warning_level_clear" = yes ]] && [ "$(koshconf get diagnostics.analysis)" = on ]; then
     echo substitution-revisions-isolated
 else
     echo substitution-revisions-leaked
 fi
 '
 "$BIN" -M bash -c '
-set +o annoying-diagnostics
-ignored=$(set -o annoying-diagnostics)
-if [[ ! -o annoying-diagnostics ]]; then
+koshconf set diagnostics.annoying off
+ignored=$(koshconf set diagnostics.annoying on)
+if [ "$(koshconf get diagnostics.annoying)" = off ]; then
     echo annoying-substitution-isolated
 else
     echo annoying-substitution-leaked
@@ -347,8 +347,8 @@ echo "== SHELLOPTS uses the shared option state:"
 set -B -h
 case :$SHELLOPTS: in *:braceexpand:*) echo braceexpand-listed;; esac
 case :$SHELLOPTS: in *:hashall:*) echo hashall-listed;; esac
-set -o export-all
-set -o no-clobber
+set -o allexport
+set -o noclobber
 if [[ "$SHELLOPTS" = \
     allexport:braceexpand:hashall:interactive-comments:noclobber ]]; then
     echo shellopts-generated-order

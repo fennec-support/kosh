@@ -1,7 +1,9 @@
 #!/bin/env kosh
 set -u
 echo "${UNSET_VAR_XYZ:-default}"
-set +u
+set -o nounset
+(set +u)
+echo "relax-rc=$?"
 set -o noclobber
 set +o noclobber
 echo done

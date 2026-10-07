@@ -26,27 +26,27 @@ printf "" | { printf "status-compound=%s\n" "$?"; }
 '
 
 "$BIN" --no-init-files --no-diagnostics -c '
-set --mood bash
-set +u
-set +o pipefail
-set +o failglob
-set +o extended-arithmetic
+set -M bash
+set -u
+set -o pipefail
+shopt -s failglob
+koshconf set arithmetic.extended on
 printf "runtime-marks-process="
 koshkit cat < <(
-  set --mood default
-  [[ -o nounset ]] && printf u
-  [[ -o pipefail ]] && printf p
-  [[ -o failglob ]] && printf f
-  [[ -o extended-arithmetic ]] && printf a
+  set -M sh
+  [ "$(koshconf get legacy.unset_is_error)" = on ] && printf u
+  [ "$(koshconf get legacy.pipe_fail)" = on ] && printf p
+  [ "$(koshconf get legacy.empty_glob_is_error)" = on ] && printf f
+  [ "$(koshconf get arithmetic.extended)" = on ] && printf a
 )
 printf "\n"
 printf "" | {
-  set --mood default
+  set -M sh
   printf "runtime-marks-compound="
-  [[ -o nounset ]] && printf u
-  [[ -o pipefail ]] && printf p
-  [[ -o failglob ]] && printf f
-  [[ -o extended-arithmetic ]] && printf a
+  [ "$(koshconf get legacy.unset_is_error)" = on ] && printf u
+  [ "$(koshconf get legacy.pipe_fail)" = on ] && printf p
+  [ "$(koshconf get legacy.empty_glob_is_error)" = on ] && printf f
+  [ "$(koshconf get arithmetic.extended)" = on ] && printf a
   printf "\n"
 }
 '
@@ -54,12 +54,12 @@ printf "" | {
 "$BIN" --mood bash --no-init-files --no-diagnostics -c '
 printf "implicit-shopt-process="
 koshkit cat < <(
-  set --mood default
+  set -M default
   if shopt -q expand_aliases; then printf on; else printf off; fi
 )
 printf "\n"
 printf "" | {
-  set --mood default
+  set -M default
   printf "implicit-shopt-compound="
   if shopt -q expand_aliases; then printf on; else printf off; fi
   printf "\n"
@@ -152,7 +152,7 @@ test -n "$dirstack_root" && "$BIN_DIR/invoke-koshkit" rm -rf "$dirstack_root"
 
 "$BIN" --mood posix --no-init-files -c '
 printf "mood="
-koshkit cat < <(set --mood)
+koshkit cat < <(set -M)
 '
 
 "$BIN" --restricted --no-init-files --no-diagnostics -c '
@@ -279,7 +279,7 @@ eval "value=after" | koshkit cat
 printf "pipeline-state=%s\n" "$value"
 '
 
-pipeline_output=$("$BIN" --no-init-files --no-diagnostics -c \
+pipeline_output=$("$BIN" --mood bash --no-init-files --no-diagnostics -c \
   "set +o pipefail; eval 'koshkit seq 1 100000' | koshkit head -n 1")
 pipeline_status=$?
 printf "pipeline-output=%s\n" "$pipeline_output"

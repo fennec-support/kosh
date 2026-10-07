@@ -215,7 +215,7 @@ def run_extended_key_checks(session, report):
     session.send(b"set -o emacs; echo emacs-on\r")
     session.wait_until(has_output("emacs-on", 1))
 
-    session.send(b"set +o extended-keys; echo option-off\r")
+    session.send(b"koshconf set editor.extended_keys off; echo option-off\r")
     session.wait_until(has_output("option-off", 1))
     mark = bytes(session.raw).rfind(b"option-off\r\n")
     session.send(b"echo plain-keys\r")
@@ -223,7 +223,7 @@ def run_extended_key_checks(session, report):
     report.record("option-off-sends-no-request", session,
                   lambda screen: EXTENDED_KEYS_ON
                   not in get_raw_since(session, mark))
-    session.send(b"set -o extended-keys; echo option-on\r")
+    session.send(b"koshconf set editor.extended_keys on; echo option-on\r")
     session.wait_until(has_output("option-on", 1))
 
     mark = len(session.raw)

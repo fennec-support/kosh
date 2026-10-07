@@ -1,10 +1,14 @@
-5:8: warning: The variable 'nope' is not set, it expands to empty.
-     5 |  echo "[$nope]"
-       |         ^~~~~
-note: Replace it with ${nope-} if empty expansion is desired.
+5:2: error: Builtin `set`: The kosh mood keeps 'nounset' on.
+     5 |  (set +u)
+       |   ^~~~~~
+note: Switch to the bash mood with `set -M bash` to change it.
+5:1: trace:
+     5 |  (set +u)
+       |  ^
+kosh-rc=1
 []
-7:8: error: Unable to expand 'nope' because the parameter is not set.
-     7 |  (echo "$nope")
+11:8: error: Unable to expand 'nope' because the parameter is not set.
+    11 |  (echo "$nope")
        |         ^~~~~
 note: Replace it with ${nope-} if empty expansion is desired.
-code=2
+code=1

@@ -1,4 +1,4 @@
 4:6: error: The glob pattern '*.zzz_explicit_fatal' matched no file, it expands to its literal text, which is rarely intended.
      4 |  echo *.zzz_explicit_fatal
        |       ^~~~~~~~~~~~~~~~~~~~
-note: Probe for matches with compgen -G '*.zzz_explicit_fatal' or relax with set +o failglob.
+note: Probe for matches with compgen -G '*.zzz_explicit_fatal' or relax it with shopt -u failglob outside the kosh mood.

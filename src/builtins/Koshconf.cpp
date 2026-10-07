@@ -156,8 +156,12 @@ fn run_set(const ExecContext &ec, EvalContext &cxt,
   try {
     write_option_text(cxt, *option, value, option_origin::Koshconf);
   } catch (const Error &error) {
-    report_soft_builtin_error(ec, cxt, operands.locations[3],
-                              error.message().view());
+    if (error.detail_message().is_empty())
+      report_soft_builtin_error(ec, cxt, operands.locations[3],
+                                error.message().view());
+    else
+      report_soft_builtin_error(ec, cxt, operands.locations[3],
+                                error.message().view(), error.detail_message());
     return 1;
   }
 

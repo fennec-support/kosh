@@ -9,11 +9,6 @@ export
 == brace group:
 export
 == arguments through the keyword:
-no-clobber
-no-diagnostics
-no-exec
-no-glob
-no-unset
 noclobber
 noexec
 noglob
@@ -25,11 +20,6 @@ export
 == case arm with alternates:
 export
 == arguments through the case arm:
-no-clobber
-no-diagnostics
-no-exec
-no-glob
-no-unset
 noclobber
 noexec
 noglob

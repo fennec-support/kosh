@@ -47,7 +47,6 @@ enum class option_storage : u8
   AnnoyingDiagnostics,
   Analysis,
   Login,
-  Rcfile,
   RestrictedShell,
   Variable,
 };
@@ -87,7 +86,6 @@ struct option_descriptor
 {
   option_text koshconf_name;
   option_text set_name;
-  option_text set_alias;
   option_text shopt_name;
   option_text variable_name;
   option_text help;
@@ -104,7 +102,6 @@ struct option_descriptor
   bool is_fixed_in_kosh_mood;
   bool is_read_only;
   bool is_session_dependent;
-  bool is_set_name_inverted;
   bool is_listed_by_set;
 
   pure fn is_bash_option() const wontthrow -> bool

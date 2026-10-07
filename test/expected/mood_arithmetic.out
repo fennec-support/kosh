@@ -184,5 +184,10 @@ default=on
 bash=off
 sh=off
 enabled=18446744073709551617
+132:34: error: Builtin `koshconf`: The kosh mood keeps 'arithmetic.extended' on.
+   132 |  koshconf set arithmetic.extended off
+       |                                   ^~~
+note: Switch to the bash mood with `set -M bash` to change it.
+kosh-rc=1
 disabled=1
 nested=2 value=1

@@ -8,7 +8,7 @@ for ((; 2 ** 64;)); do
   echo exact-loop
   break
 done
-set --mood bash
+set -M bash
 for ((; 2 ** 64;)); do
   echo wrapped-loop
   break

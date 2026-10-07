@@ -1,6 +1,6 @@
 unset KOSH_FLAGS
 
-default_count=$(PATH= "$BIN" -c 'set -o koshkit; nproc')
+default_count=$(PATH= "$BIN" -c 'koshconf set koshkit.commands on; nproc')
 case "$default_count" in
     *[!0-9]*|'') echo default-invalid ;;
     0) echo default-zero ;;
@@ -17,7 +17,7 @@ if [ "$(uname -s)" = Linux ] && command -v taskset >/dev/null 2>&1; then
 fi
 
 all_count=$(
-    PATH= "$BIN" -c 'set -o koshkit; nproc --all'
+    PATH= "$BIN" -c 'koshconf set koshkit.commands on; nproc --all'
 )
 case "$all_count" in
     *[!0-9]*|'') echo all-invalid ;;
@@ -31,7 +31,7 @@ case "$all_count" in
         ;;
 esac
 
-ignored_one=$(PATH= "$BIN" -c 'set -o koshkit; nproc --ignore=1')
+ignored_one=$(PATH= "$BIN" -c 'koshconf set koshkit.commands on; nproc --ignore=1')
 expected_one=$((default_count > 1 ? default_count - 1 : 1))
 if [ "$ignored_one" -eq "$expected_one" ]; then
     echo ignore-one
@@ -39,7 +39,7 @@ else
     echo ignore-one-wrong
 fi
 
-ignored_zero=$(PATH= "$BIN" -c 'set -o koshkit; nproc --ignore=0')
+ignored_zero=$(PATH= "$BIN" -c 'koshconf set koshkit.commands on; nproc --ignore=0')
 if [ "$ignored_zero" -eq "$default_count" ]; then
     echo ignore-zero
 else
@@ -47,7 +47,7 @@ else
 fi
 
 ignored_large=$(
-    PATH= "$BIN" -c 'set -o koshkit; nproc --ignore=18446744073709551615'
+    PATH= "$BIN" -c 'koshconf set koshkit.commands on; nproc --ignore=18446744073709551615'
 )
 if [ "$ignored_large" -eq 1 ]; then
     echo ignore-saturates
@@ -57,7 +57,7 @@ fi
 
 for invalid in x -1 '' 18446744073709551616; do
     if PATH= NPROC_INVALID=$invalid "$BIN" -c \
-        'set -o koshkit; nproc --ignore="$NPROC_INVALID"' >/dev/null 2>&1
+        'koshconf set koshkit.commands on; nproc --ignore="$NPROC_INVALID"' >/dev/null 2>&1
     then
         echo invalid-accepted
     else
@@ -65,7 +65,7 @@ for invalid in x -1 '' 18446744073709551616; do
     fi
 done
 
-if PATH= "$BIN" -c 'set -o koshkit; nproc operand' >/dev/null 2>&1; then
+if PATH= "$BIN" -c 'koshconf set koshkit.commands on; nproc operand' >/dev/null 2>&1; then
     echo operand-accepted
 else
     echo operand-rejected

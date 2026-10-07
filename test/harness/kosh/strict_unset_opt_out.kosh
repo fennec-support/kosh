@@ -1,6 +1,10 @@
 #!/bin/env kosh
 # The runtime nounset error is the contract under test, not the static warning.
+# The kosh mood refuses set +u, and the bash mood opts out.
 # shellcheck disable=unassigned-variable-read
+(set +u)
+echo "kosh-rc=$?"
+set -M bash
 set +u
 echo "[$nope]"
 set -u

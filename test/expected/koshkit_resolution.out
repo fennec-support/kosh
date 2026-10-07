@@ -13,20 +13,20 @@ rc=0
        |         ^~~
 note: Did you mean 'set'?
 rc=127
-=== set -o koshkit turns bare names on ===
+=== koshconf set koshkit.commands on turns bare names on ===
 1
 2
 3
-=== set -o koshkit passes bare Koshka utility flags ===
+=== koshconf set koshkit.commands on passes bare Koshka utility flags ===
 host-shape=matched
-=== set -o koshkit passes bare POSIX utility flags ===
-=== set -o koshkit leaves unknown names unresolved ===
+=== koshconf set koshkit.commands on passes bare POSIX utility flags ===
+=== koshconf set koshkit.commands on leaves unknown names unresolved ===
 rc=1
-=== set -o koshkit preserves builtin precedence ===
+=== koshconf set koshkit.commands on preserves builtin precedence ===
 builtin
-=== set -o koshkit preserves alias precedence ===
+=== koshconf set koshkit.commands on preserves alias precedence ===
 alias
-=== set -o koshkit preserves function precedence ===
+=== koshconf set koshkit.commands on preserves function precedence ===
 function
 === --enable-koshkit turns bare names on ===
 1
@@ -34,7 +34,7 @@ function
 3
 === --enable-koshkit prefers a PATH binary ===
 PATH seq
-=== set -o koshkit prefers a PATH binary ===
+=== koshconf set koshkit.commands on prefers a PATH binary ===
 PATH seq
 === --enable-koshkit works in the sh mood ===
 1

@@ -868,7 +868,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     if (completes_set_builtin &&
         (previous_word == "-o" || previous_word == "+o"))
     {
-      for (let const name : shell_option_names(true))
+      for (let const name : shell_option_names())
         do_push_matching(name);
       if (!candidates.is_empty()) return candidates;
       return None;
@@ -878,7 +878,10 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
         SSK("--mood"), SSK("-M"), SSK("--init-moods"), SSK("-L")};
     static constexpr StaticStringSet MOOD_FLAGS{MOOD_FLAG_KEYS};
 
-    if (MOOD_FLAGS.contains(previous_word)) {
+    let const is_mood_flag =
+        MOOD_FLAGS.contains(previous_word) &&
+        (completes_shell_binary || !previous_word.starts_with("--"));
+    if (is_mood_flag) {
       for (mimic_mood mood : {mimic_mood::Default, mimic_mood::Bash,
                               mimic_mood::Posix, mimic_mood::BashPosix})
         do_push_matching(mood_name(mood));
@@ -886,7 +889,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
       return None;
     }
 
-    if (previous_word == "--tab-selector") {
+    if (completes_shell_binary && previous_word == "--tab-selector") {
       for (tab_selector_mode selector :
            {tab_selector_mode::Interactive, tab_selector_mode::External,
             tab_selector_mode::Plain})
@@ -948,7 +951,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
   {
     /* shopt -o crosses over to the set option names. */
     if (previous_word == "-o") {
-      for (let const name : shell_option_names(true))
+      for (let const name : shell_option_names())
         do_push_matching(name);
     } else {
       for (let const name : shopt_option_name_list())

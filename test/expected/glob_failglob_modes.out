@@ -4,7 +4,7 @@ real_one real_two
 -c:1:6: error: The glob pattern 'no_match_*' matched no file, it expands to its literal text, which is rarely intended.
      1 |  echo no_match_*
        |       ^~~~~~~~~~
-note: Probe for matches with compgen -G 'no_match_*' or relax with set +o failglob.
+note: Probe for matches with compgen -G 'no_match_*' or relax it with shopt -u failglob outside the kosh mood.
 rc=1
 == the bash mood leaves it literal:
 no_match_*
@@ -15,11 +15,11 @@ data_*
 -c:2:49: warning: The glob pattern 'literal_*' matched no file, it expands to its literal text, which is rarely intended.
      2 |  pattern=$(printf "data_*"); echo $pattern; echo literal_*
        |                                                  ^~~~~~~~~
-note: Probe for matches with compgen -G 'literal_*' or relax with set +o failglob.
+note: Probe for matches with compgen -G 'literal_*' or relax it with shopt -u failglob outside the kosh mood.
 literal_*
 data_*
 -c:2:49: warning: The glob pattern 'literal_*' matched no file, it expands to its literal text, which is rarely intended.
      2 |  pattern=$(printf "data_*"); echo $pattern; echo literal_*
        |                                                  ^~~~~~~~~
-note: Probe for matches with compgen -G 'literal_*' or relax with set +o failglob.
+note: Probe for matches with compgen -G 'literal_*' or relax it with shopt -u failglob outside the kosh mood.
 literal_*

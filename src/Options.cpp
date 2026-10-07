@@ -87,13 +87,6 @@ consteval fn flag(u16 id, option_text koshconf_name, option_class category,
                     is_on);
 }
 
-consteval fn with_alias(option_descriptor entry, option_text alias) wontthrow
-    -> option_descriptor
-{
-  entry.set_alias = alias;
-  return entry;
-}
-
 consteval fn shopt_flag(u16 id, option_text koshconf_name,
                         option_class category, option_text shopt_name,
                         bool is_on_in_kosh, bool is_on_in_bash) wontthrow
@@ -145,13 +138,6 @@ consteval fn session_dependent(option_descriptor entry) wontthrow
   return entry;
 }
 
-consteval fn inverted_set_name(option_descriptor entry) wontthrow
-    -> option_descriptor
-{
-  entry.is_set_name_inverted = true;
-  return entry;
-}
-
 constexpr let INTERACTIVE = option_class::Interactive;
 constexpr let SEMANTIC = option_class::Semantic;
 constexpr let NO_SHELL_OPTION = shell_option_id::Count;
@@ -166,7 +152,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                          NO_SHELL_OPTION, entry_shape{}, 0, 0),
               enum_values(TAB_SELECTOR_VALUE_NAMES)),
     flag(3, "editor.hints", INTERACTIVE, shell_option_id::InteractiveHints,
-         entry_shape{"interactive-hints",
+         entry_shape{{},
                      {},
                      {},
                      "Show the synopsis or flag description of the "
@@ -174,14 +160,14 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
          true),
     flag(4, "editor.diagnostics", INTERACTIVE,
          shell_option_id::InteractiveDiagnostics,
-         entry_shape{"interactive-diagnostics",
+         entry_shape{{},
                      {},
                      {},
                      "Show the syntax problem or analysis finding of "
                      "the line below the input."},
          true),
     flag(5, "editor.auto_pair", INTERACTIVE, shell_option_id::AutoPair,
-         entry_shape{"auto-pair",
+         entry_shape{{},
                      {},
                      {},
                      "Insert the closer after a typed bracket, brace, "
@@ -189,14 +175,14 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
          false),
     flag(6, "editor.transient_prompt", INTERACTIVE,
          shell_option_id::TransientPrompt,
-         entry_shape{"transient-prompt",
+         entry_shape{{},
                      {},
                      {},
                      "Redraw a submitted line after PS1_TRANSIENT and "
                      "without RPS1."},
          false),
     flag(7, "editor.extended_keys", INTERACTIVE, shell_option_id::ExtendedKeys,
-         entry_shape{"extended-keys",
+         entry_shape{{},
                      {},
                      {},
                      "Ask the terminal to report modified keys such as "
@@ -204,7 +190,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
          true),
     flag(8, "history.prefix_search", INTERACTIVE,
          shell_option_id::HistoryPrefixSearch,
-         entry_shape{"history-prefix-search",
+         entry_shape{{},
                      {},
                      {},
                      "Recall only history entries that begin with the "
@@ -219,7 +205,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                entry_shape{{}, {}, "KOSH_HISTORY_SIZE"}, 0, 0),
     flag(11, "completion.space_after", INTERACTIVE,
          shell_option_id::SpaceAfterCompletion,
-         entry_shape{"space-after-completion",
+         entry_shape{{},
                      {},
                      {},
                      "Insert a space after an accepted non-directory "
@@ -233,24 +219,21 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                                      .letter = 'W'},
                          0, 0),
               enum_values(WARNING_LEVEL_VALUE_NAMES)),
-    special(flag(13, "diagnostics.annoying", INTERACTIVE, NO_SHELL_OPTION,
-                 entry_shape{"annoying-diagnostics",
+    special(
+        flag(13, "diagnostics.annoying", INTERACTIVE, NO_SHELL_OPTION,
+             entry_shape{{}, {}, {}, "Report the annoying diagnostic tier."},
+             true),
+        option_storage::AnnoyingDiagnostics),
+    special(flag(14, "diagnostics.analysis", INTERACTIVE, NO_SHELL_OPTION,
+                 entry_shape{{},
                              {},
                              {},
-                             "Report the annoying diagnostic tier."},
+                             "Run the analysis stage before each chunk "
+                             "runs."},
                  true),
-            option_storage::AnnoyingDiagnostics),
-    inverted_set_name(
-        special(flag(14, "diagnostics.analysis", INTERACTIVE, NO_SHELL_OPTION,
-                     entry_shape{"no-diagnostics",
-                                 {},
-                                 {},
-                                 "Skip the analysis stage before each chunk "
-                                 "runs."},
-                     true),
-                option_storage::Analysis)),
+            option_storage::Analysis),
     flag(15, "koshkit.commands", INTERACTIVE, shell_option_id::Koshkit,
-         entry_shape{"koshkit",
+         entry_shape{{},
                      {},
                      {},
                      "Resolve the bundled koshkit utility names "
@@ -260,7 +243,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
         make_entry(16, "arithmetic.extended", option_type::Boolean, SEMANTIC,
                    option_storage::ShellOption,
                    shell_option_id::ExtendedArithmetic,
-                   entry_shape{"extended-arithmetic",
+                   entry_shape{{},
                                {},
                                {},
                                "Use arbitrary-precision integers and finite "
@@ -268,20 +251,16 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                    1, 0),
         1),
     flag(17, "compat.mimicry", INTERACTIVE, shell_option_id::Mimicry,
-         entry_shape{"mimicry",
-                     {},
-                     {},
-                     "Mimic the shell named by a script's shebang.",
-                     'I'},
+         entry_shape{
+             {}, {}, {}, "Mimic the shell named by a script's shebang.", 'I'},
          false),
     unlisted(flag(
         18, "debug.show_ast", INTERACTIVE, shell_option_id::ShowAst,
-        entry_shape{
-            "show-ast", {}, {}, "Print the AST before each command runs.", 'A'},
+        entry_shape{{}, {}, {}, "Print the AST before each command runs.", 'A'},
         false)),
     unlisted(flag(19, "debug.show_lexed_words", INTERACTIVE,
                   shell_option_id::ShowLexedWords,
-                  entry_shape{"show-lexed-words",
+                  entry_shape{{},
                               {},
                               {},
                               "Print the escape bitmap after each "
@@ -290,7 +269,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                   false)),
     unlisted(flag(20, "debug.show_exit_code", INTERACTIVE,
                   shell_option_id::ShowExitCode,
-                  entry_shape{"show-exit-code",
+                  entry_shape{{},
                               {},
                               {},
                               "Show diagnostics for every non-zero "
@@ -298,7 +277,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                   false)),
     unlisted(flag(21, "debug.show_all_exit_codes", INTERACTIVE,
                   shell_option_id::ShowAllExitCodes,
-                  entry_shape{"show-all-exit-codes",
+                  entry_shape{{},
                               {},
                               {},
                               "Show diagnostics for every exit code, "
@@ -307,41 +286,25 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                   false)),
     unlisted(flag(22, "debug.show_stats", INTERACTIVE,
                   shell_option_id::ShowStats,
-                  entry_shape{"show-stats",
+                  entry_shape{{},
                               {},
                               {},
                               "Print evaluation statistics after each "
                               "run.",
                               'S'},
                   false)),
-    unlisted(flag(23, "debug.show_memory", INTERACTIVE,
-                  shell_option_id::ShowMemory,
-                  entry_shape{"show-memory",
-                              {},
-                              {},
-                              "Print a granular memory report at exit.",
-                              'G'},
-                  false)),
-    read_only(unlisted(
-        special(flag(24, "startup.rcfile", INTERACTIVE, NO_SHELL_OPTION,
-                     entry_shape{"rcfile",
-                                 {},
-                                 {},
-                                 "Whether a custom rc file was named at "
-                                 "startup, fixed at startup."},
-                     false),
-                option_storage::Rcfile))),
+    unlisted(flag(
+        23, "debug.show_memory", INTERACTIVE, shell_option_id::ShowMemory,
+        entry_shape{{}, {}, {}, "Print a granular memory report at exit.", 'G'},
+        false)),
 
-    with_alias(flag(64, "legacy.export_all", SEMANTIC,
-                    shell_option_id::Allexport,
-                    entry_shape{"allexport",
-                                {},
-                                {},
-                                "Mark every assigned variable for the "
-                                "environment.",
-                                'a'},
-                    false),
-               "export-all"),
+    flag(64, "legacy.export_all", SEMANTIC, shell_option_id::Allexport,
+         entry_shape{"allexport",
+                     {},
+                     {},
+                     "Mark every assigned variable for the environment.",
+                     'a'},
+         false),
     flag(65, "legacy.notify_jobs", INTERACTIVE, shell_option_id::Notify,
          entry_shape{"notify",
                      {},
@@ -350,20 +313,13 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                      "when it finishes.",
                      'b'},
          false),
-    with_alias(
-        flag(66, "legacy.exit_on_error", SEMANTIC, shell_option_id::Errexit,
-             entry_shape{"errexit",
-                         {},
-                         {},
-                         "Exit on the first command that fails.",
-                         'e'},
-             false),
-        "error-exit"),
-    with_alias(
-        flag(67, "legacy.no_glob", SEMANTIC, shell_option_id::Noglob,
-             entry_shape{"noglob", {}, {}, "Disable pathname expansion.", 'f'},
-             false),
-        "no-glob"),
+    flag(66, "legacy.exit_on_error", SEMANTIC, shell_option_id::Errexit,
+         entry_shape{
+             "errexit", {}, {}, "Exit on the first command that fails.", 'e'},
+         false),
+    flag(67, "legacy.no_glob", SEMANTIC, shell_option_id::Noglob,
+         entry_shape{"noglob", {}, {}, "Disable pathname expansion.", 'f'},
+         false),
     flag(68, "legacy.hash_commands", SEMANTIC, shell_option_id::Hashall,
          entry_shape{"hashall",
                      {},
@@ -389,14 +345,13 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                          "notifications.",
                          'm'},
              false)),
-    with_alias(flag(71, "legacy.no_exec", SEMANTIC, shell_option_id::Noexec,
-                    entry_shape{"noexec",
-                                {},
-                                {},
-                                "Read and parse commands but do not run them.",
-                                'n'},
-                    false),
-               "no-exec"),
+    flag(71, "legacy.no_exec", SEMANTIC, shell_option_id::Noexec,
+         entry_shape{"noexec",
+                     {},
+                     {},
+                     "Read and parse commands but do not run them.",
+                     'n'},
+         false),
     flag(72, "legacy.one_command", SEMANTIC, shell_option_id::Onecmd,
          entry_shape{"onecmd",
                      {},
@@ -413,17 +368,15 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                      "startup files.",
                      'p'},
          false),
-    fixed_in_kosh(
-        with_alias(flag(74, "legacy.unset_is_error", SEMANTIC,
-                        shell_option_id::Nounset,
-                        entry_shape{"nounset",
-                                    {},
-                                    {},
-                                    "Treat an unset variable as an error.",
-                                    'u'},
-                        false),
-                   "no-unset"),
-        1),
+    fixed_in_kosh(flag(74, "legacy.unset_is_error", SEMANTIC,
+                       shell_option_id::Nounset,
+                       entry_shape{"nounset",
+                                   {},
+                                   {},
+                                   "Treat an unset variable as an error.",
+                                   'u'},
+                       false),
+                  1),
     flag(75, "legacy.echo_input", SEMANTIC, shell_option_id::Verbose,
          entry_shape{"verbose",
                      {},
@@ -441,16 +394,13 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
     flag(77, "legacy.brace_expansion", SEMANTIC, shell_option_id::Braceexpand,
          entry_shape{"braceexpand", {}, {}, "Enable brace expansion.", 'B'},
          true),
-    with_alias(flag(78, "legacy.no_clobber", SEMANTIC,
-                    shell_option_id::Noclobber,
-                    entry_shape{"noclobber",
-                                {},
-                                {},
-                                "Refuse to overwrite an existing file through "
-                                "'>'.",
-                                'C'},
-                    false),
-               "no-clobber"),
+    flag(78, "legacy.no_clobber", SEMANTIC, shell_option_id::Noclobber,
+         entry_shape{"noclobber",
+                     {},
+                     {},
+                     "Refuse to overwrite an existing file through '>'.",
+                     'C'},
+         false),
     flag(79, "legacy.err_trap_inherit", SEMANTIC, shell_option_id::Errtrace,
          entry_shape{"errtrace",
                      {},
@@ -557,7 +507,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                              option_type::Boolean, SEMANTIC,
                              option_storage::Failglob,
                              shell_option_id::Failglob,
-                             entry_shape{"failglob",
+                             entry_shape{{},
                                          "failglob",
                                          {},
                                          "Fail a command whose glob matches "
@@ -596,16 +546,14 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                false, false),
     shopt_flag(158, "legacy.local_unset", SEMANTIC, "localvar_unset", false,
                false),
-    read_only(unlisted(special(
-        make_entry(159, "legacy.login_shell", option_type::Boolean, INTERACTIVE,
-                   option_storage::Login, NO_SHELL_OPTION,
-                   entry_shape{"login",
-                               "login_shell",
-                               {},
-                               "Whether the shell started as a login shell, "
-                               "fixed at startup."},
-                   0, 0),
-        option_storage::Login))),
+    read_only(make_entry(159, "legacy.login_shell", option_type::Boolean,
+                         INTERACTIVE, option_storage::Login, NO_SHELL_OPTION,
+                         entry_shape{{},
+                                     "login_shell",
+                                     {},
+                                     "Whether the shell started as a login "
+                                     "shell, fixed at startup."},
+                         0, 0)),
     shopt_flag(160, "legacy.mail_warn", INTERACTIVE, "mailwarn", false, false),
     shopt_flag(161, "legacy.no_empty_command_completion", INTERACTIVE,
                "no_empty_cmd_completion", false, false),
@@ -613,8 +561,9 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                false),
     shopt_flag(163, "legacy.match_ignore_case", SEMANTIC, "nocasematch", false,
                false),
-    shopt_flag(164, "legacy.empty_glob_is_removed", SEMANTIC, "nullglob", false,
-               false),
+    fixed_in_kosh(shopt_flag(164, "legacy.empty_glob_is_removed", SEMANTIC,
+                             "nullglob", false, false),
+                  0),
     shopt_flag(165, "legacy.patsub_replacement", SEMANTIC, "patsub_replacement",
                true, true),
     shopt_flag(166, "legacy.programmable_completion", INTERACTIVE, "progcomp",
@@ -705,10 +654,8 @@ consteval fn name_of(const option_descriptor &entry, name_kind kind) wontthrow
 consteval fn name_count(name_kind kind) wontthrow -> usize
 {
   usize result = 0;
-  for (let const &entry : OPTION_REGISTRY) {
+  for (let const &entry : OPTION_REGISTRY)
     if (!name_of(entry, kind).is_empty()) result++;
-    if (kind == name_kind::Set && !entry.set_alias.is_empty()) result++;
-  }
   return result;
 }
 
@@ -722,10 +669,6 @@ consteval fn make_name_entries() wontthrow -> name_entry_table<name_count(Kind)>
     if (!name.is_empty())
       result.entries[position++] = {PackedStringKey::from_literal(name.data),
                                     static_cast<u8>(index)};
-    if (Kind == name_kind::Set && !OPTION_REGISTRY[index].set_alias.is_empty())
-      result.entries[position++] = {
-          PackedStringKey::from_literal(OPTION_REGISTRY[index].set_alias.data),
-          static_cast<u8>(index)};
   }
   return result;
 }
@@ -755,8 +698,8 @@ consteval fn registry_is_valid() wontthrow -> bool
   for (usize left = 0; left < countof(OPTION_REGISTRY); left++) {
     let const &entry = OPTION_REGISTRY[left];
     if (entry.koshconf_name.is_empty() || entry.id == 0) return false;
-    for (let const name : {entry.koshconf_name, entry.set_name,
-                           entry.shopt_name, entry.set_alias})
+    for (let const name :
+         {entry.koshconf_name, entry.set_name, entry.shopt_name})
       if (name.length > PackedStringKey::BYTE_CAPACITY) return false;
     if (entry.type != option_type::String && entry.enum_values.count == 0)
       return false;
@@ -890,7 +833,6 @@ fn read_boolean(const EvalContext &cxt, const option_descriptor &option) throws
     return state.is_annoying_diagnostics_enabled();
   case option_storage::Analysis: return !state.is_diagnostics_disabled();
   case option_storage::Login: return cxt.startup_store().is_login_shell();
-  case option_storage::Rcfile: return cxt.startup_store().has_custom_rcfile();
   case option_storage::RestrictedShell:
     return cxt.startup_store().is_restricted_shell();
   case option_storage::Mood:
@@ -968,7 +910,6 @@ fn write_boolean(EvalContext &cxt, const option_descriptor &option,
     state.set_diagnostics_disabled(!is_enabled);
     return;
   case option_storage::Login:
-  case option_storage::Rcfile:
   case option_storage::RestrictedShell:
   case option_storage::Mood:
   case option_storage::TabSelector:
@@ -1167,6 +1108,17 @@ fn write_option_number(EvalContext &cxt, const option_descriptor &option,
     throw Error{StringView{"Unable to change '"} +
                 display_name(option, origin) +
                 "' because it is fixed at shell startup"};
+  let const is_held_by_kosh_mood =
+      option.is_fixed_in_kosh_mood && origin != option_origin::Startup &&
+      cxt.runtime_state().get_mood() == mimic_mood::Default &&
+      value != option.strict_value;
+  if (is_held_by_kosh_mood) {
+    let error = ErrorWithDetails{
+        StringView{"The kosh mood keeps '"} + display_name(option, origin) +
+            "' " + format_option_number(option, option.strict_value),
+        "Switch to the bash mood with `set -M bash` to change it"};
+    throw error;
+  }
   LOG(Info, "setting option '%.*s' to %u",
       static_cast<int>(option.koshconf_name.length), option.koshconf_name.data,
       value);

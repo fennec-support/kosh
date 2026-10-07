@@ -198,7 +198,7 @@ send_unhighlighted_input()
 }
 
 printf '%s\n' \
-    "set --tab-selector=plain" \
+    "koshconf set editor.tab_selector plain" \
     "PS1='> '" \
     "PROMPT_COMMAND='printf ready > \"\$EDITOR_READY_FILE\"; unset PROMPT_COMMAND'" \
     "trap 'echo exited >> \"\$EDITOR_EXIT_FILE\"' EXIT" \
@@ -320,8 +320,8 @@ send_help_retry_input()
 }
 
 printf '%s\n' \
-  "set --tab-selector=plain" \
-  "set +o interactive-hints" \
+  "koshconf set editor.tab_selector plain" \
+  "koshconf set editor.hints off" \
   "PS1='> '" \
   "PROMPT_COMMAND='printf \"ready\\\\n\" >> \"\$EDITOR_READY_FILE\"'" \
   > "$d/help-retry-rc"
@@ -371,7 +371,7 @@ send_manpath_retry_input()
 }
 
 printf '%s\n' \
-  "set --tab-selector=plain" \
+  "koshconf set editor.tab_selector plain" \
   "PS1='> '" \
   "PROMPT_COMMAND='printf \"ready\\\\n\" >> \"\$EDITOR_READY_FILE\"'" \
   > "$d/manpath-rc"

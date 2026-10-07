@@ -1,31 +1,30 @@
 unset KOSH_FLAGS
 # set -e aborts the run on the first failing command, set +e turns it back off,
-# an unknown --mood value is rejected, and set -o with no name lists the option
-# states.
+# an unknown -M value is rejected, and set -o with no name lists the Bash
+# option states.
 echo "== set -e aborts before the next command:"
 "$BIN" -c 'set -e; false; echo unreached'; echo "rc=$?"
 echo "== set +e lets the run continue:"
 "$BIN" -c 'set -e; set +e; false; echo reached'; echo "rc=$?"
 echo "== an unknown mood is rejected:"
-"$BIN" -c 'set --mood badmood'; echo "rc=$?"
+"$BIN" -c 'set -M badmood'; echo "rc=$?"
 echo "== set -o lists the option states:"
 "$BIN" -c 'set -o'
 
 unset KOSH_FLAGS
-# set --mood and its short -M switch the runtime mood and reseed the strictness,
-# and -L is the short for --init-moods, matching the command-line flags so a
-# config can set either form.
+# set -M switches the runtime mood and reseeds the strictness, and -L sources
+# the startup files of other moods, matching the command-line letters.
 echo "== bash mood relaxes nounset:"
 "$BIN" -c '# shellcheck disable=unassigned-variable-read
-set --mood bash; echo "[${UNSETA}]"; echo ok'
+set -M bash; echo "[${UNSETA}]"; echo ok'
 echo "== -M short form prints the active mood:"
-"$BIN" -c 'set -M sh; set --mood'
+"$BIN" -c 'set -M sh; set -M'
 echo "== default mood is strict:"
 "$BIN" -c '# shellcheck disable=SC2154
 echo "[${UNSETB}]"' 2>&1 | grep -o "is not set" | head -1
 echo "== switching back to kosh restores strictness:"
 "$BIN" -c '# shellcheck disable=SC2154
-set --mood bash; set --mood kosh; echo "[${UNSETC}]"' 2>&1 | grep -o "is not set" | head -1
+set -M bash; set -M kosh; echo "[${UNSETC}]"' 2>&1 | grep -o "is not set" | head -1
 echo "rc-done"
 
 unset KOSH_FLAGS
@@ -37,7 +36,7 @@ unset KOSH_FLAGS
 echo "rc=$?"
 
 unset KOSH_FLAGS
-# set -o posix mirrors set --mood sh, entering the POSIX mood. set +o posix
+# set -o posix mirrors set -M sh, entering the POSIX mood. set +o posix
 # steps down to bash only when already in POSIX, and is a no-op otherwise since
 # the prior mood is not recoverable.
 echo "== set -o posix enters posix mood:"
@@ -51,11 +50,11 @@ echo "== brew's two failing lines now pass:"
 echo "rc-done"
 
 unset KOSH_FLAGS
-# A login shell marks its mood initialized, and set --init-moods lists the
-# same moods inside a background subshell as in the shell that started it.
+# A login shell marks its mood initialized, and set -L lists the same moods
+# inside a background subshell as in the shell that started it.
 home=$(mktemp -d)
 trap '[ -n "$home" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$home"' EXIT
 echo "== a background subshell lists the initialized moods:"
-HOME="$home" "$BIN" -l -c 'set --init-moods; ( set --init-moods ) & wait "$!"' \
+HOME="$home" "$BIN" -l -c 'set -L; ( set -L ) & wait "$!"' \
   2>/dev/null
 echo "rc=$?"

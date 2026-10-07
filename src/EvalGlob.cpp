@@ -894,7 +894,8 @@ hot fn EvalContext::expand_path(glob_field field,
                         "' matched no file, it expands to its literal text, "
                         "which is rarely intended",
                     "Probe for matches with compgen -G '" + pattern +
-                        "' or relax with set +o failglob");
+                        "' or relax it with shopt -u failglob outside the "
+                        "kosh mood");
     }
 
     /* nullglob drops a no-match glob entirely, while the default and a test

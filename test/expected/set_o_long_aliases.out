@@ -1,5 +1,95 @@
-failglob       	on
 noglob         	on
-errexit        	on
-noclobber      	on
+10:11: error: Builtin `set`: Unknown -o option 'no-glob'.
+    10 |    (set -o "$name")
+       |            ^~~~~~~
+10:3: trace:
+    10 |    (set -o "$name")
+       |    ^
+no-glob rc=1
+10:11: error: Builtin `set`: Unknown -o option 'error-exit'.
+    10 |    (set -o "$name")
+       |            ^~~~~~~
+10:3: trace:
+    10 |    (set -o "$name")
+       |    ^
+error-exit rc=1
+10:11: error: Builtin `set`: Unknown -o option 'no-clobber'.
+    10 |    (set -o "$name")
+       |            ^~~~~~~
+10:3: trace:
+    10 |    (set -o "$name")
+       |    ^
+no-clobber rc=1
+10:11: error: Builtin `set`: Unknown -o option 'failglob'.
+    10 |    (set -o "$name")
+       |            ^~~~~~~
+10:3: trace:
+    10 |    (set -o "$name")
+       |    ^
+failglob rc=1
+10:11: error: Builtin `set`: Unknown -o option 'koshkit'.
+    10 |    (set -o "$name")
+       |            ^~~~~~~
+10:3: trace:
+    10 |    (set -o "$name")
+       |    ^
+koshkit rc=1
+10:11: error: Builtin `set`: Unknown -o option 'no-diagnostics'.
+    10 |    (set -o "$name")
+       |            ^~~~~~~
+10:3: trace:
+    10 |    (set -o "$name")
+       |    ^
+no-diagnostics rc=1
+10:11: error: Builtin `set`: Unknown -o option 'extended-arithmetic'.
+    10 |    (set -o "$name")
+       |            ^~~~~~~
+10:3: trace:
+    10 |    (set -o "$name")
+       |    ^
+extended-arithmetic rc=1
+10:11: error: Builtin `set`: Unknown -o option 'interactive-hints'.
+    10 |    (set -o "$name")
+       |            ^~~~~~~
+10:3: trace:
+    10 |    (set -o "$name")
+       |    ^
+interactive-hints rc=1
+10:11: error: Builtin `set`: Unknown -o option 'mimicry'.
+    10 |    (set -o "$name")
+       |            ^~~~~~~
+10:3: trace:
+    10 |    (set -o "$name")
+       |    ^
+mimicry rc=1
+10:11: error: Builtin `set`: Unknown -o option 'login'.
+    10 |    (set -o "$name")
+       |            ^~~~~~~
+10:3: trace:
+    10 |    (set -o "$name")
+       |    ^
+login rc=1
+10:11: error: Builtin `set`: Unknown -o option 'rcfile'.
+    10 |    (set -o "$name")
+       |            ^~~~~~~
+10:3: trace:
+    10 |    (set -o "$name")
+       |    ^
+rcfile rc=1
+13:6: error: Builtin `set`: Unknown option '--mood'.
+    13 |  (set --mood bash)
+       |       ^~~~~~
+note: Koshka settings without a letter belong to koshconf, such as `koshconf set mood bash`.
+13:1: trace:
+    13 |  (set --mood bash)
+       |  ^
+long-mood rc=1
+15:6: error: Builtin `set`: Unknown option '--options'.
+    15 |  (set --options)
+       |       ^~~~~~~~~
+note: Koshka settings without a letter belong to koshconf, such as `koshconf set mood bash`.
+15:1: trace:
+    15 |  (set --options)
+       |  ^
+options rc=1
 done

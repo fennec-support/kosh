@@ -32,13 +32,13 @@ echo "rc=$?"
 trap - RETURN
 koshkit unlink "$source_file"
 echo "== GUARDED LOOP =="
-set --mood bash
+set -M bash
 trap 'echo unexpected' ERR
 for item in one two; do
   false && echo unreachable
 done
 echo "rc=$?"
 trap - ERR
-set --mood kosh
-echo "mood=$(set --mood)"
+set -M kosh
+echo "mood=$(set -M)"
 echo "== DONE =="

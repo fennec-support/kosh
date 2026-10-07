@@ -1,11 +1,17 @@
 #!/bin/env kosh
-set -o no-glob
-set -o | grep glob
-set +o no-glob
-set -o error-exit
-set -o | grep errexit
-set +o error-exit
-set -o no-clobber
-set -o | grep clobber
-set +o no-clobber
+# set -o accepts only the Bash names. The former Koshka spellings and the
+# shopt-only failglob are unknown, and koshconf owns the Koshka settings.
+set -o noglob
+set -o | grep noglob
+set +o noglob
+for name in no-glob error-exit no-clobber failglob koshkit no-diagnostics \
+  extended-arithmetic interactive-hints mimicry login rcfile
+do
+  (set -o "$name")
+  echo "$name rc=$?"
+done
+(set --mood bash)
+echo "long-mood rc=$?"
+(set --options)
+echo "options rc=$?"
 echo done

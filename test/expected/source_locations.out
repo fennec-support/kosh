@@ -422,14 +422,14 @@ rc=0
 warnings.sh:2:14: warning: The glob pattern '*.txt' matched no file, it expands to its literal text, which is rarely intended.
      2 |  files=$(echo *.txt)
        |               ^~~~~
-note: Probe for matches with compgen -G '*.txt' or relax with set +o failglob.
+note: Probe for matches with compgen -G '*.txt' or relax it with shopt -u failglob outside the kosh mood.
 2:7: trace:
      2 |  files=$(echo *.txt)
        |        ^~~~~~~~~~~~~
 warnings.sh:3:12: warning: The glob pattern '*.nope' matched no file, it expands to its literal text, which is rarely intended.
      3 |  cat <(echo *.nope)
        |             ^~~~~~
-note: Probe for matches with compgen -G '*.nope' or relax with set +o failglob.
+note: Probe for matches with compgen -G '*.nope' or relax it with shopt -u failglob outside the kosh mood.
 3:5: trace:
      3 |  cat <(echo *.nope)
        |      ^~~~~~~~~~~~~~
@@ -437,14 +437,14 @@ note: Probe for matches with compgen -G '*.nope' or relax with set +o failglob.
 warnings.sh:4:9: warning: The glob pattern '*.back' matched no file, it expands to its literal text, which is rarely intended.
      4 |  x=`echo *.back`
        |          ^~~~~~
-note: Probe for matches with compgen -G '*.back' or relax with set +o failglob.
+note: Probe for matches with compgen -G '*.back' or relax it with shopt -u failglob outside the kosh mood.
 4:3: trace:
      4 |  x=`echo *.back`
        |    ^~~~~~~~~~~~~
 warnings.sh:6:8: warning: The glob pattern '*.zip' matched no file, it expands to its literal text, which is rarely intended.
      6 |  $(echo *.zip)
        |         ^~~~~
-note: Probe for matches with compgen -G '*.zip' or relax with set +o failglob.
+note: Probe for matches with compgen -G '*.zip' or relax it with shopt -u failglob outside the kosh mood.
 6:1: trace:
      6 |  $(echo *.zip)
        |  ^~~~~~~~~~~~~

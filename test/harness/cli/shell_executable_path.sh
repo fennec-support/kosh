@@ -23,7 +23,7 @@ ln -s "$BIN" "$real_d/bin/bash"
 for mood in kosh bash sh bash-posix; do
   "$BIN" --mood "$mood" -c 'printf "%s " "${KOSH:+set}"'
 done
-"$BIN" -c 'set --mood sh; printf "%s " "${KOSH:+set}"'
+"$BIN" -c 'set -M sh; printf "%s " "${KOSH:+set}"'
 "$real_d/bin/bash" -c 'printf "%s\n" "${KOSH:+set}"'
 echo "== KOSH replaces an inherited value and is not exported:"
 KOSH=inherited "$BIN" --mood bash -c 'case $KOSH in inherited) echo kept;; *) echo replaced;; esac'

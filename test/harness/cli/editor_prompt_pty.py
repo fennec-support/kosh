@@ -114,9 +114,9 @@ def run_checks(binary, directory, command_directory, report):
         report.record("right-prompt-returns-at-full-width", session,
                       is_prompt_line(empty_prompt))
 
-        session.send(b"set -o transient-prompt\r")
+        session.send(b"koshconf set editor.transient_prompt on\r")
         session.wait_until(is_submitted(
-            [with_right_prompt(BULLET + " set -o transient-prompt")],
+            [with_right_prompt(BULLET + " koshconf set editor.transient_prompt on")],
             empty_prompt))
         session.send(b"echo three\r")
         report.record("transient-prompt-redraws-the-line", session,

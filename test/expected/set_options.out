@@ -1,14 +1,19 @@
 on=0
-off=0
+3:2: error: Builtin `set`: The kosh mood keeps 'pipefail' on.
+     3 |  (set +o pipefail); echo "off=$?"
+       |   ^~~~~~~~~~~~~~~
+note: Switch to the bash mood with `set -M bash` to change it.
+3:1: trace:
+     3 |  (set +o pipefail); echo "off=$?"
+       |  ^
+off=1
 one three count=3
 kosh
 mood=kosh args=mood-marker
 
 init=init-marker
-interactive
-selector=interactive args=selector-marker
 bundled=0
 after=1
-10:5: error: Builtin `set`: Unknown option '-Z'.
-    10 |  set -Z 2>&1; echo "bad=$?"
+9:5: error: Builtin `set`: Unknown option '-Z'.
+     9 |  set -Z 2>&1; echo "bad=$?"
        |      ^~

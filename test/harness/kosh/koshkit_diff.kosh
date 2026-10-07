@@ -38,10 +38,12 @@ echo "text=$?"
 printf 'same\n' > right
 printf 'same\n' | koshkit diff - right
 echo "stdin=$?"
-set +o pipefail
-printf 'same\n' | koshkit diff - -
-echo "double-stdin=$?"
-set -o pipefail
+(
+  set -M bash
+  set +o pipefail
+  printf 'same\n' | koshkit diff - -
+  echo "double-stdin=$?"
+)
 
 printf 'a\na\n' > left
 printf 'b\na\n' > right

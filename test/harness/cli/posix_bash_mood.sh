@@ -10,7 +10,7 @@ echo "== --posix seeds BASH_VERSINFO:"
 "$BIN" --posix -c \
   'printf "BASH_VERSINFO=%s.%s.%s.%s\n" "${BASH_VERSINFO[@]:0:4}"'; echo "rc=$?"
 echo "== --posix reports the bash-posix mood:"
-"$BIN" --posix -c 'set --mood'; echo "rc=$?"
+"$BIN" --posix -c 'set -M'; echo "rc=$?"
 echo "== --mood bash-posix keeps [[ working:"
 "$BIN" --mood bash-posix -c '[[ x == x ]] && echo bracket-works'; echo "rc=$?"
 echo "== --posix does not enter the sh mood:"

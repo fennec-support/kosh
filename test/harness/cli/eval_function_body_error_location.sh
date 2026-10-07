@@ -26,6 +26,6 @@ echo "== bash mood, function keyword form =="
     printf 'rc=%s\n' "$?"
 } | "invoke-normalize-trace" "$BIN"
 echo "== function defined in default mood, called from bash, renders once =="
-result=$("$BIN" -c 'm(){ echo $((1/0)); }; set --mood bash; m' 2>&1)
+result=$("$BIN" -c 'm(){ echo $((1/0)); }; set -M bash; m' 2>&1)
 [ "$?" -eq 1 ] || exit 1
 printf '%s\n' "$result" | grep -c 'Division by zero'

@@ -105,15 +105,12 @@ _kosh_set_complete ()
   local previous_word=${COMP_WORDS[COMP_CWORD - 1]}
   local moods="kosh bash sh bash-posix"
   local \
-    option_names="allexport export-all notify errexit error-exit noglob no-glob \
-hashall keyword monitor noexec no-exec nounset no-unset verbose xtrace braceexpand \
-histexpand history history-prefix-search ignoreeof interactive-hints interactive-diagnostics auto-pair interactive-comments nolog space-after-completion transient-prompt extended-keys \
-noclobber no-clobber errtrace physical functrace onecmd pipefail failglob koshkit vi emacs \
-posix show-ast show-lexed-words show-exit-code show-all-exit-codes mimicry extended-arithmetic annoying-diagnostics \
-show-stats no-diagnostics show-memory login rcfile"
-  local tab_selectors="interactive external plain"
+    option_names="allexport braceexpand emacs errexit errtrace functrace \
+hashall histexpand history ignoreeof interactive-comments keyword monitor \
+noclobber noexec noglob nolog notify nounset onecmd physical pipefail posix \
+privileged verbose vi xtrace"
   local \
-    switches="--help --options --mood --init-moods --tab-selector -o +o -M -L \
+    switches="--help -o +o -M -L \
 -a -b -e -f -h -k -m -n -t -u -v -x -B -C -E -H -N -P -T -A -R -W -WW -WWW -I -S -G \
 +a +b +e +f +h +k +m +n +t +u +v +x +B +C +E +H +N +P +T +A +R +W +WW +WWW +I +S +G"
 
@@ -122,16 +119,8 @@ show-stats no-diagnostics show-memory login rcfile"
       _kosh_compgen -W "$option_names" -- "$current_word"
       return
     ;;
-    -M | --mood)
+    -M | -L)
       _kosh_compgen -W "$moods" -- "$current_word"
-      return
-    ;;
-    -L | --init-moods)
-      _kosh_compgen -W "$moods" -- "$current_word"
-      return
-    ;;
-    --tab-selector)
-      _kosh_compgen -W "$tab_selectors" -- "$current_word"
       return
     ;;
   esac

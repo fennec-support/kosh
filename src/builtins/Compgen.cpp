@@ -369,7 +369,7 @@ static fn run_compgen_actions(EvalContext &cxt, u32 action_mask,
   }
 
   if (do_wants(compgen_action::SetOpt)) {
-    for (let const name : shell_option_names(false))
+    for (let const name : shell_option_names())
       emitter.push_prefixed(name);
   }
 

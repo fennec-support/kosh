@@ -2,7 +2,7 @@
 # The koshkit builtin prefix always works. In the default mood a bare coreutil
 # name falls back to the koshkit utility when PATH has no binary of that name,
 # while the sh mood reports a command not found. The --enable-koshkit flag and
-# set -o koshkit enable the same fallback in every mood.
+# koshconf set koshkit.commands on enable the same fallback in every mood.
 # An empty PATH isolates the resolution from the system coreutils.
 unset KOSH_FLAGS
 
@@ -28,30 +28,30 @@ echo "=== sh mood, empty PATH, not found ==="
     printf 'rc=%s\n' "$?"
 } | "invoke-normalize-trace" "$BIN"
 
-echo "=== set -o koshkit turns bare names on ==="
-"$BIN" -c 'PATH=; set -o koshkit; seq 3'
+echo "=== koshconf set koshkit.commands on turns bare names on ==="
+"$BIN" -c 'PATH=; koshconf set koshkit.commands on; seq 3'
 
-echo "=== set -o koshkit passes bare Koshka utility flags ==="
-host_line=$("$BIN" -c 'PATH=; set -o koshkit; evil --short' | sed -n 2p)
+echo "=== koshconf set koshkit.commands on passes bare Koshka utility flags ==="
+host_line=$("$BIN" -c 'PATH=; koshconf set koshkit.commands on; evil --short' | sed -n 2p)
 case $host_line in
   '  Host '?*) echo 'host-shape=matched' ;;
   *) echo 'host-shape=wrong' ;;
 esac
 
-echo "=== set -o koshkit passes bare POSIX utility flags ==="
-"$BIN" -c 'PATH=; set -o koshkit; ls --help' >"$TEST_NULL_DEVICE"
+echo "=== koshconf set koshkit.commands on passes bare POSIX utility flags ==="
+"$BIN" -c 'PATH=; koshconf set koshkit.commands on; ls --help' >"$TEST_NULL_DEVICE"
 
-echo "=== set -o koshkit leaves unknown names unresolved ==="
-"$BIN" -c 'PATH=; set -o koshkit; command -v KOSH_NOT_A_UTILITY; echo "rc=$?"'
+echo "=== koshconf set koshkit.commands on leaves unknown names unresolved ==="
+"$BIN" -c 'PATH=; koshconf set koshkit.commands on; command -v KOSH_NOT_A_UTILITY; echo "rc=$?"'
 
-echo "=== set -o koshkit preserves builtin precedence ==="
-"$BIN" -c 'PATH=; set -o koshkit; echo builtin'
+echo "=== koshconf set koshkit.commands on preserves builtin precedence ==="
+"$BIN" -c 'PATH=; koshconf set koshkit.commands on; echo builtin'
 
-echo "=== set -o koshkit preserves alias precedence ==="
-"$BIN" -c "PATH=; set -o koshkit; alias seq='echo alias'; seq"
+echo "=== koshconf set koshkit.commands on preserves alias precedence ==="
+"$BIN" -c "PATH=; koshconf set koshkit.commands on; alias seq='echo alias'; seq"
 
-echo "=== set -o koshkit preserves function precedence ==="
-"$BIN" -c 'PATH=; set -o koshkit; seq() { echo function; }; seq'
+echo "=== koshconf set koshkit.commands on preserves function precedence ==="
+"$BIN" -c 'PATH=; koshconf set koshkit.commands on; seq() { echo function; }; seq'
 
 echo "=== --enable-koshkit turns bare names on ==="
 "$BIN" --enable-koshkit -c 'PATH=; seq 3'
@@ -60,9 +60,9 @@ echo "=== --enable-koshkit prefers a PATH binary ==="
 env -u PATH "$TEST_PATH_ENVIRONMENT_NAME=$dir" \
     "$BIN" --enable-koshkit -c 'seq 3'
 
-echo "=== set -o koshkit prefers a PATH binary ==="
+echo "=== koshconf set koshkit.commands on prefers a PATH binary ==="
 env -u PATH "$TEST_PATH_ENVIRONMENT_NAME=$dir" \
-    "$BIN" -c 'set -o koshkit; seq 3'
+    "$BIN" -c 'koshconf set koshkit.commands on; seq 3'
 
 echo "=== --enable-koshkit works in the sh mood ==="
 "$BIN" --mood sh --enable-koshkit -c 'PATH=; seq 3'

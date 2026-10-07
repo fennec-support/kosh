@@ -29,7 +29,7 @@ report_shape()
 }
 
 report=$("$BIN" --no-init-files --mood bash -c \
-  'time "$1" --no-init-files -c :; set --mood kosh; time "$1" --no-init-files -c :' \
+  'time "$1" --no-init-files -c :; set -M kosh; time "$1" --no-init-files -c :' \
   time-test "$BIN" 2>&1) || exit 1
 shape=$(report_shape "$report") || exit 1
 echo "runtime-mood=$shape"

@@ -5,7 +5,7 @@
 # and a remembered command path must reach it. A fork platform copies them.
 # The child runs source its parent already analyzed, so a suppressed warning
 # stays suppressed there.
-set --mood bash
+set -M bash
 
 f() {
   unset -f f

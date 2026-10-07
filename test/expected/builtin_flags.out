@@ -1,9 +1,5 @@
 == set switches:
 --help
---init-moods
---mood
---options
---tab-selector
 -A
 -B
 -C
@@ -35,19 +31,17 @@
 -v
 -x
 == set -o names by prefix:
-no-clobber
-no-diagnostics
-no-exec
-no-glob
-no-unset
 noclobber
 noexec
 noglob
 nolog
 notify
 nounset
-== set annoying diagnostics name:
-annoying-diagnostics
+== set -o offers no Koshka name:
+== koshconf offers the diagnostics names:
+diagnostics.analysis
+diagnostics.annoying
+diagnostics.level
 == kosh no-traces flag:
 --no-traces
 == kosh no-annoying flag:

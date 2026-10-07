@@ -1,5 +1,11 @@
 #!/bin/env kosh
-if [[ -o login ]]; then echo login=on; else echo login=off; fi
-if [[ -o rcfile ]]; then echo rcfile=on; else echo rcfile=off; fi
-set -o login
-echo not-reached
+# login_shell reports the startup login state and cannot be changed. The former
+# Koshka -o login and -o rcfile names are unknown to the -o test.
+if shopt -q login_shell; then echo login=on; else echo login=off; fi
+if [[ -o login ]]; then echo o-login=on; else echo o-login=off; fi
+if [[ -o rcfile ]]; then echo o-rcfile=on; else echo o-rcfile=off; fi
+koshconf get legacy.login_shell
+koshconf set legacy.login_shell on
+echo "rc=$?"
+shopt -s login_shell
+shopt -q login_shell || echo login-still-off

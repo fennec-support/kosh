@@ -110,7 +110,7 @@ echo "status_true=$?"
 echo "backoff=$?"
 
 for arithmetic_mood in default bash sh default; do
-  set --mood "$arithmetic_mood"
+  set -M "$arithmetic_mood"
   echo $((18446744073709551616 + 1))
 done
 big=18446744073709551616
@@ -121,19 +121,18 @@ echo "big_status=$?"
 
 echo "== extended arithmetic option:"
 for arithmetic_mood in default bash sh; do
-  set --mood "$arithmetic_mood"
-  if [[ -o extended-arithmetic ]]; then
-    echo "$arithmetic_mood=on"
-  else
-    echo "$arithmetic_mood=off"
-  fi
+  set -M "$arithmetic_mood"
+  echo "$arithmetic_mood=$(koshconf get arithmetic.extended)"
 done
-set --mood bash
-set -o extended-arithmetic
+set -M bash
+koshconf set arithmetic.extended on
 big=18446744073709551616
 echo "enabled=$((big + 1))"
-set --mood default
-set +o extended-arithmetic
+set -M default
+koshconf set arithmetic.extended off
+echo "kosh-rc=$?"
+set -M bash
+koshconf set arithmetic.extended off
 echo "disabled=$((big + 1))"
 
 x='x=1,'

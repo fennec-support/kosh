@@ -1,11 +1,11 @@
-3:6: warning: The glob pattern 'nomatch_*' matched no file, it expands to its literal text, which is rarely intended.
-     3 |  echo nomatch_*
-       |       ^~~~~~~~~
-note: Probe for matches with compgen -G 'nomatch_*' or relax with set +o failglob.
+4:2: error: Builtin `shopt`: The kosh mood keeps 'failglob' on.
+     4 |  (shopt -u failglob)
+       |   ^~~~~~~~~~~~~~~~~
+note: Switch to the bash mood with `set -M bash` to change it.
+4:1: trace:
+     4 |  (shopt -u failglob)
+       |  ^
+kosh-rc=1
 nomatch_*
-4:6: warning: The glob pattern 'a*.zzznomatch' matched no file, it expands to its literal text, which is rarely intended.
-     4 |  echo a*.zzznomatch literal
-       |       ^~~~~~~~~~~~~
-note: Probe for matches with compgen -G 'a*.zzznomatch' or relax with set +o failglob.
 a*.zzznomatch literal
-failglob       	off
+failglob            	off

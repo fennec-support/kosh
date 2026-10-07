@@ -1,12 +1,8 @@
-== set --tab-selector value:
+== koshconf set editor.tab_selector value:
 external
 interactive
 plain
-== set --tab-selector= value:
-external
-interactive
-plain
-== set --tab-selector= prefix:
+== koshconf set editor.tab_selector prefix:
 external
 == kosh --tab-selector value:
 external
@@ -16,7 +12,6 @@ plain
 plain
 == the flag name itself:
 --tab-selector
-== set flag name:
---tab-selector
+== set has no tab selector flag:
 == an unrelated command keeps its own candidates:
 0

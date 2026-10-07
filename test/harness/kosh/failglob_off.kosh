@@ -1,5 +1,11 @@
 #!/bin/env kosh
-set +o failglob
+# The kosh mood keeps failglob on, and the bash mood relaxes it to the
+# literal fallback.
+(shopt -u failglob)
+echo "kosh-rc=$?"
+set -M bash
+shopt -s failglob
+shopt -u failglob
 echo nomatch_*
 echo a*.zzznomatch literal
-set -o | grep failglob
+shopt failglob

@@ -1,5 +1,5 @@
 #!/bin/env kosh
 set -WWW
-set -o failglob
+shopt -s failglob
 echo *.zzz_explicit_fatal
 echo not-reached

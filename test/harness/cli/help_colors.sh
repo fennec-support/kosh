@@ -28,7 +28,7 @@ check_excludes()
 escape=$(printf '\033')
 main_help=$(NO_COLOR= capture_terminal_command "exec \"$BIN\" --help") || exit 1
 builtin_help=$(NO_COLOR= capture_terminal_command \
-  "exec \"$BIN\" -c 'help set'") || exit 1
+  "exec \"$BIN\" -c 'help bench'") || exit 1
 koshkit_help=$(NO_COLOR= capture_terminal_command \
   "exec \"$BIN\" -c 'koshkit --help'") || exit 1
 
@@ -38,7 +38,7 @@ check_contains "$main_help" "${escape}[32m  $BIN" main-synopsis
 check_contains "$main_help" \
   "  -M, --mood${escape}[2m=<...>${escape}[0m" main-flag
 check_contains "$builtin_help" \
-  "  -M, --mood${escape}[2m=<...>${escape}[0m" builtin-flag
+  "      --runs${escape}[2m=<...>${escape}[0m" builtin-flag
 check_contains "$koshkit_help" \
   "${escape}[32m  koshkit --color" koshkit-flag
 check_excludes "$main_help$builtin_help$koshkit_help" \

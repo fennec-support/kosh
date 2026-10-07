@@ -96,10 +96,10 @@ unset EDITOR
 fc echo
 echo "$edited_value"
 seed_fc_history
-set --mood bash-posix
+set -M bash-posix
 fc echo
 echo "$edited_value"
-set --mood kosh
+set -M kosh
 seed_fc_history
 fc -e fail_fc_editor echo
 echo "editor-rc=$?"

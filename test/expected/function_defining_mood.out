@@ -6,10 +6,14 @@ is not set
 == sourced function keeps its source mood:
 inside=bash unset=[]
 outside=kosh
-== idempotent strictness changes survive the defining mood:
+== strictness changes from a bash function reach a bash caller:
 nounset=off
 pipefail=off
 failglob=off
+== a bash function cannot relax the kosh mood:
+nounset=on
+pipefail=on
+failglob=on
 == propagated mood carries its strictness:
 mood=sh unset=[]
 rc-done

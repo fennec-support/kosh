@@ -162,7 +162,7 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (should_operate_on_set_options) {
     if (names.is_empty()) {
       if (!is_quiet) {
-        for (let const &name : shell_option_names(false)) {
+        for (let const &name : shell_option_names()) {
           let on = query_shell_option(cxt, name);
           if (!on.has_value()) continue;
 

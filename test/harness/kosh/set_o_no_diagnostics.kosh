@@ -4,6 +4,6 @@
 # shellcheck disable=unassigned-variable-read
 set -WWW
 echo "first=$never_a"
-set -o no-diagnostics
+koshconf set diagnostics.analysis off
 echo "second=$never_b"
 echo done

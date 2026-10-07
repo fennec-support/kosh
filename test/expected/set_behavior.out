@@ -4,35 +4,24 @@ rc=1
 reached
 rc=0
 == an unknown mood is rejected:
--c:1:12: error: Builtin `set`: Unknown --mood value 'badmood', expected 'kosh', 'bash', 'sh', or 'bash-posix'.
-     1 |  set --mood badmood
-       |             ^~~~~~~
+-c:1:8: error: Builtin `set`: Unknown -M value 'badmood', expected 'kosh', 'bash', 'sh', or 'bash-posix'.
+     1 |  set -M badmood
+       |         ^~~~~~~
 rc=1
 == set -o lists the option states:
 allexport      	off
-annoying-diagnostics	on
-auto-pair      	off
 braceexpand    	on
 emacs          	off
 errexit        	off
 errtrace       	off
-extended-arithmetic	on
-extended-keys  	on
-failglob       	on
 functrace      	off
 hashall        	on
 histexpand     	off
 history        	off
-history-prefix-search	on
 ignoreeof      	off
 interactive-comments	on
-interactive-diagnostics	on
-interactive-hints	on
 keyword        	off
-koshkit        	off
-mimicry        	off
 monitor        	off
-no-diagnostics 	off
 noclobber      	off
 noexec         	off
 noglob         	off
@@ -44,8 +33,6 @@ physical       	off
 pipefail       	on
 posix          	off
 privileged     	off
-space-after-completion	off
-transient-prompt	off
 verbose        	off
 vi             	off
 xtrace         	off

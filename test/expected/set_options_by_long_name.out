@@ -1,2 +1,10 @@
 default
+5:2: error: Builtin `set`: The kosh mood keeps 'nounset' on.
+     5 |  (set +u)
+       |   ^~~~~~
+note: Switch to the bash mood with `set -M bash` to change it.
+5:1: trace:
+     5 |  (set +u)
+       |  ^
+relax-rc=1
 done

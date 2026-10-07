@@ -1,5 +1,5 @@
 2:6: warning: The glob pattern 'data/*/*' matched no file, it expands to its literal text, which is rarely intended.
      2 |  echo data/*/\*
        |       ^~~~~~~~~
-note: Probe for matches with compgen -G 'data/*/*' or relax with set +o failglob.
+note: Probe for matches with compgen -G 'data/*/*' or relax it with shopt -u failglob outside the kosh mood.
 data/*/*

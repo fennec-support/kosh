@@ -407,8 +407,7 @@ fn query_shell_option(const EvalContext &cxt, StringView name) throws
 fn apply_shell_option(EvalContext &cxt, StringView name, bool enable) throws
     -> bool;
 
-fn shell_option_names(bool include_alias_spellings) throws
-    -> const ArrayList<StringView> &;
+fn shell_option_names() throws -> const ArrayList<StringView> &;
 fn shell_option_letters() throws -> const String &;
 fn enabled_shell_option_names(const EvalContext &cxt) throws -> String;
 fn enabled_shell_option_letters(const EvalContext &cxt) throws -> String;

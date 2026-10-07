@@ -716,13 +716,13 @@ def run_checks(binary, directory, command_directory, report):
                       is_line("true"))
         clear_line(session)
 
-        session.send(b"set +o history-prefix-search\r")
+        session.send(b"koshconf set history.prefix_search off\r")
         session.wait_until(is_line(""))
         session.send(b"echo hist-")
         session.wait_until(is_line("echo hist-", "gamma"))
         session.send(UP)
         report.record("option-off-up-recalls-newest-entry", session,
-                      is_line("set +o history-prefix-search"))
+                      is_line("koshconf set history.prefix_search off"))
         clear_line(session)
 
         session.send(b"cat ")
@@ -920,7 +920,7 @@ def run_checks(binary, directory, command_directory, report):
         type_text(session, b"echo (")
         report.record("auto-pair-off-by-default", session, is_line("echo ("))
         clear_line(session)
-        session.send(b"set -o auto-pair\r")
+        session.send(b"koshconf set editor.auto_pair on\r")
         session.wait_until(is_line(""))
         type_text(session, b"echo (")
         report.record("auto-pair-inserts-closer", session, is_line("echo ()"))
@@ -936,10 +936,10 @@ def run_checks(binary, directory, command_directory, report):
         report.record("auto-pair-quote-after-word-stays-single", session,
                       is_line("echo (a) don'"))
         clear_line(session)
-        session.send(b"set +o auto-pair\r")
+        session.send(b"koshconf set editor.auto_pair off\r")
         session.wait_until(is_line(""))
 
-        session.send(b"set +o interactive-hints\r")
+        session.send(b"koshconf set editor.hints off\r")
         session.wait_until(is_line(""))
         session.send(b"cat ")
         session.wait_until(is_line("cat"))
@@ -952,7 +952,7 @@ def run_checks(binary, directory, command_directory, report):
                       has_hint("Unterminated"))
         clear_line(session)
 
-        session.send(b"set +o interactive-diagnostics\r")
+        session.send(b"koshconf set editor.diagnostics off\r")
         session.wait_until(is_line(""))
         type_text(session, b'echo "abc')
         session.wait_until(is_line('echo "abc'))
@@ -961,7 +961,7 @@ def run_checks(binary, directory, command_directory, report):
                       is_without_hint('echo "abc'))
         clear_line(session)
 
-        session.send(b"set -o interactive-hints\r")
+        session.send(b"koshconf set editor.hints on\r")
         session.wait_until(is_line(""))
         type_text(session, b'cat "abc')
         session.pump(0.3)

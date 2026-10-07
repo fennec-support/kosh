@@ -1,6 +1,9 @@
 #!/bin/env kosh
 false | true
 echo "strict=$?"
+(set +o pipefail)
+echo "kosh-rc=$?"
+set -M bash
 set +o pipefail
 false | true
 echo "relaxed=$?"

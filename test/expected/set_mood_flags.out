@@ -1,17 +1,4 @@
-== set --m:
---mood
-== set --i:
---init-moods
-== set --mood value:
-bash
-bash-posix
-kosh
-sh
-== set --init-moods value:
-bash
-bash-posix
-kosh
-sh
+== set has no long mood flags:
 == set -M value:
 bash
 bash-posix
@@ -22,22 +9,12 @@ bash
 bash-posix
 kosh
 sh
-== set --mood= value:
-bash
-bash-posix
-kosh
-sh
-== set --init-moods= value:
-bash
-bash-posix
-kosh
-sh
 == set -M= value:
 bash
 bash-posix
 kosh
 sh
-== set --mood= prefix:
+== set -M= prefix:
 bash
 bash-posix
 == kosh --mood value:

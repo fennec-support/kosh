@@ -3,6 +3,6 @@
 pattern=$(printf 'zzz_data_*')
 echo $pattern
 echo zzz_literal_*
-set -o failglob
+shopt -s failglob
 echo $pattern
 echo not-reached

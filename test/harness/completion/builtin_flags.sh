@@ -5,8 +5,10 @@ echo "== set switches:"
 "$BIN" --debug-complete-at 'set -' </dev/null
 echo "== set -o names by prefix:"
 "$BIN" --debug-complete-at 'set -o no' </dev/null
-echo "== set annoying diagnostics name:"
+echo "== set -o offers no Koshka name:"
 "$BIN" --debug-complete-at 'set -o annoying-' </dev/null
+echo "== koshconf offers the diagnostics names:"
+"$BIN" --debug-complete-at 'koshconf set diagnostics.' </dev/null
 echo "== kosh no-traces flag:"
 "$BIN" --debug-complete-at 'kosh --no-t' </dev/null
 echo "== kosh no-annoying flag:"

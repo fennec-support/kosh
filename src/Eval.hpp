@@ -3691,15 +3691,15 @@ public:
   fn apply_strictness_for_mood() wontthrow -> void
   {
     let const strict = runtime_state().get_mood() == mimic_mood::Default;
-    if (!runtime_state().was_error_unset_set_explicitly())
-      runtime_state().set_error_unset(
-          strict && !execution_store().completion_function_running());
-    if (!runtime_state().was_pipefail_set_explicitly())
+    let const is_completion_running =
+        execution_store().completion_function_running();
+    if (strict || !runtime_state().was_error_unset_set_explicitly())
+      runtime_state().set_error_unset(strict && !is_completion_running);
+    if (strict || !runtime_state().was_pipefail_set_explicitly())
       runtime_state().set_pipefail(strict);
-    if (!runtime_state().was_failglob_set_explicitly())
-      runtime_state().set_failglob(
-          strict && !execution_store().completion_function_running());
-    if (!runtime_state().was_extended_arithmetic_set_explicitly())
+    if (strict || !runtime_state().was_failglob_set_explicitly())
+      runtime_state().set_failglob(strict && !is_completion_running);
+    if (strict || !runtime_state().was_extended_arithmetic_set_explicitly())
       runtime_state().set_extended_arithmetic(strict);
   }
 
@@ -3785,6 +3785,8 @@ public:
                                        reporting_field::Annoying))
       runtime_state().set_annoying_diagnostics_enabled(
           finished.is_annoying_diagnostics_enabled());
+    if (runtime_state().get_mood() == mimic_mood::Default)
+      apply_strictness_for_mood();
   }
 
   /* Run the script at the resolved program in-process in the matching mode.
@@ -3814,6 +3816,11 @@ public:
   {
     let const index = shopt_option_index(name);
     if (!index.has_value()) return false;
+    if (*index == shopt_option_index(shopt_option_id::Nullglob) &&
+        runtime_state().get_mood() == mimic_mood::Default)
+    {
+      return false;
+    }
     if (runtime_state().is_shopt_option_overridden(*index))
       return runtime_state().is_shopt_option_enabled(*index);
     if (*index == shopt_option_index(shopt_option_id::Extglob))

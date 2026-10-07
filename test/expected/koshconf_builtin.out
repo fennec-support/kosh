@@ -22,7 +22,6 @@ debug.show_exit_code=off                    interactive
 debug.show_all_exit_codes=off               interactive
 debug.show_stats=off                        interactive
 debug.show_memory=off                       interactive
-startup.rcfile=off                          interactive
 legacy.export_all=off                       semantic
 legacy.notify_jobs=off                      interactive
 legacy.exit_on_error=off                    semantic

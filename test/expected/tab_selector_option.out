@@ -13,14 +13,20 @@ interactive
      1 |  --tab-selector bogus
        |                 ^~~~~
 status=2
-== the set builtin changes it at runtime:
+== koshconf changes it at runtime:
 external
 == a mood change keeps the selector:
 plain
-== an unknown set value is rejected:
--c:1:20: error: Builtin `set`: Unknown --tab-selector value 'bogus', expected 'interactive', 'external', or 'plain'.
-     1 |  set --tab-selector bogus
-       |                     ^~~~~
+== an unknown koshconf value is rejected:
+-c:1:34: error: Builtin `koshconf`: Invalid value 'bogus' for 'editor.tab_selector', expected 'interactive', 'external', or 'plain'.
+     1 |  koshconf set editor.tab_selector bogus
+       |                                   ^~~~~
+status=1
+== set no longer accepts the long form:
+-c:1:5: error: Builtin `set`: Unknown option '--tab-selector'.
+     1 |  set --tab-selector plain
+       |      ^~~~~~~~~~~~~~
+note: Koshka settings without a letter belong to koshconf, such as `koshconf set mood bash`.
 status=1
 == the selector survives a subshell:
 external

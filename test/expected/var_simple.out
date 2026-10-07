@@ -14,12 +14,12 @@ note: Quote the expansion to keep one argument.
     59 |  echo $X
        |       ^~
 note: Quote the expansion to keep one argument.
-63:6: warning: An unquoted variable can split into words and expand globs. (SC2086)
-    63 |  echo $NOPE end
+62:6: warning: An unquoted variable can split into words and expand globs. (SC2086)
+    62 |  echo $NOPE end
        |       ^~~~~
 note: Quote the expansion to keep one argument.
-65:7: warning: An unquoted variable can split into words and expand globs. (SC2086)
-    65 |  echo a${NOPE}b
+64:7: warning: An unquoted variable can split into words and expand globs. (SC2086)
+    64 |  echo a${NOPE}b
        |        ^~~~~~~
 note: Quote the expansion to keep one argument.
 Encountered 6 warnings.
