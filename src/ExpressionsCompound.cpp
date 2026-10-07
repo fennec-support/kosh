@@ -893,8 +893,27 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
     expand_command_aliases(cxt, stage_args, stage_arg_locations);
 
     if (stage_args.is_empty()) {
-      throw ErrorWithLocation{e->source_location(),
-                              "A pipeline stage expanded to no command to run"};
+      if (cxt.runtime_state().get_mood() == mimic_mood::Default) {
+        throw ErrorWithLocation{
+            e->source_location(),
+            "A pipeline stage expanded to no command to run"};
+      }
+
+      let empty_stage =
+          ExecContext::make_from_unresolved(e->source_location(), 0, {});
+      bool was_empty_stage_handed_off = false;
+      defer
+      {
+        if (!was_empty_stage_handed_off) empty_stage.close_fds();
+      };
+      try {
+        e->redirect_exec_context(empty_stage, cxt);
+      } catch (const TrapAbandonedRedirection &) {
+        return cxt.execution_store().last_exit_status();
+      }
+      was_empty_stage_handed_off = true;
+      ecs.push(steal(empty_stage));
+      continue;
     }
     cxt.write_xtrace(stage_args);
 

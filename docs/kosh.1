@@ -1320,6 +1320,10 @@ PIPESTATUS is updated after every foreground command. It contains the status of
 each pipeline stage. When
 .B pipefail
 is enabled, a pipeline returns the status of its rightmost failing stage.
+A pipeline stage that expands to no command, such as
+.BR "p=1 | cat" ,
+is an error in the kosh mood. The other moods run it as an empty command
+that applies its redirections and returns 0.
 .SH FUNCTIONS
 A function has its own positional parameters and local variables. Call stack
 state is exposed through FUNCNAME, BASH_SOURCE, BASH_LINENO, and BASH_COMMAND.
