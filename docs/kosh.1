@@ -3316,8 +3316,11 @@ names, else EDITOR, else vi. The value is split on blanks without expansion.
 When the editor exits with status 0, the saved text replaces the line with its
 trailing newlines removed, and nothing runs until Enter is pressed. An editor
 that is not found or that exits with another status leaves the line alone and
-reports a message above the prompt. An editor that stops, such as after
-Ctrl\-Z, is continued at once, since the line waits for it to exit. The key
+reports a message above the prompt. An editor that stops on SIGTSTP or
+SIGSTOP, such as after Ctrl\-Z, is continued at once, since the line waits for
+it to exit. An editor stopped by any other signal, stopped more than 32 times,
+or stopped after the shell received an interrupt is killed, and its stop status
+is reported. The key
 does nothing under
 .BR \-T .
 Ctrl\-X Ctrl\-U undoes the last edit. Ctrl\-X before any other key is ignored,
@@ -3651,7 +3654,7 @@ The external selector passes the candidates to the program named by
 .B KOSH_FZF_COMPLETION_COMMAND
 and its output replaces the token. Raw mode is left while the selector program
 runs, and the prompt is repainted afterwards. A selector program that stops is
-continued at once. A selector that reports no match or is dismissed leaves the
+continued or killed the same way as the Ctrl\-X Ctrl\-E editor. A selector that reports no match or is dismissed leaves the
 line alone and prints nothing. A single
 remaining candidate keeps the plain listing. A session without a controlling
 terminal keeps it too.

@@ -363,25 +363,70 @@ fn get_continue_signal() throws -> koshka::Maybe<i32>
   return continue_signal;
 }
 
-fn continue_stopped_program(koshka::os::process child) throws -> bool
+constexpr usize STOPPED_PROGRAM_CONTINUE_LIMIT = 32;
+
+fn signal_program_group(koshka::os::process child,
+                        koshka::StringView signal_name) throws -> bool
 {
-  let const continue_signal = get_continue_signal();
-  if (!continue_signal.has_value()) return false;
+  let const signal_number = koshka::os::signal_number_from_name(signal_name);
+  if (!signal_number.has_value() ||
+      !koshka::os::is_process_signal_supported(*signal_number))
+  {
+    return false;
+  }
 
   let const group = koshka::os::process_group_of(child);
   defer { koshka::os::close_process_reference(group); };
 
-  return koshka::os::signal_process(group, *continue_signal);
+  return koshka::os::signal_process(group, *signal_number);
+}
+
+fn is_suspension_status(i32 stop_status) throws -> bool
+{
+  for (let const name :
+       {koshka::StringView{"TSTP"}, koshka::StringView{"STOP"}})
+  {
+    let const signal_number = koshka::os::signal_number_from_name(name);
+    if (signal_number.has_value() && stop_status == 128 + *signal_number) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+fn continue_stopped_program(koshka::os::process child, i32 stop_status,
+                            usize &continue_count) throws -> bool
+{
+  let const should_continue = !koshka::os::INTERRUPT_REQUESTED &&
+                              continue_count < STOPPED_PROGRAM_CONTINUE_LIMIT &&
+                              is_suspension_status(stop_status);
+  if (should_continue && signal_program_group(child, "CONT")) {
+    continue_count++;
+    return true;
+  }
+
+  LOG(Info,
+      "ending a picker or editor stopped with status %d after %zu "
+      "continues",
+      stop_status, continue_count);
+  unused(signal_program_group(child, "KILL"));
+  return false;
 }
 
 fn wait_for_continued_program(koshka::os::process child) throws -> i32
 {
+  usize continue_count = 0;
   loop
   {
     bool was_stopped = false;
     let const status =
         koshka::os::wait_and_monitor_process(child, &was_stopped);
-    if (!was_stopped || !continue_stopped_program(child)) return status;
+    if (!was_stopped) return status;
+    if (!continue_stopped_program(child, status, continue_count)) {
+      unused(koshka::os::reap_process_quietly(child));
+      return status;
+    }
   }
 }
 
@@ -396,6 +441,7 @@ fn read_while_continuing_program(koshka::os::descriptor fd,
 
   let captured = koshka::String{koshka::heap_allocator()};
   char buffer[4096];
+  usize continue_count = 0;
   loop
   {
     let const readiness =
@@ -408,7 +454,10 @@ fn read_while_continuing_program(koshka::os::descriptor fd,
       i32 status = 0;
       let const state = koshka::os::poll_process(child, status);
       if (state == koshka::os::process_state::Stopped) {
-        unused(continue_stopped_program(child));
+        if (!continue_stopped_program(child, status, continue_count)) {
+          unused(koshka::os::reap_process_quietly(child));
+          out_exit_status = status;
+        }
       } else if (state == koshka::os::process_state::Exited) {
         out_exit_status = status;
       }

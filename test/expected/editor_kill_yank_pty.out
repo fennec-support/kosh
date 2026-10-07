@@ -39,6 +39,8 @@ ctrl-x-before-an-arrow-keeps-the-arrow PASS
 alt-t-keeps-trailing-blanks PASS
 alt-t-leaves-the-caret-before-the-blank PASS
 missing-editor-keeps-the-line PASS
+terminal-read-stop-editor-is-ended PASS
+repeated-stop-editor-is-ended PASS
 arithmetic-brackets-highlight-cleanly PASS
 kitty-enter-runs-the-line PASS
 extended-keys-withdrawn-before-output PASS

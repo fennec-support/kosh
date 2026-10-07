@@ -8,7 +8,9 @@
 # Ctrl-K and consecutive Ctrl-W kills, Ctrl-Y and Alt-Y, Ctrl-T and Alt-T, the
 # Alt-. walk through the last words of history, and Ctrl-X Ctrl-E through a
 # VISUAL script that rewrites the line without running it. A VISUAL script that
-# stops itself is continued and its temporary file removed, and one that writes
+# stops itself is continued and its temporary file removed, one stopped by a
+# terminal read or stopped again more times than the shell continues is ended
+# with its stop status, and one that writes
 # control bytes leaves them drawn in caret notation and out of the history
 # file. A trailing backslash continues the line, the shell joins it only
 # outside quotes, and history keeps both physical lines. A lone Ctrl-X names
@@ -478,6 +480,20 @@ def run_checks(binary, directory, command_directory, report):
                                   "echo kept"))
         clear_line(session)
 
+        for name, script_name, status in (
+                ("terminal-read-stop", "reading-visual", 149),
+                ("repeated-stop", "restopping-visual", 147)):
+            session.send(("VISUAL=%s\r" % os.path.join(command_directory,
+                                                       script_name)).encode())
+            session.wait_until(is_line(""))
+            session.send(b"echo kept")
+            session.wait_until(is_line("echo kept"))
+            session.send(CTRL_X_CTRL_E)
+            report.record("%s-editor-is-ended" % name, session,
+                          has_message("exited with status %d" % status,
+                                      "echo kept"))
+            clear_line(session)
+
         mark = len(session.raw)
         session.send(b"echo $((2 + 3))")
         session.wait_until(is_line("echo $((2 + 3))"))
@@ -552,6 +568,10 @@ def main():
                      "printf ': a\\033]0;PWN\\007b\\n' > \"$1\"\n")
         write_script(os.path.join(command_directory, "tty-modes"),
                      "exec '%s' -a\n" % shutil.which("stty"))
+        write_script(os.path.join(command_directory, "reading-visual"),
+                     "while :; do kill -TTIN $$; done\n")
+        write_script(os.path.join(command_directory, "restopping-visual"),
+                     "while :; do kill -STOP $$; done\n")
         run_checks(binary, directory, command_directory, report)
         run_fatal_signal_checks(binary, directory, command_directory, report)
     finally:
