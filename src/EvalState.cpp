@@ -2739,7 +2739,8 @@ fn EvalContext::register_inherited_source_origin(
     let const length = payload.read_u32();
     let const line_text = payload.read_text();
     if (!payload.is_valid || line_number == 0 || column > line_text.length ||
-        length > line_text.length - column)
+        length > line_text.length - column ||
+        usize{line_number} - 1 + line_text.length > UINT32_MAX)
     {
       invalid_subshell_bootstrap();
     }
@@ -2819,11 +2820,15 @@ fn EvalContext::register_inherited_source_origin(
   source_store().set_script_run(is_script_run);
   if (!has_origin) return false;
 
+  let const window_length = usize{origin_line_number} - 1 +
+                            origin_prefix.length + contents.count() +
+                            origin_suffix.length;
+  if (window_length > UINT32_MAX) invalid_subshell_bootstrap();
+
   source_name = source_name_at(origin_name_index);
   windows.push(String{heap_allocator()});
   let &window = windows.back();
-  window.reserve(usize{origin_line_number} - 1 + origin_prefix.length +
-                 contents.count() + origin_suffix.length);
+  window.reserve(window_length);
   window.append_repeated('\n', usize{origin_line_number} - 1);
   window.append(origin_prefix);
   let const body_position = window.count();
