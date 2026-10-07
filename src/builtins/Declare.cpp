@@ -216,7 +216,13 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return true;
   };
 
-  if (should_print && i >= args.count() && !ec.has_stripped_array_operands) {
+  let const has_attribute_filter =
+      should_make_indexed || should_make_associative || should_export ||
+      should_mark_integer_attribute || should_mark_lowercase_attribute ||
+      should_mark_uppercase_attribute || should_mark_readonly;
+  if ((should_print || has_attribute_filter) && i >= args.count() &&
+      !ec.has_stripped_array_operands)
+  {
     let const do_matches_attribute_filter = [&](StringView name) -> bool {
       if (should_export && !os::get_environment_variable(name).has_value()) {
         return false;

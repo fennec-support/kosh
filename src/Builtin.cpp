@@ -428,7 +428,15 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
     line.append(name);
     line += "=(";
 
-    let element_count = elements.has_value() ? elements->count() : 0;
+    let subscripts = ArrayList<String>{cxt.scratch_allocator()};
+    let values = ArrayList<String>{cxt.scratch_allocator()};
+    let element_count = usize{0};
+    if (elements.has_value()) {
+      subscripts = cxt.collect_array_subscripts(name);
+      values = cxt.collect_array_elements(name);
+      ASSERT(subscripts.count() == values.count());
+      element_count = subscripts.count();
+    }
     if (is_directory_stack) {
       element_count = cxt.variable_store().directory_stack().count() + 1;
     } else if (is_argument_array) {
@@ -442,8 +450,11 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
       if (e > 0) line += ' ';
       line += '[';
       char index_text[24];
-      line.append(utils::int_to_text_into(static_cast<i64>(e), index_text,
-                                          sizeof(index_text)));
+      if (is_directory_stack || is_argument_array)
+        line.append(utils::int_to_text_into(static_cast<i64>(e), index_text,
+                                            sizeof(index_text)));
+      else
+        line.append(subscripts[e].view());
       line += "]=\"";
 
       let directory_stack_element = Maybe<String>{};
@@ -461,7 +472,7 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
             e, cxt.scratch_allocator());
         element = argument_array_element.view();
       } else {
-        element = elements->operator[](e).view();
+        element = values[e].view();
       }
 
       line += quote_for_declare(element);
