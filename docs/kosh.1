@@ -2088,7 +2088,9 @@ The
 .B \-V
 option prints everything the shell holds about each name. A function is reported
 with the file and the line its definition starts on, followed by the body as the
-shell recorded it. A builtin and a bundled utility are reported with their
+shell recorded it. A function defined by an eval is reported as defined in
+.B eval
+on its line within the eval text. A builtin and a bundled utility are reported with their
 description. A keyword and an alias hold nothing further. The
 .BR \-t ,
 .BR \-p ,

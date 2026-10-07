@@ -778,18 +778,18 @@ hot fn EvalContext::expand_word_for_assignment(const Word &word) throws
           source_location.has_value() ? &*source_location : nullptr, 0,
           !segment.is_in_double_quotes);
     } break;
-    case WordSegment::Kind::CommandSubstitution:
+    case WordSegment::Kind::CommandSubstitution: {
       result += capture_command_substitution(segment);
-      break;
-    case WordSegment::Kind::FunctionSubstitution:
+    } break;
+    case WordSegment::Kind::FunctionSubstitution: {
       result += capture_function_substitution(segment);
-      break;
+    } break;
     case WordSegment::Kind::ArithmeticExpansion: {
       result += evaluate_arithmetic_cached_text(segment).view();
     } break;
-    case WordSegment::Kind::ProcessSubstitution:
+    case WordSegment::Kind::ProcessSubstitution: {
       result += setup_process_substitution(segment);
-      break;
+    } break;
     default: result += segment_text; break;
     }
   }
