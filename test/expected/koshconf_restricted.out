@@ -41,5 +41,28 @@ absent
 == an inherited KOSHCONF is ignored and removed:
 warning: A restricted shell ignores the KOSHCONF environment variable.
 off
-[unset]
-rc=0
+0
+rc=1
+== -Q skips and removes KOSHCONF:
+off
+0
+== a restricted shell keeps only harmless settings from the files:
+warning: A restricted shell ignores 'mood' from the configuration files.
+warning: A restricted shell ignores 'koshkit.commands' from the configuration files.
+warning: A restricted shell ignores 'history.file' from the configuration files.
+kosh
+off
+/history
+on
+0
+== a subshell of a restricted shell keeps the restrictions:
+warning: A restricted shell ignores the KOSHCONF environment variable.
+-c:1:3: error: cd is forbidden in a restricted shell.
+1:1: trace:
+cd rc=1
+-c:3:3: error: Unable to assign 'PATH' because it is read only.
+3:1: trace:
+PATH rc=1
+-c:4:3: error: Changing settings with koshconf is forbidden in a restricted shell.
+4:1: trace:
+koshconf rc=1

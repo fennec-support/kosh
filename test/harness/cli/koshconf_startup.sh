@@ -45,7 +45,7 @@ XDG_CONFIG_HOME="$home/elsewhere" "$BIN" -c 'koshconf get mood'
 
 echo "== KOSHCONF applies after the file and leaves the environment:"
 KOSHCONF=AQEBBQEA "$BIN" -c 'koshconf get mood; koshconf get editor.auto_pair
-echo "[${KOSHCONF:+set}]"; env | grep -c "^KOSHCONF="'
+env | grep -c "^KOSHCONF="'
 echo "== an invalid KOSHCONF is a warning:"
 KOSHCONF='%%%' "$BIN" -c 'koshconf get mood'
 echo "rc=$?"

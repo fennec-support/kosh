@@ -724,6 +724,35 @@ static fn apply_inherited_shell(inherited_shell &inherited,
   return None;
 }
 
+static pure fn
+is_kept_in_restricted_shell(const option_descriptor &option) wontthrow -> bool
+{
+  switch (option.storage) {
+  case option_storage::Mood:
+  case option_storage::Variable: return false;
+  case option_storage::ShellOption:
+    return option.shell_option != shell_option_id::Koshkit &&
+           option.shell_option != shell_option_id::Mimicry;
+  default: return true;
+  }
+}
+
+static fn keep_restricted_settings(koshconf_reading &reading) throws -> void
+{
+  let kept = ArrayList<koshconf_setting>{heap_allocator()};
+  for (let &setting : reading.settings) {
+    if (is_kept_in_restricted_shell(*setting.option)) {
+      kept.push(steal(setting));
+      continue;
+    }
+    reading.warnings.push(Warning{StringView{"A restricted shell ignores '"} +
+                                  setting.option->koshconf_name +
+                                  "' from the configuration files"}
+                              .to_string());
+  }
+  reading.settings = steal(kept);
+}
+
 static fn read_startup_configuration(const command_line &line,
                                      const inherited_shell &inherited,
                                      const invocation_identity &identity,
@@ -761,6 +790,7 @@ static fn read_startup_configuration(const command_line &line,
                 "so it is ignored"}
             .to_string());
   }
+  if (identity.is_restricted_shell) keep_restricted_settings(reading);
   for (let const &warning : reading.warnings)
     show_message(warning.view());
   reading.warnings.clear();

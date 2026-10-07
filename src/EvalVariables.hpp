@@ -320,6 +320,12 @@ inline constexpr static_string_entry<shell_variable_description>
           "executable, and an inherited value is discarded.",
           shell_variable_fact::Dynamic | shell_variable_fact::ReadOnly |
               shell_variable_fact::Exported}                                  },
+        {SSK("KOSHCONF"),
+         {"The value is the base64 binary form of the mood and the "
+          "interactive options, which koshconf load or a KOSHCONF variable in "
+          "the environment of another kosh applies. An assignment is "
+          "discarded, and the variable is never exported by itself.",
+          shell_variable_fact::Dynamic}                                       },
 
         {SSK("RANDOM"),
          {"Each read supplies a new random number between 0 and 32767.",

@@ -827,11 +827,17 @@ configuration file;
 and
 .B list
 remain available. Because no form writes a file, XDG_CONFIG_HOME and HOME stay
-assignable. The configuration files are read before the restrictions take
-effect, the way the startup files are, and no setting can turn restricted mode
-off. A shell started restricted ignores and removes a
+assignable. No setting can turn restricted mode off. A shell started restricted
+by
+.B \-r
+or the name rbash ignores and removes a
 .B KOSHCONF
-environment variable with a warning.
+environment variable with a warning. From the configuration files, which are
+read before the restrictions take effect, it applies only the options that
+change presentation or diagnostics and warns about the mood,
+koshkit.commands, compat.mimicry, history.file, and history.size, so a
+configuration file cannot choose the startup files, the command resolution, or
+a history path. A child shell or a fresh evaluator inherits the restrictions.
 .PP
 A sourced script retains the restrictions. A shell script found through PATH
 and executed as a command runs without them.
@@ -4146,6 +4152,18 @@ is configured, and when the count is zero.
 .B KOSH_IDENTITY
 The read-only exported value is the lowercase CRC-32 identity of the running
 executable. An inherited value is discarded.
+.TP
+.B KOSHCONF
+Each read supplies the mood and the interactive options in the base64 binary
+form that
+.BR kosh (5)
+describes. An assignment is discarded, and the shell never exports it by
+itself. A KOSHCONF value in the environment at startup is applied after the
+configuration files and removed from the environment, so
+.B ssh host KOSHCONF=\(dq$KOSHCONF\(dq kosh
+carries the settings to a remote shell.
+.B koshconf load
+applies a value to the current session.
 .TP
 .BR KOSH_WELCOME ", " KOSH_FAREWELL
 When set and non-empty, the value is printed once at interactive startup

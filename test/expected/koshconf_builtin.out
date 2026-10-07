@@ -214,3 +214,14 @@ rc=1
      1 |  koshconf load BQ==
        |                ^~~~
 rc=1
+== KOSHCONF carries the mood and interactive options to another shell:
+AQECAgEBAwEBBAEBBQEABgEABwEBCAEBCgI3NwsBAQwBAA0BAQ4BAQ8BABEBABIBABMBABQBABUBABYBABcBAEEBAFUBAFYBAFcBAIABAQGDAQEAhQEBAIYBAQGHAQEBiAEBAIkBAQCRAQEBlQEBAJYBAQCXAQEAmAEBAZkBAQCbAQEBoAEBAKEBAQCmAQEBpwEBAKgBAQE=
+bash
+external
+77
+off
+external
+== KOSHCONF is never exported and a subshell sees the same value:
+0
+same
+discarded

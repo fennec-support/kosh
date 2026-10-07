@@ -87,3 +87,21 @@ echo "rc=$?"
 echo "rc=$?"
 "$BIN" -c 'koshconf load BQ=='
 echo "rc=$?"
+
+echo "== KOSHCONF carries the mood and interactive options to another shell:"
+encoded=$("$BIN" -c 'koshconf set mood bash
+koshconf set editor.tab_selector external
+koshconf set history.size 77
+koshconf set legacy.exit_on_error on
+printf %s "$KOSHCONF"')
+printf '%s\n' "$encoded"
+KOSHCONF=$encoded "$BIN" -c 'koshconf get mood
+koshconf get editor.tab_selector
+koshconf get history.size
+koshconf get legacy.exit_on_error'
+"$BIN" -c "koshconf load '$encoded'; koshconf get editor.tab_selector"
+echo "== KOSHCONF is never exported and a subshell sees the same value:"
+"$BIN" -c 'env | grep -c "^KOSHCONF="
+[ "$KOSHCONF" = "$( (printf %s "$KOSHCONF") & wait)" ] && echo same
+KOSHCONF=ignored
+[ "$KOSHCONF" != ignored ] && echo discarded'

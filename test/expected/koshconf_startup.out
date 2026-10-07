@@ -41,7 +41,6 @@ kosh
 == KOSHCONF applies after the file and leaves the environment:
 sh
 off
-[]
 0
 == an invalid KOSHCONF is a warning:
 warning: The KOSHCONF environment variable is not a valid encoding, so it is ignored.

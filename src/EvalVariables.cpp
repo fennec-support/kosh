@@ -15,6 +15,7 @@
 #include "Errors.hpp"
 #include "Eval.hpp"
 #include "Expressions.hpp"
+#include "Koshconf.hpp"
 #include "Koshkit.hpp"
 #include "Lexer.hpp"
 #include "Parser.hpp"
@@ -140,6 +141,7 @@ enum class dynamic_var : u8
   KOSH_GIT_AHEAD,
   KOSH_GIT_BEHIND,
   KOSH_IDENTITY,
+  KOSHCONF,
 
   RANDOM,
   SECONDS,
@@ -201,6 +203,7 @@ constexpr static_string_entry<dynamic_variable_info> ALWAYS_DYNAMIC_ENTRIES[] =
         DYNAMIC_VARIABLE("KOSH_GIT_AHEAD", KOSH_GIT_AHEAD, false, Settable),
         DYNAMIC_VARIABLE("KOSH_GIT_BEHIND", KOSH_GIT_BEHIND, false, Settable),
         DYNAMIC_VARIABLE("KOSH_IDENTITY", KOSH_IDENTITY, false, Settable),
+        DYNAMIC_VARIABLE("KOSHCONF", KOSHCONF, false, Discarded),
 };
 constexpr StaticStringMap ALWAYS_DYNAMIC{ALWAYS_DYNAMIC_ENTRIES};
 
@@ -563,6 +566,7 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
         }
       }
       case dynamic_var::KOSH_IDENTITY: return materialize_kosh_identity();
+      case dynamic_var::KOSHCONF: return encode_koshconf_blob(*this);
       default: break;
       }
     }
