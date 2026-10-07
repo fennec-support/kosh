@@ -7,11 +7,11 @@ $'ZQcommand_marker
 $'ZQdir_marker/
 $'ZQmarker_file
 == an ANSI C escape resolves to the decoded name:
-$'ZQdir_marker/\x5aQinner
+$'ZQdir_marker/\x5aQinner'
 == an ANSI C quote completes a command name:
-$'ZQcommand_marker
+$'ZQcommand_marker'
 == an ANSI C quote after a directory keeps the prefix:
-ZQdir_marker/$'ZQinner
+ZQdir_marker/$'ZQinner'
 == a doubled dollar sign keeps the process id in the prefix:
 == a tripled dollar sign keeps the process id before the quote body:
 == a locale quote lists the same markers:
@@ -20,7 +20,7 @@ $"ZQdir_marker/
 $"ZQmarker_file
 == an escaped quote stays inside a locale quoted word:
 == a locale quote completes a command name:
-$"ZQcommand_marker
+$"ZQcommand_marker"
 == a locale quote after a directory keeps the prefix:
-ZQdir_marker/$"ZQinner
+ZQdir_marker/$"ZQinner"
 == a doubled dollar sign keeps the process id before a locale quote:

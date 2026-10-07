@@ -5,7 +5,9 @@
 # prints the current options under the command name. A named compopt inside
 # the function changes the registered spec. nosort keeps the order of the
 # reply, and the reply is quoted the way Bash quotes it: as file names, with
-# fullquote, and never with noquote alone. The probe runs in a temp directory
+# fullquote, and never with noquote alone. An empty reply under bashdefault
+# without default completes only a variable, a user name, or a glob, as Bash
+# does, while default falls back to file names. The probe runs in a temp directory
 # holding one directory and two files.
 dir=$(mktemp -d)
 mkdir "$dir/probe_dir"
@@ -45,4 +47,11 @@ complete_in "_f(){ COMPREPLY=('a b'); }; complete -o fullquote -o noquote -F _f 
 echo "== noquote leaves the fallback file names unquoted:"
 complete_in "_f(){ :; }; complete -o default -F _f cp" 'cp spa'
 complete_in "_f(){ :; }; complete -o default -o noquote -F _f cp" 'cp spa'
+echo "== bashdefault alone leaves a plain word empty:"
+complete_in "_f(){ :; }; complete -o bashdefault -F _f cp" 'cp spa'
+echo "== bashdefault still completes a variable and a glob:"
+complete_in "_f(){ :; }; complete -o bashdefault -F _f cp; probe_variable=1" 'cp $probe_v'
+complete_in "_f(){ :; }; complete -o bashdefault -F _f cp" 'cp spa*'
+echo "== bashdefault with default falls back to file names:"
+complete_in "_f(){ :; }; complete -o bashdefault -o default -F _f cp" 'cp spa'
 test -n "$dir" && "$BIN_DIR/invoke-koshkit" rm -rf "$dir"

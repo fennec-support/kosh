@@ -1279,6 +1279,9 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       token.data == token_prefix.data && token.length == token_prefix.length
           ? steal(decoded_prefix)
           : utils::decode_shell_word(token, completion_allocator());
+  let const is_quote_closed_after_token =
+      line_end < line.length && decoded_token.quote_character != 0 &&
+      line[line_end] == decoded_token.quote_character;
   line = line.substring_of_length(0, line_end);
   let const has_open_quote = decoded_token.quote_character != 0;
   let const open_quote_content_token =
@@ -1557,6 +1560,21 @@ fn complete(StringView line, usize cursor, EvalContext &context,
         candidate = steal(rebuilt);
       }
       descriptions = steal(rebuilt_descriptions);
+    }
+
+    let const open_quote = decoded_token.quote_character;
+    if (open_quote != 0 && !is_quote_closed_after_token &&
+        candidates.count() == 1 && !candidates[0].is_empty() &&
+        !os::is_directory_separator(candidates[0][candidates[0].length() - 1]))
+    {
+      let const description = descriptions.find(candidates[0].view());
+      let description_text = String{arena};
+      if (description.has_value()) description_text.append(description->view());
+      candidates[0].push(open_quote);
+      if (description.has_value()) {
+        descriptions.set(candidates[0].view(), description_text.view());
+      }
+      longest_common_prefix = String{arena, candidates[0].view()};
     }
 
     if (for_listing && extension_hint.has_value() && !stage_token.is_empty() &&

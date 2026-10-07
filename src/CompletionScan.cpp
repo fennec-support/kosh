@@ -1431,6 +1431,23 @@ generate_spec_candidates(completion_spec &active_spec,
   return candidates;
 }
 
+static pure fn token_reaches_bash_default_completion(StringView token) wontthrow
+    -> bool
+{
+  if (token.starts_with("$") || token.starts_with("~")) return true;
+
+  for (usize position = 0; position < token.length; position++) {
+    switch (token[position]) {
+    case '*':
+    case '?':
+    case '[': return true;
+    default: break;
+    }
+  }
+
+  return false;
+}
+
 fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
                                 EvalContext &context,
                                 StringMap<String> &descriptions,
@@ -1495,7 +1512,17 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
   option_mask = active_spec.option_mask;
 
   /* An empty result never claims the completion, so the cascade falls to the
-     filesystem the way bash-completion's -o default behaves. */
+     filesystem the way bash-completion's -o default behaves. Bash's own
+     default completions complete only variables, user names, and globs, so a
+     bashdefault spec without default keeps every other word empty. */
+  if (candidates.is_empty() &&
+      active_spec.has_option(completion_option::BashDefault) &&
+      !active_spec.has_option(completion_option::Default) &&
+      !token_reaches_bash_default_completion(token))
+  {
+    return candidates;
+  }
+
   if (candidates.is_empty()) return None;
   return candidates;
 }

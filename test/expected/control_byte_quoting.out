@@ -5,9 +5,9 @@ $'csi\xc2\x9by'
 == a quote, a backslash, and DEL are escaped together:
 $'mix\'q\\b\x7fz'
 == an open single quote splices each control run:
-'osc'$'\e'']0;title'$'\a''x
+'osc'$'\e'']0;title'$'\a''x'
 == an open double quote splices each control run:
-"csi"$'\xc2\x9b'"y
+"csi"$'\xc2\x9b'"y"
 == noquote keeps blanks raw and still splices each control run:
 nq a$'\e'b
 == a spec word splices each control run:

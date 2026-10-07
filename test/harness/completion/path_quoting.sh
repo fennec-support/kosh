@@ -1,7 +1,8 @@
 # A filesystem completion whose match carries a special byte is backslash
 # escaped, while a plain name stays bare. A hermetic temp directory keeps the
 # candidates stable across machines. The typed prefix is one token, the special
-# byte lives in the matched entry.
+# byte lives in the matched entry. A single match that is no directory closes
+# the quote the word left open, as readline does.
 dir=$(mktemp -d)
 trap '[ -n "$dir" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$dir"' EXIT
 : > "$dir/spacey file.txt"
@@ -34,9 +35,9 @@ echo "== a plain match stays unquoted:"
 "$BIN" --debug-complete-at 'cat plain' </dev/null
 echo "== a dollar in the match escapes it:"
 "$BIN" --debug-complete-at 'cat dollar' </dev/null
-echo "== inside a single quote the space match completes bare within it:"
+echo "== inside a single quote the only match completes bare and closes it:"
 "$BIN" --debug-complete-at "cat 'spacey" </dev/null
-echo "== inside a double quote the space match completes bare within it:"
+echo "== inside a double quote the only match completes bare and closes it:"
 "$BIN" --debug-complete-at 'cat "spacey' </dev/null
 echo "== glob-like bytes stay literal inside open quotes:"
 for quote in "'" '"'; do

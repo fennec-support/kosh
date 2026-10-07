@@ -2322,7 +2322,13 @@ candidate equal to the one before it.
 inserts no space after an accepted candidate whatever
 completion.add_space_after_completed_word chooses.
 A dash candidate is offered only when the word starts with a dash. An empty
-result falls through to the next completion source. An unknown
+result falls through to the next completion source, except that with
+.B \-o bashdefault
+and without
+.B \-o default
+it stays empty as in Bash unless the word starts with $ or ~ or holds a glob
+character. A single candidate that is not a directory closes a quote the word
+left open. An unknown
 .B \-o
 option name or
 .B \-A

@@ -35,3 +35,9 @@ a b
 == noquote leaves the fallback file names unquoted:
 'spaced name'
 spaced name
+== bashdefault alone leaves a plain word empty:
+== bashdefault still completes a variable and a glob:
+$probe_variable
+'spaced name'
+== bashdefault with default falls back to file names:
+'spaced name'

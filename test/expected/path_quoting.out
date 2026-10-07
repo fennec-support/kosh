@@ -4,10 +4,10 @@
 plainfile.txt
 == a dollar in the match escapes it:
 'dollar$x.txt'
-== inside a single quote the space match completes bare within it:
-'spacey file.txt
-== inside a double quote the space match completes bare within it:
-"spacey file.txt
+== inside a single quote the only match completes bare and closes it:
+'spacey file.txt'
+== inside a double quote the only match completes bare and closes it:
+"spacey file.txt"
 == glob-like bytes stay literal inside open quotes:
 '[C] alpha/
 'star* alpha/
@@ -18,16 +18,16 @@ plainfile.txt
 == an open quote after a directory keeps the full path prefix:
 outer/"[C] alpha/
 == an open quote inside a command keeps the prefix:
-e"cho
+e"cho"
 == a closed quote inside a command keeps the prefix:
 e"cho"
 == a fuzzy prefix before an open quote maps into the candidate:
-foo_b"ar_baz
+foo_b"ar_baz"
 == open quotes escape bytes that remain active in their quote mode:
-'single'"'"'quote.txt
-"double"'$'""'"'"tick"'`'""'\'"name.txt
+'single'"'"'quote.txt'
+"double"'$'""'"'"tick"'`'""'\'"name.txt"
 == an adjacent open double quote keeps variable expansion active:
-$QUOTED_COMPLETION_UNIQUE
+$QUOTED_COMPLETION_UNIQUE"
 == a closed quoted directory continues through an unquoted slash:
 'PATH'/'space file.txt'
 'PATH'/plain.txt
@@ -47,7 +47,7 @@ space\ dir/mixed.txt
 == a single-quoted variable directory remains literal:
 '$HOME'/literal-variable.txt
 == an open single-quoted variable directory remains literal:
-'$HOME/literal-variable.txt
+'$HOME/literal-variable.txt'
 == an open double-quoted variable directory remains active:
 "$HOME/home.txt
 "$HOME/space file.txt

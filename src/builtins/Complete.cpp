@@ -31,7 +31,8 @@ FLAG(COMPLETE_FUNCTION, String, 'F', "",
 FLAG(COMPLETE_OPTION, ManyStrings, 'o', "",
      "dirnames adds directory names when nothing else matched, plusdirs adds "
      "them always, filenames gives directory candidates a trailing slash, "
-     "default and bashdefault leave an empty result to filename completion, "
+     "default leaves an empty result to filename completion, bashdefault "
+     "alone completes only a variable, a user name, or a glob, "
      "fullquote quotes every candidate, noquote leaves file names unquoted, "
      "nosort keeps the generated order, and nospace adds no space after an "
      "accepted candidate. Any other name is an error.");
