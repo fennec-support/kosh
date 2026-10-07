@@ -3372,6 +3372,8 @@ public:
   fn resolve_nameref(StringView name) const throws -> Maybe<String>;
   fn warn_circular_nameref(StringView name) const throws -> void;
   fn resolve_nameref_for_write(StringView name) throws -> String;
+  fn resolve_nameref_base_for_write(StringView name) throws -> String;
+  fn guard_nameref_name(StringView name) const throws -> void;
   fn bind_nameref(StringView name, StringView target) throws -> void;
   fn resolve_nameref_parameter(StringView spec) throws -> Maybe<String>;
   pure fn variable_requires_dynamic_lookup(StringView name) const wontthrow

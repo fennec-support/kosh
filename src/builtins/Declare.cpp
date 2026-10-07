@@ -354,8 +354,8 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if ((should_mark_integer_attribute || should_unmark_integer_attribute ||
          should_mark_lowercase_attribute || should_unmark_lowercase_attribute ||
-         should_mark_uppercase_attribute ||
-         should_unmark_uppercase_attribute) &&
+         should_mark_uppercase_attribute || should_unmark_uppercase_attribute ||
+         should_mark_nameref || should_unmark_nameref) &&
         cxt.is_readonly(name))
     {
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
@@ -417,19 +417,20 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                stored.has_value())
         target = String{cxt.scratch_allocator(), stored->view()};
 
-      if (target.has_value()) {
-        try {
+      try {
+        if (target.has_value()) {
           cxt.bind_nameref(name, target->view());
-        } catch (const Error &error) {
-          report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
-                                    error.message().view());
-          status = 1;
-          continue;
+        } else {
+          cxt.guard_nameref_name(name);
+          cxt.variable_store().attributes().set(
+              name, variable_attribute::Nameref, true);
+          cxt.variable_store().attributes().mark_declared(name);
         }
-      } else {
-        cxt.variable_store().attributes().set(name, variable_attribute::Nameref,
-                                              true);
-        cxt.variable_store().attributes().mark_declared(name);
+      } catch (const Error &error) {
+        report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
+                                  error.message().view());
+        status = 1;
+        continue;
       }
 
       if (should_mark_readonly)
@@ -504,8 +505,15 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     /* The read-only mark applies after the assignment, so declare -r v=1 stores
        the value first and then locks it, the way bash rejects only a later
        write rather than the declaration's own assignment. */
-    if (should_mark_readonly)
-      cxt.variable_store().attributes().mark_readonly(name);
+    if (should_mark_readonly) {
+      if (cxt.variable_store().attributes().is_nameref(name)) rarely
+        {
+          cxt.variable_store().attributes().mark_readonly(
+              cxt.resolve_nameref_base_for_write(name));
+        }
+      else
+        cxt.variable_store().attributes().mark_readonly(name);
+    }
   }
 
   return status;

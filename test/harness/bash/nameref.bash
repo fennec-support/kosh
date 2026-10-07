@@ -128,6 +128,60 @@ declare -n pp 2>/dev/null
 echo "invalid value status $?"
 declare -p pp
 
+declare -n s1='a;b' 2>/dev/null
+echo "separator target status $?"
+declare -n s2='a[1' 2>/dev/null
+echo "unclosed target status $?"
+declare -n s3='a]' 2>/dev/null
+echo "bracket target status $?"
+
+sub=(zero one two)
+declare -n se='sub[$(echo evaluated >&2; echo 1)]'
+{ echo "subscript read $se"; } 2>&1
+{ se=written; } 2>&1
+echo "subscript write ${sub[*]}"
+
+readonly RO=kept
+declare -n ro=RO
+(ro=changed; echo "not reached") 2>/dev/null
+echo "readonly assignment status $?"
+(ro+=more; echo "not reached") 2>/dev/null
+echo "readonly append status $?"
+(ro[1]=element; echo "not reached") 2>/dev/null
+echo "readonly element status $?"
+read -r ro <<<"read" 2>/dev/null
+echo "readonly read status $?"
+printf -v ro '%s' printed 2>/dev/null
+echo "readonly printf status $?"
+unset ro 2>/dev/null
+echo "readonly unset status $?"
+write_readonly() {
+  local -n target=RO
+  target=from_function
+  echo "not reached"
+}
+(write_readonly) 2>/dev/null
+echo "readonly local status $?"
+declare -n RO=other 2>/dev/null
+echo "readonly reference status $?"
+echo "RO=$RO"
+declare -p RO
+
+W=writable
+declare -n protect=W
+readonly protect
+(W=changed; echo "not reached") 2>/dev/null
+echo "readonly through reference status $? W=$W"
+declare -p protect W
+
+declare -i counter=1
+declare -n counted=counter
+counted='2 + 3'
+declare -u upper
+declare -n cased=upper
+cased=value
+echo "target attributes counter=$counter upper=$upper"
+
 declare -n ca=cb
 declare -n cb=ca
 { echo "circular ${ca-default}"; } 2>/dev/null

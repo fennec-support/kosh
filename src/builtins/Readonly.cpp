@@ -139,12 +139,16 @@ fn Readonly::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     LOG(All, "readonly marking '%.*s' against later assignment",
         static_cast<int>(parts.get_name().length), parts.get_name().data);
 
-    if (parts.get_value().has_value()) {
+    if (parts.get_value().has_value())
       cxt.set_shell_variable(parts.get_name(), *parts.get_value());
+
+    if (cxt.variable_store().attributes().is_nameref(parts.get_name())) rarely
+      {
+        cxt.variable_store().attributes().mark_readonly(
+            cxt.resolve_nameref_base_for_write(parts.get_name()));
+      }
+    else
       cxt.variable_store().attributes().mark_readonly(parts.get_name());
-    } else {
-      cxt.variable_store().attributes().mark_readonly(arg);
-    }
   }
 
   return has_error ? 1 : 0;

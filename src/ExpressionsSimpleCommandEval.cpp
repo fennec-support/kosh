@@ -616,15 +616,24 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     cxt.mark_expansion_error(error, reach);
     throw steal(error);
   };
+  let const do_reject_readonly_target = [&](StringView name) throws {
+    let resolved_name = Maybe<String>{};
+    if (cxt.variable_store().attributes().is_nameref(name)) rarely
+      {
+        resolved_name = cxt.resolve_nameref_base_for_write(name);
+        name = resolved_name->view();
+      }
+    if (cxt.is_readonly(name)) {
+      do_reject_readonly_assignment(name,
+                                    expansion_error_reach::LineOrPosixScript);
+    }
+  };
 
   let const do_apply_persistent_assignment =
       [&](const tokens::Assignment &assignment) throws {
         let const name = assignment.key().view();
         let value = cxt.expand_word_for_assignment(assignment.value_word());
-        if (cxt.is_readonly(name)) {
-          do_reject_readonly_assignment(
-              name, expansion_error_reach::LineOrPosixScript);
-        }
+        do_reject_readonly_target(name);
         do_trace_assignment(name, assignment.get_update_mode(), value.view());
         if (assignment.get_update_mode() == assignment_update_mode::Append)
           do_apply_append(name, value);
@@ -645,10 +654,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       do_apply_persistent_assignment(*assignment);
     /* Bare array assignments apply after the scalars in source order. */
     for (let const &assignment : m_array_args) {
-      if (cxt.is_readonly(assignment.name)) {
-        do_reject_readonly_assignment(assignment.name,
-                                      expansion_error_reach::LineOrPosixScript);
-      }
+      do_reject_readonly_target(assignment.name);
       ArrayList<String> values = cxt.process_args(
           assignment.elements, nullptr, argument_lifetime::Persistent,
           argument_context::ArrayLiteral);

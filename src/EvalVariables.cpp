@@ -715,6 +715,19 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
 
 static constexpr u32 NAMEREF_DEPTH_LIMIT = 8;
 
+static pure fn is_valid_nameref_target(StringView target) wontthrow -> bool
+{
+  let base = target;
+  if (let const bracket = target.find_character('['); bracket.has_value()) {
+    if (target[target.length - 1] != ']' || *bracket + 2 >= target.length)
+      return false;
+
+    base = target.substring_of_length(0, *bracket);
+  }
+
+  return lexer::word_is_variable_name(base);
+}
+
 fn EvalContext::resolve_nameref(StringView name) const throws -> Maybe<String>
 {
   if (!variable_store().attributes().is_nameref(name)) return None;
@@ -724,7 +737,8 @@ fn EvalContext::resolve_nameref(StringView name) const throws -> Maybe<String>
 
   let target = String{heap_allocator(), stored->view()};
   for (u32 depth_count = 0; depth_count < NAMEREF_DEPTH_LIMIT; depth_count++) {
-    if (target.view() == name) return String{heap_allocator()};
+    if (target.view() == name || !is_valid_nameref_target(target.view()))
+      return String{heap_allocator()};
     if (!variable_store().attributes().is_nameref(target.view())) return target;
 
     let const next = variable_store().shell_variables().find(target.view());
@@ -756,15 +770,36 @@ fn EvalContext::resolve_nameref_for_write(StringView name) throws -> String
   return target.take();
 }
 
+fn EvalContext::resolve_nameref_base_for_write(StringView name) throws -> String
+{
+  let target = resolve_nameref_for_write(name);
+  if (let const bracket = target.view().find_character('[');
+      bracket.has_value())
+  {
+    target = String{heap_allocator(),
+                    target.view().substring_of_length(0, *bracket)};
+  }
+
+  return target;
+}
+
+fn EvalContext::guard_nameref_name(StringView name) const throws -> void
+{
+  if (is_readonly(name))
+    throw Error{"Unable to assign '" + name + "' because it is read only"};
+  if (variable_requires_dynamic_lookup(name) || is_dynamic_write_owner(name) ||
+      is_write_discarded_dynamic_variable(name) ||
+      utils::environment_name_is_path(name) || name == "IFS")
+  {
+    throw Error{"The shell variable '" + name +
+                "' cannot become a name reference"};
+  }
+}
+
 fn EvalContext::bind_nameref(StringView name, StringView target) throws -> void
 {
-  let base = target;
-  if (let const bracket = target.find_character('[');
-      bracket.has_value() && target[target.length - 1] == ']')
-  {
-    base = target.substring_of_length(0, *bracket);
-  }
-  if (!lexer::word_is_variable_name(base)) {
+  guard_nameref_name(name);
+  if (!is_valid_nameref_target(target)) {
     throw Error{"'" + target +
                 "' is not a valid variable name for a name reference"};
   }

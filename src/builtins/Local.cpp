@@ -192,19 +192,20 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       cxt.variable_store().attributes().mark_uppercase(name);
 
     if (should_mark_nameref) {
-      if (equals_position.has_value()) {
-        try {
+      try {
+        if (equals_position.has_value()) {
           cxt.bind_nameref(name, arg.substring(*equals_position + 1));
-        } catch (const Error &error) {
-          report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
-                                    error.message().view());
-          status = 1;
-          continue;
+        } else {
+          cxt.guard_nameref_name(name);
+          cxt.variable_store().attributes().set(
+              name, variable_attribute::Nameref, true);
+          cxt.variable_store().attributes().mark_declared(name);
         }
-      } else {
-        cxt.variable_store().attributes().set(name, variable_attribute::Nameref,
-                                              true);
-        cxt.variable_store().attributes().mark_declared(name);
+      } catch (const Error &error) {
+        report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
+                                  error.message().view());
+        status = 1;
+        continue;
       }
 
       if (should_mark_readonly)

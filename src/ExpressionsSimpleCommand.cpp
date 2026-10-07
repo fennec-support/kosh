@@ -340,9 +340,15 @@ fn AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
     let const bracket = key_view.find_character('[');
     let const is_element_assignment =
         bracket.has_value() && key_view[key_view.length - 1] == ']';
-    let const assigned_name = is_element_assignment
-                                  ? key_view.substring_of_length(0, *bracket)
-                                  : key_view;
+    let assigned_name = is_element_assignment
+                            ? key_view.substring_of_length(0, *bracket)
+                            : key_view;
+    let resolved_name = Maybe<String>{};
+    if (cxt.variable_store().attributes().is_nameref(assigned_name)) rarely
+      {
+        resolved_name = cxt.resolve_nameref_base_for_write(assigned_name);
+        assigned_name = resolved_name->view();
+      }
     if (cxt.is_readonly(assigned_name)) {
       let error = Error{"Unable to assign '" + assigned_name +
                         "' because it is read only"};
