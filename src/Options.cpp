@@ -251,7 +251,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                      {},
                      {},
                      "Ask the terminal to report modified keys such as "
-                     "Ctrl-Shift-Z apart while a line is read."},
+                     "Ctrl-Shift-Z separately while a line is read."},
          true),
     flag(8, "history.arrow_keys_search_by_typed_prefix", INTERACTIVE,
          shell_option_id::HistoryPrefixSearch,
@@ -267,8 +267,8 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
         entry_shape{{},
                     {},
                     "KOSH_HISTORY_FILE",
-                    "Store the command history in this file, the value of "
-                    "KOSH_HISTORY_FILE."},
+                    "Store command history in this file. KOSH_HISTORY_FILE "
+                    "supplies the value."},
         0, 0)),
     with_default_text(
         make_entry(10, "history.max_entries", option_type::String, INTERACTIVE,
@@ -276,8 +276,9 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                    entry_shape{{},
                                {},
                                "KOSH_HISTORY_SIZE",
-                               "Keep at most this many history entries, the "
-                               "value of KOSH_HISTORY_SIZE; 0 keeps none."},
+                               "Keep at most this many history entries. "
+                               "KOSH_HISTORY_SIZE supplies the value, and 0 "
+                               "keeps none."},
                    0, 0),
         "4096"),
     flag(11, "completion.add_space_after_completed_word", INTERACTIVE,
@@ -306,8 +307,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                  entry_shape{{},
                              {},
                              {},
-                             "Run the analysis stage before each chunk "
-                             "runs."},
+                             "Analyze each chunk before it runs."},
                  true),
             option_storage::Analysis),
     flag(15, "koshkit.run_utilities_as_plain_commands", INTERACTIVE,
@@ -376,7 +376,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
     unlisted(flag(
         23, "debug.print_memory_report_at_exit", INTERACTIVE,
         shell_option_id::ShowMemory,
-        entry_shape{{}, {}, {}, "Print a granular memory report at exit.", 'G'},
+        entry_shape{{}, {}, {}, "Print a detailed memory report at exit.", 'G'},
         false)),
 
     flag(64, "legacy.export_every_assigned_variable", SEMANTIC,

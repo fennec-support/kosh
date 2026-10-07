@@ -103,7 +103,8 @@ The
 option separates a declaration block from the following command. It also
 separates a completed fi, done, esac, subshell, or brace group from the next
 independent command. Lines are kept within 78 columns. A word that cannot be
-broken to fit is left whole, and a warning names its file, line, and column.
+broken to fit is left whole, and a warning identifies its file, line, and
+column.
 .PP
 When both
 .B \-s
@@ -283,7 +284,7 @@ an sh or dash shebang selects
 .BR sh ,
 and a kosh shebang selects
 .BR kosh .
-The interpreter may be named through
+The interpreter may be selected through
 .BR env ,
 as in
 .B "#!/usr/bin/env bash"
@@ -550,10 +551,10 @@ Bundled utility names resolve directly as commands. The option is equivalent to
 .B \-\-enable\-extended\-arithmetic
 Arbitrary-precision integers and finite decimal values are enabled. The option
 is equivalent to
-.BR "koshconf set arithmetic.use_big_integers_and_decimals on" ,
-which the
+.BR "koshconf set arithmetic.use_big_integers_and_decimals on" .
+The
 .B kosh
-mood always holds.
+mood always holds this option on.
 .SS Debug options
 .TP
 .BR \-A ", " \-\-show\-ast
@@ -643,7 +644,7 @@ When neither
 .B \-s
 nor
 .B \-c
-selects another source, the first operand names the script file. A lone
+selects another source, the first operand specifies the script file. A lone
 .B \-
 operand selects standard input. A directory operand fails with status 126. A
 file that cannot be opened fails with status 127.
@@ -685,7 +686,7 @@ nullglob off.
 .BR shopt ,
 and
 .B koshconf
-report an error that names the mood and suggests
+report an error that identifies the mood and suggests
 .B set \-M bash
 when asked for another value, and accept the value the mood already holds, so
 .B set \-euo pipefail
@@ -694,9 +695,9 @@ in the
 .B kosh
 mood. Every other option that changes evaluation remains toggleable in the
 .B kosh
-mood. Errexit aborts failures that scripts test, noclobber and noglob prevent
-ordinary file and pattern use, and xtrace, verbose, allexport, and the other
-Bash options select behavior. In the
+mood. Errexit aborts when commands fail, including failures that scripts test.
+Noclobber and noglob prevent ordinary file and pattern use. Xtrace, verbose,
+allexport, and the other Bash options select behavior. In the
 .BR bash ,
 .BR bash-posix ,
 and
@@ -754,10 +755,10 @@ name and encoded by position. A string is written as it is. An interactive
 option changes presentation, editing, or diagnostics. A semantic option changes
 evaluation.
 .PP
-A koshconf name starts with its topic, so related settings sort and search
-together: every globbing option contains glob, and every Bash option appears
+A koshconf name starts with its topic. Related settings sort and search
+together. Every globbing option contains glob, and every Bash option appears
 under
-.B legacy.
+.B legacy
 with a descriptive name.
 .B koshconf list
 shows the current value and class of each.
@@ -1033,7 +1034,7 @@ read; see
 .BR kosh (5).
 .SH STARTUP FILES
 Before any shell startup file, interactive and noninteractive shells apply the
-configuration files /etc/kosh.conf, or %ProgramData%\ekosh\ekosh.conf on
+configuration files /etc/kosh.conf, or %ProgramData%\kosh\kosh.conf on
 Windows, and then $XDG_CONFIG_HOME/kosh/kosh.conf, or
 ~/.config/kosh/kosh.conf when XDG_CONFIG_HOME is unset, empty, or relative.
 The system file is skipped with a warning unless only the system
@@ -1043,11 +1044,12 @@ They are not shell code;
 describes their format. A
 .B KOSHCONF
 variable in the environment is applied after them and removed from the
-environment. A later setting replaces an earlier one. A mood named by the
+environment. A later setting replaces an earlier one. A mood selected by the
 configuration selects the startup files below unless the command line or the
-invocation name names a mood, and a script shebang still selects the mood of
-that script. Any option the command line names, and any diagnostic setting
-inherited through KOSH_ANALYSIS, keeps that value. A malformed line is reported
+invocation name selects a mood, and a script shebang still selects the mood of
+that script. Any option specified on the command line, and any diagnostic
+setting inherited through KOSH_ANALYSIS, keeps that value. A malformed line is
+reported
 with its file and line and skipped.
 .PP
 The
@@ -1179,13 +1181,13 @@ by
 .B \-r
 or the name rbash ignores and removes a
 .B KOSHCONF
-environment variable with a warning. From the configuration files, which are
-read before the restrictions take effect, it applies only the options that
-change presentation or diagnostics and warns about the mood, every semantic
-option, koshkit.run_utilities_as_plain_commands,
-compat.mimic_shell_named_by_shebang, history.file_path, and
-history.max_entries, so a configuration file cannot choose the startup files,
-the evaluation rules, the command resolution, or a history path. A child shell or a fresh evaluator inherits the restrictions.
+environment variable with a warning. The configuration files are read before
+the restrictions take effect. They apply only presentation and diagnostic
+options. They warn about the mood, every semantic option,
+koshkit.run_utilities_as_plain_commands, compat.mimic_shell_named_by_shebang,
+history.file_path, and history.max_entries. A configuration file cannot choose
+the startup files, the evaluation rules, the command resolution, or a history
+path. A child shell or a fresh evaluator inherits the restrictions.
 .PP
 A sourced script retains the restrictions. A shell script found through PATH
 and executed as a command runs without them.
@@ -1214,7 +1216,7 @@ accepts a coprocess. The command runs asynchronously and two pipes connect
 it to the shell. NAME[0] is read from, NAME[1] is written to, and NAME_PID holds
 the process id. The default name is COPROC.
 .PP
-A word before the command names the coprocess only when a compound command
+A word before the command identifies the coprocess only when a compound command
 follows that word. In
 .B coproc NAME cat
 the word NAME is the first word of a simple command and the coprocess takes the
@@ -1350,7 +1352,7 @@ substitution restores runtime state, shell options, directory stack, working
 directory state, and file creation mask when it finishes. A syntax error inside
 a command, process, or function substitution is reported at its place in the
 outer source, and a script or command string containing one does not run. Every
-such error in the source is reported, not only the first. The
+such error in the source is reported. The
 same check covers substitutions in double quotes, here-document bodies, and the
 words of a parameter expansion or arithmetic expansion, and the subscript of
 an array assignment. A substitution nested
@@ -1359,8 +1361,8 @@ more than 64 levels deep is reported as a syntax error, as it is at run time.
 Analysis diagnostics apply to the commands inside command, process, and
 function substitutions, and to substitutions in parameter expansion words,
 arithmetic expansions, here-document bodies, arithmetic commands, and C-style
-for headers. The inner findings use the file's own line and column. The body of a
-command, backtick, or process substitution is analyzed as a subshell, so a
+for headers. The inner findings use the file's own line and column. The body of
+a command, backtick, or process substitution is analyzed as a subshell, so a
 variable it assigns is not visible after it, and a read inside it counts as a
 read of the parent variable. A function substitution shares the current shell.
 A backtick body whose escapes change its text is not analyzed.
@@ -1383,15 +1385,15 @@ with that process returns it, waiting first when the process still runs.
 .B wait
 without an operand waits for the process that
 .B $!
-names when it is a process substitution.
+identifies the process when it is a process substitution.
 A later command cannot open the path. An
 .B exec
 command without a program keeps the process for as long as its redirections
 hold the descriptor, closes the path, and reaps the process after it ends
 without waiting for it. On POSIX the path is /dev/fd/63 or the next free
-descriptor above it. On Windows the path names a named pipe that behaves like a
-FIFO. A program may open or inspect the path before it reads or writes, and
-the path may be opened again. Each reader continues where the previous reader
+descriptor above it. On Windows the path identifies a named pipe that behaves
+like a FIFO. A program may open or inspect the path before it reads or writes.
+The path may be opened again. Each reader continues where the previous reader
 stopped, a reader that opens the path after the stream ends reads end of file,
 and each writer appends to the same stream. A redirection that finds the pipe
 busy retries for up to two seconds. When a reader that reads in large blocks
@@ -1446,8 +1448,8 @@ read from the shell at the time of each match, and an assignment, an unset, an
 export, and a prefix assignment all take effect. A value whose codeset after
 the dot is UTF\-8 or utf8, in any letter case, selects UTF\-8 when the platform
 can select that locale. Any other value selects bytes, and so do a UTF\-8 name
-that the platform cannot select, an empty value, and no value. This is the way
-bash falls back to the C locale.
+that the platform cannot select, an empty value, and no value. Bash falls back
+to the C locale in the same cases.
 .PP
 In UTF\-8, a ? and each step of a * consume one whole valid UTF\-8 sequence,
 and an invalid byte counts as one character. In bytes, each of them consumes
@@ -1719,8 +1721,9 @@ applies a value of
 to the current session.
 .IP
 A boolean is written as on or off and is also read as true, false, 1, or 0. An
-enumeration is written by name. A string must be valid UTF-8, and history.max_entries
-is a non-negative decimal integer. An unknown option or value, and a file that
+enumeration is written by name. A string must be valid UTF-8, and
+history.max_entries is a non-negative decimal integer. An unknown option or
+value, and a file that
 cannot be read or written, is an error with status 1, and a malformed form
 exits with status 2.
 .TP
@@ -1741,8 +1744,8 @@ form keeps the selected entry's full-stack index.
 With no option and no operand, the shell variables are printed as sorted
 assignments. A minus enables an option. A plus disables it. The forms
 .BR "set \-o NAME" " and " "set +o NAME"
-select the option by its Bash name, and only the Bash names are accepted; the
-OPTION REGISTRY section lists them. With no NAME,
+select the option by its Bash name. Only Bash names are accepted. The OPTION
+REGISTRY section lists them. With no NAME,
 .B set \-o
 prints current states and
 .B set +o
@@ -1782,8 +1785,9 @@ prints the initialized moods. The
 .BR \-S ,
 and
 .B \-G
-letters set compat.mimic_shell_named_by_shebang, debug.print_syntax_tree, debug.print_lexed_word_escapes,
-debug.report_every_exit_code, debug.print_evaluation_statistics, and
+letters set compat.mimic_shell_named_by_shebang, debug.print_syntax_tree,
+debug.print_lexed_word_escapes, debug.report_every_exit_code,
+debug.print_evaluation_statistics, and
 debug.print_memory_report_at_exit. Every other Koshka setting belongs to
 .BR koshconf .
 The
@@ -1799,7 +1803,7 @@ removes them from the argument list. The
 .BR \-WW ,
 and
 .B \-WWW
-forms control the diagnostic level, which is diagnostics.warning_level.
+forms set diagnostics.warning_level.
 .PP
 The
 .B history
@@ -1948,19 +1952,19 @@ option records path as the location of each name.
 Without a maintenance option the stored events are listed, and a numeric
 operand limits the listing to that many newest events. The
 .B \-r
-option reads the history file into the list, and an operand names the file that
-is read. The
+option reads the history file into the list, and an operand specifies the file
+that is read. The
 .B \-n
-option reads the same way, and an operand names a file whose already read bytes
-are skipped. The
+option also reads the history file, and an operand specifies a file whose
+already read bytes are skipped. The
 .B \-w
-option writes the list to the history file, and an operand names a file that is
-replaced. Without an operand it replaces the shared file with this shell's
+option writes the list to the history file, and an operand specifies a file that
+is replaced. Without an operand it replaces the shared file with this shell's
 private branch. The
 .B \-a
-option writes the list to the history file, and an operand names a file that
+option writes the list to the history file, and an operand specifies a file that
 receives the events this shell has not written to a named file yet. The written
-events are bounded by
+events are limited by
 .BR KOSH_HISTORY_SIZE .
 Without an operand,
 .B \-a
@@ -1984,8 +1988,8 @@ option joins its operands with spaces and stores the result as a history event.
 .TP
 .B "fc [\-e editor] [\-lnr] [first [last]]"
 The selected history events are edited and executed in the current shell. A
-decimal selector names an event number. A negative selector is relative to the
-current history position. A text selector finds the newest event with that
+decimal selector specifies an event number. A negative selector is relative to
+the current history position. A text selector finds the newest event with that
 prefix. The first and last selectors form an inclusive range. Without
 selectors, editing selects the previous event.
 .PP
@@ -2232,7 +2236,7 @@ list what
 lists for the same action, and the glob keeps the matches that start with the
 word. The
 .B \-X
-filter then removes candidates the way
+filter then removes candidates using the rules of
 .B compgen \-X
 does, and
 .B \-P
@@ -2244,7 +2248,7 @@ option adds the directory names that start with the word when nothing else
 matched, and
 .B \-o plusdirs
 adds them always. A spec with a directory or file action or a glob ends each
-candidate that names a directory with a slash unless its function runs
+candidate that refers to a directory with a slash unless its function runs
 .BR "compopt +o filenames" ,
 and dirnames and plusdirs mark the directories they add after the function.
 As in Bash, a spec quotes the special characters of the candidates it inserts
@@ -2255,8 +2259,8 @@ added.
 .B \-o fullquote
 quotes every candidate, and
 .B \-o noquote
-leaves file names unquoted, also in the filename completion an empty result
-falls through to, unless fullquote is on as well.
+leaves file names unquoted. It also leaves an empty filename-completion result
+unquoted when that result falls through, unless fullquote is on.
 .B \-o nosort
 keeps the candidates in the order the spec generated them and drops only a
 candidate equal to the one before it.
@@ -2277,7 +2281,7 @@ alias. An explicit Tab also follows a command found through PATH to the name
 of its symlink target. The ghost suggestion follows only the alias, so it
 never searches PATH. A command with no spec reached this way uses the
 .B \-D
-default spec, which generates candidates the same way. When its function
+default spec, which generates candidates using those rules. When its function
 returns 124, completion restarts with the spec the function registered for the
 command. The
 .B \-E
@@ -2324,7 +2328,8 @@ form turns a
 .B complete \-o
 option on and
 .BI "+o " option
-turns it off, and off wins when both name the same option. The change applies
+turns it off, and off wins when both refer to the same option. The change
+applies
 to the spec of each named command, or to the
 .BR \-D ,
 .BR \-E ,
@@ -2352,8 +2357,8 @@ option prints everything the shell holds about each name. A function is reported
 with the file and the line its definition starts on, followed by the body as the
 shell recorded it. A function defined by an eval is reported as defined in
 .B eval
-on its line within the eval text. A builtin and a bundled utility are reported with their
-description. A keyword and an alias hold nothing further. The
+on its line within the eval text. A builtin and a bundled utility are reported
+with their description. A keyword and an alias hold nothing further. The
 .BR \-t ,
 .BR \-p ,
 and
@@ -2364,7 +2369,8 @@ The
 .B \-a
 option applies the longer form to every resolution it prints. Under the bash
 moods a function is named a function and its body is printed from the plain
-form. Every other mood names a shell function and prints nothing after it.
+form. Every other mood treats the command as a shell function and prints
+nothing after it.
 .SH KOSHKIT UTILITIES
 The
 .B koshkit
@@ -2405,7 +2411,7 @@ the link that
 .B make install
 places next to
 .BR kosh ,
-it runs the utility its first operand names, such as
+it runs the utility specified by its first operand, such as
 .BR "koshkit ls \-l" ,
 and otherwise acts as the koshkit builtin, so
 .B koshkit \-\-list
@@ -2727,8 +2733,8 @@ option adds a pattern, and each
 .B \-f
 option adds the lines of a file as patterns. When either option is given, every
 operand is a file. A newline inside a pattern separates two patterns, and a line
-is selected when any pattern matches it. An empty pattern matches every line, and an
-empty pattern file matches none.
+is selected when any pattern matches it. An empty pattern matches every line,
+and an empty pattern file matches none.
 The
 .B \-x
 option selects only lines that match entirely.
@@ -3007,7 +3013,7 @@ Signed integer sequences are printed with a nonzero step.
 Execution pauses for summed durations with optional s, m, h, or d suffixes.
 .TP
 .B sort
-Input lines are sorted in byte order, or by the keys named with
+Input lines are sorted in byte order, or by the keys specified with
 .BR \-k .
 A key is
 .IR F[.C][bdfinr][,F[.C][bdfinr]] .
@@ -3072,7 +3078,7 @@ File times are updated. The
 and
 .B \-t
 options select the access time, suppress creation of a missing file, select the
-modification time, name a reference file, and set an explicit timestamp.
+modification time, specify a reference file, and set an explicit timestamp.
 .TP
 .B tr
 Input bytes are translated with ranges and character classes. The
@@ -3104,7 +3110,7 @@ One non-directory path is removed.
 .TP
 .B evil
 System identity, uptime, processor, memory, swap, root filesystem, process,
-filesystem, and network information is printed in titled sections named
+filesystem, and network information is printed in titled sections called
 Identity, Session, Accounts, Resources, Limits, Activity, and Anomalies, each
 with its name and value rows indented two spaces beneath the title. A section
 without rows is omitted. The
@@ -3265,7 +3271,8 @@ value, N, is the number of seconds between samples and between refreshes; it
 defaults to 0.5 seconds.
 Output uses
 the alternate screen and restores the previous contents on exit.
-Every frame of a live utility starts with a header line that names the utility,
+Every frame of a live utility starts with a header line that identifies the
+utility,
 shows a LIVE indicator, the local time, the window and the refresh
 interval, and, on a terminal, the keys the utility accepts. The header
 is shortened to fit the terminal width and is colored only when color is
@@ -3282,7 +3289,8 @@ M seconds. The window never changes the sampling or refresh interval. The
 counter columns show the accumulated change inside the window, and a heading
 such as
 .B READ OPS/2s
-names its length. A burst stays in the report until its samples age out of the
+indicates its length. A burst stays in the report until its samples age out of
+the
 window, and then it leaves at once; counters do not fade gradually. When the
 window is shorter than the interval, the last interval is divided in
 proportion. A row that is not seen again leaves the report after it has been
@@ -3374,7 +3382,7 @@ option locates an inode beneath the path selected by
 .BR \-r .
 The
 .B \-\-verify
-option runs bounded native filesystem verification when the platform supports
+option runs the platform's native filesystem verification when it supports
 it. On APFS it runs
 .B diskutil verifyVolume
 and reports the command status without parsing localized output.
@@ -3576,8 +3584,8 @@ history entry, and each further press replaces it with the last word of an
 older entry. A quoted last word is inserted whole with its quotes. Undo reverts
 a yank or a last-word insertion with all of its replacements in one step.
 .PP
-Ctrl\-X Ctrl\-E opens the line in a temporary file with the editor that VISUAL
-names, else EDITOR, else vi. The value is split on blanks without expansion.
+Ctrl\-X Ctrl\-E opens the line in a temporary file with the editor selected by
+VISUAL, EDITOR, or vi. The value is split on blanks without expansion.
 When the editor exits with status 0, the saved text replaces the line with its
 trailing newlines removed, and nothing runs until Enter is pressed. An editor
 that is not found or that exits with another status leaves the line alone and
@@ -3591,10 +3599,11 @@ does nothing under
 Ctrl\-X Ctrl\-U undoes the last edit. Ctrl\-X before any other key is ignored,
 and that key runs as usual.
 .PP
-A key that waits for another key before it acts names itself and what it waits
-for on the hint rows below the input, in place of the command hint, until the
-next key resolves it. The header row names the keys pressed so far and the
-body names the keys that complete them. Ctrl\-X shows the header
+A key that waits for another key before it acts identifies itself and what it
+waits for on the hint rows below the input, in place of the command hint, until
+the
+next key resolves it. The header row lists the keys pressed so far and the
+body lists the keys that complete them. Ctrl\-X shows the header
 .B "pressed ctrl\-x"
 over
 .BR "waiting for ctrl\-e (edit in $VISUAL), ctrl\-u (undo)" .
@@ -3678,9 +3687,10 @@ restores the typed text. An empty line steps through the whole history. The
 command turns this off, and the option is on by default.
 .PP
 Once the cursor is past the command word, the rows directly below the input
-show a dimmed hint for the command. The hint names the command in the pipeline
+show a dimmed hint for the command. The hint identifies the command in the
+pipeline
 segment, list element, or command substitution under the cursor. A hint is a
-header row that names its kind and a body
+header row that identifies its kind and a body
 under it. The body is the synopsis of a builtin under
 .BR "builtin synopsis" ,
 of a bundled koshkit utility under
@@ -3734,8 +3744,8 @@ and the program run only from a directory owned by the user or root that no
 group or other user can write. Each load runs in a child process that the
 editor reads between keys and never waits on, so typing stays responsive while
 it runs, and the hint updates in place when it finishes. The section 1
-directories of the manual roots are read one directory per step, and a Tab
-that needs a load still running waits for it rather than starting another. A load is killed
+directories of the manual roots are read one directory per step. A Tab that
+needs a running load waits for it. A load is killed
 after 8 seconds or when the line is submitted, and a later pause tries it once
 more before it counts as missing. Every other manual page and help output is
 loaded at most once per session, and a missing page or an untrusted program
@@ -3753,7 +3763,8 @@ under its severity,
 .BR warning ,
 or
 .BR note ,
-in place of the synopsis until the line changes. This analysis follows no sourced
+in place of the synopsis until the line changes. This analysis follows no
+sourced
 file and resolves no command name, so it reads no file and searches no PATH.
 The finding and the syntax problem below follow
 .BR editor.show_live_diagnostics ,
@@ -3869,9 +3880,9 @@ or a tilde, also the directories under each CDPATH entry.
 .PP
 An explicit Tab first replaces the token with the longest common prefix. When
 that prefix does not extend the token and more than one candidate remains, the
-candidates are presented by the selector that
+candidates are presented by the selector chosen by
 .B \-\-tab\-selector
-or editor.completion_menu_style names. Ctrl\-Space acts as Tab on a POSIX system.
+or editor.completion_menu_style. Ctrl\-Space acts as Tab on a POSIX system.
 The optional
 .B koshconf set completion.add_space_after_completed_word on
 setting inserts one space after a complete non-directory candidate is accepted;
@@ -3886,14 +3897,16 @@ menu always starts at the left edge. The
 down arrow moves to the next row, the up arrow moves back, and Tab accepts the
 highlighted row. In the completion menu, Escape closes the menu with the current
 edit, and Ctrl\-G restores the line that opened it. Enter closes the completion
-menu and runs the line as it stands. The highlighted row is not accepted. A first
-row names the active source and shows the available keys beside it, reading
+menu and runs the line as it stands. The highlighted row is not accepted. A
+first
+row identifies the active source and shows the available keys beside it, reading
 .B selecting completions
 for the candidates of a token and
 .B incremental history search
 for a stable snapshot of the shared history file. Opening the search does not
 replace or merge the session's private history. The terminal height bounds the
-number of rows, and a count row names the part that is drawn. A first row too
+number of rows, and a count row identifies the part that is drawn. A first row
+too
 long for the width wraps onto further rows between its items, each starting at
 the column of the menu rows.
 .PP
@@ -3902,25 +3915,26 @@ candidates that still match. A candidate matches when the token opens it, when
 the token appears inside it whole, or when the bytes of the token appear inside
 it in order. The three kinds are drawn in that order, and each kind keeps the
 order the candidates arrived in. Letters are compared without case. The
-completion menu narrows a list of command names or paths instead to the best of
-the exact prefix, smart-case prefix, and subsequence matches, the way Tab ranks
-them, and any other list, such as the reply of a completion spec, to every
+For command-name and path lists, the menu narrows the candidates to the best of
+the exact prefix, smart-case prefix, and subsequence matches, as Tab ranks them.
+For other lists, such as the reply of a completion spec, it keeps every
 candidate the token opens in either case. Narrowing
 filters the most recent search results. The file system and history are not
 searched again. Backspace erases the last character of the token
 and widens the list again. A search that matches nothing keeps the menu open on
 a dimmed row reading
 .BR "no matches, erase to widen the search" ,
-and a backspace brings the list back. An accepted candidate that names a
+and a backspace brings the list back. An accepted candidate that refers to a
 directory opens a menu of the entries it holds. The menu closes when any other
 key is pressed. That key then acts on the line.
 .PP
-The external selector passes the candidates to the program named by
+The external selector passes the candidates to the program specified by
 .B KOSH_FZF_COMPLETION_COMMAND
 and its output replaces the token. Raw mode is left while the selector program
-runs, and the prompt is repainted afterwards. A selector program that stops is
-continued or killed the same way as the Ctrl\-X Ctrl\-E editor. A selector that reports no match or is dismissed leaves the
-line alone and prints nothing. A single
+runs, and the prompt is repainted afterwards. A selector program that stops
+follows the same continue and kill rules as the Ctrl\-X Ctrl\-E editor. A
+selector that reports no match or is dismissed leaves the line alone and prints
+nothing. A single
 remaining candidate keeps the plain listing. A session without a controlling
 terminal keeps it too.
 .PP
@@ -3931,9 +3945,10 @@ other than 0, 1, or 130 each report a message above the prompt and keep the
 plain listing.
 .PP
 The plain selector prints the candidates below the prompt as a static column
-list. The list starts under the token being completed, and starts at the left
-edge when its widest candidate, and its widest description when it shows any,
-does not fit to the right of that column. A terminal without decoration support always receives the plain listing.
+list. The list starts under the token being completed. If the widest candidate
+or description does not fit to the right of that column, the list starts at
+the left edge. A terminal without decoration support always receives the plain
+listing.
 .PP
 Ctrl\-R searches the history through the same selector. The line is the search
 query, and the entries it matches are offered by the same three kinds, with the
@@ -3988,7 +4003,7 @@ such as Ctrl\-G, Ctrl\-O, a bare Escape, or a function key. The Windows
 console also reports the arrows, Ctrl\-Left, Ctrl\-Right, Home, End, Delete,
 Ctrl\-Delete, and Shift\-Tab as legacy scan codes, which act the same. A key a
 terminal reports through the kitty keyboard protocol or xterm modifyOtherKeys
-acts as the key it names, as described for the
+acts as the key it represents, as described for the
 .B editor.request_extended_key_reports
 option above.
 .SS Emacs mode keys
@@ -4084,7 +4099,7 @@ Undo.
 Redo.
 .TP
 .B Ctrl\-X Ctrl\-E
-Edit the line in the editor that VISUAL or EDITOR names.
+Edit the line in the editor selected by VISUAL or EDITOR.
 .TP
 .B Ctrl\-R
 Search the history.
@@ -4118,7 +4133,8 @@ Count for the next command or motion.
 .BI \(dq x
 Use register
 .I x
-from a to z, where an upper case letter names the same register, for the next
+from a to z, where an upper case letter identifies the same register, for the
+next
 delete, change, yank, or paste.
 .TP
 .BR h ", " Left ", " Backspace ", " Ctrl\-B
@@ -4404,9 +4420,9 @@ the status.
 .PP
 A job that
 .B wait
-names by number or process leaves later. It stays in the job table, as Bash
-keeps it, until the next input line, the end of a loop iteration, an eval or sourced command, a
-new child process, or the
+selected by number or process remains in the job table after it finishes. Bash
+keeps it there until the next input line, the end of a loop iteration, an eval
+or sourced command, a new child process, or the
 .B jobs
 builtin. A second
 .B wait
@@ -4532,8 +4548,9 @@ directive applies to the next complete and-or command. A directive after
 or a pipe does not apply. These comments do not suppress parser or runtime
 diagnostics outside the analysis catalog.
 .PP
-A diagnostic names the file, line, and column of the failing command, quotes
-its source line, and puts a caret under it. Text inside command substitution,
+A diagnostic identifies the file, line, and column of the failing command. It
+quotes its source line and puts a caret under it. Text inside command
+substitution,
 backticks, process substitution, and here-document bodies is part of the file,
 so its diagnostics use the file's own line and column. Text built at run time,
 such as an eval string or a trap action, is its own source. A location in an
@@ -4605,7 +4622,7 @@ words. A shell that starts with the variable
 rewrites it from its own settings.
 .TP
 .B KOSH_HISTORY_FILE
-The value names the command history file. The default is ~/.kosh_history.
+The value specifies the command history file. The default is ~/.kosh_history.
 .TP
 .B KOSH_HISTORY_SIZE
 The value bounds the number of history events retained for recall, listing, and
@@ -4625,17 +4642,18 @@ These variables select the editor used by
 FCEDIT takes precedence over EDITOR.
 .TP
 .B KOSH_DIRECTORY_HISTORY
-The value names the z frecency store. The default is
+The value specifies the z frecency store. The default is
 ~/.kosh_directory_history.
 .TP
 .B KOSH_CALC_HISTORY
-The value names interactive calc history. The default is ~/.kosh_calc_history.
+The value specifies the interactive calc history file. The default is
+~/.kosh_calc_history.
 .TP
 .BR KOSH_FZF_COMPLETION_COMMAND ", " KOSH_FZF_COMPLETION_OPTS
 These variables configure the external tab selector. An interactive session sets
 both before the first prompt when a startup file has not already set them.
-KOSH_FZF_COMPLETION_COMMAND names the program the candidates are handed to and
-defaults to
+KOSH_FZF_COMPLETION_COMMAND specifies the program that receives the candidates
+and defaults to
 .BR fzf .
 KOSH_FZF_COMPLETION_OPTS holds the presentation options and defaults to
 \-\-multi \-\-layout=reverse \-\-height=~40% \-\-min\-height=3. The value is
@@ -4661,7 +4679,8 @@ removes the last logical component. A logical PWD is accepted only when it is
 absolute and identifies the physical current directory.
 .TP
 .BR SHELL ", " SHLVL
-SHELL names the executable. The invocation path is used when SHELL was unset.
+SHELL specifies the executable. The invocation path is used when SHELL was
+unset.
 SHLVL is inherited and incremented by a child shell.
 .TP
 .B IFS
@@ -4687,8 +4706,9 @@ backslash escapes \\u,
 \\d, \\s, \\v, \\V, \\!, \\#, \\n, \\r, \\e, \\a, \\[, and \\] are expanded.
 The \\. escape emits a bullet, plain when the last exit status is zero and
 bold red when it is not. The user, host, directory, branch, shell name, and
-version that \\u, \\h, \\H, \\w, \\W, \\P, \\g, \\s, \\v, and \\V insert draw a C0
-control byte or DEL in caret notation, such as ^[ for escape, and a C1 control
+version that \\u, \\h, \\H, \\w, \\W, \\P, \\g, \\s, \\v, and \\V insert draw a
+C0 control byte or DEL in caret notation, such as ^[ for escape, and a C1
+control
 or a byte that is not UTF-8 as \\xHH, so a directory name cannot write escape
 sequences to the terminal.
 .TP
@@ -4722,7 +4742,8 @@ A value of zero silences the diagnostics of
 A leading colon in the option string silences them too.
 .TP
 .B TMPDIR
-The value names the directory used for a temporary file. The default is /tmp.
+The value specifies the directory used for a temporary file. The default is
+/tmp.
 .TP
 .BR PIPESTATUS ", " REPLY ", " OPTIND ", " OPTARG ", " TIMEFORMAT
 These variables hold pipeline statuses, default read and select input, getopts
@@ -4739,8 +4760,8 @@ For a working directory inside a repository, the value contains the branch
 name. A detached HEAD produces a short commit hash. The value is empty outside a
 repository. An assignment overrides detection. The search for a repository
 moves up from the working directory and never enters a directory listed in
-GIT_CEILING_DIRECTORIES. That variable holds absolute paths, separated the way
-PATH is.
+GIT_CEILING_DIRECTORIES. That variable holds absolute paths separated by colons,
+the same format as PATH.
 .TP
 .BR KOSH_GIT_AHEAD ", " KOSH_GIT_BEHIND
 The values contain the unpushed and unpulled commit counts relative to the
@@ -4932,7 +4953,7 @@ the spec was registered with
 .B complete -o filenames
 or
 .B compopt -o filenames
-is run inside the function, a slash is appended to each entry that names a
+is run inside the function, a slash is appended to each entry that refers to a
 directory, and to each such word of a
 .B \-W
 list.
@@ -4945,7 +4966,8 @@ run inside the function turns dirnames, plusdirs, default, and bashdefault on
 or off for them.
 .SH EXIT STATUS
 The shell exits with the status of the last command it ran. A command path that
-names a directory, or has a trailing separator whose target is not a directory,
+refers to a directory, or has a trailing separator whose target is not a
+directory,
 returns 126. A script file that cannot be opened returns 127. A syntax error in
 a script or a
 .B \-c
@@ -4982,7 +5004,7 @@ This is the default interactive calc history file.
 .TP
 .IR /etc/kosh.conf ", " $XDG_CONFIG_HOME/kosh/kosh.conf ", " ~/.config/kosh/kosh.conf
 These are the system and user settings files. Windows reads the system file
-from %ProgramData%\ekosh\ekosh.conf.
+from %ProgramData%\kosh\kosh.conf.
 .PP
 The settings files and the shell startup files are described in
 .BR kosh (5).

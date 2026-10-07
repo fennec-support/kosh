@@ -392,7 +392,7 @@ note: the limit must be a positive integer.
 -c:1:18: error: koshkit evilps: too many operands.
      1 |  koshkit evilps 1 2
        |                   ^
-note: name at most one process id.
+note: specify at most one process id.
 === evilps sort value location ===
 -c:1:23: error: koshkit evilps: invalid sort key.
      1 |  koshkit evilps --sort invalid

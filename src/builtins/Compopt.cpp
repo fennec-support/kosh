@@ -18,15 +18,14 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-o|+o option] [-DEI] [name ...]");
 HELP_DESCRIPTION_DECL(
-    "The compopt builtin changes the options of the named completion specs, "
-    "of the -D, -E, or -I spec, or, with neither inside a completion function, "
-    "of the current completion. With no option it prints the options in a "
-    "replayable form.");
+    "The compopt builtin changes options for named completion specs, the "
+    "-D, -E, or -I spec, or, with no name inside a completion function, the "
+    "current completion. With no option, it prints a replayable form.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(COMPOPT_OPTION, ManyStrings, 'o', "",
-     "Turn the option on, as complete -o names it. +o turns it off, and off "
-     "wins when both are given. Any other name is an error.");
+     "Turn the option on, as complete -o does. +o turns it off. If both are "
+     "given, the option remains off. Any other name is an error.");
 FLAG(COMPOPT_DEFAULT, Bool, 'D', "",
      "Change the default spec used for a command with no spec of its own.");
 FLAG(COMPOPT_EMPTY, Bool, 'E', "",

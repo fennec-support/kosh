@@ -57,8 +57,8 @@ noted.
 - [ ] Once the release runs as `koshkit` from a link of that name, add
       `ln -s kosh "$pkgdir/usr/bin/koshkit"` to both recipes' `package()`,
       matching `make install`.
-- [ ] **AUR** (`kosh-shell`): copy `PKGBUILD` and
-      `kosh-shell.install` into the AUR clone, run
+- [ ] **AUR** (`kosh-shell`): the package receives no review. Copy `PKGBUILD`
+      and `kosh-shell.install` into the AUR clone, run
       `makepkg --printsrcinfo > .SRCINFO`, build once with `makepkg`, and push.
 - [ ] **Alpine aports**: the maintainer named in the APKBUILD opens or updates
       the merge request against aports.
@@ -68,8 +68,8 @@ noted.
 
 ## 5. Editor clients
 
-The clients download the newest kosh release on their own, so a kosh release
-needs no client release. Release a client only when the client itself changed.
+The clients download the newest kosh release automatically, so release kosh
+clients only when their own code changes.
 
 - [ ] **VS Code** (`kosh-vscode`): bump `version` in `package.json`, push, then
       push a tag `vX.Y.Z` (the workflow only runs on tags starting with `v`). It
@@ -87,5 +87,5 @@ needs no client release. Release a client only when the client itself changed.
 
 - [ ] Install from each channel on a clean machine or container and run
       `kosh --version`.
-- [ ] Open a VS Code and a Zed session with no kosh on `PATH` and confirm the
+- [ ] Open sessions in VS Code and Zed with no kosh on `PATH` and confirm the
       client downloads the new release.

@@ -383,8 +383,8 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (arg.view().starts_with(StringView{"--"})) {
       throw make_error_for_arg(ec, i,
                                StringView{"Unknown option '"} + arg + "'",
-                               "Koshka settings without a letter belong to "
-                               "koshconf, such as `koshconf set mood bash`");
+                               "Use koshconf for Koshka settings without a "
+                               "letter, such as `koshconf set mood bash`");
     }
 
     if (arg == "-o" || arg == "+o") {

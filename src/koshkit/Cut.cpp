@@ -22,7 +22,7 @@ HELP_DESCRIPTION_DECL("The cut utility selects bytes, characters, or fields.");
 
 FLAG(CUT_BYTES, String, 'b', "bytes", "Select byte positions.");
 FLAG(CUT_CHARACTERS, String, 'c', "characters", "Select character positions.");
-FLAG(CUT_FIELDS, String, 'f', "fields", "Select delimiter separated fields.");
+FLAG(CUT_FIELDS, String, 'f', "fields", "Select delimiter-separated fields.");
 FLAG(CUT_DELIMITER, String, 'd', "delimiter", "Use this field delimiter.");
 FLAG(CUT_NO_SPLIT, Bool, 'n', "no-split", "Do not split multibyte characters.");
 FLAG(CUT_SUPPRESS, Bool, 's', "only-delimited",

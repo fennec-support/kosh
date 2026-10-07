@@ -31,7 +31,7 @@ FLAG(DU_HUMAN, Bool, 'h', "",
 FLAG(DU_TREE, Bool, '\0', "tree",
      "Print the entries as a tree, largest children first.");
 FLAG(DU_ONE_FILE_SYSTEM, Bool, 'x', "one-file-system",
-     "Skip entries on file systems other than the one of each path.");
+     "Skip entries on file systems other than each path's file system.");
 FLAG(DU_TOP, Bool, 'T', "top-largest",
      "Print a human-readable tree of only the largest entries and their "
      "ancestors in at most 36 lines.");

@@ -42,7 +42,7 @@ FLAG(EVILPS_MEMORY, Bool, 'M', "memory", "Show resident memory usage.");
 FLAG(EVILPS_WIDE, Bool, 'w', "wide",
      "Do not truncate command lines to the terminal width.");
 FLAG(EVILPS_SORT, String, '\0', "sort",
-     "Sort process trees by name, pid, cpu, or memory; show relatives "
+     "Sort process trees by name, pid, cpu, or memory; show descendants "
      "beneath the highest-ranked process.");
 static pure fn is_evilps_sample_duration(koshka::StringView value) wontthrow
     -> bool
@@ -838,7 +838,7 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
 
   if (operands.count() > 1) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[1], "too many operands",
-                            "name at most one process id");
+                            "specify at most one process id");
     return 1;
   }
 

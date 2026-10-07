@@ -36,8 +36,8 @@ FLAG(DECLARE_FUNCTION_NAMES, Bool, 'F', "",
      "through the exit status.");
 FLAG(DECLARE_GLOBAL, Bool, 'g', "", "Accepted without effect.");
 FLAG(DECLARE_INTEGER, Bool, 'i', "",
-     "Mark an integer whose every assignment evaluates as arithmetic. The +i "
-     "form removes the mark.");
+     "Mark the variable as integer. Evaluate each assignment as arithmetic. "
+     "The +i form removes the mark.");
 FLAG(DECLARE_LOWERCASE, Bool, 'l', "",
      "Convert every assigned value to lowercase. The +l form removes the "
      "attribute.");

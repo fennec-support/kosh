@@ -34,7 +34,7 @@ FLAG(LS_LONG, Bool, 'l', "",
 FLAG(LS_HUMAN, Bool, 'h', "",
      "With -l, print the size in a human-readable form such as 4.0K.");
 FLAG(LS_CLASSIFY, Bool, 'F', "classify",
-     "Append a type indicator to each name, one of / * @ | and =.");
+     "Append a type indicator to each name, one of /, *, @, |, and =.");
 FLAG(LS_DIRECTORY, Bool, 'd', "",
      "List a directory operand as itself instead of its contents.");
 FLAG(LS_MARK_DIRECTORIES, Bool, 'p', "",
@@ -49,9 +49,9 @@ FLAG(LS_SORT_TIME, Bool, 't', "", "Sort by modification time, newest first.");
 FLAG(LS_SORT_SIZE, Bool, 'S', "", "Sort by size, largest first.");
 FLAG(LS_REVERSE, Bool, 'r', "", "Reverse the sort order.");
 FLAG(LS_RECURSIVE, Bool, 'R', "recursive",
-     "List every subdirectory that is reached.");
+     "List every subdirectory reached while descending.");
 FLAG(LS_TREE, Bool, '\0', "tree",
-     "Draw every reached subdirectory as an indented tree.");
+     "Draw each reached subdirectory as an indented tree.");
 FLAG(LS_LEVEL, String, 'L', "level",
      "Descend at most this many levels with -R and --tree.");
 FLAG(LS_ONE_FILE_SYSTEM, Bool, '\0', "one-file-system",

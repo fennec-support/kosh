@@ -276,10 +276,10 @@ struct idle_documentation_progress
   bool is_loading{false};
 };
 
-/* Called while the editor is idle. It reads the man page or the --help text
-   the hint row would show for the command under the caret, one bounded child
-   at a time, and never waits on that child. A finished load may change the
-   row. */
+/* Called while the editor is idle. It reads the man page or --help text that
+   the hint row would show for the command under the caret. It starts at most
+   one child process per idle step and does not wait for it. A finished load
+   may change the row. */
 fn step_idle_documentation(StringView line, usize cursor,
                            EvalContext &context) throws
     -> idle_documentation_progress;

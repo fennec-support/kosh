@@ -20,7 +20,7 @@ HELP_SYNOPSIS_DECL("[-df] [file ...]");
 HELP_DESCRIPTION_DECL(
     "The sync utility flushes pending writes to permanent storage.");
 
-FLAG(SYNC_DATA, Bool, 'd', "data", "Flush the data of each operand only.");
+FLAG(SYNC_DATA, Bool, 'd', "data", "Flush only the data of each operand.");
 FLAG(SYNC_FILESYSTEM, Bool, 'f', "file-system",
      "Flush the filesystem that holds each operand.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");

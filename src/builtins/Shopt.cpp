@@ -24,10 +24,10 @@ FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(SHOPT_SET, Bool, 's', "", "Enable each named option.");
 FLAG(SHOPT_UNSET, Bool, 'u', "", "Disable each named option.");
 FLAG(SHOPT_QUIET, Bool, 'q', "",
-     "Suppress the status output, the scripted probe form.");
+     "Suppress status output in the scripted probe form.");
 FLAG(SHOPT_PRINT, Bool, 'p', "",
-     "Print in the replayable form, shopt -s or -u per line, and set -o or "
-     "+o behind -o.");
+     "Print one shopt -s or -u command per line. With -o, print set -o or "
+     "+o commands.");
 FLAG(SHOPT_SET_OPTIONS, Bool, 'o', "", "Operate on the set -o option names.");
 
 REGISTER_BUILTIN_FLAGS(Shopt);

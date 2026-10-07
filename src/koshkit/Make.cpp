@@ -2157,7 +2157,7 @@ static fn parse_makefile_into(EvalContext &cxt, makefile &mk,
         let const name = trim(trimmed.substring(directive.length));
         if (name.is_empty())
           throw ErrorWithLocation{logical.source_span,
-                                  "A define line must name a variable"};
+                                  "A define line must specify a variable"};
 
         String value{cxt.scratch_allocator()};
         usize define_depth = 1;
@@ -3775,7 +3775,7 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
     if (mk.default_goal.is_empty())
       throw ErrorWithDetails{
           "The makefile defines no targets and no default goal",
-          "Add a rule or name a target on the command line"};
+          "Add a rule or specify a target on the command line"};
     goals.push(mk.default_goal.clone());
     goal_locations.push(ec.source_location());
   }

@@ -4,7 +4,7 @@
  *
  * This file declares the shared live view driver of the evil utilities, where
  * a utility supplies its options plus sampler, renderer, and key callbacks.
- * The driver owns terminal handling, cadence, interrupts, and one write per
+ * The driver owns terminal handling, sample and refresh timing, interrupts, and one write per
  * frame. It also declares update_retained_rows, which folds each fresh sample
  * into the retained rows of a live utility, and live_report_options, which
  * owns the --live and --cumulative parsing, the window, and the view options.

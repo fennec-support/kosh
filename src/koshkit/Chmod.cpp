@@ -23,7 +23,7 @@ HELP_DESCRIPTION_DECL("The chmod utility changes file permission modes.");
 FLAG(CHMOD_RECURSIVE, Bool, 'R', "recursive",
      "Change directories and their contents recursively.");
 FLAG(CHMOD_ONE_FILE_SYSTEM, Bool, '\0', "one-file-system",
-     "Skip directories on file systems other than the one of each operand.");
+     "Skip directories on file systems other than each operand's file system.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Chmod);

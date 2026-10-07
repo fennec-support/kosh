@@ -27,8 +27,8 @@ HELP_DESCRIPTION_DECL(
 FLAG(EVILNET_ALL, Bool, 'a', "all", "Include interface traffic and TCP data.");
 FLAG(EVILNET_TRAFFIC, Bool, 't', "traffic", "Show interface traffic only.");
 FLAG(EVILNET_SORT, String, '\0', "sort",
-     "Sort traffic by a unique prefix of name, rx, tx, packet, error, or drop "
-     "counters.");
+     "Sort traffic by a unique prefix of the name, receive, transmit, packet, "
+     "error, or dropped packet counters.");
 static pure fn is_evilnet_sample_duration(koshka::StringView value) wontthrow
     -> bool
 {
@@ -45,7 +45,7 @@ FLAG_OPTIONAL(EVILNET_CUMULATIVE, 'C', "cumulative", Live,
               "window rolls and does not set the refresh rate.",
               is_evilnet_sample_duration, "seconds");
 FLAG(EVILNET_FAILURES, Bool, 'f', "failures",
-     "Show TCP failure and packet-loss telemetry only.");
+     "Show only TCP failures and packet loss.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(EvilNet);

@@ -112,7 +112,7 @@ inline constexpr static_string_entry<shell_variable_description>
           "operand.",
           shell_variable_fact::Plain}                                         },
         {SSK("SHELL"),
-         {"The value names the shell executable. A restricted shell refuses to "
+         {"The value specifies the shell executable. A restricted shell refuses to "
           "change it.",
           shell_variable_fact::Plain}                                         },
         {SSK("SHLVL"),
@@ -120,11 +120,11 @@ inline constexpr static_string_entry<shell_variable_description>
           "it.",
           shell_variable_fact::Exported | shell_variable_fact::NotPosix}      },
         {SSK("ENV"),
-         {"The value names the startup file an interactive shell reads. A "
+         {"The value specifies the startup file an interactive shell reads. A "
           "restricted shell refuses to change it.",
           shell_variable_fact::Plain}                                         },
         {SSK("BASH_ENV"),
-         {"The value names the startup file a non-interactive shell reads. A "
+         {"The value specifies the startup file a non-interactive shell reads. A "
           "restricted shell refuses to change it.",
           shell_variable_fact::Plain}                                         },
 
@@ -206,16 +206,16 @@ inline constexpr static_string_entry<shell_variable_description>
           "option.",
           shell_variable_fact::Plain}                                         },
         {SSK("PAGER"),
-         {"The value names the program that pages long output.",
+         {"The value specifies the program that pages long output.",
           shell_variable_fact::Plain}                                         },
         {SSK("EDITOR"),
-         {"The value names the editor fc uses when FCEDIT is unset.",
+         {"The value specifies the editor fc uses when FCEDIT is unset.",
           shell_variable_fact::Plain}                                         },
         {SSK("VISUAL"),
-         {"The value names the preferred full-screen editor.",
+         {"The value specifies the preferred full-screen editor.",
           shell_variable_fact::Plain}                                         },
         {SSK("FCEDIT"),
-         {"The value names the editor fc uses, and it takes precedence over "
+         {"The value specifies the editor fc uses, and it takes precedence over "
           "EDITOR.",
           shell_variable_fact::Plain}                                         },
         {SSK("GLOBIGNORE"),
@@ -225,7 +225,7 @@ inline constexpr static_string_entry<shell_variable_description>
         {SSK("POSIXLY_CORRECT"),
          {"A set value selects POSIX behavior.", shell_variable_fact::Plain}  },
         {SSK("TMPDIR"),
-         {"The value names the directory a temporary file is created in.",
+         {"The value specifies the directory a temporary file is created in.",
           shell_variable_fact::Plain}                                         },
         {SSK("TZ"),
          {"The value selects the time zone.", shell_variable_fact::Plain}     },
@@ -236,9 +236,9 @@ inline constexpr static_string_entry<shell_variable_description>
          {"The value is the login name the system recorded.",
           shell_variable_fact::Plain}                                         },
         {SSK("DISPLAY"),
-         {"The value names the X display.", shell_variable_fact::Plain}       },
+         {"The value specifies the X display.", shell_variable_fact::Plain}       },
         {SSK("MAIL"),
-         {"The value names the mailbox that is checked for new mail.",
+         {"The value specifies the mailbox that is checked for new mail.",
           shell_variable_fact::Plain}                                         },
         {SSK("MAILCHECK"),
          {"The value is the mail check interval in seconds.",
@@ -283,17 +283,17 @@ inline constexpr static_string_entry<shell_variable_description>
          {"The value supplies default command-line options.",
           shell_variable_fact::Plain}                                         },
         {SSK("KOSH_HISTORY_FILE"),
-         {"The value names the command history file, and the default is "
+         {"The value specifies the command history file, and the default is "
           "~/.kosh_history.",
           shell_variable_fact::Plain}                                         },
         {SSK("KOSH_HISTORY_SIZE"),
          {"The value bounds the number of retained history events.",
           shell_variable_fact::Plain}                                         },
         {SSK("KOSH_CALC_HISTORY"),
-         {"The value names the interactive calc history file.",
+         {"The value specifies the interactive calc history file.",
           shell_variable_fact::Plain}                                         },
         {SSK("KOSH_DIRECTORY_HISTORY"),
-         {"The value names the z frecency store.", shell_variable_fact::Plain}},
+         {"The value specifies the z frecency store.", shell_variable_fact::Plain}},
         {SSK("KOSH_WELCOME"),
          {"A nonempty value is printed once at interactive startup, and an "
           "empty value prints nothing.",
@@ -378,13 +378,13 @@ inline constexpr static_string_entry<shell_variable_description>
          {"The value is the host name.",
           shell_variable_fact::Dynamic | shell_variable_fact::BashOnly}       },
         {SSK("HOSTTYPE"),
-         {"The value names the machine architecture.",
+         {"The value specifies the machine architecture.",
           shell_variable_fact::Dynamic | shell_variable_fact::BashOnly}       },
         {SSK("MACHTYPE"),
          {"The value describes the system type.",
           shell_variable_fact::Dynamic | shell_variable_fact::BashOnly}       },
         {SSK("OSTYPE"),
-         {"The value names the operating system.",
+         {"The value specifies the operating system.",
           shell_variable_fact::Dynamic | shell_variable_fact::BashOnly}       },
         {SSK("SHELLOPTS"),
          {"The value is a colon-separated list of the set options that are on.",
@@ -416,7 +416,7 @@ inline constexpr static_string_entry<shell_variable_description>
               shell_variable_fact::BashOnly}                                  },
 
         {SSK("BASH"),
-         {"The value names the shell executable, and it is seeded in the bash "
+         {"The value specifies the shell executable, and it is seeded in the bash "
           "mood.",
           shell_variable_fact::NotPosix}                                      },
         {SSK("BASH_VERSION"),

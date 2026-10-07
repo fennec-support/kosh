@@ -22,7 +22,8 @@ HELP_DESCRIPTION_DECL("The timeout utility runs a command with a time limit.");
 FLAG(TIMEOUT_SIGNAL, String, 's', "signal",
      "Send this signal when the time limit expires.");
 FLAG(TIMEOUT_KILL_AFTER, String, 'k', "kill-after",
-     "Send KILL when the command survives this additional duration.");
+     "Send KILL if the command is still running after this additional "
+     "duration.");
 FLAG(TIMEOUT_PRESERVE_STATUS, Bool, 'p', "preserve-status",
      "Return the command status after the time limit expires.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");

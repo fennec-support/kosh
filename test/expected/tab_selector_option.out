@@ -26,7 +26,7 @@ status=1
 -c:1:5: error: Builtin `set`: Unknown option '--tab-selector'.
      1 |  set --tab-selector plain
        |      ^~~~~~~~~~~~~~
-note: Koshka settings without a letter belong to koshconf, such as `koshconf set mood bash`.
+note: Use koshconf for Koshka settings without a letter, such as `koshconf set mood bash`.
 status=1
 == the selector survives a subshell:
 external

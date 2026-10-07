@@ -79,7 +79,7 @@ rcfile rc=1
 13:6: error: Builtin `set`: Unknown option '--mood'.
     13 |  (set --mood bash)
        |       ^~~~~~
-note: Koshka settings without a letter belong to koshconf, such as `koshconf set mood bash`.
+note: Use koshconf for Koshka settings without a letter, such as `koshconf set mood bash`.
 13:1: trace:
     13 |  (set --mood bash)
        |  ^
@@ -87,7 +87,7 @@ long-mood rc=1
 15:6: error: Builtin `set`: Unknown option '--options'.
     15 |  (set --options)
        |       ^~~~~~~~~
-note: Koshka settings without a letter belong to koshconf, such as `koshconf set mood bash`.
+note: Use koshconf for Koshka settings without a letter, such as `koshconf set mood bash`.
 15:1: trace:
     15 |  (set --options)
        |  ^

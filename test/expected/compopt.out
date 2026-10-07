@@ -1,4 +1,4 @@
-1:1: error: Builtin `compopt`: No completion function is running, so a command name or -D, -E, or -I is required.
+1:1: error: Builtin `compopt`: No completion function is running. A command name or -D, -E, or -I is required.
      1 |  compopt
        |  ^~~~~~~
 outside=1

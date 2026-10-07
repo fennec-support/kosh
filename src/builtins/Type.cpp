@@ -31,11 +31,12 @@ FLAG(TYPE_FORCE_PATH, Bool, 'P', "",
      "Search the PATH and print the disk path even for a name that is also a "
      "builtin.");
 FLAG(TYPE_ALL, Bool, 'a', "",
-     "Print every location of each name, the keyword, alias, function, or "
-     "builtin and every matching file on the PATH.");
+     "Print every location for each name, including its keyword, alias, "
+     "function, or builtin entry and every matching file on PATH.");
 FLAG(TYPE_VERBOSE, Bool, 'V', "",
-     "Print everything the shell holds about each name, the file and line a "
-     "function was defined on, its body, and the description of a builtin.");
+     "Print all information the shell holds for each name, including the file "
+     "and line where a function was defined, its body, and a builtin "
+     "description.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_BUILTIN_FLAGS(Type);

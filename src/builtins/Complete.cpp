@@ -20,8 +20,8 @@ HELP_SYNOPSIS_DECL("[-abcdefgjksuv] [-o option] [-A action] [-G globpat] "
                    "[-W wordlist] [-F function] [-C command] [-X filterpat] "
                    "[-P prefix] [-S suffix] [-DEIpr] [name ...]");
 HELP_DESCRIPTION_DECL(
-    "The complete builtin registers a completion spec for a command, or for "
-    "the default, empty-line, or initial-word slot.");
+    "The complete builtin registers a completion spec for a command or for "
+    "the default, empty line, or initial word slot.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(COMPLETE_WORDLIST, String, 'W', "",
@@ -40,15 +40,15 @@ FLAG(COMPLETE_PRINT, Bool, 'p', "",
 FLAG(COMPLETE_DEFAULT, Bool, 'D', "",
      "Register the default spec used for a command with no spec of its own.");
 FLAG(COMPLETE_REMOVE, Bool, 'r', "",
-     "Remove the named specs or the -D, -E, or -I spec, and every spec when "
-     "given neither.");
+     "Remove the named specs or the -D, -E, or -I spec. If none is given, "
+     "remove every spec.");
 FLAG(COMPLETE_ACTION, ManyStrings, 'A', "",
      "Register the candidates of the named action, as compgen -A lists them.");
 FLAG(COMPLETE_GLOB, String, 'G', "",
      "Register the filenames that match the glob and start with the word.");
 FLAG(COMPLETE_COMMAND, String, 'C', "",
-     "Register the command to run on an explicit tab, one candidate per line "
-     "of its output.");
+     "Register the command to run on an explicit tab. Each output line is one "
+     "candidate.");
 FLAG(COMPLETE_FILTER, String, 'X', "",
      "Remove matching candidates, with leading ! reversing the filter and "
      "unescaped & expanding to the completion word.");

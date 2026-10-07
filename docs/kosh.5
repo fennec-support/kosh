@@ -4,14 +4,15 @@ kosh.conf \- Koshka settings files and the KOSHCONF encoding
 .SH DESCRIPTION
 The settings Koshka owns live in koshconf files. They hold option values, not
 shell commands. A shell reads them before any shell startup file, whether or
-not it is interactive. A shell started with
+not it is interactive. The following do not read a settings file or apply
+KOSHCONF: a shell started with
 .BR \-Q ,
 a lint, format, or language server run, rescue mode, a shell whose real and
 effective ids differ, and a fresh evaluator that receives its state from its
-parent read no settings file and ignore KOSHCONF. A binary started as a
-koshkit utility or as
+parent. A binary started as a koshkit utility or as
 .B koshkit
-also reads no settings file and ignores KOSHCONF. Privileged mode,
+also does not read a settings file or apply KOSHCONF.
+Privileged mode,
 .BR \-p ,
 reads the files but ignores KOSHCONF.
 .PP
@@ -22,8 +23,9 @@ and to a script without a shebang, so a file that sets
 runs such code under the bash grammar. Name the mood with
 .B \-\-mood
 or a shebang where the grammar matters.
+The
 .B koshconf
-in
+builtin in
 .BR kosh (1)
 reads, changes, and writes these settings.
 .PP
@@ -36,7 +38,7 @@ mood listed under FILES. The
 mood sources no shell startup file.
 .SH FILES
 .TP
-.IR /etc/kosh.conf " or " %ProgramData%\ekosh\ekosh.conf
+.IR /etc/kosh.conf " or " %ProgramData%\kosh\kosh.conf
 The system settings file, read first. Because it applies to every user, it is
 read only when nobody else could have written it. On POSIX the open file and
 its directory must be owned by root and must not be writable by their group or
@@ -51,7 +53,7 @@ change the permissions of, or take ownership of either. An entry that applies
 only to children, such as the usual CREATOR OWNER entry, is not counted. The
 default ProgramData permissions let any user create a missing subdirectory,
 which this check rejects. A file that fails the check is skipped with a
-warning that names the reason.
+warning that explains the reason.
 .TP
 .IR $XDG_CONFIG_HOME/kosh/kosh.conf " or " ~/.config/kosh/kosh.conf
 The user settings file, read second. XDG_CONFIG_HOME is used when it is set to
@@ -61,8 +63,8 @@ and
 .B koshconf set \-\-persist
 write this file. When the path is a symbolic link, as a dotfile manager such as
 stow leaves it, the link is kept and its final target is written instead. The
-new text goes to a temporary file in the target's directory, which is flushed
-to disk and renamed over the target, so a reader sees either the old or the new
+new text goes to a temporary file in the target's directory. The file is flushed
+to disk and renamed over the target. A reader sees either the old or the new
 file. The directory is created when it is missing. The written file keeps the
 permission bits of the file it replaces, and a new file is created with mode
 0644 less the file creation mask. Each write holds an advisory lock on the
@@ -120,8 +122,9 @@ blanks, or starts with a number sign after optional blanks is ignored.
 .PP
 Every other line has the form
 .IR name = value .
-Blanks around the name are ignored. A value that starts with a double or a single
-quote ends at the next quote of the same kind, and only blanks may follow it.
+Blanks around the name are ignored. A value that starts with a double or a
+single quote ends at the next quote of the same kind, and only blanks may follow
+it.
 Otherwise the value is everything after the equals sign up to the end of the
 line, blanks included. A value cannot span lines.
 .PP
@@ -132,7 +135,7 @@ integer.
 .B koshconf
 quotes a written value that starts with a quote or starts or ends with a blank.
 A value containing a newline cannot be written to a file. A value containing
-both quote characters cannot be written when quoting is required.
+both quote characters cannot be written if the value needs quoting.
 .B koshconf set \-\-persist
 rejects either value before changing the session.
 .B koshconf list
@@ -149,8 +152,8 @@ section of
 .BR kosh (1)
 lists them.
 .PP
-.B A semantic option in a file changes every shell that reads it, including
-.B each script run by kosh, not only the interactive session.
+.B A semantic option in a file changes every shell that reads it. This includes
+.B the interactive session and every script that kosh runs.
 For example, legacy.exit_on_command_failure=on makes every script exit on its
 first failing command, and legacy.glob_includes_dotfiles=on changes what every
 glob matches. Put such a setting in a file only when every script should run
@@ -166,9 +169,9 @@ are read under it. In the
 mood, legacy.unset_variable_is_error, legacy.pipeline_fails_on_any_stage,
 legacy.glob_no_match_is_error, and arithmetic.use_big_integers_and_decimals stay
 on and legacy.glob_no_match_expands_to_nothing stays off; a file that sets
-another value gets a warning that names the option and
+another value gets a warning that identifies the option and
 .BR "set \-M bash" ,
-and the line is skipped. An option named on the command line, such as
+and the line is skipped. An option specified on the command line, such as
 .B \-u
 or
 .BR \-e ,
@@ -180,7 +183,7 @@ writes every option a file may hold, grouped by topic under a
 .RI # " group"
 header, each after a
 .RI # " help"
-comment that also names its
+comment that also identifies its
 .B set \-o
 or
 .B shopt
@@ -200,8 +203,8 @@ each command the shell starts receives the settings current when it starts,
 not a copy taken at the export. Another shell receives it through
 .B koshconf load
 .I value
-or through a KOSHCONF variable in its environment, which is applied after the
-settings files and removed before any command runs:
+or through a KOSHCONF variable in its environment. The variable is applied after
+the settings files and removed before any command runs:
 .PP
 .RS
 .EX
@@ -217,26 +220,25 @@ a varint holding the value's position in its list. A string is its UTF-8 bytes.
 The ids are listed by
 .BR kosh (1)
 and never change meaning. Only the mood and the interactive options are
-written: a child shell reads the settings files itself, and carrying semantic
-options such as exit_on_command_failure through the environment would change
-how every script below the shell runs, which bash avoids by exporting
-SHELLOPTS only on request.
+written. A child shell reads the settings files itself. Passing semantic options
+such as exit_on_command_failure through the environment would change how every
+script below the shell runs. Bash exports SHELLOPTS only on request.
 .PP
 A reader skips a record with an unknown id, an option it never carries, or a
 value that a settings file would reject, and reports a warning. Only the
 canonical form is accepted: the base64 text must carry its padding, every varint
-must use the fewest bytes, and the ids must strictly ascend, which is the order
-the writer uses. A blob that breaks any of these rules, or whose records are
+must use the fewest bytes, and the ids must strictly ascend in writer order. A
+blob that breaks any of these rules, or whose records are
 truncated, is rejected as a whole with a warning.
 .SH ERRORS
 A missing settings file is skipped. An unreadable one, and a system file that
 fails the ownership check under FILES, produce a warning. A line
 without an equals sign, an unknown option name, an invalid value, an unclosed
 quote, text after a closing quote, and an option a file cannot hold each
-produce a warning that names the file and line, and the line is skipped. A
+produce a warning that identifies the file and line, and the line is skipped.
 The warning renders a control byte or invalid UTF-8 byte from the file as an
-escape in its message and as a question mark in the source excerpt. A settings
-file
+escape
+in its message and as a question mark in the source excerpt. A settings file
 never stops the shell.
 .PP
 Shell startup files produce the ordinary shell diagnostics described in

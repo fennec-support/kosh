@@ -35,7 +35,7 @@ FLAG(GREP_PATTERN_FILE, ManyStrings, 'f', "file",
      "Read patterns from a file, one per line.");
 FLAG(GREP_COUNT, Bool, 'c', "count", "Print the count of selected lines.");
 FLAG(GREP_LIST, Bool, 'l', "files-with-matches",
-     "Print the names of files with a selected line.");
+     "Print the names of files containing a selected line.");
 FLAG(GREP_QUIET, Bool, 'q', "quiet",
      "Print nothing and stop at the first selected line.");
 FLAG(GREP_NO_MESSAGES, Bool, 's', "no-messages",

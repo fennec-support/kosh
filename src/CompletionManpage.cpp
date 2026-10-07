@@ -820,9 +820,10 @@ static fn command_prefers_help_over_manpage(StringView command) throws -> bool
 
 static fn command_directory_is_trusted(StringView absolute_path) throws -> bool;
 
-/* man forks only when it resolves into a trusted directory, so an alias or a
-   planted man is never run. The resolved absolute path runs in place of the
-   bare name so PATH cannot reresolve it. None means the page is not read. */
+/* man forks only when it resolves into a trusted directory. A man page from an
+   untrusted location is never run. The resolved absolute path runs in place of
+   the bare name, so PATH cannot resolve it again. None means the page is not
+   read. */
 static fn manpage_argv_for(StringView page_name, EvalContext &context) throws
     -> Maybe<ArrayList<String>>
 {
@@ -1342,8 +1343,8 @@ static fn parse_help_subcommands(StringView text, StringView command) throws
     }
 
     /* brew's help repeats the command word on every entry, "  brew install
-       FORMULA|CASK...", so the surface command is stripped before the column
-       split reads the real subcommand name. */
+       FORMULA|CASK...". The command name is stripped before the column split
+       reads the subcommand name. */
     let entry_text = trimmed;
     if (!command.is_empty() && entry_text.length > command.length + 1 &&
         entry_text.substring_of_length(0, command.length) == command &&
@@ -1494,16 +1495,16 @@ fn internal::complete_from_help_subcommands(StringView line, StringView token,
   if (!for_listing) return None;
   if (!token.is_empty() && token[0] == '-') return None;
   if (os::has_directory_separator(token)) return None;
-  let const surface_command = command_word_of(line);
-  if (surface_command.is_empty() ||
-      os::has_directory_separator(surface_command))
+  let const command_name = command_word_of(line);
+  if (command_name.is_empty() ||
+      os::has_directory_separator(command_name))
   {
-    LOG(Debug, "help subcommands bail because the surface command is empty");
+    LOG(Debug, "help subcommands bail because the command name is empty");
     return None;
   }
 
-  let const resolved_name = resolve_completion_alias(surface_command, context);
-  LOG(Debug, "help subcommands resolved the surface to '%.*s'",
+  let const resolved_name = resolve_completion_alias(command_name, context);
+  LOG(Debug, "help subcommands resolved the command name to '%.*s'",
       static_cast<int>(resolved_name.view().length), resolved_name.view().data);
 
   /* An empty chain at the first-argument position lists the base subcommands.

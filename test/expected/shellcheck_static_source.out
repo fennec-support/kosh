@@ -133,7 +133,7 @@ note: Declare it with `local` to keep it inside the function.
 75:13: warning: The HTML entity `&amp;` is read as an operator followed by a command. (SC1109)
     75 |    echo one &amp echo two
        |              ^~~
-note: Write the character the entity names.
+note: Write the character identified by the entity.
 80:12: warning: A bare glob can expand to a filename that begins with `-`. (SC2035)
     80 |    sudo cat *.log
        |             ^~~~~

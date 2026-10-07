@@ -24,7 +24,7 @@ HELP_DESCRIPTION_DECL(
 FLAG(UNIQ_COUNT, Bool, 'c', "", "Prefix each line with the count of its run.");
 FLAG(UNIQ_REPEATED, Bool, 'd', "",
      "Write one copy of each line that has a repeat.");
-FLAG(UNIQ_UNIQUE, Bool, 'u', "", "Write only the lines that have no repeat.");
+FLAG(UNIQ_UNIQUE, Bool, 'u', "", "Write only lines that occur once.");
 FLAG(UNIQ_FIELDS, String, 'f', "",
      "Ignore this many leading blank separated fields.");
 FLAG(UNIQ_CHARS, String, 's', "",

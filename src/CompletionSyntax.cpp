@@ -430,7 +430,7 @@ pure fn internal::command_segment_start(StringView line, usize cursor) wontthrow
 }
 
 /* Symlinks are left alone so a name that dispatches on its argv[0], such as a
-   busybox or rustup link, keeps the surface name the user typed. */
+   busybox or rustup link, keeps the original command name the user typed. */
 fn internal::resolve_completion_alias(StringView command,
                                       EvalContext &context) throws -> String
 {

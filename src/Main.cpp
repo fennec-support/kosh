@@ -95,7 +95,7 @@ FLAG(INIT_MOODS, ManyStrings, 'L', "init-moods", Compat,
      "Source the startup files for each listed mood, in order, comma separated "
      "or by repeating the flag. Defaults to --mood.");
 FLAG(MIMICRY, Bool, 'I', "enable-mimicry", Compat,
-     "Mimic the shell a script's shebang names, running a known shell shebang "
+     "Mimic the shell specified by a script's shebang, running a known shell shebang "
      "in-process in the matching mode.");
 FLAG(DUMB, Bool, '\0', "dumb", Compat,
      "Make the shell extremely dumb. Equivalent to --mood sh --no-completion "
@@ -632,7 +632,7 @@ static fn prefetch_script_shebang(invocation_identity &identity,
     let const shebang_mood = detect_mimic_shell_from_source(contents->view());
     LOG(Info, "the script operand '%s' %s a shell to mimic",
         operands[0].c_str(),
-        shebang_mood.has_value() ? "names" : "does not name");
+        shebang_mood.has_value() ? "selects" : "does not select");
     identity.session_mood = shebang_mood.value_or(identity.session_mood);
   }
 
@@ -1472,7 +1472,7 @@ struct script_cursor
         detect_mimic_shell_from_source(chunk.contents.view());
     LOG(Info, "the script operand '%s' %s a shell to mimic",
         String{chunk.filename.value_or(StringView{})}.c_str(),
-        detected_mood.has_value() ? "names" : "does not name");
+        detected_mood.has_value() ? "selects" : "does not select");
     context.select_mood(detected_mood.value_or(identity.session_mood));
 
     if (FLAG_LINT.is_enabled()) {
@@ -1593,8 +1593,8 @@ struct interactive_session
 
     toiletline::set_idle_title();
 
-    /* The PROMPT_COMMAND hook runs before the template is expanded, so a
-       framework that assigns PS1 inside it is in place by then. */
+    /* The PROMPT_COMMAND hook runs before the template is expanded. Code that
+       assigns PS1 inside the hook is in place by then. */
     run_prompt_command(context, ast_arena);
 
     prepare_completion(context, line);

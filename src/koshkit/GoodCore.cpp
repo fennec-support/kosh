@@ -410,7 +410,7 @@ fn GoodCore::execute(
     let const source = Path{operands[0].view(), allocator}.to_absolute();
     if (!source.is_regular_file()) {
       report_soft_koshkit_error(ec, cxt, "core file not found",
-                                "the operand must name a regular file");
+                                "the operand must refer to a regular file");
       return 1;
     }
 

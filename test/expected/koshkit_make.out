@@ -95,13 +95,13 @@ eval-recipe-first
 eval-recipe-second
 includes=one two
 --- makefile parse error locations ---
-malformed-main.mk:1:1: error: A define line must name a variable.
+malformed-main.mk:1:1: error: A define line must specify a variable.
      1 |  define
        |  ^~~~~~
-malformed-included.mk:1:1: error: A define line must name a variable.
+malformed-included.mk:1:1: error: A define line must specify a variable.
      1 |  define
        |  ^~~~~~
-malformed-continued.mk:1:1: error: A define line must name a variable.
+malformed-continued.mk:1:1: error: A define line must specify a variable.
      1 |  define \
        |  ^~~~~~~~
 malformed-expansion.mk:1:1: error: The make variable reference is unterminated.
@@ -110,7 +110,7 @@ malformed-expansion.mk:1:1: error: The make variable reference is unterminated.
 malformed-function.mk:1:1: error: The makefile stopped the build with the message 'included expansion failed'.
      1 |  BROKEN := $(error included expansion failed)
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-malformed-eval.mk.eval.2:1:1: error: A define line must name a variable.
+malformed-eval.mk.eval.2:1:1: error: A define line must specify a variable.
      1 |  define
        |  ^~~~~~
 automatic=auto.o

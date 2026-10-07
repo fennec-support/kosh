@@ -26,7 +26,7 @@ HELP_DESCRIPTION_DECL(
 
 FLAG(GOODFSW_RECURSIVE, Bool, 'r', "recursive", "Watch every subdirectory.");
 FLAG(GOODFSW_HUMAN, Bool, 'h', "human-readable",
-     "Use normal timestamps and descriptive event names.");
+     "Use human-readable timestamps and descriptive event names.");
 FLAG(GOODFSW_MACHINE, Bool, 'm', "machine-readable",
      "Use Unix timestamps and numeric event masks.");
 FLAG(GOODFSW_TIMESTAMP, Bool, 't', "timestamp",

@@ -22,9 +22,9 @@ HELP_SYNOPSIS_DECL("[-fn] [-p var] [%job|pid ...]");
 HELP_DESCRIPTION_DECL("The wait builtin blocks until the named jobs finish.");
 
 FLAG(WAIT_NEXT, Bool, 'n', "",
-     "Wait for the next of the named jobs, or of every job, to finish.");
+     "Wait until the next named job, or any job, finishes.");
 FLAG(WAIT_FORCE, Bool, 'f', "",
-     "Wait for each job to terminate, including jobs that stop.");
+     "Wait for each job to terminate, even if it stops first.");
 FLAG(WAIT_PID_VARIABLE, String, 'p', "",
      "Store the process id whose status is returned in the variable.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");

@@ -112,8 +112,8 @@ fn require_user_path(const ExecContext &ec, EvalContext &cxt) throws
   if (!path.has_value())
     report_soft_builtin_error(
         ec, cxt,
-        "Unable to locate the user configuration file, since neither "
-        "XDG_CONFIG_HOME nor HOME names a directory");
+        "Neither XDG_CONFIG_HOME nor HOME specifies a directory, so the user "
+        "configuration file cannot be located");
   return path;
 }
 
@@ -164,8 +164,7 @@ fn run_set(const ExecContext &ec, EvalContext &cxt,
     report_soft_builtin_error(
         ec, cxt, operands.locations[2],
         StringView{"The '"} + option->koshconf_name +
-            "' option depends on how the shell started, so --persist cannot "
-            "write it",
+            "' option cannot be written with --persist",
         "Read-only, invocation-only, and session-dependent options are not "
         "written to the file");
     return 1;

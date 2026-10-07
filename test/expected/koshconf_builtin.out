@@ -114,15 +114,15 @@ editor.show_live_diagnostics=on
 editor.auto_close_brackets_and_quotes=off
 # Redraw a submitted line after PS1_TRANSIENT and without RPS1.
 editor.transient_prompt_after_submit=off
-# Ask the terminal to report modified keys such as Ctrl-Shift-Z apart while a line is read.
+# Ask the terminal to report modified keys such as Ctrl-Shift-Z separately while a line is read.
 editor.request_extended_key_reports=on
 
 # history
 # Recall only history entries that begin with the typed text on Up and Down.
 history.arrow_keys_search_by_typed_prefix=on
-# Store the command history in this file, the value of KOSH_HISTORY_FILE.
+# Store command history in this file. KOSH_HISTORY_FILE supplies the value.
 # history.file_path=
-# Keep at most this many history entries, the value of KOSH_HISTORY_SIZE; 0 keeps none.
+# Keep at most this many history entries. KOSH_HISTORY_SIZE supplies the value, and 0 keeps none.
 history.max_entries=4096
 
 # completion
@@ -134,7 +134,7 @@ completion.add_space_after_completed_word=off
 diagnostics.warning_level=0
 # Report the annoying diagnostic tier.
 diagnostics.show_annoying_tier=on
-# Run the analysis stage before each chunk runs.
+# Analyze each chunk before it runs.
 diagnostics.analyze_before_running=on
 
 # koshkit
@@ -160,7 +160,7 @@ debug.report_nonzero_exit_codes=off
 debug.report_every_exit_code=off
 # Print evaluation statistics after each run.
 debug.print_evaluation_statistics=off
-# Print a granular memory report at exit.
+# Print a detailed memory report at exit.
 debug.print_memory_report_at_exit=off
 
 # legacy.aliases
@@ -206,7 +206,7 @@ legacy.completion_expand_directory_names=off
 legacy.completion_fix_directory_typos=off
 # Complete host names after an @ in a word. (shopt hostcomplete)
 legacy.completion_hostnames_after_at=on
-# Use the completion specifications that complete defines. (shopt progcomp)
+# Use the completion specifications defined by complete. (shopt progcomp)
 legacy.completion_programmable=on
 # Complete an alias with the specification of the command it names. (shopt progcomp_alias)
 legacy.completion_programmable_follows_aliases=off
@@ -256,7 +256,7 @@ legacy.glob_ignores_case=off
 legacy.glob_includes_dotfiles=off
 # Never let a glob match . or .. (shopt globskipdots)
 legacy.glob_never_matches_dot_and_dotdot=on
-# Remove a glob that matches nothing instead of keeping it as written. (shopt nullglob)
+# Remove a glob that matches nothing. With this option off, the unmatched glob remains unchanged. (shopt nullglob)
 legacy.glob_no_match_expands_to_nothing=off
 # Fail a command whose glob matches nothing. (shopt failglob)
 legacy.glob_no_match_is_error=on
@@ -268,7 +268,7 @@ legacy.glob_ranges_use_ascii_order=on
 legacy.history_reedit_failed_substitution=off
 # Accept the Bash option, which Bash itself ignores, without changing execution. (set -o nolog)
 legacy.history_skip_function_definitions=off
-# Load an expanded history reference into the editor instead of running it. (shopt histverify)
+# Load an expanded history reference into the editor. The shell runs it after the user accepts it. (shopt histverify)
 legacy.history_verify_expansion_before_running=off
 
 # legacy.interactive
@@ -322,7 +322,7 @@ legacy.redirect_refuses_to_overwrite_files=off
 legacy.redirect_variable_fd_closed_after_command=off
 
 # legacy.remember
-# Report command path hashing as on. Koshka caches command paths either way. (set -o hashall)
+# Report command path hashing as enabled. Koshka caches command paths whether this option is enabled or disabled. (set -o hashall)
 legacy.remember_command_paths=on
 
 # legacy.shift
@@ -387,10 +387,10 @@ completion.add_space_after_completed_word=on
 rc=0
 legacy.glob_includes_dotfiles=on
 == --persist rejects an option fixed by how the shell started:
--c:1:14: error: Builtin `koshconf`: The 'legacy.privileged_mode' option depends on how the shell started, so --persist cannot write it.
+-c:1:14: error: Builtin `koshconf`: The 'legacy.privileged_mode' option cannot be written with --persist.
      1 |  koshconf set legacy.privileged_mode off --persist
        |               ^~~~~~~~~~~~~~~~~~~~~~
-note: Read-only, invocation, and session options stay out of the file.
+note: Read-only, invocation-only, and session-dependent options are not written to the file.
 rc=1
 == a value the file cannot hold changes neither the session nor the file:
 -c:1:32: error: Builtin `koshconf`: A value of 'history.file_path' cannot span lines in the configuration file.

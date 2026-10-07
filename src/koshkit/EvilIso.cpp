@@ -35,9 +35,9 @@ FLAG(EVILISO_SESSIONS, Bool, 's', "sessions", "Report login sessions.");
 FLAG(EVILISO_REMOTE, Bool, 'r', "remote",
      "Select remote peers and socket summary.");
 FLAG(EVILISO_RUNTIME, Bool, 'k', "runtime",
-     "Report container runtime evidence.");
+     "Report container runtime information.");
 FLAG(EVILISO_KUBERNETES, Bool, '\0', "kubernetes",
-     "Report Kubernetes evidence.");
+     "Report Kubernetes information.");
 FLAG(EVILISO_CONTAINER, Bool, '\0', "container", "Report detected containers.");
 FLAG(EVILISO_CONTAINERS, Bool, '\0', "containers",
      "Report detected containers.");
