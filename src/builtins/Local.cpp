@@ -30,7 +30,8 @@ FLAG(LOCAL_INTEGER, Bool, 'i', "",
      "Mark an integer whose every assignment evaluates as arithmetic.");
 FLAG(LOCAL_LOWERCASE, Bool, 'l', "",
      "Convert every assigned value to lowercase in this scope.");
-FLAG(LOCAL_NAMEREF, Bool, 'n', "", "Accepted without effect.");
+FLAG(LOCAL_NAMEREF, Bool, 'n', "",
+     "Make the local a reference to the variable its value names.");
 FLAG(LOCAL_PRINT, Bool, 'p', "",
      "Print the reusable declaration of each named local.");
 FLAG(LOCAL_READONLY, Bool, 'r', "",
@@ -65,6 +66,7 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   bool should_mark_readonly = false;
   bool should_mark_uppercase = false;
   bool should_mark_export = false;
+  bool should_mark_nameref = false;
   bool should_print_declaration = false;
   usize first_name = 1;
   for (; first_name < args.count(); first_name++) {
@@ -86,7 +88,7 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       case 'r': should_mark_readonly = true; break;
       case 'u': should_mark_uppercase = true; break;
       case 'x': should_mark_export = true; break;
-      case 'n': break;
+      case 'n': should_mark_nameref = true; break;
       default: {
         let invalid = String{heap_allocator()};
         invalid += arg[c];
@@ -188,6 +190,27 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       cxt.variable_store().attributes().mark_lowercase(name);
     if (should_mark_uppercase)
       cxt.variable_store().attributes().mark_uppercase(name);
+
+    if (should_mark_nameref) {
+      if (equals_position.has_value()) {
+        try {
+          cxt.bind_nameref(name, arg.substring(*equals_position + 1));
+        } catch (const Error &error) {
+          report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
+                                    error.message().view());
+          status = 1;
+          continue;
+        }
+      } else {
+        cxt.variable_store().attributes().set(name, variable_attribute::Nameref,
+                                              true);
+        cxt.variable_store().attributes().mark_declared(name);
+      }
+
+      if (should_mark_readonly)
+        cxt.variable_store().attributes().mark_readonly(name);
+      continue;
+    }
 
     if (!equals_position.has_value() && !should_make_associative &&
         !should_make_indexed)

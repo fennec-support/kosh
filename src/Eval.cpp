@@ -332,6 +332,34 @@ hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
     -> void
 {
   let const attribute_bits = variable_store().attributes().get_bits(name);
+  if ((attribute_bits & static_cast<u8>(variable_attribute::Nameref)) != 0)
+    rarely
+    {
+      let const target = resolve_nameref_for_write(name);
+      if (target.view() == name) {
+        try {
+          bind_nameref(name, value);
+        } catch (ErrorBase &error) {
+          mark_expansion_error(error, expansion_error_reach::LineOrPosixScript);
+          throw;
+        }
+        return;
+      }
+
+      if (let const bracket = target.view().find_character('[');
+          bracket.has_value())
+      {
+        assign_array_element(target.view().substring_of_length(0, *bracket),
+                             target.view().substring_of_length(
+                                 *bracket + 1, target.count() - *bracket - 2),
+                             value, assignment_update_mode::Replace);
+        return;
+      }
+
+      set_shell_variable(target.view(), value);
+      return;
+    }
+
   if (is_implicitly_readonly(name) ||
       (attribute_bits & static_cast<u8>(variable_attribute::Readonly)) != 0)
   {
@@ -434,6 +462,23 @@ fn EvalContext::prepare_child_environment() const throws -> void
 
 fn EvalContext::unset_shell_variable(StringView name) throws -> void
 {
+  if (variable_store().attributes().is_nameref(name)) rarely
+    {
+      let const target = resolve_nameref_for_write(name);
+      if (let const bracket = target.view().find_character('[');
+          bracket.has_value())
+      {
+        unset_array_element(target.view().substring_of_length(0, *bracket),
+                            target.view().substring_of_length(
+                                *bracket + 1, target.count() - *bracket - 2));
+        return;
+      }
+      if (target.view() != name) {
+        unset_shell_variable(target.view());
+        return;
+      }
+    }
+
   if (is_readonly(name))
     throw Error{"Unable to unset '" + name + "' because it is read only"};
 
@@ -548,6 +593,12 @@ fn EvalContext::set_indexed_array(StringView name,
 {
   LOG(All, "storing indexed array '%.*s' with %zu elements",
       static_cast<int>(name.length), name.data, values.count());
+  let resolved_name = Maybe<String>{};
+  if (variable_store().attributes().is_nameref(name)) rarely
+    {
+      resolved_name = resolve_nameref_for_write(name);
+      name = resolved_name->view();
+    }
   if (is_readonly(name))
     throw Error{"Unable to assign '" + name + "' because it is read only"};
   if (is_write_discarded_dynamic_variable(name)) return;

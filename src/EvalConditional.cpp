@@ -120,6 +120,7 @@ struct conditional_evaluator
     Empty,
     Nonempty,
     VariableSet,
+    NameReference,
     PathExists,
     RegularFile,
     Directory,
@@ -148,6 +149,7 @@ struct conditional_evaluator
         {SSK("-z"), UnaryOperatorKind::Empty              },
         {SSK("-n"), UnaryOperatorKind::Nonempty           },
         {SSK("-v"), UnaryOperatorKind::VariableSet        },
+        {SSK("-R"), UnaryOperatorKind::NameReference      },
         {SSK("-a"), UnaryOperatorKind::PathExists         },
         {SSK("-e"), UnaryOperatorKind::PathExists         },
         {SSK("-f"), UnaryOperatorKind::RegularFile        },
@@ -290,6 +292,9 @@ struct conditional_evaluator
       }
       return cxt.get_variable_value(operand).has_value();
     }
+    case UnaryOperatorKind::NameReference:
+      return cxt.variable_store().attributes().is_nameref(operand) &&
+             cxt.variable_store().shell_variables().find(operand).has_value();
     case UnaryOperatorKind::PathExists: return make_path(operand).exists();
     case UnaryOperatorKind::RegularFile:
       return make_path(operand).is_regular_file();

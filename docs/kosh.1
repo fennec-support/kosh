@@ -2130,8 +2130,21 @@ element under its own index. Without operands, the
 .B \-p
 option or an attribute option lists every variable that carries the requested
 attributes. The
-.BR \-g ,
-.BR \-n ,
+.B \-n
+option makes the name a reference to the variable its value names, which may
+carry an array subscript. A read, an assignment, an append, an element
+assignment, an export, and an unset of the reference act on that variable, and
+a chain of references is followed. A for loop over a reference binds the
+reference to each word, ${!name} reads the name the reference reaches, and
+.B "unset \-n"
+removes the reference itself. The conditional [[ \-R name ]] is true for a
+reference with a value. A reference with no value binds to the name its
+first assignment gives it. A reference to itself is an error, and a circular
+chain reads as unset with a warning and fails an assignment. The
+.B +n
+form removes the reference and keeps its value. The
+.B \-g
+and
 .B \-t
 options are accepted without effect.
 .TP
@@ -2141,13 +2154,14 @@ The name is local to the running function. The
 .BR \-A ,
 .BR \-i ,
 .BR \-l ,
+.BR \-n ,
 .BR \-r ,
 .BR \-u ,
 and
 .B \-x
-attributes have the same meanings as for declare. The
-.B \-n
-option is accepted without effect.
+attributes have the same meanings as for declare, so
+.B "local \-n"
+passes a caller's variable by reference.
 .TP
 .B readonly
 Each named variable is marked read-only. The

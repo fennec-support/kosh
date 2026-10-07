@@ -877,7 +877,7 @@ fn EvalContext::ModifierWordExpander::expand_plain_parameter() throws -> void
   /* A nested reference obeys set -u the way a top level reference does. A
      stored name resolves without the extra dynamic-value lookup and copy.
    */
-  let const stored = m_context.variable_store().shell_variables().find(name);
+  let const stored = m_context.variable_store().find_plain_scalar(name);
   if (stored.has_value()) {
     emit_run(stored->view(), !m_is_in_double_quote);
   } else {
@@ -1261,6 +1261,14 @@ fn EvalContext::ParameterExpander::expand_indirect() throws -> String
 {
   /* ${!name} indirection, or a prefix listing when it ends with * or @. */
   let const body = m_spec.substring(1);
+  if (m_context.variable_store().attributes().is_nameref(body)) rarely
+    {
+      if (let const target = m_context.resolve_nameref(body);
+          target.has_value() && !target->is_empty())
+      {
+        return String{m_context.scratch_allocator(), target->view()};
+      }
+    }
   /* A modifier after the name applies to the indirected value, the bare
      trailing * and @ stay with the body as the prefix-listing forms. */
   let const name_end = find_indirect_name_end(body);
@@ -1323,8 +1331,7 @@ fn EvalContext::ParameterExpander::expand_length() throws -> String
     return expand_element_length(name, *bracket);
   }
 
-  if (let const stored =
-          m_context.variable_store().shell_variables().find(name);
+  if (let const stored = m_context.variable_store().find_plain_scalar(name);
       stored.has_value())
     return String::from(get_character_count(m_context, **stored),
                         m_context.scratch_allocator());
@@ -1493,8 +1500,7 @@ fn EvalContext::ParameterExpander::expand_bare_reference() throws -> String
 {
   /* A plain reference reports under set -u, a modifier form such as ${x:-w}
      handles the unset case itself. */
-  if (let const stored =
-          m_context.variable_store().shell_variables().find(m_name);
+  if (let const stored = m_context.variable_store().find_plain_scalar(m_name);
       stored.has_value())
     return String{m_context.scratch_allocator(), stored->view()};
   let value = m_context.get_variable_value(m_name);
@@ -1756,6 +1762,16 @@ hot fn EvalContext::apply_parameter_expansion(
      the depth is capped before the native stack is exhausted. */
   enter_parameter_expansion();
   defer { leave_parameter_expansion(); };
+
+  let resolved_spec = Maybe<String>{};
+  if (variable_store().attributes().has_namerefs()) rarely
+    {
+      resolved_spec = resolve_nameref_parameter(spec);
+      if (resolved_spec.has_value()) {
+        spec = resolved_spec->view();
+        source_location = nullptr;
+      }
+    }
 
   let expander = ParameterExpander{*this,
                                    spec,

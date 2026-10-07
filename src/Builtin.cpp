@@ -432,6 +432,24 @@ fn quote_for_declare(StringView value) throws -> String
 fn append_variable_declaration(EvalContext &cxt, StringView name,
                                String &out) throws -> bool
 {
+  if (cxt.variable_store().attributes().is_nameref(name)) rarely
+    {
+      out += "declare -n";
+      if (cxt.is_readonly(name)) out += 'r';
+      out += ' ';
+      out.append(name);
+      if (let const target = cxt.variable_store().shell_variables().find(name);
+          target.has_value())
+      {
+        out += "=\"";
+        out += quote_for_declare(target->view());
+        out += '"';
+      }
+      out += '\n';
+
+      return true;
+    }
+
   let const is_directory_stack = cxt.is_bash_directory_stack_special(name);
   let const is_argument_array = cxt.is_bash_argument_array(name);
   let const elements = cxt.variable_store().indexed_arrays().find(name);

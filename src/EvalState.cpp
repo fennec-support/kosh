@@ -1882,7 +1882,8 @@ fn ScopeStore::from_wire(
       static_cast<u8>(variable_attribute::Integer) |
       static_cast<u8>(variable_attribute::Lowercase) |
       static_cast<u8>(variable_attribute::Uppercase) |
-      static_cast<u8>(variable_attribute::Declared);
+      static_cast<u8>(variable_attribute::Declared) |
+      static_cast<u8>(variable_attribute::Nameref);
   let const do_read_texts = [&](ArrayList<String> &texts, usize text_count)
                                 throws -> void {
     texts.reserve(text_count);
@@ -2293,6 +2294,18 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
     if (is_bash_aliases_special(name) || is_bash_argument_array(name) ||
         is_bash_directory_stack_special(name))
     {
+      continue;
+    }
+    if (variable_store().attributes().is_nameref(name)) {
+      source += "declare -n ";
+      source.append(name);
+      if (let const target = variable_store().shell_variables().find(name);
+          target.has_value())
+      {
+        source.push('=');
+        append_shell_quoted_arg(source, target->view());
+      }
+      source.push('\n');
       continue;
     }
     let const is_integer = is_integer_variable(name);

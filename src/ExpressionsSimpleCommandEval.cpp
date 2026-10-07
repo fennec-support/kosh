@@ -746,7 +746,13 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
      expanded, so a later value reads an earlier same-line one. */
   let const do_apply_environment_assignment = [&](const tokens::Assignment
                                                       &assignment) throws {
-    let const name = assignment.key().view();
+    let name = assignment.key().view();
+    let resolved_name = Maybe<String>{};
+    if (cxt.variable_store().attributes().is_nameref(name)) rarely
+      {
+        resolved_name = cxt.resolve_nameref_for_write(name);
+        name = resolved_name->view();
+      }
     if (cxt.is_readonly(name)) {
       if (cxt.runtime_state().is_bash_compatible() &&
           !cxt.runtime_state().is_posix_option_on())

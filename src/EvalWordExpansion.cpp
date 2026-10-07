@@ -230,8 +230,15 @@ hot fn EvalContext::expand_word(const Word &word) throws
   };
 
   for (let const &segment : *segments) {
-    let const segment_text =
-        StringView{segment.text.data(), segment.text.count()};
+    let segment_text = StringView{segment.text.data(), segment.text.count()};
+    let resolved_text = Maybe<String>{};
+    if (segment.kind == WordSegment::Kind::VariableReference &&
+        variable_store().attributes().has_namerefs())
+      rarely
+      {
+        resolved_text = resolve_nameref_parameter(segment_text);
+        if (resolved_text.has_value()) segment_text = resolved_text->view();
+      }
     switch (segment.kind) {
     case WordSegment::Kind::LiteralText:
     case WordSegment::Kind::DoubleQuotedText:
@@ -316,7 +323,8 @@ hot fn EvalContext::expand_word(const Word &word) throws
       let const do_source_location_for =
           [&](StringView part,
               SourceLocation &storage) -> const SourceLocation * {
-        if (!segment_source_location.has_value()) return nullptr;
+        if (!segment_source_location.has_value() || resolved_text.has_value())
+          return nullptr;
         return segment_source_location->subspan_for_view(segment_text, part,
                                                          storage);
       };
@@ -684,7 +692,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
           }
         if (is_plain_name)
           if (let const stored =
-                  variable_store().shell_variables().find(segment_text);
+                  variable_store().find_plain_scalar(segment_text);
               stored.has_value())
           {
             if (segment.is_in_double_quotes)

@@ -2,11 +2,11 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file resolves dynamic shell variables and publishes their metadata to
- * completion and hover consumers. It computes process, status, call-stack,
- * call-argument, random, timing, option, and terminal color values without
- * storing ordinary variables. The split keeps scalar dynamic lookup separate
- * from aggregate expansion in EvalArrays.cpp.
+ * This file resolves dynamic shell variables and name references, and publishes
+ * the dynamic metadata to completion and hover consumers. It computes process,
+ * status, call-stack, call-argument, random, timing, option, and terminal color
+ * values without storing ordinary variables. The split keeps scalar dynamic
+ * lookup separate from aggregate expansion in EvalArrays.cpp.
  */
 
 #include "CLI.hpp"
@@ -484,6 +484,24 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
     }
   }
 
+  if (variable_store().attributes().has_namerefs()) rarely
+    {
+      if (let const target = resolve_nameref(name); target.has_value()) {
+        if (target->is_empty()) {
+          warn_circular_nameref(name);
+          return None;
+        }
+
+        let const bracket = target->view().find_character('[');
+        if (!bracket.has_value()) return get_variable_value(target->view());
+
+        return read_literal_array_element(
+            target->view().substring_of_length(0, *bracket),
+            target->view().substring_of_length(*bracket + 1,
+                                               target->count() - *bracket - 2));
+      }
+    }
+
   if (let const stored = variable_store().shell_variables().find(name);
       stored.has_value())
     return *stored.value();
@@ -693,6 +711,99 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
   if (let const env = os::get_environment_variable(name))
     return String{heap_allocator(), env->view()};
   return koshka::None;
+}
+
+static constexpr u32 NAMEREF_DEPTH_LIMIT = 8;
+
+fn EvalContext::resolve_nameref(StringView name) const throws -> Maybe<String>
+{
+  if (!variable_store().attributes().is_nameref(name)) return None;
+
+  let const stored = variable_store().shell_variables().find(name);
+  if (!stored.has_value() || stored->is_empty()) return None;
+
+  let target = String{heap_allocator(), stored->view()};
+  for (u32 depth_count = 0; depth_count < NAMEREF_DEPTH_LIMIT; depth_count++) {
+    if (target.view() == name) return String{heap_allocator()};
+    if (!variable_store().attributes().is_nameref(target.view())) return target;
+
+    let const next = variable_store().shell_variables().find(target.view());
+    if (!next.has_value() || next->is_empty()) return target;
+
+    target = String{heap_allocator(), next->view()};
+  }
+
+  return String{heap_allocator()};
+}
+
+fn EvalContext::warn_circular_nameref(StringView name) const throws -> void
+{
+  show_message(
+      Warning{"The name reference '" + name + "' is circular"}.to_string());
+}
+
+fn EvalContext::resolve_nameref_for_write(StringView name) throws -> String
+{
+  let target = resolve_nameref(name);
+  if (!target.has_value()) return String{heap_allocator(), name};
+
+  if (target->is_empty()) {
+    let error = Error{"The name reference '" + name + "' is circular"};
+    mark_expansion_error(error, expansion_error_reach::LineOrPosixScript);
+    throw steal(error);
+  }
+
+  return target.take();
+}
+
+fn EvalContext::bind_nameref(StringView name, StringView target) throws -> void
+{
+  let base = target;
+  if (let const bracket = target.find_character('[');
+      bracket.has_value() && target[target.length - 1] == ']')
+  {
+    base = target.substring_of_length(0, *bracket);
+  }
+  if (!lexer::word_is_variable_name(base)) {
+    throw Error{"'" + target +
+                "' is not a valid variable name for a name reference"};
+  }
+  if (target == name) {
+    throw Error{"The name reference '" + name + "' would refer to itself"};
+  }
+
+  variable_store().attributes().set(name, variable_attribute::Nameref, true);
+  assign_variable(name, target);
+}
+
+fn EvalContext::resolve_nameref_parameter(StringView spec) throws
+    -> Maybe<String>
+{
+  let const prefix_length =
+      !spec.is_empty() && (spec[0] == '!' || spec[0] == '#') ? usize{1}
+                                                             : usize{0};
+  if (spec.length <= prefix_length ||
+      !lexer::is_variable_name_start(spec[prefix_length]))
+  {
+    return None;
+  }
+
+  let name_end = prefix_length + 1;
+  while (name_end < spec.length && lexer::is_variable_name(spec[name_end]))
+    name_end++;
+  if (spec[0] == '!' && name_end == spec.length) return None;
+
+  let const target = resolve_nameref(
+      spec.substring_of_length(prefix_length, name_end - prefix_length));
+  if (!target.has_value() || target->is_empty()) return None;
+
+  let rewritten = String{scratch_allocator()};
+  rewritten.reserve(spec.length - (name_end - prefix_length) + target->count());
+  rewritten.append(spec.substring_of_length(0, prefix_length));
+  rewritten.append(target->view());
+  rewritten.append(spec.substring(name_end));
+
+  return rewritten;
 }
 
 fn EvalContext::append_dynamic_variable_names(

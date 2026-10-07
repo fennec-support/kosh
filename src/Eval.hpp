@@ -1534,6 +1534,7 @@ public:
   }
   fn set_bits(StringView name, u8 bits) throws -> void
   {
+    note_nameref_bits(bits);
     m_bits.set(name, bits);
   }
   fn erase(StringView name) throws -> void { m_bits.erase(name); }
@@ -1549,6 +1550,7 @@ public:
     let const mask = static_cast<u8>(attribute);
 
     if (is_enabled) {
+      note_nameref_bits(mask);
       m_bits.get_or_create(name, u8{0}) |= mask;
       return;
     }
@@ -1585,6 +1587,11 @@ public:
     return (get_bits(name) &
             (static_cast<u8>(variable_attribute::Lowercase) |
              static_cast<u8>(variable_attribute::Uppercase))) != 0;
+  }
+  hot pure fn has_namerefs() const wontthrow -> bool { return m_has_namerefs; }
+  hot pure fn is_nameref(StringView name) const wontthrow -> bool
+  {
+    return m_has_namerefs && has(name, variable_attribute::Nameref);
   }
 
   fn mark_readonly(StringView name) throws -> void
@@ -1654,10 +1661,18 @@ public:
   fn set_entries(StringMap<u8> entries) wontthrow -> void
   {
     m_bits = steal(entries);
+    m_bits.for_each([&](StringView, u8 bits) { note_nameref_bits(bits); });
   }
 
 private:
+  fn note_nameref_bits(u8 bits) wontthrow -> void
+  {
+    if ((bits & static_cast<u8>(variable_attribute::Nameref)) != 0)
+      m_has_namerefs = true;
+  }
+
   StringMap<u8> m_bits{heap_allocator()};
+  bool m_has_namerefs{false};
 };
 
 class VariableStore
@@ -1694,6 +1709,13 @@ public:
   pure fn shell_variables() const wontthrow -> const StringMap<String> &
   {
     return m_shell_variables;
+  }
+  hot pure fn find_plain_scalar(StringView name) const wontthrow
+      -> Maybe<const String *>
+  {
+    if (m_attributes.is_nameref(name)) rarely return None;
+
+    return m_shell_variables.find(name);
   }
   pure fn is_pipestatus_scalar_possible() const wontthrow -> bool
   {
@@ -3346,6 +3368,12 @@ public:
 
   fn get_variable_value(StringView name) const throws -> Maybe<String>;
   fn get_variable_value_checked(StringView name) const throws -> Maybe<String>;
+
+  fn resolve_nameref(StringView name) const throws -> Maybe<String>;
+  fn warn_circular_nameref(StringView name) const throws -> void;
+  fn resolve_nameref_for_write(StringView name) throws -> String;
+  fn bind_nameref(StringView name, StringView target) throws -> void;
+  fn resolve_nameref_parameter(StringView spec) throws -> Maybe<String>;
   pure fn variable_requires_dynamic_lookup(StringView name) const wontthrow
       -> bool;
 
@@ -4210,6 +4238,9 @@ protected:
   fn apply_array_subscript(
       StringView name, StringView subscript,
       const SourceLocation *source_location = nullptr) throws -> String;
+  fn read_literal_array_element(StringView name,
+                                StringView subscript) const throws
+      -> Maybe<String>;
   fn array_negative_index_base(StringView name) const throws -> i64;
 
   fn apply_indirect_or_name_listing(StringView body) throws -> String;

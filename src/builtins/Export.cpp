@@ -177,6 +177,10 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       has_error = true;
       continue;
     }
+    if (cxt.variable_store().attributes().is_nameref(name.view())) rarely
+      {
+        name = cxt.resolve_nameref_for_write(name.view());
+      }
 
     if (cxt.is_readonly(name)) {
       if (has_new_value) {

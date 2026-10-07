@@ -853,7 +853,12 @@ hot fn ForLoop::evaluate_status_impl(EvalContext &cxt) const throws
 
     cxt.write_xtrace(loop_trace.view());
     try {
-      cxt.set_shell_variable(m_variable_name, value);
+      if (cxt.variable_store().attributes().is_nameref(m_variable_name)) rarely
+        {
+          cxt.bind_nameref(m_variable_name, value);
+        }
+      else
+        cxt.set_shell_variable(m_variable_name, value);
     } catch (ErrorBase &error) {
       cxt.mark_expansion_error(error,
                                expansion_error_reach::CommandOrPosixScript);

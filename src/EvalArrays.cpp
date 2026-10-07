@@ -152,6 +152,12 @@ fn EvalContext::assign_indexed_array_elements(
     StringView name, const ArrayList<String> &elements,
     assignment_update_mode update_mode) throws -> void
 {
+  let resolved_name = Maybe<String>{};
+  if (variable_store().attributes().is_nameref(name)) rarely
+    {
+      resolved_name = resolve_nameref_for_write(name);
+      name = resolved_name->view();
+    }
   if (is_readonly(name))
     throw Error{"Unable to assign '" + name + "' because it is read only"};
   if (is_write_discarded_dynamic_variable(name)) return;
@@ -336,6 +342,12 @@ fn EvalContext::assign_array_element(StringView name, StringView subscript,
   LOG(All, "assigning the array element '%.*s[%.*s]'",
       static_cast<int>(name.length), name.data,
       static_cast<int>(subscript.length), subscript.data);
+  let resolved_name = Maybe<String>{};
+  if (variable_store().attributes().is_nameref(name)) rarely
+    {
+      resolved_name = resolve_nameref_for_write(name);
+      name = resolved_name->view();
+    }
   if (is_readonly(name))
     throw Error{"Unable to assign '" + name + "' because it is read only"};
 
@@ -559,6 +571,12 @@ fn EvalContext::unset_array_element(StringView name,
   LOG(All, "unsetting the array element '%.*s[%.*s]'",
       static_cast<int>(name.length), name.data,
       static_cast<int>(subscript.length), subscript.data);
+  let resolved_name = Maybe<String>{};
+  if (variable_store().attributes().is_nameref(name)) rarely
+    {
+      resolved_name = resolve_nameref_for_write(name);
+      name = resolved_name->view();
+    }
   if (is_readonly(name))
     throw Error{"Unable to unset '" + name + "' because it is read only"};
 
@@ -961,6 +979,31 @@ fn EvalContext::apply_array_subscript(
   }
   return String{scratch_allocator(),
                 array->operator[](static_cast<usize>(index)).view()};
+}
+
+fn EvalContext::read_literal_array_element(StringView name,
+                                           StringView subscript) const throws
+    -> Maybe<String>
+{
+  if (is_associative_array(name))
+    return lookup_associative_element(name, subscript);
+
+  let const index = subscript.to<i64>();
+  if (index.is_error() || index.value() < 0) return None;
+
+  let const element_index = static_cast<usize>(index.value());
+  let const array = variable_store().indexed_arrays().find(name);
+  if (!array.has_value())
+    return element_index == 0 ? get_variable_value(name) : None;
+  if (element_index < array->count()) return (*array.value())[element_index];
+
+  let const key = sparse_array_key(name, element_index, scratch_allocator());
+  if (let const sparse =
+          variable_store().sparse_arrays().values().find(key.view());
+      sparse.has_value())
+    return String{heap_allocator(), sparse->view()};
+
+  return None;
 }
 
 fn EvalContext::collect_array_elements(StringView name) const throws

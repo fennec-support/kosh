@@ -41,7 +41,9 @@ FLAG(DECLARE_INTEGER, Bool, 'i', "",
 FLAG(DECLARE_LOWERCASE, Bool, 'l', "",
      "Convert every assigned value to lowercase. The +l form removes the "
      "attribute.");
-FLAG(DECLARE_NAMEREF, Bool, 'n', "", "Accepted without effect.");
+FLAG(DECLARE_NAMEREF, Bool, 'n', "",
+     "Make the variable a reference to the variable its value names. The +n "
+     "form removes the reference and keeps the value.");
 FLAG(DECLARE_PRINT, Bool, 'p', "", "Print the matching declarations.");
 FLAG(DECLARE_READONLY, Bool, 'r', "", "Accepted without effect.");
 FLAG(DECLARE_TRACE, Bool, 't', "", "Accepted without effect.");
@@ -77,6 +79,8 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let should_mark_uppercase_attribute = false;
   let should_unmark_uppercase_attribute = false;
   let should_mark_readonly = false;
+  let should_mark_nameref = false;
+  let should_unmark_nameref = false;
   let should_restrict_to_functions = false;
   let should_print_function_names_only = false;
   let should_be_global = false;
@@ -128,9 +132,14 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         if (!is_remove_form) should_mark_readonly = true;
         break;
       case 'g': should_be_global = true; break;
-      /* The remaining attribute letters carry no backing behavior yet and are
-         accepted so a script that sets them keeps running. */
       case 'n':
+        if (is_remove_form)
+          should_unmark_nameref = true;
+        else
+          should_mark_nameref = true;
+        break;
+      /* The remaining attribute letter carries no backing behavior yet and is
+         accepted so a script that sets it keeps running. */
       case 't': break;
       default: {
         let invalid = String{cxt.scratch_allocator()};
@@ -219,7 +228,8 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const has_attribute_filter =
       should_make_indexed || should_make_associative || should_export ||
       should_mark_integer_attribute || should_mark_lowercase_attribute ||
-      should_mark_uppercase_attribute || should_mark_readonly;
+      should_mark_uppercase_attribute || should_mark_readonly ||
+      should_mark_nameref;
   if ((should_print || has_attribute_filter) && i >= args.count() &&
       !ec.has_stripped_array_operands)
   {
@@ -251,6 +261,11 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         return false;
       }
       if (should_mark_readonly && !cxt.is_readonly(name)) {
+        return false;
+      }
+      if (should_mark_nameref &&
+          !cxt.variable_store().attributes().is_nameref(name))
+      {
         return false;
       }
       return true;
@@ -389,6 +404,38 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       cxt.variable_store().attributes().mark_lowercase(name);
     if (should_mark_uppercase_attribute)
       cxt.variable_store().attributes().mark_uppercase(name);
+    if (should_unmark_nameref)
+      cxt.variable_store().attributes().set(name, variable_attribute::Nameref,
+                                            false);
+
+    if (should_mark_nameref && !has_subscript) {
+      let target = Maybe<String>{};
+      if (equals.has_value())
+        target = String{cxt.scratch_allocator(), value};
+      else if (let const stored =
+                   cxt.variable_store().shell_variables().find(name);
+               stored.has_value())
+        target = String{cxt.scratch_allocator(), stored->view()};
+
+      if (target.has_value()) {
+        try {
+          cxt.bind_nameref(name, target->view());
+        } catch (const Error &error) {
+          report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
+                                    error.message().view());
+          status = 1;
+          continue;
+        }
+      } else {
+        cxt.variable_store().attributes().set(name, variable_attribute::Nameref,
+                                              true);
+        cxt.variable_store().attributes().mark_declared(name);
+      }
+
+      if (should_mark_readonly)
+        cxt.variable_store().attributes().mark_readonly(name);
+      continue;
+    }
 
     if (!equals.has_value() && !has_subscript && !should_make_associative &&
         !should_make_indexed)
@@ -441,10 +488,17 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     {
       LOG(All, "declare exporting '%.*s' to the environment",
           static_cast<int>(name.length), name.data);
-      cxt.record_environment_change(name);
-      cxt.mark_exported(name);
-      if (let const stored = cxt.get_variable_value(name))
-        os::set_environment_variable(name, stored->view());
+      let exported_name = name;
+      let resolved_name = Maybe<String>{};
+      if (cxt.variable_store().attributes().is_nameref(name)) rarely
+        {
+          resolved_name = cxt.resolve_nameref_for_write(name);
+          exported_name = resolved_name->view();
+        }
+      cxt.record_environment_change(exported_name);
+      cxt.mark_exported(exported_name);
+      if (let const stored = cxt.get_variable_value(exported_name))
+        os::set_environment_variable(exported_name, stored->view());
     }
 
     /* The read-only mark applies after the assignment, so declare -r v=1 stores

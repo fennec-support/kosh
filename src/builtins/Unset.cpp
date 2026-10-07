@@ -13,13 +13,15 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[-f] [-v] name ...");
+HELP_SYNOPSIS_DECL("[-f] [-v] [-n] name ...");
 
 HELP_DESCRIPTION_DECL(
     "The unset builtin removes each named shell variable or function.");
 
 FLAG(UNSET_FUNCTION, Bool, 'f', "", "Remove each named shell function.");
 FLAG(UNSET_VARIABLE, Bool, 'v', "", "Remove variables, the default.");
+FLAG(UNSET_NAMEREF, Bool, 'n', "",
+     "Remove a name reference itself rather than the variable it names.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_BUILTIN_FLAGS(Unset);
@@ -55,6 +57,16 @@ fn Unset::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (should_unset_function) {
       LOG(All, "unset removing function '%s'", name.c_str());
       do_try_unset(i, [&] { cxt.unset_function(name); });
+    } else if (FLAG_UNSET_NAMEREF.is_enabled() &&
+               cxt.variable_store().attributes().is_nameref(name.view()))
+    {
+      LOG(All, "unset removing the name reference '%s'", name.c_str());
+      do_try_unset(i, [&] {
+        if (!cxt.is_readonly(name.view()))
+          cxt.variable_store().attributes().set(
+              name.view(), variable_attribute::Nameref, false);
+        cxt.unset_shell_variable(name);
+      });
     } else if (let const bracket = name.view().find_character('[');
                bracket.has_value() && name.view()[name.count() - 1] == ']')
     {
