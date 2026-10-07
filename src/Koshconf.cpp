@@ -9,6 +9,7 @@
 
 #include "Koshconf.hpp"
 
+#include "CLI.hpp"
 #include "Errors.hpp"
 #include "Eval.hpp"
 #include "Koshkit.hpp"
@@ -21,6 +22,7 @@ namespace koshka {
 namespace {
 
 constexpr u32 KOSHCONF_DIRECTORY_MODE = 0755;
+constexpr usize KOSHCONF_COMMENT_WIDTH = 80;
 constexpr u32 KOSHCONF_FILE_MODE = 0644;
 constexpr u32 KOSHCONF_PERMISSION_BITS = 07777;
 constexpr usize KOSHCONF_LINK_LIMIT = 40;
@@ -672,18 +674,25 @@ fn make_koshconf_preset(mimic_mood preset) throws -> String
       previous_group = group;
     }
 
-    contents += "# ";
-    contents += option->help;
+    let comment = String{StringView{option->help}};
     if (!option->set_name.is_empty()) {
-      contents += " (set -o ";
-      contents += option->set_name;
-      contents += ')';
+      comment += " (set -o ";
+      comment += option->set_name;
+      comment += ')';
     } else if (!option->shopt_name.is_empty()) {
-      contents += " (shopt ";
-      contents += option->shopt_name;
-      contents += ')';
+      comment += " (shopt ";
+      comment += option->shopt_name;
+      comment += ')';
     }
-    contents += '\n';
+
+    let const wrapped =
+        wrap_text(comment.view(), 0, KOSHCONF_COMMENT_WIDTH - 2);
+    usize position = 0;
+    while (position < wrapped.count()) {
+      contents += "# ";
+      contents += wrapped.view().next_line(position).without_trailing_newline();
+      contents += '\n';
+    }
 
     if (option->type == option_type::String) {
       if (option->default_text.is_empty()) {
