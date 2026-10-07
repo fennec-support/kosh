@@ -4,6 +4,7 @@ history ghost hides entries whose command no longer resolves
 history ghost suggests entries whose command resolves
 completion menu keeps callback-owned strings alive
 timed out help completion stops after two attempts
+help completion adopts the idle load of the same help
 man subcommand indexing recovers after a timed out manpath command
 quoted replacement and smart-case TAB preserve the completed token
 Alt and Ctrl keys preserve word and line editing

@@ -526,6 +526,22 @@ def run_cached_filter_checks(session, report, directory):
                   and count_marker_lines(directory, "count-runs") == 2)
     clear_line(session)
 
+    session.send(b"complete -C %s zzgrow\r"
+                 % os.path.join(directory, "grow-words").encode())
+    session.wait_until(is_line(""))
+    session.send(b"zzgrow t\t")
+    report.record("command-spec-prefix-grows-into-menu", session,
+                  has_typed_menu("zzgrow tool-", ["tool-alpha", "tool-beta"]))
+    report.record("command-spec-prefix-menu-runs-once", session,
+                  lambda screen: count_marker_lines(directory,
+                                                    "grow-runs") == 1)
+    session.send(b"a")
+    report.record("command-spec-prefix-menu-narrows-without-rerun", session,
+                  lambda screen: has_typed_menu("zzgrow tool-a",
+                                                ["tool-alpha"])(screen)
+                  and count_marker_lines(directory, "grow-runs") == 1)
+    clear_line(session)
+
 
 def run_checks(binary, directory, command_directory, report):
     session = Session(binary, directory, command_directory)
@@ -1099,15 +1115,15 @@ def write_help_probe(path, marker):
 
 COUNTING_WORDS = """#!/bin/sh
 echo run >> '%s'
-for word in apple apricot apron avocado banana; do
+for word in %s; do
   case $word in "$2"*) echo "$word" ;; esac
 done
 """
 
 
-def write_counting_words(path, counter):
+def write_counting_words(path, counter, words):
     with open(path, "w") as handle:
-        handle.write(COUNTING_WORDS % counter)
+        handle.write(COUNTING_WORDS % (counter, words))
     os.chmod(path, 0o755)
 
 
@@ -1172,7 +1188,11 @@ def main():
         os.makedirs(open_directory)
         os.chmod(open_directory, 0o777)
         write_counting_words(os.path.join(directory, "count-words"),
-                             os.path.join(directory, "count-runs"))
+                             os.path.join(directory, "count-runs"),
+                             "apple apricot apron avocado banana")
+        write_counting_words(os.path.join(directory, "grow-words"),
+                             os.path.join(directory, "grow-runs"),
+                             "tool-alpha tool-beta other")
         write_help_probe(os.path.join(directory, "bin", "act"),
                          os.path.join(directory, "act-marker"))
         write_help_probe(os.path.join(open_directory, "adb"),

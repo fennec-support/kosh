@@ -117,6 +117,15 @@ static constexpr u64 HELP_FORK_TIMEOUT_NANOS = 1'000'000'000;
 
 static constexpr u64 HELP_FORK_BATCH_TIMEOUT_NANOS = 8'000'000'000;
 
+enum class idle_load_kind : u8
+{
+  Manpage,
+  Help,
+};
+
+static fn adopt_idle_load(idle_load_kind kind, StringView key,
+                          EvalContext &context) throws -> bool;
+
 /* A killed fork is retried until this many attempts have been spent on one key,
    and the empty answer is then cached for the session. A first execution that
    the platform serializes recovers on the retry, while a command that always
@@ -138,6 +147,13 @@ static fn should_retry_killed_fork(StringView kind, StringView name) throws
   return attempt_count < KILLED_FORK_ATTEMPT_LIMIT;
 }
 
+static fn completion_fork_timeout_nanos(EvalContext &context) wontthrow -> u64
+{
+  return context.execution_store().shell_is_interactive()
+             ? HELP_FORK_TIMEOUT_NANOS
+             : HELP_FORK_BATCH_TIMEOUT_NANOS;
+}
+
 static fn
 capture_completion_program_output(EvalContext &context,
                                   const ArrayList<String> &arguments) wontthrow
@@ -145,8 +161,7 @@ capture_completion_program_output(EvalContext &context,
 {
   let const is_prompt_waiting =
       context.execution_store().shell_is_interactive();
-  let const timeout_nanos = is_prompt_waiting ? HELP_FORK_TIMEOUT_NANOS
-                                              : HELP_FORK_BATCH_TIMEOUT_NANOS;
+  let const timeout_nanos = completion_fork_timeout_nanos(context);
   let const attempt_limit = is_prompt_waiting ? 1u : KILLED_FORK_ATTEMPT_LIMIT;
 
   Maybe<String> output;
@@ -779,6 +794,15 @@ static fn manpage_options_for(StringView page_name, EvalContext &context) throws
   if (let const cached = MANPAGE_CACHE.option_entries.find(page_name);
       cached.has_value())
     return *cached.value();
+
+  if (adopt_idle_load(idle_load_kind::Manpage, page_name, context)) {
+    if (let const adopted = MANPAGE_CACHE.option_entries.find(page_name);
+        adopted.has_value())
+      return *adopted.value();
+
+    return EMPTY_HELP_ENTRIES;
+  }
+
   let parsed_options = ArrayList<help_entry>{heap_allocator()};
   let const argv = manpage_argv_for(page_name, context);
   if (!argv.has_value())
@@ -1070,6 +1094,8 @@ fn HelpOutputCache::ensure_parsed(EvalContext &context, StringView command,
 {
   let const key = help_cache_key(command, subcommand);
   if (parsed_keys.contains(key.view())) return;
+  if (adopt_idle_load(idle_load_kind::Help, key.view(), context)) return;
+
   store(command, key.view(), help_text_for(context, command, subcommand));
 }
 
@@ -1844,12 +1870,6 @@ fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
   return true;
 }
 
-enum class idle_load_kind : u8
-{
-  Manpage,
-  Help,
-};
-
 struct idle_load
 {
   idle_load_kind kind;
@@ -1898,6 +1918,37 @@ static fn start_idle_load(idle_load_kind kind, StringView key,
       static_cast<int>(key.length), key.data);
   IDLE_LOAD = idle_load{kind, String{key}, String{command}, String{hint_key},
                         steal(*capture)};
+  return true;
+}
+
+static fn adopt_idle_load(idle_load_kind kind, StringView key,
+                          EvalContext &context) throws -> bool
+{
+  if (!IDLE_LOAD.has_value() || IDLE_LOAD->kind != kind ||
+      IDLE_LOAD->key.view() != key)
+  {
+    return false;
+  }
+
+  let const deadline_nanos =
+      os::monotonic_nanos() + completion_fork_timeout_nanos(context);
+  let state = IDLE_LOAD->capture.step();
+  while (state == os::ProgramCapture::State::Running) {
+    let const now_nanos = os::monotonic_nanos();
+    if (os::INTERRUPT_REQUESTED || now_nanos >= deadline_nanos) {
+      state = os::ProgramCapture::State::Failed;
+      break;
+    }
+
+    IDLE_LOAD->capture.wait(deadline_nanos - now_nanos);
+    state = IDLE_LOAD->capture.step();
+  }
+
+  LOG(Debug, "explicit completion adopted the idle load of '%.*s', which %s",
+      static_cast<int>(key.length), key.data,
+      state == os::ProgramCapture::State::Finished ? "finished" : "failed");
+  finish_idle_load(*IDLE_LOAD, state);
+  IDLE_LOAD = None;
   return true;
 }
 

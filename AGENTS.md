@@ -192,6 +192,9 @@ changes update this file.
   and with it a `complete -F` function or `-C` command, runs again only for the
   first byte of a word or path component, a blank, quote, equals sign, or
   slash, an erase below the gathered token, or a change of the best tier.
+  A TAB that grows the token to the common prefix opens the menu on the
+  candidates it gathered under the same rules, so one TAB runs the callback
+  once.
 - Command completion reads keywords, builtins, bundled utilities, functions,
   aliases, and PATH. `KEYWORD_ENTRIES` is the sole keyword catalog. A `type`
   operand reads the same catalog. Only the listing mode accepts an empty
@@ -238,7 +241,9 @@ changes update this file.
   `os::ProgramCapture` child under the man and help trust rules and reads it
   without blocking on each repeat, so a key is served while the child runs.
   Every load, miss, and timeout lands in the same caches explicit flag
-  completion uses, and a submitted line kills a running load. The hook also
+  completion uses, and a submitted line kills a running load. An explicit
+  completion that needs the key the idle child is loading adopts that child
+  and waits for it no longer than its own fork budget. The hook also
   keeps `describe_analysis_finding` for the paused line, which analyzes with
   unresolved commands silenced and no followed sources, so it reads no file.
 - The highlight callback receives the caret and follows it. It reuses the

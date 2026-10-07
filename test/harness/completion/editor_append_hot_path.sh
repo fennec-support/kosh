@@ -321,7 +321,6 @@ send_help_retry_input()
 
 printf '%s\n' \
   "koshconf set editor.tab_selector plain" \
-  "koshconf set editor.hints off" \
   "PS1='> '" \
   "PROMPT_COMMAND='printf \"ready\\\\n\" >> \"\$EDITOR_READY_FILE\"'" \
   > "$d/help-retry-rc"
@@ -335,6 +334,25 @@ send_help_retry_input | TERM=xterm-256color \
 
 test "$(wc -l < "$d/help-retry-marker")" -eq 2 || fail "$LINENO"
 echo 'timed out help completion stops after two attempts'
+
+send_help_adopt_input()
+{
+  wait_for_prompt_count "$d/help-adopt-ready" 1 || fail "$LINENO"
+  printf 'act --mark\t'
+  wait_for_marker_count "$d/help-adopt-marker" 2 || fail "$LINENO"
+  printf '\t\025exit 0\n'
+}
+
+send_help_adopt_input | TERM=xterm-256color \
+  PATH="$d/retry-bin${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" \
+  KOSH_HELP_MARKER="$d/help-adopt-marker" \
+  EDITOR_READY_FILE="$d/help-adopt-ready" \
+  KOSH_HISTORY_FILE="$d/help-adopt-history" RCFILE="$d/help-retry-rc" \
+  EDITOR_OPTIONS=--no-syntax-highlighting BIN="$BIN" \
+  run_editor "$d/help-adopt-typescript" || fail "$LINENO"
+
+test "$(wc -l < "$d/help-adopt-marker")" -eq 2 || fail "$LINENO"
+echo 'help completion adopts the idle load of the same help'
 
 mkdir "$d/manpath-bin" "$d/recovered-man"
 mkdir "$d/recovered-man/man1"
