@@ -158,7 +158,8 @@ FAILED_LIST := failed.diff
 export FAILED_LIST
 
 export TEST_SHELL := $(SHELL)
-unexport KOSH_IDENTITY KOSH_ANALYSIS KOSH_FLAGS
+unexport KOSH_IDENTITY KOSH_ANALYSIS KOSH_FLAGS KOSHCONF
+export XDG_CONFIG_HOME := $(TEST_MKTEMP_DIRECTORY)/no-config-home
 
 export KOSH_HISTORY_FILE := $(CURDIR)/.test_history
 export KOSH_DIRECTORY_HISTORY := $(CURDIR)/.test_directory_history

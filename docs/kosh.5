@@ -1,80 +1,156 @@
-.TH KOSH 5 "2026-08-04" "kosh" "File Formats"
+.TH KOSH 5 "2026-10-07" "kosh" "File Formats"
 .SH NAME
-kosh \- shell startup configuration files
+kosh.conf \- Koshka settings files and the KOSHCONF encoding
 .SH DESCRIPTION
-Startup configuration files contain shell commands. The startup chain
-selects each file for a mood and parses it with that mood's grammar. There
-is no separate syntax for sections, directives, keys, or values.
-.PP
-Commands, comments, quoting, expansion, redirection, functions, and builtins use
-the syntax defined by
-.BR kosh (1).
-See
+The settings Koshka owns live in koshconf files. They hold option values, not
+shell commands, and every shell reads them before any shell startup file,
+whether or not it is interactive.
+.B koshconf
+in
 .BR kosh (1)
-for startup discovery, loading order, suppression, and error handling.
+reads, changes, and writes them.
+.PP
+Shell code that should run at startup belongs in the startup files of the
+.B bash
+or
+.B sh
+mood listed under FILES. The
+.B kosh
+mood sources no shell startup file.
 .SH FILES
 .TP
-.I /etc/koshrc
-This is the system configuration file for an interactive
-.B kosh
-mood.
+.I /etc/kosh.conf
+The system settings file, read first.
 .TP
-.I ~/.koshrc
-This is the user configuration file for an interactive
-.B kosh
-mood.
+.IR $XDG_CONFIG_HOME/kosh/kosh.conf " or " ~/.config/kosh/kosh.conf
+The user settings file, read second. XDG_CONFIG_HOME is used when it is set to
+an absolute path.
+.B koshconf create
+and
+.B koshconf set \-\-persist
+write this file through a temporary file in the same directory and a rename,
+creating the directory when it is missing.
 .TP
 .I /etc/profile
-This is the system login configuration file.
+The system login file of the
+.B bash
+and
+.B sh
+moods.
 .TP
 .I ~/.profile
-This is the user POSIX login configuration file and the last Bash login
-candidate.
+The user POSIX login file and the last Bash login candidate.
 .TP
 .I ~/.bash_profile
-This is the first user Bash login candidate.
+The first user Bash login candidate.
 .TP
 .I ~/.bash_login
-This is the second user Bash login candidate.
+The second user Bash login candidate.
 .TP
 .IR /etc/bash/bashrc " or " /etc/bash.bashrc
-The first readable path is the system configuration file for an interactive
-non-login Bash mood.
-.TP
-.I ~/.bashrc
-This is the default user configuration file for an interactive non-login Bash
+The first readable path is the system rc file of an interactive non-login Bash
 mood.
 .TP
+.I ~/.bashrc
+The default user rc file of an interactive non-login Bash mood.
+.TP
 .I /usr/share/bash-completion/bash_completion
-This file supplies Bash programmable completion after the Bash startup chain
-sources an rc file. It is skipped when completion is disabled, when a default
-completion specification exists, and when BASH_COMPLETION_VERSINFO is already
-set.
+Bash programmable completion, sourced after the Bash startup chain sources an rc
+file. It is skipped when completion is disabled, when a default completion
+specification exists, and when BASH_COMPLETION_VERSINFO is already set.
 .PP
 The
 .B \-\-rcfile
 and
 .B \-\-init\-file
-options and the ENV and BASH_ENV variables may select a different file. See
+options and the ENV and BASH_ENV variables may select a different shell startup
+file in the
+.B bash
+and
+.B sh
+moods. See
 .BR kosh (1)
 for their conditions and expansion rules.
 .SH SYNTAX
-LF and CRLF terminate a line. A CRLF pair is one newline. A lone carriage return
-remains source text.
+A settings file is a sequence of lines. LF and CRLF end a line. A line that is
+empty, holds only blanks, or starts with a number sign after optional blanks is
+ignored.
 .PP
-A number sign begins a shell comment where the shell lexical rules recognize a
-comment. Assignments, shell options, functions, aliases, and commands take
-effect in the shell that sources the file. A sourced configuration file may
-select a runtime mood with
-.B set \-\-mood
-or request another startup chain with
-.BR "set \-\-init\-moods" .
-A mood whose files are already being sourced is not reentered.
+Every other line has the form
+.IR name = value .
+Blanks around the name are ignored. A value that starts with a double or a single
+quote ends at the next quote of the same kind, and only blanks may follow it.
+Otherwise the value is everything after the equals sign up to the end of the
+line, blanks included. A value cannot span lines.
+.PP
+A boolean is written as on or off and is also read as true, false, 1, or 0. An
+enumeration is written by name. A string is taken as written.
+.B koshconf
+quotes a written value that starts with a quote or starts or ends with a blank.
+.PP
+Only the mood and the interactive options may appear in a file. The options
+that change evaluation are set for a session with
+.BR set ,
+.BR shopt ,
+or
+.BR "koshconf set" .
+A later line replaces an earlier one, and the user file and KOSHCONF replace the
+system file.
+.SH KOSHCONF
+.B KOSHCONF
+is a dynamic shell variable that always holds the current settings in a binary
+form, encoded as standard base64 with padding. It is never exported by itself.
+Another shell receives it through
+.B koshconf load
+.I value
+or through a KOSHCONF variable in its environment, which is applied after the
+settings files and removed before any command runs:
+.PP
+.RS
+.EX
+ssh host KOSHCONF="$KOSHCONF" kosh
+.EE
+.RE
+.PP
+The decoded bytes are a sequence of records. Each record is an option id, a
+value length, and the value. The id and the length are unsigned LEB128 varints:
+seven bits per byte, least significant group first, with the high bit set on
+every byte but the last. A boolean value is one byte, 0 or 1. An enumeration is
+a varint holding the value's position in its list. A string is its UTF-8 bytes.
+The ids are listed by
+.BR kosh (1)
+and never change meaning. Only the mood and the interactive options are
+written.
+.PP
+A reader skips a record with an unknown id, an option it never carries, or an
+unknown value, and reports a warning. A blob that is not base64, or whose
+records are truncated, is rejected as a whole.
 .SH ERRORS
-A missing optional file, custom rc file, or BASH_ENV file is skipped. An
-existing custom rc or BASH_ENV file is skipped with a diagnostic if it cannot
-be read. An unreadable ENV file is skipped without a diagnostic. Syntax and
-execution errors produce the ordinary shell diagnostics described in
+A missing settings file is skipped. An unreadable one produces a warning. A line
+without an equals sign, an unknown option name, an invalid value, an unclosed
+quote, text after a closing quote, and an option that changes evaluation each
+produce a warning that names the file and line, and the line is skipped. A
+settings file never stops the shell.
+.PP
+Shell startup files produce the ordinary shell diagnostics described in
 .BR kosh (1).
+.SH MIGRATION
+Earlier releases read /etc/koshrc and ~/.koshrc as shell code in the
+.B kosh
+mood. They are no longer read. Move option settings into
+.I kosh.conf
+with
+.B "koshconf set"
+.I option value
+.BR \-\-persist ,
+and move shell code into ~/.bashrc with
+.B mood=bash
+or with
+.B \-L bash
+on the command line. Guard Koshka-only lines with
+.B test \-n \(dq$KOSH\(dq
+and lines for other shells with
+.BR "test \-z \(dq$KOSH\(dq" .
+KOSH is set in every mood and never exported.
 .SH SEE ALSO
 .BR kosh (1)

@@ -279,26 +279,26 @@ fi
 
 echo "== command substitution isolates startup state:"
 /bin/mkdir -p "$directory/home"
-printf 'ignored=$(set --mood sh)\nignored=$(set --init-moods=sh)\n' \
-    > "$directory/home/.koshrc"
+printf 'ignored=$(set -M sh)\nignored=$(set -L sh)\n' \
+    > "$directory/home/.bashrc"
 send_snapshot_input()
 {
     sleep 0.5
-    printf 'printf "snapshot-""mood=%%s\\n" "$(set --mood)"\nprintf "snapshot-""moods=%%s\\n" "$(set --init-moods)"\nexit\n'
+    printf 'printf "snapshot-""mood=%%s\\n" "$(set -M)"\nprintf "snapshot-""moods=%%s\\n" "$(set -L)"\nexit\n'
 }
 if script --version >/dev/null 2>&1; then
     send_snapshot_input |
         HOME="$directory/home" ENV=/dev/null BIN="$BIN" script -q -c \
-            'exec "$BIN" -i -M bash --init-moods=kosh' \
+            'exec "$BIN" -i -M kosh -L bash' \
             "$directory/startup-state" >/dev/null 2>&1
 else
     send_snapshot_input |
         HOME="$directory/home" ENV=/dev/null BIN="$BIN" script -q \
             "$directory/startup-state" /bin/sh -c \
-            'exec "$BIN" -i -M bash --init-moods=kosh' >/dev/null 2>&1
+            'exec "$BIN" -i -M kosh -L bash' >/dev/null 2>&1
 fi
-if strings "$directory/startup-state" | grep -q 'snapshot-mood=bash' &&
-    strings "$directory/startup-state" | grep -q 'snapshot-moods=kosh'
+if strings "$directory/startup-state" | grep -q 'snapshot-mood=kosh' &&
+    strings "$directory/startup-state" | grep -q 'snapshot-moods=bash'
 then
     echo startup-state-isolated
 else

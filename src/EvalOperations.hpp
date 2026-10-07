@@ -41,9 +41,9 @@ wontreturn fn throw_script_fatal(StringView message,
 
 /* Source the startup files for each mood in the list, in order, the way the
    --init-moods flag and the set --init-moods builtin both ask. A kosh flavor
-   reads /etc/koshrc and ~/.koshrc, a bash flavor the bash rc and completion, a
-   posix flavor the ENV file, and each adds its login profiles when is_login is
-   set. */
+   reads nothing, a bash flavor the bash rc and completion, and a posix flavor
+   the ENV file. The bash and posix flavors add their login profiles when
+   is_login is set. */
 fn source_init_moods(EvalContext &context, const ArrayList<mimic_mood> &moods,
                      bool is_login_shell, bool should_be_interactive) throws
     -> void;

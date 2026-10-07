@@ -232,10 +232,10 @@ Option parsing ends. The next operand is treated as the script name.
 .BR \-\-init\-file " " \fIFILE\fR ", " \-\-rcfile " " \fIFILE\fR
 FILE selects the interactive rc file. The last occurrence of either name is
 used.
-A leading tilde is expanded. The file replaces /etc/koshrc and ~/.koshrc in the
+A leading tilde is expanded. The file replaces ~/.bashrc in an interactive
+non-login Bash mood. The system Bash rc is still read first. The
 .B kosh
-mood. The file replaces ~/.bashrc in an interactive non-login Bash mood. The
-system Bash rc is still read first.
+mood reads no rc file and ignores this option.
 .TP
 .B \-\-norc
 The interactive non-login Bash rc and a custom rc file are skipped. Login
@@ -698,20 +698,53 @@ option enables escape decoding. The
 .B sh
 mood retains dash-style default escape handling.
 .SH STARTUP FILES
+Before any shell startup file, interactive and noninteractive shells apply the
+configuration files /etc/kosh.conf and then $XDG_CONFIG_HOME/kosh/kosh.conf, or
+~/.config/kosh/kosh.conf when XDG_CONFIG_HOME is unset, empty, or relative.
+They are not shell code;
+.BR kosh (5)
+describes their format. A
+.B KOSHCONF
+variable in the environment is applied after them and removed from the
+environment. A later setting replaces an earlier one. A mood named by the
+configuration selects the startup files below unless the command line or the
+invocation name names a mood, and a script shebang still selects the mood of
+that script. Any option the command line names, and any diagnostic setting
+inherited through KOSH_ANALYSIS, keeps that value. A malformed line is reported
+with its file and line and skipped.
+.PP
+The
+.B kosh
+mood sources no shell startup file, so ~/.koshrc and /etc/koshrc are not read
+and
+.B \-\-rcfile
+has no effect in it. Shell code meant to run at startup belongs in ~/.bashrc
+with the
+.B bash
+mood selected. A
+.B kosh
+mood session started with
+.B \-L bash
+sources the bash startup files in the
+.B bash
+mood and then returns to the
+.B kosh
+mood.
+Every mood sets KOSH and never exports it, so a real bash sees it unset. A line
+guarded with
+.B test \-n \(dq$KOSH\(dq
+runs only in Koshka, and a line guarded with
+.B test \-z \(dq$KOSH\(dq
+runs only in another shell.
+.PP
 Each startup file is parsed with the grammar of the mood whose files are being
 sourced. A startup file that invokes
-.B "set \-\-init\-moods"
+.B "set \-L"
 does not reenter a mood whose files are already being sourced.
 .PP
 A login shell in the
-.B kosh
-or
 .B sh
-mood sources /etc/profile and ~/.profile in that order. An interactive shell in
-the
-.B kosh
-mood then sources /etc/koshrc and ~/.koshrc. A custom rc file replaces that
-pair.
+mood sources /etc/profile and ~/.profile in that order.
 .PP
 An interactive shell in the
 .B sh
@@ -743,8 +776,11 @@ PATH is not searched. A shell in the
 .B bash-posix
 mood does not source BASH_ENV.
 .PP
-A clean, rescue, or lint shell skips every startup file. A shell whose real and
-effective identities differ skips them too. The
+A clean, rescue, lint, format, or language server shell skips every startup
+file and every configuration file, and so does
+.BR \-Q .
+A shell whose real and effective identities differ skips them too. A fresh
+evaluator receives its parent's settings instead of reading them. The
 privileged option suppresses ENV and BASH_ENV processing. Restricted mode is
 visible while startup files run. Its restrictions become active after startup
 finishes.
@@ -777,6 +813,25 @@ or
 are rejected. Restricted mode cannot be disabled with
 .BR "set +r" .
 Changes to the restricted_shell shopt value are accepted without effect.
+.PP
+The
+.B koshconf
+forms
+.BR create ,
+.BR set ,
+and
+.B load
+are rejected, so a restricted shell neither changes a setting nor writes a
+configuration file;
+.B get
+and
+.B list
+remain available. Because no form writes a file, XDG_CONFIG_HOME and HOME stay
+assignable. The configuration files are read before the restrictions take
+effect, the way the startup files are, and no setting can turn restricted mode
+off. A shell started restricted ignores and removes a
+.B KOSHCONF
+environment variable with a warning.
 .PP
 A sourced script retains the restrictions. A shell script found through PATH
 and executed as a command runs without them.

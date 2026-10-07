@@ -265,6 +265,17 @@ fn Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return report_usage(ec, cxt, ec.source_location(),
                         "Only the create form accepts --force");
 
+  let const is_mutation = *command == koshconf_command::Create ||
+                          *command == koshconf_command::Set ||
+                          *command == koshconf_command::Load;
+  if (is_mutation &&
+      cxt.runtime_state().option_is_enabled(shell_option_id::Restricted))
+  {
+    throw ErrorWithLocation{
+        ec.source_location(),
+        "Changing settings with koshconf is forbidden in a restricted shell"};
+  }
+
   LOG(Debug, "koshconf running the '%s' form", args[1].c_str());
   let const operands = koshconf_operands{args, operand_locations};
   switch (*command) {

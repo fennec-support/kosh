@@ -16,6 +16,7 @@
 #include "EvalVariablesInternal.hpp"
 #include "Expressions.hpp"
 #include "Formatter.hpp"
+#include "Koshconf.hpp"
 #include "Koshkit.hpp"
 #include "LanguageServer.hpp"
 #include "Lexer.hpp"
@@ -721,6 +722,114 @@ static fn apply_inherited_shell(inherited_shell &inherited,
   }
 
   return None;
+}
+
+static fn read_startup_configuration(const command_line &line,
+                                     const inherited_shell &inherited,
+                                     const invocation_identity &identity,
+                                     bool has_elevated_identity) throws
+    -> koshconf_reading
+{
+  let reading = koshconf_reading{};
+  let encoded = os::get_environment_variable(KOSHCONF_VARIABLE_NAME);
+  if (encoded.has_value())
+    os::unset_environment_variable(KOSHCONF_VARIABLE_NAME);
+  if (encoded.has_value() && identity.is_restricted_shell) {
+    show_message(Warning{"A restricted shell ignores the KOSHCONF environment "
+                         "variable"}
+                     .to_string()
+                     .view());
+    encoded = None;
+  }
+
+  let const should_skip =
+      has_elevated_identity || line.is_rescue_mode || FLAG_CLEAN.is_enabled() ||
+      FLAG_LINT.is_enabled() || FLAG_FORMAT.is_enabled() ||
+      FLAG_LANGUAGE_SERVER.is_enabled() || is_debug_driver_run() ||
+      !inherited.bootstrap.payload.is_empty();
+  if (should_skip) {
+    LOG(Info, "skipping the configuration files");
+    return reading;
+  }
+
+  unused(read_koshconf_file(Path{SYSTEM_KOSHCONF_PATH}, reading));
+  if (let const user_path = get_user_koshconf_path(); user_path.has_value())
+    unused(read_koshconf_file(*user_path, reading));
+  if (encoded.has_value() && !read_koshconf_blob(encoded->view(), reading)) {
+    reading.warnings.push(
+        Warning{"The KOSHCONF environment variable is not a valid encoding, "
+                "so it is ignored"}
+            .to_string());
+  }
+  for (let const &warning : reading.warnings)
+    show_message(warning.view());
+  reading.warnings.clear();
+
+  return reading;
+}
+
+static fn apply_configured_mood(invocation_identity &identity,
+                                const koshconf_reading &reading) throws -> void
+{
+  if (identity.was_mood_named_on_command_line) return;
+
+  for (let const &setting : reading.settings) {
+    if (setting.option->storage != option_storage::Mood) continue;
+    let const mood = parse_option_number(*setting.option, setting.value.view());
+    if (mood.has_value())
+      identity.session_mood = static_cast<mimic_mood>(*mood);
+  }
+}
+
+static fn is_pinned_by_invocation(const option_descriptor &option) wontthrow
+    -> bool
+{
+  let const is_analysis_inherited = os::has_environment_variable(
+      inheritable_analysis_state::ENVIRONMENT_NAME);
+  switch (option.storage) {
+  case option_storage::Mood: return true;
+  case option_storage::TabSelector:
+    return FLAG_TAB_SELECTOR.is_set() || FLAG_DUMB.is_enabled();
+  case option_storage::WarningLevel:
+    return FLAG_WARNINGS.count() != 0 || is_analysis_inherited;
+  case option_storage::AnnoyingDiagnostics:
+    return FLAG_SUPPRESS_ANNOYING_DIAGNOSTICS.is_enabled() ||
+           is_analysis_inherited;
+  case option_storage::Analysis:
+    return FLAG_SUPPRESS_DIAGNOSTICS.is_enabled() || is_analysis_inherited;
+  case option_storage::ShellOption: break;
+  default: return false;
+  }
+
+  switch (option.shell_option) {
+  case shell_option_id::Koshkit: return FLAG_ENABLE_KOSHKIT.is_enabled();
+  case shell_option_id::Mimicry:
+    return FLAG_MIMICRY.is_enabled() || is_analysis_inherited;
+  case shell_option_id::ShowAst: return FLAG_AST.is_enabled();
+  case shell_option_id::ShowLexedWords: return FLAG_ESCAPE_MAP.is_enabled();
+  case shell_option_id::ShowExitCode: return FLAG_EXIT_CODE.is_enabled();
+  case shell_option_id::ShowAllExitCodes:
+    return FLAG_ALL_EXIT_CODES.is_enabled();
+  case shell_option_id::ShowStats: return FLAG_STATS.is_enabled();
+  case shell_option_id::ShowMemory: return FLAG_MEMORY.is_enabled();
+  default: return false;
+  }
+}
+
+static fn apply_startup_configuration(EvalContext &context,
+                                      koshconf_reading &reading) throws -> void
+{
+  let unpinned = ArrayList<koshconf_setting>{heap_allocator()};
+  for (let &setting : reading.settings)
+    if (!is_pinned_by_invocation(*setting.option))
+      unpinned.push(steal(setting));
+  reading.settings.clear();
+
+  apply_koshconf_settings(context, unpinned, option_origin::Startup,
+                          reading.warnings);
+  for (let const &warning : reading.warnings)
+    show_message(warning.view());
+  reading.warnings.clear();
 }
 
 struct session_config
@@ -1868,14 +1977,18 @@ fn kosh_main(int argc, char **argv) -> int
   LOG(Info, "privileged mode is %s",
       FLAG_PRIVILEGED.is_enabled() || has_elevated_identity ? "on" : "off");
 
+  let inherited = koshka::take_inherited_shell();
+  if (inherited.has_invalid_state) return 1;
+
+  let configuration = koshka::read_startup_configuration(
+      line, inherited, identity, has_elevated_identity);
+  koshka::apply_configured_mood(identity, configuration);
+
   let const input = koshka::resolve_input_plan(file_names);
   let prefetched_script_contents =
       koshka::prefetch_script_shebang(identity, input, file_names);
   let operands = koshka::take_script_operands(steal(identity.program_path),
                                               file_names, input);
-
-  let inherited = koshka::take_inherited_shell();
-  if (inherited.has_invalid_state) return 1;
 
   let context = koshka::EvalContext{koshka::make_startup_options(input),
                                     steal(operands.shell_name),
@@ -1891,6 +2004,7 @@ fn kosh_main(int argc, char **argv) -> int
                                koshka::read_session_config(identity, input));
   koshka::seed_session_variables(context, identity, init_moods, inherited,
                                  input.should_be_interactive);
+  koshka::apply_startup_configuration(context, configuration);
 
   /* The path map starts empty because eager scanning helps only in interactive
      mode. */

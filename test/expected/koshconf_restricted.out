@@ -1,0 +1,45 @@
+== kosh -r: koshconf create kosh
+-c:1:1: error: Changing settings with koshconf is forbidden in a restricted shell.
+     1 |  koshconf create kosh; koshconf get editor.auto_pair
+       |  ^~~~~~~~~~~~~~~~~~~~
+rc=1
+== kosh -r: koshconf create --force bash
+-c:1:1: error: Changing settings with koshconf is forbidden in a restricted shell.
+     1 |  koshconf create --force bash; koshconf get editor.auto_pair
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+rc=1
+== kosh -r: koshconf set editor.auto_pair on --persist
+-c:1:1: error: Changing settings with koshconf is forbidden in a restricted shell.
+     1 |  koshconf set editor.auto_pair on --persist; koshconf get editor.auto_pair
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+rc=1
+== kosh -r: koshconf set editor.auto_pair on
+-c:1:1: error: Changing settings with koshconf is forbidden in a restricted shell.
+     1 |  koshconf set editor.auto_pair on; koshconf get editor.auto_pair
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+rc=1
+== kosh -r: koshconf set mood bash
+-c:1:1: error: Changing settings with koshconf is forbidden in a restricted shell.
+     1 |  koshconf set mood bash; koshconf get editor.auto_pair
+       |  ^~~~~~~~~~~~~~~~~~~~~~
+rc=1
+== kosh -r: koshconf load BQEB
+-c:1:1: error: Changing settings with koshconf is forbidden in a restricted shell.
+     1 |  koshconf load BQEB; koshconf get editor.auto_pair
+       |  ^~~~~~~~~~~~~~~~~~
+rc=1
+== set -r refuses a later change:
+-c:1:9: error: Changing settings with koshconf is forbidden in a restricted shell.
+     1 |  set -r; koshconf set editor.auto_pair on
+       |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+rc=1
+== get and list stay available:
+kosh
+COUNT
+== no configuration file was written:
+absent
+== an inherited KOSHCONF is ignored and removed:
+warning: A restricted shell ignores the KOSHCONF environment variable.
+off
+[unset]
+rc=0
