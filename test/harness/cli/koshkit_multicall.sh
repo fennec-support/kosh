@@ -39,6 +39,19 @@ ln -s "$BIN" tabs
 echo "--- a specialized utility locates an invalid operand ---"
 ./tabs 4,nope 2>&1
 
+ln -s "$BIN" koshkit
+
+echo "--- a binary named koshkit runs the utility its first operand names ---"
+./koshkit seq 2
+echo "rc=$?"
+
+echo "--- a binary named koshkit passes the rest to the utility ---"
+./koshkit tail --bogus 2>&1 | head -1
+echo "--- a binary named koshkit without a utility acts as the builtin ---"
+./koshkit --list | grep -c '^seq$'
+./koshkit no-such-utility > /dev/null 2>&1
+echo "rc=$?"
+
 unset KOSH_FLAGS
 # koshkit --assimilate installs a symlink to the binary named for each utility
 # into a directory, the busybox-style install. A symlinked invocation routes its

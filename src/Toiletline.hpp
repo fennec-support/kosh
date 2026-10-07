@@ -108,7 +108,7 @@ void set_space_after_completion(bool enabled);
 
 void set_history_prefix_search(bool enabled);
 
-void set_inline_hints(bool enabled);
+void set_hint_row(bool should_show_hints, bool should_show_diagnostics);
 
 void set_auto_pair(bool enabled);
 

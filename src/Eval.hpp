@@ -112,7 +112,8 @@ enum class shell_option_id : u8
   Onecmd,
   SpaceAfterCompletion,
   HistoryPrefixSearch,
-  InlineHints,
+  InteractiveHints,
+  InteractiveDiagnostics,
   AutoPair,
   TransientPrompt,
   ExtendedKeys,
@@ -469,7 +470,8 @@ private:
                       option_mask(shell_option_id::Failglob) |
                       option_mask(shell_option_id::Hashall) |
                       option_mask(shell_option_id::HistoryPrefixSearch) |
-                      option_mask(shell_option_id::InlineHints) |
+                      option_mask(shell_option_id::InteractiveHints) |
+                      option_mask(shell_option_id::InteractiveDiagnostics) |
                       option_mask(shell_option_id::ExtendedKeys) |
                       option_mask(shell_option_id::Braceexpand)};
   shopt_state m_shopt;

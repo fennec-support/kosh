@@ -377,6 +377,7 @@
     done
 
     line "Would install $BIN_DIR/kosh$EXT"
+    [ -n "$EXT" ] || line "Would link $BIN_DIR/koshkit to kosh"
     line "Would install completions and manpages to $SHARE_DIR"
     line "Dry run: nothing was installed."
     exit 0
@@ -424,6 +425,10 @@
   printf 'ok\n'
   mkdir -p "$BIN_DIR" || fail "cannot write to $BIN_DIR"
   install -m 755 "$BINARY" "$BIN_DIR/kosh$EXT"
+  if [ -z "$EXT" ]
+  then
+    ln -sf kosh "$BIN_DIR/koshkit" || fail "cannot link $BIN_DIR/koshkit"
+  fi
   if [ "$FILES" != "$BINARY" ]
   then
     mkdir -p "$SHARE_DIR/bash-completion/completions" ||
@@ -444,7 +449,7 @@
       line "Use $(paint "$IS_COLOR" '1;34' kosh) to launch the shell."
     ;;
     *)
-      line "Install prefix is not in the PATH. Use $(paint "$IS_COLOR" '1;34' $BIN_DIR/kosh$EXT) to launch the shell."
+      line "Install prefix is not in the PATH. Use $(paint "$IS_COLOR" '1;34' "$BIN_DIR/kosh$EXT") to launch the shell."
     ;;
   esac
 }

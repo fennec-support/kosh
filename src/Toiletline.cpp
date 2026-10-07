@@ -138,6 +138,8 @@ struct completion_session
       koshka::heap_allocator()};
   bool is_highlight_color_enabled{false};
   bool is_highlight_styled_underlines_enabled{false};
+  bool should_show_hints{true};
+  bool should_show_diagnostics{true};
   koshka::tab_selector_mode tab_selector{
       koshka::tab_selector_mode::Interactive};
 
@@ -1062,20 +1064,22 @@ fn completion_session::hint(const char *buffer, size_t cursor) -> const char *
   try {
     let const byte_length = std::strlen(buffer);
     let const line = koshka::StringView{buffer, byte_length};
-    if (koshka::completion::describe_syntax_problem(
-            line, cursor, context->runtime_state().get_mood(), hint_row))
-    {
-      return hint_row.c_str();
+    if (should_show_diagnostics) {
+      if (koshka::completion::describe_syntax_problem(
+              line, cursor, context->runtime_state().get_mood(), hint_row))
+      {
+        return hint_row.c_str();
+      }
+
+      if (has_analyzed_line && !analysis_finding.is_empty() &&
+          analyzed_line.view() == line)
+      {
+        return analysis_finding.c_str();
+      }
     }
 
-    if (has_analyzed_line && !analysis_finding.is_empty() &&
-        analyzed_line.view() == line)
-    {
-      return analysis_finding.c_str();
-    }
-
-    if (!koshka::completion::compose_command_hint(line, cursor, *context,
-                                                  hint_row))
+    if (!should_show_hints || !koshka::completion::compose_command_hint(
+                                  line, cursor, *context, hint_row))
     {
       return nullptr;
     }
@@ -1106,7 +1110,10 @@ fn completion_session::idle(const char *buffer, size_t cursor) -> int
   try {
     let const line = koshka::StringView{buffer, std::strlen(buffer)};
     let outcome = 0;
-    if (!has_analyzed_line || analyzed_line.view() != line) {
+    let const should_analyze =
+        should_show_diagnostics &&
+        (!has_analyzed_line || analyzed_line.view() != line);
+    if (should_analyze) {
       let const had_finding = !analysis_finding.is_empty();
       analyzed_line = koshka::String{line};
       has_analyzed_line = true;
@@ -1115,6 +1122,7 @@ fn completion_session::idle(const char *buffer, size_t cursor) -> int
       if (had_finding || !analysis_finding.is_empty())
         outcome |= TL_IDLE_REFRESH;
     }
+    if (!should_show_hints) return outcome;
 
     let const progress =
         koshka::completion::step_idle_documentation(line, cursor, *context);
@@ -2267,11 +2275,14 @@ fn set_history_prefix_search(bool enabled) -> void
   ::tl_set_history_prefix_search(enabled ? 1 : 0);
 }
 
-fn set_inline_hints(bool enabled) -> void
+fn set_hint_row(bool should_show_hints, bool should_show_diagnostics) -> void
 {
-  ::tl_set_hint_callback(enabled ? kosh_hint_callback : nullptr);
-  ::tl_set_idle_callback(enabled ? kosh_idle_callback : nullptr, IDLE_DELAY_MS,
-                         IDLE_REPEAT_MS);
+  COMPLETION_SESSION.should_show_hints = should_show_hints;
+  COMPLETION_SESSION.should_show_diagnostics = should_show_diagnostics;
+  let const is_row_shown = should_show_hints || should_show_diagnostics;
+  ::tl_set_hint_callback(is_row_shown ? kosh_hint_callback : nullptr);
+  ::tl_set_idle_callback(is_row_shown ? kosh_idle_callback : nullptr,
+                         IDLE_DELAY_MS, IDLE_REPEAT_MS);
 }
 
 fn set_auto_pair(bool enabled) -> void { ::tl_set_auto_pair(enabled ? 1 : 0); }

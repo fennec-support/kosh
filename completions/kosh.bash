@@ -107,7 +107,7 @@ _kosh_set_complete ()
   local \
     option_names="allexport export-all notify errexit error-exit noglob no-glob \
 hashall keyword monitor noexec no-exec nounset no-unset verbose xtrace braceexpand \
-histexpand history history-prefix-search ignoreeof inline-hints auto-pair interactive-comments nolog space-after-completion transient-prompt extended-keys \
+histexpand history history-prefix-search ignoreeof interactive-hints interactive-diagnostics auto-pair interactive-comments nolog space-after-completion transient-prompt extended-keys \
 noclobber no-clobber errtrace physical functrace onecmd pipefail failglob koshkit vi emacs \
 posix show-ast show-lexed-words show-exit-code show-all-exit-codes mimicry extended-arithmetic annoying-diagnostics \
 show-stats no-diagnostics show-memory login rcfile"

@@ -548,14 +548,16 @@ else
 	install -m 644 $(COMMAND_MANPAGE) "$(DESTDIR)$(mandir)/kosh.1"
 	install -m 644 $(CONFIGURATION_MANPAGE) "$(DESTDIR)$(man5dir)/kosh.5"
 	install -m 644 $(BASH_COMPLETION_FILE) "$(DESTDIR)$(bashcompdir)/kosh"
+	ln -sf kosh "$(DESTDIR)$(bindir)/koshkit"
 	for mood in $(INSTALL_MOOD_SYMLINKS); do \
 		ln -sf kosh "$(DESTDIR)$(bindir)/$$mood"; \
 	done
-	echo "Installed kosh, its manual pages, and its bash completion under '$(DESTDIR)$(PREFIX)'."
+	echo "Installed kosh, the koshkit link, its manual pages, and its bash completion under '$(DESTDIR)$(PREFIX)'."
 endif
 
 uninstall:
 	rm -f "$(DESTDIR)$(bindir)/kosh"
+	rm -f "$(DESTDIR)$(bindir)/koshkit"
 	rm -f "$(DESTDIR)$(mandir)/kosh.1"
 	rm -f "$(DESTDIR)$(man5dir)/kosh.5"
 	rm -f "$(DESTDIR)$(bashcompdir)/kosh"

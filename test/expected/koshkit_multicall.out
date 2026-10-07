@@ -27,6 +27,15 @@ note: Use a non-negative number with an optional `s`, `m`, `h`, or `d` suffix, s
      1 |  tabs 4,nope
        |       ^~~~~~
 note: use a named template or comma-separated positive decimal columns, with + for relative stops.
+--- a binary named koshkit runs the utility its first operand names ---
+1
+2
+rc=0
+--- a binary named koshkit passes the rest to the utility ---
+1:6: error: tail: Unknown flag '--bogus'.
+--- a binary named koshkit without a utility acts as the builtin ---
+1
+rc=1
 == a symlink was installed for head:
 head-linked
 == a symlinked head routes its own -c flag to the utility:

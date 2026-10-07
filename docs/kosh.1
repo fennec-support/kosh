@@ -1737,7 +1737,18 @@ whoami, xargs, and yes.
 The command
 .BI "koshkit \-\-assimilate " DIR
 installs one symlink per utility into DIR. When direct koshkit lookup is
-enabled, a PATH program takes precedence over a bundled utility.
+enabled, a PATH program takes precedence over a bundled utility. The shell
+started under a utility name runs that utility. Started as
+.BR koshkit ,
+the link that
+.B make install
+places next to
+.BR kosh ,
+it runs the utility its first operand names, such as
+.BR "koshkit ls \-l" ,
+and otherwise acts as the koshkit builtin, so
+.B koshkit \-\-list
+lists the utilities.
 .TP
 .B basename
 The final path component is printed. An optional suffix operand is removed.
@@ -2935,8 +2946,11 @@ and
 the replace key
 .BR r ,
 and the colon command line. A key typed fast enough to arrive with the prefix
-is read at once without drawing the row. The row is the inline hint row, so
-.B set +o inline-hints
+is read at once without drawing the row. The row is the hint row, so turning
+off both
+.B interactive-hints
+and
+.B interactive-diagnostics
 turns these off too.
 .PP
 Ctrl\-Z undoes while the editor reads a line, the same as Ctrl\-_. A program
@@ -3023,8 +3037,8 @@ after 8 seconds or when the line is submitted, and a later pause tries it once
 more before it counts as missing. Every other manual page and help output is
 loaded at most once per session, and a missing page or an untrusted program
 is remembered as missing. The
-.B set \+o inline-hints
-command turns the hint row off and stops the loads, and the option is on by
+.B set +o interactive-hints
+command turns these hints off and stops the loads, and the option is on by
 default.
 .PP
 In the same pause, a line that parses is analyzed as Enter would analyze it in
@@ -3033,6 +3047,12 @@ finding, such as
 .BR "An unquoted variable can split into words and expand globs. (SC2086)" ,
 in place of the synopsis until the line changes. This analysis follows no sourced
 file and resolves no command name, so it reads no file and searches no PATH.
+The finding and the syntax problem below follow
+.BR interactive-diagnostics ,
+which
+.B set +o interactive-diagnostics
+turns off; the option is on by default and is independent of
+.BR interactive-hints .
 .PP
 When the line has a syntax problem that running it would report, the same row
 shows that problem in place of the synopsis, in the same dim style. The line is
@@ -3078,9 +3098,9 @@ the whole buffer on Enter and has no continuation prompt, so an open construct
 is an error even when a later line would close it, except after a trailing
 backslash, which joins the next row and shows nothing. The error shows with the
 caret anywhere, including at the end of the word it starts in. A line over 2048
-bytes shows nothing. The row
+bytes shows nothing. The problem
 follows
-.BR inline-hints .
+.BR interactive-diagnostics .
 .PP
 The
 .B set \-o auto-pair

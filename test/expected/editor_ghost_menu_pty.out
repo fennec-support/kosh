@@ -114,7 +114,9 @@ auto-pair-steps-over-closer PASS
 auto-pair-backspace-deletes-pair PASS
 auto-pair-quote-after-word-stays-single PASS
 option-off-hides-hint PASS
+hints-off-keeps-diagnostic PASS
 option-off-hides-diagnostic PASS
+diagnostics-off-keeps-hint PASS
 narrow-startup-prompt PASS
 narrow-menu-help-wraps-between-items PASS
 narrow-menu-escape-closes PASS

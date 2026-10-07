@@ -50,6 +50,9 @@ top to bottom: each step depends on the ones above it. Repositories live under
       resets `pkgrel` when the version changes. Commit the result.
 - [ ] Once the release carries the `FORTIFY_FLAGS` change in `src/Makefile`,
       delete the `_FORTIFY_SOURCE` workaround in the PKGBUILD's `build()`.
+- [ ] Once the release runs as `koshkit` from a link of that name, add
+      `ln -s kosh "$pkgdir/usr/bin/koshkit"` to both recipes' `package()`,
+      matching `make install`.
 - [ ] **AUR** (`kosh-shell`, no review): copy `PKGBUILD` and
       `kosh-shell.install` into the AUR clone, run
       `makepkg --printsrcinfo > .SRCINFO`, build once with `makepkg`, and push.

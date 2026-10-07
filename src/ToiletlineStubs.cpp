@@ -528,7 +528,11 @@ fn set_space_after_completion(bool enabled) -> void { unused(enabled); }
 
 fn set_history_prefix_search(bool enabled) -> void { unused(enabled); }
 
-fn set_inline_hints(bool enabled) -> void { unused(enabled); }
+fn set_hint_row(bool should_show_hints, bool should_show_diagnostics) -> void
+{
+  unused(should_show_hints);
+  unused(should_show_diagnostics);
+}
 
 fn set_auto_pair(bool enabled) -> void { unused(enabled); }
 

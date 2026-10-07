@@ -840,7 +840,7 @@ def run_checks(binary, directory, command_directory, report):
         session.send(b"set +o auto-pair\r")
         session.wait_until(is_line(""))
 
-        session.send(b"set +o inline-hints\r")
+        session.send(b"set +o interactive-hints\r")
         session.wait_until(is_line(""))
         session.send(b"cat ")
         session.wait_until(is_line("cat"))
@@ -849,10 +849,26 @@ def run_checks(binary, directory, command_directory, report):
         clear_line(session)
 
         type_text(session, b'echo "abc')
+        report.record("hints-off-keeps-diagnostic", session,
+                      has_hint("Unterminated"))
+        clear_line(session)
+
+        session.send(b"set +o interactive-diagnostics\r")
+        session.wait_until(is_line(""))
+        type_text(session, b'echo "abc')
         session.wait_until(is_line('echo "abc'))
         session.pump(0.3)
         report.record("option-off-hides-diagnostic", session,
                       is_without_hint('echo "abc'))
+        clear_line(session)
+
+        session.send(b"set -o interactive-hints\r")
+        session.wait_until(is_line(""))
+        type_text(session, b'cat "abc')
+        session.pump(0.3)
+        report.record("diagnostics-off-keeps-hint", session,
+                      lambda screen: screen.get_hint() != ""
+                      and "Unterminated" not in screen.get_hint())
         clear_line(session)
 
         session.send(CTRL_D)

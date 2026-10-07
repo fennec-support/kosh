@@ -1383,8 +1383,10 @@ static fn configure_line_editor(EvalContext &context) throws -> void
   toiletline::set_history_prefix_search(
       context.runtime_state().option_is_enabled(
           shell_option_id::HistoryPrefixSearch));
-  toiletline::set_inline_hints(
-      context.runtime_state().option_is_enabled(shell_option_id::InlineHints));
+  toiletline::set_hint_row(context.runtime_state().option_is_enabled(
+                               shell_option_id::InteractiveHints),
+                           context.runtime_state().option_is_enabled(
+                               shell_option_id::InteractiveDiagnostics));
   toiletline::set_auto_pair(
       context.runtime_state().option_is_enabled(shell_option_id::AutoPair));
   toiletline::set_history_limit(
@@ -1692,7 +1694,9 @@ fn kosh_main(int argc, char **argv) -> int
   koshka::os::register_platform_flags(FLAG_LIST);
 
   /* A symlink or rename to a koshkit utility name runs that utility directly,
-     before any flag parsing, so `ls -l` reaches ls and its own flag parser. */
+     before any flag parsing, so `ls -l` reaches ls and its own flag parser. A
+     link named koshkit takes the utility name from its first operand. */
+  let is_koshkit_invocation = false;
   if (argc > 0) {
     koshka::StringView invocation =
         koshka::Path::invocation_filename(koshka::StringView{argv[0]}, true);
@@ -1701,6 +1705,12 @@ fn kosh_main(int argc, char **argv) -> int
         koshka::os::normalize_program_name(invocation_name);
     invocation =
         invocation_name.substring_of_length(0, invocation_info.stem_length);
+    is_koshkit_invocation = invocation == "koshkit";
+    int first_operand_index = 1;
+    if (is_koshkit_invocation && argc > 1) {
+      invocation = koshka::StringView{argv[1]};
+      first_operand_index = 2;
+    }
 
     if (let const chosen_utility = koshka::koshkit::find_util(invocation);
         chosen_utility.has_value())
@@ -1725,13 +1735,31 @@ fn kosh_main(int argc, char **argv) -> int
       context.arena_store().set_function_arena(&function_arena);
 
       koshka::ArrayList<koshka::String> operands{koshka::heap_allocator()};
-      operands.reserve(static_cast<usize>(argc - 1));
-      for (int i = 1; i < argc; i++)
+      operands.reserve(static_cast<usize>(argc - first_operand_index));
+      for (int i = first_operand_index; i < argc; i++)
         operands.push(koshka::String{koshka::StringView{argv[i]}});
 
       return static_cast<int>(koshka::koshkit::run_as_multicall(
           invocation, *chosen_utility, steal(operands), context));
     }
+  }
+
+  /* A link named koshkit whose first operand is not a utility, such as --list
+     or no operand at all, runs the koshkit builtin with every operand. */
+  let koshkit_argv = koshka::ArrayList<char *>{koshka::heap_allocator()};
+  if (is_koshkit_invocation) {
+    static char COMMAND_FLAG[] = "-c";
+    static char COMMAND_TEXT[] = "koshkit \"$@\"";
+    static char COMMAND_NAME[] = "koshkit";
+    koshkit_argv.push(argv[0]);
+    koshkit_argv.push(COMMAND_FLAG);
+    koshkit_argv.push(COMMAND_TEXT);
+    koshkit_argv.push(COMMAND_NAME);
+    for (int i = 1; i < argc; i++)
+      koshkit_argv.push(argv[i]);
+    koshkit_argv.push(nullptr);
+    argc = static_cast<int>(koshkit_argv.count()) - 1;
+    argv = koshkit_argv.begin();
   }
 
   let line = koshka::command_line{argc, argv};
