@@ -58,3 +58,6 @@ echo "== a configured bash mood sources the bash rc:"
 printf 'echo bashrc-ran\n' >"$home/.bashrc"
 printf 'mood=bash\n' >"$conf"
 "$BIN" -i <"$TEST_NULL_DEVICE" 2>/dev/null | grep -c bashrc-ran
+echo "== an inherited KOSH_HISTORY_SIZE is the history.size option:"
+printf 'mood=kosh\n' >"$conf"
+KOSH_HISTORY_SIZE=77 "$BIN" -c 'koshconf get history.size; (koshconf get history.size) & wait "$!"'

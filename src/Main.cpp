@@ -1057,10 +1057,7 @@ static fn seed_session_variables(EvalContext &context,
       context.set_shell_variable("KOSH_HISTORY_FILE", history_path->text());
     }
   }
-  if (!context.variable_store()
-           .shell_variables()
-           .find("KOSH_HISTORY_SIZE")
-           .has_value())
+  if (!context.get_variable_value("KOSH_HISTORY_SIZE").has_value())
     context.set_shell_variable("KOSH_HISTORY_SIZE", "4096");
   context.mark_exported("KOSH_HISTORY_FILE");
   context.mark_exported("KOSH_HISTORY_SIZE");

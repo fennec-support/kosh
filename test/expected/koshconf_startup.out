@@ -50,3 +50,6 @@ rc=0
 0
 == a configured bash mood sources the bash rc:
 1
+== an inherited KOSH_HISTORY_SIZE is the history.size option:
+77
+77
