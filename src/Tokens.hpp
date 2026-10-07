@@ -741,6 +741,15 @@ inline constexpr static_string_entry<Token::Kind> KEYWORD_ENTRIES[] = {
 
 inline constexpr StaticStringMap KEYWORDS{KEYWORD_ENTRIES};
 
+inline constexpr PackedStringKey BASH_KEYWORD_KEYS[] = {
+    SSK("[["),
+    SSK("]]"),
+    SSK("coproc"),
+    SSK("select"),
+};
+
+inline constexpr StaticStringSet BASH_KEYWORDS{BASH_KEYWORD_KEYS};
+
 pure inline fn token_kind_is_keyword(Token::Kind kind) wontthrow -> bool
 {
   return kind >= Token::Kind::If && kind <= Token::Kind::Function;

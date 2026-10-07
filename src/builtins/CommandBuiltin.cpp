@@ -97,7 +97,8 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
         continue;
       }
 
-      if (utils::is_posix_reserved_word(name.view())) {
+      if (name_is_keyword_in_mood(name.view(), cxt.runtime_state().get_mood()))
+      {
         ec.print_to_stdout(is_verbose ? name + " is a shell keyword\n"
                                       : name + "\n");
         did_find_any = true;

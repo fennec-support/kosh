@@ -112,18 +112,7 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     Maybe<String> alias_value;
     Maybe<Builtin::Kind> builtin_kind;
     bool is_bundled_utility = false;
-    let const catalog_keyword = KEYWORDS.find(name.view());
-    let const is_catalog_keyword =
-        catalog_keyword.has_value() &&
-        !(*catalog_keyword == Token::Kind::Time && is_posix_report) &&
-        !(*catalog_keyword == Token::Kind::Function && is_posix_report);
-    let const is_bash_keyword_name =
-        cxt.runtime_state().get_mood() != mimic_mood::Posix &&
-        (name.view() == "[[" || name.view() == "]]" || name.view() == "select");
-
-    if (utils::is_posix_reserved_word(name.view()) || is_catalog_keyword ||
-        is_bash_keyword_name)
-    {
+    if (name_is_keyword_in_mood(name.view(), cxt.runtime_state().get_mood())) {
       word = "keyword";
     } else if (let const alias = cxt.scope_store().get_alias(name.view());
                alias.has_value())

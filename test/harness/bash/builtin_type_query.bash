@@ -58,3 +58,14 @@ f() { :; }
 type -t f
 type -t totally_nonexistent_xyz_cmd
 echo "notfound rc=$?"
+
+# The parser reads coproc, select, and the double brackets as keywords, so type,
+# command, and compgen report them with the lexer keywords.
+type coproc
+type -t coproc
+type -a coproc
+command -V coproc select '[[' time function
+command -v coproc
+compgen -k co
+compgen -k s
+compgen -k | grep -c -x -e coproc -e select -e '\[\[' -e ']]' -e in -e '{' -e '}' -e '!'

@@ -75,6 +75,20 @@ pure fn builtin_is_hidden_by_mood(Builtin::Kind kind, mimic_mood mood) wontthrow
   return kind == Builtin::Kind::Let || kind == Builtin::Kind::Time;
 }
 
+pure fn name_is_keyword_in_mood(StringView name, mimic_mood mood) wontthrow
+    -> bool
+{
+  if (utils::is_posix_reserved_word(name)) return true;
+
+  let const is_posix = mood == mimic_mood::Posix;
+  if (let const keyword = KEYWORDS.find(name); keyword.has_value()) {
+    return !is_posix ||
+           (*keyword != Token::Kind::Time && *keyword != Token::Kind::Function);
+  }
+
+  return !is_posix && BASH_KEYWORDS.contains(name);
+}
+
 /* The per-kind flag lists, a zero-initialized table immune to static-init
    order, filled by each builtin file's registrar after its FLAG_LIST is
    built, since both sit in the same translation unit in order. */

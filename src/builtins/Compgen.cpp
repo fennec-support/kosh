@@ -360,6 +360,15 @@ static fn run_compgen_actions(EvalContext &cxt, u32 action_mask,
   if (do_wants(compgen_action::Keyword)) {
     for (let const &name : keyword_names())
       emitter.push_prefixed(name.view());
+
+    static constexpr StringView RESERVED_SYMBOL_WORDS[] = {"in", "{", "}", "!"};
+    for (let const word : RESERVED_SYMBOL_WORDS)
+      emitter.push_prefixed(word);
+
+    if (cxt.runtime_state().get_mood() != mimic_mood::Posix) {
+      for (let const &key : BASH_KEYWORD_KEYS)
+        emitter.push_prefixed(key.to_string().view());
+    }
   }
 
   if (do_wants(compgen_action::Service)) {

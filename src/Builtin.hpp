@@ -333,6 +333,9 @@ Maybe<Builtin::Kind> search_builtin(StringView builtin_name) throws;
 pure fn builtin_is_hidden_by_mood(Builtin::Kind kind, mimic_mood mood) wontthrow
     -> bool;
 
+pure fn name_is_keyword_in_mood(StringView name, mimic_mood mood) wontthrow
+    -> bool;
+
 /* True when the name is one of the POSIX special builtins, the set whose prefix
    assignments persist after the command and whose errors abort a
    non-interactive shell. The test is by name rather than by kind, since : is
