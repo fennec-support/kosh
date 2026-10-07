@@ -1509,8 +1509,12 @@ hot fn Parser::parse_simple_command(const Token *leading_token) throws
       Token *next = m_lexer.peek_shell_token();
       ASSERT(next != nullptr);
 
+      let const operator_length =
+          a->get_update_mode() == assignment_update_mode::Append ? 2 : 1;
+      let const has_empty_value =
+          a->source_location().length == a->key().count() + operator_length;
       let const is_array_assignment =
-          next->kind() == Token::Kind::LeftParen &&
+          next->kind() == Token::Kind::LeftParen && has_empty_value &&
           next->source_location().position ==
               a->source_location().position + a->source_location().length;
 

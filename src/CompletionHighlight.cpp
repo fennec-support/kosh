@@ -1337,6 +1337,13 @@ fn internal::scan_highlight_range(
       } else if (d == '\\' && i + 1 < end) {
         word_has_shell_syntax = true;
         i += 2;
+      } else if (lexer::is_extglob_operator(d) && i + 1 < end &&
+                 line[i + 1] == '(')
+      {
+        word_has_shell_syntax = true;
+        let const group_end = lexer::scan_balanced_shell_region(
+            line.substring_of_length(0, end), i + 2, ')');
+        i = group_end.value_or(end);
       } else {
         i++;
       }
