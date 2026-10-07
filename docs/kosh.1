@@ -246,10 +246,10 @@ completion script is not loaded.
 The shell becomes restricted after the startup files finish.
 .TP
 .BR \-p ", " \-\-privileged
-Privileged mode is enabled. BASH_ENV is not sourced, and a KOSHCONF variable in
-the environment is ignored and removed, the way bash ignores SHELLOPTS and
-BASHOPTS. The settings files are still read. When the real and effective ids
-differ, every startup file and settings file is skipped. Elevated ids are retained
+Privileged mode is enabled. BASH_ENV is not sourced. KOSHCONF from the
+environment is ignored and removed. The settings files are still read. When
+the real and effective ids differ, every startup file and settings file is
+skipped. Elevated ids are retained
 only when this option is present. The state is exposed through
 .BR $\- ,
 .BR SHELLOPTS ,
@@ -692,12 +692,11 @@ when asked for another value, and accept the value the mood already holds, so
 still runs. A function defined in another mood cannot relax them for a caller
 in the
 .B kosh
-mood. Every other option that changes evaluation stays toggleable in the
+mood. Every other option that changes evaluation remains toggleable in the
 .B kosh
-mood, because it has no stricter value that ordinary scripts can live with:
-errexit aborts on failures that scripts test on purpose, noclobber and noglob
-forbid ordinary file and pattern use, and xtrace, verbose, allexport, and the
-remaining Bash options select behavior rather than strictness. In the
+mood. Errexit aborts failures that scripts test, noclobber and noglob prevent
+ordinary file and pattern use, and xtrace, verbose, allexport, and the other
+Bash options select behavior. In the
 .BR bash ,
 .BR bash-posix ,
 and
@@ -1118,7 +1117,7 @@ A clean, rescue, lint, format, or language server shell skips every startup
 file and every configuration file, and so does
 .BR \-Q .
 A shell whose real and effective identities differ skips them too. A fresh
-evaluator receives its parent's settings instead of reading them. The
+evaluator inherits its parent's settings. The
 privileged option suppresses ENV and BASH_ENV processing. Restricted mode is
 visible while startup files run. Its restrictions become active after startup
 finishes.
@@ -3679,9 +3678,9 @@ restores the typed text. An empty line steps through the whole history. The
 command turns this off, and the option is on by default.
 .PP
 Once the cursor is past the command word, the rows directly below the input
-show a dimmed hint for the command. The command is the one of the pipeline
-segment, list element, or command substitution under the cursor, not only the
-first one on the line. A hint is a header row that names its kind and a body
+show a dimmed hint for the command. The hint names the command in the pipeline
+segment, list element, or command substitution under the cursor. A hint is a
+header row that names its kind and a body
 under it. The body is the synopsis of a builtin under
 .BR "builtin synopsis" ,
 of a bundled koshkit utility under
@@ -3692,10 +3691,10 @@ and of a subcommand such as
 .B git commit
 under
 .B "subcommand synopsis"
-when its own manual page or help output is known. It becomes the description
-of the flag under the cursor, under
-.BR flag ,
-when the cursor is inside a flag, led by the flag forms with their value name,
+when its own manual page or help output is known. When the cursor is inside a
+flag, the hint uses the flag description under the
+.BR flag
+header and starts with the flag forms and value name,
 such as
 .BR "\-f, \-\-file=FILE" .
 An alias shows its definition as
@@ -3711,9 +3710,9 @@ under
 or its definition on one line when it was defined at the prompt. Every row is
 indented by two columns. The header is cut with an ellipsis at the terminal
 width, and the body wraps at spaces onto at most three rows, the last of which
-is cut with an ellipsis. The input never scrolls off the screen for a hint: a
-terminal too short for the input and every row shows fewer body rows, then the
-body alone on one row, then no hint. The rows are hidden while a completion
+is cut with an ellipsis. If the terminal is too short for the input and all
+hint rows, the editor drops body rows, then shows only the body on one row,
+then hides the hint. The rows are hidden while a completion
 menu or history search is open and erased when the line is submitted. A
 keystroke reads only data already loaded, and it never runs
 .BR man
@@ -4809,7 +4808,7 @@ id. A subshell that is the last command of an already forked substitution,
 subshell, pipeline stage, or background job runs in that process without
 another fork, so
 .B BASHPID
-inside it repeats the value of the process around it. These names are
+inside it repeats the value of the enclosing process. These names are
 unavailable in the
 .B sh
 mood.

@@ -1329,8 +1329,8 @@ generate_spec_candidates(completion_spec &active_spec,
   context.execution_store().should_mark_completion_directories() =
       should_mark_file_names;
   if (for_listing && !active_spec.function_name.is_empty()) {
-    /* A cobra-style function truncates its description to COLUMNS, so the
-       width is set wide for the run and restored after. */
+    /* A completion function may truncate its description to COLUMNS. The
+       listing temporarily widens COLUMNS and restores it afterward. */
     let const saved_columns = context.get_variable_value("COLUMNS");
     context.set_shell_variable("COLUMNS", "100000");
     defer

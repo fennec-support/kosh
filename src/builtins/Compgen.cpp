@@ -2,8 +2,8 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements and is responsible for the compgen builtin and the
- * action, glob, and filter generators that complete specs share with it. Each
+ * This file implements the compgen builtin and the action, glob, and filter
+ * generators that completion specs share with it. Each
  * requested action contributes its own candidates in the bash action order,
  * and the glob and the word list are appended after them. The generators
  * either print for compgen or collect the candidates for a completion spec.

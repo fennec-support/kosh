@@ -223,8 +223,8 @@ static fn manpath_argv_for(EvalContext &context) throws
   return argv;
 }
 
-/* None is a killed or failed run, which is retried on a later request until
-   its attempts run out. */
+/* A killed or failed run returns no output. The next request retries it until
+   the attempt limit. */
 static fn settle_manpath_output(Maybe<String> output) throws -> void
 {
   if (output.has_value()) {
@@ -243,8 +243,8 @@ static fn settle_manpath_output(Maybe<String> output) throws -> void
   MANPAGE_CACHE.was_manpath_settled = true;
 }
 
-/* The fork happens once and the output is cached for the session. A run the
-   idle hook started is adopted rather than forked again. */
+/* The first fork's output is cached for the session. The idle hook's running
+   process is adopted. */
 static fn manpath_command_output(EvalContext &context) throws -> StringView
 {
   if (MANPAGE_CACHE.was_manpath_settled)
@@ -407,8 +407,8 @@ fn ManpageCache::scan_next_subcommand_directory(EvalContext &context) throws
   finish_subcommand_index();
 }
 
-/* The tail is a subcommand only when the head page exists too, so xdg-open
-   invents no xdg, and a digit-leading version tail is none. */
+/* A tail is a subcommand only when its head page exists. This excludes
+   xdg-open and tails that start with a digit. */
 fn ManpageCache::finish_subcommand_index() throws -> void
 {
   subcommand_index.clear();
@@ -541,8 +541,8 @@ static fn usage_line_of_help(StringView text) throws -> String
   return String{heap_allocator()};
 }
 
-/* is_read_allowed is false on the ghost path, which trusts a cached verdict
-   rather than scan a page on a keystroke. */
+/* The ghost path sets is_read_allowed to false and uses the cached verdict, so
+   a keystroke does not scan a page. */
 static fn man_subcommand_page_is_valid(StringView command,
                                        StringView subcommand,
                                        bool is_read_allowed) throws -> bool
@@ -613,7 +613,8 @@ static fn is_first_argument_token(StringView line, usize token_start) wontthrow
   return true;
 }
 
-/* None when the line has no completed second word or it opens with a dash. */
+/* Returns None when the line has no completed second word or when that word
+   starts with a dash. */
 fn internal::second_word_of(StringView line) wontthrow -> Maybe<StringView>
 {
   let const command = command_word_of(line);
@@ -1692,8 +1693,8 @@ static fn locate_hint_target(StringView line, usize cursor) throws
   return target;
 }
 
-/* The header row of each hint, which names the kind of word the body below it
-   describes. The editor puts the header before the first line break. */
+/* Each hint begins with a header naming the kind of word described by its body.
+   The editor places the header before the first line break. */
 static constexpr StringView FUNCTION_HINT_HEADER{"function synopsis\n"};
 static constexpr StringView ALIAS_HINT_HEADER{"alias synopsis\n"};
 static constexpr StringView FLAG_HINT_HEADER{"flag\n"};

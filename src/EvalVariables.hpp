@@ -321,9 +321,9 @@ inline constexpr static_string_entry<shell_variable_description>
           shell_variable_fact::Dynamic | shell_variable_fact::ReadOnly |
               shell_variable_fact::Exported}                                  },
         {SSK("KOSHCONF"),
-         {"The value is the base64 binary form of the mood and the "
-          "interactive options, which koshconf load or a KOSHCONF variable in "
-          "the environment of another kosh applies. An assignment is "
+         {"The value is the base64 binary form of the mood and interactive "
+          "options. Another kosh shell applies it with koshconf load or from "
+          "its KOSHCONF environment variable. An assignment is "
           "discarded, and the variable is never exported by itself.",
           shell_variable_fact::Dynamic}                                       },
 

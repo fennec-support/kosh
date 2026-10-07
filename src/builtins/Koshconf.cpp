@@ -166,7 +166,8 @@ fn run_set(const ExecContext &ec, EvalContext &cxt,
         StringView{"The '"} + option->koshconf_name +
             "' option depends on how the shell started, so --persist cannot "
             "write it",
-        "Read-only, invocation, and session options stay out of the file");
+        "Read-only, invocation-only, and session-dependent options are not "
+        "written to the file");
     return 1;
   }
 

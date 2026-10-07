@@ -1,8 +1,9 @@
 # Release checklist
 
-One pass from a green staging branch to every channel users install from. Work
-top to bottom: each step depends on the ones above it. Repositories live under
-`github.com/fennec-support` unless noted.
+This checklist takes a green staging branch through every channel from which
+users install. Complete the steps in order because each step depends on the
+preceding steps. Repositories live under `github.com/fennec-support` unless
+noted.
 
 ## 1. Before tagging
 
@@ -44,19 +45,19 @@ top to bottom: each step depends on the ones above it. Repositories live under
 
 ## 4. Distribution recipes (`deploy/`)
 
-- [ ] `scripts/update-package-recipes.sh` (or with the tag as its operand). It
-      pins the release commit and time, the toiletline commit, and both SHA-512
-      sums in `deploy/archlinux/PKGBUILD` and `deploy/alpine/APKBUILD`, and
-      resets `pkgrel` when the version changes. The tag goes to `_tag`, and
-      `pkgver` drops a leading `v` and spells a pre-release such as
-      `0.2.0-rc1` as `0.2.0_rc1`; any other hyphenated tag is refused.
-      Commit the result.
+- [ ] Run `scripts/update-package-recipes.sh` with the tag as its operand when
+      needed. The script pins the release commit and time, the toiletline
+      commit, and both SHA-512 sums in `deploy/archlinux/PKGBUILD` and
+      `deploy/alpine/APKBUILD`. It resets `pkgrel` when the version changes,
+      stores the tag in `_tag`, removes a leading `v` from `pkgver`, and spells
+      a pre-release such as `0.2.0-rc1` as `0.2.0_rc1`. Any other hyphenated tag
+      is refused. Commit the result.
 - [ ] Once the release carries the `FORTIFY_FLAGS` change in `src/Makefile`,
       delete the `_FORTIFY_SOURCE` workaround in the PKGBUILD's `build()`.
 - [ ] Once the release runs as `koshkit` from a link of that name, add
       `ln -s kosh "$pkgdir/usr/bin/koshkit"` to both recipes' `package()`,
       matching `make install`.
-- [ ] **AUR** (`kosh-shell`, no review): copy `PKGBUILD` and
+- [ ] **AUR** (`kosh-shell`): copy `PKGBUILD` and
       `kosh-shell.install` into the AUR clone, run
       `makepkg --printsrcinfo > .SRCINFO`, build once with `makepkg`, and push.
 - [ ] **Alpine aports**: the maintainer named in the APKBUILD opens or updates

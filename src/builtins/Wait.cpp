@@ -24,7 +24,7 @@ HELP_DESCRIPTION_DECL("The wait builtin blocks until the named jobs finish.");
 FLAG(WAIT_NEXT, Bool, 'n', "",
      "Wait for the next of the named jobs, or of every job, to finish.");
 FLAG(WAIT_FORCE, Bool, 'f', "",
-     "Wait for each job to terminate rather than to stop.");
+     "Wait for each job to terminate, including jobs that stop.");
 FLAG(WAIT_PID_VARIABLE, String, 'p', "",
      "Store the process id whose status is returned in the variable.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");

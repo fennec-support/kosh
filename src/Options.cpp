@@ -409,8 +409,8 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
          entry_shape{"hashall",
                      {},
                      {},
-                     "Report command path hashing as on. Koshka caches "
-                     "command paths either way.",
+                     "Report command path hashing as enabled. Koshka caches "
+                     "command paths whether this option is enabled or disabled.",
                      'h'},
          true),
     flag(69, "legacy.assignments_anywhere_in_command", SEMANTIC,
@@ -568,7 +568,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
               enum_values(EDITOR_MODE_VALUE_NAMES)),
     session_dependent(special(
         flag(89, "legacy.posix_mode", SEMANTIC, NO_SHELL_OPTION,
-             entry_shape{"posix", {}, {}, "Switch to the bash posix mood."},
+             entry_shape{"posix", {}, {}, "Switch to the bash-posix mood."},
              false),
         option_storage::Posix)),
 
@@ -666,8 +666,8 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                false),
     shopt_flag(151, "legacy.history_verify_expansion_before_running",
                INTERACTIVE, "histverify",
-               "Load an expanded history reference into the editor "
-               "instead of running it.",
+               "Load an expanded history reference into the editor. The shell "
+               "runs it after the user accepts it.",
                false, false),
     shopt_flag(152, "legacy.completion_hostnames_after_at", INTERACTIVE,
                "hostcomplete", "Complete host names after an @ in a word.",
@@ -723,8 +723,8 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                false, false),
     fixed_in_kosh(shopt_flag(164, "legacy.glob_no_match_expands_to_nothing",
                              SEMANTIC, "nullglob",
-                             "Remove a glob that matches nothing instead of "
-                             "keeping it as written.",
+                             "Remove a glob that matches nothing. With this "
+                             "option off, the unmatched glob remains unchanged.",
                              false, false),
                   0),
     shopt_flag(165, "legacy.pattern_substitution_ampersand_is_match", SEMANTIC,
@@ -733,7 +733,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                "match.",
                true, true),
     shopt_flag(166, "legacy.completion_programmable", INTERACTIVE, "progcomp",
-               "Use the completion specifications that complete defines.", true,
+               "Use the completion specifications defined by complete.", true,
                true),
     shopt_flag(167, "legacy.completion_programmable_follows_aliases",
                INTERACTIVE, "progcomp_alias",

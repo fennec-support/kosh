@@ -343,7 +343,7 @@
     if [ -n "${IS_CURRENT:-}" ]
     then
       say "Kosh $INSTALLED_VERSION is already installed:" "$INSTALLED"
-      line "*pats you gently* You are up to date with $VERSION. Nothing to do."
+      line "You are up to date with $VERSION. Nothing to do."
       line "Pass --force to install it again."
       exit 0
     fi
@@ -483,5 +483,4 @@
     ;;
   esac
 }
-
 

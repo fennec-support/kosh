@@ -4,13 +4,14 @@ kosh.conf \- Koshka settings files and the KOSHCONF encoding
 .SH DESCRIPTION
 The settings Koshka owns live in koshconf files. They hold option values, not
 shell commands. A shell reads them before any shell startup file, whether or
-not it is interactive, with these exceptions: a shell started with
+not it is interactive. A shell started with
 .BR \-Q ,
 a lint, format, or language server run, rescue mode, a shell whose real and
-effective ids differ, a fresh evaluator that receives its state from its
-parent, and the binary started as a koshkit utility or as
+effective ids differ, and a fresh evaluator that receives its state from its
+parent read no settings file and ignore KOSHCONF. A binary started as a
+koshkit utility or as
 .B koshkit
-read no settings file and ignore KOSHCONF. Privileged mode,
+also reads no settings file and ignores KOSHCONF. Privileged mode,
 .BR \-p ,
 reads the files but ignores KOSHCONF.
 .PP
@@ -24,7 +25,7 @@ or a shebang where the grammar matters.
 .B koshconf
 in
 .BR kosh (1)
-reads, changes, and writes them.
+reads, changes, and writes these settings.
 .PP
 Shell code that should run at startup belongs in the startup files of the
 .B bash
@@ -130,10 +131,10 @@ UTF-8 without a NUL byte. history.max_entries is a non-negative decimal
 integer.
 .B koshconf
 quotes a written value that starts with a quote or starts or ends with a blank.
-A value that holds a newline, or both quote characters and a reason to quote,
-cannot be written to a file, so
+A value containing a newline cannot be written to a file. A value containing
+both quote characters cannot be written when quoting is required.
 .B koshconf set \-\-persist
-rejects it before changing the session.
+rejects either value before changing the session.
 .B koshconf list
 shows such a value, and any value with a control byte or invalid UTF-8, in the
 .B $\(aq...\(aq
@@ -233,8 +234,9 @@ fails the ownership check under FILES, produce a warning. A line
 without an equals sign, an unknown option name, an invalid value, an unclosed
 quote, text after a closing quote, and an option a file cannot hold each
 produce a warning that names the file and line, and the line is skipped. A
-warning writes a control byte or an invalid UTF-8 byte of the file as an escape
-in its message and as a question mark in its source excerpt. A settings file
+The warning renders a control byte or invalid UTF-8 byte from the file as an
+escape in its message and as a question mark in the source excerpt. A settings
+file
 never stops the shell.
 .PP
 Shell startup files produce the ordinary shell diagnostics described in

@@ -2,7 +2,7 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements and is responsible for the compopt builtin. It turns
+ * This file implements the compopt builtin. It turns
  * the options of named completion specs or of the -D, -E, or -I spec on and
  * off, or those of the current completion inside a running completion
  * function, and prints them when no option is given.
@@ -176,8 +176,8 @@ fn Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let &execution = cxt.execution_store();
     if (!execution.completion_function_running()) {
       report_soft_builtin_error(ec, cxt,
-                                "No completion function is running, so a "
-                                "command name or -D, -E, or -I is required");
+                                "No completion function is running. A command "
+                                "name or -D, -E, or -I is required");
       return 1;
     }
 

@@ -1030,8 +1030,8 @@ static fn complete_glob(StringView token, const Path &base_directory,
 
 static pure fn token_is_variable(StringView token) wontthrow -> bool
 {
-  /* A slash after the reference makes it a variable-prefixed path, which the
-     filesystem completion expands to list while keeping the literal prefix. */
+  /* A slash after the reference marks a variable-prefixed path. Filesystem
+     completion lists the expanded path and preserves the literal prefix. */
   return !token.is_empty() && token[0] == '$' &&
          !os::has_directory_separator(token);
 }
@@ -1258,9 +1258,9 @@ fn complete(StringView line, usize cursor, EvalContext &context,
   let const line_end = replacement_token_end;
   if (cursor == token_start) replacement_token_end = cursor;
 
-  /* An option-value word such as --exit-node=host and an assignment word such
-     as name=value complete only the value after the equals sign, the way bash
-     splits on the equals through COMP_WORDBREAKS. */
+  /* For an option value such as --exit-node=host or an assignment such as
+     name=value, complete only the text after the equals sign. Bash does this
+     through COMP_WORDBREAKS. */
   let const is_option_value_word =
       !is_command && token.length >= 2 && token[0] == '-';
   if (is_option_value_word || lexer::word_looks_like_assignment(token)) {
