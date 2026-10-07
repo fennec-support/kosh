@@ -1701,30 +1701,52 @@ fn Parser::consume_bash_array_assignment() throws -> ArrayList<const Token *>
   ASSERT(open != nullptr);
   ASSERT(open->kind() == Token::Kind::LeftParen);
 
-  /* Every token inside the outermost pair is kept so bash mode expands them as
-     array elements, while POSIX mode discards the list. */
+  /* Every word up to the closing parenthesis is kept so bash mode expands them
+     as array elements, while POSIX mode discards the list. */
   ArrayList<const Token *> elements{heap_allocator()};
-  usize depth = 1;
   loop
   {
     Token *t = m_lexer.next_shell_token();
     ASSERT(t != nullptr);
-    if (t->kind() == Token::Kind::EndOfFile) {
+    switch (t->kind()) {
+    case Token::Kind::EndOfFile:
       throw ErrorWithLocation{open->source_location(),
                               "Unterminated array assignment, expected ')'"};
+    case Token::Kind::RightParen: return elements;
+    case Token::Kind::Newline: break;
+    case Token::Kind::LeftParen:
+    case Token::Kind::Semicolon:
+    case Token::Kind::DoubleSemicolon:
+    case Token::Kind::SemicolonAmpersand:
+    case Token::Kind::DoubleSemicolonAmpersand:
+    case Token::Kind::Ampersand:
+    case Token::Kind::DoubleAmpersand:
+    case Token::Kind::Pipe:
+    case Token::Kind::DoublePipe:
+    case Token::Kind::PipeAmpersand:
+    case Token::Kind::Greater:
+    case Token::Kind::DoubleGreater:
+    case Token::Kind::Less:
+    case Token::Kind::DoubleLess:
+    case Token::Kind::TripleLess:
+    case Token::Kind::AmpersandGreater:
+    case Token::Kind::AmpersandDoubleGreater: {
+      let const ast = t->to_ast_string();
+      let const message = "Unexpected '" + ast.view() +
+                          "' in an array assignment, expected a word";
+      let const is_arithmetic_shape =
+          elements.is_empty() && t->kind() == Token::Kind::LeftParen &&
+          t->source_location().position == open->source_location().position + 1;
+      if (is_arithmetic_shape) {
+        throw ErrorWithLocationAndDetails{
+            t->source_location(), message.view(),
+            "Write `(( name = expression ))` to assign arithmetic"};
+      }
+      throw ErrorWithLocation{t->source_location(), message.view()};
     }
-    if (t->kind() == Token::Kind::LeftParen) {
-      depth++;
-      elements.push(t);
-    } else if (t->kind() == Token::Kind::RightParen) {
-      depth--;
-      if (depth == 0) break;
-      elements.push(t);
-    } else {
-      if (t->kind() != Token::Kind::Newline) elements.push(t);
+    default: elements.push(t); break;
     }
   }
-  return elements;
 }
 
 } /* namespace koshka */

@@ -1095,6 +1095,8 @@ first byte of IFS.
 An indexed array is assigned with a=(x y z). An element is assigned with
 a[2]=z. The form a+=(w) appends elements. An opening parenthesis directly after
 a nonempty value, as in a=x(y) or a=\e<(y), is a syntax error in every mood.
+The list holds words, so a nested parenthesis, a control operator such as ;
+or |, or a redirection operator inside it is a syntax error, as in Bash.
 ${a[i]} reads an arithmetic subscript.
 ${a[@]} and ${a[*]} list elements. ${#a[@]} counts elements. ${!a[@]} lists
 indices. A negative index counts from the end. Sparse indices remain absent

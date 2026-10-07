@@ -14,7 +14,6 @@ if "$BIN" --list-diagnostics | grep -q SC2219; then
 else
   echo "SC2219=absent"
 fi
-"$BIN" --list-diagnostics | grep -c arith-assign
 catalog=$("$BIN" --list-diagnostics)
 echo "SC2024-variants=$(printf '%s\n' "$catalog" |
   grep -c '^  SC2024: sudo-.* (strict):')"

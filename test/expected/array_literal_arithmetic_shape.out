@@ -1,0 +1,7 @@
+3:4: error: Unexpected '(' in an array assignment, expected a word.
+     3 |  A=((2 + 2))
+       |     ^
+note: Write `(( name = expression ))` to assign arithmetic.
+4:5: error: Unexpected '(' in an array assignment, expected a word.
+     4 |  C=( (2) )
+       |      ^

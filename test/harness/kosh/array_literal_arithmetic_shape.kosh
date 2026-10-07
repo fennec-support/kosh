@@ -1,0 +1,4 @@
+#!/bin/env kosh
+echo unreached
+A=((2 + 2))
+C=( (2) )
