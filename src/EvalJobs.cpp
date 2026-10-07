@@ -22,38 +22,46 @@ fn JobTable::set_last_background_pid(i64 pid) wontthrow -> void
   m_last_background_pid = pid;
 }
 
-fn JobTable::remember_process_substitution_status(i64 process_id,
-                                                  i32 status) wontthrow -> void
+fn JobTable::remember_finished_status(i64 process_id, i32 status) wontthrow
+    -> void
 {
-  m_process_substitution_statuses[m_next_process_substitution_slot] =
-      finished_process_status{process_id, status};
-  m_next_process_substitution_slot = (m_next_process_substitution_slot + 1) %
-                                     REMEMBERED_PROCESS_SUBSTITUTION_COUNT;
-  if (m_process_substitution_status_count <
-      REMEMBERED_PROCESS_SUBSTITUTION_COUNT)
-  {
-    m_process_substitution_status_count++;
+  let const entry = finished_process_status{process_id, status};
+
+  if (m_finished_statuses.count() < REMEMBERED_FINISHED_STATUS_COUNT) {
+    try {
+      m_finished_statuses.push(entry);
+    } catch (...) {
+      LOG(Debug, "remembering the status of process %lld failed",
+          static_cast<long long>(process_id));
+
+      return;
+    }
+  } else {
+    m_finished_statuses[m_next_finished_status_slot] = entry;
   }
+
+  m_next_finished_status_slot =
+      (m_next_finished_status_slot + 1) % REMEMBERED_FINISHED_STATUS_COUNT;
 }
 
-pure fn JobTable::find_process_substitution_status(
-    i64 process_id) const wontthrow -> Maybe<i32>
+pure fn JobTable::find_finished_status(i64 process_id) const wontthrow
+    -> Maybe<i32>
 {
-  for (usize age = 1; age <= m_process_substitution_status_count; age++) {
-    let const slot = (m_next_process_substitution_slot +
-                      REMEMBERED_PROCESS_SUBSTITUTION_COUNT - age) %
-                     REMEMBERED_PROCESS_SUBSTITUTION_COUNT;
-    let const &entry = m_process_substitution_statuses[slot];
+  for (usize age = 1; age <= m_finished_statuses.count(); age++) {
+    let const slot =
+        (m_next_finished_status_slot + REMEMBERED_FINISHED_STATUS_COUNT - age) %
+        REMEMBERED_FINISHED_STATUS_COUNT;
+    let const &entry = m_finished_statuses[slot];
     if (entry.process_id == process_id) return entry.status;
   }
 
   return None;
 }
 
-fn JobTable::forget_process_substitution_statuses() wontthrow -> void
+fn JobTable::forget_finished_statuses() wontthrow -> void
 {
-  m_process_substitution_status_count = 0;
-  m_next_process_substitution_slot = 0;
+  m_finished_statuses.clear();
+  m_next_finished_status_slot = 0;
 }
 
 fn JobTable::take_snapshot() throws -> job_table_snapshot
@@ -86,11 +94,22 @@ fn JobTable::restore_snapshot(job_table_snapshot snapshot) throws -> void
   m_next_job_id = snapshot.next_job_id;
 }
 
+fn JobTable::claim_job_id() wontthrow -> i32
+{
+  i32 id = 1;
+  for (let const &existing : m_jobs)
+    if (existing.id >= id) id = existing.id + 1;
+
+  m_next_job_id = id + 1;
+
+  return id;
+}
+
 fn JobTable::register_job(os::process pid, StringView command,
                           i64 process_group_id) throws -> i32
 {
   let new_job = job{m_jobs.allocator()};
-  new_job.id = m_next_job_id++;
+  new_job.id = claim_job_id();
   new_job.pid = pid;
   new_job.process_id = os::process_id_of(pid);
   new_job.process_group_id = process_group_id;
@@ -108,7 +127,7 @@ fn JobTable::register_pipeline_job(const ArrayList<os::process> &processes,
                                    i64 process_group_id) throws -> i32
 {
   let new_job = job{m_jobs.allocator()};
-  new_job.id = m_next_job_id++;
+  new_job.id = claim_job_id();
   new_job.pid = primary_process;
   new_job.process_id = os::process_id_of(primary_process);
   new_job.process_group_id = process_group_id;
@@ -215,13 +234,15 @@ fn JobTable::update_jobs() throws -> void
   }
 }
 
-fn JobTable::wait_for_job_processes(job &job, bool *was_stopped) throws -> i32
+fn JobTable::wait_for_job_processes(job &job, bool *was_stopped,
+                                    bool should_wait_for_termination) throws
+    -> i32
 {
   if (job.state == job::State::Done) {
     if (was_stopped != nullptr) *was_stopped = false;
     return job.last_status;
   }
-  if (job.state == job::State::Stopped) {
+  if (job.state == job::State::Stopped && !should_wait_for_termination) {
     if (was_stopped != nullptr) *was_stopped = true;
     return job.stopped_status;
   }
@@ -234,7 +255,7 @@ fn JobTable::wait_for_job_processes(job &job, bool *was_stopped) throws -> i32
         if (was_stopped != nullptr) *was_stopped = false;
         return job.last_status;
       }
-      if (job.state == job::State::Stopped) {
+      if (job.state == job::State::Stopped && !should_wait_for_termination) {
         if (was_stopped != nullptr) *was_stopped = true;
         return job.stopped_status;
       }
@@ -289,6 +310,43 @@ fn JobTable::wait_for_job_processes(job &job, bool *was_stopped) throws -> i32
       if (was_stopped != nullptr) *was_stopped = false;
       return job.last_status;
     }
+  }
+}
+
+fn JobTable::wait_for_next_job(const ArrayList<i32> &job_ids,
+                               bool should_wait_for_termination) throws
+    -> next_job_wait
+{
+  loop
+  {
+    update_jobs();
+
+    bool has_waitable_job = false;
+    for (let const &entry : m_jobs) {
+      if (!job_ids.is_empty() && !job_ids.find(entry.id).has_value()) {
+        continue;
+      }
+
+      if (entry.state == job::State::Done)
+        return next_job_wait{entry.id, entry.process_id, entry.last_status};
+
+      if (entry.state == job::State::Running || should_wait_for_termination) {
+        has_waitable_job = true;
+      }
+    }
+
+    if (!has_waitable_job) return next_job_wait{};
+
+    if (let const number = os::peek_pending_signal_besides_child(); number != 0)
+    {
+      LOG(Info, "signal %d interrupted the wait for the next job", number);
+      return next_job_wait{None, 0, 128 + number, true};
+    }
+
+    if constexpr (os::HAS_CHILD_STATE_CHANGE_WAIT)
+      os::wait_for_child_state_change();
+    else
+      os::sleep_for_seconds(0.005);
   }
 }
 
@@ -352,12 +410,32 @@ fn JobTable::forget_done_jobs() throws -> void
 {
   let kept = ArrayList<job>{m_jobs.allocator()};
   for (job &job : m_jobs) {
-    if (job.state == job::State::Done) continue;
+    if (job.state == job::State::Done) {
+      remember_finished_status(job.process_id, job.last_status);
+
+      continue;
+    }
+
     kept.push(steal(job));
   }
   LOG(Debug, "dropping finished jobs, keeping %zu of %zu", kept.count(),
       m_jobs.count());
   m_jobs = steal(kept);
+}
+
+fn JobTable::forget_done_job(i32 id) throws -> void
+{
+  for (usize position = 0; position < m_jobs.count(); position++) {
+    if (m_jobs[position].id != id) continue;
+
+    if (m_jobs[position].state != job::State::Done) return;
+
+    remember_finished_status(m_jobs[position].process_id,
+                             m_jobs[position].last_status);
+    m_jobs.remove(position);
+
+    return;
+  }
 }
 
 fn JobTable::remove_job(i32 id) throws -> bool

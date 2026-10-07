@@ -407,6 +407,14 @@ struct finished_process_status
   i32 status{0};
 };
 
+struct next_job_wait
+{
+  Maybe<i32> job_id{None};
+  i64 process_id{0};
+  i32 status{127};
+  bool was_interrupted{false};
+};
+
 struct job_table_snapshot
 {
   Maybe<i64> last_background_pid;
@@ -434,15 +442,14 @@ class JobTable
 
 public:
   explicit JobTable(Allocator allocator)
-      : m_jobs(allocator), m_detached_job_processes(allocator)
+      : m_finished_statuses(allocator), m_jobs(allocator),
+        m_detached_job_processes(allocator)
   {}
 
   fn set_last_background_pid(i64 pid) wontthrow -> void;
-  fn remember_process_substitution_status(i64 process_id, i32 status) wontthrow
-      -> void;
-  pure fn find_process_substitution_status(i64 process_id) const wontthrow
-      -> Maybe<i32>;
-  fn forget_process_substitution_statuses() wontthrow -> void;
+  fn remember_finished_status(i64 process_id, i32 status) wontthrow -> void;
+  pure fn find_finished_status(i64 process_id) const wontthrow -> Maybe<i32>;
+  fn forget_finished_statuses() wontthrow -> void;
   fn register_job(os::process pid, StringView command,
                   i64 process_group_id) throws -> i32;
   fn register_pipeline_job(const ArrayList<os::process> &processes,
@@ -452,12 +459,17 @@ public:
                           i64 process_group_id) throws -> i32;
   fn notify_stopped_job(i32 id, StringView command) throws -> void;
   fn update_jobs() throws -> void;
-  fn wait_for_job_processes(job &entry, bool *was_stopped = nullptr) throws
+  fn wait_for_job_processes(job &entry, bool *was_stopped = nullptr,
+                            bool should_wait_for_termination = false) throws
       -> i32;
+  fn wait_for_next_job(const ArrayList<i32> &job_ids,
+                       bool should_wait_for_termination) throws
+      -> next_job_wait;
   fn find_job_index_by_spec(StringView spec) throws -> Maybe<usize>;
   fn find_job_by_spec(StringView spec) throws -> job *;
   fn most_recent_job() wontthrow -> job *;
   fn forget_done_jobs() throws -> void;
+  fn forget_done_job(i32 id) throws -> void;
   fn remove_job(i32 id) throws -> bool;
   fn format_done_job_notifications(StringView line_ending) throws -> String;
   fn take_snapshot() throws -> job_table_snapshot;
@@ -512,13 +524,13 @@ public:
   }
 
 private:
-  static constexpr usize REMEMBERED_PROCESS_SUBSTITUTION_COUNT = 16;
+  static constexpr usize REMEMBERED_FINISHED_STATUS_COUNT = 1024;
+
+  fn claim_job_id() wontthrow -> i32;
 
   Maybe<i64> m_last_background_pid{};
-  finished_process_status
-      m_process_substitution_statuses[REMEMBERED_PROCESS_SUBSTITUTION_COUNT]{};
-  usize m_process_substitution_status_count{0};
-  usize m_next_process_substitution_slot{0};
+  ArrayList<finished_process_status> m_finished_statuses;
+  usize m_next_finished_status_slot{0};
   ArrayList<job> m_jobs;
   ArrayList<os::process> m_detached_job_processes;
   i32 m_next_job_id{1};

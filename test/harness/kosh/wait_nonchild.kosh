@@ -1,3 +1,15 @@
 #!/bin/env kosh
 wait 99999
 echo exit=$?
+wait %9
+echo job-exit=$?
+wait abc
+echo word-exit=$?
+wait -n
+echo next-exit=$?
+(exit 3) &
+pid=$!
+wait "$pid"
+echo first-exit=$?
+wait "$pid"
+echo again-exit=$?

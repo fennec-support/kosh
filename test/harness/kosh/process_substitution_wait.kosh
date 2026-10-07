@@ -33,5 +33,5 @@ wait "$substituted"
 printf 'before-background=%s\n' "$?"
 wait
 printf 'no-operand=%s\n' "$?"
-wait "$substituted"
+wait "$substituted" 2> /dev/null
 printf 'forgotten=%s\n' "$?"

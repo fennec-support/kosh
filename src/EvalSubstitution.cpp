@@ -482,8 +482,7 @@ fn EvalContext::release_finished_held_process_substitutions() wontthrow -> void
       if (os::poll_process(sub.child, status) != os::process_state::Exited)
         continue;
       sub.child = KOSH_INVALID_PROCESS;
-      job_table_store().remember_process_substitution_status(sub.process_id,
-                                                             status);
+      job_table_store().remember_finished_status(sub.process_id, status);
     }
 
     if (!os::release_finished_process_substitution(sub.platform_cleanup))
@@ -509,7 +508,7 @@ fn EvalContext::wait_for_process_substitution(i64 process_id) wontthrow
       LOG(Debug, "waiting for a process substitution failed");
     }
     sub.child = KOSH_INVALID_PROCESS;
-    job_table_store().remember_process_substitution_status(process_id, status);
+    job_table_store().remember_finished_status(process_id, status);
 
     return true;
   };
@@ -534,7 +533,7 @@ fn EvalContext::wait_for_process_substitution(i64 process_id) wontthrow
     break;
   }
 
-  return job_table_store().find_process_substitution_status(process_id);
+  return job_table_store().find_finished_status(process_id);
 }
 
 fn EvalContext::cleanup_process_substitutions(
@@ -557,7 +556,7 @@ fn EvalContext::cleanup_process_substitutions(
     if (sub.child == KOSH_INVALID_PROCESS) continue;
 
     try {
-      job_table_store().remember_process_substitution_status(
+      job_table_store().remember_finished_status(
           sub.process_id, os::reap_process_quietly(sub.child));
     } catch (const Error &e) {
       LOG(Debug, "a process substitution reap failed and was swallowed: %s",

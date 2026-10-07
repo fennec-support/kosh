@@ -2,9 +2,10 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file waits for all tracked jobs or named job and process targets,
- * propagates the last waited status, reports invalid targets, and removes
- * completed jobs.
+ * This file waits for every tracked job, for named job and process targets, or
+ * for the next job to finish, and propagates the waited status. It reports
+ * invalid targets, stores the waited process id, and forgets waited jobs while
+ * their statuses stay known.
  */
 
 #include "../Builtin.hpp"
@@ -16,15 +17,37 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[%job|pid ...]");
+HELP_SYNOPSIS_DECL("[-fn] [-p var] [%job|pid ...]");
 
 HELP_DESCRIPTION_DECL("The wait builtin blocks until the named jobs finish.");
 
+FLAG(WAIT_NEXT, Bool, 'n', "",
+     "Wait for the next of the named jobs, or of every job, to finish.");
+FLAG(WAIT_FORCE, Bool, 'f', "",
+     "Wait for each job to terminate rather than to stop.");
+FLAG(WAIT_PID_VARIABLE, String, 'p', "",
+     "Store the process id whose status is returned in the variable.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_BUILTIN_FLAGS(Wait);
 
 namespace koshka {
+
+namespace {
+
+fn find_job_by_process(JobTable &table, i64 process_id) wontthrow -> job *
+{
+  for (job &entry : table.jobs()) {
+    if (entry.process_id == process_id) return &entry;
+
+    for (let const process : entry.earlier_pipeline_processes)
+      if (os::process_has_id(process, process_id)) return &entry;
+  }
+
+  return nullptr;
+}
+
+} /* namespace */
 
 Wait::Wait() = default;
 
@@ -32,10 +55,36 @@ pure fn Wait::kind() const wontthrow -> Builtin::Kind { return Kind::Wait; }
 
 fn Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
-  let const &args = ec.args();
+  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
+  let const args = PARSE_BUILTIN_ARGS_WITH_LOCATIONS(ec, operand_locations);
+
+  if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
+
   ASSERT(!args.is_empty());
 
-  i32 status = 0;
+  let &table = cxt.job_table_store();
+  let const should_wait_for_termination = FLAG_WAIT_FORCE.is_enabled();
+  let const has_pid_variable = FLAG_WAIT_PID_VARIABLE.is_set();
+  let const pid_variable = FLAG_WAIT_PID_VARIABLE.value();
+
+  if (has_pid_variable && !name_is_valid_identifier(pid_variable)) {
+    report_soft_builtin_error(ec, cxt,
+                              StringView{"'"} + pid_variable +
+                                  "' is not a valid identifier");
+
+    return 1;
+  }
+
+  let const do_store_pid = [&](Maybe<i64> process_id) throws -> void {
+    if (!has_pid_variable) return;
+
+    if (process_id.has_value()) {
+      cxt.set_shell_variable(
+          pid_variable, String::from(*process_id, cxt.scratch_allocator()));
+    } else {
+      cxt.unset_shell_variable(pid_variable);
+    }
+  };
 
   /* A trapped signal that arrives while the wait blocks ends it, and its
      action runs at the boundary the builtin returns to. */
@@ -43,85 +92,170 @@ fn Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return os::peek_pending_signal_besides_child() != 0;
   };
 
-  if (args.count() == 1) {
-    LOG(Debug, "wait blocking on every job of %zu",
-        cxt.job_table_store().jobs().count());
+  let const do_report_unknown_target = [&](usize i) throws -> i32 {
+    let const &target = args[i];
 
-    for (job &job : cxt.job_table_store().jobs()) {
-      status = cxt.job_table_store().wait_for_job_processes(job);
+    if (!target.is_empty() && target[0] == '%') {
+      report_soft_builtin_error(ec, cxt, operand_locations[i],
+                                target + ": no such job",
+                                "List the running jobs with `jobs`");
+
+      return 127;
+    }
+
+    if (target.to<i64>().is_error()) {
+      report_soft_builtin_error(ec, cxt, operand_locations[i],
+                                "'" + target +
+                                    "': not a pid or valid job spec");
+
+      return 1;
+    }
+
+    report_soft_builtin_error(ec, cxt, operand_locations[i],
+                              "pid " + target + " is not a child of this shell",
+                              "List the running jobs with `jobs -l`");
+
+    return 127;
+  };
+
+  let const do_find_target_job = [&](usize i) throws -> job * {
+    let const &target = args[i];
+
+    if (!target.is_empty() && target[0] == '%') {
+      return table.find_job_by_spec(target);
+    }
+
+    let const parsed = target.to<i64>();
+    if (parsed.is_error()) return nullptr;
+
+    return find_job_by_process(table, parsed.value());
+  };
+
+  let const do_finish_next_wait = [&](next_job_wait outcome) throws -> i32 {
+    if (outcome.was_interrupted) return outcome.status;
+
+    if (!outcome.job_id.has_value()) {
+      do_store_pid(None);
+
+      return 127;
+    }
+
+    do_store_pid(outcome.process_id);
+    table.forget_done_job(*outcome.job_id);
+
+    return outcome.status;
+  };
+
+  if (FLAG_WAIT_NEXT.is_enabled()) {
+    let job_ids = ArrayList<i32>{cxt.scratch_allocator()};
+
+    if (args.count() == 1)
+      return do_finish_next_wait(
+          table.wait_for_next_job(job_ids, should_wait_for_termination));
+
+    let other_pids = ArrayList<i64>{cxt.scratch_allocator()};
+    for (usize i = 1; i < args.count(); i++) {
+      if (job *const matched = do_find_target_job(i); matched != nullptr) {
+        job_ids.push(matched->id);
+
+        continue;
+      }
+
+      if (args[i].is_empty() || args[i][0] == '%') {
+        continue;
+      }
+
+      if (let const parsed = args[i].to<i64>(); !parsed.is_error())
+        other_pids.push(parsed.value());
+    }
+
+    for (let const process_id : other_pids) {
+      if (let const status = table.find_finished_status(process_id);
+          status.has_value())
+      {
+        do_store_pid(process_id);
+
+        return *status;
+      }
+    }
+
+    if (!job_ids.is_empty())
+      return do_finish_next_wait(
+          table.wait_for_next_job(job_ids, should_wait_for_termination));
+
+    for (let const process_id : other_pids) {
+      if (let const status = cxt.wait_for_process_substitution(process_id);
+          status.has_value())
+      {
+        do_store_pid(process_id);
+
+        return *status;
+      }
+    }
+
+    for (usize i = 1; i < args.count(); i++)
+      unused(do_report_unknown_target(i));
+    do_store_pid(None);
+
+    return 127;
+  }
+
+  if (args.count() == 1) {
+    LOG(Debug, "wait blocking on every job of %zu", table.jobs().count());
+
+    do_store_pid(None);
+
+    for (job &job : table.jobs()) {
+      let const status = table.wait_for_job_processes(
+          job, nullptr, should_wait_for_termination);
 
       if (do_was_interrupted()) {
-        cxt.job_table_store().forget_done_jobs();
+        table.forget_done_jobs();
 
         return status;
       }
     }
 
-    let const &last_background_pid =
-        cxt.job_table_store().last_background_pid();
+    let const &last_background_pid = table.last_background_pid();
     if (last_background_pid.has_value())
       unused(cxt.wait_for_process_substitution(*last_background_pid));
 
-    cxt.job_table_store().forget_process_substitution_statuses();
-    cxt.job_table_store().forget_done_jobs();
+    table.forget_done_jobs();
+    table.forget_finished_statuses();
 
     return 0;
   }
 
+  i32 status = 0;
   for (usize i = 1; i < args.count(); i++) {
-    let const &target = args[i];
+    LOG(Debug, "wait blocking on target '%s'", args[i].c_str());
 
-    LOG(Debug, "wait blocking on target '%s'", target.c_str());
+    if (job *const matched = do_find_target_job(i); matched != nullptr) {
+      let const job_id = matched->id;
+      let const process_id = matched->process_id;
 
-    if (!target.is_empty() && target[0] == '%') {
-      job *const matched = cxt.job_table_store().find_job_by_spec(target);
-
-      if (matched != nullptr) {
-        status = cxt.job_table_store().wait_for_job_processes(*matched);
-      } else {
-        report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
-                                  target + ": no such job",
-                                  "List the running jobs with `jobs`");
-        status = 127;
-      }
+      status = table.wait_for_job_processes(*matched, nullptr,
+                                            should_wait_for_termination);
+      do_store_pid(process_id);
+      table.forget_done_job(job_id);
+    } else if (let const parsed = args[i].to<i64>();
+               args[i].is_empty() || args[i][0] == '%' || parsed.is_error())
+    {
+      status = do_report_unknown_target(i);
+      do_store_pid(None);
+    } else if (let const known_status =
+                   cxt.wait_for_process_substitution(parsed.value());
+               known_status.has_value())
+    {
+      status = *known_status;
+      do_store_pid(parsed.value());
     } else {
-      let const parsed = target.to<i64>();
-      if (parsed.is_error()) {
-        report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
-                                  "'" + target +
-                                      "': not a pid or valid job spec");
-        status = 1;
-      } else {
-        /* An untracked pid returns 127 with no waitpid, since waiting the raw
-           pid would throw on ECHILD and abort the command. */
-        job *matched = nullptr;
-        for (job &job : cxt.job_table_store().jobs()) {
-          bool is_matching_process = job.process_id == parsed.value();
-          for (let const process : job.earlier_pipeline_processes)
-            if (os::process_has_id(process, parsed.value()))
-              is_matching_process = true;
-          if (is_matching_process) {
-            matched = &job;
-            break;
-          }
-        }
-        if (matched != nullptr) {
-          status = cxt.job_table_store().wait_for_job_processes(*matched);
-        } else {
-          status =
-              cxt.wait_for_process_substitution(parsed.value()).value_or(127);
-        }
-      }
+      status = do_report_unknown_target(i);
+      do_store_pid(None);
     }
 
-    if (do_was_interrupted()) {
-      cxt.job_table_store().forget_done_jobs();
-
-      return status;
-    }
+    if (do_was_interrupted()) return status;
   }
-
-  cxt.job_table_store().forget_done_jobs();
 
   return status;
 }

@@ -1336,15 +1336,14 @@ the word list of a for loop stays open until the loop finishes. The shell then
 closes it and waits for the process, while Bash leaves the process running.
 A process substitution sets
 .B $!
-to its process. The shell remembers the status of the sixteen most recent
-process substitutions, and
+to its process. The shell remembers its status as it remembers the status of
+a job, and
 .B wait
 with that process returns it, waiting first when the process still runs.
 .B wait
 without an operand waits for the process that
 .B $!
-names when it is a process substitution, then forgets every remembered
-status. Bash remembers more of them.
+names when it is a process substitution.
 A later command cannot open the path. An
 .B exec
 command without a program keeps the process for as long as its redirections
@@ -4330,6 +4329,41 @@ builtin returns that stored status without waiting for the process again. The
 and
 .B bg
 builtins resume every stage of the job.
+.PP
+A job that
+.BR wait ,
+.BR jobs ,
+or a notification reports leaves the job table, and the shell remembers the
+status of its process. A later
+.B wait
+with that process returns the status again. The shell remembers the 1024 most
+recent statuses, and
+.B wait
+without an operand forgets all of them. A job number is one more than the
+highest number in use.
+.B wait
+reports 127 and a diagnostic for a process that is not a child of the shell or
+a job that does not exist, and with several operands the last operand decides
+the status.
+.PP
+.B wait \-n
+returns the status of the next job to finish among the named jobs and
+processes, or among every job when no operand is given. A job that already
+finished and was not yet waited is returned first. It reports 127 when no
+named or tracked job is left.
+.B wait \-p
+.I var
+stores the process whose status is returned in
+.IR var ,
+and unsets it when no status is returned. A stopped job returns 128 plus the
+stop signal, and
+.B wait \-n
+skips it.
+.B wait \-f
+waits until each job terminates. Without job control Bash waits for
+termination even without
+.BR \-f ,
+so it never returns for a job that stays stopped.
 .PP
 A coprocess is one asynchronous job and sets $!. Its descriptors are numbered
 above 9 and are closed across an exec. A subshell receives neither descriptor,

@@ -1,1 +1,17 @@
+2:6: error: Builtin `wait`: pid 99999 is not a child of this shell.
+     2 |  wait 99999
+       |       ^~~~~
+note: List the running jobs with `jobs -l`.
 exit=127
+4:6: error: Builtin `wait`: %9: no such job.
+     4 |  wait %9
+       |       ^~
+note: List the running jobs with `jobs`.
+job-exit=127
+6:6: error: Builtin `wait`: 'abc': not a pid or valid job spec.
+     6 |  wait abc
+       |       ^~~
+word-exit=1
+next-exit=127
+first-exit=3
+again-exit=3
