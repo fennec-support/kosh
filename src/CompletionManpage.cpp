@@ -87,10 +87,18 @@ public:
   StringMap<String> synopses{heap_allocator()};
   StringMap<String> hint_pages{heap_allocator()};
   String manpath_output{heap_allocator()};
+  ArrayList<Path> scan_directories{heap_allocator()};
+  usize scanned_directory_count{0};
   bool is_subcommand_index_built{false};
+  bool is_subcommand_scan_running{false};
+  bool was_scan_root_set_complete{false};
   bool was_manpath_settled{false};
 
   fn build_subcommand_index(EvalContext &context) throws -> void;
+  fn scan_next_subcommand_directory(EvalContext &context) throws -> void;
+
+private:
+  fn finish_subcommand_index() throws -> void;
 };
 
 class HelpOutputCache
@@ -119,6 +127,7 @@ static constexpr u64 HELP_FORK_BATCH_TIMEOUT_NANOS = 8'000'000'000;
 
 enum class idle_load_kind : u8
 {
+  Manpath,
   Manpage,
   Help,
 };
@@ -180,13 +189,11 @@ static fn manpage_section1_directories(EvalContext &context) throws
 
 /* A trusted `manpath` or `man --path` run reports every man root the system
    resolves, including the macOS CommandLineTools root a bare $MANPATH leaves
-   out. A result line is colon-separated. The fork happens once and the output
-   is cached for the session. */
-static fn manpath_command_output(EvalContext &context) throws -> StringView
+   out. A result line is colon-separated. None means neither program is
+   present in a trusted directory. */
+static fn manpath_argv_for(EvalContext &context) throws
+    -> Maybe<ArrayList<String>>
 {
-  let &cached = MANPAGE_CACHE.manpath_output;
-  if (MANPAGE_CACHE.was_manpath_settled) return cached.view();
-
   let &resolver = context.program_resolver();
   let const man_paths =
       resolver.search("manpath", ProgramResolver::SearchMode::First,
@@ -202,33 +209,58 @@ static fn manpath_command_output(EvalContext &context) throws -> StringView
   let const man_present =
       !manbin_paths.is_empty() &&
       os::directory_is_trusted_for_exec(manbin_paths[0].parent());
-  if (manpath_present || man_present) {
-    let argv = ArrayList<String>{heap_allocator()};
-    if (manpath_present) {
-      argv.push(String{man_paths[0].view()});
-    } else {
-      argv.push(String{manbin_paths[0].view()});
-      argv.push(String{"--path"});
-    }
-
-    Maybe<String> output = capture_completion_program_output(context, argv);
-    if (!output.has_value()) {
-      if (should_retry_killed_fork("manpath", "")) {
-        LOG(Debug, "the manpath fork was killed, retrying on the next request");
-        return cached.view();
-      }
-
-      LOG(Debug, "the manpath fork was killed again, settling on the roots "
-                 "resolved without it");
-      MANPAGE_CACHE.was_manpath_settled = true;
-      return cached.view();
-    }
-
-    cached = steal(*output);
+  if (!manpath_present && !man_present) {
+    return None;
   }
 
+  let argv = ArrayList<String>{heap_allocator()};
+  if (manpath_present) {
+    argv.push(String{man_paths[0].view()});
+  } else {
+    argv.push(String{manbin_paths[0].view()});
+    argv.push(String{"--path"});
+  }
+  return argv;
+}
+
+/* None is a killed or failed run, which is retried on a later request until
+   its attempts run out. */
+static fn settle_manpath_output(Maybe<String> output) throws -> void
+{
+  if (output.has_value()) {
+    MANPAGE_CACHE.manpath_output = steal(*output);
+    MANPAGE_CACHE.was_manpath_settled = true;
+    return;
+  }
+
+  if (should_retry_killed_fork("manpath", "")) {
+    LOG(Debug, "the manpath fork was killed, retrying on the next request");
+    return;
+  }
+
+  LOG(Debug, "the manpath fork was killed again, settling on the roots "
+             "resolved without it");
   MANPAGE_CACHE.was_manpath_settled = true;
-  return cached.view();
+}
+
+/* The fork happens once and the output is cached for the session. A run the
+   idle hook started is adopted rather than forked again. */
+static fn manpath_command_output(EvalContext &context) throws -> StringView
+{
+  if (MANPAGE_CACHE.was_manpath_settled)
+    return MANPAGE_CACHE.manpath_output.view();
+
+  if (adopt_idle_load(idle_load_kind::Manpath, StringView{}, context))
+    return MANPAGE_CACHE.manpath_output.view();
+
+  let const argv = manpath_argv_for(context);
+  if (!argv.has_value()) {
+    MANPAGE_CACHE.was_manpath_settled = true;
+    return MANPAGE_CACHE.manpath_output.view();
+  }
+
+  settle_manpath_output(capture_completion_program_output(context, *argv));
+  return MANPAGE_CACHE.manpath_output.view();
 }
 
 static fn manpage_section1_directories(EvalContext &context) throws
@@ -329,28 +361,57 @@ static pure fn strip_man1_suffix(StringView entry) wontthrow
   return None;
 }
 
-/* The tail is a subcommand only when the head page exists too, so xdg-open
-   invents no xdg, and a digit-leading version tail is none. */
 fn ManpageCache::build_subcommand_index(EvalContext &context) throws -> void
 {
-  subcommand_index.clear();
-  for (let const &directory : manpage_section1_directories(context)) {
+  do {
+    scan_next_subcommand_directory(context);
+  } while (is_subcommand_scan_running);
+}
+
+/* Each call reads one man1 directory, so an idle step stays short. The
+   directories are resolved when a scan starts. */
+fn ManpageCache::scan_next_subcommand_directory(EvalContext &context) throws
+    -> void
+{
+  if (!is_subcommand_scan_running) {
+    scan_directories = manpage_section1_directories(context);
+    scanned_directory_count = 0;
+    was_scan_root_set_complete = was_manpath_settled;
+    is_subcommand_scan_running = true;
+  }
+
+  if (scanned_directory_count < scan_directories.count()) {
+    let const &directory = scan_directories[scanned_directory_count];
+    scanned_directory_count++;
     LOG(Info, "scanning man1 directory '%s'", directory.c_str());
     let entries = Path::read_directory(directory);
     if (!entries.has_value()) {
       LOG(Debug, "directory '%s' is unreadable, skipping", directory.c_str());
-      continue;
-    }
-    page_file_paths.reserve(page_file_paths.count() + entries->count());
-    for (let const &entry : *entries) {
-      let const stripped = strip_man1_suffix(entry.view());
-      if (!stripped.has_value() || stripped->is_empty()) continue;
-      if (page_file_paths.find(*stripped).has_value()) continue;
-      let file_path = directory.clone();
-      file_path.append(entry.view());
-      page_file_paths.set(*stripped, String{file_path.view()});
+    } else {
+      page_file_paths.reserve(page_file_paths.count() + entries->count());
+      for (let const &entry : *entries) {
+        let const stripped = strip_man1_suffix(entry.view());
+        if (!stripped.has_value() || stripped->is_empty()) {
+          continue;
+        }
+        if (page_file_paths.find(*stripped).has_value()) continue;
+        let file_path = directory.clone();
+        file_path.append(entry.view());
+        page_file_paths.set(*stripped, String{file_path.view()});
+      }
     }
   }
+
+  if (scanned_directory_count < scan_directories.count()) return;
+
+  finish_subcommand_index();
+}
+
+/* The tail is a subcommand only when the head page exists too, so xdg-open
+   invents no xdg, and a digit-leading version tail is none. */
+fn ManpageCache::finish_subcommand_index() throws -> void
+{
+  subcommand_index.clear();
   page_file_paths.for_each([&](StringView name, const String &) {
     let const dash = name.find_character('-');
     if (!dash.has_value() || *dash == 0) return;
@@ -364,7 +425,9 @@ fn ManpageCache::build_subcommand_index(EvalContext &context) throws -> void
 
   /* A killed manpath fork hides every root the environment leaves out. The
      index is incomplete until that fork settles and is built again. */
-  is_subcommand_index_built = was_manpath_settled;
+  is_subcommand_index_built = was_scan_root_set_complete;
+  is_subcommand_scan_running = false;
+  scan_directories.clear();
   LOG(Info, "indexed %zu section-1 pages", page_file_paths.count());
 }
 
@@ -1885,6 +1948,12 @@ static fn finish_idle_load(idle_load &load,
                            os::ProgramCapture::State state) throws -> void
 {
   let const did_finish = state == os::ProgramCapture::State::Finished;
+  if (load.kind == idle_load_kind::Manpath) {
+    settle_manpath_output(did_finish ? Maybe<String>{load.capture.take_output()}
+                                     : Maybe<String>{None});
+    return;
+  }
+
   if (load.kind == idle_load_kind::Help) {
     HELP_OUTPUT_CACHE.store(load.command.view(), load.key.view(),
                             did_finish
@@ -2005,8 +2074,22 @@ static fn start_next_idle_load(StringView line, usize cursor,
   subcommand_key.push(' ');
   subcommand_key.append(first_word);
   if (has_subcommand_word && !prefers_help) {
-    if (!MANPAGE_CACHE.is_subcommand_index_built)
-      MANPAGE_CACHE.build_subcommand_index(context);
+    if (!MANPAGE_CACHE.is_subcommand_index_built) {
+      if (!MANPAGE_CACHE.was_manpath_settled) {
+        let const argv = manpath_argv_for(context);
+        if (!argv.has_value()) {
+          MANPAGE_CACHE.was_manpath_settled = true;
+        } else if (!start_idle_load(idle_load_kind::Manpath, StringView{},
+                                    StringView{}, StringView{}, *argv))
+        {
+          settle_manpath_output(None);
+        }
+        return true;
+      }
+
+      MANPAGE_CACHE.scan_next_subcommand_directory(context);
+      return true;
+    }
 
     let combined = String{command.view()};
     combined.push('-');
@@ -2103,7 +2186,9 @@ fn abandon_idle_documentation() throws -> void
   if (!IDLE_LOAD.has_value()) return;
 
   if (!should_retry_killed_fork("idle", IDLE_LOAD->key.view())) {
-    if (IDLE_LOAD->kind == idle_load_kind::Help) {
+    if (IDLE_LOAD->kind == idle_load_kind::Manpath) {
+      MANPAGE_CACHE.was_manpath_settled = true;
+    } else if (IDLE_LOAD->kind == idle_load_kind::Help) {
       HELP_OUTPUT_CACHE.store(IDLE_LOAD->command.view(), IDLE_LOAD->key.view(),
                               Maybe<String>{String{heap_allocator()}});
     } else {

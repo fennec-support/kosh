@@ -21,7 +21,9 @@
 # long synopsis onto several indented rows that a submit erases, and a short
 # terminal keeps the input on screen with fewer rows. A pause loads
 # the --help usage, flag forms, and subcommand usage of a trusted allowlisted
-# command once per key and never runs one from a world-writable directory. The
+# command once per key and never runs one from a world-writable directory. A
+# slow manpath started by a pause leaves typed keys served while it runs, and
+# Tab adopts that run instead of forking another. The
 # row shows an alias expansion before its target synopsis, a function
 # definition, the first analysis finding of a paused line, and the command of
 # the pipeline segment or command substitution under the caret. The same row
@@ -1090,6 +1092,79 @@ def run_short_checks(binary, directory, command_directory, report):
         session.close()
 
 
+MANPATH_PROBE = """#!/bin/sh
+echo $$ >> '%s'
+attempt_count=0
+while [ ! -f '%s' ] && [ "$attempt_count" -lt 200 ]; do
+  '%s' 0.05
+  attempt_count=$((attempt_count + 1))
+done
+echo '%s'
+"""
+
+
+def is_process_alive(pid):
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
+
+
+def run_idle_manpath_checks(binary, directory, report):
+    command_directory = os.path.join(directory, "manpath-bin")
+    man_root = os.path.join(directory, "manpath-root")
+    marker = os.path.join(directory, "manpath-marker")
+    release = os.path.join(directory, "manpath-release")
+    os.makedirs(command_directory)
+    os.makedirs(os.path.join(man_root, "man1"))
+    probe = os.path.join(command_directory, "koshmanprobe")
+    with open(probe, "w") as handle:
+        handle.write("#!/bin/sh\n")
+    os.chmod(probe, 0o755)
+    manpath = os.path.join(command_directory, "manpath")
+    with open(manpath, "w") as handle:
+        handle.write(MANPATH_PROBE % (marker, release, shutil.which("sleep"),
+                                      man_root))
+    os.chmod(manpath, 0o755)
+    with open(os.path.join(man_root, "man1", "koshmanprobe.1"), "w") as handle:
+        handle.write(".TH KOSHMANPROBE 1\n.SH SYNOPSIS\n\\fBkoshmanprobe\\fR\n")
+    with open(os.path.join(man_root, "man1", "koshmanprobe-recovered.1"),
+              "w") as handle:
+        handle.write(".TH KOSHMANPROBE-RECOVERED 1\n.SH SYNOPSIS\n"
+                     "\\fBkoshmanprobe\\fR \\fBrecovered\\fR\n")
+
+    session = Session(binary, directory, command_directory)
+    try:
+        if not report.record("manpath-startup-prompt", session, is_line("")):
+            return
+
+        type_text(session, b"koshmanprobe sub ")
+        if not report.record("idle-manpath-load-starts", session,
+                             lambda screen: count_marker_lines(
+                                 directory, "manpath-marker") == 1):
+            return
+
+        with open(marker) as handle:
+            pid = int(handle.read().split()[0])
+        session.send(b"Q")
+        report.record("idle-manpath-load-serves-keys", session,
+                      lambda screen: get_state(screen) is not None
+                      and get_state(screen)[0] == "koshmanprobe sub Q"
+                      and is_process_alive(pid))
+
+        open(release, "w").close()
+        session.send(b"\x15koshmanprobe rec\t")
+        report.record("completion-adopts-idle-manpath-load", session,
+                      lambda screen: get_state(screen) is not None
+                      and get_state(screen)[0].startswith(
+                          "koshmanprobe recovered")
+                      and count_marker_lines(directory, "manpath-marker")
+                      == 1)
+    finally:
+        session.close()
+
+
 HELP_PROBE ="""#!/bin/sh
 echo forked >> '%s'
 if [ "$1" = run ]; then
@@ -1204,6 +1279,7 @@ def main():
                           report)
         run_short_checks(binary, directory, os.path.join(directory, "bin"),
                          report)
+        run_idle_manpath_checks(binary, directory, report)
         control_directory = os.path.join(directory.encode(), b"ctl")
         os.makedirs(control_directory)
         for name in (b"ZQa\x1b]0;PWN\x07x", b"ZQb\xc2\x9by"):

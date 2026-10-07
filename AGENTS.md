@@ -240,6 +240,8 @@ changes update this file.
   the hint caches through `step_idle_documentation`, which starts one
   `os::ProgramCapture` child under the man and help trust rules and reads it
   without blocking on each repeat, so a key is served while the child runs.
+  The `manpath` run is one of these loads, and the subcommand index reads one
+  man1 directory per repeat. Explicit completion adopts a running load.
   Every load, miss, and timeout lands in the same caches explicit flag
   completion uses, and a submitted line kills a running load. An explicit
   completion that needs the key the idle child is loading adopts that child

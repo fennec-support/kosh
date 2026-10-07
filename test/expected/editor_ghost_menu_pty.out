@@ -140,6 +140,10 @@ narrow-hint-rows-indented PASS
 narrow-hint-rows-erased-on-submit PASS
 short-startup-prompt PASS
 short-hint-keeps-the-input-on-screen PASS
+manpath-startup-prompt PASS
+idle-manpath-load-starts PASS
+idle-manpath-load-serves-keys PASS
+completion-adopts-idle-manpath-load PASS
 control-startup-prompt PASS
 control-name-completes-ansi-c-quoted PASS
 control-name-menu-opens PASS

@@ -3413,15 +3413,20 @@ When no key arrives for 250 milliseconds, the editor loads what the hint of an
 external program needs: its section 1 manual page through
 .BR man ,
 a subcommand page such as
-.BR git\-commit (1),
-and, for a command on the help allowlist, the output of its help flag and of
-the subcommand under the cursor. The same trust rules as flag completion
+.BR git\-commit (1)
+among the manual roots that
+.BR manpath (1)
+reports, and, for a command on the help allowlist, the output of its help flag
+and of the subcommand under the cursor. The same trust rules as flag completion
 apply, so
-.B man
+.BR man ,
+.BR manpath ,
 and the program run only from a directory owned by the user or root that no
 group or other user can write. Each load runs in a child process that the
 editor reads between keys and never waits on, so typing stays responsive while
-it runs, and the hint updates in place when it finishes. A load is killed
+it runs, and the hint updates in place when it finishes. The section 1
+directories of the manual roots are read one directory per step, and a Tab
+that needs a load still running waits for it rather than starting another. A load is killed
 after 8 seconds or when the line is submitted, and a later pause tries it once
 more before it counts as missing. Every other manual page and help output is
 loaded at most once per session, and a missing page or an untrusted program
