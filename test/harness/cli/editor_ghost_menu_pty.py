@@ -20,7 +20,8 @@
 # inserted before a word with the caret at its start and replaces a word with
 # the caret inside it. With the space-after option on, a spec completion takes
 # a space unless the spec has nospace, and a nosort reply keeps its order in
-# the menu. It also covers word-wise ghost
+# the menu. A sole completion stops after its word, space, or slash without a
+# menu, and only a second Tab lists a directory. It also covers word-wise ghost
 # acceptance through Ctrl-Right and Alt-F, and prefix history search on Up and
 # Down with its option switched off, and the inline hint rows for a command and
 # a flag, their header naming the kind and the two-column indent, their absence
@@ -683,6 +684,38 @@ def run_compopt_checks(session, report):
     session.wait_until(is_line(""))
 
 
+def is_typed_without_menu(typed):
+    return lambda screen: (is_menu_closed(screen)
+                           and get_state(screen)[0] == typed)
+
+
+def run_sole_completion_checks(session, report):
+    for name, keys, typed in (
+            ("sole-directory-stops-after-the-slash", b"ls zzloc\tQ",
+             "ls zzlocal/Q"),
+            ("second-tab-lists-the-directory", b"ls zzloc\t\t",
+             "ls zzlocal/inner.txt"),
+            ("sole-empty-directory-opens-no-menu", b"ls zzhol\t\tQ",
+             "ls zzhollow/Q")):
+        session.send(keys)
+        report.record(name, session, is_typed_without_menu(typed))
+        clear_line(session)
+    session.send(
+        b"koshconf set completion.add_space_after_completed_word on\r")
+    session.wait_until(is_line(""))
+    for name, keys, typed in (
+            ("sole-file-stops-after-the-space", b"cat sub/al\tQ",
+             "cat sub/alpha-beta.txt Q"),
+            ("sole-directory-stops-after-the-space", b"ls zzloc\tQ",
+             "ls zzlocal/ Q")):
+        session.send(keys)
+        report.record(name, session, is_typed_without_menu(typed))
+        clear_line(session)
+    session.send(
+        b"koshconf set completion.add_space_after_completed_word off\r")
+    session.wait_until(is_line(""))
+
+
 def run_checks(binary, directory, command_directory, report):
     session = Session(binary, directory, command_directory)
     try:
@@ -830,6 +863,7 @@ def run_checks(binary, directory, command_directory, report):
 
         run_cached_filter_checks(session, report, directory)
         run_compopt_checks(session, report)
+        run_sole_completion_checks(session, report)
 
         run_command(session, report, "history-seed-alpha",
                     b"echo hist-alpha", "hist-alpha", 1)
@@ -1423,6 +1457,9 @@ def main():
     try:
         os.makedirs(os.path.join(directory, "sub"))
         os.makedirs(os.path.join(directory, "menu"))
+        os.makedirs(os.path.join(directory, "zzlocal"))
+        os.makedirs(os.path.join(directory, "zzhollow"))
+        open(os.path.join(directory, "zzlocal", "inner.txt"), "w").close()
         os.makedirs(os.path.join(directory, "cdpath", "cdpath-target"))
         os.makedirs(os.path.join(directory, "bin"))
         with open(os.path.join(directory, "sub", "alpha-beta.txt"), "w") as handle:

@@ -4062,7 +4062,10 @@ or a tilde, also the directories under each CDPATH entry. The ghost suggestion
 reads a CDPATH directory only once the editor has indexed it during a pause of
 a quarter second, so a keystroke never waits on it.
 .PP
-An explicit Tab first replaces the token with the longest common prefix. When
+An explicit Tab first replaces the token with the longest common prefix. A sole
+candidate replaces the token, takes the space the setting below asks for, and
+ends the Tab, so the next Tab lists the following word or the entries of a
+completed directory. When
 that prefix does not extend the token and more than one candidate remains, the
 candidates are presented by the selector chosen by
 .B \-\-tab\-selector
@@ -4114,7 +4117,8 @@ and widens the list again. A search that matches nothing keeps the menu open on
 a dimmed row reading
 .BR "no matches, erase to widen the search" ,
 and a backspace brings the list back. An accepted candidate that refers to a
-directory opens a menu of the entries it holds. The menu closes when any other
+directory opens a menu of the entries it holds, or closes the menu when it
+holds none. The menu closes when any other
 key is pressed. That key then acts on the line.
 .PP
 The external selector passes the candidates to the program specified by
