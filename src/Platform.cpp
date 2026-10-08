@@ -608,67 +608,27 @@ pure alwaysinline fn shift_crc32c(const crc32c_shift_table &table,
 
 #if defined __x86_64__ && !defined __COSMOPOLITAN__
 #if defined __clang__
-targetisa("crc32")
+#define CRC32C_TARGETISA targetisa("crc32")
 #else
-targetisa("sse4.2")
+#define CRC32C_TARGETISA targetisa("sse4.2")
 #endif
-    pure fn
-    crc32c_update_sse42_streams(u32 crc, const u8 *data, usize block_length,
-                                const crc32c_shift_table &table) wontthrow->u32
+
+struct crc32c_x86_instructions
 {
-  u64 middle_crc = 0;
-  u64 last_crc = 0;
-  u64 first_crc = crc;
-  for (usize offset = 0; offset < block_length; offset += 8) {
-    u64 first_word;
-    u64 middle_word;
-    u64 last_word;
-    __builtin_memcpy(&first_word, data + offset, 8);
-    __builtin_memcpy(&middle_word, data + block_length + offset, 8);
-    __builtin_memcpy(&last_word, data + 2 * block_length + offset, 8);
-    first_crc = _mm_crc32_u64(first_crc, first_word);
-    middle_crc = _mm_crc32_u64(middle_crc, middle_word);
-    last_crc = _mm_crc32_u64(last_crc, last_word);
+  using accumulator = u64;
+
+  CRC32C_TARGETISA static alwaysinline fn update_word(u64 crc,
+                                                      u64 word) wontthrow -> u64
+  {
+    return _mm_crc32_u64(crc, word);
   }
 
-  crc = shift_crc32c(table, static_cast<u32>(first_crc)) ^
-        static_cast<u32>(middle_crc);
-  return shift_crc32c(table, crc) ^ static_cast<u32>(last_crc);
-}
-
-#if defined __clang__
-targetisa("crc32")
-#else
-targetisa("sse4.2")
-#endif
-    pure fn
-    crc32c_update_sse42(u32 crc, const u8 *data, usize length) wontthrow->u32
-{
-  while (length >= 3 * CRC32C_LONG_BLOCK_LENGTH) {
-    crc = crc32c_update_sse42_streams(crc, data, CRC32C_LONG_BLOCK_LENGTH,
-                                      CRC32C_LONG_SHIFT_TABLE);
-    data += 3 * CRC32C_LONG_BLOCK_LENGTH;
-    length -= 3 * CRC32C_LONG_BLOCK_LENGTH;
+  CRC32C_TARGETISA static alwaysinline fn update_byte(u32 crc,
+                                                      u8 byte) wontthrow -> u32
+  {
+    return _mm_crc32_u8(crc, byte);
   }
-
-  while (length >= 3 * CRC32C_SHORT_BLOCK_LENGTH) {
-    crc = crc32c_update_sse42_streams(crc, data, CRC32C_SHORT_BLOCK_LENGTH,
-                                      CRC32C_SHORT_SHIFT_TABLE);
-    data += 3 * CRC32C_SHORT_BLOCK_LENGTH;
-    length -= 3 * CRC32C_SHORT_BLOCK_LENGTH;
-  }
-
-  while (length >= 8) {
-    u64 word;
-    __builtin_memcpy(&word, data, 8);
-    crc = static_cast<u32>(_mm_crc32_u64(crc, word));
-    data += 8;
-    length -= 8;
-  }
-  while (length-- > 0)
-    crc = _mm_crc32_u8(crc, *data++);
-  return crc;
-}
+};
 
 fn is_x86_sse42_available() wontthrow -> bool
 {
@@ -684,56 +644,24 @@ fn is_x86_sse42_available() wontthrow -> bool
 #endif
 
 #if defined __aarch64__ || defined __arm64__ || defined _M_ARM64
-targetisa("+crc") pure fn
-    crc32c_update_acle_streams(u32 crc, const u8 *data, usize block_length,
-                               const crc32c_shift_table &table) wontthrow->u32
+#define CRC32C_TARGETISA targetisa("+crc")
+
+struct crc32c_arm_instructions
 {
-  u32 middle_crc = 0;
-  u32 last_crc = 0;
-  for (usize offset = 0; offset < block_length; offset += 8) {
-    u64 first_word;
-    u64 middle_word;
-    u64 last_word;
-    __builtin_memcpy(&first_word, data + offset, 8);
-    __builtin_memcpy(&middle_word, data + block_length + offset, 8);
-    __builtin_memcpy(&last_word, data + 2 * block_length + offset, 8);
-    crc = __crc32cd(crc, first_word);
-    middle_crc = __crc32cd(middle_crc, middle_word);
-    last_crc = __crc32cd(last_crc, last_word);
+  using accumulator = u32;
+
+  CRC32C_TARGETISA static alwaysinline fn update_word(u32 crc,
+                                                      u64 word) wontthrow -> u32
+  {
+    return __crc32cd(crc, word);
   }
 
-  crc = shift_crc32c(table, crc) ^ middle_crc;
-  return shift_crc32c(table, crc) ^ last_crc;
-}
-
-targetisa("+crc") pure fn
-    crc32c_update_acle(u32 crc, const u8 *data, usize length) wontthrow->u32
-{
-  while (length >= 3 * CRC32C_LONG_BLOCK_LENGTH) {
-    crc = crc32c_update_acle_streams(crc, data, CRC32C_LONG_BLOCK_LENGTH,
-                                     CRC32C_LONG_SHIFT_TABLE);
-    data += 3 * CRC32C_LONG_BLOCK_LENGTH;
-    length -= 3 * CRC32C_LONG_BLOCK_LENGTH;
+  CRC32C_TARGETISA static alwaysinline fn update_byte(u32 crc,
+                                                      u8 byte) wontthrow -> u32
+  {
+    return __crc32cb(crc, byte);
   }
-
-  while (length >= 3 * CRC32C_SHORT_BLOCK_LENGTH) {
-    crc = crc32c_update_acle_streams(crc, data, CRC32C_SHORT_BLOCK_LENGTH,
-                                     CRC32C_SHORT_SHIFT_TABLE);
-    data += 3 * CRC32C_SHORT_BLOCK_LENGTH;
-    length -= 3 * CRC32C_SHORT_BLOCK_LENGTH;
-  }
-
-  while (length >= 8) {
-    u64 word;
-    __builtin_memcpy(&word, data, 8);
-    crc = __crc32cd(crc, word);
-    data += 8;
-    length -= 8;
-  }
-  while (length-- > 0)
-    crc = __crc32cb(crc, *data++);
-  return crc;
-}
+};
 
 fn is_aarch64_crc32c_available() wontthrow -> bool
 {
@@ -753,6 +681,64 @@ fn is_aarch64_crc32c_available() wontthrow -> bool
 #else
   return false;
 #endif
+}
+#endif
+
+#if defined CRC32C_TARGETISA
+template <typename Instructions>
+CRC32C_TARGETISA
+    pure fn crc32c_update_streams(u32 crc, const u8 *data, usize block_length,
+                                  const crc32c_shift_table &table) wontthrow
+    -> u32
+{
+  typename Instructions::accumulator middle_crc = 0;
+  typename Instructions::accumulator last_crc = 0;
+  typename Instructions::accumulator first_crc = crc;
+  for (usize offset = 0; offset < block_length; offset += 8) {
+    u64 first_word;
+    u64 middle_word;
+    u64 last_word;
+    __builtin_memcpy(&first_word, data + offset, 8);
+    __builtin_memcpy(&middle_word, data + block_length + offset, 8);
+    __builtin_memcpy(&last_word, data + 2 * block_length + offset, 8);
+    first_crc = Instructions::update_word(first_crc, first_word);
+    middle_crc = Instructions::update_word(middle_crc, middle_word);
+    last_crc = Instructions::update_word(last_crc, last_word);
+  }
+
+  crc = shift_crc32c(table, static_cast<u32>(first_crc)) ^
+        static_cast<u32>(middle_crc);
+  return shift_crc32c(table, crc) ^ static_cast<u32>(last_crc);
+}
+
+template <typename Instructions>
+CRC32C_TARGETISA pure fn crc32c_update_hardware(u32 crc, const u8 *data,
+                                                usize length) wontthrow -> u32
+{
+  while (length >= 3 * CRC32C_LONG_BLOCK_LENGTH) {
+    crc = crc32c_update_streams<Instructions>(
+        crc, data, CRC32C_LONG_BLOCK_LENGTH, CRC32C_LONG_SHIFT_TABLE);
+    data += 3 * CRC32C_LONG_BLOCK_LENGTH;
+    length -= 3 * CRC32C_LONG_BLOCK_LENGTH;
+  }
+
+  while (length >= 3 * CRC32C_SHORT_BLOCK_LENGTH) {
+    crc = crc32c_update_streams<Instructions>(
+        crc, data, CRC32C_SHORT_BLOCK_LENGTH, CRC32C_SHORT_SHIFT_TABLE);
+    data += 3 * CRC32C_SHORT_BLOCK_LENGTH;
+    length -= 3 * CRC32C_SHORT_BLOCK_LENGTH;
+  }
+
+  while (length >= 8) {
+    u64 word;
+    __builtin_memcpy(&word, data, 8);
+    crc = static_cast<u32>(Instructions::update_word(crc, word));
+    data += 8;
+    length -= 8;
+  }
+  while (length-- > 0)
+    crc = Instructions::update_byte(crc, *data++);
+  return crc;
 }
 #endif
 
@@ -778,10 +764,12 @@ fn crc32c_update(u32 crc, const void *data, usize length) wontthrow -> u32
 
 #if defined __x86_64__ && !defined __COSMOPOLITAN__
   static let const has_sse42 = is_x86_sse42_available();
-  if (has_sse42) return crc32c_update_sse42(crc, bytes, length);
+  if (has_sse42)
+    return crc32c_update_hardware<crc32c_x86_instructions>(crc, bytes, length);
 #elif defined __aarch64__ || defined __arm64__ || defined _M_ARM64
   static let const has_crc32c = is_aarch64_crc32c_available();
-  if (has_crc32c) return crc32c_update_acle(crc, bytes, length);
+  if (has_crc32c)
+    return crc32c_update_hardware<crc32c_arm_instructions>(crc, bytes, length);
 #endif
 
   return crc32c_update_software(crc, bytes, length);
