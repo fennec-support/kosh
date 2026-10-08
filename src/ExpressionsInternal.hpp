@@ -68,9 +68,6 @@ pure fn word_has_malformed_glob_bracket(const Word &word) wontthrow -> bool;
 pure fn analysis_source_text(const AnalysisContext &actx,
                              const SourceLocation &location) wontthrow
     -> StringView;
-pure fn analysis_source_span(const AnalysisContext &actx,
-                             const Expression &expression) wontthrow
-    -> StringView;
 
 /* The segment span widened over the leading sigil and the braces around it. */
 pure fn expansion_location_with_sigil(const AnalysisContext &actx,

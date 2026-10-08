@@ -2494,18 +2494,6 @@ pure fn internal::location_spanning(SourceLocation first,
                         first.source_name_index};
 }
 
-pure fn internal::analysis_source_span(const AnalysisContext &actx,
-                                       const Expression &expression) wontthrow
-    -> StringView
-{
-  let const start = expression.source_location().position;
-  let const end = expression.source_end_position();
-  if (start > end || end > actx.source.length) {
-    return {};
-  }
-  return actx.source.substring_of_length(start, end - start);
-}
-
 pure fn internal::arithmetic_reads_external_input(
     const AnalysisContext &actx, StringView expression) wontthrow -> bool
 {
@@ -2656,23 +2644,6 @@ pure fn Command::local_vars() const wontthrow
 }
 
 fn Command::is_assignment() const wontthrow -> bool { return false; }
-
-/* A plain command node carries no redirect target of its own, so the default
-   reports that. A node that does take a target overrides this. */
-fn Command::redirect_to(usize target_fd, String &filename,
-                        bool duplicate) throws -> void
-{
-  unused(target_fd);
-  unused(filename);
-  unused(duplicate);
-  throw ErrorWithLocation{source_location(), "Not implemented (Expressions)"};
-}
-
-fn Command::append_to(usize target_fd, String &filename, bool duplicate) throws
-    -> void
-{
-  redirect_to(target_fd, filename, duplicate);
-}
 
 DummyExpression::DummyExpression(SourceLocation location)
     : Expression(steal(location))

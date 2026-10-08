@@ -961,10 +961,6 @@ public:
   {
     m_execution_string = steal(text);
   }
-  fn restore_execution_string(Maybe<String> execution_string) wontthrow -> void
-  {
-    m_execution_string = steal(execution_string);
-  }
   fn set_current_command(String command) wontthrow -> void
   {
     m_current_command = steal(command);

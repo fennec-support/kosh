@@ -851,8 +851,6 @@ public:
 
   hot fn sort() throws -> void { Base::sort(m_compare); }
 
-  pure fn comparator() const wontthrow -> const Compare & { return m_compare; }
-
   template <class Wanted>
   pure fn lower_bound(const Wanted &wanted) const throws -> usize
   {

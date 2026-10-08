@@ -105,26 +105,6 @@ public:
     return m_words.allocator();
   }
 
-  hot flatten fn and_with(const Bitset &other) wontthrow -> void
-  {
-    let const shared = m_words.count() < other.m_words.count()
-                           ? m_words.count()
-                           : other.m_words.count();
-    for (usize i = 0; i < shared; i++)
-      m_words[i] &= other.m_words[i];
-    for (usize i = shared; i < m_words.count(); i++)
-      m_words[i] = 0;
-  }
-
-  hot flatten fn or_with(const Bitset &other) wontthrow -> void
-  {
-    let const shared = m_words.count() < other.m_words.count()
-                           ? m_words.count()
-                           : other.m_words.count();
-    for (usize i = 0; i < shared; i++)
-      m_words[i] |= other.m_words[i];
-  }
-
   hot mustuse pure fn any() const wontthrow -> bool
   {
     for (usize i = 0; i < m_words.count(); i++)

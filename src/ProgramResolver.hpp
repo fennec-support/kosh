@@ -127,7 +127,6 @@ public:
   }
 
   fn assign_path(Maybe<String> path) throws -> void;
-  fn restore_path(Maybe<String> path) throws -> void;
   fn invalidate() throws -> void;
   fn remember_path(StringView name, const Path &path) throws -> void;
   fn working_directory_changed() throws -> void;
@@ -146,8 +145,6 @@ public:
       StringView validation_prefix = {},
       ValidationScope validation_scope = ValidationScope::Prefix) throws
       -> const ArrayList<String> &;
-  pure fn get_command_name_lower_bound(StringView name) const wontthrow
-      -> usize;
   fn command_name_has_prefix(StringView prefix) throws -> bool;
   pure fn has_valid_command_names() const wontthrow -> bool;
   fn for_each_command_name(auto callback) const throws -> void

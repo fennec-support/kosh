@@ -1141,11 +1141,6 @@ public:
 
   virtual fn is_assignment() const wontthrow -> bool;
 
-  /* The default throws the unsupported error, only a node that takes a target
-     overrides it. */
-  virtual fn append_to(usize d, String &f, bool duplicate) throws -> void;
-  virtual fn redirect_to(usize d, String &f, bool duplicate) throws -> void;
-
   fn evaluate_async(EvalContext &cxt) const throws -> i64;
 
 protected:
@@ -1502,15 +1497,12 @@ protected:
   mutable bool m_has_assignment_only_stage{false};
 };
 
-/* Redirections on a compound command are not supported yet. */
 class CompoundCommand : public Command
 {
 public:
   CompoundCommand(SourceLocation location);
 
   fn is_compound_command() const wontthrow -> bool override;
-
-  fn redirect_to(usize d, String &f, bool duplicate) throws -> void override;
 
   fn set_fully_eliminated() const wontthrow -> void;
   pure fn is_fully_eliminated() const wontthrow -> bool;
@@ -1925,94 +1917,6 @@ protected:
   const Expression *m_body;
   SparseList<analysis_scope_definition> m_analysis_scope_definitions{};
 };
-
-class ConstantNumber : public Expression
-{
-public:
-  ConstantNumber(SourceLocation location, i64 value);
-  ~ConstantNumber() override;
-
-  fn to_ast_string(usize layer = 0) const throws -> String override;
-  fn to_string() const throws -> String override;
-
-protected:
-  fn evaluate_impl(EvalContext &cxt) const throws -> i64 override;
-
-  const i64 m_value;
-};
-
-class UnaryExpression : public Expression
-{
-public:
-  UnaryExpression(SourceLocation location, const Expression *rhs);
-  ~UnaryExpression() override;
-
-  fn to_ast_string(usize layer = 0) const throws -> String override;
-
-protected:
-  const Expression *m_rhs;
-};
-
-#define UNARY_EXPRESSION_STRUCT(e)                                             \
-  class e : public UnaryExpression                                             \
-  {                                                                            \
-  public:                                                                      \
-    e(SourceLocation location, const Expression *rhs);                         \
-    String to_string() const throws override;                                  \
-                                                                               \
-  protected:                                                                   \
-    i64 evaluate_impl(EvalContext &cxt) const throws override;                 \
-  }
-
-UNARY_EXPRESSION_STRUCT(Negate);
-UNARY_EXPRESSION_STRUCT(Unnegate);
-UNARY_EXPRESSION_STRUCT(LogicalNot);
-UNARY_EXPRESSION_STRUCT(BinaryComplement);
-
-class BinaryExpression : public Expression
-{
-public:
-  BinaryExpression(SourceLocation location, const Expression *lhs,
-                   const Expression *rhs);
-  ~BinaryExpression() override;
-
-  fn to_ast_string(usize layer = 0) const throws -> String override;
-
-protected:
-  const Expression *m_lhs;
-  const Expression *m_rhs;
-};
-
-#define BINARY_EXPRESSION_STRUCT(e)                                            \
-  class e : public BinaryExpression                                            \
-  {                                                                            \
-  public:                                                                      \
-    e(SourceLocation location, const Expression *lhs, const Expression *rhs);  \
-    String to_string() const throws override;                                  \
-                                                                               \
-  protected:                                                                   \
-    i64 evaluate_impl(EvalContext &cxt) const throws override;                 \
-  }
-
-BINARY_EXPRESSION_STRUCT(BinaryDummyExpression);
-BINARY_EXPRESSION_STRUCT(Add);
-BINARY_EXPRESSION_STRUCT(Subtract);
-BINARY_EXPRESSION_STRUCT(Multiply);
-BINARY_EXPRESSION_STRUCT(Divide);
-BINARY_EXPRESSION_STRUCT(Module);
-BINARY_EXPRESSION_STRUCT(BinaryAnd);
-BINARY_EXPRESSION_STRUCT(LogicalAnd);
-BINARY_EXPRESSION_STRUCT(GreaterThan);
-BINARY_EXPRESSION_STRUCT(GreaterOrEqual);
-BINARY_EXPRESSION_STRUCT(RightShift);
-BINARY_EXPRESSION_STRUCT(LeftShift);
-BINARY_EXPRESSION_STRUCT(LessThan);
-BINARY_EXPRESSION_STRUCT(LessOrEqual);
-BINARY_EXPRESSION_STRUCT(BinaryOr);
-BINARY_EXPRESSION_STRUCT(LogicalOr);
-BINARY_EXPRESSION_STRUCT(Xor);
-BINARY_EXPRESSION_STRUCT(Equal);
-BINARY_EXPRESSION_STRUCT(NotEqual);
 
 } /* namespace expressions */
 

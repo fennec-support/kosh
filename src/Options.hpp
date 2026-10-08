@@ -112,10 +112,6 @@ struct option_descriptor
   bool is_set_alias;
   bool is_listed_by_set;
 
-  pure fn is_bash_option() const wontthrow -> bool
-  {
-    return !set_name.is_empty() || !shopt_name.is_empty();
-  }
   pure fn is_legacy() const wontthrow -> bool
   {
     return is_set_alias ||

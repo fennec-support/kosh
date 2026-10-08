@@ -110,9 +110,6 @@ fn complete_command_names(StringView token, EvalContext &context,
                           const ArrayList<StringView> *extra_command_names,
                           command_match_mode match_mode) throws
     -> ArrayList<String>;
-fn complete_filesystem_names(StringView token, EvalContext &context,
-                             const Path &base_directory) throws
-    -> ArrayList<String>;
 
 fn warm_cdpath_indexes(EvalContext &context) throws -> void;
 

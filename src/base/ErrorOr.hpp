@@ -132,13 +132,3 @@ private:
     if (t__result.is_error()) rarely return t__result.error();                 \
     t__result.take();                                                          \
   })
-
-/* Build an Error whose message carries the source file and line, for an
-   internal failure that should not normally reach the user. */
-#define MAKE_ERROR(msg)                                                        \
-  ::koshka::Error                                                              \
-  {                                                                            \
-    ::koshka::String{__FILE__ ":"} +                                           \
-        ::koshka::String::from(__LINE__, ::koshka::heap_allocator()) + ": " +  \
-        (msg)                                                                  \
-  }

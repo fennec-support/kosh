@@ -58,9 +58,6 @@ static u64 DIRECTORY_LISTING_GENERATION = 0;
 #if !defined NDEBUG
 static usize DEBUG_DIRECTORY_STAT_COUNT = 0;
 static usize DEBUG_DIRECTORY_READ_COUNT = 0;
-static usize DEBUG_DIRECTORY_SORT_COUNT = 0;
-static usize DEBUG_EXECUTABLE_PROBE_COUNT = 0;
-static usize DEBUG_PROGRAM_PATH_CANDIDATE_COUNT = 0;
 #endif
 
 static fn clear_directory_listing_cache() throws -> void
@@ -225,9 +222,6 @@ static fn apply_directory_listing_order(cached_directory_listing &listing,
     -> const ArrayList<Path::directory_child> *
 {
   if (order == directory_listing_order::FoldedName && !listing.is_sorted) {
-#if !defined NDEBUG
-    DEBUG_DIRECTORY_SORT_COUNT++;
-#endif
     listing.entries.sort([](const Path::directory_child &left,
                             const Path::directory_child &right) {
       return directory_entry_name_is_less(left.name.view(), right.name.view());
@@ -510,11 +504,6 @@ fn ProgramResolver::assign_path(Maybe<String> path) throws -> void
   clear_derived_indexes();
 }
 
-fn ProgramResolver::restore_path(Maybe<String> path) throws -> void
-{
-  assign_path(steal(path));
-}
-
 fn ProgramResolver::invalidate() throws -> void
 {
   m_execution_cache.clear();
@@ -697,9 +686,6 @@ fn ProgramResolver::probe_directory_entries(
       full_path->append(entry.name.view());
     }
 
-#if !defined NDEBUG
-    DEBUG_EXECUTABLE_PROBE_COUNT++;
-#endif
     probe.regular_entries.push(true);
     probe.executable_entries.push(full_path->is_executable());
   }
@@ -838,21 +824,6 @@ pure fn debug_directory_read_count() wontthrow -> usize
 {
   return DEBUG_DIRECTORY_READ_COUNT;
 }
-
-pure fn debug_directory_sort_count() wontthrow -> usize
-{
-  return DEBUG_DIRECTORY_SORT_COUNT;
-}
-
-pure fn debug_executable_probe_count() wontthrow -> usize
-{
-  return DEBUG_EXECUTABLE_PROBE_COUNT;
-}
-
-pure fn debug_program_path_candidate_count() wontthrow -> usize
-{
-  return DEBUG_PROGRAM_PATH_CANDIDATE_COUNT;
-}
 #endif
 
 fn ProgramResolver::validate_path_directory_generations() throws -> bool
@@ -955,9 +926,6 @@ fn ProgramResolver::revalidate_command_prefix(StringView prefix) throws -> void
       if (stem_matches) regular_names.push(String{stem});
       if (full_name_matches) regular_names.push(String{normalized_name.view()});
 
-#if !defined NDEBUG
-      DEBUG_EXECUTABLE_PROBE_COUNT++;
-#endif
       if (!full_path->is_executable()) continue;
       if (stem_matches) command_names.push(String{stem});
       if (full_name_matches) command_names.push(steal(normalized_name));
@@ -1031,12 +999,6 @@ fn ProgramResolver::get_command_names(StringView validation_prefix,
   prepare_complete_path_cache(validation_prefix, validation_scope);
 
   return m_command_names;
-}
-
-pure fn ProgramResolver::get_command_name_lower_bound(
-    StringView name) const wontthrow -> usize
-{
-  return m_command_names.lower_bound(name);
 }
 
 fn ProgramResolver::command_name_has_prefix(StringView prefix) throws -> bool
@@ -1178,9 +1140,6 @@ fn ProgramResolver::resolve_along_path(StringView program_name,
       candidate_batch.add(os::batch_operation::stat(candidate_paths[index],
                                                     candidate_statuses[index]));
 
-#if !defined NDEBUG
-    DEBUG_PROGRAM_PATH_CANDIDATE_COUNT += candidate_paths.count();
-#endif
     let const candidate_results = candidate_batch.execute();
     for (usize index = 0; index < candidate_paths.count(); index++) {
       if (candidate_results[index].error_number != 0 ||
@@ -1227,9 +1186,6 @@ fn ProgramResolver::resolve_along_path(StringView program_name,
       candidate_batch.add(os::batch_operation::stat(candidate_paths[index],
                                                     candidate_statuses[index]));
 
-#if !defined NDEBUG
-    DEBUG_PROGRAM_PATH_CANDIDATE_COUNT += candidate_paths.count();
-#endif
     candidate_batch.execute(candidate_results);
     for (usize index = 0; index < candidate_paths.count(); index++) {
       if (candidate_results[index].error_number != 0 ||

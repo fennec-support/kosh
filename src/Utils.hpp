@@ -521,9 +521,6 @@ fn directory_entry_kind(const Path &directory,
 #if !defined NDEBUG
 pure fn debug_directory_stat_count() wontthrow -> usize;
 pure fn debug_directory_read_count() wontthrow -> usize;
-pure fn debug_directory_sort_count() wontthrow -> usize;
-pure fn debug_executable_probe_count() wontthrow -> usize;
-pure fn debug_program_path_candidate_count() wontthrow -> usize;
 #endif
 
 fn file_content_identity(const Path &path, Allocator allocator) throws

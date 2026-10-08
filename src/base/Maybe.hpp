@@ -201,14 +201,4 @@ private:
   T *m_value{nullptr};
 };
 
-/* Evaluate a Maybe expression, return None from the enclosing function when
-   it is empty, otherwise yield the value. The enclosing function must itself
-   return a Maybe. */
-#define UNWRAP(maybe_expr)                                                     \
-  ({                                                                           \
-    auto t__result = (maybe_expr);                                             \
-    if (!t__result) return ::koshka::None;                                     \
-    t__result.take();                                                          \
-  })
-
 } /* namespace koshka */

@@ -320,14 +320,6 @@ static pure fn common_prefix_length(StringView left, StringView right,
 class GhostPrefixCollector
 {
 public:
-  enum class Selection : u8
-  {
-    CommonPrefix,
-    FirstMatch,
-  };
-
-  explicit GhostPrefixCollector(Selection selection) : selection(selection) {}
-
   fn add(StringView name, match_tier tier) throws -> void
   {
     let const tier_index = static_cast<usize>(tier);
@@ -339,15 +331,6 @@ public:
       return;
     }
 
-    if (selection == Selection::FirstMatch) {
-      match_count++;
-      return;
-    }
-
-    let const shared_length = common_prefix_length(
-        prefix.view(), name, prefix.count(), tier == match_tier::prefix);
-    while (prefix.count() > shared_length)
-      prefix.pop_back();
     match_count++;
   }
 
@@ -367,7 +350,6 @@ private:
   usize match_count{0};
   usize source_scan_count{0};
   String prefix{completion_allocator()};
-  Selection selection;
 };
 
 template <typename Collector>
@@ -461,8 +443,7 @@ complete_command_name_prefix(StringView token, EvalContext &context,
                              command_match_mode match_mode) throws
     -> GhostPrefixCollector
 {
-  let collector =
-      GhostPrefixCollector{GhostPrefixCollector::Selection::FirstMatch};
+  let collector = GhostPrefixCollector{};
   collect_command_names(token, context, collector, extra_command_names,
                         match_mode);
   return collector;
@@ -852,14 +833,6 @@ static fn complete_filesystem(
   return collector.take();
 }
 
-fn complete_filesystem_names(StringView token, EvalContext &context,
-                             const Path &base_directory) throws
-    -> ArrayList<String>
-{
-  return complete_filesystem(token, base_directory, context, nullptr,
-                             path_text_mode::Raw, filesystem_entry_filter::All);
-}
-
 fn complete_filesystem_names_by_prefix(StringView token, EvalContext &context,
                                        const Path &base_directory,
                                        completion_filesystem_mode mode) throws
@@ -954,9 +927,8 @@ static fn complete_filesystem_prefix(
     -> GhostPrefixCollector
 {
   return complete_filesystem_with<GhostPrefixCollector>(
-      token, base_directory, context,
-      GhostPrefixCollector{GhostPrefixCollector::Selection::FirstMatch},
-      decoded, text_mode, filter, directory_suffix_mode::Marked);
+      token, base_directory, context, GhostPrefixCollector{}, decoded,
+      text_mode, filter, directory_suffix_mode::Marked);
 }
 
 /* Only the trailing component is globbed. */
@@ -1531,16 +1503,14 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       /* A token ending in a slash names a directory the ghost has not read yet,
          and the collector indexes it and suggests its first entry. An empty
          token names nothing and gets no suggestion. */
-      let collector =
-          is_directory_change_command
-              ? collect_directory_change_operand(
-                    token, base_directory, context, decoded_token,
-                    GhostPrefixCollector{
-                        GhostPrefixCollector::Selection::FirstMatch},
-                    utils::directory_validation::IndexOnly)
-              : complete_filesystem_prefix(token, base_directory, context,
-                                           &decoded_token, file_name_text_mode,
-                                           filesystem_filter);
+      let collector = is_directory_change_command
+                          ? collect_directory_change_operand(
+                                token, base_directory, context, decoded_token,
+                                GhostPrefixCollector{},
+                                utils::directory_validation::IndexOnly)
+                          : complete_filesystem_prefix(
+                                token, base_directory, context, &decoded_token,
+                                file_name_text_mode, filesystem_filter);
       ghost_candidate_count = collector.count();
       source_candidate_scan_count = collector.source_scans();
       materialized_candidate_count = collector.materialized();
