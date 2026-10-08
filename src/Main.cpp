@@ -2035,7 +2035,7 @@ wontreturn static fn exit_after_final_chunk(EvalContext &context, i32 exit_code,
   }
 #endif
   LOG(Info, "exiting after the final chunk with code %d", exit_code);
-  if (!os::is_child_process()) context.run_exit_trap();
+  if (!os::is_child_process()) context.run_exit_trap(exit_code);
   if (FLAG_LINT.is_enabled()) lint.print_summary(context);
   utils::quit(exit_code, FLAG_ERROR_EXIT.is_enabled()
                              ? utils::farewell_policy::Goodbye

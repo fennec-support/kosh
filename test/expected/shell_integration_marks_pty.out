@@ -4,4 +4,5 @@ PASS directory is a file uri
 PASS cd reports directory
 PASS opt out writes nothing
 PASS dumb terminal writes nothing
+PASS discarded line leaves status 1
 status=0

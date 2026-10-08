@@ -860,6 +860,8 @@ static fn run_script_contents(
     utils::quit(EXIT_FAILURE);
   }
 
+  context.execution_store().set_last_exit_status(exit_code);
+
   return exit_code;
 }
 

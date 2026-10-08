@@ -9,3 +9,28 @@ report.sh:1:6: error: missing: is gone.
      1 |  echo "${missing:?is gone}"
        |       ^~~~~~~~~~~~~~~~~~~~~
 rc=1
+== the EXIT trap reads the status a fatal expansion error ends with ==
+trap saw 1
+kosh trap_report.sh rc=1
+kosh trap_setu.sh rc=1
+trap saw 1
+kosh trap_arith.sh rc=1
+trap saw 1
+bash trap_report.sh rc=1
+trap saw 1
+bash trap_setu.sh rc=1
+after
+trap saw 0
+bash trap_arith.sh rc=0
+trap saw 1
+bash-posix trap_report.sh rc=1
+trap saw 1
+bash-posix trap_setu.sh rc=1
+trap saw 1
+bash-posix trap_arith.sh rc=1
+trap saw 2
+sh trap_report.sh rc=2
+trap saw 2
+sh trap_setu.sh rc=2
+trap saw 2
+sh trap_arith.sh rc=2

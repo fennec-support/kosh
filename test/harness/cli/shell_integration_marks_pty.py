@@ -7,7 +7,9 @@
 # OSC 7 shell integration marks as raw bytes. It checks the prompt, command,
 # and exit status order, the status after a failing command, the working
 # directory after cd, and that the marks vanish under KOSH_SHELL_INTEGRATION=0
-# and TERM=dumb. Each check prints one stable PASS line.
+# and TERM=dumb. A line that a fatal expansion error discards reports status
+# 1 and leaves it in $? for the next line. Each check prints one stable PASS
+# line.
 
 import fcntl
 import os
@@ -106,6 +108,12 @@ def main():
 
     dumb = run_session({"TERM": "dumb"}, ["false"], home)
     check("dumb terminal writes nothing", len(get_marks(dumb)) == 0)
+
+    discarded = run_session(
+        {}, [': "${zz?q}"', "echo status-after-discard=$?"], home)
+    check("discarded line leaves status 1",
+          b"\x1b]133;D;1\x07" in discarded
+          and b"status-after-discard=1" in discarded)
 
 
 main()
