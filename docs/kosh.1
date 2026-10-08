@@ -5002,8 +5002,10 @@ An interactive shell stores the initial terminal width and height in these
 variables.
 .TP
 .B PROMPT_COMMAND
-The command runs before each interactive prompt. Its status does not replace the
-previous command status.
+The command runs before each interactive prompt. When the variable is an
+indexed array, each nonempty element runs as a command in index order. Every
+element sees the status and $_ of the previous command, and neither the status
+nor $_ of a hook replaces them.
 .TP
 .BR PS0 ", " PS1 ", " PS2 ", " PS3 ", " PS4
 These variables provide the pre-execution, primary, continuation, select, and

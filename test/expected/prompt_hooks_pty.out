@@ -7,6 +7,10 @@ bash-return-trap PASS
 bash-debug-trap PASS
 bash-preexec-sees-the-command PASS
 bash-job-report PASS
+bash-prompt-command-array-elements PASS
+bash-prompt-command-elements-keep-the-status PASS
+bash-preexec-array-sees-the-command PASS
+bash-prompt-command-element-return-trap PASS
 kosh-prompt-hook PASS
 kosh-ps1-expansions PASS
 kosh-ps0-expansions PASS
@@ -16,4 +20,8 @@ kosh-return-trap PASS
 kosh-debug-trap PASS
 kosh-preexec-sees-the-command PASS
 kosh-job-report PASS
+kosh-prompt-command-array-elements PASS
+kosh-prompt-command-elements-keep-the-status PASS
+kosh-preexec-array-sees-the-command PASS
+kosh-prompt-command-element-return-trap PASS
 status=0

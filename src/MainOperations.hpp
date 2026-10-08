@@ -980,52 +980,68 @@ static fn format_document_source(StringView source, Maybe<StringView> filename,
   return parser_format_apply_replacements(source, steal(replacements));
 }
 
+/* Each element of a PROMPT_COMMAND array runs in index order, as in bash
+   5.1, and an empty element is skipped. Every element sees the status and $_
+   of the last command, and neither survives the hooks. A run resets the arena
+   it parses into, so only a lone hook keeps its parsed tree between prompts. */
 static fn run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
 {
-  Maybe<String> command = context.get_variable_value("PROMPT_COMMAND");
-  if (!command.has_value() || command->is_empty()) {
-    return;
+  if (context.is_associative_array("PROMPT_COMMAND")) return;
+
+  let commands = context.collect_array_elements("PROMPT_COMMAND");
+  usize command_count = 0;
+  for (let &command : commands) {
+    command.normalize_crlf_line_endings();
+    if (!command.is_empty()) command_count++;
   }
 
-  command->normalize_crlf_line_endings();
-
-  LOG(Info, "running the PROMPT_COMMAND hook, %zu bytes", command->count());
-
-  let const saved_exit_status = context.execution_store().last_exit_status();
-  let const saved_command_duration_nanos =
-      context.execution_store().last_command_duration_nanos();
-  context.execution_store().prompt_command_running() = true;
-  defer { context.execution_store().prompt_command_running() = false; };
+  if (command_count == 0) return;
 
   let &prompt_store = context.prompt_command_store();
-  let &cached_text = prompt_store.get_cached_text();
-  let cached_ast = prompt_store.get_cached_ast();
-  let &prompt_arena = prompt_store.get_arena();
-  i32 status = EXIT_SUCCESS;
-  if (cached_ast != nullptr && cached_text.view() == command->view()) {
-    status = run_script_contents(cached_text, context, ast_arena,
-                                 StringView{"$PROMPT_COMMAND"}, cached_ast,
-                                 nullptr, None, {}, {false});
-  } else {
-    prompt_arena.reset();
-    prompt_store.set_cached_ast(nullptr);
-    cached_text = String{command->view()};
-    Expression *parsed_ast = nullptr;
-    status = run_script_contents(cached_text, context, prompt_arena,
-                                 StringView{"$PROMPT_COMMAND"}, nullptr,
-                                 &parsed_ast, None, {}, {false});
-    prompt_store.set_cached_ast(parsed_ast);
+  let &execution = context.execution_store();
+  let const saved_exit_status = execution.last_exit_status();
+  let const saved_command_duration_nanos =
+      execution.last_command_duration_nanos();
+  let const saved_last_argument = execution.get_last_argument().clone();
+  execution.prompt_command_running() = true;
+  defer { execution.prompt_command_running() = false; };
+
+  for (let &command : commands) {
+    if (command.is_empty()) continue;
+
+    LOG(Info, "running a PROMPT_COMMAND hook, %zu bytes", command.count());
+    execution.set_last_exit_status(saved_exit_status);
+    let &cached_text = prompt_store.get_cached_text();
+    let const cached_ast = prompt_store.get_cached_ast();
+    i32 status = EXIT_SUCCESS;
+    if (command_count == 1 && cached_ast != nullptr &&
+        cached_text.view() == command.view())
+    {
+      status = run_script_contents(cached_text, context, ast_arena,
+                                   StringView{"$PROMPT_COMMAND"}, cached_ast,
+                                   nullptr, None, {}, {false});
+    } else {
+      prompt_store.set_cached_ast(nullptr);
+      cached_text = steal(command);
+      Expression *parsed_ast = nullptr;
+      status =
+          run_script_contents(cached_text, context, prompt_store.get_arena(),
+                              StringView{"$PROMPT_COMMAND"}, nullptr,
+                              &parsed_ast, None, {}, {false});
+      prompt_store.set_cached_ast(parsed_ast);
+    }
+
+    if (status != EXIT_SUCCESS)
+      if (let const definition =
+              context.special_variable_definition_location("PROMPT_COMMAND");
+          definition.has_value())
+        context.print_source_backtrace(definition);
+
+    execution.set_last_argument(saved_last_argument.clone());
   }
 
-  if (status != EXIT_SUCCESS)
-    if (let const definition =
-            context.special_variable_definition_location("PROMPT_COMMAND");
-        definition.has_value())
-      context.print_source_backtrace(definition);
-
-  context.execution_store().set_last_exit_status(saved_exit_status);
-  context.execution_store().set_last_command_duration_nanos(
-      saved_command_duration_nanos);
+  execution.set_last_exit_status(saved_exit_status);
+  execution.set_last_command_duration_nanos(saved_command_duration_nanos);
 }
 
 static fn history_control_operator_byte_length(StringView source,

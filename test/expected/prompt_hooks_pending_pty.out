@@ -1,5 +1,0 @@
-bash-prompt-hook PASS
-bash-prompt-command-array-elements PASS
-kosh-prompt-hook PASS
-kosh-prompt-command-array-elements PASS
-status=0

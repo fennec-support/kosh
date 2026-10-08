@@ -10,8 +10,11 @@
 # and PS0 expand command and arithmetic substitutions, backquotes, and list
 # operators on PROMPT_COMMAND, a DEBUG trap sees each command once, a
 # preexec hook armed by the prompt hook sees the typed command, a RETURN trap
-# runs, and a background job is reported before the next prompt. Each check
-# prints one stable PASS line.
+# runs, and a background job is reported before the next prompt. Every
+# element of a PROMPT_COMMAND array runs in order with the status of the
+# last command, and with its $_ in the bash mood, a precmd hook appended as an element arms a preexec
+# DEBUG trap the way bash-preexec does, and a RETURN trap set by an element
+# runs. Each check prints one stable PASS line.
 
 import fcntl
 import os
@@ -177,6 +180,39 @@ def run_mood(binary, directory, mood, report):
         session.run("sleep 0.1 &")
         check_line(session, report, mood + "-job-report", "sleep 0.4",
                    ["Done"])
+
+        session.run("m=0; PROMPT_COMMAND=('m=$((m + 1))' '%s')"
+                    % READY_HOOK)
+        check_line(session, report, mood + "-prompt-command-array-elements",
+                   "echo \"<middle-$m>\"", ["<middle-1>"])
+        last_word = " $_" if mood == "bash" else ""
+        session.run("PROMPT_COMMAND=('echo \"<first-$?>\"; false'"
+                    " 'echo \"<second-$?%s>\"' '' '%s')"
+                    % (last_word, READY_HOOK))
+        check_line(session, report,
+                   mood + "-prompt-command-elements-keep-the-status",
+                   "false last-word",
+                   ["<first-1>", "<second-1%s>"
+                    % last_word.replace("$_", "last-word")])
+
+        session.run("bp_mode=; bp_precmd() { bp_status=$?;"
+                    " echo \"<precmd-$bp_status>\"; bp_mode=on; }")
+        session.run("bp_preexec() { [ -n \"$bp_mode\" ] || return 0;"
+                    " bp_mode=; echo \"<preexec:$BASH_COMMAND>\"; }")
+        session.run("trap 'bp_preexec' DEBUG; PROMPT_COMMAND=('%s');"
+                    " PROMPT_COMMAND+=(bp_precmd)" % READY_HOOK)
+        check_line(session, report,
+                   mood + "-preexec-array-sees-the-command",
+                   "echo \"<ran-$((3 + 4))>\"; (exit 3)",
+                   ["<preexec:echo \"<ran-$((3 + 4))>\">", "<ran-7>",
+                    "<precmd-3>"])
+        session.run("trap - DEBUG")
+
+        session.run("hook() { trap 'echo \"<hook-return>\"; trap - RETURN'"
+                    " RETURN; }; PROMPT_COMMAND=('%s' hook)" % READY_HOOK)
+        check_line(session, report,
+                   mood + "-prompt-command-element-return-trap", "true",
+                   ["<hook-return>"])
     finally:
         session.close()
 

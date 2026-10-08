@@ -55,8 +55,7 @@ SKIPPED_TESTS := \
 	koshkit_live_pty koshkit_live_sanitizers koshkit_live_deltas \
 	editor_ghost_menu_pty editor_kill_yank_pty editor_prompt_pty \
 	shell_integration_marks_pty background_terminal_pty \
-	prompt_function_substitution_pty prompt_hooks_pty \
-	prompt_hooks_pending_pty startup_chain_pty \
+	prompt_function_substitution_pty prompt_hooks_pty startup_chain_pty \
 	procsub_contexts_matrix \
 	shell_executable_path \
 	analysis_environment_inheritance progcomp_alias_ghost koshconf_persist \
@@ -65,8 +64,7 @@ else ifneq ($(TARGET), Linux)
 SKIPPED_TESTS := koshkit_mknod koshkit_live_pty koshkit_live_sanitizers \
 	koshkit_live_deltas editor_ghost_menu_pty editor_kill_yank_pty \
 	editor_prompt_pty background_terminal_pty koshkit_evilfiles_parity \
-	prompt_hooks_pty prompt_hooks_pending_pty startup_chain_pty \
-	trap_during_blocking_open \
+	prompt_hooks_pty startup_chain_pty trap_during_blocking_open \
 	koshconf_system_file process_substitution_release
 else
 SKIPPED_TESTS :=
@@ -90,8 +88,7 @@ SKIPPED_TESTS += koshkit_live_sanitizers
 endif
 SKIPPED_TESTS += expansion_list_operators_matrix_pending \
 	transform_operators_matrix_pending nameref_contexts_matrix_pending \
-	funsub_contexts_matrix_pending positional_operators_matrix_pending \
-	prompt_hooks_pending_pty
+	funsub_contexts_matrix_pending positional_operators_matrix_pending
 ifeq ($(NO_KOSHKIT),1)
 ifeq ($(KOSHKIT_BIN),)
 $(error NO_KOSHKIT=1 needs KOSHKIT_BIN set to a build that bundles koshkit)
@@ -119,7 +116,7 @@ ifeq ($(shell command -v python3),)
 SKIPPED_TESTS += koshkit_live_pty koshkit_live_deltas editor_ghost_menu_pty \
 	editor_kill_yank_pty editor_prompt_pty shell_integration_marks_pty \
 	background_terminal_pty prompt_function_substitution_pty \
-	prompt_hooks_pty prompt_hooks_pending_pty startup_chain_pty
+	prompt_hooks_pty startup_chain_pty
 endif
 
 ifeq ($(OS), Windows_NT)
