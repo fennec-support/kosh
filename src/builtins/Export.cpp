@@ -185,8 +185,6 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       continue;
     }
 
-    /* An integer name evaluates its new value as arithmetic, so the environment
-       receives the decimal result. */
     let const is_integer_name = cxt.is_integer_variable(name.view());
     if (has_new_value && is_integer_name) {
       value = value.is_empty() ? String{cxt.scratch_allocator(), "0"}
@@ -195,8 +193,6 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (has_new_value) cxt.write_dynamic_variable(name.view(), value.view());
 
-    /* The unset here is this move, not a user unset, so the integer mark it
-       clears is put back. */
     LOG(All, "export moving '%s' into the environment", name.c_str());
     let const environment_name = os::get_environment_spelling(name.view());
     cxt.unset_shell_variable(name);
@@ -208,9 +204,6 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     cxt.record_environment_change(environment_name.view());
     os::set_environment_variable(environment_name.view(), value);
     cxt.mark_exported(environment_name.view());
-    /* The unset above pointed the resolver at the now-removed environment PATH,
-       so an export PATH=... refreshes it to the value just placed in the
-       environment. */
     if (utils::environment_name_is_path(name.view()))
       cxt.program_resolver().assign_path(String{value.view()});
   }
@@ -220,4 +213,4 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return has_error ? 1 : 0;
 }
 
-} /* namespace koshka */
+}

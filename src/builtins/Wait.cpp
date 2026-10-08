@@ -47,7 +47,7 @@ fn find_job_by_process(JobTable &table, i64 process_id) wontthrow -> job *
   return nullptr;
 }
 
-} /* namespace */
+}
 
 static fn wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32;
 
@@ -91,8 +91,6 @@ static fn wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
     }
   };
 
-  /* A trapped signal that arrives while the wait blocks ends it, and its
-     action runs at the boundary the builtin returns to. */
   let const do_was_interrupted = [] wontthrow -> bool {
     return os::peek_pending_signal_besides_child() != 0;
   };
@@ -342,4 +340,4 @@ static fn wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
   return status;
 }
 
-} /* namespace koshka */
+}

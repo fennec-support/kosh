@@ -57,9 +57,6 @@ class ArrayList
 public:
   static_assert(std::is_nothrow_destructible_v<T>);
 
-  /* The length and the capacity are 32-bit, so the header is twenty-four bytes
-     on a machine whose pointer is eight. The evaluator holds millions of these
-     as members, and no list it builds approaches four billion elements. */
   static constexpr usize MAXIMUM_ELEMENT_COUNT =
       static_cast<usize>(~static_cast<u32>(0));
 
@@ -236,7 +233,6 @@ public:
     push(T{m_allocator, static_cast<Args &&>(args)...});
   }
 
-  /* The caller guarantees the list is not empty. */
   fn pop_back() wontthrow -> void
   {
     ASSERT(m_length > 0, "pop_back on an empty list");
@@ -257,7 +253,6 @@ public:
     }
   }
 
-  /* The caller guarantees index is in range. */
   fn remove(usize index) throws -> void
   {
     ASSERT(index < m_length, "remove past the end of the list");
@@ -282,8 +277,6 @@ public:
     m_length = 0;
   }
 
-  /* Destroy every element and give the storage back, where clear keeps the
-     capacity for the next fill. */
   fn release() wontthrow -> void { destroy_all(); }
 
   hot mustuse pure fn back() wontthrow -> T &
@@ -351,8 +344,6 @@ public:
     m_capacity = static_cast<u32>(new_capacity);
   }
 
-  /* The exact-size move to another allocator. A list is built on the heap where
-     growth is cheap and is then parked in an arena without its growth slack. */
   cold fn move_to_allocator(Allocator allocator) throws -> void
   {
     if (m_length == 0) {
@@ -435,9 +426,6 @@ public:
       & throws -> SortedArrayList<T, order_comparator<T>>;
 
 private:
-  /* A default list is heap-backed and empty, so it can serve as the value a
-     StringMap slot holds before a real list is placed into it. The friend keeps
-     it reachable to the table while every call site must name its lifetime. */
   template <class Value>
   friend class StringMap;
   template <class Value, class Compare>
@@ -471,8 +459,6 @@ private:
     m_length++;
   }
 
-  /* A trivially copyable type relocates as one memcpy, skipping the per-element
-     move constructor and destructor the compiler would otherwise emit. */
   fn relocate_to(T *fresh) throws -> void
   {
     if constexpr (std::is_trivially_copyable_v<T>) {
@@ -902,10 +888,6 @@ template <class T>
   return sorted_type{clone(), steal(compare)};
 }
 
-/* A list that is empty on almost every instance it is a member of. An empty one
-   is one pointer, and the list itself is allocated only when a fill carries
-   elements. The read interface matches ArrayList, so a member can be swapped
-   over without touching its readers. */
 template <class T>
 class SparseList
 {
@@ -931,7 +913,6 @@ public:
     return *this;
   }
 
-  /* An empty fill leaves the instance at one null pointer. */
   fn fill(ArrayList<T> &&filled) throws -> void
   {
     if (filled.is_empty()) {
@@ -950,7 +931,6 @@ public:
     if (allocator.get_kind() == Allocator::Kind::Heap) m_list->shrink_to_fit();
   }
 
-  /* Drop every element and return the instance to one null pointer. */
   fn clear() wontthrow -> void { release(); }
 
   hot mustuse pure fn is_empty() const wontthrow -> bool
@@ -990,4 +970,4 @@ private:
   ArrayList<T> *m_list{nullptr};
 };
 
-} /* namespace koshka */
+}

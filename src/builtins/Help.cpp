@@ -133,4 +133,4 @@ fn Help::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return status;
 }
 
-} /* namespace koshka */
+}

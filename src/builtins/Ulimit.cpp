@@ -45,7 +45,6 @@ namespace koshka {
 
 namespace {
 
-/* The order matches dash so -a prints the same table. */
 struct resource_entry
 {
   const char *label;
@@ -156,7 +155,7 @@ fn render_limit(const os::resource_limit &limit, u64 divisor,
   return String::from(value / divisor, allocator);
 }
 
-} /* namespace */
+}
 
 cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
@@ -239,18 +238,15 @@ cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           "The limit must be a non-negative whole number");
       return is_posix ? 2 : 1;
     }
-    /* A scaled resource multiplies the operand by its unit, so an operand that
-       would overflow the multiply saturates to unlimited the way bash reports
-       it. */
-    if (units != 0 && parsed.value() > os::RESOURCE_UNLIMITED / units) {
+    let const does_scaled_value_saturate_to_unlimited =
+        units != 0 && parsed.value() > os::RESOURCE_UNLIMITED / units;
+    if (does_scaled_value_saturate_to_unlimited) {
       value = os::RESOURCE_UNLIMITED;
     } else {
       value = parsed.value() * units;
     }
   }
 
-  /* Naming neither -H nor -S, or both together, sets both, the way dash does.
-   */
   if (FLAG_HARD.is_enabled() || !FLAG_SOFT.is_enabled()) {
     limit.hard = value;
   }
@@ -265,4 +261,4 @@ cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return 0;
 }
 
-} /* namespace koshka */
+}

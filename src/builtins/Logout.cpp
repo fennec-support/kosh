@@ -40,4 +40,4 @@ fn Logout::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       "Logout takes at most one status, such as `logout 1`");
 }
 
-} /* namespace koshka */
+}

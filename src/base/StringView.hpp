@@ -143,7 +143,7 @@ hot inline fn find_last_byte(const char *bytes, usize byte_count,
   return nullptr;
 }
 
-} /* namespace byte_scan */
+}
 
 template <class T>
 class ErrorOr;
@@ -159,8 +159,6 @@ public:
   constexpr StringView(const char *bytes, usize count)
       : data(bytes), length(count)
   {}
-  /* The length folds at compile time for a literal, so a static table of views
-     costs no startup work and no strlen on read. */
   constexpr StringView(const char *cstr) wontthrow
       : data(cstr),
         length(cstr != nullptr ? __builtin_strlen(cstr) : 0)
@@ -176,8 +174,6 @@ public:
 
   mustuse fn to_lower_ascii(Allocator allocator) const throws -> String;
 
-  /* A copy of these bytes in the allocator, borrowed for as long as that
-     allocator keeps them. An arena copy lives as long as the arena. */
   mustuse fn copy_to(Allocator allocator) const throws -> StringView;
 
   hot flatten mustuse pure fn operator==(StringView other) const wontthrow->bool
@@ -240,10 +236,6 @@ public:
     }
   }
 
-  /* Whether the view is one or more decimal digits and nothing else, the strict
-     digit scan a numeric name, positional, or descriptor shares before it
-     parses. An empty view is not a number, and no sign or surrounding
-     whitespace is allowed, so a caller can tell a bare number apart. */
   mustuse pure fn is_all_decimal_digits() const wontthrow -> bool
   {
     if (length == 0) return false;
@@ -293,4 +285,4 @@ pure alwaysinline fn hash_bytes(StringView view) wontthrow -> u64
   return hash;
 }
 
-} /* namespace koshka */
+}

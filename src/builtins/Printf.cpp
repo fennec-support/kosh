@@ -70,8 +70,6 @@ fn decode_utf8_code_point(const String &arg, usize start) throws -> i64
   return code_point;
 }
 
-/* is_valid is false when a byte follows the number, matching bash. An argument
-   that opens with a quote yields the next character's code point. */
 fn parse_printf_number(const String &arg) throws -> printf_number
 {
   if (!arg.is_empty() && (arg[0] == '\'' || arg[0] == '"')) {
@@ -284,8 +282,6 @@ fn append_escape(String &out, const String &fmt, usize &i,
 
   let const e = fmt[i];
 
-  /* The index is left on the last digit consumed, the caller advances past it.
-   */
   if (e >= '0' && e <= '7') {
     i32 value = e - '0';
     usize digit_count = 1;
@@ -337,7 +333,6 @@ fn append_escape(String &out, const String &fmt, usize &i,
   append_simple_escape(out, e, should_use_bash_escapes);
 }
 
-/* Returns true when a \c was seen so the caller can abort the whole printf. */
 fn append_b_argument(String &out, const String &arg,
                      bool should_use_bash_escapes) throws -> bool
 {
@@ -366,7 +361,6 @@ fn append_b_argument(String &out, const String &arg,
       continue;
     }
     if (e == '0' || (e >= '1' && e <= '7')) {
-      /* A leading zero does not count toward the three octal digits. */
       usize digit_index = i + 1;
       if (arg[digit_index] == '0') digit_index++;
       i32 value = 0;
@@ -438,8 +432,6 @@ fn append_conversion(String &out, String &spec, char conv,
 {
   char buffer[256];
 
-  /* A conversion whose result is wider than the stack buffer is rewritten into
-     a heap buffer sized from the length snprintf reports. */
   let const do_append_formatted = [&](const char *format, auto value) throws {
     const int needed = std::snprintf(buffer, sizeof(buffer), format, value);
     if (needed >= 0 && static_cast<usize>(needed) < sizeof(buffer)) {
@@ -462,8 +454,6 @@ fn append_conversion(String &out, String &spec, char conv,
     break;
   case 's': {
     if (spec == "%") {
-      /* A plain %s stops at an embedded NUL the way snprintf on the c_str
-         does, so the output matches the reference shell. */
       let const value = arg.view();
       let const printed = value.find_character('\0').value_or(value.length);
       out.append(value.substring_of_length(0, printed));
@@ -546,7 +536,7 @@ fn append_conversion(String &out, String &spec, char conv,
   }
 }
 
-} /* namespace */
+}
 
 fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
@@ -564,8 +554,6 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   LOG(All, "printf formatting %zu arguments", ec.args().count() - 1);
 
-  /* bash printf -v NAME stores the result in NAME, riding every mood but POSIX.
-   */
   usize format_index = 1;
   Maybe<String> store_variable;
   let const &first_arg = ec.args()[1];
@@ -662,9 +650,6 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         do_push_field_size();
       }
 
-      /* bash %(datefmt)T formats a time. The format sits in parentheses where
-         the conversion letter would be, followed by T, and the operand is the
-         epoch seconds, -1 for now and -2 for the shell start. */
       if (cxt.runtime_state().bash_additions_enabled() && i < fmt.length() &&
           fmt[i] == '(')
       {
@@ -701,8 +686,6 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         out += '%';
         continue;
       }
-      /* A '(' that did not open a valid %(fmt)T is emitted literally and
-         consumes no operand. */
       if (conv == '(') {
         out += spec;
         out += '(';
@@ -748,4 +731,4 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return exit_status;
 }
 
-} /* namespace koshka */
+}

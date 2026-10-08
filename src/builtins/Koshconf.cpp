@@ -331,7 +331,7 @@ fn run_load(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-} /* namespace */
+}
 
 fn Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
@@ -393,4 +393,4 @@ fn Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   unreachable("Unhandled koshconf form");
 }
 
-} /* namespace koshka */
+}

@@ -25,8 +25,6 @@ HELP_DESCRIPTION_DECL(
     "The declare builtin declares variables and sets their attributes.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
-/* The FLAG rows feed only the help text. The attribute letters are hand-parsed
-   in execute. */
 FLAG(DECLARE_INDEXED, Bool, 'a', "", "Declare an indexed array.");
 FLAG(DECLARE_ASSOCIATIVE, Bool, 'A', "", "Declare an associative array.");
 FLAG(DECLARE_FUNCTIONS, Bool, 'f', "",
@@ -120,8 +118,6 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         should_print_function_names_only = true;
         break;
       case 'r':
-        /* bash refuses to drop the read-only attribute, so the +r form is left
-           as a silent no-op rather than unmarking. */
         if (!is_remove_form) should_mark_readonly = true;
         break;
       case 'g': should_be_global = true; break;
@@ -131,8 +127,6 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         else
           should_mark_nameref = true;
         break;
-      /* The remaining attribute letter carries no backing behavior yet and is
-         accepted so a script that sets it keeps running. */
       case 't': break;
       default: {
         let invalid = String{cxt.scratch_allocator()};
@@ -160,8 +154,6 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     should_unmark_uppercase_attribute = true;
   }
 
-  /* A missing name turns the status to 1, silently for -F the way bash answers
-     an existence probe, with a message for -f. */
   if (should_restrict_to_functions) {
     i32 status = 0;
     if (i >= args.count()) {
@@ -305,9 +297,6 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let const value =
         equals.has_value() ? operand.substring(*equals + 1) : StringView{};
 
-    /* process_args passes a declare append through as name+=value, so a
-       trailing plus on the name marks the append and is stripped before the
-       attributes apply. */
     let const update_mode =
         equals.has_value() && !name.is_empty() && name[name.count() - 1] == '+'
             ? assignment_update_mode::Append
@@ -315,9 +304,6 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (update_mode == assignment_update_mode::Append)
       name = name.substring_of_length(0, name.count() - 1);
 
-    /* A subscripted operand such as a[0]=5 declares the base name's array and
-       assigns the element, the way bash treats declare a[i]=v, so the
-       attribute marks land on the base name rather than the bracketed text. */
     let const bracket = name.find_character('[');
     let const has_subscript =
         bracket.has_value() && name[name.count() - 1] == ']';
@@ -390,9 +376,6 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                   cxt.runtime_state().is_shopt_enabled(
                                       shopt_option_id::LocalvarInherit));
 
-    /* The attribute applies before the assignment, so declare -i x+=3 already
-       adds on this command the way bash applies the integer mark first. */
-    /* The marks of a nameref land on the variable it refers to. */
     let attribute_name = name;
     let resolved_attribute_name = Maybe<String>{};
     if (!should_mark_nameref && !should_unmark_nameref &&
@@ -480,7 +463,6 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
     } else if (equals.has_value()) {
       if (update_mode == assignment_update_mode::Append) {
-        /* An integer name joins the appended expression as arithmetic. */
         let appended = String{cxt.scratch_allocator()};
         if (let const existing = cxt.get_variable_value(name))
           appended.append(existing->view());
@@ -519,9 +501,6 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         os::set_environment_variable(exported_name, stored->view());
     }
 
-    /* The read-only mark applies after the assignment, so declare -r v=1 stores
-       the value first and then locks it, the way bash rejects only a later
-       write rather than the declaration's own assignment. */
     if (should_mark_readonly) {
       if (cxt.variable_store().attributes().is_nameref(name)) rarely
         {
@@ -536,4 +515,4 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return status;
 }
 
-} /* namespace koshka */
+}

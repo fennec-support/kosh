@@ -148,7 +148,6 @@ fn BumpArena::run_destructors_down_to(usize first) wontthrow -> void
   }
 }
 
-/* The kept chunks are handed to the next fill without another allocation. */
 cold fn BumpArena::release_destructor_chunks(usize kept_chunk_count) wontthrow
     -> void
 {
@@ -341,4 +340,4 @@ cold fn BumpArena::reset() wontthrow -> void
   m_current_index = 0;
 }
 
-} /* namespace koshka */
+}

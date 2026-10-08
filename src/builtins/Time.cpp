@@ -52,9 +52,6 @@ cold fn Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   user_before = child_times_before.user_seconds;
   system_before = child_times_before.system_seconds;
 
-  /* The tail-exec optimization would replace the shell process on the final
-     command, so the report would never print. The flag is cleared around the
-     run and restored after. */
   let const saved_terminal_exec = cxt.execution_store().terminal_exec_allowed();
   cxt.execution_store().terminal_exec_allowed() = false;
   defer
@@ -100,4 +97,4 @@ cold fn Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return status;
 }
 
-} /* namespace koshka */
+}

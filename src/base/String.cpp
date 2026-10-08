@@ -130,11 +130,6 @@ cold fn String::reserve(usize needed) throws -> void
   let const required_capacity = needed + 1;
   let new_capacity = required_capacity;
 
-  /* The first heap block is exact. Most strings that outgrow the inline buffer
-     are built from one known run and are never appended to again, and the heap
-     pool rounds the request up to a power of two on top of any slack left
-     here. A string that keeps growing pays one extra copy and then grows
-     geometrically from its second block on. */
   if (!is_inline()) {
     let const growth = m_capacity < 64 ? usize{4} : usize{2};
     new_capacity = m_capacity > SIZE_MAX / growth ? required_capacity
@@ -204,7 +199,6 @@ fn String::find_last_character(char wanted) const wontthrow -> Maybe<usize>
 
 cold fn String::free_storage() wontthrow -> void
 {
-  /* The inline buffer is part of the object and is never freed. */
   if (m_data != m_inline) m_allocator.free_array(m_data, m_capacity);
   reset_to_inline();
 }
@@ -264,4 +258,4 @@ KOSH_STRING_TO(hu32)
 KOSH_STRING_TO(hu64)
 #undef KOSH_STRING_TO
 
-} /* namespace koshka */
+}

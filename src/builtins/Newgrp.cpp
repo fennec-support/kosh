@@ -32,8 +32,6 @@ fn Newgrp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const &args = ec.args();
   ASSERT(!args.is_empty());
 
-  /* The group change must outlive this command, so it re-execs system newgrp.
-   */
   let const found = cxt.program_resolver().search(
       "newgrp", ProgramResolver::SearchMode::First,
       ProgramResolver::Requirement::Runnable,
@@ -72,4 +70,4 @@ fn Newgrp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return 126;
 }
 
-} /* namespace koshka */
+}

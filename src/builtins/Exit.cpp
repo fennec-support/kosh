@@ -27,9 +27,6 @@ fn Exit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let status = static_cast<i64>(cxt.execution_store().last_exit_status());
 
-  /* Bash keeps the status the shell had reached when a trap action began. An
-     exit with no operand inside that action reports it, and the commands of the
-     action itself are not visible to it. */
   if (let const trap_status = cxt.trap_store().action_frame().saved_exit_status;
       trap_status.has_value())
   {
@@ -43,4 +40,4 @@ fn Exit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                              "exit takes at most one status, e.g. `exit 1`");
 }
 
-} /* namespace koshka */
+}

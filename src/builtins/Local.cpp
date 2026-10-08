@@ -22,8 +22,6 @@ HELP_DESCRIPTION_DECL(
     "function.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
-/* The attribute letters are hand-parsed in execute, so these FLAG rows only
-   feed the help text and never the parser. */
 FLAG(LOCAL_INDEXED, Bool, 'a', "", "Declare an indexed array.");
 FLAG(LOCAL_ASSOCIATIVE, Bool, 'A', "", "Declare an associative array.");
 FLAG(LOCAL_INTEGER, Bool, 'i', "",
@@ -136,14 +134,9 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let const &arg = args[i];
     let const equals_position = arg.find_character('=');
 
-    /* A bare name declares the local without touching the value, so the
-       caller's binding stays readable until the body assigns it, matching
-       dash. */
     let name = equals_position.has_value()
                    ? arg.substring_of_length(0, *equals_position)
                    : arg.view();
-    /* process_args passes a local append through as name+=value, so a trailing
-       plus on the name marks the append and is stripped before the binding. */
     let const update_mode = !name.is_empty() && name[name.count() - 1] == '+'
                                 ? assignment_update_mode::Append
                                 : assignment_update_mode::Replace;
@@ -186,9 +179,6 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       continue;
     }
 
-    /* The append reads the name's own value only when it is already local in
-       this scope, so a first local += starts from empty the way bash localizes
-       it fresh. */
     if (should_mark_nameref && equals_position.has_value() &&
         update_mode == assignment_update_mode::Replace &&
         arg.substring(*equals_position + 1) == name)
@@ -269,4 +259,4 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return status;
 }
 
-} /* namespace koshka */
+}

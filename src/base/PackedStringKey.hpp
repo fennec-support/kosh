@@ -24,10 +24,6 @@ public:
 
   u64 words[WORD_COUNT]{};
 
-  /* Pack a NUL-terminated literal at compile time, so a static table entry
-     becomes a constant with no runtime initialization. consteval forbids the
-     runtime path, so a caller that passed a non-literal would fail to compile
-     rather than silently pack the key at run time. */
   static consteval fn from_literal(const char *text) wontthrow
       -> PackedStringKey
   {
@@ -72,10 +68,6 @@ public:
     return false;
   }
 
-  /* The byte length of a key with no embedded NUL, read as the position of the
-     first zero byte and capped at the byte capacity. A key built from a name
-     round-trips its length here, so a packed match alone does not let a
-     NUL-padded query stand in for a shorter name. */
   hot mustuse pure constexpr fn packed_length() const wontthrow -> usize
   {
     for (usize k = 0; k < WORD_COUNT; k++) {
@@ -91,9 +83,6 @@ public:
     return static_cast<u8>(words[0] & 0xFF);
   }
 
-  /* Unpack the bytes back into a String, stopping at the first NUL or the byte
-     capacity. A key with no embedded NUL and no more than that many bytes
-     round-trips exactly, which holds for every builtin name. */
   cold mustuse fn to_string() const throws -> String
   {
     char buffer[BYTE_CAPACITY];
@@ -110,6 +99,6 @@ public:
   }
 };
 
-} /* namespace koshka */
+}
 
 #define SSK(literal) koshka::PackedStringKey::from_literal(literal)

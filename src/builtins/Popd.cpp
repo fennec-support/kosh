@@ -52,8 +52,6 @@ fn Popd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   };
 
-  /* With no argument the top of the stack is removed and becomes the current
-     directory. */
   if (args.count() <= 1) {
     if (let const status = do_pop_top(); status != 0) return status;
     print_directory_stack(cxt, ec, false, false, false);
@@ -63,8 +61,6 @@ fn Popd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (usize index = 0; parse_directory_stack_rotation(
           args[1].view(), stack.count() + 1, operand_locations[1], index))
   {
-    /* Index zero names the current directory, so removing it pops the top and
-       moves there. A deeper index drops a saved entry without a chdir. */
     if (index == 0) {
       if (let const status = do_pop_top(); status != 0) return status;
     } else {
@@ -80,4 +76,4 @@ fn Popd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       "Pass a +N or a -N stack index, or no argument to pop the top"};
 }
 
-} /* namespace koshka */
+}

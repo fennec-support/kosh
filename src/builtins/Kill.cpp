@@ -32,7 +32,6 @@ fn Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const &args = ec.args();
   ASSERT(!args.is_empty());
 
-  /* Checked before the signal parsing so -l is not read as a signal named l. */
   if (args.count() > 1 && (args[1] == "-l" || args[1] == "--list")) {
     if (args.count() == 2) {
       ec.print_to_stdout(koshkit::format_signal_list());
@@ -87,9 +86,6 @@ fn Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const do_resolve_signal = [&ec](StringView spec, usize index)
                                     throws -> i32 {
-    /* The leading-digit guard rejects a doubled minus such as --9, whose
-       stripped spec -9 would otherwise parse as the negative signal -9 and
-       reach kill with an invalid number. */
     if (let const parsed = spec.to<i64>();
         !parsed.is_error() && spec[0] >= '0' && spec[0] <= '9')
     {
@@ -169,8 +165,6 @@ fn Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     } else {
       const ErrorOr<i64> parsed_value = target.to<i64>();
       if (parsed_value.is_error()) {
-        /* A non-numeric target must not fall through to kill(0), which would
-           signal the whole process group including this shell. */
         report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
                                   StringView{"'"} + target +
                                       "' is not a valid job or process id");
@@ -194,4 +188,4 @@ fn Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return status;
 }
 
-} /* namespace koshka */
+}

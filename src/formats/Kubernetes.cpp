@@ -42,4 +42,4 @@ fn parse_kubernetes_format(const parser_format_input &input,
                                   yaml_shell_selection::Nearby);
 }
 
-} // namespace koshka
+}

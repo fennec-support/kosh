@@ -511,4 +511,4 @@ fn Fc::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                           last_index);
 }
 
-} /* namespace koshka */
+}

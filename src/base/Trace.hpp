@@ -22,7 +22,6 @@ enum class verbosity : u8
   All,
 };
 
-/* A message prints when its level is at or below this. */
 inline verbosity LOGGER_VERBOSITY = verbosity::Nothing;
 
 inline std::FILE *LOGGER_OUTPUT = nullptr;
@@ -129,9 +128,9 @@ fn format_named_values(StringView names, Args &&...args) -> String
   return out;
 }
 
-} /* namespace log_detail */
+}
 
-} /* namespace koshka */
+}
 
 #define T__LOG_STRINGIZE2(x) #x
 #define T__LOG_STRINGIZE(x)  T__LOG_STRINGIZE2(x)
@@ -145,11 +144,8 @@ fn format_named_values(StringView names, Args &&...args) -> String
   do {                                                                         \
   } while (0)
 
-#else /* NDEBUG */
+#else
 
-/* The level is named unqualified, such as Debug, and the macro prepends
-   ::koshka::verbosity the way the FLAG macro prepends the section, so a call
-   site spells neither the namespace nor the enum. */
 #define LOG(level, ...)                                                        \
   do {                                                                         \
     constexpr ::koshka::verbosity t__log_level = ::koshka::verbosity::level;   \
@@ -182,4 +178,4 @@ fn format_named_values(StringView names, Args &&...args) -> String
       }                                                                        \
   } while (0)
 
-#endif /* !NDEBUG */
+#endif

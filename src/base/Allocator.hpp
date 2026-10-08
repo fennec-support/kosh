@@ -25,7 +25,7 @@ fn bump_arena_owns(const BumpArena *arena, const opaque *pointer) wontthrow
 namespace os {
 fn allocate_aligned(usize length, usize alignment) wontthrow -> opaque *;
 fn free_aligned(opaque *pointer) wontthrow -> void;
-} /* namespace os */
+}
 
 namespace allocators {
 
@@ -52,14 +52,6 @@ hot inline fn uncached_heap_free(opaque *pointer, usize alignment) wontthrow
   std::free(pointer);
 }
 
-/* A size-classed cache over the C allocator. musl returns a freed page group to
-   the kernel at once, so a tight allocate then free of the same size churns
-   mmap and munmap once per turn, which dominates the bench on Alpine where
-   glibc would have cached the page. A freed block parks on a per-class free
-   list and is handed back on the next request of that class, so the kernel sees
-   a steady working set. The cache is bounded per class so a burst does not pin
-   memory. The pool is single threaded, since the evaluator never shares an
-   allocator across threads. */
 class HeapPool
 {
 public:
@@ -119,10 +111,8 @@ public:
   }
 
 private:
-  static constexpr usize MIN_CLASS_SHIFT =
-      4; /* the smallest class is 16 bytes */
-  static constexpr usize MAX_CLASS_SHIFT =
-      16; /* the largest pooled block is 64 KiB */
+  static constexpr usize MIN_CLASS_SHIFT = 4;
+  static constexpr usize MAX_CLASS_SHIFT = 16;
   static constexpr usize CLASS_COUNT = MAX_CLASS_SHIFT - MIN_CLASS_SHIFT + 1;
   static constexpr usize MAX_BLOCKS_PER_CLASS = 512;
   static constexpr usize MAX_RETAINED_BYTES_PER_CLASS = 64 * 1024;
@@ -144,12 +134,6 @@ private:
   }
 };
 
-/* The single process-wide cache, one instance across every translation unit
-   through the inline function local static. The pool is trivially destructible,
-   so it registers no exit destructor and its storage stays valid through
-   process teardown. A heap free from a file-scope cache destructor at process
-   exit then reaches live storage whatever the static destruction order names.
- */
 hot inline fn heap_pool_instance() wontthrow -> HeapPool &
 {
   static HeapPool pool;
@@ -158,10 +142,6 @@ hot inline fn heap_pool_instance() wontthrow -> HeapPool &
 
 hot inline fn heap_alloc(usize length, usize alignment) wontthrow -> opaque *
 {
-  /* malloc already meets every alignment up to alignof(max_align_t), so the
-  common request stays on the pooled path. The over-aligned path is rare and
-     stays uncached, and its length is rounded up to a multiple of the alignment
-     for aligned_alloc. */
   if (alignment > alignof(max_align_t)) {
     if (length > SIZE_MAX - (alignment - 1)) return nullptr;
     let const rounded_length = (length + alignment - 1) & ~(alignment - 1);
@@ -187,8 +167,6 @@ hot inline fn heap_realloc(opaque *pointer, usize old_length,
 hot inline fn heap_free(opaque *pointer, usize length,
                         usize alignment) wontthrow -> void
 {
-  /* An over-aligned block skips the pool, so a pooled block always belongs to
-     one size class. */
   if (alignment > alignof(max_align_t)) {
     os::free_aligned(pointer);
     return;
@@ -201,13 +179,8 @@ hot inline fn heap_free(opaque *pointer, usize length,
 #endif
 }
 
-} /* namespace allocators */
+}
 
-/* One tagged word. The four kinds are the pooled heap, uncached heap, a bump
-   arena, and the fake allocator a container carries while it holds no storage.
-   An arena is aligned well past four bytes, so the two low bits carry the kind
-   and the remaining bits carry the arena address. The heap and fake kinds hold
-   no address. */
 class Allocator
 {
 public:
@@ -300,8 +273,6 @@ public:
   flatten fn raw_free(opaque *pointer, usize length,
                       usize alignment) const wontthrow -> void
   {
-    /* An arena hands nothing back, and the fake allocator never handed anything
-       out. */
     switch (get_kind()) {
     case Kind::Heap: allocators::heap_free(pointer, length, alignment); return;
     case Kind::UncachedHeap:
@@ -315,11 +286,9 @@ public:
   template <class T>
   hot flatten fn alloc_array(usize count) const throws -> T *
   {
-    /* The product overflows usize for a large enough count, wrapping to a small
-       request that the caller then writes past. The division guards the
-       multiply, since count times sizeof(T) cannot exceed the max when count is
-       at most the max divided by sizeof(T). */
-    if (sizeof(T) != 0 && count > (static_cast<usize>(-1) / sizeof(T))) rarely
+    let const is_count_overflowing_usize =
+        sizeof(T) != 0 && count > (static_cast<usize>(-1) / sizeof(T));
+    if (is_count_overflowing_usize) rarely
       {
         throw std::bad_alloc{};
       }
@@ -367,4 +336,4 @@ inline fn fake_allocator() wontthrow -> Allocator
   return Allocator{static_cast<uintptr>(Allocator::Kind::Fake)};
 }
 
-} /* namespace koshka */
+}

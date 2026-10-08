@@ -34,7 +34,6 @@ fn Unalias::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (FLAG_ALL.is_enabled()) {
     LOG(Debug, "unalias removing every alias");
-    /* alias_definitions yields name='value', so the name ends at the equals. */
     for (let const &definition : cxt.scope_store().alias_definitions()) {
       let const equals_position = definition.find_character('=');
       let const name_length =
@@ -61,4 +60,4 @@ fn Unalias::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return status;
 }
 
-} /* namespace koshka */
+}

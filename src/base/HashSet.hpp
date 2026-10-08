@@ -15,9 +15,6 @@
 
 namespace koshka {
 
-/* A set of byte-string keys over the StringMap open-addressing table. The value
-   is None, so a set stores only keys. It owns a copy of every key it holds, so
-   a view passed to add need not outlive it. */
 class HashSet
 {
 public:
@@ -56,4 +53,4 @@ private:
   StringMap<Nothing> m_map;
 };
 
-} /* namespace koshka */
+}

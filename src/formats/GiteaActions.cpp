@@ -20,4 +20,4 @@ fn parse_gitea_actions_format(const parser_format_input &input,
                                   yaml_shell_selection::Workflow);
 }
 
-} // namespace koshka
+}

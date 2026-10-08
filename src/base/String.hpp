@@ -20,10 +20,6 @@ namespace koshka {
 class String
 {
 public:
-  /* The inline buffer length. A string shorter than this, counting the trailing
-     null, lives inline. The value keeps sizeof(String) at fifty-six bytes next
-     to the one-word allocator, the three size words, and the ASCII state
-     byte. */
   static constexpr usize INLINE_CAPACITY = 23;
 
   explicit String(Allocator allocator) : m_allocator(allocator)
@@ -163,9 +159,6 @@ public:
 
   fn clear() wontthrow -> void;
 
-  /* The has-capacity fast path is inlined, so a hot append that fits pays no
-     call. reserve stays cold for the growth path, and m_capacity counts the
-     null slot, so the fit test is length + count < capacity. */
   hot fn push(char c) throws -> void
   {
     m_ascii_state = AsciiState::Unknown;
@@ -276,10 +269,8 @@ public:
     return !(view() == other);
   }
 
-  /* Byte order, so a sort matches the C locale collating order. */
   hot mustuse pure fn operator<(const String &other) const wontthrow->bool;
 
-  /* The first byte. The caller guarantees the string is not empty. */
   mustuse pure fn first_character() const wontthrow -> char
   {
     ASSERT(m_length > 0, "first_character() on an empty string");
@@ -310,9 +301,6 @@ private:
 
   cold fn classify_ascii() const wontthrow -> void;
 
-  /* A default String is inline and empty, so it can serve as a container slot
-     before its real allocator and value are assigned. The friend keeps it
-     reachable to the table while every call site must name its lifetime. */
   template <class Value>
   friend class StringMap;
   String() : m_allocator(heap_allocator()) { reset_to_inline(); }
@@ -326,8 +314,6 @@ private:
     return m_data == m_inline;
   }
 
-  /* Point the string at its empty inline buffer. The caller must have already
-     released any heap storage, since this overwrites the data pointer. */
   fn reset_to_inline() wontthrow -> void
   {
     m_data = m_inline;
@@ -355,4 +341,4 @@ fn String::to<f64>() const throws -> ErrorOr<f64>;
 
 fn operator+(StringView left, StringView right) throws->String;
 
-} /* namespace koshka */
+}

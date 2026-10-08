@@ -489,7 +489,7 @@ fn preflight_command(StringView executable_system,
   return command;
 }
 
-} /* namespace */
+}
 
 fn Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
@@ -641,4 +641,4 @@ fn Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return status;
 }
 
-} /* namespace koshka */
+}

@@ -266,7 +266,7 @@ fn format_option_switches_help() throws -> String
   return section;
 }
 
-} /* namespace */
+}
 
 fn query_shell_option(const EvalContext &cxt, StringView name) throws
     -> Maybe<bool>
@@ -496,8 +496,6 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       for (usize c = 1; c < arg.length(); c++) {
         let const letter = arg[c];
 
-        /* The o letter ends the bundle and names one option from the next
-           argument, the way bash accepts set -euo pipefail. */
         if (letter == 'o') {
           apply_long_option_by_name(ec, cxt, args, i, enable);
           break;
@@ -558,4 +556,4 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return 0;
 }
 
-} /* namespace koshka */
+}

@@ -33,8 +33,6 @@ fn Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const &args = ec.args();
   ASSERT(!args.is_empty());
 
-  /* Only the kosh default mood answers --help, since bash and dash print the
-     literal text a script may depend on. */
   if (args.count() == 2 && args[1] == "--help" &&
       !cxt.runtime_state().is_posix_mode() &&
       !cxt.runtime_state().is_bash_compatible())
@@ -193,4 +191,4 @@ fn Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return 0;
 }
 
-} /* namespace koshka */
+}

@@ -176,19 +176,12 @@ public:
     return *place(result.insertion, key, hash, steal(default_value));
   }
 
-  /* Store a String value built from a view. An existing slot reuses its String
-     buffer, so a tight reassignment loop pays no per-turn allocation. The value
-     must not view the existing slot's own buffer, since clear then append would
-     read bytes the clear already truncated. */
   hot fn set(StringView key, StringView value) throws -> Value *
   {
     let const hash = hash_bytes(key);
     let const result = prepare_insertion(key, hash);
     if (result.found != NO_INDEX) {
       Value *existing = &m_slots[result.found].value;
-      /* A buffer that once held a large value and now takes a far smaller one
-         is rebuilt at the right size rather than reused, so a name that held a
-         big value does not pin that memory for the session. */
       let const buffer_is_wasteful =
           existing->count() > 256 && value.length < existing->count() / 2;
       if (!buffer_is_wasteful) {
@@ -456,4 +449,4 @@ private:
   u32 m_first_capacity{DEFAULT_MAP_FIRST_CAPACITY};
 };
 
-} /* namespace koshka */
+}

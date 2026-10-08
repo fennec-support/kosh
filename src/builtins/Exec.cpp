@@ -117,8 +117,6 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
   }
 
-  /* Inside an in-process subshell each touched descriptor is backed up first,
-     so the change stays contained at the subshell's end. */
   if (command_index >= args.count()) {
     LOG(Debug, "exec applying redirections to the shell's own descriptors");
     if (ec.in_fd.has_value()) cxt.snapshot_subshell_descriptor(0);
@@ -228,11 +226,6 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   command.should_use_empty_environment = should_use_empty_environment;
   command.should_use_fallback_argv0 = has_custom_argv0;
 
-  /* Inside an in-process subshell, a command substitution, or a pipeline
-     stage, the process the exec would replace is that inner scope, not the
-     shell, so $(exec cat) and true | exec cat must not kill the session. The
-     program runs as a spawned child and its status ends the scope, the way
-     bash's forked subshell or stage dies into its exec. */
   if (cxt.in_subshell() || cxt.job_table_store().is_in_pipeline_stage()) {
     LOG(Info, "exec runs '%s' as a child rather than replacing the shell",
         command_name.c_str());
@@ -275,4 +268,4 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   utils::quit(status, utils::farewell_policy::Silent);
 }
 
-} /* namespace koshka */
+}

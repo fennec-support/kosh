@@ -228,8 +228,6 @@ cold fn format_metric(double value, metric_unit unit,
   return String{allocator, buffer};
 }
 
-/* The color escapes are added at render time, not here, since they carry no
-   display width and would corrupt the width measurement. */
 class MetricRow
 {
 public:
@@ -307,9 +305,6 @@ fn append_relative_line(String &out, StringView name, const metric_stats &first,
 
   let const ratio = other.mean / first.mean;
 
-  /* The relative uncertainty is the sum in quadrature of the two coefficients
-     of variation, scaled onto the ratio, so a noisy pair reports a wider
-     band. */
   let const first_cv = first.std_dev / first.mean;
   let const other_cv = other.std_dev / other.mean;
   let const ratio_uncertainty =
@@ -624,11 +619,10 @@ fn append_comparison(String &out, const CommandResult &first,
   }
 }
 
-} /* namespace */
+}
 
 cold fn Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
-  /* The flag parser keeps argv[0], so the commands start at index 1. */
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
   let const arguments =
       PARSE_BUILTIN_ARGS_WITH_LOCATIONS(ec, operand_locations);
@@ -724,4 +718,4 @@ cold fn Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return 0;
 }
 
-} /* namespace koshka */
+}

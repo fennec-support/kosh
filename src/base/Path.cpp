@@ -88,8 +88,6 @@ fn Path::extension() const wontthrow -> StringView
   if (name == StringView{"."} || name == StringView{".."}) {
     return StringView{name.data + name.length, 0};
   }
-  /* A leading dot names a hidden file, so the scan stops before the first byte.
-   */
   for (usize i = name.length; i > 1; i--)
     if (name.data[i - 1] == '.') return name.substring(i - 1);
   return StringView{name.data + name.length, 0};
@@ -103,8 +101,6 @@ fn Path::parent() const throws -> Path
   return Path{m_text.substring_of_length(0, end - 1), allocator()};
 }
 
-/* A bare filename has no parent text, and every caller that locks or writes
-   beside the file needs a directory it can name. */
 fn Path::parent_or_current() const throws -> Path
 {
   let directory = parent();
@@ -185,8 +181,6 @@ cold fn Path::normalized() const throws -> Path
     if (component.is_empty()) break;
     if (component == StringView{"."}) continue;
     if (component == StringView{".."}) {
-      /* A relative path keeps a leading .. because it cannot climb past its own
-         start. */
       if (components.count() > 0 && !(components.back() == StringView{".."})) {
         components.pop_back();
       } else if (!is_absolute_path) {
@@ -465,7 +459,6 @@ fn Path::canonicalize(StringView path) throws -> Maybe<Path>
     candidate = candidate.to_absolute_without_normalizing();
   }
 
-  /* A name written with a trailing dot gets no suffix added. */
   let const ends_with_dot =
       path.length > 0 && path.data[path.length - 1] == '.';
   let status = os::file_status{};
@@ -504,4 +497,4 @@ fn Path::is_shell_source(StringView source) const throws -> bool
          detect_mimic_shell_from_source(source).has_value();
 }
 
-} /* namespace koshka */
+}

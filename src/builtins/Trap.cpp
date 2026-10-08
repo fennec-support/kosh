@@ -52,9 +52,6 @@ fn normalize_condition(StringView raw, Allocator allocator) throws -> String
   return name;
 }
 
-/* The sh mood behaves like dash. Dash knows EXIT and the real signals and
-   reports DEBUG, ERR, and RETURN as a bad trap. Each of those three is also
-   inert there, since every dispatch site holds them behind the mood. */
 fn is_valid_trap_condition(StringView condition, mimic_mood mood) throws -> bool
 {
   static constexpr PackedStringKey SPECIAL_CONDITION_KEYS[] = {
@@ -96,8 +93,6 @@ enum class trap_condition_format : u8
   SignalPrefixed,
 };
 
-/* Bash walks EXIT, then every real signal in ascending number order, then
-   DEBUG, ERR, and RETURN. No signal number reaches the special base. */
 fn trap_listing_order(StringView condition) throws -> i64
 {
   static constexpr i64 SPECIAL_CONDITION_BASE = 1000;
@@ -132,17 +127,13 @@ fn format_listed_condition(StringView condition, Allocator allocator,
   return String{allocator, condition};
 }
 
-} /* namespace */
+}
 
 fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();
   ASSERT(!args.is_empty());
 
-  /* Dash accepts no trap option at all. A leading operand that opens with a
-     dash and carries more than that dash is an illegal option there, and the
-     special builtin ends a non-interactive shell with status 2. A lone dash and
-     the separator stay operands. */
   if (cxt.runtime_state().is_posix_mode() && args.count() > 1 &&
       args[1].count() > 1 && args[1].starts_with("-") && args[1] != "--")
   {
@@ -156,11 +147,6 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     throw bad_option;
   }
 
-  /* Bash reads the trap options with getopt. Every option word ahead of the
-     first operand is read, a joined cluster is accepted, the list form wins
-     over the print form, and `--` ends the options. The sh mood has already
-     rejected every option above, and the separator remains an operand marker
-     there. */
   usize operand_index = 1;
   let should_print_listing = false;
   let should_list_signals = false;
@@ -236,8 +222,6 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let const do_append_listing = [&](StringView condition, StringView action)
                                       throws -> void {
       out += "trap -- ";
-      /* Bash wraps every listed action in single quotes. An action holding no
-         character that needs them is wrapped as well. */
       append_shell_quoted_arg(out, action, true);
       out += ' ';
       out += format_listed_condition(condition, cxt.scratch_allocator(),
@@ -245,8 +229,6 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       out += '\n';
     };
 
-    /* A filtered listing follows the operand order, prints a repeated operand
-       twice, and reports an operand that names no condition. */
     if (has_filter) {
       let has_invalid_operand = false;
 
@@ -314,7 +296,6 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (action_index + 1 == args.count()) {
     let const condition = do_read_condition(action_index);
     if (!condition.has_value()) {
-      /* Dash reports 1 for the reset form, and bash reports 2. */
       return cxt.runtime_state().is_posix_mode() ? 1 : 2;
     }
 
@@ -346,4 +327,4 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return status;
 }
 
-} /* namespace koshka */
+}

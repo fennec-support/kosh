@@ -21,4 +21,4 @@ fn parse_bitbucket_pipelines_format(const parser_format_input &input,
                                   yaml_shell_selection::Nearby);
 }
 
-} // namespace koshka
+}

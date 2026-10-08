@@ -87,7 +87,6 @@ static fn read_frecency_store(Allocator allocator) throws
     line_start = i + 1;
     if (line.is_empty()) continue;
 
-    /* Each line is path, rank, and last-access, tab separated. */
     let const first_tab = line.find_character('\t');
     if (!first_tab) continue;
     let const after_path = line.substring(*first_tab + 1);
@@ -129,9 +128,6 @@ static fn write_frecency_store(const ArrayList<frecency_entry> &entries,
   let const fd = os::open_file_descriptor(path->text().view(),
                                           os::file_open_mode::Truncate);
   if (!fd) return;
-  /* The store was just truncated, so a short write would drop entries. The
-     write loops until the whole buffer lands or the descriptor stops accepting
-     it. */
   usize total_written = 0;
   while (total_written < out.count()) {
     let const written = os::write_fd(*fd, out.c_str() + total_written,
@@ -165,7 +161,7 @@ static fn contains_ignore_case(StringView haystack, StringView needle) wontthrow
   return false;
 }
 
-} /* namespace */
+}
 
 fn z_completion_candidates(StringView query, Allocator allocator) throws
     -> ArrayList<String>
@@ -219,9 +215,6 @@ fn record_directory_access(StringView directory, Allocator allocator) throws
         String{allocator, directory},
         1, now
     });
-    /* The weakest older entry is overwritten with the just-added last entry.
-       The search excludes the new entry, so a brand-new directory that is the
-       rank minimum is kept rather than evicting itself. */
     if (entries.count() > Z_FRECENCY_MAX) {
       let const newest = entries.count() - 1;
       usize weakest = 0;
@@ -295,4 +288,4 @@ fn Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return 0;
 }
 
-} /* namespace koshka */
+}

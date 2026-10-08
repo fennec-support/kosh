@@ -75,8 +75,6 @@ constexpr static_string_entry<binary_operator> BINARY_OPERATOR_ENTRIES[] = {
 };
 constexpr StaticStringMap BINARY_OPERATORS{BINARY_OPERATOR_ENTRIES};
 
-/* The window is [pos, end), so the argument-count rules can strip a wrapping
-   paren pair by narrowing pos and end before the grammar runs. */
 class TestEvaluator
 {
 public:
@@ -142,8 +140,6 @@ public:
     if (op == "-t") {
       let const file_descriptor = parse_integer(operand.view());
       if (!file_descriptor.has_value()) return false;
-      /* Any descriptor is checked, not only the standard three, since a config
-         dups the controlling terminal onto a higher descriptor and tests it. */
       return os::shell_fd_is_a_tty(static_cast<int>(*file_descriptor));
     }
     fail(
@@ -165,9 +161,6 @@ public:
     }
 
     switch (*found) {
-    /* == is a bashism for string equality. bash accepts it, so the bash mood
-       treats it as =, while the default and POSIX moods reject it the way dash
-       does. The analysis stage also warns on it as SC3014. */
     case binary_operator::StringEqualBashism:
       if (!is_bash_compatible) {
         fail("'==' is a bashism, use = for string equality in POSIX mode");
@@ -226,10 +219,6 @@ public:
     return BINARY_OPERATORS.find(s.view()).has_value();
   }
 
-  /* A unary operator at index reads as a plain operand rather than an operator
-     when nothing follows it, or when two or more tokens follow and the next is
-     a binary operator, mirroring dash's isoperand. With exactly one token after
-     it the operator is a real unary primary. */
   pure bool is_unary_in_operand_position(usize index) const wontthrow
   {
     if (index + 1 >= end) return true;
@@ -237,9 +226,6 @@ public:
     return is_binary_operator(args[index + 1]);
   }
 
-  /* A bare ( reads as a plain operand rather than a grouping paren when no
-     token follows it, mirroring dash's t_lex special case for a trailing paren.
-   */
   pure bool is_open_paren_token(usize index) const wontthrow
   {
     return args[index] == "(" && index + 1 < end;
@@ -258,8 +244,6 @@ public:
       return false;
     }
     if (current() == "!") {
-      /* A lone ! with nothing after it is the one-argument test of a non-empty
-         string, which is true, not a negation missing its operand. */
       if (pos + 1 >= end) {
         pos++;
         return true;
@@ -322,15 +306,7 @@ public:
     return is_true;
   }
 
-  /* The POSIX argument-count rules disambiguate the short forms before the
-     grammar runs, mirroring dash's testcmd. A three-argument form whose middle
-     operand is a binary primary is the binary test, so a literal paren in the
-     first or third operand stays a plain operand. A three or four argument form
-     wrapped in a paren pair strips the pair, and one led by ! strips the bang
-     and flips the verdict, then rechecks the shorter window. Whatever remains
-     runs through the grammar, where a paren groups and -a and -o connect. The
-     window narrows by pos and end so the stripping needs no copy. */
-  bool evaluate_top() throws
+  bool evaluate_with_posix_argument_count_rules() throws
   {
     let should_negate = false;
     loop
@@ -365,16 +341,13 @@ public:
   }
 };
 
-} /* namespace */
+}
 
 fn Test::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &arguments = ec.args();
   ASSERT(!arguments.is_empty());
 
-  /* Only the kosh default mood answers --help, only as the sole argument,
-     and only for the word form, since bash and dash evaluate the word as a
-     nonempty string and [ --help ] stays an expression. */
   if (arguments.count() == 2 && arguments[1] == "--help" &&
       ec.program() != "[" && !cxt.runtime_state().is_posix_mode() &&
       !cxt.runtime_state().is_bash_compatible())
@@ -403,10 +376,7 @@ fn Test::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                 expression_end,
                                 cxt.runtime_state().is_bash_compatible(),
                                 cxt.runtime_state().bash_additions_enabled()};
-  let const result = evaluator.evaluate_top();
-  /* A paren pair the argument-count rules stripped narrowed end past the
-     closing paren, so the leftover check runs against the narrowed window
-     rather than the original operand count. */
+  let const result = evaluator.evaluate_with_posix_argument_count_rules();
   if (evaluator.pos != evaluator.end) {
     ASSERT(evaluator.pos < evaluator.end);
     let error = make_error_for_arg(
@@ -420,4 +390,4 @@ fn Test::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return result ? 0 : 1;
 }
 
-} /* namespace koshka */
+}

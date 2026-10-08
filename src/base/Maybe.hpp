@@ -18,9 +18,6 @@ class Nothing
 
 inline constexpr Nothing None{};
 
-/* A value or None. There is no failure reason inside, so the caller handles the
-   empty case itself. Reading the value out of an empty Maybe traps in the debug
-   build. The value is stored inline, so no allocation happens. */
 template <class T>
 class mustuse Maybe
 {
@@ -201,4 +198,4 @@ private:
   T *m_value{nullptr};
 };
 
-} /* namespace koshka */
+}

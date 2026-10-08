@@ -21,10 +21,6 @@ class Ok
 
 inline constexpr Ok Success{};
 
-/* A value or an Error, held in one of two members of an explicit tagged union
-   rather than a std::variant. The active member is tracked by m_is_error, and
-   the storage is sized for the larger of the two, so only one is alive at a
-   time and no heap allocation happens for the discriminant. */
 template <class T>
 class mustuse ErrorOr
 {
@@ -121,11 +117,8 @@ private:
                                                                : sizeof(Error)];
 };
 
-} /* namespace koshka */
+}
 
-/* Evaluate a fallible expression, return its error early on failure, and yield
-   its value otherwise. Used inside a function that itself returns an ErrorOr.
- */
 #define TRY(expr)                                                              \
   ({                                                                           \
     auto t__result = (expr);                                                   \

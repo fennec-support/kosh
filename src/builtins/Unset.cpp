@@ -119,7 +119,6 @@ fn Unset::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     } else if (cxt.is_generated_nameref(name.view())) {
       LOG(All, "unset leaves the generated name reference '%s'", name.c_str());
     } else {
-      /* A read-only name throws, the rest are still unset, matching dash. */
       LOG(All, "unset removing variable '%s'", name.c_str());
       do_try_unset(i, [&] {
         cxt.unset_shell_variable(name);
@@ -131,4 +130,4 @@ fn Unset::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return has_error ? 1 : 0;
 }
 
-} /* namespace koshka */
+}

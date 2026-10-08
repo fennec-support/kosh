@@ -29,7 +29,6 @@ fn Eval::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());
 
-  /* A leading -- ends eval's option scan, matching bash eval -- "$code". */
   usize first = 1;
   if (ec.args().count() > 1) {
     let const &lead = ec.args()[1];
@@ -71,4 +70,4 @@ fn Eval::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                    : syntax_error_reach::PosixScript);
 }
 
-} /* namespace koshka */
+}

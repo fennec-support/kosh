@@ -80,8 +80,6 @@ fn Readonly::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return has_function_error ? 1 : 0;
   }
 
-  /* A bare readonly lists every read-only variable, in the declare -r form
-     under the bash mood and the POSIX readonly form otherwise. */
   if (args.count() == 1 && !ec.has_stripped_array_operands) {
     let const is_declare_form = cxt.runtime_state().is_bash_compatible();
     let out = String{cxt.scratch_allocator()};
@@ -139,4 +137,4 @@ fn Readonly::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return has_error ? 1 : 0;
 }
 
-} /* namespace koshka */
+}

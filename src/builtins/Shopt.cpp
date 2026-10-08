@@ -56,9 +56,6 @@ fn format_option_names_help(Allocator allocator) throws -> String
   return section;
 }
 
-/* The bash -p line is a command the shell replays to restore the state, so it
-   must execute when a completion script captures it through $(shopt -p name).
- */
 enum class shopt_reusable_form : u8
 {
   Shopt,
@@ -84,7 +81,7 @@ fn shopt_is_on(const EvalContext &cxt, const option_descriptor &option) throws
   return read_option_number(cxt, option) != 0;
 }
 
-} /* namespace */
+}
 
 fn shopt_option_name_list() throws -> const ArrayList<StringView> &
 {
@@ -153,8 +150,6 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return nullptr;
   };
 
-  /* shopt -o operates on the set -o options, the bridge bash provides so the
-     same options answer either builtin. A config probes shopt -qo posix. */
   if (should_operate_on_set_options) {
     if (names.is_empty()) {
       if (!is_quiet) {
@@ -232,8 +227,6 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return status;
   }
 
-  /* A named query reports a non-zero status when any option is off, which the
-     -q form relies on. */
   if (names.is_empty()) {
     if (!is_quiet) {
       for (let const &option : get_option_registry())
@@ -256,4 +249,4 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return status;
 }
 
-} /* namespace koshka */
+}

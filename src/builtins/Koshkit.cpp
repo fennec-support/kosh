@@ -50,7 +50,7 @@ fn Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return 1;
 }
 
-#else /* KOSH_NO_KOSHKIT */
+#else
 
 enum class utility_section : u8
 {
@@ -201,6 +201,6 @@ fn Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return koshkit::dispatch(ec, cxt, 1, chosen);
 }
 
-#endif /* KOSH_NO_KOSHKIT */
+#endif
 
-} // namespace koshka
+}

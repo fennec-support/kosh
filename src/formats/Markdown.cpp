@@ -74,4 +74,4 @@ fn parse_markdown_format(const parser_format_input &input,
   }
 }
 
-} // namespace koshka
+}

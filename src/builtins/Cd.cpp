@@ -33,8 +33,6 @@ REGISTER_BUILTIN_FLAGS(Cd);
 
 namespace koshka {
 
-/* An absolute operand, or one led by dot or dot-dot, skips the CDPATH search.
- */
 static fn cdpath_search_applies(const String &operand) throws -> bool
 {
   if (operand.is_empty() || os::path_is_absolute(operand.view()) ||
@@ -164,8 +162,6 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return logical_candidate;
   };
 
-  /* An empty CDPATH entry, including one a leading, trailing, or doubled colon
-     makes, names the current directory. */
   let should_print_target = is_to_previous;
   if (!is_to_previous && operand_count > 0 && cdpath_search_applies(arg_path)) {
     if (let const cdpath = cxt.get_variable_value("CDPATH")) {
@@ -222,9 +218,6 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
   }
 
-  /* A relative operand joins onto the logical PWD when that names a directory,
-     the bash -L default, so cd .. out of a symlinked directory returns to the
-     symlink's parent. */
   let is_physical_target_available = true;
   if (is_physical) {
     if (target.is_relative()) {
@@ -280,16 +273,12 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (old_directory.is_empty())
       old_directory = logical_working_directory(cxt);
-    /* A path that exists can still refuse the move, so the chdir failure throws
-       before PWD and OLDPWD are rewritten, leaving them untouched like dash. */
     if (Path::set_current_directory(target).is_error()) {
       throw ErrorWithLocation{
           ec.source_location(),
           StringView{"Unable to change to the directory '"} + arg_path +
               "': " + os::last_system_error_message()};
     }
-    /* A relative or empty PATH entry now names a different directory, so a
-       cached resolution is marked stale for the next command to re-resolve. */
     cxt.program_resolver().working_directory_changed();
     if (!old_directory.is_empty())
       cxt.set_shell_variable("OLDPWD", old_directory.text());
@@ -351,4 +340,4 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                     details};
 }
 
-} /* namespace koshka */
+}

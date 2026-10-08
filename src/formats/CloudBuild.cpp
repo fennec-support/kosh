@@ -20,4 +20,4 @@ fn parse_cloud_build_format(const parser_format_input &input,
                                   yaml_shell_selection::Nearby);
 }
 
-} // namespace koshka
+}

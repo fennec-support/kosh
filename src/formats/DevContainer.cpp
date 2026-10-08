@@ -27,4 +27,4 @@ fn parse_dev_container_format(const parser_format_input &input,
                                   mimic_mood::Posix);
 }
 
-} // namespace koshka
+}

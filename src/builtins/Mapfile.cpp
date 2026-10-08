@@ -104,8 +104,6 @@ fn Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   LOG(Debug, "mapfile reading lines into array '%.*s'",
       static_cast<int>(array_name.length), array_name.data);
 
-  /* The skipped lines are read and dropped before any line is stored, so -s
-     does not count against -n. */
   for (i64 skipped = 0; skipped < skip_count; skipped++) {
     let const skipped_line = utils::read_line_from_fd(read_fd, delimiter);
     if (skipped_line.did_read_fail) {
@@ -197,4 +195,4 @@ fn Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return 0;
 }
 
-} /* namespace koshka */
+}

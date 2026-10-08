@@ -38,9 +38,6 @@ REGISTER_BUILTIN_FLAGS(History);
 
 namespace koshka {
 
-/* A failed history operation names the resolved file. A file whose bytes the
-   history format rejects is reported apart from a system failure. The system
-   message is taken before the file is read again. */
 static fn report_history_file_failure(const ExecContext &ec, EvalContext &cxt,
                                       StringView action,
                                       StringView failure_message) throws -> void
@@ -58,9 +55,6 @@ static fn report_history_file_failure(const ExecContext &ec, EvalContext &cxt,
                                 path->text().view() + "': " + failure_message);
 }
 
-/* An appended record needs a leading newline when the target does not end with
-   one. Only the last byte is read, because the target holds every event this
-   shell has already stored. */
 static fn history_target_needs_separator(const Path &target) throws
     -> ErrorOr<bool>
 {
@@ -575,4 +569,4 @@ fn History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return 0;
 }
 
-} /* namespace koshka */
+}

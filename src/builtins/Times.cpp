@@ -49,4 +49,4 @@ cold i32 Times::execute(ExecContext &ec, EvalContext &cxt) const throws
   return 0;
 }
 
-} /* namespace koshka */
+}

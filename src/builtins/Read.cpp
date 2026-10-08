@@ -53,8 +53,6 @@ fn Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
-  /* The array, count, query, timeout, silent, delimiter, descriptor, and
-     editor options are bash extensions the sh mood rejects. */
   if (cxt.runtime_state().is_posix_mode() &&
       (FLAG_READ_ARRAY.is_set() || FLAG_READ_TIMEOUT.is_set() ||
        FLAG_READ_NCHARS.is_set() || FLAG_READ_QUERY.is_enabled() ||
@@ -149,15 +147,12 @@ fn Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 1;
   }
 
-  /* A -p prompt prints only when the read's own input is a terminal, matching
-     bash for a redirected descriptor. */
   if (FLAG_READ_PROMPT.is_set() &&
       os::is_fd_a_tty(ec.in_fd.value_or(KOSH_STDIN)))
   {
     koshka::print_error(FLAG_READ_PROMPT.value());
   }
 
-  /* Query mode is a yes or no probe, so the answer never reaches a variable. */
   if (FLAG_READ_QUERY.is_enabled()) {
     char answer = 0;
     let const got = do_read_byte(answer);
@@ -179,16 +174,12 @@ fn Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return names[first_operand + index];
   };
 
-  /* An empty -d argument reads until a NUL byte, so the whole input is slurped.
-   */
   let const delimiter =
       FLAG_READ_DELIM.is_set()
           ? (FLAG_READ_DELIM.value().is_empty() ? '\0'
                                                 : FLAG_READ_DELIM.value()[0])
           : '\n';
 
-  /* Reaching the -n count is a success the way the delimiter is, while end of
-     input before the count yields the short-read status below. */
   i64 max_bytes = 0;
   if (FLAG_READ_NCHARS.is_set()) {
     let const parsed = FLAG_READ_NCHARS.value().to<i64>();
@@ -305,9 +296,6 @@ fn Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return !is_literal_byte[i] &&
            field_separators.find_character(line[i]).has_value();
   };
-  /* POSIX folds an IFS whitespace run into a single delimiter, while each IFS
-     non-whitespace character delimits one field on its own, so an empty field
-     can sit between two non-whitespace delimiters. */
   let const do_is_ifs_whitespace = [&](usize i) {
     return (line[i] == ' ' || line[i] == '\t' || line[i] == '\n') &&
            do_is_separator(i);
@@ -393,4 +381,4 @@ fn Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return read_status;
 }
 
-} /* namespace koshka */
+}

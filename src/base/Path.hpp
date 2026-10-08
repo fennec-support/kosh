@@ -30,8 +30,6 @@ struct unavailable_path_component
   bool is_not_directory;
 };
 
-/* A forward slash is always accepted on input, even on Windows, so a script
-   written for POSIX keeps working. */
 class Path
 {
 public:
@@ -86,14 +84,11 @@ public:
   cold mustuse fn exists() const wontthrow -> bool;
   cold mustuse fn is_directory() const wontthrow -> bool;
   mustuse fn is_regular_file() const wontthrow -> bool;
-  /* Tested without following the link. */
   mustuse fn is_symbolic_link() const wontthrow -> bool;
-  /* Each is always false on Windows where the type has no equivalent. */
   mustuse fn is_block_device() const wontthrow -> bool;
   mustuse fn is_character_device() const wontthrow -> bool;
   mustuse fn is_fifo() const wontthrow -> bool;
   mustuse fn is_socket() const wontthrow -> bool;
-  /* Each is always false on Windows where the bit has no equivalent. */
   mustuse fn has_setuid_bit() const wontthrow -> bool;
   mustuse fn has_setgid_bit() const wontthrow -> bool;
   mustuse fn has_sticky_bit() const wontthrow -> bool;
@@ -122,7 +117,6 @@ public:
                                         Allocator allocator) throws
       -> Maybe<ArrayList<String>>;
 
-  /* Unknown means the caller must stat to learn the type. */
   enum class entry_kind : u8
   {
     Unknown,
@@ -153,4 +147,4 @@ private:
   String m_text{heap_allocator()};
 };
 
-} /* namespace koshka */
+}

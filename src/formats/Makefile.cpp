@@ -54,4 +54,4 @@ fn parse_makefile_format(const parser_format_input &input,
   }
 }
 
-} // namespace koshka
+}

@@ -29,10 +29,6 @@ class String;
     unused(fflush(stderr));                                                    \
   } while (0)
 #if defined __clang__
-/* The string parameter is a template so the body sees a complete
-   ::koshka::String only at the call site. Debug.hpp can not include String.hpp,
-   since String.hpp includes Debug.hpp, so naming String here would close an
-   include cycle. */
 namespace koshka {
 
 template <class P>
@@ -136,16 +132,16 @@ fn t__string_from_struct(const T &value, AllocatorT allocator) throws -> StringT
   return static_cast<StringT &&>(state.output);
 }
 
-} /* namespace koshka */
+}
 
-#define STRUCT_STRING(x)                                                       \
+#define STRUCT_STRING(x)                                                      \
   ::koshka::t__string_from_struct<::koshka::String>(                           \
       x, ::koshka::heap_allocator())
 #endif
-#else /* !NDEBUG */
+#else
 #define STRUCT_STRING(...) ::koshka::String{"<optimized out>"}
-#define TRACE(...)         /* None */
-#define TRACELN(...)       /* None */
+#define TRACE(...)
+#define TRACELN(...)
 #endif
 
 #if !defined STRUCT_STRING
@@ -195,5 +191,5 @@ fn t__string_from_struct(const T &value, AllocatorT allocator) throws -> StringT
       }                                                                        \
   } while (0)
 #else
-#define ASSERT(...) /* None */
+#define ASSERT(...)
 #endif

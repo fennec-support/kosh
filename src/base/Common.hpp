@@ -17,8 +17,6 @@
 #endif
 #endif
 
-/* Timestamp the build. */
-
 #if !defined KOSH_ENVCXXFLAGS
 #warning KOSH_ENVCXXFLAGS should be defined. Please use provided makefile \
          for compilation!
@@ -120,7 +118,6 @@ using usize = size_t;
 using isize = ptrdiff_t;
 using uintptr = uintptr_t;
 
-/* void is ambiguous, this is an alias for clarity. */
 using opaque = void;
 
 #if defined __GNUC__ || defined __clang__ || defined __COSMOCC__
@@ -134,15 +131,15 @@ using opaque = void;
 #endif
 #define t__unreachable() __builtin_unreachable()
 #define t__debugtrap()   __builtin_trap()
-#else /* __GNUC__ || __clang__ || __COSMOCC__ */
+#else
 #error Oh no! Segmentation fault. Please download a better compiler that \
        supports GNU extensions!
 #define T__HAS_GCC_EXTENSIONS 0
-#define t__used               /* None */
-#define t__pure               /* None */
-#define t__forceinline        /* None */
-#define t__unreachable()      abort()
-#define t__debugtrap()        abort()
+#define t__used
+#define t__pure
+#define t__forceinline
+#define t__unreachable() abort()
+#define t__debugtrap()   abort()
 #endif
 #define t__concat_literal(x, y) x##y
 #define concat_literal(x, y)    t__concat_literal(x, y)
@@ -211,12 +208,12 @@ public:
 #define cold [[gnu::cold]]
 #define hot  [[gnu::hot]]
 #if defined KOSH_TINYREL
-#define flatten /* tinyrel leaves call-graph decisions to the optimizer */
+#define flatten
 #elif defined __clang__
 #define flatten [[gnu::flatten]]
 #else
-#define flatten /* nothing. GNU is too harsh with inlining. */
-#endif          /* __clang__ */
+#define flatten
+#endif
 #define noinline       [[gnu::noinline]]
 #define targetisa(isa) [[gnu::target(isa)]]
 #else
@@ -226,18 +223,12 @@ public:
 #define flatten
 #define noinline
 #define targetisa(isa)
-#endif /* T__HAS_GCC_EXTENSIONS */
+#endif
 
 namespace koshka {
 constexpr const char *EXPRESSION_AST_INDENT = " ";
 constexpr const char *EXPRESSION_DOUBLE_AST_INDENT = "  ";
 
-/* Normal means the node owns its command boundary and runs the DEBUG trap
-   itself. PreparedPipelineStage means the pipeline already published the
-   boundary and ran the trap. The stage keeps the command text and leaves the
-   trap alone. ContainedSubstitution runs a process substitution body in a
-   fresh evaluator, which renders the error that stops it with its backtrace
-   the way a forked substitution child does. */
 enum class root_evaluation_mode : u8
 {
   Normal,
@@ -296,4 +287,4 @@ using hi64 = tagged_int<int_base::hex, i64>;
 using hu16 = tagged_int<int_base::hex, u16>;
 using hu32 = tagged_int<int_base::hex, u32>;
 using hu64 = tagged_int<int_base::hex, u64>;
-} /* namespace koshka */
+}

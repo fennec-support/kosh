@@ -29,8 +29,6 @@ fn Return::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());
 
-  /* The default mood rejects a return outside a function or a sourced file,
-     while the sh mood lets it end the script the way dash does. */
   if (!cxt.runtime_state().is_posix_mode() &&
       cxt.scope_store().local_scope_depth() == 0 &&
       cxt.source_store().function_substitution_depth() == 0 &&
@@ -74,4 +72,4 @@ fn Return::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return static_cast<i32>(status);
 }
 
-} /* namespace koshka */
+}

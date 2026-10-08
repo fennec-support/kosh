@@ -22,10 +22,6 @@ struct static_string_entry
   Value value;
 };
 
-/* A query that shares no leading byte with any key and a query outside the key
-   length range are both rejected before the 64-byte pack and the binary search
-   are paid. The masks are derived from the table itself, so a table edit cannot
-   leave the filter stale. */
 struct static_string_prefilter
 {
   u64 leading_byte_mask[4]{};
@@ -164,4 +160,4 @@ public:
 template <usize Count>
 StaticStringSet(const PackedStringKey (&)[Count]) -> StaticStringSet<Count>;
 
-} /* namespace koshka */
+}

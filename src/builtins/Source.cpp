@@ -33,7 +33,6 @@ fn Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (ec.args().count() < 2) return report_usage_error(ec, cxt, ec.program());
 
-  /* A leading -- ends option parsing, the source -- file form ble.sh uses. */
   usize path_index = 1;
   if (ec.args()[1] == "--") path_index = 2;
   if (path_index >= ec.args().count())
@@ -61,8 +60,6 @@ fn Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                             "Unable to source the file '" + path +
                                 "': " + os::last_system_error_message()};
 
-  /* Operands after the file set the sourced $1 upward, a bash extension the
-     sh mood ignores. */
   let const has_extra_args = !cxt.runtime_state().is_posix_mode() &&
                              ec.args().count() > path_index + 1;
   let saved_params = ArrayList<String>{heap_allocator()};
@@ -77,14 +74,9 @@ fn Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       cxt.variable_store().positional_params() = steal(saved_params);
   };
 
-  /* The RETURN action of a sourced file belongs to the frame the file ran in.
-     Functrace is required before the caller DEBUG action reaches it. The frame
-     is already left where the action runs, and this window covers it. */
   let const untraced_debug_scope =
       UntracedTrapScope{cxt, UntracedTrapScope::Kind::Debug};
 
-  /* Bash reports the source invocation in BASH_COMMAND while the RETURN action
-     runs. The commands of the file publish their own text over it. */
   let saved_current_command =
       String{heap_allocator(), cxt.execution_store().get_current_command()};
 
@@ -110,9 +102,6 @@ fn Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                      : syntax_error_reach::PosixScript);
   }
 
-  /* A sourced file runs in the current scope, and its finish fires the RETURN
-     trap with no functrace option. The source frame is already left here, and
-     the positional parameters are still the ones the file received. */
   cxt.execution_store().set_current_command(steal(saved_current_command));
 
   let const is_exit_pending =
@@ -129,4 +118,4 @@ fn Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return status;
 }
 
-} /* namespace koshka */
+}

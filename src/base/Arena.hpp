@@ -73,8 +73,6 @@ public:
     return total;
   }
 
-  /* A saved bump position, so a scope can reclaim everything it allocated above
-     the mark while leaving earlier allocations alone. The marks nest. */
   fn mark() const wontthrow -> Mark;
   fn release(Mark saved) wontthrow -> void;
 
@@ -142,9 +140,6 @@ private:
 
   static constexpr usize DEFAULT_BLOCK_SIZE = 64 * 1024;
   static constexpr usize FIRST_DESTRUCTOR_CHUNK_COUNT = 32;
-  /* The chunks double from the 32 records of the first one until they reach 64
-     KiB, the largest block the heap pool keeps on a free list. Every later
-     chunk is 64 KiB. */
   static constexpr usize DESTRUCTORS_PER_CHUNK =
       DEFAULT_BLOCK_SIZE / sizeof(pending_destructor);
   static_assert(DESTRUCTORS_PER_CHUNK % FIRST_DESTRUCTOR_CHUNK_COUNT == 0 &&
@@ -183,12 +178,7 @@ private:
   }
 
   ArrayList<block> m_blocks{heap_allocator()};
-  /* Every block above this index is empty, so a release rewinds the index and
-     the blocks it reclaimed are handed out again. */
   usize m_current_index{0};
-  /* The half-open address range covering every live block. A pointer outside it
-     belongs to no block, so the ownership scan is skipped. The range only ever
-     widens while blocks are added, and it stays conservative after a reset. */
   uintptr m_lowest_address{UINTPTR_MAX};
   uintptr m_highest_address{0};
   ArrayList<pending_destructor *> m_destructor_chunks{heap_allocator()};
@@ -201,9 +191,6 @@ private:
 
   fn add_block(usize minimum_size, usize preferred_size) throws -> void;
   fn push_destructor(pending_destructor pending) throws -> void;
-  /* Run and drop every registered destructor from the index down to first, in
-     reverse of registration so an object tears down before the one it followed.
-   */
   fn run_destructors_down_to(usize first) wontthrow -> void;
   fn release_destructor_chunks(usize kept_chunk_count) wontthrow -> void;
   fn register_live() wontthrow -> void;
@@ -215,4 +202,4 @@ private:
 
 fn is_arena_pointer(const opaque *pointer) wontthrow -> bool;
 
-} /* namespace koshka */
+}

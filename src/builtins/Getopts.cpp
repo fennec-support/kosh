@@ -49,8 +49,6 @@ fn Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     for (usize i = 3; i < args.count(); i++)
       explicit_operands.push(args[i]);
   }
-  /* The common while-getopts form names no operands, so the positional
-     parameters are read in place with no per-call copy. */
   const ArrayList<String> &operands =
       args.count() > 3 ? explicit_operands
                        : cxt.variable_store().positional_params();
@@ -64,7 +62,6 @@ fn Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   LOG(Debug, "getopts parsing into '%s' at OPTIND %lld of %zu operands",
       name.c_str(), static_cast<long long>(optind), operands.count());
 
-  /* A script that resets OPTIND starts a fresh scan at the first letter. */
   let &cursor = cxt.expansion_store().get_getopts_cursor();
   if (optind != cursor.last_optind) cursor.char_index = 1;
   let char_index = cursor.char_index;
@@ -90,8 +87,6 @@ fn Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return do_finish(1);
   }
 
-  /* An index at or past the operand length reads a fresh operand at the first
-     letter, guarding against a stale index reading past the end. */
   if (char_index >= current.length()) char_index = 1;
   ASSERT(char_index < current.length());
   let const option = current[char_index];
@@ -168,4 +163,4 @@ fn Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return do_finish(0);
 }
 
-} /* namespace koshka */
+}

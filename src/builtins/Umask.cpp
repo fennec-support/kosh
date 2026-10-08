@@ -63,8 +63,6 @@ fn mask_to_symbolic(u32 mask, Allocator allocator) throws -> String
   return out;
 }
 
-/* The clauses operate on the complement of the mask, then the result is
-   complemented back into a mask. */
 fn apply_symbolic_mask(StringView spec, u32 current_mask) throws -> Maybe<u32>
 {
   u32 allowed = (~current_mask) & PERMISSION_BITS;
@@ -116,7 +114,7 @@ fn apply_symbolic_mask(StringView spec, u32 current_mask) throws -> Maybe<u32>
   return (~allowed) & PERMISSION_BITS;
 }
 
-} /* namespace */
+}
 
 cold i32 Umask::execute(ExecContext &ec, EvalContext &cxt) const throws
 {
@@ -185,4 +183,4 @@ cold i32 Umask::execute(ExecContext &ec, EvalContext &cxt) const throws
   return 0;
 }
 
-} /* namespace koshka */
+}

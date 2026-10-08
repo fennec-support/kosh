@@ -43,8 +43,6 @@ fn Pushd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let &stack = cxt.variable_store().directory_stack();
   let const pwd = logical_working_directory(cxt).text().clone();
 
-  /* With no directory the top two entries swap, so the current directory and
-     the top of the stack trade places. */
   if (args.count() <= 1) {
     if (stack.is_empty()) {
       throw ErrorWithLocationAndDetails{
@@ -61,8 +59,6 @@ fn Pushd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const arg = args[1].view();
 
-  /* The ring is the current directory at index zero, then the saved stack from
-     the top down, which drives a rotation. */
   if (usize index = 0; parse_directory_stack_rotation(
           arg, stack.count() + 1, operand_locations[1], index))
   {
@@ -91,4 +87,4 @@ fn Pushd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return 0;
 }
 
-} /* namespace koshka */
+}
