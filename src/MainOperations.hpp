@@ -1560,6 +1560,28 @@ struct interactive_history_expansion
   bool should_execute;
 };
 
+/* Bash leaves a ! that negates a bracket expression, opens an indirect
+   parameter, or forms $! to the shell, so [!a], ${!name}, and $! stay. A
+   bracket or a brace counts only when its closing byte follows on the line. */
+static fn is_history_expansion_inhibited(StringView source,
+                                         usize position) wontthrow -> bool
+{
+  let const rest = source.substring(position + 1);
+  if (position > 0 && source[position - 1] == '[' &&
+      rest.find_character(']').has_value())
+  {
+    return true;
+  }
+
+  if (position > 1 && source[position - 1] == '{' &&
+      source[position - 2] == '$' && rest.find_character('}').has_value())
+  {
+    return true;
+  }
+
+  return position > 1 && source[position - 1] == '$';
+}
+
 static fn expand_interactive_history(StringView source,
                                      Maybe<usize> accepted_event_number,
                                      history_expansion_state &state,
@@ -1667,7 +1689,8 @@ static fn expand_interactive_history(StringView source,
 
     let const next_byte = source[position + 1];
     if (is_ascii_whitespace(next_byte) || next_byte == '=' ||
-        next_byte == '"' || next_byte == '\'' || next_byte == '(')
+        next_byte == '"' || next_byte == '\'' || next_byte == '(' ||
+        is_history_expansion_inhibited(source, position))
     {
       continue;
     }

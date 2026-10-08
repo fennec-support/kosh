@@ -2039,7 +2039,11 @@ omitted. Text after the final caret remains in the expanded input, and a
 modifier may follow it directly.
 .PP
 Single-quoted and backslash-escaped references remain literal. A reference
-immediately before a closing double quote also remains literal. A comment
+immediately before a closing double quote also remains literal. As in bash, a !
+right after [ stays literal when a ] follows later on the line, so [!a] keeps
+its negation, a ! right after ${ stays literal when a } follows later on the
+line, so ${!name} stays an indirect expansion, and $! stays a parameter. A
+comment
 marker at the start of a word prevents expansion through the end of the line.
 An event, word, modifier, or substitution error prevents execution and history
 recording and preserves the previous exit status. Both history options are

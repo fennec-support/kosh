@@ -232,6 +232,10 @@ out=$({
     'false\r' \
     '!1:99\r' \
     'printf "WSTATUS=%s\\n" "$?"\r' \
+    'printf "WBRACKET=<%s>\\n" "${-//[!u]/}"\r' \
+    'wvar=1; printf "WINDIRECT=<%s>\\n" "${!wva*}"\r' \
+    'true & printf "WBANG=<%s>\\n" "x$!y" | tr -d 0-9\r' \
+    'printf "WOPEN=<%s>\\n" "[!marker"\r' \
     'exit\r'
   printf '%s\n' "$?" > "$input_status"
 } |
@@ -244,7 +248,9 @@ case "$out" in
 *'WA=4,alpha,needle'*'WR=2,alpha,beta'*'WR0=3,marker,beta'*\
 *'WRS=3,beta,needle'*'WRD=3,beta,needle'*'WRL=2,beta,gamma'*'WP=1,gamma'*\
 *'WPP=<gamma>'*'WPS=<<(printf x)>'*'WPT=<tail>'*'WINHIBIT=<!(>'*\
-*'!marker=tail: event not found'*':99: bad word specifier'*'WSTATUS=1'*)
+*'!marker=tail: event not found'*':99: bad word specifier'*'WSTATUS=1'*\
+*'WBRACKET=<>'*'WINDIRECT=<wvar>'*'WBANG=<xy>'*\
+*'WOPEN=<[marker <(printf x) tail>'*)
   echo "history words ok" ;;
 *) echo "history words broken" ;;
 esac
