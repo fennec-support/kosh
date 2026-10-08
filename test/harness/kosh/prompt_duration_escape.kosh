@@ -1,0 +1,4 @@
+fast='[\L]'
+echo "${fast@P}"
+strftime='a\D{%%}b\D'
+echo "${strftime@P}"

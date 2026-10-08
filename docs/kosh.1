@@ -5057,8 +5057,13 @@ xtrace prompts. PS0 defaults to empty. PS2 defaults to "> ". PS3 defaults to
 enclosing subshell. The default PS1 shows the git branch, ahead and behind
 counts, user, host, and working directory, and it ends with a bullet. The
 backslash escapes \\u,
-\\h, \\H, \\w, \\W, \\P, \\g, \\$, \\?, \\j, \\D, \\., \\t, \\T, \\@, \\A,
+\\h, \\H, \\w, \\W, \\P, \\g, \\$, \\?, \\j, \\L, \\., \\t, \\T, \\@, \\A,
 \\d, \\s, \\v, \\V, \\!, \\#, \\n, \\r, \\e, \\a, \\[, and \\] are expanded.
+The \\D{format} escape passes format to strftime and inserts the result, as
+Bash does. An empty format gives the time in the locale, and a format with no
+closing brace extends to the end of the prompt. A \\D that no brace follows
+stays as typed. The \\L escape inserts the duration of the last command, which
+is empty for a command that took under 5 milliseconds.
 The escapes are decoded before parameters and substitutions expand, so text an
 escape inserts is never expanded, and a backslash that a parameter or
 substitution yields is never decoded.

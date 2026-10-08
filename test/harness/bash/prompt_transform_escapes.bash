@@ -28,3 +28,17 @@ show substitution-escape '$(printf "%s" "\\$HOME")'
 mkdir 'd$(echo bad)`echo tick`' && cd 'd$(echo bad)`echo tick`' || exit 1
 show directory-name '\W'
 show directory-dollar '\W$HOME'
+show strftime-percent 'a\D{%%}b'
+show strftime-text '\D{x y}'
+show strftime-adjacent '\D{%%}\D{x}z'
+show strftime-dollar '\D{$HOME %%}'
+show strftime-backslash '\D{\\\\%%}'
+show strftime-unterminated 'a\D{x%%'
+show strftime-bare 'a\Db'
+show strftime-trailing 'a\D'
+locale_time='\D{%X}'
+empty_format='\D{}'
+unterminated_empty_format='\D{'
+[[ ${empty_format@P} == "${locale_time@P}" ]] && echo empty-format-is-locale-time
+[[ ${unterminated_empty_format@P} == "${locale_time@P}" ]] &&
+  echo unterminated-empty-format-is-locale-time

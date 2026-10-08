@@ -2941,10 +2941,28 @@ static fn expand_prompt_escapes(StringView prompt, StringView user,
           static_cast<i64>(context.job_table_store().jobs().count()),
           koshka::heap_allocator());
       break;
-    case 'D':
+    case 'L':
       out += format_prompt_duration(
           context.execution_store().last_command_duration_nanos());
       break;
+    case 'D': {
+      if (i + 1 >= prompt.length || prompt[i + 1] != '{') {
+        out += "\\D";
+        break;
+      }
+
+      let const format_start = i + 2;
+      let const format_end = prompt.substring(format_start).find_character('}');
+      let const format_length =
+          format_end.value_or(prompt.length - format_start);
+      let const format =
+          format_length == 0
+              ? String{"%X"}
+              : String{prompt.substring_of_length(format_start, format_length)};
+
+      do_append_value(prompt_strftime(format.c_str()).view());
+      i = format_start + format_length;
+    } break;
     case '!': break;
     case '#': break;
     case '\\': out += '\\'; break;
