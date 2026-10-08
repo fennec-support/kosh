@@ -4087,6 +4087,12 @@ public:
      shell with no snapshot, so its assignments persist. A break, continue, or
      return is consumed inside it, while an exit stays pending. */
   fn capture_function_substitution(const WordSegment &segment) throws -> String;
+  /* The same substitution from the text between ${ and }, as a here-document
+     body or a prompt holds it. A text that starts with | is the ${| ...; }
+     form, which yields the value of a REPLY local to the body. */
+  fn capture_function_substitution(StringView text,
+                                   const SourceLocation *call_site) throws
+      -> String;
   fn push_substitution_source_frame(const WordSegment &segment,
                                     StringView origin) throws -> bool;
   fn push_substitution_source_frame(const SourceLocation &location,
@@ -4131,6 +4137,8 @@ public:
   fn run_captured_substitution(const Expression *ast, const String &source,
                                Maybe<SourceLocation> call_site) throws
       -> String;
+  fn run_function_substitution(const Expression *ast, const String &source,
+                               bool is_value_substitution) throws -> String;
 
   /* Lex, parse, and evaluate a chunk of source in this context, without
      capturing output or snapshotting state. A dot-source consumes a return at

@@ -469,7 +469,10 @@ private:
   fn expand_process_substitution() throws -> void;
   fn expand_special_parameter(char name) throws -> void;
   fn emit_command_substitution(StringView body, usize end_index) throws -> void;
-  fn scan_braced_body(usize &position) throws -> String;
+  fn is_function_substitution_start() const wontthrow -> bool;
+  fn expand_function_substitution() throws -> void;
+  fn scan_braced_body(usize &position, bool is_command_body = false) throws
+      -> String;
   fn scan_arithmetic_body(bool is_bracket_form, usize &position) throws
       -> String;
   fn scan_command_body(usize start, usize &position) throws -> String;
@@ -784,8 +787,51 @@ fn EvalContext::ModifierWordExpander::copy_braced_command(
   }
 }
 
-fn EvalContext::ModifierWordExpander::scan_braced_body(usize &position) throws
-    -> String
+fn EvalContext::ModifierWordExpander::is_function_substitution_start()
+    const wontthrow -> bool
+{
+  if (!m_context.runtime_state().bash_additions_enabled()) return false;
+  if (m_index + 2 >= m_word.length) return false;
+
+  let const byte = m_word[m_index + 2];
+  return byte == ' ' || byte == '\t' || byte == '\n' || byte == '|';
+}
+
+fn EvalContext::ModifierWordExpander::expand_function_substitution() throws
+    -> void
+{
+  usize j = 0;
+  let const inner = scan_braced_body(j, true);
+  usize body_start = 0;
+  while (body_start < inner.count() &&
+         (inner[body_start] == ' ' || inner[body_start] == '\t' ||
+          inner[body_start] == '\n'))
+  {
+    body_start++;
+  }
+  let const text = inner.view().substring(body_start);
+
+  let body_location = SourceLocation{};
+  const SourceLocation *body_location_pointer = nullptr;
+  let const text_offset = m_index + 2 + body_start;
+  if (m_source_location != nullptr &&
+      text_offset <= m_source_location->length &&
+      text.length <= m_source_location->length - text_offset)
+  {
+    body_location = m_source_location->subspan(text_offset, text.length);
+    if (!text.is_empty() && text[0] == '|') {
+      body_location =
+          m_source_location->subspan(text_offset + 1, text.length - 1);
+    }
+    body_location_pointer = &body_location;
+  }
+  emit_run(m_context.capture_function_substitution(text, body_location_pointer),
+           !m_is_in_double_quote);
+  m_index = j;
+}
+
+fn EvalContext::ModifierWordExpander::scan_braced_body(
+    usize &position, bool is_command_body) throws -> String
 {
   /* Scan the ${...} body to the matching } at brace depth one. A quote run
      or a backslash escape keeps its bytes literal so a } inside is never
@@ -825,6 +871,12 @@ fn EvalContext::ModifierWordExpander::scan_braced_body(usize &position) throws
       depth++;
       inner += ch;
       inner += m_word[++position];
+      position++;
+      continue;
+    }
+    if (ch == '{' && is_command_body) {
+      depth++;
+      inner += ch;
       position++;
       continue;
     }
@@ -1046,7 +1098,9 @@ fn EvalContext::ModifierWordExpander::expand_dollar() throws -> void
     return;
   }
 
-  if (next == '{') {
+  if (next == '{' && is_function_substitution_start()) {
+    expand_function_substitution();
+  } else if (next == '{') {
     expand_braced_parameter();
   } else if (lexer::is_variable_name_start(next)) {
     expand_plain_parameter();

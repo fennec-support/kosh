@@ -3079,10 +3079,16 @@ static fn expand_prompt_variable(EvalContext &context, StringView name,
 fn expand_prompt_template(StringView prompt, EvalContext &context) throws
     -> String
 {
+  /* ${name@P} expands parameters and substitutions the way a prompt does,
+     before the backslash escapes, so an escape-inserted value is never
+     expanded again. */
+  let const guarded = guard_prompt_backslashes(prompt);
+  let const expanded = unguard_prompt_backslashes(
+      context.expand_heredoc_body(guarded.view(), nullptr).view());
   let const working_directory = Path::current_directory().text();
   let const user = os::get_current_user().value_or(String{"???"});
-  return expand_prompt_escapes(prompt, user.view(), working_directory.view(),
-                               context);
+  return expand_prompt_escapes(expanded.view(), user.view(),
+                               working_directory.view(), context);
 }
 
 /* The user is stable for the session, so it is resolved once and reused. */

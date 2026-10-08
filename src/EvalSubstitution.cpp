@@ -1048,6 +1048,9 @@ fn EvalContext::capture_function_substitution(const WordSegment &segment) throws
   ASSERT(cache_arena != nullptr);
   let frame = SubstitutionFrame{*this};
   frame.push_source_frame(segment, StringView{"function substitution"});
+  let const text = segment.text.view();
+  let const is_value_substitution = !text.is_empty() && text[0] == '|';
+  let const body = is_value_substitution ? text.substring(1) : text;
   let &cache = segment.get_eval_cache(cache_arena);
   if (cache.substitution_ast == nullptr ||
       !cache_arena->is_lifetime_valid(cache.substitution_lifetime))
@@ -1057,32 +1060,132 @@ fn EvalContext::capture_function_substitution(const WordSegment &segment) throws
                                     ? ParseSession::AllocationKind::FunctionBody
                                     : ParseSession::AllocationKind::Syntax;
     let parser = Parser{
-        Lexer{segment.text.view(), *cache_arena, None,
-              runtime_state().get_mood(), allocation_kind}
+        Lexer{body, *cache_arena, None, runtime_state().get_mood(),
+              allocation_kind}
     };
     try {
       cache.substitution_ast = parser.construct_ast();
     } catch (...) {
-      render_contained_substitution_error(std::current_exception(),
-                                          segment.text.view());
+      render_contained_substitution_error(std::current_exception(), body);
       throw;
     }
     cache.substitution_lifetime = cache_arena->register_lifetime();
   }
   ASSERT(cache.substitution_ast != nullptr);
 
-  let const ast = cache.substitution_ast;
   /* The trace and LINENO paths hold the address of the running source for the
      whole body, so the segment text is materialized here. */
-  let const source = String{heap_allocator(), segment.text.view()};
+  let const source = String{heap_allocator(), body};
+
+  return run_function_substitution(cache.substitution_ast, source,
+                                   is_value_substitution);
+}
+
+fn EvalContext::capture_function_substitution(
+    StringView text, const SourceLocation *call_site) throws -> String
+{
+  if (arena_store().parse_arena() == nullptr)
+    throw Error{"Function substitution outside of a parse"};
+  let const ast_mark = arena_store().parse_arena()->mark();
+  defer { arena_store().parse_arena()->release(ast_mark); };
+
+  let const is_value_substitution = !text.is_empty() && text[0] == '|';
+  let source = String{heap_allocator(),
+                      is_value_substitution ? text.substring(1) : text};
+  source.normalize_crlf_line_endings();
+
+  let frame = SubstitutionFrame{*this};
+  if (call_site != nullptr) {
+    frame.push_source_frame(*call_site, StringView{"function substitution"});
+    frame.register_embedded(source.view(), *call_site);
+  }
+  let parser = Parser{
+      Lexer{source.view(), *arena_store().parse_arena(), None,
+            runtime_state().get_mood()}
+  };
+  const Expression *ast;
+  try {
+    ast = parser.construct_ast();
+  } catch (ErrorWithLocation &error) {
+    frame.pop_source_frame();
+    mark_substitution_frames_printed(source_store());
+    render_contained_substitution_error(std::current_exception(),
+                                        source.view());
+    error.set_rendered();
+    throw;
+  } catch (...) {
+    frame.pop_source_frame();
+    mark_substitution_frames_printed(source_store());
+    render_contained_substitution_error(std::current_exception(),
+                                        source.view());
+    throw;
+  }
+  ASSERT(ast != nullptr);
+
+  return run_function_substitution(ast, source, is_value_substitution);
+}
+
+fn EvalContext::run_function_substitution(const Expression *ast,
+                                          const String &source,
+                                          bool is_value_substitution) throws
+    -> String
+{
   LOG(Debug, "running a function substitution body of %zu bytes",
       source.count());
-
   /* The body runs against the live state, no snapshot and no subshell, so its
      assignments, cd, and definitions persist the way the bash 5.3 funsub
      leaves them. */
   let const source_scope =
       enter_source_scope(&source, String{"function substitution"});
+
+  let const do_evaluate_body = [&]() throws -> std::exception_ptr {
+    let const was_interactive = execution_store().shell_is_interactive();
+    execution_store().set_shell_is_interactive(false);
+
+    std::exception_ptr body_error;
+    try {
+      ast->evaluate(*this);
+    } catch (...) {
+      body_error = std::current_exception();
+    }
+    /* A break, continue, or return acts only within the body and is consumed
+       here. An exit stays pending, so the shell ends after the surrounding
+       command finishes, the way bash exits from a funsub. */
+    if (control_flow_store().has_pending() &&
+        control_flow_store().pending().kind != control_flow::Kind::Exit)
+    {
+      control_flow_store().clear();
+    }
+
+    execution_store().set_shell_is_interactive(was_interactive);
+    return body_error;
+  };
+  let const do_contain_error = [&](const std::exception_ptr
+                                       &body_error) throws {
+    if (!body_error) return;
+
+    LOG(Debug,
+        "the function substitution failed, containing the error with status 1");
+    render_contained_substitution_error(body_error, source.view());
+    execution_store().set_last_exit_status(1);
+  };
+
+  if (is_value_substitution) {
+    /* REPLY is local to a ${| ...; } body, which starts with it unset, and the
+       body's standard output stays the shell's own. */
+    let const outer_reply = get_variable_value(StringView{"REPLY"});
+    unset_shell_variable(StringView{"REPLY"});
+    let const body_error = do_evaluate_body();
+    let reply = get_variable_value(StringView{"REPLY"})
+                    .value_or(String{heap_allocator()});
+    unset_shell_variable(StringView{"REPLY"});
+    if (outer_reply.has_value()) {
+      set_shell_variable(StringView{"REPLY"}, outer_reply->view());
+    }
+    do_contain_error(body_error);
+
+    return reply;
+  }
 
   let const pipe = os::make_pipe();
   if (!pipe) throw Error{"Could not open a pipe for function substitution"};
@@ -1100,26 +1203,7 @@ fn EvalContext::capture_function_substitution(const WordSegment &segment) throws
 
   koshka::flush();
   let const saved = os::redirect_stdout(pipe->out);
-
-  let const was_interactive = execution_store().shell_is_interactive();
-  execution_store().set_shell_is_interactive(false);
-
-  std::exception_ptr error;
-  try {
-    ast->evaluate(*this);
-  } catch (...) {
-    error = std::current_exception();
-  }
-  /* A break, continue, or return acts only within the body and is consumed
-     here. An exit stays pending, so the shell ends after the surrounding
-     command finishes, the way bash exits from a funsub. */
-  if (control_flow_store().has_pending() &&
-      control_flow_store().pending().kind != control_flow::Kind::Exit)
-  {
-    control_flow_store().clear();
-  }
-
-  execution_store().set_shell_is_interactive(was_interactive);
+  let const error = do_evaluate_body();
 
   koshka::flush();
   os::restore_stdout(saved);
@@ -1133,12 +1217,7 @@ fn EvalContext::capture_function_substitution(const WordSegment &segment) throws
                                          drain_context.capacity);
   }
 
-  if (error) {
-    LOG(Debug,
-        "the function substitution failed, containing the error with status 1");
-    render_contained_substitution_error(error, source.view());
-    execution_store().set_last_exit_status(1);
-  }
+  do_contain_error(error);
 
   captured.strip_trailing_newlines();
   return captured;

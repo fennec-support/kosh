@@ -1102,6 +1102,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
         /* A ${ followed by whitespace is the bash 5.3 funsub, a command body
            run in the current shell. The leading whitespace drops. */
         bool is_function_substitution = false;
+        bool is_value_substitution = false;
         if (bash_additions_enabled()) {
           let probe = chop_character(byte_count);
           while (probe == ' ' || probe == '\t' || probe == '\n') {
@@ -1109,8 +1110,13 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
             byte_count++;
             probe = chop_character(byte_count);
           }
+          if (!is_function_substitution && probe == '|') {
+            is_function_substitution = true;
+            is_value_substitution = true;
+          }
         }
         let const name_start = byte_count;
+        if (is_value_substitution) byte_count++;
         /* Only a nested ${ raises the depth, so a bare { does not, matching
            dash. A nested $(...), backtick, quote, or escape shields its }. */
         usize brace_depth = 1;
@@ -1210,7 +1216,10 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
                                             expansion_segment.text.count());
         if (should_validate_substitutions()) {
           if (is_function_substitution) {
-            validate_substitution_body(m_cursor_position + name_start, name,
+            let const body_offset = is_value_substitution ? usize{1} : 0;
+            validate_substitution_body(m_cursor_position + name_start +
+                                           body_offset,
+                                       name.substring(body_offset),
                                        here(m_cursor_position + expansion_start,
                                             byte_count - expansion_start));
           } else if (name.find_character('$').has_value() ||
@@ -1801,6 +1810,11 @@ cold fn lexer::find_segment_substitution(StringView source,
 
     entry.body_position = position + length - 1 - text.length;
     entry.body_length = text.length;
+    if (!text.is_empty() && text[0] == '|') {
+      entry.body_position++;
+      entry.body_length--;
+      body_text = text.substring(1);
+    }
     break;
 
   default: return None;

@@ -1,0 +1,5 @@
+PASS first command runs the hook
+PASS second command runs the hook again
+PASS assignments in the hook persist
+PASS no expansion error
+status=0

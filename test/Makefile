@@ -55,7 +55,7 @@ SKIPPED_TESTS := \
 	koshkit_live_pty koshkit_live_sanitizers koshkit_live_deltas \
 	editor_ghost_menu_pty editor_kill_yank_pty editor_prompt_pty \
 	shell_integration_marks_pty background_terminal_pty \
-	shell_executable_path \
+	prompt_function_substitution_pty shell_executable_path \
 	analysis_environment_inheritance progcomp_alias_ghost koshconf_persist \
 	koshconf_system_file
 else ifneq ($(TARGET), Linux)
@@ -106,7 +106,7 @@ endif
 ifeq ($(shell command -v python3),)
 SKIPPED_TESTS += koshkit_live_pty koshkit_live_deltas editor_ghost_menu_pty \
 	editor_kill_yank_pty editor_prompt_pty shell_integration_marks_pty \
-	background_terminal_pty
+	background_terminal_pty prompt_function_substitution_pty
 endif
 
 ifeq ($(OS), Windows_NT)
