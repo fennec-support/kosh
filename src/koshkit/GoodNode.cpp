@@ -38,42 +38,6 @@ enum class goodnode_verification_mode : u8
   Verify,
 };
 
-fn file_crc32c(const ExecContext &ec, StringView path,
-               Allocator allocator) throws -> Maybe<String>
-{
-  let const input = open_named_or_stdin(ec, path);
-  if (!input.has_value()) return None;
-  defer
-  {
-    if (input->mode == input_descriptor_mode::Owned)
-      unused(os::close_fd(input->descriptor));
-  };
-
-  u32 crc = 0xffffffffu;
-  char buffer[65536];
-  loop
-  {
-    let const read_count =
-        os::read_fd(input->descriptor, buffer, sizeof(buffer));
-    if (!read_count.has_value()) return None;
-    if (*read_count == 0) break;
-
-    crc = os::crc32c_update(crc, buffer, *read_count);
-    if (os::INTERRUPT_REQUESTED) return None;
-  }
-
-  crc = ~crc;
-  let digest = String::from_in_base(crc, false, int_base::hex, allocator);
-  if (digest.length() < 8) {
-    let padded = String{allocator};
-    padded.append_repeated('0', 8 - digest.length());
-    padded += digest.view();
-    return padded;
-  }
-
-  return digest;
-}
-
 fn filesystem_features(StringView filesystem_type) throws -> Maybe<StringView>
 {
   static constexpr static_string_entry<StringView> FEATURE_ENTRIES[] = {
@@ -96,10 +60,7 @@ fn append_node_report(String &output, const ExecContext &ec, StringView path,
 {
   let table = ReportTable{allocator};
   let const do_append_field = [&](StringView name, StringView value) throws {
-    let cells = ArrayList<report_table_cell_view>{allocator};
-    cells.push({name, colors::ansi::BOLD_CYAN});
-    cells.push({value, {}});
-    table.add_row(cells);
+    table.add_field_row(name, value, colors::ansi::BOLD_CYAN);
   };
   do_append_field("Type", file_type_name(status));
   do_append_field("Inode", String::from(status.file_id, allocator));

@@ -162,10 +162,7 @@ fn Retry::execute(const ExecContext &ec, EvalContext &cxt,
                             return_handling::Consume);
     if (status == 0) return 0;
 
-    if (os::INTERRUPT_REQUESTED) {
-      os::INTERRUPT_REQUESTED = 0;
-      return 130;
-    }
+    if (take_interrupt_request()) return 130;
 
     if (attempt == attempt_limit) break;
 

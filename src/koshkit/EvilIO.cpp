@@ -23,13 +23,6 @@ KOSHKIT_UTIL_DECL(
     "[--ps | -NUMBER | -n count | -p pid]",
     "The evilio utility reports system and process I/O activity.");
 
-static pure fn is_evilio_sample_duration(koshka::StringView value) wontthrow
-    -> bool
-{
-  return !value.is_empty() &&
-         ((value[0] >= '0' && value[0] <= '9') || value[0] == '.');
-}
-
 FLAG(EVILIO_ALL, Bool, 'a', "all", "Include sampled system activity.");
 FLAG(EVILIO_HUMAN, Bool, 'h', "human-readable",
      "Print byte values with compact binary units such as 4.0K or 1.5M.");
@@ -37,12 +30,12 @@ FLAG_OPTIONAL(EVILIO_CUMULATIVE, 'C', "cumulative", Live,
               "Report sampled activity over an M-second window; the default "
               "is one second. Without --live, wait M seconds first. With "
               "--live the window rolls and does not set the refresh rate.",
-              is_evilio_sample_duration, "seconds");
+              koshka::koshkit::is_koshkit_sample_duration, "seconds");
 FLAG(EVILIO_PS, Bool, '\0', "ps", "Show every visible process.");
 FLAG_OPTIONAL(EVILIO_LIVE, 'l', "live", Live,
               "Sample and refresh live output every N seconds; the default is "
               "0.5 seconds.",
-              is_evilio_sample_duration, "seconds");
+              koshka::koshkit::is_koshkit_sample_duration, "seconds");
 FLAG(EVILIO_COUNT, String, 'n', "count", "Show this many processes.");
 FLAG(EVILIO_PID, String, 'p', "pid", "Show only this process.");
 FLAG(EVILIO_SORT, String, '\0', "sort",
@@ -112,22 +105,13 @@ static constexpr static_string_entry<evilio_sort_spec> SORT_KEY_ENTRIES[] = {
 
 static constexpr StaticStringMap SORT_KEYS{SORT_KEY_ENTRIES};
 
-struct evilio_sort_resolution
-{
-  Maybe<evilio_sort_key> key{};
-  usize match_count{0};
-  String matches{heap_allocator()};
-};
-
 fn resolve_sort_key(StringView value, bool should_show_processes,
-                    Allocator allocator) throws -> evilio_sort_resolution
+                    Allocator allocator) throws
+    -> koshkit_key_resolution<evilio_sort_key>
 {
-  evilio_sort_resolution result{};
-  result.matches = String{allocator};
+  koshkit_key_resolution<evilio_sort_key> result{{}, 0, String{allocator}};
   if (let const exact = SORT_KEYS.find(value); exact.has_value()) {
-    result.key = exact->key;
-    result.match_count = 1;
-    result.matches += exact->name;
+    result.add_match(exact->key, exact->name);
     return result;
   }
 
@@ -140,10 +124,7 @@ fn resolve_sort_key(StringView value, bool should_show_processes,
       {
         continue;
       }
-      if (!result.matches.is_empty()) result.matches += ", ";
-      result.matches += entry.value.name;
-      result.key = entry.value.key;
-      result.match_count++;
+      result.add_match(entry.value.key, entry.value.name);
     }
     if (result.match_count != 0) break;
   }
@@ -460,18 +441,16 @@ fn append_process_io_rate_report(String &output, const ArrayList<io_row> &rows,
                                  bool should_color) throws -> void
 {
   let table = ReportTable{allocator};
-  table.add_column("PID", report_table_alignment::Right,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column(String{"READ"} + duration_suffix,
-                   report_table_alignment::Right, colors::ansi::BOLD_CYAN);
-  table.add_column(String{"WRITE"} + duration_suffix,
-                   report_table_alignment::Right, colors::ansi::BOLD_CYAN);
-  table.add_column(String{"READ OPS"} + duration_suffix,
-                   report_table_alignment::Right, colors::ansi::BOLD_CYAN);
-  table.add_column(String{"WRITE OPS"} + duration_suffix,
-                   report_table_alignment::Right, colors::ansi::BOLD_CYAN);
-  table.add_column("COMMAND", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
+  table.add_heading("PID", report_table_alignment::Right);
+  table.add_heading(String{"READ"} + duration_suffix,
+                    report_table_alignment::Right);
+  table.add_heading(String{"WRITE"} + duration_suffix,
+                    report_table_alignment::Right);
+  table.add_heading(String{"READ OPS"} + duration_suffix,
+                    report_table_alignment::Right);
+  table.add_heading(String{"WRITE OPS"} + duration_suffix,
+                    report_table_alignment::Right);
+  table.add_heading("COMMAND");
 
   let const shown_count = rows.count() < row_limit ? rows.count() : row_limit;
   for (usize index = 0; index < shown_count; index++) {
@@ -800,40 +779,32 @@ fn append_disk_io_report(String &output, const ArrayList<disk_io_row> &rows,
   if (rows.is_empty() && sampling == report_sampling_mode::Instant) return;
 
   let table = ReportTable{allocator};
-  table.add_column("DEVICE", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column(sampling == report_sampling_mode::Rolling
-                       ? String{"READ"} + duration_suffix
-                       : "READ",
-                   report_table_alignment::Right, colors::ansi::BOLD_CYAN);
-  table.add_column(sampling == report_sampling_mode::Rolling
-                       ? String{"WRITE"} + duration_suffix
-                       : "WRITTEN",
-                   report_table_alignment::Right, colors::ansi::BOLD_CYAN);
-  table.add_column(sampling == report_sampling_mode::Rolling
-                       ? String{"READ OPS"} + duration_suffix
-                       : "READ OPS",
-                   report_table_alignment::Right, colors::ansi::BOLD_CYAN);
-  table.add_column(sampling == report_sampling_mode::Rolling
-                       ? String{"WRITE OPS"} + duration_suffix
-                       : "WRITE OPS",
-                   report_table_alignment::Right, colors::ansi::BOLD_CYAN);
+  table.add_heading("DEVICE");
+  table.add_heading(sampling == report_sampling_mode::Rolling
+                        ? String{"READ"} + duration_suffix
+                        : "READ",
+                    report_table_alignment::Right);
+  table.add_heading(sampling == report_sampling_mode::Rolling
+                        ? String{"WRITE"} + duration_suffix
+                        : "WRITTEN",
+                    report_table_alignment::Right);
+  table.add_heading(sampling == report_sampling_mode::Rolling
+                        ? String{"READ OPS"} + duration_suffix
+                        : "READ OPS",
+                    report_table_alignment::Right);
+  table.add_heading(sampling == report_sampling_mode::Rolling
+                        ? String{"WRITE OPS"} + duration_suffix
+                        : "WRITE OPS",
+                    report_table_alignment::Right);
   if (sampling == report_sampling_mode::Rolling) {
-    table.add_column("BUSY", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("READ LATENCY", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("WRITE LATENCY", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("AVG QUEUE", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
+    table.add_heading("BUSY", report_table_alignment::Right);
+    table.add_heading("READ LATENCY", report_table_alignment::Right);
+    table.add_heading("WRITE LATENCY", report_table_alignment::Right);
+    table.add_heading("AVG QUEUE", report_table_alignment::Right);
   }
-  table.add_column("QUEUE", report_table_alignment::Right,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("ERRORS", report_table_alignment::Right,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("RETRIES", report_table_alignment::Right,
-                   colors::ansi::BOLD_CYAN);
+  table.add_heading("QUEUE", report_table_alignment::Right);
+  table.add_heading("ERRORS", report_table_alignment::Right);
+  table.add_heading("RETRIES", report_table_alignment::Right);
 
   for (let const &row : rows) {
     let const read = row.read.has_value()
@@ -930,10 +901,7 @@ fn run_live_process_io(const ExecContext &ec, Maybe<i64> selected_pid,
   };
   let baseline_rows =
       read_process_io_rows(allocator, selected_pid, evilio_idle_mode::Include);
-  if (os::INTERRUPT_REQUESTED != 0) {
-    os::INTERRUPT_REQUESTED = 0;
-    return 130;
-  }
+  if (take_interrupt_request()) return 130;
   if (selected_pid.has_value() && baseline_rows.is_empty()) return 1;
   update_retained_rows(retained, baseline_rows, last_sample_nanoseconds,
                        window_nanoseconds, allocator, do_get_key, do_get_value,
@@ -942,10 +910,7 @@ fn run_live_process_io(const ExecContext &ec, Maybe<i64> selected_pid,
   let const do_sample = [&](u64 now, Allocator frame_allocator) -> Maybe<i32> {
     let after_rows = read_process_io_rows(frame_allocator, selected_pid,
                                           evilio_idle_mode::Include);
-    if (os::INTERRUPT_REQUESTED != 0) {
-      os::INTERRUPT_REQUESTED = 0;
-      return 130;
-    }
+    if (take_interrupt_request()) return 130;
     if (selected_pid.has_value() && after_rows.is_empty()) {
       return 1;
     }
@@ -1159,20 +1124,14 @@ fn append_process_io_report(String &output, const ArrayList<io_row> &rows,
                              should_color);
 
   let process_table = ReportTable{allocator};
-  process_table.add_column("PID", report_table_alignment::Right,
-                           colors::ansi::BOLD_CYAN);
-  process_table.add_column("READ", report_table_alignment::Right,
-                           colors::ansi::BOLD_CYAN);
-  process_table.add_column("WRITTEN", report_table_alignment::Right,
-                           colors::ansi::BOLD_CYAN);
+  process_table.add_heading("PID", report_table_alignment::Right);
+  process_table.add_heading("READ", report_table_alignment::Right);
+  process_table.add_heading("WRITTEN", report_table_alignment::Right);
   if (has_operation_counts) {
-    process_table.add_column("READ OPS", report_table_alignment::Right,
-                             colors::ansi::BOLD_CYAN);
-    process_table.add_column("WRITE OPS", report_table_alignment::Right,
-                             colors::ansi::BOLD_CYAN);
+    process_table.add_heading("READ OPS", report_table_alignment::Right);
+    process_table.add_heading("WRITE OPS", report_table_alignment::Right);
   }
-  process_table.add_column("COMMAND", report_table_alignment::Left,
-                           colors::ansi::BOLD_CYAN);
+  process_table.add_heading("COMMAND");
 
   let const shown_count = rows.count() < row_limit ? rows.count() : row_limit;
   for (usize index = 0; index < shown_count; index++) {
@@ -1334,21 +1293,12 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
   if (FLAG_EVILIO_SORT.is_set()) {
     let const resolved = resolve_sort_key(FLAG_EVILIO_SORT.value(),
                                           should_show_processes, allocator);
-    if (resolved.match_count == 0) {
-      KOSHKIT_REPORT_ERROR_AT(
-          FLAG_EVILIO_SORT.value_location(), "invalid sort key",
-          "use pid, read, write, read-ops, write-ops, busy, read-latency, "
-          "write-latency, average-queue, queue, errors, or retries");
+    if (!report_unresolved_sort_key(
+            ec, cxt, FLAG_EVILIO_SORT.value_location(), args[0].view(),
+            resolved.match_count, resolved.matches.view(),
+            "use pid, read, write, read-ops, write-ops, busy, read-latency, "
+            "write-latency, average-queue, queue, errors, or retries"))
       return 1;
-    }
-    if (resolved.match_count > 1) {
-      let note = String{allocator, "matches "};
-      note += resolved.matches.view();
-      note += "; use a longer prefix";
-      KOSHKIT_REPORT_ERROR_AT(FLAG_EVILIO_SORT.value_location(),
-                              "ambiguous sort key", note.view());
-      return 1;
-    }
 
     sort_key = resolved.key;
     let const spec = find_sort_spec(*sort_key);
@@ -1411,10 +1361,7 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
     let const before_rows = read_process_io_rows(allocator, selected_pid,
                                                  evilio_idle_mode::Include);
     os::sleep_for_seconds(cumulative_duration_seconds);
-    if (os::INTERRUPT_REQUESTED != 0) {
-      os::INTERRUPT_REQUESTED = 0;
-      return 130;
-    }
+    if (take_interrupt_request()) return 130;
     let const after_rows = read_process_io_rows(allocator, selected_pid,
                                                 evilio_idle_mode::Include);
     let const sampled_rows =
@@ -1469,10 +1416,7 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
   } else if (FLAG_EVILIO_CUMULATIVE.is_enabled()) {
     disk_before = steal(disk_after);
     os::sleep_for_seconds(cumulative_duration_seconds);
-    if (os::INTERRUPT_REQUESTED != 0) {
-      os::INTERRUPT_REQUESTED = 0;
-      return 130;
-    }
+    if (take_interrupt_request()) return 130;
     disk_after = os::read_disk_io_snapshot(allocator);
     if (disk_after.sampled_at_nanoseconds >= disk_before.sampled_at_nanoseconds)
     {

@@ -194,20 +194,14 @@ fn append_namespace_report(String &output, bool should_color,
       });
 
   let table = ReportTable{allocator};
-  table.add_column("TYPE", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("ID", report_table_alignment::Right,
-                   colors::ansi::BOLD_CYAN);
+  table.add_heading("TYPE");
+  table.add_heading("ID", report_table_alignment::Right);
   if (detail == eviliso_detail_mode::All) {
-    table.add_column("PID", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("NAME", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("ROLE", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
+    table.add_heading("PID", report_table_alignment::Right);
+    table.add_heading("NAME");
+    table.add_heading("ROLE");
   } else {
-    table.add_column("PROCESSES", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
+    table.add_heading("PROCESSES", report_table_alignment::Right);
   }
 
   let cells = ArrayList<report_table_cell_view>{allocator};
@@ -252,23 +246,16 @@ fn append_namespace_report(String &output, bool should_color,
   append_titled_report_table(output, "Namespaces", table, should_color);
 
   let failure_table = ReportTable{allocator};
-  failure_table.add_column("TYPE", report_table_alignment::Left,
-                           colors::ansi::BOLD_CYAN);
+  failure_table.add_heading("TYPE");
   if (detail == eviliso_detail_mode::All) {
-    failure_table.add_column("PID", report_table_alignment::Right,
-                             colors::ansi::BOLD_CYAN);
-    failure_table.add_column("NAME", report_table_alignment::Left,
-                             colors::ansi::BOLD_CYAN);
-    failure_table.add_column("ROLE", report_table_alignment::Left,
-                             colors::ansi::BOLD_CYAN);
+    failure_table.add_heading("PID", report_table_alignment::Right);
+    failure_table.add_heading("NAME");
+    failure_table.add_heading("ROLE");
   } else {
-    failure_table.add_column("PROCESSES", report_table_alignment::Right,
-                             colors::ansi::BOLD_CYAN);
+    failure_table.add_heading("PROCESSES", report_table_alignment::Right);
   }
-  failure_table.add_column("STATUS", report_table_alignment::Left,
-                           colors::ansi::BOLD_CYAN);
-  failure_table.add_column("REASON", report_table_alignment::Left,
-                           colors::ansi::BOLD_CYAN);
+  failure_table.add_heading("STATUS");
+  failure_table.add_heading("REASON");
   bool has_failure = false;
   if (detail == eviliso_detail_mode::All) {
     for (let const &relation : sorted_relations) {
@@ -733,12 +720,9 @@ fn append_cgroup_failure_report(
 {
   let const allocator = snapshot.allocator();
   let table = ReportTable{allocator};
-  table.add_column("PID", report_table_alignment::Right,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("PROCESS", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("STATUS", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
+  table.add_heading("PID", report_table_alignment::Right);
+  table.add_heading("PROCESS");
+  table.add_heading("STATUS");
 
   bool has_failure = false;
   for (let const &process : snapshot) {
@@ -830,21 +814,13 @@ fn append_cgroup_report(String &output, bool should_color,
       });
 
   let report = ReportTable{allocator};
-  report.add_column("HIERARCHY", report_table_alignment::Right,
-                    colors::ansi::BOLD_CYAN);
-  report.add_column("CONTROLLER", report_table_alignment::Left,
-                    colors::ansi::BOLD_CYAN);
-  report.add_column("PATH", report_table_alignment::Left,
-                    colors::ansi::BOLD_CYAN);
-  report.add_column("PID", report_table_alignment::Right,
-                    colors::ansi::BOLD_CYAN);
-  report.add_column("NAME", report_table_alignment::Left,
-                    colors::ansi::BOLD_CYAN);
-  report.add_column("ROLE", report_table_alignment::Left,
-                    colors::ansi::BOLD_CYAN);
-  if (detail == eviliso_detail_mode::All)
-    report.add_column("STATUS", report_table_alignment::Left,
-                      colors::ansi::BOLD_CYAN);
+  report.add_heading("HIERARCHY", report_table_alignment::Right);
+  report.add_heading("CONTROLLER");
+  report.add_heading("PATH");
+  report.add_heading("PID", report_table_alignment::Right);
+  report.add_heading("NAME");
+  report.add_heading("ROLE");
+  if (detail == eviliso_detail_mode::All) report.add_heading("STATUS");
   let cells = ArrayList<report_table_cell_view>{allocator};
   cells.reserve(7);
   for (let const &row : sorted_rows) {
@@ -907,14 +883,9 @@ fn append_session_report(String &output, bool should_color, Allocator allocator,
   }
 
   let table = ReportTable{allocator};
-  table.add_column("USER", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("TERMINAL", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  if (detail == eviliso_detail_mode::All) {
-    table.add_column("LOGIN TIME", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-  }
+  table.add_heading("USER");
+  table.add_heading("TERMINAL");
+  if (detail == eviliso_detail_mode::All) table.add_heading("LOGIN TIME");
   for (let const &row : rows) {
     let cells = ArrayList<report_table_cell_view>{allocator};
     cells.push({row.user.view(), colors::ansi::BOLD_GREEN});
@@ -977,12 +948,9 @@ fn append_remote_report(String &output, bool should_color,
 {
   let table = ReportTable{allocator};
   if (!os::has_network_socket_listing()) {
-    table.add_column("RESOURCE", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("STATUS", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("REASON", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
+    table.add_heading("RESOURCE");
+    table.add_heading("STATUS");
+    table.add_heading("REASON");
     let cells = ArrayList<report_table_cell_view>{allocator};
     cells.reserve(3);
     cells.push({"Sockets", colors::ansi::BOLD_CYAN});
@@ -1303,43 +1271,25 @@ fn append_remote_report(String &output, bool should_color,
   }
 
   let peer_table = ReportTable{allocator};
-  peer_table.add_column("FAMILY", report_table_alignment::Left,
-                        colors::ansi::BOLD_CYAN);
-  peer_table.add_column("PROTO", report_table_alignment::Left,
-                        colors::ansi::BOLD_CYAN);
-  peer_table.add_column("STATE", report_table_alignment::Left,
-                        colors::ansi::BOLD_CYAN);
-  peer_table.add_column("RECV-Q", report_table_alignment::Right,
-                        colors::ansi::BOLD_CYAN);
-  peer_table.add_column("SEND-Q", report_table_alignment::Right,
-                        colors::ansi::BOLD_CYAN);
-  peer_table.add_column("LOCAL", report_table_alignment::Left,
-                        colors::ansi::BOLD_CYAN);
-  peer_table.add_column("PEER", report_table_alignment::Left,
-                        colors::ansi::BOLD_CYAN);
+  peer_table.add_heading("FAMILY");
+  peer_table.add_heading("PROTO");
+  peer_table.add_heading("STATE");
+  peer_table.add_heading("RECV-Q", report_table_alignment::Right);
+  peer_table.add_heading("SEND-Q", report_table_alignment::Right);
+  peer_table.add_heading("LOCAL");
+  peer_table.add_heading("PEER");
   if (detail == eviliso_detail_mode::All) {
-    peer_table.add_column("SOCKET", report_table_alignment::Right,
-                          colors::ansi::BOLD_CYAN);
-    peer_table.add_column("PID", report_table_alignment::Right,
-                          colors::ansi::BOLD_CYAN);
-    peer_table.add_column("UID", report_table_alignment::Right,
-                          colors::ansi::BOLD_CYAN);
-    peer_table.add_column("USER", report_table_alignment::Left,
-                          colors::ansi::BOLD_CYAN);
-    peer_table.add_column("NAME", report_table_alignment::Left,
-                          colors::ansi::BOLD_CYAN);
-    peer_table.add_column("COMMAND", report_table_alignment::Left,
-                          colors::ansi::BOLD_CYAN);
-    peer_table.add_column("NETNS", report_table_alignment::Left,
-                          colors::ansi::BOLD_CYAN);
-    peer_table.add_column("ORCHESTRATOR", report_table_alignment::Left,
-                          colors::ansi::BOLD_CYAN);
-    peer_table.add_column("RUNTIME", report_table_alignment::Left,
-                          colors::ansi::BOLD_CYAN);
-    peer_table.add_column("CONTAINER", report_table_alignment::Left,
-                          colors::ansi::BOLD_CYAN);
-    peer_table.add_column("CGROUP", report_table_alignment::Left,
-                          colors::ansi::BOLD_CYAN);
+    peer_table.add_heading("SOCKET", report_table_alignment::Right);
+    peer_table.add_heading("PID", report_table_alignment::Right);
+    peer_table.add_heading("UID", report_table_alignment::Right);
+    peer_table.add_heading("USER");
+    peer_table.add_heading("NAME");
+    peer_table.add_heading("COMMAND");
+    peer_table.add_heading("NETNS");
+    peer_table.add_heading("ORCHESTRATOR");
+    peer_table.add_heading("RUNTIME");
+    peer_table.add_heading("CONTAINER");
+    peer_table.add_heading("CGROUP");
   }
   for (let const &row : remote_rows) {
     let receive = String::from(row.receive_queue_bytes, allocator);
@@ -1454,20 +1404,14 @@ fn append_runtime_evidence_report(
       });
 
   let table = ReportTable{allocator};
-  table.add_column("RUNTIME", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("SOURCE", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
+  table.add_heading("RUNTIME");
+  table.add_heading("SOURCE");
   if (detail == eviliso_detail_mode::All) {
-    table.add_column("PID", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("NAME", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("ROLE", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
+    table.add_heading("PID", report_table_alignment::Right);
+    table.add_heading("NAME");
+    table.add_heading("ROLE");
   }
-  table.add_column("EVIDENCE", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
+  table.add_heading("EVIDENCE");
   for (let const &row : sorted_rows) {
     let cells = ArrayList<report_table_cell_view>{allocator};
     cells.push({row.runtime.view(), colors::ansi::BOLD_GREEN});
@@ -1575,10 +1519,8 @@ fn append_container_report(String &output, bool should_color,
     }
   }
   let table = ReportTable{allocator};
-  table.add_column("RUNTIME", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("CONTAINER", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
+  table.add_heading("RUNTIME");
+  table.add_heading("CONTAINER");
   if (detail != eviliso_detail_mode::All) {
     let const sorted_summary_rows =
         steal(summary_rows)
@@ -1588,8 +1530,7 @@ fn append_container_report(String &output, bool should_color,
                 return left.runtime < right.runtime;
               return left.identifier < right.identifier;
             });
-    table.add_column("PROCESSES", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
+    table.add_heading("PROCESSES", report_table_alignment::Right);
     for (let const &row : sorted_summary_rows) {
       let count = String::from(row.process_count, allocator);
       let cells = ArrayList<report_table_cell_view>{allocator};
@@ -1611,14 +1552,10 @@ fn append_container_report(String &output, bool should_color,
                 return left.process_id_value < right.process_id_value;
               return left.cgroup < right.cgroup;
             });
-    table.add_column("PID", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("NAME", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("ROLE", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("CGROUP", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
+    table.add_heading("PID", report_table_alignment::Right);
+    table.add_heading("NAME");
+    table.add_heading("ROLE");
+    table.add_heading("CGROUP");
     for (let const &row : sorted_detail_rows) {
       let cells = ArrayList<report_table_cell_view>{allocator};
       cells.push({row.runtime.view(), colors::ansi::BOLD_GREEN});
@@ -1686,14 +1623,10 @@ fn append_kubernetes_report(String &output, bool should_color,
       has_kubepods = has_kubepods || evidence.is_kubernetes;
   }
   let evidence_table = ReportTable{allocator};
-  evidence_table.add_column("SOURCE", report_table_alignment::Left,
-                            colors::ansi::BOLD_CYAN);
-  evidence_table.add_column("HOST", report_table_alignment::Left,
-                            colors::ansi::BOLD_CYAN);
-  evidence_table.add_column("NAMESPACE", report_table_alignment::Left,
-                            colors::ansi::BOLD_CYAN);
-  evidence_table.add_column("EVIDENCE", report_table_alignment::Left,
-                            colors::ansi::BOLD_CYAN);
+  evidence_table.add_heading("SOURCE");
+  evidence_table.add_heading("HOST");
+  evidence_table.add_heading("NAMESPACE");
+  evidence_table.add_heading("EVIDENCE");
   if (!kubernetes_host.is_empty()) {
     let cells = ArrayList<report_table_cell_view>{allocator};
     cells.push({"environment", colors::ansi::RESET});
@@ -1777,16 +1710,11 @@ fn append_kubernetes_report(String &output, bool should_color,
     }
   }
   let workload_table = ReportTable{allocator};
-  workload_table.add_column("SOURCE", report_table_alignment::Left,
-                            colors::ansi::BOLD_CYAN);
-  workload_table.add_column("POD UID", report_table_alignment::Left,
-                            colors::ansi::BOLD_CYAN);
-  workload_table.add_column("QOS", report_table_alignment::Left,
-                            colors::ansi::BOLD_CYAN);
-  workload_table.add_column("RUNTIME", report_table_alignment::Left,
-                            colors::ansi::BOLD_CYAN);
-  workload_table.add_column("CONTAINER", report_table_alignment::Left,
-                            colors::ansi::BOLD_CYAN);
+  workload_table.add_heading("SOURCE");
+  workload_table.add_heading("POD UID");
+  workload_table.add_heading("QOS");
+  workload_table.add_heading("RUNTIME");
+  workload_table.add_heading("CONTAINER");
   if (detail != eviliso_detail_mode::All) {
     let const sorted_rows = steal(rows).make_sorted(
         [](const kubernetes_row &left, const kubernetes_row &right) {
@@ -1797,8 +1725,7 @@ fn append_kubernetes_report(String &output, bool should_color,
             return left.runtime < right.runtime;
           return left.container_id < right.container_id;
         });
-    workload_table.add_column("PROCESSES", report_table_alignment::Right,
-                              colors::ansi::BOLD_CYAN);
+    workload_table.add_heading("PROCESSES", report_table_alignment::Right);
     for (let const &row : sorted_rows) {
       let count = String::from(row.process_count, allocator);
       let cells = ArrayList<report_table_cell_view>{allocator};
@@ -1811,14 +1738,10 @@ fn append_kubernetes_report(String &output, bool should_color,
       workload_table.add_row(cells);
     }
   } else {
-    workload_table.add_column("PID", report_table_alignment::Right,
-                              colors::ansi::BOLD_CYAN);
-    workload_table.add_column("NAME", report_table_alignment::Left,
-                              colors::ansi::BOLD_CYAN);
-    workload_table.add_column("ROLE", report_table_alignment::Left,
-                              colors::ansi::BOLD_CYAN);
-    workload_table.add_column("CGROUP", report_table_alignment::Left,
-                              colors::ansi::BOLD_CYAN);
+    workload_table.add_heading("PID", report_table_alignment::Right);
+    workload_table.add_heading("NAME");
+    workload_table.add_heading("ROLE");
+    workload_table.add_heading("CGROUP");
     for (let const &process : snapshot) {
       for (usize index = 0; index < process.evidence.count(); index++) {
         let const &evidence = process.evidence[index];

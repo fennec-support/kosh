@@ -349,20 +349,13 @@ fn EvilDisk::execute(
 
   let unavailable_sections = ArrayList<StringView>{allocator};
   let capacity_table = ReportTable{allocator};
-  capacity_table.add_column("FILESYSTEM", report_table_alignment::Left,
-                            colors::ansi::BOLD_CYAN);
-  capacity_table.add_column("TYPE", report_table_alignment::Left,
-                            colors::ansi::BOLD_CYAN);
-  capacity_table.add_column("SIZE", report_table_alignment::Right,
-                            colors::ansi::BOLD_CYAN);
-  capacity_table.add_column("USED", report_table_alignment::Right,
-                            colors::ansi::BOLD_CYAN);
-  capacity_table.add_column("AVAILABLE", report_table_alignment::Right,
-                            colors::ansi::BOLD_CYAN);
-  capacity_table.add_column("USE", report_table_alignment::Right,
-                            colors::ansi::BOLD_CYAN);
-  capacity_table.add_column("MOUNT", report_table_alignment::Left,
-                            colors::ansi::BOLD_CYAN);
+  capacity_table.add_heading("FILESYSTEM");
+  capacity_table.add_heading("TYPE");
+  capacity_table.add_heading("SIZE", report_table_alignment::Right);
+  capacity_table.add_heading("USED", report_table_alignment::Right);
+  capacity_table.add_heading("AVAILABLE", report_table_alignment::Right);
+  capacity_table.add_heading("USE", report_table_alignment::Right);
+  capacity_table.add_heading("MOUNT");
   for (let const &row : rows) {
     let cells = ArrayList<report_table_cell_view>{allocator};
     cells.push({row.source.view(), colors::ansi::GREEN});
@@ -400,16 +393,11 @@ fn EvilDisk::execute(
     unavailable_sections.push("Disk failure counters");
   } else {
     let table = ReportTable{allocator};
-    table.add_column("DEVICE", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("READ ERRORS", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("WRITE ERRORS", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("READ RETRIES", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("WRITE RETRIES", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
+    table.add_heading("DEVICE");
+    table.add_heading("READ ERRORS", report_table_alignment::Right);
+    table.add_heading("WRITE ERRORS", report_table_alignment::Right);
+    table.add_heading("READ RETRIES", report_table_alignment::Right);
+    table.add_heading("WRITE RETRIES", report_table_alignment::Right);
     for (let const &disk : sorted_disks) {
       const u64 counters[] = {
           disk.read_error_count,
@@ -468,12 +456,9 @@ fn EvilDisk::execute(
       unavailable_sections.push("Identity data");
     } else {
       let table = ReportTable{allocator};
-      table.add_column("MOUNT", report_table_alignment::Left,
-                       colors::ansi::BOLD_CYAN);
-      table.add_column("LABEL", report_table_alignment::Left,
-                       colors::ansi::BOLD_CYAN);
-      table.add_column("UUID", report_table_alignment::Left,
-                       colors::ansi::BOLD_CYAN);
+      table.add_heading("MOUNT");
+      table.add_heading("LABEL");
+      table.add_heading("UUID");
       for (let const &row : identity_rows) {
         let cells = ArrayList<report_table_cell_view>{allocator};
         cells.push({row.mount, colors::ansi::BOLD_GREEN});
@@ -486,24 +471,15 @@ fn EvilDisk::execute(
     }
 
     let table = ReportTable{allocator};
-    table.add_column("MOUNT", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("TYPE", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("STATUS", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("READ", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("WRITE", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("FLUSH", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("CORRUPTION", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("GENERATION", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("RECORDED ERRORS", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
+    table.add_heading("MOUNT");
+    table.add_heading("TYPE");
+    table.add_heading("STATUS");
+    table.add_heading("READ", report_table_alignment::Right);
+    table.add_heading("WRITE", report_table_alignment::Right);
+    table.add_heading("FLUSH", report_table_alignment::Right);
+    table.add_heading("CORRUPTION", report_table_alignment::Right);
+    table.add_heading("GENERATION", report_table_alignment::Right);
+    table.add_heading("RECORDED ERRORS", report_table_alignment::Right);
     constexpr StringView SUPPORTED_TYPES[] = {"btrfs", "ext4", "ntfs", "ntfs3"};
     for (let const &filesystem : filesystems) {
       let status = StringView{"unsupported"};
@@ -568,16 +544,11 @@ fn EvilDisk::execute(
       unavailable_sections.push("SMART data");
     } else {
       let table = ReportTable{allocator};
-      table.add_column("DEVICE", report_table_alignment::Left,
-                       colors::ansi::BOLD_CYAN);
-      table.add_column("STATUS", report_table_alignment::Left,
-                       colors::ansi::BOLD_CYAN);
-      table.add_column("MODEL", report_table_alignment::Left,
-                       colors::ansi::BOLD_CYAN);
-      table.add_column("PROTOCOL", report_table_alignment::Left,
-                       colors::ansi::BOLD_CYAN);
-      table.add_column("STATISTICS", report_table_alignment::Left,
-                       colors::ansi::BOLD_CYAN);
+      table.add_heading("DEVICE");
+      table.add_heading("STATUS");
+      table.add_heading("MODEL");
+      table.add_heading("PROTOCOL");
+      table.add_heading("STATISTICS");
       for (let const &row : smart_rows) {
         let const is_healthy = smart_status_is_healthy(row.status.view());
         let cells = ArrayList<report_table_cell_view>{allocator};
@@ -603,8 +574,7 @@ fn EvilDisk::execute(
 
   if (!unavailable_sections.is_empty()) {
     let table = ReportTable{allocator};
-    table.add_column("SECTION", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
+    table.add_heading("SECTION");
     table.add_column("STATUS", report_table_alignment::Left,
                      colors::ansi::BOLD_YELLOW);
     for (let const section : unavailable_sections) {

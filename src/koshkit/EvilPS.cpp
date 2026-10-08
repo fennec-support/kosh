@@ -41,22 +41,16 @@ FLAG(EVILPS_WIDE, Bool, 'w', "wide",
 FLAG(EVILPS_SORT, String, '\0', "sort",
      "Sort process trees by name, pid, cpu, or memory; show descendants "
      "beneath the highest-ranked process.");
-static pure fn is_evilps_sample_duration(koshka::StringView value) wontthrow
-    -> bool
-{
-  return !value.is_empty() &&
-         ((value[0] >= '0' && value[0] <= '9') || value[0] == '.');
-}
 FLAG_OPTIONAL(EVILPS_LIVE, 'l', "live", Live,
               "Sample and refresh the process tree every N seconds until "
               "interrupted; the default is 0.5 seconds.",
-              is_evilps_sample_duration, "seconds");
+              koshka::koshkit::is_koshkit_sample_duration, "seconds");
 FLAG_OPTIONAL(EVILPS_CUMULATIVE, 'C', "cumulative", Live,
               "Average CPU use over an M-second window; the default is one "
               "second. With --live the window rolls and does not set the "
               "refresh rate. Without --live, compare snapshots across M "
               "seconds.",
-              is_evilps_sample_duration, "seconds");
+              koshka::koshkit::is_koshkit_sample_duration, "seconds");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(EvilPS);
 
@@ -976,10 +970,7 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
       update_cpu_history(nodes, history, before_nanoseconds,
                          window_nanoseconds);
     os::sleep_for_seconds(report_options->window_seconds);
-    if (os::INTERRUPT_REQUESTED != 0) {
-      os::INTERRUPT_REQUESTED = 0;
-      return 130;
-    }
+    if (take_interrupt_request()) return 130;
     nodes = read_process_nodes(allocator, resource_mode);
     let const after_nanoseconds = os::monotonic_nanos();
     if (should_sample_cpu)

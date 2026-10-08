@@ -552,32 +552,19 @@ fn EvilFiles::execute(
     }
   }
   let table = ReportTable{allocator};
-  table.add_column("COMMAND", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("PID", report_table_alignment::Right,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("USER", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("FD", report_table_alignment::Right,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("TYPE", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("MODE", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("STATE", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("DEVICE", report_table_alignment::Right,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("SIZE/OFF", report_table_alignment::Right,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("OFFSET", report_table_alignment::Right,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("NODE", report_table_alignment::Right,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("ENDPOINT", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("NAME", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
+  table.add_heading("COMMAND");
+  table.add_heading("PID", report_table_alignment::Right);
+  table.add_heading("USER");
+  table.add_heading("FD", report_table_alignment::Right);
+  table.add_heading("TYPE");
+  table.add_heading("MODE");
+  table.add_heading("STATE");
+  table.add_heading("DEVICE", report_table_alignment::Right);
+  table.add_heading("SIZE/OFF", report_table_alignment::Right);
+  table.add_heading("OFFSET", report_table_alignment::Right);
+  table.add_heading("NODE", report_table_alignment::Right);
+  table.add_heading("ENDPOINT");
+  table.add_heading("NAME");
 
   let const used_width = other_columns_width + 2 + widths.command;
   for (let const &row : rows) {

@@ -26,21 +26,15 @@ FLAG(EVILNET_TRAFFIC, Bool, 't', "traffic", "Show interface traffic only.");
 FLAG(EVILNET_SORT, String, '\0', "sort",
      "Sort traffic by a unique prefix of the name, receive, transmit, packet, "
      "error, or dropped packet counters.");
-static pure fn is_evilnet_sample_duration(koshka::StringView value) wontthrow
-    -> bool
-{
-  return !value.is_empty() &&
-         ((value[0] >= '0' && value[0] <= '9') || value[0] == '.');
-}
 FLAG_OPTIONAL(EVILNET_LIVE, 'l', "live", Live,
               "Sample and refresh live traffic every N seconds; the default "
               "is 0.5 seconds.",
-              is_evilnet_sample_duration, "seconds");
+              koshka::koshkit::is_koshkit_sample_duration, "seconds");
 FLAG_OPTIONAL(EVILNET_CUMULATIVE, 'C', "cumulative", Live,
               "Report traffic over an M-second window; the default is one "
               "second. Without --live, wait M seconds first. With --live the "
               "window rolls and does not set the refresh rate.",
-              is_evilnet_sample_duration, "seconds");
+              koshka::koshkit::is_koshkit_sample_duration, "seconds");
 FLAG(EVILNET_FAILURES, Bool, 'f', "failures",
      "Show only TCP failures and packet loss.");
 
@@ -100,13 +94,6 @@ static constexpr evilnet_sort_spec EVILNET_SORT_SPECS[] = {
      &os::network_interface_statistics_entry::transmit_drop_count  },
 };
 
-struct evilnet_sort_resolution
-{
-  Maybe<evilnet_sort_key> key{};
-  usize match_count{0};
-  String matches{heap_allocator()};
-};
-
 struct evilnet_statistics_comparator
 {
   evilnet_sort_key selected;
@@ -129,22 +116,16 @@ struct evilnet_statistics_comparator
 };
 
 fn resolve_evilnet_sort_key(StringView value, Allocator allocator) throws
-    -> evilnet_sort_resolution
+    -> koshkit_key_resolution<evilnet_sort_key>
 {
-  evilnet_sort_resolution result{};
-  result.matches = String{allocator};
+  koshkit_key_resolution<evilnet_sort_key> result{{}, 0, String{allocator}};
   for (let const &spec : EVILNET_SORT_SPECS) {
     if (spec.name == value) {
-      result.key = spec.key;
-      result.match_count = 1;
-      result.matches += spec.name;
+      result = {{}, 0, String{allocator}};
+      result.add_match(spec.key, spec.name);
       return result;
     }
-    if (!spec.name.starts_with(value)) continue;
-    if (!result.matches.is_empty()) result.matches += ", ";
-    result.matches += spec.name;
-    result.key = spec.key;
-    result.match_count++;
+    if (spec.name.starts_with(value)) result.add_match(spec.key, spec.name);
   }
   return result;
 }
@@ -198,8 +179,7 @@ fn append_network_interface_report(String &output, bool should_color) throws
       });
 
   let table = ReportTable{addresses.allocator()};
-  table.add_column("NAME", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
+  table.add_heading("NAME");
   table.add_column("FAMILY", report_table_alignment::Left,
                    colors::ansi::BOLD_MAGENTA);
   table.add_column("ADDRESS", report_table_alignment::Left,
@@ -224,8 +204,7 @@ fn append_network_traffic_statistics_report(
 {
   let table = ReportTable{allocator};
   table.set_column_gap(3);
-  table.add_column("NAME", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
+  table.add_heading("NAME");
   let receive_header = String{allocator, "RX"};
   let transmit_header = String{allocator, "TX"};
   let receive_packets_header = String{allocator, "RX PACKETS"};
@@ -257,8 +236,7 @@ fn append_network_traffic_statistics_report(
       "TX LIMIT",
   };
   for (let const heading : HEADERS)
-    table.add_column(heading, report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
+    table.add_heading(heading, report_table_alignment::Right);
 
   let cells = ArrayList<report_table_cell_view>{allocator};
   cells.reserve(countof(HEADERS) + 1);
@@ -374,12 +352,9 @@ fn append_tcp_report(String &output, ArrayList<String> &warnings,
   if (!os::read_tcp_statistics(statistics)) return false;
 
   let table = ReportTable{allocator};
-  table.add_column("GROUP", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("METRIC", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("COUNT", report_table_alignment::Right,
-                   colors::ansi::BOLD_CYAN);
+  table.add_heading("GROUP");
+  table.add_heading("METRIC");
+  table.add_heading("COUNT", report_table_alignment::Right);
   let cells = ArrayList<report_table_cell_view>{allocator};
   cells.reserve(3);
   bool has_rows = false;
@@ -802,21 +777,12 @@ fn EvilNet::execute(const ExecContext &ec, EvalContext &cxt,
   if (FLAG_EVILNET_SORT.is_set()) {
     let const resolved =
         resolve_evilnet_sort_key(FLAG_EVILNET_SORT.value(), allocator);
-    if (resolved.match_count == 0) {
-      KOSHKIT_REPORT_ERROR_AT(FLAG_EVILNET_SORT.value_location(),
-                              "invalid sort key",
-                              "use name, rx, tx, rx-packets, tx-packets, "
-                              "rx-errors, tx-errors, rx-drops, or tx-drops");
+    if (!report_unresolved_sort_key(
+            ec, cxt, FLAG_EVILNET_SORT.value_location(), args[0].view(),
+            resolved.match_count, resolved.matches.view(),
+            "use name, rx, tx, rx-packets, tx-packets, rx-errors, "
+            "tx-errors, rx-drops, or tx-drops"))
       return 1;
-    }
-    if (resolved.match_count > 1) {
-      let note = String{allocator, "matches "};
-      note += resolved.matches.view();
-      note += "; use a longer prefix";
-      KOSHKIT_REPORT_ERROR_AT(FLAG_EVILNET_SORT.value_location(),
-                              "ambiguous sort key", note.view());
-      return 1;
-    }
     sort_key = resolved.key;
   }
   if (FLAG_EVILNET_FAILURES.is_enabled() && FLAG_EVILNET_LIVE.is_enabled()) {
@@ -851,10 +817,7 @@ fn EvilNet::execute(const ExecContext &ec, EvalContext &cxt,
     if (report_options->is_cumulative) {
       let const before = os::read_network_interface_statistics();
       os::sleep_for_seconds(report_options->window_seconds);
-      if (os::INTERRUPT_REQUESTED != 0) {
-        os::INTERRUPT_REQUESTED = 0;
-        return 130;
-      }
+      if (take_interrupt_request()) return 130;
       let const after = os::read_network_interface_statistics();
       let sampled = sample_network_statistics(before, after, allocator);
       let const sorted_sampled =

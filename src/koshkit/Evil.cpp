@@ -95,18 +95,13 @@ struct field_section
       : table(section_allocator), allocator(section_allocator)
   {
     table.set_header_visible(false);
-    table.add_column("", report_table_alignment::Left, colors::ansi::BOLD_CYAN);
+    table.add_heading("");
     table.add_column("");
   }
 
   fn add(StringView name, StringView value) throws -> void
   {
-    if (value.is_empty()) return;
-
-    let cells = ArrayList<report_table_cell_view>{allocator};
-    cells.push({name, {}});
-    cells.push({value, {}});
-    table.add_row(cells);
+    if (!value.is_empty()) table.add_field_row(name, value, {});
   }
 };
 

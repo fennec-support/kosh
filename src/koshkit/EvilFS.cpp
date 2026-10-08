@@ -60,40 +60,23 @@ fn EvilFS::execute(const ExecContext &ec, EvalContext &cxt,
     usize skipped_permission_count = 0;
     let skipped_warning = String{allocator};
     let table = ReportTable{allocator};
-    table.add_column("SOURCE", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("TARGET", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("VOLUME", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("UUID", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("TYPE", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("OPTIONS", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("FILESYSTEM ID", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("TYPE ID", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("BLOCK SIZE", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("FUNDAMENTAL BLOCK SIZE", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("TOTAL BLOCKS", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("FREE BLOCKS", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("AVAILABLE BLOCKS", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("TOTAL FILES", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("FREE FILES", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("NAME LIMIT", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("STATUS", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
+    table.add_heading("SOURCE");
+    table.add_heading("TARGET");
+    table.add_heading("VOLUME");
+    table.add_heading("UUID");
+    table.add_heading("TYPE");
+    table.add_heading("OPTIONS");
+    table.add_heading("FILESYSTEM ID", report_table_alignment::Right);
+    table.add_heading("TYPE ID", report_table_alignment::Right);
+    table.add_heading("BLOCK SIZE", report_table_alignment::Right);
+    table.add_heading("FUNDAMENTAL BLOCK SIZE", report_table_alignment::Right);
+    table.add_heading("TOTAL BLOCKS", report_table_alignment::Right);
+    table.add_heading("FREE BLOCKS", report_table_alignment::Right);
+    table.add_heading("AVAILABLE BLOCKS", report_table_alignment::Right);
+    table.add_heading("TOTAL FILES", report_table_alignment::Right);
+    table.add_heading("FREE FILES", report_table_alignment::Right);
+    table.add_heading("NAME LIMIT", report_table_alignment::Right);
+    table.add_heading("STATUS");
     for (let const &mount : mounts) {
       os::filesystem_status status{};
       let const is_metadata_available =
@@ -174,14 +157,10 @@ fn EvilFS::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   let table = ReportTable{allocator};
-  table.add_column("SOURCE", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("TARGET", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("TYPE", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("OPTIONS", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
+  table.add_heading("SOURCE");
+  table.add_heading("TARGET");
+  table.add_heading("TYPE");
+  table.add_heading("OPTIONS");
   for (let const &mount : mounts) {
     let cells = ArrayList<report_table_cell_view>{allocator};
     cells.push({mount.source.view(), colors::ansi::GREEN});

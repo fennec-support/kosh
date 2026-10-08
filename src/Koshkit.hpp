@@ -35,6 +35,30 @@ enum class report_sampling_mode : u8
   Rolling,
 };
 
+pure fn is_koshkit_sample_duration(StringView value) wontthrow -> bool;
+fn take_interrupt_request() wontthrow -> bool;
+
+template <class Key>
+struct koshkit_key_resolution
+{
+  Maybe<Key> key{};
+  usize match_count{0};
+  String matches;
+
+  fn add_match(Key matched_key, StringView name) throws -> void
+  {
+    if (!matches.is_empty()) matches += ", ";
+    matches += name;
+    key = matched_key;
+    match_count++;
+  }
+};
+
+fn report_unresolved_sort_key(const ExecContext &ec, EvalContext &cxt,
+                              SourceLocation location, StringView utility_name,
+                              usize match_count, StringView matches,
+                              StringView invalid_note) throws -> bool;
+
 #define KOSHKIT_UTILITY_LIST(X)                                                \
   X(LS, "ls")                                                                  \
   X(Ln, "ln")                                                                  \
@@ -523,6 +547,8 @@ struct input_descriptor
 
 fn open_named_or_stdin(const ExecContext &ec, StringView path) wontthrow
     -> Maybe<input_descriptor>;
+fn file_crc32c(const ExecContext &ec, StringView path,
+               Allocator allocator) throws -> Maybe<String>;
 
 /* The operand list becomes a source list, a single "-" stdin source when no
    operand is given, otherwise each operand as a view. */

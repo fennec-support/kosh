@@ -297,14 +297,10 @@ fn append_core_dump_report(String &output, Allocator allocator,
     title += format_human_size(total_size, allocator).view();
 
     let table = ReportTable{allocator};
-    table.add_column("SIZE", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("MODIFIED", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("PROGRAM", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("NAME", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
+    table.add_heading("SIZE");
+    table.add_heading("MODIFIED");
+    table.add_heading("PROGRAM");
+    table.add_heading("NAME");
 
     let const shown_count = dumps.count() < DEFAULT_DUMP_COUNT
                                 ? dumps.count()
@@ -505,14 +501,10 @@ fn append_log_report(String &output, Allocator allocator,
     title += format_human_size(total_size, allocator).view();
 
     let table = ReportTable{allocator};
-    table.add_column("SIZE", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("FORMAT", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("MODIFIED", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("NAME", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
+    table.add_heading("SIZE");
+    table.add_heading("FORMAT");
+    table.add_heading("MODIFIED");
+    table.add_heading("NAME");
 
     let const shown_count = entries.count() < DEFAULT_LOG_ENTRY_COUNT
                                 ? entries.count()

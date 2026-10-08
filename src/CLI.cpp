@@ -1210,6 +1210,12 @@ fn ReportTable::add_column(StringView heading, report_table_alignment alignment,
   });
 }
 
+fn ReportTable::add_heading(StringView heading,
+                            report_table_alignment alignment) throws -> void
+{
+  add_column(heading, alignment, colors::ansi::BOLD_CYAN);
+}
+
 fn ReportTable::add_row(const ArrayList<report_table_cell_view> &cells) throws
     -> void
 {
@@ -1220,6 +1226,22 @@ fn ReportTable::add_row(const ArrayList<report_table_cell_view> &cells) throws
         String{row.allocator(), cell.text},
         cell.style
     });
+  m_grid_rows.push(steal(row));
+}
+
+fn ReportTable::add_field_row(StringView name, StringView value,
+                              StringView name_style) throws -> void
+{
+  let row = ArrayList<report_table_cell>{m_grid_rows.allocator()};
+  row.reserve(2);
+  row.push({
+      String{row.allocator(), name},
+      name_style
+  });
+  row.push({
+      String{row.allocator(), value},
+      {}
+  });
   m_grid_rows.push(steal(row));
 }
 

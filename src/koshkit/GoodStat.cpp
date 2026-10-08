@@ -83,39 +83,6 @@ fn size_text(u64 size, Allocator allocator) throws -> String
   return result;
 }
 
-fn file_crc32c(const ExecContext &ec, StringView path,
-               Allocator allocator) throws -> Maybe<String>
-{
-  let const input = open_named_or_stdin(ec, path);
-  if (!input.has_value()) return None;
-  defer
-  {
-    if (input->mode == input_descriptor_mode::Owned)
-      unused(os::close_fd(input->descriptor));
-  };
-
-  u32 crc = 0xffffffffu;
-  char buffer[65536];
-  loop
-  {
-    let const read_count =
-        os::read_fd(input->descriptor, buffer, sizeof(buffer));
-    if (!read_count.has_value()) return None;
-    if (*read_count == 0) break;
-    crc = os::crc32c_update(crc, buffer, *read_count);
-    if (os::INTERRUPT_REQUESTED) return None;
-  }
-
-  let digest = String::from_in_base(~crc, false, int_base::hex, allocator);
-  if (digest.length() < 8) {
-    let padded = String{allocator};
-    padded.append_repeated('0', 8 - digest.length());
-    padded += digest.view();
-    return padded;
-  }
-  return digest;
-}
-
 fn percent_used(const os::filesystem_status &filesystem) wontthrow -> u64
 {
   if (filesystem.total_blocks == 0) return 0;
@@ -139,13 +106,9 @@ fn append_subject(String &output, StringView operand,
                   bool should_color) throws -> void
 {
   let table = ReportTable{allocator};
-  let const do_append_field = [&](StringView name, StringView value,
-                                  StringView style) throws {
-    let cells = ArrayList<report_table_cell_view>{allocator};
-    cells.push({name, style});
-    cells.push({value, {}});
-    table.add_row(cells);
-  };
+  let const do_append_field =
+      [&](StringView name, StringView value, StringView style)
+          throws { table.add_field_row(name, value, style); };
   let const described_type = describe_file_type(operand, status, allocator);
   do_append_field("Type",
                   described_type.has_value() ? described_type->view()

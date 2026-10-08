@@ -373,10 +373,7 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
     scan_path(operands[index].view(), collected_previous, 0, watch_allocator,
               operand_statuses[index].device_id, &operand_statuses[index],
               traversal);
-  if (os::INTERRUPT_REQUESTED != 0) {
-    os::INTERRUPT_REQUESTED = 0;
-    return 130;
-  }
+  if (take_interrupt_request()) return 130;
   let previous =
       steal(collected_previous).make_sorted(watched_entry_comparator{});
   let recycled_entries = ArrayList<watched_entry>{watch_allocator};

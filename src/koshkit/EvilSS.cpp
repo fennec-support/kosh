@@ -30,16 +30,10 @@ FLAG(EVILSS_NUMERIC, Bool, 'n', "numeric", "Keep addresses and ports numeric.");
 FLAG(EVILSS_IPV4, Bool, '4', "ipv4", "Show IPv4 sockets.");
 FLAG(EVILSS_IPV6, Bool, '6', "ipv6", "Show IPv6 sockets.");
 FLAG(EVILSS_NO_HEADER, Bool, 'H', "no-header", "Omit the header row.");
-static pure fn is_evilss_live_duration(koshka::StringView value) wontthrow
-    -> bool
-{
-  return !value.is_empty() &&
-         ((value[0] >= '0' && value[0] <= '9') || value[0] == '.');
-}
 FLAG_OPTIONAL(EVILSS_LIVE, '\0', "live", Live,
               "Read the sockets again and refresh the table every N seconds "
               "until interrupted; the default is 0.5 seconds.",
-              is_evilss_live_duration, "seconds");
+              koshka::koshkit::is_koshkit_sample_duration, "seconds");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(EvilSS);
 
@@ -290,25 +284,16 @@ fn append_network_socket_report(String &output,
 
   let table = ReportTable{allocator};
   table.set_header_visible(options.should_show_header);
-  table.add_column("Netid", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("State", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("Recv-Q", report_table_alignment::Right,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("Send-Q", report_table_alignment::Right,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("Local Address:Port", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
-  table.add_column("Peer Address:Port", report_table_alignment::Left,
-                   colors::ansi::BOLD_CYAN);
+  table.add_heading("Netid");
+  table.add_heading("State");
+  table.add_heading("Recv-Q", report_table_alignment::Right);
+  table.add_heading("Send-Q", report_table_alignment::Right);
+  table.add_heading("Local Address:Port");
+  table.add_heading("Peer Address:Port");
   if (options.should_show_processes) {
-    table.add_column("PID", report_table_alignment::Right,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("Process", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
-    table.add_column("Owner", report_table_alignment::Left,
-                     colors::ansi::BOLD_CYAN);
+    table.add_heading("PID", report_table_alignment::Right);
+    table.add_heading("Process");
+    table.add_heading("Owner");
   }
 
   let cells = ArrayList<report_table_cell_view>{allocator};

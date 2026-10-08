@@ -24,6 +24,41 @@ namespace koshkit {
 
 #if !defined KOSH_NO_KOSHKIT
 
+pure fn is_koshkit_sample_duration(StringView value) wontthrow -> bool
+{
+  return !value.is_empty() &&
+         ((value[0] >= '0' && value[0] <= '9') || value[0] == '.');
+}
+
+fn take_interrupt_request() wontthrow -> bool
+{
+  if (os::INTERRUPT_REQUESTED == 0) return false;
+
+  os::INTERRUPT_REQUESTED = 0;
+  return true;
+}
+
+fn report_unresolved_sort_key(const ExecContext &ec, EvalContext &cxt,
+                              SourceLocation location, StringView utility_name,
+                              usize match_count, StringView matches,
+                              StringView invalid_note) throws -> bool
+{
+  if (match_count == 1) return true;
+
+  if (match_count == 0) {
+    report_soft_koshkit_util_error(ec, cxt, location, utility_name,
+                                   "invalid sort key", invalid_note);
+    return false;
+  }
+
+  let note = String{cxt.scratch_allocator(), "matches "};
+  note += matches;
+  note += "; use a longer prefix";
+  report_soft_koshkit_util_error(ec, cxt, location, utility_name,
+                                 "ambiguous sort key", note.view());
+  return false;
+}
+
 flatten fn find_util(StringView name) throws -> Maybe<Utility::Kind>
 {
   return KOSHKIT_UTILS.find(name);
@@ -825,6 +860,41 @@ fn open_named_or_stdin(const ExecContext &ec, StringView path) wontthrow
       os::open_file_descriptor(path, os::file_open_mode::Read);
   if (!descriptor.has_value()) return None;
   return input_descriptor{*descriptor, input_descriptor_mode::Owned};
+}
+
+fn file_crc32c(const ExecContext &ec, StringView path,
+               Allocator allocator) throws -> Maybe<String>
+{
+  let const input = open_named_or_stdin(ec, path);
+  if (!input.has_value()) return None;
+  defer
+  {
+    if (input->mode == input_descriptor_mode::Owned)
+      unused(os::close_fd(input->descriptor));
+  };
+
+  u32 crc = 0xffffffffu;
+  char buffer[65536];
+  loop
+  {
+    let const read_count =
+        os::read_fd(input->descriptor, buffer, sizeof(buffer));
+    if (!read_count.has_value()) return None;
+    if (*read_count == 0) break;
+
+    crc = os::crc32c_update(crc, buffer, *read_count);
+    if (os::INTERRUPT_REQUESTED) return None;
+  }
+
+  let digest = String::from_in_base(~crc, false, int_base::hex, allocator);
+  if (digest.length() < 8) {
+    let padded = String{allocator};
+    padded.append_repeated('0', 8 - digest.length());
+    padded += digest.view();
+    return padded;
+  }
+
+  return digest;
 }
 
 fn source_list_from_operands(const ArrayList<String> &operands,

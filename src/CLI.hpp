@@ -415,6 +415,9 @@ public:
   fn add_column(StringView heading,
                 report_table_alignment alignment = report_table_alignment::Left,
                 StringView style = {}) throws -> void;
+  fn add_heading(StringView heading, report_table_alignment alignment =
+                                         report_table_alignment::Left) throws
+      -> void;
   fn set_header_visible(bool should_show_header) wontthrow -> void
   {
     m_should_show_header = should_show_header;
@@ -433,6 +436,8 @@ public:
     return m_grid_rows.count();
   }
   fn add_row(const ArrayList<report_table_cell_view> &cells) throws -> void;
+  fn add_field_row(StringView name, StringView value,
+                   StringView name_style) throws -> void;
   fn to_string() const throws -> String;
   fn to_string(bool should_color, StringView indentation = "  ") const throws
       -> String;
