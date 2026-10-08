@@ -196,8 +196,10 @@ changes update this file.
   a one-byte offer picks the reader, made to one connected client at a time
   and withdrawn after a short turn while another client waits, so an aborted
   offer delivered nothing. Writes have no
-  quota so only consumed bytes leave the queue, and a failed write is sent
-  again to the next reader. Writes stay one line long until a write completes
+  quota so only consumed bytes leave the queue, and the part of a failed
+  write past the bytes its completion reports is sent again to the next
+  reader. Wine reports none for a write whose reader left, so under Wine
+  the whole write is sent again. Writes stay one line long until a write completes
   at once. Input from several writers reaches the child in connection order.
   Cleanup signals the relay and waits until it has closed every listening
   instance, so a later open of the path fails. The relay then serves connected

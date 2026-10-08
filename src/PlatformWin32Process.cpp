@@ -1288,7 +1288,9 @@ struct substitution_relay_client
 struct substitution_relay_write
 {
   relay_operation operation{};
+  u64 start{0};
   u64 end{0};
+  DWORD transferred_byte_count{0};
   bool is_done{false};
   bool did_succeed{false};
 };
@@ -1754,11 +1756,12 @@ static fn retire_relay_writes(substitution_relay &relay) wontthrow -> void
     let &write = relay.writes[relay.oldest_write];
     if (!write.is_done) return;
 
-    if (write.did_succeed && !relay.has_active_failed) {
-      relay.head = write.end;
-    } else {
-      relay.has_active_failed = true;
+    if (!relay.has_active_failed) {
+      relay.head = write.did_succeed
+                       ? write.end
+                       : write.start + write.transferred_byte_count;
     }
+    if (!write.did_succeed) relay.has_active_failed = true;
     relay.oldest_write =
         (relay.oldest_write + 1) % SUBSTITUTION_RELAY_WRITE_COUNT;
     relay.write_count--;
@@ -1766,11 +1769,15 @@ static fn retire_relay_writes(substitution_relay &relay) wontthrow -> void
 }
 
 static fn finish_relay_write(substitution_relay &relay, usize slot,
-                             DWORD error) wontthrow -> void
+                             DWORD byte_count, DWORD error) wontthrow -> void
 {
   let &write = relay.writes[slot];
   write.is_done = true;
   write.did_succeed = error == ERROR_SUCCESS;
+  write.transferred_byte_count =
+      byte_count < write.end - write.start
+          ? byte_count
+          : static_cast<DWORD>(write.end - write.start);
   if (!write.did_succeed &&
       relay.active_client != SUBSTITUTION_RELAY_CLIENT_COUNT)
   {
@@ -1814,7 +1821,9 @@ static fn start_relay_writes(substitution_relay &relay) wontthrow -> void
     let &write = relay.writes[slot];
     let const overlapped = prepare_relay_operation(
         write.operation, relay_operation_kind::Write, slot);
+    write.start = relay.posted;
     write.end = relay.posted + length;
+    write.transferred_byte_count = 0;
     write.is_done = false;
     write.did_succeed = false;
     let const was_started = WriteFile(
@@ -1884,7 +1893,7 @@ static fn finish_relay_operation(substitution_relay &relay,
     finish_relay_transfer(relay, operation.owner, error);
     break;
   case relay_operation_kind::Write:
-    finish_relay_write(relay, operation.owner, error);
+    finish_relay_write(relay, operation.owner, byte_count, error);
     break;
   case relay_operation_kind::BodyRead:
     finish_relay_body_read(relay, byte_count, error);
