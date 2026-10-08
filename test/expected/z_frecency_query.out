@@ -11,3 +11,11 @@ query-rank=7
 rc=1
 == a higher-ranked but removed entry is skipped:
 TMPDIR
+== an existing directory operand beats a higher-ranked entry:
+TMPDIR/kosh
+== a relative existing directory operand is taken as is:
+TMPDIR/kosh-vscode
+== an exact last component beats a higher-ranked substring match:
+TMPDIR/kosh
+== a substring query still takes the highest rank:
+TMPDIR/kosh-vscode

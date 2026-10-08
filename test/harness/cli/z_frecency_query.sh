@@ -24,6 +24,21 @@ echo "== a higher-ranked but removed entry is skipped:"
 printf '%s\t9\t9999999999\n%s\t5\t9999999999\n' "$d/removed" "$d" > "$store"
 KOSH_DIRECTORY_HISTORY="$store" "$BIN" -c "z $(basename "$d")" |
     tr '\\' '/' | sed "s#$normalized_d#TMPDIR#"
+mkdir "$d/kosh" "$d/kosh-vscode"
+printf '%s\t9\t9999999999\n%s\t1\t9999999999\n' "$d/kosh-vscode" "$d/kosh" > "$store"
+echo "== an existing directory operand beats a higher-ranked entry:"
+(cd "$d/start" && KOSH_DIRECTORY_HISTORY="$store" "$BIN" -c "z '$d/kosh'") |
+    tr '\\' '/' | sed "s#$normalized_d#TMPDIR#"
+echo "== a relative existing directory operand is taken as is:"
+(cd "$d/start" && KOSH_DIRECTORY_HISTORY="$store" "$BIN" -c 'z ../kosh-vscode') |
+    tr '\\' '/' | sed "s#$normalized_d#TMPDIR#"
+printf '%s\t9\t9999999999\n%s\t1\t9999999999\n' "$d/kosh-vscode" "$d/kosh" > "$store"
+echo "== an exact last component beats a higher-ranked substring match:"
+(cd "$d/start" && KOSH_DIRECTORY_HISTORY="$store" "$BIN" -c 'z KOSH') |
+    tr '\\' '/' | sed "s#$normalized_d#TMPDIR#"
+echo "== a substring query still takes the highest rank:"
+(cd "$d/start" && KOSH_DIRECTORY_HISTORY="$store" "$BIN" -c 'z code') |
+    tr '\\' '/' | sed "s#$normalized_d#TMPDIR#"
 if [ -n "$d" ] && [ -n "$store" ]; then
   "$BIN_DIR/invoke-koshkit" rm -r "$d" "$store"
 fi

@@ -1903,7 +1903,10 @@ wrote on standard error; a script stays silent.
 .TP
 .B z
 The current directory is changed to one selected from the frecency store.
-Operands form one case-insensitive substring query. Visit count and recency
+A single operand that is an existing directory is selected as it is.
+Otherwise the operands form one case-insensitive substring query. An entry
+equal to the query wins, then an entry whose last component equals it, then
+any entry that contains it. Within each of these, visit count and recency
 determine the ranking. With no operand, the home directory is selected.
 .SS Compatibility forms
 .TP

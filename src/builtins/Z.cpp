@@ -161,6 +161,12 @@ static fn contains_ignore_case(StringView haystack, StringView needle) wontthrow
   return false;
 }
 
+static fn equals_ignore_case(StringView text, StringView needle) wontthrow
+    -> bool
+{
+  return text.length == needle.length && contains_ignore_case(text, needle);
+}
+
 } /* namespace */
 
 fn z_completion_candidates(StringView query, Allocator allocator) throws
@@ -250,13 +256,31 @@ fn Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     query.append(operands[i]);
   }
 
+  if (operands.count() == 2) {
+    let const literal_directory = Path{query.view()}.to_absolute().normalized();
+    if (literal_directory.is_directory()) {
+      let const status = run_cd_to_directory(cxt, ec, literal_directory.text());
+      if (status != 0) return status;
+
+      ec.print_to_stdout(literal_directory.text() + "\n");
+      return 0;
+    }
+  }
+
   LOG(Debug, "z ranking the frecency store against query '%s'", query.c_str());
 
   let entries = read_frecency_store(cxt.scratch_allocator());
   let const now = now_epoch_seconds();
 
+  let const do_match_tier = [&](StringView path) wontthrow -> i32 {
+    if (equals_ignore_case(path, query.view())) return 2;
+    if (equals_ignore_case(Path::filename(path), query.view())) return 1;
+    return 0;
+  };
+
   const frecency_entry *best = nullptr;
   let best_score = -1.0;
+  i32 best_tier = -1;
   for (let const &entry : entries) {
     if (!query.is_empty() &&
         !contains_ignore_case(entry.path.view(), query.view()))
@@ -265,9 +289,11 @@ fn Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
     if (!Path{entry.path.view()}.to_absolute().normalized().is_directory())
       continue;
+    let const tier = do_match_tier(entry.path.view());
     let const score = static_cast<double>(entry.rank) *
                       recency_weight(now - entry.last_access);
-    if (score > best_score) {
+    if (tier > best_tier || (tier == best_tier && score > best_score)) {
+      best_tier = tier;
       best_score = score;
       best = &entry;
     }
