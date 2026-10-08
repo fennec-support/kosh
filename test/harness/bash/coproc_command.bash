@@ -126,3 +126,35 @@ exec {ELEM[1]}>&-
 printf '%s\n' "$element_reply"
 wait "$elem_pid"
 printf '%s\n' "element wait status:$?"
+
+# A wait that reaps the coprocess closes both of its descriptors and unsets the
+# array and the process id variable, so the next coprocess gets the same two
+# numbers. A descriptor the script closed itself reads as -1 and is not closed
+# again, so a later descriptor that took its number stays open.
+echo "== release on reap =="
+for round in 1 2 3; do
+  coproc ROUND { read -r line; printf '%s\n' "round:$line"; }
+  round_pid=$ROUND_PID
+  if [ "$round" = 1 ]; then
+    first_descriptors=${ROUND[*]}
+  elif [ "${ROUND[*]}" = "$first_descriptors" ]; then
+    echo "descriptors reused"
+  fi
+  printf '%s\n' "$round" >&"${ROUND[1]}"
+  read -r round_reply <&"${ROUND[0]}"
+  wait "$round_pid"
+  printf '%s\n' "$round_reply array:${ROUND[*]-unset} pid:${ROUND_PID-unset}"
+done
+coproc KEEP { cat >/dev/null; }
+keep_pid=$KEEP_PID
+exec {KEEP[1]}>&-
+printf '%s\n' "closed write element:${KEEP[1]}"
+exec {kept}>/dev/null
+wait "$keep_pid"
+printf '%s\n' "kept array:${KEEP[*]-unset}"
+if { printf 'x\n' >&"$kept"; } 2>/dev/null; then
+  echo "kept:open"
+else
+  echo "kept:closed"
+fi
+exec {kept}>&-

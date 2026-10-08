@@ -91,6 +91,7 @@ fn Jobs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   cxt.job_table_store().forget_waited_jobs();
   cxt.job_table_store().update_jobs();
+  cxt.release_finished_coprocess();
 
   let const color_mode = should_color_jobs(cxt) ? jobs_color_mode::Colored
                                                 : jobs_color_mode::Plain;

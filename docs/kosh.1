@@ -4702,7 +4702,11 @@ so it never returns for a job that stays stopped.
 .PP
 A coprocess is one asynchronous job and sets $!. Its descriptors are numbered
 above 9 and are closed across an exec. A subshell receives neither descriptor,
-while NAME and NAME_PID stay readable there.
+while NAME and NAME_PID stay readable there. An exec that closes one of them
+sets its element of NAME to \-1. Once the coprocess has finished, the next wait,
+jobs, new line, loop iteration, external command, subshell, pipeline,
+asynchronous command, command substitution, or coprocess closes its remaining
+descriptors and unsets NAME and NAME_PID, as Bash does when it reaps it.
 .SH SIGNALS
 The main shell ignores SIGPIPE. A forked child restores the default SIGPIPE
 action. A producer terminated by SIGPIPE therefore returns status 141.

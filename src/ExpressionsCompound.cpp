@@ -191,6 +191,7 @@ hot fn CompoundList::evaluate_root_status_impl(
           do_starts_new_line(m_nodes[index - 1]->source_location().position))
       {
         cxt.job_table_store().forget_waited_jobs();
+        cxt.release_finished_coprocess();
       }
     }
 
@@ -898,6 +899,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
 
   cxt.execution_store().terminal_exec_allowed() = false;
   cxt.job_table_store().forget_waited_jobs();
+  cxt.release_finished_coprocess();
 
   /* A pipeline of only simple commands keeps the fast path. A compound stage
      takes the fork-per-stage path. A simple stage carrying a prefix assignment

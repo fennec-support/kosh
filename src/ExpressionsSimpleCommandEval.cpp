@@ -441,6 +441,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
 
           if (from_fd == Redirection::DUP_FD_CLOSE) {
             os::close_shell_fd(redir.fd);
+            cxt.forget_coprocess_descriptor(redir.fd);
             break;
           }
 

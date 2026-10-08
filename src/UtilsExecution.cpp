@@ -183,6 +183,7 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
 
   LOG(Debug, "spawning the external command '%s'%s", ec.program().c_str(),
       is_async ? " in the background" : "");
+  cxt.release_finished_coprocess();
 
   /* An interactive foreground command runs in its own process group and holds
      the terminal, so it dies on its own Ctrl-C. */

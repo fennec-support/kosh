@@ -644,6 +644,7 @@ fn EvalContext::capture_command_substitution(const WordSegment &segment) throws
   if (arena_store().parse_arena() == nullptr)
     throw Error{"Command substitution outside of a parse"};
 
+  release_finished_coprocess();
   enter_substitution();
   defer { leave_substitution(); };
 

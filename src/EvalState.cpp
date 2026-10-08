@@ -109,12 +109,59 @@ fn EvalContext::snapshot_subshell_descriptor(i32 shell_fd) throws -> void
                                 os::save_descriptor_out_of_reach(shell_fd)});
 }
 
-fn EvalContext::set_coprocess_descriptors(i32 read_fd, i32 write_fd) wontthrow
-    -> void
+fn EvalContext::set_coprocess_descriptors(i32 read_fd, i32 write_fd,
+                                          i64 process_id,
+                                          StringView name) throws -> void
 {
   LOG(Debug, "the live coprocess is read on %d and written on %d", read_fd,
       write_fd);
-  subshell_store().coprocess() = coprocess_descriptors{read_fd, write_fd};
+  subshell_store().coprocess() = coprocess_descriptors{
+      read_fd, write_fd, process_id, String{heap_allocator(), name}
+  };
+}
+
+fn EvalContext::forget_coprocess_descriptor(i32 shell_fd) throws -> void
+{
+  let &coprocess = subshell_store().coprocess();
+  if (shell_fd < 0 || coprocess.process_id < 0) return;
+
+  if (coprocess.read_fd == shell_fd) {
+    coprocess.read_fd = -1;
+    set_array_element(coprocess.name.view(), 0, "-1");
+  }
+  if (coprocess.write_fd == shell_fd) {
+    coprocess.write_fd = -1;
+    set_array_element(coprocess.name.view(), 1, "-1");
+  }
+}
+
+fn EvalContext::release_finished_coprocess() throws -> void
+{
+  let &coprocess = subshell_store().coprocess();
+  if (coprocess.process_id < 0) return;
+
+  let &table = job_table_store();
+  table.update_jobs();
+  for (let const &entry : table.jobs()) {
+    if (entry.process_id == coprocess.process_id &&
+        entry.state != job::State::Done)
+    {
+      return;
+    }
+  }
+  for (let const process : table.detached_job_processes())
+    if (os::process_has_id(process, coprocess.process_id)) return;
+
+  LOG(Debug, "releasing the finished coprocess '%s'", coprocess.name.c_str());
+  for (let const shell_fd : {coprocess.read_fd, coprocess.write_fd}) {
+    if (shell_fd >= 0) unused(os::close_shell_fd(shell_fd));
+  }
+
+  let name = steal(coprocess.name);
+  coprocess = coprocess_descriptors{};
+  unset_shell_variable(name.view());
+  name += "_PID";
+  unset_shell_variable(name.view());
 }
 
 fn EvalContext::hide_coprocess_descriptors() throws -> void

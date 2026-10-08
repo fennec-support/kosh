@@ -304,6 +304,8 @@ struct coprocess_descriptors
 {
   i32 read_fd{-1};
   i32 write_fd{-1};
+  i64 process_id{-1};
+  String name{heap_allocator()};
 
   pure fn has_any() const wontthrow -> bool
   {

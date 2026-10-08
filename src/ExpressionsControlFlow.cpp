@@ -99,6 +99,8 @@ fn Command::evaluate_async_with(EvalContext &cxt, async_body body,
                                 StringView expanded_child_source) const throws
     -> i64
 {
+  cxt.release_finished_coprocess();
+
   let const source_view = cxt.source_store().current_source_view();
   let const command_text =
       cxt.source_text_in_span(source_location(), source_end_position());
@@ -446,6 +448,7 @@ hot fn internal::resolve_loop_control(EvalContext &cxt) throws
 {
   if (!cxt.runtime_state().is_posix_mode())
     cxt.job_table_store().forget_waited_jobs();
+  cxt.release_finished_coprocess();
 
   if (!cxt.control_flow_store().has_pending()) return loop_disposition::RunNext;
 
@@ -1493,6 +1496,8 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
 {
   ASSERT(m_body != nullptr);
 
+  cxt.release_finished_coprocess();
+
   let const source_view = cxt.source_store().current_source_view();
   let const command_text =
       cxt.source_text_in_span(source_location(), source_end_position());
@@ -1590,14 +1595,14 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
                             "Could not place the coprocess descriptors"};
   }
 
-  cxt.set_coprocess_descriptors(read_fd, write_fd);
+  let const process_id = os::process_id_of(child);
+  cxt.set_coprocess_descriptors(read_fd, write_fd, process_id, m_name);
 
   let descriptors = ArrayList<String>{heap_allocator()};
   descriptors.push(String::from(read_fd, heap_allocator()));
   descriptors.push(String::from(write_fd, heap_allocator()));
   cxt.set_indexed_array(m_name, steal(descriptors));
 
-  let const process_id = os::process_id_of(child);
   let pid_name = String{m_name};
   pid_name += "_PID";
   cxt.set_shell_variable(

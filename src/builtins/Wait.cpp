@@ -53,7 +53,17 @@ Wait::Wait() = default;
 
 pure fn Wait::kind() const wontthrow -> Builtin::Kind { return Kind::Wait; }
 
+static fn wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32;
+
 fn Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+{
+  let const status = wait_for_operands(ec, cxt);
+  cxt.release_finished_coprocess();
+
+  return status;
+}
+
+static fn wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
   let const args = PARSE_BUILTIN_ARGS_WITH_LOCATIONS(ec, operand_locations);

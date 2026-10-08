@@ -3758,7 +3758,12 @@ public:
 
   /* Record the descriptors a coprocess launch bound, so a subshell entered
      later knows which two to take away. */
-  fn set_coprocess_descriptors(i32 read_fd, i32 write_fd) wontthrow -> void;
+  fn set_coprocess_descriptors(i32 read_fd, i32 write_fd, i64 process_id,
+                               StringView name) throws -> void;
+  fn forget_coprocess_descriptor(i32 shell_fd) throws -> void;
+  /* Close the descriptors of a coprocess the job table found finished and
+     unset its two variables, as bash does when it reaps one. */
+  fn release_finished_coprocess() throws -> void;
   /* Take the coprocess descriptors away from the subshell that is being
      entered. Bash gives a subshell neither end, and a forgotten writer in a
      child would keep the reader in the shell from ever seeing end of file. */

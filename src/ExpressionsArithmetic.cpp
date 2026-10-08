@@ -1118,6 +1118,7 @@ fn Subshell::evaluate_impl(EvalContext &cxt) const throws -> i64
   ASSERT(m_body != nullptr);
 
   cxt.job_table_store().forget_waited_jobs();
+  cxt.release_finished_coprocess();
 
   /* A redirected wrapper hands down the span that reaches over its
      redirections, and the bare subshell answers for its own. */
