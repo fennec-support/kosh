@@ -163,6 +163,11 @@ changes update this file.
   `line_discard_subshell_depth` records for the chunk; deeper, it passes the
   error on with status 1, so the enclosing subshell ends. A $(( )) error in a
   posix mood is script fatal, which passes through eval and source.
+- A function's `local -n ref=ref` pushes a local binding marked
+  `is_self_reference` that saves nothing, so the name keeps reaching the
+  caller's binding the way bash falls back to the global. Local lookups and
+  the scope pop skip it, and a later local or an unset of the name in that
+  function replaces it with an ordinary local.
 - A forked child marks the jobs it inherits so `wait` cannot reach them. A job
   waited by number or process stays in the table until a reap point: a new
   input line, a loop iteration, a child process, or `jobs`.

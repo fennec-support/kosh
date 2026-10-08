@@ -344,7 +344,10 @@ hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
       let const target = resolve_nameref_for_write(name);
       if (target.view() == name) {
         try {
-          bind_nameref(name, value);
+          if (value == name)
+            bind_self_nameref(name, scope_store().has_current_local(name));
+          else
+            bind_nameref(name, value);
         } catch (ErrorBase &error) {
           mark_expansion_error(error, expansion_error_reach::LineOrPosixScript);
           throw;
@@ -526,7 +529,7 @@ fn EvalContext::peel_caller_local_binding(StringView name) throws -> bool
     ArrayList<local_binding> &frame = scope_store().local_scopes()[frame_index];
     for (usize i = frame.count(); i-- > 0;) {
       let &binding = frame[i];
-      if (binding.name.view() != name) continue;
+      if (binding.name.view() != name || binding.is_self_reference) continue;
       LOG(Debug, "peeling the local binding of '%.*s' from caller frame %zu",
           static_cast<int>(name.length), name.data, frame_index);
 
@@ -1336,7 +1339,7 @@ fn EvalContext::leave_function_scope() throws -> void
       scope.count());
   for (usize i = scope.count(); i > 0; i--) {
     ASSERT(i - 1 < scope.count());
-    restore_local_binding(scope[i - 1]);
+    if (!scope[i - 1].is_self_reference) restore_local_binding(scope[i - 1]);
   }
   scope.clear();
   scope_store().local_scope_depth()--;

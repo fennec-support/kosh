@@ -1278,6 +1278,15 @@ fn EvalContext::ParameterExpander::expand_indirect() throws -> String
 {
   /* ${!name} indirection, or a prefix listing when it ends with * or @. */
   let const body = m_spec.substring(1);
+  if (m_context.scope_store().is_self_reference(body)) rarely
+    {
+      let error = Error{"Unable to expand '${" + m_spec +
+                        "}' because the name reference '" + body +
+                        "' refers to itself"};
+      m_context.mark_expansion_error(error,
+                                     expansion_error_reach::LineOrPosixScript);
+      throw steal(error);
+    }
   if (m_context.variable_store().attributes().is_nameref(body)) rarely
     {
       if (let const target = m_context.resolve_nameref(body);

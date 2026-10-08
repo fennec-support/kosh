@@ -5,7 +5,9 @@
 # per word in a for loop, and reports itself to declare -p, ${!name},
 # [[ -R ]], test -R, and [ -R ].
 # unset acts on the target, unset -n on the reference, and a circular chain
-# reads as unset and fails an assignment.
+# reads as unset and fails an assignment. A reference to itself is an error at
+# the top level, and inside a function it warns and reaches the variable
+# outside the function.
 X=1
 declare -n r=X
 r=2
@@ -199,3 +201,72 @@ declare -n cb=ca
 { echo "circular ${ca-default}"; } 2>/dev/null
 (ca=1; echo "not reached") 2>/dev/null
 echo "circular assignment status $?"
+
+self_scalar() {
+  local -n selfref=selfref
+  echo "local self status $? [$selfref] $(declare -p selfref)"
+  [[ -R selfref ]] && test -R selfref && echo "self is a reference"
+  selfref=written
+  echo "after write [$selfref]"
+}
+selfref=global
+self_scalar 2>/dev/null
+echo "global selfref=$selfref"
+declare -p selfref
+append_self() {
+  local -n selflist=$1
+  selflist+=(new)
+  echo "inside ${#selflist[@]} ${selflist[*]}"
+  read -ra selflist <<<"r1 r2"
+}
+selflist=(a b)
+append_self selflist 2>/dev/null
+declare -p selflist
+self_outer() { declare -n selfdeep=selfdeep; self_inner; echo "outer $selfdeep"; }
+self_inner() { echo "inner [$selfdeep]"; selfdeep=from_inner; declare -p selfdeep; }
+selfdeep=top
+self_outer 2>/dev/null
+echo "top selfdeep=$selfdeep"
+self_arith() { local -n selfnum=selfnum; ((selfnum += 5)); printf -v selfnum '%s!' "$selfnum"; }
+selfnum=1
+self_arith 2>/dev/null
+echo "selfnum=$selfnum"
+self_over_local() {
+  local selfover=local
+  local -n selfover=selfover
+  echo "over local status $? [${selfover-unset}]"
+  selfover=assigned
+}
+self_over_local 2>/dev/null
+declare -p selfover
+self_bind() { local -n selfbind; selfbind=selfbind; echo "bind status $? [$selfbind]"; selfbind=val; }
+selfbind=gl
+self_bind 2>/dev/null
+echo "selfbind=$selfbind"
+self_unset() { local -n selfgone=selfgone; unset selfgone; echo "unset $? [${selfgone-unset}]"; selfgone=local; }
+selfgone=kept
+self_unset 2>/dev/null
+echo "selfgone=$selfgone"
+self_unset_n() { local -n selfn=selfn; unset -n selfn; echo "unset -n $? [${selfn-unset}]"; selfn=local; }
+selfn=kept
+self_unset_n 2>/dev/null
+echo "selfn=$selfn"
+self_listing() { local before=1; local -n selflisted=selflisted; local -p; }
+self_listing 2>/dev/null
+self_retarget() { local -n selfrt=selfrt; declare -n selfrt=X; echo "retarget [$selfrt]"; }
+self_retarget 2>/dev/null
+self_subshell() { local -n selfsub=selfsub; (selfsub=inner; echo "subshell [$selfsub]"); echo "after [$selfsub]"; }
+selfsub=s
+self_subshell 2>/dev/null
+self_indirect() { local -n selfbang=selfbang; echo "${!selfbang}"; echo "not reached"; }
+selfbang=X
+self_indirect 2>/dev/null; echo "indirect status $?"
+echo "indirect line status $?"
+self_global() { declare -gn selfg=selfg; echo "global self status $?"; }
+self_global 2>/dev/null
+declare -p selfg
+{ echo "global circular [${selfg-unset}]"; } 2>/dev/null
+declare -n selftop; selftop=selftop; echo "top bind status $?"
+declare -p selftop
+self_readonly() { local -n RO=RO; echo "readonly self status $?"; }
+self_readonly 2>/dev/null

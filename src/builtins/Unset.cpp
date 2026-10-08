@@ -54,6 +54,12 @@ fn Unset::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   };
   for (usize i = 1; i < names.count(); i++) {
     let const &name = names[i];
+    if (!should_unset_function &&
+        cxt.scope_store().is_current_self_reference(name.view()))
+    {
+      cxt.declare_local(name.view(), false);
+    }
+
     if (should_unset_function) {
       LOG(All, "unset removing function '%s'", name.c_str());
       do_try_unset(i, [&] { cxt.unset_function(name); });

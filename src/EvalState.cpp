@@ -1047,9 +1047,10 @@ enum class local_binding_wire_flag : u8
   HasIndexedArray = 1U << 1,
   WasAssociative = 1U << 2,
   WasExported = 1U << 3,
+  IsSelfReference = 1U << 4,
 };
 
-static constexpr u8 ALL_LOCAL_BINDING_WIRE_FLAGS = (1U << 4) - 1U;
+static constexpr u8 ALL_LOCAL_BINDING_WIRE_FLAGS = (1U << 5) - 1U;
 
 enum class inherited_frame_wire_flag : u8
 {
@@ -1261,6 +1262,8 @@ fn ScopeStore::append_wire(String &output) const throws -> void
           flags |= static_cast<u8>(local_binding_wire_flag::WasAssociative);
         if (binding.previous_was_exported)
           flags |= static_cast<u8>(local_binding_wire_flag::WasExported);
+        if (binding.is_self_reference)
+          flags |= static_cast<u8>(local_binding_wire_flag::IsSelfReference);
 
         append_subshell_bootstrap_text(payload, binding.name.view());
         payload.push(static_cast<char>(flags));
@@ -1917,6 +1920,7 @@ fn ScopeStore::from_wire(
           .previous_attributes = 0,
           .previous_was_associative = false,
           .previous_was_exported = false,
+          .is_self_reference = false,
       };
       let const flags = payload.read_u8();
       binding.previous_attributes = payload.read_u8();
@@ -1934,6 +1938,8 @@ fn ScopeStore::from_wire(
           do_has_flag(local_binding_wire_flag::WasAssociative);
       binding.previous_was_exported =
           do_has_flag(local_binding_wire_flag::WasExported);
+      binding.is_self_reference =
+          do_has_flag(local_binding_wire_flag::IsSelfReference);
 
       if (do_has_flag(local_binding_wire_flag::HasValue))
         binding.previous_value = String{heap_allocator(), payload.read_text()};

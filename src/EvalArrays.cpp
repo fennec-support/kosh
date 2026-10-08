@@ -640,6 +640,7 @@ fn EvalContext::declare_local(StringView name, bool should_inherit_value) throws
     throw Error{"Unable to assign '" + name + "' because it is read only"};
   ASSERT(scope_store().local_scope_depth() <=
          scope_store().local_scopes().count());
+  scope_store().forget_current_self_reference(name);
   /* One binding per scope, the bash rule. A second local of the same name keeps
      the first's saved caller state, so the scope pop restores the true pre-call
      value and the unset peel finds one entry to consume. */
@@ -718,7 +719,8 @@ fn EvalContext::declare_local(StringView name, bool should_inherit_value) throws
       String{name}, steal(previous_value), previous_special_definition_location,
       steal(previous_array), steal(previous_keys), steal(previous_values),
       steal(previous_sparse_indices), steal(previous_sparse_values),
-      previous_attributes, previous_was_associative, previous_was_exported});
+      previous_attributes, previous_was_associative, previous_was_exported,
+      false});
 
   if (should_inherit_value && was_bash_directory_stack_special)
     set_indexed_array(name, steal(inherited_directory_stack));
@@ -734,6 +736,38 @@ fn EvalContext::declare_local(StringView name, bool should_inherit_value) throws
     clear_sparse_array(name);
     clear_associative_array(name);
   }
+}
+
+fn EvalContext::declare_self_reference(StringView name) throws -> void
+{
+  ASSERT(scope_store().local_scope_depth() != 0);
+  let self_reference = local_binding{
+      .name = String{name},
+      .previous_value = None,
+      .previous_special_definition_location = None,
+      .previous_indexed_array = None,
+      .previous_associative_keys = ArrayList<String>{heap_allocator()},
+      .previous_associative_values = ArrayList<String>{heap_allocator()},
+      .previous_sparse_indices = ArrayList<usize>{heap_allocator()},
+      .previous_sparse_values = ArrayList<String>{heap_allocator()},
+      .previous_attributes = 0,
+      .previous_was_associative = false,
+      .previous_was_exported = false,
+      .is_self_reference = true,
+  };
+
+  for (let &binding : scope_store().current_local_scope()) {
+    if (binding.name.view() != name) continue;
+
+    if (!binding.is_self_reference) {
+      restore_local_binding(binding);
+      binding = steal(self_reference);
+    }
+
+    return;
+  }
+
+  scope_store().current_local_scope().push(steal(self_reference));
 }
 
 hot fn EvalContext::expand_variable(StringView name) const throws -> String

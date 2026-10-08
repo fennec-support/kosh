@@ -385,6 +385,23 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       continue;
     }
 
+    if (should_mark_nameref && !has_subscript &&
+        update_mode == assignment_update_mode::Replace && value == name &&
+        equals.has_value() && cxt.scope_store().local_scope_depth() > 0)
+    {
+      try {
+        cxt.bind_self_nameref(name, !should_be_global);
+      } catch (const Error &error) {
+        report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
+                                  error.message().view());
+        status = 1;
+        continue;
+      }
+
+      cxt.warn_circular_nameref(name);
+      continue;
+    }
+
     if (!should_be_global)
       cxt.declare_local(name, !cxt.runtime_state().is_bash_compatible() ||
                                   cxt.runtime_state().is_shopt_enabled(

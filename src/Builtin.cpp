@@ -454,6 +454,16 @@ fn quote_for_declare(StringView value) throws -> String
 fn append_variable_declaration(EvalContext &cxt, StringView name,
                                String &out) throws -> bool
 {
+  if (cxt.scope_store().is_self_reference(name)) rarely
+    {
+      out += "declare -n ";
+      out.append(name);
+      out += "=\"";
+      out.append(name);
+      out += "\"\n";
+      return true;
+    }
+
   if (cxt.variable_store().attributes().is_nameref(name)) rarely
     {
       out += "declare -n";

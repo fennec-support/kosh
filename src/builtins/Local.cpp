@@ -159,7 +159,8 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (should_print_declaration) {
       let line = String{cxt.scratch_allocator()};
-      if (!cxt.scope_store().has_current_local(identifier) ||
+      if ((!cxt.scope_store().has_current_local(identifier) &&
+           !cxt.scope_store().is_current_self_reference(identifier)) ||
           !append_variable_declaration(cxt, identifier, line))
       {
         report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
@@ -176,6 +177,23 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     /* The append reads the name's own value only when it is already local in
        this scope, so a first local += starts from empty the way bash localizes
        it fresh. */
+    if (should_mark_nameref && equals_position.has_value() &&
+        update_mode == assignment_update_mode::Replace &&
+        arg.substring(*equals_position + 1) == name)
+    {
+      try {
+        cxt.bind_self_nameref(name, true);
+      } catch (const Error &error) {
+        report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
+                                  error.message().view());
+        status = 1;
+        continue;
+      }
+
+      cxt.warn_circular_nameref(name);
+      continue;
+    }
+
     let const was_already_local =
         update_mode == assignment_update_mode::Append &&
         cxt.scope_store().has_current_local(name);

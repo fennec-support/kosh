@@ -2147,8 +2147,17 @@ reference to each word, ${!name} reads the name the reference reaches, and
 removes the reference itself. The conditional [[ \-R name ]] and, outside
 the sh mood, test \-R name and [ \-R name ] are true for a reference with a
 value. A reference with no value binds to the name its
-first assignment gives it. A reference to itself is an error, and a circular
-chain reads as unset with a warning and fails an assignment. A write through a
+first assignment gives it. A reference to itself is an error at the top level,
+and a circular chain reads as unset with a warning and fails an assignment.
+Inside a function, local \-n name=name or declare \-n name=name warns and
+leaves the name reaching the variable outside the function, as Bash falls back
+to the global one, though a caller's local of that name is reached first. Reads
+and writes act on that variable, declare \-p and \-R report a reference,
+${!name} abandons the line, and unset in the same function turns the name into
+an unset local. declare \-gn name=name in a function makes a circular
+reference. A first assignment of its own name to a reference with no value
+makes the same self reference when the reference is local to the running
+function, and a circular reference otherwise. A write through a
 reference applies the read-only, restricted, integer, and case rules of the
 target, and readonly or declare \-r on a reference marks the target. A target
 must be a name or a name with a subscript, which is evaluated on each use. A

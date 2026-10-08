@@ -796,7 +796,7 @@ public:
   {
     if (m_local_scope_depth == 0) return false;
     for (let const &binding : current_local_scope())
-      if (binding.name.view() == name) return true;
+      if (binding.name.view() == name) return !binding.is_self_reference;
     return false;
   }
   pure fn has_active_local(StringView name) const wontthrow -> bool
@@ -804,9 +804,36 @@ public:
     ASSERT(m_local_scope_depth <= m_local_scopes.count());
     for (usize frame_index = m_local_scope_depth; frame_index-- > 0;) {
       for (let const &binding : m_local_scopes[frame_index])
-        if (binding.name.view() == name) return true;
+        if (binding.name.view() == name && !binding.is_self_reference)
+          return true;
     }
     return false;
+  }
+  pure fn is_self_reference(StringView name) const wontthrow -> bool
+  {
+    ASSERT(m_local_scope_depth <= m_local_scopes.count());
+    for (usize frame_index = m_local_scope_depth; frame_index-- > 0;) {
+      for (let const &binding : m_local_scopes[frame_index])
+        if (binding.name.view() == name) return binding.is_self_reference;
+    }
+    return false;
+  }
+  pure fn is_current_self_reference(StringView name) const wontthrow -> bool
+  {
+    if (m_local_scope_depth == 0) return false;
+    for (let const &binding : current_local_scope())
+      if (binding.name.view() == name) return binding.is_self_reference;
+    return false;
+  }
+  fn forget_current_self_reference(StringView name) throws -> void
+  {
+    if (m_local_scope_depth == 0) return;
+    let &scope = current_local_scope();
+    for (usize i = 0; i < scope.count(); i++) {
+      if (scope[i].name.view() != name) continue;
+      if (scope[i].is_self_reference) scope.remove(i);
+      return;
+    }
   }
 
   fn set_alias(StringView name, StringView value) throws -> void
@@ -3386,6 +3413,7 @@ public:
   fn resolve_nameref_base_for_write(StringView name) throws -> String;
   fn guard_nameref_name(StringView name) const throws -> void;
   fn bind_nameref(StringView name, StringView target) throws -> void;
+  fn bind_self_nameref(StringView name, bool is_local) throws -> void;
   fn resolve_nameref_parameter(StringView spec) throws -> Maybe<String>;
   pure fn variable_requires_dynamic_lookup(StringView name) const wontthrow
       -> bool;
@@ -3695,6 +3723,7 @@ public:
   pure fn borrowed_frame_source(const source_frame &frame) const wontthrow
       -> const String *;
   fn declare_local(StringView name, bool should_inherit_value) throws -> void;
+  fn declare_self_reference(StringView name) throws -> void;
   fn snapshot_state() throws -> eval_state_snapshot;
   fn restore_state(eval_state_snapshot snapshot) throws -> void;
   fn make_subshell_bootstrap() const throws -> os::subshell_bootstrap;

@@ -752,6 +752,8 @@ fn EvalContext::resolve_nameref(StringView name) const throws -> Maybe<String>
 
 pure fn EvalContext::is_bound_nameref(StringView name) const wontthrow -> bool
 {
+  if (scope_store().is_self_reference(name)) return true;
+
   return variable_store().attributes().is_nameref(name) &&
          variable_store().shell_variables().find(name).has_value();
 }
@@ -815,6 +817,18 @@ fn EvalContext::bind_nameref(StringView name, StringView target) throws -> void
 
   variable_store().attributes().set(name, variable_attribute::Nameref, true);
   assign_variable(name, target);
+}
+
+fn EvalContext::bind_self_nameref(StringView name, bool is_local) throws -> void
+{
+  guard_nameref_name(name);
+  if (is_local) {
+    declare_self_reference(name);
+    return;
+  }
+
+  variable_store().attributes().set(name, variable_attribute::Nameref, true);
+  assign_variable(name, name);
 }
 
 fn EvalContext::resolve_nameref_parameter(StringView spec) throws

@@ -377,6 +377,7 @@ struct local_binding
   u8 previous_attributes{0};
   bool previous_was_associative{false};
   bool previous_was_exported{false};
+  bool is_self_reference{false};
 };
 
 static_assert(sizeof(usize) != 8 || sizeof(local_binding) == 272);
