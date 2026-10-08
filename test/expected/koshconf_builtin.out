@@ -184,7 +184,8 @@ legacy.array_subscripts_expand_once=off
 # keyword)
 legacy.assignments_anywhere_in_command=off
 
-# Edit the command line with emacs or vi key bindings.
+# Edit the command line with emacs or vi key bindings. (set -o emacs or set -o
+# vi)
 legacy.base_editor_mode=emacs
 
 # Enable brace expansion. (set -o braceexpand)

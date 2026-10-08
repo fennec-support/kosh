@@ -729,6 +729,17 @@ fn make_koshconf_preset(mimic_mood preset) throws -> String
       comment += " (shopt ";
       comment += option->shopt_name;
       comment += ')';
+    } else if (option->storage == option_storage::EditorMode) {
+      usize alias_count = 0;
+      for (let const &alias : get_option_registry()) {
+        if (!alias.is_set_alias || alias.storage != option_storage::EditorMode)
+          continue;
+
+        comment += alias_count == 0 ? " (set -o " : " or set -o ";
+        comment += alias.set_name;
+        alias_count++;
+      }
+      if (alias_count != 0) comment += ')';
     }
     if (preset == mimic_mood::Bash && option->is_bash_default_session_dependent)
       comment += " Left unset, it is on in an interactive shell and off in a "
