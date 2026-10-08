@@ -158,7 +158,10 @@ changes update this file.
   list skips the rest of the input line. A subshell, a command substitution, a
   pipeline stage, and an asynchronous command hold it. An eval or sourced root
   sets `line_discard_status`, so its discarded line reports status 1, while a
-  script root, a subshell, and a stage keep the status the error carries. A $(( )) error in a
+  script root, a subshell, and a stage keep the status the error carries. An
+  eval or a sourced file becomes a root only at the subshell depth that
+  `line_discard_subshell_depth` records for the chunk; deeper, it passes the
+  error on with status 1, so the enclosing subshell ends. A $(( )) error in a
   posix mood is script fatal, which passes through eval and source.
 - A forked child marks the jobs it inherits so `wait` cannot reach them. A job
   waited by number or process stays in the table until a reap point: a new

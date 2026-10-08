@@ -1076,6 +1076,10 @@ public:
   {
     return m_line_discard_status;
   }
+  fn line_discard_subshell_depth() wontthrow -> usize &
+  {
+    return m_line_discard_subshell_depth;
+  }
   pure fn shell_is_interactive() const wontthrow -> bool
   {
     return m_shell_is_interactive;
@@ -1095,6 +1099,7 @@ private:
   const Expression *m_line_discard_root{nullptr};
   StringView m_line_discard_source{};
   Maybe<i64> m_line_discard_status{};
+  usize m_line_discard_subshell_depth{0};
   u64 m_last_command_duration_nanos{0};
   usize m_subshell_depth{0};
   usize m_condition_depth{0};

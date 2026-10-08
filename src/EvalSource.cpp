@@ -600,6 +600,20 @@ fn EvalContext::run_source(StringView source, StringView origin,
     source_store().source_frames().pop_back();
   };
 
+  let const should_hold_line_discard =
+      execution_store().subshell_depth() ==
+      execution_store().line_discard_subshell_depth();
+  let const do_pass_line_discard = [&](ErrorBase &error) wontthrow -> bool {
+    if (should_hold_line_discard || !error.is_line_discarding() ||
+        error.is_script_fatal())
+    {
+      return false;
+    }
+
+    error.set_command_status(1);
+    return true;
+  };
+
   try {
     const Expression *ast = nullptr;
     const String *retained_source = nullptr;
@@ -666,9 +680,11 @@ fn EvalContext::run_source(StringView source, StringView origin,
         execution_store().line_discard_source();
     let const previous_line_discard_status =
         execution_store().line_discard_status();
-    execution_store().line_discard_root() = ast;
-    execution_store().line_discard_source() = source;
-    execution_store().line_discard_status() = i64{1};
+    if (should_hold_line_discard) {
+      execution_store().line_discard_root() = ast;
+      execution_store().line_discard_source() = source;
+      execution_store().line_discard_status() = i64{1};
+    }
     defer
     {
       execution_store().line_discard_root() = previous_line_discard_root;
@@ -707,6 +723,7 @@ fn EvalContext::run_source(StringView source, StringView origin,
     if (detailed_error.is_script_fatal() && should_propagate_script_fatal) {
       throw;
     }
+    if (do_pass_line_discard(detailed_error)) throw;
     did_complete_source = true;
     return static_cast<i32>(detailed_error.command_status());
   } catch (ErrorWithLocation &located_error) {
@@ -718,6 +735,7 @@ fn EvalContext::run_source(StringView source, StringView origin,
     if (located_error.is_script_fatal() && should_propagate_script_fatal) {
       throw;
     }
+    if (do_pass_line_discard(located_error)) throw;
     did_complete_source = true;
     return static_cast<i32>(located_error.command_status());
   } catch (Error &caught_error) {
@@ -729,6 +747,7 @@ fn EvalContext::run_source(StringView source, StringView origin,
     if (caught_error.is_script_fatal() && should_propagate_script_fatal) {
       throw;
     }
+    if (do_pass_line_discard(caught_error)) throw;
     did_complete_source = true;
     return static_cast<i32>(caught_error.command_status());
   }

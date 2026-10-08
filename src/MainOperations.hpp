@@ -671,12 +671,18 @@ static fn evaluate_script(const script_run_input &input,
       context.execution_store().line_discard_root();
   let const previous_line_discard_source =
       context.execution_store().line_discard_source();
+  let const previous_line_discard_subshell_depth =
+      context.execution_store().line_discard_subshell_depth();
   context.execution_store().line_discard_source() = input.contents.view();
+  context.execution_store().line_discard_subshell_depth() =
+      context.execution_store().subshell_depth();
   defer
   {
     context.execution_store().line_discard_root() = previous_line_discard_root;
     context.execution_store().line_discard_source() =
         previous_line_discard_source;
+    context.execution_store().line_discard_subshell_depth() =
+        previous_line_discard_subshell_depth;
   };
   let const command_start_nanos = koshka::os::monotonic_nanos();
   if (plan.should_stream_execution) {

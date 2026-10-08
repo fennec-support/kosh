@@ -87,6 +87,23 @@ eval $': ${unset_readonly:=2}\necho "readonly-default-eval-line=$?"'
 echo "readonly-default-stage=${PIPESTATUS[0]}"
 y=$(: ${unset_readonly:=2}; echo same); echo "readonly-default-substitution=$? [$y]"
 ( (: ${unset_readonly:=2}); echo "readonly-default-nested=$?" )
+(eval ': ${unset_readonly:=2}'; echo same); echo "subshell-eval=$?"
+(eval 'r=2'; echo same); echo "subshell-eval-readonly=$?"
+(eval 'echo ${x!y}'; echo same); echo "subshell-eval-bad=$?"
+(eval ': $((1 / 0))'; echo same); echo "subshell-eval-arithmetic=$?"
+(eval 'eval ": \${unset_readonly:=2}"; echo same'; echo same)
+echo "subshell-eval-eval=$?"
+( (eval ': ${unset_readonly:=2}'; echo same); echo "nested-eval=$?" )
+y=$(eval ': ${unset_readonly:=2}'; echo same); echo "substitution-eval=$? [$y]"
+{ eval ': ${unset_readonly:=2}'; echo same; } | cat
+echo "stage-eval=${PIPESTATUS[0]}"
+{ eval ': ${unset_readonly:=2}'; echo same; } &
+wait $!; echo "async-eval=$?"
+eval_in_function() { eval ': ${unset_readonly:=2}'; echo same; }
+(eval_in_function; echo same); echo "subshell-function-eval=$?"
+(eval ': ${unset_readonly:=2}' || echo or; echo same); echo "subshell-eval-or=$?"
+(. /dev/stdin <<<': ${unset_readonly:=2}'; echo same); echo "subshell-source=$?"
+eval '(: ${unset_readonly:=2}; echo same); echo "eval-subshell=$?"'
 (echo "${x@Z}"; echo same); echo "transform=$?"
 (echo "${x@}"; echo same); echo "transform-empty=$?"
 (echo "${x@QQ}"; echo same); echo "transform-long=$?"

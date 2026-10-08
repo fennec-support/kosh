@@ -1362,7 +1362,10 @@ ends at an unquoted newline, so the rest of a command that spans lines goes
 with it. An eval, a sourced file, a subshell, and a command substitution are
 lines of their own: an eval or a sourced file goes on with its next line, and
 a subshell or command substitution ends with status 1. A pipeline stage or an
-asynchronous command fails alone. An error in the expression of (( )),
+asynchronous command fails alone. An eval or a sourced file inside a
+subshell, a command substitution, a pipeline stage, or an asynchronous command
+passes the error on, so that subshell ends with status 1 as Bash's does. An
+error in the expression of (( )),
 .BR let ,
 a [[ ]] operand, or a C-style for header fails that command with status 1, and
 an error in a here-document body fails the command it feeds, unless the error
