@@ -25,7 +25,8 @@
 # menu, only a second Tab lists a directory, and one Ctrl-Z undoes a
 # completion with its space. It also covers word-wise ghost
 # acceptance through Ctrl-Right and Alt-F, and prefix history search on Up and
-# Down with its option switched off, and the inline hint rows for a command and
+# Down with its option switched off, a Ctrl-R menu that names a miss and cuts
+# a long entry with an ellipsis, and the inline hint rows for a command and
 # a flag, their header naming the kind and the two-column indent, their absence
 # inside the command word and for an uncached command, their yielding to the
 # menu, their erasure on submit, and their option. A path menu lists the last
@@ -73,6 +74,8 @@ ROWS = 40
 WAIT_SECONDS = 8.0
 MENU_HEADER = "selecting completions"
 MENU_FOOTER = "showing "
+HISTORY_HEADER = "incremental history search"
+HISTORY_NO_MATCH = "no matches, erase to widen the search"
 RIGHT = b"\x1b[C"
 LEFT = b"\x1b[D"
 HOME = b"\x1b[H"
@@ -83,6 +86,7 @@ CTRL_RIGHT = b"\x1b[1;5C"
 ALT_F = b"\x1bf"
 CTRL_A = b"\x01"
 CTRL_E = b"\x05"
+CTRL_R = b"\x12"
 CTRL_W = b"\x17"
 CTRL_Z = b"\x1a"
 CTRL_C = b"\x03"
@@ -364,6 +368,14 @@ def is_all_commands_menu(screen):
     return (get_state(screen) is not None and get_state(screen)[0] == ""
             and menu is not None
             and menu[1] is not None and menu[1] > 20)
+
+
+def has_search_row(screen, is_wanted):
+    row = screen.get_prompt_row()
+    lines = screen.get_lines()
+    if row < 0 or row + 1 >= len(lines) or HISTORY_HEADER not in lines[row + 1]:
+        return False
+    return any(is_wanted(line.strip()) for line in lines[row + 2:])
 
 
 def is_menu_closed(screen):
@@ -939,6 +951,27 @@ def run_checks(binary, directory, command_directory, report):
         session.send(UP)
         report.record("empty-line-up-keeps-plain-history", session,
                       is_line("true"))
+        clear_line(session)
+
+        session.send(b"zzqq" + CTRL_R)
+        report.record("ctrl-r-says-no-match", session,
+                      lambda screen: has_search_row(
+                          screen, lambda row: row == HISTORY_NO_MATCH))
+        session.send(ESCAPE)
+        session.wait_until(lambda screen: not has_search_row(
+            screen, lambda row: row == HISTORY_NO_MATCH))
+        clear_line(session)
+        long_command = b"echo hist-long-" + b"y" * 130
+        session.send(long_command + b"\r")
+        session.wait_until(is_line(""))
+        session.send(b"hist-long" + CTRL_R)
+        report.record("ctrl-r-cuts-a-long-row-with-an-ellipsis", session,
+                      lambda screen: has_search_row(
+                          screen, lambda row: row.startswith("echo hist-long-y")
+                          and row.endswith("yyy...")))
+        session.send(ESCAPE)
+        session.wait_until(lambda screen: not has_search_row(
+            screen, lambda row: row.endswith("yyy...")))
         clear_line(session)
 
         session.send(b"koshconf set history.arrow_keys_search_by_typed_prefix off\r")

@@ -4165,7 +4165,11 @@ keeps the incremental search inside the editor and accepts the same keys as the
 menu. The down arrow and Ctrl\-R step back to an older match, the up arrow
 and Ctrl\-F step forward to a newer one, Enter or Tab accepts the match without
 running it, and Escape or Ctrl\-G cancels the search and restores the preceding
-line state. A history that matches nothing leaves the line alone.
+line state. A query that matches nothing opens the menu on its no-match row, so
+a backspace can widen the search, and the incremental search writes
+.B no match
+after the query. An empty history leaves the line alone. A row or match too
+long for the width ends in an ellipsis.
 .PP
 Completion identifies the command segment at the cursor across quoted
 separators, command substitutions, and here-document bodies. Directory prefixes
