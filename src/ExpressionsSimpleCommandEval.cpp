@@ -128,8 +128,11 @@ static fn command_runs_program(const ArrayList<String> &args,
     while (operand_index < args.count() && args[operand_index] == "-p")
       operand_index++;
 
-    if (operand_index == args.count() || args[operand_index].view()[0] == '-')
+    if (operand_index == args.count() ||
+        args[operand_index].view().starts_with("-"))
+    {
       return false;
+    }
 
     builtin = search_builtin(args[operand_index].view());
   }
@@ -344,6 +347,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
             cxt.runtime_state().get_mood()))
       redirection_snapshot = snapshot_child_redirection_state(cxt);
   }
+  defer { discard_child_redirection_state(cxt, redirection_snapshot); };
 
   bool did_redirection_open_fail = false;
   try {
