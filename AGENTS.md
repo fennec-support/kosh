@@ -175,6 +175,10 @@ changes update this file.
 - A forked child marks the jobs it inherits so `wait` cannot reach them. A job
   waited by number or process stays in the table until a reap point: a new
   input line, a loop iteration, a child process, or `jobs`.
+- An ampersand ends a whole and-or list. When the list has more than one
+  command, the parser moves its nodes into a `BraceGroup` that carries the
+  async flag and spans the source text of the list, so the forked job, `jobs`,
+  and a fresh evaluator receive all of it. A lone command forks directly.
 - An asynchronous pipeline job owns and reaps every stage. POSIX stages share a
   process group. The last stage owns status and job output. Stream writes retry
   partial writes and reject zero-length writes while bytes remain.
