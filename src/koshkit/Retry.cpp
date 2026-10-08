@@ -82,7 +82,7 @@ fn build_command_source(const ArrayList<String> &operands,
   for (usize index = 0; index < operands.count(); index++) {
     if (index > 0) source.push(' ');
 
-    utils::append_shell_quoted(source, operands[index].view());
+    utils::append_shell_quoted(source, operands[index].view(), true);
   }
 
   return source;

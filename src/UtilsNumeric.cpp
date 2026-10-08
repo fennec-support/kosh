@@ -826,26 +826,49 @@ fn decode_ansi_c_escapes(String &out, StringView body) throws -> void
   }
 }
 
-fn append_ansi_c_quote_if_needed(String &out, StringView arg) throws -> bool
+static fn get_printable_character_length(StringView text, usize position,
+                                         bool is_utf8_locale) wontthrow -> usize
 {
-  if (arg.is_empty()) {
-    out += "''";
-    return true;
+  let const byte = static_cast<unsigned char>(text[position]);
+  if (byte < 0x80) return byte < 0x20 || byte == 0x7f ? 0 : 1;
+  if (!is_utf8_locale) return 0;
+
+  let const decoded = decode_utf8(text, position, 0);
+  let const smallest_code_point = decoded.length == 2   ? u32{0x80}
+                                  : decoded.length == 3 ? u32{0x800}
+                                                        : u32{0x10000};
+  if (decoded.length < 2 || decoded.value < smallest_code_point ||
+      decoded.value > 0x10ffff ||
+      (decoded.value >= 0xd800 && decoded.value <= 0xdfff) ||
+      !os::code_point_is_in_class("print", decoded.value))
+  {
+    return 0;
   }
 
-  bool has_control_byte = false;
-  for (usize i = 0; i < arg.length; i++) {
-    let const byte = static_cast<unsigned char>(arg[i]);
-    if (byte < 0x20 || byte == 0x7f) {
-      has_control_byte = true;
-      break;
-    }
-  }
-  if (!has_control_byte) return false;
+  return decoded.length;
+}
 
+fn should_ansi_c_quote(StringView text, bool is_utf8_locale) throws -> bool
+{
+  usize position = 0;
+  while (position < text.length) {
+    let const length =
+        get_printable_character_length(text, position, is_utf8_locale);
+    if (length == 0) return true;
+
+    position += length;
+  }
+
+  return false;
+}
+
+fn append_ansi_c_quoted(String &out, StringView text,
+                        bool is_utf8_locale) throws -> void
+{
   out += "$'";
-  for (usize i = 0; i < arg.length; i++) {
-    let const character = arg[i];
+  usize position = 0;
+  while (position < text.length) {
+    let const character = text[position];
     switch (character) {
     case '\a': out += "\\a"; break;
     case '\b': out += "\\b"; break;
@@ -858,26 +881,43 @@ fn append_ansi_c_quote_if_needed(String &out, StringView arg) throws -> bool
     case '\'': out += "\\'"; break;
     case '\\': out += "\\\\"; break;
     default: {
-      let const byte = static_cast<unsigned char>(character);
-      if (byte < 0x20 || byte == 0x7f) {
+      let const length =
+          get_printable_character_length(text, position, is_utf8_locale);
+      if (length == 0) {
+        let const byte = static_cast<unsigned char>(character);
         out.push('\\');
         out.push(static_cast<char>('0' + ((byte >> 6) & 7)));
         out.push(static_cast<char>('0' + ((byte >> 3) & 7)));
         out.push(static_cast<char>('0' + (byte & 7)));
       } else {
-        out.push(character);
+        out.append(text.substring_of_length(position, length));
+        position += length - 1;
       }
       break;
     }
     }
+    position++;
   }
   out += "'";
+}
+
+fn append_ansi_c_quote_if_needed(String &out, StringView arg,
+                                 bool is_utf8_locale) throws -> bool
+{
+  if (arg.is_empty()) {
+    out += "''";
+    return true;
+  }
+  if (!should_ansi_c_quote(arg, is_utf8_locale)) return false;
+
+  append_ansi_c_quoted(out, arg, is_utf8_locale);
   return true;
 }
 
-fn append_shell_quoted(String &out, StringView arg) throws -> void
+fn append_shell_quoted(String &out, StringView arg, bool is_utf8_locale) throws
+    -> void
 {
-  if (append_ansi_c_quote_if_needed(out, arg)) return;
+  if (append_ansi_c_quote_if_needed(out, arg, is_utf8_locale)) return;
 
   out.push('\'');
   for (usize i = 0; i < arg.length; i++) {

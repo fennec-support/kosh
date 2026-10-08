@@ -413,7 +413,13 @@ fn parse_directory_stack_rotation(StringView arg, usize ring_count,
    quotes, with the characters special inside double quotes escaped, so the
    printed line reloads to the same value the way bash quotes it. */
 fn quote_for_declare(StringView value) throws -> String;
-fn append_declare_key(String &out, StringView key) throws -> void;
+
+/* A value or key that does not print in the locale takes the $'...' form
+   instead, since bash prints it that way and the form reloads every byte. */
+fn append_declare_value(String &out, StringView value,
+                        bool is_utf8_locale) throws -> void;
+fn append_declare_key(String &out, StringView key, bool is_utf8_locale) throws
+    -> void;
 
 fn append_variable_declaration(EvalContext &cxt, StringView name,
                                String &out) throws -> bool;

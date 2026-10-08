@@ -136,11 +136,18 @@ fn append_name_columns(String &output, usize name_count,
 
 fn expand_leading_tilde_path(StringView name) throws -> Maybe<String>;
 
-/* Returns false when the value has no control byte, so the caller applies its
-   own non-control quoting. */
-fn append_ansi_c_quote_if_needed(String &out, StringView arg) throws -> bool;
+fn should_ansi_c_quote(StringView text, bool is_utf8_locale) throws -> bool;
 
-fn append_shell_quoted(String &out, StringView arg) throws -> void;
+fn append_ansi_c_quoted(String &out, StringView text,
+                        bool is_utf8_locale) throws -> void;
+
+/* Returns false when every byte of the value prints in the locale, so the
+   caller applies its own quoting. */
+fn append_ansi_c_quote_if_needed(String &out, StringView arg,
+                                 bool is_utf8_locale) throws -> bool;
+
+fn append_shell_quoted(String &out, StringView arg, bool is_utf8_locale) throws
+    -> void;
 
 fn decode_ansi_c_escapes(String &out, StringView body) throws -> void;
 

@@ -91,9 +91,10 @@ fn Readonly::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       out += name;
       if (let const value = cxt.get_variable_value(name)) {
         if (is_declare_form) {
-          out += "=\"";
-          out += quote_for_declare(value->view());
-          out += "\"";
+          out += '=';
+          append_declare_value(out, value->view(),
+                               cxt.get_glob_charset_for(*value) ==
+                                   glob_charset::Utf8);
         } else {
           out += '=';
           append_shell_quoted_arg(out, value->view(), true);

@@ -1583,10 +1583,11 @@ fn EvalContext::ParameterExpander::expand_element_transform(
     out.append(m_name);
     if (is_set) {
       out += '=';
-      utils::append_shell_quoted(
-          out,
-          m_context.apply_array_subscript(m_name, subscript, subscript_location)
-              .view());
+      let const value = m_context.apply_array_subscript(m_name, subscript,
+                                                        subscript_location);
+      utils::append_shell_quoted(out, value.view(),
+                                 m_context.get_glob_charset_for(value) ==
+                                     glob_charset::Utf8);
     }
 
     return out;
@@ -1831,7 +1832,9 @@ fn EvalContext::ParameterExpander::expand_list_transform(
     out += "set --";
     for (let const &value : values) {
       out += ' ';
-      utils::append_shell_quoted(out, value.view());
+      utils::append_shell_quoted(out, value.view(),
+                                 m_context.get_glob_charset_for(value) ==
+                                     glob_charset::Utf8);
     }
 
     return out;
@@ -1852,12 +1855,13 @@ fn EvalContext::ParameterExpander::expand_list_transform(
     let const pair_count =
         keys.count() < values.count() ? keys.count() : values.count();
     if (op == 'K') {
+      let const is_utf8_locale =
+          m_context.get_glob_charset() == glob_charset::Utf8;
       for (usize i = 0; i < pair_count; i++) {
         if (i > 0) out += ' ';
-        append_declare_key(out, keys[i].view());
-        out += " \"";
-        out += quote_for_declare(values[i].view());
-        out += '"';
+        append_declare_key(out, keys[i].view(), is_utf8_locale);
+        out += ' ';
+        append_declare_value(out, values[i].view(), is_utf8_locale);
       }
       if (pair_count > 0 && m_context.is_associative_array(m_name)) {
         out += ' ';
@@ -2726,7 +2730,8 @@ fn EvalContext::apply_parameter_transform_to_value(StringView text, char op,
   case 'k':
     /* On a bare name K and k quote the value the way Q does, the key-and-value
        listing is the ${a[@]@K} array-field form on the element path. */
-    utils::append_shell_quoted(out, text);
+    utils::append_shell_quoted(
+        out, text, get_glob_charset_for(text) == glob_charset::Utf8);
     return out;
   case 'P': return toiletline::expand_prompt_template(text, *this);
   case 'A': {
@@ -2743,7 +2748,8 @@ fn EvalContext::apply_parameter_transform_to_value(StringView text, char op,
     }
     out.append(name);
     out += '=';
-    utils::append_shell_quoted(out, text);
+    utils::append_shell_quoted(
+        out, text, get_glob_charset_for(text) == glob_charset::Utf8);
     return out;
   }
   case 'E':

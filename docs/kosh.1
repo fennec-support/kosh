@@ -1365,8 +1365,11 @@ ampersand. When the option is disabled, every ampersand is literal.
 .PP
 The forms ${v^^}, ${v,,}, ${v^}, and ${v,} change case with an optional pattern.
 The transforms ${v@Q}, ${v@E}, ${v@A}, ${v@P}, and ${v@a} produce a quoted
-value, expanded escapes, an assignment, a prompt expansion, or attributes. The
-forms ${v@U}, ${v@L}, and ${v@u} apply the corresponding case conversion.
+value, expanded escapes, an assignment, a prompt expansion, or attributes.
+A value or key with a byte that does not print in the locale, such as a
+control byte or invalid UTF-8, takes the $'...' form in ${v@Q}, ${v@A},
+${a[@]@K}, printf %q, declare \-p, and export \-p, so the printed text
+evaluates back to the same bytes. The forms ${v@U}, ${v@L}, and ${v@u} apply the corresponding case conversion.
 Any other operator after @ on a set parameter is a bad substitution that ends
 the script, and on an unset one it expands to nothing.
 .PP

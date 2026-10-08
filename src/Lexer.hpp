@@ -423,6 +423,7 @@ protected:
   fn skip_whitespace() throws -> void;
   fn advance_forward(usize offset) wontthrow -> usize;
   fn chop_character(usize offset = 0) wontthrow -> char;
+  fn has_character(usize offset = 0) const wontthrow -> bool;
 
   fn lex_identifier() throws -> Token *;
   fn lex_sentinel() throws -> Token *;

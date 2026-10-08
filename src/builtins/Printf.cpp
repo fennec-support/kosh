@@ -395,13 +395,17 @@ fn is_q_safe_byte(char c) throws -> bool
          c == '/' || c == ':' || c == '%' || c == '+' || c == '@' || c == '=';
 }
 
-fn append_q_argument(String &out, const String &arg) throws -> void
+fn append_q_argument(String &out, const String &arg, bool is_utf8_locale) throws
+    -> void
 {
-  if (utils::append_ansi_c_quote_if_needed(out, arg.view())) return;
+  if (utils::append_ansi_c_quote_if_needed(out, arg.view(), is_utf8_locale))
+    return;
 
   for (usize i = 0; i < arg.count(); i++) {
     let const c = arg[i];
-    if (!is_q_safe_byte(c)) out += '\\';
+    if (!is_q_safe_byte(c) && static_cast<unsigned char>(c) < 0x80) {
+      out += '\\';
+    }
     out += c;
   }
 }
@@ -452,7 +456,10 @@ fn append_conversion(String &out, String &spec, char conv,
   };
 
   switch (conv) {
-  case 'q': append_q_argument(out, arg); break;
+  case 'q':
+    append_q_argument(out, arg,
+                      cxt.get_glob_charset_for(arg) == glob_charset::Utf8);
+    break;
   case 's': {
     if (spec == "%") {
       /* A plain %s stops at an embedded NUL the way snprintf on the c_str

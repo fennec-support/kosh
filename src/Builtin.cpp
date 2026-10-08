@@ -564,9 +564,28 @@ static pure fn is_declare_key_meta(char c) wontthrow -> bool
   }
 }
 
-fn append_declare_key(String &out, StringView key) throws -> void
+fn append_declare_value(String &out, StringView value,
+                        bool is_utf8_locale) throws -> void
 {
-  let is_plain = !key.is_empty();
+  if (utils::should_ansi_c_quote(value, is_utf8_locale)) {
+    utils::append_ansi_c_quoted(out, value, is_utf8_locale);
+    return;
+  }
+
+  out += '"';
+  out += quote_for_declare(value);
+  out += '"';
+}
+
+fn append_declare_key(String &out, StringView key, bool is_utf8_locale) throws
+    -> void
+{
+  if (utils::should_ansi_c_quote(key, is_utf8_locale)) {
+    utils::append_ansi_c_quoted(out, key, is_utf8_locale);
+    return;
+  }
+
+  let is_plain = !key.is_empty() && key != "@";
   for (usize i = 0; i < key.length && is_plain; i++)
     is_plain = !is_declare_key_meta(key[i]);
 
@@ -620,6 +639,7 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
       return true;
     }
 
+  let const is_utf8_locale = cxt.get_glob_charset() == glob_charset::Utf8;
   let const is_directory_stack = cxt.is_bash_directory_stack_special(name);
   let const is_argument_array = cxt.is_bash_argument_array(name);
   let const elements = cxt.variable_store().indexed_arrays().find(name);
@@ -658,7 +678,7 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
                                             sizeof(index_text)));
       else
         line.append(subscripts[e].view());
-      line += "]=\"";
+      line += "]=";
 
       let directory_stack_element = Maybe<String>{};
       let argument_array_element = String{cxt.scratch_allocator()};
@@ -678,8 +698,7 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
         element = values[e].view();
       }
 
-      line += quote_for_declare(element);
-      line += '"';
+      append_declare_value(line, element, is_utf8_locale);
     }
 
     line += ")\n";
@@ -699,10 +718,12 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
 
     for (usize e = 0; e < keys.count(); e++) {
       line += '[';
-      append_declare_key(line, keys[e].view());
-      line += "]=\"";
-      if (e < values.count()) line += quote_for_declare(values[e].view());
-      line += "\" ";
+      append_declare_key(line, keys[e].view(), is_utf8_locale);
+      line += "]=";
+      append_declare_value(line,
+                           e < values.count() ? values[e].view() : StringView{},
+                           is_utf8_locale);
+      line += ' ';
     }
 
     line += ")\n";
@@ -721,9 +742,9 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
     line.append(attribute.view());
     line += ' ';
     line.append(name);
-    line += "=\"";
-    line += quote_for_declare(value->view());
-    line += "\"\n";
+    line += '=';
+    append_declare_value(line, value->view(), is_utf8_locale);
+    line += '\n';
     out.append(line.view());
 
     return true;

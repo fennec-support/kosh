@@ -62,7 +62,6 @@ hot pure fn is_shell_sentinel(char ch) wontthrow -> bool
 hot pure fn is_part_of_identifier(char ch) wontthrow -> bool
 {
   switch (ch) {
-  case CEOF:
   case ' ':
   case '\t':
   case '\n':
@@ -80,7 +79,6 @@ hot pure fn is_part_of_identifier(char ch) wontthrow -> bool
 hot pure static fn is_plain_unquoted_run_byte(char ch) wontthrow -> bool
 {
   switch (ch) {
-  case CEOF:
   case ' ':
   case '\t':
   case '\n':
@@ -510,11 +508,15 @@ hot flatten fn Lexer::lex_shell_token() throws -> Token *
 {
   Token *token{};
   let const ch = chop_character();
-  switch (ch) {
-  case lexer::CEOF:
+  if (!has_character()) {
     token = m_parse_session.get_arena().create<tokens::EndOfFile>(
         here(m_cursor_position, 1));
-    break;
+    m_last_shell_token_was_newline = false;
+
+    return token;
+  }
+
+  switch (ch) {
   case '<':
   case '>':
     token = chop_character(1) == '(' ? lex_identifier() : lex_sentinel();
@@ -613,6 +615,11 @@ hot alwaysinline fn Lexer::chop_character(usize offset) wontthrow -> char
   return lexer::CEOF;
 }
 
+hot alwaysinline fn Lexer::has_character(usize offset) const wontthrow -> bool
+{
+  return m_cursor_position + offset < m_source.length;
+}
+
 flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
 {
   let word = Word{};
@@ -677,8 +684,9 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
     usize offset = start + 1;
     usize depth = 1;
     while (depth > 0) {
+      if (!has_character(offset)) return None;
+
       let const c = chop_character(offset);
-      if (c == lexer::CEOF) return None;
       offset++;
       if (c == '[')
         depth++;
@@ -696,11 +704,12 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
   loop
   {
     let const ch = chop_character(byte_count);
+    let const is_at_end = !has_character(byte_count);
 
     let const is_inside_quote_or_escape =
         quote_char.has_value() || should_escape;
-    if (!(is_inside_quote_or_escape && ch != lexer::CEOF) &&
-        !lexer::is_part_of_identifier(ch))
+    if (is_at_end ||
+        (!is_inside_quote_or_escape && !lexer::is_part_of_identifier(ch)))
     {
       if (extglob_depth == 0 && (ch == '<' || ch == '>') &&
           chop_character(byte_count + 1) == '(')
@@ -709,7 +718,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
         continue;
       }
 
-      if (extglob_depth == 0 || ch == lexer::CEOF) break;
+      if (extglob_depth == 0 || is_at_end) break;
 
       if (ch == '(')
         extglob_depth++;
@@ -763,7 +772,11 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
         let const next = chop_character(byte_count);
         /* The run stops before a '[' so the assignment-subscript capture above
            can protect the bracket group. */
-        if (next == '[' || !lexer::is_plain_unquoted_run_byte(next)) break;
+        if (!has_character(byte_count) || next == '[' ||
+            !lexer::is_plain_unquoted_run_byte(next))
+        {
+          break;
+        }
         if (lexer::is_extglob_operator(next) &&
             chop_character(byte_count + 1) == '(')
           break;
@@ -844,9 +857,11 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
       let const run_start = byte_count;
       while (true) {
         let const next = chop_character(byte_count);
-        if (next == lexer::CEOF || next == '"' || next == '\\' || next == '$' ||
-            next == '`')
+        if (!has_character(byte_count) || next == '"' || next == '\\' ||
+            next == '$' || next == '`')
+        {
           break;
+        }
         byte_count++;
       }
       do_append_run(WordSegment::Kind::DoubleQuotedText,
@@ -876,19 +891,17 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
         let const ansi_body_start = byte_count;
         loop
         {
-          let const c = chop_character(byte_count);
-          if (c == lexer::CEOF) {
+          if (!has_character(byte_count)) {
             throw ErrorWithLocationAndDetails{
                 here(m_cursor_position, byte_count),
                 "Unterminated $'...' string",
                 here(m_cursor_position + byte_count, 1), "expected ' here"};
           }
+
+          let const c = chop_character(byte_count);
           byte_count++;
           if (c == '\'') break;
-          if (c == '\\') {
-            let const escaped = chop_character(byte_count);
-            if (escaped != lexer::CEOF) byte_count++;
-          }
+          if (c == '\\' && has_character(byte_count)) byte_count++;
         }
 
         let decoded = String{heap_allocator()};
@@ -939,7 +952,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
             closing_length = 0;
             break;
           }
-          if (c == lexer::CEOF) rarely
+          if (!has_character(byte_count)) rarely
             {
               throw ErrorWithLocationAndDetails{
                   here(m_cursor_position, byte_count),
@@ -953,8 +966,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
            */
           if (c == '\\') {
             byte_count++;
-            let const escaped = chop_character(byte_count);
-            if (escaped != lexer::CEOF) {
+            if (has_character(byte_count)) {
               byte_count++;
             }
           } else if (c == '\'' || c == '"') {
@@ -962,12 +974,12 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
             byte_count++;
             loop
             {
+              if (!has_character(byte_count)) break;
+
               let const q = chop_character(byte_count);
-              if (q == lexer::CEOF) break;
               byte_count++;
               if (quote == '"' && q == '\\') {
-                let const escaped = chop_character(byte_count);
-                if (escaped != lexer::CEOF) {
+                if (has_character(byte_count)) {
                   byte_count++;
                 }
                 continue;
@@ -978,12 +990,12 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
             byte_count++;
             loop
             {
+              if (!has_character(byte_count)) break;
+
               let const b = chop_character(byte_count);
-              if (b == lexer::CEOF) break;
               byte_count++;
               if (b == '\\') {
-                let const escaped = chop_character(byte_count);
-                if (escaped != lexer::CEOF) {
+                if (has_character(byte_count)) {
                   byte_count++;
                 }
                 continue;
@@ -997,13 +1009,13 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
             char nested_quote = 0;
             loop
             {
+              if (!has_character(byte_count)) break;
+
               let const p = chop_character(byte_count);
-              if (p == lexer::CEOF) break;
               byte_count++;
               if (nested_quote != 0) {
                 if (nested_quote == '"' && p == '\\') {
-                  let const escaped = chop_character(byte_count);
-                  if (escaped != lexer::CEOF) {
+                  if (has_character(byte_count)) {
                     byte_count++;
                   }
                   continue;
@@ -1012,8 +1024,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
                 continue;
               }
               if (p == '\\') {
-                let const escaped = chop_character(byte_count);
-                if (escaped != lexer::CEOF) {
+                if (has_character(byte_count)) {
                   byte_count++;
                 }
                 continue;
@@ -1123,14 +1134,15 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
         char quote = 0;
         loop
         {
-          let const c = chop_character(byte_count);
-          if (c == lexer::CEOF) rarely
+          if (!has_character(byte_count)) rarely
             {
               throw ErrorWithLocationAndDetails{
                   here(m_cursor_position + byte_count, 1),
                   "Unterminated variable expansion",
                   here(m_cursor_position + byte_count, 1), "expected } here"};
             }
+
+          let const c = chop_character(byte_count);
           byte_count++;
 
           if (quote == '\'') {
@@ -1138,8 +1150,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
             continue;
           }
           if (c == '\\') {
-            let const escaped = chop_character(byte_count);
-            if (escaped != lexer::CEOF) {
+            if (has_character(byte_count)) {
               byte_count++;
             }
             continue;
@@ -1158,12 +1169,12 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
           if (c == '`') {
             loop
             {
+              if (!has_character(byte_count)) break;
+
               let const b = chop_character(byte_count);
-              if (b == lexer::CEOF) break;
               byte_count++;
               if (b == '\\') {
-                let const escaped = chop_character(byte_count);
-                if (escaped != lexer::CEOF) {
+                if (has_character(byte_count)) {
                   byte_count++;
                 }
                 continue;
@@ -1272,14 +1283,15 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
       let inner = String{heap_allocator()};
       loop
       {
-        let const c = chop_character(byte_count);
-        if (c == lexer::CEOF) rarely
+        if (!has_character(byte_count)) rarely
           {
             throw ErrorWithLocationAndDetails{
                 here(m_cursor_position + relative_open_backtick_pos, 1),
                 "Unterminated command substitution",
                 here(m_cursor_position + byte_count, 1), "expected ` here"};
           }
+
+        let const c = chop_character(byte_count);
         if (c == '`') {
           byte_count++;
           break;
@@ -1399,8 +1411,8 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
 
 hot alwaysinline fn Lexer::lex_sentinel() throws -> Token *
 {
+  ASSERT(has_character());
   let const ch = chop_character();
-  ASSERT(ch != lexer::CEOF);
   let &arena = m_parse_session.get_arena();
 
   usize extra_length = 0;
