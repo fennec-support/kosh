@@ -4,7 +4,9 @@
 # A readonly loop variable fails only the loop, a readonly prefix assignment
 # still runs its command, and set -u or ${name:?} ends the script. In POSIX
 # mode a bad substitution and a readonly assignment end the shell instead,
-# while failglob still abandons the line.
+# while failglob still abandons the line. An error in a here-document body
+# fails only the simple command it feeds, unless that command is a function
+# or a special builtin.
 x=abc
 readonly r=1
 echo a ${x!y}; echo same
@@ -111,6 +113,47 @@ eval '(: ${unset_readonly:=2}; echo same); echo "eval-subshell=$?"'
 nums=(1 2)
 (echo "${nums[@]@Z}"; echo same); echo "transform-array=$?"
 echo "transform-unset=[${unset_name@Z}] [${unset_list[@]@Z}]"
+cat <<EOF
+${unset_name?gone}
+EOF
+echo "heredoc-question=$?"
+(
+  set -u
+  cat <<EOF
+$unset_name
+EOF
+  echo "heredoc-nounset=$?"
+)
+cat <<EOF | cat
+${unset_name?gone}
+EOF
+echo "heredoc-stage=$? ${PIPESTATUS[*]}"
+(
+  heredoc_reader() { cat; }
+  heredoc_reader <<EOF
+${unset_name?gone}
+EOF
+  echo same
+)
+echo "heredoc-function=$?"
+(
+  : <<EOF
+${unset_name?gone}
+EOF
+  echo same
+)
+echo "heredoc-special=$?"
+(
+  set -o posix
+  cat <<EOF
+${unset_name?gone}
+EOF
+  echo "posix-heredoc=$?"
+  cat <<EOF
+$((1 / 0))
+EOF
+  echo "posix-heredoc-arithmetic=$?"
+)
 echo end
 r=2
 echo not reached

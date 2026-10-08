@@ -714,7 +714,22 @@ fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
                              fallback_location.source_name_index};
           source_location_pointer = &source_location;
         }
-        expanded_body = cxt.expand_heredoc_body(body, source_location_pointer);
+        try {
+          expanded_body =
+              cxt.expand_heredoc_body(body, source_location_pointer);
+        } catch (const InterruptErrorWithLocation &) {
+          throw;
+        } catch (const Error &error) {
+          if (cxt.runtime_state().get_mood() == mimic_mood::Default ||
+              (!error.is_script_fatal() &&
+               !cxt.runtime_state().is_posix_mode()))
+          {
+            throw;
+          }
+
+          if (open_or_stage_failed != nullptr) *open_or_stage_failed = true;
+          relocate_if_unlocated(error, fallback_location);
+        }
         body = expanded_body.view();
       }
     } else {

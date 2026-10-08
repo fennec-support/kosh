@@ -550,13 +550,22 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   } catch (const TrapAbandonedRedirection &) {
     return cxt.execution_store().last_exit_status();
   } catch (const ErrorWithLocation &redirection_error) {
-    /* Only an open or dup failure is caught here. An expansion error in a
-       target word stays fatal. */
+    /* Only an open or dup failure, or an expansion error in a here-document
+       body outside the kosh mood, is caught here. An expansion error in a
+       target word stays fatal, and so does a fatal body error before a
+       function in the bash moods, as in bash. */
     if (!did_redirection_open_fail) throw;
     /* A special builtin's redirection error exits a non-interactive shell, so
        it is not recovered. The defers above put the partial redirections
        back. */
     if (is_command_special_builtin) throw;
+    if (redirection_error.is_script_fatal() &&
+        command_word_function != nullptr &&
+        cxt.runtime_state().is_bash_compatible())
+    {
+      throw;
+    }
+
     show_message(redirection_error.to_string(
         cxt.source_store().current_source_view(), &cxt));
     /* bash reports a redirection failure with status 1 and dash with 2. */

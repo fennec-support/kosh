@@ -1428,8 +1428,9 @@ a [[ ]] operand, or a C-style for header fails that command with status 1, and
 an error in a here-document body fails the command it feeds, unless the error
 comes from a $(( )) expansion or a subscript inside it.
 .PP
-A $(( )) error ends a non-interactive shell in the bash-posix mood with status
-1 and in the sh mood with status 2, as Bash in POSIX mode and dash do. It passes
+A $(( )) error outside a here-document body ends a non-interactive shell in the
+bash-posix mood with status 1 and in the sh mood with status 2, as Bash in POSIX
+mode and dash do. It passes
 through an eval and a sourced file. A subshell and a command substitution end
 with it alone, with status 1 in the bash-posix mood and 2 in the sh mood. An
 interactive shell abandons the line instead. In the kosh mood every arithmetic
@@ -1449,6 +1450,13 @@ in the bash mood, so its command still runs, while the bash-posix mood
 abandons the line, or ends the shell before a special builtin. An unset
 parameter under set \-u and ${NAME?word} end the script in every mood. In
 the kosh mood each of these errors ends the script.
+.PP
+Outside the kosh mood, an unset parameter under set \-u, ${NAME?word}, or a
+bad substitution in a here-document body fails only the simple command the
+body feeds, with status 1 in the bash and bash-posix moods and 2 in the sh
+mood, as Bash and dash do. In the sh mood a $(( )) error in the body fails the
+command the same way. The error still ends the shell before a special
+builtin, and before a function in the bash and bash-posix moods, as in Bash.
 .PP
 The
 .B arithmetic.use_big_integers_and_decimals
