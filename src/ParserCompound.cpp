@@ -232,6 +232,74 @@ fn Parser::parse_optional_in_clause_words(
   return true;
 }
 
+alwaysinline fn Parser::parse_loop_header(
+    const SourceLocation &location, StringView keyword,
+    StringView unterminated_message, StringView missing_do_detail,
+    StringView missing_do_without_in_detail) throws -> parsed_loop_header
+{
+  Token *name_token = m_lexer.next_shell_token();
+  ASSERT(name_token != nullptr);
+  if (name_token->kind() != Token::Kind::Word &&
+      token_kind_is_keyword(name_token->kind()))
+  {
+    let const raw = name_token->raw_string();
+    name_token = word_token_from_raw(m_lexer.arena(), raw.view(),
+                                     name_token->source_location());
+  }
+  if (name_token->kind() != Token::Kind::Word) {
+    /* A (( in the name slot under POSIX mode is the bash C-style loop in a mode
+       that keeps the dash reading. */
+    if (keyword == "for" && m_lexer.is_posix_mode() &&
+        name_token->kind() == Token::Kind::LeftParen)
+    {
+      throw ErrorWithLocationAndDetails{
+          name_token->source_location(),
+          "Expected a variable name after 'for'. The for ((...)) C-style "
+          "loop is a bashism that POSIX mode does not read",
+          "Use a while loop instead"};
+    }
+    throw ErrorWithLocation{name_token->source_location(),
+                            StringView{"Expected a variable name after '"} +
+                                keyword + "'"};
+  }
+
+  /* The loop variable must be a plain name, so a $ expansion such as for $f, a
+     quoted word, or a non-identifier is rejected. */
+  let const &name_word =
+      static_cast<const tokens::WordToken *>(name_token)->word();
+  let is_name_plain =
+      name_word.segments.count() == 1 &&
+      name_word.segments[0].kind == WordSegment::Kind::UnquotedText;
+  if (is_name_plain) {
+    is_name_plain =
+        lexer::word_is_variable_name(name_word.segments[0].text.view());
+  }
+  if (!is_name_plain) {
+    throw ErrorWithLocationAndDetails{
+        name_token->source_location(),
+        StringView{"Bad "} + keyword + " loop variable, '" +
+            name_token->raw_string() + "' is not a plain name",
+        "Drop the '$' and any quotes"};
+  }
+
+  ArrayList<const Token *> words{heap_allocator()};
+  let const has_in_clause = parse_optional_in_clause_words(words);
+
+  skip_semicolons_and_newlines();
+
+  Token *do_token = m_lexer.next_shell_token();
+  ASSERT(do_token != nullptr);
+  if (do_token->kind() != Token::Kind::Do) {
+    throw ErrorWithLocationAndDetails{
+        location, unterminated_message, do_token->source_location(),
+        has_in_clause ? missing_do_detail : missing_do_without_in_detail};
+  }
+
+  return parsed_loop_header{name_token, name_word.segments[0].text.view(),
+                            steal(words), has_in_clause,
+                            parse_loop_body(location, unterminated_message)};
+}
+
 hot fn Parser::parse_for() throws -> Command *
 {
   Token *keyword = m_lexer.next_shell_token();
@@ -260,75 +328,15 @@ hot fn Parser::parse_for() throws -> Command *
     }
   }
 
-  Token *name_token = m_lexer.next_shell_token();
-  ASSERT(name_token != nullptr);
-  if (name_token->kind() != Token::Kind::Word &&
-      token_kind_is_keyword(name_token->kind()))
-  {
-    let const raw = name_token->raw_string();
-    name_token = word_token_from_raw(m_lexer.arena(), raw.view(),
-                                     name_token->source_location());
-  }
-  if (name_token->kind() != Token::Kind::Word) {
-    /* A (( in the name slot under POSIX mode is the bash C-style loop in a mode
-       that keeps the dash reading. */
-    if (m_lexer.is_posix_mode() && name_token->kind() == Token::Kind::LeftParen)
-    {
-      throw ErrorWithLocationAndDetails{
-          name_token->source_location(),
-          "Expected a variable name after 'for'. The for ((...)) C-style "
-          "loop is a bashism that POSIX mode does not read",
-          "Use a while loop instead"};
-    }
-    throw ErrorWithLocation{name_token->source_location(),
-                            "Expected a variable name after 'for'"};
-  }
-
-  /* The loop variable must be a plain name, so a $ expansion such as for $f, a
-     quoted word, or a non-identifier is rejected. */
-  let const &name_word =
-      static_cast<const tokens::WordToken *>(name_token)->word();
-  let is_name_plain =
-      name_word.segments.count() == 1 &&
-      name_word.segments[0].kind == WordSegment::Kind::UnquotedText;
-  if (is_name_plain) {
-    is_name_plain =
-        lexer::word_is_variable_name(name_word.segments[0].text.view());
-  }
-  if (!is_name_plain) {
-    throw ErrorWithLocationAndDetails{name_token->source_location(),
-                                      StringView{"Bad for loop variable, '"} +
-                                          name_token->raw_string() +
-                                          "' is not a plain name",
-                                      "Drop the '$' and any quotes"};
-  }
-
-  let const variable_name = name_word.segments[0].text.view();
-
-  ArrayList<const Token *> words{heap_allocator()};
-  let const has_in_clause = parse_optional_in_clause_words(words);
-
-  skip_semicolons_and_newlines();
-
-  Token *do_token = m_lexer.next_shell_token();
-  ASSERT(do_token != nullptr);
-  if (do_token->kind() != Token::Kind::Do) {
-    String detail = "Expected 'do'";
-    if (!has_in_clause) {
-      detail = "Expected 'do', or 'in WORDS' before it; without 'in' the loop "
-               "walks the positional parameters";
-    }
-    throw ErrorWithLocationAndDetails{location, "Unterminated for loop",
-                                      do_token->source_location(), detail};
-  }
-
-  let const parsed_body = parse_loop_body(location, "Unterminated for loop");
-
+  let header = parse_loop_header(
+      location, "for", "Unterminated for loop", "Expected 'do'",
+      "Expected 'do', or 'in WORDS' before it; without 'in' the loop "
+      "walks the positional parameters");
   let loop_node = m_lexer.arena().create<ForLoop>(
-      location, name_token->source_location(), variable_name, steal(words),
-      has_in_clause, parsed_body.body);
-  loop_node->set_source_end_position(parsed_body.done_location.position +
-                                     parsed_body.done_location.length);
+      location, header.name_token->source_location(), header.variable_name,
+      steal(header.words), header.has_in_clause, header.body.body);
+  loop_node->set_source_end_position(header.body.done_location.position +
+                                     header.body.done_location.length);
   return loop_node;
 }
 
@@ -343,60 +351,13 @@ hot fn Parser::parse_select() throws -> Command *
 
   LOG(Debug, "parsing a select loop at byte %u", location.position);
 
-  Token *name_token = m_lexer.next_shell_token();
-  ASSERT(name_token != nullptr);
-  if (name_token->kind() != Token::Kind::Word &&
-      token_kind_is_keyword(name_token->kind()))
-  {
-    let const raw = name_token->raw_string();
-    name_token = word_token_from_raw(m_lexer.arena(), raw.view(),
-                                     name_token->source_location());
-  }
-  if (name_token->kind() != Token::Kind::Word) {
-    throw ErrorWithLocation{name_token->source_location(),
-                            "Expected a variable name after 'select'"};
-  }
-  /* The menu variable must be a plain name. A $ expansion such as select $f, a
-     quoted word, or a non-identifier is rejected. */
-  let const &name_word =
-      static_cast<const tokens::WordToken *>(name_token)->word();
-  let is_name_plain =
-      name_word.segments.count() == 1 &&
-      name_word.segments[0].kind == WordSegment::Kind::UnquotedText;
-  if (is_name_plain) {
-    is_name_plain =
-        lexer::word_is_variable_name(name_word.segments[0].text.view());
-  }
-  if (!is_name_plain) {
-    throw ErrorWithLocationAndDetails{
-        name_token->source_location(),
-        StringView{"Bad select loop variable, '"} + name_token->raw_string() +
-            "' is not a plain name",
-        "Drop the '$' and any quotes"};
-  }
-
-  let const variable_name = name_word.segments[0].text.view();
-
-  ArrayList<const Token *> words{heap_allocator()};
-  let const has_in_clause = parse_optional_in_clause_words(words);
-
-  skip_semicolons_and_newlines();
-
-  Token *do_token = m_lexer.next_shell_token();
-  ASSERT(do_token != nullptr);
-  if (do_token->kind() != Token::Kind::Do) {
-    throw ErrorWithLocationAndDetails{location, "Unterminated select loop",
-                                      do_token->source_location(),
-                                      "expected 'do'"};
-  }
-
-  let const parsed_body = parse_loop_body(location, "Unterminated select loop");
-
+  let header = parse_loop_header(location, "select", "Unterminated select loop",
+                                 "expected 'do'", "expected 'do'");
   let loop_node = m_lexer.arena().create<SelectLoop>(
-      location, name_token->source_location(), variable_name, steal(words),
-      has_in_clause, parsed_body.body);
-  loop_node->set_source_end_position(parsed_body.done_location.position +
-                                     parsed_body.done_location.length);
+      location, header.name_token->source_location(), header.variable_name,
+      steal(header.words), header.has_in_clause, header.body.body);
+  loop_node->set_source_end_position(header.body.done_location.position +
+                                     header.body.done_location.length);
   return loop_node;
 }
 

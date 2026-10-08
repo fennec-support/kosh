@@ -22,6 +22,15 @@ struct parsed_loop_body
   SourceLocation done_location;
 };
 
+struct parsed_loop_header
+{
+  Token *name_token;
+  StringView variable_name;
+  ArrayList<const Token *> words;
+  bool has_in_clause;
+  parsed_loop_body body;
+};
+
 enum class redirection_descriptor_spelling : u8
 {
   Implicit,
@@ -147,7 +156,12 @@ private:
   cold fn record_error(ArrayList<String> &errors, EvalContext *context,
                        ArrayList<source_diagnostic> *diagnostic_sink) throws
       -> void;
+  fn peek_top_level_token(ArrayList<String> &errors, EvalContext *context,
+                          ArrayList<source_diagnostic> *diagnostic_sink) throws
+      -> Token *;
 
+  fn next_token_of_kind(Token::Kind kind, StringView missing_message) throws
+      -> Token *;
   fn skip_newlines_after_pipe() throws -> void;
   fn skip_semicolons_and_newlines() throws -> void;
 
@@ -195,6 +209,10 @@ private:
       Maybe<SourceLocation> &first_location,
       ArrayList<expressions::Redirection> &out) throws -> bool;
 
+  fn try_build_operator_redirection(
+      const Token *token, Maybe<SourceLocation> &first_location,
+      ArrayList<expressions::Redirection> &out) throws -> bool;
+
   mustuse fn try_parse_trailing_redirection(
       ArrayList<expressions::Redirection> &out) throws -> bool;
 
@@ -213,6 +231,12 @@ private:
 
   mustuse fn parse_if() throws -> Command *;
   mustuse fn parse_while_or_until(loop_kind kind) throws -> Command *;
+  mustuse fn parse_loop_header(const SourceLocation &location,
+                               StringView keyword,
+                               StringView unterminated_message,
+                               StringView missing_do_detail,
+                               StringView missing_do_without_in_detail) throws
+      -> parsed_loop_header;
   mustuse fn parse_for() throws -> Command *;
   mustuse fn parse_select() throws -> Command *;
   mustuse fn parse_coproc() throws -> Command *;
