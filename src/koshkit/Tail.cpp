@@ -117,9 +117,9 @@ struct tail_options
   {
     tail_options options;
 
-    /* -c takes precedence over -n when both are given, matching GNU tail. */
+    let const is_bytes_overriding_lines = FLAG_TAIL_BYTES.is_set();
     options.unit =
-        FLAG_TAIL_BYTES.is_set() ? tail_unit::Bytes : tail_unit::Lines;
+        is_bytes_overriding_lines ? tail_unit::Bytes : tail_unit::Lines;
     let parsed_count = Maybe<parsed_tail_count>{
         parsed_tail_count{count_origin::FromEnd, 10}
     };
@@ -890,4 +890,4 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
   }
 }
 
-} /* namespace koshka::koshkit */
+}

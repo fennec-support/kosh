@@ -47,7 +47,7 @@ struct cp_directory_identity
   u64 file_id;
 };
 
-} /* namespace */
+}
 
 enum class cp_symlink_mode : u8
 {
@@ -78,7 +78,7 @@ struct cp_options
   }
 };
 
-} /* namespace */
+}
 
 static fn report_copy_error(const ExecContext &ec, EvalContext &cxt,
                             StringView utility_name, const Error &error) throws
@@ -168,10 +168,9 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
 
   if (is_source_symlink) {
     if (let const target = os::read_symlink(source, allocator)) {
-      /* Symlink creation fails when the path is already present, so an existing
-         destination is removed first. */
-      if ((destination_path.exists() || destination_path.is_symbolic_link()) &&
-          !os::remove_file(destination))
+      let const is_destination_blocking_symlink =
+          destination_path.exists() || destination_path.is_symbolic_link();
+      if (is_destination_blocking_symlink && !os::remove_file(destination))
       {
         throw Error{
             "unable to remove '" + String{allocator, destination}
@@ -201,8 +200,6 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
   else
     source_status = source_file_status(source);
 
-  /* A symlink is excluded so a link back into the tree does not drive an
-     unbounded walk. */
   let const is_source_directory =
       source_status.has_value()
           ? os::file_type_letter(source_status->mode) == 'd'
@@ -330,9 +327,11 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
     return did_succeed;
   }
 
-  /* A destination symlink is removed so the copy does not follow the link and
-     truncate its target. */
-  if (destination_path.is_symbolic_link() && !os::remove_file(destination)) {
+  let const is_destination_link_to_unlink_before_copy =
+      destination_path.is_symbolic_link();
+  if (is_destination_link_to_unlink_before_copy &&
+      !os::remove_file(destination))
+  {
     throw Error{
         "unable to remove '" + String{allocator, destination}
           +
@@ -432,8 +431,6 @@ fn Cp::execute(const ExecContext &ec, EvalContext &cxt,
     let const source = operands[i].view();
     let target = String{cxt.scratch_allocator(), destination};
     if (is_destination_directory) {
-      /* The Path is held in a named local so the basename view does not dangle
-         into a destroyed temporary. */
       let const source_path = Path{source, cxt.scratch_allocator()};
       let const leaf = source_path.filename();
       target = join_with_operand_separator(destination, leaf,
@@ -462,4 +459,4 @@ fn Cp::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} /* namespace koshka::koshkit */
+}

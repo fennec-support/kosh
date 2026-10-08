@@ -138,7 +138,7 @@ fn append_hints(String &output, StringView hints, bool should_style) throws
   }
 }
 
-} /* namespace */
+}
 
 LiveView::LiveView(const ExecContext &ec,
                    const live_view_options &options) wontthrow
@@ -492,4 +492,4 @@ fn LiveView::write_frame(String &frame,
   m_ec.print_to_stdout(frame.view());
 }
 
-} /* namespace koshka::koshkit */
+}

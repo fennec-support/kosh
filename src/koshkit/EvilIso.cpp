@@ -1780,7 +1780,7 @@ fn append_kubernetes_report(String &output, bool should_color,
                              should_color);
 }
 
-} /* namespace */
+}
 
 fn EvilIso::execute(const ExecContext &ec, EvalContext &cxt,
                     const ArrayList<String> &args,
@@ -1864,4 +1864,4 @@ fn EvilIso::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-} /* namespace koshka::koshkit */
+}

@@ -1202,4 +1202,4 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
   return was_custom_sampling_interrupted ? 130 : status;
 }
 
-} /* namespace koshka::koshkit */
+}

@@ -104,8 +104,6 @@ fn resolve_koshkit_color_flag(bool is_enabled, bool has_value,
   return mode.has_value() && stdout_wants_color(*mode);
 }
 
-/* Zero-initialized so it is immune to static-init order, filled by each
-   utility's registrar. */
 static const FlagList *KOSHKIT_UTIL_FLAG_LISTS[KOSHKIT_UTIL_COUNT] = {};
 
 static const SynopsisList *KOSHKIT_UTIL_SYNOPSES[KOSHKIT_UTIL_COUNT] = {};
@@ -706,8 +704,6 @@ fn SourceBatchReader::read_seekable() throws -> ReadResult
     reader.pending_byte_count = result.transferred_byte_count;
     reader.chunk_state = reader_chunk_state::Pending;
     reader.byte_offset += result.transferred_byte_count;
-    /* A short positioned read from a regular file is the EOF boundary. Avoid
-       submitting a second zero-byte read for the common small-file case. */
     if (reader.should_end_at_short_read &&
         result.transferred_byte_count < reader.read_byte_count)
     {
@@ -749,8 +745,6 @@ fn SourceBatchReader::read_sequential() throws -> ReadResult
 
   reader.pending_byte_count = *read_count;
   reader.chunk_state = reader_chunk_state::Pending;
-  /* A short read is the EOF boundary only for a regular file that reports its
-     size. Pipes and other sequential sources must keep reading until EOF. */
   if (reader.should_end_at_short_read && *read_count < reader.read_byte_count)
     close_reader(reader);
   return ReadResult::Chunks;
@@ -964,7 +958,7 @@ fn parse_strict_count(StringView text) throws -> ErrorOr<u64>
   return utils::parse_decimal_u64(digits);
 }
 
-#else /* KOSH_NO_KOSHKIT */
+#else
 
 fn find_util(StringView) throws -> Maybe<Utility::Kind> { return {}; }
 
@@ -1029,7 +1023,7 @@ fn preflight_timeout_stage(const ExecContext &, EvalContext &, usize,
   return {};
 }
 
-#endif /* KOSH_NO_KOSHKIT */
+#endif
 
 static fn render_multicall_error(const ErrorWithLocation &error,
                                  StringView message, StringView source,
@@ -1048,7 +1042,6 @@ static fn render_multicall_error(const ErrorWithLocation &error,
 fn run_as_multicall(StringView util_name, Maybe<Utility::Kind> chosen,
                     ArrayList<String> operands, EvalContext &cxt) throws -> i32
 {
-  /* The scan stops at --, where a later --version is an operand. */
   for (let const &operand : operands) {
     if (operand == "--") break;
     if (operand == "--version") {
@@ -1210,7 +1203,7 @@ fn format_socket_endpoint(StringView address, u16 port,
   return result;
 }
 
-#endif /* KOSH_NO_KOSHKIT */
+#endif
 
 fn format_human_size(u64 bytes, Allocator allocator, u64 unit_step) throws
     -> String
@@ -1221,7 +1214,6 @@ fn format_human_size(u64 bytes, Allocator allocator, u64 unit_step) throws
   let const step = static_cast<double>(unit_step);
   double value = static_cast<double>(bytes);
   usize unit = 0;
-  /* The condition reads unit, so the last unit P stays reachable. */
   while (value >= step && unit < sizeof(units)) {
     value /= step;
     unit++;
@@ -1234,9 +1226,9 @@ fn format_human_size(u64 bytes, Allocator allocator, u64 unit_step) throws
   }
 
   String out{allocator};
-  /* A scaled value below ten keeps one decimal, otherwise it rounds whole. */
   let const tenths = static_cast<u64>(value * 10.0 + 0.5);
-  if (value < 10.0 && tenths < 100) {
+  let const does_keep_one_decimal = value < 10.0 && tenths < 100;
+  if (does_keep_one_decimal) {
     out += String::from(tenths / 10, allocator);
     out += '.';
     out += String::from(tenths % 10, allocator);
@@ -1503,8 +1495,8 @@ cold noinline fn report_soft_koshkit_util_error(
   show_message(Note{String{note}}.to_string());
 }
 
-#endif /* KOSH_NO_KOSHKIT */
+#endif
 
-} /* namespace koshkit */
+}
 
-} /* namespace koshka */
+}

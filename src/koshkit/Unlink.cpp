@@ -32,11 +32,11 @@ cold fn Unlink::execute(
     return 1;
   }
 
-  /* unlink(2) removes the link itself, so a symlink to a directory passes and
-     only a real directory is refused. */
   let const &target = operands[0];
   let const target_path = Path{target.view(), cxt.scratch_allocator()};
-  if (target_path.is_directory() && !target_path.is_symbolic_link()) {
+  let const is_real_directory =
+      target_path.is_directory() && !target_path.is_symbolic_link();
+  if (is_real_directory) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "cannot unlink '" + target +
                                                       "': it is a directory");
     return 1;
@@ -51,4 +51,4 @@ cold fn Unlink::execute(
   return 0;
 }
 
-} /* namespace koshka::koshkit */
+}

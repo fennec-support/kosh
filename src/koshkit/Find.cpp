@@ -132,13 +132,11 @@ static fn find_entry_matches(char type_letter, StringView filename, usize depth,
   }
 
   let const original_filename = filename;
-  String folded_filename{allocator};
-  /* Keep -iname locale-independent: ASCII letters fold, while UTF-8 bytes
-     remain exact so traversal does not depend on the process locale. */
+  String locale_independent_folded_filename{allocator};
   if (options.has_case_insensitive_name_pattern) {
-    folded_filename.reserve(filename.length);
-    folded_filename.assign_lowercase_ascii(filename);
-    filename = folded_filename.view();
+    locale_independent_folded_filename.reserve(filename.length);
+    locale_independent_folded_filename.assign_lowercase_ascii(filename);
+    filename = locale_independent_folded_filename.view();
   }
 
   if (options.name_patterns != nullptr) {
@@ -148,7 +146,8 @@ static fn find_entry_matches(char type_letter, StringView filename, usize depth,
           options.name_pattern_ignore_case != nullptr &&
           (*options.name_pattern_ignore_case)[index];
       let const candidate =
-          should_ignore_case ? folded_filename.view() : original_filename;
+          should_ignore_case ? locale_independent_folded_filename.view()
+                             : original_filename;
       if (!utils::glob_matches(pattern, candidate,
                                (*options.name_pattern_masks)[index], 0,
                                extglob_mode::Disabled, options.name_charset))
@@ -595,9 +594,6 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
   find_options options{};
   ArrayList<find_action> actions{cxt.scratch_allocator()};
 
-  /* The flag parser is bypassed, a predicate such as -name is not a
-     single-letter flag bundle. An empty argument is a start path, not a
-     predicate, so it is collected as a root. */
   usize index = 1;
   while (index < args.count()) {
     let const start_argument = args[index].view();
@@ -824,4 +820,4 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} /* namespace koshka::koshkit */
+}

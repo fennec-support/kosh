@@ -132,7 +132,6 @@ struct listing_entry_comparator
   }
 };
 
-/* The blocks ride along so the total line sums them without a second stat. */
 struct long_entry
 {
   explicit long_entry(Allocator allocator)
@@ -416,11 +415,10 @@ static fn collect_directory(const Path &directory,
                          allocator);
 }
 
-/* A path that cannot be stat'd renders a sparse row so the listing still names
-   it. */
-static fn build_long_entry(const listing_entry &entry,
-                           const listing_options &options,
-                           id_name_cache &id_names, Allocator allocator) throws
+static fn build_long_entry_or_sparse_row(const listing_entry &entry,
+                                         const listing_options &options,
+                                         id_name_cache &id_names,
+                                         Allocator allocator) throws
     -> long_entry
 {
   long_entry row{allocator};
@@ -537,7 +535,6 @@ static fn render_columns(const ArrayList<listing_entry> &entries,
 
   const usize terminal_width = options.terminal_dimensions->columns;
 
-  /* A column-major grid puts the entry at column*rows+row. */
   usize shortest_name_length = widths.front();
   for (let const width : widths)
     if (width < shortest_name_length) shortest_name_length = width;
@@ -582,10 +579,8 @@ static fn render_columns(const ArrayList<listing_entry> &entries,
   }
 }
 
-/* coreutils prints the total in 1K blocks, summed from the 512-byte block
-   counts the entries carry, hence the divide by two. */
-static fn long_total_blocks(const ArrayList<long_entry> &entries,
-                            Allocator allocator) throws -> String
+static fn long_total_in_1k_blocks(const ArrayList<long_entry> &entries,
+                                  Allocator allocator) throws -> String
 {
   u64 total_512_blocks = 0;
   for (let const &entry : entries)
@@ -608,10 +603,11 @@ static fn render_entries(const ArrayList<listing_entry> &entries,
   ArrayList<long_entry> rows{allocator};
   rows.reserve(entries.count());
   for (let const &entry : entries)
-    rows.push(build_long_entry(entry, options, id_names, allocator));
+    rows.push(
+        build_long_entry_or_sparse_row(entry, options, id_names, allocator));
 
   if (should_print_total) {
-    output += long_total_blocks(rows, allocator);
+    output += long_total_in_1k_blocks(rows, allocator);
     output += '\n';
   }
 
@@ -959,4 +955,4 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
   return run.status;
 }
 
-} /* namespace koshka::koshkit */
+}

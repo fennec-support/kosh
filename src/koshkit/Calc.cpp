@@ -78,9 +78,7 @@ fn evaluate_one(const ExecContext &ec, EvalContext &cxt, StringView expression,
   }
 }
 
-/* The right side is stored unevaluated, a == comparison is left for the
-   evaluator. */
-fn try_define(EvalContext &cxt, StringView line) throws -> bool
+fn try_define_unevaluated_assignment(EvalContext &cxt, StringView line) throws -> bool
 {
   usize i = 0;
   while (i < line.length && (line[i] == ' ' || line[i] == '\t'))
@@ -97,7 +95,6 @@ fn try_define(EvalContext &cxt, StringView line) throws -> bool
   while (i < line.length && (line[i] == ' ' || line[i] == '\t'))
     i++;
 
-  /* A single = assigns, while == is a comparison the evaluator handles. */
   if (i >= line.length || line[i] != '=') {
     return false;
   }
@@ -108,8 +105,6 @@ fn try_define(EvalContext &cxt, StringView line) throws -> bool
   let const value =
       line.substring_of_length(i + 1, line.length - (i + 1)).trim_blanks();
 
-  /* An empty right side reports rather than binding a name that would read as
-     zero and defeat the unset error. */
   if (value.is_empty())
     throw ErrorWithLocation{
         SourceLocation{name_start,              name.length},
@@ -135,10 +130,6 @@ fn run_repl(const ExecContext &ec, EvalContext &cxt,
   let const is_terminal = input_mode == calc_repl_input_mode::DetectTerminal &&
                           os::is_fd_a_tty(input_fd);
 
-  /* When the host shell ran calc off a -c command, it never entered the
-     interactive loop, so toiletline was never initialized. Bring it up here so
-     the editor path is taken the way it is inside the interactive shell, then
-     tear it down fully on the way out. */
   let const did_initialize_editor = is_terminal && !toiletline::is_active();
   if (did_initialize_editor) {
     try {
@@ -150,10 +141,6 @@ fn run_repl(const ExecContext &ec, EvalContext &cxt,
 
   let const should_use_editor = is_terminal && toiletline::is_active();
 
-  /* The editor REPL takes raw mode for itself, otherwise the kernel and the
-     editor both echo the line. */
-  /* Completion is turned off for the REPL and the history swaps to
-     ~/.kosh_calc_history. */
   let const was_completion_enabled =
       should_use_editor && toiletline::is_completion_enabled();
   if (should_use_editor) {
@@ -168,8 +155,6 @@ fn run_repl(const ExecContext &ec, EvalContext &cxt,
       toiletline::leave_calc_history();
       if (was_completion_enabled) toiletline::enable_completion(cxt);
 
-      /* exit_raw_mode throws, so the throw is reported inside this noexcept
-         defer. */
       try {
         toiletline::exit_raw_mode();
       } catch (const Error &error) {
@@ -177,8 +162,6 @@ fn run_repl(const ExecContext &ec, EvalContext &cxt,
       }
     }
 
-    /* A full teardown only runs when calc brought toiletline up itself, so an
-       interactive host shell keeps its editor across the call. */
     if (did_initialize_editor) {
       try {
         toiletline::exit();
@@ -240,7 +223,7 @@ fn run_repl(const ExecContext &ec, EvalContext &cxt,
       unused(toiletline::append_history_event(line->view()));
 
     try {
-      if (try_define(cxt, line->view())) continue;
+      if (try_define_unevaluated_assignment(cxt, line->view())) continue;
     } catch (const ErrorWithLocation &error) {
       show_message(error.to_string(line->view(), &cxt));
       continue;
@@ -258,7 +241,7 @@ fn run_repl(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-} /* namespace */
+}
 
 fn Calc::execute(const ExecContext &ec, EvalContext &cxt,
                  const ArrayList<String> &args,
@@ -267,12 +250,9 @@ fn Calc::execute(const ExecContext &ec, EvalContext &cxt,
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
-  /* calc prints only errors, an unset variable is a calc error instead. */
   let const runtime_scope = RuntimeStateScope{cxt};
   cxt.runtime_state().set_diagnostics_disabled(true);
 
-  /* A piped run with no expression keeps the usage error so it does not hang.
-   */
   let const has_expression = !operands.is_empty();
   let const should_pipe = FLAG_CALC_PIPE.is_enabled();
   let const is_interactive =
@@ -335,4 +315,4 @@ fn Calc::execute(const ExecContext &ec, EvalContext &cxt,
                                                   : nullptr);
 }
 
-} /* namespace koshka::koshkit */
+}

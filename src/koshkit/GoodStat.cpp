@@ -215,7 +215,7 @@ fn append_subject(String &output, StringView operand,
   append_titled_report_table(output, operand, table, should_color);
 }
 
-} /* namespace */
+}
 
 fn GoodStat::execute(
     const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
@@ -277,4 +277,4 @@ fn GoodStat::execute(
   return status;
 }
 
-} /* namespace koshka::koshkit */
+}

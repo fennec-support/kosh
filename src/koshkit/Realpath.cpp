@@ -52,4 +52,4 @@ cold fn Realpath::execute(
   return status;
 }
 
-} /* namespace koshka::koshkit */
+}

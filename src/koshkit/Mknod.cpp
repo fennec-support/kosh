@@ -64,7 +64,7 @@ pure fn node_type(StringView text) wontthrow -> Maybe<u32>
   return NODE_TYPES.find(text);
 }
 
-} /* namespace */
+}
 
 fn Mknod::execute(const ExecContext &ec, EvalContext &cxt,
                   const ArrayList<String> &args,
@@ -268,4 +268,4 @@ fn Mknod::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} /* namespace koshka::koshkit */
+}

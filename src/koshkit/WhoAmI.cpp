@@ -52,4 +52,4 @@ cold fn WhoAmI::execute(
   return 1;
 }
 
-} /* namespace koshka::koshkit */
+}

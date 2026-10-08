@@ -754,7 +754,7 @@ fn run_live_network_traffic(const ExecContext &ec, Allocator allocator,
                        do_sample, do_render);
 }
 
-} /* namespace */
+}
 
 fn EvilNet::execute(const ExecContext &ec, EvalContext &cxt,
                     const ArrayList<String> &args,
@@ -846,4 +846,4 @@ fn EvilNet::execute(const ExecContext &ec, EvalContext &cxt,
                                                                          : 0;
 }
 
-} /* namespace koshka::koshkit */
+}

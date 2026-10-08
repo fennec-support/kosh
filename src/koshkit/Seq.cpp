@@ -78,8 +78,6 @@ fn Seq::execute(const ExecContext &ec, EvalContext &cxt,
   static constexpr usize OUTPUT_BUFFER_LENGTH = 64 * 1024;
   output.reserve(OUTPUT_BUFFER_LENGTH);
   char value_text[21];
-  /* The step is guarded against signed overflow before it is taken, so a range
-     reaching the integer bounds ends rather than wrapping. */
   if (increment > 0)
     for (i64 value = first; value <= last; value += increment) {
       output += utils::int_to_text_into(value, value_text, sizeof(value_text));
@@ -88,7 +86,8 @@ fn Seq::execute(const ExecContext &ec, EvalContext &cxt,
         ec.print_to_stdout(output);
         output.clear();
       }
-      if (value > INT64_MAX - increment) break;
+      let const would_step_overflow = value > INT64_MAX - increment;
+      if (would_step_overflow) break;
     }
   else
     for (i64 value = first; value >= last; value += increment) {
@@ -98,11 +97,12 @@ fn Seq::execute(const ExecContext &ec, EvalContext &cxt,
         ec.print_to_stdout(output);
         output.clear();
       }
-      if (value < INT64_MIN - increment) break;
+      let const would_step_underflow = value < INT64_MIN - increment;
+      if (would_step_underflow) break;
     }
 
   ec.print_to_stdout(output);
   return 0;
 }
 
-} /* namespace koshka::koshkit */
+}

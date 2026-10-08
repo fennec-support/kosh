@@ -531,7 +531,7 @@ fn append_log_report(String &output, Allocator allocator,
   }
 }
 
-} /* namespace */
+}
 
 fn EvilLogs::execute(
     const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
@@ -561,4 +561,4 @@ fn EvilLogs::execute(
   return 0;
 }
 
-} /* namespace koshka::koshkit */
+}

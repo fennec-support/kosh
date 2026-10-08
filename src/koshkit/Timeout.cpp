@@ -409,4 +409,4 @@ fn Timeout::execute(const ExecContext &ec, EvalContext &cxt,
   return timeout_expiration_status(status, timeout_signal);
 }
 
-} /* namespace koshka::koshkit */
+}

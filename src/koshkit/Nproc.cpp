@@ -65,4 +65,4 @@ cold fn Nproc::execute(
   return 0;
 }
 
-} /* namespace koshka::koshkit */
+}

@@ -220,7 +220,7 @@ fn remove_stage(const Path &stage, Allocator allocator) throws -> void
   unused(remove_path(stage.view(), allocator, removal_mode::Recursive));
 }
 
-} /* namespace */
+}
 
 fn GoodCore::execute(
     const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
@@ -574,4 +574,4 @@ fn GoodCore::execute(
   return 0;
 }
 
-} /* namespace koshka::koshkit */
+}

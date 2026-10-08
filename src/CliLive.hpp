@@ -361,4 +361,4 @@ fn update_retained_rows(ArrayList<Row> &retained, Items &observed,
                        do_make_row, no_retained_update{});
 }
 
-} /* namespace koshka::koshkit */
+}

@@ -28,11 +28,6 @@
 
 #define FLAG_LIST_DECL() static koshka::FlagList FLAG_LIST
 
-/* FLAG takes an optional flag_section argument before the description. The
-   section is named unqualified, such as Compat, and the macro prepends
-   koshka::flag_section. The five-argument form defaults to NoSection, which
-   renders the flag at the top of --help with no section heading. The
-   six-argument form names the section the flag renders under. */
 #define T__FLAG_SELECT(_1, _2, _3, _4, _5, _6, name, ...) name
 #define FLAG(...)                                         T__FLAG_SELECT(__VA_ARGS__, T__FLAG6, T__FLAG5)(__VA_ARGS__)
 #define T__FLAG5(var_name, kind, short_name, long_name, description)           \
@@ -44,8 +39,6 @@
         description                                                            \
   }
 
-/* FLAG_OPTIONAL takes an optional flag_section argument before the
-   description, followed by the value validator and displayed value name. */
 #define T__FLAG_OPTIONAL_SELECT(_1, _2, _3, _4, _5, _6, _7, name, ...) name
 #define FLAG_OPTIONAL(...)                                                     \
   T__FLAG_OPTIONAL_SELECT(__VA_ARGS__, T__FLAG_OPTIONAL7, T__FLAG_OPTIONAL6,   \
@@ -124,7 +117,6 @@ private:
   usize m_count{0};
 };
 
-/* The order here is the order the sections print in. */
 enum class flag_section : u8
 {
   NoSection,
@@ -167,7 +159,7 @@ protected:
        StringView description);
 
   Kind m_kind;
-  usize m_position{0}; /* 0 if it wasn't specified. */
+  usize m_position{0};
   SourceLocation m_value_location{};
   char m_short_name;
   flag_section m_section;
@@ -302,11 +294,6 @@ struct flag_parse_options
   StringView plus_letters{};
 };
 
-/* operand_value_flag names the one flag whose value is read from the first
-   non-option operand the way the shell's -c command is, so a recognized boolean
-   flag that follows it is parsed as a flag rather than swallowed as the value.
-   It is null for every builtin, which take an option value from the next
-   argument verbatim the way bash's getopt does. */
 fn parse_flags_vec(const FlagList &flags, const ArrayList<String> &args,
                    usize base_position = 0,
                    const Flag *operand_value_flag = nullptr,
@@ -552,13 +539,10 @@ fn show_warning(StringView warning) throws -> void;
 fn show_report_warning(StringView warning) throws -> void;
 fn show_report_warnings(const ArrayList<String> &warnings) throws -> void;
 
-/* Arm a one-shot leading newline on the next show_message, so a diagnostic
-   raised while the editor sits mid-line starts on its own line instead of
-   joining the prompt. The first message consumes the arming. */
 fn arm_message_leading_newline(bool armed) wontthrow -> void;
 
 fn print(StringView text) throws -> void;
 fn print_error(StringView text) throws -> void;
 fn flush() throws -> void;
 
-} /* namespace koshka */
+}

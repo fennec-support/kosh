@@ -30,7 +30,6 @@ inline const StringView GREEN = "\x1b[32m";
 inline const StringView YELLOW = "\x1b[33m";
 inline const StringView MAGENTA = "\x1b[35m";
 inline const StringView BLUE = "\x1b[34m";
-/* The high-intensity foreground colors, distinct from the bold attribute. */
 inline const StringView BRIGHT_RED = "\x1b[91m";
 inline const StringView BRIGHT_GREEN = "\x1b[92m";
 inline const StringView BRIGHT_BLUE = "\x1b[94m";
@@ -49,12 +48,8 @@ inline const StringView BOLD_WHITE = "\x1b[1;37m";
 inline const StringView RED_CURLY_YELLOW_UNDERLINE = "\x1b[91;4:3;58:5:3m";
 inline const StringView BOLD_RED_CURLY_YELLOW_UNDERLINE =
     "\x1b[1;91;4:3;58:5:3m";
-} /* namespace ansi */
+}
 
-/* Whether color may be written to a stream. Color is on only when the stream is
-   a terminal, NO_COLOR is unset or empty, and TERM is not dumb. The terminal
-   answer is cached until a redirection rebinds the descriptor. A redirected
-   stream never gains escapes. */
 fn stdout_wants_color() throws -> bool;
 fn stderr_wants_color() throws -> bool;
 fn stdout_is_a_terminal() wontthrow -> bool;
@@ -82,6 +77,6 @@ extern const highlight_theme NONINTERACTIVE_HIGHLIGHT_THEME;
 extern const highlight_theme PRINTED_SOURCE_HIGHLIGHT_THEME;
 extern const highlight_theme DIAGNOSTIC_HIGHLIGHT_THEME;
 
-} /* namespace colors */
+}
 
-} /* namespace koshka */
+}

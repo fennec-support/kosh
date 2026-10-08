@@ -40,9 +40,6 @@ fn Yes::execute(const ExecContext &ec, EvalContext &cxt,
   {
     if (os::INTERRUPT_REQUESTED) return 130;
 
-    /* written_count accumulates across passes, so a short write advances
-       through the line rather than re-emitting the whole line and corrupting
-       the stream. */
     usize written_count = 0;
     while (written_count < line.count()) {
       let const chunk = os::write_fd(out_fd, line.view().data + written_count,
@@ -55,4 +52,4 @@ fn Yes::execute(const ExecContext &ec, EvalContext &cxt,
   }
 }
 
-} /* namespace koshka::koshkit */
+}

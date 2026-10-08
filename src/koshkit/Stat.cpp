@@ -711,7 +711,7 @@ fn resolve_format(String &format, bool &should_append_newline,
   }
 }
 
-} /* namespace */
+}
 
 fn Stat::execute(const ExecContext &ec, EvalContext &cxt,
                  const ArrayList<String> &args,
@@ -820,4 +820,4 @@ fn Stat::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} /* namespace koshka::koshkit */
+}

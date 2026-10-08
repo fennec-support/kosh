@@ -60,10 +60,7 @@ static fn append_right(String &output, StringView text, usize width) throws
   output += text;
 }
 
-/* The %CPU, %MEM, TTY, and START columns of a full ps are omitted, since they
-   need a sampling pass and a controlling-terminal map this listing does not
-   gather. */
-static fn render_aux(const ArrayList<os::process_entry> &processes,
+static fn render_aux_without_sampled_columns(const ArrayList<os::process_entry> &processes,
                      String &output, Allocator allocator) throws -> void
 {
   ArrayList<uid_name_cache_entry> uid_cache{allocator};
@@ -109,8 +106,6 @@ static fn render_aux(const ArrayList<os::process_entry> &processes,
     append_right(output, String::from(process.resident_kib, allocator).view(),
                  rss_width);
     output += ' ';
-    /* The state is padded to the four-wide STAT field plus a separator space.
-     */
     output += process.state;
     output += "    ";
     output += process.command_line.is_empty() ? process.name.view()
@@ -138,7 +133,8 @@ fn Ps::execute(const ExecContext &ec, EvalContext &cxt,
 
   let output = String{cxt.scratch_allocator()};
   if (should_show_aux) {
-    render_aux(processes, output, cxt.scratch_allocator());
+    render_aux_without_sampled_columns(processes, output,
+                                       cxt.scratch_allocator());
     ec.print_to_stdout(output);
     return 0;
   }
@@ -157,4 +153,4 @@ fn Ps::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-} /* namespace koshka::koshkit */
+}

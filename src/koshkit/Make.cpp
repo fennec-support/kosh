@@ -64,10 +64,8 @@ namespace koshka::koshkit {
 
 namespace {
 
-/* The variables make predefines, so a makefile that reads one without assigning
-   it still finds a sane default. These sit at the lowest precedence, below a
-   makefile assignment and the environment, which the expander checks first. */
-constexpr static_string_entry<const char *> BUILTIN_VARIABLE_ENTRIES[] = {
+constexpr static_string_entry<const char *>
+    LOWEST_PRECEDENCE_BUILTIN_VARIABLE_ENTRIES[] = {
     {SSK("MAKE"),         "koshkit make"},
     {SSK("AR"),           "ar"          },
     {SSK("ARFLAGS"),      "-rv"         },
@@ -88,7 +86,8 @@ constexpr static_string_entry<const char *> BUILTIN_VARIABLE_ENTRIES[] = {
     {SSK("CPP"),          "c99 -E"      },
     {SSK("RM"),           "rm -f"       },
 };
-constexpr StaticStringMap BUILTIN_VARIABLES{BUILTIN_VARIABLE_ENTRIES};
+constexpr StaticStringMap BUILTIN_VARIABLES{
+    LOWEST_PRECEDENCE_BUILTIN_VARIABLE_ENTRIES};
 
 enum class make_function_kind : u8
 {
@@ -281,7 +280,6 @@ struct make_rule
   String target;
   ArrayList<String> prerequisites;
   ArrayList<String> recipe_lines;
-  /* Each entry is the raw `NAME op= value` text. */
   ArrayList<String> variable_assignments;
 };
 
@@ -314,9 +312,6 @@ struct makefile
   ArrayList<make_variable> variables;
   ArrayList<make_rule> rules;
   ArrayList<make_pattern_rule> pattern_rules;
-  /* The first ordinary explicit target, the bare-make goal. A target-specific
-     variable line does not set it, the way GNU make picks the first real rule.
-   */
   String default_goal;
   StringMap<usize> variable_index;
   StringMap<usize> rule_index;
@@ -393,9 +388,6 @@ static fn make_expansion_end(StringView text, usize start_position,
                              ArrayList<char> &close_stack) throws
     -> Maybe<usize>;
 
-/* This runs on the raw recipe before the $(NAME) expansion, and a $$ escape is
-   carried through untouched so the later expansion collapses it to a single $
-   without the following byte being read as an automatic variable. */
 static fn automatic_path_part(StringView text, bool is_filename,
                               Allocator allocator) throws -> String
 {
@@ -1162,7 +1154,6 @@ static fn run_make_shell_function(EvalContext &cxt, makefile &mk,
   return folded;
 }
 
-/* None means the name is not a substitution reference. */
 static fn try_substitution_reference(EvalContext &cxt, makefile &mk,
                                      StringView name, usize depth) throws
     -> Maybe<String>
@@ -1709,8 +1700,7 @@ static fn expand(EvalContext &cxt, makefile &mk, StringView text,
   return result;
 }
 
-/* The first colon not immediately followed by '=' opens the rule. */
-static fn rule_colon(StringView line) wontthrow -> Maybe<usize>
+static fn first_colon_not_followed_by_equals(StringView line) wontthrow -> Maybe<usize>
 {
   usize token_start = 0;
   for (usize i = 0; i < line.length; i++) {
@@ -1785,14 +1775,6 @@ static fn apply_assignment(EvalContext &cxt, makefile &mk, StringView name_part,
     return;
   if (is_command_line) mk.command_variable_names.set(name, true);
 
-  /* A := assignment is immediate, so its right-hand side expands now against
-     the values defined so far, the way GNU make evaluates a simple variable. A
-     later
-     $(NAME) then reads the finished string. Expanding here also breaks the
-     self-reference in MAKE := $(MAKE) -j$(shell nproc), since $(MAKE) resolves
-     to the make program name before the variable is stored rather than
-     recursing on itself to the expansion-depth cap. A plain = stays lazy and
-     keeps its raw text. */
   if (let const index = mk.variable_index.find(name); index.has_value()) {
     make_variable &variable = mk.variables[*index.value()];
     if (operator_character == '?') return;
@@ -1832,9 +1814,7 @@ static fn apply_assignment(EvalContext &cxt, makefile &mk, StringView name_part,
   });
 }
 
-/* An odd run of trailing backslashes continues the line, a doubled \\ is a
-   literal backslash. */
-static fn ends_with_continuation(StringView line) wontthrow -> bool
+static fn ends_with_odd_backslash_run(StringView line) wontthrow -> bool
 {
   usize backslash_count = 0;
   usize k = line.length;
@@ -1866,7 +1846,9 @@ static fn join_continuations(StringView source, u32 source_name_index,
     let line = String{allocator, raw};
 
     if (!raw.is_empty() && raw[0] == '\t') {
-      while (ends_with_continuation(line.view()) && i + 1 < physical.count()) {
+      while (ends_with_odd_backslash_run(line.view()) &&
+             i + 1 < physical.count())
+      {
         line += '\n';
         i++;
         let next = physical[i].without_trailing_newline();
@@ -1875,7 +1857,9 @@ static fn join_continuations(StringView source, u32 source_name_index,
         line += next;
       }
     } else {
-      while (ends_with_continuation(line.view()) && i + 1 < physical.count()) {
+      while (ends_with_odd_backslash_run(line.view()) &&
+             i + 1 < physical.count())
+      {
         line =
             String{allocator,
                    line.view().substring_of_length(0, line.view().length - 1)};
@@ -1963,9 +1947,8 @@ static fn makefile_without_comment(StringView line, Allocator allocator) throws
   return uncommented;
 }
 
-/* The comma split honors nested parentheses. */
-static fn split_conditional_arguments(StringView rest, StringView &first,
-                                      StringView &second) wontthrow -> bool
+static fn split_conditional_arguments_at_top_level_comma(
+    StringView rest, StringView &first, StringView &second) wontthrow -> bool
 {
   rest = trim(rest);
   if (rest.is_empty() || rest[0] != '(') return false;
@@ -2013,7 +1996,8 @@ static fn evaluate_conditional(EvalContext &cxt, makefile &mk,
 
   let first = StringView{};
   let second = StringView{};
-  if (!split_conditional_arguments(rest, first, second)) return false;
+  if (!split_conditional_arguments_at_top_level_comma(rest, first, second))
+    return false;
   let const expanded_first = expand(cxt, mk, first, 0);
   let const expanded_second = expand(cxt, mk, second, 0);
   let const is_equal = expanded_first.view() == expanded_second.view();
@@ -2078,7 +2062,6 @@ static fn parse_makefile_into(EvalContext &cxt, makefile &mk,
       mk.active_source_name_index = logical.source_span.source_name_index;
       let line = logical.text.view();
 
-      /* A recipe line is kept verbatim and expanded only at build time. */
       if (!line.is_empty() && line[0] == '\t') {
         if (do_is_active()) {
           for (usize index : current_rule_indices)
@@ -2103,8 +2086,6 @@ static fn parse_makefile_into(EvalContext &cxt, makefile &mk,
 
       let const directive = leading_word(trimmed);
 
-      /* An inactive branch still tracks nested directives so the matching endif
-         pops the right one. */
       if (CONDITIONAL_DIRECTIVES.contains(directive)) {
         let const is_parent_active = do_is_active();
         let const is_taken =
@@ -2227,8 +2208,6 @@ static fn parse_makefile_into(EvalContext &cxt, makefile &mk,
         continue;
       }
 
-      /* override re-asserts a value, so its prefix is stripped and the
-         assignment parses as usual. */
       let expanded_statement = String{cxt.scratch_allocator()};
       let statement = trimmed;
       if (directive == "override")
@@ -2295,7 +2274,7 @@ static fn parse_makefile_into(EvalContext &cxt, makefile &mk,
         }
       }
 
-      let const colon = rule_colon(statement);
+      let const colon = first_colon_not_followed_by_equals(statement);
       let const equals = statement.find_character('=');
       let const is_rule =
           colon.has_value() && (!equals.has_value() || *colon < *equals);
@@ -2322,7 +2301,6 @@ static fn parse_makefile_into(EvalContext &cxt, makefile &mk,
           continue;
         }
 
-        /* The targets and prerequisites expand when the rule is read. */
         let const targets =
             expand(cxt, mk, trim(statement.substring_of_length(0, *colon)), 0);
         let prerequisite_text = after_colon;
@@ -2867,7 +2845,6 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
     }
   }
 
-  /* The saved values restore in reverse so a repeated += unwinds cleanly. */
   let saved_variables =
       ArrayList<make_variable_snapshot>{cxt.scratch_allocator()};
   for (let const &assignment : target_assignments) {
@@ -3077,9 +3054,6 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
     if ((options.is_query || options.should_touch) && !should_force_run)
       continue;
 
-    /* The automatic variables are filled on the raw recipe first, then the
-       $(NAME) expansion runs, so a $$ stays an escape and a $@ that the
-       expansion would not touch is resolved here. */
     let const with_autos = substitute_automatic(
         body, automatic_target.view(), archive_member.view(), first_prereq,
         all_prereqs.view(), repeated_prereqs.view(), newer_prereqs.view(),
@@ -3090,18 +3064,13 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
       ec.print_to_stdout(command + "\n");
     if (options.is_dry_run && !should_force_run) continue;
 
-    /* A recipe runs with the strict toggles off so an unmatched glob or an
-       unset variable does not abort the build. */
-    let const runtime_scope = RuntimeStateScope{cxt};
+    let const strict_toggles_off_scope = RuntimeStateScope{cxt};
     cxt.runtime_state().set_mood(mimic_mood::Posix);
     cxt.runtime_state().set_option(shell_option_id::Failglob, false);
     cxt.runtime_state().set_option(shell_option_id::Nounset, false);
     cxt.runtime_state().set_option(shell_option_id::Errexit, false);
     cxt.runtime_state().set_warning_level(0);
 
-    /* Each recipe line runs in its own subshell, the way GNU make spawns a
-       shell per line. The newlines guard the closing paren against a trailing
-       comment in the line. */
     let recipe_source = command.clone();
     if (const String *shell_value = mk.find_variable("SHELL");
         shell_value != nullptr)
@@ -3165,7 +3134,7 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
   return true;
 }
 
-} /* namespace */
+}
 
 fn parse_makefile_shell_sources(StringView source, Allocator allocator) throws
     -> SortedArrayList<make_shell_source_range,
@@ -3225,7 +3194,7 @@ fn parse_makefile_shell_sources(StringView source, Allocator allocator) throws
       continue;
     }
 
-    let const colon = rule_colon(statement);
+    let const colon = first_colon_not_followed_by_equals(statement);
     let const equals = statement.find_character('=');
     if (colon.has_value() && (!equals.has_value() || *colon < *equals)) {
       let const after_colon = statement.substring(*colon + 1);
@@ -3237,7 +3206,7 @@ fn parse_makefile_shell_sources(StringView source, Allocator allocator) throws
       has_current_rule = true;
       let const raw_line = source.substring_of_length(
           logical.source_span.position, logical.source_span.length);
-      let const raw_colon = rule_colon(raw_line);
+      let const raw_colon = first_colon_not_followed_by_equals(raw_line);
       if (!raw_colon.has_value()) continue;
       let const semicolon =
           raw_line.substring(*raw_colon + 1).find_character(';');
@@ -3730,7 +3699,7 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
       suffix_description += " " + suffix;
     suffix_description += '\n';
     ec.print_to_stdout(suffix_description);
-    for (let const &entry : BUILTIN_VARIABLE_ENTRIES)
+    for (let const &entry : LOWEST_PRECEDENCE_BUILTIN_VARIABLE_ENTRIES)
       ec.print_to_stdout(entry.key.to_string() + " = " + entry.value + "\n");
     for (let const &variable : mk.variables)
       ec.print_to_stdout(variable.name + " = " + variable.value + "\n");
@@ -3817,7 +3786,6 @@ fn collect_makefile_targets(EvalContext &cxt, const Path &makefile) throws
   let source = makefile.read_entire_file();
   if (!source.has_value()) return targets;
 
-  /* Completion leaves the makefile's $(shell ...) functions unrun. */
   let const saved_suppressed = cxt.execution_store().make_shell_suppressed();
   cxt.execution_store().set_make_shell_suppressed(true);
   defer { cxt.execution_store().set_make_shell_suppressed(saved_suppressed); };
@@ -3835,4 +3803,4 @@ fn collect_makefile_targets(EvalContext &cxt, const Path &makefile) throws
   return targets;
 }
 
-} /* namespace koshka::koshkit */
+}

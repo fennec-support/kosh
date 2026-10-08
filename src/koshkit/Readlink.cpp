@@ -49,4 +49,4 @@ fn Readlink::execute(
   return status;
 }
 
-} /* namespace koshka::koshkit */
+}

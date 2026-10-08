@@ -105,8 +105,6 @@ static fn color_is_suppressed_by_environment() throws -> bool
   return false;
 }
 
-/* isatty is a syscall and diagnostic rendering asks once per message. The
-   answer is kept until a redirection rebinds a standard descriptor. */
 struct cached_terminal_answer
 {
   u64 epoch{static_cast<u64>(-1)};
@@ -199,7 +197,7 @@ pure fn file_entry_color(file_entry_type type) wontthrow -> StringView
   return StringView{};
 }
 
-} /* namespace colors */
+}
 
 pure fn highlight_role_name(highlight_role role) wontthrow -> StringView
 {
@@ -231,4 +229,4 @@ pure fn highlight_role_name(highlight_role role) wontthrow -> StringView
   return "unknown";
 }
 
-} /* namespace koshka */
+}

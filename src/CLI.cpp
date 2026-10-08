@@ -313,9 +313,8 @@ static fn find_flag(const FlagList &flags, const char *flag_start, bool is_long,
       if (!flags[i]->long_name().is_empty()) {
         let const flag_length = flags[i]->long_name().length;
 
-        /* strncmp stops at the argument's NUL, so a short argument such as --f
-           against the flag --foobar does not read past it. */
-        if (flag_length > flag_start_length) continue;
+        let const is_flag_longer_than_argument = flag_length > flag_start_length;
+        if (is_flag_longer_than_argument) continue;
 
         let const after_name = flag_start[flag_length];
         if (flag_length > longest_length &&
@@ -481,9 +480,6 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
   u32 position = 0;
   let args = ArrayList<String>{allocator};
 
-  /* When the caller asks for operand locations, each surviving operand records
-     the source span of the argv token it came from, so a builtin can caret the
-     specific operand after flag parsing drops the flags. */
   let const do_record_operand =
       [argv, base_position, arg_locations, operand_locations](usize arg_index)
           throws -> void {
@@ -503,9 +499,6 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
     ASSERT(argv[i] != nullptr);
 
     if (should_take_next_argument_as_value) {
-      /* operand_value_flag alone lets a recognized boolean flag after it parse
-         as a flag, so `-c -l command` runs command under -l. Every other flag
-         takes the next argument verbatim, keeping a dash-led value intact. */
       bool is_next_known_boolean_flag = false;
       if (previous_flag == operand_value_flag &&
           operand_value_flag != nullptr && argv[i][0] == '-' &&
@@ -605,8 +598,6 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
       continue;
     }
 
-    /* argv[0] is the invocation name even when it opens with a dash, the login
-       convention that spawns a shell as -bash, so it is never a flag bundle. */
     let const argument = StringView{argv[i]};
     let const is_negative_number_operand =
         parse_options.should_accept_negative_number_operand &&
@@ -615,8 +606,6 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
     if (should_ignore_rest || argv[i][0] != '-' || i == 0 ||
         is_negative_number_operand)
     {
-      /* The next operand is the script, after which every argument is a
-         positional parameter for the script, the way `sh script -x` does. */
       let const is_program_name = i == 0;
       if (is_program_name && parse_options.should_omit_program_name) continue;
 
@@ -1660,13 +1649,11 @@ fn flush() throws -> void
                 os::last_system_error_message()};
 }
 
-/* The first show_message consumes it, so only the leading message of a
-   completion run breaks to its own line, not every message after it. */
-static thread_local bool MESSAGE_LEADING_NEWLINE_ARMED = false;
+static thread_local bool ONE_SHOT_MESSAGE_LEADING_NEWLINE_ARMED = false;
 
 fn arm_message_leading_newline(bool armed) wontthrow -> void
 {
-  MESSAGE_LEADING_NEWLINE_ARMED = armed;
+  ONE_SHOT_MESSAGE_LEADING_NEWLINE_ARMED = armed;
 }
 
 cold fn show_message(StringView err) throws -> void
@@ -1675,9 +1662,9 @@ cold fn show_message(StringView err) throws -> void
 
   os::signal_internal_diagnostic();
 
-  if (MESSAGE_LEADING_NEWLINE_ARMED) {
+  if (ONE_SHOT_MESSAGE_LEADING_NEWLINE_ARMED) {
     print_error("\n");
-    MESSAGE_LEADING_NEWLINE_ARMED = false;
+    ONE_SHOT_MESSAGE_LEADING_NEWLINE_ARMED = false;
   }
   print_error(err);
   print_error("\n");
@@ -1705,4 +1692,4 @@ fn show_report_warnings(const ArrayList<String> &warnings) throws -> void
     show_warning(warning.view());
 }
 
-} /* namespace koshka */
+}

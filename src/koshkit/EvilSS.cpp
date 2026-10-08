@@ -318,7 +318,7 @@ fn append_network_socket_report(String &output,
   return !rows.is_empty();
 }
 
-} /* namespace */
+}
 
 fn EvilSS::execute(const ExecContext &ec, EvalContext &cxt,
                    const ArrayList<String> &args,
@@ -380,4 +380,4 @@ fn EvilSS::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-} /* namespace koshka::koshkit */
+}

@@ -193,7 +193,6 @@ inline constexpr StaticStringMap KOSHKIT_UTILS{KOSHKIT_ENTRIES};
 
 inline constexpr usize KOSHKIT_UTIL_COUNT = countof(KOSHKIT_ENTRIES);
 
-/* A utility with no registration reads back null. */
 fn register_koshkit_util_flags(Utility::Kind chosen, const FlagList *flags,
                                const SynopsisList *synopsis) wontthrow -> void;
 fn koshkit_util_flag_list(Utility::Kind chosen) wontthrow -> const FlagList *;
@@ -262,8 +261,6 @@ fn makefile_shell_analysis_source(StringView source,
                                   const make_shell_source_range &range) throws
     -> String;
 
-/* The koshkit builtin passes 1 for `koshkit ls` and 0 for a bare-name
-   invocation. */
 fn dispatch(const ExecContext &ec, EvalContext &cxt, usize name_index,
             Maybe<Utility::Kind> chosen) throws -> i32;
 
@@ -282,8 +279,6 @@ fn print_util_help(const ExecContext &ec, StringView name, StringView synopsis,
                    StringView description, const FlagList &flags) throws
     -> void;
 
-/* Reads FLAG_HELP, HELP_SYNOPSIS, HELP_DESCRIPTION, and FLAG_LIST from the
-   caller's scope. */
 #define KOSHKIT_SHOW_HELP_AND_RETURN(ec, args)                                 \
   do {                                                                         \
     if (FLAG_HELP.is_enabled()) {                                              \
@@ -343,8 +338,6 @@ fn read_fd_to_string(os::descriptor fd) throws -> Maybe<String>;
 fn confirm_koshkit_action(const ExecContext &ec, StringView prompt) throws
     -> bool;
 
-/* Returns false on the first failure with the reason in
-   os::last_system_error_message. */
 enum class removal_mode : u8
 {
   SinglePath,
@@ -630,8 +623,6 @@ fn open_named_or_stdin(const ExecContext &ec, StringView path) wontthrow
 fn file_crc32c(const ExecContext &ec, StringView path,
                Allocator allocator) throws -> Maybe<String>;
 
-/* The operand list becomes a source list, a single "-" stdin source when no
-   operand is given, otherwise each operand as a view. */
 fn source_list_from_operands(const ArrayList<String> &operands,
                              Allocator allocator,
                              usize first_operand_index = 0) throws
@@ -664,9 +655,6 @@ fn resolve_koshkit_signal(StringView spelled, SourceLocation location,
 
 fn format_signal_list() throws -> String;
 
-/* Report a utility error that must not abort the run, with a located caret in
-   the default and posix moods and a soft line in the bash mood. A fatal error
-   throws an Error instead. */
 cold noinline fn report_soft_koshkit_error(const ExecContext &ec,
                                            EvalContext &cxt,
                                            StringView message) throws -> void;
@@ -698,6 +686,6 @@ cold noinline fn report_soft_koshkit_util_error(const ExecContext &ec,
                                                 StringView message,
                                                 StringView note) throws -> void;
 
-} /* namespace koshkit */
+}
 
-} /* namespace koshka */
+}

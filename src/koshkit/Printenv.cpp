@@ -47,4 +47,4 @@ fn Printenv::execute(
   return status;
 }
 
-} /* namespace koshka::koshkit */
+}

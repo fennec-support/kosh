@@ -88,7 +88,7 @@ fn build_command_source(const ArrayList<String> &operands,
   return source;
 }
 
-} /* namespace */
+}
 
 fn Retry::execute(const ExecContext &ec, EvalContext &cxt,
                   const ArrayList<String> &args,
@@ -191,4 +191,4 @@ fn Retry::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} /* namespace koshka::koshkit */
+}

@@ -78,4 +78,4 @@ cold fn Dirname::execute(
   return 0;
 }
 
-} /* namespace koshka::koshkit */
+}

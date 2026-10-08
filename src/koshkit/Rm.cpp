@@ -246,8 +246,7 @@ report_dry_run_removal(const removal_request &request, StringView path,
   return true;
 }
 
-/* POSIX requires rm to refuse a . or .. operand even under -f. */
-static fn names_dot_or_dotdot(StringView operand) wontthrow -> bool
+static fn names_dot_refused_under_force(StringView operand) wontthrow -> bool
 {
   usize end = operand.length;
   while (end > 1 && operand[end - 1] == '/')
@@ -261,8 +260,7 @@ static fn names_dot_or_dotdot(StringView operand) wontthrow -> bool
   return base == StringView{"."} || base == StringView{".."};
 }
 
-/* rm refuses / even under -f, matching GNU preserve-root. */
-static fn names_root_directory(StringView operand) wontthrow -> bool
+static fn names_root_refused_under_force(StringView operand) wontthrow -> bool
 {
   if (operand.length == 0) return false;
 
@@ -305,7 +303,7 @@ fn Rm::execute(const ExecContext &ec, EvalContext &cxt,
   i32 status = 0;
   for (let const &operand : operands) {
     if (os::INTERRUPT_REQUESTED) return 130;
-    if (names_dot_or_dotdot(operand.view())) {
+    if (names_dot_refused_under_force(operand.view())) {
       report_soft_koshkit_util_error(
           ec, cxt, args[0].view(),
           "refusing to remove '.' or '..' directory: "
@@ -315,7 +313,7 @@ fn Rm::execute(const ExecContext &ec, EvalContext &cxt,
       continue;
     }
 
-    if (names_root_directory(operand.view())) {
+    if (names_root_refused_under_force(operand.view())) {
       report_soft_koshkit_util_error(
           ec, cxt, args[0].view(),
           "refusing to remove the root directory: skipping '" + operand + "'");
@@ -347,4 +345,4 @@ fn Rm::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} /* namespace koshka::koshkit */
+}
