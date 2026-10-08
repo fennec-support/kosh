@@ -34,6 +34,6 @@ cold wontreturn fn throw_unterminated(const SourceLocation &opener,
                                       StringView keyword,
                                       SourceLocation fallback) throws -> void;
 
-} /* namespace internal */
+}
 
-} /* namespace koshka */
+}

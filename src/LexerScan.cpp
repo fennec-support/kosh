@@ -35,8 +35,6 @@ enum struct balanced_scan_keyword : u8
   command_word,
 };
 
-/* A command word keeps the next word at command position, so a case header is
-   still recognized after it. */
 constexpr static_string_entry<balanced_scan_keyword>
     BALANCED_SCAN_KEYWORD_ENTRIES[] = {
         {SSK("case"),   balanced_scan_keyword::case_word   },
@@ -195,8 +193,6 @@ fn scan_balanced_shell_region(StringView source, usize position,
       continue;
     }
 
-    /* A case pattern ends with a parenthesis that closes no region. Keywords
-       are recognized so a pattern position is known. */
     if (byte >= 'a' && byte <= 'z' &&
         (previous_byte == 0 || is_whitespace(previous_byte) ||
          is_shell_sentinel(previous_byte)))
@@ -367,6 +363,6 @@ fn scan_balanced_shell_region(StringView source, usize position,
   return None;
 }
 
-} /* namespace lexer */
+}
 
-} /* namespace koshka */
+}

@@ -59,4 +59,4 @@ fn source_fixes_for_diagnostic(diagnostic_id diagnostic, StringView source,
                                const SourceLocation &location) throws
     -> ArrayList<source_fix>;
 
-} /* namespace koshka */
+}

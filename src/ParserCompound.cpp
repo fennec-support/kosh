@@ -144,9 +144,6 @@ static fn word_token_from_assignment(BumpArena &arena,
                                      const Assignment *a) throws
     -> tokens::WordToken *;
 
-/* Whether the (( opening before body_start_position closes with two adjacent
-   right parens at depth zero, separating an arithmetic command from a subshell
-   whose first child is a subshell. */
 static fn double_paren_closes_adjacent(StringView source,
                                        usize body_start_position) wontthrow
     -> bool
@@ -193,7 +190,6 @@ static fn word_token_from_raw(BumpArena &arena, StringView text,
 fn Parser::parse_optional_in_clause_words(
     ArrayList<const Token *> &words) throws -> bool
 {
-  /* The word 'in' is not a keyword token. */
   Token *peeked = m_lexer.peek_shell_token();
   ASSERT(peeked != nullptr);
   if (!is_unquoted_word(peeked, "in")) {
@@ -218,7 +214,6 @@ fn Parser::parse_optional_in_clause_words(
       continue;
     }
     if (word->kind() != Token::Kind::Word) {
-      /* A non-keyword separator or operator ends the list. */
       if (!token_kind_is_keyword(word->kind())) break;
       let const raw = word->raw_string();
       m_lexer.advance_past_last_peek();
@@ -247,8 +242,6 @@ alwaysinline fn Parser::parse_loop_header(
                                      name_token->source_location());
   }
   if (name_token->kind() != Token::Kind::Word) {
-    /* A (( in the name slot under POSIX mode is the bash C-style loop in a mode
-       that keeps the dash reading. */
     if (keyword == "for" && m_lexer.is_posix_mode() &&
         name_token->kind() == Token::Kind::LeftParen)
     {
@@ -263,8 +256,6 @@ alwaysinline fn Parser::parse_loop_header(
                                 keyword + "'"};
   }
 
-  /* The loop variable must be a plain name, so a $ expansion such as for $f, a
-     quoted word, or a non-identifier is rejected. */
   let const &name_word =
       static_cast<const tokens::WordToken *>(name_token)->word();
   let is_name_plain =
@@ -308,8 +299,6 @@ hot fn Parser::parse_for() throws -> Command *
 
   LOG(Debug, "parsing a for loop at byte %u", location.position);
 
-  /* A for header opening with (( is the bash C-style loop, riding every mood
-     but POSIX where the bare-name reading holds. */
   if (!m_lexer.is_posix_mode()) {
     Token *peeked = m_lexer.peek_shell_token();
     ASSERT(peeked != nullptr);
@@ -340,8 +329,6 @@ hot fn Parser::parse_for() throws -> Command *
   return loop_node;
 }
 
-/* A bash select loop, select name in words; do BODY; done. It shares the for
-   header shape, printing a numbered menu and reading a choice at run time. */
 hot fn Parser::parse_select() throws -> Command *
 {
   Token *keyword = m_lexer.next_shell_token();
@@ -361,7 +348,6 @@ hot fn Parser::parse_select() throws -> Command *
   return loop_node;
 }
 
-/* The shell_command productions a coprocess body can open with. */
 hot pure static fn token_opens_compound_command(const Token *token) wontthrow
     -> bool
 {
@@ -392,10 +378,6 @@ hot pure static fn token_opens_compound_command(const Token *token) wontthrow
   }
 }
 
-/* A bash coprocess, coproc [NAME] command. A word after the keyword names the
-   coprocess only when a compound command opens behind it. In coproc cat the
-   word is the first word of a simple command and the coprocess takes the
-   default name. */
 hot fn Parser::parse_coproc() throws -> Command *
 {
   Token *keyword = m_lexer.next_shell_token();
@@ -420,9 +402,6 @@ hot fn Parser::parse_coproc() throws -> Command *
     }
 
     if (is_plain_name) {
-      /* The candidate is consumed either way. A compound opener behind it makes
-         the word the coprocess name, and anything else makes it the first word
-         of a simple command. */
       candidate = m_lexer.next_shell_token();
 
       if (token_opens_compound_command(m_lexer.peek_shell_token()))
@@ -447,8 +426,6 @@ hot fn Parser::parse_coproc() throws -> Command *
   return node;
 }
 
-/* In a case word or pattern a NAME=VALUE token is a plain word, rebuilt into a
-   word token that keeps the expansion segments after the NAME= prefix. */
 static fn word_token_from_assignment(BumpArena &arena,
                                      const Assignment *a) throws
     -> tokens::WordToken *
@@ -550,8 +527,6 @@ hot fn Parser::parse_case() throws -> Command *
         pattern = word_token_from_assignment(
             m_lexer.arena(), static_cast<Assignment *>(pattern));
       } else if (pattern->kind() != Token::Kind::Word) {
-        /* A keyword used as a literal pattern, the way ble.sh writes (done), is
-           taken by its source text. */
         let const pattern_location = pattern->source_location();
         let const text = m_lexer.source().substring_of_length(
             pattern_location.position, pattern_location.length);
@@ -628,8 +603,6 @@ hot fn Parser::parse_brace_group() throws -> Command *
   Token *close = m_lexer.next_shell_token();
   ASSERT(close != nullptr);
   if (!is_unquoted_word(close, "}")) {
-    /* The closing '}' is a reserved word only at the start of a command, so
-       without a ';' or newline before it the group never closes. */
     throw_unterminated(open->source_location(), "Unterminated brace group",
                        m_lexer.source(), "}", close->source_location());
   }
@@ -654,10 +627,6 @@ hot fn Parser::parse_paren_command() throws -> Command *
   ASSERT(open != nullptr);
   ASSERT(open->kind() == Token::Kind::LeftParen);
 
-  /* Two opening parens are a nested subshell in POSIX, so POSIX keeps that
-     reading while bash and default take the arithmetic command. A (( that
-     closes with a lone ) at depth zero, such as ((cmd; cmd); cmd), is a
-     subshell whose first child is a subshell, decided by a quote-aware scan. */
   Token *next = m_lexer.peek_shell_token();
   ASSERT(next != nullptr);
   if (!m_lexer.is_posix_mode() && next->kind() == Token::Kind::LeftParen &&
@@ -705,9 +674,6 @@ hot fn Parser::parse_subshell(Token *open) throws -> Command *
   return subshell;
 }
 
-/* Read the body of a (( )) construct, returning a view of the source between
-   the two pairs. Shared by the arithmetic command and the C-style for header.
- */
 hot fn Parser::capture_double_paren_body(Token *open) throws -> StringView
 {
   ASSERT(open != nullptr);
@@ -758,8 +724,6 @@ hot fn Parser::parse_arithmetic_command(Token *open) throws -> Command *
       open->source_location().position);
 
   let const body = capture_double_paren_body(open);
-  /* The location spans the whole (( body )) so a runtime error underlines the
-     entire expression. */
   let const open_location = open->source_location();
   const SourceLocation full_location{open_location.position, body.length + 4,
                                      open_location.source_name_index};
@@ -767,8 +731,6 @@ hot fn Parser::parse_arithmetic_command(Token *open) throws -> Command *
       full_location, body.copy_to(bump_allocator(m_lexer.arena())));
 }
 
-/* A bash C-style for, for (( init; cond; step )); do BODY; done. The header is
-   split on its two top-level semicolons into three arithmetic clauses. */
 hot fn Parser::parse_c_style_for(const SourceLocation &location,
                                  Token *open) throws -> Command *
 {
@@ -776,8 +738,6 @@ hot fn Parser::parse_c_style_for(const SourceLocation &location,
 
   let const header = capture_double_paren_body(open);
 
-  /* The clause separators are the semicolons at paren depth zero, so a grouped
-     subexpression in a clause is skipped. */
   usize separators[2] = {0, 0};
   usize separator_count = 0;
   usize depth = 0;
@@ -858,10 +818,6 @@ hot fn Parser::parse_conditional_command() throws -> Command *
   LOG(Debug, "parsing a conditional command at byte %u",
       open->source_location().position);
 
-  /* The tokens between [[ and ]] are collected raw rather than run through the
-     command parser, so a < or > inside is a string comparison and not a
-     redirection. The operand words are kept for the evaluator to expand without
-     field splitting. */
   let elements = ArrayList<conditional_element>{heap_allocator()};
   usize close_end_position;
   loop
@@ -1006,4 +962,4 @@ hot fn Parser::parse_conditional_command() throws -> Command *
   return node;
 }
 
-} /* namespace koshka */
+}

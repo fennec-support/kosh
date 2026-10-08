@@ -22,9 +22,6 @@ namespace optimizer {
 
 namespace {
 
-/* A byte that may appear in a provably-constant arithmetic expression. Every
-   letter and underscore is excluded, so no variable name and no hex prefix is
-   folded. */
 pure fn is_constant_arithmetic_text(StringView text) wontthrow -> bool
 {
   static constexpr let CONSTANT_BYTES = [] {
@@ -43,8 +40,6 @@ pure fn is_constant_arithmetic_text(StringView text) wontthrow -> bool
   return true;
 }
 
-/* A recorded constant is only substituted into arithmetic when its value is a
-   plain integer, so it cannot inject an operator or another name. */
 pure fn is_plain_integer_literal(StringView text) wontthrow -> bool
 {
   if (text.is_empty()) return false;
@@ -52,9 +47,6 @@ pure fn is_plain_integer_literal(StringView text) wontthrow -> bool
   return text.substring(start_position).is_all_decimal_digits();
 }
 
-/* True when a token is a bare unquoted $name reference that field-splits at run
-   time. Its recorded value is not the single test argument the run sees, so the
-   verdict must not fold from it. A quoted "$name" still folds. */
 pure fn is_split_eligible_variable_operand(const Token *token) wontthrow -> bool
 {
   ASSERT(token != nullptr);
@@ -125,7 +117,7 @@ fn constant_test_verdict(const ArrayList<const Token *> &args,
   return None;
 }
 
-} /* namespace */
+}
 
 fn literal_word_value(const Word &word) throws -> Maybe<String>
 {
@@ -137,8 +129,6 @@ fn literal_word_value(const Word &word) throws -> Maybe<String>
       value.append(segment.text.view());
       break;
     case WordSegment::Kind::UnquotedText:
-      /* An unquoted segment expands a glob metacharacter and a leading tilde,
-         so its bytes are only a plain constant when it holds neither. */
       for (usize i = 0; i < segment.text.count(); i++) {
         if (lexer::is_expandable_char(segment.text[i])) return None;
       }
@@ -164,8 +154,6 @@ fn literal_word_value(const Token *token) throws -> Maybe<String>
 
 namespace {
 
-/* The literal program text of a command word, keeping a glob metacharacter so
-   the bracket word [ reads as its two-byte name. */
 fn command_word_literal(const Token *token) throws -> Maybe<String>
 {
   ASSERT(token != nullptr);
@@ -186,7 +174,7 @@ fn command_word_literal(const Token *token) throws -> Maybe<String>
   return name;
 }
 
-} /* namespace */
+}
 
 fn plain_variable_reference_name(const Token *token) wontthrow
     -> Maybe<StringView>
@@ -333,8 +321,6 @@ fn simple_command_static_verdict(const ArrayList<const Token *> &args,
 {
   if (args.is_empty()) return None;
 
-  /* The bracket word [ holds a glob metacharacter that the operand extractor
-     rejects, so the name uses the word's literal text directly. */
   let const name = command_word_literal(args[0]);
   if (!name.has_value()) return None;
 
@@ -389,8 +375,6 @@ pure fn word_segment_has_glob_metacharacter(
     case '?':
     case '[': return true;
 
-    /* An extended-glob opener such as @( still globs against names, so it keeps
-       the word off the literal fast path. */
     case '+':
     case '@':
     case '!':
@@ -408,8 +392,6 @@ pure fn classify_plain_literal(const Word &word) wontthrow -> Word::PlainLiteral
 {
   if (word.segments.is_empty()) return Word::PlainLiteral::NotPlain;
 
-  /* A single unquoted segment splits and globs, so it qualifies only without a
-     glob metacharacter and without a leading tilde. */
   if (word.segments.count() == 1 &&
       word.segments[0].kind == WordSegment::Kind::UnquotedText)
   {
@@ -434,8 +416,6 @@ pure fn classify_plain_literal(const Word &word) wontthrow -> Word::PlainLiteral
 
 namespace {
 
-/* Fold every constant arithmetic expansion in a word once, so the evaluator
-   reads the cached value instead of re-parsing on every expansion. */
 pure fn arithmetic_has_side_effect(StringView text) wontthrow -> bool
 {
   for (usize i = 0; i < text.length; i++) {
@@ -516,7 +496,6 @@ fn fold_constant_arithmetic_in_token(const Token *token,
       token->source_location());
 }
 
-/* RULE constant-arithmetic folding. */
 fn rule_fold_constant_arithmetic(const Expression *node,
                                  AnalysisContext &actx) throws -> bool
 {
@@ -545,9 +524,6 @@ fn rule_fold_constant_arithmetic(const Expression *node,
   return false;
 }
 
-/* RULE dead-branch elimination. The branch an if takes is recorded when every
-   condition up to it is statically decidable, and the first undecidable
-   condition stops the fold. */
 fn rule_dead_branch_elimination(const Expression *node,
                                 AnalysisContext &actx) throws -> bool
 {
@@ -586,9 +562,6 @@ fn rule_dead_branch_elimination(const Expression *node,
   return true;
 }
 
-/* RULE loop elimination. A while false or until true never runs its body and is
-   recorded as skipped. A while true or until false is infinite and stays
-   unfolded. */
 fn rule_loop_elimination(const Expression *node, AnalysisContext &actx) throws
     -> bool
 {
@@ -622,8 +595,6 @@ fn rule_loop_elimination(const Expression *node, AnalysisContext &actx) throws
   return true;
 }
 
-/* RULE compound-body elimination. An if folded to a missing else body runs
-   nothing, so the whole if is a proven no-op the evaluator skips. */
 fn rule_eliminate_compound_body(const Expression *node,
                                 AnalysisContext &actx) throws -> bool
 {
@@ -645,8 +616,6 @@ fn rule_eliminate_compound_body(const Expression *node,
   return true;
 }
 
-/* RULE empty for-loop elimination. A for with an explicit in clause and no
-   words never iterates. */
 fn rule_eliminate_empty_for(const Expression *node,
                             AnalysisContext &actx) throws -> bool
 {
@@ -654,8 +623,6 @@ fn rule_eliminate_empty_for(const Expression *node,
   if (loop_node == nullptr) return false;
   if (loop_node->is_fully_eliminated()) return false;
 
-  /* A for without an in clause walks the positional parameters, whose count is
-     only known at run time. */
   if (!loop_node->has_in_clause()) return false;
   if (!loop_node->words().is_empty()) return false;
 
@@ -669,9 +636,6 @@ fn rule_eliminate_empty_for(const Expression *node,
   return true;
 }
 
-/* RULE C-style for folding. A constant condition with no run-time variable is
-   folded to its value, non-zero running as an infinite loop and zero folding
-   the loop to a no-op. */
 fn rule_fold_cstyle_for(const Expression *node, AnalysisContext &actx) throws
     -> bool
 {
@@ -679,13 +643,9 @@ fn rule_fold_cstyle_for(const Expression *node, AnalysisContext &actx) throws
   if (loop_node == nullptr) return false;
   if (loop_node->has_folded_condition()) return false;
 
-  /* A blank condition is the for ((;;)) infinite form. */
   let const trimmed = loop_node->condition_clause().trim_blanks();
   if (trimmed.length == 0) return false;
 
-  /* A condition that reads the counter would freeze the loop at its first
-     verdict. Only a condition built entirely from constant arithmetic bytes
-     folds. */
   let const value = try_fold_constant_arithmetic(trimmed);
   if (!value.has_value()) return false;
   bool is_exact_nonzero;
@@ -706,9 +666,6 @@ fn rule_fold_cstyle_for(const Expression *node, AnalysisContext &actx) throws
                            node->source_location(), {trimmed, folded.view()});
   }
 
-  /* A constant zero condition skips the body, but the init clause still runs
-     once the way C semantics require, so only a blank-init loop is a proven
-     no-op. */
   if (*value == 0 && !is_exact_nonzero &&
       loop_node->init_clause().trim_blanks().length == 0)
   {
@@ -729,11 +686,9 @@ OptimizationRule *const OPTIMIZATION_RULES[] = {
     rule_eliminate_empty_for,      rule_fold_cstyle_for,
 };
 
-/* The pass cap bounds the fixpoint loop, so a rule that reports a change
-   without progress cannot loop the driver forever. */
 constexpr usize MAX_OPTIMIZATION_PASSES = 8;
 
-} /* namespace */
+}
 
 fn optimize_node(const Expression *node, AnalysisContext &actx) throws -> void
 {
@@ -754,6 +709,6 @@ fn optimize_node(const Expression *node, AnalysisContext &actx) throws -> void
       MAX_OPTIMIZATION_PASSES);
 }
 
-} /* namespace optimizer */
+}
 
-} /* namespace koshka */
+}

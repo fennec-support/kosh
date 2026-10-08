@@ -147,9 +147,6 @@ fn Parser::close_analysis_scope(usize scope_mark) throws
 
 static_assert(static_cast<u8>(Token::Kind::Function) < 64);
 
-/* A brace is a reserved word only when a token is exactly '{' or '}' as a
-   single unquoted segment, so a quoted or escaped brace is rejected. */
-/* [[ and ]] arrive from the lexer as ordinary single unquoted words. */
 hot pure fn internal::get_unquoted_word_text(const Token *token) wontthrow
     -> const SegmentText *
 {
@@ -171,8 +168,6 @@ hot pure fn internal::is_unquoted_word(const Token *token,
   return unquoted_text != nullptr && *unquoted_text == text;
 }
 
-/* RightBracket in the terminator set stands for a standalone '}' word, the
-   close of a brace group. */
 hot pure static fn is_list_terminator(const Token *token,
                                       u64 terminator_mask) wontthrow -> bool
 {
@@ -183,9 +178,6 @@ hot pure static fn is_list_terminator(const Token *token,
           is_unquoted_word(token, "}"));
 }
 
-/* The byte location of the keyword as a whole word in the source, so a missing
-   terminator can point the caret straight at the keyword read as an argument.
- */
 cold pure static fn find_standalone_keyword(StringView source,
                                             StringView keyword) wontthrow
     -> Maybe<SourceLocation>
@@ -339,9 +331,6 @@ fn Parser::skip_semicolons_and_newlines() throws -> void
   }
 }
 
-/* Skip to the next statement boundary so parsing resumes after a syntax error.
-   At least one token is always consumed, so the offending token cannot stall
-   the loop. */
 cold fn Parser::recover_to_next_statement() throws -> void
 {
   LOG(Debug, "skipping tokens to the next statement boundary");
@@ -476,7 +465,6 @@ alwaysinline fn Parser::peek_top_level_token(
   return token;
 }
 
-/* Parse every top-level command and recover after syntax errors. */
 cold fn Parser::construct_ast(
     ArrayList<String> &errors, EvalContext *context,
     ArrayList<source_diagnostic> *diagnostic_sink) throws -> Expression *
@@ -486,8 +474,6 @@ cold fn Parser::construct_ast(
 
   loop
   {
-    /* An unterminated quote or here-document is raised by the token read
-       itself, so the scan for the next command records it and stops. */
     Token *token = peek_top_level_token(errors, context, diagnostic_sink);
     if (token == nullptr) break;
 
@@ -506,8 +492,6 @@ cold fn Parser::construct_ast(
     }
     if (!did_parse_fail) continue;
 
-    /* The recovery scan is reached only once the parse error is recorded, and
-       a lexical error stops that scan at the same place. */
     let did_recovery_fail = false;
     try {
       recover_to_next_statement();
@@ -569,8 +553,6 @@ fn Parser::reject_empty_loop_body(const Expression *body) throws -> void
 
 hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
 {
-  /* Every nested compound command recurses through this list. A source nested
-     past the limit throws here instead of overflowing the native stack. */
   m_command_depth++;
   defer { m_command_depth--; };
   if (m_command_depth > MAX_COMMAND_DEPTH) {
@@ -621,9 +603,6 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
   loop
   {
     if (should_parse_command) {
-      /* A leading time keyword times the command or pipeline that follows. bash
-         allows it before the ! negation, and -p or --posix selects the POSIX
-         report. */
       Token *maybe_time = nullptr;
       if (m_analysis_metadata_collection_mode ==
           analysis_metadata_collection_mode::Enabled)
@@ -716,7 +695,6 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
     Token *token = m_lexer.peek_shell_token();
     ASSERT(token != nullptr);
 
-    /* A terminator keyword is left for the caller to consume. */
     if (is_list_terminator(token, terminator_mask)) {
       do_finish_shellcheck_suppression(token->source_location().position);
       if (lhs != nullptr) {
@@ -800,8 +778,6 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
                                         "Expected a command before the pipe"};
       }
 
-      /* A |& pipe routes the left command's stderr into the pipe too, the
-         shorthand for 2>&1 |. */
       let const has_left_stderr_pipe =
           token->kind() == Token::Kind::PipeAmpersand;
       m_lexer.advance_past_last_peek();
@@ -818,8 +794,6 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
       {
         Command *rhs = parse_simple_command();
         if (rhs == nullptr) {
-          /* An ampersand glued to the pipe under POSIX mode is the bash |&
-             stderr pipe read as | then &. */
           Token *after = m_lexer.peek_shell_token();
           if (m_lexer.is_posix_mode() &&
               after->kind() == Token::Kind::Ampersand &&
@@ -882,8 +856,6 @@ static fn stderr_to_stdout_dup() wontthrow -> expressions::Redirection
   return dup;
 }
 
-/* A & touching the operator means a descriptor duplication, n>&m, otherwise a
-   filename word follows. */
 fn Parser::build_file_or_dup_redirection(
     i32 fd, Token::Kind op_kind, const SourceLocation &op_location,
     Maybe<SourceLocation> &first_location,
@@ -917,16 +889,12 @@ fn Parser::build_file_or_dup_redirection(
 
       let const literal = from_word.to_literal_string();
 
-      /* The close form >&- and <&- closes fd outright, the dash arriving as
-         part of the following word. */
       if (literal == "-") {
         redir.dup_fd = expressions::Redirection::DUP_FD_CLOSE;
         out.push(redir);
         return;
       }
 
-      /* A wholly-digit word names the descriptor at parse time, anything else
-         such as $4 or ${fd} resolves when the redirection runs. */
       if (literal.view().is_all_decimal_digits()) {
         let const parsed_descriptor = literal.to<i64>();
         if (parsed_descriptor.is_error()) {
@@ -938,9 +906,6 @@ fn Parser::build_file_or_dup_redirection(
         return;
       }
 
-      /* A bare >&word in every mood but POSIX may be the csh both-streams
-         spelling, cmd >&/dev/null, decided after the expansion. An explicit
-         descriptor as in 2>&word keeps the strict error. */
       redir.target = from;
       redir.is_dup_filename_allowed =
           op_kind == Token::Kind::Greater &&
@@ -954,12 +919,9 @@ fn Parser::build_file_or_dup_redirection(
   {
     Token *after = m_lexer.peek_shell_token();
     ASSERT(after != nullptr);
-    /* The second character must touch the operator, so a real pipe in cmd >file
-       | next stays separate from >| and <>. */
     let const is_adjacent = after->source_location().position ==
                             op_location.position + op_location.length;
 
-    /* >| truncates the target even under noclobber, the explicit override. */
     if (op_kind == Token::Kind::Greater && after->kind() == Token::Kind::Pipe &&
         is_adjacent)
     {
@@ -971,7 +933,6 @@ fn Parser::build_file_or_dup_redirection(
       return;
     }
 
-    /* <> opens the target for reading and writing, creating it if absent. */
     if (op_kind == Token::Kind::Less && after->kind() == Token::Kind::Greater &&
         is_adjacent)
     {
@@ -1066,8 +1027,6 @@ fn Parser::build_heredoc_redirection(
   Token *delimiter_token = m_lexer.next_shell_token();
   ASSERT(delimiter_token != nullptr);
   if (delimiter_token->kind() != Token::Kind::Word) {
-    /* A <<<word in POSIX mode tokenizes as << then <word, so a stray < here is
-       the bash here-string in a mode that does not read it. */
     if (delimiter_token->kind() == Token::Kind::Less) {
       throw ErrorWithLocationAndDetails{
           delimiter_token->source_location(),
@@ -1084,8 +1043,6 @@ fn Parser::build_heredoc_redirection(
   let const delimiter_literal = delimiter_word.to_literal_string();
   let delimiter = delimiter_literal.view();
   heredoc_tab_policy tab_policy = heredoc_tab_policy::Preserve;
-  /* <<- strips leading tabs. The dash counts only when unquoted, so <<'-EOF'
-     keeps the dash in the delimiter and terminates on -EOF. */
   let const has_unquoted_leading_dash =
       !delimiter_word.segments.is_empty() &&
       delimiter_word.segments[0].kind == WordSegment::Kind::UnquotedText &&
@@ -1103,7 +1060,6 @@ fn Parser::build_heredoc_redirection(
   LOG(Debug, "registering a heredoc redirection with delimiter '%.*s'",
       static_cast<int>(delimiter.length), delimiter.data);
 
-  /* A quoted delimiter, such as <<'EOF', keeps the body literal. */
   bool should_expand = true;
   for (let const &segment : delimiter_word.segments) {
     if (segment.kind != WordSegment::Kind::UnquotedText) {
@@ -1214,8 +1170,6 @@ alwaysinline fn Parser::try_build_operator_redirection(
   }
 }
 
-/* A digit word touching a redirect operator is a descriptor prefix, such as the
-   2 in 2>file. */
 mustuse fn Parser::try_parse_trailing_redirection(
     ArrayList<expressions::Redirection> &out) throws -> bool
 {
@@ -1253,9 +1207,6 @@ mustuse fn Parser::attach_trailing_redirections(Command *compound) throws
 {
   ASSERT(compound != nullptr);
 
-  /* The wrapper location is the compound's opening token, so the end is taken
-     from the lexer after each redirection is consumed. Without it the span
-     would close after that one token and a function body would print as `{`. */
   let end_position = compound->source_end_position();
   let redirections = ArrayList<expressions::Redirection>{heap_allocator()};
   while (try_parse_trailing_redirection(redirections))
@@ -1280,9 +1231,6 @@ enum class command_position_word : u8
   Coproc,
 };
 
-/* Returns a command, a compound command, or nullptr when a list terminator is
-   next. A reserved word or a group opener in command position starts a compound
-   command. */
 hot fn Parser::parse_simple_command(const Token *leading_token) throws
     -> Command *
 {
@@ -1354,15 +1302,11 @@ hot fn Parser::parse_simple_command(const Token *leading_token) throws
         }
       }
 
-      /* A standalone '{' opens a brace group, a standalone '}' closes one, both
-         arriving as words. A '}' with no open group is left for the caller. */
       switch (position_word) {
       case command_position_word::BraceOpen:
         return attach_trailing_redirections(parse_brace_group());
       case command_position_word::BraceClose: return nullptr;
       case command_position_word::Conditional:
-        /* The sh mood is POSIX, where [[ is not a keyword, so the conditional
-           is rejected there. */
         if (m_lexer.is_posix_mode()) {
           throw ErrorWithLocation{token->source_location(),
                                   "The [[ conditional is a bash extension that "
@@ -1371,15 +1315,10 @@ hot fn Parser::parse_simple_command(const Token *leading_token) throws
         }
         return attach_trailing_redirections(parse_conditional_command());
       case command_position_word::Select:
-        /* Select is not a reserved word in the lexer, so it is matched on the
-           text in bash mode. */
         if (m_lexer.is_bash_compatible())
           return attach_trailing_redirections(parse_select());
         break;
       case command_position_word::Coproc:
-        /* Coproc is not a reserved word in the lexer either, so it is matched
-           on the text in every mood but POSIX, the way the highlighter reads
-           it. */
         if (m_lexer.bash_additions_enabled())
           return attach_trailing_redirections(parse_coproc());
         break;
@@ -1414,7 +1353,6 @@ hot fn Parser::parse_simple_command(const Token *leading_token) throws
     }
 
     switch (token->kind()) {
-    /* A reserved word out of command position is an ordinary word. */
     case Token::Kind::Word:
     case Token::Kind::If:
     case Token::Kind::Then:
@@ -1430,8 +1368,6 @@ hot fn Parser::parse_simple_command(const Token *leading_token) throws
     case Token::Kind::Esac:
     case Token::Kind::Time:
     case Token::Kind::When: {
-      /* A run of digits touching a redir operator is a descriptor prefix, such
-         as the 2 in 2>file, not an argument. */
       if (token->kind() == Token::Kind::Word) {
         const tokens::WordToken *word_token =
             static_cast<tokens::WordToken *>(token);
@@ -1455,8 +1391,6 @@ hot fn Parser::parse_simple_command(const Token *leading_token) throws
     } break;
 
     case Token::Kind::Function:
-      /* The bash function keyword begins a definition only when it leads the
-         command. */
       if (args_accumulator.is_empty() && local_vars.count() == 0) {
         m_lexer.advance_past_last_peek();
         return parse_keyword_function_definition();
@@ -1492,9 +1426,6 @@ hot fn Parser::parse_simple_command(const Token *leading_token) throws
           next->source_location().position ==
               a->source_location().position + a->source_location().length;
 
-      /* Once a command word is present, an assignment-looking token is an
-         ordinary argument, except an array assignment given to a builtin such
-         as local. */
       if (!args_accumulator.is_empty()) {
         if (is_array_assignment) {
           let const command_name = args_accumulator[0]->raw_string();
@@ -1514,8 +1445,6 @@ hot fn Parser::parse_simple_command(const Token *leading_token) throws
         break;
       }
 
-      /* NAME=(...) leading the command is captured in every mood. POSIX mode
-         downgrades it to an empty scalar at evaluation. */
       if (is_array_assignment) {
         ArrayList<const Token *> elements = consume_bash_array_assignment();
         let const assignment_end_position =
@@ -1533,8 +1462,6 @@ hot fn Parser::parse_simple_command(const Token *leading_token) throws
       {
         return m_lexer.arena().create<AssignCommand>(*source_location, a);
       } else {
-        /* Kept in source order so a later assignment sees an earlier one and a
-           repeated name accumulates, which a map would lose. */
         local_vars.push(PrefixAssignment{a});
       }
     } break;
@@ -1587,8 +1514,6 @@ fn Parser::finish_function_body(const SourceLocation &location,
   }
   body_storage.set_body(body);
 
-  /* The span ends where the body ends so declare -f can print the definition
-     text from the source. */
   let definition = m_lexer.arena().create<FunctionDefinition>(
       location, name, steal(body_storage));
   definition->set_analysis_scope_definitions(close_analysis_scope(scope_mark));
@@ -1621,7 +1546,6 @@ fn Parser::parse_keyword_function_definition() throws -> Command *
 
   LOG(Debug, "parsing a keyword function definition for '%s'", name.c_str());
 
-  /* An empty () pair may follow the name in the bash function form. */
   Token *after_name = m_lexer.peek_shell_token();
   ASSERT(after_name != nullptr);
   if (after_name->kind() == Token::Kind::LeftParen) {
@@ -1639,8 +1563,6 @@ fn Parser::consume_bash_array_assignment() throws -> ArrayList<const Token *>
   ASSERT(open != nullptr);
   ASSERT(open->kind() == Token::Kind::LeftParen);
 
-  /* Every word up to the closing parenthesis is kept so bash mode expands them
-     as array elements, while POSIX mode discards the list. */
   ArrayList<const Token *> elements{heap_allocator()};
   loop
   {
@@ -1687,4 +1609,4 @@ fn Parser::consume_bash_array_assignment() throws -> ArrayList<const Token *>
   }
 }
 
-} /* namespace koshka */
+}

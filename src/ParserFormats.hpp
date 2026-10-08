@@ -306,4 +306,4 @@ fn parse_vscode_tasks_format(const parser_format_input &input,
 fn parse_dev_container_format(const parser_format_input &input,
                               parsed_format_document &document) throws -> void;
 
-} /* namespace koshka */
+}

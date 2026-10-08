@@ -38,9 +38,6 @@ struct arith_token
   StringView text{};
 };
 
-/* The tokenized form of one arithmetic segment. A segment reaches this cache
-   only while it is evaluated, so the list is allocated on first evaluation and
-   an unevaluated segment carries a null pointer. */
 struct arith_token_cache
 {
   explicit arith_token_cache(Allocator allocator = heap_allocator())
@@ -54,9 +51,6 @@ struct arith_token_cache
   bool has_exact_constant_text{false};
 };
 
-/* The evaluation state of one segment. A literal segment never reaches
-   evaluation and never carries this block, so a large script holds one null
-   pointer per segment. */
 struct segment_eval_cache
 {
   const Expression *substitution_ast{nullptr};
@@ -66,11 +60,6 @@ struct segment_eval_cache
   bool has_optimizer_arithmetic_result{false};
 };
 
-/* The text of one word segment. A parsed segment borrows its bytes from the
-   arena that holds the segment, and a segment built during evaluation owns its
-   bytes on the heap. The capacity is zero while the bytes are borrowed, so the
-   destructor frees nothing and an append copies to the heap first. The value is
-   sixteen bytes, which keeps WordSegment at forty. */
 class SegmentText
 {
 public:
@@ -136,8 +125,6 @@ public:
     return *this;
   }
 
-  /* The heap allocator makes the copy owned, and an arena makes it borrowed for
-     the life of that arena. */
   fn assign_copy(Allocator allocator, StringView source) throws -> void
   {
     if (source.length == 0) {
@@ -146,8 +133,6 @@ public:
     }
     if (source.length > MAXIMUM_TEXT_LENGTH) rarely throw std::bad_alloc{};
 
-    /* The source may be a view of this text, so the copy is taken before the
-       old bytes are released. */
     let const bytes = allocator.alloc_array<char>(source.length);
     std::memcpy(bytes, source.data, source.length);
     release();
@@ -292,9 +277,6 @@ static_assert(sizeof(usize) != 8 || sizeof(SegmentText) == 16);
 class WordSegment
 {
 public:
-  /* The underlying type is four bytes so the kind shares a storage unit with
-     the length and the flags under the Microsoft bitfield rules, which open a
-     new unit for every change of declared type size. */
   enum class Kind : u32
   {
     LiteralText,
@@ -304,8 +286,6 @@ public:
     CommandSubstitution,
     ArithmeticExpansion,
     ProcessSubstitution,
-    /* The bash 5.3 funsub runs in the current shell, so its assignments and cd
-       persist. */
     FunctionSubstitution,
   };
 
@@ -387,10 +367,6 @@ public:
     return *this;
   }
 
-  /* The span length and the flags share one four-byte unit, so the group costs
-     nothing beside the position. The segment is thirty-two bytes. Every field
-     of the group carries a four-byte declared type, which is what keeps the
-     packing identical on the Itanium and the Microsoft ABI. */
   mutable u32 source_position{0};
 
   mutable u32 source_length : 24 {0};
@@ -450,9 +426,6 @@ public:
 
   fn move_resources_to_arena(BumpArena &arena) throws -> void;
 
-  /* A position beyond four gigabytes or a span beyond sixteen megabytes has no
-     representable form here, so the segment reports no location instead of a
-     wrapped one. */
   fn set_source_span(usize position, usize length) wontthrow -> void
   {
     constexpr usize MAXIMUM_SOURCE_POSITION = ~static_cast<u32>(0);
@@ -495,8 +468,6 @@ public:
   Word() = default;
   ~Word() { release_constant_value(); }
 
-  /* A copy carries the segments and syntax markers. The flattened text is a
-     cache, and it is rebuilt on the copy when something asks for it. */
   cold Word(const Word &other) throws
       : segments(heap_allocator()),
         has_locale_translation_quote(other.has_locale_translation_quote)
@@ -563,10 +534,6 @@ public:
 
   fn get_assignment_split() const throws -> Maybe<word_assignment_split>;
 
-  /* The split for an operand whose name is quoted, such as "name=value", which
-     an assignment builtin still assigns. The name may run across several
-     literal segments. Word expansion is unaffected, so this is read by
-     analysis alone. */
   cold fn get_quoted_assignment_split() const throws
       -> Maybe<word_assignment_split>;
 
@@ -595,8 +562,6 @@ private:
     m_constant_value_length = 0;
   }
 
-  /* Almost every word is one segment and answers from that segment directly, so
-     the flattened text is a bare buffer and not a String. */
   mutable char *m_constant_value_data{nullptr};
   mutable u32 m_constant_value_length{0};
   mutable PlainLiteral m_cached_plain_kind{PlainLiteral::NotPlain};
@@ -627,7 +592,6 @@ class Token
 public:
   enum class Kind : u8
   {
-    /* Significant symbols */
     RightParen,
     LeftParen,
     RightBracket,
@@ -640,11 +604,9 @@ public:
     DoubleSemicolonAmpersand,
     Dot,
 
-    /* Values */
     Word,
     Assignment,
 
-    /* Operators */
     Plus,
     Minus,
     Asterisk,
@@ -671,7 +633,6 @@ public:
     ExclamationMark,
     ExclamationEquals,
 
-    /* Keywords */
     If,
     Then,
     Else,
@@ -706,8 +667,6 @@ public:
 
   pure fn source_location() const wontthrow -> SourceLocation;
 
-  /* This no-ops for arena storage and frees an ordinary heap token otherwise.
-   */
   static fn operator delete(opaque *pointer) wontthrow->void;
 
 protected:
@@ -862,10 +821,6 @@ protected:
   Word m_word;
 };
 
-/* A word carrying a substitution or several segments has no single segment to
-   borrow the flattened text from, so the flattened form is owned here. It is
-   built on the first read, because analysis walks the segments and most tokens
-   are never asked for their flattened text. */
 class ExpandedWordToken : public WordToken
 {
 public:
@@ -880,8 +835,6 @@ public:
 protected:
   fn fill_literal() const throws -> void;
 
-  /* The flattened text is a bare buffer. Word holds its constant value the
-     same way. */
   mutable char *m_literal_data{nullptr};
   mutable u32 m_literal_length{0};
 };
@@ -913,6 +866,6 @@ TOKEN_STRUCT(Equals);
 TOKEN_STRUCT(DoubleEquals);
 TOKEN_STRUCT(ExclamationEquals);
 
-} /* namespace tokens */
+}
 
-} /* namespace koshka */
+}

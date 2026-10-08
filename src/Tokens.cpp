@@ -393,9 +393,6 @@ static fn append_subscript_segment_source(const WordSegment &segment,
   }
 }
 
-/* An array element assignment whose subscript holds an expansion, the $k in
-   v[$k]=1, splits across segments since the = lands after the ] in a later
-   segment. */
 static fn
 array_element_assignment_split(const ArrayList<WordSegment> &segments,
                                bool has_locale_translation_quote) throws
@@ -411,11 +408,12 @@ array_element_assignment_split(const ArrayList<WordSegment> &segments,
   }
 
   let subscript = String{heap_allocator()};
-  /* A ] in the rest of segment 0 means the = sits in segment 0 too, already
-     ruled out, so this is not an assignment. */
-  const StringView head = first.text.substring(name_end + 1);
-  if (head.find_character(']').has_value()) return koshka::None;
-  subscript.append(head);
+  const StringView subscript_head_without_close =
+      first.text.substring(name_end + 1);
+  if (subscript_head_without_close.find_character(']').has_value()) {
+    return koshka::None;
+  }
+  subscript.append(subscript_head_without_close);
 
   for (usize i = 1; i < segments.count(); i++) {
     let const &segment = segments[i];
@@ -467,8 +465,6 @@ array_element_assignment_split(const ArrayList<WordSegment> &segments,
   return koshka::None;
 }
 
-/* The = that ends an assignment target. A subscript holds quotes, so a ] or =
-   inside them does not end the target. */
 static fn find_assignment_equals(StringView text) wontthrow -> Maybe<usize>
 {
   usize cursor = 1;
@@ -546,8 +542,6 @@ hot fn Word::get_assignment_split() const throws -> Maybe<word_assignment_split>
 
   let value = Word{};
   value.has_locale_translation_quote = has_locale_translation_quote;
-  /* The value always begins with an unquoted segment, even when empty, so that
-     FOO= produces one empty field rather than no field at all. */
   value.segments.push(WordSegment{
       WordSegment::Kind::UnquotedText,
       SegmentText{heap_allocator(), first.text.substring(*equals_position + 1)},
@@ -559,8 +553,6 @@ hot fn Word::get_assignment_split() const throws -> Maybe<word_assignment_split>
   return word_assignment_split{steal(name), steal(value), update_mode};
 }
 
-/* The name characters ahead of the first literal =, gathered across the
-   literal segments the quoting split the operand into. */
 static fn quoted_assignment_name_prefix(const ArrayList<WordSegment> &segments,
                                         usize &equals_segment,
                                         usize &equals_position) throws -> String
@@ -669,8 +661,6 @@ fn SegmentText::append(StringView other) throws -> void
 
   let const needed = static_cast<usize>(m_length) + other.length;
   if (needed > m_capacity) {
-    /* The source may live inside this text, so its offset is kept and the view
-       is rebound after the buffer moves. */
     let const source_address = reinterpret_cast<uintptr>(other.data);
     let const storage_address = reinterpret_cast<uintptr>(m_data);
     let const is_aliased = m_data != nullptr &&
@@ -753,8 +743,6 @@ pure fn Assignment::value_word() const wontthrow -> const Word &
 
 namespace {
 
-/* A word whose flattened text is already spelled out by one of its segments,
-   so nothing has to be built and owned to answer for it. */
 pure fn borrowed_word_literal(const Word &word) wontthrow -> Maybe<StringView>
 {
   if (word.segments.is_empty()) return StringView{};
@@ -769,7 +757,7 @@ pure fn borrowed_word_literal(const Word &word) wontthrow -> Maybe<StringView>
   }
 }
 
-} /* namespace */
+}
 
 WordToken::WordToken(SourceLocation location, Word word)
     : Token(steal(location), Token::Kind::Word), m_word(steal(word))
@@ -803,9 +791,6 @@ ExpandedWordToken::~ExpandedWordToken()
   heap_allocator().free_array(m_literal_data, m_literal_length);
 }
 
-/* The flattened text of such a word is empty only when every segment is empty,
-   and rebuilding an empty result costs nothing, so the null buffer doubles as
-   the not-yet-built mark. */
 fn ExpandedWordToken::fill_literal() const throws -> void
 {
   if (m_literal_data != nullptr) return;
@@ -825,8 +810,6 @@ fn ExpandedWordToken::fill_literal() const throws -> void
 
 fn ExpandedWordToken::raw_view() const wontthrow -> Maybe<StringView>
 {
-  /* The override is noexcept, so a failed build answers as an unavailable view
-     the same way a word with no borrowable segment does. */
   try {
     fill_literal();
   } catch (...) {
@@ -882,6 +865,6 @@ TOKEN_DECLS(ExclamationEquals, "!=");
 TOKEN_DECLS(ExclamationMark, "!");
 TOKEN_DECLS(Tilde, "~");
 
-} /* namespace tokens */
+}
 
-} /* namespace koshka */
+}

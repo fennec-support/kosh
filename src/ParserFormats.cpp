@@ -970,4 +970,4 @@ fn parse_format_document(const parser_format_input &input) throws
   return document;
 }
 
-} /* namespace koshka */
+}

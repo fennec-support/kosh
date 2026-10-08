@@ -1786,7 +1786,7 @@ fn validate_formatted_source(StringView source, BumpArena &arena,
   return errors.is_empty();
 }
 
-} /* namespace */
+}
 
 fn format_shell_source(StringView source, BumpArena &arena,
                        ArrayList<String> &errors, String *ast_output,
@@ -2346,4 +2346,4 @@ fn source_fixes_for_diagnostic(diagnostic_id diagnostic, StringView source,
   return fixes;
 }
 
-} /* namespace koshka */
+}

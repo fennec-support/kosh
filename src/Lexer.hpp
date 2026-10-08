@@ -195,8 +195,6 @@ struct heredoc_pending
 
 namespace lexer {
 
-/* Command substitution spends the most native frames per level, a sanitizer
-   build overflows past two hundred so the cap stays well below. */
 static constexpr usize MAX_SUBSTITUTION_NESTING_DEPTH = 64;
 
 pure fn is_whitespace(char ch) wontthrow -> bool;
@@ -246,23 +244,15 @@ fn find_segment_substitution(StringView source,
                              const WordSegment &segment) throws
     -> Maybe<nested_substitution>;
 
-/* The quotes and the escapes of a heredoc delimiter word, so <<\EOF and <<'EOF'
-   both terminate on EOF. */
 fn unquote_heredoc_delimiter(StringView word, Allocator allocator) throws
     -> String;
 
-/* Owned shell source is normalized before lexing, so a heredoc body line is
-   matched against the delimiter without its CRLF carriage return. */
 pure fn heredoc_line_content(StringView line) wontthrow -> StringView;
 
-/* A special shell parameter named by a single punctuation byte, $? $! $# $$ $*
-   $@ $- , distinct from a positional digit or an ordinary name. */
 pure fn is_special_parameter_char(char ch) wontthrow -> bool;
 
-} /* namespace lexer */
+}
 
-/* Only advance_past_last_peek, skip_whitespace, and advance_forward move the
- * internal cursor. */
 class Lexer
 {
 public:
@@ -284,9 +274,6 @@ public:
     return mood() == mimic_mood::Bash || mood() == mimic_mood::BashPosix;
   }
 
-  /* Whether strict POSIX lexing is active. The default mood is neither bash nor
-     POSIX, so a dash-rejected pure addition such as the NAME=(...) array
-     literal stays on in the default mood and is suppressed only here. */
   pure fn is_posix_mode() const wontthrow -> bool
   {
     return mood() == mimic_mood::Posix;
@@ -297,9 +284,6 @@ public:
     return mood() == mimic_mood::Posix || mood() == mimic_mood::BashPosix;
   }
 
-  /* The token-level bash additions, $'...' and <<< and |& and &>, ride every
-     mood but POSIX under the pure-addition rule. EvalContext holds the same
-     predicate for the additions the evaluator gates. */
   pure fn bash_additions_enabled() const wontthrow -> bool
   {
     return mood() != mimic_mood::Posix;
@@ -384,14 +368,9 @@ protected:
 
   StringView m_source;
   ParseSession m_parse_session;
-  /* The interned name of the file this source came from, or zero for an unnamed
-     source such as an interactive line. It travels into every SourceLocation
-     the lexer stamps. */
   usize m_cursor_position{0};
   usize m_cached_offset{0};
 
-  /* The parser peeks the next token many times before it consumes one, and each
-     peek would otherwise re-lex from the same position. */
   Token *m_peek_cache{nullptr};
 #if !defined NDEBUG
   usize m_peek_cache_generation{0};
@@ -407,9 +386,6 @@ protected:
       heap_allocator()};
   ArrayList<heredoc_terminator_miss> m_heredoc_terminator_misses{
       heap_allocator()};
-  /* Each body is allocated in the arena, so its address is stable and it
-     outlives the lexer. A parsed redirection holds a pointer into one, and the
-     arena reclaims the body when it reclaims the nodes that point at it. */
   ArrayList<heredoc_pending> m_pending_heredocs{heap_allocator()};
   fn collect_pending_heredocs() throws -> void;
 
@@ -446,4 +422,4 @@ protected:
       -> void;
 };
 
-} /* namespace koshka */
+}
