@@ -15,7 +15,9 @@
 # same way before its ^C. A prompt that leaves too few columns beside it
 # continues the input two columns from the left edge instead of in a narrow
 # strip under the prompt. A working directory named with control bytes
-# reaches the prompt through \w in caret notation and never as raw bytes. The
+# reaches the prompt through \w in caret notation and never as raw bytes. A
+# job stopped by Ctrl-Z reports on its own row below the echoed ^Z, and Ctrl-C
+# on a job that fg resumed ends its row before the next prompt. The
 # terminal model and session come from the
 # ghost and menu probe. Each check prints one stable PASS line for the golden
 # output.
@@ -37,6 +39,8 @@ RIGHT_PROMPT_COLUMN = COLUMNS - 1 - len(RIGHT_PROMPT)
 ALT_ENTER = b"\x1b\r"
 BACKSPACE = b"\x7f"
 CTRL_C = b"\x03"
+CTRL_Z = b"\x1a"
+SLEEP_TITLE = b"]0;sleep 30\x07"
 BULLET = "•"
 SHORT_PROMPT = "# " if os.geteuid() == 0 else "$ "
 CONTROL_DIRECTORY = b"d\x07\x1b[31mRED\x1b]2;PWNED\x07z"
@@ -174,6 +178,42 @@ def run_checks(binary, directory, command_directory, report):
         session.close()
 
 
+def has_no_partial_line_marker(screen):
+    return not any("\\n" in line for line in screen.get_lines())
+
+
+def run_job_notice_checks(binary, directory, report):
+    sleep_path = shutil.which("sleep")
+    if sleep_path is None:
+        print("job notice checks: skipped (no sleep program)")
+        return
+    session = Session(binary, directory, os.path.dirname(sleep_path), COLUMNS)
+    try:
+        session.wait_until(lambda screen: screen.get_prompt_row() >= 0)
+        session.send(b"PS1='\\. '\r")
+        session.wait_until(is_prompt_line(BULLET))
+
+        mark = len(session.raw)
+        session.send(b"sleep 30\r")
+        session.wait_until(lambda screen: SLEEP_TITLE in session.raw[mark:])
+        session.pump(0.3)
+        session.send(CTRL_Z)
+        report.record("stopped-job-notice-starts-a-row", session,
+                      lambda screen: has_rows(["^Z", "[1]+ Stopped  sleep 30",
+                                               BULLET])(screen))
+
+        mark = len(session.raw)
+        session.send(b"fg\r")
+        session.wait_until(lambda screen: SLEEP_TITLE in session.raw[mark:])
+        session.pump(0.3)
+        session.send(CTRL_C)
+        report.record("fg-interrupt-ends-its-row", session,
+                      lambda screen: has_rows(["sleep 30", "^C", BULLET])(
+                          screen) and has_no_partial_line_marker(screen))
+    finally:
+        session.close()
+
+
 def main():
     if sys.platform != "linux":
         print("editor prompt PTY probes: skipped (requires Linux)")
@@ -190,6 +230,7 @@ def main():
         command_directory = os.path.join(directory, "bin")
         os.makedirs(command_directory)
         run_checks(binary, directory, command_directory, report)
+        run_job_notice_checks(binary, directory, report)
     finally:
         shutil.rmtree(directory, ignore_errors=True)
     return 0 if report.is_ok else 1

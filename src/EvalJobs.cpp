@@ -186,7 +186,7 @@ fn JobTable::register_stopped_job(os::process pid, StringView command,
 
 fn JobTable::notify_stopped_job(i32 id, StringView command) throws -> void
 {
-  print_error("[" + String::from(id, heap_allocator()) + "]+ Stopped  " +
+  print_error("\n[" + String::from(id, heap_allocator()) + "]+ Stopped  " +
               String{command} + "\n");
 }
 

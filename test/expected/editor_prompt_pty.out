@@ -13,4 +13,6 @@ transient-prompt-collapses-prompt-rows PASS
 narrow-prompt-continues-near-the-left-edge PASS
 prompt-directory-draws-control-bytes PASS
 prompt-directory-writes-no-raw-control PASS
+stopped-job-notice-starts-a-row PASS
+fg-interrupt-ends-its-row PASS
 status=0

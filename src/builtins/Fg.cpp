@@ -113,6 +113,12 @@ fn Fg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return status;
   }
 
+  if (let const interrupt = os::signal_number_from_name("INT");
+      should_reclaim && interrupt.has_value() && status == 128 + *interrupt)
+  {
+    print("\n");
+  }
+
   cxt.job_table_store().forget_done_jobs();
 
   return status;
