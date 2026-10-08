@@ -47,16 +47,12 @@ fn Mkfifo::execute(const ExecContext &ec, EvalContext &cxt,
   i32 status = 0;
   for (let const &operand : operands) {
     if (!os::make_fifo(operand.view(), mode)) {
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "cannot create '" + operand + "': " +
-                                         os::last_system_error_message());
+      KOSHKIT_REPORT_PATH_ERROR("create", operand);
       status = 1;
       continue;
     }
     if (FLAG_MKFIFO_MODE.is_set() && !os::set_file_mode(operand.view(), mode)) {
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "cannot set mode of '" + operand + "': " +
-                                         os::last_system_error_message());
+      KOSHKIT_REPORT_PATH_ERROR("set mode of", operand);
       status = 1;
     }
   }

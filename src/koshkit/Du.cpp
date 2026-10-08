@@ -815,9 +815,7 @@ fn Du::execute(const ExecContext &ec, EvalContext &cxt,
     let const &target = targets[index];
     if (!is_target_status_known[index]) {
       os::set_last_system_error(target_results[index].error_number);
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "cannot access '" + target.text() + "': " +
-                                         os::last_system_error_message());
+      KOSHKIT_REPORT_PATH_ERROR("access", target.text());
       status = 1;
       continue;
     }

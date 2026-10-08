@@ -215,10 +215,7 @@ fn Nl::execute(const ExecContext &ec, EvalContext &cxt,
   let const source = operands.is_empty() ? StringView{"-"} : operands[0].view();
   let const input = open_named_or_stdin(ec, source);
   if (!input.has_value()) {
-    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   "cannot read '" +
-                                       String{cxt.scratch_allocator(), source} +
-                                       "': " + os::last_system_error_message());
+    KOSHKIT_REPORT_PATH_ERROR("read", source);
     return 1;
   }
   defer

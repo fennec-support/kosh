@@ -119,9 +119,7 @@ fn Cmp::execute(const ExecContext &ec, EvalContext &cxt,
   let const left_input = open_named_or_stdin(ec, operands[0].view());
   if (!left_input.has_value()) {
     if (!FLAG_CMP_SILENT.is_enabled())
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "cannot read '" + operands[0] + "': " +
-                                         os::last_system_error_message());
+      KOSHKIT_REPORT_PATH_ERROR("read", operands[0]);
     return 2;
   }
   defer
@@ -133,9 +131,7 @@ fn Cmp::execute(const ExecContext &ec, EvalContext &cxt,
   let const right_input = open_named_or_stdin(ec, operands[1].view());
   if (!right_input.has_value()) {
     if (!FLAG_CMP_SILENT.is_enabled())
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "cannot read '" + operands[1] + "': " +
-                                         os::last_system_error_message());
+      KOSHKIT_REPORT_PATH_ERROR("read", operands[1]);
     return 2;
   }
   defer

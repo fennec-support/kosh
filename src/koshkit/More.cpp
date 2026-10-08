@@ -98,10 +98,7 @@ fn More::execute(const ExecContext &ec, EvalContext &cxt,
     if (should_buffer) {
       let const input = read_named_or_stdin(ec, source);
       if (!input.has_value()) {
-        report_soft_koshkit_util_error(
-            ec, cxt, args[0].view(),
-            "cannot read '" + String{source} +
-                "': " + os::last_system_error_message());
+        KOSHKIT_REPORT_PATH_ERROR("read", source);
         status = 1;
         continue;
       }
@@ -170,9 +167,7 @@ fn More::execute(const ExecContext &ec, EvalContext &cxt,
 
     let const input = open_named_or_stdin(ec, source);
     if (!input.has_value()) {
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "cannot read '" + String{source} + "': " +
-                                         os::last_system_error_message());
+      KOSHKIT_REPORT_PATH_ERROR("read", source);
       status = 1;
       continue;
     }

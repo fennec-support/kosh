@@ -305,6 +305,20 @@ fn print_util_help(const ExecContext &ec, StringView name, StringView synopsis,
   report_soft_koshkit_util_error((ec), (cxt), (location), (args)[0].view(),    \
                                  __VA_ARGS__)
 
+#define KOSHKIT_REPORT_ERROR(...)                                              \
+  report_soft_koshkit_util_error((ec), (cxt), (args)[0].view(), __VA_ARGS__)
+
+#define KOSHKIT_REPORT_PATH_ERROR(verb, path)                                  \
+  KOSHKIT_REPORT_ERROR(koshka::koshkit::path_error_message(                    \
+      verb, path, cxt.scratch_allocator()))
+
+#define KOSHKIT_REPORT_PATH_ERROR_AT(location, verb, path)                     \
+  KOSHKIT_REPORT_ERROR_AT(location, koshka::koshkit::path_error_message(       \
+                                        verb, path, cxt.scratch_allocator()))
+
+fn path_error_message(StringView verb, StringView path,
+                      Allocator allocator) throws -> String;
+
 #define U_CASE(util, name)                                                     \
   case Utility::Kind::util: {                                                  \
     util utility;                                                              \

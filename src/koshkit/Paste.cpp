@@ -86,11 +86,7 @@ fn Paste::execute(const ExecContext &ec, EvalContext &cxt,
     let &source_result = source_results[source_index];
     if (!source_result.content.has_value()) {
       os::set_last_system_error(source_result.error_number);
-      report_soft_koshkit_util_error(
-          ec, cxt, args[0].view(),
-          "cannot read '" +
-              String{cxt.scratch_allocator(), sources[source_index]} +
-              "': " + os::last_system_error_message());
+      KOSHKIT_REPORT_PATH_ERROR("read", sources[source_index]);
       status = 1;
       contents.push(String{cxt.scratch_allocator()});
       lines.push(ArrayList<StringView>{cxt.scratch_allocator()});

@@ -38,6 +38,19 @@ fn take_interrupt_request() wontthrow -> bool
   return true;
 }
 
+fn path_error_message(StringView verb, StringView path,
+                      Allocator allocator) throws -> String
+{
+  let const reason = os::last_system_error_message();
+  let message = String{allocator, "cannot "};
+  message += verb;
+  message += " '";
+  message += path;
+  message += "': ";
+  message += reason.view();
+  return message;
+}
+
 fn report_unresolved_sort_key(const ExecContext &ec, EvalContext &cxt,
                               SourceLocation location, StringView utility_name,
                               usize match_count, StringView matches,

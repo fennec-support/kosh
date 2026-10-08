@@ -1173,11 +1173,7 @@ fn Bc::execute(const ExecContext &ec, EvalContext &cxt,
       ec, sources, cxt.scratch_allocator(),
       [&](usize source_index, const Maybe<String> &content) throws {
         if (!content.has_value()) {
-          report_soft_koshkit_util_error(
-              ec, cxt, args[0].view(),
-              "cannot read '" +
-                  String{cxt.scratch_allocator(), sources[source_index]} +
-                  "': " + os::last_system_error_message());
+          KOSHKIT_REPORT_PATH_ERROR("read", sources[source_index]);
           return false;
         }
 

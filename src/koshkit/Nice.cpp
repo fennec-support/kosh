@@ -54,9 +54,7 @@ fn Nice::execute(const ExecContext &ec, EvalContext &cxt,
   cxt.prepare_child_environment();
   let const result = os::run_nice(command, static_cast<i32>(increment));
   if (!result.has_value()) {
-    report_soft_koshkit_util_error(
-        ec, cxt, operand_locations[0], args[0].view(),
-        "cannot run '" + operands[0] + "': " + os::last_system_error_message());
+    KOSHKIT_REPORT_PATH_ERROR_AT(operand_locations[0], "run", operands[0]);
     return 126;
   }
   return *result;

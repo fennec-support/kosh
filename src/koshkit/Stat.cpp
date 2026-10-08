@@ -774,10 +774,7 @@ fn Stat::execute(const ExecContext &ec, EvalContext &cxt,
           output.clear();
         }
 
-        report_soft_koshkit_util_error(
-            ec, cxt, args[0].view(),
-            "cannot read filesystem of '" + operand +
-                "': " + os::last_system_error_message());
+        KOSHKIT_REPORT_PATH_ERROR("read filesystem of", operand);
         status = 1;
         continue;
       }
@@ -795,9 +792,7 @@ fn Stat::execute(const ExecContext &ec, EvalContext &cxt,
         }
 
         os::set_last_system_error(results[index].error_number);
-        report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                       "cannot stat '" + operand + "': " +
-                                           os::last_system_error_message());
+        KOSHKIT_REPORT_PATH_ERROR("stat", operand);
         status = 1;
         continue;
       }

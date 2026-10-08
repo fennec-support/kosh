@@ -184,9 +184,7 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
 
   let const content = read_named_or_stdin(ec, operands[0].view());
   if (!content.has_value()) {
-    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   "cannot read '" + operands[0] +
-                                       "': " + os::last_system_error_message());
+    KOSHKIT_REPORT_PATH_ERROR("read", operands[0]);
     return 1;
   }
   let lines = utils::split_lines(content->view(), cxt.scratch_allocator(),

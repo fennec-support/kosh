@@ -175,10 +175,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
       if (!source_result.content.has_value()) {
         if (!FLAG_PR_NO_ERRORS.is_enabled()) {
           os::set_last_system_error(source_result.error_number);
-          report_soft_koshkit_util_error(
-              ec, cxt, args[0].view(),
-              "cannot read '" + String{sources[source_index]} +
-                  "': " + os::last_system_error_message());
+          KOSHKIT_REPORT_PATH_ERROR("read", sources[source_index]);
         }
         status = 1;
         contents.push(String{cxt.scratch_allocator()});
@@ -353,10 +350,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
           return do_append_source(source, content->view());
 
         if (!FLAG_PR_NO_ERRORS.is_enabled())
-          report_soft_koshkit_util_error(
-              ec, cxt, args[0].view(),
-              "cannot read '" + String{cxt.scratch_allocator(), source} +
-                  "': " + os::last_system_error_message());
+          KOSHKIT_REPORT_PATH_ERROR("read", source);
         status = 1;
       });
   if (visit == source_visit_result::Interrupted) return 130;

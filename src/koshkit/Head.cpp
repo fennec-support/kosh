@@ -313,11 +313,7 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
         do_print_header(source_index);
         do_flush_output();
         os::set_last_system_error(read_error);
-        report_soft_koshkit_util_error(
-            ec, cxt, args[0].view(),
-            "cannot read '" +
-                String{cxt.scratch_allocator(), sources[source_index]} +
-                "': " + os::last_system_error_message());
+        KOSHKIT_REPORT_PATH_ERROR("read", sources[source_index]);
         status = 1;
         continue;
       }

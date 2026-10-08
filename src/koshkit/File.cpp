@@ -841,10 +841,8 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
   ArrayList<file_magic_rule> magic_rules{allocator};
   for (let const &magic_path : magic_paths) {
     if (!append_magic_database(magic_path.path, magic_rules, allocator)) {
-      report_soft_koshkit_util_error(
-          ec, cxt, magic_path.location, args[0].view(),
-          "cannot open '" + String{allocator, magic_path.path} +
-              "': " + os::last_system_error_message());
+      KOSHKIT_REPORT_PATH_ERROR_AT(magic_path.location, "open",
+                                   magic_path.path);
       status = 1;
     }
   }
@@ -1131,9 +1129,8 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
     if (metadata_results[operand_position].error_number != 0) {
       os::set_last_system_error(
           metadata_results[operand_position].error_number);
-      report_soft_koshkit_util_error(
-          ec, cxt, operand_locations[operand_position], args[0].view(),
-          "cannot open '" + operand + "': " + os::last_system_error_message());
+      KOSHKIT_REPORT_PATH_ERROR_AT(operand_locations[operand_position], "open",
+                                   operand);
       status = 1;
       continue;
     }
@@ -1172,10 +1169,8 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
       let const default_description =
           describe_file_type(operand.view(), file_status, allocator);
       if (!default_description.has_value()) {
-        report_soft_koshkit_util_error(
-            ec, cxt, operand_locations[operand_position], args[0].view(),
-            "cannot read '" + operand +
-                "': " + os::last_system_error_message());
+        KOSHKIT_REPORT_PATH_ERROR_AT(operand_locations[operand_position],
+                                     "read", operand);
         status = 1;
         continue;
       }

@@ -103,11 +103,7 @@ fn Expand::execute(const ExecContext &ec, EvalContext &cxt,
       [&](usize source_index, const Maybe<String> &content) throws {
         if (content.has_value()) return do_append_source(content->view());
 
-        report_soft_koshkit_util_error(
-            ec, cxt, args[0].view(),
-            "cannot read '" +
-                String{cxt.scratch_allocator(), sources[source_index]} +
-                "': " + os::last_system_error_message());
+        KOSHKIT_REPORT_PATH_ERROR("read", sources[source_index]);
         status = 1;
       });
   if (visit == source_visit_result::Interrupted) return 130;

@@ -100,10 +100,7 @@ fn Mkdir::execute(const ExecContext &ec, EvalContext &cxt,
         if (!make_one(text, intermediate_mode, mode_application::RespectUmask,
                       existing_directory_policy::Accept))
         {
-          report_soft_koshkit_util_error(
-              ec, cxt, args[0].view(),
-              "cannot create directory '" + operand +
-                  "': " + os::last_system_error_message());
+          KOSHKIT_REPORT_PATH_ERROR("create directory", operand);
           status = 1;
         }
         continue;
@@ -124,11 +121,7 @@ fn Mkdir::execute(const ExecContext &ec, EvalContext &cxt,
                                             : mode_application::RespectUmask,
                       existing_directory_policy::Accept))
         {
-          report_soft_koshkit_util_error(
-              ec, cxt, args[0].view(),
-              "cannot create directory '" +
-                  String{cxt.scratch_allocator(), prefix} +
-                  "': " + os::last_system_error_message());
+          KOSHKIT_REPORT_PATH_ERROR("create directory", prefix);
           status = 1;
           break;
         }
@@ -139,10 +132,7 @@ fn Mkdir::execute(const ExecContext &ec, EvalContext &cxt,
                              : mode_application::RespectUmask,
                          existing_directory_policy::Reject))
     {
-      report_soft_koshkit_util_error(
-          ec, cxt, args[0].view(),
-          "cannot create directory '" + operand +
-              "': " + os::last_system_error_message());
+      KOSHKIT_REPORT_PATH_ERROR("create directory", operand);
       status = 1;
     }
   }

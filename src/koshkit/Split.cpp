@@ -99,10 +99,7 @@ fn Split::execute(const ExecContext &ec, EvalContext &cxt,
 
   let const input = open_named_or_stdin(ec, source);
   if (!input.has_value()) {
-    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   "cannot read '" +
-                                       String{cxt.scratch_allocator(), source} +
-                                       "': " + os::last_system_error_message());
+    KOSHKIT_REPORT_PATH_ERROR("read", source);
     return 1;
   }
   defer
@@ -126,9 +123,7 @@ fn Split::execute(const ExecContext &ec, EvalContext &cxt,
     let const descriptor =
         os::open_file_descriptor(name.view(), os::file_open_mode::Truncate);
     if (!descriptor.has_value()) {
-      report_soft_koshkit_util_error(
-          ec, cxt, args[0].view(),
-          "cannot create '" + name + "': " + os::last_system_error_message());
+      KOSHKIT_REPORT_PATH_ERROR("create", name);
       return false;
     }
     output_descriptor = *descriptor;

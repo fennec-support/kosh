@@ -38,10 +38,7 @@ fn Tsort::execute(const ExecContext &ec, EvalContext &cxt,
   let const source = operands.is_empty() ? StringView{"-"} : operands[0].view();
   let const content = read_named_or_stdin(ec, source);
   if (!content.has_value()) {
-    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   "cannot read '" +
-                                       String{cxt.scratch_allocator(), source} +
-                                       "': " + os::last_system_error_message());
+    KOSHKIT_REPORT_PATH_ERROR("read", source);
     return 1;
   }
 

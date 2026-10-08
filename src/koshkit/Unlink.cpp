@@ -45,9 +45,7 @@ cold fn Unlink::execute(
   if (!remove_path(target.view(), cxt.scratch_allocator(),
                    removal_mode::SinglePath))
   {
-    KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
-                            "cannot unlink '" + target +
-                                "': " + os::last_system_error_message());
+    KOSHKIT_REPORT_PATH_ERROR_AT(operand_locations[0], "unlink", target);
     return 1;
   }
   return 0;

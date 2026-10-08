@@ -263,9 +263,7 @@ fn GoodStat::execute(
     let const &operand = operands[index];
     if (results[index].error_number != 0) {
       os::set_last_system_error(results[index].error_number);
-      KOSHKIT_REPORT_ERROR_AT(operand_locations[index],
-                              "cannot stat '" + operand +
-                                  "': " + os::last_system_error_message());
+      KOSHKIT_REPORT_PATH_ERROR_AT(operand_locations[index], "stat", operand);
       status = 1;
       continue;
     }

@@ -308,9 +308,7 @@ fn EvilDisk::execute(
       let const location = operands.is_empty()
                                ? ec.source_location()
                                : operand_locations[filesystem_index];
-      KOSHKIT_REPORT_ERROR_AT(location,
-                              "cannot read '" + mounted.target +
-                                  "': " + os::last_system_error_message());
+      KOSHKIT_REPORT_PATH_ERROR_AT(location, "read", mounted.target);
       status = 1;
       continue;
     }

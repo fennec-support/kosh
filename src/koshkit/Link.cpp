@@ -34,9 +34,7 @@ fn Link::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   if (os::create_hard_link(operands[0].view(), operands[1].view())) return 0;
-  KOSHKIT_REPORT_ERROR_AT(operand_locations[1],
-                          "cannot create '" + operands[1] +
-                              "': " + os::last_system_error_message());
+  KOSHKIT_REPORT_PATH_ERROR_AT(operand_locations[1], "create", operands[1]);
   return 1;
 }
 

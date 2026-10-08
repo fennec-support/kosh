@@ -68,10 +68,8 @@ fn Logger::execute(const ExecContext &ec, EvalContext &cxt,
   if (FLAG_LOGGER_FILE.is_set()) {
     let const content = read_named_or_stdin(ec, FLAG_LOGGER_FILE.value());
     if (!content.has_value()) {
-      report_soft_koshkit_util_error(
-          ec, cxt, FLAG_LOGGER_FILE.value_location(), args[0].view(),
-          "cannot read '" + String{FLAG_LOGGER_FILE.value()} +
-              "': " + os::last_system_error_message());
+      KOSHKIT_REPORT_PATH_ERROR_AT(FLAG_LOGGER_FILE.value_location(), "read",
+                                   FLAG_LOGGER_FILE.value());
       return 1;
     }
     message = content->clone();

@@ -361,9 +361,8 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
   for (usize index = 0; index < operands.count(); index++) {
     if (operand_results[index].error_number != 0) {
       os::set_last_system_error(operand_results[index].error_number);
-      KOSHKIT_REPORT_ERROR_AT(operand_locations[index],
-                              "cannot watch '" + operands[index] +
-                                  "': " + os::last_system_error_message());
+      KOSHKIT_REPORT_PATH_ERROR_AT(operand_locations[index], "watch",
+                                   operands[index]);
       return 1;
     }
   }

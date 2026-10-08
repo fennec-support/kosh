@@ -92,11 +92,7 @@ fn Uniq::execute(const ExecContext &ec, EvalContext &cxt,
   let const source = operands.is_empty() ? StringView{"-"} : operands[0].view();
   let const input = open_named_or_stdin(ec, source);
   if (!input.has_value())
-    throw Error{
-        "cannot read '" + String{cxt.scratch_allocator(), source}
-          +
-        "': " + os::last_system_error_message()
-    };
+    throw Error{path_error_message("read", source, cxt.scratch_allocator())};
   defer
   {
     if (input->mode == input_descriptor_mode::Owned)

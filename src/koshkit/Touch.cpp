@@ -137,9 +137,8 @@ fn Touch::execute(const ExecContext &ec, EvalContext &cxt,
   if (FLAG_TOUCH_REFERENCE.is_set() &&
       !os::stat_path_following(FLAG_TOUCH_REFERENCE.value(), reference_status))
   {
-    KOSHKIT_REPORT_ERROR_AT(FLAG_TOUCH_REFERENCE.value_location(),
-                            "cannot stat '" + FLAG_TOUCH_REFERENCE.value() +
-                                "': " + os::last_system_error_message());
+    KOSHKIT_REPORT_PATH_ERROR_AT(FLAG_TOUCH_REFERENCE.value_location(), "stat",
+                                 FLAG_TOUCH_REFERENCE.value());
     return 1;
   }
 
@@ -169,9 +168,7 @@ fn Touch::execute(const ExecContext &ec, EvalContext &cxt,
       let const fd =
           os::open_file_descriptor(operand.view(), os::file_open_mode::Append);
       if (!fd.has_value()) {
-        report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                       "cannot touch '" + operand + "': " +
-                                           os::last_system_error_message());
+        KOSHKIT_REPORT_PATH_ERROR("touch", operand);
         status = 1;
         continue;
       }
@@ -181,9 +178,7 @@ fn Touch::execute(const ExecContext &ec, EvalContext &cxt,
 
     os::file_status current_status{};
     if (!os::stat_path_following(operand.view(), current_status)) {
-      report_soft_koshkit_util_error(
-          ec, cxt, args[0].view(),
-          "cannot touch '" + operand + "': " + os::last_system_error_message());
+      KOSHKIT_REPORT_PATH_ERROR("touch", operand);
       status = 1;
       continue;
     }
@@ -215,9 +210,7 @@ fn Touch::execute(const ExecContext &ec, EvalContext &cxt,
                  ? selected_modification_nanoseconds
                  : current_status.modification_nanoseconds}))
     {
-      report_soft_koshkit_util_error(
-          ec, cxt, args[0].view(),
-          "cannot touch '" + operand + "': " + os::last_system_error_message());
+      KOSHKIT_REPORT_PATH_ERROR("touch", operand);
       status = 1;
     }
   }

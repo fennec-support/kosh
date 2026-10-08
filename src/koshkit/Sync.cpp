@@ -64,9 +64,8 @@ fn Sync::execute(const ExecContext &ec, EvalContext &cxt,
   {
     let const &operand = operands[operand_index];
     if (!os::sync_path(operand.view(), mode)) {
-      KOSHKIT_REPORT_ERROR_AT(operand_locations[operand_index],
-                              "cannot flush '" + operand +
-                                  "': " + os::last_system_error_message());
+      KOSHKIT_REPORT_PATH_ERROR_AT(operand_locations[operand_index], "flush",
+                                   operand);
       status = 1;
     }
   }

@@ -19,7 +19,9 @@ bundled flags, flag arguments, `--`, or operand locations. Extend
 use a specialized parser only when its documented operand grammar cannot be
 represented by the shared parser.
 
-Use `report_soft_koshkit_error` for recoverable utility diagnostics. Use
+Use `report_soft_koshkit_error` for recoverable utility diagnostics, and
+`KOSHKIT_REPORT_PATH_ERROR` when a path operation fails with a system error.
+`visit_ordered_sources` hands each whole source over in operand order. Use
 `ExecContext` for standard streams and output. File operations accept `Path`.
 Platform operations pass through the `os` wrappers.
 

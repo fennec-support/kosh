@@ -562,9 +562,7 @@ fn Diff::execute(const ExecContext &ec, EvalContext &cxt,
   let const do_report_read_error = [&](usize source_index, i32 error_number)
                                        throws -> void {
     os::set_last_system_error(error_number);
-    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   "cannot read '" + operands[source_index] +
-                                       "': " + os::last_system_error_message());
+    KOSHKIT_REPORT_PATH_ERROR("read", operands[source_index]);
   };
 
   loop
