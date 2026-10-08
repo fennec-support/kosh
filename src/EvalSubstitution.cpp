@@ -1154,6 +1154,13 @@ fn EvalContext::run_function_substitution(const Expression *ast,
   let const do_evaluate_body = [&]() throws -> std::exception_ptr {
     let const was_interactive = execution_store().shell_is_interactive();
     execution_store().set_shell_is_interactive(false);
+    source_store().set_function_substitution_depth(
+        source_store().function_substitution_depth() + 1);
+    defer
+    {
+      source_store().set_function_substitution_depth(
+          source_store().function_substitution_depth() - 1);
+    };
 
     std::exception_ptr body_error;
     try {

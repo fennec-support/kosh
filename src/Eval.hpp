@@ -2641,6 +2641,14 @@ public:
   {
     return m_rejected_return_source_frames;
   }
+  fn set_function_substitution_depth(usize depth) wontthrow -> void
+  {
+    m_function_substitution_depth = depth;
+  }
+  pure fn function_substitution_depth() const wontthrow -> usize
+  {
+    return m_function_substitution_depth;
+  }
   fn set_script_run(bool is_script_run) wontthrow -> void
   {
     m_is_script_run = is_script_run;
@@ -2730,6 +2738,7 @@ private:
   u64 m_current_source_generation{EXTERNAL_SOURCE_GENERATION};
   usize m_source_depth{0};
   usize m_rejected_return_source_frames{0};
+  usize m_function_substitution_depth{0};
   usize m_mimicry_depth{0};
 };
 

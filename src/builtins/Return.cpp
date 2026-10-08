@@ -33,6 +33,7 @@ fn Return::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
      while the sh mood lets it end the script the way dash does. */
   if (!cxt.runtime_state().is_posix_mode() &&
       cxt.scope_store().local_scope_depth() == 0 &&
+      cxt.source_store().function_substitution_depth() == 0 &&
       cxt.source_store().source_depth() <=
           cxt.source_store().rejected_return_source_frames())
   {
