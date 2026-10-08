@@ -269,6 +269,7 @@ constexpr char DIRECTORY_SEPARATOR = '\\';
 constexpr bool IS_BACKSLASH_A_SEPARATOR = true;
 constexpr usize HISTORY_RECORD_MAX_DECODED_BYTE_COUNT = 8191;
 constexpr bool ENVIRONMENT_IS_CASE_SENSITIVE = false;
+constexpr usize ENVIRONMENT_VALUE_MAX_UNIT_COUNT = 32766;
 constexpr bool FILESYSTEM_IS_CASE_SENSITIVE = false;
 constexpr bool HAS_CHILD_STATE_CHANGE_WAIT = false;
 constexpr bool DEFAULT_LOCALE_IS_UTF8 = false;
@@ -290,6 +291,7 @@ constexpr char DIRECTORY_SEPARATOR = '/';
 constexpr bool IS_BACKSLASH_A_SEPARATOR = false;
 constexpr usize HISTORY_RECORD_MAX_DECODED_BYTE_COUNT = 4095;
 constexpr bool ENVIRONMENT_IS_CASE_SENSITIVE = true;
+constexpr usize ENVIRONMENT_VALUE_MAX_UNIT_COUNT = SIZE_MAX;
 constexpr bool FILESYSTEM_IS_CASE_SENSITIVE = true;
 constexpr bool HAS_CHILD_STATE_CHANGE_WAIT = true;
 #if defined __linux__ && !defined __GLIBC__
@@ -1688,6 +1690,21 @@ fn get_environment_variable(StringView key) throws -> Maybe<String>;
 fn set_environment_variable(StringView key, StringView value) throws -> void;
 fn unset_environment_variable(StringView key) throws -> void;
 pure fn get_environment_epoch() wontthrow -> u64;
+
+pure inline fn is_environment_value_storable(StringView value) wontthrow -> bool
+{
+  if (value.length <= ENVIRONMENT_VALUE_MAX_UNIT_COUNT) return true;
+
+  usize unit_count = 0;
+  for (usize index = 0; index < value.length; index++) {
+    let const byte = static_cast<u8>(value[index]);
+    if ((byte & 0xC0) != 0x80) unit_count++;
+    if (byte >= 0xF0) unit_count++;
+  }
+
+  return unit_count <= ENVIRONMENT_VALUE_MAX_UNIT_COUNT;
+}
+
 fn get_environment_spelling(StringView key) throws -> String;
 fn signal_internal_diagnostic() wontthrow -> void;
 

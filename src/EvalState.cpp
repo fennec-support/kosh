@@ -2411,7 +2411,11 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
         !is_integer && !is_lowercase && !is_uppercase && !is_read_only)
     {
       let const environment_value = os::get_environment_variable(name);
-      if (environment_value.has_value()) continue;
+      if (environment_value.has_value() &&
+          (!value.has_value() || *environment_value == *value))
+      {
+        continue;
+      }
     }
 
     source += is_associative        ? "declare -A"

@@ -218,6 +218,9 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     cxt.unset_shell_variable(name);
     if (is_integer_name)
       cxt.variable_store().attributes().mark_integer(name.view());
+    if (!os::is_environment_value_storable(value.view())) {
+      cxt.set_shell_variable(environment_name.view(), value.view());
+    }
     cxt.record_environment_change(environment_name.view());
     os::set_environment_variable(environment_name.view(), value);
     cxt.mark_exported(environment_name.view());

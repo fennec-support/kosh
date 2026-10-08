@@ -62,3 +62,15 @@ echo "$X"
 echo $NOPE end
 echo "$NOPE" end
 echo a${NOPE}b
+
+# An exported value longer than a Windows environment variable can hold keeps
+# its full length in the shell, a subshell, and a command substitution.
+long_value=$(printf '%040000d' 0)
+export long_value
+echo "exported=${#long_value}"
+( echo "subshell=${#long_value}" )
+echo "substitution=$(n=${#long_value}; echo "$n")"
+long_value="${long_value}1"
+echo "assigned=${#long_value}"
+export -n long_value
+echo "unexported=${#long_value}"

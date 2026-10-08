@@ -55,3 +55,8 @@ a  b   c
 hidden end
 hidden end
 ahiddenb
+exported=40000
+subshell=40000
+substitution=40000
+assigned=40001
+unexported=40001

@@ -1774,8 +1774,15 @@ static fn find_environment_spelling(const wchar_t *wide_key) throws
 fn set_environment_variable(StringView key, StringView value) -> void
 {
   let const wide_key = utf8_to_wide(key, heap_allocator());
-  let const wide_value = utf8_to_wide(value, heap_allocator());
+  let wide_value = utf8_to_wide(value, heap_allocator());
   if (!wide_key.has_value() || !wide_value.has_value()) return;
+
+  if (!is_environment_value_storable(value)) {
+    usize kept_unit_count = ENVIRONMENT_VALUE_MAX_UNIT_COUNT;
+    let const last_kept = (*wide_value)[kept_unit_count - 1];
+    if (last_kept >= 0xD800 && last_kept <= 0xDBFF) kept_unit_count--;
+    (*wide_value)[kept_unit_count] = L'\0';
+  }
 
   let const existing_spelling = find_environment_spelling(wide_key->begin());
   SetEnvironmentVariableW(existing_spelling.has_value()

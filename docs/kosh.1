@@ -4880,6 +4880,10 @@ is printed once and its header ends with the repeat count, as in
 A frame is printed once for each activation. Diagnostics print the same text
 in every mood.
 .SH ENVIRONMENT
+On Windows an environment variable holds at most 32,766 UTF-16 units. The
+shell keeps the whole value of a longer exported variable for itself, its
+subshells, and its command substitutions, and a child process receives the
+value cut to that limit at a character boundary.
 .TP
 .B KOSH_FLAGS
 The value supplies default command-line options.
