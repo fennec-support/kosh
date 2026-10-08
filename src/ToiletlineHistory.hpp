@@ -17,27 +17,16 @@
 
 namespace toiletline {
 
-/* A record stored only in the private branch carries this durable offset. An
-   explicit append writes it to the file and records its real offset. */
 inline constexpr usize UNWRITTEN_HISTORY_RECORD_BYTE_OFFSET =
     static_cast<usize>(-1);
 
-/* A history operation that loses a race against another shell rereads the file
-   this many times before it reports the failure. */
 inline constexpr int HISTORY_RACE_ATTEMPT_COUNT = 3;
 
-/* The decoder writes one record into a fixed buffer. A longer record cannot be
-   read back and is rejected before it reaches a file. The vendored
-   ITL_STRING_MAX_LEN holds the same value and is visible only to the editor
-   implementation. Toiletline.cpp asserts that the two agree. */
 inline constexpr usize HISTORY_RECORD_MAX_DECODED_BYTE_COUNT =
     koshka::os::HISTORY_RECORD_MAX_DECODED_BYTE_COUNT;
 
-/* The contents are flushed to a temporary file beside the resolved target and
-   renamed over it, so no reader sees a partial file and a symbolic link keeps
-   pointing at the replaced file. The target keeps its permission bits. */
 fn write_history_file_atomically(const koshka::Path &path,
                                  koshka::StringView name_prefix,
                                  koshka::StringView contents) throws -> bool;
 
-} /* namespace toiletline */
+}

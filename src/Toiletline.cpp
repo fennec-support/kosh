@@ -38,7 +38,7 @@ enum class edit_mode : u8
 fn get_codepoint_byte_offset(const char *bytes, usize byte_length,
                              usize codepoint_index) -> usize;
 
-} /* namespace toiletline */
+}
 
 #if !defined KOSH_NO_TOILETLINE
 
@@ -105,11 +105,9 @@ fn tl_arena_realloc(opaque *pointer, usize length) -> opaque *
 #define TL_ASSERT           ASSERT
 #define TL_HISTORY_MAX_SIZE (1024 * 4)
 
-} /* namespace */
+}
 
 #define TOILETLINE_IMPLEMENTATION
-/* A release build makes TL_ASSERT a no-op, leaving some vendored helpers
- * unused. */
 #if defined __clang__ || defined __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -119,8 +117,6 @@ fn tl_arena_realloc(opaque *pointer, usize length) -> opaque *
 #pragma GCC diagnostic pop
 #endif
 
-/* The shell-facing limit is declared where the implementation macro is not
-   visible. The two values are compared here. */
 static_assert(toiletline::HISTORY_RECORD_MAX_DECODED_BYTE_COUNT ==
               ITL_STRING_MAX_LEN);
 
@@ -185,25 +181,17 @@ struct completion_session
 
 completion_session COMPLETION_SESSION{};
 
-/* The external selector hands the candidates to a filtering program, and what
-   it prints replaces them. The engine, the replaced token span, and the quoting
-   are untouched. Only the presentation moves. Every failure below leaves the
-   result alone. The printed list still appears. */
 constexpr koshka::StringView SELECTOR_COMMAND_VARIABLE{
     "KOSH_FZF_COMPLETION_COMMAND"};
 constexpr koshka::StringView SELECTOR_OPTIONS_VARIABLE{
     "KOSH_FZF_COMPLETION_OPTS"};
 
-/* Seeded into the shell before the first prompt. The picker and its
-   presentation are visible and editable. The record framing is absent, since
-   --read0 and --print0 are the protocol between the shell and the picker. */
 constexpr koshka::StringView DEFAULT_SELECTOR_COMMAND{"fzf"};
-constexpr koshka::StringView DEFAULT_SELECTOR_OPTIONS{
+constexpr koshka::StringView DEFAULT_SELECTOR_OPTIONS_WITHOUT_RECORD_FRAMING{
     "--multi --layout=reverse --height=~40% --min-height=3"};
 
-/* The picker the variable names, or the reason the selector cannot run. */
-fn resolve_selector_program(koshka::EvalContext &context) throws
-    -> koshka::ErrorOr<koshka::Path>
+fn resolve_selector_program_or_report_why_it_cannot_run(
+    koshka::EvalContext &context) throws -> koshka::ErrorOr<koshka::Path>
 {
   let const configured = context.get_variable_value(SELECTOR_COMMAND_VARIABLE);
   if (configured.has_value() && configured->is_empty()) {
@@ -226,9 +214,8 @@ fn resolve_selector_program(koshka::EvalContext &context) throws
   return koshka::Path{resolved[0].text()};
 }
 
-/* The variables the external selector reads, with the value each one holds.
-   Every selector failure carries this as its note. */
-fn selector_variable_note(koshka::EvalContext &context) throws -> koshka::String
+fn selector_failure_note_with_variable_values(
+    koshka::EvalContext &context) throws -> koshka::String
 {
   let note = koshka::String{koshka::heap_allocator()};
 
@@ -253,7 +240,8 @@ fn selector_variable_note(koshka::EvalContext &context) throws -> koshka::String
 
   do_append_variable(SELECTOR_COMMAND_VARIABLE, DEFAULT_SELECTOR_COMMAND);
   note.append(", and ");
-  do_append_variable(SELECTOR_OPTIONS_VARIABLE, DEFAULT_SELECTOR_OPTIONS);
+  do_append_variable(SELECTOR_OPTIONS_VARIABLE,
+                     DEFAULT_SELECTOR_OPTIONS_WITHOUT_RECORD_FRAMING);
 
   note.append(". Set ");
   note.append(SELECTOR_COMMAND_VARIABLE);
@@ -264,11 +252,9 @@ fn selector_variable_note(koshka::EvalContext &context) throws -> koshka::String
   return note;
 }
 
-/* Records are NUL separated in both directions, so a candidate carrying a
-   newline still travels as one field. A description rides after a tab, which
-   makes it searchable while never reaching the line. */
-fn build_selector_input(const koshka::completion::completion_result &result)
-    throws -> koshka::String
+fn build_nul_separated_selector_input(
+    const koshka::completion::completion_result &result) throws
+    -> koshka::String
 {
   let input = koshka::String{koshka::heap_allocator()};
   let const has_descriptions = result.descriptions.count() > 0;
@@ -294,17 +280,13 @@ fn build_selector_args(koshka::EvalContext &context,
   let args = koshka::ArrayList<koshka::String>{koshka::heap_allocator()};
   args.push(koshka::String{program.view()});
 
-  /* The records travel NUL separated in both directions. The framing belongs
-     to the shell and stays out of the variable. */
   args.push(koshka::String{"--read0"});
   args.push(koshka::String{"--print0"});
 
-  /* The value is split on blanks with no expansion, since a completion
-     keystroke must never run a substitution. An unset variable carries the
-     defaults. The seeded value holds the defaults. */
   let const options = context.get_variable_value(SELECTOR_OPTIONS_VARIABLE);
-  let const option_text =
-      options.has_value() ? options->view() : DEFAULT_SELECTOR_OPTIONS;
+  let const option_text = options.has_value()
+                              ? options->view()
+                              : DEFAULT_SELECTOR_OPTIONS_WITHOUT_RECORD_FRAMING;
 
   for (let const &option :
        context.expand_wordlist_to_fields(option_text, false))
@@ -313,9 +295,8 @@ fn build_selector_args(koshka::EvalContext &context,
   return args;
 }
 
-/* The selected records, with each description stripped back off. A source that
-   sent no descriptions keeps its tabs, since they are data there. */
-fn parse_selector_reply(koshka::StringView reply, bool has_descriptions) throws
+fn parse_selector_reply_stripping_descriptions(koshka::StringView reply,
+                                               bool has_descriptions) throws
     -> koshka::ArrayList<koshka::String>
 {
   let selected = koshka::ArrayList<koshka::String>{koshka::heap_allocator()};
@@ -328,7 +309,6 @@ fn parse_selector_reply(koshka::StringView reply, bool has_descriptions) throws
         if (let const tab = record.find_character('\t'); tab.has_value())
           record = record.substring_of_length(0, *tab);
       }
-      /* fzf writes a trailing newline of its own under some option sets. */
       while (!record.is_empty() && record[record.length - 1] == '\n')
         record = record.substring_of_length(0, record.length - 1);
       if (!record.is_empty()) selected.push(koshka::String{record});
@@ -340,13 +320,8 @@ fn parse_selector_reply(koshka::StringView reply, bool has_descriptions) throws
 
 enum class selector_outcome : u8
 {
-  /* The selector did not run, so the printed list still answers the key. */
   NotRun,
-  /* The result now holds the replacement the user chose. */
   Selected,
-  /* The user dismissed the selector, so the key does nothing at all. Printing
-     the list here would dump every candidate over the screen the user just
-     chose to keep. */
   Dismissed,
 };
 
@@ -473,12 +448,9 @@ fn read_while_continuing_program(koshka::os::descriptor fd,
   }
 }
 
-/* Handing the editor screen back erases every row below the prompt. A message
-   survives only after that. A failure that happens before the picker starts
-   cycles the screen itself to reach the same place. The message is left above
-   the repainted prompt. */
-fn report_selector_failure(koshka::StringView message, koshka::StringView note,
-                           bool should_hand_back_screen) throws -> void
+fn report_selector_failure_above_repainted_prompt(
+    koshka::StringView message, koshka::StringView note,
+    bool should_hand_back_screen) throws -> void
 {
   if (should_hand_back_screen) {
     koshka::flush();
@@ -489,10 +461,6 @@ fn report_selector_failure(koshka::StringView message, koshka::StringView note,
   koshka::show_message(koshka::ErrorWithDetails{message, note}.to_string());
 }
 
-/* Hand the framed records to the configured picker and collect what it printed
-   back. The editor screen belongs to the child for the length of the run, and
-   every failure leaves out_selected empty so the caller can answer the key on
-   its own. */
 fn run_selector_program(koshka::EvalContext &context, koshka::StringView input,
                         bool has_descriptions,
                         koshka::ArrayList<koshka::String> &out_selected) throws
@@ -502,10 +470,12 @@ fn run_selector_program(koshka::EvalContext &context, koshka::StringView input,
   if (!koshka::os::shell_has_controlling_terminal())
     return selector_outcome::NotRun;
 
-  let const program = resolve_selector_program(context);
+  let const program =
+      resolve_selector_program_or_report_why_it_cannot_run(context);
   if (program.is_error()) {
-    let const note = selector_variable_note(context);
-    report_selector_failure(program.error().message(), note.view(), true);
+    let const note = selector_failure_note_with_variable_values(context);
+    report_selector_failure_above_repainted_prompt(program.error().message(),
+                                                   note.view(), true);
     return selector_outcome::NotRun;
   }
   let const &selector_program = program.value();
@@ -519,13 +489,11 @@ fn run_selector_program(koshka::EvalContext &context, koshka::StringView input,
     return selector_outcome::NotRun;
   }
 
-  /* execute_program owns both descriptors it is handed and closes them on every
-     path, so only the read end is released here. */
-  bool are_child_descriptors_owned = true;
+  bool are_child_descriptors_still_ours_until_execute_program = true;
   bool is_read_end_open = true;
   defer
   {
-    if (are_child_descriptors_owned) {
+    if (are_child_descriptors_still_ours_until_execute_program) {
       koshka::os::close_fd(*input_fd);
       koshka::os::close_fd(output_pipe->out);
     }
@@ -551,7 +519,7 @@ fn run_selector_program(koshka::EvalContext &context, koshka::StringView input,
     if (is_editor_suspended) unused(::tl_end_external_screen());
   };
 
-  are_child_descriptors_owned = false;
+  are_child_descriptors_still_ours_until_execute_program = false;
   let const child = koshka::os::execute_program(
       selector, koshka::os::program_execution_options{
                     .fallback = koshka::os::script_fallback_policy::Reject,
@@ -574,22 +542,16 @@ fn run_selector_program(koshka::EvalContext &context, koshka::StringView input,
                          : wait_for_continued_program(child);
   koshka::os::reclaim_controlling_terminal();
   is_terminal_lent = false;
-  /* A cancelled picker exits nonzero, and its own SIGINT must not abort the
-     next command the way an interrupted prompt would. */
   koshka::os::INTERRUPT_REQUESTED = 0;
 
   is_editor_suspended = false;
   if (::tl_end_external_screen() != TL_SUCCESS) return selector_outcome::NotRun;
 
-  /* A picker reports 0 for a selection, 1 when nothing matched, and 130 when it
-     was dismissed. A status it never uses for either says the picker could not
-     do its work. The failure is reported before the printed list answers the
-     key. */
   if (status != 0) {
     if (status == 1 || status == 130) return selector_outcome::Dismissed;
 
-    let const note = selector_variable_note(context);
-    report_selector_failure(
+    let const note = selector_failure_note_with_variable_values(context);
+    report_selector_failure_above_repainted_prompt(
         koshka::StringView{"The tab selector '"} + selector_program.view() +
             "' exited with status " +
             koshka::String::from(status, koshka::heap_allocator()),
@@ -600,7 +562,8 @@ fn run_selector_program(koshka::EvalContext &context, koshka::StringView input,
 
   if (!captured.has_value()) return selector_outcome::NotRun;
 
-  out_selected = parse_selector_reply(captured->view(), has_descriptions);
+  out_selected = parse_selector_reply_stripping_descriptions(captured->view(),
+                                                             has_descriptions);
   if (out_selected.is_empty()) return selector_outcome::Dismissed;
 
   return selector_outcome::Selected;
@@ -622,13 +585,11 @@ fn completion_session::run_selector(
   if (result.candidates.count() < 2) return selector_outcome::NotRun;
 
   let selected = koshka::ArrayList<koshka::String>{koshka::heap_allocator()};
-  let const outcome =
-      run_selector_program(*context, build_selector_input(result).view(),
-                           result.descriptions.count() > 0, selected);
+  let const outcome = run_selector_program(
+      *context, build_nul_separated_selector_input(result).view(),
+      result.descriptions.count() > 0, selected);
   if (outcome != selector_outcome::Selected) return outcome;
 
-  /* Several picks join into one replacement, the same shape the inline glob
-     expansion produces, so the token is rewritten once. */
   let replacement = koshka::String{koshka::heap_allocator()};
   for (usize i = 0; i < selected.count(); i++) {
     if (i > 0) replacement.push(' ');
@@ -644,15 +605,9 @@ fn completion_session::run_selector(
   return selector_outcome::Selected;
 }
 
-/* The history entry the picker last chose. Toiletline reads the pointer after
-   the callback returns. The bytes outlive the call and are replaced by the
-   next one. */
-koshka::String SELECTED_HISTORY_ENTRY{koshka::heap_allocator()};
+koshka::String SELECTED_HISTORY_ENTRY_READ_BY_EDITOR_AFTER_CALLBACK{
+    koshka::heap_allocator()};
 
-/* Ctrl-R reaches the same picker the completion candidates use, with the
-   matching history entries as its records. A picker that runs and is dismissed
-   answers the key on its own, and every other path hands ctrl-R back to the
-   editor. */
 fn completion_session::select_history(const char *const *entries, size_t count,
                                       const char **out_selected) -> int
 {
@@ -660,8 +615,6 @@ fn completion_session::select_history(const char *const *entries, size_t count,
   if (tab_selector != koshka::tab_selector_mode::External) return 0;
   if (entries == nullptr || count == 0) return 0;
 
-  /* Toiletline calls this through a C function pointer. A throw unwinding past
-     this frame is undefined behavior. */
   try {
     let input = koshka::String{koshka::heap_allocator()};
     for (size_t i = 0; i < count; i++) {
@@ -676,10 +629,10 @@ fn completion_session::select_history(const char *const *entries, size_t count,
     if (outcome == selector_outcome::Dismissed) return -1;
     if (selected.is_empty()) return 0;
 
-    /* A multiple selection has no meaning for one line. The first pick wins. */
-    SELECTED_HISTORY_ENTRY =
+    SELECTED_HISTORY_ENTRY_READ_BY_EDITOR_AFTER_CALLBACK =
         koshka::String{koshka::heap_allocator(), selected[0].view()};
-    *out_selected = SELECTED_HISTORY_ENTRY.c_str();
+    *out_selected =
+        SELECTED_HISTORY_ENTRY_READ_BY_EDITOR_AFTER_CALLBACK.c_str();
     return 1;
   } catch (...) {
     return 0;
@@ -725,9 +678,10 @@ fn run_line_editor(koshka::EvalContext &context, koshka::StringView line,
       koshka::ProgramResolver::Requirement::Execution,
       koshka::ProgramResolver::CachePolicy::ReadOnly);
   if (resolved.is_empty()) {
-    report_selector_failure(koshka::StringView{"The editor '"} +
-                                words[0].view() + "' was not found",
-                            LINE_EDITOR_NOTE, true);
+    report_selector_failure_above_repainted_prompt(
+        koshka::StringView{"The editor '"} + words[0].view() +
+            "' was not found",
+        LINE_EDITOR_NOTE, true);
     return false;
   }
 
@@ -773,7 +727,7 @@ fn run_line_editor(koshka::EvalContext &context, koshka::StringView line,
   if (::tl_end_external_screen() != TL_SUCCESS) return false;
 
   if (status != 0) {
-    report_selector_failure(
+    report_selector_failure_above_repainted_prompt(
         koshka::StringView{"The editor '"} + program.view() +
             "' exited with status " +
             koshka::String::from(status, koshka::heap_allocator()),
@@ -814,15 +768,11 @@ fn kosh_edit_callback(const char *buffer, const char **out_edited) -> int
   }
 }
 
-/* Toiletline edits in codepoints while the completion engine works in bytes. */
 fn completion_session::complete(const char *buffer, size_t cursor,
                                 tl_completion *out, int for_listing) -> int
 {
   if (context == nullptr || result == nullptr) return 0;
 
-  /* Toiletline calls this through a C function pointer. A throw unwinding past
-     this frame is undefined behavior. The body is guarded and any throw is
-     swallowed. */
   try {
     let const is_explicit_completion = for_listing != 0;
     if (is_explicit_completion) {
@@ -835,18 +785,12 @@ fn completion_session::complete(const char *buffer, size_t cursor,
         context->program_resolver().end_explicit_completion();
     };
 
-    /* A completion spec can shell out, and a command talking to an unreachable
-       host blocks until its own timeout. Raw mode swallows the interrupt key as
-       an ordinary byte, so it is handed back to the terminal for the length of
-       the completion and reaches that command as SIGINT the way it would at a
-       prompt. The ghost path runs no spec, so it is left alone. */
-    let const are_signal_keys_enabled =
+    let const are_signal_keys_lent_to_completion_spec =
         is_explicit_completion && ::tl_set_signal_keys(1) == TL_SUCCESS;
     defer
     {
-      if (are_signal_keys_enabled) unused(::tl_set_signal_keys(0));
-      /* An interrupt belongs to the abandoned completion, not to whatever the
-         user types next. */
+      if (are_signal_keys_lent_to_completion_spec)
+        unused(::tl_set_signal_keys(0));
       koshka::os::INTERRUPT_REQUESTED = 0;
     };
 
@@ -856,8 +800,6 @@ fn completion_session::complete(const char *buffer, size_t cursor,
     const usize byte_cursor =
         toiletline::get_codepoint_byte_offset(buffer, byte_length, cursor);
 
-    /* A completion diagnostic is armed to break onto its own line, then
-       disarmed so a later command's message is unaffected. */
     koshka::arm_message_leading_newline(true);
     result->candidates.clear();
     result->descriptions.clear();
@@ -869,12 +811,8 @@ fn completion_session::complete(const char *buffer, size_t cursor,
     let const &completions = *result;
     koshka::arm_message_leading_newline(false);
 
-    /* An abandoned completion offers nothing, so the key leaves the line as it
-       was rather than acting on whatever the interrupted spec had produced. */
     if (koshka::os::INTERRUPT_REQUESTED) return 0;
 
-    /* An explicit tab may route the candidates through a filtering picker
-       first. The ghost never does, since it draws no list and must not fork. */
     let const token_start_codepoint =
         ::tl_utf8_strnlen(buffer, completions.token_start);
     let const token_codepoint_count =
@@ -895,8 +833,6 @@ fn completion_session::complete(const char *buffer, size_t cursor,
         candidate_pointers.push(candidate.c_str());
     }
 
-    /* The candidate text keys the description lookup, and the build is skipped
-       when none was produced. */
     description_pointers.clear();
     out->descriptions = nullptr;
     if (for_listing != 0 && completions.descriptions.count() > 0) {
@@ -915,7 +851,6 @@ fn completion_session::complete(const char *buffer, size_t cursor,
     out->candidates = for_listing != 0 ? candidate_pointers.begin() : nullptr;
     out->count = completions.candidate_count;
     out->longest_common_prefix = completions.longest_common_prefix.c_str();
-    /* The engine reports the span in bytes, converted to codepoint indices. */
     out->token_start = ::tl_utf8_strnlen(buffer, completions.token_start);
     out->token_end = ::tl_utf8_strnlen(buffer, completions.token_end);
     out->is_tier_ranked = completions.is_tier_ranked ? 1 : 0;
@@ -923,7 +858,6 @@ fn completion_session::complete(const char *buffer, size_t cursor,
 
     return 1;
   } catch (koshka::ErrorBase &error) {
-    /* A throw skips the disarm above, so it runs here too. */
     koshka::arm_message_leading_newline(false);
     LOG(Debug, "completion swallowed an error: %s", error.message().c_str());
     return 0;
@@ -940,7 +874,6 @@ fn kosh_completion_callback(const char *buffer, size_t cursor,
   return COMPLETION_SESSION.complete(buffer, cursor, out, for_listing);
 }
 
-/* The body is guarded since toiletline calls through a C function pointer. */
 fn completion_session::highlight(const char *buffer, tl_highlight *out) -> int
 {
   if (context == nullptr) return 0;
@@ -1062,9 +995,6 @@ fn kosh_highlight_callback(const char *buffer, tl_highlight *out) -> int
 koshka::EvalContext *JOB_CONTEXT = nullptr;
 koshka::String WAKE_NOTIFICATION_STASH{koshka::heap_allocator()};
 
-/* The two-phase wake hook for set -b. Phase 0 formats the Done rows, phase 1
-   prints them after the editor cleared its render block. The body is guarded
-   since toiletline calls through a C function pointer. */
 fn kosh_wake_callback(int phase) -> int
 {
   try {
@@ -1089,8 +1019,6 @@ fn kosh_wake_callback(int phase) -> int
   }
 }
 
-/* An entry whose command word no longer resolves is rejected. A throw accepts
-   the entry. */
 fn completion_session::validate_ghost(const char *entry) const -> int
 {
   if (context == nullptr) return 1;
@@ -1167,11 +1095,8 @@ fn kosh_pair_role_callback(const char *buffer, size_t cursor, int byte) -> int
   }
 }
 
-/* A pause longer than the gap between keys of a word, so documentation loads
-   while the user reads the line rather than while a word is typed. */
-constexpr int IDLE_DELAY_MS = 250;
-/* How often a running documentation child is read while the pause lasts. */
-constexpr int IDLE_REPEAT_MS = 20;
+constexpr int IDLE_PAUSE_LONGER_THAN_WORD_KEY_GAP_MS = 250;
+constexpr int IDLE_DOCUMENTATION_CHILD_READ_REPEAT_MS = 20;
 
 fn completion_session::idle(const char *buffer, size_t cursor) -> int
 {
@@ -1210,7 +1135,7 @@ fn kosh_idle_callback(const char *buffer, size_t cursor) -> int
   return COMPLETION_SESSION.idle(buffer, cursor);
 }
 
-} /* namespace */
+}
 
 namespace toiletline {
 
@@ -1312,9 +1237,6 @@ struct history_file_tracking
 
 static history_file_tracking HISTORY_FILE{};
 
-/* A rename that commits leaves the file correct even when the reload that
-   follows it fails. A caller that only wrote bytes accepts the second outcome,
-   while a caller that rewrote entries in place cannot. */
 enum class history_replacement : u8
 {
   Replaced,
@@ -1482,8 +1404,6 @@ static fn restore_history_snapshot(const history_snapshot &snapshot) -> void
   HISTORY_FILE = snapshot.file_tracking;
 }
 
-/* Every read and append resolves the file the swap currently points at. A calc
-   prompt never reloads the shell file over the calc entries. */
 class CalcHistorySwap
 {
 public:
@@ -1547,9 +1467,6 @@ fn get_history_path() -> koshka::Maybe<koshka::Path>
 
 static bool SHOULD_PERSIST_HISTORY = false;
 
-/* Only an interactive shell or the calc prompt writes the file implicitly. Any
-   other shell changes the private branch, and only an explicit write, append,
-   or synchronization reaches the file. */
 static fn is_history_persistent() -> bool
 {
   return SHOULD_PERSIST_HISTORY || CALC_HISTORY_SWAP.is_active();
@@ -1593,9 +1510,9 @@ static fn find_history_record_end(StringView contents, usize start_offset)
   return koshka::None;
 }
 
-/* The records are complete encoded lines. They join the private branch only,
-   each marked as absent from the file. */
-static fn append_private_history_records(StringView records) -> bool
+static fn
+append_encoded_records_to_private_branch_as_unwritten(StringView records)
+    -> bool
 {
   if (!::itl_history_ensure_read_buffer() && ::itl_g_history_count != 0)
     return false;
@@ -1651,9 +1568,6 @@ static fn append_private_history_records(StringView records) -> bool
   return ::itl_g_history_read_buffer != nullptr;
 }
 
-/* An interactive shell appends each entry to the file as it is stored, and a
-   noninteractive one keeps it in the private branch. A write replaces the file
-   with the private branch either way. */
 fn write_history() -> koshka::ErrorOr<koshka::Ok>
 {
   let const path = get_history_file_path();
@@ -1804,8 +1718,6 @@ static fn ensure_history_loaded(const Path &path, bool should_allow_missing)
   return load_history(path, should_allow_missing);
 }
 
-/* A caller that cannot describe the new file itself reloads it here. The
-   caller holds the process lock. */
 static fn replace_history_file(const Path &path, StringView name_prefix,
                                StringView contents) -> history_replacement
 {
@@ -1838,8 +1750,6 @@ fn sync_history() -> koshka::ErrorOr<koshka::Ok>
   return load_history(*path, true);
 }
 
-/* Bash leaves the file alone when the list is cleared, so the clear empties the
-   private branch and an explicit write is the only way to empty the file. */
 fn clear_history() -> koshka::ErrorOr<koshka::Ok>
 {
   let const path = get_history_file_path();
@@ -1859,7 +1769,7 @@ fn import_history(StringView contents) -> koshka::ErrorOr<koshka::Ok>
 
   let records = String{koshka::heap_allocator(), contents};
   if (contents[contents.length - 1] != '\n') records.push('\n');
-  if (!append_private_history_records(records.view()))
+  if (!append_encoded_records_to_private_branch_as_unwritten(records.view()))
     return koshka::Error{"the file contains invalid data"};
 
   return koshka::Success;
@@ -2000,8 +1910,6 @@ fn get_history_events(koshka::Allocator allocator,
   let const path = get_history_file_path();
   if (!path.has_value()) return events;
 
-  /* The load is allowed to miss the file. An absent history reads as an empty
-     list and a damaged or unreadable file reads as a failure. */
   TRY(ensure_history_loaded(*path, true));
   if (::itl_g_history_count == 0) return events;
   if (!::itl_history_ensure_read_buffer())
@@ -2133,7 +2041,8 @@ static fn append_private_history_event(const itl_string_t *entry,
 
   let record = String{koshka::heap_allocator()};
   encode_history_record(record, command);
-  if (!append_private_history_records(record.view())) return koshka::None;
+  if (!append_encoded_records_to_private_branch_as_unwritten(record.view()))
+    return koshka::None;
 
   return ::itl_g_last_history_event_number;
 }
@@ -2381,7 +2290,7 @@ fn rewrite_history_event(usize number, StringView expected,
   return HISTORY_FILE.can_rewrite;
 }
 
-static fn strip_ansi_color(StringView text) throws -> String;
+static fn strip_sgr_color_sequences_only(StringView text) throws -> String;
 
 fn set_title(StringView title) -> void
 {
@@ -2479,8 +2388,6 @@ fn set_title(StringView title) -> void
 
   sequence.push('\a');
 
-  /* A loop body sets the same title on every iteration. A redirection that
-     rebinds a standard descriptor retires the cached one. */
   static String LAST_TITLE_SEQUENCE{koshka::heap_allocator()};
   static u64 LAST_TITLE_EPOCH = static_cast<u64>(-1);
   let const current_epoch = os::get_descriptor_epoch();
@@ -2518,15 +2425,13 @@ fn enable_completion(koshka::EvalContext &context) -> void
   ::tl_set_edit_callback(kosh_edit_callback);
   ::tl_set_pair_role_callback(kosh_pair_role_callback);
 
-  /* The selector configuration is seeded after the startup files have run. A
-     value they set wins and an unset one becomes visible and editable. */
   if (!context.get_variable_value(SELECTOR_COMMAND_VARIABLE).has_value())
     context.set_shell_variable(SELECTOR_COMMAND_VARIABLE,
                                DEFAULT_SELECTOR_COMMAND);
 
   if (!context.get_variable_value(SELECTOR_OPTIONS_VARIABLE).has_value())
     context.set_shell_variable(SELECTOR_OPTIONS_VARIABLE,
-                               DEFAULT_SELECTOR_OPTIONS);
+                               DEFAULT_SELECTOR_OPTIONS_WITHOUT_RECORD_FRAMING);
 }
 
 fn disable_completion() -> void
@@ -2548,7 +2453,6 @@ fn is_completion_enabled() -> bool
 
 fn enable_job_notifications(koshka::EvalContext &context) -> void
 {
-  /* Registered even under -T, since set -b is job reporting, not completion. */
   JOB_CONTEXT = &context;
   ::tl_set_wake_callback(kosh_wake_callback);
 }
@@ -2574,7 +2478,9 @@ fn set_hint_row(bool should_show_hints, bool should_show_diagnostics) -> void
   COMPLETION_SESSION.should_show_diagnostics = should_show_diagnostics;
   let const is_row_shown = should_show_hints || should_show_diagnostics;
   ::tl_set_hint_callback(is_row_shown ? kosh_hint_callback : nullptr);
-  ::tl_set_idle_callback(kosh_idle_callback, IDLE_DELAY_MS, IDLE_REPEAT_MS);
+  ::tl_set_idle_callback(kosh_idle_callback,
+                         IDLE_PAUSE_LONGER_THAN_WORD_KEY_GAP_MS,
+                         IDLE_DOCUMENTATION_CHILD_READ_REPEAT_MS);
 }
 
 fn set_auto_pair(bool enabled) -> void { ::tl_set_auto_pair(enabled ? 1 : 0); }
@@ -2632,10 +2538,7 @@ fn initialize() -> void
   ::tl_set_history_search_snapshot_callback(provide_history_search_snapshot);
 }
 
-/* The trim rereads the file under the lock, so the records it keeps come from
-   the file rather than from a private branch that a clear or a deletion may
-   have shortened. */
-static fn compact_history_file(usize entry_limit) -> bool
+static fn compact_history_file_from_locked_reread(usize entry_limit) -> bool
 {
   if (!is_history_persistent()) return true;
 
@@ -2675,7 +2578,7 @@ static fn compact_history_file(usize entry_limit) -> bool
 
 fn exit(usize history_size_limit) -> void
 {
-  if (!compact_history_file(history_size_limit)) {
+  if (!compact_history_file_from_locked_reread(history_size_limit)) {
     koshka::Error error{"Toiletline: Could not save history: " +
                         koshka::os::last_system_error_message()};
     koshka::show_message(error.to_string());
@@ -2732,8 +2635,6 @@ fn get_input(const String &prompt, const String &right_prompt,
   let const previous_history_total_count = ::itl_g_history_total_count;
   let const was_history_empty = previous_history_total_count == 0;
   let const previous_history_tracking = HISTORY_FILE;
-  /* Refresh geometry before every prompt so history keys are not interpreted
-     against a stale or zero-width frame after a terminal or tmux resize. */
   ::itl_g_tty_changed_size = 1;
   i32 code = ::tl_get_input(TL_BUFFER, sizeof(TL_BUFFER), prompt.c_str());
   try {
@@ -2775,8 +2676,6 @@ fn set_input(const String &input) -> void
 fn enter_raw_mode() -> void
 {
   if (::tl_enter_raw_mode() == TL_SUCCESS) return;
-  /* An in-process exec redirection can leave fd 0 off the terminal, so the tty
-     is reopened onto fd 0 and raw mode retried. */
   if (koshka::os::reopen_terminal_as_stdin() &&
       ::tl_enter_raw_mode() == TL_SUCCESS)
   {
@@ -2816,7 +2715,6 @@ static fn shorten_path_with_ellipsis(StringView path, usize max_length) throws
 {
   if (path.length <= max_length) return String{path};
   if (max_length < 3) return String{path};
-  /* The byte cut is advanced to the next codepoint boundary. */
   usize tail_start = path.length - max_length + 3;
   while (tail_start < path.length &&
          (static_cast<unsigned char>(path[tail_start]) & 0xC0) == 0x80)
@@ -2853,8 +2751,6 @@ static fn format_prompt_duration(u64 nanos) throws -> String
   return utils::format_duration_nanoseconds(nanos, koshka::heap_allocator());
 }
 
-/* localtime runs on the single interactive thread, so its shared static tm is
-   not a race. */
 static fn prompt_strftime(const char *format) throws -> String
 {
   std::time_t now = std::time(nullptr);
@@ -2877,8 +2773,6 @@ static fn prompt_hostname(bool should_use_full_hostname) throws -> String
       host.view().substring_of_length(0, dot.value_or(host.length()))};
 }
 
-/* The home prefix collapses to ~ only when it ends on a path boundary, so
-   HOME=/home/sd with cwd=/home/sderp keeps the full path. */
 static fn collapse_home_prefix(StringView path) throws -> String
 {
   let shown = String{path};
@@ -2911,8 +2805,6 @@ static fn append_prompt_notation(String &out, u32 value) throws -> void
   out.push(HEX_DIGITS[value & 0x0f]);
 }
 
-/* An escape value bound for the parameter pass carries a backslash before each
-   byte that pass would act on, so a directory named $(...) stays literal. */
 static fn append_prompt_value(String &out, StringView value,
                               bool should_quote) throws -> void
 {
@@ -2956,8 +2848,6 @@ static fn append_prompt_data(String &out, StringView data,
   append_prompt_value(out, shown.view(), should_quote);
 }
 
-/* The backslash escapes are decoded before the parameter pass, as bash does,
-   so a backslash that a parameter or substitution yields stays literal. */
 static fn expand_prompt_escapes(StringView prompt, StringView user,
                                 StringView working_directory,
                                 EvalContext &context, bool should_quote) throws
@@ -3013,8 +2903,6 @@ static fn expand_prompt_escapes(StringView prompt, StringView user,
     case 'r': out += '\r'; break;
     case 'e': out += '\x1b'; break;
     case 'a': out += '\a'; break;
-    /* The editor skips ANSI runs already, so the markers are dropped and the
-       bytes between them emitted plainly. */
     case '[': break;
     case ']': break;
     case 't': do_append_value(prompt_strftime("%H:%M:%S").view()); break;
@@ -3057,7 +2945,6 @@ static fn expand_prompt_escapes(StringView prompt, StringView user,
       out += format_prompt_duration(
           context.execution_store().last_command_duration_nanos());
       break;
-    /* \! and \# are untracked here, so they expand to nothing. */
     case '!': break;
     case '#': break;
     case '\\': out += '\\'; break;
@@ -3070,9 +2957,6 @@ static fn expand_prompt_escapes(StringView prompt, StringView user,
   return out;
 }
 
-/* The previous PS1 expansion, reusable only while every parameter it read is
-   unchanged. A template holding a substitution, funsub, or assigning parameter
-   form has inputs the names cannot capture, so it never caches. */
 struct prompt_cache_input
 {
   String name{koshka::heap_allocator()};
@@ -3118,11 +3002,8 @@ struct prompt_cache
 
 static prompt_cache PROMPT_CACHE{};
 
-/* A $ that opens anything but a plain name or a non-assigning braced parameter
-   form marks the template impure. */
-static fn
-scan_prompt_template_inputs(StringView text,
-                            koshka::ArrayList<prompt_cache_input> &names) throws
+static fn scan_prompt_template_inputs_or_report_impure(
+    StringView text, koshka::ArrayList<prompt_cache_input> &names) throws
     -> bool
 {
   let const do_is_name_byte = [](char c) {
@@ -3146,7 +3027,6 @@ scan_prompt_template_inputs(StringView text,
     if (next == '(') return false;
     if (next == '{') {
       usize j = i + 2;
-      /* A brace followed by whitespace or a pipe is a funsub. */
       if (j < text.length && (text[j] == ' ' || text[j] == '\t' ||
                               text[j] == '\n' || text[j] == '|'))
       {
@@ -3158,7 +3038,6 @@ scan_prompt_template_inputs(StringView text,
         j++;
       if (j == name_start) return false;
       do_add_name(text.substring_of_length(name_start, j - name_start));
-      /* An assigning form has an input the cache cannot key. */
       if (j < text.length && text[j] == '=') return false;
       if (j + 1 < text.length && text[j] == ':' && text[j + 1] == '=') {
         return false;
@@ -3174,7 +3053,6 @@ scan_prompt_template_inputs(StringView text,
       i = j - 1;
       continue;
     }
-    /* A special parameter such as $? reads one byte, keyed like a name. */
     do_add_name(text.substring_of_length(i + 1, 1));
     i++;
   }
@@ -3222,8 +3100,7 @@ fn get_default_prompt_template() -> String
   return template_string;
 }
 
-/* Only an SGR sequence ending in 'm' is stripped, a non-color CSI is left. */
-static fn strip_ansi_color(StringView text) throws -> String
+static fn strip_sgr_color_sequences_only(StringView text) throws -> String
 {
   let out = String{koshka::heap_allocator()};
   usize i = 0;
@@ -3243,11 +3120,8 @@ static fn strip_ansi_color(StringView text) throws -> String
   return out;
 }
 
-/* Readline takes a raw 001 and 002 byte as the bounds of a region that takes
-   no columns, the bytes \[ and \] stand for in bash. The editor measures every
-   escape sequence at zero width already, so the bounds are dropped, as the
-   two escapes are. */
-static fn finish_prompt(StringView expanded) throws -> String
+static fn finish_prompt_dropping_width_markers(StringView expanded) throws
+    -> String
 {
   let shown = String{koshka::heap_allocator()};
   for (usize i = 0; i < expanded.length; i++) {
@@ -3256,13 +3130,13 @@ static fn finish_prompt(StringView expanded) throws -> String
     }
   }
 
-  if (!colors::stdout_wants_color()) return strip_ansi_color(shown.view());
+  if (!colors::stdout_wants_color())
+    return strip_sgr_color_sequences_only(shown.view());
 
   return shown;
 }
 
-/* The user is stable for the session, so it is resolved once and reused. */
-static fn get_cached_user() throws -> const String &
+static fn get_user_resolved_once_per_session() throws -> const String &
 {
   static String CACHED_USER{koshka::heap_allocator()};
   static bool was_user_resolved = false;
@@ -3278,7 +3152,8 @@ static fn decode_prompt(StringView template_string, EvalContext &context,
                         bool should_quote) throws -> String
 {
   let const working_directory = Path::current_directory().text();
-  return expand_prompt_escapes(template_string, get_cached_user().view(),
+  return expand_prompt_escapes(template_string,
+                               get_user_resolved_once_per_session().view(),
                                working_directory.view(), context, should_quote);
 }
 
@@ -3307,8 +3182,6 @@ static fn expand_decoded_prompt(EvalContext &context, StringView name,
   return expanded;
 }
 
-/* A prompt draw error leaves the template standing with its escapes decoded
-   rather than taking down the shell. */
 static fn expand_prompt_variable(EvalContext &context, StringView name,
                                  StringView template_string,
                                  StringView decoded) throws -> String
@@ -3339,14 +3212,14 @@ fn build_prompt(EvalContext &context) -> String
   let const decoded = decode_prompt(ps1_template.view(), context, true);
   let scanned_inputs =
       koshka::ArrayList<prompt_cache_input>{koshka::heap_allocator()};
-  let const is_cacheable =
-      scan_prompt_template_inputs(decoded.view(), scanned_inputs);
+  let const is_cacheable = scan_prompt_template_inputs_or_report_impure(
+      decoded.view(), scanned_inputs);
   if (is_cacheable && PROMPT_CACHE.matches(decoded.view(), context))
-    return finish_prompt(PROMPT_CACHE.expansion.view());
+    return finish_prompt_dropping_width_markers(PROMPT_CACHE.expansion.view());
 
   String expanded = expand_prompt_variable(context, "PS1", ps1_template.view(),
                                            decoded.view());
-  String rendered = finish_prompt(expanded.view());
+  String rendered = finish_prompt_dropping_width_markers(expanded.view());
 
   PROMPT_CACHE.invalidate();
   if (is_cacheable)
@@ -3360,7 +3233,7 @@ static fn render_prompt_variable(EvalContext &context, StringView name,
                                  StringView template_string) throws -> String
 {
   let const decoded = decode_prompt(template_string, context, true);
-  return finish_prompt(
+  return finish_prompt_dropping_width_markers(
       expand_prompt_variable(context, name, template_string, decoded.view())
           .view());
 }
@@ -3386,7 +3259,8 @@ fn build_transient_prompt(EvalContext &context) -> String
                                   transient_template->view());
   }
 
-  return finish_prompt(decode_prompt("\\$ ", context, false).view());
+  return finish_prompt_dropping_width_markers(
+      decode_prompt("\\$ ", context, false).view());
 }
 
 fn render_ps0(EvalContext &context) -> String
@@ -3401,7 +3275,7 @@ fn render_ps0(EvalContext &context) -> String
       expand_decoded_prompt(context, "PS0", decoded.view());
   if (!expanded.has_value()) return String{koshka::heap_allocator()};
 
-  return finish_prompt(expanded->view());
+  return finish_prompt_dropping_width_markers(expanded->view());
 }
 
 static constexpr StringView SHELL_INTEGRATION_VARIABLE{
@@ -3565,6 +3439,6 @@ fn emit_command_start_marks(EvalContext &context, StringView command_line)
   koshka::flush();
 }
 
-} /* namespace toiletline */
+}
 
-#endif /* KOSH_NO_TOILETLINE */
+#endif

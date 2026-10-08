@@ -22,7 +22,7 @@
 
 namespace koshka {
 class EvalContext;
-} /* namespace koshka */
+}
 
 namespace toiletline {
 
@@ -50,8 +50,6 @@ void append_prompt_end_mark(koshka::EvalContext &context, String &prompt);
 void emit_command_start_marks(koshka::EvalContext &context,
                               StringView command_line);
 
-/* Called only on the interactive path, so a non-interactive run never enables
-   it. */
 void enable_completion(koshka::EvalContext &context);
 void disable_completion();
 
@@ -79,8 +77,6 @@ struct history_event
   String command;
 };
 
-/* Only the events above after_event_number are decoded. A caller that writes an
-   increment pays for the increment alone. A missing file is an empty list. */
 koshka::ErrorOr<koshka::ArrayList<history_event>>
 get_history_events(koshka::Allocator allocator,
                    koshka::Maybe<usize> after_event_number = koshka::None);
@@ -175,4 +171,4 @@ void restore_terminal_for_exit() noexcept;
 
 void emit_newlines(StringView buffer);
 
-} /* namespace toiletline */
+}

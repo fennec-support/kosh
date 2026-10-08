@@ -86,8 +86,6 @@ static fn codepoint_display_width(u32 codepoint) -> usize
   if (codepoint == '\t') return 1;
   if (codepoint < 0x20 || (codepoint >= 0x7f && codepoint < 0xa0)) return 0;
 
-  /* The first interval of either table begins at NARROW_CODEPOINT_LIMIT.
-     Everything below it is one column and skips both searches. */
   if (codepoint < NARROW_CODEPOINT_LIMIT) return 1;
 
   if (codepoint_is_in(codepoint, ZERO_WIDTH_INTERVALS,
@@ -161,7 +159,7 @@ flatten static fn display_width_walk(StringView text, usize stop_after,
   return width;
 }
 
-} /* namespace koshka::internal */
+}
 
 namespace toiletline {
 
@@ -186,9 +184,6 @@ fn is_history_contents_valid(StringView contents) -> bool
       if (byte < 0x20 || byte == 0x7f) return false;
     }
 
-    /* A backslash escape decodes to one byte for a newline or a backslash and
-       to two bytes for anything else, and a carriage return before a newline
-       decodes to nothing. */
     usize escaped_byte_count = 0;
     if (is_escape_pending) {
       is_escape_pending = false;
@@ -260,9 +255,6 @@ fn is_history_contents_valid(StringView contents) -> bool
   return true;
 }
 
-/* One record occupies one line. A newline inside the command is written as
-   backslash n and every backslash is doubled. The editor and the noninteractive
-   store both read this form. */
 fn encode_history_record(String &output, StringView command) -> void
 {
   output.reserve(output.count() + command.length * 2 + 1);
@@ -334,7 +326,6 @@ fn get_codepoint_byte_offset(const char *bytes, usize byte_length,
       seen_codepoints += 1;
     byte_offset += 1;
   }
-  /* Step over the trailing continuation bytes of the last counted codepoint. */
   while (byte_offset < byte_length &&
          (static_cast<unsigned char>(bytes[byte_offset]) & 0xC0) == 0x80)
     byte_offset += 1;
@@ -370,4 +361,4 @@ fn get_byte_offset_at_or_before_display_cell(StringView text,
   return previous_byte_offset;
 }
 
-} /* namespace toiletline */
+}

@@ -51,9 +51,6 @@ struct history_record_span
   usize end_byte_offset;
 };
 
-/* Rereading the same bytes cannot repair a malformed record, and it can repair
-   a file that grew between the read and the stat. The outcomes are kept apart
-   so a retry is spent only on the second case. */
 enum class history_scan_outcome : u8
 {
   Loaded,
@@ -209,8 +206,6 @@ static fn decode_history_record(String &decoded, StringView contents,
       is_escape_pending = true;
       continue;
     } else if (byte == '\r' && byte_offset + 2 == span.end_byte_offset) {
-      /* The record was written with CRLF endings. A carriage return anywhere
-         else is entry data. */
       continue;
     }
 
@@ -446,8 +441,6 @@ static fn rewrite_no_editor_history_event(usize wanted_number,
   return true;
 }
 
-/* The records are complete encoded lines. They join the private branch only,
-   each marked as absent from the file. */
 static fn append_no_editor_history_records(no_editor_history_state &state,
                                            StringView records) -> usize
 {
@@ -479,7 +472,7 @@ static fn append_no_editor_history_records(no_editor_history_state &state,
   return state.total_count;
 }
 
-} /* namespace koshka::internal */
+}
 
 namespace toiletline {
 
@@ -1015,6 +1008,6 @@ fn emit_command_start_marks(koshka::EvalContext &context,
   unused(command_line);
 }
 
-} /* namespace toiletline */
+}
 
-#endif /* KOSH_NO_TOILETLINE */
+#endif
