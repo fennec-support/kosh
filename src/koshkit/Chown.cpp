@@ -86,30 +86,13 @@ fn Chown::execute(const ExecContext &ec, EvalContext &cxt,
     group_id = *resolved;
   }
 
-  let const traversal_mode =
-      !FLAG_CHOWN_RECURSIVE.is_enabled()
-          ? utils::ownership_traversal_mode::SinglePath
-      : FLAG_CHOWN_ONE_FILE_SYSTEM.is_enabled()
-          ? utils::ownership_traversal_mode::RecursiveOneFileSystem
-          : utils::ownership_traversal_mode::Recursive;
-  i32 status = 0;
-
-  for (usize index = 1; index < operands.count(); index++) {
-    if (os::INTERRUPT_REQUESTED) return 130;
-    if (!utils::change_path_ownership(
-            ec, cxt, "chown",
-            Path{operands[index].view(), cxt.scratch_allocator()}, owner_id,
-            group_id, FLAG_CHOWN_COMMAND_LINE_FOLLOW.position(),
-            FLAG_CHOWN_FOLLOW.position(), FLAG_CHOWN_PHYSICAL.position(),
-            traversal_mode,
-            FLAG_CHOWN_NO_DEREFERENCE.is_enabled()
-                ? utils::ownership_symlink_mode::NoFollow
-                : utils::ownership_symlink_mode::Follow))
-      status = 1;
-    if (os::INTERRUPT_REQUESTED) return 130;
-  }
-
-  return status;
+  return utils::change_operands_ownership(
+      ec, cxt, "chown", operands,
+      {owner_id, group_id, FLAG_CHOWN_RECURSIVE.is_enabled(),
+       FLAG_CHOWN_ONE_FILE_SYSTEM.is_enabled(),
+       FLAG_CHOWN_NO_DEREFERENCE.is_enabled(),
+       FLAG_CHOWN_COMMAND_LINE_FOLLOW.position(), FLAG_CHOWN_FOLLOW.position(),
+       FLAG_CHOWN_PHYSICAL.position()});
 }
 
 } /* namespace koshka::koshkit */

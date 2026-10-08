@@ -223,42 +223,51 @@ fn resolve_group_id(StringView text) throws -> Maybe<u32>
   return os::groupname_to_gid(text);
 }
 
-fn change_path_ownership(const ExecContext &ec, EvalContext &cxt,
-                         StringView utility_name, const Path &path,
-                         i64 owner_id, i64 group_id,
-                         usize command_line_follow_position,
-                         usize follow_position, usize physical_position,
-                         ownership_traversal_mode traversal_mode,
-                         ownership_symlink_mode argument_symlink_mode) throws
-    -> bool
+fn change_operands_ownership(const ExecContext &ec, EvalContext &cxt,
+                             StringView utility_name,
+                             const ArrayList<String> &operands,
+                             const ownership_request &request) throws -> i32
 {
-  let const is_recursive =
-      traversal_mode != ownership_traversal_mode::SinglePath;
-  let traversal_position = command_line_follow_position;
-  if (follow_position > traversal_position)
-    traversal_position = follow_position;
-  if (physical_position > traversal_position)
-    traversal_position = physical_position;
+  let const traversal_mode =
+      !request.is_recursive ? ownership_traversal_mode::SinglePath
+      : request.is_one_file_system
+          ? ownership_traversal_mode::RecursiveOneFileSystem
+          : ownership_traversal_mode::Recursive;
+  let traversal_position = request.command_line_follow_position;
+  if (request.follow_position > traversal_position)
+    traversal_position = request.follow_position;
+  if (request.physical_position > traversal_position)
+    traversal_position = request.physical_position;
 
   let const should_follow_nested =
-      follow_position == traversal_position && traversal_position != 0;
+      request.follow_position == traversal_position && traversal_position != 0;
   let const should_follow_command_line =
       should_follow_nested ||
-      (command_line_follow_position == traversal_position &&
+      (request.command_line_follow_position == traversal_position &&
        traversal_position != 0);
   let const should_follow_argument =
-      argument_symlink_mode == ownership_symlink_mode::Follow &&
-      (!is_recursive || should_follow_command_line);
-  let active_directories =
-      ArrayList<ownership_directory_identity>{heap_allocator()};
+      !request.should_change_symlink &&
+      (!request.is_recursive || should_follow_command_line);
+  i32 status = 0;
 
-  return change_path_ownership_recursive(
-      ec, cxt, utility_name, path, owner_id, group_id, active_directories,
-      nullptr, nullptr, false, traversal_mode,
-      should_follow_argument ? ownership_symlink_mode::Follow
-                             : ownership_symlink_mode::NoFollow,
-      should_follow_nested ? ownership_symlink_mode::Follow
-                           : ownership_symlink_mode::NoFollow);
+  for (usize index = 1; index < operands.count(); index++) {
+    if (os::INTERRUPT_REQUESTED) return 130;
+    let active_directories =
+        ArrayList<ownership_directory_identity>{heap_allocator()};
+    if (!change_path_ownership_recursive(
+            ec, cxt, utility_name,
+            Path{operands[index].view(), cxt.scratch_allocator()},
+            request.owner_id, request.group_id, active_directories, nullptr,
+            nullptr, false, traversal_mode,
+            should_follow_argument ? ownership_symlink_mode::Follow
+                                   : ownership_symlink_mode::NoFollow,
+            should_follow_nested ? ownership_symlink_mode::Follow
+                                 : ownership_symlink_mode::NoFollow))
+      status = 1;
+    if (os::INTERRUPT_REQUESTED) return 130;
+  }
+
+  return status;
 }
 
 } /* namespace koshka::utils */

@@ -49,30 +49,13 @@ fn Chgrp::execute(const ExecContext &ec, EvalContext &cxt,
     return 1;
   }
 
-  let const traversal_mode =
-      !FLAG_CHGRP_RECURSIVE.is_enabled()
-          ? utils::ownership_traversal_mode::SinglePath
-      : FLAG_CHGRP_ONE_FILE_SYSTEM.is_enabled()
-          ? utils::ownership_traversal_mode::RecursiveOneFileSystem
-          : utils::ownership_traversal_mode::Recursive;
-  i32 status = 0;
-
-  for (usize index = 1; index < operands.count(); index++) {
-    if (os::INTERRUPT_REQUESTED) return 130;
-    if (!utils::change_path_ownership(
-            ec, cxt, "chgrp",
-            Path{operands[index].view(), cxt.scratch_allocator()}, -1,
-            *group_id, FLAG_CHGRP_COMMAND_LINE_FOLLOW.position(),
-            FLAG_CHGRP_FOLLOW.position(), FLAG_CHGRP_PHYSICAL.position(),
-            traversal_mode,
-            FLAG_CHGRP_NO_DEREFERENCE.is_enabled()
-                ? utils::ownership_symlink_mode::NoFollow
-                : utils::ownership_symlink_mode::Follow))
-      status = 1;
-    if (os::INTERRUPT_REQUESTED) return 130;
-  }
-
-  return status;
+  return utils::change_operands_ownership(
+      ec, cxt, "chgrp", operands,
+      {-1, *group_id, FLAG_CHGRP_RECURSIVE.is_enabled(),
+       FLAG_CHGRP_ONE_FILE_SYSTEM.is_enabled(),
+       FLAG_CHGRP_NO_DEREFERENCE.is_enabled(),
+       FLAG_CHGRP_COMMAND_LINE_FOLLOW.position(), FLAG_CHGRP_FOLLOW.position(),
+       FLAG_CHGRP_PHYSICAL.position()});
 }
 
 } /* namespace koshka::koshkit */
