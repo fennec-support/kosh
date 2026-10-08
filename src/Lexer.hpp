@@ -69,15 +69,10 @@ public:
   };
 
   explicit ParseSession(BumpArena &syntax_arena)
-      : m_syntax_arena(&syntax_arena), m_active_arena(&syntax_arena)
+      : m_active_arena(&syntax_arena)
   {}
 
   pure fn get_arena() const wontthrow -> BumpArena & { return *m_active_arena; }
-
-  pure fn get_syntax_arena() const wontthrow -> BumpArena &
-  {
-    return *m_syntax_arena;
-  }
 
   pure fn is_allocating_function_body() const wontthrow -> bool
   {
@@ -158,7 +153,6 @@ public:
   }
 
 private:
-  BumpArena *m_syntax_arena;
   BumpArena *m_active_arena;
   AllocationKind m_allocation_kind{AllocationKind::Syntax};
   u32 m_source_name_index{0};

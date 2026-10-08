@@ -623,6 +623,16 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
 
 #elif defined __linux__
 
+static fn format_proc_pid_path(char (&path)[64], i64 process_id,
+                               const char *suffix) wontthrow -> bool
+{
+  let const path_length =
+      std::snprintf(path, sizeof(path), "/proc/%lld%s",
+                    static_cast<long long>(process_id), suffix);
+
+  return path_length > 0 && static_cast<usize>(path_length) < sizeof(path);
+}
+
 static donteliminate fn nth_space_field(StringView text, usize index) wontthrow
     -> StringView
 {
@@ -712,9 +722,14 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
     let const parsed_pid = name.to<i64>();
     if (parsed_pid.is_error()) continue;
 
-    const String process_directory = "/proc/" + name;
-    let command_name =
-        Path{(process_directory + "/comm").view()}.read_entire_file();
+    char process_directory[64];
+    char process_file[64];
+    if (!format_proc_pid_path(process_directory, parsed_pid.value(), "") ||
+        !format_proc_pid_path(process_file, parsed_pid.value(), "/comm"))
+    {
+      continue;
+    }
+    let command_name = Path{process_file}.read_entire_file();
     if (!command_name.has_value()) continue;
     while (!command_name->is_empty() && command_name->back() == '\n')
       command_name->pop_back();
@@ -723,12 +738,12 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
     process.pid = parsed_pid.value();
     process.name = steal(*command_name);
 
-    if (let const uid = linux_process_real_uid(process_directory.view(),
-                                               &process.parent_pid))
+    if (let const uid =
+            linux_process_real_uid(process_directory, &process.parent_pid))
       process.owner_id = *uid;
 
-    if (let command_line =
-            Path{(process_directory + "/cmdline").view()}.read_entire_file();
+    unused(format_proc_pid_path(process_file, parsed_pid.value(), "/cmdline"));
+    if (let command_line = Path{process_file}.read_entire_file();
         command_line.has_value() && !command_line->is_empty())
     {
       let normalized_command_line = String{heap_allocator()};
@@ -746,10 +761,8 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
     }
 
     if (include_resource_stats) {
-      if (let stat =
-              Path{(process_directory + "/stat").view()}.read_entire_file();
-          stat.has_value())
-      {
+      unused(format_proc_pid_path(process_file, parsed_pid.value(), "/stat"));
+      if (let stat = Path{process_file}.read_entire_file(); stat.has_value()) {
         let const text = stat->view();
         usize after_name_position = text.length;
         for (usize position = text.length; position > 0; position--)
@@ -779,8 +792,8 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
         }
       }
 
-      if (let statm =
-              Path{(process_directory + "/statm").view()}.read_entire_file();
+      unused(format_proc_pid_path(process_file, parsed_pid.value(), "/statm"));
+      if (let statm = Path{process_file}.read_entire_file();
           statm.has_value())
       {
         let const page_kib = static_cast<u64>(sysconf(_SC_PAGESIZE)) / 1024;
@@ -815,10 +828,14 @@ fn describe_processes(const ArrayList<u32> &pids) throws
 {
   ArrayList<process_entry> described{heap_allocator()};
   for (let const pid : pids) {
-    let const process_directory =
-        "/proc/" + String::from(pid, heap_allocator()).view();
-    let command_name =
-        Path{(process_directory + "/comm").view()}.read_entire_file();
+    char process_directory[64];
+    char process_file[64];
+    if (!format_proc_pid_path(process_directory, pid, "") ||
+        !format_proc_pid_path(process_file, pid, "/comm"))
+    {
+      continue;
+    }
+    let command_name = Path{process_file}.read_entire_file();
     if (!command_name.has_value()) continue;
     while (!command_name->is_empty() && command_name->back() == '\n')
       command_name->pop_back();
@@ -826,13 +843,11 @@ fn describe_processes(const ArrayList<u32> &pids) throws
     process_entry process{};
     process.pid = static_cast<i64>(pid);
     process.name = steal(*command_name);
-    if (let const uid = linux_process_real_uid(process_directory.view()))
+    if (let const uid = linux_process_real_uid(process_directory))
       process.owner_id = *uid;
 
-    if (let stat =
-            Path{(process_directory + "/stat").view()}.read_entire_file();
-        stat.has_value())
-    {
+    unused(format_proc_pid_path(process_file, pid, "/stat"));
+    if (let stat = Path{process_file}.read_entire_file(); stat.has_value()) {
       let const text = stat->view();
       usize after_name_position = text.length;
       for (usize position = text.length; position > 0; position--)
@@ -1266,16 +1281,6 @@ static fn parse_decimal_word(StringView word) wontthrow -> Maybe<u64>
   }
 
   return parsed;
-}
-
-static fn format_proc_pid_path(char (&path)[64], i64 process_id,
-                               const char *suffix) wontthrow -> bool
-{
-  let const path_length =
-      std::snprintf(path, sizeof(path), "/proc/%lld%s",
-                    static_cast<long long>(process_id), suffix);
-
-  return path_length > 0 && static_cast<usize>(path_length) < sizeof(path);
 }
 
 struct tcp_counter_field
