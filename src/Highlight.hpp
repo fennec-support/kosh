@@ -73,4 +73,4 @@ struct highlight_theme
 
 pure fn highlight_role_name(highlight_role role) wontthrow -> StringView;
 
-} /* namespace koshka */
+}

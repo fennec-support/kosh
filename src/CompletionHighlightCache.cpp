@@ -660,6 +660,6 @@ fn debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
 }
 #endif
 
-} /* namespace completion */
+}
 
-} /* namespace koshka */
+}

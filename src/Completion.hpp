@@ -26,10 +26,6 @@ namespace koshka {
 
 class EvalContext;
 
-/* The presentation the editor uses when a completion has several candidates.
-   Interactive draws the shell's own bounded menu under the prompt. External
-   launches the configured selector program. Plain prints the candidate list the
-   way a terminal shell without an editor does. */
 enum class tab_selector_mode : u8
 {
   Interactive,
@@ -84,8 +80,6 @@ enum class completion_filesystem_mode : u8
 struct completion_result
 {
   ArrayList<String> candidates;
-  /* Keyed by the candidate text so it survives the candidate sort. Empty for a
-     filesystem or command-name completion. */
   StringMap<String> descriptions{heap_allocator()};
   String longest_common_prefix;
   usize candidate_count;
@@ -93,7 +87,6 @@ struct completion_result
   usize materialized_candidate_count;
   usize token_start;
   usize token_end;
-  /* Argument position completes against the filesystem instead. */
   bool is_command_position;
   bool is_tier_ranked{false};
   bool is_space_suppressed{false};
@@ -141,7 +134,6 @@ private:
   BumpArena::Mark m_saved;
 };
 
-/* The spans come back sorted by start and non-overlapping. */
 enum class shell_lexical_frame_kind : u8
 {
   command,
@@ -276,7 +268,6 @@ pure fn debug_shell_lexical_scan_byte_count() wontthrow -> usize;
 fn debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool;
 #endif
 
-/* The verdicts are cached per word and the cache drops when PATH changes. */
 fn command_word_resolves(StringView line, EvalContext &context) throws -> bool;
 
 fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
@@ -288,24 +279,18 @@ struct idle_documentation_progress
   bool is_loading{false};
 };
 
-/* Called while the editor is idle. It reads the man page or --help text that
-   the hint row would show for the command under the caret. It starts at most
-   one child process per idle step and does not wait for it. A finished load
-   may change the row. */
 fn step_idle_documentation(StringView line, usize cursor,
                            EvalContext &context) throws
     -> idle_documentation_progress;
 
-/* Kills a load still running when the line is submitted. */
 fn abandon_idle_documentation() throws -> void;
 
 fn describe_syntax_problem(StringView line, usize cursor, mimic_mood mood,
                            String &out) throws -> bool;
 
-/* The first analysis finding of a line that parses, for an idle editor. */
 fn describe_analysis_finding(StringView line, EvalContext &context,
                              String &out) throws -> bool;
 
-} /* namespace completion */
+}
 
-} /* namespace koshka */
+}

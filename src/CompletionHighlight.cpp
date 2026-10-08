@@ -30,8 +30,6 @@ namespace completion {
 
 using namespace internal;
 
-/* Reset at the top of highlight_line so the previous render stays valid until
-   the editor drains it. */
 BumpArena internal::HIGHLIGHT_ARENA{};
 #if !defined NDEBUG
 usize internal::DEBUG_HIGHLIGHT_INPUT_BYTE_COUNT = 0;
@@ -43,8 +41,6 @@ static fn first_word_resolves(StringView word, EvalContext &context) throws
   if (word == "!") return true;
   if (KEYWORDS.find(word).has_value()) return true;
 
-  /* A path word resolves against the filesystem with a leading tilde expanded
-     first. */
   if (os::has_directory_separator(word)) {
     let target = word;
     Maybe<String> expanded;
@@ -56,8 +52,6 @@ static fn first_word_resolves(StringView word, EvalContext &context) throws
       } else
         return false;
     }
-    /* An existing regular file resolves even when not executable, permission
-       is a runtime matter. */
     if (Maybe<Path> canonical = Path::canonicalize(target);
         canonical.has_value())
     {
@@ -152,10 +146,6 @@ static pure fn is_highlight_function_name_char(char c) wontthrow -> bool
   }
 }
 
-/* The shell looks a command word up in the function table before it treats the
-   word as a path. A name such as ble/util/put is a call. A brace pair holding
-   `..` is a range expansion. An unpaired brace is a fragment. Neither one
-   belongs to a name. */
 pure fn internal::word_is_function_name(StringView word) wontthrow -> bool
 {
   if (word.is_empty() || !is_highlight_name_start(word[0])) return false;
@@ -201,7 +191,6 @@ pure fn internal::word_defines_function(StringView line, usize word_end,
   return i < end && line[i] == ')';
 }
 
-/* '{' and '}' are left out so a brace word such as a{1,2} stays one word. */
 static pure fn position_is_highlight_word_break(StringView line, usize position,
                                                 usize end) wontthrow -> bool
 {
@@ -222,7 +211,6 @@ static pure fn position_is_highlight_word_break(StringView line, usize position,
   }
 }
 
-/* The $(...) form is handled by the caller. */
 static pure fn scan_dollar_expansion(StringView line, usize dollar,
                                      usize end) wontthrow -> usize
 {
@@ -372,8 +360,6 @@ constexpr static_string_entry<keyword_spec> HIGHLIGHT_KEYWORD_ENTRIES[] = {
 
 constexpr StaticStringMap HIGHLIGHT_KEYWORDS{HIGHLIGHT_KEYWORD_ENTRIES};
 
-/* The highlight table carries `[[` and `in`, which the lexer keyword table does
-   not hold, so the coupling is a subset test in one direction. */
 consteval fn every_lexer_keyword_has_a_highlight_spec() wontthrow -> bool
 {
   for (let const &keyword : KEYWORD_ENTRIES) {
@@ -392,7 +378,7 @@ static_assert(every_lexer_keyword_has_a_highlight_spec(),
               "A lexer keyword reaches the highlighter with no spec, so its "
               "construct never opens.");
 
-} /* namespace */
+}
 
 fn internal::advance_shell_keyword_state(StringView word, usize frame_depth,
                                          shell_lexical_state &state) throws
@@ -556,7 +542,6 @@ static fn path_partial_prefixes_entry(StringView word, usize existing_end,
   return false;
 }
 
-/* True when the byte after a word finishes it, so no keystroke can grow it. */
 static fn word_is_terminated_by_separator(StringView line, usize word_end,
                                           usize line_length) wontthrow -> bool
 {
@@ -580,9 +565,6 @@ static fn word_is_terminated_by_separator(StringView line, usize word_end,
   }
 }
 
-/* Path coloring receives source spelling rather than an expanded word. On
-   Windows an unquoted backslash looks like a native separator but the shell
-   grammar removes it when it escapes an ordinary byte. */
 static fn word_has_erased_directory_separator(StringView word) wontthrow -> bool
 {
   char quote_character = 0;
@@ -610,7 +592,6 @@ static fn word_has_erased_directory_separator(StringView word) wontthrow -> bool
   return false;
 }
 
-/* Returns whether the word was treated as a path. */
 static fn color_path_argument(usize word_start, StringView word,
                               bool word_is_terminated,
                               bool should_only_include_directories,
@@ -744,8 +725,6 @@ static fn color_path_argument(usize word_start, StringView word,
   return true;
 }
 
-/* None when the expansion carries an operator such as ${x:-y} or a form like
-   ${#x}. */
 static fn simple_dollar_name(StringView line, usize i,
                              usize expansion_end) wontthrow -> Maybe<StringView>
 {
@@ -763,8 +742,6 @@ static fn simple_dollar_name(StringView line, usize i,
   return line.substring_of_length(i + 1, expansion_end - (i + 1));
 }
 
-/* Read without side effect so the highlighter never advances RANDOM or reads
-   the clock. */
 static fn dollar_name_is_set(StringView name,
                              const HashSet &line_variable_names,
                              EvalContext &context) throws -> bool
@@ -785,8 +762,6 @@ static fn color_dollar(StringView line, usize i, usize end,
                        HashSet &line_variable_names,
                        const HashSet *known_function_names) throws -> usize
 {
-  /* $(( ... )) frames an arithmetic expression, so its inside colors as bare
-     names, numbers, and operators. */
   if (i + 2 < end && line[i + 1] == '(' && line[i + 2] == '(') {
     let const inner_begin = i + 3 < end ? i + 3 : end;
     return color_arithmetic(line, inner_begin, end, context, spans,
@@ -912,8 +887,6 @@ struct heredoc_pending_highlight
   bool should_strip_tabs;
 };
 
-/* A <<- delimiter is matched once its leading tabs are skipped, the way the
-   lexer strips them. */
 static fn
 scan_heredoc_bodies(StringView line, usize position, usize end,
                     const ArrayList<heredoc_pending_highlight> &pending,
@@ -996,8 +969,6 @@ static constexpr PackedStringKey TIME_OPTION_KEYS[] = {
 };
 static constexpr StaticStringSet TIME_OPTIONS{TIME_OPTION_KEYS};
 
-/* An alias name reaches as wide as a function name, so the operand keeps every
-   byte before the equals sign. */
 static pure fn command_name_operand_of(StringView word) wontthrow -> StringView
 {
   let name = word;
@@ -1106,8 +1077,6 @@ static pure fn variable_name_operand_of(StringView word) wontthrow -> StringView
   return lexer::word_is_variable_name(name) ? name : StringView{};
 }
 
-/* A command substitution recurses with its own command-position and construct
-   state, so a nested command line colors on its own. */
 fn internal::scan_highlight_range(
     StringView line, usize begin, usize end, EvalContext &context,
     ArrayList<highlight_span> &spans, HashSet &line_variable_names,
@@ -1174,7 +1143,6 @@ fn internal::scan_highlight_range(
     if (c == ' ' || c == '\t' || c == '\n' ||
         (c == '\r' && i + 1 < end && line[i + 1] == '\n'))
     {
-      /* A newline ends a command the way a ';' does. */
       if (c == '\n') {
         do_commit_pending_assignments();
         is_command_position = true;
@@ -1208,7 +1176,6 @@ fn internal::scan_highlight_range(
       continue;
     }
 
-    /* <<< is a one-line here-string and falls through to the operator scan. */
     if (c == '<' && i + 1 < end && line[i + 1] == '<' &&
         !(i + 2 < end && line[i + 2] == '<'))
     {
@@ -1241,8 +1208,6 @@ fn internal::scan_highlight_range(
       continue;
     }
 
-    /* A separator or an opener moves the next word back to command position, a
-       redirection does not. */
     if (c == '|' || c == '&' || c == ';' || c == '<' || c == '>' || c == '(' ||
 
         c == ')' || c == '{' || c == '}')
@@ -1332,8 +1297,6 @@ fn internal::scan_highlight_range(
         word_spans.push(
             highlight_span{string_start, i, highlight_role::string});
       } else if (d == '"' || (d == '$' && i + 1 < end && line[i + 1] == '"')) {
-        /* literal_start tracks the current yellow run, which resumes after
-           every expansion. */
         let literal_start = i;
         if (d == '$') i++;
         i++;
@@ -1578,9 +1541,6 @@ fn internal::scan_highlight_range(
       }
     }
 
-    /* The words inside `name=(...)` are element values, so the list is left out
-       of command position until it closes. A declare or local operand carries
-       the same form outside command position. */
     if (is_assignment && word[word.length - 1] == '=' && word_end < end &&
         line[word_end] == '(')
     {
@@ -1638,7 +1598,6 @@ fn internal::scan_highlight_range(
       expecting_in = false;
       for_variable_pending = false;
       is_command_position = false;
-      /* A case takes patterns, so this only arms for a for. */
       if (!stack.is_empty() && stack.back() == highlight_construct::for_) {
         for_do_expected = true;
       }
@@ -1648,8 +1607,6 @@ fn internal::scan_highlight_range(
       continue;
     }
 
-    /* The word right after for is the loop variable, which must be a plain
-       identifier, the way the parser rejects for $f. */
     if (for_variable_pending) {
       for_variable_pending = false;
       is_command_position = false;
@@ -1674,8 +1631,6 @@ fn internal::scan_highlight_range(
       continue;
     }
 
-    /* A word other than do once the for word list ends is misplaced, shown
-       red. */
     if (for_do_expected && is_command_position) {
       for_do_expected = false;
       if (word != "do") {
@@ -1790,7 +1745,6 @@ fn internal::scan_highlight_range(
       {
         do_push(word_start, word_end, highlight_role::url);
       } else if (token_has_glob_metacharacter(word)) {
-        /* The word is plain here so the metacharacter is live. */
         do_push(word_start, word_end, highlight_role::glob);
       } else {
         if (!word_has_erased_directory_separator(word))
@@ -1814,6 +1768,6 @@ fn internal::scan_highlight_range(
   return i;
 }
 
-} /* namespace completion */
+}
 
-} /* namespace koshka */
+}

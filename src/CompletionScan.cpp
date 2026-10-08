@@ -80,8 +80,6 @@ static fn previous_settled_word(StringView line, usize token_start) wontthrow
 
 using sorted_target_list = SortedArrayList<String, order_comparator<String>>;
 
-/* Keyed by the source file's absolute path and refreshed when the mtime moves.
-   Cached targets stay sorted so prefix completion can skip non-matches. */
 struct cached_target_list
 {
   i64 mtime{0};
@@ -146,7 +144,6 @@ static fn parse_make_database_targets(StringView database,
       continue;
     }
     if (text.is_empty() || text[0] == '#') continue;
-    /* The disowned rule follows its "# Not a target" comment immediately. */
     if (skip_next_rule) {
       skip_next_rule = false;
       continue;
@@ -200,8 +197,6 @@ static fn parse_tsh_node_names(StringView listing) throws -> ArrayList<String>
   return names;
 }
 
-/* A tolerant scan that tracks only strings, escapes, and brace nesting, no
-   JSON machinery. */
 static fn parse_package_json_scripts(StringView text) throws
     -> ArrayList<String>
 {
@@ -277,8 +272,6 @@ static fn parse_package_json_scripts(StringView text) throws
   return scripts;
 }
 
-/* The Host lines of the ssh config without the glob patterns, and the first
-   fields of known_hosts without the hashed rows. */
 static fn collect_ssh_hosts() throws -> ArrayList<String>
 {
   let hosts = ArrayList<String>{heap_allocator()};
@@ -305,7 +298,6 @@ static fn collect_ssh_hosts() throws -> ArrayList<String>
             row.starts_with(StringView{"Host\t"})))
         continue;
       row = row.substring(5);
-      /* A name carrying a pattern byte is a rule, not a reachable host. */
       usize k = 0;
       while (k < row.length) {
         k = skip_blanks(row, k);
@@ -336,7 +328,6 @@ static fn collect_ssh_hosts() throws -> ArrayList<String>
     usize i = 0;
     while (i < text.length) {
       let const row = text.next_line(i);
-      /* A hashed row opens with |1| and hides its host on purpose. */
       if (row.is_empty() || row[0] == '#' || row[0] == '|') continue;
       usize field_end = 0;
       while (field_end < row.length && row[field_end] != ' ' &&
@@ -359,7 +350,6 @@ static fn collect_ssh_hosts() throws -> ArrayList<String>
   return hosts;
 }
 
-/* Null means the source file is missing. The result points into the cache. */
 template <typename Collector>
 static fn cached_targets_for(const Path &source_file, Collector collect) throws
     -> Maybe<const sorted_target_list *>
@@ -408,7 +398,6 @@ fn internal::complete_from_process_arguments(StringView line, StringView token,
     return None;
   }
 
-  /* A signal operand is not a process, so the flag scan answers instead. */
   let const previous_word = previous_settled_word(line, token_start);
   if (SIGNAL_FLAGS.contains(previous_word)) {
     return None;
@@ -447,13 +436,9 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
   let const command = command_word_of(line);
   if (command.is_empty()) return None;
 
-  /* A `koshkit make` routes make through the multicall dispatcher, so the build
-     tool is the second word when koshkit is the command word. */
   let const tool =
       (command == "koshkit") ? second_word_of(line).value_or(command) : command;
 
-  /* The name resolves to a path first, since the helper runs the path directly
-     with no PATH search, and a probe that overruns the deadline is killed. */
   let const probe_timeout_nanos = 2'000'000'000ULL;
   let const do_capture = [&](const ArrayList<String> &probe_argv)
                              throws -> String {
@@ -642,7 +627,6 @@ static fn append_flag_forms(const FlagList &flags, StringView token_filter,
   }
 }
 
-/* Null means the kind registered no flags. */
 static fn dash_candidates_for(Maybe<Builtin::Kind> builtin_kind) throws
     -> const ArrayList<String> *
 {
@@ -741,7 +725,6 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
   if (command.is_empty()) return None;
 
   let const builtin_kind = search_builtin(command);
-  /* Matched by basename so both kosh and a path to it answer. */
   let shell_binary_name = command;
   for (usize i = command.length; i > 0; i--)
     if (os::is_directory_separator(command[i - 1])) {
@@ -867,7 +850,6 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
       builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Set;
 
   if (completes_set_builtin || completes_shell_binary) {
-    /* set -o and set +o name an option by long name, no dash on the operand. */
     if (completes_set_builtin &&
         (previous_word == "-o" || previous_word == "+o"))
     {
@@ -988,11 +970,9 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     return None;
   }
 
-  /* A shopt operand is an option name, no dash required. */
   if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Shopt &&
       wants_operand)
   {
-    /* shopt -o crosses over to the set option names. */
     if (previous_word == "-o") {
       for (let const name : shell_option_names())
         do_push_matching(name);
@@ -1025,14 +1005,12 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
   }
 
   if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Kill) {
-    /* kill -s and kill -n both resolve a signal name or a number. */
     if (previous_word == "-s" || previous_word == "-n") {
       do_push_signal_names();
       if (!candidates.is_empty()) return candidates;
       return None;
     }
 
-    /* A bare kill operand completes the %job ids, the one live table here. */
     if (wants_operand) {
       for (let const &background_job : context.job_table_store().jobs()) {
         let job_id = String{"%"};
@@ -1044,7 +1022,6 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     }
   }
 
-  /* A trap operand past the action names a signal or a special condition. */
   if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Trap &&
       wants_operand && previous_word != command)
   {
@@ -1055,7 +1032,6 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     return None;
   }
 
-  /* An enable operand is a builtin name. */
   if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Enable &&
       wants_operand)
   {
@@ -1125,7 +1101,6 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     return None;
   }
 
-  /* complete -o, compgen -o, and compopt -o or +o name a completion option. */
   let const is_option_name_word =
       builtin_kind.has_value() &&
       (((*builtin_kind == Builtin::Kind::Complete ||
@@ -1140,7 +1115,6 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     return None;
   }
 
-  /* compgen -V names the indexed array that receives the candidates. */
   if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Compgen &&
       previous_word == "-V")
   {
@@ -1149,7 +1123,6 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     return None;
   }
 
-  /* assimilate --link-mood names the symlink spellings it installs. */
   if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Assimilate &&
       previous_word == "--link-mood")
   {
@@ -1159,11 +1132,9 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     return None;
   }
 
-  /* A bare unset operand is a variable name with no leading $. */
   if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Unset &&
       (token.is_empty() || token[0] != '-'))
   {
-    /* unset -f removes a function, the plain and -v forms a variable. */
     let unsets_function = false;
     let const prefix = line.substring_of_length(0, token_start);
     usize scan_position = 0;
@@ -1213,8 +1184,6 @@ static pure fn entry_is_unrequested_dash_word(
   return !should_offer_dash_entries && !entry.is_empty() && entry[0] == '-';
 }
 
-/* The description opens after a space, so a value holding a parenthesis such as
-   a filename is left whole. */
 static fn push_spec_candidate(StringView entry, ArrayList<String> &candidates,
                               StringMap<String> &descriptions) throws -> void
 {
@@ -1344,7 +1313,6 @@ generate_spec_candidates(completion_spec &active_spec,
   }
 
   if (!active_spec.word_list.is_empty()) {
-    /* The -W list expands through the same shared path compgen -W reads. */
     let const definition_scope =
         DefinitionStateScope{context, active_spec.defining_state,
                              definition_state_exit::RestoreCaller};
@@ -1359,8 +1327,6 @@ generate_spec_candidates(completion_spec &active_spec,
     }
   }
 
-  /* COMPREPLY is already filtered to the current word, so its entries are taken
-     as they are under the same dash gate. */
   let const should_mark_file_names =
       active_spec.has_option(completion_option::FileNames) ||
       glob_pattern.has_value() ||
@@ -1369,8 +1335,6 @@ generate_spec_candidates(completion_spec &active_spec,
   context.execution_store().should_mark_completion_directories() =
       should_mark_file_names;
   if (for_listing && !active_spec.function_name.is_empty()) {
-    /* A completion function may truncate its description to COLUMNS. The
-       listing temporarily widens COLUMNS and restores it afterward. */
     let const saved_columns = context.get_variable_value("COLUMNS");
     context.set_shell_variable("COLUMNS", "100000");
     defer
@@ -1501,9 +1465,6 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
   let const command = command_word_of(line.substring_of_length(0, cursor));
   if (command.is_empty()) return None;
 
-  /* A command's own completion spec takes precedence over specs reached through
-     aliases and symlinks. The ghost follows aliases only, so a keystroke never
-     searches PATH. */
   const completion_spec *spec = context.completion_store().lookup_spec(command);
   String resolved_command{completion_allocator()};
   if (spec == nullptr &&
@@ -1533,8 +1494,6 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
       spec != nullptr ? spec->word_list.length() : 0);
   if (spec == nullptr) return None;
 
-  /* The default -D loader sources the per-command file and returns 124 to ask
-     for a retry with the spec it registered. */
   i32 function_status = 0;
   let active_spec = spec->clone(completion_allocator());
   let candidates =
@@ -1551,15 +1510,12 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
   }
   option_mask = active_spec.option_mask;
 
-  /* An empty result never claims the completion, so the cascade falls to the
-     filesystem the way bash-completion's -o default behaves. Bash's own
-     default completions complete only variables, user names, and globs, so a
-     bashdefault spec without default keeps every other word empty. */
-  if (candidates.is_empty() &&
+  let const is_bashdefault_without_default_keeping_word_empty =
+      candidates.is_empty() &&
       active_spec.has_option(completion_option::BashDefault) &&
       !active_spec.has_option(completion_option::Default) &&
-      !token_reaches_bash_default_completion(token))
-  {
+      !token_reaches_bash_default_completion(token);
+  if (is_bashdefault_without_default_keeping_word_empty) {
     return candidates;
   }
 
@@ -1774,8 +1730,6 @@ fn internal::advance_shell_lexical_state(
     if (state.is_in_comment) {
       if (c == '\n') {
         state.is_in_comment = false;
-        /* The separator block never reaches this newline, so the frame is
-           returned to command position here. */
         let &comment_frame =
             state.frames.is_empty() ? state.root_frame : state.frames.back();
         comment_frame.is_command_position = true;
@@ -1823,9 +1777,6 @@ fn internal::advance_shell_lexical_state(
       }
     }
 
-    /* A backslash escapes the next byte inside `$'...'`, so the quote is
-       tracked apart from a plain single quote. Inside double quotes the `$'`
-       is literal. */
     if (c == '$' && state.quote == 0 && i + 1 < end && source[i + 1] == '\'') {
       state.quote = '\'';
       state.is_in_ansi_c_quote = true;
@@ -1903,8 +1854,6 @@ fn internal::advance_shell_lexical_state(
         state.frames.is_empty() ||
         state.frames.back().kind == shell_lexical_frame_kind::command ||
         state.frames.back().kind == shell_lexical_frame_kind::backtick;
-    /* `<<<` is a here-string. The scan reaches its second byte as well, so the
-       neighbours on both sides are checked. */
     let const is_heredoc_operator = c == '<' && i + 1 < end &&
                                     source[i + 1] == '<' &&
                                     !(i + 2 < end && source[i + 2] == '<') &&
@@ -2079,9 +2028,6 @@ fn internal::advance_shell_lexical_state(
           frame.is_command_position = false;
       }
 
-      /* The words inside `name=(...)` are element values, so the scan stays out
-         of them until the list closes. A declare or local operand carries the
-         same form outside command position. */
       if (!word.is_empty() && word[word.length - 1] == '=' && word_end < end &&
           source[word_end] == '(' && lexer::word_looks_like_assignment(word))
       {
@@ -2103,8 +2049,6 @@ fn internal::advance_shell_lexical_state(
       }
     }
 
-    /* A bare `((` in command position opens arithmetic, where `<<` is a shift
-       and never a here-document. */
     if (is_command_code && c == '(' && i + 1 < end && source[i + 1] == '(' &&
         frame.is_command_position)
     {
@@ -2295,7 +2239,7 @@ fn append_sentence_tail(String &out, StringView sentence) throws -> void
   out.append(sentence.substring_of_length(1, sentence.length - 1));
 }
 
-} /* namespace */
+}
 
 fn describe_syntax_problem(StringView line, usize cursor, mimic_mood mood,
                            String &out) throws -> bool
@@ -2328,9 +2272,6 @@ fn describe_syntax_problem(StringView line, usize cursor, mimic_mood mood,
   return true;
 }
 
-/* The analysis runs where a submitted line would run it, and it neither
-   follows sourced files nor resolves command names, so it reads no file and
-   searches no PATH. */
 fn describe_analysis_finding(StringView line, EvalContext &context,
                              String &out) throws -> bool
 {
@@ -2383,6 +2324,6 @@ fn describe_analysis_finding(StringView line, EvalContext &context,
   return true;
 }
 
-} /* namespace completion */
+}
 
-} /* namespace koshka */
+}

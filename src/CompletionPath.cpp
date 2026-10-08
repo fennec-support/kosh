@@ -44,7 +44,6 @@ pure fn internal::split_path_token(StringView token) wontthrow -> path_token
   };
 }
 
-/* The tilde is excluded since it expands a home the user wants. */
 static pure fn byte_needs_quoting(char byte) wontthrow -> bool
 {
   switch (byte) {
@@ -345,10 +344,6 @@ fn internal::rebuild_shell_syntax_candidate(
   return candidate;
 }
 
-/* A leading $NAME or ${NAME} in the directory prefix is expanded to its value
-   so the listing reads the real directory, while the offered candidate keeps
-   the unexpanded prefix. None means no leading variable, so the caller falls
-   back to the literal path. */
 static fn expand_leading_variable_path(StringView directory_part,
                                        usize expansion_end,
                                        EvalContext &context) throws
@@ -417,6 +412,6 @@ fn internal::resolve_listing_directory(
   return resolved_path;
 }
 
-} /* namespace completion */
+}
 
-} /* namespace koshka */
+}

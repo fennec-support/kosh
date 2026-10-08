@@ -215,7 +215,7 @@ private:
   usize m_explicit_completion_depth{0};
 };
 
-} /* namespace utils */
+}
 
 using ProgramResolver = utils::ProgramResolver;
-} /* namespace koshka */
+}

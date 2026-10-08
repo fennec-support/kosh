@@ -23,7 +23,7 @@ namespace koshka {
 namespace utils {
 struct decoded_shell_word;
 struct leading_expansion;
-} // namespace utils
+}
 
 namespace completion::internal {
 
@@ -55,16 +55,12 @@ struct token_bounds
   usize end;
 };
 
-/* The directory part keeps its trailing separator so the basename joins back
-   on. */
 struct path_token
 {
   StringView directory_part;
   StringView basename_part;
 };
 
-/* Primitives defined in Completion.cpp and reached from the cascade stages and
-   the highlighter. */
 pure fn quoted_run_end(StringView line, usize position) wontthrow -> usize;
 pure fn find_token_bounds(StringView line, usize cursor) wontthrow
     -> token_bounds;
@@ -110,7 +106,6 @@ fn scan_highlight_range(StringView line, usize begin, usize end,
                         bool should_stop_at_closing_parenthesis = false) throws
     -> usize;
 
-/* Defined in CompletionManpage.cpp. */
 fn second_word_of(StringView line) wontthrow -> Maybe<StringView>;
 fn manpage_text_for(StringView page_name, EvalContext &context) throws
     -> StringView;
@@ -133,7 +128,6 @@ fn complete_from_help_subcommands(StringView line, StringView token,
                                   completion::completion_mode mode) throws
     -> Maybe<ArrayList<String>>;
 
-/* Defined in CompletionScan.cpp. */
 fn complete_from_process_arguments(StringView line, StringView token,
                                    usize token_start,
                                    completion::completion_mode mode) throws
@@ -182,6 +176,6 @@ fn command_substitution_range(StringView line, usize cursor) throws
 fn collect_case_pattern_ends(StringView line,
                              ArrayList<usize> &positions) throws -> void;
 
-} /* namespace completion::internal */
+}
 
-} /* namespace koshka */
+}

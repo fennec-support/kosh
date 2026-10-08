@@ -30,13 +30,13 @@ namespace koshka::language_server {
 
 namespace {
 
-/* The client language identifiers `parse_mood_name` does not already answer. */
-constexpr static_string_entry<mimic_mood> LANGUAGE_MOOD_ENTRIES[] = {
+constexpr static_string_entry<mimic_mood> UNNAMED_LANGUAGE_MOOD_ENTRIES[] = {
     {SSK("rbash"),       mimic_mood::Bash   },
     {SSK("shellscript"), mimic_mood::Bash   },
     {SSK("shit"),        mimic_mood::Default},
 };
-constexpr StaticStringMap LANGUAGE_MOODS{LANGUAGE_MOOD_ENTRIES};
+constexpr StaticStringMap UNNAMED_LANGUAGE_MOODS{
+    UNNAMED_LANGUAGE_MOOD_ENTRIES};
 
 pure fn code_action_kind_includes(StringView supported,
                                   StringView offered) wontthrow -> bool
@@ -565,8 +565,6 @@ private:
   usize m_header_scan_position{0};
 };
 
-/* A client capability sits at the end of a chain of optional objects, and a
-   missing link anywhere along the chain means the client named nothing. */
 template <class... Names>
 pure fn json_field_path(const JsonValue *object, Names... names) wontthrow
     -> const JsonValue *
@@ -639,8 +637,6 @@ struct document_symbol
   usize end;
 };
 
-/* A rename edits the source in place, so a collected occurrence carries no
-   text of its own. */
 struct rename_span
 {
   highlight_role role;
@@ -648,7 +644,6 @@ struct rename_span
   usize end;
 };
 
-/* The end excludes the line terminator. */
 struct line_bounds
 {
   usize start;
@@ -687,7 +682,6 @@ public:
     if (replacement.view() == normalized_source.view()) return false;
 
     normalized_source = steal(replacement);
-    /* A recorded position belongs to one revision. */
     symbol_records.clear();
     rebuild_format();
     rebuild_lines();
@@ -917,7 +911,7 @@ fn mood_for(const Document &document) throws -> mimic_mood
   if (let const mood = parse_mood_name(document.language_id.view());
       mood.has_value())
     return *mood;
-  if (let const mood = LANGUAGE_MOODS.find(document.language_id.view());
+  if (let const mood = UNNAMED_LANGUAGE_MOODS.find(document.language_id.view());
       mood.has_value())
     return *mood;
   if (document.path.has_value()) {
@@ -943,6 +937,6 @@ fn document_position(const JsonValue *position) throws
                            static_cast<usize>(*character)};
 }
 
-} /* namespace */
+}
 
-} /* namespace koshka::language_server */
+}

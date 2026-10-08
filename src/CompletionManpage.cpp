@@ -54,9 +54,6 @@ static fn matches_from_help_entries(const ArrayList<help_entry> &entries,
   return matches;
 }
 
-/* An empty list is cached too. A command with no manpage is not retried. A
-   fork that was killed borrows EMPTY_HELP_ENTRIES for the reference it owes its
-   caller until its attempts run out. */
 static const ArrayList<help_entry> EMPTY_HELP_ENTRIES{heap_allocator()};
 
 static fn manpage_name_for(StringView command) throws -> String
@@ -120,7 +117,6 @@ public:
 static ManpageCache MANPAGE_CACHE{};
 static HelpOutputCache HELP_OUTPUT_CACHE{};
 
-/* A fork that runs past this budget is killed so the prompt never freezes. */
 static constexpr u64 HELP_FORK_TIMEOUT_NANOS = 1'000'000'000;
 
 static constexpr u64 HELP_FORK_BATCH_TIMEOUT_NANOS = 8'000'000'000;
@@ -135,14 +131,8 @@ enum class idle_load_kind : u8
 static fn adopt_idle_load(idle_load_kind kind, StringView key,
                           EvalContext &context) throws -> bool;
 
-/* A killed fork is retried until this many attempts have been spent on one key,
-   and the empty answer is then cached for the session. A first execution that
-   the platform serializes recovers on the retry, while a command that always
-   runs past the budget stops forking. */
 static constexpr u32 KILLED_FORK_ATTEMPT_LIMIT = 2;
 
-/* The kind separates a help key from a page name so two caches never share one
-   attempt count. */
 static fn should_retry_killed_fork(StringView kind, StringView name) throws
     -> bool
 {
@@ -182,15 +172,9 @@ capture_completion_program_output(EvalContext &context,
   return output;
 }
 
-/* An empty $MANPATH segment stands for the system defaults at that position,
-   the manpath(1) reading. */
 static fn manpage_section1_directories(EvalContext &context) throws
     -> ArrayList<Path>;
 
-/* A trusted `manpath` or `man --path` run reports every man root the system
-   resolves, including the macOS CommandLineTools root a bare $MANPATH leaves
-   out. A result line is colon-separated. None means neither program is
-   present in a trusted directory. */
 static fn manpath_argv_for(EvalContext &context) throws
     -> Maybe<ArrayList<String>>
 {
@@ -223,8 +207,6 @@ static fn manpath_argv_for(EvalContext &context) throws
   return argv;
 }
 
-/* A killed or failed run returns no output. The next request retries it until
-   the attempt limit. */
 static fn settle_manpath_output(Maybe<String> output) throws -> void
 {
   if (output.has_value()) {
@@ -243,8 +225,6 @@ static fn settle_manpath_output(Maybe<String> output) throws -> void
   MANPAGE_CACHE.was_manpath_settled = true;
 }
 
-/* The first fork's output is cached for the session. The idle hook's running
-   process is adopted. */
 static fn manpath_command_output(EvalContext &context) throws -> StringView
 {
   if (MANPAGE_CACHE.was_manpath_settled)
@@ -368,8 +348,6 @@ fn ManpageCache::build_subcommand_index(EvalContext &context) throws -> void
   } while (is_subcommand_scan_running);
 }
 
-/* Each call reads one man1 directory, so an idle step stays short. The
-   directories are resolved when a scan starts. */
 fn ManpageCache::scan_next_subcommand_directory(EvalContext &context) throws
     -> void
 {
@@ -407,8 +385,6 @@ fn ManpageCache::scan_next_subcommand_directory(EvalContext &context) throws
   finish_subcommand_index();
 }
 
-/* A tail is a subcommand only when its head page exists. This excludes
-   xdg-open and tails that start with a digit. */
 fn ManpageCache::finish_subcommand_index() throws -> void
 {
   subcommand_index.clear();
@@ -423,15 +399,12 @@ fn ManpageCache::finish_subcommand_index() throws -> void
         .values.push_managed(tail);
   });
 
-  /* A killed manpath fork hides every root the environment leaves out. The
-     index is incomplete until that fork settles and is built again. */
   is_subcommand_index_built = was_scan_root_set_complete;
   is_subcommand_scan_running = false;
   scan_directories.clear();
   LOG(Info, "indexed %zu section-1 pages", page_file_paths.count());
 }
 
-/* Empty when the page has no synopsis. */
 static fn cleaned_synopsis_of_page(StringView source) throws -> String
 {
   let synopsis = String{heap_allocator()};
@@ -466,7 +439,6 @@ static fn cleaned_synopsis_of_page(StringView source) throws -> String
         }
         continue;
       }
-      /* A CR at a CRLF line end folds like whitespace. */
       if (byte == ' ' || byte == '\t' || byte == '\r') {
         if (!synopsis.is_empty() &&
             synopsis.view()[synopsis.length() - 1] != ' ')
@@ -541,8 +513,6 @@ static fn usage_line_of_help(StringView text) throws -> String
   return String{heap_allocator()};
 }
 
-/* The ghost path sets is_read_allowed to false and uses the cached verdict, so
-   a keystroke does not scan a page. */
 static fn man_subcommand_page_is_valid(StringView command,
                                        StringView subcommand,
                                        bool is_read_allowed) throws -> bool
@@ -562,7 +532,6 @@ static fn man_subcommand_page_is_valid(StringView command,
     return false;
   }
 
-  /* A compressed page cannot be scanned without a decompressor. */
   let const path_view = file_path->view();
   if (has_compression_suffix(path_view)) {
     MANPAGE_CACHE.subcommand_page_validity.set(page_name.view(), true);
@@ -574,8 +543,6 @@ static fn man_subcommand_page_is_valid(StringView command,
     MANPAGE_CACHE.subcommand_page_validity.set(page_name.view(), true);
     return true;
   }
-  /* A page that is one .so redirect reads its target relative to the man root
-     above the section directory. */
   if (source->view().starts_with(".so ")) {
     let const rest = source->view().substring(4);
     usize target_end = 0;
@@ -613,8 +580,6 @@ static fn is_first_argument_token(StringView line, usize token_start) wontthrow
   return true;
 }
 
-/* Returns None when the line has no completed second word or when that word
-   starts with a dash. */
 fn internal::second_word_of(StringView line) wontthrow -> Maybe<StringView>
 {
   let const command = command_word_of(line);
@@ -623,15 +588,11 @@ fn internal::second_word_of(StringView line) wontthrow -> Maybe<StringView>
       static_cast<usize>(command.data - line.data) + command.length;
   let position = command_end;
   let const word = line.next_ascii_whitespace_word(position);
-  /* A word the cursor still sits in is the token under completion, not a
-     settled subcommand. */
   if (position >= line.length) return None;
   if (word.is_empty() || word[0] == '-') return None;
   return word;
 }
 
-/* The ghost path reads only an already built and validated entry, so a
-   keystroke never scans a directory or reads a page. */
 fn internal::complete_from_man_subcommands(StringView line, StringView token,
                                            usize token_start,
                                            EvalContext &context,
@@ -661,7 +622,6 @@ fn internal::complete_from_man_subcommands(StringView line, StringView token,
   let const subcommands = MANPAGE_CACHE.subcommand_index.find(command);
   if (!subcommands.has_value() || subcommands->values.is_empty()) return None;
 
-  /* Only the token matches are validated, so a typo reads no page. */
   let matches = ArrayList<String>{heap_allocator()};
   let const &sorted_subcommands = subcommands->values;
   let const first = sorted_subcommands.lower_bound(token);
@@ -699,8 +659,6 @@ static fn extract_dash_flags(StringView option_part) throws -> ArrayList<String>
   return flags;
 }
 
-/* man's overstrike formatting, a byte backspace byte for bold and an underscore
-   backspace char for an underline, is stripped first. */
 static fn parse_manpage_option_entries(StringView text) throws
 
     -> ArrayList<help_entry>
@@ -745,8 +703,6 @@ static fn parse_manpage_option_entries(StringView text) throws
       continue;
     }
 
-    /* A dashless line at or below the option's indent continues the wrapped
-       description. */
     if (!pending_flags.is_empty() && raw[indent] != '-' &&
         indent >= pending_indent)
     {
@@ -808,9 +764,6 @@ static fn parse_manpage_option_entries(StringView text) throws
   return entries;
 }
 
-/* Only a command whose help argument is not the plain --help qualifies, the
-   ffmpeg family, whose manpage carries the options in a form the flag scanner
-   does not read. */
 static fn command_prefers_help_over_manpage(StringView command) throws -> bool
 
 {
@@ -820,10 +773,6 @@ static fn command_prefers_help_over_manpage(StringView command) throws -> bool
 
 static fn command_directory_is_trusted(StringView absolute_path) throws -> bool;
 
-/* man forks only when it resolves into a trusted directory. A man page from an
-   untrusted location is never run. The resolved absolute path runs in place of
-   the bare name, so PATH cannot resolve it again. None means the page is not
-   read. */
 static fn manpage_argv_for(StringView page_name, EvalContext &context) throws
     -> Maybe<ArrayList<String>>
 {
@@ -889,8 +838,6 @@ static fn manpage_options_for(StringView page_name, EvalContext &context) throws
   return store_manpage_options(page_name, page->view());
 }
 
-/* An empty entry records a page that is absent or untrusted, so the fork
-   happens once per name for the session. */
 fn internal::manpage_text_for(StringView page_name, EvalContext &context) throws
     -> StringView
 {
@@ -961,8 +908,6 @@ fn internal::manpage_text_for(StringView page_name, EvalContext &context) throws
   return MANPAGE_CACHE.text.set(page_name, steal(text))->view();
 }
 
-/* Runs only on an explicit tab and a dash token, so the ghost never forks man.
-   None falls through to the spec and files. */
 fn internal::complete_from_manpage(StringView line, StringView token,
                                    EvalContext &context,
                                    StringMap<String> &descriptions,
@@ -983,8 +928,6 @@ fn internal::complete_from_manpage(StringView line, StringView token,
 
   if (command_prefers_help_over_manpage(command)) return None;
 
-  /* git commit -<tab> reads the git-commit subcommand page when the index
-     knows it. */
   let page_name = manpage_name_for(command);
   let hint_key = resolve_completion_alias(surface_command, context);
   if (let const subcommand_word = second_word_of(line);
@@ -1011,21 +954,11 @@ fn internal::complete_from_manpage(StringView line, StringView token,
   return matches;
 }
 
-/* One fork parses both the option and the subcommand caches so the raw text
-   frees after. HELP_OUTPUT_CACHE.parsed_keys records a command that ran so it
-   never forks twice.
- */
-
-/* The check is permission-based, so a user tool directory like ~/.cargo/bin is
-   trusted while a world-writable one like /tmp is not. */
 static fn command_directory_is_trusted(StringView absolute_path) throws -> bool
 {
   return os::directory_is_trusted_for_exec(Path{absolute_path}.parent());
 }
 
-/* The fork passes two gates, the command is on the allowlist and resolves into
-   a trusted directory. The resolved absolute path runs as the only argv entry,
-   not through a shell, so no alias shadows it. */
 static fn help_argv_for(EvalContext &context, StringView command,
                         StringView subcommand) throws
     -> Maybe<ArrayList<String>>
@@ -1042,9 +975,6 @@ static fn help_argv_for(EvalContext &context, StringView command,
         "the help allowlist lists '%.*s' and the directory is trusted, "
         "preparing the --help fork",
         static_cast<int>(command.length), command.data);
-    /* argv is the absolute path, then the subcommand chain split on spaces,
-       then the help argument split on spaces, so git remote add runs as path,
-       remote, add, --help. */
     let argv = ArrayList<String>{heap_allocator()};
     argv.push(String{paths[0].view()});
     subcommand.for_each_ascii_whitespace_word(
@@ -1096,8 +1026,6 @@ static fn help_text_for(EvalContext &context, StringView command,
   return String{heap_allocator()};
 }
 
-/* The parsed caches keep entries and free the raw text, so a reader that wants
-   the text keeps its own copy. */
 fn internal::help_text_of(StringView command, EvalContext &context) throws
     -> StringView
 {
@@ -1153,8 +1081,6 @@ static fn help_cache_key(StringView command, StringView subcommand) throws
   return key;
 }
 
-/* parsed_keys gates the fork so a second tab reads the parsed caches. A key is
-   recorded only after the fork settles. */
 fn HelpOutputCache::ensure_parsed(EvalContext &context, StringView command,
                                   StringView subcommand) throws -> void
 {
@@ -1165,8 +1091,6 @@ fn HelpOutputCache::ensure_parsed(EvalContext &context, StringView command,
   store(command, key.view(), help_text_for(context, command, subcommand));
 }
 
-/* A killed fork still fills both caches so the caller has a reference to
-   return, and the key stays unparsed while attempts remain. */
 fn HelpOutputCache::store(StringView command, StringView key,
                           const Maybe<String> &text) throws -> void
 {
@@ -1212,8 +1136,6 @@ static fn is_plausible_subcommand_name(StringView name) wontthrow -> bool
   return true;
 }
 
-/* A bare all-caps header with no colon, such as tailscale's "SUBCOMMANDS",
-   opens a section only when the whole line is the single word. */
 static fn line_opens_subcommand_section(StringView trimmed) wontthrow -> bool
 {
   if (trimmed.is_empty()) return false;
@@ -1235,9 +1157,6 @@ static fn line_opens_subcommand_section(StringView trimmed) wontthrow -> bool
         do_ends_with_ignoring_case(StringView{"commands are:"}) ||
         do_ends_with_ignoring_case(StringView{"example usage:"}))
       return true;
-    /* git opens with "These are common Git commands used in various
-       situations:", a colon-terminated line that names commands without
-       matching a fixed suffix. */
     let const do_contains_word_ignoring_case = [&](StringView needle) {
       if (needle.length > trimmed.length) return false;
       let const do_is_alpha = [](char c) {
@@ -1279,10 +1198,6 @@ static fn line_opens_subcommand_section(StringView trimmed) wontthrow -> bool
           do_equal_ignoring_case(StringView{"subcommands"}));
 }
 
-/* git groups its subcommands under left-margin headers like "start a working
-   area (see also: git help tutorial)". A header is not itself a subcommand and
-   holds no double-space gap before a name, so it keeps an open section intact
-   instead of closing it. */
 static fn line_is_subcommand_group_header(StringView trimmed) wontthrow -> bool
 {
   if (trimmed.is_empty()) return false;
@@ -1296,8 +1211,6 @@ static fn line_is_subcommand_group_header(StringView trimmed) wontthrow -> bool
          do_contains(StringView{"see also:"});
 }
 
-/* cargo and other tools with subcommands but no manpage list them under a
-   "Commands:" header as indented "name<spaces>description" lines. */
 static fn parse_help_subcommands(StringView text, StringView command) throws
     -> ArrayList<help_entry>
 {
@@ -1319,11 +1232,6 @@ static fn parse_help_subcommands(StringView text, StringView command) throws
       saw_entry_in_section = false;
       continue;
     }
-    /* A grouped header such as git's "start a working area (see also: ...)"
-       sits at the left margin and opens a section even when no section was
-       open, since the indented entries beneath it are the subcommands. An
-       indented line that happens to end with ')' is a wrapped option
-       description, not a group header. */
     if (trim_start == 0 && line_is_subcommand_group_header(trimmed)) {
       in_section = true;
       saw_entry_in_section = false;
@@ -1334,17 +1242,11 @@ static fn parse_help_subcommands(StringView text, StringView command) throws
       if (saw_entry_in_section) in_section = false;
       continue;
     }
-    /* A line that returns to the left margin ends the section. A blank line
-       already closed it above, and a left-margin group header reopened it, so
-       a left-margin line here is a non-header such as a trailing note. */
     if (trim_start == 0) {
       in_section = false;
       continue;
     }
 
-    /* brew's help repeats the command word on every entry, "  brew install
-       FORMULA|CASK...". The command name is stripped before the column split
-       reads the subcommand name. */
     let entry_text = trimmed;
     if (!command.is_empty() && entry_text.length > command.length + 1 &&
         entry_text.substring_of_length(0, command.length) == command &&
@@ -1354,10 +1256,6 @@ static fn parse_help_subcommands(StringView text, StringView command) throws
 
     let column_end = double_space_gap(entry_text, 0);
 
-    /* A single-space separated help such as brew's "brew install
-       FORMULA|CASK..." has no double-space gap, so the column boundary falls
-       back to the first single space. The plausibility check then rejects
-       argument tokens that are not valid subcommand names. */
     if (column_end >= entry_text.length) {
       usize single_space = 0;
       while (single_space < entry_text.length &&
@@ -1373,8 +1271,6 @@ static fn parse_help_subcommands(StringView text, StringView command) throws
               .substring_of_length(column_end, entry_text.length - column_end)
               .trim_blanks();
 
-    /* Each comma-separated alias such as `ft, fetch` becomes its own candidate
-       under the shared description. */
     let const column = entry_text.substring_of_length(0, column_end);
     usize alias_start = 0;
     while (alias_start < column.length) {
@@ -1415,8 +1311,7 @@ static fn is_known_help_subcommand(EvalContext &context, StringView command,
   return false;
 }
 
-/* A line past this depth stops forking, so the fork count is bounded. */
-static constexpr usize MAX_SUBCOMMAND_DEPTH = 4;
+static constexpr usize MAX_SUBCOMMAND_DEPTH_BOUNDING_FORK_COUNT = 4;
 
 static fn settled_subcommand_chain(EvalContext &context,
                                    StringView resolved_command, StringView line,
@@ -1431,13 +1326,11 @@ static fn settled_subcommand_chain(EvalContext &context,
   usize position = static_cast<usize>(surface_command.data - line.data) +
                    surface_command.length;
 
-  while (depth_count < MAX_SUBCOMMAND_DEPTH) {
+  while (depth_count < MAX_SUBCOMMAND_DEPTH_BOUNDING_FORK_COUNT) {
     let const word = line.next_ascii_whitespace_word(position);
     if (word.is_empty()) break;
     let const start = static_cast<usize>(word.data - line.data);
 
-    /* A word that reaches the token under the cursor is the token itself, so
-       the chain ends before it. */
     if (start >= token_start || position > token_start) {
       break;
     }
@@ -1507,8 +1400,6 @@ fn internal::complete_from_help_subcommands(StringView line, StringView token,
   LOG(Debug, "help subcommands resolved the command name to '%.*s'",
       static_cast<int>(resolved_name.view().length), resolved_name.view().data);
 
-  /* An empty chain at the first-argument position lists the base subcommands.
-   */
   let const chain = settled_subcommand_chain(context, resolved_name.view(),
                                              line, token_start);
   if (chain.is_empty()) {
@@ -1681,9 +1572,6 @@ static fn flag_under_caret(StringView token, usize cursor_in_token,
   }
 }
 
-/* The command the caret's arguments belong to. A command substitution under
-   the caret is its own line, and a pipe, a list operator, or a closing paren
-   starts a new segment. The caller holds the completion scratch. */
 struct hint_target
 {
   StringView command;
@@ -1732,8 +1620,6 @@ static fn locate_hint_target(StringView line, usize cursor) throws
   return target;
 }
 
-/* Each hint begins with a header naming the kind of word described by its body.
-   The editor places the header before the first line break. */
 static constexpr StringView FUNCTION_HINT_HEADER{"function synopsis\n"};
 static constexpr StringView ALIAS_HINT_HEADER{"alias synopsis\n"};
 static constexpr StringView FLAG_HINT_HEADER{"flag\n"};
@@ -1742,7 +1628,6 @@ static constexpr StringView UTILITY_HINT_HEADER{"utility synopsis\n"};
 static constexpr StringView COMMAND_HINT_HEADER{"command synopsis\n"};
 static constexpr StringView SUBCOMMAND_HINT_HEADER{"subcommand synopsis\n"};
 
-/* A function has no synopsis, so the body names where it was defined. */
 static fn describe_function(StringView name, EvalContext &context,
                             String &out) throws -> bool
 {
@@ -1879,7 +1764,7 @@ fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
     let chain = String{heap_allocator()};
     usize chain_position = 0;
     usize depth_count = 0;
-    while (depth_count < MAX_SUBCOMMAND_DEPTH) {
+    while (depth_count < MAX_SUBCOMMAND_DEPTH_BOUNDING_FORK_COUNT) {
       let const word = between.next_ascii_whitespace_word(chain_position);
       if (word.is_empty() || word[0] == '-') {
         break;
@@ -1954,7 +1839,6 @@ fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
     out.clear();
   }
 
-  /* An alias shows its definition before the synopsis of its target. */
   if (let const expansion = context.scope_store().get_alias(command);
       expansion.has_value() && !expansion->view().trim_blanks().is_empty())
   {
@@ -2074,9 +1958,6 @@ static fn adopt_idle_load(idle_load_kind kind, StringView key,
   return true;
 }
 
-/* The loads run in the order an explicit flag completion would read them, and
-   the first one the caches do not hold yet starts. A missing or untrusted
-   program records its miss at once, so it is never asked again. */
 static fn start_next_idle_load(StringView line, usize cursor,
                                EvalContext &context) throws -> bool
 {
@@ -2227,8 +2108,6 @@ fn step_idle_documentation(StringView line, usize cursor,
   return progress;
 }
 
-/* A load cut short by a submitted line is tried again on a later pause until
-   its attempts run out, and then its miss is recorded. */
 fn abandon_idle_documentation() throws -> void
 {
   if (!IDLE_LOAD.has_value()) return;
@@ -2247,6 +2126,6 @@ fn abandon_idle_documentation() throws -> void
   IDLE_LOAD = None;
 }
 
-} /* namespace completion */
+}
 
-} /* namespace koshka */
+}

@@ -55,9 +55,6 @@ static pure fn is_unmatched_closing_paren(StringView line,
   return depth == 0;
 }
 
-/* A single quote that a dollar opens holds backslash escapes. Its run ends
-   past an escaped quote. An even run of backslashes leaves the dollar itself
-   unescaped. */
 static pure fn opens_dollar_quote(StringView line, usize position) wontthrow
     -> bool
 {
@@ -123,10 +120,6 @@ pure fn internal::is_active_token_boundary(StringView line,
   return true;
 }
 
-/* A forward scan honors single and double quotes and a backslash escape. A
-   quoted or escaped separator stays part of the word. A paren glued to the
-   preceding byte is literal. A name like burner (3).log completes without
-   opening a subshell. */
 pure fn internal::find_token_bounds(StringView line, usize cursor) wontthrow
     -> token_bounds
 {
@@ -376,7 +369,6 @@ fn internal::command_word_of(StringView line) wontthrow -> StringView
     if (c == '(') {
       open_paren_depth++;
     } else if (c == ')') {
-      /* An unmatched paren closes a case pattern and starts the arm's body. */
       if (open_paren_depth > 0)
         open_paren_depth--;
       else
@@ -429,8 +421,6 @@ pure fn internal::command_segment_start(StringView line, usize cursor) wontthrow
   return start;
 }
 
-/* Symlinks are left alone so a name that dispatches on its argv[0], such as a
-   busybox or rustup link, keeps the original command name the user typed. */
 fn internal::resolve_completion_alias(StringView command,
                                       EvalContext &context) throws -> String
 {
@@ -498,6 +488,6 @@ fn internal::split_completion_words(StringView line, usize cursor,
   return words;
 }
 
-} /* namespace completion */
+}
 
-} /* namespace koshka */
+}

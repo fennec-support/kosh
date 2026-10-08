@@ -688,8 +688,6 @@ fn Server::publish_diagnostics(Document &document) throws -> bool
   let rendered_errors = ArrayList<String>{heap_allocator()};
   let diagnostics = ArrayList<source_diagnostic>{heap_allocator()};
   let followed_paths = HashSet{heap_allocator()};
-  /* A document that does not parse leaves the records empty. Hover then answers
-     nothing. */
   let symbol_records = analysis_symbol_records{};
   let const ast =
       parser.construct_ast(rendered_errors, &m_context, &diagnostics);
@@ -1240,7 +1238,6 @@ fn Server::symbol_at(const Document &document,
                             start, end - start)},
                         span.role, start, end};
 
-    /* A cursor sitting on a boundary belongs to the span that opens there. */
     if (*byte_position == end) {
       if (!touching.has_value()) touching = steal(symbol);
       continue;
@@ -1367,8 +1364,6 @@ fn Server::definition(const JsonValue *id, const JsonValue *params) throws
   return send_result(id, response.view());
 }
 
-/* A word that only prefixes a PATH entry still sits in command position, and it
-   is renamed with the rest once the document defines the name. */
 pure fn role_names_command(highlight_role role) wontthrow -> bool
 {
   return role_reads_function(role) || role == highlight_role::partial_command;
@@ -1435,9 +1430,6 @@ fn Server::collect_rename_spans(const Document &document, rename_kind kind,
   }
 }
 
-/* An alias and a function are defined in the open document, so a command name
-   is renamed only when that definition is present. A program on PATH keeps its
-   name everywhere. */
 fn Server::prepare_rename(const JsonValue *id, const JsonValue *params) throws
     -> bool
 {
@@ -1523,7 +1515,6 @@ fn Server::rename(const JsonValue *id, const JsonValue *params) throws -> bool
   return send_result(id, response.view());
 }
 
-/* The protocol numbers a function 12 and a variable 13. */
 constexpr usize OUTLINE_FUNCTION_KIND = 12;
 constexpr usize OUTLINE_VARIABLE_KIND = 13;
 
@@ -1577,8 +1568,6 @@ fn document_outline(const Document &document) throws
                         ? record.position + record.length
                         : name_end;
 
-    /* A quoted operand spells the name across quotes, so the name span is not
-       a slice of the source and the whole entry is selected. */
     let const is_name_verbatim =
         name_end <= source_length &&
         source.substring_of_length(record.position, record.name.count()) ==
@@ -1612,7 +1601,6 @@ fn Server::document_symbols(const JsonValue *id, const JsonValue *params) throws
     while (!scopes.is_empty() && scopes.back().end <= entry.start)
       do_close_scope();
 
-    /* One name assigned again in the same scope is one outline row. */
     if (entry.kind == OUTLINE_VARIABLE_KIND) {
       let &names =
           scopes.is_empty() ? top_level_names : scopes.back().assigned_names;
@@ -1689,8 +1677,6 @@ fn Server::command_information(StringView command) throws -> Maybe<String>
       ProgramResolver::Requirement::Runnable,
       ProgramResolver::CachePolicy::Bypass);
 
-  /* A PATH program is what an ordinary command word resolves to, so the
-     bundled utility answers only for a name PATH does not hold. */
   if (paths.is_empty()) {
     if (!m_context.runtime_state().koshkit_utilities_are_reachable())
       return None;
@@ -1719,7 +1705,6 @@ fn Server::command_information(StringView command) throws -> Maybe<String>
   return information;
 }
 
-/* A generated script would flood the card with assignment sites. */
 static constexpr usize HOVER_EARLIER_ASSIGNMENT_LIMIT = 8;
 static constexpr usize HOVER_ASSIGNMENT_TEXT_LENGTH_LIMIT = 200;
 static constexpr usize HOVER_BODY_LINE_LIMIT = 40;
@@ -1744,9 +1729,6 @@ pure fn source_line_span(const Document &document, usize position) wontthrow
   return line_end.has_value() ? rest.substring_of_length(0, *line_end) : rest;
 }
 
-/* An array assignment location covers the name and the operator alone, and a
-   binding location covers the name alone. The rest is recovered from the
-   line. */
 pure fn assignment_headline_span(
     const Document &document,
     const variable_assignment_record &record) wontthrow -> StringView
@@ -1788,8 +1770,6 @@ fn append_hover_clipped_text(String &output, StringView text,
   output.append("...");
 }
 
-/* A marker line is appended outside the fence. The two content kinds stay
-   structurally identical. */
 fn append_hover_block(String &output, StringView text, bool is_markdown,
                       StringView language) throws -> void
 {
@@ -1798,8 +1778,6 @@ fn append_hover_block(String &output, StringView text, bool is_markdown,
     return;
   }
 
-  /* A fence longer than the longest backquote run inside the text keeps a
-     command substitution from closing the block early. */
   usize longest_backquote_run = 0;
   usize position = 0;
   while (position < text.length) {
@@ -1961,7 +1939,6 @@ fn Server::variable_hover_text(
     if (record.is_conditional) text.append(" (conditional)");
   }
 
-  /* A cap that stayed silent would read as complete coverage. */
   if (listed_count < earlier_count) {
     text.append("\n\n");
     text.append(
@@ -2035,8 +2012,6 @@ fn Server::function_hover_text(const Document &document,
   let const kept_body =
       clipped_line_span(body, HOVER_BODY_LINE_LIMIT, dropped_line_count);
 
-  /* The rendered shape follows FunctionDefinition::evaluate_impl. The form is
-     the one declare -f prints. */
   let definition = String{heap_allocator()};
   definition.append(record.name.view());
   definition.append(" () \n");
@@ -2306,7 +2281,7 @@ fn Server::run() throws -> int
   }
 }
 
-} /* namespace */
+}
 
 fn run(EvalContext &context, BumpArena &ast_arena) throws -> int
 {
@@ -2315,4 +2290,4 @@ fn run(EvalContext &context, BumpArena &ast_arena) throws -> int
   return server.run();
 }
 
-} /* namespace koshka::language_server */
+}

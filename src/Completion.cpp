@@ -43,9 +43,6 @@ static fn all_active_glob_mask(usize length) throws -> Bitset
   return mask;
 }
 
-/* The three match strengths a typed token has against a candidate, best first.
-   An exact prefix always wins, then a smart-case prefix, then a subsequence
-   such as fbb inside foo_bar_baz. */
 enum class match_tier : u8
 {
   exact_prefix = 0,
@@ -55,9 +52,6 @@ enum class match_tier : u8
 
 static constexpr usize MATCH_TIER_COUNT = 3;
 
-/* Smart case means a token with an uppercase byte matches case sensitively,
-   while an all-lowercase token matches either case. The caller passes the smart
-   verdict so it is computed once per token, not once per candidate. */
 static pure fn candidate_match(StringView token, StringView candidate,
                                bool is_case_sensitive) wontthrow
     -> Maybe<match_tier>
@@ -81,10 +75,9 @@ static pure fn candidate_match(StringView token, StringView candidate,
     if (is_prefix) return match_tier::prefix;
   }
 
-  /* A subsequence match is far looser than a prefix, so it is limited to a
-     name-like token of at least two bytes. A single byte or an option dash
-     would otherwise match almost every entry. */
-  if (token.length < 2 || !lexer::is_variable_name(token[0])) return None;
+  let const is_token_too_loose_for_subsequence =
+      token.length < 2 || !lexer::is_variable_name(token[0]);
+  if (is_token_too_loose_for_subsequence) return None;
 
   usize matched_count = 0;
   if (is_case_sensitive) {
@@ -384,8 +377,6 @@ collect_command_names(StringView token, EvalContext &context,
     if (tier.has_value() && seen.add(name)) collector.add(name, *tier);
   };
 
-  /* A keyword is resolved before a builtin of the same name, so it claims the
-     name first and the builtin loop then skips it. */
   for (let const &keyword_name : keyword_names())
     do_add(keyword_name.view());
 
@@ -868,12 +859,6 @@ static fn visit_cdpath_directories(EvalContext &context,
   }
 }
 
-/* A cd or pushd operand that is neither absolute nor led by a dot or a tilde
-   also completes the directories under each CDPATH entry, the ones the builtin
-   would reach through it. One collector ranks them with the working directory,
-   so only the best match tier across every directory is kept. The ghost reads
-   only the CDPATH directories already in the index, which the idle hook
-   fills. */
 template <typename Collector>
 static fn collect_directory_change_operand(
     StringView token, const Path &base_directory, EvalContext &context,
@@ -931,7 +916,6 @@ static fn complete_filesystem_prefix(
       text_mode, filter, directory_suffix_mode::Marked);
 }
 
-/* Only the trailing component is globbed. */
 static fn complete_glob(StringView token, const Path &base_directory,
                         EvalContext &context,
                         const utils::decoded_shell_word &decoded_word,
@@ -1050,8 +1034,6 @@ static fn complete_glob(StringView token, const Path &base_directory,
 
 static pure fn token_is_variable(StringView token) wontthrow -> bool
 {
-  /* A slash after the reference marks a variable-prefixed path. Filesystem
-     completion lists the expanded path and preserves the literal prefix. */
   return !token.is_empty() && token[0] == '$' &&
          !os::has_directory_separator(token);
 }
@@ -1234,9 +1216,6 @@ fn complete(StringView line, usize cursor, EvalContext &context,
   if (cursor > line.length) cursor = line.length;
   let const is_line_empty = line.is_empty();
 
-  /* When the cursor sits inside a command substitution, completion re-roots to
-     the substitution's own command line. The offset maps the replaced token
-     span back to the full line for the caller. */
   let const command_range = command_substitution_range(line, cursor);
   let completion_offset = command_range.start;
   line = line.substring_of_length(command_range.start,
@@ -1278,9 +1257,6 @@ fn complete(StringView line, usize cursor, EvalContext &context,
   let const line_end = replacement_token_end;
   if (cursor == token_start) replacement_token_end = cursor;
 
-  /* For an option value such as --exit-node=host or an assignment such as
-     name=value, complete only the text after the equals sign. Bash does this
-     through COMP_WORDBREAKS. */
   let const is_option_value_word =
       !is_command && token.length >= 2 && token[0] == '-';
   if (is_option_value_word || lexer::word_looks_like_assignment(token)) {
@@ -1315,8 +1291,6 @@ fn complete(StringView line, usize cursor, EvalContext &context,
   let const is_leading_tilde_active =
       !has_open_quote && decoded_token.leading.is_tilde_active;
 
-  /* A command-position token holding a path separator completes against the
-     filesystem rather than the command sets. */
   let const token_has_path_separator =
       os::has_directory_separator(decoded_token.text.view());
   LOG(Debug, "complete line '%.*s' cursor %zu token '%.*s' command %d",
@@ -1324,8 +1298,6 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       static_cast<int>(stage_token.length), stage_token.data,
       is_command ? 1 : 0);
 
-  /* A glob word with the cursor right after it expands inline to its file
-     matches, even in command position. */
   let const inline_glob = token_is_glob && cursor == token_end;
 
   let const command_word =
@@ -1394,9 +1366,6 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       should_rebuild_shell_syntax_candidates = true;
     }
   } else if (is_command && !token_has_path_separator) {
-    /* An empty command token would enumerate every PATH command on each
-       keystroke for the ghost, so command completion runs only once a prefix
-       is typed. An explicit tab still lists them all. */
     let from_initial_word = Maybe<ArrayList<String>>{None};
     if (!is_posix_completion && (!stage_token.is_empty() || for_listing)) {
       from_initial_word = complete_from_initial_word_spec(
@@ -1435,10 +1404,6 @@ fn complete(StringView line, usize cursor, EvalContext &context,
     candidates = complete_glob(token, base_directory, context, decoded_token,
                                filesystem_filter);
   } else {
-    /* The argument cascade runs in the bash and the default moods, the POSIX
-       mood goes straight to files. The build tools answer before the man
-       sources, so a recognized build tool in the current directory offers its
-       targets even when a like-named subcommand man page exists. */
     Maybe<ArrayList<String>> from_stage = None;
     if (!is_posix_completion) {
       from_stage =
@@ -1500,9 +1465,6 @@ fn complete(StringView line, usize cursor, EvalContext &context,
                                     filesystem_filter);
       should_close_generated_prefix_quote = decoded_token.quote_character == 0;
     } else if (!decoded_token.text.is_empty()) {
-      /* A token ending in a slash names a directory the ghost has not read yet,
-         and the collector indexes it and suggests its first entry. An empty
-         token names nothing and gets no suggestion. */
       let collector = is_directory_change_command
                           ? collect_directory_change_operand(
                                 token, base_directory, context, decoded_token,
@@ -1627,6 +1589,6 @@ fn complete(StringView line, usize cursor, EvalContext &context,
   };
 }
 
-} /* namespace completion */
+}
 
-} /* namespace koshka */
+}
