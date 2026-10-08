@@ -334,18 +334,21 @@ fn execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
   unreachable("execute_builtin reached the end without dispatching");
 }
 
+static fn builtin_error_ends_posix_script(const ExecContext &ec,
+                                          const EvalContext &cxt) wontthrow
+    -> bool
+{
+  if (!cxt.runtime_state().is_posix_mode()) return false;
+  if (ec.builtin_kind() == Builtin::Kind::Trap) return false;
+
+  return ec.builtin_kind() == Builtin::Kind::Local ||
+         is_special_builtin_name(ec.program());
+}
+
 fn report_soft_builtin_error(const ExecContext &ec, EvalContext &cxt,
                              StringView message) throws -> void
 {
-  const ErrorWithLocation located{ec.source_location(),
-                                  builtin_error_message(ec.program(), message)};
-  if (const String *source = cxt.source_store().current_source();
-      source != nullptr)
-  {
-    show_message(located.to_string(source->view(), &cxt));
-    cxt.print_source_backtrace(ec.source_location(), false);
-  } else
-    print_error(builtin_error_message(ec.program(), message) + "\n");
+  report_soft_builtin_error(ec, cxt, ec.source_location(), message);
 }
 
 fn report_soft_builtin_error(const ExecContext &ec, EvalContext &cxt,
@@ -359,8 +362,13 @@ fn report_soft_builtin_error(const ExecContext &ec, EvalContext &cxt,
                              SourceLocation location, StringView message) throws
     -> void
 {
-  const ErrorWithLocation located{location,
-                                  builtin_error_message(ec.program(), message)};
+  ErrorWithLocation located{location,
+                            builtin_error_message(ec.program(), message)};
+  if (builtin_error_ends_posix_script(ec, cxt)) {
+    located.set_command_status(2);
+    throw located;
+  }
+
   if (const String *source = cxt.source_store().current_source();
       source != nullptr)
   {

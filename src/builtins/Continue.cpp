@@ -35,7 +35,9 @@ fn Continue::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());
 
-  if (cxt.execution_store().loop_depth() == 0) {
+  if (cxt.execution_store().loop_depth() == 0 &&
+      !cxt.runtime_state().is_posix_mode())
+  {
     LOG(All, "continue outside a loop does nothing");
     report_loop_control_without_loop(ec, cxt);
     return 0;
@@ -73,9 +75,12 @@ fn Continue::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (level < 1) {
     if (!cxt.runtime_state().is_bash_compatible()) {
-      throw make_error_for_arg(ec, 1,
-                               "Unable to continue because '" + ec.args()[1] +
-                                   "' is not a valid loop count");
+      let error =
+          make_error_for_arg(ec, 1,
+                             "Unable to continue because '" + ec.args()[1] +
+                                 "' is not a valid loop count");
+      if (cxt.runtime_state().is_posix_mode()) error.set_command_status(2);
+      throw error;
     }
 
     LOG(All, "continue abandoning every enclosing loop for a count below one");
@@ -86,6 +91,8 @@ fn Continue::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                       ec.source_location());
     return 1;
   }
+
+  if (cxt.execution_store().loop_depth() == 0) return 0;
 
   LOG(All, "continue skipping to the next iteration of %lld loops",
       static_cast<long long>(level));

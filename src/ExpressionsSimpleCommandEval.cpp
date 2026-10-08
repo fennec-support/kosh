@@ -1167,6 +1167,9 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     cxt.job_table_store().set_in_pipeline_stage(true);
   defer { cxt.job_table_store().set_in_pipeline_stage(was_in_pipeline_stage); };
 
+  let const is_posix_regular_builtin =
+      cxt.runtime_state().is_posix_mode() && ec.is_builtin() &&
+      !is_command_special_builtin && ec.builtin_kind() != Builtin::Kind::Local;
   i32 ret = 0;
   try {
     ret = utils::execute_context(steal(ec), cxt,
@@ -1175,7 +1178,10 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   } catch (const InterruptErrorWithLocation &) {
     throw;
   } catch (ErrorWithLocation &error) {
-    if (!cxt.runtime_state().is_bash_compatible() || error.is_script_fatal())
+    let const is_soft_posix_error =
+        is_posix_regular_builtin && !error.is_line_discarding();
+    if (error.is_script_fatal()) throw;
+    if (!cxt.runtime_state().is_bash_compatible() && !is_soft_posix_error)
       throw;
 
     if (!error.was_rendered()) {
@@ -1192,7 +1198,9 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       error.set_rendered();
     }
 
-    throw;
+    if (!is_soft_posix_error) throw;
+
+    ret = 2;
   }
   cxt.execution_store().set_last_argument(String{last_argument.view()});
 

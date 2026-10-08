@@ -1458,6 +1458,13 @@ mood, as Bash and dash do. In the sh mood a $(( )) error in the body fails the
 command the same way. The error still ends the shell before a special
 builtin, and before a function in the bash and bash-posix moods, as in Bash.
 .PP
+In the sh mood, an error of a regular builtin, such as a missing cd
+directory or an invalid test operand, fails that command with status 2 and
+the script goes on. An error of a special builtin or of local, such as shift
+past the last parameter or export of an invalid name, ends a non-interactive
+shell with status 2 unless command runs it. A bad trap signal only fails trap,
+and extra operands of exit, break, and continue are ignored, as in dash.
+.PP
 The
 .B arithmetic.use_big_integers_and_decimals
 koshconf option uses arbitrary-precision integers and accepts finite base-10

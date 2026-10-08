@@ -54,6 +54,16 @@ fn Unset::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   };
   for (usize i = 1; i < names.count(); i++) {
     let const &name = names[i];
+    if (!should_unset_function && cxt.runtime_state().is_posix_mode() &&
+        !name_is_valid_identifier(name.view()))
+    {
+      report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
+                                StringView{"'"} + name +
+                                    "' is not a valid identifier");
+      has_error = true;
+      continue;
+    }
+
     if (!should_unset_function &&
         cxt.scope_store().is_current_self_reference(name.view()))
     {

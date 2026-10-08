@@ -52,7 +52,8 @@ fn Break::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());
 
-  if (cxt.execution_store().loop_depth() == 0) {
+  let const is_posix_mode = cxt.runtime_state().is_posix_mode();
+  if (cxt.execution_store().loop_depth() == 0 && !is_posix_mode) {
     LOG(All, "break outside a loop does nothing");
     report_loop_control_without_loop(ec, cxt);
     return 0;
@@ -75,7 +76,7 @@ fn Break::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     level = parsed_level.value();
   }
 
-  if (ec.args().count() > 2) {
+  if (ec.args().count() > 2 && !is_posix_mode) {
     ErrorWithLocation located{
         ec.arg_location_at(2),
         StringView{"break accepts at most one loop count"}};
@@ -84,11 +85,21 @@ fn Break::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     throw located;
   }
 
+  if (level < 1 && is_posix_mode) {
+    let error = make_error_for_arg(ec, 1,
+                                   "Unable to break because '" + ec.args()[1] +
+                                       "' is not a valid loop count");
+    error.set_command_status(2);
+    throw error;
+  }
+
   if (level < 1) {
     report_break_out_of_range(ec, cxt, ec.args()[1].view());
     cxt.request_break(1, ec.source_location());
     return 1;
   }
+
+  if (cxt.execution_store().loop_depth() == 0) return 0;
 
   LOG(All, "break leaving %lld enclosing loops", static_cast<long long>(level));
   cxt.request_break(level, ec.source_location());
