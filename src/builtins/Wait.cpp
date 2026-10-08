@@ -171,6 +171,14 @@ static fn wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
       return do_finish_next_wait(
           table.wait_for_next_job(job_ids, should_wait_for_termination));
 
+    if (has_pid_variable &&
+        cxt.variable_store().attributes().is_nameref(pid_variable))
+    {
+      cxt.variable_store().attributes().set(pid_variable,
+                                            variable_attribute::Nameref, false);
+      cxt.unset_shell_variable(pid_variable);
+    }
+
     let other_pids = ArrayList<i64>{cxt.scratch_allocator()};
     let unknown_targets = ArrayList<usize>{cxt.scratch_allocator()};
     for (usize i = 1; i < args.count(); i++) {
@@ -211,6 +219,45 @@ static fn wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
                                   "'" + target +
                                       "': not a pid or valid job spec");
       }
+    }
+
+    let const do_has_done_target_job = [&]() throws -> bool {
+      table.update_jobs();
+      for (let const &entry : table.jobs()) {
+        if (entry.state == job::State::Done && !entry.was_waited &&
+            job_ids.find(entry.id).has_value())
+        {
+          return true;
+        }
+      }
+
+      return false;
+    };
+
+    while (!job_ids.is_empty() && !other_pids.is_empty()) {
+      for (let const process_id : other_pids) {
+        if (let const status =
+                cxt.wait_for_process_substitution(process_id, false);
+            status.has_value())
+        {
+          do_store_pid(process_id);
+
+          return *status;
+        }
+      }
+
+      if (do_has_done_target_job()) break;
+
+      if (let const number = os::peek_pending_signal_besides_child();
+          number != 0)
+      {
+        return 128 + number;
+      }
+
+      if constexpr (os::HAS_CHILD_STATE_CHANGE_WAIT)
+        os::wait_for_child_state_change();
+      else
+        os::sleep_for_seconds(0.005);
     }
 
     if (!job_ids.is_empty())

@@ -778,6 +778,27 @@ fn EvalContext::warn_circular_nameref(StringView name) const throws -> void
       Warning{"The name reference '" + name + "' is circular"}.to_string());
 }
 
+fn EvalContext::is_circular_nameref(StringView name) const throws -> bool
+{
+  let const target = resolve_nameref(name);
+
+  return target.has_value() && target->is_empty();
+}
+
+fn EvalContext::unbind_circular_nameref(StringView name) throws -> bool
+{
+  if (!variable_store().attributes().is_nameref(name) ||
+      !is_circular_nameref(name))
+  {
+    return false;
+  }
+
+  variable_store().attributes().set(name, variable_attribute::Nameref, false);
+  variable_store().shell_variables().erase(name);
+
+  return true;
+}
+
 fn EvalContext::resolve_nameref_for_write(StringView name) throws -> String
 {
   if (is_generated_nameref(name)) rarely
@@ -790,11 +811,8 @@ fn EvalContext::resolve_nameref_for_write(StringView name) throws -> String
   let target = resolve_nameref(name);
   if (!target.has_value()) return String{heap_allocator(), name};
 
-  if (target->is_empty()) {
-    let error = Error{"The name reference '" + name + "' is circular"};
-    mark_expansion_error(error, expansion_error_reach::LineOrPosixScript);
-    throw steal(error);
-  }
+  if (target->is_empty())
+    throw Error{"The name reference '" + name + "' is circular"};
 
   return target.take();
 }

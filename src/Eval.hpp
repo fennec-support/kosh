@@ -3416,6 +3416,10 @@ public:
   pure fn has_generated_value(StringView name) const wontthrow -> bool;
   pure fn is_generated_nameref(StringView name) const wontthrow -> bool;
   fn warn_circular_nameref(StringView name) const throws -> void;
+  fn is_circular_nameref(StringView name) const throws -> bool;
+  fn unbind_circular_nameref(StringView name) throws -> bool;
+  fn assign_caller_binding_of_circular_nameref(StringView name,
+                                               StringView value) throws -> bool;
   fn resolve_nameref_for_write(StringView name) throws -> String;
   fn resolve_nameref_base_for_write(StringView name) throws -> String;
   fn guard_nameref_name(StringView name) const throws -> void;
@@ -4131,7 +4135,9 @@ public:
   fn hold_process_substitutions(process_substitution_mark mark) wontthrow
       -> void;
   fn release_finished_held_process_substitutions() wontthrow -> void;
-  fn wait_for_process_substitution(i64 process_id) wontthrow -> Maybe<i32>;
+  fn wait_for_process_substitution(i64 process_id,
+                                   bool should_block = true) wontthrow
+      -> Maybe<i32>;
   pure fn is_pending_process_substitution(i64 process_id) const wontthrow
       -> bool;
 

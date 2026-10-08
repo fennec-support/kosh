@@ -510,7 +510,8 @@ fn EvalContext::release_finished_held_process_substitutions() wontthrow -> void
   }
 }
 
-fn EvalContext::wait_for_process_substitution(i64 process_id) wontthrow
+fn EvalContext::wait_for_process_substitution(i64 process_id,
+                                              bool should_block) wontthrow
     -> Maybe<i32>
 {
   let const do_reap_matching = [&](process_substitution &sub)
@@ -520,10 +521,15 @@ fn EvalContext::wait_for_process_substitution(i64 process_id) wontthrow
     }
 
     i32 status = 127;
-    try {
-      status = os::reap_process_quietly(sub.child);
-    } catch (...) {
-      LOG(Debug, "waiting for a process substitution failed");
+    if (!should_block) {
+      if (os::poll_process(sub.child, status) != os::process_state::Exited)
+        return false;
+    } else {
+      try {
+        status = os::reap_process_quietly(sub.child);
+      } catch (...) {
+        LOG(Debug, "waiting for a process substitution failed");
+      }
     }
     sub.child = KOSH_INVALID_PROCESS;
     job_table_store().remember_finished_status(process_id, status);

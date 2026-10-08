@@ -6,7 +6,9 @@
 # operands the last one decides the status. The -n option returns the next job
 # to finish, -p stores the process whose status is returned, and -f waits for
 # termination. A trapped signal ends a blocking wait -n with 128 plus its
-# number. Gate FIFOs order the jobs without timing.
+# number. A finished process substitution among the operands of wait -n
+# returns before a running job, and -p with operands replaces a name
+# reference with a plain variable. Gate FIFOs order the jobs without timing.
 
 dir=$(mktemp -d)
 trap 'rm -rf "$dir"' EXIT
@@ -130,5 +132,25 @@ wait "$sleeper"
 echo "killed=$?"
 wait "$notifier"
 trap - USR1
+
+echo substitution-before-job
+mkfifo "$dir/held"
+exec {held_fd}< <(exit 6)
+held_substitution=$!
+{ read -r _ < "$dir/held"; exit 7; } &
+held_job=$!
+wait -n -p held_who "$held_job" "$held_substitution"
+echo "next=$? substitution=$([ "$held_who" = "$held_substitution" ] && echo yes)"
+echo release > "$dir/held"
+wait "$held_job"
+echo "job=$?"
+exec {held_fd}<&-
+
+echo pid-reference
+declare -n pid_ref=pid_target
+(exit 5) &
+wait -n -p pid_ref "$!"
+echo "status=$? target=${pid_target-unset} value=${pid_ref:+set}"
+[[ -R pid_ref ]] || echo "pid_ref is no reference"
 
 echo wait-forms-done

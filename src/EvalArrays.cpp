@@ -155,8 +155,12 @@ fn EvalContext::assign_indexed_array_elements(
   let resolved_name = Maybe<String>{};
   if (variable_store().attributes().is_nameref(name)) rarely
     {
-      resolved_name = resolve_nameref_for_write(name);
-      name = resolved_name->view();
+      if (unbind_circular_nameref(name)) {
+        warn_circular_nameref(name);
+      } else {
+        resolved_name = resolve_nameref_for_write(name);
+        name = resolved_name->view();
+      }
     }
   if (is_readonly(name))
     throw Error{"Unable to assign '" + name + "' because it is read only"};
@@ -354,8 +358,12 @@ fn EvalContext::assign_array_element(StringView name, StringView subscript,
   let resolved_name = Maybe<String>{};
   if (variable_store().attributes().is_nameref(name)) rarely
     {
-      resolved_name = resolve_nameref_for_write(name);
-      name = resolved_name->view();
+      if (unbind_circular_nameref(name)) {
+        warn_circular_nameref(name);
+      } else {
+        resolved_name = resolve_nameref_for_write(name);
+        name = resolved_name->view();
+      }
     }
   if (is_readonly(name))
     throw Error{"Unable to assign '" + name + "' because it is read only"};

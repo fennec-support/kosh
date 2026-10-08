@@ -74,8 +74,11 @@ fn Unset::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       LOG(All, "unset removing function '%s'", name.c_str());
       do_try_unset(i, [&] { cxt.unset_function(name); });
     } else if (FLAG_UNSET_NAMEREF.is_enabled() &&
-               cxt.variable_store().attributes().is_nameref(name.view()))
+               !cxt.variable_store().attributes().is_nameref(name.view()))
     {
+      LOG(All, "unset -n leaves '%s', which is not a name reference",
+          name.c_str());
+    } else if (FLAG_UNSET_NAMEREF.is_enabled()) {
       LOG(All, "unset removing the name reference '%s'", name.c_str());
       do_try_unset(i, [&] {
         let const was_generated = cxt.is_generated_nameref(name.view());

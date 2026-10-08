@@ -336,8 +336,21 @@ fn AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
     let assigned_name = is_element_assignment
                             ? key_view.substring_of_length(0, *bracket)
                             : key_view;
+    if (!is_element_assignment &&
+        m_assignment->get_update_mode() == assignment_update_mode::Replace &&
+        cxt.assign_caller_binding_of_circular_nameref(assigned_name,
+                                                      value.view()))
+    {
+      if (!value_ran_substitution)
+        cxt.execution_store().set_last_exit_status(0);
+      cxt.publish_single_pipe_status(cxt.execution_store().last_exit_status());
+      return cxt.execution_store().last_exit_status();
+    }
+
     let resolved_name = Maybe<String>{};
-    if (cxt.variable_store().attributes().is_nameref(assigned_name)) rarely
+    if (cxt.variable_store().attributes().is_nameref(assigned_name) &&
+        !(is_element_assignment && cxt.is_circular_nameref(assigned_name)))
+      rarely
       {
         try {
           resolved_name = cxt.resolve_nameref_base_for_write(assigned_name);

@@ -471,7 +471,9 @@ fn EvalContext::prepare_child_environment() const throws -> void
 
 fn EvalContext::unset_shell_variable(StringView name) throws -> void
 {
-  if (variable_store().attributes().is_nameref(name)) rarely
+  if (variable_store().attributes().is_nameref(name) &&
+      !unbind_circular_nameref(name))
+    rarely
     {
       let const target = resolve_nameref_for_write(name);
       if (let const bracket = target.view().find_character('[');
@@ -539,6 +541,35 @@ fn EvalContext::peel_caller_local_binding(StringView name) throws -> bool
       return true;
     }
   }
+  return false;
+}
+
+fn EvalContext::assign_caller_binding_of_circular_nameref(
+    StringView name, StringView value) throws -> bool
+{
+  if (scope_store().local_scope_depth() == 0) return false;
+  if (!variable_store().attributes().is_nameref(name)) return false;
+  if (!is_circular_nameref(name)) return false;
+
+  ArrayList<local_binding> &frame = scope_store().current_local_scope();
+  for (usize i = frame.count(); i-- > 0;) {
+    let &binding = frame[i];
+    if (binding.name.view() != name || binding.is_self_reference) continue;
+
+    let const nameref_bit = static_cast<u8>(variable_attribute::Nameref);
+    if ((binding.previous_attributes & nameref_bit) != 0 ||
+        binding.previous_indexed_array.has_value() ||
+        binding.previous_was_associative)
+    {
+      return false;
+    }
+
+    warn_circular_nameref(name);
+    binding.previous_value = String{heap_allocator(), value};
+
+    return true;
+  }
+
   return false;
 }
 

@@ -662,7 +662,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
           let const subscript = name.substring_of_length(
               *bracket + 1, name.length - *bracket - 2);
           do_trace_assignment(name, assignment.get_update_mode(), value.view());
-          do_reject_readonly_target(array_name);
+          if (!cxt.is_circular_nameref(array_name))
+            do_reject_readonly_target(array_name);
           try {
             cxt.assign_array_element(array_name, subscript, value.view(),
                                      assignment.get_update_mode());
@@ -693,7 +694,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       do_apply_persistent_assignment(*assignment);
     /* Bare array assignments apply after the scalars in source order. */
     for (let const &assignment : m_array_args) {
-      do_reject_readonly_target(assignment.name);
+      if (!cxt.is_circular_nameref(assignment.name))
+        do_reject_readonly_target(assignment.name);
       ArrayList<String> values = cxt.process_args(
           assignment.elements, nullptr, argument_lifetime::Persistent,
           argument_context::ArrayLiteral);
@@ -795,6 +797,11 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     let resolved_name = Maybe<String>{};
     if (cxt.variable_store().attributes().is_nameref(name)) rarely
       {
+        if (cxt.is_circular_nameref(name)) {
+          cxt.warn_circular_nameref(name);
+          return;
+        }
+
         resolved_name = cxt.resolve_nameref_for_write(name);
         name = resolved_name->view();
       }

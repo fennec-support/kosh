@@ -336,6 +336,13 @@ public:
   {
     if (m_is_skipping) return;
     ASSERT(context != nullptr);
+    if (context->variable_store().attributes().is_nameref(name) &&
+        context->is_circular_nameref(name))
+    {
+      context->warn_circular_nameref(name);
+      return;
+    }
+
     let const text = value.to_string(context->scratch_allocator());
     context->set_shell_variable(name, text.view());
   }

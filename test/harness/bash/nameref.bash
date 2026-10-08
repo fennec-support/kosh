@@ -4,8 +4,12 @@
 # assignment, follows a chain, passes a caller variable by reference, binds
 # per word in a for loop, and reports itself to declare -p, ${!name},
 # [[ -R ]], test -R, and [ -R ].
-# unset acts on the target, unset -n on the reference, and a circular chain
-# reads as unset and fails an assignment. A reference to itself is an error at
+# unset acts on the target, unset -n on the reference and on nothing else, and
+# a circular chain reads as unset and fails an assignment. Through a circular
+# chain read, printf -v, and export fail, arithmetic, a prefix, and declare
+# skip the write, an element or array assignment and unset drop the
+# reference, and a function's reference that loops back writes the caller's
+# variable. A reference to itself is an error at
 # the top level, and inside a function it warns and reaches the variable
 # outside the function. RANDOM and SECONDS take the attribute and keep their
 # generated value, so each expansion or assignment of the name fails. An
@@ -203,6 +207,30 @@ declare -n cb=ca
 { echo "circular ${ca-default}"; } 2>/dev/null
 (ca=1; echo "not reached") 2>/dev/null
 echo "circular assignment status $?"
+{
+  read -r ca <<<"r"; echo "circular read $?"
+  printf -v ca '%s' p; echo "circular printf $?"
+  export ca=e; echo "circular export $?"
+  (( ca = 1 )); echo "circular arithmetic $?"
+  ca=prefix true; echo "circular prefix $?"
+  declare ca=d; echo "circular declare $?"
+  (ca[1]=element; echo "circular element $?"; declare -p ca cb)
+  (ca=(a b); echo "circular array $?"; declare -p ca cb)
+  (unset ca; echo "circular unset $?"; declare -p cb; [[ -v ca ]] || echo "unset ca")
+} 2>/dev/null
+declare -p ca cb
+circular_inner() { local -n circular_x=$1; circular_x=inner; echo "inner $?"; }
+circular_outer() {
+  local circular_x=outer
+  local -n circular_x2=circular_x
+  circular_inner circular_x2
+  echo "outer circular_x=$circular_x"
+}
+circular_outer 2>/dev/null
+plain_unset_n=1
+unset -n plain_unset_n; echo "unset -n plain $? [$plain_unset_n]"
+plain_unset_n_function() { echo function; }
+unset -n plain_unset_n_function; plain_unset_n_function
 
 self_scalar() {
   local -n selfref=selfref

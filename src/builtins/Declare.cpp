@@ -466,6 +466,14 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     LOG(All, "declare applying attributes to '%.*s'",
         static_cast<int>(name.length), name.data);
 
+    if (equals.has_value() && !has_subscript &&
+        cxt.variable_store().attributes().is_nameref(name) &&
+        cxt.is_circular_nameref(name))
+    {
+      cxt.warn_circular_nameref(name);
+      continue;
+    }
+
     if (has_subscript && equals.has_value()) {
       cxt.assign_array_element(name, subscript, value, update_mode);
     } else if (should_make_associative) {

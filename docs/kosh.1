@@ -2226,11 +2226,17 @@ assignment, an export, and an unset of the reference act on that variable, and
 a chain of references is followed. A for loop over a reference binds the
 reference to each word, ${!name} reads the name the reference reaches, and
 .B "unset \-n"
-removes the reference itself. The conditional [[ \-R name ]] and, outside
+removes the reference itself and leaves a name that is not a reference alone.
+The conditional [[ \-R name ]] and, outside
 the sh mood, test \-R name and [ \-R name ] are true for a reference with a
 value. A reference with no value binds to the name its
 first assignment gives it. A reference to itself is an error at the top level,
 and a circular chain reads as unset with a warning and fails an assignment.
+Through a circular chain, read, printf \-v, and export fail with status 1,
+arithmetic, a prefix assignment, and declare warn and skip the write, an element
+or array assignment warns and turns the reference into an array, and unset
+removes the reference. When a function's reference loops back to its own name,
+an assignment warns and sets the variable the function's local hides.
 Inside a function, local \-n name=name or declare \-n name=name warns and
 leaves the name reaching the variable outside the function, as Bash falls back
 to the global one, though a caller's local of that name is reached first. Reads
@@ -4685,12 +4691,18 @@ processes, or among every job when no operand is given. A job that already
 finished and was not yet waited is returned first. A named process whose status
 is remembered is returned at once. Otherwise every named job or process that
 is not known is reported before the wait, and the wait goes on for the known
-ones. It reports 127 when no named or tracked job is left.
+ones, so a named process substitution that finishes before a named job is
+returned first. It reports 127 when no named or tracked job is left.
 .B wait \-p
 .I var
 stores the process whose status is returned in
 .IR var ,
-and unsets it when no status is returned. A stopped job returns 128 plus the
+and unsets it when no status is returned. With
+.B \-n
+and operands, a
+.I var
+that is a name reference loses the attribute first and holds the process
+itself, as in Bash. A stopped job returns 128 plus the
 stop signal, and
 .B wait \-n
 skips it.
