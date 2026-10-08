@@ -24,6 +24,7 @@
 #include "base/ErrorOr.hpp"
 #include "base/Maybe.hpp"
 #include "base/Path.hpp"
+#include "base/Trace.hpp"
 
 namespace koshka {
 
@@ -228,16 +229,23 @@ public:
   fn set_diagnostics_disabled(bool enabled) wontthrow -> void;
   pure fn is_annoying_diagnostics_enabled() const wontthrow -> bool;
   fn set_annoying_diagnostics_enabled(bool enabled) wontthrow -> void;
-  pure fn was_error_unset_set_explicitly() const wontthrow -> bool;
-  fn set_error_unset_set_explicitly(bool enabled) wontthrow -> void;
-  pure fn was_pipefail_set_explicitly() const wontthrow -> bool;
-  fn set_pipefail_set_explicitly(bool enabled) wontthrow -> void;
-  pure fn was_failglob_set_explicitly() const wontthrow -> bool;
-  fn set_failglob_set_explicitly(bool enabled) wontthrow -> void;
-  pure fn was_extended_arithmetic_set_explicitly() const wontthrow -> bool;
-  fn set_extended_arithmetic_set_explicitly(bool enabled) wontthrow -> void;
-  pure fn was_glob_ignore_assigned() const wontthrow -> bool;
-  fn set_glob_ignore_assigned(bool enabled) wontthrow -> void;
+#define KOSH_RUNTIME_FLAG(getter, setter, flag)                                \
+  pure fn getter() const wontthrow -> bool { return has_flag(Flag::flag); }    \
+  fn setter(bool enabled) wontthrow -> void { set_flag(Flag::flag, enabled); }
+
+  KOSH_RUNTIME_FLAG(was_error_unset_set_explicitly,
+                    set_error_unset_set_explicitly, ErrorUnsetExplicit)
+  KOSH_RUNTIME_FLAG(was_pipefail_set_explicitly, set_pipefail_set_explicitly,
+                    PipefailExplicit)
+  KOSH_RUNTIME_FLAG(was_failglob_set_explicitly, set_failglob_set_explicitly,
+                    FailglobExplicit)
+  KOSH_RUNTIME_FLAG(was_extended_arithmetic_set_explicitly,
+                    set_extended_arithmetic_set_explicitly,
+                    ExtendedArithmeticExplicit)
+  KOSH_RUNTIME_FLAG(was_glob_ignore_assigned, set_glob_ignore_assigned,
+                    GlobIgnoreAssigned)
+
+#undef KOSH_RUNTIME_FLAG
 
   pure static constexpr fn option_mask(shell_option_id option) wontthrow -> u64
   {
@@ -345,6 +353,8 @@ public:
 
   fn set_option(shell_option_id option, bool enabled) wontthrow -> void
   {
+    LOG(Info, "option %u flips to %s", static_cast<unsigned>(option),
+        enabled ? "on" : "off");
     if (enabled)
       m_shell_options |= option_mask(option);
     else
@@ -373,42 +383,48 @@ public:
 
   pure fn is_shopt_enabled(shopt_option_id option) const wontthrow -> bool;
 
-  fn set_error_exit(bool enabled) wontthrow -> void;
-  pure fn error_exit() const wontthrow -> bool;
-  fn set_echo_expanded(bool enabled) wontthrow -> void;
-  pure fn should_echo_expanded() const wontthrow -> bool;
-  fn set_error_unset(bool enabled) wontthrow -> void;
-  pure fn error_unset() const wontthrow -> bool;
-  fn set_pipefail(bool enabled) wontthrow -> void;
-  pure fn pipefail() const wontthrow -> bool;
-  fn set_no_clobber(bool enabled) wontthrow -> void;
-  pure fn no_clobber() const wontthrow -> bool;
-  fn set_export_all(bool enabled) wontthrow -> void;
-  pure fn export_all() const wontthrow -> bool;
-  fn set_no_glob(bool enabled) wontthrow -> void;
-  pure fn no_glob() const wontthrow -> bool;
-  fn set_no_exec(bool enabled) wontthrow -> void;
-  pure fn no_exec() const wontthrow -> bool;
-  fn set_extended_arithmetic(bool enabled) wontthrow -> void;
-  pure fn is_extended_arithmetic_enabled() const wontthrow -> bool;
-  fn set_koshkit(bool enabled) wontthrow -> void;
-  pure fn koshkit() const wontthrow -> bool;
-  fn set_failglob(bool enabled) wontthrow -> void;
-  pure fn failglob() const wontthrow -> bool;
-  fn set_echo(bool enabled) wontthrow -> void;
-  pure fn should_echo() const wontthrow -> bool;
-  fn set_stats_enabled(bool enabled) wontthrow -> void;
-  pure fn stats_enabled() const wontthrow -> bool;
-  fn set_show_ast(bool enabled) wontthrow -> void;
-  pure fn show_ast() const wontthrow -> bool;
-  fn set_show_lexed_words(bool enabled) wontthrow -> void;
-  pure fn show_lexed_words() const wontthrow -> bool;
-  fn set_show_exit_code(bool enabled) wontthrow -> void;
-  pure fn show_exit_code() const wontthrow -> bool;
-  fn set_show_all_exit_codes(bool enabled) wontthrow -> void;
-  pure fn show_all_exit_codes() const wontthrow -> bool;
-  fn set_memory_stats_enabled(bool enabled) wontthrow -> void;
-  pure fn memory_stats_enabled() const wontthrow -> bool;
+#define KOSH_RUNTIME_OPTION(setter, getter, option)                            \
+  fn setter(bool enabled) wontthrow -> void                                    \
+  {                                                                            \
+    set_option(shell_option_id::option, enabled);                              \
+  }                                                                            \
+  pure fn getter() const wontthrow -> bool                                     \
+  {                                                                            \
+    return option_is_enabled(shell_option_id::option);                         \
+  }
+
+  KOSH_RUNTIME_OPTION(set_error_exit, error_exit, Errexit)
+  KOSH_RUNTIME_OPTION(set_echo_expanded, should_echo_expanded, Xtrace)
+  KOSH_RUNTIME_OPTION(set_error_unset, error_unset, Nounset)
+  KOSH_RUNTIME_OPTION(set_pipefail, pipefail, Pipefail)
+  KOSH_RUNTIME_OPTION(set_no_clobber, no_clobber, Noclobber)
+  KOSH_RUNTIME_OPTION(set_export_all, export_all, Allexport)
+  KOSH_RUNTIME_OPTION(set_no_glob, no_glob, Noglob)
+  KOSH_RUNTIME_OPTION(set_no_exec, no_exec, Noexec)
+  KOSH_RUNTIME_OPTION(set_extended_arithmetic, is_extended_arithmetic_enabled,
+                      ExtendedArithmetic)
+  KOSH_RUNTIME_OPTION(set_koshkit, koshkit, Koshkit)
+  KOSH_RUNTIME_OPTION(set_failglob, failglob, Failglob)
+  KOSH_RUNTIME_OPTION(set_echo, should_echo, Verbose)
+  KOSH_RUNTIME_OPTION(set_stats_enabled, stats_enabled, ShowStats)
+  KOSH_RUNTIME_OPTION(set_show_ast, show_ast, ShowAst)
+  KOSH_RUNTIME_OPTION(set_show_lexed_words, show_lexed_words, ShowLexedWords)
+  KOSH_RUNTIME_OPTION(set_show_all_exit_codes, show_all_exit_codes,
+                      ShowAllExitCodes)
+  KOSH_RUNTIME_OPTION(set_memory_stats_enabled, memory_stats_enabled,
+                      ShowMemory)
+
+#undef KOSH_RUNTIME_OPTION
+
+  fn set_show_exit_code(bool enabled) wontthrow -> void
+  {
+    set_option(shell_option_id::ShowExitCode, enabled);
+  }
+  pure fn show_exit_code() const wontthrow -> bool
+  {
+    return option_is_enabled(shell_option_id::ShowExitCode) ||
+           option_is_enabled(shell_option_id::ShowAllExitCodes);
+  }
 
   mustuse static fn capture(const EvalContext &context) wontthrow
       -> RuntimeState;
@@ -545,65 +561,6 @@ inline fn RuntimeState::set_annoying_diagnostics_enabled(bool enabled) wontthrow
     -> void
 {
   m_reporting.is_annoying_disabled = !enabled;
-}
-
-inline pure fn RuntimeState::was_error_unset_set_explicitly() const wontthrow
-    -> bool
-{
-  return has_flag(Flag::ErrorUnsetExplicit);
-}
-
-inline fn RuntimeState::set_error_unset_set_explicitly(bool enabled) wontthrow
-    -> void
-{
-  set_flag(Flag::ErrorUnsetExplicit, enabled);
-}
-
-inline pure fn RuntimeState::was_pipefail_set_explicitly() const wontthrow
-    -> bool
-{
-  return has_flag(Flag::PipefailExplicit);
-}
-
-inline fn RuntimeState::set_pipefail_set_explicitly(bool enabled) wontthrow
-    -> void
-{
-  set_flag(Flag::PipefailExplicit, enabled);
-}
-
-inline pure fn RuntimeState::was_failglob_set_explicitly() const wontthrow
-    -> bool
-{
-  return has_flag(Flag::FailglobExplicit);
-}
-
-inline fn RuntimeState::set_failglob_set_explicitly(bool enabled) wontthrow
-    -> void
-{
-  set_flag(Flag::FailglobExplicit, enabled);
-}
-
-inline pure fn
-RuntimeState::was_extended_arithmetic_set_explicitly() const wontthrow -> bool
-{
-  return has_flag(Flag::ExtendedArithmeticExplicit);
-}
-
-inline fn
-RuntimeState::set_extended_arithmetic_set_explicitly(bool enabled) wontthrow
-    -> void
-{
-  set_flag(Flag::ExtendedArithmeticExplicit, enabled);
-}
-
-inline pure fn RuntimeState::was_glob_ignore_assigned() const wontthrow -> bool
-{
-  return has_flag(Flag::GlobIgnoreAssigned);
-}
-
-inline fn RuntimeState::set_glob_ignore_assigned(bool enabled) wontthrow -> void
-{
-  set_flag(Flag::GlobIgnoreAssigned, enabled);
 }
 
 } /* namespace koshka */
