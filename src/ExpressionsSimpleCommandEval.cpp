@@ -115,6 +115,28 @@ static fn command_word_is_glob(const Word &word) wontthrow -> bool
 
 } /* namespace */
 
+static fn command_runs_program(const ArrayList<String> &args,
+                               const Maybe<Builtin::Kind> *literal_builtin,
+                               mimic_mood mood) throws -> bool
+{
+  if (args.is_empty()) return true;
+
+  let builtin = literal_builtin != nullptr ? *literal_builtin
+                                           : search_builtin(args[0].view());
+  if (builtin.has_value() && *builtin == Builtin::Kind::CommandBuiltin) {
+    usize operand_index = 1;
+    while (operand_index < args.count() && args[operand_index] == "-p")
+      operand_index++;
+
+    if (operand_index == args.count() || args[operand_index].view()[0] == '-')
+      return false;
+
+    builtin = search_builtin(args[operand_index].view());
+  }
+
+  return !builtin.has_value() || builtin_is_hidden_by_mood(*builtin, mood);
+}
+
 hot fn SimpleCommand::get_literal_command_lookup(
     const ArrayList<String> &program_args) const throws
     -> const literal_command_lookup *
@@ -311,6 +333,18 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     if (redirect_in_fd) os::close_fd(*redirect_in_fd);
   };
 
+  Maybe<eval_state_snapshot> redirection_snapshot;
+  if (!m_redirections.is_empty() && cxt.runtime_state().is_bash_compatible() &&
+      command_word_function == nullptr &&
+      redirections_can_change_state(m_redirections))
+  {
+    if (command_runs_program(
+            program_args,
+            literal_lookup != nullptr ? &literal_lookup->builtin : nullptr,
+            cxt.runtime_state().get_mood()))
+      redirection_snapshot = snapshot_child_redirection_state(cxt);
+  }
+
   bool did_redirection_open_fail = false;
   try {
     for (let const &original_redir : m_redirections) {
@@ -493,9 +527,12 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       }
       }
     }
+    discard_child_redirection_state(cxt, redirection_snapshot);
   } catch (const TrapAbandonedRedirection &) {
+    discard_child_redirection_state(cxt, redirection_snapshot);
     return cxt.execution_store().last_exit_status();
   } catch (const ErrorWithLocation &redirection_error) {
+    discard_child_redirection_state(cxt, redirection_snapshot);
     if (!did_redirection_open_fail) throw;
     if (is_command_special_builtin) throw;
     if (redirection_error.is_script_fatal() &&

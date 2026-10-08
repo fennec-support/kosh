@@ -2,27 +2,13 @@
 # Function substitutions, ${ cmd; } and ${| cmd; }, in every word and command
 # context, checked against bash. The bodies print nothing, spaces, glob
 # characters, quotes, and trailing newlines, change variables in the current
-# shell, fail, and nest. Cases listed in the pending fixture are skipped.
+# shell, fail, and nest.
 export LC_ALL=C
-list_only=1
-. "${BASH_SOURCE%/*}/funsub_contexts_matrix_pending.bash"
-unset list_only
 cd "$(mktemp -d)" || exit 1
 error_file=$PWD/.error
 script_file=$PWD/.sourced
 
-declare -A pending_set=()
-for pending_key in "${pending_cases[@]}"; do
-  pending_set[$pending_key]=1
-done
-
 run_case() {
-  local case_key="$values|$operator||$context|$extra"
-  if [[ -n ${pending_set[$case_key]-} ]]; then
-    [ -n "${is_pending_run-}" ] || return 0
-  else
-    [ -z "${is_pending_run-}" ] || return 0
-  fi
   printf '%s: ' "$1"
   side=before
   eval "$1" 2>"$error_file"
@@ -80,8 +66,6 @@ EOF"
   "echo \"\$( printf '<%s>' \"@E@\" )\""
 )
 
-extra=
-values=body
 for operator in "${bodies[@]}"; do
   for context in "${!contexts[@]}"; do
     case $context in
@@ -93,7 +77,6 @@ for operator in "${bodies[@]}"; do
   done
 done
 
-extra=nounset
 for operator in '${ echo "$unset_name"; }' '${| REPLY=$unset_name; }' \
   '${ echo ok; }'; do
   for context in 0 1 2; do

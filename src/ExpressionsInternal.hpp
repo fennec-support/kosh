@@ -259,6 +259,15 @@ fn resolve_redirection(const Redirection &redir, EvalContext &cxt,
                        bool should_allow_fd_memoization = false) throws
     -> resolved_redirection;
 
+pure fn redirections_can_change_state(
+    const SparseList<Redirection> &redirections) wontthrow -> bool;
+
+fn snapshot_child_redirection_state(EvalContext &cxt) throws
+    -> Maybe<eval_state_snapshot>;
+
+fn discard_child_redirection_state(
+    EvalContext &cxt, Maybe<eval_state_snapshot> &snapshot) wontthrow -> void;
+
 fn allocate_redirection_descriptor(
     const Redirection &redir, const resolved_redirection &resolved,
     EvalContext &cxt, const SourceLocation &location,

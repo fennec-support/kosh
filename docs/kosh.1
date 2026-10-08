@@ -1650,6 +1650,18 @@ runs as a pipeline stage. Writes therefore continue to the original file even
 after that file is renamed or removed. Bash reopens the file on every iteration.
 .PP
 A diagnostic inside a tab-stripped here-document carries no source caret.
+.PP
+In the bash moods, the redirections of a program, of a command with no word,
+and of a subshell expand as they do in Bash, in a child process. A program
+started through
+.B command
+is included. An assignment such as ${v:=x}, an arithmetic side effect, or a
+function substitution in the word of such a redirection or in the body of its
+here-document leaves no change in the shell afterward. The redirections of a
+builtin, a function, a command group, and
+.B exec
+expand in the shell itself, and so do the redirections of every command in the
+kosh mood.
 .SH COMMAND EXECUTION
 Command lookup checks functions, builtins, cached program paths, PATH, and
 bundled koshkit commands when the active mood and options enable them. Running a

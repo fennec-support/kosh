@@ -172,6 +172,13 @@ changes update this file.
   caller's binding the way bash falls back to the global. Local lookups and
   the scope pop skip it, and a later local or an unset of the name in that
   function replaces it with an ordinary local.
+- In a bash mood, Bash expands the redirections of a program, a null command,
+  and a subshell in the forked child. Kosh does not fork there. When
+  `redirections_can_change_state` finds an assignment, an arithmetic side
+  effect, or a function substitution, the expansion runs between
+  `snapshot_child_redirection_state` and `discard_child_redirection_state`.
+  Builtins, functions, and groups expand in the shell, and the kosh mood keeps
+  every change.
 - A forked child marks the jobs it inherits so `wait` cannot reach them. A job
   waited by number or process stays in the table until a reap point: a new
   input line, a loop iteration, a child process, or `jobs`.

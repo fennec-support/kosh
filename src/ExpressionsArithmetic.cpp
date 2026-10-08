@@ -1534,6 +1534,15 @@ fn RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
 
   koshka::flush();
 
+  Maybe<eval_state_snapshot> redirection_snapshot;
+  if (m_child->as_subshell() != nullptr &&
+      cxt.runtime_state().is_bash_compatible() &&
+      redirections_can_change_state(m_redirections))
+  {
+    redirection_snapshot = snapshot_child_redirection_state(cxt);
+  }
+  defer { discard_child_redirection_state(cxt, redirection_snapshot); };
+
   for (let const &redir : m_redirections) {
     let r = resolve_redirection(redir, cxt, source_location());
     r.target_fd =
@@ -1589,6 +1598,8 @@ fn RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
     }
     }
   }
+
+  discard_child_redirection_state(cxt, redirection_snapshot);
 
   if (m_child->as_subshell() != nullptr) {
     cxt.execution_store().pending_subshell_end_position() =

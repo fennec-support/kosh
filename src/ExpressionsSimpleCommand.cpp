@@ -660,6 +660,75 @@ wontreturn fn reject_restricted_output_redirection(
       "Output redirection is forbidden in a restricted shell"};
 }
 
+static fn text_can_assign(StringView text) wontthrow -> bool
+{
+  return text.find_character('=').has_value() ||
+         view_contains(text, StringView{"++"}) ||
+         view_contains(text, StringView{"--"});
+}
+
+static fn redirection_can_change_state(const Redirection &redir) wontthrow
+    -> bool
+{
+  if (redir.kind == Redirection::Kind::Heredoc) {
+    if (!redir.should_expand_heredoc || redir.heredoc == nullptr) return false;
+
+    let const body = redir.heredoc->text.view();
+    return view_contains(body, StringView{"${"}) ||
+           view_contains(body, StringView{"$(("});
+  }
+
+  if (redir.target == nullptr || redir.target->kind() != Token::Kind::Word)
+    return false;
+
+  for (let const &segment :
+       static_cast<const tokens::WordToken *>(redir.target)->word().segments)
+  {
+    switch (segment.kind) {
+    case WordSegment::Kind::FunctionSubstitution: return true;
+
+    case WordSegment::Kind::ArithmeticExpansion:
+    case WordSegment::Kind::VariableReference:
+      if (text_can_assign(segment.text.view())) return true;
+      break;
+
+    default: break;
+    }
+  }
+
+  return false;
+}
+
+pure fn internal::redirections_can_change_state(
+    const SparseList<Redirection> &redirections) wontthrow -> bool
+{
+  for (let const &redir : redirections) {
+    if (redirection_can_change_state(redir)) return true;
+  }
+
+  return false;
+}
+
+fn internal::snapshot_child_redirection_state(EvalContext &cxt) throws
+    -> Maybe<eval_state_snapshot>
+{
+  try {
+    return cxt.snapshot_state();
+  } catch (const Error &) {
+    return None;
+  }
+}
+
+fn internal::discard_child_redirection_state(
+    EvalContext &cxt, Maybe<eval_state_snapshot> &snapshot) wontthrow -> void
+{
+  if (!snapshot.has_value()) return;
+
+  try {
+    cxt.restore_state(snapshot.take());
+  } catch (const Error &) {}
+}
+
 fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
                                  const SourceLocation &fallback_location,
                                  bool *open_or_stage_failed,
