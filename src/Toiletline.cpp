@@ -2686,36 +2686,66 @@ static fn append_prompt_notation(String &out, u32 value) throws -> void
   out.push(HEX_DIGITS[value & 0x0f]);
 }
 
-static fn append_prompt_data(String &out, StringView data) throws -> void
+/* An escape value bound for the parameter pass carries a backslash before each
+   byte that pass would act on, so a directory named $(...) stays literal. */
+static fn append_prompt_value(String &out, StringView value,
+                              bool should_quote) throws -> void
+{
+  if (!should_quote) {
+    out.append(value);
+    return;
+  }
+
+  for (usize i = 0; i < value.length; i++) {
+    if (value[i] == '$' || value[i] == '`' || value[i] == '\\') out.push('\\');
+    out.push(value[i]);
+  }
+}
+
+static fn append_prompt_data(String &out, StringView data,
+                             bool should_quote) throws -> void
 {
   static constexpr u32 INVALID_CODEPOINT = 0xffffffffu;
+  let shown = String{koshka::heap_allocator()};
   usize position = 0;
   while (position < data.length) {
     let const byte = static_cast<u8>(data[position]);
     if (byte < 0x20 || byte == 0x7f) {
-      append_prompt_notation(out, byte);
+      append_prompt_notation(shown, byte);
       position++;
       continue;
     }
 
     let const decoded = utils::decode_utf8(data, position, INVALID_CODEPOINT);
     if (decoded.value == INVALID_CODEPOINT) {
-      append_prompt_notation(out, byte);
+      append_prompt_notation(shown, byte);
     } else if (decoded.value >= 0x80 && decoded.value < 0xa0) {
-      append_prompt_notation(out, decoded.value);
+      append_prompt_notation(shown, decoded.value);
     } else {
-      out.append(data.substring_of_length(position, decoded.length));
+      shown.append(data.substring_of_length(position, decoded.length));
     }
 
     position += decoded.length;
   }
+
+  append_prompt_value(out, shown.view(), should_quote);
 }
 
+/* The backslash escapes are decoded before the parameter pass, as bash does,
+   so a backslash that a parameter or substitution yields stays literal. */
 static fn expand_prompt_escapes(StringView prompt, StringView user,
                                 StringView working_directory,
-                                EvalContext &context) throws -> String
+                                EvalContext &context, bool should_quote) throws
+    -> String
 {
   let out = String{koshka::heap_allocator()};
+  let const do_append_value = [&](StringView value) throws {
+    append_prompt_value(out, value, should_quote);
+  };
+  let const do_append_data = [&](StringView data) throws {
+    append_prompt_data(out, data, should_quote);
+  };
+
   for (usize i = 0; i < prompt.length; i++) {
     if (prompt[i] != '\\' || i + 1 >= prompt.length) {
       out += prompt[i];
@@ -2739,24 +2769,21 @@ static fn expand_prompt_escapes(StringView prompt, StringView user,
 
     i++;
     switch (escaped) {
-    case 'u': append_prompt_data(out, user); break;
-    case 'h': append_prompt_data(out, prompt_hostname(false).view()); break;
-    case 'H': append_prompt_data(out, prompt_hostname(true).view()); break;
+    case 'u': do_append_data(user); break;
+    case 'h': do_append_data(prompt_hostname(false).view()); break;
+    case 'H': do_append_data(prompt_hostname(true).view()); break;
     case 'w':
-      append_prompt_data(out, collapse_home_prefix(working_directory).view());
+      do_append_data(collapse_home_prefix(working_directory).view());
       break;
-    case 'W':
-      append_prompt_data(out, Path{working_directory}.filename());
-      break;
+    case 'W': do_append_data(Path{working_directory}.filename()); break;
     case 'P':
-      append_prompt_data(
-          out,
+      do_append_data(
           shorten_path_with_ellipsis(
               collapse_home_prefix(working_directory).view(), PROMPT_PWD_LENGTH)
               .view());
       break;
-    case 'g': append_prompt_data(out, git_branch().view()); break;
-    case '$': out += (user == "root") ? '#' : '$'; break;
+    case 'g': do_append_data(git_branch().view()); break;
+    case '$': do_append_value(user == "root" ? "#" : "$"); break;
     case 'n': out += '\n'; break;
     case 'r': out += '\r'; break;
     case 'e': out += '\x1b'; break;
@@ -2765,21 +2792,21 @@ static fn expand_prompt_escapes(StringView prompt, StringView user,
        bytes between them emitted plainly. */
     case '[': break;
     case ']': break;
-    case 't': out += prompt_strftime("%H:%M:%S"); break;
-    case 'T': out += prompt_strftime("%I:%M:%S"); break;
-    case '@': out += prompt_strftime("%I:%M %p"); break;
-    case 'A': out += prompt_strftime("%H:%M"); break;
-    case 'd': out += prompt_strftime("%a %b %d"); break;
+    case 't': do_append_value(prompt_strftime("%H:%M:%S").view()); break;
+    case 'T': do_append_value(prompt_strftime("%I:%M:%S").view()); break;
+    case '@': do_append_value(prompt_strftime("%I:%M %p").view()); break;
+    case 'A': do_append_value(prompt_strftime("%H:%M").view()); break;
+    case 'd': do_append_value(prompt_strftime("%a %b %d").view()); break;
     case 's': {
       if (Maybe<String> argv0 = context.get_variable_value("0");
           argv0.has_value())
-        append_prompt_data(out, Path{argv0->view()}.filename());
+        do_append_data(Path{argv0->view()}.filename());
     } break;
     case 'v':
     case 'V':
       if (Maybe<String> version = context.get_variable_value("BASH_VERSION");
           version.has_value())
-        append_prompt_data(out, version->view());
+        do_append_data(version->view());
       break;
     case '?': {
       const i32 status = context.execution_store().last_exit_status();
@@ -2970,52 +2997,6 @@ fn get_default_prompt_template() -> String
   return template_string;
 }
 
-/* The prompt backslash escapes are mapped to control-byte markers so the
-   parameter pass does not unescape them before the escape pass runs. */
-static constexpr char PROMPT_GUARD_DOLLAR = '\x01';
-static constexpr char PROMPT_GUARD_BACKSLASH = '\x02';
-static constexpr char PROMPT_GUARD_BACKTICK = '\x03';
-
-static fn guard_prompt_backslashes(StringView template_string) throws -> String
-{
-  let out = String{koshka::heap_allocator()};
-  for (usize i = 0; i < template_string.length; i++) {
-    if (template_string[i] == '\\' && i + 1 < template_string.length) {
-      switch (template_string[i + 1]) {
-      case '$':
-        out.push(PROMPT_GUARD_DOLLAR);
-        i++;
-        continue;
-      case '\\':
-        out.push(PROMPT_GUARD_BACKSLASH);
-        i++;
-        continue;
-      case '`':
-        out.push(PROMPT_GUARD_BACKTICK);
-        i++;
-        continue;
-      default: break;
-      }
-    }
-    out.push(template_string[i]);
-  }
-  return out;
-}
-
-static fn unguard_prompt_backslashes(StringView expanded) throws -> String
-{
-  let out = String{koshka::heap_allocator()};
-  for (usize i = 0; i < expanded.length; i++) {
-    switch (expanded[i]) {
-    case PROMPT_GUARD_DOLLAR: out += "\\$"; break;
-    case PROMPT_GUARD_BACKSLASH: out += "\\\\"; break;
-    case PROMPT_GUARD_BACKTICK: out += "\\`"; break;
-    default: out.push(expanded[i]); break;
-    }
-  }
-  return out;
-}
-
 /* Only an SGR sequence ending in 'm' is stripped, a non-color CSI is left. */
 static fn strip_ansi_color(StringView text) throws -> String
 {
@@ -3037,59 +3018,11 @@ static fn strip_ansi_color(StringView text) throws -> String
   return out;
 }
 
-static fn render_prompt_escapes(StringView expanded, StringView user,
-                                StringView working_directory,
-                                EvalContext &context) throws -> String
+static fn finish_prompt(StringView expanded) throws -> String
 {
-  String rendered =
-      expand_prompt_escapes(expanded, user, working_directory, context);
-  if (!colors::stdout_wants_color()) return strip_ansi_color(rendered.view());
+  if (!colors::stdout_wants_color()) return strip_ansi_color(expanded);
 
-  return rendered;
-}
-
-static fn expand_prompt_variable(EvalContext &context, StringView name,
-                                 StringView template_string) throws
-    -> Maybe<String>
-{
-  const i32 saved_status = context.execution_store().last_exit_status();
-  String guarded = guard_prompt_backslashes(template_string);
-  Maybe<String> expanded = koshka::None;
-  try {
-    let source_text = String{"$"};
-    source_text.append(name);
-    let const source_name = koshka::intern_source_name(source_text.view());
-    let const source_location =
-        koshka::SourceLocation{0, guarded.count(), source_name};
-    expanded = unguard_prompt_backslashes(
-        context.expand_heredoc_body(guarded.view(), &source_location).view());
-  } catch (const koshka::ErrorBase &error) {
-    /* A prompt draw error leaves the template standing rather than taking down
-       the shell. */
-    koshka::show_message(error.to_string(guarded.view(), &context));
-    if (let const definition =
-            context.special_variable_definition_location(name);
-        definition.has_value())
-      context.print_source_backtrace(definition);
-  }
-  context.execution_store().set_last_exit_status(saved_status);
-
-  return expanded;
-}
-
-fn expand_prompt_template(StringView prompt, EvalContext &context) throws
-    -> String
-{
-  /* ${name@P} expands parameters and substitutions the way a prompt does,
-     before the backslash escapes, so an escape-inserted value is never
-     expanded again. */
-  let const guarded = guard_prompt_backslashes(prompt);
-  let const expanded = unguard_prompt_backslashes(
-      context.expand_heredoc_body(guarded.view(), nullptr).view());
-  let const working_directory = Path::current_directory().text();
-  let const user = os::get_current_user().value_or(String{"???"});
-  return expand_prompt_escapes(expanded.view(), user.view(),
-                               working_directory.view(), context);
+  return String{expanded};
 }
 
 /* The user is stable for the session, so it is resolved once and reused. */
@@ -3105,11 +3038,61 @@ static fn get_cached_user() throws -> const String &
   return CACHED_USER;
 }
 
+static fn decode_prompt(StringView template_string, EvalContext &context,
+                        bool should_quote) throws -> String
+{
+  let const working_directory = Path::current_directory().text();
+  return expand_prompt_escapes(template_string, get_cached_user().view(),
+                               working_directory.view(), context, should_quote);
+}
+
+static fn expand_decoded_prompt(EvalContext &context, StringView name,
+                                StringView decoded) throws -> Maybe<String>
+{
+  const i32 saved_status = context.execution_store().last_exit_status();
+  Maybe<String> expanded = koshka::None;
+  try {
+    let source_text = String{"$"};
+    source_text.append(name);
+    let const source_name = koshka::intern_source_name(source_text.view());
+    let const source_location =
+        koshka::SourceLocation{0, decoded.length, source_name};
+    expanded =
+        String{context.expand_heredoc_body(decoded, &source_location).view()};
+  } catch (const koshka::ErrorBase &error) {
+    koshka::show_message(error.to_string(decoded, &context));
+    if (let const definition =
+            context.special_variable_definition_location(name);
+        definition.has_value())
+      context.print_source_backtrace(definition);
+  }
+  context.execution_store().set_last_exit_status(saved_status);
+
+  return expanded;
+}
+
+/* A prompt draw error leaves the template standing with its escapes decoded
+   rather than taking down the shell. */
+static fn expand_prompt_variable(EvalContext &context, StringView name,
+                                 StringView template_string,
+                                 StringView decoded) throws -> String
+{
+  if (let expanded = expand_decoded_prompt(context, name, decoded);
+      expanded.has_value())
+    return steal(*expanded);
+
+  return decode_prompt(template_string, context, false);
+}
+
+fn expand_prompt_template(StringView prompt, EvalContext &context) throws
+    -> String
+{
+  let const decoded = decode_prompt(prompt, context, true);
+  return String{context.expand_heredoc_body(decoded.view(), nullptr).view()};
+}
+
 fn build_prompt(EvalContext &context) -> String
 {
-  let const full_pwd = Path::current_directory().text().clone();
-  let const &cached_user = get_cached_user();
-
   String ps1_template{koshka::heap_allocator()};
   if (Maybe<String> ps1 = context.get_variable_value("PS1");
       ps1.has_value() && !ps1->is_empty())
@@ -3117,28 +3100,21 @@ fn build_prompt(EvalContext &context) -> String
   else
     ps1_template = get_default_prompt_template();
 
-  /* The raw template expands before the backslash escapes are decoded, so the
-     escape-inserted cwd and user are literal and never re-expanded. A directory
-     named $(...) therefore cannot run a command at the prompt. */
-
+  let const decoded = decode_prompt(ps1_template.view(), context, true);
   let scanned_inputs =
       koshka::ArrayList<prompt_cache_input>{koshka::heap_allocator()};
   let const is_cacheable =
-      scan_prompt_template_inputs(ps1_template.view(), scanned_inputs);
-  if (is_cacheable && PROMPT_CACHE.matches(ps1_template.view(), context)) {
-    return render_prompt_escapes(PROMPT_CACHE.expansion.view(),
-                                 cached_user.view(), full_pwd.view(), context);
-  }
+      scan_prompt_template_inputs(decoded.view(), scanned_inputs);
+  if (is_cacheable && PROMPT_CACHE.matches(decoded.view(), context))
+    return finish_prompt(PROMPT_CACHE.expansion.view());
 
-  String expanded = expand_prompt_variable(context, "PS1", ps1_template.view())
-                        .value_or(ps1_template.clone());
-
-  String rendered = render_prompt_escapes(expanded.view(), cached_user.view(),
-                                          full_pwd.view(), context);
+  String expanded = expand_prompt_variable(context, "PS1", ps1_template.view(),
+                                           decoded.view());
+  String rendered = finish_prompt(expanded.view());
 
   PROMPT_CACHE.invalidate();
   if (is_cacheable)
-    PROMPT_CACHE.store(ps1_template, steal(scanned_inputs), steal(expanded),
+    PROMPT_CACHE.store(decoded, steal(scanned_inputs), steal(expanded),
                        context);
 
   return rendered;
@@ -3147,11 +3123,10 @@ fn build_prompt(EvalContext &context) -> String
 static fn render_prompt_variable(EvalContext &context, StringView name,
                                  StringView template_string) throws -> String
 {
-  let const expanded = expand_prompt_variable(context, name, template_string)
-                           .value_or(String{template_string});
-  let const working_directory = Path::current_directory().text();
-  return render_prompt_escapes(expanded.view(), get_cached_user().view(),
-                               working_directory.view(), context);
+  let const decoded = decode_prompt(template_string, context, true);
+  return finish_prompt(
+      expand_prompt_variable(context, name, template_string, decoded.view())
+          .view());
 }
 
 fn build_right_prompt(EvalContext &context) -> String
@@ -3175,7 +3150,7 @@ fn build_transient_prompt(EvalContext &context) -> String
                                   transient_template->view());
   }
 
-  return render_prompt_escapes("\\$ ", get_cached_user().view(), {}, context);
+  return finish_prompt(decode_prompt("\\$ ", context, false).view());
 }
 
 fn render_ps0(EvalContext &context) -> String
@@ -3185,14 +3160,12 @@ fn render_ps0(EvalContext &context) -> String
     return String{koshka::heap_allocator()};
   }
 
-  Maybe<String> expanded = expand_prompt_variable(context, "PS0", ps0->view());
+  let const decoded = decode_prompt(ps0->view(), context, true);
+  Maybe<String> expanded =
+      expand_decoded_prompt(context, "PS0", decoded.view());
   if (!expanded.has_value()) return String{koshka::heap_allocator()};
 
-  let const working_directory = Path::current_directory().text();
-  let const user = os::get_current_user().value_or(String{"???"});
-
-  return render_prompt_escapes(expanded->view(), user.view(),
-                               working_directory.view(), context);
+  return finish_prompt(expanded->view());
 }
 
 static constexpr StringView SHELL_INTEGRATION_VARIABLE{

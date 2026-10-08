@@ -5014,6 +5014,9 @@ counts, user, host, and working directory, and it ends with a bullet. The
 backslash escapes \\u,
 \\h, \\H, \\w, \\W, \\P, \\g, \\$, \\?, \\j, \\D, \\., \\t, \\T, \\@, \\A,
 \\d, \\s, \\v, \\V, \\!, \\#, \\n, \\r, \\e, \\a, \\[, and \\] are expanded.
+The escapes are decoded before parameters and substitutions expand, so text an
+escape inserts is never expanded, and a backslash that a parameter or
+substitution yields is never decoded.
 The \\. escape emits a bullet, plain when the last exit status is zero and
 bold red when it is not. The user, host, directory, branch, shell name, and
 version that \\u, \\h, \\H, \\w, \\W, \\P, \\g, \\s, \\v, and \\V insert draw a

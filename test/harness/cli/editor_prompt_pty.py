@@ -16,9 +16,11 @@
 # continues the input two columns from the left edge instead of in a narrow
 # strip under the prompt. A working directory named with control bytes
 # reaches the prompt through \w in caret notation and never as raw bytes. A
-# job stopped by Ctrl-Z reports on its own row below the echoed ^Z, and Ctrl-C
-# on a job that fg resumed ends its row before the next prompt. A background
-# job that a signal ended reports the signal description at the next prompt.
+# backslash that PS1 takes from a parameter stays literal, also when the
+# prompt is drawn again from its cached expansion. A job stopped by Ctrl-Z
+# reports on its own row below the echoed ^Z, and Ctrl-C on a job that fg
+# resumed ends its row before the next prompt. A background job that a signal
+# ended reports the signal description at the next prompt.
 # koshconf set --persist names the file it wrote at an interactive prompt. The
 # terminal model and session come from the
 # ghost and menu probe. Each check prints one stable PASS line for the golden
@@ -176,6 +178,15 @@ def run_checks(binary, directory, command_directory, report):
                       lambda screen: not any(
                           sequence in bytes(session.raw[mark:])
                           for sequence in CONTROL_DIRECTORY_SEQUENCES))
+
+        value_prompt = "C:\\new\\$HOME " + BULLET
+        session.send(b"v='C:\\new\\$HOME'; PS1='$v \\. '\r")
+        report.record("prompt-value-keeps-backslashes", session,
+                      is_prompt_line(value_prompt))
+        session.send(b"true\r")
+        report.record("prompt-value-keeps-backslashes-when-drawn-again",
+                      session,
+                      is_submitted(["T> true"], value_prompt))
     finally:
         session.close()
 

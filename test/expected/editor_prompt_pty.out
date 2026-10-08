@@ -13,6 +13,8 @@ transient-prompt-collapses-prompt-rows PASS
 narrow-prompt-continues-near-the-left-edge PASS
 prompt-directory-draws-control-bytes PASS
 prompt-directory-writes-no-raw-control PASS
+prompt-value-keeps-backslashes PASS
+prompt-value-keeps-backslashes-when-drawn-again PASS
 stopped-job-notice-starts-a-row PASS
 fg-interrupt-ends-its-row PASS
 signaled-job-notice-names-the-signal PASS
