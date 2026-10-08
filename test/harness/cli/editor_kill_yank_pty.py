@@ -5,7 +5,8 @@
 #
 # Drives the interactive editor through a real PTY and checks the readline
 # editing keys from the text on screen. The checks cover the kill ring filled by
-# Ctrl-K and consecutive Ctrl-W kills, Ctrl-Y and Alt-Y, Ctrl-T and Alt-T, the
+# Ctrl-K and consecutive Ctrl-W kills, Ctrl-Y and Alt-Y, Ctrl-T and Alt-T,
+# Ctrl-T and Backspace keeping a flag, a skin tone, and a joined emoji whole, the
 # Alt-. walk through the last words of history, and Ctrl-X Ctrl-E through a
 # VISUAL script that rewrites the line without running it. A VISUAL script that
 # stops itself is continued and its temporary file removed, one stopped by a
@@ -44,9 +45,9 @@ import tempfile
 import termios
 import time
 
-from editor_ghost_menu_pty import (LEFT, WAIT_SECONDS, Report, Session,
-                                   clear_line, has_hint, has_hint_header,
-                                   is_line)
+from editor_ghost_menu_pty import (BACKSPACE, LEFT, WAIT_SECONDS, Report,
+                                   Session, clear_line, has_hint,
+                                   has_hint_header, is_line)
 
 
 CTRL_A = b"\x01"
@@ -419,6 +420,28 @@ def run_checks(binary, directory, command_directory, report):
         session.send(CTRL_T)
         report.record("ctrl-t-transposes-characters", session,
                       is_line("echo ba"))
+        clear_line(session)
+
+        for name, typed, expected in (
+                ("flag", "echo x\U0001F1FA\U0001F1F8",
+                 "echo \U0001F1FA\U0001F1F8x"),
+                ("skin-tone", "echo \U0001F44B\U0001F3FFz",
+                 "echo z\U0001F44B\U0001F3FF"),
+                ("joined-sequence",
+                 "echo \U0001F468‍\U0001F469‍\U0001F467z",
+                 "echo z\U0001F468‍\U0001F469‍\U0001F467")):
+            session.send(typed.encode())
+            session.wait_until(is_line(typed))
+            session.send(CTRL_T)
+            report.record("ctrl-t-keeps-a-%s-whole" % name, session,
+                          is_line(expected))
+            clear_line(session)
+
+        session.send("echo \U0001F44B\U0001F3FF end".encode())
+        session.wait_until(is_line("echo \U0001F44B\U0001F3FF end"))
+        session.send(LEFT * 4 + BACKSPACE + b"Q")
+        report.record("backspace-erases-a-skin-tone-emoji-whole", session,
+                      is_line("echo Q end"))
         clear_line(session)
 
         session.send(b"echo first second")

@@ -9,6 +9,10 @@ alt-y-cycles-to-the-older-kill PASS
 alt-y-wraps-to-the-newest-kill PASS
 cycled-line-runs PASS
 ctrl-t-transposes-characters PASS
+ctrl-t-keeps-a-flag-whole PASS
+ctrl-t-keeps-a-skin-tone-whole PASS
+ctrl-t-keeps-a-joined-sequence-whole PASS
+backspace-erases-a-skin-tone-emoji-whole PASS
 alt-t-transposes-words PASS
 transposed-line-runs PASS
 alt-dot-inserts-the-last-word PASS
