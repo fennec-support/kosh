@@ -52,13 +52,17 @@ cannot be swapped between the check and the read. On Windows the ProgramData
 directory comes from the system's known folder, not from an environment
 variable, and the file and its
 .I kosh
-directory must be owned by SYSTEM, Administrators, or TrustedInstaller, with
-no access control entry that lets any other account write, append, delete,
-change the permissions of, or take ownership of either. An entry that applies
-only to children, such as the usual CREATOR OWNER entry, is not counted. The
-default ProgramData permissions let any user create a missing subdirectory,
-which this check rejects. A file that fails the check is skipped with a
-warning that explains the reason and, on POSIX, names the
+directory must be owned by SYSTEM, Administrators, or TrustedInstaller. No
+access control entry on the file may let any other account write, append,
+delete, change the permissions of, or take ownership of it. No entry on the
+directory may let another account delete its entries, delete or rename it,
+change its permissions, or take ownership of it. Replacing an existing file
+needs one of those rights, so the right to add files and subdirectories, which
+the default ProgramData permissions pass to every user, is allowed on the
+directory; a file another account adds is owned by that account and fails the
+owner check. An entry that applies only to children, such as the usual CREATOR
+OWNER entry, is not counted. A file that fails the check is skipped with a
+warning that explains the reason and, on POSIX, suggests the
 .B chown root
 or
 .B chmod go\-w

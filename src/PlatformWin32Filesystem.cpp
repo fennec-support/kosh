@@ -62,14 +62,17 @@ static fn is_trusted_owner_sid(PSID sid) wontthrow -> bool
   return EqualSid(sid, trusted_installer) != FALSE;
 }
 
-static fn find_security_problem(PSID owner, PACL dacl) wontthrow
+static constexpr DWORD FILE_CHANGE_ACCESS_MASK =
+    FILE_WRITE_DATA | FILE_APPEND_DATA | FILE_WRITE_EA | FILE_WRITE_ATTRIBUTES |
+    FILE_DELETE_CHILD | DELETE | WRITE_DAC | WRITE_OWNER | GENERIC_WRITE |
+    GENERIC_ALL;
+static constexpr DWORD DIRECTORY_REPLACE_ACCESS_MASK =
+    FILE_DELETE_CHILD | DELETE | WRITE_DAC | WRITE_OWNER | GENERIC_ALL;
+
+static fn find_security_problem(PSID owner, PACL dacl,
+                                DWORD change_access_mask) wontthrow
     -> Maybe<StringView>
 {
-  constexpr DWORD WRITE_ACCESS_MASK = FILE_WRITE_DATA | FILE_APPEND_DATA |
-                                      FILE_WRITE_EA | FILE_WRITE_ATTRIBUTES |
-                                      FILE_DELETE_CHILD | DELETE | WRITE_DAC |
-                                      WRITE_OWNER | GENERIC_WRITE | GENERIC_ALL;
-
   if (!is_trusted_owner_sid(owner)) {
     return StringView{
         "is not owned by SYSTEM, Administrators, or TrustedInstaller"};
@@ -98,7 +101,7 @@ static fn find_security_problem(PSID owner, PACL dacl) wontthrow
     }
 
     let const *allowed = static_cast<const ACCESS_ALLOWED_ACE *>(entry);
-    if ((allowed->Mask & WRITE_ACCESS_MASK) == 0) continue;
+    if ((allowed->Mask & change_access_mask) == 0) continue;
 
     let const sid = const_cast<DWORD *>(&allowed->SidStart);
     if (!is_trusted_owner_sid(sid)) {
@@ -142,7 +145,8 @@ fn read_system_owned_file(const Path &path) throws -> system_file_reading
     return reading;
   }
   defer { LocalFree(descriptor); };
-  if (let const problem = find_security_problem(owner, dacl);
+  if (let const problem =
+          find_security_problem(owner, dacl, FILE_CHANGE_ACCESS_MASK);
       problem.has_value())
   {
     reading.rejection = "Ignoring '" + path.text() + "', which " + *problem;
@@ -168,7 +172,8 @@ fn read_system_owned_file(const Path &path) throws -> system_file_reading
   }
   defer { LocalFree(directory_descriptor); };
   if (let const problem =
-          find_security_problem(directory_owner, directory_dacl);
+          find_security_problem(directory_owner, directory_dacl,
+                                DIRECTORY_REPLACE_ACCESS_MASK);
       problem.has_value())
   {
     reading.rejection = "Ignoring '" + path.text() + "', whose directory '" +
