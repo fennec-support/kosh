@@ -14,7 +14,8 @@
 # aliases in ghost and Tab completion. A complete -C command runs once while a
 # filter narrows and widens its menu, and again below the gathered token. A
 # -C reply the shell does not rank narrows to every row the token opens in
-# either case. complete -E serves only a line that holds nothing, and -I serves
+# either case. complete -E serves only a line that holds nothing, runs once,
+# and keeps its own list after Tab inserts its common prefix, and -I serves
 # a command word with the caret at its start, inserting before the word, and
 # keeps the text after the caret inside a word. An argument candidate is
 # inserted before a word with the caret at its start and replaces a word with
@@ -615,6 +616,19 @@ def run_cached_filter_checks(session, report, directory):
                   lambda screen: get_state(screen) is not None
                   and get_state(screen)[0].rstrip() == "zzone zzarg")
     clear_line(session)
+    session.send(b"complete -E -C %s\r"
+                 % os.path.join(directory, "empty-words").encode())
+    session.wait_until(is_line(""))
+    session.send(b"\t")
+    report.record("empty-slot-prefix-keeps-its-list", session,
+                  lambda screen: has_typed_menu(
+                      "zzempty", ["zzemptyA", "zzemptyB"])(screen)
+                  and count_marker_lines(directory, "empty-runs") == 1)
+    session.send(ESCAPE)
+    session.wait_until(is_menu_closed)
+    clear_line(session)
+    session.send(b"complete -r -E\r")
+    session.wait_until(is_line(""))
 
 
 def run_compopt_checks(session, report):
@@ -1492,6 +1506,9 @@ def main():
         write_counting_words(os.path.join(directory, "case-words"),
                              os.path.join(directory, "case-runs"),
                              "apple Apricot avocado", LISTING_WORDS)
+        write_counting_words(os.path.join(directory, "empty-words"),
+                             os.path.join(directory, "empty-runs"),
+                             "zzemptyA zzemptyB")
         write_help_probe(os.path.join(directory, "bin", "act"),
                          os.path.join(directory, "act-marker"))
         write_help_probe(os.path.join(open_directory, "adb"),
