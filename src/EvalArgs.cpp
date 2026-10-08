@@ -468,7 +468,10 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
     -> ArrayList<String>
 {
   let const args_are_transient = lifetime == argument_lifetime::Transient;
-  let const is_array_literal = context == argument_context::ArrayLiteral;
+  let const is_associative_literal =
+      context == argument_context::AssociativeLiteral;
+  let const is_array_literal =
+      context == argument_context::ArrayLiteral || is_associative_literal;
   LOG(Debug, "expanding %zu argument tokens", args.count());
   /* A transient request lives on the caller's scratch region and leaves its
      fields for the caller, so only the heap form releases them on return. */
@@ -634,8 +637,9 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
         word = &*fallback_word;
       }
 
-      if (is_array_literal && word != nullptr &&
-          word_starts_array_subscript(*word))
+      if (word != nullptr &&
+          (is_associative_literal ||
+           (is_array_literal && word_starts_array_subscript(*word))))
       {
         expanded_args.push(String{expanded_args.allocator(),
                                   expand_word_for_assignment(*word).view()});

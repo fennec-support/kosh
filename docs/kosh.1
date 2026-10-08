@@ -1348,7 +1348,9 @@ The command
 declares an associative array. The form m[key]=v assigns an element. The form
 ${m[key]} reads it. The form ${!m[@]} lists keys. The command
 .B unset 'm[key]'
-removes one element.
+removes one element. A word in the list m=(k1 v1 k2 v2) is not split into
+fields and not matched against files, and a quoted "${a[@]}" joins into one
+word.
 .SH EXPANSIONS
 .SS Parameter expansion
 The form ${v:offset:length} selects a substring. A negative offset requires a

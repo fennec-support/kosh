@@ -699,7 +699,9 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         do_reject_readonly_target(assignment.name);
       ArrayList<String> values = cxt.process_args(
           assignment.elements, nullptr, argument_lifetime::Persistent,
-          argument_context::ArrayLiteral);
+          cxt.is_associative_array(assignment.name)
+              ? argument_context::AssociativeLiteral
+              : argument_context::ArrayLiteral);
       do_trace_array_assignment(assignment, values);
       cxt.assign_indexed_array_elements(assignment.name, values,
                                         assignment.update_mode);
@@ -1328,7 +1330,9 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         cxt.variable_store().attributes().mark_uppercase(assignment.name);
       ArrayList<String> values = cxt.process_args(
           assignment.elements, nullptr, argument_lifetime::Persistent,
-          argument_context::ArrayLiteral);
+          is_associative_request || cxt.is_associative_array(assignment.name)
+              ? argument_context::AssociativeLiteral
+              : argument_context::ArrayLiteral);
       do_trace_array_assignment(assignment, values);
       if (is_associative_request)
         cxt.declare_associative_array(assignment.name);

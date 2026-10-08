@@ -69,6 +69,7 @@ enum class argument_context : u8
 {
   Command,
   ArrayLiteral,
+  AssociativeLiteral,
 };
 
 enum class execution_mode : u8
