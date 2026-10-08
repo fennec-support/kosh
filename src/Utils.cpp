@@ -335,8 +335,6 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
   for (usize position = 0; position < word.length; position++) {
     let const byte = word[position];
 
-    /* A doubled dollar sign is the process id expansion. Its second byte is
-       already consumed. It cannot open a locale quote. */
     let const was_after_unconsumed_dollar = is_after_unconsumed_dollar;
     is_after_unconsumed_dollar = false;
 
@@ -364,12 +362,10 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
       usize body_end = body_start;
       let is_terminated = false;
 
-      /* An escape makes the decoded length differ from the source length. The
-         whole construct becomes the source of every byte it produced. */
-      let has_escape = false;
+      let has_length_changing_escape = false;
       while (body_end < word.length) {
         if (word[body_end] == '\\') {
-          has_escape = true;
+          has_length_changing_escape = true;
           if (body_end + 1 < word.length) {
             body_end += 2;
             continue;
@@ -402,14 +398,15 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
       decode_ansi_c_escapes(ansi_text, body);
 
       let const construct_end = is_terminated ? body_end + 1 : body_end;
-      if (should_map_source && !has_escape) {
+      if (should_map_source && !has_length_changing_escape) {
         decoded.raw_positions.back() = body_start;
       }
 
       for (usize index = 0; index < ansi_text.length(); index++) {
         let const decoded_byte = ansi_text[index];
         let const raw_after =
-            has_escape ? construct_end : body_start + index + 1;
+            has_length_changing_escape ? construct_end
+                                       : body_start + index + 1;
         decoded.text.push(decoded_byte);
         decoded.glob_active.push(false);
         if (should_map_source) decoded.raw_positions.push(raw_after);
@@ -772,7 +769,7 @@ struct kosh_identity_cache
   bool is_initialized{false};
 };
 
-} /* namespace */
+}
 
 fn kosh_identity(StringView fallback_path) throws -> Maybe<StringView>
 {
@@ -853,8 +850,6 @@ pure fn strip_sig_prefix(StringView name) wontthrow -> StringView
   return name;
 }
 
-/* A decimal operand is the signal number itself, and kill accepts it for a
-   signal the table does not name. */
 fn find_signal_number(const signal_pair *pairs, usize pair_count,
                       StringView name) throws -> Maybe<i32>
 {
@@ -1060,6 +1055,6 @@ hot pure fn is_posix_reserved_word(StringView word) wontthrow -> bool
   return RESERVED_WORDS.contains(word);
 }
 
-} /* namespace utils */
+}
 
-} /* namespace koshka */
+}

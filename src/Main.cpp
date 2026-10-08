@@ -169,8 +169,6 @@ FLAG(
     "arena bytes.");
 FLAG(MEMORY, Bool, '\0', "show-memory", Debug,
      "Print a memory report at exit, the arena bytes and the heap in use.");
-/* A release binary rejects these flags as unknown, since its LOG calls compile
-   out. */
 #if !defined NDEBUG
 FLAG(LOG, String, 'X', "debug-logging", Debug,
      "Enable internal logging at the given level, one of 'info', 'debug', or "
@@ -210,12 +208,6 @@ struct invocation_identity
   bool was_mood_named_on_command_line;
 };
 
-/* A basename of sh or dash selects POSIX mode and a basename of bash selects
-   bash mode, so a symlink named after a system shell behaves like it. A login
-   shell receives argv[0] prefixed with a dash, such as -bash, and exec -l
-   prepends the dash to the whole path, such as -/usr/bin/bash. The mark is the
-   first byte of argv[0], not of the basename, so a path whose directory
-   component contains a dash is not mistaken for a login shell. */
 static fn make_invocation_identity(String program_path) throws
     -> invocation_identity
 {
@@ -228,9 +220,6 @@ static fn make_invocation_identity(String program_path) throws
   StringView program_basename = normalized_program_basename.substring_of_length(
       0, program_name_info.stem_length);
 
-  /* SHELL and BASH must name a runnable file a child can exec, so the login
-     dash is dropped here for the executable identity while $0 keeps the dashed
-     spelling. A bare dash keeps its spelling since it names nothing to run. */
   let executable_path = program_path.clone();
   if (is_login_name && program_path.view().length > 1) {
     executable_path = String{program_path.view().substring(1)};
@@ -275,8 +264,6 @@ static fn make_invocation_identity(String program_path) throws
       : session_mood == mimic_mood::BashPosix ? "bash-posix"
                                               : "default");
 
-  /* A dash-prefixed invocation name, -bash or a bare -, is the login spawn
-     convention, the same mark -l sets. */
   let const is_login_shell = FLAG_LOGIN.is_enabled() || is_login_name;
   LOG(Info, "the shell %s a login shell", is_login_shell ? "is" : "is not");
 
@@ -315,10 +302,6 @@ struct command_line
   }
 };
 
-/* KOSH_FLAGS supplies options through the environment. The whitespace-split
-   tokens are spliced in right after the program name, so a command-line flag
-   still has the final say. The token strings and the spliced pointer array
-   outlive the parse. */
 static fn splice_environment_flags(command_line &line) throws -> void
 {
   if (Maybe<String> kosh_flags = os::get_environment_variable("KOSH_FLAGS");
@@ -328,8 +311,6 @@ static fn splice_environment_flags(command_line &line) throws -> void
         SSK("--apply"), SSK("--format"), SSK("--as-language-server")};
     static constexpr StaticStringSet IGNORED_KOSH_FLAGS{IGNORED_KOSH_FLAG_KEYS};
     let const view = kosh_flags->view();
-    /* A -c in KOSH_FLAGS is dropped with the command word after it, since the
-       variable must not splice a command into every invocation. */
     bool should_skip_next_command_word = false;
 
     view.for_each_ascii_whitespace_word([&](StringView token) throws {
@@ -372,19 +353,12 @@ static fn enter_rescue_mode(command_line &line) throws -> void
   try {
     line.operands = parse_invocation_flags(line.argc, line.argv);
   } catch (...) {
-    /* The real argv carried the bad flag too, so even the clean reparse fails.
-       The program name is kept as the sole operand so $0 and SHELL stay the
-       real name. */
     reset_flags(FLAG_LIST);
     line.operands = ArrayList<String>{heap_allocator()};
     if (line.argc > 0) line.operands.push(String{line.argv[0]});
   }
 }
 
-/* A login shell that launches with a broken flag config drops to a rescue
-   prompt rather than exiting and locking the user out. The lockout-risk case is
-   marked by a dash-prefixed argv[0], a bare - or -bash, so rescue is offered
-   only there and any other invocation keeps the usage exit. */
 static fn parse_command_line(command_line &line) throws -> Maybe<int>
 {
   splice_environment_flags(line);
@@ -538,8 +512,6 @@ resolve_invocation_options(ArrayList<invocation_option> &options) throws
   return None;
 }
 
-/* Rejects unusable flag values and flag combinations with the usage exit
-   status, and collects the --init-moods list. */
 static fn validate_invocation(const ArrayList<String> &operands,
                               ArrayList<mimic_mood> &init_moods) throws
     -> Maybe<int>
@@ -606,8 +578,6 @@ static fn validate_invocation(const ArrayList<String> &operands,
   return parse_init_moods(init_moods);
 }
 
-/* The input source is chosen by flag precedence, -s first, then -c, then a file
-   operand, then -i or no arguments. */
 static fn select_input_source(const ArrayList<String> &operands) throws
     -> input_plan
 {
@@ -695,8 +665,6 @@ static fn resolve_input_plan(const ArrayList<String> &operands) throws
   return plan;
 }
 
-/* Mimicry reads the shebang of a script operand before the session is built, so
-   the mood is known up front. The text is kept for the first chunk to run. */
 static fn prefetch_script_shebang(invocation_identity &identity,
                                   const input_plan &input,
                                   const ArrayList<String> &operands) throws
@@ -745,8 +713,6 @@ struct inherited_shell
   bool has_invalid_state = false;
   bool should_suppress_root_source_trace = false;
 
-  /* Only the first chunk stands in for the pipeline stage the parent prepared.
-     The mode is spent whichever branch consumes it. */
   fn take_evaluation_mode() wontthrow -> root_evaluation_mode
   {
     let const mode = evaluation_mode;
@@ -756,9 +722,6 @@ struct inherited_shell
   }
 };
 
-/* A child shell receives its state from the parent through the environment
-   and the bootstrap payload. Each variable is consumed here so it never leaks
-   into the commands the child runs. */
 static fn take_inherited_shell() throws -> inherited_shell
 {
   os::unset_environment_variable("KOSH_IDENTITY");
@@ -1085,8 +1048,6 @@ struct session_config
   bool is_koshkit_enabled;
 };
 
-/* The analysis settings a parent shell passed down are inherited, and the
-   command line adds to them. Lint reports every tier at its normal severity. */
 static fn read_analysis_state(const invocation_identity &identity) throws
     -> inheritable_analysis_state
 {
@@ -1145,10 +1106,6 @@ static fn read_session_config(const invocation_identity &identity,
                         FLAG_ENABLE_KOSHKIT.is_enabled()};
 }
 
-/* Startup files run with strictness off because /etc/profile may read unset
-   variables such as $BASH_VERSION. Session strictness applies after the
-   configuration loads. An explicit CLI -u remains fatal after a -W downgrade or
-   mood change. */
 static fn apply_session_config(EvalContext &context,
                                const session_config &config) throws -> void
 {
@@ -1256,8 +1213,6 @@ static fn seed_session_variables(EvalContext &context,
     context.set_shell_variable("KOSH_HISTORY_SIZE", "4096");
   toiletline::set_history_persistent(is_interactive);
 
-  /* A bash session, a bash-posix session, or a bash flavor in the init list
-     advertises BASH_VERSION so a bash rc detects it. */
   let identity_mode = shell_identity_mode::Native;
   if (identity.session_mood == mimic_mood::Bash ||
       identity.session_mood == mimic_mood::BashPosix)
@@ -1269,9 +1224,6 @@ static fn seed_session_variables(EvalContext &context,
       identity_mode = shell_identity_mode::Bash;
   context.seed_shell_identity_variables(identity_mode);
 
-  /* SHLVL counts shell nesting, incremented and exported so a child shell
-     continues the count. The exported set must know SHLVL even on a first shell
-     that did not inherit one. */
   if (!inherited.state.has_value()) seed_shell_level();
   context.mark_exported("SHLVL");
 
@@ -1296,9 +1248,6 @@ static fn seed_session_variables(EvalContext &context,
   }
 }
 
-/* --no-init-diagnostics disables analysis while the startup files source. The
-   switch is restored only when no startup file changed it, since a file that
-   toggled diagnostics itself has the final say. */
 struct init_diagnostics_scope
 {
   EvalContext &context;
@@ -1331,10 +1280,6 @@ struct init_diagnostics_scope
   }
 };
 
-/* A lint report must not follow the aliases, functions, and search path of
-   whoever invoked it, so lint, format, rescue, clean, and privileged runs skip
-   every startup file. A fresh evaluator receives the state those files built
-   in its parent through the bootstrap. */
 static fn run_startup(EvalContext &context, ArrayList<mimic_mood> &init_moods,
                       const invocation_identity &identity,
                       const command_line &line,
@@ -1366,13 +1311,6 @@ static fn run_startup(EvalContext &context, ArrayList<mimic_mood> &init_moods,
   }
 }
 
-/* The mutable runtime state is rechecked here because a startup file can change
-   it. The session mood takes over and seeds its strictness once the config has
-   loaded, unless the rc picked one with set -M, which wins the way a
-   command-line --mood would. Lint recomputes its warning level from the mood
-   that won. The rc files retained a heap copy of their text and tree until the
-   next top-level command clears them, dropped now rather than carried through
-   the idle prompt. */
 static fn finish_startup(EvalContext &context,
                          const invocation_identity &identity,
                          inherited_shell &inherited, bool is_interactive) throws
@@ -1414,9 +1352,6 @@ struct script_operands
   ArrayList<String> positional_params;
 };
 
-/* A script file or a -c run takes its first operand as $0 and the rest as the
-   arguments, while an interactive or -s shell keeps the shell name as $0 and
-   takes every operand as a positional parameter. */
 static fn take_script_operands(String program_name, ArrayList<String> &operands,
                                const input_plan &input) throws
     -> script_operands
@@ -1451,22 +1386,14 @@ static fn take_script_operands(String program_name, ArrayList<String> &operands,
 struct script_chunk
 {
   String contents{heap_allocator()};
-  /* The named script file flows into the diagnostics so an error reads
-     path:line:col. An interactive line carries no path, and a -c string carries
-     the name -c. */
   Maybe<StringView> filename = None;
   Maybe<StringView> command_string_name = None;
-  /* The root frame caret underlines the operand that produced the script body,
-     the -c flag and its argument for a command string, the file name for a
-     script file. Stdin and interactive runs leave it empty. */
   Maybe<SourceLocation> root_frame_call_site = None;
   Maybe<usize> history_event_number = None;
   bool should_analyze = true;
   bool is_fresh_evaluator_command = false;
 };
 
-/* The consumed command is the Nth command option, where N is how many commands
-   FLAG_COMMAND has handed out so far. */
 static fn find_command_call_site(const command_line &line,
                                  usize consumed_command_index) wontthrow
     -> Maybe<SourceLocation>
@@ -1531,8 +1458,6 @@ struct script_cursor
         chunk.contents.count());
     chunk.root_frame_call_site =
         find_command_call_site(line, FLAG_COMMAND.value_position());
-    /* A debug driver clears should_read_files while the operands remain
-       listed. */
     if (FLAG_COMMAND.at_end() &&
         (!FLAG_LINT.is_enabled() || !input.should_read_files))
     {
@@ -1607,17 +1532,11 @@ struct script_cursor
 
     chunk.contents = steal(*contents);
     chunk.filename = file_name.view();
-    /* A script-file run bottoms FUNCNAME out at "main", while -c and stdin runs
-       leave it off. */
     context.source_store().set_script_run(true);
     chunk.root_frame_call_site = operand_location;
     mimic_script_shell(context, chunk);
   }
 
-  /* Mimicry reads the shebang of a script operand. `kosh -I script.sh` picks
-     the same mood the dispatch path picks for `./script.sh`. A script with no
-     shebang keeps the session mood, and a mood a startup file chose explicitly
-     wins. */
   fn mimic_script_shell(EvalContext &context,
                         const script_chunk &chunk) const throws -> void
   {
@@ -1658,11 +1577,7 @@ static fn start_line_editor(EvalContext &context,
   toiletline::initialize();
   os::install_fatal_exit_hook(toiletline::restore_terminal_for_exit);
   toiletline::set_history_enabled(false);
-  /* The set -b wake hook registers even under -T, since job reporting is not
-     completion. */
   toiletline::enable_job_notifications(context);
-  /* The editor reads no environment of its own. NO_COLOR and a dumb terminal
-     reach it through this switch. */
   toiletline::set_colors_enabled(colors::stdout_wants_color());
   if (let const welcome = context.get_variable_value("KOSH_WELCOME");
       welcome.has_value())
@@ -1679,18 +1594,12 @@ static fn start_line_editor(EvalContext &context,
   toiletline::exit_raw_mode();
 }
 
-/* A command whose output did not end in a newline leaves the cursor off the
-   first column. A marker, spaces to the line width, and a carriage return push
-   the prompt to a fresh line, and on a clean line the prompt overwrites the
-   marker so nothing shows. */
 static fn emit_prompt_line_break() throws -> void
 {
   let const dimensions = os::get_terminal_dimensions();
   if (!dimensions.has_value() || dimensions->columns == 0) return;
 
   String eol_marker{heap_allocator()};
-  /* One allocation holds the glyph, the fill spaces, and the controls so the
-     fill loop never regrows the buffer. */
   eol_marker.reserve(dimensions->columns + 12);
   if (colors::stdout_wants_color()) {
     eol_marker += colors::ansi::INVERSE;
@@ -1699,8 +1608,9 @@ static fn emit_prompt_line_break() throws -> void
   } else {
     eol_marker += "\\n";
   }
-  /* The marker is the two-column \n glyph, so the fill starts at column two. */
-  for (u32 column = 2; column < dimensions->columns; column++)
+  constexpr u32 EOL_GLYPH_COLUMN_COUNT = 2;
+  for (u32 column = EOL_GLYPH_COLUMN_COUNT; column < dimensions->columns;
+       column++)
     eol_marker.push(' ');
   eol_marker.push('\r');
   print(eol_marker);
@@ -1766,8 +1676,6 @@ struct interactive_session
 
     toiletline::set_idle_title();
 
-    /* The PROMPT_COMMAND hook runs before the template is expanded. Code that
-       assigns PS1 inside the hook is in place by then. */
     run_prompt_command(context, ast_arena);
 
     prepare_completion(context, line);
@@ -1811,9 +1719,6 @@ struct interactive_session
       did_seed_path_map = true;
     }
 
-    /* The working directory is indexed before the first keystroke so a ghost
-       path suggestion is ready without a tab. A directory that cannot be read
-       leaves the index empty. */
     if (!line.is_rescue_mode && is_tab_completion_enabled) {
       try {
         utils::warm_directory_index(Path::current_directory());
@@ -1833,13 +1738,9 @@ struct interactive_session
 
       switch (code) {
       case TL_PRESSED_TAB:
-        /* This fires only when there was nothing to complete, so the line is
-           re-fed rather than inserting a literal tab. */
         toiletline::set_input(input);
         continue;
       case TL_PRESSED_EOF:
-        /* EOF exits only on an empty line after the configured number of
-           consecutive events. */
         if (input.is_empty()) {
           i64 ignored_eof_limit_count = 0;
           if (context.runtime_state().option_is_enabled(
@@ -1894,9 +1795,6 @@ struct interactive_session
     }
   }
 
-  /* Expands history references and records the line. A false result means the
-     line must not run, either because the expansion failed or because the
-     expansion was only to be printed. */
   fn prepare_history(EvalContext &context, script_chunk &chunk) throws -> bool
   {
     let const is_interactive = context.execution_store().shell_is_interactive();
@@ -1989,10 +1887,6 @@ static fn run_chunk(script_chunk &chunk, EvalContext &context,
                              run_options, evaluation_mode);
 }
 
-/* On the final chunk a terminal external command may replace the shell process
-   rather than fork, exec, and wait, the way dash execs the last command under
-   EV_EXIT. An interactive prompt, an EXIT trap, or a pending trailer keeps the
-   fork to regain control. */
 static fn allow_terminal_exec_on_final_chunk(EvalContext &context,
                                              bool should_quit) wontthrow -> void
 {
@@ -2008,8 +1902,6 @@ static fn should_exit_after_chunk(EvalContext &context,
                                   const script_cursor &cursor,
                                   i32 exit_code) wontthrow -> bool
 {
-  /* A child process reaches here when its exec() failed and printed the error
-     itself. */
   return cursor.should_quit ||
          context.runtime_state().option_is_enabled(shell_option_id::Onecmd) ||
          os::is_child_process() ||
@@ -2021,8 +1913,6 @@ wontreturn static fn exit_after_final_chunk(EvalContext &context, i32 exit_code,
                                             lint_run &lint) throws -> void
 {
 #if !defined NDEBUG
-  /* The completion test driver runs after the staged chunks, so a -c that
-     registered specs is visible to the engine. */
   if (FLAG_DEBUG_COMPLETE_AT.is_set() && !os::is_child_process()) {
     exit_code =
         run_debug_completion_driver(FLAG_DEBUG_COMPLETE_AT.value(), context);
@@ -2050,18 +1940,13 @@ wontreturn static fn exit_after_final_chunk(EvalContext &context, i32 exit_code,
                              : utils::farewell_policy::Silent);
 }
 
-} /* namespace koshka */
+}
 
 fn kosh_main(int argc, char **argv) -> int
 {
   koshka::os::initialize_platform_runtime();
   koshka::os::register_platform_flags(FLAG_LIST);
 
-  /* A symlink or rename to a koshkit utility name runs that utility directly,
-     before any flag parsing, so `ls -l` reaches ls and its own flag parser. A
-     link named koshkit takes the utility name from its first operand, and
-     runs the koshkit builtin with every operand when that names no utility.
-     Neither form reads a startup or settings file. */
   if (argc > 0) {
     koshka::StringView invocation =
         koshka::Path::invocation_filename(koshka::StringView{argv[0]}, true);
@@ -2140,8 +2025,6 @@ fn kosh_main(int argc, char **argv) -> int
     return 1;
   }
 
-  /* --dumb enables -T and --no-diagnostics and turns color off. The sh mood is
-     selected by resolve_session_mood. */
   if (FLAG_DUMB.is_enabled()) {
     if (!FLAG_NO_COMPLETION.is_enabled()) FLAG_NO_COMPLETION.toggle();
     if (!FLAG_SUPPRESS_DIAGNOSTICS.is_enabled())
@@ -2153,8 +2036,6 @@ fn kosh_main(int argc, char **argv) -> int
     koshka::os::set_environment_variable("PATH", "/usr/bin:/bin");
   }
 
-  /* Raise the runtime log level before any helper runs, so the trace covers
-     startup. */
 #if !defined NDEBUG
   if (FLAG_LOG.is_set()) {
     struct log_level_name
@@ -2184,8 +2065,6 @@ fn kosh_main(int argc, char **argv) -> int
     }
   }
 
-  /* The sink opens in append mode. A file that cannot open leaves it on
-     stderr. */
   if (FLAG_DEBUG_OUTPUT_FILE.is_set() &&
       !FLAG_DEBUG_OUTPUT_FILE.value().is_empty())
   {
@@ -2223,7 +2102,6 @@ fn kosh_main(int argc, char **argv) -> int
   }
   let const is_language_server = FLAG_LANGUAGE_SERVER.is_enabled();
 
-  /* A shell with unequal ids skips config controlled by the real user. */
   LOG(Info, "privileged mode is %s",
       FLAG_PRIVILEGED.is_enabled() || has_elevated_identity ? "on" : "off");
 
@@ -2268,19 +2146,13 @@ fn kosh_main(int argc, char **argv) -> int
     return *option_status;
   }
 
-  /* The path map starts empty because eager scanning helps only in interactive
-     mode. */
   koshka::os::set_default_signal_handlers(
       input.should_be_interactive ? koshka::os::signal_profile::Interactive
                                   : koshka::os::signal_profile::NonInteractive);
   LOG(Info, "installed the default signal handlers");
 
-  /* The parse arena holds the AST and its tokens for one command, reset between
-     commands. */
   let ast_arena = koshka::BumpArena{};
 
-  /* Function bodies outlive the command that defined them, so the function
-     arena is never reset during the run. */
   let function_arena = koshka::BumpArena{};
   context.arena_store().set_parse_arena(&ast_arena);
   context.arena_store().set_function_arena(&function_arena);
@@ -2304,8 +2176,6 @@ fn kosh_main(int argc, char **argv) -> int
     return *startup_status;
   }
 
-  /* A plain return must not be used past this point, since toiletline needs its
-     own cleanup that utils::quit() runs. */
   let cursor = koshka::script_cursor{line,
                                      file_names,
                                      input,
@@ -2365,8 +2235,6 @@ fn kosh_main(int argc, char **argv) -> int
 
     if (!session.prepare_history(context, chunk)) continue;
 
-    /* A Ctrl-C used to clear the input line must not abort the command about to
-       run, so a pending interrupt is dropped here. */
     koshka::os::INTERRUPT_REQUESTED = 0;
 
     koshka::allow_terminal_exec_on_final_chunk(context, cursor.should_quit);

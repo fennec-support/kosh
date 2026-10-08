@@ -224,10 +224,6 @@ pure fn builtin_is_hidden_by_mood(Builtin::Kind kind, mimic_mood mood) wontthrow
 pure fn name_is_keyword_in_mood(StringView name, mimic_mood mood) wontthrow
     -> bool;
 
-/* True when the name is one of the POSIX special builtins, the set whose prefix
-   assignments persist after the command and whose errors abort a
-   non-interactive shell. The test is by name rather than by kind, since : is
-   special while true is not. */
 fn is_special_builtin_name(StringView name) wontthrow -> bool;
 
 const ArrayList<String> &builtin_names() throws;
@@ -235,9 +231,6 @@ const ArrayList<String> &builtin_names() throws;
 inline constexpr usize BUILTIN_KIND_COUNT =
     sizeof(BUILTIN_SECTIONS) / sizeof(BUILTIN_SECTIONS[0]);
 
-/* The FLAG_LIST of a builtin, registered at static-init time by the
-   REGISTER_BUILTIN_FLAGS line in its file. A kind with no registration reads
-   back null. */
 fn register_builtin_help(Builtin::Kind kind, const FlagList *flags,
                          const StringView *description,
                          const SynopsisList *synopsis) wontthrow -> void;
@@ -278,10 +271,6 @@ fn builtin_error_message(StringView program, StringView message) throws
                   builtin_error_context(ec.program()));                        \
   defer { reset_flags(FLAG_LIST); }
 
-/* The same parse, but it also fills operand_locations with the source span of
-   each surviving operand, so a builtin that iterates its parsed operands can
-   caret the specific one. The caller declares the list and passes it by name.
- */
 #define PARSE_BUILTIN_ARGS_WITH_LOCATIONS(ec, operand_locations)               \
   parse_flags_vec(FLAG_LIST, ec.args(), ec.source_location().position,         \
                   nullptr, &ec.arg_locations(), &(operand_locations),          \
@@ -297,9 +286,6 @@ fn builtin_error_message(StringView program, StringView message) throws
 
 i32 execute_builtin(ExecContext &&ec, EvalContext &cxt) throws;
 
-/* The state of a set -o option by name, or None when the name is not a known
-   shell option, so shopt -o can bridge to the same options set -o drives.
-   apply_shell_option sets one and reports whether the name was known. */
 fn query_shell_option(const EvalContext &cxt, StringView name) throws
     -> Maybe<bool>;
 fn apply_shell_option(EvalContext &cxt, StringView name, bool enable) throws
@@ -315,9 +301,6 @@ fn enabled_shopt_option_names(const EvalContext &cxt) throws -> String;
 
 fn kosh_binary_flag_list() wontthrow -> const FlagList &;
 
-/* Report a builtin error that must not abort the run, with the same located
-   caret in the default and posix moods and the same soft unlocated line in the
-   bash mood. A builtin that throws gets a fatal located error instead. */
 fn report_soft_builtin_error(const ExecContext &ec, EvalContext &cxt,
                              StringView message) throws -> void;
 
@@ -328,9 +311,6 @@ fn report_soft_builtin_error(const ExecContext &ec, EvalContext &cxt,
 fn declaration_assignment_failure_status(const EvalContext &cxt) wontthrow
     -> i32;
 
-/* The span-aware forms caret the specific argument whose SourceLocation is
-   passed, rather than the whole command. A builtin that has identified the bad
-   argument passes its span here. */
 fn report_soft_builtin_error(const ExecContext &ec, EvalContext &cxt,
                              SourceLocation location, StringView message) throws
     -> void;
@@ -339,9 +319,6 @@ fn report_soft_builtin_error(const ExecContext &ec, EvalContext &cxt,
                              SourceLocation location, StringView message,
                              StringView note) throws -> void;
 
-/* Report a break or a continue that no loop encloses. The bash mood names the
-   builtin and keeps running. The posix option form and dash stay silent. Every
-   other mood reports nothing. */
 fn report_loop_control_without_loop(const ExecContext &ec,
                                     EvalContext &cxt) throws -> void;
 
@@ -373,25 +350,14 @@ pure fn get_operand_location(const ExecContext &ec,
 fn report_usage_error(EvalContext &cxt, SourceLocation location,
                       StringView program_name) throws -> i32;
 
-/* Build a located error pointing at the argument at index, so a builtin can
-   throw with a precise caret and let execute_builtin render it. The note
-   variant produces ErrorWithLocationAndDetails. */
 fn make_error_for_arg(const ExecContext &ec, usize index,
                       StringView message) throws -> ErrorWithLocation;
 
 fn make_error_for_arg(const ExecContext &ec, usize index, StringView message,
                       StringView note) throws -> ErrorWithLocationAndDetails;
 
-/* A name that opens with a letter or underscore and carries only letters,
-   digits, and underscores, the shell's rule for an export or readonly target.
- */
 pure fn name_is_valid_identifier(StringView name) wontthrow -> bool;
 
-/* pushd, popd, and dirs share these. The cd runs through the cd builtin so the
-   logical PWD, OLDPWD, and the -L rules stay in one place. The stack print
-   shows the current directory first, then the saved stack from the top down,
-   with the home directory abbreviated to ~ unless should_print_full_paths is
-   set. */
 fn run_cd_to_directory(EvalContext &cxt, const ExecContext &ec,
                        StringView target) throws -> i32;
 fn logical_working_directory(const EvalContext &cxt) throws -> Path;
@@ -401,21 +367,12 @@ fn print_directory_stack(EvalContext &cxt, const ExecContext &ec,
                          bool should_print_full_paths,
                          Maybe<usize> selected_index = None) throws -> void;
 
-/* A +N or -N stack argument names an index into the ring of ring_count entries,
-   the current directory at zero then the saved stack from the top. N counts
-   from the top for +N and from the bottom for -N. False means the argument is
-   not a rotation, and an out-of-range N throws. */
 fn parse_directory_stack_rotation(StringView arg, usize ring_count,
                                   SourceLocation location,
                                   usize &index_out) throws -> bool;
 
-/* The value a declare -x, declare -r, or declare -p line wraps in double
-   quotes, with the characters special inside double quotes escaped, so the
-   printed line reloads to the same value the way bash quotes it. */
 fn quote_for_declare(StringView value) throws -> String;
 
-/* A value or key that does not print in the locale takes the $'...' form
-   instead, since bash prints it that way and the form reloads every byte. */
 fn append_declare_value(String &out, StringView value,
                         bool is_utf8_locale) throws -> void;
 fn append_declare_key(String &out, StringView key, bool is_utf8_locale) throws
@@ -424,10 +381,7 @@ fn append_declare_key(String &out, StringView key, bool is_utf8_locale) throws
 fn append_variable_declaration(EvalContext &cxt, StringView name,
                                String &out) throws -> bool;
 
-/* The optional first integer argument of a builtin such as exit, return, break,
-   continue, and shift, or default_value when no argument is given. A malformed
-   argument propagates its parse error to the caller. */
 fn parse_optional_integer_arg(const ExecContext &ec, i64 default_value) throws
     -> i64;
 
-} /* namespace koshka */
+}

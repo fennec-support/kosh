@@ -52,8 +52,6 @@ cold fn show_builtin_help_impl(const ExecContext &ec, StringView description,
   let const should_color = colors::stdout_wants_color();
   help_text += make_flag_help(flags, should_color);
   help_text += '\n';
-  /* The per-builtin generated text, the OPTION SWITCHES table of set and the
-     OPTION NAMES list of shopt, lands after the flag sections. */
   if (!extra_sections.is_empty()) {
     help_text += extra_sections;
     help_text += '\n';
@@ -89,9 +87,6 @@ pure fn name_is_keyword_in_mood(StringView name, mimic_mood mood) wontthrow
   return !is_posix && BASH_KEYWORDS.contains(name);
 }
 
-/* The per-kind flag lists, a zero-initialized table immune to static-init
-   order, filled by each builtin file's registrar after its FLAG_LIST is
-   built, since both sit in the same translation unit in order. */
 static const FlagList *BUILTIN_FLAG_LISTS[BUILTIN_KIND_COUNT] = {};
 static const StringView *BUILTIN_HELP_DESCRIPTIONS[BUILTIN_KIND_COUNT] = {};
 static const SynopsisList *BUILTIN_HELP_SYNOPSES[BUILTIN_KIND_COUNT] = {};
@@ -124,9 +119,6 @@ fn builtin_help_synopsis(Builtin::Kind kind) wontthrow -> const SynopsisList *
 
 fn is_special_builtin_name(StringView name) wontthrow -> bool
 {
-  /* The POSIX special builtin set, matched by name. The colon and the dot are
-     special while their plain-word siblings true and source-as-a-program are
-     not, so the kind cannot decide this. */
   static constexpr PackedStringKey SPECIAL_BUILTIN_KEYS[] = {
       SSK(":"),    SSK("."),     SSK("break"),  SSK("continue"), SSK("eval"),
       SSK("exec"), SSK("exit"),  SSK("export"), SSK("readonly"), SSK("return"),
@@ -174,27 +166,11 @@ fn execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
   cxt.evaluation_metrics_store().add_builtin_run(
       cxt.runtime_state().stats_enabled());
 
-  /* A builtin runs inside the shell process, so it keeps the shell's own signal
-     handlers. Resetting them to the default here would let a Ctrl-C during a
-     builtin terminate the whole shell, and would cost two extra syscalls on
-     every builtin command. */
   defer { ec.close_fds(); };
 
-  /* A builtin stage of a pipeline carries the pipe ends in its context. A
-     builtin that runs a sub-command, such as eval, command, or the dot source,
-     evaluates a fresh command that builds its own context from the shell's real
-     descriptors and never sees these pipe ends. The pipe descriptors are placed
-     on the real shell fd 0, 1, and 2 for the duration of the builtin so any
-     sub-command it spawns inherits them, and the originals are restored after.
-     A single builtin that is not a pipeline stage carries no pipe fds, so it
-     pays for none of this. */
   const bool has_pipe_descriptors =
       ec.in_fd.has_value() || ec.out_fd.has_value() || ec.err_fd.has_value() ||
       !ec.nonstandard_fds.is_empty();
-  /* A bare 2>&1 or 1>&2 on a builtin carries no file descriptor, only a routing
-     flag, so the placement runs whenever either a descriptor or a cross-route
-     is present. Otherwise `cd /bad 2>&1` would leave the builtin's stderr on
-     the terminal instead of following the standard output. */
   let const has_dup_routing = ec.should_duplicate_error_to_output ||
                               ec.should_duplicate_output_to_error;
 
@@ -202,8 +178,6 @@ fn execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
   if (has_pipe_descriptors || has_dup_routing) {
     if (ec.in_fd)
       saved_descriptors.push(os::save_and_replace_descriptor(0, *ec.in_fd));
-    /* Every save pushes onto one stack in the order the routing applies it.
-       The restore below unwinds the whole sequence in reverse. */
     ec.apply_output_routing(
         [&]() {
           if (ec.out_fd) {
@@ -235,8 +209,6 @@ fn execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
               target_fd, os::descriptor_for_shell_fd(dup_from_fd)));
         },
         [&](i32 target_fd) {
-          /* The backup carries the descriptor back after the builtin, and a
-             target that was never open restores to closed. */
           saved_descriptors.push(os::save_descriptor(target_fd));
           os::close_fd(os::descriptor_for_shell_fd(target_fd));
         });
@@ -247,9 +219,6 @@ fn execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
       os::restore_descriptor(saved_descriptors[i - 1]);
   };
 
-  /* Each builtin is a stateless dispatch object, so its case constructs it on
-     the stack and runs it, which avoids a heap allocation on every builtin
-     command. */
   LOG(Debug, "dispatching builtin '%s' with %zu arguments",
       ec.program().c_str(), ec.args().count());
   try {
@@ -369,12 +338,6 @@ fn report_usage_error(const ExecContext &ec, EvalContext &cxt,
   return report_usage_error(cxt, ec.source_location(), program_name);
 }
 
-/* A missing required argument reads the same located caret in every mood, the
-   kosh feature form, rather than the soft unlocated line the bash mood gives a
-   thrown builtin error. The trailing note points the reader at the per-command
-   help the way a compiler points past an error at a hint. The fallback line is
-   for the rare case with no source to caret against, such as the multicall
-   entry. */
 fn report_usage_error(EvalContext &cxt, SourceLocation location,
                       StringView program_name) throws -> i32
 {
@@ -917,4 +880,4 @@ fn print_directory_stack(EvalContext &cxt, const ExecContext &ec,
   ec.print_to_stdout(out);
 }
 
-} /* namespace koshka */
+}

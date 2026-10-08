@@ -1287,6 +1287,6 @@ hot fn ProgramResolver::search(StringView program_name, SearchMode search_mode,
                             cache_policy, path_override);
 }
 
-} /* namespace utils */
+}
 
-} /* namespace koshka */
+}

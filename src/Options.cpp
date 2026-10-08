@@ -1196,7 +1196,7 @@ fn write_boolean(EvalContext &cxt, const option_descriptor &option,
   unreachable("A non-boolean option was written as a boolean");
 }
 
-} /* namespace */
+}
 
 pure fn get_option_registry() wontthrow -> option_registry_view
 {
@@ -1488,4 +1488,4 @@ fn step_warning_level(EvalContext &cxt, bool should_raise) throws -> void
   cxt.runtime_state().set_warnings_enabled(should_raise);
 }
 
-} /* namespace koshka */
+}

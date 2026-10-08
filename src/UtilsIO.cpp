@@ -26,15 +26,8 @@ namespace koshka {
 
 namespace utils {
 
-/* The rolling distance rows are fixed-width stack arrays, so a candidate name
-   longer than this is treated as too far rather than indexed past the row. */
 constexpr usize OSA_ROW_WIDTH = 256;
 
-/* The optimal-string-alignment distance, the edit distance that also counts an
-   adjacent transposition as one edit, so a typo such as gti for git scores one
-   rather than two. Bounded by max_distance, returning max_distance + 1 once the
-   best possible result on the current row already exceeds it, so a far-off
-   candidate costs little. */
 pure fn bounded_osa_distance(StringView a, StringView b,
                              usize max_distance) wontthrow -> usize
 {
@@ -45,9 +38,8 @@ pure fn bounded_osa_distance(StringView a, StringView b,
     return max_distance + 1;
   if (a_length == 0) return b_length;
   if (b_length == 0) return a_length;
-  /* The rolling rows are indexed up to b_length, so a candidate longer than the
-     row width is rejected before the rows are reserved. */
-  if (b_length + 1 > OSA_ROW_WIDTH) return max_distance + 1;
+  let const is_beyond_row_width = b_length + 1 > OSA_ROW_WIDTH;
+  if (is_beyond_row_width) return max_distance + 1;
 
   usize rows[3][OSA_ROW_WIDTH];
   let previous_previous = rows[0];
@@ -192,9 +184,6 @@ fn read_line_from_fd(os::descriptor fd, char delimiter, u64 deadline_nanos,
     }
   }
 
-  /* The loop fell out at end of input, so no delimiter ended the line. The read
-     builtin maps an unterminated final line to a non-zero status while still
-     assigning the bytes it read, the way dash does. */
   if (!has_read_any_byte) return result;
 
   result.line = steal(line);
@@ -672,6 +661,6 @@ fn parse_file_mode(StringView expression, u32 current_mode, u32 creation_mask,
   return mode;
 }
 
-} /* namespace utils */
+}
 
-} /* namespace koshka */
+}

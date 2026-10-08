@@ -194,12 +194,8 @@ static fn run_debug_ghost_driver(StringView driver_line,
   flush();
   return 0;
 }
-#endif /* NDEBUG */
+#endif
 
-/* The session mood, from --mood when given, then the invocation mood, then the
-   strict default. --dumb forces the sh mood when --mood is absent, and --posix
-   selects the bash-with-posix-identity mood so a terminal that re-execs with it
-   to inject its integration runs as bash. */
 pure static fn resolve_session_mood(mimic_mood invocation_mood) wontthrow
     -> mimic_mood
 {
@@ -216,9 +212,6 @@ pure static fn resolve_session_mood(mimic_mood invocation_mood) wontthrow
   return invocation_mood;
 }
 
-/* The session tab selector, from --tab-selector when given, then the plain
-   listing --dumb asks for, then the interactive menu. An unknown spelling is
-   rejected before this runs. */
 pure static fn resolve_session_tab_selector() wontthrow -> tab_selector_mode
 {
   if (FLAG_TAB_SELECTOR.is_set()) {
@@ -342,8 +335,6 @@ static fn report_escaped_control_flow(EvalContext &context,
     what = "'continue' used outside of a loop";
     break;
   case control_flow::Kind::Return: {
-    /* A return at the top of a non-interactive script ends the shell with its
-       status, the way dash treats a top-level return. */
     if (!context.execution_store().shell_is_interactive()) {
       i32 return_status = static_cast<i32>(control.value);
       context.control_flow_store().clear();
@@ -365,9 +356,6 @@ static fn report_escaped_control_flow(EvalContext &context,
   context.control_flow_store().clear();
 }
 
-/* One top-level command at a time for the paths that only lint. The arena is
-   rewound to the mark taken before each unit, so a large script costs the
-   memory of its widest command and not the memory of its whole syntax tree. */
 class StreamedAnalysisUnits final : public AnalysisUnitStream
 {
 public:
@@ -438,12 +426,6 @@ struct script_run_input
   ArrayList<source_diagnostic> *diagnostic_sink;
 };
 
-/* The default mood and noexec run analysis. Compatibility moods require enabled
-   warnings. The live context is read so a mood or diagnostic switch changes the
-   next command. A run that only lints holds one top-level command at a time,
-   so the peak memory of a large script is the memory of its widest command.
-   A fresh evaluator skips analysis because its parent analyzed the whole
-   source, with its suppressions, before running it. */
 static fn make_script_run_plan(EvalContext &context, bool has_precompiled_ast,
                                bool has_out_ast,
                                const script_run_options &run_options) wontthrow
@@ -470,8 +452,6 @@ static fn make_script_run_plan(EvalContext &context, bool has_precompiled_ast,
       run_options.is_whole_line};
 }
 
-/* A file with any parse error must not run, so every error is collected and
-   reported at once. */
 static fn report_parse_errors(const script_run_input &input,
                               const ArrayList<String> &parse_errors) throws
     -> bool
@@ -486,8 +466,6 @@ static fn report_parse_errors(const script_run_input &input,
   return true;
 }
 
-/* The whole file is scanned first, because analysis resolves a call to a
-   function the source defines further down. */
 static fn scan_analysis_metadata(const script_run_input &input,
                                  ArrayList<String> &parse_errors,
                                  analysis_directives &directives) throws -> bool
@@ -640,8 +618,6 @@ static fn analyze_script(const script_run_input &input,
       Lexer{input.contents.view(), input.arena, input.filename,
             context.runtime_state().get_mood()}
   };
-  /* A function body and a subshell carry their own definitions on the node, and
-     the walk seeds them when it enters. */
   unit_parser.set_analysis_scope_collection_mode(
       analysis_metadata_collection_mode::Enabled);
 
@@ -751,12 +727,8 @@ static fn evaluate_script(const script_run_input &input,
   context.execution_store().set_last_command_duration_nanos(
       koshka::os::monotonic_nanos() - command_start_nanos);
   LOG(Debug, "the chunk finished with exit code %d", exit_code);
-  /* A signal trapped during the last command has no following node to trigger
-     its action, so the pending traps drain here. */
   if (koshka::os::SIGNAL_PENDING) context.run_pending_traps();
   report_escaped_control_flow(context, input.contents);
-  /* The source is local to the caller, so the frame is dropped before it
-     dangles. */
   context.set_current_source(nullptr, "");
 
   return exit_code;
@@ -780,8 +752,6 @@ static fn run_script_contents(
     defer { context.end_command(); };
     defer { utils::invalidate_line_number_cache_for(script_contents.view()); };
 
-    /* Function bodies live in the separate function arena, so they survive this
-       reset. */
     context.clear_retained_sources();
     ast_arena.reset();
     context.expansion_store().scratch_arena().reset();
@@ -793,8 +763,6 @@ static fn run_script_contents(
     let parse_errors = ArrayList<String>{heap_allocator()};
     let directives = analysis_directives{};
 
-    /* A precompiled tree lives in a caller-owned arena that outlives this call.
-     */
     let const preflight_mark = ast_arena.mark();
     Expression *ast = precompiled_ast;
     if (plan.should_stream_units) {
@@ -810,9 +778,6 @@ static fn run_script_contents(
 
     LOG(Debug, "the analysis stage %s for this chunk",
         plan.should_analyze ? "runs" : "is skipped");
-    /* An interactive -W chunk runs right away and the runtime reports a missing
-       command itself, so the analysis copy stays quiet to avoid a doubled
-       error. */
     bool did_analysis_fail = false;
 #if !defined NDEBUG
     let const diagnostic_highlight_bytes_before =
@@ -851,8 +816,6 @@ static fn run_script_contents(
       print("\n");
     }
   } catch (const ErrorWithLocationAndDetails &e) {
-    /* An error thrown from a function body was already rendered at the call
-       boundary against the file that defined it. */
     if (!e.was_rendered()) {
       show_message(e.to_string(script_contents, &context));
       show_message(e.details_to_string(script_contents, &context));
@@ -980,10 +943,6 @@ static fn format_document_source(StringView source, Maybe<StringView> filename,
   return parser_format_apply_replacements(source, steal(replacements));
 }
 
-/* Each element of a PROMPT_COMMAND array runs in index order, as in bash
-   5.1, and an empty element is skipped. Every element sees the status and $_
-   of the last command, and neither survives the hooks. A run resets the arena
-   it parses into, so only a lone hook keeps its parsed tree between prompts. */
 static fn run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
 {
   if (context.is_associative_array("PROMPT_COMMAND")) return;
@@ -1560,9 +1519,6 @@ struct interactive_history_expansion
   bool should_execute;
 };
 
-/* Bash leaves a ! that negates a bracket expression, opens an indirect
-   parameter, or forms $! to the shell, so [!a], ${!name}, and $! stay. A
-   bracket or a brace counts only when its closing byte follows on the line. */
 static fn is_history_expansion_inhibited(StringView source,
                                          usize position) wontthrow -> bool
 {
@@ -1885,10 +1841,7 @@ static fn source_file(const Path &path, EvalContext &context,
 
   LOG(Info, "sourcing '%s', %zu bytes", path.c_str(), contents->count());
 
-  /* run_source keeps the active arena because a sourced rc may run
-     set -L while its syntax tree is still in use. Resetting the arena
-     then would free the current node. */
-  context.run_source(*contents, path.view(), /*call_site=*/None, path.view(),
+  context.run_source(*contents, path.view(), None, path.view(),
                      nullptr, nullptr, return_handling::Consume);
   return true;
 }
@@ -1962,7 +1915,6 @@ static fn warn_about_retired_koshrc() throws -> void
           .view());
 }
 
-/* The dash login files in POSIX order, /etc/profile then ~/.profile. */
 static fn source_posix_login_files(EvalContext &context) throws -> void
 {
   LOG(Info, "sourcing the posix login files");
@@ -1970,8 +1922,6 @@ static fn source_posix_login_files(EvalContext &context) throws -> void
   source_home_file(".profile", context);
 }
 
-/* The bash login files in bash order, /etc/profile then the first existing of
-   ~/.bash_profile, ~/.bash_login, ~/.profile. */
 static fn source_bash_login_files(EvalContext &context) throws -> void
 {
   LOG(Info, "sourcing the bash login files in bash order");
@@ -1985,8 +1935,6 @@ static fn source_bash_login_files(EvalContext &context) throws -> void
   }
 }
 
-/* The system bashrc the way bash compiled with SYS_BASHRC reads it, the Void
-   /etc/bash/bashrc or the Debian /etc/bash.bashrc, whichever exists first. */
 static fn source_bash_system_rc(EvalContext &context) throws -> void
 {
   LOG(Info, "looking for the system bashrc");
@@ -1994,8 +1942,6 @@ static fn source_bash_system_rc(EvalContext &context) throws -> void
     if (source_file(Path{path}, context)) break;
 }
 
-/* The default spec and the guard variable are probed so an already-loaded chain
-   is not sourced twice. */
 static fn ensure_bash_completion_loaded(EvalContext &context) throws -> void
 {
   if (context.completion_store().get_slot_spec(completion_spec_slot::Default) !=
@@ -2022,8 +1968,6 @@ fn source_init_moods(EvalContext &context, const ArrayList<mimic_mood> &moods,
                      bool is_login_shell, bool should_be_interactive) throws
     -> void
 {
-  /* Each mood sources under its own grammar, so a bash rc parses with the bash
-     grammar and a posix profile with the dash grammar. */
   bool did_source_bash_rc = false;
   bool did_source_bash_env = false;
   for (let flavor : moods) {
@@ -2037,8 +1981,6 @@ fn source_init_moods(EvalContext &context, const ArrayList<mimic_mood> &moods,
       continue;
     }
 
-    /* A mood already on the sourcing stack is skipped, so a set -L
-       inside the rc this is sourcing cannot recurse to overflow. */
     if (context.runtime_control_store().init_mood_sourcing(flavor)) {
       LOG(Info, "skipping the %s mood, its startup files are already sourcing",
           flavor == mimic_mood::Bash        ? "bash"
@@ -2079,8 +2021,6 @@ fn source_init_moods(EvalContext &context, const ArrayList<mimic_mood> &moods,
       break;
     case mimic_mood::Bash:
     case mimic_mood::BashPosix:
-      /* bash runs the system rc first even under --rcfile, so the order mirrors
-         that. BashPosix falls through so --posix finds the bash integration. */
       if (is_login_shell) source_bash_login_files(context);
       if (flavor == mimic_mood::Bash &&
           !context.runtime_state().option_is_enabled(
@@ -2106,8 +2046,6 @@ fn source_init_moods(EvalContext &context, const ArrayList<mimic_mood> &moods,
     }
   }
 
-  /* The bash programmable completion loads once after a bash rc sourced, so it
-     parses under the bash grammar. */
   if (did_source_bash_rc &&
       context.runtime_state().option_is_enabled(shell_option_id::TabCompletion))
   {
@@ -2568,4 +2506,4 @@ static fn run_lint_apply_operation(const ArrayList<String> &file_names,
   return did_fail ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
-} /* namespace koshka */
+}

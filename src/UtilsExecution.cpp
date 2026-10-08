@@ -65,8 +65,6 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
 
   let const can_replace_shell = cxt.can_replace_process() && !cxt.in_subshell();
 
-  /* Mimicry runs the script in-process, a background command keeps its fork.
-   */
   if (cxt.runtime_state().is_mimicry_enabled() && !is_async) {
     if (Maybe<mimic_mood> mode = ec.program_path().detect_mimic_shell();
         mode.has_value())
@@ -82,8 +80,6 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
           append_shell_quoted_arg(command, ec.args()[index]);
         }
 
-        /* The child blocks on this pipe until the parent hands off the
-           terminal, so it never touches the terminal before the handoff. */
         let const sync_pipe = os::make_pipe();
 
         koshka::flush();
@@ -92,8 +88,6 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
           const os::process child = *forked_child;
           if (os::process_id_of(child) == 0) {
             if (sync_pipe.has_value()) {
-              /* The child drops its write end so the read unblocks on EOF if
-                 the parent dies before the handoff. */
               os::close_fd(sync_pipe->out);
               char handoff_byte = 0;
               (void) os::read_fd(sync_pipe->in, &handoff_byte, 1);
@@ -144,11 +138,6 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
     }
   }
 
-  /* The terminal external command replaces the shell in place, the way dash
-     execs the last command under EV_EXIT. A forked subshell child spawns it
-     instead, since replacing a forked copy of the shell measured slower than
-     spawning from it. The traps are rechecked at run time here, since one set
-     earlier in this chunk must still run. */
   if (!is_async && can_replace_shell) {
     LOG(Debug,
         "execute_context replacing the shell with the terminal command '%s'",
@@ -158,7 +147,6 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
     try {
       os::replace_process(steal(ec));
     } catch (const ErrorWithLocation &error) {
-      /* Resolved but unexecutable exits 126, missing exits 127. */
       show_message(
           error.to_string(cxt.source_store().current_source_view(), &cxt));
       quit(126, farewell_policy::Silent);
@@ -185,8 +173,6 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
       is_async ? " in the background" : "");
   cxt.release_finished_coprocess();
 
-  /* An interactive foreground command runs in its own process group and holds
-     the terminal, so it dies on its own Ctrl-C. */
   let const is_foreground_job = !is_async &&
                                 cxt.execution_store().shell_is_interactive() &&
                                 os::shell_has_controlling_terminal();
@@ -250,16 +236,10 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
         p, command, foreground_status, os::process_id_of(p));
     cxt.job_table_store().notify_stopped_job(id);
   }
-  /* A foreground child owns the terminal, so an interrupt reaches it alone and
-     the shell reads only its status. That is right at a prompt, where the next
-     command is the user's own, but a completion spec has no prompt behind it,
-     so its remaining commands would run against a half-finished answer and
-     offer it as if nothing had happened. The interrupt is therefore raised
-     here, which unwinds the spec and turns the key into a cancelled
-     completion. */
-  if (foreground_status == 130 &&
-      cxt.execution_store().completion_function_running())
-    os::INTERRUPT_REQUESTED = 1;
+  let const was_interrupt_to_reraise_for_completion =
+      foreground_status == 130 &&
+      cxt.execution_store().completion_function_running();
+  if (was_interrupt_to_reraise_for_completion) os::INTERRUPT_REQUESTED = 1;
   return foreground_status;
 }
 
@@ -270,8 +250,6 @@ fn terminate_and_reap_processes(const ArrayList<os::process> &processes,
        position++)
     unused(os::signal_process(processes[position], 9));
 
-  /* The shell asked for the kill. The death of the child is not news the user
-     needs. A monitoring wait would announce every one of them. */
   for (usize position = first_process_position; position < processes.count();
        position++)
   {
@@ -281,10 +259,6 @@ fn terminate_and_reap_processes(const ArrayList<os::process> &processes,
   }
 }
 
-/* The diagnostic for a stage whose command did not resolve goes to the stage's
-   own standard error. 2>/dev/null on that stage hides it and 2>&1 carries it
-   onto the pipe. The message is written from here because a stage only owns its
-   pipe end after the loop below places it. */
 static fn report_unresolved_stage(EvalContext &cxt,
                                   const ExecContext &stage) throws -> void
 {
@@ -294,8 +268,6 @@ static fn report_unresolved_stage(EvalContext &cxt,
        stage.was_output_to_error_last);
   let target = does_error_follow_output ? stage.out_fd : stage.err_fd;
 
-  /* 2>&1 with no file and no pipe on the stage names the shell's own standard
-     output. */
   if (does_error_follow_output && !target.has_value())
     target = os::descriptor_for_shell_fd(1);
 
@@ -312,8 +284,6 @@ static fn report_unresolved_stage(EvalContext &cxt,
 
   show_message(stage.get_unresolved_diagnostic());
 
-  /* Print the backtrace before restoring the descriptor so it uses the
-     message's stream. */
   cxt.print_source_backtrace(stage.source_location(), !saved.is_dup2_ok);
 }
 
@@ -357,9 +327,6 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
 
   i32 ret = 0;
 
-  /* Every external stage is collected so all of them are reaped, not only the
-     last. Otherwise a first stage like yes is left a zombie when the last stage
-     exits. */
   let children = ArrayList<os::process>{heap_allocator()};
   os::process last_child = KOSH_INVALID_PROCESS;
   os::descriptor last_stdin = KOSH_INVALID_FD;
@@ -375,11 +342,6 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
     }
   };
 
-  /* Each stage's status is recorded against its position, so pipefail can
-     report the rightmost stage that failed and the plain case can read the last
-     stage. A builtin stage yields its status at once and an external one's
-     status arrives from the wait below, tracked by the parallel child-to-stage
-     list. */
   let const stage_count = ecs.count();
   let stage_status = ArrayList<i32>{heap_allocator()};
   stage_status.reserve(stage_count);
@@ -387,12 +349,6 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
     stage_status.push(0);
   let child_stage = ArrayList<usize>{heap_allocator()};
 
-  /* An unresolved stage keeps its descriptors and its diagnostic until every
-     stage is spawned. A message merged onto the pipe can be larger than the
-     pipe buffer, and a report written inside the loop would block against a
-     reader that has not been launched yet. The last builtin stage of such a
-     pipeline is forked for the same reason, because a reader running in this
-     process cannot drain the pipe while this process writes the report. */
   let unresolved_stages = ArrayList<usize>{heap_allocator()};
 
   bool is_first = true;
@@ -415,9 +371,6 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
       if (!pipe) {
         throw ErrorWithLocation{ec.source_location(), "Could not open a pipe"};
       }
-      /* The write end is the stage's standard output before the stage applies
-         its own redirections. A dup written ahead of them reads the pipe.
-         2>&1 >file on a stage is 2>pipe 1>file. */
       let const has_leading_error_dup = ec.should_duplicate_error_to_output &&
                                         ec.did_output_file_follow_error_dup;
       let const has_leading_output_dup = ec.should_duplicate_output_to_error &&
@@ -431,8 +384,6 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
         did_stage_take_pipe = true;
       }
 
-      /* An explicit > takes the stage's stdout, and a leading 1>&2 replaces it
-         with the inherited standard error. The pipe end closes unused. */
       if (!ec.out_fd && !has_leading_output_dup && !did_stage_take_pipe) {
         ec.out_fd = pipe->out;
         did_stage_take_pipe = true;
@@ -618,9 +569,6 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
           ec.err_fd = koshka::None;
           if (last_stdin != KOSH_INVALID_FD) os::close_fd(last_stdin);
 
-          /* A fork keeps the descriptors an exec would drop. A stage that
-             still owes its diagnostic leaves its pipe end open in this reader
-             and the read never ends. */
           for (let const unresolved_index : unresolved_stages)
             ecs[unresolved_index].close_fds();
 
@@ -658,8 +606,6 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
         last_child = child;
       }
     } else {
-      /* The last builtin stage runs in this process so a cd affects the shell.
-         The flag makes exec spawn a child rather than replace the shell. */
       cxt.job_table_store().set_in_pipeline_stage(true);
       defer { cxt.job_table_store().set_in_pipeline_stage(false); };
       ret = execute_builtin(steal(ec), cxt);
@@ -710,7 +656,6 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
     pipe_status.push(String::from(stage_status[i], heap_allocator()));
   cxt.publish_pipe_statuses(steal(pipe_status));
 
-  /* pipefail reports the rightmost failing stage, otherwise the last stage. */
   if (cxt.runtime_state().pipefail()) {
     for (usize i = stage_count; i > 0; i--)
       if (stage_status[i - 1] != 0) return stage_status[i - 1];
@@ -720,11 +665,6 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
   return stage_status[stage_count - 1];
 }
 
-/* The one context quit reads the interactive state and the memory-report flag
-   from, so quit gates the goodbye on a real interactive prompt and a script,
-   a -c, or a subshell exits silently the way dash does. A null pointer, the
-   state before the context exists, reads as a non-interactive shell with the
-   report off. */
 static const EvalContext *QUIT_CONTEXT = nullptr;
 
 fn set_quit_context(const EvalContext *context) wontthrow -> void
@@ -732,10 +672,6 @@ fn set_quit_context(const EvalContext *context) wontthrow -> void
   QUIT_CONTEXT = context;
 }
 
-/* The granular memory report, the live bump bytes and the reserved capacity of
-   each arena, then the malloc heap in use. The arena capacity counts the blocks
-   the bump allocator holds, while the heap figure counts the String buffers and
-   other long-lived allocations the arenas do not own. */
 cold fn print_memory_report() wontthrow -> void
 {
   if (QUIT_CONTEXT != nullptr &&
@@ -823,6 +759,6 @@ wontreturn fn quit(i32 code, farewell_policy farewell) throws -> void
   std::exit(actual_code);
 }
 
-} /* namespace utils */
+}
 
-} /* namespace koshka */
+}

@@ -141,8 +141,6 @@ fn should_ansi_c_quote(StringView text, bool is_utf8_locale) throws -> bool;
 fn append_ansi_c_quoted(String &out, StringView text,
                         bool is_utf8_locale) throws -> void;
 
-/* Returns false when every byte of the value prints in the locale, so the
-   caller applies its own quoting. */
 fn append_ansi_c_quote_if_needed(String &out, StringView arg,
                                  bool is_utf8_locale) throws -> bool;
 
@@ -165,9 +163,6 @@ fn terminate_and_reap_processes(const ArrayList<os::process> &processes,
 
 pure fn strip_sig_prefix(StringView name) wontthrow -> StringView;
 
-/* The signals a platform names. Each platform owns its own table, since the
-   numbers come from that platform's headers, and the three lookups below read
-   the table in both directions. */
 struct signal_pair
 {
   i32 number;
@@ -268,12 +263,8 @@ fn decode_base64(StringView text) throws -> Maybe<String>;
 
 fn format_unix_timestamp(i64 unix_time, const char *format) throws -> String;
 
-/* It matches dash's set, not the lexer's, so a shell-specific token such as
-   time is excluded. */
 pure fn is_posix_reserved_word(StringView word) wontthrow -> bool;
 
-/* The value saturates to the i64 range on overflow, and any other content
-   yields an Error. */
 fn parse_decimal_i64(StringView text, bool *out_of_range = nullptr) throws
     -> ErrorOr<i64>;
 fn parse_decimal_u64(StringView text) throws -> ErrorOr<u64>;
@@ -284,7 +275,6 @@ fn format_f64(f64 value, Allocator allocator) throws -> String;
 
 fn parse_timeout_seconds_to_nanos(StringView text) throws -> ErrorOr<i64>;
 
-/* The caller's buffer must hold at least twenty-one bytes. */
 fn int_to_text_into(i64 value, char *buffer, usize buffer_size) wontthrow
     -> StringView;
 fn uint_to_text_into(u64 value, char *buffer, usize buffer_size) wontthrow
@@ -308,17 +298,11 @@ enum class time_report_rss : u8
   Include,
 };
 
-/* The bash conversions are honored, %%, a literal percent, %[p][l]R, %[p][l]U,
-   and %[p][l]S for the real, user, and system seconds, and %P for the cpu busy
-   percent, where p is a precision from zero to six and l selects the minutes
-   form. */
 fn format_time_report(const Maybe<String> &time_format, double real_seconds,
                       double user_seconds, double system_seconds,
                       u64 peak_rss_bytes, time_report_layout layout,
                       time_report_rss rss) throws -> String;
 
-/* The zero-based line number the byte at position falls on. The newline table
-   is cached on the source pointer and length, holding one source at a time. */
 struct source_line_position
 {
   usize line_number;
@@ -330,26 +314,17 @@ fn source_line_position_at(StringView source, usize position) throws
     -> source_line_position;
 fn line_number_at(StringView source, usize position) throws -> usize;
 
-/* Drop the table only when it points into a source being freed. */
 fn invalidate_line_number_cache_for(StringView source) wontthrow -> void;
 fn parse_integer_in_base(StringView text, bool *out_of_range,
                          int_base base) throws -> ErrorOr<i64>;
 fn parse_integer_in_base_u64(StringView text, int_base base) throws
     -> ErrorOr<u64>;
 
-/* The optimal-string-alignment distance, the edit distance that also counts an
-   adjacent transposition as one edit. The result saturates at max_distance + 1
-   once the rows can no longer reach the bound. */
 pure fn bounded_osa_distance(StringView a, StringView b,
                              usize max_distance) wontthrow -> usize;
 
-/* The edit budget a name of this length is allowed, which is one for a name too
-   short to survive two edits. */
 pure fn suggestion_distance_budget(usize name_length) wontthrow -> usize;
 
-/* The closest candidate to a name, kept as candidates are offered one at a
-   time. A candidate that is an anagram of the name wins a tie, since a
-   transposed pair is the likelier typo. */
 class NameSuggestion
 {
 public:
@@ -358,9 +333,6 @@ public:
         m_best_distance(m_max_distance + 1)
   {}
 
-  /* Whether an edit distance reads as a correction of a name of this length. A
-     correction keeps at least one byte of the name it corrects, so a distance
-     that covers the whole name names something else. */
   static pure fn is_correction(usize distance, usize name_length) wontthrow
       -> bool
   {
@@ -424,10 +396,6 @@ fn suggest_command(StringView name, const ArrayList<String> &local_names,
 fn suggest_directory_entry(const Path &directory, StringView name) throws
     -> Maybe<String>;
 
-/* The current git branch read from .git/HEAD without forking git, walking up
-   from the working directory to the filesystem root or to a directory listed
-   in the ceiling list, the way GIT_CEILING_DIRECTORIES bounds git. Empty
-   outside a repository. A detached HEAD reads as the short commit hash. */
 fn current_git_branch(StringView ceiling_directories) throws -> String;
 
 fn resolve_git_directory(StringView ceiling_directories) throws -> Path;
@@ -452,9 +420,6 @@ fn git_status(StringView ceiling_directories,
 
 fn read_entire_standard_input() throws -> String;
 
-/* Returns None at end of input with no bytes read. The delimiter defaults to a
-   newline, and read -d passes the first byte of its argument, or a NUL for an
-   empty argument. */
 struct read_line_result
 {
   Maybe<String> line;
@@ -510,9 +475,6 @@ fn read_directory_cached(
     directory_validation validation = directory_validation::Validate,
     directory_listing_order order = directory_listing_order::Unsorted) throws
     -> const ArrayList<Path::directory_child> *;
-/* Indexes the directory in the order the ghost completion asks for. The
-   suggestion after the next keystroke costs no read. A directory that cannot be
-   read is left out of the index. */
 fn warm_directory_index(const Path &directory) throws -> void;
 pure fn directory_listing_generation(const Path &directory) wontthrow -> u64;
 pure fn directory_entry_name_lower_bound(
@@ -535,38 +497,20 @@ fn file_content_identity(const Path &path, Allocator allocator) throws
 
 fn kosh_identity(StringView fallback_path) throws -> Maybe<StringView>;
 
-/* glob_active reads which bytes act as metacharacters. With extglob set the
-   bash extended-glob groups ?(..), *(..), +(..), @(..), and !(..) are
-   recognized, otherwise they are plain bytes. With the Utf8 charset a ? and a
-   star retry step over one whole UTF-8 sequence, and an invalid byte counts as
-   one character. */
 fn glob_matches(StringView glob, StringView str, const Bitset &glob_active,
                 usize mask_offset, extglob_mode mode = extglob_mode::Disabled,
                 glob_charset charset = glob_charset::Bytes) throws -> bool;
 
-/* A copy of text folded to lower case for a case-insensitive glob match. The
-   Bytes charset folds ASCII only. The Utf8 charset folds every well-formed
-   character whose lower case form has the same encoded length, so the copy
-   keeps the byte length and a glob mask built for text stays aligned. */
 fn lowercase_for_glob(StringView text, glob_charset charset,
                       Allocator allocator) throws -> String;
 
-/* True when a locale name selects the UTF-8 codeset, as in en_US.UTF-8 or
-   C.utf8, and the platform can select that locale. A name the platform cannot
-   select falls back to the C locale the way bash does. The availability answer
-   is cached for the last few names. */
 fn locale_name_is_utf8(StringView locale_name) wontthrow -> bool;
 
-/* The length of the character that starts at position, one byte for ASCII or
-   an invalid sequence. */
 pure fn utf8_character_length(StringView text, usize position) wontthrow
     -> usize;
 
-/* The number of characters in text, counting each invalid byte as one. */
 pure fn utf8_character_count(StringView text) wontthrow -> usize;
 
-/* The length of the character that starts at position under the charset, one
-   byte in the byte charset and at or past the end of text. */
 pure alwaysinline fn charset_character_length(StringView text, usize position,
                                               glob_charset charset) wontthrow
     -> usize
@@ -600,6 +544,6 @@ enum class file_kind_mode : u8
 fn parse_file_mode(StringView expression, u32 current_mode, u32 creation_mask,
                    file_kind_mode kind) wontthrow -> Maybe<u32>;
 
-} /* namespace utils */
+}
 
-} /* namespace koshka */
+}

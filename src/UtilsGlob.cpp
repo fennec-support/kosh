@@ -36,8 +36,6 @@ static pure fn is_glob_char_active(const Bitset &glob_active,
 
 namespace {
 
-/* One alternative of a bash extended-glob group, a slice of the glob and the
-   mask offset that slice begins at. */
 struct extglob_alternative
 {
   StringView pattern;
@@ -78,9 +76,6 @@ hot fn extglob_active(const Bitset &mask, usize index) wontthrow -> bool
   return index < mask.count() ? mask[index] : true;
 }
 
-/* True when glob at index opens an extended-glob group, one of ?, *, +, @, or !
-   immediately followed by (, with both bytes active. A quoted operator or a
-   quoted parenthesis is a literal and never opens a group. */
 fn extglob_opens_group(StringView glob, const Bitset &mask, usize mask_offset,
                        usize index) wontthrow -> bool
 {
@@ -93,9 +88,6 @@ fn extglob_opens_group(StringView glob, const Bitset &mask, usize mask_offset,
          extglob_active(mask, mask_offset + index + 1);
 }
 
-/* The index of the ) that closes the group whose ( sits at glob[1], tracking
-   nested groups by text. A quoted parenthesis is a literal and never nests or
-   closes. Returns glob.count() when the group is unbalanced. */
 fn extglob_group_close(StringView glob, const Bitset &mask,
                        usize mask_offset) wontthrow -> usize
 {
@@ -119,9 +111,6 @@ pure fn get_next_split(StringView str, usize position,
   return position + charset_character_length(str, position, charset);
 }
 
-/* The length of the bracket expression that opens at glob[0], or zero when no
-   closing ] exists. A ] right after [ or [! or [^ is a member, and a [:name:]
-   unit is taken whole so its inner ] never closes the bracket. */
 fn get_bracket_span(StringView glob, const Bitset &mask,
                     usize mask_offset) wontthrow -> usize
 {
@@ -165,9 +154,6 @@ fn get_bracket_span(StringView glob, const Bitset &mask,
 fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
                       usize mask_offset, glob_charset charset) throws -> bool;
 
-/* Match min_reps or more repetitions of one of the alternatives against the
-   front of str, then the suffix against the rest. The min drops to zero after
-   the first repetition, so a + needs one and a * needs none. */
 fn extglob_match_repetition(const ExtglobAlternatives &alternatives,
                             StringView suffix, usize suffix_offset,
                             StringView str, const Bitset &mask, usize min_reps,
@@ -207,8 +193,6 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
   let const is_active = extglob_active(mask, mask_offset);
   let const head = glob[0];
 
-  /* An extended-glob group such as @(a|b), *(a|b), or !(a) drives the match
-     through the alternatives split on the top-level |. */
   if (extglob_opens_group(glob, mask, mask_offset, 0)) {
     const usize close = extglob_group_close(glob, mask, mask_offset);
     if (close < glob.count()) {
@@ -261,13 +245,9 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
               return true;
           }
         }
-        /* A ? group also matches zero occurrences, so the suffix may follow
-           with nothing consumed. */
         return head == '?' &&
                extglob_full_match(suffix, str, mask, suffix_offset, charset);
       case '!':
-        /* A negated group consumes a prefix that none of the alternatives
-           match, then the suffix matches the rest. */
         for (usize length = 0; length <= str.count();
              length = get_next_split(str, length, charset))
         {
@@ -297,8 +277,6 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
     }
   }
 
-  /* A trailing * matches the rest of the string, so it is taken without trying
-     every split. */
   if (is_active && head == '*') {
     for (usize eaten = 0; eaten <= str.count();
          eaten = get_next_split(str, eaten, charset))
@@ -319,8 +297,6 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
   }
 
   if (is_active && head == '[') {
-    /* Reuse the iterative matcher for a single bracket class by matching one
-       character, then continue with the rest of the glob and the string. */
     let const span = get_bracket_span(glob, mask, mask_offset);
     if (span != 0) {
       let const character_length = get_next_split(str, 0, charset);
@@ -340,10 +316,6 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
                             mask_offset + 1, charset);
 }
 
-/* The POSIX character classes a bracket accepts as [:name:], each name bound
-   to its ctype predicate through a packed-key map so the glob hot path pays
-   a word compare rather than a name chain. The wrappers pin the byte through
-   unsigned char, the only argument range the ctype functions define. */
 using posix_class_test = bool (*)(u8 byte);
 
 constexpr static_string_entry<posix_class_test> POSIX_CLASS_ENTRIES[] = {
@@ -363,8 +335,6 @@ constexpr static_string_entry<posix_class_test> POSIX_CLASS_ENTRIES[] = {
 
 constexpr StaticStringMap POSIX_CLASSES{POSIX_CLASS_ENTRIES};
 
-/* Whether the byte belongs to the named class. An unknown name matches
-   nothing, the way bash treats a class it does not know. */
 fn byte_is_in_posix_class(StringView class_name, u8 byte) throws -> bool
 {
   if (const Maybe<posix_class_test> test = POSIX_CLASSES.find(class_name);
@@ -373,7 +343,7 @@ fn byte_is_in_posix_class(StringView class_name, u8 byte) throws -> bool
   return false;
 }
 
-} /* namespace */
+}
 
 pure fn token_has_uppercase(StringView token) wontthrow -> bool
 {
@@ -527,10 +497,6 @@ hot flatten fn glob_matches(StringView glob, StringView str,
 {
   let const is_utf8 = charset == glob_charset::Utf8;
 
-  /* The extended-glob grammar needs backtracking over alternatives and
-     repetition, so it runs in a separate recursive matcher. It is taken only
-     when extglob is on and the pattern actually holds a group, so a plain glob
-     keeps the iterative matcher below, unchanged, and pays nothing. */
   if (mode == extglob_mode::Enabled) {
     for (usize i = 0; i + 1 < glob.count(); i++) {
       if (extglob_opens_group(glob, glob_active, mask_offset, i)) {
@@ -584,12 +550,6 @@ hot flatten fn glob_matches(StringView glob, StringView str,
   };
       /* clang-format on */
 
-      /* A bracket member, a class terminator ], a negating ! or ^, and a range
-         '-' carry their special meaning only when the byte is an active glob
-         character. A quoted or escaped ] inside the class is a literal member,
-         not the terminator, and a quoted member byte never opens a range, so
-         the scan consults the same per-byte mask the rest of the matcher reads.
-       */
       let const do_is_active = [&](usize index) wontthrow -> bool {
         return is_glob_char_active(glob_active, mask_offset + index);
       };
@@ -597,9 +557,6 @@ hot flatten fn glob_matches(StringView glob, StringView str,
         return glob[index] == ']' && do_is_active(index);
       };
 
-      /* The unsigned value of a byte, so a high byte at or above 0x80 compares
-         as itself rather than as a negative char in the range and equality
-         tests. */
       let const do_get_byte_at =
           [](StringView view, usize index)
               wontthrow -> u8 { return static_cast<u8>(view[index]); };
@@ -621,10 +578,6 @@ hot flatten fn glob_matches(StringView glob, StringView str,
 
       let const subject = do_get_character_at(str, s);
 
-      /* A [:name:] unit inside the bracket is a POSIX character class. The
-         index past its closing ":]" comes back when one starts here, so both
-         scans treat the unit atomically and its inner ] never closes the
-         bracket. */
       let const do_get_class_end_past = [&](usize index)
                                             wontthrow -> Maybe<usize> {
         if (index + 1 >= glob.count() || glob[index] != '[' ||
@@ -632,16 +585,11 @@ hot flatten fn glob_matches(StringView glob, StringView str,
           return None;
         for (usize scan = index + 2; scan + 1 < glob.count(); scan++) {
           if (glob[scan] == ':' && glob[scan + 1] == ']') return scan + 2;
-          /* A ] before any ":]" means the [ was a plain member after all, the
-             way [[:a] is a bracket holding [, :, and a. */
           if (glob[scan] == ']' && do_is_active(scan)) return None;
         }
         return None;
       };
 
-      /* A bracket with no closing ] is not a character class, so the [ is a
-         literal character, as POSIX specifies. A ] right after [ or [^ is a
-         member, so the scan for the closing ] starts past it. */
       usize close_scan = g + 1;
       if (close_scan < glob.count() &&
           (glob[close_scan] == '!' || glob[close_scan] == '^') &&
@@ -676,9 +624,6 @@ hot flatten fn glob_matches(StringView glob, StringView str,
       g++;
       if (g >= glob.count()) GLOB_GROUP_ERR();
 
-      /* POSIX sh negates a class with a leading '!'. The '^' form is kept as a
-         common extension. The negation applies only to an active byte, so a
-         quoted ! or ^ at the front is a literal member. */
       if ((glob[g] == '!' || glob[g] == '^') && do_is_active(g)) {
         g++;
         should_negate = true;
@@ -686,9 +631,6 @@ hot flatten fn glob_matches(StringView glob, StringView str,
         if (g >= glob.count()) GLOB_GROUP_ERR();
       }
 
-      /* The first member bypasses the close check, so a leading ] is a plain
-         member. A range is consumed as one atom, so its first endpoint does not
-         also match by itself and a later hyphen remains a literal member. */
       bool is_first_member = true;
       while (g < glob.count() && (is_first_member || !do_is_close_at(g))) {
         if (Maybe<usize> past_class = do_get_class_end_past(g);
@@ -765,6 +707,6 @@ retry_star:
   return false;
 }
 
-} /* namespace utils */
+}
 
-} /* namespace koshka */
+}

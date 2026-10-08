@@ -16,11 +16,6 @@
 
 namespace koshka {
 
-/* The mode a mimicked script runs in, chosen from its shebang. A sh or dash
-   shebang gives Posix, a bash shebang gives Bash, and a kosh shebang gives
-   Default. BashPosix is the bash mood reached through --posix or set -o posix,
-   so a terminal that re-execs with --posix to inject its integration runs as
-   bash with the bash identity and rc rather than the dash-like sh mood. */
 enum class mimic_mood : u8
 {
   Default,
@@ -32,8 +27,7 @@ enum class mimic_mood : u8
 fn detect_mimic_shell_from_source(StringView source) throws
     -> Maybe<mimic_mood>;
 
-/* The extension carries a dot, the way Path::extension reports it. */
-pure fn detect_mimic_shell_from_extension(StringView extension) throws
+pure fn detect_mimic_shell_from_extension(StringView dotted_extension) throws
     -> Maybe<mimic_mood>;
 
 inline pure fn parse_mood_name(StringView name) throws -> Maybe<mimic_mood>
@@ -67,4 +61,4 @@ inline pure fn mood_name(mimic_mood mood) wontthrow -> StringView
   return "kosh";
 }
 
-} /* namespace koshka */
+}

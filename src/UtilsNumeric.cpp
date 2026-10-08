@@ -25,8 +25,6 @@ namespace koshka {
 
 namespace utils {
 
-/* Turn an accumulated magnitude and sign into a saturating signed result. The
-   per-base parsers share this so only the digit loop stays base-specific. */
 static pure fn saturate_signed_magnitude(u64 magnitude, bool is_negative,
                                          bool has_overflowed) wontthrow -> i64
 {
@@ -50,9 +48,6 @@ static fn not_an_integer_error(StringView text) throws -> Error
 fn int_to_text_into(i64 value, char *buffer, usize buffer_size) wontthrow
     -> StringView
 {
-  /* The digits are written from the least significant end of the buffer, the
-     same scheme String::from uses, then a leading minus is prepended. A u64
-     never needs more than twenty digits, so twenty-one bytes hold any i64. */
   ASSERT(buffer_size >= 21, "the buffer must hold a sign and twenty digits");
   let const is_negative = value < 0;
   u64 magnitude =
@@ -81,8 +76,6 @@ fn uint_to_text_into(u64 value, char *buffer, usize buffer_size) wontthrow
 
 fn format_minutes_seconds(double seconds, i32 decimal_count) throws -> String
 {
-  /* An rusage subtraction can go backwards, a negative clamps to zero to avoid
-     a doubled sign like -0m-0.001s. */
   if (seconds < 0.0) seconds = 0.0;
   const i64 minutes = static_cast<i64>(seconds) / 60;
   const double remainder = seconds - static_cast<double>(minutes * 60);
@@ -187,8 +180,6 @@ static fn format_time_report_custom(StringView format, double real_seconds,
       continue;
     }
 
-    /* A precision digit and the l flag may precede the conversion, %3lR is
-       three digits in minutes form, precision clamped to six. */
     usize precision = 3;
     if (format[i] >= '0' && format[i] <= '9') {
       precision = static_cast<usize>(format[i] - '0');
@@ -292,9 +283,6 @@ fn format_time_report(const Maybe<String> &time_format, double real_seconds,
   return report;
 }
 
-/* Newline offset tables cached on the few most recently used sources, keyed on
-   the source pointer and length, so a $LINENO lookup is a binary search over
-   the newlines. */
 class LineNumberCache
 {
 public:
@@ -326,16 +314,10 @@ private:
     {
       invalidate();
 
-      /* An offset is 32-bit, matching every other source offset the shell
-         carries, so a source beyond four gigabytes is indexed up to that point
-         and everything past it reads as the last line. */
       let const indexable_length =
           source.count() < UINT32_MAX ? source.count() : usize{UINT32_MAX};
       let const indexable = source.substring_of_length(0, indexable_length);
 
-      /* The count pass is one memchr sweep and it makes the offset table an
-         exact allocation, where geometric growth would leave up to half the
-         block unused on a source with hundreds of thousands of lines. */
       m_newline_offsets.reserve(count_newlines(indexable));
 
       usize scan_position = 0;
@@ -595,8 +577,6 @@ fn parse_timeout_seconds_to_nanos(StringView text) throws -> ErrorOr<i64>
     return Error{"'" + text + "' is not a valid timeout"};
   }
 
-  /* A whole-seconds part too large for the signed nanosecond result saturates
-     to the maximum rather than overflowing. */
   constexpr u64 max_whole_seconds = INT64_MAX / 1'000'000'000;
   constexpr i64 max_fractional_nanos = INT64_MAX % 1'000'000'000;
   if (has_overflowed || whole_seconds > max_whole_seconds ||
@@ -929,6 +909,6 @@ fn append_shell_quoted(String &out, StringView arg, bool is_utf8_locale) throws
   out.push('\'');
 }
 
-} /* namespace utils */
+}
 
-} /* namespace koshka */
+}
