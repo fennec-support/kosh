@@ -38,7 +38,7 @@ noted.
 
 ## 3. Homebrew (`homebrew-kosh`)
 
-- [ ] Nothing to edit: the formula reads the newest release tag and its
+- [ ] Nothing to edit: the formula uses the newest release tag and its
       `SHA256SUMS` each time Homebrew loads it.
 - [ ] Re-run its CI, or `brew update && brew upgrade kosh` on macOS, and
       confirm `kosh --version` prints the new version.
@@ -62,7 +62,7 @@ noted.
       `makepkg --printsrcinfo > .SRCINFO`, build once with `makepkg`, and push.
 - [ ] **Alpine aports**: the maintainer named in the APKBUILD opens or updates
       the merge request against aports.
-- [ ] **nixpkgs**: `flake.nix` reads the version from `Common.hpp`, so the flake
+- [ ] **nixpkgs**: `flake.nix` takes the version from `Common.hpp`, so the flake
       needs no edit. A nixpkgs package, once it exists, needs its version and
       hash bumped in a pull request.
 
