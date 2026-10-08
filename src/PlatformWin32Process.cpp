@@ -2142,7 +2142,6 @@ static fn spawn_subshell_stage(StringView source, Maybe<descriptor> in_fd,
   let arguments = ArrayList<String>{heap_allocator()};
   arguments.push(String{heap_allocator(), module_path->view()});
   arguments.push(String{heap_allocator(), StringView{"--privileged"}});
-  arguments.push(String{heap_allocator(), StringView{"--no-init-files"}});
   if (mood != mimic_mood::Default) {
     arguments.push(String{heap_allocator(), StringView{"--mood"}});
     arguments.push(String{heap_allocator(), mood_name(mood)});

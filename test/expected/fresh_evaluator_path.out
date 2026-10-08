@@ -1,0 +1,8 @@
+background
+background-status=0
+read first-stage
+loop last-stage
+same-path
+reads input
+writes output
+writer-status=0

@@ -1,0 +1,31 @@
+#!/bin/env kosh
+
+# A background group, a pipeline stage, and a process substitution start a
+# fresh evaluator on Windows. Each must search the parent's PATH for a program
+# the parent never ran, so the child keeps PATH and reads no startup file.
+set -M bash
+d=$TEST_TEMP_DIRECTORY/fresh-evaluator-path
+koshkit mkdir -p "$d"
+probe_file=$d/fresh-probe
+if [ "${OS-}" = Windows_NT ]; then probe_file=$probe_file.exe; fi
+koshkit cp "$BIN" "$probe_file"
+parent_path=$d
+PATH=$parent_path
+
+{ fresh-probe -c 'echo background'; } &
+wait "$!"
+echo "background-status=$?"
+
+{ fresh-probe -c 'echo first-stage'; } | { read -r line; echo "read $line"; }
+
+echo last-stage | while read -r line; do fresh-probe -c "echo loop $line"; done
+
+{ [ "$PATH" = "$parent_path" ] && echo same-path; } | { read -r line; echo "$line"; }
+
+while read -r line; do echo "reads $line"; done < <(fresh-probe -c 'echo input')
+
+echo output > >(while read -r line; do fresh-probe -c "echo writes $line"; done)
+wait "$!"
+echo "writer-status=$?"
+
+if [ -n "$d" ]; then koshkit rm -rf -- "$d"; fi

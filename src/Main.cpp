@@ -1334,17 +1334,22 @@ struct init_diagnostics_scope
 
 /* A lint report must not follow the aliases, functions, and search path of
    whoever invoked it, so lint, format, rescue, clean, and privileged runs skip
-   every startup file. */
+   every startup file. A fresh evaluator receives the state those files built
+   in its parent through the bootstrap. */
 static fn run_startup(EvalContext &context, ArrayList<mimic_mood> &init_moods,
                       const invocation_identity &identity,
-                      const command_line &line, bool has_elevated_identity,
-                      bool is_interactive) throws -> void
+                      const command_line &line,
+                      const inherited_shell &inherited,
+                      bool has_elevated_identity, bool is_interactive) throws
+    -> void
 {
+  let const is_fresh_evaluator = !inherited.bootstrap.payload.is_empty();
   if (has_elevated_identity || line.is_rescue_mode || FLAG_CLEAN.is_enabled() ||
-      FLAG_LINT.is_enabled() || FLAG_FORMAT.is_enabled())
+      FLAG_LINT.is_enabled() || FLAG_FORMAT.is_enabled() || is_fresh_evaluator)
   {
     LOG(Info, "skipping every startup config file in %s mode",
         line.is_rescue_mode       ? "rescue"
+        : is_fresh_evaluator      ? "fresh evaluator"
         : FLAG_CLEAN.is_enabled() ? "clean"
         : FLAG_LINT.is_enabled()  ? "lint"
                                   : "privileged");
@@ -2287,7 +2292,7 @@ fn kosh_main(int argc, char **argv) -> int
                                         FLAG_LINT.is_enabled(), ast_arena,
                                         context, identity.session_mood);
 
-  koshka::run_startup(context, init_moods, identity, line,
+  koshka::run_startup(context, init_moods, identity, line, inherited,
                       has_elevated_identity, input.should_be_interactive);
   if (koshka::Maybe<int> startup_status = koshka::finish_startup(
           context, identity, inherited, input.should_be_interactive);

@@ -141,6 +141,8 @@ changes update this file.
   embedded source. The source store records the lines before each window, so
   diagnostics, traces, and LINENO use the parent's coordinates without padding
   bytes. The child skips analysis, because the parent analyzed the text.
+  It also skips every startup file because it received a bootstrap, and it
+  keeps the environment the parent prepared, PATH included.
   The origin also carries the rendered call site of every function and source
   frame above the launch site, each on its own one-line window, and the lines
   LINENO counts beyond a rendered line, such as those before an eval. The
