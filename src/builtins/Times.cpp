@@ -28,10 +28,6 @@ REGISTER_BUILTIN_FLAGS(Times);
 
 namespace koshka {
 
-Times::Times() = default;
-
-pure fn Times::kind() const wontthrow -> Builtin::Kind { return Kind::Times; }
-
 cold i32 Times::execute(ExecContext &ec, EvalContext &cxt) const throws
 {
   LOG(Debug, "times printing the shell and child process accounting");

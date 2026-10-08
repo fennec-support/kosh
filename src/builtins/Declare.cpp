@@ -56,13 +56,6 @@ REGISTER_BUILTIN_FLAGS(Declare);
 
 namespace koshka {
 
-Declare::Declare() = default;
-
-pure fn Declare::kind() const wontthrow -> Builtin::Kind
-{
-  return Kind::Declare;
-}
-
 fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();

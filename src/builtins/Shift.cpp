@@ -26,10 +26,6 @@ REGISTER_BUILTIN_FLAGS(Shift);
 
 namespace koshka {
 
-Shift::Shift() = default;
-
-pure fn Shift::kind() const wontthrow -> Builtin::Kind { return Kind::Shift; }
-
 fn Shift::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());

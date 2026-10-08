@@ -34,10 +34,6 @@ REGISTER_BUILTIN_FLAGS(Exec);
 
 namespace koshka {
 
-Exec::Exec() = default;
-
-pure fn Exec::kind() const wontthrow -> Builtin::Kind { return Kind::Exec; }
-
 static fn report_exec_resolution_error(ExecContext &ec, EvalContext &cxt,
                                        SourceLocation location,
                                        StringView message,

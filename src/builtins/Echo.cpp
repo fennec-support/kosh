@@ -28,10 +28,6 @@ REGISTER_BUILTIN_FLAGS(Echo);
 
 namespace koshka {
 
-Echo::Echo() = default;
-
-pure fn Echo::kind() const wontthrow -> Builtin::Kind { return Kind::Echo; }
-
 fn Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();

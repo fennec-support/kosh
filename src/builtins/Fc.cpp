@@ -57,10 +57,6 @@ struct fc_selection
   fc_selection_error error{fc_selection_error::None};
 };
 
-Fc::Fc() = default;
-
-pure fn Fc::kind() const wontthrow -> Builtin::Kind { return Kind::Fc; }
-
 static pure fn is_history_number(StringView text) wontthrow -> bool
 {
   if (text.is_empty()) return false;

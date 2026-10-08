@@ -23,10 +23,6 @@ REGISTER_BUILTIN_FLAGS(Alias);
 
 namespace koshka {
 
-Alias::Alias() = default;
-
-pure fn Alias::kind() const wontthrow -> Builtin::Kind { return Kind::Alias; }
-
 fn Alias::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const args = PARSE_BUILTIN_ARGS(ec);

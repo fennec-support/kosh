@@ -24,9 +24,13 @@ come from `ExecContext` and the parsed operand locations.
 
 ## Register one builtin
 
-Add the kind, name entry, switch case, and struct declaration in `Builtin.hpp`.
-Keep the count derived from the last enum value. The source file belongs
-directly below `src/builtins`. The source Makefile discovers it automatically.
+Add one `KOSH_BUILTIN_KINDS` row and the string table entry in `Builtin.hpp`.
+A row holds the kind, the section of the `builtin --list` report, and whether
+`execute_builtin` answers `--help` before the builtin runs. The list generates
+the kind enum, the dispatch switch, the class declaration, and the section and
+help tables, and the kind count follows the list length. The source file
+defines only `execute` and belongs directly below `src/builtins`. The source
+Makefile discovers it automatically.
 
 Do not add a builtin to special, declaration, optimizer, or fresh-process
 tables unless its semantics require that classification. Runtime state belongs

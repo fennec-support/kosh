@@ -118,10 +118,6 @@ fn apply_symbolic_mask(StringView spec, u32 current_mask) throws -> Maybe<u32>
 
 } /* namespace */
 
-Umask::Umask() = default;
-
-pure fn Umask::kind() const wontthrow -> Builtin::Kind { return Kind::Umask; }
-
 cold i32 Umask::execute(ExecContext &ec, EvalContext &cxt) const throws
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};

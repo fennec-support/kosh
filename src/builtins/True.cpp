@@ -23,10 +23,6 @@ REGISTER_BUILTIN_FLAGS(True);
 
 namespace koshka {
 
-True::True() = default;
-
-pure fn True::kind() const wontthrow -> Builtin::Kind { return Kind::True; }
-
 fn True::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   unused(ec);

@@ -27,10 +27,6 @@ REGISTER_BUILTIN_FLAGS(Fg);
 
 namespace koshka {
 
-Fg::Fg() = default;
-
-pure fn Fg::kind() const wontthrow -> Builtin::Kind { return Kind::Fg; }
-
 fn Fg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();

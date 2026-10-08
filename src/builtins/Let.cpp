@@ -26,10 +26,6 @@ REGISTER_BUILTIN_FLAGS(Let);
 
 namespace koshka {
 
-Let::Let() = default;
-
-pure fn Let::kind() const wontthrow -> Builtin::Kind { return Kind::Let; }
-
 fn Let::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   /* An empty let reports status 1, not usage status 2, matching bash. */

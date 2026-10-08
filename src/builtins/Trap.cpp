@@ -29,10 +29,6 @@ REGISTER_BUILTIN_FLAGS(Trap);
 
 namespace koshka {
 
-Trap::Trap() = default;
-
-pure fn Trap::kind() const wontthrow -> Builtin::Kind { return Kind::Trap; }
-
 namespace {
 
 fn normalize_condition(StringView raw, Allocator allocator) throws -> String

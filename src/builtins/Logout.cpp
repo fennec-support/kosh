@@ -22,10 +22,6 @@ REGISTER_BUILTIN_FLAGS(Logout);
 
 namespace koshka {
 
-Logout::Logout() = default;
-
-pure fn Logout::kind() const wontthrow -> Builtin::Kind { return Kind::Logout; }
-
 fn Logout::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());

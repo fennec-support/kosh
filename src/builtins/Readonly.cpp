@@ -30,13 +30,6 @@ REGISTER_BUILTIN_FLAGS(Readonly);
 
 namespace koshka {
 
-Readonly::Readonly() = default;
-
-pure fn Readonly::kind() const wontthrow -> Builtin::Kind
-{
-  return Kind::Readonly;
-}
-
 fn Readonly::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};

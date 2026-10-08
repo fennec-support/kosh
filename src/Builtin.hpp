@@ -24,83 +24,94 @@ class EvalContext;
 class Path;
 struct job;
 
+enum class builtin_section : u8
+{
+  Posix,
+  Bash,
+  Koshka,
+};
+
+#define KOSH_BUILTIN_KINDS(X)                                                  \
+  X(Echo, Posix, false)                                                        \
+  X(Cd, Posix, true)                                                           \
+  X(Exit, Posix, true)                                                         \
+  X(Pwd, Posix, false)                                                         \
+  X(Pushd, Bash, false)                                                        \
+  X(Popd, Bash, false)                                                         \
+  X(Dirs, Bash, false)                                                         \
+  X(Export, Posix, false)                                                      \
+  X(Break, Posix, true)                                                        \
+  X(Continue, Posix, true)                                                     \
+  X(Return, Posix, true)                                                       \
+  X(True, Posix, true)                                                         \
+  X(False, Posix, false)                                                       \
+  X(Test, Posix, false)                                                        \
+  X(Source, Posix, true)                                                       \
+  X(Eval, Posix, true)                                                         \
+  X(Set, Posix, false)                                                         \
+  X(Shift, Posix, true)                                                        \
+  X(Unset, Posix, false)                                                       \
+  X(Read, Posix, false)                                                        \
+  X(Printf, Posix, true)                                                       \
+  X(Umask, Posix, false)                                                       \
+  X(Getopts, Posix, true)                                                      \
+  X(Trap, Posix, true)                                                         \
+  X(Exec, Posix, true)                                                         \
+  X(Type, Posix, false)                                                        \
+  X(CommandBuiltin, Posix, false)                                              \
+  X(BuiltinBuiltin, Bash, true)                                                \
+  X(Readonly, Posix, false)                                                    \
+  X(Local, Bash, true)                                                         \
+  X(Declare, Bash, true)                                                       \
+  X(Mapfile, Bash, false)                                                      \
+  X(Shopt, Bash, false)                                                        \
+  X(Times, Posix, true)                                                        \
+  X(Let, Bash, true)                                                           \
+  X(Ulimit, Posix, false)                                                      \
+  X(Hash, Posix, false)                                                        \
+  X(Alias, Posix, false)                                                       \
+  X(Unalias, Posix, false)                                                     \
+  X(Jobs, Posix, false)                                                        \
+  X(Fg, Posix, true)                                                           \
+  X(Bg, Posix, true)                                                           \
+  X(Disown, Bash, false)                                                       \
+  X(Wait, Posix, true)                                                         \
+  X(Kill, Posix, true)                                                         \
+  X(Time, Bash, false)                                                         \
+  X(Bench, Koshka, false)                                                      \
+  X(Assimilate, Koshka, false)                                                 \
+  X(Newgrp, Posix, true)                                                       \
+  X(Z, Koshka, false)                                                          \
+  X(Complete, Bash, false)                                                     \
+  X(Compgen, Bash, false)                                                      \
+  X(Koshkit, Koshka, false)                                                    \
+  X(Compopt, Bash, true)                                                       \
+  X(History, Bash, false)                                                      \
+  X(Fc, Posix, false)                                                          \
+  X(Caller, Bash, false)                                                       \
+  X(Help, Bash, false)                                                         \
+  X(Logout, Bash, true)                                                        \
+  X(Suspend, Bash, false)                                                      \
+  X(Bind, Bash, false)                                                         \
+  X(Enable, Bash, false)                                                       \
+  X(Koshconf, Koshka, false)
+
 class Builtin
 {
 public:
+#define T__BUILTIN_KIND(kind, section, should_dispatch_help) kind,
   enum class Kind : uint8_t
   {
-    Echo,
-    Cd,
-    Exit,
-    Pwd,
-    Pushd,
-    Popd,
-    Dirs,
-    Export,
-    Break,
-    Continue,
-    Return,
-    True,
-    False,
-    Test,
-    Source,
-    Eval,
-    Set,
-    Shift,
-    Unset,
-    Read,
-    Printf,
-    Umask,
-    Getopts,
-    Trap,
-    Exec,
-    Type,
-    CommandBuiltin,
-    BuiltinBuiltin,
-    Readonly,
-    Local,
-    Declare,
-    Mapfile,
-    Shopt,
-    Times,
-    Let,
-    Ulimit,
-    Hash,
-    Alias,
-    Unalias,
-    Jobs,
-    Fg,
-    Bg,
-    Disown,
-    Wait,
-    Kill,
-    Time,
-    Bench,
-    Assimilate,
-    Newgrp,
-    Z,
-    Complete,
-    Compgen,
-    Koshkit,
-    Compopt,
-    History,
-    Fc,
-    Caller,
-    Help,
-    Logout,
-    Suspend,
-    Bind,
-    Enable,
-    Koshconf,
+    KOSH_BUILTIN_KINDS(T__BUILTIN_KIND)
   };
+#undef T__BUILTIN_KIND
 
-  pure virtual Kind kind() const wontthrow = 0;
   virtual i32 execute(ExecContext &ec, EvalContext &cxt) const throws = 0;
 
   virtual ~Builtin() = default;
 
 protected:
-  Builtin();
+  Builtin() = default;
 };
 
 inline constexpr static_string_entry<Builtin::Kind> BUILTIN_ENTRIES[] = {
@@ -176,158 +187,34 @@ inline constexpr static_string_entry<Builtin::Kind> BUILTIN_ENTRIES[] = {
 
 inline constexpr StaticStringMap BUILTINS{BUILTIN_ENTRIES};
 
-#define B_CASE(btin)                                                           \
-  case Builtin::Kind::btin: {                                                  \
-    btin builtin;                                                              \
+#define T__BUILTIN_CASE(kind, section, should_dispatch_help)                   \
+  case Builtin::Kind::kind: {                                                  \
+    kind builtin;                                                              \
     return builtin.execute(ec, cxt);                                           \
   }
 
-#define BUILTIN_SWITCH_CASES()                                                 \
-  B_CASE(Echo);                                                                \
-  B_CASE(Cd);                                                                  \
-  B_CASE(Exit);                                                                \
-  B_CASE(Pwd);                                                                 \
-  B_CASE(Pushd);                                                               \
-  B_CASE(Popd);                                                                \
-  B_CASE(Dirs);                                                                \
-  B_CASE(Export);                                                              \
-  B_CASE(Break);                                                               \
-  B_CASE(Continue);                                                            \
-  B_CASE(Return);                                                              \
-  B_CASE(True);                                                                \
-  B_CASE(False);                                                               \
-  B_CASE(Test);                                                                \
-  B_CASE(Source);                                                              \
-  B_CASE(Eval);                                                                \
-  B_CASE(Set);                                                                 \
-  B_CASE(Shift);                                                               \
-  B_CASE(Unset);                                                               \
-  B_CASE(Read);                                                                \
-  B_CASE(Printf);                                                              \
-  B_CASE(Umask);                                                               \
-  B_CASE(Getopts);                                                             \
-  B_CASE(Trap);                                                                \
-  B_CASE(Exec);                                                                \
-  B_CASE(Type);                                                                \
-  B_CASE(CommandBuiltin);                                                      \
-  B_CASE(BuiltinBuiltin);                                                      \
-  B_CASE(Readonly);                                                            \
-  B_CASE(Local);                                                               \
-  B_CASE(Declare);                                                             \
-  B_CASE(Mapfile);                                                             \
-  B_CASE(Shopt);                                                               \
-  B_CASE(Times);                                                               \
-  B_CASE(Let);                                                                 \
-  B_CASE(Ulimit);                                                              \
-  B_CASE(Hash);                                                                \
-  B_CASE(Alias);                                                               \
-  B_CASE(Unalias);                                                             \
-  B_CASE(Jobs);                                                                \
-  B_CASE(Fg);                                                                  \
-  B_CASE(Bg);                                                                  \
-  B_CASE(Disown);                                                              \
-  B_CASE(Wait);                                                                \
-  B_CASE(Kill);                                                                \
-  B_CASE(Time);                                                                \
-  B_CASE(Bench);                                                               \
-  B_CASE(Assimilate);                                                          \
-  B_CASE(Newgrp);                                                              \
-  B_CASE(Z);                                                                   \
-  B_CASE(Complete);                                                            \
-  B_CASE(Compgen);                                                             \
-  B_CASE(Koshkit);                                                             \
-  B_CASE(Compopt);                                                             \
-  B_CASE(History);                                                             \
-  B_CASE(Fc);                                                                  \
-  B_CASE(Caller);                                                              \
-  B_CASE(Help);                                                                \
-  B_CASE(Logout);                                                              \
-  B_CASE(Suspend);                                                             \
-  B_CASE(Bind);                                                                \
-  B_CASE(Enable);                                                              \
-  B_CASE(Koshconf)
+#define BUILTIN_SWITCH_CASES() KOSH_BUILTIN_KINDS(T__BUILTIN_CASE)
 
-#define BUILTIN_STRUCT(b)                                                      \
-  class b : public Builtin                                                     \
+#define BUILTIN_STRUCT(kind, section, should_dispatch_help)                    \
+  class kind : public Builtin                                                  \
   {                                                                            \
   public:                                                                      \
-    b();                                                                       \
-                                                                               \
-    pure Kind kind() const wontthrow override;                                 \
     i32 execute(ExecContext &ec, EvalContext &cxt) const throws override;      \
   };
 
-BUILTIN_STRUCT(Echo);
-BUILTIN_STRUCT(Cd);
-BUILTIN_STRUCT(Pwd);
-BUILTIN_STRUCT(Pushd);
-BUILTIN_STRUCT(Popd);
-BUILTIN_STRUCT(Dirs);
-BUILTIN_STRUCT(Export);
-BUILTIN_STRUCT(Break);
-BUILTIN_STRUCT(Continue);
-BUILTIN_STRUCT(Return);
-BUILTIN_STRUCT(True);
-BUILTIN_STRUCT(False);
-BUILTIN_STRUCT(Test);
-BUILTIN_STRUCT(Source);
-BUILTIN_STRUCT(Eval);
-BUILTIN_STRUCT(Set);
-BUILTIN_STRUCT(Shift);
-BUILTIN_STRUCT(Unset);
-BUILTIN_STRUCT(Read);
-BUILTIN_STRUCT(Printf);
-BUILTIN_STRUCT(Umask);
-BUILTIN_STRUCT(Getopts);
-BUILTIN_STRUCT(Trap);
-BUILTIN_STRUCT(Exec);
-BUILTIN_STRUCT(Type);
-BUILTIN_STRUCT(CommandBuiltin);
-BUILTIN_STRUCT(BuiltinBuiltin);
-BUILTIN_STRUCT(Readonly);
-BUILTIN_STRUCT(Local);
-BUILTIN_STRUCT(Declare);
-BUILTIN_STRUCT(Mapfile);
-BUILTIN_STRUCT(Shopt);
-BUILTIN_STRUCT(Times);
-BUILTIN_STRUCT(Let);
-BUILTIN_STRUCT(Ulimit);
-BUILTIN_STRUCT(Hash);
-BUILTIN_STRUCT(Alias);
-BUILTIN_STRUCT(Unalias);
-BUILTIN_STRUCT(Jobs);
-BUILTIN_STRUCT(Fg);
-BUILTIN_STRUCT(Bg);
-BUILTIN_STRUCT(Disown);
-BUILTIN_STRUCT(Wait);
-BUILTIN_STRUCT(Kill);
-BUILTIN_STRUCT(Time);
-BUILTIN_STRUCT(Bench);
-BUILTIN_STRUCT(Assimilate);
-BUILTIN_STRUCT(Newgrp);
-BUILTIN_STRUCT(Complete);
-BUILTIN_STRUCT(Compgen);
-BUILTIN_STRUCT(Compopt);
-BUILTIN_STRUCT(Z);
-BUILTIN_STRUCT(Koshkit);
-BUILTIN_STRUCT(History);
-BUILTIN_STRUCT(Fc);
-BUILTIN_STRUCT(Caller);
-BUILTIN_STRUCT(Help);
-BUILTIN_STRUCT(Logout);
-BUILTIN_STRUCT(Suspend);
-BUILTIN_STRUCT(Bind);
-BUILTIN_STRUCT(Enable);
-BUILTIN_STRUCT(Koshconf);
+KOSH_BUILTIN_KINDS(BUILTIN_STRUCT)
 
-class Exit : public Builtin
-{
-public:
-  Exit();
+#define T__BUILTIN_SECTION(kind, section, should_dispatch_help)                \
+  builtin_section::section,
+inline constexpr builtin_section BUILTIN_SECTIONS[] = {
+    KOSH_BUILTIN_KINDS(T__BUILTIN_SECTION)};
+#undef T__BUILTIN_SECTION
 
-  pure Kind kind() const wontthrow override;
-  i32 execute(ExecContext &ec, EvalContext &cxt) const throws override;
-};
+#define T__BUILTIN_HELP_DISPATCH(kind, section, should_dispatch_help)          \
+  should_dispatch_help,
+inline constexpr bool SHOULD_DISPATCH_BUILTIN_HELP[] = {
+    KOSH_BUILTIN_KINDS(T__BUILTIN_HELP_DISPATCH)};
+#undef T__BUILTIN_HELP_DISPATCH
 
 Maybe<Builtin::Kind> search_builtin(StringView builtin_name) throws;
 
@@ -346,7 +233,7 @@ fn is_special_builtin_name(StringView name) wontthrow -> bool;
 const ArrayList<String> &builtin_names() throws;
 
 inline constexpr usize BUILTIN_KIND_COUNT =
-    static_cast<usize>(Builtin::Kind::Koshconf) + 1;
+    sizeof(BUILTIN_SECTIONS) / sizeof(BUILTIN_SECTIONS[0]);
 
 /* The FLAG_LIST of a builtin, registered at static-init time by the
    REGISTER_BUILTIN_FLAGS line in its file. A kind with no registration reads

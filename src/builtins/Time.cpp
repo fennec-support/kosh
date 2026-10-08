@@ -29,10 +29,6 @@ REGISTER_BUILTIN_FLAGS(Time);
 
 namespace koshka {
 
-Time::Time() = default;
-
-pure fn Time::kind() const wontthrow -> Builtin::Kind { return Kind::Time; }
-
 cold fn Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const args = PARSE_BUILTIN_ARGS(ec);

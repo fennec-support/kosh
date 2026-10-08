@@ -234,10 +234,6 @@ fn record_directory_access(StringView directory, Allocator allocator) throws
   write_frecency_store(entries, allocator);
 }
 
-Z::Z() = default;
-
-pure fn Z::kind() const wontthrow -> Builtin::Kind { return Kind::Z; }
-
 fn Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const operands = PARSE_BUILTIN_ARGS(ec);

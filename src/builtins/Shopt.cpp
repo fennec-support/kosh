@@ -108,10 +108,6 @@ fn enabled_shopt_option_names(const EvalContext &cxt) throws -> String
   return joined;
 }
 
-Shopt::Shopt() = default;
-
-pure fn Shopt::kind() const wontthrow -> Builtin::Kind { return Kind::Shopt; }
-
 fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};

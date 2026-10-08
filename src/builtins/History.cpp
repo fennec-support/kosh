@@ -38,13 +38,6 @@ REGISTER_BUILTIN_FLAGS(History);
 
 namespace koshka {
 
-History::History() = default;
-
-pure fn History::kind() const wontthrow -> Builtin::Kind
-{
-  return Kind::History;
-}
-
 /* A failed history operation names the resolved file. A file whose bytes the
    history format rejects is reported apart from a system failure. The system
    message is taken before the file is read again. */

@@ -28,13 +28,6 @@ REGISTER_BUILTIN_FLAGS(Suspend);
 
 namespace koshka {
 
-Suspend::Suspend() = default;
-
-pure fn Suspend::kind() const wontthrow -> Builtin::Kind
-{
-  return Kind::Suspend;
-}
-
 fn Suspend::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};

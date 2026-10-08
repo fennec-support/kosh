@@ -491,13 +491,6 @@ fn preflight_command(StringView executable_system,
 
 } /* namespace */
 
-Assimilate::Assimilate() = default;
-
-pure fn Assimilate::kind() const wontthrow -> Builtin::Kind
-{
-  return Kind::Assimilate;
-}
-
 fn Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const arguments = PARSE_BUILTIN_ARGS(ec);

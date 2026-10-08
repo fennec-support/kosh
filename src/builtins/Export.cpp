@@ -32,10 +32,6 @@ REGISTER_BUILTIN_FLAGS(Export);
 
 namespace koshka {
 
-Export::Export() = default;
-
-pure fn Export::kind() const wontthrow -> Builtin::Kind { return Kind::Export; }
-
 fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};

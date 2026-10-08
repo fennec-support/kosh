@@ -37,13 +37,6 @@ REGISTER_BUILTIN_FLAGS(Compopt);
 
 namespace koshka {
 
-Compopt::Compopt() = default;
-
-pure fn Compopt::kind() const wontthrow -> Builtin::Kind
-{
-  return Kind::Compopt;
-}
-
 static fn append_option_line(String &output, u32 option_mask,
                              StringView name) throws -> void
 {

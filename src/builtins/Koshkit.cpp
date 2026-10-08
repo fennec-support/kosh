@@ -35,13 +35,6 @@ REGISTER_BUILTIN_FLAGS(Koshkit);
 
 namespace koshka {
 
-Koshkit::Koshkit() = default;
-
-pure fn Koshkit::kind() const wontthrow -> Builtin::Kind
-{
-  return Kind::Koshkit;
-}
-
 #if defined KOSH_NO_KOSHKIT
 
 fn Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32

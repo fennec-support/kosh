@@ -30,13 +30,6 @@ REGISTER_BUILTIN_FLAGS(BuiltinBuiltin);
 
 namespace koshka {
 
-BuiltinBuiltin::BuiltinBuiltin() = default;
-
-pure fn BuiltinBuiltin::kind() const wontthrow -> Builtin::Kind
-{
-  return Kind::BuiltinBuiltin;
-}
-
 using sorted_builtin_name_list =
     SortedArrayList<String, order_comparator<String>>;
 
@@ -51,63 +44,12 @@ static fn sorted_builtin_names() throws -> const sorted_builtin_name_list &
   return names;
 }
 
-enum class builtin_section : u8
-{
-  Posix,
-  Bash,
-  Koshka,
-};
-
 static pure fn get_builtin_section(Builtin::Kind kind,
                                    StringView name) wontthrow -> builtin_section
 {
   if (name == "source") return builtin_section::Bash;
 
-  switch (kind) {
-  case Builtin::Kind::Assimilate:
-  case Builtin::Kind::Bench:
-  case Builtin::Kind::Koshconf:
-  case Builtin::Kind::Koshkit:
-  case Builtin::Kind::Z: return builtin_section::Koshka;
-  case Builtin::Kind::Alias:
-  case Builtin::Kind::Bg:
-  case Builtin::Kind::Break:
-  case Builtin::Kind::Cd:
-  case Builtin::Kind::CommandBuiltin:
-  case Builtin::Kind::Continue:
-  case Builtin::Kind::Echo:
-  case Builtin::Kind::Eval:
-  case Builtin::Kind::Exec:
-  case Builtin::Kind::Exit:
-  case Builtin::Kind::Export:
-  case Builtin::Kind::False:
-  case Builtin::Kind::Fc:
-  case Builtin::Kind::Fg:
-  case Builtin::Kind::Getopts:
-  case Builtin::Kind::Hash:
-  case Builtin::Kind::Jobs:
-  case Builtin::Kind::Kill:
-  case Builtin::Kind::Newgrp:
-  case Builtin::Kind::Printf:
-  case Builtin::Kind::Pwd:
-  case Builtin::Kind::Read:
-  case Builtin::Kind::Readonly:
-  case Builtin::Kind::Return:
-  case Builtin::Kind::Set:
-  case Builtin::Kind::Shift:
-  case Builtin::Kind::Source:
-  case Builtin::Kind::Test:
-  case Builtin::Kind::Times:
-  case Builtin::Kind::Trap:
-  case Builtin::Kind::True:
-  case Builtin::Kind::Type:
-  case Builtin::Kind::Ulimit:
-  case Builtin::Kind::Umask:
-  case Builtin::Kind::Unalias:
-  case Builtin::Kind::Unset:
-  case Builtin::Kind::Wait: return builtin_section::Posix;
-  default: return builtin_section::Bash;
-  }
+  return BUILTIN_SECTIONS[static_cast<usize>(kind)];
 }
 
 static fn print_builtin_columns(ExecContext &ec, Allocator allocator) throws

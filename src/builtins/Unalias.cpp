@@ -24,13 +24,6 @@ REGISTER_BUILTIN_FLAGS(Unalias);
 
 namespace koshka {
 
-Unalias::Unalias() = default;
-
-pure fn Unalias::kind() const wontthrow -> Builtin::Kind
-{
-  return Kind::Unalias;
-}
-
 fn Unalias::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const args = PARSE_BUILTIN_ARGS(ec);

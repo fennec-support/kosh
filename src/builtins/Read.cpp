@@ -45,10 +45,6 @@ REGISTER_BUILTIN_FLAGS(Read);
 
 namespace koshka {
 
-Read::Read() = default;
-
-pure fn Read::kind() const wontthrow -> Builtin::Kind { return Kind::Read; }
-
 fn Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const names = PARSE_BUILTIN_ARGS(ec);

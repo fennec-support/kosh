@@ -27,10 +27,6 @@ REGISTER_BUILTIN_FLAGS(Kill);
 
 namespace koshka {
 
-Kill::Kill() = default;
-
-pure fn Kill::kind() const wontthrow -> Builtin::Kind { return Kind::Kill; }
-
 fn Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();

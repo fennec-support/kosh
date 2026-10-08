@@ -333,13 +333,6 @@ fn run_load(const ExecContext &ec, EvalContext &cxt,
 
 } /* namespace */
 
-Koshconf::Koshconf() = default;
-
-pure fn Koshconf::kind() const wontthrow -> Builtin::Kind
-{
-  return Kind::Koshconf;
-}
-
 fn Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};

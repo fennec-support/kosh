@@ -27,10 +27,6 @@ REGISTER_BUILTIN_FLAGS(Bg);
 
 namespace koshka {
 
-Bg::Bg() = default;
-
-pure fn Bg::kind() const wontthrow -> Builtin::Kind { return Kind::Bg; }
-
 static fn resume_job_in_background(ExecContext &ec, EvalContext &cxt,
                                    job *job) throws -> void
 {

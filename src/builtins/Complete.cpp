@@ -80,8 +80,6 @@ REGISTER_BUILTIN_FLAGS(Complete);
 
 namespace koshka {
 
-Complete::Complete() = default;
-
 static pure fn action_short_flag(compgen_action action) wontthrow -> char
 {
   switch (action) {
@@ -227,11 +225,6 @@ static fn report_missing_slot_spec(const ExecContext &ec, EvalContext &cxt,
                             StringView{"The "} +
                                 find_completion_slot_name(slot).description +
                                 " completion specification was not found");
-}
-
-pure fn Complete::kind() const wontthrow -> Builtin::Kind
-{
-  return Kind::Complete;
 }
 
 fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32

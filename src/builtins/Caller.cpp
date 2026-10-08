@@ -25,10 +25,6 @@ REGISTER_BUILTIN_FLAGS(Caller);
 
 namespace koshka {
 
-Caller::Caller() = default;
-
-pure fn Caller::kind() const wontthrow -> Builtin::Kind { return Kind::Caller; }
-
 fn Caller::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};

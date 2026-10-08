@@ -24,13 +24,6 @@ REGISTER_BUILTIN_FLAGS(Continue);
 
 namespace koshka {
 
-Continue::Continue() = default;
-
-pure fn Continue::kind() const wontthrow -> Builtin::Kind
-{
-  return Kind::Continue;
-}
-
 fn Continue::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());

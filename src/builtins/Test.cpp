@@ -367,10 +367,6 @@ public:
 
 } /* namespace */
 
-Test::Test() = default;
-
-pure fn Test::kind() const wontthrow -> Builtin::Kind { return Kind::Test; }
-
 fn Test::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &arguments = ec.args();

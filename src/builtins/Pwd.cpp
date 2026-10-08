@@ -30,10 +30,6 @@ REGISTER_BUILTIN_FLAGS(Pwd);
 
 namespace koshka {
 
-Pwd::Pwd() = default;
-
-pure fn Pwd::kind() const wontthrow -> Builtin::Kind { return Kind::Pwd; }
-
 fn Pwd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const args = PARSE_BUILTIN_ARGS(ec);

@@ -34,10 +34,6 @@ REGISTER_BUILTIN_FLAGS(Dirs);
 
 namespace koshka {
 
-Dirs::Dirs() = default;
-
-pure fn Dirs::kind() const wontthrow -> Builtin::Kind { return Kind::Dirs; }
-
 fn Dirs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};

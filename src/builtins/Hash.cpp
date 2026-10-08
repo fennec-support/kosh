@@ -28,10 +28,6 @@ REGISTER_BUILTIN_FLAGS(Hash);
 
 namespace koshka {
 
-Hash::Hash() = default;
-
-pure fn Hash::kind() const wontthrow -> Builtin::Kind { return Kind::Hash; }
-
 fn Hash::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const args = PARSE_BUILTIN_ARGS(ec);

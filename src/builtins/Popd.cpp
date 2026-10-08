@@ -29,10 +29,6 @@ REGISTER_BUILTIN_FLAGS(Popd);
 
 namespace koshka {
 
-Popd::Popd() = default;
-
-pure fn Popd::kind() const wontthrow -> Builtin::Kind { return Kind::Popd; }
-
 fn Popd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};

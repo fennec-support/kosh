@@ -23,10 +23,6 @@ REGISTER_BUILTIN_FLAGS(Break);
 
 namespace koshka {
 
-Break::Break() = default;
-
-pure fn Break::kind() const wontthrow -> Builtin::Kind { return Kind::Break; }
-
 static fn report_break_out_of_range(const ExecContext &ec, EvalContext &cxt,
                                     StringView count) throws -> void
 {

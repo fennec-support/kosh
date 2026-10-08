@@ -43,10 +43,6 @@ REGISTER_BUILTIN_FLAGS(Type);
 
 namespace koshka {
 
-Type::Type() = default;
-
-pure fn Type::kind() const wontthrow -> Builtin::Kind { return Kind::Type; }
-
 fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const args = PARSE_BUILTIN_ARGS(ec);

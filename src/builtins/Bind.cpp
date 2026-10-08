@@ -38,10 +38,6 @@ REGISTER_BUILTIN_FLAGS(Bind);
 
 namespace koshka {
 
-Bind::Bind() = default;
-
-pure fn Bind::kind() const wontthrow -> Builtin::Kind { return Kind::Bind; }
-
 fn Bind::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};

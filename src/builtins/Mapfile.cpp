@@ -38,13 +38,6 @@ REGISTER_BUILTIN_FLAGS(Mapfile);
 
 namespace koshka {
 
-Mapfile::Mapfile() = default;
-
-pure fn Mapfile::kind() const wontthrow -> Builtin::Kind
-{
-  return Kind::Mapfile;
-}
-
 fn Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const args = PARSE_BUILTIN_ARGS(ec);

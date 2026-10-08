@@ -541,10 +541,6 @@ fn append_conversion(String &out, String &spec, char conv,
 
 } /* namespace */
 
-Printf::Printf() = default;
-
-pure fn Printf::kind() const wontthrow -> Builtin::Kind { return Kind::Printf; }
-
 fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());

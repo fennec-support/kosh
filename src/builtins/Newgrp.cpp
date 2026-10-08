@@ -27,10 +27,6 @@ REGISTER_BUILTIN_FLAGS(Newgrp);
 
 namespace koshka {
 
-Newgrp::Newgrp() = default;
-
-pure fn Newgrp::kind() const wontthrow -> Builtin::Kind { return Kind::Newgrp; }
-
 fn Newgrp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();

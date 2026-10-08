@@ -45,10 +45,6 @@ REGISTER_BUILTIN_FLAGS(Local);
 
 namespace koshka {
 
-Local::Local() = default;
-
-pure fn Local::kind() const wontthrow -> Builtin::Kind { return Kind::Local; }
-
 fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();

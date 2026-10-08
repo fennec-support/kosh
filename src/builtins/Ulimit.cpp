@@ -265,8 +265,4 @@ cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return 0;
 }
 
-Ulimit::Ulimit() = default;
-
-pure fn Ulimit::kind() const wontthrow -> Builtin::Kind { return Kind::Ulimit; }
-
 } /* namespace koshka */

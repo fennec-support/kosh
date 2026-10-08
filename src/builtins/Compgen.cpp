@@ -63,8 +63,6 @@ REGISTER_BUILTIN_FLAGS(Compgen);
 
 namespace koshka {
 
-Compgen::Compgen() = default;
-
 struct compgen_filter
 {
   explicit compgen_filter(Allocator allocator)
@@ -475,11 +473,6 @@ fn completion::remove_compgen_filtered(EvalContext &context,
   }
 
   candidates.truncate(kept_count);
-}
-
-pure fn Compgen::kind() const wontthrow -> Builtin::Kind
-{
-  return Kind::Compgen;
 }
 
 fn Compgen::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32

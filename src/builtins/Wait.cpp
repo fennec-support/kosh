@@ -49,10 +49,6 @@ fn find_job_by_process(JobTable &table, i64 process_id) wontthrow -> job *
 
 } /* namespace */
 
-Wait::Wait() = default;
-
-pure fn Wait::kind() const wontthrow -> Builtin::Kind { return Kind::Wait; }
-
 static fn wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32;
 
 fn Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32

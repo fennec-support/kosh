@@ -33,10 +33,6 @@ REGISTER_BUILTIN_FLAGS(Enable);
 
 namespace koshka {
 
-Enable::Enable() = default;
-
-pure fn Enable::kind() const wontthrow -> Builtin::Kind { return Kind::Enable; }
-
 fn Enable::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};

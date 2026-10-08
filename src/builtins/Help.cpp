@@ -28,10 +28,6 @@ REGISTER_BUILTIN_FLAGS(Help);
 
 namespace koshka {
 
-Help::Help() = default;
-
-pure fn Help::kind() const wontthrow -> Builtin::Kind { return Kind::Help; }
-
 enum class help_synopsis_layout : u8
 {
   Manpage,

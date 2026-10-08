@@ -28,10 +28,6 @@ REGISTER_BUILTIN_FLAGS(Unset);
 
 namespace koshka {
 
-Unset::Unset() = default;
-
-pure fn Unset::kind() const wontthrow -> Builtin::Kind { return Kind::Unset; }
-
 fn Unset::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const names = PARSE_BUILTIN_ARGS(ec);

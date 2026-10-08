@@ -33,10 +33,6 @@ REGISTER_BUILTIN_FLAGS(Cd);
 
 namespace koshka {
 
-Cd::Cd() = default;
-
-pure fn Cd::kind() const wontthrow -> Builtin::Kind { return Kind::Cd; }
-
 /* An absolute operand, or one led by dot or dot-dot, skips the CDPATH search.
  */
 static fn cdpath_search_applies(const String &operand) throws -> bool

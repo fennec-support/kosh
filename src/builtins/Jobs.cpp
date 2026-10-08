@@ -61,10 +61,6 @@ fn should_color_jobs(EvalContext &cxt) throws -> bool
 
 } /* namespace */
 
-Jobs::Jobs() = default;
-
-pure fn Jobs::kind() const wontthrow -> Builtin::Kind { return Kind::Jobs; }
-
 fn Jobs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const names = PARSE_BUILTIN_ARGS(ec);

@@ -36,13 +36,6 @@ REGISTER_BUILTIN_FLAGS(CommandBuiltin);
 
 namespace koshka {
 
-CommandBuiltin::CommandBuiltin() = default;
-
-pure fn CommandBuiltin::kind() const wontthrow -> Builtin::Kind
-{
-  return Kind::CommandBuiltin;
-}
-
 fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
     -> i32
 {

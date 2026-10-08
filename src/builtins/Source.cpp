@@ -27,10 +27,6 @@ REGISTER_BUILTIN_FLAGS(Source);
 
 namespace koshka {
 
-Source::Source() = default;
-
-pure fn Source::kind() const wontthrow -> Builtin::Kind { return Kind::Source; }
-
 fn Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());

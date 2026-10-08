@@ -626,10 +626,6 @@ fn append_comparison(String &out, const CommandResult &first,
 
 } /* namespace */
 
-Bench::Bench() = default;
-
-pure fn Bench::kind() const wontthrow -> Builtin::Kind { return Kind::Bench; }
-
 cold fn Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   /* The flag parser keeps argv[0], so the commands start at index 1. */

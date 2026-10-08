@@ -26,13 +26,6 @@ REGISTER_BUILTIN_FLAGS(Getopts);
 
 namespace koshka {
 
-Getopts::Getopts() = default;
-
-pure fn Getopts::kind() const wontthrow -> Builtin::Kind
-{
-  return Kind::Getopts;
-}
-
 fn Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();
