@@ -253,6 +253,10 @@ changes update this file.
   epoch the highlighter reads the command names, remembers the status of each
   command word after one PATH search, and looks plain operands up in the
   working directory listing, so a keystroke reads no file for a name it saw.
+  An empty Enter or Ctrl-C at the prompt starts a new epoch the same way. An
+  explicit completion starts its own epoch for directory listings, so it
+  stats each directory it lists once and reads it again only after a change,
+  while it keeps the PATH command names of the prompt.
 - An open completion menu narrows the gathered candidates in the editor. A
   command-name or path list, which `match_tier` ranked, narrows by the same
   exact, smart-case, and subsequence tiers, with the subsequence tier held to

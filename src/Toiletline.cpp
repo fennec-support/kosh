@@ -827,7 +827,7 @@ fn completion_session::complete(const char *buffer, size_t cursor,
     let const is_explicit_completion = for_listing != 0;
     if (is_explicit_completion) {
       context->program_resolver().begin_explicit_completion(
-          koshka::ProgramResolver::CompletionRefresh::Cached);
+          koshka::ProgramResolver::CompletionRefresh::Listings);
     }
     defer
     {

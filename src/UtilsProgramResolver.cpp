@@ -808,6 +808,9 @@ fn ProgramResolver::begin_explicit_completion(CompletionRefresh refresh) throws
 {
   if (m_explicit_completion_depth == 0) {
     switch (refresh) {
+    case CompletionRefresh::Listings:
+      begin_directory_validation_epoch();
+      [[fallthrough]];
     case CompletionRefresh::Cached:
       m_path_directories_validation_epoch = DIRECTORY_VALIDATION_EPOCH;
       m_command_names_validation_epoch = DIRECTORY_VALIDATION_EPOCH;

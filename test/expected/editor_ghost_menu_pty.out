@@ -7,6 +7,8 @@ ghost-end-runs PASS
 ghost-ctrl-e-accepts PASS
 ghost-ctrl-e-runs PASS
 ghost-reads-cdpath-after-a-pause PASS
+tab-lists-file-created-after-prompt PASS
+empty-enter-refreshes-directory-listings PASS
 menu-opens-with-all-candidates PASS
 menu-narrows-on-first-letter PASS
 menu-narrows-on-second-letter PASS

@@ -1789,7 +1789,7 @@ struct interactive_session
     }
     enter_line_editor(context);
     configure_line_editor(context);
-    read_accepted_line(context, prompt, right_prompt, transient_prompt,
+    read_accepted_line(context, line, prompt, right_prompt, transient_prompt,
                        exit_code, chunk);
 
     LOG(Info, "accepted an interactive line of %zu bytes",
@@ -1822,8 +1822,8 @@ struct interactive_session
     }
   }
 
-  fn read_accepted_line(EvalContext &context, const String &prompt,
-                        const String &right_prompt,
+  fn read_accepted_line(EvalContext &context, const command_line &line,
+                        const String &prompt, const String &right_prompt,
                         const String &transient_prompt, i32 exit_code,
                         script_chunk &chunk) throws -> void
   {
@@ -1890,6 +1890,8 @@ struct interactive_session
         chunk.history_event_number = accepted_history_event_number;
         break;
       }
+
+      prepare_completion(context, line);
     }
   }
 

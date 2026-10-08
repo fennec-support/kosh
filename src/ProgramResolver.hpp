@@ -99,6 +99,7 @@ public:
   enum class CompletionRefresh : u8
   {
     Cached,
+    Listings,
     Fresh,
   };
 

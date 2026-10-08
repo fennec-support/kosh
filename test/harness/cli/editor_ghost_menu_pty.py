@@ -8,7 +8,9 @@
 # terminal model replays the escape sequences the editor writes and tracks which
 # cells are drawn in the dim ghost color. The checks cover the ghost appearing
 # without Tab, its acceptance through Right, End, and Ctrl-E, a cd operand
-# found under CDPATH once a pause has indexed it, menu narrowing and
+# found under CDPATH once a pause has indexed it, a file a background job
+# creates after the prompt reaching Tab, an empty Enter refreshing the
+# listings the ghost reads, menu narrowing and
 # widening on every keystroke, Ctrl-W and Alt-Backspace refreshing an open menu
 # down to an empty line, Escape and Ctrl-C afterwards, and session functions and
 # aliases in ghost and Tab completion. A complete -C command runs once while a
@@ -796,6 +798,33 @@ def run_checks(binary, directory, command_directory, report):
         session.send(b"unset CDPATH\r")
         session.wait_until(is_line(""))
 
+        late_file = os.path.join(directory, "late", "late-file")
+        session.send(b"{ sleep 0.5; : > late/late-file; } &\r")
+        session.wait_until(is_line(""))
+        session.send(b"cat late/la\t")
+        session.pump(0.1)
+        deadline = time.monotonic() + WAIT_SECONDS
+        while not os.path.exists(late_file) and time.monotonic() < deadline:
+            session.pump(0.05)
+        session.send(b"\t")
+        report.record("tab-lists-file-created-after-prompt", session,
+                      lambda screen: get_state(screen) is not None
+                      and get_state(screen)[0].startswith("cat late/late-file"))
+        clear_line(session)
+
+        session.send(b"cat later/")
+        session.pump(0.3)
+        session.send(BACKSPACE * len("cat later/"))
+        session.wait_until(is_line(""))
+        open(os.path.join(directory, "later", "later-file"), "w").close()
+        session.send(b"\r")
+        session.wait_until(is_line(""))
+        session.pump(0.1)
+        session.send(b"cat later/la")
+        report.record("empty-enter-refreshes-directory-listings", session,
+                      is_line("cat later/la", "ter-file"))
+        clear_line(session)
+
         session.send(b"cat menu/menu-")
         session.send(b"\t")
         names = ["menu-apple", "menu-apricot", "menu-avocado", "menu-banana"]
@@ -1545,6 +1574,8 @@ def main():
         os.makedirs(os.path.join(directory, "zzlocal"))
         os.makedirs(os.path.join(directory, "zzhollow"))
         open(os.path.join(directory, "zzlocal", "inner.txt"), "w").close()
+        os.makedirs(os.path.join(directory, "late"))
+        os.makedirs(os.path.join(directory, "later"))
         os.makedirs(os.path.join(directory, "cdpath", "cdpath-target"))
         os.makedirs(os.path.join(directory, "bin"))
         with open(os.path.join(directory, "sub", "alpha-beta.txt"), "w") as handle:
