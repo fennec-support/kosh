@@ -25,42 +25,22 @@ namespace {
 /* A byte that may appear in a provably-constant arithmetic expression. Every
    letter and underscore is excluded, so no variable name and no hex prefix is
    folded. */
-pure fn is_constant_arithmetic_byte(char byte) wontthrow -> bool
+pure fn is_constant_arithmetic_text(StringView text) wontthrow -> bool
 {
-  switch (byte) {
-  case '0':
-  case '1':
-  case '2':
-  case '3':
-  case '4':
-  case '5':
-  case '6':
-  case '7':
-  case '8':
-  case '9':
-  case ' ':
-  case '\t':
-  case '\n':
-  case '\r':
-  case '(':
-  case ')':
-  case '+':
-  case '-':
-  case '*':
-  case '/':
-  case '%':
-  case '&':
-  case '|':
-  case '^':
-  case '~':
-  case '!':
-  case '<':
-  case '>':
-  case '=':
-  case '?':
-  case ':': return true;
-  default: return false;
-  }
+  static constexpr let CONSTANT_BYTES = [] {
+    constexpr char MEMBERS[] = "0123456789 \t\n\r()+-*/%&|^~!<>=?:";
+    struct
+    {
+      bool is_member[256]{};
+    } table;
+    for (usize i = 0; i + 1 < sizeof(MEMBERS); i++)
+      table.is_member[static_cast<u8>(MEMBERS[i])] = true;
+    return table;
+  }();
+
+  for (usize i = 0; i < text.length; i++)
+    if (!CONSTANT_BYTES.is_member[static_cast<u8>(text[i])]) return false;
+  return true;
 }
 
 /* A recorded constant is only substituted into arithmetic when its value is a
@@ -246,10 +226,8 @@ fn propagated_literal_word_value(const Token *token,
 
 fn try_fold_constant_arithmetic(StringView expression) wontthrow -> Maybe<i64>
 {
-  if (expression.length == 0) return None;
-
-  for (usize i = 0; i < expression.length; i++) {
-    if (!is_constant_arithmetic_byte(expression[i])) return None;
+  if (expression.length == 0 || !is_constant_arithmetic_text(expression)) {
+    return None;
   }
 
   try {
@@ -266,10 +244,8 @@ fn try_fold_constant_arithmetic(StringView expression) wontthrow -> Maybe<i64>
 fn try_fold_exact_constant_arithmetic(StringView expression) wontthrow
     -> Maybe<String>
 {
-  if (expression.length == 0) return None;
-
-  for (usize i = 0; i < expression.length; i++) {
-    if (!is_constant_arithmetic_byte(expression[i])) return None;
+  if (expression.length == 0 || !is_constant_arithmetic_text(expression)) {
+    return None;
   }
 
   try {
@@ -324,9 +300,7 @@ fn try_fold_arithmetic_with_constants(StringView expression,
       rewritten.append(recorded->view());
     }
 
-    for (usize j = 0; j < rewritten.count(); j++) {
-      if (!is_constant_arithmetic_byte(rewritten[j])) return None;
-    }
+    if (!is_constant_arithmetic_text(rewritten.view())) return None;
     return evaluate_constant_arithmetic_text(rewritten.view(),
                                              heap_allocator());
   } catch (const ErrorBase &) {
@@ -335,12 +309,6 @@ fn try_fold_arithmetic_with_constants(StringView expression,
         static_cast<int>(expression.length), expression.data);
     return None;
   }
-}
-
-static pure fn trim_arithmetic_whitespace(StringView text) wontthrow
-    -> StringView
-{
-  return text.trim_blanks();
 }
 
 enum class static_verdict_kind : u8
@@ -712,8 +680,7 @@ fn rule_fold_cstyle_for(const Expression *node, AnalysisContext &actx) throws
   if (loop_node->has_folded_condition()) return false;
 
   /* A blank condition is the for ((;;)) infinite form. */
-  let const condition = loop_node->condition_clause();
-  let const trimmed = trim_arithmetic_whitespace(condition);
+  let const trimmed = loop_node->condition_clause().trim_blanks();
   if (trimmed.length == 0) return false;
 
   /* A condition that reads the counter would freeze the loop at its first
@@ -742,9 +709,9 @@ fn rule_fold_cstyle_for(const Expression *node, AnalysisContext &actx) throws
   /* A constant zero condition skips the body, but the init clause still runs
      once the way C semantics require, so only a blank-init loop is a proven
      no-op. */
-  let const init_is_blank =
-      trim_arithmetic_whitespace(loop_node->init_clause()).length == 0;
-  if (*value == 0 && !is_exact_nonzero && init_is_blank) {
+  if (*value == 0 && !is_exact_nonzero &&
+      loop_node->init_clause().trim_blanks().length == 0)
+  {
     loop_node->set_fully_eliminated();
     actx.optimizer_eliminated_count++;
     if (actx.options.should_report_optimizer_diagnostics)

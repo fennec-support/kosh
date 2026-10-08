@@ -155,6 +155,12 @@ pure fn arithmetic_shift_right(i64 lhs, i64 rhs) wontthrow -> i64
   return static_cast<i64>(value);
 }
 
+wontreturn cold fn throw_division_by_zero() throws -> void
+{
+  throw ErrorWithDetails{"Division by zero",
+                         "The right operand evaluated to 0"};
+}
+
 static fn lex_arith_number(StringView from, i64 *out_value) throws -> usize;
 static fn lex_exact_arith_number(StringView from, ArithmeticValue *out_value,
                                  BumpArena &arena) throws -> usize;
@@ -209,22 +215,29 @@ public:
   ArithmeticValue cached_pi{};
   usize calculator_function_position{0};
 
-  wontreturn cold fn fail(StringView message, StringView note = {}) throws
+  wontreturn cold fn fail_at(usize start_position, usize length,
+                             StringView message, StringView note = {}) throws
       -> void
   {
     if (precise_base.has_value()) {
-      let const error_position = should_error_unset    ? pos
-                                 : pos < source.length ? pos
-                                 : source.is_empty()   ? 0
-                                                       : source.length - 1;
-      const SourceLocation location{precise_base->position + error_position, 1,
-                                    precise_base->source_name_index};
+      const SourceLocation location{precise_base->position + start_position,
+                                    length, precise_base->source_name_index};
       if (note.is_empty()) throw ErrorWithLocation{location, message};
       throw ErrorWithLocationAndDetails{location, message, note};
     }
 
     if (note.is_empty()) throw Error{String{message}};
     throw ErrorWithDetails{message, note};
+  }
+
+  wontreturn cold fn fail(StringView message, StringView note = {}) throws
+      -> void
+  {
+    let const error_position = should_error_unset    ? pos
+                               : pos < source.length ? pos
+                               : source.is_empty()   ? 0
+                                                     : source.length - 1;
+    fail_at(error_position, 1, message, note);
   }
 
   wontreturn cold fn fail_span(usize start_position, usize end_position,
@@ -239,16 +252,7 @@ public:
       end_position--;
     }
 
-    if (precise_base.has_value()) {
-      const SourceLocation location{precise_base->position + start_position,
-                                    end_position - start_position,
-                                    precise_base->source_name_index};
-      if (note.is_empty()) throw ErrorWithLocation{location, message};
-      throw ErrorWithLocationAndDetails{location, message, note};
-    }
-
-    if (note.is_empty()) throw Error{String{message}};
-    throw ErrorWithDetails{message, note};
+    fail_at(start_position, end_position - start_position, message, note);
   }
 
   fn skip_spaces() wontthrow -> void
@@ -280,20 +284,10 @@ public:
 
     let const value = context->get_variable_value(name);
     if (!value.has_value()) {
-      if (should_error_unset && !m_is_skipping) {
-        let const message = "The variable '" + String{name} + "' is not set";
-        if (precise_base.has_value()) {
-          throw ErrorWithLocation{
-              SourceLocation{precise_base->position + name_position,
-                             name.length, precise_base->source_name_index},
-              message.view()
-          };
-        }
-        throw Error{steal(message)};
-      }
-      /* An unset name reports under the strict mood, a skipped ternary branch
-         never does. */
-      if (!m_is_skipping) context->report_unset_reference(name);
+      if (should_error_unset)
+        fail_at(name_position, name.length,
+                "The variable '" + String{name} + "' is not set");
+      context->report_unset_reference(name);
       return ArithmeticValue{};
     }
     return evaluate_operand_value(value->view());
@@ -446,21 +440,11 @@ public:
     if (pos == source.length) return ArithmeticValue{};
     let const result = parse_comma();
     skip_spaces();
-    if (pos != source.length) {
-      if (should_error_unset && precise_base.has_value()) {
-        throw ErrorWithLocationAndDetails{
-            SourceLocation{precise_base->position + pos, source.length - pos,
-                           precise_base->source_name_index},
-            "Unexpected '" + String{source.substring(pos)}
-            +
-                "' after the expression",
-            "An operator is missing between two values"
-        };
-      }
-      fail("Unexpected '" + String{source.substring(pos)} +
-               "' after the expression",
-           "An operator is missing between two values");
-    }
+    if (pos != source.length)
+      fail_at(pos, should_error_unset ? source.length - pos : 1,
+              "Unexpected '" + String{source.substring(pos)} +
+                  "' after the expression",
+              "An operator is missing between two values");
     return result;
   }
 
@@ -682,44 +666,11 @@ public:
         continue;
       }
       try {
-        switch (op.kind) {
-        case 'P':
-          if (rhs.is_negative() && !bc_scale.has_value()) {
-            if (m_is_skipping) {
-              lhs = ArithmeticValue{};
-              break;
-            }
-            fail_span(rhs_start, pos, "Exponent less than 0",
-                      "'**' requires a non-negative exponent");
-          }
-          lhs = arith_apply_binop('P', lhs, rhs, is_exact, arena, bc_scale);
-          break;
-        case '/':
-          if (rhs.is_zero()) {
-            if (m_is_skipping) {
-              lhs = ArithmeticValue{};
-              break;
-            }
-            fail_span(rhs_start, pos, "Division by zero",
-                      "The right operand evaluated to 0");
-          }
-          lhs = arith_apply_binop('/', lhs, rhs, is_exact, arena, bc_scale);
-          break;
-        case '%':
-          if (rhs.is_zero()) {
-            if (m_is_skipping) {
-              lhs = ArithmeticValue{};
-              break;
-            }
-            fail_span(rhs_start, pos, "Division by zero",
-                      "The right operand evaluated to 0");
-          }
-          lhs = arith_apply_binop('%', lhs, rhs, is_exact, arena, bc_scale);
-          break;
-        default:
-          lhs = arith_apply_binop(op.kind, lhs, rhs, is_exact, arena, bc_scale);
-          break;
+        if (op.kind == 'P' && rhs.is_negative() && !bc_scale.has_value()) {
+          fail_span(rhs_start, pos, "Exponent less than 0",
+                    "'**' requires a non-negative exponent");
         }
+        lhs = arith_apply_binop(op.kind, lhs, rhs, is_exact, arena, bc_scale);
       } catch (const ErrorWithLocation &) {
         throw;
       } catch (const ErrorBase &error) {
@@ -1443,20 +1394,10 @@ public:
     if (pos >= source.length || !is_number_continuation(source[pos])) return;
 
     let const token = source.substring(number_start);
-    usize base = 10;
+    usize base = arithmetic_internal::detect_radix_prefix(token).radix;
     if (let const hash = token.find_character('#'); hash.has_value()) {
       base = static_cast<usize>(
           parse_arithmetic_operand(token.substring_of_length(0, *hash)));
-    } else if (token.length >= 2 && token[0] == '0' &&
-               (token[1] == 'x' || token[1] == 'X'))
-    {
-      base = 16;
-    } else if (token.length >= 2 && token[0] == '0' &&
-               (token[1] == 'b' || token[1] == 'B'))
-    {
-      base = 2;
-    } else if (token[0] == '0') {
-      base = 8;
     }
 
     usize end = pos;
@@ -1518,63 +1459,56 @@ public:
   }
 };
 
+struct explicit_radix
+{
+  u32 radix;
+  usize digit_start;
+};
+
+alwaysinline static fn lex_explicit_radix(StringView from) throws
+    -> Maybe<explicit_radix>
+{
+  let const base_length = arithmetic_internal::count_leading_digits(from, 10);
+  if (base_length == 0 || base_length >= from.length ||
+      from[base_length] != '#')
+  {
+    return None;
+  }
+
+  let const base =
+      parse_arithmetic_operand(from.substring_of_length(0, base_length));
+  if (base < 2 || base > 64) {
+    throw ErrorWithDetails{"The arithmetic base must be between 2 and 64",
+                           "Use `base#digits` with a base from 2 to 64"};
+  }
+
+  return explicit_radix{static_cast<u32>(base), base_length + 1};
+}
+
 static fn lex_arith_number(StringView from, i64 *out_value) throws -> usize
 {
-  if (let const base_length =
-          arithmetic_internal::count_leading_digits(from, 10);
-      base_length > 0 && base_length < from.length && from[base_length] == '#')
+  if (let const explicit_base = lex_explicit_radix(from);
+      explicit_base.has_value())
   {
-    let const base =
-        parse_arithmetic_operand(from.substring_of_length(0, base_length));
-    if (base < 2 || base > 64) {
-      throw ErrorWithDetails{"The arithmetic base must be between 2 and 64",
-                             "Use `base#digits` with a base from 2 to 64"};
-    }
-    let const do_digit_value = [base](char c) -> i64 {
-      if (c >= '0' && c <= '9') {
-        return c - '0';
-      }
-      if (c >= 'a' && c <= 'z') {
-        return c - 'a' + 10;
-      }
-      if (c >= 'A' && c <= 'Z') {
-        return base <= 36 ? c - 'A' + 10 : c - 'A' + 36;
-      }
-      if (c == '@') return 62;
-      if (c == '_') return 63;
-      return -1;
-    };
+    let const radix = explicit_base->radix;
     u64 value = 0;
-    usize i = base_length + 1;
+    usize i = explicit_base->digit_start;
     while (i < from.length) {
-      let const digit = do_digit_value(from[i]);
-      if (digit < 0 || digit >= base) {
-        break;
-      }
+      let const digit = arithmetic_internal::radix_digit_value(from[i], radix);
+      if (digit >= radix) break;
       /* The accumulation wraps in the unsigned domain so an oversized base#
          literal does not trigger signed-overflow. */
-      value = value * static_cast<u64>(base) + static_cast<u64>(digit);
+      value = value * radix + digit;
       i++;
     }
     *out_value = static_cast<i64>(value);
     return i;
   }
 
-  usize consumed;
-  if (from.length >= 2 && from[0] == '0' && (from[1] == 'x' || from[1] == 'X'))
-  {
-    consumed =
-        2 + arithmetic_internal::count_leading_digits(from.substring(2), 16);
-  } else if (from.length >= 2 && from[0] == '0' &&
-             (from[1] == 'b' || from[1] == 'B'))
-  {
-    consumed =
-        2 + arithmetic_internal::count_leading_digits(from.substring(2), 2);
-  } else if (from.length >= 1 && from[0] == '0') {
-    consumed = arithmetic_internal::count_leading_digits(from, 8);
-  } else {
-    consumed = arithmetic_internal::count_leading_digits(from, 10);
-  }
+  let const detected = arithmetic_internal::detect_radix_prefix(from);
+  usize consumed = detected.prefix_length +
+                   arithmetic_internal::count_leading_digits(
+                       from.substring(detected.prefix_length), detected.radix);
   if (consumed == 0) consumed = 1;
   *out_value = parse_arithmetic_operand(from.substring_of_length(0, consumed));
   return consumed;
@@ -1583,48 +1517,16 @@ static fn lex_arith_number(StringView from, i64 *out_value) throws -> usize
 static fn lex_exact_arith_number(StringView from, ArithmeticValue *out_value,
                                  BumpArena &arena) throws -> usize
 {
-  let const do_count_digits = [](StringView text, u32 radix)
-                                  wontthrow -> usize {
-    usize digit_count = 0;
-
-    while (digit_count < text.length) {
-      let const byte = text[digit_count];
-      i32 digit = -1;
-      if (byte >= '0' && byte <= '9')
-        digit = byte - '0';
-      else if (byte >= 'a' && byte <= 'z')
-        digit = byte - 'a' + 10;
-      else if (byte >= 'A' && byte <= 'Z')
-        digit = radix <= 36 ? byte - 'A' + 10 : byte - 'A' + 36;
-      else if (byte == '@')
-        digit = 62;
-      else if (byte == '_')
-        digit = 63;
-      if (digit < 0 || static_cast<u32>(digit) >= radix) break;
-      digit_count++;
-    }
-
-    return digit_count;
-  };
-
-  if (let const base_length =
-          arithmetic_internal::count_leading_digits(from, 10);
-      base_length > 0 && base_length < from.length && from[base_length] == '#')
+  if (let const explicit_base = lex_explicit_radix(from);
+      explicit_base.has_value())
   {
-    let const base =
-        parse_arithmetic_operand(from.substring_of_length(0, base_length));
-    if (base < 2 || base > 64) {
-      throw ErrorWithDetails{"The arithmetic base must be between 2 and 64",
-                             "Use `base#digits` with a base from 2 to 64"};
-    }
-
-    let const digit_count = do_count_digits(from.substring(base_length + 1),
-                                            static_cast<u32>(base));
-    let const consumed = base_length + 1 + digit_count;
-    *out_value = ArithmeticValue::parse(
-        from.substring_of_length(base_length + 1, digit_count),
-        static_cast<u32>(base), arena);
-    return consumed;
+    let const digits = from.substring(explicit_base->digit_start);
+    let const digit_count =
+        arithmetic_internal::count_leading_digits(digits, explicit_base->radix);
+    *out_value =
+        ArithmeticValue::parse(digits.substring_of_length(0, digit_count),
+                               explicit_base->radix, arena);
+    return explicit_base->digit_start + digit_count;
   }
 
   let const decimal_integer_count =
@@ -1815,17 +1717,15 @@ static fn bc_apply_binop(char kind, const ArithmeticValue &lhs,
                          const ArithmeticValue &rhs, u32 scale,
                          BumpArena &arena) throws -> ArithmeticValue
 {
-  if ((kind == '/' || kind == '%') && rhs.is_zero())
-    throw ErrorWithDetails{"Division by zero",
-                           "The right operand evaluated to 0"};
+  if ((kind == '/' || kind == '%') && rhs.is_zero()) {
+    throw_division_by_zero();
+  }
 
   switch (kind) {
   case '*': {
     let const combined_scale =
         static_cast<u64>(lhs.get_decimal_scale()) + rhs.get_decimal_scale();
-    let desired_scale = lhs.get_decimal_scale() > rhs.get_decimal_scale()
-                            ? lhs.get_decimal_scale()
-                            : rhs.get_decimal_scale();
+    let desired_scale = ArithmeticValue::wider_decimal_scale(lhs, rhs);
     if (scale > desired_scale) desired_scale = scale;
     if (combined_scale < desired_scale)
       desired_scale = static_cast<u32>(combined_scale);
@@ -1893,16 +1793,10 @@ hot static fn arith_apply_binop(char kind, const ArithmeticValue &lhs,
       return ArithmeticValue{arithmetic_power(left, right)};
     case '*': return ArithmeticValue{arithmetic_multiply(left, right)};
     case '/':
-      if (right == 0) {
-        throw ErrorWithDetails{"Division by zero",
-                               "The right operand evaluated to 0"};
-      }
+      if (right == 0) throw_division_by_zero();
       return ArithmeticValue{arithmetic_divide(left, right)};
     case '%':
-      if (right == 0) {
-        throw ErrorWithDetails{"Division by zero",
-                               "The right operand evaluated to 0"};
-      }
+      if (right == 0) throw_division_by_zero();
       return ArithmeticValue{arithmetic_modulo(left, right)};
     case '+': return ArithmeticValue{arithmetic_add(left, right)};
     case '-': return ArithmeticValue{arithmetic_subtract(left, right)};
@@ -1926,25 +1820,20 @@ hot static fn arith_apply_binop(char kind, const ArithmeticValue &lhs,
 
   if (bc_scale.has_value() &&
       (kind == '*' || kind == '/' || kind == '%' || kind == 'P'))
+  {
     return bc_apply_binop(kind, lhs, rhs, *bc_scale, arena);
+  }
+  if ((kind == '/' || kind == '%') && rhs.is_zero()) {
+    throw_division_by_zero();
+  }
 
   let const allocator = bump_allocator(arena);
 
   switch (kind) {
   case 'P': return ArithmeticValue::power(lhs, rhs, arena);
   case '*': return ArithmeticValue::multiply(lhs, rhs, arena);
-  case '/':
-    if (rhs.is_zero()) {
-      throw ErrorWithDetails{"Division by zero",
-                             "The right operand evaluated to 0"};
-    }
-    return ArithmeticValue::divide(lhs, rhs, arena);
-  case '%':
-    if (rhs.is_zero()) {
-      throw ErrorWithDetails{"Division by zero",
-                             "The right operand evaluated to 0"};
-    }
-    return ArithmeticValue::modulo(lhs, rhs, arena);
+  case '/': return ArithmeticValue::divide(lhs, rhs, arena);
+  case '%': return ArithmeticValue::modulo(lhs, rhs, arena);
   case '+': return ArithmeticValue::add(lhs, rhs, arena);
   case '-': return ArithmeticValue::subtract(lhs, rhs, arena);
   case 'L': return ArithmeticValue::shift_left(lhs, rhs, arena);
@@ -1955,9 +1844,9 @@ hot static fn arith_apply_binop(char kind, const ArithmeticValue &lhs,
   case 'g': return ArithmeticValue{lhs.compare(rhs, allocator) >= 0 ? 1 : 0};
   case 'e': return ArithmeticValue{lhs.compare(rhs, allocator) == 0 ? 1 : 0};
   case 'n': return ArithmeticValue{lhs.compare(rhs, allocator) != 0 ? 1 : 0};
-  case '&': return ArithmeticValue::bit_and(lhs, rhs, arena);
-  case '^': return ArithmeticValue::bit_xor(lhs, rhs, arena);
-  case '|': return ArithmeticValue::bit_or(lhs, rhs, arena);
+  case '&':
+  case '^':
+  case '|': return ArithmeticValue::bitwise(kind, lhs, rhs, arena);
   default:
     unreachable("the cached arithmetic evaluator received invalid binary "
                 "operator '%c'",
@@ -2428,29 +2317,29 @@ pure fn obvious_xor_power_operator_position(StringView expression) wontthrow
     -> Maybe<usize>
 {
   usize position = 0;
-  while (position < expression.length &&
-         lexer::is_whitespace(expression[position]))
-    position++;
-  let const left_start = position;
-  while (position < expression.length && lexer::is_number(expression[position]))
-    position++;
-  if (position == left_start) return None;
-  while (position < expression.length &&
-         lexer::is_whitespace(expression[position]))
-    position++;
-  if (position >= expression.length || expression[position] != '^') return None;
+  let const do_skip = [&](bool (*is_member)(char)) wontthrow -> usize {
+    let const start_position = position;
+    while (position < expression.length && is_member(expression[position])) {
+      position++;
+    }
+    return position - start_position;
+  };
+
+  do_skip(lexer::is_whitespace);
+  if (do_skip(lexer::is_number) == 0) return None;
+  do_skip(lexer::is_whitespace);
+  if (position >= expression.length || expression[position] != '^') {
+    return None;
+  }
+
   let const operator_position = position++;
-  if (position < expression.length && expression[position] == '=') return None;
-  while (position < expression.length &&
-         lexer::is_whitespace(expression[position]))
-    position++;
-  let const right_start = position;
-  while (position < expression.length && lexer::is_number(expression[position]))
-    position++;
-  if (position == right_start) return None;
-  while (position < expression.length &&
-         lexer::is_whitespace(expression[position]))
-    position++;
+  if (position < expression.length && expression[position] == '=') {
+    return None;
+  }
+
+  do_skip(lexer::is_whitespace);
+  if (do_skip(lexer::is_number) == 0) return None;
+  do_skip(lexer::is_whitespace);
   if (position != expression.length) return None;
 
   return operator_position;

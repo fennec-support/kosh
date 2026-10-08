@@ -13,6 +13,7 @@
 
 #include "base/ArrayList.hpp"
 #include "base/Common.hpp"
+#include "base/Maybe.hpp"
 #include "base/String.hpp"
 #include "base/StringView.hpp"
 
@@ -65,18 +66,18 @@ public:
   static fn shift_right(const ArithmeticValue &value,
                         const ArithmeticValue &count, BumpArena &arena) throws
       -> ArithmeticValue;
-  static fn bit_and(const ArithmeticValue &left, const ArithmeticValue &right,
-                    BumpArena &arena) throws -> ArithmeticValue;
-  static fn bit_or(const ArithmeticValue &left, const ArithmeticValue &right,
-                   BumpArena &arena) throws -> ArithmeticValue;
-  static fn bit_xor(const ArithmeticValue &left, const ArithmeticValue &right,
-                    BumpArena &arena) throws -> ArithmeticValue;
+  static fn bitwise(char kind, const ArithmeticValue &left,
+                    const ArithmeticValue &right, BumpArena &arena) throws
+      -> ArithmeticValue;
   static fn bit_not(const ArithmeticValue &value, BumpArena &arena) throws
       -> ArithmeticValue;
   static fn absolute(const ArithmeticValue &value, BumpArena &arena) throws
       -> ArithmeticValue;
   static fn integer_part(const ArithmeticValue &value, BumpArena &arena) throws
       -> ArithmeticValue;
+  static pure fn wider_decimal_scale(const ArithmeticValue &left,
+                                     const ArithmeticValue &right) wontthrow
+      -> u32;
 
 private:
   struct Storage;
@@ -94,6 +95,12 @@ private:
                               u64 *&limbs) throws -> ArithmeticValue;
   static fn from_power_of_two(usize bit_position, bool is_negative,
                               BumpArena &arena) throws -> ArithmeticValue;
+  static pure fn is_i64_division(const ArithmeticValue &left,
+                                 const ArithmeticValue &right) wontthrow
+      -> bool;
+  static fn get_shift_bit_count(const ArithmeticValue &value,
+                                const ArithmeticValue &count) throws
+      -> Maybe<usize>;
 
   pure fn is_promoted() const wontthrow -> bool;
   pure fn get_storage() const wontthrow -> const Storage *;
@@ -114,23 +121,29 @@ struct radix_prefix
   usize prefix_length;
 };
 
+alwaysinline pure fn radix_digit_value(char byte, u32 radix) wontthrow -> u32
+{
+  if (byte >= '0' && byte <= '9') {
+    return static_cast<u32>(byte - '0');
+  }
+  if (byte >= 'a' && byte <= 'z') {
+    return static_cast<u32>(byte - 'a') + 10;
+  }
+  if (byte >= 'A' && byte <= 'Z') {
+    return static_cast<u32>(byte - 'A') + (radix <= 36 ? 10 : 36);
+  }
+  if (byte == '@') return 62;
+  if (byte == '_') return 63;
+  return 64;
+}
+
 alwaysinline pure fn count_leading_digits(StringView text, u32 radix) wontthrow
     -> usize
 {
   usize length = 0;
 
-  while (length < text.length) {
-    let const current_byte = text[length];
-    u32 digit;
-    if (current_byte >= '0' && current_byte <= '9')
-      digit = static_cast<u32>(current_byte - '0');
-    else if (current_byte >= 'a' && current_byte <= 'f')
-      digit = static_cast<u32>(current_byte - 'a') + 10;
-    else if (current_byte >= 'A' && current_byte <= 'F')
-      digit = static_cast<u32>(current_byte - 'A') + 10;
-    else
-      break;
-    if (digit >= radix) break;
+  while (length < text.length && radix_digit_value(text[length], radix) < radix)
+  {
     length++;
   }
 
