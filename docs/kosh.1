@@ -1841,7 +1841,8 @@ to the current session.
 .IP
 A boolean is written as on or off and is also read as true, false, 1, or 0. An
 enumeration is written by name. A string must be valid UTF-8, and
-history.max_entries is a non-negative decimal integer. An unknown option or
+history.max_entries is a decimal integer from 0 to 2147483647. An unknown
+option or
 value, and a file that
 cannot be read or written, is an error with status 1, and a malformed form
 exits with status 2.

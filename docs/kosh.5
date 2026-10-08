@@ -135,8 +135,8 @@ line, blanks included. A value cannot span lines.
 .PP
 A boolean is written as on or off and is also read as true, false, 1, or 0. An
 enumeration is written by name. A string is taken as written, and must be valid
-UTF-8 without a NUL byte. history.max_entries is a non-negative decimal
-integer. startup.init_moods is a comma-separated list of the mood names
+UTF-8 without a NUL byte. history.max_entries is a decimal integer from 0 to
+2147483647. startup.init_moods is a comma-separated list of the mood names
 .B \-L
 accepts, such as kosh, sh, bash, and bash-posix. An empty name is skipped.
 .B koshconf

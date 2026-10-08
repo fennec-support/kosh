@@ -86,6 +86,12 @@ echo "== string values are validated:"
 echo "rc=$?"
 koshconf set history.max_entries -- -1
 echo "rc=$?"
+koshconf set history.max_entries 99999999999999999999
+echo "rc=$?"
+koshconf set history.max_entries 2147483648
+echo "rc=$?"
+koshconf set history.max_entries 2147483647
+echo "rc=$?"
 koshconf set history.file_path $'"'"'a\xffb'"'"'
 echo "rc=$?"
 koshconf set history.max_entries 0

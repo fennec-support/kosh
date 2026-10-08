@@ -26,7 +26,7 @@ mood=kosh
 rc=0
 == a byte order mark is skipped, and raw bytes are escaped in warnings:
 0
-HOME/.config/kosh/kosh.conf:2:21: warning: Invalid value '-5' for 'history.max_entries', expected a non-negative decimal integer, skipping it.
+HOME/.config/kosh/kosh.conf:2:21: warning: Invalid value '-5' for 'history.max_entries', expected a decimal integer from 0 to 2147483647, skipping it.
      2 |  history.max_entries=-5
        |                      ^~
 HOME/.config/kosh/kosh.conf:3:19: warning: Invalid value 'a\xffb' for 'history.file_path', expected valid UTF-8 text, skipping it.

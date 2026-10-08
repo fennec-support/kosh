@@ -30,6 +30,7 @@ constexpr u32 MAX_CODEPOINT = 0x10ffff;
 constexpr u32 INVALID_CODEPOINT = MAX_CODEPOINT + 1;
 constexpr StringView UTF8_BYTE_ORDER_MARK{"\xef\xbb\xbf"};
 constexpr StringView HISTORY_MAX_ENTRIES_NAME{"history.max_entries"};
+constexpr u64 HISTORY_MAX_ENTRIES_LIMIT = 2147483647;
 
 enum class escape_style : u8
 {
@@ -74,16 +75,19 @@ fn is_valid_utf8(StringView text) wontthrow -> bool
   return true;
 }
 
-fn is_decimal_count(StringView text) throws -> bool
+fn is_decimal_count(StringView text) wontthrow -> bool
 {
   if (text.is_empty()) return false;
+  u64 value = 0;
   for (usize position = 0; position < text.count(); position++) {
     if (text[position] < '0' || text[position] > '9') {
       return false;
     }
+    value = value * 10 + static_cast<u64>(text[position] - '0');
+    if (value > HISTORY_MAX_ENTRIES_LIMIT) return false;
   }
 
-  return !text.to<i64>().is_error();
+  return true;
 }
 
 fn append_escaped_text(String &out, StringView text, escape_style style) throws
@@ -433,7 +437,7 @@ fn find_koshconf_value_problem(const option_descriptor &option,
   let const is_count =
       StringView{option.koshconf_name} == HISTORY_MAX_ENTRIES_NAME;
   if (is_count && !is_decimal_count(value)) {
-    return do_describe("a non-negative decimal integer");
+    return do_describe("a decimal integer from 0 to 2147483647");
   }
   if (option.storage == option_storage::InitMoods) {
     let moods = ArrayList<mimic_mood>{heap_allocator()};

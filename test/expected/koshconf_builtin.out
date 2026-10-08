@@ -412,16 +412,25 @@ off
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
 rc=1
 == string values are validated:
--c:1:34: error: Builtin `koshconf`: Invalid value '12x' for 'history.max_entries', expected a non-negative decimal integer.
+-c:1:34: error: Builtin `koshconf`: Invalid value '12x' for 'history.max_entries', expected a decimal integer from 0 to 2147483647.
      1 |  koshconf set history.max_entries 12x
        |                                   ^~~
 rc=1
--c:3:37: error: Builtin `koshconf`: Invalid value '-1' for 'history.max_entries', expected a non-negative decimal integer.
+-c:3:37: error: Builtin `koshconf`: Invalid value '-1' for 'history.max_entries', expected a decimal integer from 0 to 2147483647.
      3 |  koshconf set history.max_entries -- -1
        |                                      ^~
 rc=1
--c:5:32: error: Builtin `koshconf`: Invalid value 'a\xffb' for 'history.file_path', expected valid UTF-8 text.
-     5 |  koshconf set history.file_path $'a\xffb'
+-c:5:34: error: Builtin `koshconf`: Invalid value '99999999999999999999' for 'history.max_entries', expected a decimal integer from 0 to 2147483647.
+     5 |  koshconf set history.max_entries 99999999999999999999
+       |                                   ^~~~~~~~~~~~~~~~~~~~
+rc=1
+-c:7:34: error: Builtin `koshconf`: Invalid value '2147483648' for 'history.max_entries', expected a decimal integer from 0 to 2147483647.
+     7 |  koshconf set history.max_entries 2147483648
+       |                                   ^~~~~~~~~~
+rc=1
+rc=0
+-c:11:32: error: Builtin `koshconf`: Invalid value 'a\xffb' for 'history.file_path', expected valid UTF-8 text.
+    11 |  koshconf set history.file_path $'a\xffb'
        |                                 ^~~~~~~~~
 rc=1
 0
