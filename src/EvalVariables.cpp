@@ -435,7 +435,7 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
     case '@': {
       let separator = ' ';
       let has_separator = true;
-      if (first_byte == '*') {
+      if (first_byte == '*' || runtime_state().is_posix_mode()) {
         let const ifs = variable_store().field_separators();
         has_separator = !ifs.is_empty();
         if (has_separator) separator = ifs[0];

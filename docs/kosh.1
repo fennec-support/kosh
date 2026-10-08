@@ -1329,6 +1329,9 @@ field per positional parameter. The form "$*" joins the parameters with the
 first byte of IFS. In the sh mood, as in dash, a prefix or suffix removal on
 $@ or $* matches the parameters as one string whose pieces are the parameters,
 so "${@%%?}" can drop later parameters and "${@#?}" shortens only the first.
+In the sh mood a $@ that becomes one string, as in an assignment, a case word,
+or a here-document, joins the parameters with the first byte of IFS, or with
+nothing when IFS is empty, as dash does. The bash moods join it with a space.
 .SS Indexed arrays
 An indexed array is assigned with a=(x y z). An element is assigned with
 a[2]=z. The form a+=(w) appends elements. An opening parenthesis directly after
