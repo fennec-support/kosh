@@ -1514,12 +1514,15 @@ struct script_cursor
     should_quit = true;
   }
 
-  fn read_next_command(EvalContext &context, script_chunk &chunk) throws -> void
+  fn read_next_command(EvalContext &context, script_chunk &chunk,
+                       bool is_fresh_evaluator) throws -> void
   {
     chunk.contents = FLAG_COMMAND.take_next();
     chunk.command_string_name = COMMAND_STRING_SOURCE_NAME;
-    context.execution_store().set_execution_string(
-        String{heap_allocator(), chunk.contents.view()});
+    if (!is_fresh_evaluator) {
+      context.execution_store().set_execution_string(
+          String{heap_allocator(), chunk.contents.view()});
+    }
     LOG(Info, "taking the next -c command string, %zu bytes",
         chunk.contents.count());
     chunk.root_frame_call_site =
@@ -2323,7 +2326,7 @@ fn kosh_main(int argc, char **argv) -> int
       if (input.should_read_stdin) {
         cursor.read_standard_input(chunk);
       } else if (input.should_execute_commands && !FLAG_COMMAND.at_end()) {
-        cursor.read_next_command(context, chunk);
+        cursor.read_next_command(context, chunk, inherited.state.has_value());
         chunk.is_fresh_evaluator_command = inherited.state.has_value();
         did_register_origin = context.register_inherited_source_origin(
             inherited.source_origin.view(), chunk.contents,

@@ -981,7 +981,7 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
 }
 
 static constexpr u32 SUBSHELL_BOOTSTRAP_MAGIC = 0x4b534842U;
-static constexpr u32 SUBSHELL_BOOTSTRAP_VERSION = 20U;
+static constexpr u32 SUBSHELL_BOOTSTRAP_VERSION = 21U;
 static constexpr u32 NO_BOOTSTRAP_PROCESS = UINT32_MAX;
 static constexpr u32 NO_BARE_PROGRAM_PATH = UINT32_MAX;
 
@@ -1039,6 +1039,7 @@ enum class wire_section : u8
   Control,
   Programs,
   Origin,
+  Diagnostics,
 };
 
 enum class local_binding_wire_flag : u8
@@ -1198,6 +1199,15 @@ fn StartupStore::append_wire(String &output) const throws -> void
 {
   append_wire_section(output, wire_section::Startup, [&](String &payload) {
     payload.push(static_cast<char>(m_is_restricted_shell));
+    payload.push(static_cast<char>(m_is_login_shell));
+    append_subshell_bootstrap_text(payload, m_init_moods.view());
+  });
+}
+
+fn DiagnosticsStore::append_wire(String &output) const throws -> void
+{
+  append_wire_section(output, wire_section::Diagnostics, [&](String &payload) {
+    payload.push(static_cast<char>(m_source_traces_enabled));
   });
 }
 
@@ -1774,13 +1784,28 @@ fn VariableStore::from_wire(subshell_bootstrap_reader &reader,
 }
 
 fn StartupStore::from_wire(subshell_bootstrap_reader &reader,
-                           bool &is_restricted_shell) wontthrow -> bool
+                           startup_wire &wire) throws -> bool
 {
   subshell_bootstrap_reader payload;
   if (!reader.read_section(wire_section::Startup, payload)) return false;
 
-  is_restricted_shell = payload.read_u8() != 0;
+  if (!read_subshell_bootstrap_bool(payload, wire.is_restricted_shell) ||
+      !read_subshell_bootstrap_bool(payload, wire.is_login_shell))
+  {
+    return false;
+  }
+  wire.init_moods = String{heap_allocator(), payload.read_text()};
   return payload.is_fully_read();
+}
+
+fn DiagnosticsStore::from_wire(subshell_bootstrap_reader &reader,
+                               bool &is_source_traces_enabled) wontthrow -> bool
+{
+  subshell_bootstrap_reader payload;
+  if (!reader.read_section(wire_section::Diagnostics, payload)) return false;
+
+  return read_subshell_bootstrap_bool(payload, is_source_traces_enabled) &&
+         payload.is_fully_read();
 }
 
 fn FunctionStore::from_wire(subshell_bootstrap_reader &reader,
@@ -2441,6 +2466,7 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
   trap_store().append_wire(body);
   runtime_control_store().append_wire(body);
   program_resolver().append_wire(body);
+  diagnostics_store().append_wire(body);
 
   if (body.count() > UINT32_MAX) throw std::bad_alloc{};
   append_subshell_bootstrap_u32(source, SUBSHELL_BOOTSTRAP_MAGIC);
@@ -2907,7 +2933,8 @@ fn EvalContext::apply_subshell_bootstrap(
   let getopts = getopts_cursor{};
   let runtime = RuntimeState{};
   let variables = variable_wire{};
-  bool is_restricted_shell_identity = false;
+  let startup = startup_wire{};
+  bool is_source_traces_enabled = true;
   let functions = function_wire{};
   let local_scopes = ArrayList<ArrayList<local_binding>>{heap_allocator()};
   let completion = completion_snapshot{
@@ -2922,13 +2949,14 @@ fn EvalContext::apply_subshell_bootstrap(
       !getopts_cursor::from_wire(reader, getopts) ||
       !RuntimeState::from_wire(reader, runtime) ||
       !VariableStore::from_wire(reader, variables) ||
-      !StartupStore::from_wire(reader, is_restricted_shell_identity) ||
+      !StartupStore::from_wire(reader, startup) ||
       !FunctionStore::from_wire(reader, functions) ||
       !ScopeStore::from_wire(reader, local_scopes) ||
       !CompletionStore::from_wire(reader, completion) ||
       !TrapStore::from_wire(reader, startup_ignored_signals) ||
       !RuntimeControlStore::from_wire(reader, control) ||
-      !ProgramResolver::from_wire(reader, execution_cache))
+      !ProgramResolver::from_wire(reader, execution_cache) ||
+      !DiagnosticsStore::from_wire(reader, is_source_traces_enabled))
   {
     invalid_subshell_bootstrap();
   }
@@ -2957,7 +2985,10 @@ fn EvalContext::apply_subshell_bootstrap(
                "inherited shell state");
   }
   function_store().apply_wire_definitions(functions);
-  if (is_restricted_shell_identity) startup_store().request_restricted_shell();
+  if (startup.is_restricted_shell) startup_store().request_restricted_shell();
+  startup_store().set_login_shell(startup.is_login_shell);
+  startup_store().set_init_moods(startup.init_moods.view());
+  diagnostics_store().set_source_traces_enabled(is_source_traces_enabled);
   runtime.restore(*this);
 
   execution_store().apply_wire(steal(execution));

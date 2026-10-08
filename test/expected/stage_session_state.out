@@ -1,0 +1,4 @@
+shell: same sh,bash off off
+stage: same sh,bash off off
+compound: same sh,bash off off
+substitution: same sh,bash off off

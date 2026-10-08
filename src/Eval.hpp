@@ -2890,7 +2890,7 @@ public:
   }
   fn append_wire(String &output) const throws -> void;
   static fn from_wire(subshell_bootstrap_reader &reader,
-                      bool &is_restricted_shell) wontthrow -> bool;
+                      startup_wire &wire) throws -> bool;
 
 private:
   String m_init_moods{heap_allocator()};
@@ -2917,6 +2917,9 @@ public:
   {
     m_source_traces_enabled = enabled;
   }
+  fn append_wire(String &output) const throws -> void;
+  static fn from_wire(subshell_bootstrap_reader &reader,
+                      bool &is_source_traces_enabled) wontthrow -> bool;
   fn diagnostic_highlight_cache() wontthrow
       -> completion::shell_highlight_cache *&
   {

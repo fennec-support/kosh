@@ -312,6 +312,13 @@ struct execution_wire
   String last_argument{heap_allocator()};
 };
 
+struct startup_wire
+{
+  String init_moods{heap_allocator()};
+  bool is_restricted_shell{false};
+  bool is_login_shell{false};
+};
+
 struct function_wire
 {
   usize call_depth{0};
