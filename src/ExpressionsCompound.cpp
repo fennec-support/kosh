@@ -957,6 +957,16 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
 
   if (has_compound_stage) return evaluate_with_compound_stages(cxt);
 
+  let const substitution_mark = cxt.mark_process_substitutions();
+  defer
+  {
+    if (is_async()) {
+      cxt.hold_process_substitutions(substitution_mark);
+    } else {
+      cxt.cleanup_process_substitutions(substitution_mark);
+    }
+  };
+
   /* The arena runs a destructor only for an object it created, and this list
      took plain storage, so a stage still holding open descriptors on an early
      exit is closed by the defer before the release. */

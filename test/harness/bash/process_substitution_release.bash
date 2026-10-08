@@ -3,7 +3,10 @@
 # A process substitution in a [[ ]] operand, a case word or pattern, or the
 # operand word of a parameter expansion in an assignment value closes its
 # descriptor and reaps its child when that command finishes, at top level and
-# in while and until loops, checked against bash through /proc on Linux.
+# in while and until loops, checked against bash through /proc on Linux. A
+# process substitution in a pipeline stage is released once the pipeline is
+# reaped, so its output comes first and waiting for it returns, under a
+# watchdog that ends a shell that hangs.
 count_fds() {
   local entries=(/proc/$$/fd/*)
   fd_count=${#entries[@]}
@@ -70,3 +73,25 @@ report until-loop
 
 [[ $(cat <(echo readable)) == readable ]] && echo "conditional-readable"
 case $(cat <(echo word)) in word) echo "case-readable" ;; esac
+
+watchdog_file=$(mktemp)
+(
+  {
+    sleep 30
+    kill -KILL "$$"
+  } >/dev/null 2>&1 &
+  echo "$!" >"$watchdog_file"
+)
+read -r watchdog_pid <"$watchdog_file"
+rm -f "$watchdog_file"
+echo x | tee >(wc -c) >/dev/null
+sleep 1
+echo "after-tee"
+true | true >(cat)
+wait
+echo "output-substitution-waited=$?"
+cat <(yes) | head -n1
+wait
+echo "endless-substitution-waited"
+report pipeline-stage
+kill "$watchdog_pid"
