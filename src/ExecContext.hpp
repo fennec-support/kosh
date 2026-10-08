@@ -112,6 +112,7 @@ public:
   bool is_multicall{false};
 
   bool has_stripped_array_operands{false};
+  bool is_called_through_command{false};
 
   pure fn is_builtin() const wontthrow -> bool;
   pure fn is_unresolved() const wontthrow -> bool;

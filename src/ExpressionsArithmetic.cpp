@@ -1049,7 +1049,8 @@ static fn evaluate_subshell_in_process(const Expression *body, EvalContext &cxt,
     if (should_allow_terminal_exec)
       cxt.execution_store().allow_terminal_exec_at_current_depth();
     /* A script-fatal or line discarding error is confined to the subshell in
-       every mood, status 1 the way bash answers it and 2 the way dash does. */
+       every mood, with the status the error carries the way bash answers it
+       and 2 the way dash does. */
     let const do_confine_error =
         [&](ErrorBase &error, Maybe<SourceLocation> location) throws -> void {
       if (!error.is_script_fatal() && !error.is_line_discarding()) {
@@ -1066,12 +1067,8 @@ static fn evaluate_subshell_in_process(const Expression *body, EvalContext &cxt,
         }
         error.set_rendered();
       }
-      ret = 2;
-      if (cxt.runtime_state().is_bash_compatible()) {
-        ret = error.is_line_discarding() && !error.is_script_fatal()
-                  ? error.command_status()
-                  : 1;
-      }
+      ret =
+          cxt.runtime_state().is_bash_compatible() ? error.command_status() : 2;
       cxt.execution_store().set_last_exit_status(static_cast<i32>(ret));
       cxt.control_flow_store().clear();
     };

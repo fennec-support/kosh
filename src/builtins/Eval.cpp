@@ -68,9 +68,11 @@ fn Eval::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   LOG(Debug, "eval running %zu joined bytes in the current shell",
       joined.length());
 
-  return cxt.run_source(joined, "eval", ec.source_location(),
-                        StringView{"eval"}, nullptr, nullptr,
-                        return_handling::Propagate);
+  return cxt.run_source(
+      joined, "eval", ec.source_location(), StringView{"eval"}, nullptr,
+      nullptr, return_handling::Propagate, history_recording::Disabled, nullptr,
+      ec.is_called_through_command ? syntax_error_reach::Command
+                                   : syntax_error_reach::PosixScript);
 }
 
 } /* namespace koshka */

@@ -37,7 +37,9 @@ static fn contained_substitution_status(const std::exception_ptr &error,
   try {
     std::rethrow_exception(error);
   } catch (const ErrorBase &caught_error) {
-    return caught_error.is_script_fatal() && is_posix_mode ? 2 : 1;
+    if (!caught_error.is_script_fatal()) return 1;
+
+    return is_posix_mode ? 2 : static_cast<i32>(caught_error.command_status());
   } catch (...) {
     return 1;
   }

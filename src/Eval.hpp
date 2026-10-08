@@ -4150,14 +4150,16 @@ public:
      the top of the chunk and ends there, an eval leaves it pending.
      consume_return is false for eval. A consumed return reports the status the
      chunk held before it through status_before_return. */
-  fn run_source(StringView source, StringView origin = "a sourced command",
-                Maybe<SourceLocation> call_site = None,
-                Maybe<StringView> filename = None,
-                Maybe<i32> *status_before_return = nullptr,
-                const FunctionBodyHandle *cached_body = nullptr,
-                return_handling handling = return_handling::Consume,
-                history_recording history = history_recording::Disabled,
-                const trap_definition *definition = nullptr) throws -> i32;
+  fn run_source(
+      StringView source, StringView origin = "a sourced command",
+      Maybe<SourceLocation> call_site = None, Maybe<StringView> filename = None,
+      Maybe<i32> *status_before_return = nullptr,
+      const FunctionBodyHandle *cached_body = nullptr,
+      return_handling handling = return_handling::Consume,
+      history_recording history = history_recording::Disabled,
+      const trap_definition *definition = nullptr,
+      syntax_error_reach syntax_reach = syntax_error_reach::Command) throws
+      -> i32;
   fn resolve_source_path(StringView path,
                          source_tilde_expansion tilde_expansion =
                              source_tilde_expansion::Disabled) throws

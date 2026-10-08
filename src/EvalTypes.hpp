@@ -102,6 +102,12 @@ enum class history_recording : u8
   Enabled,
 };
 
+enum class syntax_error_reach : u8
+{
+  Command,
+  PosixScript,
+};
+
 enum class source_tilde_expansion : u8
 {
   Disabled,

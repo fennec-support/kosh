@@ -503,7 +503,8 @@ fn EvalContext::run_source(StringView source, StringView origin,
                            Maybe<i32> *status_before_return,
                            const FunctionBodyHandle *cached_body,
                            return_handling handling, history_recording history,
-                           const trap_definition *definition) throws -> i32
+                           const trap_definition *definition,
+                           syntax_error_reach syntax_reach) throws -> i32
 {
   if (cached_body != nullptr && (cached_body->get_body() == nullptr ||
                                  cached_body->get_source() == nullptr))
@@ -631,6 +632,12 @@ fn EvalContext::run_source(StringView source, StringView origin,
         parsed_ast = parser.construct_ast();
       } catch (ErrorWithLocation &syntax_error) {
         syntax_error.set_command_status(SYNTAX_ERROR_STATUS);
+        if (syntax_reach == syntax_error_reach::PosixScript &&
+            runtime_state().is_posix_option_on() &&
+            !execution_store().shell_is_interactive())
+        {
+          syntax_error.set_script_fatal();
+        }
         throw;
       }
       ASSERT(parsed_ast != nullptr);

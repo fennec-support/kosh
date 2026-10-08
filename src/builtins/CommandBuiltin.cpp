@@ -202,6 +202,8 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
         cxt.source_store().current_source_view(), &cxt));
     return static_cast<i32>(resolution_error.command_status());
   }
+  sub->is_called_through_command = true;
+
   return utils::execute_context(steal(*sub), cxt, execution_mode::Foreground);
 }
 
