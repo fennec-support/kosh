@@ -76,6 +76,10 @@ warning: 'HOME/.koshrc' is no longer read; see MIGRATION in kosh(5)
 /inherited 5
 KOSH_HISTORY_FILE=/inherited
 KOSH_HISTORY_SIZE=5
+== an inherited KOSH is replaced and no longer exported:
+replaced
+0
+unset-in-a-child-shell
 == privileged mode ignores and removes KOSHCONF and still reads the file:
 on
 0

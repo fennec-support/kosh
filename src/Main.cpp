@@ -1234,6 +1234,13 @@ static fn seed_session_variables(EvalContext &context,
   context.set_shell_variable("KOSH_COMMIT", KOSH_COMMIT_HASH);
   context.set_shell_variable("KOSH_BUILD_MODE", KOSH_BUILD_MODE);
   context.set_shell_variable("KOSH_OS", KOSH_OS_INFO);
+  for (let const name : {StringView{"KOSH"}, StringView{"KOSH_VERSION"},
+                         StringView{"KOSH_COMMIT"},
+                         StringView{"KOSH_BUILD_MODE"}, StringView{"KOSH_OS"}})
+  {
+    if (os::has_environment_variable(name))
+      context.unexport_shell_variable(name);
+  }
   if (!context.variable_store()
            .shell_variables()
            .find("KOSH_HISTORY_FILE")

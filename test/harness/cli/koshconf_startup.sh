@@ -89,6 +89,10 @@ env | grep -c "^KOSH_HISTORY_" || :'
 echo "$(koshconf get history.file_path) $(koshconf get history.max_entries)"
 env | grep "^KOSH_HISTORY_"'
 )
+echo "== an inherited KOSH is replaced and no longer exported:"
+KOSH=/elsewhere KOSH_VERSION=0 "$BIN" -c '[ "$KOSH" != /elsewhere ] && echo replaced
+env | grep -c -e "^KOSH=" -e "^KOSH_VERSION=" || :
+sh -c "test -z \"\$KOSH\" && echo unset-in-a-child-shell"'
 echo "== privileged mode ignores and removes KOSHCONF and still reads the file:"
 printf 'editor.auto_close_brackets_and_quotes=on\n' >"$conf"
 KOSHCONF=BQEA "$BIN" -p -c 'koshconf get editor.auto_close_brackets_and_quotes
