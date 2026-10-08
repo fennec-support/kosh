@@ -546,7 +546,15 @@ enum class process_state : u8
   Unchanged,
 };
 
-fn poll_process(process p, i32 &status_out) wontthrow -> process_state;
+struct process_termination
+{
+  i32 signal_number{0};
+  bool did_dump_core{false};
+};
+
+fn poll_process(process p, i32 &status_out,
+                process_termination *termination_out = nullptr) wontthrow
+    -> process_state;
 
 fn signal_process(process p, i32 signal_number) wontthrow -> bool;
 fn process_is_running(process p) wontthrow -> bool;
@@ -556,6 +564,8 @@ fn is_process_signal_supported(i32 signal_number) wontthrow -> bool;
 fn signal_number_from_name(StringView name) throws -> Maybe<i32>;
 
 fn signal_name_from_number(i32 number) throws -> Maybe<String>;
+
+fn signal_description_from_number(i32 number) throws -> String;
 
 fn signal_names() throws -> const ArrayList<StringView> &;
 

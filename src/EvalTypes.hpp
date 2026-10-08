@@ -412,11 +412,20 @@ struct job
   os::process pid{KOSH_INVALID_PROCESS};
   i32 last_status{0};
   i32 stopped_status{0};
+  os::process_termination termination{};
   State state{State::Running};
   bool is_primary_process_active{true};
   bool has_unreported_state_change{false};
   bool is_inherited{false};
   bool was_waited{false};
+};
+
+struct job_line_format
+{
+  bool should_show_process_id{false};
+  bool is_posix{false};
+  StringView state_color{};
+  StringView color_reset{};
 };
 
 struct finished_process_status
@@ -477,7 +486,9 @@ public:
                            i64 process_group_id) throws -> i32;
   fn register_stopped_job(os::process pid, StringView command, i32 status,
                           i64 process_group_id) throws -> i32;
-  fn notify_stopped_job(i32 id, StringView command) throws -> void;
+  fn notify_stopped_job(i32 id) throws -> void;
+  fn append_status_line(String &out, usize index,
+                        const job_line_format &format) const throws -> void;
   fn update_jobs() throws -> void;
   fn wait_for_job_processes(job &entry, bool *was_stopped = nullptr,
                             bool should_wait_for_termination = false) throws
@@ -497,7 +508,8 @@ public:
   }
   fn inherit_parent_jobs(bool should_keep_finished_statuses) wontthrow -> void;
   fn remove_job(i32 id) throws -> bool;
-  fn format_done_job_notifications(StringView line_ending) throws -> String;
+  fn format_done_job_notifications(StringView line_ending, bool is_posix) throws
+      -> String;
   fn take_snapshot() throws -> job_table_snapshot;
   fn restore_snapshot(job_table_snapshot snapshot) throws -> void;
   fn append_wire(String &output, os::subshell_bootstrap &bootstrap) const throws

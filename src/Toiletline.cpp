@@ -1075,7 +1075,8 @@ fn kosh_wake_callback(int phase) -> int
               koshka::shell_option_id::Notify))
         return 0;
       WAKE_NOTIFICATION_STASH =
-          JOB_CONTEXT->job_table_store().format_done_job_notifications("\r\n");
+          JOB_CONTEXT->job_table_store().format_done_job_notifications(
+              "\r\n", JOB_CONTEXT->runtime_state().is_posix_option_on());
       koshka::os::CHILD_STATE_CHANGED = 0;
       return WAKE_NOTIFICATION_STASH.is_empty() ? 0 : 1;
     }

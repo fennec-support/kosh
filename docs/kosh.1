@@ -4643,6 +4643,20 @@ and
 .B bg
 builtins resume every stage of the job.
 .PP
+.B jobs
+and the notification of a finished or stopped job print one line per job in
+the columns Bash uses: the job number and its current or previous mark, the
+process with
+.BR \-l ,
+a state field 27 columns wide, and the command. A running job ends with an
+ampersand. A job that a signal ended shows the description of the signal, such
+as Terminated or Killed, with (core dumped) before the command when the process
+dumped core, and wait still reports 128 plus the signal number. A job that
+exited shows Done, or Exit and its status; the bash-posix and sh moods show
+Done and the status in parentheses. With
+.BR \-l ,
+a stopped job shows the description of the signal that stopped it.
+.PP
 A job that
 .BR wait ,
 .BR jobs ,

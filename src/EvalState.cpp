@@ -1462,6 +1462,9 @@ fn JobTable::append_wire(String &output,
       append_subshell_bootstrap_i64(payload, child_job.process_group_id);
       append_subshell_bootstrap_i32(payload, child_job.last_status);
       append_subshell_bootstrap_i32(payload, child_job.stopped_status);
+      append_subshell_bootstrap_i32(payload,
+                                    child_job.termination.signal_number);
+      payload.push(static_cast<char>(child_job.termination.did_dump_core));
       payload.push(static_cast<char>(child_job.state));
       payload.push(static_cast<char>(child_job.is_primary_process_active));
       payload.push(static_cast<char>(child_job.has_unreported_state_change));
@@ -2215,7 +2218,7 @@ fn JobTable::from_wire(subshell_bootstrap_reader &reader,
   wire.next_job_id = payload.read_i32();
 
   let const job_count = static_cast<usize>(payload.read_u32());
-  constexpr usize MINIMUM_JOB_BYTES = 43;
+  constexpr usize MINIMUM_JOB_BYTES = 48;
   if (!payload.is_valid || wire.next_job_id < 1 ||
       job_count > payload.get_remaining_length() / MINIMUM_JOB_BYTES)
   {
@@ -2233,10 +2236,19 @@ fn JobTable::from_wire(subshell_bootstrap_reader &reader,
     child_job.process_group_id = payload.read_i64();
     child_job.last_status = payload.read_i32();
     child_job.stopped_status = payload.read_i32();
+    child_job.termination.signal_number = payload.read_i32();
+    if (!read_subshell_bootstrap_bool(payload,
+                                      child_job.termination.did_dump_core))
+    {
+      return false;
+    }
+
     let const state = payload.read_u8();
     bool is_primary_process_active = false;
     bool has_unreported_state_change = false;
-    if (!read_subshell_bootstrap_bool(payload, is_primary_process_active) ||
+    if (child_job.termination.signal_number < 0 ||
+        child_job.termination.signal_number > 127 ||
+        !read_subshell_bootstrap_bool(payload, is_primary_process_active) ||
         !read_subshell_bootstrap_bool(payload, has_unreported_state_change) ||
         child_job.id <= previous_job_id || child_job.id >= wire.next_job_id ||
         child_job.process_group_id < 0 ||

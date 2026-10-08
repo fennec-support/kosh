@@ -184,10 +184,87 @@ fn JobTable::register_stopped_job(os::process pid, StringView command,
   return id;
 }
 
-fn JobTable::notify_stopped_job(i32 id, StringView command) throws -> void
+fn JobTable::notify_stopped_job(i32 id) throws -> void
 {
-  print_error("\n[" + String::from(id, heap_allocator()) + "]+ Stopped  " +
-              String{command} + "\n");
+  for (usize index = 0; index < m_jobs.count(); index++) {
+    if (m_jobs[index].id != id) continue;
+
+    let line = String{heap_allocator(), "\n"};
+    append_status_line(line, index, job_line_format{});
+    line.push('\n');
+    print_error(line);
+    return;
+  }
+}
+
+static fn describe_job_state(const job &entry,
+                             const job_line_format &format) throws -> String
+{
+  switch (entry.state) {
+  case job::State::Running: return String{"Running"};
+  case job::State::Stopped:
+    if (format.should_show_process_id && entry.stopped_status > 128) {
+      return os::signal_description_from_number(entry.stopped_status - 128);
+    }
+
+    return String{"Stopped"};
+  case job::State::Done: break;
+  }
+
+  if (entry.termination.signal_number != 0) {
+    return os::signal_description_from_number(entry.termination.signal_number);
+  }
+
+  if (entry.last_status == 0) return String{"Done"};
+
+  let const status = String::from(entry.last_status, heap_allocator());
+  if (format.is_posix) return "Done(" + status + ")";
+
+  return "Exit " + status;
+}
+
+fn JobTable::append_status_line(String &out, usize index,
+                                const job_line_format &format) const throws
+    -> void
+{
+  constexpr usize PROCESS_ID_COLUMN_WIDTH = 5;
+  constexpr usize STATE_COLUMN_WIDTH = 27;
+
+  let const &entry = m_jobs[index];
+  char marker = ' ';
+  if (index == m_jobs.count() - 1) {
+    marker = '+';
+  } else if (index + 2 == m_jobs.count()) {
+    marker = '-';
+  }
+
+  out += "[" + String::from(entry.id, heap_allocator()) + "]";
+  out.push(marker);
+  out.push(' ');
+  if (format.should_show_process_id) {
+    let const process_id = String::from(entry.process_id, heap_allocator());
+    out.append_repeated(' ', process_id.count() < PROCESS_ID_COLUMN_WIDTH
+                                 ? PROCESS_ID_COLUMN_WIDTH - process_id.count()
+                                 : 0);
+    out += process_id;
+    out.push(' ');
+  } else {
+    out.push(' ');
+  }
+
+  let const state = describe_job_state(entry, format);
+  out.append(format.state_color);
+  out.append(state.view());
+  if (!format.state_color.is_empty()) out.append(format.color_reset);
+  out.append_repeated(' ', state.count() < STATE_COLUMN_WIDTH
+                               ? STATE_COLUMN_WIDTH - state.count()
+                               : 1);
+
+  if (entry.state == job::State::Done && entry.termination.did_dump_core) {
+    out += "(core dumped) ";
+  }
+  out.append(entry.command.view());
+  if (entry.state == job::State::Running) out += " &";
 }
 
 static fn poll_owned_processes(ArrayList<os::process> &processes) wontthrow
@@ -228,11 +305,13 @@ fn JobTable::update_jobs() throws -> void
 
     if (job.is_primary_process_active) {
       i32 status = 0;
-      let const state = os::poll_process(job.pid, status);
+      let termination = os::process_termination{};
+      let const state = os::poll_process(job.pid, status, &termination);
       switch (state) {
       case os::process_state::Exited:
         job.is_primary_process_active = false;
         job.last_status = status;
+        job.termination = termination;
         break;
       case os::process_state::Stopped:
         if (job.state != job::State::Stopped)
@@ -527,8 +606,8 @@ fn JobTable::remove_job(i32 id) throws -> bool
   return true;
 }
 
-fn JobTable::format_done_job_notifications(StringView line_ending) throws
-    -> String
+fn JobTable::format_done_job_notifications(StringView line_ending,
+                                           bool is_posix) throws -> String
 {
   update_jobs();
 
@@ -539,17 +618,7 @@ fn JobTable::format_done_job_notifications(StringView line_ending) throws
       continue;
     }
 
-    char marker = ' ';
-    if (i == m_jobs.count() - 1) {
-      marker = '+';
-    } else if (i == m_jobs.count() - 2) {
-      marker = '-';
-    }
-
-    out += "[" + String::from(job.id, heap_allocator()) + "]";
-    out.push(marker);
-    out += " Done  ";
-    out += job.command.c_str();
+    append_status_line(out, i, job_line_format{.is_posix = is_posix});
     out += line_ending;
   }
 
@@ -559,7 +628,8 @@ fn JobTable::format_done_job_notifications(StringView line_ending) throws
 
 fn EvalContext::notify_done_jobs() throws -> void
 {
-  let const lines = job_table_store().format_done_job_notifications("\n");
+  let const lines = job_table_store().format_done_job_notifications(
+      "\n", runtime_state().is_posix_option_on());
   if (!lines.is_empty()) print_error(lines);
 }
 

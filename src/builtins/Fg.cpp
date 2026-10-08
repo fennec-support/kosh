@@ -61,12 +61,7 @@ fn Fg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return done_status;
   }
 
-  let command = job->command.view();
-  if (command.count() >= 2 &&
-      command.substring_of_length(command.count() - 2, 2) == " &")
-  {
-    command = command.substring_of_length(0, command.count() - 2);
-  }
+  let const command = job->command.view();
   ec.print_to_stdout(command + "\n");
   if (cxt.execution_store().shell_is_interactive())
     toiletline::set_title(command);
@@ -109,7 +104,7 @@ fn Fg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (was_stopped) {
     job->state = job::State::Stopped;
     job->stopped_status = status;
-    cxt.job_table_store().notify_stopped_job(job->id, job->command.view());
+    cxt.job_table_store().notify_stopped_job(job->id);
     return status;
   }
 

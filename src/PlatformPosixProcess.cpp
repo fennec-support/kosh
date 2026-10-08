@@ -1074,7 +1074,8 @@ fn reap_process_quietly(process pid) throws -> i32
   return 1;
 }
 
-fn poll_process(process p, i32 &status_out) wontthrow -> process_state
+fn poll_process(process p, i32 &status_out,
+                process_termination *termination_out) wontthrow -> process_state
 {
   i32 status = 0;
   pid_t result;
@@ -1099,6 +1100,11 @@ fn poll_process(process p, i32 &status_out) wontthrow -> process_state
 
   if (WIFSIGNALED(status)) {
     status_out = 128 + WTERMSIG(status);
+    if (termination_out != nullptr) {
+      termination_out->signal_number = WTERMSIG(status);
+      termination_out->did_dump_core = WCOREDUMP(status);
+    }
+
     return process_state::Exited;
   }
   status_out = WEXITSTATUS(status);
@@ -1356,6 +1362,16 @@ fn signal_name_from_number(i32 number) throws -> Maybe<String>
   let const &pairs = signal_pairs();
 
   return utils::find_signal_name(pairs.begin(), pairs.count(), number);
+}
+
+fn signal_description_from_number(i32 number) throws -> String
+{
+  let const description = strsignal(number);
+  if (description == nullptr) {
+    return "Unknown signal " + String::from(number, heap_allocator());
+  }
+
+  return String{description};
 }
 
 fn signal_names() throws -> const ArrayList<StringView> &

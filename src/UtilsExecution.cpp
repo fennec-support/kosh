@@ -127,7 +127,7 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
           if (was_stopped) {
             const i32 id = cxt.job_table_store().register_stopped_job(
                 child, command, status, os::process_id_of(child));
-            cxt.job_table_store().notify_stopped_job(id, command.view());
+            cxt.job_table_store().notify_stopped_job(id);
           }
           return status;
         }
@@ -197,7 +197,6 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
       if (i > 0) command += ' ';
       append_shell_quoted_arg(command, ec.args()[i]);
     }
-    if (is_async) command += " &";
   }
 
   cxt.evaluation_metrics_store().add_external_command_run(
@@ -249,7 +248,7 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
   if (was_stopped) {
     const i32 id = cxt.job_table_store().register_stopped_job(
         p, command, foreground_status, os::process_id_of(p));
-    cxt.job_table_store().notify_stopped_job(id, command.view());
+    cxt.job_table_store().notify_stopped_job(id);
   }
   /* A foreground child owns the terminal, so an interrupt reaches it alone and
      the shell reads only its status. That is right at a prompt, where the next

@@ -41,24 +41,6 @@ enum class jobs_color_mode : u8
   Colored,
 };
 
-pure fn state_word(job::State state) wontthrow -> const char *
-{
-  switch (state) {
-  case job::State::Running: return "Running";
-  case job::State::Stopped: return "Stopped";
-  case job::State::Done: return "Done";
-  }
-  return "Unknown";
-}
-
-pure fn job_marker(const ArrayList<job> &jobs, usize index) wontthrow -> char
-{
-  if (jobs.is_empty()) return ' ';
-  if (index == jobs.count() - 1) return '+';
-  if (index == jobs.count() - 2) return '-';
-  return ' ';
-}
-
 fn state_color(job::State state, jobs_color_mode color_mode) throws
     -> StringView
 {
@@ -142,27 +124,12 @@ fn Jobs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       continue;
     }
 
-    out += "[" + String::from(job.id, cxt.scratch_allocator()) + "]";
-    out.push(job_marker(jobs, index));
-    out += " ";
-
-    if (FLAG_JOBS_LONG.is_enabled()) {
-      out += String::from(job.process_id, cxt.scratch_allocator());
-      out += " ";
-    }
-
-    out.append(state_color(job.state, color_mode));
-    let state = String{cxt.scratch_allocator(), state_word(job.state)};
-    if (job.state == job::State::Done && job.last_status != 0) {
-      state = String{cxt.scratch_allocator(), "Exit "};
-      state += String::from(job.last_status, cxt.scratch_allocator());
-    }
-    out.append(state.view());
-    out.append_repeated(' ', state.count() < 7 ? 7 - state.count() : 0);
-    if (color_mode == jobs_color_mode::Colored) out += colors::ansi::RESET;
-
-    out += "  ";
-    out += job.command.c_str();
+    cxt.job_table_store().append_status_line(
+        out, index,
+        job_line_format{.should_show_process_id = FLAG_JOBS_LONG.is_enabled(),
+                        .is_posix = cxt.runtime_state().is_posix_option_on(),
+                        .state_color = state_color(job.state, color_mode),
+                        .color_reset = colors::ansi::RESET});
     out.push('\n');
   }
   ec.print_to_stdout(out);

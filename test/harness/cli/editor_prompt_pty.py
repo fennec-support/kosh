@@ -17,7 +17,8 @@
 # strip under the prompt. A working directory named with control bytes
 # reaches the prompt through \w in caret notation and never as raw bytes. A
 # job stopped by Ctrl-Z reports on its own row below the echoed ^Z, and Ctrl-C
-# on a job that fg resumed ends its row before the next prompt.
+# on a job that fg resumed ends its row before the next prompt. A background
+# job that a signal ended reports the signal description at the next prompt.
 # koshconf set --persist names the file it wrote at an interactive prompt. The
 # terminal model and session come from the
 # ghost and menu probe. Each check prints one stable PASS line for the golden
@@ -200,8 +201,10 @@ def run_job_notice_checks(binary, directory, report):
         session.pump(0.3)
         session.send(CTRL_Z)
         report.record("stopped-job-notice-starts-a-row", session,
-                      lambda screen: has_rows(["^Z", "[1]+ Stopped  sleep 30",
-                                               BULLET])(screen))
+                      lambda screen: has_rows([
+                          "^Z",
+                          "[1]+  Stopped                    sleep 30",
+                          BULLET])(screen))
 
         mark = len(session.raw)
         session.send(b"fg\r")
@@ -211,6 +214,26 @@ def run_job_notice_checks(binary, directory, report):
         report.record("fg-interrupt-ends-its-row", session,
                       lambda screen: has_rows(["sleep 30", "^C", BULLET])(
                           screen) and has_no_partial_line_marker(screen))
+
+        mark = len(session.raw)
+        session.send(b"sleep 30 &\r")
+        session.wait_until(lambda screen: b"[1] " in session.raw[mark:]
+                           and is_prompt_line(BULLET)(screen))
+        mark = len(session.raw)
+        session.send(b"kill %1\r")
+        session.wait_until(lambda screen: b"kill %1" in session.raw[mark:]
+                           and is_prompt_line(BULLET)(screen))
+        is_noticed = has_rows(["[1]+  Terminated                 sleep 30"])
+        for _ in range(10):
+            session.pump(0.2)
+            if is_noticed(session.screen):
+                break
+            mark = len(session.raw)
+            session.send(b":\r")
+            session.wait_until(lambda screen: b":" in session.raw[mark:]
+                               and is_prompt_line(BULLET)(screen))
+        report.record("signaled-job-notice-names-the-signal", session,
+                      is_noticed)
 
         mark = len(session.raw)
         session.send(b"koshconf set mood kosh --persist\r")

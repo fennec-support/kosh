@@ -70,6 +70,6 @@ for attempt in $(koshkit seq 500); do
   jobs | koshkit grep -q Exit && break
   koshkit sleep 0.01
 done
-jobs -l | koshkit sed 's/ [0-9][0-9]* / PID /;s/  .*//'
+jobs -l | koshkit sed 's/  *[0-9][0-9]* / PID /;s/  .*//'
 jobs
 echo done

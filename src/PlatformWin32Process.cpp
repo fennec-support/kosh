@@ -2491,8 +2491,10 @@ fn reap_process_quietly(process p) -> i32
   return static_cast<i32>(code);
 }
 
-fn poll_process(process p, i32 &status_out) wontthrow -> process_state
+fn poll_process(process p, i32 &status_out,
+                process_termination *termination_out) wontthrow -> process_state
 {
+  unused(termination_out);
   let const wait_result = WaitForSingleObject(p, 0);
   if (wait_result == WAIT_TIMEOUT) return process_state::Running;
   if (wait_result != WAIT_OBJECT_0) {
@@ -2624,6 +2626,11 @@ fn signal_number_from_name(StringView name) -> Maybe<i32>
 fn signal_name_from_number(i32 number) -> Maybe<String>
 {
   return utils::find_signal_name(SIGNAL_PAIRS, countof(SIGNAL_PAIRS), number);
+}
+
+fn signal_description_from_number(i32 number) throws -> String
+{
+  return "Unknown signal " + String::from(number, heap_allocator());
 }
 
 fn signal_names() throws -> const ArrayList<StringView> &
