@@ -91,6 +91,12 @@ fn Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());
 
+  if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted)) {
+    report_soft_builtin_error(
+        ec, cxt, "The bundled utilities are forbidden in a restricted shell");
+    return 1;
+  }
+
   defer { koshkit::set_koshkit_color_mode(cli_color_mode::Auto); };
 
   let const utility_index =

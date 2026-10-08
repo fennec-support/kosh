@@ -156,15 +156,14 @@ koshkit cat < <(set -M)
 '
 
 "$BIN" --restricted --no-init-files --no-diagnostics -c '
-printf "restricted-process="
-koshkit cat < <(
+IFS= read -r restricted_state < <(
   if [[ $- == *r* ]]; then
-    printf yes
+    printf "yes\n"
   else
-    printf no
+    printf "no\n"
   fi
 )
-printf "\n"
+printf "restricted-process=%s\n" "$restricted_state"
 printf "" | {
   if [[ $- == *r* ]]; then
     printf "restricted-compound=yes\n"

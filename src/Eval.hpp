@@ -257,6 +257,8 @@ public:
 
   pure fn koshkit_utilities_are_reachable() const wontthrow -> bool
   {
+    if (option_is_enabled(shell_option_id::Restricted)) return false;
+
     return option_is_enabled(shell_option_id::Koshkit) ||
            m_mood == mimic_mood::Default;
   }

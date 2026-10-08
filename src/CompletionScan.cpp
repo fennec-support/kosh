@@ -763,7 +763,8 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
 
   {
     let const is_koshkit_builtin =
-        builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Koshkit;
+        builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Koshkit &&
+        !context.runtime_state().option_is_enabled(shell_option_id::Restricted);
     Maybe<koshkit::Utility::Kind> util_for_flags;
     bool should_offer_util_names = false;
     if (is_koshkit_builtin) {

@@ -97,6 +97,7 @@ SKIPPED_TESTS += alias_unalias arith_decimal ast_process_substitution \
 	koshkit_expr koshkit_filesystem_portable koshkit_filesystem_posix \
 	koshkit_getconf koshkit_goodfsw koshkit_inspect_posix \
 	koshkit_numeric_posix koshkit_process_posix koshkit_readlink \
+	koshkit_restricted \
 	koshkit_retry koshkit_stat koshkit_stream_posix koshkit_sync \
 	koshkit_system_posix koshkit_terminal_posix koshkit_text_posix \
 	koshkit_watch koshkit_whoami mood_arithmetic read_builtin \

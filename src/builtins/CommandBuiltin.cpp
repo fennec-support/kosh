@@ -157,8 +157,7 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
         did_find_any = true;
         continue;
       }
-      if ((cxt.runtime_state().koshkit() ||
-           cxt.runtime_state().get_mood() == mimic_mood::Default) &&
+      if (cxt.runtime_state().koshkit_utilities_are_reachable() &&
           koshkit::find_util(name.view()).has_value())
       {
         ec.print_to_stdout(is_verbose ? name + " is a built-in utility\n"

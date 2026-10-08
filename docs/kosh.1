@@ -1182,7 +1182,15 @@ and
 .B enable \-f
 or
 .B enable \-d
-are rejected. Restricted mode cannot be disabled with
+are rejected. The
+.B koshkit
+builtin is rejected in every form, and a command name never falls back to a
+bundled utility, so a restricted shell runs only the builtins and the programs
+its PATH provides.
+.BR type ,
+.BR "command \-v" ,
+and completion do not offer the bundled utilities. Restricted mode cannot be
+disabled with
 .BR "set +r" .
 Changing the mood with
 .B set \-M
@@ -1190,8 +1198,7 @@ and mimicry with
 .B set \-I
 or
 .B set +I
-is rejected, because the mood decides whether the bundled utilities resolve
-without PATH.
+is rejected.
 .B set \-o posix
 remains available, as in bash.
 Changes to the restricted_shell shopt value are accepted without effect.

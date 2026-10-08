@@ -1,0 +1,50 @@
+== kosh -r: env sh -c "echo x > escaped.txt"
+-c:1:1: error: The command 'env' was not found.
+== kosh -r: cp escaped.txt copy.txt
+-c:1:1: error: The command 'cp' was not found.
+note: Did you mean 'cd'?
+== kosh -r: tee tee.txt </dev/null
+-c:1:1: error: The command 'tee' was not found.
+== kosh -r: koshkit env sh -c "echo x > escaped.txt"
+-c:1:1: error: Builtin `koshkit`: The bundled utilities are forbidden in a restricted shell.
+next status=1
+== kosh -r: koshkit tee tee.txt </dev/null
+-c:1:1: error: Builtin `koshkit`: The bundled utilities are forbidden in a restricted shell.
+next status=1
+== kosh -r: koshkit find . -exec touch found.txt ";"
+-c:1:1: error: Builtin `koshkit`: The bundled utilities are forbidden in a restricted shell.
+next status=1
+== kosh -r: echo xargs.txt | koshkit xargs touch
+-c:1:18: error: Builtin `koshkit`: The bundled utilities are forbidden in a restricted shell.
+next status=1
+== kosh -r: koshkit rm --dry-run -- run
+-c:1:1: error: Builtin `koshkit`: The bundled utilities are forbidden in a restricted shell.
+next status=1
+== kosh -r: koshkit --list
+-c:1:1: error: Builtin `koshkit`: The bundled utilities are forbidden in a restricted shell.
+next status=1
+== kosh -r: koshkit --help
+-c:1:1: error: Builtin `koshkit`: The bundled utilities are forbidden in a restricted shell.
+next status=1
+== the bash mood:
+-c:1:1: error: The command 'env' was not found.
+env status=127
+-c:2:1: error: Builtin `koshkit`: The bundled utilities are forbidden in a restricted shell.
+koshkit status=1
+== set -r refuses a utility resolved before it:
+before
+-c:1:12: error: The command 'basename' was not found.
+1:50: trace:
+status=127
+== type, command -v, and hash do not offer a bundled utility:
+-c:1:1: error: Builtin `type`: The command 'env' was not found.
+type status=1
+command status=1
+-c:3:1: error: Builtin `hash`: The command 'env' was not found.
+hash status=1
+== an unrestricted shell still runs them:
+env
+b
+status=0
+== nothing was written:
+0
