@@ -125,7 +125,7 @@ constexpr static_string_entry<analysis_command_info>
 
 constexpr StaticStringMap ANALYSIS_COMMANDS{ANALYSIS_COMMAND_ENTRIES};
 
-} /* namespace */
+}
 
 fn get_analysis_command_info(StringView name) throws -> analysis_command_info
 {
@@ -135,4 +135,4 @@ fn get_analysis_command_info(StringView name) throws -> analysis_command_info
   return analysis_command_info{command_name_id::Unknown, NO_COMMAND_GROUP};
 }
 
-} /* namespace koshka */
+}

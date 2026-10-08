@@ -51,9 +51,6 @@ fn check_posix_arithmetic_operators(AnalysisContext &actx,
   if (has_exponent) actx.report_diagnostic(diagnostic_id::sc3019, location);
 }
 
-/* An expansion that stands left of an arithmetic assignment names the variable
-   the assignment writes, so the dollar sign carries the indirection and cannot
-   be dropped. */
 static pure fn arithmetic_expansion_assigns(StringView expression,
                                             usize expansion_end) wontthrow
     -> bool
@@ -121,9 +118,6 @@ fn check_arithmetic_expression_lints(AnalysisContext &actx,
   let has_reported_precision_loss = false;
   let has_reported_xor_power = false;
   let has_redundant_dollar = false;
-  /* A division truncates its result, so a multiplication that follows it in the
-     same term multiplies the truncated value, shellcheck SC2017. Any operator
-     that ends the term clears the flag. */
   let has_pending_division = false;
   let const obvious_power_position =
       obvious_xor_power_operator_position(expression);
@@ -282,8 +276,6 @@ fn check_arithmetic_expression_lints(AnalysisContext &actx,
 
     case '=': has_pending_division = false; break;
 
-    /* An arithmetic expression is never quoted, so a $ here introduces a real
-       expansion and a positional name behind it is a positional read. */
     case '$': {
       has_pending_division = false;
 
@@ -320,9 +312,6 @@ fn check_arithmetic_expression_lints(AnalysisContext &actx,
         break;
       }
 
-      /* A name character on either side means the expansion builds a longer
-         name, and dropping the sign would merge the parts into one
-         identifier. */
       let const expansion_end = is_braced ? name_end + 1 : name_end;
       let const is_name_part =
           (dollar_position > 0 &&
@@ -353,8 +342,6 @@ fn check_arithmetic_expression_lints(AnalysisContext &actx,
     default: {
       if (!lexer::is_variable_name(expression[position])) break;
 
-      /* The whole name or number is consumed so the scan never restarts inside
-         one and reads a suffix as a fresh literal. */
       let const start = position;
       while (position + 1 < expression.length &&
              (lexer::is_variable_name(expression[position + 1]) ||
@@ -814,9 +801,6 @@ fn check_operand_lints_before_scan(AnalysisContext &actx,
   }
 }
 
-/* The parser refuses a malformed assignment and hands the word on as a command
-   name, so the leading byte of the source text decides which of the shellcheck
-   assignment shapes was written. */
 fn check_equals_bearing_command_name(AnalysisContext &actx,
                                      StringView command_literal,
                                      usize equals_position,
@@ -897,8 +881,6 @@ fn check_equals_bearing_command_name(AnalysisContext &actx,
   return false;
 }
 
-/* A name like [ holds a glob metacharacter that static_command_name rejects,
-   so the literal text is taken separately for the test recognition. */
 fn check_command_word_shape(AnalysisContext &actx,
                             const command_lint_input &input) throws -> bool
 {
@@ -915,8 +897,6 @@ fn check_command_word_shape(AnalysisContext &actx,
   if (equals_position.has_value() && command_literal.length > 1 &&
       !command_literal.starts_with(StringView{"[["}))
   {
-    /* The word literal drops the quotes, so the source text tells a quoted
-       assignment name apart from a bare one, shellcheck SC2276. */
     let const command_source = location.get_source_text(actx.source);
     if (command_source.has_value() && !command_source->is_empty() &&
         ((*command_source)[0] == '"' || (*command_source)[0] == '\''))
@@ -948,8 +928,6 @@ fn check_command_word_shape(AnalysisContext &actx,
       actx.report_diagnostic(diagnostic_id::sc1014, location);
   }
 
-  /* The word literal drops the quotes, so the source text decides whether the
-     bracket was written as syntax or as data. */
   if (args.count() >= 2 && command_literal != "[" && command_literal != "[[" &&
       args.back()->source_location().get_source_text(actx.source) ==
           StringView{"]"})
@@ -1070,9 +1048,6 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
     break;
   }
 
-  /* The client expands an ssh operand before the remote shell ever sees it,
-     shellcheck SC2029. The host is the first plain operand, so the command that
-     follows it is the part that runs remotely. */
   case command_name_id::Ssh: {
     let has_seen_host = false;
     let should_skip_option_value = false;
@@ -1108,8 +1083,6 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
     break;
   }
 
-  /* su starts a fresh shell, so a function name never resolves there,
-     shellcheck SC2032. A bare command operand without -c is SC2117. */
   case command_name_id::Su: {
     let is_command_value_next = false;
     let has_seen_user = false;
@@ -1165,9 +1138,6 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
 
       if (args[i]->kind() != Token::Kind::Word) continue;
 
-      /* export $name exports whatever the value spells, shellcheck SC2163. A
-         modifier or a brace form is left alone, since the name no longer spans
-         the whole segment. */
       let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
       if (word.segments.count() != 1 ||
           word.segments[0].kind != WordSegment::Kind::VariableReference)
@@ -1250,8 +1220,6 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
       }
 
       if (predicate_view == "-exec" || predicate_view == "-execdir") {
-        /* find launches the action itself, so a shell function is never found,
-           shellcheck SC2033. */
         let const action = args[i + 1]->raw_string();
         if (actx.functions.defined.contains(action.view())) {
           actx.report_diagnostic(diagnostic_id::sc2033,
@@ -1386,8 +1354,6 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
 
       has_seen_command_word = true;
 
-      /* sudo starts an external program, so a builtin with no program of the
-         same name is never reached, shellcheck SC2232. */
       if (is_shell_only_builtin(view))
         actx.report_diagnostic(diagnostic_id::sc2232,
                                args[i]->source_location(), {view});
@@ -1399,6 +1365,6 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
   }
 }
 
-} /* namespace expressions::internal */
+}
 
-} /* namespace koshka */
+}

@@ -18,8 +18,6 @@ namespace koshka {
 
 namespace expressions::internal {
 
-/* The direct test operator a leading ! collapses into, for the SC2335 lint.
-   None for an operator with no negated shortcut. */
 constexpr static_string_entry<StringView> NEGATED_TEST_OPERATOR_ENTRIES[] = {
     {SSK("-eq"), StringView{"-ne", 3}},
     {SSK("-ne"), StringView{"-eq", 3}},
@@ -37,8 +35,6 @@ cold fn negated_test_operator(StringView op) wontthrow -> Maybe<StringView>
   return NEGATED_TEST_OPERATORS.find(op);
 }
 
-/* The binary operators of test, used to tell a == in the operator slot from a
-   literal == operand, so the SC3014 lint does not flag [ x = == ]. */
 constexpr PackedStringKey TEST_BINARY_OPERATOR_KEYS[] = {
     SSK("="),   SSK("=="),  SSK("!="),  SSK("<"),   SSK(">"),
     SSK("-eq"), SSK("-ne"), SSK("-lt"), SSK("-le"), SSK("-gt"),
@@ -51,8 +47,6 @@ cold fn is_test_binary_operator_word(StringView op) wontthrow -> bool
   return TEST_BINARY_OPERATORS.contains(op);
 }
 
-/* The file comparison operators of test, absent from POSIX, for the SC3013
-   lint. */
 constexpr PackedStringKey TEST_FILE_COMPARISON_KEYS[] = {
     SSK("-ef"),
     SSK("-nt"),
@@ -65,7 +59,6 @@ cold fn is_test_file_comparison_word(StringView op) wontthrow -> bool
   return TEST_FILE_COMPARISONS.contains(op);
 }
 
-/* The numeric comparison operators of test, for the SC2170 lint. */
 constexpr PackedStringKey TEST_NUMERIC_OPERATOR_KEYS[] = {
     SSK("-eq"), SSK("-ne"), SSK("-lt"), SSK("-le"), SSK("-gt"), SSK("-ge"),
 };
@@ -76,9 +69,6 @@ cold fn is_test_numeric_operator_word(StringView op) wontthrow -> bool
   return TEST_NUMERIC_OPERATORS.contains(op);
 }
 
-/* The unary operators of test, gathered from the test builtin and the
-   conditional evaluator, for the SC2057 and SC2058 lints. -a and -o are listed
-   because they also join two conditions. */
 constexpr PackedStringKey TEST_UNARY_OPERATOR_KEYS[] = {
     SSK("-a"), SSK("-b"), SSK("-c"), SSK("-d"), SSK("-e"), SSK("-f"), SSK("-g"),
     SSK("-h"), SSK("-k"), SSK("-n"), SSK("-o"), SSK("-p"), SSK("-r"), SSK("-s"),
@@ -93,9 +83,6 @@ cold fn is_known_test_operator_word(StringView op) wontthrow -> bool
          TEST_BINARY_OPERATORS.contains(op);
 }
 
-/* The unary operators that take a path, for the SC2245 lint. -a is left out
-   because it also joins two conditions, -t takes a descriptor, and -n and -z
-   belong to SC2157. */
 constexpr PackedStringKey TEST_PATH_UNARY_OPERATOR_KEYS[] = {
     SSK("-b"), SSK("-c"), SSK("-d"), SSK("-e"), SSK("-f"), SSK("-g"), SSK("-h"),
     SSK("-k"), SSK("-p"), SSK("-r"), SSK("-s"), SSK("-u"), SSK("-w"), SSK("-x"),
@@ -114,8 +101,6 @@ cold fn is_test_unary_operator_word(StringView op) wontthrow -> bool
   return TEST_UNARY_OPERATORS.contains(op);
 }
 
-/* The words that open a fresh condition, so the word after one of them sits in
-   the unary operator slot. */
 constexpr PackedStringKey TEST_CONDITION_OPENER_KEYS[] = {
     SSK("!"),
     SSK("("),
@@ -129,8 +114,6 @@ cold fn is_test_condition_opener_word(StringView word) wontthrow -> bool
   return TEST_CONDITION_OPENERS.contains(word);
 }
 
-/* The words a bracketed constant condition can hold, whose diagnostic names the
-   builtin the author meant. */
 constexpr static_string_entry<bracketed_constant_kind>
     BRACKETED_CONSTANT_ENTRIES[] = {
         {SSK("0"),     bracketed_constant_kind::Zero },
@@ -146,9 +129,6 @@ cold fn get_bracketed_constant_kind(StringView word) wontthrow
   return BRACKETED_CONSTANTS.find(word);
 }
 
-/* The left operand of an X != Y triple centered on operator_index, absent when
-   the words there do not form one. The raw view is compared, so "$name" and
-   $name stay distinct. */
 cold fn test_inequality_left_operand(const ArrayList<const Token *> &args,
                                      usize operator_index,
                                      usize operand_end) wontthrow
@@ -166,8 +146,6 @@ cold fn test_inequality_left_operand(const ArrayList<const Token *> &args,
   return args[operator_index - 1]->raw_view();
 }
 
-/* An operator name carries a letter after the dash, which keeps a negative
-   number such as -5 out of the unknown-operator lints. */
 cold fn view_looks_like_test_operator(StringView view) wontthrow -> bool
 {
   if (view.length < 2 || view[0] != '-') {
@@ -221,9 +199,6 @@ static pure fn is_arithmetic_operand_byte(char byte) wontthrow -> bool
   }
 }
 
-/* A multiplicative or additive operator between two operand bytes, which reads
-   as arithmetic the test builtin never evaluates. The minus sign is left out
-   because a date such as 2019-01-01 carries the same shape. */
 cold fn view_has_arithmetic_operator(StringView view) wontthrow -> bool
 {
   for (usize position = 1; position + 1 < view.length; position++) {
@@ -245,8 +220,6 @@ cold fn view_has_arithmetic_operator(StringView view) wontthrow -> bool
   return false;
 }
 
-/* A letter that appears twice in a tr set, which reads as a word rather than as
-   a set of characters. Case is kept apart because tr keeps it apart. */
 cold fn view_repeats_a_letter(StringView view) wontthrow -> bool
 {
   u32 seen_lowercase = 0;
@@ -268,9 +241,6 @@ cold fn view_repeats_a_letter(StringView view) wontthrow -> bool
   return false;
 }
 
-/* A pattern whose only regular expression byte is a star that follows an
-   ordinary byte. The author wrote a glob, where the star repeats one character
-   instead of matching any text. */
 cold fn view_is_glob_shaped_pattern(StringView view) wontthrow -> bool
 {
   bool has_repetition = false;
@@ -301,9 +271,6 @@ cold fn view_is_glob_shaped_pattern(StringView view) wontthrow -> bool
   return has_repetition;
 }
 
-/* A sed script of the s<delimiter>search<delimiter>replacement<delimiter> shape
-   whose fields hold no regular expression byte, so a parameter expansion
-   replaces the text without a fork. */
 cold fn view_is_plain_substitution_script(StringView view) wontthrow -> bool
 {
   if (view.length < 4 || view[0] != 's') {
@@ -351,9 +318,6 @@ cold fn view_is_plain_substitution_script(StringView view) wontthrow -> bool
   return field_count == 3;
 }
 
-/* The escape sequence a shell echo prints as written, for the printf
-   suggestion. The returned view spans the backslash and the letter behind
-   it. */
 cold fn find_echo_escape_sequence(StringView view) wontthrow -> StringView
 {
   for (usize position = 0; position + 1 < view.length; position++) {
@@ -411,8 +375,6 @@ cold fn find_echo_escape_sequence_outside_substitutions(
   return find_echo_escape_sequence(operand_text.substring(cursor));
 }
 
-/* An echo option bundle that names the escape handling, so the operand text is
-   written the way the author intends. */
 cold fn view_settles_echo_escapes(StringView view) wontthrow -> bool
 {
   if (view.length < 2 || view[0] != '-') {
@@ -432,8 +394,6 @@ cold fn view_settles_echo_escapes(StringView view) wontthrow -> bool
   return has_escape_letter;
 }
 
-/* The command that produces the output of a substitution body. The body is read
-   back to its last pipe, since that stage writes what the caller collects. */
 cold fn substitution_runs_pattern_matcher(StringView body) throws -> bool
 {
   usize position = 0;
@@ -556,10 +516,6 @@ cold fn args_have_short_flag(const ArrayList<const Token *> &args,
   return false;
 }
 
-/* The lone operand of a move, a copy or a link, for the missing destination
-   lints. None is returned when a destination is named, when a flag supplies the
-   destination, or when an operand carries an expansion that could bring more
-   words with it. */
 cold fn single_literal_file_operand(const ArrayList<const Token *> &args) throws
     -> Maybe<const Token *>
 {
@@ -594,8 +550,6 @@ cold fn single_literal_file_operand(const ArrayList<const Token *> &args) throws
   return lone_operand;
 }
 
-/* The top-level system directories rm -r must never aim at, the SC2114
-   table. */
 constexpr PackedStringKey SYSTEM_DIRECTORY_KEYS[] = {
     SSK("/"),     SSK("/bin"), SSK("/boot"), SSK("/dev"),  SSK("/etc"),
     SSK("/home"), SSK("/lib"), SSK("/proc"), SSK("/root"), SSK("/sbin"),
@@ -620,8 +574,6 @@ pure fn is_find_action(StringView word) wontthrow -> bool
   return FIND_ACTIONS.contains(word);
 }
 
-/* The find options that stand before the search paths, so the path lint keeps
-   reading past them. -f takes the path itself and counts as a path. */
 constexpr PackedStringKey FIND_LEADING_OPTION_KEYS[] = {
     SSK("-E"), SSK("-H"), SSK("-L"), SSK("-P"),
     SSK("-d"), SSK("-s"), SSK("-x"), SSK("-X")};
@@ -632,8 +584,6 @@ pure fn is_find_leading_option(StringView word) wontthrow -> bool
   return FIND_LEADING_OPTIONS.contains(word);
 }
 
-/* The names the shell or the environment gives a value without the script
-   assigning one, so a read of them is not an unassigned read. */
 constexpr PackedStringKey SHELL_MAINTAINED_VARIABLE_KEYS[] = {
     SSK("BASH"),
     SSK("BASHOPTS"),
@@ -734,9 +684,6 @@ constexpr PackedStringKey BASH_ONLY_VARIABLE_KEYS[] = {
 };
 constexpr StaticStringSet BASH_ONLY_VARIABLES{BASH_ONLY_VARIABLE_KEYS};
 
-/* The builtins that have no external program of the same name, so an external
-   launcher such as sudo never finds them. echo, printf, test, pwd, true and
-   false are left out because a real program exists for each. */
 constexpr PackedStringKey SHELL_ONLY_BUILTIN_KEYS[] = {
     SSK("."),    SSK("alias"),    SSK("cd"),      SSK("declare"), SSK("eval"),
     SSK("exec"), SSK("export"),   SSK("getopts"), SSK("let"),     SSK("local"),
@@ -750,8 +697,6 @@ pure fn is_shell_only_builtin(StringView name) wontthrow -> bool
   return SHELL_ONLY_BUILTINS.contains(name);
 }
 
-/* An ssh short option that consumes the operand behind it, so the host lint
-   does not read that operand as the remote host. */
 pure fn ssh_option_takes_value(char letter) wontthrow -> bool
 {
   switch (letter) {
@@ -858,8 +803,6 @@ fn check_posix_parameter_expansion(AnalysisContext &actx,
   }
 }
 
-/* The name an arithmetic assignment writes, read backwards from the '=' the
-   scan stands on. The view is empty when that '=' closes a comparison. */
 pure fn arithmetic_assignment_target(StringView expression,
                                      usize equals_position) wontthrow
     -> StringView
@@ -910,6 +853,6 @@ pure fn arithmetic_assignment_target(StringView expression,
   return expression.substring_of_length(at, end - at);
 }
 
-} /* namespace expressions::internal */
+}
 
-} /* namespace koshka */
+}

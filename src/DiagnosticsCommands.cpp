@@ -54,8 +54,6 @@ fn check_trap_condition_operands(AnalysisContext &actx,
       continue;
     }
 
-    /* A numeric condition is a signal number, and only the first few numbers
-       are fixed by POSIX, shellcheck SC2172. */
     if (view.is_all_decimal_digits() && view.length <= 3) {
       usize number = 0;
       for (usize position = 0; position < view.length; position++)
@@ -94,8 +92,6 @@ fn check_trap_condition_operands(AnalysisContext &actx,
                                signal_name_is_unblockable(bare) ||
                                os::signal_number_from_name(bare).has_value();
 
-    /* The kernel delivers KILL and STOP without consulting the handler table,
-       shellcheck SC2173. */
     if (signal_name_is_unblockable(bare)) {
       actx.report_diagnostic(diagnostic_id::sc2173, args[i]->source_location(),
                              {view});
@@ -115,7 +111,7 @@ fn check_trap_condition_operands(AnalysisContext &actx,
   }
 }
 
-} /* namespace */
+}
 
 fn check_command_name_lints(AnalysisContext &actx,
                             const command_lint_input &input) throws -> void
@@ -123,9 +119,6 @@ fn check_command_name_lints(AnalysisContext &actx,
   let const &args = input.args;
   let const location = input.command_location();
 
-  /* An unquoted variable inside a test silently breaks when it is empty or
-     splits. This stays a warning even at the strict default, since the split
-     may be intended. */
   if (input.is_in_group(COMMAND_GROUP_TEST)) {
     for (usize i = 1; i < args.count(); i++) {
       if (args[i]->kind() != Token::Kind::Word) continue;
@@ -156,8 +149,6 @@ fn check_command_name_lints(AnalysisContext &actx,
 
   switch (input.command_id()) {
   case command_name_id::Read:
-    /* read without -r lets a backslash escape the next byte, mangling a line,
-       shellcheck SC2162. */
     if (!args_have_short_flag(args, 'r'))
       actx.report_diagnostic(diagnostic_id::sc2162,
                              input.command_source_location);
@@ -203,16 +194,12 @@ fn check_command_name_lints(AnalysisContext &actx,
       actx.report_diagnostic(diagnostic_id::sc2168, location);
     break;
 
-  /* mapfile and its readarray alias are bash array builtins, shellcheck
-     SC3030. */
   case command_name_id::Mapfile:
   case command_name_id::Readarray: {
     if (is_posix)
       actx.report_diagnostic(diagnostic_id::sc3030, location,
                              {input.command_literal});
 
-    /* The filled array is the last plain operand, so the index is kept and its
-       text is read once the loop has settled on it. */
     let filled_name_index = args.count();
     let should_skip_option_operand = false;
     for (usize i = 1; i < args.count(); i++) {
@@ -258,9 +245,6 @@ fn check_command_name_lints(AnalysisContext &actx,
     break;
   }
 
-  /* The optstring and the name reach the case in the loop body, so the call is
-     recorded for shellcheck SC2213, SC2214 and SC2220. The views point into the
-     syntax tree, which outlives the analysis. */
   case command_name_id::Getopts: {
     if (args.count() < 3) break;
     if (args[1]->kind() != Token::Kind::Word) break;
@@ -281,9 +265,6 @@ fn check_command_name_lints(AnalysisContext &actx,
     break;
   }
 
-  /* Nothing surrounds a break outside a loop, shellcheck SC2104 and SC2105. A
-     function body starts its own loop depth, so a call from inside a loop does
-     not count. */
   case command_name_id::Break:
   case command_name_id::Continue:
     if (actx.loop_body_depth == 0) {
@@ -297,12 +278,8 @@ fn check_command_name_lints(AnalysisContext &actx,
     }
     break;
 
-  /* set changes the options and the positional parameters, so a name=value
-     operand assigns nothing, shellcheck SC2121. */
   case command_name_id::Set:
     if (args.count() >= 2) {
-      /* The operand arrives as an Assignment token, since name=value keeps that
-         shape wherever it stands. */
       let const literal = args[1]->raw_string();
       let const view = literal.view();
       if (!view.is_empty() && view[0] != '-' && view[0] != '+') {
@@ -317,8 +294,6 @@ fn check_command_name_lints(AnalysisContext &actx,
     }
     break;
 
-  /* The POSIX dot command reads a file and takes nothing else, shellcheck
-     SC2240. The source spelling is already reported as SC3046. */
   case command_name_id::Dot:
     if (is_posix && args.count() > 2) {
       let const operand = args[2]->raw_string();
@@ -343,8 +318,6 @@ fn check_command_name_lints(AnalysisContext &actx,
     actx.report_diagnostic(diagnostic_id::sc2003, location);
     break;
 
-  /* A double-quoted trap action expands at set time, not when it fires,
-     shellcheck SC2064. The action is the first operand. */
   case command_name_id::Trap:
     if (args.count() >= 2 && args[1]->kind() == Token::Kind::Word) {
       let const &action =
@@ -397,9 +370,6 @@ fn check_command_name_lints(AnalysisContext &actx,
       actx.report_diagnostic(diagnostic_id::sc3045, args[1]->source_location());
     }
 
-    /* A variable or command substitution in the printf format lets the data
-       control the directives, shellcheck SC2059. The format is the first
-       non-option word, and a -- forces the next word as the format. */
     usize format_index = 0;
     for (usize i = 1; i < args.count(); i++) {
       if (args[i]->kind() != Token::Kind::Word) {
@@ -450,9 +420,6 @@ fn check_command_value_lints(AnalysisContext &actx,
 
   let const &args = input.args;
 
-  /* A declaration builtin that assigns from a command substitution, such as
-     local x=$(cmd), reports its own success rather than the command's status,
-     shellcheck SC2155. The value rides an Assignment token. */
   if (input.is_in_group(COMMAND_GROUP_ASSIGNMENT_BUILTIN)) {
     let has_reported_substitution_value = false;
     let has_array_declaration = false;
@@ -486,8 +453,6 @@ fn check_command_value_lints(AnalysisContext &actx,
                               .to_literal_string();
       let const view = literal.view();
 
-      /* A grouped -aA flag list declares an array, and every other letter in
-         the group changes an unrelated attribute. */
       if (view.length >= 2 && view[0] == '-') {
         if (view.find_character('a').has_value() ||
             view.find_character('A').has_value())
@@ -506,8 +471,6 @@ fn check_command_value_lints(AnalysisContext &actx,
   }
 
   switch (input.command_id()) {
-  /* rm -r with a "$var/" operand deletes / when the variable is empty,
-     shellcheck SC2115. A literal top-level system directory is SC2114. */
   case command_name_id::Rm:
     if (!args_have_short_flag(args, 'r')) break;
 
@@ -532,10 +495,6 @@ fn check_command_value_lints(AnalysisContext &actx,
     }
     break;
 
-  /* The grep pattern lints. An unquoted pattern with a glob metacharacter is
-     SC2062, a pattern with a leading * that has nothing to repeat is SC2063,
-     and a glob-shaped pattern whose star repeats one character is SC2022.
-     The pattern is the first word past the options. */
   case command_name_id::Grep:
   case command_name_id::Egrep:
   case command_name_id::Fgrep: {
@@ -571,20 +530,15 @@ fn check_command_value_lints(AnalysisContext &actx,
     break;
   }
 
-  /* mkdir -pm applies the mode only to the deepest directory, shellcheck
-     SC2174. */
   case command_name_id::Mkdir:
     if (args_have_short_flag(args, 'p') && args_have_short_flag(args, 'm'))
       actx.report_diagnostic(diagnostic_id::sc2174, input.command_location());
     break;
 
-  /* An exit or return code outside the literal 0-255 shape errors or wraps
-     modulo 256, shellcheck SC2242. */
   case command_name_id::Exit:
   case command_name_id::Return: {
     let const is_return = input.command_id() == command_name_id::Return;
 
-    /* One status is all either builtin reads, shellcheck SC2151 and SC2241. */
     if (args.count() > 2) {
       actx.report_diagnostic(is_return ? diagnostic_id::sc2151
                                        : diagnostic_id::sc2241,
@@ -610,7 +564,6 @@ fn check_command_value_lints(AnalysisContext &actx,
                  operand.segments[0].kind ==
                      WordSegment::Kind::CommandSubstitution)
       {
-        /* Command output stands where a status belongs, shellcheck SC2152. */
         actx.report_diagnostic(diagnostic_id::sc2152,
                                args[1]->source_location());
       }
@@ -618,8 +571,6 @@ fn check_command_value_lints(AnalysisContext &actx,
     break;
   }
 
-  /* A move, a copy or a link given one operand names no destination,
-     shellcheck SC2224, SC2225 and SC2226. */
   case command_name_id::Cp:
   case command_name_id::Ln:
   case command_name_id::Mv: {
@@ -642,14 +593,10 @@ fn check_command_value_lints(AnalysisContext &actx,
     break;
   }
 
-  /* GNU xargs kept -i for compatibility and documents -I in its place,
-     shellcheck SC2267. */
   case command_name_id::Xargs:
     if (args_have_short_flag(args, 'i'))
       actx.report_diagnostic(diagnostic_id::sc2267, input.command_location());
 
-    /* xargs launches the program itself, so a shell function is never found,
-       shellcheck SC2033. */
     for (usize i = 1; i < args.count(); i++) {
       if (args[i]->kind() != Token::Kind::Word) continue;
 
@@ -673,6 +620,6 @@ fn check_command_value_lints(AnalysisContext &actx,
   }
 }
 
-} /* namespace expressions::internal */
+}
 
-} /* namespace koshka */
+}

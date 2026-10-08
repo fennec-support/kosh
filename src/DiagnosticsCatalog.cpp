@@ -1416,4 +1416,4 @@ const diagnostic_definition DIAGNOSTIC_DEFINITIONS[] = {
 static_assert(countof(DIAGNOSTIC_DEFINITIONS) ==
               static_cast<usize>(diagnostic_id::Count));
 
-} /* namespace koshka */
+}

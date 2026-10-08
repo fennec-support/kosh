@@ -21,8 +21,6 @@ namespace expressions::internal {
 
 namespace {
 
-/* Which quoting a byte sits inside, which decides whether a homoglyph is read
-   as syntax or as text. */
 enum class source_scan_state : u8
 {
   Normal,
@@ -46,9 +44,6 @@ struct source_scan_table
   u8 acting_states[256];
 };
 
-/* The states in which a byte changes the scan below. A run of bytes that acts
-   in no state is stepped over at once, which keeps a long word, a long comment,
-   and a long quoted string off the per-byte dispatch. */
 consteval fn build_source_scan_table() -> source_scan_table
 {
   source_scan_table table{};
@@ -114,9 +109,6 @@ alwaysinline pure fn chunk_holds_scanned_byte(u64 chunk) wontthrow -> bool
           chunk_holds_byte(chunk, BACKSLASHES)) != 0;
 }
 
-/* Whether the source holds a byte the classification below could report. A
-   script is almost always plain ASCII, so this eight-byte-at-a-time answer
-   keeps the classifying walk off the common path. */
 pure fn source_holds_scanned_byte(StringView source) wontthrow -> bool
 {
   usize at = 0;
@@ -188,9 +180,6 @@ pure fn classify_codepoint(u32 codepoint) wontthrow -> homoglyph_kind
   }
 }
 
-/* A slanted single quote inside a double-quoted string, and a slanted double
-   quote inside a single-quoted string, are the literal typography upstream
-   allows, so they answer None. */
 pure fn homoglyph_diagnostic(homoglyph_kind kind,
                              source_scan_state state) wontthrow
     -> Maybe<diagnostic_id>
@@ -271,8 +260,6 @@ pure fn byte_ends_here_document_delimiter(char byte) wontthrow -> bool
   }
 }
 
-/* The offset just past the here-document terminator. A body holds prose, where
-   a slanted quote or a Unicode dash is ordinary text. */
 pure fn skip_here_document(StringView source, usize at) wontthrow -> usize
 {
   usize cursor = at + 2;
@@ -339,7 +326,6 @@ pure fn byte_is_ascii_letter(char byte) wontthrow -> bool
   return (byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z');
 }
 
-/* The letters whose escape reads as a control byte in other languages. */
 pure fn escape_names_control_byte(char byte) wontthrow -> bool
 {
   switch (byte) {
@@ -359,8 +345,6 @@ fn escape_spelling(char escaped) throws -> String
   return spelling;
 }
 
-/* Whether the line ending just above the given line start carries a
-   continuation, which is what makes a commented-out backslash matter. */
 pure fn line_above_continues(StringView source, usize line_start) wontthrow
     -> bool
 {
@@ -373,7 +357,7 @@ pure fn line_above_continues(StringView source, usize line_start) wontthrow
   return ending > 0 && source[ending - 1] == '\\';
 }
 
-} /* namespace */
+}
 
 fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
 {
@@ -395,7 +379,6 @@ fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
       let const id =
           homoglyph_diagnostic(classify_codepoint(decoded.value), state);
 
-      /* A leading byte-order mark is already reported as its own finding. */
       if (id.has_value() && at != 0) {
         let const spelling = codepoint_spelling(decoded.value);
         actx.report_diagnostic(*id, SourceLocation{at, decoded.length},
@@ -427,8 +410,6 @@ fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
         } else if (at + 2 < source.length && source[at + 1] == '(' &&
                    source[at + 2] == '(')
         {
-          /* A redirection cannot open inside an arithmetic expansion. The
-             shift operator is not read as a here-document there. */
           arithmetic_paren_depth += 2;
           at += 2;
         } else {
@@ -520,16 +501,12 @@ fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
       switch (byte) {
       case '\'': state = source_scan_state::Normal; break;
 
-      /* The backslash carries no meaning here, so the byte behind it is read
-         as source and the scan does not step over it. */
       case '\\':
         if (at + 1 < source.length) {
           if (source[at + 1] == '\'') {
             actx.report_diagnostic(diagnostic_id::sc1003,
                                    SourceLocation{at, 2});
           } else if (source[at + 1] == '\n' && at > 0) {
-            /* The caret reaches back one byte because a span that opens on a
-               continuation is rendered against the line below it. */
             actx.report_diagnostic(diagnostic_id::sc1004,
                                    SourceLocation{at - 1, 2});
           }
@@ -582,9 +559,6 @@ fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
       break;
     }
 
-    /* An escape case consumes its escaped byte. The last consumed byte is read
-       here. An escape that ends the source leaves nothing behind it to
-       read. */
     at++;
     if (at <= source.length && source[at - 1] == '\n') line_start = at;
   }
@@ -608,8 +582,6 @@ pure fn path_base_name(StringView path) wontthrow -> StringView
   return path.substring(at);
 }
 
-/* One left-to-right reader over the shebang line, so the interpreter, its
-   parameters, and their spans come from one walk. */
 struct shebang_word_reader
 {
   StringView line;
@@ -634,9 +606,6 @@ struct shebang_word_reader
   }
 };
 
-/* Whether a later line in the leading comment block opens with the shebang
-   bytes. A misplaced shebang sits under a copyright header, so the walk stops
-   at the first line that is neither blank nor a comment. */
 pure fn header_holds_shebang(StringView source, usize first_line_end) wontthrow
     -> bool
 {
@@ -669,7 +638,7 @@ pure fn header_holds_shebang(StringView source, usize first_line_end) wontthrow
   return false;
 }
 
-} /* namespace */
+}
 
 fn check_shebang(AnalysisContext &actx, StringView source,
                  missing_shebang_policy shebang_policy) throws -> void
@@ -686,8 +655,6 @@ fn check_shebang(AnalysisContext &actx, StringView source,
 
   let const indent_length = at;
 
-  /* A leading `!` is the negation operator, so only a following path reads as
-     a mistyped shebang. */
   if (at < first_line.length && first_line[at] == '!') {
     let const is_swapped = at + 2 < first_line.length &&
                            first_line[at + 1] == '#' &&
@@ -713,7 +680,6 @@ fn check_shebang(AnalysisContext &actx, StringView source,
   let const has_bang =
       has_hash && bang_at < first_line.length && first_line[bang_at] == '!';
 
-  /* A command line that opens a here-document owns the lines after it. */
   let const does_open_here_document =
       !has_hash && first_line.find_substring("<<").has_value();
 
@@ -723,15 +689,11 @@ fn check_shebang(AnalysisContext &actx, StringView source,
       return;
     }
 
-    /* A comment naming an absolute path is the shebang written without its
-       bang. */
     if (has_hash && bang_at < first_line.length && first_line[bang_at] == '/') {
       actx.report_diagnostic(diagnostic_id::sc1113, SourceLocation{at, 1});
       return;
     }
 
-    /* A script without a shebang runs correctly, so the missing interpreter is
-       reported only when diagnostics were asked for. */
     if (shebang_policy == missing_shebang_policy::Report &&
         actx.options.warning_level != 0)
       actx.report_diagnostic(diagnostic_id::sc2148, SourceLocation{0, 1});
@@ -789,8 +751,6 @@ fn check_shebang(AnalysisContext &actx, StringView source,
     parameter_count++;
   }
 
-  /* `env -S` splits its own argument, so the words after it are not separate
-     shebang parameters. */
   if (parameter_count > 1 && !(names_env && has_split_string_flag))
     actx.report_diagnostic(diagnostic_id::sc2096, interpreter_location);
 
@@ -819,8 +779,6 @@ constexpr PackedStringKey DIRECTIVE_KEY_KEYS[] = {
 };
 constexpr StaticStringSet DIRECTIVE_KEYS{DIRECTIVE_KEY_KEYS};
 
-/* A word that continues the command above it, so a directive placed before it
-   covers nothing. */
 constexpr PackedStringKey CLAUSE_KEYWORD_KEYS[] = {
     SSK("do"),   SSK("done"), SSK("elif"), SSK("else"),
     SSK("esac"), SSK("fi"),   SSK("then"), SSK("}"),
@@ -848,8 +806,6 @@ pure fn only_blanks_precede(StringView source, usize line_start,
   return true;
 }
 
-/* The first word below the directive, with blank lines and further comments
-   skipped. */
 pure fn read_word_below_directive(StringView source, usize after) wontthrow
     -> StringView
 {
@@ -881,9 +837,6 @@ pure fn read_word_below_directive(StringView source, usize after) wontthrow
   return source.substring_of_length(word_start, at - word_start);
 }
 
-/* The last line above the directive that carries a command, with blank lines
-   and further comments skipped. Trailing blanks are dropped so the terminator
-   is the final byte. */
 pure fn read_line_above_directive(StringView source, usize line_start) wontthrow
     -> StringView
 {
@@ -946,9 +899,6 @@ pure fn word_holds_case_pattern(StringView word) wontthrow -> bool
   return false;
 }
 
-/* SC1107 and SC1125, read from the tokens after the directive keyword. One
-   finding closes the scan, since a malformed directive is usually followed by
-   prose that would report again on every word. */
 fn check_directive_body(AnalysisContext &actx, StringView source,
                         shellcheck_directive_span span,
                         usize body_position) throws -> void
@@ -990,7 +940,7 @@ fn check_directive_body(AnalysisContext &actx, StringView source,
   }
 }
 
-} /* namespace */
+}
 
 fn check_shellcheck_directives(
     AnalysisContext &actx, StringView source,
@@ -1079,8 +1029,6 @@ struct unassigned_read
   SourceLocation location;
 };
 
-/* The assigned name a read comes closest to, with the assignment that recorded
-   it. */
 struct resembling_assignment
 {
   StringView name;
@@ -1132,8 +1080,6 @@ pure fn fold_name_byte(char byte) wontthrow -> char
                                     : byte;
 }
 
-/* Whether two names differ only in letter case and in underscore placement,
-   which is the shape a misspelled reference of an assigned name takes. */
 pure fn names_resemble_each_other(StringView left, StringView right) wontthrow
     -> bool
 {
@@ -1160,8 +1106,6 @@ pure fn names_resemble_each_other(StringView left, StringView right) wontthrow
   return at_left == left.length && at_right == right.length;
 }
 
-/* The same edit distance the command name suggestion spends, so a mistyped
-   variable and a mistyped command are judged by one rule. */
 pure fn names_are_near_misspellings(StringView left, StringView right) wontthrow
     -> bool
 {
@@ -1170,7 +1114,7 @@ pure fn names_are_near_misspellings(StringView left, StringView right) wontthrow
       utils::bounded_osa_distance(left, right, budget), right.length);
 }
 
-} /* namespace */
+}
 
 fn check_command_name_assignments(AnalysisContext &actx) throws -> void
 {
@@ -1282,8 +1226,6 @@ namespace {
 
 constexpr usize NO_DEFINITION_INDEX = ~usize{0};
 
-/* Every definition and call the script gave one name, gathered once so the
-   sweep no longer costs definitions times calls on a large script. */
 struct function_name_summary
 {
   usize first_definition_index{NO_DEFINITION_INDEX};
@@ -1326,8 +1268,6 @@ fn check_function_argument_use(AnalysisContext &actx,
                                const function_name_summary &summary) throws
     -> void
 {
-  /* A definition no call reaches may belong to a sourced library, where the
-     caller lives outside this file. */
   if (summary.has_call_with_arguments || !summary.has_call_without_arguments) {
     return;
   }
@@ -1353,8 +1293,6 @@ fn check_call_before_definition(
   for (let const &call : actx.function_calls) {
     if (call.is_inside_function_body) continue;
 
-    /* A name that is also a builtin runs the builtin until the definition is
-       reached, so the earlier call is not a forward reference. */
     if (search_builtin(call.name.view()).has_value()) continue;
 
     let const summary = summaries.find(call.name.view());
@@ -1367,7 +1305,7 @@ fn check_call_before_definition(
   }
 }
 
-} /* namespace */
+}
 
 fn check_function_argument_dataflow(AnalysisContext &actx) throws -> void
 {
@@ -1377,8 +1315,6 @@ fn check_function_argument_dataflow(AnalysisContext &actx) throws -> void
       actx.should_report(diagnostic_id::sc2119) ||
       actx.should_report(diagnostic_id::sc2120);
 
-  /* An interactive chunk runs against a live shell whose functions the file
-     never defines, so the order the file states is not the order that runs. */
   let const should_check_definition_order =
       !actx.effects.should_silence_unresolved_commands &&
       actx.should_report(diagnostic_id::sc2218);
@@ -1392,7 +1328,6 @@ fn check_function_argument_dataflow(AnalysisContext &actx) throws -> void
       let const &definition = actx.functions.records[index];
       if (definition.first_positional_read.is_empty()) continue;
 
-      /* A redefinition is judged by the first body the file gives the name. */
       let const summary = summaries.find(definition.name.view());
       if (!summary.has_value() || summary->first_definition_index != index)
         continue;
@@ -1405,6 +1340,6 @@ fn check_function_argument_dataflow(AnalysisContext &actx) throws -> void
     check_call_before_definition(actx, summaries);
 }
 
-} /* namespace expressions::internal */
+}
 
-} /* namespace koshka */
+}

@@ -49,10 +49,6 @@ fn check_posix_redirection_portability(AnalysisContext &actx,
   if (redirection.is_both_streams_spelling)
     actx.report_diagnostic(diagnostic_id::sc3020, do_get_location());
 
-  /* A delimiter is matched literally and is never expanded. Only its quoting
-     form carries a portability difference. POSIX sh reads the dollar sign of a
-     quoting form as part of the delimiter and ends the document on a different
-     line than bash does. */
   if (redirection.heredoc_delimiter != nullptr) {
     let const delimiter_location =
         redirection.heredoc_delimiter->source_location();
@@ -75,8 +71,6 @@ fn check_posix_redirection_portability(AnalysisContext &actx,
 
   if (redirection.target == nullptr) return;
 
-  /* A target expands like any other word. The same segment checks the operands
-     use apply here. */
   if (redirection.target->kind() == Token::Kind::Word) {
     let const target_location = redirection.target->source_location();
     let const &target_word =
@@ -119,23 +113,16 @@ cold fn plain_output_redirection_spelling(Redirection::Kind kind) wontthrow
   }
 }
 
-} /* namespace */
+}
 
-/* The redirection lints. 2>&1 before the stdout file redirect is SC2069,
-   reading and truncating the same file is SC2094, an input redirect into a
-   non-stdin command is SC2217. */
 fn check_redirection_lints(AnalysisContext &actx,
                            const command_lint_input &input) throws -> void
 {
   let saw_stderr_to_stdout = false;
-  /* An owned String, since the view of a to_literal_string() temporary would
-     dangle past the statement. */
   String read_target{heap_allocator()};
   const Token *read_token = nullptr;
   let const is_test_command =
       input.is_in_group(COMMAND_GROUP_TEST) && !input.is_command_shadowed;
-  /* Descriptors 0 through 9 are the ones a script writes, and the location of
-     the first claim is kept so the second claim can point back at it. */
   SourceLocation claimed_fd_locations[10]{};
   u16 claimed_fd_mask = 0;
 
@@ -153,8 +140,6 @@ fn check_redirection_lints(AnalysisContext &actx,
                                           input.command_location());
     }
 
-    /* A descriptor points at one file, so a second claim silently wins and the
-       first is lost, shellcheck SC2261. */
     if (redirection.claims_descriptor() && redirection.fd >= 0 &&
         redirection.fd < 10 && redirection.target != nullptr)
     {
@@ -171,9 +156,6 @@ fn check_redirection_lints(AnalysisContext &actx,
       }
     }
 
-    /* The local shell expands an unquoted here document body before ssh sends
-       it, so the remote host receives values from this host, shellcheck
-       SC2087. */
     if (redirection.kind == Redirection::Kind::Heredoc &&
         redirection.should_expand_heredoc &&
         input.command_id() == command_name_id::Ssh &&
@@ -221,8 +203,6 @@ fn check_redirection_lints(AnalysisContext &actx,
                                  {*digits});
         }
 
-        /* Quoting the name states that a file is meant, and the word literal
-           drops the quotes, so the source text decides, shellcheck SC2238. */
         if (digits.has_value() && word_names_a_command_as_a_value(*digits)) {
           let const target_source =
               redirection.target->source_location().get_source_text(
@@ -320,8 +300,6 @@ fn check_test_operand_lints(AnalysisContext &actx,
   let const &args = input.args;
   let const is_posix = actx.is_posix_sh_shebang;
 
-  /* The operand range excludes the closing bracket, so the operator loop and
-     the operand loop share one bound. */
   usize operand_end = args.count();
   bool is_bracket_form_closed = true;
   if (input.command_id() == command_name_id::SingleBracket ||
@@ -338,11 +316,6 @@ fn check_test_operand_lints(AnalysisContext &actx,
     if (is_bracket_form_closed) operand_end = args.count() - 1;
   }
 
-  /* Obsolescent or redundant test forms. -a or -o joining two conditions is
-     SC2166, warned only past the first operand and not after a !. A negated -z
-     or -n is SC2236 and SC2237. */
-  /* This holds the literal of the previous word. It is empty when the
-     predecessor is not a word. */
   let previous_literal = String{heap_allocator()};
   if (args.count() > 1 && args[0]->kind() == Token::Kind::Word) {
     previous_literal = static_cast<const tokens::WordToken *>(args[0])
@@ -363,18 +336,11 @@ fn check_test_operand_lints(AnalysisContext &actx,
     let const is_previous_binary_operator =
         is_test_binary_operator_word(previous_literal.view());
 
-    /* == is a bashism in test, shellcheck SC3014, warned only when == sits in
-       the operator slot so [ x = == ] comparing the literal == is left
-       alone. */
     if (view == "==" && i >= 2 && !is_previous_binary_operator) {
       actx.report_diagnostic(diagnostic_id::sc3014, args[i]->source_location());
     }
     let const previous_is_bang = previous_literal.view() == "!";
 
-    /* A dash-led word that names no operator, shellcheck SC2057 and SC2058.
-       The word after a condition opener sits in the unary slot, the word after
-       a plain operand sits in the binary slot, and the word after a known
-       operator is an operand. */
     if (view_looks_like_test_operator(view) && view[1] != '-' &&
         !is_known_test_operator_word(view))
     {
@@ -385,8 +351,6 @@ fn check_test_operand_lints(AnalysisContext &actx,
       if (is_unary_slot && i + 1 < args.count() &&
           args[i + 1]->kind() == Token::Kind::Word)
       {
-        /* A three-word test compares strings when the middle word is a binary
-           operator, so [ -verbose = "$1" ] holds an operand. */
         let const next = static_cast<const tokens::WordToken *>(args[i + 1])
                              ->word()
                              .to_literal_string();
@@ -409,9 +373,6 @@ fn check_test_operand_lints(AnalysisContext &actx,
                              {view});
     }
 
-    /* Both sides of a comparison are written out, so the answer is fixed,
-       shellcheck SC2050. The file comparisons read the filesystem and are left
-       alone. */
     if (i >= 2 && i + 1 < operand_end && is_test_binary_operator_word(view) &&
         !is_test_file_comparison_word(view) && !is_previous_binary_operator &&
         args[i - 1]->kind() == Token::Kind::Word &&
@@ -422,8 +383,6 @@ fn check_test_operand_lints(AnalysisContext &actx,
       let const &right =
           static_cast<const tokens::WordToken *>(args[i + 1])->word();
       if (word_is_fully_literal(left) && word_is_fully_literal(right)) {
-        /* A bracket test receives its operands already expanded, so a glob or a
-           brace list on either side is not the text that is compared. */
         let const left_shape = classify_test_operand(left);
         let const right_shape = classify_test_operand(right);
         let const is_expanded_before_test =
@@ -440,9 +399,6 @@ fn check_test_operand_lints(AnalysisContext &actx,
       }
     }
 
-    /* The bracket test takes one word per operand, so an operand that expands
-       to several words leaves the test with a stray argument. The shape is read
-       once from the segments the word already holds. */
     if (i < operand_end) {
       let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
       let const shape = classify_test_operand(word);
@@ -495,8 +451,6 @@ fn check_test_operand_lints(AnalysisContext &actx,
       }
     }
 
-    /* Two inequalities on the same operand joined by -o hold for every value,
-       shellcheck SC2056. */
     if (view == "-o" && i >= 3) {
       let const before = test_inequality_left_operand(args, i - 2, operand_end);
       let const after = test_inequality_left_operand(args, i + 2, operand_end);
@@ -523,8 +477,6 @@ fn check_test_operand_lints(AnalysisContext &actx,
       } else if (i + 2 < args.count() &&
                  args[i + 2]->kind() == Token::Kind::Word)
       {
-        /* The ! X OP Y shape where OP has a direct negated form, shellcheck
-           SC2335. */
         let const op = static_cast<const tokens::WordToken *>(args[i + 2])
                            ->word()
                            .to_literal_string();
@@ -540,15 +492,9 @@ fn check_test_operand_lints(AnalysisContext &actx,
     previous_literal = steal(literal);
   }
 
-  /* A test with no operand always fails, shellcheck SC2212. */
   if (is_bracket_form_closed && operand_end == 1)
     actx.report_diagnostic(diagnostic_id::sc2212, input.command_location());
 
-  /* A single-operand test with no operator is the nonempty-string test. A
-     bracketed true, false, 0 or 1 reads as the builtin and is SC2158 through
-     SC2161, another literal is the constant condition SC2078, command output is
-     SC2243, and a variable is SC2244. A flag-shaped operand is left alone so
-     [ -n ] is not told to use -n. */
   if (is_bracket_form_closed && operand_end == 2 &&
       args[1]->kind() == Token::Kind::Word)
   {
@@ -588,10 +534,6 @@ fn check_test_operand_lints(AnalysisContext &actx,
     }
   }
 
-  /* The operand-shape lints over the closed operand range. A -z or -n on a
-     literal operand is SC2157, the same test on collected matcher output is
-     SC2143, a numeric comparison against a non-numeric literal is SC2170, and a
-     = or == against a glob literal is SC2081. */
   for (usize i = 1; i < operand_end; i++) {
     if (args[i]->kind() != Token::Kind::Word) continue;
     let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
@@ -619,7 +561,6 @@ fn check_test_operand_lints(AnalysisContext &actx,
 
     if (is_test_numeric_operator_word(view)) {
       for (usize side = i - 1; side <= i + 1; side += 2) {
-        /* Index zero is the command word, never an operand. */
         if (side == 0 || side >= operand_end ||
             args[side]->kind() != Token::Kind::Word)
           continue;
@@ -641,7 +582,6 @@ fn check_test_operand_lints(AnalysisContext &actx,
           actx.report_diagnostic(diagnostic_id::sc2081,
                                  args[i + 1]->source_location());
         } else if (i >= 2 && args[i - 1]->kind() == Token::Kind::Word) {
-          /* Two differing literals never compare equal, shellcheck SC2193. */
           let const &left =
               static_cast<const tokens::WordToken *>(args[i - 1])->word();
           let const left_literal = left.to_literal_string();
@@ -656,8 +596,6 @@ fn check_test_operand_lints(AnalysisContext &actx,
       }
     }
 
-    /* A test against $? checks the exit status indirectly, shellcheck
-       SC2181. */
     if (word.segments.count() == 1 &&
         word.segments[0].kind == WordSegment::Kind::VariableReference &&
         word.segments[0].text.view() == "?")
@@ -669,8 +607,6 @@ fn check_test_operand_lints(AnalysisContext &actx,
 
 namespace {
 
-/* The variables whose value is a command name by convention, so an ordinary
-   prefix assignment to one of them is not a swallowed command. */
 constexpr PackedStringKey COMMAND_VALUED_VARIABLE_KEYS[] = {
     SSK("BROWSER"), SSK("CC"),     SSK("CXX"),      SSK("DIFFPROG"),
     SSK("EDITOR"),  SSK("FCEDIT"), SSK("MANPAGER"), SSK("PAGER"),
@@ -679,12 +615,8 @@ constexpr PackedStringKey COMMAND_VALUED_VARIABLE_KEYS[] = {
 constexpr StaticStringSet COMMAND_VALUED_VARIABLES{
     COMMAND_VALUED_VARIABLE_KEYS};
 
-/* A prefix such as `BIN="$BIN"` hands the outer value to the command, so a
-   reference to the name among the operands reads those same bytes. */
 pure fn prefix_value_is_own_name(const PrefixAssignment &var) wontthrow -> bool
 {
-  /* A quoted value carries an empty text segment for the quote itself, which
-     contributes no bytes to the value. */
   let has_matching_reference = false;
   for (let const &segment : var.get_value().segments) {
     if (segment.kind == WordSegment::Kind::VariableReference) {
@@ -701,10 +633,8 @@ pure fn prefix_value_is_own_name(const PrefixAssignment &var) wontthrow -> bool
   return has_matching_reference;
 }
 
-} /* namespace */
+}
 
-/* A prefix assignment does not affect the expansion on the same command, so a
-   reference to one of its names reads the old value. */
 fn check_prefix_assignment_reads(AnalysisContext &actx,
                                  const command_lint_input &input) throws -> bool
 {
@@ -713,9 +643,6 @@ fn check_prefix_assignment_reads(AnalysisContext &actx,
   let const &args = input.args;
   let has_explained_resolution_failure = false;
 
-  /* One prefix assignment whose value names a command leaves the next word as
-     the command name, shellcheck SC2037. A variable that holds a command name
-     by convention keeps its ordinary use. */
   if (input.local_vars.count() == 1 && !input.command_literal.is_empty()) {
     let const &value = input.local_vars[0].get_value();
     let const value_is_bare_word =
@@ -765,8 +692,6 @@ fn check_prefix_assignment_reads(AnalysisContext &actx,
 
 namespace {
 
-/* An arithmetic value assigns text unless it is wrapped, so the operand shape
-   is read from the raw assignment. */
 pure fn value_is_self_arithmetic(StringView name, StringView value) wontthrow
     -> bool
 {
@@ -795,8 +720,6 @@ pure fn value_is_self_arithmetic(StringView name, StringView value) wontthrow
   return value.substring(position).is_all_decimal_digits();
 }
 
-/* The value keeps its quote bytes, so the surrounding pair is dropped before
-   the name is compared. */
 pure fn assignment_value_is_own_name(StringView name,
                                      StringView value) wontthrow -> bool
 {
@@ -831,11 +754,8 @@ pure fn value_has_written_escape(StringView value) wontthrow -> bool
   return false;
 }
 
-} /* namespace */
+}
 
-/* A brace expansion needs a comma between the braces, so a lone brace stays
-   data. A question mark is common inside a plain URL, so only the star counts
-   as a glob here. */
 static pure fn segment_holds_literal_pattern(StringView text) wontthrow -> bool
 {
   if (text.find_character('*').has_value()) return true;
@@ -906,8 +826,6 @@ fn check_assignment_value_shape(AnalysisContext &actx,
     actx.report_diagnostic(diagnostic_id::sc2125, input.location, {input.name});
   }
 
-  /* PATH without a separator and without its own value replaces the search
-     path, shellcheck SC2123. An expanded value may already hold a path list. */
   if (input.name == "PATH" &&
       input.update_mode != assignment_update_mode::Append &&
       !value.is_empty() && input.shape.has_only_literal_segments &&
@@ -923,8 +841,6 @@ fn check_assignment_value_shape(AnalysisContext &actx,
     actx.report_diagnostic(id, input.location, {input.name});
   }
 
-  /* A prefix repeating the value the name already holds exports it into the
-     environment of the command, which an ordinary assignment does not do. */
   if (input.update_mode != assignment_update_mode::Append &&
       !input.is_command_prefix &&
       assignment_value_is_own_name(input.name, value))
@@ -932,16 +848,12 @@ fn check_assignment_value_shape(AnalysisContext &actx,
     actx.report_diagnostic(diagnostic_id::sc2269, input.location, {input.name});
   }
 
-  /* A separator written as two text bytes never becomes the control byte,
-     shellcheck SC2141. */
   if (input.name == "IFS" && input.shape.has_only_literal_segments &&
       value_has_written_escape(value))
   {
     actx.report_diagnostic(diagnostic_id::sc2141, input.location, {input.name});
   }
 
-  /* A prefix naming the program another tool is meant to start, such as
-     `PAGER=cat cmd`, hands the name to that tool and is deliberate. */
   let const is_deliberate_command_prefix =
       input.is_command_prefix && COMMAND_VALUED_VARIABLES.contains(input.name);
 
@@ -962,8 +874,6 @@ fn check_assignment_value_shape(AnalysisContext &actx,
   }
 
   if (!first_bracket.has_value()) {
-    /* A scalar assignment to an array name touches the first element alone,
-       shellcheck SC2178 and SC2179. */
     if (actx.array_valued_names.count() != 0 &&
         actx.array_valued_names.contains(input.name))
     {
@@ -976,8 +886,6 @@ fn check_assignment_value_shape(AnalysisContext &actx,
     return;
   }
 
-  /* A second subscript makes the name a multidimensional array, which the shell
-     does not have, shellcheck SC2180. */
   let const after_first = input.name.substring(*first_bracket + 1);
   let const closer = after_first.find_character(']');
   if (closer.has_value() &&
@@ -1032,11 +940,6 @@ pure fn literal_run_matches_at(const Word &case_word, usize start, usize end,
   return true;
 }
 
-/* Whether the literal chunks of the case word leave room for the pattern. An
-   expansion matches anything, so only a literal chunk can refute a match, and
-   an unproven case answers true. The leading run is held to the start of the
-   pattern and the trailing run to its end, since an expansion cannot move
-   either. */
 pure fn case_pattern_can_match_word(const Word &case_word,
                                     StringView pattern) wontthrow -> bool
 {
@@ -1093,7 +996,7 @@ pure fn case_pattern_can_match_word(const Word &case_word,
   return true;
 }
 
-} /* namespace */
+}
 
 fn check_case_word_shape(AnalysisContext &actx,
                          const case_lint_input &input) throws -> void
@@ -1150,15 +1053,11 @@ fn check_case_pattern_shape(AnalysisContext &actx, const case_lint_input &input,
     }
   }
 
-  /* An expanded pattern is matched as a glob, so its bytes never compare
-     literally, shellcheck SC2254. */
   if (has_unquoted_expansion && !pattern_source.is_empty()) {
     actx.report_diagnostic(diagnostic_id::sc2254, pattern_location,
                            {pattern_source});
   }
 
-  /* A literal pattern with no metacharacter matches one string, so the literal
-     chunks of the case word decide it, shellcheck SC2195. */
   if (input.case_word != nullptr && is_literal_pattern &&
       !has_glob_metacharacter && !pattern_source.is_empty() &&
       !input.case_word_source.is_empty() &&
@@ -1202,14 +1101,12 @@ fn check_case_option_coverage(AnalysisContext &actx,
                            input.getopts_location);
   }
 
-  /* getopts stores a question mark for an unknown option, so a case without a
-     catch-all silently skips it, shellcheck SC2220. */
   if (!tally.has_default_arm && !tally.has_question_arm) {
     actx.report_diagnostic(diagnostic_id::sc2220, input.case_location, {},
                            input.getopts_location);
   }
 }
 
-} /* namespace expressions::internal */
+}
 
-} /* namespace koshka */
+}

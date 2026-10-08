@@ -374,7 +374,6 @@ struct diagnostic_definition
   const char *message_template;
   Maybe<const char *> suggestion_template;
   Maybe<const char *> related_template;
-  /* None marks a native analysis row that borrows no ShellCheck number. */
   Maybe<u16> shellcheck_code;
   diagnostic_tier tier;
   diagnostic_delivery delivery;
@@ -388,13 +387,11 @@ struct shellcheck_directive_span
 
 enum class heredoc_miss_kind : u8
 {
-  IndentedTerminator,    /* a blank other than a stripped tab leads the line */
-  TabIndentedTerminator, /* tabs lead the line and `<<-` was not written */
-  TrailingBlankTerminator, /* a blank follows the token */
+  IndentedTerminator,
+  TabIndentedTerminator,
+  TrailingBlankTerminator,
 };
 
-/* A body line that reads as the terminator once its blanks are removed, kept
-   only for a here-document that ran to the end of the source. */
 struct heredoc_terminator_miss
 {
   usize position;
@@ -404,14 +401,12 @@ struct heredoc_terminator_miss
 
 enum class shellcheck_selector_kind : u8
 {
-  All,       /* every catalog entry is disabled */
-  Slug,      /* one native or numbered variant is named */
-  Code,      /* every variant under one ShellCheck code is named */
-  CodeRange, /* every code in [code_start, code_end) is named */
+  All,
+  Slug,
+  Code,
+  CodeRange,
 };
 
-/* The slug is a span because the parser's source copy is released before the
-   analysis stage reads the suppressions. */
 struct shellcheck_selector
 {
   shellcheck_selector_kind kind{shellcheck_selector_kind::All};
@@ -427,8 +422,6 @@ struct shellcheck_suppression
   ArrayList<shellcheck_selector> selectors;
 };
 
-/* The name is owned because the parser releases its source copy before
-   analysis runs. */
 enum class analysis_scope_definition_kind : u8
 {
   Function,
@@ -559,10 +552,6 @@ constexpr u32 COMMAND_GROUP_NON_STDIN_READER = 1u << 6;
 constexpr u32 COMMAND_GROUP_ENVIRONMENT_NEUTRAL = 1u << 7;
 constexpr u32 COMMAND_GROUP_PATTERN_MATCHER = 1u << 8;
 constexpr u32 COMMAND_GROUP_HTML_ENTITY_TAIL = 1u << 9;
-/* A bare word naming one of these programs is almost always a missing command
-   substitution or a missing pipe, shellcheck SC2209 and SC2238. A name that
-   reads naturally as data, such as test, id, set, true, and echo, is left
-   out. */
 constexpr u32 COMMAND_GROUP_NAME_AS_VALUE = 1u << 10;
 
 struct analysis_command_info
@@ -583,4 +572,4 @@ struct analysis_command_info
 
 fn get_analysis_command_info(StringView name) throws -> analysis_command_info;
 
-} /* namespace koshka */
+}
