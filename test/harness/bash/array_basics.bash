@@ -3,7 +3,8 @@
 # byte-for-byte against bash. Covers numeric index, @ and *, the scalar read of
 # element zero, a negative index, an arithmetic subscript, out of range, building
 # one array from another, and iteration. An integer array evaluates each
-# element of a literal.
+# element of a literal. An element assignment with a redirection and no
+# command assigns the element, and a bad subscript there ends the script.
 a=(x y z)
 echo "${a[0]}"
 echo "${a[1]}"
@@ -415,3 +416,15 @@ declare -p int_literal
 declare -Ai int_assoc=([k]=1+1)
 int_assoc+=([j]=2+2)
 echo "int-assoc=${int_assoc[k]} ${int_assoc[j]}"
+redirected[2]=x >/dev/null
+redirected[1]+=y redirected_scalar=2 redirected[2]+=z >/dev/null
+declare -p redirected redirected_scalar
+declare -n redirected_ref=redirected
+redirected_ref[5]=q >/dev/null
+int_literal[0]=2*4 >/dev/null
+int_assoc[k]+=5 >/dev/null
+echo "redirected=${redirected[*]} int=${int_literal[0]} ${int_assoc[k]}"
+readonly redirected_readonly=(1)
+redirected_readonly[1]=2 >/dev/null; echo "not reached"
+echo "readonly element status $?"
+redirected[1+]=1 >/dev/null

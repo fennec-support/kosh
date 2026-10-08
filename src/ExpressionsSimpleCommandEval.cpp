@@ -654,6 +654,23 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       [&](const tokens::Assignment &assignment) throws {
         let const name = assignment.key().view();
         let value = cxt.expand_word_for_assignment(assignment.value_word());
+        if (let const bracket = name.find_character('[');
+            bracket.has_value() && name[name.length - 1] == ']')
+        {
+          let const array_name = name.substring_of_length(0, *bracket);
+          let const subscript = name.substring_of_length(
+              *bracket + 1, name.length - *bracket - 2);
+          do_trace_assignment(name, assignment.get_update_mode(), value.view());
+          do_reject_readonly_target(array_name);
+          try {
+            cxt.assign_array_element(array_name, subscript, value.view(),
+                                     assignment.get_update_mode());
+          } catch (const Error &error) {
+            relocate_if_unlocated(error, assignment.source_location());
+          }
+          return;
+        }
+
         do_reject_readonly_target(name);
         do_trace_assignment(name, assignment.get_update_mode(), value.view());
         if (assignment.get_update_mode() == assignment_update_mode::Append)
