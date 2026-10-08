@@ -2144,8 +2144,9 @@ assignment, an export, and an unset of the reference act on that variable, and
 a chain of references is followed. A for loop over a reference binds the
 reference to each word, ${!name} reads the name the reference reaches, and
 .B "unset \-n"
-removes the reference itself. The conditional [[ \-R name ]] is true for a
-reference with a value. A reference with no value binds to the name its
+removes the reference itself. The conditional [[ \-R name ]] and, outside
+the sh mood, test \-R name and [ \-R name ] are true for a reference with a
+value. A reference with no value binds to the name its
 first assignment gives it. A reference to itself is an error, and a circular
 chain reads as unset with a warning and fails an assignment. A write through a
 reference applies the read-only, restricted, integer, and case rules of the

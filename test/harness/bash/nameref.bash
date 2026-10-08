@@ -2,7 +2,8 @@
 # Name references, checked against bash. A reference writes through for a
 # plain, appending, element, array, read, printf, arithmetic, and prefix
 # assignment, follows a chain, passes a caller variable by reference, binds
-# per word in a for loop, and reports itself to declare -p and ${!name}.
+# per word in a for loop, and reports itself to declare -p, ${!name},
+# [[ -R ]], test -R, and [ -R ].
 # unset acts on the target, unset -n on the reference, and a circular chain
 # reads as unset and fails an assignment.
 X=1
@@ -118,6 +119,17 @@ declare -p gone 2>/dev/null || echo "reference removed"
 
 [[ -R r ]] && echo "r is a reference"
 [[ -R X ]] || echo "X is not a reference"
+declare -n dangling
+for name in r X e loop dangling unset_name; do
+  test -R "$name"
+  test_status=$?
+  [ -R "$name" ]
+  echo "test -R $name $test_status $?"
+done
+test ! -R r; echo "negated test -R $?"
+[ -R r -a -R X ]; echo "joined test -R $?"
+[ -R r -o -R X ]; echo "either test -R $?"
+test -R; echo "lone -R $?"
 
 declare -n self=self 2>/dev/null
 echo "self status $?"

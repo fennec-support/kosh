@@ -81,10 +81,12 @@ class TestEvaluator
 {
 public:
   const ExecContext &ec;
+  const EvalContext &cxt;
   const ArrayList<String> &args;
   usize pos;
   usize end;
   bool is_bash_compatible;
+  bool has_name_reference_test;
 
   pure const String &current() const wontthrow
   {
@@ -104,6 +106,7 @@ public:
   {
     if (op == "-z") return operand.is_empty();
     if (op == "-n") return !operand.is_empty();
+    if (op == "-R") return cxt.is_bound_nameref(operand.view());
 
     let const operand_path = Path{operand};
 
@@ -146,7 +149,7 @@ public:
     fail(
         StringView{"'"} + op +
         "' is not a known unary operator, expected one of -z -n -e -f -d -s -r "
-        "-w -x -L -h -b -c -p -S -g -u -k -O -G -t");
+        "-w -x -L -h -b -c -p -S -g -u -k -O -G -t -R");
     return false;
   }
 
@@ -213,6 +216,8 @@ public:
         SSK("-O"), SSK("-G"), SSK("-t"),
     };
     static constexpr StaticStringSet UNARY_OPS{KEYS};
+    if (has_name_reference_test && s == "-R") return true;
+
     return UNARY_OPS.contains(s.view());
   }
 
@@ -395,8 +400,13 @@ fn Test::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   LOG(All, "test evaluating %zu operands", expression_end - 1);
 
-  let evaluator = TestEvaluator{ec, arguments, 1, expression_end,
-                                cxt.runtime_state().is_bash_compatible()};
+  let evaluator = TestEvaluator{ec,
+                                cxt,
+                                arguments,
+                                1,
+                                expression_end,
+                                cxt.runtime_state().is_bash_compatible(),
+                                cxt.runtime_state().bash_additions_enabled()};
   let const result = evaluator.evaluate_top();
   /* A paren pair the argument-count rules stripped narrowed end past the
      closing paren, so the leftover check runs against the narrowed window

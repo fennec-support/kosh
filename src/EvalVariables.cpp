@@ -750,6 +750,12 @@ fn EvalContext::resolve_nameref(StringView name) const throws -> Maybe<String>
   return String{heap_allocator()};
 }
 
+pure fn EvalContext::is_bound_nameref(StringView name) const wontthrow -> bool
+{
+  return variable_store().attributes().is_nameref(name) &&
+         variable_store().shell_variables().find(name).has_value();
+}
+
 fn EvalContext::warn_circular_nameref(StringView name) const throws -> void
 {
   show_message(

@@ -292,9 +292,7 @@ struct conditional_evaluator
       }
       return cxt.get_variable_value(operand).has_value();
     }
-    case UnaryOperatorKind::NameReference:
-      return cxt.variable_store().attributes().is_nameref(operand) &&
-             cxt.variable_store().shell_variables().find(operand).has_value();
+    case UnaryOperatorKind::NameReference: return cxt.is_bound_nameref(operand);
     case UnaryOperatorKind::PathExists: return make_path(operand).exists();
     case UnaryOperatorKind::RegularFile:
       return make_path(operand).is_regular_file();
