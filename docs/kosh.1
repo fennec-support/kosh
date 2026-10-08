@@ -4005,9 +4005,9 @@ command makes a typed
 .BR [ ,
 .BR { ,
 double quote, or single quote insert its closer after the caret. The closer
-is added only at the line end or before a blank or a closing bracket, never
-after a backslash, and a quote is left single after a letter, a digit, or the
-same quote. Inside a quoted string, a comment, or a here-document body a
+is added only at the line end or before a blank, a closing bracket, a quote, or
+a closer the editor inserted, never after a backslash, and a quote is left
+single after a letter or a digit or next to the same quote. Inside a quoted string, a comment, or a here-document body a
 bracket or quote is typed alone, except that
 .B $(
 and

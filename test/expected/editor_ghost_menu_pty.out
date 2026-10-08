@@ -150,6 +150,8 @@ auto-pair-backspace-deletes-pair PASS
 auto-pair-quote-after-word-stays-single PASS
 auto-pair-single-quoted-text-stays-plain PASS
 auto-pair-double-quoted-text-stays-plain PASS
+auto-pair-substitution-in-paired-quote PASS
+auto-pair-expansion-in-paired-quote PASS
 auto-pair-case-pattern-keeps-subshell-closer PASS
 auto-pair-parenthesized-pattern-steps-over PASS
 option-off-hides-hint PASS

@@ -42,8 +42,9 @@
 # backslash. Caret moves onto matched brackets keep the line and the caret,
 # so a key typed there lands in place. The auto-pair option inserts, steps
 # over, and erases closers, leaves brackets and quotes plain inside quoted
-# text, and types a case pattern end before the closer of its subshell while a
-# parenthesized pattern steps over its own. A file name with control bytes completes in the
+# text, pairs $( and ${ inside a double quote it closed itself, and types a
+# case pattern end before the closer of its subshell while a parenthesized
+# pattern steps over its own. A file name with control bytes completes in the
 # $'...' form, and neither the ghost nor the menu writes those bytes raw to the
 # terminal. Every wait polls for the expected final
 # state under a deadline, so a failure reports the last screen instead of
@@ -1145,6 +1146,14 @@ def run_checks(binary, directory, command_directory, report):
         type_text(session, b'echo "a (')
         report.record("auto-pair-double-quoted-text-stays-plain", session,
                       is_line('echo "a ("'))
+        clear_line(session)
+        type_text(session, b'echo "$(')
+        report.record("auto-pair-substitution-in-paired-quote", session,
+                      is_line('echo "$()"'))
+        clear_line(session)
+        type_text(session, b'echo "${')
+        report.record("auto-pair-expansion-in-paired-quote", session,
+                      is_line('echo "${}"'))
         clear_line(session)
         type_text(session, b"(case x in a)")
         report.record("auto-pair-case-pattern-keeps-subshell-closer", session,
