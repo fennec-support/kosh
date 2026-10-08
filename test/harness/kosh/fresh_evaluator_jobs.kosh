@@ -1,0 +1,18 @@
+#!/bin/env kosh
+
+# A background group, a pipeline stage, and a process substitution are not
+# the parent of the shell's jobs, so wait cannot reach them there, while the
+# shell itself still can. Windows runs each child in a fresh evaluator.
+set -M bash
+koshkit sleep 1 &
+parent_job=$!
+
+{ wait "$parent_job" 2>/dev/null; echo "background-wait=$?"; } &
+wait "$!"
+
+{ wait "$parent_job" 2>/dev/null; echo "stage-wait=$?"; } | { read -r line; echo "$line"; }
+
+while read -r line; do echo "$line"; done < <(wait "$parent_job" 2>/dev/null; echo "substitution-wait=$?")
+
+wait "$parent_job"
+echo "parent-wait=$?"

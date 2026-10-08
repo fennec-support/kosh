@@ -3008,6 +3008,7 @@ fn EvalContext::apply_subshell_bootstrap(
   }
   completion_store().restore(steal(completion));
   job_table_store().apply_wire(steal(jobs));
+  job_table_store().inherit_parent_jobs(false);
   bootstrap.release_process_ownership();
 }
 

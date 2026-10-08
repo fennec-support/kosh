@@ -92,7 +92,8 @@ export KOSHKIT_BIN
 SKIPPED_TESTS += alias_unalias arith_decimal ast_process_substitution \
 	bash_operators_default bash_source_stack builtin_list cd_dash \
 	cd_fail_file cd_paths command compound_redirect \
-	debug_err_return_traps fc fresh_evaluator_path glob_dot_slash_prefix \
+	debug_err_return_traps fc fresh_evaluator_jobs fresh_evaluator_path \
+	glob_dot_slash_prefix \
 	koshkit_compare_posix koshkit_csplit koshkit_diff koshkit_evillogs \
 	koshkit_expr koshkit_filesystem_portable koshkit_filesystem_posix \
 	koshkit_getconf koshkit_goodfsw koshkit_inspect_posix \

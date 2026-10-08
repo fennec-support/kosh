@@ -424,6 +424,7 @@ fn EvalContext::setup_process_substitution(
     if (launch.child_close_fd.has_value()) os::close_fd(*launch.child_close_fd);
     enter_subshell();
     hide_coprocess_descriptors();
+    job_table_store().inherit_parent_jobs(false);
     i32 status = 0;
     let const source_scope = enter_source_scope(&substitution_source,
                                                 String{"process substitution"});
