@@ -489,11 +489,11 @@ fn run_selector_program(koshka::EvalContext &context, koshka::StringView input,
     return selector_outcome::NotRun;
   }
 
-  bool are_child_descriptors_still_ours_until_execute_program = true;
+  bool is_child_descriptor_pair_owned = true;
   bool is_read_end_open = true;
   defer
   {
-    if (are_child_descriptors_still_ours_until_execute_program) {
+    if (is_child_descriptor_pair_owned) {
       koshka::os::close_fd(*input_fd);
       koshka::os::close_fd(output_pipe->out);
     }
@@ -519,7 +519,7 @@ fn run_selector_program(koshka::EvalContext &context, koshka::StringView input,
     if (is_editor_suspended) unused(::tl_end_external_screen());
   };
 
-  are_child_descriptors_still_ours_until_execute_program = false;
+  is_child_descriptor_pair_owned = false;
   let const child = koshka::os::execute_program(
       selector, koshka::os::program_execution_options{
                     .fallback = koshka::os::script_fallback_policy::Reject,
@@ -605,8 +605,7 @@ fn completion_session::run_selector(
   return selector_outcome::Selected;
 }
 
-koshka::String SELECTED_HISTORY_ENTRY_READ_BY_EDITOR_AFTER_CALLBACK{
-    koshka::heap_allocator()};
+koshka::String SELECTED_HISTORY_ENTRY{koshka::heap_allocator()};
 
 fn completion_session::select_history(const char *const *entries, size_t count,
                                       const char **out_selected) -> int
@@ -629,10 +628,9 @@ fn completion_session::select_history(const char *const *entries, size_t count,
     if (outcome == selector_outcome::Dismissed) return -1;
     if (selected.is_empty()) return 0;
 
-    SELECTED_HISTORY_ENTRY_READ_BY_EDITOR_AFTER_CALLBACK =
+    SELECTED_HISTORY_ENTRY =
         koshka::String{koshka::heap_allocator(), selected[0].view()};
-    *out_selected =
-        SELECTED_HISTORY_ENTRY_READ_BY_EDITOR_AFTER_CALLBACK.c_str();
+    *out_selected = SELECTED_HISTORY_ENTRY.c_str();
     return 1;
   } catch (...) {
     return 0;
@@ -1095,8 +1093,8 @@ fn kosh_pair_role_callback(const char *buffer, size_t cursor, int byte) -> int
   }
 }
 
-constexpr int IDLE_PAUSE_LONGER_THAN_WORD_KEY_GAP_MS = 250;
-constexpr int IDLE_DOCUMENTATION_CHILD_READ_REPEAT_MS = 20;
+constexpr int IDLE_DELAY_MS = 250;
+constexpr int IDLE_REPEAT_MS = 20;
 
 fn completion_session::idle(const char *buffer, size_t cursor) -> int
 {
@@ -2478,9 +2476,7 @@ fn set_hint_row(bool should_show_hints, bool should_show_diagnostics) -> void
   COMPLETION_SESSION.should_show_diagnostics = should_show_diagnostics;
   let const is_row_shown = should_show_hints || should_show_diagnostics;
   ::tl_set_hint_callback(is_row_shown ? kosh_hint_callback : nullptr);
-  ::tl_set_idle_callback(kosh_idle_callback,
-                         IDLE_PAUSE_LONGER_THAN_WORD_KEY_GAP_MS,
-                         IDLE_DOCUMENTATION_CHILD_READ_REPEAT_MS);
+  ::tl_set_idle_callback(kosh_idle_callback, IDLE_DELAY_MS, IDLE_REPEAT_MS);
 }
 
 fn set_auto_pair(bool enabled) -> void { ::tl_set_auto_pair(enabled ? 1 : 0); }
@@ -3154,7 +3150,7 @@ static fn finish_prompt_dropping_width_markers(StringView expanded) throws
   return shown;
 }
 
-static fn get_user_resolved_once_per_session() throws -> const String &
+static fn get_cached_user() throws -> const String &
 {
   static String CACHED_USER{koshka::heap_allocator()};
   static bool was_user_resolved = false;
@@ -3170,8 +3166,7 @@ static fn decode_prompt(StringView template_string, EvalContext &context,
                         bool should_quote) throws -> String
 {
   let const working_directory = Path::current_directory().text();
-  return expand_prompt_escapes(template_string,
-                               get_user_resolved_once_per_session().view(),
+  return expand_prompt_escapes(template_string, get_cached_user().view(),
                                working_directory.view(), context, should_quote);
 }
 

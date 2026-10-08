@@ -1311,7 +1311,7 @@ static fn is_known_help_subcommand(EvalContext &context, StringView command,
   return false;
 }
 
-static constexpr usize MAX_SUBCOMMAND_DEPTH_BOUNDING_FORK_COUNT = 4;
+static constexpr usize MAX_SUBCOMMAND_DEPTH = 4;
 
 static fn settled_subcommand_chain(EvalContext &context,
                                    StringView resolved_command, StringView line,
@@ -1326,7 +1326,7 @@ static fn settled_subcommand_chain(EvalContext &context,
   usize position = static_cast<usize>(surface_command.data - line.data) +
                    surface_command.length;
 
-  while (depth_count < MAX_SUBCOMMAND_DEPTH_BOUNDING_FORK_COUNT) {
+  while (depth_count < MAX_SUBCOMMAND_DEPTH) {
     let const word = line.next_ascii_whitespace_word(position);
     if (word.is_empty()) break;
     let const start = static_cast<usize>(word.data - line.data);
@@ -1764,7 +1764,7 @@ fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
     let chain = String{heap_allocator()};
     usize chain_position = 0;
     usize depth_count = 0;
-    while (depth_count < MAX_SUBCOMMAND_DEPTH_BOUNDING_FORK_COUNT) {
+    while (depth_count < MAX_SUBCOMMAND_DEPTH) {
       let const word = between.next_ascii_whitespace_word(chain_position);
       if (word.is_empty() || word[0] == '-') {
         break;

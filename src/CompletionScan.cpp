@@ -1510,12 +1510,12 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
   }
   option_mask = active_spec.option_mask;
 
-  let const is_bashdefault_without_default_keeping_word_empty =
+  let const is_bashdefault_result_empty =
       candidates.is_empty() &&
       active_spec.has_option(completion_option::BashDefault) &&
       !active_spec.has_option(completion_option::Default) &&
       !token_reaches_bash_default_completion(token);
-  if (is_bashdefault_without_default_keeping_word_empty) {
+  if (is_bashdefault_result_empty) {
     return candidates;
   }
 
