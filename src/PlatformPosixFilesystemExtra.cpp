@@ -2076,7 +2076,7 @@ fn execute_batch_operations(const batched_syscall *operations,
   }
 }
 
-} // namespace batch_internal
+}
 
-} // namespace os
-} // namespace koshka
+}
+}

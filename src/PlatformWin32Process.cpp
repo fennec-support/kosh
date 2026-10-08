@@ -176,7 +176,6 @@ volatile sig_atomic_t CHILD_STATE_CHANGED = 0;
 volatile sig_atomic_t SIGNAL_PENDING = 0;
 
 static constexpr i32 SIGNAL_FLAG_COUNT = 128;
-/* Windows raises no child signal, and no number is reserved for one. */
 static constexpr i32 CHILD_SIGNAL_NUMBER = 0;
 static volatile sig_atomic_t PENDING_SIGNAL_FLAGS[SIGNAL_FLAG_COUNT] = {};
 static volatile LONG64 CHILD_USER_TICKS = 0;
@@ -266,8 +265,8 @@ static fn record_child_process_usage(process child) wontthrow -> void
   }
 }
 
-} /* namespace os */
-} /* namespace koshka */
+}
+}
 
 namespace koshka {
 
@@ -422,7 +421,6 @@ fn ProgramCapture::step() wontthrow -> State
   }
 
   if (WaitForSingleObject(m_child, 0) == WAIT_OBJECT_0) {
-    /* The pipe can report empty just before the final child write arrives. */
     DWORD remaining_byte_count = 0;
     if (m_output != KOSH_INVALID_FD &&
         ((PeekNamedPipe(m_output, nullptr, 0, nullptr, &remaining_byte_count,
@@ -497,7 +495,6 @@ fn is_child_process() wontthrow -> bool
   return GetCurrentProcessId() != PARENT_SHELL_PID;
 }
 
-/* Windows has no setuid or setgid notion. */
 fn is_running_setuid() wontthrow -> bool { return false; }
 fn drop_elevated_identity() wontthrow -> bool { return true; }
 
@@ -1048,8 +1045,6 @@ fn execute_program(ExecContext &ec, const program_execution_options &options)
     startup_info.dwFlags = STARTF_USESTDHANDLES;
   }
 
-  /* An empty CreateProcess environment block is two nulls, a null pointer would
-     inherit the shell's environment. */
   wchar_t empty_environment_block[] = {L'\0', L'\0'};
   LPVOID environment_block =
       ec.should_use_empty_environment ? empty_environment_block : nullptr;
@@ -2197,8 +2192,6 @@ static fn spawn_subshell_stage(StringView source, Maybe<descriptor> in_fd,
   let const mood = evaluator.mood;
   let const shell_name = evaluator.shell_name;
 
-  /* Windows has no fork, so a compound pipeline stage re-parses its source in a
-     fresh shell, returned unwaited for the pipeline to reap. */
   let const module_path = current_executable_path();
   if (!module_path.has_value()) return koshka::None;
 
@@ -2346,8 +2339,6 @@ wontreturn fn exit_process_immediately(i32 status) wontthrow -> void
 
 fn replace_process(ExecContext &&ec) -> void
 {
-  /* Windows cannot exec in place, so the program runs to completion and the
-     shell exits with its status. */
   LOG(Debug, "running '%s' to completion in place of an exec",
       ec.program_path().c_str());
   process child = execute_program(
@@ -2392,8 +2383,6 @@ fn make_pipe() wontthrow -> Maybe<Pipe>
   SECURITY_ATTRIBUTES attributes{};
 
   attributes.nLength = sizeof(SECURITY_ATTRIBUTES);
-  /* Both ends non-inheritable, the child receives only what
-     STARTF_USESTDHANDLES names. */
   attributes.bInheritHandle = FALSE;
   attributes.lpSecurityDescriptor = nullptr; /* NOLINT */
 
@@ -2600,9 +2589,6 @@ fn process_from_pid(i64 pid) wontthrow -> process
   return reinterpret_cast<process>(encoded);
 }
 
-/* The numbers are the POSIX values the shell scripts name, and the Windows
-   runtime raises none of them, so the table is the whole of what this platform
-   answers. */
 static const utils::signal_pair SIGNAL_PAIRS[] = {
     {9,  "KILL"},
     {15, "TERM"},
@@ -2631,9 +2617,6 @@ fn signal_names() throws -> const ArrayList<StringView> &
   return names;
 }
 
-/* Quotes and escapes the way CommandLineToArgvW parses back, so an argument
-   with a space, tab, or quote cannot inject further arguments. A backslash run
-   is doubled only before a quote, an empty argument is quoted so it is kept. */
 static fn append_windows_quoted_arg(String &out, StringView arg) -> void
 {
   bool should_quote_arg = arg.count() == 0;
@@ -2656,14 +2639,11 @@ static fn append_windows_quoted_arg(String &out, StringView arg) -> void
       backslash_count++;
     }
     if (i == arg.count()) {
-      /* Trailing backslashes precede the closing quote, so they are doubled to
-         stay literal rather than escaping the quote. */
       for (usize k = 0; k < backslash_count * 2; k++)
         out += '\\';
       break;
     }
     if (arg[i] == '"') {
-      /* The backslashes before a quote are doubled and the quote is escaped. */
       for (usize k = 0; k < backslash_count * 2 + 1; k++)
         out += '\\';
       out += '"';
@@ -2720,7 +2700,6 @@ cold fn last_system_error_message() throws -> String
            StringView{" (Error message could not be converted to UTF-8)"};
   }
   let view = converted->view();
-  /* FormatMessage ends with a period, spacing, and a CRLF, trimmed here. */
   while (view.length > 0) {
     let const last_byte = view[view.length - 1];
     if (last_byte != '.' && last_byte != ' ' && last_byte != '\r' &&
@@ -2733,7 +2712,6 @@ cold fn last_system_error_message() throws -> String
 
   String err{heap_allocator()};
   for (usize i = 0; i < view.length; i++) {
-    /* A %N placeholder is replaced with a word since no argument is passed. */
     if (view[i] == '%' && i + 1 < view.length && view[i + 1] >= '0' &&
         view[i + 1] <= '9')
     {
@@ -2786,8 +2764,6 @@ static fn handle_interrupt(int s) -> void
 fn set_default_signal_handlers(signal_profile profile) -> void
 {
   let const is_interactive = profile == signal_profile::Interactive;
-  /* The interactive shell ignores SIGTERM so a stray terminate does not close
-     the prompt. */
   if (is_interactive && signal(SIGTERM, SIG_IGN) == SIG_ERR) {
     throw Error{"Could not install the signal handlers: " +
                 last_system_error_message()};
@@ -2804,7 +2780,6 @@ static fn handle_trapped_signal(int signal_number) -> void
   if (is_trappable_signal(signal_number))
     PENDING_SIGNAL_FLAGS[signal_number] = 1;
   SIGNAL_PENDING = 1;
-  /* The C runtime resets the disposition, so it is reinstalled for the next. */
   signal(signal_number, handle_trapped_signal);
 }
 
@@ -2841,9 +2816,6 @@ fn monotonic_nanos() wontthrow -> u64
   LARGE_INTEGER counter;
   if (frequency.QuadPart == 0) return 0;
   if (QueryPerformanceCounter(&counter) == 0) return 0;
-  /* The counter is scaled to nanoseconds through the frequency, splitting the
-     whole seconds from the remainder so the multiply never overflows the way a
-     raw counter times a billion would. */
   const u64 whole_seconds = counter.QuadPart / frequency.QuadPart;
   const u64 remainder = counter.QuadPart % frequency.QuadPart;
   return whole_seconds * 1000000000ULL +
@@ -2963,8 +2935,6 @@ fn realtime_microseconds() wontthrow -> u64
   FILETIME file_time;
   GetSystemTimePreciseAsFileTime(&file_time);
   const u64 ticks = filetime_ticks(file_time);
-  /* FILETIME counts 100ns intervals since 1601, so the 1970 offset is removed.
-   */
   const u64 epoch_offset_100ns = 116444736000000000ULL;
   if (ticks < epoch_offset_100ns) return 0;
   return (ticks - epoch_offset_100ns) / 10ULL;
@@ -3038,8 +3008,6 @@ run_measured_with_options(const ArrayList<String> &argv, measured_output output,
   let const suppress_output = output == measured_output::Suppress;
   if (argv.is_empty()) return None;
 
-  /* Windows has no hardware perf counters, only wall time and peak working set.
-   */
   measured_result result{};
 
   let command_line = make_os_args(argv);
@@ -3136,8 +3104,6 @@ fn run_measured(const ArrayList<String> &argv,
 }
 fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
 {
-  /* The snapshot has no per-process resource stats, so the BSD columns stay
-   * zero. */
   unused(detail);
   ArrayList<process_entry> processes{heap_allocator()};
   HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -3157,8 +3123,6 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
     process.pid = static_cast<i64>(entry.th32ProcessID);
     process.parent_pid = static_cast<i64>(entry.th32ParentProcessID);
     process.name = name.take();
-    /* The snapshot exposes only the executable name, used as the command line.
-     */
     process.command_line = process.name.clone();
     if (detail == process_detail::ResourceStats) {
       let const handle =
@@ -3589,6 +3553,6 @@ fn process_owner_name(u32 pid, u32 owner_id, Allocator allocator) throws
   return qualified_name;
 }
 
-} /* namespace os */
+}
 
-} /* namespace koshka */
+}

@@ -491,7 +491,7 @@ fn platform_peak_rss_bytes(long peak_rss) wontthrow -> u64
 #endif
 }
 
-} /* namespace */
+}
 
 fn affinity_processor_count(usize online_count,
                             usize configured_count) wontthrow -> usize
@@ -1200,13 +1200,11 @@ fn read_malloc_heap_stats(malloc_heap_stats &stats) wontthrow -> bool
   }
   return true;
 #elif defined __APPLE__
-  /* The default zone answers for every ordinary malloc, and the size allocated
-     is the region total the zone holds from the kernel. */
-  malloc_statistics_t zone_stats{};
-  malloc_zone_statistics(malloc_default_zone(), &zone_stats);
-  stats.bytes_in_use = zone_stats.size_in_use;
-  stats.arena_bytes = zone_stats.size_allocated;
-  stats.mapped_bytes = zone_stats.max_size_in_use;
+  malloc_statistics_t default_zone_stats{};
+  malloc_zone_statistics(malloc_default_zone(), &default_zone_stats);
+  stats.bytes_in_use = default_zone_stats.size_in_use;
+  stats.arena_bytes = default_zone_stats.size_allocated;
+  stats.mapped_bytes = default_zone_stats.max_size_in_use;
 
   return true;
 #else
@@ -1287,8 +1285,6 @@ struct tcp_counter_field
   tcp_statistics_field capability;
 };
 
-/* The first row with the prefix lists the counter names and the next row
-   carries their values. */
 template <usize FieldCount>
 static fn read_tcp_counter_rows(StringView text, StringView prefix,
                                 const tcp_counter_field (&fields)[FieldCount],
@@ -3009,5 +3005,5 @@ fn FileWatcher::wait(f64 timeout_seconds) wontthrow -> void
   }
 }
 
-} /* namespace os */
-} /* namespace koshka */
+}
+}

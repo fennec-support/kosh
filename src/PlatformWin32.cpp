@@ -103,9 +103,6 @@ namespace os {
 static i32 HIGHEST_OPEN_SHELL_FD = 2;
 static bool HAS_SCANNED_INHERITED_SHELL_FDS = false;
 
-/* Windows has no descriptor flag for close on exec. The numbers a spawn must
-   keep away from its child are marked here instead. The table covers the
-   largest descriptor the C runtime will hand out. */
 static constexpr i32 TRACKED_SHELL_FD_COUNT = 8192;
 static constexpr i32 TRACKED_SHELL_FDS_PER_WORD = 64;
 static u64 CLOSE_ON_EXEC_SHELL_FDS[TRACKED_SHELL_FD_COUNT /
@@ -487,7 +484,6 @@ static fn duplicate_handle(HANDLE source, HANDLE &copy,
                          &copy, 0, is_inheritable, DUPLICATE_SAME_ACCESS) != 0;
 }
 
-/* Windows addresses only the three standard streams. */
 static fn std_handle_slot_for_shell_fd(i32 shell_fd) -> Maybe<DWORD>
 {
   switch (shell_fd) {
@@ -543,8 +539,6 @@ fn save_and_replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow
   result.was_open = original != nullptr && original != INVALID_HANDLE_VALUE;
   result.saved = original;
 
-  /* SetStdHandle does not copy, so the target is duplicated here and the dup
-     stays valid until restore_descriptor closes it. */
   HANDLE duplicate = INVALID_HANDLE_VALUE;
   if (!duplicate_handle(target, duplicate, TRUE)) {
     result.is_dup2_ok = false;
@@ -619,9 +613,6 @@ fn save_and_replace_descriptor_out_of_reach(i32 shell_fd,
                                             os::descriptor target) wontthrow
     -> saved_descriptor
 {
-  /* A standard descriptor is backed up by the original handle held in the
-     result, and any other descriptor by an unregistered duplicate. Neither
-     one carries a number a script can name. */
   return save_and_replace_descriptor(shell_fd, target);
 }
 
@@ -641,7 +632,6 @@ fn reopen_terminal_as_stdin() wontthrow -> bool
   return replace_descriptor(0, terminal) && shell_fd_is_a_tty(0);
 }
 
-/* Windows has no POSIX process groups, so the terminal handoff is a no-op. */
 fn shell_has_controlling_terminal() wontthrow -> bool { return false; }
 fn give_controlling_terminal_to(process p) wontthrow -> void { unused(p); }
 fn give_controlling_terminal_to_process_group(i64 process_group_id) wontthrow
@@ -679,8 +669,6 @@ fn move_descriptor_to_free_shell_fd(os::descriptor source,
 
   if (!replace_descriptor(shell_fd, source)) return -1;
 
-  /* The POSIX peer places the descriptor with F_DUPFD_CLOEXEC. The mark keeps
-     the spawn path from handing this number to a child. */
   set_shell_fd_close_on_exec(shell_fd, close_on_exec_mode::Enabled);
 
   close_fd(source);

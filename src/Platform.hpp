@@ -158,7 +158,7 @@ hot alwaysinline fn read_native_endian_bytes(const char *bytes,
   return value;
 }
 
-} /* namespace koshka::os */
+}
 
 #include "base/ArrayList.hpp"
 #include "base/Maybe.hpp"
@@ -482,11 +482,11 @@ fn join_thread(thread t) wontthrow -> void;
 
 enum class file_open_mode : u8
 {
-  Truncate,          /* >  create or truncate for writing */
-  TruncateNoClobber, /* >  under noclobber, fail if the file exists */
-  Append,            /* >> create or append for writing */
-  Read,              /* <  open an existing file for reading */
-  ReadWrite,         /* <> create or open for reading and writing */
+  Truncate,
+  TruncateNoClobber,
+  Append,
+  Read,
+  ReadWrite,
   ReadNonblocking,
 };
 
@@ -522,8 +522,6 @@ fn wait_for_child_state_change() wontthrow -> void;
 
 fn reap_process_quietly(process p) throws -> i32;
 
-/* Unchanged means the poll reported no new transition, so the caller keeps the
-   state it already recorded. */
 enum class process_state : u8
 {
   Running,
@@ -555,20 +553,14 @@ fn signal_description_from_number(i32 number) throws -> String;
 
 fn signal_names() throws -> const ArrayList<StringView> &;
 
-/* On Windows a handle is opened for it, which may be the invalid handle when
-   the process is gone or not permitted. */
 fn process_from_pid(i64 pid) wontthrow -> process;
 
-/* One live process the koshkit pkill, killall, and ps utilities read, its
-   numeric id, the basename of its command, the owner uid, and the full command
-   line. The command line is empty for a process that exposes none. */
 struct process_entry
 {
   i64 pid{0};
   i64 parent_pid{0};
   String name{heap_allocator()};
   String command_line{heap_allocator()};
-  /* The BSD aux columns, filled only when resource stats are requested. */
   u64 virtual_kib{0};
   u64 resident_kib{0};
   u64 cpu_milliseconds{0};
@@ -579,9 +571,6 @@ struct process_entry
 
 static_assert(sizeof(usize) != 8 || sizeof(process_entry) == 168);
 
-/* Every process the current user can see, for the koshkit pkill and killall
-   utilities to match a name against. Empty on a platform with no process
-   listing. The resource stats are read only when asked. */
 fn enumerate_processes(process_detail detail = process_detail::Basic) throws
     -> ArrayList<process_entry>;
 
@@ -977,7 +966,6 @@ fn current_executable_path() wontthrow -> Maybe<String>;
 
 fn crc32c_update(u32 crc, const void *data, usize length) wontthrow -> u32;
 
-/* The mode carries the type and permission bits in the POSIX st_mode layout. */
 struct file_status
 {
   u64 device_id{0};
@@ -1013,9 +1001,6 @@ struct directory_batch_listing
   Maybe<descriptor> directory;
 };
 
-/* Two observations describe the same untouched file. The device and file
-   identity is compared only when both observations carry it, because a
-   filesystem that reports no identity would otherwise never match. */
 pure constexpr fn file_status_matches(const file_status &expected,
                                       const file_status &actual) wontthrow
     -> bool
@@ -1055,9 +1040,6 @@ fn file_type_letter(u32 mode) wontthrow -> char;
 pure fn device_major(u64 device_id) wontthrow -> u32;
 pure fn device_minor(u64 device_id) wontthrow -> u32;
 
-/* The user name for a numeric uid and the group name for a numeric gid, read
-   directly from /etc/passwd and /etc/group, so the static build stays free of
-   getpwuid and getgrgid. */
 fn uid_to_username(u32 uid) throws -> Maybe<String>;
 fn gid_to_groupname(u32 gid) throws -> Maybe<String>;
 fn username_to_uid(StringView username) throws -> Maybe<u32>;
@@ -1375,8 +1357,6 @@ private:
   ArrayList<String> m_watched_paths{heap_allocator()};
 };
 
-/* Every rebinding of a standard descriptor bumps this counter. A cached answer
-   about a standard stream is refreshed when the value changes. */
 pure fn get_descriptor_epoch() wontthrow -> u64;
 fn note_descriptor_rebound() wontthrow -> void;
 
@@ -1387,14 +1367,8 @@ struct saved_descriptor
 {
   i32 shell_fd{-1};
   descriptor original{KOSH_INVALID_FD};
-  /* A copy of the original descriptor, valid only when was_open is true. */
   descriptor saved{KOSH_INVALID_FD};
-  /* False when shell_fd was not open before the redirection, so restore closes
-     it instead of duplicating the backup back. */
   bool was_open{false};
-  /* False when the dup2 onto shell_fd failed, as when the target descriptor was
-     closed in a duplication like >&5 with fd 5 closed. The caller throws a
-     located error and the restore puts shell_fd back unchanged. */
   bool is_dup2_ok{true};
 };
 
@@ -1402,10 +1376,6 @@ fn save_and_replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow
     -> saved_descriptor;
 fn save_descriptor(i32 shell_fd) wontthrow -> saved_descriptor;
 
-/* Take the same backup the pair above takes and put it where a script is not
-   going to name it. Bash forks a subshell and execs a mimicked script, so it
-   needs no such backup. Kosh runs both in process and has to keep this one
-   alive underneath the script. */
 fn save_and_replace_descriptor_out_of_reach(i32 shell_fd,
                                             os::descriptor target) wontthrow
     -> saved_descriptor;
@@ -1414,38 +1384,20 @@ fn restore_descriptor(const saved_descriptor &saved) wontthrow -> void;
 
 fn descriptor_for_shell_fd(i32 shell_fd) wontthrow -> os::descriptor;
 
-/* Take an independent descriptor for the same open file the shell holds on
-   shell_fd. The result is owned by the caller and closes on exec, and a
-   shell_fd that is not open returns KOSH_INVALID_FD. */
 fn duplicate_shell_fd(i32 shell_fd) wontthrow -> os::descriptor;
 
-/* Move an owned descriptor onto a free shell fd at or above floor_fd and close
-   the original. The result is the shell fd number a script can name, and a
-   failure returns -1 with the original still open. */
 fn move_descriptor_to_free_shell_fd(os::descriptor source,
                                     i32 floor_fd) wontthrow -> i32;
 fn descriptors_refer_to_same_file(os::descriptor first,
                                   os::descriptor second) wontthrow -> bool;
 
-/* On POSIX the descriptor is the shell fd number, on Windows it is the handle
-   that occupies the shell's standard-handle slot. */
 fn descriptor_is_shell_fd(os::descriptor fd, i32 shell_fd) wontthrow -> bool;
 
-/* Orders two strings by the locale collation on POSIX and by byte value on a
-   platform without one. The sign follows strcmp. */
 fn collate_compare(const String &left, const String &right) wontthrow -> int;
 
-/* Whether a Unicode code point belongs to the named ctype class, such as alpha
-   or punct. The answer comes from the platform's UTF-8 classification and is
-   false when the platform has none or the class name is unknown. */
 fn code_point_is_in_class(StringView class_name, u32 code_point) wontthrow
     -> bool;
 
-/* Makes the calling thread classify and decode text as UTF-8 for its lifetime
-   when the requested mode is on, so regex compilation and execution under it
-   match whole characters. It restores the previous locale on destruction and
-   changes nothing when the mode is off, when no UTF-8 locale exists, or on a
-   platform whose regex engine always decodes UTF-8. */
 class regex_utf8_scope
 {
 public:
@@ -1460,13 +1412,9 @@ private:
   maybeunused bool m_is_active{false};
 };
 
-/* The simple case mapping of a Unicode code point under the platform's UTF-8
-   classification, or the code point itself when it has no mapping or the
-   platform has no such classification. */
 fn code_point_to_upper(u32 code_point) wontthrow -> u32;
 fn code_point_to_lower(u32 code_point) wontthrow -> u32;
 
-/* Whether the platform can select the named locale, as newlocale does. */
 fn locale_is_available(StringView locale_name) wontthrow -> bool;
 
 class numeric_locale_scope
@@ -1499,16 +1447,12 @@ private:
   bool m_is_active{false};
 };
 
-/* One capture group's byte span in the subject. A group that did not
-   participate carries a negative start. */
 struct regex_span
 {
   i64 start{-1};
   i64 end{-1};
 };
 
-/* An opaque compiled regular expression. Ownership is tracked by
-   CompiledRegex, not here. */
 struct compiled_regex
 {
   regex_t re{};
@@ -1611,8 +1555,6 @@ cold fn list_directory_typed(descriptor directory, Allocator allocator) throws
 cold fn list_directory_status(StringView dir, Allocator allocator) throws
     -> Maybe<ArrayList<directory_status_entry>>;
 
-/* The user and system seconds the shell and its children have consumed. Every
-   field is zero on a platform with no process accounting. */
 struct cpu_times
 {
   double self_user_seconds{0};
@@ -1639,8 +1581,6 @@ enum class resource_kind : u8
   RealtimePriority,
 };
 
-/* The shell-level stand-in for an infinite limit, mapped to the platform's own
-   sentinel by the wrappers. */
 constexpr u64 RESOURCE_UNLIMITED = ~static_cast<u64>(0);
 
 struct resource_limit
@@ -1653,8 +1593,6 @@ fn get_resource_limit(resource_kind kind) wontthrow -> Maybe<resource_limit>;
 fn set_resource_limit(const resource_limit &limit, resource_kind kind) wontthrow
     -> bool;
 
-/* On POSIX the number is the descriptor, and on Windows it maps to the C
-   runtime handle. */
 fn descriptor_from_fd_number(i64 fd_number) wontthrow -> os::descriptor;
 
 fn replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow -> bool;
@@ -1714,8 +1652,6 @@ fn system_version_name() throws -> String;
 fn machine_target_name() throws -> String;
 fn ostype_name() wontthrow -> StringView;
 
-/* The shell skips its startup config files in the setuid or setgid case, so a
-   file an attacker controls cannot run with the raised privileges. */
 fn is_running_setuid() wontthrow -> bool;
 fn drop_elevated_identity() wontthrow -> bool;
 
@@ -1982,32 +1918,16 @@ fn enumerate_users() throws -> ArrayList<String>;
 
 fn enumerate_groups() throws -> ArrayList<String>;
 
-/* The interactive shell blocks the terminal-generated signals, a
-   non-interactive script leaves those at their default. SIGINT routes to the
-   polled handler in both modes. */
 fn set_default_signal_handlers(signal_profile profile) throws -> void;
 
-/* Runs the hook in this process at exit and on a fatal signal before the signal
-   takes its previous action. The hook must be async-signal-safe. */
 fn install_fatal_exit_hook(void (*hook)()) throws -> void;
 
-/* Set to one by the SIGINT handler and polled by the evaluator, so a Ctrl-C
-   aborts the running command. The main loop clears it before each interactive
-   command. */
 extern volatile sig_atomic_t INTERRUPT_REQUESTED;
 
-/* Raised by the SIGCHLD handler when a child changes state, read and cleared
-   by the prompt's wake hook so set -b reports a finished job immediately. */
 extern volatile sig_atomic_t CHILD_STATE_CHANGED;
 
-/* Set to one whenever any trapped signal arrives, so the evaluator's hot poll
-   is a single read. The drain at the command boundary clears it as it consumes
-   the per-signal flags. */
 extern volatile sig_atomic_t SIGNAL_PENDING;
 
-/* Raised while a CHLD trap action is installed. An arrival is recorded and the
-   trap drain is woken only under this flag. A child that no action observes
-   leaves a signal that is already queued for the next boundary of its own. */
 extern volatile sig_atomic_t CHILD_TRAP_ARMED;
 
 enum class child_trap_arming : u8
@@ -2016,33 +1936,20 @@ enum class child_trap_arming : u8
   Armed,
 };
 
-/* Arm or disarm the child wake from the trap table. The evaluator calls this
-   whenever the table changes, because a platform whose signal table has no
-   CHLD entry never reaches set_trap_handler for it. */
 fn set_child_trap_armed(child_trap_arming arming) wontthrow -> void;
 
-/* A signal the startup blocked is unblocked here, after its disposition is in
-   place. */
 fn set_trap_handler(i32 signal_number) throws -> void;
 
-/* Install the ignore disposition for a signal, for a trap with an empty action
-   such as trap "" INT, so the signal is discarded. */
 fn set_trap_ignore(i32 signal_number) throws -> void;
 
 constexpr i32 ENTRY_IGNORED_SIGNAL_LIMIT = 64;
 
 fn get_entry_ignored_signals() wontthrow -> u64;
 
-/* Restore a signal's default disposition when its trap is removed. SIGINT
-   returns to the shell's interrupt handler, every other signal to SIG_DFL. A
-   signal the install unblocked is blocked again. */
 fn clear_trap_handler(i32 signal_number) throws -> void;
 
 fn take_pending_signal() wontthrow -> i32;
 
-/* Report the lowest queued signal that is not the child signal, leaving its
-   flag in place for the drain. A blocking wait breaks out on this and reports
-   128 plus the number, the way bash reports an interrupted wait. */
 mustuse fn peek_pending_signal_besides_child() wontthrow -> i32;
 
 fn note_child_reaped() wontthrow -> void;
@@ -2054,7 +1961,6 @@ fn monotonic_nanos() wontthrow -> u64;
 
 fn realtime_microseconds() wontthrow -> u64;
 
-/* A negative epoch renders the current time, the bash -1 and -2 forms. */
 fn format_local_time(StringView format, i64 epoch) throws -> String;
 
 struct terminal_dimensions
@@ -2093,8 +1999,6 @@ fn apply_terminal_settings(descriptor terminal,
                            const ArrayList<String> &settings) wontthrow
     -> terminal_settings_apply_result;
 
-/* The user and system seconds this process's children have consumed so far,
-   read from RUSAGE_CHILDREN. Windows has no equivalent and reports zero. */
 struct child_cpu_times
 {
   double user_seconds{0};
@@ -2151,7 +2055,6 @@ struct process_launch_counts
 
 fn get_process_launch_counts() wontthrow -> process_launch_counts;
 
-/* The perf counts are filled only when has_perf is true. */
 struct measured_result
 {
   u64 wall_nanos{0};
@@ -2202,8 +2105,6 @@ struct program_execution_options
   process_group_mode process_group{process_group_mode::Inherit};
 };
 
-/* Script fallback returns KOSH_INVALID_PROCESS when it is allowed and the file
-   has no executable format. */
 fn execute_program(ExecContext &ec,
                    const program_execution_options &options = {}) throws
     -> process;
@@ -2214,26 +2115,14 @@ fn canonical_path(const Path &path) wontthrow -> Maybe<Path>;
 fn path_from_file_id(StringView filesystem_path, u64 file_id) wontthrow
     -> Maybe<Path>;
 
-/* On Windows the wildcard applies to the last path component the way
-   FindFirstFile expands it. */
 fn glob_matches(StringView pattern, Allocator allocator) throws
     -> ArrayList<String>;
 
-/* Whether the directory is safe to run a binary from for its --help text, so it
-   is owned by root or the current user and is not writable by group or other,
-   rejecting a world-writable directory such as /tmp. On Windows a PATH
-   directory is trusted because Windows uses ACLs rather than owner/group mode
-   bits. */
 fn directory_is_trusted_for_exec(const Path &directory) wontthrow -> bool;
 
 fn capture_program_output(const ArrayList<String> &argv,
                           u64 timeout_nanos) wontthrow -> Maybe<String>;
 
-/* A program whose output is collected a step at a time, so a caller that must
-   stay responsive reads it between other work. The program reads the null
-   device and writes standard output and error into one pipe. It is killed when
-   its deadline passes, and a capture dropped before it finished kills and reaps
-   it. */
 class ProgramCapture
 {
 public:
@@ -2253,11 +2142,7 @@ public:
   fn operator=(const ProgramCapture &)->ProgramCapture & = delete;
   ~ProgramCapture();
 
-  /* Reads what the program wrote so far without blocking. Finished leaves the
-     whole output for take_output, and Failed means the program timed out or
-     the pipe broke, with the program already gone. */
   fn step() wontthrow -> State;
-  /* Blocks for at most wait_nanos until the program writes or exits. */
   fn wait(u64 wait_nanos) const wontthrow -> void;
   fn take_output() wontthrow -> String;
 
@@ -2271,9 +2156,6 @@ private:
   String m_captured{heap_allocator()};
 };
 
-/* Ignores SIGTTOU across the change. A no-op without a controlling terminal,
-   in a background child, and for a handoff while another group holds the
-   terminal. */
 fn give_controlling_terminal_to(process p) wontthrow -> void;
 fn give_controlling_terminal_to_process_group(i64 process_group_id) wontthrow
     -> void;
@@ -2416,17 +2298,14 @@ fn register_platform_flags(FlagList &flags) throws -> void;
 fn initialize_platform_runtime() wontthrow -> void;
 fn take_subshell_bootstrap() wontthrow -> subshell_bootstrap;
 
-/* A forked pipeline-stage child calls this so it never runs the parent's
-   cleanup inside the duplicated process. */
 wontreturn fn exit_process_immediately(i32 status) wontthrow -> void;
 
-/* It does not fork, so on success it never returns. */
 fn replace_process(ExecContext &&ec) throws -> void;
 
 fn redirect_self(const ExecContext &ec) throws -> void;
 
-} /* namespace os */
+}
 
-} /* namespace koshka */
+}
 
 #include "PlatformBatch.hpp"

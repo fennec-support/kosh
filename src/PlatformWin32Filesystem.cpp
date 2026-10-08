@@ -71,7 +71,6 @@ static fn fill_file_identity(const BY_HANDLE_FILE_INFORMATION &identity,
   status.has_file_identity = true;
 }
 
-/* A handle opened with no access rights, only to query a path. */
 static fn open_path_for_query(const wchar_t *wide_path, DWORD access,
                               DWORD flags) wontthrow -> HANDLE
 {
@@ -562,8 +561,6 @@ fn path_is_symbolic_link(StringView path) wontthrow -> bool
          (attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
 }
 
-/* Windows has no POSIX block, character, or socket file type. A named pipe
-   stands in for a FIFO. */
 fn path_is_block_device(StringView) wontthrow -> bool { return false; }
 fn path_is_character_device(StringView path) wontthrow -> bool
 {
@@ -575,7 +572,6 @@ fn path_is_fifo(StringView path) wontthrow -> bool
 }
 fn path_is_socket(StringView) wontthrow -> bool { return false; }
 
-/* Windows carries no setuid, setgid, sticky, or POSIX ownership bit. */
 fn path_has_setuid_bit(StringView) wontthrow -> bool { return false; }
 fn path_has_setgid_bit(StringView) wontthrow -> bool { return false; }
 fn path_has_sticky_bit(StringView) wontthrow -> bool { return false; }
@@ -623,7 +619,6 @@ fn paths_are_same_file(StringView first, StringView second) wontthrow -> bool
   if (!wide_first.has_value()) return false;
   let const wide_second = utf8_to_wide(second, heap_allocator());
   if (!wide_second.has_value()) return false;
-  /* FILE_FLAG_BACKUP_SEMANTICS lets a directory open too. */
   let const first_handle =
       open_path_for_query(wide_first->begin(), 0, FILE_FLAG_BACKUP_SEMANTICS);
   if (first_handle == INVALID_HANDLE_VALUE) return false;
@@ -697,7 +692,6 @@ fn path_is_writable(StringView path) wontthrow -> bool
 
 fn path_is_executable(const Path &path) wontthrow -> bool
 {
-  /* Windows has no execute permission bit, so an existing file is runnable. */
   return path_is_regular_file(path.view());
 }
 

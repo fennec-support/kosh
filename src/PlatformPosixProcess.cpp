@@ -94,8 +94,6 @@ fn process_has_id(process p, i64 id) wontthrow -> bool
   return p == static_cast<process>(id);
 }
 
-/* posix_spawn reports an exec failure through its return value with no waitable
-   pid, so a child is forked to give the caller the same pid and status. */
 cold fn spawn_failure_child(SourceLocation location, const Path &program_path,
                             int spawn_error, StringView source,
                             i64 process_group_id,
@@ -119,7 +117,6 @@ cold fn spawn_failure_child(SourceLocation location, const Path &program_path,
                                       "`: " + last_system_error_message()};
     koshka::show_message(error.to_string(source));
     koshka::flush();
-    /* 127 for a missing file, 126 for a resolved but unexecutable program. */
     _exit(spawn_error == ENOENT ? 127 : 126);
   }
 
@@ -243,8 +240,6 @@ hot fn execute_program(ExecContext &ec,
   posix_spawn_file_actions_init(&file_actions);
   defer { posix_spawn_file_actions_destroy(&file_actions); };
 
-  /* A descriptor already on its target slot is left in place, the close would
-     shut the live descriptor. */
   if (ec.in_fd && *ec.in_fd != STDIN_FILENO) {
     posix_spawn_file_actions_adddup2(&file_actions, *ec.in_fd, STDIN_FILENO);
     posix_spawn_file_actions_addclose(&file_actions, *ec.in_fd);
@@ -282,10 +277,6 @@ hot fn execute_program(ExecContext &ec,
         posix_spawn_file_actions_adddup2(&file_actions, dup_from_fd, target_fd);
       },
       [&](i32 target_fd) {
-        /* A close action for a descriptor the child does not hold fails the
-           whole spawn on Darwin. The descriptor is gone when the parent never
-           opened it and when the standard routing already moved it onto its
-           slot and closed it. */
         let const do_is_closed_by_slot = [&](const Maybe<os::descriptor> &slot,
                                              i32 standard_fd) {
           return slot.has_value() && *slot == target_fd && *slot != standard_fd;
@@ -311,8 +302,6 @@ hot fn execute_program(ExecContext &ec,
   sigemptyset(&default_signals);
   sigaddset(&default_signals, SIGINT);
   sigaddset(&default_signals, SIGCHLD);
-  /* SIGPIPE is reset so a pipe producer dies rather than inheriting the shell's
-     ignore. */
   sigaddset(&default_signals, SIGPIPE);
   posix_spawnattr_setsigdefault(&attr, &default_signals);
 
@@ -338,8 +327,6 @@ hot fn execute_program(ExecContext &ec,
                       ? const_cast<char *const *>(empty_environment)
                       : environ);
 
-  /* An ENOEXEC file with no shebang runs as a shell script in place, the POSIX
-     behavior. The check runs before the fds close so the script keeps them. */
   if (spawn_error == ENOEXEC && allow_script_fallback) {
     was_fds_handed_to_fallback = true;
     return KOSH_INVALID_PROCESS;
@@ -374,8 +361,6 @@ fn ProgramCapture::start(const ArrayList<String> &argv,
   if (pipe(pipe_fds) != 0) return None;
   const int read_end = pipe_fds[0];
   const int write_end = pipe_fds[1];
-  /* The read end outlives this call, so a command the shell runs meanwhile
-     must not inherit it. */
   fcntl(read_end, F_SETFD, FD_CLOEXEC);
 
   const int devnull_fd = open("/dev/null", O_RDONLY);
@@ -396,9 +381,6 @@ fn ProgramCapture::start(const ArrayList<String> &argv,
 
   let const raw_args = make_os_args(argv);
 
-  /* The shell ignores SIGPIPE. The spawn restores the default in the child, so
-     a child that keeps writing after the read end closes on the timeout dies on
-     SIGPIPE rather than seeing EPIPE. */
   posix_spawnattr_t attr;
   posix_spawnattr_init(&attr);
   sigset_t default_signals;
@@ -523,7 +505,6 @@ fn give_controlling_terminal_to(process p) wontthrow -> void
     return;
   }
 
-  /* The handoff itself raises SIGTTOU, so it is ignored across the change. */
   void (*const previous)(int) = signal(SIGTTOU, SIG_IGN);
   tcsetpgrp(STDIN_FILENO, p);
   signal(SIGTTOU, previous);
@@ -564,8 +545,6 @@ static fn fork_compound_stage(
   const pid_t child_pid = check_syscall(fork());
 
   if (child_pid == 0) {
-    /* A throw would unwind into the parent's evaluator, the child must exit
-       directly. */
     try {
       if (process_group != process_group_mode::Inherit) {
         ASSERT(process_group != process_group_mode::Join ||
@@ -813,9 +792,6 @@ fn replace_process(ExecContext &&ec) throws -> void
 
   reset_signal_handlers();
 
-  /* exec -c replaces the inherited environ with a single null, so the program
-     starts with an empty environment. execve takes the envp explicitly where
-     execv would have read environ. */
   char *const empty_environment[] = {nullptr};
   note_exec_launch();
   execve(ec.program_path().c_str(),
@@ -826,8 +802,6 @@ fn replace_process(ExecContext &&ec) throws -> void
 
   let const exec_error = errno;
   if (exec_error == ENOEXEC) return;
-  /* The reason is read before the concatenation, which allocates and could
-     clobber errno. */
   errno = exec_error;
   let const reason = last_system_error_message();
   let error = koshka::ErrorWithLocation{
@@ -1015,8 +989,6 @@ fn wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
     const String sig_desc =
         (sig_str != nullptr) ? String{sig_str} : String{"Unknown"};
 
-    /* SIGPIPE is reaped silently the way bash and dash do, Ctrl-C prints a bare
-       newline, every other signal prints the located process message. */
     if (sig == SIGPIPE) {
     } else if (sig != SIGINT) {
       koshka::print_error(
@@ -1065,9 +1037,7 @@ fn reap_process_quietly(process pid) throws -> i32
   loop
   {
     const pid_t w = retry_interrupted([&] { return waitpid(pid, &status, 0); });
-    /* The SIGCHLD handler may already have reaped it, a missing child is fine.
-     */
-    if (w == -1 && errno == ECHILD) {
+      if (w == -1 && errno == ECHILD) {
       return 0;
     }
     if (check_syscall(w) == pid) break;
@@ -1536,13 +1506,8 @@ fn realtime_microseconds() wontthrow -> u64
 
 fn format_local_time(StringView format, i64 epoch) throws -> String
 {
-  /* A negative epoch is the current time, so a fixed value renders a fixed time
-     while the bash -1 and -2 magic values track the clock. */
   const time_t when = epoch < 0 ? time(nullptr) : static_cast<time_t>(epoch);
   struct tm broken_down{};
-  /* localtime_r returns null and leaves the struct unspecified for an epoch
-     outside the representable range, so an unchecked struct would feed strftime
-     garbage. An out-of-range time renders as empty rather than a wrong date. */
   if (localtime_r(&when, &broken_down) == nullptr)
     return String{heap_allocator()};
   let const format_string = String{format};
@@ -1776,7 +1741,7 @@ fn wait_for_measured_child(pid_t child_pid, i64 &status_out, u64 &peak_rss_out,
   return true;
 }
 
-} /* namespace */
+}
 
 fn read_own_resource_usage() wontthrow -> process_resource_usage
 {
@@ -1984,9 +1949,9 @@ fn run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
   });
 }
 
-} /* namespace os */
+}
 
-} /* namespace koshka */
+}
 
 fn kosh_main(int argc, char **argv) -> int;
 

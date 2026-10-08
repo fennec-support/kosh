@@ -68,7 +68,6 @@ static fn stat_path(StringView path, struct stat &info) wontthrow -> bool
   return ::stat(path_string.c_str(), &info) == 0;
 }
 
-/* A failed stat reads as the type not matching. */
 static fn stat_matches_type(StringView path, mode_t expected_type) wontthrow
     -> bool
 {
@@ -181,7 +180,6 @@ fn path_is_newer_than(StringView first, StringView second) wontthrow -> bool
   struct stat first_info{}, second_info{};
   if (!stat_path(first, first_info)) return false;
   if (!stat_path(second, second_info)) return false;
-  /* The nanoseconds break a same-second tie. */
   if (first_info.st_mtim.tv_sec != second_info.st_mtim.tv_sec)
     return first_info.st_mtim.tv_sec > second_info.st_mtim.tv_sec;
   return first_info.st_mtim.tv_nsec > second_info.st_mtim.tv_nsec;
@@ -551,14 +549,10 @@ static fn open_with_flags(StringView path, file_open_mode mode,
   LOG(Debug, "opening '%.*s'", static_cast<int>(path.length), path.data);
   did_signal_arrive = false;
 
-  /* Left inheritable on purpose, exec 3>file keeps the fd open across an exec.
-   */
   int flags = 0;
   switch (mode) {
   case file_open_mode::Truncate: flags = O_WRONLY | O_CREAT | O_TRUNC; break;
   case file_open_mode::TruncateNoClobber:
-    /* O_EXCL fails atomically when the file exists, the way noclobber requires.
-     */
     flags = O_WRONLY | O_CREAT | O_EXCL;
     break;
   case file_open_mode::Append: flags = O_WRONLY | O_CREAT | O_APPEND; break;
@@ -624,7 +618,6 @@ fn write_to_temp_file(StringView content) throws -> Maybe<descriptor>
   let path_template_path = Path{temp_dir.text()};
   path_template_path.append("kosh_heredoc_XXXXXX");
 
-  /* mkstemp rewrites the XXXXXX suffix in place, so the template is mutable. */
   const String &path_template_text = path_template_path.text();
   ArrayList<char> path_template{heap_allocator()};
   path_template.reserve(path_template_text.count() + 1);
@@ -699,8 +692,6 @@ fn make_temp_directory(const Path &directory, StringView prefix) throws
   return Path{StringView{path_template.begin()}};
 }
 
-/* The String destructor may clobber errno, so each helper saves it across the
-   inner scope that ends the String first. */
 fn make_directory(StringView path, u32 mode) wontthrow -> bool
 {
   bool did_succeed;
@@ -959,7 +950,6 @@ fn stat_path(StringView path, file_status &status) wontthrow -> bool
 {
   const String path_string{path};
   struct stat info{};
-  /* lstat does not follow the symlink, so ls shows the l type without -L. */
   if (::lstat(path_string.c_str(), &info) != 0) return false;
   fill_file_status(info, status);
   return true;
@@ -1014,6 +1004,6 @@ fn format_mode_string(u32 mode) throws -> String
   return result;
 }
 
-} /* namespace os */
+}
 
-} /* namespace koshka */
+}

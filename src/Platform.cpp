@@ -57,8 +57,8 @@ static u64 ENVIRONMENT_EPOCH = 0;
 
 pure fn get_environment_epoch() wontthrow -> u64 { return ENVIRONMENT_EPOCH; }
 
-} /* namespace os */
-} /* namespace koshka */
+}
+}
 
 #if defined __x86_64__ && !defined __COSMOPOLITAN__
 #include <immintrin.h>
@@ -315,9 +315,6 @@ fn take_pending_signal() wontthrow -> i32
   return 0;
 }
 
-/* A child arrival reaches its action through the reaped count, and a blocking
-   wait keeps running against it. Every other queued signal is left in place for
-   the drain at the next boundary. */
 fn peek_pending_signal_besides_child() wontthrow -> i32
 {
   for (i32 number = 1; number < SIGNAL_FLAG_COUNT; number++) {
@@ -528,8 +525,8 @@ fn read_fd_to_string(os::descriptor fd, Allocator allocator) throws
   }
 }
 
-} /* namespace os */
-} /* namespace koshka */
+}
+}
 
 namespace koshka {
 namespace os {
@@ -756,7 +753,7 @@ pure alwaysinline fn crc32c_update_software(u32 crc, const u8 *data,
   return crc;
 }
 
-} /* namespace */
+}
 
 fn crc32c_update(u32 crc, const void *data, usize length) wontthrow -> u32
 {
@@ -775,5 +772,5 @@ fn crc32c_update(u32 crc, const void *data, usize length) wontthrow -> u32
   return crc32c_update_software(crc, bytes, length);
 }
 
-} /* namespace os */
-} /* namespace koshka */
+}
+}

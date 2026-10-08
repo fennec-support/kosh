@@ -607,14 +607,12 @@ static constexpr i32 SIGNAL_FLAG_COUNT = 128;
 static constexpr i32 CHILD_SIGNAL_NUMBER = SIGCHLD;
 static volatile sig_atomic_t PENDING_SIGNAL_FLAGS[SIGNAL_FLAG_COUNT] = {};
 
-/* The signals a trap install unblocked. Clearing the trap gives each of them
-   its blocked state back. */
 static sigset_t SIGNALS_UNBLOCKED_BY_TRAP = {};
 
 static sigset_t SIGNALS_WITH_TRAP_ACTION = {};
 
-} /* namespace os */
-} /* namespace koshka */
+}
+}
 
 #define KOSH_UMASK(mask) umask(static_cast<mode_t>(mask))
 
@@ -650,7 +648,6 @@ hot fn read_fd(os::descriptor fd, opaque *buf, usize size) wontthrow
   loop
   {
     let read_count = read(fd, buf, size);
-    /* A Ctrl-C returns to the caller, any other interrupting signal retries. */
     if (read_count == -1 && errno == EINTR) {
       if (INTERRUPT_REQUESTED) return koshka::None;
       continue;
@@ -773,12 +770,8 @@ fn restore_stdout(os::descriptor saved) wontthrow -> void
   close(saved);
 }
 
-/* Backups live at or above this number. Bash uses the same floor for the
-   backup a command redirection takes, and a script can name it. */
 constexpr int SHELL_BACKUP_FD_FLOOR = 10;
 
-/* A backup that has to outlive the commands running above it is placed at or
-   below this number, away from the range a script writes by hand. */
 constexpr int SHELL_HIDDEN_FD_CEILING = 255;
 
 static fn highest_free_shell_fd() wontthrow -> int
@@ -817,9 +810,6 @@ static fn save_descriptor_at(i32 shell_fd, int floor_fd) wontthrow
 
   os::descriptor backup = fcntl(shell_fd, F_DUPFD_CLOEXEC, floor_fd);
 
-  /* A raised floor can exceed the real descriptor limit when the limit could
-     not be read. The backup is worth more on a visible number than not at
-     all. */
   if (backup == -1 && errno != EBADF && floor_fd != SHELL_BACKUP_FD_FLOOR) {
     backup = fcntl(shell_fd, F_DUPFD_CLOEXEC, SHELL_BACKUP_FD_FLOOR);
   }
@@ -835,9 +825,6 @@ static fn save_and_replace_descriptor_at(i32 shell_fd, os::descriptor target,
                                          int floor_fd) wontthrow
     -> saved_descriptor
 {
-  /* The backup is placed at the lowest free number at or above the floor, and
-     a closed source names a number in that same range. The source is proven
-     open before anything moves, so a backup can never answer for it. */
   if (fcntl(target, F_GETFD) == -1) {
     saved_descriptor failed{};
     failed.shell_fd = shell_fd;
@@ -871,8 +858,6 @@ fn save_and_replace_descriptor_out_of_reach(i32 shell_fd,
 
 fn restore_descriptor(const saved_descriptor &saved) wontthrow -> void
 {
-  /* A failed replacement leaves the shell descriptor untouched, the backup it
-     already took still has to be closed. */
   if (!saved.is_dup2_ok) {
     if (saved.was_open) close(saved.saved);
     return;
@@ -989,8 +974,6 @@ static fn passwd_field(StringView line, usize index) wontthrow -> StringView;
 
 fn get_current_user() throws -> Maybe<String>
 {
-  /* getpwuid is avoided so the static build does not pull in the glibc NSS
-     modules. */
   if (const char *name = std::getenv("LOGNAME"); name != nullptr)
     return String{name};
   if (const char *name = std::getenv("USER"); name != nullptr)
@@ -1311,11 +1294,6 @@ fn get_system_koshconf_path() throws -> Maybe<Path>
   return Path{StringView{"/etc/kosh.conf"}};
 }
 
-/* The colon field at index of an /etc/passwd line, empty when the line has too
-   few fields. The format is name:passwd:uid:gid:gecos:home:shell. The database
-   is read directly rather than through getpwnam, which a static build cannot
-   call without the glibc NSS modules. A user defined only through NSS is not
-   seen, the accepted tradeoff for the static build. */
 static fn passwd_field(StringView line, usize index) wontthrow -> StringView
 {
   usize field_start_position = 0;
@@ -2208,7 +2186,6 @@ static fn make_fd_inheritable(descriptor fd) wontthrow -> void
   if (flags != -1) fcntl(fd, F_SETFD, flags & ~FD_CLOEXEC);
 }
 
-/* TODO replace with a runtime check, Cosmopolitan runs on Linux and Windows. */
 #if KOSH_PLATFORM_ISNT KOSH_PLATFORM_COSMO
 const ProgramSuffixList PROGRAM_SUFFIXES{POSIX_PROGRAM_SUFFIXES};
 
@@ -2216,7 +2193,7 @@ fn normalize_program_name(String &program_name) throws -> program_name_info
 {
   return {program_extension::None, program_name.length()};
 }
-#endif /* !COSMO */
+#endif
 
 fn has_environment_variable(StringView key) throws -> bool
 {
@@ -2345,9 +2322,6 @@ static fn sigchild_handler(int signal_number, siginfo_t *siginfo,
   unused(siginfo);
   CHILD_STATE_CHANGED = 1;
 
-  /* The drain is woken only for a CHLD trap that has an action. Every external
-     command reaps a child, and a wake for each one would drain a signal that
-     an outer action left queued. */
   if (CHILD_TRAP_ARMED == 0) return;
 
   if (is_trappable_signal(signal_number))
@@ -2391,11 +2365,8 @@ static fn reset_signal_handlers() throws -> void
 
   sigemptyset(&SIGNALS_WITH_TRAP_ACTION);
 
-  /* The shell ignores SIGPIPE, the child restores the default so a producer
-     dies on a broken pipe. */
   check_syscall(sigaction(SIGPIPE, &sa, nullptr));
 
-  /* A stale inherited flag would throw Interrupted before the child runs. */
   INTERRUPT_REQUESTED = 0;
 }
 
@@ -2434,8 +2405,6 @@ fn set_default_signal_handlers(signal_profile profile) throws -> void
   LOG(Info, "installing the shell signal handlers, interactive %d",
       is_interactive ? 1 : 0);
 
-  /* SIGHUP stays default on purpose so a hangup ends the shell rather than
-     leaving it reparented to init and spinning on a redirected loop. */
   if (is_interactive) {
     sigset_t sm = make_sigset(SIGTERM, SIGQUIT, SIGSTOP, SIGTSTP);
     check_syscall(sigprocmask(SIG_BLOCK, &sm, nullptr));
@@ -2559,9 +2528,6 @@ fn set_trap_handler(i32 signal_number) throws -> void
 
   LOG(Info, "installing the trap handler for signal %d", signal_number);
 
-  /* The disposition is installed before the unblock. A pending instance of the
-     signal is delivered the moment it is unblocked, and the default action for
-     most signals ends the shell. */
   if (signal_number == SIGCHLD) {
     install_child_state_handler();
   } else {
@@ -2597,14 +2563,11 @@ fn clear_trap_handler(i32 signal_number) throws -> void
     return;
   }
 
-  /* SIGINT returns to the shell's handler so a Ctrl-C still aborts a loop. */
   install_signal_disposition(
       signal_number, signal_number == SIGINT ? handle_interrupt : SIG_DFL);
   sigdelset(&SIGNALS_WITH_TRAP_ACTION, signal_number);
 }
 
-/* The field 0 name of the first colon line whose field at id_field_index equals
-   the wanted id. One reader serves both /etc/passwd and /etc/group. */
 static fn lookup_name_by_id(StringView database_path, u32 wanted_id,
                             usize id_field_index) throws -> Maybe<String>
 {
@@ -3008,7 +2971,6 @@ fn sleep_for_seconds(double seconds) wontthrow -> void
   requested.tv_sec = static_cast<time_t>(seconds);
   requested.tv_nsec = static_cast<long>(
       (seconds - static_cast<double>(requested.tv_sec)) * 1000000000.0);
-  /* A Ctrl-C returns at once, any other signal sleeps the remaining time. */
   struct timespec remaining;
   while (nanosleep(&requested, &remaining) == -1 && errno == EINTR) {
     if (INTERRUPT_REQUESTED) break;
@@ -3016,9 +2978,9 @@ fn sleep_for_seconds(double seconds) wontthrow -> void
   }
 }
 
-} /* namespace os */
+}
 
-} /* namespace koshka */
+}
 
 #if KOSH_PLATFORM_IS KOSH_PLATFORM_COSMO
 
@@ -3037,11 +2999,11 @@ fn normalize_program_name(String &program_name) -> program_name_info
   return normalize_windows_program_name(program_name);
 }
 
-} /* namespace os */
+}
 
-} /* namespace koshka */
+}
 
-#endif /* COSMO */
+#endif
 
 namespace koshka {
 namespace os {
@@ -3073,5 +3035,5 @@ fn initialize_platform_runtime() wontthrow -> void
   capture_entry_ignored_signals();
 }
 
-} /* namespace os */
-} /* namespace koshka */
+}
+}
