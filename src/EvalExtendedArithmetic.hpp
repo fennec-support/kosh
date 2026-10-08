@@ -121,20 +121,39 @@ struct radix_prefix
   usize prefix_length;
 };
 
+struct radix_digit_table
+{
+  u8 values[256];
+};
+
+inline constexpr radix_digit_table RADIX_DIGIT_TABLE = [] {
+  radix_digit_table table{};
+  for (u32 byte = 0; byte < 256; byte++) {
+    u8 value = 64;
+    if (byte >= '0' && byte <= '9') {
+      value = static_cast<u8>(byte - '0');
+    } else if (byte >= 'a' && byte <= 'z') {
+      value = static_cast<u8>(byte - 'a' + 10);
+    } else if (byte >= 'A' && byte <= 'Z') {
+      value = static_cast<u8>(byte - 'A' + 10);
+    } else if (byte == '@') {
+      value = 62;
+    } else if (byte == '_') {
+      value = 63;
+    }
+    table.values[byte] = value;
+  }
+  return table;
+}();
+
 alwaysinline pure fn radix_digit_value(char byte, u32 radix) wontthrow -> u32
 {
-  if (byte >= '0' && byte <= '9') {
-    return static_cast<u32>(byte - '0');
+  let const value = RADIX_DIGIT_TABLE.values[static_cast<u8>(byte)];
+  if (radix > 36 && byte >= 'A' && byte <= 'Z') {
+    return value + 26u;
   }
-  if (byte >= 'a' && byte <= 'z') {
-    return static_cast<u32>(byte - 'a') + 10;
-  }
-  if (byte >= 'A' && byte <= 'Z') {
-    return static_cast<u32>(byte - 'A') + (radix <= 36 ? 10 : 36);
-  }
-  if (byte == '@') return 62;
-  if (byte == '_') return 63;
-  return 64;
+
+  return value;
 }
 
 alwaysinline pure fn count_leading_digits(StringView text, u32 radix) wontthrow
