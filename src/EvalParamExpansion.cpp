@@ -11,6 +11,7 @@
  * expands the word that follows an operator.
  */
 
+#include "Builtin.hpp"
 #include "Errors.hpp"
 #include "Eval.hpp"
 #include "Expressions.hpp"
@@ -1195,7 +1196,16 @@ private:
                          const SourceLocation *subscript_location,
                          StringView modifier, bool is_colon, char after) throws
       -> Maybe<String>;
+  fn expand_element_transform(StringView subscript,
+                              const SourceLocation *subscript_location,
+                              char op) throws -> String;
   fn expand_bare_reference() throws -> String;
+  fn expand_list_operator(const ArrayList<String> &values, bool is_star,
+                          StringView modifier) throws -> String;
+  fn expand_list_test(const ArrayList<String> &values, bool is_star,
+                      StringView modifier) throws -> String;
+  fn expand_list_transform(const ArrayList<String> &values, bool is_star,
+                           char op) throws -> String;
   fn expand_operator() throws -> String;
   fn expand_substring_form() throws -> String;
   fn expand_positional_slice() throws -> String;
@@ -1463,8 +1473,46 @@ fn EvalContext::ParameterExpander::expand_element_operator(
     return expand_element_test(subscript, subscript_location, modifier,
                                is_colon, after);
   }
+  if (modifier_op == '@' && modifier.length == 2 &&
+      is_transform_operator(modifier[1]))
+  {
+    return expand_element_transform(subscript, subscript_location, modifier[1]);
+  }
 
   return None;
+}
+
+fn EvalContext::ParameterExpander::expand_element_transform(
+    StringView subscript, const SourceLocation *subscript_location,
+    char op) throws -> String
+{
+  if (op == 'a') {
+    return m_context.apply_parameter_transform_to_value(StringView{}, op,
+                                                        m_name);
+  }
+
+  let const is_set = m_context.array_element_is_set(m_name, subscript);
+  if (op == 'A') {
+    let out = String{m_context.scratch_allocator(),
+                     m_context.is_associative_array(m_name) ? "declare -A "
+                                                            : "declare -a "};
+    out.append(m_name);
+    if (is_set) {
+      out += '=';
+      utils::append_shell_quoted(
+          out,
+          m_context.apply_array_subscript(m_name, subscript, subscript_location)
+              .view());
+    }
+
+    return out;
+  }
+  if (!is_set) return String{m_context.scratch_allocator()};
+
+  return m_context.apply_parameter_transform_to_value(
+      m_context.apply_array_subscript(m_name, subscript, subscript_location)
+          .view(),
+      op, m_name);
 }
 
 fn EvalContext::ParameterExpander::expand_subscripted() throws -> Maybe<String>
@@ -1490,8 +1538,8 @@ fn EvalContext::ParameterExpander::expand_subscripted() throws -> Maybe<String>
   };
   if (*close + 1 == m_rest.length) return do_read_element();
 
-  /* The / # % ^ , modifiers after the ] modify the one element, a different
-     modifier such as :- falls through to the general path. */
+  /* The / # % ^ , modifiers after an element subscript modify the one element,
+     and every modifier after an @ or * subscript applies to the list. */
   let const modifier = m_rest.substring(*close + 1);
   let modifier_location = SourceLocation{};
   let const *modifier_location_pointer =
@@ -1509,21 +1557,22 @@ fn EvalContext::ParameterExpander::expand_subscripted() throws -> Maybe<String>
   }
   if (subscript != "@" && subscript != "*" &&
       (modifier_op == '/' || modifier_op == '#' || modifier_op == '%' ||
-       modifier_op == '^' || modifier_op == ','))
+       modifier_op == '^' || modifier_op == ',' || modifier_op == '~'))
   {
     return m_context.apply_value_modifier(do_read_element().view(), modifier,
                                           modifier_location_pointer);
   }
-  if (subscript != "@" && subscript != "*" && !modifier.is_empty()) {
+  if (subscript != "@" && subscript != "*") {
     return expand_element_operator(subscript, subscript_location_pointer,
                                    modifier, modifier_op);
   }
+
+  let const elements = m_context.collect_array_elements(m_name);
   if (modifier.length > 1 && modifier_op == ':' &&
       !is_colon_modifier_operator(modifier[1]))
   {
     let const slice = modifier.substring(1);
     let slice_location = SourceLocation{};
-    let const elements = m_context.collect_array_elements(m_name);
     let const bounds = m_context.compute_list_slice_bounds(
         slice, static_cast<i64>(elements.count()),
         get_location_for(slice, slice_location));
@@ -1531,7 +1580,167 @@ fn EvalContext::ParameterExpander::expand_subscripted() throws -> Maybe<String>
     return m_context.join_list_slice(bounds, elements, None, subscript == "*");
   }
 
-  return None;
+  return expand_list_operator(elements, subscript == "*", modifier);
+}
+
+fn EvalContext::ParameterExpander::expand_list_operator(
+    const ArrayList<String> &values, bool is_star, StringView modifier) throws
+    -> String
+{
+  let const is_colon = modifier[0] == ':';
+  if (is_colon && modifier.length == 1) {
+    raise_bad_substitution();
+  }
+
+  let const op = modifier[is_colon ? 1 : 0];
+  if (is_colon_modifier_operator(op))
+    return expand_list_test(values, is_star, modifier);
+  if (is_colon) raise_bad_substitution();
+
+  switch (op) {
+  case '/':
+  case '#':
+  case '%':
+  case '^':
+  case ',':
+  case '~': {
+    let modifier_location = SourceLocation{};
+    let const *modifier_location_pointer =
+        get_location_for(modifier, modifier_location);
+    let modified = ArrayList<String>{heap_allocator()};
+    modified.reserve(values.count());
+    for (let const &value : values)
+      modified.push(m_context.apply_value_modifier(value.view(), modifier,
+                                                   modifier_location_pointer));
+
+    return m_context.join_list_slice(
+        substring_bounds{0, static_cast<i64>(modified.count())}, modified, None,
+        is_star);
+  }
+  case '@':
+    if (modifier.length == 2 && is_transform_operator(modifier[1])) {
+      return expand_list_transform(values, is_star, modifier[1]);
+    }
+    if (values.is_empty()) return String{m_context.scratch_allocator()};
+
+    raise_bad_substitution();
+  default: raise_bad_substitution();
+  }
+}
+
+fn EvalContext::ParameterExpander::expand_list_test(
+    const ArrayList<String> &values, bool is_star, StringView modifier) throws
+    -> String
+{
+  let const is_colon = modifier[0] == ':';
+  let const op = modifier[is_colon ? 1 : 0];
+  let const word = modifier.substring(is_colon ? 2 : 1);
+  let joined = m_context.join_list_slice(
+      substring_bounds{0, static_cast<i64>(values.count())}, values, None,
+      is_star);
+  let const treat_as_unset = is_colon ? joined.is_empty() : values.is_empty();
+  if (!treat_as_unset) {
+    if (op == '+') return expand_word(word, m_quoting);
+
+    return joined;
+  }
+
+  let const is_positional = m_name == "@" || m_name == "*";
+  let const list_name = is_positional
+                            ? String{m_context.scratch_allocator(), m_name}
+                            : m_name + (is_star ? "[*]" : "[@]");
+  switch (op) {
+  case '-': return expand_word(word, m_quoting);
+  case '+': return String{m_context.scratch_allocator()};
+  case '=': {
+    if (is_positional)
+      throw Error{"Unable to assign to the positional parameters with '${" +
+                  m_spec + "}'"};
+
+    let error = ErrorWithDetails{
+        "Unable to assign to '" + list_name +
+            "' because it names every element of the array",
+        "Assign one element, as in ${" + m_name + "[0]" +
+            modifier.substring_of_length(0, is_colon ? 2 : 1) + "word}."};
+    m_context.mark_expansion_error(error,
+                                   expansion_error_reach::LineOrPosixScript);
+    if (error.is_line_discarding() && !error.is_script_fatal()) {
+      error.set_command_status(2);
+    }
+    throw steal(error);
+  }
+  default:
+    if (word.is_empty()) {
+      throw_script_fatal(
+          "Unable to expand '" + list_name + "' because " +
+          (is_colon ? "it is not set or is empty" : "it is not set"));
+    }
+    throw_script_fatal(list_name + ": " +
+                       expand_word(word, parameter_word_quoting::Unquoted));
+  }
+}
+
+fn EvalContext::ParameterExpander::expand_list_transform(
+    const ArrayList<String> &values, bool is_star, char op) throws -> String
+{
+  let const is_positional = m_name == "@" || m_name == "*";
+  let out = String{m_context.scratch_allocator()};
+  if (op == 'A' && is_positional) {
+    if (values.is_empty()) return out;
+
+    out += "set --";
+    for (let const &value : values) {
+      out += ' ';
+      utils::append_shell_quoted(out, value.view());
+    }
+
+    return out;
+  }
+  if (op == 'A') {
+    if (append_variable_declaration(m_context, m_name, out) &&
+        out[out.count() - 1] == '\n')
+    {
+      out.pop_back();
+    }
+
+    return out;
+  }
+
+  let transformed = ArrayList<String>{heap_allocator()};
+  if ((op == 'K' || op == 'k') && !is_positional) {
+    let const keys = m_context.collect_array_subscripts(m_name);
+    let const pair_count =
+        keys.count() < values.count() ? keys.count() : values.count();
+    if (op == 'K') {
+      for (usize i = 0; i < pair_count; i++) {
+        if (i > 0) out += ' ';
+        out.append(keys[i].view());
+        out += " \"";
+        out += quote_for_declare(values[i].view());
+        out += '"';
+      }
+      if (pair_count > 0 && m_context.is_associative_array(m_name)) {
+        out += ' ';
+      }
+
+      return out;
+    }
+
+    transformed.reserve(pair_count * 2);
+    for (usize i = 0; i < pair_count; i++) {
+      transformed.push(String{heap_allocator(), keys[i].view()});
+      transformed.push(String{heap_allocator(), values[i].view()});
+    }
+  } else {
+    transformed.reserve(values.count());
+    for (let const &value : values)
+      transformed.push(m_context.apply_parameter_transform_to_value(
+          value.view(), op, m_name));
+  }
+
+  return m_context.join_list_slice(
+      substring_bounds{0, static_cast<i64>(transformed.count())}, transformed,
+      None, is_star);
 }
 
 fn EvalContext::ParameterExpander::expand_bare_reference() throws -> String
@@ -1700,7 +1909,12 @@ fn EvalContext::ParameterExpander::expand_operator() throws -> String
     }
   }
 
-  if (!is_colon_form && !is_all_parameters) {
+  if (is_all_parameters) {
+    return expand_list_operator(m_context.variable_store().positional_params(),
+                                m_name == "*", m_rest);
+  }
+
+  if (!is_colon_form) {
     if (let form = expand_leading_form(); form.has_value()) {
       return steal(*form);
     }
@@ -2378,7 +2592,7 @@ fn EvalContext::apply_value_modifier(
   if (modifier.is_empty()) return String{scratch_allocator(), value};
   let const op = modifier[0];
   if (op == '/') return pattern_replace_value(value, modifier, source_location);
-  if (op == '^' || op == ',') {
+  if (op == '^' || op == ',' || op == '~') {
     return apply_case_modification_to_value(value, modifier, source_location);
   }
   if (op == '#' || op == '%') {

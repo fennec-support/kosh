@@ -441,7 +441,8 @@ hot fn EvalContext::expand_word(const Word &word) throws
           segment_text.length > 2 && segment_text[1] == '@' &&
                   (segment_text[2] == 'Q' || segment_text[2] == 'E' ||
                    segment_text[2] == 'U' || segment_text[2] == 'L' ||
-                   segment_text[2] == 'u' || segment_text[2] == 'P')
+                   segment_text[2] == 'u' || segment_text[2] == 'P' ||
+                   segment_text[2] == 'K' || segment_text[2] == 'k')
               ? segment_text[2]
               : '\0';
       if (!segment_text.is_empty() &&
@@ -449,7 +450,8 @@ hot fn EvalContext::expand_word(const Word &word) throws
           segment_text.length > 1 &&
           (segment_text[1] == '/' || segment_text[1] == '#' ||
            segment_text[1] == '%' || segment_text[1] == '^' ||
-           segment_text[1] == ',' || positional_at_op != '\0'))
+           segment_text[1] == ',' || segment_text[1] == '~' ||
+           positional_at_op != '\0'))
       {
         let const is_star = segment_text[0] == '*';
         let const modifier = segment_text.substring(1);
@@ -546,7 +548,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
             at_transform_op == 'Q' || at_transform_op == 'E' ||
             at_transform_op == 'U' || at_transform_op == 'L' ||
             at_transform_op == 'u' || at_transform_op == 'P' ||
-            at_transform_op == 'a';
+            at_transform_op == 'a' || at_transform_op == 'k';
         if (name_end + 3 < segment_text.length &&
             segment_text[name_end] == '[' &&
             (segment_text[name_end + 1] == '@' ||
@@ -554,7 +556,8 @@ hot fn EvalContext::expand_word(const Word &word) throws
             segment_text[name_end + 2] == ']' &&
             (field_modifier_op == '/' || field_modifier_op == '#' ||
              field_modifier_op == '%' || field_modifier_op == '^' ||
-             field_modifier_op == ',' || is_mapped_at_op))
+             field_modifier_op == ',' || field_modifier_op == '~' ||
+             is_mapped_at_op))
         {
           let const array_name = segment_text.substring_of_length(0, name_end);
           let const modifier = segment_text.substring(name_end + 3);
@@ -563,6 +566,17 @@ hot fn EvalContext::expand_word(const Word &word) throws
               do_source_location_for(modifier, modifier_location);
           let const is_star = segment_text[name_end + 1] == '*';
           let const elements = collect_array_elements(array_name);
+          if (at_transform_op == 'k') {
+            let const keys = collect_array_subscripts(array_name);
+            let pairs = ArrayList<String>{heap_allocator()};
+            pairs.reserve(keys.count() * 2);
+            for (usize i = 0; i < keys.count() && i < elements.count(); i++) {
+              pairs.push(String{heap_allocator(), keys[i].view()});
+              pairs.push(String{heap_allocator(), elements[i].view()});
+            }
+            do_emit_elements(pairs, segment.is_in_double_quotes, is_star);
+            break;
+          }
           let const do_transform = [&](StringView element_value) -> String {
             if (is_mapped_at_op)
               return apply_parameter_transform_to_value(
@@ -601,12 +615,12 @@ hot fn EvalContext::expand_word(const Word &word) throws
           let const rest = segment_text.substring(name_end + 3);
           let const is_colon_form = !rest.is_empty() && rest[0] == ':';
           let const op_index = is_colon_form ? usize{1} : usize{0};
-          if (op_index < rest.length &&
-              (rest[op_index] == '+' || rest[op_index] == '-'))
-          {
+          let const array_test_op =
+              op_index < rest.length ? rest[op_index] : '\0';
+          if (is_colon_modifier_operator(array_test_op)) {
             let const array_name =
                 segment_text.substring_of_length(0, name_end);
-            let const modifier_op = rest[op_index];
+            let const modifier_op = array_test_op;
             let const modifier_word = rest.substring(op_index + 1);
             let const is_star = segment_text[name_end + 1] == '*';
             let const elements = collect_array_elements(array_name);
@@ -616,24 +630,29 @@ hot fn EvalContext::expand_word(const Word &word) throws
                 is_every_element_empty = false;
                 break;
               }
+            let const is_joined_value_empty =
+                is_every_element_empty &&
+                (elements.count() <= 1 ||
+                 (is_star && variable_store().field_separators().is_empty()));
             let const treat_as_unset =
-                is_colon_form ? is_every_element_empty : elements.is_empty();
-            let const should_expand_word =
-                modifier_op == '+' ? !treat_as_unset : treat_as_unset;
-
-            if (!should_expand_word) {
-              if (modifier_op == '-')
-                do_emit_elements(elements, segment.is_in_double_quotes,
-                                 is_star);
+                is_colon_form ? is_joined_value_empty : elements.is_empty();
+            if (!treat_as_unset && modifier_op != '+') {
+              do_emit_elements(elements, segment.is_in_double_quotes, is_star);
               break;
             }
+            if (modifier_op == '+' || modifier_op == '-') {
+              let const should_expand_word =
+                  modifier_op == '+' ? !treat_as_unset : treat_as_unset;
 
-            let modifier_word_location = SourceLocation{};
-            do_emit_modifier_word(
-                modifier_word,
-                do_source_location_for(modifier_word, modifier_word_location),
-                segment.is_in_double_quotes);
-            break;
+              if (!should_expand_word) break;
+
+              let modifier_word_location = SourceLocation{};
+              do_emit_modifier_word(
+                  modifier_word,
+                  do_source_location_for(modifier_word, modifier_word_location),
+                  segment.is_in_double_quotes);
+              break;
+            }
           }
         }
       }
