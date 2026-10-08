@@ -398,11 +398,18 @@ struct script_run_options
   bool is_whole_line{false};
 };
 
-static fn exit_status_for(const Error &error, EvalContext &context) wontthrow
-    -> i32
+static fn exit_status_for(const Error &error, EvalContext &context,
+                          bool is_command_string) wontthrow -> i32
 {
   if (error.command_status() != 1) {
     return static_cast<i32>(error.command_status());
+  }
+
+  if (is_command_string && error.is_script_fatal() &&
+      context.runtime_state().is_bash_compatible() &&
+      !context.runtime_state().error_exit())
+  {
+    return BASH_COMMAND_STRING_FATAL_STATUS;
   }
 
   return context.runtime_state().is_posix_mode() ? 2 : EXIT_FAILURE;
@@ -746,6 +753,8 @@ static fn run_script_contents(
   let const should_print_ast = run_options.should_print_ast;
   let const is_contained_substitution =
       evaluation_mode == root_evaluation_mode::ContainedSubstitution;
+  let const is_command_string =
+      filename.has_value() && filename->data == COMMAND_STRING_SOURCE_NAME.data;
   i32 exit_code = EXIT_SUCCESS;
 
   try {
@@ -822,17 +831,17 @@ static fn run_script_contents(
       if (is_contained_substitution)
         context.print_source_backtrace(e.location());
     }
-    exit_code = exit_status_for(e, context);
+    exit_code = exit_status_for(e, context, is_command_string);
   } catch (const ErrorWithLocation &e) {
     if (!e.was_rendered()) {
       show_message(e.to_string(script_contents, &context));
       if (is_contained_substitution)
         context.print_source_backtrace(e.location());
     }
-    exit_code = exit_status_for(e, context);
+    exit_code = exit_status_for(e, context, is_command_string);
   } catch (const Error &e) {
     if (!e.was_rendered()) show_message(e.to_string());
-    exit_code = exit_status_for(e, context);
+    exit_code = exit_status_for(e, context, is_command_string);
   } catch (const std::exception &e) {
     exit_code = EXIT_FAILURE;
     show_message(

@@ -52,12 +52,12 @@ status=1
      1 |  x=1; a=(1); echo "${x@Z}"
        |                       ^~
 note: Use one of Q E P A K a u U L k, as in ${x@Q}.
-status=1
+status=127
 -c:1:22: error: Unable to expand '${x@}' because the '@' must be followed by a transformation.
      1 |  x=1; a=(1); echo "${x@}"
        |                       ^
 note: Use one of Q E P A K a u U L k, as in ${x@Q}.
-status=1
+status=127
 -c:1:17: error: Unable to expand '${a[@]:}' because the ':' must be followed by an offset or an operator such as :- or :+.
      1 |  a=(1); [[ ${a[@]:} ]]
        |                  ^
@@ -72,7 +72,7 @@ status=1
      1 |  a=(1); [[ ${a[@]@QQ} ]]
        |                  ^~~
 note: Use one of Q E P A K a u U L k, as in ${a[@]@Q}.
-status=1
+status=127
 -c:1:10: error: Unable to assign to 'a[@]' because it stands for every element of the array.
      1 |  a=(); [[ ${a[@]:=x} ]]
        |           ^~~~~~~~~~

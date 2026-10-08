@@ -1,7 +1,8 @@
 unset KOSH_FLAGS
 # Each bad substitution says which part makes it bad, points the excerpt at
 # that part, and suggests the form that was likely meant. Every form runs in
-# its own bash mood shell, which abandons the line and keeps status 1. The
+# its own bash mood shell, which abandons the line with status 1, or 127 for a
+# transformation that fails while expanding, as Bash does for -c. The
 # list forms run inside [[ ]], where they expand to one string, and the last
 # form sits in a here-document, whose errors point into the body.
 check()

@@ -16,6 +16,23 @@ printf '%s\n: "${CFG?must be set}"\necho after\n' "$trap_line" > trap_report.sh
 printf '%s\nset -u\necho "$undefined_variable"\necho after\n' "$trap_line" \
   > trap_setu.sh
 printf '%s\nx=0\necho $((1/x))\necho after\n' "$trap_line" > trap_arith.sh
+echo "== a -c string ends 127 in the bash moods on a fatal expansion error =="
+for mood in kosh bash bash-posix sh; do
+  for body in 'echo ${x:?m}; echo after' 'set -u; echo $u; echo after' \
+    'x=a; echo ${x@Z}; echo after' 'echo $((1/0)); echo after' \
+    'f() { echo ${x:?m}; }; f; echo after' 'set -e; echo ${x:?m}; echo after' \
+    '(echo ${x:?m}); echo "sub rc=$?"' \
+    "trap 'echo trap saw \$?' EXIT; echo \${x:?m}"; do
+    "$BIN" --mood "$mood" -c "$body" 2>/dev/null
+    echo "$mood [$body] rc=$?"
+  done
+done
+echo "== a script file and standard input keep status 1 =="
+printf 'echo ${x:?m}; echo after\n' > file_fatal.sh
+"$BIN" --mood bash file_fatal.sh 2>/dev/null
+echo "file rc=$?"
+"$BIN" --mood bash < file_fatal.sh 2>/dev/null
+echo "stdin rc=$?"
 echo "== the EXIT trap reads the status a fatal expansion error ends with =="
 for mood in kosh bash bash-posix sh; do
   for script in trap_report.sh trap_setu.sh trap_arith.sh; do
