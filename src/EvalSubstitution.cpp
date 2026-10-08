@@ -31,6 +31,18 @@ static fn mark_substitution_frames_printed(SourceStore &store) wontthrow -> void
   }
 }
 
+static fn is_script_fatal_error(const std::exception_ptr &error) wontthrow
+    -> bool
+{
+  try {
+    std::rethrow_exception(error);
+  } catch (const ErrorBase &caught_error) {
+    return caught_error.is_script_fatal();
+  } catch (...) {
+    return false;
+  }
+}
+
 static fn contained_substitution_status(const std::exception_ptr &error,
                                         bool is_posix_mode) wontthrow -> i32
 {
@@ -1188,6 +1200,9 @@ fn EvalContext::run_function_substitution(const Expression *ast,
         "the function substitution failed, containing the error with status 1");
     render_contained_substitution_error(body_error, source.view());
     execution_store().set_last_exit_status(1);
+    /* The body shares the shell, so a fatal error such as an unset variable
+       under set -u ends the enclosing subshell or script. */
+    if (is_script_fatal_error(body_error)) std::rethrow_exception(body_error);
   };
 
   if (is_value_substitution) {

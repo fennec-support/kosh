@@ -41,6 +41,11 @@ not_first_line.kosh:1:1: warning: A shebang is read from the first line only. (S
      1 |  # Copyright 2018
        |  ^
 note: Move the shebang to the first line.
+== here_document_body ==
+here_document_body.kosh:1:1: warning: The analysis cannot tell which shell the script targets. (SC2148)
+     1 |  cat <<EOF
+       |  ^
+note: Add a shebang such as `#!/bin/sh` on the first line.
 == parameter_count ==
 parameter_count.kosh:1:3: warning: The shebang passes more than one parameter. (SC2096)
      1 |  #!/bin/sh -e -u

@@ -129,6 +129,7 @@ public:
   fn assign_path(Maybe<String> path) throws -> void;
   fn invalidate() throws -> void;
   fn remember_path(StringView name, const Path &path) throws -> void;
+  fn find_remembered_path(StringView name) wontthrow -> const Path *;
   fn working_directory_changed() throws -> void;
   fn initialize_path_map() throws -> void;
   fn revalidate_for_prompt() throws -> void;

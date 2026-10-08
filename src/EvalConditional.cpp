@@ -444,7 +444,8 @@ struct conditional_evaluator
         if (selected_binary_operator.has_value()) {
           if (pos + 2 >= elements.count() || kind_at(pos + 2) != Kind::Operand)
           {
-            throw Error{"Expected an operand after '" + op + "'"};
+            fail_conditional_syntax(
+                String{"Expected an operand after '"} + op + "'");
           }
           pos += 3;
           if (is_skipping) return false;

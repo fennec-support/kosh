@@ -453,6 +453,7 @@ private:
   fn emit_field_slice(substring_bounds bounds, const ArrayList<String> &values,
                       Maybe<StringView> leading, bool is_star) throws -> void;
   fn expand_field_reference(StringView inner) throws -> bool;
+  fn expand_leading_tilde() throws -> bool;
   static fn is_element_operator(StringView modifier) wontthrow -> bool;
   fn emit_modified_elements(const ArrayList<String> &values,
                             StringView modifier, StringView name,
@@ -1221,6 +1222,33 @@ fn EvalContext::ModifierWordExpander::expand_dollar() throws -> void
   }
 }
 
+fn EvalContext::ModifierWordExpander::expand_leading_tilde() throws -> bool
+{
+  if (!m_remove_quotes || is_quoted() || m_is_here_document_word) return false;
+
+  usize prefix_end = 1;
+  while (prefix_end < m_word.length && m_word[prefix_end] != '/' &&
+         m_word[prefix_end] != ':')
+  {
+    let const byte = m_word[prefix_end];
+    if (byte == '\\' || byte == '\'' || byte == '"' || byte == '$' ||
+        byte == '`')
+    {
+      return false;
+    }
+    prefix_end++;
+  }
+
+  let const directory = m_context.resolve_tilde_prefix(
+      m_word.substring_of_length(1, prefix_end - 1));
+  if (!directory.has_value()) return false;
+
+  emit_run(directory->view(), false);
+  m_index = prefix_end - 1;
+
+  return true;
+}
+
 fn EvalContext::ModifierWordExpander::expand() throws -> String
 {
   for (m_index = 0; m_index < m_word.length; m_index++) {
@@ -1231,6 +1259,7 @@ fn EvalContext::ModifierWordExpander::expand() throws -> String
     }
 
     let const byte = m_word[m_index];
+    if (byte == '~' && m_index == 0 && expand_leading_tilde()) continue;
     if (byte == '\\') {
       expand_backslash();
       continue;
@@ -2759,8 +2788,18 @@ fn EvalContext::pattern_replace_value(
   let const pattern_word = remainder.substring_of_length(0, separator);
   let pattern_location = SourceLocation{};
   let pattern_active = Bitset{scratch_allocator()};
+  /* The anchor keeps a leading tilde from starting the pattern. */
+  let guarded_pattern_word = String{scratch_allocator()};
+  let word_to_expand = pattern_word;
+  if ((is_anchored_at_start || is_anchored_at_end) &&
+      pattern_word.starts_with("~"))
+  {
+    guarded_pattern_word += '\\';
+    guarded_pattern_word.append(pattern_word);
+    word_to_expand = guarded_pattern_word.view();
+  }
   let const pattern = expand_modifier_word_masked(
-      pattern_word, pattern_active, true,
+      word_to_expand, pattern_active, true,
       source_location_for_subview(source_location, spec, pattern_word,
                                   pattern_location));
   let replacement_location = SourceLocation{};

@@ -518,6 +518,15 @@ fn ProgramResolver::remember_path(StringView name, const Path &path) throws
                       program_path_kind::Bare);
 }
 
+fn ProgramResolver::find_remembered_path(StringView name) wontthrow
+    -> const Path *
+{
+  let const cached = m_execution_cache.find(name);
+  if (!cached.has_value()) return nullptr;
+
+  return find_cached_program_path(*cached.value(), os::program_extension::None);
+}
+
 fn ProgramResolver::split_path_dirs(StringView path) throws -> ArrayList<String>
 {
   let directories = ArrayList<String>{heap_allocator()};

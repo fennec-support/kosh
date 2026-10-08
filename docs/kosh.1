@@ -1386,6 +1386,10 @@ the script, and on an unset one it expands to nothing.
 The form ${!ref} reads the variable named by ref. The forms ${!pre*} and
 ${!pre@} list names beginning with pre.
 .PP
+An unquoted tilde that starts the word of a parameter expansion expands, as in
+${v\-~} and ${v#~/x}. It stays literal in double quotes and after the anchor of
+${v/#~/x}.
+.PP
 When ${v:\-word}, ${v:+word}, or ${v:=word}, with or without the colon, sits
 in double quotes or a here-document, the word follows double-quote rules.
 Single quotes in it stay literal, so "${v:\-'a'}" expands to 'a' with its
@@ -1466,7 +1470,8 @@ fails the loop in the bash mood and ends a non-interactive shell in the
 bash-posix and sh moods. A read-only prefix assignment is reported and skipped
 in the bash mood, so its command still runs, while the bash-posix mood
 abandons the line, or ends the shell before a special builtin. An unset
-parameter under set \-u and ${NAME?word} end the script in every mood. In
+parameter under set \-u and ${NAME?word} end the script in every mood, also
+inside a function substitution, which ends the enclosing subshell. In
 the kosh mood each of these errors ends the script.
 .PP
 Outside the kosh mood, an unset parameter under set \-u, ${NAME?word}, or a
@@ -2124,7 +2129,10 @@ Resolved command locations are remembered or listed. The
 .B \-r
 option clears the cache. The
 .BI "\-p " path
-option records path as the location of each name.
+option records path as the location of each name. The
+.B \-t
+option prints the remembered location of each name, preceded by the name and a
+tab when several are given, and fails for a name with no remembered location.
 .TP
 .B "history [\-cnrwaps] [\-d selector] [operand]"
 .br

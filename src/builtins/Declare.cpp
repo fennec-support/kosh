@@ -392,18 +392,28 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     /* The attribute applies before the assignment, so declare -i x+=3 already
        adds on this command the way bash applies the integer mark first. */
+    /* The marks of a nameref land on the variable it refers to. */
+    let attribute_name = name;
+    let resolved_attribute_name = Maybe<String>{};
+    if (!should_mark_nameref && !should_unmark_nameref &&
+        cxt.variable_store().attributes().is_nameref(name) &&
+        !cxt.is_circular_nameref(name)) rarely
+      {
+        resolved_attribute_name = cxt.resolve_nameref_base_for_write(name);
+        attribute_name = resolved_attribute_name->view();
+      }
     if (should_mark_integer_attribute)
-      cxt.variable_store().attributes().mark_integer(name);
+      cxt.variable_store().attributes().mark_integer(attribute_name);
     if (should_unmark_integer_attribute)
-      cxt.variable_store().attributes().unmark_integer(name);
+      cxt.variable_store().attributes().unmark_integer(attribute_name);
     if (should_unmark_lowercase_attribute)
-      cxt.variable_store().attributes().unmark_lowercase(name);
+      cxt.variable_store().attributes().unmark_lowercase(attribute_name);
     if (should_unmark_uppercase_attribute)
-      cxt.variable_store().attributes().unmark_uppercase(name);
+      cxt.variable_store().attributes().unmark_uppercase(attribute_name);
     if (should_mark_lowercase_attribute)
-      cxt.variable_store().attributes().mark_lowercase(name);
+      cxt.variable_store().attributes().mark_lowercase(attribute_name);
     if (should_mark_uppercase_attribute)
-      cxt.variable_store().attributes().mark_uppercase(name);
+      cxt.variable_store().attributes().mark_uppercase(attribute_name);
     if (should_unmark_nameref)
       cxt.variable_store().attributes().set(name, variable_attribute::Nameref,
                                             false);

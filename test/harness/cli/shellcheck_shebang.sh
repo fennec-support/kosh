@@ -33,6 +33,10 @@ run_case not_first_line '# Copyright 2018
 #!/bin/sh
 echo hi
 '
+run_case here_document_body 'cat <<EOF
+#!/bin/sh
+EOF
+'
 run_case parameter_count '#!/bin/sh -e -u
 echo hi
 '

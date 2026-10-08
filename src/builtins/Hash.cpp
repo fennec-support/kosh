@@ -15,13 +15,14 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[-rR] [-p pathname] [name ...]");
+HELP_SYNOPSIS_DECL("[-rRt] [-p pathname] [name ...]");
 HELP_DESCRIPTION_DECL(
     "The hash builtin manages the cache of resolved command locations.");
 
 FLAG(RESET, Bool, 'r', "", "Forget remembered command locations.");
 FLAG(REHASH, Bool, 'R', "", "Rebuild the PATH command cache.");
 FLAG(PATHNAME, String, 'p', "", "Remember each name at pathname.");
+FLAG(TARGET, Bool, 't', "", "Print the remembered location of each name.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_BUILTIN_FLAGS(Hash);
@@ -41,6 +42,35 @@ fn Hash::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   } else if (FLAG_RESET.is_enabled()) {
     LOG(Info, "hash forgetting every remembered command location");
     cxt.program_resolver().invalidate();
+  }
+
+  if (FLAG_TARGET.is_enabled()) {
+    if (args.count() == 1) {
+      report_soft_builtin_error(ec, cxt, "-t: option requires an argument");
+      return 1;
+    }
+
+    i32 target_status = 0;
+    let output = String{cxt.scratch_allocator()};
+    for (usize i = 1; i < args.count(); i++) {
+      let const *remembered =
+          cxt.program_resolver().find_remembered_path(args[i].view());
+      if (remembered == nullptr) {
+        report_soft_builtin_error(
+            ec, cxt, "The command '" + args[i] + "' was not found");
+        target_status = 1;
+        continue;
+      }
+
+      if (args.count() > 2) {
+        output.append(args[i].view());
+        output += '\t';
+      }
+      output.append(remembered->text());
+      output += '\n';
+    }
+    ec.print_to_stdout(output);
+    return target_status;
   }
 
   if (FLAG_PATHNAME.is_set()) {

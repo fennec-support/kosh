@@ -713,8 +713,12 @@ fn check_shebang(AnalysisContext &actx, StringView source,
   let const has_bang =
       has_hash && bang_at < first_line.length && first_line[bang_at] == '!';
 
+  /* A command line that opens a here-document owns the lines after it. */
+  let const does_open_here_document =
+      !has_hash && first_line.find_substring("<<").has_value();
+
   if (!has_bang) {
-    if (header_holds_shebang(source, line_end)) {
+    if (!does_open_here_document && header_holds_shebang(source, line_end)) {
       actx.report_diagnostic(diagnostic_id::sc1128, SourceLocation{at, 1});
       return;
     }
