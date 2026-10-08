@@ -157,18 +157,12 @@ pure fn word_looks_like_assignment(StringView word) wontthrow -> bool
   position++;
   while (position < word.length && bracket_depth > 0) {
     let const byte = word[position];
-    if (byte == '\\') {
-      position++;
-    } else if (byte == '\'' || byte == '"') {
-      usize closing = position + 1;
-      while (closing < word.length && word[closing] != byte) {
-        closing += byte == '"' && word[closing] == '\\' ? 2 : 1;
-      }
-      if (closing < word.length) position = closing;
-    } else if (byte == '[') {
+    if (byte == '[') {
       bracket_depth++;
     } else if (byte == ']') {
       bracket_depth--;
+    } else {
+      position = skip_quoted_run(word, position);
     }
     position++;
   }
@@ -685,17 +679,12 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
         depth++;
       } else if (c == ']') {
         depth--;
-      } else if (c == '\\') {
-        if (!has_character(offset)) return None;
+      } else {
+        let const skipped = lexer::skip_quoted_run(
+            m_source.substring(m_cursor_position), offset - 1);
+        if (skipped == offset - 1 && (c == '\'' || c == '"')) return None;
 
-        offset++;
-      } else if (c == '\'' || c == '"') {
-        while (has_character(offset) && chop_character(offset) != c) {
-          offset += c == '"' && chop_character(offset) == '\\' ? 2 : 1;
-        }
-        if (!has_character(offset)) return None;
-
-        offset++;
+        offset = skipped + 1;
       }
     }
     let const after = chop_character(offset);

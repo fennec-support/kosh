@@ -201,6 +201,22 @@ pure fn is_variable_name_start(char ch) wontthrow -> bool;
 pure fn is_variable_name(char ch) wontthrow -> bool;
 pure fn word_is_variable_name(StringView word) wontthrow -> bool;
 pure fn word_looks_like_assignment(StringView word) wontthrow -> bool;
+
+pure inline fn skip_quoted_run(StringView text, usize position) wontthrow
+    -> usize
+{
+  let const byte = text[position];
+  if (byte == '\\') return position + 1;
+  if (byte != '\'' && byte != '"') return position;
+
+  usize closing = position + 1;
+  while (closing < text.length && text[closing] != byte) {
+    closing += byte == '"' && text[closing] == '\\' ? 2 : 1;
+  }
+
+  return closing < text.length ? closing : position;
+}
+
 pure fn is_extglob_operator(char ch) wontthrow -> bool;
 pure fn is_backtick_escape_stripped(char escaped,
                                     bool is_in_double_quotes) wontthrow -> bool;
