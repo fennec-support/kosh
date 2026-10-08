@@ -450,12 +450,23 @@ hot fn EvalContext::expand_word(const Word &word) throws
         }
         break;
       }
+      if (segment.is_in_double_quotes && segment_text == "@@A") {
+        let const fields = get_declaration_fields("@");
+        if (fields.count() > 1) {
+          for (usize i = 0; i < fields.count(); i++) {
+            if (i > 0) do_flush();
+            do_append_run(fields[i].view(), false);
+          }
+          break;
+        }
+      }
       const char positional_at_op =
           segment_text.length > 2 && segment_text[1] == '@' &&
                   (segment_text[2] == 'Q' || segment_text[2] == 'E' ||
                    segment_text[2] == 'U' || segment_text[2] == 'L' ||
                    segment_text[2] == 'u' || segment_text[2] == 'P' ||
-                   segment_text[2] == 'K' || segment_text[2] == 'k')
+                   segment_text[2] == 'K' || segment_text[2] == 'k' ||
+                   segment_text[2] == 'a')
               ? segment_text[2]
               : '\0';
       if (!segment_text.is_empty() &&
@@ -550,6 +561,24 @@ hot fn EvalContext::expand_word(const Word &word) throws
             }
           }
           break;
+        }
+        if (segment.is_in_double_quotes &&
+            name_end + 5 == segment_text.length &&
+            segment_text[name_end] == '[' &&
+            segment_text[name_end + 1] == '@' &&
+            segment_text[name_end + 2] == ']' &&
+            segment_text[name_end + 3] == '@' &&
+            segment_text[name_end + 4] == 'A')
+        {
+          let const fields = get_declaration_fields(
+              segment_text.substring_of_length(0, name_end));
+          if (fields.count() > 1) {
+            for (usize i = 0; i < fields.count(); i++) {
+              if (i > 0) do_flush();
+              do_append_run(fields[i].view(), false);
+            }
+            break;
+          }
         }
         let const field_modifier_op = name_end + 3 < segment_text.length
                                           ? segment_text[name_end + 3]

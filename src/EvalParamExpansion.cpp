@@ -453,6 +453,10 @@ private:
   fn emit_field_slice(substring_bounds bounds, const ArrayList<String> &values,
                       Maybe<StringView> leading, bool is_star) throws -> void;
   fn expand_field_reference(StringView inner) throws -> bool;
+  static fn is_element_operator(StringView modifier) wontthrow -> bool;
+  fn emit_modified_elements(const ArrayList<String> &values,
+                            StringView modifier, StringView name,
+                            bool is_star) throws -> void;
   fn toggle_quote_state() throws -> bool;
   fn expand_backslash() throws -> void;
   fn expand_backquote() throws -> void;
@@ -560,6 +564,21 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
     return true;
   }
 
+  if (is_quoted() && inner == "@@A") {
+    let const fields = m_context.get_declaration_fields("@");
+    if (fields.count() > 1) {
+      emit_field_elements(fields);
+      return true;
+    }
+  }
+  if (is_quoted() && inner.length > 1 && (inner[0] == '@' || inner[0] == '*') &&
+      is_element_operator(inner.substring(1)))
+  {
+    emit_modified_elements(m_context.variable_store().positional_params(),
+                           inner.substring(1), StringView{}, inner[0] == '*');
+    return true;
+  }
+
   usize name_length = 0;
   while (name_length < inner.length &&
          lexer::is_variable_name(inner[name_length]))
@@ -590,8 +609,88 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
         elements, None, is_star);
     return true;
   }
+  if (!is_star && is_quoted() && rest == "@A") {
+    let const fields = m_context.get_declaration_fields(name);
+    if (fields.count() > 1) {
+      emit_field_elements(fields);
+      return true;
+    }
+  }
+  if (is_quoted() && !is_star && rest.length > 1 &&
+      (rest[0] == '-' || rest.starts_with(":-")))
+  {
+    let const elements = m_context.collect_array_elements(name);
+    let is_every_element_empty = true;
+    for (let const &element : elements)
+      if (!element.is_empty()) {
+        is_every_element_empty = false;
+        break;
+      }
+    let const is_unset = rest[0] == ':'
+                             ? is_every_element_empty && elements.count() <= 1
+                             : elements.is_empty();
+    if (!is_unset) {
+      emit_field_elements(elements);
+      return true;
+    }
+
+    return false;
+  }
+  if (is_quoted() && is_element_operator(rest)) {
+    emit_modified_elements(m_context.collect_array_elements(name), rest, name,
+                           is_star);
+    return true;
+  }
 
   return false;
+}
+
+fn EvalContext::ModifierWordExpander::is_element_operator(
+    StringView modifier) wontthrow -> bool
+{
+  if (modifier.is_empty()) return false;
+
+  switch (modifier[0]) {
+  case '/':
+  case '#':
+  case '%':
+  case '^':
+  case ',':
+  case '~': return true;
+  case '@':
+    return modifier.length == 2 &&
+           (modifier[1] == 'Q' || modifier[1] == 'E' || modifier[1] == 'U' ||
+            modifier[1] == 'L' || modifier[1] == 'u' || modifier[1] == 'P' ||
+            modifier[1] == 'a');
+  default: return false;
+  }
+}
+
+fn EvalContext::ModifierWordExpander::emit_modified_elements(
+    const ArrayList<String> &values, StringView modifier, StringView name,
+    bool is_star) throws -> void
+{
+  let modified = ArrayList<String>{m_context.scratch_allocator()};
+  modified.reserve(values.count());
+  for (let const &value : values) {
+    modified.push(
+        modifier[0] == '@'
+            ? m_context.apply_parameter_transform_to_value(value.view(),
+                                                           modifier[1], name)
+            : m_context.apply_value_modifier(value.view(), modifier, nullptr));
+  }
+
+  if (is_star && is_quoted()) {
+    emit_run(m_context
+                 .join_list_slice(
+                     substring_bounds{0, static_cast<i64>(modified.count())},
+                     modified, None, true)
+                 .view(),
+             false);
+    return;
+  }
+
+  emit_field_elements(modified);
 }
 
 fn EvalContext::ModifierWordExpander::emit_run(StringView bytes,
@@ -1852,6 +1951,13 @@ fn EvalContext::ParameterExpander::expand_list_transform(
     return out;
   }
   if (op == 'A') {
+    if (!m_context.variable_store().indexed_arrays().find(m_name).has_value() &&
+        !m_context.variable_store().sparse_arrays().has(m_name) &&
+        !m_context.is_associative_array(m_name) &&
+        m_context.get_variable_value(m_name).has_value())
+    {
+      return m_context.apply_parameter_transform(m_name, op);
+    }
     if (append_variable_declaration(m_context, m_name, out) &&
         out[out.count() - 1] == '\n')
     {
@@ -2773,6 +2879,57 @@ fn EvalContext::apply_parameter_transform(StringView name, char op) throws
   if (!value.has_value()) return String{scratch_allocator()};
 
   return apply_parameter_transform_to_value(value->view(), op, name);
+}
+
+fn EvalContext::get_declaration_fields(StringView name) throws
+    -> ArrayList<String>
+{
+  let fields = ArrayList<String>{heap_allocator()};
+  if (name == "@") {
+    if (variable_store().positional_params().is_empty()) return fields;
+
+    fields.push(String{heap_allocator(), "set"});
+    fields.push(String{heap_allocator(), "--"});
+    for (let const &value : variable_store().positional_params()) {
+      let quoted = String{heap_allocator()};
+      utils::append_shell_quoted(quoted, value.view(),
+                                 get_glob_charset_for(value) ==
+                                     glob_charset::Utf8);
+      fields.push(steal(quoted));
+    }
+
+    return fields;
+  }
+
+  if (!variable_store().indexed_arrays().find(name).has_value() &&
+      !variable_store().sparse_arrays().has(name) &&
+      !is_associative_array(name) && get_variable_value(name).has_value())
+  {
+    fields.push(
+        String{heap_allocator(), apply_parameter_transform(name, 'A').view()});
+    return fields;
+  }
+
+  let declaration = String{scratch_allocator()};
+  if (append_variable_declaration(*this, name, declaration) &&
+      declaration[declaration.count() - 1] == '\n')
+  {
+    declaration.pop_back();
+  }
+
+  let const view = declaration.view();
+  let cursor = usize{0};
+  for (usize field_index = 0; field_index < 2; field_index++) {
+    let const space = view.substring(cursor).find_character(' ');
+    if (!space.has_value() || !view.starts_with("declare ")) break;
+
+    fields.push(
+        String{heap_allocator(), view.substring_of_length(cursor, *space)});
+    cursor += *space + 1;
+  }
+  fields.push(String{heap_allocator(), view.substring(cursor)});
+
+  return fields;
 }
 
 fn EvalContext::apply_parameter_transform_to_value(StringView text, char op,

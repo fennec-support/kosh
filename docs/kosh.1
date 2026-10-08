@@ -1338,7 +1338,10 @@ ${a[@]} and ${a[*]} list elements. ${#a[@]} counts elements. ${!a[@]} lists
 indices. A negative index counts from the end. Sparse indices remain absent
 from ${!a[@]}.
 .PP
-Inside double quotes, "${a[@]}" preserves one field per element.
+Inside double quotes, "${a[@]}" preserves one field per element, also when an
+operator changes each element or the form sits in the word of another
+expansion, as in "${u:-${a[@]#x}}". The form "${a[@]@A}" yields the words of
+the declaration.
 "${a[*]}" joins elements with the first byte of IFS. An unset array read through
 ${a[@]} is an error under
 .BR "set \-u" .

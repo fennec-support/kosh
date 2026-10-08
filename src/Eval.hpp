@@ -4298,6 +4298,9 @@ protected:
       const SourceLocation *source_location = nullptr) throws -> String;
 
   fn apply_parameter_transform(StringView name, char op) throws -> String;
+  /* The words of ${name[@]@A} inside double quotes, split the way bash splits
+     a declaration. */
+  fn get_declaration_fields(StringView name) throws -> ArrayList<String>;
   fn apply_parameter_transform_to_value(StringView value, char op,
                                         StringView name) throws -> String;
   fn apply_case_modification_to_value(
