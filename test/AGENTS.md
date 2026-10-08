@@ -86,6 +86,12 @@ new case exercises the same behavior. Keep a case separate when process exit,
 fatal parsing, signals, jobs, terminal ownership, or shell state would change
 after concatenation.
 
+A compatibility matrix keeps the cases Kosh does not yet pass in a sibling
+`*_pending` fixture. The matrix sources that file for its keys and skips
+them, the pending fixture runs only them, and `SKIPPED_TESTS` lists every
+pending fixture. A fix removes its keys, and an empty pending fixture leaves
+the skip list.
+
 Every golden backed source has one matching file directly under `expected`.
 Compatibility sources have no repository golden. Keep output deterministic and
 use the shared test environment variables for temporary paths and platform

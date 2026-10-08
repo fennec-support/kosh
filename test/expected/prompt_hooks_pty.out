@@ -1,0 +1,19 @@
+bash-prompt-hook PASS
+bash-ps1-expansions PASS
+bash-ps0-expansions PASS
+bash-ps0-function-substitution PASS
+bash-ps0-function-substitution-runs PASS
+bash-return-trap PASS
+bash-debug-trap PASS
+bash-preexec-sees-the-command PASS
+bash-job-report PASS
+kosh-prompt-hook PASS
+kosh-ps1-expansions PASS
+kosh-ps0-expansions PASS
+kosh-ps0-function-substitution PASS
+kosh-ps0-function-substitution-runs PASS
+kosh-return-trap PASS
+kosh-debug-trap PASS
+kosh-preexec-sees-the-command PASS
+kosh-job-report PASS
+status=0

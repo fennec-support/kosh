@@ -1,0 +1,8 @@
+startup-chain-reaches-the-prompt PASS
+startup-chain-path PASS
+startup-chain-prompt PASS
+startup-chain-precmd-status PASS
+startup-chain-preexec-reads-history PASS
+startup-chain-aliases PASS
+startup-chain-nounset-restored PASS
+status=0
