@@ -1,0 +1,13 @@
+after-and
+left-done
+after-or
+after-chain
+chain-done
+after-negated
+negated-done
+x=1
+status=1
+exit=4
+[1]+  Running                    sleep 5 && echo never &
+after-function
+in-function

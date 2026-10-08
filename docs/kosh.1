@@ -4694,6 +4694,13 @@ status 1 in the bash moods and 2 in the sh mood, while $! still identifies it, a
 a side effect of the expansion, such as $((i++)) or ${v:=word}, stays in the
 job. The kosh mood expands the words in the shell before it starts the job.
 .PP
+An ampersand ends a whole and-or list in every mood. In
+.B a && b || c &
+the entire list runs in one background job, so its left side never delays the
+shell, its variable and directory changes stay in the job, and the
+.B jobs
+builtin shows the whole list. A single simple command still forks directly.
+.PP
 A stopped stage is recorded even when it is not the final one. The
 .B wait
 builtin returns that stored status without waiting for the process again. The

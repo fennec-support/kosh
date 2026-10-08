@@ -1,0 +1,31 @@
+#!/bin/env kosh
+sleep 0.3 && echo "left-done" &
+echo "after-and"
+wait
+sleep 0.3 || echo never &
+echo "after-or"
+wait
+false || sleep 0.3 && echo "chain-done" &
+echo "after-chain"
+wait
+! false && sleep 0.3 && echo "negated-done" &
+echo "after-negated"
+wait
+x=1
+true && x=2 &
+wait
+echo "x=$x"
+true && false &
+wait $!
+echo "status=$?"
+false || exit 4 &
+wait $!
+echo "exit=$?"
+sleep 5 && echo never &
+jobs
+kill %1
+wait
+f() { sleep 0.2 && echo "in-function" & }
+f
+echo "after-function"
+wait

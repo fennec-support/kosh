@@ -1312,6 +1312,9 @@ public:
   pure fn is_empty() const wontthrow -> bool;
   fn has_single_test_command() const throws -> bool;
   fn append_node(const CompoundListCondition *node) throws -> void;
+  pure fn node_count() const wontthrow -> usize;
+  fn move_nodes_from(usize first_index, CompoundList &destination) throws
+      -> void;
 
   fn single_unconditional_command() const wontthrow -> const Command *;
 

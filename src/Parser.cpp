@@ -569,6 +569,8 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
 
   CompoundList *compound_list = m_lexer.arena().create<CompoundList>();
   CompoundListCondition::Kind next_cond = CompoundListCondition::Kind::None;
+  SourceLocation and_or_start{};
+  usize and_or_first_index = 0;
 
   bool should_parse_command = true;
   bool should_negate_pending = false;
@@ -654,6 +656,10 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
         maybe_time = m_lexer.peek_shell_token();
       }
       ASSERT(maybe_time != nullptr);
+      if (next_cond == CompoundListCondition::Kind::None) {
+        and_or_start = maybe_time->source_location();
+        and_or_first_index = compound_list->node_count();
+      }
       const Token *leading_command_token = nullptr;
       if (maybe_time->kind() == Token::Kind::Time) {
         time_location = maybe_time->source_location();
@@ -712,7 +718,29 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
 
     switch (token->kind()) {
     case Token::Kind::Ampersand:
-      if (lhs != nullptr) lhs->make_async();
+      if (lhs != nullptr) {
+        if (next_cond != CompoundListCondition::Kind::None) {
+          do_finish_pending(lhs, token);
+
+          let const source = m_lexer.source();
+          let end_position = token->source_location().position;
+          while (end_position > and_or_start.position &&
+                 (source[end_position - 1] == ' ' ||
+                  source[end_position - 1] == '\t'))
+          {
+            end_position--;
+          }
+
+          CompoundList *and_or_list = m_lexer.arena().create<CompoundList>();
+          compound_list->move_nodes_from(and_or_first_index, *and_or_list);
+          BraceGroup *group =
+              m_lexer.arena().create<BraceGroup>(and_or_start, and_or_list);
+          group->set_source_end_position(end_position);
+          next_cond = CompoundListCondition::Kind::None;
+          lhs = group;
+        }
+        lhs->make_async();
+      }
       fallthru;
     case Token::Kind::DoublePipe:
     case Token::Kind::DoubleAmpersand:

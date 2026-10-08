@@ -89,6 +89,23 @@ fn CompoundList::append_node(const CompoundListCondition *node) throws -> void
   m_nodes.push(node);
 }
 
+pure fn CompoundList::node_count() const wontthrow -> usize
+{
+  return m_nodes.count();
+}
+
+fn CompoundList::move_nodes_from(usize first_index,
+                                 CompoundList &destination) throws -> void
+{
+  ASSERT(first_index <= m_nodes.count());
+
+  for (usize index = first_index; index < m_nodes.count(); index++) {
+    m_location.length -= m_nodes[index]->source_location().length;
+    destination.append_node(m_nodes[index]);
+  }
+  m_nodes.truncate(first_index);
+}
+
 fn CompoundList::single_unconditional_command() const wontthrow
     -> const Command *
 {
