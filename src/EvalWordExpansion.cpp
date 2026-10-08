@@ -518,7 +518,9 @@ hot fn EvalContext::expand_word(const Word &word) throws
         }
         break;
       }
-      if (lexer::is_variable_name_start(segment_text[0])) {
+      if (!segment_text.is_empty() &&
+          lexer::is_variable_name_start(segment_text[0]))
+      {
         usize name_end = 1;
         while (name_end < segment_text.length &&
                lexer::is_variable_name(segment_text[name_end]))
@@ -700,8 +702,9 @@ hot fn EvalContext::expand_word(const Word &word) throws
         }
       }
       usize alternate_name_end = 0;
-      if (segment_text[0] == '#' || segment_text[0] == '?' ||
-          segment_text[0] == '-' || segment_text[0] == '$')
+      if (!segment_text.is_empty() &&
+          (segment_text[0] == '#' || segment_text[0] == '?' ||
+           segment_text[0] == '-' || segment_text[0] == '$'))
       {
         alternate_name_end = 1;
       } else {
