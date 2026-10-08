@@ -2860,7 +2860,21 @@ fn EvalContext::apply_parameter_transform(StringView name, char op) throws
 {
   let const value = get_variable_value_checked(name);
 
-  if (!value.has_value()) return String{scratch_allocator()};
+  if (!value.has_value()) {
+    if (op != 'a') return String{scratch_allocator()};
+
+    let const is_reference = variable_store().attributes().is_nameref(name) &&
+                             !is_circular_nameref(name);
+    let const base_name = is_reference
+                              ? resolve_nameref_base_for_write(name)
+                              : String{scratch_allocator(), name};
+    let const has_no_scalar_value =
+        variable_store().sparse_arrays().has(base_name.view()) ||
+        is_associative_array(base_name.view());
+    if (!has_no_scalar_value) return String{scratch_allocator()};
+
+    return apply_parameter_transform_to_value(StringView{}, op, name);
+  }
 
   return apply_parameter_transform_to_value(value->view(), op, name);
 }
@@ -2950,6 +2964,12 @@ fn EvalContext::apply_parameter_transform_to_value(StringView text, char op,
     return out;
   case 'P': return toiletline::expand_prompt_template(text, *this);
   case 'A': {
+    let const is_special_parameter =
+        !name.is_empty() &&
+        (name.is_all_decimal_digits() ||
+         (name.length == 1 && lexer::is_special_parameter_char(name[0])));
+    if (is_special_parameter) return out;
+
     let flags = String{scratch_allocator()};
     if (is_integer_variable(name)) flags.push('i');
     if (variable_store().attributes().is_lowercase(name)) flags.push('l');
@@ -2993,13 +3013,24 @@ fn EvalContext::apply_parameter_transform_to_value(StringView text, char op,
       }
     }
     return out;
-  case 'a':
-    if (variable_store().indexed_arrays().find(name).has_value()) out.push('a');
-    if (is_associative_array(name)) out.push('A');
-    if (is_integer_variable(name)) out.push('i');
-    if (is_readonly(name)) out.push('r');
-    if (is_exported(name)) out.push('x');
+  case 'a': {
+    let const is_reference = variable_store().attributes().is_nameref(name) &&
+                             !is_circular_nameref(name);
+    let const base_name = is_reference
+                              ? resolve_nameref_base_for_write(name)
+                              : String{scratch_allocator(), name};
+    let const attribute_name = base_name.view();
+    if (variable_store().indexed_arrays().find(attribute_name).has_value() ||
+        variable_store().sparse_arrays().has(attribute_name))
+    {
+      out.push('a');
+    }
+    if (is_associative_array(attribute_name)) out.push('A');
+    if (is_integer_variable(attribute_name)) out.push('i');
+    if (is_readonly(attribute_name)) out.push('r');
+    if (is_exported(attribute_name)) out.push('x');
     return out;
+  }
   default: return expand_variable(name);
   }
 }

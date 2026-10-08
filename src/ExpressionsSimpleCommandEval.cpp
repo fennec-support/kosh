@@ -1111,6 +1111,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     let is_readonly_request = is_readonly_kind;
     let did_request_readonly_flag = false;
     let should_print_declaration = false;
+    let is_global_request = false;
     let is_associative_request = false;
     let should_mark_integer = false;
     let should_unmark_integer = false;
@@ -1145,6 +1146,10 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
             if (is_set_request) is_associative_request = true;
             break;
 
+          case 'g':
+            if (is_set_request) is_global_request = true;
+            break;
+
           case 'i':
             should_mark_integer = is_set_request;
             should_unmark_integer = !is_set_request;
@@ -1177,7 +1182,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     }
 
     for (let const &assignment : m_array_args) {
-      if (is_local || is_function_local) {
+      if (is_local || (is_function_local && !is_global_request)) {
         cxt.declare_local(assignment.name, true);
       }
       if (should_mark_integer)

@@ -188,6 +188,17 @@ fn scan_balanced_shell_region(StringView source, usize position,
         previous_byte = ')';
         continue;
       }
+      if (byte == '$' && quote == '"' && position + 1 < source.length &&
+          source[position] == '{' &&
+          (is_whitespace(source[position + 1]) || source[position + 1] == '|'))
+      {
+        let const nested =
+            scan_balanced_shell_region(source, position + 1, '}');
+        if (!nested.has_value()) return None;
+        position = *nested;
+        previous_byte = '}';
+        continue;
+      }
       if (byte == quote) quote = 0;
       previous_byte = byte;
       continue;
