@@ -184,14 +184,6 @@ static volatile LONG64 CHILD_SYSTEM_TICKS = 0;
 static volatile LONG64 CHILD_PEAK_RSS_BYTES = 0;
 static volatile LONG INTERNAL_PIPE_SEQUENCE = 0;
 
-static fn filetime_ticks(FILETIME time) wontthrow -> u64
-{
-  ULARGE_INTEGER ticks{};
-  ticks.LowPart = time.dwLowDateTime;
-  ticks.HighPart = time.dwHighDateTime;
-  return ticks.QuadPart;
-}
-
 static process_launch_counts PROCESS_LAUNCH_COUNTS{};
 
 fn get_process_launch_counts() wontthrow -> process_launch_counts
@@ -519,9 +511,7 @@ fn process_id_of(process p) wontthrow -> i64
 fn process_group_of(process p) throws -> process
 {
   HANDLE duplicate = INVALID_HANDLE_VALUE;
-  if (DuplicateHandle(GetCurrentProcess(), p, GetCurrentProcess(), &duplicate,
-                      0, FALSE, DUPLICATE_SAME_ACCESS) == 0)
-  {
+  if (!duplicate_handle(p, duplicate, FALSE)) {
     let message = last_system_error_message();
     let const group = reinterpret_cast<process>(reinterpret_cast<uintptr>(p) |
                                                 PROCESS_GROUP_REFERENCE_TAG);
@@ -2972,14 +2962,12 @@ fn realtime_microseconds() wontthrow -> u64
 {
   FILETIME file_time;
   GetSystemTimePreciseAsFileTime(&file_time);
-  ULARGE_INTEGER ticks;
-  ticks.LowPart = file_time.dwLowDateTime;
-  ticks.HighPart = file_time.dwHighDateTime;
+  const u64 ticks = filetime_ticks(file_time);
   /* FILETIME counts 100ns intervals since 1601, so the 1970 offset is removed.
    */
   const u64 epoch_offset_100ns = 116444736000000000ULL;
-  if (ticks.QuadPart < epoch_offset_100ns) return 0;
-  return (ticks.QuadPart - epoch_offset_100ns) / 10ULL;
+  if (ticks < epoch_offset_100ns) return 0;
+  return (ticks - epoch_offset_100ns) / 10ULL;
 }
 
 fn format_local_time(StringView format, i64 epoch) throws -> String

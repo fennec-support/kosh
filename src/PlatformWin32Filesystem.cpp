@@ -44,6 +44,50 @@ unc_share_end(StringView path, usize position,
   return position;
 }
 
+static fn filetime_ticks(FILETIME time) wontthrow -> u64
+{
+  ULARGE_INTEGER ticks{};
+  ticks.LowPart = time.dwLowDateTime;
+  ticks.HighPart = time.dwHighDateTime;
+  return ticks.QuadPart;
+}
+
+static fn filetime_unix_seconds(FILETIME time) wontthrow -> i64
+{
+  return static_cast<i64>(filetime_ticks(time) / 10000000ULL - 11644473600ULL);
+}
+
+static fn filetime_nanoseconds(FILETIME time) wontthrow -> u32
+{
+  return static_cast<u32>(filetime_ticks(time) % 10000000ULL * 100ULL);
+}
+
+static fn fill_file_identity(const BY_HANDLE_FILE_INFORMATION &identity,
+                             file_status &status) wontthrow -> void
+{
+  status.device_id = identity.dwVolumeSerialNumber;
+  status.file_id = (static_cast<u64>(identity.nFileIndexHigh) << 32) |
+                   identity.nFileIndexLow;
+  status.has_file_identity = true;
+}
+
+/* A handle opened with no access rights, only to query a path. */
+static fn open_path_for_query(const wchar_t *wide_path, DWORD access,
+                              DWORD flags) wontthrow -> HANDLE
+{
+  return CreateFileW(wide_path, access,
+                     FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                     nullptr, OPEN_EXISTING, flags, nullptr);
+}
+
+static fn path_attributes(StringView path) wontthrow -> DWORD
+{
+  let const wide_path = utf8_to_wide(path, heap_allocator());
+  if (!wide_path.has_value()) return INVALID_FILE_ATTRIBUTES;
+
+  return GetFileAttributesW(wide_path->begin());
+}
+
 static fn is_trusted_owner_sid(PSID sid) wontthrow -> bool
 {
   if (sid == nullptr || IsValidSid(sid) == FALSE) return false;
@@ -203,10 +247,8 @@ fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
                                     wontthrow -> Maybe<Path> {
     let const wide_candidate = utf8_to_wide(candidate.view(), heap_allocator());
     if (!wide_candidate.has_value()) return koshka::None;
-    let const handle = CreateFileW(
-        wide_candidate->begin(), 0,
-        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
-        OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+    let const handle = open_path_for_query(wide_candidate->begin(), 0,
+                                           FILE_FLAG_BACKUP_SEMANTICS);
     if (handle == INVALID_HANDLE_VALUE) return koshka::None;
     defer
     {
@@ -349,13 +391,7 @@ fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
   return resolved;
 }
 
-fn path_from_file_id(StringView filesystem_path, u64 file_id) wontthrow
-    -> Maybe<Path>
-{
-  unused(filesystem_path);
-  unused(file_id);
-  return None;
-}
+fn path_from_file_id(StringView, u64) wontthrow -> Maybe<Path> { return None; }
 
 fn glob_matches(StringView pattern, Allocator allocator) throws
     -> ArrayList<String>
@@ -500,16 +536,12 @@ cold fn path_exists(StringView path) wontthrow -> bool
   if (path == StringView{"/dev/null"}) return true;
   if (is_named_pipe_path(path)) return named_pipe_exists(path);
 
-  let const wide_path = utf8_to_wide(path, heap_allocator());
-  return wide_path.has_value() &&
-         GetFileAttributesW(wide_path->begin()) != INVALID_FILE_ATTRIBUTES;
+  return path_attributes(path) != INVALID_FILE_ATTRIBUTES;
 }
 
 cold fn path_is_directory(StringView path) wontthrow -> bool
 {
-  let const wide_path = utf8_to_wide(path, heap_allocator());
-  if (!wide_path.has_value()) return false;
-  let const attributes = GetFileAttributesW(wide_path->begin());
+  let const attributes = path_attributes(path);
   return attributes != INVALID_FILE_ATTRIBUTES &&
          (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 }
@@ -518,29 +550,21 @@ fn path_is_regular_file(StringView path) wontthrow -> bool
 {
   if (is_named_pipe_path(path)) return false;
 
-  let const wide_path = utf8_to_wide(path, heap_allocator());
-  if (!wide_path.has_value()) return false;
-  let const attributes = GetFileAttributesW(wide_path->begin());
+  let const attributes = path_attributes(path);
   return attributes != INVALID_FILE_ATTRIBUTES &&
          (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
 }
 
 fn path_is_symbolic_link(StringView path) wontthrow -> bool
 {
-  let const wide_path = utf8_to_wide(path, heap_allocator());
-  if (!wide_path.has_value()) return false;
-  let const attributes = GetFileAttributesW(wide_path->begin());
+  let const attributes = path_attributes(path);
   return attributes != INVALID_FILE_ATTRIBUTES &&
          (attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
 }
 
 /* Windows has no POSIX block, character, or socket file type. A named pipe
    stands in for a FIFO. */
-fn path_is_block_device(StringView path) wontthrow -> bool
-{
-  unused(path);
-  return false;
-}
+fn path_is_block_device(StringView) wontthrow -> bool { return false; }
 fn path_is_character_device(StringView path) wontthrow -> bool
 {
   return path == StringView{"/dev/null"};
@@ -549,36 +573,18 @@ fn path_is_fifo(StringView path) wontthrow -> bool
 {
   return is_named_pipe_path(path) && named_pipe_exists(path);
 }
-fn path_is_socket(StringView path) wontthrow -> bool
-{
-  unused(path);
-  return false;
-}
+fn path_is_socket(StringView) wontthrow -> bool { return false; }
 
 /* Windows carries no setuid, setgid, sticky, or POSIX ownership bit. */
-fn path_has_setuid_bit(StringView path) wontthrow -> bool
+fn path_has_setuid_bit(StringView) wontthrow -> bool { return false; }
+fn path_has_setgid_bit(StringView) wontthrow -> bool { return false; }
+fn path_has_sticky_bit(StringView) wontthrow -> bool { return false; }
+fn path_is_owned_by_effective_user(StringView) wontthrow -> bool
 {
-  unused(path);
   return false;
 }
-fn path_has_setgid_bit(StringView path) wontthrow -> bool
+fn path_is_owned_by_effective_group(StringView) wontthrow -> bool
 {
-  unused(path);
-  return false;
-}
-fn path_has_sticky_bit(StringView path) wontthrow -> bool
-{
-  unused(path);
-  return false;
-}
-fn path_is_owned_by_effective_user(StringView path) wontthrow -> bool
-{
-  unused(path);
-  return false;
-}
-fn path_is_owned_by_effective_group(StringView path) wontthrow -> bool
-{
-  unused(path);
   return false;
 }
 
@@ -619,14 +625,10 @@ fn paths_are_same_file(StringView first, StringView second) wontthrow -> bool
   if (!wide_second.has_value()) return false;
   /* FILE_FLAG_BACKUP_SEMANTICS lets a directory open too. */
   let const first_handle =
-      CreateFileW(wide_first->begin(), 0,
-                  FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                  nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+      open_path_for_query(wide_first->begin(), 0, FILE_FLAG_BACKUP_SEMANTICS);
   if (first_handle == INVALID_HANDLE_VALUE) return false;
   let const second_handle =
-      CreateFileW(wide_second->begin(), 0,
-                  FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                  nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+      open_path_for_query(wide_second->begin(), 0, FILE_FLAG_BACKUP_SEMANTICS);
   if (second_handle == INVALID_HANDLE_VALUE) {
     let const error = GetLastError();
     CloseHandle(first_handle);
@@ -727,9 +729,8 @@ fn change_current_directory(StringView path) throws -> ErrorOr<Ok>
 
 fn reference_current_directory() wontthrow -> DirectoryReference
 {
-  return DirectoryReference{CreateFileW(
-      L".", 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
-      OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr)};
+  return DirectoryReference{
+      open_path_for_query(L".", 0, FILE_FLAG_BACKUP_SEMANTICS)};
 }
 
 fn restore_current_directory(const DirectoryReference &reference) wontthrow
@@ -1120,13 +1121,8 @@ fn set_file_mode(StringView path, u32 mode) wontthrow -> bool
   return SetFileAttributesW(wide_path->begin(), attributes) != FALSE;
 }
 
-fn set_file_owner(StringView path, i64 owner_id, i64 group_id,
-                  symlink_follow_mode follow_mode) wontthrow -> bool
+fn set_file_owner(StringView, i64, i64, symlink_follow_mode) wontthrow -> bool
 {
-  unused(path);
-  unused(owner_id);
-  unused(group_id);
-  unused(follow_mode);
   SetLastError(ERROR_NOT_SUPPORTED);
   return false;
 }
@@ -1141,21 +1137,14 @@ fn create_hard_link(StringView target, StringView link_path) wontthrow -> bool
                          nullptr) != 0;
 }
 
-fn make_fifo(StringView path, u32 mode) wontthrow -> bool
+fn make_fifo(StringView, u32) wontthrow -> bool
 {
-  unused(path);
-  unused(mode);
   SetLastError(ERROR_NOT_SUPPORTED);
   return false;
 }
 
-fn make_device_node(StringView path, u32 mode, u32 major_number,
-                    u32 minor_number) wontthrow -> bool
+fn make_device_node(StringView, u32, u32, u32) wontthrow -> bool
 {
-  unused(path);
-  unused(mode);
-  unused(major_number);
-  unused(minor_number);
   SetLastError(ERROR_NOT_SUPPORTED);
   return false;
 }
@@ -1211,10 +1200,8 @@ fn set_file_times(StringView path, const file_time_values &times) wontthrow
 
   let const wide_path = utf8_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return false;
-  let const handle =
-      CreateFileW(wide_path->begin(), FILE_WRITE_ATTRIBUTES,
-                  FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                  nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+  let const handle = open_path_for_query(
+      wide_path->begin(), FILE_WRITE_ATTRIBUTES, FILE_FLAG_BACKUP_SEMANTICS);
   if (handle == INVALID_HANDLE_VALUE) return false;
 
   let const did_set = SetFileTime(handle, nullptr, &access_file_time,
@@ -1328,11 +1315,9 @@ fn read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
 
   let const wide_path = utf8_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return koshka::None;
-  let const handle = CreateFileW(
-      wide_path->begin(), 0,
-      FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
-      OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
-      nullptr);
+  let const handle = open_path_for_query(wide_path->begin(), 0,
+                                         FILE_FLAG_OPEN_REPARSE_POINT |
+                                             FILE_FLAG_BACKUP_SEMANTICS);
   if (handle == INVALID_HANDLE_VALUE) return koshka::None;
   defer
   {
@@ -1627,9 +1612,7 @@ fn read_filesystem_integrity_evidence(StringView path) throws
   if (volume_path_length > 0 && volume_path[volume_path_length - 1] == L'\\')
     volume_path[volume_path_length - 1] = L'\0';
 
-  let const volume = CreateFileW(
-      volume_path, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-      nullptr, OPEN_EXISTING, 0, nullptr);
+  let const volume = open_path_for_query(volume_path, 0, 0);
   if (volume == INVALID_HANDLE_VALUE) return None;
   defer { CloseHandle(volume); };
 
@@ -1648,11 +1631,9 @@ fn read_filesystem_integrity_evidence(StringView path) throws
   return evidence;
 }
 
-fn verify_filesystem_integrity(StringView path, u64 timeout_nanoseconds) throws
+fn verify_filesystem_integrity(StringView, u64) throws
     -> filesystem_verification_result
 {
-  unused(path);
-  unused(timeout_nanoseconds);
   return filesystem_verification_result::Unsupported;
 }
 
@@ -1752,33 +1733,21 @@ fn stat_path(StringView path, file_status &status) wontthrow -> bool
     status.change_nanoseconds = 0;
     status.blocks = (status.size + 511) / 512;
 
-    let const handle = CreateFileW(
-        wide_path->begin(), 0,
-        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
-        OPEN_EXISTING,
-        FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+    let const handle = open_path_for_query(wide_path->begin(), 0,
+                                           FILE_FLAG_OPEN_REPARSE_POINT |
+                                               FILE_FLAG_BACKUP_SEMANTICS);
     if (handle != INVALID_HANDLE_VALUE) {
       BY_HANDLE_FILE_INFORMATION identity{};
       if (GetFileInformationByHandle(handle, &identity)) {
-        status.device_id = identity.dwVolumeSerialNumber;
-        status.file_id = (static_cast<u64>(identity.nFileIndexHigh) << 32) |
-                         identity.nFileIndexLow;
-        status.has_file_identity = true;
+        fill_file_identity(identity, status);
         status.link_count = identity.nNumberOfLinks;
-        ULARGE_INTEGER access_ticks{};
-        access_ticks.LowPart = identity.ftLastAccessTime.dwLowDateTime;
-        access_ticks.HighPart = identity.ftLastAccessTime.dwHighDateTime;
-        status.access_time = static_cast<i64>(
-            access_ticks.QuadPart / 10000000ULL - 11644473600ULL);
+        status.access_time = filetime_unix_seconds(identity.ftLastAccessTime);
         status.access_nanoseconds =
-            static_cast<u32>(access_ticks.QuadPart % 10000000ULL * 100ULL);
-        ULARGE_INTEGER modification_ticks{};
-        modification_ticks.LowPart = identity.ftLastWriteTime.dwLowDateTime;
-        modification_ticks.HighPart = identity.ftLastWriteTime.dwHighDateTime;
-        status.modification_time = static_cast<i64>(
-            modification_ticks.QuadPart / 10000000ULL - 11644473600ULL);
-        status.modification_nanoseconds = static_cast<u32>(
-            modification_ticks.QuadPart % 10000000ULL * 100ULL);
+            filetime_nanoseconds(identity.ftLastAccessTime);
+        status.modification_time =
+            filetime_unix_seconds(identity.ftLastWriteTime);
+        status.modification_nanoseconds =
+            filetime_nanoseconds(identity.ftLastWriteTime);
         status.change_time = status.modification_time;
         status.change_nanoseconds = status.modification_nanoseconds;
       }
@@ -1793,17 +1762,11 @@ fn stat_path(StringView path, file_status &status) wontthrow -> bool
   status.file_id = 0;
   status.has_file_identity = false;
   let const handle =
-      CreateFileW(wide_path->begin(), 0,
-                  FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                  nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+      open_path_for_query(wide_path->begin(), 0, FILE_FLAG_BACKUP_SEMANTICS);
   if (handle != INVALID_HANDLE_VALUE) {
     BY_HANDLE_FILE_INFORMATION identity{};
-    if (GetFileInformationByHandle(handle, &identity)) {
-      status.device_id = identity.dwVolumeSerialNumber;
-      status.file_id = (static_cast<u64>(identity.nFileIndexHigh) << 32) |
-                       identity.nFileIndexLow;
-      status.has_file_identity = true;
-    }
+    if (GetFileInformationByHandle(handle, &identity))
+      fill_file_identity(identity, status);
     CloseHandle(handle);
   }
   status.mode = static_cast<u32>(info.st_mode);
@@ -1818,16 +1781,10 @@ fn stat_path(StringView path, file_status &status) wontthrow -> bool
   if (GetFileAttributesExW(wide_path->begin(), GetFileExInfoStandard,
                            &attribute_data) != 0)
   {
-    ULARGE_INTEGER access_ticks{};
-    access_ticks.LowPart = attribute_data.ftLastAccessTime.dwLowDateTime;
-    access_ticks.HighPart = attribute_data.ftLastAccessTime.dwHighDateTime;
     status.access_nanoseconds =
-        static_cast<u32>(access_ticks.QuadPart % 10000000ULL * 100ULL);
-    ULARGE_INTEGER modification_ticks{};
-    modification_ticks.LowPart = attribute_data.ftLastWriteTime.dwLowDateTime;
-    modification_ticks.HighPart = attribute_data.ftLastWriteTime.dwHighDateTime;
+        filetime_nanoseconds(attribute_data.ftLastAccessTime);
     status.modification_nanoseconds =
-        static_cast<u32>(modification_ticks.QuadPart % 10000000ULL * 100ULL);
+        filetime_nanoseconds(attribute_data.ftLastWriteTime);
     status.change_nanoseconds = status.modification_nanoseconds;
   }
   /* Windows stat has no block count, so 512-byte blocks are derived from size.
@@ -1842,10 +1799,7 @@ fn stat_descriptor(os::descriptor fd, file_status &status) wontthrow -> bool
   if (GetFileInformationByHandle(fd, &identity) == 0) return false;
 
   status = {};
-  status.device_id = identity.dwVolumeSerialNumber;
-  status.file_id = (static_cast<u64>(identity.nFileIndexHigh) << 32) |
-                   identity.nFileIndexLow;
-  status.has_file_identity = true;
+  fill_file_identity(identity, status);
   status.link_count = identity.nNumberOfLinks;
   status.size =
       (static_cast<u64>(identity.nFileSizeHigh) << 32) | identity.nFileSizeLow;
@@ -2262,11 +2216,7 @@ fn uid_to_username(u32 uid) throws -> Maybe<String>
                             heap_allocator());
 }
 
-fn gid_to_groupname(u32 gid) throws -> Maybe<String>
-{
-  unused(gid);
-  return koshka::None;
-}
+fn gid_to_groupname(u32) throws -> Maybe<String> { return koshka::None; }
 
 fn username_to_uid(StringView username) throws -> Maybe<u32>
 {
@@ -2275,11 +2225,7 @@ fn username_to_uid(StringView username) throws -> Maybe<u32>
   return None;
 }
 
-fn groupname_to_gid(StringView groupname) throws -> Maybe<u32>
-{
-  unused(groupname);
-  return koshka::None;
-}
+fn groupname_to_gid(StringView) throws -> Maybe<u32> { return koshka::None; }
 
 } /* namespace os */
 
