@@ -2438,6 +2438,28 @@ fn internal::analyze_redirection_substitutions(
     const SourceLocation &node_location, bool is_unconditional) throws -> void
 {
   analyze_token_substitutions(actx, redirection.target, is_unconditional);
+  if (redirection.fd_allocation_name_token != nullptr) {
+    let const allocation_target = static_cast<const tokens::WordToken *>(
+                                      redirection.fd_allocation_name_token)
+                                      ->word()
+                                      .get_fd_allocation_target();
+    if (allocation_target.has_value()) {
+      let const allocation_location =
+          redirection.fd_allocation_name_token->source_location();
+      let const name_location =
+          allocation_location.length > allocation_target->name.length
+              ? allocation_location.subspan(1, allocation_target->name.length)
+              : allocation_location;
+      let const is_definite =
+          is_unconditional && !actx.effects.has_seen_runtime_definer;
+      actx.note_variable_occurrence(allocation_target->name, name_location,
+                                    variable_occurrence_kind::Assignment,
+                                    !is_definite);
+      actx.note_variable_assignment(allocation_target->name, name_location,
+                                    is_definite);
+    }
+  }
+
   if (redirection.heredoc == nullptr || !redirection.should_expand_heredoc ||
       redirection.heredoc->source_end_position <=
           redirection.heredoc->source_position)

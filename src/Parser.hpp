@@ -169,7 +169,8 @@ private:
   mustuse fn wrap_with_stderr_to_stdout(Command *command) throws -> Command *;
 
   fn build_here_string_redirection(
-      const SourceLocation &op_location, Maybe<SourceLocation> &first_location,
+      i32 fd, const SourceLocation &op_location,
+      Maybe<SourceLocation> &first_location,
       ArrayList<expressions::Redirection> &out) throws -> void;
 
   fn build_heredoc_redirection(i32 fd, const SourceLocation &op_location,

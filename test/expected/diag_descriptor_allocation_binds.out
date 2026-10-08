@@ -1,0 +1,12 @@
+13:7: warning: The variable 'never_assigned' is read before any assignment gives it a value. (SC2154)
+    13 |  echo "$never_assigned"
+       |        ^~~~~~~~~~~~~~~
+note: Assign 'never_assigned' before it is read, or set it in the environment.
+file=1
+string=1
+document=1
+13:7: warning: The variable 'never_assigned' is not set, it expands to empty.
+    13 |  echo "$never_assigned"
+       |        ^~~~~~~~~~~~~~~
+note: Replace it with ${never_assigned-} if empty expansion is desired.
+

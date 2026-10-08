@@ -1009,13 +1009,14 @@ fn Parser::build_both_streams_redirection(
 }
 
 fn Parser::build_here_string_redirection(
-    const SourceLocation &op_location, Maybe<SourceLocation> &first_location,
+    i32 fd, const SourceLocation &op_location,
+    Maybe<SourceLocation> &first_location,
     ArrayList<expressions::Redirection> &out) throws -> void
 {
   if (!first_location) first_location = op_location;
 
   expressions::Redirection redir{};
-  redir.fd = 0;
+  redir.fd = fd;
   redir.kind = expressions::Redirection::Kind::HereString;
   redir.target =
       next_token_of_kind(Token::Kind::Word, "Expected a word after '<<<'");
@@ -1119,7 +1120,8 @@ mustuse fn Parser::try_parse_descriptor_prefixed_redirection(
   ASSERT(next != nullptr);
   let const nk = next->kind();
   if ((nk == Token::Kind::Greater || nk == Token::Kind::DoubleGreater ||
-       nk == Token::Kind::Less || nk == Token::Kind::DoubleLess) &&
+       nk == Token::Kind::Less || nk == Token::Kind::DoubleLess ||
+       nk == Token::Kind::TripleLess) &&
       next->source_location().position ==
           word_location.position + word_location.length)
   {
@@ -1129,12 +1131,16 @@ mustuse fn Parser::try_parse_descriptor_prefixed_redirection(
     let const allocation_name = word_token->word().fd_allocation_name();
     if (allocation_name.has_value()) {
       if (nk == Token::Kind::DoubleLess) {
-        throw ErrorWithLocation{word_location,
-                                "A heredoc descriptor cannot be allocated"};
+        build_heredoc_redirection(-1, op_location, first_location, out);
+        out.back().fd_allocation_name_token = word_token;
+      } else if (nk == Token::Kind::TripleLess) {
+        build_here_string_redirection(-1, op_location, first_location, out);
+        out.back().fd_allocation_name_token = word_token;
+      } else {
+        build_file_or_dup_redirection(
+            -1, nk, op_location, first_location, out, word_token,
+            redirection_descriptor_spelling::Explicit);
       }
-      build_file_or_dup_redirection(-1, nk, op_location, first_location, out,
-                                    word_token,
-                                    redirection_descriptor_spelling::Explicit);
       return true;
     }
 
@@ -1147,6 +1153,8 @@ mustuse fn Parser::try_parse_descriptor_prefixed_redirection(
     let const fd = static_cast<i32>(parsed_descriptor.value());
     if (nk == Token::Kind::DoubleLess) {
       build_heredoc_redirection(fd, op_location, first_location, out);
+    } else if (nk == Token::Kind::TripleLess) {
+      build_here_string_redirection(fd, op_location, first_location, out);
     } else {
       build_file_or_dup_redirection(fd, nk, op_location, first_location, out,
                                     nullptr,
@@ -1191,7 +1199,7 @@ alwaysinline fn Parser::try_build_operator_redirection(
 
   case Token::Kind::TripleLess:
     m_lexer.advance_past_last_peek();
-    build_here_string_redirection(op_location, first_location, out);
+    build_here_string_redirection(0, op_location, first_location, out);
     return true;
 
   default: return false;

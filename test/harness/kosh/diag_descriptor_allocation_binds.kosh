@@ -1,0 +1,13 @@
+#!/bin/env kosh
+exec {file_fd}>/dev/null
+echo "file=$(( file_fd >= 10 ))"
+exec {file_fd}>&-
+exec {string_fd}<<< "text"
+echo "string=$(( string_fd >= 10 ))"
+exec {string_fd}<&-
+exec {document_fd}<<EOF
+body
+EOF
+echo "document=$(( document_fd >= 10 ))"
+exec {document_fd}<&-
+echo "$never_assigned"

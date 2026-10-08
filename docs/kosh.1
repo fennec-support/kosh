@@ -1634,11 +1634,13 @@ always matches by UTF\-8 sequence.
 .SH REDIRECTIONS
 The operators &> and &>> redirect standard output and standard error to one
 file. The operator |& pipes both streams. The operator <<< supplies a
-here-string followed by one newline.
+here-string followed by one newline. A descriptor number written before <<<
+or <<, as in 7<<< or 8<<EOF, sets the descriptor that receives the input.
 .PP
-A redirection of the form {var}> or {var}< allocates a descriptor numbered ten
-or greater and assigns its number to var. The form {var}>&\- closes the
-descriptor named by var.
+A redirection of the form {var}>, {var}<, {var}<<<, or {var}<< allocates a
+descriptor numbered ten or greater and assigns its number to var, so analysis
+counts var as assigned. The form {var}>&\- closes the descriptor whose number
+var holds.
 .PP
 An appending redirection written inside a loop body opens its file once and
 keeps that descriptor for the rest of the loop. The same file and descriptor
