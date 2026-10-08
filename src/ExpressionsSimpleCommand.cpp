@@ -149,8 +149,6 @@ fn AssignCommand::analyze(AnalysisContext &actx,
     actx.report_diagnostic(diagnostic_id::sc2025, source_location());
   }
 
-  /* The fold reads the constant table, so it runs before the table records this
-     assignment. */
   optimizer::optimize_node(this, actx);
 
   let const &name = m_assignment->key();
@@ -160,15 +158,11 @@ fn AssignCommand::analyze(AnalysisContext &actx,
     actx.pipeline_lost_names.add(name.view());
   }
 
-  /* A PATH assignment leaves the runtime search path unknown to the prepass, so
-     a later command's not-found check stays quiet. */
   if (utils::environment_name_is_path(name.view()))
     actx.mark_path_unknown(true);
   if (is_source_location_variable(name.view()))
     actx.mark_working_directory_unknown();
 
-  /* An element assignment a[i]=v changes what $a reads without recording a
-     scalar literal, so the base name before the bracket is forgotten. */
   if (let const bracket = name.view().find_character('['); bracket.has_value())
   {
     let const base = name.view().substring_of_length(0, *bracket);
@@ -208,8 +202,6 @@ fn AssignCommand::analyze(AnalysisContext &actx,
   actx.note_variable_assignment(name.view(), source_location(),
                                 is_unconditional &&
                                     !actx.effects.has_seen_runtime_definer);
-  /* The record is taken before the constant table gives up on this name. A
-     conditional or appending assignment stays answerable. */
   actx.note_variable_assignment_record(
       name.view(), &m_assignment->value_word(), source_location(),
       !is_unconditional || actx.effects.has_seen_runtime_definer,
@@ -242,9 +234,6 @@ fn AssignCommand::analyze(AnalysisContext &actx,
     actx.add_global_assigned_name(name.view(), source_location());
   }
 
-  /* A conditional or nested assignment may not run, a runtime definer may have
-     changed the name out of view, and NAME+=VALUE depends on the untracked
-     prior value, so each forgets the name. */
   if (!is_unconditional || actx.effects.has_seen_runtime_definer ||
       m_assignment->get_update_mode() == assignment_update_mode::Append)
   {
@@ -309,9 +298,6 @@ hot fn AssignCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
 
 fn AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
 {
-  /* A command substitution in the value leaves the status of the last one, so
-     the reset to 0 waits until after the expansion and a $? in the value reads
-     the prior command's status. */
   let const value_ran_substitution =
       m_assignment->value_word().runs_substitution();
   let const substitution_mark = cxt.mark_process_substitutions();
@@ -381,8 +367,6 @@ fn AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
       return cxt.execution_store().last_exit_status();
     }
 
-    /* NAME+=VALUE prepends the current value of NAME, empty when unset. An
-       integer name adds rather than concatenates. */
     if (m_assignment->get_update_mode() == assignment_update_mode::Append) {
       let appended =
           String{cxt.get_variable_value(m_assignment->key()).value_or("")};
@@ -429,8 +413,6 @@ SimpleCommand::SimpleCommand(SourceLocation location,
                              ArrayList<const Token *> &&args)
     : Command(steal(location)), m_args(steal(args))
 {
-  /* The location spans from the first word to the end of the last, so a caret
-     covers the whole command and not only the command word. */
   if (!m_args.is_empty()) {
     let const first = m_args[0]->source_location();
     let const last = m_args.back()->source_location();
@@ -556,9 +538,6 @@ namespace {
 
 using expressions::Redirection;
 
-/* Keep one binding for each nonstandard target. The last redirection of that
-   descriptor wins, and the file it replaces closes here unless the loop
-   redirection cache owns it. */
 fn bind_nonstandard_fd(ArrayList<nonstandard_descriptor> &nonstandard,
                        nonstandard_descriptor binding) throws -> void
 {
@@ -576,10 +555,6 @@ fn bind_nonstandard_fd(ArrayList<nonstandard_descriptor> &nonstandard,
   nonstandard.push(binding);
 }
 
-/* Route an opened descriptor into the slot its target names, fd 0 to input, 1
-   to output, 2 to error. Any other target keeps its own number and joins the
-   nonstandard list. The last redirection of a descriptor wins. A descriptor in
-   the slot closes first unless the loop redirection cache owns it. */
 fn assign_redirected_fd(ExecContext &ec,
                         ArrayList<nonstandard_descriptor> &nonstandard, i32 fd,
                         os::descriptor file_fd,
@@ -613,9 +588,6 @@ fn assign_redirected_fd(ExecContext &ec,
       nonstandard, nonstandard_descriptor{file_fd, fd, -1, is_file_borrowed});
 }
 
-/* A resolved duplication target, the descriptor or close marker in fd, or the
-   csh both-streams filename when >&word expanded to a name, read as >word
-   2>&1. */
 struct resolved_duplication
 {
   i32 fd{-1};
@@ -651,7 +623,7 @@ fn resolve_duplication(const Redirection &redir, EvalContext &cxt) throws
                               koshka::None};
 }
 
-} /* namespace */
+}
 
 static fn redirection_open_mode(Redirection::Kind kind,
                                 bool no_clobber) wontthrow -> os::file_open_mode
@@ -677,12 +649,6 @@ static fn redirection_open_error(StringView path) throws -> String
   return system_error;
 }
 
-/* Resolve one redirection to an unplaced outcome, the shared open-and-stage
-   work the three redirection sites repeat. The returned descriptor is the
-   caller's to place and to close. A failure throws a located error, and
-   open_or_stage_failed is set true only for the open, stage, and
-   ambiguous-target failures the simple-command path recovers from, so a
-   duplication-resolve or word-expansion error stays fatal. */
 wontreturn fn reject_restricted_output_redirection(
     const Redirection &redir, const SourceLocation &fallback_location,
     bool *open_or_stage_failed) throws -> void
@@ -819,7 +785,7 @@ fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
     let cached = cxt.find_loop_redirect_fd(redir.fd, target_path, mode);
     if (cached.has_value())
       return resolved_redirection{redirection_outcome::OpenedFile, redir.fd,
-                                  cached.value(), -1, /*is_cached=*/true};
+                                  cached.value(), -1, true};
   }
 
   bool did_signal_arrive = false;
@@ -839,8 +805,6 @@ fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
   if (!opened) {
     if (open_or_stage_failed != nullptr) *open_or_stage_failed = true;
 
-    /* An interrupt ends the shell, and the open never reached the file. The
-       flag stays set so the command boundary above still sees the interrupt. */
     if (os::INTERRUPT_REQUESTED)
       throw InterruptErrorWithLocation{redir.target->source_location()};
 
@@ -854,11 +818,11 @@ fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
       cxt.retain_loop_redirect_fd(redir.fd, target_path, mode, file_fd))
   {
     return resolved_redirection{redirection_outcome::OpenedFile, redir.fd,
-                                file_fd, -1, /*is_cached=*/true};
+                                file_fd, -1, true};
   }
 
   return resolved_redirection{redirection_outcome::OpenedFile, redir.fd,
-                              file_fd, -1, /*is_cached=*/false};
+                              file_fd, -1, false};
 }
 
 static fn read_fd_allocation_value(EvalContext &cxt,
@@ -989,8 +953,6 @@ static fn append_reprinted_source(String &out, StringView source,
                                   bool are_bash_additions_enabled) throws
     -> void;
 
-/* The byte just past the double quote that closes the one opened before
-   `position`, or the end of the source when the quote is unterminated. */
 static fn find_double_quote_end(StringView source, usize position) throws
     -> usize
 {
@@ -1021,8 +983,6 @@ static fn find_double_quote_end(StringView source, usize position) throws
   return source.length;
 }
 
-/* The body a command substitution or a subshell reprints, with the padding bash
-   drops removed from both ends. */
 static pure fn trimmed_reprint_body(StringView body) wontthrow -> StringView
 {
   while (!body.is_empty() && (is_reprint_blank(body[0]) || body[0] == '\n'))
@@ -1035,10 +995,6 @@ static pure fn trimmed_reprint_body(StringView body) wontthrow -> StringView
   return body;
 }
 
-/* The redirection a reprint spells. A duplication always prints its descriptor
-   and binds its target with no blank between them. Every other form prints a
-   descriptor only when it differs from the default the operator carries, and it
-   separates its target with one blank. */
 struct reprinted_redirection
 {
   usize length;
@@ -1048,9 +1004,6 @@ struct reprinted_redirection
   bool is_duplication;
 };
 
-/* The redirection whose operator starts at `position`, or nothing when the
-   bytes there spell none. A leading descriptor counts only where a token
-   starts, since the digits of `a2>b` belong to the word before the operator. */
 static pure fn match_reprinted_redirection(StringView source, usize position,
                                            bool is_token_start) wontthrow
     -> Maybe<reprinted_redirection>
@@ -1130,8 +1083,6 @@ static pure fn match_reprinted_redirection(StringView source, usize position,
   return redirection;
 }
 
-/* Whether any byte past `position` still spells a command. The answer decides
-   whether a terminator that bash drops at the end is written. */
 static pure fn has_reprint_remainder(StringView source,
                                      usize position) wontthrow -> bool
 {
@@ -1146,10 +1097,6 @@ static pure fn has_reprint_remainder(StringView source,
   return false;
 }
 
-/* The subshell region the way bash reprints it, with one blank inside each
-   parenthesis and the commands of a body written across several lines separated
-   by a semicolon and a blank. The region spans the opening parenthesis through
-   the closing one. */
 static fn append_reprinted_subshell(String &out, StringView region,
                                     bool are_bash_additions_enabled) throws
     -> void
@@ -1272,8 +1219,6 @@ static fn append_reprinted_source(String &out, StringView source,
         let const body = trimmed_reprint_body(
             source.substring_of_length(position + 2, *end - position - 3));
 
-        /* A body that opens a subshell would read as arithmetic when it follows
-           the dollar sign directly. Bash writes a blank between them. */
         out.append(!body.is_empty() && body[0] == '(' ? "$( " : "$(");
         append_reprinted_source(out, body, true, true, false,
                                 are_bash_additions_enabled);
@@ -1345,9 +1290,6 @@ static fn append_reprinted_source(String &out, StringView source,
         continue;
       }
 
-      /* A nested subshell carries the same layout as the one that holds it. A
-         doubled parenthesis opens an arithmetic command. Bash keeps that
-         command the way it is written. */
       if (byte == '(' && is_token_start && next_byte != '(') {
         let const end =
             lexer::scan_balanced_shell_region(source, position + 1, ')');
@@ -1436,8 +1378,6 @@ static fn append_reprinted_source(String &out, StringView source,
         continue;
       }
 
-      /* Bash keeps no merging pipe of its own and reprints the merge as the
-         duplication it stands for. */
       if (byte == '|' && next_byte == '&') {
         do_append_operator(StringView{" 2>&1 | "}, 2);
         continue;
@@ -1528,9 +1468,6 @@ fn internal::append_word_source_text(EvalContext &cxt, String &out,
   out += word.raw_string();
 }
 
-/* The descriptor the operator carries. A named allocation prints its name in
-   braces, a descriptor equal to the form's own default prints nothing, and
-   every other descriptor prints its number. */
 static fn append_redirection_descriptor(String &out, const Redirection &redir,
                                         i32 default_fd) throws -> void
 {
@@ -1552,16 +1489,12 @@ static fn append_redirection_descriptor(String &out, const Redirection &redir,
   out += String::from(static_cast<i64>(redir.fd), heap_allocator());
 }
 
-/* The descriptor a duplication carries. Bash prints it even when it is the
-   form's own default. */
 static fn append_duplication_descriptor(String &out,
                                         const Redirection &redir) throws -> void
 {
   append_redirection_descriptor(out, redir, -1);
 }
 
-/* The heredoc terminator. The terminator is the delimiter word without its
-   quoting and without the dash that requested the tab stripping. */
 static fn heredoc_terminator(const Redirection &redir) throws -> String
 {
   ASSERT(redir.heredoc_delimiter != nullptr);
@@ -1642,8 +1575,6 @@ static fn append_one_redirection(EvalContext &cxt, String &out,
 
   case Redirection::Kind::DuplicateOutput:
   case Redirection::Kind::DuplicateInput: {
-    /* A close prints as an output duplication in either direction, the way bash
-       spells 0>&- for <&-. */
     if (redir.dup_fd == Redirection::DUP_FD_CLOSE) {
       append_duplication_descriptor(out, redir);
       out += ">&-";
@@ -1666,8 +1597,6 @@ static fn append_one_redirection(EvalContext &cxt, String &out,
   }
 }
 
-/* Whether the duplication is the one the parser adds behind &>file. Bash spells
-   it as part of the operator and never prints it on its own. */
 static pure fn
 is_synthesized_error_duplication(const Redirection &redir) wontthrow -> bool
 {
@@ -1697,8 +1626,6 @@ fn internal::append_redirections_text(
 
   if (!has_heredoc) return;
 
-  /* Each here-document follows the whole command, in the order the operators
-     appear. */
   for (let const &redir : redirections) {
     if (redir.kind != Redirection::Kind::Heredoc) continue;
 
@@ -1746,9 +1673,6 @@ fn SimpleCommand::redirect_exec_context(ExecContext &ec,
   LOG(Debug, "applying %zu redirections to the pipeline stage",
       m_redirections.count());
 
-  /* A binding opened here is owned by the list until the context adopts it. A
-     later redirection that throws still releases what the earlier ones opened.
-     A binding the loop redirection cache owns stays open. */
   ArrayList<nonstandard_descriptor> nonstandard{heap_allocator()};
   bool was_nonstandard_handed_off = false;
   defer
@@ -1788,9 +1712,8 @@ fn SimpleCommand::redirect_exec_context(ExecContext &ec,
   };
 
   for (let const &redir : m_redirections) {
-    let const r = resolve_redirection(redir, cxt, source_location(),
-                                      /*open_or_stage_failed=*/nullptr,
-                                      /*should_allow_fd_memoization=*/true);
+    let const r =
+        resolve_redirection(redir, cxt, source_location(), nullptr, true);
 
     let previous = Maybe<String>{};
     let const *known_previous = static_cast<const Maybe<String> *>(nullptr);
@@ -1827,10 +1750,6 @@ fn SimpleCommand::redirect_exec_context(ExecContext &ec,
       ec.did_output_file_follow_error_dup = false;
       break;
     case redirection_outcome::OpenedFile:
-      /* A file already in the slot is what the pending dup read. It moves into
-         the other slot and stays open while this file takes its place. An empty
-         slot means the dup read the stream the stage inherits. The ordering
-         mark carries that stream to the routing. */
       if (target_fd == 1 && ec.should_duplicate_error_to_output) {
         if (ec.out_fd) {
           if (ec.err_fd && !ec.is_err_fd_borrowed) os::close_fd(*ec.err_fd);
@@ -1873,22 +1792,15 @@ fn SimpleCommand::redirect_exec_context(ExecContext &ec,
         ec.was_output_to_error_last = true;
         ec.did_error_file_follow_output_dup = false;
       } else if (target_fd > 2) {
-        /* A close leaves no source, and a duplication names the descriptor the
-           stage carries once the three standard slots are placed. */
         let const dup_from_fd =
             r.dup_from_fd == Redirection::DUP_FD_CLOSE ? -1 : r.dup_from_fd;
         bind_nonstandard_fd(
             nonstandard,
             nonstandard_descriptor{KOSH_INVALID_FD, target_fd, dup_from_fd});
       } else if (r.dup_from_fd == Redirection::DUP_FD_CLOSE) {
-        /* One of the three standard descriptors closes after the routing places
-           it. The close joins the list that runs last. */
         bind_nonstandard_fd(nonstandard, nonstandard_descriptor{KOSH_INVALID_FD,
                                                                 target_fd, -1});
       } else {
-        /* The source is a descriptor the shell holds and the stage never
-           carries. The slot receives an independent copy of the same open file.
-           The context owns that copy and releases it with the rest. */
         let const copied = os::duplicate_shell_fd(r.dup_from_fd);
         if (copied == KOSH_INVALID_FD) {
           let const location = redir.target != nullptr
@@ -1960,6 +1872,6 @@ cold fn SimpleCommand::to_string() const throws -> String
   return s;
 }
 
-} /* namespace expressions */
+}
 
-} /* namespace koshka */
+}

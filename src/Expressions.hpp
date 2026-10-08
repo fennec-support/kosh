@@ -56,10 +56,6 @@ public:
       -> Maybe<String> = 0;
 };
 
-/* A source handed to the analysis stage one top-level command at a time. The
-   stream owns the parser and the arena mark, and the analysis stage releases
-   each unit before it asks for the next, so a large script costs the memory of
-   its widest command and not the memory of its whole syntax tree. */
 class AnalysisUnitStream
 {
 public:
@@ -78,10 +74,8 @@ class ForLoop;
 class CStyleForLoop;
 class Subshell;
 class RedirectedCommand;
-} /* namespace expressions */
+}
 
-/* The getopts call whose result the enclosing loop body reads. The views point
-   into the syntax tree, which outlives the analysis. */
 struct active_getopts_call
 {
   StringView optstring;
@@ -89,8 +83,6 @@ struct active_getopts_call
   SourceLocation location;
 };
 
-/* One call of a name this script defines as a function. The name is owned for
-   the same reason the definition name is. */
 struct function_call_record
 {
   String name;
@@ -99,8 +91,6 @@ struct function_call_record
   bool is_inside_function_body{false};
 };
 
-/* One assignment whose value is a bare command name. The value points into a
-   composed string that dies with the command, so both fields are owned. */
 struct command_name_assignment_record
 {
   String name;
@@ -108,8 +98,6 @@ struct command_name_assignment_record
   SourceLocation location;
 };
 
-/* What put a value in the name, so a reader who asks about a name a command
-   binds is told where the value comes from. */
 enum class assignment_binder : u8
 {
   Assignment,
@@ -131,9 +119,6 @@ struct diagnostic_assignment_trace
   assignment_binder binder{assignment_binder::Assignment};
 };
 
-/* One assignment a reader may ask about. The name and the folded value are
-   owned, and the span is a plain byte range, since the language server releases
-   the analysis arena before it answers. */
 struct variable_assignment_record
 {
   String name;
@@ -286,8 +271,6 @@ struct function_global_assignment
   SourceLocation location;
 };
 
-/* One function this script defines. The whole-script sweep reads these after
-   the walk, so the name is owned and never a slice of the syntax tree. */
 struct function_definition_record
 {
   String name;
@@ -320,9 +303,6 @@ struct analysis_function_mark
   usize alias_insertion_count{0};
 };
 
-/* The definitions and names a scope may add and later take back. One mark
-   covers the records, the latest-definition index, the function names, and the
-   alias names, so a rollback needs no counter of its own. */
 struct analysis_function_table
 {
   HashSet defined{heap_allocator(), SMALL_MAP_FIRST_CAPACITY};
@@ -379,8 +359,6 @@ struct analysis_function_table
   }
 };
 
-/* One function definition a reader may ask about. The body span is recovered
-   from the document source, in the shape declare -f prints. */
 struct function_body_record
 {
   String name;
@@ -409,8 +387,6 @@ struct analysis_diagnostic_totals
   usize error_count{0};
 };
 
-/* The booleans that describe where the walk currently stands. A scope that
-   changes some of them saves the whole value and restores it on the way out. */
 struct analysis_walk_flags
 {
   bool is_direct_pipeline_stage{false};
@@ -459,9 +435,6 @@ struct followed_source_effects
   bool has_fatal{false};
 };
 
-/* Whether the name reads a positional parameter, so $1 through $9, $@, $*, or
-   $#. A name carrying a modifier such as ${1:-default} supplies its own value
-   and is left out. */
 inline pure fn reference_names_positional(StringView name) wontthrow -> bool
 {
   if (name.is_empty()) return false;
@@ -485,11 +458,6 @@ inline pure fn reference_names_positional(StringView name) wontthrow -> bool
   }
 }
 
-/* The sibling checks of a command list read the node that follows, and a
-   streamed run holds one top-level command at a time. The carry keeps what
-   those checks need from the unit before, so a finding that spans two
-   top-level commands is still reported. Every field is owned, so a rewind of
-   the syntax tree leaves it readable. */
 struct top_level_sibling_carry
 {
   Maybe<SourceLocation> first_directory_change{};
@@ -552,9 +520,6 @@ struct analysis_report_site
   EvalContext *eval_context;
 };
 
-/* The reporting state of one analysis run: which codes reach the output, which
-   source ranges silence them, the warnings held until a flush, the totals, and
-   where a finished diagnostic goes. */
 struct analysis_reporter
 {
   const analysis_options &options;
@@ -569,8 +534,6 @@ struct analysis_reporter
       : options(analysis)
   {}
 
-  /* The result is true when the message was delivered. A suppressed code must
-     not suppress a later check. */
   fn report(const analysis_report_site &site, diagnostic_id id,
             const SourceLocation &location,
             std::initializer_list<StringView> arguments,
@@ -616,29 +579,19 @@ public:
   analysis_reporter reporter;
   bool are_koshkit_utilities_reachable{true};
   analysis_function_table functions;
-  /* The table is cleared at a conditional branch, a loop body, a function body,
-     a subshell, and on any runtime definer, since a value recorded before such
-     a boundary is no longer proven to hold past it. */
   StringMap<String> constant_variables{heap_allocator(),
                                        SMALL_MAP_FIRST_CAPACITY};
 
   usize function_scope_depth{0};
 
-  /* Saved and zeroed on entry to a function body, since a break inside the body
-     cannot leave a loop that only surrounds the call. */
   usize loop_body_depth{0};
   usize conditional_branch_depth{0};
 
-  /* Saved and cleared on entry to a function body and restored on exit. Each
-     name carries the assignment that recorded it, read by the diagnostic that
-     names a near miss. */
   StringMap<SourceLocation> function_local_names{heap_allocator(),
                                                  SMALL_MAP_FIRST_CAPACITY};
 
   variable_occurrence_pair occurrences;
 
-  /* An assignment inside a function to one of these updates an existing global
-     rather than leaking a new binding, so the no-local warning stays quiet. */
   StringMap<SourceLocation> global_assigned_names{heap_allocator()};
   HashSet inherited_global_assigned_names{heap_allocator(),
                                           SMALL_MAP_FIRST_CAPACITY};
@@ -653,15 +606,10 @@ public:
       heap_allocator()};
   HashSet readonly_assigned_names{heap_allocator()};
 
-  /* An assignment holding a bare command name is only wrong when nothing runs
-     that name, and the run may follow the assignment, so the finding waits for
-     the end of the walk. */
   ArrayList<command_name_assignment_record> command_name_assignments{
       heap_allocator()};
   HashSet command_position_names{heap_allocator()};
 
-  /* Every call of a function the script defines, gathered during the walk and
-     swept once it ends. */
   ArrayList<function_call_record> function_calls{heap_allocator()};
 
   static constexpr usize NO_ACTIVE_FUNCTION_DEFINITION = ~usize{0};
@@ -671,26 +619,17 @@ public:
   HashSet pipeline_lost_names{heap_allocator()};
   HashSet external_input_names{heap_allocator()};
 
-  /* A name proven to hold an array, so a bare expansion of it reads one element
-     and a scalar assignment to it drops the rest. */
   HashSet array_valued_names{heap_allocator(), SMALL_MAP_FIRST_CAPACITY};
   ArrayList<analysis_name_insertion> scoped_name_insertions{heap_allocator()};
 
-  /* Where a name whose literal value carries quote bytes was assigned, read
-     when that name is expanded as a command word. */
   StringMap<SourceLocation> quoted_literal_assignments{heap_allocator()};
 
   StringMap<SourceLocation> active_loop_variables{heap_allocator()};
 
-  /* Saved before a while condition and restored after its body, so a case in
-     the body sees the getopts call that fills its word. */
   active_getopts_call active_getopts{};
 
-  /* The lookup is lazy, and null in a context with no live shell. */
   EvalContext *eval_context{nullptr};
 
-  /* The SC3xxx bashism lints fire only behind this gate, since a kosh or bash
-     shebang means the bash extension on purpose. */
   bool is_posix_sh_shebang{false};
 
   ArrayList<function_global_assignment> function_global_assignments{
@@ -699,9 +638,6 @@ public:
   HashSet shared_scope_variable_names{heap_allocator()};
   HashSet top_level_assigned_names{heap_allocator()};
 
-  /* An interactive -W chunk runs the moment the analysis ends and the runtime
-     resolution reports the same missing command, so the analysis copy would
-     double the report. A script run keeps the check. */
   analysis_effects effects;
   const parsed_format_document *format_document{nullptr};
 
@@ -715,14 +651,10 @@ public:
   StringMap<followed_source_effects> *followed_source_effects_cache{nullptr};
   followed_source_effects *current_source_effects{nullptr};
 
-  /* Armed for one streamed top-level command, and the list that reads it
-     takes it so a nested list keeps its own sibling state. */
   top_level_sibling_carry *stream_sibling_carry{nullptr};
 
   AnalysisSourceProvider *source_provider{nullptr};
 
-  /* Null outside the language server. A record costs an owned name and a folded
-     value, so an ordinary run pays one null test per assignment. */
   analysis_symbol_records *symbol_records{nullptr};
 
   BumpArena substitution_arena;
@@ -839,9 +771,6 @@ public:
   fn print_diagnostic_summary() const throws -> void;
   fn print_optimizer_summary() const throws -> void;
 
-  /* Whether the mood and the warning level let this code reach the output. A
-     check that costs more than a comparison asks first, and the reporting
-     funnel asks before it formats anything. */
   pure fn should_report(diagnostic_id id) const wontthrow -> bool
   {
     return reporter.should_report(id);
@@ -849,15 +778,11 @@ public:
   fn note_variable_assignment(StringView name, const SourceLocation &location,
                               bool is_proven_unconditional) throws -> void;
 
-  /* A null value word means the assignment has no scalar word to fold, so an
-     array element or a NAME=(...) list. */
   fn note_variable_assignment_record(StringView name, const Word *value_word,
                                      const SourceLocation &location,
                                      bool is_conditional,
                                      assignment_update_mode update_mode) throws
       -> void;
-  /* A command that binds a name supplies no value word and no literal, so the
-     binder is what a reader is told. */
   fn note_variable_binding_record(StringView name,
                                   const SourceLocation &location,
                                   assignment_binder binder,
@@ -937,13 +862,8 @@ public:
   virtual ~Expression() = default;
 
   pure fn source_location() const wontthrow -> SourceLocation;
-  /* The byte just past this node's source text. It defaults to the end of the
-     opening token that source_location names, and a compound node widens it to
-     its closing token so the whole span is recoverable. */
   pure fn source_end_position() const wontthrow -> usize;
   fn set_source_end_position(usize position) wontthrow -> void;
-  /* The site an ERR trap reports for this node. A node whose text spans several
-     lines does not always answer for the line it opens on. */
   virtual fn error_report_location() const wontthrow -> SourceLocation;
   fn evaluate(EvalContext &cxt) const throws -> i64;
   fn evaluate_root(EvalContext &cxt, root_evaluation_mode mode) const throws
@@ -982,11 +902,8 @@ public:
 
   virtual fn always_exits(const AnalysisContext &actx) const wontthrow -> bool;
 
-  /* This no-ops for arena storage and frees an ordinary heap node otherwise. */
   static fn operator delete(opaque *pointer) wontthrow->void;
 
-  /* is_unconditional says whether this node is reached on every run, which
-     decides a failure from a warning. */
   virtual fn analyze(AnalysisContext &actx, bool is_unconditional) const throws
       -> void;
 
@@ -997,9 +914,6 @@ public:
   virtual fn can_evaluate_in_process_substitution(
       const EvalContext &cxt, HashSet &active_functions) const throws -> bool;
 
-  /* Some(true) means the condition always succeeds with no side effect,
-     Some(false) means it always fails, and None means the result is only known
-     at run time. */
   virtual fn
   try_static_condition_verdict(const AnalysisContext &actx) const wontthrow
       -> Maybe<bool>;
@@ -1015,8 +929,6 @@ protected:
       -> status_result;
 
   SourceLocation m_location;
-  /* This sits in the hole the twelve-byte location leaves, and a source beyond
-     four gigabytes is already out of reach of the location itself. */
   u32 m_source_end_position;
 };
 
@@ -1057,7 +969,6 @@ protected:
   fn evaluate_impl(EvalContext &cxt) const throws -> i64 override;
 };
 
-/* Kept as an ordered list, so a repeated name accumulates. */
 class PrefixAssignment
 {
 public:
@@ -1090,10 +1001,6 @@ struct array_builtin_assignment
   assignment_update_mode update_mode;
 };
 
-/* The bash assignment builtins that parse a NAME=(...) argument as an array
-   assignment. The parser recognizes the form by this classification and the
-   evaluator applies the elements with the scope and the marks the same
-   classification selects. */
 enum class assignment_builtin : u8
 {
   None,
@@ -1162,8 +1069,6 @@ protected:
     TimeReportRss = 1U << 4,
     FullyEliminated = 1U << 5,
     UntilLoop = 1U << 6,
-    /* A while true stays unfolded, since the loop is infinite and still runs.
-     */
     FoldedLoopToSkip = 1U << 7,
   };
 
@@ -1181,9 +1086,6 @@ protected:
   }
 
   mutable u8 m_execution_flags{0};
-  /* The keyword is always the literal `time` in the source the command itself
-     is stamped with, so the length and the source name are recovered and only
-     the position is retained. */
   u32 m_time_position{0};
   SparseList<PrefixAssignment> m_local_vars{};
 };
@@ -1221,40 +1123,28 @@ class Redirection
 public:
   enum class Kind : u8
   {
-    TruncateOutput,         /* >    */
-    TruncateOutputOverride, /* >|   */
-    AppendOutput,           /* >>   */
-    ReadInput,              /* <    */
-    ReadWrite,              /* <>   */
-    DuplicateOutput,        /* >&   */
-    DuplicateInput,         /* <&   */
-    Heredoc,                /* <<   */
-    HereString              /* <<<  */
+    TruncateOutput,
+    TruncateOutputOverride,
+    AppendOutput,
+    ReadInput,
+    ReadWrite,
+    DuplicateOutput,
+    DuplicateInput,
+    Heredoc,
+    HereString
   };
 
-  /* The dup_fd value that marks the close-descriptor form, as in 2>&- and <&-,
-     which closes fd rather than copying another descriptor onto it. */
   static constexpr i32 DUP_FD_CLOSE = -2;
 
-  /* Null for a duplication whose descriptor was a literal in the source. */
   const Token *target;
   const heredoc_contents *heredoc;
   const Token *fd_allocation_name_token;
-  /* The delimiter word of a heredoc, kept for analysis. The delimiter is
-     matched literally and never expanded. It is not a target. */
   const Token *heredoc_delimiter;
   i32 fd;
-  /* The literal descriptor to copy from, or DUP_FD_CLOSE for the close form,
-     or -1 when the descriptor is a dynamic word held in target. */
   i32 dup_fd;
   Kind kind;
   bool should_expand_heredoc;
-  /* True for the <<- form, whose dash both strips the leading tabs and stays
-     out of the terminator. */
   bool should_strip_heredoc_tabs;
-  /* True for a bare >&word outside POSIX mode, where a word that expands to
-     neither a number nor a dash is the csh both-streams spelling bash reads
-     as >word 2>&1, resolved after the expansion the way bash decides it. */
   bool is_dup_filename_allowed;
   bool is_both_streams_spelling;
 
@@ -1281,8 +1171,6 @@ public:
     }
   }
 
-  /* A duplication and a close copy a descriptor that is already open, so only
-     these forms compete with a pipe or with a second redirect for fd. */
   pure fn claims_descriptor() const wontthrow -> bool
   {
     return opens_output_file() || opens_input_source();
@@ -1383,8 +1271,6 @@ public:
   pure fn kind() const wontthrow -> Kind;
   pure fn command() const wontthrow -> const Command *;
 
-  /* True when the command this node holds carries a leading !, which set -e
-     exempts from its exit. */
   pure fn is_negated() const wontthrow -> bool;
 
   fn to_string() const throws -> String override;
@@ -1427,8 +1313,6 @@ public:
   fn has_single_test_command() const throws -> bool;
   fn append_node(const CompoundListCondition *node) throws -> void;
 
-  /* The command this list holds when it holds nothing else, and no connector,
-     negation, background operator, or timing prefix stands beside it. */
   fn single_unconditional_command() const wontthrow -> const Command *;
 
   fn to_string() const throws -> String override;
@@ -1528,12 +1412,8 @@ public:
   pure fn branches() const wontthrow -> const ArrayList<if_branch> &;
   pure fn otherwise() const wontthrow -> const Expression *;
 
-  /* The branch count selects the else body or nothing. */
   fn set_folded_branch(usize index) const wontthrow -> void;
   pure fn has_folded_branch() const wontthrow -> bool;
-  /* The branch index the dead-branch rule recorded, read by the compound-body
-     elimination rule. An index at the branch count names the else body. Valid
-     only when has_folded_branch is true. */
   pure fn folded_branch_index() const wontthrow -> usize;
 
   fn as_if_clause() const wontthrow -> const IfClause * override;
@@ -1550,11 +1430,6 @@ protected:
   ArrayList<if_branch> m_branches{heap_allocator()};
   const Expression *m_otherwise;
 
-  /* The branch the analyze pass proved this if takes, when every condition up
-     to it has a statically-decidable verdict. Some(i) selects branch i's body,
-     a value past the last branch selects the else body or nothing. None means
-     the branch is only known at run time and evaluate_impl runs the conditions.
-   */
   mutable Maybe<usize> m_folded_branch{};
 };
 
@@ -1614,7 +1489,6 @@ protected:
   fn evaluate_status_impl(EvalContext &cxt) const throws
       -> status_result override;
 
-  /* The name is a slice of the arena that holds this node. */
   StringView m_variable_name;
   ArrayList<const Token *> m_words{heap_allocator()};
   const Expression *m_body;
@@ -1622,8 +1496,6 @@ protected:
   bool m_has_in_clause;
 };
 
-/* How an arm ends. ;; stops the case, ;& falls into the next arm body without
-   matching it, and ;;& resumes matching at the following arms. */
 enum class case_terminator : u8
 {
   Break,
@@ -1682,9 +1554,6 @@ protected:
   const Expression *m_body;
 };
 
-/* A bash coprocess, coproc [NAME] command. The body runs in the background and
-   two pipes connect it to the shell. NAME[0] reads what the body writes,
-   NAME[1] writes what the body reads, and NAME_PID holds the process id. */
 class CoprocCommand : public CompoundCommand
 {
 public:
@@ -1700,7 +1569,6 @@ public:
 protected:
   fn evaluate_impl(EvalContext &cxt) const throws -> i64 override;
 
-  /* The name is a slice of the arena that holds this node. */
   StringView m_name;
   const Expression *m_body;
 };
@@ -1727,9 +1595,6 @@ public:
 protected:
   fn evaluate_impl(EvalContext &cxt) const throws -> i64 override;
 
-  /* The body bash runs in the process it already forked. A chain of bare
-     parentheses collapses to the innermost body. The innermost body raises no
-     fire and costs no fork of its own. */
   fn collapsed_body() const wontthrow -> const Expression *;
 
   const Expression *m_body;
@@ -1774,7 +1639,6 @@ public:
 protected:
   fn evaluate_impl(EvalContext &cxt) const throws -> i64 override;
 
-  /* The expression is a slice of the arena that holds this node. */
   StringView m_expression;
 };
 
@@ -1792,8 +1656,6 @@ public:
       -> void override;
   pure fn condition_clause() const wontthrow -> StringView;
 
-  /* The init runs once before the condition even when the condition folds to
-     zero, so the folding rule keeps the loop alive to run it. */
   pure fn init_clause() const wontthrow -> StringView;
 
   fn set_folded_condition(i64 compatibility_value,
@@ -1807,11 +1669,7 @@ protected:
   fn evaluate_status_impl(EvalContext &cxt) const throws
       -> status_result override;
 
-  /* The source position of the first byte of the init clause, so each clause
-     base is recovered from the lengths that precede it. */
   usize m_header_position;
-  /* The three clauses are slices of the arena that holds this node, so they
-     stay readable for as long as the node does. */
   StringView m_init;
   StringView m_condition;
   StringView m_step;
@@ -1820,8 +1678,6 @@ protected:
   mutable Maybe<i64> m_folded_condition{};
   mutable bool m_is_exact_folded_condition_nonzero{false};
 
-  /* A loop that is only analyzed never tokenizes a clause, so each cache is
-     allocated on the first evaluation that needs it. */
   mutable arith_token_cache *m_condition_cache{nullptr};
   mutable arith_token_cache *m_step_cache{nullptr};
 
@@ -1848,7 +1704,6 @@ protected:
   fn evaluate_status_impl(EvalContext &cxt) const throws
       -> status_result override;
 
-  /* The name is a slice of the arena that holds this node. */
   StringView m_variable_name;
   ArrayList<const Token *> m_words{heap_allocator()};
   const Expression *m_body;
@@ -1871,7 +1726,6 @@ public:
   fn as_redirected_command() const wontthrow
       -> const RedirectedCommand * override;
 
-  /* The command the redirections are written around. */
   pure fn child() const wontthrow -> const Command *;
 
   pure fn redirections() const wontthrow -> const SparseList<Redirection> &;
@@ -1918,6 +1772,6 @@ protected:
   SparseList<analysis_scope_definition> m_analysis_scope_definitions{};
 };
 
-} /* namespace expressions */
+}
 
-} /* namespace koshka */
+}

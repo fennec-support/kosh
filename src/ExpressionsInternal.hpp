@@ -29,8 +29,6 @@ fn report_command_resolution_error(EvalContext &cxt,
                                    CommandResolutionErrorWithLocation &e) throws
     -> void;
 
-/* The returned view is the windowed source, or None when no window applies and
-   the caller renders against the current source. */
 fn window_function_body_error(EvalContext &cxt,
                               ErrorWithLocation &error) wontthrow
     -> Maybe<StringView>;
@@ -41,9 +39,6 @@ pure fn full_source_text(const EvalContext &cxt,
 fn static_command_name(const Token *token) throws -> Maybe<StringView>;
 fn normalized_relative_executable_path(StringView path) throws -> Maybe<String>;
 
-/* The token's raw text without a copy when the token owns its bytes. A token
-   that composes its text on demand writes into storage, which the caller keeps
-   alive for as long as the returned view is read. */
 fn borrowed_token_text(const Token *token, String &storage) throws
     -> StringView;
 fn wrapped_command_index(command_name_id wrapper_id,
@@ -69,15 +64,12 @@ pure fn analysis_source_text(const AnalysisContext &actx,
                              const SourceLocation &location) wontthrow
     -> StringView;
 
-/* The segment span widened over the leading sigil and the braces around it. */
 pure fn expansion_location_with_sigil(const AnalysisContext &actx,
                                       SourceLocation location) wontthrow
     -> SourceLocation;
 fn note_variable_reference(AnalysisContext &actx, const WordSegment &segment,
                            SourceLocation fallback_location) throws -> void;
 
-/* One span reaching from the start of the first location to the end of the
-   last. An empty location contributes nothing. */
 pure fn location_spanning(SourceLocation first, SourceLocation last) wontthrow
     -> SourceLocation;
 pure fn view_contains(StringView view, StringView needle) wontthrow -> bool;
@@ -86,8 +78,6 @@ pure fn arithmetic_reads_external_input(const AnalysisContext &actx,
     -> bool;
 cold fn word_is_bare_glob(const Word &word) wontthrow -> bool;
 
-/* What one test operand expands to, gathered in the segment walk the operand
-   loop already performs. */
 struct test_operand_shape
 {
   bool has_array_spread{false};
@@ -105,17 +95,12 @@ fn check_posix_word_portability(AnalysisContext &actx,
                                 const WordSegment &segment,
                                 SourceLocation fallback_location) throws
     -> void;
-/* The whole-word form reports the locale quoting form and walks every segment.
-   It answers the shebang question once for the word. */
 fn check_posix_word_portability(AnalysisContext &actx, const Word &word,
                                 const SourceLocation &location) throws -> void;
 fn check_posix_arithmetic_operators(AnalysisContext &actx,
                                     StringView expression,
                                     const SourceLocation &location) throws
     -> void;
-/* expression_base_position is the source position of the first byte of
-   expression, and None when the caller holds a copy it cannot place. A target
-   name is recorded only when the computed span reads back as that name. */
 fn check_arithmetic_expression_lints(
     AnalysisContext &actx, StringView expression,
     const SourceLocation &location,
@@ -128,9 +113,6 @@ fn check_numeric_comparison_operand(AnalysisContext &actx,
     -> void;
 pure fn is_test_unary_operator_word(StringView op) wontthrow -> bool;
 
-/* The borrowed inputs one simple command's name-keyed checks read. The walk in
-   SimpleCommand::analyze computes each field once and the check bodies in
-   Diagnostics.cpp take them as parameters, so a check adds no traversal. */
 struct command_lint_input
 {
   const ArrayList<const Token *> &args;
@@ -152,8 +134,6 @@ struct command_lint_input
     return command_info.is_in_group(group);
   }
 
-  /* A redirected compound command carries redirections without a command word.
-     The node location stands in for the missing first argument. */
   pure fn command_location() const wontthrow -> SourceLocation
   {
     return args.is_empty() ? command_source_location
@@ -161,8 +141,6 @@ struct command_lint_input
   }
 };
 
-/* What one assignment value expands to, gathered in one walk of its
-   segments. */
 struct assignment_value_shape
 {
   bool has_unquoted_pattern{false};
@@ -171,14 +149,10 @@ struct assignment_value_shape
   bool has_bare_literal_value{true};
 };
 
-/* The walk shared by a standalone assignment and a command prefix assignment.
-   It gathers the shape and reports the findings one segment decides. */
 fn scan_assignment_value(AnalysisContext &actx, const Word &value_word,
                          const SourceLocation &location) throws
     -> assignment_value_shape;
 
-/* The borrowed inputs one assignment's value checks read. The segment walk in
-   scan_assignment_value computes the shape and the raw view once. */
 struct assignment_lint_input
 {
   StringView name;
@@ -193,8 +167,6 @@ fn check_assignment_value_shape(AnalysisContext &actx,
                                 const assignment_lint_input &input) throws
     -> void;
 
-/* The borrowed inputs one case clause's checks read. CaseClause::analyze fills
-   it once and the pattern loop passes it to each check body. */
 struct case_lint_input
 {
   const Word *case_word;
@@ -205,8 +177,6 @@ struct case_lint_input
   bool is_getopts_case;
 };
 
-/* What the pattern loop learned about the arms it has passed. A letter is one
-   bit, with 'a' to 'z' at 0 to 25 and 'A' to 'Z' at 26 to 51. */
 struct case_arm_tally
 {
   u64 handled_option_letters{0};
@@ -226,25 +196,15 @@ fn check_case_option_coverage(AnalysisContext &actx,
                               const case_lint_input &input,
                               const case_arm_tally &tally) throws -> void;
 
-/* The homoglyph and carriage return findings the syntax tree cannot carry,
-   since a token holds the bytes without their surrounding quoting. */
 fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void;
 
-/* The shebang findings and the POSIX gate, read from one walk of the first
-   line. */
 fn check_shebang(AnalysisContext &actx, StringView source,
                  missing_shebang_policy shebang_policy) throws -> void;
 
-/* The placement and spelling findings for the directive comments the lexer
-   recorded. A directive comment is rare, so this walk touches almost no
-   script. */
 fn check_shellcheck_directives(
     AnalysisContext &actx, StringView source,
     const ArrayList<shellcheck_directive_span> &directives) throws -> void;
 
-/* The terminator findings the lexer recorded for a here-document that ran to
-   the end of the source. The list is empty for a script whose here-documents
-   all closed. */
 fn check_heredoc_terminators(
     AnalysisContext &actx, StringView source,
     const ArrayList<heredoc_terminator_miss> &misses) throws -> void;
@@ -278,13 +238,12 @@ alwaysinline fn set_and_return_exit_status(EvalContext &cxt,
 
 enum class redirection_outcome : u8
 {
-  Heredoc,     /* opened_fd holds a staged temp body for target_fd */
-  OpenedFile,  /* opened_fd holds a freshly opened file for target_fd */
-  BothStreams, /* opened_fd opens like >file, fd 1 and fd 2 both follow it */
-  Duplicate,   /* dup_from_fd names the source, or DUP_FD_CLOSE for the close */
+  Heredoc,
+  OpenedFile,
+  BothStreams,
+  Duplicate,
 };
 
-/* opened_fd is owned by the caller, which places it and closes it. */
 struct resolved_redirection
 {
   redirection_outcome kind{};
@@ -308,26 +267,15 @@ fn allocate_redirection_descriptor(
 
 enum class loop_disposition : u8
 {
-  /* No jump, or a continue aimed here, so run the next iteration. */
   RunNext,
-  /* A break aimed here, or a jump aimed at an outer loop that is now left
-     pending, so this loop stops. */
   StopLoop,
 };
 
 fn resolve_loop_control(EvalContext &cxt) throws -> loop_disposition;
 
-/* The source text the way bash reprints a command from its own parse. Quoting,
-   arithmetic, a parameter expansion, and a backtick body keep their spelling. A
-   run of blanks outside them collapses to one blank, a line continuation
-   disappears, and a command substitution body loses its padding. An ANSI-C word
-   becomes its value in single quotes under a mood that reads the form. */
 fn reprinted_command_text(StringView source,
                           bool are_bash_additions_enabled) throws -> String;
 
-/* The command as its source spells it. The source keeps the quoting that the
-   parsed words no longer carry. The builder answers for a node whose span is
-   unavailable. */
 template <typename CommandTextBuilder>
 fn source_command_text(EvalContext &cxt, const SourceLocation &location,
                        usize end_position,
@@ -341,54 +289,28 @@ fn source_command_text(EvalContext &cxt, const SourceLocation &location,
                                 cxt.runtime_state().bash_additions_enabled());
 }
 
-/* The subshell the way bash reprints it, with one blank inside each
-   parenthesis, its commands separated by a semicolon and a blank, and the
-   redirections the span carries kept after the closing parenthesis. The answer
-   is empty when the span is unavailable or spells no subshell. */
 fn subshell_command_text(EvalContext &cxt, const SourceLocation &location,
                          usize end_position) throws -> String;
 
-/* The word the way bash reprints it from its own parse. The source quoting the
-   parsed word drops is kept. The parsed text answers for a word whose span is
-   unavailable. */
 fn append_word_source_text(EvalContext &cxt, String &out,
                            const Token &word) throws -> void;
 
-/* The redirection list the way bash spells it, with canonical operators and
-   spacing and with each target kept as its source spells it. A here-document
-   appends its body and its terminator after the whole list. */
 fn append_redirections_text(EvalContext &cxt, String &out,
                             const SparseList<Redirection> &redirections) throws
     -> void;
 
-/* Whether a reader can observe the command text this process publishes. The
-   answer decides whether the text is worth building. BASH_COMMAND belongs to
-   the bash mood, and a trap action keeps the command that triggered it. */
 inline fn command_text_is_observed(const EvalContext &cxt) wontthrow -> bool
 {
   return cxt.runtime_state().bash_dynamic_variables_enabled() &&
          cxt.trap_store().trap_action_depth() == 0;
 }
 
-/* Whether a reader can see the commands a folded or eliminated node would run.
-   The DEBUG trap and the xtrace echo are the two readers. A node with no reader
-   takes its fast path and evaluates nothing. */
 inline fn folded_commands_are_observed(const EvalContext &cxt) wontthrow -> bool
 {
   return cxt.should_run_debug_trap() ||
          cxt.runtime_state().should_echo_expanded();
 }
 
-/* The command text a DEBUG trap and BASH_COMMAND observe, published before the
-   command runs. The builder runs only when a reader can observe its result,
-   because BASH_COMMAND belongs to the bash mood and a trap action keeps the
-   command that triggered it. The text is heap owned, since the context holds it
-   past the arena that carries the syntax node. A prepared pipeline stage takes
-   the text and leaves the trap to the boundary its pipeline already ran. The
-   answer is false when the action leaves a pending exit or return, since bash
-   unwinds past the command the action traced. A break or a continue keeps the
-   answer true, because bash runs the traced command and hands the jump to the
-   enclosing loop afterwards. */
 template <typename CommandTextBuilder>
 fn publish_command_and_run_debug_trap(
     EvalContext &cxt, CommandTextBuilder do_build_command_text,
@@ -413,11 +335,11 @@ fn publish_command_and_run_debug_trap(
              control.kind == control_flow::Kind::Continue;
     }
 
-    /* Under the extdebug option a nonzero action status skips the traced
-       command. A skipped command reports success. */
-    if (cxt.runtime_state().is_shopt_enabled(shopt_option_id::Extdebug) &&
-        cxt.trap_store().last_trap_action_status() != 0)
-    {
+    let const should_skip_traced_command_under_extdebug =
+        cxt.runtime_state().is_shopt_enabled(shopt_option_id::Extdebug) &&
+        cxt.trap_store().last_trap_action_status() != 0;
+
+    if (should_skip_traced_command_under_extdebug) {
       cxt.execution_store().set_last_exit_status(0);
       return false;
     }
@@ -426,8 +348,6 @@ fn publish_command_and_run_debug_trap(
   return true;
 }
 
-/* The same publication for a simple command, whose text is built from its
-   assignments, its words, and its redirections. */
 fn publish_simple_command(
     EvalContext &cxt, const SimpleCommand &command,
     root_evaluation_mode mode = root_evaluation_mode::Normal) throws -> bool;
@@ -435,27 +355,16 @@ fn expand_command_aliases(EvalContext &cxt, ArrayList<String> &args,
                           ArrayList<SourceLocation> &arg_locations) throws
     -> void;
 
-/* Whether the shell or the environment gives the name a value on its own, so a
-   script that reads it without assigning it is correct. */
 pure fn is_shell_maintained_variable(StringView name) wontthrow -> bool;
 
 pure fn is_single_word_special_parameter(StringView name) wontthrow -> bool;
 
-/* An alternate-value reference whose word is empty or wholly double-quoted, so
-   the expansion keeps its words intact the way ${1+"$@"} does. */
 pure fn reference_has_quoted_alternate_word(StringView spec) wontthrow -> bool;
 
-/* The assignments holding a bare command name that no command word ever
-   expanded. A run of the name may follow the assignment, so the decision waits
-   for the end of the walk. */
 fn check_command_name_assignments(AnalysisContext &actx) throws -> void;
 
-/* The names left in reads_before_assignment once the walk is done. A name still
-   listed there was read at the top level and no later assignment claimed it. */
 fn check_unassigned_variable_reads(AnalysisContext &actx) throws -> void;
 
-/* The function definitions and calls the walk gathered. A call and a definition
-   only agree once both are known, so the comparison waits for the end. */
 fn check_function_argument_dataflow(AnalysisContext &actx) throws -> void;
 
 enum class analysis_scope_mode : u8
@@ -511,4 +420,4 @@ fn analyze_region_substitutions(AnalysisContext &actx,
                                 bool is_heredoc, bool is_unconditional) throws
     -> void;
 
-} /* namespace koshka::expressions::internal */
+}

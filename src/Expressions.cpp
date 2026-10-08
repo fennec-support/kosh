@@ -518,8 +518,6 @@ hot flatten fn Expression::evaluate_root(EvalContext &cxt,
     let const was_control_flow_pending = cxt.control_flow_store().has_pending();
     cxt.run_pending_traps();
 
-    /* A jump the action requested takes the place of this command. The
-       enclosing list never reaches this command. */
     if (!was_control_flow_pending && cxt.control_flow_store().has_pending())
       return cxt.execution_store().last_exit_status();
   }
@@ -552,19 +550,15 @@ hot flatten fn Expression::evaluate_status(EvalContext &cxt) const throws
 hot flatten fn Expression::evaluate_root_status(
     EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result
 {
-  /* The check runs before every node, so a running command stops promptly and
-     control returns to the prompt. */
   if (os::INTERRUPT_REQUESTED) {
     os::INTERRUPT_REQUESTED = 0;
     throw InterruptErrorWithLocation{source_location()};
   }
-  /* A trapped signal runs its action here at the command boundary. */
+
   if (os::SIGNAL_PENDING) {
     let const was_control_flow_pending = cxt.control_flow_store().has_pending();
     cxt.run_pending_traps();
 
-    /* A jump the action requested takes the place of this command. The
-       enclosing list never reaches this command. */
     if (!was_control_flow_pending && cxt.control_flow_store().has_pending())
       return {cxt.execution_store().last_exit_status(), 0};
   }
@@ -998,7 +992,6 @@ fn AnalysisContext::note_variable_assignment(
   }
 }
 
-/* One pathological value is a likelier memory hog than the record count. */
 static constexpr usize RECORDED_LITERAL_LENGTH_LIMIT = 256;
 
 fn AnalysisContext::note_variable_assignment_record(
@@ -1255,8 +1248,6 @@ fn AnalysisContext::note_function_body_record(StringView name,
       String{name}, name_position, body_position, body_end_position});
 }
 
-/* The name an assign form ${name=value} or ${name:=value} writes back, or an
-   empty view for every other expansion. */
 static pure fn assign_form_target_name(StringView expansion_text) wontthrow
     -> StringView
 {
@@ -1470,8 +1461,6 @@ fn expressions::internal::static_command_name(const Token *token) throws
   let const &word = static_cast<const tokens::WordToken *>(token)->word();
 
   for (let const &segment : word.segments) {
-    /* Any expansion segment makes the name a runtime value, so its raw bytes
-       must not pass for the program text. */
     if (segment.kind != WordSegment::Kind::LiteralText &&
         segment.kind != WordSegment::Kind::DoubleQuotedText &&
         segment.kind != WordSegment::Kind::UnquotedText)
@@ -1634,8 +1623,6 @@ fn expressions::internal::analyze_followed_source(
   if (option.has_value() && *option == "--") path_index++;
   if (path_index >= args.count()) return true;
 
-  /* An unread source may have edited the search path or the working
-     directory. */
   let const do_give_up_on_source = [&actx]() throws -> bool {
     actx.mark_path_unknown(false);
     actx.mark_working_directory_unknown();
@@ -1743,8 +1730,6 @@ fn expressions::internal::analyze_followed_source(
   }
 
   let const directives = parser.take_analysis_directives();
-  /* A child that skips its own nested sources records partial effects, wrong
-     for a later visit that carries no uncertainty. */
   let const was_analyzed_under_uncertainty =
       actx.effects.has_unknown_path ||
       actx.effects.has_unknown_working_directory;
@@ -1839,23 +1824,17 @@ fn expressions::internal::command_resolves(
 
 enum class bracket_scan_state : u8
 {
-  Outside,     /* no bracket expression is open */
-  AfterOpen,   /* the byte after '[', where a '!' or '^' negates the class */
-  InsideClass, /* the closing ']' has not been reached */
+  Outside,
+  AfterOpen,
+  InsideClass,
 };
 
-/* The scan mirrors the matcher in utils::glob_matches, where an active '[' with
-   no closing ']' is a literal, so only a '[' that opens a class and never
-   closes is malformed. A '[' as the last byte cannot open a class, which is why
-   only InsideClass ends malformed. Returns true when malformed. */
 pure fn expressions::internal::word_has_malformed_glob_bracket(
     const Word &word) wontthrow -> bool
 {
   let state = bracket_scan_state::Outside;
 
   for (let const &segment : word.segments) {
-    /* Only an unquoted '[' or ']' is active, so a quoted "[" or an escaped \[
-       stays literal and never opens a bracket expression. */
     let const is_glob_active = segment.has_live_glob_chars();
 
     for (usize i = 0; i < segment.text.count(); i++) {
@@ -1915,8 +1894,6 @@ fn analyze_ast(const Expression *root, StringView source,
   actx.followed_source_effects_cache = followed_sources.effects_cache;
   actx.reporter.sink = outputs.diagnostic_sink;
   actx.source_provider = source_provider;
-  /* A followed source file is left out. Its byte positions index another
-     source string. */
   actx.symbol_records = symbol_records;
   if (parent_analysis_context != nullptr) {
     actx.effects.has_seen_runtime_definer =
@@ -1964,8 +1941,6 @@ fn analyze_ast(const Expression *root, StringView source,
   LOG(Debug, "analyzing the ast, the posix sh shebang gate is %s",
       actx.is_posix_sh_shebang ? "armed" : "off");
 
-  /* A function or alias defined by an earlier command resolves, so the already
-     registered names seed the top-level scope. */
   known_functions.for_each(
       [&actx](StringView name) { actx.add_defined_function(name); });
   known_aliases.for_each(
@@ -1974,8 +1949,6 @@ fn analyze_ast(const Expression *root, StringView source,
   actx.apply_scope_definitions(directives.scope_definitions);
 
   if (unit_stream != nullptr) {
-    /* Each unit is flushed before its arena span is handed back, so a warning
-       never outlives the tree that produced it. */
     let sibling_carry = top_level_sibling_carry{};
     loop
     {
@@ -2061,8 +2034,6 @@ pure fn classify_assignment_builtin(StringView name) wontthrow
   return ASSIGNMENT_BUILTINS.find(name).value_or(assignment_builtin::None);
 }
 
-/* A word segment spans the name and its modifiers, and the sigil and the braces
-   around it belong to the expansion a reader sees. */
 pure fn internal::expansion_location_with_sigil(
     const AnalysisContext &actx, SourceLocation location) wontthrow
     -> SourceLocation
@@ -2658,8 +2629,6 @@ fn DummyExpression::evaluate_impl(EvalContext &cxt) const throws -> i64
 
 cold fn DummyExpression::to_string() const throws -> String { return "Dummy"; }
 
-/* The special parameters carry their own splitting rules, so quoting advice
-   never applies to them. */
-} /* namespace expressions */
+}
 
-} /* namespace koshka */
+}

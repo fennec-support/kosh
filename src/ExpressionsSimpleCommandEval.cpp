@@ -32,10 +32,6 @@ namespace expressions {
 
 using namespace internal;
 
-/* Replace a command word that names an alias with the alias body. The body is
-   split on whitespace, and a name already expanded is not expanded again so a
-   self-referential alias terminates. A quoted space inside the body is not
-   preserved, since the full tokenizer is not re-run. */
 fn internal::expand_command_aliases(
     EvalContext &cxt, ArrayList<String> &args,
     ArrayList<SourceLocation> &arg_locations) throws -> void
@@ -60,8 +56,6 @@ fn internal::expand_command_aliases(
     let rebuilt_locations = ArrayList<SourceLocation>{heap_allocator()};
     let current = String{cxt.scratch_allocator()};
     let const &body_value = *body;
-    /* An alias body word has no span in this command, so it inherits the
-       command word's location. */
     let const body_location =
         !arg_locations.is_empty() ? arg_locations[0] : SourceLocation{};
     for (usize i = 0; i < body_value.count(); i++) {
@@ -100,8 +94,6 @@ fn internal::expand_command_aliases(
 
 namespace {
 
-/* Whether the command word is itself a glob pattern. The lone [ that opens a
-   test command carries no closing ] in the same word and is left alone. */
 static fn command_word_is_glob(const Word &word) wontthrow -> bool
 {
   bool has_open_bracket = false;
@@ -121,7 +113,7 @@ static fn command_word_is_glob(const Word &word) wontthrow -> bool
   return false;
 }
 
-} /* namespace */
+}
 
 hot fn SimpleCommand::get_literal_command_lookup(
     const ArrayList<String> &program_args) const throws
@@ -171,8 +163,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
                                          root_evaluation_mode mode) const throws
     -> i64
 {
-  /* A command may have no words when it is only a redirection or only
-     assignments, so those still run below. */
   ASSERT(m_args.count() > 0 || !m_redirections.is_empty() ||
          m_local_vars.count() > 0 || !m_array_args.is_empty());
 
@@ -181,9 +171,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   let const should_run_command = publish_simple_command(cxt, *this, mode);
   if (!should_run_command) return cxt.execution_store().last_exit_status();
 
-  /* A compatibility mood forks an asynchronous command before it expands its
-     words, as bash does, so an expansion error fails the job and an expansion
-     side effect stays in the child. */
   let const is_async_command =
       is_async() && mode != root_evaluation_mode::PreparedAsyncCommand;
   if (is_async_command && cxt.runtime_state().get_mood() != mimic_mood::Default)
@@ -208,8 +195,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         cxt.source_text_in_span(full_location, full_source_end_position()));
   }
 
-  /* The check reads the typed command word before its expansion, so a pattern
-     that happens to match a single file is still caught. */
   if (!m_args.is_empty() && m_args[0]->kind() == Token::Kind::Word) {
     const Word &command_word =
         static_cast<const tokens::WordToken *>(m_args[0])->word();
@@ -237,9 +222,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
 
   let const args_mark = cxt.expansion_store().scratch_arena().mark();
   defer { cxt.expansion_store().scratch_arena().release(args_mark); };
-  /* The mark is taken before the expansion so this command reaps only the
-     process substitution it opens, leaving an enclosing command's for that
-     command to reap. */
   let const substitution_mark = cxt.mark_process_substitutions();
   let program_arg_locations =
       ArrayList<SourceLocation>{cxt.scratch_allocator()};
@@ -284,8 +266,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       program_args.is_empty() ? "" : program_args[0].c_str(),
       program_args.count());
 
-  /* A bare exec, exec with no further argument, applies its redirections to the
-     shell's own descriptors for good. A function named exec shadows it. */
   FunctionBodyHandle command_function_storage{};
   if (!program_args.is_empty() && cxt.function_store().has_functions()) {
     if (let const *storage =
@@ -311,9 +291,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     }
   }
 
-  /* A POSIX special builtin not shadowed by a function exits the shell on a
-     redirection error and keeps a prefix assignment, so it is computed once and
-     read on both paths. */
   let const *const literal_lookup = get_literal_command_lookup(program_args);
   const bool is_command_special_builtin =
       !program_args.is_empty() && command_word_function == nullptr &&
@@ -321,12 +298,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
            ? literal_lookup->is_special
            : is_special_builtin_name(program_args[0].view()));
 
-  /* A heredoc on the standard input passes its staged descriptor through this
-     slot, and the guard closes it on any path that does not hand it off. */
   Maybe<os::descriptor> redirect_in_fd;
-  /* The standard fds are routed in source order so a later 2>&1 copies the
-     descriptor its source points at now rather than the one a deferred slot
-     would place last. */
   ArrayList<os::saved_descriptor> dup_saved_descriptors{
       cxt.scratch_allocator()};
   defer
@@ -339,15 +311,13 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     if (redirect_in_fd) os::close_fd(*redirect_in_fd);
   };
 
-  /* Set true just before a redirection resource failure throws, so the catch
-     tells it apart from a fatal expansion error in a target word. */
   bool did_redirection_open_fail = false;
   try {
     for (let const &original_redir : m_redirections) {
       let redir = original_redir;
-      let const r = resolve_redirection(redir, cxt, source_location(),
-                                        &did_redirection_open_fail,
-                                        /*allow_fd_memoization=*/!is_bare_exec);
+      let const r =
+          resolve_redirection(redir, cxt, source_location(),
+                              &did_redirection_open_fail, !is_bare_exec);
 
       redir.fd = allocate_redirection_descriptor(original_redir, r, cxt,
                                                  source_location(),
@@ -356,8 +326,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       switch (r.kind) {
       case redirection_outcome::Heredoc: {
         let const body_fd = r.opened_fd;
-        /* Inside an in-process subshell the move is backed up first, so it
-           stays contained the way a fork would contain it. */
         if (is_bare_exec) {
           cxt.snapshot_subshell_descriptor(redir.fd);
           koshka::flush();
@@ -367,17 +335,12 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
           break;
         }
 
-        /* A numbered heredoc such as 3<<EOF targets descriptor N, staged onto
-           the real shell fd N around the command and restored afterward. */
         if (redir.fd == 0) {
           if (redirect_in_fd) os::close_fd(*redirect_in_fd);
           redirect_in_fd = body_fd;
           break;
         }
 
-        /* The temp file already lands on fd N when mkstemp handed back that
-           number, so the collision is handled directly and the restore closes
-           fd N, which was free before mkstemp claimed it. */
         const bool is_body_target_fd =
             os::descriptor_is_shell_fd(body_fd, redir.fd);
         if (is_body_target_fd) {
@@ -397,8 +360,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       }
 
       case redirection_outcome::BothStreams: {
-        /* The filename lands on the standard output and the standard error
-           follows it, the pair bash builds for csh >&file. */
         let const file_fd = r.opened_fd;
         koshka::flush();
         if (is_bare_exec) {
@@ -432,9 +393,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       case redirection_outcome::Duplicate: {
         let const from_fd = r.dup_from_fd;
 
-        /* Inside an in-process subshell the move is backed up and contained at
-           the subshell's end. The flush keeps buffered output on the original
-           descriptor before it moves. */
         if (is_bare_exec) {
           cxt.snapshot_subshell_descriptor(redir.fd);
           koshka::flush();
@@ -463,9 +421,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
           break;
         }
 
-        /* A cross-route such as 2>&1 points the real shell descriptor at the
-           target in source order so a later file redirect on the source does
-           not change what the copy already captured. */
         koshka::flush();
 
         if (from_fd == Redirection::DUP_FD_CLOSE) {
@@ -473,8 +428,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
               redir.fd, os::descriptor_for_shell_fd(redir.fd));
           dup_saved_descriptors.push(saved);
 
-          /* A descriptor that was never open is in the state the close asks
-             for. */
           if (!saved.was_open) break;
 
           if (!saved.is_dup2_ok) {
@@ -503,9 +456,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
 
       case redirection_outcome::OpenedFile: {
         let const file_fd = r.opened_fd;
-        /* The dup2 onto fd N replaces whatever fd N held, so a second exec onto
-           the same number closes the earlier file rather than leaking it. The
-           flush keeps buffered output on the original descriptor. */
         if (is_bare_exec) {
           cxt.snapshot_subshell_descriptor(redir.fd);
           koshka::flush();
@@ -521,17 +471,12 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
           break;
         }
 
-        /* Staged onto the real shell fd N in source order so a later 2>&1
-           copies the descriptor fd N points at now. A redirect onto fd 1 or 2
-           mutates the shell's own stdout or stderr, so it is flushed first. */
         if (redir.fd == 1 || redir.fd == 2) {
           koshka::flush();
         }
         const bool is_file_target_fd =
             os::descriptor_is_shell_fd(file_fd, redir.fd);
         if (is_file_target_fd) {
-          /* open returned fd N itself, so the collision is recorded for restore
-             without a close. */
           dup_saved_descriptors.push(
               os::saved_descriptor{.shell_fd = redir.fd, .was_open = false});
         } else {
@@ -551,14 +496,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   } catch (const TrapAbandonedRedirection &) {
     return cxt.execution_store().last_exit_status();
   } catch (const ErrorWithLocation &redirection_error) {
-    /* Only an open or dup failure, or an expansion error in a here-document
-       body outside the kosh mood, is caught here. An expansion error in a
-       target word stays fatal, and so does a fatal body error before a
-       function in the bash moods, as in bash. */
     if (!did_redirection_open_fail) throw;
-    /* A special builtin's redirection error exits a non-interactive shell, so
-       it is not recovered. The defers above put the partial redirections
-       back. */
     if (is_command_special_builtin) throw;
     if (redirection_error.is_script_fatal() &&
         command_word_function != nullptr &&
@@ -569,7 +507,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
 
     show_message(redirection_error.to_string(
         cxt.source_store().current_source_view(), &cxt));
-    /* bash reports a redirection failure with status 1 and dash with 2. */
     let const redirection_status =
         cxt.runtime_state().is_bash_compatible() ? 1 : 2;
     cxt.execution_store().set_last_exit_status(redirection_status);
@@ -579,9 +516,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
 
   if (is_bare_exec) cxt.hold_process_substitutions(substitution_mark);
 
-  /* The append form reads the current value from the shell store first so a
-     non-exported shell variable still contributes. An integer name evaluates
-     the join to its decimal here. */
   let const do_apply_append = [&](StringView name, String &value_ref) throws {
     let appended = String{cxt.scratch_allocator()};
     if (let const existing = cxt.get_variable_value(name))
@@ -686,14 +620,11 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         }
       };
 
-  /* An expansion may drop every word. A command-less line still carries its
-     assignments, which persist in the current shell. */
   if (program_args.is_empty()) {
     for (let const &var : m_local_vars)
       do_apply_persistent_assignment(*var.token);
     for (let const assignment : keyword_assignments)
       do_apply_persistent_assignment(*assignment);
-    /* Bare array assignments apply after the scalars in source order. */
     for (let const &assignment : m_array_args) {
       if (!cxt.is_circular_nameref(assignment.name))
         do_reject_readonly_target(assignment.name);
@@ -706,8 +637,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       cxt.assign_indexed_array_elements(assignment.name, values,
                                         assignment.update_mode);
     }
-    /* A value that ran a command substitution leaves the status of the last
-       one. A line with no substitution resets to 0. */
     let const do_token_ran_substitution = [&](const Token *token) {
       if (token == nullptr) return false;
       if (token->kind() == Token::Kind::Word)
@@ -734,9 +663,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     return cxt.execution_store().last_exit_status();
   }
 
-  /* A prefix assignment before a special builtin persists after the command as
-     a regular shell variable. A per-command assignment otherwise applies to the
-     environment for this command, restored on every exit path. */
   struct saved_env_var
   {
     String name;
@@ -748,9 +674,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   };
   ArrayList<saved_env_var> saved_env{cxt.scratch_allocator()};
   saved_env.reserve(m_local_vars.count() + keyword_assignments.count());
-  /* A prefix IFS=... drives the shell's own word splitting for this command
-     through the live separator cache. The effective separators are saved before
-     the first such prefix and restored on exit. */
   bool was_ifs_assigned = false;
   String saved_ifs_separators{cxt.scratch_allocator()};
   Maybe<ProgramResolver> saved_program_resolver{};
@@ -797,8 +720,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
                  cxt.runtime_state().is_posix_option_on()
            : is_source_evaluating_builtin &&
                  cxt.runtime_state().is_posix_option_on());
-  /* The assignments apply left to right, each committed before the next is
-     expanded, so a later value reads an earlier same-line one. */
   let const do_apply_environment_assignment = [&](const tokens::Assignment
                                                       &assignment) throws {
     let name = assignment.key().view();
@@ -848,9 +769,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     if (assignment.get_update_mode() == assignment_update_mode::Append)
       do_apply_append(name, expanded_value);
 
-    /* A special builtin keeps the assignment outside the bash mood, so it
-       commits to the store. The bash mood drops it after the command, so it
-       falls to the temporary path instead. */
     if (is_prefix_assignment_persistent) {
       cxt.set_shell_variable(name, expanded_value);
       if (cxt.runtime_state().export_all()) {
@@ -908,8 +826,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       os::set_environment_variable(name, expanded_value.view());
       cxt.mark_exported(name);
     }
-    /* The resolver reads its own MAYBE_PATH, so a prefix PATH=... must
-       update it for the environment write to change the search order. */
     if (is_path_name)
       cxt.program_resolver().assign_path(String{expanded_value.view()});
     if (name == "IFS")
@@ -927,8 +843,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
                                 ? String{cxt.scratch_allocator()}
                                 : program_args.back();
 
-  /* The command name is classified for the array-argument application below,
-     since the argument vector moves into the exec context before that point. */
   let array_command_kind = assignment_builtin::None;
   if (!m_array_args.is_empty())
     array_command_kind = classify_assignment_builtin(program_args[0].view());
@@ -936,9 +850,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   if (const Expression *function_body = command_word_function;
       function_body != nullptr)
   {
-    /* An input redirection on the call lands on the real fd 0 for the body's
-       duration, so the in-process body and every child it spawns read the
-       staged bytes. */
     if (redirect_in_fd) {
       let const saved = os::save_and_replace_descriptor(0, *redirect_in_fd);
       dup_saved_descriptors.push(saved);
@@ -961,9 +872,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       cxt.variable_store().positional_params() = steal(call_params);
       defer { cxt.variable_store().positional_params() = steal(saved_params); };
 
-      /* Registered before the frame is entered so the restore runs after the
-         frame is left. Once the frame is left, the depth the caller installed
-         the action at is reachable again. */
       let const untraced_debug_scope =
           UntracedTrapScope{cxt, UntracedTrapScope::Kind::Debug};
       let const untraced_err_scope =
@@ -971,19 +879,13 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       let const untraced_return_scope =
           UntracedTrapScope{cxt, UntracedTrapScope::Kind::Return};
 
-      /* Bound the call nesting so a function that recurses without a base case
-         errors with a caret here rather than exhausting the native stack. */
       cxt.enter_function_call(source_location());
       defer { cxt.leave_function_call(); };
 
-      /* A loop in the caller is not the body's to break, so the body starts
-         with a fresh loop count. */
       let const saved_loop_depth = cxt.execution_store().loop_depth();
       cxt.execution_store().loop_depth() = 0;
       defer { cxt.execution_store().loop_depth() = saved_loop_depth; };
 
-      /* Registered first so it runs last, after the scope pop restores the
-         locals. */
       let const call_mark = cxt.expansion_store().scratch_arena().mark();
       defer { cxt.expansion_store().scratch_arena().release(call_mark); };
 
@@ -996,8 +898,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         cxt.leave_function_scope();
       };
 
-      /* A command at the tail of the body must not exec the shell in place,
-         since the call's cleanup has to run after the body. */
       let const saved_terminal_exec =
           cxt.execution_store().terminal_exec_allowed();
       cxt.execution_store().terminal_exec_allowed() = false;
@@ -1006,10 +906,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec;
       };
 
-      /* The body runs in the mood and diagnostics state the function was
-         defined in, so a function defined in bash mood runs bash even after a
-         later set -M. The swap only happens when the defining state
-         differs from the live state. */
       let const *const definition_info =
           command_function_storage.get_definition_info();
       let const should_swap_state =
@@ -1022,16 +918,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
                             : definition_state::from(cxt.runtime_state()),
           definition_state_exit::PropagateMutations, should_swap_state};
 
-      /* A located error thrown from the body is rendered here while the stack
-         still names the function, since the top-level handler cannot reach the
-         definition file once this frame unwinds. window_function_body_error
-         rebases the position onto the definition copy. The error is marked
-         rendered so the top-level handler keeps the status without printing it
-         twice. */
-      /* Bash traces the entry into the frame as a second DEBUG fire. The depth
-         gate reaches that fire only while functrace is on. LINENO names the
-         line the body opens on, and the call site is already behind the
-         frame. */
       if (cxt.should_run_debug_trap()) {
         let const saved_call_location = cxt.source_store().current_location();
         let const was_control_flow_pending =
@@ -1042,8 +928,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         cxt.run_named_trap(StringView{"DEBUG", 5});
         cxt.source_store().set_current_location(saved_call_location);
 
-        /* An action that leaves an exit, a return, a break, or a continue
-           abandons the body the entry traced. */
         if (!was_control_flow_pending && cxt.control_flow_store().has_pending())
         {
           return cxt.execution_store().last_exit_status();
@@ -1091,9 +975,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         throw;
       }
 
-      /* A return supplies the status. A break or continue is scoped to a loop
-         inside this function and is consumed here. An exit stays pending for
-         the shell. */
       if (cxt.control_flow_store().has_pending()) {
         let const kind = cxt.control_flow_store().pending().kind;
         if (kind == control_flow::Kind::Return) {
@@ -1117,10 +998,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       return (*static_cast<decltype(do_call_function) *>(context))();
     };
 
-    /* A fresh evaluator replays source, so it receives the words already
-       expanded here as quoted literals and expands nothing again. The
-       redirections and prefix assignments already took effect on the
-       descriptors and the state the child inherits. */
     let expanded_child_source = String{cxt.scratch_allocator()};
     if (!os::can_fork_evaluator()) {
       for (usize i = 0; i < program_args.count(); i++) {
@@ -1178,14 +1055,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   }
   ec.has_stripped_array_operands = !m_array_args.is_empty();
 
-  /* The exec context now owns and closes the staged input descriptor. The
-     stdout and stderr redirects already took effect on the real shell fds. */
   if (redirect_in_fd) ec.in_fd = redirect_in_fd.take();
 
-  /* The command's redirections sit on the real shell descriptors and the defers
-     in this frame put them back. A located error from a builtin is rendered
-     here while its own standard error still holds, and the list handler keeps
-     the status without a second render. */
   let const was_in_pipeline_stage =
       cxt.job_table_store().is_in_pipeline_stage();
   if (mode == root_evaluation_mode::PreparedAsyncCommand && ec.is_builtin())
@@ -1229,24 +1100,17 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   }
   cxt.execution_store().set_last_argument(String{last_argument.view()});
 
-  /* An assignment builtin with NAME=(...) array arguments applies them after it
-     runs, in the scope the builtin selects. The builtin ran first, so a local
-     outside a function has already errored and the elements never reach here.
-   */
   if (!m_array_args.is_empty()) {
     let const is_local = array_command_kind == assignment_builtin::Local;
     let const is_declare = array_command_kind == assignment_builtin::Declare;
     let const is_function_local =
         is_declare && cxt.scope_store().local_scope_depth() > 0;
     let const is_export = array_command_kind == assignment_builtin::Export;
-    /* The -r flag sits in the builtin's arguments, so it is read off them. */
     let const is_readonly_kind =
         array_command_kind == assignment_builtin::Readonly;
     let is_readonly_request = is_readonly_kind;
     let did_request_readonly_flag = false;
     let should_print_declaration = false;
-    /* The -A flag routes to the string-keyed store rather than the indexed
-       one. */
     let is_associative_request = false;
     let should_mark_integer = false;
     let should_unmark_integer = false;
@@ -1358,6 +1222,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   return ret;
 }
 
-} /* namespace expressions */
+}
 
-} /* namespace koshka */
+}
