@@ -26,6 +26,8 @@ static fn fork_job_process() throws -> process;
 
 static process_launch_counts PROCESS_LAUNCH_COUNTS{};
 
+static bool IS_TERMINAL_OWNER = true;
+
 static inline fn note_fork_launch() wontthrow -> void
 {
   PROCESS_LAUNCH_COUNTS.fork_count++;
@@ -333,7 +335,12 @@ hot fn execute_program(ExecContext &ec,
 
 fn shell_has_controlling_terminal() wontthrow -> bool
 {
-  return isatty(STDIN_FILENO) == 1;
+  return IS_TERMINAL_OWNER && isatty(STDIN_FILENO) == 1;
+}
+
+static fn is_terminal_foreground_group() wontthrow -> bool
+{
+  return tcgetpgrp(STDIN_FILENO) == getpgrp();
 }
 
 fn ProgramCapture::start(const ArrayList<String> &argv,
@@ -494,7 +501,10 @@ fn ProgramCapture::abandon() wontthrow -> void
 
 fn give_controlling_terminal_to(process p) wontthrow -> void
 {
-  if (!shell_has_controlling_terminal()) return;
+  if (!shell_has_controlling_terminal() || !is_terminal_foreground_group()) {
+    return;
+  }
+
   /* The handoff itself raises SIGTTOU, so it is ignored across the change. */
   void (*const previous)(int) = signal(SIGTTOU, SIG_IGN);
   tcsetpgrp(STDIN_FILENO, p);
@@ -504,7 +514,12 @@ fn give_controlling_terminal_to(process p) wontthrow -> void
 fn give_controlling_terminal_to_process_group(i64 process_group_id) wontthrow
     -> void
 {
-  if (!shell_has_controlling_terminal() || process_group_id <= 0) return;
+  if (!shell_has_controlling_terminal() || process_group_id <= 0 ||
+      !is_terminal_foreground_group())
+  {
+    return;
+  }
+
   void (*const previous)(int) = signal(SIGTTOU, SIG_IGN);
   tcsetpgrp(STDIN_FILENO, static_cast<pid_t>(process_group_id));
   signal(SIGTTOU, previous);
@@ -541,6 +556,12 @@ static fn fork_compound_stage(
                                      ? static_cast<pid_t>(process_group_id)
                                      : 0;
         check_syscall(setpgid(0, target_group));
+      }
+
+      if (process_group == process_group_mode::NewBackground ||
+          process_group == process_group_mode::Join)
+      {
+        IS_TERMINAL_OWNER = false;
       }
 
       if (in_fd) {

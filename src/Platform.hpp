@@ -2284,7 +2284,9 @@ private:
   String m_captured{heap_allocator()};
 };
 
-/* Ignores SIGTTOU across the change. A no-op without a controlling terminal. */
+/* Ignores SIGTTOU across the change. A no-op without a controlling terminal,
+   in a background child, and for a handoff while another group holds the
+   terminal. */
 fn give_controlling_terminal_to(process p) wontthrow -> void;
 fn give_controlling_terminal_to_process_group(i64 process_group_id) wontthrow
     -> void;

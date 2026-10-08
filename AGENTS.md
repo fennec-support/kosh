@@ -174,6 +174,9 @@ changes update this file.
 - An asynchronous pipeline job owns and reaps every stage. POSIX stages share a
   process group. The last stage owns status and job output. Stream writes retry
   partial writes and reject zero-length writes while bytes remain.
+- A background child, coprocess, or asynchronous stage never owns the
+  terminal and runs its commands without job control. A process hands the
+  terminal to another group only while its own group is in the foreground.
 - A pipe has its writer and its reader in different processes whenever either
   side can exceed the pipe buffer. A deferred stage report is written only after
   every reading stage runs in a child.
