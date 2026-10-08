@@ -65,9 +65,7 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                            : arg;
       if (name == "-" || name_is_valid_identifier(name)) continue;
 
-      report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
-                                StringView{"'"} + arg +
-                                    "' is not a valid identifier");
+      report_invalid_identifier(ec, cxt, ec.arg_location_at(i), arg);
       return 2;
     }
 
