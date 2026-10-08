@@ -313,19 +313,14 @@ static fn find_path_from_file_id(StringView filesystem_path,
 
 #else
 
-static fn list_directory_status_bulk(StringView dir, Allocator allocator) throws
+static fn list_directory_status_bulk(StringView, Allocator) throws
     -> Maybe<ArrayList<directory_status_entry>>
 {
-  unused(dir);
-  unused(allocator);
   return None;
 }
 
-static fn find_path_from_file_id(StringView filesystem_path,
-                                 u64 file_id) wontthrow -> Maybe<Path>
+static fn find_path_from_file_id(StringView, u64) wontthrow -> Maybe<Path>
 {
-  unused(filesystem_path);
-  unused(file_id);
   return None;
 }
 
@@ -432,13 +427,9 @@ static fn fill_native_filesystem_identity(const String &path,
 
 #else
 
-static fn fill_native_filesystem_identity(const String &path,
-                                          filesystem_status &status) wontthrow
-    -> void
-{
-  unused(path);
-  unused(status);
-}
+static fn fill_native_filesystem_identity(const String &,
+                                          filesystem_status &) wontthrow -> void
+{}
 
 #endif
 
@@ -891,17 +882,14 @@ fn read_filesystem_integrity_evidence(StringView path) throws
 #else
 
 static fn read_native_filesystem_error_counters(
-    StringView path, filesystem_error_counters &counters) wontthrow -> bool
+    StringView, filesystem_error_counters &) wontthrow -> bool
 {
-  unused(path);
-  unused(counters);
   return false;
 }
 
-fn read_filesystem_integrity_evidence(StringView path) throws
+fn read_filesystem_integrity_evidence(StringView) throws
     -> Maybe<filesystem_integrity_evidence>
 {
-  unused(path);
   return None;
 }
 
@@ -1076,6 +1064,25 @@ static fn validate_batched_syscall(const batched_syscall &operation) wontthrow
   return EINVAL;
 }
 
+template <typename Transfer>
+static fn run_batched_transfer(batched_syscall_result &result,
+                               Transfer do_transfer) wontthrow -> void
+{
+  loop
+  {
+    let const transferred_byte_count = do_transfer();
+    if (transferred_byte_count >= 0) {
+      result.transferred_byte_count =
+          static_cast<usize>(transferred_byte_count);
+      return;
+    }
+    if (errno != EINTR || INTERRUPT_REQUESTED) {
+      result.error_number = errno;
+      return;
+    }
+  }
+}
+
 static fn
 execute_batched_syscall_direct(const batched_syscall &operation,
                                batched_syscall_result &result) wontthrow -> void
@@ -1085,56 +1092,28 @@ execute_batched_syscall_direct(const batched_syscall &operation,
 
   switch (batch_operation_access::get_kind(operation)) {
   case batched_syscall_id::Read:
-    loop
-    {
-      let const transferred_byte_count = ::pread(
-          batch_operation_access::get_descriptor(operation),
-          batch_operation_access::get_output_buffer(operation),
-          operation.byte_count, static_cast<off_t>(operation.byte_offset));
-      if (transferred_byte_count >= 0) {
-        result.transferred_byte_count =
-            static_cast<usize>(transferred_byte_count);
-        return;
-      }
-      if (errno != EINTR || INTERRUPT_REQUESTED) {
-        result.error_number = errno;
-        return;
-      }
-    }
+    run_batched_transfer(result, [&] {
+      return ::pread(batch_operation_access::get_descriptor(operation),
+                     batch_operation_access::get_output_buffer(operation),
+                     operation.byte_count,
+                     static_cast<off_t>(operation.byte_offset));
+    });
+    return;
   case batched_syscall_id::Write:
-    loop
-    {
-      let const transferred_byte_count = ::pwrite(
-          batch_operation_access::get_descriptor(operation),
-          batch_operation_access::get_input_buffer(operation),
-          operation.byte_count, static_cast<off_t>(operation.byte_offset));
-      if (transferred_byte_count >= 0) {
-        result.transferred_byte_count =
-            static_cast<usize>(transferred_byte_count);
-        return;
-      }
-      if (errno != EINTR || INTERRUPT_REQUESTED) {
-        result.error_number = errno;
-        return;
-      }
-    }
+    run_batched_transfer(result, [&] {
+      return ::pwrite(batch_operation_access::get_descriptor(operation),
+                      batch_operation_access::get_input_buffer(operation),
+                      operation.byte_count,
+                      static_cast<off_t>(operation.byte_offset));
+    });
+    return;
   case batched_syscall_id::WriteCurrent:
-    loop
-    {
-      let const transferred_byte_count =
-          ::write(batch_operation_access::get_descriptor(operation),
-                  batch_operation_access::get_input_buffer(operation),
-                  operation.byte_count);
-      if (transferred_byte_count >= 0) {
-        result.transferred_byte_count =
-            static_cast<usize>(transferred_byte_count);
-        return;
-      }
-      if (errno != EINTR || INTERRUPT_REQUESTED) {
-        result.error_number = errno;
-        return;
-      }
-    }
+    run_batched_transfer(result, [&] {
+      return ::write(batch_operation_access::get_descriptor(operation),
+                     batch_operation_access::get_input_buffer(operation),
+                     operation.byte_count);
+    });
+    return;
   case batched_syscall_id::Lstat:
     if (!stat_path(batch_operation_access::get_path(operation)->text().view(),
                    *batch_operation_access::get_status(operation)))
