@@ -1,0 +1,85 @@
+-c:1:18: error: Unable to expand '${}' because the braces hold no parameter.
+     1 |  x=1; a=(1); echo "${}"
+       |                   ^~~~~
+note: Write a name between the braces, as in ${name}.
+status=1
+-c:1:21: error: Unable to expand '${%}' because '%' is not a parameter name.
+     1 |  x=1; a=(1); echo "${%}"
+       |                      ^
+note: A name starts with a letter or an underscore, and the special parameters are digits and @ * # ? - $ !.
+status=1
+-c:1:21: error: Unable to expand '${:-a}' because ':' is not a parameter name.
+     1 |  x=1; a=(1); echo "${:-a}"
+       |                      ^
+note: A name starts with a letter or an underscore, and the special parameters are digits and @ * # ? - $ !.
+status=1
+-c:1:22: error: Unable to expand '${x!y}' because '!y' is not an operator.
+     1 |  x=1; a=(1); echo "${x!y}"
+       |                       ^~
+note: An indirect reference is written ${!name}.
+status=1
+-c:1:22: error: Unable to expand '${x:}' because the ':' must be followed by an offset or an operator such as :- or :+.
+     1 |  x=1; a=(1); echo "${x:}"
+       |                       ^
+note: Write ${x:-word} for a default or ${x:1} for a substring.
+status=1
+-c:1:22: error: Unable to expand '${x.y}' because '.y' is not an operator.
+     1 |  x=1; a=(1); echo "${x.y}"
+       |                       ^~
+note: A name holds only letters, digits, and underscores, and an operator such as :- or # follows it.
+status=1
+-c:1:22: error: Unable to expand '${x[}' because the subscript '[' is never closed.
+     1 |  x=1; a=(1); echo "${x[}"
+       |                       ^
+note: Close it with ']', as in ${x[0]}.
+status=1
+-c:1:22: error: Unable to expand '${1x}' because 'x' is not an operator.
+     1 |  x=1; a=(1); echo "${1x}"
+       |                       ^
+note: A positional parameter is all digits, as in ${10}.
+status=1
+-c:1:22: error: Unable to expand '${?x}' because 'x' is not an operator.
+     1 |  x=1; a=(1); echo "${?x}"
+       |                       ^
+note: A special parameter is one character, as in ${?}.
+status=1
+-c:1:25: error: Unable to expand '${a[0]!}' because '!' is not an operator.
+     1 |  x=1; a=(1); echo "${a[0]!}"
+       |                          ^
+note: An indirect reference is written ${!name}.
+status=1
+-c:1:22: error: Unable to expand '${x@Z}' because '@Z' is not a transformation.
+     1 |  x=1; a=(1); echo "${x@Z}"
+       |                       ^~
+note: Use one of Q E P A K a u U L k, as in ${x@Q}.
+status=1
+-c:1:22: error: Unable to expand '${x@}' because the '@' must be followed by a transformation.
+     1 |  x=1; a=(1); echo "${x@}"
+       |                       ^
+note: Use one of Q E P A K a u U L k, as in ${x@Q}.
+status=1
+-c:1:17: error: Unable to expand '${a[@]:}' because the ':' must be followed by an offset or an operator such as :- or :+.
+     1 |  a=(1); [[ ${a[@]:} ]]
+       |                  ^
+note: Write ${a[@]:-word} for a default or ${a[@]:1} for a substring.
+status=1
+-c:1:17: error: Unable to expand '${a[@]x}' because 'x' is not an operator.
+     1 |  a=(1); [[ ${a[@]x} ]]
+       |                  ^
+note: Follow the parameter with an operator such as :- := :? :+ # % / ^ , or @.
+status=1
+-c:1:17: error: Unable to expand '${a[@]@QQ}' because '@QQ' is not a transformation.
+     1 |  a=(1); [[ ${a[@]@QQ} ]]
+       |                  ^~~
+note: Use one of Q E P A K a u U L k, as in ${a[@]@Q}.
+status=1
+-c:1:10: error: Unable to assign to 'a[@]' because it stands for every element of the array.
+     1 |  a=(); [[ ${a[@]:=x} ]]
+       |           ^~~~~~~~~~
+note: Assign one element, as in ${a[0]:=word}.
+status=2
+-c:2:9: error: Unable to expand '${x!y}' because '!y' is not an operator.
+     2 |  body ${x!y}
+       |          ^~
+note: An indirect reference is written ${!name}.
+status=1

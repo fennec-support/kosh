@@ -1267,7 +1267,16 @@ private:
   fn take_value(Maybe<String> &current) wontthrow -> String;
   fn assign_word(StringView word) throws -> String;
   fn raise_unset_error(StringView word) throws -> void;
-  wontreturn fn raise_bad_substitution() const throws -> void;
+  fn get_spec_before(StringView part) const wontthrow -> StringView;
+  wontreturn fn
+  raise_bad_substitution(StringView part, StringView reason, StringView note,
+                         bool should_end_script = false) const throws -> void;
+  wontreturn fn raise_bare_colon(StringView colon) const throws -> void;
+  wontreturn fn raise_unknown_operator(StringView operator_text) const throws
+      -> void;
+  wontreturn fn
+  raise_unknown_transformation(StringView transformation) const throws -> void;
+  wontreturn fn raise_invalid_name_start() const throws -> void;
   fn expand_test_operator(char op, StringView word, Maybe<String> &current,
                           bool treat_as_unset) throws -> String;
   fn expand_trim_operator(char op, StringView word, bool is_doubled,
@@ -1606,8 +1615,7 @@ fn EvalContext::ParameterExpander::expand_subscripted() throws -> Maybe<String>
     if (!m_context.array_element_is_set(m_name, subscript))
       return String{m_context.scratch_allocator()};
 
-    throw_script_fatal("Unable to expand '${" + m_spec +
-                       "}' because it is a bad substitution");
+    raise_unknown_transformation(modifier);
   }
   if (subscript != "@" && subscript != "*" &&
       (modifier_op == '/' || modifier_op == '#' || modifier_op == '%' ||
@@ -1617,8 +1625,14 @@ fn EvalContext::ParameterExpander::expand_subscripted() throws -> Maybe<String>
                                           modifier_location_pointer);
   }
   if (subscript != "@" && subscript != "*") {
-    return expand_element_operator(subscript, subscript_location_pointer,
-                                   modifier, modifier_op);
+    if (let element = expand_element_operator(
+            subscript, subscript_location_pointer, modifier, modifier_op);
+        element.has_value())
+    {
+      return element;
+    }
+
+    raise_unknown_operator(modifier);
   }
 
   let const elements = m_context.collect_array_elements(m_name);
@@ -1643,13 +1657,13 @@ fn EvalContext::ParameterExpander::expand_list_operator(
 {
   let const is_colon = modifier[0] == ':';
   if (is_colon && modifier.length == 1) {
-    raise_bad_substitution();
+    raise_bare_colon(modifier);
   }
 
   let const op = modifier[is_colon ? 1 : 0];
   if (is_colon_modifier_operator(op))
     return expand_list_test(values, is_star, modifier);
-  if (is_colon) raise_bad_substitution();
+  if (is_colon) raise_unknown_operator(modifier);
 
   switch (op) {
   case '/':
@@ -1677,8 +1691,8 @@ fn EvalContext::ParameterExpander::expand_list_operator(
     }
     if (values.is_empty()) return String{m_context.scratch_allocator()};
 
-    raise_bad_substitution();
-  default: raise_bad_substitution();
+    raise_unknown_transformation(modifier);
+  default: raise_unknown_operator(modifier);
   }
 }
 
@@ -1713,7 +1727,7 @@ fn EvalContext::ParameterExpander::expand_list_test(
 
     let error = ErrorWithDetails{
         "Unable to assign to '" + list_name +
-            "' because it names every element of the array",
+            "' because it stands for every element of the array",
         "Assign one element, as in ${" + m_name + "[0]" +
             modifier.substring_of_length(0, is_colon ? 2 : 1) + "word}."};
     m_context.mark_expansion_error(error,
@@ -1858,8 +1872,7 @@ fn EvalContext::ParameterExpander::expand_leading_form() throws -> Maybe<String>
       if (!m_context.get_variable_value(m_name).has_value())
         return String{m_context.scratch_allocator()};
 
-      throw_script_fatal("Unable to expand '${" + m_spec +
-                         "}' because it is a bad substitution");
+      raise_unknown_transformation(m_rest);
     }
 
     return m_context.apply_parameter_transform(m_name, m_rest[1]);
@@ -1914,14 +1927,141 @@ fn EvalContext::ParameterExpander::assign_word(StringView word) throws -> String
   return assigned;
 }
 
-wontreturn fn
-EvalContext::ParameterExpander::raise_bad_substitution() const throws -> void
+fn EvalContext::ParameterExpander::get_spec_before(
+    StringView part) const wontthrow -> StringView
 {
-  let error = Error{"Unable to expand '${" + m_spec +
-                    "}' because it is a bad substitution"};
-  m_context.mark_expansion_error(error,
-                                 expansion_error_reach::LineOrPosixScript);
+  return m_spec.substring_of_length(
+      0, static_cast<usize>(part.data - m_spec.data));
+}
+
+wontreturn fn EvalContext::ParameterExpander::raise_bad_substitution(
+    StringView part, StringView reason, StringView note,
+    bool should_end_script) const throws -> void
+{
+  let const message = "Unable to expand '${" + m_spec + "}' because " + reason;
+  let const do_mark = [&](ErrorBase &error) throws {
+    if (should_end_script) {
+      error.set_script_fatal();
+      return;
+    }
+
+    m_context.mark_expansion_error(error,
+                                   expansion_error_reach::LineOrPosixScript);
+  };
+
+  let part_location = SourceLocation{};
+  let const *part_location_pointer =
+      part.is_empty() ? nullptr : get_location_for(part, part_location);
+  if (part_location_pointer != nullptr) {
+    let error = ErrorWithLocationAndDetails{*part_location_pointer,
+                                            message.view(), note};
+    do_mark(error);
+    throw steal(error);
+  }
+
+  let error = ErrorWithDetails{message.view(), note};
+  do_mark(error);
   throw steal(error);
+}
+
+wontreturn fn EvalContext::ParameterExpander::raise_bare_colon(
+    StringView colon) const throws -> void
+{
+  let const before = get_spec_before(colon);
+  raise_bad_substitution(colon,
+                         "the ':' must be followed by an offset or an operator "
+                         "such as :- or :+",
+                         "Write ${" + before + ":-word} for a default or ${" +
+                             before + ":1} for a substring.");
+}
+
+wontreturn fn EvalContext::ParameterExpander::raise_unknown_operator(
+    StringView operator_text) const throws -> void
+{
+  let const first = operator_text[0];
+  let const reason = "'" + operator_text + "' is not an operator";
+  if (first == '[' && !find_balanced_subscript_close(operator_text).has_value())
+  {
+    raise_bad_substitution(operator_text, "the subscript '[' is never closed",
+                           "Close it with ']', as in ${" +
+                               get_spec_before(operator_text) + "[0]}.");
+  }
+  if (first == '!') {
+    raise_bad_substitution(operator_text, reason.view(),
+                           "An indirect reference is written ${!name}.");
+  }
+
+  let const is_after_name = operator_text.data == m_rest.data;
+  let const is_name_character =
+      lexer::is_variable_name(first) || lexer::is_number(first);
+  if (is_after_name && is_name_character && lexer::is_number(m_name[0])) {
+    raise_bad_substitution(operator_text, reason.view(),
+                           "A positional parameter is all digits, as in "
+                           "${10}.");
+  }
+  if (is_after_name && is_name_character &&
+      lexer::is_special_parameter_char(m_name[0]))
+  {
+    raise_bad_substitution(operator_text, reason.view(),
+                           "A special parameter is one character, as in ${" +
+                               m_name + "}.");
+  }
+  if (is_after_name && lexer::is_variable_name_start(m_name[0])) {
+    raise_bad_substitution(operator_text, reason.view(),
+                           "A name holds only letters, digits, and "
+                           "underscores, and an operator such as :- or # "
+                           "follows it.");
+  }
+
+  raise_bad_substitution(operator_text, reason.view(),
+                         "Follow the parameter with an operator such as :- := "
+                         ":? :+ # % / ^ , or @.");
+}
+
+wontreturn fn EvalContext::ParameterExpander::raise_unknown_transformation(
+    StringView transformation) const throws -> void
+{
+  let const note = "Use one of Q E P A K a u U L k, as in ${" +
+                   get_spec_before(transformation) + "@Q}.";
+  if (transformation.length == 1) {
+    raise_bad_substitution(transformation,
+                           "the '@' must be followed by a transformation",
+                           note.view(), true);
+  }
+
+  raise_bad_substitution(transformation,
+                         "'" + transformation + "' is not a transformation",
+                         note.view(), true);
+}
+
+wontreturn fn
+EvalContext::ParameterExpander::raise_invalid_name_start() const throws -> void
+{
+  let const character =
+      m_spec.substring_of_length(0, utils::utf8_character_length(m_spec, 0));
+  let const is_command_form = m_spec[0] == ' ' || m_spec[0] == '\t' ||
+                              m_spec[0] == '\n' || m_spec[0] == '|';
+  let const note =
+      is_command_form &&
+              m_context.runtime_state().get_mood() == mimic_mood::Posix
+          ? StringView{"The sh mood reads ${ as a parameter expansion, so "
+                       "${ command; } runs a command only in the other moods."}
+          : StringView{"A name starts with a letter or an underscore, and the "
+                       "special parameters are digits and @ * # ? - $ !."};
+  switch (m_spec[0]) {
+  case ' ':
+    raise_bad_substitution(character,
+                           "a parameter name cannot start with a space", note);
+  case '\t':
+    raise_bad_substitution(character,
+                           "a parameter name cannot start with a tab", note);
+  case '\n':
+    raise_bad_substitution(
+        character, "a parameter name cannot start with a newline", note);
+  default:
+    raise_bad_substitution(character,
+                           "'" + character + "' is not a parameter name", note);
+  }
 }
 
 fn EvalContext::ParameterExpander::raise_unset_error(StringView word) throws
@@ -1951,7 +2091,7 @@ fn EvalContext::ParameterExpander::expand_operator() throws -> String
   /* A leading colon makes the test forms treat an empty value as unset. */
   let const is_colon_form = m_rest[0] == ':';
   const usize op_index = is_colon_form ? 1 : 0;
-  if (op_index >= m_rest.length) raise_bad_substitution();
+  if (op_index >= m_rest.length) raise_bare_colon(m_rest);
 
   let const is_all_parameters = m_name == "@" || m_name == "*";
 
@@ -1992,7 +2132,7 @@ fn EvalContext::ParameterExpander::expand_operator() throws -> String
   case '?': return expand_test_operator(op, word, current, treat_as_unset);
   case '#':
   case '%': return expand_trim_operator(op, word, is_doubled, current);
-  default: raise_bad_substitution();
+  default: raise_unknown_operator(m_rest);
   }
 }
 
@@ -2027,7 +2167,10 @@ static fn is_operator_after_hash(StringView spec) wontthrow -> bool
 
 fn EvalContext::ParameterExpander::expand() throws -> String
 {
-  if (m_spec.is_empty()) return String{m_context.scratch_allocator()};
+  if (m_spec.is_empty()) {
+    raise_bad_substitution(m_spec, "the braces hold no parameter",
+                           "Write a name between the braces, as in ${name}.");
+  }
   if (m_spec.length > 1 && m_spec[0] == '!' &&
       !is_operator_after_bang(m_spec[1]))
   {
@@ -2044,7 +2187,7 @@ fn EvalContext::ParameterExpander::expand() throws -> String
       !lexer::is_number(m_name[0]) &&
       !lexer::is_special_parameter_char(m_name[0]))
   {
-    raise_bad_substitution();
+    raise_invalid_name_start();
   }
 
   if (!m_rest.is_empty() && m_rest[0] == '[' && !m_name.is_empty() &&
