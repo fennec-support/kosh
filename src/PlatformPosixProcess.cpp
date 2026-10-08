@@ -44,6 +44,28 @@ static inline fn note_spawn_launch() wontthrow -> void
   note_exec_launch();
 }
 
+template <typename Call>
+alwaysinline static fn retry_interrupted(Call do_call) wontthrow
+    -> decltype(do_call())
+{
+  loop
+  {
+    let const result = do_call();
+    if (result != -1 || errno != EINTR) return result;
+  }
+}
+
+static fn reap_child(pid_t child) wontthrow -> void
+{
+  unused(retry_interrupted([child] { return waitpid(child, nullptr, 0); }));
+}
+
+static fn kill_and_reap(pid_t child) wontthrow -> void
+{
+  kill(child, SIGKILL);
+  reap_child(child);
+}
+
 fn get_process_launch_counts() wontthrow -> process_launch_counts
 {
   return PROCESS_LAUNCH_COUNTS;
@@ -442,10 +464,8 @@ fn ProgramCapture::step() wontthrow -> State
 
   if (m_output == KOSH_INVALID_FD) {
     int wait_status = 0;
-    pid_t waited_pid;
-    do {
-      waited_pid = waitpid(m_child, &wait_status, WNOHANG);
-    } while (waited_pid < 0 && errno == EINTR);
+    let const waited_pid = retry_interrupted(
+        [&] { return waitpid(m_child, &wait_status, WNOHANG); });
     if (waited_pid == m_child) {
       m_child = KOSH_INVALID_PROCESS;
       return State::Finished;
@@ -493,9 +513,7 @@ fn ProgramCapture::abandon() wontthrow -> void
   }
   if (m_child == KOSH_INVALID_PROCESS) return;
 
-  signal_process(m_child, SIGKILL);
-  int wait_status = 0;
-  while (waitpid(m_child, &wait_status, 0) < 0 && errno == EINTR) {}
+  kill_and_reap(m_child);
   m_child = KOSH_INVALID_PROCESS;
 }
 
@@ -980,18 +998,9 @@ fn wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
 
   i32 status{};
   const int wait_flags = was_stopped != nullptr ? WUNTRACED : 0;
-  pid_t changed_pid = 0;
-
-  loop
-  {
-    changed_pid = waitpid(pid, &status, wait_flags);
-    /* Retry waitpid after a signal interrupts it. */
-    if (changed_pid == -1 && errno == EINTR) {
-      continue;
-    }
-    check_syscall(changed_pid);
-    break;
-  }
+  let const changed_pid =
+      retry_interrupted([&] { return waitpid(pid, &status, wait_flags); });
+  check_syscall(changed_pid);
 
   if (!WIFCONTINUED(status)) note_child_reaped();
 
@@ -1055,10 +1064,7 @@ fn reap_process_quietly(process pid) throws -> i32
   i32 status{};
   loop
   {
-    const pid_t w = waitpid(pid, &status, 0);
-    if (w == -1 && errno == EINTR) {
-      continue;
-    }
+    const pid_t w = retry_interrupted([&] { return waitpid(pid, &status, 0); });
     /* The SIGCHLD handler may already have reaped it, a missing child is fine.
      */
     if (w == -1 && errno == ECHILD) {
@@ -1078,10 +1084,8 @@ fn poll_process(process p, i32 &status_out,
                 process_termination *termination_out) wontthrow -> process_state
 {
   i32 status = 0;
-  pid_t result;
-  do {
-    result = waitpid(p, &status, WNOHANG | WUNTRACED | WCONTINUED);
-  } while (result == -1 && errno == EINTR);
+  let const result = retry_interrupted(
+      [&] { return waitpid(p, &status, WNOHANG | WUNTRACED | WCONTINUED); });
 
   if (result == 0) return process_state::Unchanged;
   if (result == -1) {
@@ -1117,26 +1121,34 @@ fn signal_process(process p, i32 signal_number) wontthrow -> bool
 }
 
 #if defined __linux__
-static fn is_zombie_process(pid_t process_id) wontthrow -> bool
+static fn read_process_stat_after_command(i64 process_id, char (&buffer)[512],
+                                          StringView &text,
+                                          usize &position) wontthrow -> bool
 {
   char stat_path[64];
-  let const stat_path_length =
-      std::snprintf(stat_path, sizeof(stat_path), "/proc/%lld/stat",
-                    static_cast<long long>(process_id));
-  if (stat_path_length <= 0 ||
-      static_cast<usize>(stat_path_length) >= sizeof(stat_path))
+  if (!format_proc_pid_path(stat_path, process_id, "/stat")) return false;
+
+  let const stat_length = read_small_file(stat_path, buffer, sizeof(buffer));
+  text = StringView{buffer, stat_length};
+  let const command_end = text.find_last_character(')');
+  if (!command_end.has_value()) return false;
+
+  position = *command_end + 1;
+
+  return true;
+}
+
+static fn is_zombie_process(pid_t process_id) wontthrow -> bool
+{
+  char stat_buffer[512];
+  StringView stat_text;
+  usize position = 0;
+  if (!read_process_stat_after_command(process_id, stat_buffer, stat_text,
+                                       position))
   {
     return false;
   }
 
-  char stat_buffer[512];
-  let const stat_length =
-      read_small_file(stat_path, stat_buffer, sizeof(stat_buffer));
-  let const stat_text = StringView{stat_buffer, stat_length};
-  let const command_end = stat_text.find_last_character(')');
-  if (!command_end.has_value()) return false;
-
-  usize position = *command_end + 1;
   let const state = stat_text.next_ascii_whitespace_word(position);
 
   return !state.is_empty() && state[0] == 'Z';
@@ -1161,24 +1173,15 @@ static i64 LAST_RUNNING_MEMBER_ID = 0;
 static fn is_running_group_member(i64 process_id, pid_t group_id) wontthrow
     -> bool
 {
-  char stat_path[64];
-  let const stat_path_length =
-      std::snprintf(stat_path, sizeof(stat_path), "/proc/%lld/stat",
-                    static_cast<long long>(process_id));
-  if (stat_path_length <= 0 ||
-      static_cast<usize>(stat_path_length) >= sizeof(stat_path))
+  char stat_buffer[512];
+  StringView stat_text;
+  usize position = 0;
+  if (!read_process_stat_after_command(process_id, stat_buffer, stat_text,
+                                       position))
   {
     return false;
   }
 
-  char stat_buffer[512];
-  let const stat_length =
-      read_small_file(stat_path, stat_buffer, sizeof(stat_buffer));
-  let const stat_text = StringView{stat_buffer, stat_length};
-  let const command_end = stat_text.find_last_character(')');
-  if (!command_end.has_value()) return false;
-
-  usize position = *command_end + 1;
   let const state = stat_text.next_ascii_whitespace_word(position);
   unused(stat_text.next_ascii_whitespace_word(position));
   let const member_group_id =
@@ -1590,12 +1593,11 @@ fn transfer_barrier_byte(int descriptor,
                          barrier_transfer_direction direction) wontthrow -> bool
 {
   char byte = 1;
-  ssize_t transfer_count;
-  do {
-    transfer_count = direction == barrier_transfer_direction::Write
-                         ? write(descriptor, &byte, 1)
-                         : read(descriptor, &byte, 1);
-  } while (transfer_count == -1 && errno == EINTR);
+  let const transfer_count = retry_interrupted([&] {
+    return direction == barrier_transfer_direction::Write
+               ? write(descriptor, &byte, 1)
+               : read(descriptor, &byte, 1);
+  });
 
   return transfer_count == 1;
 }
@@ -1659,7 +1661,7 @@ fn spawn_measured_child(const ArrayList<String> &argv, measured_output output,
   close(ready_descriptors[0]);
   if (!is_ready) {
     close(start_descriptors[1]);
-    while (waitpid(child_pid, nullptr, 0) == -1 && errno == EINTR) {}
+    reap_child(child_pid);
     return false;
   }
 
@@ -1692,8 +1694,7 @@ fn fill_usage_from_rusage(const struct rusage &usage,
 fn open_proc_io_descriptor(pid_t pid) wontthrow -> int
 {
   char path[64];
-  std::snprintf(path, sizeof(path), "/proc/%lld/io",
-                static_cast<long long>(pid));
+  unused(format_proc_pid_path(path, pid, "/io"));
   return ::open(path, O_RDONLY | O_CLOEXEC);
 }
 
@@ -1715,10 +1716,8 @@ fn fill_usage_from_proc_io(int io_descriptor,
   if (io_descriptor < 0) return;
 
   char buffer[2048];
-  ssize_t length;
-  do {
-    length = ::pread(io_descriptor, buffer, sizeof(buffer), 0);
-  } while (length == -1 && errno == EINTR);
+  let const length = retry_interrupted(
+      [&] { return ::pread(io_descriptor, buffer, sizeof(buffer), 0); });
 
   if (length <= 0) return;
 
@@ -1744,11 +1743,10 @@ fn wait_for_measured_child(pid_t child_pid, i64 &status_out, u64 &peak_rss_out,
 #if defined __linux__
   if (resources != nullptr) {
     siginfo_t info{};
-    int wait_result;
-    do {
-      wait_result =
-          waitid(P_PID, static_cast<id_t>(child_pid), &info, WEXITED | WNOWAIT);
-    } while (wait_result == -1 && errno == EINTR);
+    let const wait_result = retry_interrupted([&] {
+      return waitid(P_PID, static_cast<id_t>(child_pid), &info,
+                    WEXITED | WNOWAIT);
+    });
     if (wait_result == 0) fill_usage_from_proc_io(io_descriptor, *resources);
   }
 #else
@@ -1757,21 +1755,11 @@ fn wait_for_measured_child(pid_t child_pid, i64 &status_out, u64 &peak_rss_out,
 
   int status = 0;
   struct rusage usage{};
-  pid_t waited = -1;
-  loop
-  {
-    waited = wait4(child_pid, &status, 0, &usage);
-    if (waited == -1 && errno == EINTR) {
-      continue;
-    }
-    break;
-  }
+  let const waited =
+      retry_interrupted([&] { return wait4(child_pid, &status, 0, &usage); });
 
   if (waited != child_pid) {
-    if (waited == -1 && errno != ECHILD) {
-      kill(child_pid, SIGKILL);
-      while (waitpid(child_pid, nullptr, 0) == -1 && errno == EINTR) {}
-    }
+    if (waited == -1 && errno != ECHILD) kill_and_reap(child_pid);
     return false;
   }
 
@@ -1836,8 +1824,7 @@ fn run_measured(const ArrayList<String> &argv, const Maybe<descriptor> &,
       child.start_descriptor, barrier_transfer_direction::Write);
   close(child.start_descriptor);
   if (!did_release) {
-    kill(child.pid, SIGKILL);
-    while (waitpid(child.pid, nullptr, 0) == -1 && errno == EINTR) {}
+    kill_and_reap(child.pid);
     return None;
   }
 
@@ -1881,10 +1868,11 @@ fn set_priority(i64 id, i32 priority, priority_target target) wontthrow -> bool
                      priority) == 0;
 }
 
-fn run_nice(const ArrayList<String> &argv, i32 increment) throws -> Maybe<i32>
+template <typename PrepareChild>
+static fn run_through_error_pipe(const auto &raw_argv,
+                                 PrepareChild do_prepare_child) wontthrow
+    -> Maybe<i32>
 {
-  if (argv.is_empty()) return None;
-  let const raw_argv = make_os_args(argv);
   int exec_error_pipe[2];
   if (pipe(exec_error_pipe) != 0) return None;
   if (fcntl(exec_error_pipe[1], F_SETFD, FD_CLOEXEC) != 0) {
@@ -1894,6 +1882,7 @@ fn run_nice(const ArrayList<String> &argv, i32 increment) throws -> Maybe<i32>
     errno = saved_errno;
     return None;
   }
+
   note_spawn_launch();
   let const child = fork();
   if (child == -1) {
@@ -1905,13 +1894,7 @@ fn run_nice(const ArrayList<String> &argv, i32 increment) throws -> Maybe<i32>
   }
   if (child == 0) {
     close(exec_error_pipe[0]);
-    errno = 0;
-    let current = getpriority(PRIO_PROCESS, 0);
-    if (current == -1 && errno != 0) current = 0;
-    let target = static_cast<i64>(current) + increment;
-    if (target < -20) target = -20;
-    if (target > 19) target = 19;
-    unused(setpriority(PRIO_PROCESS, 0, static_cast<int>(target)));
+    do_prepare_child(exec_error_pipe[1]);
     execvp(raw_argv[0], const_cast<char *const *>(raw_argv.begin()));
     let const child_errno = errno;
     unused(
@@ -1921,17 +1904,14 @@ fn run_nice(const ArrayList<String> &argv, i32 increment) throws -> Maybe<i32>
 
   close(exec_error_pipe[1]);
   int child_errno = 0;
-  ssize_t error_length;
-  do {
-    error_length = read(exec_error_pipe[0], &child_errno, sizeof(child_errno));
-  } while (error_length == -1 && errno == EINTR);
+  let const error_length = retry_interrupted([&] {
+    return read(exec_error_pipe[0], &child_errno, sizeof(child_errno));
+  });
   let const read_errno = errno;
   close(exec_error_pipe[0]);
   int status = 0;
-  pid_t waited;
-  do {
-    waited = waitpid(child, &status, 0);
-  } while (waited == -1 && errno == EINTR);
+  let const waited =
+      retry_interrupted([&] { return waitpid(child, &status, 0); });
   if (waited != child) return None;
   if (error_length == -1) {
     errno = read_errno;
@@ -1946,6 +1926,22 @@ fn run_nice(const ArrayList<String> &argv, i32 increment) throws -> Maybe<i32>
   return None;
 }
 
+fn run_nice(const ArrayList<String> &argv, i32 increment) throws -> Maybe<i32>
+{
+  if (argv.is_empty()) return None;
+  let const raw_argv = make_os_args(argv);
+
+  return run_through_error_pipe(raw_argv, [increment](int) {
+    errno = 0;
+    let current = getpriority(PRIO_PROCESS, 0);
+    if (current == -1 && errno != 0) current = 0;
+    let target = static_cast<i64>(current) + increment;
+    if (target < -20) target = -20;
+    if (target > 19) target = 19;
+    unused(setpriority(PRIO_PROCESS, 0, static_cast<int>(target)));
+  });
+}
+
 fn run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
     -> Maybe<i32>
 {
@@ -1955,27 +1951,7 @@ fn run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
   if (!home_output.is_empty() && home_output.back() != '/') home_output += '/';
   home_output += "nohup.out";
 
-  int exec_error_pipe[2];
-  if (pipe(exec_error_pipe) != 0) return None;
-  if (fcntl(exec_error_pipe[1], F_SETFD, FD_CLOEXEC) != 0) {
-    let const saved_errno = errno;
-    close(exec_error_pipe[0]);
-    close(exec_error_pipe[1]);
-    errno = saved_errno;
-    return None;
-  }
-
-  note_spawn_launch();
-  let const child = fork();
-  if (child == -1) {
-    let const saved_errno = errno;
-    close(exec_error_pipe[0]);
-    close(exec_error_pipe[1]);
-    errno = saved_errno;
-    return None;
-  }
-  if (child == 0) {
-    close(exec_error_pipe[0]);
+  return run_through_error_pipe(raw_argv, [&](int error_descriptor) {
     signal(SIGHUP, SIG_IGN);
     let child_input = options.input;
     let child_output = options.output;
@@ -1993,8 +1969,8 @@ fn run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
             open(home_output.c_str(), O_WRONLY | O_APPEND | O_CREAT, 0600);
       if (nohup_output == -1) {
         let const child_errno = errno;
-        unused(os::write_all(exec_error_pipe[1], &child_errno,
-                             sizeof(child_errno)));
+        unused(
+            os::write_all(error_descriptor, &child_errno, sizeof(child_errno)));
         _exit(127);
       }
       child_output = nohup_output;
@@ -2005,38 +1981,7 @@ fn run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
     if (child_error != STDERR_FILENO) dup2(child_error, STDERR_FILENO);
     if (null_input > STDERR_FILENO) close(null_input);
     if (nohup_output > STDERR_FILENO) close(nohup_output);
-    execvp(raw_argv[0], const_cast<char *const *>(raw_argv.begin()));
-    let const child_errno = errno;
-    unused(
-        os::write_all(exec_error_pipe[1], &child_errno, sizeof(child_errno)));
-    _exit(child_errno == ENOENT ? 127 : 126);
-  }
-
-  close(exec_error_pipe[1]);
-  int child_errno = 0;
-  ssize_t error_length;
-  do {
-    error_length = read(exec_error_pipe[0], &child_errno, sizeof(child_errno));
-  } while (error_length == -1 && errno == EINTR);
-  let const read_errno = errno;
-  close(exec_error_pipe[0]);
-  int status = 0;
-  pid_t waited;
-  do {
-    waited = waitpid(child, &status, 0);
-  } while (waited == -1 && errno == EINTR);
-  if (waited != child) return None;
-  if (error_length == -1) {
-    errno = read_errno;
-    return None;
-  }
-  if (error_length == static_cast<ssize_t>(sizeof(child_errno))) {
-    errno = child_errno;
-    return None;
-  }
-  if (WIFEXITED(status)) return WEXITSTATUS(status);
-  if (WIFSIGNALED(status)) return 128 + WTERMSIG(status);
-  return None;
+  });
 }
 
 } /* namespace os */
