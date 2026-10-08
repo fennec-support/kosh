@@ -654,7 +654,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   let const do_apply_persistent_assignment =
       [&](const tokens::Assignment &assignment) throws {
         let const name = assignment.key().view();
-        let value = cxt.expand_word_for_assignment(assignment.value_word());
+        let value =
+            cxt.expand_word_for_assignment(assignment.value_word(), true);
         if (let const bracket = name.find_character('[');
             bracket.has_value() && name[name.length - 1] == ']')
         {
@@ -827,7 +828,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     if (!is_read_field_separator) previous = os::get_environment_variable(name);
     let expanded_value = String{cxt.scratch_allocator()};
     try {
-      expanded_value = cxt.expand_word_for_assignment(assignment.value_word());
+      expanded_value =
+          cxt.expand_word_for_assignment(assignment.value_word(), true);
     } catch (const Error &e) {
       relocate_if_unlocated(e, source_location());
     }

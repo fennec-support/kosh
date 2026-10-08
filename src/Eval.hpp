@@ -2455,6 +2455,22 @@ public:
   {
     return m_is_expanding_here_document;
   }
+  fn is_expanding_assignment_value() wontthrow -> bool &
+  {
+    return m_is_expanding_assignment_value;
+  }
+  fn is_expanding_single_string() wontthrow -> bool &
+  {
+    return m_is_expanding_single_string;
+  }
+  pure fn is_expanding_assignment_value() const wontthrow -> bool
+  {
+    return m_is_expanding_assignment_value;
+  }
+  pure fn is_expanding_single_string() const wontthrow -> bool
+  {
+    return m_is_expanding_single_string;
+  }
   pure fn is_expanding_here_document() const wontthrow -> bool
   {
     return m_is_expanding_here_document;
@@ -2515,6 +2531,8 @@ private:
   getopts_cursor m_getopts_cursor{};
   bool m_glob_exempt_for_test{false};
   bool m_is_expanding_here_document{false};
+  bool m_is_expanding_assignment_value{false};
+  bool m_is_expanding_single_string{false};
   ArrayList<process_substitution> m_pending_process_substitutions{
       heap_allocator()};
   ArrayList<process_substitution> m_held_process_substitutions{
@@ -4044,7 +4062,12 @@ public:
   fn sorted_variable_assignments() const throws
       -> SortedArrayList<String, order_comparator<String>>;
 
-  fn expand_word_for_assignment(const Word &word) throws -> String;
+  /* An assignment value and a here-string set is_assignment_value. There
+     bash keeps the empty elements of ${a[@]} and ${a[*]} as quoted nulls,
+     so a colon test sees a list with any element as set. */
+  fn expand_word_for_assignment(const Word &word,
+                                bool is_assignment_value = false) throws
+      -> String;
 
   fn evaluate_arithmetic(StringView expression,
                          const SourceLocation *expression_base = nullptr) throws

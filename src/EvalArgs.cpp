@@ -573,7 +573,7 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
             assignment += '+';
             assignment += '=';
             assignment.append(
-                expand_word_for_assignment(assignment_token->value_word())
+                expand_word_for_assignment(assignment_token->value_word(), true)
                     .view());
           } else {
             assignment += '=';
@@ -583,8 +583,8 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
               let const existing = get_variable_value(assignment_token->key());
               if (existing.has_value()) assignment.append(existing->view());
             }
-            let const expanded_value =
-                expand_word_for_assignment(assignment_token->value_word());
+            let const expanded_value = expand_word_for_assignment(
+                assignment_token->value_word(), true);
             /* An integer name adds rather than concatenates. */
             let const is_append = assignment_token->get_update_mode() ==
                                   assignment_update_mode::Append;

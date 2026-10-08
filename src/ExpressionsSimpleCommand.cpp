@@ -318,7 +318,8 @@ fn AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
   defer { cxt.cleanup_process_substitutions(substitution_mark); };
 
   try {
-    let value = cxt.expand_word_for_assignment(m_assignment->value_word());
+    let value =
+        cxt.expand_word_for_assignment(m_assignment->value_word(), true);
 
     if (cxt.runtime_state().should_echo_expanded()) {
       let trace = String{cxt.scratch_allocator(), m_assignment->key().view()};
@@ -748,7 +749,7 @@ fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
     } else {
       ASSERT(redir.target != nullptr);
       expanded_body = cxt.expand_word_for_assignment(
-          static_cast<const tokens::WordToken *>(redir.target)->word());
+          static_cast<const tokens::WordToken *>(redir.target)->word(), true);
       expanded_body += "\n";
       body = expanded_body.view();
     }

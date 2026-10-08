@@ -61,6 +61,19 @@ hot fn EvalContext::expand_word(const Word &word) throws
   LOG(All, "expanding a word of %zu segments into fields",
       word.segments.count());
   let const scratch = scratch_allocator();
+  let const was_expanding_assignment_value =
+      expansion_store().is_expanding_assignment_value();
+  let const was_expanding_single_string =
+      expansion_store().is_expanding_single_string();
+  expansion_store().is_expanding_assignment_value() = false;
+  expansion_store().is_expanding_single_string() = false;
+  defer
+  {
+    expansion_store().is_expanding_assignment_value() =
+        was_expanding_assignment_value;
+    expansion_store().is_expanding_single_string() =
+        was_expanding_single_string;
+  };
 
   let const *segments = &word.segments;
   let tilde_expanded_segments = ArrayList<WordSegment>{scratch};
@@ -769,11 +782,25 @@ hot fn EvalContext::expand_word(const Word &word) throws
   return fields;
 }
 
-hot fn EvalContext::expand_word_for_assignment(const Word &word) throws
+hot fn EvalContext::expand_word_for_assignment(const Word &word,
+                                               bool is_assignment_value) throws
     -> String
 {
   LOG(All, "expanding an assignment word of %zu segments",
       word.segments.count());
+  let const was_expanding_assignment_value =
+      expansion_store().is_expanding_assignment_value();
+  let const was_expanding_single_string =
+      expansion_store().is_expanding_single_string();
+  expansion_store().is_expanding_assignment_value() = is_assignment_value;
+  expansion_store().is_expanding_single_string() = true;
+  defer
+  {
+    expansion_store().is_expanding_assignment_value() =
+        was_expanding_assignment_value;
+    expansion_store().is_expanding_single_string() =
+        was_expanding_single_string;
+  };
   /* An assignment expands a tilde after an unquoted colon too, the rule bash
      applies to PATH=~/bin:~/tmp. */
   let const *segments = &word.segments;

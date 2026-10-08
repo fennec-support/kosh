@@ -1222,6 +1222,7 @@ public:
   {}
 
   fn expand() throws -> String;
+  fn set_reference_target() wontthrow -> void { m_is_reference_target = true; }
 
 private:
   EvalContext &m_context;
@@ -1230,6 +1231,7 @@ private:
   usize m_source_location_offset;
   bool m_should_expand_process_substitution;
   parameter_word_quoting m_quoting;
+  bool m_is_reference_target = false;
   StringView m_name;
   StringView m_rest;
 
@@ -1258,6 +1260,10 @@ private:
                           StringView modifier) throws -> String;
   fn expand_list_test(const ArrayList<String> &values, bool is_star,
                       StringView modifier) throws -> String;
+  fn is_operand_quoted_null(const ArrayList<String> &values,
+                            bool is_star) const wontthrow -> bool;
+  fn should_join_with_ifs(bool is_star,
+                          bool is_trim_or_transform) const wontthrow -> bool;
   fn expand_list_transform(const ArrayList<String> &values, bool is_star,
                            char op) throws -> String;
   fn expand_operator() throws -> String;
@@ -1424,6 +1430,10 @@ fn EvalContext::ParameterExpander::expand_length() throws -> String
                         m_context.scratch_allocator());
   }
 
+  if (m_is_reference_target && name.find_substring("][").has_value()) {
+    return String{m_context.scratch_allocator(), "0"};
+  }
+
   /* ${#a[@]} is the element count, ${#a[i]} the length of one element. */
   if (let const bracket = name.find_character('[');
       bracket.has_value() && *bracket > 0 && name[name.length - 1] == ']' &&
@@ -1549,12 +1559,23 @@ fn EvalContext::ParameterExpander::expand_element_transform(
     StringView subscript, const SourceLocation *subscript_location,
     char op) throws -> String
 {
+  if (op == 'a' && m_is_reference_target) {
+    return String{m_context.scratch_allocator()};
+  }
   if (op == 'a') {
     return m_context.apply_parameter_transform_to_value(StringView{}, op,
                                                         m_name);
   }
 
   let const is_set = m_context.array_element_is_set(m_name, subscript);
+  let const is_array =
+      m_context.variable_store().indexed_arrays().find(m_name).has_value() ||
+      m_context.is_associative_array(m_name);
+  if (op == 'A' && !is_array) {
+    if (!is_set) return String{m_context.scratch_allocator()};
+
+    return m_context.apply_parameter_transform(m_name, op);
+  }
   if (op == 'A') {
     let out = String{m_context.scratch_allocator(),
                      m_context.is_associative_array(m_name) ? "declare -A "
@@ -1608,6 +1629,11 @@ fn EvalContext::ParameterExpander::expand_subscripted() throws -> Maybe<String>
   let const *modifier_location_pointer =
       get_location_for(modifier, modifier_location);
   let const modifier_op = modifier.is_empty() ? '\0' : modifier[0];
+  /* A reference to one element takes no subscript of its own, so bash expands
+     ${ref[i]} to nothing. */
+  if (modifier_op == '[' && m_is_reference_target) {
+    return String{m_context.scratch_allocator()};
+  }
   if (modifier_op == '@' &&
       m_context.runtime_state().get_mood() != mimic_mood::Posix &&
       (modifier.length != 2 || !is_transform_operator(modifier[1])))
@@ -1645,7 +1671,8 @@ fn EvalContext::ParameterExpander::expand_subscripted() throws -> Maybe<String>
         slice, static_cast<i64>(elements.count()),
         get_location_for(slice, slice_location));
 
-    return m_context.join_list_slice(bounds, elements, None, subscript == "*");
+    return m_context.join_list_slice(
+        bounds, elements, None, should_join_with_ifs(subscript == "*", false));
   }
 
   return expand_list_operator(elements, subscript == "*", modifier);
@@ -1680,10 +1707,12 @@ fn EvalContext::ParameterExpander::expand_list_operator(
     for (let const &value : values)
       modified.push(m_context.apply_value_modifier(value.view(), modifier,
                                                    modifier_location_pointer));
+    if (is_operand_quoted_null(modified, is_star))
+      return String{m_context.scratch_allocator()};
 
     return m_context.join_list_slice(
         substring_bounds{0, static_cast<i64>(modified.count())}, modified, None,
-        is_star);
+        should_join_with_ifs(is_star, op == '#' || op == '%'));
   }
   case '@':
     if (modifier.length == 2 && is_transform_operator(modifier[1])) {
@@ -1696,6 +1725,43 @@ fn EvalContext::ParameterExpander::expand_list_operator(
   }
 }
 
+fn EvalContext::ParameterExpander::should_join_with_ifs(
+    bool is_star, bool is_trim_or_transform) const wontthrow -> bool
+{
+  /* In an assignment value bash joins the elements an operator changed with
+     the first IFS byte: always inside double quotes, and outside them only
+     after a trim or a transformation. */
+  if (is_star) return true;
+  if (!m_context.expansion_store().is_expanding_assignment_value()) {
+    return false;
+  }
+  if (m_quoting == parameter_word_quoting::HereDocument) return false;
+  if (m_context.variable_store().field_separators().is_empty()) return false;
+
+  return m_quoting == parameter_word_quoting::DoubleQuoted ||
+         is_trim_or_transform;
+}
+
+fn EvalContext::ParameterExpander::is_operand_quoted_null(
+    const ArrayList<String> &values, bool is_star) const wontthrow -> bool
+{
+  /* In a [[ ]] or case word bash keeps the empty elements of an unquoted list
+     as quoted nulls. They join to a set but empty string when * meets an
+     empty IFS or @ meets an IFS that starts with a byte other than a blank. */
+  let const &store = m_context.expansion_store();
+  if (m_quoting != parameter_word_quoting::Unquoted) return false;
+  if (!store.is_expanding_single_string()) return false;
+  if (store.is_expanding_assignment_value() || values.is_empty()) return false;
+
+  for (let const &value : values)
+    if (!value.is_empty()) return false;
+
+  let const ifs = m_context.variable_store().field_separators();
+  if (is_star) return ifs.is_empty();
+
+  return !ifs.is_empty() && ifs[0] != ' ' && ifs[0] != '\t' && ifs[0] != '\n';
+}
+
 fn EvalContext::ParameterExpander::expand_list_test(
     const ArrayList<String> &values, bool is_star, StringView modifier) throws
     -> String
@@ -1706,7 +1772,13 @@ fn EvalContext::ParameterExpander::expand_list_test(
   let joined = m_context.join_list_slice(
       substring_bounds{0, static_cast<i64>(values.count())}, values, None,
       is_star);
-  let const treat_as_unset = is_colon ? joined.is_empty() : values.is_empty();
+  let const is_quoted_null_list =
+      m_quoting == parameter_word_quoting::Unquoted &&
+      m_context.expansion_store().is_expanding_assignment_value();
+  let const treat_as_unset = is_colon && !is_quoted_null_list &&
+                                     !is_operand_quoted_null(values, is_star)
+                                 ? joined.is_empty()
+                                 : values.is_empty();
   if (!treat_as_unset) {
     if (op == '+') return expand_word(word, m_quoting);
 
@@ -1808,7 +1880,7 @@ fn EvalContext::ParameterExpander::expand_list_transform(
 
   return m_context.join_list_slice(
       substring_bounds{0, static_cast<i64>(transformed.count())}, transformed,
-      None, is_star);
+      None, should_join_with_ifs(is_star, true));
 }
 
 fn EvalContext::ParameterExpander::expand_bare_reference() throws -> String
@@ -1847,7 +1919,7 @@ fn EvalContext::ParameterExpander::expand_positional_slice() throws -> String
 
   return m_context.join_list_slice(bounds, params,
                                    m_context.execution_store().get_shell_name(),
-                                   m_name == "*");
+                                   should_join_with_ifs(m_name == "*", false));
 }
 
 fn EvalContext::ParameterExpander::expand_leading_form() throws -> Maybe<String>
@@ -2103,12 +2175,19 @@ fn EvalContext::ParameterExpander::expand_operator() throws -> String
     }
   }
 
-  if (is_all_parameters) {
+  /* Where one string results, dash applies an operator to "$@" and "$*"
+     joined, and the parameters always count as set, while bash applies it to
+     each one. */
+  let const is_dash_single_string =
+      m_context.runtime_state().get_mood() == mimic_mood::Posix &&
+      (m_context.expansion_store().is_expanding_single_string() ||
+       m_quoting == parameter_word_quoting::HereDocument);
+  if (is_all_parameters && !is_dash_single_string) {
     return expand_list_operator(m_context.variable_store().positional_params(),
                                 m_name == "*", m_rest);
   }
 
-  if (!is_colon_form) {
+  if (!is_colon_form && !is_all_parameters) {
     if (let form = expand_leading_form(); form.has_value()) {
       return steal(*form);
     }
@@ -2232,6 +2311,7 @@ hot fn EvalContext::apply_parameter_expansion(
                                    source_location_offset,
                                    should_expand_process_substitution,
                                    quoting};
+  if (resolved_spec.has_value()) expander.set_reference_target();
 
   return expander.expand();
 }
@@ -2649,11 +2729,23 @@ fn EvalContext::apply_parameter_transform_to_value(StringView text, char op,
     utils::append_shell_quoted(out, text);
     return out;
   case 'P': return toiletline::expand_prompt_template(text, *this);
-  case 'A':
+  case 'A': {
+    let flags = String{scratch_allocator()};
+    if (is_integer_variable(name)) flags.push('i');
+    if (variable_store().attributes().is_lowercase(name)) flags.push('l');
+    if (is_readonly(name)) flags.push('r');
+    if (variable_store().attributes().is_uppercase(name)) flags.push('u');
+    if (is_exported(name)) flags.push('x');
+    if (!flags.is_empty()) {
+      out += "declare -";
+      out.append(flags.view());
+      out += ' ';
+    }
     out.append(name);
     out += '=';
     utils::append_shell_quoted(out, text);
     return out;
+  }
   case 'E':
     for (usize i = 0; i < text.length; i++) {
       if (text[i] != '\\' || i + 1 >= text.length) {

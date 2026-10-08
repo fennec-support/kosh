@@ -3,19 +3,6 @@
 # expand as bash does. The matrix skips these keys, and this fixture
 # runs only them. Remove a key once its case agrees with bash.
 pending_cases=(
-  'unset|A|arr[1]|0|'
-  'unset|A|arr[1]|1|'
-  'unset|A|arr[1]|2|'
-  'unset|A|arr[1]|3|'
-  'unset|A|arr[1]|4|'
-  'unset|A|arr[1]|5|'
-  'unset|A|arr[1]|6|'
-  'unset|A|arr[1]|7|'
-  'unset|A|arr[1]|8|'
-  'unset|A|arr[1]|10|'
-  'unset|A|arr[1]|11|'
-  'unset|A|arr[1]|12|'
-  'unset|A|arr[1]|13|'
   'empty|A|arr[@]|1|'
   'empty|A|arr[@]|5|'
   'empty|A|arr[@]|8|'
