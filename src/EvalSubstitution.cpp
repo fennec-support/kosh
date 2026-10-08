@@ -473,6 +473,8 @@ fn EvalContext::hold_process_substitutions(
     process_substitution &sub = pending[i];
     if (sub.shell_fd != KOSH_INVALID_FD) os::close_fd(sub.shell_fd);
     sub.shell_fd = KOSH_INVALID_FD;
+    os::finish_process_substitution(sub.platform_cleanup);
+    sub.platform_cleanup = nullptr;
     sub.source = StringView{};
     sub.location = SourceLocation{};
     try {
