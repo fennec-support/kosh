@@ -522,8 +522,7 @@ fn EvalContext::run_source(StringView source, StringView origin,
 
   let const consume_return = handling == return_handling::Consume;
   let const reject_return = handling == return_handling::Reject;
-  let const should_propagate_script_fatal =
-      call_site.has_value() && !reject_return;
+  let const should_propagate_script_fatal = call_site.has_value();
   if (arena_store().parse_arena() == nullptr)
     throw Error{"Cannot run source outside of a parse"};
 
