@@ -3396,6 +3396,11 @@ public:
                                    const ArrayList<String> &elements,
                                    assignment_update_mode update_mode) throws
       -> void;
+  /* Every element written as [key]=value sets that key, and a list with no
+     such element alternates keys and values, the bash 5.1 form. */
+  fn assign_associative_elements(StringView name,
+                                 const ArrayList<String> &elements) throws
+      -> void;
 
   fn record_environment_change(StringView name) throws -> void;
 

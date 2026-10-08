@@ -148,6 +148,55 @@ static fn parse_explicit_array_index(StringView element,
   return false;
 }
 
+fn EvalContext::assign_associative_elements(
+    StringView name, const ArrayList<String> &elements) throws -> void
+{
+  if (elements.is_empty()) return;
+
+  let const is_integer = is_integer_variable(name);
+  let integer_text = String{scratch_allocator()};
+  let const do_set = [&](StringView key, StringView element_value) throws {
+    if (is_integer) {
+      integer_text = evaluate_arithmetic_text(element_value);
+      element_value = integer_text.view();
+    }
+
+    set_associative_element(name, key, element_value);
+  };
+
+  StringView subscript;
+  StringView value;
+  if (parse_explicit_array_index(elements[0].view(), subscript, value)) {
+    for (let const &element : elements) {
+      if (!parse_explicit_array_index(element.view(), subscript, value)) {
+        let error = ErrorWithDetails{
+            "Unable to assign '" + element + "' to the associative array '" +
+                name + "' because it has no [key]= subscript",
+            "Write every element as [key]=value, or write none that way to "
+            "alternate keys and values."};
+        mark_expansion_error(error, expansion_error_reach::LineOrPosixScript);
+        throw steal(error);
+      }
+
+      do_set(subscript, value);
+    }
+
+    return;
+  }
+
+  for (usize i = 0; i < elements.count(); i += 2) {
+    let const key = elements[i].view();
+    if (key.is_empty()) {
+      show_runtime_error_at(source_store().current_location(),
+                            "Unable to assign to the associative array '" +
+                                name + "' because a key is empty");
+      continue;
+    }
+
+    do_set(key, i + 1 < elements.count() ? elements[i + 1].view() : "");
+  }
+}
+
 fn EvalContext::assign_indexed_array_elements(
     StringView name, const ArrayList<String> &elements,
     assignment_update_mode update_mode) throws -> void
@@ -192,14 +241,7 @@ fn EvalContext::assign_indexed_array_elements(
       declare_associative_array(name);
     }
 
-    for (let const &element : elements) {
-      StringView subscript;
-      StringView value;
-      if (parse_explicit_array_index(element.view(), subscript, value))
-        set_associative_element(name, subscript, do_element_value(value));
-      else
-        set_associative_element(name, element.view(), do_element_value(""));
-    }
+    assign_associative_elements(name, elements);
     return;
   }
 
