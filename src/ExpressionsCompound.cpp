@@ -905,23 +905,35 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
      argument words alone and the prefix must reach only that stage. */
   if (!m_has_compound_stage.has_value()) {
     bool has_compound_stage = false;
+    bool has_assignment_only_stage = false;
     for (let const stage : m_commands) {
       if (!stage->is_simple_command()) {
         has_compound_stage = true;
         break;
       }
-      /* A command-less stage of bare assignments keeps the fast path, so the
-         strict diagnostic for x=1 | cat is preserved. */
+
       const SimpleCommand *simple = static_cast<const SimpleCommand *>(stage);
-      if (!simple->local_vars().is_empty() && !simple->args().is_empty()) {
-        has_compound_stage = true;
-        break;
+      if (simple->local_vars().is_empty()) continue;
+
+      if (simple->args().is_empty()) {
+        has_assignment_only_stage = true;
+        continue;
       }
+
+      has_compound_stage = true;
+      break;
     }
     m_has_compound_stage = has_compound_stage;
+    m_has_assignment_only_stage = has_assignment_only_stage;
   }
 
-  bool has_compound_stage = *m_has_compound_stage;
+  /* A command-less stage of bare assignments keeps the fast path in the kosh
+     mood, so the strict diagnostic for x=1 | cat is preserved. The other moods
+     fork it, so its values expand in the child and report their status. */
+  bool has_compound_stage =
+      *m_has_compound_stage ||
+      (m_has_assignment_only_stage &&
+       cxt.runtime_state().get_mood() != mimic_mood::Default);
 
   if (!has_compound_stage && cxt.function_store().has_functions()) {
     for (let const stage : m_commands) {

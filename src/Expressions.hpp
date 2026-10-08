@@ -1499,6 +1499,7 @@ protected:
   ArrayList<const Command *> m_commands{heap_allocator()};
 
   mutable Maybe<bool> m_has_compound_stage{};
+  mutable bool m_has_assignment_only_stage{false};
 };
 
 /* Redirections on a compound command are not supported yet. */
