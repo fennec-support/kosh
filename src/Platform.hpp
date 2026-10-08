@@ -504,22 +504,6 @@ fn write_to_named_temp_file(const Path &directory, StringView prefix,
 fn make_temp_directory(const Path &directory, StringView prefix) throws
     -> Maybe<Path>;
 
-/* On a platform that leaves no temp file, such as POSIX, it holds nothing. */
-class TempFileSet
-{
-public:
-  fn track(Path &&path) throws -> void;
-  mustuse fn count() const wontthrow -> usize;
-  /* Delete every file tracked at or after the mark on a best-effort basis, and
-     keep one still held open by a reader for a later retry. */
-  fn cleanup_from(usize mark) wontthrow -> void;
-
-private:
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
-  ArrayList<Path> m_paths{heap_allocator()};
-#endif
-};
-
 fn get_file_creation_mask() wontthrow -> u32;
 fn set_file_creation_mask(u32 mask) wontthrow -> void;
 
@@ -731,10 +715,6 @@ struct filesystem_error_counters
   u64 corruption_count{0};
   u64 generation_count{0};
 };
-
-fn read_filesystem_error_counters(StringView path,
-                                  filesystem_error_counters &counters) throws
-    -> bool;
 
 enum class filesystem_integrity_kind : u8
 {
@@ -1300,8 +1280,6 @@ fn query_string_configuration(string_configuration_key key,
 fn system_configuration(system_configuration_key key) wontthrow -> Maybe<i64>;
 fn path_configuration(StringView path, path_configuration_key key) wontthrow
     -> Maybe<i64>;
-fn string_configuration(string_configuration_key key,
-                        Allocator allocator) throws -> Maybe<String>;
 fn path_component_length(StringView component) wontthrow -> Maybe<usize>;
 
 fn sleep_for_seconds(double seconds) wontthrow -> void;
@@ -1728,8 +1706,6 @@ fn get_real_group_id() wontthrow -> i64;
 fn get_effective_group_id() wontthrow -> i64;
 fn get_supplementary_group_ids(Allocator allocator) throws -> ArrayList<u32>;
 
-fn child_max() wontthrow -> i64;
-
 fn machine_type() throws -> String;
 fn executable_system_name() throws -> String;
 fn executable_machine_name() throws -> String;
@@ -1769,8 +1745,6 @@ pure inline fn has_directory_separator(StringView path) wontthrow -> bool
 }
 
 pure fn path_root_length(StringView path) wontthrow -> usize;
-
-fn make_fd_inheritable(descriptor fd) wontthrow -> void;
 
 fn normalize_program_name(String &program_name) throws -> program_name_info;
 
@@ -1974,18 +1948,6 @@ fn has_network_socket_listing() wontthrow -> bool;
 fn network_sockets(network_socket_process_mode process_mode) throws
     -> ArrayList<network_socket_entry>;
 
-enum class connect_probe_result : u8
-{
-  Connected,
-  Refused,
-  TimedOut,
-  Unreachable,
-};
-
-fn probe_tcp_connect(StringView host, u16 port,
-                     u32 timeout_milliseconds) wontthrow
-    -> connect_probe_result;
-
 struct user_session
 {
   String user{heap_allocator()};
@@ -2024,8 +1986,6 @@ fn enumerate_groups() throws -> ArrayList<String>;
    non-interactive script leaves those at their default. SIGINT routes to the
    polled handler in both modes. */
 fn set_default_signal_handlers(signal_profile profile) throws -> void;
-
-fn reset_signal_handlers() throws -> void;
 
 /* Runs the hook in this process at exit and on a fatal signal before the signal
    takes its previous action. The hook must be async-signal-safe. */

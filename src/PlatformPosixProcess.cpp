@@ -1445,11 +1445,6 @@ fn get_supplementary_group_ids(Allocator allocator) throws -> ArrayList<u32>
   return groups;
 }
 
-fn child_max() wontthrow -> i64
-{
-  return static_cast<i64>(sysconf(_SC_CHILD_MAX));
-}
-
 fn machine_type() throws -> String
 {
   static const String cached = []() -> String {

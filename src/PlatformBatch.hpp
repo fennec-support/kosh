@@ -48,8 +48,6 @@ struct batch_operation
   static fn exists(const Path &path) wontthrow -> batch_operation;
   static fn lstat_at(descriptor directory, const char *name,
                      file_status &status) wontthrow -> batch_operation;
-  static fn stat_at(descriptor directory, const char *name,
-                    file_status &status) wontthrow -> batch_operation;
   static fn lstat(Path &&path, file_status &status) wontthrow
       -> batch_operation = delete;
   static fn lstat(const Path &&path, file_status &status) wontthrow

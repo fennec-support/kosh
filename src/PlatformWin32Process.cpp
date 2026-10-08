@@ -2809,18 +2809,6 @@ fn set_default_signal_handlers(signal_profile profile) -> void
   }
 }
 
-fn reset_signal_handlers() -> void
-{
-  if (signal(SIGTERM, SIG_DFL) == SIG_ERR || signal(SIGINT, SIG_DFL) == SIG_ERR)
-  {
-    throw Error{"Could not restore the default signal handlers: " +
-                last_system_error_message()};
-  }
-
-  /* A stale inherited flag would throw Interrupted before the child runs. */
-  INTERRUPT_REQUESTED = 0;
-}
-
 static fn handle_trapped_signal(int signal_number) -> void
 {
   if (is_trappable_signal(signal_number))
@@ -2911,8 +2899,6 @@ fn get_supplementary_group_ids(Allocator allocator) throws -> ArrayList<u32>
   groups.push(0);
   return groups;
 }
-
-fn child_max() wontthrow -> i64 { return 0; }
 
 fn machine_type() throws -> String
 {

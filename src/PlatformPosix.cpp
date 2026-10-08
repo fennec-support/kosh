@@ -761,10 +761,6 @@ fn close_fd(os::descriptor fd) wontthrow -> bool
   return true;
 }
 
-fn TempFileSet::track(Path &&) throws -> void {}
-fn TempFileSet::count() const wontthrow -> usize { return 0; }
-fn TempFileSet::cleanup_from(usize mark) wontthrow -> void { unused(mark); }
-
 fn redirect_stdout(os::descriptor target) wontthrow -> os::descriptor
 {
   const os::descriptor saved = fcntl(STDOUT_FILENO, F_DUPFD_CLOEXEC, 0);
@@ -1310,100 +1306,6 @@ fn network_sockets(network_socket_process_mode process_mode) throws
   unused(process_mode);
 #endif
 
-  return result;
-}
-
-static fn probe_one_address(const struct addrinfo *candidate,
-                            u32 timeout_milliseconds) wontthrow
-    -> connect_probe_result
-{
-  let const handle = ::socket(candidate->ai_family, candidate->ai_socktype,
-                              candidate->ai_protocol);
-  if (handle < 0) return connect_probe_result::Unreachable;
-
-  let const previous_flags = ::fcntl(handle, F_GETFL, 0);
-  if (previous_flags >= 0) {
-    ::fcntl(handle, F_SETFL, previous_flags | O_NONBLOCK);
-  }
-
-  connect_probe_result result = connect_probe_result::Unreachable;
-  let const started =
-      ::connect(handle, candidate->ai_addr, candidate->ai_addrlen);
-
-  if (started == 0) {
-    result = connect_probe_result::Connected;
-  } else if (errno != EINPROGRESS) {
-    result = errno == ECONNREFUSED ? connect_probe_result::Refused
-                                   : connect_probe_result::Unreachable;
-  } else {
-    struct pollfd waited{};
-    waited.fd = handle;
-    waited.events = POLLOUT;
-
-    let const ready =
-        ::poll(&waited, 1, static_cast<int>(timeout_milliseconds));
-    if (ready == 0) {
-      result = connect_probe_result::TimedOut;
-    } else if (ready > 0) {
-      int pending = 0;
-      socklen_t pending_length = sizeof(pending);
-      if (::getsockopt(handle, SOL_SOCKET, SO_ERROR, &pending,
-                       &pending_length) != 0)
-      {
-        result = connect_probe_result::Unreachable;
-      } else if (pending == 0) {
-        result = connect_probe_result::Connected;
-      } else if (pending == ECONNREFUSED) {
-        result = connect_probe_result::Refused;
-      } else if (pending == ETIMEDOUT) {
-        result = connect_probe_result::TimedOut;
-      } else {
-        result = connect_probe_result::Unreachable;
-      }
-    }
-  }
-
-  ::close(handle);
-  return result;
-}
-
-fn probe_tcp_connect(StringView host, u16 port,
-                     u32 timeout_milliseconds) wontthrow -> connect_probe_result
-{
-  const String host_string{host};
-  char service[8]{};
-  usize digit_count = 0;
-  u16 remaining = port;
-  char reversed[8]{};
-  do {
-    reversed[digit_count] = static_cast<char>('0' + (remaining % 10));
-    remaining /= 10;
-    digit_count++;
-  } while (remaining != 0 && digit_count < sizeof(reversed));
-
-  for (usize index = 0; index < digit_count; index++)
-    service[index] = reversed[digit_count - index - 1];
-
-  struct addrinfo request{};
-  request.ai_family = AF_UNSPEC;
-  request.ai_socktype = SOCK_STREAM;
-
-  struct addrinfo *resolved = nullptr;
-  if (::getaddrinfo(host_string.c_str(), service, &request, &resolved) != 0) {
-    return connect_probe_result::Unreachable;
-  }
-
-  connect_probe_result result = connect_probe_result::Unreachable;
-  for (let const *candidate = resolved; candidate != nullptr;
-       candidate = candidate->ai_next)
-  {
-    result = probe_one_address(candidate, timeout_milliseconds);
-    if (result == connect_probe_result::Connected) break;
-
-    if (result == connect_probe_result::Refused) break;
-  }
-
-  ::freeaddrinfo(resolved);
   return result;
 }
 
@@ -2330,7 +2232,7 @@ fn apply_terminal_settings(descriptor terminal,
   return {terminal_settings_apply_kind::Success, 0};
 }
 
-fn make_fd_inheritable(descriptor fd) wontthrow -> void
+static fn make_fd_inheritable(descriptor fd) wontthrow -> void
 {
   const int flags = fcntl(fd, F_GETFD);
   if (flags != -1) fcntl(fd, F_SETFD, flags & ~FD_CLOEXEC);
@@ -2492,7 +2394,7 @@ static fn install_child_state_handler() throws -> void
   check_syscall(sigaction(SIGCHLD, &action, nullptr));
 }
 
-fn reset_signal_handlers() throws -> void
+static fn reset_signal_handlers() throws -> void
 {
   LOG(Debug, "restoring signal dispositions for a child process");
 

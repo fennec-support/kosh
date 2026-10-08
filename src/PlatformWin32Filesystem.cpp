@@ -1596,15 +1596,6 @@ fn mounted_filesystems() throws -> ArrayList<mounted_filesystem>
   return result;
 }
 
-fn read_filesystem_error_counters(StringView path,
-                                  filesystem_error_counters &counters) throws
-    -> bool
-{
-  unused(path);
-  unused(counters);
-  return false;
-}
-
 fn read_filesystem_integrity_evidence(StringView path) throws
     -> Maybe<filesystem_integrity_evidence>
 {

@@ -51,14 +51,6 @@ fn path_configuration(StringView path, path_configuration_key key) wontthrow
   return result.value;
 }
 
-fn string_configuration(string_configuration_key key,
-                        Allocator allocator) throws -> Maybe<String>
-{
-  let result = query_string_configuration(key, allocator);
-  if (result.status != configuration_query_status::Value) return None;
-  return steal(result.value);
-}
-
 static fn is_trappable_signal(i32 signal_number) wontthrow -> bool;
 
 static u64 ENVIRONMENT_EPOCH = 0;

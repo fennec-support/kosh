@@ -90,22 +90,6 @@ fn batch_operation::lstat_at(descriptor directory, const char *name,
   return operation;
 }
 
-fn batch_operation::stat_at(descriptor directory, const char *name,
-                            file_status &status) wontthrow -> batch_operation
-{
-  batch_operation operation;
-  operation.syscall_id = Kind::StatAt;
-  operation.m_primary.input_buffer = name;
-  operation.m_secondary.status = &status;
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
-  operation.byte_offset =
-      static_cast<u64>(reinterpret_cast<uintptr_t>(directory));
-#else
-  operation.byte_offset = static_cast<u64>(directory);
-#endif
-  return operation;
-}
-
 Batch::Batch(Allocator allocator)
     : m_operations(allocator), m_canonical_positions(allocator),
       m_buckets(allocator), m_optimized_operations(allocator)

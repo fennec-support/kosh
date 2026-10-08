@@ -465,28 +465,6 @@ fn close_fd(os::descriptor fd) wontthrow -> bool
   return true;
 }
 
-fn TempFileSet::track(Path &&path) throws -> void { m_paths.push(steal(path)); }
-fn TempFileSet::count() const wontthrow -> usize { return m_paths.count(); }
-fn TempFileSet::cleanup_from(usize mark) wontthrow -> void
-{
-  /* A failed delete keeps the path and retries once the descriptor closes. */
-  usize kept = mark;
-  for (usize i = mark; i < m_paths.count(); i++) {
-    try {
-      let const wide_path = utf8_to_wide(m_paths[i].view(), heap_allocator());
-      if (wide_path.has_value() && DeleteFileW(wide_path->begin()) != FALSE)
-        continue;
-    } catch (...) {}
-    if (kept != i) m_paths[kept] = steal(m_paths[i]);
-    kept++;
-  }
-  while (m_paths.count() > kept)
-    m_paths.remove(m_paths.count() - 1);
-}
-
-/* Windows inherits handles per CreateProcess, so this is a no-op. */
-fn make_fd_inheritable(os::descriptor fd) wontthrow -> void { unused(fd); }
-
 fn redirect_stdout(os::descriptor target) wontthrow -> os::descriptor
 {
   os::descriptor saved = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -1029,101 +1007,6 @@ fn network_sockets(network_socket_process_mode process_mode) throws
 {
   unused(process_mode);
   return ArrayList<network_socket_entry>{heap_allocator()};
-}
-
-static fn probe_one_address(const struct addrinfo *candidate,
-                            u32 timeout_milliseconds) wontthrow
-    -> connect_probe_result
-{
-  let const handle = ::socket(candidate->ai_family, candidate->ai_socktype,
-                              candidate->ai_protocol);
-  if (handle == INVALID_SOCKET) return connect_probe_result::Unreachable;
-
-  u_long is_nonblocking = 1;
-  ioctlsocket(handle, FIONBIO, &is_nonblocking);
-
-  connect_probe_result result = connect_probe_result::Unreachable;
-  let const started = ::connect(handle, candidate->ai_addr,
-                                static_cast<int>(candidate->ai_addrlen));
-
-  if (started == 0) {
-    result = connect_probe_result::Connected;
-  } else if (WSAGetLastError() != WSAEWOULDBLOCK) {
-    result = WSAGetLastError() == WSAECONNREFUSED
-                 ? connect_probe_result::Refused
-                 : connect_probe_result::Unreachable;
-  } else {
-    WSAPOLLFD waited{};
-    waited.fd = handle;
-    waited.events = POLLWRNORM;
-
-    let const ready =
-        WSAPoll(&waited, 1, static_cast<INT>(timeout_milliseconds));
-    if (ready == 0) {
-      result = connect_probe_result::TimedOut;
-    } else if (ready > 0) {
-      int pending = 0;
-      int pending_length = sizeof(pending);
-      if (getsockopt(handle, SOL_SOCKET, SO_ERROR,
-                     reinterpret_cast<char *>(&pending), &pending_length) != 0)
-      {
-        result = connect_probe_result::Unreachable;
-      } else if (pending == 0) {
-        result = connect_probe_result::Connected;
-      } else if (pending == WSAECONNREFUSED) {
-        result = connect_probe_result::Refused;
-      } else if (pending == WSAETIMEDOUT) {
-        result = connect_probe_result::TimedOut;
-      } else {
-        result = connect_probe_result::Unreachable;
-      }
-    }
-  }
-
-  closesocket(handle);
-  return result;
-}
-
-fn probe_tcp_connect(StringView host, u16 port,
-                     u32 timeout_milliseconds) wontthrow -> connect_probe_result
-{
-  if (!ensure_winsock_started()) return connect_probe_result::Unreachable;
-
-  const String host_string{host};
-  char service[8]{};
-  usize digit_count = 0;
-  u16 remaining = port;
-  char reversed[8]{};
-  do {
-    reversed[digit_count] = static_cast<char>('0' + (remaining % 10));
-    remaining /= 10;
-    digit_count++;
-  } while (remaining != 0 && digit_count < sizeof(reversed));
-
-  for (usize index = 0; index < digit_count; index++)
-    service[index] = reversed[digit_count - index - 1];
-
-  struct addrinfo request{};
-  request.ai_family = AF_UNSPEC;
-  request.ai_socktype = SOCK_STREAM;
-
-  struct addrinfo *resolved = nullptr;
-  if (::getaddrinfo(host_string.c_str(), service, &request, &resolved) != 0) {
-    return connect_probe_result::Unreachable;
-  }
-
-  connect_probe_result result = connect_probe_result::Unreachable;
-  for (let const *candidate = resolved; candidate != nullptr;
-       candidate = candidate->ai_next)
-  {
-    result = probe_one_address(candidate, timeout_milliseconds);
-    if (result == connect_probe_result::Connected) break;
-
-    if (result == connect_probe_result::Refused) break;
-  }
-
-  ::freeaddrinfo(resolved);
-  return result;
 }
 
 fn get_processor_counts() wontthrow -> processor_counts

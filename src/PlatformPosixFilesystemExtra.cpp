@@ -907,13 +907,6 @@ fn read_filesystem_integrity_evidence(StringView path) throws
 
 #endif
 
-fn read_filesystem_error_counters(StringView path,
-                                  filesystem_error_counters &counters) throws
-    -> bool
-{
-  return read_native_filesystem_error_counters(path, counters);
-}
-
 fn verify_filesystem_integrity(StringView path, u64 timeout_nanoseconds) throws
     -> filesystem_verification_result
 {
