@@ -585,6 +585,12 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     let appended = String{cxt.scratch_allocator()};
     if (let const existing = cxt.get_variable_value(name))
       appended.append(existing->view());
+    let resolved_name = Maybe<String>{};
+    if (cxt.variable_store().attributes().is_nameref(name)) rarely
+      {
+        resolved_name = cxt.resolve_nameref_base_for_write(name);
+        name = resolved_name->view();
+      }
     if (cxt.is_integer_variable(name)) {
       cxt.append_integer_expression(appended, value_ref.view());
       value_ref = cxt.evaluate_arithmetic_text(appended.view());
@@ -1276,29 +1282,10 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
           assignment.elements, nullptr, argument_lifetime::Persistent,
           argument_context::ArrayLiteral);
       do_trace_array_assignment(assignment, values);
-      if (is_associative_request) {
-        /* A bare element with no bracketed key becomes a key with an empty
-           value. */
+      if (is_associative_request)
         cxt.declare_associative_array(assignment.name);
-        for (let const &element : values) {
-          let const text = element.view();
-          if (!text.is_empty() && text[0] == '[') {
-            if (let const close = text.find_character(']');
-                close.has_value() && *close + 1 < text.length &&
-                text[*close + 1] == '=')
-            {
-              cxt.set_associative_element(
-                  assignment.name, text.substring_of_length(1, *close - 1),
-                  text.substring(*close + 2));
-              continue;
-            }
-          }
-          cxt.set_associative_element(assignment.name, text, StringView{});
-        }
-      } else {
-        cxt.assign_indexed_array_elements(assignment.name, values,
-                                          assignment.update_mode);
-      }
+      cxt.assign_indexed_array_elements(assignment.name, values,
+                                        assignment.update_mode);
       if (is_export) cxt.mark_exported(assignment.name);
       if (is_readonly_request)
         cxt.variable_store().attributes().mark_readonly(assignment.name);

@@ -2,7 +2,8 @@
 # Bash indexed arrays, assignment a=(x y z) and element access, checked
 # byte-for-byte against bash. Covers numeric index, @ and *, the scalar read of
 # element zero, a negative index, an arithmetic subscript, out of range, building
-# one array from another, and iteration.
+# one array from another, and iteration. An integer array evaluates each
+# element of a literal.
 a=(x y z)
 echo "${a[0]}"
 echo "${a[1]}"
@@ -408,3 +409,9 @@ unset 'unset_once[$(printf hit >&2; printf foo)]'
 echo "assoc-unset-once=[${unset_once[foo]+set}]"
 declare -aA invalid_both 2>/dev/null
 printf 'declare-both=%s\n' "$?"
+declare -ai int_literal=(1+1 "" x)
+int_literal+=(3+4 [5]=2*3)
+declare -p int_literal
+declare -Ai int_assoc=([k]=1+1)
+int_assoc+=([j]=2+2)
+echo "int-assoc=${int_assoc[k]} ${int_assoc[j]}"

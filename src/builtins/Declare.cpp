@@ -493,7 +493,14 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         let appended = String{cxt.scratch_allocator()};
         if (let const existing = cxt.get_variable_value(name))
           appended.append(existing->view());
-        if (cxt.is_integer_variable(name))
+        let integer_name = name;
+        let resolved_name = Maybe<String>{};
+        if (cxt.variable_store().attributes().is_nameref(name)) rarely
+          {
+            resolved_name = cxt.resolve_nameref_base_for_write(name);
+            integer_name = resolved_name->view();
+          }
+        if (cxt.is_integer_variable(integer_name))
           cxt.append_integer_expression(appended, value);
         else
           appended.append(value);

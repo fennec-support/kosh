@@ -372,7 +372,7 @@ fn AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
     if (m_assignment->get_update_mode() == assignment_update_mode::Append) {
       let appended =
           String{cxt.get_variable_value(m_assignment->key()).value_or("")};
-      if (cxt.is_integer_variable(m_assignment->key()))
+      if (cxt.is_integer_variable(assigned_name))
         cxt.append_integer_expression(appended, value.view());
       else
         appended += value;

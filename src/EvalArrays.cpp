@@ -173,6 +173,15 @@ fn EvalContext::assign_indexed_array_elements(
       return;
     }
 
+  let const is_integer = is_integer_variable(name);
+  let integer_text = String{scratch_allocator()};
+  let const do_element_value = [&](StringView value) throws -> StringView {
+    if (!is_integer) return value;
+
+    integer_text = evaluate_arithmetic_text(value);
+    return integer_text.view();
+  };
+
   if (is_associative_array(name)) {
     if (update_mode != assignment_update_mode::Append) {
       clear_associative_array(name);
@@ -183,9 +192,9 @@ fn EvalContext::assign_indexed_array_elements(
       StringView subscript;
       StringView value;
       if (parse_explicit_array_index(element.view(), subscript, value))
-        set_associative_element(name, subscript, value);
+        set_associative_element(name, subscript, do_element_value(value));
       else
-        set_associative_element(name, element.view(), "");
+        set_associative_element(name, element.view(), do_element_value(""));
     }
     return;
   }
@@ -224,9 +233,9 @@ fn EvalContext::assign_indexed_array_elements(
         throw Error{"Unable to index '" + name +
                     "' because the array subscript is invalid"};
       index = static_cast<usize>(raw_index);
-      set_array_element(name, index, value);
+      set_array_element(name, index, do_element_value(value));
     } else {
-      set_array_element(name, index, element.view());
+      set_array_element(name, index, do_element_value(element.view()));
     }
     running_index = index + 1;
   }

@@ -8,7 +8,8 @@
 # reads as unset and fails an assignment. A reference to itself is an error at
 # the top level, and inside a function it warns and reaches the variable
 # outside the function. RANDOM and SECONDS take the attribute and keep their
-# generated value, so each expansion or assignment of the name fails.
+# generated value, so each expansion or assignment of the name fails. An
+# append through a reference adds when the target is an integer.
 X=1
 declare -n r=X
 r=2
@@ -316,3 +317,23 @@ echo "dynamic_target=$dynamic_target"
 seconds_local_unset() { local -n SECONDS=dynamic_target; unset -n SECONDS; }
 seconds_local_unset
 [[ $SECONDS =~ ^[0-9]+$ ]] && echo "seconds counts after a local unset -n"
+declare -i int_target=10
+declare -n int_ref=int_target
+int_ref+=5
+echo "integer append $int_target"
+int_ref+=1 eval 'echo "integer prefix append $int_target"'
+declare int_ref+=2
+echo "integer declare append $int_target"
+export int_ref+=3
+echo "integer export append $int_target"
+declare -ai int_array=(1)
+declare -n int_array_ref=int_array
+int_array_ref+=(3+4)
+declare -p int_array
+int_append_local() {
+  local -n int_local=$1
+  int_local+=10
+}
+declare -i int_caller=1
+int_append_local int_caller
+echo "integer local reference append $int_caller"

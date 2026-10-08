@@ -586,10 +586,17 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
             let const expanded_value =
                 expand_word_for_assignment(assignment_token->value_word());
             /* An integer name adds rather than concatenates. */
-            if (assignment_token->get_update_mode() ==
-                    assignment_update_mode::Append &&
-                is_integer_variable(assignment_token->key()))
+            let const is_append = assignment_token->get_update_mode() ==
+                                  assignment_update_mode::Append;
+            let integer_name = assignment_token->key().view();
+            let resolved_name = Maybe<String>{};
+            if (is_append &&
+                variable_store().attributes().is_nameref(integer_name))
             {
+              resolved_name = resolve_nameref_base_for_write(integer_name);
+              integer_name = resolved_name->view();
+            }
+            if (is_append && is_integer_variable(integer_name)) {
               append_integer_expression(assignment, expanded_value.view());
             } else {
               assignment.append(expanded_value.view());
