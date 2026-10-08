@@ -2212,6 +2212,22 @@ static fn spawn_subshell_stage(StringView source, Maybe<descriptor> in_fd,
   let const module_path = current_executable_path();
   if (!module_path.has_value()) return koshka::None;
 
+  if (bootstrap != nullptr &&
+      !subshell_transport_header::from_bootstrap(*bootstrap).has_value())
+  {
+    let const state_byte_count = static_cast<u64>(bootstrap->payload.count()) +
+                                 bootstrap->source_origin.count() +
+                                 bootstrap->processes.count() * sizeof(u64);
+    throw Error{
+        "The shell state is " +
+        String::from(state_byte_count, heap_allocator()) +
+        " bytes, more than the " +
+        String::from(static_cast<u64>(
+                         subshell_transport_header::MAXIMUM_TRANSPORT_LENGTH),
+                     heap_allocator()) +
+        " bytes a Windows child shell can receive"};
+  }
+
   let arguments = ArrayList<String>{heap_allocator()};
   arguments.push(String{heap_allocator(), module_path->view()});
   arguments.push(String{heap_allocator(), StringView{"--privileged"}});
@@ -2311,9 +2327,17 @@ fn launch_compound_stage(const compound_stage_options &options) throws
         "A compound command in a pipeline is not supported on this platform"};
 
   unused(options.process_group_id);
-  let child = spawn_subshell_stage(options.source, options.in_fd,
-                                   options.out_fd, options.err_fd, true,
-                                   options.evaluator, options.process_group);
+  Maybe<process> child = None;
+  try {
+    child = spawn_subshell_stage(options.source, options.in_fd, options.out_fd,
+                                 options.err_fd, true, options.evaluator,
+                                 options.process_group);
+  } catch (const Error &error) {
+    throw ErrorWithLocation{
+        steal(options.location),
+        String{heap_allocator(), error.message().view()}
+    };
+  }
   if (!child.has_value())
     throw ErrorWithLocation{steal(options.location),
                             "Could not spawn the compound pipeline stage"};
