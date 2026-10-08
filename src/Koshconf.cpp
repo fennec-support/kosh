@@ -821,37 +821,50 @@ fn make_koshconf_preset(mimic_mood preset) throws -> String
       previous_group = group;
     }
 
-    let comment = String{StringView{option->help}};
+    let spelling = String{heap_allocator()};
     if (!option->set_name.is_empty()) {
-      comment += " (set -o ";
-      comment += option->set_name;
-      comment += ')';
+      spelling += "(set -o ";
+      spelling += option->set_name;
+      spelling += ')';
     } else if (!option->shopt_name.is_empty()) {
-      comment += " (shopt ";
-      comment += option->shopt_name;
-      comment += ')';
+      spelling += "(shopt ";
+      spelling += option->shopt_name;
+      spelling += ')';
     } else if (option->storage == option_storage::EditorMode) {
       usize alias_count = 0;
       for (let const &alias : get_option_registry()) {
         if (!alias.is_set_alias || alias.storage != option_storage::EditorMode)
           continue;
 
-        comment += alias_count == 0 ? " (set -o " : " or set -o ";
-        comment += alias.set_name;
+        spelling += alias_count == 0 ? "(set -o " : " or set -o ";
+        spelling += alias.set_name;
         alias_count++;
       }
-      if (alias_count != 0) comment += ')';
+      if (alias_count != 0) spelling += ')';
     }
+
+    let comment = String{StringView{option->help}};
     if (preset == mimic_mood::Bash && option->is_bash_default_session_dependent)
       comment += " Left unset, it is on in an interactive shell and off in a "
                  "script.";
 
-    let const wrapped =
-        wrap_text(comment.view(), 0, KOSHCONF_COMMENT_WIDTH - 2);
+    constexpr usize COMMENT_TEXT_WIDTH = KOSHCONF_COMMENT_WIDTH - 2;
+    let const wrapped = wrap_text(comment.view(), 0, COMMENT_TEXT_WIDTH);
     usize position = 0;
     while (position < wrapped.count()) {
+      let const row =
+          wrapped.view().next_line(position).without_trailing_newline();
       contents += "# ";
-      contents += wrapped.view().next_line(position).without_trailing_newline();
+      contents += row;
+      let const is_last_row = position >= wrapped.count();
+      if (is_last_row && !spelling.is_empty()) {
+        if (row.count() + 1 + spelling.count() <= COMMENT_TEXT_WIDTH) {
+          contents += ' ';
+        } else {
+          contents += "\n# ";
+        }
+        contents += spelling.view();
+      }
       contents += '\n';
     }
 

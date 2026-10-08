@@ -312,8 +312,10 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
     with_enum(make_entry(12, "diagnostics.warning_level", option_type::Enum,
                          INTERACTIVE, option_storage::WarningLevel,
                          NO_SHELL_OPTION,
-                         entry_shape{.help = "Step through the diagnostic "
-                                             "tiers with -W, -WW, and -WWW.",
+                         entry_shape{.help = "Set the diagnostic level from 0 "
+                                             "to 3: 0 keeps the mood's "
+                                             "default, and 1, 2, and 3 act "
+                                             "as -W, -WW, and -WWW.",
                                      .letter = 'W'},
                          0, 0),
               enum_values(WARNING_LEVEL_VALUE_NAMES)),
@@ -332,8 +334,10 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
          entry_shape{{},
                      {},
                      {},
-                     "Resolve the bundled koshkit utility names "
-                     "directly as commands."},
+                     "Let the bash and sh moods run a bundled koshkit "
+                     "utility by its plain name when PATH has no program "
+                     "of that name. The kosh mood always does, whatever "
+                     "this value."},
          false),
     fixed_in_kosh(
         make_entry(16, "arithmetic.use_big_integers_and_decimals",

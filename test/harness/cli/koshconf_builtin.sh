@@ -48,6 +48,10 @@ grep -c '^legacy\.glob' "$conf"
 grep -B2 '^legacy.glob_includes_dotfiles=' "$conf"
 grep -c '^# history.file_path=$' "$conf"
 grep -c '^legacy.privileged_mode=' "$conf"
+echo "== a Bash spelling stays on one comment line:"
+grep -c -E '\((set -o|shopt) [a-z_]*$' "$conf"
+grep -c -E '^# [a-z_]+\)$' "$conf"
+grep -B1 '^legacy.assignments_anywhere_in_command=' "$conf"
 
 echo "== set changes the session, and --persist rewrites one line:"
 "$BIN" -c 'koshconf set editor.auto_close_brackets_and_quotes true; koshconf get editor.auto_close_brackets_and_quotes'

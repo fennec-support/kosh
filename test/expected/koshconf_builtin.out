@@ -139,7 +139,8 @@ history.max_entries=4096
 # on-excluding-trailing-slash for all but a directory.
 completion.add_space_after_completed_word=off
 
-# Step through the diagnostic tiers with -W, -WW, and -WWW.
+# Set the diagnostic level from 0 to 3: 0 keeps the mood's default, and 1, 2,
+# and 3 act as -W, -WW, and -WWW.
 diagnostics.warning_level=0
 # Report the annoying diagnostic tier.
 diagnostics.show_annoying_tier=on
@@ -149,7 +150,9 @@ diagnostics.analyze_before_running=on
 # warning.
 diagnostics.show_source_traces=on
 
-# Resolve the bundled koshkit utility names directly as commands.
+# Let the bash and sh moods run a bundled koshkit utility by its plain name when
+# PATH has no program of that name. The kosh mood always does, whatever this
+# value.
 koshkit.run_utilities_as_plain_commands=off
 
 # Use arbitrary-precision integers and finite decimal values.
@@ -178,16 +181,16 @@ debug.print_memory_report_at_exit=off
 # Expand aliases in commands. (shopt expand_aliases)
 legacy.aliases_expand=on
 
-# Expand an array subscript once in assignments and arithmetic. (shopt
-# assoc_expand_once)
+# Expand an array subscript once in assignments and arithmetic.
+# (shopt assoc_expand_once)
 legacy.array_subscripts_expand_once=off
 
-# Place assignment arguments anywhere in a command into its environment. (set -o
-# keyword)
+# Place assignment arguments anywhere in a command into its environment.
+# (set -o keyword)
 legacy.assignments_anywhere_in_command=off
 
-# Edit the command line with emacs or vi key bindings. (set -o emacs or set -o
-# vi)
+# Edit the command line with emacs or vi key bindings.
+# (set -o emacs or set -o vi)
 legacy.base_editor_mode=emacs
 
 # Enable brace expansion. (set -o braceexpand)
@@ -199,18 +202,18 @@ legacy.cd_by_typing_directory_name=on
 legacy.cd_fix_typos=off
 # Resolve symbolic links while changing directories. (set -o physical)
 legacy.cd_resolves_symlinks=off
-# Treat a cd operand that is not a directory as a variable naming one. (shopt
-# cdable_vars)
+# Treat a cd operand that is not a directory as a variable naming one.
+# (shopt cdable_vars)
 legacy.cd_to_variable_value=off
 
 # Let a command substitution inherit set -e. (shopt inherit_errexit)
 legacy.command_substitution_inherits_exit_on_failure=off
 
-# Drop FIGNORE suffixes from completions even when that leaves none. (shopt
-# force_fignore)
+# Drop FIGNORE suffixes from completions even when that leaves none.
+# (shopt force_fignore)
 legacy.completion_always_apply_fignore=on
-# Replace a directory name with its expansion during completion. (shopt
-# direxpand)
+# Replace a directory name with its expansion during completion.
+# (shopt direxpand)
 legacy.completion_expand_directory_names=off
 # Correct a misspelled directory name during completion. (shopt dirspell)
 legacy.completion_fix_directory_typos=off
@@ -218,17 +221,17 @@ legacy.completion_fix_directory_typos=off
 legacy.completion_hostnames_after_at=on
 # Use the completion specifications defined by complete. (shopt progcomp)
 legacy.completion_programmable=on
-# Complete an alias with the specification of the command it names. (shopt
-# progcomp_alias)
+# Complete an alias with the specification of the command it names.
+# (shopt progcomp_alias)
 legacy.completion_programmable_follows_aliases=off
-# Quote every shell metacharacter in a completed file name. (shopt
-# complete_fullquote)
+# Quote every shell metacharacter in a completed file name.
+# (shopt complete_fullquote)
 legacy.completion_quote_all_special_characters=on
 # Offer no command completion on an empty line. (shopt no_empty_cmd_completion)
 legacy.completion_skip_empty_line=off
 
-# Require repeated end-of-file input before an interactive shell exits. (set -o
-# ignoreeof)
+# Require repeated end-of-file input before an interactive shell exits.
+# (set -o ignoreeof)
 legacy.ctrl_d_does_not_exit=off
 
 # Enable the behavior Bash provides for debuggers. (shopt extdebug)
@@ -240,8 +243,8 @@ legacy.echo_interprets_backslash_escapes=off
 # Write error messages in the GNU file:line format. (shopt gnu_errfmt)
 legacy.errors_use_gnu_format=off
 
-# Keep a non-interactive shell running when exec cannot run its command. (shopt
-# execfail)
+# Keep a non-interactive shell running when exec cannot run its command.
+# (shopt execfail)
 legacy.exec_failure_keeps_shell=off
 
 # Exit on the first command that fails. (set -o errexit)
@@ -267,8 +270,8 @@ legacy.glob_never_matches_dot_and_dotdot=on
 legacy.glob_no_match_expands_to_nothing=off
 # Fail a command whose glob matches nothing. (shopt failglob)
 legacy.glob_no_match_is_error=on
-# Order bracket ranges in globs and patterns by byte value. (shopt
-# globasciiranges)
+# Order bracket ranges in globs and patterns by byte value.
+# (shopt globasciiranges)
 legacy.glob_ranges_use_ascii_order=on
 
 # Return a failed history substitution to the editor. (shopt histreedit)
@@ -280,36 +283,36 @@ legacy.history_verify_expansion_before_running=off
 # Allow comments in interactive shell input. (set -o interactive-comments)
 legacy.interactive_comments=on
 
-# List running and stopped jobs before an interactive shell exits. (shopt
-# checkjobs)
+# List running and stopped jobs before an interactive shell exits.
+# (shopt checkjobs)
 legacy.jobs_check_before_exit=off
-# Send SIGHUP to every job when an interactive login shell exits. (shopt
-# huponexit)
+# Send SIGHUP to every job when an interactive login shell exits.
+# (shopt huponexit)
 legacy.jobs_hangup_on_exit=off
-# Report a background job's completion immediately when it finishes. (set -o
-# notify)
+# Report a background job's completion immediately when it finishes.
+# (set -o notify)
 legacy.jobs_report_status_immediately=off
 
-# Give a new local variable the value of the variable it shadows. (shopt
-# localvar_inherit)
+# Give a new local variable the value of the variable it shadows.
+# (shopt localvar_inherit)
 legacy.local_inherits_outer_value=off
-# Keep a local variable unset by unset from exposing the outer one. (shopt
-# localvar_unset)
+# Keep a local variable unset by unset from exposing the outer one.
+# (shopt localvar_unset)
 legacy.local_unset_hides_outer=off
 
 # Warn when a checked mail file was read since the last check. (shopt mailwarn)
 legacy.mail_warn_when_read=off
 
-# Match case, [[, and pattern operators without regard to case. (shopt
-# nocasematch)
+# Match case, [[, and pattern operators without regard to case.
+# (shopt nocasematch)
 legacy.match_ignores_case=off
 
-# Replace an unquoted & in ${name/pattern/string} with the match. (shopt
-# patsub_replacement)
+# Replace an unquoted & in ${name/pattern/string} with the match.
+# (shopt patsub_replacement)
 legacy.pattern_substitution_ampersand_is_match=on
 
-# Report a pipeline's status as the rightmost stage that failed. (set -o
-# pipefail)
+# Report a pipeline's status as the rightmost stage that failed.
+# (set -o pipefail)
 legacy.pipeline_fails_on_any_stage=on
 # Run the last stage of a pipeline in the current shell. (shopt lastpipe)
 legacy.pipeline_last_stage_runs_in_shell=off
@@ -317,8 +320,8 @@ legacy.pipeline_last_stage_runs_in_shell=off
 # Expand parameters and substitutions in prompt strings. (shopt promptvars)
 legacy.prompt_expands_parameters=on
 
-# Process $'...' and $"..." quoting inside a quoted ${...} expansion. (shopt
-# extquote)
+# Process $'...' and $"..." quoting inside a quoted ${...} expansion.
+# (shopt extquote)
 legacy.quote_dollar_strings_in_parameter_expansion=on
 
 # Refuse to overwrite an existing file through '>'. (set -o noclobber)
@@ -326,8 +329,8 @@ legacy.redirect_refuses_to_overwrite_files=off
 # Close a {name}> descriptor when its command finishes. (shopt varredir_close)
 legacy.redirect_variable_fd_closed_after_command=off
 
-# Report a shift count larger than the positional parameters. (shopt
-# shift_verbose)
+# Report a shift count larger than the positional parameters.
+# (shopt shift_verbose)
 legacy.shift_reports_overflow=off
 
 # Search PATH for a source operand without a slash. (shopt sourcepath)
@@ -348,12 +351,12 @@ legacy.trap_err_inherited_by_functions=off
 # Treat an unset variable as an error. (set -o nounset)
 legacy.unset_variable_is_error=on
 
-# Update COLUMNS and LINES after each command from the terminal size. (shopt
-# checkwinsize)
+# Update COLUMNS and LINES after each command from the terminal size.
+# (shopt checkwinsize)
 legacy.update_columns_and_lines=on
 
-# Check that a remembered command path still exists before running it. (shopt
-# checkhash)
+# Check that a remembered command path still exists before running it.
+# (shopt checkhash)
 legacy.verify_remembered_command_paths=off
 == create refuses an existing file without --force:
 -c:1:1: error: Builtin `koshconf`: The configuration file 'CONFIG/user/kosh/kosh.conf' already exists.
@@ -365,8 +368,8 @@ rc=0
 mood=bash
 == the bash preset matches a fresh bash session:
 == the bash preset leaves the alias default to the session:
-# Expand aliases in commands. (shopt expand_aliases) Left unset, it is on in an
-# interactive shell and off in a script.
+# Expand aliases in commands. Left unset, it is on in an interactive shell and
+# off in a script. (shopt expand_aliases)
 # legacy.aliases_expand=
 shopt -u expand_aliases
 == the sh preset matches a fresh sh session:
@@ -377,6 +380,11 @@ legacy.glob_ignores_case=off
 legacy.glob_includes_dotfiles=off
 1
 0
+== a Bash spelling stays on one comment line:
+0
+0
+# (set -o keyword)
+legacy.assignments_anywhere_in_command=off
 == set changes the session, and --persist rewrites one line:
 on
 editor.auto_close_brackets_and_quotes=on
