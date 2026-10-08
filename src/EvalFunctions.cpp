@@ -25,6 +25,8 @@ namespace koshka {
 
 namespace {
 
+constexpr StringView TRAP_SOURCE_NAME{"trap"};
+
 constexpr PackedStringKey RESTRICTED_READONLY_KEYS[] = {
     SSK("SHELL"),
     SSK("PATH"),
@@ -357,7 +359,7 @@ fn EvalContext::cached_trap_body(StringView condition, StringView action) throws
   ASSERT(stored_action != nullptr);
 
   let parser = Parser{
-      Lexer{stored_action->view(), *body_storage.get_arena(), None,
+      Lexer{stored_action->view(), *body_storage.get_arena(), TRAP_SOURCE_NAME,
             runtime_state().get_mood(),
             ParseSession::AllocationKind::FunctionBody}
   };
@@ -436,7 +438,7 @@ fn EvalContext::run_named_trap(StringView condition,
   let const definition = trap_store().find_definition(condition);
 
   run_source(action, "the " + String{heap_allocator(), condition} + " trap",
-             trigger_site, None, nullptr,
+             trigger_site, TRAP_SOURCE_NAME, nullptr,
              cached_action.has_value() ? &cached_action : nullptr,
              return_handling::Reject, history_recording::Disabled,
              definition.has_value() ? &*definition : nullptr);
@@ -829,7 +831,7 @@ fn EvalContext::run_pending_traps() throws -> void
       let const definition = trap_store().find_definition(name->view());
 
       run_source(action, "the " + *name + " trap",
-                 source_store().current_location(), None, nullptr,
+                 source_store().current_location(), TRAP_SOURCE_NAME, nullptr,
                  cached_action.has_value() ? &cached_action : nullptr,
                  return_handling::Reject, history_recording::Disabled,
                  definition.has_value() ? &*definition : nullptr);
@@ -878,7 +880,7 @@ fn EvalContext::run_pending_traps() throws -> void
 
         LOG(Info, "running the trap action for signal 'CHLD'");
         run_source(action.view(), "the CHLD trap",
-                   source_store().current_location(), None, nullptr,
+                   source_store().current_location(), TRAP_SOURCE_NAME, nullptr,
                    cached_child_body, return_handling::Reject,
                    history_recording::Disabled,
                    child_definition.has_value() ? &*child_definition : nullptr);
@@ -933,8 +935,9 @@ cold fn EvalContext::run_exit_trap(Maybe<i32> final_status) throws -> void
     LOG(Info, "running the EXIT trap action at shell exit");
     let const definition = trap_store().find_definition(StringView{"EXIT", 4});
 
-    run_source(trap->action_text.view(), "the EXIT trap", None, None, nullptr,
-               nullptr, return_handling::Reject, history_recording::Disabled,
+    run_source(trap->action_text.view(), "the EXIT trap", None,
+               TRAP_SOURCE_NAME, nullptr, nullptr, return_handling::Reject,
+               history_recording::Disabled,
                definition.has_value() ? &*definition : nullptr);
   }
 
@@ -991,8 +994,9 @@ cold fn EvalContext::run_subshell_exit_trap() throws -> Maybe<i32>
     LOG(Info, "running the EXIT trap action the subshell set at its end");
     let const definition = trap_store().find_definition(StringView{"EXIT", 4});
 
-    run_source(trap->action_text.view(), "the EXIT trap", None, None, nullptr,
-               nullptr, return_handling::Reject, history_recording::Disabled,
+    run_source(trap->action_text.view(), "the EXIT trap", None,
+               TRAP_SOURCE_NAME, nullptr, nullptr, return_handling::Reject,
+               history_recording::Disabled,
                definition.has_value() ? &*definition : nullptr);
 
     if (control_flow_store().has_pending() &&

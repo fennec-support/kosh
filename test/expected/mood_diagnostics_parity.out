@@ -52,7 +52,7 @@ trap.sh bash-posix: same
 trap.sh dumb: same
 -- reference
 body
-1:6: error: Division by zero.
+trap:1:6: error: Division by zero.
      1 |  echo $((1/0))
        |       ^~~~~~~~
 note: The right operand evaluated to 0.

@@ -191,7 +191,7 @@ cleaning
 ./trap_lib.sh:5:3: error: The command 'missing_cleanup' was not found.
      5 |    missing_cleanup
        |    ^~~~~~~~~~~~~~~
-1:1: trace:
+trap:1:1: trace:
      1 |  cleanup
        |  ^~~~~~~
 ./trap_lib.sh:7:1: trace:
@@ -200,7 +200,7 @@ cleaning
 rc=0
 == trap on EXIT
 working
-1:1: error: The command 'missing_exit_action' was not found.
+trap:1:1: error: The command 'missing_exit_action' was not found.
      1 |  missing_exit_action
        |  ^~~~~~~~~~~~~~~~~~~
 trap_exit.sh:2:1: trace:
@@ -208,7 +208,7 @@ trap_exit.sh:2:1: trace:
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 rc=0
 == trap on a signal
-1:1: error: The command 'missing_signal_action' was not found.
+trap:1:1: error: The command 'missing_signal_action' was not found.
      1 |  missing_signal_action
        |  ^~~~~~~~~~~~~~~~~~~~~
 trap_signal.sh:1:1: trace:
@@ -220,7 +220,7 @@ trap_signal.sh:1:1: trace:
 after-signal
 rc=0
 == trap on ERR
-1:1: error: The command 'missing_err_action' was not found.
+trap:1:1: error: The command 'missing_err_action' was not found.
      1 |  missing_err_action
        |  ^~~~~~~~~~~~~~~~~~
 trap_err.sh:1:1: trace:
@@ -232,7 +232,7 @@ trap_err.sh:1:1: trace:
 after-err
 rc=0
 == trap on DEBUG
-1:1: error: The command 'missing_debug_action' was not found.
+trap:1:1: error: The command 'missing_debug_action' was not found.
      1 |  missing_debug_action
        |  ^~~~~~~~~~~~~~~~~~~~
 trap_debug.sh:1:1: trace:
@@ -242,7 +242,7 @@ trap_debug.sh:1:1: trace:
      2 |  echo debugged
        |  ^~~~~~~~~~~~~
 debugged
-1:1: error: The command 'missing_debug_action' was not found.
+trap:1:1: error: The command 'missing_debug_action' was not found.
      1 |  missing_debug_action
        |  ^~~~~~~~~~~~~~~~~~~~
 trap_debug.sh:1:1: trace:
@@ -254,7 +254,7 @@ trap_debug.sh:1:1: trace:
 rc=0
 == trap on RETURN
 in-f
-1:1: error: The command 'missing_return_action' was not found.
+trap:1:1: error: The command 'missing_return_action' was not found.
      1 |  missing_return_action
        |  ^~~~~~~~~~~~~~~~~~~~~
 trap_return.sh:3:3: trace:
@@ -272,7 +272,7 @@ working
 trap_function.sh:3:3: error: The command 'missing_in_function' was not found.
      3 |    missing_in_function
        |    ^~~~~~~~~~~~~~~~~~~
-1:1: trace:
+trap:1:1: trace:
      1 |  inner_failure
        |  ^~~~~~~~~~~~~
 trap_function.sh:5:1: trace:
@@ -281,7 +281,7 @@ trap_function.sh:5:1: trace:
 rc=0
 == trap defined inside a function
 working
-1:1: error: The command 'missing_installed' was not found.
+trap:1:1: error: The command 'missing_installed' was not found.
      1 |  missing_installed
        |  ^~~~~~~~~~~~~~~~~
 trap_in_function.sh:3:3: trace:
@@ -348,7 +348,7 @@ building
 ./helper_lib.sh:5:3: error: The command 'missing_tool' was not found.
      5 |    missing_tool --flag
        |    ^~~~~~~~~~~~
-1:1: trace:
+trap:1:1: trace:
      1 |  build
        |  ^~~~~
 combined.sh:2:1: trace:
@@ -468,7 +468,7 @@ building
 ./helper_lib.sh:5:3: error: The command 'missing_tool' was not found.
      5 |    missing_tool --flag
        |    ^~~~~~~~~~~~
-1:3: trace:
+trap:1:3: trace:
      1 |  ( build )
        |    ^~~~~
 1:1: trace:

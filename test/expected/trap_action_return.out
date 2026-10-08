@@ -26,7 +26,7 @@ n=3
 tail
 rc=0
 == a return with no function and no sourced file runs the traced command:
-1:37: error: Builtin `return`: can only `return' from a function or sourced script.
+trap:1:37: error: Builtin `return`: can only `return' from a function or sourced script.
      1 |  case "$BASH_COMMAND" in echo\ top*) return 5;; esac
        |                                      ^~~~~~~~
 -c:2:1: trace:
@@ -36,7 +36,7 @@ rc=0
      3 |  echo top-1
        |  ^~~~
 top-1
-1:37: error: Builtin `return`: can only `return' from a function or sourced script.
+trap:1:37: error: Builtin `return`: can only `return' from a function or sourced script.
      1 |  case "$BASH_COMMAND" in echo\ top*) return 5;; esac
        |                                      ^~~~~~~~
 -c:2:1: trace:

@@ -4808,7 +4808,9 @@ such as an eval string or a trap action, is its own source. A location in an
 eval string reads
 .BR eval:2:7: ,
 counted from the start of that string, and the quoted line and caret come from
-it. A function defined by an eval keeps that numbering wherever it is called,
+it. A location in a trap action appears as
+.BR trap:1:5:
+in the same way. A function defined by an eval keeps that numbering wherever it is called,
 including from a background job, while
 .B LINENO
 and
