@@ -9,7 +9,7 @@ note: Write `counter=$(( ... ))` to evaluate the arithmetic.
 7:3: warning: This assignment replaces the command search path with '/opt/local/bin'. (SC2123)
      7 |    PATH=/opt/local/bin
        |    ^~~~~~~~~~~~~~~~~~~
-note: Name the variable something else, or keep `$PATH` in the value.
+note: Assign a different variable, or keep `$PATH` in the value.
 8:3: warning: The value of 'pattern' keeps the pattern as text. (SC2125)
      8 |    pattern=*.txt
        |    ^~~~~~~~~~~~~
@@ -42,7 +42,7 @@ note: Write `swallowed=$(...)` to assign the command output.
     15 |    swallowed=printf 'x\n'
        |    ^~~~~~~~~~~~~~~~
 note: Write `swallowed=$(printf)` to store its output, or quote the name.
-20:8: warning: The expansion of 'entries' without a subscript reads the first element alone. (SC2128)
+20:8: warning: The expansion of 'entries' without a subscript yields the first element alone. (SC2128)
     20 |    echo "$entries"
        |         ^~~~~~~~~~
 note: Write `${entries[@]}` to expand every element.
@@ -70,7 +70,7 @@ note: Quote the element, or split the value with `mapfile` or `read -a`.
     26 |    declared=flat
        |    ^~~~~~~~~~~~~
 note: Write `declared=( ... )` to keep the array.
-28:8: warning: The expansion of 'filled' without a subscript reads the first element alone. (SC2128)
+28:8: warning: The expansion of 'filled' without a subscript yields the first element alone. (SC2128)
     28 |    echo "$filled"
        |         ^~~~~~~~~
 note: Write `${filled[@]}` to expand every element.
@@ -112,7 +112,7 @@ note: Declare it with `local` to keep it inside the function.
 40:3: warning: The value assigned to 'same' is the value 'same' already holds. (SC2269)
     40 |    same=$same
        |    ^~~~~~~~~~
-note: Remove the assignment, or name the variable that the value comes from.
+note: Remove the assignment, or use the variable that the value comes from.
 40:3: warning: This assignment to 'same' in a function has no `local`.
     40 |    same=$same
        |    ^~~~~~~~~~
@@ -176,7 +176,7 @@ note: Attach the redirection to its command, or write `: > file`.
 57:5: warning: The pipeline stage holds a redirection and no command. (SC2189)
     57 |    < file.txt | grep foo
        |      ^~~~~~~~
-note: Attach the redirection to the command that reads it.
+note: Attach the redirection to the command that takes it.
 58:14: warning: The redirect opens a file named 'tr', and the command never runs. (SC2238)
     58 |    cat file > tr
        |               ^~
@@ -265,7 +265,7 @@ note: Add a `b)` branch, or drop the letter from the optstring.
        |           ^~~~~~~~~~~~~~
 107:17: details:
    107 |    while getopts "ab:" chosen_option; do
-       |                  ^~~~~ this loop reads the options.
+       |                  ^~~~~ this loop handles the options.
 note: Add a `*)` branch that prints the usage and exits.
 110:5: warning: The optstring does not declare 'z'. (SC2214)
    110 |      z) : ;;
@@ -278,7 +278,7 @@ note: Add the letter to the optstring, or remove the branch.
    116 |    ( echo first || echo second ) && echo third
        |    ^
 note: Write `{ ...; }` to group the commands in the current shell.
-117:5: warning: The `!` inhibits errexit whether the command succeeds or fails, and nothing reads the status. (SC2251)
+117:5: warning: The `!` inhibits errexit whether the command succeeds or fails, and nothing uses the status. (SC2251)
    117 |    ! false
        |      ^~~~~
 note: Write `|| exit 1` after it, or check `$?`.

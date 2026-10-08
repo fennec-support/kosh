@@ -42,7 +42,7 @@ FLAG(DECLARE_LOWERCASE, Bool, 'l', "",
      "Convert every assigned value to lowercase. The +l form removes the "
      "attribute.");
 FLAG(DECLARE_NAMEREF, Bool, 'n', "",
-     "Make the variable a reference to the variable its value names. The +n "
+     "Make the variable a reference to the variable its value selects. The +n "
      "form removes the reference and keeps the value.");
 FLAG(DECLARE_PRINT, Bool, 'p', "", "Print the matching declarations.");
 FLAG(DECLARE_READONLY, Bool, 'r', "", "Accepted without effect.");

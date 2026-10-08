@@ -185,7 +185,7 @@ note: Write the file redirect and `2>&1` separately under a `sh` shebang.
 53:8: warning: The named file descriptor '{logfd}' is a bash extension absent from POSIX sh. (SC3022)
     53 |    exec {logfd}>trace.log
        |         ^~~~~~~
-note: Name a fixed descriptor number under a `sh` shebang.
+note: Use a fixed descriptor number under a `sh` shebang.
 54:16: warning: The file descriptor '12' is outside the range POSIX sh defines. (SC3023)
     54 |    echo high 12>high.log
        |                 ^~~~~~~~
@@ -197,7 +197,7 @@ note: Open the connection with a network client under a `sh` shebang.
 56:14: warning: The redirection target 'prefix*.log' is a glob that POSIX sh leaves undefined. (SC3031)
     56 |    echo glob >prefix*.log
        |               ^~~~~~~~~~~
-note: Name the file explicitly under a `sh` shebang.
+note: Write the file explicitly under a `sh` shebang.
 58:17: warning: The `$"..."` quoting form is a bash extension absent from POSIX sh. (SC3004)
     58 |    echo locale >>$"locale.log"
        |                  ^~~~~~~~~~~~~
@@ -316,11 +316,11 @@ note: Check the status after each command under a `sh` shebang.
 93:18: warning: The `SIG` prefix on 'SIGINT' is undefined in POSIX sh. (SC3048)
     93 |    trap 'cleanup' SIGINT
        |                   ^~~~~~
-note: Name the signal without the `SIG` prefix under a `sh` shebang.
+note: Write the signal without the `SIG` prefix under a `sh` shebang.
 94:18: warning: The signal name 'int' is not uppercase, and POSIX sh leaves it undefined. (SC3049)
     94 |    trap 'cleanup' int
        |                   ^~~
-note: Name the signal in uppercase under a `sh` shebang.
+note: Write the signal in uppercase under a `sh` shebang.
 97:10: warning: The `printf` `%q` directive is a bash extension absent from POSIX sh. (SC3050)
     97 |    printf '%q\n' "$value"
        |           ^~~~~~
@@ -356,7 +356,7 @@ note: Write the file redirect and `2>&1` separately under a `sh` shebang.
 113:22: warning: The redirection target 'prefix*.log' is a glob that POSIX sh leaves undefined. (SC3031)
    113 |    { echo globbed; } >prefix*.log
        |                       ^~~~~~~~~~~
-note: Name the file explicitly under a `sh` shebang.
+note: Write the file explicitly under a `sh` shebang.
 114:24: warning: The `$"..."` quoting form is a bash extension absent from POSIX sh. (SC3004)
    114 |    { echo localized; } >$"compound.log"
        |                         ^~~~~~~~~~~~~~~

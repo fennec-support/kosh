@@ -31,7 +31,7 @@ FLAG(LOCAL_INTEGER, Bool, 'i', "",
 FLAG(LOCAL_LOWERCASE, Bool, 'l', "",
      "Convert every assigned value to lowercase in this scope.");
 FLAG(LOCAL_NAMEREF, Bool, 'n', "",
-     "Make the local a reference to the variable its value names.");
+     "Make the local a reference to the variable its value selects.");
 FLAG(LOCAL_PRINT, Bool, 'p', "",
      "Print the reusable declaration of each named local.");
 FLAG(LOCAL_READONLY, Bool, 'r', "",

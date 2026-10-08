@@ -208,7 +208,7 @@ fn resolve_selector_program(koshka::EvalContext &context) throws
   let const configured = context.get_variable_value(SELECTOR_COMMAND_VARIABLE);
   if (configured.has_value() && configured->is_empty()) {
     return koshka::Error{SELECTOR_COMMAND_VARIABLE +
-                         " is empty and names no tab selector"};
+                         " is empty and gives no tab selector"};
   }
 
   let const command_name =

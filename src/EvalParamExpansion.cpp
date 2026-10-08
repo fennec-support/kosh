@@ -41,7 +41,7 @@ fn compute_substring_bounds(i64 value_count, i64 offset, Maybe<i64> length,
   if (length.has_value()) {
     if (*length < 0) {
       if (subject == substring_subject::List)
-        throw Error{"Unable to take the substring because the length names "
+        throw Error{"Unable to take the substring because the length ends at "
                     "a point before the offset"};
       end = *length < -value_count ? -1 : value_count + *length;
     } else {
@@ -52,7 +52,7 @@ fn compute_substring_bounds(i64 value_count, i64 offset, Maybe<i64> length,
   }
   if (end > value_count) end = value_count;
   if (end < start)
-    throw Error{"Unable to take the substring because the length names "
+    throw Error{"Unable to take the substring because the length ends at "
                 "a point before the offset"};
 
   return substring_bounds{start, end};
@@ -2267,7 +2267,7 @@ EvalContext::ParameterExpander::raise_invalid_name_start() const throws -> void
   let const note =
       is_command_form &&
               m_context.runtime_state().get_mood() == mimic_mood::Posix
-          ? StringView{"The sh mood reads ${ as a parameter expansion, so "
+          ? StringView{"The sh mood parses ${ as a parameter expansion, so "
                        "${ command; } runs a command only in the other moods."}
           : StringView{"A name starts with a letter or an underscore, and the "
                        "special parameters are digits and @ * # ? - $ !."};
@@ -2600,7 +2600,7 @@ fn EvalContext::compute_array_slice_bounds(
   let const operands = parse_substring_operands(*this, slice, source_location);
   let const do_check_length = [&operands] {
     if (operands.length.has_value() && *operands.length < 0) {
-      throw Error{"Unable to take the substring because the length names "
+      throw Error{"Unable to take the substring because the length ends at "
                   "a point before the offset"};
     }
   };

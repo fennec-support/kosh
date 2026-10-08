@@ -19,7 +19,7 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[-HSacdflmnpstuvw] [limit]");
 
 HELP_DESCRIPTION_DECL(
-    "The ulimit builtin reads or sets a resource limit of the shell.");
+    "The ulimit builtin prints or sets a resource limit of the shell.");
 
 FLAG(CPU_TIME, Bool, 't', "", "The most CPU time in seconds.");
 FLAG(FILE_SIZE, Bool, 'f', "",

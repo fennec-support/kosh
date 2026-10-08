@@ -21,7 +21,7 @@ note: Use `find -exec`, or a `while read -r` loop over `find -print0`.
      7 |    find . | xargs echo
        |             ^~~~~
 note: Pair `find -print0` with `xargs -0`, or use `find -exec`.
-8:10: warning: The `echo` command never reads the upstream output. (SC2008)
+8:10: warning: The `echo` command never uses the upstream output. (SC2008)
      8 |    true | echo discarded
        |           ^~~~
 note: Remove the pipe, or forward the input with `cat`.
@@ -29,12 +29,12 @@ note: Remove the pipe, or forward the input with `cat`.
     13 |    command 2>&1 > out.log
        |                   ^~~~~~~
 note: Put the file redirect first as in `>file 2>&1`.
-14:17: warning: The command reads and truncates 'data' at once. (SC2094)
+14:17: warning: The command takes input from 'data' and truncates it at once. (SC2094)
     14 |    sort < data > data
        |                  ^~~~
 14:10: details:
     14 |    sort < data > data
-       |           ^~~~ this redirect reads the file that is later truncated.
+       |           ^~~~ this redirect takes input from the file that is later truncated.
 note: Write to a temporary file and move it over.
 15:8: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
     15 |    echo "wrapped $(echo inner)"
@@ -52,10 +52,10 @@ note: Test a variable or drop the check.
     22 |    [ count -eq notanumber ] && echo b
        |      ^~~~~~~~~~~~~~~~~~~~
 note: Remove the constant condition or compare runtime data.
-22:5: warning: The numeric comparison `-eq` reads 'count', and that is not a number. (SC2170)
+22:5: warning: The numeric comparison `-eq` takes 'count', and that is not a number. (SC2170)
     22 |    [ count -eq notanumber ] && echo b
        |      ^~~~~
-22:15: warning: The numeric comparison `-eq` reads 'notanumber', and that is not a number. (SC2170)
+22:15: warning: The numeric comparison `-eq` takes 'notanumber', and that is not a number. (SC2170)
     22 |    [ count -eq notanumber ] && echo b
        |                ^~~~~~~~~~
 23:12: warning: `[` and `test` compare strings byte for byte and never glob-match. (SC2081)
@@ -415,7 +415,7 @@ note: Use `[[ value =~ expression ]]`.
    135 |    while read -r host; do command -v ssh >/dev/null 2>&1 && ssh "$host" uptime; done
        |                                                             ^~~
 note: Redirect `ssh` input from `/dev/null`, or pass `-n`.
-136:9: warning: The `$1` in an alias body reads the positional arguments of the surrounding script. (SC2142)
+136:9: warning: The `$1` in an alias body uses the positional arguments of the surrounding script. (SC2142)
    136 |    alias archive='mv $1 /backup'
        |          ^~~~~~~~~~~~~~~~~~~~~~~
 note: Use a function when the wrapper needs arguments.

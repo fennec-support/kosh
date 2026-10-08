@@ -794,7 +794,7 @@ fn make_koshconf_preset(mimic_mood preset) throws -> String
   let contents = String{"# Koshka settings written by koshconf create "};
   contents += mood_name(preset);
   contents += ".\n# Each line is name=value. kosh(5) describes the format.\n"
-              "# Every shell reads this file, including the ones that run "
+              "# Every shell loads this file, including the ones that run "
               "scripts.\n";
 
   let ordered = ArrayList<const option_descriptor *>{heap_allocator()};

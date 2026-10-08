@@ -21,7 +21,7 @@ HELP_DESCRIPTION_DECL(
 FLAG(UNSET_FUNCTION, Bool, 'f', "", "Remove each named shell function.");
 FLAG(UNSET_VARIABLE, Bool, 'v', "", "Remove variables, the default.");
 FLAG(UNSET_NAMEREF, Bool, 'n', "",
-     "Remove a name reference itself rather than the variable it names.");
+     "Remove a name reference itself rather than the variable it selects.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_BUILTIN_FLAGS(Unset);

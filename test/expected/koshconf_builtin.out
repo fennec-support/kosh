@@ -100,7 +100,7 @@ legacy.echo_interprets_backslash_escapes=off              semantic
 rc=0
 # Koshka settings written by koshconf create kosh.
 # Each line is name=value. kosh(5) describes the format.
-# Every shell reads this file, including the ones that run scripts.
+# Every shell loads this file, including the ones that run scripts.
 
 # Choose the grammar and the startup files: kosh, sh, bash, or bash-posix.
 mood=kosh
@@ -221,7 +221,7 @@ legacy.completion_fix_directory_typos=off
 legacy.completion_hostnames_after_at=on
 # Use the completion specifications defined by complete. (shopt progcomp)
 legacy.completion_programmable=on
-# Complete an alias with the specification of the command it names.
+# Complete an alias with the specification of the command it expands to.
 # (shopt progcomp_alias)
 legacy.completion_programmable_follows_aliases=off
 # Quote every shell metacharacter in a completed file name.

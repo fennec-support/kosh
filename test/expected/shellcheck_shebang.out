@@ -2,7 +2,7 @@
 unknown_interpreter.kosh:1:3: warning: The shebang interpreter 'perl' is not a shell this analysis knows. (SC1008)
      1 |  #!/bin/perl
        |    ^~~~~~~~~
-note: Name a shell such as `sh` or `bash` in the shebang.
+note: Use a shell such as `sh` or `bash` in the shebang.
 == swapped ==
 swapped.kosh:1:1: warning: The first line begins with `!#` and is read as a command. (SC1084)
      1 |  !#/bin/sh

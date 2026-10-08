@@ -358,7 +358,7 @@ note: use increasing positive columns separated by commas or blanks.
 -c:1:14: error: koshkit evil: unexpected operand.
      1 |  koshkit evil extra
        |               ^~~~~
-note: this utility reads no operand.
+note: this utility takes no operand.
 === evil color value location ===
 -c:1:17: error: koshkit: invalid color mode 'invalid'.
      1 |  koshkit --color invalid evil
@@ -372,7 +372,7 @@ note: this utility accepts no operands.
 -c:1:18: error: koshkit evillogs: unexpected operand.
      1 |  koshkit evillogs extra
        |                   ^~~~~
-note: this utility reads no operand.
+note: this utility takes no operand.
 === evilnet operand location ===
 -c:1:17: error: koshkit evilnet: unexpected operand.
      1 |  koshkit evilnet extra

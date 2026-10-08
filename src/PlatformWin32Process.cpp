@@ -1122,7 +1122,7 @@ static fn make_internal_pipe_path() throws -> String
 {
   u8 random_bytes[16];
   if (RtlGenRandom(random_bytes, sizeof(random_bytes)) == FALSE)
-    throw Error{"Unable to name an internal pipe: " +
+    throw Error{"Unable to build the name of an internal pipe: " +
                 last_system_error_message()};
 
   let path = String{"\\\\.\\pipe\\kosh-"};
@@ -2078,7 +2078,7 @@ fn launch_process_substitution(const process_substitution_options &options)
   if (!copy_relay_pipe_name(path.view(), relay->path) ||
       !copy_relay_pipe_name(body_path.view(), relay->body_path))
   {
-    throw Error{"Unable to name the process substitution pipe"};
+    throw Error{"Unable to build the name of the process substitution pipe"};
   }
 
   relay->port = CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1);

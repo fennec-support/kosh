@@ -1,14 +1,14 @@
 == a call passes nothing to a body that reads its arguments:
--c:2:15: warning: The function 'greet' reads arguments, and no call passes any. (SC2120)
+-c:2:15: warning: The function 'greet' uses arguments, and no call passes any. (SC2120)
      2 |    echo "hello $1"
        |                ^~
 note: Pass the arguments at the call.
--c:4:1: warning: The function 'greet' reads arguments, and this call passes none. (SC2119)
+-c:4:1: warning: The function 'greet' uses arguments, and this call passes none. (SC2119)
      4 |  greet
        |  ^~~~~
 -c:2:15: details:
      2 |    echo "hello $1"
-       |                ^~ the body reads $1 here.
+       |                ^~ the body uses $1 here.
 note: Pass the values 'greet' expects, or forward `"$@"`.
 Encountered 2 warnings.
 == one call with arguments clears every call of that function:
@@ -20,68 +20,68 @@ rc=0
 == a modifier supplies the value, so the read does not count:
 rc=0
 == a positional read in a test operand counts:
--c:2:9: warning: The function 'check' reads arguments, and no call passes any. (SC2120)
+-c:2:9: warning: The function 'check' uses arguments, and no call passes any. (SC2120)
      2 |    [ -n "$1" ]
        |          ^~
 note: Pass the arguments at the call.
--c:4:1: warning: The function 'check' reads arguments, and this call passes none. (SC2119)
+-c:4:1: warning: The function 'check' uses arguments, and this call passes none. (SC2119)
      4 |  check
        |  ^~~~~
 -c:2:9: details:
      2 |    [ -n "$1" ]
-       |          ^~ the body reads $1 here.
+       |          ^~ the body uses $1 here.
 note: Pass the values 'check' expects, or forward `"$@"`.
 Encountered 2 warnings.
 == a positional read in an arithmetic expression counts:
--c:2:15: warning: The function 'double' reads arguments, and no call passes any. (SC2120)
+-c:2:15: warning: The function 'double' uses arguments, and no call passes any. (SC2120)
      2 |    echo $((2 * $1))
        |                ^~
 note: Pass the arguments at the call.
--c:4:1: warning: The function 'double' reads arguments, and this call passes none. (SC2119)
+-c:4:1: warning: The function 'double' uses arguments, and this call passes none. (SC2119)
      4 |  double
        |  ^~~~~~
 -c:2:15: details:
      2 |    echo $((2 * $1))
-       |                ^~ the body reads $1 here.
+       |                ^~ the body uses $1 here.
 note: Pass the values 'double' expects, or forward `"$@"`.
 Encountered 2 warnings.
 == a positional read in a for loop word counts:
--c:2:15: warning: The function 'walk' reads arguments, and no call passes any. (SC2120)
+-c:2:15: warning: The function 'walk' uses arguments, and no call passes any. (SC2120)
      2 |    for one in "$@"; do echo "$one"; done
        |                ^~
 note: Pass the arguments at the call.
--c:4:1: warning: The function 'walk' reads arguments, and this call passes none. (SC2119)
+-c:4:1: warning: The function 'walk' uses arguments, and this call passes none. (SC2119)
      4 |  walk
        |  ^~~~
 -c:2:15: details:
      2 |    for one in "$@"; do echo "$one"; done
-       |                ^~ the body reads $@ here.
+       |                ^~ the body uses $@ here.
 note: Pass the values 'walk' expects, or forward `"$@"`.
 Encountered 2 warnings.
 == a positional star read names its exact expansion:
--c:2:18: warning: The function 'join' reads arguments, and no call passes any. (SC2120)
+-c:2:18: warning: The function 'join' uses arguments, and no call passes any. (SC2120)
      2 |    printf "%s\n" "$*"
        |                   ^~
 note: Pass the arguments at the call.
--c:4:1: warning: The function 'join' reads arguments, and this call passes none. (SC2119)
+-c:4:1: warning: The function 'join' uses arguments, and this call passes none. (SC2119)
      4 |  join
        |  ^~~~
 -c:2:18: details:
      2 |    printf "%s\n" "$*"
-       |                   ^~ the body reads $* here.
+       |                   ^~ the body uses $* here.
 note: Pass the values 'join' expects, or forward `"$@"`.
 Encountered 2 warnings.
 == the first reading definition remains authoritative:
--c:2:9: warning: The function 'choice' reads arguments, and no call passes any. (SC2120)
+-c:2:9: warning: The function 'choice' uses arguments, and no call passes any. (SC2120)
      2 |    echo "$1"
        |          ^~
 note: Pass the arguments at the call.
--c:7:1: warning: The function 'choice' reads arguments, and this call passes none. (SC2119)
+-c:7:1: warning: The function 'choice' uses arguments, and this call passes none. (SC2119)
      7 |  choice
        |  ^~~~~~
 -c:2:9: details:
      2 |    echo "$1"
-       |          ^~ the body reads $1 here.
+       |          ^~ the body uses $1 here.
 note: Pass the values 'choice' expects, or forward `"$@"`.
 Encountered 2 warnings.
 == a later reading definition does not replace the first summary:
@@ -101,16 +101,16 @@ rc=0
 == a call inside another body stays quiet:
 rc=0
 == the default mood rejects a call that passes nothing:
--c:2:15: error: The function 'greet' reads arguments, and no call passes any. (SC2120)
+-c:2:15: error: The function 'greet' uses arguments, and no call passes any. (SC2120)
      2 |    echo "hello $1"
        |                ^~
 note: Pass the arguments at the call.
--c:4:1: error: The function 'greet' reads arguments, and this call passes none. (SC2119)
+-c:4:1: error: The function 'greet' uses arguments, and this call passes none. (SC2119)
      4 |  greet
        |  ^~~~~
 -c:2:15: details:
      2 |    echo "hello $1"
-       |                ^~ the body reads $1 here.
+       |                ^~ the body uses $1 here.
 note: Pass the values 'greet' expects, or forward `"$@"`.
 Encountered 2 errors.
 rc=1

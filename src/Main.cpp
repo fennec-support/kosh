@@ -624,7 +624,7 @@ static fn select_input_source(const ArrayList<String> &operands) throws
     }
     if (FLAG_LINT.is_enabled() && !operands.is_empty()) {
       show_message("The '-s' option was given along with file operands, "
-                   "so '--lint' reads standard input and analyzes no "
+                   "so '--lint' takes standard input and analyzes no "
                    "named file.");
     }
     plan.should_read_stdin = true;

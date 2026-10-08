@@ -153,7 +153,7 @@ note: Write `${staging:?}` so an empty value aborts the command.
 83:3: warning: The created parent directories keep the umask default. (SC2174)
     83 |    mkdir -pm 0700 parent/child
        |    ^~~~~
-87:3: warning: The 'echo' command never reads the redirected input. (SC2217)
+87:3: warning: The 'echo' command never uses the redirected input. (SC2217)
     87 |    echo hello < input.txt
        |    ^~~~
 88:3: warning: The `typeset` builtin is the ksh spelling of `declare`.
@@ -183,12 +183,12 @@ note: Put the file redirect first as in `>file 2>&1`.
    102 |    { echo claimed; } > claim.log > claim.log
        |                        ^~~~~~~~~ this earlier redirect claims the same descriptor.
 note: Pass the files as operands, or use `tee` for several outputs.
-103:49: warning: The command reads and truncates 'same.txt' at once. (SC2094)
+103:49: warning: The command takes input from 'same.txt' and truncates it at once. (SC2094)
    103 |    while true; do echo looped; done < same.txt > same.txt
        |                                                  ^~~~~~~~
 103:38: details:
    103 |    while true; do echo looped; done < same.txt > same.txt
-       |                                       ^~~~~~~~ this redirect reads the file that is later truncated.
+       |                                       ^~~~~~~~ this redirect takes input from the file that is later truncated.
 note: Write to a temporary file and move it over.
 104:37: warning: A redirection expansion can run in a child and lose its mutation. (SC2257)
    104 |    if true; then echo branched; fi > "file$((index++))"

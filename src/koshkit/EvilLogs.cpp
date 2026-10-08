@@ -541,7 +541,7 @@ fn EvilLogs::execute(
 
   if (!operands.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "unexpected operand",
-                            "this utility reads no operand");
+                            "this utility takes no operand");
     return 1;
   }
 

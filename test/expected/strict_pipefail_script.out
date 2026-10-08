@@ -1,10 +1,10 @@
-2:9: warning: The 'true' command never reads the upstream output. (SC2216)
+2:9: warning: The 'true' command never uses the upstream output. (SC2216)
      2 |  false | true
        |          ^~~~
-8:9: warning: The 'true' command never reads the upstream output. (SC2216)
+8:9: warning: The 'true' command never uses the upstream output. (SC2216)
      8 |  false | true
        |          ^~~~
-11:9: warning: The 'true' command never reads the upstream output. (SC2216)
+11:9: warning: The 'true' command never uses the upstream output. (SC2216)
     11 |  false | true
        |          ^~~~
 Encountered 3 warnings.

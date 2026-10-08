@@ -24,7 +24,7 @@ KOSHKIT_UTIL_DECL(
     "[-i] [-p] [expression ...]",
     "The calc utility joins its command-line operands into one arithmetic "
     "expression and prints the result. With no expression on a terminal it "
-    "reads and "
+    "accepts and "
     "evaluates expressions interactively, and a name = value line binds a "
     "variable for a later expression to read.");
 

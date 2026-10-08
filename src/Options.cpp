@@ -781,7 +781,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
     shopt_flag(167, "legacy.completion_programmable_follows_aliases",
                INTERACTIVE, "progcomp_alias",
                "Complete an alias with the specification of the command "
-               "it names.",
+               "it expands to.",
                false, false),
     shopt_flag(
         168, "legacy.prompt_expands_parameters", INTERACTIVE, "promptvars",

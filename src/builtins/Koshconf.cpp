@@ -24,7 +24,7 @@ HELP_SYNOPSIS_DECL("create <bash|sh|kosh> [--force]",
                    "list | load <base64>");
 
 HELP_DESCRIPTION_DECL(
-    "The koshconf builtin reads and changes the settings Koshka owns, writes "
+    "The koshconf builtin loads and changes the settings Koshka owns, writes "
     "the configuration file, and loads the binary form of KOSHCONF.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");

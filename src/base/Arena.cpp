@@ -287,7 +287,7 @@ pure fn BumpArena::is_lifetime_valid(LifetimeIdentity identity) const wontthrow
 fn BumpArena::release(Mark saved) wontthrow -> void
 {
   ASSERT(saved.block_index <= m_current_index,
-         "mark cannot name a block above the current one");
+         "mark cannot refer to a block above the current one");
 
   run_destructors_down_to(saved.destructor_count);
   m_reset_generation++;

@@ -9,7 +9,7 @@ note: Use `command` before the wrapped command name.
      7 |    let "counter -lt limit"
        |    ^~~
 note: Write `(( ... ))` for the arithmetic.
-7:7: warning: Arithmetic reads the `-lt` operator as a subtraction. (SC1106)
+7:7: warning: Arithmetic treats the `-lt` operator as a subtraction. (SC1106)
      7 |    let "counter -lt limit"
        |        ^~~~~~~~~~~~~~~~~~~
 note: Use the symbolic form such as `<` or `>` inside arithmetic.
@@ -185,7 +185,7 @@ note: Escape it as `\>`, or use the `[[ ]]` form.
     49 |    [ "$left" < "$right" ]
        |      ^~~~~~~
 note: Write it with `-n`.
-49:15: warning: The `<` reads a file into the test. (SC2073)
+49:15: warning: The `<` takes a file as input for the test. (SC2073)
     49 |    [ "$left" < "$right" ]
        |                ^~~~~~~~
 note: Escape it as `\<`, or use the `[[ ]]` form.
@@ -277,11 +277,11 @@ note: Quote '$right' so the comparison stays literal.
     68 |    [[ "$left" != $right ]]
        |                  ^~~~~~
 note: Quote '$right' so the comparison stays literal.
-69:17: warning: The `=~` operator takes a regular expression, and '*.txt' reads as a glob. (SC2049)
+69:17: warning: The `=~` operator takes a regular expression, and '*.txt' is treated as a glob. (SC2049)
     69 |    [[ "$left" =~ *.txt ]]
        |                  ^~~~~
 note: Compare with `=` for a glob, or write the pattern as a regex.
-73:8: warning: The `ls` listing splits a name with a space or a newline before `xargs` reads it. (SC2011)
+73:8: warning: The `ls` listing splits a name with a space or a newline before `xargs` receives it. (SC2011)
     73 |    ls | xargs rm
        |         ^~~~~
 note: Use `find -print0` with `xargs -0`, or `find -exec`.
@@ -317,7 +317,7 @@ note: Use `${#variable}`.
     84 |    sed 's/old/new/' file
        |        ^~~~~~~~~~~~
 note: Use `${variable//search/replace}`.
-85:10: warning: The 'ls' command never reads the upstream output. (SC2216)
+85:10: warning: The 'ls' command never uses the upstream output. (SC2216)
     85 |    true | ls
        |           ^~
 86:21: warning: The substitution in the `find` action expands once before `find` runs. (SC2014)
@@ -384,7 +384,7 @@ note: Wrap the call in `sh -c`, or move the body into its own script.
    105 |    find . -execdir helper_function {} \;
        |                    ^~~~~~~~~~~~~~~
 note: Wrap the call in `sh -c`, or move the body into its own script.
-106:8: warning: The `ls` listing splits a name with a space or a newline before `xargs` reads it. (SC2011)
+106:8: warning: The `ls` listing splits a name with a space or a newline before `xargs` receives it. (SC2011)
    106 |    ls | xargs helper_function
        |         ^~~~~
 note: Use `find -print0` with `xargs -0`, or `find -exec`.
@@ -456,7 +456,7 @@ note: Wrap the builtin in `sudo sh -c`.
 120:26: warning: The trap condition '9' is a signal number. (SC2172)
    120 |    trap 'helper_function' 9
        |                           ^
-note: Name the signal, such as `INT` or `TERM`.
+note: Write the signal as a name, such as `INT` or `TERM`.
 120:26: warning: The signal '9' cannot be trapped. (SC2173)
    120 |    trap 'helper_function' 9
        |                           ^
@@ -464,7 +464,7 @@ note: Remove the condition.
 121:26: warning: The trap condition '15' is a signal number. (SC2172)
    121 |    trap 'helper_function' 15
        |                           ^~
-note: Name the signal, such as `INT` or `TERM`.
+note: Write the signal as a name, such as `INT` or `TERM`.
 122:26: warning: The signal 'KILL' cannot be trapped. (SC2173)
    122 |    trap 'helper_function' KILL
        |                           ^~~~
