@@ -1090,6 +1090,9 @@ fn CaseClause::evaluate_status_impl(EvalContext &cxt) const throws
   });
   if (!should_run_case) return {cxt.execution_store().last_exit_status()};
 
+  let const substitution_mark = cxt.mark_process_substitutions();
+  defer { cxt.cleanup_process_substitutions(substitution_mark); };
+
   /* A case word and its patterns expand with variables and tilde but no field
      splitting and no globbing, so a pattern keeps its metacharacters. */
   let const do_expand_no_glob = [&cxt](const Token *t) -> String {

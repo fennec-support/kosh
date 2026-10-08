@@ -514,6 +514,9 @@ fn ConditionalCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
       });
   if (!should_run_conditional) return cxt.execution_store().last_exit_status();
 
+  let const substitution_mark = cxt.mark_process_substitutions();
+  defer { cxt.cleanup_process_substitutions(substitution_mark); };
+
   i64 status;
   try {
     status = cxt.evaluate_conditional(m_elements) ? 0 : 1;
