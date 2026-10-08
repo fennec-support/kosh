@@ -1350,7 +1350,7 @@ ${m[key]} reads it. The form ${!m[@]} lists keys. The command
 .B unset 'm[key]'
 removes one element. A word in the list m=(k1 v1 k2 v2) is not split into
 fields and not matched against files, and a quoted "${a[@]}" joins into one
-word.
+word. A quoted ] inside a key, as in m['k]x']=1, does not close the subscript.
 .SH EXPANSIONS
 .SS Parameter expansion
 The form ${v:offset:length} selects a substring. A negative offset requires a

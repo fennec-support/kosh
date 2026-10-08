@@ -159,10 +159,18 @@ pure fn word_looks_like_assignment(StringView word) wontthrow -> bool
   usize bracket_depth = 1;
   position++;
   while (position < word.length && bracket_depth > 0) {
-    if (word[position] == '[')
+    let const byte = word[position];
+    if (byte == '\'' || byte == '"') {
+      usize closing = position + 1;
+      while (closing < word.length && word[closing] != byte) {
+        closing += byte == '"' && word[closing] == '\\' ? 2 : 1;
+      }
+      if (closing < word.length) position = closing;
+    } else if (byte == '[') {
       bracket_depth++;
-    else if (word[position] == ']')
+    } else if (byte == ']') {
       bracket_depth--;
+    }
     position++;
   }
   if (position < word.length && word[position] == '=') return true;
@@ -688,10 +696,22 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
 
       let const c = chop_character(offset);
       offset++;
-      if (c == '[')
+      if (c == '[') {
         depth++;
-      else if (c == ']')
+      } else if (c == ']') {
         depth--;
+      } else if (c == '\\') {
+        if (!has_character(offset)) return None;
+
+        offset++;
+      } else if (c == '\'' || c == '"') {
+        while (has_character(offset) && chop_character(offset) != c) {
+          offset += c == '"' && chop_character(offset) == '\\' ? 2 : 1;
+        }
+        if (!has_character(offset)) return None;
+
+        offset++;
+      }
     }
     let const after = chop_character(offset);
     if (after == '=' || (after == '+' && chop_character(offset + 1) == '='))

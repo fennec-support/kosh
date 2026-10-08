@@ -1311,6 +1311,18 @@ static pure fn find_balanced_subscript_close(
 {
   usize depth = 0;
   for (usize position = 0; position < subscript_text.length; position++) {
+    let const byte = subscript_text[position];
+    if (byte == '\'' || byte == '"') {
+      usize closing = position + 1;
+      while (closing < subscript_text.length && subscript_text[closing] != byte)
+      {
+        closing += byte == '"' && subscript_text[closing] == '\\' ? 2 : 1;
+      }
+      if (closing < subscript_text.length) {
+        position = closing;
+        continue;
+      }
+    }
     if (subscript_text[position] == '[') depth++;
     if (subscript_text[position] != ']') continue;
     if (depth <= 1) return position;
