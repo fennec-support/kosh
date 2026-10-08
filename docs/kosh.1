@@ -3742,6 +3742,10 @@ selects vi mode. The command
 .B set \-o emacs
 restores emacs mode.
 .PP
+A line wider than the terminal continues on rows that start under its first
+character. When the prompt leaves fewer than 20 columns beside it, those rows
+start two columns from the left edge instead.
+.PP
 When a ghost suggestion is shown at the end of the line, the right arrow and
 End accept all of it. Ctrl\-Right and Alt\-F accept only its next word.
 .PP

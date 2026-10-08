@@ -12,7 +12,9 @@
 # With the transient-prompt option, Enter must redraw the submitted line after
 # "$ ", "# " for root, or PS1_TRANSIENT with no right prompt, no hint row, and
 # no rows of a multi-row PS1, and Ctrl-C must redraw the interrupted line the
-# same way before its ^C. A working directory named with control bytes
+# same way before its ^C. A prompt that leaves too few columns beside it
+# continues the input two columns from the left edge instead of in a narrow
+# strip under the prompt. A working directory named with control bytes
 # reaches the prompt through \w in caret notation and never as raw bytes. The
 # terminal model and session come from the
 # ghost and menu probe. Each check prints one stable PASS line for the golden
@@ -145,6 +147,18 @@ def run_checks(binary, directory, command_directory, report):
                           ["T> echo four", "   echo five", "four", "five",
                            "top"], empty_prompt)(screen)
                       and screen.count_lines("top") == 1)
+
+        long_prompt = "p" * 26 + " " + BULLET + " "
+        session.send(b"PS1='" + b"p" * 26 + b" \\. '; RPS1=\r")
+        session.wait_until(is_prompt_line(long_prompt.rstrip()))
+        session.send(b"echo " + b"x" * 15)
+        report.record("narrow-prompt-continues-near-the-left-edge", session,
+                      lambda screen: is_prompt_line(
+                          long_prompt + "echo " + "x" * 6)(screen)
+                      and is_prompt_line("  " + "x" * 9, 1)(screen))
+        session.send(CTRL_C)
+        session.wait_until(lambda screen: screen.get_lines()[-1]
+                           == long_prompt.rstrip())
 
         os.makedirs(os.path.join(directory.encode(), CONTROL_DIRECTORY))
         mark = len(session.raw)
