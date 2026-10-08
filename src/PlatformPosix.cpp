@@ -307,18 +307,11 @@ static pure fn linux_unix_socket_field(StringView text, usize index) wontthrow
   return StringView{};
 }
 
-static fn linux_unix_sockets(const ArrayList<linux_socket_owner> *owners,
-                             Allocator allocator,
-                             network_socket_process_mode process_mode) throws
-    -> ArrayList<network_socket_entry>
+template <typename Row>
+static fn for_each_proc_net_row(StringView path, Row do_row) throws -> void
 {
-  let result = ArrayList<network_socket_entry>{allocator};
-  let const peers = linux_unix_socket_peers(allocator);
-  let const path = linux_socket_proc_path("/net/unix", allocator);
-  let const contents = Path{path.view()}.read_entire_file();
-  if (!contents.has_value() || contents->is_empty()) {
-    return result;
-  }
+  let const contents = Path{path}.read_entire_file();
+  if (!contents.has_value() || contents->is_empty()) return;
 
   let const text = contents->view();
   usize position = 0;
@@ -329,8 +322,40 @@ static fn linux_unix_sockets(const ArrayList<linux_socket_owner> *owners,
       is_header = false;
       continue;
     }
+    do_row(line);
+  }
+}
+
+template <typename Push>
+static fn push_socket_for_owners(const ArrayList<linux_socket_owner> *owners,
+                                 network_socket_process_mode process_mode,
+                                 u64 inode, Push do_push_socket) throws -> void
+{
+  bool has_process_owner = false;
+  if (process_mode == network_socket_process_mode::WithProcesses &&
+      owners != nullptr)
+  {
+    for (let const &owner : *owners) {
+      if (owner.inode == inode) {
+        do_push_socket(owner.pid, owner.start_token, owner.has_start_token);
+        has_process_owner = true;
+      }
+    }
+  }
+  if (!has_process_owner) do_push_socket(0, 0, false);
+}
+
+static fn linux_unix_sockets(const ArrayList<linux_socket_owner> *owners,
+                             Allocator allocator,
+                             network_socket_process_mode process_mode) throws
+    -> ArrayList<network_socket_entry>
+{
+  let result = ArrayList<network_socket_entry>{allocator};
+  let const peers = linux_unix_socket_peers(allocator);
+  let const path = linux_socket_proc_path("/net/unix", allocator);
+  for_each_proc_net_row(path.view(), [&](StringView line) throws {
     let const inode = linux_unix_socket_field(line, 6).to<u64>();
-    if (inode.is_error()) continue;
+    if (inode.is_error()) return;
     let const flags = utils::parse_integer_in_base_u64(
         linux_unix_socket_field(line, 3), int_base::hex);
     let const type = linux_unix_socket_field(line, 4);
@@ -370,19 +395,9 @@ static fn linux_unix_sockets(const ArrayList<linux_socket_owner> *owners,
       socket.has_owner_start_token = has_start_token;
       result.push(steal(socket));
     };
-    bool has_process_owner = false;
-    if (process_mode == network_socket_process_mode::WithProcesses &&
-        owners != nullptr)
-    {
-      for (let const &owner : *owners) {
-        if (owner.inode == inode.value()) {
-          do_push_socket(owner.pid, owner.start_token, owner.has_start_token);
-          has_process_owner = true;
-        }
-      }
-    }
-    if (!has_process_owner) do_push_socket(0, 0, false);
-  }
+    push_socket_for_owners(owners, process_mode, inode.value(), do_push_socket);
+  });
+
   return result;
 }
 
@@ -460,21 +475,7 @@ static fn linux_network_sockets_from_file(
     -> ArrayList<network_socket_entry>
 {
   let result = ArrayList<network_socket_entry>{allocator};
-  let const contents = Path{path}.read_entire_file();
-  if (!contents.has_value() || contents->is_empty()) {
-    return result;
-  }
-
-  let const text = contents->view();
-  usize position = 0;
-  bool is_header = true;
-  while (position < text.length) {
-    let const line = each_line(text, position);
-    if (is_header) {
-      is_header = false;
-      continue;
-    }
-
+  for_each_proc_net_row(path, [&](StringView line) throws {
     let const local = nth_space_field(line, 1);
     let const peer = nth_space_field(line, 2);
     let const state = nth_space_field(line, 3);
@@ -486,7 +487,7 @@ static fn linux_network_sockets_from_file(
     let const queue_separator = queues.find_character(':');
     if (!local_separator.has_value() || !peer_separator.has_value() ||
         !queue_separator.has_value())
-      continue;
+      return;
 
     let const local_address = linux_socket_address(
         local.substring_of_length(0, *local_separator), allocator, family);
@@ -508,7 +509,7 @@ static fn linux_network_sockets_from_file(
         local_port.is_error() || peer_port.is_error() ||
         state_value.is_error() || receive_queue.is_error() ||
         send_queue.is_error() || inode.is_error())
-      continue;
+      return;
 
     let const do_push_socket = [&](u32 process_id, u64 start_token,
                                    bool has_start_token) throws {
@@ -538,19 +539,8 @@ static fn linux_network_sockets_from_file(
       result.push(steal(socket));
     };
 
-    bool has_process_owner = false;
-    if (process_mode == network_socket_process_mode::WithProcesses &&
-        owners != nullptr)
-    {
-      for (let const &owner : *owners) {
-        if (owner.inode == inode.value()) {
-          do_push_socket(owner.pid, owner.start_token, owner.has_start_token);
-          has_process_owner = true;
-        }
-      }
-    }
-    if (!has_process_owner) do_push_socket(0, 0, false);
-  }
+    push_socket_for_owners(owners, process_mode, inode.value(), do_push_socket);
+  });
 
   return result;
 }
@@ -819,20 +809,11 @@ static fn highest_free_shell_fd() wontthrow -> int
   return placement_fd;
 }
 
-static fn save_and_replace_descriptor_at(i32 shell_fd, os::descriptor target,
-                                         int floor_fd) wontthrow
+static fn save_descriptor_at(i32 shell_fd, int floor_fd) wontthrow
     -> saved_descriptor
 {
   saved_descriptor result{};
   result.shell_fd = shell_fd;
-
-  /* The backup is placed at the lowest free number at or above the floor, and
-     a closed source names a number in that same range. The source is proven
-     open before anything moves, so a backup can never answer for it. */
-  if (fcntl(target, F_GETFD) == -1) {
-    result.is_dup2_ok = false;
-    return result;
-  }
 
   os::descriptor backup = fcntl(shell_fd, F_DUPFD_CLOEXEC, floor_fd);
 
@@ -843,12 +824,29 @@ static fn save_and_replace_descriptor_at(i32 shell_fd, os::descriptor target,
     backup = fcntl(shell_fd, F_DUPFD_CLOEXEC, SHELL_BACKUP_FD_FLOOR);
   }
 
-  if (backup == -1 && errno != EBADF) {
-    result.is_dup2_ok = false;
-    return result;
-  }
   result.was_open = backup != -1;
   result.saved = backup;
+  result.is_dup2_ok = backup != -1 || errno == EBADF;
+
+  return result;
+}
+
+static fn save_and_replace_descriptor_at(i32 shell_fd, os::descriptor target,
+                                         int floor_fd) wontthrow
+    -> saved_descriptor
+{
+  /* The backup is placed at the lowest free number at or above the floor, and
+     a closed source names a number in that same range. The source is proven
+     open before anything moves, so a backup can never answer for it. */
+  if (fcntl(target, F_GETFD) == -1) {
+    saved_descriptor failed{};
+    failed.shell_fd = shell_fd;
+    failed.is_dup2_ok = false;
+    return failed;
+  }
+
+  let result = save_descriptor_at(shell_fd, floor_fd);
+  if (!result.is_dup2_ok) return result;
 
   result.is_dup2_ok = dup2(target, shell_fd) != -1;
   note_descriptor_rebound();
@@ -888,28 +886,6 @@ fn restore_descriptor(const saved_descriptor &saved) wontthrow -> void
   }
 
   note_descriptor_rebound();
-}
-
-static fn save_descriptor_at(i32 shell_fd, int floor_fd) wontthrow
-    -> saved_descriptor
-{
-  saved_descriptor result{};
-  result.shell_fd = shell_fd;
-
-  os::descriptor backup = fcntl(shell_fd, F_DUPFD_CLOEXEC, floor_fd);
-
-  /* A raised floor can exceed the real descriptor limit when the limit could
-     not be read. The backup is worth more on a visible number than not at
-     all. */
-  if (backup == -1 && errno != EBADF && floor_fd != SHELL_BACKUP_FD_FLOOR) {
-    backup = fcntl(shell_fd, F_DUPFD_CLOEXEC, SHELL_BACKUP_FD_FLOOR);
-  }
-
-  result.was_open = backup != -1;
-  result.saved = backup;
-  result.is_dup2_ok = backup != -1 || errno == EBADF;
-
-  return result;
 }
 
 fn save_descriptor(i32 shell_fd) wontthrow -> saved_descriptor
@@ -1372,38 +1348,32 @@ fn get_home_for_user(StringView username) throws -> Maybe<Path>
   return koshka::None;
 }
 
-fn enumerate_users() throws -> ArrayList<String>
+static fn enumerate_first_fields(const Path &database) throws
+    -> ArrayList<String>
 {
-  ArrayList<String> users{heap_allocator()};
-  let const contents = Path{"/etc/passwd"}.read_entire_file();
-  if (!contents) return users;
+  ArrayList<String> names{heap_allocator()};
+  let const contents = database.read_entire_file();
+  if (!contents) return names;
 
   let const text = contents->view();
   for (let const &line : utils::split_lines(text)) {
     let const name = passwd_field(line, 0);
     if (!name.is_empty() && line.find_character(':').has_value()) {
-      users.push(String{name});
+      names.push(String{name});
     }
   }
 
-  return users;
+  return names;
+}
+
+fn enumerate_users() throws -> ArrayList<String>
+{
+  return enumerate_first_fields(Path{"/etc/passwd"});
 }
 
 fn enumerate_groups() throws -> ArrayList<String>
 {
-  ArrayList<String> groups{heap_allocator()};
-  let const contents = Path{"/etc/group"}.read_entire_file();
-  if (!contents) return groups;
-
-  let const text = contents->view();
-  for (let const &line : utils::split_lines(text)) {
-    let const name = passwd_field(line, 0);
-    if (!name.is_empty() && line.find_character(':').has_value()) {
-      groups.push(String{name});
-    }
-  }
-
-  return groups;
+  return enumerate_first_fields(Path{"/etc/group"});
 }
 
 static pid_t PARENT_SHELL_PID = getpid();
@@ -2574,6 +2544,15 @@ static fn reblock_signal_after_trap(i32 signal_number) throws -> void
   sigdelset(&SIGNALS_UNBLOCKED_BY_TRAP, signal_number);
 }
 
+static fn install_signal_disposition(i32 signal_number,
+                                     void (*handler)(int)) throws -> void
+{
+  struct sigaction sa = {};
+  check_syscall(sigemptyset(&sa.sa_mask));
+  sa.sa_handler = handler;
+  check_syscall(sigaction(signal_number, &sa, nullptr));
+}
+
 fn set_trap_handler(i32 signal_number) throws -> void
 {
   if (!is_trappable_signal(signal_number)) return;
@@ -2586,10 +2565,7 @@ fn set_trap_handler(i32 signal_number) throws -> void
   if (signal_number == SIGCHLD) {
     install_child_state_handler();
   } else {
-    struct sigaction sa = {};
-    check_syscall(sigemptyset(&sa.sa_mask));
-    sa.sa_handler = handle_trapped_signal;
-    check_syscall(sigaction(signal_number, &sa, nullptr));
+    install_signal_disposition(signal_number, handle_trapped_signal);
     sigaddset(&SIGNALS_WITH_TRAP_ACTION, signal_number);
   }
 
@@ -2605,10 +2581,7 @@ fn set_trap_ignore(i32 signal_number) throws -> void
     return;
   }
 
-  struct sigaction sa = {};
-  check_syscall(sigemptyset(&sa.sa_mask));
-  sa.sa_handler = SIG_IGN;
-  check_syscall(sigaction(signal_number, &sa, nullptr));
+  install_signal_disposition(signal_number, SIG_IGN);
   sigdelset(&SIGNALS_WITH_TRAP_ACTION, signal_number);
 }
 
@@ -2624,14 +2597,9 @@ fn clear_trap_handler(i32 signal_number) throws -> void
     return;
   }
 
-  struct sigaction sa = {};
-  check_syscall(sigemptyset(&sa.sa_mask));
   /* SIGINT returns to the shell's handler so a Ctrl-C still aborts a loop. */
-  if (signal_number == SIGINT)
-    sa.sa_handler = handle_interrupt;
-  else
-    sa.sa_handler = SIG_DFL;
-  check_syscall(sigaction(signal_number, &sa, nullptr));
+  install_signal_disposition(
+      signal_number, signal_number == SIGINT ? handle_interrupt : SIG_DFL);
   sigdelset(&SIGNALS_WITH_TRAP_ACTION, signal_number);
 }
 
@@ -2856,6 +2824,13 @@ static constexpr int SYSTEM_CONFIGURATION_KEYS[] = {
 static_assert(countof(SYSTEM_CONFIGURATION_KEYS) ==
               static_cast<usize>(system_configuration_key::Count));
 
+static fn failed_configuration_query() wontthrow -> numeric_configuration_result
+{
+  return {errno == 0 ? configuration_query_status::Undefined
+                     : configuration_query_status::Error,
+          0};
+}
+
 fn query_system_configuration(system_configuration_key key) wontthrow
     -> numeric_configuration_result
 {
@@ -2866,11 +2841,7 @@ fn query_system_configuration(system_configuration_key key) wontthrow
 
   errno = 0;
   let const value = sysconf(native_key);
-  if (value == -1) {
-    return {errno == 0 ? configuration_query_status::Undefined
-                       : configuration_query_status::Error,
-            0};
-  }
+  if (value == -1) return failed_configuration_query();
   return {configuration_query_status::Value, static_cast<i64>(value)};
 }
 
@@ -3021,11 +2992,7 @@ fn query_path_configuration(StringView path,
   let const path_text = String{heap_allocator(), path};
   errno = 0;
   let const value = pathconf(path_text.c_str(), native_key);
-  if (value == -1) {
-    return {errno == 0 ? configuration_query_status::Undefined
-                       : configuration_query_status::Error,
-            0};
-  }
+  if (value == -1) return failed_configuration_query();
   return {configuration_query_status::Value, static_cast<i64>(value)};
 }
 
