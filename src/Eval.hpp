@@ -4122,6 +4122,9 @@ protected:
   fn apply_value_modifier(
       StringView value, StringView modifier,
       const SourceLocation *source_location = nullptr) throws -> String;
+  fn trim_positional_fields(bool is_star, bool is_quoted, StringView modifier,
+                            const SourceLocation *source_location =
+                                nullptr) throws -> ArrayList<String>;
 
   fn apply_array_subscript(
       StringView name, StringView subscript,

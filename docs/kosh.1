@@ -1326,7 +1326,9 @@ reports it as a bash extension absent from POSIX sh.
 .SS Positional parameters
 An unquoted $@ or $* is subject to field splitting. The form "$@" preserves one
 field per positional parameter. The form "$*" joins the parameters with the
-first byte of IFS.
+first byte of IFS. In the sh mood, as in dash, a prefix or suffix removal on
+$@ or $* matches the parameters as one string whose pieces are the parameters,
+so "${@%%?}" can drop later parameters and "${@#?}" shortens only the first.
 .SS Indexed arrays
 An indexed array is assigned with a=(x y z). An element is assigned with
 a[2]=z. The form a+=(w) appends elements. An opening parenthesis directly after
@@ -1342,7 +1344,11 @@ Inside double quotes, "${a[@]}" preserves one field per element, also when an
 operator changes each element or the form sits in the word of another
 expansion, as in "${u:-${a[@]#x}}". The form "${a[@]@A}" yields the words of
 the declaration.
-"${a[*]}" joins elements with the first byte of IFS. An unset array read through
+"${a[*]}" joins elements with the first byte of IFS. An unquoted ${a[@]} or
+${a[*]}, with or without an operator, joins elements with the first byte of IFS
+and splits the result, so a non-whitespace IFS keeps empty fields. Under an
+empty IFS the elements stay apart, except that a prefix or suffix removal joins
+them with a space into one word. An unset array read through
 ${a[@]} is an error under
 .BR "set \-u" .
 .SS Associative arrays

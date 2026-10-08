@@ -647,6 +647,20 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
       return true;
     }
   }
+  if (m_context.runtime_state().is_posix_mode() && inner.length > 1 &&
+      (inner[0] == '@' || inner[0] == '*') &&
+      (inner[1] == '#' || inner[1] == '%'))
+  {
+    let const trimmed = m_context.trim_positional_fields(
+        inner[0] == '*', is_quoted(), inner.substring(1));
+    if (is_quoted()) m_did_quoted_at = true;
+    for (usize i = 0; i < trimmed.count(); i++) {
+      if (i > 0) start_field();
+      emit_run(trimmed[i].view(), !is_quoted());
+    }
+
+    return true;
+  }
   if ((is_quoted() || !m_context.runtime_state().is_posix_mode()) &&
       inner.length > 1 && (inner[0] == '@' || inner[0] == '*') &&
       is_element_operator(inner.substring(1)))
@@ -1911,6 +1925,18 @@ fn EvalContext::ParameterExpander::expand_list_operator(
     let modifier_location = SourceLocation{};
     let const *modifier_location_pointer =
         get_location_for(modifier, modifier_location);
+    if ((op == '#' || op == '%') && m_context.runtime_state().is_posix_mode() &&
+        (m_name == "@" || m_name == "*"))
+    {
+      let const trimmed = m_context.trim_positional_fields(
+          m_name == "*", m_quoting != parameter_word_quoting::Unquoted,
+          modifier, modifier_location_pointer);
+
+      return m_context.join_list_slice(
+          substring_bounds{0, static_cast<i64>(trimmed.count())}, trimmed, None,
+          true);
+    }
+
     let modified = ArrayList<String>{heap_allocator()};
     modified.reserve(values.count());
     for (let const &value : values)
@@ -2406,6 +2432,15 @@ fn EvalContext::ParameterExpander::expand_operator() throws -> String
       m_context.runtime_state().get_mood() == mimic_mood::Posix &&
       (m_context.expansion_store().is_expanding_single_string() ||
        m_quoting == parameter_word_quoting::HereDocument);
+  if (is_all_parameters && is_dash_single_string &&
+      (m_rest[0] == '#' || m_rest[0] == '%'))
+  {
+    let const trimmed = m_context.trim_positional_fields(true, true, m_rest);
+
+    return trimmed.is_empty()
+               ? String{m_context.scratch_allocator()}
+               : String{m_context.scratch_allocator(), trimmed[0].view()};
+  }
   if (is_all_parameters && !is_dash_single_string) {
     return expand_list_operator(m_context.variable_store().positional_params(),
                                 m_name == "*", m_rest);
@@ -3263,6 +3298,77 @@ fn EvalContext::apply_value_modifier(
                                     pattern_location));
   }
   return String{scratch_allocator(), value};
+}
+
+fn EvalContext::trim_positional_fields(
+    bool is_star, bool is_quoted, StringView modifier,
+    const SourceLocation *source_location) throws -> ArrayList<String>
+{
+  let const &params = variable_store().positional_params();
+  let const ifs = variable_store().field_separators();
+  let fields = ArrayList<String>{scratch_allocator()};
+  if (is_star && is_quoted) {
+    let joined = String{scratch_allocator()};
+    for (usize i = 0; i < params.count(); i++) {
+      if (i > 0 && !ifs.is_empty()) joined.push(ifs[0]);
+      joined.append(params[i].view());
+    }
+    if (!params.is_empty()) fields.push(steal(joined));
+  } else {
+    for (let const &param : params)
+      fields.push(String{scratch_allocator(), param.view()});
+  }
+  if (fields.is_empty()) return fields;
+
+  let const op = modifier[0];
+  let const is_doubled = modifier.length > 1 && modifier[1] == op;
+  let const pattern_word = modifier.substring(is_doubled ? 2 : 1);
+  let pattern_location = SourceLocation{};
+  let active = Bitset{scratch_allocator()};
+  let const pattern = expand_modifier_word_masked(
+      pattern_word, active, true,
+      source_location_for_subview(source_location, modifier, pattern_word,
+                                  pattern_location));
+  let const extent = is_doubled ? pattern_match_extent::Longest
+                                : pattern_match_extent::Shortest;
+  let const mode = get_extglob_mode();
+  let const do_matches = [&](StringView candidate) throws -> bool {
+    return utils::glob_matches(pattern.view(), candidate, active, 0, mode,
+                               get_glob_charset_for(candidate));
+  };
+
+  if (op == '#') {
+    if (is_doubled && do_matches(fields[0].view())) {
+      fields.truncate(1);
+      fields[0].clear();
+      return fields;
+    }
+    fields[0] = trim_matching(*this, scratch_allocator(), fields[0].view(),
+                              pattern.view(), active, trim_end::Prefix, extent);
+
+    return fields;
+  }
+
+  let const is_empty_match = do_matches(StringView{});
+  if (!is_doubled && is_empty_match) return fields;
+
+  for (usize step = 0; step < fields.count(); step++) {
+    let const index = is_doubled ? step : fields.count() - 1 - step;
+    let trimmed =
+        trim_matching(*this, scratch_allocator(), fields[index].view(),
+                      pattern.view(), active, trim_end::Suffix, extent);
+    if (trimmed.count() < fields[index].count()) {
+      fields.truncate(index + 1);
+      fields[index] = steal(trimmed);
+      return fields;
+    }
+    if (is_doubled && is_empty_match) {
+      fields.truncate(index + 1);
+      return fields;
+    }
+  }
+
+  return fields;
 }
 
 } /* namespace koshka */

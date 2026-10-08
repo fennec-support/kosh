@@ -495,6 +495,21 @@ hot fn EvalContext::expand_word(const Word &word) throws
         let modifier_location = SourceLocation{};
         let const *modifier_location_pointer =
             do_source_location_for(modifier, modifier_location);
+        if (runtime_state().is_posix_mode() &&
+            (segment_text[1] == '#' || segment_text[1] == '%'))
+        {
+          let const trimmed =
+              trim_positional_fields(is_star, segment.is_in_double_quotes,
+                                     modifier, modifier_location_pointer);
+          for (usize i = 0; i < trimmed.count(); i++) {
+            if (i > 0) do_flush();
+            if (segment.is_in_double_quotes)
+              do_append_run(trimmed[i].view(), false);
+            else
+              do_append_split_run(trimmed[i].view(), true);
+          }
+          break;
+        }
         let const do_transform = [&](StringView value) -> String {
           if (positional_at_op != '\0')
             return apply_parameter_transform_to_value(value, positional_at_op,
