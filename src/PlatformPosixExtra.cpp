@@ -1270,6 +1270,63 @@ static fn parse_decimal_word(StringView word) wontthrow -> Maybe<u64>
   return parsed;
 }
 
+static fn format_proc_pid_path(char (&path)[64], i64 process_id,
+                               const char *suffix) wontthrow -> bool
+{
+  let const path_length =
+      std::snprintf(path, sizeof(path), "/proc/%lld%s",
+                    static_cast<long long>(process_id), suffix);
+
+  return path_length > 0 && static_cast<usize>(path_length) < sizeof(path);
+}
+
+struct tcp_counter_field
+{
+  StringView name;
+  u64 tcp_statistics::*field;
+  tcp_statistics_field capability;
+};
+
+/* The first row with the prefix lists the counter names and the next row
+   carries their values. */
+template <usize FieldCount>
+static fn read_tcp_counter_rows(StringView text, StringView prefix,
+                                const tcp_counter_field (&fields)[FieldCount],
+                                tcp_statistics &statistics) wontthrow -> bool
+{
+  let has_statistics = false;
+  StringView header;
+  usize position = 0;
+  while (position < text.length) {
+    let const line = each_line(text, position);
+    if (!line.starts_with(prefix)) continue;
+    if (header.is_empty()) {
+      header = line.substring(prefix.length);
+      continue;
+    }
+
+    usize name_position = 0;
+    usize value_position = prefix.length;
+    while (name_position < header.length && value_position < line.length) {
+      let const name = header.next_ascii_whitespace_word(name_position);
+      let const value_word = line.next_ascii_whitespace_word(value_position);
+      let const parsed_value = parse_decimal_word(value_word);
+      if (!parsed_value.has_value()) continue;
+
+      for (let const &known : fields) {
+        if (name != known.name) continue;
+        statistics.*known.field = *parsed_value;
+        statistics.available_fields |= static_cast<u32>(known.capability);
+        has_statistics = true;
+        break;
+      }
+    }
+    break;
+  }
+
+  return has_statistics;
+}
+
 static fn parse_decimal_words(StringView text, u64 *values,
                               usize value_capacity) wontthrow -> usize
 {
@@ -1826,131 +1883,64 @@ fn read_tcp_statistics(tcp_statistics &statistics) wontthrow -> bool
   let const length = read_small_file("/proc/net/snmp", buffer, sizeof(buffer));
   if (length == 0) return false;
 
-  let const text = StringView{buffer, length};
-  StringView header;
-  bool has_statistics = false;
-  usize position = 0;
-  while (position < text.length) {
-    let const line = each_line(text, position);
-    if (!line.starts_with("Tcp:")) continue;
-    if (header.is_empty()) {
-      header = line.substring(4);
-      continue;
-    }
-
-    usize name_position = 0;
-    usize value_position = 4;
-    while (name_position < header.length && value_position < line.length) {
-      let const name = header.next_ascii_whitespace_word(name_position);
-      let const value_word = line.next_ascii_whitespace_word(value_position);
-      let const parsed_value = parse_decimal_word(value_word);
-      if (!parsed_value.has_value()) continue;
-      let const value = *parsed_value;
-      struct tcp_field
-      {
-        StringView name;
-        u64 tcp_statistics::*field;
-        tcp_statistics_field capability;
-      };
-      static constexpr tcp_field FIELDS[] = {
-          {"ActiveOpens",  &tcp_statistics::active_open_count,
-           tcp_statistics_field::ActiveOpens          },
-          {"PassiveOpens", &tcp_statistics::passive_open_count,
-           tcp_statistics_field::PassiveOpens         },
-          {"InSegs",       &tcp_statistics::received_segment_count,
-           tcp_statistics_field::ReceivedSegments     },
-          {"OutSegs",      &tcp_statistics::sent_segment_count,
-           tcp_statistics_field::SentSegments         },
-          {"RetransSegs",  &tcp_statistics::retransmitted_segment_count,
-           tcp_statistics_field::RetransmittedSegments},
-          {"InErrs",       &tcp_statistics::input_error_count,
-           tcp_statistics_field::InputErrors          },
-          {"AttemptFails", &tcp_statistics::attempt_failure_count,
-           tcp_statistics_field::AttemptFailures      },
-          {"EstabResets",  &tcp_statistics::established_reset_count,
-           tcp_statistics_field::EstablishedResets    },
-          {"CurrEstab",    &tcp_statistics::current_established_count,
-           tcp_statistics_field::CurrentEstablished   },
-          {"OutRsts",      &tcp_statistics::sent_reset_count,
-           tcp_statistics_field::SentResets           },
-      };
-      for (let const &known : FIELDS) {
-        if (name != known.name) continue;
-        statistics.*known.field = value;
-        statistics.available_fields |= static_cast<u32>(known.capability);
-        has_statistics = true;
-        break;
-      }
-    }
-    break;
-  }
+  static constexpr tcp_counter_field SNMP_FIELDS[] = {
+      {"ActiveOpens",  &tcp_statistics::active_open_count,
+       tcp_statistics_field::ActiveOpens          },
+      {"PassiveOpens", &tcp_statistics::passive_open_count,
+       tcp_statistics_field::PassiveOpens         },
+      {"InSegs",       &tcp_statistics::received_segment_count,
+       tcp_statistics_field::ReceivedSegments     },
+      {"OutSegs",      &tcp_statistics::sent_segment_count,
+       tcp_statistics_field::SentSegments         },
+      {"RetransSegs",  &tcp_statistics::retransmitted_segment_count,
+       tcp_statistics_field::RetransmittedSegments},
+      {"InErrs",       &tcp_statistics::input_error_count,
+       tcp_statistics_field::InputErrors          },
+      {"AttemptFails", &tcp_statistics::attempt_failure_count,
+       tcp_statistics_field::AttemptFailures      },
+      {"EstabResets",  &tcp_statistics::established_reset_count,
+       tcp_statistics_field::EstablishedResets    },
+      {"CurrEstab",    &tcp_statistics::current_established_count,
+       tcp_statistics_field::CurrentEstablished   },
+      {"OutRsts",      &tcp_statistics::sent_reset_count,
+       tcp_statistics_field::SentResets           },
+  };
+  let has_statistics = read_tcp_counter_rows(StringView{buffer, length},
+                                             "Tcp:", SNMP_FIELDS, statistics);
 
   char netstat_buffer[65536];
   let const netstat_length = read_small_file(
       "/proc/net/netstat", netstat_buffer, sizeof(netstat_buffer));
   if (netstat_length == 0) return has_statistics;
 
-  let const netstat_text = StringView{netstat_buffer, netstat_length};
-  let tcp_extended_header = StringView{};
-  usize netstat_position = 0;
-  while (netstat_position < netstat_text.length) {
-    let const line = each_line(netstat_text, netstat_position);
-    if (!line.starts_with("TcpExt:")) continue;
-    if (tcp_extended_header.is_empty()) {
-      tcp_extended_header = line.substring(7);
-      continue;
-    }
-
-    usize name_position = 0;
-    usize value_position = 7;
-    while (name_position < tcp_extended_header.length &&
-           value_position < line.length)
-    {
-      let const name =
-          tcp_extended_header.next_ascii_whitespace_word(name_position);
-      let const value_word = line.next_ascii_whitespace_word(value_position);
-      let const parsed_value = parse_decimal_word(value_word);
-      if (!parsed_value.has_value()) continue;
-      let const value = *parsed_value;
-      struct tcp_extended_field
-      {
-        StringView name;
-        u64 tcp_statistics::*field;
-        tcp_statistics_field capability;
-      };
-      static constexpr tcp_extended_field FIELDS[] = {
-          {"ListenOverflows", &tcp_statistics::listen_overflow_count,
-           tcp_statistics_field::ListenOverflows           },
-          {"ListenDrops",     &tcp_statistics::listen_drop_count,
-           tcp_statistics_field::ListenDrops               },
-          {"TCPTimeouts",     &tcp_statistics::retransmit_timeout_count,
-           tcp_statistics_field::RetransmitTimeouts        },
-          {"TCPSynRetrans",   &tcp_statistics::syn_retransmit_count,
-           tcp_statistics_field::SynRetransmits            },
-          {"TCPFastRetrans",  &tcp_statistics::fast_retransmit_count,
-           tcp_statistics_field::FastRetransmits           },
-          {"TCPSpuriousRTOs",
-           &tcp_statistics::spurious_retransmit_timeout_count,
-           tcp_statistics_field::SpuriousRetransmitTimeouts},
-          {"TCPRcvQDrop",     &tcp_statistics::receive_queue_drop_count,
-           tcp_statistics_field::ReceiveQueueDrops         },
-          {"TCPBacklogDrop",  &tcp_statistics::backlog_drop_count,
-           tcp_statistics_field::BacklogDrops              },
-          {"TCPReqQFullDrop", &tcp_statistics::request_queue_full_drop_count,
-           tcp_statistics_field::RequestQueueFullDrops     },
-          {"TCPRetransFail",  &tcp_statistics::retransmit_failure_count,
-           tcp_statistics_field::RetransmitFailures        },
-      };
-      for (let const &known : FIELDS) {
-        if (name != known.name) continue;
-        statistics.*known.field = value;
-        statistics.available_fields |= static_cast<u32>(known.capability);
-        has_statistics = true;
-        break;
-      }
-    }
-    break;
+  static constexpr tcp_counter_field NETSTAT_FIELDS[] = {
+      {"ListenOverflows", &tcp_statistics::listen_overflow_count,
+       tcp_statistics_field::ListenOverflows           },
+      {"ListenDrops",     &tcp_statistics::listen_drop_count,
+       tcp_statistics_field::ListenDrops               },
+      {"TCPTimeouts",     &tcp_statistics::retransmit_timeout_count,
+       tcp_statistics_field::RetransmitTimeouts        },
+      {"TCPSynRetrans",   &tcp_statistics::syn_retransmit_count,
+       tcp_statistics_field::SynRetransmits            },
+      {"TCPFastRetrans",  &tcp_statistics::fast_retransmit_count,
+       tcp_statistics_field::FastRetransmits           },
+      {"TCPSpuriousRTOs", &tcp_statistics::spurious_retransmit_timeout_count,
+       tcp_statistics_field::SpuriousRetransmitTimeouts},
+      {"TCPRcvQDrop",     &tcp_statistics::receive_queue_drop_count,
+       tcp_statistics_field::ReceiveQueueDrops         },
+      {"TCPBacklogDrop",  &tcp_statistics::backlog_drop_count,
+       tcp_statistics_field::BacklogDrops              },
+      {"TCPReqQFullDrop", &tcp_statistics::request_queue_full_drop_count,
+       tcp_statistics_field::RequestQueueFullDrops     },
+      {"TCPRetransFail",  &tcp_statistics::retransmit_failure_count,
+       tcp_statistics_field::RetransmitFailures        },
+  };
+  if (read_tcp_counter_rows(StringView{netstat_buffer, netstat_length},
+                            "TcpExt:", NETSTAT_FIELDS, statistics))
+  {
+    has_statistics = true;
   }
+
   return has_statistics;
 #else
   unused(statistics);
@@ -2398,11 +2388,7 @@ fn read_process_io_status(i64 pid, process_io_status &status) wontthrow -> bool
   return true;
 #elif defined __linux__
   char path[64];
-  let const path_length = std::snprintf(path, sizeof(path), "/proc/%lld/io",
-                                        static_cast<long long>(pid));
-  if (path_length <= 0 || static_cast<usize>(path_length) >= sizeof(path)) {
-    return false;
-  }
+  if (!format_proc_pid_path(path, pid, "/io")) return false;
 
   char buffer[2048];
   let const length = read_small_file(path, buffer, sizeof(buffer));
@@ -2471,10 +2457,7 @@ fn read_process_io_statuses(const ArrayList<i64> &process_ids,
        process_position++)
   {
     char path[64];
-    let const path_length =
-        std::snprintf(path, sizeof(path), "/proc/%lld/io",
-                      static_cast<long long>(process_ids[process_position]));
-    if (path_length <= 0 || static_cast<usize>(path_length) >= sizeof(path)) {
+    if (!format_proc_pid_path(path, process_ids[process_position], "/io")) {
       continue;
     }
 
@@ -2683,12 +2666,7 @@ fn list_process_open_files(i64 pid, Allocator allocator,
   return files;
 #elif defined __linux__
   char process_path[64];
-  let const process_path_length =
-      std::snprintf(process_path, sizeof(process_path), "/proc/%lld",
-                    static_cast<long long>(pid));
-  if (process_path_length <= 0 ||
-      static_cast<usize>(process_path_length) >= sizeof(process_path))
-    return files;
+  if (!format_proc_pid_path(process_path, pid, "")) return files;
 
   struct named_reference
   {
