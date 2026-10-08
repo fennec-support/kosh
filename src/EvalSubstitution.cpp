@@ -393,6 +393,7 @@ fn EvalContext::setup_process_substitution(
   let const do_launch = [&]() throws -> os::process_substitution_launch {
     try {
       let const evaluator = make_child_evaluator_state(bootstrap);
+      bootstrap.evaluation_mode = root_evaluation_mode::ContainedSubstitution;
       set_child_source_origin(bootstrap, substitution_source.view(),
                               SourceLocation{});
       return os::launch_process_substitution(os::process_substitution_options{

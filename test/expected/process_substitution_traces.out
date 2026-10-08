@@ -1,0 +1,28 @@
+8:20: error: missing: at the top.
+     8 |  koshkit cat <(echo "${missing:?at the top}")
+       |                     ^~~~~~~~~~~~~~~~~~~~~~~~
+8:13: trace:
+     8 |  koshkit cat <(echo "${missing:?at the top}")
+       |              ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+9:31: error: missing: in a function.
+     9 |  inside() { koshkit cat <(echo "${missing:?in a function}"); }
+       |                                ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+9:24: trace:
+     9 |  inside() { koshkit cat <(echo "${missing:?in a function}"); }
+       |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+10:1: trace:
+    10 |  inside
+       |  ^~~~~~
+12:17: error: missing: in a helper.
+    12 |  helper() { echo "${missing:?in a helper}"; }
+       |                  ^~~~~~~~~~~~~~~~~~~~~~~~~
+11:26: trace:
+    11 |  nested() { koshkit cat <(helper); }
+       |                           ^~~~~~
+11:24: trace:
+    11 |  nested() { koshkit cat <(helper); }
+       |                         ^~~~~~~~~
+13:1: trace:
+    13 |  nested
+       |  ^~~~~~
+done

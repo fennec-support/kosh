@@ -1997,8 +1997,11 @@ struct subshell_transport_header
     return source_length <= payload_length &&
            payload_length <= MAXIMUM_TRANSPORT_LENGTH &&
            origin_length <= MAXIMUM_TRANSPORT_LENGTH - payload_length &&
-           evaluation_mode <=
-               static_cast<u32>(root_evaluation_mode::PreparedPipelineStage) &&
+           (evaluation_mode <=
+                static_cast<u32>(root_evaluation_mode::PreparedPipelineStage) ||
+            evaluation_mode ==
+                static_cast<u32>(
+                    root_evaluation_mode::ContainedSubstitution)) &&
            process_count <=
                (MAXIMUM_TRANSPORT_LENGTH - payload_length - origin_length) /
                    sizeof(u64);

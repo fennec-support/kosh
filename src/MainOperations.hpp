@@ -756,6 +756,8 @@ static fn run_script_contents(
 {
   let const diagnostic_sink = diagnostics.diagnostic_sink;
   let const should_print_ast = run_options.should_print_ast;
+  let const is_contained_substitution =
+      evaluation_mode == root_evaluation_mode::ContainedSubstitution;
   i32 exit_code = EXIT_SUCCESS;
 
   try {
@@ -838,10 +840,16 @@ static fn run_script_contents(
     if (!e.was_rendered()) {
       show_message(e.to_string(script_contents, &context));
       show_message(e.details_to_string(script_contents, &context));
+      if (is_contained_substitution)
+        context.print_source_backtrace(e.location());
     }
     exit_code = exit_status_for(e, context);
   } catch (const ErrorWithLocation &e) {
-    if (!e.was_rendered()) show_message(e.to_string(script_contents, &context));
+    if (!e.was_rendered()) {
+      show_message(e.to_string(script_contents, &context));
+      if (is_contained_substitution)
+        context.print_source_backtrace(e.location());
+    }
     exit_code = exit_status_for(e, context);
   } catch (const Error &e) {
     if (!e.was_rendered()) show_message(e.to_string());

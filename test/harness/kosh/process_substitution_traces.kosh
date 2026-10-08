@@ -1,0 +1,14 @@
+#!/bin/env kosh
+
+# An expansion error written directly in a process substitution body renders
+# with the substitution and its callers as trace frames. Windows runs the body
+# in a fresh evaluator, which must render the same frames.
+set -M bash
+unset missing
+koshkit cat <(echo "${missing:?at the top}")
+inside() { koshkit cat <(echo "${missing:?in a function}"); }
+inside
+nested() { koshkit cat <(helper); }
+helper() { echo "${missing:?in a helper}"; }
+nested
+echo done

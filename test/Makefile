@@ -103,7 +103,7 @@ SKIPPED_TESTS += alias_unalias arith_decimal ast_process_substitution \
 	koshkit_system_posix koshkit_terminal_posix koshkit_text_posix \
 	koshkit_watch koshkit_whoami mood_arithmetic \
 	process_substitution_partial_reads process_substitution_readers \
-	read_builtin \
+	process_substitution_traces read_builtin \
 	redirect_dynamic_fd redirection_truncate_append_input \
 	rerr_redirect_to_directory subshell_isolates_state test_builtin trap
 endif
