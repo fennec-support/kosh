@@ -4147,9 +4147,12 @@ reads a CDPATH directory only once the editor has indexed it during a pause of
 a quarter second, so a keystroke never waits on it.
 .PP
 An explicit Tab first replaces the token with the longest common prefix. A sole
-candidate replaces the token, takes the space the setting below asks for, and
-ends the Tab, so the next Tab lists the following word or the entries of a
-completed directory. When
+candidate replaces the token and takes the space the setting below asks for.
+With no space, the Tab ends there, and the next Tab lists the entries of a
+completed directory. With a space, the interactive selector stays open on the
+candidates for the following word, without a preview of its first row until a
+typed byte starts the word, and it closes quietly when that word has no
+candidates. Typing, Esc, Ctrl\-G, and Enter act as in any open menu. When
 that prefix does not extend the token and more than one candidate remains, the
 candidates are presented by the selector chosen by
 .B \-\-tab\-selector

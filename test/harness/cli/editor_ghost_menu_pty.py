@@ -741,19 +741,113 @@ def run_sole_completion_checks(session, report):
     session.send(
         b"koshconf set completion.add_space_after_completed_word on\r")
     session.wait_until(is_line(""))
-    for name, keys, typed in (
-            ("sole-file-stops-after-the-space", b"cat sub/al\tQ",
-             "cat sub/alpha-beta.txt Q"),
-            ("sole-directory-stops-after-the-space", b"ls zzloc\tQ",
-             "ls zzlocal/ Q"),
-            ("completion-and-space-undo-in-one-step",
-             b"cat sub/al\t" + CTRL_Z + b"Q", "cat sub/alQ")):
+    for name, keys, spaced in (
+            ("sole-file-keeps-the-menu-after-the-space", b"cat sub/al\t",
+             "cat sub/alpha-beta.txt "),
+            ("sole-directory-keeps-the-menu-after-the-space", b"ls zzloc\t",
+             "ls zzlocal/ ")):
         session.send(keys)
-        report.record(name, session, is_typed_without_menu(typed))
+        report.record(name, session,
+                      lambda screen, spaced=spaced: screen.get_menu() is not None
+                      and get_state(screen)[0] == spaced.rstrip())
+        session.send(ESCAPE)
+        session.wait_until(is_menu_closed)
+        session.send(b"Q")
+        report.record(name + "-and-escape-closes-it", session,
+                      is_typed_without_menu(spaced + "Q"))
         clear_line(session)
+    session.send(b"cat sub/al\t")
+    session.wait_until(lambda screen: screen.get_menu() is not None)
+    session.send(ESCAPE)
+    session.wait_until(is_menu_closed)
+    session.send(CTRL_Z)
+    session.wait_until(is_line("cat sub/al"))
+    session.send(b"Q")
+    report.record("completion-and-space-undo-in-one-step", session,
+                  is_typed_without_menu("cat sub/alQ"))
+    clear_line(session)
     session.send(
         b"koshconf set completion.add_space_after_completed_word off\r")
     session.wait_until(is_line(""))
+
+
+def settle(session, seconds):
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        session.pump(0.02)
+
+
+def run_next_word_menu_checks(session, report, directory):
+    session.send(b"complete -C %s zznw; complete -C %s zznone\r"
+                 % (os.path.join(directory, "next-words").encode(),
+                    os.path.join(directory, "next-words").encode()))
+    session.wait_until(is_line(""))
+    session.send(
+        b"koshconf set completion.add_space_after_completed_word on\r")
+    session.wait_until(is_line(""))
+    before = count_marker_lines(directory, "next-runs")
+    session.send(b"zznw zznwf\t")
+    report.record("next-word-menu-opens-after-the-space", session,
+                  lambda screen: has_typed_menu(
+                      "zznw zznwfirst", ["zzalpha", "zzbeta"])(screen))
+    report.record("next-word-menu-shows-no-duplicate-preview", session,
+                  lambda screen: get_state(screen) == ("zznw zznwfirst", ""))
+    report.record("next-word-menu-runs-the-callback-once-per-word", session,
+                  lambda screen: count_marker_lines(
+                      directory, "next-runs") - before == 2)
+    session.send(b"zzb")
+    report.record("next-word-menu-narrows-by-typing", session,
+                  lambda screen: has_typed_menu(
+                      "zznw zznwfirst zzb", ["zzbeta"])(screen))
+    session.send(ESCAPE)
+    report.record("next-word-menu-closes-on-escape", session,
+                  is_typed_without_menu("zznw zznwfirst zzb"))
+    clear_line(session)
+    session.send(b"zznw zznwf\t")
+    session.wait_until(lambda screen: screen.get_menu() is not None)
+    session.send(b"zz")
+    session.wait_until(lambda screen: get_state(screen)[0].endswith("zz"))
+    session.send(b"\x07")
+    session.wait_until(is_menu_closed)
+    session.send(b"Q")
+    report.record("next-word-menu-restores-on-ctrl-g", session,
+                  is_typed_without_menu("zznw zznwfirst Q"))
+    clear_line(session)
+    session.send(b"zznw zznwf\t")
+    session.wait_until(lambda screen: screen.get_menu() is not None)
+    session.send(b"\r")
+    report.record("next-word-menu-enter-runs-the-line", session,
+                  lambda screen: get_state(screen) == ("", "")
+                  and any("was not found" in line
+                          for line in screen.get_lines()))
+    clear_line(session)
+    session.send(b"_zzn() { echo run >> %s; "
+                 b"[ \"$COMP_CWORD\" = 1 ] && COMPREPLY=(zznonefirst); :; }; "
+                 b"complete -o bashdefault -F _zzn zznone\r"
+                 % os.path.join(directory, "next-runs").encode())
+    session.wait_until(is_line(""))
+    before = count_marker_lines(directory, "next-runs")
+    session.send(b"zznone zznonef\t")
+    session.wait_until(lambda screen: count_marker_lines(
+        directory, "next-runs") - before == 2)
+    settle(session, 0.5)
+    report.record("next-word-without-candidates-opens-no-menu", session,
+                  is_typed_without_menu("zznone zznonefirst"))
+    session.send(b"Q")
+    report.record("next-word-without-candidates-keeps-typing", session,
+                  is_typed_without_menu("zznone zznonefirst Q"))
+    clear_line(session)
+    session.send(
+        b"koshconf set completion.add_space_after_completed_word off\r")
+    session.wait_until(is_line(""))
+    before = count_marker_lines(directory, "next-runs")
+    session.send(b"zznw zznwf\t")
+    session.wait_until(lambda screen: count_marker_lines(
+        directory, "next-runs") - before == 1)
+    settle(session, 0.5)
+    report.record("next-word-menu-stays-closed-with-the-option-off", session,
+                  is_typed_without_menu("zznw zznwfirst"))
+    clear_line(session)
 
 
 def run_checks(binary, directory, command_directory, report):
@@ -930,6 +1024,7 @@ def run_checks(binary, directory, command_directory, report):
         run_cached_filter_checks(session, report, directory)
         run_compopt_checks(session, report)
         run_sole_completion_checks(session, report)
+        run_next_word_menu_checks(session, report, directory)
 
         run_command(session, report, "history-seed-alpha",
                     b"echo hist-alpha", "hist-alpha", 1)
@@ -1531,6 +1626,20 @@ done
 """
 
 
+NEXT_WORDS = """#!/bin/sh
+echo run >> '%s'
+case "$1:$3" in
+  zznw:zznw) words="zznwfirst" ;;
+  zznw:zznwfirst) words="zzalpha zzbeta" ;;
+  zznone:zznone) words="zznonefirst" ;;
+  *) words="" ;;
+esac
+for word in $words; do
+  case $word in "$2"*) echo "$word" ;; esac
+done
+"""
+
+
 LISTING_WORDS = """#!/bin/sh
 echo run >> '%s'
 for word in %s; do
@@ -1623,6 +1732,9 @@ def main():
         write_counting_words(os.path.join(directory, "empty-words"),
                              os.path.join(directory, "empty-runs"),
                              "zzemptyA zzemptyB")
+        with open(os.path.join(directory, "next-words"), "w") as handle:
+            handle.write(NEXT_WORDS % os.path.join(directory, "next-runs"))
+        os.chmod(os.path.join(directory, "next-words"), 0o755)
         write_help_probe(os.path.join(directory, "bin", "act"),
                          os.path.join(directory, "act-marker"))
         write_help_probe(os.path.join(open_directory, "adb"),

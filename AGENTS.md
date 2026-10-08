@@ -268,7 +268,12 @@ changes update this file.
   slash, an erase below the gathered token, or a change of the best tier.
   A TAB that grows the token to the common prefix opens the menu on the
   candidates it gathered under the same rules, so one TAB runs the callback
-  once.
+  once. A sole candidate that takes the space of
+  `completion.add_space_after_completed_word` keeps the menu open on the next
+  word through a second gather, so that TAB runs the callback once for each
+  word. The menu holds back the preview of its first row while the token is
+  empty, closes quietly when the next word has no candidates, and does not
+  open when the option adds no space.
 - Command completion reads keywords, builtins, bundled utilities, functions,
   aliases, and PATH. `KEYWORD_ENTRIES` is the sole keyword catalog. A `type`
   operand reads the same catalog. Only the listing mode accepts an empty
