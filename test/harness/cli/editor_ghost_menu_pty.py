@@ -22,7 +22,8 @@
 # the caret inside it. With the space-after option on, a spec completion takes
 # a space unless the spec has nospace, and a nosort reply keeps its order in
 # the menu. A sole completion stops after its word, space, or slash without a
-# menu, and only a second Tab lists a directory. It also covers word-wise ghost
+# menu, only a second Tab lists a directory, and one Ctrl-Z undoes a
+# completion with its space. It also covers word-wise ghost
 # acceptance through Ctrl-Right and Alt-F, and prefix history search on Up and
 # Down with its option switched off, and the inline hint rows for a command and
 # a flag, their header naming the kind and the two-column indent, their absence
@@ -81,6 +82,7 @@ ALT_F = b"\x1bf"
 CTRL_A = b"\x01"
 CTRL_E = b"\x05"
 CTRL_W = b"\x17"
+CTRL_Z = b"\x1a"
 CTRL_C = b"\x03"
 CTRL_D = b"\x04"
 ALT_BACKSPACE = b"\x1b\x7f"
@@ -711,7 +713,9 @@ def run_sole_completion_checks(session, report):
             ("second-tab-lists-the-directory", b"ls zzloc\t\t",
              "ls zzlocal/inner.txt"),
             ("sole-empty-directory-opens-no-menu", b"ls zzhol\t\tQ",
-             "ls zzhollow/Q")):
+             "ls zzhollow/Q"),
+            ("completion-undoes-in-one-step", b"cat sub/al\t" + CTRL_Z + b"Q",
+             "cat sub/alQ")):
         session.send(keys)
         report.record(name, session, is_typed_without_menu(typed))
         clear_line(session)
@@ -722,7 +726,9 @@ def run_sole_completion_checks(session, report):
             ("sole-file-stops-after-the-space", b"cat sub/al\tQ",
              "cat sub/alpha-beta.txt Q"),
             ("sole-directory-stops-after-the-space", b"ls zzloc\tQ",
-             "ls zzlocal/ Q")):
+             "ls zzlocal/ Q"),
+            ("completion-and-space-undo-in-one-step",
+             b"cat sub/al\t" + CTRL_Z + b"Q", "cat sub/alQ")):
         session.send(keys)
         report.record(name, session, is_typed_without_menu(typed))
         clear_line(session)

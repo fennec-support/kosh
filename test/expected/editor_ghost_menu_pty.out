@@ -63,8 +63,10 @@ space-after-completion-still-follows-a-word PASS
 sole-directory-stops-after-the-slash PASS
 second-tab-lists-the-directory PASS
 sole-empty-directory-opens-no-menu PASS
+completion-undoes-in-one-step PASS
 sole-file-stops-after-the-space PASS
 sole-directory-stops-after-the-space PASS
+completion-and-space-undo-in-one-step PASS
 history-seed-alpha PASS
 history-seed-beta PASS
 history-seed-gamma PASS
