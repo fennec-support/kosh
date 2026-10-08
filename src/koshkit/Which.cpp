@@ -15,37 +15,22 @@
 #include "../base/Path.hpp"
 #include "../base/Trace.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-aq] program [program ...]");
-
-HELP_DESCRIPTION_DECL(
-    "The which utility prints how each named program resolves.");
+KOSHKIT_UTIL_DECL("[-aq] program [program ...]",
+                  "The which utility prints how each named program resolves.");
 
 FLAG(ALL, Bool, 'a', "all", "Show all matches.");
 FLAG(QUIET, Bool, 'q', "quiet", "Print nothing, only set the status.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Which);
 
-namespace koshka {
-
-namespace koshkit {
-
-Which::Which() = default;
-
-pure fn Which::kind() const wontthrow -> Utility::Kind { return Kind::Which; }
+namespace koshka::koshkit {
 
 fn Which::execute(const ExecContext &ec, EvalContext &cxt,
                   const ArrayList<String> &args,
                   const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const is_quiet = FLAG_QUIET.is_enabled();
   let output = String{cxt.scratch_allocator()};
@@ -114,6 +99,4 @@ fn Which::execute(const ExecContext &ec, EvalContext &cxt,
   return has_missing_any ? 1 : 0;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

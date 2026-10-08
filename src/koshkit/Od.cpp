@@ -14,12 +14,9 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-bcdosvx] [-A base] [-j skip] [-N count] [-t type]... "
-                   "[file ...]");
-
-HELP_DESCRIPTION_DECL("The od utility writes formatted file bytes.");
+KOSHKIT_UTIL_DECL("[-bcdosvx] [-A base] [-j skip] [-N count] [-t type]... "
+                  "[file ...]",
+                  "The od utility writes formatted file bytes.");
 
 FLAG(OD_ADDRESS, String, 'A', "address-radix", "Use d, o, x, or n addresses.");
 FLAG(OD_SKIP, String, 'j', "skip-bytes", "Skip this many input bytes.");
@@ -34,7 +31,6 @@ FLAG(OD_DECIMAL_WORDS, Bool, 'd', "",
 FLAG(OD_OCTAL_WORDS, Bool, 'o', "", "Write octal words, as -t o2.");
 FLAG(OD_SIGNED_WORDS, Bool, 's', "", "Write signed decimal words, as -t d2.");
 FLAG(OD_HEX_WORDS, Bool, 'x', "", "Write hexadecimal words, as -t x2.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Od);
 
@@ -154,20 +150,12 @@ static fn parse_od_byte_count(StringView text, bool has_unit_suffix) throws
   return parsed.value() * multiplier;
 }
 
-Od::Od() = default;
-
-pure fn Od::kind() const wontthrow -> Utility::Kind { return Kind::Od; }
-
 fn Od::execute(const ExecContext &ec, EvalContext &cxt,
                const ArrayList<String> &args,
                const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   char address_radix = 'o';
   if (FLAG_OD_ADDRESS.is_set()) {
@@ -520,4 +508,4 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

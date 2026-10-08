@@ -12,13 +12,8 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("expression");
-
-HELP_DESCRIPTION_DECL("The expr utility evaluates an operand expression.");
-
-FLAG(HELP, Bool, '\0', "help", "Display help.");
+KOSHKIT_UTIL_DECL("expression",
+                  "The expr utility evaluates an operand expression.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Expr);
 
@@ -269,21 +264,13 @@ private:
   usize m_position{0};
 };
 
-Expr::Expr() = default;
-
-pure fn Expr::kind() const wontthrow -> Utility::Kind { return Kind::Expr; }
-
 fn Expr::execute(const ExecContext &ec, EvalContext &cxt,
                  const ArrayList<String> &args,
                  const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations,
-      {.should_accept_negative_number_operand = true});
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(
+      args, arg_locations, {.should_accept_negative_number_operand = true});
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
   ExprParser parser{operands, operand_locations, cxt.scratch_allocator()};
@@ -294,4 +281,4 @@ fn Expr::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

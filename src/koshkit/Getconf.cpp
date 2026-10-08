@@ -11,18 +11,14 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL(
-    "[-v specification] system-variable | path-variable path | -a [path]");
-
-HELP_DESCRIPTION_DECL("The getconf utility writes configuration values.");
+KOSHKIT_UTIL_DECL(
+    "[-v specification] system-variable | path-variable path | -a [path]",
+    "The getconf utility writes configuration values.");
 
 FLAG(GETCONF_SPECIFICATION, String, 'v', "specification",
      "Use this POSIX specification.");
 FLAG(GETCONF_ALL, Bool, 'a', "all",
      "Write every known variable, using path for pathname variables.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Getconf);
 
@@ -353,23 +349,12 @@ fn report_configuration_query_error(const ExecContext &ec, EvalContext &cxt,
   return 1;
 }
 
-Getconf::Getconf() = default;
-
-pure fn Getconf::kind() const wontthrow -> Utility::Kind
-{
-  return Kind::Getconf;
-}
-
 fn Getconf::execute(const ExecContext &ec, EvalContext &cxt,
                     const ArrayList<String> &args,
                     const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (FLAG_GETCONF_ALL.is_enabled()) {
     if (operands.count() > 1)
@@ -486,4 +471,4 @@ fn Getconf::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

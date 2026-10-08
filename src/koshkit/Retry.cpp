@@ -14,12 +14,8 @@
 #include "../Platform.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL(
-    "[-q] [-n attempts] [-d delay] [-b backoff] [-m max-delay] command ...");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[-q] [-n attempts] [-d delay] [-b backoff] [-m max-delay] command ...",
     "The retry utility runs a command until it succeeds or the attempts run "
     "out.");
 
@@ -32,7 +28,6 @@ FLAG(RETRY_BACKOFF, String, 'b', "backoff",
 FLAG(RETRY_MAX_DELAY, String, 'm', "max-delay",
      "Never wait longer than this between attempts.");
 FLAG(RETRY_QUIET, Bool, 'q', "quiet", "Report no attempt lines.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Retry);
 
@@ -93,20 +88,14 @@ fn build_command_source(const ArrayList<String> &operands,
   return source;
 }
 
-} // namespace
-
-Retry::Retry() = default;
-
-pure fn Retry::kind() const wontthrow -> Utility::Kind { return Kind::Retry; }
+} /* namespace */
 
 fn Retry::execute(const ExecContext &ec, EvalContext &cxt,
                   const ArrayList<String> &args,
                   const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const operands = PARSE_KOSHKIT_ARGS(args, arg_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const allocator = cxt.scratch_allocator();
 
@@ -205,4 +194,4 @@ fn Retry::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

@@ -12,14 +12,10 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-t tablist] [file ...]");
-
-HELP_DESCRIPTION_DECL("The expand utility converts tabs to spaces.");
+KOSHKIT_UTIL_DECL("[-t tablist] [file ...]",
+                  "The expand utility converts tabs to spaces.");
 
 FLAG(EXPAND_TABS, String, 't', "tabs", "Use these tab stops.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Expand);
 
@@ -30,18 +26,12 @@ static pure fn is_expand_control(char byte) wontthrow -> bool
   return byte == '\t' || byte == '\n' || byte == '\r' || byte == '\b';
 }
 
-Expand::Expand() = default;
-
-pure fn Expand::kind() const wontthrow -> Utility::Kind { return Kind::Expand; }
-
 fn Expand::execute(const ExecContext &ec, EvalContext &cxt,
                    const ArrayList<String> &args,
                    const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const operands = PARSE_KOSHKIT_ARGS(args, arg_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let tab_stops = ArrayList<usize>{cxt.scratch_allocator()};
   if (FLAG_EXPAND_TABS.is_set()) {
@@ -168,4 +158,4 @@ fn Expand::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

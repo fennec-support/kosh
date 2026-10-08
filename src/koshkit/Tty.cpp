@@ -11,33 +11,20 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-s]");
-
-HELP_DESCRIPTION_DECL("The tty utility writes the terminal name.");
+KOSHKIT_UTIL_DECL("[-s]", "The tty utility writes the terminal name.");
 
 FLAG(TTY_SILENT, Bool, 's', "silent", "Write no output.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Tty);
 
 namespace koshka::koshkit {
-
-Tty::Tty() = default;
-
-pure fn Tty::kind() const wontthrow -> Utility::Kind { return Kind::Tty; }
 
 fn Tty::execute(const ExecContext &ec, EvalContext &cxt,
                 const ArrayList<String> &args,
                 const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const operands =
-      PARSE_KOSHKIT_ARGS_WITH_LOCATIONS(args, arg_locations, operand_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (!operands.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
@@ -57,4 +44,4 @@ fn Tty::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

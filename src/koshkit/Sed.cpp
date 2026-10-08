@@ -13,19 +13,15 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-En] [-e script]... [-f script-file]... [script] "
-                   "[file ...]");
-
-HELP_DESCRIPTION_DECL("The sed utility edits text streams.");
+KOSHKIT_UTIL_DECL("[-En] [-e script]... [-f script-file]... [script] "
+                  "[file ...]",
+                  "The sed utility edits text streams.");
 
 FLAG(SED_EXTENDED, Bool, 'E', "extended-regexp",
      "Use extended regular expressions.");
 FLAG(SED_EXPRESSION, ManyStrings, 'e', "expression", "Add an editing script.");
 FLAG(SED_FILE, ManyStrings, 'f', "file", "Read an editing script from a file.");
 FLAG(SED_QUIET, Bool, 'n', "quiet", "Suppress automatic printing.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Sed);
 
@@ -512,20 +508,12 @@ static fn apply_sed_substitution(sed_command &command, String &line,
   return did_replace;
 }
 
-Sed::Sed() = default;
-
-pure fn Sed::kind() const wontthrow -> Utility::Kind { return Kind::Sed; }
-
 fn Sed::execute(const ExecContext &ec, EvalContext &cxt,
                 const ArrayList<String> &args,
                 const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const operands =
-      PARSE_KOSHKIT_ARGS_WITH_LOCATIONS(args, arg_locations, operand_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   String script{cxt.scratch_allocator()};
   let script_parts = ArrayList<sed_script_part>{cxt.scratch_allocator()};
@@ -717,4 +705,4 @@ fn Sed::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

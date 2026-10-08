@@ -14,15 +14,11 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-a] [[month] year]");
-
-HELP_DESCRIPTION_DECL("The cal utility writes a Gregorian calendar.");
+KOSHKIT_UTIL_DECL("[-a] [[month] year]",
+                  "The cal utility writes a Gregorian calendar.");
 
 FLAG(CAL_TODAY, Bool, 'a', "today",
      "Start weeks on Monday and describe the current date.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Cal);
 
@@ -114,20 +110,12 @@ static fn append_calendar_month(String &output, usize month, i64 year,
   }
 }
 
-Cal::Cal() = default;
-
-pure fn Cal::kind() const wontthrow -> Utility::Kind { return Kind::Cal; }
-
 fn Cal::execute(const ExecContext &ec, EvalContext &cxt,
                 const ArrayList<String> &args,
                 const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() > 2) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[2],
@@ -216,4 +204,4 @@ fn Cal::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

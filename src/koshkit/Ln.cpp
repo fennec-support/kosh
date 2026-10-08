@@ -14,38 +14,24 @@
 #include "../base/Path.hpp"
 #include "../base/Trace.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-fLPs] target ... link");
-
-HELP_DESCRIPTION_DECL("The ln utility creates links to files.");
+KOSHKIT_UTIL_DECL("[-fLPs] target ... link",
+                  "The ln utility creates links to files.");
 
 FLAG(LN_SYMBOLIC, Bool, 's', "", "Create a symbolic link.");
 FLAG(LN_FORCE, Bool, 'f', "", "Remove an existing destination first.");
 FLAG(LN_LOGICAL, Bool, 'L', "", "Follow symbolic link sources.");
 FLAG(LN_PHYSICAL, Bool, 'P', "", "Link symbolic link sources themselves.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Ln);
 
-namespace koshka {
-
-namespace koshkit {
-
-Ln::Ln() = default;
-
-pure fn Ln::kind() const wontthrow -> Utility::Kind { return Kind::Ln; }
+namespace koshka::koshkit {
 
 fn Ln::execute(const ExecContext &ec, EvalContext &cxt,
                const ArrayList<String> &args,
                const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
 
@@ -100,6 +86,4 @@ fn Ln::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

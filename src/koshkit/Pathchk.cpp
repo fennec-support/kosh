@@ -12,17 +12,13 @@
 #include "../Koshkit.hpp"
 #include "../base/Path.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-pP] pathname ...");
-
-HELP_DESCRIPTION_DECL("The pathchk utility checks pathname portability.");
+KOSHKIT_UTIL_DECL("[-pP] pathname ...",
+                  "The pathchk utility checks pathname portability.");
 
 FLAG(PATHCHK_PORTABLE, Bool, 'p', "portable",
      "Use POSIX portable pathname limits and characters.");
 FLAG(PATHCHK_LEADING_HYPHEN, Bool, 'P', "leading-hyphen",
      "Reject an empty pathname or a component beginning with a hyphen.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Pathchk);
 
@@ -35,23 +31,12 @@ static pure fn is_portable_filename_byte(char byte) wontthrow -> bool
          byte == '-';
 }
 
-Pathchk::Pathchk() = default;
-
-pure fn Pathchk::kind() const wontthrow -> Utility::Kind
-{
-  return Kind::Pathchk;
-}
-
 fn Pathchk::execute(const ExecContext &ec, EvalContext &cxt,
                     const ArrayList<String> &args,
                     const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
   let const should_check_portable = FLAG_PATHCHK_PORTABLE.is_enabled();
@@ -120,4 +105,4 @@ fn Pathchk::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

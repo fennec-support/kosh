@@ -11,35 +11,18 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("");
-
-HELP_DESCRIPTION_DECL("The logname utility writes the login name.");
-
-FLAG(HELP, Bool, '\0', "help", "Display help.");
+KOSHKIT_UTIL_DECL("", "The logname utility writes the login name.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Logname);
 
 namespace koshka::koshkit {
-
-Logname::Logname() = default;
-
-pure fn Logname::kind() const wontthrow -> Utility::Kind
-{
-  return Kind::Logname;
-}
 
 fn Logname::execute(const ExecContext &ec, EvalContext &cxt,
                     const ArrayList<String> &args,
                     const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (!operands.is_empty()) {
     report_soft_koshkit_util_error(ec, cxt, operand_locations[0],
@@ -58,4 +41,4 @@ fn Logname::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

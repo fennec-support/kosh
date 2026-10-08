@@ -17,18 +17,14 @@
 #include "../base/Path.hpp"
 #include "../base/StaticStringMap.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-i inode] [-r root] [--verify] [path ...]");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[-i inode] [-r root] [--verify] [path ...]",
     "The goodnode utility reports inode metadata and a CRC32C checksum.");
 
 FLAG(GOODNODE_INODE, String, 'i', "inode", "Locate this inode.");
 FLAG(GOODNODE_ROOT, String, 'r', "root", "Search beneath this path.");
 FLAG(GOODNODE_VERIFY, Bool, '\0', "verify",
      "Verify filesystem integrity when the platform supports it.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(GoodNode);
 
@@ -249,24 +245,13 @@ pure fn path_is_beneath(const Path &root, const Path &candidate) wontthrow
           os::is_directory_separator(candidate_text[root_text.length]));
 }
 
-} // namespace
-
-GoodNode::GoodNode() = default;
-
-pure fn GoodNode::kind() const wontthrow -> Utility::Kind
-{
-  return Kind::GoodNode;
-}
+} /* namespace */
 
 fn GoodNode::execute(
     const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
     const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const allocator = cxt.scratch_allocator();
   let paths = ArrayList<String>{allocator};
@@ -376,4 +361,4 @@ fn GoodNode::execute(
   return exit_status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

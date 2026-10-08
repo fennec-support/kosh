@@ -13,11 +13,8 @@
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-hHkP] [file ...]");
-
-HELP_DESCRIPTION_DECL("The df utility reports available filesystem space.");
+KOSHKIT_UTIL_DECL("[-hHkP] [file ...]",
+                  "The df utility reports available filesystem space.");
 
 FLAG(DF_KIBIBYTES, Bool, 'k', "kilobytes", "Use 1024-byte units.");
 FLAG(DF_PORTABLE, Bool, 'P', "portability", "Use the POSIX output format.");
@@ -25,26 +22,17 @@ FLAG(DF_HUMAN, Bool, 'h', "human-readable",
      "Print sizes in powers of 1024 with K, M, G, T, or P suffixes.");
 FLAG(DF_SI, Bool, 'H', "si",
      "Print sizes in powers of 1000 with K, M, G, T, or P suffixes.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Df);
 
 namespace koshka::koshkit {
-
-Df::Df() = default;
-
-pure fn Df::kind() const wontthrow -> Utility::Kind { return Kind::Df; }
 
 fn Df::execute(const ExecContext &ec, EvalContext &cxt,
                const ArrayList<String> &args,
                const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const is_human = FLAG_DF_HUMAN.is_enabled() || FLAG_DF_SI.is_enabled();
   let const human_step = FLAG_DF_SI.is_enabled() ? 1000u : 1024u;
@@ -104,4 +92,4 @@ fn Df::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

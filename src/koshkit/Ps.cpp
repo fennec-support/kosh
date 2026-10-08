@@ -13,11 +13,7 @@
 #include "../Platform.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[aux]");
-
-HELP_DESCRIPTION_DECL("The ps utility lists the running processes.");
+KOSHKIT_UTIL_DECL("[aux]", "The ps utility lists the running processes.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(PS_ALL, Bool, 'a', "", "List every user's processes.");
@@ -26,11 +22,9 @@ FLAG(PS_NO_TTY, Bool, 'x', "",
      "List processes without a controlling terminal.");
 FLAG(PS_WIDE, Bool, 'w', "", "Use a wide output format.");
 
-REGISTER_KOSHKIT_UTIL_FLAGS(Ps);
+REGISTER_KOSHKIT_UTIL_FLAGS_WITH_OWN_HELP(Ps);
 
-namespace koshka {
-
-namespace koshkit {
+namespace koshka::koshkit {
 
 struct uid_name_cache_entry
 {
@@ -125,20 +119,12 @@ static fn render_aux(const ArrayList<os::process_entry> &processes,
   }
 }
 
-Ps::Ps() = default;
-
-pure fn Ps::kind() const wontthrow -> Utility::Kind { return Kind::Ps; }
-
 fn Ps::execute(const ExecContext &ec, EvalContext &cxt,
                const ArrayList<String> &args,
                const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   bool should_show_aux = FLAG_PS_ALL.is_enabled() ||
                          FLAG_PS_USER_FMT.is_enabled() ||
@@ -171,6 +157,4 @@ fn Ps::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

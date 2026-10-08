@@ -11,11 +11,8 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-amnrsv]");
-
-HELP_DESCRIPTION_DECL("The uname utility writes system identification.");
+KOSHKIT_UTIL_DECL("[-amnrsv]",
+                  "The uname utility writes system identification.");
 
 FLAG(UNAME_ALL, Bool, 'a', "all", "Write all fields.");
 FLAG(UNAME_MACHINE, Bool, 'm', "machine", "Write the machine type.");
@@ -26,26 +23,17 @@ FLAG(UNAME_SYSTEM, Bool, 's', "kernel-name",
      "Write the operating system name.");
 FLAG(UNAME_VERSION, Bool, 'v', "kernel-version",
      "Write the operating system version.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Uname);
 
 namespace koshka::koshkit {
-
-Uname::Uname() = default;
-
-pure fn Uname::kind() const wontthrow -> Utility::Kind { return Kind::Uname; }
 
 fn Uname::execute(const ExecContext &ec, EvalContext &cxt,
                   const ArrayList<String> &args,
                   const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const operands =
-      PARSE_KOSHKIT_ARGS_WITH_LOCATIONS(args, arg_locations, operand_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (!operands.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
@@ -81,4 +69,4 @@ fn Uname::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

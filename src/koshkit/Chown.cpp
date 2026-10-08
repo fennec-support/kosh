@@ -13,11 +13,8 @@
 #include "../Koshkit.hpp"
 #include "../UtilsOwnership.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-hRx] [-H|-L|-P] owner[:group] file ...");
-
-HELP_DESCRIPTION_DECL("The chown utility changes file owner and group.");
+KOSHKIT_UTIL_DECL("[-hRx] [-H|-L|-P] owner[:group] file ...",
+                  "The chown utility changes file owner and group.");
 
 FLAG(CHOWN_NO_DEREFERENCE, Bool, 'h', "no-dereference",
      "Change a symbolic link instead of its target.");
@@ -31,26 +28,17 @@ FLAG(CHOWN_PHYSICAL, Bool, 'P', "physical",
      "Do not follow symbolic links during recursion.");
 FLAG(CHOWN_ONE_FILE_SYSTEM, Bool, 'x', "one-file-system",
      "Do not descend into a directory on another file system.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Chown);
 
 namespace koshka::koshkit {
-
-Chown::Chown() = default;
-
-pure fn Chown::kind() const wontthrow -> Utility::Kind { return Kind::Chown; }
 
 fn Chown::execute(const ExecContext &ec, EvalContext &cxt,
                   const ArrayList<String> &args,
                   const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const operands =
-      PARSE_KOSHKIT_ARGS_WITH_LOCATIONS(args, arg_locations, operand_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
   let const specification = operands[0].view();
@@ -124,4 +112,4 @@ fn Chown::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

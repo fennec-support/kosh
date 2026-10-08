@@ -13,22 +13,16 @@
 #include "../Koshkit.hpp"
 #include "../base/Path.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-fiv] source ... destination");
-
-HELP_DESCRIPTION_DECL("The mv utility renames each source to the destination.");
+KOSHKIT_UTIL_DECL("[-fiv] source ... destination",
+                  "The mv utility renames each source to the destination.");
 
 FLAG(MV_FORCE, Bool, 'f', "", "Overwrite an existing destination.");
 FLAG(MV_INTERACTIVE, Bool, 'i', "", "Ask before overwriting a destination.");
 FLAG(MV_VERBOSE, Bool, 'v', "", "Print the name of each move as it happens.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Mv);
 
-namespace koshka {
-
-namespace koshkit {
+namespace koshka::koshkit {
 
 static fn copy_file_contents(StringView source, StringView destination,
                              Allocator allocator) throws -> void
@@ -149,20 +143,12 @@ static fn move_across_devices(StringView source, StringView target,
   return true;
 }
 
-Mv::Mv() = default;
-
-pure fn Mv::kind() const wontthrow -> Utility::Kind { return Kind::Mv; }
-
 fn Mv::execute(const ExecContext &ec, EvalContext &cxt,
                const ArrayList<String> &args,
                const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
 
@@ -239,6 +225,4 @@ fn Mv::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

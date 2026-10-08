@@ -13,38 +13,23 @@
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL(
-    "[--transaction-held-lock] directory command [argument ...]");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[--transaction-held-lock] directory command [argument ...]",
     "The flock utility runs a command while holding a directory lock.");
 
 FLAG(TRANSACTION_HELD_LOCK, Bool, '\0', "transaction-held-lock",
      "Keep the lock after the process that launched the transaction exits.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Flock);
 
-namespace koshka {
-
-namespace koshkit {
-
-Flock::Flock() = default;
-
-pure fn Flock::kind() const wontthrow -> Utility::Kind { return Kind::Flock; }
+namespace koshka::koshkit {
 
 fn Flock::execute(const ExecContext &ec, EvalContext &cxt,
                   const ArrayList<String> &args,
                   const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  defer { reset_flags(FLAG_LIST); };
-
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
 
@@ -89,6 +74,4 @@ fn Flock::execute(const ExecContext &ec, EvalContext &cxt,
   return result.has_value() ? static_cast<i32>(result->exit_status) : 126;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

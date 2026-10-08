@@ -16,12 +16,9 @@
 #include "../Utils.hpp"
 #include "../base/Arena.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-aCtlf] [--live [seconds]] [--cumulative [seconds]] "
-                   "[--sort key]");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[-aCtlf] [--live [seconds]] [--cumulative [seconds]] "
+    "[--sort key]",
     "The evilnet utility reports the addresses assigned to each interface.");
 
 FLAG(EVILNET_ALL, Bool, 'a', "all", "Include interface traffic and TCP data.");
@@ -46,7 +43,6 @@ FLAG_OPTIONAL(EVILNET_CUMULATIVE, 'C', "cumulative", Live,
               is_evilnet_sample_duration, "seconds");
 FLAG(EVILNET_FAILURES, Bool, 'f', "failures",
      "Show only TCP failures and packet loss.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(EvilNet);
 
@@ -785,23 +781,12 @@ fn run_live_network_traffic(const ExecContext &ec, Allocator allocator,
 
 } /* namespace */
 
-EvilNet::EvilNet() = default;
-
-pure fn EvilNet::kind() const wontthrow -> Utility::Kind
-{
-  return Kind::EvilNet;
-}
-
 fn EvilNet::execute(const ExecContext &ec, EvalContext &cxt,
                     const ArrayList<String> &args,
                     const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const operands =
-      PARSE_KOSHKIT_ARGS_WITH_LOCATIONS(args, arg_locations, operand_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (!operands.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "unexpected operand",

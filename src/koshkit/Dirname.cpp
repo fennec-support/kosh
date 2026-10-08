@@ -13,20 +13,12 @@
 #include "../Koshkit.hpp"
 #include "../base/Path.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("path");
-
-HELP_DESCRIPTION_DECL(
-    "The dirname utility prints the directory part of a path.");
-
-FLAG(HELP, Bool, '\0', "help", "Display help.");
+KOSHKIT_UTIL_DECL("path",
+                  "The dirname utility prints the directory part of a path.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Dirname);
 
-namespace koshka {
-
-namespace koshkit {
+namespace koshka::koshkit {
 
 static pure fn is_directory_separator(char c) wontthrow -> bool
 {
@@ -69,22 +61,11 @@ static pure fn directory_part_of(StringView path) wontthrow -> StringView
   return path.substring_of_length(0, end_position);
 }
 
-Dirname::Dirname() = default;
-
-pure fn Dirname::kind() const wontthrow -> Utility::Kind
-{
-  return Kind::Dirname;
-}
-
 cold fn Dirname::execute(
     const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
     const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) {
     report_usage_error(ec, cxt, args[0].view());
@@ -97,6 +78,4 @@ cold fn Dirname::execute(
   return 0;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

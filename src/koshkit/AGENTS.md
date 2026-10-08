@@ -6,10 +6,12 @@ Search `src/koshkit`, `Koshkit.hpp`, and `Koshkit.cpp` before adding behavior.
 Existing flag types, parsers, path helpers, stream helpers, and diagnostics
 should own shared behavior.
 
-Every utility declares flags with `FLAG_LIST_DECL`, `FLAG`, and the shared flag
-types. `REGISTER_KOSHKIT_UTIL_FLAGS` publishes the list for execution, help,
-and completion. `parse_util_operands` handles flags, `--`, and operand
-locations. `KOSHKIT_SHOW_HELP_AND_RETURN` handles help.
+Every utility declares its synopsis and description with `KOSHKIT_UTIL_DECL`
+and its flags with `FLAG` and the shared flag types.
+`REGISTER_KOSHKIT_UTIL_FLAGS` adds the `--help` flag last and publishes the
+list for execution, help, and completion. `KOSHKIT_PARSE_OPERANDS_OR_HELP`
+calls `parse_util_operands`, which handles flags, `--`, and operand
+locations, resets the flags at scope exit, and returns after help.
 
 Do not write a local option scanner for ordinary short flags, long flags,
 bundled flags, flag arguments, `--`, or operand locations. Extend
@@ -23,10 +25,10 @@ Platform operations pass through the `os` wrappers.
 
 ## Register one utility
 
-Add the kind, name entry, switch case, and struct declaration in
-`Koshkit.hpp`. Keep the count derived from the last enum value. The source file
-belongs directly below `src/koshkit`. The source Makefile discovers it
-automatically.
+Add one entry to `KOSHKIT_UTILITY_LIST` in `Koshkit.hpp`, which derives the
+kind, the name entry, the switch case, the class declaration, and the count.
+The source file belongs directly below `src/koshkit`. The source Makefile
+discovers it automatically.
 
 Do not invoke a host utility to implement bundled behavior. Do not duplicate a
 reader, writer, traversal, numeric parser, signal parser, or process helper.

@@ -15,16 +15,11 @@
 #include "../Utils.hpp"
 #include "../base/StaticStringMap.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-lq] [file ...]");
-
-HELP_DESCRIPTION_DECL(
-    "The bc utility evaluates decimal arithmetic statements.");
+KOSHKIT_UTIL_DECL("[-lq] [file ...]",
+                  "The bc utility evaluates decimal arithmetic statements.");
 
 FLAG(BC_MATH_LIBRARY, Bool, 'l', "mathlib", "Enable common math functions.");
 FLAG(BC_QUIET, Bool, 'q', "quiet", "Suppress an interactive banner.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Bc);
 
@@ -1163,20 +1158,12 @@ static fn bc_run_program(StringView program, const ExecContext &ec,
   return bc_flow::Normal;
 }
 
-Bc::Bc() = default;
-
-pure fn Bc::kind() const wontthrow -> Utility::Kind { return Kind::Bc; }
-
 fn Bc::execute(const ExecContext &ec, EvalContext &cxt,
                const ArrayList<String> &args,
                const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
@@ -1246,4 +1233,4 @@ fn Bc::execute(const ExecContext &ec, EvalContext &cxt,
   return runtime.status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

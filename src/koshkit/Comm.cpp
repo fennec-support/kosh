@@ -12,16 +12,12 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-123] file1 file2");
-
-HELP_DESCRIPTION_DECL("The comm utility compares two sorted files.");
+KOSHKIT_UTIL_DECL("[-123] file1 file2",
+                  "The comm utility compares two sorted files.");
 
 FLAG(COMM_HIDE_FIRST, Bool, '1', "hide-first", "Suppress the first column.");
 FLAG(COMM_HIDE_SECOND, Bool, '2', "hide-second", "Suppress the second column.");
 FLAG(COMM_HIDE_COMMON, Bool, '3', "hide-common", "Suppress the common column.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Comm);
 
@@ -39,20 +35,12 @@ static fn append_comm_line(String &output, usize column, StringView line,
   output += '\n';
 }
 
-Comm::Comm() = default;
-
-pure fn Comm::kind() const wontthrow -> Utility::Kind { return Kind::Comm; }
-
 fn Comm::execute(const ExecContext &ec, EvalContext &cxt,
                  const ArrayList<String> &args,
                  const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() != 2) return report_usage_error(ec, cxt, args[0].view());
 
@@ -137,4 +125,4 @@ fn Comm::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

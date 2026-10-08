@@ -13,24 +13,18 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-l] [-s signal] pattern");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[-l] [-s signal] pattern",
     "The pkill utility sends a signal to each process whose name matches a "
     "pattern.");
 
 FLAG(PKILL_SIGNAL, String, 's', "signal",
      "The signal to send, a name such as TERM or a number such as 15.");
 FLAG(PKILL_LIST, Bool, 'l', "list", "List the signal names and exit.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Pkill);
 
-namespace koshka {
-
-namespace koshkit {
+namespace koshka::koshkit {
 
 static fn uppercase_signal_name(StringView spelled, Allocator allocator) throws
     -> String
@@ -70,20 +64,12 @@ fn resolve_koshkit_signal(StringView spelled, SourceLocation location,
   return *named;
 }
 
-Pkill::Pkill() = default;
-
-pure fn Pkill::kind() const wontthrow -> Utility::Kind { return Kind::Pkill; }
-
 fn Pkill::execute(const ExecContext &ec, EvalContext &cxt,
                   const ArrayList<String> &args,
                   const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (FLAG_PKILL_LIST.is_enabled()) {
     ec.print_to_stdout(format_signal_list());
@@ -132,6 +118,4 @@ fn Pkill::execute(const ExecContext &ec, EvalContext &cxt,
   return did_signal_any ? 0 : 1;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

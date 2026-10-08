@@ -11,36 +11,18 @@
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[name ...]");
-
-HELP_DESCRIPTION_DECL("The printenv utility writes environment variables.");
-
-FLAG(HELP, Bool, '\0', "help", "Display help.");
+KOSHKIT_UTIL_DECL("[name ...]",
+                  "The printenv utility writes environment variables.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Printenv);
 
-namespace koshka {
-
-namespace koshkit {
-
-Printenv::Printenv() = default;
-
-pure fn Printenv::kind() const wontthrow -> Utility::Kind
-{
-  return Kind::Printenv;
-}
+namespace koshka::koshkit {
 
 fn Printenv::execute(
     const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
     const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) {
     print_environment(ec, cxt);
@@ -65,6 +47,4 @@ fn Printenv::execute(
   return status;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

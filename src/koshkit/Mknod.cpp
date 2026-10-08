@@ -15,11 +15,8 @@
 #include "../Utils.hpp"
 #include "../base/StaticStringMap.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL(
-    "[-m mode] [--type type --major N --minor N] name [type [major minor]]");
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[-m mode] [--type type --major N --minor N] name [type [major minor]]",
     "The mknod utility creates FIFO, character, and block special files.\n"
     "Examples: mknod pipe p; mknod --fifo pipe; "
     "mknod --character --major 1 --minor 3 device; "
@@ -33,7 +30,6 @@ FLAG(MKNOD_CHARACTER, Bool, '\0', "character", "Create a character node.");
 FLAG(MKNOD_BLOCK, Bool, '\0', "block", "Create a block node.");
 FLAG(MKNOD_MAJOR, String, '\0', "major", "Set the device major number.");
 FLAG(MKNOD_MINOR, String, '\0', "minor", "Set the device minor number.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Mknod);
 
@@ -70,20 +66,12 @@ pure fn node_type(StringView text) wontthrow -> Maybe<u32>
 
 } /* namespace */
 
-Mknod::Mknod() = default;
-
-pure fn Mknod::kind() const wontthrow -> Utility::Kind { return Kind::Mknod; }
-
 fn Mknod::execute(const ExecContext &ec, EvalContext &cxt,
                   const ArrayList<String> &args,
                   const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
   let const allocator = cxt.scratch_allocator();

@@ -12,33 +12,21 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-u] [+format]");
-
-HELP_DESCRIPTION_DECL("The date utility writes the date and time.");
+KOSHKIT_UTIL_DECL("[-u] [+format]",
+                  "The date utility writes the date and time.");
 
 FLAG(DATE_UTC, Bool, 'u', "utc", "Use Coordinated Universal Time.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Date);
 
 namespace koshka::koshkit {
-
-Date::Date() = default;
-
-pure fn Date::kind() const wontthrow -> Utility::Kind { return Kind::Date; }
 
 fn Date::execute(const ExecContext &ec, EvalContext &cxt,
                  const ArrayList<String> &args,
                  const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() > 1) return report_usage_error(ec, cxt, args[0].view());
   if (!operands.is_empty() && (operands[0].is_empty() || operands[0][0] != '+'))
@@ -78,4 +66,4 @@ fn Date::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

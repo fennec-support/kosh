@@ -15,11 +15,8 @@
 #include "../Utils.hpp"
 #include "../base/Path.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-Lft] [-c format] [--printf=format] file ...");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[-Lft] [-c format] [--printf=format] file ...",
     "The stat utility displays the status of a file or a filesystem.");
 
 FLAG(STAT_DEREFERENCE, Bool, 'L', "dereference", "Follow symbolic links.");
@@ -30,7 +27,6 @@ FLAG(STAT_FORMAT, String, 'c', "format",
      "Render this directive format and a newline for every operand.");
 FLAG(STAT_PRINTF, String, '\0', "printf",
      "Render this directive format with backslash escapes and no newline.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Stat);
 
@@ -715,22 +711,14 @@ fn resolve_format(String &format, bool &should_append_newline,
   }
 }
 
-} // namespace
-
-Stat::Stat() = default;
-
-pure fn Stat::kind() const wontthrow -> Utility::Kind { return Kind::Stat; }
+} /* namespace */
 
 fn Stat::execute(const ExecContext &ec, EvalContext &cxt,
                  const ArrayList<String> &args,
                  const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) {
     return report_usage_error(ec, cxt, args[0].view());
@@ -837,4 +825,4 @@ fn Stat::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

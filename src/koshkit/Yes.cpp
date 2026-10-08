@@ -10,35 +10,20 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[string ...]");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[string ...]",
     "The yes utility writes the given string on its own line over and over.");
-
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Yes);
 
-namespace koshka {
-
-namespace koshkit {
-
-Yes::Yes() = default;
-
-pure fn Yes::kind() const wontthrow -> Utility::Kind { return Kind::Yes; }
+namespace koshka::koshkit {
 
 fn Yes::execute(const ExecContext &ec, EvalContext &cxt,
                 const ArrayList<String> &args,
                 const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   String line{cxt.scratch_allocator()};
   if (operands.is_empty())
@@ -70,6 +55,4 @@ fn Yes::execute(const ExecContext &ec, EvalContext &cxt,
   }
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

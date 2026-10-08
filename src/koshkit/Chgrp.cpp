@@ -13,11 +13,8 @@
 #include "../Koshkit.hpp"
 #include "../UtilsOwnership.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-hRx] [-H|-L|-P] group file ...");
-
-HELP_DESCRIPTION_DECL("The chgrp utility changes file group ownership.");
+KOSHKIT_UTIL_DECL("[-hRx] [-H|-L|-P] group file ...",
+                  "The chgrp utility changes file group ownership.");
 
 FLAG(CHGRP_NO_DEREFERENCE, Bool, 'h', "no-dereference",
      "Change a symbolic link instead of its target.");
@@ -31,26 +28,17 @@ FLAG(CHGRP_PHYSICAL, Bool, 'P', "physical",
      "Do not follow symbolic links during recursion.");
 FLAG(CHGRP_ONE_FILE_SYSTEM, Bool, 'x', "one-file-system",
      "Do not descend into a directory on another file system.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Chgrp);
 
 namespace koshka::koshkit {
-
-Chgrp::Chgrp() = default;
-
-pure fn Chgrp::kind() const wontthrow -> Utility::Kind { return Kind::Chgrp; }
 
 fn Chgrp::execute(const ExecContext &ec, EvalContext &cxt,
                   const ArrayList<String> &args,
                   const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const operands =
-      PARSE_KOSHKIT_ARGS_WITH_LOCATIONS(args, arg_locations, operand_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
   let const group_id = utils::resolve_group_id(operands[0].view());
@@ -87,4 +75,4 @@ fn Chgrp::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

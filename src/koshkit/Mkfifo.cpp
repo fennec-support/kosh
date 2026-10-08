@@ -14,33 +14,21 @@
 #include "../Platform.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-m mode] file ...");
-
-HELP_DESCRIPTION_DECL("The mkfifo utility creates FIFO special files.");
+KOSHKIT_UTIL_DECL("[-m mode] file ...",
+                  "The mkfifo utility creates FIFO special files.");
 
 FLAG(MKFIFO_MODE, String, 'm', "mode", "Set the FIFO permission mode.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Mkfifo);
 
 namespace koshka::koshkit {
-
-Mkfifo::Mkfifo() = default;
-
-pure fn Mkfifo::kind() const wontthrow -> Utility::Kind { return Kind::Mkfifo; }
 
 fn Mkfifo::execute(const ExecContext &ec, EvalContext &cxt,
                    const ArrayList<String> &args,
                    const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
   u32 mode = 0666;
@@ -76,4 +64,4 @@ fn Mkfifo::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

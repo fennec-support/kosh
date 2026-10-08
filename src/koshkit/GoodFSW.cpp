@@ -17,11 +17,8 @@
 
 #include <ctime>
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-hmrtx1] [-l latency] [-e substring] path ...");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[-hmrtx1] [-l latency] [-e substring] path ...",
     "The goodfsw utility reports changes under the paths it watches.");
 
 FLAG(GOODFSW_RECURSIVE, Bool, 'r', "recursive", "Watch every subdirectory.");
@@ -45,7 +42,6 @@ FLAG(GOODFSW_TIMEZONE, String, '\0', "timezone",
      "Use local or UTC time for human timestamps.");
 FLAG(GOODFSW_PRECISION, String, '\0', "precision",
      "Use zero to nine fractional timestamp digits.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(GoodFSW);
 
@@ -296,25 +292,14 @@ fn scan_path(StringView path, ArrayList<watched_entry> &entries, usize depth,
   }
 }
 
-} // namespace
-
-GoodFSW::GoodFSW() = default;
-
-pure fn GoodFSW::kind() const wontthrow -> Utility::Kind
-{
-  return Kind::GoodFSW;
-}
+} /* namespace */
 
 fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
                     const ArrayList<String> &args,
                     const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const operands =
-      PARSE_KOSHKIT_ARGS_WITH_LOCATIONS(args, arg_locations, operand_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) {
     return report_usage_error(ec, cxt, args[0].view());
@@ -500,4 +485,4 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
   return was_interrupted ? 130 : 0;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

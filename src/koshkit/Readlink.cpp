@@ -11,39 +11,21 @@
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-n] file ...");
-
-HELP_DESCRIPTION_DECL(
-    "The readlink utility prints the target of a symbolic link.");
+KOSHKIT_UTIL_DECL("[-n] file ...",
+                  "The readlink utility prints the target of a symbolic link.");
 
 FLAG(READLINK_NO_NEWLINE, Bool, 'n', "",
      "Do not print a trailing newline after a single file.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Readlink);
 
-namespace koshka {
-
-namespace koshkit {
-
-Readlink::Readlink() = default;
-
-pure fn Readlink::kind() const wontthrow -> Utility::Kind
-{
-  return Kind::Readlink;
-}
+namespace koshka::koshkit {
 
 fn Readlink::execute(
     const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
     const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
 
@@ -67,6 +49,4 @@ fn Readlink::execute(
   return status;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

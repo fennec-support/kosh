@@ -12,16 +12,12 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-bs] [-w width] [file ...]");
-
-HELP_DESCRIPTION_DECL("The fold utility wraps input lines.");
+KOSHKIT_UTIL_DECL("[-bs] [-w width] [file ...]",
+                  "The fold utility wraps input lines.");
 
 FLAG(FOLD_BYTES, Bool, 'b', "bytes", "Count bytes instead of columns.");
 FLAG(FOLD_SPACES, Bool, 's', "spaces", "Break at blanks when possible.");
 FLAG(FOLD_WIDTH, String, 'w', "width", "Use this maximum width.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Fold);
 
@@ -57,18 +53,12 @@ static fn append_folded_line(String &output, StringView line, usize width,
   output += '\n';
 }
 
-Fold::Fold() = default;
-
-pure fn Fold::kind() const wontthrow -> Utility::Kind { return Kind::Fold; }
-
 fn Fold::execute(const ExecContext &ec, EvalContext &cxt,
                  const ArrayList<String> &args,
                  const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const operands = PARSE_KOSHKIT_ARGS(args, arg_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   u64 width_value = 80;
   if (FLAG_FOLD_WIDTH.is_set()) {
@@ -164,4 +154,4 @@ fn Fold::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

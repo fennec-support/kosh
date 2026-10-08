@@ -14,11 +14,8 @@
 #include "../Platform.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-ceisu] [-n lines] [-p command] [-t tag] [file ...]");
-
-HELP_DESCRIPTION_DECL("The more utility displays text one screen at a time.");
+KOSHKIT_UTIL_DECL("[-ceisu] [-n lines] [-p command] [-t tag] [file ...]",
+                  "The more utility displays text one screen at a time.");
 
 FLAG(MORE_CLEAR, Bool, 'c', "clear", "Clear each screen before displaying it.");
 FLAG(MORE_EXIT, Bool, 'e', "exit", "Exit at end of input.");
@@ -28,26 +25,17 @@ FLAG(MORE_PLAIN, Bool, 'u', "plain", "Suppress terminal underline handling.");
 FLAG(MORE_LINES, String, 'n', "lines", "Use this many lines per screen.");
 FLAG(MORE_COMMAND, String, 'p', "command", "Run this initial pager command.");
 FLAG(MORE_TAG, String, 't', "tag", "Open the file containing this tag.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(More);
 
 namespace koshka::koshkit {
-
-More::More() = default;
-
-pure fn More::kind() const wontthrow -> Utility::Kind { return Kind::More; }
 
 fn More::execute(const ExecContext &ec, EvalContext &cxt,
                  const ArrayList<String> &args,
                  const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (FLAG_MORE_COMMAND.is_set() && FLAG_MORE_TAG.is_set())
     return report_usage_error(ec, cxt, args[0].view());
@@ -208,4 +196,4 @@ fn More::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

@@ -12,37 +12,23 @@
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[--all] [--ignore=count]");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[--all] [--ignore=count]",
     "The nproc utility prints the number of available logical processors.");
 
 FLAG(NPROC_ALL, Bool, '\0', "all", "Print the configured processor count.");
 FLAG(NPROC_IGNORE, String, '\0', "ignore",
      "Exclude up to this many processors from the result.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Nproc);
 
-namespace koshka {
-
-namespace koshkit {
-
-Nproc::Nproc() = default;
-
-pure fn Nproc::kind() const wontthrow -> Utility::Kind { return Kind::Nproc; }
+namespace koshka::koshkit {
 
 cold fn Nproc::execute(
     const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
     const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const operands =
-      PARSE_KOSHKIT_ARGS_WITH_LOCATIONS(args, arg_locations, operand_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (!operands.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
@@ -79,6 +65,4 @@ cold fn Nproc::execute(
   return 0;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

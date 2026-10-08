@@ -19,11 +19,8 @@
 #include "../base/StringMap.hpp"
 #include "../base/Trace.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-shxT] [--tree] [path ...]");
-
-HELP_DESCRIPTION_DECL("The du utility prints the disk usage of each path.");
+KOSHKIT_UTIL_DECL("[-shxT] [--tree] [path ...]",
+                  "The du utility prints the disk usage of each path.");
 
 FLAG(DU_SUMMARY, Bool, 's', "", "Print only the total for each path.");
 FLAG(DU_HUMAN, Bool, 'h', "",
@@ -35,13 +32,10 @@ FLAG(DU_ONE_FILE_SYSTEM, Bool, 'x', "one-file-system",
 FLAG(DU_TOP, Bool, 'T', "top-largest",
      "Print a human-readable tree of only the largest entries and their "
      "ancestors in at most 36 lines.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Du);
 
-namespace koshka {
-
-namespace koshkit {
+namespace koshka::koshkit {
 
 static constexpr usize TOP_ROW_LIMIT = 36;
 
@@ -776,20 +770,12 @@ static fn print_tree_report(const du_tree_request &request,
   return render_tree(nodes, child_order, sorted_roots, request, ec, allocator);
 }
 
-Du::Du() = default;
-
-pure fn Du::kind() const wontthrow -> Utility::Kind { return Kind::Du; }
-
 fn Du::execute(const ExecContext &ec, EvalContext &cxt,
                const ArrayList<String> &args,
                const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const allocator = cxt.scratch_allocator();
   let targets = ArrayList<Path>{allocator};
@@ -962,6 +948,4 @@ fn Du::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

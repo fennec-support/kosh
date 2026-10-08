@@ -13,12 +13,8 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL(
-    "-b list [-n] | -c list | -f list [-d delim] [-s] [file ...]");
-
-HELP_DESCRIPTION_DECL("The cut utility selects bytes, characters, or fields.");
+KOSHKIT_UTIL_DECL("-b list [-n] | -c list | -f list [-d delim] [-s] [file ...]",
+                  "The cut utility selects bytes, characters, or fields.");
 
 FLAG(CUT_BYTES, String, 'b', "bytes", "Select byte positions.");
 FLAG(CUT_CHARACTERS, String, 'c', "characters", "Select character positions.");
@@ -27,24 +23,17 @@ FLAG(CUT_DELIMITER, String, 'd', "delimiter", "Use this field delimiter.");
 FLAG(CUT_NO_SPLIT, Bool, 'n', "no-split", "Do not split multibyte characters.");
 FLAG(CUT_SUPPRESS, Bool, 's', "only-delimited",
      "Suppress lines without a delimiter.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Cut);
 
 namespace koshka::koshkit {
-
-Cut::Cut() = default;
-
-pure fn Cut::kind() const wontthrow -> Utility::Kind { return Kind::Cut; }
 
 fn Cut::execute(const ExecContext &ec, EvalContext &cxt,
                 const ArrayList<String> &args,
                 const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const operands = PARSE_KOSHKIT_ARGS(args, arg_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const selection_count = static_cast<usize>(FLAG_CUT_BYTES.is_set()) +
                               static_cast<usize>(FLAG_CUT_CHARACTERS.is_set()) +
@@ -218,4 +207,4 @@ fn Cut::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

@@ -16,16 +16,11 @@
 #include "../base/Path.hpp"
 #include "../base/StaticStringMap.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[--cores] [--logs]");
-
-HELP_DESCRIPTION_DECL(
-    "The evillogs utility reports core dumps and system logs.");
+KOSHKIT_UTIL_DECL("[--cores] [--logs]",
+                  "The evillogs utility reports core dumps and system logs.");
 
 FLAG(EVILLOGS_CORES, Bool, '\0', "cores", "Print only the core dump report.");
 FLAG(EVILLOGS_LOGS, Bool, '\0', "logs", "Print only the log report.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(EvilLogs);
 
@@ -546,22 +541,11 @@ fn append_log_report(String &output, Allocator allocator,
 
 } /* namespace */
 
-EvilLogs::EvilLogs() = default;
-
-pure fn EvilLogs::kind() const wontthrow -> Utility::Kind
-{
-  return Kind::EvilLogs;
-}
-
 fn EvilLogs::execute(
     const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
     const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const operands =
-      PARSE_KOSHKIT_ARGS_WITH_LOCATIONS(args, arg_locations, operand_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (!operands.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "unexpected operand",

@@ -14,11 +14,8 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-uwa] [--color[=when]] [-L label] file1 file2");
-
-HELP_DESCRIPTION_DECL("The diff utility compares two files line by line.");
+KOSHKIT_UTIL_DECL("[-uwa] [--color[=when]] [-L label] file1 file2",
+                  "The diff utility compares two files line by line.");
 
 FLAG(DIFF_UNIFIED, Bool, 'u', "unified", "Write unified differences.");
 FLAG(DIFF_IGNORE_SPACE, Bool, 'w', "ignore-all-space",
@@ -28,7 +25,6 @@ FLAG(DIFF_LABEL, ManyStrings, 'L', "label", "Use this file label.");
 FLAG_OPTIONAL(DIFF_COLOR, '\0', "color",
               "Color the differences; the default is auto.",
               koshka::koshkit::is_koshkit_color_when, "auto|always|never");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Diff);
 
@@ -544,20 +540,12 @@ static fn append_unified_diff(const ExecContext &ec, String &output,
   return true;
 }
 
-Diff::Diff() = default;
-
-pure fn Diff::kind() const wontthrow -> Utility::Kind { return Kind::Diff; }
-
 fn Diff::execute(const ExecContext &ec, EvalContext &cxt,
                  const ArrayList<String> &args,
                  const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() != 2 || FLAG_DIFF_LABEL.count() > 2)
     return report_usage_error(ec, cxt, args[0].view());

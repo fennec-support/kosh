@@ -14,13 +14,10 @@
 #include "../Utils.hpp"
 #include "../base/StaticStringMap.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-p] [-b type] [-d delim] [-f type] [-h type] "
-                   "[-i incr] [-l num] [-n format] [-s sep] [-v start] "
-                   "[-w width] [file]");
-
-HELP_DESCRIPTION_DECL("The nl utility numbers input lines.");
+KOSHKIT_UTIL_DECL("[-p] [-b type] [-d delim] [-f type] [-h type] "
+                  "[-i incr] [-l num] [-n format] [-s sep] [-v start] "
+                  "[-w width] [file]",
+                  "The nl utility numbers input lines.");
 
 FLAG(NL_BODY, String, 'b', "body-numbering", "Select body line numbering.");
 FLAG(NL_DELIMITER, String, 'd', "section-delimiter",
@@ -38,7 +35,6 @@ FLAG(NL_SEPARATOR, String, 's', "number-separator",
      "Use this separator after numbers.");
 FLAG(NL_START, String, 'v', "starting-line-number", "Start at this number.");
 FLAG(NL_WIDTH, String, 'w', "number-width", "Use this number field width.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Nl);
 
@@ -104,20 +100,12 @@ static fn append_nl_number(String &output, i64 number, usize width,
   output += separator;
 }
 
-Nl::Nl() = default;
-
-pure fn Nl::kind() const wontthrow -> Utility::Kind { return Kind::Nl; }
-
 fn Nl::execute(const ExecContext &ec, EvalContext &cxt,
                const ArrayList<String> &args,
                const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() > 1) return report_usage_error(ec, cxt, args[0].view());
 
@@ -298,4 +286,4 @@ fn Nl::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

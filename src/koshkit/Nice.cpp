@@ -14,35 +14,23 @@
 #include "../Platform.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-n increment] utility [argument ...]");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[-n increment] utility [argument ...]",
     "The nice utility invokes a command with an adjusted scheduling priority.");
 
 FLAG(NICE_INCREMENT, String, 'n', "increment",
      "Add this value to the inherited priority.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Nice);
 
 namespace koshka::koshkit {
-
-Nice::Nice() = default;
-
-pure fn Nice::kind() const wontthrow -> Utility::Kind { return Kind::Nice; }
 
 fn Nice::execute(const ExecContext &ec, EvalContext &cxt,
                  const ArrayList<String> &args,
                  const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const operands =
-      PARSE_KOSHKIT_ARGS_WITH_LOCATIONS(args, arg_locations, operand_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
   i64 increment = 10;
@@ -74,4 +62,4 @@ fn Nice::execute(const ExecContext &ec, EvalContext &cxt,
   return *result;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

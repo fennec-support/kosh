@@ -13,11 +13,8 @@
 #include "../Koshkit.hpp"
 #include "../base/StaticStringMap.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-a|-m] | [-ck] [name ...]");
-
-HELP_DESCRIPTION_DECL("The locale utility writes locale information.");
+KOSHKIT_UTIL_DECL("[-a|-m] | [-ck] [name ...]",
+                  "The locale utility writes locale information.");
 
 FLAG(LOCALE_ALL_LOCALES, Bool, 'a', "all-locales", "List available locales.");
 FLAG(LOCALE_CHARMAPS, Bool, 'm', "charmaps", "List available charmaps.");
@@ -25,7 +22,6 @@ FLAG(LOCALE_CATEGORY, Bool, 'c', "category-name",
      "Write the category name for each selected keyword.");
 FLAG(LOCALE_KEYWORD, Bool, 'k', "keyword-name",
      "Write each selected keyword name.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Locale);
 
@@ -62,20 +58,12 @@ static fn locale_environment_value(const char *name) wontthrow -> StringView
   return value == nullptr ? StringView{} : StringView{value};
 }
 
-Locale::Locale() = default;
-
-pure fn Locale::kind() const wontthrow -> Utility::Kind { return Kind::Locale; }
-
 fn Locale::execute(const ExecContext &ec, EvalContext &cxt,
                    const ArrayList<String> &args,
                    const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (FLAG_LOCALE_ALL_LOCALES.is_enabled() && FLAG_LOCALE_CHARMAPS.is_enabled())
     return report_usage_error(ec, cxt, args[0].view());
@@ -168,4 +156,4 @@ fn Locale::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

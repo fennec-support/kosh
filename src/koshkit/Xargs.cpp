@@ -15,12 +15,9 @@
 #include "../Platform.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-0prtx] [-E eof] [-I replace] [-L lines] [-n count] [-s "
-                   "bytes] [utility [argument ...]]");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[-0prtx] [-E eof] [-I replace] [-L lines] [-n count] [-s "
+    "bytes] [utility [argument ...]]",
     "The xargs utility builds and invokes argument lists from standard input.");
 
 FLAG(XARGS_EOF, String, 'E', "eof", "Stop at this logical argument.");
@@ -39,7 +36,6 @@ FLAG(XARGS_NULL, Bool, '0', "null",
      "Separate input items with null bytes and keep quotes literal.");
 FLAG(XARGS_NO_RUN_IF_EMPTY, Bool, 'r', "no-run-if-empty",
      "Do not run the utility when the input has no items.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Xargs);
 
@@ -210,20 +206,12 @@ static fn trace_xargs_command(const ExecContext &ec,
   ec.print_to_stderr(output);
 }
 
-Xargs::Xargs() = default;
-
-pure fn Xargs::kind() const wontthrow -> Utility::Kind { return Kind::Xargs; }
-
 fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
                   const ArrayList<String> &args,
                   const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (FLAG_XARGS_PROMPT.is_enabled()) FLAG_XARGS_TRACE.enable();
   let const input = read_fd_to_string(ec.in_fd.value_or(KOSH_STDIN));
@@ -382,4 +370,4 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

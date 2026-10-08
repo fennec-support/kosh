@@ -13,33 +13,20 @@
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("utility [argument ...]");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "utility [argument ...]",
     "The nohup utility invokes a command that ignores terminal hangups.");
-
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Nohup);
 
 namespace koshka::koshkit {
-
-Nohup::Nohup() = default;
-
-pure fn Nohup::kind() const wontthrow -> Utility::Kind { return Kind::Nohup; }
 
 fn Nohup::execute(const ExecContext &ec, EvalContext &cxt,
                   const ArrayList<String> &args,
                   const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
   let command = ArrayList<String>{cxt.scratch_allocator()};
@@ -61,4 +48,4 @@ fn Nohup::execute(const ExecContext &ec, EvalContext &cxt,
   return *result;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

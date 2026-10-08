@@ -17,13 +17,10 @@
 #include "../base/Arena.hpp"
 #include "../base/StaticStringMap.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-ah] [-C [seconds]] [--live [seconds]] [--cumulative "
-                   "[seconds]] [--sort key] "
-                   "[--ps | -NUMBER | -n count | -p pid]");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[-ah] [-C [seconds]] [--live [seconds]] [--cumulative "
+    "[seconds]] [--sort key] "
+    "[--ps | -NUMBER | -n count | -p pid]",
     "The evilio utility reports system and process I/O activity.");
 
 static pure fn is_evilio_sample_duration(koshka::StringView value) wontthrow
@@ -50,7 +47,6 @@ FLAG(EVILIO_COUNT, String, 'n', "count", "Show this many processes.");
 FLAG(EVILIO_PID, String, 'p', "pid", "Show only this process.");
 FLAG(EVILIO_SORT, String, '\0', "sort",
      "Sort by a full metric name or its shortest unambiguous prefix.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(EvilIO);
 
@@ -1210,22 +1206,15 @@ fn append_process_io_report(String &output, const ArrayList<io_row> &rows,
 
 } /* namespace */
 
-EvilIO::EvilIO() = default;
-
-pure fn EvilIO::kind() const wontthrow -> Utility::Kind { return Kind::EvilIO; }
-
 fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
                    const ArrayList<String> &args,
                    const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const operands = PARSE_KOSHKIT_ARGS_WITH_LOCATIONS(
-      args, arg_locations, operand_locations,
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(
+      args, arg_locations,
       flag_parse_options{.should_accept_negative_number_operand = true,
                          .should_allow_options_after_operands = true});
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
 
   let const allocator = cxt.scratch_allocator();
   let process_limit_operand = Maybe<StringView>{};

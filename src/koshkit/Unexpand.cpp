@@ -12,15 +12,11 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-a] [-t tablist] [file ...]");
-
-HELP_DESCRIPTION_DECL("The unexpand utility converts spaces to tabs.");
+KOSHKIT_UTIL_DECL("[-a] [-t tablist] [file ...]",
+                  "The unexpand utility converts spaces to tabs.");
 
 FLAG(UNEXPAND_ALL, Bool, 'a', "all", "Convert blanks beyond line prefixes.");
 FLAG(UNEXPAND_TABS, String, 't', "tabs", "Use these tab stops.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Unexpand);
 
@@ -45,20 +41,11 @@ static fn append_unexpanded_blanks(String &output, usize start_column,
   }
 }
 
-Unexpand::Unexpand() = default;
-
-pure fn Unexpand::kind() const wontthrow -> Utility::Kind
-{
-  return Kind::Unexpand;
-}
-
 fn Unexpand::execute(
     const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
     const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  let const operands = PARSE_KOSHKIT_ARGS(args, arg_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let tab_stops = ArrayList<usize>{cxt.scratch_allocator()};
   if (FLAG_UNEXPAND_TABS.is_set()) {
@@ -186,4 +173,4 @@ fn Unexpand::execute(
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

@@ -12,27 +12,17 @@
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-cfu] file ...");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[-cfu] file ...",
     "The fuser utility lists the process IDs that use each file.");
 
 FLAG(FUSER_FILESYSTEM, Bool, 'c', "", "Match every file on the filesystem.");
 FLAG(FUSER_FILE, Bool, 'f', "", "Match only the named file.");
 FLAG(FUSER_USER, Bool, 'u', "", "Print each process owner's user name.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Fuser);
 
-namespace koshka {
-
-namespace koshkit {
-
-Fuser::Fuser() = default;
-
-pure fn Fuser::kind() const wontthrow -> Utility::Kind { return Kind::Fuser; }
+namespace koshka::koshkit {
 
 static pure fn has_use(u8 mask, os::process_file_use use) wontthrow -> bool
 {
@@ -53,11 +43,7 @@ fn Fuser::execute(const ExecContext &ec, EvalContext &cxt,
                   const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
   if (FLAG_FUSER_FILESYSTEM.is_enabled() && FLAG_FUSER_FILE.is_enabled()) {
@@ -207,6 +193,4 @@ fn Fuser::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

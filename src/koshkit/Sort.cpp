@@ -15,12 +15,9 @@
 #include "../Lexer.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-bcCdfimnrsu] [-o output] [-t separator] [-k keydef]... "
-                   "[file ...]");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[-bcCdfimnrsu] [-o output] [-t separator] [-k keydef]... "
+    "[file ...]",
     "The sort utility writes the lines of its input in byte order or in the "
     "order selected by its keys and ordering options.");
 
@@ -43,13 +40,10 @@ FLAG(SORT_STABLE, Bool, 's', "",
 FLAG(SORT_OUTPUT, String, 'o', "", "Write the result to this file.");
 FLAG(SORT_SEPARATOR, String, 't', "", "Separate fields with this byte.");
 FLAG(SORT_KEY, ManyStrings, 'k', "", "Sort by this key definition.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Sort);
 
-namespace koshka {
-
-namespace koshkit {
+namespace koshka::koshkit {
 
 struct sort_modifiers
 {
@@ -468,20 +462,12 @@ pure static fn compare_sort_entries(const sort_entry &left,
   return left.index < right.index ? -1 : 1;
 }
 
-Sort::Sort() = default;
-
-pure fn Sort::kind() const wontthrow -> Utility::Kind { return Kind::Sort; }
-
 fn Sort::execute(const ExecContext &ec, EvalContext &cxt,
                  const ArrayList<String> &args,
                  const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let settings = sort_settings{ArrayList<sort_key>{cxt.scratch_allocator()},
                                sort_modifiers{}};
@@ -651,6 +637,4 @@ fn Sort::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

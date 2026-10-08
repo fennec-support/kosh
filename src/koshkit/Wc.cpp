@@ -13,11 +13,8 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-lwcm] [file ...]");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[-lwcm] [file ...]",
     "The wc utility counts the lines, words, characters, and bytes of each "
     "file.");
 
@@ -25,13 +22,10 @@ FLAG(WC_LINES, Bool, 'l', "", "Print the newline count.");
 FLAG(WC_WORDS, Bool, 'w', "", "Print the word count.");
 FLAG(WC_BYTES, Bool, 'c', "", "Print the byte count.");
 FLAG(WC_CHARACTERS, Bool, 'm', "", "Print the UTF-8 character count.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Wc);
 
-namespace koshka {
-
-namespace koshkit {
+namespace koshka::koshkit {
 
 enum class wc_count_selection : u8
 {
@@ -282,20 +276,12 @@ static fn append_counts(String &line, const wc_counts &counts, StringView name,
   line += '\n';
 }
 
-Wc::Wc() = default;
-
-pure fn Wc::kind() const wontthrow -> Utility::Kind { return Kind::Wc; }
-
 fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
                const ArrayList<String> &args,
                const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const has_requested_selection =
       FLAG_WC_LINES.is_enabled() || FLAG_WC_WORDS.is_enabled() ||
@@ -412,6 +398,4 @@ fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

@@ -12,15 +12,11 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-l|-s] file1 file2");
-
-HELP_DESCRIPTION_DECL("The cmp utility compares two files byte by byte.");
+KOSHKIT_UTIL_DECL("[-l|-s] file1 file2",
+                  "The cmp utility compares two files byte by byte.");
 
 FLAG(CMP_LIST, Bool, 'l', "verbose", "List every differing byte.");
 FLAG(CMP_SILENT, Bool, 's', "silent", "Write no output.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Cmp);
 
@@ -109,20 +105,12 @@ static fn append_padded_number(String &output, u64 value, usize width,
   output += digits.view();
 }
 
-Cmp::Cmp() = default;
-
-pure fn Cmp::kind() const wontthrow -> Utility::Kind { return Kind::Cmp; }
-
 fn Cmp::execute(const ExecContext &ec, EvalContext &cxt,
                 const ArrayList<String> &args,
                 const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() != 2 ||
       (FLAG_CMP_LIST.is_enabled() && FLAG_CMP_SILENT.is_enabled()))
@@ -243,4 +231,4 @@ fn Cmp::execute(const ExecContext &ec, EvalContext &cxt,
   return has_difference ? 1 : 0;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

@@ -18,12 +18,9 @@
 
 #include <ctype.h>
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-EFivrnhcqslx] [--color[=when]] [--one-file-system] "
-                   "[-e pattern] [-f file] [pattern] [file ...]");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[-EFivrnhcqslx] [--color[=when]] [--one-file-system] "
+    "[-e pattern] [-f file] [pattern] [file ...]",
     "The grep utility prints the lines of each file that match a pattern.");
 
 FLAG(GREP_EXTENDED, Bool, 'E', "extended-regexp",
@@ -55,13 +52,10 @@ FLAG_OPTIONAL(GREP_COLOR, '\0', "color",
               "Color matches, names, numbers, and separators; the default is "
               "auto.",
               koshka::koshkit::is_koshkit_color_when, "auto|always|never");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Grep);
 
-namespace koshka {
-
-namespace koshkit {
+namespace koshka::koshkit {
 
 enum class grep_recursion_mode : u8
 {
@@ -1556,21 +1550,13 @@ private:
   bool m_has_any_match{false};
 };
 
-Grep::Grep() = default;
-
-pure fn Grep::kind() const wontthrow -> Utility::Kind { return Kind::Grep; }
-
 fn Grep::execute(const ExecContext &ec, EvalContext &cxt,
                  const ArrayList<String> &args,
                  const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations,
-      {.should_allow_options_after_operands = true});
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations,
+                                 {.should_allow_options_after_operands = true});
 
   let const has_pattern_flag =
       !FLAG_GREP_EXPRESSION.is_empty() || !FLAG_GREP_PATTERN_FILE.is_empty();
@@ -1708,6 +1694,4 @@ fn Grep::execute(const ExecContext &ec, EvalContext &cxt,
   return search.run();
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

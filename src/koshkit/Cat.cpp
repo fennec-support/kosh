@@ -15,24 +15,18 @@
 #include "../Utils.hpp"
 #include "../base/Path.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-nu] [--syntax-highlighting] [file ...]");
-
-HELP_DESCRIPTION_DECL("The cat utility writes each file to standard output.");
+KOSHKIT_UTIL_DECL("[-nu] [--syntax-highlighting] [file ...]",
+                  "The cat utility writes each file to standard output.");
 
 FLAG(CAT_NUMBER, Bool, 'n', "", "Number every output line, starting at one.");
 FLAG(CAT_UNBUFFERED, Bool, 'u', "",
      "Accepted for compatibility; output is never delayed past a read.");
 FLAG(CAT_SYNTAX_HIGHLIGHTING, Bool, '\0', "syntax-highlighting",
      "Highlight detected shell source on a terminal.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Cat);
 
-namespace koshka {
-
-namespace koshkit {
+namespace koshka::koshkit {
 
 constexpr usize CAT_OUTPUT_FLUSH_BYTE_COUNT = 64 * 1024;
 
@@ -141,20 +135,12 @@ static fn append_cat_source(String &output, StringView source, i64 &line_number,
   }
 }
 
-Cat::Cat() = default;
-
-pure fn Cat::kind() const wontthrow -> Utility::Kind { return Kind::Cat; }
-
 fn Cat::execute(const ExecContext &ec, EvalContext &cxt,
                 const ArrayList<String> &args,
                 const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
@@ -322,6 +308,4 @@ fn Cat::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

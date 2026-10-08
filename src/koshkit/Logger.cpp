@@ -14,11 +14,8 @@
 #include "../Platform.hpp"
 #include "../base/StaticStringMap.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-is] [-f file] [-p priority] [-t tag] [message ...]");
-
-HELP_DESCRIPTION_DECL("The logger utility writes a message to the system log.");
+KOSHKIT_UTIL_DECL("[-is] [-f file] [-p priority] [-t tag] [message ...]",
+                  "The logger utility writes a message to the system log.");
 
 FLAG(LOGGER_PID, Bool, 'i', "id", "Include the process identifier.");
 FLAG(LOGGER_FILE, String, 'f', "file", "Read the message from this file.");
@@ -26,7 +23,6 @@ FLAG(LOGGER_PRIORITY, String, 'p', "priority",
      "Use this facility and severity.");
 FLAG(LOGGER_STDERR, Bool, 's', "stderr", "Copy the message to standard error.");
 FLAG(LOGGER_TAG, String, 't', "tag", "Use this message tag.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Logger);
 
@@ -59,20 +55,12 @@ static pure fn logger_priority_is_valid(StringView priority) wontthrow -> bool
   return LOGGER_SEVERITIES.contains(severity);
 }
 
-Logger::Logger() = default;
-
-pure fn Logger::kind() const wontthrow -> Utility::Kind { return Kind::Logger; }
-
 fn Logger::execute(const ExecContext &ec, EvalContext &cxt,
                    const ArrayList<String> &args,
                    const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (FLAG_LOGGER_FILE.is_set() && !operands.is_empty())
     return report_usage_error(ec, cxt, args[0].view());
@@ -126,4 +114,4 @@ fn Logger::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

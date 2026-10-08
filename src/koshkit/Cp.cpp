@@ -13,11 +13,8 @@
 #include "../Koshkit.hpp"
 #include "../base/Path.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-fHiLPpRrvx] source ... destination");
-
-HELP_DESCRIPTION_DECL("The cp utility copies each source to the destination.");
+KOSHKIT_UTIL_DECL("[-fHiLPpRrvx] source ... destination",
+                  "The cp utility copies each source to the destination.");
 
 FLAG(CP_RECURSIVE_R, Bool, 'r', "", "Copy directories and their contents.");
 FLAG(CP_RECURSIVE_UPPER, Bool, 'R', "", "Copy directories and their contents.");
@@ -31,13 +28,10 @@ FLAG(CP_FOLLOW_ALL, Bool, 'L', "", "Follow every symbolic link.");
 FLAG(CP_FOLLOW_NONE, Bool, 'P', "", "Copy symbolic links as links.");
 FLAG(CP_ONE_FILE_SYSTEM, Bool, 'x', "one-file-system",
      "Do not copy the contents of a directory on another file system.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Cp);
 
-namespace koshka {
-
-namespace koshkit {
+namespace koshka::koshkit {
 
 namespace {
 
@@ -53,7 +47,7 @@ struct cp_directory_identity
   u64 file_id;
 };
 
-} // namespace
+} /* namespace */
 
 enum class cp_symlink_mode : u8
 {
@@ -84,7 +78,7 @@ struct cp_options
   }
 };
 
-} // namespace
+} /* namespace */
 
 static fn report_copy_error(const ExecContext &ec, EvalContext &cxt,
                             StringView utility_name, const Error &error) throws
@@ -399,20 +393,12 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
   return true;
 }
 
-Cp::Cp() = default;
-
-pure fn Cp::kind() const wontthrow -> Utility::Kind { return Kind::Cp; }
-
 fn Cp::execute(const ExecContext &ec, EvalContext &cxt,
                const ArrayList<String> &args,
                const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
 
@@ -501,6 +487,4 @@ fn Cp::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

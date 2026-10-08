@@ -13,36 +13,24 @@
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-df] [file ...]");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[-df] [file ...]",
     "The sync utility flushes pending writes to permanent storage.");
 
 FLAG(SYNC_DATA, Bool, 'd', "data", "Flush only the data of each operand.");
 FLAG(SYNC_FILESYSTEM, Bool, 'f', "file-system",
      "Flush the filesystem that holds each operand.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Sync);
 
 namespace koshka::koshkit {
-
-Sync::Sync() = default;
-
-pure fn Sync::kind() const wontthrow -> Utility::Kind { return Kind::Sync; }
 
 fn Sync::execute(const ExecContext &ec, EvalContext &cxt,
                  const ArrayList<String> &args,
                  const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const operands =
-      PARSE_KOSHKIT_ARGS_WITH_LOCATIONS(args, arg_locations, operand_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (FLAG_SYNC_DATA.is_enabled() && FLAG_SYNC_FILESYSTEM.is_enabled()) {
     let conflict_location = FLAG_SYNC_DATA.value_location();
@@ -86,4 +74,4 @@ fn Sync::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

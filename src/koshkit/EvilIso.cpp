@@ -18,12 +18,9 @@
 
 #include <cstdlib>
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-a] [-n] [-c] [-s] [-r] [-k] [--kubernetes] [--container] "
-                   "[--containers]");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[-a] [-n] [-c] [-s] [-r] [-k] [--kubernetes] [--container] "
+    "[--containers]",
     "The eviliso utility reports namespaces, cgroups, sessions, remote "
     "connections, container runtimes, containers, and Kubernetes.");
 
@@ -41,7 +38,6 @@ FLAG(EVILISO_KUBERNETES, Bool, '\0', "kubernetes",
 FLAG(EVILISO_CONTAINER, Bool, '\0', "container", "Report detected containers.");
 FLAG(EVILISO_CONTAINERS, Bool, '\0', "containers",
      "Report detected containers.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(EvilIso);
 
@@ -1861,24 +1857,14 @@ fn append_kubernetes_report(String &output, bool should_color,
                              should_color);
 }
 
-} // namespace
-
-EvilIso::EvilIso() = default;
-
-pure fn EvilIso::kind() const wontthrow -> Utility::Kind
-{
-  return Kind::EvilIso;
-}
+} /* namespace */
 
 fn EvilIso::execute(const ExecContext &ec, EvalContext &cxt,
                     const ArrayList<String> &args,
                     const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
   if (!operands.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "unexpected operand",
                             "pass only isolation section flags");
@@ -1955,4 +1941,4 @@ fn EvilIso::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

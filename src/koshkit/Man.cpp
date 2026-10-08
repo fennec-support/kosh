@@ -13,15 +13,11 @@
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-k keyword] | [section] name ...");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[-k keyword] | [section] name ...",
     "The man utility displays manual pages found through MANPATH.");
 
 FLAG(MAN_KEYWORD, String, 'k', "keyword", "Search manual page descriptions.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Man);
 
@@ -76,20 +72,12 @@ static fn find_manual_page(StringView paths, StringView section,
   return None;
 }
 
-Man::Man() = default;
-
-pure fn Man::kind() const wontthrow -> Utility::Kind { return Kind::Man; }
-
 fn Man::execute(const ExecContext &ec, EvalContext &cxt,
                 const ArrayList<String> &args,
                 const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const configured_paths = cxt.get_variable_value("MANPATH");
   let const paths =
@@ -186,4 +174,4 @@ fn Man::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

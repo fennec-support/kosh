@@ -13,11 +13,8 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-abdHlmpqrstTu] [am i]");
-
-HELP_DESCRIPTION_DECL("The who utility writes logged-in users.");
+KOSHKIT_UTIL_DECL("[-abdHlmpqrstTu] [am i]",
+                  "The who utility writes logged-in users.");
 
 FLAG(WHO_ALL, Bool, 'a', "all", "Write all available records.");
 FLAG(WHO_BOOT, Bool, 'b', "boot", "Write the last system boot record.");
@@ -32,26 +29,17 @@ FLAG(WHO_SHORT, Bool, 's', "short", "Write names, lines, and login times.");
 FLAG(WHO_TIME, Bool, 't', "time", "Write the last system clock change.");
 FLAG(WHO_STATE, Bool, 'T', "terminal-state", "Write terminal write states.");
 FLAG(WHO_IDLE, Bool, 'u', "idle", "Write idle times.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Who);
 
 namespace koshka::koshkit {
-
-Who::Who() = default;
-
-pure fn Who::kind() const wontthrow -> Utility::Kind { return Kind::Who; }
 
 fn Who::execute(const ExecContext &ec, EvalContext &cxt,
                 const ArrayList<String> &args,
                 const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const operands =
-      PARSE_KOSHKIT_ARGS_WITH_LOCATIONS(args, arg_locations, operand_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (!operands.is_empty()) {
     if (operands[0].view() != "am") {
@@ -132,4 +120,4 @@ fn Who::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

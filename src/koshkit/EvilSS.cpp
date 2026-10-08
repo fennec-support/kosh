@@ -16,11 +16,8 @@
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-46aHlnptux] [--live [seconds]]");
-
-HELP_DESCRIPTION_DECL("The evilss utility reports visible network sockets.");
+KOSHKIT_UTIL_DECL("[-46aHlnptux] [--live [seconds]]",
+                  "The evilss utility reports visible network sockets.");
 
 FLAG(EVILSS_LISTENING, Bool, 'l', "listening", "Show only listening sockets.");
 FLAG(EVILSS_ALL, Bool, 'a', "all", "Show listening and connected sockets.");
@@ -43,7 +40,6 @@ FLAG_OPTIONAL(EVILSS_LIVE, '\0', "live", Live,
               "Read the sockets again and refresh the table every N seconds "
               "until interrupted; the default is 0.5 seconds.",
               is_evilss_live_duration, "seconds");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(EvilSS);
 
@@ -339,20 +335,12 @@ fn append_network_socket_report(String &output,
 
 } /* namespace */
 
-EvilSS::EvilSS() = default;
-
-pure fn EvilSS::kind() const wontthrow -> Utility::Kind { return Kind::EvilSS; }
-
 fn EvilSS::execute(const ExecContext &ec, EvalContext &cxt,
                    const ArrayList<String> &args,
                    const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const operands =
-      PARSE_KOSHKIT_ARGS_WITH_LOCATIONS(args, arg_locations, operand_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (!operands.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "unexpected operand",

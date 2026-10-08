@@ -14,12 +14,9 @@
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-tgex] [-n seconds] command [argument ...]");
-
-HELP_DESCRIPTION_DECL("The watch utility runs a command at fixed intervals and "
-                      "shows its output.");
+KOSHKIT_UTIL_DECL("[-tgex] [-n seconds] command [argument ...]",
+                  "The watch utility runs a command at fixed intervals and "
+                  "shows its output.");
 
 FLAG(WATCH_INTERVAL, String, 'n', "interval",
      "Wait this many seconds between runs. The default is two.");
@@ -32,7 +29,6 @@ FLAG(WATCH_ERROR_EXIT, Bool, 'e', "errexit",
      "Stop as soon as the command reports a nonzero status.");
 FLAG(WATCH_EXEC, Bool, 'x', "exec",
      "Accepted for compatibility. The operands always run as one command.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Watch);
 
@@ -103,22 +99,14 @@ fn append_truncated_lines(String &output, StringView body,
   }
 }
 
-} // namespace
-
-Watch::Watch() = default;
-
-pure fn Watch::kind() const wontthrow -> Utility::Kind { return Kind::Watch; }
+} /* namespace */
 
 fn Watch::execute(const ExecContext &ec, EvalContext &cxt,
                   const ArrayList<String> &args,
                   const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) {
     return report_usage_error(ec, cxt, args[0].view());
@@ -207,4 +195,4 @@ fn Watch::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

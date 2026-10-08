@@ -14,11 +14,8 @@
 #include "../base/Path.hpp"
 #include "../base/Trace.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-p] [-m mode] directory ...");
-
-HELP_DESCRIPTION_DECL("The mkdir utility creates each named directory.");
+KOSHKIT_UTIL_DECL("[-p] [-m mode] directory ...",
+                  "The mkdir utility creates each named directory.");
 
 FLAG(MKDIR_PARENTS, Bool, 'p', "",
      "Create the missing parent directories and ignore one that already "
@@ -26,13 +23,10 @@ FLAG(MKDIR_PARENTS, Bool, 'p', "",
 FLAG(MKDIR_MODE, String, 'm', "",
      "Set the file mode of the named directory, an octal or symbolic "
      "operand.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Mkdir);
 
-namespace koshka {
-
-namespace koshkit {
+namespace koshka::koshkit {
 
 enum class mode_application : u8
 {
@@ -65,20 +59,12 @@ static fn make_one(StringView path, u32 mode, mode_application application,
   return false;
 }
 
-Mkdir::Mkdir() = default;
-
-pure fn Mkdir::kind() const wontthrow -> Utility::Kind { return Kind::Mkdir; }
-
 fn Mkdir::execute(const ExecContext &ec, EvalContext &cxt,
                   const ArrayList<String> &args,
                   const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
 
@@ -163,6 +149,4 @@ fn Mkdir::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

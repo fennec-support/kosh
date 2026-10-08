@@ -13,11 +13,8 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[option ...] duration command [argument ...]");
-
-HELP_DESCRIPTION_DECL("The timeout utility runs a command with a time limit.");
+KOSHKIT_UTIL_DECL("[option ...] duration command [argument ...]",
+                  "The timeout utility runs a command with a time limit.");
 
 FLAG(TIMEOUT_SIGNAL, String, 's', "signal",
      "Send this signal when the time limit expires.");
@@ -26,20 +23,10 @@ FLAG(TIMEOUT_KILL_AFTER, String, 'k', "kill-after",
      "duration.");
 FLAG(TIMEOUT_PRESERVE_STATUS, Bool, 'p', "preserve-status",
      "Return the command status after the time limit expires.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Timeout);
 
-namespace koshka {
-
-namespace koshkit {
-
-Timeout::Timeout() = default;
-
-pure fn Timeout::kind() const wontthrow -> Utility::Kind
-{
-  return Kind::Timeout;
-}
+namespace koshka::koshkit {
 
 static fn duration_to_nanos(f64 seconds) wontthrow -> u64
 {
@@ -252,12 +239,8 @@ fn Timeout::execute(const ExecContext &ec, EvalContext &cxt,
                     const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  defer { reset_flags(FLAG_LIST); };
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations,
-      {.should_accept_negative_number_operand = true});
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(
+      args, arg_locations, {.should_accept_negative_number_operand = true});
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
 
@@ -426,6 +409,4 @@ fn Timeout::execute(const ExecContext &ec, EvalContext &cxt,
   return timeout_expiration_status(status, timeout_signal);
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

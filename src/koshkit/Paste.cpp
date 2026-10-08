@@ -12,17 +12,12 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-s] [-d list] [file ...]");
-
-HELP_DESCRIPTION_DECL(
-    "The paste utility merges corresponding or serial lines.");
+KOSHKIT_UTIL_DECL("[-s] [-d list] [file ...]",
+                  "The paste utility merges corresponding or serial lines.");
 
 FLAG(PASTE_DELIMITERS, String, 'd', "delimiters",
      "Cycle through these delimiters.");
 FLAG(PASTE_SERIAL, Bool, 's', "serial", "Paste one file at a time.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Paste);
 
@@ -56,18 +51,12 @@ static fn append_paste_delimiter(String &output, StringView delimiters,
   if (delimiter != '\0') output += delimiter;
 }
 
-Paste::Paste() = default;
-
-pure fn Paste::kind() const wontthrow -> Utility::Kind { return Kind::Paste; }
-
 fn Paste::execute(const ExecContext &ec, EvalContext &cxt,
                   const ArrayList<String> &args,
                   const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const operands = PARSE_KOSHKIT_ARGS(args, arg_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const delimiter_text = FLAG_PASTE_DELIMITERS.is_set()
                                  ? FLAG_PASTE_DELIMITERS.value()
@@ -151,4 +140,4 @@ fn Paste::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

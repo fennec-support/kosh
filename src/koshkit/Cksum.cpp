@@ -11,13 +11,8 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[file ...]");
-
-HELP_DESCRIPTION_DECL("The cksum utility writes a CRC and byte count.");
-
-FLAG(HELP, Bool, '\0', "help", "Display help.");
+KOSHKIT_UTIL_DECL("[file ...]",
+                  "The cksum utility writes a CRC and byte count.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Cksum);
 
@@ -76,20 +71,12 @@ static fn finish_checksum(u32 checksum, u64 byte_count) wontthrow -> u32
   return ~checksum;
 }
 
-Cksum::Cksum() = default;
-
-pure fn Cksum::kind() const wontthrow -> Utility::Kind { return Kind::Cksum; }
-
 fn Cksum::execute(const ExecContext &ec, EvalContext &cxt,
                   const ArrayList<String> &args,
                   const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
@@ -156,4 +143,4 @@ fn Cksum::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

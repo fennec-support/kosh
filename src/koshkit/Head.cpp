@@ -13,21 +13,15 @@
 #include "../Utils.hpp"
 #include "../base/Path.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-n count] [-c count] [file ...]");
-
-HELP_DESCRIPTION_DECL("The head utility writes the first lines of each file.");
+KOSHKIT_UTIL_DECL("[-n count] [-c count] [file ...]",
+                  "The head utility writes the first lines of each file.");
 
 FLAG(HEAD_LINES, String, 'n', "", "Write the first count lines.");
 FLAG(HEAD_BYTES, String, 'c', "", "Write the first count bytes.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Head);
 
-namespace koshka {
-
-namespace koshkit {
+namespace koshka::koshkit {
 
 constexpr usize HEAD_OUTPUT_FLUSH_BYTE_COUNT = 64 * 1024;
 
@@ -197,20 +191,12 @@ static fn read_regular_all_but_last(os::descriptor fd, u64 file_size,
   return result;
 }
 
-Head::Head() = default;
-
-pure fn Head::kind() const wontthrow -> Utility::Kind { return Kind::Head; }
-
 fn Head::execute(const ExecContext &ec, EvalContext &cxt,
                  const ArrayList<String> &args,
                  const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const has_bytes_flag = FLAG_HEAD_BYTES.is_set();
   let const has_lines_flag = FLAG_HEAD_LINES.is_set();
@@ -442,6 +428,4 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

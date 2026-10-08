@@ -14,11 +14,8 @@
 #include "../Platform.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-g | -p | -u] -n increment id ...");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[-g | -p | -u] -n increment id ...",
     "The renice utility adjusts scheduling priorities of running processes.");
 
 FLAG(RENICE_GROUP, Bool, 'g', "pgrp",
@@ -28,7 +25,6 @@ FLAG(RENICE_PROCESS, Bool, 'p', "pid",
 FLAG(RENICE_USER, Bool, 'u', "user", "Interpret identifiers as users.");
 FLAG(RENICE_INCREMENT, String, 'n', "increment",
      "Add this value to each current priority.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Renice);
 
@@ -46,20 +42,12 @@ static fn renice_identifier(StringView text, os::priority_target target) throws
   return None;
 }
 
-Renice::Renice() = default;
-
-pure fn Renice::kind() const wontthrow -> Utility::Kind { return Kind::Renice; }
-
 fn Renice::execute(const ExecContext &ec, EvalContext &cxt,
                    const ArrayList<String> &args,
                    const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const operands =
-      PARSE_KOSHKIT_ARGS_WITH_LOCATIONS(args, arg_locations, operand_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const selector_count =
       static_cast<usize>(FLAG_RENICE_GROUP.is_enabled()) +
@@ -120,4 +108,4 @@ fn Renice::execute(const ExecContext &ec, EvalContext &cxt,
   return result;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

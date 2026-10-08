@@ -13,37 +13,20 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-n | tabstop-list]");
-
-HELP_DESCRIPTION_DECL("The tabs utility sets terminal tab stops.");
-
-FLAG(HELP, Bool, '\0', "help", "Display help.");
+KOSHKIT_UTIL_DECL("[-n | tabstop-list]",
+                  "The tabs utility sets terminal tab stops.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Tabs);
 
 namespace koshka::koshkit {
-
-Tabs::Tabs() = default;
-
-pure fn Tabs::kind() const wontthrow -> Utility::Kind { return Kind::Tabs; }
 
 fn Tabs::execute(const ExecContext &ec, EvalContext &cxt,
                  const ArrayList<String> &args,
                  const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations,
-      {.should_accept_unknown_flag_operand = true});
-  defer { reset_flags(FLAG_LIST); };
-
-  if (FLAG_HELP.is_enabled()) {
-    print_util_help(ec, args[0].view(), HELP_SYNOPSIS[0], HELP_DESCRIPTION,
-                    FLAG_LIST);
-    return 0;
-  }
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations,
+                                 {.should_accept_unknown_flag_operand = true});
 
   if (operands.count() > 1) {
     KOSHKIT_REPORT_ERROR_AT(
@@ -132,4 +115,4 @@ fn Tabs::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

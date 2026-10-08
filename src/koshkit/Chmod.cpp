@@ -14,17 +14,13 @@
 #include "../Utils.hpp"
 #include "../base/Path.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-R] [--one-file-system] mode file ...");
-
-HELP_DESCRIPTION_DECL("The chmod utility changes file permission modes.");
+KOSHKIT_UTIL_DECL("[-R] [--one-file-system] mode file ...",
+                  "The chmod utility changes file permission modes.");
 
 FLAG(CHMOD_RECURSIVE, Bool, 'R', "recursive",
      "Change directories and their contents recursively.");
 FLAG(CHMOD_ONE_FILE_SYSTEM, Bool, '\0', "one-file-system",
      "Skip directories on file systems other than each operand's file system.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Chmod);
 
@@ -115,20 +111,12 @@ static fn change_mode(const ExecContext &ec, EvalContext &cxt, const Path &path,
   return did_succeed;
 }
 
-Chmod::Chmod() = default;
-
-pure fn Chmod::kind() const wontthrow -> Utility::Kind { return Kind::Chmod; }
-
 fn Chmod::execute(const ExecContext &ec, EvalContext &cxt,
                   const ArrayList<String> &args,
                   const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const operands =
-      PARSE_KOSHKIT_ARGS_WITH_LOCATIONS(args, arg_locations, operand_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
   let const expression = operands[0].view();
@@ -159,4 +147,4 @@ fn Chmod::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

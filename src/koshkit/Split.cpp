@@ -13,18 +13,14 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-a suffix-length] [-b byte-count | -l line-count] "
-                   "[file [prefix]]");
-
-HELP_DESCRIPTION_DECL("The split utility divides input into output files.");
+KOSHKIT_UTIL_DECL("[-a suffix-length] [-b byte-count | -l line-count] "
+                  "[file [prefix]]",
+                  "The split utility divides input into output files.");
 
 FLAG(SPLIT_SUFFIX_LENGTH, String, 'a', "suffix-length",
      "Use this many suffix letters.");
 FLAG(SPLIT_BYTES, String, 'b', "bytes", "Write this many bytes per file.");
 FLAG(SPLIT_LINES, String, 'l', "lines", "Write this many lines per file.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Split);
 
@@ -49,18 +45,12 @@ static fn split_output_name(StringView prefix, usize suffix_length, u64 index,
   return name;
 }
 
-Split::Split() = default;
-
-pure fn Split::kind() const wontthrow -> Utility::Kind { return Kind::Split; }
-
 fn Split::execute(const ExecContext &ec, EvalContext &cxt,
                   const ArrayList<String> &args,
                   const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const operands = PARSE_KOSHKIT_ARGS(args, arg_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() > 2 ||
       (FLAG_SPLIT_BYTES.is_set() && FLAG_SPLIT_LINES.is_set()))
@@ -212,4 +202,4 @@ fn Split::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

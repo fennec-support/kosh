@@ -12,32 +12,19 @@
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("file1 file2");
-
-HELP_DESCRIPTION_DECL("The link utility creates a hard link to a file.");
-
-FLAG(HELP, Bool, '\0', "help", "Display help.");
+KOSHKIT_UTIL_DECL("file1 file2",
+                  "The link utility creates a hard link to a file.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Link);
 
 namespace koshka::koshkit {
-
-Link::Link() = default;
-
-pure fn Link::kind() const wontthrow -> Utility::Kind { return Kind::Link; }
 
 fn Link::execute(const ExecContext &ec, EvalContext &cxt,
                  const ArrayList<String> &args,
                  const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const operands =
-      PARSE_KOSHKIT_ARGS_WITH_LOCATIONS(args, arg_locations, operand_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
   if (operands.count() > 2) {
@@ -53,4 +40,4 @@ fn Link::execute(const ExecContext &ec, EvalContext &cxt,
   return 1;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

@@ -17,12 +17,9 @@
 #include "../Utils.hpp"
 #include "../base/Path.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-fFqv] [-n count] [-c count] [-s seconds] [--pid pid] "
-                   "[file ...]");
-
-HELP_DESCRIPTION_DECL("The tail utility writes the last lines of each file.");
+KOSHKIT_UTIL_DECL("[-fFqv] [-n count] [-c count] [-s seconds] [--pid pid] "
+                  "[file ...]",
+                  "The tail utility writes the last lines of each file.");
 
 static pure fn is_tail_follow_mode(koshka::StringView value) wontthrow -> bool
 {
@@ -48,13 +45,10 @@ FLAG(TAIL_PID, String, '\0', "pid", "Stop following when this process exits.");
 FLAG(TAIL_QUIET, Bool, 'q', "quiet", "Never write file name headers.");
 FLAG(TAIL_SILENT, Bool, '\0', "silent", "Never write file name headers.");
 FLAG(TAIL_VERBOSE, Bool, 'v', "verbose", "Always write file name headers.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Tail);
 
-namespace koshka {
-
-namespace koshkit {
+namespace koshka::koshkit {
 
 enum class count_origin : u8
 {
@@ -353,20 +347,12 @@ static fn find_tail_starts_from_start(ArrayList<positioned_tail_state> &states,
   }
 }
 
-Tail::Tail() = default;
-
-pure fn Tail::kind() const wontthrow -> Utility::Kind { return Kind::Tail; }
-
 fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
                  const ArrayList<String> &args,
                  const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const options = tail_options::parse(cxt.scratch_allocator());
 
@@ -904,6 +890,4 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
   }
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

@@ -12,38 +12,24 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-a] [file ...]");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[-a] [file ...]",
     "The tee utility copies standard input to standard output and to each "
     "named "
     "file. With -a it appends to the files. The default truncates them.");
 
 FLAG(TEE_APPEND, Bool, 'a', "", "Append to the files.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Tee);
 
-namespace koshka {
-
-namespace koshkit {
-
-Tee::Tee() = default;
-
-pure fn Tee::kind() const wontthrow -> Utility::Kind { return Kind::Tee; }
+namespace koshka::koshkit {
 
 fn Tee::execute(const ExecContext &ec, EvalContext &cxt,
                 const ArrayList<String> &args,
                 const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const mode = FLAG_TEE_APPEND.is_enabled() ? os::file_open_mode::Append
                                                 : os::file_open_mode::Truncate;
@@ -151,6 +137,4 @@ fn Tee::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

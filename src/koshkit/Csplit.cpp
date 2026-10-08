@@ -14,17 +14,13 @@
 #include "../Utils.hpp"
 #include "../base/Path.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-ks] [-f prefix] [-n digits] file pattern ...");
-
-HELP_DESCRIPTION_DECL("The csplit utility divides a file at selected lines.");
+KOSHKIT_UTIL_DECL("[-ks] [-f prefix] [-n digits] file pattern ...",
+                  "The csplit utility divides a file at selected lines.");
 
 FLAG(CSPLIT_KEEP, Bool, 'k', "keep-files", "Keep output files after an error.");
 FLAG(CSPLIT_PREFIX, String, 'f', "prefix", "Use this output prefix.");
 FLAG(CSPLIT_DIGITS, String, 'n', "digits", "Use this many suffix digits.");
 FLAG(CSPLIT_SILENT, Bool, 's', "silent", "Suppress byte counts.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Csplit);
 
@@ -134,20 +130,12 @@ static fn write_csplit_part(const ExecContext &ec, EvalContext &cxt,
   return true;
 }
 
-Csplit::Csplit() = default;
-
-pure fn Csplit::kind() const wontthrow -> Utility::Kind { return Kind::Csplit; }
-
 fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
                    const ArrayList<String> &args,
                    const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
 
@@ -431,4 +419,4 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

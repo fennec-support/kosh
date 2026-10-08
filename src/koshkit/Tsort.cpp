@@ -12,13 +12,7 @@
 #include "../Koshkit.hpp"
 #include "../base/StringMap.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[file]");
-
-HELP_DESCRIPTION_DECL("The tsort utility writes a topological ordering.");
-
-FLAG(HELP, Bool, '\0', "help", "Display help.");
+KOSHKIT_UTIL_DECL("[file]", "The tsort utility writes a topological ordering.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Tsort);
 
@@ -32,20 +26,12 @@ struct tsort_vertex
   bool is_emitted{false};
 };
 
-Tsort::Tsort() = default;
-
-pure fn Tsort::kind() const wontthrow -> Utility::Kind { return Kind::Tsort; }
-
 fn Tsort::execute(const ExecContext &ec, EvalContext &cxt,
                   const ArrayList<String> &args,
                   const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() > 1) return report_usage_error(ec, cxt, args[0].view());
 
@@ -161,4 +147,4 @@ fn Tsort::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

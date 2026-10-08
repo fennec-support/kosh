@@ -14,18 +14,14 @@
 #include "../Platform.hpp"
 #include "../base/Path.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-L] [-c] [-f] file ...");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[-L] [-c] [-f] file ...",
     "The goodstat utility presents file metadata as a readable report.");
 
 FLAG(GOODSTAT_DEREFERENCE, Bool, 'L', "dereference", "Follow symbolic links.");
 FLAG(GOODSTAT_CHECKSUM, Bool, 'c', "checksum", "Calculate a CRC32C checksum.");
 FLAG(GOODSTAT_FILESYSTEM, Bool, 'f', "filesystem",
      "Report filesystem capacity and identity.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(GoodStat);
 
@@ -256,24 +252,13 @@ fn append_subject(String &output, StringView operand,
   append_titled_report_table(output, operand, table, should_color);
 }
 
-} // namespace
-
-GoodStat::GoodStat() = default;
-
-pure fn GoodStat::kind() const wontthrow -> Utility::Kind
-{
-  return Kind::GoodStat;
-}
+} /* namespace */
 
 fn GoodStat::execute(
     const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
     const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) {
     return report_usage_error(ec, cxt, args[0].view());
@@ -331,4 +316,4 @@ fn GoodStat::execute(
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

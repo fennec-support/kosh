@@ -18,12 +18,9 @@
 #include "../base/StaticStringMap.hpp"
 #include "../base/Trace.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-aA1dgFhklnoprRSt] [-L level] [--tree] "
-                   "[--one-file-system] [path ...]");
-
-HELP_DESCRIPTION_DECL("The ls utility lists the names in each directory.");
+KOSHKIT_UTIL_DECL("[-aA1dgFhklnoprRSt] [-L level] [--tree] "
+                  "[--one-file-system] [path ...]",
+                  "The ls utility lists the names in each directory.");
 
 FLAG(LS_ALL, Bool, 'a', "", "List entries whose name starts with a dot.");
 FLAG(LS_ALMOST_ALL, Bool, 'A', "",
@@ -57,13 +54,10 @@ FLAG(LS_LEVEL, String, 'L', "level",
 FLAG(LS_ONE_FILE_SYSTEM, Bool, '\0', "one-file-system",
      "Do not descend into directories on other file systems with -R and "
      "--tree.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(LS);
 
-namespace koshka {
-
-namespace koshkit {
+namespace koshka::koshkit {
 
 static constexpr usize COLUMN_GAP = 2;
 
@@ -770,20 +764,12 @@ static fn resolve_depth_limit(const ExecContext &ec, EvalContext &cxt,
   return true;
 }
 
-LS::LS() = default;
-
-pure fn LS::kind() const wontthrow -> Utility::Kind { return Kind::LS; }
-
 fn LS::execute(const ExecContext &ec, EvalContext &cxt,
                const ArrayList<String> &args,
                const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   listing_options options{};
   if (!resolve_color_mode(ec, cxt, options.should_color)) return 2;
@@ -973,6 +959,4 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
   return run.status;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

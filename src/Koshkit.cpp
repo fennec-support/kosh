@@ -24,8 +24,6 @@ namespace koshkit {
 
 #if !defined KOSH_NO_KOSHKIT
 
-Utility::Utility() = default;
-
 flatten fn find_util(StringView name) throws -> Maybe<Utility::Kind>
 {
   return KOSHKIT_UTILS.find(name);

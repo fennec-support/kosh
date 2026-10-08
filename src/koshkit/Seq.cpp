@@ -13,20 +13,13 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[first [increment]] last");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[first [increment]] last",
     "The seq utility prints a sequence of integers from first to last.");
-
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Seq);
 
-namespace koshka {
-
-namespace koshkit {
+namespace koshka::koshkit {
 
 static fn is_negative_number_token(StringView token) wontthrow -> bool
 {
@@ -54,10 +47,6 @@ find_leading_negative_position(const ArrayList<String> &args) wontthrow
   return None;
 }
 
-Seq::Seq() = default;
-
-pure fn Seq::kind() const wontthrow -> Utility::Kind { return Kind::Seq; }
-
 fn Seq::execute(const ExecContext &ec, EvalContext &cxt,
                 const ArrayList<String> &args,
                 const ArrayList<SourceLocation> &arg_locations) const throws
@@ -83,12 +72,7 @@ fn Seq::execute(const ExecContext &ec, EvalContext &cxt,
       negative_position.has_value() ? patched_args : args;
   let const &effective_arg_locations =
       negative_position.has_value() ? patched_arg_locations : arg_locations;
-  let const[operands, operand_locations] =
-      parse_util_operands(FLAG_LIST, effective_args, cxt.scratch_allocator(),
-                          &effective_arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(effective_args, effective_arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
 
@@ -166,6 +150,4 @@ fn Seq::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

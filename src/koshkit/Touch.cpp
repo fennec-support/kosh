@@ -13,25 +13,19 @@
 #include "../Koshkit.hpp"
 #include "../base/Path.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-acm] [-r file | -t time] file ...");
-
-HELP_DESCRIPTION_DECL("The touch utility sets the access and the modification "
-                      "times of each named file.");
+KOSHKIT_UTIL_DECL("[-acm] [-r file | -t time] file ...",
+                  "The touch utility sets the access and the modification "
+                  "times of each named file.");
 
 FLAG(TOUCH_ACCESS, Bool, 'a', "", "Change the access time.");
 FLAG(TOUCH_NO_CREATE, Bool, 'c', "", "Do not create a file that is missing.");
 FLAG(TOUCH_MODIFICATION, Bool, 'm', "", "Change the modification time.");
 FLAG(TOUCH_REFERENCE, String, 'r', "", "Use the timestamps of this file.");
 FLAG(TOUCH_TIME, String, 't', "", "Use [[CC]YY]MMDDhhmm[.SS].");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Touch);
 
-namespace koshka {
-
-namespace koshkit {
+namespace koshka::koshkit {
 
 static fn parse_touch_pair(StringView text, usize position,
                            i32 &value) wontthrow -> bool
@@ -121,20 +115,12 @@ static fn parse_touch_time(StringView text) throws -> Maybe<i64>
   return static_cast<i64>(timestamp);
 }
 
-Touch::Touch() = default;
-
-pure fn Touch::kind() const wontthrow -> Utility::Kind { return Kind::Touch; }
-
 fn Touch::execute(const ExecContext &ec, EvalContext &cxt,
                   const ArrayList<String> &args,
                   const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
   if (FLAG_TOUCH_REFERENCE.is_set() && FLAG_TOUCH_TIME.is_set()) {
@@ -239,6 +225,4 @@ fn Touch::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

@@ -13,12 +13,9 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[+page] [-column] [-adFfmrt] [-h header] [-l length] "
-                   "[-n] [-o offset] [-s separator] [-w width] [file ...]");
-
-HELP_DESCRIPTION_DECL("The pr utility paginates text files.");
+KOSHKIT_UTIL_DECL("[+page] [-column] [-adFfmrt] [-h header] [-l length] "
+                  "[-n] [-o offset] [-s separator] [-w width] [file ...]",
+                  "The pr utility paginates text files.");
 
 FLAG(PR_ACROSS, Bool, 'a', "across", "Write columns across each row.");
 FLAG(PR_DOUBLE_SPACE, Bool, 'd', "double-space", "Double-space output lines.");
@@ -35,7 +32,6 @@ FLAG(PR_NO_HEADER, Bool, 't', "omit-header", "Omit page headers and trailers.");
 FLAG(PR_SEPARATOR, String, 's', "separator",
      "Separate columns with this text.");
 FLAG(PR_WIDTH, String, 'w', "width", "Use this page width.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Pr);
 
@@ -55,10 +51,6 @@ static fn append_pr_indent(String &output, usize offset) throws -> void
   for (usize position = 0; position < offset; position++)
     output += ' ';
 }
-
-Pr::Pr() = default;
-
-pure fn Pr::kind() const wontthrow -> Utility::Kind { return Kind::Pr; }
 
 fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
                const ArrayList<String> &args,
@@ -113,11 +105,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
     filtered_args.push(args[index].clone());
     filtered_locations.push(arg_locations[index]);
   }
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, filtered_args, cxt.scratch_allocator(), &filtered_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(filtered_args, filtered_locations);
 
   usize page_length = 66;
   if (FLAG_PR_LENGTH.is_set()) {
@@ -419,4 +407,4 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

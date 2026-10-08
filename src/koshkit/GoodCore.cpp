@@ -17,14 +17,10 @@
 #include "../Utils.hpp"
 #include "../base/Path.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-q] [-b executable] [-o archive] [--no-compress] "
-                   "(-p pid | core)");
-
-HELP_DESCRIPTION_DECL(
-    "The goodcore utility captures or packages a core dump with its "
-    "executable, mapped libraries, and host metadata.");
+KOSHKIT_UTIL_DECL("[-q] [-b executable] [-o archive] [--no-compress] "
+                  "(-p pid | core)",
+                  "The goodcore utility captures or packages a core dump with "
+                  "its executable, mapped libraries, and host metadata.");
 
 FLAG(GOODCORE_PID, String, 'p', "pid", "Capture this running process.");
 FLAG(GOODCORE_BINARY, String, 'b', "binary",
@@ -33,7 +29,6 @@ FLAG(GOODCORE_OUTPUT, String, 'o', "output", "Write the archive to this path.");
 FLAG(GOODCORE_QUIET, Bool, 'q', "quiet", "Print only errors.");
 FLAG(GOODCORE_NO_COMPRESS, Bool, '\0', "no-compress",
      "Create an uncompressed tar archive.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(GoodCore);
 
@@ -233,24 +228,13 @@ fn remove_stage(const Path &stage, Allocator allocator) throws -> void
   unused(remove_path(stage.view(), allocator, removal_mode::Recursive));
 }
 
-} // namespace
-
-GoodCore::GoodCore() = default;
-
-pure fn GoodCore::kind() const wontthrow -> Utility::Kind
-{
-  return Kind::GoodCore;
-}
+} /* namespace */
 
 fn GoodCore::execute(
     const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
     const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const allocator = cxt.scratch_allocator();
   let const has_pid = FLAG_GOODCORE_PID.is_set();
@@ -598,4 +582,4 @@ fn GoodCore::execute(
   return 0;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

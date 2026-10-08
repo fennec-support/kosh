@@ -17,23 +17,16 @@
 #include "../base/StaticStringMap.hpp"
 #include "../base/Trace.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[path ...] [-name glob] [-iname glob] [-type fdl] "
-                   "[-maxdepth n] [-mindepth n] [-xdev] [-mount] [-print] "
-                   "[-print0] "
-                   "[-exec command [argument ...] {} ;|+]");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[path ...] [-name glob] [-iname glob] [-type fdl] "
+    "[-maxdepth n] [-mindepth n] [-xdev] [-mount] [-print] "
+    "[-print0] "
+    "[-exec command [argument ...] {} ;|+]",
     "The find utility walks each path and prints every entry under it.");
-
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Find);
 
-namespace koshka {
-
-namespace koshkit {
+namespace koshka::koshkit {
 
 struct find_options
 {
@@ -588,10 +581,6 @@ private:
   os::Batch m_unknown_batch{heap_allocator()};
 };
 
-Find::Find() = default;
-
-pure fn Find::kind() const wontthrow -> Utility::Kind { return Kind::Find; }
-
 fn Find::execute(const ExecContext &ec, EvalContext &cxt,
                  const ArrayList<String> &args,
                  const ArrayList<SourceLocation> &arg_locations) const throws
@@ -835,6 +824,4 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

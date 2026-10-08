@@ -13,33 +13,17 @@
 #include "../Koshkit.hpp"
 #include "../base/Path.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("file");
-
-HELP_DESCRIPTION_DECL("The unlink utility removes the single named file.");
-
-FLAG(HELP, Bool, '\0', "help", "Display help.");
+KOSHKIT_UTIL_DECL("file", "The unlink utility removes the single named file.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Unlink);
 
-namespace koshka {
-
-namespace koshkit {
-
-Unlink::Unlink() = default;
-
-pure fn Unlink::kind() const wontthrow -> Utility::Kind { return Kind::Unlink; }
+namespace koshka::koshkit {
 
 cold fn Unlink::execute(
     const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
     const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const operands =
-      PARSE_KOSHKIT_ARGS_WITH_LOCATIONS(args, arg_locations, operand_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
   if (operands.count() > 1) {
@@ -69,6 +53,4 @@ cold fn Unlink::execute(
   return 0;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

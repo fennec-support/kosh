@@ -20,11 +20,8 @@
 #include "../Utils.hpp"
 #include "../base/Trace.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-i] [-p] [expression ...]");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[-i] [-p] [expression ...]",
     "The calc utility joins its command-line operands into one arithmetic "
     "expression and prints the result. With no expression on a terminal it "
     "reads and "
@@ -36,17 +33,10 @@ FLAG(CALC_INTERACTIVE, Bool, 'i', "interactive",
 FLAG(CALC_PIPE, Bool, 'p', "pipe",
      "Read and evaluate expressions from standard input, one per line, with no "
      "prompt.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Calc);
 
-namespace koshka {
-
-namespace koshkit {
-
-Calc::Calc() = default;
-
-pure fn Calc::kind() const wontthrow -> Utility::Kind { return Kind::Calc; }
+namespace koshka::koshkit {
 
 namespace {
 
@@ -275,11 +265,7 @@ fn Calc::execute(const ExecContext &ec, EvalContext &cxt,
                  const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   /* calc prints only errors, an unset variable is a calc error instead. */
   let const runtime_scope = RuntimeStateScope{cxt};
@@ -349,6 +335,4 @@ fn Calc::execute(const ExecContext &ec, EvalContext &cxt,
                                                   : nullptr);
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

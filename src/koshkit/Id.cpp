@@ -13,18 +13,14 @@
 #include "../Koshkit.hpp"
 #include "../UtilsOwnership.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-Ggu] [-nr] [user]");
-
-HELP_DESCRIPTION_DECL("The id utility writes user and group identities.");
+KOSHKIT_UTIL_DECL("[-Ggu] [-nr] [user]",
+                  "The id utility writes user and group identities.");
 
 FLAG(ID_GROUPS, Bool, 'G', "groups", "Write all group identities.");
 FLAG(ID_GROUP, Bool, 'g', "group", "Write the group identity.");
 FLAG(ID_NAME, Bool, 'n', "name", "Write names instead of numbers.");
 FLAG(ID_REAL, Bool, 'r', "real", "Use real identities.");
 FLAG(ID_USER, Bool, 'u', "user", "Write the user identity.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Id);
 
@@ -58,20 +54,12 @@ static fn id_group_text(u32 id, Allocator allocator,
   return String::from(id, allocator);
 }
 
-Id::Id() = default;
-
-pure fn Id::kind() const wontthrow -> Utility::Kind { return Kind::Id; }
-
 fn Id::execute(const ExecContext &ec, EvalContext &cxt,
                const ArrayList<String> &args,
                const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() > 1) return report_usage_error(ec, cxt, args[0].view());
   let const selector_count = static_cast<usize>(FLAG_ID_GROUPS.is_enabled()) +
@@ -160,4 +148,4 @@ fn Id::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

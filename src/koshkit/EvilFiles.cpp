@@ -17,11 +17,8 @@
 #include "../Utils.hpp"
 #include "../base/StaticStringMap.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-itw] [-p pid] [-u user] [-c command] [path ...]");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[-itw] [-p pid] [-u user] [-c command] [path ...]",
     "The evilfiles utility lists the files that running processes hold open.");
 
 FLAG(EVILFILES_TERSE, Bool, 't', "terse",
@@ -34,7 +31,6 @@ FLAG(EVILFILES_COMMAND, String, 'c', "command",
 FLAG(EVILFILES_NETWORK, Bool, 'i', "network", "List only socket descriptors.");
 FLAG(EVILFILES_WIDE, Bool, 'w', "wide",
      "Do not truncate names to the terminal width.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(EvilFiles);
 
@@ -322,20 +318,11 @@ pure fn is_network_file(StringView path) wontthrow -> bool
 
 } /* namespace */
 
-EvilFiles::EvilFiles() = default;
-
-pure fn EvilFiles::kind() const wontthrow -> Utility::Kind
-{
-  return Kind::EvilFiles;
-}
-
 fn EvilFiles::execute(
     const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
     const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  let const operands = PARSE_KOSHKIT_ARGS(args, arg_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const allocator = cxt.scratch_allocator();
 

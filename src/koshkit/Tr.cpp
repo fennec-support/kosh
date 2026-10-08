@@ -12,11 +12,8 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-cCds] set1 [set2]");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[-cCds] set1 [set2]",
     "The tr utility translates the bytes in set1 to the matching bytes in "
     "set2.");
 
@@ -27,13 +24,10 @@ FLAG(TR_COMPLEMENT_VALUES, Bool, 'C', "",
      "Use every byte that is not in set1, in byte order.");
 FLAG(TR_SQUEEZE, Bool, 's', "",
      "Collapse each run of one repeated byte from the final set into one.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Tr);
 
-namespace koshka {
-
-namespace koshkit {
+namespace koshka::koshkit {
 
 using posix_class_test = bool (*)(u8 byte);
 
@@ -160,20 +154,12 @@ static fn expand_set(StringView set, Allocator allocator) throws
   return expanded;
 }
 
-Tr::Tr() = default;
-
-pure fn Tr::kind() const wontthrow -> Utility::Kind { return Kind::Tr; }
-
 fn Tr::execute(const ExecContext &ec, EvalContext &cxt,
                const ArrayList<String> &args,
                const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const operands =
-      PARSE_KOSHKIT_ARGS_WITH_LOCATIONS(args, arg_locations, operand_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const is_deleting = FLAG_TR_DELETE.is_enabled();
   let const is_squeezing = FLAG_TR_SQUEEZE.is_enabled();
@@ -302,6 +288,4 @@ fn Tr::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

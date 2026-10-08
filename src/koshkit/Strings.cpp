@@ -13,16 +13,12 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-a] [-n number] [-t format] [file ...]");
-
-HELP_DESCRIPTION_DECL("The strings utility writes printable byte sequences.");
+KOSHKIT_UTIL_DECL("[-a] [-n number] [-t format] [file ...]",
+                  "The strings utility writes printable byte sequences.");
 
 FLAG(STRINGS_ALL, Bool, 'a', "all", "Scan the complete file.");
 FLAG(STRINGS_MINIMUM, String, 'n', "bytes", "Use this minimum length.");
 FLAG(STRINGS_RADIX, String, 't', "radix", "Print offsets in d, o, or x.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Strings);
 
@@ -58,21 +54,12 @@ static fn append_strings_record(String &output, StringView text, u64 offset,
   output += '\n';
 }
 
-Strings::Strings() = default;
-
-pure fn Strings::kind() const wontthrow -> Utility::Kind
-{
-  return Kind::Strings;
-}
-
 fn Strings::execute(const ExecContext &ec, EvalContext &cxt,
                     const ArrayList<String> &args,
                     const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const operands = PARSE_KOSHKIT_ARGS(args, arg_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   u64 minimum_length = 4;
   if (FLAG_STRINGS_MINIMUM.is_set()) {
@@ -200,4 +187,4 @@ fn Strings::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

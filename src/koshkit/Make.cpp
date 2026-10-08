@@ -18,14 +18,10 @@
 
 #include <cstdio>
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-BeiknpqrSst] [-j[jobs]] [-C directory] [-f makefile]... "
-                   "[macro=value ...] "
-                   "[target ...]");
-
-HELP_DESCRIPTION_DECL(
-    "The make utility runs the recipe of each requested target.");
+KOSHKIT_UTIL_DECL("[-BeiknpqrSst] [-j[jobs]] [-C directory] [-f makefile]... "
+                  "[macro=value ...] "
+                  "[target ...]",
+                  "The make utility runs the recipe of each requested target.");
 
 FLAG(MAKE_FILE, ManyStrings, 'f', "file",
      "Read the named file instead of Makefile.");
@@ -61,13 +57,10 @@ FLAG_OPTIONAL(
     MAKE_JOBS, 'j', "jobs",
     "Accept an optional job count and propagate it through MAKEFLAGS.",
     is_make_job_count);
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Make);
 
-namespace koshka {
-
-namespace koshkit {
+namespace koshka::koshkit {
 
 namespace {
 
@@ -3415,10 +3408,6 @@ fn makefile_shell_analysis_source(StringView source,
   return analysis_source;
 }
 
-Make::Make() = default;
-
-pure fn Make::kind() const wontthrow -> Utility::Kind { return Kind::Make; }
-
 fn Make::execute(const ExecContext &ec, EvalContext &cxt,
                  const ArrayList<String> &args,
                  const ArrayList<SourceLocation> &arg_locations) const throws
@@ -3502,10 +3491,8 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   reset_flags(FLAG_LIST);
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, parse_arguments, cxt.scratch_allocator(), &parse_locations,
-      {.should_allow_options_after_operands = true});
-  defer { reset_flags(FLAG_LIST); };
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(parse_arguments, parse_locations,
+                                 {.should_allow_options_after_operands = true});
 
   for (usize makefile_position = 0; makefile_position < FLAG_MAKE_FILE.count();
        makefile_position++)
@@ -3517,8 +3504,6 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
   }
   let const should_keep_going =
       FLAG_MAKE_KEEP_GOING.position() > FLAG_MAKE_STOP.position();
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
 
   make_runtime_flags runtime_flags{FLAG_MAKE_ALWAYS_MAKE.is_enabled(),
                                    FLAG_MAKE_ENVIRONMENT_OVERRIDES.is_enabled(),
@@ -3850,6 +3835,4 @@ fn collect_makefile_targets(EvalContext &cxt, const Path &makefile) throws
   return targets;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

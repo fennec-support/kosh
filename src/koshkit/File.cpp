@@ -15,11 +15,8 @@
 #include "../base/Bitset.hpp"
 #include "../base/Path.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-dhiL] [-m file] [-M file] [file ...]");
-
-HELP_DESCRIPTION_DECL("The file utility classifies file operands.");
+KOSHKIT_UTIL_DECL("[-dhiL] [-m file] [-M file] [file ...]",
+                  "The file utility classifies file operands.");
 
 FLAG(FILE_DEFAULT_TESTS, Bool, 'd', "default-tests", "Apply default tests.");
 FLAG(FILE_NO_FOLLOW, Bool, 'h', "no-dereference", "Classify symbolic links.");
@@ -30,7 +27,6 @@ FLAG(FILE_MAGIC, ManyStrings, 'm', "magic-file",
      "Add position-sensitive tests from this file.");
 FLAG(FILE_MAGIC_ONLY, ManyStrings, 'M', "magic-only",
      "Use position-sensitive tests from this file.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(File);
 
@@ -811,20 +807,12 @@ struct file_content_probe
   char bytes[FILE_CONTENT_SAMPLE_BYTE_COUNT]{};
 };
 
-File::File() = default;
-
-pure fn File::kind() const wontthrow -> Utility::Kind { return Kind::File; }
-
 fn File::execute(const ExecContext &ec, EvalContext &cxt,
                  const ArrayList<String> &args,
                  const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
   let const allocator = cxt.scratch_allocator();
@@ -1219,4 +1207,4 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
   return was_custom_sampling_interrupted ? 130 : status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

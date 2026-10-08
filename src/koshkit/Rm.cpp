@@ -13,11 +13,8 @@
 #include "../Koshkit.hpp"
 #include "../base/Path.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-fiRrx] [--dry-run] path ...");
-
-HELP_DESCRIPTION_DECL("The rm utility removes each path.");
+KOSHKIT_UTIL_DECL("[-fiRrx] [--dry-run] path ...",
+                  "The rm utility removes each path.");
 
 FLAG(RM_RECURSIVE_R, Bool, 'r', "", "Remove directories and their contents.");
 FLAG(RM_RECURSIVE_UPPER, Bool, 'R', "",
@@ -28,13 +25,10 @@ FLAG(RM_ONE_FILE_SYSTEM, Bool, 'x', "one-file-system",
      "Skip a directory on another file system.");
 FLAG(RM_DRY_RUN, Bool, '\0', "dry-run",
      "Print what would be removed without removing anything.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Rm);
 
-namespace koshka {
-
-namespace koshkit {
+namespace koshka::koshkit {
 
 enum class removal_prompt_mode : u8
 {
@@ -278,20 +272,12 @@ static fn names_root_directory(StringView operand) wontthrow -> bool
   return true;
 }
 
-Rm::Rm() = default;
-
-pure fn Rm::kind() const wontthrow -> Utility::Kind { return Kind::Rm; }
-
 fn Rm::execute(const ExecContext &ec, EvalContext &cxt,
                const ArrayList<String> &args,
                const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const should_force = FLAG_RM_FORCE.is_enabled();
   let const should_prompt = FLAG_RM_INTERACTIVE.is_enabled() &&
@@ -361,6 +347,4 @@ fn Rm::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

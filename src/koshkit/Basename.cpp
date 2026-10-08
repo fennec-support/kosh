@@ -12,20 +12,12 @@
 #include "../Koshkit.hpp"
 #include "../base/Path.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("path [suffix]");
-
-HELP_DESCRIPTION_DECL(
-    "The basename utility prints the final component of a path.");
-
-FLAG(HELP, Bool, '\0', "help", "Display help.");
+KOSHKIT_UTIL_DECL("path [suffix]",
+                  "The basename utility prints the final component of a path.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Basename);
 
-namespace koshka {
-
-namespace koshkit {
+namespace koshka::koshkit {
 
 static fn basename_component(StringView path) wontthrow -> StringView
 {
@@ -47,22 +39,11 @@ static fn basename_component(StringView path) wontthrow -> StringView
                                   end_position - start_position);
 }
 
-Basename::Basename() = default;
-
-pure fn Basename::kind() const wontthrow -> Utility::Kind
-{
-  return Kind::Basename;
-}
-
 cold fn Basename::execute(
     const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
     const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const operands =
-      PARSE_KOSHKIT_ARGS_WITH_LOCATIONS(args, arg_locations, operand_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
   if (operands.count() > 2) {
@@ -87,6 +68,4 @@ cold fn Basename::execute(
   return 0;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

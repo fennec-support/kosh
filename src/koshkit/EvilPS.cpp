@@ -20,12 +20,9 @@
 #include "../base/Arena.hpp"
 #include "../base/StaticStringMap.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-NUMBER] [-pAncUMcw] [--sort key] [--live [seconds]] "
-                   "[--cumulative [seconds]] [pid]");
-
-HELP_DESCRIPTION_DECL("The evilps utility shows running processes as a tree.");
+KOSHKIT_UTIL_DECL("[-NUMBER] [-pAncUMcw] [--sort key] [--live [seconds]] "
+                  "[--cumulative [seconds]] [pid]",
+                  "The evilps utility shows running processes as a tree.");
 
 FLAG(EVILPS_PIDS, Bool, 'p', "show-pids",
      "Show the identifier of each process.");
@@ -60,7 +57,6 @@ FLAG_OPTIONAL(EVILPS_CUMULATIVE, 'C', "cumulative", Live,
               "refresh rate. Without --live, compare snapshots across M "
               "seconds.",
               is_evilps_sample_duration, "seconds");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(EvilPS);
 
@@ -799,22 +795,18 @@ fn evilps_live_state::handle_key(live_view_key key) throws
   }
 }
 
-} // namespace
-
-EvilPS::EvilPS() = default;
-
-pure fn EvilPS::kind() const wontthrow -> Utility::Kind { return Kind::EvilPS; }
+} /* namespace */
 
 fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
                    const ArrayList<String> &args,
                    const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let operands = PARSE_KOSHKIT_ARGS_WITH_LOCATIONS(
-      args, arg_locations, operand_locations,
-      flag_parse_options{.should_accept_negative_number_operand = true,
-                         .should_allow_options_after_operands = true});
+  let[operands, operand_locations] = parse_util_operands(
+      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations,
+      {.should_accept_negative_number_operand = true,
+       .should_allow_options_after_operands = true});
+  defer { reset_flags(FLAG_LIST); };
 
   KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
 
@@ -1011,4 +1003,4 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */

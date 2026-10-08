@@ -14,25 +14,17 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL(
-    "[-i] [-u name]... [NAME=value ...] [command [argument ...]]");
-
-HELP_DESCRIPTION_DECL(
-    "The env utility runs a command in a modified environment.");
+KOSHKIT_UTIL_DECL("[-i] [-u name]... [NAME=value ...] [command [argument ...]]",
+                  "The env utility runs a command in a modified environment.");
 
 FLAG(ENV_IGNORE, Bool, 'i', "ignore-environment",
      "Start with an empty environment.");
 FLAG(ENV_UNSET, ManyStrings, 'u', "unset",
      "Remove this variable from the environment.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Env);
 
-namespace koshka {
-
-namespace koshkit {
+namespace koshka::koshkit {
 
 static fn is_assignment(StringView text) wontthrow -> bool
 {
@@ -56,20 +48,12 @@ static fn is_assignment(StringView text) wontthrow -> bool
   return true;
 }
 
-Env::Env() = default;
-
-pure fn Env::kind() const wontthrow -> Utility::Kind { return Kind::Env; }
-
 fn Env::execute(const ExecContext &ec, EvalContext &cxt,
                 const ArrayList<String> &args,
                 const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let const[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations);
-  defer { reset_flags(FLAG_LIST); };
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   ArrayList<String> saved_names{cxt.scratch_allocator()};
   ArrayList<String> saved_values{cxt.scratch_allocator()};
@@ -171,6 +155,4 @@ fn Env::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-} /* namespace koshkit */
-
-} /* namespace koshka */
+} /* namespace koshka::koshkit */

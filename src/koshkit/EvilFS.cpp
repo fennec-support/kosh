@@ -13,24 +13,15 @@
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-a]");
-
-HELP_DESCRIPTION_DECL(
-    "The evilfs utility reports the filesystems mounted on the host.");
+KOSHKIT_UTIL_DECL(
+    "[-a]", "The evilfs utility reports the filesystems mounted on the host.");
 
 FLAG(EVILFS_ALL, Bool, 'a', "all",
      "Show volume identity and operating system metadata.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(EvilFS);
 
 namespace koshka::koshkit {
-
-EvilFS::EvilFS() = default;
-
-pure fn EvilFS::kind() const wontthrow -> Utility::Kind { return Kind::EvilFS; }
 
 static fn format_filesystem_id(u64 value, Allocator allocator) throws -> String
 {
@@ -44,11 +35,7 @@ fn EvilFS::execute(const ExecContext &ec, EvalContext &cxt,
                    const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const operands =
-      PARSE_KOSHKIT_ARGS_WITH_LOCATIONS(args, arg_locations, operand_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (!operands.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "unexpected operand",

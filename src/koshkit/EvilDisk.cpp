@@ -14,15 +14,11 @@
 #include "../Platform.hpp"
 #include "../base/StaticStringMap.hpp"
 
-FLAG_LIST_DECL();
-
-HELP_SYNOPSIS_DECL("[-a] [file ...]");
-
-HELP_DESCRIPTION_DECL(
+KOSHKIT_UTIL_DECL(
+    "[-a] [file ...]",
     "The evildisk utility reports filesystem capacity and disk health data.");
 
 FLAG(EVILDISK_ALL, Bool, 'a', "all", "Show available SMART data.");
-FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(EvilDisk);
 
@@ -268,24 +264,13 @@ fn read_smart_rows(EvalContext &cxt,
   return rows;
 }
 
-} // namespace
-
-EvilDisk::EvilDisk() = default;
-
-pure fn EvilDisk::kind() const wontthrow -> Utility::Kind
-{
-  return Kind::EvilDisk;
-}
+} /* namespace */
 
 fn EvilDisk::execute(
     const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
     const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const operands =
-      PARSE_KOSHKIT_ARGS_WITH_LOCATIONS(args, arg_locations, operand_locations);
-
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const should_color = koshkit_should_color();
   let const allocator = cxt.scratch_allocator();
@@ -638,4 +623,4 @@ fn EvilDisk::execute(
   return status;
 }
 
-} // namespace koshka::koshkit
+} /* namespace koshka::koshkit */
