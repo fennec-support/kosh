@@ -43,6 +43,8 @@ missing-editor-keeps-the-line PASS
 terminal-read-stop-editor-is-ended PASS
 repeated-stop-editor-is-ended PASS
 arithmetic-brackets-highlight-cleanly PASS
+vi-ex-escape-keeps-the-caret PASS
+vi-ex-backspace-keeps-the-caret PASS
 ctrl-a-acts-the-same-in-every-encoding PASS
 ctrl-b-acts-the-same-in-every-encoding PASS
 ctrl-d-acts-the-same-in-every-encoding PASS

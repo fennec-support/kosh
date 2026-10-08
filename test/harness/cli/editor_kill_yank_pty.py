@@ -18,7 +18,8 @@
 # its chords on the hint rows until the next key resolves it, and Ctrl-X before
 # an arrow keeps the arrow. Ctrl-Z undoes at the prompt and still stops a
 # running program, Ctrl-Shift-Z in its kitty and xterm encodings redoes, and
-# Alt-T keeps trailing blanks in place. The prompt asks for the kitty and
+# Alt-T keeps trailing blanks in place. Leaving the vi : command line by
+# Escape or Backspace keeps the caret where the colon was typed. The prompt asks for the kitty and
 # xterm extended keys and withdraws them before a command's output and around
 # the external editor, and the option turns the request off. Every editing
 # Ctrl and Alt key in the table acts the same in its legacy bytes, which a
@@ -353,6 +354,31 @@ def run_extended_key_checks(session, report, directory):
                   and EXTENDED_KEYS_OFF in get_raw_since(session, mark))
 
 
+def run_vi_ex_checks(session, report):
+    session.send(b"set -o vi; echo vi-ex-on\r")
+    session.wait_until(has_output("vi-ex-on", 1))
+    for name, leave_key in (("escape", KITTY_ESCAPE), ("backspace", b"\x7f")):
+        session.send(b"echo abcd")
+        session.wait_until(is_line("echo abcd"))
+        mark = len(session.raw)
+        session.send(KITTY_ESCAPE)
+        session.wait_until(lambda screen: VI_COMMAND_CURSOR
+                           in get_raw_since(session, mark))
+        session.send(b"0w:")
+        session.wait_until(lambda screen: any(
+            line.strip() == ":" for line in screen.get_lines()))
+        session.send(leave_key)
+        session.wait_until(lambda screen: not any(
+            line.strip() == ":" for line in screen.get_lines()))
+        session.send(b"x")
+        report.record("vi-ex-%s-keeps-the-caret" % name, session,
+                      is_line("echo bcd"))
+        session.send(KITTY_CTRL_C)
+        session.wait_until(is_line(""))
+    session.send(b"set -o emacs; echo vi-ex-off\r")
+    session.wait_until(has_output("vi-ex-off", 1))
+
+
 def run_checks(binary, directory, command_directory, report):
     session = Session(binary, directory, command_directory)
     try:
@@ -586,6 +612,7 @@ def run_checks(binary, directory, command_directory, report):
                       lambda screen: has_output("5", 1)(screen)
                       and b"runtime error" not in bytes(session.raw[mark:]))
 
+        run_vi_ex_checks(session, report)
         run_key_table_checks(session, report)
         run_extended_key_checks(session, report, directory)
     finally:
