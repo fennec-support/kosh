@@ -451,6 +451,54 @@ fn quote_for_declare(StringView value) throws -> String
   return quoted;
 }
 
+static pure fn is_declare_key_meta(char c) wontthrow -> bool
+{
+  switch (c) {
+  case ' ':
+  case '"':
+  case '\'':
+  case '\\':
+  case '$':
+  case '`':
+  case '|':
+  case '&':
+  case ';':
+  case '(':
+  case ')':
+  case '<':
+  case '>':
+  case '!':
+  case '{':
+  case '}':
+  case '*':
+  case '[':
+  case ']':
+  case '?':
+  case '^':
+  case '~':
+  case '#': return true;
+  default:
+    return static_cast<unsigned char>(c) < 0x20 ||
+           static_cast<unsigned char>(c) == 0x7f;
+  }
+}
+
+fn append_declare_key(String &out, StringView key) throws -> void
+{
+  let is_plain = !key.is_empty();
+  for (usize i = 0; i < key.length && is_plain; i++)
+    is_plain = !is_declare_key_meta(key[i]);
+
+  if (is_plain) {
+    out.append(key);
+    return;
+  }
+
+  out += '"';
+  out += quote_for_declare(key);
+  out += '"';
+}
+
 fn append_variable_declaration(EvalContext &cxt, StringView name,
                                String &out) throws -> bool
 {
@@ -567,7 +615,7 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
 
     for (usize e = 0; e < keys.count(); e++) {
       line += '[';
-      line.append(keys[e].view());
+      append_declare_key(line, keys[e].view());
       line += "]=\"";
       if (e < values.count()) line += quote_for_declare(values[e].view());
       line += "\" ";

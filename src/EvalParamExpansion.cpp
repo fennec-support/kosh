@@ -1714,7 +1714,7 @@ fn EvalContext::ParameterExpander::expand_list_transform(
     if (op == 'K') {
       for (usize i = 0; i < pair_count; i++) {
         if (i > 0) out += ' ';
-        out.append(keys[i].view());
+        append_declare_key(out, keys[i].view());
         out += " \"";
         out += quote_for_declare(values[i].view());
         out += '"';

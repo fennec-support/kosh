@@ -496,6 +496,7 @@ fn parse_directory_stack_rotation(StringView arg, usize ring_count,
    quotes, with the characters special inside double quotes escaped, so the
    printed line reloads to the same value the way bash quotes it. */
 fn quote_for_declare(StringView value) throws -> String;
+fn append_declare_key(String &out, StringView key) throws -> void;
 
 fn append_variable_declaration(EvalContext &cxt, StringView name,
                                String &out) throws -> bool;
