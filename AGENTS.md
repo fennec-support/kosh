@@ -258,7 +258,8 @@ changes update this file.
   stats each directory it lists once and reads it again only after a change,
   while it keeps the PATH command names of the prompt.
 - An open completion menu narrows the gathered candidates in the editor. A
-  command-name or path list, which `match_tier` ranked, narrows by the same
+  command-name, path, or koshconf option-name list, which `match_tier`
+  ranked, narrows by the same
   exact, smart-case, and subsequence tiers, with the subsequence tier held to
   the same two-byte, name-like guard. Any other list, such as a spec reply,
   keeps every row the longer token opens in either case. The callback,

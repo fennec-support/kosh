@@ -413,6 +413,12 @@ fn parse_mood_list(StringView list, ArrayList<mimic_mood> &moods) throws
   return None;
 }
 
+pure fn koshconf_option_takes_count(const option_descriptor &option) wontthrow
+    -> bool
+{
+  return StringView{option.koshconf_name} == HISTORY_MAX_ENTRIES_NAME;
+}
+
 fn find_koshconf_value_problem(const option_descriptor &option,
                                StringView value) throws -> Maybe<String>
 {
@@ -434,9 +440,7 @@ fn find_koshconf_value_problem(const option_descriptor &option,
     return do_describe("text without a NUL byte");
   }
   if (!is_valid_utf8(value)) return do_describe("valid UTF-8 text");
-  let const is_count =
-      StringView{option.koshconf_name} == HISTORY_MAX_ENTRIES_NAME;
-  if (is_count && !is_decimal_count(value)) {
+  if (koshconf_option_takes_count(option) && !is_decimal_count(value)) {
     return do_describe("a decimal integer from 0 to 2147483647");
   }
   if (option.storage == option_storage::InitMoods) {

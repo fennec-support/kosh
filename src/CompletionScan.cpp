@@ -15,6 +15,7 @@
 #include "CompletionInternal.hpp"
 #include "CompletionPolicy.hpp"
 #include "Errors.hpp"
+#include "Koshconf.hpp"
 #include "Koshkit.hpp"
 #include "Lexer.hpp"
 #include "MimicMood.hpp"
@@ -732,7 +733,8 @@ static fn declaration_flags_select_functions(StringView line,
 fn internal::complete_from_builtin_flags(StringView line, StringView token,
                                          usize token_start,
                                          EvalContext &context,
-                                         completion_mode mode) throws
+                                         completion_mode mode,
+                                         bool &is_tier_ranked) throws
     -> Maybe<ArrayList<String>>
 {
   let const command = command_word_of(line);
@@ -911,38 +913,75 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
 #endif
   }
 
-  if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Koshconf &&
-      wants_operand)
-  {
+  if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Koshconf) {
     usize cword = 0;
     let const words = split_completion_words(
         line.substring_of_length(0, token_start), token_start, cword);
     let operands = ArrayList<StringView>{heap_allocator()};
-    for (usize i = 1; i < words.count(); i++)
-      if (!words[i].is_empty() && !words[i].view().starts_with(StringView{"-"}))
-      {
-        operands.push(words[i].view());
+    for (usize i = 1; i < words.count(); i++) {
+      let const word = words[i].view();
+      let const is_value_word = operands.count() == 2 && operands[0] == "set";
+      if (!word.is_empty() && (is_value_word || word[0] != '-')) {
+        operands.push(word);
       }
+    }
+
+    let const form = operands.is_empty() ? StringView{} : operands[0];
+    let const is_set_value = operands.count() == 2 && form == "set";
+    if (!wants_operand && !is_set_value) {
+      do_push_matching("--help");
+      if (form.is_empty() || form == "create") do_push_matching("--force");
+      if (form.is_empty() || form == "set") do_push_matching("--persist");
+      if (!candidates.is_empty()) return candidates;
+      return None;
+    }
 
     if (operands.is_empty()) {
-      for (let const form : {"create", "get", "list", "load", "set"})
-        do_push_matching(form);
-    } else if (operands.count() == 1 && operands[0] == "create") {
+      for (let const form_name : {"create", "get", "list", "load", "set"})
+        do_push_matching(form_name);
+    } else if (operands.count() == 1 && form == "create") {
       for (let const preset : {"bash", "kosh", "sh"})
         do_push_matching(preset);
-    } else if (operands.count() == 1 &&
-               (operands[0] == "set" || operands[0] == "get"))
-    {
-      for (let const &option : get_option_registry()) {
-        if (option.is_set_alias) continue;
+    } else if (operands.count() == 1 && (form == "set" || form == "get")) {
+      let names = ArrayList<StringView>{heap_allocator()};
+      for (let const &option : get_option_registry())
+        if (!option.is_set_alias) names.push(option.koshconf_name);
 
-        do_push_matching(option.koshconf_name);
+      if (mode != completion_mode::Listing) {
+        for (let const name : names)
+          do_push_matching(name);
+      } else {
+        candidates = best_tier_matches(token, names);
+        is_tier_ranked = true;
       }
-    } else if (operands.count() == 2 && operands[0] == "set") {
+    } else if (is_set_value) {
       let const *option = find_option_by_koshconf_name(operands[1]);
-      if (option != nullptr)
+      if (option == nullptr) return None;
+
+      if (option->storage == option_storage::InitMoods) {
+        let const comma = token.find_last_character(',');
+        let const listed_count = comma.has_value() ? *comma + 1 : 0;
+        let const listed = token.substring_of_length(0, listed_count);
+        let const typed = token.substring(listed_count);
+        for (let const mood_value : {"kosh", "sh", "bash", "bash-posix"}) {
+          let const mood_text = StringView{mood_value};
+          if (!mood_text.starts_with(typed)) continue;
+
+          let candidate = String{listed};
+          candidate.append(mood_text);
+          candidates.push(steal(candidate));
+        }
+      } else {
         for (u8 value = 0; value < option->enum_values.name_count; value++)
           do_push_matching(option->enum_values.names[value]);
+      }
+
+      if (option->type != option_type::String ||
+          option->storage == option_storage::InitMoods ||
+          koshconf_option_takes_count(*option))
+      {
+        return candidates;
+      }
     }
 
     if (!candidates.is_empty()) return candidates;

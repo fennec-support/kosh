@@ -29,14 +29,15 @@
 # acceptance through Ctrl-Right and Alt-F, and prefix history search on Up and
 # Down with its option switched off, a Ctrl-R menu that names a miss and cuts
 # a long entry with an ellipsis, and the inline hint rows for a command and
-# a flag, their header naming the kind and the two-column indent, their absence
-# inside the command word, for an uncached command, and for a bundled
-# utility that a PATH program shadows unless the word follows koshkit, their
-# yielding to the menu, their erasure on submit, and their option. A path menu
-# lists the last component of each path. A narrow terminal wraps a long
-# synopsis onto several indented rows that a submit erases, starts the menu at
-# the left edge when the token is too far right for its help text to keep two
-# rows, and a short
+# a flag, the builtin form that a typed subcommand opens, a koshconf option
+# that Tab finds by subsequence, their header naming the kind and the
+# two-column indent, their absence inside the command word, for an uncached
+# command, and for a bundled utility that a PATH program shadows unless the
+# word follows koshkit, their yielding to the menu, their erasure on submit,
+# and their option. A path menu lists the last component of each path. A
+# narrow terminal wraps a long synopsis onto several indented rows that a
+# submit erases, starts the menu at the left edge when the token is too far
+# right for its help text to keep two rows, and a short
 # terminal keeps the input on screen with fewer rows. A pause loads
 # the --help usage, flag forms, and subcommand usage of a trusted allowlisted
 # command once per key and never runs one from a world-writable directory. A
@@ -1036,6 +1037,26 @@ def run_checks(binary, directory, command_directory, report):
         session.send(b"echo ")
         report.record("hint-names-builtin-header", session,
                       is_hint_under("builtin synopsis", "echo [-neE] [arg ...]"))
+        clear_line(session)
+
+        session.send(b"koshconf set ")
+        report.record("hint-names-typed-builtin-form", session,
+                      is_hint_under("builtin synopsis",
+                                    "koshconf set <option> <value> "
+                                    "[--persist]"))
+        clear_line(session)
+
+        session.send(b"koshconf load ")
+        report.record("hint-names-alternative-builtin-form", session,
+                      is_hint_under("builtin synopsis",
+                                    "koshconf load <base64>"))
+        clear_line(session)
+
+        session.send(b"koshconf get maxent\t")
+        report.record("tab-completes-option-name-by-subsequence", session,
+                      lambda screen: get_state(screen) is not None
+                      and get_state(screen)[0].startswith(
+                          "koshconf get history.max_entries"))
         clear_line(session)
 
         session.send(b"zzprobe-one ")

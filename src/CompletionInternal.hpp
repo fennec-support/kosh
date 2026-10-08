@@ -94,6 +94,9 @@ fn resolve_completion_command(StringView command, EvalContext &context) throws
     -> String;
 fn split_completion_words(StringView line, usize cursor, usize &cword) throws
     -> ArrayList<String>;
+fn best_tier_matches(StringView token,
+                     const ArrayList<StringView> &names) throws
+    -> ArrayList<String>;
 pure fn word_is_function_name(StringView word) wontthrow -> bool;
 pure fn word_defines_function(StringView line, usize word_end,
                               usize end) wontthrow -> bool;
@@ -141,7 +144,8 @@ fn complete_from_tools_with_targets(StringView line, StringView token,
     -> Maybe<ArrayList<String>>;
 fn complete_from_builtin_flags(StringView line, StringView token,
                                usize token_start, EvalContext &context,
-                               completion::completion_mode mode) throws
+                               completion::completion_mode mode,
+                               bool &is_tier_ranked) throws
     -> Maybe<ArrayList<String>>;
 fn complete_from_spec(StringView line, StringView token, usize cursor,
                       EvalContext &context, StringMap<String> &descriptions,

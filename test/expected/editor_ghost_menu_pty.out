@@ -94,6 +94,9 @@ hint-shows-flag-description PASS
 hint-names-flag-header PASS
 hint-clears-inside-command-word PASS
 hint-names-builtin-header PASS
+hint-names-typed-builtin-form PASS
+hint-names-alternative-builtin-form PASS
+tab-completes-option-name-by-subsequence PASS
 hint-absent-for-uncached-command PASS
 hint-path-program-hides-bundled-synopsis PASS
 hint-koshkit-names-bundled-synopsis PASS

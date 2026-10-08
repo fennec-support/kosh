@@ -140,6 +140,22 @@ private:
       ArrayList<String>{completion_allocator()}};
 };
 
+fn internal::best_tier_matches(StringView token,
+                               const ArrayList<StringView> &names) throws
+    -> ArrayList<String>
+{
+  let const is_case_sensitive = utils::token_has_uppercase(token);
+  let candidates = TieredCandidates{};
+  for (let const name : names)
+    if (let const tier = candidate_match(token, name, is_case_sensitive);
+        tier.has_value())
+    {
+      candidates.add(*tier, String{completion_allocator(), name});
+    }
+
+  return candidates.best();
+}
+
 class BorrowedStringSet
 {
 public:
@@ -1455,9 +1471,12 @@ fn complete(StringView line, usize cursor, EvalContext &context,
     if (!is_posix_completion) {
       from_stage =
           complete_from_process_arguments(line, stage_token, token_start, mode);
-      if (!from_stage.has_value())
+      if (!from_stage.has_value()) {
         from_stage = complete_from_builtin_flags(line, stage_token, token_start,
-                                                 context, mode);
+                                                 context, mode, is_tier_ranked);
+        should_ignore_common_prefix_case =
+            is_tier_ranked && !utils::token_has_uppercase(stage_token);
+      }
       if (!from_stage.has_value()) {
         from_stage = complete_from_spec(line, stage_token, cursor, context,
                                         descriptions, mode, spec_option_mask);

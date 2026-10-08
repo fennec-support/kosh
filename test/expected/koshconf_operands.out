@@ -33,3 +33,24 @@ off
 on
 == koshconf flags:
 --persist
+== koshconf set init moods value:
+bash
+bash-posix
+kosh
+sh
+== koshconf set init moods after a comma:
+kosh,bash
+kosh,bash-posix
+== koshconf set count value offers no file:
+== koshconf set path value offers files:
+history-probe
+== koshconf set flags after the value:
+--help
+--persist
+== koshconf create flags:
+--force
+--help
+== koshconf option name by subsequence:
+history.max_entries
+== koshconf option name prefix wins over subsequence:
+mood

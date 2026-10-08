@@ -1534,8 +1534,37 @@ fn internal::complete_from_help_subcommands(StringView line, StringView token,
 
 static StringMap<String> HINT_SYNOPSIS_ROWS{heap_allocator()};
 
+static pure fn find_synopsis_form(const SynopsisList &synopsis,
+                                  StringView subcommand_word) wontthrow
+    -> StringView
+{
+  constexpr StringView FORM_SEPARATOR{" | "};
+  for (let const line : synopsis) {
+    usize form_start = 0;
+    while (form_start <= line.length) {
+      let const separator = line.find_substring(FORM_SEPARATOR, form_start);
+      let const form_end = separator.has_value() ? *separator : line.length;
+      let const form =
+          line.substring_of_length(form_start, form_end - form_start);
+      if (form.starts_with(subcommand_word) &&
+          (form.length == subcommand_word.length ||
+           form[subcommand_word.length] == ' '))
+      {
+        return form;
+      }
+
+      if (!separator.has_value()) break;
+
+      form_start = form_end + FORM_SEPARATOR.length;
+    }
+  }
+
+  return StringView{};
+}
+
 static fn synopsis_row_of(StringView key, StringView display_name,
-                          const SynopsisList *synopsis) throws -> StringView
+                          const SynopsisList *synopsis,
+                          StringView subcommand_word = {}) throws -> StringView
 {
   if (let const cached = HINT_SYNOPSIS_ROWS.find(key); cached.has_value())
     return cached->view();
@@ -1543,9 +1572,18 @@ static fn synopsis_row_of(StringView key, StringView display_name,
     return StringView{};
   }
 
+  let form = (*synopsis)[0];
+  if (!subcommand_word.is_empty()) {
+    if (let const named_form = find_synopsis_form(*synopsis, subcommand_word);
+        !named_form.is_empty())
+    {
+      form = named_form;
+    }
+  }
+
   let row = String{display_name};
   row += ' ';
-  row.append((*synopsis)[0]);
+  row.append(form);
   return HINT_SYNOPSIS_ROWS.set(key, steal(row))->view();
 }
 
@@ -1790,11 +1828,21 @@ fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
           key.view(), first_word, koshkit::koshkit_util_synopsis(*bundled));
       source.flags = koshkit::koshkit_util_flag_list(*bundled);
     } else {
+      let const *synopsis = builtin_help_synopsis(*builtin_kind);
+      let const subcommand_word =
+          has_subcommand_word && synopsis != nullptr &&
+                  !find_synopsis_form(*synopsis, first_word).is_empty()
+              ? first_word
+              : StringView{};
       let key = String{"b:"};
       key.append(name.view());
+      if (!subcommand_word.is_empty()) {
+        key.push(' ');
+        key.append(subcommand_word);
+      }
       source.header = BUILTIN_HINT_HEADER;
-      source.synopsis = synopsis_row_of(key.view(), name.view(),
-                                        builtin_help_synopsis(*builtin_kind));
+      source.synopsis =
+          synopsis_row_of(key.view(), name.view(), synopsis, subcommand_word);
       source.flags = builtin_flag_list(*builtin_kind);
     }
   } else {

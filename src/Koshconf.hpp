@@ -48,6 +48,8 @@ fn parse_mood_list(StringView list, ArrayList<mimic_mood> &moods) throws
     -> Maybe<StringView>;
 fn find_koshconf_value_problem(const option_descriptor &option,
                                StringView value) throws -> Maybe<String>;
+pure fn koshconf_option_takes_count(const option_descriptor &option) wontthrow
+    -> bool;
 fn format_koshconf_line(const option_descriptor &option,
                         StringView value) throws -> String;
 fn format_koshconf_display_line(const option_descriptor &option,
