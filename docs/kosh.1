@@ -1565,7 +1565,9 @@ The
 .B extglob
 option enables ?(), *(), +(), @(), and !() matching. The shell parses these
 groups as part of a word in every mood whatever the option, so @(a)<(cmd) is one
-word where Bash with the option off reports a syntax error. The
+word where Bash with the option off reports a syntax error. The pattern of
+.B [[
+always matches these groups, as in Bash, whatever the option. The
 .B globstar
 option enables **. The
 .BR dotglob ,

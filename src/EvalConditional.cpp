@@ -487,11 +487,14 @@ struct conditional_evaluator
             let const pattern =
                 operand_pattern_masked(elements[pos - 1], active);
             let const is_case_insensitive = cxt.is_shopt_enabled("nocasematch");
+            /* A conditional pattern always honors extended groups. */
+            let const pattern_extglob = cxt.runtime_state().is_posix_mode()
+                                            ? extglob_mode::Disabled
+                                            : extglob_mode::Enabled;
             if (!is_case_insensitive) {
-              let const is_matched =
-                  utils::glob_matches(pattern.view(), left.view(), active, 0,
-                                      cxt.get_extglob_mode(),
-                                      cxt.get_glob_charset_for(left.view()));
+              let const is_matched = utils::glob_matches(
+                  pattern.view(), left.view(), active, 0, pattern_extglob,
+                  cxt.get_glob_charset_for(left.view()));
               return *selected_binary_operator ==
                              BinaryOperatorKind::PatternNotEqual
                          ? !is_matched
@@ -506,8 +509,7 @@ struct conditional_evaluator
                 cxt.scratch_allocator());
             let const is_matched = utils::glob_matches(
                 match_pattern.view(), match_value.view(), active, 0,
-                cxt.get_extglob_mode(),
-                cxt.get_glob_charset_for(match_value.view()));
+                pattern_extglob, cxt.get_glob_charset_for(match_value.view()));
             return *selected_binary_operator ==
                            BinaryOperatorKind::PatternNotEqual
                        ? !is_matched
