@@ -3018,11 +3018,22 @@ static fn strip_ansi_color(StringView text) throws -> String
   return out;
 }
 
+/* Readline takes a raw 001 and 002 byte as the bounds of a region that takes
+   no columns, the bytes \[ and \] stand for in bash. The editor measures every
+   escape sequence at zero width already, so the bounds are dropped, as the
+   two escapes are. */
 static fn finish_prompt(StringView expanded) throws -> String
 {
-  if (!colors::stdout_wants_color()) return strip_ansi_color(expanded);
+  let shown = String{koshka::heap_allocator()};
+  for (usize i = 0; i < expanded.length; i++) {
+    if (expanded[i] != '\x01' && expanded[i] != '\x02') {
+      shown.push(expanded[i]);
+    }
+  }
 
-  return String{expanded};
+  if (!colors::stdout_wants_color()) return strip_ansi_color(shown.view());
+
+  return shown;
 }
 
 /* The user is stable for the session, so it is resolved once and reused. */

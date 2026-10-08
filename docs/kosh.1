@@ -5017,6 +5017,9 @@ backslash escapes \\u,
 The escapes are decoded before parameters and substitutions expand, so text an
 escape inserts is never expanded, and a backslash that a parameter or
 substitution yields is never decoded.
+A raw 001 or 002 byte in PS0, PS1, RPS1, or PS1_TRANSIENT bounds an invisible
+region the way \\[ and \\] do: it is not drawn, and the escape sequences
+inside the region take no columns.
 The \\. escape emits a bullet, plain when the last exit status is zero and
 bold red when it is not. The user, host, directory, branch, shell name, and
 version that \\u, \\h, \\H, \\w, \\W, \\P, \\g, \\s, \\v, and \\V insert draw a

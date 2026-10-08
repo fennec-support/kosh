@@ -17,7 +17,9 @@
 # strip under the prompt. A working directory named with control bytes
 # reaches the prompt through \w in caret notation and never as raw bytes. A
 # backslash that PS1 takes from a parameter stays literal, also when the
-# prompt is drawn again from its cached expansion. A job stopped by Ctrl-Z
+# prompt is drawn again from its cached expansion. Raw 001 and 002 bytes
+# around escape sequences in PS1, RPS1, and PS1_TRANSIENT are not drawn and
+# take no columns, as the \[ and \] markers do. A job stopped by Ctrl-Z
 # reports on its own row below the echoed ^Z, and Ctrl-C on a job that fg
 # resumed ends its row before the next prompt. A background job that a signal
 # ended reports the signal description at the next prompt.
@@ -187,6 +189,20 @@ def run_checks(binary, directory, command_directory, report):
         report.record("prompt-value-keeps-backslashes-when-drawn-again",
                       session,
                       is_submitted(["T> true"], value_prompt))
+
+        marked_prompt = with_right_prompt("p " + BULLET)
+        mark = len(session.raw)
+        session.send(b"PS1=$'\\001\\e[1m\\002p\\001\\e[0m\\002 \\\\. ';"
+                     b" RPS1=$'\\001\\e[2m\\002<R>\\001\\e[0m\\002';"
+                     b" PS1_TRANSIENT=$'\\001\\e[1m\\002M> '\r")
+        report.record("prompt-markers-take-no-columns", session,
+                      is_prompt_line(marked_prompt))
+        session.send(b"true\r")
+        report.record("transient-prompt-markers-take-no-columns", session,
+                      is_submitted(["M> true"], marked_prompt))
+        report.record("prompt-markers-are-not-drawn", session,
+                      lambda screen: b"\x01" not in session.raw[mark:]
+                      and b"\x02" not in session.raw[mark:])
     finally:
         session.close()
 
