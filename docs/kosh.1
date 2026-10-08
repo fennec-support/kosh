@@ -82,7 +82,7 @@ With no command string and no file operand, standard input is analyzed.
 .PP
 The
 .B \-\-format
-option reads standard input when no file is named. One named file is formatted
+option takes standard input when no file is named. One named file is formatted
 to standard output. The
 .B \-\-apply
 option writes the result to one or more named files. Under
@@ -249,7 +249,7 @@ Letters may be combined, as in
 .BR +eu ,
 and
 .B \-euo pipefail
-names pipefail with
+sets pipefail with
 .BR \-o .
 .PP
 An option named on the command line, on or off, keeps that value over the
@@ -267,7 +267,7 @@ used.
 A leading tilde is expanded. The file replaces ~/.bashrc in an interactive
 non-login Bash mood. The system Bash rc is still read first. The
 .B kosh
-mood reads no rc file and ignores this option.
+mood sources no rc file and ignores this option.
 .TP
 .B \-\-norc
 The interactive non-login Bash rc and a custom rc file are skipped. Login
@@ -728,7 +728,7 @@ mood accepts Bash extensions with analysis disabled by default. The
 .B sh
 mood follows the supported dash behavior. The
 .B bash-posix
-mood uses Bash syntax with the POSIX option enabled and reads the Bash startup
+mood uses Bash syntax with the POSIX option enabled and sources the Bash startup
 files.
 .PP
 The
@@ -1316,7 +1316,7 @@ Single quotes preserve every enclosed byte. Double quotes retain parameter,
 command, and arithmetic expansion. A backslash quotes the next byte where the
 grammar permits it.
 .PP
-The form $'...' reads C escapes including \en, \et, \exHH, and \eOOO. The form
+The form $'...' interprets C escapes including \en, \et, \exHH, and \eOOO. The form
 $"..." marks a string for translation. Every mood accepts it, and it behaves as
 an ordinary double-quoted string when no catalog is present. It is recognized
 only outside double quotes. Within a double-quoted string, $" is a literal
@@ -1333,7 +1333,7 @@ a[2]=z. The form a+=(w) appends elements. An opening parenthesis directly after
 a nonempty value, as in a=x(y) or a=\e<(y), is a syntax error in every mood.
 The list holds words, so a nested parenthesis, a control operator such as ;
 or |, or a redirection operator inside it is a syntax error, as in Bash.
-${a[i]} reads an arithmetic subscript.
+${a[i]} takes an arithmetic subscript.
 ${a[@]} and ${a[*]} list elements. ${#a[@]} counts elements. ${!a[@]} lists
 indices. A negative index counts from the end. Sparse indices remain absent
 from ${!a[@]}.
@@ -1349,7 +1349,7 @@ ${a[@]} is an error under
 The command
 .B declare \-A m
 declares an associative array. The form m[key]=v assigns an element. The form
-${m[key]} reads it. The form ${!m[@]} lists keys. The command
+${m[key]} expands to it. The form ${!m[@]} lists keys. The command
 .B unset 'm[key]'
 removes one element. A word in the list m=(k1 v1 k2 v2) is not split into
 fields and not matched against files, and a quoted "${a[@]}" joins into one
@@ -1383,7 +1383,7 @@ evaluates back to the same bytes. The forms ${v@U}, ${v@L}, and ${v@u} apply the
 Any other operator after @ on a set parameter is a bad substitution that ends
 the script, and on an unset one it expands to nothing.
 .PP
-The form ${!ref} reads the variable named by ref. The forms ${!pre*} and
+The form ${!ref} expands the variable named by ref. The forms ${!pre*} and
 ${!pre@} list names beginning with pre.
 .PP
 An unquoted tilde that starts the word of a parameter expansion expands, as in
@@ -1554,11 +1554,11 @@ command without a program keeps the process for as long as its redirections
 hold the descriptor, closes the path, and reaps the process after it ends
 without waiting for it. On POSIX the path is /dev/fd/63 or the next free
 descriptor above it. On Windows the path identifies a named pipe that behaves
-like a FIFO. A program may open or inspect the path before it reads or writes.
+like a FIFO. A program may open or inspect the path before it performs a read or a write.
 The path may be opened again. Each reader continues where the previous reader
-stopped, a reader that opens the path after the stream ends reads end of file,
+stopped, a reader that opens the path after the stream ends receives end of file,
 and each writer appends to the same stream. A redirection that finds the pipe
-busy retries for up to two seconds. When a reader that reads in large blocks
+busy retries for up to two seconds. When a reader that consumes input in large blocks
 closes the path in the middle of a line, the next reader may receive that whole
 line again.
 .SS Brace expansion
@@ -1860,7 +1860,7 @@ or
 .B sh
 preset to the user configuration file that
 .BR kosh (5)
-names. It refuses to replace an existing file unless
+describes. It refuses to replace an existing file unless
 .B \-\-force
 is given.
 .B set
@@ -2140,10 +2140,10 @@ tab when several are given, and fails for a name with no remembered location.
 Without a maintenance option the stored events are listed, and a numeric
 operand limits the listing to that many newest events. The
 .B \-r
-option reads the history file into the list, and an operand specifies a file
+option loads the history file into the list, and an operand specifies a file
 whose events join the list without being written to the history file. The
 .B \-n
-option also reads the history file, and an operand specifies a file whose
+option also loads the history file, and an operand specifies a file whose
 already read bytes are skipped. The
 .B \-w
 option writes the list to the history file, and an operand specifies a file that
@@ -2270,18 +2270,18 @@ element under its own index. Without operands, the
 option or an attribute option lists every variable that carries the requested
 attributes. The
 .B \-n
-option makes the name a reference to the variable its value names, which may
+option makes the name a reference to the variable its value selects, which may
 carry an array subscript. A read, an assignment, an append, an element
 assignment, an export, and an unset of the reference act on that variable, and
 a chain of references is followed. A for loop over a reference binds the
-reference to each word, ${!name} reads the name the reference reaches, and
+reference to each word, ${!name} gives the name the reference reaches, and
 .B "unset \-n"
 removes the reference itself and leaves a name that is not a reference alone.
 The conditional [[ \-R name ]] and, outside
 the sh mood, test \-R name and [ \-R name ] are true for a reference with a
 value. A reference with no value binds to the name its
 first assignment gives it. A reference to itself is an error at the top level,
-and a circular chain reads as unset with a warning and fails an assignment.
+and a circular chain counts as unset with a warning and fails an assignment.
 Through a circular chain, read, printf \-v, and export fail with status 1,
 arithmetic, a prefix assignment before a builtin, and declare warn and skip
 the write, a prefix assignment before eval, a sourced file, a function, or an
@@ -2353,7 +2353,7 @@ lists each read-only function with its body.
 .BR "mapfile, readarray"
 The
 .B \-t
-option reads input lines into an array without their delimiters. The
+option stores input lines in an array without their delimiters. The
 .B \-n
 option limits the line count, and
 .B \-s
@@ -2363,7 +2363,7 @@ option selects the first array index. The
 .B \-d
 option replaces the newline delimiter with the first byte of its value. The
 .B \-u
-option reads from a file descriptor. The
+option takes input from a file descriptor. The
 .B \-C
 option evaluates its callback with the destination index and current record as
 arguments. The callback runs after each quantum of records and before the
@@ -2404,7 +2404,7 @@ continuation. The
 .B \-a
 option splits the line into a named indexed array. The
 .B \-d
-option replaces the newline delimiter, and an empty value reads to a NUL byte.
+option replaces the newline delimiter, and an empty value selects a NUL byte.
 The
 .B \-n
 option bounds the byte count, and
@@ -2415,9 +2415,9 @@ option prints a prompt at a terminal, and
 .B \-s
 keeps terminal input unechoed. The
 .B \-u
-option reads from a file descriptor. The
+option takes input from a file descriptor. The
 .B \-q
-option reads one byte and returns zero for y or Y. The
+option takes one byte and returns zero for y or Y. The
 .B \-e
 option is accepted without effect. The line editor is always used at a
 terminal.
@@ -2456,7 +2456,7 @@ directory names. Of the actions it offers only those the shell answers from
 memory, so the user, group, hostname, service, command, file, and directory
 actions wait for a Tab. A
 .B \-I
-spec that has none of the generators the ghost reads leaves the ghost of the
+spec that has none of the generators the ghost uses leaves the ghost of the
 command names in place. The actions
 .BR \-a ,
 .BR \-b ,
@@ -2662,7 +2662,7 @@ it runs the utility specified by its first operand, such as
 .BR "koshkit ls \-l" ,
 and otherwise acts as the koshkit builtin, so
 .B koshkit \-\-list
-lists the utilities. Either form skips the shell startup: it reads no settings
+lists the utilities. Either form skips the shell startup: it loads no settings
 or startup file and ignores KOSH_FLAGS.
 .TP
 .B basename
@@ -2970,9 +2970,9 @@ matches whole lines. The combined
 form is accepted, and options may follow the operands.
 A pattern is a basic regular expression. The
 .B \-E
-option reads patterns as extended regular expressions and the
+option treats patterns as extended regular expressions and the
 .B \-F
-option reads them as fixed strings. The two options conflict and exit with
+option treats them as fixed strings. The two options conflict and exit with
 status 2.
 Each
 .B \-e
@@ -3523,7 +3523,7 @@ utility,
 shows a LIVE indicator, the local time, the window and the refresh
 interval, and, on a terminal, the keys the utility accepts. The header
 is shortened to fit the terminal width and is colored only when color is
-enabled. The terminal reads keys without echo and without Enter: q quits with
+enabled. The terminal delivers keys without echo and without Enter: q quits with
 status 0, and an interrupt quits with status 130. Each frame is written with one
 write and follows the terminal size at the time of the frame. Output
 that is not a terminal carries a plain header and no escape sequences.
@@ -3702,7 +3702,7 @@ selected with ss-compatible options. The
 .B \-\-live
 option, which has no short form because
 .B \-l
-selects listening sockets, reads the sockets again and refreshes the same table
+selects listening sockets, samples the sockets again and refreshes the same table
 every optional number of seconds until interrupted; the default is 0.5 seconds.
 .TP
 .B goodstat
@@ -3890,13 +3890,13 @@ and
 .B editor.show_live_diagnostics
 turns these off too.
 .PP
-Ctrl\-Z undoes while the editor reads a line, the same as Ctrl\-_. A program
+Ctrl\-Z undoes while the editor collects a line, the same as Ctrl\-_. A program
 that runs in the foreground has the terminal in its usual mode, so Ctrl\-Z
 stops it and the shell reports the stopped job. Ctrl\-Shift\-Z redoes when the
 terminal reports it apart from Ctrl\-Z. PROMPT_COMMAND and the expansion of
 the prompts run with the terminal in its usual mode, so a program they start
-reads plain keys and Ctrl\-C interrupts it. Only then, while the editor reads a
-line, does it ask the terminal for such reports through the disambiguate flag
+receives plain keys and Ctrl\-C interrupts it. Only then, while the editor
+collects a line, does it ask the terminal for such reports through the disambiguate flag
 of the kitty
 keyboard protocol
 .RB ( "ESC [ > 1 u" )
@@ -3984,7 +3984,7 @@ is cut with an ellipsis. If the terminal is too short for the input and all
 hint rows, the editor drops body rows, then shows only the body on one row,
 then hides the hint. The rows are hidden while a completion
 menu or history search is open and erased when the line is submitted. A
-keystroke reads only data already loaded, and it never runs
+keystroke uses only data already loaded, and it never runs
 .BR man
 or the command.
 .PP
@@ -4002,7 +4002,7 @@ apply, so
 .BR manpath ,
 and the program run only from a directory owned by the user or root that no
 group or other user can write. Each load runs in a child process that the
-editor reads between keys and never waits on, so typing stays responsive while
+editor polls between keys and never waits on, so typing stays responsive while
 it runs, and the hint updates in place when it finishes. The section 1
 directories of the manual roots are read one directory per step. A Tab that
 needs a running load waits for it. A load is killed
@@ -4025,7 +4025,7 @@ or
 .BR note ,
 in place of the synopsis until the line changes. This analysis follows no
 sourced
-file and resolves no command name, so it reads no file and searches no PATH.
+file and resolves no command name, so it opens no file and searches no PATH.
 The finding and the syntax problem below follow
 .BR editor.show_live_diagnostics ,
 which
@@ -4143,7 +4143,7 @@ or
 .B pushd
 completes only directories, and when it is neither absolute nor led by a dot
 or a tilde, also the directories under each CDPATH entry. The ghost suggestion
-reads a CDPATH directory only once the editor has indexed it during a pause of
+uses a CDPATH directory only once the editor has indexed it during a pause of
 a quarter second, so a keystroke never waits on it.
 .PP
 An explicit Tab first replaces the token with the longest common prefix. A sole
@@ -4288,7 +4288,7 @@ perform the corresponding linewise operations.
 .PP
 The subsections below list every key the editor binds. A key not listed for a
 mode does nothing there unless its subsection says otherwise. An unrecognized
-key is a control key or an escape sequence the editor reads as no key at all,
+key is a control key or an escape sequence the editor treats as no key at all,
 such as Ctrl\-G, Ctrl\-O, a bare Escape, or a function key. The Windows
 console also reports the arrows, Ctrl\-Left, Ctrl\-Right, Home, End, Delete,
 Ctrl\-Delete, and Shift\-Tab as legacy scan codes, which act the same. A key a
@@ -4635,7 +4635,7 @@ Close the menu, then act on the line.
 The interactive selector shows the history in the menu, where Enter and Tab
 accept the highlighted entry without running it, and Escape, Ctrl\-G, or any
 other unrecognized key cancels and restores the line. The other menu keys act
-as in the completion menu. The plain selector reads these keys:
+as in the completion menu. The plain selector accepts these keys:
 .TP
 .BR Down ", " Ctrl\-N ", " Ctrl\-R
 Step to an older match.
@@ -4687,7 +4687,7 @@ determine the status.
 In the bash, bash-posix, and sh moods an asynchronous simple command or
 assignment forks before it expands its words, its prefix assignments, and its
 redirections, as Bash and dash do. An expansion error then fails the job, with
-status 1 in the bash moods and 2 in the sh mood, while $! still names it, and
+status 1 in the bash moods and 2 in the sh mood, while $! still identifies it, and
 a side effect of the expansion, such as $((i++)) or ${v:=word}, stays in the
 job. The kosh mood expands the words in the shell before it starts the job.
 .PP
@@ -4841,7 +4841,7 @@ findings remain warnings. The annoying tier contains additional safety and style
 checks that can produce many reports in existing scripts.
 .PP
 Whole-script dataflow findings are strict. In the default mood, a script is
-rejected when it reads a name that it never assigns, calls a function that reads
+rejected when it expands a name that it never assigns, calls a function that uses
 arguments without passing any, or calls a function before defining it. If an
 unassigned name resembles an assigned name, that assignment is shown as a detail
 location.
@@ -4880,7 +4880,7 @@ substitution,
 backticks, process substitution, and here-document bodies is part of the file,
 so its diagnostics use the file's own line and column. Text built at run time,
 such as an eval string or a trap action, is its own source. A location in an
-eval string reads
+eval string appears as
 .BR eval:2:7: ,
 counted from the start of that string, and the quoted line and caret come from
 it. A location in a trap action appears as
@@ -4894,7 +4894,7 @@ inside it count from the file line of the eval command, as Bash does. A
 .B \-c
 string is named
 .BR \-c ,
-so a location in it reads
+so a location in it appears as
 .BR \-c:1:5: .
 Every
 .B \-c
@@ -4946,7 +4946,7 @@ for the level of
 for diagnostics.show_annoying_tier off, and
 .B no\-diagnostics
 for diagnostics.analyze_before_running off.
-The variable is removed when no word remains. A shell reads it at startup, and
+The variable is removed when no word remains. A shell loads it at startup, and
 an explicit
 .B \-W
 level replaces the inherited level, and the other options add to the inherited
@@ -4954,13 +4954,13 @@ words. A shell that starts with the variable
 rewrites it from its own settings.
 .TP
 .B KOSH_DEBUG_SYSTEM_KOSHCONF
-A non-empty value names the system configuration file in place of
+A non-empty value selects the system configuration file in place of
 /etc/kosh.conf or %ProgramData%\ekosh\ekosh.conf, with the same ownership check.
 The test suite points it at a missing file. Only a debug build, made with
 .B make MODE=dbg
 or a Debug
 .BR "zig build" ,
-reads it; every other build, including a ReleaseSafe zig build, always reads
+honors it; every other build, including a ReleaseSafe zig build, always uses
 the system path.
 .TP
 .B KOSH_HISTORY_FILE
@@ -5175,7 +5175,7 @@ of
 .B SECONDS
 or
 .B RANDOM
-makes the name ordinary for the rest of the shell. The name then reads empty,
+makes the name ordinary for the rest of the shell. The name is then empty,
 an assignment stores an ordinary value, and a subshell inherits it that way.
 They are unavailable in the
 .B sh
@@ -5186,7 +5186,7 @@ The field separator and the line number of the running command are available in
 every mood. Inside a command substitution, backticks, or a process
 substitution,
 .B LINENO
-is the file line of the command that reads it in every mood. Bash differs
+is the file line of the command that expands it in every mood. Bash differs
 inside a command substitution that spans lines. It starts the count at a line
 between the first and last line of the substitution, which its parser chooses,
 and counts the lines of the body as it prints the body back, without comments
@@ -5194,7 +5194,7 @@ or blank lines. A command on the second line of
 .B y=$(echo $LINENO
 followed by
 .B echo $LINENO)
-reads 3 in Bash and 2 in kosh when the substitution starts on line 1.
+gives 3 in Bash and 2 in kosh when the substitution starts on line 1.
 .TP
 .BR BASHPID ", " PPID ", " UID ", " EUID ", " GROUPS ", " HOSTNAME ", " HOSTTYPE ", " MACHTYPE ", " OSTYPE
 These dynamic values identify the current shell process, parent, ids,
@@ -5308,7 +5308,7 @@ or
 .BR bash-posix .
 .TP
 .BR COMP_WORDS ", " COMP_CWORD ", " COMP_LINE ", " COMP_POINT ", " COMP_WORDBREAKS ", " COMPREPLY
-A programmable completion function reads these values and writes COMPREPLY.
+A programmable completion function uses these values and writes COMPREPLY.
 COMP_WORDS contains the words on the line. COMP_CWORD is the index of the word
 under the cursor. COMP_LINE contains the complete line. COMP_POINT is the
 cursor byte offset. COMP_WORDBREAKS contains the bytes that split a word.
@@ -5385,7 +5385,7 @@ This is the default z frecency store.
 This is the default interactive calc history file.
 .TP
 .IR /etc/kosh.conf ", " $XDG_CONFIG_HOME/kosh/kosh.conf ", " ~/.config/kosh/kosh.conf
-These are the system and user settings files. Windows reads the system file
+These are the system and user settings files. Windows loads the system file
 from %ProgramData%\ekosh\ekosh.conf.
 .PP
 The settings files and the shell startup files are described in

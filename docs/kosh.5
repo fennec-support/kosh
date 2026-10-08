@@ -3,7 +3,7 @@
 kosh.conf \- Koshka settings files and the KOSHCONF encoding
 .SH DESCRIPTION
 The settings Koshka owns live in koshconf files. They hold option values, not
-shell commands. A shell reads them before any shell startup file, whether or
+shell commands. A shell loads them before any shell startup file, whether or
 not it is interactive. The following do not read a settings file or apply
 KOSHCONF: a shell started with
 .B \-Q
@@ -16,7 +16,7 @@ parent. A binary started as a koshkit utility or as
 also does not read a settings file or apply KOSHCONF.
 Privileged mode,
 .BR \-p ,
-reads the files but ignores KOSHCONF.
+loads the files but ignores KOSHCONF.
 .PP
 The configured mood also applies to
 .B kosh \-c
@@ -29,7 +29,7 @@ The
 .B koshconf
 builtin in
 .BR kosh (1)
-reads, changes, and writes these settings.
+loads, changes, and writes these settings.
 .PP
 Shell code that should run at startup belongs in the startup files of the
 .B bash
@@ -37,7 +37,7 @@ or
 .B sh
 mood listed under FILES. The
 .B kosh
-mood sources no shell startup file. The startup.init_moods option names the
+mood sources no shell startup file. The startup.init_moods option lists the
 moods whose startup files an interactive or login shell sources, so a
 .B kosh
 mood session can still source ~/.bashrc; see STARTUP MOODS.
@@ -81,7 +81,7 @@ to disk and renamed over the target. A reader sees either the old or the new
 file. The directory is created when it is missing. The written file keeps the
 permission bits of the file it replaces, and a new file is created with mode
 0644 less the file creation mask. Each write holds an advisory lock on the
-target's directory while it reads and replaces the file, so concurrent
+target's directory while it loads and replaces the file, so concurrent
 .B koshconf set \-\-persist
 commands that change different options all take effect. On Windows the lock is
 a hidden
@@ -171,7 +171,7 @@ section of
 .BR kosh (1)
 lists them.
 .PP
-.B A semantic option in a file changes every shell that reads it. This includes
+.B A semantic option in a file changes every shell that loads it. This includes
 .B the interactive session and every script that kosh runs.
 For example, legacy.exit_on_command_failure=on makes every script exit on its
 first failing command, and legacy.glob_includes_dotfiles=on changes what every
@@ -305,7 +305,7 @@ The ids are listed by
 and never change meaning. Only the mood and the interactive options are
 written. An interactive option affects only the interactive editor, the
 history, or how diagnostics are presented, never how a script runs. A child
-shell reads the settings files itself. Passing semantic options such as
+shell loads the settings files itself. Passing semantic options such as
 exit_on_command_failure, compat.mimic_shell_named_by_shebang, or the debug
 reports through the environment would change how every script below the shell
 runs. Bash exports SHELLOPTS only on request.
@@ -315,7 +315,7 @@ value that a settings file would reject, and reports a warning. Only the
 canonical form is accepted: the base64 text must carry its padding, every varint
 must use the fewest bytes, and the ids must strictly ascend in writer order. A
 blob that breaks any of these rules, or whose records are
-truncated, is rejected as a whole with a warning that names the broken rule.
+truncated, is rejected as a whole with a warning that identifies the broken rule.
 .SH ERRORS
 A missing settings file is skipped. An unreadable one, and a system file that
 fails the ownership check under FILES, produce a warning. A line
