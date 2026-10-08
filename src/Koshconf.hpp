@@ -38,7 +38,7 @@ fn read_koshconf_file(const Path &path, koshconf_reading &reading) throws
 fn read_system_koshconf_file(const Path &path, koshconf_reading &reading) throws
     -> bool;
 fn read_koshconf_blob(StringView encoded, koshconf_reading &reading) throws
-    -> bool;
+    -> Maybe<StringView>;
 fn encode_koshconf_blob(const EvalContext &cxt) throws -> String;
 fn apply_koshconf_settings(EvalContext &cxt,
                            const ArrayList<koshconf_setting> &settings,

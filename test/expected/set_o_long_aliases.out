@@ -2,6 +2,7 @@ noglob         	on
 10:11: error: Builtin `set`: Unknown -o option 'no-glob'.
     10 |    (set -o "$name")
        |            ^~~~~~~
+note: The option was retired; use `set -o noglob` instead.
 10:3: trace:
     10 |    (set -o "$name")
        |    ^
@@ -9,6 +10,7 @@ no-glob rc=1
 10:11: error: Builtin `set`: Unknown -o option 'error-exit'.
     10 |    (set -o "$name")
        |            ^~~~~~~
+note: The option was retired; use `set -o errexit` instead.
 10:3: trace:
     10 |    (set -o "$name")
        |    ^
@@ -16,6 +18,7 @@ error-exit rc=1
 10:11: error: Builtin `set`: Unknown -o option 'no-clobber'.
     10 |    (set -o "$name")
        |            ^~~~~~~
+note: The option was retired; use `set -o noclobber` instead.
 10:3: trace:
     10 |    (set -o "$name")
        |    ^
@@ -23,6 +26,7 @@ no-clobber rc=1
 10:11: error: Builtin `set`: Unknown -o option 'failglob'.
     10 |    (set -o "$name")
        |            ^~~~~~~
+note: The option was retired; use `shopt -s failglob` instead.
 10:3: trace:
     10 |    (set -o "$name")
        |    ^
@@ -30,6 +34,7 @@ failglob rc=1
 10:11: error: Builtin `set`: Unknown -o option 'koshkit'.
     10 |    (set -o "$name")
        |            ^~~~~~~
+note: The option was retired; use `koshconf set koshkit.run_utilities_as_plain_commands on` instead.
 10:3: trace:
     10 |    (set -o "$name")
        |    ^
@@ -37,6 +42,7 @@ koshkit rc=1
 10:11: error: Builtin `set`: Unknown -o option 'no-diagnostics'.
     10 |    (set -o "$name")
        |            ^~~~~~~
+note: The option was retired; use `koshconf set diagnostics.analyze_before_running off` instead.
 10:3: trace:
     10 |    (set -o "$name")
        |    ^
@@ -44,6 +50,7 @@ no-diagnostics rc=1
 10:11: error: Builtin `set`: Unknown -o option 'extended-arithmetic'.
     10 |    (set -o "$name")
        |            ^~~~~~~
+note: The option was retired; use `koshconf set arithmetic.use_big_integers_and_decimals on` instead.
 10:3: trace:
     10 |    (set -o "$name")
        |    ^
@@ -51,6 +58,7 @@ extended-arithmetic rc=1
 10:11: error: Builtin `set`: Unknown -o option 'interactive-hints'.
     10 |    (set -o "$name")
        |            ^~~~~~~
+note: The option was retired; use `koshconf set editor.show_command_synopsis on` instead.
 10:3: trace:
     10 |    (set -o "$name")
        |    ^
@@ -58,6 +66,7 @@ interactive-hints rc=1
 10:11: error: Builtin `set`: Unknown -o option 'mimicry'.
     10 |    (set -o "$name")
        |            ^~~~~~~
+note: The option was retired; use `koshconf set compat.mimic_shell_named_by_shebang on` instead.
 10:3: trace:
     10 |    (set -o "$name")
        |    ^

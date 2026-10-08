@@ -891,11 +891,13 @@ static fn read_startup_configuration(const command_line &line,
   }
   if (let const user_path = get_user_koshconf_path(); user_path.has_value())
     unused(read_koshconf_file(*user_path, reading));
-  if (encoded.has_value() && !read_koshconf_blob(encoded->view(), reading)) {
-    reading.warnings.push(
-        Warning{"The KOSHCONF environment variable is not a valid encoding, "
-                "so it is ignored"}
-            .to_string());
+  let const blob_problem = encoded.has_value()
+                               ? read_koshconf_blob(encoded->view(), reading)
+                               : Maybe<StringView>{};
+  if (blob_problem.has_value()) {
+    reading.warnings.push(Warning{
+        "The KOSHCONF environment variable is ignored because " + *blob_problem}
+                              .to_string());
   }
   if (identity.is_restricted_shell) keep_restricted_settings(reading);
   for (let const &warning : reading.warnings)

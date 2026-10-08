@@ -97,6 +97,20 @@ fn find_named_option(const ExecContext &ec, EvalContext &cxt,
     -> const option_descriptor *
 {
   let const *option = find_option_by_koshconf_name(operands.values[index]);
+  let const *bash_option =
+      option != nullptr ? nullptr
+                        : find_option_by_set_name(operands.values[index]);
+  if (bash_option == nullptr && option == nullptr) {
+    bash_option = find_option_by_shopt_name(operands.values[index]);
+  }
+  if (bash_option != nullptr && !bash_option->koshconf_name.is_empty()) {
+    report_soft_builtin_error(
+        ec, cxt, operands.locations[index],
+        StringView{"Unknown option '"} + operands.values[index] + "'",
+        StringView{"'"} + operands.values[index] + "' is the Bash name of '" +
+            bash_option->koshconf_name + "'");
+    return nullptr;
+  }
   if (option == nullptr)
     report_soft_builtin_error(ec, cxt, operands.locations[index],
                               StringView{"Unknown option '"} +
@@ -260,9 +274,13 @@ fn run_load(const ExecContext &ec, EvalContext &cxt,
                         "The load form takes one encoded value");
 
   let reading = koshconf_reading{};
-  if (!read_koshconf_blob(operands.values[2].view(), reading)) {
+  if (let const problem =
+          read_koshconf_blob(operands.values[2].view(), reading);
+      problem.has_value())
+  {
     report_soft_builtin_error(ec, cxt, operands.locations[2],
-                              "The value is not a valid KOSHCONF encoding");
+                              "The value is not a valid KOSHCONF encoding: " +
+                                  *problem);
     return 1;
   }
   apply_koshconf_settings(cxt, reading.settings, option_origin::Koshconf,

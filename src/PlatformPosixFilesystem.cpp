@@ -449,12 +449,16 @@ cold static fn list_directory_status_fallback(StringView dir,
   return entries;
 }
 
-static fn find_ownership_problem(const struct stat &status) wontthrow
-    -> Maybe<StringView>
+static fn find_ownership_problem(const struct stat &status,
+                                 const Path &target) throws -> Maybe<String>
 {
-  if (status.st_uid != 0) return StringView{"is not owned by root"};
+  if (status.st_uid != 0) {
+    return "is not owned by root; run `chown root '" + target.text() +
+           "'` to trust it";
+  }
   if ((status.st_mode & (S_IWGRP | S_IWOTH)) != 0) {
-    return StringView{"is writable by its group or by others"};
+    return "is writable by its group or by others; run `chmod go-w '" +
+           target.text() + "'` to trust it";
   }
 
   return None;
@@ -479,7 +483,7 @@ fn read_system_owned_file(const Path &path) throws -> system_file_reading
                         "': " + last_system_error_message();
     return reading;
   }
-  if (let const problem = find_ownership_problem(file_status);
+  if (let const problem = find_ownership_problem(file_status, path);
       problem.has_value())
   {
     reading.rejection = "Ignoring '" + path.text() + "', which " + *problem;
@@ -493,7 +497,7 @@ fn read_system_owned_file(const Path &path) throws -> system_file_reading
                         "': " + last_system_error_message();
     return reading;
   }
-  if (let const problem = find_ownership_problem(directory_status);
+  if (let const problem = find_ownership_problem(directory_status, directory);
       problem.has_value())
   {
     reading.rejection = "Ignoring '" + path.text() + "', whose directory '" +

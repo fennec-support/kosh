@@ -122,7 +122,8 @@ editor.request_extended_key_reports=on
 # Complete the word under the cursor on Tab. Turning this off also turns off the
 # ghost suggestion and the syntax colors.
 editor.complete_on_tab=on
-# Color the input by syntax and suggest the rest of the word in ghost text.
+# Color the input by syntax and suggest the rest of the word in ghost text. Both
+# also need editor.complete_on_tab on.
 editor.highlight_syntax_and_show_ghost_text=on
 
 # Recall only history entries that begin with the typed text on Up and Down.
@@ -133,8 +134,8 @@ history.arrow_keys_search_by_typed_prefix=on
 # and 0 keeps none.
 history.max_entries=4096
 
-# Insert a space after an accepted completion: never, always, or unless it ends
-# in a slash.
+# Insert a space after an accepted completion: off for never, on for always, or
+# on-excluding-trailing-slash for all but a directory.
 completion.add_space_after_completed_word=off
 
 # Step through the diagnostic tiers with -W, -WW, and -WWW.
@@ -481,11 +482,11 @@ rc=2
 warning: Skipping the unknown option id 200 in KOSHCONF.
 on
 rc=0
--c:1:15: error: Builtin `koshconf`: The value is not a valid KOSHCONF encoding.
+-c:1:15: error: Builtin `koshconf`: The value is not a valid KOSHCONF encoding: it is not padded standard base64.
      1 |  koshconf load "not base64"
        |                ^~~~~~~~~~~~
 rc=1
--c:1:15: error: Builtin `koshconf`: The value is not a valid KOSHCONF encoding.
+-c:1:15: error: Builtin `koshconf`: The value is not a valid KOSHCONF encoding: a record is truncated.
      1 |  koshconf load BQ==
        |                ^~~~
 rc=1

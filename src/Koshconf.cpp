@@ -441,9 +441,16 @@ fn find_koshconf_value_problem(const option_descriptor &option,
   }
   if (option.storage == option_storage::InitMoods) {
     let moods = ArrayList<mimic_mood>{heap_allocator()};
-    if (parse_mood_list(value, moods).has_value()) {
-      return do_describe("a comma-separated list of 'kosh', 'sh', 'bash', "
-                         "and 'bash-posix'");
+    if (let const bad_name = parse_mood_list(value, moods);
+        bad_name.has_value())
+    {
+      let message = String{"Unknown mood '"};
+      append_escaped_text(message, *bad_name, escape_style::Message);
+      message += "' in the value of '";
+      message += option.koshconf_name;
+      message += "', expected a comma-separated list of 'kosh', 'sh', 'bash', "
+                 "and 'bash-posix'";
+      return message;
     }
   }
 
@@ -597,25 +604,40 @@ fn encode_koshconf_blob(const EvalContext &cxt) throws -> String
 }
 
 fn read_koshconf_blob(StringView encoded, koshconf_reading &reading) throws
-    -> bool
+    -> Maybe<StringView>
 {
   let const records = utils::decode_base64(encoded);
-  if (!records.has_value()) return false;
+  if (!records.has_value()) {
+    return StringView{"it is not padded standard base64"};
+  }
 
   let decoded = ArrayList<koshconf_setting>{heap_allocator()};
   let warnings = ArrayList<String>{heap_allocator()};
   let const bytes = records->view();
+  let const do_describe_bad_varint = [&](usize start) -> StringView {
+    for (usize scanned = start; scanned < bytes.count(); scanned++) {
+      if ((static_cast<u8>(bytes[scanned]) & 0x80) == 0) {
+        return "a varint is not in its shortest form";
+      }
+    }
+
+    return "a record is truncated";
+  };
   usize position = 0;
   u32 previous_id = 0;
   while (position < bytes.count()) {
+    let const id_start = position;
     let const id = read_varint(bytes, position);
-    if (!id.has_value() || *id <= previous_id) {
-      return false;
-    }
+    if (!id.has_value()) return do_describe_bad_varint(id_start);
+    if (*id <= previous_id)
+      return StringView{"its option ids are out of order"};
+
     previous_id = *id;
+    let const length_start = position;
     let const length = read_varint(bytes, position);
-    if (!length.has_value() || *length > bytes.count() - position) {
-      return false;
+    if (!length.has_value()) return do_describe_bad_varint(length_start);
+    if (*length > bytes.count() - position) {
+      return StringView{"a record is truncated"};
     }
     let const value_bytes = bytes.substring_of_length(position, *length);
     position += *length;
@@ -649,7 +671,7 @@ fn read_koshconf_blob(StringView encoded, koshconf_reading &reading) throws
     reading.settings.push(steal(setting));
   for (let &warning : warnings)
     reading.warnings.push(steal(warning));
-  return true;
+  return None;
 }
 
 fn apply_koshconf_settings(EvalContext &cxt,
@@ -820,28 +842,55 @@ fn persist_koshconf_setting(const Path &path, const option_descriptor &option,
   }
 
   let contents = String{heap_allocator()};
+  let text = existing->view();
+  if (text.starts_with(UTF8_BYTE_ORDER_MARK)) {
+    contents += UTF8_BYTE_ORDER_MARK;
+    text = text.substring(UTF8_BYTE_ORDER_MARK.count());
+  }
+  let const first_line_end = text.find_character('\n');
+  let const line_end = first_line_end.has_value() && *first_line_end > 0 &&
+                               text[*first_line_end - 1] == '\r'
+                           ? StringView{"\r\n"}
+                           : StringView{"\n"};
+  let const option_name = StringView{option.koshconf_name};
+  let const do_find_name = [](StringView line, bool is_commented) {
+    let const has_return = !line.is_empty() && line[line.count() - 1] == '\r';
+    let const without_return =
+        has_return ? line.substring_of_length(0, line.count() - 1) : line;
+    if (!is_commented) return declared_name(without_return);
+
+    let const trimmed = without_return.trim_blanks();
+    if (trimmed.is_empty() || trimmed[0] != '#') return Maybe<StringView>{};
+    return declared_name(trimmed.substring(1));
+  };
+
+  let has_setting_line = false;
+  for (usize position = 0; position < text.count();) {
+    let const name = do_find_name(text.next_line(position), false);
+    if (name.has_value() && *name == option_name) has_setting_line = true;
+  }
+
   let did_replace = false;
-  let const text = existing->view();
-  usize position = 0;
-  while (position < text.count()) {
+  for (usize position = 0; position < text.count();) {
     let const line = text.next_line(position);
-    let const name = declared_name(line.without_trailing_newline());
-    let const is_setting_line =
-        name.has_value() && *name == StringView{option.koshconf_name};
-    if (is_setting_line && did_replace) {
-      continue;
-    }
+    let const name = did_replace && !has_setting_line
+                         ? Maybe<StringView>{}
+                         : do_find_name(line, !has_setting_line);
+    let const is_setting_line = name.has_value() && *name == option_name;
+    if (is_setting_line && did_replace) continue;
+
     if (is_setting_line) {
       contents += replacement.view();
+      contents += line_end;
       did_replace = true;
-    } else {
-      contents += line;
+      continue;
     }
+    contents += line;
     contents += '\n';
   }
   if (!did_replace) {
     contents += replacement.view();
-    contents += '\n';
+    contents += line_end;
   }
   replace_koshconf_target(target, contents.view());
 }

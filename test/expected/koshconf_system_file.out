@@ -1,14 +1,14 @@
 == file 644, /etc 755, owner root:
 on
 == file 664, /etc 755, owner root:
-warning: Ignoring '/etc/kosh.conf', which is writable by its group or by others.
+warning: Ignoring '/etc/kosh.conf', which is writable by its group or by others; run `chmod go-w '/etc/kosh.conf'` to trust it.
 off
 == file 646, /etc 755, owner root:
-warning: Ignoring '/etc/kosh.conf', which is writable by its group or by others.
+warning: Ignoring '/etc/kosh.conf', which is writable by its group or by others; run `chmod go-w '/etc/kosh.conf'` to trust it.
 off
 == file 644, /etc 775, owner root:
-warning: Ignoring '/etc/kosh.conf', whose directory '/etc' is writable by its group or by others.
+warning: Ignoring '/etc/kosh.conf', whose directory '/etc' is writable by its group or by others; run `chmod go-w '/etc'` to trust it.
 off
 == file 644, /etc 755, owner nobody:
-warning: Ignoring '/etc/kosh.conf', which is not owned by root.
+warning: Ignoring '/etc/kosh.conf', which is not owned by root; run `chown root '/etc/kosh.conf'` to trust it.
 off

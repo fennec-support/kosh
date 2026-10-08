@@ -14,6 +14,7 @@
 #include "../Options.hpp"
 #include "../Platform.hpp"
 #include "../Utils.hpp"
+#include "../base/StaticStringMap.hpp"
 #include "../base/Trace.hpp"
 
 FLAG_LIST_DECL();
@@ -77,6 +78,85 @@ fn apply_or_reject_option(EvalContext &cxt, const option_descriptor &option,
   write_option_number(cxt, option, enable ? 1 : 0, option_origin::Set);
 }
 
+enum class retired_option_owner : u8
+{
+  Koshconf,
+  KoshconfInverted,
+  Set,
+  Shopt,
+};
+
+struct retired_option
+{
+  StringView replacement;
+  retired_option_owner owner;
+};
+
+fn find_retired_option_replacement(StringView name, bool enable) throws
+    -> Maybe<String>
+{
+  using enum retired_option_owner;
+  static constexpr static_string_entry<retired_option> RETIRED_ENTRIES[] = {
+      {SSK("annoying-diagnostics"),
+       {"diagnostics.show_annoying_tier", Koshconf}                                         },
+      {SSK("auto-pair"),               {"editor.auto_close_brackets_and_quotes", Koshconf}  },
+      {SSK("error-exit"),              {"errexit", Set}                                     },
+      {SSK("export-all"),              {"allexport", Set}                                   },
+      {SSK("extended-arithmetic"),
+       {"arithmetic.use_big_integers_and_decimals", Koshconf}                               },
+      {SSK("extended-keys"),           {"editor.request_extended_key_reports", Koshconf}    },
+      {SSK("failglob"),                {"failglob", Shopt}                                  },
+      {SSK("history-prefix-search"),
+       {"history.arrow_keys_search_by_typed_prefix", Koshconf}                              },
+      {SSK("interactive-diagnostics"),
+       {"editor.show_live_diagnostics", Koshconf}                                           },
+      {SSK("interactive-hints"),       {"editor.show_command_synopsis", Koshconf}           },
+      {SSK("koshkit"),                 {"koshkit.run_utilities_as_plain_commands", Koshconf}},
+      {SSK("mimicry"),                 {"compat.mimic_shell_named_by_shebang", Koshconf}    },
+      {SSK("no-clobber"),              {"noclobber", Set}                                   },
+      {SSK("no-diagnostics"),
+       {"diagnostics.analyze_before_running", KoshconfInverted}                             },
+      {SSK("no-exec"),                 {"noexec", Set}                                      },
+      {SSK("no-glob"),                 {"noglob", Set}                                      },
+      {SSK("no-unset"),                {"nounset", Set}                                     },
+      {SSK("show-all-exit-codes"),     {"debug.report_every_exit_code", Koshconf}           },
+      {SSK("show-ast"),                {"debug.print_syntax_tree", Koshconf}                },
+      {SSK("show-exit-code"),          {"debug.report_nonzero_exit_codes", Koshconf}        },
+      {SSK("show-lexed-words"),        {"debug.print_lexed_word_escapes", Koshconf}         },
+      {SSK("show-memory"),             {"debug.print_memory_report_at_exit", Koshconf}      },
+      {SSK("show-stats"),              {"debug.print_evaluation_statistics", Koshconf}      },
+      {SSK("space-after-completion"),
+       {"completion.add_space_after_completed_word", Koshconf}                              },
+      {SSK("transient-prompt"),
+       {"editor.transient_prompt_after_submit", Koshconf}                                   },
+  };
+  static constexpr StaticStringMap RETIRED{RETIRED_ENTRIES};
+
+  let const retired = RETIRED.find(name);
+  if (!retired.has_value()) return None;
+
+  let replacement = String{heap_allocator()};
+  switch (retired->owner) {
+  case Koshconf:
+  case KoshconfInverted: {
+    let const is_on = enable == (retired->owner == Koshconf);
+    replacement += "koshconf set ";
+    replacement += retired->replacement;
+    replacement += is_on ? " on" : " off";
+  } break;
+  case Set:
+    replacement += enable ? "set -o " : "set +o ";
+    replacement += retired->replacement;
+    break;
+  case Shopt:
+    replacement += enable ? "shopt -s " : "shopt -u ";
+    replacement += retired->replacement;
+    break;
+  }
+
+  return replacement;
+}
+
 fn list_options(const EvalContext &cxt) throws -> String
 {
   let out = String{heap_allocator()};
@@ -120,9 +200,18 @@ fn apply_long_option_by_name(const ExecContext &ec, EvalContext &cxt,
   }
   let const &name = args[++i];
   let const *option = find_option_by_set_name(name);
-  if (option == nullptr)
-    throw make_error_for_arg(ec, i,
-                             StringView{"Unknown -o option '"} + name + "'");
+  if (option == nullptr) {
+    let const message = StringView{"Unknown -o option '"} + name + "'";
+    if (let const replacement =
+            find_retired_option_replacement(name.view(), enable);
+        replacement.has_value())
+    {
+      throw make_error_for_arg(ec, i, message.view(),
+                               StringView{"The option was retired; use `"} +
+                                   *replacement + "` instead");
+    }
+    throw make_error_for_arg(ec, i, message.view());
+  }
   if (!option_is_available(cxt, *option)) {
     let error = make_error_for_arg(
         ec, i, StringView{"Unknown -o option '"} + name + "'");

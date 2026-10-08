@@ -58,7 +58,11 @@ change the permissions of, or take ownership of either. An entry that applies
 only to children, such as the usual CREATOR OWNER entry, is not counted. The
 default ProgramData permissions let any user create a missing subdirectory,
 which this check rejects. A file that fails the check is skipped with a
-warning that explains the reason.
+warning that explains the reason and, on POSIX, names the
+.B chown root
+or
+.B chmod go\-w
+command that would let the shell trust it.
 .TP
 .IR $XDG_CONFIG_HOME/kosh/kosh.conf " or " ~/.config/kosh/kosh.conf
 The user settings file, read second. XDG_CONFIG_HOME is used when it is set to
@@ -302,7 +306,7 @@ value that a settings file would reject, and reports a warning. Only the
 canonical form is accepted: the base64 text must carry its padding, every varint
 must use the fewest bytes, and the ids must strictly ascend in writer order. A
 blob that breaks any of these rules, or whose records are
-truncated, is rejected as a whole with a warning.
+truncated, is rejected as a whole with a warning that names the broken rule.
 .SH ERRORS
 A missing settings file is skipped. An unreadable one, and a system file that
 fails the ownership check under FILES, produce a warning. A line

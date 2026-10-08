@@ -55,7 +55,7 @@ sh
 off
 0
 == an invalid KOSHCONF is a warning:
-warning: The KOSHCONF environment variable is not a valid encoding, so it is ignored.
+warning: The KOSHCONF environment variable is ignored because it is not padded standard base64.
 bash
 rc=0
 == the kosh mood sources no rc file:
@@ -118,10 +118,10 @@ bash version: unset
 0
 sh,bash
 == an unknown mood in the list is a warning:
-HOME/.config/kosh/kosh.conf:1:20: warning: Invalid value 'bash,zsh' for 'startup.init_moods', expected a comma-separated list of 'kosh', 'sh', 'bash', and 'bash-posix', skipping it.
+HOME/.config/kosh/kosh.conf:1:20: warning: Unknown mood 'zsh' in the value of 'startup.init_moods', expected a comma-separated list of 'kosh', 'sh', 'bash', and 'bash-posix', skipping it.
      1 |  startup.init_moods=bash,zsh
        |                     ^~~~~~~~
 
 == koshconf set validates the list:
 sh,bash-posix
--c:2:33: error: Builtin `koshconf`: Invalid value 'ksh' for 'startup.init_moods', expected a comma-separated list of 'kosh', 'sh', 'bash', and 'bash-posix'.
+-c:2:33: error: Builtin `koshconf`: Unknown mood 'ksh' in the value of 'startup.init_moods', expected a comma-separated list of 'kosh', 'sh', 'bash', and 'bash-posix'.

@@ -304,8 +304,9 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                    option_storage::SpaceAfterCompletion,
                    shell_option_id::SpaceAfterCompletion,
                    entry_shape{.help = "Insert a space after an accepted "
-                                       "completion: never, always, or unless "
-                                       "it ends in a slash."},
+                                       "completion: off for never, on for "
+                                       "always, or on-excluding-trailing-slash "
+                                       "for all but a directory."},
                    0, 0),
         enum_values(SPACE_AFTER_COMPLETION_VALUE_NAMES)),
     with_enum(make_entry(12, "diagnostics.warning_level", option_type::Enum,
@@ -323,10 +324,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
         option_storage::AnnoyingDiagnostics),
     special(flag(14, "diagnostics.analyze_before_running", SEMANTIC,
                  NO_SHELL_OPTION,
-                 entry_shape{{},
-                             {},
-                             {},
-                             "Analyze each chunk before it runs."},
+                 entry_shape{{}, {}, {}, "Analyze each chunk before it runs."},
                  true),
             option_storage::Analysis),
     flag(15, "koshkit.run_utilities_as_plain_commands", SEMANTIC,
@@ -412,7 +410,8 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                      {},
                      {},
                      "Color the input by syntax and suggest the rest of the "
-                     "word in ghost text."},
+                     "word in ghost text. Both also need "
+                     "editor.complete_on_tab on."},
          true),
     special(flag(26, "diagnostics.show_source_traces", INTERACTIVE,
                  NO_SHELL_OPTION,
@@ -425,13 +424,14 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
             option_storage::SourceTraces),
     make_entry(27, "startup.init_moods", option_type::String, SEMANTIC,
                option_storage::InitMoods, NO_SHELL_OPTION,
-               entry_shape{{},
-                           {},
-                           {},
-                           "Source the startup files of each listed mood, "
-                           "comma separated, when the shell is interactive "
-                           "or a login shell. Empty selects the session "
-                           "mood."},
+               entry_shape{
+                   {},
+                   {},
+                   {},
+                   "Source the startup files of each listed mood, "
+                   "comma separated, when the shell is interactive "
+                   "or a login shell. Empty selects the session "
+                   "mood."},
                0, 0),
 
     flag(64, "legacy.export_every_assigned_variable", SEMANTIC,
@@ -759,12 +759,13 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                "Match case, [[, and pattern operators without regard to "
                "case.",
                false, false),
-    fixed_in_kosh(shopt_flag(164, "legacy.glob_no_match_expands_to_nothing",
-                             SEMANTIC, "nullglob",
-                             "Remove a glob that matches nothing. With this "
-                             "option off, the unmatched glob remains unchanged.",
-                             false, false),
-                  0),
+    fixed_in_kosh(
+        shopt_flag(164, "legacy.glob_no_match_expands_to_nothing", SEMANTIC,
+                   "nullglob",
+                   "Remove a glob that matches nothing. With this "
+                   "option off, the unmatched glob remains unchanged.",
+                   false, false),
+        0),
     shopt_flag(165, "legacy.pattern_substitution_ampersand_is_match", SEMANTIC,
                "patsub_replacement",
                "Replace an unquoted & in ${name/pattern/string} with the "
@@ -1381,9 +1382,11 @@ fn describe_option_values(const option_descriptor &option) throws -> String
     return String{"'on', 'off', 'true', 'false', '1', or '0'"};
   let description = String{heap_allocator()};
   for (u8 value = 0; value < option.enum_values.name_count; value++) {
-    if (value > 0) {
-      description +=
-          value + 1 == option.enum_values.name_count ? ", or " : ", ";
+    let const is_last = value + 1 == option.enum_values.name_count;
+    if (value > 0 && is_last) {
+      description += option.enum_values.name_count == 2 ? " or " : ", or ";
+    } else if (value > 0) {
+      description += ", ";
     }
     description += '\'';
     description += option.enum_values.names[value];
