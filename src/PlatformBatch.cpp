@@ -14,8 +14,7 @@ namespace koshka::os {
 fn batch_operation::read(descriptor fd, char *buffer, usize byte_count,
                          u64 byte_offset) wontthrow -> batch_operation
 {
-  batch_operation operation;
-  operation.syscall_id = Kind::Read;
+  batch_operation operation{Kind::Read};
   operation.m_secondary.fd = fd;
   operation.m_primary.output_buffer = buffer;
   operation.byte_count = byte_count;
@@ -26,8 +25,7 @@ fn batch_operation::read(descriptor fd, char *buffer, usize byte_count,
 fn batch_operation::write(descriptor fd, const char *buffer, usize byte_count,
                           u64 byte_offset) wontthrow -> batch_operation
 {
-  batch_operation operation;
-  operation.syscall_id = Kind::Write;
+  batch_operation operation{Kind::Write};
   operation.m_secondary.fd = fd;
   operation.m_primary.input_buffer = buffer;
   operation.byte_count = byte_count;
@@ -38,8 +36,7 @@ fn batch_operation::write(descriptor fd, const char *buffer, usize byte_count,
 fn batch_operation::write_current(descriptor fd, const char *buffer,
                                   usize byte_count) wontthrow -> batch_operation
 {
-  batch_operation operation;
-  operation.syscall_id = Kind::WriteCurrent;
+  batch_operation operation{Kind::WriteCurrent};
   operation.m_secondary.fd = fd;
   operation.m_primary.input_buffer = buffer;
   operation.byte_count = byte_count;
@@ -49,8 +46,7 @@ fn batch_operation::write_current(descriptor fd, const char *buffer,
 fn batch_operation::lstat(const Path &path, file_status &status) wontthrow
     -> batch_operation
 {
-  batch_operation operation;
-  operation.syscall_id = Kind::Lstat;
+  batch_operation operation{Kind::Lstat};
   operation.m_primary.path = &path;
   operation.m_secondary.status = &status;
   return operation;
@@ -59,8 +55,7 @@ fn batch_operation::lstat(const Path &path, file_status &status) wontthrow
 fn batch_operation::stat(const Path &path, file_status &status) wontthrow
     -> batch_operation
 {
-  batch_operation operation;
-  operation.syscall_id = Kind::Stat;
+  batch_operation operation{Kind::Stat};
   operation.m_primary.path = &path;
   operation.m_secondary.status = &status;
   return operation;
@@ -68,8 +63,7 @@ fn batch_operation::stat(const Path &path, file_status &status) wontthrow
 
 fn batch_operation::exists(const Path &path) wontthrow -> batch_operation
 {
-  batch_operation operation;
-  operation.syscall_id = Kind::Exists;
+  batch_operation operation{Kind::Exists};
   operation.m_primary.path = &path;
   return operation;
 }
@@ -77,16 +71,11 @@ fn batch_operation::exists(const Path &path) wontthrow -> batch_operation
 fn batch_operation::lstat_at(descriptor directory, const char *name,
                              file_status &status) wontthrow -> batch_operation
 {
-  batch_operation operation;
-  operation.syscall_id = Kind::LstatAt;
+  batch_operation operation{Kind::LstatAt};
   operation.m_primary.input_buffer = name;
   operation.m_secondary.status = &status;
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
   operation.byte_offset =
-      static_cast<u64>(reinterpret_cast<uintptr_t>(directory));
-#else
-  operation.byte_offset = static_cast<u64>(directory);
-#endif
+      batch_internal::encode_directory_descriptor(directory);
   return operation;
 }
 
@@ -255,11 +244,7 @@ static fn find_canonical_operation_positions(
               operation);
       if (name == nullptr) continue;
       request_hash ^= hash_bytes(StringView{name});
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
-      request_hash ^= static_cast<u64>(reinterpret_cast<uintptr_t>(directory));
-#else
-      request_hash ^= static_cast<u64>(directory);
-#endif
+      request_hash ^= batch_internal::encode_directory_descriptor(directory);
     }
     usize bucket = static_cast<usize>(request_hash) & (bucket_count - 1);
     loop

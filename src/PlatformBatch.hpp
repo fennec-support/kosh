@@ -18,6 +18,27 @@ namespace batch_internal {
 
 struct batch_operation_access;
 
+/* A directory descriptor travels in the byte offset of a relative stat. */
+inline pure fn encode_directory_descriptor(descriptor directory) wontthrow
+    -> u64
+{
+#if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
+  return static_cast<u64>(reinterpret_cast<uintptr_t>(directory));
+#else
+  return static_cast<u64>(directory);
+#endif
+}
+
+inline pure fn decode_directory_descriptor(u64 byte_offset) wontthrow
+    -> descriptor
+{
+#if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
+  return reinterpret_cast<descriptor>(static_cast<uintptr_t>(byte_offset));
+#else
+  return static_cast<descriptor>(byte_offset);
+#endif
+}
+
 } /* namespace batch_internal */
 
 struct batch_operation
@@ -77,6 +98,7 @@ private:
     descriptor fd;
   } m_secondary{};
 
+  explicit batch_operation(Kind kind) : syscall_id(kind) {}
   batch_operation() = default;
   friend class Batch;
   friend struct batch_internal::batch_operation_access;
@@ -219,12 +241,7 @@ struct batch_operation_access
     switch (operation.syscall_id) {
     case batch_operation::Kind::LstatAt:
     case batch_operation::Kind::StatAt:
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
-      return reinterpret_cast<descriptor>(
-          static_cast<uintptr_t>(operation.byte_offset));
-#else
-      return static_cast<descriptor>(operation.byte_offset);
-#endif
+      return decode_directory_descriptor(operation.byte_offset);
     case batch_operation::Kind::Read:
     case batch_operation::Kind::Write:
     case batch_operation::Kind::WriteCurrent:
