@@ -119,6 +119,17 @@ enum class pattern_match_extent : u8
   Longest,
 };
 
+static fn should_drop_final_empty_element(StringView separators) wontthrow
+    -> bool
+{
+  if (separators.is_empty()) return false;
+
+  for (usize i = 0; i < separators.length; i++)
+    if (separators[i] == ' ') return false;
+
+  return true;
+}
+
 alwaysinline static fn splits_character(StringView text, usize position,
                                         glob_charset charset) wontthrow -> bool
 {
@@ -448,6 +459,9 @@ private:
   fn mark_quoted_empty() throws -> void;
   fn start_field() throws -> void;
   fn emit_field_elements(const ArrayList<String> &values) throws -> void;
+  fn emit_unquoted_list(const ArrayList<String> &values, bool is_star,
+                        bool should_join_with_space, bool is_computed) throws
+      -> void;
   fn emit_field_slice(substring_bounds bounds, const ArrayList<String> &values,
                       Maybe<StringView> leading, bool is_star) throws -> void;
   fn expand_field_reference(StringView inner) throws -> bool;
@@ -512,11 +526,16 @@ fn EvalContext::ModifierWordExpander::start_field() throws -> void
 fn EvalContext::ModifierWordExpander::emit_field_elements(
     const ArrayList<String> &values) throws -> void
 {
-  if (is_quoted()) m_did_quoted_at = true;
+  if (!is_quoted()) {
+    emit_unquoted_list(values, false, false, false);
+    return;
+  }
+
+  m_did_quoted_at = true;
 
   for (usize i = 0; i < values.count(); i++) {
     if (i > 0) start_field();
-    emit_run(values[i].view(), !is_quoted());
+    emit_run(values[i].view(), false);
   }
 }
 
@@ -532,15 +551,66 @@ fn EvalContext::ModifierWordExpander::emit_field_slice(
     return;
   }
 
-  if (is_quoted()) m_did_quoted_at = true;
+  if (!is_quoted()) {
+    let slice = ArrayList<String>{m_context.scratch_allocator()};
+    for (i64 index = bounds.start; index < bounds.end; index++) {
+      let const position = static_cast<usize>(index);
+      slice.push(String{m_context.scratch_allocator(),
+                        position < leading_count
+                            ? *leading
+                            : values[position - leading_count].view()});
+    }
+    emit_unquoted_list(slice, is_star, false, true);
+    return;
+  }
+
+  m_did_quoted_at = true;
 
   for (i64 index = bounds.start; index < bounds.end; index++) {
     if (index > bounds.start) start_field();
     let const position = static_cast<usize>(index);
     emit_run(position < leading_count ? *leading
                                       : values[position - leading_count].view(),
-             !is_quoted());
+             false);
   }
+}
+
+fn EvalContext::ModifierWordExpander::emit_unquoted_list(
+    const ArrayList<String> &values, bool is_star, bool should_join_with_space,
+    bool is_computed) throws -> void
+{
+  let const ifs = m_context.variable_store().field_separators();
+  let has_space_separator = false;
+  for (usize i = 0; i < ifs.length; i++)
+    if (ifs[i] == ' ') has_space_separator = true;
+
+  if (m_context.runtime_state().is_posix_mode() ||
+      (!should_join_with_space &&
+       (ifs.is_empty() || (!is_star && has_space_separator))))
+  {
+    for (usize i = 0; i < values.count(); i++) {
+      if (i > 0) start_field();
+      emit_run(values[i].view(), true);
+    }
+
+    return;
+  }
+
+  let const separator =
+      is_star && !should_join_with_space && !ifs.is_empty() ? ifs[0] : ' ';
+  let count = values.count();
+  if (is_computed && !is_star && !should_join_with_space && count > 0 &&
+      values[count - 1].is_empty() && should_drop_final_empty_element(ifs))
+  {
+    count--;
+  }
+
+  let joined = String{m_context.scratch_allocator()};
+  for (usize i = 0; i < count; i++) {
+    if (i > 0) joined.push(separator);
+    joined.append(values[i].view());
+  }
+  if (!joined.is_empty()) emit_run(joined.view(), true);
 }
 
 fn EvalContext::ModifierWordExpander::expand_field_reference(
@@ -550,6 +620,13 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
 
   if (inner == "@") {
     emit_field_elements(m_context.variable_store().positional_params());
+    return true;
+  }
+  if (inner == "*" && !is_quoted() &&
+      !m_context.runtime_state().is_posix_mode())
+  {
+    emit_unquoted_list(m_context.variable_store().positional_params(), true,
+                       false, false);
     return true;
   }
   if (inner.length > 2 && (inner[0] == '@' || inner[0] == '*') &&
@@ -570,7 +647,8 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
       return true;
     }
   }
-  if (is_quoted() && inner.length > 1 && (inner[0] == '@' || inner[0] == '*') &&
+  if ((is_quoted() || !m_context.runtime_state().is_posix_mode()) &&
+      inner.length > 1 && (inner[0] == '@' || inner[0] == '*') &&
       is_element_operator(inner.substring(1)))
   {
     emit_modified_elements(m_context.variable_store().positional_params(),
@@ -599,6 +677,11 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
     emit_field_elements(m_context.collect_array_elements(name));
     return true;
   }
+  if (rest.is_empty() && !is_quoted()) {
+    emit_unquoted_list(m_context.collect_array_elements(name), true, false,
+                       false);
+    return true;
+  }
   if (rest.length > 1 && rest[0] == ':' && !is_colon_modifier_operator(rest[1]))
   {
     let const elements = m_context.collect_array_elements(name);
@@ -615,7 +698,7 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
       return true;
     }
   }
-  if (is_quoted() && !is_star && rest.length > 1 &&
+  if ((!is_star || !is_quoted()) && rest.length > 1 &&
       (rest[0] == '-' || rest.starts_with(":-")))
   {
     let const elements = m_context.collect_array_elements(name);
@@ -629,13 +712,16 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
                              ? is_every_element_empty && elements.count() <= 1
                              : elements.is_empty();
     if (!is_unset) {
-      emit_field_elements(elements);
+      if (is_quoted())
+        emit_field_elements(elements);
+      else
+        emit_unquoted_list(elements, is_star, false, false);
       return true;
     }
 
     return false;
   }
-  if (is_quoted() && is_element_operator(rest)) {
+  if (is_element_operator(rest)) {
     emit_modified_elements(m_context.collect_array_elements(name), rest, name,
                            is_star);
     return true;
@@ -679,7 +765,16 @@ fn EvalContext::ModifierWordExpander::emit_modified_elements(
             : m_context.apply_value_modifier(value.view(), modifier, nullptr));
   }
 
-  if (is_star && is_quoted()) {
+  if (!is_quoted()) {
+    emit_unquoted_list(
+        modified, is_star,
+        !name.is_empty() && (modifier[0] == '#' || modifier[0] == '%') &&
+            m_context.variable_store().field_separators().is_empty(),
+        modifier[0] != '@');
+    return;
+  }
+
+  if (is_star) {
     emit_run(m_context
                  .join_list_slice(
                      substring_bounds{0, static_cast<i64>(modified.count())},
@@ -1158,7 +1253,7 @@ fn EvalContext::ModifierWordExpander::expand_special_parameter(char name) throws
   let const special_name = StringView{&name, 1};
   if (!m_context.get_variable_value(special_name).has_value())
     m_context.report_unset_reference(special_name);
-  if (name == '@' && expand_field_reference(special_name)) {
+  if ((name == '@' || name == '*') && expand_field_reference(special_name)) {
     m_index++;
     return;
   }
@@ -1380,6 +1475,9 @@ private:
                             bool is_star) const wontthrow -> bool;
   fn should_join_with_ifs(bool is_star,
                           bool is_trim_or_transform) const wontthrow -> bool;
+  fn should_drop_final_empty_of_computed_list(const ArrayList<String> &values,
+                                              bool is_star) const wontthrow
+      -> bool;
   fn expand_list_transform(const ArrayList<String> &values, bool is_star,
                            char op) throws -> String;
   fn expand_operator() throws -> String;
@@ -1821,6 +1919,9 @@ fn EvalContext::ParameterExpander::expand_list_operator(
     if (is_operand_quoted_null(modified, is_star))
       return String{m_context.scratch_allocator()};
 
+    if (should_drop_final_empty_of_computed_list(modified, is_star))
+      modified.pop_back();
+
     return m_context.join_list_slice(
         substring_bounds{0, static_cast<i64>(modified.count())}, modified, None,
         should_join_with_ifs(is_star, op == '#' || op == '%'));
@@ -1848,6 +1949,20 @@ fn EvalContext::ParameterExpander::should_join_with_ifs(
 
   return m_quoting == parameter_word_quoting::DoubleQuoted ||
          is_trim_or_transform;
+}
+
+fn EvalContext::ParameterExpander::should_drop_final_empty_of_computed_list(
+    const ArrayList<String> &values, bool is_star) const wontthrow -> bool
+{
+  if (is_star || values.is_empty() || !values[values.count() - 1].is_empty()) {
+    return false;
+  }
+  if (m_quoting != parameter_word_quoting::Unquoted) return false;
+  if (m_context.expansion_store().is_expanding_assignment_value()) return false;
+  if (m_context.runtime_state().is_posix_mode()) return false;
+
+  return should_drop_final_empty_element(
+      m_context.variable_store().field_separators());
 }
 
 fn EvalContext::ParameterExpander::is_operand_quoted_null(

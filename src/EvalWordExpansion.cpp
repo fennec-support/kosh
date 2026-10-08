@@ -40,7 +40,9 @@ static fn is_field_sensitive_word(StringView word) wontthrow -> bool
     if (byte == '"' || byte == '\'' || byte == '\\' || byte == '@') {
       return true;
     }
-    if (byte == '*' && i > 0 && (word[i - 1] == '{' || word[i - 1] == '[')) {
+    if (byte == '*' && i > 0 &&
+        (word[i - 1] == '{' || word[i - 1] == '[' || word[i - 1] == '$'))
+    {
       return true;
     }
   }
@@ -150,6 +152,21 @@ hot fn EvalContext::expand_word(const Word &word) throws
     }
   };
 
+  let const do_begin_list_element = [&](usize index) throws {
+    if (index == 0) return;
+
+    let const separators = variable_store().field_separators();
+    if (separators.is_empty() || separators[0] == ' ' ||
+        separators[0] == '\t' || separators[0] == '\n' ||
+        runtime_state().is_posix_mode())
+    {
+      do_flush();
+      return;
+    }
+
+    do_append_split_run(StringView{separators.data, 1}, true);
+  };
+
   let const do_emit_elements = [&](const ArrayList<String> &values, bool quoted,
                                    bool star) throws {
     if (quoted && star) {
@@ -165,11 +182,13 @@ hot fn EvalContext::expand_word(const Word &word) throws
       return;
     }
     for (usize i = 0; i < values.count(); i++) {
-      if (i > 0) do_flush();
-      if (quoted)
+      if (quoted) {
+        if (i > 0) do_flush();
         do_append_run(values[i].view(), false);
-      else
+      } else {
+        do_begin_list_element(i);
         do_append_split_run(values[i].view(), true);
+      }
     }
   };
 
@@ -274,7 +293,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
       {
         for (usize i = 0; i < variable_store().positional_params().count(); i++)
         {
-          if (i > 0) do_flush();
+          do_begin_list_element(i);
           do_append_split_run(variable_store().positional_params()[i].view(),
                               true);
         }
@@ -438,7 +457,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
           }
         } else {
           for (i64 j = start; j < end; j++) {
-            if (j > start) do_flush();
+            do_begin_list_element(static_cast<usize>(j - start));
             do_append_split_run(do_positional_at(j), true);
           }
         }
@@ -501,13 +520,15 @@ hot fn EvalContext::expand_word(const Word &word) throws
           for (usize i = 0; i < variable_store().positional_params().count();
                i++)
           {
-            if (i > 0) do_flush();
             let const modified =
                 do_transform(variable_store().positional_params()[i].view());
-            if (segment.is_in_double_quotes)
+            if (segment.is_in_double_quotes) {
+              if (i > 0) do_flush();
               do_append_run(modified.view(), false);
-            else
+            } else {
+              do_begin_list_element(i);
               do_append_split_run(modified.view(), true);
+            }
           }
         }
         break;
@@ -552,7 +573,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
             }
           } else {
             for (i64 j = start; j < end; j++) {
-              if (j > start) do_flush();
+              do_begin_list_element(static_cast<usize>(j - start));
               do_append_split_run(elements[static_cast<usize>(j)].view(), true);
             }
           }
@@ -633,14 +654,26 @@ hot fn EvalContext::expand_word(const Word &word) throws
               joined.append(do_transform(elements[i].view()).view());
             }
             do_append_run(joined, false);
+          } else if (!segment.is_in_double_quotes &&
+                     (field_modifier_op == '#' || field_modifier_op == '%') &&
+                     variable_store().field_separators().is_empty())
+          {
+            let joined = String{scratch_allocator()};
+            for (usize i = 0; i < elements.count(); i++) {
+              if (i > 0) joined.push(' ');
+              joined.append(do_transform(elements[i].view()).view());
+            }
+            if (!joined.is_empty()) do_append_run(joined, true);
           } else {
             for (usize i = 0; i < elements.count(); i++) {
-              if (i > 0) do_flush();
               let const modified = do_transform(elements[i].view());
-              if (segment.is_in_double_quotes)
+              if (segment.is_in_double_quotes) {
+                if (i > 0) do_flush();
                 do_append_run(modified.view(), false);
-              else
+              } else {
+                do_begin_list_element(i);
                 do_append_split_run(modified.view(), true);
+              }
             }
           }
           break;
@@ -672,7 +705,8 @@ hot fn EvalContext::expand_word(const Word &word) throws
             let const is_joined_value_empty =
                 is_every_element_empty &&
                 (elements.count() <= 1 ||
-                 (is_star && variable_store().field_separators().is_empty()));
+                 (is_star && segment.is_in_double_quotes &&
+                  variable_store().field_separators().is_empty()));
             let const treat_as_unset =
                 is_colon_form ? is_joined_value_empty : elements.is_empty();
             if (!treat_as_unset && modifier_op != '+') {
