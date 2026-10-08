@@ -12,16 +12,16 @@ history.max_entries=4096                    interactive
 completion.add_space_after_completed_word=off interactive
 diagnostics.warning_level=0                 interactive
 diagnostics.show_annoying_tier=on           interactive
-diagnostics.analyze_before_running=on       interactive
-koshkit.run_utilities_as_plain_commands=off interactive
+diagnostics.analyze_before_running=on       semantic
+koshkit.run_utilities_as_plain_commands=off semantic
 arithmetic.use_big_integers_and_decimals=on semantic
-compat.mimic_shell_named_by_shebang=off     interactive
-debug.print_syntax_tree=off                 interactive
-debug.print_lexed_word_escapes=off          interactive
-debug.report_nonzero_exit_codes=off         interactive
-debug.report_every_exit_code=off            interactive
-debug.print_evaluation_statistics=off       interactive
-debug.print_memory_report_at_exit=off       interactive
+compat.mimic_shell_named_by_shebang=off     semantic
+debug.print_syntax_tree=off                 semantic
+debug.print_lexed_word_escapes=off          semantic
+debug.report_nonzero_exit_codes=off         semantic
+debug.report_every_exit_code=off            semantic
+debug.print_evaluation_statistics=off       semantic
+debug.print_memory_report_at_exit=off       semantic
 editor.complete_on_tab=on                   interactive
 editor.highlight_syntax_and_show_ghost_text=on interactive
 diagnostics.show_source_traces=on           interactive
@@ -495,7 +495,7 @@ warning: Skipping an invalid value of 'history.max_entries' in KOSHCONF.
 on
 4096
 == KOSHCONF carries the mood and interactive options to another shell:
-AQECAgEBAwEBBAEBBQEABgEABwEBCAEBCgI3NwsBAQwBAA0BAQ4BAQ8BABEBABIBABMBABQBABUBABYBABcBABgBARkBARoBAUEBAFUBAFcBAIABAQGDAQEAhQEBAIYBAQGHAQEBiAEBAIkBAQCRAQEBlQEBAJYBAQCXAQEAmAEBAZkBAQCbAQEBoAEBAKEBAQCmAQEBpwEBAKgBAQE=
+AQECAgEBAwEBBAEBBQEABgEABwEBCAEBCgI3NwsBAQwBAA0BARgBARkBARoBAUEBAFUBAFcBAIABAQGDAQEAhQEBAIYBAQGHAQEBiAEBAIkBAQCRAQEBlQEBAJYBAQCXAQEAmAEBAZkBAQCbAQEBoAEBAKEBAQCmAQEBpwEBAKgBAQE=
 bash
 external
 77

@@ -30,7 +30,7 @@ rc=126
 -c:1:18: error: This file is not a directory.
 refused
 rc=126
---- directory path changes directory ---
-directory-changed
+--- a script does not change into a directory path ---
+directory-refused
 --- missing remains missing ---
 rc=127

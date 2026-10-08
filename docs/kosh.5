@@ -278,9 +278,12 @@ a varint holding the value's position in its list. A string is its UTF-8 bytes.
 The ids are listed by
 .BR kosh (1)
 and never change meaning. Only the mood and the interactive options are
-written. A child shell reads the settings files itself. Passing semantic options
-such as exit_on_command_failure through the environment would change how every
-script below the shell runs. Bash exports SHELLOPTS only on request.
+written. An interactive option affects only the interactive editor, the
+history, or how diagnostics are presented, never how a script runs. A child
+shell reads the settings files itself. Passing semantic options such as
+exit_on_command_failure, compat.mimic_shell_named_by_shebang, or the debug
+reports through the environment would change how every script below the shell
+runs. Bash exports SHELLOPTS only on request.
 .PP
 A reader skips a record with an unknown id, an option it never carries, or a
 value that a settings file would reject, and reports a warning. Only the

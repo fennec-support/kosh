@@ -726,9 +726,6 @@ is_kept_in_restricted_shell(const option_descriptor &option) wontthrow -> bool
   switch (option.storage) {
   case option_storage::Mood:
   case option_storage::Variable: return false;
-  case option_storage::ShellOption:
-    return option.shell_option != shell_option_id::Koshkit &&
-           option.shell_option != shell_option_id::Mimicry;
   default: return true;
   }
 }

@@ -140,8 +140,9 @@ autocd_root=$(cd "$autocd_root" && pwd)
 autocd_bin=$(cd "$autocd_bin" && pwd)
 printf '#!/bin/sh\nprintf "dot-program\\n"\n' > "$autocd_bin/..."
 chmod +x "$autocd_bin/..."
-echo "== autocd changes directories in the default mood:"
-AUTOCD_ROOT="$autocd_root" AUTOCD_BIN="$autocd_bin" "$BIN" --no-init-files --no-diagnostics -c '
+echo "== autocd changes directories in an interactive shell:"
+autocd_env=$autocd_bin/interactive.sh
+cat >"$autocd_env" <<'EOF'
 shopt -q autocd
 printf "default=%s\n" "$?"
 "$AUTOCD_ROOT/one"
@@ -202,15 +203,18 @@ else
 fi
 "$AUTOCD_ROOT/one"
 printf "reenabled=%s\n" "${PWD##*/}"
-'
-echo "== autocd is enabled in the Bash mood by default:"
+EOF
+AUTOCD_ROOT="$autocd_root" AUTOCD_BIN="$autocd_bin" ENV="$autocd_env" \
+  "$BIN" --no-diagnostics -L sh -i <"$TEST_NULL_DEVICE" 2>/dev/null
+echo "== autocd is enabled in the Bash mood by default but not in a script:"
 AUTOCD_ROOT="$autocd_root" "$BIN" --no-init-files --no-diagnostics \
   --mood bash -c '
 shopt -q autocd
 printf "bash-default=%s\n" "$?"
-"$AUTOCD_ROOT/two"
-printf "bash-directory=%s\n" "${PWD##*/}"
+cd "$AUTOCD_ROOT"
+two 2>/dev/null
+printf "bash-directory=%s status=%s\n" "${PWD##*/}" "$?"
 cd "$AUTOCD_ROOT/tree/one/two/three/four"
-...
+... 2>/dev/null
 printf "bash-dot-two=%s\n" "${PWD##*/}"
 '

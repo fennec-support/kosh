@@ -1099,7 +1099,9 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
           cxt.runtime_state().koshkit_utilities_are_reachable(),
           cxt.runtime_state().is_shopt_enabled(shopt_option_id::Checkhash),
           cxt.program_resolver(), steal(program_arg_locations),
-          cxt.runtime_state().get_mood(), cxt.is_shopt_enabled("autocd"));
+          cxt.runtime_state().get_mood(),
+          cxt.execution_store().shell_is_interactive() &&
+              cxt.is_shopt_enabled("autocd"));
     } catch (CommandResolutionErrorWithLocation &e) {
       report_command_resolution_error(cxt, e);
       did_resolution_fail = true;

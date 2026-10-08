@@ -756,8 +756,10 @@ changes meaning, a koshconf name, its Bash spelling when it is a Bash option,
 its letter when it has one, a type, and a class. A boolean is on or off and is
 named as a statement that is true when it is on. An enumeration is written by
 name and encoded by position. A string is written as it is. An interactive
-option changes presentation, editing, or diagnostics. A semantic option changes
-evaluation.
+option affects only the interactive editor, the history, or how diagnostics
+are presented, so a script runs the same under every value. Every other option
+is semantic: it can change what a script does or what it writes to its output,
+as the analysis stage, command resolution, mimicry, and the debug reports do.
 .PP
 A koshconf name starts with its topic. Related settings sort and search
 together. Every globbing option contains glob, and every Bash option appears
@@ -833,25 +835,25 @@ retired.
  13  diagnostics.show_annoying_tier
        interactive
  14  diagnostics.analyze_before_running
-       interactive
+       semantic
  15  koshkit.run_utilities_as_plain_commands
-       interactive
+       semantic
  16  arithmetic.use_big_integers_and_decimals
        semantic
  17  compat.mimic_shell_named_by_shebang
-       letter I, interactive
+       letter I, semantic
  18  debug.print_syntax_tree
-       letter A, interactive
+       letter A, semantic
  19  debug.print_lexed_word_escapes
-       letter R, interactive
+       letter R, semantic
  20  debug.report_nonzero_exit_codes
-       interactive
+       semantic
  21  debug.report_every_exit_code
-       letter N, interactive
+       letter N, semantic
  22  debug.print_evaluation_statistics
-       letter S, interactive
+       letter S, semantic
  23  debug.print_memory_report_at_exit
-       letter G, interactive
+       letter G, semantic
  24  editor.complete_on_tab
        interactive
  25  editor.highlight_syntax_and_show_ghost_text
@@ -1223,9 +1225,8 @@ or the name rbash ignores and removes a
 .B KOSHCONF
 environment variable with a warning. The configuration files are read before
 the restrictions take effect. They apply only presentation and diagnostic
-options. They warn about the mood, every semantic option,
-koshkit.run_utilities_as_plain_commands, compat.mimic_shell_named_by_shebang,
-history.file_path, and history.max_entries. A configuration file cannot choose
+options. They warn about the mood, every semantic option, history.file_path,
+and history.max_entries. A configuration file cannot choose
 the startup files, the evaluation rules, the command resolution, or a history
 path. A child shell or a fresh evaluator inherits the restrictions.
 .PP
@@ -1566,9 +1567,10 @@ forgets cached command locations.
 .B hash \-R
 forgets them and rebuilds the PATH command index at once.
 .PP
-A single directory path in command position changes the
-working directory as if it were an operand to
+In an interactive shell, a single directory path in command position changes
+the working directory as if it were an operand to
 .BR cd .
+A script is never affected, as in bash.
 Functions, builtins, programs, and bundled utilities take precedence. The
 .B autocd
 shopt option controls this behavior and is enabled by default in every mood.

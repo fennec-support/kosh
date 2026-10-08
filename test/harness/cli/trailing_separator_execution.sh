@@ -34,10 +34,11 @@ run_rejected_file env 'koshkit env ./program/'
 run_rejected_file symlink './link/'
 run_rejected_file pipeline 'set -o pipefail; ./program/ | koshkit cat'
 
-echo '--- directory path changes directory ---'
+echo '--- a script does not change into a directory path ---'
 output=$("$BIN" --mood sh -c './directory/; status=$?; printf "directory=%s status=%s\n" "${PWD##*/}" "$status"' 2>&1)
 case "$output" in
-*'directory=directory status=0'*) echo directory-changed ;;
+*'directory=directory '*) echo directory-changed ;;
+*'status=126'*) echo directory-refused ;;
 *) echo directory-error ;;
 esac
 

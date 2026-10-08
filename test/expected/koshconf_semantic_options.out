@@ -1,0 +1,16 @@
+== a script does not change into a directory named as a command:
+script.sh:1:1: error: The command 'sub' was not found.
+status=127
+-c:1:1: error: The command 'sub' was not found.
+status=127
+WORK
+== an interactive shell does:
+WORK/sub
+== KOSHCONF carries no semantic option:
+editor.auto_close_brackets_and_quotes=on    interactive
+diagnostics.analyze_before_running=on       semantic
+koshkit.run_utilities_as_plain_commands=off semantic
+compat.mimic_shell_named_by_shebang=off     semantic
+debug.report_nonzero_exit_codes=off         semantic
+debug.report_every_exit_code=off            semantic
+another shell
