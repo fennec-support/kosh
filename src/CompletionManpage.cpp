@@ -1866,7 +1866,9 @@ fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
 
     if (source.synopsis.is_empty() && source.manpage_entries == nullptr &&
         source.help_entries == nullptr &&
-        context.runtime_state().koshkit_utilities_are_reachable())
+        context.runtime_state().koshkit_utilities_are_reachable() &&
+        context.program_resolver().get_status(name.view()) ==
+            ProgramResolver::Status::Missing)
     {
       if (let const bundled = koshkit::find_util(name.view());
           bundled.has_value())
@@ -2038,11 +2040,6 @@ static fn start_next_idle_load(StringView line, usize cursor,
   if (search_builtin(name.view()).has_value()) return false;
   if (context.function_store().find_storage(name.view()) != nullptr)
     return false;
-  if (context.runtime_state().koshkit_utilities_are_reachable() &&
-      koshkit::find_util(name.view()).has_value())
-  {
-    return false;
-  }
   if (context.program_resolver()
           .search(name.view(), ProgramResolver::SearchMode::First,
                   ProgramResolver::Requirement::Runnable,

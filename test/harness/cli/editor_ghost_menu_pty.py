@@ -28,11 +28,13 @@
 # Down with its option switched off, a Ctrl-R menu that names a miss and cuts
 # a long entry with an ellipsis, and the inline hint rows for a command and
 # a flag, their header naming the kind and the two-column indent, their absence
-# inside the command word and for an uncached command, their yielding to the
-# menu, their erasure on submit, and their option. A path menu lists the last
-# component of each path. A narrow terminal wraps a long synopsis onto several
-# indented rows that a submit erases, starts the menu at the left edge when the
-# token is too far right for its help text to keep two rows, and a short
+# inside the command word, for an uncached command, and for a bundled
+# utility that a PATH program shadows unless the word follows koshkit, their
+# yielding to the menu, their erasure on submit, and their option. A path menu
+# lists the last component of each path. A narrow terminal wraps a long
+# synopsis onto several indented rows that a submit erases, starts the menu at
+# the left edge when the token is too far right for its help text to keep two
+# rows, and a short
 # terminal keeps the input on screen with fewer rows. A pause loads
 # the --help usage, flag forms, and subcommand usage of a trusted allowlisted
 # command once per key and never runs one from a world-writable directory. A
@@ -1014,6 +1016,18 @@ def run_checks(binary, directory, command_directory, report):
                       is_without_hint("zzprobe-one"))
         clear_line(session)
 
+        session.send(b"nproc ")
+        session.wait_until(is_line("nproc"))
+        session.pump(0.4)
+        report.record("hint-path-program-hides-bundled-synopsis", session,
+                      is_without_hint("nproc"))
+        clear_line(session)
+
+        session.send(b"koshkit nproc ")
+        report.record("hint-koshkit-names-bundled-synopsis", session,
+                      has_hint_header("utility synopsis"))
+        clear_line(session)
+
         session.send(b"cat menu/menu-")
         session.wait_until(has_hint("cat ["))
         session.send(b"\t")
@@ -1537,7 +1551,7 @@ def main():
             handle.write("ALPHA-CONTENT\n")
         for name in ("apple", "apricot", "avocado", "banana"):
             open(os.path.join(directory, "menu", "menu-" + name), "w").close()
-        for name in ("zzprobe-one", "zzprobe-two"):
+        for name in ("zzprobe-one", "zzprobe-two", "nproc"):
             path = os.path.join(directory, "bin", name)
             with open(path, "w") as handle:
                 handle.write("#!/bin/sh\n")

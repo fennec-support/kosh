@@ -282,6 +282,9 @@ changes update this file.
   the segment or command substitution under the caret, and reads only
   builtin and koshkit registrations, aliases, function definitions, and the
   manpage and help caches. It never forks, searches PATH, or reads a file.
+  A bundled utility synopsis shows only when the command status the
+  highlighter remembers for the validation epoch finds no PATH program,
+  because a PATH program runs first, or after `koshkit`.
 - Every hint is a header naming its kind, a line break, and a body. The
   headers are `builtin synopsis`, `utility synopsis`, `command synopsis`,
   `subcommand synopsis`, `alias synopsis`, `function synopsis`, `flag`,

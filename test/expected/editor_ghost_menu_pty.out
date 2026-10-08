@@ -93,6 +93,8 @@ hint-names-flag-header PASS
 hint-clears-inside-command-word PASS
 hint-names-builtin-header PASS
 hint-absent-for-uncached-command PASS
+hint-path-program-hides-bundled-synopsis PASS
+hint-koshkit-names-bundled-synopsis PASS
 hint-yields-to-menu PASS
 hint-returns-after-menu-closes PASS
 hint-erased-on-submit PASS
