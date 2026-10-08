@@ -840,7 +840,7 @@ static fn keep_restricted_settings(koshconf_reading &reading) throws -> void
 
 static fn find_system_koshconf_path() throws -> Maybe<Path>
 {
-#if !defined NDEBUG
+#if defined KOSH_DEBUG_SYSTEM_KOSHCONF_OVERRIDE
   if (let const debug_path =
           os::get_environment_variable("KOSH_DEBUG_SYSTEM_KOSHCONF");
       debug_path.has_value() && !debug_path->is_empty())

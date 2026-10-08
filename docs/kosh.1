@@ -4811,8 +4811,12 @@ rewrites it from its own settings.
 .B KOSH_DEBUG_SYSTEM_KOSHCONF
 A non-empty value names the system configuration file in place of
 /etc/kosh.conf or %ProgramData%\kosh\kosh.conf, with the same ownership check.
-The test suite points it at a missing file. Only a debug build reads it; a
-release build always reads the system path.
+The test suite points it at a missing file. Only a debug build, made with
+.B make MODE=dbg
+or a Debug
+.BR "zig build" ,
+reads it; every other build, including a ReleaseSafe zig build, always reads
+the system path.
 .TP
 .B KOSH_HISTORY_FILE
 The value specifies the command history file. The default is ~/.kosh_history.

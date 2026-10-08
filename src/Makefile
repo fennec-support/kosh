@@ -338,6 +338,7 @@ endif
 # MODE=dbg
 else ifeq ($(MODE), dbg)
 CXXFLAGS += \
+	-DKOSH_DEBUG_SYSTEM_KOSHCONF_OVERRIDE \
 	-fno-omit-frame-pointer \
 	-g3 \
 	-O0

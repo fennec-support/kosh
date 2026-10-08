@@ -53,6 +53,9 @@ pub fn build(b: *std.Build) void {
         "-DKOSH_ENVCXXFLAGS=\"\"",
     };
     flags.appendSlice(b.allocator, &defines) catch @panic("out of memory");
+    if (!is_release) {
+        flags.append(b.allocator, "-DKOSH_DEBUG_SYSTEM_KOSHCONF_OVERRIDE") catch @panic("out of memory");
+    }
 
     const sources = collectSources(b);
     module.addCSourceFiles(.{
