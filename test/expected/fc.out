@@ -33,11 +33,7 @@ echo local-new
 local-new
 	 false
 	 echo local-new
-echo alpha
-echo old-old
-false
 echo peer
-echo local-new
 == editor selection and current shell ==
 edited_value=explicit
 explicit

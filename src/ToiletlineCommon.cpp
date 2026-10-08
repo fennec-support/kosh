@@ -3,10 +3,11 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements UTF-8 validation, length, position, terminal
- * display-width conversion, and history record encoding shared by the
- * interactive editor and noninteractive stubs. It remains outside either
- * implementation so both build configurations use the same text measurement and
- * history format behavior without initializing terminal state.
+ * display-width conversion, history record encoding, and atomic history file
+ * replacement shared by the interactive editor and noninteractive stubs. It
+ * remains outside either implementation so both build configurations use the
+ * same text measurement and history format behavior without initializing
+ * terminal state.
  *
  * is_history_contents_valid applies the same rejection rules as the vendored
  * itl_string_from_bytes in src/toiletline/toiletline.h. Both sides of the
@@ -276,6 +277,32 @@ fn encode_history_record(String &output, StringView command) -> void
   }
 
   output.push('\n');
+}
+
+fn write_history_file_atomically(const koshka::Path &path,
+                                 StringView name_prefix,
+                                 StringView contents) throws -> bool
+{
+  let target = koshka::Path{path.view()};
+  if (let resolved = koshka::os::canonical_path(path); resolved.has_value())
+    target = steal(*resolved);
+
+  let status = koshka::os::file_status{};
+  let const has_status = koshka::os::stat_path_following(target.view(), status);
+  let const replacement = koshka::os::write_to_named_temp_file(
+      target.parent_or_current(), name_prefix, contents);
+  if (!replacement.has_value()) return false;
+
+  if ((has_status &&
+       !koshka::os::set_file_mode(replacement->view(), status.mode & 07777)) ||
+      !koshka::os::sync_path(replacement->view(), koshka::os::sync_mode::All) ||
+      !koshka::os::rename_path(replacement->view(), target.view()))
+  {
+    unused(koshka::os::remove_file(replacement->view()));
+    return false;
+  }
+
+  return true;
 }
 
 fn get_utf8_length(const koshka::String &string, usize byte_count) -> usize

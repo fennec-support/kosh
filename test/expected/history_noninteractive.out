@@ -1,3 +1,37 @@
+== noninteractive maintenance leaves the history file byte-identical ==
+unchanged after history -c; history -s x
+unchanged after history -c; history -s one; history -s two
+unchanged after history -s stored
+unchanged after history -s stored; exit 3
+unchanged after history -c
+unchanged after history -d 1
+unchanged after history -d 1-2
+unchanged after history -d -1
+unchanged after history -r; history -c; history -s zz
+unchanged after history -r "$1"
+unchanged after history -n "$1"
+unchanged after history -S; history -d 2
+unchanged after fc -s kept
+unchanged after history -s one; fc -s one=two
+unchanged after fc -s 2; history -c
+unchanged after KOSH_HISTORY_SIZE=1; history -s one; history -s two
+unchanged after set -o history; history -s stored
+unchanged after a script file
+unchanged after standard input
+== the private branch still lists what the file never received ==
+    1  one
+    2  two
+    1  two
+== an explicit append writes only the events the file lacks ==
+rc=0
+rc=0
+kept one
+kept two
+kept three
+appended
+== an explicit write replaces the file with the private branch ==
+rc=0
+written
 == the numbered list prints every entry ==
     1  echo one
     2  ls
@@ -35,54 +69,45 @@ rc=0
 named base
 existing one
 existing two
-merged alpha
-merged beta
 == history -a leaves its backing file unchanged ==
 rc=0
     1  existing one
     2  existing two
-    3  merged alpha
-    4  merged beta
 == a hard link aliases the backing file ==
 rc=0
 == history -a leaves an aliased backing file unchanged ==
 rc=0
     1  existing one
     2  existing two
-    3  merged alpha
-    4  merged beta
 == history -w replaces a named file with the list ==
 rc=0
 existing one
 existing two
-merged alpha
-merged beta
 == history -r on a missing file errors ==
 rc=1
 == history -r rejects invalid data without changing the list ==
 rc=1
     1  existing one
     2  existing two
-    3  merged alpha
-    4  merged beta
 == history -a rejects invalid backing data ==
 rc=1
 == history -r rejects malformed UTF-8 without changing the list ==
 rc=1
     1  existing one
     2  existing two
-    3  merged alpha
-    4  merged beta
 == history -r separates an unterminated backing record ==
     1  tail
     2  next
 == history -r terminates an unterminated imported record ==
     1  next
-== an empty import creates a missing backing file ==
+== an empty import leaves a missing backing file missing ==
 rc=0
-== history stores into a missing backing file ==
+no backing file
+== history stores into a missing backing file only on an append ==
 rc=0
     1  created
+no backing file
+rc=0
     1  created
 == history accepts high bytes as file data ==
 1
@@ -104,7 +129,7 @@ rc=1
 == an oversized decoded record is reported ==
 1
 rc=1
-== concurrent history stores preserve both records ==
+== concurrent history appends preserve both records ==
 rc=0,0
 2
 == consecutive duplicate stores succeed and retain one record ==
@@ -124,33 +149,29 @@ rc=0,0,0
 rc=0
     1  mode one
     2  modetwo
-== history deletion rewrites the no editor store ==
+== history deletion edits the private branch ==
     1  second
 == history deletion preserves legacy high-byte records ==
 rc=0
 1
-== deletion rejects a startup receipt from a replaced file ==
-rc=1
-    1  same
-    2  local
+== deletion after a replaced file leaves the file alone ==
+rc=0
+    1  local
 durable
 same
 peer
-local
-== fc rejects a startup receipt from a replaced file ==
-rc=1
+== fc after a replaced file leaves the file alone ==
+rc=127
     1  same
 durable
 same
 peer
-== a promoted startup tail keeps its original receipt ==
-rc=1
-    1  same
-    2  local
+== deletion after a replaced unterminated file leaves the file alone ==
+rc=0
+    1  local
 durable
 same
 peer
-local
 == a range deletion renumbers before the next store ==
 rc=0,0
     1  third
@@ -266,7 +287,7 @@ rc=0
 == a concurrent deletion and store leave a readable store ==
 rc=0,0
 rc=0
-== a store after an external append keeps its private branch ==
+== an append after an external append keeps its private branch ==
     1  grow one
     2  growthree
 == a new shell sees every externally appended record ==
@@ -285,16 +306,16 @@ rc=0
     1  tail one
     2  peer-tail
     3  local-tail
-== deleting a local event preserves an unseen peer ==
+== deleting a local event leaves an unseen peer in the file ==
     1  delete base
 == a fresh shell sees the preserved peer after local deletion ==
     1  delete base
     2  delete peer
 == deleting a startup event keeps the private local event ==
     1  startup local
-== a fresh shell sees the peer and local event after startup deletion ==
-    1  startup peer
-    2  startup local
+== a fresh shell sees the unchanged file after startup deletion ==
+    1  delete startup
+    2  startup peer
 == operandless history append leaves the private branch unchanged ==
     1  append base
     2  append local
@@ -308,6 +329,10 @@ rc=0
 == a fresh shell sees the private branch written without peers ==
     1  write base
     2  write local
+== an operandless write keeps a linked backing file and its mode ==
+rc=0 link=0 mode=640
+linked base
+linked
 == a named write preserves a symlink target ==
 rc=0 link=0
 symlinked
@@ -355,7 +380,7 @@ rc=0
     4  trunc-local
 durable
 trunc-local
-== a fresh shell after a peer truncation sees only the stored record ==
+== a fresh shell after a peer truncation sees only the appended record ==
     1  trunc-local
 == a peer rewrite to a shorter file keeps the private branch ==
     1  trunc one
@@ -374,10 +399,9 @@ peer long record one
 peer long record two
 peer three
 after
-== deleting after a peer truncation fails and changes nothing ==
-rc=1
-    1  trunc one
-    2  trunc two
+== deleting after a peer truncation leaves the truncated file alone ==
+rc=0
+    1  trunc two
 durable
 == history -S after a peer truncation adopts the truncated file ==
 rc=0

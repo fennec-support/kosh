@@ -435,6 +435,104 @@ else
   echo "history size broken"
 fi
 
+explicit_history_path=$dir/explicit-history
+explicit_import_path=$dir/explicit-import
+explicit_target_path=$dir/explicit-target
+printf 'EXPLICIT_BASE_ONE\nEXPLICIT_BASE_TWO\n' > "$explicit_history_path"
+printf 'EXPLICIT_IMPORT_ONE\nEXPLICIT_IMPORT_TWO\n' > "$explicit_import_path"
+rm -f "$ready"
+rm -f "$input_status"
+out=$({
+  send_input_when_ready 'history -c\r' && wait_for_prompt_count 2 &&
+    cp "$explicit_history_path" "$dir/explicit-after-clear" &&
+    send_input_when_ready 'history -r "$EXPLICIT_IMPORT"\r' &&
+    wait_for_prompt_count 3 &&
+    cp "$explicit_history_path" "$dir/explicit-after-import" &&
+    send_input_when_ready 'history -a\r' && wait_for_prompt_count 4 &&
+    send_input_when_ready 'history -w "$EXPLICIT_TARGET"\r' &&
+    wait_for_prompt_count 5 && send_input_when_ready 'exit\r'
+  printf '%s\n' "$?" > "$input_status"
+} |
+  BIN="$BIN" READY="$ready" KOSH_HISTORY_FILE="$explicit_history_path" \
+    EXPLICIT_IMPORT="$explicit_import_path" \
+    EXPLICIT_TARGET="$explicit_target_path" \
+    PROMPT_COMMAND='printf x >> "$READY"' \
+    run_interactive 'exec "$BIN" -i --rcfile /dev/null') || exit 1
+[ "$(cat "$input_status")" = 0 ] || exit 1
+explicit_after_clear='EXPLICIT_BASE_ONE
+EXPLICIT_BASE_TWO
+history -c'
+explicit_after_import="$explicit_after_clear"'
+history -r "$EXPLICIT_IMPORT"'
+explicit_target='history -r "$EXPLICIT_IMPORT"
+EXPLICIT_IMPORT_ONE
+EXPLICIT_IMPORT_TWO
+history -a
+history -w "$EXPLICIT_TARGET"'
+explicit_final="$explicit_after_import"'
+history -a
+EXPLICIT_IMPORT_ONE
+EXPLICIT_IMPORT_TWO
+history -w "$EXPLICIT_TARGET"
+exit'
+if [ "$(cat "$dir/explicit-after-clear")" = "$explicit_after_clear" ] &&
+  [ "$(cat "$dir/explicit-after-import")" = "$explicit_after_import" ] &&
+  [ "$(cat "$explicit_target_path")" = "$explicit_target" ] &&
+  [ "$(cat "$explicit_history_path")" = "$explicit_final" ]; then
+  echo "explicit history writes ok"
+else
+  printf 'explicit history files:\n%.2048s\n--\n%.2048s\n' \
+    "$(cat "$explicit_history_path")" "$(cat "$explicit_target_path")" >&2
+  echo "explicit history writes broken"
+fi
+
+printf 'EXPLICIT_TRIM_ONE\nEXPLICIT_TRIM_TWO\nEXPLICIT_TRIM_THREE\n' \
+  > "$explicit_history_path"
+rm -f "$ready"
+rm -f "$input_status"
+out=$({
+  send_input_when_ready 'KOSH_HISTORY_SIZE=3\r' && wait_for_prompt_count 2 &&
+    send_input_when_ready 'history -r "$EXPLICIT_IMPORT"\r' &&
+    wait_for_prompt_count 3 && send_input_when_ready 'exit\r'
+  printf '%s\n' "$?" > "$input_status"
+} |
+  BIN="$BIN" READY="$ready" KOSH_HISTORY_FILE="$explicit_history_path" \
+    EXPLICIT_IMPORT="$explicit_import_path" \
+    PROMPT_COMMAND='printf x >> "$READY"' \
+    run_interactive 'exec "$BIN" -i --rcfile /dev/null') || exit 1
+[ "$(cat "$input_status")" = 0 ] || exit 1
+explicit_trimmed='KOSH_HISTORY_SIZE=3
+history -r "$EXPLICIT_IMPORT"
+exit'
+if [ "$(cat "$explicit_history_path")" = "$explicit_trimmed" ]; then
+  echo "exit trim keeps file records ok"
+else
+  printf 'exit trim file:\n%.2048s\n' "$(cat "$explicit_history_path")" >&2
+  echo "exit trim keeps file records broken"
+fi
+
+printf 'EXPLICIT_CLEAR_ONE\nEXPLICIT_CLEAR_TWO\n' > "$explicit_history_path"
+rm -f "$ready"
+rm -f "$input_status"
+out=$({
+  send_input_when_ready 'history -c\r' && wait_for_prompt_count 2 &&
+    send_input_when_ready 'history -w\r' && wait_for_prompt_count 3 &&
+    send_input_when_ready 'exit\r'
+  printf '%s\n' "$?" > "$input_status"
+} |
+  BIN="$BIN" READY="$ready" KOSH_HISTORY_FILE="$explicit_history_path" \
+    PROMPT_COMMAND='printf x >> "$READY"' \
+    run_interactive 'exec "$BIN" -i --rcfile /dev/null') || exit 1
+[ "$(cat "$input_status")" = 0 ] || exit 1
+if [ "$(cat "$explicit_history_path")" = 'history -w
+exit' ]; then
+  echo "explicit write after clear ok"
+else
+  printf 'explicit write file:\n%.2048s\n' \
+    "$(cat "$explicit_history_path")" >&2
+  echo "explicit write after clear broken"
+fi
+
 printf 'ZERO_HISTORY_SIZE_BASE\n' > "$zero_history_size_path"
 printf 'KOSH_HISTORY_SIZE=0\n' > "$zero_history_size_rc"
 rm -f "$ready"

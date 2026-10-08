@@ -2050,9 +2050,16 @@ recording and preserves the previous exit status. Both history options are
 enabled by default in an interactive shell and disabled in a noninteractive
 shell.
 .PP
-Each shell loads one private history branch at startup. Submitted commands are
-appended to the shared file immediately without importing commands written by
-other running shells. Recall, expansion, listing, and editing use the private
+Each shell loads one private history branch at startup. An interactive shell
+appends submitted commands to the shared file immediately without importing
+commands written by other running shells. A noninteractive shell never writes
+the file on its own. Its stored events, deletions, clears, imports, and
+.B fc
+edits change only the private branch, and only
+.B "history \-w"
+and
+.B "history \-a"
+reach the file. Recall, expansion, listing, and editing use the private
 branch. A command that duplicates the preceding private event is skipped. A
 multiline command is stored as one event, and its embedded newlines are
 preserved. KOSH_HISTORY_SIZE bounds retained and stored history and defaults to
@@ -2110,15 +2117,15 @@ option records path as the location of each name.
 Without a maintenance option the stored events are listed, and a numeric
 operand limits the listing to that many newest events. The
 .B \-r
-option reads the history file into the list, and an operand specifies the file
-that is read. The
+option reads the history file into the list, and an operand specifies a file
+whose events join the list without being written to the history file. The
 .B \-n
 option also reads the history file, and an operand specifies a file whose
 already read bytes are skipped. The
 .B \-w
 option writes the list to the history file, and an operand specifies a file that
-is replaced. Without an operand it replaces the shared file with this shell's
-private branch. The
+is replaced. Without an operand it atomically replaces the shared file with
+this shell's private branch. The
 .B \-a
 option writes the list to the history file, and an operand specifies a file that
 receives the events this shell has not written to a named file yet. The written
@@ -2126,7 +2133,10 @@ events are limited by
 .BR KOSH_HISTORY_SIZE .
 Without an operand,
 .B \-a
-does nothing because accepted events are already appended immediately.
+appends the events of the private branch that the file lacks, such as the
+events a noninteractive shell stored or an operand of
+.B \-r
+supplied.
 The
 .B \-S
 and
@@ -2135,12 +2145,14 @@ forms explicitly replace the private branch with a locked snapshot of the
 shared history file and accept no operand.
 The
 .B \-c
-option clears the stored history, and
+option clears the private branch and leaves the history file intact, as bash
+does, and
 .B \-p
 prints its operands without storing them. The
 .B \-d
 option deletes an event number, a negative offset from the newest event, or an
-inclusive event range. The
+inclusive event range. An interactive shell also removes a deleted event from
+the history file through an atomic replacement. The
 .B \-s
 option joins its operands with spaces and stores the result as a history event.
 .TP
@@ -4929,7 +4941,8 @@ the system path.
 The value specifies the command history file. The default is ~/.kosh_history.
 A value inherited from the environment wins over history.file_path in the
 settings files. Like bash's HISTFILE, the shell does not export it unless it
-was inherited or is exported explicitly.
+was inherited or is exported explicitly. HISTFILE itself has no effect on the
+history file.
 .TP
 .B KOSH_HISTORY_SIZE
 The value bounds the number of history events retained for recall, listing, and

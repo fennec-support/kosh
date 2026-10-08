@@ -1254,6 +1254,7 @@ static fn seed_session_variables(EvalContext &context,
   }
   if (!context.get_variable_value("KOSH_HISTORY_SIZE").has_value())
     context.set_shell_variable("KOSH_HISTORY_SIZE", "4096");
+  toiletline::set_history_persistent(is_interactive);
 
   /* A bash session, a bash-posix session, or a bash flavor in the init list
      advertises BASH_VERSION so a bash rc detects it. */

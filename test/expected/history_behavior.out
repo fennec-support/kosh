@@ -7,6 +7,9 @@ history modifiers ok
 history storage ok
 multiline history ok
 history size ok
+explicit history writes ok
+exit trim keeps file records ok
+explicit write after clear ok
 zero history size storage ok
 history option ok
 ignoreeof ok

@@ -7,7 +7,7 @@ export KOSH_HISTORY_FILE=$d/history
 
 seed_fc_history()
 {
-  history -c
+  : > "$KOSH_HISTORY_FILE"; history -c
   printf 'echo alpha\necho old-old\nfalse\n' > "$d/seed"
   history -r "$d/seed"
 }

@@ -67,6 +67,9 @@ koshka::ErrorOr<koshka::Ok> write_history();
 koshka::ErrorOr<koshka::Ok> read_history();
 koshka::ErrorOr<koshka::Ok> sync_history();
 koshka::ErrorOr<koshka::Ok> clear_history();
+koshka::ErrorOr<koshka::Ok> import_history(StringView contents);
+koshka::ErrorOr<koshka::Ok> append_unwritten_history();
+void set_history_persistent(bool should_persist);
 void set_history_enabled(bool is_enabled);
 void set_history_limit(usize entry_count);
 

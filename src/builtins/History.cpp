@@ -214,39 +214,6 @@ static fn write_history_contents(const Path &target, os::file_open_mode mode,
   return Success;
 }
 
-static fn append_contents_into_history(EvalContext &cxt,
-                                       StringView source_text) throws
-    -> ErrorOr<Ok>
-{
-  let const backing = toiletline::get_history_path();
-  if (!backing.has_value()) return Error{"the path is unavailable"};
-
-  let const parent = backing->parent_or_current();
-  let lock = os::acquire_process_lock(parent.view());
-  if (!lock.has_value()) return Error{os::last_system_error_message()};
-
-  defer { os::release_process_lock(lock.take()); };
-
-  let const needs_separator = TRY(history_target_needs_separator(*backing));
-
-  let payload = String{cxt.scratch_allocator()};
-  let contents = source_text;
-  if (needs_separator ||
-      (!source_text.is_empty() && source_text[source_text.length - 1] != '\n'))
-  {
-    payload.reserve(source_text.length + (needs_separator ? 1 : 0) + 1);
-    if (needs_separator) payload.push('\n');
-    payload.append(source_text);
-    if (!source_text.is_empty() && source_text[source_text.length - 1] != '\n')
-    {
-      payload.push('\n');
-    }
-    contents = payload.view();
-  }
-
-  return write_history_contents(*backing, os::file_open_mode::Append, contents);
-}
-
 struct history_append_state
 {
   history_file_identity identity{};
@@ -269,6 +236,20 @@ static fn write_history_to_file(EvalContext &cxt, const Path &target,
                                 history_file_write_mode write_mode) throws
     -> ErrorOr<Ok>
 {
+  let &append_state = get_history_append_state();
+  let const source_path = toiletline::get_history_path();
+  if (write_mode == history_file_write_mode::Append &&
+      source_path.has_value() && source_path->exists() && target.exists() &&
+      source_path->is_same_file_as(target))
+  {
+    TRY(toiletline::append_unwritten_history());
+    let const appended_number =
+        TRY(toiletline::get_newest_history_event_number());
+    append_state.identity = get_history_file_identity(target);
+    append_state.event_number = appended_number.value_or(0);
+    return Success;
+  }
+
   let const target_identity = get_history_file_identity(target);
   let const lock_target = Path{target_identity.resolved_path.view()};
   let const lock_parent = lock_target.parent_or_current();
@@ -277,7 +258,6 @@ static fn write_history_to_file(EvalContext &cxt, const Path &target,
 
   defer { os::release_process_lock(lock.take()); };
 
-  let &append_state = get_history_append_state();
   if (!history_file_identity_matches(append_state.identity, target_identity))
     append_state.event_number = 0;
 
@@ -288,16 +268,6 @@ static fn write_history_to_file(EvalContext &cxt, const Path &target,
   }
 
   if (append_state.event_number > newest_number) append_state.event_number = 0;
-
-  let const source_path = toiletline::get_history_path();
-  if (write_mode == history_file_write_mode::Append &&
-      source_path.has_value() && source_path->exists() && target.exists() &&
-      source_path->is_same_file_as(target))
-  {
-    append_state.identity = get_history_file_identity(target);
-    append_state.event_number = newest_number;
-    return Success;
-  }
 
   Maybe<usize> written_above{None};
   if (write_mode == history_file_write_mode::Append)
@@ -468,22 +438,18 @@ fn History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         imported = imported.substring(import_state.imported_prefix.length());
       }
 
-      if (let const result = append_contents_into_history(cxt, imported);
+      if (let const result = toiletline::import_history(imported);
           result.is_error())
       {
-        report_soft_builtin_error(
-            ec, cxt, ec.arg_location_at(1),
-            StringView{"Unable to append the history file: "} +
-                result.error().message());
+        report_history_file_failure(ec, cxt, "read", result.error().message());
         return 1;
       }
 
       import_state.identity = source_identity;
       import_state.imported_prefix.clear();
       import_state.imported_prefix.append(source_text->view());
-    }
-
-    if (let const result = toiletline::read_history(); result.is_error()) {
+    } else if (let const result = toiletline::read_history(); result.is_error())
+    {
       report_history_file_failure(ec, cxt, "read", result.error().message());
       return 1;
     }
@@ -516,6 +482,11 @@ fn History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         report_history_file_failure(ec, cxt, "write", result.error().message());
         return 1;
       }
+    } else if (let const result = toiletline::append_unwritten_history();
+               result.is_error())
+    {
+      report_history_file_failure(ec, cxt, "append", result.error().message());
+      return 1;
     }
 
     did_maintain_list = true;

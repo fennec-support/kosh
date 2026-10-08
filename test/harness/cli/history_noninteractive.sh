@@ -4,7 +4,9 @@
 #    See the top-level LICENSE file for the licensing information.
 #
 # This script verifies noninteractive history listing, maintenance, file
-# access, multiline storage, and in-memory limit changes.
+# access, multiline storage, and in-memory limit changes. Maintenance changes
+# only the private branch, and only an explicit write or append reaches the
+# history file.
 
 unset KOSH_FLAGS
 dir=$(mktemp -d)
@@ -15,6 +17,56 @@ cleanup()
   fi
 }
 trap cleanup EXIT
+
+printf 'kept one\nkept two\nkept three\n' > "$dir/untouched"
+printf 'kept one\nkept two\nkept three\n' > "$dir/untouched.expected"
+printf 'imported one\nimported two\n' > "$dir/untouched-import"
+printf 'history -c\nhistory -s xx\nhistory -s yy\n' > "$dir/untouched-script"
+echo "== noninteractive maintenance leaves the history file byte-identical =="
+for form in 'history -c; history -s x' 'history -c; history -s one; history -s two' \
+  'history -s stored' 'history -s stored; exit 3' 'history -c' 'history -d 1' \
+  'history -d 1-2' 'history -d -1' 'history -r; history -c; history -s zz' \
+  'history -r "$1"' 'history -n "$1"' 'history -S; history -d 2' \
+  'fc -s kept' 'history -s one; fc -s one=two' 'fc -s 2; history -c' \
+  'KOSH_HISTORY_SIZE=1; history -s one; history -s two' \
+  'set -o history; history -s stored'; do
+  KOSH_HISTORY_FILE="$dir/untouched" "$BIN" --no-init-files -c "$form" \
+    history-test "$dir/untouched-import" >/dev/null 2>&1
+  if "$BIN_DIR/invoke-koshkit" cmp -s "$dir/untouched" \
+    "$dir/untouched.expected"; then
+    printf 'unchanged after %s\n' "$form"
+  else
+    printf 'changed after %s\n' "$form"
+    printf 'kept one\nkept two\nkept three\n' > "$dir/untouched"
+  fi
+done
+KOSH_HISTORY_FILE="$dir/untouched" "$BIN" --no-init-files \
+  "$dir/untouched-script" >/dev/null 2>&1
+if "$BIN_DIR/invoke-koshkit" cmp -s "$dir/untouched" "$dir/untouched.expected"
+then
+  echo "unchanged after a script file"
+else
+  echo "changed after a script file"
+fi
+KOSH_HISTORY_FILE="$dir/untouched" "$BIN" --no-init-files -s \
+  < "$dir/untouched-script" >/dev/null 2>&1
+if "$BIN_DIR/invoke-koshkit" cmp -s "$dir/untouched" "$dir/untouched.expected"
+then
+  echo "unchanged after standard input"
+else
+  echo "changed after standard input"
+fi
+echo "== the private branch still lists what the file never received =="
+KOSH_HISTORY_FILE="$dir/untouched" "$BIN" --no-init-files -c \
+  'history -c; history -s one; history -s two; history; history -d 1; history'
+echo "== an explicit append writes only the events the file lacks =="
+KOSH_HISTORY_FILE="$dir/untouched" "$BIN" --no-init-files -c \
+  'history -s appended; history -a; echo "rc=$?"; history -a; echo "rc=$?"'
+cat "$dir/untouched"
+echo "== an explicit write replaces the file with the private branch =="
+KOSH_HISTORY_FILE="$dir/untouched" "$BIN" --no-init-files -c \
+  'history -c; history -s written; history -w; echo "rc=$?"'
+cat "$dir/untouched"
 
 printf 'echo one\nls\ncd /tmp\ngit status\n' > "$dir/hist"
 export KOSH_HISTORY_FILE="$dir/hist"
@@ -83,13 +135,17 @@ KOSH_HISTORY_FILE="$dir/unterminated-import-backing" "$BIN" --no-init-files -c \
   'history -r "$1"; history' history-test "$dir/next"
 
 : > "$dir/empty"
-echo "== an empty import creates a missing backing file =="
+echo "== an empty import leaves a missing backing file missing =="
 KOSH_HISTORY_FILE="$dir/empty-backing" "$BIN" --no-init-files -c \
   'history -r "$1"; echo "rc=$?"' history-test "$dir/empty"
+[ -e "$dir/empty-backing" ] || echo "no backing file"
 
-echo "== history stores into a missing backing file =="
+echo "== history stores into a missing backing file only on an append =="
 KOSH_HISTORY_FILE="$dir/missing-backing" "$BIN" --no-init-files -c \
   'history -s created; echo "rc=$?"; history'
+[ -e "$dir/missing-backing" ] || echo "no backing file"
+KOSH_HISTORY_FILE="$dir/missing-backing" "$BIN" --no-init-files -c \
+  'history -s created; history -a; echo "rc=$?"'
 KOSH_HISTORY_FILE="$dir/missing-backing" "$BIN" --no-init-files -c 'history'
 
 printf '\377\n' > "$dir/high-byte"
@@ -130,12 +186,12 @@ KOSH_HISTORY_FILE="$dir/oversized" "$BIN" --no-init-files -c \
   'history; echo "rc=$?"' 2>/dev/null
 
 : > "$dir/concurrent"
-echo "== concurrent history stores preserve both records =="
+echo "== concurrent history appends preserve both records =="
 KOSH_HISTORY_FILE="$dir/concurrent" "$BIN" --no-init-files -c \
-  'history -s first' &
+  'history -s first; history -a' &
 first_pid=$!
 KOSH_HISTORY_FILE="$dir/concurrent" "$BIN" --no-init-files -c \
-  'history -s second' &
+  'history -s second; history -a' &
 second_pid=$!
 wait "$first_pid"
 first_status=$?
@@ -179,7 +235,7 @@ KOSH_HISTORY_FILE="$dir/mode-change" "$BIN" --no-init-files -c \
 echo "rc=$?"; history -s modetwo; history'
 
 : > "$dir/rewrite"
-echo "== history deletion rewrites the no editor store =="
+echo "== history deletion edits the private branch =="
 KOSH_HISTORY_FILE="$dir/rewrite" "$BIN" --no-init-files -c \
   'history -s first; history -s second; history -d 1; history'
 
@@ -190,7 +246,7 @@ KOSH_HISTORY_FILE="$dir/high-byte-rewrite" "$BIN" --no-init-files -c \
 
 printf 'same\n' > "$dir/replaced-receipt"
 printf 'same\npeer\n' > "$dir/replaced-receipt-next"
-echo "== deletion rejects a startup receipt from a replaced file =="
+echo "== deletion after a replaced file leaves the file alone =="
 KOSH_HISTORY_FILE="$dir/replaced-receipt" "$BIN" --no-init-files -c \
   'history >/dev/null; koshkit mv "$1" "$KOSH_HISTORY_FILE"; \
 history -s local; history -d 1; echo "rc=$?"; history; \
@@ -199,7 +255,7 @@ echo durable; cat "$KOSH_HISTORY_FILE"' history-test \
 
 printf 'same\n' > "$dir/replaced-fc-receipt"
 printf 'same\npeer\n' > "$dir/replaced-fc-receipt-next"
-echo "== fc rejects a startup receipt from a replaced file =="
+echo "== fc after a replaced file leaves the file alone =="
 KOSH_HISTORY_FILE="$dir/replaced-fc-receipt" "$BIN" --no-init-files -c \
   'history >/dev/null; koshkit mv "$1" "$KOSH_HISTORY_FILE"; \
 history -s same; fc -s 1; echo "rc=$?"; history; \
@@ -208,7 +264,7 @@ echo durable; cat "$KOSH_HISTORY_FILE"' history-test \
 
 printf same > "$dir/replaced-tail-receipt"
 printf 'same\npeer\n' > "$dir/replaced-tail-receipt-next"
-echo "== a promoted startup tail keeps its original receipt =="
+echo "== deletion after a replaced unterminated file leaves the file alone =="
 KOSH_HISTORY_FILE="$dir/replaced-tail-receipt" "$BIN" --no-init-files -c \
   'history >/dev/null; koshkit mv "$1" "$KOSH_HISTORY_FILE"; \
 history -s local; history -d 1; echo "rc=$?"; history; \
@@ -244,7 +300,7 @@ KOSH_HISTORY_FILE="$dir/synchronized" "$BIN" --no-init-files -c \
   'history >/dev/null; printf ready > "$1"; attempt_count=0; \
 while [ ! -e "$2" ] && [ "$attempt_count" -lt 500 ]; do \
 koshkit sleep 0.01; attempt_count=$((attempt_count + 1)); done; \
-[ -e "$2" ] || exit 1; history; history -s local-event; history' \
+[ -e "$2" ] || exit 1; history; history -s local-event; history -a; history' \
   history-sync "$dir/sync-ready" "$dir/sync-go" > "$dir/sync-output" &
 reader_pid=$!
 attempt_count=0
@@ -259,7 +315,7 @@ if [ ! -e "$dir/sync-ready" ]; then
   exit 1
 fi
 KOSH_HISTORY_FILE="$dir/synchronized" "$BIN" --no-init-files -c \
-  'history -s shared-event'
+  'history -s shared-event; history -a'
 : > "$dir/sync-go"
 wait "$reader_pid"
 cat "$dir/sync-output"
@@ -392,10 +448,10 @@ KOSH_HISTORY_FILE="$dir/race" "$BIN" --no-init-files -c \
   'history >/dev/null; echo "rc=$?"'
 
 printf 'grow one\n' > "$dir/grow"
-echo "== a store after an external append keeps its private branch =="
+echo "== an append after an external append keeps its private branch =="
 KOSH_HISTORY_FILE="$dir/grow" "$BIN" --no-init-files -c \
   'history >/dev/null; printf "grow two\n" >> "$KOSH_HISTORY_FILE"; \
-history -s growthree; history'
+history -s growthree; history -a; history'
 echo "== a new shell sees every externally appended record =="
 KOSH_HISTORY_FILE="$dir/grow" "$BIN" --no-init-files -c 'history'
 
@@ -404,7 +460,8 @@ KOSH_HISTORY_FILE="$dir/missing-startup" "$BIN" --no-init-files -c \
   'history >/dev/null; printf ready > "$1"; attempt_count=0; \
 while [ ! -e "$2" ] && [ "$attempt_count" -lt 500 ]; do \
 koshkit sleep 0.01; attempt_count=$((attempt_count + 1)); done; \
-[ -e "$2" ] || exit 1; history -s local-missing; history' history-test \
+[ -e "$2" ] || exit 1; history -s local-missing; history -a; history' \
+  history-test \
   "$dir/missing-ready" "$dir/missing-go" > "$dir/missing-output" &
 missing_reader_pid=$!
 attempt_count=0
@@ -429,13 +486,13 @@ printf 'tail one\n' > "$dir/unterminated-peer"
 echo "== a peer unterminated tail stays separate from a local append =="
 KOSH_HISTORY_FILE="$dir/unterminated-peer" "$BIN" --no-init-files -c \
   'history >/dev/null; printf peer-tail >> "$KOSH_HISTORY_FILE"; \
-history -s local-tail; history'
+history -s local-tail; history -a; history'
 echo "== a new shell reads separate peer and local tail records =="
 KOSH_HISTORY_FILE="$dir/unterminated-peer" "$BIN" --no-init-files -c \
   'history'
 
 printf 'delete base\n' > "$dir/divergent-delete-local"
-echo "== deleting a local event preserves an unseen peer =="
+echo "== deleting a local event leaves an unseen peer in the file =="
 KOSH_HISTORY_FILE="$dir/divergent-delete-local" "$BIN" --no-init-files -c \
   'history >/dev/null; printf "delete peer\n" >> "$KOSH_HISTORY_FILE"; \
 history -s "delete local"; history -d 2; history'
@@ -448,7 +505,7 @@ echo "== deleting a startup event keeps the private local event =="
 KOSH_HISTORY_FILE="$dir/divergent-delete-startup" "$BIN" --no-init-files -c \
   'history >/dev/null; printf "startup peer\n" >> "$KOSH_HISTORY_FILE"; \
 history -s "startup local"; history -d 1; history'
-echo "== a fresh shell sees the peer and local event after startup deletion =="
+echo "== a fresh shell sees the unchanged file after startup deletion =="
 KOSH_HISTORY_FILE="$dir/divergent-delete-startup" "$BIN" --no-init-files -c \
   'history'
 
@@ -467,6 +524,17 @@ KOSH_HISTORY_FILE="$dir/divergent-write" "$BIN" --no-init-files -c \
 history -s "write local"; history -w; history'
 echo "== a fresh shell sees the private branch written without peers =="
 KOSH_HISTORY_FILE="$dir/divergent-write" "$BIN" --no-init-files -c 'history'
+
+printf 'linked base\n' > "$dir/backing-link-target"
+"$BIN" --no-init-files -c 'koshkit chmod 640 "$1"; koshkit ln -s "$1" "$2"' \
+  history-test "$dir/backing-link-target" "$dir/backing-link"
+echo "== an operandless write keeps a linked backing file and its mode =="
+KOSH_HISTORY_FILE="$dir/backing-link" "$BIN" --no-init-files -c \
+  'history -s linked; history -w; write_status=$?; \
+if [ -L "$KOSH_HISTORY_FILE" ]; then link_status=0; else link_status=1; fi; \
+printf "rc=%s link=%s mode=%s\n" "$write_status" "$link_status" \
+"$(koshkit stat -c %a "$1")"' history-test "$dir/backing-link-target"
+cat "$dir/backing-link-target"
 
 printf 'old symlink\n' > "$dir/write-symlink-target"
 "$BIN" --no-init-files -c 'koshkit ln -s "$1" "$2"' history-test \
@@ -581,27 +649,27 @@ printf 'trunc one\ntrunc two\ntrunc three\n' > "$dir/peer-truncate"
 echo "== a peer truncation keeps the private branch and its recall =="
 KOSH_HISTORY_FILE="$dir/peer-truncate" "$BIN" --no-init-files -c \
   'history >/dev/null; : > "$KOSH_HISTORY_FILE"; history; \
-history -s trunc-local; echo "rc=$?"; history; echo durable; \
+history -s trunc-local; history -a; echo "rc=$?"; history; echo durable; \
 cat "$KOSH_HISTORY_FILE"'
-echo "== a fresh shell after a peer truncation sees only the stored record =="
+echo "== a fresh shell after a peer truncation sees only the appended record =="
 KOSH_HISTORY_FILE="$dir/peer-truncate" "$BIN" --no-init-files -c 'history'
 
 printf 'trunc one\ntrunc two\ntrunc three\n' > "$dir/peer-shrink"
 echo "== a peer rewrite to a shorter file keeps the private branch =="
 KOSH_HISTORY_FILE="$dir/peer-shrink" "$BIN" --no-init-files -c \
   'history >/dev/null; printf "p\n" > "$KOSH_HISTORY_FILE"; history -s after; \
-history; echo durable; cat "$KOSH_HISTORY_FILE"'
+history -a; history; echo durable; cat "$KOSH_HISTORY_FILE"'
 
 printf 'trunc one\ntrunc two\n' > "$dir/peer-grow-replace"
 echo "== a peer rewrite to a longer file keeps the private branch =="
 KOSH_HISTORY_FILE="$dir/peer-grow-replace" "$BIN" --no-init-files -c \
   'history >/dev/null; \
 printf "peer long record one\npeer long record two\npeer three\n" \
-> "$KOSH_HISTORY_FILE"; history -s after; history; echo durable; \
-cat "$KOSH_HISTORY_FILE"'
+> "$KOSH_HISTORY_FILE"; history -s after; history -a; history; \
+echo durable; cat "$KOSH_HISTORY_FILE"'
 
 printf 'trunc one\ntrunc two\n' > "$dir/peer-truncate-delete"
-echo "== deleting after a peer truncation fails and changes nothing =="
+echo "== deleting after a peer truncation leaves the truncated file alone =="
 KOSH_HISTORY_FILE="$dir/peer-truncate-delete" "$BIN" --no-init-files -c \
   'history >/dev/null; : > "$KOSH_HISTORY_FILE"; history -d 1; \
 echo "rc=$?"; history; echo durable; cat "$KOSH_HISTORY_FILE"' 2>/dev/null
@@ -617,11 +685,12 @@ printf 'read only one\n' > "$dir/read-only"
 if ! ( : >> "$dir/read-only" ) 2>/dev/null; then
   failed_append=$(KOSH_HISTORY_FILE="$dir/read-only" "$BIN" --no-init-files -c \
     'history >/dev/null; history -s refused; echo "rc=$?"; \
-history -s refused-again; echo "rc=$?"; history; echo durable; \
+history -a; echo "rc=$?"; history; echo durable; \
 cat "$KOSH_HISTORY_FILE"' 2>/dev/null)
-  expected_append="rc=1
+  expected_append="rc=0
 rc=1
     1  read only one
+    2  refused
 durable
 read only one"
   if [ "$failed_append" != "$expected_append" ]; then
@@ -642,7 +711,7 @@ while [ ! -e "$3-go" ] && [ "$attempt_count" -lt 3000 ]; do \
 koshkit sleep 0.01; attempt_count=$((attempt_count + 1)); done; \
 [ -e "$3-go" ] || exit 1; record_index=1; \
 while [ "$record_index" -le "$2" ]; do \
-history -s "writer$1-record$record_index" || exit 1; \
+history -s "writer$1-record$record_index" || exit 1; history -a || exit 1; \
 record_index=$((record_index + 1)); done; \
 own_count=$(history | koshkit grep -c "writer$1-"); \
 all_count=$(history | koshkit grep -c "writer[0-9]-"); \
