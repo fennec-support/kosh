@@ -319,9 +319,10 @@ fn Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (is_mutation &&
       cxt.runtime_state().option_is_enabled(shell_option_id::Restricted))
   {
-    throw ErrorWithLocation{
-        ec.source_location(),
-        "Changing settings with koshconf is forbidden in a restricted shell"};
+    report_soft_builtin_error(
+        ec, cxt,
+        "Changing settings with koshconf is forbidden in a restricted shell");
+    return 1;
   }
 
   LOG(Debug, "koshconf running the '%s' form", args[1].c_str());

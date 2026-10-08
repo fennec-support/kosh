@@ -11,7 +11,8 @@ for form in 'koshconf create kosh' 'koshconf create --force bash' \
   'koshconf load BQEB'
 do
   echo "== kosh -r: $form"
-  "$BIN" -r -c "$form; koshconf get editor.auto_close_brackets_and_quotes"
+  "$BIN" -r -c "$form; echo \"next status=\$?\"
+koshconf get editor.auto_close_brackets_and_quotes"
   echo "rc=$?"
 done
 echo "== set -r refuses a later change:"

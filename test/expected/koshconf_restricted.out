@@ -1,35 +1,47 @@
 == kosh -r: koshconf create kosh
--c:1:1: error: Changing settings with koshconf is forbidden in a restricted shell.
-     1 |  koshconf create kosh; koshconf get editor.auto_close_brackets_and_quotes
+-c:1:1: error: Builtin `koshconf`: Changing settings with koshconf is forbidden in a restricted shell.
+     1 |  koshconf create kosh; echo "next status=$?"
        |  ^~~~~~~~~~~~~~~~~~~~
-rc=1
+next status=1
+off
+rc=0
 == kosh -r: koshconf create --force bash
--c:1:1: error: Changing settings with koshconf is forbidden in a restricted shell.
-     1 |  koshconf create --force bash; koshconf get editor.auto_close_brackets_and_quotes
+-c:1:1: error: Builtin `koshconf`: Changing settings with koshconf is forbidden in a restricted shell.
+     1 |  koshconf create --force bash; echo "next status=$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
-rc=1
+next status=1
+off
+rc=0
 == kosh -r: koshconf set editor.auto_close_brackets_and_quotes on --persist
--c:1:1: error: Changing settings with koshconf is forbidden in a restricted shell.
-     1 |  koshconf set editor.auto_close_brackets_and_quotes on --persist; koshconf get editor.auto_close_brackets_and_quotes
+-c:1:1: error: Builtin `koshconf`: Changing settings with koshconf is forbidden in a restricted shell.
+     1 |  koshconf set editor.auto_close_brackets_and_quotes on --persist; echo "next status=$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-rc=1
+next status=1
+off
+rc=0
 == kosh -r: koshconf set editor.auto_close_brackets_and_quotes on
--c:1:1: error: Changing settings with koshconf is forbidden in a restricted shell.
-     1 |  koshconf set editor.auto_close_brackets_and_quotes on; koshconf get editor.auto_close_brackets_and_quotes
+-c:1:1: error: Builtin `koshconf`: Changing settings with koshconf is forbidden in a restricted shell.
+     1 |  koshconf set editor.auto_close_brackets_and_quotes on; echo "next status=$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-rc=1
+next status=1
+off
+rc=0
 == kosh -r: koshconf set mood bash
--c:1:1: error: Changing settings with koshconf is forbidden in a restricted shell.
-     1 |  koshconf set mood bash; koshconf get editor.auto_close_brackets_and_quotes
+-c:1:1: error: Builtin `koshconf`: Changing settings with koshconf is forbidden in a restricted shell.
+     1 |  koshconf set mood bash; echo "next status=$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~
-rc=1
+next status=1
+off
+rc=0
 == kosh -r: koshconf load BQEB
--c:1:1: error: Changing settings with koshconf is forbidden in a restricted shell.
-     1 |  koshconf load BQEB; koshconf get editor.auto_close_brackets_and_quotes
+-c:1:1: error: Builtin `koshconf`: Changing settings with koshconf is forbidden in a restricted shell.
+     1 |  koshconf load BQEB; echo "next status=$?"
        |  ^~~~~~~~~~~~~~~~~~
-rc=1
+next status=1
+off
+rc=0
 == set -r refuses a later change:
--c:1:9: error: Changing settings with koshconf is forbidden in a restricted shell.
+-c:1:9: error: Builtin `koshconf`: Changing settings with koshconf is forbidden in a restricted shell.
      1 |  set -r; koshconf set editor.auto_close_brackets_and_quotes on
        |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 rc=1
@@ -82,6 +94,6 @@ cd rc=1
 -c:3:3: error: Unable to assign 'PATH' because it is read only.
 3:1: trace:
 PATH rc=1
--c:4:3: error: Changing settings with koshconf is forbidden in a restricted shell.
+-c:4:3: error: Builtin `koshconf`: Changing settings with koshconf is forbidden in a restricted shell.
 4:1: trace:
 koshconf rc=1
