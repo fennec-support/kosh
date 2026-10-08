@@ -1,0 +1,15 @@
+#!/bin/env kosh
+
+# A process substitution path names a pipe: it exists, it is readable, it is a
+# FIFO, and it is not a regular file. Windows names it as a named pipe, which
+# the probe must not connect to.
+set -M bash
+probe() {
+  for test_operator in -e -r -p -f; do
+    if [ "$test_operator" "$1" ]; then echo "$2 $test_operator=yes"; else echo "$2 $test_operator=no"; fi
+  done
+  if [[ -p $1 ]]; then echo "$2 [[-p]]=yes"; else echo "$2 [[-p]]=no"; fi
+  read -r line <"$1"
+  echo "$2 read=$line"
+}
+probe <(echo input) input

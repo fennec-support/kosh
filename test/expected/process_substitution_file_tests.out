@@ -1,0 +1,6 @@
+input -e=yes
+input -r=yes
+input -p=yes
+input -f=no
+input [[-p]]=yes
+input read=input

@@ -475,9 +475,26 @@ fn temp_directory_path() throws -> String
   return String{"C:\\Windows\\Temp"};
 }
 
+static fn is_named_pipe_path(StringView path) wontthrow -> bool
+{
+  return path.starts_with(StringView{"\\\\.\\pipe\\"});
+}
+
+static fn named_pipe_exists(StringView path) wontthrow -> bool
+{
+  let const wide_path = utf8_to_wide(path, heap_allocator());
+  if (!wide_path.has_value()) return false;
+
+  if (WaitNamedPipeW(wide_path->begin(), NMPWAIT_NOWAIT) != FALSE) return true;
+
+  return GetLastError() == ERROR_SEM_TIMEOUT;
+}
+
 cold fn path_exists(StringView path) wontthrow -> bool
 {
   if (path == StringView{"/dev/null"}) return true;
+  if (is_named_pipe_path(path)) return named_pipe_exists(path);
+
   let const wide_path = utf8_to_wide(path, heap_allocator());
   return wide_path.has_value() &&
          GetFileAttributesW(wide_path->begin()) != INVALID_FILE_ATTRIBUTES;
@@ -494,6 +511,8 @@ cold fn path_is_directory(StringView path) wontthrow -> bool
 
 fn path_is_regular_file(StringView path) wontthrow -> bool
 {
+  if (is_named_pipe_path(path)) return false;
+
   let const wide_path = utf8_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return false;
   let const attributes = GetFileAttributesW(wide_path->begin());
@@ -510,7 +529,8 @@ fn path_is_symbolic_link(StringView path) wontthrow -> bool
          (attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
 }
 
-/* Windows has no POSIX block, character, FIFO, or socket file type. */
+/* Windows has no POSIX block, character, or socket file type. A named pipe
+   stands in for a FIFO. */
 fn path_is_block_device(StringView path) wontthrow -> bool
 {
   unused(path);
@@ -522,8 +542,7 @@ fn path_is_character_device(StringView path) wontthrow -> bool
 }
 fn path_is_fifo(StringView path) wontthrow -> bool
 {
-  unused(path);
-  return false;
+  return is_named_pipe_path(path) && named_pipe_exists(path);
 }
 fn path_is_socket(StringView path) wontthrow -> bool
 {
@@ -655,12 +674,16 @@ fn path_is_older_than(StringView first, StringView second) wontthrow -> bool
 
 fn path_is_readable(StringView path) wontthrow -> bool
 {
+  if (is_named_pipe_path(path)) return named_pipe_exists(path);
+
   let const wide_path = utf8_to_wide(path, heap_allocator());
   return wide_path.has_value() && _waccess(wide_path->begin(), 4) == 0;
 }
 
 fn path_is_writable(StringView path) wontthrow -> bool
 {
+  if (is_named_pipe_path(path)) return named_pipe_exists(path);
+
   let const wide_path = utf8_to_wide(path, heap_allocator());
   return wide_path.has_value() && _waccess(wide_path->begin(), 2) == 0;
 }
@@ -856,7 +879,7 @@ fn open_file_descriptor(StringView path, file_open_mode mode)
   case file_open_mode::ReadNonblocking: disposition = OPEN_EXISTING; break;
   case file_open_mode::ReadWrite: disposition = OPEN_ALWAYS; break;
   }
-  let const is_named_pipe = path.starts_with(StringView{"\\\\.\\pipe\\"});
+  let const is_named_pipe = is_named_pipe_path(path);
   if (is_named_pipe) disposition = OPEN_EXISTING;
 
   /* Non-inheritable, execute_program flips it only while spawning the child. */
