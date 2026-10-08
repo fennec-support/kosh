@@ -184,6 +184,7 @@ public:
            StringView description);
 
   fn enable() wontthrow -> void;
+  fn disable() wontthrow -> void;
   fn toggle() throws -> void;
   pure fn is_enabled() const wontthrow -> bool;
 
@@ -237,14 +238,15 @@ public:
   FlagManyStrings(char short_name, StringView long_name, flag_section section,
                   StringView description);
 
-  fn append(StringView v, usize position = 0,
-            SourceLocation location = {}) throws -> void;
+  fn append(StringView v, usize position = 0, SourceLocation location = {},
+            bool was_given_after_plus = false) throws -> void;
   pure fn count() const wontthrow -> usize;
   pure fn is_empty() const wontthrow -> bool;
 
   pure fn get(usize i) const wontthrow -> StringView;
   pure fn get_position(usize i) const wontthrow -> usize;
   pure fn get_location(usize i) const wontthrow -> SourceLocation;
+  pure fn was_given_after_plus(usize i) const wontthrow -> bool;
 
   fn take_next() wontthrow -> String;
   pure fn at_end() const wontthrow -> bool;
@@ -256,6 +258,7 @@ private:
   ArrayList<String> m_values{heap_allocator()};
   ArrayList<usize> m_positions{heap_allocator()};
   ArrayList<SourceLocation> m_locations{heap_allocator()};
+  ArrayList<bool> m_plus_markers{heap_allocator()};
   usize m_value_position{0};
 };
 
@@ -296,6 +299,7 @@ struct flag_parse_options
   bool should_allow_options_after_operands{false};
   bool should_accept_unknown_flag_operand{false};
   bool should_omit_program_name{false};
+  StringView plus_letters{};
 };
 
 /* operand_value_flag names the one flag whose value is read from the first

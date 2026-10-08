@@ -1,0 +1,40 @@
+== the settings file applies:
+ehBc pipefail=on extglob=on editor=vi
+== +e, +o, and +O keep the options off:
+hBc pipefail=off extglob=off editor=emacs
+== -o and -O name options the file leaves alone:
+ehBCc pipefail=on extglob=on editor=vi
+noclobber
+nocasematch
+== the later of a letter and its name wins:
+hBc pipefail=on extglob=on editor=vi
+ehBc pipefail=on extglob=on editor=vi
+huBc pipefail=on extglob=on editor=vi
+== -euo pipefail names pipefail with -o:
+ehuBc
+pipefail
+== -o posix acts as --posix:
+bash-posix
+== a read-only shopt name is accepted without effect:
+not-login
+== an unknown name or letter is a usage error:
+1:4: error: Unknown -o option name.
+     1 |  -o nosuch
+       |     ^~~~~~
+rc=2
+1:4: error: Unknown -O option name.
+     1 |  +O nosuch
+       |     ^~~~~~
+rc=2
+error: The flag '+r' cannot be turned off.
+rc=2
+== the kosh mood refuses to turn off an option it holds:
+error: The kosh mood keeps 'pipefail' on.
+note: Switch to the bash mood with `set -M bash` to change it.
+rc=2
+== a plus word after the script is an operand:
+operand=+e
+== --no-config reads no settings file and drops KOSHCONF:
+kosh
+huBc
+0

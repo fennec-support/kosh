@@ -6,7 +6,9 @@ The settings Koshka owns live in koshconf files. They hold option values, not
 shell commands. A shell reads them before any shell startup file, whether or
 not it is interactive. The following do not read a settings file or apply
 KOSHCONF: a shell started with
-.BR \-Q ,
+.B \-Q
+or
+.BR \-\-no\-config ,
 a lint, format, or language server run, rescue mode, a shell whose real and
 effective ids differ, and a fresh evaluator that receives its state from its
 parent. A binary started as a koshkit utility or as
@@ -179,11 +181,19 @@ another value gets a warning that identifies the option and
 and the line is skipped. An option specified on the command line, such as
 .BR \-u ,
 .BR \-e ,
+.BR +e ,
+.BR "\-o pipefail" ,
+.BR "+O extglob" ,
 .BR \-T ,
 .BR \-\-no\-traces ,
 or
 .BR \-L ,
-keeps the command-line value. A later line replaces an earlier one, and the
+keeps the command-line value, so
+.B kosh +e script
+runs without errexit whatever a file says. To run with no settings file at
+all, start the shell with
+.BR \-\-no\-config .
+A later line replaces an earlier one, and the
 user file and KOSHCONF replace the system file.
 .PP
 .B koshconf create

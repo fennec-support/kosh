@@ -226,6 +226,37 @@ The shell acts as a login shell.
 .BR \-h ", " \-m
 The options are accepted without effect for compatibility.
 .TP
+.BR \-o " " \fINAME\fR ", " +o " " \fINAME\fR
+The set option NAME is turned on, or off with
+.BR +o ,
+as
+.B set \-o
+.I NAME
+and
+.B set +o
+.I NAME
+do. A name with a letter, such as errexit, acts as that letter, and the later
+of the two wins.
+.B \-o posix
+acts as
+.BR \-\-posix .
+An unknown name exits with status 2.
+.TP
+.BR +a ", " +C ", " +e ", " +f ", " +n ", " +p ", " +t ", " +u ", " +v ", " +x
+The letter's option is turned off, as with
+.BR "set +e" .
+Letters may be combined, as in
+.BR +eu ,
+and
+.B \-euo pipefail
+names pipefail with
+.BR \-o .
+.PP
+An option named on the command line, on or off, keeps that value over the
+settings files and KOSHCONF, so
+.B kosh +e script
+runs the script without errexit even when a settings file turns it on.
+.TP
 .B \-\-
 Option parsing ends. The next operand is treated as the script name.
 .SS Bash options
@@ -242,6 +273,18 @@ mood reads no rc file and ignores this option.
 The interactive non-login Bash rc and a custom rc file are skipped. Login
 profiles and noninteractive BASH_ENV processing are unchanged. The stock Bash
 completion script is not loaded.
+.TP
+.BR \-O " " \fINAME\fR ", " +O " " \fINAME\fR
+The shopt option NAME is turned on, or off with
+.BR +O ,
+as
+.B shopt \-s
+.I NAME
+and
+.B shopt \-u
+.I NAME
+do, and keeps that value over the settings files. A read-only name such as
+login_shell is accepted without effect. An unknown name exits with status 2.
 .TP
 .BR \-r ", " \-\-restricted
 The shell becomes restricted after the startup files finish.
@@ -477,6 +520,12 @@ It is ignored in
 .TP
 .BR \-Q ", " \-\-no\-init\-files
 No startup file is read. PATH is set to /usr/bin:/bin.
+.TP
+.B \-\-no\-config
+No settings file is read, and KOSHCONF from the environment is ignored and
+removed. PATH and the shell startup files are left alone, so a script can run
+with the default settings without the minimal PATH of
+.BR \-Q .
 .TP
 .BR \-W ", " \-WW ", " \-WWW
 The analysis stage has strict, lenient, and annoying tiers. In the default

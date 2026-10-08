@@ -71,6 +71,9 @@ FLAG(LOGIN, Bool, 'l', "login", Posix,
      "Act as a login shell and source the profiles.");
 FLAG(IGNORED1, Bool, 'h', "\0", Posix, "Ignored, left for compatibility.");
 FLAG(IGNORED2, Bool, 'm', "\0", Posix, "Ignored, left for compatibility.");
+FLAG(SET_OPTION, ManyStrings, 'o', "\0", Posix,
+     "Turn on the set option NAME, or turn it off as +o NAME. A letter after "
+     "a plus, such as +e, turns its option off.");
 
 FLAG(RCFILE, String, '\0', "rcfile", Bash,
      "Source FILE as the interactive rc in place of the mood default.");
@@ -82,8 +85,13 @@ FLAG(RESTRICTED, Bool, 'r', "restricted", Bash,
      "Start a restricted shell after the startup files finish.");
 FLAG(PRIVILEGED, Bool, 'p', "privileged", Bash,
      "Run privileged, suppressing BASH_ENV. Unequal ids skip startup files.");
+FLAG(SHOPT_OPTION, ManyStrings, 'O', "\0", Bash,
+     "Turn on the shopt option NAME, or turn it off as +O NAME.");
 FLAG(CLEAN, Bool, 'Q', "no-init-files", Kosh,
      "Start clean, reading no startup file and setting a minimal PATH.");
+FLAG(NO_CONFIG, Bool, '\0', "no-config", Kosh,
+     "Read no kosh.conf file and ignore KOSHCONF, keeping PATH and the shell "
+     "startup files.");
 FLAG(POSIX_COMPAT, Bool, '\0', "posix", Bash,
      "Run in bash POSIX mode, equivalent to --mood bash-posix.");
 
@@ -346,14 +354,23 @@ static fn splice_environment_flags(command_line &line) throws -> void
   }
 }
 
+static constexpr flag_parse_options INVOCATION_PARSE_OPTIONS{
+    .plus_letters = "aCefhmnptuvxoO"};
+
+static fn parse_invocation_flags(int argc, const char *const *argv) throws
+    -> ArrayList<String>
+{
+  return parse_flags(FLAG_LIST, argc, argv, 0, &FLAG_COMMAND, nullptr, nullptr,
+                     StringView{}, INVOCATION_PARSE_OPTIONS);
+}
+
 static fn enter_rescue_mode(command_line &line) throws -> void
 {
   show_message("Entering rescue.");
   line.is_rescue_mode = true;
   reset_flags(FLAG_LIST);
   try {
-    line.operands =
-        parse_flags(FLAG_LIST, line.argc, line.argv, 0, &FLAG_COMMAND);
+    line.operands = parse_invocation_flags(line.argc, line.argv);
   } catch (...) {
     /* The real argv carried the bad flag too, so even the clean reparse fails.
        The program name is kept as the sole operand so $0 and SHELL stay the
@@ -376,8 +393,7 @@ static fn parse_command_line(command_line &line) throws -> Maybe<int>
   let const parse_argc = line.get_parse_argc();
   let const parse_argv = line.get_parse_argv();
   try {
-    line.operands =
-        parse_flags(FLAG_LIST, parse_argc, parse_argv, 0, &FLAG_COMMAND);
+    line.operands = parse_invocation_flags(parse_argc, parse_argv);
   } catch (const ErrorWithLocation &e) {
     let const source = join_command_line(parse_argc, parse_argv);
     let highlight_context =
@@ -441,6 +457,82 @@ static fn parse_init_moods(ArrayList<mimic_mood> &moods) throws -> Maybe<int>
           "'sh'");
       return 2;
     }
+  }
+
+  return None;
+}
+
+struct invocation_option
+{
+  const option_descriptor *option;
+  option_origin origin;
+  bool is_on;
+};
+
+static fn find_letter_flag(char letter) wontthrow -> FlagBool *
+{
+  switch (letter) {
+  case 'a': return &FLAG_EXPORT_ALL;
+  case 'C': return &FLAG_NO_CLOBBER;
+  case 'e': return &FLAG_ERROR_EXIT;
+  case 'f': return &FLAG_DISABLE_EXPANSION;
+  case 'n': return &FLAG_NO_EXEC;
+  case 'p': return &FLAG_PRIVILEGED;
+  case 't': return &FLAG_ONE_COMMAND;
+  case 'u': return &FLAG_NOUNSET;
+  case 'v': return &FLAG_VERBOSE;
+  case 'x': return &FLAG_EXPAND_VERBOSE;
+  default: return nullptr;
+  }
+}
+
+static fn
+resolve_invocation_options(ArrayList<invocation_option> &options) throws
+    -> Maybe<int>
+{
+  for (usize i = 0; i < FLAG_SET_OPTION.count(); i++) {
+    let const name = FLAG_SET_OPTION.get(i);
+    let const is_on = !FLAG_SET_OPTION.was_given_after_plus(i);
+    let const *option = find_option_by_set_name(name);
+    if (option == nullptr) {
+      show_unknown_flag_value(is_on ? "-o " : "+o ", name,
+                              "Unknown -o option name");
+      return 2;
+    }
+
+    let const position = FLAG_SET_OPTION.get_position(i);
+    if (let *letter_flag = find_letter_flag(option->letter);
+        letter_flag != nullptr)
+    {
+      if (position > letter_flag->position()) {
+        if (is_on)
+          letter_flag->enable();
+        else
+          letter_flag->disable();
+        letter_flag->set_position(static_cast<u32>(position));
+      }
+      continue;
+    }
+    if (option->storage == option_storage::Posix) {
+      if (is_on) FLAG_POSIX_COMPAT.enable();
+      continue;
+    }
+
+    options.push(invocation_option{option, option_origin::Set, is_on});
+  }
+
+  for (usize i = 0; i < FLAG_SHOPT_OPTION.count(); i++) {
+    let const name = FLAG_SHOPT_OPTION.get(i);
+    let const is_on = !FLAG_SHOPT_OPTION.was_given_after_plus(i);
+    let const *option = find_option_by_shopt_name(name);
+    if (option == nullptr) {
+      show_unknown_flag_value(is_on ? "-O " : "+O ", name,
+                              "Unknown -O option name");
+      return 2;
+    }
+    if (option->is_read_only) continue;
+
+    options.push(invocation_option{option, option_origin::Shopt, is_on});
   }
 
   return None;
@@ -784,9 +876,9 @@ static fn read_startup_configuration(const command_line &line,
 
   let const should_skip =
       has_elevated_identity || line.is_rescue_mode || FLAG_CLEAN.is_enabled() ||
-      FLAG_LINT.is_enabled() || FLAG_FORMAT.is_enabled() ||
-      FLAG_LANGUAGE_SERVER.is_enabled() || is_debug_driver_run() ||
-      !inherited.bootstrap.payload.is_empty();
+      FLAG_NO_CONFIG.is_enabled() || FLAG_LINT.is_enabled() ||
+      FLAG_FORMAT.is_enabled() || FLAG_LANGUAGE_SERVER.is_enabled() ||
+      is_debug_driver_run() || !inherited.bootstrap.payload.is_empty();
   if (should_skip) {
     LOG(Info, "skipping the configuration files");
     return reading;
@@ -853,9 +945,17 @@ static fn describe_init_moods(const ArrayList<mimic_mood> &init_moods) throws
   return text;
 }
 
-static fn is_pinned_by_invocation(const option_descriptor &option) wontthrow
-    -> bool
+static fn is_pinned_by_invocation(
+    const option_descriptor &option,
+    const ArrayList<invocation_option> &invocation_options) wontthrow -> bool
 {
+  for (let const &named : invocation_options) {
+    let const is_same_editor_mode =
+        named.option->storage == option_storage::EditorMode &&
+        option.storage == option_storage::EditorMode;
+    if (named.option == &option || is_same_editor_mode) return true;
+  }
+
   let const is_analysis_inherited = os::has_environment_variable(
       inheritable_analysis_state::ENVIRONMENT_NAME);
   switch (option.storage) {
@@ -876,13 +976,14 @@ static fn is_pinned_by_invocation(const option_descriptor &option) wontthrow
   }
 
   switch (option.shell_option) {
-  case shell_option_id::Errexit: return FLAG_ERROR_EXIT.is_enabled();
-  case shell_option_id::Noglob: return FLAG_DISABLE_EXPANSION.is_enabled();
-  case shell_option_id::Verbose: return FLAG_VERBOSE.is_enabled();
-  case shell_option_id::Xtrace: return FLAG_EXPAND_VERBOSE.is_enabled();
-  case shell_option_id::Allexport: return FLAG_EXPORT_ALL.is_enabled();
-  case shell_option_id::Noclobber: return FLAG_NO_CLOBBER.is_enabled();
-  case shell_option_id::Nounset: return FLAG_NOUNSET.is_enabled();
+  case shell_option_id::Errexit:
+  case shell_option_id::Noglob:
+  case shell_option_id::Verbose:
+  case shell_option_id::Xtrace:
+  case shell_option_id::Allexport:
+  case shell_option_id::Noclobber:
+  case shell_option_id::Nounset:
+    return find_letter_flag(option.letter)->position() != 0;
   case shell_option_id::ExtendedArithmetic:
     return FLAG_EXTENDED_ARITHMETIC.is_enabled();
   case shell_option_id::Koshkit: return FLAG_ENABLE_KOSHKIT.is_enabled();
@@ -902,14 +1003,15 @@ static fn is_pinned_by_invocation(const option_descriptor &option) wontthrow
   }
 }
 
-static fn apply_startup_configuration(EvalContext &context,
-                                      koshconf_reading &reading) throws -> void
+static fn apply_startup_configuration(
+    EvalContext &context, koshconf_reading &reading,
+    const ArrayList<invocation_option> &invocation_options) throws -> Maybe<int>
 {
   let const is_kosh_mood =
       context.runtime_state().get_mood() == mimic_mood::Default;
   let unpinned = ArrayList<koshconf_setting>{heap_allocator()};
   for (let &setting : reading.settings) {
-    if (is_pinned_by_invocation(*setting.option)) continue;
+    if (is_pinned_by_invocation(*setting.option, invocation_options)) continue;
 
     let const &option = *setting.option;
     let const value = option.type == option_type::String
@@ -937,6 +1039,18 @@ static fn apply_startup_configuration(EvalContext &context,
   for (let const &warning : reading.warnings)
     show_message(warning.view());
   reading.warnings.clear();
+
+  for (let const &named : invocation_options) {
+    try {
+      write_option_number(context, *named.option, named.is_on ? 1 : 0,
+                          named.origin);
+    } catch (const Error &error) {
+      show_message(error.to_string());
+      return 2;
+    }
+  }
+
+  return None;
 }
 
 struct session_config
@@ -1985,6 +2099,14 @@ fn kosh_main(int argc, char **argv) -> int
   {
     return *usage_status;
   }
+  let invocation_options =
+      koshka::ArrayList<koshka::invocation_option>{koshka::heap_allocator()};
+  if (koshka::Maybe<int> usage_status =
+          koshka::resolve_invocation_options(invocation_options);
+      usage_status.has_value())
+  {
+    return *usage_status;
+  }
   let &file_names = line.operands;
   let const parse_argc = line.get_parse_argc();
   let const parse_argv = line.get_parse_argv();
@@ -2119,7 +2241,12 @@ fn kosh_main(int argc, char **argv) -> int
   }
   koshka::seed_session_variables(context, identity, init_moods, inherited,
                                  input.should_be_interactive);
-  koshka::apply_startup_configuration(context, configuration);
+  if (koshka::Maybe<int> option_status = koshka::apply_startup_configuration(
+          context, configuration, invocation_options);
+      option_status.has_value())
+  {
+    return *option_status;
+  }
 
   /* The path map starts empty because eager scanning helps only in interactive
      mode. */

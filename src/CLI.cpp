@@ -73,6 +73,8 @@ fn FlagBool::toggle() throws -> void { m_value = !m_value; }
 
 fn FlagBool::enable() wontthrow -> void { m_value = true; }
 
+fn FlagBool::disable() wontthrow -> void { m_value = false; }
+
 pure fn FlagBool::is_enabled() const wontthrow -> bool { return m_value; }
 
 fn FlagBool::reset() throws -> void
@@ -156,11 +158,13 @@ FlagManyStrings::FlagManyStrings(FlagList &flags, char short_name,
 }
 
 fn FlagManyStrings::append(StringView v, usize position,
-                           SourceLocation location) throws -> void
+                           SourceLocation location,
+                           bool was_given_after_plus) throws -> void
 {
   m_values.push_managed(v);
   m_positions.push(position);
   m_locations.push(steal(location));
+  m_plus_markers.push(was_given_after_plus);
 }
 
 pure fn FlagManyStrings::is_empty() const wontthrow -> bool
@@ -191,6 +195,12 @@ pure fn FlagManyStrings::get_location(usize i) const wontthrow -> SourceLocation
   return m_locations[i];
 }
 
+pure fn FlagManyStrings::was_given_after_plus(usize i) const wontthrow -> bool
+{
+  ASSERT(i < m_plus_markers.count());
+  return m_plus_markers[i];
+}
+
 fn FlagManyStrings::take_next() wontthrow -> String
 {
   ASSERT(m_value_position < m_values.count());
@@ -209,6 +219,7 @@ fn FlagManyStrings::reset() throws -> void
   m_values.clear();
   m_positions.clear();
   m_locations.clear();
+  m_plus_markers.clear();
   m_value_position = 0;
 }
 
@@ -485,6 +496,7 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
   Flag *previous_flag{};
   bool should_take_next_argument_as_value = false;
   bool was_previous_flag_long = false;
+  bool was_previous_flag_after_plus = false;
   bool should_ignore_rest = false;
 
   for (int i = 0; i < argc; i++) {
@@ -528,12 +540,69 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
           static_cast<FlagString *>(previous_flag)->set(argv[i]);
         else
           static_cast<FlagManyStrings *>(previous_flag)
-              ->append(argv[i], value_position, value_location);
+              ->append(argv[i], value_position, value_location,
+                       was_previous_flag_after_plus);
         previous_flag->set_position(value_position);
         previous_flag->set_value_location(value_location);
+        was_previous_flag_after_plus = false;
 
         continue;
       }
+    }
+
+    let const is_plus_cluster = !parse_options.plus_letters.is_empty() &&
+                                !should_ignore_rest && i != 0 &&
+                                argv[i][0] == '+' && argv[i][1] != '\0';
+    if (is_plus_cluster) {
+      for (const char *letter = &argv[i][1]; *letter != '\0'; letter++) {
+        Flag *plus_flag = nullptr;
+        const char *plus_value = nullptr;
+        let const is_known =
+            parse_options.plus_letters.find_character(*letter).has_value() &&
+            find_flag(flags, letter, false, &plus_flag, &plus_value);
+        if (!is_known) {
+          let message = String{"The flag '+"};
+          message.push(*letter);
+          message += "' cannot be turned off";
+          let error =
+              ErrorWithLocation{argument_location(argv, static_cast<usize>(i),
+                                                  base_position, arg_locations),
+                                prefixed_message(program_name, message.view())};
+          error.set_command_status(2);
+          throw error;
+        }
+
+        let const flag_location =
+            boolean_flag_location(argv, static_cast<usize>(i), letter, false,
+                                  base_position, arg_locations);
+        if (plus_flag->kind() == Flag::Kind::Bool) {
+          static_cast<FlagBool *>(plus_flag)->disable();
+          plus_flag->set_position(++position);
+          plus_flag->set_value_location(flag_location);
+          continue;
+        }
+
+        ASSERT(plus_flag->kind() == Flag::Kind::ManyStrings);
+        if (*plus_value != '\0') {
+          let const value_position = ++position;
+          let const value_location = attached_flag_value_location(
+              argv, static_cast<usize>(i), plus_value, base_position,
+              arg_locations);
+          static_cast<FlagManyStrings *>(plus_flag)->append(
+              plus_value, value_position, value_location, true);
+          plus_flag->set_position(value_position);
+          plus_flag->set_value_location(value_location);
+        } else {
+          should_take_next_argument_as_value = true;
+          previous_flag = plus_flag;
+          was_previous_flag_long = false;
+          was_previous_flag_after_plus = true;
+          plus_flag->set_value_location(flag_location);
+        }
+        break;
+      }
+
+      continue;
     }
 
     /* argv[0] is the invocation name even when it opens with a dash, the login

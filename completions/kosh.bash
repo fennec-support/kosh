@@ -40,6 +40,14 @@ _kosh_complete ()
       _kosh_compgen -f -- "$current_word"
       return
     ;;
+    -o | +o)
+      _kosh_compgen -A setopt -- "$current_word"
+      return
+    ;;
+    -O | +O)
+      _kosh_compgen -A shopt -- "$current_word"
+      return
+    ;;
     -c | --command)
       COMPREPLY=()
 
@@ -51,7 +59,7 @@ _kosh_complete ()
     long_flags="--version --short-version --help --interactive --stdin \
 --command --error-exit --no-glob --one-command --verbose --xtrace --export-all \
 --no-clobber --no-exec --no-unset --login --rcfile --init-file --norc \
---restricted --privileged --no-init-files --posix --mood \
+--restricted --privileged --no-init-files --no-config --posix --mood \
 --init-moods --enable-mimicry --dumb --tab-selector --lint --format --apply --as-language-server --list-diagnostics \
 --no-diagnostics --no-annoying-diagnostics --no-init-diagnostics --no-traces --no-completion --no-syntax-highlighting \
 --enable-koshkit --enable-extended-arithmetic \
@@ -59,12 +67,16 @@ _kosh_complete ()
 --show-optimizer-diagnostics --show-exit-code --show-all-exit-codes --show-lexed-words --show-stats --show-memory \
 "
   local \
-    short_flags="-V -i -s -c -e -f -t -v -x -a -C -n -u -l -r -p -M -L -I -W -WW -WWW \
+    short_flags="-V -i -s -c -e -f -t -v -x -a -C -n -u -l -r -p -o -O -M -L -I -W -WW -WWW \
 -Q -T -A -N -R"
+  local plus_flags="+a +C +e +f +n +p +t +u +v +x +o +O"
 
   if [[ $current_word == --* ]]
   then
     _kosh_compgen -W "$long_flags" -- "$current_word"
+  elif [[ $current_word == +* ]]
+  then
+    _kosh_compgen -W "$plus_flags" -- "$current_word"
   elif [[ $current_word == -* ]]
   then
     _kosh_compgen -W "$short_flags $long_flags" -- "$current_word"
