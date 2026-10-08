@@ -4266,6 +4266,12 @@ protected:
   fn compute_list_slice_bounds(StringView slice, i64 value_count,
                                const SourceLocation *source_location =
                                    nullptr) throws -> substring_bounds;
+  /* A sparse indexed array counts the offset in indices, and an associative
+     array counts it from one in its listing order, as bash does. */
+  fn compute_array_slice_bounds(
+      StringView name, StringView slice, i64 element_count,
+      const SourceLocation *source_location = nullptr) throws
+      -> substring_bounds;
   fn join_list_slice(substring_bounds bounds, const ArrayList<String> &values,
                      Maybe<StringView> leading, bool is_star) const throws
       -> String;

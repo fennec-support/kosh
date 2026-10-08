@@ -1354,6 +1354,11 @@ removes one element.
 The form ${v:offset:length} selects a substring. A negative offset requires a
 leading space, as in ${v: \-3}. Without the space, ${v:\-3} is the default-value
 form. A negative length excludes that many characters from the end.
+On an indexed array, ${a[@]:offset:length} starts at the first element whose
+index is at least the offset and takes length elements. A negative offset
+counts back from one past the highest index, and one that falls before index
+zero selects nothing. On an associative array the offset counts from one in
+the listing order, as bash counts it.
 .PP
 The form ${v/pat/rep} replaces the first match. The form ${v//pat/rep} replaces
 every match. The anchors /# and /% select the start and end. The

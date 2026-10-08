@@ -34,10 +34,7 @@ fn compute_substring_bounds(i64 value_count, i64 offset, Maybe<i64> length,
   i64 start = offset < 0 && offset < -value_count ? -1
               : offset < 0                        ? value_count + offset
                                                   : offset;
-  if (start < 0) {
-    if (subject == substring_subject::Scalar) return substring_bounds{0, 0};
-    start = 0;
-  }
+  if (start < 0) return substring_bounds{0, 0};
   if (start > value_count) start = value_count;
 
   i64 end = value_count;
@@ -453,7 +450,7 @@ private:
   fn mark_quoted_empty() throws -> void;
   fn start_field() throws -> void;
   fn emit_field_elements(const ArrayList<String> &values) throws -> void;
-  fn emit_field_slice(StringView slice, const ArrayList<String> &values,
+  fn emit_field_slice(substring_bounds bounds, const ArrayList<String> &values,
                       Maybe<StringView> leading, bool is_star) throws -> void;
   fn expand_field_reference(StringView inner) throws -> bool;
   fn toggle_quote_state() throws -> bool;
@@ -521,12 +518,10 @@ fn EvalContext::ModifierWordExpander::emit_field_elements(
 }
 
 fn EvalContext::ModifierWordExpander::emit_field_slice(
-    StringView slice, const ArrayList<String> &values,
+    substring_bounds bounds, const ArrayList<String> &values,
     Maybe<StringView> leading, bool is_star) throws -> void
 {
   let const leading_count = leading.has_value() ? usize{1} : usize{0};
-  let const total = static_cast<i64>(values.count() + leading_count);
-  let const bounds = m_context.compute_list_slice_bounds(slice, total);
 
   if (is_star && is_quoted()) {
     emit_run(m_context.join_list_slice(bounds, values, leading, true).view(),
@@ -557,9 +552,11 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
   if (inner.length > 2 && (inner[0] == '@' || inner[0] == '*') &&
       inner[1] == ':' && !is_colon_modifier_operator(inner[2]))
   {
+    let const &params = m_context.variable_store().positional_params();
     emit_field_slice(
-        inner.substring(2), m_context.variable_store().positional_params(),
-        m_context.execution_store().get_shell_name(), inner[0] == '*');
+        m_context.compute_list_slice_bounds(
+            inner.substring(2), static_cast<i64>(params.count() + 1)),
+        params, m_context.execution_store().get_shell_name(), inner[0] == '*');
     return true;
   }
 
@@ -586,8 +583,11 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
   }
   if (rest.length > 1 && rest[0] == ':' && !is_colon_modifier_operator(rest[1]))
   {
-    emit_field_slice(rest.substring(1), m_context.collect_array_elements(name),
-                     None, is_star);
+    let const elements = m_context.collect_array_elements(name);
+    emit_field_slice(
+        m_context.compute_array_slice_bounds(
+            name, rest.substring(1), static_cast<i64>(elements.count())),
+        elements, None, is_star);
     return true;
   }
 
@@ -1668,8 +1668,8 @@ fn EvalContext::ParameterExpander::expand_subscripted() throws -> Maybe<String>
   {
     let const slice = modifier.substring(1);
     let slice_location = SourceLocation{};
-    let const bounds = m_context.compute_list_slice_bounds(
-        slice, static_cast<i64>(elements.count()),
+    let const bounds = m_context.compute_array_slice_bounds(
+        m_name, slice, static_cast<i64>(elements.count()),
         get_location_for(slice, slice_location));
 
     return m_context.join_list_slice(
@@ -2439,6 +2439,70 @@ fn EvalContext::compute_list_slice_bounds(
 
   return compute_substring_bounds(value_count, operands.offset, operands.length,
                                   substring_subject::List);
+}
+
+fn EvalContext::compute_array_slice_bounds(
+    StringView name, StringView slice, i64 element_count,
+    const SourceLocation *source_location) throws -> substring_bounds
+{
+  let const is_associative = is_associative_array(name);
+  if (!is_associative && !variable_store().sparse_arrays().has(name)) {
+    return compute_list_slice_bounds(slice, element_count, source_location);
+  }
+
+  let const operands = parse_substring_operands(*this, slice, source_location);
+  let const do_check_length = [&operands] {
+    if (operands.length.has_value() && *operands.length < 0) {
+      throw Error{"Unable to take the substring because the length names "
+                  "a point before the offset"};
+    }
+  };
+  let const empty = substring_bounds{0, 0};
+  if (element_count == 0) return empty;
+
+  if (is_associative) {
+    let const limit = element_count + (operands.offset < 0 ? 1 : 0);
+    let const offset =
+        operands.offset < 0 ? operands.offset + limit : operands.offset;
+    if (offset < 0 || offset > limit) return empty;
+
+    do_check_length();
+    let const start = offset > 0 ? offset - 1 : i64{0};
+    if (start >= element_count) return empty;
+
+    let const taken_count = operands.length.has_value()
+                                ? (*operands.length > 0 ? *operands.length : 1)
+                                : limit;
+
+    return substring_bounds{start, taken_count > element_count - start
+                                       ? element_count
+                                       : start + taken_count};
+  }
+
+  let const subscripts = collect_array_subscripts(name);
+  let const do_index_at = [&subscripts](usize position) throws -> i64 {
+    let const parsed = subscripts[position].to<i64>();
+    return parsed.is_error() ? 0 : parsed.value();
+  };
+  let const last_index = do_index_at(subscripts.count() - 1);
+  let const offset =
+      operands.offset < 0 ? operands.offset + last_index + 1 : operands.offset;
+  if (offset < 0 || offset > last_index) return empty;
+
+  do_check_length();
+  i64 start = 0;
+  while (start < element_count &&
+         do_index_at(static_cast<usize>(start)) < offset)
+  {
+    start++;
+  }
+
+  let const end =
+      !operands.length.has_value() || *operands.length > element_count - start
+          ? element_count
+          : start + *operands.length;
+
+  return substring_bounds{start, end};
 }
 
 fn EvalContext::join_list_slice(substring_bounds bounds,

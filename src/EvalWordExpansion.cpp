@@ -530,8 +530,9 @@ hot fn EvalContext::expand_word(const Word &word) throws
           let const total = static_cast<i64>(elements.count());
 
           let slice_location = SourceLocation{};
-          let const bounds = compute_list_slice_bounds(
-              slice, total, do_source_location_for(slice, slice_location));
+          let const bounds = compute_array_slice_bounds(
+              array_name, slice, total,
+              do_source_location_for(slice, slice_location));
           let const start = bounds.start;
           let const end = bounds.end;
 

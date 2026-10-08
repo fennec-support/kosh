@@ -1046,6 +1046,18 @@ fn EvalContext::apply_array_subscript(
       if (has_separator) separator = variable_store().field_separators()[0];
     }
     let out = String{scratch_allocator()};
+    if (variable_store().sparse_arrays().has(name)) rarely
+      {
+        let const elements = collect_array_elements(name);
+        for (usize i = 0; i < elements.count(); i++) {
+          if (i > 0 && has_separator) {
+            out.push(separator);
+          }
+          out.append(elements[i].view());
+        }
+        return out;
+      }
+
     for (usize i = 0; i < array->count(); i++) {
       if (i > 0 && has_separator) {
         out.push(separator);
