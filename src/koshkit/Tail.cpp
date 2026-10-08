@@ -890,4 +890,4 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
   }
 }
 
-}
+} /* namespace koshka::koshkit */

@@ -819,6 +819,6 @@ inline constexpr static_string_entry<const char *> HELP_ALLOWLIST_ENTRIES[] = {
 };
 inline constexpr StaticStringMap HELP_ALLOWLIST{HELP_ALLOWLIST_ENTRIES};
 
-}
+} /* namespace completion */
 
-}
+} /* namespace koshka */

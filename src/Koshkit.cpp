@@ -1497,6 +1497,6 @@ cold noinline fn report_soft_koshkit_util_error(
 
 #endif
 
-}
+} /* namespace koshkit */
 
-}
+} /* namespace koshka */

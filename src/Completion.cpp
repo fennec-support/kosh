@@ -1589,6 +1589,6 @@ fn complete(StringView line, usize cursor, EvalContext &context,
   };
 }
 
-}
+} /* namespace completion */
 
-}
+} /* namespace koshka */

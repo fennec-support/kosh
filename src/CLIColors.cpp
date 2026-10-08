@@ -197,7 +197,7 @@ pure fn file_entry_color(file_entry_type type) wontthrow -> StringView
   return StringView{};
 }
 
-}
+} /* namespace colors */
 
 pure fn highlight_role_name(highlight_role role) wontthrow -> StringView
 {
@@ -229,4 +229,4 @@ pure fn highlight_role_name(highlight_role role) wontthrow -> StringView
   return "unknown";
 }
 
-}
+} /* namespace koshka */

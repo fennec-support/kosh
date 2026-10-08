@@ -268,4 +268,4 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   utils::quit(status, utils::farewell_policy::Silent);
 }
 
-}
+} /* namespace koshka */

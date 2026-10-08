@@ -38,7 +38,7 @@ enum class edit_mode : u8
 fn get_codepoint_byte_offset(const char *bytes, usize byte_length,
                              usize codepoint_index) -> usize;
 
-}
+} /* namespace toiletline */
 
 #if !defined KOSH_NO_TOILETLINE
 
@@ -105,7 +105,7 @@ fn tl_arena_realloc(opaque *pointer, usize length) -> opaque *
 #define TL_ASSERT           ASSERT
 #define TL_HISTORY_MAX_SIZE (1024 * 4)
 
-}
+} /* namespace */
 
 #define TOILETLINE_IMPLEMENTATION
 #if defined __clang__ || defined __GNUC__
@@ -1135,7 +1135,7 @@ fn kosh_idle_callback(const char *buffer, size_t cursor) -> int
   return COMPLETION_SESSION.idle(buffer, cursor);
 }
 
-}
+} /* namespace */
 
 namespace toiletline {
 
@@ -3457,6 +3457,6 @@ fn emit_command_start_marks(EvalContext &context, StringView command_line)
   koshka::flush();
 }
 
-}
+} /* namespace toiletline */
 
 #endif

@@ -1546,6 +1546,6 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
   SET_AND_RETURN_EXIT_STATUS(cxt, 0);
 }
 
-}
+} /* namespace expressions */
 
-}
+} /* namespace koshka */

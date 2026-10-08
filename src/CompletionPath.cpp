@@ -412,6 +412,6 @@ fn internal::resolve_listing_directory(
   return resolved_path;
 }
 
-}
+} /* namespace completion */
 
-}
+} /* namespace koshka */

@@ -95,4 +95,4 @@ fn parse_package_json_format(const parser_format_input &input,
   }
 }
 
-}
+} /* namespace koshka */

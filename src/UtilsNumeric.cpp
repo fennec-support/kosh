@@ -909,6 +909,6 @@ fn append_shell_quoted(String &out, StringView arg, bool is_utf8_locale) throws
   out.push('\'');
 }
 
-}
+} /* namespace utils */
 
-}
+} /* namespace koshka */

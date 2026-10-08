@@ -32,4 +32,4 @@ inline constexpr wchar_t PARENT_PROCESS_ID_WIDE[] =
 inline constexpr wchar_t STATE_NAMED_PIPE_WIDE[] =
     L"KOSH_INTERNAL_STATE_NAMED_PIPE";
 
-}
+} /* namespace koshka::internal */

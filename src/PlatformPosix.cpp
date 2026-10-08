@@ -611,8 +611,8 @@ static sigset_t SIGNALS_UNBLOCKED_BY_TRAP = {};
 
 static sigset_t SIGNALS_WITH_TRAP_ACTION = {};
 
-}
-}
+} /* namespace os */
+} /* namespace koshka */
 
 #define KOSH_UMASK(mask) umask(static_cast<mode_t>(mask))
 
@@ -2978,9 +2978,9 @@ fn sleep_for_seconds(double seconds) wontthrow -> void
   }
 }
 
-}
+} /* namespace os */
 
-}
+} /* namespace koshka */
 
 #if KOSH_PLATFORM_IS KOSH_PLATFORM_COSMO
 
@@ -2999,9 +2999,9 @@ fn normalize_program_name(String &program_name) -> program_name_info
   return normalize_windows_program_name(program_name);
 }
 
-}
+} /* namespace os */
 
-}
+} /* namespace koshka */
 
 #endif
 
@@ -3035,5 +3035,5 @@ fn initialize_platform_runtime() wontthrow -> void
   capture_entry_ignored_signals();
 }
 
-}
-}
+} /* namespace os */
+} /* namespace koshka */

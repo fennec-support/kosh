@@ -291,6 +291,6 @@ fn describe_syntax_problem(StringView line, usize cursor, mimic_mood mood,
 fn describe_analysis_finding(StringView line, EvalContext &context,
                              String &out) throws -> bool;
 
-}
+} /* namespace completion */
 
-}
+} /* namespace koshka */

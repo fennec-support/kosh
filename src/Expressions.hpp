@@ -74,7 +74,7 @@ class ForLoop;
 class CStyleForLoop;
 class Subshell;
 class RedirectedCommand;
-}
+} /* namespace expressions */
 
 struct active_getopts_call
 {
@@ -1772,6 +1772,6 @@ protected:
   SparseList<analysis_scope_definition> m_analysis_scope_definitions{};
 };
 
-}
+} /* namespace expressions */
 
-}
+} /* namespace koshka */

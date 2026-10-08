@@ -1004,6 +1004,6 @@ fn format_mode_string(u32 mode) throws -> String
   return result;
 }
 
-}
+} /* namespace os */
 
-}
+} /* namespace koshka */

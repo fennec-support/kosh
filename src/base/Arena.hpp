@@ -202,4 +202,4 @@ private:
 
 fn is_arena_pointer(const opaque *pointer) wontthrow -> bool;
 
-}
+} /* namespace koshka */

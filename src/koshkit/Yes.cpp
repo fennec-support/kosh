@@ -52,4 +52,4 @@ fn Yes::execute(const ExecContext &ec, EvalContext &cxt,
   }
 }
 
-}
+} /* namespace koshka::koshkit */

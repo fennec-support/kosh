@@ -160,4 +160,4 @@ public:
 template <usize Count>
 StaticStringSet(const PackedStringKey (&)[Count]) -> StaticStringSet<Count>;
 
-}
+} /* namespace koshka */

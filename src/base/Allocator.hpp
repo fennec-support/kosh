@@ -25,7 +25,7 @@ fn bump_arena_owns(const BumpArena *arena, const opaque *pointer) wontthrow
 namespace os {
 fn allocate_aligned(usize length, usize alignment) wontthrow -> opaque *;
 fn free_aligned(opaque *pointer) wontthrow -> void;
-}
+} /* namespace os */
 
 namespace allocators {
 
@@ -179,7 +179,7 @@ hot inline fn heap_free(opaque *pointer, usize length,
 #endif
 }
 
-}
+} /* namespace allocators */
 
 class Allocator
 {
@@ -336,4 +336,4 @@ inline fn fake_allocator() wontthrow -> Allocator
   return Allocator{static_cast<uintptr>(Allocator::Kind::Fake)};
 }
 
-}
+} /* namespace koshka */

@@ -341,7 +341,7 @@ fn names_text(const ArrayList<String> &names, Allocator allocator) throws
   return result;
 }
 
-}
+} /* namespace */
 
 fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
                  const ArrayList<String> &args,
@@ -674,4 +674,4 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-}
+} /* namespace koshka::koshkit */

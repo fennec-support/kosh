@@ -3100,4 +3100,4 @@ cold fn EvalContext::make_stats_string() const throws -> String
   return stats_text;
 }
 
-}
+} /* namespace koshka */

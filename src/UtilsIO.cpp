@@ -661,6 +661,6 @@ fn parse_file_mode(StringView expression, u32 current_mode, u32 creation_mask,
   return mode;
 }
 
-}
+} /* namespace utils */
 
-}
+} /* namespace koshka */

@@ -765,7 +765,7 @@ pure fn borrowed_word_literal(const Word &word) wontthrow -> Maybe<StringView>
   }
 }
 
-}
+} /* namespace */
 
 WordToken::WordToken(SourceLocation location, Word word)
     : Token(steal(location), Token::Kind::Word), m_word(steal(word))
@@ -873,6 +873,6 @@ TOKEN_DECLS(ExclamationEquals, "!=");
 TOKEN_DECLS(ExclamationMark, "!");
 TOKEN_DECLS(Tilde, "~");
 
-}
+} /* namespace tokens */
 
-}
+} /* namespace koshka */

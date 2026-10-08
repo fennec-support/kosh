@@ -292,7 +292,7 @@ fn scan_path(StringView path, ArrayList<watched_entry> &entries, usize depth,
   }
 }
 
-}
+} /* namespace */
 
 fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
                     const ArrayList<String> &args,
@@ -481,4 +481,4 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
   return was_interrupted ? 130 : 0;
 }
 
-}
+} /* namespace koshka::koshkit */

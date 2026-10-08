@@ -161,7 +161,7 @@ static fn contains_ignore_case(StringView haystack, StringView needle) wontthrow
   return false;
 }
 
-}
+} /* namespace */
 
 fn z_completion_candidates(StringView query, Allocator allocator) throws
     -> ArrayList<String>
@@ -288,4 +288,4 @@ fn Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return 0;
 }
 
-}
+} /* namespace koshka */

@@ -114,7 +114,7 @@ fn apply_symbolic_mask(StringView spec, u32 current_mask) throws -> Maybe<u32>
   return (~allowed) & PERMISSION_BITS;
 }
 
-}
+} /* namespace */
 
 cold i32 Umask::execute(ExecContext &ec, EvalContext &cxt) const throws
 {
@@ -183,4 +183,4 @@ cold i32 Umask::execute(ExecContext &ec, EvalContext &cxt) const throws
   return 0;
 }
 
-}
+} /* namespace koshka */

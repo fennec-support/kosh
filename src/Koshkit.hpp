@@ -686,6 +686,6 @@ cold noinline fn report_soft_koshkit_util_error(const ExecContext &ec,
                                                 StringView message,
                                                 StringView note) throws -> void;
 
-}
+} /* namespace koshkit */
 
-}
+} /* namespace koshka */

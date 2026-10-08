@@ -207,7 +207,7 @@ static fn change_path_ownership_recursive(
   return did_succeed;
 }
 
-}
+} /* namespace */
 
 fn resolve_user_id(StringView text) throws -> Maybe<u32>
 {
@@ -270,4 +270,4 @@ fn change_operands_ownership(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-}
+} /* namespace koshka::utils */

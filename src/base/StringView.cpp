@@ -39,7 +39,7 @@ fn parse_integer_in_base(StringView text, bool *out_of_range,
                          int_base base) throws -> ErrorOr<i64>;
 fn parse_integer_in_base_u64(StringView text, int_base base) throws
     -> ErrorOr<u64>;
-}
+} /* namespace utils */
 
 template <class T>
 static fn narrow_integer(i64 value) throws -> ErrorOr<T>
@@ -197,4 +197,4 @@ fn StringView::starts_with(StringView prefix) const wontthrow -> bool
          byte_scan::are_bytes_equal(data, prefix.data, prefix.length);
 }
 
-}
+} /* namespace koshka */

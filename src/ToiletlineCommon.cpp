@@ -159,7 +159,7 @@ flatten static fn display_width_walk(StringView text, usize stop_after,
   return width;
 }
 
-}
+} /* namespace koshka::internal */
 
 namespace toiletline {
 
@@ -361,4 +361,4 @@ fn get_byte_offset_at_or_before_display_cell(StringView text,
   return previous_byte_offset;
 }
 
-}
+} /* namespace toiletline */

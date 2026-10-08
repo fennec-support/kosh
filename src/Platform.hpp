@@ -158,7 +158,7 @@ hot alwaysinline fn read_native_endian_bytes(const char *bytes,
   return value;
 }
 
-}
+} /* namespace koshka::os */
 
 #include "base/ArrayList.hpp"
 #include "base/Maybe.hpp"
@@ -2304,8 +2304,8 @@ fn replace_process(ExecContext &&ec) throws -> void;
 
 fn redirect_self(const ExecContext &ec) throws -> void;
 
-}
+} /* namespace os */
 
-}
+} /* namespace koshka */
 
 #include "PlatformBatch.hpp"

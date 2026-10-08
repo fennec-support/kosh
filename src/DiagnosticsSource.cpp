@@ -357,7 +357,7 @@ pure fn line_above_continues(StringView source, usize line_start) wontthrow
   return ending > 0 && source[ending - 1] == '\\';
 }
 
-}
+} /* namespace */
 
 fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
 {
@@ -638,7 +638,7 @@ pure fn header_holds_shebang(StringView source, usize first_line_end) wontthrow
   return false;
 }
 
-}
+} /* namespace */
 
 fn check_shebang(AnalysisContext &actx, StringView source,
                  missing_shebang_policy shebang_policy) throws -> void
@@ -940,7 +940,7 @@ fn check_directive_body(AnalysisContext &actx, StringView source,
   }
 }
 
-}
+} /* namespace */
 
 fn check_shellcheck_directives(
     AnalysisContext &actx, StringView source,
@@ -1114,7 +1114,7 @@ pure fn names_are_near_misspellings(StringView left, StringView right) wontthrow
       utils::bounded_osa_distance(left, right, budget), right.length);
 }
 
-}
+} /* namespace */
 
 fn check_command_name_assignments(AnalysisContext &actx) throws -> void
 {
@@ -1305,7 +1305,7 @@ fn check_call_before_definition(
   }
 }
 
-}
+} /* namespace */
 
 fn check_function_argument_dataflow(AnalysisContext &actx) throws -> void
 {
@@ -1340,6 +1340,6 @@ fn check_function_argument_dataflow(AnalysisContext &actx) throws -> void
     check_call_before_definition(actx, summaries);
 }
 
-}
+} /* namespace expressions::internal */
 
-}
+} /* namespace koshka */

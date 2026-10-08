@@ -1694,4 +1694,4 @@ fn Grep::execute(const ExecContext &ec, EvalContext &cxt,
   return search.run();
 }
 
-}
+} /* namespace koshka::koshkit */

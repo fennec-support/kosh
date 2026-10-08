@@ -1192,4 +1192,4 @@ fn Bc::execute(const ExecContext &ec, EvalContext &cxt,
   return runtime.status;
 }
 
-}
+} /* namespace koshka::koshkit */

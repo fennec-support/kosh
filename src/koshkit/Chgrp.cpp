@@ -58,4 +58,4 @@ fn Chgrp::execute(const ExecContext &ec, EvalContext &cxt,
        FLAG_CHGRP_PHYSICAL.position()});
 }
 
-}
+} /* namespace koshka::koshkit */

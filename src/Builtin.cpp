@@ -880,4 +880,4 @@ fn print_directory_stack(EvalContext &cxt, const ExecContext &ec,
   ec.print_to_stdout(out);
 }
 
-}
+} /* namespace koshka */

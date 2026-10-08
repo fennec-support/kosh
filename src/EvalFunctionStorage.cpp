@@ -191,4 +191,4 @@ fn FunctionBodyHandle::release() wontthrow -> void
   m_storage = nullptr;
 }
 
-}
+} /* namespace koshka */

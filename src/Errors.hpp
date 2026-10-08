@@ -434,4 +434,4 @@ relocate_if_unlocated(const ErrorBase &error,
   }
 }
 
-}
+} /* namespace koshka */

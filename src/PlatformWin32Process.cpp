@@ -265,8 +265,8 @@ static fn record_child_process_usage(process child) wontthrow -> void
   }
 }
 
-}
-}
+} /* namespace os */
+} /* namespace koshka */
 
 namespace koshka {
 
@@ -3553,6 +3553,6 @@ fn process_owner_name(u32 pid, u32 owner_id, Allocator allocator) throws
   return qualified_name;
 }
 
-}
+} /* namespace os */
 
-}
+} /* namespace koshka */

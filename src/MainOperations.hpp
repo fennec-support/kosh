@@ -2515,4 +2515,4 @@ static fn run_lint_apply_operation(const ArrayList<String> &file_names,
   return did_fail ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
-}
+} /* namespace koshka */

@@ -117,4 +117,4 @@ fn Tput::execute(const ExecContext &ec, EvalContext &cxt,
   return 1;
 }
 
-}
+} /* namespace koshka::koshkit */

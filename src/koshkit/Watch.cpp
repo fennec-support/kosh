@@ -99,7 +99,7 @@ fn append_truncated_lines(String &output, StringView body,
   }
 }
 
-}
+} /* namespace */
 
 fn Watch::execute(const ExecContext &ec, EvalContext &cxt,
                   const ArrayList<String> &args,
@@ -195,4 +195,4 @@ fn Watch::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-}
+} /* namespace koshka::koshkit */

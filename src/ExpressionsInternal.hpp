@@ -420,4 +420,4 @@ fn analyze_region_substitutions(AnalysisContext &actx,
                                 bool is_heredoc, bool is_unconditional) throws
     -> void;
 
-}
+} /* namespace koshka::expressions::internal */

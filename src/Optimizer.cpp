@@ -117,7 +117,7 @@ fn constant_test_verdict(const ArrayList<const Token *> &args,
   return None;
 }
 
-}
+} /* namespace */
 
 fn literal_word_value(const Word &word) throws -> Maybe<String>
 {
@@ -174,7 +174,7 @@ fn command_word_literal(const Token *token) throws -> Maybe<String>
   return name;
 }
 
-}
+} /* namespace */
 
 fn plain_variable_reference_name(const Token *token) wontthrow
     -> Maybe<StringView>
@@ -688,7 +688,7 @@ OptimizationRule *const OPTIMIZATION_RULES[] = {
 
 constexpr usize MAX_OPTIMIZATION_PASSES = 8;
 
-}
+} /* namespace */
 
 fn optimize_node(const Expression *node, AnalysisContext &actx) throws -> void
 {
@@ -709,6 +709,6 @@ fn optimize_node(const Expression *node, AnalysisContext &actx) throws -> void
       MAX_OPTIMIZATION_PASSES);
 }
 
-}
+} /* namespace optimizer */
 
-}
+} /* namespace koshka */

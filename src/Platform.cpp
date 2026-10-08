@@ -57,8 +57,8 @@ static u64 ENVIRONMENT_EPOCH = 0;
 
 pure fn get_environment_epoch() wontthrow -> u64 { return ENVIRONMENT_EPOCH; }
 
-}
-}
+} /* namespace os */
+} /* namespace koshka */
 
 #if defined __x86_64__ && !defined __COSMOPOLITAN__
 #include <immintrin.h>
@@ -525,8 +525,8 @@ fn read_fd_to_string(os::descriptor fd, Allocator allocator) throws
   }
 }
 
-}
-}
+} /* namespace os */
+} /* namespace koshka */
 
 namespace koshka {
 namespace os {
@@ -753,7 +753,7 @@ pure alwaysinline fn crc32c_update_software(u32 crc, const u8 *data,
   return crc;
 }
 
-}
+} /* namespace */
 
 fn crc32c_update(u32 crc, const void *data, usize length) wontthrow -> u32
 {
@@ -772,5 +772,5 @@ fn crc32c_update(u32 crc, const void *data, usize length) wontthrow -> u32
   return crc32c_update_software(crc, bytes, length);
 }
 
-}
-}
+} /* namespace os */
+} /* namespace koshka */

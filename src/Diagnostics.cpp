@@ -247,4 +247,4 @@ fn collect_shellcheck_selectors(
   }
 }
 
-}
+} /* namespace koshka */

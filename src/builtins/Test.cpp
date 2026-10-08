@@ -341,7 +341,7 @@ public:
   }
 };
 
-}
+} /* namespace */
 
 fn Test::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
@@ -390,4 +390,4 @@ fn Test::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return result ? 0 : 1;
 }
 
-}
+} /* namespace koshka */

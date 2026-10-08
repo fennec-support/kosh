@@ -176,7 +176,7 @@ fn update_generated_executable_paths(AnalysisContext &actx,
   }
 }
 
-}
+} /* namespace */
 
 pure fn internal::is_single_word_special_parameter(StringView name) wontthrow
     -> bool
@@ -1614,6 +1614,6 @@ cold fn SimpleCommand::try_static_condition_verdict(
   return optimizer::simple_command_static_verdict(m_args, actx);
 }
 
-}
+} /* namespace expressions */
 
-}
+} /* namespace koshka */

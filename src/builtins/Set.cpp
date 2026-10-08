@@ -266,7 +266,7 @@ fn format_option_switches_help() throws -> String
   return section;
 }
 
-}
+} /* namespace */
 
 fn query_shell_option(const EvalContext &cxt, StringView name) throws
     -> Maybe<bool>
@@ -556,4 +556,4 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return 0;
 }
 
-}
+} /* namespace koshka */

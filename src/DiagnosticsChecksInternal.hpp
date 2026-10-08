@@ -70,4 +70,4 @@ pure fn arithmetic_assignment_target(StringView expression,
                                      usize equals_position) wontthrow
     -> StringView;
 
-}
+} /* namespace koshka::expressions::internal */

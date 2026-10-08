@@ -316,7 +316,7 @@ pure fn is_network_file(StringView path) wontthrow -> bool
   return path == "[socket]" || path.starts_with("socket:[");
 }
 
-}
+} /* namespace */
 
 fn EvilFiles::execute(
     const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
@@ -622,4 +622,4 @@ fn EvilFiles::execute(
   return 0;
 }
 
-}
+} /* namespace koshka::koshkit */

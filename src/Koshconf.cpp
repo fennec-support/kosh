@@ -372,7 +372,7 @@ fn replace_koshconf_target(const Path &target, StringView contents) throws
   LOG(Info, "wrote the koshconf file '%s'", target.text().c_str());
 }
 
-}
+} /* namespace */
 
 fn get_user_koshconf_path() throws -> Maybe<Path>
 {
@@ -983,4 +983,4 @@ fn persist_koshconf_setting(const Path &path, const option_descriptor &option,
   replace_koshconf_target(target, contents.view());
 }
 
-}
+} /* namespace koshka */

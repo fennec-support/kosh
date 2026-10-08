@@ -70,4 +70,4 @@ fn Eval::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                    : syntax_error_reach::PosixScript);
 }
 
-}
+} /* namespace koshka */

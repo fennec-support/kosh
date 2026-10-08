@@ -1067,6 +1067,6 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
   SET_AND_RETURN_EXIT_STATUS(cxt, ret);
 }
 
-}
+} /* namespace expressions */
 
-}
+} /* namespace koshka */

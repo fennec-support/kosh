@@ -1617,6 +1617,6 @@ fn RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
   }
 }
 
-}
+} /* namespace expressions */
 
-}
+} /* namespace koshka */

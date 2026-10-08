@@ -970,4 +970,4 @@ private:
   ArrayList<T> *m_list{nullptr};
 };
 
-}
+} /* namespace koshka */

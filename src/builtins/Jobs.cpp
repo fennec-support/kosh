@@ -59,7 +59,7 @@ fn should_color_jobs(EvalContext &cxt) throws -> bool
          colors::stdout_wants_color();
 }
 
-}
+} /* namespace */
 
 fn Jobs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
@@ -134,4 +134,4 @@ fn Jobs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return status;
 }
 
-}
+} /* namespace koshka */

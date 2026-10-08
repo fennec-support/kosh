@@ -227,4 +227,4 @@ fn Cmp::execute(const ExecContext &ec, EvalContext &cxt,
   return has_difference ? 1 : 0;
 }
 
-}
+} /* namespace koshka::koshkit */

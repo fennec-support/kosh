@@ -955,4 +955,4 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
   return run.status;
 }
 
-}
+} /* namespace koshka::koshkit */

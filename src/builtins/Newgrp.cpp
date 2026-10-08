@@ -70,4 +70,4 @@ fn Newgrp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return 126;
 }
 
-}
+} /* namespace koshka */

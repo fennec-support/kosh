@@ -3134,7 +3134,7 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
   return true;
 }
 
-}
+} /* namespace */
 
 fn parse_makefile_shell_sources(StringView source, Allocator allocator) throws
     -> SortedArrayList<make_shell_source_range,
@@ -3803,4 +3803,4 @@ fn collect_makefile_targets(EvalContext &cxt, const Path &makefile) throws
   return targets;
 }
 
-}
+} /* namespace koshka::koshkit */

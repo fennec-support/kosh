@@ -777,4 +777,4 @@ enum class suppressible_warning : u8
   UnsetTestOperand,
 };
 
-}
+} /* namespace koshka */

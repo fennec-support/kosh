@@ -128,9 +128,9 @@ fn format_named_values(StringView names, Args &&...args) -> String
   return out;
 }
 
-}
+} /* namespace log_detail */
 
-}
+} /* namespace koshka */
 
 #define T__LOG_STRINGIZE2(x) #x
 #define T__LOG_STRINGIZE(x)  T__LOG_STRINGIZE2(x)

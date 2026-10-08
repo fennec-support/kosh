@@ -111,7 +111,7 @@ fn check_trap_condition_operands(AnalysisContext &actx,
   }
 }
 
-}
+} /* namespace */
 
 fn check_command_name_lints(AnalysisContext &actx,
                             const command_lint_input &input) throws -> void
@@ -620,6 +620,6 @@ fn check_command_value_lints(AnalysisContext &actx,
   }
 }
 
-}
+} /* namespace expressions::internal */
 
-}
+} /* namespace koshka */

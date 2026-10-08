@@ -180,4 +180,4 @@ fn write_option_text(EvalContext &cxt, const option_descriptor &option,
                      StringView text, option_origin origin) throws -> void;
 fn step_warning_level(EvalContext &cxt, bool should_raise) throws -> void;
 
-}
+} /* namespace koshka */

@@ -497,4 +497,4 @@ fn Path::is_shell_source(StringView source) const throws -> bool
          detect_mimic_shell_from_source(source).has_value();
 }
 
-}
+} /* namespace koshka */

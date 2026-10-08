@@ -769,7 +769,7 @@ struct kosh_identity_cache
   bool is_initialized{false};
 };
 
-}
+} /* namespace */
 
 fn kosh_identity(StringView fallback_path) throws -> Maybe<StringView>
 {
@@ -1055,6 +1055,6 @@ hot pure fn is_posix_reserved_word(StringView word) wontthrow -> bool
   return RESERVED_WORDS.contains(word);
 }
 
-}
+} /* namespace utils */
 
-}
+} /* namespace koshka */

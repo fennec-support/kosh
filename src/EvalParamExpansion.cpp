@@ -361,7 +361,7 @@ static fn trim_value_with_modifier(EvalContext &cxt, StringView value,
                                   : pattern_match_extent::Shortest);
 }
 
-}
+} /* namespace */
 
 fn EvalContext::expand_modifier_word_masked(
     StringView word, Bitset &active_out, bool remove_quotes,
@@ -3162,4 +3162,4 @@ fn EvalContext::apply_value_modifier(
   return String{scratch_allocator(), value};
 }
 
-}
+} /* namespace koshka */

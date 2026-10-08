@@ -155,7 +155,7 @@ fn render_limit(const os::resource_limit &limit, u64 divisor,
   return String::from(value / divisor, allocator);
 }
 
-}
+} /* namespace */
 
 cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
@@ -261,4 +261,4 @@ cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return 0;
 }
 
-}
+} /* namespace koshka */

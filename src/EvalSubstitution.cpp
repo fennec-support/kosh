@@ -1227,4 +1227,4 @@ fn EvalContext::run_function_substitution(const Expression *ast,
   return captured;
 }
 
-}
+} /* namespace koshka */

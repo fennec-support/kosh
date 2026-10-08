@@ -536,7 +536,7 @@ fn append_conversion(String &out, String &spec, char conv,
   }
 }
 
-}
+} /* namespace */
 
 fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
@@ -731,4 +731,4 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return exit_status;
 }
 
-}
+} /* namespace koshka */

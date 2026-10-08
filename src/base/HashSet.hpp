@@ -53,4 +53,4 @@ private:
   StringMap<Nothing> m_map;
 };
 
-}
+} /* namespace koshka */

@@ -29,4 +29,4 @@ fn write_history_file_atomically(const koshka::Path &path,
                                  koshka::StringView name_prefix,
                                  koshka::StringView contents) throws -> bool;
 
-}
+} /* namespace toiletline */

@@ -694,6 +694,6 @@ fn IfStatement::analyze(AnalysisContext &actx,
   actx.constant_variables.clear();
 }
 
-}
+} /* namespace expressions */
 
-}
+} /* namespace koshka */

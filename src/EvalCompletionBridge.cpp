@@ -243,4 +243,4 @@ fn EvalContext::run_completion_function(StringView function_name,
   return result;
 }
 
-}
+} /* namespace koshka */

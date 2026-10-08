@@ -61,4 +61,4 @@ inline pure fn mood_name(mimic_mood mood) wontthrow -> StringView
   return "kosh";
 }
 
-}
+} /* namespace koshka */

@@ -343,7 +343,7 @@ fn byte_is_in_posix_class(StringView class_name, u8 byte) throws -> bool
   return false;
 }
 
-}
+} /* namespace */
 
 pure fn token_has_uppercase(StringView token) wontthrow -> bool
 {
@@ -707,6 +707,6 @@ retry_star:
   return false;
 }
 
-}
+} /* namespace utils */
 
-}
+} /* namespace koshka */

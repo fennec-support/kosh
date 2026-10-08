@@ -41,4 +41,4 @@ fn parse_justfile_format(const parser_format_input &input,
   }
 }
 
-}
+} /* namespace koshka */

@@ -491,7 +491,7 @@ fn platform_peak_rss_bytes(long peak_rss) wontthrow -> u64
 #endif
 }
 
-}
+} /* namespace */
 
 fn affinity_processor_count(usize online_count,
                             usize configured_count) wontthrow -> usize
@@ -3010,5 +3010,5 @@ fn FileWatcher::wait(f64 timeout_seconds) wontthrow -> void
   }
 }
 
-}
-}
+} /* namespace os */
+} /* namespace koshka */

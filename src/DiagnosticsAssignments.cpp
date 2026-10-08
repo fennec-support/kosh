@@ -113,7 +113,7 @@ cold fn plain_output_redirection_spelling(Redirection::Kind kind) wontthrow
   }
 }
 
-}
+} /* namespace */
 
 fn check_redirection_lints(AnalysisContext &actx,
                            const command_lint_input &input) throws -> void
@@ -633,7 +633,7 @@ pure fn prefix_value_is_own_name(const PrefixAssignment &var) wontthrow -> bool
   return has_matching_reference;
 }
 
-}
+} /* namespace */
 
 fn check_prefix_assignment_reads(AnalysisContext &actx,
                                  const command_lint_input &input) throws -> bool
@@ -754,7 +754,7 @@ pure fn value_has_written_escape(StringView value) wontthrow -> bool
   return false;
 }
 
-}
+} /* namespace */
 
 static pure fn segment_holds_literal_pattern(StringView text) wontthrow -> bool
 {
@@ -996,7 +996,7 @@ pure fn case_pattern_can_match_word(const Word &case_word,
   return true;
 }
 
-}
+} /* namespace */
 
 fn check_case_word_shape(AnalysisContext &actx,
                          const case_lint_input &input) throws -> void
@@ -1107,6 +1107,6 @@ fn check_case_option_coverage(AnalysisContext &actx,
   }
 }
 
-}
+} /* namespace expressions::internal */
 
-}
+} /* namespace koshka */

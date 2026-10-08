@@ -117,4 +117,4 @@ private:
   usize m_length{0};
 };
 
-}
+} /* namespace koshka */

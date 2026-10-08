@@ -113,7 +113,7 @@ static fn command_word_is_glob(const Word &word) wontthrow -> bool
   return false;
 }
 
-}
+} /* namespace */
 
 hot fn SimpleCommand::get_literal_command_lookup(
     const ArrayList<String> &program_args) const throws
@@ -1227,6 +1227,6 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
   return ret;
 }
 
-}
+} /* namespace expressions */
 
-}
+} /* namespace koshka */

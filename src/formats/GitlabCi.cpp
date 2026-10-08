@@ -22,4 +22,4 @@ fn parse_gitlab_ci_format(const parser_format_input &input,
                                   yaml_shell_selection::Nearby);
 }
 
-}
+} /* namespace koshka */

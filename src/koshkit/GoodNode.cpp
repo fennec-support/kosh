@@ -206,7 +206,7 @@ pure fn path_is_beneath(const Path &root, const Path &candidate) wontthrow
           os::is_directory_separator(candidate_text[root_text.length]));
 }
 
-}
+} /* namespace */
 
 fn GoodNode::execute(
     const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
@@ -322,4 +322,4 @@ fn GoodNode::execute(
   return exit_status;
 }
 
-}
+} /* namespace koshka::koshkit */

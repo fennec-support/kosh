@@ -23,7 +23,7 @@ namespace koshka {
 namespace utils {
 struct decoded_shell_word;
 struct leading_expansion;
-}
+} /* namespace utils */
 
 namespace completion::internal {
 
@@ -176,6 +176,6 @@ fn command_substitution_range(StringView line, usize cursor) throws
 fn collect_case_pattern_ends(StringView line,
                              ArrayList<usize> &positions) throws -> void;
 
-}
+} /* namespace completion::internal */
 
-}
+} /* namespace koshka */

@@ -48,4 +48,4 @@ fn parse_rpm_spec_format(const parser_format_input &input,
   }
 }
 
-}
+} /* namespace koshka */

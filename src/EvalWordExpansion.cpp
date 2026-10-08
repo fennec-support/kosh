@@ -1082,4 +1082,4 @@ fn EvalContext::expand_wordlist_to_fields(StringView wordlist,
   return fields;
 }
 
-}
+} /* namespace koshka */

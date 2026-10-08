@@ -21,4 +21,4 @@ fn parse_vscode_tasks_format(const parser_format_input &input,
                                   mimic_mood::Posix);
 }
 
-}
+} /* namespace koshka */

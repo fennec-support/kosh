@@ -170,4 +170,4 @@ private:
   ArrayList<SourceLocation> m_arg_locations{heap_allocator()};
 };
 
-}
+} /* namespace koshka */

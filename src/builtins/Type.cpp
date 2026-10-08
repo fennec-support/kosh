@@ -304,4 +304,4 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return is_posix_report ? 127 : 1;
 }
 
-}
+} /* namespace koshka */

@@ -1692,4 +1692,4 @@ fn show_report_warnings(const ArrayList<String> &warnings) throws -> void
     show_warning(warning.view());
 }
 
-}
+} /* namespace koshka */

@@ -103,4 +103,4 @@ fn Let::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return is_last_nonzero ? 0 : 1;
 }
 
-}
+} /* namespace koshka */

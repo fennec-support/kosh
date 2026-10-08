@@ -216,7 +216,7 @@ hot pure fn is_special_parameter_char(char ch) wontthrow -> bool
   }
 }
 
-}
+} /* namespace lexer */
 
 Lexer::Lexer(StringView source, BumpArena &arena, Maybe<StringView> filename,
              mimic_mood mood, ParseSession::AllocationKind allocation_kind,
@@ -1805,4 +1805,4 @@ cold fn lexer::find_segment_substitution(StringView source,
   return entry;
 }
 
-}
+} /* namespace koshka */

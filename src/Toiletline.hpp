@@ -22,7 +22,7 @@
 
 namespace koshka {
 class EvalContext;
-}
+} /* namespace koshka */
 
 namespace toiletline {
 
@@ -171,4 +171,4 @@ void restore_terminal_for_exit() noexcept;
 
 void emit_newlines(StringView buffer);
 
-}
+} /* namespace toiletline */

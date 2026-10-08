@@ -143,7 +143,7 @@ hot inline fn find_last_byte(const char *bytes, usize byte_count,
   return nullptr;
 }
 
-}
+} /* namespace byte_scan */
 
 template <class T>
 class ErrorOr;
@@ -285,4 +285,4 @@ pure alwaysinline fn hash_bytes(StringView view) wontthrow -> u64
   return hash;
 }
 
-}
+} /* namespace koshka */

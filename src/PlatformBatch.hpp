@@ -38,7 +38,7 @@ inline pure fn decode_directory_descriptor(u64 byte_offset) wontthrow
 #endif
 }
 
-}
+} /* namespace batch_internal */
 
 struct batch_operation
 {
@@ -258,7 +258,7 @@ fn execute_batch_operations(const batched_syscall *operations,
                             usize operation_count,
                             batch_result *results) wontthrow -> void;
 
-}
+} /* namespace batch_internal */
 
 class Batch
 {
@@ -284,4 +284,4 @@ private:
   bool m_has_metadata_operations{false};
 };
 
-}
+} /* namespace koshka::os */

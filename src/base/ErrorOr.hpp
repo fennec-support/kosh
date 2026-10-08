@@ -117,7 +117,7 @@ private:
                                                                : sizeof(Error)];
 };
 
-}
+} /* namespace koshka */
 
 #define TRY(expr)                                                              \
   ({                                                                           \

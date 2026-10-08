@@ -962,4 +962,4 @@ hot fn Parser::parse_conditional_command() throws -> Command *
   return node;
 }
 
-}
+} /* namespace koshka */

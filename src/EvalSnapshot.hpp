@@ -378,4 +378,4 @@ private:
   bool m_is_owned{false};
 };
 
-}
+} /* namespace koshka */

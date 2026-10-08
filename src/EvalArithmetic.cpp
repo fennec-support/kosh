@@ -1959,7 +1959,7 @@ public:
   }
 };
 
-}
+} /* namespace */
 
 fn EvalContext::read_array_element_arithmetic_text(StringView name,
                                                    StringView subscript) throws
@@ -2004,7 +2004,7 @@ fn evaluate_arithmetic_value(
   return parser.parse();
 }
 
-}
+} /* namespace */
 
 fn EvalContext::evaluate_arithmetic(StringView expression,
                                     const SourceLocation *expression_base,
@@ -2145,7 +2145,7 @@ fn evaluate_arithmetic_cached_value(EvalContext *context, StringView expression,
   return evaluator.run();
 }
 
-}
+} /* namespace */
 
 fn EvalContext::evaluate_arithmetic_cached_text(
     const WordSegment &segment) throws -> String
@@ -2239,7 +2239,7 @@ fn get_constant_arithmetic_arena() wontthrow -> BumpArena &
   return arena;
 }
 
-}
+} /* namespace */
 
 fn evaluate_constant_arithmetic(StringView expression) throws -> i64
 {
@@ -2302,4 +2302,4 @@ pure fn obvious_xor_power_operator_position(StringView expression) wontthrow
   return operator_position;
 }
 
-}
+} /* namespace koshka */

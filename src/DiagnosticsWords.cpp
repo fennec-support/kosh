@@ -1365,6 +1365,6 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
   }
 }
 
-}
+} /* namespace expressions::internal */
 
-}
+} /* namespace koshka */

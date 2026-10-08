@@ -394,7 +394,7 @@ fn expand_braces(const Word &word, Allocator alloc) throws -> ArrayList<Word>
   return words;
 }
 
-}
+} /* namespace */
 
 static pure fn segment_is_literal(const WordSegment &segment) wontthrow -> bool
 {
@@ -812,4 +812,4 @@ fn EvalContext::write_xtrace(const ArrayList<String> &args) throws -> void
   write_xtrace(command.view());
 }
 
-}
+} /* namespace koshka */

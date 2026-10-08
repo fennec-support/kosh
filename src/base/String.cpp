@@ -258,4 +258,4 @@ KOSH_STRING_TO(hu32)
 KOSH_STRING_TO(hu64)
 #undef KOSH_STRING_TO
 
-}
+} /* namespace koshka */

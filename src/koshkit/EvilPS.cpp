@@ -789,7 +789,7 @@ fn evilps_live_state::handle_key(live_view_key key) throws
   }
 }
 
-}
+} /* namespace */
 
 fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
                    const ArrayList<String> &args,
@@ -994,4 +994,4 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-}
+} /* namespace koshka::koshkit */

@@ -69,4 +69,4 @@ fn Uname::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-}
+} /* namespace koshka::koshkit */

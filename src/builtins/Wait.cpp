@@ -47,7 +47,7 @@ fn find_job_by_process(JobTable &table, i64 process_id) wontthrow -> job *
   return nullptr;
 }
 
-}
+} /* namespace */
 
 static fn wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32;
 
@@ -340,4 +340,4 @@ static fn wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
   return status;
 }
 
-}
+} /* namespace koshka */

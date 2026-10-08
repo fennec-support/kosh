@@ -1163,7 +1163,7 @@ fn append_process_io_report(String &output, const ArrayList<io_row> &rows,
   append_titled_report_table(output, "Processes", process_table, should_color);
 }
 
-}
+} /* namespace */
 
 fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
                    const ArrayList<String> &args,
@@ -1835,4 +1835,4 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-}
+} /* namespace koshka::koshkit */

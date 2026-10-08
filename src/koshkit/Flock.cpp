@@ -74,4 +74,4 @@ fn Flock::execute(const ExecContext &ec, EvalContext &cxt,
   return result.has_value() ? static_cast<i32>(result->exit_status) : 126;
 }
 
-}
+} /* namespace koshka::koshkit */

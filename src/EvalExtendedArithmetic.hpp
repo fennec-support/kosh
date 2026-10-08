@@ -209,4 +209,4 @@ alwaysinline fn consume(StringView source, usize &position,
   return true;
 }
 
-}
+} /* namespace koshka::arithmetic_internal */

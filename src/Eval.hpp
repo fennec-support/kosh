@@ -562,7 +562,7 @@ inline fn RuntimeState::set_annoying_diagnostics_enabled(bool enabled) wontthrow
   m_reporting.is_annoying_disabled = !enabled;
 }
 
-}
+} /* namespace koshka */
 
 #include "EvalOperations.hpp"
 #include "EvalSnapshot.hpp"
@@ -576,7 +576,7 @@ class EvalContext;
 
 namespace completion {
 class shell_highlight_cache;
-}
+} /* namespace completion */
 
 class RuntimeControlStore
 {
@@ -4153,4 +4153,4 @@ protected:
       -> void;
 };
 
-}
+} /* namespace koshka */

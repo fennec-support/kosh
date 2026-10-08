@@ -175,4 +175,4 @@ fn EvilFS::execute(const ExecContext &ec, EvalContext &cxt,
   return mounts.is_empty() ? 1 : 0;
 }
 
-}
+} /* namespace koshka::koshkit */

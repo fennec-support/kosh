@@ -1940,7 +1940,7 @@ wontreturn static fn exit_after_final_chunk(EvalContext &context, i32 exit_code,
                              : utils::farewell_policy::Silent);
 }
 
-}
+} /* namespace koshka */
 
 fn kosh_main(int argc, char **argv) -> int
 {

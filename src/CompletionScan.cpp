@@ -2239,7 +2239,7 @@ fn append_sentence_tail(String &out, StringView sentence) throws -> void
   out.append(sentence.substring_of_length(1, sentence.length - 1));
 }
 
-}
+} /* namespace */
 
 fn describe_syntax_problem(StringView line, usize cursor, mimic_mood mood,
                            String &out) throws -> bool
@@ -2324,6 +2324,6 @@ fn describe_analysis_finding(StringView line, EvalContext &context,
   return true;
 }
 
-}
+} /* namespace completion */
 
-}
+} /* namespace koshka */

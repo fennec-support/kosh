@@ -623,7 +623,7 @@ fn resolve_duplication(const Redirection &redir, EvalContext &cxt) throws
                               koshka::None};
 }
 
-}
+} /* namespace */
 
 static fn redirection_open_mode(Redirection::Kind kind,
                                 bool no_clobber) wontthrow -> os::file_open_mode
@@ -1872,6 +1872,6 @@ cold fn SimpleCommand::to_string() const throws -> String
   return s;
 }
 
-}
+} /* namespace expressions */
 
-}
+} /* namespace koshka */

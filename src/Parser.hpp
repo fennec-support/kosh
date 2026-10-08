@@ -232,4 +232,4 @@ private:
   fn consume_bash_array_assignment() throws -> ArrayList<const Token *>;
 };
 
-}
+} /* namespace koshka */

@@ -40,4 +40,4 @@ fn Exit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                              "exit takes at most one status, e.g. `exit 1`");
 }
 
-}
+} /* namespace koshka */

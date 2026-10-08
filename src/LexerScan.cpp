@@ -374,6 +374,6 @@ fn scan_balanced_shell_region(StringView source, usize position,
   return None;
 }
 
-}
+} /* namespace lexer */
 
-}
+} /* namespace koshka */

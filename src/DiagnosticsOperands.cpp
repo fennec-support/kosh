@@ -853,6 +853,6 @@ pure fn arithmetic_assignment_target(StringView expression,
   return expression.substring_of_length(at, end - at);
 }
 
-}
+} /* namespace expressions::internal */
 
-}
+} /* namespace koshka */

@@ -357,4 +357,4 @@ fn Batch::execute(batch_deduplication deduplication) throws
 
 pure fn Batch::count() const wontthrow -> usize { return m_operations.count(); }
 
-}
+} /* namespace koshka::os */

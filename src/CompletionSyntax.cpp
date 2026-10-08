@@ -488,6 +488,6 @@ fn internal::split_completion_words(StringView line, usize cursor,
   return words;
 }
 
-}
+} /* namespace completion */
 
-}
+} /* namespace koshka */

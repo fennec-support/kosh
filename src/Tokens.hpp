@@ -866,6 +866,6 @@ TOKEN_STRUCT(Equals);
 TOKEN_STRUCT(DoubleEquals);
 TOKEN_STRUCT(ExclamationEquals);
 
-}
+} /* namespace tokens */
 
-}
+} /* namespace koshka */

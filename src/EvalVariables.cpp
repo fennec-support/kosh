@@ -922,4 +922,4 @@ fn EvalContext::append_dynamic_variable_names(
     out.push(DIRSTACK_VARIABLE);
 }
 
-}
+} /* namespace koshka */

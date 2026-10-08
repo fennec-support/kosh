@@ -81,7 +81,7 @@ fn shopt_is_on(const EvalContext &cxt, const option_descriptor &option) throws
   return read_option_number(cxt, option) != 0;
 }
 
-}
+} /* namespace */
 
 fn shopt_option_name_list() throws -> const ArrayList<StringView> &
 {
@@ -249,4 +249,4 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return status;
 }
 
-}
+} /* namespace koshka */

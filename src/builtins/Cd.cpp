@@ -340,4 +340,4 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                     details};
 }
 
-}
+} /* namespace koshka */

@@ -60,4 +60,4 @@ fn Nice::execute(const ExecContext &ec, EvalContext &cxt,
   return *result;
 }
 
-}
+} /* namespace koshka::koshkit */

@@ -48,7 +48,7 @@ inline const StringView BOLD_WHITE = "\x1b[1;37m";
 inline const StringView RED_CURLY_YELLOW_UNDERLINE = "\x1b[91;4:3;58:5:3m";
 inline const StringView BOLD_RED_CURLY_YELLOW_UNDERLINE =
     "\x1b[1;91;4:3;58:5:3m";
-}
+} /* namespace ansi */
 
 fn stdout_wants_color() throws -> bool;
 fn stderr_wants_color() throws -> bool;
@@ -77,6 +77,6 @@ extern const highlight_theme NONINTERACTIVE_HIGHLIGHT_THEME;
 extern const highlight_theme PRINTED_SOURCE_HIGHLIGHT_THEME;
 extern const highlight_theme DIAGNOSTIC_HIGHLIGHT_THEME;
 
-}
+} /* namespace colors */
 
-}
+} /* namespace koshka */

@@ -47,7 +47,7 @@ struct cp_directory_identity
   u64 file_id;
 };
 
-}
+} /* namespace */
 
 enum class cp_symlink_mode : u8
 {
@@ -78,7 +78,7 @@ struct cp_options
   }
 };
 
-}
+} /* namespace */
 
 static fn report_copy_error(const ExecContext &ec, EvalContext &cxt,
                             StringView utility_name, const Error &error) throws
@@ -459,4 +459,4 @@ fn Cp::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-}
+} /* namespace koshka::koshkit */

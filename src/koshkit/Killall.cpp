@@ -67,4 +67,4 @@ fn Killall::execute(const ExecContext &ec, EvalContext &cxt,
   return has_signaled_any ? 0 : 1;
 }
 
-}
+} /* namespace koshka::koshkit */

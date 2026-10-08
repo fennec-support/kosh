@@ -937,6 +937,6 @@ fn document_position(const JsonValue *position) throws
                            static_cast<usize>(*character)};
 }
 
-}
+} /* namespace */
 
-}
+} /* namespace koshka::language_server */

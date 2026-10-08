@@ -465,4 +465,4 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-}
+} /* namespace koshka::koshkit */

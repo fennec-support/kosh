@@ -50,6 +50,6 @@ fn try_fold_arithmetic_with_constants(StringView expression,
 
 fn optimize_node(const Expression *node, AnalysisContext &actx) throws -> void;
 
-}
+} /* namespace optimizer */
 
-}
+} /* namespace koshka */

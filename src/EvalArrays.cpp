@@ -1258,4 +1258,4 @@ fn EvalContext::collect_array_subscripts(StringView name) const throws
   return out;
 }
 
-}
+} /* namespace koshka */

@@ -582,4 +582,4 @@ fn Compgen::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return sink.has_any_matched ? 0 : 1;
 }
 
-}
+} /* namespace koshka */

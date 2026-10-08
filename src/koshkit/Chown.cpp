@@ -95,4 +95,4 @@ fn Chown::execute(const ExecContext &ec, EvalContext &cxt,
        FLAG_CHOWN_PHYSICAL.position()});
 }
 
-}
+} /* namespace koshka::koshkit */

@@ -51,4 +51,4 @@ cold fn Unlink::execute(
   return 0;
 }
 
-}
+} /* namespace koshka::koshkit */

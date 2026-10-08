@@ -264,7 +264,7 @@ fn read_smart_rows(EvalContext &cxt,
   return rows;
 }
 
-}
+} /* namespace */
 
 fn EvilDisk::execute(
     const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
@@ -591,4 +591,4 @@ fn EvilDisk::execute(
   return status;
 }
 
-}
+} /* namespace koshka::koshkit */

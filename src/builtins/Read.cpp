@@ -381,4 +381,4 @@ fn Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return read_status;
 }
 
-}
+} /* namespace koshka */

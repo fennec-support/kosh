@@ -873,4 +873,4 @@ fn EvalContext::expand_heredoc_body(
   return expand_modifier_word(body, false, false, source_location);
 }
 
-}
+} /* namespace koshka */

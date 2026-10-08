@@ -340,4 +340,4 @@ cold fn BumpArena::reset() wontthrow -> void
   m_current_index = 0;
 }
 
-}
+} /* namespace koshka */

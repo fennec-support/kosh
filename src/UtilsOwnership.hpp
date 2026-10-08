@@ -53,6 +53,6 @@ fn change_operands_ownership(const ExecContext &ec, EvalContext &cxt,
                              const ArrayList<String> &operands,
                              const ownership_request &request) throws -> i32;
 
-}
+} /* namespace utils */
 
-}
+} /* namespace koshka */

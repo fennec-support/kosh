@@ -105,4 +105,4 @@ fn Pkill::execute(const ExecContext &ec, EvalContext &cxt,
   return did_signal_any ? 0 : 1;
 }
 
-}
+} /* namespace koshka::koshkit */

@@ -741,4 +741,4 @@ cold fn ErrorWithLocationAndDetails::details_to_string(
   return result;
 }
 
-}
+} /* namespace koshka */

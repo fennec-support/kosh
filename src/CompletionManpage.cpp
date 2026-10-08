@@ -2126,6 +2126,6 @@ fn abandon_idle_documentation() throws -> void
   IDLE_LOAD = None;
 }
 
-}
+} /* namespace completion */
 
-}
+} /* namespace koshka */

@@ -2281,7 +2281,7 @@ fn Server::run() throws -> int
   }
 }
 
-}
+} /* namespace */
 
 fn run(EvalContext &context, BumpArena &ast_arena) throws -> int
 {
@@ -2290,4 +2290,4 @@ fn run(EvalContext &context, BumpArena &ast_arena) throws -> int
   return server.run();
 }
 
-}
+} /* namespace koshka::language_server */

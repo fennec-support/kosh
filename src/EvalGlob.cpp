@@ -40,7 +40,7 @@ fn name_matches_glob(StringView glob, StringView filename,
                              mask_offset, mode, charset);
 }
 
-}
+} /* namespace */
 
 fn EvalContext::get_glob_charset() const throws -> glob_charset
 {
@@ -419,7 +419,7 @@ fn collect_globstar_paths(const Path &dir, StringView relative,
   }
 }
 
-}
+} /* namespace */
 
 fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
     -> ArrayList<glob_field>
@@ -767,7 +767,7 @@ fn glob_ignore_pattern_matches(const glob_ignore_pattern &pattern,
   return false;
 }
 
-}
+} /* namespace */
 
 hot fn EvalContext::expand_path(glob_field field,
                                 const SourceLocation &location) throws
@@ -903,4 +903,4 @@ fn EvalContext::expand_glob_lenient(StringView pattern) throws
   return steal(values).make_sorted(sort_order::ascending);
 }
 
-}
+} /* namespace koshka */

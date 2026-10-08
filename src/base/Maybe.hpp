@@ -198,4 +198,4 @@ private:
   T *m_value{nullptr};
 };
 
-}
+} /* namespace koshka */

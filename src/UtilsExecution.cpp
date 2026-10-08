@@ -759,6 +759,6 @@ wontreturn fn quit(i32 code, farewell_policy farewell) throws -> void
   std::exit(actual_code);
 }
 
-}
+} /* namespace utils */
 
-}
+} /* namespace koshka */

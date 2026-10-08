@@ -79,4 +79,4 @@ fn detect_mimic_shell_from_source(StringView source) throws -> Maybe<mimic_mood>
   return SHELL_MOODS.find(shell);
 }
 
-}
+} /* namespace koshka */

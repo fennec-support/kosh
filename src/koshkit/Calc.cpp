@@ -241,7 +241,7 @@ fn run_repl(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-}
+} /* namespace */
 
 fn Calc::execute(const ExecContext &ec, EvalContext &cxt,
                  const ArrayList<String> &args,
@@ -315,4 +315,4 @@ fn Calc::execute(const ExecContext &ec, EvalContext &cxt,
                                                   : nullptr);
 }
 
-}
+} /* namespace koshka::koshkit */

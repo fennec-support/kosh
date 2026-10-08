@@ -619,7 +619,7 @@ fn append_comparison(String &out, const CommandResult &first,
   }
 }
 
-}
+} /* namespace */
 
 cold fn Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
@@ -718,4 +718,4 @@ cold fn Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return 0;
 }
 
-}
+} /* namespace koshka */

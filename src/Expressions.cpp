@@ -2629,6 +2629,6 @@ fn DummyExpression::evaluate_impl(EvalContext &cxt) const throws -> i64
 
 cold fn DummyExpression::to_string() const throws -> String { return "Dummy"; }
 
-}
+} /* namespace expressions */
 
-}
+} /* namespace koshka */

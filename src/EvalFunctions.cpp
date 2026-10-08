@@ -66,7 +66,7 @@ pure fn running_trap_bit(StringView condition) wontthrow -> u8
   return static_cast<u8>(1u << *index);
 }
 
-}
+} /* namespace */
 
 fn EvalContext::register_function(StringView name,
                                   const FunctionBodyHandle &body_storage,
@@ -1052,4 +1052,4 @@ fn EvalContext::append_integer_expression(String &joined,
   joined += '0';
 }
 
-}
+} /* namespace koshka */

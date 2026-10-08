@@ -378,7 +378,7 @@ static_assert(every_lexer_keyword_has_a_highlight_spec(),
               "A lexer keyword reaches the highlighter with no spec, so its "
               "construct never opens.");
 
-}
+} /* namespace */
 
 fn internal::advance_shell_keyword_state(StringView word, usize frame_depth,
                                          shell_lexical_state &state) throws
@@ -1768,6 +1768,6 @@ fn internal::scan_highlight_range(
   return i;
 }
 
-}
+} /* namespace completion */
 
-}
+} /* namespace koshka */

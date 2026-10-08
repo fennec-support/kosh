@@ -62,4 +62,4 @@ fn write_koshconf_file(const Path &path, StringView contents) throws -> void;
 fn persist_koshconf_setting(const Path &path, const option_descriptor &option,
                             StringView value) throws -> void;
 
-}
+} /* namespace koshka */

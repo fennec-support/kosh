@@ -472,7 +472,7 @@ static fn append_no_editor_history_records(no_editor_history_state &state,
   return state.total_count;
 }
 
-}
+} /* namespace koshka::internal */
 
 namespace toiletline {
 
@@ -1008,6 +1008,6 @@ fn emit_command_start_marks(koshka::EvalContext &context,
   unused(command_line);
 }
 
-}
+} /* namespace toiletline */
 
 #endif

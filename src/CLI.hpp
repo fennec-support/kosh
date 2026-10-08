@@ -545,4 +545,4 @@ fn print(StringView text) throws -> void;
 fn print_error(StringView text) throws -> void;
 fn flush() throws -> void;
 
-}
+} /* namespace koshka */

@@ -2010,4 +2010,4 @@ fn ExecContext::set_unresolved(i32 resolution_status,
   m_unresolved_diagnostic = diagnostic;
 }
 
-}
+} /* namespace koshka */

@@ -572,4 +572,4 @@ struct analysis_command_info
 
 fn get_analysis_command_info(StringView name) throws -> analysis_command_info;
 
-}
+} /* namespace koshka */

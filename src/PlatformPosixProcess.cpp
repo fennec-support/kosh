@@ -1741,7 +1741,7 @@ fn wait_for_measured_child(pid_t child_pid, i64 &status_out, u64 &peak_rss_out,
   return true;
 }
 
-}
+} /* namespace */
 
 fn read_own_resource_usage() wontthrow -> process_resource_usage
 {
@@ -1949,9 +1949,9 @@ fn run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
   });
 }
 
-}
+} /* namespace os */
 
-}
+} /* namespace koshka */
 
 fn kosh_main(int argc, char **argv) -> int;
 

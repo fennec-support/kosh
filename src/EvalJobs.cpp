@@ -631,4 +631,4 @@ fn EvalContext::notify_done_jobs() throws -> void
   if (!lines.is_empty()) print_error(lines);
 }
 
-}
+} /* namespace koshka */

@@ -127,7 +127,7 @@ fn format_listed_condition(StringView condition, Allocator allocator,
   return String{allocator, condition};
 }
 
-}
+} /* namespace */
 
 fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
@@ -327,4 +327,4 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return status;
 }
 
-}
+} /* namespace koshka */

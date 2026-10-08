@@ -449,4 +449,4 @@ private:
   u32 m_first_capacity{DEFAULT_MAP_FIRST_CAPACITY};
 };
 
-}
+} /* namespace koshka */
