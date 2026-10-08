@@ -1242,6 +1242,7 @@ static constexpr DWORD SUBSTITUTION_RELAY_BODY_BYTES = 262144;
 static constexpr usize SUBSTITUTION_RELAY_PATH_LENGTH = 128;
 static constexpr ULONG_PTR SUBSTITUTION_RELAY_FINISH_KEY = 1;
 static constexpr DWORD SUBSTITUTION_RELAY_FINISH_WAIT_MS = 5000;
+static constexpr u64 SUBSTITUTION_RELAY_OFFER_TURN_MS = 20;
 
 enum class relay_client_state : u8
 {
@@ -1305,7 +1306,10 @@ struct substitution_relay
   u64 posted{0};
   u64 tail{0};
   u64 next_sequence{0};
+  u64 offer_turn_end_ms{0};
   usize active_client{SUBSTITUTION_RELAY_CLIENT_COUNT};
+  usize offering_client{SUBSTITUTION_RELAY_CLIENT_COUNT};
+  usize next_offer_client{0};
   usize oldest_write{0};
   usize write_count{0};
   bool is_command_writes{false};
@@ -1313,6 +1317,7 @@ struct substitution_relay
   bool is_body_finished{false};
   bool is_bulk{false};
   bool has_active_failed{false};
+  bool was_offer_withdrawn{false};
   substitution_relay_client clients[SUBSTITUTION_RELAY_CLIENT_COUNT];
   substitution_relay_write writes[SUBSTITUTION_RELAY_WRITE_COUNT];
   char ring[SUBSTITUTION_RELAY_RING_BYTES];
@@ -1634,18 +1639,62 @@ static fn start_relay_offer(substitution_relay &relay, usize position) wontthrow
       nullptr, overlapped);
   if (note_relay_operation(client.transfer, was_started)) {
     client.state = relay_client_state::Offering;
+    relay.offering_client = position;
+    relay.was_offer_withdrawn = false;
+    relay.offer_turn_end_ms =
+        GetTickCount64() + SUBSTITUTION_RELAY_OFFER_TURN_MS;
     return;
   }
 
   close_relay_client(client);
 }
 
-static fn withdraw_relay_offers(substitution_relay &relay) wontthrow -> void
+static fn has_other_connected_relay_client(const substitution_relay &relay,
+                                           usize position) wontthrow -> bool
 {
-  for (let &client : relay.clients) {
-    if (client.state != relay_client_state::Offering) continue;
+  for (usize other = 0; other < SUBSTITUTION_RELAY_CLIENT_COUNT; other++) {
+    if (other != position &&
+        relay.clients[other].state == relay_client_state::Connected)
+    {
+      return true;
+    }
+  }
 
-    CancelIoEx(client.pipe, &client.transfer.overlapped);
+  return false;
+}
+
+static fn should_withdraw_relay_offer(const substitution_relay &relay) wontthrow
+    -> bool
+{
+  return relay.offering_client != SUBSTITUTION_RELAY_CLIENT_COUNT &&
+         !relay.was_offer_withdrawn &&
+         has_other_connected_relay_client(relay, relay.offering_client);
+}
+
+static fn rotate_relay_offer(substitution_relay &relay) wontthrow -> void
+{
+  if (!should_withdraw_relay_offer(relay) ||
+      GetTickCount64() < relay.offer_turn_end_ms)
+  {
+    return;
+  }
+
+  let &client = relay.clients[relay.offering_client];
+  relay.was_offer_withdrawn = true;
+  CancelIoEx(client.pipe, &client.transfer.overlapped);
+}
+
+static fn start_next_relay_offer(substitution_relay &relay) wontthrow -> void
+{
+  for (usize step = 0; step < SUBSTITUTION_RELAY_CLIENT_COUNT; step++) {
+    let const position =
+        (relay.next_offer_client + step) % SUBSTITUTION_RELAY_CLIENT_COUNT;
+    if (relay.clients[position].state != relay_client_state::Connected)
+      continue;
+
+    relay.next_offer_client = (position + 1) % SUBSTITUTION_RELAY_CLIENT_COUNT;
+    start_relay_offer(relay, position);
+    if (relay.offering_client != SUBSTITUTION_RELAY_CLIENT_COUNT) return;
   }
 }
 
@@ -1655,6 +1704,8 @@ static fn finish_relay_offer(substitution_relay &relay, usize position,
   let &client = relay.clients[position];
   let const was_offering = client.state == relay_client_state::Offering;
   if (was_offering) client.state = relay_client_state::Connected;
+  if (relay.offering_client == position)
+    relay.offering_client = SUBSTITUTION_RELAY_CLIENT_COUNT;
 
   if (error != ERROR_SUCCESS) {
     if (error != ERROR_OPERATION_ABORTED) close_relay_client(client);
@@ -1669,7 +1720,6 @@ static fn finish_relay_offer(substitution_relay &relay, usize position,
 
   relay.head++;
   relay.posted = relay.head;
-  withdraw_relay_offers(relay);
   if (!was_offering) return;
 
   client.state = relay_client_state::Active;
@@ -1872,12 +1922,24 @@ static fn advance_relay_output(substitution_relay &relay) wontthrow -> void
     return;
   }
 
-  for (usize position = 0; position < SUBSTITUTION_RELAY_CLIENT_COUNT;
-       position++)
-  {
-    if (relay.clients[position].state == relay_client_state::Connected)
-      start_relay_offer(relay, position);
+  if (relay.offering_client != SUBSTITUTION_RELAY_CLIENT_COUNT) {
+    rotate_relay_offer(relay);
+    return;
   }
+
+  start_next_relay_offer(relay);
+}
+
+static fn get_relay_wait_ms(const substitution_relay &relay) wontthrow -> DWORD
+{
+  if (!relay.is_command_writes || !should_withdraw_relay_offer(relay)) {
+    return INFINITE;
+  }
+
+  let const now_ms = GetTickCount64();
+  if (now_ms >= relay.offer_turn_end_ms) return 0;
+
+  return static_cast<DWORD>(relay.offer_turn_end_ms - now_ms);
 }
 
 static fn relay_is_finished(substitution_relay &relay) wontthrow -> bool
@@ -1955,7 +2017,7 @@ static fn run_substitution_relay(opaque *context) wontthrow -> void
     ULONG_PTR key = 0;
     OVERLAPPED *overlapped = nullptr;
     let const was_dequeued = GetQueuedCompletionStatus(
-        relay.port, &byte_count, &key, &overlapped, INFINITE);
+        relay.port, &byte_count, &key, &overlapped, get_relay_wait_ms(relay));
     let const error = was_dequeued != FALSE ? ERROR_SUCCESS : GetLastError();
     if (overlapped != nullptr) {
       finish_relay_operation(relay,
@@ -1963,6 +2025,8 @@ static fn run_substitution_relay(opaque *context) wontthrow -> void
                              byte_count, error);
       continue;
     }
+
+    if (error == WAIT_TIMEOUT) continue;
 
     if (was_dequeued == FALSE) {
       signal_relay_listeners_closed(relay);

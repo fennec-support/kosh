@@ -1,0 +1,25 @@
+#!/bin/env kosh
+
+# Several readers of one process substitution share its output the way
+# readers of one pipe do: every byte reaches exactly one of them. A reader
+# that holds the path open without reading must not stall another.
+set -M bash
+d=$TEST_TEMP_DIRECTORY/process-substitution-readers
+koshkit mkdir -p "$d"
+
+race() {
+  koshkit cat "$1" >"$d/first" &
+  koshkit cat "$1" >"$d/second" &
+  wait
+}
+race <(koshkit sleep 1; echo hello)
+koshkit cat "$d/first" "$d/second"
+
+held() {
+  exec 7<"$1"
+  koshkit cat "$1"
+  exec 7<&-
+}
+held <(echo held-reader)
+
+if [ -n "$d" ]; then koshkit rm -rf -- "$d"; fi

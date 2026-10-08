@@ -193,7 +193,9 @@ changes update this file.
   the shell serves the public named pipe as a FIFO through one completion
   port. It arms a spare instance after each connect, and the shell's own
   redirection open retries a busy pipe. Output goes to one client at a time:
-  a one-byte offer to every connected client picks the reader, writes have no
+  a one-byte offer picks the reader, made to one connected client at a time
+  and withdrawn after a short turn while another client waits, so an aborted
+  offer delivered nothing. Writes have no
   quota so only consumed bytes leave the queue, and a failed write is sent
   again to the next reader. Writes stay one line long until a write completes
   at once. Input from several writers reaches the child in connection order.
