@@ -57,9 +57,7 @@ fn Unset::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (!should_unset_function && cxt.runtime_state().is_posix_mode() &&
         !name_is_valid_identifier(name.view()))
     {
-      report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
-                                StringView{"'"} + name +
-                                    "' is not a valid identifier");
+      report_invalid_identifier(ec, cxt, ec.arg_location_at(i), name);
       has_error = true;
       continue;
     }

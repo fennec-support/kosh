@@ -642,22 +642,21 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
         spec.push(fmt[i++]);
       }
-      if (i < fmt.length() && fmt[i] == '*') {
-        do_consume_star(spec);
-        i++;
-      } else {
-        while (i < fmt.length() && fmt[i] >= '0' && fmt[i] <= '9')
-          spec.push(fmt[i++]);
-      }
-      if (i < fmt.length() && fmt[i] == '.') {
-        spec.push(fmt[i++]);
+
+      let const do_push_field_size = [&]() throws {
         if (i < fmt.length() && fmt[i] == '*') {
           do_consume_star(spec);
           i++;
-        } else {
-          while (i < fmt.length() && fmt[i] >= '0' && fmt[i] <= '9')
-            spec.push(fmt[i++]);
+          return;
         }
+
+        while (i < fmt.length() && fmt[i] >= '0' && fmt[i] <= '9')
+          spec.push(fmt[i++]);
+      };
+      do_push_field_size();
+      if (i < fmt.length() && fmt[i] == '.') {
+        spec.push(fmt[i++]);
+        do_push_field_size();
       }
 
       /* bash %(datefmt)T formats a time. The format sits in parentheses where

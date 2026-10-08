@@ -79,9 +79,7 @@ static fn wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
   let const pid_variable = FLAG_WAIT_PID_VARIABLE.value();
 
   if (has_pid_variable && !name_is_valid_identifier(pid_variable)) {
-    report_soft_builtin_error(ec, cxt,
-                              StringView{"'"} + pid_variable +
-                                  "' is not a valid identifier");
+    report_invalid_identifier(ec, cxt, ec.source_location(), pid_variable);
 
     return 1;
   }

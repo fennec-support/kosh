@@ -74,10 +74,9 @@ fn Readonly::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     for (usize i = 1; i < args.count(); i++) {
       let const name = args[i].view();
       if (!cxt.function_store().find_function(name).has_value()) {
-        let const loc = i < operand_locations.count() ? operand_locations[i]
-                                                      : ec.source_location();
         report_soft_builtin_error(
-            ec, cxt, loc, StringView{"'"} + name + "' is not a function");
+            ec, cxt, get_operand_location(ec, operand_locations, i),
+            StringView{"'"} + name + "' is not a function");
         has_function_error = true;
         continue;
       }
@@ -103,14 +102,8 @@ fn Readonly::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           out += quote_for_declare(value->view());
           out += "\"";
         } else {
-          out += "='";
-          for (usize k = 0; k < value->count(); k++) {
-            if ((*value)[k] == '\'')
-              out += "'\\''";
-            else
-              out.push((*value)[k]);
-          }
-          out += "'";
+          out += '=';
+          append_shell_quoted_arg(out, value->view(), true);
         }
       }
       out += "\n";
@@ -128,10 +121,8 @@ fn Readonly::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let const parts = NameValueArg::from(arg);
 
     if (!name_is_valid_identifier(parts.get_name())) {
-      let const loc = i < operand_locations.count() ? operand_locations[i]
-                                                    : ec.source_location();
-      report_soft_builtin_error(
-          ec, cxt, loc, StringView{"'"} + arg + "' is not a valid identifier");
+      report_invalid_identifier(
+          ec, cxt, get_operand_location(ec, operand_locations, i), arg);
       has_error = true;
       continue;
     }

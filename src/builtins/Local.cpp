@@ -163,9 +163,7 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       identifier = identifier.substring_of_length(0, *bracket);
     }
     if (!name_is_valid_identifier(identifier)) {
-      report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
-                                StringView{"'"} + arg +
-                                    "' is not a valid identifier");
+      report_invalid_identifier(ec, cxt, ec.arg_location_at(i), arg);
       status = 1;
       continue;
     }
@@ -201,16 +199,7 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         update_mode == assignment_update_mode::Replace &&
         arg.substring(*equals_position + 1) == name)
     {
-      try {
-        cxt.bind_self_nameref(name, true);
-      } catch (const Error &error) {
-        report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
-                                  error.message().view());
-        status = 1;
-        continue;
-      }
-
-      cxt.warn_circular_nameref(name);
+      if (!bind_declared_self_nameref(ec, cxt, i, name, true)) status = 1;
       continue;
     }
 
@@ -230,24 +219,15 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       cxt.variable_store().attributes().mark_uppercase(name);
 
     if (should_mark_nameref) {
-      try {
-        if (equals_position.has_value()) {
-          cxt.bind_nameref(name, arg.substring(*equals_position + 1));
-        } else {
-          cxt.guard_nameref_name(name);
-          cxt.variable_store().attributes().set(
-              name, variable_attribute::Nameref, true);
-          cxt.variable_store().attributes().mark_declared(name);
-        }
-      } catch (const Error &error) {
-        report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
-                                  error.message().view());
+      if (!declare_nameref(
+              ec, cxt, i, name,
+              equals_position.has_value()
+                  ? Maybe<StringView>{arg.substring(*equals_position + 1)}
+                  : Maybe<StringView>{None},
+              should_mark_readonly))
+      {
         status = 1;
-        continue;
       }
-
-      if (should_mark_readonly)
-        cxt.variable_store().attributes().mark_readonly(name);
       continue;
     }
 

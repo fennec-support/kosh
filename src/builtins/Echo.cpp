@@ -154,18 +154,7 @@ fn Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           output += static_cast<char>(value);
         }
       } break;
-      case '0': {
-        i32 value = 0;
-        usize digit_count = 0;
-        while (digit_count < 3 && j + 1 < arg.length() && arg[j + 1] >= '0' &&
-               arg[j + 1] <= '7')
-        {
-          value = value * 8 + (arg[j + 1] - '0');
-          j++;
-          digit_count++;
-        }
-        output += static_cast<char>(value);
-      } break;
+      case '0':
       case '1':
       case '2':
       case '3':
@@ -173,13 +162,13 @@ fn Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       case '5':
       case '6':
       case '7': {
-        if (cxt.runtime_state().is_bash_compatible()) {
+        if (escaped != '0' && cxt.runtime_state().is_bash_compatible()) {
           output += '\\';
           output += escaped;
           break;
         }
         i32 value = escaped - '0';
-        usize digit_count = 1;
+        usize digit_count = escaped == '0' ? 0 : 1;
         while (digit_count < 3 && j + 1 < arg.length() && arg[j + 1] >= '0' &&
                arg[j + 1] <= '7')
         {

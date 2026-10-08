@@ -91,12 +91,8 @@ fn Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   ASSERT(static_cast<usize>(optind) - 1 < operands.count());
   let const &current = operands[static_cast<usize>(optind) - 1];
-  if (current.length() < 2 || current[0] != '-') {
-    cxt.set_shell_variable(name, "?");
-    return do_finish(1);
-  }
-  if (current == "--") {
-    optind++;
+  if (current.length() < 2 || current[0] != '-' || current == "--") {
+    if (current == "--") optind++;
     cxt.set_shell_variable(name, "?");
     return do_finish(1);
   }
@@ -118,6 +114,18 @@ fn Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
   };
 
+  let const do_report_option_error = [&](StringView prefix) throws {
+    if (!should_print_diagnostic) return;
+
+    let const message = prefix + option_as_string;
+    if (args.count() > 3) {
+      report_soft_builtin_error(
+          ec, cxt, ec.arg_location_at(static_cast<usize>(optind) + 2), message);
+    } else {
+      report_soft_builtin_error(ec, cxt, message);
+    }
+  };
+
   if (option == ':' || !spec.has_value()) {
     do_advance_letter();
     cxt.set_shell_variable(name, "?");
@@ -125,19 +133,7 @@ fn Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       cxt.set_shell_variable("OPTARG", option_as_string);
     } else {
       cxt.unset_shell_variable("OPTARG");
-      if (should_print_diagnostic) {
-        let const operand_arg_index =
-            args.count() > 3 ? Maybe<usize>{static_cast<usize>(optind) + 2}
-                             : Maybe<usize>{None};
-        if (operand_arg_index.has_value()) {
-          report_soft_builtin_error(
-              ec, cxt, ec.arg_location_at(*operand_arg_index),
-              StringView{"Illegal option -- "} + option_as_string);
-        } else {
-          report_soft_builtin_error(
-              ec, cxt, StringView{"Illegal option -- "} + option_as_string);
-        }
-      }
+      do_report_option_error("Illegal option -- ");
     }
     return do_finish(0);
   }
@@ -164,22 +160,7 @@ fn Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       } else {
         cxt.set_shell_variable(name, "?");
         cxt.unset_shell_variable("OPTARG");
-        if (should_print_diagnostic) {
-          let const operand_arg_index =
-              args.count() > 3 ? Maybe<usize>{static_cast<usize>(optind) + 2}
-                               : Maybe<usize>{None};
-          if (operand_arg_index.has_value()) {
-            report_soft_builtin_error(
-                ec, cxt, ec.arg_location_at(*operand_arg_index),
-                StringView{"Option requires an argument -- "} +
-                    option_as_string);
-          } else {
-            report_soft_builtin_error(
-                ec, cxt,
-                StringView{"Option requires an argument -- "} +
-                    option_as_string);
-          }
-        }
+        do_report_option_error("Option requires an argument -- ");
       }
       return do_finish(0);
     }

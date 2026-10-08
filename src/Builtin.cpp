@@ -400,24 +400,15 @@ fn report_loop_control_without_loop(const ExecContext &ec,
 fn report_usage_error(const ExecContext &ec, EvalContext &cxt,
                       StringView program_name) throws -> i32
 {
-  /* A missing required argument reads the same located caret in every mood, the
-     kosh feature form, rather than the soft unlocated line the bash mood gives
-     a thrown builtin error. The trailing note points the reader at the
-     per-command help the way a compiler points past an error at a hint. The
-     fallback line is for the rare case with no source to caret against, such as
-     the multicall entry. */
-  const ErrorWithLocation located{
-      ec.source_location(), String{program_name} + ": Not enough arguments"};
-  if (const String *source = cxt.source_store().current_source();
-      source != nullptr)
-    show_message(located.to_string(source->view(), &cxt));
-  else
-    print_error(String{program_name} + ": Not enough arguments.\n");
-  show_message(Note{String{"Try `"} + program_name + " --help` for more info"}
-                   .to_string());
-  return 2;
+  return report_usage_error(cxt, ec.source_location(), program_name);
 }
 
+/* A missing required argument reads the same located caret in every mood, the
+   kosh feature form, rather than the soft unlocated line the bash mood gives a
+   thrown builtin error. The trailing note points the reader at the per-command
+   help the way a compiler points past an error at a hint. The fallback line is
+   for the rare case with no source to caret against, such as the multicall
+   entry. */
 fn report_usage_error(EvalContext &cxt, SourceLocation location,
                       StringView program_name) throws -> i32
 {
@@ -431,6 +422,122 @@ fn report_usage_error(EvalContext &cxt, SourceLocation location,
   show_message(Note{String{"Try `"} + program_name + " --help` for more info"}
                    .to_string());
   return 2;
+}
+
+fn bind_declared_self_nameref(const ExecContext &ec, EvalContext &cxt,
+                              usize arg_index, StringView name,
+                              bool is_local) throws -> bool
+{
+  try {
+    cxt.bind_self_nameref(name, is_local);
+  } catch (const Error &error) {
+    report_soft_builtin_error(ec, cxt, ec.arg_location_at(arg_index),
+                              error.message().view());
+    return false;
+  }
+
+  cxt.warn_circular_nameref(name);
+  return true;
+}
+
+fn declare_nameref(const ExecContext &ec, EvalContext &cxt, usize arg_index,
+                   StringView name, Maybe<StringView> target,
+                   bool should_mark_readonly) throws -> bool
+{
+  try {
+    if (target.has_value()) {
+      cxt.bind_nameref(name, *target);
+    } else {
+      cxt.guard_nameref_name(name);
+      cxt.variable_store().attributes().set(name, variable_attribute::Nameref,
+                                            true);
+      cxt.variable_store().attributes().mark_declared(name);
+    }
+  } catch (const Error &error) {
+    report_soft_builtin_error(ec, cxt, ec.arg_location_at(arg_index),
+                              error.message().view());
+    return false;
+  }
+
+  if (should_mark_readonly)
+    cxt.variable_store().attributes().mark_readonly(name);
+  return true;
+}
+
+fn continue_job(job &job) throws -> void
+{
+  let const cont = os::signal_number_from_name("CONT");
+  if (!cont.has_value())
+    throw Error{"This platform does not support continuing stopped jobs"};
+  bool did_resume = true;
+  if (job.is_primary_process_active)
+    did_resume = os::signal_process(job.pid, *cont);
+  for (let const process : job.earlier_pipeline_processes)
+    if (!os::signal_process(process, *cont)) did_resume = false;
+  if (!did_resume) throw Error{"Unable to continue the stopped job"};
+  job.state = job::State::Running;
+}
+
+fn finish_exit_builtin(const ExecContext &ec, EvalContext &cxt, i64 status,
+                       StringView invalid_status_note,
+                       StringView too_many_message,
+                       StringView too_many_note) throws -> i32
+{
+  if (ec.args().count() > 1) {
+    let const parsed_status = ec.args()[1].to<i64>();
+
+    if (parsed_status.is_error()) {
+      let const message =
+          StringView{"'"} + ec.args()[1] + "' is not a numeric exit status";
+      if (invalid_status_note.is_empty()) {
+        report_soft_builtin_error(ec, cxt, ec.arg_location_at(1), message);
+      } else {
+        report_soft_builtin_error(ec, cxt, ec.arg_location_at(1), message,
+                                  invalid_status_note);
+      }
+      return 2;
+    }
+
+    if (ec.args().count() > 2 && !too_many_message.is_empty()) {
+      report_soft_builtin_error(ec, cxt, ec.arg_location_at(2),
+                                too_many_message, too_many_note);
+
+      if (cxt.execution_store().shell_is_interactive()) return 2;
+
+      status = 1;
+    } else {
+      status = parsed_status.value();
+    }
+  }
+
+  LOG(Debug, "%s ending the shell with status %lld", ec.program().c_str(),
+      static_cast<long long>(status));
+
+  if (cxt.in_subshell()) {
+    let const masked_status = status & 0xFF;
+    cxt.request_exit(masked_status, ec.source_location());
+    return static_cast<i32>(masked_status);
+  }
+
+  cxt.run_exit_trap(static_cast<i32>(status & 0xFF));
+  utils::quit(static_cast<i32>(status), utils::farewell_policy::Goodbye);
+}
+
+fn report_invalid_identifier(const ExecContext &ec, EvalContext &cxt,
+                             SourceLocation location, StringView name) throws
+    -> void
+{
+  report_soft_builtin_error(ec, cxt, location,
+                            StringView{"'"} + name +
+                                "' is not a valid identifier");
+}
+
+pure fn get_operand_location(const ExecContext &ec,
+                             const ArrayList<SourceLocation> &operand_locations,
+                             usize index) wontthrow -> SourceLocation
+{
+  return index < operand_locations.count() ? operand_locations[index]
+                                           : ec.source_location();
 }
 
 fn make_error_for_arg(const ExecContext &ec, usize index,
@@ -507,6 +614,15 @@ fn append_declare_key(String &out, StringView key) throws -> void
   out += '"';
 }
 
+static fn append_value_attribute_letters(EvalContext &cxt, StringView name,
+                                         String &out) throws -> void
+{
+  if (cxt.is_integer_variable(name)) out += 'i';
+  if (cxt.variable_store().attributes().is_lowercase(name)) out += 'l';
+  if (cxt.is_readonly(name)) out += 'r';
+  if (cxt.variable_store().attributes().is_uppercase(name)) out += 'u';
+}
+
 fn append_variable_declaration(EvalContext &cxt, StringView name,
                                String &out) throws -> bool
 {
@@ -544,10 +660,7 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
 
   if (elements.has_value() || is_directory_stack || is_argument_array) {
     let line = String{cxt.scratch_allocator(), "declare -a"};
-    if (cxt.is_integer_variable(name)) line += 'i';
-    if (cxt.variable_store().attributes().is_lowercase(name)) line += 'l';
-    if (cxt.is_readonly(name)) line += 'r';
-    if (cxt.variable_store().attributes().is_uppercase(name)) line += 'u';
+    append_value_attribute_letters(cxt, name, line);
     line += ' ';
     line.append(name);
     line += "=(";
@@ -613,10 +726,7 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
     let const keys = cxt.associative_keys(name);
     let const values = cxt.associative_values(name);
     let line = String{cxt.scratch_allocator(), "declare -A"};
-    if (cxt.is_integer_variable(name)) line += 'i';
-    if (cxt.variable_store().attributes().is_lowercase(name)) line += 'l';
-    if (cxt.is_readonly(name)) line += 'r';
-    if (cxt.variable_store().attributes().is_uppercase(name)) line += 'u';
+    append_value_attribute_letters(cxt, name, line);
     line += ' ';
     line.append(name);
     line += "=(";
@@ -637,10 +747,7 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
 
   if (const Maybe<String> value = cxt.get_variable_value(name)) {
     let attribute = String{cxt.scratch_allocator(), "-"};
-    if (cxt.is_integer_variable(name)) attribute += 'i';
-    if (cxt.variable_store().attributes().is_lowercase(name)) attribute += 'l';
-    if (cxt.is_readonly(name)) attribute += 'r';
-    if (cxt.variable_store().attributes().is_uppercase(name)) attribute += 'u';
+    append_value_attribute_letters(cxt, name, attribute);
     if (os::get_environment_variable(name).has_value()) attribute += 'x';
     if (attribute.count() == 1) attribute += '-';
 
@@ -664,10 +771,7 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
       cxt.scope_store().has_current_local(name))
   {
     let attribute = String{cxt.scratch_allocator(), "-"};
-    if (cxt.is_integer_variable(name)) attribute += 'i';
-    if (cxt.variable_store().attributes().is_lowercase(name)) attribute += 'l';
-    if (cxt.is_readonly(name)) attribute += 'r';
-    if (cxt.variable_store().attributes().is_uppercase(name)) attribute += 'u';
+    append_value_attribute_letters(cxt, name, attribute);
     if (cxt.is_exported(name)) attribute += 'x';
     if (attribute.count() == 1) attribute += '-';
 

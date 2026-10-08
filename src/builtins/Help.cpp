@@ -82,9 +82,7 @@ fn Help::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let const resolved = search_builtin(name.view());
     if (!resolved.has_value()) {
       report_soft_builtin_error(
-          ec, cxt,
-          i < operand_locations.count() ? operand_locations[i]
-                                        : ec.source_location(),
+          ec, cxt, get_operand_location(ec, operand_locations, i),
           StringView{"'"} + name + "' is not a shell builtin",
           "Run `help` with no operand to list every builtin");
       status = 1;

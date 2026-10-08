@@ -72,10 +72,9 @@ fn Enable::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let const &name = args[i];
     let const resolved = search_builtin(name.view());
     if (!resolved.has_value()) {
-      let const loc = i < operand_locations.count() ? operand_locations[i]
-                                                    : ec.source_location();
       report_soft_builtin_error(
-          ec, cxt, loc, StringView{"'"} + name + "' is not a shell builtin");
+          ec, cxt, get_operand_location(ec, operand_locations, i),
+          StringView{"'"} + name + "' is not a shell builtin");
       status = 1;
     }
   }

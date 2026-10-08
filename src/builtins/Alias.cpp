@@ -58,20 +58,9 @@ fn Alias::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     } else if (const Maybe<String> value = cxt.scope_store().get_alias(arg)) {
       String message{cxt.scratch_allocator(), "alias "};
       message += arg;
-      message += "='";
-
-      for (usize value_position = 0; value_position < value->count();
-           value_position++)
-      {
-        let const character = (*value)[value_position];
-
-        if (character == '\'')
-          message += "'\\''";
-        else
-          message += character;
-      }
-
-      message += "'\n";
+      message += '=';
+      append_shell_quoted_arg(message, value->view(), true);
+      message += '\n';
       ec.print_to_stdout(message);
     } else {
       report_soft_builtin_error(ec, cxt,

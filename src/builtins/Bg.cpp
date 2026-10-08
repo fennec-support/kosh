@@ -35,18 +35,7 @@ static fn resume_job_in_background(ExecContext &ec, EvalContext &cxt,
                                    job *job) throws -> void
 {
   LOG(Info, "bg resuming job %d in the background", job->id);
-
-  let const cont = os::signal_number_from_name("CONT");
-  if (!cont.has_value())
-    throw Error{"This platform does not support continuing stopped jobs"};
-  bool did_resume = true;
-  if (job->is_primary_process_active)
-    did_resume = os::signal_process(job->pid, *cont);
-  for (let const process : job->earlier_pipeline_processes)
-    if (!os::signal_process(process, *cont)) did_resume = false;
-  if (!did_resume) throw Error{"Unable to continue the stopped job"};
-  job->state = job::State::Running;
-
+  continue_job(*job);
   ec.print_to_stdout("[" + String::from(job->id, cxt.scratch_allocator()) +
                      "] " + job->command + " &\n");
 }

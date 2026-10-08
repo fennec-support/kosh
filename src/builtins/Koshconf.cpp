@@ -343,13 +343,9 @@ pure fn Koshconf::kind() const wontthrow -> Builtin::Kind
 fn Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const args = parse_flags_vec(
-      FLAG_LIST, ec.args(), ec.source_location().position, nullptr,
-      &ec.arg_locations(), &operand_locations,
-      builtin_error_context(ec.program()),
-      flag_parse_options{.should_accept_negative_number_operand = true,
-                         .should_allow_options_after_operands = true});
-  defer { reset_flags(FLAG_LIST); };
+  let const args = PARSE_BUILTIN_ARGS_WITH_OPTIONS(
+      ec, operand_locations, .should_accept_negative_number_operand = true,
+      .should_allow_options_after_operands = true);
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 

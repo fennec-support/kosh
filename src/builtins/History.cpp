@@ -200,6 +200,27 @@ static fn get_history_import_state() -> history_import_state &
   return state;
 }
 
+static fn write_history_contents(const Path &target, os::file_open_mode mode,
+                                 StringView contents) throws -> ErrorOr<Ok>
+{
+  let const opened = os::open_file_descriptor(target.view(), mode);
+  if (!opened.has_value()) return Error{os::last_system_error_message()};
+
+  let const fd = opened.value();
+  if (!contents.is_empty() &&
+      !os::write_all(fd, contents.data, contents.length))
+  {
+    let const failure_message = os::last_system_error_message();
+    unused(os::close_fd(fd));
+
+    return Error{failure_message.view()};
+  }
+
+  if (!os::close_fd(fd)) return Error{os::last_system_error_message()};
+
+  return Success;
+}
+
 static fn append_contents_into_history(EvalContext &cxt,
                                        StringView source_text) throws
     -> ErrorOr<Ok>
@@ -230,23 +251,7 @@ static fn append_contents_into_history(EvalContext &cxt,
     contents = payload.view();
   }
 
-  let const opened = os::open_file_descriptor(backing->text().view(),
-                                              os::file_open_mode::Append);
-  if (!opened.has_value()) return Error{os::last_system_error_message()};
-
-  let const fd = opened.value();
-  if (!contents.is_empty() &&
-      !os::write_all(fd, contents.data, contents.length))
-  {
-    let const failure_message = os::last_system_error_message();
-    unused(os::close_fd(fd));
-
-    return Error{failure_message.view()};
-  }
-
-  if (!os::close_fd(fd)) return Error{os::last_system_error_message()};
-
-  return Success;
+  return write_history_contents(*backing, os::file_open_mode::Append, contents);
 }
 
 struct history_append_state
@@ -313,21 +318,8 @@ static fn write_history_to_file(EvalContext &cxt, const Path &target,
     toiletline::encode_history_record(payload, event.command.view());
 
   if (write_mode == history_file_write_mode::Replace) {
-    let const opened =
-        os::open_file_descriptor(target.view(), os::file_open_mode::Truncate);
-    if (!opened.has_value()) return Error{os::last_system_error_message()};
-
-    let const fd = opened.value();
-    if (!payload.is_empty() &&
-        !os::write_all(fd, payload.data(), payload.count()))
-    {
-      let const failure_message = os::last_system_error_message();
-      unused(os::close_fd(fd));
-
-      return Error{failure_message.view()};
-    }
-
-    if (!os::close_fd(fd)) return Error{os::last_system_error_message()};
+    TRY(write_history_contents(target, os::file_open_mode::Truncate,
+                               payload.view()));
 
     append_state.identity = get_history_file_identity(target);
     append_state.event_number = newest_number;
@@ -345,21 +337,7 @@ static fn write_history_to_file(EvalContext &cxt, const Path &target,
     }
   }
 
-  let const opened =
-      os::open_file_descriptor(target.view(), os::file_open_mode::Append);
-  if (!opened.has_value()) return Error{os::last_system_error_message()};
-
-  let const fd = opened.value();
-  if (!contents.is_empty() &&
-      !os::write_all(fd, contents.data, contents.length))
-  {
-    let const failure_message = os::last_system_error_message();
-    unused(os::close_fd(fd));
-
-    return Error{failure_message.view()};
-  }
-
-  if (!os::close_fd(fd)) return Error{os::last_system_error_message()};
+  TRY(write_history_contents(target, os::file_open_mode::Append, contents));
 
   append_state.identity = get_history_file_identity(target);
   append_state.event_number = newest_number;

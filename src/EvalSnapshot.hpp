@@ -94,6 +94,31 @@ inline constexpr pure fn compgen_action_bit(compgen_action action) wontthrow
   return 1U << static_cast<u32>(action);
 }
 
+inline constexpr compgen_action LETTER_COMPGEN_ACTIONS[] = {
+    compgen_action::Alias,   compgen_action::Builtin,
+    compgen_action::Command, compgen_action::Directory,
+    compgen_action::Export,  compgen_action::File,
+    compgen_action::Group,   compgen_action::Job,
+    compgen_action::Keyword, compgen_action::Service,
+    compgen_action::User,    compgen_action::Variable,
+};
+
+inline constexpr usize LETTER_COMPGEN_ACTION_COUNT =
+    sizeof(LETTER_COMPGEN_ACTIONS) / sizeof(LETTER_COMPGEN_ACTIONS[0]);
+
+inline constexpr pure fn compgen_letter_action_mask(const bool (
+    &is_action_enabled)[LETTER_COMPGEN_ACTION_COUNT]) wontthrow -> u32
+{
+  u32 action_mask = 0;
+  for (usize i = 0; i < LETTER_COMPGEN_ACTION_COUNT; i++) {
+    if (is_action_enabled[i]) {
+      action_mask |= compgen_action_bit(LETTER_COMPGEN_ACTIONS[i]);
+    }
+  }
+
+  return action_mask;
+}
+
 enum class completion_option : u8
 {
   BashDefault,

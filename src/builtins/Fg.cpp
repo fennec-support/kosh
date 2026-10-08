@@ -71,18 +71,7 @@ fn Fg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const should_reclaim_after_wait =
       should_reclaim && job->process_group_id > 0;
   let const do_resume_job = [&]() throws {
-    if (job->state == job::State::Stopped) {
-      let const cont = os::signal_number_from_name("CONT");
-      if (!cont.has_value())
-        throw Error{"This platform does not support continuing stopped jobs"};
-      bool did_resume = true;
-      if (job->is_primary_process_active)
-        did_resume = os::signal_process(job->pid, *cont);
-      for (let const process : job->earlier_pipeline_processes)
-        if (!os::signal_process(process, *cont)) did_resume = false;
-      if (!did_resume) throw Error{"Unable to continue the stopped job"};
-      job->state = job::State::Running;
-    }
+    if (job->state == job::State::Stopped) continue_job(*job);
   };
 
   let was_stopped = false;

@@ -73,9 +73,8 @@ fn Disown::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   for (usize i = 1; i < names.count(); i++) {
     let const job = cxt.job_table_store().find_job_by_spec(names[i]);
     if (job == nullptr || !cxt.job_table_store().remove_job(job->id)) {
-      let const loc = i < operand_locations.count() ? operand_locations[i]
-                                                    : ec.source_location();
-      throw ErrorWithLocation{loc, "'" + names[i] + "' is not a valid job"};
+      throw ErrorWithLocation{get_operand_location(ec, operand_locations, i),
+                              "'" + names[i] + "' is not a valid job"};
     }
   }
 

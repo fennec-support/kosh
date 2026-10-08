@@ -22,6 +22,7 @@ namespace koshka {
 class ExecContext;
 class EvalContext;
 class Path;
+struct job;
 
 class Builtin
 {
@@ -400,6 +401,13 @@ fn builtin_error_message(StringView program, StringView message) throws
                   builtin_error_context(ec.program()));                        \
   defer { reset_flags(FLAG_LIST); }
 
+#define PARSE_BUILTIN_ARGS_WITH_OPTIONS(ec, operand_locations, ...)            \
+  parse_flags_vec(FLAG_LIST, ec.args(), ec.source_location().position,         \
+                  nullptr, &ec.arg_locations(), &(operand_locations),          \
+                  builtin_error_context(ec.program()),                         \
+                  flag_parse_options{__VA_ARGS__});                            \
+  defer { reset_flags(FLAG_LIST); }
+
 i32 execute_builtin(ExecContext &&ec, EvalContext &cxt) throws;
 
 /* The state of a set -o option by name, or None when the name is not a known
@@ -452,6 +460,28 @@ fn report_loop_control_without_loop(const ExecContext &ec,
 
 fn report_usage_error(const ExecContext &ec, EvalContext &cxt,
                       StringView program_name) throws -> i32;
+
+fn continue_job(job &job) throws -> void;
+
+fn bind_declared_self_nameref(const ExecContext &ec, EvalContext &cxt,
+                              usize arg_index, StringView name,
+                              bool is_local) throws -> bool;
+fn declare_nameref(const ExecContext &ec, EvalContext &cxt, usize arg_index,
+                   StringView name, Maybe<StringView> target,
+                   bool should_mark_readonly) throws -> bool;
+
+fn finish_exit_builtin(const ExecContext &ec, EvalContext &cxt, i64 status,
+                       StringView invalid_status_note,
+                       StringView too_many_message,
+                       StringView too_many_note) throws -> i32;
+
+fn report_invalid_identifier(const ExecContext &ec, EvalContext &cxt,
+                             SourceLocation location, StringView name) throws
+    -> void;
+
+pure fn get_operand_location(const ExecContext &ec,
+                             const ArrayList<SourceLocation> &operand_locations,
+                             usize index) wontthrow -> SourceLocation;
 
 fn report_usage_error(EvalContext &cxt, SourceLocation location,
                       StringView program_name) throws -> i32;

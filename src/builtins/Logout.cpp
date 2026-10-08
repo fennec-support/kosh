@@ -9,8 +9,6 @@
 #include "../Builtin.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
-#include "../Utils.hpp"
-#include "../base/Trace.hpp"
 
 FLAG_LIST_DECL();
 
@@ -39,43 +37,11 @@ fn Logout::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 1;
   }
 
-  let status = static_cast<i64>(cxt.execution_store().last_exit_status());
-
-  if (ec.args().count() > 1) {
-    let const parsed_status = ec.args()[1].to<i64>();
-
-    if (parsed_status.is_error()) {
-      report_soft_builtin_error(
-          ec, cxt, ec.arg_location_at(1),
-          StringView{"'"} + ec.args()[1] + "' is not a numeric exit status",
-          "The status must be a whole number such as `logout 1`");
-      return 2;
-    }
-
-    if (ec.args().count() > 2) {
-      report_soft_builtin_error(
-          ec, cxt, ec.arg_location_at(2), "Too many arguments",
-          "Logout takes at most one status, such as `logout 1`");
-
-      if (cxt.execution_store().shell_is_interactive()) return 2;
-
-      status = 1;
-    } else {
-      status = parsed_status.value();
-    }
-  }
-
-  LOG(Debug, "logout ending the login shell with status %lld",
-      static_cast<long long>(status));
-
-  if (cxt.in_subshell()) {
-    let const masked_status = status & 0xFF;
-    cxt.request_exit(masked_status, ec.source_location());
-    return static_cast<i32>(masked_status);
-  }
-
-  cxt.run_exit_trap(static_cast<i32>(status & 0xFF));
-  utils::quit(static_cast<i32>(status), utils::farewell_policy::Goodbye);
+  return finish_exit_builtin(
+      ec, cxt, static_cast<i64>(cxt.execution_store().last_exit_status()),
+      "The status must be a whole number such as `logout 1`",
+      "Too many arguments",
+      "Logout takes at most one status, such as `logout 1`");
 }
 
 } /* namespace koshka */

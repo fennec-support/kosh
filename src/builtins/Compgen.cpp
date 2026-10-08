@@ -484,10 +484,7 @@ pure fn Compgen::kind() const wontthrow -> Builtin::Kind
 
 fn Compgen::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
-  let const args = parse_flags_vec(
-      FLAG_LIST, ec.args(), ec.source_location().position, nullptr,
-      &ec.arg_locations(), nullptr, builtin_error_context(ec.program()));
-  defer { reset_flags(FLAG_LIST); };
+  let const args = PARSE_BUILTIN_ARGS(ec);
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
@@ -499,9 +496,7 @@ fn Compgen::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let const target_location = FLAG_COMPGEN_VARIABLE_NAME.value_location();
 
     if (!name_is_valid_identifier(*variable_name)) {
-      report_soft_builtin_error(ec, cxt, target_location,
-                                StringView{"'"} + *variable_name +
-                                    "' is not a valid identifier");
+      report_invalid_identifier(ec, cxt, target_location, *variable_name);
 
       return 2;
     }
@@ -523,43 +518,13 @@ fn Compgen::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
   }
 
-  u32 action_mask = 0;
-  if (FLAG_COMPGEN_ALIAS.is_enabled()) {
-    action_mask |= compgen_action_bit(compgen_action::Alias);
-  }
-  if (FLAG_COMPGEN_BUILTIN.is_enabled()) {
-    action_mask |= compgen_action_bit(compgen_action::Builtin);
-  }
-  if (FLAG_COMPGEN_COMMANDS.is_enabled()) {
-    action_mask |= compgen_action_bit(compgen_action::Command);
-  }
-  if (FLAG_COMPGEN_DIRECTORY.is_enabled()) {
-    action_mask |= compgen_action_bit(compgen_action::Directory);
-  }
-  if (FLAG_COMPGEN_EXPORT.is_enabled()) {
-    action_mask |= compgen_action_bit(compgen_action::Export);
-  }
-  if (FLAG_COMPGEN_FILE.is_enabled()) {
-    action_mask |= compgen_action_bit(compgen_action::File);
-  }
-  if (FLAG_COMPGEN_GROUP.is_enabled()) {
-    action_mask |= compgen_action_bit(compgen_action::Group);
-  }
-  if (FLAG_COMPGEN_JOB.is_enabled()) {
-    action_mask |= compgen_action_bit(compgen_action::Job);
-  }
-  if (FLAG_COMPGEN_KEYWORD.is_enabled()) {
-    action_mask |= compgen_action_bit(compgen_action::Keyword);
-  }
-  if (FLAG_COMPGEN_SERVICE.is_enabled()) {
-    action_mask |= compgen_action_bit(compgen_action::Service);
-  }
-  if (FLAG_COMPGEN_USER.is_enabled()) {
-    action_mask |= compgen_action_bit(compgen_action::User);
-  }
-  if (FLAG_COMPGEN_VARIABLE.is_enabled()) {
-    action_mask |= compgen_action_bit(compgen_action::Variable);
-  }
+  u32 action_mask = compgen_letter_action_mask(
+      {FLAG_COMPGEN_ALIAS.is_enabled(), FLAG_COMPGEN_BUILTIN.is_enabled(),
+       FLAG_COMPGEN_COMMANDS.is_enabled(), FLAG_COMPGEN_DIRECTORY.is_enabled(),
+       FLAG_COMPGEN_EXPORT.is_enabled(), FLAG_COMPGEN_FILE.is_enabled(),
+       FLAG_COMPGEN_GROUP.is_enabled(), FLAG_COMPGEN_JOB.is_enabled(),
+       FLAG_COMPGEN_KEYWORD.is_enabled(), FLAG_COMPGEN_SERVICE.is_enabled(),
+       FLAG_COMPGEN_USER.is_enabled(), FLAG_COMPGEN_VARIABLE.is_enabled()});
 
   if (FLAG_COMPGEN_ACTION.is_set()) {
     let const name = FLAG_COMPGEN_ACTION.value();

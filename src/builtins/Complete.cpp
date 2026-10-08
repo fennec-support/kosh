@@ -236,10 +236,7 @@ pure fn Complete::kind() const wontthrow -> Builtin::Kind
 
 fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
-  let const args = parse_flags_vec(
-      FLAG_LIST, ec.args(), ec.source_location().position, nullptr,
-      &ec.arg_locations(), nullptr, builtin_error_context(ec.program()));
-  defer { reset_flags(FLAG_LIST); };
+  let const args = PARSE_BUILTIN_ARGS(ec);
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
@@ -266,26 +263,14 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     option_mask |= completion_option_bit(*option);
   }
 
-  u32 action_mask = 0;
-  let const do_add_action_if = [&](bool is_enabled, compgen_action action)
-                                   wontthrow -> void {
-    if (is_enabled) action_mask |= compgen_action_bit(action);
-  };
-  do_add_action_if(FLAG_COMPLETE_ALIAS.is_enabled(), compgen_action::Alias);
-  do_add_action_if(FLAG_COMPLETE_BUILTIN.is_enabled(), compgen_action::Builtin);
-  do_add_action_if(FLAG_COMPLETE_COMMANDS.is_enabled(),
-                   compgen_action::Command);
-  do_add_action_if(FLAG_COMPLETE_DIRECTORY.is_enabled(),
-                   compgen_action::Directory);
-  do_add_action_if(FLAG_COMPLETE_EXPORT.is_enabled(), compgen_action::Export);
-  do_add_action_if(FLAG_COMPLETE_FILE.is_enabled(), compgen_action::File);
-  do_add_action_if(FLAG_COMPLETE_GROUP.is_enabled(), compgen_action::Group);
-  do_add_action_if(FLAG_COMPLETE_JOB.is_enabled(), compgen_action::Job);
-  do_add_action_if(FLAG_COMPLETE_KEYWORD.is_enabled(), compgen_action::Keyword);
-  do_add_action_if(FLAG_COMPLETE_SERVICE.is_enabled(), compgen_action::Service);
-  do_add_action_if(FLAG_COMPLETE_USER.is_enabled(), compgen_action::User);
-  do_add_action_if(FLAG_COMPLETE_VARIABLE.is_enabled(),
-                   compgen_action::Variable);
+  u32 action_mask = compgen_letter_action_mask(
+      {FLAG_COMPLETE_ALIAS.is_enabled(), FLAG_COMPLETE_BUILTIN.is_enabled(),
+       FLAG_COMPLETE_COMMANDS.is_enabled(),
+       FLAG_COMPLETE_DIRECTORY.is_enabled(), FLAG_COMPLETE_EXPORT.is_enabled(),
+       FLAG_COMPLETE_FILE.is_enabled(), FLAG_COMPLETE_GROUP.is_enabled(),
+       FLAG_COMPLETE_JOB.is_enabled(), FLAG_COMPLETE_KEYWORD.is_enabled(),
+       FLAG_COMPLETE_SERVICE.is_enabled(), FLAG_COMPLETE_USER.is_enabled(),
+       FLAG_COMPLETE_VARIABLE.is_enabled()});
 
   for (usize i = 0; i < FLAG_COMPLETE_ACTION.count(); i++) {
     let const name = FLAG_COMPLETE_ACTION.get(i);

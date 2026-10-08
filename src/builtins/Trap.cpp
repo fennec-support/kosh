@@ -216,6 +216,20 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   }
 
+  let const do_read_condition = [&](usize index) throws -> Maybe<String> {
+    let condition = normalize_condition(args[index], cxt.scratch_allocator());
+    if (is_valid_trap_condition(condition.view(),
+                                cxt.runtime_state().get_mood()))
+    {
+      return condition;
+    }
+
+    report_soft_builtin_error(ec, cxt, ec.arg_location_at(index),
+                              args[index] + ": invalid signal specification",
+                              "List the signal names with `trap -l`");
+    return None;
+  };
+
   let const has_filter = should_print_listing && operand_index < args.count();
   if (operand_index >= args.count() || has_filter) {
     let const condition_format = cxt.runtime_state().is_bash_compatible()
@@ -241,26 +255,20 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let has_invalid_operand = false;
 
       for (usize i = operand_index; i < args.count(); i++) {
-        let const condition =
-            normalize_condition(args[i], cxt.scratch_allocator());
-        if (!is_valid_trap_condition(condition.view(),
-                                     cxt.runtime_state().get_mood()))
-        {
-          report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
-                                    args[i] + ": invalid signal specification",
-                                    "List the signal names with `trap -l`");
+        let const condition = do_read_condition(i);
+        if (!condition.has_value()) {
           has_invalid_operand = true;
           continue;
         }
 
-        if (cxt.is_signal_ignored_at_startup(condition.view())) {
-          do_append_listing(condition.view(), "");
+        if (cxt.is_signal_ignored_at_startup(condition->view())) {
+          do_append_listing(condition->view(), "");
           continue;
         }
 
-        let const trap = cxt.trap_store().find(condition.view());
+        let const trap = cxt.trap_store().find(condition->view());
         if (trap.has_value())
-          do_append_listing(condition.view(), trap->action_text.view());
+          do_append_listing(condition->view(), trap->action_text.view());
       }
 
       ec.print_to_stdout(out);
@@ -308,23 +316,15 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const action_index = operand_index;
 
   if (action_index + 1 == args.count()) {
-    let const condition =
-        normalize_condition(args[action_index], cxt.scratch_allocator());
-    if (!is_valid_trap_condition(condition.view(),
-                                 cxt.runtime_state().get_mood()))
-    {
-      report_soft_builtin_error(ec, cxt, ec.arg_location_at(action_index),
-                                args[action_index] +
-                                    ": invalid signal specification",
-                                "List the signal names with `trap -l`");
-
+    let const condition = do_read_condition(action_index);
+    if (!condition.has_value()) {
       /* Dash reports 1 for the reset form, and bash reports 2. */
       return cxt.runtime_state().is_posix_mode() ? 1 : 2;
     }
 
     LOG(Info, "trap resetting condition '%s' to its default",
-        condition.c_str());
-    cxt.remove_trap(condition);
+        condition->c_str());
+    cxt.remove_trap(*condition);
     return 0;
   }
 
@@ -333,23 +333,18 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   i32 status = 0;
   for (usize i = action_index + 1; i < args.count(); i++) {
-    let const condition = normalize_condition(args[i], cxt.scratch_allocator());
-    if (!is_valid_trap_condition(condition.view(),
-                                 cxt.runtime_state().get_mood()))
-    {
-      report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
-                                args[i] + ": invalid signal specification",
-                                "List the signal names with `trap -l`");
+    let const condition = do_read_condition(i);
+    if (!condition.has_value()) {
       status = 1;
       continue;
     }
 
     LOG(Info, "trap %s action for signal '%s'",
-        is_reset ? "resetting the" : "setting", condition.c_str());
+        is_reset ? "resetting the" : "setting", condition->c_str());
     if (is_reset)
-      cxt.remove_trap(condition);
+      cxt.remove_trap(*condition);
     else
-      cxt.set_trap(condition, action, ec.source_location());
+      cxt.set_trap(*condition, action, ec.source_location());
   }
 
   return status;

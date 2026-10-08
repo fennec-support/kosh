@@ -320,54 +320,57 @@ fn Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return do_is_separator(i) && !do_is_ifs_whitespace(i);
   };
 
+  let const read_status =
+      was_timed_out ? 142 : (was_newline_terminated ? 0 : 1);
+  usize cursor = 0;
+  let const do_skip_ifs_whitespace = [&]() {
+    while (cursor < line.length() && do_is_ifs_whitespace(cursor)) {
+      cursor++;
+    }
+  };
+  let const do_skip_field = [&]() -> usize {
+    let const start = cursor;
+    while (cursor < line.length() && !do_is_separator(cursor)) {
+      cursor++;
+    }
+    return start;
+  };
+  let const do_skip_delimiter = [&]() {
+    do_skip_ifs_whitespace();
+    if (cursor < line.length() && do_is_ifs_nonwhitespace(cursor)) {
+      cursor++;
+      do_skip_ifs_whitespace();
+    }
+  };
+
   if (FLAG_READ_ARRAY.is_set()) {
     let words = ArrayList<String>{heap_allocator()};
-    usize cursor = 0;
-    while (cursor < line.length() && do_is_ifs_whitespace(cursor))
-      cursor++;
+    do_skip_ifs_whitespace();
     while (cursor < line.length()) {
-      let const start = cursor;
-      while (cursor < line.length() && !do_is_separator(cursor))
-        cursor++;
+      let const start = do_skip_field();
       words.push(String{line.substring_of_length(start, cursor - start)});
-      while (cursor < line.length() && do_is_ifs_whitespace(cursor))
-        cursor++;
-      if (cursor < line.length() && do_is_ifs_nonwhitespace(cursor)) {
-        cursor++;
-        while (cursor < line.length() && do_is_ifs_whitespace(cursor))
-          cursor++;
-      }
+      do_skip_delimiter();
     }
     cxt.set_indexed_array(FLAG_READ_ARRAY.value(), steal(words));
-    return was_timed_out ? 142 : (was_newline_terminated ? 0 : 1);
+    return read_status;
   }
 
   if (!has_operands) {
     cxt.set_shell_variable(reply_name, line.view());
-    return was_timed_out ? 142 : (was_newline_terminated ? 0 : 1);
+    return read_status;
   }
 
-  usize cursor = 0;
-  while (cursor < line.length() && do_is_ifs_whitespace(cursor))
-    cursor++;
+  do_skip_ifs_whitespace();
 
   for (usize i = 0; i < operand_count; i++) {
     if (i + 1 == operand_count) {
-      let const field_start = cursor;
-      while (cursor < line.length() && !do_is_separator(cursor))
-        cursor++;
+      let const field_start = do_skip_field();
       let const field_end = cursor;
 
       let has_trailing_content = false;
       if (cursor < line.length()) {
-        if (do_is_ifs_whitespace(cursor)) {
-          while (cursor < line.length() && do_is_ifs_whitespace(cursor))
-            cursor++;
-        } else {
-          cursor++;
-          while (cursor < line.length() && do_is_ifs_whitespace(cursor))
-            cursor++;
-        }
+        if (!do_is_ifs_whitespace(cursor)) cursor++;
+        do_skip_ifs_whitespace();
         has_trailing_content = cursor < line.length();
       }
 
@@ -385,22 +388,13 @@ fn Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       break;
     }
 
-    let const start = cursor;
-    while (cursor < line.length() && !do_is_separator(cursor))
-      cursor++;
+    let const start = do_skip_field();
     cxt.set_shell_variable(do_operand_name(i),
                            line.substring_of_length(start, cursor - start));
-
-    while (cursor < line.length() && do_is_ifs_whitespace(cursor))
-      cursor++;
-    if (cursor < line.length() && do_is_ifs_nonwhitespace(cursor)) {
-      cursor++;
-      while (cursor < line.length() && do_is_ifs_whitespace(cursor))
-        cursor++;
-    }
+    do_skip_delimiter();
   }
 
-  return was_timed_out ? 142 : (was_newline_terminated ? 0 : 1);
+  return read_status;
 }
 
 } /* namespace koshka */

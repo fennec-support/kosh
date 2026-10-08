@@ -702,11 +702,8 @@ cold fn Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
 
     if (did_command_fail) {
-      let const operand_location = i < operand_locations.count()
-                                       ? operand_locations[i]
-                                       : ec.source_location();
       report_soft_builtin_error(
-          ec, cxt, operand_location,
+          ec, cxt, get_operand_location(ec, operand_locations, i),
           StringView{"the command `"} + arguments[i].view() +
               "` exited with status " +
               String::from(failure_status, cxt.scratch_allocator()),

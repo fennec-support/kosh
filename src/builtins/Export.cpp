@@ -51,10 +51,9 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const name = String{cxt.scratch_allocator(), args[i].view()};
       let const *source = cxt.function_store().find_source(name.view());
       if (source == nullptr) {
-        let const loc = i < operand_locations.count() ? operand_locations[i]
-                                                      : ec.source_location();
         report_soft_builtin_error(
-            ec, cxt, loc, StringView{"'"} + name + "' is not a function");
+            ec, cxt, get_operand_location(ec, operand_locations, i),
+            StringView{"'"} + name + "' is not a function");
         has_error = true;
         continue;
       }
@@ -112,14 +111,8 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         out += quote_for_declare(value.view());
         out += "\"";
       } else {
-        out += "='";
-        for (usize k = 0; k < value.count(); k++) {
-          if (value[k] == '\'')
-            out += "'\\''";
-          else
-            out.push(value[k]);
-        }
-        out += "'";
+        out += '=';
+        append_shell_quoted_arg(out, value.view(), true);
       }
       out += "\n";
     }
@@ -133,11 +126,8 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const parts = NameValueArg::from(args[i]);
       let const name = String{cxt.scratch_allocator(), parts.get_name()};
       if (!name_is_valid_identifier(name.view())) {
-        let const loc = i < operand_locations.count() ? operand_locations[i]
-                                                      : ec.source_location();
-        report_soft_builtin_error(ec, cxt, loc,
-                                  StringView{"'"} + args[i] +
-                                      "' is not a valid identifier");
+        report_invalid_identifier(
+            ec, cxt, get_operand_location(ec, operand_locations, i), args[i]);
         has_error = true;
         continue;
       }
@@ -171,10 +161,8 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
 
     if (!name_is_valid_identifier(name.view())) {
-      let const loc = i < operand_locations.count() ? operand_locations[i]
-                                                    : ec.source_location();
-      report_soft_builtin_error(
-          ec, cxt, loc, StringView{"'"} + arg + "' is not a valid identifier");
+      report_invalid_identifier(
+          ec, cxt, get_operand_location(ec, operand_locations, i), arg);
       has_error = true;
       continue;
     }
@@ -185,10 +173,9 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (cxt.is_readonly(name)) {
       if (has_new_value) {
-        let const loc = i < operand_locations.count() ? operand_locations[i]
-                                                      : ec.source_location();
-        report_soft_builtin_error(ec, cxt, loc,
-                                  StringView{"'"} + name + "' is read-only");
+        report_soft_builtin_error(
+            ec, cxt, get_operand_location(ec, operand_locations, i),
+            StringView{"'"} + name + "' is read-only");
         has_error = true;
         has_assignment_error = true;
         continue;

@@ -8,8 +8,6 @@
 
 #include "../Builtin.hpp"
 #include "../Eval.hpp"
-#include "../Utils.hpp"
-#include "../base/Trace.hpp"
 
 FLAG_LIST_DECL();
 
@@ -42,40 +40,11 @@ fn Exit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     status = static_cast<i64>(*trap_status);
   }
 
-  if (ec.args().count() > 1) {
-    let const parsed_status = ec.args()[1].to<i64>();
-
-    if (parsed_status.is_error()) {
-      report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
-                                StringView{"'"} + ec.args()[1] +
-                                    "' is not a numeric exit status");
-      return 2;
-    }
-
-    if (ec.args().count() > 2 && !cxt.runtime_state().is_posix_mode()) {
-      report_soft_builtin_error(ec, cxt, ec.arg_location_at(2),
-                                "too many arguments",
-                                "exit takes at most one status, e.g. `exit 1`");
-
-      if (cxt.execution_store().shell_is_interactive()) return 2;
-
-      status = 1;
-    } else {
-      status = parsed_status.value();
-    }
-  }
-
-  LOG(Debug, "exit ending the shell with status %lld",
-      static_cast<long long>(status));
-
-  if (cxt.in_subshell()) {
-    let const masked_status = status & 0xFF;
-    cxt.request_exit(masked_status, ec.source_location());
-    return static_cast<i32>(masked_status);
-  }
-
-  cxt.run_exit_trap(static_cast<i32>(status & 0xFF));
-  utils::quit(static_cast<i32>(status), utils::farewell_policy::Goodbye);
+  return finish_exit_builtin(ec, cxt, status, {},
+                             cxt.runtime_state().is_posix_mode()
+                                 ? StringView{}
+                                 : StringView{"too many arguments"},
+                             "exit takes at most one status, e.g. `exit 1`");
 }
 
 } /* namespace koshka */

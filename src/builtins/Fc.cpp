@@ -249,10 +249,9 @@ static fn execute_fc_command(const ExecContext &ec, EvalContext &cxt,
     }
   }
   if (selection.error != fc_selection_error::None) {
-    let const location = operand_position < operand_locations.count()
-                             ? operand_locations[operand_position]
-                             : ec.source_location();
-    return report_fc_selection_error(ec, cxt, location, selection.error);
+    return report_fc_selection_error(
+        ec, cxt, get_operand_location(ec, operand_locations, operand_position),
+        selection.error);
   }
 
   if (cxt.runtime_state().is_posix_option_on() &&
@@ -435,12 +434,8 @@ static fn edit_fc_commands(const ExecContext &ec, EvalContext &cxt,
 fn Fc::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const args =
-      parse_flags_vec(FLAG_LIST, ec.args(), ec.source_location().position,
-                      nullptr, &ec.arg_locations(), &operand_locations,
-                      builtin_error_context(ec.program()),
-                      {.should_accept_negative_number_operand = true});
-  defer { reset_flags(FLAG_LIST); };
+  let const args = PARSE_BUILTIN_ARGS_WITH_OPTIONS(
+      ec, operand_locations, .should_accept_negative_number_operand = true);
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
