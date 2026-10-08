@@ -259,9 +259,6 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
       isolated ? " in an isolated subshell" : "");
   source_store().set_script_run(true);
 
-  /* A mimicked script runs with the strictness of the mood it mimics, so a bash
-     or sh script clears nounset, pipefail, and failglob while a kosh script
-     keeps the strict default. */
   let const is_mimic_strict = mode == mimic_mood::Default;
   runtime_state().set_error_unset(is_mimic_strict);
   runtime_state().set_pipefail(is_mimic_strict);
@@ -300,8 +297,6 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
   for (usize i = 1; i < ec.args().count(); i++)
     params.push_managed(ec.args()[i].view());
 
-  /* A standard descriptor with no staged redirect is backed up too, since the
-     script may move it with an exec redirection that a fork would contain. */
   let saved_fds = ArrayList<os::saved_descriptor>{heap_allocator()};
   bool should_restore_fds = true;
   let const do_restore_fds = [&]() {
@@ -386,8 +381,6 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
     return is_interrupt;
   };
 
-  /* The kernel hands a shebang interpreter the resolved script path, so $0 and
-     BASH_SOURCE read that path rather than the word as typed. */
   execution_store().set_shell_name(
       String{heap_allocator(), ec.should_use_fallback_argv0
                                    ? ec.args()[0].view()
@@ -419,8 +412,6 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
     }
   };
 
-  /* The terminal command the shell exits with needs no isolation, so the script
-     runs against the current state with no snapshot. */
   if (!isolated) {
     variable_store().positional_params() = steal(params);
     seed_shell_identity_variables(mode == mimic_mood::Bash
@@ -551,8 +542,6 @@ fn EvalContext::run_source(StringView source, StringView origin,
       static_cast<int>(origin.length), origin.data, source.length,
       source_store().source_depth());
 
-  /* Bound the source and eval nesting so a file that sources itself errors here
-     rather than exhausting memory. */
   enter_source(call_site ? *call_site : SourceLocation{0, 0});
   defer { leave_source(); };
 
@@ -561,9 +550,6 @@ fn EvalContext::run_source(StringView source, StringView origin,
   let const frame_is_sourced_file =
       consume_return && filename.has_value() && !filename->is_empty();
 
-  /* The window opens before the frame is entered, and its restore runs after
-     the frame is left. The body of a sourced file the trace option does not
-     follow runs without the DEBUG action the caller installed. */
   let const untraced_debug_scope = UntracedTrapScope{
       *this, UntracedTrapScope::Kind::Debug, frame_is_sourced_file};
 
@@ -642,9 +628,6 @@ fn EvalContext::run_source(StringView source, StringView origin,
       ASSERT(parsed_ast != nullptr);
       source_retention().reserve_one_more();
 
-      /* Keep a copy of the source alive for as long as the AST, so a
-         control-flow jump made inside it can point a caret at the right text
-         after this call returns. */
       let const owned_source = heap_allocator().alloc_array<String>(1);
       if (owned_source == nullptr) throw std::bad_alloc{};
       try {
@@ -699,8 +682,6 @@ fn EvalContext::run_source(StringView source, StringView origin,
 
     ast->evaluate(*this);
     did_complete_source = true;
-    /* A return at the top of a sourced file or an eval returns from that source
-       with its status. Break, continue, and exit keep propagating. */
     if (consume_return && control_flow_store().has_pending() &&
         control_flow_store().pending().kind == control_flow::Kind::Return)
     {
@@ -715,8 +696,6 @@ fn EvalContext::run_source(StringView source, StringView origin,
     }
     return execution_store().last_exit_status();
   } catch (const InterruptErrorWithLocation &) {
-    /* An interrupt ends the whole shell command. It passes through the sourced
-       file, the eval, and the trap action that was running. */
     throw;
   } catch (ErrorWithLocationAndDetails &detailed_error) {
     if (!detailed_error.was_rendered()) {
@@ -807,8 +786,6 @@ fn EvalContext::clear_retained_sources() wontthrow -> void
   }
 #endif
 
-  /* A stashed source view or location may index a buffer freed just below, so
-     both drop to the unlocated rendering. */
   for (process_substitution &sub :
        expansion_store().pending_process_substitutions())
   {
@@ -896,4 +873,4 @@ fn EvalContext::expand_heredoc_body(
   return expand_modifier_word(body, false, false, source_location);
 }
 
-} /* namespace koshka */
+}

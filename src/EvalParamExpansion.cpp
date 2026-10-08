@@ -172,8 +172,6 @@ static fn get_byte_position_after(StringView value, usize byte_position,
   return byte_position;
 }
 
-/* The active mask marks which pattern bytes may act as glob metacharacters, so
-   a quoted or escaped * or ? matches itself. */
 fn trim_matching(const EvalContext &cxt, Allocator result_allocator,
                  StringView value, StringView pattern, const Bitset &active,
                  trim_end end, pattern_match_extent extent) throws -> String
@@ -363,7 +361,7 @@ static fn trim_value_with_modifier(EvalContext &cxt, StringView value,
                                   : pattern_match_extent::Shortest);
 }
 
-} /* namespace */
+}
 
 fn EvalContext::expand_modifier_word_masked(
     StringView word, Bitset &active_out, bool remove_quotes,
@@ -722,7 +720,6 @@ fn EvalContext::ModifierWordExpander::emit_run(StringView bytes,
 
 fn EvalContext::ModifierWordExpander::toggle_quote_state() throws -> bool
 {
-  /* A heredoc body passes remove_quotes as false, so its quotes stay. */
   if (m_remove_quotes && !m_is_in_single_quote && m_word[m_index] == '"') {
     m_is_in_double_quote = !m_is_in_double_quote;
     if (m_is_in_double_quote) {
@@ -745,8 +742,6 @@ fn EvalContext::ModifierWordExpander::toggle_quote_state() throws -> bool
 
 fn EvalContext::ModifierWordExpander::expand_backslash() throws -> void
 {
-  /* In a # or % pattern word a backslash quotes the next byte so a quoted
-     glob character such as \* matches itself. */
   if (m_is_pattern_word && m_index + 1 < m_word.length) {
     emit_byte(m_word[m_index + 1], false);
     m_index++;
@@ -803,8 +798,6 @@ fn EvalContext::ModifierWordExpander::emit_command_substitution(
 
 fn EvalContext::ModifierWordExpander::expand_backquote() throws -> void
 {
-  /* The POSIX backquote unescaping strips a backslash before a backtick, a
-     dollar sign, or another backslash. */
   let inner = String{m_context.scratch_allocator()};
   usize j = m_index + 1;
   for (; j < m_word.length; j++) {
@@ -933,9 +926,6 @@ fn EvalContext::ModifierWordExpander::expand_function_substitution() throws
 fn EvalContext::ModifierWordExpander::scan_braced_body(
     usize &position, bool is_command_body) throws -> String
 {
-  /* Scan the ${...} body to the matching } at brace depth one. A quote run
-     or a backslash escape keeps its bytes literal so a } inside is never
-     counted. */
   let inner = String{m_context.scratch_allocator()};
   position = m_index + 2;
   i32 depth = 1;
@@ -1027,9 +1017,6 @@ fn EvalContext::ModifierWordExpander::expand_plain_parameter() throws -> void
   while (j < m_word.length && lexer::is_variable_name(m_word[j])) {
     name += m_word[j++];
   }
-  /* A nested reference obeys set -u the way a top level reference does. A
-     stored name resolves without the extra dynamic-value lookup and copy.
-   */
   let const stored = m_context.variable_store().find_plain_scalar(name);
   if (stored.has_value()) {
     emit_run(stored->view(), !m_is_in_double_quote);
@@ -1045,9 +1032,6 @@ fn EvalContext::ModifierWordExpander::expand_plain_parameter() throws -> void
 fn EvalContext::ModifierWordExpander::scan_arithmetic_body(
     bool is_bracket_form, usize &position) throws -> String
 {
-  /* Arithmetic $((...)), scanned to the matching )), or $[...], scanned to the
-     ] that balances its brackets. A quote run keeps its bytes literal so a
-     closing byte inside a string does not count. */
   let inner = String{m_context.scratch_allocator()};
   position = m_index + (is_bracket_form ? 2 : 3);
   usize depth = 0;
@@ -1495,7 +1479,6 @@ fn EvalContext::ParameterExpander::expand_word(
 
 fn EvalContext::ParameterExpander::expand_indirect() throws -> String
 {
-  /* ${!name} indirection, or a prefix listing when it ends with * or @. */
   let const body = m_spec.substring(1);
   if (m_context.scope_store().is_self_reference(body)) rarely
     {
@@ -1516,8 +1499,6 @@ fn EvalContext::ParameterExpander::expand_indirect() throws -> String
         return String{m_context.scratch_allocator(), target->view()};
       }
     }
-  /* A modifier after the name applies to the indirected value, the bare
-     trailing * and @ stay with the body as the prefix-listing forms. */
   let const name_end = find_indirect_name_end(body);
   if (name_end > 0 && name_end < body.length &&
       !(name_end == body.length - 1 &&
@@ -1529,8 +1510,6 @@ fn EvalContext::ParameterExpander::expand_indirect() throws -> String
     let const suffix = body.substring(name_end);
     let rewritten = String{m_context.scratch_allocator()};
     rewritten.reserve(target_name.length + suffix.length);
-    /* An unset indirection name stands in for the target so the modifier sees
-       the unset state, a fatal error would be harsher than bash. */
     rewritten.append(target_name);
     rewritten.append(suffix);
     let suffix_location = SourceLocation{};
@@ -1574,7 +1553,6 @@ fn EvalContext::ParameterExpander::expand_length() throws -> String
     return String{m_context.scratch_allocator(), "0"};
   }
 
-  /* ${#a[@]} is the element count, ${#a[i]} the length of one element. */
   if (let const bracket = name.find_character('[');
       bracket.has_value() && *bracket > 0 && name[name.length - 1] == ']' &&
       lexer::is_variable_name_start(name[0]))
@@ -1763,15 +1741,11 @@ fn EvalContext::ParameterExpander::expand_subscripted() throws -> Maybe<String>
   };
   if (*close + 1 == m_rest.length) return do_read_element();
 
-  /* The / # % ^ , modifiers after an element subscript modify the one element,
-     and every modifier after an @ or * subscript applies to the list. */
   let const modifier = m_rest.substring(*close + 1);
   let modifier_location = SourceLocation{};
   let const *modifier_location_pointer =
       get_location_for(modifier, modifier_location);
   let const modifier_op = modifier.is_empty() ? '\0' : modifier[0];
-  /* A reference to one element takes no subscript of its own, so bash expands
-     ${ref[i]} to nothing. */
   if (modifier_op == '[' && m_is_reference_target) {
     return String{m_context.scratch_allocator()};
   }
@@ -1869,9 +1843,6 @@ fn EvalContext::ParameterExpander::expand_list_operator(
 fn EvalContext::ParameterExpander::should_join_with_ifs(
     bool is_star, bool is_trim_or_transform) const wontthrow -> bool
 {
-  /* In an assignment value bash joins the elements an operator changed with
-     the first IFS byte: always inside double quotes, and outside them only
-     after a trim or a transformation. */
   if (is_star) return true;
   if (!m_context.expansion_store().is_expanding_assignment_value()) {
     return false;
@@ -1886,9 +1857,6 @@ fn EvalContext::ParameterExpander::should_join_with_ifs(
 fn EvalContext::ParameterExpander::is_operand_quoted_null(
     const ArrayList<String> &values, bool is_star) const wontthrow -> bool
 {
-  /* In a [[ ]] or case word bash keeps the empty elements of an unquoted list
-     as quoted nulls. They join to a set but empty string when * meets an
-     empty IFS or @ meets an IFS that starts with a byte other than a blank. */
   let const &store = m_context.expansion_store();
   if (m_quoting != parameter_word_quoting::Unquoted) return false;
   if (!store.is_expanding_single_string()) return false;
@@ -2036,8 +2004,6 @@ fn EvalContext::ParameterExpander::expand_list_transform(
 
 fn EvalContext::ParameterExpander::expand_bare_reference() throws -> String
 {
-  /* A plain reference reports under set -u, a modifier form such as ${x:-w}
-     handles the unset case itself. */
   if (let const stored = m_context.variable_store().find_plain_scalar(m_name);
       stored.has_value())
     return String{m_context.scratch_allocator(), stored->view()};
@@ -2311,7 +2277,6 @@ fn EvalContext::ParameterExpander::expand_trim_operator(
 
 fn EvalContext::ParameterExpander::expand_operator() throws -> String
 {
-  /* A leading colon makes the test forms treat an empty value as unset. */
   let const is_colon_form = m_rest[0] == ':';
   const usize op_index = is_colon_form ? 1 : 0;
   if (op_index >= m_rest.length) raise_bare_colon(m_rest);
@@ -2326,9 +2291,6 @@ fn EvalContext::ParameterExpander::expand_operator() throws -> String
     }
   }
 
-  /* Where one string results, dash applies an operator to "$@" and "$*"
-     joined, and the parameters always count as set, while bash applies it to
-     each one. */
   let const is_dash_single_string =
       m_context.runtime_state().get_mood() == mimic_mood::Posix &&
       (m_context.expansion_store().is_expanding_single_string() ||
@@ -2441,8 +2403,6 @@ hot fn EvalContext::apply_parameter_expansion(
   LOG(All, "applying the parameter expansion '${%.*s}'",
       static_cast<int>(spec.length), spec.data);
 
-  /* A nested ${name:-${...}} default re-enters this dispatch at each level, so
-     the depth is capped before the native stack is exhausted. */
   enter_parameter_expansion();
   defer { leave_parameter_expansion(); };
 
@@ -2467,9 +2427,6 @@ hot fn EvalContext::apply_parameter_expansion(
   return expander.expand();
 }
 
-/* The index of the colon that separates the offset from the length, or the body
-   length when there is none. Parentheses and a ternary inside the offset are
-   tracked so a colon belonging to a ternary is not mistaken for it. */
 fn find_substring_length_separator(StringView body) wontthrow -> usize
 {
   usize paren_depth = 0;
@@ -2674,8 +2631,6 @@ fn EvalContext::join_list_slice(substring_bounds bounds,
   return joined;
 }
 
-/* A slash inside a quote run or behind a backslash belongs to the pattern, the
-   way bash reads ${var/#"a/b"/c}, so the scan tracks the quote state. */
 static fn find_replacement_separator(StringView body) wontthrow -> usize
 {
   char quote = 0;
@@ -2730,9 +2685,6 @@ fn EvalContext::apply_pattern_replacement(
   return pattern_replace_value(current_view, spec, source_location);
 }
 
-/* With patsub_replacement an unquoted & reads as the matched span. A quoted
-   byte stays literal, and a backslash that came from an unquoted expansion
-   quotes a following & or backslash. */
 static fn append_pattern_replacement(String &out, StringView replacement,
                                      const Bitset &active,
                                      bool is_patsub_enabled,
@@ -2788,7 +2740,6 @@ fn EvalContext::pattern_replace_value(
   let const pattern_word = remainder.substring_of_length(0, separator);
   let pattern_location = SourceLocation{};
   let pattern_active = Bitset{scratch_allocator()};
-  /* The anchor keeps a leading tilde from starting the pattern. */
   let guarded_pattern_word = String{scratch_allocator()};
   let word_to_expand = pattern_word;
   if ((is_anchored_at_start || is_anchored_at_end) &&
@@ -2816,9 +2767,6 @@ fn EvalContext::pattern_replace_value(
   let const is_patsub_enabled =
       runtime_state().is_shopt_enabled(shopt_option_id::PatsubReplacement);
 
-  /* An empty unanchored pattern matches nothing in bash, so the value is
-     returned unchanged. The anchored forms still splice at the start or the
-     end. */
   if (pattern.is_empty() && !is_anchored_at_start && !is_anchored_at_end) {
     return String{scratch_allocator(), value};
   }
@@ -2871,7 +2819,6 @@ fn EvalContext::pattern_replace_value(
     return out;
   }
 
-  /* A zero-length match advances one byte so the scan cannot loop. */
   bool has_replaced = false;
   usize i = 0;
   while (i < value.length) {
@@ -2908,8 +2855,6 @@ fn EvalContext::pattern_replace_value(
   return out;
 }
 
-/* Q quotes for reuse, U u L change the case, E expands backslash escapes, A
-   prints a recreating assignment, and a lists the attribute letters. */
 fn EvalContext::apply_parameter_transform(StringView name, char op) throws
     -> String
 {
@@ -3000,8 +2945,6 @@ fn EvalContext::apply_parameter_transform_to_value(StringView text, char op,
   case 'Q':
   case 'K':
   case 'k':
-    /* On a bare name K and k quote the value the way Q does, the key-and-value
-       listing is the ${a[@]@K} array-field form on the element path. */
     utils::append_shell_quoted(
         out, text, get_glob_charset_for(text) == glob_charset::Utf8);
     return out;
@@ -3174,4 +3117,4 @@ fn EvalContext::apply_value_modifier(
   return String{scratch_allocator(), value};
 }
 
-} /* namespace koshka */
+}

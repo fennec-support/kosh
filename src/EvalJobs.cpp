@@ -505,8 +505,6 @@ fn JobTable::find_job_by_spec(StringView spec) throws -> job *
 
 fn JobTable::most_recent_job() wontthrow -> job *
 {
-  /* Skip a finished job, so a bare fg or bg acts on a running or stopped job
-     rather than a dead pid. */
   for (usize i = m_jobs.count(); i > 0; i--) {
     ASSERT(i - 1 < m_jobs.count());
     if (m_jobs[i - 1].state != job::State::Done) return &m_jobs[i - 1];
@@ -633,4 +631,4 @@ fn EvalContext::notify_done_jobs() throws -> void
   if (!lines.is_empty()) print_error(lines);
 }
 
-} /* namespace koshka */
+}

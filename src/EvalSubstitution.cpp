@@ -277,7 +277,6 @@ fn EvalContext::read_redirect_substitution(StringView source) throws
   if (name == nullptr || name->kind() != Token::Kind::Word) {
     return None;
   }
-  /* Anything after the single filename means this is not the bare read form. */
   Token *after = lexer.next_shell_token();
   if (after != nullptr && after->kind() != Token::Kind::EndOfFile &&
       after->kind() != Token::Kind::Newline)
@@ -308,8 +307,6 @@ fn EvalContext::capture_command_substitution(
       file.has_value())
     return steal(*file);
 
-  /* A caller such as the make $(shell) names a filename, so an error inside the
-     command carets that source rather than a bare unnamed line. */
   if (arena_store().parse_arena() == nullptr)
     throw Error{"Command substitution outside of a parse"};
   let const ast_mark = arena_store().parse_arena()->mark();
@@ -371,7 +368,6 @@ fn EvalContext::setup_process_substitution(
     throw Error{"Process substitution outside of a parse"};
   ASSERT(!text.is_empty());
 
-  /* The first byte is the direction marker the lexer wrote. */
   let const direction = text[0];
   let const command_writes_the_pipe = direction == '<';
   LOG(Debug, "setting up a process substitution where the command %s the pipe",
@@ -603,8 +599,6 @@ fn EvalContext::cleanup_process_substitutions(
     process_substitution &sub =
         expansion_store().pending_process_substitutions()[i];
     os::finish_process_substitution(sub.platform_cleanup);
-    /* Closing the shell end first sends SIGPIPE to a producer that still has
-       output queued, so it ends rather than blocking the wait below. */
     if (sub.shell_fd != KOSH_INVALID_FD) os::close_fd(sub.shell_fd);
     if (sub.child == KOSH_INVALID_PROCESS) continue;
 
@@ -614,7 +608,6 @@ fn EvalContext::cleanup_process_substitutions(
     } catch (const Error &e) {
       LOG(Debug, "a process substitution reap failed and was swallowed: %s",
           e.message().c_str());
-      /* bash stays silent here, so the warning is suppressed in bash mode. */
       if (!runtime_state().is_bash_compatible()) {
         try {
           let const text =
@@ -755,9 +748,6 @@ fn EvalContext::run_captured_substitution(
   LOG(Debug, "running a captured substitution body of %zu bytes",
       source.count());
 
-  /* The inner scratch is reclaimed at the substitution boundary, so a $(...)
-     inside a loop does not grow the arena across iterations. The captured
-     output is heap and escapes. */
   let const substitution_mark = expansion_store().scratch_arena().mark();
   defer { expansion_store().scratch_arena().release(substitution_mark); };
 
@@ -851,8 +841,6 @@ fn EvalContext::run_captured_substitution(
         }
         if (!error) {
           try {
-            /* A status the action exits with lands in the exit status the
-               child process below reports. */
             unused(run_subshell_exit_trap());
           } catch (...) {
             error = std::current_exception();
@@ -984,8 +972,6 @@ fn EvalContext::run_captured_substitution(
     execution_store().set_shell_is_interactive(false);
     did_change_interactive_state = true;
 
-    /* A break, continue, return, or exit inside a substitution acts only within
-       it and must not escape into the enclosing loop, function, or shell. */
     enter_subshell();
     did_enter_subshell = true;
     hide_coprocess_descriptors();
@@ -1008,9 +994,6 @@ fn EvalContext::run_captured_substitution(
             static_cast<i32>(control_flow_store().pending().value));
       control_flow_store().clear();
     }
-    /* The substitution's own EXIT action runs while stdout still points at the
-       pipe. Its output joins the captured value. A status the action exits
-       with stays in the exit status the substitution reports. */
     if (!error) {
       try {
         unused(run_subshell_exit_trap());
@@ -1033,8 +1016,6 @@ fn EvalContext::run_captured_substitution(
     note_subshell_child_exit();
 
     if (error) {
-      /* A throw inside the substitution is contained to its subshell the way
-         bash holds a fatal expansion error to the command substitution. */
       LOG(Debug, "the command substitution failed, containing the error");
       execution_store().set_last_exit_status(contained_substitution_status(
           error, runtime_state().is_posix_mode()));
@@ -1098,8 +1079,6 @@ fn EvalContext::capture_function_substitution(const WordSegment &segment) throws
   }
   ASSERT(cache.substitution_ast != nullptr);
 
-  /* The trace and LINENO paths hold the address of the running source for the
-     whole body, so the segment text is materialized here. */
   let const source = String{heap_allocator(), body};
 
   return run_function_substitution(cache.substitution_ast, source,
@@ -1157,9 +1136,6 @@ fn EvalContext::run_function_substitution(const Expression *ast,
 {
   LOG(Debug, "running a function substitution body of %zu bytes",
       source.count());
-  /* The body runs against the live state, no snapshot and no subshell, so its
-     assignments, cd, and definitions persist the way the bash 5.3 funsub
-     leaves them. */
   let const source_scope =
       enter_source_scope(&source, String{"function substitution"});
 
@@ -1180,9 +1156,6 @@ fn EvalContext::run_function_substitution(const Expression *ast,
     } catch (...) {
       body_error = std::current_exception();
     }
-    /* A break, continue, or return acts only within the body and is consumed
-       here. An exit stays pending, so the shell ends after the surrounding
-       command finishes, the way bash exits from a funsub. */
     if (control_flow_store().has_pending() &&
         control_flow_store().pending().kind != control_flow::Kind::Exit)
     {
@@ -1200,14 +1173,10 @@ fn EvalContext::run_function_substitution(const Expression *ast,
         "the function substitution failed, containing the error with status 1");
     render_contained_substitution_error(body_error, source.view());
     execution_store().set_last_exit_status(1);
-    /* The body shares the shell, so a fatal error such as an unset variable
-       under set -u ends the enclosing subshell or script. */
     if (is_script_fatal_error(body_error)) std::rethrow_exception(body_error);
   };
 
   if (is_value_substitution) {
-    /* REPLY is local to a ${| ...; } body, which starts with it unset, and the
-       body's standard output stays the shell's own. */
     let const outer_reply = get_variable_value(StringView{"REPLY"});
     unset_shell_variable(StringView{"REPLY"});
     let const body_error = do_evaluate_body();
@@ -1258,4 +1227,4 @@ fn EvalContext::run_function_substitution(const Expression *ast,
   return captured;
 }
 
-} /* namespace koshka */
+}

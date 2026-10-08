@@ -48,9 +48,6 @@ struct conditional_evaluator
   EvalContext &cxt;
   const ArrayList<conditional_element> &elements;
   usize pos = 0;
-  /* A decided && or || branch is parsed to advance past its tokens but not
-     evaluated, so a dead-branch glob, regex, or command substitution runs no
-     side effect and raises no error, the way bash short-circuits [[ ]]. */
   bool is_skipping = false;
 
   using Kind = conditional_element::Kind;
@@ -95,8 +92,6 @@ struct conditional_evaluator
     return String{heap_allocator()};
   }
 
-  /* The mask marks which *, ?, and [ stay active. A quoted or escaped
-     metacharacter is masked off and matches literally. */
   fn operand_pattern_masked(const conditional_element &e, Bitset &active) throws
       -> String
   {
@@ -229,8 +224,6 @@ struct conditional_evaluator
                        "It is not supported on this platform");
     }
 
-    /* An inactive mask byte came from a quoted part of the operand, so a regex
-       metacharacter there is backslash-escaped to match itself. */
     let escaped_pattern = String{cxt.scratch_allocator()};
     for (usize i = 0; i < pattern.length; i++) {
       let const is_literal = i < active.count() && !active[i];
@@ -254,8 +247,6 @@ struct conditional_evaluator
       return false;
     }
     if (match.result == os::regex_match_result::Error) {
-      /* A genuine engine failure such as REG_ESPACE surfaces with the engine's
-         own message instead of reading as false. */
       fail_conditional("Unable to match the =~ pattern",
                        match.error_message.view());
     }
@@ -327,7 +318,6 @@ struct conditional_evaluator
       if (ErrorOr<i64> descriptor = operand.to<i64>(); !descriptor.is_error())
         return os::is_fd_a_tty(
             os::descriptor_from_fd_number(descriptor.value()));
-      /* bash reports a non-integer -t operand with status 2. */
       ErrorWithDetails error{"Unable to test '-t " + operand + "'",
                              "The operand is not an integer"};
       error.set_command_status(2);
@@ -353,8 +343,6 @@ struct conditional_evaluator
     default: break;
     }
 
-    /* The arithmetic comparison operands are full expressions, so 1+1 and a
-       bare variable name evaluate. An empty operand reads as zero. */
     let const do_normalize = [&](StringView operand) throws -> StringView {
       for (usize i = 0; i < operand.length; i++) {
         if (operand[i] != ' ' && operand[i] != '\t') return operand;
@@ -397,9 +385,6 @@ struct conditional_evaluator
 
       pos += 2;
       if (is_skipping) return false;
-      /* bash does not nounset the operand of -v, so the unset-variable
-         diagnostic stays silent while it expands. The defer restores the prior
-         value so a throw cannot strand the suppression on. */
       let const is_existence_test =
           *selected_unary_operator == UnaryOperatorKind::VariableSet;
       let const saved_suppress_unset =
@@ -488,7 +473,6 @@ struct conditional_evaluator
             let const pattern =
                 operand_pattern_masked(elements[pos - 1], active);
             let const is_case_insensitive = cxt.is_shopt_enabled("nocasematch");
-            /* A conditional pattern always honors extended groups. */
             let const pattern_extglob = cxt.runtime_state().is_posix_mode()
                                             ? extglob_mode::Disabled
                                             : extglob_mode::Enabled;
@@ -520,8 +504,6 @@ struct conditional_evaluator
             let active = Bitset{cxt.scratch_allocator()};
             const String pattern =
                 operand_pattern_masked(elements[pos - 1], active);
-            /* A malformed regex throws without a location, so the caret is
-               pointed at the regex operand. */
             try {
               return regex_match(left.view(), pattern.view(), active);
             } catch (const Error &err) {
@@ -591,7 +573,7 @@ struct conditional_evaluator
   }
 };
 
-} /* namespace */
+}
 
 static constexpr usize REGEX_CACHE_CAP = 128;
 
@@ -658,4 +640,4 @@ fn EvalContext::evaluate_conditional(
   return is_conditional_true;
 }
 
-} /* namespace koshka */
+}

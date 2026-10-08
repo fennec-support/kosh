@@ -467,7 +467,7 @@ pure fn did_signed_multiply_overflow(i128 left, i128 right,
   return false;
 }
 
-} // namespace
+}
 
 ArithmeticValue::ArithmeticValue(i64 value) wontthrow
     : m_low{static_cast<u64>(value)},
@@ -1300,4 +1300,4 @@ fn ArithmeticValue::has_integer_value(BumpArena &arena) const throws -> bool
   return compare(integer, bump_allocator(arena)) == 0;
 }
 
-} /* namespace koshka::arithmetic_internal */
+}

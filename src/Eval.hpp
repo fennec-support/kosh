@@ -133,7 +133,6 @@ enum class bash_special_array_id : u8
   Count,
 };
 
-/* An unset can take the reader away from each of these dynamic names. */
 enum class dynamic_reader_id : u8
 {
   Seconds,
@@ -563,7 +562,7 @@ inline fn RuntimeState::set_annoying_diagnostics_enabled(bool enabled) wontthrow
   m_reporting.is_annoying_disabled = !enabled;
 }
 
-} /* namespace koshka */
+}
 
 #include "EvalOperations.hpp"
 #include "EvalSnapshot.hpp"
@@ -577,7 +576,7 @@ class EvalContext;
 
 namespace completion {
 class shell_highlight_cache;
-} /* namespace completion */
+}
 
 class RuntimeControlStore
 {
@@ -3268,11 +3267,6 @@ public:
                   heap_allocator()});
   fn end_command() wontthrow -> void;
 
-  /* Variable expand, tilde expand, field split, and glob each token. The
-     expanded_locations out-parameter, when not null, is filled in parallel
-     with the returned strings, so each field carries the source_location of
-     the token it expanded from. A token that splits into many fields
-     contributes one location per field. */
   fn process_args(const ArrayList<const Token *> &args,
                   ArrayList<SourceLocation> *expanded_locations = nullptr,
                   argument_lifetime lifetime = argument_lifetime::Persistent,
@@ -3306,16 +3300,11 @@ public:
   fn set_array_element(StringView name, usize index, StringView value) throws
       -> void;
 
-  /* Assign one array element from a raw subscript, routing an associative name
-     to a string key and an indexed name to an arithmetic index. The append form
-     concatenates onto the current element. */
   fn assign_array_element(StringView name, StringView subscript,
                           StringView value,
                           assignment_update_mode update_mode) throws -> void;
   fn read_array_element_arithmetic_text(StringView name,
                                         StringView subscript) throws -> String;
-  /* The bash associative arrays. The values live in one flat map under a
-     composite name-and-key, the declared names are tracked separately. */
   fn declare_associative_array(StringView name) throws -> void;
   pure fn is_associative_array(StringView name) const wontthrow -> bool
   {
@@ -3365,8 +3354,6 @@ public:
 
   fn array_element_is_set(StringView name, StringView subscript) throws -> bool;
 
-  /* The compiled form of an extended regex, reused across matches so a hot =~
-     loop compiles each distinct pattern once. */
   fn cached_compiled_regex(StringView pattern) throws -> os::compiled_regex *;
 
   fn collect_array_subscripts(StringView name) const throws
@@ -3374,15 +3361,10 @@ public:
 
   fn clear_sparse_array(StringView name) throws -> void;
 
-  /* Assign an array literal, honoring an explicit [index]=value element with a
-     bare element taking the next index. An append continues after the highest
-     set index. */
   fn assign_indexed_array_elements(StringView name,
                                    const ArrayList<String> &elements,
                                    assignment_update_mode update_mode) throws
       -> void;
-  /* Every element written as [key]=value sets that key, and a list with no
-     such element alternates keys and values, the bash 5.1 form. */
   fn assign_associative_elements(StringView name,
                                  const ArrayList<String> &elements) throws
       -> void;
@@ -3419,30 +3401,17 @@ public:
   pure fn variable_requires_dynamic_lookup(StringView name) const wontthrow
       -> bool;
 
-  /* Answer whether a dynamic reader claims every write of the name. */
   pure fn is_dynamic_write_owner(StringView name) const wontthrow -> bool;
 
-  /* Give a dynamic name its assigned value and answer whether the name owns the
-     write. SECONDS moves the base its elapsed count is measured from. RANDOM
-     seeds the generator, and a repeated seed repeats the sequence. A name that
-     answers true keeps no ordinary storage, because ordinary storage shadows
-     the reader. */
   fn write_dynamic_variable(StringView name, StringView value) throws -> bool;
 
   fn append_dynamic_variable_names(ArrayList<StringView> &out) const throws
       -> void;
 
-  /* Answer whether an unset has already taken the reader of the name away. */
   pure fn is_dynamic_reader_unset(StringView name) const wontthrow -> bool;
 
-  /* Take the reader of the name away for the rest of the shell. The name keeps
-     whatever ordinary storage a later assignment gives it, and the value stays
-     frozen. A subshell inherits the loss. */
   fn unset_dynamic_reader(StringView name) wontthrow -> void;
 
-  /* The closest name the shell currently holds, or None when nothing is close
-     enough. The walk covers every name the shell knows and runs only on the
-     unset diagnostic path. */
   fn suggest_similar_variable_name(StringView name) const throws
       -> Maybe<String>;
 
@@ -3454,8 +3423,6 @@ public:
            is_exported(name) || variable_requires_dynamic_lookup(name);
   }
 
-  /* Move the positional parameters out, so a function call saves the caller's
-     without a deep copy and restores them by moving the saved list back. */
   fn notify_done_jobs() throws -> void;
 
   fn register_function(StringView name, const FunctionBodyHandle &body_storage,
@@ -3513,8 +3480,6 @@ public:
   pure fn function_storage_stats() const wontthrow -> function_arena_stats;
   fn unset_function(StringView name) throws -> void;
   fn mark_function_readonly(StringView name) throws -> void;
-  /* out_exit_status receives the function's return status, so the engine sees
-     the 124 a dynamic loader returns to request a retry. */
   fn run_completion_function(StringView function_name, StringView command_name,
                              const ArrayList<String> &words, usize cword,
                              StringView line, usize point,
@@ -3525,14 +3490,12 @@ public:
                             StringView word, StringView previous_word,
                             StringView line, usize point) throws
       -> ArrayList<String>;
-  /* allow_expansion off keeps the plain split with no shell expansion. */
   fn expand_wordlist_to_fields(StringView wordlist,
                                bool allow_expansion = true) throws
       -> ArrayList<String>;
 
   fn variable_names(Allocator result_allocator = heap_allocator()) const throws
       -> HashSet;
-  /* A signal condition installs the shell's handler. */
   fn set_trap(StringView condition, StringView action,
               Maybe<SourceLocation> definition_location = None) throws -> void;
   fn capture_trap_definition(const SourceLocation &location,
@@ -3541,33 +3504,21 @@ public:
   fn discard_inherited_signal_traps() throws -> void;
   fn run_exit_trap(Maybe<i32> final_status = None) throws -> void;
 
-  /* The trigger location is the command that fired the trap. $LINENO reports
-     it inside the action. An absent location falls back to the current one.
-     The current one suits a trap that fires as a command runs. */
   fn run_named_trap(StringView condition,
                     const SourceLocation *trigger_location = nullptr) throws
       -> void;
   fn cached_trap_body(StringView condition, StringView action) throws
       -> FunctionBodyHandle;
-  /* Run the RETURN action against the status the leaving frame left behind. The
-     caller owns the condition that decides whether the trap runs at all. */
   fn run_return_trap(i32 status_before_return) throws -> void;
   fn restore_trap_pipe_statuses(bool has_saved_pipe_statuses,
                                 ArrayList<String> saved_pipe_statuses) wontthrow
       -> void;
-  /* A trap a frame installs for itself traces that frame without errtrace. An
-     inherited trap needs errtrace to reach the frame. The subshell bootstrap
-     emits the trap dispositions ahead of the state it replays. A failing replay
-     step belongs to the shell. */
   pure fn should_run_err_trap() const wontthrow -> bool
   {
     return !trap_store().is_replaying_inherited_state() &&
            (runtime_state().option_is_enabled(shell_option_id::Errtrace) ||
             nesting_depth() <= trap_store().err_trap_active_depth());
   }
-  /* How deep the current frame sits inside function calls, subshells, and
-     command substitutions together. Each of the three moves it by one. One
-     number orders every frame the DEBUG and ERR traps care about. */
   pure fn nesting_depth() const wontthrow -> usize
   {
     return function_store().call_depth() + execution_store().subshell_depth() +
@@ -3580,8 +3531,6 @@ public:
            (runtime_state().option_is_enabled(shell_option_id::Functrace) ||
             nesting_depth() <= trap_store().debug_trap_active_depth());
   }
-  /* The trap installed inside a frame keeps running once that frame is left.
-     Leaving a frame lowers the depth each action is allowed to reach. */
   fn lower_trap_depths_to_current() wontthrow -> void
   {
     let const depth = nesting_depth();
@@ -3590,9 +3539,6 @@ public:
     if (trap_store().err_trap_active_depth() > depth)
       trap_store().err_trap_active_depth() = depth;
   }
-  /* A function call the trace option does not follow runs its body without the
-     trap the caller installed. The body sees no trap listed and can install one
-     of its own. The saved action returns when the body left none behind. */
   mustuse fn save_untraced_trap(StringView condition,
                                 shell_option_id trace_option,
                                 usize *active_depth) throws -> saved_frame_trap;
@@ -3602,31 +3548,15 @@ public:
   {
     return !runtime_state().is_posix_mode();
   }
-  /* A subshell is a fresh shell for the trap engine. No action is running
-     inside it, and the condition that forked it fires again there. */
-  /* The status an exit with no operand reports inside a trap action. It is the
-     status the shell had reached when the action began. The commands of the
-     action itself replace that status in the ordinary exit status. */
-  /* The status of the last trap action. It is recorded before the restoration
-     returns the triggering command's own status. A condition that ran no action
-     records zero. */
-  /* The line $LINENO reports inside a trap action. It is the line of the
-     command that fired the trap. A function or a sourced file the action enters
-     carries its own lines. The answer is empty there. */
   pure fn trap_trigger_line_number() const wontthrow -> Maybe<usize>
   {
     return trap_store().action_frame().get_trigger_line_number(
         source_store().source_frames().count(), function_store().call_depth());
   }
 
-  /* Run the action of every signal whose flag the handler set, at the command
-     boundary. The pending flag is cleared before the flags are consumed, and a
-     signal that arrives during the drain is taken at the next boundary. */
   fn run_pending_traps() throws -> void;
   fn has_exit_trap() const wontthrow -> bool;
 
-  /* A subshell clears the inherited EXIT action on entry and fires its own on
-     exit. The status an exit inside the action asked for is returned. */
   fn clear_inherited_exit_trap() throws -> void;
   fn run_subshell_exit_trap() throws -> Maybe<i32>;
 
@@ -3644,8 +3574,6 @@ public:
       -> SortedArrayList<String, order_comparator<String>>;
 
   fn is_integer_variable(StringView name) const wontthrow -> bool;
-  /* The appended expression is parenthesized so its precedence stays
-     self-contained. */
   fn append_integer_expression(String &joined,
                                StringView expression) const throws -> void;
 
@@ -3682,14 +3610,9 @@ public:
       -> MergedFrame;
   mustuse fn merged_frame_at(usize index) const wontthrow -> MergedFrame;
   mustuse fn script_source_frame_index() const wontthrow -> Maybe<usize>;
-  /* The FUNCNAME frame list bash exposes, the function calls innermost first,
-     one "source" per sourced file, and "main" at the bottom of a script run. */
   mustuse fn funcname_frame_count() const wontthrow -> usize;
   mustuse fn funcname_frame_at(usize index) const wontthrow -> StringView;
-  /* A frame past the function calls reports zero. */
   mustuse fn funcname_line_at(usize index) const throws -> usize;
-  /* The BASH_SOURCE frame list, the innermost sourced file first and the script
-     name at the bottom. A frame past the stack reports an empty path. */
   mustuse fn bash_source_frame_at(usize index) const wontthrow -> StringView;
   mustuse fn bash_source_frame_count(
       Maybe<usize> script_source_index) const wontthrow -> usize;
@@ -3745,22 +3668,12 @@ public:
   fn set_subshell_depth(usize depth) wontthrow -> void;
   pure fn in_subshell() const wontthrow -> bool;
   pure fn can_replace_process() const wontthrow -> bool;
-  /* Back the descriptor up before a bare exec moves it inside an in-process
-     subshell, so leave_subshell restores it. The first backup per subshell
-     wins. */
   fn snapshot_subshell_descriptor(i32 shell_fd) throws -> void;
 
-  /* Record the descriptors a coprocess launch bound, so a subshell entered
-     later knows which two to take away. */
   fn set_coprocess_descriptors(i32 read_fd, i32 write_fd, i64 process_id,
                                StringView name) throws -> void;
   fn forget_coprocess_descriptor(i32 shell_fd) throws -> void;
-  /* Close the descriptors of a coprocess the job table found finished and
-     unset its two variables, as bash does when it reaps one. */
   fn release_finished_coprocess() throws -> void;
-  /* Take the coprocess descriptors away from the subshell that is being
-     entered. Bash gives a subshell neither end, and a forgotten writer in a
-     child would keep the reader in the shell from ever seeing end of file. */
   fn hide_coprocess_descriptors() throws -> void;
 
   fn request_loop_control(control_flow::Kind kind, i64 level,
@@ -3782,8 +3695,6 @@ public:
     return SourceScope{*this, source, steal(origin)};
   }
   fn record_history_event(StringView command) throws -> bool;
-  /* A frame at error_location is dropped. Consecutive frames in one file print
-     the file name once, and a replayed trace starts with the name. */
   fn print_source_backtrace(Maybe<SourceLocation> error_location = None,
                             bool should_defer_for_source_file = true,
                             bool is_replay = false) throws -> void;
@@ -3802,52 +3713,28 @@ public:
   fn render_contained_substitution_error(const std::exception_ptr &error,
                                          StringView source) throws -> void;
 
-  /* Marks the unset strictness as the script's own set -u rather than a mood
-     seed, so the -W downgrade leaves it fatal. */
-  /* Mark a warning suppressed or not for the span of a construct. */
   pure fn strict_diagnostics_are_warnings() const wontthrow -> bool
   {
     if (runtime_state().get_mood() == mimic_mood::Default)
       return runtime_state().get_warning_level() >= 3;
     return runtime_state().get_warning_level() >= 1;
   }
-  /* A reference to an unset variable, fatal under set -u, downgraded to a
-     warning under -W unless the set -u was explicit, else expanded to empty. */
   fn report_unset_reference(StringView name) throws -> void;
-  /* A suspicious runtime condition the strict default treats as fatal. Throws
-     when fatal and not downgraded, warns under -W, returns otherwise. */
   fn warn_or_throw(bool fatal, bool explicitly_requested,
                    const SourceLocation &location, StringView message,
                    StringView note = {}) throws -> void;
-  /* Renders a runtime warning at a location inside the command being
-     evaluated. */
   cold fn show_runtime_warning_at(SourceLocation location, StringView message,
                                   StringView note = {},
                                   bool should_ignore_disabled = false) wontthrow
       -> void;
   cold fn show_runtime_error_at(SourceLocation location,
                                 StringView message) wontthrow -> void;
-  /* The location of the $name or ${name spelling inside the command being
-     evaluated. The statement location is the fallback when it is not found. */
   pure fn locate_variable_reference(StringView name) const wontthrow
       -> SourceLocation;
 
-  /* Marks the pipeline strictness as the script's own set -o pipefail rather
-     than a mood seed, so a later mood switch leaves it in place. */
-  /* True while a test or [ command expands its arguments, so an unmatched glob
-     there stays a silent literal and the probe answers false rather than
-     tripping failglob. */
-  /* The compgen -G probe, glob matches with failglob suppressed and a plain
-     name reported only when the file exists. */
   fn expand_glob_lenient(StringView pattern) throws
       -> SortedArrayList<String, order_comparator<String>>;
 
-  /* The set -o posix form enters the BashPosix mood, and set +o posix steps
-     down to bash when already in BashPosix or the dash-like Posix mood. A
-     non-posix mood is left alone, since the mood is not a stack and the prior
-     mood is not recoverable. The explicit mark and the strictness follow the
-     switch the way set -M does.
-  */
   fn set_posix_mode_via_option(bool enable) wontthrow -> void
   {
     if (enable) {
@@ -3865,10 +3752,6 @@ public:
     runtime_state().set_mood(mood);
     apply_strictness_for_mood();
   }
-
-  /* While listing makefile targets for completion, the bundled make parser
-     leaves $(shell ...) unrun, so a tab never forks the makefile's commands and
-     never blocks on a slow one. */
 
   fn apply_strictness_for_mood() wontthrow -> void
   {
@@ -3971,9 +3854,6 @@ public:
       apply_strictness_for_mood();
   }
 
-  /* Run the script at the resolved program in-process in the matching mode.
-     When isolated is true the run is contained in a snapshotted subshell, and
-     when false the snapshot is skipped. */
   fn run_mimicked_script(ExecContext &ec, mimic_mood mode,
                          script_isolation isolation) throws -> i32;
   fn run_program_fallback(ExecContext &ec, mimic_mood mode,
@@ -4013,25 +3893,14 @@ public:
              execution_store().shell_is_interactive();
     return shopt_default_is_on(name);
   }
-  /* Whether bash ships the named shopt option enabled, the miss fallback for
-     is_shopt_enabled. */
   static pure fn shopt_default_is_on(StringView name) wontthrow -> bool;
 
-  /* The count of loops currently running, the cap the break and continue
-     builtins clamp their level to. A function call and a subshell zero it. */
   fn enter_loop() wontthrow -> void;
   fn leave_loop() wontthrow -> void;
-
-  /* The run loop sets this before the final chunk when the shell will exit with
-     that chunk's status and no EXIT trap is pending, so a terminal external
-     command replaces the shell process instead of fork and wait. */
 
   fn sorted_variable_assignments() const throws
       -> SortedArrayList<String, order_comparator<String>>;
 
-  /* An assignment value and a here-string set is_assignment_value. There
-     bash keeps the empty elements of ${a[@]} and ${a[*]} as quoted nulls,
-     so a colon test sees a list with any element as set. */
   fn expand_word_for_assignment(const Word &word,
                                 bool is_assignment_value = false) throws
       -> String;
@@ -4059,47 +3928,24 @@ public:
   fn evaluate_arithmetic_cached_text(const WordSegment &segment) throws
       -> String;
 
-  /* The same truth value as evaluate_arithmetic, but it lexes the clause once
-     into the caller-owned token store and re-evaluates from it. A complex
-     clause or a lexing failure falls back to the char parser, and a clause
-     holding a substitution skips the cache. */
   fn evaluate_arithmetic_cached_clause_nonzero(
       StringView expression, ArrayList<arith_token> &tokens, bool &is_tokenized,
       bool &is_simple, const SourceLocation *source_location = nullptr) throws
       -> bool;
 
-  /* Evaluate a [[ ]] conditional element list and report whether it is true.
-     The operands expand without field splitting, == and != glob match their
-     right side, < and > compare strings, and && and || join primaries. */
   fn evaluate_conditional(const ArrayList<conditional_element> &elements) throws
       -> bool;
 
-  /* Expand a case pattern word the same way assignment context expands, plus a
-     parallel mask of which output bytes may act as glob metacharacters, so a
-     quoted metacharacter in the pattern matches literally. */
   fn expand_case_pattern_masked(const Word &word, Bitset &active_out) throws
       -> String;
 
-  /* Run the source of a $(...) and return its standard output with trailing
-     newlines stripped. The inner command runs in-process with state
-     snapshotted. The filename, when given, backs the source locations the
-     parsed AST carries, so its bytes must outlive the parse arena. */
   fn capture_command_substitution(
       const String &source, Maybe<StringView> filename = None,
       const SourceLocation *call_site = nullptr) throws -> String;
 
-  /* Same capture, but the segment caches its parsed inner command so a $(...)
-     in a loop body is lexed and parsed once and re-evaluated thereafter. */
   fn capture_command_substitution(const WordSegment &segment) throws -> String;
 
-  /* Run the source of a ${ ...; } funsub and return its standard output with
-     trailing newlines stripped, the bash 5.3 form. The body runs in the current
-     shell with no snapshot, so its assignments persist. A break, continue, or
-     return is consumed inside it, while an exit stays pending. */
   fn capture_function_substitution(const WordSegment &segment) throws -> String;
-  /* The same substitution from the text between ${ and }, as a here-document
-     body or a prompt holds it. A text that starts with | is the ${| ...; }
-     form, which yields the value of a REPLY local to the body. */
   fn capture_function_substitution(StringView text,
                                    const SourceLocation *call_site) throws
       -> String;
@@ -4108,22 +3954,12 @@ public:
   fn push_substitution_source_frame(const SourceLocation &location,
                                     StringView origin) throws -> bool;
 
-  /* The $(< file) shorthand reads the named file directly, when the
-     substitution body is only an input redirection naming one word with no
-     command. None when the body is anything else. */
   fn read_redirect_substitution(StringView source) throws -> Maybe<String>;
 
-  /* Run a <(...) or >(...) process substitution. A pipe is opened, the inner
-     command runs in a forked child on one end, and the shell keeps the other
-     end open and returns its /dev/fd path. The descriptor and the child are
-     recorded for later cleanup. */
   fn setup_process_substitution(const WordSegment &segment) throws -> String;
   fn setup_process_substitution(StringView text,
                                 Maybe<SourceLocation> segment_location) throws
       -> String;
-  /* Close the descriptors and reap the children of the process substitutions a
-     command opened. Closing first sends SIGPIPE to a producer that has more to
-     write, so it ends rather than blocking the reap. */
   mustuse fn mark_process_substitutions() const wontthrow
       -> process_substitution_mark;
   fn cleanup_process_substitutions(process_substitution_mark mark) wontthrow
@@ -4152,11 +3988,6 @@ public:
   fn run_function_substitution(const Expression *ast, const String &source,
                                bool is_value_substitution) throws -> String;
 
-  /* Lex, parse, and evaluate a chunk of source in this context, without
-     capturing output or snapshotting state. A dot-source consumes a return at
-     the top of the chunk and ends there, an eval leaves it pending.
-     consume_return is false for eval. A consumed return reports the status the
-     chunk held before it through status_before_return. */
   fn run_source(
       StringView source, StringView origin = "a sourced command",
       Maybe<SourceLocation> call_site = None, Maybe<StringView> filename = None,
@@ -4172,7 +4003,6 @@ public:
                              source_tilde_expansion::Disabled) throws
       -> Maybe<Path>;
 
-  /* Each throws a located error past the recursion cap. */
   fn enter_source(const SourceLocation &location) throws -> void;
   fn leave_source() wontthrow -> void;
   fn enter_function_call(const SourceLocation &location) throws -> void;
@@ -4196,8 +4026,6 @@ public:
       parameter_word_quoting quoting = parameter_word_quoting::Unquoted) throws
       -> String;
 
-  /* active_out marks which output bytes may act as glob metacharacters, so
-     ${x#pat} and ${x%pat} match literally. */
   fn expand_modifier_word_masked(
       StringView word, Bitset &active_out, bool remove_quotes = true,
       const SourceLocation *source_location = nullptr) throws -> String;
@@ -4212,8 +4040,6 @@ public:
   class ModifierWordExpander;
   class ParameterExpander;
 
-  /* is_pattern_word makes a backslash quote the following byte, the # and %
-     rule. */
   fn expand_modifier_word_worker(StringView word, Bitset *active_out,
                                  bool remove_quotes, bool is_pattern_word,
                                  bool strip_escaped_literals,
@@ -4244,19 +4070,10 @@ protected:
 
   fn expand_variable(StringView name) const throws -> String;
 
-  /* Write a variable without the read-only check, for restoring a shadowed
-     local on function return where a throw from a noexcept defer would
-     terminate the shell. */
   fn assign_variable(StringView name, StringView value) throws -> void;
 
   fn force_unset_shell_variable(StringView name) throws -> void;
-  /* The unset peel, the bash upvar semantics. A local declared by a caller
-     rather than the current scope restores that caller's saved value now and
-     cancels the restore its scope pop would have run. Returns whether a binding
-     was peeled. */
   fn peel_caller_local_binding(StringView name) throws -> bool;
-  /* The one restore a saved local binding gets, the scalar, the arrays, and
-     the integer mark, shared by the scope pop and the unset peel. */
   fn restore_local_binding(local_binding &binding) throws -> void;
 
   fn apply_parameter_expansion(
@@ -4275,8 +4092,6 @@ protected:
   fn compute_list_slice_bounds(StringView slice, i64 value_count,
                                const SourceLocation *source_location =
                                    nullptr) throws -> substring_bounds;
-  /* A sparse indexed array counts the offset in indices, and an associative
-     array counts it from one in its listing order, as bash does. */
   fn compute_array_slice_bounds(
       StringView name, StringView slice, i64 element_count,
       const SourceLocation *source_location = nullptr) throws
@@ -4298,8 +4113,6 @@ protected:
       const SourceLocation *source_location = nullptr) throws -> String;
 
   fn apply_parameter_transform(StringView name, char op) throws -> String;
-  /* The words of ${name[@]@A} inside double quotes, split the way bash splits
-     a declaration. */
   fn get_declaration_fields(StringView name) throws -> ArrayList<String>;
   fn apply_parameter_transform_to_value(StringView value, char op,
                                         StringView name) throws -> String;
@@ -4340,4 +4153,4 @@ protected:
       -> void;
 };
 
-} /* namespace koshka */
+}

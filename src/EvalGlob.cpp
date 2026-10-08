@@ -33,9 +33,6 @@ fn name_matches_glob(StringView glob, StringView filename,
     return utils::glob_matches(glob, filename, glob_active, mask_offset, mode,
                                charset);
 
-  /* The glob arrives already lowered from the caller, so only the per-entry
-     filename is lowered here. Lowering preserves length, so the active mask
-     stays aligned. */
   let const lowered_name =
       utils::lowercase_for_glob(filename, charset, allocator);
 
@@ -43,7 +40,7 @@ fn name_matches_glob(StringView glob, StringView filename,
                              mask_offset, mode, charset);
 }
 
-} /* namespace */
+}
 
 fn EvalContext::get_glob_charset() const throws -> glob_charset
 {
@@ -120,8 +117,6 @@ fn EvalContext::expand_path_once(const glob_field &field,
   let glob = StringView{};
   if (has_glob) glob = path.substring(stem_start);
 
-  /* A missing or unreadable parent directory yields no match, so the caller
-     applies the failglob policy. */
   let entries = Path::read_directory_typed(parent_dir);
   if (!entries.has_value()) {
     LOG(Debug,
@@ -138,16 +133,12 @@ fn EvalContext::expand_path_once(const glob_field &field,
     return expanded;
   }
 
-  /* The typed prefix is preserved on each match so a dot-slash glob yields a
-     dot-slash result. */
   let const typed_prefix =
       has_slashes ? path.substring_of_length(0, stem_start) : StringView{};
 
   ASSERT(has_glob);
   ASSERT(!glob.is_empty());
 
-  /* The directory read omits . and .. , so a dotted pattern that should reach
-     them has them fed back in unless globskipdots keeps them out. */
   let const pattern_leads_with_dot = glob[0] == '.';
   if (pattern_leads_with_dot && !is_shopt_enabled("globskipdots")) {
     entries->push(
@@ -181,7 +172,6 @@ fn EvalContext::expand_path_once(const glob_field &field,
                                    throws -> bool {
     let const filename = entry.name.view();
 
-    /* A leading-dot-less pattern skips a dotfile unless dotglob is on. */
     if (filename == "." || filename == "..") {
       if (!pattern_leads_with_dot) return false;
     } else if (!pattern_leads_with_dot && !filename.is_empty() &&
@@ -259,15 +249,10 @@ fn EvalContext::expand_path_once(const glob_field &field,
   return expanded;
 }
 
-/* The index of the first active metacharacter that actually forms a glob. A '['
-   without a later ']' is a literal bracket. None when the field is all
-   literal. */
 hot pure fn first_active_glob(StringView text, const Bitset &mask,
                               extglob_mode mode) wontthrow -> Maybe<usize>
 {
   let open_bracket = Maybe<usize>{};
-  /* An absent tail mask entry counts as inert, so an empty mask names a fully
-     quoted or literal word with no glob. */
   for (usize i = 0; i < text.length; i++) {
     if (i >= mask.count() || !mask[i]) {
       continue;
@@ -293,13 +278,8 @@ hot pure fn first_active_glob(StringView text, const Bitset &mask,
 
 namespace {
 
-/* The recursion depth cap for a ** walk, stopping a symlink cycle from looping
-   forever. */
 constexpr usize GLOBSTAR_MAX_DEPTH = 256;
 
-/* In directory position only subdirectories are collected and the base is added
-   as the empty path so ** can match zero levels. As a trailing component every
-   entry is collected. */
 fn collect_globstar_paths(const Path &dir, StringView relative,
                           bool directories_only, bool should_match_dotfiles,
                           bool include_base, usize depth, Allocator allocator,
@@ -431,8 +411,6 @@ fn collect_globstar_paths(const Path &dir, StringView relative,
     if (!directories_only || is_directory[index]) {
       out.push(String{allocator, child_relative.view()});
     }
-    /* A directory symlink is a match but is not descended into, so a self or
-       parent symlink does not spin the walk to the depth cap. */
     if (is_directory[index] && !is_symbolic_link[index]) {
       collect_globstar_paths(child_dir, child_relative.view(), directories_only,
                              should_match_dotfiles, false, depth + 1, allocator,
@@ -441,7 +419,7 @@ fn collect_globstar_paths(const Path &dir, StringView relative,
   }
 }
 
-} /* namespace */
+}
 
 fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
     -> ArrayList<glob_field>
@@ -487,8 +465,6 @@ fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
     let const glob_index = glob_indices[field_index];
 
     if (!glob_index) {
-      /* This field is a literal suffix appended after an earlier glob, so keep
-         it only when it exists. */
       if (Path{field.text.view(), scratch}.exists()) result.push(steal(field));
       continue;
     }
@@ -533,9 +509,6 @@ fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
                              is_shopt_enabled("dotglob"), true, 0, scratch,
                              relatives);
 
-      /* The base directory is the zero-level match, emitted as the bare prefix,
-         skipped when the prefix is empty so a bare ** does not yield the
-         current directory. */
       if (!directory_position) {
         if (!prefix.is_empty()) {
           let base_field = glob_field{scratch};
@@ -551,8 +524,6 @@ fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
         continue;
       }
 
-      /* In a directory position the globstar stands in for zero or more levels,
-         so the suffix is matched in the base and every descendant directory. */
       let const suffix = text.substring(*slash_after + 1);
       let rebuilt = ArrayList<glob_field>{scratch};
       for (let const &relative : relatives) {
@@ -600,8 +571,6 @@ fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
     let expanded_directories =
         expand_path_once(directory_component, glob_expansion_mode::Directories);
 
-    /* Each match came back all-literal, so its false mask entries are restored
-       before the suffix mask to keep the mask aligned with the text. */
     for (let &f : expanded_directories) {
       let const matched_length = f.text.count();
       f.text.append(removed_suffix.text.view());
@@ -636,9 +605,6 @@ fn EvalContext::expand_tilde(WordSegment &leading_segment, bool word_continues,
     name_end++;
   let const name = text.view().substring_of_length(1, name_end - 1);
 
-  /* A tilde prefix that runs to the segment's end while the word continues in a
-     later segment carries a quoted character, so bash leaves the whole word
-     literal. */
   if (name_end == text.length() && word_continues) {
     return;
   }
@@ -661,7 +627,6 @@ fn EvalContext::expand_tilde(WordSegment &leading_segment, bool word_continues,
 fn EvalContext::resolve_tilde_prefix(StringView name) const throws
     -> Maybe<String>
 {
-  /* ~+ is PWD and ~- is OLDPWD. */
   if (name == "+" || name == "-")
     return get_variable_value(name == "+" ? StringView{"PWD"}
                                           : StringView{"OLDPWD"});
@@ -802,7 +767,7 @@ fn glob_ignore_pattern_matches(const glob_ignore_pattern &pattern,
   return false;
 }
 
-} /* namespace */
+}
 
 hot fn EvalContext::expand_path(glob_field field,
                                 const SourceLocation &location) throws
@@ -810,7 +775,6 @@ hot fn EvalContext::expand_path(glob_field field,
 {
   let const scratch = scratch_allocator();
 
-  /* Fast path. A field with no glob is its own single result. */
   let const has_glob = !runtime_state().no_glob() &&
                        first_active_glob(field.text.view(), field.glob_active,
                                          get_extglob_mode())
@@ -822,7 +786,6 @@ hot fn EvalContext::expand_path(glob_field field,
     return steal(single_result).make_sorted(sort_order::ascending);
   }
 
-  /* The pattern is kept so a glob that matches None falls back to it. */
   let pattern = String{scratch};
   pattern.append(field.text.view());
   let const has_literal_glob = field.has_literal_glob;
@@ -876,9 +839,6 @@ hot fn EvalContext::expand_path(glob_field field,
   LOG(All, "the glob pattern '%s' matched %zu paths", pattern.c_str(),
       values.count());
 
-  /* A glob that matches no file is a hard error by default, or the POSIX
-     literal fallback with failglob off. A test or [ command is exempt so a glob
-     probing for a file keeps its literal text. */
   if (values.count() == 0) {
     let const failglob_is_on = runtime_state().failglob();
     let const failglob_is_explicit =
@@ -903,8 +863,6 @@ hot fn EvalContext::expand_path(glob_field field,
       }
     }
 
-    /* nullglob drops a no-match glob entirely, while the default and a test
-       probe keep its literal text. */
     if (expansion_store().glob_exempt_for_test() ||
         !is_shopt_enabled("nullglob"))
     {
@@ -915,7 +873,6 @@ hot fn EvalContext::expand_path(glob_field field,
   return steal(values).make_sorted(sort_order::ascending);
 }
 
-/* The compgen -G probe, a glob expansion that never trips failglob. */
 fn EvalContext::expand_glob_lenient(StringView pattern) throws
     -> SortedArrayList<String, order_comparator<String>>
 {
@@ -946,4 +903,4 @@ fn EvalContext::expand_glob_lenient(StringView pattern) throws
   return steal(values).make_sorted(sort_order::ascending);
 }
 
-} /* namespace koshka */
+}

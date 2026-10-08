@@ -100,8 +100,6 @@ hot fn EvalContext::expand_word(const Word &word) throws
     }
   };
 
-  /* An empty glob mask reads as all-false, so the first active run
-     materializes it and back-fills false for the bytes already appended. */
   let const do_append_run = [&](StringView text, bool glob_active) {
     let const text_count_before = current.text.count();
     current.text.append(text);
@@ -119,8 +117,6 @@ hot fn EvalContext::expand_word(const Word &word) throws
 
   let const do_emit_empty_field = [&]() { fields.push(glob_field{scratch}); };
 
-  /* IFS whitespace folds and a non-whitespace IFS byte delimits one field each.
-     A run of k delimiters ends the field and emits k minus one empty fields. */
   let const do_append_split_run = [&](StringView text, bool glob_active) {
     usize i = 0;
     while (i < text.length) {
@@ -408,8 +404,6 @@ hot fn EvalContext::expand_word(const Word &word) throws
         }
         break;
       }
-      /* Index zero names the shell itself, the way bash counts $0 into the
-         positional slice. */
       if (!segment_text.is_empty() &&
           (segment_text[0] == '@' || segment_text[0] == '*') &&
           segment_text.length > 1 && segment_text[1] == ':')
@@ -834,8 +828,6 @@ hot fn EvalContext::expand_word_for_assignment(const Word &word,
     expansion_store().is_expanding_single_string() =
         was_expanding_single_string;
   };
-  /* An assignment expands a tilde after an unquoted colon too, the rule bash
-     applies to PATH=~/bin:~/tmp. */
   let const *segments = &word.segments;
   let tilde_expanded_segments = ArrayList<WordSegment>{scratch_allocator()};
   let const has_leading_tilde =
@@ -1000,9 +992,6 @@ fn EvalContext::expand_wordlist_to_fields(StringView wordlist,
   }
   if (!has_expandable_byte) return do_split_plain();
 
-  /* The list expands wrapped in an array literal, so a top-level structural
-     byte that closes the literal early and runs the tail as a command is a
-     break-out. Such a list degrades to the plain split. */
   let const do_array_literal_is_safe = [&]() wontthrow -> bool {
     char quote = 0;
     usize paren_depth = 0;
@@ -1093,4 +1082,4 @@ fn EvalContext::expand_wordlist_to_fields(StringView wordlist,
   return fields;
 }
 
-} /* namespace koshka */
+}

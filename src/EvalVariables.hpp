@@ -497,4 +497,4 @@ inline fn describe_shell_variable(StringView name) throws
   return SHELL_VARIABLES.find(name);
 }
 
-} /* namespace koshka */
+}

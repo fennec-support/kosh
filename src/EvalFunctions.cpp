@@ -50,8 +50,6 @@ constexpr PackedStringKey BASH_IMPLICIT_INTEGER_KEYS[] = {
 constexpr StaticStringSet BASH_IMPLICIT_INTEGER_NAMES{
     BASH_IMPLICIT_INTEGER_KEYS};
 
-/* The named conditions run_named_trap serves. The position of a key is the bit
-   that marks its action as running. */
 constexpr PackedStringKey NAMED_TRAP_CONDITION_KEYS[] = {
     SSK("DEBUG"),
     SSK("ERR"),
@@ -68,7 +66,7 @@ pure fn running_trap_bit(StringView condition) wontthrow -> u8
   return static_cast<u8>(1u << *index);
 }
 
-} /* namespace */
+}
 
 fn EvalContext::register_function(StringView name,
                                   const FunctionBodyHandle &body_storage,
@@ -254,10 +252,6 @@ pure fn EvalContext::resolve_current_function_window(
   return resolved_source;
 }
 
-/* The exact source a span covers. It keeps the quoting the parsed words drop.
-   A body window maps the span onto the stored definition first. The
-   answer is empty when the span reaches past the resolved source, the way a
-   node the optimizer rewrote can. */
 pure fn EvalContext::source_text_in_span(const SourceLocation &location,
                                          usize end_position) const wontthrow
     -> StringView
@@ -309,8 +303,6 @@ fn EvalContext::variable_names(Allocator result_allocator) const throws
         unused(value);
         names.add(name);
       });
-  /* An indexed or associative array is a set variable too, so its name joins
-     the scalar names. */
   variable_store().indexed_arrays().for_each(
       [&](StringView name, const ArrayList<String> &value) {
         unused(value);
@@ -393,10 +385,6 @@ fn EvalContext::run_named_trap(StringView condition,
     execution_store().terminal_exec_allowed() = was_terminal_exec_allowed;
   };
 
-  /* The line is resolved here, while the triggering command is still current.
-     The action below replaces the current source. The location alone cannot be
-     read against the current source afterwards. run_source pushes exactly one
-     frame. */
   let const trigger_site = trigger_location != nullptr
                                ? *trigger_location
                                : source_store().current_location();
@@ -413,9 +401,6 @@ fn EvalContext::run_named_trap(StringView condition,
   if (has_saved_pipe_statuses)
     saved_pipe_statuses = current_pipe_statuses->clone();
 
-  /* The command that fired the trap observes its own status again after the
-     action. The restoration is deferred because an action that throws would
-     otherwise leave the status of the action behind. */
   let was_pipe_status_restored = false;
   defer
   {
@@ -429,10 +414,6 @@ fn EvalContext::run_named_trap(StringView condition,
     }
   };
 
-  /* A return in an action belongs to the enclosing function or sourced file.
-     The action's own frame neither consumes it nor counts as a return scope.
-     The triggering command is the call site. A diagnostic raised inside the
-     action is traced back to the line that fired the trap. */
   let const cached_action = cached_trap_body(condition, action);
 
   let const definition = trap_store().find_definition(condition);
@@ -474,8 +455,6 @@ fn EvalContext::restore_trap_pipe_statuses(
 
 fn EvalContext::run_return_trap(i32 status_before_return) throws -> void
 {
-  /* Bash never applies the status the return supplied before the action runs.
-     The action reads the status the last command of the frame left. */
   let const saved_exit_status = execution_store().last_exit_status();
   execution_store().last_exit_status() = status_before_return;
   defer { execution_store().last_exit_status() = saved_exit_status; };
@@ -603,9 +582,6 @@ fn EvalContext::set_trap(StringView condition, StringView action,
     trap_store().set_action(condition, action);
   }
 
-  /* A trap installed inside a function, a subshell, or a substitution traces
-     that frame without functrace or errtrace. An inherited trap needs the
-     option to reach the frame. */
   enum class pseudo_condition : u8
   {
     Debug,
@@ -682,8 +658,6 @@ fn EvalContext::restore_untraced_trap(StringView condition,
                                       usize *active_depth) wontthrow -> void
 {
   if (!saved.definition.has_value()) return;
-  /* A trap the body installed for itself stands, the way bash keeps the one it
-     finds on the return. */
   if (trap_store().find(condition).has_value()) return;
 
   LOG(Info, "restoring the '%.*s' action an untraced body ran without",
@@ -760,9 +734,6 @@ fn EvalContext::install_trap_dispositions() throws -> void
   });
 }
 
-/* A signal an action sends to the shell is drained at the next boundary inside
-   that action. The drain carries no guard of its own. The source depth cap
-   bounds an action that keeps resending its own signal. */
 fn EvalContext::run_pending_traps() throws -> void
 {
   let const saved_exit_status = execution_store().last_exit_status();
@@ -777,9 +748,6 @@ fn EvalContext::run_pending_traps() throws -> void
     execution_store().terminal_exec_allowed() = was_terminal_exec_allowed;
   };
 
-  /* The fast flag is cleared before the per-signal flags are consumed, so a
-     signal that arrives during the drain re-sets it and the next boundary
-     drains again rather than dropping the arrival. */
   os::SIGNAL_PENDING = 0;
 
   let const child_condition = StringView{"CHLD", 4};
@@ -824,8 +792,6 @@ fn EvalContext::run_pending_traps() throws -> void
       let const action = trap->action_text.view();
 
       LOG(Info, "running the trap action for signal '%s'", name->c_str());
-      /* A return in the action belongs to the function the signal
-         interrupted. The action's own frame is no return scope of its own. */
       let const cached_action = cached_trap_body(name->view(), action);
 
       let const definition = trap_store().find_definition(name->view());
@@ -837,8 +803,6 @@ fn EvalContext::run_pending_traps() throws -> void
                  definition.has_value() ? &*definition : nullptr);
     }
 
-    /* A return, a break, or an exit the action requested leaves the remaining
-       arrivals for the next boundary. */
     if (control_flow_store().has_pending()) break;
   }
 
@@ -901,8 +865,6 @@ cold fn EvalContext::run_exit_trap(Maybe<i32> final_status) throws -> void
   if (final_status.has_value())
     execution_store().last_exit_status() = *final_status;
 
-  /* A Ctrl-C that ended the last command leaves the interrupt flag set, so it
-     is dropped before the action evaluates. */
   os::INTERRUPT_REQUESTED = 0;
 
   let const saved_exit_status = execution_store().last_exit_status();
@@ -916,8 +878,6 @@ cold fn EvalContext::run_exit_trap(Maybe<i32> final_status) throws -> void
   if (has_saved_pipe_statuses)
     saved_pipe_statuses = current_pipe_statuses->clone();
 
-  /* The shell exits with the status the action found. An action that runs exit
-     replaces it on its own path. */
   let was_pipe_status_restored = false;
   defer
   {
@@ -958,8 +918,6 @@ fn EvalContext::clear_inherited_exit_trap() throws -> void
 
 cold fn EvalContext::run_subshell_exit_trap() throws -> Maybe<i32>
 {
-  /* The action keeps the command that triggered it in BASH_COMMAND. The depth
-     reports it to every publisher the action reaches. */
   let const saved_exit_status = execution_store().last_exit_status();
   let const action_scope =
       TrapActionScope::enter(trap_store(), saved_exit_status);
@@ -971,7 +929,6 @@ cold fn EvalContext::run_subshell_exit_trap() throws -> Maybe<i32>
   if (has_saved_pipe_statuses)
     saved_pipe_statuses = current_pipe_statuses->clone();
 
-  /* An exit the action ran replaces the status the subshell had reached. */
   let requested_status = Maybe<i32>{None};
   let was_pipe_status_restored = false;
   defer
@@ -985,9 +942,6 @@ cold fn EvalContext::run_subshell_exit_trap() throws -> Maybe<i32>
     }
   };
 
-  /* Only an EXIT action the subshell itself set is present, since the boundary
-     cleared the inherited one on entry. It runs before restore_state returns
-     the parent's traps. */
   if (let const trap = trap_store().find_active(StringView{"EXIT", 4});
       trap.has_value())
   {
@@ -1098,4 +1052,4 @@ fn EvalContext::append_integer_expression(String &joined,
   joined += '0';
 }
 
-} /* namespace koshka */
+}

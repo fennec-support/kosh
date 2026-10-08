@@ -72,8 +72,6 @@ fn EvalContext::set_subshell_depth(usize depth) wontthrow -> void
 fn EvalContext::leave_subshell() wontthrow -> void
 {
   ASSERT(execution_store().subshell_depth() > 0);
-  /* Stacked exec moves unwind newest first so the descriptors land back in
-     order. */
   while (!subshell_store().saved_descriptors().is_empty() &&
          subshell_store().saved_descriptors().back().depth ==
              execution_store().subshell_depth())
@@ -171,9 +169,6 @@ fn EvalContext::hide_coprocess_descriptors() throws -> void
   LOG(Debug, "taking the coprocess descriptors away at subshell depth %zu",
       execution_store().subshell_depth());
 
-  /* The backup is what leave_subshell hands back. An in-process subshell
-     returns the descriptors to the shell that owns them. Both backups are
-     taken before either close. Each one then lands on a number of its own. */
   let const coprocess = subshell_store().coprocess();
   for (let const shell_fd : {coprocess.read_fd, coprocess.write_fd}) {
     if (shell_fd >= 0) snapshot_subshell_descriptor(shell_fd);
@@ -550,9 +545,6 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
   }
 }
 
-/* TODO: these caps are hand-tuned below the observed native overflow point.
-   Query the actual stack size per platform, getrlimit RLIMIT_STACK on POSIX and
-   the thread stack on Windows, and derive the caps from it. */
 static constexpr usize MAX_SOURCE_DEPTH = 400;
 static constexpr usize MAX_FUNCTION_CALL_DEPTH = 900;
 static constexpr usize MAX_PARAMETER_EXPANSION_DEPTH = 256;
@@ -648,8 +640,6 @@ fn EvalContext::leave_loop() wontthrow -> void
   execution_store().loop_depth()--;
 }
 
-/* The count is bounded so a target past the bound reopens every iteration
-   the way bash does, instead of exhausting the descriptor table. */
 static constexpr usize MAX_LOOP_REDIRECT_FDS = 16;
 
 fn EvalContext::mark_loop_redirect_fds() const wontthrow
@@ -714,8 +704,6 @@ fn EvalContext::suggest_similar_variable_name(StringView name) const throws
   variable_store().associative_arrays().names().for_each(
       [&suggestion](StringView candidate)
           throws -> void { suggestion.consider(candidate); });
-  /* A case-sensitive environment types the value as Nothing. The generic
-     parameter keeps the folded branch uninstantiated there. */
   variable_store().exported_names().for_each(
       [&suggestion](StringView key, const auto &display_name) throws -> void {
         if constexpr (os::ENVIRONMENT_IS_CASE_SENSITIVE) {
@@ -857,8 +845,6 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
   expansion_store().set_getopts_cursor(snapshot.getopts);
   subshell_store().coprocess() = snapshot.coprocess;
 
-  /* A signal the subshell trapped that the parent does not is returned to
-     default before the parent's dispositions are reinstalled. */
   if (trap_store().count() != 0 || snapshot.traps.traps.count() != 0) {
     trap_store().list([&](StringView condition, const trap_definition &trap) {
       unused(trap);
@@ -877,15 +863,10 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
     LOG(Debug, "the subshell could not restore the working directory");
   os::set_file_creation_mask(snapshot.file_creation_mask);
 
-  /* The logged environment writes revert newest first, before the PATH re-point
-     below so an exported PATH reads its restored value. */
   LOG(Debug, "rewinding %zu environment writes made inside the subshell",
       environment_store().environment_undo_log().count() -
           snapshot.environment_undo_mark);
   environment_store().restore(snapshot.environment_undo_mark);
-
-  /* The exit status is intentionally not restored, a subshell propagates its
-     last command's status to the parent. */
 }
 
 static constexpr u32 SUBSHELL_BOOTSTRAP_MAGIC = 0x4b534842U;
@@ -2972,9 +2953,6 @@ fn EvalContext::apply_indirect_or_name_listing(StringView body) throws -> String
 
   let const last = body[body.length - 1];
   if (last == '*' || last == '@') {
-    /* The quoted "${!prefix@}" per-name field form is produced in the
-       field-expansion path, this string return cannot carry field boundaries.
-     */
     let const prefix = body.substring_of_length(0, body.length - 1);
     let const names = matching_prefix_names(prefix);
     let out = String{scratch_allocator()};
@@ -3028,8 +3006,6 @@ cold fn EvalContext::make_stats_string() const throws -> String
     append_line(name, value.view());
   };
 
-  /* Stats print before end_command runs the rollup, so the live arena is
-     sampled here. */
   const usize live_ast_arena_bytes =
       arena_store().parse_arena() != nullptr
           ? arena_store().parse_arena()->bytes_used()
@@ -3124,7 +3100,4 @@ cold fn EvalContext::make_stats_string() const throws -> String
   return stats_text;
 }
 
-/* The arithmetic engine, the ArithmeticParser, the cached-token fast path, and
-   the EvalContext arithmetic methods, lives in EvalArithmetic.cpp. */
-
-} /* namespace koshka */
+}

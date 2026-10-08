@@ -229,8 +229,6 @@ struct completion_spec
   }
 };
 
-/* Variable attributes ride the snapshot, so a declaration inside a subshell
-   does not leak its marks to the parent. */
 struct variable_snapshot
 {
   StringMap<String> shell_variables;
@@ -272,9 +270,6 @@ struct execution_snapshot
   bool terminal_exec_allowed;
 };
 
-/* The nesting depth a DEBUG or ERR trap was installed at rides the snapshot
-   beside the trap map, because the depth decides which frames the action
-   reaches. */
 struct trap_snapshot
 {
   StringMap<trap_definition> traps;
@@ -307,11 +302,7 @@ struct eval_state_snapshot
   dynamic_clock_state clock;
   job_table_snapshot jobs;
   getopts_cursor getopts;
-  /* The shell descriptors of the live coprocess ride the snapshot, so a
-     coprocess started inside a subshell leaves the outer record alone. */
   coprocess_descriptors coprocess;
-  /* The length of the environment undo log when the snapshot was taken, the
-     point restore_state rewinds the process environment back to. */
   usize environment_undo_mark;
   RuntimeState runtime;
   ProgramResolver program_resolver;
@@ -351,9 +342,6 @@ struct function_wire
   StringMap<function_definition_info> definition_origins{heap_allocator()};
 };
 
-/* Owns one compiled regex and frees it on destruction, so the regex cache
-   reclaims every entry when the table rehashes, clears, or is torn down. It is
-   move-only, since two owners would each free the same compiled buffer. */
 class CompiledRegex
 {
 public:
@@ -390,4 +378,4 @@ private:
   bool m_is_owned{false};
 };
 
-} /* namespace koshka */
+}

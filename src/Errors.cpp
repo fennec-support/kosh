@@ -42,9 +42,6 @@ struct interned_source_name
   }
 };
 
-/* The table outlives every location that indexes it, and a fork keeps its rows
-   at the same indexes, so an index stamped before the fork still reads back in
-   the child. */
 static fn get_source_name_table() wontthrow -> ArrayList<interned_source_name> &
 {
   static ArrayList<interned_source_name> table{heap_allocator()};
@@ -52,8 +49,6 @@ static fn get_source_name_table() wontthrow -> ArrayList<interned_source_name> &
   return table;
 }
 
-/* One run touches a handful of distinct names, so a linear scan finds a row
-   faster than a hash of the path would. */
 cold fn intern_source_name(StringView name) throws -> u32
 {
   if (name.is_empty()) return 0;
@@ -102,8 +97,6 @@ fn source_name_at(u32 source_name_index) wontthrow -> Maybe<StringView>
   return StringView{row.data, row.length};
 }
 
-/* Each field is empty when color is off, so the render code appends them
-   unconditionally and emits nothing on the plain path. */
 struct diagnostic_color
 {
   StringView severity;
@@ -142,8 +135,6 @@ cold static fn diagnostic_colors_for(error_severity severity) throws
   unreachable("invalid diagnostic color severity %d", ENUM(severity));
 }
 
-/* An analysis message closes with its catalog code in parentheses, and that
-   closer ends the sentence. */
 pure static fn text_ends_a_sentence(StringView text) wontthrow -> bool
 {
   if (text.is_empty()) return false;
@@ -197,9 +188,6 @@ cold static fn number_string_length(T value) wontthrow -> usize
   return digit_count;
 }
 
-/* The reported line of a zero-based line inside the rendered source. A window
-   that carries a synthesized header shifts backwards. The sum is taken
-   signed. */
 cold static fn reported_line_number(usize rendered_line,
                                     isize line_offset) wontthrow -> usize
 {
@@ -472,8 +460,6 @@ WarningWithDetails::WarningWithDetails(StringView message, StringView note)
 InterruptErrorWithLocation::InterruptErrorWithLocation(SourceLocation location)
     : ErrorWithLocation(steal(location), "Interrupted")
 {
-  /* An interrupted command reports 128 plus SIGINT, the status a shell gives a
-     command its signal ended. */
   set_command_status(130);
 }
 
@@ -503,9 +489,6 @@ ErrorWithLocation::ErrorWithLocation(SourceLocation location,
       m_location.position, m_location.length);
 }
 
-/* A location inside a function body names the defining file, while the caller
-   renders against whatever source is current. The stored definition copy is
-   the text the position belongs to. */
 cold fn resolve_rendered_site(StringView source, const SourceLocation &location,
                               isize line_offset, bool is_rebased,
                               const EvalContext *context) wontthrow
@@ -551,8 +534,6 @@ fn ErrorWithLocation::to_string(StringView source,
   usize byte_position = site.location.position;
   let const byte_count = site.location.length;
 
-  /* The location can name a byte in a source other than the one rendered, so
-     the caret would read out of bounds and the message renders unlocated. */
   if (source.data == nullptr || byte_position > source.count())
     return ErrorBase::to_string(source, context);
 
@@ -562,8 +543,6 @@ fn ErrorWithLocation::to_string(StringView source,
   LOG(Debug, "formatting located %.*s", static_cast<int>(severity_word.length),
       severity_word.data);
 
-  /* A position on a line continuation or a bare newline is nudged past the
-     backslash-newline pair or the lone newline to the next line. */
   if (byte_position + 2 < source.count() && source[byte_position] == '\\' &&
       source[byte_position + 1] == '\n')
   {
@@ -699,8 +678,6 @@ cold fn DetailsWithLocation::to_string(StringView source,
   usize byte_position = site.location.position;
   let const byte_count = site.location.length;
 
-  /* The out-of-source guard renders nothing when the location names another
-     source, so the caret never reads past the end. */
   if (byte_position > source.count()) return String{heap_allocator()};
 
   LOG(Debug, "formatting details at byte %zu", byte_position);
@@ -764,4 +741,4 @@ cold fn ErrorWithLocationAndDetails::details_to_string(
   return result;
 }
 
-} /* namespace koshka */
+}

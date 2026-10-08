@@ -207,9 +207,6 @@ constexpr static_string_entry<dynamic_variable_info> ALWAYS_DYNAMIC_ENTRIES[] =
 };
 constexpr StaticStringMap ALWAYS_DYNAMIC{ALWAYS_DYNAMIC_ENTRIES};
 
-/* Every name here is a bash extension, so membership answers the bash-only
-   diagnostic. BASHOPTS, SHELLOPTS, EUID, PPID, and UID stay settable. The
-   implicit read only attribute rejects their assignment first. */
 constexpr static_string_entry<dynamic_variable_info> BASH_DYNAMIC_ENTRIES[] = {
     DYNAMIC_VARIABLE("BASH_ARGC", BASH_ARGC, false, Discarded),
     DYNAMIC_VARIABLE("BASH_ARGV", BASH_ARGV, false, Discarded),
@@ -381,8 +378,6 @@ hot fn EvalContext::write_dynamic_variable(StringView name,
   if ((variable_store().unset_dynamic_readers() & dynamic_reader_mask(*id)) !=
       0)
     return false;
-  /* A local declaration turns the name into an ordinary frozen variable for the
-     length of the call, and the outer state keeps moving underneath it. */
   if (scope_store().has_active_local(name)) return false;
 
   let const parsed = value.to<i64>();
@@ -395,8 +390,6 @@ hot fn EvalContext::write_dynamic_variable(StringView name,
         (static_cast<u64>(assigned) + 0x9e3779b97f4a7c15ULL) *
         0x2545f4914f6cdd1dULL;
     dynamic_runtime_store().is_random_reseed_pending() = false;
-    /* A zero state reads as unseeded and would draw a fresh seed from the
-       clock. */
     if (dynamic_runtime_store().random_state() == 0)
       dynamic_runtime_store().random_state() = 0x9e3779b97f4a7c15ULL;
 
@@ -470,8 +463,6 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
 
   if (first_byte >= '0' && first_byte <= '9') {
     if (name.is_all_decimal_digits()) {
-      /* A positional beyond the count is unset, so ${1-default} uses its
-         default. */
       if (name.count() > 9) return None;
       let const parsed_index = name.to<i64>();
       if (parsed_index.is_error()) return None;
@@ -506,8 +497,6 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
       stored.has_value())
     return *stored.value();
 
-  /* A read of an array name with no scalar yields element zero, the way bash
-     treats $a as ${a[0]}. */
   if (variable_store().indexed_arrays().count() != 0)
     if (let const array = variable_store().indexed_arrays().find(name);
         array.has_value())
@@ -521,10 +510,6 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
 
   if (scope_store().has_current_local(name)) return koshka::None;
 
-  /* The store lookup above wins, so IFS= reads back empty while the unset
-     default reads back space-tab-newline, keeping the IFS save/restore idiom
-     round-trip. A name whose first byte holds no dynamic variable falls
-     straight through to the environment. */
   if (is_dynamic_first_byte(first_byte)) {
     if (let const info = ALWAYS_DYNAMIC.find(name); info.has_value()) {
       switch (info->kind) {
@@ -937,4 +922,4 @@ fn EvalContext::append_dynamic_variable_names(
     out.push(DIRSTACK_VARIABLE);
 }
 
-} /* namespace koshka */
+}

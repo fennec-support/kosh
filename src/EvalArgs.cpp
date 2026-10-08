@@ -28,8 +28,6 @@ namespace koshka {
 
 namespace {
 
-/* The stand-in byte for an opaque segment in the brace template. A doubled
-   marker is literal, while marker-O-decimal-semicolon names a segment. */
 constexpr char BRACE_OPAQUE_MARKER = '\x01';
 
 pure fn word_has_brace_candidate(const Word &word) wontthrow -> bool
@@ -247,8 +245,6 @@ fn find_brace_group(StringView text, Allocator alloc) throws
   return None;
 }
 
-/* The recursion cap keeps a pathological {a,{b,{c,...}}} off the native
-   stack. */
 constexpr usize MAX_BRACE_DEPTH = 256;
 
 fn brace_expand_text(StringView text, Allocator alloc, usize depth = 0) throws
@@ -398,7 +394,7 @@ fn expand_braces(const Word &word, Allocator alloc) throws -> ArrayList<Word>
   return words;
 }
 
-} /* namespace */
+}
 
 static pure fn segment_is_literal(const WordSegment &segment) wontthrow -> bool
 {
@@ -473,16 +469,11 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
   let const is_array_literal =
       context == argument_context::ArrayLiteral || is_associative_literal;
   LOG(Debug, "expanding %zu argument tokens", args.count());
-  /* A transient request lives on the caller's scratch region and leaves its
-     fields for the caller, so only the heap form releases them on return. */
   let expanded_args = args_are_transient
                           ? ArrayList<String>{scratch_allocator()}
                           : ArrayList<String>{heap_allocator()};
   expanded_args.reserve(args.count());
 
-  /* The location list mirrors the string list one field per entry, so a builtin
-     can caret the specific token a field came from. It lives on the same
-     allocator as the strings. */
   if (expanded_locations != nullptr) {
     *expanded_locations = args_are_transient
                               ? ArrayList<SourceLocation>{scratch_allocator()}
@@ -501,9 +492,6 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
       expansion_store().scratch_arena().release(fields_mark);
   };
 
-  /* A declaration builtin treats a name=value argument as an assignment whose
-     value expands with no field splitting or globbing. The plain literal
-     command word is decided before any expansion, the way bash does. */
   let is_declaration_command = false;
   let is_local_command = false;
   let is_declare_command = false;
@@ -518,28 +506,20 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
       is_declare_command = (flags & declaration_flag_declare) != 0;
       is_declaration_command = (flags & declaration_flag_declaration) != 0;
       is_test_command = (flags & declaration_flag_test) != 0;
-    }
-    /* The lone bracket is the test builtin and earns the same glob exemption,
-       though it never classifies as a plain literal above. */
-    else if (command_word.segments.count() == 1 &&
-             command_word.segments[0].kind == WordSegment::Kind::UnquotedText &&
-             command_word.segments[0].text.view() == "[")
+    } else if (command_word.segments.count() == 1 &&
+               command_word.segments[0].kind ==
+                   WordSegment::Kind::UnquotedText &&
+               command_word.segments[0].text.view() == "[")
     {
       is_test_command = true;
     }
   }
 
-  /* A test or [ command probes the filesystem, so an unmatched glob there stays
-     literal and the probe returns false rather than tripping failglob. A
-     declaration command such as unset names a variable, so its operand stays
-     literal too. */
   let const previous_glob_exempt = expansion_store().glob_exempt_for_test();
   expansion_store().set_glob_exempt_for_test(is_test_command ||
                                              is_declaration_command);
   defer { expansion_store().set_glob_exempt_for_test(previous_glob_exempt); };
 
-  /* An unset variable in a test operand is the question the command asks, so
-     the advisory warning is suppressed. An explicit set -u still aborts. */
   let const previous_suppress_test_warning =
       runtime_control_store().is_warning_suppressed(
           suppressible_warning::UnsetTestOperand);
@@ -570,9 +550,6 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
                   assignment_update_mode::Append &&
               (is_local_command || is_declare_command))
           {
-            /* local shadows an outer name and declare may apply -i on the same
-               command, so name+=value passes through literally and the builtin
-               computes the append after its own effects exist. */
             assignment += '+';
             assignment += '=';
             assignment.append(
@@ -588,7 +565,6 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
             }
             let const expanded_value = expand_word_for_assignment(
                 assignment_token->value_word(), true);
-            /* An integer name adds rather than concatenates. */
             let const is_append = assignment_token->get_update_mode() ==
                                   assignment_update_mode::Append;
             let integer_name = assignment_token->key().view();
@@ -609,7 +585,6 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
           do_record_location(location);
           continue;
         }
-        /* An assignment as an argument, like echo k=$v, is an ordinary word. */
         let key_literal = String{assignment_token->key().view()};
         if (assignment_token->get_update_mode() ==
             assignment_update_mode::Append)
@@ -657,8 +632,6 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
           do_record_location(location);
           did_take_fast_path = true;
         } else if (plain_kind == Word::PlainLiteral::PlainUnquotedOneSegment) {
-          /* A single unquoted segment still needs the IFS check, since an IFS
-             byte in its text splits it into more than one field. */
           let literal = String{expanded_args.allocator(),
                                expandable.segments[0].text.view()};
 
@@ -676,8 +649,6 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
           }
         }
 
-        /* A lone "$@" copies each positional parameter straight into the
-           vector, the hot path of a set -- "$@" extra growth loop. */
         if (!did_take_fast_path && expandable.segments.count() == 1) {
           const WordSegment &only = expandable.segments[0];
           if (only.kind == WordSegment::Kind::VariableReference &&
@@ -692,10 +663,6 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
           }
         }
 
-        /* The single-field fast path covers a word that can neither split nor
-           glob, expanding straight into one argument. A positional or array
-           reference, an unquoted segment, a substitution, and a leading tilde
-           fall through to the full machine. */
         if (!did_take_fast_path) {
           let is_single_field = !expandable.segments.is_empty();
           for (let const &segment : expandable.segments) {
@@ -715,8 +682,6 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
               if (!segment.is_in_double_quotes) is_single_field = false;
               break;
             case WordSegment::Kind::VariableReference: {
-              /* The '@', '*', and '[' bytes mark a reference that expands to
-                 many fields, so their absence leaves a scalar of one field. */
               let const spec = segment.text.view();
               let has_multi_field_marker = !segment.is_in_double_quotes;
 #pragma clang loop unroll_count(4)
@@ -773,8 +738,6 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
 
         if (!did_take_fast_path) {
           for (glob_field &field : expand_word(expandable)) {
-            /* A field with no active glob is its own single result, pushed
-               straight in without a directory scan. */
             if (runtime_state().no_glob() ||
                 !first_active_glob(field.text.view(), field.glob_active,
                                    get_extglob_mode())
@@ -849,4 +812,4 @@ fn EvalContext::write_xtrace(const ArrayList<String> &args) throws -> void
   write_xtrace(command.view());
 }
 
-} /* namespace koshka */
+}

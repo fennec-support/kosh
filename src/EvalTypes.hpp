@@ -31,9 +31,6 @@ enum class assignment_update_mode : u8
   Append,
 };
 
-/* A case-sensitive environment is keyed by the name itself and needs no value.
-   An environment that ignores case is keyed by the folded name, and the value
-   holds the original spelling when folding changed it. */
 using exported_name_value =
     std::conditional_t<os::ENVIRONMENT_IS_CASE_SENSITIVE, Nothing, String>;
 
@@ -157,9 +154,6 @@ enum class variable_attribute : u8
   Nameref = 1U << 5,
 };
 
-/* A candidate argument after variable expansion and field splitting. The
-   parallel mask marks which characters may act as glob metacharacters, and the
-   flag records whether the source word itself wrote one. */
 struct glob_field
 {
   explicit glob_field(Allocator allocator)
@@ -189,10 +183,6 @@ enum class glob_charset : u8
   Utf8,
 };
 
-/* The index of the first active glob metacharacter in a field, or None when the
-   field is all literal. The argument expander reads it to push a glob-free
-   field straight through, skipping the directory scan that expand_path would
-   run. */
 hot pure fn first_active_glob(StringView text, const Bitset &mask,
                               extglob_mode mode) wontthrow -> Maybe<usize>;
 
@@ -233,8 +223,6 @@ pure fn is_runtime_dynamic_variable_name(StringView name) wontthrow -> bool;
 pure fn is_bash_only_dynamic_variable_name(StringView name) wontthrow -> bool;
 pure fn is_process_dynamic_variable_name(StringView name) wontthrow -> bool;
 
-/* The evaluator carries a non-local jump until a matching boundary consumes it.
-   Otherwise, the jump remains pending for an outer node. */
 struct control_flow
 {
   enum class Kind : u8
@@ -371,8 +359,6 @@ struct source_frame
   bool has_deferred_trace : 1 {false};
 };
 
-/* A variable binding saved when a local shadows it. A None previous value means
-   the name was unset, so leaving the scope restores the unset state. */
 struct local_binding
 {
   String name;
@@ -621,19 +607,6 @@ struct subshell_saved_descriptor
   os::saved_descriptor saved;
 };
 
-/* How a function body's absolute source positions map onto the stored
-   definition copy. The copy holds a "name () " header then the body verbatim.
-   An absolute position rebases by the body start and header length. The
-   header occupies the copy's first line, and the line offset restores the
-   numbering of the defining text, which diagnostics show. The enclosing line
-   count adds the lines above an eval text, so LINENO counts from the file
-   the way bash does. A body that starts on the first line needs a
-   negative offset. A body defined in a substitution or an eval is numbered
-   apart from the text that defines it, so it renders through its window even
-   while that text runs. An error renders the body between the rest of its first
-   and last defining lines, which render_source builds on first use. A fresh
-   evaluator parses an inherited body from its bootstrap, so the body positions
-   carry the name of that text while the rest names the defining file. */
 struct function_definition_info
 {
   usize body_start_position{0};
@@ -787,9 +760,6 @@ struct function_runtime_state
   control_mutations entry_mutations;
 };
 
-/* The DEBUG or ERR action a function call takes away from its body, held with
-   the depth the caller installed it at. An empty action means the call left the
-   trap in place. */
 struct saved_frame_trap
 {
   Maybe<trap_definition> definition;
@@ -801,14 +771,10 @@ fn record_directory_access(StringView directory, Allocator allocator) throws
 fn z_completion_candidates(StringView query, Allocator allocator) throws
     -> ArrayList<String>;
 
-/* A warning the evaluator can silence for the span of a construct.
-   UnsetReference exempts an unset name entirely, so neither the warning nor the
-   set -u abort fires. UnsetTestOperand silences only the advisory unset warning
-   while a test or [ expands its operands, the set -u abort still fires. */
 enum class suppressible_warning : u8
 {
   UnsetReference,
   UnsetTestOperand,
 };
 
-} /* namespace koshka */
+}

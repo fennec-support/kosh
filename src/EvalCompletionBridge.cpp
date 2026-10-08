@@ -212,16 +212,10 @@ fn EvalContext::run_completion_function(StringView function_name,
   execution_store().terminal_exec_allowed() = false;
   defer { execution_store().terminal_exec_allowed() = saved_terminal_exec; };
 
-  /* A completion function that errors must not abort the prompt, so any error
-     is swallowed and a stray break or return is consumed. */
   let was_interrupted = false;
   try {
     body->evaluate(*this);
   } catch (const InterruptErrorWithLocation &) {
-    /* The throw already consumed the interrupt request on its way out, so it is
-       raised again for the caller. Without it the editor would see a settled
-       flag and offer whatever the function had filled in before the user asked
-       it to stop. */
     was_interrupted = true;
     os::INTERRUPT_REQUESTED = 1;
     LOG(Debug, "completion function '%.*s' was interrupted",
@@ -231,8 +225,6 @@ fn EvalContext::run_completion_function(StringView function_name,
         static_cast<int>(function_name.length), function_name.data,
         error.message().c_str());
   }
-  /* The return status is read before the control flow is cleared, so a dynamic
-     loader that returns 124 to request a retry is seen by the caller. */
   if (out_exit_status != nullptr)
     *out_exit_status = execution_store().last_exit_status();
   if (control_flow_store().has_pending()) control_flow_store().clear();
@@ -251,4 +243,4 @@ fn EvalContext::run_completion_function(StringView function_name,
   return result;
 }
 
-} /* namespace koshka */
+}

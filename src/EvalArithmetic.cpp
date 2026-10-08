@@ -86,8 +86,6 @@ pure alwaysinline fn try_parse_single_integer_literal(StringView text) wontthrow
   return static_cast<i64>(is_negative ? -magnitude : magnitude);
 }
 
-/* The add, subtract, and multiply run in u64 where overflow is defined, a
-   direct i64 overflow is undefined and trips UBSan in the dbg build. */
 pure fn arithmetic_add(i64 lhs, i64 rhs) wontthrow -> i64
 {
   return static_cast<i64>(static_cast<u64>(lhs) + static_cast<u64>(rhs));
@@ -103,8 +101,6 @@ pure fn arithmetic_multiply(i64 lhs, i64 rhs) wontthrow -> i64
   return static_cast<i64>(static_cast<u64>(lhs) * static_cast<u64>(rhs));
 }
 
-/* Runs in u64 so the result wraps in 64 bits. The caller rejects a negative
-   exponent. */
 pure fn arithmetic_power(i64 base, i64 exponent) wontthrow -> i64
 {
   let result = static_cast<u64>(1);
@@ -118,8 +114,6 @@ pure fn arithmetic_power(i64 base, i64 exponent) wontthrow -> i64
   return static_cast<i64>(result);
 }
 
-/* INT64_MIN / -1 and INT64_MIN % -1 overflow the signed result and trap on
-   x86, so the two's-complement wrap of INT64_MIN and 0 is returned directly. */
 pure fn arithmetic_divide(i64 lhs, i64 rhs) wontthrow -> i64
 {
   if (lhs == INT64_MIN && rhs == -1) {
@@ -136,8 +130,6 @@ pure fn arithmetic_modulo(i64 lhs, i64 rhs) wontthrow -> i64
   return lhs % rhs;
 }
 
-/* The count is masked to the low 6 bits the way dash does, the shift runs in
-   u64 where a shift below the width is defined. */
 pure fn arithmetic_shift_left(i64 lhs, i64 rhs) wontthrow -> i64
 {
   let const count = static_cast<u64>(rhs) & 63u;
@@ -178,8 +170,6 @@ hot static fn arith_apply_binop(char kind, const ArithmeticValue &lhs,
                                 Maybe<u32> bc_scale = {}) throws
     -> ArithmeticValue;
 
-/* A recursive-descent evaluator for $((...)) following C operator precedence.
- */
 class ArithmeticParser
 {
 public:
@@ -192,8 +182,6 @@ public:
         m_is_skipping{is_skipping}, bc_scale{bc_scale_value}, arena{arena_value}
   {}
 
-  /* Null only on the analyze-time constant fold, where no variable read and no
-     assignment path that dereferences the context is reached. */
   EvalContext *context;
   StringView source;
   usize pos;
@@ -202,9 +190,6 @@ public:
   usize depth{0};
   static constexpr usize MAX_DEPTH = 128;
 
-  /* The dead operand of a short-circuited || or && and the untaken ternary arm
-     are parsed to consume their tokens, this flag makes their assignments skip
-     the store. */
   bool m_is_skipping{false};
   bool should_error_unset{false};
   Maybe<u32> bc_scale{};
@@ -348,8 +333,6 @@ public:
     usize name_position;
   };
 
-  /* Nested brackets are balanced so a[b[0]] reads the whole inner expression.
-   */
   fn read_optional_subscript() throws -> Maybe<StringView>
   {
     if (pos >= source.length || source[pos] != '[') {
@@ -458,8 +441,6 @@ public:
 
   fn parse_assignment() throws -> ArithmeticValue
   {
-    /* Try a bare name on the left and rewind when no assignment operator
-       follows it. */
     let const save = pos;
     skip_spaces();
     if (pos < source.length && lexer::is_variable_name_start(source[pos])) {
@@ -526,8 +507,6 @@ public:
     return parse_ternary();
   }
 
-  /* The flag is saved and restored so a nested skip inside an already-skipped
-     region stays skipped. */
   fn parse_skipped(ArithmeticValue (ArithmeticParser::*parse_branch)()) throws
       -> ArithmeticValue
   {
@@ -558,8 +537,6 @@ public:
     return condition;
   }
 
-  /* Precedence runs 11 for the tightest ** to 1 for the loosest ||. Precedence
-     0 means no binary operator opens here. */
   struct binary_operator
   {
     char kind;
@@ -567,8 +544,6 @@ public:
     u8 length;
   };
 
-  /* A compound assignment suffix such as += or <<= answers no operator, the
-     assignment level above the ladder owns those. */
   fn peek_binary_operator() wontthrow -> binary_operator
   {
     skip_spaces();
@@ -626,8 +601,6 @@ public:
     }
   }
 
-  /* One precedence-climbing loop, one frame for a whole run of operators. The
-     nine cascade levels showed up whole in the profile. */
   fn parse_binary(u8 min_precedence) throws -> ArithmeticValue
   {
     skip_spaces();
@@ -658,7 +631,6 @@ public:
         continue;
       }
 
-      /* ** is right-associative so it re-enters at its own precedence. */
       let const rhs =
           parse_binary(op.kind == 'P' ? op.precedence : op.precedence + 1);
       if (m_is_skipping) {
@@ -684,8 +656,6 @@ public:
 
   fn parse_unary() throws -> ArithmeticValue
   {
-    /* The doubled operators are checked before single + and - so a leading ++
-       or -- is read as one prefix step. */
     skip_spaces();
     let const first = pos < source.length ? source[pos] : '\0';
     if (first == '+') {
@@ -1496,8 +1466,6 @@ static fn lex_arith_number(StringView from, i64 *out_value) throws -> usize
     while (i < from.length) {
       let const digit = arithmetic_internal::radix_digit_value(from[i], radix);
       if (digit >= radix) break;
-      /* The accumulation wraps in the unsigned domain so an oversized base#
-         literal does not trigger signed-overflow. */
       value = value * radix + digit;
       i++;
     }
@@ -1556,7 +1524,6 @@ static fn lex_exact_arith_number(StringView from, ArithmeticValue *out_value,
   return consumed;
 }
 
-/* Longest first so the scan munches maximally, <<= before << before <. */
 static const StringView ARITH_OPERATORS[] = {
     "<<=", ">>=", "**", "<<", ">>", "<=", ">=", "==", "!=", "&&",
     "||",  "++",  "--", "+=", "-=", "*=", "/=", "%=", "&=", "|=",
@@ -1651,8 +1618,6 @@ static fn tokenize_arithmetic(StringView src,
   }
 }
 
-/* An operator that assigns, steps, short-circuits, or branches forces the full
-   char parser, the token fast path keeps no side-effect ordering. */
 static pure fn arith_op_is_complex(StringView t) wontthrow -> bool
 {
   static constexpr PackedStringKey KEYS[] = {
@@ -1685,8 +1650,6 @@ struct arith_binop
   u8 precedence;
 };
 
-/* Mirrors peek_binary_operator. The short-circuit pair is excluded, a simple
-   expression never holds it. */
 static pure fn arith_classify_binop(StringView t) wontthrow -> arith_binop
 {
   static constexpr static_string_entry<arith_binop> ENTRIES[] = {
@@ -1774,8 +1737,6 @@ static fn bc_apply_binop(char kind, const ArithmeticValue &lhs,
   }
 }
 
-/* Uses the same helpers as the char parser's ladder so the fast path and the
-   full parser agree. */
 hot static fn arith_apply_binop(char kind, const ArithmeticValue &lhs,
                                 const ArithmeticValue &rhs, bool is_exact,
                                 BumpArena &arena, Maybe<u32> bc_scale) throws
@@ -1890,8 +1851,6 @@ static fn arith_read_variable(EvalContext *context, StringView name,
   return evaluate_named_value_operand(context, value->view(), is_exact, arena);
 }
 
-/* A precedence-climbing evaluator over the cached token stream for a simple
-   expression with no assignment, ternary, comma, or short-circuit. */
 class ArithmeticTokenEvaluator
 {
 public:
@@ -2000,7 +1959,7 @@ public:
   }
 };
 
-} // namespace
+}
 
 fn EvalContext::read_array_element_arithmetic_text(StringView name,
                                                    StringView subscript) throws
@@ -2045,7 +2004,7 @@ fn evaluate_arithmetic_value(
   return parser.parse();
 }
 
-} /* namespace */
+}
 
 fn EvalContext::evaluate_arithmetic(StringView expression,
                                     const SourceLocation *expression_base,
@@ -2186,7 +2145,7 @@ fn evaluate_arithmetic_cached_value(EvalContext *context, StringView expression,
   return evaluator.run();
 }
 
-} /* namespace */
+}
 
 fn EvalContext::evaluate_arithmetic_cached_text(
     const WordSegment &segment) throws -> String
@@ -2280,12 +2239,10 @@ fn get_constant_arithmetic_arena() wontthrow -> BumpArena &
   return arena;
 }
 
-} /* namespace */
+}
 
 fn evaluate_constant_arithmetic(StringView expression) throws -> i64
 {
-  /* The optimizer has proven the expression holds no variable and no
-     assignment, so a null context is never dereferenced. */
   let &arena = get_constant_arithmetic_arena();
   let const scratch = arena.mark();
   defer { arena.release(scratch); };
@@ -2345,4 +2302,4 @@ pure fn obvious_xor_power_operator_position(StringView expression) wontthrow
   return operator_position;
 }
 
-} /* namespace koshka */
+}

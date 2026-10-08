@@ -437,8 +437,6 @@ fn EvalContext::seed_shell_identity_variables(
     versinfo.push(String{KOSH_OS_INFO});
     set_indexed_array("BASH_VERSINFO", steal(versinfo));
     set_shell_variable("BASH", execution_store().get_shell_executable_path());
-    /* A missing COMP_WORDBREAKS collapses every word into one and kills
-       bash-completion. */
     if (!get_variable_value("COMP_WORDBREAKS").has_value())
       set_shell_variable("COMP_WORDBREAKS", StringView{" \t\n\"'><=;|&(:"});
     return;
@@ -581,9 +579,6 @@ fn EvalContext::assign_caller_binding_of_circular_nameref(
 
 fn EvalContext::restore_local_binding(local_binding &binding) throws -> void
 {
-  /* The scope pop runs this inside a noexcept defer, so a readonly name would
-     throw from a destructor and terminate the shell. assign_variable and the
-     stores below skip the readonly check. */
   if (binding.previous_value.has_value())
     assign_variable(binding.name, *binding.previous_value);
   else
@@ -706,8 +701,6 @@ fn EvalContext::publish_single_pipe_status(i32 status) throws -> void
   values.push(String::from(status, values.allocator()));
 }
 
-/* The script-fatal mark aborts the whole run, unlike the command-level errors
-   the bash mood continues past. */
 wontreturn fn throw_script_fatal(StringView message, StringView note) throws
     -> void
 {
@@ -729,9 +722,6 @@ cold fn EvalContext::show_runtime_warning_at(
   if (runtime_state().is_diagnostics_disabled() && !should_ignore_disabled)
     return;
   let const trace_location = location;
-  /* The stamped view may outlive its buffer once the defining command's sources
-     are freed, so a windowed resolution swaps in the definition copy's owned
-     filename. */
   try {
     let const resolved_source = resolve_render_source(location);
     let const line_offset =
@@ -797,7 +787,6 @@ pure fn EvalContext::locate_variable_reference(StringView name) const wontthrow
   }
   if (scan_start >= source.length) return fallback;
 
-  /* The byte after the name must end it so $FOO does not match $FOOBAR. */
   usize i = scan_start;
   while (i < source.length) {
     let const byte = source[i];
@@ -828,8 +817,6 @@ pure fn EvalContext::locate_variable_reference(StringView name) const wontthrow
     i++;
   }
 
-  /* Arithmetic reads a variable as a bare name, so a second pass takes the
-     first name-delimited spelling. */
   usize k = scan_start;
   while (k + name.length <= source.length) {
     let const byte = source[k];
@@ -875,7 +862,6 @@ fn EvalContext::mark_expansion_error(
 
 fn EvalContext::report_unset_reference(StringView name) throws -> void
 {
-  /* bash does not nounset on the operand of [[ -v name ]]. */
   if (runtime_control_store().is_warning_suppressed(
           suppressible_warning::UnsetReference))
     return;
@@ -1000,9 +986,6 @@ fn EvalContext::record_environment_change(StringView name) throws -> void
 
 static constexpr usize EXPORTED_NAME_FOLD_BYTES = 64;
 
-/* A name that fits the buffer folds without touching an allocator, and a longer
-   name folds into the caller's string. The result borrows from whichever of the
-   two holds it. Both outlive the lookup. */
 static fn fold_exported_name(StringView name,
                              char (&buffer)[EXPORTED_NAME_FOLD_BYTES],
                              String &spill) throws -> StringView
@@ -1020,8 +1003,6 @@ static fn fold_exported_name(StringView name,
   return StringView{buffer, name.length};
 }
 
-/* The stored value keeps the original spelling only where the environment
-   ignores case and folding changed the name. */
 template <typename Value>
 static fn store_exported_name(StringMap<Value> &names, StringView key,
                               StringView spelling) throws -> void
@@ -1030,8 +1011,6 @@ static fn store_exported_name(StringMap<Value> &names, StringView key,
     unused(spelling);
     names.set(key, Nothing{});
   } else {
-    /* The empty default costs no allocation. One probe both finds an existing
-       name and places a new one. */
     let const previous_count = names.count();
     let &display_name = names.get_or_create(key, String{heap_allocator()});
     if (names.count() != previous_count && key != spelling) {
@@ -1367,8 +1346,6 @@ fn EvalContext::leave_function_scope() throws -> void
 {
   if (scope_store().local_scope_depth() == 0) return;
 
-  /* Restore each shadowed binding in reverse, so a name declared local twice
-     ends with the value it held before the function ran. */
   ASSERT(scope_store().local_scope_depth() <=
          scope_store().local_scopes().count());
   let &scope = scope_store().current_local_scope();
@@ -1513,9 +1490,6 @@ fn EvalContext::line_number_at_location(
     const SourceLocation &location, const String *fallback_source,
     Maybe<usize> fallback_call_depth) const throws -> usize
 {
-  /* A substitution body is its own source, so its line count restarts. The
-     lines before the enclosing site add up through every substitution the
-     site is itself nested in. */
   let const &line_bases = source_store().embedded_sources();
   let site = location;
   let site_source = fallback_source != nullptr
@@ -2036,4 +2010,4 @@ fn ExecContext::set_unresolved(i32 resolution_status,
   m_unresolved_diagnostic = diagnostic;
 }
 
-} /* namespace koshka */
+}

@@ -40,16 +40,9 @@ pure inline fn get_error_severity_word(error_severity severity) wontthrow
   unreachable("invalid error severity %d", ENUM(severity));
 }
 
-/* One row per distinct source name, so a location holds a four-byte index where
-   it held a twenty-four byte view. The table owns its copies, and a row is
-   never released, because the row count is the number of distinct script paths
-   one run touches. Index zero is the source with no name. */
 fn intern_source_name(StringView name) throws -> u32;
 fn source_name_at(u32 source_name_index) wontthrow -> Maybe<StringView>;
 
-/* A command string and a file can share a spelling, so each row also records
-   which of the two it names. The command string constant below is the only
-   spelling that interns as a command string, and its address identifies it. */
 enum class source_identity_kind : u8
 {
   File,
@@ -65,9 +58,6 @@ inline constexpr char COMMAND_STRING_SOURCE_TEXT[] = "-c";
 inline constexpr StringView COMMAND_STRING_SOURCE_NAME{
     COMMAND_STRING_SOURCE_TEXT, 2};
 
-/* The offsets are 32-bit because one shell source is far below four gigabytes,
-   and every token and every syntax node carries one of these. The constructor
-   accepts usize so the many call sites that compute an offset need no cast. */
 struct SourceLocation
 {
   u32 position{0};
@@ -122,8 +112,6 @@ struct SourceLocation
     if (part_offset < source_offset) return nullptr;
     let const mapped_offset = part_offset - source_offset;
     if (part.length == 0) return nullptr;
-    /* Expanded words can be empty or extend beyond a shortened source span;
-       leave the diagnostic unmapped rather than trapping the shell. */
     if (mapped_offset > length || part.length > length - mapped_offset)
       return nullptr;
     storage = subspan(mapped_offset, part.length);
@@ -155,11 +143,6 @@ public:
   virtual fn to_string(StringView source,
                        EvalContext *context = nullptr) const throws -> String;
 
-  /* The command status is 1 for most errors and 2 for a [[ ]] operand error. A
-     relocation that rewraps an error must carry the fatal mark, the line
-     discard mark, and the status over. A line discarding error abandons the
-     rest of the input line in a bash mood, the way bash treats an arithmetic
-     expansion error. */
   fn set_script_fatal() wontthrow -> void { m_is_script_fatal = true; }
   pure fn is_script_fatal() const wontthrow -> bool
   {
@@ -264,10 +247,6 @@ public:
   fn get_severity() const wontthrow -> error_severity override;
 };
 
-/* Thrown by print_to_stdout and print_to_stderr when write returns EPIPE,
-   since the shell ignores SIGPIPE and so a builtin only sees the EPIPE return.
-   Caught at the builtin and forked-stage boundaries and turned into a silent
-   exit 141, mirroring the SIGPIPE reap in wait_and_monitor_process. */
 class BrokenPipeExit : public Error
 {
 public:
@@ -288,9 +267,6 @@ public:
   fn to_string(StringView source, EvalContext *context = nullptr) const throws
       -> String override;
 
-  /* The line numbering shifts by this many lines, for a source that is a window
-     into a larger file. A window that carries a synthesized header ahead of the
-     original text shifts backwards. */
   fn set_line_offset(isize offset) wontthrow -> void
   {
     m_line_offset = offset;
@@ -311,8 +287,6 @@ protected:
   bool m_is_filename_hidden{false};
 };
 
-/* The mimic boundary tests this type, never the message text, so a
-   program-thrown Error reading "Interrupted" is not mistaken for it. */
 class InterruptErrorWithLocation : public ErrorWithLocation
 {
 public:
@@ -459,4 +433,4 @@ relocate_if_unlocated(const ErrorBase &error,
   }
 }
 
-} /* namespace koshka */
+}
