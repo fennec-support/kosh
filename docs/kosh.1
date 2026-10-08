@@ -1114,7 +1114,7 @@ read; see
 .BR kosh (5).
 .SH STARTUP FILES
 Before any shell startup file, interactive and noninteractive shells apply the
-configuration files /etc/kosh.conf, or %ProgramData%\kosh\kosh.conf on
+configuration files /etc/kosh.conf, or %ProgramData%\ekosh\ekosh.conf on
 Windows, and then $XDG_CONFIG_HOME/kosh/kosh.conf, or
 ~/.config/kosh/kosh.conf when XDG_CONFIG_HOME is unset, empty, or relative.
 The system file is skipped with a warning unless only the system
@@ -4124,14 +4124,17 @@ long for the width wraps onto further rows between its items, each starting at
 the column of the menu rows.
 .PP
 A printable key is inserted into the token, and the menu is drawn again from the
-candidates that still match. A candidate matches when the token opens it, when
-the token appears inside it whole, or when the bytes of the token appear inside
-it in order. The three kinds are drawn in that order, and each kind keeps the
-order the candidates arrived in. Letters are compared without case. The
-For command-name, path, and koshconf option-name lists, the menu narrows the candidates to the best of
-the exact prefix, smart-case prefix, and subsequence matches, as Tab ranks them.
-For other lists, such as the reply of a completion spec, it keeps every
-candidate the token opens in either case. Narrowing
+candidates that still match. A command-name, path, or koshconf option-name list
+keeps the best of the tiers Tab ranks it by: the candidates the token opens
+exactly, then the ones it opens in smart case, where a token without an
+uppercase letter matches either case, then the ones that hold the bytes of a
+name-like token of at least two bytes in order. Any other completion list, such
+as the reply of a completion spec, keeps every candidate the token opens,
+comparing letters without case. In the history search, an entry matches when
+the query opens it, when the query appears inside it whole, or when the bytes
+of the query appear inside it in order. The three kinds are drawn in that
+order, each keeps the order the entries arrived in, and letters are compared
+without case. Narrowing
 filters the most recent search results. The file system and history are not
 searched again. Backspace erases the last character of the token
 and widens the list again. A search that matches nothing keeps the menu open on
@@ -4848,7 +4851,7 @@ rewrites it from its own settings.
 .TP
 .B KOSH_DEBUG_SYSTEM_KOSHCONF
 A non-empty value names the system configuration file in place of
-/etc/kosh.conf or %ProgramData%\kosh\kosh.conf, with the same ownership check.
+/etc/kosh.conf or %ProgramData%\ekosh\ekosh.conf, with the same ownership check.
 The test suite points it at a missing file. Only a debug build, made with
 .B make MODE=dbg
 or a Debug
@@ -4916,7 +4919,11 @@ directories. CDPATH supplies search directories for a relative
 .B cd
 operand. A relative directory is resolved against logical PWD. The form
 .B cd ..
-removes the last logical component. A logical PWD is accepted only when it is
+removes the last logical component, unless
+.B cd \-P
+or the physical option resolves symbolic links first;
+.B cd \-L
+keeps the logical form. A logical PWD is accepted only when it is
 absolute and identifies the physical current directory.
 .TP
 .BR SHELL ", " SHLVL
@@ -5266,7 +5273,7 @@ This is the default interactive calc history file.
 .TP
 .IR /etc/kosh.conf ", " $XDG_CONFIG_HOME/kosh/kosh.conf ", " ~/.config/kosh/kosh.conf
 These are the system and user settings files. Windows reads the system file
-from %ProgramData%\kosh\kosh.conf.
+from %ProgramData%\ekosh\ekosh.conf.
 .PP
 The settings files and the shell startup files are described in
 .BR kosh (5).

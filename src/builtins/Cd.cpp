@@ -17,10 +17,16 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[dir]");
+HELP_SYNOPSIS_DECL("[-L|-P] [dir]");
 
 HELP_DESCRIPTION_DECL("The cd builtin changes the working directory.");
 
+FLAG(LOGICAL, Bool, 'L', "",
+     "Resolve '..' against the path as typed, keeping symbolic links. This is "
+     "the default unless set -o physical is on.");
+FLAG(PHYSICAL, Bool, 'P', "",
+     "Resolve symbolic links first, so '..' leaves the directory a link "
+     "points to.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_BUILTIN_FLAGS(Cd);

@@ -13,7 +13,7 @@ NAME
     cd - The cd builtin changes the working directory.
 
 SYNOPSIS
-    cd [dir]
+    cd [-L|-P] [dir]
 
 DESCRIPTION
   The cd builtin changes the working directory.
