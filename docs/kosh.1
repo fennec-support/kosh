@@ -4693,6 +4693,8 @@ redirections, as Bash and dash do. An expansion error then fails the job, with
 status 1 in the bash moods and 2 in the sh mood, while $! still identifies it, and
 a side effect of the expansion, such as $((i++)) or ${v:=word}, stays in the
 job. The kosh mood expands the words in the shell before it starts the job.
+In the bash moods the job also runs the inherited EXIT trap before it ends with
+such an error, as Bash does.
 .PP
 An ampersand ends a whole and-or list in every mood. In
 .B a && b || c &

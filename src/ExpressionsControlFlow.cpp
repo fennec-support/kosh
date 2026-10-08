@@ -140,6 +140,18 @@ fn Command::evaluate_async_with(EvalContext &cxt, async_body body,
 
   if (launch.should_evaluate_child) {
     i32 status = 1;
+    let const do_run_exit_trap_after_error = [&](i32 error_status) {
+      if ((!is_simple_command() && !is_assignment()) ||
+          !cxt.runtime_state().is_bash_compatible())
+      {
+        return;
+      }
+      try {
+        cxt.run_exit_trap(error_status & 0xFF);
+      } catch (...) {
+        LOG(Debug, "the async child failed to run the EXIT trap");
+      }
+    };
     try {
       cxt.enter_subshell();
       cxt.hide_coprocess_descriptors();
@@ -158,9 +170,11 @@ fn Command::evaluate_async_with(EvalContext &cxt, async_body body,
         koshka::show_message(e.to_string(source_view, &cxt));
       }
       status = async_error_status(cxt, e, should_use_command_string_status);
+      do_run_exit_trap_after_error(status);
     } catch (const Error &e) {
       if (!e.was_rendered()) koshka::show_message(e.to_string());
       status = async_error_status(cxt, e, should_use_command_string_status);
+      do_run_exit_trap_after_error(status);
     } catch (...) {
       LOG(Debug, "the compound command child swallowed an unknown error");
     }
