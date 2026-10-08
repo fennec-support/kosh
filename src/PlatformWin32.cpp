@@ -480,6 +480,13 @@ fn restore_stdout(os::descriptor saved) wontthrow -> void
   note_descriptor_rebound();
 }
 
+static fn duplicate_handle(HANDLE source, HANDLE &copy,
+                           BOOL is_inheritable) wontthrow -> bool
+{
+  return DuplicateHandle(GetCurrentProcess(), source, GetCurrentProcess(),
+                         &copy, 0, is_inheritable, DUPLICATE_SAME_ACCESS) != 0;
+}
+
 /* Windows addresses only the three standard streams. */
 static fn std_handle_slot_for_shell_fd(i32 shell_fd) -> Maybe<DWORD>
 {
@@ -511,28 +518,20 @@ static fn standard_handle_is_owned_by_runtime(os::descriptor handle) wontthrow
 fn save_and_replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow
     -> saved_descriptor
 {
-  saved_descriptor result{};
-  result.shell_fd = shell_fd;
-
   const Maybe<DWORD> slot = std_handle_slot_for_shell_fd(shell_fd);
   if (!slot.has_value()) {
-    let const original = descriptor_for_shell_fd(shell_fd);
-    result.original = original;
-    result.was_open = original != nullptr && original != INVALID_HANDLE_VALUE;
-    if (result.was_open &&
-        DuplicateHandle(GetCurrentProcess(), original, GetCurrentProcess(),
-                        &result.saved, 0, FALSE,
-                        DUPLICATE_SAME_ACCESS) == FALSE)
-    {
-      result.is_dup2_ok = false;
-      return result;
-    }
+    let result = save_descriptor(shell_fd);
+    if (!result.is_dup2_ok) return result;
+
     result.is_dup2_ok = replace_descriptor(shell_fd, target);
     if (!result.is_dup2_ok && result.was_open) {
       CloseHandle(result.saved);
     }
     return result;
   }
+
+  saved_descriptor result{};
+  result.shell_fd = shell_fd;
 
   if (target == nullptr || target == INVALID_HANDLE_VALUE) {
     result.is_dup2_ok = false;
@@ -547,9 +546,7 @@ fn save_and_replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow
   /* SetStdHandle does not copy, so the target is duplicated here and the dup
      stays valid until restore_descriptor closes it. */
   HANDLE duplicate = INVALID_HANDLE_VALUE;
-  if (DuplicateHandle(GetCurrentProcess(), target, GetCurrentProcess(),
-                      &duplicate, 0, TRUE, DUPLICATE_SAME_ACCESS) == 0)
-  {
+  if (!duplicate_handle(target, duplicate, TRUE)) {
     result.is_dup2_ok = false;
     return result;
   }
@@ -603,22 +600,14 @@ fn save_descriptor(i32 shell_fd) wontthrow -> saved_descriptor
     let const original = descriptor_for_shell_fd(shell_fd);
     result.original = original;
     result.was_open = original != nullptr && original != INVALID_HANDLE_VALUE;
-    if (result.was_open &&
-        DuplicateHandle(GetCurrentProcess(), original, GetCurrentProcess(),
-                        &result.saved, 0, FALSE,
-                        DUPLICATE_SAME_ACCESS) == FALSE)
-    {
+    if (result.was_open && !duplicate_handle(original, result.saved, FALSE))
       result.is_dup2_ok = false;
-    }
     return result;
   }
   let const original = GetStdHandle(*slot);
   result.original = original;
   result.was_open = original != nullptr && original != INVALID_HANDLE_VALUE;
-  if (result.was_open &&
-      DuplicateHandle(GetCurrentProcess(), original, GetCurrentProcess(),
-                      &result.saved, 0, FALSE, DUPLICATE_SAME_ACCESS) == 0)
-  {
+  if (result.was_open && !duplicate_handle(original, result.saved, FALSE)) {
     result.is_dup2_ok = false;
     return result;
   }
@@ -677,9 +666,7 @@ fn duplicate_shell_fd(i32 shell_fd) wontthrow -> os::descriptor
     return KOSH_INVALID_FD;
 
   HANDLE copy = INVALID_HANDLE_VALUE;
-  if (DuplicateHandle(GetCurrentProcess(), original, GetCurrentProcess(), &copy,
-                      0, TRUE, DUPLICATE_SAME_ACCESS) == FALSE)
-    return KOSH_INVALID_FD;
+  if (!duplicate_handle(original, copy, TRUE)) return KOSH_INVALID_FD;
 
   return copy;
 }
@@ -737,9 +724,7 @@ fn replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow -> bool
 
   if (!slot.has_value()) {
     HANDLE duplicate = INVALID_HANDLE_VALUE;
-    if (DuplicateHandle(GetCurrentProcess(), target, GetCurrentProcess(),
-                        &duplicate, 0, TRUE, DUPLICATE_SAME_ACCESS) == FALSE)
-      return false;
+    if (!duplicate_handle(target, duplicate, TRUE)) return false;
     let const temporary_fd = _open_osfhandle(
         reinterpret_cast<intptr_t>(duplicate), O_BINARY | O_RDWR);
     if (temporary_fd == -1) {
@@ -761,9 +746,7 @@ fn replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow -> bool
   }
 
   HANDLE duplicate = INVALID_HANDLE_VALUE;
-  if (DuplicateHandle(GetCurrentProcess(), target, GetCurrentProcess(),
-                      &duplicate, 0, TRUE, DUPLICATE_SAME_ACCESS) == 0)
-    return false;
+  if (!duplicate_handle(target, duplicate, TRUE)) return false;
 
   let const previous = GetStdHandle(*slot);
   if (SetStdHandle(*slot, duplicate) == FALSE) {
