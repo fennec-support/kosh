@@ -1,0 +1,35 @@
+#!/bin/env kosh
+
+# A child sees the parent's logical PWD, OLDPWD, and directory stack, not the
+# native spelling of the working directory. Windows runs each child in a
+# fresh evaluator, which replays the directories from its bootstrap.
+set -M bash
+d=$PWD/$TEST_TEMP_DIRECTORY/fresh-evaluator-directories
+koshkit mkdir -p "$d"
+cd / || exit 1
+cd "$d" || exit 1
+parent_pwd=$PWD
+parent_oldpwd=$OLDPWD
+
+report() {
+  if [ "$PWD" = "$parent_pwd" ]; then echo "$1 pwd=same"; else echo "$1 pwd=$PWD"; fi
+  if [ "$OLDPWD" = "$parent_oldpwd" ]; then echo "$1 oldpwd=same"; else echo "$1 oldpwd=$OLDPWD"; fi
+}
+
+{ report background; } &
+wait "$!"
+{ report stage; } | { while read -r line; do echo "$line"; done; }
+while read -r line; do echo "$line"; done < <(report substitution)
+
+unset OLDPWD
+{ echo "unset-oldpwd=${OLDPWD-unset}"; } | { read -r line; echo "$line"; }
+
+pushd / >/dev/null || exit 1
+{ echo "root-pwd=$PWD"; } | { read -r line; echo "$line"; }
+parent_stack=$(dirs)
+{ if [ "$(dirs)" = "$parent_stack" ]; then echo stack=same; else echo "stack=$(dirs)"; fi; } &
+wait "$!"
+popd >/dev/null || exit 1
+
+cd / || exit 1
+if [ -n "$d" ]; then koshkit rm -rf -- "$d"; fi

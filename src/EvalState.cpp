@@ -10,6 +10,7 @@
  * expression execution.
  */
 
+#include "Builtin.hpp"
 #include "CLI.hpp"
 #include "Errors.hpp"
 #include "Eval.hpp"
@@ -2414,7 +2415,7 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
   }
   source.push('\n');
 
-  let const working_directory = Path::current_directory();
+  let const working_directory = logical_working_directory(*this);
   if (!variable_store().directory_stack().is_empty()) {
     source += "builtin cd -- ";
     append_shell_quoted_arg(source,
@@ -2435,6 +2436,15 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
     source += "builtin cd -- ";
     append_shell_quoted_arg(source, working_directory.view());
     source.push('\n');
+  }
+  if (let const previous_directory = get_variable_value("OLDPWD");
+      previous_directory.has_value())
+  {
+    source += "OLDPWD=";
+    append_shell_quoted_arg(source, previous_directory->view());
+    source.push('\n');
+  } else {
+    source += "unset OLDPWD\n";
   }
 
   char mask_text[8];

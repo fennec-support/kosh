@@ -1,0 +1,9 @@
+background pwd=same
+background oldpwd=same
+stage pwd=same
+stage oldpwd=same
+substitution pwd=same
+substitution oldpwd=same
+unset-oldpwd=unset
+root-pwd=/
+stack=same
