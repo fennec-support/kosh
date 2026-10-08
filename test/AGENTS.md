@@ -25,8 +25,8 @@ Place a test in the cheapest harness that expresses its contract.
   matching golden.
 - `harness/completion` owns completion output and uses a matching golden.
 - `harness/highlight` owns debug highlighting output and uses a matching golden.
-- `harness/sh` compares one fixture with dash.
-- `harness/bash` compares one fixture with Bash 5.3 or newer.
+- `harness/sh` compares one test case with dash.
+- `harness/bash` compares one test case with Bash 5.3 or newer.
 - `bench` owns performance workloads.
 
 There are no native unit tests, and none are written.
@@ -40,7 +40,7 @@ diagnostics to `failed.diff`.
 complete output, compares it with `expected/<name>.out`, and removes the
 temporary output. It does not suppress annoying diagnostics.
 
-`run-harness-script` serves CLI, completion, and highlight fixtures. The
+`run-harness-script` serves CLI, completion, and highlight tests. The
 compatibility runners launch the reference shell and Kosh, compare output and
 status, and compare stderr presence unless the source requests exact stderr.
 
@@ -56,11 +56,11 @@ stems. Any captured Kosh output replaces the matching golden. A timeout removes
 its temporary output and leaves the existing golden unchanged.
 
 Refill records process output. It does not validate behavior. Every changed
-golden requires absolute validation against its fixture. Inspect the complete
+golden requires absolute validation against its test case. Inspect the complete
 output and verify statuses, diagnostics, side effects, and active platform
 branches before accepting the golden.
 
-POSIX and Bash fixtures do not use refill or repository goldens. Their runners
+POSIX and Bash tests do not use refill or repository goldens. Their runners
 compare each reference shell result with the Kosh result directly.
 
 ## Focused validation
@@ -74,7 +74,7 @@ make -C test harness/completion/name.sh
 make -C test harness/highlight/name.sh
 ```
 
-Pass `MODE`, `BIN`, and `TARGET` when the fixture must use a specific root
+Pass `MODE`, `BIN`, and `TARGET` when the test case must use a specific root
 build. Run `make test` from the repository root for the complete suite. Read
 every changed golden and inspect `failed.diff` before treating a suite as
 successful.
@@ -87,9 +87,9 @@ fatal parsing, signals, jobs, terminal ownership, or shell state would change
 after concatenation.
 
 A compatibility matrix keeps the cases Kosh does not yet pass in a sibling
-`*_pending` fixture. The matrix sources that file for its keys and skips
-them, the pending fixture runs only them, and `SKIPPED_TESTS` lists every
-pending fixture. A fix removes its keys, and an empty pending fixture leaves
+`*_pending` test case. The matrix sources that file for its keys and skips
+them, the pending test case runs only them, and `SKIPPED_TESTS` lists every
+pending test case. A fix removes its keys, and an empty pending test case leaves
 the skip list.
 
 Every golden backed source has one matching file directly under `expected`.

@@ -20,7 +20,7 @@ changes update this file.
   type. Functions use `fn name(...) throws -> ret`.
 - Compare pointers with `nullptr`. Do not use pointer truthiness.
 - Boolean names start with `is_`, `should_`, `was_`, `did_`, or `has_`. Counts
-  end with `_count`. Measurements name their unit. Lambdas start with `do_`.
+  end with `_count`. Measurements state their unit. Lambdas start with `do_`.
   Accessors start with `get_` or `set_`.
 - Free structs and enums use lower snake case. Classes and nested types use
   camel case. File operations accept `Path`.
@@ -48,18 +48,18 @@ changes update this file.
   `inherited_shell`, the startup configuration, `input_plan`, and
   `session_config` in that order, seeds the session variables, applies the
   startup configuration, then calls `run_startup` and `finish_startup`. The
-  startup configuration reads the system file from
+  startup configuration loads the system file from
   `os::get_system_koshconf_path`, which is `/etc/kosh.conf` on POSIX and
   `%ProgramData%\kosh\kosh.conf` on Windows through the known folder, and
-  reads it with `os::read_system_owned_file`, which rejects a file or
+  loads it with `os::read_system_owned_file`, which rejects a file or
   directory that anyone but root or the Windows administrators could change,
   then the user `kosh.conf`, and an
   inherited `KOSHCONF`, removes `KOSHCONF` from the environment, and settles a
   configured mood before the input plan and the configured
   `startup.init_moods` of an interactive or login shell after it. A debug
-  build lets KOSH_DEBUG_SYSTEM_KOSHCONF name the system file; a release build
+  build lets KOSH_DEBUG_SYSTEM_KOSHCONF select the system file; a release build
   has no such override. An option the command line or
-  `KOSH_ANALYSIS` names keeps its value. A restricted or privileged invocation
+  `KOSH_ANALYSIS` sets keeps its value. A restricted or privileged invocation
   ignores `KOSHCONF`, and a restricted one keeps only presentation and
   diagnostic options from the files. The kosh mood sources no shell startup
   file, and an interactive kosh mood warns once about a retired `.koshrc`. A
@@ -105,7 +105,7 @@ changes update this file.
   SHELLOPTS, BASHOPTS, and `$-` read and write through it. `set` and `shopt`
   accept only Bash names; Koshka settings without a letter belong to
   `koshconf`. A koshconf name is full English words with the topic first, and
-  a boolean reads as a statement true when on. `legacy.base_editor_mode` is
+  a boolean is a statement true when on. `legacy.base_editor_mode` is
   one enumeration behind the set-only alias entries `emacs` and `vi`, which
   have id 0 and no koshconf name; id 88 is retired. The kosh mood holds
   nounset, pipefail, failglob, and extended
@@ -133,7 +133,7 @@ changes update this file.
   duplicates live process handles into the
   authenticated child. The bootstrap owns received handles until evaluator state
   adopts them. Restricted behavior uses one context state. BASHPID identifies
-  forked evaluators. `$$` identifies the original shell, and `PPID` names its parent in every
+  forked evaluators. `$$` identifies the original shell, and `PPID` identifies its parent in every
   forked or fresh evaluator.
 - Each launch of a fresh evaluator also sends the origin of its command text:
   the source name, the starting line, and the rest of the first and last
@@ -155,7 +155,7 @@ changes update this file.
   `DefinitionStateScope`, `TrapActionScope`, `UntracedTrapScope`,
   `SubstitutionFrame`, or `os::ScopedEnvironment`.
 - An arithmetic error in a bash mood carries a line discarding mark. It
-  unwinds to the root list that `line_discard_root` names, the list of a
+  unwinds to the root list that `line_discard_root` holds, the list of a
   streamed script line, a whole script, an eval, or a sourced file, and that
   list skips the rest of the input line. A subshell, a command substitution, a
   pipeline stage, and an asynchronous command hold it. An eval or sourced root
@@ -182,8 +182,8 @@ changes update this file.
 - A pipe has its writer and its reader in different processes whenever either
   side can exceed the pipe buffer. A deferred stage report is written only after
   every reading stage runs in a child.
-- A forked stage closes every descriptor the parent still owns before it reads.
-  The close-on-exec flag releases a stage that execs and keeps every descriptor
+- A forked stage closes every descriptor the parent still owns before it takes
+  input. The close-on-exec flag releases a stage that execs and keeps every descriptor
   of a forked builtin, group, or subshell.
 - A named-pipe server connects before its child evaluates source. Thread launch
   order is not connection readiness.
@@ -212,7 +212,7 @@ changes update this file.
 - `src/koshkit` holds only utility sources. Code shared by utilities lives in
   `src`, such as `src/CliLive` and the file-mode parser in `src/UtilsIO.cpp`.
 - `src/CliLive` owns every Evil live view and the retained live rows. It holds
-  the alternate screen, raw key input, sample and refresh cadence, the styled
+  the alternate screen, raw key input, sample and refresh interval, the styled
   header, and one write per frame. Redirected frames carry no escape sequences.
 
 ## Platform
@@ -250,12 +250,12 @@ changes update this file.
 - `revalidate_for_prompt` starts one directory validation epoch before each
   prompt. It stats every PATH directory and rebuilds the command names when
   one changed, probing only the directories whose listing changed. Within the
-  epoch the highlighter reads the command names, remembers the status of each
+  epoch the highlighter uses the command names, remembers the status of each
   command word after one PATH search, and looks plain operands up in the
-  working directory listing, so a keystroke reads no file for a name it saw.
+  working directory listing, so a keystroke opens no file for a name it saw.
   An empty Enter or Ctrl-C at the prompt starts a new epoch the same way. An
   explicit completion starts its own epoch for directory listings, so it
-  stats each directory it lists once and reads it again only after a change,
+  stats each directory it lists once and loads it again only after a change,
   while it keeps the PATH command names of the prompt.
 - An open completion menu narrows the gathered candidates in the editor. A
   command-name, path, or koshconf option-name list, which `match_tier`
@@ -274,9 +274,9 @@ changes update this file.
   word. The menu holds back the preview of its first row while the token is
   empty, closes quietly when the next word has no candidates, and does not
   open when the option adds no space.
-- Command completion reads keywords, builtins, bundled utilities, functions,
+- Command completion draws on keywords, builtins, bundled utilities, functions,
   aliases, and PATH. `KEYWORD_ENTRIES` is the sole keyword catalog. A `type`
-  operand reads the same catalog. Only the listing mode accepts an empty
+  operand uses the same catalog. Only the listing mode accepts an empty
   operand.
 - The inline hint rows show a syntax problem before the synopsis.
   `describe_syntax_problem` parses the line with the real parser in
@@ -289,9 +289,9 @@ changes update this file.
 - Static koshkit completion names stay alphabetically sorted.
 - The inline hint is `compose_command_hint` in
   `src/CompletionManpage.cpp`. It runs on every keystroke for the command of
-  the segment or command substitution under the caret, and reads only
+  the segment or command substitution under the caret, and uses only
   builtin and koshkit registrations, aliases, function definitions, and the
-  manpage and help caches. It never forks, searches PATH, or reads a file.
+  manpage and help caches. It never forks, searches PATH, or opens a file.
   A bundled utility synopsis shows only when the command status the
   highlighter remembers for the validation epoch finds no PATH program,
   because a PATH program runs first, or after `koshkit`.
@@ -314,7 +314,7 @@ changes update this file.
   Ctrl-Z undoes while a line is read. A foreground program runs with the
   terminal in its usual mode and receives Ctrl-Z as a stop signal.
 - The interactive loop enters raw mode after the job report, PROMPT_COMMAND,
-  and the prompt expansions, just before the editor reads, so the programs
+  and the prompt expansions, just before the editor takes input, so the programs
   they run see the terminal in its usual mode.
 - Raw mode requests the kitty disambiguate flag and xterm modifyOtherKeys
   level 1 when the `extended-keys` option is on. Leaving raw mode and turning
@@ -322,30 +322,30 @@ changes update this file.
   keeps them on. `os::install_fatal_exit_hook` restores the terminal at exit
   and on a fatal signal in the shell process, then lets the signal take its
   previous action. The editor byte reader turns each key reported
-  in either form into its legacy bytes before any key loop reads it, and leaves
-  a key without a legacy form, such as Ctrl-Shift-Z, to the parser.
+  in either form into its legacy bytes before any key loop consumes it, and
+  leaves a key without a legacy form, such as Ctrl-Shift-Z, to the parser.
 - The editor calls an idle hook after 250 ms without a key. The hook fills
   the hint caches through `step_idle_documentation`, which starts one
-  `os::ProgramCapture` child under the man and help trust rules and reads it
+  `os::ProgramCapture` child under the man and help trust rules and polls it
   without blocking on each repeat, so a key is served while the child runs.
-  The `manpath` run is one of these loads, and the subcommand index reads one
+  The `manpath` run is one of these loads, and the subcommand index scans one
   man1 directory per repeat. Explicit completion adopts a running load.
   Every load, miss, and timeout lands in the same caches explicit flag
   completion uses, and a submitted line kills a running load. An explicit
   completion that needs the key the idle child is loading adopts that child
   and waits for it no longer than its own fork budget. The hook also
   keeps `describe_analysis_finding` for the paused line, which analyzes with
-  unresolved commands silenced and no followed sources, so it reads no file.
+  unresolved commands silenced and no followed sources, so it opens no file.
   The hook runs whatever the hint rows show and indexes each CDPATH
-  directory, and the ghost of a cd or pushd operand reads CDPATH directories
+  directory, and the ghost of a cd or pushd operand takes CDPATH directories
   only from the index.
 - The highlight callback receives the caret and follows it. It reuses the
   spans of an unchanged line within one prompt, and on a caret move it only
-  overlays the pair from `find_matching_bracket`, which reads the highlight
+  overlays the pair from `find_matching_bracket`, which uses the highlight
   spans to skip quoted, commented, and here-document brackets and the
   tolerant scanner to skip case pattern ends. Auto-pair asks
   `classify_typed_pair_byte` through the editor's pair role callback, which
-  reads the same scanner state at the caret.
+  uses the same scanner state at the caret.
 - The language server wraps completion in `begin_explicit_completion` and loads
   command documentation lazily. Mood selection checks the shebang, language
   identifier, then extension. `shellscript` selects bash.
@@ -366,12 +366,12 @@ changes update this file.
 - The editor clients live in their own repositories:
   `fennec-support/kosh.nvim`, `fennec-support/kosh-vscode`, and
   `fennec-support/kosh-zed`. Homebrew installs from
-  `fennec-support/homebrew-kosh`, whose formula reads the newest release tag
+  `fennec-support/homebrew-kosh`, whose formula uses the newest release tag
   and its `SHA256SUMS` each time Homebrew loads it.
 - Formatting reaches every client through `textDocument/formatting`. The
   `kosh --format` command is the documented fallback for a setup without the
   server.
-- A client document selector names only the language identifiers the format
+- A client document selector lists only the language identifiers the format
   detector compares against. These are `markdown`, `yaml`, `dockercompose`,
   `dockerfile`, `makefile`, `json`, and `jsonc`, plus the shell identifiers. Any other
   non-empty identifier makes the whole document parse as shell. A host format
@@ -419,8 +419,8 @@ changes update this file.
   slug suppresses one. Parser and runtime errors remain enabled.
 - `SourceLocation` stores 32-bit position, length, and interned source index.
   Syntax nodes store end positions separately. Diagnostics and LINENO share a
-  line index. Each interned source name records whether it names a file or the
-  command string, so a file called `-c` stays a file. Only a sourced file or
+  line index. Each interned source name records whether it refers to a file or
+  the command string, so a file called `-c` stays a file. Only a sourced file or
   mimicked script frame owns a BASH_SOURCE row. An eval has none, and a line
   number inside an eval counts from the line of the eval command.
 - Small types stay in light headers. Shared behavior stays on the value type.
@@ -458,44 +458,44 @@ changes update this file.
   removal. Never remove `./kosh` directly.
 - `NO_TOILETLINE=1 make` builds the no editor configuration in a separate
   object directory and links the same `./kosh-dbg` path. Rebuild the ordinary
-  configuration before the next fixture run.
+  configuration before the next test run.
 - `NO_KOSHKIT=1 make` leaves out `src/koshkit`, `src/CliLive.cpp`, and
   `src/UtilsOwnership.cpp`, defines `KOSH_NO_KOSHKIT`, and links the same
   path from its own object directory. `Koshkit.cpp` keeps signal and size
   helpers and stubs the lookup, so no utility name resolves and the `koshkit`
-  builtin reports an error. The test Makefile skips fixtures that need the
+  builtin reports an error. The test Makefile skips test cases that need the
   utilities, and the harness helpers need `KOSHKIT_BIN` set to an ordinary
   build.
 - `make test` runs Kosh, CLI, completion, highlighting, POSIX, and Bash
   suites. `make bench` runs benchmarks.
   `make toiletline_test` runs the standalone editor unit suite.
 - Kosh has no native unit tests. Never write them. Behavior is covered by
-  fixtures that drive the shell or a utility.
+  test cases that drive the shell or a utility.
   Completion tests require debug. Bound interactive and long-running commands.
   Test runners apply a deadline to each case.
-- An editor fixture types the next line only after the prompt hook reports
+- An editor test case types the next line only after the prompt hook reports
   the next prompt. Bytes that arrive while a command, PROMPT_COMMAND, or a
   prompt expansion runs meet the cooked terminal, which echoes them into the
   output. An explicit TAB
   completion turns Ctrl-C into a signal while its program runs.
 - `make -C test refill` regenerates goldens for Kosh, CLI, completion, and
-  highlight fixtures. `REFILL` selects source stems. POSIX and Bash fixtures
+  highlight tests. `REFILL` selects source stems. POSIX and Bash tests
   compare against their reference shells and do not use repository goldens.
   Goldens live directly under `test/expected` and have unique names. Read every
   changed line.
 - Refill records process output. It does not validate behavior. Every changed
-  golden requires absolute validation against its fixture, including output,
+  golden requires absolute validation against its test case, including output,
   status, diagnostics, side effects, and active platform branches.
-- A native fixture that reaches the timeout status cannot use `refill`. The
+- A native test case that reaches the timeout status cannot use `refill`. The
   runner treats that status as a driver failure. Verify its output and patch
   its golden.
-- Make discovers inputs, platform skips, and direct fixture targets. Runners own
+- Make discovers inputs, platform skips, and direct test targets. Runners own
   setup, output, comparison, refill, and cleanup. Results are under
   `.test-work`. Auxiliary test shell scripts use two-space indentation.
-- The test Makefile owns fixture discovery, pattern targets, platform skips, and
-  parallel scheduling. Each target delegates one fixture to a small runner.
+- The test Makefile owns test case discovery, pattern targets, platform skips,
+  and parallel scheduling. Each target delegates one test case to a small runner.
   `test/bin/run-test` prints the running and final status lines. Harness
-  runners execute one fixture, compare its result, write failures to stderr,
+  runners execute one test case, compare its result, write failures to stderr,
   and return the comparison status.
 - The shared CLI, completion, and highlight behavior is implemented by
   `test/bin/run-harness-script`. The other process models use one runner each.
@@ -503,30 +503,30 @@ changes update this file.
   supported checkout platform.
 - The harness was simplified by deleting the worker layer and directory
   specific wrapper copies. Make expands each harness wildcard into direct
-  pattern targets. Each recipe passes its fixture path to `run-test`. The
+  pattern targets. Each recipe passes its test path to `run-test`. The
   shared runner prints status and records diagnostics. A process model runner
   only launches the required commands, compares output, and returns a status.
   Shared setup is exported by Make or kept in the runner that uses it once.
-- Run a focused fixture through its direct path target, for example
+- Run a focused test case through its direct path target, for example
   `make -C test harness/kosh/name.kosh` or
   `make -C test harness/cli/name.sh`. Pass matching `MODE`, `BIN`, and `TARGET`
   values when a direct invocation needs a different root build. Native Kosh
-  fixtures run with `-WWW` and keep all diagnostics in their output. The test
+  tests run with `-WWW` and keep all diagnostics in their output. The test
   Makefile points XDG_CONFIG_HOME at a missing directory and unexports
-  KOSHCONF, so no user `kosh.conf` reaches a fixture; a fixture that needs one
-  sets XDG_CONFIG_HOME or HOME itself. It also points
-  KOSH_DEBUG_SYSTEM_KOSHCONF at a missing file. Only a debug build reads that
-  variable, so a debug run never reads a host `/etc/kosh.conf`, and a release
-  run still does. A fixture that tests the system file unsets it.
+  KOSHCONF, so no user `kosh.conf` reaches a test case; a test case that needs
+  one sets XDG_CONFIG_HOME or HOME itself. It also points
+  KOSH_DEBUG_SYSTEM_KOSHCONF at a missing file. Only a debug build honors that
+  variable, so a debug run never loads a host `/etc/kosh.conf`, and a release
+  run still does. A test case that tests the system file unsets it.
 - Koshkit rm tests use `--dry-run`. Cleanup uses koshkit rm after a nonempty
   path check. Bashdiff and mimicrydiff need Bash 5.3 or newer.
   `scripts/find-modern-bash.sh` selects one from PATH, and `BASHP` overrides that
   choice. An unsuitable `BASHP` fails the suite while a suitable Bash is
   installed.
 - Golden comparisons use the host `diff` command with platform-specific flags.
-- A compatibility fixture compares standard output and status exactly. It
+- A compatibility test case compares standard output and status exactly. It
   compares only the presence of error output because Kosh formats and locates
-  diagnostics independently. A fixture whose error output must agree byte for
+  diagnostics independently. A test case whose error output must agree byte for
   byte carries `# compat-stderr: exact` on a line of its own.
 
 ## Workflow
@@ -562,7 +562,7 @@ changes update this file.
   the whole construction can be simplified and whether the assumption that
   requires the workaround is wrong. Verify those answers before keeping it.
 - For shell compatibility, measure the exact construct in both shells first.
-  Verify mood, options, input channel, output, and status. Keep fixture
+  Verify mood, options, input channel, output, and status. Keep test
   operands stable across both commands.
 
 ## Build and validation
@@ -572,16 +572,16 @@ changes update this file.
   invoking it. Pass matching MODE, BIN, and TARGET to direct test targets.
 - Run test owners that share result or artifact paths sequentially, including
   debug and release modes. Keep the CLI harness separate from other full
-  suites. Do not load the machine while timed interactive fixtures run.
+  suites. Do not load the machine while timed interactive tests run.
 - Redirect a build or suite to a resolved log, capture its final status, then
   read the log. A full suite passes only after all shards finish and no
   failure artifact remains. Check that capability-gated tests took the active
   branch.
 - Use focused regression coverage for behavior changes. Inspect changed
-  golden lines and exact streams and statuses. Native fixtures with status
+  golden lines and exact streams and statuses. Native tests with status
   126 or 127 need a manually verified golden instead of refill.
-- Check the fixture runner's interpreter before shell-specific syntax.
-  Host-dependent counts belong in shape assertions, not goldens. Run
+- Check the test runner's interpreter before shell-specific syntax.
+  Host-dependent counts belong in structure assertions, not goldens. Run
   containers without a terminal and with the workspace user and group when
   they write through a bind mount. Verify packages and binary dependencies
   inside the target container.
