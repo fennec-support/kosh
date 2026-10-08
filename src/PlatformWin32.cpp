@@ -1796,8 +1796,8 @@ static fn append_subshell_transport_u32(String &output, u32 value) throws
 struct subshell_transport_header
 {
   static constexpr u32 MAGIC = 0x4b535442U;
-  static constexpr u32 VERSION = 4U;
-  static constexpr usize ENCODED_LENGTH = 28;
+  static constexpr u32 VERSION = 5U;
+  static constexpr usize ENCODED_LENGTH = 32;
   static constexpr usize MAXIMUM_TRANSPORT_LENGTH = 16 * 1024 * 1024;
 
   u32 payload_length{0};
@@ -1805,6 +1805,7 @@ struct subshell_transport_header
   u32 origin_length{0};
   u32 process_count{0};
   u32 evaluation_mode{0};
+  u32 should_use_command_string_status{0};
 
   static fn from_bootstrap(const subshell_bootstrap &bootstrap) wontthrow
       -> Maybe<subshell_transport_header>
@@ -1826,6 +1827,8 @@ struct subshell_transport_header
         .origin_length = static_cast<u32>(bootstrap.source_origin.count()),
         .process_count = static_cast<u32>(bootstrap.processes.count()),
         .evaluation_mode = static_cast<u32>(bootstrap.evaluation_mode),
+        .should_use_command_string_status =
+            bootstrap.should_use_command_string_status ? 1U : 0U,
     };
     if (!header.is_valid()) return None;
 
@@ -1847,6 +1850,8 @@ struct subshell_transport_header
         .origin_length = decode_subshell_transport_u32(bytes + 16),
         .process_count = decode_subshell_transport_u32(bytes + 20),
         .evaluation_mode = decode_subshell_transport_u32(bytes + 24),
+        .should_use_command_string_status =
+            decode_subshell_transport_u32(bytes + 28),
     };
     if (!header.is_valid()) return None;
 
@@ -1855,7 +1860,8 @@ struct subshell_transport_header
 
   pure fn is_valid() const wontthrow -> bool
   {
-    return source_length <= payload_length &&
+    return should_use_command_string_status <= 1U &&
+           source_length <= payload_length &&
            payload_length <= MAXIMUM_TRANSPORT_LENGTH &&
            origin_length <= MAXIMUM_TRANSPORT_LENGTH - payload_length &&
            (evaluation_mode <=
@@ -1877,6 +1883,7 @@ struct subshell_transport_header
     append_subshell_transport_u32(output, origin_length);
     append_subshell_transport_u32(output, process_count);
     append_subshell_transport_u32(output, evaluation_mode);
+    append_subshell_transport_u32(output, should_use_command_string_status);
   }
 };
 
@@ -2066,6 +2073,8 @@ static fn receive_subshell_bootstrap() wontthrow -> void
     SUBSHELL_BOOTSTRAP.source_length = source_length;
     SUBSHELL_BOOTSTRAP.evaluation_mode =
         static_cast<root_evaluation_mode>(evaluation_mode);
+    SUBSHELL_BOOTSTRAP.should_use_command_string_status =
+        header->should_use_command_string_status == 1U;
     SUBSHELL_BOOTSTRAP.owns_processes = true;
   } catch (...) {
     CloseHandle(pipe);

@@ -40,3 +40,20 @@ for mood in kosh bash bash-posix sh; do
     echo "$mood $script rc=$?"
   done
 done
+echo "== a background simple command of a -c string ends 127, a subshell or group 1 =="
+for mood in bash bash-posix; do
+  for body in '(: ${x:?m}) & wait $!; echo $?' \
+    '{ : ${x:?m}; } & wait $!; echo $?' ': ${x:?m} & wait $!; echo $?' \
+    'set -u; : $y & wait $!; echo $?' 'set -u; (: $y) & wait $!; echo $?' \
+    'x=a; : ${x@Z} & wait $!; echo $?' 'v=${y:?m} & wait $!; echo $?' \
+    'f() { : ${x:?m}; }; f & wait $!; echo $?' \
+    '{ : ${x:?m} & wait $!; echo $?; }' \
+    '(: ${x:?m} & wait $!; echo $?)' 'set -e; : ${x:?m} & wait $!; echo $?'; do
+    "$BIN" --mood "$mood" -c "$body" 2>/dev/null
+    echo "$mood [$body]"
+  done
+done
+echo "== a background command of a script file keeps status 1 =="
+printf ': ${x:?m} & wait $!; echo $?\n' > file_async.sh
+"$BIN" --mood bash file_async.sh 2>/dev/null
+"$BIN" --mood bash < file_async.sh 2>/dev/null

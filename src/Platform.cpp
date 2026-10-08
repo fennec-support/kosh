@@ -92,11 +92,13 @@ subshell_bootstrap::subshell_bootstrap(subshell_bootstrap &&other) noexcept
     : payload(steal(other.payload)), source_origin(steal(other.source_origin)),
       processes(steal(other.processes)), source_length(other.source_length),
       evaluation_mode(other.evaluation_mode),
-      owns_processes(other.owns_processes)
+      owns_processes(other.owns_processes),
+      should_use_command_string_status(other.should_use_command_string_status)
 {
   other.source_length = 0;
   other.evaluation_mode = root_evaluation_mode::Normal;
   other.owns_processes = false;
+  other.should_use_command_string_status = false;
 }
 
 subshell_bootstrap::~subshell_bootstrap() { close_owned_processes(); }
@@ -113,9 +115,11 @@ fn subshell_bootstrap::operator=(subshell_bootstrap &&other) noexcept
   source_length = other.source_length;
   evaluation_mode = other.evaluation_mode;
   owns_processes = other.owns_processes;
+  should_use_command_string_status = other.should_use_command_string_status;
   other.source_length = 0;
   other.evaluation_mode = root_evaluation_mode::Normal;
   other.owns_processes = false;
+  other.should_use_command_string_status = false;
   return *this;
 }
 

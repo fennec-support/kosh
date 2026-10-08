@@ -2195,6 +2195,7 @@ struct subshell_bootstrap
   u32 source_length{0};
   root_evaluation_mode evaluation_mode{root_evaluation_mode::Normal};
   bool owns_processes{false};
+  bool should_use_command_string_status{false};
 
 private:
   fn close_owned_processes() wontthrow -> void;

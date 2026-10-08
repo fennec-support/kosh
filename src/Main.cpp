@@ -712,6 +712,7 @@ struct inherited_shell
   Maybe<os::inherited_subshell_state> state = None;
   bool has_invalid_state = false;
   bool should_suppress_root_source_trace = false;
+  bool should_use_command_string_status = false;
 
   fn take_evaluation_mode() wontthrow -> root_evaluation_mode
   {
@@ -727,7 +728,10 @@ static fn take_inherited_shell() throws -> inherited_shell
   os::unset_environment_variable("KOSH_IDENTITY");
   let bootstrap = os::take_subshell_bootstrap();
   let const evaluation_mode = bootstrap.evaluation_mode;
+  let const should_use_command_string_status =
+      bootstrap.should_use_command_string_status;
   let inherited = inherited_shell{steal(bootstrap), evaluation_mode};
+  inherited.should_use_command_string_status = should_use_command_string_status;
   inherited.source_origin = steal(inherited.bootstrap.source_origin);
   if (!os::can_fork_evaluator() && !inherited.bootstrap.payload.is_empty()) {
     inherited.state = os::inherited_subshell_state::take_from_environment();
@@ -1392,6 +1396,7 @@ struct script_chunk
   Maybe<usize> history_event_number = None;
   bool should_analyze = true;
   bool is_fresh_evaluator_command = false;
+  bool should_use_command_string_status = true;
 };
 
 static fn find_command_call_site(const command_line &line,
@@ -1872,6 +1877,8 @@ static fn run_chunk(script_chunk &chunk, EvalContext &context,
 
   let run_options = script_run_options{};
   run_options.should_analyze = !chunk.is_fresh_evaluator_command;
+  run_options.should_use_command_string_status =
+      chunk.should_use_command_string_status;
   run_options.is_whole_line =
       chunk.command_string_name.has_value() || chunk.is_fresh_evaluator_command;
   if (chunk.command_string_name.has_value()) {
@@ -2206,6 +2213,9 @@ fn kosh_main(int argc, char **argv) -> int
       } else if (input.should_execute_commands && !FLAG_COMMAND.at_end()) {
         cursor.read_next_command(context, chunk, inherited.state.has_value());
         chunk.is_fresh_evaluator_command = inherited.state.has_value();
+        chunk.should_use_command_string_status =
+            !inherited.state.has_value() ||
+            inherited.should_use_command_string_status;
         did_register_origin = context.register_inherited_source_origin(
             inherited.source_origin.view(), chunk.contents,
             inherited.source_windows, chunk.command_string_name);

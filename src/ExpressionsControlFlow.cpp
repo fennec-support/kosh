@@ -67,9 +67,28 @@ CompoundCommand::CompoundCommand(SourceLocation location)
     : Command(steal(location))
 {}
 
-static fn async_error_status(const EvalContext &cxt,
-                             const ErrorBase &error) wontthrow -> i32
+static fn does_async_child_use_command_string_status(
+    const EvalContext &cxt, const Command &command) wontthrow -> bool
 {
+  let const filename = command.source_location().get_filename();
+
+  return (command.is_simple_command() || command.is_assignment()) &&
+         cxt.execution_store().subshell_depth() == 0 &&
+         cxt.runtime_state().is_bash_compatible() &&
+         !cxt.runtime_state().error_exit() && filename.has_value() &&
+         filename->data == COMMAND_STRING_SOURCE_NAME.data;
+}
+
+static fn async_error_status(const EvalContext &cxt, const ErrorBase &error,
+                             bool should_use_command_string_status) wontthrow
+    -> i32
+{
+  if (should_use_command_string_status && error.is_script_fatal() &&
+      error.command_status() == 1)
+  {
+    return BASH_COMMAND_STRING_FATAL_STATUS;
+  }
+
   if (error.is_script_fatal() && cxt.runtime_state().is_posix_mode()) return 2;
 
   return static_cast<i32>(error.command_status());
@@ -106,7 +125,10 @@ fn Command::evaluate_async_with(EvalContext &cxt, async_body body,
   let const child_source =
       expanded_child_source.is_empty() ? command_text : expanded_child_source;
   let bootstrap = os::subshell_bootstrap{};
+  let const should_use_command_string_status =
+      does_async_child_use_command_string_status(cxt, *this);
   let const evaluator = cxt.make_child_evaluator_state(bootstrap);
+  bootstrap.should_use_command_string_status = should_use_command_string_status;
   cxt.set_child_source_origin(bootstrap, child_source, source_location());
   let const launch = os::launch_compound_stage(os::compound_stage_options{
       .source = child_source,
@@ -135,10 +157,10 @@ fn Command::evaluate_async_with(EvalContext &cxt, async_body body,
       if (!e.was_rendered()) {
         koshka::show_message(e.to_string(source_view, &cxt));
       }
-      status = async_error_status(cxt, e);
+      status = async_error_status(cxt, e, should_use_command_string_status);
     } catch (const Error &e) {
       if (!e.was_rendered()) koshka::show_message(e.to_string());
-      status = async_error_status(cxt, e);
+      status = async_error_status(cxt, e, should_use_command_string_status);
     } catch (...) {
       LOG(Debug, "the compound command child swallowed an unknown error");
     }

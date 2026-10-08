@@ -5370,7 +5370,10 @@ operand, or a bad substitution, returns 127 from a
 string, as Bash does, and 1 from a script file or standard input. Errexit keeps
 the status 1 for a
 .B \-c
-string. A child terminated by SIGPIPE returns 141. A
+string. A background simple command or assignment of a
+.B \-c
+string that meets such an error also ends with 127, while a background
+subshell or group ends with 1. A child terminated by SIGPIPE returns 141. A
 .B \-\-lint
 batch returns 1 when an input cannot be read or parsed, or its analysis reports
 an error. Warning-only findings return 0.

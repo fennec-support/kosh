@@ -396,6 +396,7 @@ struct script_run_options
   bool should_print_ast{true};
   bool should_analyze{true};
   bool is_whole_line{false};
+  bool should_use_command_string_status{true};
 };
 
 static fn exit_status_for(const Error &error, EvalContext &context,
@@ -754,7 +755,8 @@ static fn run_script_contents(
   let const is_contained_substitution =
       evaluation_mode == root_evaluation_mode::ContainedSubstitution;
   let const is_command_string =
-      filename.has_value() && filename->data == COMMAND_STRING_SOURCE_NAME.data;
+      run_options.should_use_command_string_status && filename.has_value() &&
+      filename->data == COMMAND_STRING_SOURCE_NAME.data;
   i32 exit_code = EXIT_SUCCESS;
 
   try {

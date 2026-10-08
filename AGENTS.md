@@ -147,7 +147,9 @@ changes update this file.
   frame above the launch site, each on its own one-line window, and the lines
   LINENO counts beyond a rendered line, such as those before an eval. The
   bootstrap carries the defining name, lines, and edges of each function, which
-  the child applies to the definitions it replays.
+  the child applies to the definitions it replays. It also carries whether a
+  fatal expansion error of the child exits 127 as in a `-c` string, which only
+  an asynchronous simple command or assignment of a top-level `-c` string sets.
 - Each store owns its state and operations. The trap store keeps one map of
   trap definitions, the history recorder and source retention are separate from
   the source store, and runtime state keeps its fields private. A scope that

@@ -76,3 +76,49 @@ trap saw 2
 sh trap_setu.sh rc=2
 trap saw 2
 sh trap_arith.sh rc=2
+== a background simple command of a -c string ends 127, a subshell or group 1 ==
+1
+bash [(: ${x:?m}) & wait $!; echo $?]
+1
+bash [{ : ${x:?m}; } & wait $!; echo $?]
+127
+bash [: ${x:?m} & wait $!; echo $?]
+127
+bash [set -u; : $y & wait $!; echo $?]
+1
+bash [set -u; (: $y) & wait $!; echo $?]
+127
+bash [x=a; : ${x@Z} & wait $!; echo $?]
+127
+bash [v=${y:?m} & wait $!; echo $?]
+127
+bash [f() { : ${x:?m}; }; f & wait $!; echo $?]
+127
+bash [{ : ${x:?m} & wait $!; echo $?; }]
+1
+bash [(: ${x:?m} & wait $!; echo $?)]
+bash [set -e; : ${x:?m} & wait $!; echo $?]
+1
+bash-posix [(: ${x:?m}) & wait $!; echo $?]
+1
+bash-posix [{ : ${x:?m}; } & wait $!; echo $?]
+127
+bash-posix [: ${x:?m} & wait $!; echo $?]
+127
+bash-posix [set -u; : $y & wait $!; echo $?]
+1
+bash-posix [set -u; (: $y) & wait $!; echo $?]
+127
+bash-posix [x=a; : ${x@Z} & wait $!; echo $?]
+127
+bash-posix [v=${y:?m} & wait $!; echo $?]
+127
+bash-posix [f() { : ${x:?m}; }; f & wait $!; echo $?]
+127
+bash-posix [{ : ${x:?m} & wait $!; echo $?; }]
+1
+bash-posix [(: ${x:?m} & wait $!; echo $?)]
+bash-posix [set -e; : ${x:?m} & wait $!; echo $?]
+== a background command of a script file keeps status 1 ==
+1
+1
