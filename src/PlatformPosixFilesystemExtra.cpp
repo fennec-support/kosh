@@ -881,12 +881,6 @@ fn read_filesystem_integrity_evidence(StringView path) throws
 
 #else
 
-static fn read_native_filesystem_error_counters(
-    StringView, filesystem_error_counters &) wontthrow -> bool
-{
-  return false;
-}
-
 fn read_filesystem_integrity_evidence(StringView) throws
     -> Maybe<filesystem_integrity_evidence>
 {
