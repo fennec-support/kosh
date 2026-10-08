@@ -468,27 +468,35 @@ array_element_assignment_split(const ArrayList<WordSegment> &segments,
 static fn find_assignment_equals(StringView text) wontthrow -> Maybe<usize>
 {
   usize cursor = 1;
-  while (cursor < text.length && lexer::is_variable_name(text[cursor]))
+  while (cursor < text.length && lexer::is_variable_name(text[cursor])) {
     cursor++;
-  if (cursor >= text.length || text[cursor] != '[')
+  }
+  if (cursor >= text.length || text[cursor] != '[') {
     return text.find_character('=');
+  }
 
   usize depth = 0;
   for (usize position = cursor; position < text.length; position++) {
     let const byte = text[position];
-    if (byte == '\'' || byte == '"') {
+    if (byte == '\\') {
+      position++;
+    } else if (byte == '\'' || byte == '"') {
       usize closing = position + 1;
-      while (closing < text.length && text[closing] != byte)
+      while (closing < text.length && text[closing] != byte) {
         closing += byte == '"' && text[closing] == '\\' ? 2 : 1;
+      }
       if (closing < text.length) position = closing;
     } else if (byte == '[') {
       depth++;
     } else if (byte == ']' && depth > 0 && --depth == 0) {
-      if (position + 1 < text.length && text[position + 1] == '=')
+      if (position + 1 < text.length && text[position + 1] == '=') {
         return position + 1;
+      }
       if (position + 2 < text.length && text[position + 1] == '+' &&
           text[position + 2] == '=')
+      {
         return position + 2;
+      }
     }
   }
 

@@ -157,7 +157,9 @@ pure fn word_looks_like_assignment(StringView word) wontthrow -> bool
   position++;
   while (position < word.length && bracket_depth > 0) {
     let const byte = word[position];
-    if (byte == '\'' || byte == '"') {
+    if (byte == '\\') {
+      position++;
+    } else if (byte == '\'' || byte == '"') {
       usize closing = position + 1;
       while (closing < word.length && word[closing] != byte) {
         closing += byte == '"' && word[closing] == '\\' ? 2 : 1;

@@ -384,6 +384,19 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       {
         resolved_attribute_name = cxt.resolve_nameref_base_for_write(name);
         attribute_name = resolved_attribute_name->view();
+        if ((should_mark_integer_attribute || should_unmark_integer_attribute ||
+             should_mark_lowercase_attribute ||
+             should_unmark_lowercase_attribute ||
+             should_mark_uppercase_attribute ||
+             should_unmark_uppercase_attribute) &&
+            cxt.is_readonly(attribute_name))
+        {
+          report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
+                                    StringView{"'"} + attribute_name +
+                                        "' is read-only");
+          status = 1;
+          continue;
+        }
       }
     if (should_mark_integer_attribute)
       cxt.variable_store().attributes().mark_integer(attribute_name);

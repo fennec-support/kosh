@@ -1208,7 +1208,9 @@ fn EvalContext::ModifierWordExpander::expand_dollar() throws -> void
 
 fn EvalContext::ModifierWordExpander::expand_leading_tilde() throws -> bool
 {
-  if (!m_remove_quotes || is_quoted() || m_is_here_document_word) return false;
+  if (!m_remove_quotes || is_quoted() || m_is_here_document_word) {
+    return false;
+  }
 
   usize prefix_end = 1;
   while (prefix_end < m_word.length && m_word[prefix_end] != '/' &&
@@ -1243,7 +1245,9 @@ fn EvalContext::ModifierWordExpander::expand() throws -> String
     }
 
     let const byte = m_word[m_index];
-    if (byte == '~' && m_index == 0 && expand_leading_tilde()) continue;
+    if (byte == '~' && m_index == 0 && expand_leading_tilde()) {
+      continue;
+    }
     if (byte == '\\') {
       expand_backslash();
       continue;
@@ -1424,6 +1428,10 @@ static pure fn find_balanced_subscript_close(
   usize depth = 0;
   for (usize position = 0; position < subscript_text.length; position++) {
     let const byte = subscript_text[position];
+    if (byte == '\\') {
+      position++;
+      continue;
+    }
     if (byte == '\'' || byte == '"') {
       usize closing = position + 1;
       while (closing < subscript_text.length && subscript_text[closing] != byte)
@@ -2568,7 +2576,9 @@ fn EvalContext::compute_array_slice_bounds(
     let const limit = element_count + (operands.offset < 0 ? 1 : 0);
     let const offset =
         operands.offset < 0 ? operands.offset + limit : operands.offset;
-    if (offset < 0 || offset > limit) return empty;
+    if (offset < 0 || offset > limit) {
+      return empty;
+    }
 
     do_check_length();
     let const start = offset > 0 ? offset - 1 : i64{0};
@@ -2591,7 +2601,9 @@ fn EvalContext::compute_array_slice_bounds(
   let const last_index = do_index_at(subscripts.count() - 1);
   let const offset =
       operands.offset < 0 ? operands.offset + last_index + 1 : operands.offset;
-  if (offset < 0 || offset > last_index) return empty;
+  if (offset < 0 || offset > last_index) {
+    return empty;
+  }
 
   do_check_length();
   i64 start = 0;
@@ -2919,7 +2931,9 @@ fn EvalContext::get_declaration_fields(StringView name) throws
   let cursor = usize{0};
   for (usize field_index = 0; field_index < 2; field_index++) {
     let const space = view.substring(cursor).find_character(' ');
-    if (!space.has_value() || !view.starts_with("declare ")) break;
+    if (!space.has_value() || !view.starts_with("declare ")) {
+      break;
+    }
 
     fields.push(
         String{heap_allocator(), view.substring_of_length(cursor, *space)});
