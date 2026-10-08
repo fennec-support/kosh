@@ -899,6 +899,8 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
 
   cxt.execution_store().terminal_exec_allowed() = false;
   cxt.job_table_store().forget_waited_jobs();
+  if (!cxt.job_table_store().jobs().is_empty())
+    cxt.job_table_store().update_jobs();
   cxt.release_finished_coprocess();
 
   /* A pipeline of only simple commands keeps the fast path. A compound stage

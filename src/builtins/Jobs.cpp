@@ -152,9 +152,13 @@ fn Jobs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
 
     out.append(state_color(job.state, color_mode));
-    let state = StringView{state_word(job.state)};
-    out.append(state);
-    out.append_repeated(' ', state.length < 7 ? 7 - state.length : 0);
+    let state = String{cxt.scratch_allocator(), state_word(job.state)};
+    if (job.state == job::State::Done && job.last_status != 0) {
+      state = String{cxt.scratch_allocator(), "Exit "};
+      state += String::from(job.last_status, cxt.scratch_allocator());
+    }
+    out.append(state.view());
+    out.append_repeated(' ', state.count() < 7 ? 7 - state.count() : 0);
     if (color_mode == jobs_color_mode::Colored) out += colors::ansi::RESET;
 
     out += "  ";

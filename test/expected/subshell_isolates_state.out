@@ -23,5 +23,7 @@ complete -W 'parent' completion-command
 complete -W 'parent' completion-command
 background-pid-restored
 jobs-restored
+[1]+ PID Exit 3
+[1]+ Exit 3   (exit 3) &
 done
 PARENT

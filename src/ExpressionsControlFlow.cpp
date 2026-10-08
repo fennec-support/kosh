@@ -99,6 +99,8 @@ fn Command::evaluate_async_with(EvalContext &cxt, async_body body,
                                 StringView expanded_child_source) const throws
     -> i64
 {
+  if (!cxt.job_table_store().jobs().is_empty())
+    cxt.job_table_store().update_jobs();
   cxt.release_finished_coprocess();
 
   let const source_view = cxt.source_store().current_source_view();
