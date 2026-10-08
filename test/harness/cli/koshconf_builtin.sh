@@ -36,6 +36,9 @@ echo "rc=$?"
 grep '^mood=' "$conf"
 echo "== the bash preset matches a fresh bash session:"
 do_compare_preset bash
+echo "== the bash preset leaves the alias default to the session:"
+grep -B2 '^# legacy.aliases_expand=$' "$conf"
+"$BIN" -c 'shopt -p expand_aliases'
 echo "== the sh preset matches a fresh sh session:"
 "$BIN" -c 'koshconf create --force sh'
 do_compare_preset sh

@@ -730,6 +730,9 @@ fn make_koshconf_preset(mimic_mood preset) throws -> String
       comment += option->shopt_name;
       comment += ')';
     }
+    if (preset == mimic_mood::Bash && option->is_bash_default_session_dependent)
+      comment += " Left unset, it is on in an interactive shell and off in a "
+                 "script.";
 
     let const wrapped =
         wrap_text(comment.view(), 0, KOSHCONF_COMMENT_WIDTH - 2);
@@ -750,6 +753,14 @@ fn make_koshconf_preset(mimic_mood preset) throws -> String
 
       contents += format_koshconf_line(*option, option->default_text);
       contents += '\n';
+      continue;
+    }
+
+    if (preset == mimic_mood::Bash && option->is_bash_default_session_dependent)
+    {
+      contents += "# ";
+      contents += option->koshconf_name;
+      contents += "=\n";
       continue;
     }
 

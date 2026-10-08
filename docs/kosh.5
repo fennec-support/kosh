@@ -196,6 +196,10 @@ or
 .B shopt
 spelling. A string option without a default, such as history.file_path, is
 written commented out. The
+.B bash
+preset also writes legacy.aliases_expand commented out, because bash expands
+aliases in an interactive shell and not in a script, and a written value would
+apply to both. The
 .B kosh
 preset writes the values the
 .B kosh

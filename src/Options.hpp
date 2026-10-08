@@ -106,6 +106,7 @@ struct option_descriptor
   bool is_fixed_in_kosh_mood;
   bool is_read_only;
   bool is_session_dependent;
+  bool is_bash_default_session_dependent;
   bool is_invocation_only;
   bool is_kept_out_of_koshconf;
   bool is_set_alias;

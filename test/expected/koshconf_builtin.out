@@ -361,6 +361,11 @@ rc=1
 rc=0
 mood=bash
 == the bash preset matches a fresh bash session:
+== the bash preset leaves the alias default to the session:
+# Expand aliases in commands. (shopt expand_aliases) Left unset, it is on in an
+# interactive shell and off in a script.
+# legacy.aliases_expand=
+shopt -u expand_aliases
 == the sh preset matches a fresh sh session:
 == create writes every file option with its help and Bash name:
 9

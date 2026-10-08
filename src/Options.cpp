@@ -201,6 +201,13 @@ consteval fn session_dependent(option_descriptor entry) wontthrow
   return entry;
 }
 
+consteval fn bash_default_follows_session(option_descriptor entry) wontthrow
+    -> option_descriptor
+{
+  entry.is_bash_default_session_dependent = true;
+  return entry;
+}
+
 constexpr let INTERACTIVE = option_class::Interactive;
 constexpr let SEMANTIC = option_class::Semantic;
 constexpr let NO_SHELL_OPTION = shell_option_id::Count;
@@ -648,10 +655,10 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                "Keep a non-interactive shell running when exec cannot run "
                "its command.",
                false, false),
-    with_posix_default(shopt_flag(140, "legacy.aliases_expand", SEMANTIC,
-                                  "expand_aliases",
-                                  "Expand aliases in commands.", true, false),
-                       1),
+    bash_default_follows_session(with_posix_default(
+        shopt_flag(140, "legacy.aliases_expand", SEMANTIC, "expand_aliases",
+                   "Expand aliases in commands.", true, false),
+        1)),
     shopt_flag(141, "legacy.debugger_support", SEMANTIC, "extdebug",
                "Enable the behavior Bash provides for debuggers.", false,
                false),
