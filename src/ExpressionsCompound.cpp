@@ -155,8 +155,6 @@ hot fn CompoundList::evaluate_root_status_impl(
 
   status_result ret{NOTHING_WAS_EXECUTED, 0};
 
-  /* Only the last node yields the list's status, so a terminal exec rides into
-     that node alone. */
   let const was_terminal_exec_allowed =
       cxt.execution_store().terminal_exec_allowed();
   cxt.execution_store().terminal_exec_allowed() = false;
@@ -172,8 +170,6 @@ hot fn CompoundList::evaluate_root_status_impl(
   for (usize index = 0; index < m_nodes.count(); index++) {
     if (cxt.runtime_state().no_exec()) break;
 
-    /* A break or a continue a trap action requested before this list was
-       entered runs nothing here and stays pending for the enclosing loop. */
     if (cxt.control_flow_store().has_pending_loop_jump()) break;
 
     const CompoundListCondition *n = m_nodes[index];
@@ -250,25 +246,16 @@ hot fn CompoundList::evaluate_root_status_impl(
     cxt.execution_store().terminal_exec_allowed() =
         was_terminal_exec_allowed && is_last_node;
 
-    /* set -e keys off the command that actually produced the status, not one
-       carried over from a short-circuited sibling. */
     bool did_execute = false;
     const bool is_end_of_and_or_chain =
         index + 1 >= m_nodes.count() ||
         m_nodes[index + 1]->kind() == CompoundListCondition::Kind::None;
     const bool should_ignore_errexit =
         !is_end_of_and_or_chain || n->is_negated();
-    /* The ERR trap belongs to a command only when the trap was already
-       installed as the command began. A function that installs one for itself
-       leaves its own call untraced. */
     const bool was_err_trapped = cxt.trap_store().has_err_trap();
     let const is_async_node = n->command()->is_async();
     let const is_contained_async_node =
         is_async_node && cxt.runtime_state().get_mood() != mimic_mood::Default;
-    /* In bash mood an evaluation error fails the command and the list goes on,
-       while a script-fatal error still aborts the run. An asynchronous command
-       expands its words before the fork, so its error stays with the command
-       the way it stays in the child bash forks. */
     let const do_run_node = [&]() throws -> status_result {
       if (should_ignore_errexit) cxt.execution_store().condition_depth()++;
       defer
@@ -291,10 +278,6 @@ hot fn CompoundList::evaluate_root_status_impl(
             "bash mood converted the located error to command status %lld: %s",
             static_cast<long long>(error.command_status()),
             error.message().c_str());
-        /* A located error from a function body rebases onto the defining copy
-           here, since this catch fires while the call name stack still names
-           the function. An error a deeper frame already rendered keeps its
-           status without a second render. */
         if (!error.was_rendered()) {
           let const trace_location = error.location();
           if (let const windowed = window_function_body_error(cxt, error);
@@ -379,9 +362,6 @@ hot fn CompoundList::evaluate_root_status_impl(
       continue;
     }
 
-    /* POSIX exempts set -e for a command that is an operand of && or || and not
-       the last of the and-or list, and for a command the ! reserved word
-       negates. */
     const bool has_pending_control_flow =
         cxt.control_flow_store().has_pending();
     const bool was_command_failure_uncaught =
@@ -414,8 +394,6 @@ hot fn CompoundList::evaluate_root_status_impl(
       ret.set(status_flag::ExitCodeReported);
     }
 
-    /* A break, continue, return, or exit inside a node stops the rest of the
-       list and unwinds to the boundary that consumes it. */
     if (has_pending_control_flow) break;
 
     if (was_command_failure_uncaught && !cxt.runtime_state().is_posix_mode()) {
@@ -425,17 +403,12 @@ hot fn CompoundList::evaluate_root_status_impl(
         cxt.run_named_trap(StringView{"ERR", 3}, &failed_location);
       }
 
-      /* The action can request an exit, a return, or a loop jump of its own.
-         Such a request stops the rest of this list the same way a node
-         would. */
       if (cxt.control_flow_store().has_pending()) {
         ret.set(status_flag::ErrResolved);
         break;
       }
     }
 
-    /* The action can turn errexit off or on, and the option decides the exit
-       only as it stands once the action has returned. */
     if (was_command_failure_uncaught && cxt.runtime_state().error_exit()) {
       cxt.execution_store().set_last_exit_status(ret.status);
       if (cxt.in_subshell()) {
@@ -526,9 +499,6 @@ hot fn CompoundListCondition::evaluate_root_status_impl(
   ASSERT(m_cmd != nullptr);
   cxt.evaluation_metrics_store().begin_command_evaluation();
 
-  /* A negated or timed command must run to completion here, since the inverse
-     or the report applies after the command returns, which an exec would
-     skip. */
   if (m_cmd->is_negated() || m_cmd->is_timed()) {
     cxt.execution_store().terminal_exec_allowed() = false;
   }
@@ -577,7 +547,6 @@ hot fn CompoundListCondition::evaluate_root_status_impl(
     }
   }
 
-  /* A pipeline prefixed with ! reports the inverse of its status. */
   if (m_cmd->is_negated()) {
     result.status = (result.status == 0) ? 1 : 0;
     cxt.execution_store().set_last_exit_status(result.status);
@@ -616,10 +585,6 @@ fn Pipeline::append_command(const Command *node) throws -> void
   m_commands.push(node);
 }
 
-/* Bash publishes the text and the site of a simple stage in the parent before
-   it forks that stage. A failing pipeline answers for the last simple stage it
-   holds. A compound stage publishes nothing and leaves the stage written
-   before it in place. */
 fn Pipeline::error_report_location() const wontthrow -> SourceLocation
 {
   for (usize index = m_commands.count(); index > 0; index--) {
@@ -651,9 +616,6 @@ cold fn Pipeline::to_ast_string(usize layer) const throws -> String
   return s;
 }
 
-/* Run a pipeline that has at least one compound stage. Every stage forks, so a
-   compound stage evaluates its tree in a child with the pipe already on its
-   standard descriptors. */
 cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
     -> i64
 {
@@ -670,9 +632,6 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
   let bootstrap = os::subshell_bootstrap{};
   let const child_evaluator = cxt.make_child_evaluator_state(bootstrap);
 
-  /* On a make_pipe or fork failure mid-loop the previous read end and the
-     current pipe are closed and every spawned child is waited, then the error
-     is rethrown. */
   try {
     for (usize stage_index = 0; stage_index < m_commands.count(); stage_index++)
     {
@@ -702,8 +661,6 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
 
       defer { cxt.job_table_store().set_stage_boundary_published(false); };
 
-      /* The stage boundary was published above for a simple stage. The stage
-         itself must not publish a second one. */
       let const stage_mode = simple != nullptr
                                  ? root_evaluation_mode::PreparedPipelineStage
                                  : root_evaluation_mode::Normal;
@@ -767,15 +724,8 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
       let const child = launch.child;
 
       if (launch.should_evaluate_child) {
-        /* This child inherited the read end of its own output pipe. A stage
-           that runs its command as a grandchild would otherwise keep the pipe
-           open and a producer in this stage would never see its consumer
-           leave. */
         if (pipe.has_value()) os::close_fd(pipe->in);
 
-        /* The child evaluates the stage in a subshell, then exits with its
-           status. A diagnostic or an exit request inside still yields a child
-           status rather than unwinding into the parent's evaluator. */
         i32 stage_status = 0;
         try {
           cxt.enter_subshell();
@@ -811,8 +761,6 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
         os::exit_process_immediately(stage_status);
       }
 
-      /* The parent keeps neither pipe end open past the stage that owns it,
-         otherwise a reader never sees the writer close. */
       if (stage_out) os::close_fd(*stage_out);
       if (stage_in) os::close_fd(*stage_in);
       if (!is_last) last_stdin = pipe->in;
@@ -833,8 +781,6 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
     throw;
   }
 
-  /* A DEBUG action that exits abandons the stage it traced, and the stages
-     already spawned lose the consumer that would drain them. */
   if (was_pipeline_abandoned) {
     if (last_stdin != KOSH_INVALID_FD) os::close_fd(last_stdin);
     utils::terminate_and_reap_processes(children);
@@ -913,10 +859,6 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
     cxt.job_table_store().update_jobs();
   cxt.release_finished_coprocess();
 
-  /* A pipeline of only simple commands keeps the fast path. A compound stage
-     takes the fork-per-stage path. A simple stage carrying a prefix assignment
-     takes the fork path too, since the fast path builds the stage from its
-     argument words alone and the prefix must reach only that stage. */
   if (!m_has_compound_stage.has_value()) {
     bool has_compound_stage = false;
     bool has_assignment_only_stage = false;
@@ -941,9 +883,6 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
     m_has_assignment_only_stage = has_assignment_only_stage;
   }
 
-  /* A command-less stage of bare assignments keeps the fast path in the kosh
-     mood, so the strict diagnostic for x=1 | cat is preserved. The other moods
-     fork it, so its values expand in the child and report their status. */
   bool has_compound_stage =
       *m_has_compound_stage ||
       (m_has_assignment_only_stage &&
@@ -981,9 +920,6 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
     }
   };
 
-  /* The arena runs a destructor only for an object it created, and this list
-     took plain storage, so a stage still holding open descriptors on an early
-     exit is closed by the defer before the release. */
   let const pipeline_mark = cxt.expansion_store().scratch_arena().mark();
   let ecs = ArrayList<ExecContext>{cxt.scratch_allocator()};
   defer
@@ -1002,8 +938,6 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
     cxt.evaluation_metrics_store().add_evaluated_expression(
         cxt.runtime_state().stats_enabled());
 
-    /* The location moves onto the stage first so a runtime warning from its
-       words carets the stage that read the variable. */
     cxt.source_store().set_current_location(e->source_location());
     let const should_run_stage = publish_simple_command(cxt, *e);
     if (!should_run_stage) return cxt.execution_store().last_exit_status();
@@ -1081,8 +1015,6 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
     }
     cxt.write_xtrace(stage_args);
 
-    /* A stage whose command does not resolve becomes a no-op context that
-       closes its pipe to give the next stage EOF. */
     Maybe<ExecContext> stage_ec;
     try {
       stage_ec = ExecContext::make_from(
@@ -1095,10 +1027,6 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
           cxt.execution_store().shell_is_interactive() &&
               cxt.is_shopt_enabled("autocd"));
     } catch (CommandResolutionErrorWithLocation &resolution_error) {
-      /* The stage still applies its own redirections. A > onto its stdout takes
-         the slot ahead of the pipe. The next stage still sees EOF. The message
-         is rendered here and written once the pipeline has placed every
-         descriptor. A stage that merges into the pipe carries it there. */
       let const windowed = window_function_body_error(cxt, resolution_error);
       let const rendered = resolution_error.to_string(
           windowed.has_value() ? *windowed
@@ -1113,9 +1041,6 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
       continue;
     }
     let ec = stage_ec.take();
-    /* A later redirection in the same stage may throw after an earlier one
-       opened a descriptor, so the descriptors opened so far are closed on that
-       throw. The guard is disarmed once the stage is handed off. */
     bool was_stage_redirect_handed_off = false;
     defer
     {
@@ -1126,10 +1051,6 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
     } catch (const TrapAbandonedRedirection &) {
       return cxt.execution_store().last_exit_status();
     } catch (const ErrorWithLocation &redirection_error) {
-      /* A redirection the stage cannot apply fails that stage alone. The stage
-         keeps the redirections written ahead of the failing one. Its diagnostic
-         reaches the destination they named and the remaining stages still
-         run. */
       let const rendered = redirection_error.to_string(
           cxt.source_store().current_source_view(), &cxt);
       ec.set_unresolved(static_cast<i32>(redirection_error.command_status()),
@@ -1140,14 +1061,12 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt) const throws -> i64
     ecs.push(steal(ec));
   }
 
-  /* The status is committed here so $? reads it from the store, since the
-     all-simple fast path otherwise returns without recording it. */
   let const ret = utils::execute_contexts_with_pipes(
       steal(ecs), cxt,
       is_async() ? execution_mode::Background : execution_mode::Foreground);
   SET_AND_RETURN_EXIT_STATUS(cxt, ret);
 }
 
-} /* namespace expressions */
+}
 
-} /* namespace koshka */
+}

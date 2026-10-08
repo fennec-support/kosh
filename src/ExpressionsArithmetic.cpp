@@ -102,8 +102,6 @@ cold static fn is_conditional_binary_operator(StringView op) wontthrow -> bool
   return CONDITIONAL_BINARY_OPERATORS.contains(op);
 }
 
-/* The operator an element spells when it is one, so a < or a > reaches the same
-   comparison as a worded operator. */
 cold static fn
 conditional_operator_view(const conditional_element &element) wontthrow
     -> Maybe<StringView>
@@ -126,9 +124,6 @@ conditional_operator_view(const conditional_element &element) wontthrow
   return view;
 }
 
-/* The left operand of an X != Y triple whose operator sits at operator_index,
-   absent when the elements there do not form one. The raw view is compared, so
-   "$name" and $name stay distinct. */
 cold static fn conditional_inequality_left_operand(
     const ArrayList<conditional_element> &elements,
     usize operator_index) wontthrow -> Maybe<StringView>
@@ -169,8 +164,6 @@ constexpr static_string_entry<conditional_misuse_kind>
 };
 constexpr StaticStringMap CONDITIONAL_MISUSES{CONDITIONAL_MISUSE_ENTRIES};
 
-/* The path tests whose glob operand is already reported as SC2144, so the
-   general glob operand lint leaves the word after them alone. */
 constexpr PackedStringKey CONDITIONAL_PATH_TEST_KEYS[] = {
     SSK("-L"),
     SSK("-d"),
@@ -179,8 +172,6 @@ constexpr PackedStringKey CONDITIONAL_PATH_TEST_KEYS[] = {
 };
 constexpr StaticStringSet CONDITIONAL_PATH_TESTS{CONDITIONAL_PATH_TEST_KEYS};
 
-/* The equality operators, whose right side is matched as a glob pattern while
-   the regex operator takes a regular expression. */
 constexpr PackedStringKey CONDITIONAL_EQUALITY_OPERATOR_KEYS[] = {
     SSK("!="),
     SSK("="),
@@ -189,15 +180,11 @@ constexpr PackedStringKey CONDITIONAL_EQUALITY_OPERATOR_KEYS[] = {
 constexpr StaticStringSet CONDITIONAL_EQUALITY_OPERATORS{
     CONDITIONAL_EQUALITY_OPERATOR_KEYS};
 
-/* Every operator that matches its right side against a pattern, where a glob
-   there is the point of the comparison. */
 cold static fn is_conditional_pattern_operator(StringView op) wontthrow -> bool
 {
   return op == StringView{"=~"} || CONDITIONAL_EQUALITY_OPERATORS.contains(op);
 }
 
-/* A -a or a -o joins two parts only when a finished operand precedes it, so the
-   unary file and option tests keep their leading position. */
 cold static fn
 conditional_element_ends_operand(const conditional_element &element) wontthrow
     -> bool
@@ -241,8 +228,6 @@ fn ConditionalCommand::analyze(AnalysisContext &actx,
       continue;
     }
 
-    /* Two inequalities on the same operand hold for every value, shellcheck
-       SC2055. */
     if (element.kind == Kind::Or && i >= 3) {
       let const before = conditional_inequality_left_operand(m_elements, i - 2);
       let const after = conditional_inequality_left_operand(m_elements, i + 2);
@@ -259,8 +244,6 @@ fn ConditionalCommand::analyze(AnalysisContext &actx,
 
     let const operand = element.word->raw_string();
 
-    /* A unary operator followed by a binary operator lost its operand,
-       shellcheck SC1019. */
     if (element.is_bare_unquoted &&
         is_test_unary_operator_word(operand.view()) &&
         i + 1 < m_elements.count())
@@ -273,8 +256,6 @@ fn ConditionalCommand::analyze(AnalysisContext &actx,
       }
     }
 
-    /* The word literal drops the quotes and the escapes, so the source text
-       decides whether the operand was written as syntax or as data. */
     let const misuse = CONDITIONAL_MISUSES.find(operand.view());
     if (misuse.has_value()) {
       let const written = element.word->source_location()
@@ -323,10 +304,6 @@ fn ConditionalCommand::analyze(AnalysisContext &actx,
                              element.word->source_location(), {operand.view()});
     }
 
-    /* A double bracket expression takes its operand as one word and never
-       expands it, so an array, a brace expansion, or a glob written there does
-       not reach the values the author meant. The shape is read once from the
-       segments the word already holds. */
     if (element.word->kind() == Token::Kind::Word) {
       let const &operand_word =
           static_cast<const tokens::WordToken *>(element.word)->word();
@@ -418,8 +395,6 @@ fn ConditionalCommand::analyze(AnalysisContext &actx,
 
     let const left = m_elements[i - 1].word;
     let const right = m_elements[i + 1].word;
-    /* A conditional prefers = over -eq for text, so an -eq or -ne against a
-       non-integer literal is reported as SC2130 here. */
     let const should_prefer_string_comparison =
         operand.view() == "-eq" || operand.view() == "-ne";
     check_numeric_comparison_operand(actx, operand.view(), left,
@@ -440,9 +415,6 @@ fn ConditionalCommand::analyze(AnalysisContext &actx,
           {operand.view()});
     }
 
-    /* The right side of an equality comparison is a glob pattern, so an
-       unquoted variable there matches instead of comparing, shellcheck
-       SC2053. */
     if (right != nullptr && right->kind() == Token::Kind::Word &&
         CONDITIONAL_EQUALITY_OPERATORS.contains(operand.view()))
     {
@@ -476,8 +448,6 @@ fn ConditionalCommand::analyze(AnalysisContext &actx,
   actx.constant_variables.clear();
 }
 
-/* The conditional as BASH_COMMAND names it, rebuilt from the operands and
-   operators the parser kept. */
 static fn
 conditional_command_text(const ArrayList<conditional_element> &elements) throws
     -> String
@@ -568,9 +538,6 @@ static pure fn is_blank_clause(StringView text) wontthrow -> bool
   return true;
 }
 
-/* The clause without the blanks that follow the opening parenthesis or the
-   separating semicolon. A c-style for reports its clause from that point and
-   keeps whatever trails it. */
 static pure fn clause_without_leading_blanks(StringView clause) wontthrow
     -> StringView
 {
@@ -584,8 +551,6 @@ static pure fn clause_without_leading_blanks(StringView clause) wontthrow
   return clause.substring_of_length(start, clause.length - start);
 }
 
-/* The clause as BASH_COMMAND names it. A c-style for reports each of its three
-   clauses under the same double parentheses the standalone command wears. */
 static fn arithmetic_clause_command_text(StringView clause) throws -> String
 {
   let command_text = String{heap_allocator()};
@@ -613,8 +578,6 @@ fn ArithmeticCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
     SET_AND_RETURN_EXIT_STATUS(cxt, 1);
   }
 
-  /* A non-zero value is success and zero is failure, the opposite of the
-     value-to-status convention elsewhere. */
   bool is_nonzero;
   try {
     const SourceLocation body_base{source_location().position + 2, 0,
@@ -650,8 +613,6 @@ fn ArithmeticCommand::analyze(AnalysisContext &actx,
     check_posix_arithmetic_operators(actx, m_expression, source_location());
   }
 
-  /* The prepass does not parse the expression, which may assign any name, so
-     every recorded constant is forgotten. */
   actx.constant_variables.clear();
 }
 
@@ -769,8 +730,6 @@ fn CStyleForLoop::evaluate_status_impl(EvalContext &cxt) const throws
       static_cast<int>(m_condition.length), m_condition.data,
       static_cast<int>(m_step.length), m_step.data);
 
-  /* A blank clause carries no expression of its own, and bash publishes the
-     ((1)) that stands for it. */
   let const do_publish_implied_clause = [&]() throws -> bool {
     cxt.source_store().set_current_location(source_location());
 
@@ -778,8 +737,6 @@ fn CStyleForLoop::evaluate_status_impl(EvalContext &cxt) const throws
         cxt, [&] { return arithmetic_clause_command_text(StringView{"1"}); });
   };
 
-  /* The loop is entered before the header is announced. A break or a continue
-     a trap action requests on any clause names this loop. */
   cxt.enter_loop();
   defer { cxt.leave_loop(); };
 
@@ -818,7 +775,6 @@ fn CStyleForLoop::evaluate_status_impl(EvalContext &cxt) const throws
         m_condition, cache.tokens, cache.is_tokenized, cache.is_simple);
   };
 
-  /* A blank condition is always true, the way for ((;;)) loops forever. */
   let const do_test_condition = [&]() throws -> bool {
     if (is_condition_blank) return do_publish_implied_clause();
 
@@ -836,8 +792,6 @@ fn CStyleForLoop::evaluate_status_impl(EvalContext &cxt) const throws
     result = m_body->evaluate_status(cxt);
     if (cxt.runtime_state().no_exec()) break;
     if (resolve_loop_control(cxt) == loop_disposition::StopLoop) break;
-    /* The step runs after the body on every iteration, including one ended by a
-       continue. */
     if (is_step_blank) {
       if (!do_publish_implied_clause()) break;
     } else {
@@ -953,8 +907,6 @@ Subshell::~Subshell() = default;
 
 fn Subshell::as_subshell() const wontthrow -> const Subshell * { return this; }
 
-/* Bash reports a subshell against its closing parenthesis. A body written
-   across several lines names its last line. */
 fn Subshell::error_report_location() const wontthrow -> SourceLocation
 {
   let const location = source_location();
@@ -977,8 +929,6 @@ fn Subshell::collapsed_body() const wontthrow -> const Expression *
 
     let const *inner = sole->as_subshell();
     if (inner == nullptr) {
-      /* The redirections written around the inner parentheses still apply. The
-         wrapper stands in for the list that holds it. */
       let const *wrapper = sole->as_redirected_command();
       if (wrapper == nullptr) break;
 
@@ -1016,16 +966,10 @@ static fn evaluate_subshell_in_process(const Expression *body, EvalContext &cxt,
 {
   ASSERT(body != nullptr);
 
-  /* This shell has no process-level subshell, so isolation is by snapshot. A
-     loop in the parent is not the subshell's to break, so the body runs with a
-     fresh loop count. */
   let const saved_loop_depth = cxt.execution_store().loop_depth();
   cxt.execution_store().loop_depth() = 0;
   defer { cxt.execution_store().loop_depth() = saved_loop_depth; };
 
-  /* The trap action that forked this subshell is not running inside it. Bash
-     lets the same condition fire again for the commands of the body, and each
-     of them publishes its own command text. */
   let const action_scope =
       TrapActionScope::leave_for_subshell(cxt.trap_store());
 
@@ -1042,15 +986,10 @@ static fn evaluate_subshell_in_process(const Expression *body, EvalContext &cxt,
     did_enter_subshell = true;
     cxt.hide_coprocess_descriptors();
     cxt.job_table_store().inherit_parent_jobs(false);
-    /* The inherited EXIT action belongs to the parent and must not fire at the
-       subshell's end. An EXIT action the body sets survives this clear. */
     cxt.clear_inherited_exit_trap();
     cxt.reset_inherited_signal_traps();
     if (should_allow_terminal_exec)
       cxt.execution_store().allow_terminal_exec_at_current_depth();
-    /* A script-fatal or line discarding error is confined to the subshell in
-       every mood, with the status the error carries the way bash answers it
-       and 2 the way dash does. */
     let const do_confine_error =
         [&](ErrorBase &error, Maybe<SourceLocation> location) throws -> void {
       if (!error.is_script_fatal() && !error.is_line_discarding()) {
@@ -1080,8 +1019,6 @@ static fn evaluate_subshell_in_process(const Expression *body, EvalContext &cxt,
       do_confine_error(error, None);
     }
 
-    /* Exit and return end only the subshell. A break or continue is scoped to a
-       loop inside it and is consumed here. */
     if (cxt.control_flow_store().has_pending()) {
       let const kind = cxt.control_flow_store().pending().kind;
       if (kind == control_flow::Kind::Exit ||
@@ -1122,8 +1059,6 @@ fn Subshell::evaluate_impl(EvalContext &cxt) const throws -> i64
     cxt.job_table_store().update_jobs();
   cxt.release_finished_coprocess();
 
-  /* A redirected wrapper hands down the span that reaches over its
-     redirections, and the bare subshell answers for its own. */
   let const pending_end_position = [&] {
     let const end_position =
         cxt.execution_store().pending_subshell_end_position();
@@ -1172,10 +1107,6 @@ fn Subshell::evaluate_impl(EvalContext &cxt) const throws -> i64
     }
   };
 
-  /* Bash traces the commands inside a subshell and fires nothing for the
-     subshell itself. The text is published with no DEBUG fire. The parent
-     publishes it after the body has run, because the in-process body leaves its
-     own last command behind. */
   let const do_publish_subshell = [&]() throws -> void {
     cxt.source_store().set_current_location(closing_location);
 
@@ -1324,8 +1255,6 @@ fn Subshell::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     }
   }
 
-  /* An assignment in the body never changes a parent variable, so the body
-     starts from an empty table and the outer constants are restored after. */
   {
     let scope = AnalysisScopeGuard{actx, analysis_scope_mode::Subshell};
     actx.apply_scope_definitions(m_analysis_scope_definitions);
@@ -1375,9 +1304,6 @@ fn FunctionDefinition::evaluate_impl(EvalContext &cxt) const throws -> i64
 {
   ASSERT(m_body != nullptr);
 
-  /* The recorded definition is a "name () " line then the body's source span,
-     the shape bash prints from declare -f. ble.sh clones a function by
-     replacing the leading name and greps the "name ()" line, so both matter. */
   let body_end_position = m_body->source_end_position();
   if (const RedirectedCommand *redirected = m_body->as_redirected_command();
       redirected != nullptr)
@@ -1417,10 +1343,6 @@ fn FunctionDefinition::analyze(AnalysisContext &actx,
   unused(is_unconditional);
   actx.add_defined_function(m_name);
 
-  /* The body runs later when the function is called, so it is analyzed from an
-     empty constant table with the outer constants restored after. A called
-     function edits the caller's own shell, and its search path, working
-     directory, and runtime-definer effects outlive the body. */
   let const function_definition_index = actx.functions.records.count();
   {
     let scope = AnalysisScopeGuard{actx, analysis_scope_mode::Function};
@@ -1520,8 +1442,6 @@ fn RedirectedCommand::analyze(AnalysisContext &actx,
 
   if (m_redirections.is_empty()) return;
 
-  /* The lint input borrows its lists. This node has no command word and no
-     prefix assignment, and an empty list allocates nothing. */
   let const no_args = ArrayList<const Token *>{heap_allocator()};
   let const no_prefix_assignments = SparseList<PrefixAssignment>{};
   let const lint_input = command_lint_input{no_args,
@@ -1596,16 +1516,14 @@ fn RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
 
   cxt.source_store().set_current_location(source_location());
 
-  /* The mark is taken before the expansion below so this command reaps only the
-     process substitution its own redirection opens. Registered first so it runs
-     last, after the descriptor backups restore. */
-  let const substitution_mark = cxt.mark_process_substitutions();
-  defer { cxt.cleanup_process_substitutions(substitution_mark); };
+  let const own_redirection_substitution_mark =
+      cxt.mark_process_substitutions();
+  defer {
+    cxt.cleanup_process_substitutions(own_redirection_substitution_mark);
+  };
 
   cxt.execution_store().terminal_exec_allowed() = false;
 
-  /* The backups restore in reverse on every exit path, a normal return, a
-     thrown diagnostic, or a pending break, continue, return, or exit. */
   ArrayList<os::saved_descriptor> saved_descriptors{cxt.scratch_allocator()};
   defer
   {
@@ -1672,9 +1590,6 @@ fn RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
     }
   }
 
-  /* A subshell publishes its own text, and only this wrapper knows the span
-     that reaches over the redirections written after the closing
-     parenthesis. */
   if (m_child->as_subshell() != nullptr) {
     cxt.execution_store().pending_subshell_end_position() =
         static_cast<u32>(source_end_position());
@@ -1702,6 +1617,6 @@ fn RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
   }
 }
 
-} /* namespace expressions */
+}
 
-} /* namespace koshka */
+}

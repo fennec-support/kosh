@@ -33,10 +33,6 @@ namespace expressions {
 
 using namespace internal;
 
-/* The header text a word loop shows in the trace and in BASH_COMMAND. Nothing
-   is appended when no observer is armed. A missing in clause walks the
-   positional parameters. The header names those parameters by the word list
-   the loop behaves as if it carried. */
 static fn append_word_loop_header(EvalContext &cxt, String &header,
                                   StringView keyword, StringView variable_name,
                                   bool has_in_clause,
@@ -248,8 +244,6 @@ hot fn IfClause::evaluate_status_impl(EvalContext &cxt) const throws
     return {static_cast<i32>(set_and_return_exit_status(cxt, 0)), 0};
   }
 
-  /* An index past the last branch means every condition failed, so the else
-     body runs or the if yields 0. */
   if (m_folded_branch.has_value() && should_skip_condition_commands) {
     LOG(Debug,
         "running the folded if branch %zu of %zu without testing conditions",
@@ -285,12 +279,8 @@ hot fn IfClause::evaluate_status_impl(EvalContext &cxt) const throws
 fn IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     -> void
 {
-  /* The fold reads the constant table while it still holds the values recorded
-     before this if, so it runs before any child analyze mutates the table. */
   optimizer::optimize_node(this, actx);
 
-  /* The first condition runs whenever the if runs. The elif conditions and all
-     bodies are conditional. */
   let saved_tested_command_names = actx.tested_command_names.clone();
   let condition_failure_names = saved_tested_command_names.clone();
   let merged_occurrences = variable_occurrence_pair{};
@@ -372,8 +362,6 @@ fn IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
   if (has_merged_occurrence_exit || !did_skip_exiting_branch)
     actx.occurrences = steal(merged_occurrences);
 
-  /* A branch ran conditionally and may have reassigned a name, so a value
-     recorded before this if is no longer proven after it. */
   actx.constant_variables.clear();
 }
 
@@ -446,11 +434,9 @@ hot fn internal::resolve_loop_control(EvalContext &cxt) throws
   if (control.kind != control_flow::Kind::Break &&
       control.kind != control_flow::Kind::Continue)
   {
-    /* A return or an exit is not this loop's to consume. */
     return loop_disposition::StopLoop;
   }
 
-  /* A jump aimed at an outer loop decrements and stays pending. */
   if (control.value > 1) {
     control.value -= 1;
     LOG(All, "the loop jump targets an outer loop, %lld levels stay pending",
@@ -458,7 +444,6 @@ hot fn internal::resolve_loop_control(EvalContext &cxt) throws
     return loop_disposition::StopLoop;
   }
 
-  /* The jump targets this loop and is consumed here. */
   let const is_break = control.kind == control_flow::Kind::Break;
   cxt.control_flow_store().clear();
   LOG(All, "consuming the %s aimed at this loop",
@@ -537,9 +522,6 @@ fn WhileLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
   ASSERT(m_condition != nullptr);
   ASSERT(m_body != nullptr);
 
-  /* The table is cleared before optimize so a pre-loop constant is never
-     inlined into the condition, which would freeze a loop whose counter was
-     folded to its initial value. */
   actx.constant_variables.clear();
 
   optimizer::optimize_node(this, actx);
@@ -552,8 +534,6 @@ fn WhileLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
   let const saved_getopts = actx.active_getopts;
   actx.active_getopts = {};
   actx.walk.is_analyzing_condition = true;
-  /* The loop is already entered when its condition list runs, so a break or a
-     continue there leaves this loop. */
   actx.loop_body_depth++;
   m_condition->analyze(actx, is_unconditional);
   actx.loop_body_depth--;
@@ -656,8 +636,6 @@ fn SelectLoop::evaluate_status_impl(EvalContext &cxt) const throws
   let const values = m_has_in_clause ? cxt.process_args(m_words)
                                      : cxt.variable_store().positional_params();
 
-  /* The header is announced once before the menu, and an empty word list still
-     announces it. */
   let select_trace = String{cxt.scratch_allocator()};
   append_word_loop_header(cxt, select_trace, "select", m_variable_name,
                           m_has_in_clause, m_words);
@@ -682,8 +660,6 @@ fn SelectLoop::evaluate_status_impl(EvalContext &cxt) const throws
   bool should_reprint_menu = true;
   loop
   {
-    /* The numbered menu and the prompt go to standard error. The menu reprints
-       only after an empty line. */
     if (should_reprint_menu) {
       let menu = String{cxt.scratch_allocator()};
       for (usize i = 0; i < values.count(); i++) {
@@ -698,8 +674,6 @@ fn SelectLoop::evaluate_status_impl(EvalContext &cxt) const throws
     koshka::print_error(cxt.get_variable_value("PS3").value_or(String{"#? "}));
 
     let const input = utils::read_line_from_fd(KOSH_STDIN);
-    /* End of input ends the loop, and bash echoes a newline to standard output
-       the way a terminal end-of-file does. */
     if (!input.line.has_value()) {
       koshka::print("\n");
       result.status = 1;
@@ -714,8 +688,6 @@ fn SelectLoop::evaluate_status_impl(EvalContext &cxt) const throws
       continue;
     }
 
-    /* A valid menu number binds the name to that word, any other input binds it
-       to the empty string. */
     let const choice = reply.view().to<i64>();
     if (!choice.is_error() && choice.value() >= 1 &&
         static_cast<usize>(choice.value()) <= values.count())
@@ -795,8 +767,6 @@ hot fn ForLoop::evaluate_status_impl(EvalContext &cxt) const throws
   let const values = m_has_in_clause ? cxt.process_args(m_words)
                                      : cxt.variable_store().positional_params();
 
-  /* The default mood scopes the loop variable so the name does not leak, while
-     the bash and posix moods leave it set. */
   let const scope_variable = !(cxt.runtime_state().is_bash_compatible() ||
                                cxt.runtime_state().is_posix_mode());
   Maybe<String> saved_value =
@@ -815,8 +785,6 @@ hot fn ForLoop::evaluate_status_impl(EvalContext &cxt) const throws
       static_cast<int>(m_variable_name.length), m_variable_name.data,
       values.count());
 
-  /* The header text serves the trace and BASH_COMMAND. Both repeat it on every
-     iteration. The text is built once before the loop. */
   let loop_trace = String{cxt.scratch_allocator()};
   append_word_loop_header(cxt, loop_trace, "for", m_variable_name,
                           m_has_in_clause, m_words);
@@ -829,15 +797,11 @@ hot fn ForLoop::evaluate_status_impl(EvalContext &cxt) const throws
 
   status_result result{};
   for (let const &value : values) {
-    /* The body of the previous iteration left its own location behind, and the
-       header fire reports the header line. */
     cxt.source_store().set_current_location(source_location());
 
     let const should_run_iteration = publish_command_and_run_debug_trap(
         cxt, [&] { return String{heap_allocator(), loop_trace.view()}; });
     if (!should_run_iteration) {
-      /* An exit or a return leaves the whole loop. An extdebug refusal skips
-         only this iteration and keeps the status its action reported. */
       if (cxt.control_flow_store().has_pending()) break;
 
       result.status = cxt.trap_store().last_trap_action_status();
@@ -862,8 +826,6 @@ hot fn ForLoop::evaluate_status_impl(EvalContext &cxt) const throws
     if (resolve_loop_control(cxt) == loop_disposition::StopLoop) break;
   }
 
-  /* An exit, a return, or an abandoned publish carries its own status, and the
-     loop reports that status. */
   if (cxt.control_flow_store().has_pending()) {
     result.status = cxt.execution_store().last_exit_status();
     return result;
@@ -905,8 +867,6 @@ fn ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
       actx.active_loop_variables.erase(m_variable_name);
   };
 
-  /* One walk of the word list decides every word-shaped finding, so a further
-     check reads the flags this loop already holds. */
   let const word_list_holds_one_word = m_has_in_clause && m_words.count() == 1;
 
   for (let const t : m_words) {
@@ -939,8 +899,6 @@ fn ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
         break;
       }
 
-      /* A for over $(cat file) is shellcheck SC2013, over $(ls) is SC2045, and
-         over $(find ...) is SC2044. */
       case WordSegment::Kind::CommandSubstitution: {
         word_is_literal = false;
         if (segment.is_in_double_quotes) break;
@@ -1005,12 +963,8 @@ fn ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
   actx.note_variable_binding_record(m_variable_name, m_variable_location,
                                     assignment_binder::ForLoop, is_conditional);
 
-  /* The rule reads the word list while unchanged, so optimize runs before the
-     constant table is cleared for the body. */
   optimizer::optimize_node(this, actx);
 
-  /* Clearing the constant table before the body keeps a pre-loop constant from
-     being inlined into a counter the body increments. */
   actx.constant_variables.clear();
   actx.loop_body_depth++;
   actx.conditional_branch_depth++;
@@ -1086,8 +1040,6 @@ fn CaseClause::evaluate_status_impl(EvalContext &cxt) const throws
   let const substitution_mark = cxt.mark_process_substitutions();
   defer { cxt.cleanup_process_substitutions(substitution_mark); };
 
-  /* A case word and its patterns expand with variables and tilde but no field
-     splitting and no globbing, so a pattern keeps its metacharacters. */
   let const do_expand_no_glob = [&cxt](const Token *t) -> String {
     ASSERT(t != nullptr);
     if (t->kind() == Token::Kind::Word) {
@@ -1115,9 +1067,6 @@ fn CaseClause::evaluate_status_impl(EvalContext &cxt) const throws
 
   let const do_arm_matches = [&](const case_item &item) throws -> bool {
     for (let const pattern_token : item.patterns) {
-      /* A quoted or escaped metacharacter in the pattern is a literal, so the
-         expansion carries a parallel mask the matcher reads. A constant literal
-         pattern matches on an exact compare and skips the mask build. */
       if (pattern_token->kind() == Token::Kind::Word) {
         const Word &pattern_word =
             static_cast<const tokens::WordToken *>(pattern_token)->word();
@@ -1163,8 +1112,6 @@ fn CaseClause::evaluate_status_impl(EvalContext &cxt) const throws
     return false;
   };
 
-  /* A ;& fall-through runs the next arm body without matching it, and a ;;&
-     resumes matching at the arms past the one that just ran. */
   status_result result{};
   bool did_run_a_body = false;
   usize i = 0;
@@ -1307,8 +1254,6 @@ fn CaseClause::analyze(AnalysisContext &actx,
         &static_cast<const tokens::WordToken *>(m_word)->word();
     check_case_word_shape(actx, case_input);
 
-    /* The case reads the getopts result when its word names the variable that
-       call fills, which is what makes the arms an option catalog. */
     let const &case_word = *case_input.case_word;
     if (!actx.active_getopts.variable_name.is_empty() &&
         case_word.segments.count() == 1 &&
@@ -1321,9 +1266,6 @@ fn CaseClause::analyze(AnalysisContext &actx,
     }
   }
 
-  /* A case with no catch-all *) arm is shellcheck SC2249. The catch-all is an
-     unquoted * glob, a single UnquotedText segment whose text is *. A quoted
-     '*' matches only a literal asterisk. */
   let tally = case_arm_tally{};
   let earlier_patterns = StringMap<SourceLocation>{heap_allocator()};
   let earlier_shadow_prefixes = ArrayList<String>{heap_allocator()};
@@ -1380,8 +1322,6 @@ fn CaseClause::analyze(AnalysisContext &actx,
 
   check_case_option_coverage(actx, case_input, tally);
 
-  /* An arm body runs conditionally and may reassign a name, so a value recorded
-     before the case is no longer proven after it. */
   actx.constant_variables.clear();
 }
 
@@ -1478,8 +1418,6 @@ fn CoprocCommand::analyze(AnalysisContext &actx,
   m_body->analyze(actx, is_unconditional);
 }
 
-/* A coprocess descriptor is numbered above 9. Bash numbers them the same way.
- */
 static constexpr i32 COPROCESS_FD_FLOOR = 10;
 
 fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
@@ -1496,8 +1434,6 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
   let const body_text =
       os::can_fork_evaluator() ? StringView{} : full_source_text(cxt, *m_body);
 
-  /* One pipe carries what the shell writes to the coprocess, the other carries
-     what the coprocess writes back. */
   let toward_child = os::make_pipe();
   if (!toward_child.has_value()) {
     throw ErrorWithLocation{source_location(),
@@ -1530,8 +1466,6 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
   let const child = launch.child;
 
   if (launch.should_evaluate_child) {
-    /* The coprocess keeps neither end the shell owns. A kept write end would
-       stop its own reader from ever seeing end of file. */
     os::close_fd(toward_child->out);
     os::close_fd(away_from_child->in);
 
@@ -1562,7 +1496,6 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
     os::exit_process_immediately(status);
   }
 
-  /* The shell keeps neither end the coprocess owns. */
   os::close_fd(toward_child->in);
   os::close_fd(away_from_child->out);
 
@@ -1613,6 +1546,6 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
   SET_AND_RETURN_EXIT_STATUS(cxt, 0);
 }
 
-} /* namespace expressions */
+}
 
-} /* namespace koshka */
+}

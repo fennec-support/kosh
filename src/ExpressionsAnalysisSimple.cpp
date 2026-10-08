@@ -176,7 +176,7 @@ fn update_generated_executable_paths(AnalysisContext &actx,
   }
 }
 
-} // namespace
+}
 
 pure fn internal::is_single_word_special_parameter(StringView name) wontthrow
     -> bool
@@ -265,8 +265,6 @@ pure fn is_split_exempt_variable_name(StringView name) wontthrow -> bool
   }
 }
 
-/* A spread, a positional list, and a length read carry their own diagnostics,
-   so only a plain scalar name splits into several array elements. */
 pure fn reference_is_plain_scalar_name(StringView name) wontthrow -> bool
 {
   if (name.is_empty()) return false;
@@ -289,8 +287,6 @@ cold fn internal::word_is_bare_glob(const Word &word) wontthrow -> bool
          word.segments[0].has_glob_metacharacter();
 }
 
-/* A brace expansion needs a comma or a range inside its braces, so a lone brace
-   in a path is left alone. */
 cold static fn view_has_brace_expansion(StringView text) wontthrow -> bool
 {
   let const open = text.find_character('{');
@@ -438,8 +434,6 @@ fn internal::operand_target_name(StringView text) wontthrow -> StringView
   return text.substring_of_length(0, end);
 }
 
-/* An option that carries a value swallows the operand behind it, so the name
-   slot is not the first bare word. */
 pure fn builtin_value_option_letters(command_name_id command_id) wontthrow
     -> StringView
 {
@@ -512,7 +506,6 @@ fn note_variable_target_operands(AnalysisContext &actx,
     if (should_note_assignment)
       actx.note_variable_assignment(target, args[i]->source_location(), true);
 
-    /* The assignment builtin walk owns its operands and folds their values. */
     if (binder == assignment_binder::Assignment) continue;
 
     let const name_location =
@@ -550,17 +543,11 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
   let const leading_command_word =
       is_command_prefix ? m_args[0]->raw_view() : Maybe<StringView>{};
 
-  /* A prefix reaches only the environment of the command it leads, and a prefix
-     on a POSIX special builtin persists after the command in the default
-     mood. */
   let const prefix_outlives_command =
       !is_command_prefix || !leading_command_word.has_value() ||
       is_special_builtin_name(*leading_command_word);
 
   for (let const &var : m_local_vars) {
-    /* A PATH=... prefix leaves the runtime search path unknown to the prepass,
-       so the not-found check for the prefixed command and everything after it
-       stays quiet. */
     if (utils::environment_name_is_path(var.get_name()))
       actx.mark_path_unknown(true);
     if (is_source_location_variable(var.get_name()))
@@ -654,9 +641,6 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
   }
 
   if (m_args.is_empty()) {
-    /* A bare redirection opens its target and nothing reads or writes it,
-       shellcheck SC2188 and SC2189. An assignment-only command is the SC2036
-       shape and is reported by the pipeline. */
     if (!m_redirections.is_empty() && m_local_vars.is_empty() &&
         m_array_args.is_empty() && !actx.walk.is_bare_read_substitution)
     {
@@ -754,14 +738,10 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
       is_command_shadowed,
       !is_unconditional || actx.effects.has_seen_runtime_definer};
 
-  /* A declare-family builtin writes its NAME=value operands, and those reach
-     analysis as command arguments rather than as prefix assignments. */
   if (command_is_assignment_builtin && !is_command_shadowed) {
     let const should_record_readonly_name =
         command_id == command_name_id::Readonly && is_unconditional &&
         !actx.effects.has_seen_runtime_definer;
-    /* A -f, -F, or -p operand asks the builtin to report a name, so nothing on
-       that command line is declared. */
     let is_reporting_form = false;
     for (usize i = 1; i < m_args.count(); i++) {
       let flag_storage = String{heap_allocator()};
@@ -826,7 +806,6 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
         continue;
       }
 
-      /* An element assignment carries no scalar literal for the base name. */
       if (let const bracket = recorded_name.find_character('[');
           bracket.has_value())
       {
@@ -1018,9 +997,6 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
         {
           has_dollar_bracket = true;
         }
-        /* The quote that follows leaves the dollar sign literal. The word is
-           read no further only when the quote also closes the word, and a
-           dollar sign that carries text before it is ordinary prose. */
         if (!was_quote_escape_pending && !was_in_parameter_expansion &&
             is_in_double_quote && position + 1 < source_text.length &&
             source_text[position + 1] == '"')
@@ -1156,8 +1132,6 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
           }
           if (!is_operand) break;
 
-          /* An unquoted default assignment is split and globbed before it is
-             stored, shellcheck SC2223. */
           if (segment.is_split_eligible()) {
             let const colon = referenced.find_character(':');
             if (colon.has_value() && *colon + 1 < referenced.length &&
@@ -1217,16 +1191,12 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
       }
     }
 
-    /* The command word expands to a number and the shell then looks that number
-       up as a program, shellcheck SC2084. */
     if (!is_operand && word != nullptr && word->segments.count() == 1 &&
         word->segments[0].kind == WordSegment::Kind::ArithmeticExpansion)
     {
       actx.report_diagnostic(diagnostic_id::sc2084, arg_location);
     }
 
-    /* The command word is one expansion, so whatever the name holds is meant to
-       run and an assignment of a bare command name to it was deliberate. */
     if (!is_operand && word != nullptr && word->segments.count() == 1 &&
         word->segments[0].kind == WordSegment::Kind::VariableReference &&
         actx.command_name_assignments.count() != 0)
@@ -1283,8 +1253,6 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
                                {bare_array_name});
       }
 
-      /* The pair is reported once for each assignment, so the name is dropped
-         after the first split-eligible read reaches it. */
       if (!quoted_value_name.is_empty()) {
         let const assignment_location = *quoted_value_assignment.value();
         actx.report_diagnostic(diagnostic_id::sc2089, assignment_location,
@@ -1360,8 +1328,6 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
   let has_explained_resolution_failure =
       check_command_word_shape(actx, lint_input);
 
-  /* An assignment builtin that sets PATH also leaves the runtime search path
-     unknown to the prepass. */
   if (name.has_value() &&
       (command_info.is_in_group(COMMAND_GROUP_ASSIGNMENT_BUILTIN) ||
        command_id == command_name_id::Unset))
@@ -1382,8 +1348,6 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
 
   check_operand_lints_after_scan(actx, lint_input);
 
-  /* A dot, source, eval, or alias runs or defines code the prepass cannot see,
-     so any later unresolved command must not be a hard failure. */
   let runtime_definer_name = String{command_literal};
   let runtime_definer_id = command_id;
   bool is_runtime_definer =
@@ -1428,8 +1392,6 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
   has_explained_resolution_failure |=
       check_prefix_assignment_reads(actx, lint_input);
 
-  /* No search path holds a program named after an entity, so the finding needs
-     no resolution scan and survives an unknown path. */
   let const command_is_html_entity_tail =
       name.has_value() && !is_command_shadowed &&
       command_info.is_in_group(COMMAND_GROUP_HTML_ENTITY_TAIL) &&
@@ -1444,8 +1406,6 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
       actx.effects.has_seen_runtime_definer
           ? diagnostic_id::unresolved_command_uncertain
           : diagnostic_id::unresolved_command;
-  /* The resolution scan reads PATH and the filesystem, so it is skipped when
-     its only diagnostic cannot reach the output. */
   let const should_check_command_resolution =
       name.has_value() && !is_command_shadowed &&
       !command_is_html_entity_tail && !has_explained_resolution_failure &&
@@ -1508,15 +1468,10 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
   update_generated_executable_paths(actx, m_args, name, command_id,
                                     is_command_shadowed, is_unconditional);
 
-  /* A recorded constant survives only across an environment-neutral command
-     that writes no variable and runs no unseen code. Every other command
-     forgets the whole table. */
   let should_clear_constants =
       !command_info.is_in_group(COMMAND_GROUP_ENVIRONMENT_NEUTRAL) ||
       has_command_substitution_argument;
 
-  /* A neutral builtin shadowed by a function or alias is really a call into
-     user code, so it forgets the table too. */
   if (!should_clear_constants &&
       (actx.functions.defined.contains(command_literal) ||
        actx.functions.aliases.contains(command_literal)))
@@ -1557,8 +1512,6 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
     for (let const &segment : word.segments) {
       if (segment.kind != WordSegment::Kind::VariableReference) continue;
 
-      /* A read of a name this command also assigns as a prefix is reported by
-         the prefix check, which names that shape exactly. */
       let is_read_of_own_prefix = false;
       for (let const &var : m_local_vars) {
         if (var.get_name() != segment.text.view()) continue;
@@ -1652,9 +1605,6 @@ fn SimpleCommand::append_presence_tested_command_names(
 cold fn SimpleCommand::try_static_condition_verdict(
     const AnalysisContext &actx) const wontthrow -> Maybe<bool>
 {
-  /* A redirection, an async or negated command, or a prefix assignment is not
-     constant, so the fold declines it. The guards read this node's private
-     members. */
   if (!m_redirections.is_empty()) return koshka::None;
   if (is_async() || is_negated()) {
     return koshka::None;
@@ -1664,8 +1614,6 @@ cold fn SimpleCommand::try_static_condition_verdict(
   return optimizer::simple_command_static_verdict(m_args, actx);
 }
 
-/* The redirection that takes the descriptor away from the pipe, or null when
-   the stage leaves it alone. */
-} /* namespace expressions */
+}
 
-} /* namespace koshka */
+}

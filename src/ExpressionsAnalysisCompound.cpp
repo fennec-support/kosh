@@ -53,14 +53,9 @@ pure fn find_pipe_overriding_redirection(const SimpleCommand *stage,
 fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     -> void
 {
-  /* POSIX sh reads time as a utility, so it receives the first stage alone and
-     the report covers nothing else, shellcheck SC2176. */
   if (actx.is_posix_sh_shebang && is_timed())
     actx.report_diagnostic(diagnostic_id::sc2176, time_location());
 
-  /* A multi-stage pipeline runs each stage in a forked child, so a stage
-     assignment must not be recorded as a straight-line constant. A single
-     command keeps the caller's unconditional context. */
   let const has_multiple_stages = m_commands.count() > 1;
   let const stage_is_unconditional = is_unconditional && !has_multiple_stages;
   for (let const command : m_commands) {
@@ -80,16 +75,10 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     actx.walk.is_direct_pipeline_stage = was_direct_pipeline_stage;
   }
 
-  /* cat feeding a single named file into the next stage runs an extra process,
-     shellcheck SC2002. The first stage must be cat with one plain file operand
-     and a later stage must follow. */
   if (m_commands.count() > 1) {
     ASSERT(m_commands[0] != nullptr);
     const SimpleCommand *first_stage = m_commands[0]->as_simple_command();
 
-    /* An assignment-only first stage runs beside the pipeline and reads nothing
-       from it, shellcheck SC2036. The parser splits a lone assignment into an
-       AssignCommand and keeps several as prefixes on an empty command. */
     if (m_commands[0]->is_assignment()) {
       const AssignCommand *assign = m_commands[0]->as_assign_command();
       if (assign != nullptr) {
@@ -126,8 +115,6 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     }
   }
 
-  /* The stage-pair lints. A pipe into a non-stdin command is SC2216, and the
-     remaining codes are keyed on the stage that feeds the pipe. */
   for (usize i = 0; i + 1 < m_commands.count(); i++) {
     const SimpleCommand *stage = m_commands[i]->as_simple_command();
     const SimpleCommand *next = m_commands[i + 1]->as_simple_command();
@@ -138,9 +125,6 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
       continue;
     }
 
-    /* One descriptor cannot hold both a pipe and a file, and the redirection
-       wins, shellcheck SC2259 and SC2260. Each stage is visited once as the
-       feeding side and once as the receiving side. */
     let const output_override = find_pipe_overriding_redirection(stage, true);
     if (output_override != nullptr && output_override->target != nullptr) {
       actx.report_diagnostic(
@@ -188,8 +172,6 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     if (stage_is_user) continue;
 
     switch (stage_info.id) {
-    /* echo feeding wc -c measures a string whose length the shell already
-       knows, shellcheck SC2000. */
     case command_name_id::Echo:
       if (next_info.id == command_name_id::Wc && !next_is_user &&
           stage->args().count() == 2 && next->args().count() == 2)
@@ -204,7 +186,6 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
       }
       break;
 
-    /* find piped into xargs splits a name at every blank, shellcheck SC2038. */
     case command_name_id::Find: {
       if (!next_is_xargs) break;
 
@@ -226,9 +207,6 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
       break;
     }
 
-    /* The ls listing loses a name that holds a space or a newline. Grep reading
-       it is shellcheck SC2010, xargs reading it is SC2011, and any other reader
-       is SC2012. */
     case command_name_id::Ls:
       if (next_is_pattern_matcher) {
         actx.report_diagnostic(diagnostic_id::sc2010,
@@ -242,16 +220,12 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
       }
       break;
 
-    /* ps piped into grep races the process table and matches the grep itself,
-       shellcheck SC2009. */
     case command_name_id::Ps:
       if (next_is_pattern_matcher)
         actx.report_diagnostic(diagnostic_id::sc2009,
                                next->args()[0]->source_location());
       break;
 
-    /* grep feeding wc -l counts matches with a second process, shellcheck
-       SC2126. */
     case command_name_id::Grep:
       if (next_info.id == command_name_id::Wc && !next_is_user &&
           next->args().count() == 2)
@@ -268,8 +242,6 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     }
   }
 
-  /* The table cannot prove a value across the fork, so a multi-stage pipeline
-     forgets any recorded constant. */
   if (m_commands.count() > 1) actx.constant_variables.clear();
 }
 
@@ -322,8 +294,6 @@ fn CompoundList::always_exits(const AnalysisContext &actx) const wontthrow
   return false;
 }
 
-/* The opening [ of a bracket test the node leaves unclosed, null when the node
-   holds anything else. */
 cold static fn
 node_unclosed_test_bracket(const CompoundListCondition *node) wontthrow
     -> const Token *
@@ -368,14 +338,10 @@ cold fn CompoundListCondition::try_static_condition_verdict(
 {
   ASSERT(m_cmd != nullptr);
 
-  /* An && or || node depends on the command before it, so only a plain sequence
-     node carries its own verdict. */
   if (m_kind != Kind::None) return koshka::None;
   return m_cmd->try_static_condition_verdict(actx);
 }
 
-/* The X token of a bracketed X != Y test the node holds, null when the node
-   holds anything else. */
 cold static fn
 node_inequality_left_operand(const CompoundListCondition *node) wontthrow
     -> const Token *
@@ -411,9 +377,6 @@ fn CompoundList::analyze(AnalysisContext &actx,
   actx.stream_sibling_carry = nullptr;
   defer { actx.stream_sibling_carry = carry; };
 
-  /* A top-level unit ends at a newline, so the node that follows always joins
-     with Kind::None. The checks that only wanted to know that a next node
-     exists are answered here. */
   if (carry != nullptr && !m_nodes.is_empty()) {
     if (carry->pending_unchecked_cd.has_value())
       actx.report_diagnostic(diagnostic_id::sc2164,
@@ -449,8 +412,6 @@ fn CompoundList::analyze(AnalysisContext &actx,
     ASSERT(m_nodes[i] != nullptr);
     let const command = m_nodes[i]->command();
 
-    /* POSIX sh reads time as a utility, so it receives the compound keyword as
-       an operand and the report covers nothing, shellcheck SC2177. */
     if (actx.is_posix_sh_shebang && command->is_timed() &&
         command->is_compound_command())
     {
@@ -473,8 +434,6 @@ fn CompoundList::analyze(AnalysisContext &actx,
             carry->pending_unchecked_cd = simple->args()[0]->source_location();
           }
 
-          /* A subshell restores the directory on its own, so the return trip is
-             work the shell already does, shellcheck SC2103. */
           let is_return_trip = false;
           if (simple->args().count() == 2 &&
               simple->args()[1]->kind() == Token::Kind::Word)
@@ -611,8 +570,6 @@ fn CompoundList::analyze(AnalysisContext &actx,
       actx.occurrences.merge(conditional_chain_entry_occurrences);
     }
 
-    /* A [ test ends at its own bracket, so a joiner written inside one reaches
-       the shell instead, shellcheck SC2107 and SC2109. */
     if (previous_node != nullptr &&
         node->kind() != CompoundListCondition::Kind::None)
     {
@@ -635,8 +592,6 @@ fn CompoundList::analyze(AnalysisContext &actx,
         previous_node->append_presence_tested_command_names(
             actx, actx.tested_command_names, false);
 
-        /* Two inequalities on the same operand hold for every value, shellcheck
-           SC2252. */
         let const before = node_inequality_left_operand(previous_node);
         let const after = node_inequality_left_operand(node);
         if (before != nullptr && after != nullptr) {
@@ -656,8 +611,6 @@ fn CompoundList::analyze(AnalysisContext &actx,
         i + 1 < m_nodes.count() &&
         m_nodes[i + 1]->kind() != CompoundListCondition::Kind::None;
 
-    /* A subshell costs a process, and a brace group gives the same grouping in
-       the current shell, shellcheck SC2235. */
     if ((node->kind() != CompoundListCondition::Kind::None ||
          next_node_joins) &&
         node->command() != nullptr && node->command()->as_subshell() != nullptr)
@@ -666,8 +619,6 @@ fn CompoundList::analyze(AnalysisContext &actx,
                              node->command()->source_location());
     }
 
-    /* A negated command outside a condition inhibits errexit and leaves its
-       status unread, shellcheck SC2251. */
     if (!actx.walk.is_analyzing_condition && node->is_negated() &&
         node->kind() == CompoundListCondition::Kind::None && !next_node_joins &&
         node->command() != nullptr)
@@ -680,8 +631,6 @@ fn CompoundList::analyze(AnalysisContext &actx,
       }
     }
 
-    /* A semicolon or newline node runs whenever the list runs, an && or || node
-       is conditional. */
     let const node_unconditional =
         is_unconditional && node->kind() == CompoundListCondition::Kind::None;
     let const is_conditional_node =
@@ -719,8 +668,6 @@ fn CompoundList::append_presence_tested_command_names(
 cold fn CompoundList::try_static_condition_verdict(
     const AnalysisContext &actx) const wontthrow -> Maybe<bool>
 {
-  /* Only a condition list of exactly one command has a verdict the whole
-     condition takes. */
   if (m_nodes.count() != 1) return koshka::None;
   ASSERT(m_nodes[0] != nullptr);
   return m_nodes[0]->try_static_condition_verdict(actx);
@@ -747,6 +694,6 @@ fn IfStatement::analyze(AnalysisContext &actx,
   actx.constant_variables.clear();
 }
 
-} /* namespace expressions */
+}
 
-} /* namespace koshka */
+}
