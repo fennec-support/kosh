@@ -164,6 +164,7 @@ diagnostics-off-keeps-hint PASS
 narrow-startup-prompt PASS
 narrow-menu-help-wraps-between-items PASS
 narrow-menu-escape-closes PASS
+narrow-menu-far-right-keeps-two-help-rows PASS
 narrow-hint-wraps-long-synopsis PASS
 narrow-hint-rows-indented PASS
 narrow-hint-rows-erased-on-submit PASS

@@ -28,8 +28,10 @@
 # Down with its option switched off, and the inline hint rows for a command and
 # a flag, their header naming the kind and the two-column indent, their absence
 # inside the command word and for an uncached command, their yielding to the
-# menu, their erasure on submit, and their option. A narrow terminal wraps a
-# long synopsis onto several indented rows that a submit erases, and a short
+# menu, their erasure on submit, and their option. A path menu lists the last
+# component of each path. A narrow terminal wraps a long synopsis onto several
+# indented rows that a submit erases, starts the menu at the left edge when the
+# token is too far right for its help text to keep two rows, and a short
 # terminal keeps the input on screen with fewer rows. A pause loads
 # the --help usage, flag forms, and subcommand usage of a trusted allowlisted
 # command once per key and never runs one from a world-writable directory. A
@@ -782,8 +784,7 @@ def run_checks(binary, directory, command_directory, report):
 
         session.send(b"cat menu/menu-")
         session.send(b"\t")
-        names = ["menu/menu-apple", "menu/menu-apricot",
-                 "menu/menu-avocado", "menu/menu-banana"]
+        names = ["menu-apple", "menu-apricot", "menu-avocado", "menu-banana"]
         report.record("menu-opens-with-all-candidates", session,
                       is_menu(names, lambda total: total in (None, 4)))
         session.send(b"a")
@@ -1239,7 +1240,7 @@ def get_help_rows(screen):
         return None
     rows = []
     for line in screen.get_lines()[row + 1:]:
-        if line.strip().startswith("menu/"):
+        if line.strip().startswith("menu-"):
             return rows
         rows.append(line)
     return None
@@ -1285,6 +1286,14 @@ def run_narrow_checks(binary, directory, command_directory, report):
         report.record("narrow-menu-escape-closes", session,
                       lambda screen: screen.get_menu() is None
                       and get_help_rows(screen) is None)
+        clear_line(session)
+
+        session.send(b"echo " + b"x" * 20 + b" menu/menu-\t")
+        report.record("narrow-menu-far-right-keeps-two-help-rows", session,
+                      lambda screen: is_help_wrapped(columns)(screen)
+                      and len(get_help_rows(screen)) == 2)
+        session.send(ESCAPE)
+        session.wait_until(is_menu_closed)
         clear_line(session)
 
         session.send(b"ls ")

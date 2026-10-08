@@ -4087,7 +4087,10 @@ unless the candidate ends in a slash.
 The interactive selector draws a menu of the candidates below the line. The
 completion menu starts under the token being completed, and starts at the left
 edge when its widest row, the description column included, does not fit to the
-right of that column, or when an item of its first row would be cut there. The
+right of that column, when an item of its first row would be cut there, or
+when its first row would wrap onto more rows there than at the left edge. A
+path list shows the last component of each path after the directory every
+candidate shares. The
 history
 menu always starts at the left edge. The
 down arrow moves to the next row, the up arrow moves back, and Tab accepts the
