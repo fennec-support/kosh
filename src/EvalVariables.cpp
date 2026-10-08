@@ -755,7 +755,21 @@ pure fn EvalContext::is_bound_nameref(StringView name) const wontthrow -> bool
   if (scope_store().is_self_reference(name)) return true;
 
   return variable_store().attributes().is_nameref(name) &&
-         variable_store().shell_variables().find(name).has_value();
+         (variable_store().shell_variables().find(name).has_value() ||
+          has_generated_value(name));
+}
+
+pure fn EvalContext::has_generated_value(StringView name) const wontthrow
+    -> bool
+{
+  return is_dynamic_write_owner(name) && !scope_store().has_active_local(name);
+}
+
+pure fn EvalContext::is_generated_nameref(StringView name) const wontthrow
+    -> bool
+{
+  return variable_store().attributes().is_nameref(name) &&
+         has_generated_value(name);
 }
 
 fn EvalContext::warn_circular_nameref(StringView name) const throws -> void
@@ -766,6 +780,13 @@ fn EvalContext::warn_circular_nameref(StringView name) const throws -> void
 
 fn EvalContext::resolve_nameref_for_write(StringView name) throws -> String
 {
+  if (is_generated_nameref(name)) rarely
+    {
+      throw Error{"Unable to assign '" + name +
+                  "' because its generated value is not a variable name for "
+                  "the name reference"};
+    }
+
   let target = resolve_nameref(name);
   if (!target.has_value()) return String{heap_allocator(), name};
 
@@ -795,7 +816,8 @@ fn EvalContext::guard_nameref_name(StringView name) const throws -> void
 {
   if (is_readonly(name))
     throw Error{"Unable to assign '" + name + "' because it is read only"};
-  if (variable_requires_dynamic_lookup(name) || is_dynamic_write_owner(name) ||
+  if (is_dynamic_write_owner(name)) return;
+  if (variable_requires_dynamic_lookup(name) ||
       is_write_discarded_dynamic_variable(name) ||
       utils::environment_name_is_path(name) || name == "IFS")
   {
@@ -848,8 +870,21 @@ fn EvalContext::resolve_nameref_parameter(StringView spec) throws
     name_end++;
   if (spec[0] == '!' && name_end == spec.length) return None;
 
-  let const target = resolve_nameref(
-      spec.substring_of_length(prefix_length, name_end - prefix_length));
+  let const name =
+      spec.substring_of_length(prefix_length, name_end - prefix_length);
+  if (prefix_length == 0 &&
+      (name_end == spec.length || spec[name_end] != '[') &&
+      is_generated_nameref(name))
+    rarely
+    {
+      let error = Error{"Unable to expand '" + name +
+                        "' because its generated value is not a variable "
+                        "name for the name reference"};
+      mark_expansion_error(error, expansion_error_reach::LineOrPosixScript);
+      throw steal(error);
+    }
+
+  let const target = resolve_nameref(name);
   if (!target.has_value() || target->is_empty()) return None;
 
   let rewritten = String{scratch_allocator()};

@@ -1289,6 +1289,8 @@ fn EvalContext::ParameterExpander::expand_indirect() throws -> String
     }
   if (m_context.variable_store().attributes().is_nameref(body)) rarely
     {
+      if (m_context.has_generated_value(body))
+        return m_context.expand_variable(body);
       if (let const target = m_context.resolve_nameref(body);
           target.has_value() && !target->is_empty())
       {

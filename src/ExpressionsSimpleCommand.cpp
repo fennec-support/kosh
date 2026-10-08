@@ -346,7 +346,13 @@ fn AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
     let resolved_name = Maybe<String>{};
     if (cxt.variable_store().attributes().is_nameref(assigned_name)) rarely
       {
-        resolved_name = cxt.resolve_nameref_base_for_write(assigned_name);
+        try {
+          resolved_name = cxt.resolve_nameref_base_for_write(assigned_name);
+        } catch (ErrorBase &error) {
+          cxt.mark_expansion_error(error,
+                                   expansion_error_reach::LineOrPosixScript);
+          throw;
+        }
         assigned_name = resolved_name->view();
       }
     if (cxt.is_readonly(assigned_name)) {

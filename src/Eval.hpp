@@ -3408,6 +3408,8 @@ public:
 
   fn resolve_nameref(StringView name) const throws -> Maybe<String>;
   pure fn is_bound_nameref(StringView name) const wontthrow -> bool;
+  pure fn has_generated_value(StringView name) const wontthrow -> bool;
+  pure fn is_generated_nameref(StringView name) const wontthrow -> bool;
   fn warn_circular_nameref(StringView name) const throws -> void;
   fn resolve_nameref_for_write(StringView name) throws -> String;
   fn resolve_nameref_base_for_write(StringView name) throws -> String;

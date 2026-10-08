@@ -620,7 +620,13 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     let resolved_name = Maybe<String>{};
     if (cxt.variable_store().attributes().is_nameref(name)) rarely
       {
-        resolved_name = cxt.resolve_nameref_base_for_write(name);
+        try {
+          resolved_name = cxt.resolve_nameref_base_for_write(name);
+        } catch (ErrorBase &error) {
+          cxt.mark_expansion_error(error,
+                                   expansion_error_reach::LineOrPosixScript);
+          throw;
+        }
         name = resolved_name->view();
       }
     if (cxt.is_readonly(name)) {

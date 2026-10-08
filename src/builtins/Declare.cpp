@@ -433,6 +433,8 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                    cxt.variable_store().shell_variables().find(name);
                stored.has_value())
         target = String{cxt.scratch_allocator(), stored->view()};
+      else if (cxt.has_generated_value(name))
+        target = cxt.get_variable_value(name);
 
       try {
         if (target.has_value()) {

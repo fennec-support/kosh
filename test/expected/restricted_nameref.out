@@ -73,3 +73,31 @@ SHELL=/kept/shell ENV=unset BASH_ENV=unset
 after status=1
 PATH kept
 SHELL=/kept/shell ENV=unset BASH_ENV=unset
+== kosh -r --mood bash: declare -n RANDOM=PATH; RANDOM=/tmp
+after status=1
+PATH kept
+SHELL=/kept/shell ENV=unset BASH_ENV=unset
+== kosh -r --mood bash: declare -n SECONDS=PATH; read -r SECONDS <<<"/tmp"
+after status=1
+PATH kept
+SHELL=/kept/shell ENV=unset BASH_ENV=unset
+== kosh -r --mood bash: f() { local -n SECONDS=PATH; SECONDS=/tmp; }; f
+-c:1:30: error: Unable to assign 'PATH' because it is read only.
+after status=1
+PATH kept
+SHELL=/kept/shell ENV=unset BASH_ENV=unset
+== kosh -r --mood bash: f() { local -n PATH=PATH; PATH=/tmp; }; f
+-c:1:16: error: Builtin `local`: Unable to assign 'PATH' because it is read only.
+-c:1:27: error: Unable to assign 'PATH' because it is read only.
+after status=1
+PATH kept
+SHELL=/kept/shell ENV=unset BASH_ENV=unset
+== kosh -r --mood bash: declare -n KOSHCONF=PATH
+after status=1
+PATH kept
+SHELL=/kept/shell ENV=unset BASH_ENV=unset
+== kosh -r --mood bash: declare -n KOSH_IDENTITY=PATH
+-c:1:12: error: Builtin `declare`: 'KOSH_IDENTITY' is read-only.
+after status=1
+PATH kept
+SHELL=/kept/shell ENV=unset BASH_ENV=unset

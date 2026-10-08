@@ -68,10 +68,12 @@ fn Unset::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     {
       LOG(All, "unset removing the name reference '%s'", name.c_str());
       do_try_unset(i, [&] {
+        let const was_generated = cxt.is_generated_nameref(name.view());
         if (!cxt.is_readonly(name.view()))
           cxt.variable_store().attributes().set(
               name.view(), variable_attribute::Nameref, false);
         cxt.unset_shell_variable(name);
+        if (was_generated) cxt.unset_dynamic_reader(name.view());
       });
     } else if (let const bracket = name.view().find_character('[');
                bracket.has_value() && name.view()[name.count() - 1] == ']')
@@ -107,6 +109,8 @@ fn Unset::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       LOG(All, "unset removing function '%s' since no variable is set",
           name.c_str());
       do_try_unset(i, [&] { cxt.unset_function(name); });
+    } else if (cxt.is_generated_nameref(name.view())) {
+      LOG(All, "unset leaves the generated name reference '%s'", name.c_str());
     } else {
       /* A read-only name throws, the rest are still unset, matching dash. */
       LOG(All, "unset removing variable '%s'", name.c_str());

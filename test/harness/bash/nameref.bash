@@ -7,7 +7,8 @@
 # unset acts on the target, unset -n on the reference, and a circular chain
 # reads as unset and fails an assignment. A reference to itself is an error at
 # the top level, and inside a function it warns and reaches the variable
-# outside the function.
+# outside the function. RANDOM and SECONDS take the attribute and keep their
+# generated value, so each expansion or assignment of the name fails.
 X=1
 declare -n r=X
 r=2
@@ -270,3 +271,48 @@ declare -n selftop; selftop=selftop; echo "top bind status $?"
 declare -p selftop
 self_readonly() { local -n RO=RO; echo "readonly self status $?"; }
 self_readonly 2>/dev/null
+
+dynamic_target=fixed
+declare -n RANDOM=dynamic_target; echo "random reference status $?"
+echo "read $RANDOM"; echo "not reached"
+echo "random read line status $?"
+RANDOM=5; echo "not reached"
+echo "random assignment line status $?"
+RANDOM+=1; echo "not reached"
+echo "random append line status $?"
+x=${RANDOM-default}; echo "not reached"
+echo "random default line status $?"
+(echo "$RANDOM"; echo "not reached"); echo "random subshell status $?"
+random_reader() { echo "in function"; echo "$RANDOM"; echo "not reached"; }
+random_reader; echo "not reached"
+echo "random function line status $?"
+echo "arithmetic $((RANDOM >= 0))"
+read -r RANDOM <<<"x"; echo "random read status $?"
+printf -v RANDOM '%s' y; echo "random printf status $?"
+declare RANDOM=4; echo "random declare status $?"
+for RANDOM in word; do echo "random loop"; done; echo "random for status $?"
+[[ -v RANDOM ]]; echo "random -v $?"
+[[ -R RANDOM ]] && test -R RANDOM && [ -R RANDOM ] && echo "random is a reference"
+bang=${!RANDOM}
+[[ $bang =~ ^[0-9]+$ ]] && echo "random indirect is a number"
+unset RANDOM; echo "random unset status $?"
+echo "$RANDOM"; echo "not reached"
+echo "random after unset line status $?"
+echo "dynamic_target=$dynamic_target"
+unset -n RANDOM; echo "random unset -n status $?"
+echo "random after unset -n [${RANDOM-gone}]"
+declare -n SECONDS; echo "seconds bare status $?"
+declare -n SECONDS=dynamic_target
+declare +n SECONDS; echo "seconds +n status $?"
+[[ $SECONDS =~ ^[0-9]+$ ]] && echo "seconds counts again"
+seconds_local() {
+  local -n SECONDS=dynamic_target
+  echo "local seconds [$SECONDS]"
+  SECONDS=local_write
+}
+seconds_local
+echo "dynamic_target=$dynamic_target"
+[[ $SECONDS =~ ^[0-9]+$ ]] && echo "seconds still counts"
+seconds_local_unset() { local -n SECONDS=dynamic_target; unset -n SECONDS; }
+seconds_local_unset
+[[ $SECONDS =~ ^[0-9]+$ ]] && echo "seconds counts after a local unset -n"

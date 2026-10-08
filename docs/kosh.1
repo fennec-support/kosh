@@ -2161,7 +2161,18 @@ function, and a circular reference otherwise. A write through a
 reference applies the read-only, restricted, integer, and case rules of the
 target, and readonly or declare \-r on a reference marks the target. A target
 must be a name or a name with a subscript, which is evaluated on each use. A
-read-only name, PATH, IFS, and a dynamic variable cannot become a reference. The
+read-only name, PATH, IFS, and a dynamic variable other than RANDOM and SECONDS
+cannot become a reference. As in Bash, RANDOM and SECONDS take the attribute,
+a value given with it seeds or sets them as an assignment does, and they keep
+their generated value, which is never a name. An expansion or an assignment
+statement of the name then abandons the line, a write by read, printf \-v, or
+declare fails with status 1, [[ \-v name ]] is false, and ${!name} gives the
+generated value. unset leaves the name alone,
+.B "unset \-n"
+removes it with its special behavior, and
+.B +n
+restores it. A local of either name in a function is an ordinary variable that
+may become a reference. The
 .B +n
 form removes the reference and keeps its value. The
 .B \-g

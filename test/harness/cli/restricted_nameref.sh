@@ -10,7 +10,12 @@ for form in 'declare -n r=PATH; r=/tmp' 'declare -n r=PATH; r+=:/tmp' \
   'declare -n r=ENV; r=(/tmp)' 'declare -n r=BASH_ENV; r=/tmp' \
   'f() { local -n r=PATH; r=/tmp; }; f' 'f() { declare -gn r=SHELL; }; f; r=/tmp' \
   'declare -n r; r=PATH; r=/tmp' 'declare -n PATH=other' \
-  'f() { local -n PATH=other; }; f' 'declare -n SHELL'
+  'f() { local -n PATH=other; }; f' 'declare -n SHELL' \
+  'declare -n RANDOM=PATH; RANDOM=/tmp' \
+  'declare -n SECONDS=PATH; read -r SECONDS <<<"/tmp"' \
+  'f() { local -n SECONDS=PATH; SECONDS=/tmp; }; f' \
+  'f() { local -n PATH=PATH; PATH=/tmp; }; f' \
+  'declare -n KOSHCONF=PATH' 'declare -n KOSH_IDENTITY=PATH'
 do
   echo "== kosh -r --mood bash: $form"
   PATH_BEFORE=$PATH "$BIN" -r --mood bash -c "$form
