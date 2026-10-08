@@ -12,7 +12,7 @@ strict=1
 4:2: error: Builtin `set`: The kosh mood keeps 'pipefail' on.
      4 |  (set +o pipefail)
        |   ^~~~~~~~~~~~~~~
-note: Switch to the bash mood with `set -M bash` to change it.
+note: Switch to the bash mood with `koshconf set mood bash` to change it.
 4:1: trace:
      4 |  (set +o pipefail)
        |  ^

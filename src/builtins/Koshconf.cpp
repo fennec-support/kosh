@@ -13,6 +13,7 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Options.hpp"
+#include "../Utils.hpp"
 #include "../base/StaticStringMap.hpp"
 #include "../base/Trace.hpp"
 
@@ -63,7 +64,8 @@ constexpr static_string_entry<mimic_mood> KOSHCONF_PRESET_ENTRIES[] = {
 };
 constexpr StaticStringMap KOSHCONF_PRESETS{KOSHCONF_PRESET_ENTRIES};
 
-constexpr usize LIST_VALUE_COLUMN = 44;
+constexpr StringView LIST_HEADING{"# name=value"};
+constexpr usize LIST_COLUMN_GAP = 2;
 
 struct koshconf_operands
 {
@@ -111,12 +113,17 @@ fn find_named_option(const ExecContext &ec, EvalContext &cxt,
             bash_option->koshconf_name + "'");
     return nullptr;
   }
-  if (option == nullptr)
-    report_soft_builtin_error(ec, cxt, operands.locations[index],
-                              StringView{"Unknown option '"} +
-                                  operands.values[index] + "'",
-                              "Run `koshconf list` for the option names");
-  return option;
+  if (option != nullptr) return option;
+
+  let const suggestion =
+      suggest_koshconf_option_name(operands.values[index].view());
+  report_soft_builtin_error(
+      ec, cxt, operands.locations[index],
+      StringView{"Unknown option '"} + operands.values[index] + "'",
+      suggestion.has_value()
+          ? StringView{"Did you mean '"} + *suggestion + "'?"
+          : String{"Run `koshconf list` for the option names"});
+  return nullptr;
 }
 
 fn require_user_path(const ExecContext &ec, EvalContext &cxt) throws
@@ -129,6 +136,15 @@ fn require_user_path(const ExecContext &ec, EvalContext &cxt) throws
         "Neither XDG_CONFIG_HOME nor HOME specifies a directory, so the user "
         "configuration file cannot be located");
   return path;
+}
+
+fn report_written_file(const ExecContext &ec, const EvalContext &cxt,
+                       StringView written, const Path &path) throws -> void
+{
+  if (!cxt.execution_store().shell_is_interactive()) return;
+
+  ec.print_to_stderr(StringView{"Wrote "} + written + " to " + path.text() +
+                     "\n");
 }
 
 fn run_create(const ExecContext &ec, EvalContext &cxt,
@@ -160,6 +176,8 @@ fn run_create(const ExecContext &ec, EvalContext &cxt,
     return 1;
   }
 
+  report_written_file(
+      ec, cxt, StringView{"the "} + mood_name(*preset) + " preset", *path);
   return 0;
 }
 
@@ -223,6 +241,8 @@ fn run_set(const ExecContext &ec, EvalContext &cxt,
     return 1;
   }
 
+  report_written_file(
+      ec, cxt, format_koshconf_line(*option, persisted_value.view()), *path);
   return 0;
 }
 
@@ -248,19 +268,38 @@ fn run_list(const ExecContext &ec, EvalContext &cxt,
     return report_usage(ec, cxt, operands.locations[2],
                         "The list form takes no operand");
 
-  let out = String{cxt.scratch_allocator()};
+  let lines = ArrayList<String>{cxt.scratch_allocator()};
+  usize class_column = LIST_HEADING.count() + LIST_COLUMN_GAP;
   for (let const &option : get_option_registry()) {
     if (option.is_set_alias) continue;
 
-    let const line = format_koshconf_display_line(
+    let line = format_koshconf_display_line(
         option, read_option_text(cxt, option).view());
-    out += line.view();
-    out.append_repeated(' ', line.count() < LIST_VALUE_COLUMN
-                                 ? LIST_VALUE_COLUMN - line.count()
-                                 : 1);
-    out += option.category == option_class::Interactive ? "interactive"
-                                                        : "semantic";
+    if (option.type != option_type::String &&
+        line.count() + LIST_COLUMN_GAP > class_column)
+    {
+      class_column = line.count() + LIST_COLUMN_GAP;
+    }
+    lines.push(steal(line));
+  }
+
+  let out = String{cxt.scratch_allocator()};
+  let const do_append_row = [&](StringView line, StringView category) throws {
+    out += line;
+    out.append_repeated(' ', line.count() + LIST_COLUMN_GAP <= class_column
+                                 ? class_column - line.count()
+                                 : LIST_COLUMN_GAP);
+    out += category;
     out += '\n';
+  };
+  do_append_row(LIST_HEADING, "class");
+  usize line_index = 0;
+  for (let const &option : get_option_registry()) {
+    if (option.is_set_alias) continue;
+
+    do_append_row(lines[line_index++].view(),
+                  option.category == option_class::Interactive ? "interactive"
+                                                               : "semantic");
   }
   ec.print_to_stdout(out);
   return 0;
@@ -308,7 +347,8 @@ fn Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       FLAG_LIST, ec.args(), ec.source_location().position, nullptr,
       &ec.arg_locations(), &operand_locations,
       builtin_error_context(ec.program()),
-      flag_parse_options{.should_allow_options_after_operands = true});
+      flag_parse_options{.should_accept_negative_number_operand = true,
+                         .should_allow_options_after_operands = true});
   defer { reset_flags(FLAG_LIST); };
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
@@ -317,11 +357,20 @@ fn Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return report_usage(ec, cxt, ec.source_location(),
                         "A subcommand is required");
   let const command = KOSHCONF_COMMANDS.find(args[1]);
-  if (!command.has_value())
-    return report_usage(ec, cxt, operand_locations[1],
-                        StringView{"Unknown subcommand '"} + args[1] +
-                            "', expected 'create', 'set', 'get', 'list', or "
-                            "'load'");
+  if (!command.has_value()) {
+    let suggestion = utils::NameSuggestion{args[1].view()};
+    for (let const &entry : KOSHCONF_COMMAND_ENTRIES)
+      suggestion.consider(entry.key.to_string().view());
+    let const close_match = suggestion.take_suggestion();
+    report_soft_builtin_error(
+        ec, cxt, operand_locations[1],
+        StringView{"Unknown subcommand '"} + args[1] +
+            "', expected 'create', 'set', 'get', 'list', or 'load'",
+        close_match.has_value()
+            ? StringView{"Did you mean '"} + *close_match + "'?"
+            : String{"Run `koshconf --help` for the forms"});
+    return 2;
+  }
   if (FLAG_PERSIST.is_enabled() && *command != koshconf_command::Set) {
     return report_usage(ec, cxt, ec.source_location(),
                         "Only the set form accepts --persist");

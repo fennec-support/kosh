@@ -1,7 +1,8 @@
 unset KOSH_FLAGS KOSHCONF
 # koshconf lists the option registry, writes presets whose values match a fresh
-# session, changes one option for the session or also in the file, and loads
-# an encoded form while skipping an unknown id.
+# session, changes one option for the session or also in the file, suggests a
+# close name for an unknown one, and loads an encoded form while skipping an
+# unknown id.
 config=$(mktemp -d)
 trap '[ -n "$config" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$config"' EXIT
 export XDG_CONFIG_HOME="$config/user"
@@ -127,6 +128,16 @@ echo "rc=$?"
 "$BIN" -c 'koshconf get mood --force'
 echo "rc=$?"
 "$BIN" -c 'koshconf create fish'
+echo "rc=$?"
+echo "== an unknown name or form suggests a close one:"
+"$BIN" -c 'koshconf sett mood bash'
+echo "rc=$?"
+"$BIN" -c 'koshconf get history.max_entry'
+echo "rc=$?"
+"$BIN" -c 'koshconf get max_entries'
+echo "rc=$?"
+echo "== a negative value is a value, not a flag:"
+"$BIN" -c 'koshconf set history.max_entries -5'
 echo "rc=$?"
 
 echo "== load applies an encoded form and skips an unknown id:"

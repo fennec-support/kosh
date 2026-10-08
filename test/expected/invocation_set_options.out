@@ -30,7 +30,7 @@ error: The flag '+r' cannot be turned off.
 rc=2
 == the kosh mood refuses to turn off an option it holds:
 error: The kosh mood keeps 'pipefail' on.
-note: Switch to the bash mood with `set -M bash` to change it.
+note: Switch to the bash mood with `koshconf set mood bash` to change it.
 rc=2
 == a plus word after the script is an operand:
 operand=+e

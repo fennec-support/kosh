@@ -135,11 +135,15 @@ blanks, or starts with a number sign after optional blanks is ignored.
 .PP
 Every other line has the form
 .IR name = value .
-Blanks around the name are ignored. A value that starts with a double or a
-single quote ends at the next quote of the same kind, and only blanks may follow
-it.
-Otherwise the value is everything after the equals sign up to the end of the
-line, blanks included. A value cannot span lines.
+Blanks around the name and around the value are ignored, so
+.B "name = on"
+is the same as
+.BR name=on .
+A value that starts with a double or a single quote ends at the next quote of
+the same kind, and only blanks may follow it; quote a value whose own blanks
+at either end must be kept.
+Otherwise the value is everything between the blanks after the equals sign and
+the blanks at the end of the line. A value cannot span lines.
 .PP
 A boolean is written as on or off and is also read as true, false, 1, or 0. An
 enumeration is written by name. A string is taken as written, and must be valid
@@ -184,8 +188,9 @@ are read under it. In the
 mood, legacy.unset_variable_is_error, legacy.pipeline_fails_on_any_stage,
 legacy.glob_no_match_is_error, and arithmetic.use_big_integers_and_decimals stay
 on and legacy.glob_no_match_expands_to_nothing stays off; a file that sets
-another value gets a warning that identifies the option and
-.BR "set \-M bash" ,
+another value gets a warning that identifies the file, the line, the option,
+and
+.BR "koshconf set mood bash" ,
 and the line is skipped. An option specified on the command line, such as
 .BR \-u ,
 .BR \-e ,
@@ -317,6 +322,8 @@ fails the ownership check under FILES, produce a warning. A line
 without an equals sign, an unknown option name, an invalid value, an unclosed
 quote, text after a closing quote, and an option a file cannot hold each
 produce a warning that identifies the file and line, and the line is skipped.
+The warning for an unknown option name suggests a close option name when one
+exists.
 The warning renders a control byte or invalid UTF-8 byte from the file as an
 escape
 in its message and as a question mark in the source excerpt. A settings file

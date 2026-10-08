@@ -1,7 +1,8 @@
 unset KOSH_FLAGS KOSHCONF
 # The user configuration file applies before the session runs, in interactive
-# and non-interactive shells. A malformed line is a located warning that never
-# stops the shell. KOSHCONF from the environment applies after the file and is
+# and non-interactive shells. Blanks around a value are ignored. A malformed
+# line, an unknown name with its suggestion, and a value the kosh mood holds
+# are located warnings that never stop the shell. KOSHCONF from the environment applies after the file and is
 # removed. A command-line flag and -Q win over the file, and the kosh mood
 # sources no rc file.
 home=$(mktemp -d)
@@ -106,7 +107,11 @@ echo "rc=$?"
 "$BIN" -c 'shopt dotglob; set -M'
 echo "== a kosh mood value that conflicts with a fixed option is skipped:"
 printf 'legacy.unset_variable_is_error=off\nlegacy.glob_no_match_expands_to_nothing=off\n' >"$conf"
-"$BIN" -c 'koshconf get legacy.unset_variable_is_error'
+"$BIN" -c 'koshconf get legacy.unset_variable_is_error' 2>&1 |
+  sed "s|$home|HOME|"
+echo "== an unknown name in the file suggests a close one:"
+printf 'history.max_entry=3\n' >"$conf"
+"$BIN" -c 'koshconf get history.max_entries' 2>&1 | sed "s|$home|HOME|"
 echo "== a command-line flag wins over a semantic option from the file:"
 printf 'mood=bash\nlegacy.unset_variable_is_error=off\n' >"$conf"
 "$BIN" -u -c 'koshconf get legacy.unset_variable_is_error'

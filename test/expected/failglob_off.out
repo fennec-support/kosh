@@ -1,7 +1,7 @@
 4:2: error: Builtin `shopt`: The kosh mood keeps 'failglob' on.
      4 |  (shopt -u failglob)
        |   ^~~~~~~~~~~~~~~~~
-note: Switch to the bash mood with `set -M bash` to change it.
+note: Switch to the bash mood with `koshconf set mood bash` to change it.
 4:1: trace:
      4 |  (shopt -u failglob)
        |  ^

@@ -187,7 +187,7 @@ enabled=18446744073709551617
 132:55: error: Builtin `koshconf`: The kosh mood keeps 'arithmetic.use_big_integers_and_decimals' on.
    132 |  koshconf set arithmetic.use_big_integers_and_decimals off
        |                                                        ^~~
-note: Switch to the bash mood with `set -M bash` to change it.
+note: Switch to the bash mood with `koshconf set mood bash` to change it.
 kosh-rc=1
 disabled=1
 nested=2 value=1

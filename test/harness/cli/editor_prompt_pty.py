@@ -17,7 +17,8 @@
 # strip under the prompt. A working directory named with control bytes
 # reaches the prompt through \w in caret notation and never as raw bytes. A
 # job stopped by Ctrl-Z reports on its own row below the echoed ^Z, and Ctrl-C
-# on a job that fg resumed ends its row before the next prompt. The
+# on a job that fg resumed ends its row before the next prompt.
+# koshconf set --persist names the file it wrote at an interactive prompt. The
 # terminal model and session come from the
 # ghost and menu probe. Each check prints one stable PASS line for the golden
 # output.
@@ -210,6 +211,13 @@ def run_job_notice_checks(binary, directory, report):
         report.record("fg-interrupt-ends-its-row", session,
                       lambda screen: has_rows(["sleep 30", "^C", BULLET])(
                           screen) and has_no_partial_line_marker(screen))
+
+        mark = len(session.raw)
+        session.send(b"koshconf set mood kosh --persist\r")
+        written_note = ("Wrote mood=kosh to " + directory
+                        + "/.config/kosh/kosh.conf").encode()
+        report.record("persist-names-the-written-file", session,
+                      lambda screen: written_note in session.raw[mark:])
     finally:
         session.close()
 

@@ -22,6 +22,7 @@ struct koshconf_setting
 {
   const option_descriptor *option;
   String value;
+  String kosh_mood_warning{heap_allocator()};
 };
 
 struct koshconf_reading
@@ -50,6 +51,8 @@ fn find_koshconf_value_problem(const option_descriptor &option,
                                StringView value) throws -> Maybe<String>;
 pure fn koshconf_option_takes_count(const option_descriptor &option) wontthrow
     -> bool;
+fn describe_kosh_mood_hold(const option_descriptor &option) throws -> String;
+fn suggest_koshconf_option_name(StringView name) throws -> Maybe<String>;
 fn format_koshconf_line(const option_descriptor &option,
                         StringView value) throws -> String;
 fn format_koshconf_display_line(const option_descriptor &option,

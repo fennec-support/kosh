@@ -2,7 +2,7 @@ on=0
 3:2: error: Builtin `set`: The kosh mood keeps 'pipefail' on.
      3 |  (set +o pipefail); echo "off=$?"
        |   ^~~~~~~~~~~~~~~
-note: Switch to the bash mood with `set -M bash` to change it.
+note: Switch to the bash mood with `koshconf set mood bash` to change it.
 3:1: trace:
      3 |  (set +o pipefail); echo "off=$?"
        |  ^

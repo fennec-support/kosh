@@ -419,6 +419,56 @@ pure fn koshconf_option_takes_count(const option_descriptor &option) wontthrow
   return StringView{option.koshconf_name} == HISTORY_MAX_ENTRIES_NAME;
 }
 
+fn suggest_koshconf_option_name(StringView name) throws -> Maybe<String>
+{
+  if (name.is_empty()) return None;
+
+  constexpr usize ENDING_EDIT_COUNT = 2;
+  let suggestion = utils::NameSuggestion{name};
+  Maybe<String> topic_match{};
+  Maybe<String> ending_match{};
+  usize ending_match_length = 0;
+  for (let const &option : get_option_registry()) {
+    if (option.is_set_alias) continue;
+
+    let const candidate = StringView{option.koshconf_name};
+    suggestion.consider(candidate);
+    let const dot = candidate.find_character('.');
+    if (dot.has_value() && candidate.substring(*dot + 1) == name &&
+        !topic_match.has_value())
+    {
+      topic_match = String{candidate};
+    }
+
+    usize shared_length = 0;
+    while (shared_length < name.length && shared_length < candidate.length &&
+           name[shared_length] == candidate[shared_length])
+    {
+      shared_length++;
+    }
+    if (shared_length + ENDING_EDIT_COUNT >= name.length && dot.has_value() &&
+        shared_length > *dot + 1 && shared_length > ending_match_length)
+    {
+      ending_match = String{candidate};
+      ending_match_length = shared_length;
+    }
+  }
+
+  if (let close_match = suggestion.take_suggestion(); close_match.has_value())
+    return close_match;
+  if (topic_match.has_value()) return topic_match;
+
+  return ending_match;
+}
+
+fn describe_kosh_mood_hold(const option_descriptor &option) throws -> String
+{
+  return StringView{"The kosh mood keeps '"} + option.koshconf_name + "' " +
+         format_option_number(option, option.strict_value) +
+         ", so the configured value is skipped; set mood=bash or run "
+         "`koshconf set mood bash` to change it";
+}
+
 fn find_koshconf_value_problem(const option_descriptor &option,
                                StringView value) throws -> Maybe<String>
 {
@@ -488,18 +538,26 @@ fn read_koshconf_text(StringView text, StringView origin_name,
 {
   let source_index = Maybe<u32>{};
   let printable_text = Maybe<String>{};
-  let const do_warn = [&](StringView span, StringView message) throws {
+  let const do_render_warning = [&](StringView span, StringView message,
+                                    StringView note = {}) throws -> String {
     if (!source_index.has_value()) {
       source_index = intern_source_name(origin_name);
       printable_text = make_printable_copy(text);
     }
     let const offset =
         printable_offset(text, static_cast<usize>(span.data - text.data));
-    reading.warnings.push(WarningWithLocation{
-        SourceLocation{offset, span.count(), *source_index},
-        message
+    let const location = SourceLocation{offset, span.count(), *source_index};
+    if (note.is_empty()) {
+      return WarningWithLocation{location, message}.to_string(
+          printable_text->view());
     }
-                              .to_string(printable_text->view()));
+
+    return WarningWithLocationAndDetails{location, message, note}.to_string(
+        printable_text->view());
+  };
+  let const do_warn = [&](StringView span, StringView message,
+                          StringView note = {}) throws {
+    reading.warnings.push(do_render_warning(span, message, note));
   };
 
   usize position =
@@ -520,13 +578,17 @@ fn read_koshconf_text(StringView text, StringView origin_name,
     let const name = line.substring_of_length(0, *equals).trim_blanks();
     let const *option = find_option_by_koshconf_name(name);
     if (option == nullptr) {
-      do_warn(name.is_empty() ? trimmed : name, StringView{"Unknown option '"} +
-                                                    escape_for_message(name) +
-                                                    "', skipping it");
+      let const suggestion = suggest_koshconf_option_name(name);
+      do_warn(name.is_empty() ? trimmed : name,
+              StringView{"Unknown option '"} + escape_for_message(name) +
+                  "', skipping it",
+              suggestion.has_value()
+                  ? StringView{"Did you mean '"} + *suggestion + "'?"
+                  : String{heap_allocator()});
       continue;
     }
 
-    let const raw_value = line.substring(*equals + 1);
+    let const raw_value = line.substring(*equals + 1).trim_blanks();
     let value = raw_value;
     if (!raw_value.is_empty() && (raw_value[0] == '"' || raw_value[0] == '\''))
     {
@@ -559,7 +621,16 @@ fn read_koshconf_text(StringView text, StringView origin_name,
       continue;
     }
 
-    reading.settings.push(koshconf_setting{option, String{value}});
+    let setting = koshconf_setting{option, String{value}};
+    if (option->is_fixed_in_kosh_mood && option->type != option_type::String) {
+      if (let const number = parse_option_number(*option, value);
+          number.has_value() && *number != option->strict_value)
+      {
+        setting.kosh_mood_warning =
+            do_render_warning(raw_value, describe_kosh_mood_hold(*option));
+      }
+    }
+    reading.settings.push(steal(setting));
   }
 }
 

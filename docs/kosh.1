@@ -740,7 +740,7 @@ nullglob off.
 and
 .B koshconf
 report an error that identifies the mood and suggests
-.B set \-M bash
+.B koshconf set mood bash
 when asked for another value, and accept the value the mood already holds, so
 .B set \-euo pipefail
 still runs. A function defined in another mood cannot relax them for a caller
@@ -1837,9 +1837,12 @@ the session changes, so a value that the file cannot hold changes nothing.
 .B get
 prints the current value.
 .B list
-prints every option in registry order as
+prints a heading row that starts with a number sign and then every option in
+registry order as
 .IR name = value ,
-followed by its class, and shows a value that a file cannot hold in the
+followed by its class, interactive or semantic, in a column that clears the
+longest line other than a string value. It shows a value that a file cannot
+hold in the
 .B $\(aq...\(aq
 form.
 .B load
@@ -1849,11 +1852,16 @@ to the current session.
 .IP
 A boolean is written as on or off and is also read as true, false, 1, or 0. An
 enumeration is written by name. A string must be valid UTF-8, and
-history.max_entries is a decimal integer from 0 to 2147483647. An unknown
-option or
-value, and a file that
+history.max_entries is a decimal integer from 0 to 2147483647. A negative
+number is an operand rather than a flag, so it reaches the value check. An
+unknown option or value, and a file that
 cannot be read or written, is an error with status 1, and a malformed form
-exits with status 2.
+exits with status 2. An unknown option name or form suggests a close name when
+one exists. An interactive shell reports the file that
+.B create
+or
+.B set \-\-persist
+wrote on standard error; a script stays silent.
 .TP
 .B z
 The current directory is changed to one selected from the frecency store.

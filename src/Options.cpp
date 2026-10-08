@@ -1410,7 +1410,7 @@ fn write_option_number(EvalContext &cxt, const option_descriptor &option,
     let error = ErrorWithDetails{
         StringView{"The kosh mood keeps '"} + display_name(option, origin) +
             "' " + format_option_number(option, option.strict_value),
-        "Switch to the bash mood with `set -M bash` to change it"};
+        "Switch to the bash mood with `koshconf set mood bash` to change it"};
     throw error;
   }
   LOG(Info, "setting option '%.*s' to %u",

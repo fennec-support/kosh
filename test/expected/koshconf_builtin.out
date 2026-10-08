@@ -1,100 +1,101 @@
 == list prints every option with its class:
-mood=kosh                                   semantic
-editor.completion_menu_style=interactive    interactive
-editor.show_command_synopsis=on             interactive
-editor.show_live_diagnostics=on             interactive
-editor.auto_close_brackets_and_quotes=off   interactive
-editor.transient_prompt_after_submit=off    interactive
-editor.request_extended_key_reports=on      interactive
-history.arrow_keys_search_by_typed_prefix=on interactive
-history.file_path=/history                  interactive
-history.max_entries=4096                    interactive
-completion.add_space_after_completed_word=off interactive
-diagnostics.warning_level=0                 interactive
-diagnostics.show_annoying_tier=on           interactive
-diagnostics.analyze_before_running=on       semantic
-koshkit.run_utilities_as_plain_commands=off semantic
-arithmetic.use_big_integers_and_decimals=on semantic
-compat.mimic_shell_named_by_shebang=off     semantic
-debug.print_syntax_tree=off                 semantic
-debug.print_lexed_word_escapes=off          semantic
-debug.report_nonzero_exit_codes=off         semantic
-debug.report_every_exit_code=off            semantic
-debug.print_evaluation_statistics=off       semantic
-debug.print_memory_report_at_exit=off       semantic
-editor.complete_on_tab=on                   interactive
-editor.highlight_syntax_and_show_ghost_text=on interactive
-diagnostics.show_source_traces=on           interactive
-startup.init_moods=                         semantic
-legacy.export_every_assigned_variable=off   semantic
-legacy.jobs_report_status_immediately=off   interactive
-legacy.exit_on_command_failure=off          semantic
-legacy.glob_disabled=off                    semantic
-legacy.assignments_anywhere_in_command=off  semantic
-legacy.job_control=off                      interactive
-legacy.parse_without_executing=off          semantic
-legacy.exit_after_one_command=off           semantic
-legacy.privileged_mode=off                  semantic
-legacy.unset_variable_is_error=on           semantic
-legacy.trace_print_input_lines=off          semantic
-legacy.trace_print_expanded_commands=off    semantic
-legacy.brace_expansion=on                   semantic
-legacy.redirect_refuses_to_overwrite_files=off semantic
-legacy.trap_err_inherited_by_functions=off  semantic
-legacy.history_bang_expansion=off           interactive
-legacy.cd_resolves_symlinks=off             semantic
-legacy.trap_debug_and_return_inherited_by_functions=off semantic
-legacy.pipeline_fails_on_any_stage=on       semantic
-legacy.history_recording=off                interactive
-legacy.ctrl_d_does_not_exit=off             interactive
-legacy.base_editor_mode=emacs               interactive
-legacy.posix_mode=off                       semantic
-legacy.cd_by_typing_directory_name=on       interactive
-legacy.array_subscripts_expand_once=off     semantic
-legacy.cd_to_variable_value=off             semantic
-legacy.cd_fix_typos=off                     interactive
-legacy.verify_remembered_command_paths=off  semantic
-legacy.jobs_check_before_exit=off           interactive
-legacy.update_columns_and_lines=on          interactive
-legacy.completion_quote_all_special_characters=on interactive
-legacy.completion_expand_directory_names=off interactive
-legacy.completion_fix_directory_typos=off   interactive
-legacy.glob_includes_dotfiles=off           semantic
-legacy.exec_failure_keeps_shell=off         semantic
-legacy.aliases_expand=on                    semantic
-legacy.debugger_support=off                 semantic
-legacy.glob_extended_patterns=on            semantic
-legacy.quote_dollar_strings_in_parameter_expansion=on semantic
-legacy.glob_no_match_is_error=on            semantic
-legacy.completion_always_apply_fignore=on   interactive
-legacy.glob_ranges_use_ascii_order=on       semantic
-legacy.glob_never_matches_dot_and_dotdot=on semantic
-legacy.glob_double_star_recurses=off        semantic
-legacy.errors_use_gnu_format=off            interactive
-legacy.history_reedit_failed_substitution=off interactive
-legacy.history_verify_expansion_before_running=off interactive
-legacy.completion_hostnames_after_at=on     interactive
-legacy.jobs_hangup_on_exit=off              interactive
-legacy.command_substitution_inherits_exit_on_failure=off semantic
-legacy.interactive_comments=on              interactive
-legacy.pipeline_last_stage_runs_in_shell=off semantic
-legacy.local_inherits_outer_value=off       semantic
-legacy.local_unset_hides_outer=off          semantic
-legacy.login_shell=off                      interactive
-legacy.mail_warn_when_read=off              interactive
-legacy.completion_skip_empty_line=off       interactive
-legacy.glob_ignores_case=off                semantic
-legacy.match_ignores_case=off               semantic
-legacy.glob_no_match_expands_to_nothing=off semantic
-legacy.pattern_substitution_ampersand_is_match=on semantic
-legacy.completion_programmable=on           interactive
-legacy.completion_programmable_follows_aliases=off interactive
-legacy.prompt_expands_parameters=on         interactive
-legacy.restricted_shell=off                 semantic
-legacy.shift_reports_overflow=off           semantic
-legacy.source_searches_path=on              semantic
-legacy.redirect_variable_fd_closed_after_command=off semantic
-legacy.echo_interprets_backslash_escapes=off semantic
+# name=value                                              class
+mood=kosh                                                 semantic
+editor.completion_menu_style=interactive                  interactive
+editor.show_command_synopsis=on                           interactive
+editor.show_live_diagnostics=on                           interactive
+editor.auto_close_brackets_and_quotes=off                 interactive
+editor.transient_prompt_after_submit=off                  interactive
+editor.request_extended_key_reports=on                    interactive
+history.arrow_keys_search_by_typed_prefix=on              interactive
+history.file_path=/history                                interactive
+history.max_entries=4096                                  interactive
+completion.add_space_after_completed_word=off             interactive
+diagnostics.warning_level=0                               interactive
+diagnostics.show_annoying_tier=on                         interactive
+diagnostics.analyze_before_running=on                     semantic
+koshkit.run_utilities_as_plain_commands=off               semantic
+arithmetic.use_big_integers_and_decimals=on               semantic
+compat.mimic_shell_named_by_shebang=off                   semantic
+debug.print_syntax_tree=off                               semantic
+debug.print_lexed_word_escapes=off                        semantic
+debug.report_nonzero_exit_codes=off                       semantic
+debug.report_every_exit_code=off                          semantic
+debug.print_evaluation_statistics=off                     semantic
+debug.print_memory_report_at_exit=off                     semantic
+editor.complete_on_tab=on                                 interactive
+editor.highlight_syntax_and_show_ghost_text=on            interactive
+diagnostics.show_source_traces=on                         interactive
+startup.init_moods=                                       semantic
+legacy.export_every_assigned_variable=off                 semantic
+legacy.jobs_report_status_immediately=off                 interactive
+legacy.exit_on_command_failure=off                        semantic
+legacy.glob_disabled=off                                  semantic
+legacy.assignments_anywhere_in_command=off                semantic
+legacy.job_control=off                                    interactive
+legacy.parse_without_executing=off                        semantic
+legacy.exit_after_one_command=off                         semantic
+legacy.privileged_mode=off                                semantic
+legacy.unset_variable_is_error=on                         semantic
+legacy.trace_print_input_lines=off                        semantic
+legacy.trace_print_expanded_commands=off                  semantic
+legacy.brace_expansion=on                                 semantic
+legacy.redirect_refuses_to_overwrite_files=off            semantic
+legacy.trap_err_inherited_by_functions=off                semantic
+legacy.history_bang_expansion=off                         interactive
+legacy.cd_resolves_symlinks=off                           semantic
+legacy.trap_debug_and_return_inherited_by_functions=off   semantic
+legacy.pipeline_fails_on_any_stage=on                     semantic
+legacy.history_recording=off                              interactive
+legacy.ctrl_d_does_not_exit=off                           interactive
+legacy.base_editor_mode=emacs                             interactive
+legacy.posix_mode=off                                     semantic
+legacy.cd_by_typing_directory_name=on                     interactive
+legacy.array_subscripts_expand_once=off                   semantic
+legacy.cd_to_variable_value=off                           semantic
+legacy.cd_fix_typos=off                                   interactive
+legacy.verify_remembered_command_paths=off                semantic
+legacy.jobs_check_before_exit=off                         interactive
+legacy.update_columns_and_lines=on                        interactive
+legacy.completion_quote_all_special_characters=on         interactive
+legacy.completion_expand_directory_names=off              interactive
+legacy.completion_fix_directory_typos=off                 interactive
+legacy.glob_includes_dotfiles=off                         semantic
+legacy.exec_failure_keeps_shell=off                       semantic
+legacy.aliases_expand=on                                  semantic
+legacy.debugger_support=off                               semantic
+legacy.glob_extended_patterns=on                          semantic
+legacy.quote_dollar_strings_in_parameter_expansion=on     semantic
+legacy.glob_no_match_is_error=on                          semantic
+legacy.completion_always_apply_fignore=on                 interactive
+legacy.glob_ranges_use_ascii_order=on                     semantic
+legacy.glob_never_matches_dot_and_dotdot=on               semantic
+legacy.glob_double_star_recurses=off                      semantic
+legacy.errors_use_gnu_format=off                          interactive
+legacy.history_reedit_failed_substitution=off             interactive
+legacy.history_verify_expansion_before_running=off        interactive
+legacy.completion_hostnames_after_at=on                   interactive
+legacy.jobs_hangup_on_exit=off                            interactive
+legacy.command_substitution_inherits_exit_on_failure=off  semantic
+legacy.interactive_comments=on                            interactive
+legacy.pipeline_last_stage_runs_in_shell=off              semantic
+legacy.local_inherits_outer_value=off                     semantic
+legacy.local_unset_hides_outer=off                        semantic
+legacy.login_shell=off                                    interactive
+legacy.mail_warn_when_read=off                            interactive
+legacy.completion_skip_empty_line=off                     interactive
+legacy.glob_ignores_case=off                              semantic
+legacy.match_ignores_case=off                             semantic
+legacy.glob_no_match_expands_to_nothing=off               semantic
+legacy.pattern_substitution_ampersand_is_match=on         semantic
+legacy.completion_programmable=on                         interactive
+legacy.completion_programmable_follows_aliases=off        interactive
+legacy.prompt_expands_parameters=on                       interactive
+legacy.restricted_shell=off                               semantic
+legacy.shift_reports_overflow=off                         semantic
+legacy.source_searches_path=on                            semantic
+legacy.redirect_variable_fd_closed_after_command=off      semantic
+legacy.echo_interprets_backslash_escapes=off              semantic
 == the kosh preset matches a fresh kosh session:
 rc=0
 # Koshka settings written by koshconf create kosh.
@@ -436,7 +437,7 @@ rc=0
 rc=1
 0
 == list escapes a value the file cannot hold:
-history.file_path=$'a\nb\x01"\''            interactive
+history.file_path=$'a\nb\x01"\''                          interactive
 rc=0
 == enumerations and booleans:
 plain
@@ -478,6 +479,27 @@ rc=2
        |                  ^~~~
 note: Run `koshconf --help` for the forms.
 rc=2
+== an unknown name or form suggests a close one:
+-c:1:10: error: Builtin `koshconf`: Unknown subcommand 'sett', expected 'create', 'set', 'get', 'list', or 'load'.
+     1 |  koshconf sett mood bash
+       |           ^~~~
+note: Did you mean 'set'?
+rc=2
+-c:1:14: error: Builtin `koshconf`: Unknown option 'history.max_entry'.
+     1 |  koshconf get history.max_entry
+       |               ^~~~~~~~~~~~~~~~~
+note: Did you mean 'history.max_entries'?
+rc=1
+-c:1:14: error: Builtin `koshconf`: Unknown option 'max_entries'.
+     1 |  koshconf get max_entries
+       |               ^~~~~~~~~~~
+note: Did you mean 'history.max_entries'?
+rc=1
+== a negative value is a value, not a flag:
+-c:1:34: error: Builtin `koshconf`: Invalid value '-5' for 'history.max_entries', expected a decimal integer from 0 to 2147483647.
+     1 |  koshconf set history.max_entries -5
+       |                                   ^~
+rc=1
 == load applies an encoded form and skips an unknown id:
 warning: Skipping the unknown option id 200 in KOSHCONF.
 on

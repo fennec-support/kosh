@@ -1,7 +1,4 @@
 == the file applies with a warning per malformed line:
-HOME/.config/kosh/kosh.conf:4:42: warning: Invalid value ' true' for 'koshkit.run_utilities_as_plain_commands', expected 'on', 'off', 'true', 'false', '1', or '0', skipping it.
-     4 |  koshkit.run_utilities_as_plain_commands = true
-       |                                           ^~~~~
 HOME/.config/kosh/kosh.conf:7:1: warning: Expected a 'name=value' line, skipping it.
      7 |  no equals sign
        |  ^~~~~~~~~~~~~~
@@ -17,9 +14,11 @@ HOME/.config/kosh/kosh.conf:11:19: warning: The quoted value has no closing quot
 HOME/.config/kosh/kosh.conf:12:13: warning: Unexpected text after the closing quote, skipping the line.
     12 |  mood='bash' trailing
        |              ^~~~~~~~
-warning: The kosh mood keeps 'legacy.unset_variable_is_error' on, so the configured value is skipped; set mood=bash or run `set -M bash` to change it.
+HOME/.config/kosh/kosh.conf:10:32: warning: The kosh mood keeps 'legacy.unset_variable_is_error' on, so the configured value is skipped; set mood=bash or run `koshconf set mood bash` to change it.
+    10 |  legacy.unset_variable_is_error=off
+       |                                 ^~~
 editor.auto_close_brackets_and_quotes=on
-koshkit.run_utilities_as_plain_commands=off
+koshkit.run_utilities_as_plain_commands=on
 history.max_entries=128
 diagnostics.warning_level=1
 mood=kosh
@@ -89,8 +88,16 @@ rc=1
 dotglob             	on
 bash
 == a kosh mood value that conflicts with a fixed option is skipped:
-warning: The kosh mood keeps 'legacy.unset_variable_is_error' on, so the configured value is skipped; set mood=bash or run `set -M bash` to change it.
+HOME/.config/kosh/kosh.conf:1:32: warning: The kosh mood keeps 'legacy.unset_variable_is_error' on, so the configured value is skipped; set mood=bash or run `koshconf set mood bash` to change it.
+     1 |  legacy.unset_variable_is_error=off
+       |                                 ^~~
 on
+== an unknown name in the file suggests a close one:
+HOME/.config/kosh/kosh.conf:1:1: warning: Unknown option 'history.max_entry', skipping it.
+     1 |  history.max_entry=3
+       |  ^~~~~~~~~~~~~~~~~
+note: Did you mean 'history.max_entries'?
+4096
 == a command-line flag wins over a semantic option from the file:
 on
 == the editor and trace options apply from the file:

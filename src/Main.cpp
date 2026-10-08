@@ -1026,11 +1026,9 @@ static fn apply_startup_configuration(
         *value != option.strict_value;
     if (is_held_by_kosh_mood) {
       reading.warnings.push(
-          Warning{StringView{"The kosh mood keeps '"} + option.koshconf_name +
-                  "' " + format_option_number(option, option.strict_value) +
-                  ", so the configured value is skipped; set mood=bash or "
-                  "run `set -M bash` to change it"}
-              .to_string());
+          !setting.kosh_mood_warning.is_empty()
+              ? steal(setting.kosh_mood_warning)
+              : Warning{describe_kosh_mood_hold(option).view()}.to_string());
       continue;
     }
 
