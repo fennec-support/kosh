@@ -4816,11 +4816,16 @@ release build always reads the system path.
 .TP
 .B KOSH_HISTORY_FILE
 The value specifies the command history file. The default is ~/.kosh_history.
+A value inherited from the environment wins over history.file_path in the
+settings files. Like bash's HISTFILE, the shell does not export it unless it
+was inherited or is exported explicitly.
 .TP
 .B KOSH_HISTORY_SIZE
 The value bounds the number of history events retained for recall, listing, and
 storage. The default is 4096. A value of zero disables history retention and
-storage.
+storage. A value inherited from the environment wins over history.max_entries
+in the settings files, and the shell exports it only when it was inherited or
+is exported explicitly.
 .TP
 .B KOSH_SHELL_INTEGRATION
 An interactive shell on a terminal marks each prompt, command, exit status, and

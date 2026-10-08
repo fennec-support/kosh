@@ -971,6 +971,8 @@ static fn is_pinned_by_invocation(
     return FLAG_SUPPRESS_DIAGNOSTICS.is_enabled() || is_analysis_inherited;
   case option_storage::SourceTraces: return FLAG_NO_TRACES.is_enabled();
   case option_storage::InitMoods: return FLAG_INIT_MOODS.count() != 0;
+  case option_storage::Variable:
+    return os::has_environment_variable(option.variable_name);
   case option_storage::ShellOption: break;
   default: return false;
   }
@@ -1245,8 +1247,6 @@ static fn seed_session_variables(EvalContext &context,
   }
   if (!context.get_variable_value("KOSH_HISTORY_SIZE").has_value())
     context.set_shell_variable("KOSH_HISTORY_SIZE", "4096");
-  context.mark_exported("KOSH_HISTORY_FILE");
-  context.mark_exported("KOSH_HISTORY_SIZE");
 
   /* A bash session, a bash-posix session, or a bash flavor in the init list
      advertises BASH_VERSION so a bash rc detects it. */

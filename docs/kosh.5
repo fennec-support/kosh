@@ -190,7 +190,9 @@ or
 .BR \-L ,
 keeps the command-line value, so
 .B kosh +e script
-runs without errexit whatever a file says. To run with no settings file at
+runs without errexit whatever a file says. In the same way, a KOSH_HISTORY_FILE
+or KOSH_HISTORY_SIZE variable inherited from the environment keeps its value
+over history.file_path or history.max_entries. To run with no settings file at
 all, start the shell with
 .BR \-\-no\-config .
 A later line replaces an earlier one, and the

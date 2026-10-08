@@ -79,6 +79,16 @@ printf 'mood=bash\n' >"$conf"
 echo "== an inherited KOSH_HISTORY_SIZE is the history.max_entries option:"
 printf 'mood=kosh\n' >"$conf"
 KOSH_HISTORY_SIZE=77 "$BIN" -c 'koshconf get history.max_entries; (koshconf get history.max_entries) & wait "$!"'
+echo "== an inherited history variable wins over the file, and neither is exported by default:"
+printf 'history.file_path=/from-file\nhistory.max_entries=88\n' >"$conf"
+(
+  unset KOSH_HISTORY_FILE KOSH_HISTORY_SIZE
+  "$BIN" -c 'echo "$KOSH_HISTORY_FILE $KOSH_HISTORY_SIZE"
+env | grep -c "^KOSH_HISTORY_" || :'
+  KOSH_HISTORY_FILE=/inherited KOSH_HISTORY_SIZE=5 "$BIN" -c '
+echo "$(koshconf get history.file_path) $(koshconf get history.max_entries)"
+env | grep "^KOSH_HISTORY_"'
+)
 echo "== privileged mode ignores and removes KOSHCONF and still reads the file:"
 printf 'editor.auto_close_brackets_and_quotes=on\n' >"$conf"
 KOSHCONF=BQEA "$BIN" -p -c 'koshconf get editor.auto_close_brackets_and_quotes

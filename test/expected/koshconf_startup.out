@@ -70,6 +70,12 @@ warning: 'HOME/.koshrc' is no longer read; see MIGRATION in kosh(5)
 == an inherited KOSH_HISTORY_SIZE is the history.max_entries option:
 77
 77
+== an inherited history variable wins over the file, and neither is exported by default:
+/from-file 88
+0
+/inherited 5
+KOSH_HISTORY_FILE=/inherited
+KOSH_HISTORY_SIZE=5
 == privileged mode ignores and removes KOSHCONF and still reads the file:
 on
 0
