@@ -218,7 +218,6 @@ fn koshkit_util_synopsis(Utility::Kind chosen) wontthrow
 fn find_util(StringView name) throws -> Maybe<Utility::Kind>;
 
 fn set_koshkit_color_mode(cli_color_mode mode) wontthrow -> void;
-fn get_koshkit_color_mode() wontthrow -> cli_color_mode;
 fn koshkit_should_color() throws -> bool;
 pure fn is_koshkit_color_when(StringView value) wontthrow -> bool;
 fn resolve_koshkit_color_flag(bool is_enabled, bool has_value,
@@ -358,6 +357,9 @@ enum class copy_force_mode : u8
 
 fn copy_file_contents(StringView source, StringView destination,
                       copy_force_mode force_mode) throws -> copy_file_result;
+fn copy_file_or_throw(StringView source, StringView destination,
+                      copy_force_mode force_mode, Allocator allocator) throws
+    -> void;
 fn make_directories(const Path &directory, u32 mode) wontthrow -> bool;
 fn read_named_or_stdin(const ExecContext &ec, StringView path) throws
     -> Maybe<String>;
@@ -531,6 +533,70 @@ fn read_named_or_stdin_batch(const ExecContext &ec,
                              const ArrayList<StringView> &sources,
                              Allocator allocator) throws
     -> ArrayList<source_read_result>;
+
+enum class source_visit_result : u8
+{
+  Complete,
+  Stopped,
+  Interrupted,
+};
+
+template <class Visit>
+fn visit_ordered_sources(const ExecContext &ec,
+                         const ArrayList<StringView> &sources,
+                         Allocator allocator, Visit do_visit) throws
+    -> source_visit_result
+{
+  let results = ArrayList<source_read_result>{allocator};
+  results.reserve(sources.count());
+  for (usize source_index = 0; source_index < sources.count(); source_index++)
+    results.push({None, 0, source_completion_state::Pending});
+
+  let reader = SourceBatchReader{ec, sources, allocator};
+  let chunks = ArrayList<SourceBatchReader::Chunk>{allocator};
+  usize next_source_index = 0;
+  loop
+  {
+    let const read_result = reader.read_next(chunks);
+    if (read_result == SourceBatchReader::ReadResult::Interrupted)
+      return source_visit_result::Interrupted;
+
+    for (let const &chunk : chunks) {
+      let &result = results[chunk.source_index];
+      result.completion = chunk.completion;
+      if (chunk.error_number != 0) {
+        result.content.reset();
+        result.error_number = chunk.error_number;
+        continue;
+      }
+      if (!result.content.has_value())
+        result.content = String{heap_allocator()};
+      result.content->append(chunk.content);
+    }
+
+    while (next_source_index < results.count() &&
+           results[next_source_index].completion ==
+               source_completion_state::Complete)
+    {
+      let &result = results[next_source_index];
+      if (!result.content.has_value())
+        os::set_last_system_error(result.error_number);
+      if constexpr (std::is_void_v<decltype(do_visit(next_source_index,
+                                                     result.content))>)
+      {
+        do_visit(next_source_index, result.content);
+      } else if (!do_visit(next_source_index, result.content)) {
+        return source_visit_result::Stopped;
+      }
+      result.content.reset();
+      next_source_index++;
+    }
+
+    if (read_result == SourceBatchReader::ReadResult::Complete)
+      return source_visit_result::Complete;
+  }
+}
+
 fn print_environment(const ExecContext &ec, EvalContext &cxt) throws -> void;
 
 enum class input_descriptor_mode : u8

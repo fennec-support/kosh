@@ -236,73 +236,34 @@ fn Cat::execute(const ExecContext &ec, EvalContext &cxt,
   let is_at_output_line_start = true;
   i32 status = 0;
 
-  let source_results = ArrayList<source_read_result>{cxt.scratch_allocator()};
-  source_results.reserve(sources.count());
-  for (usize source_index = 0; source_index < sources.count(); source_index++)
-    source_results.push({None, 0, source_completion_state::Pending});
+  let const visit = visit_ordered_sources(
+      ec, sources, cxt.scratch_allocator(),
+      [&](usize source_index, const Maybe<String> &content) throws {
+        let const source = sources[source_index];
+        if (!content.has_value()) {
+          report_soft_koshkit_util_error(
+              ec, cxt, args[0].view(),
+              String{cxt.scratch_allocator(), source} + ": " +
+                  os::last_system_error_message());
+          status = 1;
+          return;
+        }
 
-  let reader = SourceBatchReader{ec, sources, cxt.scratch_allocator()};
-  let chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
-  usize next_source_index = 0;
-  loop
-  {
-    let const read_result = reader.read_next(chunks);
-    bool is_reader_complete = false;
-    switch (read_result) {
-    case SourceBatchReader::ReadResult::Chunks: break;
-    case SourceBatchReader::ReadResult::Complete:
-      is_reader_complete = true;
-      break;
-    case SourceBatchReader::ReadResult::Interrupted: return 130;
-    }
-
-    for (let const &chunk : chunks) {
-      let &result = source_results[chunk.source_index];
-      result.completion = chunk.completion;
-      if (chunk.error_number != 0) {
-        result.content.reset();
-        result.error_number = chunk.error_number;
-        continue;
-      }
-      if (!result.content.has_value())
-        result.content = String{heap_allocator()};
-      result.content->append(chunk.content);
-    }
-
-    while (next_source_index < source_results.count() &&
-           source_results[next_source_index].completion ==
-               source_completion_state::Complete)
-    {
-      let &result = source_results[next_source_index];
-      let const source = sources[next_source_index];
-      if (!result.content.has_value()) {
-        os::set_last_system_error(result.error_number);
-        report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                       String{cxt.scratch_allocator(), source} +
-                                           ": " +
-                                           os::last_system_error_message());
-        status = 1;
-      } else {
         let const should_highlight_source =
             should_highlight_output &&
-            Path{source}.is_shell_source(result.content->view()) &&
-            !result.content->view().find_character('\0').has_value();
+            Path{source}.is_shell_source(content->view()) &&
+            !content->view().find_character('\0').has_value();
         let const number_mode = FLAG_CAT_NUMBER.is_enabled()
                                     ? cat_number_mode::Numbered
                                     : cat_number_mode::Unnumbered;
         let const highlight_mode = should_highlight_source
                                        ? cat_highlight_mode::Highlighted
                                        : cat_highlight_mode::Plain;
-        append_cat_source(output, result.content->view(), line_number,
+        append_cat_source(output, content->view(), line_number,
                           is_at_output_line_start, cxt, number_mode,
                           highlight_mode);
-        result.content.reset();
-      }
-      next_source_index++;
-    }
-
-    if (is_reader_complete) break;
-  }
+      });
+  if (visit == source_visit_result::Interrupted) return 130;
 
   ec.print_to_stdout(output);
   return status;

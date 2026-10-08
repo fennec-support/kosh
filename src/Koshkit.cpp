@@ -71,11 +71,6 @@ fn set_koshkit_color_mode(cli_color_mode mode) wontthrow -> void
   KOSHKIT_COLOR_MODE = mode;
 }
 
-fn get_koshkit_color_mode() wontthrow -> cli_color_mode
-{
-  return KOSHKIT_COLOR_MODE;
-}
-
 fn koshkit_should_color() throws -> bool
 {
   return stdout_wants_color(KOSHKIT_COLOR_MODE);
@@ -346,15 +341,41 @@ fn copy_file_contents(StringView source, StringView destination,
     if (!read_count.has_value()) return copy_file_result::ReadFailed;
     if (*read_count == 0) return copy_file_result::Success;
 
-    usize written_count = 0;
-    while (written_count < *read_count) {
-      let const chunk =
-          os::write_fd(*destination_descriptor, buffer + written_count,
-                       *read_count - written_count);
-      if (!chunk.has_value() || *chunk == 0)
-        return copy_file_result::WriteFailed;
-      written_count += *chunk;
-    }
+    if (!os::write_all(*destination_descriptor, buffer, *read_count))
+      return copy_file_result::WriteFailed;
+  }
+}
+
+fn copy_file_or_throw(StringView source, StringView destination,
+                      copy_force_mode force_mode, Allocator allocator) throws
+    -> void
+{
+  switch (copy_file_contents(source, destination, force_mode)) {
+  case copy_file_result::SourceOpenFailed:
+    throw Error{
+        "unable to open '" + String{allocator, source}
+          +
+        "': " + os::last_system_error_message()
+    };
+  case copy_file_result::DestinationOpenFailed:
+    throw Error{
+        "unable to create '" + String{allocator, destination}
+          +
+        "': " + os::last_system_error_message()
+    };
+  case copy_file_result::ReadFailed:
+    throw Error{
+        "a read of '" + String{allocator, source}
+          +
+        "' failed: " + os::last_system_error_message()
+    };
+  case copy_file_result::WriteFailed:
+    throw Error{
+        "a write to '" + String{allocator, destination}
+          +
+        "' failed: " + os::last_system_error_message()
+    };
+  case copy_file_result::Success: break;
   }
 }
 

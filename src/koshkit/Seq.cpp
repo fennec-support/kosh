@@ -21,58 +21,13 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Seq);
 
 namespace koshka::koshkit {
 
-static fn is_negative_number_token(StringView token) wontthrow -> bool
-{
-  return token.count() >= 2 && token[0] == '-' &&
-         token.substring(1).is_all_decimal_digits();
-}
-
-static fn
-find_leading_negative_position(const ArrayList<String> &args) wontthrow
-    -> Maybe<usize>
-{
-  for (usize i = 1; i < args.count(); i++) {
-    let const token = args[i].view();
-
-    if (token == "--") return None;
-
-    if (is_negative_number_token(token)) return i;
-
-    let const is_flag_token = token.count() >= 2 && token[0] == '-';
-    if (is_flag_token) continue;
-
-    return None;
-  }
-
-  return None;
-}
-
 fn Seq::execute(const ExecContext &ec, EvalContext &cxt,
                 const ArrayList<String> &args,
                 const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  ArrayList<String> patched_args{cxt.scratch_allocator()};
-  ArrayList<SourceLocation> patched_arg_locations{cxt.scratch_allocator()};
-  let const negative_position = find_leading_negative_position(args);
-  if (negative_position.has_value()) {
-    patched_args.reserve(args.count() + 1);
-    patched_arg_locations.reserve(arg_locations.count() + 1);
-    for (usize i = 0; i < args.count(); i++) {
-      if (i == *negative_position) {
-        patched_args.push_managed(StringView{"--"});
-        patched_arg_locations.push(SourceLocation{});
-      }
-      patched_args.push_managed(args[i].view());
-      patched_arg_locations.push(arg_locations[i]);
-    }
-  }
-
-  let const &effective_args =
-      negative_position.has_value() ? patched_args : args;
-  let const &effective_arg_locations =
-      negative_position.has_value() ? patched_arg_locations : arg_locations;
-  KOSHKIT_PARSE_OPERANDS_OR_HELP(effective_args, effective_arg_locations);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(
+      args, arg_locations, {.should_accept_negative_number_operand = true});
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
 

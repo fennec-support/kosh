@@ -26,20 +26,6 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Pkill);
 
 namespace koshka::koshkit {
 
-static fn uppercase_signal_name(StringView spelled, Allocator allocator) throws
-    -> String
-{
-  let uppercased = String{allocator};
-  uppercased.reserve(spelled.length);
-  for (usize i = 0; i < spelled.length; i++) {
-    let const byte = spelled[i];
-    uppercased.push(byte >= 'a' && byte <= 'z'
-                        ? static_cast<char>(byte - 'a' + 'A')
-                        : byte);
-  }
-  return uppercased;
-}
-
 fn resolve_koshkit_signal(StringView spelled, SourceLocation location,
                           Allocator allocator) throws -> i32
 {
@@ -53,7 +39,8 @@ fn resolve_koshkit_signal(StringView spelled, SourceLocation location,
     }
     return static_cast<i32>(parsed.value());
   }
-  let const uppercased = uppercase_signal_name(spelled, allocator);
+  let uppercased = String{allocator, spelled};
+  uppercased.uppercase_ascii();
   let const named = os::signal_number_from_name(uppercased.view());
   if (!named.has_value()) {
     let const unknown_signal = String{allocator, spelled};

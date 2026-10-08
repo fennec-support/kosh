@@ -1169,61 +1169,24 @@ fn Bc::execute(const ExecContext &ec, EvalContext &cxt,
       source_list_from_operands(operands, cxt.scratch_allocator());
   String program{cxt.scratch_allocator()};
 
-  let source_results = ArrayList<source_read_result>{cxt.scratch_allocator()};
-  source_results.reserve(sources.count());
-  for (usize source_index = 0; source_index < sources.count(); source_index++)
-    source_results.push({None, 0, source_completion_state::Pending});
+  let const visit = visit_ordered_sources(
+      ec, sources, cxt.scratch_allocator(),
+      [&](usize source_index, const Maybe<String> &content) throws {
+        if (!content.has_value()) {
+          report_soft_koshkit_util_error(
+              ec, cxt, args[0].view(),
+              "cannot read '" +
+                  String{cxt.scratch_allocator(), sources[source_index]} +
+                  "': " + os::last_system_error_message());
+          return false;
+        }
 
-  let reader = SourceBatchReader{ec, sources, cxt.scratch_allocator()};
-  let chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
-  usize next_source_index = 0;
-  loop
-  {
-    let const read_result = reader.read_next(chunks);
-    bool is_reader_complete = false;
-    switch (read_result) {
-    case SourceBatchReader::ReadResult::Chunks: break;
-    case SourceBatchReader::ReadResult::Complete:
-      is_reader_complete = true;
-      break;
-    case SourceBatchReader::ReadResult::Interrupted: return 130;
-    }
-
-    for (let const &chunk : chunks) {
-      let &result = source_results[chunk.source_index];
-      result.completion = chunk.completion;
-      if (chunk.error_number != 0) {
-        result.content.reset();
-        result.error_number = chunk.error_number;
-        continue;
-      }
-      if (!result.content.has_value())
-        result.content = String{heap_allocator()};
-      result.content->append(chunk.content);
-    }
-
-    while (next_source_index < source_results.count() &&
-           source_results[next_source_index].completion ==
-               source_completion_state::Complete)
-    {
-      let &result = source_results[next_source_index];
-      if (!result.content.has_value()) {
-        os::set_last_system_error(result.error_number);
-        report_soft_koshkit_util_error(
-            ec, cxt, args[0].view(),
-            "cannot read '" +
-                String{cxt.scratch_allocator(), sources[next_source_index]} +
-                "': " + os::last_system_error_message());
-        return 1;
-      }
-      program += result.content->view();
-      program += '\n';
-      result.content.reset();
-      next_source_index++;
-    }
-
-    if (is_reader_complete) break;
-  }
+        program += content->view();
+        program += '\n';
+        return true;
+      });
+  if (visit == source_visit_result::Interrupted) return 130;
+  if (visit == source_visit_result::Stopped) return 1;
   program = bc_strip_comments(program.view(), cxt.scratch_allocator());
 
   bc_runtime runtime{cxt.scratch_allocator()};

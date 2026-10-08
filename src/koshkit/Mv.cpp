@@ -24,57 +24,6 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Mv);
 
 namespace koshka::koshkit {
 
-static fn copy_file_contents(StringView source, StringView destination,
-                             Allocator allocator) throws -> void
-{
-  let const in_fd = os::open_file_descriptor(source, os::file_open_mode::Read);
-  if (!in_fd.has_value())
-    throw Error{
-        "unable to open '" + String{allocator, source}
-          +
-        "': " + os::last_system_error_message()
-    };
-  defer { os::close_fd(*in_fd); };
-
-  let const out_fd =
-      os::open_file_descriptor(destination, os::file_open_mode::Truncate);
-  if (!out_fd.has_value())
-    throw Error{
-        "unable to create '" + String{allocator, destination}
-          +
-        "': " + os::last_system_error_message()
-    };
-  defer { os::close_fd(*out_fd); };
-
-  char buffer[4096];
-  loop
-  {
-    let const read_count = os::read_fd(*in_fd, buffer, sizeof(buffer));
-    if (!read_count.has_value())
-      throw Error{
-          "a read of '" + String{allocator, source}
-            +
-          "' failed: " + os::last_system_error_message()
-      };
-    if (*read_count == 0) break;
-
-    usize written_count = 0;
-    while (written_count < *read_count) {
-      let const chunk = os::write_fd(*out_fd, buffer + written_count,
-                                     *read_count - written_count);
-      if (!chunk.has_value() || *chunk == 0) {
-        throw Error{
-            "a write to '" + String{allocator, destination}
-              +
-            "' failed: " + os::last_system_error_message()
-        };
-      }
-
-      written_count += *chunk;
-    }
-  }
-}
-
 static fn move_across_devices(StringView source, StringView target,
                               Allocator allocator) throws -> bool
 {
@@ -112,7 +61,8 @@ static fn move_across_devices(StringView source, StringView target,
       };
     }
   } else {
-    copy_file_contents(source, temporary_path->text().view(), allocator);
+    copy_file_or_throw(source, temporary_path->text().view(),
+                       copy_force_mode::Normal, allocator);
 
     os::file_status source_status{};
     if (os::stat_path(source, source_status) &&

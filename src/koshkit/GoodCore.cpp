@@ -77,15 +77,7 @@ fn write_text_file(StringView path, StringView text) throws -> bool
   if (!descriptor.has_value()) return false;
   defer { unused(os::close_fd(*descriptor)); };
 
-  usize written_count = 0;
-  while (written_count < text.length) {
-    let const chunk = os::write_fd(*descriptor, text.data + written_count,
-                                   text.length - written_count);
-    if (!chunk.has_value() || *chunk == 0) return false;
-    written_count += *chunk;
-  }
-
-  return true;
+  return os::write_all(*descriptor, text.data, text.length);
 }
 
 pure fn stripped_root(StringView path) wontthrow -> StringView

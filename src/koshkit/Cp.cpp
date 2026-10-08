@@ -98,35 +98,10 @@ static fn copy_file(const ExecContext &ec, StringView source,
                     StringView destination, const cp_options &options,
                     Allocator allocator) throws -> void
 {
-  let const force_mode =
-      options.should_force ? copy_force_mode::Force : copy_force_mode::Normal;
-  switch (copy_file_contents(source, destination, force_mode)) {
-  case copy_file_result::SourceOpenFailed:
-    throw Error{
-        "unable to open '" + String{allocator, source}
-          +
-        "': " + os::last_system_error_message()
-    };
-  case copy_file_result::DestinationOpenFailed:
-    throw Error{
-        "unable to create '" + String{allocator, destination}
-          +
-        "': " + os::last_system_error_message()
-    };
-  case copy_file_result::ReadFailed:
-    throw Error{
-        "a read of '" + String{allocator, source}
-          +
-        "' failed: " + os::last_system_error_message()
-    };
-  case copy_file_result::WriteFailed:
-    throw Error{
-        "a write to '" + String{allocator, destination}
-          +
-        "' failed: " + os::last_system_error_message()
-    };
-  case copy_file_result::Success: break;
-  }
+  copy_file_or_throw(source, destination,
+                     options.should_force ? copy_force_mode::Force
+                                          : copy_force_mode::Normal,
+                     allocator);
 
   if (options.is_verbose)
     ec.print_to_stdout("'" + String{allocator, source} + "' -> '" +
