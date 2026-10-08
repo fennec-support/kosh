@@ -1097,6 +1097,10 @@ public:
   {
     return m_line_discard_root;
   }
+  fn top_level_line_discard_root() wontthrow -> const Expression *&
+  {
+    return m_top_level_line_discard_root;
+  }
   fn line_discard_source() wontthrow -> StringView &
   {
     return m_line_discard_source;
@@ -1126,6 +1130,7 @@ private:
   String m_current_command{heap_allocator()};
   String m_completion_command_name{heap_allocator()};
   const Expression *m_line_discard_root{nullptr};
+  const Expression *m_top_level_line_discard_root{nullptr};
   StringView m_line_discard_source{};
   Maybe<i64> m_line_discard_status{};
   usize m_line_discard_subshell_depth{0};
@@ -4070,7 +4075,8 @@ public:
       -> String;
 
   fn evaluate_arithmetic(StringView expression,
-                         const SourceLocation *expression_base = nullptr) throws
+                         const SourceLocation *expression_base = nullptr,
+                         bool should_discard_top_level_line = false) throws
       -> i64;
   fn mark_expansion_error(ErrorBase &error,
                           expansion_error_reach reach) const wontthrow -> void;

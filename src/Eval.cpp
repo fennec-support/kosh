@@ -394,7 +394,13 @@ hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
         try {
           result = evaluate_arithmetic_text(value);
         } catch (ErrorBase &error) {
+          let const was_marked =
+              error.is_line_discarding() || error.is_script_fatal();
           mark_expansion_error(error, expansion_error_reach::Line);
+          if (!was_marked && error.is_line_discarding()) {
+            error.set_top_level_line_discarding();
+          }
+
           throw;
         }
       }

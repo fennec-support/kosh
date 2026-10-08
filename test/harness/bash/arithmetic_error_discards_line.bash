@@ -3,7 +3,10 @@
 # command of it, and $? is 1 on the next line. A subscript, a substring
 # offset, and an integer attribute assignment do the same. The (( )), let,
 # [[ ]], and for (( )) commands fail with status 1 instead, unless the error
-# comes from a subscript or an expansion inside them.
+# comes from a subscript or an expansion inside them. A subscript or integer
+# assignment error abandons the line of the outermost script even inside an
+# eval or a sourced file, and it ends a -c string or a command substitution
+# with status 1.
 echo a $(( 1 + )) b; echo same
 echo "list=$?"
 true && echo $(( 1 + )) || echo or; echo same
@@ -114,6 +117,26 @@ echo "subscript-in-let=$?"
 echo "expansion-in-arithmetic=$?"
 declare -i n; n='1 +'; echo same
 echo "integer=$?"
+
+eval 'arr[1+]=1; echo a'; echo "subscript-eval=$?"
+echo "after-subscript-eval=$?"
+eval 'echo ${arr[1+]}; echo a'; echo "subscript-expansion-eval=$?"
+eval 'n="1 +"; echo a'; echo "integer-eval=$?"
+eval 'echo ${arr[$(( 1 + ))]}; echo a'; echo "inner-expansion-eval=$?"
+printf '%s\n' 'arr[1+]=1; echo a' 'echo "sourced-subscript"' >"$source_file"
+. "$source_file"; echo "subscript-source=$?"
+rm -f "$source_file"
+link_dir=$(mktemp -d)
+ln -s "$BASH" "$link_dir/bash"
+"$link_dir/bash" -c 'echo start; arr[1+]=1 >/dev/null; echo same
+echo next'; echo "command-string=$?"
+"$link_dir/bash" -c 'arr[1+]=1; echo same
+echo next'; echo "command-string-plain=$?"
+"$link_dir/bash" -c 'echo $(( 1 + )); echo same
+echo next'; echo "command-string-expansion=$?"
+rm -r "$link_dir"
+x=$(arr[1+]=1; echo in
+echo more); echo "subscript-substitution=[$x] $?"
 
 echo $(( "1" + 2 )) "$(( "1 + 2" * 3 ))" $(( "0x1""0" ))
 (( "1" )) && echo "quoted-command=$?"

@@ -604,9 +604,8 @@ fn EvalContext::run_source(StringView source, StringView origin,
       execution_store().subshell_depth() ==
       execution_store().line_discard_subshell_depth();
   let const do_pass_line_discard = [&](ErrorBase &error) wontthrow -> bool {
-    if (should_hold_line_discard || !error.is_line_discarding() ||
-        error.is_script_fatal())
-    {
+    if (!error.is_line_discarding() || error.is_script_fatal()) return false;
+    if (should_hold_line_discard && !error.is_top_level_line_discarding()) {
       return false;
     }
 

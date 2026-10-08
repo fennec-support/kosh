@@ -52,6 +52,16 @@ pure fn internal::full_source_text(const EvalContext &cxt,
   return cxt.source_text_in_span(span, end_position);
 }
 
+static fn is_line_discard_root(EvalContext &cxt, const ErrorBase &error,
+                               const Expression *list) wontthrow -> bool
+{
+  if (error.is_top_level_line_discarding()) {
+    return cxt.execution_store().top_level_line_discard_root() == list;
+  }
+
+  return cxt.execution_store().line_discard_root() == list;
+}
+
 CompoundList::CompoundList() : Expression({0, 0}) {}
 
 CompoundList::~CompoundList() = default;
@@ -299,7 +309,7 @@ hot fn CompoundList::evaluate_root_status_impl(
           error.set_rendered();
         }
         if (error.is_line_discarding() && !is_async_node) {
-          if (cxt.execution_store().line_discard_root() != this) throw;
+          if (!is_line_discard_root(cxt, error, this)) throw;
           did_discard_line = true;
 
           return {static_cast<i32>(set_and_return_exit_status(
@@ -327,7 +337,7 @@ hot fn CompoundList::evaluate_root_status_impl(
           error.set_rendered();
         }
         if (error.is_line_discarding() && !is_async_node) {
-          if (cxt.execution_store().line_discard_root() != this) throw;
+          if (!is_line_discard_root(cxt, error, this)) throw;
           did_discard_line = true;
 
           return {static_cast<i32>(set_and_return_exit_status(

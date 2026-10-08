@@ -407,6 +407,7 @@ struct script_run_options
   bool should_silence_unresolved_commands{false};
   bool should_print_ast{true};
   bool should_analyze{true};
+  bool is_whole_line{false};
 };
 
 static fn exit_status_for(const Error &error, EvalContext &context) wontthrow
@@ -425,6 +426,7 @@ struct script_run_plan
   bool should_stream_units;
   bool should_stream_execution;
   bool should_preflight_syntax;
+  bool is_whole_line;
 };
 
 struct script_run_input
@@ -464,7 +466,8 @@ static fn make_script_run_plan(EvalContext &context, bool has_precompiled_ast,
 
   return script_run_plan{
       should_analyze, should_analyze && state.no_exec() && !needs_whole_tree,
-      should_stream_execution, should_stream_execution && !should_analyze};
+      should_stream_execution, should_stream_execution && !should_analyze,
+      run_options.is_whole_line};
 }
 
 /* A file with any parse error must not run, so every error is collected and
@@ -669,6 +672,8 @@ static fn evaluate_script(const script_run_input &input,
   context.set_current_source(&input.contents, "the script");
   let const previous_line_discard_root =
       context.execution_store().line_discard_root();
+  let const previous_top_level_line_discard_root =
+      context.execution_store().top_level_line_discard_root();
   let const previous_line_discard_source =
       context.execution_store().line_discard_source();
   let const previous_line_discard_subshell_depth =
@@ -676,9 +681,20 @@ static fn evaluate_script(const script_run_input &input,
   context.execution_store().line_discard_source() = input.contents.view();
   context.execution_store().line_discard_subshell_depth() =
       context.execution_store().subshell_depth();
+  let const is_whole_line =
+      plan.is_whole_line ||
+      evaluation_mode == root_evaluation_mode::ContainedSubstitution;
+  let const do_set_line_discard_root = [&](const Expression *root)
+                                           wontthrow -> void {
+    context.execution_store().line_discard_root() = root;
+    context.execution_store().top_level_line_discard_root() =
+        is_whole_line ? nullptr : root;
+  };
   defer
   {
     context.execution_store().line_discard_root() = previous_line_discard_root;
+    context.execution_store().top_level_line_discard_root() =
+        previous_top_level_line_discard_root;
     context.execution_store().line_discard_source() =
         previous_line_discard_source;
     context.execution_store().line_discard_subshell_depth() =
@@ -717,7 +733,7 @@ static fn evaluate_script(const script_run_input &input,
 
       context.execution_store().terminal_exec_allowed() =
           was_terminal_exec_allowed && execution_parser.is_at_end();
-      context.execution_store().line_discard_root() = unit;
+      do_set_line_discard_root(unit);
       exit_code =
           static_cast<int>(unit->evaluate_root(context, evaluation_mode));
       evaluation_mode = root_evaluation_mode::Normal;
@@ -729,7 +745,7 @@ static fn evaluate_script(const script_run_input &input,
       }
     }
   } else {
-    context.execution_store().line_discard_root() = ast;
+    do_set_line_discard_root(ast);
     exit_code = static_cast<int>(ast->evaluate_root(context, evaluation_mode));
   }
   context.execution_store().set_last_command_duration_nanos(

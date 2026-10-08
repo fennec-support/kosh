@@ -94,7 +94,7 @@ fn Jobs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         report_soft_builtin_error(ec, cxt,
                                   "Unable to list the job '" + names[a] +
                                       "' because no such job exists");
-        status = 1;
+        status = cxt.runtime_state().is_posix_mode() ? 2 : 1;
       }
     }
   } else {

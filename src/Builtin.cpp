@@ -322,12 +322,12 @@ fn execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
     if (!e.detail_message().is_empty()) {
       let relocated = ErrorWithLocationAndDetails{
           ec.source_location(), prefixed.view(), e.detail_message()};
-      if (e.is_line_discarding()) relocated.set_line_discarding();
+      relocated.take_line_discard_marks(e);
       relocated.set_command_status(e.command_status());
       throw relocated;
     }
     let relocated = ErrorWithLocation{ec.source_location(), prefixed.view()};
-    if (e.is_line_discarding()) relocated.set_line_discarding();
+    relocated.take_line_discard_marks(e);
     relocated.set_command_status(e.command_status());
     throw relocated;
   }

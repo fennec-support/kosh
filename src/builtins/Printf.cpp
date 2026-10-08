@@ -549,7 +549,15 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());
 
-  if (ec.args().count() < 2) return 0;
+  constexpr i32 USAGE_STATUS = 2;
+  let const do_report_missing_format = [&]() throws -> i32 {
+    report_soft_builtin_error(
+        ec, cxt, "A format operand is required",
+        "The usage is printf [-v var] format [arguments]");
+    return USAGE_STATUS;
+  };
+
+  if (ec.args().count() < 2) return do_report_missing_format();
 
   LOG(All, "printf formatting %zu arguments", ec.args().count() - 1);
 
@@ -557,18 +565,29 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
    */
   usize format_index = 1;
   Maybe<String> store_variable;
-  if (cxt.runtime_state().bash_additions_enabled() && ec.args()[1] == "-v" &&
-      ec.args().count() >= 3)
-  {
+  let const &first_arg = ec.args()[1];
+  if (cxt.runtime_state().bash_additions_enabled() && first_arg == "-v") {
+    if (ec.args().count() < 3) {
+      report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
+                                "The option -v requires a variable name");
+      return USAGE_STATUS;
+    }
+
     store_variable = ec.args()[2];
     format_index = 3;
+  } else if (!cxt.runtime_state().bash_additions_enabled() &&
+             first_arg.count() > 1 && first_arg[0] == '-' && first_arg != "--")
+  {
+    report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
+                              "'" + first_arg + "' is not a valid option");
+    return USAGE_STATUS;
   }
 
   if (format_index < ec.args().count() && ec.args()[format_index] == "--") {
     format_index++;
   }
 
-  if (format_index >= ec.args().count()) return 0;
+  if (format_index >= ec.args().count()) return do_report_missing_format();
 
   let const &args = ec.args();
   let const &fmt = args[format_index];

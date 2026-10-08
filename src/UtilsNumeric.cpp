@@ -79,7 +79,7 @@ fn uint_to_text_into(u64 value, char *buffer, usize buffer_size) wontthrow
   return StringView{buffer + offset, buffer_size - offset};
 }
 
-fn format_minutes_seconds(double seconds) throws -> String
+fn format_minutes_seconds(double seconds, i32 decimal_count) throws -> String
 {
   /* An rusage subtraction can go backwards, a negative clamps to zero to avoid
      a doubled sign like -0m-0.001s. */
@@ -87,8 +87,8 @@ fn format_minutes_seconds(double seconds) throws -> String
   const i64 minutes = static_cast<i64>(seconds) / 60;
   const double remainder = seconds - static_cast<double>(minutes * 60);
   char buffer[64];
-  std::snprintf(buffer, sizeof(buffer), "%ldm%.3fs", static_cast<long>(minutes),
-                remainder);
+  std::snprintf(buffer, sizeof(buffer), "%ldm%.*fs", static_cast<long>(minutes),
+                static_cast<int>(decimal_count), remainder);
   return String{buffer};
 }
 

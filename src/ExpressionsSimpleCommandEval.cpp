@@ -742,6 +742,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     Maybe<String> previous_shell_value;
     Maybe<SourceLocation> previous_special_definition_location;
     bool did_overlay_shell_value;
+    bool did_clear_circular_reference;
   };
   ArrayList<saved_env_var> saved_env{cxt.scratch_allocator()};
   saved_env.reserve(m_local_vars.count() + keyword_assignments.count());
@@ -767,6 +768,10 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         os::unset_environment_variable(restore.name.view());
       cxt.sync_exported_after_restore(restore.name.view(),
                                       restore.previous_value.has_value());
+      if (restore.did_clear_circular_reference) {
+        cxt.variable_store().attributes().set(
+            restore.name.view(), variable_attribute::Nameref, true);
+      }
     }
     if (saved_program_resolver.has_value())
       cxt.program_resolver() = steal(*saved_program_resolver);
@@ -796,15 +801,18 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
                                                       &assignment) throws {
     let name = assignment.key().view();
     let resolved_name = Maybe<String>{};
+    let did_clear_circular_reference = false;
     if (cxt.variable_store().attributes().is_nameref(name)) rarely
       {
         if (cxt.is_circular_nameref(name)) {
           cxt.warn_circular_nameref(name);
-          return;
-        }
+          if (is_prefix_assignment_persistent || name == "IFS") return;
 
-        resolved_name = cxt.resolve_nameref_for_write(name);
-        name = resolved_name->view();
+          did_clear_circular_reference = true;
+        } else {
+          resolved_name = cxt.resolve_nameref_for_write(name);
+          name = resolved_name->view();
+        }
       }
     if (cxt.is_readonly(name)) {
       if (cxt.runtime_state().is_bash_compatible() &&
@@ -862,6 +870,11 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       saved_program_resolver = Maybe<ProgramResolver>{cxt.program_resolver()};
 
     if (!is_read_field_separator) {
+      if (did_clear_circular_reference) {
+        cxt.variable_store().attributes().set(name, variable_attribute::Nameref,
+                                              false);
+      }
+
       Maybe<String> previous_shell_value;
       Maybe<SourceLocation> previous_special_definition_location;
       let const is_locale_name = name.starts_with("LC_") || name == "LANG";
@@ -888,7 +901,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
           String{cxt.scratch_allocator(), name},
           steal(previous),
           steal(previous_shell_value), previous_special_definition_location,
-          did_overlay_shell_value
+          did_overlay_shell_value, did_clear_circular_reference
       });
       os::set_environment_variable(name, expanded_value.view());
       cxt.mark_exported(name);

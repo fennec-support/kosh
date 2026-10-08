@@ -220,6 +220,14 @@ cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   LOG(Debug, "ulimit changing the '%s' limit to '%s'", resource.label,
       args[1].c_str());
 
+  let const is_posix = cxt.runtime_state().is_posix_mode();
+  if (is_posix && args.count() > 2) {
+    report_soft_builtin_error(ec, cxt, ec.arg_location_at(2),
+                              "Too many operands",
+                              "The sh mood accepts one limit operand");
+    return 2;
+  }
+
   let const &requested = args[1];
   let const units = block_factor(resource, cxt.runtime_state().get_mood());
   u64 value = os::RESOURCE_UNLIMITED;
@@ -229,7 +237,7 @@ cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       report_soft_builtin_error(
           ec, cxt, ec.arg_location_at(1), requested + ": invalid limit",
           "The limit must be a non-negative whole number");
-      return 1;
+      return is_posix ? 2 : 1;
     }
     /* A scaled resource multiplies the operand by its unit, so an operand that
        would overflow the multiply saturates to unlimited the way bash reports

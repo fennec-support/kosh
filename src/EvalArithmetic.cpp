@@ -2158,8 +2158,10 @@ fn evaluate_arithmetic_value(
 
 } /* namespace */
 
-fn EvalContext::evaluate_arithmetic(
-    StringView expression, const SourceLocation *expression_base) throws -> i64
+fn EvalContext::evaluate_arithmetic(StringView expression,
+                                    const SourceLocation *expression_base,
+                                    bool should_discard_top_level_line) throws
+    -> i64
 {
   let const scratch = expansion_store().scratch_arena().mark();
   defer { expansion_store().scratch_arena().release(scratch); };
@@ -2170,7 +2172,15 @@ fn EvalContext::evaluate_arithmetic(
         expansion_store().scratch_arena(), arithmetic_text_kind::ShellSource);
     return is_exact ? value.checked_i64() : value.wrapped_i64();
   } catch (ErrorBase &error) {
+    let const was_marked =
+        error.is_line_discarding() || error.is_script_fatal();
     mark_expansion_error(error, expansion_error_reach::Line);
+    if (should_discard_top_level_line && !was_marked &&
+        error.is_line_discarding())
+    {
+      error.set_top_level_line_discarding();
+    }
+
     throw;
   }
 }

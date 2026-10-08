@@ -170,6 +170,20 @@ public:
   {
     return m_is_line_discarding;
   }
+  fn set_top_level_line_discarding() wontthrow -> void
+  {
+    m_is_line_discarding = true;
+    m_is_top_level_line_discarding = true;
+  }
+  pure fn is_top_level_line_discarding() const wontthrow -> bool
+  {
+    return m_is_top_level_line_discarding;
+  }
+  fn take_line_discard_marks(const ErrorBase &source) wontthrow -> void
+  {
+    m_is_line_discarding = source.m_is_line_discarding;
+    m_is_top_level_line_discarding = source.m_is_top_level_line_discarding;
+  }
   fn set_command_status(i64 status) wontthrow -> void
   {
     m_command_status = status;
@@ -185,6 +199,7 @@ protected:
 
   bool m_is_script_fatal{false};
   bool m_is_line_discarding{false};
+  bool m_is_top_level_line_discarding{false};
   i64 m_command_status{1};
 };
 
@@ -419,14 +434,14 @@ wontreturn inline fn relocate_error(const ErrorBase &error,
     let relocated = ErrorWithLocationAndDetails{
         location, error.message().view(), error.detail_message()};
     if (error.is_script_fatal()) relocated.set_script_fatal();
-    if (error.is_line_discarding()) relocated.set_line_discarding();
+    relocated.take_line_discard_marks(error);
     relocated.set_command_status(error.command_status());
     throw relocated;
   }
 
   let relocated = ErrorWithLocation{location, error.message().view()};
   if (error.is_script_fatal()) relocated.set_script_fatal();
-  if (error.is_line_discarding()) relocated.set_line_discarding();
+  relocated.take_line_discard_marks(error);
   relocated.set_command_status(error.command_status());
   throw relocated;
 }

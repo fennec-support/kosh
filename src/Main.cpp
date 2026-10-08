@@ -1973,6 +1973,8 @@ static fn run_chunk(script_chunk &chunk, EvalContext &context,
 
   let run_options = script_run_options{};
   run_options.should_analyze = !chunk.is_fresh_evaluator_command;
+  run_options.is_whole_line =
+      chunk.command_string_name.has_value() || chunk.is_fresh_evaluator_command;
   if (chunk.command_string_name.has_value()) {
     run_options.should_require_shebang = false;
 

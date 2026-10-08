@@ -54,6 +54,26 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const &args = ec.args();
   ASSERT(!args.is_empty());
 
+  if (ec.is_called_through_command &&
+      cxt.runtime_state().get_mood() == mimic_mood::Posix)
+  {
+    for (usize i = 1; i < args.count(); i++) {
+      let const arg = args[i].view();
+      let const equals_position = arg.find_character('=');
+      let const name = equals_position.has_value()
+                           ? arg.substring_of_length(0, *equals_position)
+                           : arg;
+      if (name == "-" || name_is_valid_identifier(name)) continue;
+
+      report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
+                                StringView{"'"} + arg +
+                                    "' is not a valid identifier");
+      return 2;
+    }
+
+    return 0;
+  }
+
   if (cxt.scope_store().local_scope_depth() == 0)
     throw ErrorWithDetails{
         "Unable to declare a local variable outside a function",

@@ -283,7 +283,8 @@ fn int_to_text_into(i64 value, char *buffer, usize buffer_size) wontthrow
 fn uint_to_text_into(u64 value, char *buffer, usize buffer_size) wontthrow
     -> StringView;
 
-fn format_minutes_seconds(double seconds) throws -> String;
+fn format_minutes_seconds(double seconds, i32 decimal_count = 3) throws
+    -> String;
 fn format_duration_nanoseconds(u64 nanoseconds, Allocator allocator) throws
     -> String;
 

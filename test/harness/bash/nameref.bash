@@ -6,8 +6,10 @@
 # [[ -R ]], test -R, and [ -R ].
 # unset acts on the target, unset -n on the reference and on nothing else, and
 # a circular chain reads as unset and fails an assignment. Through a circular
-# chain read, printf -v, and export fail, arithmetic, a prefix, and declare
-# skip the write, an element or array assignment and unset drop the
+# chain read, printf -v, and export fail, arithmetic, a prefix before a
+# builtin, and declare skip the write, a prefix before eval, a function, or an
+# external command binds a plain variable for that command only, an element or
+# array assignment and unset drop the
 # reference, and a function's reference that loops back writes the caller's
 # variable. A reference to itself is an error at
 # the top level, and inside a function it warns and reaches the variable
@@ -213,6 +215,10 @@ echo "circular assignment status $?"
   export ca=e; echo "circular export $?"
   (( ca = 1 )); echo "circular arithmetic $?"
   ca=prefix true; echo "circular prefix $?"
+  ca=pre eval 'echo "circular prefix eval [$ca]"'
+  circular_prefix_function() { echo "circular prefix function [$ca]"; }
+  ca=pre circular_prefix_function
+  ca=pre env | grep '^ca='
   declare ca=d; echo "circular declare $?"
   (ca[1]=element; echo "circular element $?"; declare -p ca cb)
   (ca=(a b); echo "circular array $?"; declare -p ca cb)

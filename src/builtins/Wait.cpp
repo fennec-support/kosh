@@ -111,7 +111,7 @@ static fn wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
                                 target + ": no such job",
                                 "List the running jobs with `jobs`");
 
-      return 127;
+      return cxt.runtime_state().is_posix_mode() ? 2 : 127;
     }
 
     if (target.to<i64>().is_error()) {

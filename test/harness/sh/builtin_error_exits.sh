@@ -1,7 +1,11 @@
 # An error of a regular builtin fails it with status 2 and the script goes on.
 # An error of a special builtin or of local ends the shell with status 2, and
 # command keeps the shell running. A bad trap signal only fails trap. Extra
-# operands of exit, break, and continue are ignored, as dash does.
+# operands of exit, break, and continue are ignored, as dash does. A local
+# through command binds nothing and succeeds even outside a function. read
+# without a variable, printf without a format, an unknown job for wait or
+# jobs, and a bad ulimit operand fail with status 2. times prints six
+# decimals.
 set -- one
 cd /nonexistent; echo "cd=$?"
 [ a b c ]; echo "bracket=$?"
@@ -28,5 +32,18 @@ trap 'echo trap' BADSIG; echo "trap=$?"
 command shift 5; echo "command-shift=$?"
 command export 1a=b; echo "command-export=$?"
 command unset 1a; echo "command-unset=$?"
+x=outer
+command local x=inner; echo "command-local=$? x=$x"
+command local 1a; echo "command-local-bad=$?"
+g() { command local x=inner; echo "command-local-function x=$x"; }
+g
+read </dev/null; echo "read-no-name=$?"
+printf; echo "printf-no-format=$?"
+printf -v x; echo "printf-option=$?"
+wait %9; echo "wait-job=$?"
+jobs %9; echo "jobs-job=$?"
+( ulimit -n abc; echo "ulimit-number=$?" )
+( ulimit -S -n 1000 2000; echo "ulimit-extra=$?"; ulimit -S -n )
+times | sed 's/[0-9]/N/g'
 shift 5
 echo not reached

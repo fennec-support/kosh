@@ -34,6 +34,14 @@ static constexpr static_string_entry<EvalContext::DynamicArray>
 };
 static constexpr StaticStringMap DYNAMIC_ARRAYS{DYNAMIC_ARRAY_ENTRIES};
 
+static fn
+evaluate_array_index(EvalContext &context, StringView subscript,
+                     const SourceLocation *source_location = nullptr) throws
+    -> i64
+{
+  return context.evaluate_arithmetic(subscript, source_location, true);
+}
+
 static fn sparse_array_key(StringView name, usize index,
                            Allocator allocator) throws -> String
 {
@@ -273,7 +281,7 @@ fn EvalContext::assign_indexed_array_elements(
     StringView value;
     let index = running_index;
     if (parse_explicit_array_index(element.view(), subscript, value)) {
-      i64 raw_index = evaluate_arithmetic(subscript);
+      i64 raw_index = evaluate_array_index(*this, subscript);
       if (raw_index < 0) raw_index += array_negative_index_base(name);
       if (raw_index < 0)
         throw Error{"Unable to index '" + name +
@@ -448,7 +456,7 @@ fn EvalContext::assign_array_element(StringView name, StringView subscript,
     return;
   }
 
-  i64 index = evaluate_arithmetic(subscript);
+  i64 index = evaluate_array_index(*this, subscript);
   if (index < 0) index += array_negative_index_base(name);
   if (index < 0)
     throw Error{"Unable to index '" + name +
@@ -643,7 +651,7 @@ fn EvalContext::unset_array_element(StringView name,
     throw Error{String{name} + ": cannot unset"};
 
   if (is_bash_directory_stack_special(name)) {
-    unused(evaluate_arithmetic(subscript));
+    unused(evaluate_array_index(*this, subscript));
     return;
   }
 
@@ -657,7 +665,7 @@ fn EvalContext::unset_array_element(StringView name,
   }
 
   if (variable_store().indexed_arrays().find(name).has_value()) {
-    let const index = evaluate_arithmetic(subscript);
+    let const index = evaluate_array_index(*this, subscript);
     let array = variable_store().indexed_arrays().find(name);
     if (!array.has_value()) return;
 
@@ -952,7 +960,7 @@ fn EvalContext::apply_array_subscript(
           return out;
         }
 
-        let index = evaluate_arithmetic(subscript, source_location);
+        let index = evaluate_array_index(*this, subscript, source_location);
         if (index < 0) index += static_cast<i64>(element_count);
 
         if (index >= 0 && static_cast<usize>(index) < element_count) {
@@ -988,7 +996,7 @@ fn EvalContext::apply_array_subscript(
       return out;
     }
 
-    let index = evaluate_arithmetic(subscript, source_location);
+    let index = evaluate_array_index(*this, subscript, source_location);
     if (index < 0) index += static_cast<i64>(count);
     if (index < 0 || static_cast<usize>(index) >= count)
       return String{scratch_allocator()};
@@ -1047,7 +1055,7 @@ fn EvalContext::apply_array_subscript(
     return out;
   }
 
-  i64 index = evaluate_arithmetic(subscript, source_location);
+  i64 index = evaluate_array_index(*this, subscript, source_location);
   let const array = variable_store().indexed_arrays().find(name);
   if (!array.has_value()) {
     /* A scalar reads as a one-element array, so ${name[0]} is the value and any
@@ -1160,7 +1168,7 @@ fn EvalContext::array_element_is_set(StringView name,
   if (runtime_state().bash_dynamic_variables_enabled()) rarely
     {
       if (let const which = DYNAMIC_ARRAYS.find(name); which.has_value()) {
-        let index = evaluate_arithmetic(subscript);
+        let index = evaluate_array_index(*this, subscript);
         let const element_count =
             static_cast<i64>(dynamic_array_element_count(*which));
         if (index < 0) index += element_count;
@@ -1168,7 +1176,7 @@ fn EvalContext::array_element_is_set(StringView name,
       }
     }
   if (is_bash_directory_stack_special(name)) {
-    let index = evaluate_arithmetic(subscript);
+    let index = evaluate_array_index(*this, subscript);
     let const count =
         static_cast<i64>(variable_store().directory_stack().count() + 1);
     if (index < 0) index += count;
@@ -1178,7 +1186,7 @@ fn EvalContext::array_element_is_set(StringView name,
     let const key = expand_modifier_word(subscript);
     return lookup_associative_element(name, key.view()).has_value();
   }
-  let const index = evaluate_arithmetic(subscript);
+  let const index = evaluate_array_index(*this, subscript);
   if (let const array = variable_store().indexed_arrays().find(name);
       array.has_value())
   {

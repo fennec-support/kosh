@@ -38,11 +38,16 @@ cold i32 Times::execute(ExecContext &ec, EvalContext &cxt) const throws
 
   let const times = os::read_process_cpu_times();
 
+  let const decimal_count = cxt.runtime_state().is_posix_mode() ? 6 : 3;
+  let const do_format = [&](double seconds) throws -> String {
+    return utils::format_minutes_seconds(seconds, decimal_count);
+  };
+
   let out = String{cxt.scratch_allocator()};
-  out += utils::format_minutes_seconds(times.self_user_seconds) + " " +
-         utils::format_minutes_seconds(times.self_system_seconds) + "\n";
-  out += utils::format_minutes_seconds(times.child_user_seconds) + " " +
-         utils::format_minutes_seconds(times.child_system_seconds) + "\n";
+  out += do_format(times.self_user_seconds) + " " +
+         do_format(times.self_system_seconds) + "\n";
+  out += do_format(times.child_user_seconds) + " " +
+         do_format(times.child_system_seconds) + "\n";
   ec.print_to_stdout(out);
 
   return 0;

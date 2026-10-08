@@ -70,6 +70,12 @@ fn Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 2;
   }
 
+  if (cxt.runtime_state().is_posix_mode() && names.count() < 2) {
+    report_soft_builtin_error(ec, cxt, "A variable operand is required",
+                              "The sh mood has no default REPLY variable");
+    return 2;
+  }
+
   let read_fd = ec.in_fd.value_or(KOSH_STDIN);
   if (FLAG_READ_FD.is_set()) {
     let const parsed = FLAG_READ_FD.value().to<i64>();

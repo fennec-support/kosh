@@ -1422,6 +1422,11 @@ a subshell or command substitution ends with status 1. A pipeline stage or an
 asynchronous command fails alone. An eval or a sourced file inside a
 subshell, a command substitution, a pipeline stage, or an asynchronous command
 passes the error on, so that subshell ends with status 1 as Bash's does. An
+error in an indexed array subscript or in an assignment to an integer variable
+goes further: it passes through every eval and sourced file and abandons the
+line of the outermost script, and it ends a \-c string or a command
+substitution with status 1, while a $(( )) expansion inside the subscript
+stays an ordinary arithmetic error. An
 error in the expression of (( )),
 .BR let ,
 a [[ ]] operand, or a C-style for header fails that command with status 1, and
@@ -1463,7 +1468,13 @@ directory or an invalid test operand, fails that command with status 2 and
 the script goes on. An error of a special builtin or of local, such as shift
 past the last parameter or export of an invalid name, ends a non-interactive
 shell with status 2 unless command runs it. A bad trap signal only fails trap,
-and extra operands of exit, break, and continue are ignored, as in dash.
+and extra operands of exit, break, and continue are ignored, as in dash. Run
+through command, local checks its operands and binds nothing, even outside a
+function, so it succeeds. read without a variable, printf with an option or
+without a format, ulimit with a bad number or a second operand, and wait or
+jobs with an unknown job number fail with status 2. times prints the seconds
+with six decimals. In every mood printf without a format fails with status 2,
+as Bash and dash do.
 .PP
 The
 .B arithmetic.use_big_integers_and_decimals
@@ -2233,7 +2244,10 @@ value. A reference with no value binds to the name its
 first assignment gives it. A reference to itself is an error at the top level,
 and a circular chain reads as unset with a warning and fails an assignment.
 Through a circular chain, read, printf \-v, and export fail with status 1,
-arithmetic, a prefix assignment, and declare warn and skip the write, an element
+arithmetic, a prefix assignment before a builtin, and declare warn and skip
+the write, a prefix assignment before eval, a sourced file, a function, or an
+external command warns and binds a plain exported variable of that name until
+the command ends, an element
 or array assignment warns and turns the reference into an array, and unset
 removes the reference. When a function's reference loops back to its own name,
 an assignment warns and sets the variable the function's local hides.
@@ -4691,7 +4705,12 @@ process that is not a child.
 .PP
 A subshell, a pipeline stage, an asynchronous command, and a coprocess cannot
 wait for a job of their parent. They report 127 for its process or number and
-see none of the remembered statuses.
+see none of the remembered statuses. In the sh mood a job number that matches
+no job reports 2 from
+.B wait
+and
+.BR jobs ,
+as dash does.
 .B jobs
 there still lists the parent jobs as they were when the child started. A
 command substitution reports 127 for a parent job that is still running, but
