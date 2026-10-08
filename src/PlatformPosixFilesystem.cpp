@@ -62,25 +62,28 @@ cold fn path_exists(StringView path) wontthrow -> bool
   return ::stat(path_string.c_str(), &info) == 0;
 }
 
+static fn stat_path(StringView path, struct stat &info) wontthrow -> bool
+{
+  const String path_string{path};
+  return ::stat(path_string.c_str(), &info) == 0;
+}
+
 /* A failed stat reads as the type not matching. */
-static fn stat_matches_type(const char *path, mode_t expected_type) wontthrow
+static fn stat_matches_type(StringView path, mode_t expected_type) wontthrow
     -> bool
 {
   struct stat info{};
-  if (::stat(path, &info) != 0) return false;
-  return (info.st_mode & S_IFMT) == expected_type;
+  return stat_path(path, info) && (info.st_mode & S_IFMT) == expected_type;
 }
 
 cold fn path_is_directory(StringView path) wontthrow -> bool
 {
-  const String path_string{path};
-  return stat_matches_type(path_string.c_str(), S_IFDIR);
+  return stat_matches_type(path, S_IFDIR);
 }
 
 fn path_is_regular_file(StringView path) wontthrow -> bool
 {
-  const String path_string{path};
-  return stat_matches_type(path_string.c_str(), S_IFREG);
+  return stat_matches_type(path, S_IFREG);
 }
 
 fn path_is_symbolic_link(StringView path) wontthrow -> bool
@@ -93,94 +96,76 @@ fn path_is_symbolic_link(StringView path) wontthrow -> bool
 
 fn path_is_block_device(StringView path) wontthrow -> bool
 {
-  const String path_string{path};
-  return stat_matches_type(path_string.c_str(), S_IFBLK);
+  return stat_matches_type(path, S_IFBLK);
 }
 
 fn path_is_character_device(StringView path) wontthrow -> bool
 {
-  const String path_string{path};
-  return stat_matches_type(path_string.c_str(), S_IFCHR);
+  return stat_matches_type(path, S_IFCHR);
 }
 
 fn path_is_fifo(StringView path) wontthrow -> bool
 {
-  const String path_string{path};
-  return stat_matches_type(path_string.c_str(), S_IFIFO);
+  return stat_matches_type(path, S_IFIFO);
 }
 
 fn path_is_socket(StringView path) wontthrow -> bool
 {
-  const String path_string{path};
-  return stat_matches_type(path_string.c_str(), S_IFSOCK);
+  return stat_matches_type(path, S_IFSOCK);
 }
 
-static fn stat_mode_has_bits(const char *path, mode_t bits) wontthrow -> bool
+static fn stat_mode_has_bits(StringView path, mode_t bits) wontthrow -> bool
 {
   struct stat info{};
-  if (::stat(path, &info) != 0) return false;
-  return (info.st_mode & bits) != 0;
+  return stat_path(path, info) && (info.st_mode & bits) != 0;
 }
 
 fn path_has_setuid_bit(StringView path) wontthrow -> bool
 {
-  const String path_string{path};
-  return stat_mode_has_bits(path_string.c_str(), S_ISUID);
+  return stat_mode_has_bits(path, S_ISUID);
 }
 
 fn path_has_setgid_bit(StringView path) wontthrow -> bool
 {
-  const String path_string{path};
-  return stat_mode_has_bits(path_string.c_str(), S_ISGID);
+  return stat_mode_has_bits(path, S_ISGID);
 }
 
 fn path_has_sticky_bit(StringView path) wontthrow -> bool
 {
-  const String path_string{path};
-  return stat_mode_has_bits(path_string.c_str(), S_ISVTX);
+  return stat_mode_has_bits(path, S_ISVTX);
 }
 
 fn path_is_owned_by_effective_user(StringView path) wontthrow -> bool
 {
-  const String path_string{path};
   struct stat info{};
-  if (::stat(path_string.c_str(), &info) != 0) return false;
-  return info.st_uid == ::geteuid();
+  return stat_path(path, info) && info.st_uid == ::geteuid();
 }
 
 fn path_is_owned_by_effective_group(StringView path) wontthrow -> bool
 {
-  const String path_string{path};
   struct stat info{};
-  if (::stat(path_string.c_str(), &info) != 0) return false;
-  return info.st_gid == ::getegid();
+  return stat_path(path, info) && info.st_gid == ::getegid();
 }
 
 fn path_file_size(StringView path) wontthrow -> Maybe<u64>
 {
-  const String path_string{path};
   struct stat info{};
-  if (::stat(path_string.c_str(), &info) != 0 || !S_ISREG(info.st_mode)) {
-    return None;
-  }
+  if (!stat_path(path, info) || !S_ISREG(info.st_mode)) return None;
   return static_cast<u64>(info.st_size);
 }
 
 fn path_modification_time(StringView path) wontthrow -> Maybe<i64>
 {
-  const String path_string{path};
   struct stat info{};
-  if (::stat(path_string.c_str(), &info) != 0) return None;
+  if (!stat_path(path, info)) return None;
   return static_cast<i64>(info.st_mtime);
 }
 
 fn paths_are_same_file(StringView first, StringView second) wontthrow -> bool
 {
-  const String first_string{first};
-  const String second_string{second};
   struct stat first_info{}, second_info{};
-  if (::stat(first_string.c_str(), &first_info) != 0) return false;
-  if (::stat(second_string.c_str(), &second_info) != 0) return false;
+  if (!stat_path(first, first_info)) return false;
+  if (!stat_path(second, second_info)) return false;
   return first_info.st_dev == second_info.st_dev &&
          first_info.st_ino == second_info.st_ino;
 }
@@ -193,11 +178,9 @@ fn paths_match_for_history(StringView first, StringView second) wontthrow
 
 fn path_is_newer_than(StringView first, StringView second) wontthrow -> bool
 {
-  const String first_string{first};
-  const String second_string{second};
   struct stat first_info{}, second_info{};
-  if (::stat(first_string.c_str(), &first_info) != 0) return false;
-  if (::stat(second_string.c_str(), &second_info) != 0) return false;
+  if (!stat_path(first, first_info)) return false;
+  if (!stat_path(second, second_info)) return false;
   /* The nanoseconds break a same-second tie. */
   if (first_info.st_mtim.tv_sec != second_info.st_mtim.tv_sec)
     return first_info.st_mtim.tv_sec > second_info.st_mtim.tv_sec;
@@ -206,14 +189,7 @@ fn path_is_newer_than(StringView first, StringView second) wontthrow -> bool
 
 fn path_is_older_than(StringView first, StringView second) wontthrow -> bool
 {
-  const String first_string{first};
-  const String second_string{second};
-  struct stat first_info{}, second_info{};
-  if (::stat(first_string.c_str(), &first_info) != 0) return false;
-  if (::stat(second_string.c_str(), &second_info) != 0) return false;
-  if (first_info.st_mtim.tv_sec != second_info.st_mtim.tv_sec)
-    return first_info.st_mtim.tv_sec < second_info.st_mtim.tv_sec;
-  return first_info.st_mtim.tv_nsec < second_info.st_mtim.tv_nsec;
+  return path_is_newer_than(second, first);
 }
 
 fn path_is_readable(StringView path) wontthrow -> bool
