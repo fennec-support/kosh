@@ -1399,6 +1399,9 @@ evaluates back to the same bytes. The forms ${v@U}, ${v@L}, and ${v@u} apply the
 Any other operator after @ on a set parameter is a bad substitution that ends
 the script, and on an unset one it expands to nothing.
 .PP
+The runtime warning for an unset variable that expands to empty, such as the
+one for ${1}, also prints in the sh mood, where dash is silent.
+.PP
 The form ${!ref} expands the variable named by ref. The forms ${!pre*} and
 ${!pre@} list names beginning with pre.
 .PP

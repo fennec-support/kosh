@@ -2,6 +2,10 @@
 # The cases of positional_operators_matrix.sh that Kosh does not yet
 # expand as dash does. The matrix skips these keys, and this fixture
 # runs only them. Remove a key once its case agrees with dash.
+# Some keys differ only in whether stderr is present. Kosh prints the
+# runtime warning that an unset variable such as ${1} expands to empty,
+# and dash is silent. The warning is deliberate and accurate, so those
+# keys stay pending.
 pending_default_none='
 <|1|0>
 <|1|1>
