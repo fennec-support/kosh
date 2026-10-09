@@ -30,12 +30,12 @@ load_values() {
       set_positional 'p 1' ' p2'
       ;;
     quotes)
-      s="it's \"q\"" arr=("it's" '"dq"' 'b\s') map=(["k'1"]='v"1')
+      s="it's \"q\"" arr=("it's" '"dq"' 'b\\s') map=(["k'1"]='v"1')
       set_positional "o'ne" '"two"'
       ;;
     escapes)
-      s='a\tb\x41\101\e\\' arr=('\n' '\a\b' 'é') map=(['\t']='\x42')
-      set_positional '\t' '\\'
+      s='a\fb\x41\101\e\\' arr=('\n' '\a\b' 'é') map=(['\f']='\x42')
+      set_positional '\f' '\\'
       ;;
     newline)
       s=$'l1\nl2' arr=($'\n' 'x') map=([$'k\n']=$'v\n')

@@ -3166,32 +3166,7 @@ fn EvalContext::apply_parameter_transform_to_value(StringView text, char op,
         out, text, get_glob_charset_for(text) == glob_charset::Utf8);
     return out;
   }
-  case 'E':
-    for (usize i = 0; i < text.length; i++) {
-      if (text[i] != '\\' || i + 1 >= text.length) {
-        out.push(text[i]);
-        continue;
-      }
-      i++;
-      switch (text[i]) {
-      case 'n': out.push('\n'); break;
-      case 't': out.push('\t'); break;
-      case 'r': out.push('\r'); break;
-      case 'a': out.push('\a'); break;
-      case 'b': out.push('\b'); break;
-      case 'f': out.push('\f'); break;
-      case 'v': out.push('\v'); break;
-      case 'e': out.push('\x1b'); break;
-      case '\\': out.push('\\'); break;
-      case '\'': out.push('\''); break;
-      case '"': out.push('"'); break;
-      default:
-        out.push('\\');
-        out.push(text[i]);
-        break;
-      }
-    }
-    return out;
+  case 'E': utils::decode_ansi_c_escapes(out, text); return out;
   case 'a': {
     let const is_reference = variable_store().attributes().is_nameref(name) &&
                              !is_circular_nameref(name);
