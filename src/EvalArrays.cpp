@@ -204,7 +204,8 @@ fn EvalContext::assign_associative_elements(
 
 fn EvalContext::assign_indexed_array_elements(
     StringView name, const ArrayList<String> &elements,
-    assignment_update_mode update_mode) throws -> void
+    assignment_update_mode update_mode, const Bitset *subscript_flags) throws
+    -> void
 {
   let resolved_name = Maybe<String>{};
   if (variable_store().attributes().is_nameref(name)) rarely
@@ -273,11 +274,18 @@ fn EvalContext::assign_indexed_array_elements(
     set_indexed_array(name, ArrayList<String>{heap_allocator()});
   }
 
-  for (let const &element : elements) {
+  for (usize element_position = 0; element_position < elements.count();
+       element_position++)
+  {
+    let const &element = elements[element_position];
     StringView subscript;
     StringView value;
     let index = running_index;
-    if (parse_explicit_array_index(element.view(), subscript, value)) {
+    let const is_subscripted =
+        subscript_flags == nullptr || (*subscript_flags)[element_position];
+    if (is_subscripted &&
+        parse_explicit_array_index(element.view(), subscript, value))
+    {
       i64 raw_index = evaluate_array_index(*this, subscript);
       if (raw_index < 0) raw_index += array_negative_index_base(name);
       if (raw_index < 0)

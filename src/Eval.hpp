@@ -3270,7 +3270,8 @@ public:
   fn process_args(const ArrayList<const Token *> &args,
                   ArrayList<SourceLocation> *expanded_locations = nullptr,
                   argument_lifetime lifetime = argument_lifetime::Persistent,
-                  argument_context context = argument_context::Command) throws
+                  argument_context context = argument_context::Command,
+                  Bitset *subscript_flags = nullptr) throws
       -> ArrayList<String>;
 
   fn set_shell_variable(StringView name, StringView value) throws -> void;
@@ -3361,10 +3362,10 @@ public:
 
   fn clear_sparse_array(StringView name) throws -> void;
 
-  fn assign_indexed_array_elements(StringView name,
-                                   const ArrayList<String> &elements,
-                                   assignment_update_mode update_mode) throws
-      -> void;
+  fn assign_indexed_array_elements(
+      StringView name, const ArrayList<String> &elements,
+      assignment_update_mode update_mode,
+      const Bitset *subscript_flags = nullptr) throws -> void;
   fn assign_associative_elements(StringView name,
                                  const ArrayList<String> &elements) throws
       -> void;

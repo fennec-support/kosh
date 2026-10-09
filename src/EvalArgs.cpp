@@ -460,7 +460,8 @@ constexpr StaticStringMap DECLARATION_COMMANDS{DECLARATION_COMMAND_ENTRIES};
 hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
                                  ArrayList<SourceLocation> *expanded_locations,
                                  argument_lifetime lifetime,
-                                 argument_context context) throws
+                                 argument_context context,
+                                 Bitset *subscript_flags) throws
     -> ArrayList<String>
 {
   let const args_are_transient = lifetime == argument_lifetime::Transient;
@@ -532,8 +533,16 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
         suppressible_warning::UnsetTestOperand, previous_suppress_test_warning);
   };
 
+  let const do_fill_subscript_flags = [&]() throws -> void {
+    if (subscript_flags == nullptr) return;
+
+    while (subscript_flags->count() < expanded_args.count())
+      subscript_flags->push(false);
+  };
+
   for (let const *token : args) {
     let const location = token->source_location();
+    do_fill_subscript_flags();
     try {
       let fallback_word = Maybe<Word>{};
       const Word *word = nullptr;
@@ -619,6 +628,7 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
         expanded_args.push(String{expanded_args.allocator(),
                                   expand_word_for_assignment(*word).view()});
         do_record_location(location);
+        if (subscript_flags != nullptr) subscript_flags->push(true);
         continue;
       }
 
@@ -768,6 +778,7 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
       relocate_if_unlocated(e, location);
     }
   }
+  do_fill_subscript_flags();
 
   return expanded_args;
 }

@@ -669,14 +669,17 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     for (let const &assignment : m_array_args) {
       if (!cxt.is_circular_nameref(assignment.name))
         do_reject_readonly_target(assignment.name);
+      let subscript_flags = Bitset{cxt.scratch_allocator()};
       ArrayList<String> values = cxt.process_args(
           assignment.elements, nullptr, argument_lifetime::Persistent,
           cxt.is_associative_array(assignment.name)
               ? argument_context::AssociativeLiteral
-              : argument_context::ArrayLiteral);
+              : argument_context::ArrayLiteral,
+          &subscript_flags);
       do_trace_array_assignment(assignment, values);
       cxt.assign_indexed_array_elements(assignment.name, values,
-                                        assignment.update_mode);
+                                        assignment.update_mode,
+                                        &subscript_flags);
     }
     let const do_token_ran_substitution = [&](const Token *token) {
       if (token == nullptr) return false;
@@ -1238,16 +1241,19 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         cxt.variable_store().attributes().mark_lowercase(assignment.name);
       if (should_mark_uppercase)
         cxt.variable_store().attributes().mark_uppercase(assignment.name);
+      let subscript_flags = Bitset{cxt.scratch_allocator()};
       ArrayList<String> values = cxt.process_args(
           assignment.elements, nullptr, argument_lifetime::Persistent,
           is_associative_request || cxt.is_associative_array(assignment.name)
               ? argument_context::AssociativeLiteral
-              : argument_context::ArrayLiteral);
+              : argument_context::ArrayLiteral,
+          &subscript_flags);
       do_trace_array_assignment(assignment, values);
       if (is_associative_request)
         cxt.declare_associative_array(assignment.name);
       cxt.assign_indexed_array_elements(assignment.name, values,
-                                        assignment.update_mode);
+                                        assignment.update_mode,
+                                        &subscript_flags);
       if (is_export) cxt.mark_exported(assignment.name);
       if (is_readonly_request)
         cxt.variable_store().attributes().mark_readonly(assignment.name);
