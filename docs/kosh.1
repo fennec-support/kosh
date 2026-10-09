@@ -4110,7 +4110,14 @@ row appears under the word only after 250 milliseconds. A key closes the row
 and is typed as usual, and Escape or Ctrl\-C closes the Tab quietly. The load
 goes on, so the next Tab finds it cached. The language server and
 .B \-\-debug\-complete\-at
-wait for the load instead. A load is killed
+wait for the load instead. A Tab that runs a
+.B complete \-F
+function or a
+.B complete \-C
+command shows the
+.B loading...
+row before the function or command runs, because the shell waits for it. A
+menu that gathers again for a later key keeps its rows instead. A load is killed
 after 8 seconds or when the line is submitted, and a later pause tries it once
 more before it counts as missing. Every other manual page and help output is
 loaded at most once per session, and a missing page or an untrusted program

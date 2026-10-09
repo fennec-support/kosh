@@ -2000,6 +2000,20 @@ ScopedDocumentationDeferral::~ScopedDocumentationDeferral()
   IS_DEFERRING_DOCUMENTATION = m_was_deferring;
 }
 
+static slow_gather_notice SLOW_GATHER_NOTICE = nullptr;
+
+fn set_slow_gather_notice(slow_gather_notice notice) wontthrow -> void
+{
+  SLOW_GATHER_NOTICE = notice;
+}
+
+fn notice_slow_gather() wontthrow -> void
+{
+  if (IS_DEFERRING_DOCUMENTATION && SLOW_GATHER_NOTICE != nullptr) {
+    SLOW_GATHER_NOTICE();
+  }
+}
+
 static fn start_next_idle_load(StringView line, usize cursor,
                                EvalContext &context) throws -> bool
 {

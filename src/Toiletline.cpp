@@ -2486,6 +2486,7 @@ fn set_hint_row(bool should_show_hints, bool should_show_diagnostics) -> void
   let const is_row_shown = should_show_hints || should_show_diagnostics;
   ::tl_set_hint_callback(is_row_shown ? kosh_hint_callback : nullptr);
   ::tl_set_idle_callback(kosh_idle_callback, IDLE_DELAY_MS, IDLE_REPEAT_MS);
+  koshka::completion::set_slow_gather_notice(::tl_show_completion_loading);
 }
 
 fn set_auto_pair(bool enabled) -> void { ::tl_set_auto_pair(enabled ? 1 : 0); }

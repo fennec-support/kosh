@@ -288,6 +288,11 @@ fn abandon_idle_documentation() throws -> void;
 struct documentation_pending
 {};
 
+using slow_gather_notice = void (*)();
+
+fn set_slow_gather_notice(slow_gather_notice notice) wontthrow -> void;
+fn notice_slow_gather() wontthrow -> void;
+
 class ScopedDocumentationDeferral
 {
 public:

@@ -9,7 +9,8 @@
 # slower help shows the loading text under the word and opens the menu when it
 # finishes. A key typed during the load lands on the line at once, takes the
 # loading text down, and leaves the load running so the next Tab opens the menu
-# without forking again. Escape closes the Tab quietly. Every wait polls under
+# without forking again. Escape closes the Tab quietly. A completion function
+# that takes a while shows the loading text before its menu. Every wait polls under
 # a deadline, so a failure reports the last screen instead of hanging.
 
 import os
@@ -124,6 +125,31 @@ def check_escape(session, scenario):
                   has_closed_line("act -"))
 
 
+SPEC_WORDS = ["alpha", "beta"]
+
+
+def has_spec_menu(screen):
+    menu = screen.get_menu()
+    return (menu is not None
+            and sorted(entry.split()[0] for entry in menu[0]) == SPEC_WORDS)
+
+
+def check_spec(session, scenario):
+    with open(os.path.join(scenario, "bin", "nap"), "w") as handle:
+        handle.write("#!/bin/sh\n%s 0.6\n" % shutil.which("sleep"))
+    os.chmod(os.path.join(scenario, "bin", "nap"), 0o755)
+    type_text(session, b"_spec() { nap; COMPREPLY=(alpha beta); }; "
+              b"complete -F _spec spec_cmd")
+    session.send(b"\r")
+    if not report.record("spec-defined", session, is_line("")):
+        return
+    type_text(session, b"spec_cmd ")
+    session.send(b"\t")
+    if report.record("slow-spec-draws-loading-first", session,
+                     has_loading_row):
+        report.record("slow-spec-opens-the-menu", session, has_spec_menu)
+
+
 report = Report()
 
 
@@ -143,6 +169,7 @@ def main():
         run_scenario(binary, directory, "slow", "0.6", check_slow)
         run_scenario(binary, directory, "key", "1.5", check_key)
         run_scenario(binary, directory, "escape", "1.5", check_escape)
+        run_scenario(binary, directory, "spec", "0.1", check_spec)
     finally:
         shutil.rmtree(directory, ignore_errors=True)
     return 0 if report.is_ok else 1

@@ -1348,6 +1348,7 @@ generate_spec_candidates(completion_spec &active_spec,
     let const &words = do_completion_words();
     context.execution_store().set_completion_option_mask(
         active_spec.option_mask);
+    notice_slow_gather();
     let const reply = context.run_completion_function(
         active_spec.function_name.view(), do_command_name(), words,
         completion_cword, line, cursor, out_function_status,
@@ -1370,6 +1371,7 @@ generate_spec_candidates(completion_spec &active_spec,
     let const previous_word = previous_index < words.count()
                                   ? words[previous_index].view()
                                   : StringView{};
+    notice_slow_gather();
     for (let const &entry : context.run_completion_command(
              active_spec.command.view(), do_command_name(), word, previous_word,
              line, cursor))

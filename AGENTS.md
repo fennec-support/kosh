@@ -355,8 +355,10 @@ changes update this file.
   the loading frame only after the idle delay, and a key or Escape ends the
   wait while the load goes on. The language server and
   `--debug-complete-at` do not defer, and adopt the running child within
-  their own fork budget. Every other gather runs in the shell as before. The
-  hook also
+  their own fork budget. Every other gather runs in the shell as before.
+  Before a `complete -F` function or `-C` command runs in that scope,
+  `notice_slow_gather` calls the editor's `tl_show_completion_loading`, which
+  draws the loading frame on the first gather of a Tab only. The hook also
   keeps `describe_analysis_finding` for the paused line, which analyzes with
   unresolved commands silenced and no followed sources, so it opens no file.
   The hook runs whatever the hint rows show and indexes each CDPATH

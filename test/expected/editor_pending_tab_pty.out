@@ -12,4 +12,8 @@ escape-prompt PASS
 escape-load-draws-loading PASS
 escape-during-load-closes-quietly PASS
 escape-leaves-the-line-clean PASS
+spec-prompt PASS
+spec-defined PASS
+slow-spec-draws-loading-first PASS
+slow-spec-opens-the-menu PASS
 status=0
