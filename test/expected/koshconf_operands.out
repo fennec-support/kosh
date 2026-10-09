@@ -10,33 +10,33 @@ bash
 kosh
 sh
 == koshconf get option prefix:
-kosh.editor.auto_close_brackets_and_quotes
-kosh.editor.base_mode
-kosh.editor.cd_by_typing_directory_name
-kosh.editor.cd_fix_typos
-kosh.editor.ctrl_d_does_not_exit
-kosh.editor.highlight_syntax_and_show_ghost_text
-kosh.editor.hints.show_command_synopsis
-kosh.editor.hints.show_live_diagnostics
-kosh.editor.history.arrow_keys_search_by_typed_prefix
-kosh.editor.history.bang_expansion
-kosh.editor.history.file_path
-kosh.editor.history.max_entries
-kosh.editor.history.records_commands
-kosh.editor.history.reedit_failed_substitution
-kosh.editor.history.verify_expansion_before_running
-kosh.editor.interactive_comments
-kosh.editor.jobs_check_before_exit
-kosh.editor.jobs_hangup_on_exit
-kosh.editor.jobs_report_status_immediately
-kosh.editor.mail_warn_when_read
-kosh.editor.prompt_expands_parameters
-kosh.editor.request_extended_key_reports
-kosh.editor.transient_prompt_after_submit
-kosh.editor.update_columns_and_lines
+editor.auto_close_brackets_and_quotes
+editor.base_mode
+editor.cd_by_typing_directory_name
+editor.cd_fix_typos
+editor.ctrl_d_does_not_exit
+editor.highlight_syntax_and_show_ghost_text
+editor.hints.show_command_synopsis
+editor.hints.show_live_diagnostics
+editor.history.arrow_keys_search_by_typed_prefix
+editor.history.bang_expansion
+editor.history.file_path
+editor.history.max_entries
+editor.history.records_commands
+editor.history.reedit_failed_substitution
+editor.history.verify_expansion_before_running
+editor.interactive_comments
+editor.jobs_check_before_exit
+editor.jobs_hangup_on_exit
+editor.jobs_report_status_immediately
+editor.mail_warn_when_read
+editor.prompt_expands_parameters
+editor.request_extended_key_reports
+editor.transient_prompt_after_submit
+editor.update_columns_and_lines
 == koshconf set option prefix after a flag:
-kosh.interpreter.glob_no_match_expands_to_nothing
-kosh.interpreter.glob_no_match_is_error
+interpreter.glob_no_match_expands_to_nothing
+interpreter.glob_no_match_is_error
 == koshconf set editor mode value:
 emacs
 vi
@@ -68,6 +68,10 @@ history-probe
 --force
 --help
 == koshconf option name by subsequence:
-kosh.editor.history.max_entries
+editor.history.max_entries
 == koshconf option name prefix wins over subsequence:
-kosh.mood
+mood
+== koshconf get offers the legacy Bash alias:
+legacy.bash.extglob
+== koshconf set offers the legacy POSIX alias:
+legacy.posix.errexit

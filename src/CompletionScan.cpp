@@ -929,8 +929,16 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
         do_push_matching(preset);
     } else if (operands.count() == 1 && (form == "set" || form == "get")) {
       let names = ArrayList<StringView>{heap_allocator()};
-      for (let const &option : get_option_registry())
-        if (!option.is_set_alias) names.push(option.koshconf_name);
+      let aliases = ArrayList<String>{heap_allocator()};
+      for (let const &option : get_option_registry()) {
+        if (option.is_set_alias) continue;
+
+        names.push(option.koshconf_name);
+        if (let alias = get_legacy_koshconf_alias(option); alias.has_value())
+          aliases.push(steal(*alias));
+      }
+      for (let const &alias : aliases)
+        names.push(alias.view());
 
       if (mode != completion_mode::Listing) {
         for (let const name : names)
