@@ -3,7 +3,9 @@
 # checked against bash. Each case reads the substituted path back or checks
 # its shape, so no descriptor number reaches the output. The bodies print
 # nothing, several lines, spaces, glob characters, fail, and nest. A wait on
-# $! after a pipeline stage's substitution must not hang.
+# $! after a pipeline stage's substitution must not hang. That substitution
+# belongs to the stage's subshell, so neither shell waits for it, and the case
+# polls for its output before reading it.
 export LC_ALL=C
 cd "$(mktemp -d)" || exit 1
 error_file=$PWD/.error
@@ -67,7 +69,7 @@ readers=(
 )
 writers=(
   "echo data > >(@W@ > out.txt); wait \$!; cat out.txt"
-  "printf 'l1\nl2\n' | tee >(@W@ > out.txt) > /dev/null; wait \$!; cat out.txt"
+  "printf 'l1\nl2\n' | tee >(@W@ > out.txt) > /dev/null; wait \$!; for n in {1..50}; do [ -s out.txt ] && break; sleep 0.1; done; cat out.txt"
   "v=>(@W@ > out.txt); echo via-var > \"\$v\"; wait \$!; cat out.txt"
   "{ echo grouped; } > >(@W@ > out.txt); wait \$!; cat out.txt"
   "f() { echo func > >(@W@ > out.txt); wait \$!; }; f; cat out.txt"
