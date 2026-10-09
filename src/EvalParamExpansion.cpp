@@ -1622,6 +1622,13 @@ fn EvalContext::ParameterExpander::expand_indirect() throws -> String
         return String{m_context.scratch_allocator(), target->view()};
       }
     }
+  if (m_is_reference_target && body.length >= 4 &&
+      body[body.length - 1] == ']' &&
+      (body[body.length - 2] == '@' || body[body.length - 2] == '*') &&
+      body[body.length - 3] == '[' && body[body.length - 4] == ']')
+  {
+    return String{m_context.scratch_allocator()};
+  }
   let const name_end = find_indirect_name_end(body);
   if (name_end > 0 && name_end < body.length &&
       !(name_end == body.length - 1 &&
