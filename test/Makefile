@@ -86,9 +86,7 @@ export IS_NONDEBUG_BUILD
 ifeq ($(IS_NONDEBUG_BUILD),1)
 SKIPPED_TESTS += koshkit_live_sanitizers
 endif
-SKIPPED_TESTS += expansion_list_operators_matrix_pending \
-	nameref_contexts_matrix_pending \
-	positional_operators_matrix_pending
+SKIPPED_TESTS += positional_operators_matrix_warnings
 ifeq ($(NO_KOSHKIT),1)
 ifeq ($(KOSHKIT_BIN),)
 $(error NO_KOSHKIT=1 needs KOSHKIT_BIN set to a build that bundles koshkit)

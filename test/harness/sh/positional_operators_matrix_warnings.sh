@@ -1,12 +1,10 @@
 #!/bin/sh
-# The cases of positional_operators_matrix.sh that Kosh does not yet
-# expand as dash does. The matrix skips these keys, and this fixture
-# runs only them. Remove a key once its case agrees with dash.
-# Some keys differ only in whether stderr is present. Kosh prints the
+# The cases of positional_operators_matrix.sh in which Kosh prints its
 # runtime warning that an unset variable such as ${1} expands to empty,
-# and dash is silent. The warning is deliberate and accurate, so those
-# keys stay pending.
-pending_default_none='
+# where dash is silent. The warning is deliberate and accurate. The matrix
+# still compares the output and status of these cases, and leaves out only
+# whether they wrote to stderr.
+warning_default_none='
 <|1|0>
 <|1|1>
 <|1|2>
@@ -95,7 +93,7 @@ pending_default_none='
 <length|#1|1>
 <length|#1|2>
 '
-pending_default_one_empty='
+warning_default_one_empty='
 <|1|10>
 <#?|1|10>
 <##*|1|10>
@@ -103,7 +101,7 @@ pending_default_one_empty='
 <%%?|1|10>
 <#x|1|10>
 '
-pending_default_two_empty='
+warning_default_two_empty='
 <|1|10>
 <#?|1|10>
 <##*|1|10>
@@ -111,7 +109,7 @@ pending_default_two_empty='
 <%%?|1|10>
 <#x|1|10>
 '
-pending_default_spaces='
+warning_default_spaces='
 <|1|10>
 <#?|1|10>
 <##*|1|10>
@@ -119,7 +117,7 @@ pending_default_spaces='
 <%%?|1|10>
 <#x|1|10>
 '
-pending_default_glob='
+warning_default_glob='
 <|1|10>
 <#?|1|10>
 <##*|1|10>
@@ -127,7 +125,7 @@ pending_default_glob='
 <%%?|1|10>
 <#x|1|10>
 '
-pending_default_quotes='
+warning_default_quotes='
 <|1|10>
 <#?|1|10>
 <##*|1|10>
@@ -135,7 +133,7 @@ pending_default_quotes='
 <%%?|1|10>
 <#x|1|10>
 '
-pending_default_newline='
+warning_default_newline='
 <|1|10>
 <#?|1|10>
 <##*|1|10>
@@ -143,7 +141,7 @@ pending_default_newline='
 <%%?|1|10>
 <#x|1|10>
 '
-pending_empty_none='
+warning_empty_none='
 <|1|0>
 <|1|1>
 <|1|2>
@@ -184,7 +182,7 @@ pending_empty_none='
 <length|#1|1>
 <length|#1|2>
 '
-pending_colon_none='
+warning_colon_none='
 <|1|0>
 <|1|1>
 <|1|2>
@@ -225,6 +223,3 @@ pending_colon_none='
 <length|#1|1>
 <length|#1|2>
 '
-[ -n "${list_only-}" ] && return 0
-is_pending_run=1
-. "${0%/*}/positional_operators_matrix.sh"

@@ -2,12 +2,12 @@
 # Every POSIX parameter operator applied to $@, $*, $1, and a scalar in each
 # word context, checked against dash. The values cover no parameters, empty
 # parameters, spaces, glob characters, quotes, and newlines, under several
-# IFS values. Cases listed in the pending fixture are skipped.
+# IFS values. A case listed in the warnings file reports its output and
+# status but not whether it wrote to stderr, because Kosh warns there about
+# an unset variable where dash is silent.
 LC_ALL=C
 export LC_ALL
-list_only=1
-. "${0%/*}/positional_operators_matrix_pending.sh"
-unset list_only
+. "${0%/*}/positional_operators_matrix_warnings.sh"
 cd "$(mktemp -d)" || exit 1
 error_file=$PWD/.error
 newline='
@@ -28,25 +28,21 @@ load_values() {
   values_args=$(for argument in "$@"; do
     printf "'%s' " "$(printf '%s' "$argument" | sed "s/'/'\\\\''/g")"
   done)
-  eval "pending_group=\${pending_${extra}_${values}-}"
+  eval "warning_group=\${warning_${extra}_${values}-}"
 }
 
 run_case() {
   case_key="$operator|$target|$context"
-  case $pending_group in
-    *"<$case_key>"*)
-      [ -n "${is_pending_run-}" ] || return 0
-      ;;
-    *)
-      [ -z "${is_pending_run-}" ] || return 0
-      ;;
+  is_warning_case=
+  case $warning_group in
+    *"<$case_key>"*) is_warning_case=1 ;;
   esac
   printf '%s: ' "$1"
   IFS=$case_ifs
   eval "set -- $values_args; s=\$*; $1" 2>"$error_file"
   status=$?
   IFS=$default_ifs
-  if [ -s "$error_file" ]; then
+  if [ -s "$error_file" ] && [ -z "$is_warning_case" ]; then
     printf ' status=%s error\n' "$status"
   else
     printf ' status=%s\n' "$status"

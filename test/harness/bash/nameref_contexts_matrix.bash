@@ -2,12 +2,21 @@
 # Name references read in each word context and written by every binding
 # command, checked against bash. A reference names a scalar, an unset name,
 # an array element, an indexed array, an associative array, another
-# reference, or a function local. Cases listed in the pending fixture are
-# skipped.
+# reference, or a function local. A step or a let through a reference to an
+# associative array with no key 0 makes Kosh warn that the unset element
+# expands to empty, where bash is silent. The warning is deliberate, so those
+# cases report their output and status but not whether they wrote to stderr.
 export LC_ALL=C
-list_only=1
-. "${BASH_SOURCE%/*}/nameref_contexts_matrix_pending.bash"
-unset list_only
+warning_cases=(
+  'assoc|((ref++))||0|write'
+  'assoc|((ref++))||1|write'
+  'assoc|((ref++))||2|write'
+  'assoc|((ref++))||3|write'
+  'assoc|let ref+=3||0|write'
+  'assoc|let ref+=3||1|write'
+  'assoc|let ref+=3||2|write'
+  'assoc|let ref+=3||3|write'
+)
 cd "$(mktemp -d)" || exit 1
 error_file=$PWD/.error
 
@@ -56,22 +65,17 @@ load_values() {
   esac
 }
 
-declare -A pending_set=()
-for pending_key in "${pending_cases[@]}"; do
-  pending_set[$pending_key]=1
+declare -A warning_set=()
+for warning_key in "${warning_cases[@]}"; do
+  warning_set[$warning_key]=1
 done
 
 run_case() {
   local case_key="$values|$operator||$context|$extra"
-  if [[ -n ${pending_set[$case_key]-} ]]; then
-    [ -n "${is_pending_run-}" ] || return 0
-  else
-    [ -z "${is_pending_run-}" ] || return 0
-  fi
   printf '%s: ' "$1"
   eval "$1" 2>"$error_file"
   local status=$?
-  if [ -s "$error_file" ]; then
+  if [ -s "$error_file" ] && [[ -z ${warning_set[$case_key]-} ]]; then
     printf ' status=%s error\n' "$status"
   else
     printf ' status=%s\n' "$status"

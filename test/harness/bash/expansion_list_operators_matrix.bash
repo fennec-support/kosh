@@ -3,12 +3,25 @@
 # ${a[*]OP}, in each word context of a script, checked against bash. The
 # value sets cover an unset array, an empty one, empty elements, a sparse
 # array, spaces, glob characters, quotes, newlines, control bytes, several
-# IFS values, and nounset. Cases listed in the pending fixture are skipped.
+# IFS values, and nounset. Under an empty IFS, bash leaks its internal \001
+# byte before each space that a trimmed element brings into an unquoted
+# result, and Kosh does not. The leak cases drop that byte from their output
+# in both shells before it is compared. In the [[ ]] context the leaked byte
+# makes bash compare unequal words, so that case is not run.
 export LC_ALL=C
 shopt -s extglob
-list_only=1
-. "${BASH_SOURCE%/*}/expansion_list_operators_matrix_pending.bash"
-unset list_only
+leak_cases=(
+  'spaces|#?|@|0|ifs_empty'
+  'spaces|#?|@|2|ifs_empty'
+  'spaces|#?|@|4|ifs_empty'
+  'spaces|#?|@|6|ifs_empty'
+  'spaces|#?|@|7|ifs_empty'
+  'spaces|#?|@|13|ifs_empty'
+  'spaces|#?|*|0|ifs_empty'
+  'spaces|#?|*|4|ifs_empty'
+  'spaces|#?|*|6|ifs_empty'
+  'spaces|#?|*|7|ifs_empty'
+)
 cd "$(mktemp -d)" || exit 1
 error_file=$PWD/.error
 
@@ -28,21 +41,23 @@ load_values() {
   esac
 }
 
-declare -A pending_set=()
-for pending_key in "${pending_cases[@]}"; do
-  pending_set[$pending_key]=1
+declare -A leak_set=()
+for leak_key in "${leak_cases[@]}"; do
+  leak_set[$leak_key]=1
 done
 
 run_case() {
   local case_key="$values|$operator|$subscript|$context|$extra"
-  if [[ -n ${pending_set[$case_key]-} ]]; then
-    [ -n "${is_pending_run-}" ] || return 0
-  else
-    [ -z "${is_pending_run-}" ] || return 0
-  fi
+  local status
+  [[ $case_key == 'spaces|#?|@|9|ifs_empty' ]] && return 0
   printf '%s: ' "$1"
-  eval "$1" 2>"$error_file"
-  local status=$?
+  if [[ -n ${leak_set[$case_key]-} ]]; then
+    eval "$1" 2>"$error_file" | tr -d '\001'
+    status=${PIPESTATUS[0]}
+  else
+    eval "$1" 2>"$error_file"
+    status=$?
+  fi
   if [ -s "$error_file" ]; then
     printf ' status=%s error\n' "$status"
   else
