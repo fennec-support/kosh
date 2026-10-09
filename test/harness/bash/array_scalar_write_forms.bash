@@ -20,7 +20,7 @@ show a
 printf -v a %s pv
 show a
 
-declare -A m=([k]=v)
+declare -A m=([0]=v [k]=v)
 m=q
 show m
 m+=r
