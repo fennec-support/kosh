@@ -579,15 +579,15 @@ previous settings are restored before interactive input begins.
 .B \-\-no\-traces
 Source backtraces are suppressed. The primary message, source caret, note, and
 detail location remain visible when available. This turns
-diagnostics.show_source_traces off.
+kosh.optimizer.show_source_traces off.
 .TP
 .BR \-T ", " \-\-no\-completion
 Tab completion, ghost text, and syntax coloring are disabled. This turns
-editor.completion.on_tab off.
+kosh.completion.on_tab off.
 .TP
 .B \-\-no\-syntax\-highlighting
 Syntax coloring and ghost text are disabled. Tab completion remains enabled.
-This turns editor.highlight_syntax_and_show_ghost_text off.
+This turns kosh.editor.highlight_syntax_and_show_ghost_text off.
 .TP
 .BR \-\-tab\-selector " " \fIMODE\fR
 MODE selects how an explicit Tab presents several candidates and how Ctrl\-R
@@ -603,12 +603,12 @@ The behavior of each mode is described under
 .TP
 .B \-\-enable\-koshkit
 Bundled utility names resolve directly as commands. The option is equivalent to
-.BR "koshconf set koshkit.run_utilities_as_plain_commands on" .
+.BR "koshconf set kosh.interpreter.resolve_koshkit_applets_as_commands on" .
 .TP
 .B \-\-enable\-extended\-arithmetic
 Arbitrary-precision integers and finite decimal values are enabled. The option
 is equivalent to
-.BR "koshconf set kosh.arithmetic_uses_big_numbers on" .
+.BR "koshconf set kosh.interpreter.arithmetic_uses_big_numbers on" .
 The
 .B kosh
 mood always holds this option on.
@@ -628,7 +628,7 @@ A located diagnostic is printed when a command returns a non-zero status. A
 warning is printed when execution continues. An error is printed before
 errexit exits. A pipeline reports its effective status after pipefail is
 applied. The
-.B "koshconf set debug.report_nonzero_exit_codes on"
+.B "koshconf set kosh.debug.report_nonzero_exit_codes on"
 form turns the diagnostic on while the shell runs.
 .TP
 .BR \-N ", " \-\-show\-all\-exit\-codes
@@ -768,7 +768,7 @@ An explicit
 .BR "set \-o pipefail" ,
 .BR "shopt \-s failglob" ,
 or
-.B koshconf set kosh.arithmetic_uses_big_numbers
+.B koshconf set kosh.interpreter.arithmetic_uses_big_numbers
 in such a mood survives a later change between those moods. The command
 .B set \-o posix
 selects
@@ -816,20 +816,24 @@ as the analysis stage, command resolution, mimicry, and the debug reports do.
 .PP
 A koshconf name starts with its topic. Related settings sort and search
 together. Every globbing option contains glob. The topics are
-.BR kosh ,
+.BR kosh.mood
+and
+.BR kosh.init_moods ,
+which select the mood,
+.BR kosh.interpreter ,
 for the behavior of the shell itself,
-.BR editor ,
+.BR kosh.editor ,
 for the line editor with its subtopics
-.BR editor.completion ,
-.BR editor.history ,
+.BR kosh.editor.history
 and
-.BR editor.hints ,
-.BR debug ,
-.BR diagnostics ,
+.BR kosh.editor.hints ,
+.BR kosh.completion ,
+.BR kosh.debug ,
 and
-.BR koshkit .
+.BR kosh.optimizer ,
+for the analysis stage and its reports.
 .B koshconf list
-shows the current value and class of each.
+shows the current value of each.
 .PP
 Every option that has a Bash spelling is also accepted under an alias. The
 alias is legacy.posix.NAME when POSIX
@@ -852,21 +856,23 @@ spellings follows the duplicate rule of the file.
 .B koshconf create
 and
 .BR "koshconf list" ,
-error messages, and KOSHCONF use only the canonical name.
+error messages, and KOSHCONF use only the canonical name, except that
+.B koshconf list \-\-all
+adds each alias on a line of its own.
 .PP
 A configuration file may set every option except the ones fixed by how the
-shell started and the ones that depend on the session. kosh.login_shell and
-kosh.restricted_shell are read-only. kosh.privileged_mode,
-kosh.parse_without_executing, and kosh.exit_after_one_command come from the
-command line. kosh.job_control, editor.history.records_commands,
-editor.history.bang_expansion, and kosh.posixly_correct follow the session and
-the mood. editor.history.file_path may appear in a file, but
+shell started and the ones that depend on the session. kosh.interpreter.login_shell and
+kosh.interpreter.restricted_shell are read-only. kosh.interpreter.privileged_mode,
+kosh.interpreter.parse_without_executing, and kosh.interpreter.exit_after_one_command come from the
+command line. kosh.interpreter.job_control, kosh.editor.history.records_commands,
+kosh.editor.history.bang_expansion, and kosh.interpreter.posixly_correct follow the session and
+the mood. kosh.editor.history.file_path may appear in a file, but
 .B KOSHCONF
 leaves it out.
 .B KOSHCONF
 carries only the mood and the interactive options.
 .PP
-editor.base_mode is one option behind the Bash names emacs and vi. Its
+kosh.editor.base_mode is one option behind the Bash names emacs and vi. Its
 value is vi while
 .B set \-o vi
 is on and emacs otherwise, since the line editor uses emacs keys whenever vi is
@@ -895,203 +901,203 @@ retired.
 .ft CR
   1  kosh.mood
        letter M, semantic
-  2  editor.completion.menu_style
+  2  kosh.completion.menu_style
        interactive
-  3  editor.hints.show_command_synopsis
+  3  kosh.editor.hints.show_command_synopsis
        interactive
-  4  editor.hints.show_live_diagnostics
+  4  kosh.editor.hints.show_live_diagnostics
        interactive
-  5  editor.auto_close_brackets_and_quotes
+  5  kosh.editor.auto_close_brackets_and_quotes
        interactive
-  6  editor.transient_prompt_after_submit
+  6  kosh.editor.transient_prompt_after_submit
        interactive
-  7  editor.request_extended_key_reports
+  7  kosh.editor.request_extended_key_reports
        interactive
-  8  editor.history.arrow_keys_search_by_typed_prefix
+  8  kosh.editor.history.arrow_keys_search_by_typed_prefix
        interactive
-  9  editor.history.file_path
+  9  kosh.editor.history.file_path
        interactive
- 10  editor.history.max_entries
+ 10  kosh.editor.history.max_entries
        interactive
- 11  editor.completion.add_space_after_completed_word
+ 11  kosh.completion.add_space_after_completed_word
        interactive
- 12  diagnostics.warning_level
+ 12  kosh.optimizer.warning_level
        letter W, interactive
- 13  diagnostics.show_annoying_tier
+ 13  kosh.optimizer.show_annoying_tier
        interactive
- 14  diagnostics.analyze_before_running
+ 14  kosh.optimizer.analyze_before_running
        semantic
- 15  koshkit.run_utilities_as_plain_commands
+ 15  kosh.interpreter.resolve_koshkit_applets_as_commands
        semantic
- 16  kosh.arithmetic_uses_big_numbers
+ 16  kosh.interpreter.arithmetic_uses_big_numbers
        semantic
- 17  kosh.mimic_shebang
+ 17  kosh.interpreter.mimic_shebang
        letter I, semantic
- 18  debug.print_syntax_tree
+ 18  kosh.debug.print_syntax_tree
        letter A, semantic
- 19  debug.print_lexed_word_escapes
+ 19  kosh.debug.print_lexed_word_escapes
        letter R, semantic
- 20  debug.report_nonzero_exit_codes
+ 20  kosh.debug.report_nonzero_exit_codes
        semantic
- 21  debug.report_every_exit_code
+ 21  kosh.debug.report_every_exit_code
        letter N, semantic
- 22  debug.print_evaluation_statistics
+ 22  kosh.debug.print_evaluation_statistics
        letter S, semantic
- 23  debug.print_memory_report_at_exit
+ 23  kosh.debug.print_memory_report_at_exit
        letter G, semantic
- 24  editor.completion.on_tab
+ 24  kosh.completion.on_tab
        interactive
- 25  editor.highlight_syntax_and_show_ghost_text
+ 25  kosh.editor.highlight_syntax_and_show_ghost_text
        interactive
- 26  diagnostics.show_source_traces
+ 26  kosh.optimizer.show_source_traces
        interactive
  27  kosh.init_moods
        semantic
- 64  kosh.export_every_assigned_variable
+ 64  kosh.interpreter.export_every_assigned_variable
        set -o allexport, letter a, semantic
- 65  editor.jobs_report_status_immediately
+ 65  kosh.editor.jobs_report_status_immediately
        set -o notify, letter b, interactive
- 66  kosh.exit_on_command_failure
+ 66  kosh.interpreter.exit_on_command_failure
        set -o errexit, letter e, semantic
- 67  kosh.glob_disabled
+ 67  kosh.interpreter.glob_disabled
        set -o noglob, letter f, semantic
- 69  kosh.assignments_anywhere_in_command
+ 69  kosh.interpreter.assignments_anywhere_in_command
        set -o keyword, letter k, semantic
- 70  kosh.job_control
+ 70  kosh.interpreter.job_control
        set -o monitor, letter m, interactive
- 71  kosh.parse_without_executing
+ 71  kosh.interpreter.parse_without_executing
        set -o noexec, letter n, semantic
- 72  kosh.exit_after_one_command
+ 72  kosh.interpreter.exit_after_one_command
        set -o onecmd, letter t, semantic
- 73  kosh.privileged_mode
+ 73  kosh.interpreter.privileged_mode
        set -o privileged, letter p, semantic
- 74  kosh.unset_variable_is_error
+ 74  kosh.interpreter.unset_variable_is_error
        set -o nounset, letter u, semantic
- 75  debug.trace_input_lines
+ 75  kosh.debug.trace_input_lines
        set -o verbose, letter v, semantic
- 76  debug.trace_expanded_commands
+ 76  kosh.debug.trace_expanded_commands
        set -o xtrace, letter x, semantic
- 77  kosh.brace_expansion
+ 77  kosh.interpreter.brace_expansion
        set -o braceexpand, letter B, semantic
- 78  kosh.redirect_refuses_to_overwrite_files
+ 78  kosh.interpreter.redirect_refuses_to_overwrite_files
        set -o noclobber, letter C, semantic
- 79  kosh.trap_err_inherited_by_functions
+ 79  kosh.interpreter.trap_err_inherited_by_functions
        set -o errtrace, letter E, semantic
- 80  editor.history.bang_expansion
+ 80  kosh.editor.history.bang_expansion
        set -o histexpand, letter H, interactive
- 81  kosh.cd_resolves_symlinks
+ 81  kosh.interpreter.cd_resolves_symlinks
        set -o physical, letter P, semantic
- 82  kosh.trap_debug_and_return_inherited_by_functions
+ 82  kosh.interpreter.trap_debug_and_return_inherited_by_functions
        set -o functrace, letter T, semantic
- 83  kosh.pipeline_fails_on_any_stage
+ 83  kosh.interpreter.pipeline_fails_on_any_stage
        set -o pipefail, semantic
- 84  editor.history.records_commands
+ 84  kosh.editor.history.records_commands
        set -o history, interactive
- 85  editor.ctrl_d_does_not_exit
+ 85  kosh.editor.ctrl_d_does_not_exit
        set -o ignoreeof, interactive
- 87  editor.base_mode
+ 87  kosh.editor.base_mode
        set -o emacs and set -o vi, interactive
- 89  kosh.posixly_correct
+ 89  kosh.interpreter.posixly_correct
        set -o posix, semantic
-128  kosh.cd_by_typing_directory_name
+128  kosh.editor.cd_by_typing_directory_name
        shopt autocd, interactive
-129  kosh.array_subscripts_expand_once
+129  kosh.interpreter.array_subscripts_expand_once
        shopt assoc_expand_once, semantic
-130  kosh.cd_to_variable_value
+130  kosh.interpreter.cd_to_variable_value
        shopt cdable_vars, semantic
-131  kosh.cd_fix_typos
+131  kosh.editor.cd_fix_typos
        shopt cdspell, interactive
-132  kosh.verify_remembered_command_paths
+132  kosh.interpreter.verify_remembered_command_paths
        shopt checkhash, semantic
-133  kosh.jobs_check_before_exit
+133  kosh.editor.jobs_check_before_exit
        shopt checkjobs, interactive
-134  kosh.update_columns_and_lines
+134  kosh.editor.update_columns_and_lines
        shopt checkwinsize, interactive
-135  editor.completion.quote_all_special_characters
+135  kosh.completion.quote_all_special_characters
        shopt complete_fullquote, interactive
-136  editor.completion.expand_directory_names
+136  kosh.completion.expand_directory_names
        shopt direxpand, interactive
-137  editor.completion.fix_directory_typos
+137  kosh.completion.fix_directory_typos
        shopt dirspell, interactive
-138  kosh.glob_includes_dotfiles
+138  kosh.interpreter.glob_includes_dotfiles
        shopt dotglob, semantic
-139  kosh.exec_failure_keeps_shell
+139  kosh.interpreter.exec_failure_keeps_shell
        shopt execfail, semantic
-140  kosh.aliases_expand
+140  kosh.interpreter.aliases_expand
        shopt expand_aliases, semantic
-141  debug.debugger_support
+141  kosh.debug.debugger_support
        shopt extdebug, semantic
-142  kosh.glob_extended_patterns
+142  kosh.interpreter.glob_extended_patterns
        shopt extglob, semantic
-143  kosh.quote_dollar_strings_in_parameter_expansion
+143  kosh.interpreter.quote_dollar_strings_in_parameter_expansion
        shopt extquote, semantic
-144  kosh.glob_no_match_is_error
+144  kosh.interpreter.glob_no_match_is_error
        shopt failglob, semantic
-145  editor.completion.always_apply_fignore
+145  kosh.completion.always_apply_fignore
        shopt force_fignore, interactive
-146  kosh.glob_ranges_use_ascii_order
+146  kosh.interpreter.glob_ranges_use_ascii_order
        shopt globasciiranges, semantic
-147  kosh.glob_never_matches_dot_and_dotdot
+147  kosh.interpreter.glob_never_matches_dot_and_dotdot
        shopt globskipdots, semantic
-148  kosh.glob_double_star_recurses
+148  kosh.interpreter.glob_double_star_recurses
        shopt globstar, semantic
-149  diagnostics.errors_use_gnu_format
+149  kosh.optimizer.errors_use_gnu_format
        shopt gnu_errfmt, interactive
-150  editor.history.reedit_failed_substitution
+150  kosh.editor.history.reedit_failed_substitution
        shopt histreedit, interactive
-151  editor.history.verify_expansion_before_running
+151  kosh.editor.history.verify_expansion_before_running
        shopt histverify, interactive
-152  editor.completion.hostnames_after_at
+152  kosh.completion.hostnames_after_at
        shopt hostcomplete, interactive
-153  kosh.jobs_hangup_on_exit
+153  kosh.editor.jobs_hangup_on_exit
        shopt huponexit, interactive
-154  kosh.command_substitution_inherits_exit_on_failure
+154  kosh.interpreter.command_substitution_inherits_exit_on_failure
        shopt inherit_errexit, semantic
-155  kosh.interactive_comments
+155  kosh.editor.interactive_comments
        shopt interactive_comments, interactive
-156  kosh.pipeline_last_stage_runs_in_shell
+156  kosh.interpreter.pipeline_last_stage_runs_in_shell
        shopt lastpipe, semantic
-157  kosh.local_inherits_outer_value
+157  kosh.interpreter.local_inherits_outer_value
        shopt localvar_inherit, semantic
-158  kosh.local_unset_hides_outer
+158  kosh.interpreter.local_unset_hides_outer
        shopt localvar_unset, semantic
-159  kosh.login_shell
+159  kosh.interpreter.login_shell
        shopt login_shell, interactive
-160  kosh.mail_warn_when_read
+160  kosh.editor.mail_warn_when_read
        shopt mailwarn, interactive
-161  editor.completion.skip_empty_line
+161  kosh.completion.skip_empty_line
        shopt no_empty_cmd_completion, interactive
-162  kosh.glob_ignores_case
+162  kosh.interpreter.glob_ignores_case
        shopt nocaseglob, semantic
-163  kosh.match_ignores_case
+163  kosh.interpreter.match_ignores_case
        shopt nocasematch, semantic
-164  kosh.glob_no_match_expands_to_nothing
+164  kosh.interpreter.glob_no_match_expands_to_nothing
        shopt nullglob, semantic
-165  kosh.pattern_substitution_ampersand_is_match
+165  kosh.interpreter.pattern_substitution_ampersand_is_match
        shopt patsub_replacement, semantic
-166  editor.completion.programmable
+166  kosh.completion.programmable
        shopt progcomp, interactive
-167  editor.completion.programmable_follows_aliases
+167  kosh.completion.programmable_follows_aliases
        shopt progcomp_alias, interactive
-168  editor.prompt_expands_parameters
+168  kosh.editor.prompt_expands_parameters
        shopt promptvars, interactive
-169  kosh.restricted_shell
+169  kosh.interpreter.restricted_shell
        shopt restricted_shell, semantic
-170  kosh.shift_reports_overflow
+170  kosh.interpreter.shift_reports_overflow
        shopt shift_verbose, semantic
-171  kosh.source_searches_path
+171  kosh.interpreter.source_searches_path
        shopt sourcepath, semantic
-172  kosh.redirect_variable_fd_closed_after_command
+172  kosh.interpreter.redirect_variable_fd_closed_after_command
        shopt varredir_close, semantic
-173  kosh.echo_interprets_backslash_escapes
+173  kosh.interpreter.echo_interprets_backslash_escapes
        shopt xpg_echo, semantic
 .ft R
 .fi
 .PP
 The values are kosh.mood, one of kosh, sh, bash, and bash-posix;
-editor.completion.menu_style, one of interactive, external, and plain;
-diagnostics.warning_level, one of 0, 1, 2, and 3; and editor.base_mode,
-one of emacs and vi. editor.history.file_path and editor.history.max_entries are
+kosh.completion.menu_style, one of interactive, external, and plain;
+kosh.optimizer.warning_level, one of 0, 1, 2, and 3; and kosh.editor.base_mode,
+one of emacs and vi. kosh.editor.history.file_path and kosh.editor.history.max_entries are
 the
 KOSH_HISTORY_FILE and KOSH_HISTORY_SIZE variables. kosh.init_moods is a
 comma-separated list of the moods that
@@ -1102,14 +1108,14 @@ interactive or login shell, and yields to
 A restricted shell ignores it in the configuration files. Changing it in a
 running shell sources nothing; use
 .B set \-L
-for that. editor.completion.on_tab, editor.highlight_syntax_and_show_ghost_text,
-and diagnostics.show_source_traces are the settings behind
+for that. kosh.completion.on_tab, kosh.editor.highlight_syntax_and_show_ghost_text,
+and kosh.optimizer.show_source_traces are the settings behind
 .BR \-T ,
 .BR \-\-no\-syntax\-highlighting ,
 and
 .BR \-\-no\-traces .
 The editor applies the first two at the next prompt. Syntax coloring and ghost
-text need editor.completion.on_tab as well. interactive-comments is both
+text need kosh.completion.on_tab as well. interactive-comments is both
 a
 .B set \-o
 and a
@@ -1127,25 +1133,25 @@ is
 and
 .B set \-\-tab\-selector
 is
-.BR "koshconf set editor.completion.menu_style" .
+.BR "koshconf set kosh.completion.menu_style" .
 Each former Koshka
 .B set \-o
 name is a koshconf option:
 .B set \-o koshkit
 is
-.BR "koshconf set koshkit.run_utilities_as_plain_commands on" ,
+.BR "koshconf set kosh.interpreter.resolve_koshkit_applets_as_commands on" ,
 and interactive-hints, interactive-diagnostics, auto-pair, transient-prompt,
 extended-keys, history-prefix-search, space-after-completion,
 annoying-diagnostics, no-diagnostics, extended-arithmetic, mimicry, and the
-show options are editor.hints.show_command_synopsis,
-editor.hints.show_live_diagnostics,
-editor.auto_close_brackets_and_quotes, editor.transient_prompt_after_submit,
-editor.request_extended_key_reports,
-editor.history.arrow_keys_search_by_typed_prefix,
-editor.completion.add_space_after_completed_word,
-diagnostics.show_annoying_tier,
-diagnostics.analyze_before_running with the opposite value,
-kosh.arithmetic_uses_big_numbers, kosh.mimic_shebang,
+show options are kosh.editor.hints.show_command_synopsis,
+kosh.editor.hints.show_live_diagnostics,
+kosh.editor.auto_close_brackets_and_quotes, kosh.editor.transient_prompt_after_submit,
+kosh.editor.request_extended_key_reports,
+kosh.editor.history.arrow_keys_search_by_typed_prefix,
+kosh.completion.add_space_after_completed_word,
+kosh.optimizer.show_annoying_tier,
+kosh.optimizer.analyze_before_running with the opposite value,
+kosh.interpreter.arithmetic_uses_big_numbers, kosh.interpreter.mimic_shebang,
 and the debug options. failglob is
 .B shopt \-s failglob
 only. The hyphenated spellings such as no-unset are gone. ~/.koshrc is no longer
@@ -1314,8 +1320,8 @@ or the name rbash ignores and removes a
 environment variable with a warning. The configuration files are read before
 the restrictions take effect. They apply only presentation and diagnostic
 options. They warn about the mood, every semantic option,
-editor.history.file_path,
-and editor.history.max_entries. A configuration file cannot choose
+kosh.editor.history.file_path,
+and kosh.editor.history.max_entries. A configuration file cannot choose
 the startup files, the evaluation rules, the command resolution, or a history
 path. A child shell or a fresh evaluator inherits the restrictions.
 .PP
@@ -1576,7 +1582,7 @@ with six decimals. In every mood printf without a format fails with status 2,
 as Bash and dash do.
 .PP
 The
-.B kosh.arithmetic_uses_big_numbers
+.B kosh.interpreter.arithmetic_uses_big_numbers
 koshconf option uses arbitrary-precision integers and accepts finite base-10
 decimal literals. The default mood always holds it on, and the other moods start
 with it off. When the option is
@@ -1942,13 +1948,15 @@ Without the option no extra rows or system calls are added.
 .TP
 .BI "koshconf get " OPTION
 .TP
-.B koshconf list
+.BR "koshconf list " "[\fB\-a\fR|\fB\-\-all\fR]"
 .TP
 .BI "koshconf load " ENCODED
+.TP
+.BR "koshconf save " "[\fB\-\-persist\fR]"
 .PD
 The koshconf builtin is the only interface to the settings Koshka owns.
 .B koshconf list
-prints every option name.
+prints every option with its current value.
 .IP
 .B create
 writes the default file of the
@@ -1976,28 +1984,75 @@ prints the current value.
 prints a heading row that starts with a number sign and then every option in
 registry order as
 .IR name = value ,
-followed by its class, interactive or semantic, in a column that clears the
-longest line other than a string value. It shows a value that a file cannot
-hold in the
+one line each. It shows a value that a file cannot hold in the
 .B $\(aq...\(aq
-form.
+form. With
+.B \-a
+or
+.BR \-\-all ,
+each option that has a Bash spelling is followed by a second line that carries
+its alias with the same value: legacy.posix.NAME for a POSIX
+.B set \-o
+option, otherwise legacy.bash.NAME. The set-only options
+.B hashall
+and
+.B nolog
+appear there as legacy.posix.hashall and legacy.posix.nolog, which
+.B list
+shows for information only. The
+.B emacs
+and
+.B vi
+spellings of kosh.editor.base_mode are not listed, because they stand for two
+values of one option. Only
+.B list
+accepts
+.BR \-\-all .
 .B load
 applies a value of
 .B KOSHCONF
 to the current session.
+.B save
+prints the current settings as the value of
+.BR $KOSHCONF :
+the same encoding that every spawned process receives, which holds the mood
+and the interactive options. A kosh started with
+.B KOSHCONF=$(koshconf save)
+adopts them, and
+.B load
+accepts the value. With
+.BR \-\-persist ,
+.B save
+instead writes every setting that a file may hold, with its current value, to
+the user configuration file through the same temporary file and rename as
+.BR create ,
+and prints nothing. A restricted shell refuses
+.B save \-\-persist
+and allows a plain
+.BR save .
 .IP
 A boolean is written as on or off and is also read as true, false, 1, or 0. An
 enumeration is written by name. A string must be valid UTF-8, and
-editor.history.max_entries is a decimal integer from 0 to 2147483647. A negative
+kosh.editor.history.max_entries is a decimal integer from 0 to 2147483647. A negative
 number is an operand rather than a flag, so it reaches the value check. An
 unknown option or value, and a file that
 cannot be read or written, is an error with status 1, and a malformed form
 exits with status 2. An unknown option name or form suggests a close name when
 one exists. An interactive shell reports the file that
-.B create
+.BR create ,
+.BR "set \-\-persist" ,
 or
-.B set \-\-persist
-wrote on standard error; a script stays silent.
+.B save \-\-persist
+wrote on standard error; a script stays silent. Only
+.B set
+and
+.B save
+accept
+.BR \-\-persist ,
+and only
+.B create
+accepts
+.BR \-\-force .
 .TP
 .B z
 The current directory is changed to one selected from the frecency store.
@@ -2060,10 +2115,10 @@ prints the initialized moods. The
 .BR \-S ,
 and
 .B \-G
-letters set kosh.mimic_shebang, debug.print_syntax_tree,
-debug.print_lexed_word_escapes, debug.report_every_exit_code,
-debug.print_evaluation_statistics, and
-debug.print_memory_report_at_exit. Every other Koshka setting belongs to
+letters set kosh.interpreter.mimic_shebang, kosh.debug.print_syntax_tree,
+kosh.debug.print_lexed_word_escapes, kosh.debug.report_every_exit_code,
+kosh.debug.print_evaluation_statistics, and
+kosh.debug.print_memory_report_at_exit. Every other Koshka setting belongs to
 .BR koshconf .
 The
 .BR \-b ,
@@ -2078,7 +2133,7 @@ removes them from the argument list. The
 .BR \-WW ,
 and
 .B \-WWW
-forms set diagnostics.warning_level.
+forms set kosh.optimizer.warning_level.
 .PP
 The
 .B history
@@ -2616,7 +2671,7 @@ keeps the candidates in the order the spec generated them and drops only a
 candidate equal to the one before it.
 .B \-o nospace
 inserts no space after an accepted candidate whatever
-editor.completion.add_space_after_completed_word chooses.
+kosh.completion.add_space_after_completed_word chooses.
 A dash candidate is offered only when the word starts with a dash. An empty
 result falls through to the next completion source, except that with
 .B \-o bashdefault
@@ -2794,7 +2849,7 @@ and
 options read expressions interactively or from a pipe.
 Arbitrary precision integers and finite decimal values are accepted in every
 mood, and the
-.B kosh.arithmetic_uses_big_numbers
+.B kosh.interpreter.arithmetic_uses_big_numbers
 option does not narrow a calc result. The abs, atan, ceil, cmp, cos, exp,
 fact, fib, floor, frac, gcd, int, iseven, isint, isodd, length, lcm, ln, max,
 min, scale, sgn, sin, and sqrt functions are available.
@@ -3996,9 +4051,9 @@ the replace key
 and the colon command line. A key typed fast enough to arrive with the prefix
 is read at once without drawing the rows. The rows are the hint rows, so
 turning off both
-.B editor.hints.show_command_synopsis
+.B kosh.editor.hints.show_command_synopsis
 and
-.B editor.hints.show_live_diagnostics
+.B kosh.editor.hints.show_live_diagnostics
 turns these off too.
 .PP
 Ctrl\-Z undoes while the editor collects a line, the same as Ctrl\-_. A program
@@ -4033,7 +4088,7 @@ protocol ignores the requests. Inside tmux the modifyOtherKeys request takes
 effect when the tmux
 .B extended\-keys
 option is on, and GNU screen discards both. The
-.B koshconf set editor.request_extended_key_reports off
+.B koshconf set kosh.editor.request_extended_key_reports off
 command stops the requests from the next prompt on, and the option is on by
 default. Without these modes most terminals send the Ctrl\-Z byte for both
 keys, and the Windows console reports no shift state for it and receives no
@@ -4051,7 +4106,7 @@ On a non-empty line, the up arrow recalls only the history entries that begin
 with the text typed before the first up arrow. Each further up arrow moves to
 an older match and the down arrow moves back. Stepping past the newest match
 restores the typed text. An empty line steps through the whole history. The
-.B koshconf set editor.history.arrow_keys_search_by_typed_prefix off
+.B koshconf set kosh.editor.history.arrow_keys_search_by_typed_prefix off
 command turns this off, and the option is on by default.
 .PP
 Once the cursor is past the command word, the rows directly below the input
@@ -4134,7 +4189,7 @@ after 8 seconds or when the line is submitted, and a later pause tries it once
 more before it counts as missing. Every other manual page and help output is
 loaded at most once per session, and a missing page or an untrusted program
 is remembered as missing. The
-.B koshconf set editor.hints.show_command_synopsis off
+.B koshconf set kosh.editor.hints.show_command_synopsis off
 command turns these hints off and stops the loads, and the option is on by
 default.
 .PP
@@ -4151,11 +4206,11 @@ in place of the synopsis until the line changes. This analysis follows no
 sourced
 file and resolves no command name, so it opens no file and searches no PATH.
 The finding and the syntax problem below follow
-.BR editor.hints.show_live_diagnostics ,
+.BR kosh.editor.hints.show_live_diagnostics ,
 which
-.B koshconf set editor.hints.show_live_diagnostics off
+.B koshconf set kosh.editor.hints.show_live_diagnostics off
 turns off; the option is on by default and is independent of
-.BR editor.hints.show_command_synopsis .
+.BR kosh.editor.hints.show_command_synopsis .
 .PP
 When the line has a syntax problem that running it would report, the same rows
 show that problem in place of the synopsis, in the same dim style, under
@@ -4204,10 +4259,10 @@ backslash, which joins the next row and shows nothing. The error shows with the
 caret anywhere, including at the end of the word it starts in. A line over 2048
 bytes shows nothing. The problem
 follows
-.BR editor.hints.show_live_diagnostics .
+.BR kosh.editor.hints.show_live_diagnostics .
 .PP
 The
-.B koshconf set editor.auto_close_brackets_and_quotes on
+.B koshconf set kosh.editor.auto_close_brackets_and_quotes on
 command makes a typed
 .BR ( ,
 .BR [ ,
@@ -4241,11 +4296,11 @@ cut to fit the row, and when its expansion holds a control character other
 than a color sequence, such as a line break, a tab, or a title sequence. Rows
 after the first input row never carry it. It is never part of the submitted
 line, and without
-.B editor.transient_prompt_after_submit
+.B kosh.editor.transient_prompt_after_submit
 it stays in the scrollback after Enter.
 .PP
 The
-.B koshconf set editor.transient_prompt_after_submit on
+.B koshconf set kosh.editor.transient_prompt_after_submit on
 command makes Enter redraw the submitted line, and Ctrl\-C the interrupted
 line before its ^C, after a short prompt so the scrollback stays compact.
 Everything from the first row of PS1 down is erased,
@@ -4283,8 +4338,8 @@ candidates. Typing, Esc, Ctrl\-G, and Enter act as in any open menu. When
 that prefix does not extend the token and more than one candidate remains, the
 candidates are presented by the selector chosen by
 .B \-\-tab\-selector
-or editor.completion.menu_style. Ctrl\-Space acts as Tab on a POSIX system.
-The editor.completion.add_space_after_completed_word setting chooses whether
+or kosh.completion.menu_style. Ctrl\-Space acts as Tab on a POSIX system.
+The kosh.completion.add_space_after_completed_word setting chooses whether
 an accepted
 complete candidate takes one space after it:
 .B off
@@ -4423,7 +4478,7 @@ Ctrl\-Delete, and Shift\-Tab as legacy scan codes, which act the same. A key
 that a terminal reports through the kitty keyboard protocol or xterm
 modifyOtherKeys
 acts as the key it represents, as described for the
-.B editor.request_extended_key_reports
+.B kosh.editor.request_extended_key_reports
 option above.
 .SS Emacs mode keys
 .TP
@@ -4798,7 +4853,7 @@ ESC ] 7 ; file://host/path, and the prompt start as ESC ] 133 ; A.
 The prompt ends with ESC ] 133 ; B. A submitted command is announced by
 ESC ] 133 ; C after PS0 is printed. The first prompt carries no D mark.
 The marks occupy no columns in the prompt width. Under
-.BR editor.transient_prompt_after_submit ,
+.BR kosh.editor.transient_prompt_after_submit ,
 the short prompt drawn over a submitted line starts on the row the A mark
 named and ends with its own ESC ] 133 ; B, so the terminal finds the command
 after it. When TERM_PROGRAM is vscode,
@@ -5083,9 +5138,9 @@ for
 for the level of
 .BR \-W ,
 .B no\-annoying
-for diagnostics.show_annoying_tier off, and
+for kosh.optimizer.show_annoying_tier off, and
 .B no\-diagnostics
-for diagnostics.analyze_before_running off.
+for kosh.optimizer.analyze_before_running off.
 The variable is removed when no word remains. A shell loads it at startup, and
 an explicit
 .B \-W
@@ -5105,7 +5160,7 @@ the system path.
 .TP
 .B KOSH_HISTORY_FILE
 The value specifies the command history file. The default is ~/.kosh_history.
-A value inherited from the environment wins over editor.history.file_path in the
+A value inherited from the environment wins over kosh.editor.history.file_path in the
 settings files. Like bash's HISTFILE, the shell does not export it unless it
 was inherited or is exported explicitly. HISTFILE itself has no effect on the
 history file.
@@ -5114,7 +5169,7 @@ history file.
 The value bounds the number of history events retained for recall, listing, and
 storage. The default is 4096. A value of zero disables history retention and
 storage. A value inherited from the environment wins over
-editor.history.max_entries
+kosh.editor.history.max_entries
 in the settings files, and the shell exports it only when it was inherited or
 is exported explicitly.
 .TP
@@ -5243,7 +5298,7 @@ RPROMPT is read when RPS1 is unset or empty. The value expands like PS1. See
 .TP
 .B PS1_TRANSIENT
 The value is the prompt a submitted line is redrawn after when the
-.B editor.transient_prompt_after_submit
+.B kosh.editor.transient_prompt_after_submit
 option is on. It expands like PS1. When it is unset or empty, the prompt is
 "$ ", or "# " for root. See
 .BR "LINE EDITING" .
@@ -5477,7 +5532,7 @@ under the cursor. COMP_LINE contains the complete line. COMP_POINT is the
 cursor byte offset. COMP_WORDBREAKS contains the bytes that split a word.
 Trailing spaces are removed from each COMPREPLY entry, and the space after an
 accepted candidate is controlled by the
-editor.completion.add_space_after_completed_word option and the nospace option
+kosh.completion.add_space_after_completed_word option and the nospace option
 of
 the completion. The
 spec's

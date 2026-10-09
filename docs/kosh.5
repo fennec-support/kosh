@@ -71,9 +71,10 @@ command that would let the shell trust it.
 .IR $XDG_CONFIG_HOME/kosh/kosh.conf " or " ~/.config/kosh/kosh.conf
 The user settings file, read second. XDG_CONFIG_HOME is used when it is set to
 an absolute path.
-.B koshconf create
+.BR "koshconf create" ,
+.BR "koshconf set \-\-persist" ,
 and
-.B koshconf set \-\-persist
+.B koshconf save \-\-persist
 write this file. When the path is a symbolic link, as a dotfile manager such as
 stow leaves it, the link is kept and its final target is written instead. The
 new text goes to a temporary file in the target's directory. The file is flushed
@@ -147,7 +148,7 @@ the blanks at the end of the line. A value cannot span lines.
 .PP
 A boolean is written as on or off and is also read as true, false, 1, or 0. An
 enumeration is written by name. A string is taken as written, and must be valid
-UTF-8 without a NUL byte. editor.history.max_entries is a decimal integer from
+UTF-8 without a NUL byte. kosh.editor.history.max_entries is a decimal integer from
 0 to 2147483647. kosh.init_moods is a comma-separated list of the moods that
 .B \-L
 accepts, such as kosh, sh, bash, and bash-posix. An empty name is skipped.
@@ -158,23 +159,24 @@ both quote characters cannot be written if the value needs quoting.
 .B koshconf set \-\-persist
 rejects either value before changing the session.
 .B koshconf list
-shows such a value, and any value with a control byte or invalid UTF-8, in the
+prints one name=value line for each option, without a class column, and shows
+such a value, and any value with a control byte or invalid UTF-8, in the
 .B $\(aq...\(aq
 form of the shell.
 .PP
 A file may set every option except the ones fixed by how the shell started,
-such as kosh.login_shell, kosh.restricted_shell, kosh.privileged_mode,
-kosh.parse_without_executing, and kosh.exit_after_one_command, and the ones
-that follow the session, kosh.job_control, editor.history.records_commands,
-editor.history.bang_expansion, and kosh.posixly_correct. The OPTION REGISTRY
+such as kosh.interpreter.login_shell, kosh.interpreter.restricted_shell, kosh.interpreter.privileged_mode,
+kosh.interpreter.parse_without_executing, and kosh.interpreter.exit_after_one_command, and the ones
+that follow the session, kosh.interpreter.job_control, kosh.editor.history.records_commands,
+kosh.editor.history.bang_expansion, and kosh.interpreter.posixly_correct. The OPTION REGISTRY
 section of
 .BR kosh (1)
 lists them.
 .PP
 .B A semantic option in a file changes every shell that loads it. This includes
 .B the interactive session and every script that kosh runs.
-For example, kosh.exit_on_command_failure=on makes every script exit on its
-first failing command, and kosh.glob_includes_dotfiles=on changes what every
+For example, kosh.interpreter.exit_on_command_failure=on makes every script exit on its
+first failing command, and kosh.interpreter.glob_includes_dotfiles=on changes what every
 glob matches. Put such a setting in a file only when every script should run
 with it; otherwise set it for a session with
 .BR set ,
@@ -185,9 +187,9 @@ or
 The mood is applied first, wherever it appears in the file, so the other lines
 are read under it. In the
 .B kosh
-mood, kosh.unset_variable_is_error, kosh.pipeline_fails_on_any_stage,
-kosh.glob_no_match_is_error, and kosh.arithmetic_uses_big_numbers stay
-on and kosh.glob_no_match_expands_to_nothing stays off; a file that sets
+mood, kosh.interpreter.unset_variable_is_error, kosh.interpreter.pipeline_fails_on_any_stage,
+kosh.interpreter.glob_no_match_is_error, and kosh.interpreter.arithmetic_uses_big_numbers stay
+on and kosh.interpreter.glob_no_match_expands_to_nothing stays off; a file that sets
 another value gets a warning that identifies the file, the line, the option,
 and
 .BR "koshconf set kosh.mood bash" ,
@@ -205,7 +207,7 @@ keeps the command-line value, so
 .B kosh +e script
 runs without errexit whatever a file says. In the same way, a KOSH_HISTORY_FILE
 or KOSH_HISTORY_SIZE variable inherited from the environment keeps its value
-over editor.history.file_path or editor.history.max_entries. To run with no
+over kosh.editor.history.file_path or kosh.editor.history.max_entries. To run with no
 settings file at all, start the shell with
 .BR \-\-no\-config .
 A later line replaces an earlier one, and the
@@ -235,6 +237,9 @@ line replaces an earlier one.
 and
 .BR "koshconf list" ,
 error messages, and KOSHCONF use only the canonical name.
+.B koshconf list \-\-all
+is the exception: it prints the alias of each option on a line after the
+canonical line, with the same value.
 .PP
 .B koshconf create
 writes every option a file may hold, with a blank line between topics, each
@@ -244,10 +249,10 @@ comment that also identifies its
 .B set \-o
 or
 .B shopt
-spelling. A string option without a default, such as editor.history.file_path,
+spelling. A string option without a default, such as kosh.editor.history.file_path,
 is written commented out. The
 .B bash
-preset also writes kosh.aliases_expand commented out, because bash expands
+preset also writes kosh.interpreter.aliases_expand commented out, because bash expands
 aliases in an interactive shell and not in a script, and a written value would
 apply to both. The
 .B kosh
@@ -311,7 +316,13 @@ each command the shell starts receives the settings current when it starts,
 not a copy taken at the export. Another shell receives it through
 .B koshconf load
 .I value
-or through a KOSHCONF variable in its environment. The variable is applied after
+or through a KOSHCONF variable in its environment.
+.B koshconf save
+prints the current form, so
+.B KOSHCONF=$(koshconf save)
+starts a kosh with the settings of the shell that ran it, and
+.B koshconf save \-\-persist
+writes the current settings to the user settings file instead. The variable is applied after
 the settings files and removed before any command runs:
 .PP
 .RS
@@ -331,7 +342,7 @@ and never change meaning. Only the mood and the interactive options are
 written. An interactive option affects only the interactive editor, the
 history, or how diagnostics are presented, never how a script runs. A child
 shell loads the settings files itself. Passing semantic options such as
-exit_on_command_failure, kosh.mimic_shebang, or the debug
+kosh.interpreter.exit_on_command_failure, kosh.interpreter.mimic_shebang, or the debug
 reports through the environment would change how every script below the shell
 runs. Bash exports SHELLOPTS only on request.
 .PP
@@ -390,14 +401,14 @@ match dotfiles in every script:
 .EX
 kosh.mood=bash
 
-editor.auto_close_brackets_and_quotes=on
-editor.completion.menu_style=plain
+kosh.editor.auto_close_brackets_and_quotes=on
+kosh.completion.menu_style=plain
 
-editor.history.max_entries=20000
+kosh.editor.history.max_entries=20000
 
-editor.base_mode=vi
+kosh.editor.base_mode=vi
 
-kosh.glob_includes_dotfiles=on
+kosh.interpreter.glob_includes_dotfiles=on
 .EE
 .RE
 .PP
