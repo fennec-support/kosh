@@ -93,11 +93,29 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (args.count() == 1 && !ec.has_stripped_array_operands) {
     let const is_declare_form = cxt.runtime_state().is_bash_compatible();
-    let const names =
-        os::environment_names().make_sorted(sort_order::ascending);
+    let const do_is_array = [&cxt](StringView name) wontthrow -> bool {
+      let const &store = cxt.variable_store();
+      return store.indexed_arrays().find(name).has_value() ||
+             store.sparse_arrays().has(name) ||
+             store.associative_arrays().has(name);
+    };
+
+    let listed_names = os::environment_names();
+    if (is_declare_form) {
+      cxt.variable_store().exported_names().for_each(
+          [&](StringView name, const auto &) throws -> void {
+            if (do_is_array(name)) listed_names.push(String{name});
+          });
+    }
+    let const names = steal(listed_names).make_sorted(sort_order::ascending);
 
     let out = String{cxt.scratch_allocator()};
     for (let const &name : names) {
+      if (is_declare_form && do_is_array(name.view())) {
+        unused(append_variable_declaration(cxt, name.view(), out));
+        continue;
+      }
+
       let const value = os::get_environment_variable(name).value_or(
           String{cxt.scratch_allocator()});
       out += is_declare_form ? "declare -x " : "export ";

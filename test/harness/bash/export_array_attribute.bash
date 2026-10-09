@@ -82,3 +82,10 @@ export arr
 
 echo "== a subshell inherits the attribute"
 ( declare -p arr )
+
+echo "== export -p lists exported arrays"
+declare -A listed_map=([k]=v)
+export listed_map
+export -p | grep -e ' arr=' -e ' listed_map='
+export -n listed_map
+export -p | grep -c ' listed_map='
