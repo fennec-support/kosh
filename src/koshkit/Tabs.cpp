@@ -31,7 +31,7 @@ fn Tabs::execute(const ExecContext &ec, EvalContext &cxt,
   if (operands.count() > 1) {
     KOSHKIT_REPORT_ERROR_AT(
         operand_locations[1], "extra operand '" + operands[1] + "'",
-        "pass one tab interval, stop list, or named template");
+        "provide one tab interval, stop list, or template name");
     return 1;
   }
   static constexpr static_string_entry<StringView> TEMPLATE_ENTRIES[] = {
@@ -77,7 +77,7 @@ fn Tabs::execute(const ExecContext &ec, EvalContext &cxt,
       if (parsed.is_error() || parsed.value() == 0) {
         KOSHKIT_REPORT_ERROR_AT(
             operand_locations[0], "invalid tab stop in '" + operands[0] + "'",
-            "use a named template or comma-separated positive decimal columns"
+            "use a template name or comma-separated positive decimal columns"
             ", with + for relative stops");
         return 1;
       }

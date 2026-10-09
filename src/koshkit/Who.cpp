@@ -14,7 +14,7 @@
 #include "../Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-abdHlmpqrstTu] [am i]",
-                  "The who utility writes logged-in users.");
+                  "The who utility writes records for logged-in users.");
 
 FLAG(WHO_ALL, Bool, 'a', "all", "Write all available records.");
 FLAG(WHO_BOOT, Bool, 'b', "boot", "Write the last system boot record.");
@@ -23,7 +23,8 @@ FLAG(WHO_HEADING, Bool, 'H', "heading", "Write column headings.");
 FLAG(WHO_LOGIN, Bool, 'l', "login", "Write login process records.");
 FLAG(WHO_CURRENT, Bool, 'm', "current", "Write the current terminal record.");
 FLAG(WHO_PROCESS, Bool, 'p', "process", "Write active process records.");
-FLAG(WHO_QUICK, Bool, 'q', "quick", "Write login names and their count.");
+FLAG(WHO_QUICK, Bool, 'q', "quick",
+     "Write login names and the number of logged-in users.");
 FLAG(WHO_RUNLEVEL, Bool, 'r', "runlevel", "Write the current run level.");
 FLAG(WHO_SHORT, Bool, 's', "short", "Write names, lines, and login times.");
 FLAG(WHO_TIME, Bool, 't', "time", "Write the last system clock change.");

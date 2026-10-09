@@ -12,7 +12,7 @@
 #include "../Koshkit.hpp"
 
 KOSHKIT_UTIL_DECL("[-amnrsv]",
-                  "The uname utility writes system identification.");
+                  "The uname utility writes system identification fields.");
 
 FLAG(UNAME_ALL, Bool, 'a', "all", "Write all fields.");
 FLAG(UNAME_MACHINE, Bool, 'm', "machine", "Write the machine type.");

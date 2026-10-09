@@ -29,12 +29,12 @@ note: Remove the pipe, or forward the input with `cat`.
     13 |    command 2>&1 > out.log
        |                   ^~~~~~~
 note: Put the file redirect first as in `>file 2>&1`.
-14:17: warning: The command takes input from 'data' and truncates it at once. (SC2094)
+14:17: warning: The command gets input from 'data' and truncates it at once. (SC2094)
     14 |    sort < data > data
        |                  ^~~~
 14:10: details:
     14 |    sort < data > data
-       |           ^~~~ this redirect takes input from the file that is later truncated.
+       |           ^~~~ this redirect gets input from a file that a later redirect truncates.
 note: Write to a temporary file and move it over.
 15:8: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
     15 |    echo "wrapped $(echo inner)"
@@ -52,10 +52,10 @@ note: Test a variable or drop the check.
     22 |    [ count -eq notanumber ] && echo b
        |      ^~~~~~~~~~~~~~~~~~~~
 note: Remove the constant condition or compare runtime data.
-22:5: warning: The numeric comparison `-eq` takes 'count', and that is not a number. (SC2170)
+22:5: warning: The numeric comparison `-eq` compares 'count', which is not a number. (SC2170)
     22 |    [ count -eq notanumber ] && echo b
        |      ^~~~~
-22:15: warning: The numeric comparison `-eq` takes 'notanumber', and that is not a number. (SC2170)
+22:15: warning: The numeric comparison `-eq` compares 'notanumber', which is not a number. (SC2170)
     22 |    [ count -eq notanumber ] && echo b
        |                ^~~~~~~~~~
 23:12: warning: `[` and `test` compare strings byte for byte and never glob-match. (SC2081)

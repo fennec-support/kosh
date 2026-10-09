@@ -16,8 +16,8 @@
 
 KOSHKIT_UTIL_DECL(
     "[-q] [-n attempts] [-d delay] [-b backoff] [-m max-delay] command ...",
-    "The retry utility runs a command until it succeeds or the attempts run "
-    "out.");
+    "The retry utility runs a command until it succeeds or exhausts its "
+    "attempts.");
 
 FLAG(RETRY_ATTEMPTS, String, 'n', "attempts",
      "Make at most this many attempts. The default is five.");
@@ -114,7 +114,7 @@ fn Retry::execute(const ExecContext &ec, EvalContext &cxt,
           ec, cxt, FLAG_RETRY_ATTEMPTS.value_location(), "retry",
           "invalid attempt count '" +
               String{allocator, FLAG_RETRY_ATTEMPTS.value()} + "'",
-          "the value is a count of attempts of one or more");
+          "the value must be a positive attempt count");
       return 1;
     }
 

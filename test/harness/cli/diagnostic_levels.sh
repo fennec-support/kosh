@@ -96,7 +96,7 @@ echo "one-async-fork-bomb=$(printf '%s\n' "$one_async_recursive_output" |
 echo "two-async-fork-bomb=$(printf '%s\n' "$two_async_recursive_output" |
   grep -c 'This is a fork bomb')"
 echo "two-async-note=$(printf '%s\n' "$two_async_recursive_output" |
-  grep -c 'Note: rewrite your program')"
+  grep -c 'Rewrite the program')"
 
 cat > "$temporary_directory/file-directive.sh" <<'EOF'
 # shellcheck disable=unchecked-cd

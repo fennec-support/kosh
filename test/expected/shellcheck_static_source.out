@@ -183,12 +183,12 @@ note: Put the file redirect first as in `>file 2>&1`.
    102 |    { echo claimed; } > claim.log > claim.log
        |                        ^~~~~~~~~ this earlier redirect claims the same descriptor.
 note: Pass the files as operands, or use `tee` for several outputs.
-103:49: warning: The command takes input from 'same.txt' and truncates it at once. (SC2094)
+103:49: warning: The command gets input from 'same.txt' and truncates it at once. (SC2094)
    103 |    while true; do echo looped; done < same.txt > same.txt
        |                                                  ^~~~~~~~
 103:38: details:
    103 |    while true; do echo looped; done < same.txt > same.txt
-       |                                       ^~~~~~~~ this redirect takes input from the file that is later truncated.
+       |                                       ^~~~~~~~ this redirect gets input from a file that a later redirect truncates.
 note: Write to a temporary file and move it over.
 104:37: warning: A redirection expansion can run in a child and lose its mutation. (SC2257)
    104 |    if true; then echo branched; fi > "file$((index++))"

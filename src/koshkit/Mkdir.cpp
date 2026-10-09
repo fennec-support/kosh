@@ -15,13 +15,13 @@
 #include "../base/Trace.hpp"
 
 KOSHKIT_UTIL_DECL("[-p] [-m mode] directory ...",
-                  "The mkdir utility creates each named directory.");
+                  "The mkdir utility creates each specified directory.");
 
 FLAG(MKDIR_PARENTS, Bool, 'p', "",
      "Create the missing parent directories and ignore one that already "
      "exists.");
 FLAG(MKDIR_MODE, String, 'm', "",
-     "Set the file mode of the named directory, an octal or symbolic "
+     "Set the file mode of the specified directory, an octal or symbolic "
      "operand.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Mkdir);

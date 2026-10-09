@@ -176,7 +176,7 @@ note: Attach the redirection to its command, or write `: > file`.
 57:5: warning: The pipeline stage holds a redirection and no command. (SC2189)
     57 |    < file.txt | grep foo
        |      ^~~~~~~~
-note: Attach the redirection to the command that takes it.
+note: Attach the redirection to the command that receives it.
 58:14: warning: The redirect opens a file named 'tr', and the command never runs. (SC2238)
     58 |    cat file > tr
        |               ^~

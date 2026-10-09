@@ -106,7 +106,7 @@ rc=0
 kosh.mood=kosh
 # Use arbitrary-precision integers and finite decimal values.
 kosh.arithmetic_uses_big_numbers=on
-# Mimic the shell named by a script's shebang.
+# Mimic the shell selected by a script's shebang.
 kosh.mimic_shebang=off
 # Source the startup files of each listed mood, comma separated, when the shell
 # is interactive or a login shell. Empty selects the session mood.

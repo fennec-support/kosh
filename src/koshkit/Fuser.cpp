@@ -17,7 +17,7 @@ KOSHKIT_UTIL_DECL(
     "The fuser utility lists the process IDs that use each file.");
 
 FLAG(FUSER_FILESYSTEM, Bool, 'c', "", "Match every file on the filesystem.");
-FLAG(FUSER_FILE, Bool, 'f', "", "Match only the named file.");
+FLAG(FUSER_FILE, Bool, 'f', "", "Match only the specified file.");
 FLAG(FUSER_USER, Bool, 'u', "", "Print each process owner's user name.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Fuser);

@@ -1,5 +1,5 @@
 == unknown_interpreter ==
-unknown_interpreter.kosh:1:3: warning: The shebang interpreter 'perl' is not a shell this analysis knows. (SC1008)
+unknown_interpreter.kosh:1:3: warning: The shebang interpreter 'perl' is not a shell supported by this analysis. (SC1008)
      1 |  #!/bin/perl
        |    ^~~~~~~~~
 note: Use a shell such as `sh` or `bash` in the shebang.

@@ -24,7 +24,7 @@ KOSHKIT_UTIL_DECL("[-BeiknpqrSst] [-j[jobs]] [-C directory] [-f makefile]... "
                   "The make utility runs the recipe of each requested target.");
 
 FLAG(MAKE_FILE, ManyStrings, 'f', "file",
-     "Read the named file instead of Makefile.");
+     "Read the specified file instead of Makefile.");
 FLAG(MAKE_DIR, String, 'C', "directory",
      "Change to this directory before reading the Makefile.");
 FLAG(MAKE_ALWAYS_MAKE, Bool, 'B', "always-make",

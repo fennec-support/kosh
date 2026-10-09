@@ -185,7 +185,7 @@ note: Escape it as `\>`, or use the `[[ ]]` form.
     49 |    [ "$left" < "$right" ]
        |      ^~~~~~~
 note: Write it with `-n`.
-49:15: warning: The `<` takes a file as input for the test. (SC2073)
+49:15: warning: The `<` operator redirects test input from a file. (SC2073)
     49 |    [ "$left" < "$right" ]
        |                ^~~~~~~~
 note: Escape it as `\<`, or use the `[[ ]]` form.

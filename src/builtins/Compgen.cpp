@@ -37,7 +37,7 @@ FLAG(COMPGEN_GLOB, String, 'G', "", "Probe the filesystem with the glob.");
 FLAG(COMPGEN_FILE, Bool, 'f', "", "List matching filenames.");
 FLAG(COMPGEN_ACTION, String, 'A', "", "List the candidates of the action.");
 FLAG(COMPGEN_VARIABLE_NAME, String, 'V', "",
-     "Store the candidates in the named indexed array and write nothing to "
+     "Store the candidates in the specified indexed array and write nothing to "
      "standard output.");
 FLAG(COMPGEN_PREFIX, String, 'P', "", "Prepend the prefix to each candidate.");
 FLAG(COMPGEN_SUFFIX, String, 'S', "", "Append the suffix to each candidate.");

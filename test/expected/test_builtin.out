@@ -6,7 +6,7 @@ note: Remove the constant condition or compare runtime data.
      5 |  ( test abc -eq 5 ); echo "invalid_number=$?"
        |         ^~~~~~~~~
 note: Remove the constant condition or compare runtime data.
-5:8: warning: The numeric comparison `-eq` takes 'abc', and that is not a number. (SC2170)
+5:8: warning: The numeric comparison `-eq` compares 'abc', which is not a number. (SC2170)
      5 |  ( test abc -eq 5 ); echo "invalid_number=$?"
        |         ^~~
 8:10: warning: The `-a` and `-o` operators are marked obsolescent by POSIX. (SC2166)

@@ -38,7 +38,7 @@ noted.
 
 ## 3. Homebrew (`homebrew-kosh`)
 
-- [ ] Nothing to edit: the formula uses the newest release tag and its
+- [ ] No edit is required because the formula uses the newest release tag and its
       `SHA256SUMS` each time Homebrew loads it.
 - [ ] Re-run its CI, or `brew update && brew upgrade kosh` on macOS, and
       confirm `kosh --version` prints the new version.
@@ -68,8 +68,8 @@ noted.
 
 ## 5. Editor clients
 
-The clients download the newest kosh release automatically, so release kosh
-clients only when their own code changes.
+Clients download the newest Kosh release automatically. Release a client only
+when its own code changes.
 
 - [ ] **VS Code** (`kosh-vscode`): bump `version` in `package.json`, push, then
       push a tag `vX.Y.Z` (the workflow only runs on tags starting with `v`). It

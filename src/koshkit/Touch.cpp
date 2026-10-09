@@ -15,7 +15,7 @@
 
 KOSHKIT_UTIL_DECL("[-acm] [-r file | -t time] file ...",
                   "The touch utility sets the access and the modification "
-                  "times of each named file.");
+                  "times of each specified file.");
 
 FLAG(TOUCH_ACCESS, Bool, 'a', "", "Change the access time.");
 FLAG(TOUCH_NO_CREATE, Bool, 'c', "", "Do not create a file that is missing.");

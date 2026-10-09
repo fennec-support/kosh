@@ -26,7 +26,7 @@ note: Use a non-negative number with an optional `s`, `m`, `h`, or `d` suffix, s
 1:6: error: tabs: invalid tab stop in '4,nope'.
      1 |  tabs 4,nope
        |       ^~~~~~
-note: use a named template or comma-separated positive decimal columns, with + for relative stops.
+note: use a template name or comma-separated positive decimal columns, with + for relative stops.
 --- a binary named koshkit runs the utility its first operand names ---
 1
 2

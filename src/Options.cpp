@@ -368,7 +368,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
         1),
     flag(17, "kosh.mimic_shebang", SEMANTIC, shell_option_id::Mimicry,
          entry_shape{
-             {}, {}, {}, "Mimic the shell named by a script's shebang.", 'I'},
+             {}, {}, {}, "Mimic the shell selected by a script's shebang.", 'I'},
          false),
     unlisted(flag(
         18, "debug.print_syntax_tree", SEMANTIC, shell_option_id::ShowAst,

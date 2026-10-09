@@ -19,10 +19,10 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-fn] [-p var] [%job|pid ...]");
 
-HELP_DESCRIPTION_DECL("The wait builtin blocks until the named jobs finish.");
+HELP_DESCRIPTION_DECL("The wait builtin blocks until the specified jobs finish.");
 
 FLAG(WAIT_NEXT, Bool, 'n', "",
-     "Wait until the next named job, or any job, finishes.");
+     "Wait until the next specified job, or any job, finishes.");
 FLAG(WAIT_FORCE, Bool, 'f', "",
      "Wait for each job to terminate, even if it stops first.");
 FLAG(WAIT_PID_VARIABLE, String, 'p', "",

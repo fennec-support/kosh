@@ -29,22 +29,23 @@ FLAG(COMPLETE_WORDLIST, String, 'W', "",
 FLAG(COMPLETE_FUNCTION, String, 'F', "",
      "Register the function to run on an explicit tab, COMPREPLY style.");
 FLAG(COMPLETE_OPTION, ManyStrings, 'o', "",
-     "dirnames adds directory names when nothing else matched, plusdirs adds "
-     "them always, filenames gives directory candidates a trailing slash, "
-     "default leaves an empty result to filename completion, bashdefault "
-     "alone completes only a variable, a user name, or a glob, "
-     "fullquote quotes every candidate, noquote leaves file names unquoted, "
-     "nosort keeps the generated order, and nospace adds no space after an "
-     "accepted candidate. Any other name is an error.");
+     "dirnames adds directory names when nothing else matched. plusdirs adds "
+     "them every time. filenames gives directory candidates a trailing slash. "
+     "default leaves an empty result to filename completion. bashdefault "
+     "alone completes a variable, a user name, or a glob. fullquote quotes "
+     "every candidate. noquote leaves file names unquoted. nosort keeps the "
+     "generated order. nospace adds no space after an accepted candidate. Any "
+     "other name is an error.");
 FLAG(COMPLETE_PRINT, Bool, 'p', "",
-     "Print the named specs, or every spec, in a replayable form.");
+     "Print the specified specs, or every spec, in a replayable form.");
 FLAG(COMPLETE_DEFAULT, Bool, 'D', "",
      "Register the default spec used for a command with no spec of its own.");
 FLAG(COMPLETE_REMOVE, Bool, 'r', "",
-     "Remove the named specs or the -D, -E, or -I spec. If none is given, "
+     "Remove the specified specs or the -D, -E, or -I spec. If none is given, "
      "remove every spec.");
 FLAG(COMPLETE_ACTION, ManyStrings, 'A', "",
-     "Register the candidates of the named action, as compgen -A lists them.");
+     "Register the candidates of the specified action, as compgen -A lists "
+     "them.");
 FLAG(COMPLETE_GLOB, String, 'G', "",
      "Register the filenames that match the glob and start with the word.");
 FLAG(COMPLETE_COMMAND, String, 'C', "",

@@ -21,7 +21,7 @@ FLAG(CHOWN_NO_DEREFERENCE, Bool, 'h', "no-dereference",
 FLAG(CHOWN_RECURSIVE, Bool, 'R', "recursive",
      "Change directories and their contents recursively.");
 FLAG(CHOWN_COMMAND_LINE_FOLLOW, Bool, 'H', "dereference-arguments",
-     "Follow symbolic links named on the command line during recursion.");
+     "Follow symbolic links specified on the command line during recursion.");
 FLAG(CHOWN_FOLLOW, Bool, 'L', "dereference",
      "Follow every symbolic link during recursion.");
 FLAG(CHOWN_PHYSICAL, Bool, 'P', "physical",

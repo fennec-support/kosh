@@ -43,7 +43,7 @@ moods whose startup files an interactive or login shell sources, so a
 mood session can still source ~/.bashrc; see STARTUP MOODS.
 .SH FILES
 .TP
-.IR /etc/kosh.conf " or " %ProgramData%\ekosh\ekosh.conf
+.IR /etc/kosh.conf " or " %ProgramData%\kosh\kosh.conf
 The system settings file, read first. Because it applies to every user, it is
 read only when nobody else could have written it. On POSIX the open file and
 its directory must be owned by root and must not be writable by their group or
@@ -147,8 +147,8 @@ the blanks at the end of the line. A value cannot span lines.
 .PP
 A boolean is written as on or off and is also read as true, false, 1, or 0. An
 enumeration is written by name. A string is taken as written, and must be valid
-UTF-8 without a NUL byte. editor.history.max_entries is a decimal integer from 0 to
-2147483647. kosh.init_moods is a comma-separated list of the mood names
+UTF-8 without a NUL byte. editor.history.max_entries is a decimal integer from
+0 to 2147483647. kosh.init_moods is a comma-separated list of the moods that
 .B \-L
 accepts, such as kosh, sh, bash, and bash-posix. An empty name is skipped.
 .B koshconf
@@ -205,35 +205,30 @@ keeps the command-line value, so
 .B kosh +e script
 runs without errexit whatever a file says. In the same way, a KOSH_HISTORY_FILE
 or KOSH_HISTORY_SIZE variable inherited from the environment keeps its value
-over editor.history.file_path or editor.history.max_entries. To run with no settings file at
-all, start the shell with
+over editor.history.file_path or editor.history.max_entries. To run with no
+settings file at all, start the shell with
 .BR \-\-no\-config .
 A later line replaces an earlier one, and the
 user file and KOSHCONF replace the system file.
 .PP
 Every option that has a Bash spelling is also accepted under an alias. The
-alias is legacy.posix.NAME, with NAME the
+alias is legacy.posix.NAME when POSIX
 .B set \-o
-name, when POSIX
-.B set
-specifies the option: allexport, errexit, ignoreeof, monitor, noclobber,
-noexec, noglob, notify, nounset, pipefail, verbose, xtrace, and vi. Otherwise
-it is legacy.bash.NAME, with NAME the
+accepts NAME. Otherwise it is legacy.bash.NAME when
 .B set \-o
 or
 .B shopt
-name, such as legacy.bash.extglob, legacy.bash.failglob,
+accepts NAME. Examples include legacy.bash.extglob, legacy.bash.failglob,
 legacy.bash.braceexpand, and legacy.bash.posix. An alias resolves to the same
 option entry as the canonical name, with the same id and the same storage, so
-setting either one changes what the other,
+setting either spelling changes the value shown by the other spelling,
 .BR "set \-o" ,
 .BR shopt ,
 .BR $\- ,
-and SHELLOPTS show. It is only a second spelling resolved at lookup. A line,
-.B koshconf set
-and
-.B koshconf get
-accept it, as does every other place that takes an option name. A line that
+and SHELLOPTS. It is a second spelling resolved during lookup. A kosh.conf
+line and the koshconf set and koshconf get commands accept the alias, as does
+every other option-name operand.
+A line that
 sets an option twice through both spellings follows the rule above that a later
 line replaces an earlier one.
 .B koshconf create
@@ -249,8 +244,8 @@ comment that also identifies its
 .B set \-o
 or
 .B shopt
-spelling. A string option without a default, such as editor.history.file_path, is
-written commented out. The
+spelling. A string option without a default, such as editor.history.file_path,
+is written commented out. The
 .B bash
 preset also writes kosh.aliases_expand commented out, because bash expands
 aliases in an interactive shell and not in a script, and a written value would
@@ -262,8 +257,8 @@ mood keeps, so reading it back never warns.
 .SH STARTUP MOODS
 kosh.init_moods lists the moods whose startup files an interactive or login
 shell sources, in order, with each file parsed under the grammar of its mood.
-It is empty by default, which sources the files of the session mood, and so
-nothing in the
+It is empty by default. An empty value sources the files of the session mood,
+so it sources no files in the
 .B kosh
 mood. It is the configured form of
 .BR \-L ,
@@ -342,10 +337,11 @@ runs. Bash exports SHELLOPTS only on request.
 .PP
 A reader skips a record with an unknown id, an option it never carries, or a
 value that a settings file would reject, and reports a warning. Only the
-canonical form is accepted: the base64 text must carry its padding, every varint
+canonical form is accepted: the base64 text must carry its padding, every
+varint
 must use the fewest bytes, and the ids must strictly ascend in writer order. A
-blob that breaks any of these rules, or whose records are
-truncated, is rejected as a whole with a warning that identifies the broken rule.
+blob that breaks any of these rules, or whose records are truncated, is rejected
+as a whole with a warning that identifies the broken rule.
 .SH ERRORS
 A missing settings file is skipped. An unreadable one, and a system file that
 fails the ownership check under FILES, produce a warning. A line
@@ -387,7 +383,7 @@ and lines for other shells with
 .BR "test \-z \(dq$KOSH\(dq" .
 KOSH is set in every mood and never exported.
 .SH EXAMPLES
-A user file that keeps the bash grammar, edits with vi keys, and lets globs
+A user file that keeps the bash grammar, edits with vi keys, and allows patterns
 match dotfiles in every script:
 .PP
 .RS

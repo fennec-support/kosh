@@ -24,11 +24,11 @@ FLAG(WATCH_NO_TITLE, Bool, 't', "no-title",
      "Omit the header and its blank "
      "line.");
 FLAG(WATCH_CHANGE_EXIT, Bool, 'g', "chgexit",
-     "Stop as soon as the output of the command changes.");
+     "Stop as soon as command output changes.");
 FLAG(WATCH_ERROR_EXIT, Bool, 'e', "errexit",
      "Stop as soon as the command reports a nonzero status.");
 FLAG(WATCH_EXEC, Bool, 'x', "exec",
-     "Accepted for compatibility. The operands always run as one command.");
+     "Accepted for compatibility. All operands always run as one command.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Watch);
 
