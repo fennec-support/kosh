@@ -14,6 +14,11 @@ moods, and builtins update `docs/kosh.1` and `completions/kosh.bash`.
 Configuration changes also update `docs/kosh.5`. Architecture and workflow
 changes update this file.
 
+Documentation prose uses direct, compact constructions that make the subject
+and recipient clear. Prefer a participial phrase such as "the same encoding
+received by every spawned process" over a longer relative clause such as "the
+same encoding that every spawned process receives."
+
 ## Code
 
 - Use `let` and `let const` for deduced locals. Literal counters keep an integer

@@ -2015,7 +2015,7 @@ to the current session.
 .B save
 prints the current settings as the value of
 .BR $KOSHCONF :
-the same encoding that every spawned process receives, which holds the mood
+the same encoding received by every spawned process, which holds the mood
 and the interactive options. A kosh started with
 .B KOSHCONF=$(koshconf save)
 adopts them, and
@@ -4153,8 +4153,8 @@ keystroke uses only data already loaded, and it never runs
 .BR man
 or the command.
 .PP
-When no key arrives for 250 milliseconds, the editor loads what the hint of an
-external program needs: its section 1 manual page through
+After a short pause, the editor loads what the hint of an external program
+needs: its section 1 manual page through
 .BR man ,
 a subcommand page such as
 .BR git\-commit (1)
@@ -4166,16 +4166,12 @@ apply, so
 .BR man ,
 .BR manpath ,
 and the program run only from a directory owned by the user or root that no
-group or other user can write. Each load runs in a child process that the
-editor polls between keys and never waits on, so typing stays responsive while
-it runs, and the hint updates in place when it finishes. The section 1
-directories of the manual roots are read one directory per step. A Tab that
-needs a load that is not cached starts it or keeps the running one and serves
-keys while it runs. The menu opens when the load finishes, and a
+group or other user can write. Loads run in the background, so typing stays
+responsive and the hint updates when the result is ready. A Tab that needs a
+load shows a
 .B loading...
-row appears under the word only after 250 milliseconds. A key closes the row
-and is typed as usual, and Escape or Ctrl\-C closes the Tab quietly. The load
-goes on, so the next Tab finds it cached. The language server and
+row while it waits. A key closes the row and is typed as usual, and Escape or
+Ctrl\-C closes the Tab quietly. The language server and
 .B \-\-debug\-complete\-at
 wait for the load instead. A Tab that runs a
 .B complete \-F
@@ -4183,12 +4179,7 @@ function or a
 .B complete \-C
 command shows the
 .B loading...
-row before the function or command runs, because the shell waits for it. A
-menu that gathers again for a later key keeps its rows instead. A load is killed
-after 8 seconds or when the line is submitted, and a later pause tries it once
-more before it counts as missing. Every other manual page and help output is
-loaded at most once per session, and a missing page or an untrusted program
-is remembered as missing. The
+row before it runs. The
 .B koshconf set kosh.editor.hints.show_command_synopsis off
 command turns these hints off and stops the loads, and the option is on by
 default.
@@ -4325,8 +4316,7 @@ or
 .B pushd
 completes only directories, and when it is neither absolute nor led by a dot
 or a tilde, also the directories under each CDPATH entry. The ghost suggestion
-uses a CDPATH directory only once the editor has indexed it during a pause of
-a quarter second, so a keystroke never waits on it.
+can use directories from CDPATH.
 .PP
 An explicit Tab first replaces the token with the longest common prefix. A sole
 candidate replaces the token and takes the space the setting below asks for.
@@ -4385,10 +4375,8 @@ as the reply of a completion spec, keeps every candidate the token opens,
 comparing letters without case. In the history search, an entry matches when
 the query opens it, when the query appears inside it whole, or when the bytes
 of the query appear inside it in order. The three kinds are drawn in that
-order, each keeps the order the entries arrived in, and letters are compared
-without case. Narrowing
-filters the most recent search results. The file system and history are not
-searched again. Backspace erases the last character of the token
+order, and letters are compared without case. Backspace erases the last
+character of the token
 and widens the list again. A search that matches nothing keeps the menu open on
 a dimmed row reading
 .BR "no matches, erase to widen the search" ,
