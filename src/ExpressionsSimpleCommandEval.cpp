@@ -677,9 +677,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
               : argument_context::ArrayLiteral,
           &subscript_flags);
       do_trace_array_assignment(assignment, values);
-      cxt.assign_indexed_array_elements(assignment.name, values,
-                                        assignment.update_mode,
-                                        &subscript_flags);
+      cxt.assign_indexed_array_elements(
+          assignment.name, values, assignment.update_mode, &subscript_flags);
     }
     let const do_token_ran_substitution = [&](const Token *token) {
       if (token == nullptr) return false;
@@ -1251,9 +1250,8 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
       do_trace_array_assignment(assignment, values);
       if (is_associative_request)
         cxt.declare_associative_array(assignment.name);
-      cxt.assign_indexed_array_elements(assignment.name, values,
-                                        assignment.update_mode,
-                                        &subscript_flags);
+      cxt.assign_indexed_array_elements(
+          assignment.name, values, assignment.update_mode, &subscript_flags);
       if (is_export) cxt.mark_exported(assignment.name);
       if (is_readonly_request)
         cxt.variable_store().attributes().mark_readonly(assignment.name);

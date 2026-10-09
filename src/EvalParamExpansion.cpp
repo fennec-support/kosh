@@ -795,16 +795,15 @@ fn EvalContext::ModifierWordExpander::emit_modified_elements(
   } else if (modifier == "@a" && values.is_empty() && !name.is_empty() &&
              m_context.is_valueless_array(name))
   {
-    modified.push(m_context.apply_parameter_transform_to_value(StringView{},
-                                                               'a', name));
+    modified.push(
+        m_context.apply_parameter_transform_to_value(StringView{}, 'a', name));
   } else {
     for (let const &value : values) {
-      modified.push(
-          modifier[0] == '@'
-              ? m_context.apply_parameter_transform_to_value(value.view(),
-                                                             modifier[1], name)
-              : m_context.apply_value_modifier(value.view(), modifier,
-                                               nullptr));
+      modified.push(modifier[0] == '@'
+                        ? m_context.apply_parameter_transform_to_value(
+                              value.view(), modifier[1], name)
+                        : m_context.apply_value_modifier(value.view(), modifier,
+                                                         nullptr));
     }
   }
 
