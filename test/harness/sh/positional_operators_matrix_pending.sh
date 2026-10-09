@@ -101,8 +101,6 @@ pending_default_one_empty='
 '
 pending_default_two_empty='
 <|1|10>
-<:-d|@|6>
-<-d|@|6>
 <#?|1|10>
 <##*|1|10>
 <%?|1|10>
@@ -111,8 +109,6 @@ pending_default_two_empty='
 '
 pending_default_spaces='
 <|1|10>
-<:-d|@|6>
-<-d|@|6>
 <#?|1|10>
 <##*|1|10>
 <%?|1|10>
@@ -121,8 +117,6 @@ pending_default_spaces='
 '
 pending_default_glob='
 <|1|10>
-<:-d|@|6>
-<-d|@|6>
 <#?|1|10>
 <##*|1|10>
 <%?|1|10>
@@ -131,8 +125,6 @@ pending_default_glob='
 '
 pending_default_quotes='
 <|1|10>
-<:-d|@|6>
-<-d|@|6>
 <#?|1|10>
 <##*|1|10>
 <%?|1|10>
@@ -141,8 +133,6 @@ pending_default_quotes='
 '
 pending_default_newline='
 <|1|10>
-<:-d|@|6>
-<-d|@|6>
 <#?|1|10>
 <##*|1|10>
 <%?|1|10>

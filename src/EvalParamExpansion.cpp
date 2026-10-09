@@ -622,6 +622,21 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
     emit_field_elements(m_context.variable_store().positional_params());
     return true;
   }
+  if (is_quoted() && m_context.runtime_state().is_posix_mode() &&
+      inner.length > 1 && inner[0] == '@' &&
+      (inner[1] == '-' || inner.starts_with("@:-")))
+  {
+    let const is_colon = inner[1] == ':';
+    let const probe = is_colon ? StringView{"@:+x"} : StringView{"@+x"};
+    let const is_set = !m_context
+                            .apply_parameter_expansion(probe, nullptr, 0, false,
+                                                       get_nested_quoting())
+                            .is_empty();
+    if (is_set) {
+      emit_field_elements(m_context.variable_store().positional_params());
+      return true;
+    }
+  }
   if (inner == "*" && !is_quoted() &&
       !m_context.runtime_state().is_posix_mode())
   {
