@@ -653,7 +653,12 @@ hot fn EvalContext::expand_word(const Word &word) throws
           let const *modifier_location_pointer =
               do_source_location_for(modifier, modifier_location);
           let const is_star = segment_text[name_end + 1] == '*';
-          let const elements = collect_array_elements(array_name);
+          let elements = collect_array_elements(array_name);
+          if (at_transform_op == 'a' && elements.is_empty() &&
+              is_valueless_array(array_name))
+          {
+            elements.push(String{heap_allocator()});
+          }
           if (at_transform_op == 'k') {
             let const keys = collect_array_subscripts(array_name);
             let pairs = ArrayList<String>{heap_allocator()};

@@ -792,6 +792,11 @@ fn EvalContext::ModifierWordExpander::emit_modified_elements(
       modified.push(String{m_context.scratch_allocator(), keys[i].view()});
       modified.push(String{m_context.scratch_allocator(), values[i].view()});
     }
+  } else if (modifier == "@a" && values.is_empty() && !name.is_empty() &&
+             m_context.is_valueless_array(name))
+  {
+    modified.push(m_context.apply_parameter_transform_to_value(StringView{},
+                                                               'a', name));
   } else {
     for (let const &value : values) {
       modified.push(
@@ -2138,6 +2143,13 @@ fn EvalContext::ParameterExpander::expand_list_transform(
     }
 
     return out;
+  }
+
+  if (op == 'a' && values.is_empty() && !is_positional &&
+      m_context.is_valueless_array(m_name))
+  {
+    return m_context.apply_parameter_transform_to_value(StringView{}, op,
+                                                        m_name);
   }
 
   let transformed = ArrayList<String>{heap_allocator()};

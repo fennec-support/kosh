@@ -87,7 +87,7 @@ ifeq ($(IS_NONDEBUG_BUILD),1)
 SKIPPED_TESTS += koshkit_live_sanitizers
 endif
 SKIPPED_TESTS += expansion_list_operators_matrix_pending \
-	transform_operators_matrix_pending nameref_contexts_matrix_pending \
+	nameref_contexts_matrix_pending \
 	positional_operators_matrix_pending
 ifeq ($(NO_KOSHKIT),1)
 ifeq ($(KOSHKIT_BIN),)

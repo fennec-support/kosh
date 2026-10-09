@@ -656,6 +656,7 @@ fn EvalContext::set_indexed_array(StringView name,
       set_bash_directory_stack_element(index, values[index].view());
     return;
   }
+  variable_store().attributes().unmark_declared(name);
   if (variable_store().attributes().has_case(name))
     rarely for (let &value : values) variable_store().attributes().apply_case(
         name, value);

@@ -571,6 +571,18 @@ static fn append_value_attribute_letters(EvalContext &cxt, StringView name,
   if (cxt.variable_store().attributes().is_uppercase(name)) out += 'u';
 }
 
+static fn append_valueless_array_declaration(EvalContext &cxt, StringView name,
+                                             char kind, String &out) throws
+    -> void
+{
+  out += "declare -";
+  out += kind;
+  append_value_attribute_letters(cxt, name, out);
+  out += ' ';
+  out.append(name);
+  out += '\n';
+}
+
 fn append_variable_declaration(EvalContext &cxt, StringView name,
                                String &out) throws -> bool
 {
@@ -606,6 +618,13 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
   let const is_directory_stack = cxt.is_bash_directory_stack_special(name);
   let const is_argument_array = cxt.is_bash_argument_array(name);
   let const elements = cxt.variable_store().indexed_arrays().find(name);
+
+  if (elements.has_value() && !is_directory_stack && !is_argument_array &&
+      cxt.is_valueless_array(name))
+  {
+    append_valueless_array_declaration(cxt, name, 'a', out);
+    return true;
+  }
 
   if (elements.has_value() || is_directory_stack || is_argument_array) {
     let line = String{cxt.scratch_allocator(), "declare -a"};
@@ -667,6 +686,11 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
     line += ")\n";
     out.append(line.view());
 
+    return true;
+  }
+
+  if (cxt.is_associative_array(name) && cxt.is_valueless_array(name)) {
+    append_valueless_array_declaration(cxt, name, 'A', out);
     return true;
   }
 

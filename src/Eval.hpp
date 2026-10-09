@@ -1602,6 +1602,10 @@ public:
   {
     set(name, variable_attribute::Declared, true);
   }
+  fn unmark_declared(StringView name) throws -> void
+  {
+    if (m_has_declared_marks) set(name, variable_attribute::Declared, false);
+  }
   fn mark_integer(StringView name) throws -> void
   {
     set(name, variable_attribute::Integer, true);
@@ -1665,10 +1669,13 @@ private:
   {
     if ((bits & static_cast<u8>(variable_attribute::Nameref)) != 0)
       m_has_namerefs = true;
+    if ((bits & static_cast<u8>(variable_attribute::Declared)) != 0)
+      m_has_declared_marks = true;
   }
 
   StringMap<u8> m_bits{heap_allocator()};
   bool m_has_namerefs{false};
+  bool m_has_declared_marks{false};
 };
 
 class VariableStore
@@ -3307,6 +3314,7 @@ public:
   fn read_array_element_arithmetic_text(StringView name,
                                         StringView subscript) throws -> String;
   fn declare_associative_array(StringView name) throws -> void;
+  fn is_valueless_array(StringView name) const throws -> bool;
   pure fn is_associative_array(StringView name) const wontthrow -> bool
   {
     return m_variable_store.associative_arrays().has(name) ||

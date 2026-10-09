@@ -3,11 +3,9 @@
 # on scalars, indexed and associative arrays, and the positional parameters,
 # in each word context of a script, checked against bash. The values cover
 # unset and empty names, spaces, quotes, escapes, newlines, and control
-# bytes. Cases listed in the pending fixture are skipped.
+# bytes. The escape values avoid the prompt time escapes, whose output
+# changes every second.
 export LC_ALL=C
-list_only=1
-. "${BASH_SOURCE%/*}/transform_operators_matrix_pending.bash"
-unset list_only
 cd "$(mktemp -d)" || exit 1
 error_file=$PWD/.error
 
@@ -60,18 +58,7 @@ set_positional() {
   positional=("$@")
 }
 
-declare -A pending_set=()
-for pending_key in "${pending_cases[@]}"; do
-  pending_set[$pending_key]=1
-done
-
 run_case() {
-  local case_key="$values|$operator|$target|$context|$extra"
-  if [[ -n ${pending_set[$case_key]-} ]]; then
-    [ -n "${is_pending_run-}" ] || return 0
-  else
-    [ -z "${is_pending_run-}" ] || return 0
-  fi
   local body=$1
   printf '%s: ' "$body"
   set -- "${positional[@]}"

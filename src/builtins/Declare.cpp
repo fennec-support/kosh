@@ -458,8 +458,12 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     } else if (should_make_associative) {
       LOG(All, "declare making '%.*s' an associative array",
           static_cast<int>(name.length), name.data);
+      let const was_associative = cxt.is_associative_array(name);
       if (equals.has_value()) cxt.set_shell_variable(name, value);
       cxt.declare_associative_array(name);
+      if (!equals.has_value() && !has_subscript && !was_associative) {
+        cxt.variable_store().attributes().mark_declared(name);
+      }
     } else if (should_make_indexed) {
       if (!cxt.variable_store().indexed_arrays().find(name).has_value() &&
           !cxt.is_bash_directory_stack_special(name) &&
@@ -472,7 +476,9 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                      cxt.variable_store().shell_variables().find(name);
                  scalar.has_value())
           values.push(String{heap_allocator(), scalar->view()});
+        let const is_valueless = values.is_empty() && !has_subscript;
         cxt.set_indexed_array(name, steal(values));
+        if (is_valueless) cxt.variable_store().attributes().mark_declared(name);
       }
     } else if (equals.has_value()) {
       if (update_mode == assignment_update_mode::Append) {

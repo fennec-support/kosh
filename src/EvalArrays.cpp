@@ -220,6 +220,7 @@ fn EvalContext::assign_indexed_array_elements(
   if (is_readonly(name))
     throw Error{"Unable to assign '" + name + "' because it is read only"};
   if (is_write_discarded_dynamic_variable(name)) return;
+  variable_store().attributes().unmark_declared(name);
 
   if (runtime_state().is_posix_mode()) rarely
     {
@@ -312,6 +313,7 @@ fn EvalContext::set_array_element(StringView name, usize index,
     set_bash_directory_stack_element(index, value);
     return;
   }
+  variable_store().attributes().unmark_declared(name);
 
   let adjusted = String{scratch_allocator()};
   if (variable_store().attributes().has_case(name)) rarely
@@ -526,11 +528,23 @@ fn EvalContext::declare_associative_array(StringView name) throws -> void
   if (scalar.has_value()) set_associative_element(name, "0", scalar->view());
 }
 
+fn EvalContext::is_valueless_array(StringView name) const throws -> bool
+{
+  if (!variable_store().attributes().is_declared(name)) return false;
+
+  if (is_associative_array(name)) return associative_keys(name).is_empty();
+
+  let const dense = variable_store().indexed_arrays().find(name);
+  return dense.has_value() && dense->is_empty() &&
+         !variable_store().sparse_arrays().has(name);
+}
+
 fn EvalContext::set_associative_element(StringView name, StringView key,
                                         StringView value) throws -> void
 {
   if (is_readonly(name))
     throw Error{"Unable to assign '" + name + "' because it is read only"};
+  variable_store().attributes().unmark_declared(name);
   if (is_bash_aliases_special(name)) {
     scope_store().set_alias(key, value);
     return;
