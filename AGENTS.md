@@ -449,6 +449,9 @@ changes update this file.
 - Small types stay in light headers. Shared behavior stays on the value type.
   `ArrayList::find` returns `Maybe<usize>`. Membership uses
   `find().has_value()`.
+- An array that carries the export attribute joins the exported set without a
+  child environment entry, so `declare -p` and `${a@a}` show `x` and no child
+  receives the array.
 - `Allocator` is one tagged word for pooled heap, bump arena, or fake storage.
   Project code allocates through this API. Only heap storage is freed. Ownership
   queries identify a specific arena. Raw storage is guarded until throwing

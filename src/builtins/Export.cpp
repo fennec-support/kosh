@@ -168,6 +168,18 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         name = cxt.resolve_nameref_for_write(name.view());
       }
 
+    let const is_array =
+        cxt.variable_store().indexed_arrays().find(name.view()).has_value() ||
+        cxt.is_associative_array(name.view());
+    if (is_array && !(has_new_value && cxt.is_readonly(name))) {
+      if (has_new_value) {
+        cxt.assign_array_element(name.view(), "0", value.view(),
+                                 assignment_update_mode::Replace);
+      }
+      cxt.mark_exported(name);
+      continue;
+    }
+
     if (cxt.is_readonly(name)) {
       if (has_new_value) {
         report_soft_builtin_error(
@@ -204,15 +216,6 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                      *bracket + 1, name.count() - *bracket - 2),
                                  value.view(), assignment_update_mode::Replace);
       }
-      continue;
-    }
-
-    if (has_new_value &&
-        (cxt.variable_store().indexed_arrays().find(name.view()).has_value() ||
-         cxt.is_associative_array(name.view())))
-    {
-      cxt.assign_array_element(name.view(), "0", value.view(),
-                               assignment_update_mode::Replace);
       continue;
     }
 

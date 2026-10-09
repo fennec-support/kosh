@@ -1152,6 +1152,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     let const is_readonly_kind =
         array_command_kind == assignment_builtin::Readonly;
     let is_readonly_request = is_readonly_kind;
+    let is_export_request = is_export;
     let did_request_readonly_flag = false;
     let should_print_declaration = false;
     let is_global_request = false;
@@ -1208,6 +1209,10 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
             should_unmark_uppercase = !is_set_request;
             break;
 
+          case 'x':
+            if (is_set_request) is_export_request = true;
+            break;
+
           default: break;
           }
         }
@@ -1252,7 +1257,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         cxt.declare_associative_array(assignment.name);
       cxt.assign_indexed_array_elements(
           assignment.name, values, assignment.update_mode, &subscript_flags);
-      if (is_export) cxt.mark_exported(assignment.name);
+      if (is_export_request) cxt.mark_exported(assignment.name);
       if (is_readonly_request)
         cxt.variable_store().attributes().mark_readonly(assignment.name);
 

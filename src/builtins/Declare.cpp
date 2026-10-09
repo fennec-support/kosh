@@ -62,6 +62,7 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let should_make_associative = false;
   let should_make_indexed = false;
   let should_export = false;
+  let should_unexport = false;
   let should_print = false;
   let should_mark_integer_attribute = false;
   let should_unmark_integer_attribute = false;
@@ -92,7 +93,12 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       switch (arg[c]) {
       case 'A': should_make_associative = true; break;
       case 'a': should_make_indexed = true; break;
-      case 'x': should_export = true; break;
+      case 'x':
+        if (is_remove_form)
+          should_unexport = true;
+        else
+          should_export = true;
+        break;
       case 'p': should_print = true; break;
       case 'i':
         if (is_remove_form)
@@ -219,7 +225,9 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       !ec.has_stripped_array_operands)
   {
     let const do_matches_attribute_filter = [&](StringView name) -> bool {
-      if (should_export && !os::get_environment_variable(name).has_value()) {
+      if (should_export && !os::get_environment_variable(name).has_value() &&
+          !cxt.is_exported(name))
+      {
         return false;
       }
       if (should_mark_integer_attribute && !cxt.is_integer_variable(name)) {
@@ -502,8 +510,13 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
     }
 
-    if (should_export && !has_subscript && !should_make_associative &&
-        !should_make_indexed)
+    if (should_export && !has_subscript &&
+        (cxt.variable_store().indexed_arrays().find(name).has_value() ||
+         cxt.is_associative_array(name)))
+    {
+      cxt.mark_exported(name);
+    } else if (should_export && !has_subscript && !should_make_associative &&
+               !should_make_indexed)
     {
       LOG(All, "declare exporting '%.*s' to the environment",
           static_cast<int>(name.length), name.data);
@@ -519,6 +532,8 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       if (let const stored = cxt.get_variable_value(exported_name))
         os::set_environment_variable(exported_name, stored->view());
     }
+
+    if (should_unexport && !has_subscript) cxt.unexport_shell_variable(name);
 
     if (should_mark_readonly) {
       if (cxt.variable_store().attributes().is_nameref(name)) rarely

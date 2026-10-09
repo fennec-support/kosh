@@ -1405,6 +1405,21 @@ ${m[key]} expands to it. The form ${!m[@]} lists keys. The command
 removes one element. A word in the list m=(k1 v1 k2 v2) is not split into
 fields and not matched against files, and a quoted "${a[@]}" joins into one
 word. A quoted ] inside a key, as in m['k]x']=1, does not close the subscript.
+.PP
+The
+.B export
+and
+.B declare \-x
+commands on an indexed or associative array keep the array, set element 0 or
+key 0 when given a value, and record the export attribute, which
+.B declare \-p
+prints as \-ax or \-Ax and
+.B ${a@a}
+reports as x. The commands
+.B "export \-n"
+and
+.B "declare +x"
+remove it. As in Bash, no child process receives the array in its environment.
 .SH EXPANSIONS
 .SS Parameter expansion
 The form ${v:offset:length} selects a substring. A negative offset requires a
@@ -2377,8 +2392,9 @@ reference to an element accepts only a scalar write. An array literal, an
 append of one, an element assignment, read \-a, and mapfile through it fail,
 and the failing assignment abandons the line. An export of a value through it
 assigns the element and reports an error with status 0. A scalar assignment to
-an array or an associative array sets element 0 or key 0, and the export
-attribute that Bash prints as \-x for an array is not recorded. A
+an array or an associative array sets element 0 or key 0, and an export of an
+array records the export attribute that declare \-p prints as \-x, as in Bash.
+An array carrying the attribute never reaches a child environment. A
 read-only name, PATH, IFS, and a dynamic variable other than RANDOM and SECONDS
 cannot become a reference. As in Bash, RANDOM and SECONDS take the attribute,
 a value given with it seeds or sets them as an assignment does, and they keep

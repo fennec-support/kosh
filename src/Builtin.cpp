@@ -571,13 +571,20 @@ static fn append_value_attribute_letters(EvalContext &cxt, StringView name,
   if (cxt.variable_store().attributes().is_uppercase(name)) out += 'u';
 }
 
+static fn append_array_attribute_letters(EvalContext &cxt, StringView name,
+                                         String &out) throws -> void
+{
+  append_value_attribute_letters(cxt, name, out);
+  if (cxt.is_exported(name)) out += 'x';
+}
+
 static fn append_valueless_array_declaration(EvalContext &cxt, StringView name,
                                              char kind, String &out) throws
     -> void
 {
   out += "declare -";
   out += kind;
-  append_value_attribute_letters(cxt, name, out);
+  append_array_attribute_letters(cxt, name, out);
   out += ' ';
   out.append(name);
   out += '\n';
@@ -628,7 +635,7 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
 
   if (elements.has_value() || is_directory_stack || is_argument_array) {
     let line = String{cxt.scratch_allocator(), "declare -a"};
-    append_value_attribute_letters(cxt, name, line);
+    append_array_attribute_letters(cxt, name, line);
     line += ' ';
     line.append(name);
     line += "=(";
@@ -698,7 +705,7 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
     let const keys = cxt.associative_keys(name);
     let const values = cxt.associative_values(name);
     let line = String{cxt.scratch_allocator(), "declare -A"};
-    append_value_attribute_letters(cxt, name, line);
+    append_array_attribute_letters(cxt, name, line);
     line += ' ';
     line.append(name);
     line += "=(";
