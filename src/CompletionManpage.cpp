@@ -120,6 +120,7 @@ static HelpOutputCache HELP_OUTPUT_CACHE{};
 static constexpr u64 HELP_FORK_TIMEOUT_NANOS = 1'000'000'000;
 
 static constexpr u64 HELP_FORK_BATCH_TIMEOUT_NANOS = 8'000'000'000;
+static constexpr u64 SUBCOMMAND_SCAN_SLICE_NANOS = 8'000'000;
 
 enum class idle_load_kind : u8
 {
@@ -281,7 +282,8 @@ static fn manpage_section1_directories(EvalContext &context) throws
           view.substring_of_length(segment_start, i - segment_start)
               .trim_blanks();
       segment_start = i + 1;
-      if (!segment.is_empty()) do_push_man1_of_root(segment);
+      if (!segment.is_empty() && Path{segment}.is_absolute())
+        do_push_man1_of_root(segment);
     }
   };
 
@@ -625,7 +627,12 @@ fn internal::complete_from_man_subcommands(StringView line, StringView token,
     if (!IS_DEFERRING_DOCUMENTATION) {
       MANPAGE_CACHE.build_subcommand_index(context);
     } else {
-      MANPAGE_CACHE.scan_next_subcommand_directory(context);
+      let const scan_deadline_nanos =
+          os::monotonic_nanos() + SUBCOMMAND_SCAN_SLICE_NANOS;
+      do {
+        MANPAGE_CACHE.scan_next_subcommand_directory(context);
+      } while (MANPAGE_CACHE.is_subcommand_scan_running &&
+               os::monotonic_nanos() < scan_deadline_nanos);
       if (MANPAGE_CACHE.is_subcommand_scan_running) {
         throw documentation_pending{};
       }
