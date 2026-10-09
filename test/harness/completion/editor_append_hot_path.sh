@@ -299,7 +299,9 @@ chmod +x "$d/menu-bin/tailscale"
 send_menu_input()
 {
     wait_for_editor "$d/menu-ready" || fail "$LINENO"
-    printf 'tailscale \t\025'
+    printf 'tailscale \t'
+    sleep 1
+    printf '\025'
     finish_editor_input || fail "$LINENO"
 }
 
@@ -319,7 +321,7 @@ mkdir "$d/retry-bin"
 printf '%s\n' \
   '#!/bin/sh' \
   'printf "attempted\\n" >> "$KOSH_HELP_MARKER"' \
-  'sleep 2' \
+  'sleep 10' \
   > "$d/retry-bin/act"
 chmod +x "$d/retry-bin/act"
 
@@ -327,11 +329,8 @@ send_help_retry_input()
 {
   wait_for_prompt_count "$d/help-retry-ready" 1 || fail "$LINENO"
   printf 'act --mark\t'
-  wait_for_marker_count "$d/help-retry-marker" 1 || fail "$LINENO"
-  sleep 1.1
-  printf '\t'
   wait_for_marker_count "$d/help-retry-marker" 2 || fail "$LINENO"
-  sleep 1.1
+  sleep 9
   printf '\t'
   sleep 0.2
   printf '\003'
@@ -359,7 +358,7 @@ send_help_adopt_input()
 {
   wait_for_prompt_count "$d/help-adopt-ready" 1 || fail "$LINENO"
   printf 'act --mark\t'
-  wait_for_marker_count "$d/help-adopt-marker" 2 || fail "$LINENO"
+  wait_for_marker_count "$d/help-adopt-marker" 1 || fail "$LINENO"
   printf '\t\025exit 0\n'
 }
 
@@ -371,7 +370,7 @@ send_help_adopt_input | TERM=xterm-256color \
   EDITOR_OPTIONS=--no-syntax-highlighting BIN="$BIN" \
   run_editor "$d/help-adopt-typescript" || fail "$LINENO"
 
-test "$(wc -l < "$d/help-adopt-marker")" -eq 2 || fail "$LINENO"
+test "$(wc -l < "$d/help-adopt-marker")" -eq 1 || fail "$LINENO"
 echo 'help completion adopts the idle load of the same help'
 
 mkdir "$d/manpath-bin" "$d/recovered-man"
@@ -382,7 +381,7 @@ printf '%s\n' \
   'printf "attempted\\n" >> "$KOSH_MANPATH_MARKER"' \
   'if [ ! -f "$KOSH_MANPATH_ATTEMPTED" ]; then' \
   '  : > "$KOSH_MANPATH_ATTEMPTED"' \
-  '  sleep 2' \
+  '  sleep 10' \
   'else' \
   '  printf "%s\\n" "$KOSH_MANPATH_ROOT"' \
   'fi' \
@@ -398,11 +397,8 @@ send_manpath_retry_input()
 {
   wait_for_prompt_count "$d/manpath-ready" 1 || fail "$LINENO"
   printf 'koshmanprobe rec\t'
-  wait_for_marker_count "$d/manpath-marker" 1 || fail "$LINENO"
-  sleep 1.1
-  printf '\t'
   wait_for_marker_count "$d/manpath-marker" 2 || fail "$LINENO"
-  sleep 0.2
+  sleep 1
   printf '\n'
   wait_for_prompt_count "$d/manpath-ready" 2 || fail "$LINENO"
   printf 'exit 0\n'

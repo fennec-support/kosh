@@ -131,6 +131,12 @@ enum class idle_load_kind : u8
 static fn adopt_idle_load(idle_load_kind kind, StringView key,
                           EvalContext &context) throws -> bool;
 
+static fn defer_idle_load(idle_load_kind kind, StringView key,
+                          StringView command, StringView hint_key,
+                          const Maybe<ArrayList<String>> &argv) throws -> void;
+
+static bool IS_DEFERRING_DOCUMENTATION = false;
+
 static constexpr u32 KILLED_FORK_ATTEMPT_LIMIT = 2;
 
 static fn should_retry_killed_fork(StringView kind, StringView name) throws
@@ -234,6 +240,9 @@ static fn manpath_command_output(EvalContext &context) throws -> StringView
     return MANPAGE_CACHE.manpath_output.view();
 
   let const argv = manpath_argv_for(context);
+  if (IS_DEFERRING_DOCUMENTATION)
+    defer_idle_load(idle_load_kind::Manpath, StringView{}, StringView{},
+                    StringView{}, argv);
   if (!argv.has_value()) {
     MANPAGE_CACHE.was_manpath_settled = true;
     return MANPAGE_CACHE.manpath_output.view();
@@ -820,6 +829,9 @@ static fn manpage_options_for(StringView page_name, EvalContext &context) throws
 
   let parsed_options = ArrayList<help_entry>{heap_allocator()};
   let const argv = manpage_argv_for(page_name, context);
+  if (IS_DEFERRING_DOCUMENTATION)
+    defer_idle_load(idle_load_kind::Manpage, page_name, page_name, page_name,
+                    argv);
   if (!argv.has_value())
     return *MANPAGE_CACHE.option_entries.set(page_name, steal(parsed_options));
   Maybe<String> page = capture_completion_program_output(context, *argv);
@@ -1088,6 +1100,9 @@ fn HelpOutputCache::ensure_parsed(EvalContext &context, StringView command,
   if (parsed_keys.contains(key.view())) return;
   if (adopt_idle_load(idle_load_kind::Help, key.view(), context)) return;
 
+  if (IS_DEFERRING_DOCUMENTATION)
+    defer_idle_load(idle_load_kind::Help, key.view(), command, key.view(),
+                    help_argv_for(context, command, subcommand));
   store(command, key.view(), help_text_for(context, command, subcommand));
 }
 
@@ -1939,6 +1954,11 @@ static fn adopt_idle_load(idle_load_kind kind, StringView key,
   let const deadline_nanos =
       os::monotonic_nanos() + completion_fork_timeout_nanos(context);
   let state = IDLE_LOAD->capture.step();
+  if (IS_DEFERRING_DOCUMENTATION && state == os::ProgramCapture::State::Running)
+  {
+    throw documentation_pending{};
+  }
+
   while (state == os::ProgramCapture::State::Running) {
     let const now_nanos = os::monotonic_nanos();
     if (os::INTERRUPT_REQUESTED || now_nanos >= deadline_nanos) {
@@ -1956,6 +1976,28 @@ static fn adopt_idle_load(idle_load_kind kind, StringView key,
   finish_idle_load(*IDLE_LOAD, state);
   IDLE_LOAD = None;
   return true;
+}
+
+static fn defer_idle_load(idle_load_kind kind, StringView key,
+                          StringView command, StringView hint_key,
+                          const Maybe<ArrayList<String>> &argv) throws -> void
+{
+  let const is_load_running =
+      IDLE_LOAD.has_value() ||
+      (argv.has_value() &&
+       start_idle_load(kind, key, command, hint_key, *argv));
+  if (is_load_running) throw documentation_pending{};
+}
+
+ScopedDocumentationDeferral::ScopedDocumentationDeferral(
+    bool should_defer) wontthrow : m_was_deferring(IS_DEFERRING_DOCUMENTATION)
+{
+  IS_DEFERRING_DOCUMENTATION = should_defer;
+}
+
+ScopedDocumentationDeferral::~ScopedDocumentationDeferral()
+{
+  IS_DEFERRING_DOCUMENTATION = m_was_deferring;
 }
 
 static fn start_next_idle_load(StringView line, usize cursor,

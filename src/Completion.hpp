@@ -285,6 +285,23 @@ fn step_idle_documentation(StringView line, usize cursor,
 
 fn abandon_idle_documentation() throws -> void;
 
+struct documentation_pending
+{};
+
+class ScopedDocumentationDeferral
+{
+public:
+  explicit ScopedDocumentationDeferral(bool should_defer) wontthrow;
+  ~ScopedDocumentationDeferral();
+
+  ScopedDocumentationDeferral(const ScopedDocumentationDeferral &) = delete;
+  ScopedDocumentationDeferral &
+  operator=(const ScopedDocumentationDeferral &) = delete;
+
+private:
+  bool m_was_deferring;
+};
+
 fn describe_syntax_problem(StringView line, usize cursor, mimic_mood mood,
                            String &out) throws -> bool;
 

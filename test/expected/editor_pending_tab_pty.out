@@ -1,0 +1,15 @@
+fast-prompt PASS
+fast-help-opens-the-menu PASS
+fast-help-never-draws-loading PASS
+slow-prompt PASS
+slow-help-draws-loading-first PASS
+slow-help-opens-the-menu PASS
+key-prompt PASS
+key-load-draws-loading PASS
+key-during-load-lands-on-the-line PASS
+next-tab-opens-without-another-fork PASS
+escape-prompt PASS
+escape-load-draws-loading PASS
+escape-during-load-closes-quietly PASS
+escape-leaves-the-line-clean PASS
+status=0

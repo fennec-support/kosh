@@ -342,11 +342,18 @@ changes update this file.
   `os::ProgramCapture` child under the man and help trust rules and polls it
   without blocking on each repeat, so a key is served while the child runs.
   The `manpath` run is one of these loads, and the subcommand index scans one
-  man1 directory per repeat. Explicit completion adopts a running load.
-  Every load, miss, and timeout lands in the same caches explicit flag
-  completion uses, and a submitted line kills a running load. An explicit
-  completion that needs the key the idle child is loading adopts that child
-  and waits for it no longer than its own fork budget. The hook also
+  man1 directory per repeat. Every load, miss, and timeout lands in the same
+  caches explicit flag completion uses, and a submitted line kills a running
+  load. An editor Tab runs its gather under `ScopedDocumentationDeferral`. A
+  gather that needs an uncached load starts or keeps `IDLE_LOAD` and throws
+  `documentation_pending`, which `completion_session::complete` turns into
+  `TL_COMPLETE_PENDING`. The editor then polls the idle hook, which advances
+  the same child, and gathers again when it reports a finished load. It draws
+  the loading frame only after the idle delay, and a key or Escape ends the
+  wait while the load goes on. The language server and
+  `--debug-complete-at` do not defer, and adopt the running child within
+  their own fork budget. Every other gather runs in the shell as before. The
+  hook also
   keeps `describe_analysis_finding` for the paused line, which analyzes with
   unresolved commands silenced and no followed sources, so it opens no file.
   The hook runs whatever the hint rows show and indexes each CDPATH

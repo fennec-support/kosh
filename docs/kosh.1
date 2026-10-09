@@ -4041,7 +4041,14 @@ group or other user can write. Each load runs in a child process that the
 editor polls between keys and never waits on, so typing stays responsive while
 it runs, and the hint updates in place when it finishes. The section 1
 directories of the manual roots are read one directory per step. A Tab that
-needs a running load waits for it. A load is killed
+needs a load that is not cached starts it or keeps the running one and serves
+keys while it runs. The menu opens when the load finishes, and a
+.B loading...
+row appears under the word only after 250 milliseconds. A key closes the row
+and is typed as usual, and Escape or Ctrl\-C closes the Tab quietly. The load
+goes on, so the next Tab finds it cached. The language server and
+.B \-\-debug\-complete\-at
+wait for the load instead. A load is killed
 after 8 seconds or when the line is submitted, and a later pause tries it once
 more before it counts as missing. Every other manual page and help output is
 loaded at most once per session, and a missing page or an untrusted program

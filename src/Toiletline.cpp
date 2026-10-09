@@ -136,6 +136,7 @@ struct completion_session
   bool is_highlight_styled_underlines_enabled{false};
   bool should_show_hints{true};
   bool should_show_diagnostics{true};
+  bool has_pending_gather{false};
   koshka::tab_selector_mode tab_selector{
       koshka::tab_selector_mode::Interactive};
 
@@ -773,6 +774,9 @@ fn completion_session::complete(const char *buffer, size_t cursor,
 
   try {
     let const is_explicit_completion = for_listing != 0;
+    has_pending_gather = false;
+    let const deferral =
+        koshka::completion::ScopedDocumentationDeferral{is_explicit_completion};
     if (is_explicit_completion) {
       context->program_resolver().begin_explicit_completion(
           koshka::ProgramResolver::CompletionRefresh::Listings);
@@ -855,6 +859,10 @@ fn completion_session::complete(const char *buffer, size_t cursor,
     out->is_space_suppressed = completions.is_space_suppressed ? 1 : 0;
 
     return 1;
+  } catch (koshka::completion::documentation_pending &) {
+    koshka::arm_message_leading_newline(false);
+    has_pending_gather = true;
+    return TL_COMPLETE_PENDING;
   } catch (koshka::ErrorBase &error) {
     koshka::arm_message_leading_newline(false);
     LOG(Debug, "completion swallowed an error: %s", error.message().c_str());
@@ -1116,12 +1124,13 @@ fn completion_session::idle(const char *buffer, size_t cursor) -> int
       if (had_finding || !analysis_finding.is_empty())
         outcome |= TL_IDLE_REFRESH;
     }
-    if (!should_show_hints) return outcome;
+    if (!should_show_hints && !has_pending_gather) return outcome;
 
     let const progress =
         koshka::completion::step_idle_documentation(line, cursor, *context);
     if (progress.did_finish_load) outcome |= TL_IDLE_REFRESH;
     if (progress.is_loading) outcome |= TL_IDLE_AGAIN;
+    if (!progress.is_loading) has_pending_gather = false;
     return outcome;
   } catch (...) {
     return 0;
