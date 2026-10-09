@@ -294,13 +294,22 @@ same encoding that every spawned process receives."
   word through a second gather, so that TAB runs the callback once for each
   word. The menu holds back the preview of its first row while the token is
   empty, closes quietly when the next word has no candidates, and does not
-  open when the option adds no space. A menu that gathered more than
-  `ITL_MENU_DEBOUNCE_THRESHOLD` rows does not call the callback on a key that
-  leaves its list, such as a blank, a slash, or an erase below the token. It
-  updates the line, shows the loading row, and gathers once through
-  `itl_complete_gather` after one idle delay without a key. Every key moves
-  that moment, and TAB asks at once. A reload of an open menu and the gather
-  of the next word draw the loading frame as a first TAB does.
+  open when the option adds no space. The menu keeps a copy of every base it
+  gathered, keyed by the line around the token, and a key that returns to a
+  word or extends one is answered from the copy without the callback. A key
+  that leaves a list of more than `ITL_MENU_DEBOUNCE_THRESHOLD` rows does not
+  call the callback at once. It updates the line, shows the loading row, and
+  gathers once through `itl_complete_gather` after one idle delay without a
+  key. The pause belongs to one word: every key in it moves that moment, a key
+  that moves the token to a new word clears it, and a list of that many rows
+  or fewer gathers at once. TAB asks at once. Every gather goes through the
+  pending protocol, so a key ends the wait and the host resumes its work at
+  the next question; a `complete -F` function cannot be stepped and runs once
+  to the end. A reload of an open menu and the gather of the next word draw
+  the loading frame as a first TAB does. The narrowing reads each base once
+  into a length and a byte class set per row (`itl_menu_index`) and narrows
+  the survivors of the last query in place, so a base of up to
+  `ITL_MENU_FILTER_SCAN_MAX` rows narrows without the host.
 - Command completion draws on keywords, builtins, bundled utilities, functions,
   aliases, and PATH. `KEYWORD_ENTRIES` is the sole keyword catalog. A `type`
   operand uses the same catalog. Only the listing mode accepts an empty

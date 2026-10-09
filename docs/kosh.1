@@ -4380,7 +4380,15 @@ character of the token
 and widens the list again. A search that matches nothing keeps the menu open on
 a dimmed row reading
 .BR "no matches, erase to widen the search" ,
-and a backspace brings the list back. An accepted candidate that refers to a
+and a backspace brings the list back. A word the menu already listed is
+listed again without asking the completion a second time. A key that leaves the
+listed candidates, such as a blank, a slash, or an erase below the token, asks
+the completion again. When the list being left holds more than 512 candidates,
+the menu shows a
+.B loading...
+row and asks once, after the typing has paused for a quarter of a second, and
+each further key in the same word moves that moment. A shorter list asks at
+once. An accepted candidate that refers to a
 directory opens a menu of the entries it holds, or closes the menu when it
 holds none. The menu closes when any other
 key is pressed. That key then acts on the line.

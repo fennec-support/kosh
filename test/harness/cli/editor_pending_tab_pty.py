@@ -10,9 +10,11 @@
 # finishes. A key typed during the load lands on the line at once, takes the
 # loading text down, and leaves the load running so the next Tab opens the menu
 # without forking again. Escape closes the Tab quietly. A completion function
-# that takes a while shows the loading text before its menu. A menu of 200
+# that takes a while shows the loading text before its menu. A menu of 600
 # commands echoes a space and the next word at once and gathers once after the
-# typing pauses. A Tab on a command with man pages does not queue behind a slow
+# typing pauses. Keys inside the pause move it and cost no gather, a return to
+# a word already gathered asks the host nothing, and a new word after a short
+# list gathers at once, with every key echoed within 50 ms. A Tab on a command with man pages does not queue behind a slow
 # hint load, and a key typed while a slow manpath builds the page index lands at
 # once. Every wait polls under a deadline, so a failure reports the last screen
 # instead of hanging.
@@ -155,7 +157,8 @@ def check_spec(session, scenario):
 
 
 BIG_MENU_ECHO_SECONDS = 0.2
-BIG_MENU_COMMAND_COUNT = 200
+BIG_MENU_COMMAND_COUNT = 600
+KEY_ECHO_SECONDS = 0.05
 INDEX_MENU_SECONDS = 1.5
 PAGE_COUNT = 3000
 
@@ -214,6 +217,45 @@ def check_big_menu(session, scenario):
     session.pump(0.6)
     report.record("big-menu-does-not-gather-again", session,
                   lambda screen: read_marker_count(scenario) == before + 1)
+    check_big_menu_word_rules(session, scenario, before + 1)
+
+
+def check_big_menu_word_rules(session, scenario, base_count):
+    slowest = 0.0
+    for key in b"xyzw":
+        slowest = max(slowest, timed_echo(session, bytes([key])))
+        session.pump(0.15)
+    report.record("big-menu-keys-inside-the-pause-echo-at-once", session,
+                  lambda screen: slowest < KEY_ECHO_SECONDS)
+    report.record("big-menu-keys-inside-the-pause-do-not-gather", session,
+                  lambda screen: read_marker_count(scenario) == base_count)
+    session.pump(0.6)
+    report.record("big-menu-gathers-once-when-the-typing-stops", session,
+                  lambda screen: read_marker_count(scenario) == base_count + 1)
+
+    slowest = 0.0
+    for key in (BACKSPACE * 4):
+        slowest = max(slowest, timed_echo(session, bytes([key])))
+    session.pump(0.6)
+    report.record("big-menu-returned-word-echoes-at-once", session,
+                  lambda screen: slowest < KEY_ECHO_SECONDS
+                  and is_line("mz000 a", "lpha")(screen))
+    report.record("big-menu-returned-word-does-not-ask-the-host", session,
+                  lambda screen: read_marker_count(scenario) == base_count + 1)
+
+    space_seconds = timed_echo(session, b" ")
+    session.pump(0.1)
+    report.record("big-menu-new-word-gathers-without-the-pause", session,
+                  lambda screen: space_seconds < KEY_ECHO_SECONDS
+                  and read_marker_count(scenario) == base_count + 2)
+    slowest = 0.0
+    for key in b"bc":
+        slowest = max(slowest, timed_echo(session, bytes([key])))
+        session.pump(0.1)
+    session.pump(0.6)
+    report.record("big-menu-second-pause-echoes-at-once", session,
+                  lambda screen: slowest < KEY_ECHO_SECONDS
+                  and get_state(screen)[0] == "mz000 a bc")
 
 
 def build_man_tree(scenario, manpath_delay, man_delay):
