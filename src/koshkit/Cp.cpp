@@ -170,8 +170,7 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
     if (let const target = os::read_symlink(source, allocator)) {
       let const is_destination_blocking_symlink =
           destination_path.exists() || destination_path.is_symbolic_link();
-      if (is_destination_blocking_symlink && !os::remove_file(destination))
-      {
+      if (is_destination_blocking_symlink && !os::remove_file(destination)) {
         throw Error{
             "unable to remove '" + String{allocator, destination}
               +

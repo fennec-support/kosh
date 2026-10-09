@@ -35,8 +35,7 @@ constexpr static_string_entry<mimic_mood> UNNAMED_LANGUAGE_MOOD_ENTRIES[] = {
     {SSK("shellscript"), mimic_mood::Bash   },
     {SSK("shit"),        mimic_mood::Default},
 };
-constexpr StaticStringMap UNNAMED_LANGUAGE_MOODS{
-    UNNAMED_LANGUAGE_MOOD_ENTRIES};
+constexpr StaticStringMap UNNAMED_LANGUAGE_MOODS{UNNAMED_LANGUAGE_MOOD_ENTRIES};
 
 pure fn code_action_kind_includes(StringView supported,
                                   StringView offered) wontthrow -> bool

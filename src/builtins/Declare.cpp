@@ -388,7 +388,8 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let resolved_attribute_name = Maybe<String>{};
     if (!should_mark_nameref && !should_unmark_nameref &&
         cxt.variable_store().attributes().is_nameref(name) &&
-        !cxt.is_circular_nameref(name)) rarely
+        !cxt.is_circular_nameref(name))
+      rarely
       {
         resolved_attribute_name = cxt.resolve_nameref_base_for_write(name);
         attribute_name = resolved_attribute_name->view();

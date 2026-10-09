@@ -60,8 +60,9 @@ static fn append_right(String &output, StringView text, usize width) throws
   output += text;
 }
 
-static fn render_aux_without_sampled_columns(const ArrayList<os::process_entry> &processes,
-                     String &output, Allocator allocator) throws -> void
+static fn render_aux_without_sampled_columns(
+    const ArrayList<os::process_entry> &processes, String &output,
+    Allocator allocator) throws -> void
 {
   ArrayList<uid_name_cache_entry> uid_cache{allocator};
   ArrayList<String> owners{allocator};

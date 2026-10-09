@@ -23,10 +23,11 @@ KOSHKIT_UTIL_DECL(
 
 FLAG(EVILNET_ALL, Bool, 'a', "all", "Include interface traffic and TCP data.");
 FLAG(EVILNET_TRAFFIC, Bool, 't', "traffic", "Show interface traffic only.");
-FLAG(EVILNET_SORT, String, '\0', "sort",
-     "Sort traffic by a unique prefix of the interface name, receive, transmit, "
-     "packet, "
-     "error, or dropped packet counters.");
+FLAG(
+    EVILNET_SORT, String, '\0', "sort",
+    "Sort traffic by a unique prefix of the interface name, receive, transmit, "
+    "packet, "
+    "error, or dropped packet counters.");
 FLAG_OPTIONAL(EVILNET_LIVE, 'l', "live", Live,
               "Sample and refresh live traffic every N seconds; the default "
               "is 0.5 seconds.",

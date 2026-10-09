@@ -1420,8 +1420,7 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
                                             actx, unavailable);
   }
   if (should_check_command_resolution && !command_was_resolved &&
-      m_args.count() == 1 &&
-      actx.eval_context != nullptr &&
+      m_args.count() == 1 && actx.eval_context != nullptr &&
       actx.eval_context->execution_store().shell_is_interactive() &&
       actx.eval_context->is_shopt_enabled("autocd") &&
       Path{*name}.is_directory())

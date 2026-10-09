@@ -214,9 +214,8 @@ fn read_system_owned_file(const Path &path) throws -> system_file_reading
     return reading;
   }
   defer { LocalFree(directory_descriptor); };
-  if (let const problem =
-          find_security_problem(directory_owner, directory_dacl,
-                                DIRECTORY_REPLACE_ACCESS_MASK);
+  if (let const problem = find_security_problem(directory_owner, directory_dacl,
+                                                DIRECTORY_REPLACE_ACCESS_MASK);
       problem.has_value())
   {
     reading.rejection = "Ignoring '" + path.text() + "', whose directory '" +

@@ -77,7 +77,8 @@ fn evaluate_one(const ExecContext &ec, EvalContext &cxt, StringView expression,
   }
 }
 
-fn try_define_unevaluated_assignment(EvalContext &cxt, StringView line) throws -> bool
+fn try_define_unevaluated_assignment(EvalContext &cxt, StringView line) throws
+    -> bool
 {
   usize i = 0;
   while (i < line.length && (line[i] == ' ' || line[i] == '\t'))

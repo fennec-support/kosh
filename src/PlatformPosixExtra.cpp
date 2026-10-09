@@ -793,8 +793,7 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
       }
 
       unused(format_proc_pid_path(process_file, parsed_pid.value(), "/statm"));
-      if (let statm = Path{process_file}.read_entire_file();
-          statm.has_value())
+      if (let statm = Path{process_file}.read_entire_file(); statm.has_value())
       {
         let const page_kib = static_cast<u64>(sysconf(_SC_PAGESIZE)) / 1024;
         if (let const size = nth_space_field(statm->view(), 0).to<i64>();

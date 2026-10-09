@@ -1518,7 +1518,8 @@ fn RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
 
   let const own_redirection_substitution_mark =
       cxt.mark_process_substitutions();
-  defer {
+  defer
+  {
     cxt.cleanup_process_substitutions(own_redirection_substitution_mark);
   };
 

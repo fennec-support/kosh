@@ -3065,9 +3065,8 @@ fn EvalContext::apply_parameter_transform(StringView name, char op) throws
 
     let const is_reference = variable_store().attributes().is_nameref(name) &&
                              !is_circular_nameref(name);
-    let const base_name = is_reference
-                              ? resolve_nameref_base_for_write(name)
-                              : String{scratch_allocator(), name};
+    let const base_name = is_reference ? resolve_nameref_base_for_write(name)
+                                       : String{scratch_allocator(), name};
     let const has_no_scalar_value =
         variable_store().sparse_arrays().has(base_name.view()) ||
         is_associative_array(base_name.view());
@@ -3193,9 +3192,8 @@ fn EvalContext::apply_parameter_transform_to_value(StringView text, char op,
   case 'a': {
     let const is_reference = variable_store().attributes().is_nameref(name) &&
                              !is_circular_nameref(name);
-    let const base_name = is_reference
-                              ? resolve_nameref_base_for_write(name)
-                              : String{scratch_allocator(), name};
+    let const base_name = is_reference ? resolve_nameref_base_for_write(name)
+                                       : String{scratch_allocator(), name};
     let const attribute_name = base_name.view();
     if (variable_store().indexed_arrays().find(attribute_name).has_value() ||
         variable_store().sparse_arrays().has(attribute_name))

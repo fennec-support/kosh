@@ -1856,8 +1856,8 @@ static fn source_file(const Path &path, EvalContext &context,
 
   LOG(Info, "sourcing '%s', %zu bytes", path.c_str(), contents->count());
 
-  context.run_source(*contents, path.view(), None, path.view(),
-                     nullptr, nullptr, return_handling::Consume);
+  context.run_source(*contents, path.view(), None, path.view(), nullptr,
+                     nullptr, return_handling::Consume);
   return true;
 }
 

@@ -104,7 +104,8 @@ FLAG(INIT_MOODS, ManyStrings, 'L', "init-moods", Compat,
      "or by repeating the flag. Defaults to kosh.init_moods in an "
      "interactive or login shell, then to --mood.");
 FLAG(MIMICRY, Bool, 'I', "enable-mimicry", Compat,
-     "Mimic the shell specified by a script's shebang, running a known shell shebang "
+     "Mimic the shell specified by a script's shebang, running a known shell "
+     "shebang "
      "in-process in the matching mode.");
 FLAG(DUMB, Bool, '\0', "dumb", Compat,
      "Make the shell extremely dumb. Equivalent to --mood sh --no-completion "
@@ -1742,9 +1743,7 @@ struct interactive_session
           toiletline::get_input(prompt, right_prompt, transient_prompt);
 
       switch (code) {
-      case TL_PRESSED_TAB:
-        toiletline::set_input(input);
-        continue;
+      case TL_PRESSED_TAB: toiletline::set_input(input); continue;
       case TL_PRESSED_EOF:
         if (input.is_empty()) {
           i64 ignored_eof_limit_count = 0;

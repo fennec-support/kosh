@@ -1404,9 +1404,7 @@ fn internal::complete_from_help_subcommands(StringView line, StringView token,
   if (!token.is_empty() && token[0] == '-') return None;
   if (os::has_directory_separator(token)) return None;
   let const command_name = command_word_of(line);
-  if (command_name.is_empty() ||
-      os::has_directory_separator(command_name))
-  {
+  if (command_name.is_empty() || os::has_directory_separator(command_name)) {
     LOG(Debug, "help subcommands bail because the command name is empty");
     return None;
   }

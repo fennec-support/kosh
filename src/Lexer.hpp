@@ -68,8 +68,7 @@ public:
     FunctionBody,
   };
 
-  explicit ParseSession(BumpArena &syntax_arena)
-      : m_active_arena(&syntax_arena)
+  explicit ParseSession(BumpArena &syntax_arena) : m_active_arena(&syntax_arena)
   {}
 
   pure fn get_arena() const wontthrow -> BumpArena & { return *m_active_arena; }

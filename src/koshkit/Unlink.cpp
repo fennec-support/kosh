@@ -13,7 +13,8 @@
 #include "../Koshkit.hpp"
 #include "../base/Path.hpp"
 
-KOSHKIT_UTIL_DECL("file", "The unlink utility removes the single specified file.");
+KOSHKIT_UTIL_DECL("file",
+                  "The unlink utility removes the single specified file.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Unlink);
 

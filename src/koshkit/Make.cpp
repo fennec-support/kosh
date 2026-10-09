@@ -66,25 +66,25 @@ namespace {
 
 constexpr static_string_entry<const char *>
     LOWEST_PRECEDENCE_BUILTIN_VARIABLE_ENTRIES[] = {
-    {SSK("MAKE"),         "koshkit make"},
-    {SSK("AR"),           "ar"          },
-    {SSK("ARFLAGS"),      "-rv"         },
-    {SSK("YACC"),         "yacc"        },
-    {SSK("YFLAGS"),       ""            },
-    {SSK("LEX"),          "lex"         },
-    {SSK("LFLAGS"),       ""            },
-    {SSK("LDFLAGS"),      ""            },
-    {SSK("CC"),           "c99"         },
-    {SSK("CFLAGS"),       "-O 1"        },
-    {SSK("FC"),           "fort77"      },
-    {SSK("FFLAGS"),       "-O 1"        },
-    {SSK("GET"),          "get"         },
-    {SSK("GFLAGS"),       ""            },
-    {SSK("SCCSFLAGS"),    ""            },
-    {SSK("SCCSGETFLAGS"), "-s"          },
-    {SSK("CXX"),          "c++"         },
-    {SSK("CPP"),          "c99 -E"      },
-    {SSK("RM"),           "rm -f"       },
+        {SSK("MAKE"),         "koshkit make"},
+        {SSK("AR"),           "ar"          },
+        {SSK("ARFLAGS"),      "-rv"         },
+        {SSK("YACC"),         "yacc"        },
+        {SSK("YFLAGS"),       ""            },
+        {SSK("LEX"),          "lex"         },
+        {SSK("LFLAGS"),       ""            },
+        {SSK("LDFLAGS"),      ""            },
+        {SSK("CC"),           "c99"         },
+        {SSK("CFLAGS"),       "-O 1"        },
+        {SSK("FC"),           "fort77"      },
+        {SSK("FFLAGS"),       "-O 1"        },
+        {SSK("GET"),          "get"         },
+        {SSK("GFLAGS"),       ""            },
+        {SSK("SCCSFLAGS"),    ""            },
+        {SSK("SCCSGETFLAGS"), "-s"          },
+        {SSK("CXX"),          "c++"         },
+        {SSK("CPP"),          "c99 -E"      },
+        {SSK("RM"),           "rm -f"       },
 };
 constexpr StaticStringMap BUILTIN_VARIABLES{
     LOWEST_PRECEDENCE_BUILTIN_VARIABLE_ENTRIES};
@@ -1700,7 +1700,8 @@ static fn expand(EvalContext &cxt, makefile &mk, StringView text,
   return result;
 }
 
-static fn first_colon_not_followed_by_equals(StringView line) wontthrow -> Maybe<usize>
+static fn first_colon_not_followed_by_equals(StringView line) wontthrow
+    -> Maybe<usize>
 {
   usize token_start = 0;
   for (usize i = 0; i < line.length; i++) {

@@ -145,9 +145,9 @@ static fn find_entry_matches(char type_letter, StringView filename, usize depth,
       let const should_ignore_case =
           options.name_pattern_ignore_case != nullptr &&
           (*options.name_pattern_ignore_case)[index];
-      let const candidate =
-          should_ignore_case ? locale_independent_folded_filename.view()
-                             : original_filename;
+      let const candidate = should_ignore_case
+                                ? locale_independent_folded_filename.view()
+                                : original_filename;
       if (!utils::glob_matches(pattern, candidate,
                                (*options.name_pattern_masks)[index], 0,
                                extglob_mode::Disabled, options.name_charset))

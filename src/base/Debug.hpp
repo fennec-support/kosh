@@ -134,7 +134,7 @@ fn t__string_from_struct(const T &value, AllocatorT allocator) throws -> StringT
 
 } /* namespace koshka */
 
-#define STRUCT_STRING(x)                                                      \
+#define STRUCT_STRING(x)                                                       \
   ::koshka::t__string_from_struct<::koshka::String>(                           \
       x, ::koshka::heap_allocator())
 #endif

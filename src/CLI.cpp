@@ -313,7 +313,8 @@ static fn find_flag(const FlagList &flags, const char *flag_start, bool is_long,
       if (!flags[i]->long_name().is_empty()) {
         let const flag_length = flags[i]->long_name().length;
 
-        let const is_flag_longer_than_argument = flag_length > flag_start_length;
+        let const is_flag_longer_than_argument =
+            flag_length > flag_start_length;
         if (is_flag_longer_than_argument) continue;
 
         let const after_name = flag_start[flag_length];

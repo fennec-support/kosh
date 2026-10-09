@@ -405,8 +405,7 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
       for (usize index = 0; index < ansi_text.length(); index++) {
         let const decoded_byte = ansi_text[index];
         let const raw_after =
-            has_length_changing_escape ? construct_end
-                                       : body_start + index + 1;
+            has_length_changing_escape ? construct_end : body_start + index + 1;
         decoded.text.push(decoded_byte);
         decoded.glob_active.push(false);
         if (should_map_source) decoded.raw_positions.push(raw_after);

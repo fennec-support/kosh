@@ -1037,7 +1037,7 @@ fn reap_process_quietly(process pid) throws -> i32
   loop
   {
     const pid_t w = retry_interrupted([&] { return waitpid(pid, &status, 0); });
-      if (w == -1 && errno == ECHILD) {
+    if (w == -1 && errno == ECHILD) {
       return 0;
     }
     if (check_syscall(w) == pid) break;
