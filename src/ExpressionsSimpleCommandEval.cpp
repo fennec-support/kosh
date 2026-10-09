@@ -669,7 +669,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
     for (let const &assignment : m_array_args) {
       if (!cxt.is_circular_nameref(assignment.name))
         do_reject_readonly_target(assignment.name);
-      let subscript_flags = Bitset{cxt.scratch_allocator()};
+      let subscript_flags = Bitset{heap_allocator()};
       ArrayList<String> values = cxt.process_args(
           assignment.elements, nullptr, argument_lifetime::Persistent,
           cxt.is_associative_array(assignment.name)
@@ -1241,7 +1241,7 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
         cxt.variable_store().attributes().mark_lowercase(assignment.name);
       if (should_mark_uppercase)
         cxt.variable_store().attributes().mark_uppercase(assignment.name);
-      let subscript_flags = Bitset{cxt.scratch_allocator()};
+      let subscript_flags = Bitset{heap_allocator()};
       ArrayList<String> values = cxt.process_args(
           assignment.elements, nullptr, argument_lifetime::Persistent,
           is_associative_request || cxt.is_associative_array(assignment.name)

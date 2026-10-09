@@ -13,6 +13,10 @@ printf '<%s>' "${fields[@]}"
 echo
 declare -a decl=($text [5]=w)
 declare -p decl
+for round in 1 2 3; do
+  again=([0]=x [5]=y [10]=z)
+  declare -p again
+done
 arr=(a 'b c')
 captured=(${arr[@]@A})
 printf '<%s>' "${captured[@]}"
