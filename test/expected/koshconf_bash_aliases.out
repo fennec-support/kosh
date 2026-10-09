@@ -1,0 +1,31 @@
+== a shopt alias and its canonical name are one option:
+off
+off
+failglob            	off
+on
+failglob            	on
+== a set -o alias reaches set -o, $- and SHELLOPTS:
+on
+errexit        	on
+flag-e-set
+shellopts-errexit
+== the editor mode alias reaches the enumeration:
+vi
+vi
+== a kosh.conf written with aliases loads:
+extglob             	off
+noclobber      	on
+== both spellings in one file follow the later-line rule:
+extglob             	on
+== list shows canonical names only:
+0
+1
+== an unknown alias and the retired names are errors:
+-c:1:14: error: Builtin `koshconf`: Unknown option 'legacy.bash.foo'.
+note: Run `koshconf list` for the option names.
+-c:1:14: error: Builtin `koshconf`: Unknown option 'legacy.bash.errexit'.
+note: Run `koshconf list` for the option names.
+-c:1:14: error: Builtin `koshconf`: Unknown option 'legacy.posix.extglob'.
+note: Run `koshconf list` for the option names.
+retired status=1
+retired status=1

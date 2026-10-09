@@ -22,7 +22,7 @@ echo "=== arbitrary precision under the bash mood ==="
 "$BIN" --mood bash -c 'koshkit calc "2 ** 100"'
 
 echo "=== arbitrary precision with extended arithmetic off ==="
-"$BIN" -M bash -c 'koshconf set arithmetic.use_big_integers_and_decimals off; koshkit calc "2 ** 100"'
+"$BIN" -M bash -c 'koshconf set kosh.arithmetic_uses_big_numbers off; koshkit calc "2 ** 100"'
 
 echo "=== signed 128-bit minimum ==="
 "$BIN" -c 'koshkit calc -- "-170141183460469231731687303715884105728"'

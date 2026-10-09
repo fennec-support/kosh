@@ -5,32 +5,32 @@ HOME/.config/kosh/kosh.conf:7:1: warning: Expected a 'name=value' line, skipping
 HOME/.config/kosh/kosh.conf:8:1: warning: Unknown option 'unknown.option', skipping it.
      8 |  unknown.option=on
        |  ^~~~~~~~~~~~~~
-HOME/.config/kosh/kosh.conf:9:30: warning: Invalid value 'maybe' for 'editor.show_command_synopsis', expected 'on', 'off', 'true', 'false', '1', or '0', skipping it.
-     9 |  editor.show_command_synopsis=maybe
-       |                               ^~~~~
-HOME/.config/kosh/kosh.conf:11:19: warning: The quoted value has no closing quote, skipping it.
-    11 |  history.file_path="unterminated
-       |                    ^~~~~~~~~~~~~
-HOME/.config/kosh/kosh.conf:12:13: warning: Unexpected text after the closing quote, skipping the line.
-    12 |  mood='bash' trailing
-       |              ^~~~~~~~
-HOME/.config/kosh/kosh.conf:10:32: warning: The kosh mood keeps 'legacy.unset_variable_is_error' on, so the configured value is skipped; set mood=bash or run `koshconf set mood bash` to change it.
-    10 |  legacy.unset_variable_is_error=off
-       |                                 ^~~
+HOME/.config/kosh/kosh.conf:9:36: warning: Invalid value 'maybe' for 'editor.hints.show_command_synopsis', expected 'on', 'off', 'true', 'false', '1', or '0', skipping it.
+     9 |  editor.hints.show_command_synopsis=maybe
+       |                                     ^~~~~
+HOME/.config/kosh/kosh.conf:11:26: warning: The quoted value has no closing quote, skipping it.
+    11 |  editor.history.file_path="unterminated
+       |                           ^~~~~~~~~~~~~
+HOME/.config/kosh/kosh.conf:12:18: warning: Unexpected text after the closing quote, skipping the line.
+    12 |  kosh.mood='bash' trailing
+       |                   ^~~~~~~~
+HOME/.config/kosh/kosh.conf:10:30: warning: The kosh mood keeps 'kosh.unset_variable_is_error' on, so the configured value is skipped; set kosh.mood=bash or run `koshconf set kosh.mood bash` to change it.
+    10 |  kosh.unset_variable_is_error=off
+       |                               ^~~
 editor.auto_close_brackets_and_quotes=on
 koshkit.run_utilities_as_plain_commands=on
-history.max_entries=128
+editor.history.max_entries=128
 diagnostics.warning_level=1
-mood=kosh
+kosh.mood=kosh
 rc=0
 == a byte order mark is skipped, and raw bytes are escaped in warnings:
 0
-HOME/.config/kosh/kosh.conf:2:21: warning: Invalid value '-5' for 'history.max_entries', expected a decimal integer from 0 to 2147483647, skipping it.
-     2 |  history.max_entries=-5
-       |                      ^~
-HOME/.config/kosh/kosh.conf:3:19: warning: Invalid value 'a\xffb' for 'history.file_path', expected valid UTF-8 text, skipping it.
-     3 |  history.file_path=a?b
-       |                    ^~~
+HOME/.config/kosh/kosh.conf:2:28: warning: Invalid value '-5' for 'editor.history.max_entries', expected a decimal integer from 0 to 2147483647, skipping it.
+     2 |  editor.history.max_entries=-5
+       |                             ^~
+HOME/.config/kosh/kosh.conf:3:26: warning: Invalid value 'a\xffb' for 'editor.history.file_path', expected valid UTF-8 text, skipping it.
+     3 |  editor.history.file_path=a?b
+       |                           ^~~
 HOME/.config/kosh/kosh.conf:4:1: warning: Unknown option 'bad\x1b[1mname', skipping it.
      4 |  bad?[1mname=on
        |  ^~~~~~~~~~~
@@ -66,7 +66,7 @@ warning: 'HOME/.koshrc' is no longer read; see MIGRATION in kosh(5)
 0
 == a configured bash mood sources the bash rc:
 1
-== an inherited KOSH_HISTORY_SIZE is the history.max_entries option:
+== an inherited KOSH_HISTORY_SIZE is the editor.history.max_entries option:
 77
 77
 == an inherited history variable wins over the file, and neither is exported by default:
@@ -88,15 +88,15 @@ rc=1
 dotglob             	on
 bash
 == a kosh mood value that conflicts with a fixed option is skipped:
-HOME/.config/kosh/kosh.conf:1:32: warning: The kosh mood keeps 'legacy.unset_variable_is_error' on, so the configured value is skipped; set mood=bash or run `koshconf set mood bash` to change it.
-     1 |  legacy.unset_variable_is_error=off
-       |                                 ^~~
+HOME/.config/kosh/kosh.conf:1:30: warning: The kosh mood keeps 'kosh.unset_variable_is_error' on, so the configured value is skipped; set kosh.mood=bash or run `koshconf set kosh.mood bash` to change it.
+     1 |  kosh.unset_variable_is_error=off
+       |                               ^~~
 on
 == an unknown name in the file suggests a close one:
-HOME/.config/kosh/kosh.conf:1:1: warning: Unknown option 'history.max_entry', skipping it.
-     1 |  history.max_entry=3
-       |  ^~~~~~~~~~~~~~~~~
-note: Did you mean 'history.max_entries'?
+HOME/.config/kosh/kosh.conf:1:1: warning: Unknown option 'editor.history.max_entry', skipping it.
+     1 |  editor.history.max_entry=3
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~
+note: Did you mean 'editor.history.max_entries'?
 4096
 == a command-line flag wins over a semantic option from the file:
 on
@@ -115,7 +115,7 @@ off
 off
 off
 off
-== startup.init_moods selects the startup files of an interactive shell:
+== kosh.init_moods selects the startup files of an interactive shell:
 bash
 kosh
 1
@@ -125,10 +125,10 @@ bash version: unset
 0
 sh,bash
 == an unknown mood in the list is a warning:
-HOME/.config/kosh/kosh.conf:1:20: warning: Unknown mood 'zsh' in the value of 'startup.init_moods', expected a comma-separated list of 'kosh', 'sh', 'bash', and 'bash-posix', skipping it.
-     1 |  startup.init_moods=bash,zsh
-       |                     ^~~~~~~~
+HOME/.config/kosh/kosh.conf:1:17: warning: Unknown mood 'zsh' in the value of 'kosh.init_moods', expected a comma-separated list of 'kosh', 'sh', 'bash', and 'bash-posix', skipping it.
+     1 |  kosh.init_moods=bash,zsh
+       |                  ^~~~~~~~
 
 == koshconf set validates the list:
 sh,bash-posix
--c:2:33: error: Builtin `koshconf`: Unknown mood 'ksh' in the value of 'startup.init_moods', expected a comma-separated list of 'kosh', 'sh', 'bash', and 'bash-posix'.
+-c:2:30: error: Builtin `koshconf`: Unknown mood 'ksh' in the value of 'kosh.init_moods', expected a comma-separated list of 'kosh', 'sh', 'bash', and 'bash-posix'.

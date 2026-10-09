@@ -16,20 +16,20 @@ printf 'sub\necho "status=$?"\n' >script.sh
 
 echo "== an interactive shell does:"
 printf 'sub\npwd\n' >.bashrc
-printf 'mood=bash\n' >config/kosh/kosh.conf
+printf 'kosh.mood=bash\n' >config/kosh/kosh.conf
 "$BIN" -i <"$TEST_NULL_DEVICE" 2>/dev/null | sed "s|$work|WORK|"
 "$BIN_DIR/invoke-koshkit" rm -- .bashrc config/kosh/kosh.conf
 
 echo "== KOSHCONF carries no semantic option:"
 printf '#!/usr/bin/bash\necho "${KOSH_VERSION:-another shell}"\n' >shebang.sh
 chmod +x shebang.sh
-"$BIN" -c 'for name in compat.mimic_shell_named_by_shebang \
+"$BIN" -c 'for name in kosh.mimic_shebang \
   debug.report_every_exit_code koshkit.run_utilities_as_plain_commands \
   editor.auto_close_brackets_and_quotes; do
   koshconf set "$name" on
 done
 koshconf set diagnostics.analyze_before_running off
 env -u KOSH_ANALYSIS KOSHCONF="$KOSHCONF" "$1" -c "koshconf list |
-  grep -e ^compat -e ^debug.report -e ^diagnostics.analyze -e ^koshkit \
+  grep -e ^kosh.mimic -e ^debug.report -e ^diagnostics.analyze -e ^koshkit \
     -e ^editor.auto_close
 ./shebang.sh" 2>&1' _ "$BIN" 2>/dev/null

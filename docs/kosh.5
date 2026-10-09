@@ -21,7 +21,7 @@ loads the files but ignores KOSHCONF.
 The configured mood also applies to
 .B kosh \-c
 and to a script without a shebang, so a file that sets
-.B mood=bash
+.B kosh.mood=bash
 runs such code under the bash grammar. Name the mood with
 .B \-\-mood
 or a shebang where the grammar matters.
@@ -37,7 +37,7 @@ or
 .B sh
 mood listed under FILES. The
 .B kosh
-mood sources no shell startup file. The startup.init_moods option lists the
+mood sources no shell startup file. The kosh.init_moods option lists the
 moods whose startup files an interactive or login shell sources, so a
 .B kosh
 mood session can still source ~/.bashrc; see STARTUP MOODS.
@@ -147,8 +147,8 @@ the blanks at the end of the line. A value cannot span lines.
 .PP
 A boolean is written as on or off and is also read as true, false, 1, or 0. An
 enumeration is written by name. A string is taken as written, and must be valid
-UTF-8 without a NUL byte. history.max_entries is a decimal integer from 0 to
-2147483647. startup.init_moods is a comma-separated list of the mood names
+UTF-8 without a NUL byte. editor.history.max_entries is a decimal integer from 0 to
+2147483647. kosh.init_moods is a comma-separated list of the mood names
 .B \-L
 accepts, such as kosh, sh, bash, and bash-posix. An empty name is skipped.
 .B koshconf
@@ -163,18 +163,18 @@ shows such a value, and any value with a control byte or invalid UTF-8, in the
 form of the shell.
 .PP
 A file may set every option except the ones fixed by how the shell started,
-such as legacy.login_shell, legacy.restricted_shell, legacy.privileged_mode,
-legacy.parse_without_executing, and legacy.exit_after_one_command, and the ones
-that follow the session, legacy.job_control, legacy.history_recording,
-legacy.history_bang_expansion, and legacy.posix_mode. The OPTION REGISTRY
+such as kosh.login_shell, kosh.restricted_shell, kosh.privileged_mode,
+kosh.parse_without_executing, and kosh.exit_after_one_command, and the ones
+that follow the session, kosh.job_control, editor.history.records_commands,
+editor.history.bang_expansion, and kosh.posixly_correct. The OPTION REGISTRY
 section of
 .BR kosh (1)
 lists them.
 .PP
 .B A semantic option in a file changes every shell that loads it. This includes
 .B the interactive session and every script that kosh runs.
-For example, legacy.exit_on_command_failure=on makes every script exit on its
-first failing command, and legacy.glob_includes_dotfiles=on changes what every
+For example, kosh.exit_on_command_failure=on makes every script exit on its
+first failing command, and kosh.glob_includes_dotfiles=on changes what every
 glob matches. Put such a setting in a file only when every script should run
 with it; otherwise set it for a session with
 .BR set ,
@@ -185,12 +185,12 @@ or
 The mood is applied first, wherever it appears in the file, so the other lines
 are read under it. In the
 .B kosh
-mood, legacy.unset_variable_is_error, legacy.pipeline_fails_on_any_stage,
-legacy.glob_no_match_is_error, and arithmetic.use_big_integers_and_decimals stay
-on and legacy.glob_no_match_expands_to_nothing stays off; a file that sets
+mood, kosh.unset_variable_is_error, kosh.pipeline_fails_on_any_stage,
+kosh.glob_no_match_is_error, and kosh.arithmetic_uses_big_numbers stay
+on and kosh.glob_no_match_expands_to_nothing stays off; a file that sets
 another value gets a warning that identifies the file, the line, the option,
 and
-.BR "koshconf set mood bash" ,
+.BR "koshconf set kosh.mood bash" ,
 and the line is skipped. An option specified on the command line, such as
 .BR \-u ,
 .BR \-e ,
@@ -205,11 +205,41 @@ keeps the command-line value, so
 .B kosh +e script
 runs without errexit whatever a file says. In the same way, a KOSH_HISTORY_FILE
 or KOSH_HISTORY_SIZE variable inherited from the environment keeps its value
-over history.file_path or history.max_entries. To run with no settings file at
+over editor.history.file_path or editor.history.max_entries. To run with no settings file at
 all, start the shell with
 .BR \-\-no\-config .
 A later line replaces an earlier one, and the
 user file and KOSHCONF replace the system file.
+.PP
+Every option that has a Bash spelling is also accepted under an alias. The
+alias is legacy.posix.NAME, with NAME the
+.B set \-o
+name, when POSIX
+.B set
+specifies the option: allexport, errexit, ignoreeof, monitor, noclobber,
+noexec, noglob, notify, nounset, pipefail, verbose, xtrace, and vi. Otherwise
+it is legacy.bash.NAME, with NAME the
+.B set \-o
+or
+.B shopt
+name, such as legacy.bash.extglob, legacy.bash.failglob,
+legacy.bash.braceexpand, and legacy.bash.posix. An alias resolves to the same
+option entry as the canonical name, with the same id and the same storage, so
+setting either one changes what the other,
+.BR "set \-o" ,
+.BR shopt ,
+.BR $\- ,
+and SHELLOPTS show. It is only a second spelling resolved at lookup. A line,
+.B koshconf set
+and
+.B koshconf get
+accept it, as does every other place that takes an option name. A line that
+sets an option twice through both spellings follows the rule above that a later
+line replaces an earlier one.
+.B koshconf create
+and
+.BR "koshconf list" ,
+error messages, and KOSHCONF use only the canonical name.
 .PP
 .B koshconf create
 writes every option a file may hold, with a blank line between topics, each
@@ -219,10 +249,10 @@ comment that also identifies its
 .B set \-o
 or
 .B shopt
-spelling. A string option without a default, such as history.file_path, is
+spelling. A string option without a default, such as editor.history.file_path, is
 written commented out. The
 .B bash
-preset also writes legacy.aliases_expand commented out, because bash expands
+preset also writes kosh.aliases_expand commented out, because bash expands
 aliases in an interactive shell and not in a script, and a written value would
 apply to both. The
 .B kosh
@@ -230,7 +260,7 @@ preset writes the values the
 .B kosh
 mood keeps, so reading it back never warns.
 .SH STARTUP MOODS
-startup.init_moods lists the moods whose startup files an interactive or login
+kosh.init_moods lists the moods whose startup files an interactive or login
 shell sources, in order, with each file parsed under the grammar of its mood.
 It is empty by default, which sources the files of the session mood, and so
 nothing in the
@@ -255,7 +285,7 @@ mood for the session and still source ~/.bashrc, write
 .PP
 .RS
 .EX
-startup.init_moods=bash
+kosh.init_moods=bash
 .EE
 .RE
 .PP
@@ -306,7 +336,7 @@ and never change meaning. Only the mood and the interactive options are
 written. An interactive option affects only the interactive editor, the
 history, or how diagnostics are presented, never how a script runs. A child
 shell loads the settings files itself. Passing semantic options such as
-exit_on_command_failure, compat.mimic_shell_named_by_shebang, or the debug
+exit_on_command_failure, kosh.mimic_shebang, or the debug
 reports through the environment would change how every script below the shell
 runs. Bash exports SHELLOPTS only on request.
 .PP
@@ -346,9 +376,9 @@ with
 .I option value
 .BR \-\-persist ,
 and move shell code into ~/.bashrc with
-.BR mood=bash ,
+.BR kosh.mood=bash ,
 with
-.BR startup.init_moods=bash ,
+.BR kosh.init_moods=bash ,
 or with
 .B \-L bash
 on the command line. Guard Koshka-only lines with
@@ -362,16 +392,16 @@ match dotfiles in every script:
 .PP
 .RS
 .EX
-mood=bash
+kosh.mood=bash
 
 editor.auto_close_brackets_and_quotes=on
-editor.completion_menu_style=plain
+editor.completion.menu_style=plain
 
-history.max_entries=20000
+editor.history.max_entries=20000
 
-legacy.base_editor_mode=vi
+editor.base_mode=vi
 
-legacy.glob_includes_dotfiles=on
+kosh.glob_includes_dotfiles=on
 .EE
 .RE
 .PP

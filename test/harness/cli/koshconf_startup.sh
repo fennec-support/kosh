@@ -17,17 +17,17 @@ cat >"$conf" <<'EOF'
 
 editor.auto_close_brackets_and_quotes=on
 koshkit.run_utilities_as_plain_commands = true
-history.max_entries="128"
+editor.history.max_entries="128"
 diagnostics.warning_level=1
 no equals sign
 unknown.option=on
-editor.show_command_synopsis=maybe
-legacy.unset_variable_is_error=off
-history.file_path="unterminated
-mood='bash' trailing
+editor.hints.show_command_synopsis=maybe
+kosh.unset_variable_is_error=off
+editor.history.file_path="unterminated
+kosh.mood='bash' trailing
 EOF
 echo "== the file applies with a warning per malformed line:"
-"$BIN" -c 'for name in editor.auto_close_brackets_and_quotes koshkit.run_utilities_as_plain_commands history.max_entries diagnostics.warning_level mood; do
+"$BIN" -c 'for name in editor.auto_close_brackets_and_quotes koshkit.run_utilities_as_plain_commands editor.history.max_entries diagnostics.warning_level kosh.mood; do
   printf "%s=%s\n" "$name" "$(koshconf get "$name")"
 done' >"$home/out" 2>&1
 status=$?
@@ -35,37 +35,37 @@ sed "s|$home|HOME|" "$home/out"
 echo "rc=$status"
 
 echo "== a byte order mark is skipped, and raw bytes are escaped in warnings:"
-printf '\357\273\277editor.auto_close_brackets_and_quotes=on\r\nhistory.max_entries=-5\r\n' >"$conf"
-printf 'history.file_path=a\377b\nbad\033[1mname=on\n' >>"$conf"
-"$BIN" -c 'koshconf get editor.auto_close_brackets_and_quotes; koshconf get history.max_entries' \
+printf '\357\273\277editor.auto_close_brackets_and_quotes=on\r\neditor.history.max_entries=-5\r\n' >"$conf"
+printf 'editor.history.file_path=a\377b\nbad\033[1mname=on\n' >>"$conf"
+"$BIN" -c 'koshconf get editor.auto_close_brackets_and_quotes; koshconf get editor.history.max_entries' \
   >"$home/out" 2>&1
 status=$?
 sed "s|$home|HOME|" "$home/out" | od -An -c | grep -c '033'
 sed "s|$home|HOME|" "$home/out"
 echo "rc=$status"
 
-printf 'mood=bash\neditor.auto_close_brackets_and_quotes=on\nkoshkit.run_utilities_as_plain_commands=off\ndiagnostics.warning_level=2\n' >"$conf"
+printf 'kosh.mood=bash\neditor.auto_close_brackets_and_quotes=on\nkoshkit.run_utilities_as_plain_commands=off\ndiagnostics.warning_level=2\n' >"$conf"
 echo "== a configured mood selects the session mood:"
-"$BIN" -c 'koshconf get mood; echo "${BASH_VERSION:+bash identity}"'
+"$BIN" -c 'koshconf get kosh.mood; echo "${BASH_VERSION:+bash identity}"'
 echo "== a command-line flag wins over the file:"
-"$BIN" --mood kosh --enable-koshkit -W -c 'koshconf get mood
+"$BIN" --mood kosh --enable-koshkit -W -c 'koshconf get kosh.mood
 koshconf get koshkit.run_utilities_as_plain_commands
 koshconf get diagnostics.warning_level'
 echo "== -Q skips the configuration files:"
-"$BIN" -Q -c 'koshconf get mood; koshconf get editor.auto_close_brackets_and_quotes'
+"$BIN" -Q -c 'koshconf get kosh.mood; koshconf get editor.auto_close_brackets_and_quotes'
 echo "== XDG_CONFIG_HOME replaces the default directory:"
-XDG_CONFIG_HOME="$home/elsewhere" "$BIN" -c 'koshconf get mood'
+XDG_CONFIG_HOME="$home/elsewhere" "$BIN" -c 'koshconf get kosh.mood'
 
 echo "== KOSHCONF applies after the file and leaves the environment:"
-KOSHCONF=AQEBBQEA "$BIN" -c 'koshconf get mood; koshconf get editor.auto_close_brackets_and_quotes
+KOSHCONF=AQEBBQEA "$BIN" -c 'koshconf get kosh.mood; koshconf get editor.auto_close_brackets_and_quotes
 env | grep -c "^KOSHCONF="'
 echo "== an invalid KOSHCONF is a warning:"
-KOSHCONF='%%%' "$BIN" -c 'koshconf get mood'
+KOSHCONF='%%%' "$BIN" -c 'koshconf get kosh.mood'
 echo "rc=$?"
 
 echo "== the kosh mood sources no rc file:"
 printf 'echo koshrc-ran\n' >"$home/.koshrc"
-printf 'mood=kosh\n' >"$conf"
+printf 'kosh.mood=kosh\n' >"$conf"
 "$BIN" -i <"$TEST_NULL_DEVICE" 2>/dev/null | grep -c koshrc-ran
 echo "== an interactive kosh mood warns once about a retired koshrc:"
 printf 'set -L kosh\nset -L kosh\n' | "$BIN" -i 2>&1 |
@@ -75,19 +75,19 @@ echo "== -Q and a non-interactive shell do not warn:"
 "$BIN" -c : 2>&1 | grep -c 'no longer read'
 echo "== a configured bash mood sources the bash rc:"
 printf 'echo bashrc-ran\n' >"$home/.bashrc"
-printf 'mood=bash\n' >"$conf"
+printf 'kosh.mood=bash\n' >"$conf"
 "$BIN" -i <"$TEST_NULL_DEVICE" 2>/dev/null | grep -c bashrc-ran
-echo "== an inherited KOSH_HISTORY_SIZE is the history.max_entries option:"
-printf 'mood=kosh\n' >"$conf"
-KOSH_HISTORY_SIZE=77 "$BIN" -c 'koshconf get history.max_entries; (koshconf get history.max_entries) & wait "$!"'
+echo "== an inherited KOSH_HISTORY_SIZE is the editor.history.max_entries option:"
+printf 'kosh.mood=kosh\n' >"$conf"
+KOSH_HISTORY_SIZE=77 "$BIN" -c 'koshconf get editor.history.max_entries; (koshconf get editor.history.max_entries) & wait "$!"'
 echo "== an inherited history variable wins over the file, and neither is exported by default:"
-printf 'history.file_path=/from-file\nhistory.max_entries=88\n' >"$conf"
+printf 'editor.history.file_path=/from-file\neditor.history.max_entries=88\n' >"$conf"
 (
   unset KOSH_HISTORY_FILE KOSH_HISTORY_SIZE
   "$BIN" -c 'echo "$KOSH_HISTORY_FILE $KOSH_HISTORY_SIZE"
 env | grep -c "^KOSH_HISTORY_" || :'
   KOSH_HISTORY_FILE=/inherited KOSH_HISTORY_SIZE=5 "$BIN" -c '
-echo "$(koshconf get history.file_path) $(koshconf get history.max_entries)"
+echo "$(koshconf get editor.history.file_path) $(koshconf get editor.history.max_entries)"
 env | grep "^KOSH_HISTORY_"'
 )
 echo "== an inherited KOSH is replaced and no longer exported:"
@@ -100,54 +100,54 @@ KOSHCONF=BQEA "$BIN" -p -c 'koshconf get editor.auto_close_brackets_and_quotes
 env | grep -c "^KOSHCONF="'
 KOSHCONF=BQEA "$BIN" -c 'koshconf get editor.auto_close_brackets_and_quotes'
 echo "== semantic options from the file apply to scripts, after the mood:"
-printf 'legacy.exit_on_command_failure=on\nlegacy.glob_includes_dotfiles=on\nmood=bash\n' >"$conf"
+printf 'kosh.exit_on_command_failure=on\nkosh.glob_includes_dotfiles=on\nkosh.mood=bash\n' >"$conf"
 printf 'false\necho unreached\n' >"$home/script.sh"
 "$BIN" "$home/script.sh"
 echo "rc=$?"
 "$BIN" -c 'shopt dotglob; set -M'
 echo "== a kosh mood value that conflicts with a fixed option is skipped:"
-printf 'legacy.unset_variable_is_error=off\nlegacy.glob_no_match_expands_to_nothing=off\n' >"$conf"
-"$BIN" -c 'koshconf get legacy.unset_variable_is_error' 2>&1 |
+printf 'kosh.unset_variable_is_error=off\nkosh.glob_no_match_expands_to_nothing=off\n' >"$conf"
+"$BIN" -c 'koshconf get kosh.unset_variable_is_error' 2>&1 |
   sed "s|$home|HOME|"
 echo "== an unknown name in the file suggests a close one:"
-printf 'history.max_entry=3\n' >"$conf"
-"$BIN" -c 'koshconf get history.max_entries' 2>&1 | sed "s|$home|HOME|"
+printf 'editor.history.max_entry=3\n' >"$conf"
+"$BIN" -c 'koshconf get editor.history.max_entries' 2>&1 | sed "s|$home|HOME|"
 echo "== a command-line flag wins over a semantic option from the file:"
-printf 'mood=bash\nlegacy.unset_variable_is_error=off\n' >"$conf"
-"$BIN" -u -c 'koshconf get legacy.unset_variable_is_error'
+printf 'kosh.mood=bash\nkosh.unset_variable_is_error=off\n' >"$conf"
+"$BIN" -u -c 'koshconf get kosh.unset_variable_is_error'
 
 echo "== the editor and trace options apply from the file:"
-printf 'editor.complete_on_tab=off\neditor.highlight_syntax_and_show_ghost_text=off\ndiagnostics.show_source_traces=off\n' >"$conf"
-"$BIN" -c 'koshconf get editor.complete_on_tab
+printf 'editor.completion.on_tab=off\neditor.highlight_syntax_and_show_ghost_text=off\ndiagnostics.show_source_traces=off\n' >"$conf"
+"$BIN" -c 'koshconf get editor.completion.on_tab
 koshconf get editor.highlight_syntax_and_show_ghost_text
 koshconf get diagnostics.show_source_traces'
 echo "== KOSHCONF carries them:"
-"$BIN" -c 'export KOSHCONF; XDG_CONFIG_HOME="$1" "$KOSH" -c "koshconf get editor.complete_on_tab; koshconf get diagnostics.show_source_traces"' \
+"$BIN" -c 'export KOSHCONF; XDG_CONFIG_HOME="$1" "$KOSH" -c "koshconf get editor.completion.on_tab; koshconf get diagnostics.show_source_traces"' \
   sh "$home/elsewhere"
 echo "== a file without traces drops the trace rows:"
 printf 'f() { missing_command_xyz; }\nf\n' >"$home/lib.sh"
 "$BIN" -c '. "$1"' sh "$home/lib.sh" 2>&1 | grep -c 'trace:'
 "$BIN" -Q -c '. "$1"' sh "$home/lib.sh" 2>&1 | grep -c 'trace:'
 echo "== the command-line flags win over the file:"
-printf 'editor.complete_on_tab=on\neditor.highlight_syntax_and_show_ghost_text=on\ndiagnostics.show_source_traces=on\n' >"$conf"
-"$BIN" -T --no-syntax-highlighting --no-traces -c 'koshconf get editor.complete_on_tab
+printf 'editor.completion.on_tab=on\neditor.highlight_syntax_and_show_ghost_text=on\ndiagnostics.show_source_traces=on\n' >"$conf"
+"$BIN" -T --no-syntax-highlighting --no-traces -c 'koshconf get editor.completion.on_tab
 koshconf get editor.highlight_syntax_and_show_ghost_text
 koshconf get diagnostics.show_source_traces'
-"$BIN" --dumb -c 'koshconf get editor.complete_on_tab'
+"$BIN" --dumb -c 'koshconf get editor.completion.on_tab'
 
-echo "== startup.init_moods selects the startup files of an interactive shell:"
-printf 'startup.init_moods=bash\n' >"$conf"
-"$BIN" -c 'koshconf get startup.init_moods; koshconf get mood'
+echo "== kosh.init_moods selects the startup files of an interactive shell:"
+printf 'kosh.init_moods=bash\n' >"$conf"
+"$BIN" -c 'koshconf get kosh.init_moods; koshconf get kosh.mood'
 "$BIN" -i <"$TEST_NULL_DEVICE" 2>/dev/null | grep -c bashrc-ran
 echo "== a script ignores it and keeps the kosh identity:"
 "$BIN" -c 'echo "bash version: ${BASH_VERSION:-unset}"'
 echo "== -L wins over the file:"
 "$BIN" -L kosh -i <"$TEST_NULL_DEVICE" 2>/dev/null | grep -c bashrc-ran
-"$BIN" -L sh,bash -c 'koshconf get startup.init_moods'
+"$BIN" -L sh,bash -c 'koshconf get kosh.init_moods'
 echo "== an unknown mood in the list is a warning:"
-printf 'startup.init_moods=bash,zsh\n' >"$conf"
-"$BIN" -c 'koshconf get startup.init_moods' 2>&1 | sed "s|$home|HOME|"
+printf 'kosh.init_moods=bash,zsh\n' >"$conf"
+"$BIN" -c 'koshconf get kosh.init_moods' 2>&1 | sed "s|$home|HOME|"
 echo "== koshconf set validates the list:"
 : >"$conf"
-"$BIN" -c 'koshconf set startup.init_moods sh,bash-posix; koshconf get startup.init_moods
-koshconf set startup.init_moods ksh' 2>&1 | grep -v '^ '
+"$BIN" -c 'koshconf set kosh.init_moods sh,bash-posix; koshconf get kosh.init_moods
+koshconf set kosh.init_moods ksh' 2>&1 | grep -v '^ '

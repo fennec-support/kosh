@@ -91,6 +91,16 @@ consteval fn flag(u16 id, option_text koshconf_name, option_class category,
                     is_on);
 }
 
+consteval fn posix_flag(u16 id, option_text koshconf_name,
+                        option_class category, shell_option_id shell_option,
+                        entry_shape shape, bool is_on) wontthrow
+    -> option_descriptor
+{
+  let entry = flag(id, koshconf_name, category, shell_option, shape, is_on);
+  entry.is_posix_set_option = true;
+  return entry;
+}
+
 consteval fn shopt_flag(u16 id, option_text koshconf_name,
                         option_class category, option_text shopt_name,
                         option_text help, bool is_on_in_kosh,
@@ -120,6 +130,12 @@ consteval fn set_alias(option_text set_name, shell_option_id shell_option,
   entry.strict_value = is_on;
   entry.is_set_alias = true;
   entry.is_listed_by_set = true;
+  return entry;
+}
+
+consteval fn posix_alias(option_descriptor entry) wontthrow -> option_descriptor
+{
+  entry.is_posix_set_option = true;
   return entry;
 }
 
@@ -213,7 +229,7 @@ constexpr let SEMANTIC = option_class::Semantic;
 constexpr let NO_SHELL_OPTION = shell_option_id::Count;
 
 constexpr option_descriptor OPTION_REGISTRY[] = {
-    with_enum(make_entry(1, "mood", option_type::Enum, SEMANTIC,
+    with_enum(make_entry(1, "kosh.mood", option_type::Enum, SEMANTIC,
                          option_storage::Mood, NO_SHELL_OPTION,
                          entry_shape{.help = "Choose the grammar and the "
                                              "startup files: kosh, sh, "
@@ -221,7 +237,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                                      .letter = 'M'},
                          0, 2),
               enum_values(MOOD_VALUE_NAMES)),
-    with_enum(make_entry(2, "editor.completion_menu_style", option_type::Enum,
+    with_enum(make_entry(2, "editor.completion.menu_style", option_type::Enum,
                          INTERACTIVE, option_storage::TabSelector,
                          NO_SHELL_OPTION,
                          entry_shape{.help = "Show completion candidates in "
@@ -230,7 +246,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                                              "list."},
                          0, 0),
               enum_values(TAB_SELECTOR_VALUE_NAMES)),
-    flag(3, "editor.show_command_synopsis", INTERACTIVE,
+    flag(3, "editor.hints.show_command_synopsis", INTERACTIVE,
          shell_option_id::InteractiveHints,
          entry_shape{{},
                      {},
@@ -238,7 +254,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                      "Show the synopsis or flag description of the "
                      "command under the cursor below the input."},
          true),
-    flag(4, "editor.show_live_diagnostics", INTERACTIVE,
+    flag(4, "editor.hints.show_live_diagnostics", INTERACTIVE,
          shell_option_id::InteractiveDiagnostics,
          entry_shape{{},
                      {},
@@ -270,7 +286,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                      "Ask the terminal to report modified keys such as "
                      "Ctrl-Shift-Z separately while a line is read."},
          true),
-    flag(8, "history.arrow_keys_search_by_typed_prefix", INTERACTIVE,
+    flag(8, "editor.history.arrow_keys_search_by_typed_prefix", INTERACTIVE,
          shell_option_id::HistoryPrefixSearch,
          entry_shape{{},
                      {},
@@ -279,7 +295,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                      "typed text on Up and Down."},
          true),
     kept_out_of_koshconf(make_entry(
-        9, "history.file_path", option_type::String, INTERACTIVE,
+        9, "editor.history.file_path", option_type::String, INTERACTIVE,
         option_storage::Variable, NO_SHELL_OPTION,
         entry_shape{{},
                     {},
@@ -288,8 +304,8 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                     "supplies the value."},
         0, 0)),
     with_default_text(
-        make_entry(10, "history.max_entries", option_type::String, INTERACTIVE,
-                   option_storage::Variable, NO_SHELL_OPTION,
+        make_entry(10, "editor.history.max_entries", option_type::String,
+                   INTERACTIVE, option_storage::Variable, NO_SHELL_OPTION,
                    entry_shape{{},
                                {},
                                "KOSH_HISTORY_SIZE",
@@ -299,7 +315,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                    0, 0),
         "4096"),
     with_enum(
-        make_entry(11, "completion.add_space_after_completed_word",
+        make_entry(11, "editor.completion.add_space_after_completed_word",
                    option_type::Enum, INTERACTIVE,
                    option_storage::SpaceAfterCompletion,
                    shell_option_id::SpaceAfterCompletion,
@@ -340,8 +356,8 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                      "this value."},
          false),
     fixed_in_kosh(
-        make_entry(16, "arithmetic.use_big_integers_and_decimals",
-                   option_type::Boolean, SEMANTIC, option_storage::ShellOption,
+        make_entry(16, "kosh.arithmetic_uses_big_numbers", option_type::Boolean,
+                   SEMANTIC, option_storage::ShellOption,
                    shell_option_id::ExtendedArithmetic,
                    entry_shape{{},
                                {},
@@ -350,8 +366,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                                "decimal values."},
                    1, 0),
         1),
-    flag(17, "compat.mimic_shell_named_by_shebang", SEMANTIC,
-         shell_option_id::Mimicry,
+    flag(17, "kosh.mimic_shebang", SEMANTIC, shell_option_id::Mimicry,
          entry_shape{
              {}, {}, {}, "Mimic the shell named by a script's shebang.", 'I'},
          false),
@@ -399,7 +414,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
         shell_option_id::ShowMemory,
         entry_shape{{}, {}, {}, "Print a detailed memory report at exit.", 'G'},
         false)),
-    flag(24, "editor.complete_on_tab", INTERACTIVE,
+    flag(24, "editor.completion.on_tab", INTERACTIVE,
          shell_option_id::TabCompletion,
          entry_shape{{},
                      {},
@@ -415,7 +430,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                      {},
                      "Color the input by syntax and suggest the rest of the "
                      "word in ghost text. Both also need "
-                     "editor.complete_on_tab on."},
+                     "editor.completion.on_tab on."},
          true),
     special(flag(26, "diagnostics.show_source_traces", INTERACTIVE,
                  NO_SHELL_OPTION,
@@ -426,7 +441,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                              "function calls below an error or warning."},
                  true),
             option_storage::SourceTraces),
-    make_entry(27, "startup.init_moods", option_type::String, SEMANTIC,
+    make_entry(27, "kosh.init_moods", option_type::String, SEMANTIC,
                option_storage::InitMoods, NO_SHELL_OPTION,
                entry_shape{
                    {},
@@ -438,32 +453,33 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                    "mood."},
                0, 0),
 
-    flag(64, "legacy.export_every_assigned_variable", SEMANTIC,
-         shell_option_id::Allexport,
-         entry_shape{"allexport",
-                     {},
-                     {},
-                     "Mark every assigned variable for the environment.",
-                     'a'},
-         false),
-    flag(65, "legacy.jobs_report_status_immediately", INTERACTIVE,
-         shell_option_id::Notify,
-         entry_shape{"notify",
-                     {},
-                     {},
-                     "Report a background job's completion immediately "
-                     "when it finishes.",
-                     'b'},
-         false),
-    flag(66, "legacy.exit_on_command_failure", SEMANTIC,
-         shell_option_id::Errexit,
-         entry_shape{
-             "errexit", {}, {}, "Exit on the first command that fails.", 'e'},
-         false),
-    flag(67, "legacy.glob_disabled", SEMANTIC, shell_option_id::Noglob,
-         entry_shape{"noglob", {}, {}, "Disable pathname expansion.", 'f'},
-         false),
-    flag(69, "legacy.assignments_anywhere_in_command", SEMANTIC,
+    posix_flag(64, "kosh.export_every_assigned_variable", SEMANTIC,
+               shell_option_id::Allexport,
+               entry_shape{"allexport",
+                           {},
+                           {},
+                           "Mark every assigned variable for the environment.",
+                           'a'},
+               false),
+    posix_flag(65, "editor.jobs_report_status_immediately", INTERACTIVE,
+               shell_option_id::Notify,
+               entry_shape{"notify",
+                           {},
+                           {},
+                           "Report a background job's completion immediately "
+                           "when it finishes.",
+                           'b'},
+               false),
+    posix_flag(
+        66, "kosh.exit_on_command_failure", SEMANTIC, shell_option_id::Errexit,
+        entry_shape{
+            "errexit", {}, {}, "Exit on the first command that fails.", 'e'},
+        false),
+    posix_flag(
+        67, "kosh.glob_disabled", SEMANTIC, shell_option_id::Noglob,
+        entry_shape{"noglob", {}, {}, "Disable pathname expansion.", 'f'},
+        false),
+    flag(69, "kosh.assignments_anywhere_in_command", SEMANTIC,
          shell_option_id::Keyword,
          entry_shape{"keyword",
                      {},
@@ -472,25 +488,25 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                      "into its environment.",
                      'k'},
          false),
-    session_dependent(
-        flag(70, "legacy.job_control", INTERACTIVE, shell_option_id::Monitor,
-             entry_shape{"monitor",
-                         {},
-                         {},
-                         "Run background jobs in their own process group with "
-                         "notifications.",
-                         'm'},
-             false)),
-    invocation_only(flag(71, "legacy.parse_without_executing", SEMANTIC,
-                         shell_option_id::Noexec,
-                         entry_shape{"noexec",
-                                     {},
-                                     {},
-                                     "Read and parse commands but do not run "
-                                     "them.",
-                                     'n'},
-                         false)),
-    invocation_only(flag(72, "legacy.exit_after_one_command", SEMANTIC,
+    session_dependent(posix_flag(
+        70, "kosh.job_control", INTERACTIVE, shell_option_id::Monitor,
+        entry_shape{"monitor",
+                    {},
+                    {},
+                    "Run background jobs in their own process group with "
+                    "notifications.",
+                    'm'},
+        false)),
+    invocation_only(posix_flag(
+        71, "kosh.parse_without_executing", SEMANTIC, shell_option_id::Noexec,
+        entry_shape{"noexec",
+                    {},
+                    {},
+                    "Read and parse commands but do not run "
+                    "them.",
+                    'n'},
+        false)),
+    invocation_only(flag(72, "kosh.exit_after_one_command", SEMANTIC,
                          shell_option_id::Onecmd,
                          entry_shape{"onecmd",
                                      {},
@@ -499,7 +515,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                                      "top-level command.",
                                      't'},
                          false)),
-    invocation_only(flag(73, "legacy.privileged_mode", SEMANTIC,
+    invocation_only(flag(73, "kosh.privileged_mode", SEMANTIC,
                          shell_option_id::Privileged,
                          entry_shape{"privileged",
                                      {},
@@ -508,43 +524,43 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                                      "environment startup files.",
                                      'p'},
                          false)),
-    fixed_in_kosh(flag(74, "legacy.unset_variable_is_error", SEMANTIC,
-                       shell_option_id::Nounset,
-                       entry_shape{"nounset",
-                                   {},
-                                   {},
-                                   "Treat an unset variable as an error.",
-                                   'u'},
-                       false),
+    fixed_in_kosh(posix_flag(74, "kosh.unset_variable_is_error", SEMANTIC,
+                             shell_option_id::Nounset,
+                             entry_shape{"nounset",
+                                         {},
+                                         {},
+                                         "Treat an unset variable as an error.",
+                                         'u'},
+                             false),
                   1),
-    flag(75, "legacy.trace_print_input_lines", SEMANTIC,
-         shell_option_id::Verbose,
-         entry_shape{"verbose",
-                     {},
-                     {},
-                     "Write input to standard error as it is read.",
-                     'v'},
-         false),
-    flag(76, "legacy.trace_print_expanded_commands", SEMANTIC,
-         shell_option_id::Xtrace,
-         entry_shape{"xtrace",
-                     {},
-                     {},
-                     "Print each command after expansion before it runs.",
-                     'x'},
-         false),
-    flag(77, "legacy.brace_expansion", SEMANTIC, shell_option_id::Braceexpand,
+    posix_flag(
+        75, "debug.trace_input_lines", SEMANTIC, shell_option_id::Verbose,
+        entry_shape{"verbose",
+                    {},
+                    {},
+                    "Write input to standard error as it is read.",
+                    'v'},
+        false),
+    posix_flag(76, "debug.trace_expanded_commands", SEMANTIC,
+               shell_option_id::Xtrace,
+               entry_shape{"xtrace",
+                           {},
+                           {},
+                           "Print each command after expansion before it runs.",
+                           'x'},
+               false),
+    flag(77, "kosh.brace_expansion", SEMANTIC, shell_option_id::Braceexpand,
          entry_shape{"braceexpand", {}, {}, "Enable brace expansion.", 'B'},
          true),
-    flag(78, "legacy.redirect_refuses_to_overwrite_files", SEMANTIC,
-         shell_option_id::Noclobber,
-         entry_shape{"noclobber",
-                     {},
-                     {},
-                     "Refuse to overwrite an existing file through '>'.",
-                     'C'},
-         false),
-    flag(79, "legacy.trap_err_inherited_by_functions", SEMANTIC,
+    posix_flag(78, "kosh.redirect_refuses_to_overwrite_files", SEMANTIC,
+               shell_option_id::Noclobber,
+               entry_shape{"noclobber",
+                           {},
+                           {},
+                           "Refuse to overwrite an existing file through '>'.",
+                           'C'},
+               false),
+    flag(79, "kosh.trap_err_inherited_by_functions", SEMANTIC,
          shell_option_id::Errtrace,
          entry_shape{"errtrace",
                      {},
@@ -554,7 +570,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                      'E'},
          false),
     session_dependent(flag(
-        80, "legacy.history_bang_expansion", INTERACTIVE,
+        80, "editor.history.bang_expansion", INTERACTIVE,
         shell_option_id::Histexpand,
         entry_shape{"histexpand",
                     {},
@@ -563,14 +579,14 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                     "mark.",
                     'H'},
         false)),
-    flag(81, "legacy.cd_resolves_symlinks", SEMANTIC, shell_option_id::Physical,
+    flag(81, "kosh.cd_resolves_symlinks", SEMANTIC, shell_option_id::Physical,
          entry_shape{"physical",
                      {},
                      {},
                      "Resolve symbolic links while changing directories.",
                      'P'},
          false),
-    flag(82, "legacy.trap_debug_and_return_inherited_by_functions", SEMANTIC,
+    flag(82, "kosh.trap_debug_and_return_inherited_by_functions", SEMANTIC,
          shell_option_id::Functrace,
          entry_shape{"functrace",
                      {},
@@ -580,101 +596,101 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                      'T'},
          false),
     fixed_in_kosh(
-        flag(83, "legacy.pipeline_fails_on_any_stage", SEMANTIC,
-             shell_option_id::Pipefail,
-             entry_shape{"pipefail",
-                         {},
-                         {},
-                         "Report a pipeline's status as the rightmost "
-                         "stage that failed."},
-             false),
+        posix_flag(83, "kosh.pipeline_fails_on_any_stage", SEMANTIC,
+                   shell_option_id::Pipefail,
+                   entry_shape{"pipefail",
+                               {},
+                               {},
+                               "Report a pipeline's status as the rightmost "
+                               "stage that failed."},
+                   false),
         1),
     session_dependent(flag(
-        84, "legacy.history_recording", INTERACTIVE, shell_option_id::History,
+        84, "editor.history.records_commands", INTERACTIVE,
+        shell_option_id::History,
         entry_shape{"history", {}, {}, "Store commands in the history list."},
         false)),
-    flag(85, "legacy.ctrl_d_does_not_exit", INTERACTIVE,
-         shell_option_id::Ignoreeof,
-         entry_shape{"ignoreeof",
-                     {},
-                     {},
-                     "Require repeated end-of-file input before an "
-                     "interactive shell exits."},
-         false),
-    with_enum(make_entry(87, "legacy.base_editor_mode", option_type::Enum,
-                         INTERACTIVE, option_storage::EditorMode,
-                         NO_SHELL_OPTION,
+    posix_flag(85, "editor.ctrl_d_does_not_exit", INTERACTIVE,
+               shell_option_id::Ignoreeof,
+               entry_shape{"ignoreeof",
+                           {},
+                           {},
+                           "Require repeated end-of-file input before an "
+                           "interactive shell exits."},
+               false),
+    with_enum(make_entry(87, "editor.base_mode", option_type::Enum, INTERACTIVE,
+                         option_storage::EditorMode, NO_SHELL_OPTION,
                          entry_shape{.help = "Edit the command line with "
                                              "emacs or vi key bindings."},
                          0, 0),
               enum_values(EDITOR_MODE_VALUE_NAMES)),
     session_dependent(special(
-        flag(89, "legacy.posix_mode", SEMANTIC, NO_SHELL_OPTION,
+        flag(89, "kosh.posixly_correct", SEMANTIC, NO_SHELL_OPTION,
              entry_shape{"posix", {}, {}, "Switch to the bash-posix mood."},
              false),
         option_storage::Posix)),
 
-    shopt_flag(128, "legacy.cd_by_typing_directory_name", INTERACTIVE, "autocd",
+    shopt_flag(128, "kosh.cd_by_typing_directory_name", INTERACTIVE, "autocd",
                "Change to a directory typed as a command name.", true, true),
-    shopt_flag(129, "legacy.array_subscripts_expand_once", SEMANTIC,
+    shopt_flag(129, "kosh.array_subscripts_expand_once", SEMANTIC,
                "assoc_expand_once",
                "Expand an array subscript once in assignments and "
                "arithmetic.",
                false, false),
-    shopt_flag(130, "legacy.cd_to_variable_value", SEMANTIC, "cdable_vars",
+    shopt_flag(130, "kosh.cd_to_variable_value", SEMANTIC, "cdable_vars",
                "Treat a cd operand that is not a directory as a variable "
                "naming one.",
                false, false),
-    shopt_flag(131, "legacy.cd_fix_typos", INTERACTIVE, "cdspell",
+    shopt_flag(131, "kosh.cd_fix_typos", INTERACTIVE, "cdspell",
                "Correct minor spelling errors in a cd operand.", false, false),
-    shopt_flag(132, "legacy.verify_remembered_command_paths", SEMANTIC,
+    shopt_flag(132, "kosh.verify_remembered_command_paths", SEMANTIC,
                "checkhash",
                "Check that a remembered command path still exists before "
                "running it.",
                false, false),
-    shopt_flag(133, "legacy.jobs_check_before_exit", INTERACTIVE, "checkjobs",
+    shopt_flag(133, "kosh.jobs_check_before_exit", INTERACTIVE, "checkjobs",
                "List running and stopped jobs before an interactive shell "
                "exits.",
                false, false),
-    shopt_flag(134, "legacy.update_columns_and_lines", INTERACTIVE,
+    shopt_flag(134, "kosh.update_columns_and_lines", INTERACTIVE,
                "checkwinsize",
                "Update COLUMNS and LINES after each command from the "
                "terminal size.",
                true, true),
-    shopt_flag(135, "legacy.completion_quote_all_special_characters",
+    shopt_flag(135, "editor.completion.quote_all_special_characters",
                INTERACTIVE, "complete_fullquote",
                "Quote every shell metacharacter in a completed file name.",
                true, true),
-    shopt_flag(136, "legacy.completion_expand_directory_names", INTERACTIVE,
+    shopt_flag(136, "editor.completion.expand_directory_names", INTERACTIVE,
                "direxpand",
                "Replace a directory name with its expansion during "
                "completion.",
                false, false),
     shopt_flag(
-        137, "legacy.completion_fix_directory_typos", INTERACTIVE, "dirspell",
+        137, "editor.completion.fix_directory_typos", INTERACTIVE, "dirspell",
         "Correct a misspelled directory name during completion.", false, false),
-    shopt_flag(138, "legacy.glob_includes_dotfiles", SEMANTIC, "dotglob",
+    shopt_flag(138, "kosh.glob_includes_dotfiles", SEMANTIC, "dotglob",
                "Let a glob match names that begin with a dot.", false, false),
-    shopt_flag(139, "legacy.exec_failure_keeps_shell", SEMANTIC, "execfail",
+    shopt_flag(139, "kosh.exec_failure_keeps_shell", SEMANTIC, "execfail",
                "Keep a non-interactive shell running when exec cannot run "
                "its command.",
                false, false),
     bash_default_follows_session(with_posix_default(
-        shopt_flag(140, "legacy.aliases_expand", SEMANTIC, "expand_aliases",
+        shopt_flag(140, "kosh.aliases_expand", SEMANTIC, "expand_aliases",
                    "Expand aliases in commands.", true, false),
         1)),
-    shopt_flag(141, "legacy.debugger_support", SEMANTIC, "extdebug",
+    shopt_flag(141, "debug.debugger_support", SEMANTIC, "extdebug",
                "Enable the behavior Bash provides for debuggers.", false,
                false),
-    shopt_flag(142, "legacy.glob_extended_patterns", SEMANTIC, "extglob",
+    shopt_flag(142, "kosh.glob_extended_patterns", SEMANTIC, "extglob",
                "Accept the extended patterns ?(), *(), +(), @(), and !().",
                true, false),
-    shopt_flag(143, "legacy.quote_dollar_strings_in_parameter_expansion",
+    shopt_flag(143, "kosh.quote_dollar_strings_in_parameter_expansion",
                SEMANTIC, "extquote",
                "Process $'...' and $\"...\" quoting inside a quoted "
                "${...} expansion.",
                true, true),
-    fixed_in_kosh(make_entry(144, "legacy.glob_no_match_is_error",
+    fixed_in_kosh(make_entry(144, "kosh.glob_no_match_is_error",
                              option_type::Boolean, SEMANTIC,
                              option_storage::Failglob,
                              shell_option_id::Failglob,
@@ -685,43 +701,43 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                                          "nothing."},
                              1, 0),
                   1),
-    shopt_flag(145, "legacy.completion_always_apply_fignore", INTERACTIVE,
+    shopt_flag(145, "editor.completion.always_apply_fignore", INTERACTIVE,
                "force_fignore",
                "Drop FIGNORE suffixes from completions even when that "
                "leaves none.",
                true, true),
-    shopt_flag(146, "legacy.glob_ranges_use_ascii_order", SEMANTIC,
+    shopt_flag(146, "kosh.glob_ranges_use_ascii_order", SEMANTIC,
                "globasciiranges",
                "Order bracket ranges in globs and patterns by byte value.",
                true, true),
-    shopt_flag(147, "legacy.glob_never_matches_dot_and_dotdot", SEMANTIC,
+    shopt_flag(147, "kosh.glob_never_matches_dot_and_dotdot", SEMANTIC,
                "globskipdots", "Never let a glob match . or ..", true, true),
-    shopt_flag(148, "legacy.glob_double_star_recurses", SEMANTIC, "globstar",
+    shopt_flag(148, "kosh.glob_double_star_recurses", SEMANTIC, "globstar",
                "Let ** in a glob match directories at any depth.", false,
                false),
-    shopt_flag(149, "legacy.errors_use_gnu_format", INTERACTIVE, "gnu_errfmt",
-               "Write error messages in the GNU file:line format.", false,
-               false),
-    shopt_flag(150, "legacy.history_reedit_failed_substitution", INTERACTIVE,
+    shopt_flag(
+        149, "diagnostics.errors_use_gnu_format", INTERACTIVE, "gnu_errfmt",
+        "Write error messages in the GNU file:line format.", false, false),
+    shopt_flag(150, "editor.history.reedit_failed_substitution", INTERACTIVE,
                "histreedit",
                "Return a failed history substitution to the editor.", false,
                false),
-    shopt_flag(151, "legacy.history_verify_expansion_before_running",
+    shopt_flag(151, "editor.history.verify_expansion_before_running",
                INTERACTIVE, "histverify",
                "Load an expanded history reference into the editor. The shell "
                "runs it after the user accepts it.",
                false, false),
-    shopt_flag(152, "legacy.completion_hostnames_after_at", INTERACTIVE,
+    shopt_flag(152, "editor.completion.hostnames_after_at", INTERACTIVE,
                "hostcomplete", "Complete host names after an @ in a word.",
                true, true),
-    shopt_flag(153, "legacy.jobs_hangup_on_exit", INTERACTIVE, "huponexit",
+    shopt_flag(153, "kosh.jobs_hangup_on_exit", INTERACTIVE, "huponexit",
                "Send SIGHUP to every job when an interactive login shell "
                "exits.",
                false, false),
-    shopt_flag(154, "legacy.command_substitution_inherits_exit_on_failure",
+    shopt_flag(154, "kosh.command_substitution_inherits_exit_on_failure",
                SEMANTIC, "inherit_errexit",
                "Let a command substitution inherit set -e.", false, false),
-    make_entry(155, "legacy.interactive_comments", option_type::Boolean,
+    make_entry(155, "kosh.interactive_comments", option_type::Boolean,
                INTERACTIVE, option_storage::Shopt, NO_SHELL_OPTION,
                entry_shape{"interactive-comments",
                            "interactive_comments",
@@ -729,20 +745,19 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                            "Allow comments in interactive shell input."},
                1, 1),
     shopt_flag(
-        156, "legacy.pipeline_last_stage_runs_in_shell", SEMANTIC, "lastpipe",
+        156, "kosh.pipeline_last_stage_runs_in_shell", SEMANTIC, "lastpipe",
         "Run the last stage of a pipeline in the current shell.", false, false),
-    shopt_flag(157, "legacy.local_inherits_outer_value", SEMANTIC,
+    shopt_flag(157, "kosh.local_inherits_outer_value", SEMANTIC,
                "localvar_inherit",
                "Give a new local variable the value of the variable it "
                "shadows.",
                false, false),
-    shopt_flag(158, "legacy.local_unset_hides_outer", SEMANTIC,
-               "localvar_unset",
+    shopt_flag(158, "kosh.local_unset_hides_outer", SEMANTIC, "localvar_unset",
                "Keep a local variable unset by unset from exposing the "
                "outer one.",
                false, false),
     invocation_only(read_only(make_entry(
-        159, "legacy.login_shell", option_type::Boolean, INTERACTIVE,
+        159, "kosh.login_shell", option_type::Boolean, INTERACTIVE,
         option_storage::Login, NO_SHELL_OPTION,
         entry_shape{{},
                     "login_shell",
@@ -750,83 +765,83 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                     "Whether the shell started as a login shell, fixed at "
                     "startup."},
         0, 0))),
-    shopt_flag(160, "legacy.mail_warn_when_read", INTERACTIVE, "mailwarn",
+    shopt_flag(160, "kosh.mail_warn_when_read", INTERACTIVE, "mailwarn",
                "Warn when a checked mail file was read since the last "
                "check.",
                false, false),
-    shopt_flag(161, "legacy.completion_skip_empty_line", INTERACTIVE,
+    shopt_flag(161, "editor.completion.skip_empty_line", INTERACTIVE,
                "no_empty_cmd_completion",
                "Offer no command completion on an empty line.", false, false),
-    shopt_flag(162, "legacy.glob_ignores_case", SEMANTIC, "nocaseglob",
+    shopt_flag(162, "kosh.glob_ignores_case", SEMANTIC, "nocaseglob",
                "Match globs without regard to case.", false, false),
-    shopt_flag(163, "legacy.match_ignores_case", SEMANTIC, "nocasematch",
+    shopt_flag(163, "kosh.match_ignores_case", SEMANTIC, "nocasematch",
                "Match case, [[, and pattern operators without regard to "
                "case.",
                false, false),
     fixed_in_kosh(
-        shopt_flag(164, "legacy.glob_no_match_expands_to_nothing", SEMANTIC,
+        shopt_flag(164, "kosh.glob_no_match_expands_to_nothing", SEMANTIC,
                    "nullglob",
                    "Remove a glob that matches nothing. With this "
                    "option off, the unmatched glob remains unchanged.",
                    false, false),
         0),
-    shopt_flag(165, "legacy.pattern_substitution_ampersand_is_match", SEMANTIC,
+    shopt_flag(165, "kosh.pattern_substitution_ampersand_is_match", SEMANTIC,
                "patsub_replacement",
                "Replace an unquoted & in ${name/pattern/string} with the "
                "match.",
                true, true),
-    shopt_flag(166, "legacy.completion_programmable", INTERACTIVE, "progcomp",
+    shopt_flag(166, "editor.completion.programmable", INTERACTIVE, "progcomp",
                "Use the completion specifications defined by complete.", true,
                true),
-    shopt_flag(167, "legacy.completion_programmable_follows_aliases",
+    shopt_flag(167, "editor.completion.programmable_follows_aliases",
                INTERACTIVE, "progcomp_alias",
                "Complete an alias with the specification of the command "
                "it expands to.",
                false, false),
     shopt_flag(
-        168, "legacy.prompt_expands_parameters", INTERACTIVE, "promptvars",
+        168, "editor.prompt_expands_parameters", INTERACTIVE, "promptvars",
         "Expand parameters and substitutions in prompt strings.", true, true),
     invocation_only(read_only(special(
-        shopt_flag(169, "legacy.restricted_shell", SEMANTIC, "restricted_shell",
+        shopt_flag(169, "kosh.restricted_shell", SEMANTIC, "restricted_shell",
                    "Whether the shell started restricted, fixed at startup.",
                    false, false),
         option_storage::RestrictedShell))),
-    shopt_flag(170, "legacy.shift_reports_overflow", SEMANTIC, "shift_verbose",
+    shopt_flag(170, "kosh.shift_reports_overflow", SEMANTIC, "shift_verbose",
                "Report a shift count larger than the positional "
                "parameters.",
                false, false),
-    shopt_flag(171, "legacy.source_searches_path", SEMANTIC, "sourcepath",
+    shopt_flag(171, "kosh.source_searches_path", SEMANTIC, "sourcepath",
                "Search PATH for a source operand without a slash.", true, true),
-    shopt_flag(172, "legacy.redirect_variable_fd_closed_after_command",
-               SEMANTIC, "varredir_close",
+    shopt_flag(172, "kosh.redirect_variable_fd_closed_after_command", SEMANTIC,
+               "varredir_close",
                "Close a {name}> descriptor when its command finishes.", false,
                false),
-    shopt_flag(173, "legacy.echo_interprets_backslash_escapes", SEMANTIC,
+    shopt_flag(173, "kosh.echo_interprets_backslash_escapes", SEMANTIC,
                "xpg_echo", "Let echo expand backslash escapes by default.",
                false, false),
 
-    set_only(flag(68, "legacy.remember_command_paths", SEMANTIC,
-                  shell_option_id::Hashall,
-                  entry_shape{"hashall",
-                              {},
-                              {},
-                              "Report command path hashing as enabled. "
-                              "Koshka caches command paths whether this "
-                              "option is enabled or disabled.",
-                              'h'},
-                  true)),
-    set_only(flag(86, "legacy.history_skip_function_definitions", INTERACTIVE,
-                  shell_option_id::Nolog,
-                  entry_shape{"nolog",
-                              {},
-                              {},
-                              "Accept the Bash option, which Bash itself "
-                              "ignores, without changing execution."},
-                  false)),
+    set_only(posix_flag(68, "kosh.remember_command_paths", SEMANTIC,
+                        shell_option_id::Hashall,
+                        entry_shape{"hashall",
+                                    {},
+                                    {},
+                                    "Report command path hashing as enabled. "
+                                    "Koshka caches command paths whether this "
+                                    "option is enabled or disabled.",
+                                    'h'},
+                        true)),
+    set_only(posix_flag(86, "editor.history.skips_function_definitions",
+                        INTERACTIVE, shell_option_id::Nolog,
+                        entry_shape{"nolog",
+                                    {},
+                                    {},
+                                    "Accept the Bash option, which Bash itself "
+                                    "ignores, without changing execution."},
+                        false)),
     set_alias("emacs", shell_option_id::Emacs,
               "Use emacs-style command-line editing.", false),
-    set_alias("vi", shell_option_id::Vi, "Use vi-style command-line editing.",
-              false),
+    posix_alias(set_alias("vi", shell_option_id::Vi,
+                          "Use vi-style command-line editing.", false)),
 };
 
 constexpr char SHELL_FLAG_LETTER_ORDER[] = "abefhkmntpuvxBCEHPTARNWISG";
@@ -1222,13 +1237,6 @@ pure fn find_option_by_id(u16 id) wontthrow -> const option_descriptor *
   return position == 0xff ? nullptr : &OPTION_REGISTRY[position];
 }
 
-fn find_option_by_koshconf_name(StringView name) wontthrow
-    -> const option_descriptor *
-{
-  let const position = OPTIONS_BY_KOSHCONF_NAME.find(name);
-  return position.has_value() ? &OPTION_REGISTRY[*position] : nullptr;
-}
-
 fn find_option_by_set_name(StringView name) wontthrow
     -> const option_descriptor *
 {
@@ -1241,6 +1249,41 @@ fn find_option_by_shopt_name(StringView name) wontthrow
 {
   let const position = OPTIONS_BY_SHOPT_NAME.find(name);
   return position.has_value() ? &OPTION_REGISTRY[*position] : nullptr;
+}
+
+fn find_option_by_koshconf_name(StringView name) wontthrow
+    -> const option_descriptor *
+{
+  let const position = OPTIONS_BY_KOSHCONF_NAME.find(name);
+  if (position.has_value()) return &OPTION_REGISTRY[*position];
+
+  constexpr StringView POSIX_ALIAS_PREFIX{"legacy.posix."};
+  constexpr StringView BASH_ALIAS_PREFIX{"legacy.bash."};
+  let const is_posix_alias = name.starts_with(POSIX_ALIAS_PREFIX);
+  if (!is_posix_alias && !name.starts_with(BASH_ALIAS_PREFIX)) return nullptr;
+
+  let const spelling = name.substring(
+      is_posix_alias ? POSIX_ALIAS_PREFIX.count() : BASH_ALIAS_PREFIX.count());
+  let const *found = find_option_by_set_name(spelling);
+  if (found != nullptr && found->is_posix_set_option != is_posix_alias) {
+    return nullptr;
+  }
+  if (found == nullptr && !is_posix_alias) {
+    found = find_option_by_shopt_name(spelling);
+  }
+  if (found == nullptr) return nullptr;
+
+  if (found->is_set_alias) {
+    if (found->storage != option_storage::EditorMode) return nullptr;
+
+    for (let const &entry : OPTION_REGISTRY) {
+      if (!entry.is_set_alias && entry.storage == found->storage) return &entry;
+    }
+
+    return nullptr;
+  }
+
+  return found->koshconf_name.is_empty() ? nullptr : found;
 }
 
 pure fn find_option_by_letter(char letter) wontthrow
@@ -1414,7 +1457,8 @@ fn write_option_number(EvalContext &cxt, const option_descriptor &option,
     let error = ErrorWithDetails{
         StringView{"The kosh mood keeps '"} + display_name(option, origin) +
             "' " + format_option_number(option, option.strict_value),
-        "Switch to the bash mood with `koshconf set mood bash` to change it"};
+        "Switch to the bash mood with `koshconf set kosh.mood bash` to change "
+        "it"};
     throw error;
   }
   LOG(Info, "setting option '%.*s' to %u",

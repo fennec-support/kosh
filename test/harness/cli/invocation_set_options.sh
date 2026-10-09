@@ -6,15 +6,15 @@ work=$(mktemp -d)
 trap '[ -n "$work" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$work"' EXIT
 mkdir -p "$work/config/kosh"
 export XDG_CONFIG_HOME="$work/config"
-printf '%s\n' mood=bash legacy.exit_on_command_failure=on \
-  legacy.pipeline_fails_on_any_stage=on legacy.glob_extended_patterns=on \
-  legacy.base_editor_mode=vi >"$work/config/kosh/kosh.conf"
+printf '%s\n' kosh.mood=bash kosh.exit_on_command_failure=on \
+  kosh.pipeline_fails_on_any_stage=on kosh.glob_extended_patterns=on \
+  editor.base_mode=vi >"$work/config/kosh/kosh.conf"
 
 do_show() {
   "$BIN" "$@" -c 'printf "%s pipefail=%s extglob=%s editor=%s\n" "$-" \
     "$(shopt -qo pipefail && echo on || echo off)" \
     "$(shopt -q extglob && echo on || echo off)" \
-    "$(koshconf get legacy.base_editor_mode)"'
+    "$(koshconf get editor.base_mode)"'
 }
 
 echo "== the settings file applies:"
@@ -32,7 +32,7 @@ do_show +eu -o nounset
 echo "== -euo pipefail names pipefail with -o:"
 "$BIN" --no-config -euo pipefail -c 'echo "$-"; shopt -qo pipefail && echo pipefail'
 echo "== -o posix acts as --posix:"
-"$BIN" -o posix -c 'koshconf get mood'
+"$BIN" -o posix -c 'koshconf get kosh.mood'
 echo "== a read-only shopt name is accepted without effect:"
 "$BIN" -O login_shell -c 'shopt -q login_shell || echo not-login'
 echo "== an unknown name or letter is a usage error:"
@@ -49,5 +49,5 @@ echo "== a plus word after the script is an operand:"
 printf 'echo "operand=$1"\n' >"$work/script.sh"
 "$BIN" "$work/script.sh" +e
 echo "== --no-config reads no settings file and drops KOSHCONF:"
-KOSHCONF=AQEB "$BIN" --no-config -c 'koshconf get mood; echo "$-"
+KOSHCONF=AQEB "$BIN" --no-config -c 'koshconf get kosh.mood; echo "$-"
 env | grep -c "^KOSHCONF=" || :'

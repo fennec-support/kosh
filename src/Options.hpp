@@ -111,12 +111,8 @@ struct option_descriptor
   bool is_kept_out_of_koshconf;
   bool is_set_alias;
   bool is_listed_by_set;
+  bool is_posix_set_option;
 
-  pure fn is_legacy() const wontthrow -> bool
-  {
-    return is_set_alias ||
-           StringView{koshconf_name}.starts_with(StringView{"legacy."});
-  }
   pure fn is_configurable() const wontthrow -> bool
   {
     return !is_set_alias && !is_read_only && !is_invocation_only &&

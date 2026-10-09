@@ -9,9 +9,9 @@ warning: The KOSHCONF environment variable is ignored because its option ids are
 -c:1:15: error: Builtin `koshconf`: The value is not a valid KOSHCONF encoding: its option ids are out of order.
 == a Bash name points at its koshconf name:
 -c:1:14: error: Builtin `koshconf`: Unknown option 'pipefail'.
-note: 'pipefail' is the Bash name of 'legacy.pipeline_fails_on_any_stage'.
+note: 'pipefail' is the Bash name of 'kosh.pipeline_fails_on_any_stage'.
 -c:1:37: error: Builtin `koshconf`: Unknown option 'extglob'.
-note: 'extglob' is the Bash name of 'legacy.glob_extended_patterns'.
+note: 'extglob' is the Bash name of 'kosh.glob_extended_patterns'.
 == a retired set -o name points at its replacement:
 -c:1:8: error: Builtin `set`: Unknown -o option 'koshkit'.
 note: The option was retired; use `koshconf set koshkit.run_utilities_as_plain_commands on` instead.
@@ -21,27 +21,28 @@ note: The option was retired; use `koshconf set diagnostics.analyze_before_runni
 note: The option was retired; use `set -o nounset` instead.
 -c:2:8: error: Builtin `set`: Unknown -o option 'failglob'.
 note: The option was retired; use `shopt -u failglob` instead.
-== an invalid startup.init_moods names the bad entry:
--c:1:33: error: Builtin `koshconf`: Unknown mood 'fish' in the value of 'startup.init_moods', expected a comma-separated list of 'kosh', 'sh', 'bash', and 'bash-posix'.
+== an invalid kosh.init_moods names the bad entry:
+-c:1:30: error: Builtin `koshconf`: Unknown mood 'fish' in the value of 'kosh.init_moods', expected a comma-separated list of 'kosh', 'sh', 'bash', and 'bash-posix'.
 == enumeration values read naturally:
--c:1:38: error: Builtin `koshconf`: Invalid value 'ed' for 'legacy.base_editor_mode', expected 'emacs' or 'vi'.
--c:2:56: error: Builtin `koshconf`: Invalid value 'true' for 'completion.add_space_after_completed_word', expected 'off', 'on', or 'on-excluding-trailing-slash'.
-# Color the input by syntax and suggest the rest of the word in ghost text. Both
-# also need editor.complete_on_tab on.
---
+-c:1:31: error: Builtin `koshconf`: Invalid value 'ed' for 'editor.base_mode', expected 'emacs' or 'vi'.
+-c:2:63: error: Builtin `koshconf`: Invalid value 'true' for 'editor.completion.add_space_after_completed_word', expected 'off', 'on', or 'on-excluding-trailing-slash'.
 # Insert a space after an accepted completion: off for never, on for always, or
 # on-excluding-trailing-slash for all but a directory.
+--
+# Color the input by syntax and suggest the rest of the word in ghost text. Both
+# also need editor.completion.on_tab on.
 == --persist skips a byte order mark:
- 357 273 277 l e g a c y . g l o b _ i
- n c l u d e s _ d o t f i l e s
- = o n \n
+ 357 273 277 k o s h . g l o b _ i n c
+ l u d e s _ d o t f i l e s = o
+ n \n
 == --persist keeps CRLF line ends:
- m o o d = b a s h \r \n e d i t o
- r . a u t o _ c l o s e _ b r a
- c k e t s _ a n d _ q u o t e s
- = o n \r \n h i s t o r y . m a x
- _ e n t r i e s = 9 \r \n
+ k o s h . m o o d = b a s h \r \n
+ e d i t o r . a u t o _ c l o s
+ e _ b r a c k e t s _ a n d _ q
+ u o t e s = o n \r \n e d i t o r
+ . h i s t o r y . m a x _ e n t
+ r i e s = 9 \r \n
 == --persist fills a commented placeholder in place:
 # Store history here.
-history.file_path=/tmp/h
-mood=bash
+editor.history.file_path=/tmp/h
+kosh.mood=bash

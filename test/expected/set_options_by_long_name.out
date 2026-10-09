@@ -2,7 +2,7 @@ default
 5:2: error: Builtin `set`: The kosh mood keeps 'nounset' on.
      5 |  (set +u)
        |   ^~~~~~
-note: Switch to the bash mood with `koshconf set mood bash` to change it.
+note: Switch to the bash mood with `koshconf set kosh.mood bash` to change it.
 5:1: trace:
      5 |  (set +u)
        |  ^

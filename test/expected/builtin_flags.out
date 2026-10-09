@@ -40,6 +40,7 @@ nounset
 == set -o offers no Koshka name:
 == koshconf offers the diagnostics names:
 diagnostics.analyze_before_running
+diagnostics.errors_use_gnu_format
 diagnostics.show_annoying_tier
 diagnostics.show_source_traces
 diagnostics.warning_level

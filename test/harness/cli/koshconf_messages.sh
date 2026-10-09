@@ -22,11 +22,11 @@ do_quiet -c 'koshconf get pipefail; koshconf set extglob on'
 echo "== a retired set -o name points at its replacement:"
 do_quiet --mood bash -c 'set -o koshkit; set +o no-diagnostics; set -o no-unset
 set +o failglob'
-echo "== an invalid startup.init_moods names the bad entry:"
-do_quiet -c 'koshconf set startup.init_moods bash,fish'
+echo "== an invalid kosh.init_moods names the bad entry:"
+do_quiet -c 'koshconf set kosh.init_moods bash,fish'
 echo "== enumeration values read naturally:"
-do_quiet -c 'koshconf set legacy.base_editor_mode ed
-koshconf set completion.add_space_after_completed_word true'
+do_quiet -c 'koshconf set editor.base_mode ed
+koshconf set editor.completion.add_space_after_completed_word true'
 koshconf_help() {
   "$BIN" -c 'koshconf create bash' >/dev/null 2>&1
   grep -A1 -e "^# Insert a space" -e "^# Color the input" "$conf"
@@ -35,15 +35,15 @@ koshconf_help() {
 koshconf_help
 
 echo "== --persist skips a byte order mark:"
-printf '\357\273\277legacy.glob_includes_dotfiles=off\n' >"$conf"
-"$BIN" -c 'koshconf set legacy.glob_includes_dotfiles on --persist'
+printf '\357\273\277kosh.glob_includes_dotfiles=off\n' >"$conf"
+"$BIN" -c 'koshconf set kosh.glob_includes_dotfiles on --persist'
 od -An -c "$conf" | tr -s ' '
 echo "== --persist keeps CRLF line ends:"
-printf 'mood=bash\r\neditor.auto_close_brackets_and_quotes=off\r\n' >"$conf"
+printf 'kosh.mood=bash\r\neditor.auto_close_brackets_and_quotes=off\r\n' >"$conf"
 "$BIN" -c 'koshconf set editor.auto_close_brackets_and_quotes on --persist
-koshconf set history.max_entries 9 --persist'
+koshconf set editor.history.max_entries 9 --persist'
 od -An -c "$conf" | tr -s ' '
 echo "== --persist fills a commented placeholder in place:"
-printf '# Store history here.\n# history.file_path=\nmood=bash\n' >"$conf"
-"$BIN" -c 'koshconf set history.file_path /tmp/h --persist'
+printf '# Store history here.\n# editor.history.file_path=\nkosh.mood=bash\n' >"$conf"
+"$BIN" -c 'koshconf set editor.history.file_path /tmp/h --persist'
 cat "$conf"

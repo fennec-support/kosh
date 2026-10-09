@@ -50,7 +50,7 @@ no-diagnostics rc=1
 10:11: error: Builtin `set`: Unknown -o option 'extended-arithmetic'.
     10 |    (set -o "$name")
        |            ^~~~~~~
-note: The option was retired; use `koshconf set arithmetic.use_big_integers_and_decimals on` instead.
+note: The option was retired; use `koshconf set kosh.arithmetic_uses_big_numbers on` instead.
 10:3: trace:
     10 |    (set -o "$name")
        |    ^
@@ -58,7 +58,7 @@ extended-arithmetic rc=1
 10:11: error: Builtin `set`: Unknown -o option 'interactive-hints'.
     10 |    (set -o "$name")
        |            ^~~~~~~
-note: The option was retired; use `koshconf set editor.show_command_synopsis on` instead.
+note: The option was retired; use `koshconf set editor.hints.show_command_synopsis on` instead.
 10:3: trace:
     10 |    (set -o "$name")
        |    ^
@@ -66,7 +66,7 @@ interactive-hints rc=1
 10:11: error: Builtin `set`: Unknown -o option 'mimicry'.
     10 |    (set -o "$name")
        |            ^~~~~~~
-note: The option was retired; use `koshconf set compat.mimic_shell_named_by_shebang on` instead.
+note: The option was retired; use `koshconf set kosh.mimic_shebang on` instead.
 10:3: trace:
     10 |    (set -o "$name")
        |    ^
@@ -88,7 +88,7 @@ rcfile rc=1
 13:6: error: Builtin `set`: Unknown option '--mood'.
     13 |  (set --mood bash)
        |       ^~~~~~
-note: Use koshconf for Koshka settings without a letter, such as `koshconf set mood bash`.
+note: Use koshconf for Koshka settings without a letter, such as `koshconf set kosh.mood bash`.
 13:1: trace:
     13 |  (set --mood bash)
        |  ^
@@ -96,7 +96,7 @@ long-mood rc=1
 15:6: error: Builtin `set`: Unknown option '--options'.
     15 |  (set --options)
        |       ^~~~~~~~~
-note: Use koshconf for Koshka settings without a letter, such as `koshconf set mood bash`.
+note: Use koshconf for Koshka settings without a letter, such as `koshconf set kosh.mood bash`.
 15:1: trace:
     15 |  (set --options)
        |  ^

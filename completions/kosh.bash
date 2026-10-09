@@ -153,61 +153,63 @@ _kosh_koshconf_complete ()
     [[ $word == -* ]] || operands+=("$word")
   done
   local \
-    option_names="mood editor.completion_menu_style \
-editor.show_command_synopsis editor.show_live_diagnostics \
-editor.auto_close_brackets_and_quotes editor.transient_prompt_after_submit \
-editor.request_extended_key_reports history.arrow_keys_search_by_typed_prefix \
-history.file_path history.max_entries \
-completion.add_space_after_completed_word diagnostics.warning_level \
-diagnostics.show_annoying_tier diagnostics.analyze_before_running \
-koshkit.run_utilities_as_plain_commands \
-arithmetic.use_big_integers_and_decimals compat.mimic_shell_named_by_shebang \
-debug.print_syntax_tree debug.print_lexed_word_escapes \
-debug.report_nonzero_exit_codes debug.report_every_exit_code \
-debug.print_evaluation_statistics debug.print_memory_report_at_exit \
-editor.complete_on_tab editor.highlight_syntax_and_show_ghost_text \
-diagnostics.show_source_traces startup.init_moods \
-legacy.export_every_assigned_variable legacy.jobs_report_status_immediately \
-legacy.exit_on_command_failure legacy.glob_disabled \
-legacy.assignments_anywhere_in_command \
-legacy.job_control legacy.parse_without_executing \
-legacy.exit_after_one_command legacy.privileged_mode \
-legacy.unset_variable_is_error legacy.trace_print_input_lines \
-legacy.trace_print_expanded_commands legacy.brace_expansion \
-legacy.redirect_refuses_to_overwrite_files \
-legacy.trap_err_inherited_by_functions legacy.history_bang_expansion \
-legacy.cd_resolves_symlinks \
-legacy.trap_debug_and_return_inherited_by_functions \
-legacy.pipeline_fails_on_any_stage legacy.history_recording \
-legacy.ctrl_d_does_not_exit \
-legacy.base_editor_mode legacy.posix_mode legacy.cd_by_typing_directory_name \
-legacy.array_subscripts_expand_once legacy.cd_to_variable_value \
-legacy.cd_fix_typos legacy.verify_remembered_command_paths \
-legacy.jobs_check_before_exit legacy.update_columns_and_lines \
-legacy.completion_quote_all_special_characters \
-legacy.completion_expand_directory_names \
-legacy.completion_fix_directory_typos legacy.glob_includes_dotfiles \
-legacy.exec_failure_keeps_shell legacy.aliases_expand \
-legacy.debugger_support legacy.glob_extended_patterns \
-legacy.quote_dollar_strings_in_parameter_expansion \
-legacy.glob_no_match_is_error legacy.completion_always_apply_fignore \
-legacy.glob_ranges_use_ascii_order legacy.glob_never_matches_dot_and_dotdot \
-legacy.glob_double_star_recurses legacy.errors_use_gnu_format \
-legacy.history_reedit_failed_substitution \
-legacy.history_verify_expansion_before_running \
-legacy.completion_hostnames_after_at legacy.jobs_hangup_on_exit \
-legacy.command_substitution_inherits_exit_on_failure \
-legacy.interactive_comments legacy.pipeline_last_stage_runs_in_shell \
-legacy.local_inherits_outer_value legacy.local_unset_hides_outer \
-legacy.login_shell legacy.mail_warn_when_read legacy.completion_skip_empty_line \
-legacy.glob_ignores_case legacy.match_ignores_case \
-legacy.glob_no_match_expands_to_nothing \
-legacy.pattern_substitution_ampersand_is_match legacy.completion_programmable \
-legacy.completion_programmable_follows_aliases \
-legacy.prompt_expands_parameters legacy.restricted_shell \
-legacy.shift_reports_overflow legacy.source_searches_path \
-legacy.redirect_variable_fd_closed_after_command \
-legacy.echo_interprets_backslash_escapes"
+    option_names="debug.debugger_support debug.print_evaluation_statistics \
+debug.print_lexed_word_escapes debug.print_memory_report_at_exit \
+debug.print_syntax_tree debug.report_every_exit_code \
+debug.report_nonzero_exit_codes debug.trace_expanded_commands \
+debug.trace_input_lines \
+diagnostics.analyze_before_running diagnostics.errors_use_gnu_format \
+diagnostics.show_annoying_tier diagnostics.show_source_traces \
+diagnostics.warning_level \
+editor.auto_close_brackets_and_quotes editor.base_mode \
+editor.completion.add_space_after_completed_word \
+editor.completion.always_apply_fignore \
+editor.completion.expand_directory_names \
+editor.completion.fix_directory_typos \
+editor.completion.hostnames_after_at editor.completion.menu_style \
+editor.completion.on_tab editor.completion.programmable \
+editor.completion.programmable_follows_aliases \
+editor.completion.quote_all_special_characters \
+editor.completion.skip_empty_line editor.ctrl_d_does_not_exit \
+editor.highlight_syntax_and_show_ghost_text \
+editor.hints.show_command_synopsis editor.hints.show_live_diagnostics \
+editor.history.arrow_keys_search_by_typed_prefix \
+editor.history.bang_expansion editor.history.file_path \
+editor.history.max_entries editor.history.records_commands \
+editor.history.reedit_failed_substitution \
+editor.history.skips_function_definitions \
+editor.history.verify_expansion_before_running \
+editor.jobs_report_status_immediately editor.prompt_expands_parameters \
+editor.request_extended_key_reports editor.transient_prompt_after_submit \
+kosh.aliases_expand kosh.arithmetic_uses_big_numbers \
+kosh.array_subscripts_expand_once kosh.assignments_anywhere_in_command \
+kosh.brace_expansion kosh.cd_by_typing_directory_name kosh.cd_fix_typos \
+kosh.cd_resolves_symlinks kosh.cd_to_variable_value \
+kosh.command_substitution_inherits_exit_on_failure \
+kosh.echo_interprets_backslash_escapes kosh.exec_failure_keeps_shell \
+kosh.exit_after_one_command kosh.exit_on_command_failure \
+kosh.export_every_assigned_variable kosh.glob_disabled \
+kosh.glob_double_star_recurses kosh.glob_extended_patterns \
+kosh.glob_ignores_case kosh.glob_includes_dotfiles \
+kosh.glob_never_matches_dot_and_dotdot \
+kosh.glob_no_match_expands_to_nothing kosh.glob_no_match_is_error \
+kosh.glob_ranges_use_ascii_order kosh.init_moods \
+kosh.interactive_comments kosh.job_control kosh.jobs_check_before_exit \
+kosh.jobs_hangup_on_exit kosh.local_inherits_outer_value \
+kosh.local_unset_hides_outer kosh.login_shell kosh.mail_warn_when_read \
+kosh.match_ignores_case kosh.mimic_shebang kosh.mood \
+kosh.parse_without_executing kosh.pattern_substitution_ampersand_is_match \
+kosh.pipeline_fails_on_any_stage kosh.pipeline_last_stage_runs_in_shell \
+kosh.posixly_correct kosh.privileged_mode \
+kosh.quote_dollar_strings_in_parameter_expansion \
+kosh.redirect_refuses_to_overwrite_files \
+kosh.redirect_variable_fd_closed_after_command \
+kosh.remember_command_paths kosh.restricted_shell \
+kosh.shift_reports_overflow kosh.source_searches_path \
+kosh.trap_debug_and_return_inherited_by_functions \
+kosh.trap_err_inherited_by_functions kosh.unset_variable_is_error \
+kosh.update_columns_and_lines kosh.verify_remembered_command_paths \
+koshkit.run_utilities_as_plain_commands"
 
   if [[ $current_word == -* ]]
   then
@@ -229,23 +231,23 @@ legacy.echo_interprets_backslash_escapes"
       if [[ ${operands[0]} == set ]]
       then
         case ${operands[1]} in
-          mood | startup.init_moods)
+          kosh.mood | kosh.init_moods)
             _kosh_compgen -W "kosh sh bash bash-posix" -- "$current_word"
           ;;
-          editor.completion_menu_style)
+          editor.completion.menu_style)
             _kosh_compgen -W "interactive external plain" -- "$current_word"
           ;;
           diagnostics.warning_level)
             _kosh_compgen -W "0 1 2 3" -- "$current_word"
           ;;
-          legacy.base_editor_mode)
+          editor.base_mode)
             _kosh_compgen -W "emacs vi" -- "$current_word"
           ;;
-          completion.add_space_after_completed_word)
+          editor.completion.add_space_after_completed_word)
             _kosh_compgen -W "off on on-excluding-trailing-slash" -- \
               "$current_word"
           ;;
-          history.file_path | history.max_entries) ;;
+          editor.history.file_path | editor.history.max_entries) ;;
           *) _kosh_compgen -W "on off" -- "$current_word" ;;
         esac
       fi

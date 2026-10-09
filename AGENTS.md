@@ -56,7 +56,7 @@ changes update this file.
   then the user `kosh.conf`, and an
   inherited `KOSHCONF`, removes `KOSHCONF` from the environment, and settles a
   configured mood before the input plan and the configured
-  `startup.init_moods` of an interactive or login shell after it. A debug
+  `kosh.init_moods` of an interactive or login shell after it. A debug
   build lets KOSH_DEBUG_SYSTEM_KOSHCONF select the system file; a release build
   has no such override. An option the command line or
   `KOSH_ANALYSIS` sets keeps its value. A restricted or privileged invocation
@@ -105,7 +105,10 @@ changes update this file.
   SHELLOPTS, BASHOPTS, and `$-` read and write through it. `set` and `shopt`
   accept only Bash names; Koshka settings without a letter belong to
   `koshconf`. A koshconf name is full English words with the topic first, and
-  a boolean is a statement true when on. `legacy.base_editor_mode` is
+  a boolean is a statement true when on. Each option with a Bash spelling is
+  also accepted as `legacy.posix.<set -o name>` for a POSIX `set` option or
+  `legacy.bash.<Bash spelling>`, resolved to the same registry entry at
+  lookup; only canonical names are written. `editor.base_mode` is
   one enumeration behind the set-only alias entries `emacs` and `vi`, which
   have id 0 and no koshconf name; id 88 is retired. The kosh mood holds
   nounset, pipefail, failglob, and extended
@@ -282,7 +285,7 @@ changes update this file.
   A TAB that grows the token to the common prefix opens the menu on the
   candidates it gathered under the same rules, so one TAB runs the callback
   once. A sole candidate that takes the space of
-  `completion.add_space_after_completed_word` keeps the menu open on the next
+  `editor.completion.add_space_after_completed_word` keeps the menu open on the next
   word through a second gather, so that TAB runs the callback once for each
   word. The menu holds back the preview of its first row while the token is
   empty, closes quietly when the next word has no candidates, and does not

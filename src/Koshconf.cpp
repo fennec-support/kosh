@@ -29,7 +29,7 @@ constexpr usize KOSHCONF_LINK_LIMIT = 40;
 constexpr u32 MAX_CODEPOINT = 0x10ffff;
 constexpr u32 INVALID_CODEPOINT = MAX_CODEPOINT + 1;
 constexpr StringView UTF8_BYTE_ORDER_MARK{"\xef\xbb\xbf"};
-constexpr StringView HISTORY_MAX_ENTRIES_NAME{"history.max_entries"};
+constexpr StringView HISTORY_MAX_ENTRIES_NAME{"editor.history.max_entries"};
 constexpr u64 HISTORY_MAX_ENTRIES_LIMIT = 2147483647;
 
 enum class escape_style : u8
@@ -251,16 +251,8 @@ fn declared_name(StringView line) wontthrow -> Maybe<StringView>
 fn preset_group_of(const option_descriptor &option) wontthrow -> StringView
 {
   let const name = StringView{option.koshconf_name};
-  if (!option.is_legacy()) {
-    let const dot = name.find_character('.');
-    return dot.has_value() ? name.substring_of_length(0, *dot) : name;
-  }
-
-  let const topic_start = StringView{"legacy."}.count();
-  let const topic = name.substring(topic_start);
-  let const underscore = topic.find_character('_');
-  return name.substring_of_length(
-      0, topic_start + (underscore.has_value() ? *underscore : topic.count()));
+  let const dot = name.find_character('.');
+  return dot.has_value() ? name.substring_of_length(0, *dot) : name;
 }
 
 fn get_preset_group_first_id(const option_descriptor &option) wontthrow -> u16
@@ -268,7 +260,7 @@ fn get_preset_group_first_id(const option_descriptor &option) wontthrow -> u16
   let const group = preset_group_of(option);
   let first_id = option.id;
   for (let const &other : get_option_registry()) {
-    if (other.is_legacy() || other.id >= first_id) continue;
+    if (other.is_set_alias || other.id >= first_id) continue;
     if (preset_group_of(other) == group) first_id = other.id;
   }
 
@@ -278,16 +270,11 @@ fn get_preset_group_first_id(const option_descriptor &option) wontthrow -> u16
 fn preset_sorts_before(const option_descriptor &left,
                        const option_descriptor &right) wontthrow -> bool
 {
-  if (left.is_legacy() != right.is_legacy()) return right.is_legacy();
-  if (!left.is_legacy()) {
-    let const left_group_id = get_preset_group_first_id(left);
-    let const right_group_id = get_preset_group_first_id(right);
-    if (left_group_id != right_group_id) return left_group_id < right_group_id;
+  let const left_group_id = get_preset_group_first_id(left);
+  let const right_group_id = get_preset_group_first_id(right);
+  if (left_group_id != right_group_id) return left_group_id < right_group_id;
 
-    return left.id < right.id;
-  }
-
-  return StringView{left.koshconf_name} < StringView{right.koshconf_name};
+  return left.id < right.id;
 }
 
 fn resolve_koshconf_target(const Path &path) throws -> Path
@@ -434,10 +421,12 @@ fn suggest_koshconf_option_name(StringView name) throws -> Maybe<String>
     let const candidate = StringView{option.koshconf_name};
     suggestion.consider(candidate);
     let const dot = candidate.find_character('.');
-    if (dot.has_value() && candidate.substring(*dot + 1) == name &&
-        !topic_match.has_value())
-    {
-      topic_match = String{candidate};
+    for (usize position = 0; position < candidate.count(); position++) {
+      if (candidate[position] == '.' &&
+          candidate.substring(position + 1) == name && !topic_match.has_value())
+      {
+        topic_match = String{candidate};
+      }
     }
 
     usize shared_length = 0;
@@ -465,8 +454,8 @@ fn describe_kosh_mood_hold(const option_descriptor &option) throws -> String
 {
   return StringView{"The kosh mood keeps '"} + option.koshconf_name + "' " +
          format_option_number(option, option.strict_value) +
-         ", so the configured value is skipped; set mood=bash or run "
-         "`koshconf set mood bash` to change it";
+         ", so the configured value is skipped; set kosh.mood=bash or run "
+         "`koshconf set kosh.mood bash` to change it";
 }
 
 fn find_koshconf_value_problem(const option_descriptor &option,

@@ -4,8 +4,8 @@
 if shopt -q login_shell; then echo login=on; else echo login=off; fi
 if [[ -o login ]]; then echo o-login=on; else echo o-login=off; fi
 if [[ -o rcfile ]]; then echo o-rcfile=on; else echo o-rcfile=off; fi
-koshconf get legacy.login_shell
-koshconf set legacy.login_shell on
+koshconf get kosh.login_shell
+koshconf set kosh.login_shell on
 echo "rc=$?"
 shopt -s login_shell
 shopt -q login_shell || echo login-still-off

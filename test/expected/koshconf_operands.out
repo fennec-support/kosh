@@ -10,16 +10,36 @@ kosh
 sh
 == koshconf get option prefix:
 editor.auto_close_brackets_and_quotes
-editor.complete_on_tab
-editor.completion_menu_style
+editor.base_mode
+editor.completion.add_space_after_completed_word
+editor.completion.always_apply_fignore
+editor.completion.expand_directory_names
+editor.completion.fix_directory_typos
+editor.completion.hostnames_after_at
+editor.completion.menu_style
+editor.completion.on_tab
+editor.completion.programmable
+editor.completion.programmable_follows_aliases
+editor.completion.quote_all_special_characters
+editor.completion.skip_empty_line
+editor.ctrl_d_does_not_exit
 editor.highlight_syntax_and_show_ghost_text
+editor.hints.show_command_synopsis
+editor.hints.show_live_diagnostics
+editor.history.arrow_keys_search_by_typed_prefix
+editor.history.bang_expansion
+editor.history.file_path
+editor.history.max_entries
+editor.history.records_commands
+editor.history.reedit_failed_substitution
+editor.history.verify_expansion_before_running
+editor.jobs_report_status_immediately
+editor.prompt_expands_parameters
 editor.request_extended_key_reports
-editor.show_command_synopsis
-editor.show_live_diagnostics
 editor.transient_prompt_after_submit
 == koshconf set option prefix after a flag:
-legacy.glob_no_match_expands_to_nothing
-legacy.glob_no_match_is_error
+kosh.glob_no_match_expands_to_nothing
+kosh.glob_no_match_is_error
 == koshconf set editor mode value:
 emacs
 vi
@@ -51,6 +71,6 @@ history-probe
 --force
 --help
 == koshconf option name by subsequence:
-history.max_entries
+editor.history.max_entries
 == koshconf option name prefix wins over subsequence:
-mood
+kosh.mood

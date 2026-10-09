@@ -1,8 +1,8 @@
-echo "== koshconf set editor.completion_menu_style value:"
-"$BIN" --debug-complete-at 'koshconf set editor.completion_menu_style ' \
+echo "== koshconf set editor.completion.menu_style value:"
+"$BIN" --debug-complete-at 'koshconf set editor.completion.menu_style ' \
   <"$TEST_NULL_DEVICE"
-echo "== koshconf set editor.completion_menu_style prefix:"
-"$BIN" --debug-complete-at 'koshconf set editor.completion_menu_style e' \
+echo "== koshconf set editor.completion.menu_style prefix:"
+"$BIN" --debug-complete-at 'koshconf set editor.completion.menu_style e' \
   <"$TEST_NULL_DEVICE"
 echo "== kosh --tab-selector value:"
 "$BIN" --debug-complete-at 'kosh --tab-selector ' <"$TEST_NULL_DEVICE"

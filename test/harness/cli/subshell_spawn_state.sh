@@ -30,23 +30,23 @@ set -M bash
 set -u
 set -o pipefail
 shopt -s failglob
-koshconf set arithmetic.use_big_integers_and_decimals on
+koshconf set kosh.arithmetic_uses_big_numbers on
 printf "runtime-marks-process="
 koshkit cat < <(
   set -M sh
-  [ "$(koshconf get legacy.unset_variable_is_error)" = on ] && printf u
-  [ "$(koshconf get legacy.pipeline_fails_on_any_stage)" = on ] && printf p
-  [ "$(koshconf get legacy.glob_no_match_is_error)" = on ] && printf f
-  [ "$(koshconf get arithmetic.use_big_integers_and_decimals)" = on ] && printf a
+  [ "$(koshconf get kosh.unset_variable_is_error)" = on ] && printf u
+  [ "$(koshconf get kosh.pipeline_fails_on_any_stage)" = on ] && printf p
+  [ "$(koshconf get kosh.glob_no_match_is_error)" = on ] && printf f
+  [ "$(koshconf get kosh.arithmetic_uses_big_numbers)" = on ] && printf a
 )
 printf "\n"
 printf "" | {
   set -M sh
   printf "runtime-marks-compound="
-  [ "$(koshconf get legacy.unset_variable_is_error)" = on ] && printf u
-  [ "$(koshconf get legacy.pipeline_fails_on_any_stage)" = on ] && printf p
-  [ "$(koshconf get legacy.glob_no_match_is_error)" = on ] && printf f
-  [ "$(koshconf get arithmetic.use_big_integers_and_decimals)" = on ] && printf a
+  [ "$(koshconf get kosh.unset_variable_is_error)" = on ] && printf u
+  [ "$(koshconf get kosh.pipeline_fails_on_any_stage)" = on ] && printf p
+  [ "$(koshconf get kosh.glob_no_match_is_error)" = on ] && printf f
+  [ "$(koshconf get kosh.arithmetic_uses_big_numbers)" = on ] && printf a
   printf "\n"
 }
 '

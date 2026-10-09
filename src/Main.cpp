@@ -101,7 +101,7 @@ FLAG(MOOD, String, 'M', "mood", Compat,
      "'bash-posix' is bash with the posix identity reached by --posix.");
 FLAG(INIT_MOODS, ManyStrings, 'L', "init-moods", Compat,
      "Source the startup files for each listed mood, in order, comma separated "
-     "or by repeating the flag. Defaults to startup.init_moods in an "
+     "or by repeating the flag. Defaults to kosh.init_moods in an "
      "interactive or login shell, then to --mood.");
 FLAG(MIMICRY, Bool, 'I', "enable-mimicry", Compat,
      "Mimic the shell specified by a script's shebang, running a known shell shebang "
@@ -150,7 +150,7 @@ FLAG(ENABLE_KOSHKIT, Bool, '\0', "enable-koshkit", Kosh,
      "koshkit.run_utilities_as_plain_commands on.");
 FLAG(EXTENDED_ARITHMETIC, Bool, '\0', "enable-extended-arithmetic", Kosh,
      "Use arbitrary-precision integers and finite decimal values, the same as "
-     "koshconf set arithmetic.use_big_integers_and_decimals on.");
+     "koshconf set kosh.arithmetic_uses_big_numbers on.");
 
 FLAG(AST, Bool, 'A', "show-ast", Debug,
      "Print syntax trees before execution and during formatting or linting.");

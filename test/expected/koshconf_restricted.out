@@ -26,10 +26,10 @@ rc=0
 next status=1
 off
 rc=0
-== kosh -r: koshconf set mood bash
+== kosh -r: koshconf set kosh.mood bash
 -c:1:1: error: Builtin `koshconf`: Changing settings with koshconf is forbidden in a restricted shell.
-     1 |  koshconf set mood bash; echo "next status=$?"
-       |  ^~~~~~~~~~~~~~~~~~~~~~
+     1 |  koshconf set kosh.mood bash; echo "next status=$?"
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~
 next status=1
 off
 rc=0
@@ -73,11 +73,11 @@ rc=1
 off
 0
 == a restricted shell keeps only harmless settings from the files:
-warning: A restricted shell ignores 'mood' from the configuration files.
+warning: A restricted shell ignores 'kosh.mood' from the configuration files.
 warning: A restricted shell ignores 'koshkit.run_utilities_as_plain_commands' from the configuration files.
-warning: A restricted shell ignores 'history.file_path' from the configuration files.
-warning: A restricted shell ignores 'legacy.glob_includes_dotfiles' from the configuration files.
-warning: A restricted shell ignores 'startup.init_moods' from the configuration files.
+warning: A restricted shell ignores 'editor.history.file_path' from the configuration files.
+warning: A restricted shell ignores 'kosh.glob_includes_dotfiles' from the configuration files.
+warning: A restricted shell ignores 'kosh.init_moods' from the configuration files.
 kosh
 off
 off

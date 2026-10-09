@@ -103,16 +103,17 @@ fn find_retired_option_replacement(StringView name, bool enable) throws
       {SSK("error-exit"),              {"errexit", Set}                                     },
       {SSK("export-all"),              {"allexport", Set}                                   },
       {SSK("extended-arithmetic"),
-       {"arithmetic.use_big_integers_and_decimals", Koshconf}                               },
+       {"kosh.arithmetic_uses_big_numbers", Koshconf}                                       },
       {SSK("extended-keys"),           {"editor.request_extended_key_reports", Koshconf}    },
       {SSK("failglob"),                {"failglob", Shopt}                                  },
       {SSK("history-prefix-search"),
-       {"history.arrow_keys_search_by_typed_prefix", Koshconf}                              },
+       {"editor.history.arrow_keys_search_by_typed_prefix", Koshconf}                       },
       {SSK("interactive-diagnostics"),
-       {"editor.show_live_diagnostics", Koshconf}                                           },
-      {SSK("interactive-hints"),       {"editor.show_command_synopsis", Koshconf}           },
+       {"editor.hints.show_live_diagnostics", Koshconf}                                     },
+      {SSK("interactive-hints"),
+       {"editor.hints.show_command_synopsis", Koshconf}                                     },
       {SSK("koshkit"),                 {"koshkit.run_utilities_as_plain_commands", Koshconf}},
-      {SSK("mimicry"),                 {"compat.mimic_shell_named_by_shebang", Koshconf}    },
+      {SSK("mimicry"),                 {"kosh.mimic_shebang", Koshconf}                     },
       {SSK("no-clobber"),              {"noclobber", Set}                                   },
       {SSK("no-diagnostics"),
        {"diagnostics.analyze_before_running", KoshconfInverted}                             },
@@ -126,7 +127,7 @@ fn find_retired_option_replacement(StringView name, bool enable) throws
       {SSK("show-memory"),             {"debug.print_memory_report_at_exit", Koshconf}      },
       {SSK("show-stats"),              {"debug.print_evaluation_statistics", Koshconf}      },
       {SSK("space-after-completion"),
-       {"completion.add_space_after_completed_word", Koshconf}                              },
+       {"editor.completion.add_space_after_completed_word", Koshconf}                       },
       {SSK("transient-prompt"),
        {"editor.transient_prompt_after_submit", Koshconf}                                   },
   };
@@ -306,11 +307,8 @@ fn enabled_shell_option_names(const EvalContext &cxt) throws -> String
 {
   let joined = String{heap_allocator()};
   for (let const &option : get_set_listing_order()) {
-    if (!option.is_listed_by_set || !option.is_legacy() ||
-        !option_is_on(cxt, option))
-    {
-      continue;
-    }
+    if (!option.is_listed_by_set || !option_is_on(cxt, option)) continue;
+
     if (!joined.is_empty()) joined.push(':');
     joined.append(option.set_name);
   }
@@ -469,7 +467,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       throw make_error_for_arg(ec, i,
                                StringView{"Unknown option '"} + arg + "'",
                                "Use koshconf for Koshka settings without a "
-                               "letter, such as `koshconf set mood bash`");
+                               "letter, such as `koshconf set kosh.mood bash`");
     }
 
     if (arg == "-o" || arg == "+o") {

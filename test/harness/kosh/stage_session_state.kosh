@@ -1,13 +1,13 @@
 # A pipeline stage, a compound stage, and a process substitution keep the
 # startup moods, the source trace switch, and $- of the shell, also where the
 # stage runs in a fresh evaluator.
-koshconf set startup.init_moods sh,bash
+koshconf set kosh.init_moods sh,bash
 koshconf set diagnostics.show_source_traces off
 shell_flags=$-
 do_report() {
   local flags=same
   [[ $- == "$shell_flags" ]] || flags="differs: $-"
-  echo "$1: $flags $(koshconf get startup.init_moods) $(koshconf get diagnostics.show_source_traces) $(koshconf get legacy.login_shell)"
+  echo "$1: $flags $(koshconf get kosh.init_moods) $(koshconf get diagnostics.show_source_traces) $(koshconf get kosh.login_shell)"
 }
 do_report shell
 do_report stage | koshkit cat

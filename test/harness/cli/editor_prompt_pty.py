@@ -263,8 +263,8 @@ def run_job_notice_checks(binary, directory, report):
                       is_noticed)
 
         mark = len(session.raw)
-        session.send(b"koshconf set mood kosh --persist\r")
-        written_note = ("Wrote mood=kosh to " + directory
+        session.send(b"koshconf set kosh.mood kosh --persist\r")
+        written_note = ("Wrote kosh.mood=kosh to " + directory
                         + "/.config/kosh/kosh.conf").encode()
         report.record("persist-names-the-written-file", session,
                       lambda screen: written_note in session.raw[mark:])

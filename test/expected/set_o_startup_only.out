@@ -2,8 +2,8 @@ login=off
 o-login=off
 o-rcfile=off
 off
-8:33: error: Builtin `koshconf`: Unable to change 'legacy.login_shell' because it is fixed at shell startup.
-     8 |  koshconf set legacy.login_shell on
-       |                                  ^~
+8:31: error: Builtin `koshconf`: Unable to change 'kosh.login_shell' because it is fixed at shell startup.
+     8 |  koshconf set kosh.login_shell on
+       |                                ^~
 rc=1
 login-still-off
