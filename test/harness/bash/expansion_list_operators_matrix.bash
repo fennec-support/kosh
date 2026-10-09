@@ -7,7 +7,8 @@
 # byte before each space that a trimmed element brings into an unquoted
 # result, and Kosh does not. The leak cases drop that byte from their output
 # in both shells before it is compared. In the [[ ]] context the leaked byte
-# makes bash compare unequal words, so that case is not run.
+# makes bash compare unequal words, so that case is not run here, and
+# list_trim_empty_ifs_condition.kosh holds Kosh's answer.
 export LC_ALL=C
 shopt -s extglob
 leak_cases=(
