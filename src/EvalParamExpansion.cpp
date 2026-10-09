@@ -2021,10 +2021,15 @@ fn EvalContext::ParameterExpander::expand_list_test(
   let const is_quoted_null_list =
       m_quoting == parameter_word_quoting::Unquoted &&
       m_context.expansion_store().is_expanding_assignment_value();
-  let const treat_as_unset = is_colon && !is_quoted_null_list &&
-                                     !is_operand_quoted_null(values, is_star)
-                                 ? joined.is_empty()
-                                 : values.is_empty();
+  let const is_posix_positional = m_context.runtime_state().is_posix_mode() &&
+                                  (m_name == "@" || m_name == "*");
+  let const treat_as_unset =
+      is_posix_positional
+          ? m_context.is_posix_positional_test_null(is_colon, op, true)
+      : is_colon && !is_quoted_null_list &&
+              !is_operand_quoted_null(values, is_star)
+          ? joined.is_empty()
+          : values.is_empty();
   if (!treat_as_unset) {
     if (op == '+') return expand_word(word, m_quoting);
 
@@ -3298,6 +3303,27 @@ fn EvalContext::apply_value_modifier(
                                     pattern_location));
   }
   return String{scratch_allocator(), value};
+}
+
+fn EvalContext::is_posix_positional_test_null(bool is_colon, char op,
+                                              bool should_test_joined) wontthrow
+    -> bool
+{
+  if (!is_colon) return false;
+
+  let const &params = variable_store().positional_params();
+  if (op != '+' && !should_test_joined) {
+    return params.is_empty() ||
+           (params.count() == 1 && params[0].view().is_empty());
+  }
+
+  if (params.count() > 1 && !variable_store().field_separators().is_empty())
+    return false;
+
+  for (let const &param : params)
+    if (!param.view().is_empty()) return false;
+
+  return true;
 }
 
 fn EvalContext::trim_positional_fields(

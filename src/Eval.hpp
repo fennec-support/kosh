@@ -4125,6 +4125,8 @@ protected:
   fn trim_positional_fields(bool is_star, bool is_quoted, StringView modifier,
                             const SourceLocation *source_location =
                                 nullptr) throws -> ArrayList<String>;
+  fn is_posix_positional_test_null(bool is_colon, char op,
+                                   bool should_test_joined) wontthrow -> bool;
 
   fn apply_array_subscript(
       StringView name, StringView subscript,

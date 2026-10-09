@@ -1332,6 +1332,13 @@ so "${@%%?}" can drop later parameters and "${@#?}" shortens only the first.
 In the sh mood a $@ that becomes one string, as in an assignment, a case word,
 or a here-document, joins the parameters with the first byte of IFS, or with
 nothing when IFS is empty, as dash does. The bash moods join it with a space.
+In the sh mood, as in dash, $@ and $* are always set, so "${@\-d}" and
+"${@+p}" never test for missing parameters. The colon forms ${@:+p} and any
+test of a quoted $* or of a single string treat the parameters as null when
+they join to an empty string. The colon forms \-, =, and ? in a field context
+treat them as null only when there are none or there is one empty parameter.
+A quoted form that expands to no field, such as "${@\-d}" without parameters,
+still gives one empty field.
 .SS Indexed arrays
 An indexed array is assigned with a=(x y z). An element is assigned with
 a[2]=z. The form a+=(w) appends elements. An opening parenthesis directly after

@@ -377,10 +377,18 @@ hot fn EvalContext::expand_word(const Word &word) throws
             param_count == 0 ||
             (param_count == 1 &&
              variable_store().positional_params()[0].view().is_empty());
+        let const is_posix = runtime_state().is_posix_mode();
         let const treat_as_unset =
-            positional_test_has_colon ? positional_is_null : param_count == 0;
+            is_posix ? is_posix_positional_test_null(
+                           positional_test_has_colon, op,
+                           segment.is_in_double_quotes && is_star)
+            : positional_test_has_colon ? positional_is_null
+                                        : param_count == 0;
+        let const is_quoted_list = is_posix && segment.is_in_double_quotes;
 
         let const do_emit_positional = [&]() throws {
+          if (is_quoted_list && param_count == 0)
+            do_append_run(StringView{}, false);
           do_emit_elements(variable_store().positional_params(),
                            segment.is_in_double_quotes, is_star);
         };
@@ -399,7 +407,10 @@ hot fn EvalContext::expand_word(const Word &word) throws
             do_emit_positional();
           break;
         case '+':
-          if (!treat_as_unset) do_emit_word();
+          if (!treat_as_unset)
+            do_emit_word();
+          else if (is_quoted_list)
+            do_append_run(StringView{}, false);
           break;
         case '=':
           if (treat_as_unset)
@@ -501,6 +512,8 @@ hot fn EvalContext::expand_word(const Word &word) throws
           let const trimmed =
               trim_positional_fields(is_star, segment.is_in_double_quotes,
                                      modifier, modifier_location_pointer);
+          if (segment.is_in_double_quotes && trimmed.is_empty())
+            do_append_run(StringView{}, false);
           for (usize i = 0; i < trimmed.count(); i++) {
             if (i > 0) do_flush();
             if (segment.is_in_double_quotes)
