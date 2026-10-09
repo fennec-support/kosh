@@ -21,15 +21,22 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("create <bash|sh|kosh> [--force]",
                    "set <option> <value> [--persist]", "get <option>",
-                   "list | load <base64>");
+                   "list [-a|--all]", "load <base64>", "save [--persist]");
 
 HELP_DESCRIPTION_DECL(
     "The koshconf builtin loads and changes the settings Koshka owns, writes "
-    "the configuration file, and loads the binary form of KOSHCONF.");
+    "the configuration file, and loads the binary form of KOSHCONF. save "
+    "prints the current settings as the value of $KOSHCONF, which a child "
+    "kosh adopts, and with --persist writes them to the user configuration "
+    "file.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
+FLAG(ALL, Bool, 'a', "all",
+     "With list, also show the legacy.posix and legacy.bash name of each "
+     "option.");
 FLAG(PERSIST, Bool, '\0', "persist",
-     "With set, also write the option to the user configuration file.");
+     "With set, also write the option to the user configuration file. With "
+     "save, write every current setting to it.");
 FLAG(FORCE, Bool, '\0', "force",
      "With create, replace an existing configuration file.");
 
@@ -46,6 +53,7 @@ enum class koshconf_command : u8
   Get,
   List,
   Load,
+  Save,
 };
 
 constexpr static_string_entry<koshconf_command> KOSHCONF_COMMAND_ENTRIES[] = {
@@ -54,6 +62,7 @@ constexpr static_string_entry<koshconf_command> KOSHCONF_COMMAND_ENTRIES[] = {
     {SSK("get"),    koshconf_command::Get   },
     {SSK("list"),   koshconf_command::List  },
     {SSK("load"),   koshconf_command::Load  },
+    {SSK("save"),   koshconf_command::Save  },
 };
 constexpr StaticStringMap KOSHCONF_COMMANDS{KOSHCONF_COMMAND_ENTRIES};
 
@@ -65,7 +74,6 @@ constexpr static_string_entry<mimic_mood> KOSHCONF_PRESET_ENTRIES[] = {
 constexpr StaticStringMap KOSHCONF_PRESETS{KOSHCONF_PRESET_ENTRIES};
 
 constexpr StringView LIST_HEADING{"# name=value"};
-constexpr usize LIST_COLUMN_GAP = 2;
 
 struct koshconf_operands
 {
@@ -268,38 +276,34 @@ fn run_list(const ExecContext &ec, EvalContext &cxt,
     return report_usage(ec, cxt, operands.locations[2],
                         "The list form takes no operand");
 
-  let lines = ArrayList<String>{cxt.scratch_allocator()};
-  usize class_column = LIST_HEADING.count() + LIST_COLUMN_GAP;
-  for (let const &option : get_option_registry()) {
-    if (option.is_set_alias) continue;
-
-    let line = format_koshconf_display_line(
-        option, read_option_text(cxt, option).view());
-    if (option.type != option_type::String &&
-        line.count() + LIST_COLUMN_GAP > class_column)
-    {
-      class_column = line.count() + LIST_COLUMN_GAP;
-    }
-    lines.push(steal(line));
-  }
-
   let out = String{cxt.scratch_allocator()};
-  let const do_append_row = [&](StringView line, StringView category) throws {
-    out += line;
-    out.append_repeated(' ', line.count() + LIST_COLUMN_GAP <= class_column
-                                 ? class_column - line.count()
-                                 : LIST_COLUMN_GAP);
-    out += category;
-    out += '\n';
-  };
-  do_append_row(LIST_HEADING, "class");
-  usize line_index = 0;
+  out += LIST_HEADING;
+  out += '\n';
   for (let const &option : get_option_registry()) {
-    if (option.is_set_alias) continue;
+    if (option.is_set_alias) {
+      let const set_only_alias =
+          FLAG_ALL.is_enabled() ? get_legacy_koshconf_alias(option) : None;
+      if (!set_only_alias.has_value()) continue;
 
-    do_append_row(lines[line_index++].view(),
-                  option.category == option_class::Interactive ? "interactive"
-                                                               : "semantic");
+      out += set_only_alias->view();
+      out += '=';
+      out += read_option_text(cxt, option).view();
+      out += '\n';
+      continue;
+    }
+
+    let const line = format_koshconf_display_line(
+        option, read_option_text(cxt, option).view());
+    out += line.view();
+    out += '\n';
+    if (!FLAG_ALL.is_enabled()) continue;
+
+    let const alias = get_legacy_koshconf_alias(option);
+    if (!alias.has_value()) continue;
+
+    out += alias->view();
+    out += line.view().substring(option.koshconf_name.length);
+    out += '\n';
   }
   ec.print_to_stdout(out);
   return 0;
@@ -331,6 +335,34 @@ fn run_load(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
+fn run_save(const ExecContext &ec, EvalContext &cxt,
+            const koshconf_operands &operands) throws -> i32
+{
+  if (operands.values.count() != 2)
+    return report_usage(ec, cxt, operands.locations[2],
+                        "The save form takes no operand");
+
+  if (!FLAG_PERSIST.is_enabled()) {
+    let blob = encode_koshconf_blob(cxt);
+    blob += '\n';
+    ec.print_to_stdout(blob);
+    return 0;
+  }
+
+  let const path = require_user_path(ec, cxt);
+  if (!path.has_value()) return 1;
+
+  try {
+    write_koshconf_file(*path, make_koshconf_snapshot(cxt).view());
+  } catch (const Error &error) {
+    report_caught_error(ec, cxt, ec.source_location(), error);
+    return 1;
+  }
+
+  report_written_file(ec, cxt, "the current settings", *path);
+  return 0;
+}
+
 } /* namespace */
 
 fn Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
@@ -354,24 +386,31 @@ fn Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     report_soft_builtin_error(
         ec, cxt, operand_locations[1],
         StringView{"Unknown subcommand '"} + args[1] +
-            "', expected 'create', 'set', 'get', 'list', or 'load'",
+            "', expected 'create', 'set', 'get', 'list', 'load', or 'save'",
         close_match.has_value()
             ? StringView{"Did you mean '"} + *close_match + "'?"
             : String{"Run `koshconf --help` for the forms"});
     return 2;
   }
-  if (FLAG_PERSIST.is_enabled() && *command != koshconf_command::Set) {
+  if (FLAG_ALL.is_enabled() && *command != koshconf_command::List) {
     return report_usage(ec, cxt, ec.source_location(),
-                        "Only the set form accepts --persist");
+                        "Only the list form accepts --all");
+  }
+  if (FLAG_PERSIST.is_enabled() &&
+      (*command != koshconf_command::Set && *command != koshconf_command::Save))
+  {
+    return report_usage(ec, cxt, ec.source_location(),
+                        "Only the set and save forms accept --persist");
   }
   if (FLAG_FORCE.is_enabled() && *command != koshconf_command::Create) {
     return report_usage(ec, cxt, ec.source_location(),
                         "Only the create form accepts --force");
   }
 
-  let const is_mutation = *command == koshconf_command::Create ||
-                          *command == koshconf_command::Set ||
-                          *command == koshconf_command::Load;
+  let const is_mutation =
+      *command == koshconf_command::Create ||
+      *command == koshconf_command::Set || *command == koshconf_command::Load ||
+      (*command == koshconf_command::Save && FLAG_PERSIST.is_enabled());
   if (is_mutation &&
       cxt.runtime_state().option_is_enabled(shell_option_id::Restricted))
   {
@@ -389,6 +428,7 @@ fn Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   case koshconf_command::Get: return run_get(ec, cxt, operands);
   case koshconf_command::List: return run_list(ec, cxt, operands);
   case koshconf_command::Load: return run_load(ec, cxt, operands);
+  case koshconf_command::Save: return run_save(ec, cxt, operands);
   }
   unreachable("Unhandled koshconf form");
 }

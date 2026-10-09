@@ -232,13 +232,13 @@ kosh.optimizer.warning_level"
 
   if [[ $current_word == -* ]]
   then
-    _kosh_compgen -W "--help --persist --force" -- "$current_word"
+    _kosh_compgen -W "--help --all --persist --force" -- "$current_word"
     return
   fi
 
   case ${#operands[@]} in
     0)
-      _kosh_compgen -W "create get list load set" -- "$current_word"
+      _kosh_compgen -W "create get list load save set" -- "$current_word"
     ;;
     1)
       case ${operands[0]} in

@@ -3,6 +3,7 @@ create
 get
 list
 load
+save
 set
 == koshconf create preset:
 bash

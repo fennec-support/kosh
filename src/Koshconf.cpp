@@ -785,10 +785,11 @@ fn format_koshconf_line(const option_descriptor &option,
   return line;
 }
 
-fn make_koshconf_preset(mimic_mood preset) throws -> String
+fn compose_koshconf_text(StringView description, mimic_mood preset,
+                         const EvalContext *current) throws -> String
 {
-  let contents = String{"# Koshka settings written by koshconf create "};
-  contents += mood_name(preset);
+  let contents = String{"# Koshka settings written by koshconf "};
+  contents += description;
   contents += ".\n# Each line is name=value. kosh(5) describes the format.\n"
               "# Every shell loads this file, including the ones that run "
               "scripts.\n";
@@ -864,6 +865,20 @@ fn make_koshconf_preset(mimic_mood preset) throws -> String
       contents += '\n';
     }
 
+    if (current != nullptr) {
+      let const current_value = read_option_text(*current, *option);
+      if (current_value.is_empty()) {
+        contents += "# ";
+        contents += option->koshconf_name;
+        contents += "=\n";
+        continue;
+      }
+
+      contents += format_koshconf_line(*option, current_value.view());
+      contents += '\n';
+      continue;
+    }
+
     if (option->type == option_type::String) {
       if (option->default_text.is_empty()) {
         contents += "# ";
@@ -897,6 +912,18 @@ fn make_koshconf_preset(mimic_mood preset) throws -> String
   }
 
   return contents;
+}
+
+fn make_koshconf_preset(mimic_mood preset) throws -> String
+{
+  let description = String{"create "};
+  description += mood_name(preset);
+  return compose_koshconf_text(description.view(), preset, nullptr);
+}
+
+fn make_koshconf_snapshot(const EvalContext &cxt) throws -> String
+{
+  return compose_koshconf_text("save", mimic_mood::Default, &cxt);
 }
 
 fn write_koshconf_file(const Path &path, StringView contents) throws -> void

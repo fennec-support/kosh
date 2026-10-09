@@ -89,7 +89,7 @@ public:
   }
 
 private:
-  StringView m_lines[4]{};
+  StringView m_lines[6]{};
   usize m_count{0};
 };
 

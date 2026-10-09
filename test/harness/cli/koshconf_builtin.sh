@@ -22,7 +22,7 @@ do_compare_preset() {
   done <"$conf"
 }
 
-echo "== list prints every option with its class:"
+echo "== list prints every option as name=value:"
 KOSH_HISTORY_FILE=/history "$BIN" -c 'koshconf list'
 echo "== the kosh preset matches a fresh kosh session:"
 "$BIN" -c 'koshconf create kosh'
@@ -44,7 +44,7 @@ echo "== the sh preset matches a fresh sh session:"
 "$BIN" -c 'koshconf create --force sh'
 do_compare_preset sh
 echo "== create writes every file option with its help and Bash name:"
-grep -c '^kosh\.glob' "$conf"
+grep -c '^kosh\.interpreter\.glob' "$conf"
 grep -B2 '^kosh.interpreter.glob_includes_dotfiles=' "$conf"
 grep -c '^# kosh.editor.history.file_path=$' "$conf"
 grep -c '^kosh.interpreter.privileged_mode=' "$conf"

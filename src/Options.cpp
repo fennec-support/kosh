@@ -1278,14 +1278,35 @@ fn find_option_by_shopt_name(StringView name) wontthrow
   return position.has_value() ? &OPTION_REGISTRY[*position] : nullptr;
 }
 
+constexpr StringView POSIX_ALIAS_PREFIX{"legacy.posix."};
+constexpr StringView BASH_ALIAS_PREFIX{"legacy.bash."};
+
+fn get_legacy_koshconf_alias(const option_descriptor &option) throws
+    -> Maybe<String>
+{
+  if (option.is_set_alias && option.storage == option_storage::EditorMode)
+    return None;
+
+  let alias = String{heap_allocator()};
+  if (!option.set_name.is_empty()) {
+    alias +=
+        option.is_posix_set_option ? POSIX_ALIAS_PREFIX : BASH_ALIAS_PREFIX;
+    alias += option.set_name;
+    return alias;
+  }
+  if (option.shopt_name.is_empty()) return None;
+
+  alias += BASH_ALIAS_PREFIX;
+  alias += option.shopt_name;
+  return alias;
+}
+
 fn find_option_by_koshconf_name(StringView name) wontthrow
     -> const option_descriptor *
 {
   let const position = OPTIONS_BY_KOSHCONF_NAME.find(name);
   if (position.has_value()) return &OPTION_REGISTRY[*position];
 
-  constexpr StringView POSIX_ALIAS_PREFIX{"legacy.posix."};
-  constexpr StringView BASH_ALIAS_PREFIX{"legacy.bash."};
   let const is_posix_alias = name.starts_with(POSIX_ALIAS_PREFIX);
   if (!is_posix_alias && !name.starts_with(BASH_ALIAS_PREFIX)) return nullptr;
 

@@ -1,101 +1,101 @@
-== list prints every option with its class:
-# name=value                                                        class
-kosh.mood=kosh                                                      semantic
-kosh.completion.menu_style=interactive                              interactive
-kosh.editor.hints.show_command_synopsis=on                          interactive
-kosh.editor.hints.show_live_diagnostics=on                          interactive
-kosh.editor.auto_close_brackets_and_quotes=off                      interactive
-kosh.editor.transient_prompt_after_submit=off                       interactive
-kosh.editor.request_extended_key_reports=on                         interactive
-kosh.editor.history.arrow_keys_search_by_typed_prefix=on            interactive
-kosh.editor.history.file_path=/history                              interactive
-kosh.editor.history.max_entries=4096                                interactive
-kosh.completion.add_space_after_completed_word=off                  interactive
-kosh.optimizer.warning_level=0                                      interactive
-kosh.optimizer.show_annoying_tier=on                                interactive
-kosh.optimizer.analyze_before_running=on                            semantic
-kosh.interpreter.resolve_koshkit_applets_as_commands=off            semantic
-kosh.interpreter.arithmetic_uses_big_numbers=on                     semantic
-kosh.interpreter.mimic_shebang=off                                  semantic
-kosh.debug.print_syntax_tree=off                                    semantic
-kosh.debug.print_lexed_word_escapes=off                             semantic
-kosh.debug.report_nonzero_exit_codes=off                            semantic
-kosh.debug.report_every_exit_code=off                               semantic
-kosh.debug.print_evaluation_statistics=off                          semantic
-kosh.debug.print_memory_report_at_exit=off                          semantic
-kosh.completion.on_tab=on                                           interactive
-kosh.editor.highlight_syntax_and_show_ghost_text=on                 interactive
-kosh.optimizer.show_source_traces=on                                interactive
-kosh.init_moods=                                                    semantic
-kosh.interpreter.export_every_assigned_variable=off                 semantic
-kosh.editor.jobs_report_status_immediately=off                      interactive
-kosh.interpreter.exit_on_command_failure=off                        semantic
-kosh.interpreter.glob_disabled=off                                  semantic
-kosh.interpreter.assignments_anywhere_in_command=off                semantic
-kosh.interpreter.job_control=off                                    interactive
-kosh.interpreter.parse_without_executing=off                        semantic
-kosh.interpreter.exit_after_one_command=off                         semantic
-kosh.interpreter.privileged_mode=off                                semantic
-kosh.interpreter.unset_variable_is_error=on                         semantic
-kosh.debug.trace_input_lines=off                                    semantic
-kosh.debug.trace_expanded_commands=off                              semantic
-kosh.interpreter.brace_expansion=on                                 semantic
-kosh.interpreter.redirect_refuses_to_overwrite_files=off            semantic
-kosh.interpreter.trap_err_inherited_by_functions=off                semantic
-kosh.editor.history.bang_expansion=off                              interactive
-kosh.interpreter.cd_resolves_symlinks=off                           semantic
-kosh.interpreter.trap_debug_and_return_inherited_by_functions=off   semantic
-kosh.interpreter.pipeline_fails_on_any_stage=on                     semantic
-kosh.editor.history.records_commands=off                            interactive
-kosh.editor.ctrl_d_does_not_exit=off                                interactive
-kosh.editor.base_mode=emacs                                         interactive
-kosh.interpreter.posixly_correct=off                                semantic
-kosh.editor.cd_by_typing_directory_name=on                          interactive
-kosh.interpreter.array_subscripts_expand_once=off                   semantic
-kosh.interpreter.cd_to_variable_value=off                           semantic
-kosh.editor.cd_fix_typos=off                                        interactive
-kosh.interpreter.verify_remembered_command_paths=off                semantic
-kosh.editor.jobs_check_before_exit=off                              interactive
-kosh.editor.update_columns_and_lines=on                             interactive
-kosh.completion.quote_all_special_characters=on                     interactive
-kosh.completion.expand_directory_names=off                          interactive
-kosh.completion.fix_directory_typos=off                             interactive
-kosh.interpreter.glob_includes_dotfiles=off                         semantic
-kosh.interpreter.exec_failure_keeps_shell=off                       semantic
-kosh.interpreter.aliases_expand=on                                  semantic
-kosh.debug.debugger_support=off                                     semantic
-kosh.interpreter.glob_extended_patterns=on                          semantic
-kosh.interpreter.quote_dollar_strings_in_parameter_expansion=on     semantic
-kosh.interpreter.glob_no_match_is_error=on                          semantic
-kosh.completion.always_apply_fignore=on                             interactive
-kosh.interpreter.glob_ranges_use_ascii_order=on                     semantic
-kosh.interpreter.glob_never_matches_dot_and_dotdot=on               semantic
-kosh.interpreter.glob_double_star_recurses=off                      semantic
-kosh.optimizer.errors_use_gnu_format=off                            interactive
-kosh.editor.history.reedit_failed_substitution=off                  interactive
-kosh.editor.history.verify_expansion_before_running=off             interactive
-kosh.completion.hostnames_after_at=on                               interactive
-kosh.editor.jobs_hangup_on_exit=off                                 interactive
-kosh.interpreter.command_substitution_inherits_exit_on_failure=off  semantic
-kosh.editor.interactive_comments=on                                 interactive
-kosh.interpreter.pipeline_last_stage_runs_in_shell=off              semantic
-kosh.interpreter.local_inherits_outer_value=off                     semantic
-kosh.interpreter.local_unset_hides_outer=off                        semantic
-kosh.interpreter.login_shell=off                                    interactive
-kosh.editor.mail_warn_when_read=off                                 interactive
-kosh.completion.skip_empty_line=off                                 interactive
-kosh.interpreter.glob_ignores_case=off                              semantic
-kosh.interpreter.match_ignores_case=off                             semantic
-kosh.interpreter.glob_no_match_expands_to_nothing=off               semantic
-kosh.interpreter.pattern_substitution_ampersand_is_match=on         semantic
-kosh.completion.programmable=on                                     interactive
-kosh.completion.programmable_follows_aliases=off                    interactive
-kosh.editor.prompt_expands_parameters=on                            interactive
-kosh.interpreter.restricted_shell=off                               semantic
-kosh.interpreter.shift_reports_overflow=off                         semantic
-kosh.interpreter.source_searches_path=on                            semantic
-kosh.interpreter.redirect_variable_fd_closed_after_command=off      semantic
-kosh.interpreter.echo_interprets_backslash_escapes=off              semantic
+== list prints every option as name=value:
+# name=value
+kosh.mood=kosh
+kosh.completion.menu_style=interactive
+kosh.editor.hints.show_command_synopsis=on
+kosh.editor.hints.show_live_diagnostics=on
+kosh.editor.auto_close_brackets_and_quotes=off
+kosh.editor.transient_prompt_after_submit=off
+kosh.editor.request_extended_key_reports=on
+kosh.editor.history.arrow_keys_search_by_typed_prefix=on
+kosh.editor.history.file_path=/history
+kosh.editor.history.max_entries=4096
+kosh.completion.add_space_after_completed_word=off
+kosh.optimizer.warning_level=0
+kosh.optimizer.show_annoying_tier=on
+kosh.optimizer.analyze_before_running=on
+kosh.interpreter.resolve_koshkit_applets_as_commands=off
+kosh.interpreter.arithmetic_uses_big_numbers=on
+kosh.interpreter.mimic_shebang=off
+kosh.debug.print_syntax_tree=off
+kosh.debug.print_lexed_word_escapes=off
+kosh.debug.report_nonzero_exit_codes=off
+kosh.debug.report_every_exit_code=off
+kosh.debug.print_evaluation_statistics=off
+kosh.debug.print_memory_report_at_exit=off
+kosh.completion.on_tab=on
+kosh.editor.highlight_syntax_and_show_ghost_text=on
+kosh.optimizer.show_source_traces=on
+kosh.init_moods=
+kosh.interpreter.export_every_assigned_variable=off
+kosh.editor.jobs_report_status_immediately=off
+kosh.interpreter.exit_on_command_failure=off
+kosh.interpreter.glob_disabled=off
+kosh.interpreter.assignments_anywhere_in_command=off
+kosh.interpreter.job_control=off
+kosh.interpreter.parse_without_executing=off
+kosh.interpreter.exit_after_one_command=off
+kosh.interpreter.privileged_mode=off
+kosh.interpreter.unset_variable_is_error=on
+kosh.debug.trace_input_lines=off
+kosh.debug.trace_expanded_commands=off
+kosh.interpreter.brace_expansion=on
+kosh.interpreter.redirect_refuses_to_overwrite_files=off
+kosh.interpreter.trap_err_inherited_by_functions=off
+kosh.editor.history.bang_expansion=off
+kosh.interpreter.cd_resolves_symlinks=off
+kosh.interpreter.trap_debug_and_return_inherited_by_functions=off
+kosh.interpreter.pipeline_fails_on_any_stage=on
+kosh.editor.history.records_commands=off
+kosh.editor.ctrl_d_does_not_exit=off
+kosh.editor.base_mode=emacs
+kosh.interpreter.posixly_correct=off
+kosh.editor.cd_by_typing_directory_name=on
+kosh.interpreter.array_subscripts_expand_once=off
+kosh.interpreter.cd_to_variable_value=off
+kosh.editor.cd_fix_typos=off
+kosh.interpreter.verify_remembered_command_paths=off
+kosh.editor.jobs_check_before_exit=off
+kosh.editor.update_columns_and_lines=on
+kosh.completion.quote_all_special_characters=on
+kosh.completion.expand_directory_names=off
+kosh.completion.fix_directory_typos=off
+kosh.interpreter.glob_includes_dotfiles=off
+kosh.interpreter.exec_failure_keeps_shell=off
+kosh.interpreter.aliases_expand=on
+kosh.debug.debugger_support=off
+kosh.interpreter.glob_extended_patterns=on
+kosh.interpreter.quote_dollar_strings_in_parameter_expansion=on
+kosh.interpreter.glob_no_match_is_error=on
+kosh.completion.always_apply_fignore=on
+kosh.interpreter.glob_ranges_use_ascii_order=on
+kosh.interpreter.glob_never_matches_dot_and_dotdot=on
+kosh.interpreter.glob_double_star_recurses=off
+kosh.optimizer.errors_use_gnu_format=off
+kosh.editor.history.reedit_failed_substitution=off
+kosh.editor.history.verify_expansion_before_running=off
+kosh.completion.hostnames_after_at=on
+kosh.editor.jobs_hangup_on_exit=off
+kosh.interpreter.command_substitution_inherits_exit_on_failure=off
+kosh.editor.interactive_comments=on
+kosh.interpreter.pipeline_last_stage_runs_in_shell=off
+kosh.interpreter.local_inherits_outer_value=off
+kosh.interpreter.local_unset_hides_outer=off
+kosh.interpreter.login_shell=off
+kosh.editor.mail_warn_when_read=off
+kosh.completion.skip_empty_line=off
+kosh.interpreter.glob_ignores_case=off
+kosh.interpreter.match_ignores_case=off
+kosh.interpreter.glob_no_match_expands_to_nothing=off
+kosh.interpreter.pattern_substitution_ampersand_is_match=on
+kosh.completion.programmable=on
+kosh.completion.programmable_follows_aliases=off
+kosh.editor.prompt_expands_parameters=on
+kosh.interpreter.restricted_shell=off
+kosh.interpreter.shift_reports_overflow=off
+kosh.interpreter.source_searches_path=on
+kosh.interpreter.redirect_variable_fd_closed_after_command=off
+kosh.interpreter.echo_interprets_backslash_escapes=off
 == the kosh preset matches a fresh kosh session:
 rc=0
 # Koshka settings written by koshconf create kosh.
@@ -336,7 +336,7 @@ kosh.mood=bash
 shopt -u expand_aliases
 == the sh preset matches a fresh sh session:
 == create writes every file option with its help and Bash name:
-0
+9
 kosh.interpreter.verify_remembered_command_paths=off
 # Let a glob match names that begin with a dot. (shopt dotglob)
 kosh.interpreter.glob_includes_dotfiles=off
@@ -407,7 +407,7 @@ rc=0
 rc=1
 0
 == list escapes a value the file cannot hold:
-kosh.editor.history.file_path=$'a\nb\x01"\''                        interactive
+kosh.editor.history.file_path=$'a\nb\x01"\''
 rc=0
 == enumerations and booleans:
 plain
@@ -425,7 +425,7 @@ vi             	off
        |  ^~~~~~~~
 note: Run `koshconf --help` for the forms.
 rc=2
--c:1:10: error: Builtin `koshconf`: Unknown subcommand 'bogus', expected 'create', 'set', 'get', 'list', or 'load'.
+-c:1:10: error: Builtin `koshconf`: Unknown subcommand 'bogus', expected 'create', 'set', 'get', 'list', 'load', or 'save'.
      1 |  koshconf bogus
        |           ^~~~~
 note: Run `koshconf --help` for the forms.
@@ -450,7 +450,7 @@ rc=2
 note: Run `koshconf --help` for the forms.
 rc=2
 == an unknown name or form suggests a close one:
--c:1:10: error: Builtin `koshconf`: Unknown subcommand 'sett', expected 'create', 'set', 'get', 'list', or 'load'.
+-c:1:10: error: Builtin `koshconf`: Unknown subcommand 'sett', expected 'create', 'set', 'get', 'list', 'load', or 'save'.
      1 |  koshconf sett kosh.mood bash
        |           ^~~~
 note: Did you mean 'set'?

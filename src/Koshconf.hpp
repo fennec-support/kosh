@@ -58,6 +58,7 @@ fn format_koshconf_line(const option_descriptor &option,
 fn format_koshconf_display_line(const option_descriptor &option,
                                 StringView value) throws -> String;
 fn make_koshconf_preset(mimic_mood preset) throws -> String;
+fn make_koshconf_snapshot(const EvalContext &cxt) throws -> String;
 fn write_koshconf_file(const Path &path, StringView contents) throws -> void;
 fn persist_koshconf_setting(const Path &path, const option_descriptor &option,
                             StringView value) throws -> void;

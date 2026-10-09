@@ -913,13 +913,16 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     if (!wants_operand && !is_set_value) {
       do_push_matching("--help");
       if (form.is_empty() || form == "create") do_push_matching("--force");
-      if (form.is_empty() || form == "set") do_push_matching("--persist");
+      if (form.is_empty() || form == "list") do_push_matching("--all");
+      if (form.is_empty() || form == "set" || form == "save")
+        do_push_matching("--persist");
       if (!candidates.is_empty()) return candidates;
       return None;
     }
 
     if (operands.is_empty()) {
-      for (let const form_name : {"create", "get", "list", "load", "set"})
+      for (let const form_name :
+           {"create", "get", "list", "load", "save", "set"})
         do_push_matching(form_name);
     } else if (operands.count() == 1 && form == "create") {
       for (let const preset : {"bash", "kosh", "sh"})

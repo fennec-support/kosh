@@ -150,6 +150,8 @@ pure fn get_option_registry() wontthrow -> option_registry_view;
 pure fn find_option_by_id(u16 id) wontthrow -> const option_descriptor *;
 fn find_option_by_koshconf_name(StringView name) wontthrow
     -> const option_descriptor *;
+fn get_legacy_koshconf_alias(const option_descriptor &option) throws
+    -> Maybe<String>;
 fn find_option_by_set_name(StringView name) wontthrow
     -> const option_descriptor *;
 fn find_option_by_shopt_name(StringView name) wontthrow
