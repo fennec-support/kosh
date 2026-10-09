@@ -16,7 +16,7 @@ echo "== list has no class column:"
 "$BIN" -c 'koshconf list' | grep -c -E ' +(interactive|semantic|class)$'
 "$BIN" -c 'koshconf list' | head -4
 echo "== list -a adds the alias after each canonical line:"
-"$BIN" -c 'koshconf list -a' | grep -A1 -E '^kosh.interpreter.(exit_on_command_failure|glob_extended_patterns)='
+"$BIN" -c 'koshconf list -a' | grep -A1 -E '^interpreter.(exit_on_command_failure|glob_extended_patterns)='
 "$BIN" -c 'koshconf list --all' | grep -c '^legacy\.'
 echo "== every alias reads the value of its option:"
 "$BIN" -c 'koshconf list -a' >"$config/all.txt"
@@ -39,29 +39,29 @@ grep -E '^legacy\.posix\.(hashall|nolog)=' "$config/all.txt"
 echo "== the editor mode lists no emacs or vi alias:"
 grep -c -E '^legacy\.[a-z]+\.(emacs|vi)=' "$config/all.txt"
 echo "== --all belongs to list:"
-"$BIN" -c 'koshconf set kosh.mood bash --all' 2>&1 | grep -E 'error|rc='
+"$BIN" -c 'koshconf set mood bash --all' 2>&1 | grep -E 'error|rc='
 "$BIN" -c 'koshconf save --all' 2>&1 | grep error
-"$BIN" -c 'koshconf get kosh.mood -a' 2>&1 | grep error
+"$BIN" -c 'koshconf get mood -a' 2>&1 | grep error
 
 echo "== save prints a blob that load accepts:"
 blob=$("$BIN" --mood bash -c 'koshconf save')
 echo "rc=$?"
 [ -n "$blob" ] && echo "blob-printed"
-"$BIN" -c "koshconf load '$blob'; koshconf get kosh.mood"
+"$BIN" -c "koshconf load '$blob'; koshconf get mood"
 echo "== a child adopts KOSHCONF=\$(koshconf save):"
-KOSHCONF=$blob "$BIN" -c 'koshconf get kosh.mood'
-"$BIN" --mood bash -c 'koshconf set kosh.editor.auto_close_brackets_and_quotes on; KOSHCONF=$(koshconf save) '"$BIN"' -c "koshconf get kosh.mood; koshconf get kosh.editor.auto_close_brackets_and_quotes"'
+KOSHCONF=$blob "$BIN" -c 'koshconf get mood'
+"$BIN" --mood bash -c 'koshconf set editor.auto_close_brackets_and_quotes on; KOSHCONF=$(koshconf save) '"$BIN"' -c "koshconf get mood; koshconf get editor.auto_close_brackets_and_quotes"'
 echo "== save refuses an operand:"
 "$BIN" -c 'koshconf save now' 2>&1 | grep error
 
 echo "== save --persist writes the current settings:"
-"$BIN" --mood bash -c 'koshconf set kosh.editor.auto_close_brackets_and_quotes on; koshconf save --persist'
+"$BIN" --mood bash -c 'koshconf set editor.auto_close_brackets_and_quotes on; koshconf save --persist'
 echo "rc=$?"
 grep -c . "$conf" | sed 's/^[0-9][0-9]*$/COUNT/'
 grep -E '^kosh\.(mood|editor\.auto_close_brackets_and_quotes|editor\.history\.file_path)=' "$conf"
 head -1 "$conf"
 echo "== the saved file loads back:"
-"$BIN" -c 'koshconf get kosh.mood; koshconf get kosh.editor.auto_close_brackets_and_quotes'
+"$BIN" -c 'koshconf get mood; koshconf get editor.auto_close_brackets_and_quotes'
 "$BIN" --mood bash -c 'koshconf list' >"$config/before.txt"
 "$BIN" --mood bash -c 'koshconf list' | diff - "$config/before.txt" && echo same
 echo "== plain save writes no file:"

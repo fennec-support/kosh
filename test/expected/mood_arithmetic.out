@@ -184,10 +184,10 @@ default=on
 bash=off
 sh=off
 enabled=18446744073709551617
-132:59: error: Builtin `koshconf`: The kosh mood keeps 'kosh.interpreter.arithmetic_uses_big_numbers' on.
-   132 |  koshconf set kosh.interpreter.arithmetic_uses_big_numbers off
-       |                                                            ^~~
-note: Switch to the bash mood with `koshconf set kosh.mood bash` to change it.
+132:54: error: Builtin `koshconf`: The kosh mood keeps 'interpreter.arithmetic_uses_big_numbers' on.
+   132 |  koshconf set interpreter.arithmetic_uses_big_numbers off
+       |                                                       ^~~
+note: Switch to the bash mood with `koshconf set mood bash` to change it.
 kosh-rc=1
 disabled=1
 nested=2 value=1

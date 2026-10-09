@@ -132,9 +132,9 @@ def run_checks(binary, directory, command_directory, report):
         report.record("right-prompt-returns-at-full-width", session,
                       is_prompt_line(empty_prompt))
 
-        session.send(b"koshconf set kosh.editor.transient_prompt_after_submit on\r")
+        session.send(b"koshconf set editor.transient_prompt_after_submit on\r")
         session.wait_until(is_submitted(
-            [with_right_prompt(BULLET + " koshconf set kosh.editor.transient_prompt_after_submit on")],
+            [with_right_prompt(BULLET + " koshconf set editor.transient_prompt_after_submit on")],
             empty_prompt))
         session.send(b"echo three\r")
         report.record("transient-prompt-redraws-the-line", session,
@@ -263,8 +263,8 @@ def run_job_notice_checks(binary, directory, report):
                       is_noticed)
 
         mark = len(session.raw)
-        session.send(b"koshconf set kosh.mood kosh --persist\r")
-        written_note = ("Wrote kosh.mood=kosh to " + directory
+        session.send(b"koshconf set mood kosh --persist\r")
+        written_note = ("Wrote mood=kosh to " + directory
                         + "/.config/kosh/kosh.conf").encode()
         report.record("persist-names-the-written-file", session,
                       lambda screen: written_note in session.raw[mark:])

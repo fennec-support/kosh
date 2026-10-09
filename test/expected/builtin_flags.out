@@ -39,11 +39,11 @@ notify
 nounset
 == set -o offers no Koshka name:
 == koshconf offers the diagnostics names:
-kosh.optimizer.analyze_before_running
-kosh.optimizer.errors_use_gnu_format
-kosh.optimizer.show_annoying_tier
-kosh.optimizer.show_source_traces
-kosh.optimizer.warning_level
+optimizer.analyze_before_running
+optimizer.errors_use_gnu_format
+optimizer.show_annoying_tier
+optimizer.show_source_traces
+optimizer.warning_level
 == kosh no-traces flag:
 --no-traces
 == kosh no-annoying flag:

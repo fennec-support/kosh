@@ -18,15 +18,15 @@ external
 == a mood change keeps the selector:
 plain
 == an unknown koshconf value is rejected:
--c:1:41: error: Builtin `koshconf`: Invalid value 'bogus' for 'kosh.completion.menu_style', expected 'interactive', 'external', or 'plain'.
-     1 |  koshconf set kosh.completion.menu_style bogus
-       |                                          ^~~~~
+-c:1:36: error: Builtin `koshconf`: Invalid value 'bogus' for 'completion.menu_style', expected 'interactive', 'external', or 'plain'.
+     1 |  koshconf set completion.menu_style bogus
+       |                                     ^~~~~
 status=1
 == set no longer accepts the long form:
 -c:1:5: error: Builtin `set`: Unknown option '--tab-selector'.
      1 |  set --tab-selector plain
        |      ^~~~~~~~~~~~~~
-note: Use koshconf for Koshka settings without a letter, such as `koshconf set kosh.mood bash`.
+note: Use koshconf for Koshka settings without a letter, such as `koshconf set mood bash`.
 status=1
 == the selector survives a subshell:
 external

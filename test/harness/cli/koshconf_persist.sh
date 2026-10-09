@@ -15,9 +15,9 @@ do_mode() {
 }
 
 echo "== a symlinked file stays a link and its target is updated:"
-printf 'kosh.mood=kosh\n' >"$dotfiles/kosh.conf"
+printf 'mood=kosh\n' >"$dotfiles/kosh.conf"
 ln -s ../../dotfiles/kosh.conf "$conf"
-"$BIN" -c 'koshconf set kosh.editor.auto_close_brackets_and_quotes on --persist'
+"$BIN" -c 'koshconf set editor.auto_close_brackets_and_quotes on --persist'
 echo "rc=$?"
 [ -L "$conf" ] && echo link-kept
 cat "$dotfiles/kosh.conf"
@@ -25,10 +25,10 @@ echo "== create --force also writes through the link:"
 "$BIN" -c 'koshconf create --force sh'
 echo "rc=$?"
 [ -L "$conf" ] && echo link-kept
-grep '^kosh.mood=' "$dotfiles/kosh.conf"
+grep '^mood=' "$dotfiles/kosh.conf"
 echo "== a dangling link gets its target created:"
 "$BIN_DIR/invoke-koshkit" rm -f -- "$dotfiles/kosh.conf"
-"$BIN" -c 'koshconf set kosh.editor.hints.show_command_synopsis off --persist'
+"$BIN" -c 'koshconf set editor.hints.show_command_synopsis off --persist'
 echo "rc=$?"
 [ -L "$conf" ] && echo link-kept
 cat "$dotfiles/kosh.conf"
@@ -38,14 +38,14 @@ echo "== no temporary file is left in either directory:"
 
 echo "== an existing mode is kept:"
 chmod 600 "$dotfiles/kosh.conf"
-"$BIN" -c 'koshconf set kosh.editor.hints.show_command_synopsis on --persist'
+"$BIN" -c 'koshconf set editor.hints.show_command_synopsis on --persist'
 do_mode "$dotfiles/kosh.conf"
 chmod 640 "$dotfiles/kosh.conf"
 "$BIN" -c 'koshconf create --force kosh'
 do_mode "$dotfiles/kosh.conf"
 echo "== a new file is 0644 less the umask:"
 "$BIN_DIR/invoke-koshkit" rm -rf -- "$XDG_CONFIG_HOME"
-(umask 022 && "$BIN" -c 'koshconf set kosh.editor.hints.show_command_synopsis on --persist')
+(umask 022 && "$BIN" -c 'koshconf set editor.hints.show_command_synopsis on --persist')
 do_mode "$conf"
 "$BIN_DIR/invoke-koshkit" rm -rf -- "$XDG_CONFIG_HOME"
 (umask 077 && "$BIN" -c 'koshconf create kosh')
@@ -54,12 +54,12 @@ do_mode "$conf"
 echo "== concurrent persists of different options both survive:"
 lost_count=0
 for attempt in 1 2 3 4 5 6 7 8 9 10; do
-  printf 'kosh.mood=kosh\n' >"$conf"
-  "$BIN" -c 'koshconf set kosh.editor.auto_close_brackets_and_quotes on --persist' &
-  "$BIN" -c 'koshconf set kosh.completion.add_space_after_completed_word off --persist' &
+  printf 'mood=kosh\n' >"$conf"
+  "$BIN" -c 'koshconf set editor.auto_close_brackets_and_quotes on --persist' &
+  "$BIN" -c 'koshconf set completion.add_space_after_completed_word off --persist' &
   wait
-  if ! grep -q '^kosh.editor.auto_close_brackets_and_quotes=on$' "$conf" ||
-    ! grep -q '^kosh.completion.add_space_after_completed_word=off$' "$conf"
+  if ! grep -q '^editor.auto_close_brackets_and_quotes=on$' "$conf" ||
+    ! grep -q '^completion.add_space_after_completed_word=off$' "$conf"
   then
     lost_count=$((lost_count + 1))
     echo "attempt $attempt lost a setting"

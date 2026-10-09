@@ -26,17 +26,17 @@ echo "== date format directives through koshkit:"
 "$BIN" --debug-complete-at 'koshkit date +' </dev/null
 echo "== koshkit own flags:"
 "$BIN" --debug-complete-at 'koshkit --' </dev/null
-echo "== bare utility flags under koshconf set kosh.interpreter.resolve_koshkit_applets_as_commands on:"
-"$BIN" -c 'PATH=; koshconf set kosh.interpreter.resolve_koshkit_applets_as_commands on' --debug-complete-at 'ls -' </dev/null
+echo "== bare utility flags under koshconf set interpreter.resolve_koshkit_applets_as_commands on:"
+"$BIN" -c 'PATH=; koshconf set interpreter.resolve_koshkit_applets_as_commands on' --debug-complete-at 'ls -' </dev/null
 echo "== bare utility names in the default mood:"
 "$BIN" -c 'PATH=' --debug-complete-at 'whoa' </dev/null
 echo "== bare utility flags in the default mood:"
 "$BIN" -c 'PATH=' --debug-complete-at 'ls -A' </dev/null
 echo "== bare utility names stay hidden in bash mood:"
 "$BIN" -M bash -c 'PATH=' --debug-complete-at 'whoa' </dev/null
-echo "== bare utility names appear after koshconf set kosh.interpreter.resolve_koshkit_applets_as_commands on:"
-"$BIN" -M bash -c 'PATH=; koshconf set kosh.interpreter.resolve_koshkit_applets_as_commands on' \
+echo "== bare utility names appear after koshconf set interpreter.resolve_koshkit_applets_as_commands on:"
+"$BIN" -M bash -c 'PATH=; koshconf set interpreter.resolve_koshkit_applets_as_commands on' \
   --debug-complete-at 'whoa' </dev/null
 echo "== a PATH program keeps its own flags:"
 env -u PATH "$TEST_PATH_ENVIRONMENT_NAME=$DIRECTORY" \
-  "$BIN" -c 'koshconf set kosh.interpreter.resolve_koshkit_applets_as_commands on' --debug-complete-at 'ls -A' </dev/null
+  "$BIN" -c 'koshconf set interpreter.resolve_koshkit_applets_as_commands on' --debug-complete-at 'ls -A' </dev/null

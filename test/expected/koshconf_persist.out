@@ -1,16 +1,16 @@
 == a symlinked file stays a link and its target is updated:
 rc=0
 link-kept
-kosh.mood=kosh
-kosh.editor.auto_close_brackets_and_quotes=on
+mood=kosh
+editor.auto_close_brackets_and_quotes=on
 == create --force also writes through the link:
 rc=0
 link-kept
-kosh.mood=sh
+mood=sh
 == a dangling link gets its target created:
 rc=0
 link-kept
-kosh.editor.hints.show_command_synopsis=off
+editor.hints.show_command_synopsis=off
 == no temporary file is left in either directory:
 kosh.conf
 kosh.conf

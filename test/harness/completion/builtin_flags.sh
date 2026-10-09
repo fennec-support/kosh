@@ -8,7 +8,7 @@ echo "== set -o names by prefix:"
 echo "== set -o offers no Koshka name:"
 "$BIN" --debug-complete-at 'set -o annoying-' </dev/null
 echo "== koshconf offers the diagnostics names:"
-"$BIN" --debug-complete-at 'koshconf set kosh.optimizer.' </dev/null
+"$BIN" --debug-complete-at 'koshconf set optimizer.' </dev/null
 echo "== kosh no-traces flag:"
 "$BIN" --debug-complete-at 'kosh --no-t' </dev/null
 echo "== kosh no-annoying flag:"

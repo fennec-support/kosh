@@ -16,21 +16,21 @@ printf 'sub\necho "status=$?"\n' >script.sh
 
 echo "== an interactive shell does:"
 printf 'sub\npwd\n' >.bashrc
-printf 'kosh.mood=bash\n' >config/kosh/kosh.conf
+printf 'mood=bash\n' >config/kosh/kosh.conf
 "$BIN" -i <"$TEST_NULL_DEVICE" 2>/dev/null | sed "s|$work|WORK|"
 "$BIN_DIR/invoke-koshkit" rm -- .bashrc config/kosh/kosh.conf
 
 echo "== KOSHCONF carries no semantic option:"
 printf '#!/usr/bin/bash\necho "${KOSH_VERSION:-another shell}"\n' >shebang.sh
 chmod +x shebang.sh
-"$BIN" -c 'for name in kosh.interpreter.mimic_shebang \
-  kosh.debug.report_every_exit_code kosh.interpreter.resolve_koshkit_applets_as_commands \
-  kosh.editor.auto_close_brackets_and_quotes; do
+"$BIN" -c 'for name in interpreter.mimic_shebang \
+  debug.report_every_exit_code interpreter.resolve_koshkit_applets_as_commands \
+  editor.auto_close_brackets_and_quotes; do
   koshconf set "$name" on
 done
-koshconf set kosh.optimizer.analyze_before_running off
+koshconf set optimizer.analyze_before_running off
 env -u KOSH_ANALYSIS KOSHCONF="$KOSHCONF" "$1" -c "koshconf list |
-  grep -e ^kosh.interpreter.mimic -e ^kosh.debug.report \
-    -e ^kosh.optimizer.analyze -e ^kosh.interpreter.resolve_koshkit \
-    -e ^kosh.editor.auto_close
+  grep -e ^interpreter.mimic -e ^debug.report \
+    -e ^optimizer.analyze -e ^interpreter.resolve_koshkit \
+    -e ^editor.auto_close
 ./shebang.sh" 2>&1' _ "$BIN" 2>/dev/null

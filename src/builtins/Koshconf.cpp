@@ -276,22 +276,26 @@ fn run_list(const ExecContext &ec, EvalContext &cxt,
     return report_usage(ec, cxt, operands.locations[2],
                         "The list form takes no operand");
 
+  let listed = ArrayList<const option_descriptor *>{cxt.scratch_allocator()};
+  let set_only = ArrayList<const option_descriptor *>{cxt.scratch_allocator()};
+  for (let const &option : get_option_registry()) {
+    if (option.is_set_alias)
+      set_only.push(&option);
+    else
+      listed.push(&option);
+  }
+  let const sorted =
+      steal(listed).make_sorted([](const option_descriptor *left,
+                                   const option_descriptor *right) {
+        return StringView{left->koshconf_name} <
+               StringView{right->koshconf_name};
+      });
+
   let out = String{cxt.scratch_allocator()};
   out += LIST_HEADING;
   out += '\n';
-  for (let const &option : get_option_registry()) {
-    if (option.is_set_alias) {
-      let const set_only_alias =
-          FLAG_ALL.is_enabled() ? get_legacy_koshconf_alias(option) : None;
-      if (!set_only_alias.has_value()) continue;
-
-      out += set_only_alias->view();
-      out += '=';
-      out += read_option_text(cxt, option).view();
-      out += '\n';
-      continue;
-    }
-
+  for (let const *option_pointer : sorted) {
+    let const &option = *option_pointer;
     let const line = format_koshconf_display_line(
         option, read_option_text(cxt, option).view());
     out += line.view();
@@ -304,6 +308,18 @@ fn run_list(const ExecContext &ec, EvalContext &cxt,
     out += alias->view();
     out += line.view().substring(option.koshconf_name.length);
     out += '\n';
+  }
+
+  if (FLAG_ALL.is_enabled()) {
+    for (let const *option_pointer : set_only) {
+      let const set_only_alias = get_legacy_koshconf_alias(*option_pointer);
+      if (!set_only_alias.has_value()) continue;
+
+      out += set_only_alias->view();
+      out += '=';
+      out += read_option_text(cxt, *option_pointer).view();
+      out += '\n';
+    }
   }
   ec.print_to_stdout(out);
   return 0;

@@ -7,10 +7,10 @@ WORK
 == an interactive shell does:
 WORK/sub
 == KOSHCONF carries no semantic option:
-kosh.editor.auto_close_brackets_and_quotes=on
-kosh.optimizer.analyze_before_running=on
-kosh.interpreter.resolve_koshkit_applets_as_commands=off
-kosh.interpreter.mimic_shebang=off
-kosh.debug.report_nonzero_exit_codes=off
-kosh.debug.report_every_exit_code=off
+debug.report_every_exit_code=off
+debug.report_nonzero_exit_codes=off
+editor.auto_close_brackets_and_quotes=on
+interpreter.mimic_shebang=off
+interpreter.resolve_koshkit_applets_as_commands=off
+optimizer.analyze_before_running=on
 another shell

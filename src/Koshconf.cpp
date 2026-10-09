@@ -29,8 +29,7 @@ constexpr usize KOSHCONF_LINK_LIMIT = 40;
 constexpr u32 MAX_CODEPOINT = 0x10ffff;
 constexpr u32 INVALID_CODEPOINT = MAX_CODEPOINT + 1;
 constexpr StringView UTF8_BYTE_ORDER_MARK{"\xef\xbb\xbf"};
-constexpr StringView HISTORY_MAX_ENTRIES_NAME{
-    "kosh.editor.history.max_entries"};
+constexpr StringView HISTORY_MAX_ENTRIES_NAME{"editor.history.max_entries"};
 constexpr u64 HISTORY_MAX_ENTRIES_LIMIT = 2147483647;
 
 enum class escape_style : u8
@@ -461,8 +460,8 @@ fn describe_kosh_mood_hold(const option_descriptor &option) throws -> String
 {
   return StringView{"The kosh mood keeps '"} + option.koshconf_name + "' " +
          format_option_number(option, option.strict_value) +
-         ", so the configured value is skipped; set kosh.mood=bash or run "
-         "`koshconf set kosh.mood bash` to change it";
+         ", so the configured value is skipped; set mood=bash or run "
+         "`koshconf set mood bash` to change it";
 }
 
 fn find_koshconf_value_problem(const option_descriptor &option,

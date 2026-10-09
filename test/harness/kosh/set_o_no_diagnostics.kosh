@@ -4,6 +4,6 @@
 # shellcheck disable=unassigned-variable-read
 set -WWW
 echo "first=$never_a"
-koshconf set kosh.optimizer.analyze_before_running off
+koshconf set optimizer.analyze_before_running off
 echo "second=$never_b"
 echo done

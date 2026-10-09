@@ -25,14 +25,14 @@ OPTIONS
 == list has no class column:
 0
 # name=value
-kosh.mood=kosh
-kosh.completion.menu_style=interactive
-kosh.editor.hints.show_command_synopsis=on
+completion.add_space_after_completed_word=off
+completion.always_apply_fignore=on
+completion.expand_directory_names=off
 == list -a adds the alias after each canonical line:
-kosh.interpreter.exit_on_command_failure=off
+interpreter.exit_on_command_failure=off
 legacy.posix.errexit=off
 --
-kosh.interpreter.glob_extended_patterns=on
+interpreter.glob_extended_patterns=on
 legacy.bash.extglob=on
 70
 == every alias reads the value of its option:
@@ -58,9 +58,6 @@ on
 == save --persist writes the current settings:
 rc=0
 COUNT
-kosh.mood=bash
-kosh.editor.auto_close_brackets_and_quotes=on
-kosh.editor.history.file_path=/history
 # Koshka settings written by koshconf save.
 == the saved file loads back:
 bash

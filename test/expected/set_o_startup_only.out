@@ -2,8 +2,8 @@ login=off
 o-login=off
 o-rcfile=off
 off
-8:43: error: Builtin `koshconf`: Unable to change 'kosh.interpreter.login_shell' because it is fixed at shell startup.
-     8 |  koshconf set kosh.interpreter.login_shell on
-       |                                            ^~
+8:38: error: Builtin `koshconf`: Unable to change 'interpreter.login_shell' because it is fixed at shell startup.
+     8 |  koshconf set interpreter.login_shell on
+       |                                       ^~
 rc=1
 login-still-off
