@@ -750,7 +750,7 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
 
     return false;
   }
-  if (is_element_operator(rest)) {
+  if (is_element_operator(rest) && rest != "@K") {
     emit_modified_elements(m_context.collect_array_elements(name), rest, name,
                            is_star);
     return true;
@@ -775,7 +775,7 @@ fn EvalContext::ModifierWordExpander::is_element_operator(
     return modifier.length == 2 &&
            (modifier[1] == 'Q' || modifier[1] == 'E' || modifier[1] == 'U' ||
             modifier[1] == 'L' || modifier[1] == 'u' || modifier[1] == 'P' ||
-            modifier[1] == 'a');
+            modifier[1] == 'a' || modifier[1] == 'K' || modifier[1] == 'k');
   default: return false;
   }
 }
@@ -786,12 +786,21 @@ fn EvalContext::ModifierWordExpander::emit_modified_elements(
 {
   let modified = ArrayList<String>{m_context.scratch_allocator()};
   modified.reserve(values.count());
-  for (let const &value : values) {
-    modified.push(
-        modifier[0] == '@'
-            ? m_context.apply_parameter_transform_to_value(value.view(),
-                                                           modifier[1], name)
-            : m_context.apply_value_modifier(value.view(), modifier, nullptr));
+  if (modifier == "@k" && !name.is_empty()) {
+    let const keys = m_context.collect_array_subscripts(name);
+    for (usize i = 0; i < keys.count() && i < values.count(); i++) {
+      modified.push(String{m_context.scratch_allocator(), keys[i].view()});
+      modified.push(String{m_context.scratch_allocator(), values[i].view()});
+    }
+  } else {
+    for (let const &value : values) {
+      modified.push(
+          modifier[0] == '@'
+              ? m_context.apply_parameter_transform_to_value(value.view(),
+                                                             modifier[1], name)
+              : m_context.apply_value_modifier(value.view(), modifier,
+                                               nullptr));
+    }
   }
 
   if (!is_quoted()) {
@@ -1810,12 +1819,15 @@ fn EvalContext::ParameterExpander::expand_element_transform(
   if (op == 'a' && m_is_reference_target) {
     return String{m_context.scratch_allocator()};
   }
+  let const is_set = m_context.array_element_is_set(m_name, subscript);
+  if (!is_set && m_context.runtime_state().error_unset()) {
+    m_context.report_unset_reference(m_name + "[" + subscript + "]");
+  }
   if (op == 'a') {
     return m_context.apply_parameter_transform_to_value(StringView{}, op,
                                                         m_name);
   }
 
-  let const is_set = m_context.array_element_is_set(m_name, subscript);
   let const is_array =
       m_context.variable_store().indexed_arrays().find(m_name).has_value() ||
       m_context.is_associative_array(m_name);
