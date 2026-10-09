@@ -6,7 +6,9 @@
 # in while and until loops, checked against bash through /proc on Linux. A
 # process substitution in a pipeline stage is released once the pipeline is
 # reaped, so its output comes first and waiting for it returns, under a
-# watchdog that ends a shell that hangs.
+# watchdog that ends a shell that hangs. Each report runs a short sleep first,
+# because bash reaps a finished child only when it next waits, and under load
+# it could still hold one at the count.
 count_fds() {
   local entries=(/proc/$$/fd/*)
   fd_count=${#entries[@]}
@@ -24,6 +26,7 @@ count_zombies() {
   done
 }
 report() {
+  sleep 0.05
   count_fds
   count_zombies
   echo "$1: fds+$((fd_count - base_fd_count)) zombies=$zombie_count"
