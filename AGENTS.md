@@ -108,7 +108,7 @@ changes update this file.
   a boolean is a statement true when on. Each option with a Bash spelling is
   also accepted as `legacy.posix.<set -o name>` for a POSIX `set` option or
   `legacy.bash.<Bash spelling>`, resolved to the same registry entry at
-  lookup; only canonical names are written. `editor.base_mode` is
+  lookup; only canonical names are written. `kosh.editor.base_mode` is
   one enumeration behind the set-only alias entries `emacs` and `vi`, which
   have id 0 and no koshconf name; id 88 is retired. The kosh mood holds
   nounset, pipefail, failglob, and extended
@@ -285,7 +285,7 @@ changes update this file.
   A TAB that grows the token to the common prefix opens the menu on the
   candidates it gathered under the same rules, so one TAB runs the callback
   once. A sole candidate that takes the space of
-  `editor.completion.add_space_after_completed_word` keeps the menu open on the next
+  `kosh.completion.add_space_after_completed_word` keeps the menu open on the next
   word through a second gather, so that TAB runs the callback once for each
   word. The menu holds back the preview of its first row while the token is
   empty, closes quietly when the next word has no candidates, and does not

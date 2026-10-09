@@ -2,7 +2,7 @@
 rc=0
 link-kept
 kosh.mood=kosh
-editor.auto_close_brackets_and_quotes=on
+kosh.editor.auto_close_brackets_and_quotes=on
 == create --force also writes through the link:
 rc=0
 link-kept
@@ -10,7 +10,7 @@ kosh.mood=sh
 == a dangling link gets its target created:
 rc=0
 link-kept
-editor.hints.show_command_synopsis=off
+kosh.editor.hints.show_command_synopsis=off
 == no temporary file is left in either directory:
 kosh.conf
 kosh.conf

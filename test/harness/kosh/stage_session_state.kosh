@@ -2,12 +2,12 @@
 # startup moods, the source trace switch, and $- of the shell, also where the
 # stage runs in a fresh evaluator.
 koshconf set kosh.init_moods sh,bash
-koshconf set diagnostics.show_source_traces off
+koshconf set kosh.optimizer.show_source_traces off
 shell_flags=$-
 do_report() {
   local flags=same
   [[ $- == "$shell_flags" ]] || flags="differs: $-"
-  echo "$1: $flags $(koshconf get kosh.init_moods) $(koshconf get diagnostics.show_source_traces) $(koshconf get kosh.login_shell)"
+  echo "$1: $flags $(koshconf get kosh.init_moods) $(koshconf get kosh.optimizer.show_source_traces) $(koshconf get kosh.interpreter.login_shell)"
 }
 do_report shell
 do_report stage | koshkit cat

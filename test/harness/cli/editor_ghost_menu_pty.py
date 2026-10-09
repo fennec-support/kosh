@@ -654,8 +654,8 @@ def run_cached_filter_checks(session, report, directory):
 
 def run_compopt_checks(session, report):
     session.send(
-        b"koshconf set editor.completion.add_space_after_completed_word on; "
-        b"koshconf set editor.completion.menu_style plain\r")
+        b"koshconf set kosh.completion.add_space_after_completed_word on; "
+        b"koshconf set kosh.completion.menu_style plain\r")
     session.wait_until(is_line(""))
     session.send(b"_zzw() { [ \"$COMP_CWORD\" = 1 ] && COMPREPLY=(zzword); }; "
                  b"complete -F _zzw zzspaced; "
@@ -677,7 +677,7 @@ def run_compopt_checks(session, report):
                   lambda screen: get_state(screen) is not None
                   and get_state(screen)[0] == "zztight zzwordQ")
     clear_line(session)
-    session.send(b"koshconf set editor.completion.menu_style interactive\r")
+    session.send(b"koshconf set kosh.completion.menu_style interactive\r")
     session.wait_until(is_line(""))
     session.send(b"_zzo() { COMPREPLY=(zeta alpha mid); }; "
                  b"complete -o nosort -F _zzo zzorder\r")
@@ -687,14 +687,14 @@ def run_compopt_checks(session, report):
                   is_menu_in_order(["zeta", "alpha", "mid"]))
     clear_line(session)
     session.send(b"complete -W zzpath/ zzslash; "
-                 b"koshconf set editor.completion.menu_style plain\r")
+                 b"koshconf set kosh.completion.menu_style plain\r")
     session.wait_until(is_line(""))
     for mode, line, name in (
             (b"on", "zzslash zzpath/ Q",
              "space-after-completion-on-follows-a-slash"),
             (b"on-excluding-trailing-slash", "zzslash zzpath/Q",
              "space-after-completion-skips-a-trailing-slash")):
-        session.send(b"koshconf set editor.completion.add_space_after_completed_word "
+        session.send(b"koshconf set kosh.completion.add_space_after_completed_word "
                      + mode + b"\r")
         session.wait_until(is_line(""))
         session.send(b"zzslash zz\t")
@@ -715,8 +715,8 @@ def run_compopt_checks(session, report):
                   and get_state(screen)[0] == "zzspaced zzword Q")
     clear_line(session)
     session.send(
-        b"koshconf set editor.completion.add_space_after_completed_word off; "
-        b"koshconf set editor.completion.menu_style interactive\r")
+        b"koshconf set kosh.completion.add_space_after_completed_word off; "
+        b"koshconf set kosh.completion.menu_style interactive\r")
     session.wait_until(is_line(""))
 
 
@@ -739,7 +739,7 @@ def run_sole_completion_checks(session, report):
         report.record(name, session, is_typed_without_menu(typed))
         clear_line(session)
     session.send(
-        b"koshconf set editor.completion.add_space_after_completed_word on\r")
+        b"koshconf set kosh.completion.add_space_after_completed_word on\r")
     session.wait_until(is_line(""))
     for name, keys, spaced in (
             ("sole-file-keeps-the-menu-after-the-space", b"cat sub/al\t",
@@ -767,7 +767,7 @@ def run_sole_completion_checks(session, report):
                   is_typed_without_menu("cat sub/alQ"))
     clear_line(session)
     session.send(
-        b"koshconf set editor.completion.add_space_after_completed_word off\r")
+        b"koshconf set kosh.completion.add_space_after_completed_word off\r")
     session.wait_until(is_line(""))
 
 
@@ -783,7 +783,7 @@ def run_next_word_menu_checks(session, report, directory):
                     os.path.join(directory, "next-words").encode()))
     session.wait_until(is_line(""))
     session.send(
-        b"koshconf set editor.completion.add_space_after_completed_word on\r")
+        b"koshconf set kosh.completion.add_space_after_completed_word on\r")
     session.wait_until(is_line(""))
     before = count_marker_lines(directory, "next-runs")
     session.send(b"zznw zznwf\t")
@@ -838,7 +838,7 @@ def run_next_word_menu_checks(session, report, directory):
                   is_typed_without_menu("zznone zznonefirst Q"))
     clear_line(session)
     session.send(
-        b"koshconf set editor.completion.add_space_after_completed_word off\r")
+        b"koshconf set kosh.completion.add_space_after_completed_word off\r")
     session.wait_until(is_line(""))
     before = count_marker_lines(directory, "next-runs")
     session.send(b"zznw zznwf\t")
@@ -1101,13 +1101,13 @@ def run_checks(binary, directory, command_directory, report):
             screen, lambda row: row.endswith("yyy...")))
         clear_line(session)
 
-        session.send(b"koshconf set editor.history.arrow_keys_search_by_typed_prefix off\r")
+        session.send(b"koshconf set kosh.editor.history.arrow_keys_search_by_typed_prefix off\r")
         session.wait_until(is_line(""))
         session.send(b"echo hist-")
         session.wait_until(is_line("echo hist-", "gamma"))
         session.send(UP)
         report.record("option-off-up-recalls-newest-entry", session,
-                      is_line("koshconf set editor.history.arrow_keys_search_by_typed_prefix off"))
+                      is_line("koshconf set kosh.editor.history.arrow_keys_search_by_typed_prefix off"))
         clear_line(session)
 
         session.send(b"cat ")
@@ -1151,7 +1151,7 @@ def run_checks(binary, directory, command_directory, report):
         report.record("tab-completes-option-name-by-subsequence", session,
                       lambda screen: get_state(screen) is not None
                       and get_state(screen)[0].startswith(
-                          "koshconf get editor.history.max_entries"))
+                          "koshconf get kosh.editor.history.max_entries"))
         clear_line(session)
 
         session.send(b"zzprobe-one ")
@@ -1337,7 +1337,7 @@ def run_checks(binary, directory, command_directory, report):
         type_text(session, b"echo (")
         report.record("auto-pair-off-by-default", session, is_line("echo ("))
         clear_line(session)
-        session.send(b"koshconf set editor.auto_close_brackets_and_quotes on\r")
+        session.send(b"koshconf set kosh.editor.auto_close_brackets_and_quotes on\r")
         session.wait_until(is_line(""))
         type_text(session, b"echo (")
         report.record("auto-pair-inserts-closer", session, is_line("echo ()"))
@@ -1376,10 +1376,10 @@ def run_checks(binary, directory, command_directory, report):
         report.record("auto-pair-parenthesized-pattern-steps-over", session,
                       is_line("echo $(case x in (a))"))
         clear_line(session)
-        session.send(b"koshconf set editor.auto_close_brackets_and_quotes off\r")
+        session.send(b"koshconf set kosh.editor.auto_close_brackets_and_quotes off\r")
         session.wait_until(is_line(""))
 
-        session.send(b"koshconf set editor.hints.show_command_synopsis off\r")
+        session.send(b"koshconf set kosh.editor.hints.show_command_synopsis off\r")
         session.wait_until(is_line(""))
         session.send(b"cat ")
         session.wait_until(is_line("cat"))
@@ -1392,7 +1392,7 @@ def run_checks(binary, directory, command_directory, report):
                       has_hint("Unterminated"))
         clear_line(session)
 
-        session.send(b"koshconf set editor.hints.show_live_diagnostics off\r")
+        session.send(b"koshconf set kosh.editor.hints.show_live_diagnostics off\r")
         session.wait_until(is_line(""))
         type_text(session, b'echo "abc')
         session.wait_until(is_line('echo "abc'))
@@ -1401,7 +1401,7 @@ def run_checks(binary, directory, command_directory, report):
                       is_without_hint('echo "abc'))
         clear_line(session)
 
-        session.send(b"koshconf set editor.hints.show_command_synopsis on\r")
+        session.send(b"koshconf set kosh.editor.hints.show_command_synopsis on\r")
         session.wait_until(is_line(""))
         type_text(session, b'cat "abc')
         session.pump(0.3)

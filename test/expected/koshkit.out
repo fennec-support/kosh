@@ -310,7 +310,7 @@ mv
 --color
 --help
 --list
-== bare utility flags under koshconf set koshkit.run_utilities_as_plain_commands on:
+== bare utility flags under koshconf set kosh.interpreter.resolve_koshkit_applets_as_commands on:
 --classify
 --help
 --level
@@ -339,6 +339,6 @@ whoami
 == bare utility flags in the default mood:
 -A
 == bare utility names stay hidden in bash mood:
-== bare utility names appear after koshconf set koshkit.run_utilities_as_plain_commands on:
+== bare utility names appear after koshconf set kosh.interpreter.resolve_koshkit_applets_as_commands on:
 whoami
 == a PATH program keeps its own flags:

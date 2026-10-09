@@ -1,101 +1,101 @@
 == list prints every option with its class:
-# name=value                                            class
-kosh.mood=kosh                                          semantic
-editor.completion.menu_style=interactive                interactive
-editor.hints.show_command_synopsis=on                   interactive
-editor.hints.show_live_diagnostics=on                   interactive
-editor.auto_close_brackets_and_quotes=off               interactive
-editor.transient_prompt_after_submit=off                interactive
-editor.request_extended_key_reports=on                  interactive
-editor.history.arrow_keys_search_by_typed_prefix=on     interactive
-editor.history.file_path=/history                       interactive
-editor.history.max_entries=4096                         interactive
-editor.completion.add_space_after_completed_word=off    interactive
-diagnostics.warning_level=0                             interactive
-diagnostics.show_annoying_tier=on                       interactive
-diagnostics.analyze_before_running=on                   semantic
-koshkit.run_utilities_as_plain_commands=off             semantic
-kosh.arithmetic_uses_big_numbers=on                     semantic
-kosh.mimic_shebang=off                                  semantic
-debug.print_syntax_tree=off                             semantic
-debug.print_lexed_word_escapes=off                      semantic
-debug.report_nonzero_exit_codes=off                     semantic
-debug.report_every_exit_code=off                        semantic
-debug.print_evaluation_statistics=off                   semantic
-debug.print_memory_report_at_exit=off                   semantic
-editor.completion.on_tab=on                             interactive
-editor.highlight_syntax_and_show_ghost_text=on          interactive
-diagnostics.show_source_traces=on                       interactive
-kosh.init_moods=                                        semantic
-kosh.export_every_assigned_variable=off                 semantic
-editor.jobs_report_status_immediately=off               interactive
-kosh.exit_on_command_failure=off                        semantic
-kosh.glob_disabled=off                                  semantic
-kosh.assignments_anywhere_in_command=off                semantic
-kosh.job_control=off                                    interactive
-kosh.parse_without_executing=off                        semantic
-kosh.exit_after_one_command=off                         semantic
-kosh.privileged_mode=off                                semantic
-kosh.unset_variable_is_error=on                         semantic
-debug.trace_input_lines=off                             semantic
-debug.trace_expanded_commands=off                       semantic
-kosh.brace_expansion=on                                 semantic
-kosh.redirect_refuses_to_overwrite_files=off            semantic
-kosh.trap_err_inherited_by_functions=off                semantic
-editor.history.bang_expansion=off                       interactive
-kosh.cd_resolves_symlinks=off                           semantic
-kosh.trap_debug_and_return_inherited_by_functions=off   semantic
-kosh.pipeline_fails_on_any_stage=on                     semantic
-editor.history.records_commands=off                     interactive
-editor.ctrl_d_does_not_exit=off                         interactive
-editor.base_mode=emacs                                  interactive
-kosh.posixly_correct=off                                semantic
-kosh.cd_by_typing_directory_name=on                     interactive
-kosh.array_subscripts_expand_once=off                   semantic
-kosh.cd_to_variable_value=off                           semantic
-kosh.cd_fix_typos=off                                   interactive
-kosh.verify_remembered_command_paths=off                semantic
-kosh.jobs_check_before_exit=off                         interactive
-kosh.update_columns_and_lines=on                        interactive
-editor.completion.quote_all_special_characters=on       interactive
-editor.completion.expand_directory_names=off            interactive
-editor.completion.fix_directory_typos=off               interactive
-kosh.glob_includes_dotfiles=off                         semantic
-kosh.exec_failure_keeps_shell=off                       semantic
-kosh.aliases_expand=on                                  semantic
-debug.debugger_support=off                              semantic
-kosh.glob_extended_patterns=on                          semantic
-kosh.quote_dollar_strings_in_parameter_expansion=on     semantic
-kosh.glob_no_match_is_error=on                          semantic
-editor.completion.always_apply_fignore=on               interactive
-kosh.glob_ranges_use_ascii_order=on                     semantic
-kosh.glob_never_matches_dot_and_dotdot=on               semantic
-kosh.glob_double_star_recurses=off                      semantic
-diagnostics.errors_use_gnu_format=off                   interactive
-editor.history.reedit_failed_substitution=off           interactive
-editor.history.verify_expansion_before_running=off      interactive
-editor.completion.hostnames_after_at=on                 interactive
-kosh.jobs_hangup_on_exit=off                            interactive
-kosh.command_substitution_inherits_exit_on_failure=off  semantic
-kosh.interactive_comments=on                            interactive
-kosh.pipeline_last_stage_runs_in_shell=off              semantic
-kosh.local_inherits_outer_value=off                     semantic
-kosh.local_unset_hides_outer=off                        semantic
-kosh.login_shell=off                                    interactive
-kosh.mail_warn_when_read=off                            interactive
-editor.completion.skip_empty_line=off                   interactive
-kosh.glob_ignores_case=off                              semantic
-kosh.match_ignores_case=off                             semantic
-kosh.glob_no_match_expands_to_nothing=off               semantic
-kosh.pattern_substitution_ampersand_is_match=on         semantic
-editor.completion.programmable=on                       interactive
-editor.completion.programmable_follows_aliases=off      interactive
-editor.prompt_expands_parameters=on                     interactive
-kosh.restricted_shell=off                               semantic
-kosh.shift_reports_overflow=off                         semantic
-kosh.source_searches_path=on                            semantic
-kosh.redirect_variable_fd_closed_after_command=off      semantic
-kosh.echo_interprets_backslash_escapes=off              semantic
+# name=value                                                        class
+kosh.mood=kosh                                                      semantic
+kosh.completion.menu_style=interactive                              interactive
+kosh.editor.hints.show_command_synopsis=on                          interactive
+kosh.editor.hints.show_live_diagnostics=on                          interactive
+kosh.editor.auto_close_brackets_and_quotes=off                      interactive
+kosh.editor.transient_prompt_after_submit=off                       interactive
+kosh.editor.request_extended_key_reports=on                         interactive
+kosh.editor.history.arrow_keys_search_by_typed_prefix=on            interactive
+kosh.editor.history.file_path=/history                              interactive
+kosh.editor.history.max_entries=4096                                interactive
+kosh.completion.add_space_after_completed_word=off                  interactive
+kosh.optimizer.warning_level=0                                      interactive
+kosh.optimizer.show_annoying_tier=on                                interactive
+kosh.optimizer.analyze_before_running=on                            semantic
+kosh.interpreter.resolve_koshkit_applets_as_commands=off            semantic
+kosh.interpreter.arithmetic_uses_big_numbers=on                     semantic
+kosh.interpreter.mimic_shebang=off                                  semantic
+kosh.debug.print_syntax_tree=off                                    semantic
+kosh.debug.print_lexed_word_escapes=off                             semantic
+kosh.debug.report_nonzero_exit_codes=off                            semantic
+kosh.debug.report_every_exit_code=off                               semantic
+kosh.debug.print_evaluation_statistics=off                          semantic
+kosh.debug.print_memory_report_at_exit=off                          semantic
+kosh.completion.on_tab=on                                           interactive
+kosh.editor.highlight_syntax_and_show_ghost_text=on                 interactive
+kosh.optimizer.show_source_traces=on                                interactive
+kosh.init_moods=                                                    semantic
+kosh.interpreter.export_every_assigned_variable=off                 semantic
+kosh.editor.jobs_report_status_immediately=off                      interactive
+kosh.interpreter.exit_on_command_failure=off                        semantic
+kosh.interpreter.glob_disabled=off                                  semantic
+kosh.interpreter.assignments_anywhere_in_command=off                semantic
+kosh.interpreter.job_control=off                                    interactive
+kosh.interpreter.parse_without_executing=off                        semantic
+kosh.interpreter.exit_after_one_command=off                         semantic
+kosh.interpreter.privileged_mode=off                                semantic
+kosh.interpreter.unset_variable_is_error=on                         semantic
+kosh.debug.trace_input_lines=off                                    semantic
+kosh.debug.trace_expanded_commands=off                              semantic
+kosh.interpreter.brace_expansion=on                                 semantic
+kosh.interpreter.redirect_refuses_to_overwrite_files=off            semantic
+kosh.interpreter.trap_err_inherited_by_functions=off                semantic
+kosh.editor.history.bang_expansion=off                              interactive
+kosh.interpreter.cd_resolves_symlinks=off                           semantic
+kosh.interpreter.trap_debug_and_return_inherited_by_functions=off   semantic
+kosh.interpreter.pipeline_fails_on_any_stage=on                     semantic
+kosh.editor.history.records_commands=off                            interactive
+kosh.editor.ctrl_d_does_not_exit=off                                interactive
+kosh.editor.base_mode=emacs                                         interactive
+kosh.interpreter.posixly_correct=off                                semantic
+kosh.editor.cd_by_typing_directory_name=on                          interactive
+kosh.interpreter.array_subscripts_expand_once=off                   semantic
+kosh.interpreter.cd_to_variable_value=off                           semantic
+kosh.editor.cd_fix_typos=off                                        interactive
+kosh.interpreter.verify_remembered_command_paths=off                semantic
+kosh.editor.jobs_check_before_exit=off                              interactive
+kosh.editor.update_columns_and_lines=on                             interactive
+kosh.completion.quote_all_special_characters=on                     interactive
+kosh.completion.expand_directory_names=off                          interactive
+kosh.completion.fix_directory_typos=off                             interactive
+kosh.interpreter.glob_includes_dotfiles=off                         semantic
+kosh.interpreter.exec_failure_keeps_shell=off                       semantic
+kosh.interpreter.aliases_expand=on                                  semantic
+kosh.debug.debugger_support=off                                     semantic
+kosh.interpreter.glob_extended_patterns=on                          semantic
+kosh.interpreter.quote_dollar_strings_in_parameter_expansion=on     semantic
+kosh.interpreter.glob_no_match_is_error=on                          semantic
+kosh.completion.always_apply_fignore=on                             interactive
+kosh.interpreter.glob_ranges_use_ascii_order=on                     semantic
+kosh.interpreter.glob_never_matches_dot_and_dotdot=on               semantic
+kosh.interpreter.glob_double_star_recurses=off                      semantic
+kosh.optimizer.errors_use_gnu_format=off                            interactive
+kosh.editor.history.reedit_failed_substitution=off                  interactive
+kosh.editor.history.verify_expansion_before_running=off             interactive
+kosh.completion.hostnames_after_at=on                               interactive
+kosh.editor.jobs_hangup_on_exit=off                                 interactive
+kosh.interpreter.command_substitution_inherits_exit_on_failure=off  semantic
+kosh.editor.interactive_comments=on                                 interactive
+kosh.interpreter.pipeline_last_stage_runs_in_shell=off              semantic
+kosh.interpreter.local_inherits_outer_value=off                     semantic
+kosh.interpreter.local_unset_hides_outer=off                        semantic
+kosh.interpreter.login_shell=off                                    interactive
+kosh.editor.mail_warn_when_read=off                                 interactive
+kosh.completion.skip_empty_line=off                                 interactive
+kosh.interpreter.glob_ignores_case=off                              semantic
+kosh.interpreter.match_ignores_case=off                             semantic
+kosh.interpreter.glob_no_match_expands_to_nothing=off               semantic
+kosh.interpreter.pattern_substitution_ampersand_is_match=on         semantic
+kosh.completion.programmable=on                                     interactive
+kosh.completion.programmable_follows_aliases=off                    interactive
+kosh.editor.prompt_expands_parameters=on                            interactive
+kosh.interpreter.restricted_shell=off                               semantic
+kosh.interpreter.shift_reports_overflow=off                         semantic
+kosh.interpreter.source_searches_path=on                            semantic
+kosh.interpreter.redirect_variable_fd_closed_after_command=off      semantic
+kosh.interpreter.echo_interprets_backslash_escapes=off              semantic
 == the kosh preset matches a fresh kosh session:
 rc=0
 # Koshka settings written by koshconf create kosh.
@@ -104,221 +104,222 @@ rc=0
 
 # Choose the grammar and the startup files: kosh, sh, bash, or bash-posix.
 kosh.mood=kosh
-# Use arbitrary-precision integers and finite decimal values.
-kosh.arithmetic_uses_big_numbers=on
-# Mimic the shell selected by a script's shebang.
-kosh.mimic_shebang=off
 # Source the startup files of each listed mood, comma separated, when the shell
 # is interactive or a login shell. Empty selects the session mood.
 # kosh.init_moods=
-# Mark every assigned variable for the environment. (set -o allexport)
-kosh.export_every_assigned_variable=off
-# Exit on the first command that fails. (set -o errexit)
-kosh.exit_on_command_failure=off
-# Disable pathname expansion. (set -o noglob)
-kosh.glob_disabled=off
-# Place assignment arguments anywhere in a command into its environment.
-# (set -o keyword)
-kosh.assignments_anywhere_in_command=off
-# Treat an unset variable as an error. (set -o nounset)
-kosh.unset_variable_is_error=on
-# Enable brace expansion. (set -o braceexpand)
-kosh.brace_expansion=on
-# Refuse to overwrite an existing file through '>'. (set -o noclobber)
-kosh.redirect_refuses_to_overwrite_files=off
-# Let shell functions, command substitutions, and subshells inherit the ERR
-# trap. (set -o errtrace)
-kosh.trap_err_inherited_by_functions=off
-# Resolve symbolic links while changing directories. (set -o physical)
-kosh.cd_resolves_symlinks=off
-# Let shell functions, command substitutions, and subshells inherit the DEBUG
-# and RETURN traps. (set -o functrace)
-kosh.trap_debug_and_return_inherited_by_functions=off
-# Report a pipeline's status as the rightmost stage that failed.
-# (set -o pipefail)
-kosh.pipeline_fails_on_any_stage=on
-# Change to a directory typed as a command name. (shopt autocd)
-kosh.cd_by_typing_directory_name=on
-# Expand an array subscript once in assignments and arithmetic.
-# (shopt assoc_expand_once)
-kosh.array_subscripts_expand_once=off
-# Treat a cd operand that is not a directory as a variable naming one.
-# (shopt cdable_vars)
-kosh.cd_to_variable_value=off
-# Correct minor spelling errors in a cd operand. (shopt cdspell)
-kosh.cd_fix_typos=off
-# Check that a remembered command path still exists before running it.
-# (shopt checkhash)
-kosh.verify_remembered_command_paths=off
-# List running and stopped jobs before an interactive shell exits.
-# (shopt checkjobs)
-kosh.jobs_check_before_exit=off
-# Update COLUMNS and LINES after each command from the terminal size.
-# (shopt checkwinsize)
-kosh.update_columns_and_lines=on
-# Let a glob match names that begin with a dot. (shopt dotglob)
-kosh.glob_includes_dotfiles=off
-# Keep a non-interactive shell running when exec cannot run its command.
-# (shopt execfail)
-kosh.exec_failure_keeps_shell=off
-# Expand aliases in commands. (shopt expand_aliases)
-kosh.aliases_expand=on
-# Accept the extended patterns ?(), *(), +(), @(), and !(). (shopt extglob)
-kosh.glob_extended_patterns=on
-# Process $'...' and $"..." quoting inside a quoted ${...} expansion.
-# (shopt extquote)
-kosh.quote_dollar_strings_in_parameter_expansion=on
-# Fail a command whose glob matches nothing. (shopt failglob)
-kosh.glob_no_match_is_error=on
-# Order bracket ranges in globs and patterns by byte value.
-# (shopt globasciiranges)
-kosh.glob_ranges_use_ascii_order=on
-# Never let a glob match . or .. (shopt globskipdots)
-kosh.glob_never_matches_dot_and_dotdot=on
-# Let ** in a glob match directories at any depth. (shopt globstar)
-kosh.glob_double_star_recurses=off
-# Send SIGHUP to every job when an interactive login shell exits.
-# (shopt huponexit)
-kosh.jobs_hangup_on_exit=off
-# Let a command substitution inherit set -e. (shopt inherit_errexit)
-kosh.command_substitution_inherits_exit_on_failure=off
-# Allow comments in interactive shell input. (set -o interactive-comments)
-kosh.interactive_comments=on
-# Run the last stage of a pipeline in the current shell. (shopt lastpipe)
-kosh.pipeline_last_stage_runs_in_shell=off
-# Give a new local variable the value of the variable it shadows.
-# (shopt localvar_inherit)
-kosh.local_inherits_outer_value=off
-# Keep a local variable unset by unset from exposing the outer one.
-# (shopt localvar_unset)
-kosh.local_unset_hides_outer=off
-# Warn when a checked mail file was read since the last check. (shopt mailwarn)
-kosh.mail_warn_when_read=off
-# Match globs without regard to case. (shopt nocaseglob)
-kosh.glob_ignores_case=off
-# Match case, [[, and pattern operators without regard to case.
-# (shopt nocasematch)
-kosh.match_ignores_case=off
-# Remove a glob that matches nothing. With this option off, the unmatched glob
-# remains unchanged. (shopt nullglob)
-kosh.glob_no_match_expands_to_nothing=off
-# Replace an unquoted & in ${name/pattern/string} with the match.
-# (shopt patsub_replacement)
-kosh.pattern_substitution_ampersand_is_match=on
-# Report a shift count larger than the positional parameters.
-# (shopt shift_verbose)
-kosh.shift_reports_overflow=off
-# Search PATH for a source operand without a slash. (shopt sourcepath)
-kosh.source_searches_path=on
-# Close a {name}> descriptor when its command finishes. (shopt varredir_close)
-kosh.redirect_variable_fd_closed_after_command=off
-# Let echo expand backslash escapes by default. (shopt xpg_echo)
-kosh.echo_interprets_backslash_escapes=off
 
 # Show completion candidates in the interactive menu, an external selector, or a
 # plain list.
-editor.completion.menu_style=interactive
-# Show the synopsis or flag description of the command under the cursor below
-# the input.
-editor.hints.show_command_synopsis=on
-# Show the syntax problem or analysis finding of the line below the input.
-editor.hints.show_live_diagnostics=on
-# Insert the closer after a typed bracket, brace, or quote.
-editor.auto_close_brackets_and_quotes=off
-# Redraw a submitted or interrupted line after PS1_TRANSIENT and without RPS1.
-editor.transient_prompt_after_submit=off
-# Ask the terminal to report modified keys such as Ctrl-Shift-Z separately while
-# a line is read.
-editor.request_extended_key_reports=on
-# Recall only history entries that begin with the typed text on Up and Down.
-editor.history.arrow_keys_search_by_typed_prefix=on
-# Store command history in this file. KOSH_HISTORY_FILE supplies the value.
-# editor.history.file_path=
-# Keep at most this many history entries. KOSH_HISTORY_SIZE supplies the value,
-# and 0 keeps none.
-editor.history.max_entries=4096
+kosh.completion.menu_style=interactive
 # Insert a space after an accepted completion: off for never, on for always, or
 # on-excluding-trailing-slash for all but a directory.
-editor.completion.add_space_after_completed_word=off
+kosh.completion.add_space_after_completed_word=off
 # Complete the word under the cursor on Tab. Turning this off also turns off the
 # ghost suggestion and the syntax colors.
-editor.completion.on_tab=on
-# Color the input by syntax and suggest the rest of the word in ghost text. Both
-# also need editor.completion.on_tab on.
-editor.highlight_syntax_and_show_ghost_text=on
-# Report a background job's completion immediately when it finishes.
-# (set -o notify)
-editor.jobs_report_status_immediately=off
-# Require repeated end-of-file input before an interactive shell exits.
-# (set -o ignoreeof)
-editor.ctrl_d_does_not_exit=off
-# Edit the command line with emacs or vi key bindings.
-# (set -o emacs or set -o vi)
-editor.base_mode=emacs
+kosh.completion.on_tab=on
 # Quote every shell metacharacter in a completed file name.
 # (shopt complete_fullquote)
-editor.completion.quote_all_special_characters=on
+kosh.completion.quote_all_special_characters=on
 # Replace a directory name with its expansion during completion.
 # (shopt direxpand)
-editor.completion.expand_directory_names=off
+kosh.completion.expand_directory_names=off
 # Correct a misspelled directory name during completion. (shopt dirspell)
-editor.completion.fix_directory_typos=off
+kosh.completion.fix_directory_typos=off
 # Drop FIGNORE suffixes from completions even when that leaves none.
 # (shopt force_fignore)
-editor.completion.always_apply_fignore=on
-# Return a failed history substitution to the editor. (shopt histreedit)
-editor.history.reedit_failed_substitution=off
-# Load an expanded history reference into the editor. The shell runs it after
-# the user accepts it. (shopt histverify)
-editor.history.verify_expansion_before_running=off
+kosh.completion.always_apply_fignore=on
 # Complete host names after an @ in a word. (shopt hostcomplete)
-editor.completion.hostnames_after_at=on
+kosh.completion.hostnames_after_at=on
 # Offer no command completion on an empty line. (shopt no_empty_cmd_completion)
-editor.completion.skip_empty_line=off
+kosh.completion.skip_empty_line=off
 # Use the completion specifications defined by complete. (shopt progcomp)
-editor.completion.programmable=on
+kosh.completion.programmable=on
 # Complete an alias with the specification of the command it expands to.
 # (shopt progcomp_alias)
-editor.completion.programmable_follows_aliases=off
+kosh.completion.programmable_follows_aliases=off
+
+# Show the synopsis or flag description of the command under the cursor below
+# the input.
+kosh.editor.hints.show_command_synopsis=on
+# Show the syntax problem or analysis finding of the line below the input.
+kosh.editor.hints.show_live_diagnostics=on
+# Insert the closer after a typed bracket, brace, or quote.
+kosh.editor.auto_close_brackets_and_quotes=off
+# Redraw a submitted or interrupted line after PS1_TRANSIENT and without RPS1.
+kosh.editor.transient_prompt_after_submit=off
+# Ask the terminal to report modified keys such as Ctrl-Shift-Z separately while
+# a line is read.
+kosh.editor.request_extended_key_reports=on
+# Recall only history entries that begin with the typed text on Up and Down.
+kosh.editor.history.arrow_keys_search_by_typed_prefix=on
+# Store command history in this file. KOSH_HISTORY_FILE supplies the value.
+# kosh.editor.history.file_path=
+# Keep at most this many history entries. KOSH_HISTORY_SIZE supplies the value,
+# and 0 keeps none.
+kosh.editor.history.max_entries=4096
+# Color the input by syntax and suggest the rest of the word in ghost text. Both
+# also need kosh.completion.on_tab on.
+kosh.editor.highlight_syntax_and_show_ghost_text=on
+# Report a background job's completion immediately when it finishes.
+# (set -o notify)
+kosh.editor.jobs_report_status_immediately=off
+# Require repeated end-of-file input before an interactive shell exits.
+# (set -o ignoreeof)
+kosh.editor.ctrl_d_does_not_exit=off
+# Edit the command line with emacs or vi key bindings.
+# (set -o emacs or set -o vi)
+kosh.editor.base_mode=emacs
+# Change to a directory typed as a command name. (shopt autocd)
+kosh.editor.cd_by_typing_directory_name=on
+# Correct minor spelling errors in a cd operand. (shopt cdspell)
+kosh.editor.cd_fix_typos=off
+# List running and stopped jobs before an interactive shell exits.
+# (shopt checkjobs)
+kosh.editor.jobs_check_before_exit=off
+# Update COLUMNS and LINES after each command from the terminal size.
+# (shopt checkwinsize)
+kosh.editor.update_columns_and_lines=on
+# Return a failed history substitution to the editor. (shopt histreedit)
+kosh.editor.history.reedit_failed_substitution=off
+# Load an expanded history reference into the editor. The shell runs it after
+# the user accepts it. (shopt histverify)
+kosh.editor.history.verify_expansion_before_running=off
+# Send SIGHUP to every job when an interactive login shell exits.
+# (shopt huponexit)
+kosh.editor.jobs_hangup_on_exit=off
+# Allow comments in interactive shell input. (set -o interactive-comments)
+kosh.editor.interactive_comments=on
+# Warn when a checked mail file was read since the last check. (shopt mailwarn)
+kosh.editor.mail_warn_when_read=off
 # Expand parameters and substitutions in prompt strings. (shopt promptvars)
-editor.prompt_expands_parameters=on
+kosh.editor.prompt_expands_parameters=on
 
 # Set the diagnostic level from 0 to 3: 0 keeps the mood's default, and 1, 2,
 # and 3 act as -W, -WW, and -WWW.
-diagnostics.warning_level=0
+kosh.optimizer.warning_level=0
 # Report the annoying diagnostic tier.
-diagnostics.show_annoying_tier=on
+kosh.optimizer.show_annoying_tier=on
 # Analyze each chunk before it runs.
-diagnostics.analyze_before_running=on
+kosh.optimizer.analyze_before_running=on
 # Show the backtrace of sourced files and function calls below an error or
 # warning.
-diagnostics.show_source_traces=on
+kosh.optimizer.show_source_traces=on
 # Write error messages in the GNU file:line format. (shopt gnu_errfmt)
-diagnostics.errors_use_gnu_format=off
+kosh.optimizer.errors_use_gnu_format=off
 
 # Let the bash and sh moods run a bundled koshkit utility by its plain name when
 # PATH has no program of that name. The kosh mood always does, whatever this
 # value.
-koshkit.run_utilities_as_plain_commands=off
+kosh.interpreter.resolve_koshkit_applets_as_commands=off
+# Use arbitrary-precision integers and finite decimal values.
+kosh.interpreter.arithmetic_uses_big_numbers=on
+# Mimic the shell selected by a script's shebang.
+kosh.interpreter.mimic_shebang=off
+# Mark every assigned variable for the environment. (set -o allexport)
+kosh.interpreter.export_every_assigned_variable=off
+# Exit on the first command that fails. (set -o errexit)
+kosh.interpreter.exit_on_command_failure=off
+# Disable pathname expansion. (set -o noglob)
+kosh.interpreter.glob_disabled=off
+# Place assignment arguments anywhere in a command into its environment.
+# (set -o keyword)
+kosh.interpreter.assignments_anywhere_in_command=off
+# Treat an unset variable as an error. (set -o nounset)
+kosh.interpreter.unset_variable_is_error=on
+# Enable brace expansion. (set -o braceexpand)
+kosh.interpreter.brace_expansion=on
+# Refuse to overwrite an existing file through '>'. (set -o noclobber)
+kosh.interpreter.redirect_refuses_to_overwrite_files=off
+# Let shell functions, command substitutions, and subshells inherit the ERR
+# trap. (set -o errtrace)
+kosh.interpreter.trap_err_inherited_by_functions=off
+# Resolve symbolic links while changing directories. (set -o physical)
+kosh.interpreter.cd_resolves_symlinks=off
+# Let shell functions, command substitutions, and subshells inherit the DEBUG
+# and RETURN traps. (set -o functrace)
+kosh.interpreter.trap_debug_and_return_inherited_by_functions=off
+# Report a pipeline's status as the rightmost stage that failed.
+# (set -o pipefail)
+kosh.interpreter.pipeline_fails_on_any_stage=on
+# Expand an array subscript once in assignments and arithmetic.
+# (shopt assoc_expand_once)
+kosh.interpreter.array_subscripts_expand_once=off
+# Treat a cd operand that is not a directory as a variable naming one.
+# (shopt cdable_vars)
+kosh.interpreter.cd_to_variable_value=off
+# Check that a remembered command path still exists before running it.
+# (shopt checkhash)
+kosh.interpreter.verify_remembered_command_paths=off
+# Let a glob match names that begin with a dot. (shopt dotglob)
+kosh.interpreter.glob_includes_dotfiles=off
+# Keep a non-interactive shell running when exec cannot run its command.
+# (shopt execfail)
+kosh.interpreter.exec_failure_keeps_shell=off
+# Expand aliases in commands. (shopt expand_aliases)
+kosh.interpreter.aliases_expand=on
+# Accept the extended patterns ?(), *(), +(), @(), and !(). (shopt extglob)
+kosh.interpreter.glob_extended_patterns=on
+# Process $'...' and $"..." quoting inside a quoted ${...} expansion.
+# (shopt extquote)
+kosh.interpreter.quote_dollar_strings_in_parameter_expansion=on
+# Fail a command whose glob matches nothing. (shopt failglob)
+kosh.interpreter.glob_no_match_is_error=on
+# Order bracket ranges in globs and patterns by byte value.
+# (shopt globasciiranges)
+kosh.interpreter.glob_ranges_use_ascii_order=on
+# Never let a glob match . or .. (shopt globskipdots)
+kosh.interpreter.glob_never_matches_dot_and_dotdot=on
+# Let ** in a glob match directories at any depth. (shopt globstar)
+kosh.interpreter.glob_double_star_recurses=off
+# Let a command substitution inherit set -e. (shopt inherit_errexit)
+kosh.interpreter.command_substitution_inherits_exit_on_failure=off
+# Run the last stage of a pipeline in the current shell. (shopt lastpipe)
+kosh.interpreter.pipeline_last_stage_runs_in_shell=off
+# Give a new local variable the value of the variable it shadows.
+# (shopt localvar_inherit)
+kosh.interpreter.local_inherits_outer_value=off
+# Keep a local variable unset by unset from exposing the outer one.
+# (shopt localvar_unset)
+kosh.interpreter.local_unset_hides_outer=off
+# Match globs without regard to case. (shopt nocaseglob)
+kosh.interpreter.glob_ignores_case=off
+# Match case, [[, and pattern operators without regard to case.
+# (shopt nocasematch)
+kosh.interpreter.match_ignores_case=off
+# Remove a glob that matches nothing. With this option off, the unmatched glob
+# remains unchanged. (shopt nullglob)
+kosh.interpreter.glob_no_match_expands_to_nothing=off
+# Replace an unquoted & in ${name/pattern/string} with the match.
+# (shopt patsub_replacement)
+kosh.interpreter.pattern_substitution_ampersand_is_match=on
+# Report a shift count larger than the positional parameters.
+# (shopt shift_verbose)
+kosh.interpreter.shift_reports_overflow=off
+# Search PATH for a source operand without a slash. (shopt sourcepath)
+kosh.interpreter.source_searches_path=on
+# Close a {name}> descriptor when its command finishes. (shopt varredir_close)
+kosh.interpreter.redirect_variable_fd_closed_after_command=off
+# Let echo expand backslash escapes by default. (shopt xpg_echo)
+kosh.interpreter.echo_interprets_backslash_escapes=off
 
 # Print the AST before each command runs.
-debug.print_syntax_tree=off
+kosh.debug.print_syntax_tree=off
 # Print the escape bitmap after each parse.
-debug.print_lexed_word_escapes=off
+kosh.debug.print_lexed_word_escapes=off
 # Show diagnostics for every non-zero exit code.
-debug.report_nonzero_exit_codes=off
+kosh.debug.report_nonzero_exit_codes=off
 # Show diagnostics for every exit code, including a successful zero.
-debug.report_every_exit_code=off
+kosh.debug.report_every_exit_code=off
 # Print evaluation statistics after each run.
-debug.print_evaluation_statistics=off
+kosh.debug.print_evaluation_statistics=off
 # Print a detailed memory report at exit.
-debug.print_memory_report_at_exit=off
+kosh.debug.print_memory_report_at_exit=off
 # Write input to standard error as it is read. (set -o verbose)
-debug.trace_input_lines=off
+kosh.debug.trace_input_lines=off
 # Print each command after expansion before it runs. (set -o xtrace)
-debug.trace_expanded_commands=off
+kosh.debug.trace_expanded_commands=off
 # Enable the behavior Bash provides for debuggers. (shopt extdebug)
-debug.debugger_support=off
+kosh.debug.debugger_support=off
 == create refuses an existing file without --force:
 -c:1:1: error: Builtin `koshconf`: The configuration file 'CONFIG/user/kosh/kosh.conf' already exists.
      1 |  koshconf create bash
@@ -331,51 +332,51 @@ kosh.mood=bash
 == the bash preset leaves the alias default to the session:
 # Expand aliases in commands. Left unset, it is on in an interactive shell and
 # off in a script. (shopt expand_aliases)
-# kosh.aliases_expand=
+# kosh.interpreter.aliases_expand=
 shopt -u expand_aliases
 == the sh preset matches a fresh sh session:
 == create writes every file option with its help and Bash name:
-9
-kosh.update_columns_and_lines=on
+0
+kosh.interpreter.verify_remembered_command_paths=off
 # Let a glob match names that begin with a dot. (shopt dotglob)
-kosh.glob_includes_dotfiles=off
+kosh.interpreter.glob_includes_dotfiles=off
 1
 0
 == a Bash spelling stays on one comment line:
 0
 0
 # (set -o keyword)
-kosh.assignments_anywhere_in_command=off
+kosh.interpreter.assignments_anywhere_in_command=off
 == set changes the session, and --persist rewrites one line:
 on
-editor.auto_close_brackets_and_quotes=on
+kosh.editor.auto_close_brackets_and_quotes=on
 same line count
 == --persist appends a missing option and quotes a padded value:
 # kept
 kosh.mood=kosh
-editor.history.file_path=" padded "
+kosh.editor.history.file_path=" padded "
 == --persist creates the file and its directory:
-editor.completion.add_space_after_completed_word=on
+kosh.completion.add_space_after_completed_word=on
 == --persist writes an option that changes evaluation:
 rc=0
-kosh.glob_includes_dotfiles=on
+kosh.interpreter.glob_includes_dotfiles=on
 == --persist rejects an option fixed by how the shell started:
--c:1:14: error: Builtin `koshconf`: The 'kosh.privileged_mode' option cannot be written with --persist.
-     1 |  koshconf set kosh.privileged_mode off --persist
-       |               ^~~~~~~~~~~~~~~~~~~~
+-c:1:14: error: Builtin `koshconf`: The 'kosh.interpreter.privileged_mode' option cannot be written with --persist.
+     1 |  koshconf set kosh.interpreter.privileged_mode off --persist
+       |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 note: Read-only, invocation-only, and session-dependent options are not written to the file.
 rc=1
 == a value the file cannot hold changes neither the session nor the file:
--c:1:39: error: Builtin `koshconf`: A value of 'editor.history.file_path' cannot span lines in the configuration file.
-     1 |  koshconf set editor.history.file_path $'a\nb' --persist
-       |                                        ^~~~~~~
+-c:1:44: error: Builtin `koshconf`: A value of 'kosh.editor.history.file_path' cannot span lines in the configuration file.
+     1 |  koshconf set kosh.editor.history.file_path $'a\nb' --persist
+       |                                             ^~~~~~~
 rc=1
 /history
 0
 == a failed write is a soft error that || can catch:
 -c:1:1: error: Builtin `koshconf`: Unable to write a file in 'CONFIG/user/kosh': Permission denied.
-     1 |  koshconf set editor.hints.show_command_synopsis off --persist || echo "rc=$?"
-       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     1 |  koshconf set kosh.editor.hints.show_command_synopsis off --persist || echo "rc=$?"
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 rc=1
 off
 -c:3:1: error: Builtin `koshconf`: Unable to write a file in 'CONFIG/user/kosh': Permission denied.
@@ -383,30 +384,30 @@ off
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
 rc=1
 == string values are validated:
--c:1:41: error: Builtin `koshconf`: Invalid value '12x' for 'editor.history.max_entries', expected a decimal integer from 0 to 2147483647.
-     1 |  koshconf set editor.history.max_entries 12x
-       |                                          ^~~
+-c:1:46: error: Builtin `koshconf`: Invalid value '12x' for 'kosh.editor.history.max_entries', expected a decimal integer from 0 to 2147483647.
+     1 |  koshconf set kosh.editor.history.max_entries 12x
+       |                                               ^~~
 rc=1
--c:3:44: error: Builtin `koshconf`: Invalid value '-1' for 'editor.history.max_entries', expected a decimal integer from 0 to 2147483647.
-     3 |  koshconf set editor.history.max_entries -- -1
-       |                                             ^~
+-c:3:49: error: Builtin `koshconf`: Invalid value '-1' for 'kosh.editor.history.max_entries', expected a decimal integer from 0 to 2147483647.
+     3 |  koshconf set kosh.editor.history.max_entries -- -1
+       |                                                  ^~
 rc=1
--c:5:41: error: Builtin `koshconf`: Invalid value '99999999999999999999' for 'editor.history.max_entries', expected a decimal integer from 0 to 2147483647.
-     5 |  koshconf set editor.history.max_entries 99999999999999999999
-       |                                          ^~~~~~~~~~~~~~~~~~~~
+-c:5:46: error: Builtin `koshconf`: Invalid value '99999999999999999999' for 'kosh.editor.history.max_entries', expected a decimal integer from 0 to 2147483647.
+     5 |  koshconf set kosh.editor.history.max_entries 99999999999999999999
+       |                                               ^~~~~~~~~~~~~~~~~~~~
 rc=1
--c:7:41: error: Builtin `koshconf`: Invalid value '2147483648' for 'editor.history.max_entries', expected a decimal integer from 0 to 2147483647.
-     7 |  koshconf set editor.history.max_entries 2147483648
-       |                                          ^~~~~~~~~~
+-c:7:46: error: Builtin `koshconf`: Invalid value '2147483648' for 'kosh.editor.history.max_entries', expected a decimal integer from 0 to 2147483647.
+     7 |  koshconf set kosh.editor.history.max_entries 2147483648
+       |                                               ^~~~~~~~~~
 rc=1
 rc=0
--c:11:39: error: Builtin `koshconf`: Invalid value 'a\xffb' for 'editor.history.file_path', expected valid UTF-8 text.
-    11 |  koshconf set editor.history.file_path $'a\xffb'
-       |                                        ^~~~~~~~~
+-c:11:44: error: Builtin `koshconf`: Invalid value 'a\xffb' for 'kosh.editor.history.file_path', expected valid UTF-8 text.
+    11 |  koshconf set kosh.editor.history.file_path $'a\xffb'
+       |                                             ^~~~~~~~~
 rc=1
 0
 == list escapes a value the file cannot hold:
-editor.history.file_path=$'a\nb\x01"\''                 interactive
+kosh.editor.history.file_path=$'a\nb\x01"\''                        interactive
 rc=0
 == enumerations and booleans:
 plain
@@ -454,20 +455,20 @@ rc=2
        |           ^~~~
 note: Did you mean 'set'?
 rc=2
--c:1:14: error: Builtin `koshconf`: Unknown option 'editor.history.max_entry'.
-     1 |  koshconf get editor.history.max_entry
-       |               ^~~~~~~~~~~~~~~~~~~~~~~~
-note: Did you mean 'editor.history.max_entries'?
+-c:1:14: error: Builtin `koshconf`: Unknown option 'kosh.editor.history.max_entry'.
+     1 |  koshconf get kosh.editor.history.max_entry
+       |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+note: Did you mean 'kosh.editor.history.max_entries'?
 rc=1
 -c:1:14: error: Builtin `koshconf`: Unknown option 'max_entries'.
      1 |  koshconf get max_entries
        |               ^~~~~~~~~~~
-note: Did you mean 'editor.history.max_entries'?
+note: Did you mean 'kosh.editor.history.max_entries'?
 rc=1
 == a negative value is a value, not a flag:
--c:1:41: error: Builtin `koshconf`: Invalid value '-5' for 'editor.history.max_entries', expected a decimal integer from 0 to 2147483647.
-     1 |  koshconf set editor.history.max_entries -5
-       |                                          ^~
+-c:1:46: error: Builtin `koshconf`: Invalid value '-5' for 'kosh.editor.history.max_entries', expected a decimal integer from 0 to 2147483647.
+     1 |  koshconf set kosh.editor.history.max_entries -5
+       |                                               ^~
 rc=1
 == load applies an encoded form and skips an unknown id:
 warning: Skipping the unknown option id 200 in KOSHCONF.
@@ -493,7 +494,7 @@ off
 BQEBBg rc=1
 off
 == load skips an invalid string value and keeps the rest:
-warning: Skipping an invalid value of 'editor.history.max_entries' in KOSHCONF.
+warning: Skipping an invalid value of 'kosh.editor.history.max_entries' in KOSHCONF.
 on
 4096
 == KOSHCONF carries the mood and interactive options to another shell:

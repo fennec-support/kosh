@@ -1,8 +1,8 @@
-== koshconf set editor.completion.menu_style value:
+== koshconf set kosh.completion.menu_style value:
 external
 interactive
 plain
-== koshconf set editor.completion.menu_style prefix:
+== koshconf set kosh.completion.menu_style prefix:
 external
 == kosh --tab-selector value:
 external

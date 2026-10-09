@@ -122,17 +122,17 @@ echo "big_status=$?"
 echo "== extended arithmetic option:"
 for arithmetic_mood in default bash sh; do
   set -M "$arithmetic_mood"
-  echo "$arithmetic_mood=$(koshconf get kosh.arithmetic_uses_big_numbers)"
+  echo "$arithmetic_mood=$(koshconf get kosh.interpreter.arithmetic_uses_big_numbers)"
 done
 set -M bash
-koshconf set kosh.arithmetic_uses_big_numbers on
+koshconf set kosh.interpreter.arithmetic_uses_big_numbers on
 big=18446744073709551616
 echo "enabled=$((big + 1))"
 set -M default
-koshconf set kosh.arithmetic_uses_big_numbers off
+koshconf set kosh.interpreter.arithmetic_uses_big_numbers off
 echo "kosh-rc=$?"
 set -M bash
-koshconf set kosh.arithmetic_uses_big_numbers off
+koshconf set kosh.interpreter.arithmetic_uses_big_numbers off
 echo "disabled=$((big + 1))"
 
 x='x=1,'

@@ -16,11 +16,11 @@ set -W
 case $- in *WWW*) :;; *WW*) echo short-level-two;; esac
 set -W
 case $- in *WWW*) echo short-level-three;; esac
-[ "$(koshconf get diagnostics.show_annoying_tier)" = on ] && echo annoying-diagnostics-on
-koshconf set diagnostics.show_annoying_tier off
-[ "$(koshconf get diagnostics.show_annoying_tier)" = on ] || echo annoying-diagnostics-off
-koshconf set diagnostics.show_annoying_tier on
-[ "$(koshconf get diagnostics.show_annoying_tier)" = on ] && echo annoying-diagnostics-restored
+[ "$(koshconf get kosh.optimizer.show_annoying_tier)" = on ] && echo annoying-diagnostics-on
+koshconf set kosh.optimizer.show_annoying_tier off
+[ "$(koshconf get kosh.optimizer.show_annoying_tier)" = on ] || echo annoying-diagnostics-off
+koshconf set kosh.optimizer.show_annoying_tier on
+[ "$(koshconf get kosh.optimizer.show_annoying_tier)" = on ] && echo annoying-diagnostics-restored
 set -M kosh
 case $- in *W*) :;; *) echo mood-reset-level;; esac
 set -WWW
@@ -48,11 +48,11 @@ echo "annoying-level-one=$?"
 "$BIN" --no-annoying-diagnostics -c "$annoying_source" >/dev/null 2>&1
 echo "annoying-suppressed=$?"
 runtime_annoying_output=$("$BIN" -W \
-  -c 'koshconf set diagnostics.show_annoying_tier off' -c "$annoying_source" 2>&1)
+  -c 'koshconf set kosh.optimizer.show_annoying_tier off' -c "$annoying_source" 2>&1)
 echo "annoying-runtime-suppressed=$(printf '%s\n' "$runtime_annoying_output" |
   grep -c 'This .cd. is unchecked')"
 runtime_annoying_output=$("$BIN" -W \
-  -c 'koshconf set diagnostics.show_annoying_tier off; koshconf set diagnostics.show_annoying_tier on' \
+  -c 'koshconf set kosh.optimizer.show_annoying_tier off; koshconf set kosh.optimizer.show_annoying_tier on' \
   -c "$annoying_source" 2>&1)
 echo "annoying-runtime-restored=$(printf '%s\n' "$runtime_annoying_output" |
   grep -c 'This .cd. is unchecked')"

@@ -29,7 +29,8 @@ constexpr usize KOSHCONF_LINK_LIMIT = 40;
 constexpr u32 MAX_CODEPOINT = 0x10ffff;
 constexpr u32 INVALID_CODEPOINT = MAX_CODEPOINT + 1;
 constexpr StringView UTF8_BYTE_ORDER_MARK{"\xef\xbb\xbf"};
-constexpr StringView HISTORY_MAX_ENTRIES_NAME{"editor.history.max_entries"};
+constexpr StringView HISTORY_MAX_ENTRIES_NAME{
+    "kosh.editor.history.max_entries"};
 constexpr u64 HISTORY_MAX_ENTRIES_LIMIT = 2147483647;
 
 enum class escape_style : u8
@@ -251,8 +252,14 @@ fn declared_name(StringView line) wontthrow -> Maybe<StringView>
 fn preset_group_of(const option_descriptor &option) wontthrow -> StringView
 {
   let const name = StringView{option.koshconf_name};
-  let const dot = name.find_character('.');
-  return dot.has_value() ? name.substring_of_length(0, *dot) : name;
+  let const first_dot = name.find_character('.');
+  if (!first_dot.has_value()) return name;
+
+  let const rest = name.substring(*first_dot + 1);
+  let const second_dot = rest.find_character('.');
+  if (!second_dot.has_value()) return name.substring_of_length(0, *first_dot);
+
+  return name.substring_of_length(0, *first_dot + 1 + *second_dot);
 }
 
 fn get_preset_group_first_id(const option_descriptor &option) wontthrow -> u16
@@ -420,7 +427,7 @@ fn suggest_koshconf_option_name(StringView name) throws -> Maybe<String>
 
     let const candidate = StringView{option.koshconf_name};
     suggestion.consider(candidate);
-    let const dot = candidate.find_character('.');
+    let const topic_length = preset_group_of(option).length;
     for (usize position = 0; position < candidate.count(); position++) {
       if (candidate[position] == '.' &&
           candidate.substring(position + 1) == name && !topic_match.has_value())
@@ -435,8 +442,8 @@ fn suggest_koshconf_option_name(StringView name) throws -> Maybe<String>
     {
       shared_length++;
     }
-    if (shared_length + ENDING_EDIT_COUNT >= name.length && dot.has_value() &&
-        shared_length > *dot + 1 && shared_length > ending_match_length)
+    if (shared_length + ENDING_EDIT_COUNT >= name.length &&
+        shared_length > topic_length + 1 && shared_length > ending_match_length)
     {
       ending_match = String{candidate};
       ending_match_length = shared_length;

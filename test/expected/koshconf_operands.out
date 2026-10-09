@@ -9,37 +9,33 @@ bash
 kosh
 sh
 == koshconf get option prefix:
-editor.auto_close_brackets_and_quotes
-editor.base_mode
-editor.completion.add_space_after_completed_word
-editor.completion.always_apply_fignore
-editor.completion.expand_directory_names
-editor.completion.fix_directory_typos
-editor.completion.hostnames_after_at
-editor.completion.menu_style
-editor.completion.on_tab
-editor.completion.programmable
-editor.completion.programmable_follows_aliases
-editor.completion.quote_all_special_characters
-editor.completion.skip_empty_line
-editor.ctrl_d_does_not_exit
-editor.highlight_syntax_and_show_ghost_text
-editor.hints.show_command_synopsis
-editor.hints.show_live_diagnostics
-editor.history.arrow_keys_search_by_typed_prefix
-editor.history.bang_expansion
-editor.history.file_path
-editor.history.max_entries
-editor.history.records_commands
-editor.history.reedit_failed_substitution
-editor.history.verify_expansion_before_running
-editor.jobs_report_status_immediately
-editor.prompt_expands_parameters
-editor.request_extended_key_reports
-editor.transient_prompt_after_submit
+kosh.editor.auto_close_brackets_and_quotes
+kosh.editor.base_mode
+kosh.editor.cd_by_typing_directory_name
+kosh.editor.cd_fix_typos
+kosh.editor.ctrl_d_does_not_exit
+kosh.editor.highlight_syntax_and_show_ghost_text
+kosh.editor.hints.show_command_synopsis
+kosh.editor.hints.show_live_diagnostics
+kosh.editor.history.arrow_keys_search_by_typed_prefix
+kosh.editor.history.bang_expansion
+kosh.editor.history.file_path
+kosh.editor.history.max_entries
+kosh.editor.history.records_commands
+kosh.editor.history.reedit_failed_substitution
+kosh.editor.history.verify_expansion_before_running
+kosh.editor.interactive_comments
+kosh.editor.jobs_check_before_exit
+kosh.editor.jobs_hangup_on_exit
+kosh.editor.jobs_report_status_immediately
+kosh.editor.mail_warn_when_read
+kosh.editor.prompt_expands_parameters
+kosh.editor.request_extended_key_reports
+kosh.editor.transient_prompt_after_submit
+kosh.editor.update_columns_and_lines
 == koshconf set option prefix after a flag:
-kosh.glob_no_match_expands_to_nothing
-kosh.glob_no_match_is_error
+kosh.interpreter.glob_no_match_expands_to_nothing
+kosh.interpreter.glob_no_match_is_error
 == koshconf set editor mode value:
 emacs
 vi
@@ -71,6 +67,6 @@ history-probe
 --force
 --help
 == koshconf option name by subsequence:
-editor.history.max_entries
+kosh.editor.history.max_entries
 == koshconf option name prefix wins over subsequence:
 kosh.mood

@@ -13,20 +13,20 @@ rc=0
        |         ^~~
 note: Did you mean 'set'?
 rc=127
-=== koshconf set koshkit.run_utilities_as_plain_commands on turns bare names on ===
+=== koshconf set kosh.interpreter.resolve_koshkit_applets_as_commands on turns bare names on ===
 1
 2
 3
-=== koshconf set koshkit.run_utilities_as_plain_commands on passes bare Koshka utility flags ===
+=== koshconf set kosh.interpreter.resolve_koshkit_applets_as_commands on passes bare Koshka utility flags ===
 host-shape=matched
-=== koshconf set koshkit.run_utilities_as_plain_commands on passes bare POSIX utility flags ===
-=== koshconf set koshkit.run_utilities_as_plain_commands on leaves unknown names unresolved ===
+=== koshconf set kosh.interpreter.resolve_koshkit_applets_as_commands on passes bare POSIX utility flags ===
+=== koshconf set kosh.interpreter.resolve_koshkit_applets_as_commands on leaves unknown names unresolved ===
 rc=1
-=== koshconf set koshkit.run_utilities_as_plain_commands on preserves builtin precedence ===
+=== koshconf set kosh.interpreter.resolve_koshkit_applets_as_commands on preserves builtin precedence ===
 builtin
-=== koshconf set koshkit.run_utilities_as_plain_commands on preserves alias precedence ===
+=== koshconf set kosh.interpreter.resolve_koshkit_applets_as_commands on preserves alias precedence ===
 alias
-=== koshconf set koshkit.run_utilities_as_plain_commands on preserves function precedence ===
+=== koshconf set kosh.interpreter.resolve_koshkit_applets_as_commands on preserves function precedence ===
 function
 === --enable-koshkit turns bare names on ===
 1
@@ -34,7 +34,7 @@ function
 3
 === --enable-koshkit prefers a PATH binary ===
 PATH seq
-=== koshconf set koshkit.run_utilities_as_plain_commands on prefers a PATH binary ===
+=== koshconf set kosh.interpreter.resolve_koshkit_applets_as_commands on prefers a PATH binary ===
 PATH seq
 === --enable-koshkit works in the sh mood ===
 1

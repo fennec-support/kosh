@@ -5,7 +5,7 @@ unset KOSH_FLAGS KOSHCONF KOSH_DEBUG_SYSTEM_KOSHCONF
 # owner and mode the check reads.
 work=$(mktemp -d)
 trap '[ -n "$work" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$work"' EXIT
-printf 'editor.auto_close_brackets_and_quotes=on\n' >"$work/kosh.conf"
+printf 'kosh.editor.auto_close_brackets_and_quotes=on\n' >"$work/kosh.conf"
 
 if ! unshare -rm true 2>/dev/null; then
   echo "user namespaces are unavailable"
@@ -25,7 +25,7 @@ do_case() {
     if [ "$4" = nobody ]; then
       mount --bind /usr/bin/env /etc/kosh.conf
     fi
-    "$5" -c "koshconf get editor.auto_close_brackets_and_quotes"
+    "$5" -c "koshconf get kosh.editor.auto_close_brackets_and_quotes"
   ' sh "$work" "$file_mode" "$directory_mode" "$owner" "$BIN" 2>&1
 }
 

@@ -88,19 +88,19 @@ else
 fi
 '
 "$BIN" -M bash -c '
-koshconf set diagnostics.analyze_before_running off
+koshconf set kosh.optimizer.analyze_before_running off
 function apply_definition_state {
     set -M bash
     set +W
-    koshconf set diagnostics.analyze_before_running off
+    koshconf set kosh.optimizer.analyze_before_running off
 }
-koshconf set diagnostics.analyze_before_running on
+koshconf set kosh.optimizer.analyze_before_running on
 set -W
 set -M kosh
 apply_definition_state
 case $- in *W*) warning_level_clear=no;; *) warning_level_clear=yes;; esac
 if [[ "$(set -M)" = bash ]] &&
-    [[ "$warning_level_clear" = yes ]] && [ "$(koshconf get diagnostics.analyze_before_running)" = off ]; then
+    [[ "$warning_level_clear" = yes ]] && [ "$(koshconf get kosh.optimizer.analyze_before_running)" = off ]; then
     echo function-runtime-state-persisted
 else
     echo function-runtime-state-lost
@@ -127,20 +127,20 @@ else
 fi
 '
 "$BIN" -M bash -c '
-function enable_no_diagnostics { koshconf set diagnostics.analyze_before_running off; }
-koshconf set diagnostics.show_annoying_tier off
+function enable_no_diagnostics { koshconf set kosh.optimizer.analyze_before_running off; }
+koshconf set kosh.optimizer.show_annoying_tier off
 enable_no_diagnostics
-if [ "$(koshconf get diagnostics.show_annoying_tier)" = off ] && [ "$(koshconf get diagnostics.analyze_before_running)" = off ]; then
+if [ "$(koshconf get kosh.optimizer.show_annoying_tier)" = off ] && [ "$(koshconf get kosh.optimizer.analyze_before_running)" = off ]; then
     echo diagnostic-options-independent
 else
     echo diagnostic-options-crossed
 fi
 '
 "$BIN" -M bash -c '
-function disable_annoying_diagnostics { koshconf set diagnostics.show_annoying_tier off; }
-koshconf set diagnostics.show_annoying_tier on
+function disable_annoying_diagnostics { koshconf set kosh.optimizer.show_annoying_tier off; }
+koshconf set kosh.optimizer.show_annoying_tier on
 disable_annoying_diagnostics
-if [ "$(koshconf get diagnostics.show_annoying_tier)" = off ]; then
+if [ "$(koshconf get kosh.optimizer.show_annoying_tier)" = off ]; then
     echo annoying-option-persisted
 else
     echo annoying-option-lost
@@ -150,24 +150,24 @@ fi
 function isolate_revision_state {
     ignored=$(set -M sh
         set -W
-        koshconf set diagnostics.analyze_before_running off)
+        koshconf set kosh.optimizer.analyze_before_running off)
 }
 set -M kosh
 set +W
-koshconf set diagnostics.analyze_before_running on
+koshconf set kosh.optimizer.analyze_before_running on
 isolate_revision_state
 case $- in *W*) warning_level_clear=no;; *) warning_level_clear=yes;; esac
 if [[ "$(set -M)" = kosh ]] &&
-    [[ "$warning_level_clear" = yes ]] && [ "$(koshconf get diagnostics.analyze_before_running)" = on ]; then
+    [[ "$warning_level_clear" = yes ]] && [ "$(koshconf get kosh.optimizer.analyze_before_running)" = on ]; then
     echo substitution-revisions-isolated
 else
     echo substitution-revisions-leaked
 fi
 '
 "$BIN" -M bash -c '
-koshconf set diagnostics.show_annoying_tier off
-ignored=$(koshconf set diagnostics.show_annoying_tier on)
-if [ "$(koshconf get diagnostics.show_annoying_tier)" = off ]; then
+koshconf set kosh.optimizer.show_annoying_tier off
+ignored=$(koshconf set kosh.optimizer.show_annoying_tier on)
+if [ "$(koshconf get kosh.optimizer.show_annoying_tier)" = off ]; then
     echo annoying-substitution-isolated
 else
     echo annoying-substitution-leaked

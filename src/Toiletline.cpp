@@ -248,7 +248,7 @@ fn selector_failure_note_with_variable_values(
   note.append(SELECTOR_COMMAND_VARIABLE);
   note.append(" to a program that filters the candidates, or choose another "
               "presentation with `koshconf set "
-              "editor.completion.menu_style`");
+              "kosh.completion.menu_style`");
 
   return note;
 }
