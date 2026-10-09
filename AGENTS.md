@@ -289,7 +289,13 @@ changes update this file.
   word through a second gather, so that TAB runs the callback once for each
   word. The menu holds back the preview of its first row while the token is
   empty, closes quietly when the next word has no candidates, and does not
-  open when the option adds no space.
+  open when the option adds no space. A menu that gathered more than
+  `ITL_MENU_DEBOUNCE_THRESHOLD` rows does not call the callback on a key that
+  leaves its list, such as a blank, a slash, or an erase below the token. It
+  updates the line, shows the loading row, and gathers once through
+  `itl_complete_gather` after one idle delay without a key. Every key moves
+  that moment, and TAB asks at once. A reload of an open menu and the gather
+  of the next word draw the loading frame as a first TAB does.
 - Command completion draws on keywords, builtins, bundled utilities, functions,
   aliases, and PATH. `KEYWORD_ENTRIES` is the sole keyword catalog. A `type`
   operand uses the same catalog. Only the listing mode accepts an empty
@@ -348,17 +354,22 @@ changes update this file.
   man1 directory per repeat. Every load, miss, and timeout lands in the same
   caches explicit flag completion uses, and a submitted line kills a running
   load. An editor Tab runs its gather under `ScopedDocumentationDeferral`. A
-  gather that needs an uncached load starts or keeps `IDLE_LOAD` and throws
-  `documentation_pending`, which `completion_session::complete` turns into
+  gather that needs an uncached load keeps an `IDLE_LOAD` of its own kind and
+  key, replaces any other, and throws `documentation_pending`, so a Tab never
+  queues behind a hint load. `completion_session::complete` turns that into
   `TL_COMPLETE_PENDING`. The editor then polls the idle hook, which advances
-  the same child, and gathers again when it reports a finished load. It draws
+  the same child without starting a hint load, and gathers again when it
+  reports a finished load or no load left. Under deferral the subcommand index
+  advances one man1 directory per gather and throws until it is built, and a
+  `manpath` fork that was killed twice settles as missing. It draws
   the loading frame only after the idle delay, and a key or Escape ends the
   wait while the load goes on. The language server and
   `--debug-complete-at` do not defer, and adopt the running child within
   their own fork budget. Every other gather runs in the shell as before.
   Before a `complete -F` function or `-C` command runs in that scope,
   `notice_slow_gather` calls the editor's `tl_show_completion_loading`, which
-  draws the loading frame on the first gather of a Tab only. The hook also
+  draws the loading frame on the gathers of a Tab, including the reload of an
+  open menu and the gather of the next word. The hook also
   keeps `describe_analysis_finding` for the paused line, which analyzes with
   unresolved commands silenced and no followed sources, so it opens no file.
   The hook runs whatever the hint rows show and indexes each CDPATH

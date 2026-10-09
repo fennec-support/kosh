@@ -1126,8 +1126,8 @@ fn completion_session::idle(const char *buffer, size_t cursor) -> int
     }
     if (!should_show_hints && !has_pending_gather) return outcome;
 
-    let const progress =
-        koshka::completion::step_idle_documentation(line, cursor, *context);
+    let const progress = koshka::completion::step_idle_documentation(
+        line, cursor, *context, !has_pending_gather);
     if (progress.did_finish_load) outcome |= TL_IDLE_REFRESH;
     if (progress.is_loading) outcome |= TL_IDLE_AGAIN;
     if (!progress.is_loading) has_pending_gather = false;

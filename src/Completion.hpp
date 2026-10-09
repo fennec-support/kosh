@@ -279,8 +279,8 @@ struct idle_documentation_progress
   bool is_loading{false};
 };
 
-fn step_idle_documentation(StringView line, usize cursor,
-                           EvalContext &context) throws
+fn step_idle_documentation(StringView line, usize cursor, EvalContext &context,
+                           bool should_start_load) throws
     -> idle_documentation_progress;
 
 fn abandon_idle_documentation() throws -> void;

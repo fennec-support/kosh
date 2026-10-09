@@ -249,6 +249,8 @@ static fn manpath_command_output(EvalContext &context) throws -> StringView
   }
 
   settle_manpath_output(capture_completion_program_output(context, *argv));
+  if (!MANPAGE_CACHE.was_manpath_settled)
+    settle_manpath_output(capture_completion_program_output(context, *argv));
   return MANPAGE_CACHE.manpath_output.view();
 }
 
@@ -620,7 +622,14 @@ fn internal::complete_from_man_subcommands(StringView line, StringView token,
 
   if (!MANPAGE_CACHE.is_subcommand_index_built) {
     if (!for_listing) return None;
-    MANPAGE_CACHE.build_subcommand_index(context);
+    if (!IS_DEFERRING_DOCUMENTATION) {
+      MANPAGE_CACHE.build_subcommand_index(context);
+    } else {
+      MANPAGE_CACHE.scan_next_subcommand_directory(context);
+      if (MANPAGE_CACHE.is_subcommand_scan_running) {
+        throw documentation_pending{};
+      }
+    }
   }
 
   let const resolved_name =
@@ -1980,11 +1989,15 @@ static fn defer_idle_load(idle_load_kind kind, StringView key,
                           StringView command, StringView hint_key,
                           const Maybe<ArrayList<String>> &argv) throws -> void
 {
-  let const is_load_running =
-      IDLE_LOAD.has_value() ||
-      (argv.has_value() &&
-       start_idle_load(kind, key, command, hint_key, *argv));
-  if (is_load_running) throw documentation_pending{};
+  if (IDLE_LOAD.has_value() && IDLE_LOAD->kind == kind &&
+      IDLE_LOAD->key.view() == key)
+  {
+    throw documentation_pending{};
+  }
+
+  IDLE_LOAD = None;
+  if (argv.has_value() && start_idle_load(kind, key, command, hint_key, *argv))
+    throw documentation_pending{};
 }
 
 ScopedDocumentationDeferral::ScopedDocumentationDeferral(
@@ -2135,13 +2148,14 @@ static fn start_next_idle_load(StringView line, usize cursor,
   return false;
 }
 
-fn step_idle_documentation(StringView line, usize cursor,
-                           EvalContext &context) throws
+fn step_idle_documentation(StringView line, usize cursor, EvalContext &context,
+                           bool should_start_load) throws
     -> idle_documentation_progress
 {
   let progress = idle_documentation_progress{};
   if (!IDLE_LOAD.has_value()) {
-    progress.is_loading = start_next_idle_load(line, cursor, context);
+    if (should_start_load)
+      progress.is_loading = start_next_idle_load(line, cursor, context);
     return progress;
   }
 
@@ -2158,7 +2172,8 @@ fn step_idle_documentation(StringView line, usize cursor,
   IDLE_LOAD = None;
 
   progress.did_finish_load = true;
-  progress.is_loading = start_next_idle_load(line, cursor, context);
+  if (should_start_load)
+    progress.is_loading = start_next_idle_load(line, cursor, context);
   return progress;
 }
 
