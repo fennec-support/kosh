@@ -455,6 +455,10 @@ changes update this file.
 - An array that carries the export attribute joins the exported set without a
   child environment entry, so `declare -p` and `${a@a}` show `x` and no child
   receives the array.
+- The command number behind the `\#` prompt escape lives in `ExecutionStore`.
+  `evaluate_script` advances it once for each streamed top-level unit, which is
+  one complete newline-terminated list, unless the shell runs a `-c` string.
+  PROMPT_COMMAND, traps, eval, and sourced files never reach that loop.
 - `Allocator` is one tagged word for pooled heap, bump arena, or fake storage.
   Project code allocates through this API. Only heap storage is freed. Ownership
   queries identify a specific arena. Raw storage is guarded until throwing

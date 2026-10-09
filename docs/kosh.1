@@ -5172,7 +5172,24 @@ enclosing subshell. The default PS1 shows the git branch, ahead and behind
 counts, user, host, and working directory, and it ends with a bullet. The
 backslash escapes \\u,
 \\h, \\H, \\w, \\W, \\P, \\g, \\$, \\?, \\j, \\L, \\., \\t, \\T, \\@, \\A,
-\\d, \\s, \\v, \\V, \\!, \\#, \\n, \\r, \\e, \\a, \\[, and \\] are expanded.
+\\d, \\s, \\v, \\V, \\!, \\#, \\l, \\n, \\r, \\e, \\a, \\[, and \\] are expanded.
+The \\s escape inserts the last component of the path the shell was started
+with, without a leading login dash or an .exe suffix, so it is the shell and
+never the script in $0. The \\v escape inserts the major and minor version and
+\\V adds the patch. In a Bash identity they come from BASH_VERSINFO, as in Bash,
+and otherwise from the Koshka version, which gives 0.3 and 0.3.1/dev. The \\!
+escape inserts the history number the next command receives, one more than the
+newest event of the history, and 1 in a shell that keeps no history, such as a
+script. The \\# escape inserts the command number. It starts at 1, and each
+command line that the shell takes from a terminal, a script file, or standard
+input adds one before it runs, where a line is a complete list ended by a
+newline, so a; b counts once. An empty line, PROMPT_COMMAND, a trap, eval, a
+sourced file, and a command in a subshell do not add one, and a string given
+to
+.B \-c
+keeps 1. The \\l escape inserts the last component of the terminal device of
+standard input, such as 3 for /dev/pts/3 or tty1, and tty when standard input
+is not a terminal.
 The \\D{format} escape passes format to strftime and inserts the result, as
 Bash does. An empty format gives the time in the locale, and a format with no
 closing brace extends to the end of the prompt. A \\D that no brace follows

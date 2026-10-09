@@ -32,8 +32,8 @@ load_values() {
       set_positional "o'ne" '"two"'
       ;;
     escapes)
-      s='a\fb\x41\101\e\\' arr=('\n' '\a\b' 'é') map=(['\f']='\x42')
-      set_positional '\f' '\\'
+      s='a\vb\x41\101\e\\' arr=('\n' '\a\b' 'é') map=(['\v']='\x42')
+      set_positional '\v' '\\'
       ;;
     newline)
       s=$'l1\nl2' arr=($'\n' 'x') map=([$'k\n']=$'v\n')
@@ -44,7 +44,7 @@ load_values() {
       set_positional $'\033' $'\x7f'
       ;;
     prompt)
-      s='\\ \[x\] \e \a \n \041' arr=('\\' 'x\]y') map=([p]='\\')
+      s='\\ \[x\] \e \a \n \041 \v \V \! \# \l' arr=('\\' 'x\]y') map=([p]='\\')
       set_positional '\\'
       ;;
     sparse)

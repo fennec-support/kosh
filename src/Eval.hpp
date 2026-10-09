@@ -917,6 +917,11 @@ public:
   {
     m_execution_string = steal(text);
   }
+  pure fn get_command_number() const wontthrow -> usize
+  {
+    return m_command_number;
+  }
+  fn advance_command_number() wontthrow -> void { m_command_number++; }
   fn set_current_command(String command) wontthrow -> void
   {
     m_current_command = steal(command);
@@ -1080,6 +1085,7 @@ private:
   String m_last_argument{heap_allocator()};
   Maybe<String> m_execution_string{None};
   String m_current_command{heap_allocator()};
+  usize m_command_number{1};
   String m_completion_command_name{heap_allocator()};
   const Expression *m_line_discard_root{nullptr};
   const Expression *m_top_level_line_discard_root{nullptr};

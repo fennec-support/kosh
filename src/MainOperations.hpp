@@ -699,6 +699,8 @@ static fn evaluate_script(const script_run_input &input,
           was_terminal_exec_allowed;
     };
 
+    let const is_command_counted =
+        !context.execution_store().has_execution_string();
     loop
     {
       let const unit_mark = input.arena.mark();
@@ -707,6 +709,8 @@ static fn evaluate_script(const script_run_input &input,
         input.arena.release(unit_mark);
         break;
       }
+      if (is_command_counted)
+        context.execution_store().advance_command_number();
       defer
       {
         context.clear_retained_sources();

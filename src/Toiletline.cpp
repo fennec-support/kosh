@@ -2853,6 +2853,57 @@ static fn append_prompt_data(String &out, StringView data,
   append_prompt_value(out, shown.view(), should_quote);
 }
 
+static fn prompt_shell_name(EvalContext &context) throws -> String
+{
+  let name = String{
+      Path{context.execution_store().get_shell_executable_path()}.filename()};
+  let const info = koshka::os::normalize_program_name(name);
+
+  return String{name.view().substring_of_length(0, info.stem_length)};
+}
+
+static fn prompt_terminal_name() throws -> String
+{
+  let const terminal = koshka::os::terminal_name(KOSH_STDIN);
+  if (!terminal.has_value()) return String{"tty"};
+
+  return String{Path{terminal->view()}.filename()};
+}
+
+static fn prompt_version(EvalContext &context, bool is_full) throws -> String
+{
+  let const versinfo =
+      context.variable_store().indexed_arrays().find("BASH_VERSINFO");
+  if (versinfo.has_value() && versinfo->count() >= 3 &&
+      context.get_variable_value("BASH_VERSION").has_value())
+  {
+    let version = String{(*versinfo.value())[0].view()};
+    version += '.';
+    version.append((*versinfo.value())[1].view());
+    if (is_full) {
+      version += '.';
+      version.append((*versinfo.value())[2].view());
+    }
+
+    return version;
+  }
+
+  if (is_full) return String{KOSH_VERSION_STRING};
+
+  return String{
+      KOSH_STRINGIFY(KOSH_VER_MAJOR) "." KOSH_STRINGIFY(KOSH_VER_MINOR)};
+}
+
+static fn prompt_history_number(EvalContext &context) throws -> usize
+{
+  if (!context.execution_store().shell_is_interactive()) return 1;
+
+  let const newest = get_newest_history_event_number();
+  if (newest.is_error() || !newest.value().has_value()) return 1;
+
+  return *newest.value() + 1;
+}
+
 static fn expand_prompt_escapes(StringView prompt, StringView user,
                                 StringView working_directory,
                                 EvalContext &context, bool should_quote) throws
@@ -2915,17 +2966,10 @@ static fn expand_prompt_escapes(StringView prompt, StringView user,
     case '@': do_append_value(prompt_strftime("%I:%M %p").view()); break;
     case 'A': do_append_value(prompt_strftime("%H:%M").view()); break;
     case 'd': do_append_value(prompt_strftime("%a %b %d").view()); break;
-    case 's': {
-      if (Maybe<String> argv0 = context.get_variable_value("0");
-          argv0.has_value())
-        do_append_data(Path{argv0->view()}.filename());
-    } break;
-    case 'v':
-    case 'V':
-      if (Maybe<String> version = context.get_variable_value("BASH_VERSION");
-          version.has_value())
-        do_append_data(version->view());
-      break;
+    case 's': do_append_data(prompt_shell_name(context).view()); break;
+    case 'v': do_append_data(prompt_version(context, false).view()); break;
+    case 'V': do_append_data(prompt_version(context, true).view()); break;
+    case 'l': do_append_data(prompt_terminal_name().view()); break;
     case '?': {
       const i32 status = context.execution_store().last_exit_status();
       let const should_use_color = colors::stdout_wants_color();
@@ -2968,8 +3012,14 @@ static fn expand_prompt_escapes(StringView prompt, StringView user,
       do_append_value(prompt_strftime(format.c_str()).view());
       i = format_start + format_length;
     } break;
-    case '!': break;
-    case '#': break;
+    case '!':
+      out += String::from(prompt_history_number(context),
+                          koshka::heap_allocator());
+      break;
+    case '#':
+      out += String::from(context.execution_store().get_command_number(),
+                          koshka::heap_allocator());
+      break;
     case '\\': out += '\\'; break;
     default:
       out += '\\';
