@@ -398,6 +398,34 @@ static fn associative_composite_key(StringView name, StringView key,
   return composite;
 }
 
+struct associative_entry
+{
+  u64 sequence;
+  String key;
+  String value;
+};
+
+static fn collect_associative_entries(const CompositeKeyArrays &arrays,
+                                      StringView prefix,
+                                      Allocator allocator) throws
+    -> ArrayList<associative_entry>
+{
+  let entries = ArrayList<associative_entry>{allocator};
+  arrays.values().for_each([&](StringView composite, const String &value) {
+    if (!composite.starts_with(prefix)) return;
+    let entry = associative_entry{arrays.sequence_of(composite),
+                                  String{allocator}, String{allocator}};
+    entry.key.append(composite.substring(prefix.length));
+    entry.value.append(value.view());
+    entries.push(steal(entry));
+  });
+  entries.sort(
+      [](const associative_entry &left, const associative_entry &right) {
+        return left.sequence < right.sequence;
+      });
+  return entries;
+}
+
 fn EvalContext::assign_array_element(StringView name, StringView subscript,
                                      StringView value,
                                      assignment_update_mode update_mode) throws
@@ -562,7 +590,7 @@ fn EvalContext::set_associative_element(StringView name, StringView key,
     variable_store().associative_arrays().declare(name);
     variable_store().shell_variables().erase(name);
   }
-  variable_store().associative_arrays().values().set(
+  variable_store().associative_arrays().put_ordered(
       associative_composite_key(name, key, scratch_allocator()).view(), value);
 }
 
@@ -594,12 +622,10 @@ fn EvalContext::associative_keys(StringView name) const throws
 
   const String prefix =
       associative_composite_key(name, "", scratch_allocator());
-  variable_store().associative_arrays().values().for_each(
-      [&](StringView composite, const String &value) {
-        unused(value);
-        if (composite.starts_with(prefix.view()))
-          keys.push_managed(composite.substring(prefix.count()));
-      });
+  for (let const &entry :
+       collect_associative_entries(variable_store().associative_arrays(),
+                                   prefix.view(), scratch_allocator()))
+    keys.push_managed(entry.key.view());
   return keys;
 }
 
@@ -618,11 +644,10 @@ fn EvalContext::associative_values(StringView name) const throws
 
   const String prefix =
       associative_composite_key(name, "", scratch_allocator());
-  variable_store().associative_arrays().values().for_each(
-      [&](StringView composite, const String &value) {
-        if (composite.starts_with(prefix.view()))
-          values.push_managed(value.view());
-      });
+  for (let const &entry :
+       collect_associative_entries(variable_store().associative_arrays(),
+                                   prefix.view(), scratch_allocator()))
+    values.push_managed(entry.value.view());
   return values;
 }
 
@@ -639,7 +664,7 @@ fn EvalContext::clear_associative_array(StringView name) throws -> void
           to_erase.push_managed(composite);
       });
   for (let const &composite : to_erase)
-    variable_store().associative_arrays().values().erase(composite.view());
+    variable_store().associative_arrays().erase_ordered(composite.view());
   variable_store().associative_arrays().forget(name);
 }
 
@@ -669,7 +694,7 @@ fn EvalContext::unset_array_element(StringView name,
   if (is_associative_array(name)) {
     let const key = expand_modifier_word(subscript);
     if (is_bash_aliases_special(name)) return;
-    variable_store().associative_arrays().values().erase(
+    variable_store().associative_arrays().erase_ordered(
         associative_composite_key(name, key.view(), scratch_allocator())
             .view());
     return;

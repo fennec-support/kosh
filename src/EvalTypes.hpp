@@ -51,9 +51,28 @@ public:
     return m_values;
   }
 
+  fn put_ordered(StringView composite, StringView value) throws -> void
+  {
+    if (!m_values.find(composite).has_value())
+      m_sequences.set(composite, m_next_sequence++);
+    m_values.set(composite, value);
+  }
+  fn erase_ordered(StringView composite) throws -> void
+  {
+    m_values.erase(composite);
+    m_sequences.erase(composite);
+  }
+  pure fn sequence_of(StringView composite) const wontthrow -> u64
+  {
+    let const found = m_sequences.find(composite);
+    return found.has_value() ? *found.value() : u64{0};
+  }
+
 private:
   HashSet m_names{heap_allocator()};
   StringMap<String> m_values{heap_allocator()};
+  StringMap<u64> m_sequences{heap_allocator()};
+  u64 m_next_sequence{1};
 };
 
 enum class argument_lifetime : u8

@@ -2,31 +2,11 @@
 # The cases of nameref_contexts_matrix.bash that Kosh does not yet
 # expand as bash does. The matrix skips these keys, and this fixture
 # runs only them. Remove a key once its case agrees with bash.
-# One group remains. Every scalar write through a reference to an
-# associative array: both shells set key 0, and the cases differ only in
-# the order declare -p lists the two keys, which follows bash's hash
-# table in one shell and Kosh's own table in the other.
+# One group remains. A step or a let through a reference to an
+# associative array that holds no key 0: both shells write key 0 and
+# print the same listing, but Kosh also warns that the unset element
+# expands to empty, and bash stays silent.
 pending_cases=(
-  'assoc|ref=new||0|write'
-  'assoc|ref=new||1|write'
-  'assoc|ref=new||2|write'
-  'assoc|ref=new||3|write'
-  'assoc|ref+=more||0|write'
-  'assoc|ref+=more||1|write'
-  'assoc|ref+=more||2|write'
-  'assoc|ref+=more||3|write'
-  'assoc|ref[1]=elem||0|write'
-  'assoc|ref[1]=elem||1|write'
-  'assoc|ref[1]=elem||2|write'
-  'assoc|ref[1]=elem||3|write'
-  'assoc|ref[2]=k||0|write'
-  'assoc|ref[2]=k||1|write'
-  'assoc|ref[2]=k||2|write'
-  'assoc|ref[2]=k||3|write'
-  'assoc|((ref = 4 * 2))||0|write'
-  'assoc|((ref = 4 * 2))||1|write'
-  'assoc|((ref = 4 * 2))||2|write'
-  'assoc|((ref = 4 * 2))||3|write'
   'assoc|((ref++))||0|write'
   'assoc|((ref++))||1|write'
   'assoc|((ref++))||2|write'
@@ -35,30 +15,6 @@ pending_cases=(
   'assoc|let ref+=3||1|write'
   'assoc|let ref+=3||2|write'
   'assoc|let ref+=3||3|write'
-  'assoc|read -r ref <<< rd||0|write'
-  'assoc|read -r ref <<< rd||1|write'
-  'assoc|read -r ref <<< rd||2|write'
-  'assoc|read -r ref <<< rd||3|write'
-  'assoc|printf -v ref %s pv||0|write'
-  'assoc|printf -v ref %s pv||1|write'
-  'assoc|printf -v ref %s pv||2|write'
-  'assoc|printf -v ref %s pv||3|write'
-  'assoc|: ${ref:=assigned}||0|write'
-  'assoc|: ${ref:=assigned}||1|write'
-  'assoc|: ${ref:=assigned}||2|write'
-  'assoc|: ${ref:=assigned}||3|write'
-  'assoc|OPTIND=1; getopts ab ref -b||0|write'
-  'assoc|OPTIND=1; getopts ab ref -b||1|write'
-  'assoc|OPTIND=1; getopts ab ref -b||2|write'
-  'assoc|OPTIND=1; getopts ab ref -b||3|write'
-  'assoc|f() { local -n lr=ref; lr=via_local; }; f||0|write'
-  'assoc|f() { local -n lr=ref; lr=via_local; }; f||1|write'
-  'assoc|f() { local -n lr=ref; lr=via_local; }; f||2|write'
-  'assoc|f() { local -n lr=ref; lr=via_local; }; f||3|write'
-  'assoc|f() { local -n lr=target; lr=via_name; }; f||0|write'
-  'assoc|f() { local -n lr=target; lr=via_name; }; f||1|write'
-  'assoc|f() { local -n lr=target; lr=via_name; }; f||2|write'
-  'assoc|f() { local -n lr=target; lr=via_name; }; f||3|write'
 )
 [ -n "${list_only-}" ] && return 0
 is_pending_run=1

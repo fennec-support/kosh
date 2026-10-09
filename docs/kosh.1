@@ -1406,6 +1406,11 @@ removes one element. A word in the list m=(k1 v1 k2 v2) is not split into
 fields and not matched against files, and a quoted "${a[@]}" joins into one
 word. A quoted ] inside a key, as in m['k]x']=1, does not close the subscript.
 .PP
+The iteration order of the keys of an associative array is unspecified and may
+differ from Bash. The shell lists them in the order the keys were first
+assigned, and an element removed and assigned again moves to the end. A script
+that depends on an order should sort the keys.
+.PP
 The
 .B export
 and

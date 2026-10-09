@@ -78,9 +78,28 @@ run_case() {
   fi
 }
 
+item_pattern='^\[([^]]*)\]=("[^"]*"|\$'"'"'[^'"'"']*'"'"') (.*)$'
+
 show_target() {
-  local declaration
+  local declaration head rest line sorted joined
+  local -a items=()
   declaration=$(declare -p target 2>/dev/null) || declaration=unset
+  if [[ $declaration == 'declare -A'*'=('* ]]; then
+    head=${declaration%%=(*}
+    rest=${declaration#*=(}
+    while [[ $rest =~ $item_pattern ]]; do
+      items+=("[${BASH_REMATCH[1]}]=${BASH_REMATCH[2]}")
+      rest=${BASH_REMATCH[3]}
+    done
+    if [[ $rest == ')' && ${#items[@]} -gt 0 ]]; then
+      sorted=$(printf '%s\n' "${items[@]}" | LC_ALL=C sort)
+      joined=
+      while read -r line; do
+        joined+="$line "
+      done <<< "$sorted"
+      declaration="$head=($joined)"
+    fi
+  fi
   printf '[%s]\n' "$declaration"
 }
 

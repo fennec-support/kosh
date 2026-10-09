@@ -1,0 +1,9 @@
+declare -A first=([key]="1" [b]="2" [a]="3" [0]="4" [z]="5" )
+declare -A first=([key]="1" [b]="2" [a]="3" [0]="4" [z]="5" )
+declare -A second=([key]="1" [b]="2" [a]="3" [0]="4" [z]="5" )
+key b a 0 z
+1 2 3 4 5
+declare -A first=([key]="1" [b]="2" [a]="3" [0]="4" [z]="5" )
+key b a 0 z new
+key a 0 z new b
+1 changed 4 5 tail again

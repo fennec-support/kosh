@@ -1,0 +1,22 @@
+#!/bin/env kosh
+# The keys of an associative array list in insertion order, whatever other
+# associative arrays hold.
+declare -A first=([key]=1 [b]=2 [a]=3 [0]=4 [z]=5)
+declare -p first
+declare -A busy
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+  busy[$i]=$i
+done
+declare -A second=([key]=1 [b]=2 [a]=3 [0]=4 [z]=5)
+declare -p first second
+echo "${!second[@]}"
+echo "${second[@]}"
+unset busy
+declare -p first
+second[a]=changed
+second[new]=tail
+echo "${!second[@]}"
+unset 'second[b]'
+second[b]=again
+echo "${!second[@]}"
+echo "${second[@]}"

@@ -449,6 +449,9 @@ changes update this file.
 - Small types stay in light headers. Shared behavior stays on the value type.
   `ArrayList::find` returns `Maybe<usize>`. Membership uses
   `find().has_value()`.
+- `CompositeKeyArrays` stamps each associative element with an insertion
+  sequence, and key and value listings sort by it, so the order of an
+  associative array never depends on the hash table or on other arrays.
 - An array that carries the export attribute joins the exported set without a
   child environment entry, so `declare -p` and `${a@a}` show `x` and no child
   receives the array.
