@@ -229,6 +229,10 @@ static fn bc_translate_expression(StringView expression, u32 input_base,
         if (!cxt.variable_store()
                  .shell_variables()
                  .find(variable_name.view())
+                 .has_value() &&
+            !cxt.variable_store()
+                 .indexed_arrays()
+                 .find(variable_name.view())
                  .has_value())
           cxt.set_shell_variable(variable_name.view(), "0");
       }

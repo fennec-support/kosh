@@ -2373,6 +2373,12 @@ function, and a circular reference otherwise. A write through a
 reference applies the read-only, restricted, integer, and case rules of the
 target, and readonly or declare \-r on a reference marks the target. A target
 must be a name or a name with a subscript, which is evaluated on each use. A
+reference to an element accepts only a scalar write. An array literal, an
+append of one, an element assignment, read \-a, and mapfile through it fail,
+and the failing assignment abandons the line. An export of a value through it
+assigns the element and reports an error with status 0. A scalar assignment to
+an array or an associative array sets element 0 or key 0, and the export
+attribute that Bash prints as \-x for an array is not recorded. A
 read-only name, PATH, IFS, and a dynamic variable other than RANDOM and SECONDS
 cannot become a reference. As in Bash, RANDOM and SECONDS take the attribute,
 a value given with it seeds or sets them as an assignment does, and they keep

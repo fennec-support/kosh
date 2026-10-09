@@ -3394,6 +3394,9 @@ public:
                                                StringView value) throws -> bool;
   fn resolve_nameref_for_write(StringView name) throws -> String;
   fn resolve_nameref_base_for_write(StringView name) throws -> String;
+  fn resolve_nameref_whole_variable_for_write(StringView name,
+                                              bool should_discard_line) throws
+      -> String;
   fn guard_nameref_name(StringView name) const throws -> void;
   fn bind_nameref(StringView name, StringView target) throws -> void;
   fn bind_self_nameref(StringView name, bool is_local) throws -> void;

@@ -815,6 +815,21 @@ fn EvalContext::resolve_nameref_base_for_write(StringView name) throws -> String
   return target;
 }
 
+fn EvalContext::resolve_nameref_whole_variable_for_write(
+    StringView name, bool should_discard_line) throws -> String
+{
+  let target = resolve_nameref_for_write(name);
+  if (target.view().find_character('[').has_value()) {
+    let error = Error{"'" + target.view() +
+                      "' is an array element, not a variable for this write"};
+    if (should_discard_line)
+      mark_expansion_error(error, expansion_error_reach::Line);
+    throw steal(error);
+  }
+
+  return target;
+}
+
 fn EvalContext::guard_nameref_name(StringView name) const throws -> void
 {
   if (is_readonly(name))

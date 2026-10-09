@@ -212,7 +212,7 @@ fn EvalContext::assign_indexed_array_elements(
       if (unbind_circular_nameref(name)) {
         warn_circular_nameref(name);
       } else {
-        resolved_name = resolve_nameref_for_write(name);
+        resolved_name = resolve_nameref_whole_variable_for_write(name, true);
         name = resolved_name->view();
       }
     }
@@ -256,6 +256,8 @@ fn EvalContext::assign_indexed_array_elements(
     if (let const array = variable_store().indexed_arrays().find(name);
         array.has_value())
       running_index = array->count();
+    else if (variable_store().shell_variables().find(name).has_value())
+      running_index = 1;
     if (variable_store().sparse_arrays().has(name))
       for_each_sparse_index(variable_store().sparse_arrays().values(), name,
                             scratch_allocator(),
@@ -400,7 +402,7 @@ fn EvalContext::assign_array_element(StringView name, StringView subscript,
       if (unbind_circular_nameref(name)) {
         warn_circular_nameref(name);
       } else {
-        resolved_name = resolve_nameref_for_write(name);
+        resolved_name = resolve_nameref_whole_variable_for_write(name, true);
         name = resolved_name->view();
       }
     }
@@ -680,6 +682,19 @@ fn EvalContext::unset_array_element(StringView name,
                                     name, scratch_allocator()))
         variable_store().sparse_arrays().forget(name);
     }
+    return;
+  }
+
+  if (name.find_character('[').has_value()) return;
+
+  if (variable_store().shell_variables().find(name).has_value() &&
+      !is_dynamic_write_owner(name))
+  {
+    if (subscript == "@" || subscript == "*" ||
+        evaluate_array_index(*this, subscript) != 0)
+      throw Error{String{name} + ": not an array variable"};
+
+    unset_shell_variable(name);
   }
 }
 

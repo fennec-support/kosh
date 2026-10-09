@@ -191,6 +191,31 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                : cxt.evaluate_arithmetic_text(value.view());
     }
 
+    if (let const bracket = name.view().find_character('[');
+        bracket.has_value())
+    {
+      report_soft_builtin_error(
+          ec, cxt, get_operand_location(ec, operand_locations, i),
+          StringView{"'"} + name +
+              "' is an array element and stays unexported");
+      if (has_new_value) {
+        cxt.assign_array_element(name.view().substring_of_length(0, *bracket),
+                                 name.view().substring_of_length(
+                                     *bracket + 1, name.count() - *bracket - 2),
+                                 value.view(), assignment_update_mode::Replace);
+      }
+      continue;
+    }
+
+    if (has_new_value &&
+        (cxt.variable_store().indexed_arrays().find(name.view()).has_value() ||
+         cxt.is_associative_array(name.view())))
+    {
+      cxt.assign_array_element(name.view(), "0", value.view(),
+                               assignment_update_mode::Replace);
+      continue;
+    }
+
     if (has_new_value) cxt.write_dynamic_variable(name.view(), value.view());
 
     LOG(All, "export moving '%s' into the environment", name.c_str());

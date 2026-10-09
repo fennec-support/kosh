@@ -385,6 +385,14 @@ hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
   }
   if (is_bash_directory_stack_special(name)) return;
 
+  if ((variable_store().indexed_arrays().count() != 0 &&
+       variable_store().indexed_arrays().find(name).has_value()) ||
+      variable_store().associative_arrays().has(name))
+  {
+    assign_array_element(name, "0", value, assignment_update_mode::Replace);
+    return;
+  }
+
   if (is_implicitly_integer(name) ||
       (attribute_bits & static_cast<u8>(variable_attribute::Integer)) != 0)
     rarely
@@ -637,7 +645,7 @@ fn EvalContext::set_indexed_array(StringView name,
   let resolved_name = Maybe<String>{};
   if (variable_store().attributes().is_nameref(name)) rarely
     {
-      resolved_name = resolve_nameref_for_write(name);
+      resolved_name = resolve_nameref_whole_variable_for_write(name, false);
       name = resolved_name->view();
     }
   if (is_readonly(name))
@@ -651,6 +659,13 @@ fn EvalContext::set_indexed_array(StringView name,
   if (variable_store().attributes().has_case(name))
     rarely for (let &value : values) variable_store().attributes().apply_case(
         name, value);
+  if (variable_store().associative_arrays().has(name)) {
+    throw Error{"Unable to convert the associative array '" + name +
+                "' to an indexed array"};
+  }
+  if (is_integer_variable(name))
+    for (let &value : values)
+      value = evaluate_arithmetic_text(value.view());
   variable_store().shell_variables().erase(name);
   clear_sparse_array(name);
   variable_store().indexed_arrays().set(name, steal(values));
