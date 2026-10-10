@@ -368,6 +368,7 @@ public:
       m_shell_options |= option_mask(option);
     else
       m_shell_options &= ~option_mask(option);
+
     if (option == shell_option_id::DevNullCompatibility ||
         option == shell_option_id::SlashTmpCompatibility)
     {

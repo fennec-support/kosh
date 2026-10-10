@@ -1534,9 +1534,11 @@ fn complete(StringView line, usize cursor, EvalContext &context,
             steal(candidates).make_sorted(sort_order::ascending);
         do_drop_repeats(sorted_candidates);
         candidates = steal(sorted_candidates).into_array_list();
+
         if (is_spec_candidates) {
           let paths = ArrayList<String>{arena};
           usize kept_count = 0;
+
           for (usize i = 0; i < candidates.count(); i++) {
             let const candidate = candidates[i].view();
             let const marker_length =
@@ -1557,6 +1559,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
             kept_count++;
           }
           candidates.truncate(kept_count);
+
           for (let &path : paths)
             candidates.push(steal(path));
         }
