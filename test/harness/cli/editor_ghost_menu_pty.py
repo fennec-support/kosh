@@ -1081,7 +1081,7 @@ def run_checks(binary, directory, command_directory, report):
                       is_line("true"))
         clear_line(session)
 
-        session.send(b"zzqq" + CTRL_R)
+        session.send(b"@@@@" + CTRL_R)
         report.record("ctrl-r-says-no-match", session,
                       lambda screen: has_search_row(
                           screen, lambda row: row == HISTORY_NO_MATCH))
