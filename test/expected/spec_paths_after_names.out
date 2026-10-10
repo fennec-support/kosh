@@ -1,0 +1,10 @@
+== names before paths:
+ls
+lsblk
+zcat
+./assets/
+./docs/
+== nosort keeps the reply order:
+./docs/
+zcat
+ls

@@ -1534,6 +1534,23 @@ fn complete(StringView line, usize cursor, EvalContext &context,
             steal(candidates).make_sorted(sort_order::ascending);
         do_drop_repeats(sorted_candidates);
         candidates = steal(sorted_candidates).into_array_list();
+        if (is_spec_candidates) {
+          let paths = ArrayList<String>{arena};
+          usize kept_count = 0;
+          for (usize i = 0; i < candidates.count(); i++) {
+            if (os::has_directory_separator(candidates[i].view())) {
+              paths.push(steal(candidates[i]));
+              continue;
+            }
+
+            if (kept_count != i) candidates[kept_count] = steal(candidates[i]);
+
+            kept_count++;
+          }
+          candidates.truncate(kept_count);
+          for (let &path : paths)
+            candidates.push(steal(path));
+        }
       }
 
       if (extension_hint.has_value() && stage_token.is_empty()) {
