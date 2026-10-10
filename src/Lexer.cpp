@@ -1242,7 +1242,9 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
     if (ch == '`') {
       let const relative_open_backtick_pos = byte_count;
       byte_count++;
+      let const body_start = m_cursor_position + byte_count;
       let inner = String{heap_allocator()};
+      bool has_stripped_escape = false;
       loop
       {
         if (!has_character(byte_count)) rarely
@@ -1262,17 +1264,28 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
           let const escaped = chop_character(byte_count + 1);
           if (lexer::is_backtick_escape_stripped(escaped, is_in_double_quotes))
           {
+            if (!has_stripped_escape) {
+              inner.append(m_source.substring_of_length(
+                  body_start, m_cursor_position + byte_count - body_start));
+              has_stripped_escape = true;
+            }
             inner += escaped;
             byte_count += 2;
             continue;
           }
         }
-        inner += c;
+        if (has_stripped_escape) inner += c;
         byte_count++;
       }
+      let const body = has_stripped_escape
+                           ? inner.view()
+                           : m_source.substring_of_length(
+                                 body_start,
+                                 m_cursor_position + byte_count - 1 -
+                                     body_start);
       word.segments.push(WordSegment{
           WordSegment::Kind::CommandSubstitution,
-          SegmentText{bump_allocator(arena()), inner.view()},
+          SegmentText{bump_allocator(arena()), body},
           is_in_double_quotes
       });
       word.segments.back().set_source_span(
