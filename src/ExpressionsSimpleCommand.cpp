@@ -631,6 +631,10 @@ fn resolve_duplication(const Redirection &redir, EvalContext &cxt) throws
     throw ErrorWithLocation{redir.target->source_location(),
                             "'" + field + "' is not a valid descriptor"};
   }
+  if (parsed_descriptor.value() > INT32_MAX) {
+    throw ErrorWithLocation{redir.target->source_location(),
+                            field + ": Bad file descriptor"};
+  }
   return resolved_duplication{static_cast<i32>(parsed_descriptor.value()),
                               koshka::None};
 }

@@ -364,6 +364,15 @@ public:
 
   fn register_heredoc(StringView delimiter, heredoc_tab_policy tab_policy,
                       bool should_expand) throws -> const heredoc_contents *;
+  pure fn get_pending_heredoc_count() const wontthrow -> usize
+  {
+    return m_pending_heredocs.count();
+  }
+  fn drop_pending_heredocs_after(usize count) wontthrow -> void
+  {
+    while (m_pending_heredocs.count() > count)
+      m_pending_heredocs.pop_back();
+  }
 
 protected:
   pure alwaysinline fn here(usize position, usize length) const wontthrow

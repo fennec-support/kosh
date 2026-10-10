@@ -1218,6 +1218,9 @@ fn EvalContext::ModifierWordExpander::scan_arithmetic_body(
 fn EvalContext::ModifierWordExpander::expand_arithmetic(
     bool is_bracket_form) throws -> void
 {
+  m_context.enter_parameter_expansion();
+  defer { m_context.leave_parameter_expansion(); };
+
   usize j = 0;
   let const inner = scan_arithmetic_body(is_bracket_form, j);
   let inner_location = SourceLocation{};

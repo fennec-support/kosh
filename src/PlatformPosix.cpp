@@ -814,6 +814,10 @@ static fn save_descriptor_at(i32 shell_fd, int floor_fd) wontthrow
     backup = fcntl(shell_fd, F_DUPFD_CLOEXEC, SHELL_BACKUP_FD_FLOOR);
   }
 
+  if (backup == -1 && errno != EBADF) {
+    backup = fcntl(shell_fd, F_DUPFD_CLOEXEC, STDERR_FILENO + 1);
+  }
+
   result.was_open = backup != -1;
   result.saved = backup;
   result.is_dup2_ok = backup != -1 || errno == EBADF;

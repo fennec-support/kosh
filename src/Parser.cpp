@@ -931,15 +931,30 @@ fn Parser::build_file_or_dup_redirection(
         return;
       }
 
-      if (literal.view().is_all_decimal_digits()) {
-        let const parsed_descriptor = literal.to<i64>();
+      let const is_move =
+          literal.count() > 1 && literal.view()[literal.count() - 1] == '-';
+      let const descriptor_text =
+          is_move ? literal.view().substring_of_length(0, literal.count() - 1)
+                  : literal.view();
+      if (descriptor_text.is_all_decimal_digits()) {
+        let const parsed_descriptor = descriptor_text.to<i64>();
         if (parsed_descriptor.is_error()) {
           throw ErrorWithLocation{from->source_location(),
                                   parsed_descriptor.error().message()};
         }
-        redir.dup_fd = static_cast<i32>(parsed_descriptor.value());
-        out.push(redir);
-        return;
+
+        if (parsed_descriptor.value() <= INT32_MAX) {
+          redir.dup_fd = static_cast<i32>(parsed_descriptor.value());
+          out.push(redir);
+          if (is_move) {
+            redir.fd = redir.dup_fd;
+            redir.dup_fd = expressions::Redirection::DUP_FD_CLOSE;
+            redir.fd_allocation_name_token = nullptr;
+            out.push(redir);
+          }
+
+          return;
+        }
       }
 
       redir.target = from;
@@ -1499,11 +1514,13 @@ hot fn Parser::parse_simple_command(const Token *leading_token) throws
         break;
       }
 
-      if (local_vars.count() == 0 &&
+      let const is_lone_assignment =
+          local_vars.count() == 0 && redirections.is_empty() &&
+          array_args.is_empty() &&
           (is_compound_list_separator(next->kind()) ||
            next->kind() == Token::Kind::EndOfFile ||
-           is_compound_terminator(next->kind())))
-      {
+           is_compound_terminator(next->kind()));
+      if (is_lone_assignment) {
         return m_lexer.arena().create<AssignCommand>(*source_location, a);
       } else {
         local_vars.push(PrefixAssignment{a});
@@ -1546,10 +1563,16 @@ fn Parser::finish_function_body(const SourceLocation &location,
   let const previous_arena_kind = m_lexer.arena_kind();
   Command *body = nullptr;
   {
+    let const pending_heredoc_count = m_lexer.get_pending_heredoc_count();
     m_lexer.set_arena(*body_storage.get_arena(),
                       ParseSession::AllocationKind::FunctionBody);
     defer { m_lexer.set_arena(previous_arena, previous_arena_kind); };
-    body = parse_simple_command();
+    try {
+      body = parse_simple_command();
+    } catch (...) {
+      m_lexer.drop_pending_heredocs_after(pending_heredoc_count);
+      throw;
+    }
   }
 
   if (body == nullptr) {

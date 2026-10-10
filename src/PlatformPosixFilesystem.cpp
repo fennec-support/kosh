@@ -576,7 +576,30 @@ static fn open_with_flags(StringView path, file_open_mode mode,
       continue;
     }
 
+    if (fd < 0 && errno == EEXIST && mode == file_open_mode::TruncateNoClobber)
+    {
+      struct stat existing_status{};
+      if (::stat(path_string.c_str(), &existing_status) == 0 &&
+          !S_ISREG(existing_status.st_mode))
+      {
+        flags = O_WRONLY;
+        continue;
+      }
+
+      errno = EEXIST;
+    }
+
     if (fd < 0) return koshka::None;
+
+    if (flags == O_WRONLY && mode == file_open_mode::TruncateNoClobber) {
+      struct stat opened_status{};
+      if (::fstat(fd, &opened_status) != 0 || S_ISREG(opened_status.st_mode)) {
+        ::close(fd);
+        errno = EEXIST;
+        return koshka::None;
+      }
+    }
+
     return fd;
   }
 }

@@ -34,3 +34,27 @@ status=$?
 
 echo "== shallow nesting still expands:"
 "$BIN" --mood bash -c 'echo "${x:-${y:-hi}}"'
+
+# Arithmetic expansion shares the parameter-expansion cap, so a deep $(( nest
+# is a located error too.
+deep_open=$(printf '$((%.0s' $(seq 1 600))
+deep_close=$(printf '))%.0s' $(seq 1 600))
+deep="${deep_open}1${deep_close}"
+
+echo "== deep arithmetic nesting is guarded, not crashing:"
+"$BIN" --mood bash -c "echo $deep" 2>&1 | grep -c "nested too deeply"
+
+echo "== exit status is a clean error, not a signal death:"
+"$BIN" --mood bash -c "echo $deep" >/dev/null 2>&1
+status=$?
+[ "$status" -lt 128 ] && echo ok || echo "crashed with signal $((status - 128))"
+
+echo "== shallow arithmetic nesting still evaluates:"
+"$BIN" --mood bash -c 'echo $((1 + $((2 * $((3))))))'
+
+# A function body that fails to parse drops the here-document it registered,
+# so the recovery collects no body into the freed body storage.
+echo "== a failed function body with a here-document reports a syntax error:"
+printf 'p(){ cat <<E; fi; }\nx\nE\n' > "$TEST_TEMP_DIRECTORY/deep-heredoc-body.sh"
+"$BIN" -n "$TEST_TEMP_DIRECTORY/deep-heredoc-body.sh" > /dev/null 2>&1
+echo "status=$?"

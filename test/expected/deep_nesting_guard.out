@@ -10,3 +10,11 @@ hi
 ok
 == shallow nesting still expands:
 hi
+== deep arithmetic nesting is guarded, not crashing:
+1
+== exit status is a clean error, not a signal death:
+ok
+== shallow arithmetic nesting still evaluates:
+7
+== a failed function body with a here-document reports a syntax error:
+status=2
