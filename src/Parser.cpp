@@ -1280,10 +1280,10 @@ hot fn Parser::parse_simple_command(const Token *leading_token) throws
 {
   Maybe<SourceLocation> source_location;
   let const arena_allocator = bump_allocator(m_lexer.arena());
-  ArrayList<const Token *> args_accumulator{heap_allocator()};
-  let local_vars = ArrayList<PrefixAssignment>{heap_allocator()};
-  let array_args = ArrayList<array_builtin_assignment>{heap_allocator()};
-  let redirections = ArrayList<expressions::Redirection>{heap_allocator()};
+  ArrayList<const Token *> args_accumulator{arena_allocator};
+  let local_vars = ArrayList<PrefixAssignment>{arena_allocator};
+  let array_args = ArrayList<array_builtin_assignment>{arena_allocator};
+  let redirections = ArrayList<expressions::Redirection>{arena_allocator};
   let full_end_position = usize{0};
 
   if (leading_token != nullptr) {
