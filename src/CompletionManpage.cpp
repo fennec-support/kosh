@@ -1909,13 +1909,13 @@ fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
     out.clear();
   }
 
-  if (let const expansion = context.scope_store().get_alias(command);
-      expansion.has_value() && !expansion->view().trim_blanks().is_empty())
+  if (let const expansion = context.scope_store().find_alias(command);
+      expansion.has_value() && !expansion->trim_blanks().is_empty())
   {
     out.append(ALIAS_HINT_HEADER);
     out.append(command);
     out.append(StringView{"='"});
-    let const value = expansion->view();
+    let const value = *expansion;
 
     for (usize position = 0; position < value.length; position++) {
       let const character = value[position];

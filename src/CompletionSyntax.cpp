@@ -426,9 +426,9 @@ fn internal::resolve_completion_alias(StringView command,
 {
   let name = String{command};
   for (usize depth = 0; depth < 8; depth++) {
-    let const expansion = context.scope_store().get_alias(name.view());
+    let const expansion = context.scope_store().find_alias(name.view());
     if (!expansion.has_value()) break;
-    let const expanded = expansion->view();
+    let const expanded = *expansion;
     usize i = 0;
     i = skip_blanks(expanded, i);
     let const start = i;

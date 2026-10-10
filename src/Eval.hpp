@@ -832,6 +832,12 @@ public:
       return String{heap_allocator(), value->view()};
     return None;
   }
+  pure fn find_alias(StringView name) const wontthrow -> Maybe<StringView>
+  {
+    if (let const value = m_aliases.find(name); value.has_value())
+      return value->view();
+    return None;
+  }
   fn alias_definitions() const throws
       -> SortedArrayList<String, order_comparator<String>>
   {
