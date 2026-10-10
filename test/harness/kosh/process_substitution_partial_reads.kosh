@@ -1,15 +1,31 @@
 #!/bin/env kosh
 
 # A reader that takes part of a write and leaves keeps the bytes it took, so
-# the next reader of the same process substitution starts after them. Wine
-# reports no transferred bytes for a write its reader abandoned, so under Wine
-# the next reader still receives the abandoned write again.
+# the next reader of the same process substitution starts after them. Windows
+# and Wine report no transferred bytes for a write its reader abandoned, so
+# there the next reader receives the abandoned write again, and the last
+# reader still sees the end of the stream.
 set -M bash
 partial() {
-  koshkit head -c 7 "$1"
-  echo
-  koshkit head -c 12 "$1"
-  echo
-  koshkit wc -c <"$1"
+  local first second rest expected_second
+  first=$(koshkit head -c 7 "$1")
+  second=$(koshkit head -c 12 "$1")
+  rest=$(koshkit cat "$1")
+  echo "first=$first"
+  if [[ ${OS-} == Windows_NT ]]; then
+    expected_second=bcdefghijklm
+  else
+    expected_second=hijklmnopqrs
+  fi
+  if [[ $second == "$expected_second" ]]; then
+    echo "second reader got the bytes the platform keeps"
+  else
+    echo "second=$second"
+  fi
+  if [[ $rest == *0123456789 ]]; then
+    echo "the last reader sees the end of the stream"
+  else
+    echo "rest=$rest"
+  fi
 }
 partial <(printf %s abcdefghijklmnopqrstuvwxyz0123456789)
