@@ -229,6 +229,8 @@ public:
     materialized_count++;
   }
 
+  pure fn needs_name(match_tier) const wontthrow -> bool { return true; }
+
   fn note_source_candidate() wontthrow -> void { source_scan_count++; }
 
   pure fn has_exact() const wontthrow -> bool
@@ -265,6 +267,11 @@ public:
     if (tier != match_tier::exact_prefix) return;
 
     names.push(String{completion_allocator(), name});
+  }
+
+  pure fn needs_name(match_tier tier) const wontthrow -> bool
+  {
+    return tier == match_tier::exact_prefix;
   }
 
   fn note_source_candidate() wontthrow -> void {}
@@ -325,6 +332,11 @@ public:
     }
 
     match_count++;
+  }
+
+  pure fn needs_name(match_tier tier) const wontthrow -> bool
+  {
+    return static_cast<usize>(tier) < best_tier;
   }
 
   fn note_source_candidate() wontthrow -> void { source_scan_count++; }
@@ -729,6 +741,11 @@ static fn collect_filesystem_matches(
           let const eligible_entry =
               check_filesystem_entry(*listing, entry, filter, resolved_kind);
           if (!eligible_entry.has_value()) continue;
+
+          if (!collector.needs_name(match.tier)) {
+            collector.add(StringView{}, match.tier);
+            continue;
+          }
 
           let const name = entry.name.view();
           let candidate = build_filesystem_candidate(
