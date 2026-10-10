@@ -35,8 +35,41 @@ pure fn is_constant_arithmetic_text(StringView text) wontthrow -> bool
     return table;
   }();
 
-  for (usize i = 0; i < text.length; i++)
+  static constexpr u64 MAXIMUM_FOLDED_GROWTH_OPERAND = 1024;
+  usize growing_operator_count = 0;
+  for (usize i = 0; i < text.length; i++) {
     if (!CONSTANT_BYTES.is_member[static_cast<u8>(text[i])]) return false;
+
+    let const is_growing_operator =
+        i + 1 < text.length &&
+        ((text[i] == '*' && text[i + 1] == '*') ||
+         (text[i] == '<' && text[i + 1] == '<'));
+    if (!is_growing_operator) continue;
+
+    growing_operator_count++;
+    if (growing_operator_count > 1) return false;
+
+    usize operand_position = i + 2;
+    while (operand_position < text.length &&
+           (text[operand_position] == ' ' || text[operand_position] == '\t'))
+    {
+      operand_position++;
+    }
+
+    u64 operand = 0;
+    usize digit_count = 0;
+    while (operand_position < text.length && text[operand_position] >= '0' &&
+           text[operand_position] <= '9')
+    {
+      operand = operand * 10 + static_cast<u64>(text[operand_position] - '0');
+      digit_count++;
+      operand_position++;
+      if (operand > MAXIMUM_FOLDED_GROWTH_OPERAND) return false;
+    }
+
+    if (digit_count == 0) return false;
+  }
+
   return true;
 }
 
