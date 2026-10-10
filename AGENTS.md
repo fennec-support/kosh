@@ -61,7 +61,7 @@ same encoding that every spawned process receives."
   then the user `kosh.conf`, and an
   inherited `KOSHCONF`, removes `KOSHCONF` from the environment, and settles a
   configured mood before the input plan and the configured
-  `kosh.init_moods` of an interactive or login shell after it. A debug
+  `init_moods` of an interactive or login shell after it. A debug
   build lets KOSH_DEBUG_SYSTEM_KOSHCONF select the system file; a release build
   has no such override. An option the command line or
   `KOSH_ANALYSIS` sets keeps its value. A restricted or privileged invocation
@@ -113,7 +113,7 @@ same encoding that every spawned process receives."
   a boolean is a statement true when on. Each option with a Bash spelling is
   also accepted as `legacy.posix.<set -o name>` for a POSIX `set` option or
   `legacy.bash.<Bash spelling>`, resolved to the same registry entry at
-  lookup; only canonical names are written. `kosh.editor.base_mode` is
+  lookup; only canonical names are written. `editor.base_mode` is
   one enumeration behind the set-only alias entries `emacs` and `vi`, which
   have id 0 and no koshconf name; id 88 is retired. The kosh mood holds
   nounset, pipefail, failglob, and extended
@@ -219,8 +219,8 @@ same encoding that every spawned process receives."
   offer delivered nothing. Writes have no
   quota so only consumed bytes leave the queue, and the part of a failed
   write past the bytes its completion reports is sent again to the next
-  reader. Wine reports none for a write whose reader left, so under Wine
-  the whole write is sent again. Writes stay one line long until a write completes
+  reader. Windows and Wine report none for a write whose reader left, so
+  there the whole write is sent again. Writes stay one line long until a write completes
   at once. Input from several writers reaches the child in connection order.
   Cleanup signals the relay and waits until it has closed every listening
   instance, so a later open of the path fails. The relay then serves connected
@@ -229,6 +229,9 @@ same encoding that every spawned process receives."
   creates its first instance exclusively, and carries a DACL that admits only
   the current user and SYSTEM.
 - Windows named-pipe redirections use OPEN_EXISTING for every shell open mode.
+- The Windows layer passes every path it hands to the system through
+  `path_to_wide`, which maps a literal `/tmp` and the paths under it onto
+  `os::temp_directory_path`, the way `/dev/null` maps to `NUL`.
 - Recheck mutable runtime state after any startup file that can change it.
 - `src/koshkit` holds only utility sources. Code shared by utilities lives in
   `src`, such as `src/CliLive` and the file-mode parser in `src/UtilsIO.cpp`.
@@ -290,7 +293,7 @@ same encoding that every spawned process receives."
   A TAB that grows the token to the common prefix opens the menu on the
   candidates it gathered under the same rules, so one TAB runs the callback
   once. A sole candidate that takes the space of
-  `kosh.completion.add_space_after_completed_word` keeps the menu open on the next
+  `completion.add_space_after_completed_word` keeps the menu open on the next
   word through a second gather, so that TAB runs the callback once for each
   word. The menu holds back the preview of its first row while the token is
   empty, closes quietly when the next word has no candidates, and does not
@@ -299,10 +302,13 @@ same encoding that every spawned process receives."
   word or extends one is answered from the copy without the callback. A key
   that leaves a list of more than `ITL_MENU_DEBOUNCE_THRESHOLD` rows does not
   call the callback at once. It updates the line, shows the loading row, and
-  gathers once through `itl_complete_gather` after one idle delay without a
-  key. The pause belongs to one word: every key in it moves that moment, a key
-  that moves the token to a new word clears it, and a list of that many rows
-  or fewer gathers at once. TAB asks at once. Every gather goes through the
+  gathers once through `itl_complete_gather` after `ITL_MENU_DEBOUNCE_MS`
+  (128 ms) without a key. Only a key within that time of the key before it
+  waits; a key after a pause asks at once, so the pause costs nothing when
+  the typing is slow. The pause belongs to one word: every key in it moves
+  that moment, a key that moves the token to a new word clears it, a list of
+  that many rows or fewer gathers at once, and a gather a key only
+  interrupted asks again right after that key. TAB asks at once. Every gather goes through the
   pending protocol, so a key ends the wait and the host resumes its work at
   the next question; a `complete -F` function cannot be stepped and runs once
   to the end. A reload of an open menu and the gather of the next word draw
@@ -398,7 +404,12 @@ same encoding that every spawned process receives."
   uses the same scanner state at the caret.
 - The language server wraps completion in `begin_explicit_completion` and loads
   command documentation lazily. Mood selection checks the shebang, language
-  identifier, then extension. `shellscript` selects bash.
+  identifier, then extension. `shellscript` selects bash. Variable completion
+  adds the names the tolerant scanner sees assigned before the word, and the
+  server adds the variables and functions its last clean analysis found in
+  the document and the files it followed, so a syntax error keeps them. The
+  server follows a relative source path from the document's directory through
+  `analysis_options::source_base_directory`.
 - `analyze_ast` optionally collects `analysis_symbol_records` for hover,
   outline, definition, and rename. Ordinary analysis passes null. Assignment
   records cover ordinary, builtin, loop, arithmetic, read, mapfile, getopts,
