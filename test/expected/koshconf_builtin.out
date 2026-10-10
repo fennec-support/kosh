@@ -1,5 +1,7 @@
 == list prints every option as name=value:
 # name=value
+compatibility.dev_null=on
+compatibility.slash_tmp=on
 completion.add_space_after_completed_word=off
 completion.bash.always_apply_fignore=on
 completion.bash.expand_directory_names=off
@@ -331,6 +333,11 @@ debug.bash.debugger_support=off
 
 # Write error messages in the GNU file:line format. (shopt gnu_errfmt)
 optimizer.bash.errors_use_gnu_format=off
+
+# On Windows, open /dev/null as the NUL device.
+compatibility.dev_null=on
+# On Windows, resolve /tmp and every path under it in the TEMP directory.
+compatibility.slash_tmp=on
 == create refuses an existing file without --force:
 -c:1:1: error: Builtin `koshconf`: The configuration file 'CONFIG/user/kosh/kosh.conf' already exists.
      1 |  koshconf create bash

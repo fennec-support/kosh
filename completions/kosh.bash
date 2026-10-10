@@ -153,7 +153,9 @@ _kosh_koshconf_complete ()
     [[ $word == -* ]] || operands+=("$word")
   done
   local \
-    option_names="completion.add_space_after_completed_word \
+    option_names="compatibility.dev_null \
+compatibility.slash_tmp \
+completion.add_space_after_completed_word \
 completion.bash.always_apply_fignore \
 completion.bash.expand_directory_names \
 completion.bash.fix_directory_typos \

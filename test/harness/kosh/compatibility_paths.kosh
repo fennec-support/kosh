@@ -1,0 +1,24 @@
+#!/bin/env kosh
+# compatibility.dev_null and compatibility.slash_tmp are on by default, and
+# turning them off ends the Windows mapping of /dev/null to the NUL device and
+# of /tmp to the TEMP directory. Other platforms have both paths themselves,
+# so the options change nothing there.
+probe=/tmp/kosh-compatibility-$$
+echo hello >"$probe" || exit 1
+koshconf get compatibility.dev_null
+koshconf get compatibility.slash_tmp
+[ -c /dev/null ] && echo "the null device is reachable"
+[ -f "$probe" ] && echo "the temporary file is reachable"
+koshconf set compatibility.dev_null off
+koshconf set compatibility.slash_tmp off
+if [[ ${OS-} == Windows_NT ]]; then
+  [ -c /dev/null ] || echo "the null device follows the option"
+  [ -e "$probe" ] || echo "the temporary file follows the option"
+else
+  [ -c /dev/null ] && echo "the null device follows the option"
+  [ -e "$probe" ] && echo "the temporary file follows the option"
+fi
+koshconf set compatibility.dev_null on
+koshconf set compatibility.slash_tmp on
+[ -c /dev/null ] && echo "the null device is back"
+koshkit rm -- "$probe" && echo "removed"

@@ -1510,6 +1510,8 @@ pure fn path_is_absolute(StringView path) wontthrow -> bool;
 pure fn path_is_drive_relative(StringView path) wontthrow -> bool;
 fn resolve_drive_relative_path(StringView path) throws -> Maybe<Path>;
 fn temp_directory_path() throws -> String;
+fn set_path_compatibility(bool should_map_dev_null,
+                          bool should_map_slash_tmp) wontthrow -> void;
 
 cold fn path_exists(StringView path) wontthrow -> bool;
 cold fn path_is_directory(StringView path) wontthrow -> bool;

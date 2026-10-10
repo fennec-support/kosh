@@ -54,6 +54,8 @@ fn temp_directory_path() throws -> String
   return String{"/tmp"};
 }
 
+fn set_path_compatibility(bool, bool) wontthrow -> void {}
+
 cold fn path_exists(StringView path) wontthrow -> bool
 {
   const String path_string{path};

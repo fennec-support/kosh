@@ -810,7 +810,12 @@ so a script that writes under
 .B /tmp
 runs unchanged. A longer name such as
 .B /tmpx
-is not mapped.
+is not mapped. The options
+.B compatibility.dev_null
+and
+.BR compatibility.slash_tmp ,
+both on by default, govern the two mappings, and turning one off leaves its
+path to the current drive. Other platforms keep both paths unchanged.
 .SH OPTION REGISTRY
 .BR set ,
 .BR shopt ,
@@ -835,6 +840,8 @@ and
 which select the mood,
 .BR interpreter ,
 for the behavior of the shell itself,
+.BR compatibility ,
+for the Windows mapping of POSIX paths,
 .BR editor ,
 for the line editor with its subtopics
 .BR editor.history
@@ -1116,6 +1123,10 @@ retired.
        shopt varredir_close, semantic
 173  interpreter.bash.echo_interprets_backslash_escapes
        shopt xpg_echo, semantic
+174  compatibility.dev_null
+       semantic
+175  compatibility.slash_tmp
+       semantic
 .ft R
 .fi
 .PP

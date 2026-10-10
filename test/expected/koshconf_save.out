@@ -25,9 +25,9 @@ OPTIONS
 == list has no class column:
 0
 # name=value
+compatibility.dev_null=on
+compatibility.slash_tmp=on
 completion.add_space_after_completed_word=off
-completion.bash.always_apply_fignore=on
-completion.bash.expand_directory_names=off
 == list -a adds the alias after each canonical line:
 interpreter.bash.glob_extended_patterns=on
 legacy.bash.extglob=on

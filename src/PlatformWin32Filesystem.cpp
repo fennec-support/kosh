@@ -531,7 +531,7 @@ static fn named_pipe_exists(StringView path) wontthrow -> bool
 
 cold fn path_exists(StringView path) wontthrow -> bool
 {
-  if (path == StringView{"/dev/null"}) return true;
+  if (is_mapped_dev_null(path)) return true;
   if (is_named_pipe_path(path)) return named_pipe_exists(path);
 
   return path_attributes(path) != INVALID_FILE_ATTRIBUTES;
@@ -563,7 +563,7 @@ fn path_is_symbolic_link(StringView path) wontthrow -> bool
 fn path_is_block_device(StringView) wontthrow -> bool { return false; }
 fn path_is_character_device(StringView path) wontthrow -> bool
 {
-  return path == StringView{"/dev/null"};
+  return is_mapped_dev_null(path);
 }
 fn path_is_fifo(StringView path) wontthrow -> bool
 {
@@ -888,7 +888,7 @@ fn open_file_descriptor(StringView path, file_open_mode mode)
   att.lpSecurityDescriptor = nullptr; /* NOLINT */
 
   let const path_text =
-      path == StringView{"/dev/null"} ? StringView{"NUL"} : path;
+      is_mapped_dev_null(path) ? StringView{"NUL"} : path;
   let const wide_path = path_to_wide(path_text, heap_allocator());
   if (!wide_path.has_value()) return koshka::None;
   let const deadline_milliseconds = GetTickCount64() + 2000;
@@ -1695,7 +1695,7 @@ fn current_executable_path() wontthrow -> Maybe<String>
 
 fn stat_path(StringView path, file_status &status) wontthrow -> bool
 {
-  if (path == StringView{"/dev/null"}) {
+  if (is_mapped_dev_null(path)) {
     status = {};
     status.mode = 0020666u;
     status.link_count = 1;

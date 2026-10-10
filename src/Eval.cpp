@@ -110,6 +110,7 @@ fn RuntimeState::capture(const EvalContext &context) wontthrow -> RuntimeState
 fn RuntimeState::restore(EvalContext &context) const wontthrow -> void
 {
   context.runtime_state() = *this;
+  publish_path_compatibility();
 }
 
 RuntimeStateScope::RuntimeStateScope(EvalContext &context)

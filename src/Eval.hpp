@@ -121,6 +121,8 @@ enum class shell_option_id : u8
   SpaceAfterDirectoryCompletion,
   TabCompletion,
   SyntaxHighlighting,
+  DevNullCompatibility,
+  SlashTmpCompatibility,
   Count,
 };
 
@@ -260,6 +262,14 @@ public:
   fn set_shell_options(u64 options) wontthrow -> void
   {
     m_shell_options = options;
+    publish_path_compatibility();
+  }
+
+  fn publish_path_compatibility() const wontthrow -> void
+  {
+    os::set_path_compatibility(
+        option_is_enabled(shell_option_id::DevNullCompatibility),
+        option_is_enabled(shell_option_id::SlashTmpCompatibility));
   }
 
   pure fn koshkit_utilities_are_reachable() const wontthrow -> bool
@@ -358,6 +368,11 @@ public:
       m_shell_options |= option_mask(option);
     else
       m_shell_options &= ~option_mask(option);
+    if (option == shell_option_id::DevNullCompatibility ||
+        option == shell_option_id::SlashTmpCompatibility)
+    {
+      publish_path_compatibility();
+    }
   }
 
   fn set_shopt_option(u8 index, bool enabled) wontthrow -> void
@@ -495,6 +510,8 @@ private:
                       option_mask(shell_option_id::ExtendedKeys) |
                       option_mask(shell_option_id::TabCompletion) |
                       option_mask(shell_option_id::SyntaxHighlighting) |
+                      option_mask(shell_option_id::DevNullCompatibility) |
+                      option_mask(shell_option_id::SlashTmpCompatibility) |
                       option_mask(shell_option_id::Braceexpand)};
   shopt_state m_shopt;
 };

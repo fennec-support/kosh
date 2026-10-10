@@ -234,7 +234,10 @@ same encoding that every spawned process receives."
 - Windows named-pipe redirections use OPEN_EXISTING for every shell open mode.
 - The Windows layer passes every path it hands to the system through
   `path_to_wide`, which maps a literal `/tmp` and the paths under it onto
-  `os::temp_directory_path`, the way `/dev/null` maps to `NUL`.
+  `os::temp_directory_path`, the way `/dev/null` maps to `NUL`. The
+  `compatibility.slash_tmp` and `compatibility.dev_null` options govern the
+  two mappings. `RuntimeState` publishes them through
+  `os::set_path_compatibility` whenever its option bits change.
 - Recheck mutable runtime state after any startup file that can change it.
 - `src/koshkit` holds only utility sources. Code shared by utilities lives in
   `src`, such as `src/CliLive` and the file-mode parser in `src/UtilsIO.cpp`.

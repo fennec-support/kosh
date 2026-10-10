@@ -221,11 +221,26 @@ static fn wide_to_utf8(const wchar_t *text, usize length,
   };
 }
 
+static bool SHOULD_MAP_DEV_NULL = true;
+static bool SHOULD_MAP_SLASH_TMP = true;
+
+fn set_path_compatibility(bool should_map_dev_null,
+                          bool should_map_slash_tmp) wontthrow -> void
+{
+  SHOULD_MAP_DEV_NULL = should_map_dev_null;
+  SHOULD_MAP_SLASH_TMP = should_map_slash_tmp;
+}
+
+static fn is_mapped_dev_null(StringView path) wontthrow -> bool
+{
+  return SHOULD_MAP_DEV_NULL && path == StringView{"/dev/null"};
+}
+
 static fn path_to_wide(StringView path, Allocator allocator) throws
     -> Maybe<ArrayList<wchar_t>>
 {
   constexpr StringView TEMPORARY_ROOT{"/tmp"};
-  if (!path.starts_with(TEMPORARY_ROOT) ||
+  if (!SHOULD_MAP_SLASH_TMP || !path.starts_with(TEMPORARY_ROOT) ||
       (path.length > TEMPORARY_ROOT.length &&
        !is_directory_separator(path[TEMPORARY_ROOT.length])))
   {
