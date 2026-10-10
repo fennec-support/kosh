@@ -24,9 +24,8 @@ big-menu-space-does-not-gather-at-once PASS
 big-menu-word-echoes-at-once PASS
 big-menu-gathers-once-after-the-pause PASS
 big-menu-does-not-gather-again PASS
-big-menu-keys-inside-the-pause-echo-at-once PASS
-big-menu-keys-inside-the-pause-do-not-gather PASS
-big-menu-gathers-once-when-the-typing-stops PASS
+big-menu-short-list-keys-echo-at-once PASS
+big-menu-short-list-asks-for-each-key PASS
 big-menu-returned-word-echoes-at-once PASS
 big-menu-returned-word-does-not-ask-the-host PASS
 big-menu-new-word-gathers-without-the-pause PASS

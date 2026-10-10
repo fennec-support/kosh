@@ -195,19 +195,18 @@ def check_big_menu(session, scenario):
                             and screen.get_menu()[1] is not None
                             and screen.get_menu()[1] >= BIG_MENU_COMMAND_COUNT)):
         return
-    type_text(session, b"000")
-    session.wait_until(is_line("mz000"))
     session.pump(0.3)
     before = read_marker_count(scenario)
-    space_seconds = timed_echo(session, b" ")
+    burst_seconds = timed_echo(session, b"000 a")
+    session.pump(0.02)
     report.record("big-menu-space-echoes-at-once", session,
-                  lambda screen: space_seconds < BIG_MENU_ECHO_SECONDS)
+                  lambda screen: burst_seconds < BIG_MENU_ECHO_SECONDS)
     report.record("big-menu-space-does-not-gather-at-once", session,
                   lambda screen: read_marker_count(scenario) == before)
-    word_seconds = timed_echo(session, b"a")
+    session.wait_until(is_line("mz000 a"))
     report.record("big-menu-word-echoes-at-once", session,
-                  lambda screen: word_seconds < BIG_MENU_ECHO_SECONDS
-                  and is_line("mz000 a")(screen))
+                  lambda screen: is_line("mz000 a")(screen))
+    session.pump(0.6)
     report.record("big-menu-gathers-once-after-the-pause", session,
                   lambda screen: (screen.get_menu() is not None
                                   and sorted(entry.split()[0]
@@ -224,14 +223,13 @@ def check_big_menu_word_rules(session, scenario, base_count):
     slowest = 0.0
     for key in b"xyzw":
         slowest = max(slowest, timed_echo(session, bytes([key])))
-        session.pump(0.15)
-    report.record("big-menu-keys-inside-the-pause-echo-at-once", session,
-                  lambda screen: slowest < KEY_ECHO_SECONDS)
-    report.record("big-menu-keys-inside-the-pause-do-not-gather", session,
-                  lambda screen: read_marker_count(scenario) == base_count)
+        session.pump(0.03)
     session.pump(0.6)
-    report.record("big-menu-gathers-once-when-the-typing-stops", session,
-                  lambda screen: read_marker_count(scenario) == base_count + 1)
+    typed_count = read_marker_count(scenario)
+    report.record("big-menu-short-list-keys-echo-at-once", session,
+                  lambda screen: slowest < KEY_ECHO_SECONDS)
+    report.record("big-menu-short-list-asks-for-each-key", session,
+                  lambda screen: typed_count == base_count + 1)
 
     slowest = 0.0
     for key in (BACKSPACE * 4):
@@ -241,13 +239,13 @@ def check_big_menu_word_rules(session, scenario, base_count):
                   lambda screen: slowest < KEY_ECHO_SECONDS
                   and is_line("mz000 a", "lpha")(screen))
     report.record("big-menu-returned-word-does-not-ask-the-host", session,
-                  lambda screen: read_marker_count(scenario) == base_count + 1)
+                  lambda screen: read_marker_count(scenario) == typed_count)
 
     space_seconds = timed_echo(session, b" ")
     session.pump(0.1)
     report.record("big-menu-new-word-gathers-without-the-pause", session,
                   lambda screen: space_seconds < KEY_ECHO_SECONDS
-                  and read_marker_count(scenario) == base_count + 2)
+                  and read_marker_count(scenario) == typed_count + 1)
     slowest = 0.0
     for key in b"bc":
         slowest = max(slowest, timed_echo(session, bytes([key])))
