@@ -101,7 +101,10 @@ fi
   > "$d/executable-stdout" 2> "$d/executable-stderr"
 case $(cat "$d/executable-stdout"):$(cat "$d/executable-stderr") in
   *"$fuser_pid"*:"$BIN:"*e*) echo executable-use=passed ;;
-  *) echo executable-use=failed ;;
+  *)
+    echo executable-use=failed
+    cat "$d/executable-stdout" "$d/executable-stderr" >&2
+    ;;
 esac
 
 "$BIN" -c 'koshkit fuser -u "$1"' fuser "$d/held" \

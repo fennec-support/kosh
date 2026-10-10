@@ -3428,14 +3428,18 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
       return query.query_position;
     }
 
+    constexpr usize LIST_ATTEMPT_COUNT = 8;
     ArrayList<RM_PROCESS_INFO> process_infos{scratch};
-    for (usize attempt_count = 0; attempt_count < 4; attempt_count++) {
-      process_infos.reserve(required_count);
-      process_count = required_count;
+    for (usize attempt_count = 0; attempt_count < LIST_ATTEMPT_COUNT;
+         attempt_count++)
+    {
+      process_count = required_count + required_count / 2 + 16;
+      process_infos.reserve(process_count);
       result = RmGetList(session_handle, &required_count, &process_count,
                          process_infos.begin(), &reboot_reasons);
       if (result == ERROR_SUCCESS) break;
-      if (result != ERROR_MORE_DATA || attempt_count == 3) {
+      if (result != ERROR_MORE_DATA || attempt_count + 1 == LIST_ATTEMPT_COUNT)
+      {
         SetLastError(result);
         return query.query_position;
       }
