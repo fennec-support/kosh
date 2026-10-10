@@ -1,0 +1,15 @@
+#!/bin/env kosh
+# A literal /tmp names the temporary directory on every platform, as
+# /dev/null names the null device, so a script can create, read, list, and
+# remove files under it, and change into it. Only /tmp itself and paths
+# under it are mapped.
+probe=/tmp/kosh-tmp-everywhere-$$
+[ -d /tmp ] && echo "tmp is a directory"
+echo hello >"$probe.txt" && echo "wrote"
+read -r line <"$probe.txt" && echo "read=$line"
+[ -f "$probe.txt" ] && echo "file exists"
+mkdir -p "$probe-dir/inner" && [ -d "$probe-dir/inner" ] && echo "made a directory"
+(cd /tmp && echo "changed into it")
+koshkit rm -r -- "$probe.txt" "$probe-dir" && echo "removed"
+[ -e "$probe.txt" ] || echo "gone"
+[ -d /tmpx ] || echo "a longer name is not mapped"

@@ -625,7 +625,7 @@ static fn create_process_utf8(StringView application_path,
 
   let wide_application = application_path.is_empty()
                              ? Maybe<ArrayList<wchar_t>>{}
-                             : utf8_to_wide(application_path, heap_allocator());
+                             : path_to_wide(application_path, heap_allocator());
   if (!application_path.is_empty() && !wide_application.has_value()) {
     return false;
   }
@@ -635,7 +635,7 @@ static fn create_process_utf8(StringView application_path,
   let wide_working_directory =
       working_directory.is_empty()
           ? Maybe<ArrayList<wchar_t>>{}
-          : utf8_to_wide(working_directory, heap_allocator());
+          : path_to_wide(working_directory, heap_allocator());
   if (!working_directory.is_empty() && !wide_working_directory.has_value()) {
     return false;
   }
@@ -3370,7 +3370,7 @@ static fn utf8_to_absolute_wide_path(StringView path,
                                      Allocator allocator) throws
     -> Maybe<ArrayList<wchar_t>>
 {
-  let wide_path = utf8_to_wide(path, allocator);
+  let wide_path = path_to_wide(path, allocator);
   if (!wide_path.has_value()) return None;
 
   let absolute_length =

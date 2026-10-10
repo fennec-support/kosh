@@ -81,7 +81,7 @@ static fn open_path_for_query(const wchar_t *wide_path, DWORD access,
 
 static fn path_attributes(StringView path) wontthrow -> DWORD
 {
-  let const wide_path = utf8_to_wide(path, heap_allocator());
+  let const wide_path = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return INVALID_FILE_ATTRIBUTES;
 
   return GetFileAttributesW(wide_path->begin());
@@ -159,7 +159,7 @@ static fn find_security_problem(PSID owner, PACL dacl,
 fn read_system_owned_file(const Path &path) throws -> system_file_reading
 {
   let reading = system_file_reading{};
-  let const wide_path = utf8_to_wide(path.view(), heap_allocator());
+  let const wide_path = path_to_wide(path.view(), heap_allocator());
   if (!wide_path.has_value()) return reading;
 
   let const handle = CreateFileW(
@@ -197,7 +197,7 @@ fn read_system_owned_file(const Path &path) throws -> system_file_reading
   }
 
   let const directory = path.parent_or_current();
-  let const wide_directory = utf8_to_wide(directory.view(), heap_allocator());
+  let const wide_directory = path_to_wide(directory.view(), heap_allocator());
   if (!wide_directory.has_value()) return reading;
 
   PSID directory_owner = nullptr;
@@ -243,7 +243,7 @@ fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
 
   let const do_resolve_direct = [has_extended_prefix](const Path &candidate)
                                     wontthrow -> Maybe<Path> {
-    let const wide_candidate = utf8_to_wide(candidate.view(), heap_allocator());
+    let const wide_candidate = path_to_wide(candidate.view(), heap_allocator());
     if (!wide_candidate.has_value()) return koshka::None;
     let const handle = open_path_for_query(wide_candidate->begin(), 0,
                                            FILE_FLAG_BACKUP_SEMANTICS);
@@ -396,7 +396,7 @@ fn glob_matches(StringView pattern, Allocator allocator) throws
 {
   let matches = ArrayList<String>{allocator};
 
-  let const wide_pattern = utf8_to_wide(pattern, heap_allocator());
+  let const wide_pattern = path_to_wide(pattern, heap_allocator());
   if (!wide_pattern.has_value()) return matches;
   WIN32_FIND_DATAW find_data;
   const HANDLE handle = FindFirstFileW(wide_pattern->begin(), &find_data);
@@ -521,7 +521,7 @@ static fn is_named_pipe_path(StringView path) wontthrow -> bool
 
 static fn named_pipe_exists(StringView path) wontthrow -> bool
 {
-  let const wide_path = utf8_to_wide(path, heap_allocator());
+  let const wide_path = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return false;
 
   if (WaitNamedPipeW(wide_path->begin(), NMPWAIT_NOWAIT) != FALSE) return true;
@@ -585,7 +585,7 @@ fn path_is_owned_by_effective_group(StringView) wontthrow -> bool
 
 fn path_file_size(StringView path) wontthrow -> Maybe<u64>
 {
-  let const wide_path = utf8_to_wide(path, heap_allocator());
+  let const wide_path = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return None;
   WIN32_FILE_ATTRIBUTE_DATA data{};
   if (GetFileAttributesExW(wide_path->begin(), GetFileExInfoStandard, &data) ==
@@ -597,7 +597,7 @@ fn path_file_size(StringView path) wontthrow -> Maybe<u64>
 
 fn path_modification_time(StringView path) wontthrow -> Maybe<i64>
 {
-  let const wide_path = utf8_to_wide(path, heap_allocator());
+  let const wide_path = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return None;
   WIN32_FILE_ATTRIBUTE_DATA data{};
   if (GetFileAttributesExW(wide_path->begin(), GetFileExInfoStandard, &data) ==
@@ -614,9 +614,9 @@ fn path_modification_time(StringView path) wontthrow -> Maybe<i64>
 
 fn paths_are_same_file(StringView first, StringView second) wontthrow -> bool
 {
-  let const wide_first = utf8_to_wide(first, heap_allocator());
+  let const wide_first = path_to_wide(first, heap_allocator());
   if (!wide_first.has_value()) return false;
-  let const wide_second = utf8_to_wide(second, heap_allocator());
+  let const wide_second = path_to_wide(second, heap_allocator());
   if (!wide_second.has_value()) return false;
   let const first_handle =
       open_path_for_query(wide_first->begin(), 0, FILE_FLAG_BACKUP_SEMANTICS);
@@ -653,9 +653,9 @@ fn paths_match_for_history(StringView first, StringView second) wontthrow
 
 fn path_is_newer_than(StringView first, StringView second) wontthrow -> bool
 {
-  let const wide_first = utf8_to_wide(first, heap_allocator());
+  let const wide_first = path_to_wide(first, heap_allocator());
   if (!wide_first.has_value()) return false;
-  let const wide_second = utf8_to_wide(second, heap_allocator());
+  let const wide_second = path_to_wide(second, heap_allocator());
   if (!wide_second.has_value()) return false;
   WIN32_FILE_ATTRIBUTE_DATA first_data{}, second_data{};
   if (GetFileAttributesExW(wide_first->begin(), GetFileExInfoStandard,
@@ -677,7 +677,7 @@ fn path_is_readable(StringView path) wontthrow -> bool
 {
   if (is_named_pipe_path(path)) return named_pipe_exists(path);
 
-  let const wide_path = utf8_to_wide(path, heap_allocator());
+  let const wide_path = path_to_wide(path, heap_allocator());
   return wide_path.has_value() && _waccess(wide_path->begin(), 4) == 0;
 }
 
@@ -685,7 +685,7 @@ fn path_is_writable(StringView path) wontthrow -> bool
 {
   if (is_named_pipe_path(path)) return named_pipe_exists(path);
 
-  let const wide_path = utf8_to_wide(path, heap_allocator());
+  let const wide_path = path_to_wide(path, heap_allocator());
   return wide_path.has_value() && _waccess(wide_path->begin(), 2) == 0;
 }
 
@@ -712,7 +712,7 @@ cold fn read_current_directory() throws -> Path
 fn change_current_directory(StringView path) throws -> ErrorOr<Ok>
 {
   const String path_string{path};
-  let const wide_path = utf8_to_wide(path, heap_allocator());
+  let const wide_path = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value() || SetCurrentDirectoryW(wide_path->begin()) == 0)
     return Error{"Could not change directory to '" + path_string +
                  "': " + os::last_system_error_message()};
@@ -791,7 +791,7 @@ cold fn list_directory_typed(StringView dir, Allocator allocator) throws
   pattern.push(DIRECTORY_SEPARATOR);
   pattern.push('*');
 
-  let const wide_pattern = utf8_to_wide(pattern.view(), allocator);
+  let const wide_pattern = path_to_wide(pattern.view(), allocator);
   if (!wide_pattern.has_value()) return None;
   WIN32_FIND_DATAW data{};
   let const handle = FindFirstFileW(wide_pattern->begin(), &data);
@@ -889,7 +889,7 @@ fn open_file_descriptor(StringView path, file_open_mode mode)
 
   let const path_text =
       path == StringView{"/dev/null"} ? StringView{"NUL"} : path;
-  let const wide_path = utf8_to_wide(path_text, heap_allocator());
+  let const wide_path = path_to_wide(path_text, heap_allocator());
   if (!wide_path.has_value()) return koshka::None;
   let const deadline_milliseconds = GetTickCount64() + 2000;
   loop
@@ -922,7 +922,7 @@ fn open_file_descriptor_until_signal(StringView path, file_open_mode mode,
 
 fn acquire_process_lock(StringView path) throws -> Maybe<descriptor>
 {
-  let const wide_path = utf8_to_wide(path, heap_allocator());
+  let const wide_path = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return None;
   constexpr wchar_t LOCK_NAME[] = L".kosh-flock.lock";
   constexpr usize LOCK_NAME_LENGTH = countof(LOCK_NAME) - 1;
@@ -1006,7 +1006,7 @@ fn write_to_named_temp_file(const Path &directory, StringView prefix,
     return None;
   }
 
-  let const wide_directory = utf8_to_wide(directory.view(), heap_allocator());
+  let const wide_directory = path_to_wide(directory.view(), heap_allocator());
   if (!wide_directory.has_value()) return None;
   let const wide_prefix = utf8_to_wide(prefix, heap_allocator());
   if (!wide_prefix.has_value()) return None;
@@ -1079,7 +1079,7 @@ fn make_temp_directory(const Path &directory, StringView prefix) throws
     directory_name += String::from(attempt, heap_allocator()).view();
     let candidate = Path{directory.text()};
     candidate.append(directory_name.view());
-    let const wide_candidate = utf8_to_wide(candidate.view(), heap_allocator());
+    let const wide_candidate = path_to_wide(candidate.view(), heap_allocator());
     if (wide_candidate.has_value() &&
         CreateDirectoryW(wide_candidate->begin(), nullptr) != 0)
     {
@@ -1095,7 +1095,7 @@ fn make_temp_directory(const Path &directory, StringView prefix) throws
 fn make_directory(StringView path, u32 mode) wontthrow -> bool
 {
   unused(mode);
-  let const wide_path = utf8_to_wide(path, heap_allocator());
+  let const wide_path = path_to_wide(path, heap_allocator());
   return wide_path.has_value() &&
          CreateDirectoryW(wide_path->begin(), nullptr) != 0;
 }
@@ -1103,7 +1103,7 @@ fn make_directory(StringView path, u32 mode) wontthrow -> bool
 fn set_file_mode(StringView path, u32 mode) wontthrow -> bool
 {
   let const owner_is_writable = (mode & 0200u) != 0;
-  let const wide_path = utf8_to_wide(path, heap_allocator());
+  let const wide_path = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return false;
   let attributes = GetFileAttributesW(wide_path->begin());
   if (attributes == INVALID_FILE_ATTRIBUTES) return false;
@@ -1122,9 +1122,9 @@ fn set_file_owner(StringView, i64, i64, symlink_follow_mode) wontthrow -> bool
 
 fn create_hard_link(StringView target, StringView link_path) wontthrow -> bool
 {
-  let const wide_target = utf8_to_wide(target, heap_allocator());
+  let const wide_target = path_to_wide(target, heap_allocator());
   if (!wide_target.has_value()) return false;
-  let const wide_link_path = utf8_to_wide(link_path, heap_allocator());
+  let const wide_link_path = path_to_wide(link_path, heap_allocator());
   return wide_link_path.has_value() &&
          CreateHardLinkW(wide_link_path->begin(), wide_target->begin(),
                          nullptr) != 0;
@@ -1144,7 +1144,7 @@ fn make_device_node(StringView, u32, u32, u32) wontthrow -> bool
 
 fn touch_file_times(StringView path) wontthrow -> bool
 {
-  let const wide_path = utf8_to_wide(path, heap_allocator());
+  let const wide_path = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return false;
   HANDLE handle =
       CreateFileW(wide_path->begin(), FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ,
@@ -1191,7 +1191,7 @@ fn set_file_times(StringView path, const file_time_values &times) wontthrow
     return false;
   }
 
-  let const wide_path = utf8_to_wide(path, heap_allocator());
+  let const wide_path = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return false;
   let const handle = open_path_for_query(
       wide_path->begin(), FILE_WRITE_ATTRIBUTES, FILE_FLAG_BACKUP_SEMANTICS);
@@ -1208,21 +1208,21 @@ fn set_file_times(StringView path, const file_time_values &times) wontthrow
 
 fn remove_directory(StringView path) wontthrow -> bool
 {
-  let const wide_path = utf8_to_wide(path, heap_allocator());
+  let const wide_path = path_to_wide(path, heap_allocator());
   return wide_path.has_value() && RemoveDirectoryW(wide_path->begin()) != 0;
 }
 
 fn remove_file(StringView path) wontthrow -> bool
 {
-  let const wide_path = utf8_to_wide(path, heap_allocator());
+  let const wide_path = path_to_wide(path, heap_allocator());
   return wide_path.has_value() && DeleteFileW(wide_path->begin()) != 0;
 }
 
 fn rename_path(StringView from, StringView to) wontthrow -> bool
 {
-  let const wide_from = utf8_to_wide(from, heap_allocator());
+  let const wide_from = path_to_wide(from, heap_allocator());
   if (!wide_from.has_value()) return false;
-  let const wide_to = utf8_to_wide(to, heap_allocator());
+  let const wide_to = path_to_wide(to, heap_allocator());
   return wide_to.has_value() &&
          MoveFileExW(wide_from->begin(), wide_to->begin(),
                      MOVEFILE_REPLACE_EXISTING) != 0;
@@ -1237,9 +1237,9 @@ fn create_symlink(StringView target, StringView link_path) wontthrow -> bool
 #ifndef SYMBOLIC_LINK_FLAG_DIRECTORY
 #define SYMBOLIC_LINK_FLAG_DIRECTORY 0x1
 #endif
-  let wide_target = utf8_to_wide(target, heap_allocator());
+  let wide_target = path_to_wide(target, heap_allocator());
   if (!wide_target.has_value()) return false;
-  let const wide_link_path = utf8_to_wide(link_path, heap_allocator());
+  let const wide_link_path = path_to_wide(link_path, heap_allocator());
   if (!wide_link_path.has_value()) return false;
 
   /* A stored target with a forward slash cannot be resolved by the filesystem
@@ -1265,7 +1265,7 @@ fn create_symlink(StringView target, StringView link_path) wontthrow -> bool
         probe_path = resolved_link->parent_or_current();
       }
       probe_path.append(target);
-      let const wide_probe = utf8_to_wide(probe_path.view(), heap_allocator());
+      let const wide_probe = path_to_wide(probe_path.view(), heap_allocator());
       if (!wide_probe.has_value()) return false;
       attributes = GetFileAttributesW(wide_probe->begin());
     } catch (...) {
@@ -1306,7 +1306,7 @@ fn read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
     WCHAR path_buffer[1];
   };
 
-  let const wide_path = utf8_to_wide(path, heap_allocator());
+  let const wide_path = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return koshka::None;
   let const handle = open_path_for_query(wide_path->begin(), 0,
                                          FILE_FLAG_OPEN_REPARSE_POINT |
@@ -1430,7 +1430,7 @@ fn read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
 
 fn stat_filesystem(StringView path, filesystem_status &status) wontthrow -> bool
 {
-  let const wide_path = utf8_to_wide(path, heap_allocator());
+  let const wide_path = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return false;
   if (GetFileAttributesW(wide_path->begin()) == INVALID_FILE_ATTRIBUTES)
     return false;
@@ -1577,7 +1577,7 @@ fn mounted_filesystems() throws -> ArrayList<mounted_filesystem>
 fn read_filesystem_integrity_evidence(StringView path) throws
     -> Maybe<filesystem_integrity_evidence>
 {
-  let const wide_path = utf8_to_wide(path, heap_allocator());
+  let const wide_path = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return None;
 
   wchar_t volume_root[MAX_PATH + 1]{};
@@ -1662,7 +1662,7 @@ fn sync_filesystems() wontthrow -> bool
 fn sync_path(StringView path, sync_mode mode) wontthrow -> bool
 {
   unused(mode);
-  let const wide_path = utf8_to_wide(path, heap_allocator());
+  let const wide_path = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return false;
 
   let const target = CreateFileW(
@@ -1702,7 +1702,7 @@ fn stat_path(StringView path, file_status &status) wontthrow -> bool
     return true;
   }
 
-  let const wide_path = utf8_to_wide(path, heap_allocator());
+  let const wide_path = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return false;
   let const attributes = GetFileAttributesW(wide_path->begin());
   if (attributes == INVALID_FILE_ATTRIBUTES) return false;

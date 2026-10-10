@@ -221,6 +221,23 @@ static fn wide_to_utf8(const wchar_t *text, usize length,
   };
 }
 
+static fn path_to_wide(StringView path, Allocator allocator) throws
+    -> Maybe<ArrayList<wchar_t>>
+{
+  constexpr StringView TEMPORARY_ROOT{"/tmp"};
+  if (!path.starts_with(TEMPORARY_ROOT) ||
+      (path.length > TEMPORARY_ROOT.length &&
+       !is_directory_separator(path[TEMPORARY_ROOT.length])))
+  {
+    return utf8_to_wide(path, allocator);
+  }
+
+  let mapped = temp_directory_path();
+  mapped += path.substring(TEMPORARY_ROOT.length);
+
+  return utf8_to_wide(mapped.view(), allocator);
+}
+
 fn logged_in_users() throws -> ArrayList<user_session>
 {
   let result = ArrayList<user_session>{heap_allocator()};
@@ -1360,7 +1377,7 @@ static fn windows_path_configuration_value(StringView path,
                                            path_configuration_key key) wontthrow
     -> Maybe<i64>
 {
-  let const path_text = utf8_to_wide(path, heap_allocator());
+  let const path_text = path_to_wide(path, heap_allocator());
   if (!path_text.has_value() ||
       GetFileAttributesW(path_text->begin()) == INVALID_FILE_ATTRIBUTES)
     return None;
