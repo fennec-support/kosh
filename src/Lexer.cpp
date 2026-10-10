@@ -1298,7 +1298,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
             raw_body_position, byte_count - relative_open_backtick_pos - 2);
         validate_substitution_body(
             raw_body_position,
-            raw_body.length == inner.count() ? raw_body : inner.view(),
+            raw_body.length == body.length ? raw_body : body,
             here(m_cursor_position + relative_open_backtick_pos,
                  byte_count - relative_open_backtick_pos));
       }
