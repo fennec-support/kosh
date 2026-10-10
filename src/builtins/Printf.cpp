@@ -376,6 +376,14 @@ fn append_b_argument(String &out, const String &arg,
       i = digit_index - 1;
       continue;
     }
+    if (should_use_bash_escapes && (e == 'u' || e == 'U') &&
+        i + 2 < arg.length() && utils::hex_digit_value(arg[i + 2]).has_value())
+    {
+      usize escape_end = i + 1;
+      append_escape(out, arg, escape_end, should_use_bash_escapes);
+      i = escape_end;
+      continue;
+    }
     if (e == '0' || (e >= '1' && e <= '7')) {
       usize digit_index = i + 1;
       if (arg[digit_index] == '0') digit_index++;

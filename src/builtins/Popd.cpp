@@ -15,7 +15,7 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[+N | -N]");
+HELP_SYNOPSIS_DECL("[-n] [+N | -N]");
 HELP_DESCRIPTION_DECL(
     "The popd builtin removes the top directory from the stack and changes to "
     "the new top. With +N or -N it removes the Nth entry, counting from the "
@@ -23,6 +23,9 @@ HELP_DESCRIPTION_DECL(
     "for +N and from the bottom for -N, and changes directory only when the "
     "current entry is removed.");
 
+FLAG(NO_CHANGE, Bool, 'n', "",
+     "Remove the entry below the current directory without changing "
+     "directory.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_BUILTIN_FLAGS(Popd);
@@ -51,6 +54,12 @@ fn Popd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     stack.pop_back();
     return 0;
   };
+
+  if (args.count() <= 1 && FLAG_NO_CHANGE.is_enabled()) {
+    stack.pop_back();
+    print_directory_stack(cxt, ec, false, false, false);
+    return 0;
+  }
 
   if (args.count() <= 1) {
     if (let const status = do_pop_top(); status != 0) return status;

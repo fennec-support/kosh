@@ -2110,6 +2110,10 @@ the Nth entry from the bottom. The
 .B \-v
 form keeps the selected entry's full-stack index.
 .TP
+.BR "pushd \-n DIR" ", " "popd \-n"
+The first form adds DIR below the current directory, and the second removes
+the entry below it. Neither changes the current directory.
+.TP
 .B set
 With no option and no operand, the shell variables are printed as sorted
 assignments. A minus enables an option. A plus disables it. The forms

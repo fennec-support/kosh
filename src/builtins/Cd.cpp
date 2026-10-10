@@ -116,6 +116,13 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
     arg_path.append(old_directory->view());
   } else if (operand_count > 0) {
+    if (ec.args()[operand_index].is_empty() &&
+        cxt.runtime_state().is_bash_compatible())
+    {
+      report_soft_builtin_error(ec, cxt, ec.arg_location_at(operand_index),
+                                "null directory");
+      return 1;
+    }
     arg_path.append(ec.args()[operand_index]);
   } else {
     let const home_directory = os::get_home_directory();

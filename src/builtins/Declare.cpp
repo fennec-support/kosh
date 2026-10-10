@@ -76,6 +76,7 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let should_restrict_to_functions = false;
   let should_print_function_names_only = false;
   let should_be_global = false;
+  let has_trace_flag = false;
 
   usize i = 1;
   i32 status = 0;
@@ -133,7 +134,7 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         else
           should_mark_nameref = true;
         break;
-      case 't': break;
+      case 't': has_trace_flag = true; break;
       default: {
         let invalid = String{cxt.scratch_allocator()};
         invalid += arg[0];
@@ -179,8 +180,21 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
       return 0;
     }
+    let const should_set_function_attributes =
+        !should_print_function_names_only &&
+        (has_trace_flag || should_mark_readonly);
     for (; i < args.count(); i++) {
       let const name = args[i].view();
+      if (should_set_function_attributes) {
+        if (!cxt.function_store().find_function(name).has_value()) {
+          status = 1;
+          continue;
+        }
+
+        if (should_mark_readonly) cxt.mark_function_readonly(name);
+        continue;
+      }
+
       if (!cxt.function_store().find_function(name).has_value()) {
         if (!should_print_function_names_only)
           report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),

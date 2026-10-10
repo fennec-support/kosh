@@ -17,7 +17,7 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[dir | +N | -N]");
+HELP_SYNOPSIS_DECL("[-n] [dir | +N | -N]");
 HELP_DESCRIPTION_DECL(
     "The pushd builtin saves the current directory on the stack and changes to "
     "dir. With no argument it swaps the top two directories. With +N it "
@@ -26,6 +26,8 @@ HELP_DESCRIPTION_DECL(
     "and "
     "with -N it counts from the bottom.");
 
+FLAG(NO_CHANGE, Bool, 'n', "",
+     "Add dir below the current directory without changing to it.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_BUILTIN_FLAGS(Pushd);
@@ -58,6 +60,12 @@ fn Pushd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let const arg = args[1].view();
+
+  if (FLAG_NO_CHANGE.is_enabled()) {
+    stack.push(String{heap_allocator(), arg});
+    print_directory_stack(cxt, ec, false, false, false);
+    return 0;
+  }
 
   if (usize index = 0; parse_directory_stack_rotation(
           arg, stack.count() + 1, operand_locations[1], index))
