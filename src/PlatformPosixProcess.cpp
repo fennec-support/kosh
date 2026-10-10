@@ -1225,6 +1225,8 @@ fn is_process_signal_supported(i32 signal_number) wontthrow -> bool
 
 fn process_from_pid(i64 pid) wontthrow -> process
 {
+  if (pid > INT32_MAX || pid < INT32_MIN) return static_cast<process>(INT32_MAX);
+
   return static_cast<process>(pid);
 }
 

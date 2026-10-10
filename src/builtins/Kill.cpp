@@ -47,7 +47,7 @@ fn Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       if (StringView{spec}.is_all_decimal_digits()) {
         let const parsed = StringView{spec}.to<i64>();
         Maybe<String> name = koshka::None;
-        if (!parsed.is_error()) {
+        if (!parsed.is_error() && parsed.value() <= INT32_MAX) {
           let const number = static_cast<i32>(parsed.value());
           name = os::signal_name_from_number(number);
           if (!name.has_value() && number > 128) {
@@ -87,7 +87,8 @@ fn Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const do_resolve_signal = [&ec](StringView spec, usize index)
                                     throws -> i32 {
     if (let const parsed = spec.to<i64>();
-        !parsed.is_error() && spec[0] >= '0' && spec[0] <= '9')
+        !parsed.is_error() && spec[0] >= '0' && spec[0] <= '9' &&
+        parsed.value() <= INT32_MAX)
     {
       return static_cast<i32>(parsed.value());
     }
@@ -164,7 +165,9 @@ fn Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       continue;
     } else {
       const ErrorOr<i64> parsed_value = target.to<i64>();
-      if (parsed_value.is_error()) {
+      if (parsed_value.is_error() || parsed_value.value() > INT32_MAX ||
+          parsed_value.value() < INT32_MIN)
+      {
         report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
                                   StringView{"'"} + target +
                                       "' is not a valid job or process id");
