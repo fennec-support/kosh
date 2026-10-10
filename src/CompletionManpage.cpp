@@ -662,19 +662,16 @@ fn internal::complete_from_man_subcommands(StringView line, StringView token,
                   : resolve_completion_alias(command_name, context);
   let const command = resolved_name.view();
 
-  let is_man_utility = false;
-  if (let const utility = koshkit::find_util(command);
-      utility.has_value())
-  {
-    is_man_utility = *utility == koshkit::Utility::Kind::Man;
-  }
-  if (is_man_utility) {
+  if (is_koshkit_man || command == "man" || command == "mandoc") {
     let matches = ArrayList<String>{heap_allocator()};
     MANPAGE_CACHE.page_file_paths.for_each(
         [&](StringView page_name, const String &) throws {
           if (page_name.starts_with(token))
             matches.push(String{page_name});
         });
+    LOG(Debug, "%zu man pages match token '%.*s'", matches.count(),
+        static_cast<int>(token.length), token.data);
+    if (matches.is_empty()) return None;
     return matches;
   }
 
