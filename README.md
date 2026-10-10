@@ -131,10 +131,10 @@ Before running a command, **Koshka** analyzes and optimizes the complete script.
 
 | Flag | Description |
 | :-- | :-- |
-| `--mood`, `-M` | The `--mood` option, or `-M`, selects `kosh`, `bash`, `bash-posix`, or `sh`. The default is `kosh`. A binary symlinked as `sh`, `dash`, or `bash` selects the matching mood and disables diagnostics. `koshconf set kosh.mood bash` changes the mood at runtime, and `--persist` also writes it to `kosh.conf`. |
+| `--mood`, `-M` | The `--mood` option, or `-M`, selects `kosh`, `bash`, `bash-posix`, or `sh`. The default is `kosh`. A binary symlinked as `sh`, `dash`, or `bash` selects the matching mood and disables diagnostics. `koshconf set mood bash` changes the mood at runtime, and `--persist` also writes it to `kosh.conf`. |
 | `-W`, `-WW`, `-WWW` | In the default mood, `-W` retains the default severities, `-WW` demotes lenient errors to warnings, and `-WWW` also demotes strict errors. In other moods, `-W` enables strict warnings, `-WW` also enables lenient warnings, and `-WWW` also enables annoying warnings. |
 | `-I` | The `-I` option enables mimicry. **Koshka** detects `sh`, `dash`, and `bash` shebangs and runs each script in the matching mood. The current diagnostics setting is preserved. |
-| `--init-moods`, `-L` | The `--init-moods` option, or `-L`, accepts a comma-separated list of moods whose startup files will be used. Its default value is the selected mood. The `kosh.init_moods` setting chooses them from `kosh.conf`. |
+| `--init-moods`, `-L` | The `--init-moods` option, or `-L`, accepts a comma-separated list of moods whose startup files will be used. Its default value is the selected mood. The `init_moods` setting chooses them from `kosh.conf`. |
 | `KOSH_FLAGS` | The `KOSH_FLAGS` environment variable sets default flags. Command-line flags override them.<br><br>When `KOSH_FLAGS` or the command line contains an invalid flag or argument, a login shell skips its startup files and opens a rescue session. |
 
 ### Builtins and interactive editor
