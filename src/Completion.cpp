@@ -1589,18 +1589,30 @@ fn complete(StringView line, usize cursor, EvalContext &context,
           token, decoded_token, longest_common_prefix.view(),
           should_quote_words);
 
-      let rebuilt_descriptions = StringMap<String>{arena};
-      if (descriptions.count() > 0)
-        rebuilt_descriptions.reserve(descriptions.count());
-      for (let &candidate : candidates) {
-        let const description = descriptions.find(candidate.view());
-        let rebuilt = rebuild_shell_syntax_candidate(
-            token, decoded_token, candidate.view(), should_quote_words);
-        if (description.has_value())
-          rebuilt_descriptions.set(rebuilt.view(), description->view());
-        candidate = steal(rebuilt);
+      let is_every_candidate_unchanged = true;
+      for (let const &candidate : candidates)
+        if (!shell_syntax_candidate_is_unchanged(token, decoded_token,
+                                                 candidate.view(),
+                                                 should_quote_words))
+        {
+          is_every_candidate_unchanged = false;
+          break;
+        }
+
+      if (!is_every_candidate_unchanged) {
+        let rebuilt_descriptions = StringMap<String>{arena};
+        if (descriptions.count() > 0)
+          rebuilt_descriptions.reserve(descriptions.count());
+        for (let &candidate : candidates) {
+          let const description = descriptions.find(candidate.view());
+          let rebuilt = rebuild_shell_syntax_candidate(
+              token, decoded_token, candidate.view(), should_quote_words);
+          if (description.has_value())
+            rebuilt_descriptions.set(rebuilt.view(), description->view());
+          candidate = steal(rebuilt);
+        }
+        descriptions = steal(rebuilt_descriptions);
       }
-      descriptions = steal(rebuilt_descriptions);
     }
 
     let const open_quote = decoded_token.quote_character;

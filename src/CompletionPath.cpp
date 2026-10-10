@@ -269,6 +269,23 @@ static fn append_candidate_suffix(String &candidate, StringView suffix,
   }
 }
 
+pure fn internal::shell_syntax_candidate_is_unchanged(
+    StringView raw_token, const utils::decoded_shell_word &decoded_word,
+    StringView decoded_candidate, bool should_quote_words) wontthrow -> bool
+{
+  if (decoded_word.quote_character != 0 ||
+      decoded_word.last_quote_character != 0)
+  {
+    return false;
+  }
+  if (raw_token != decoded_word.text.view()) return false;
+  if (!decoded_candidate.starts_with(raw_token)) return false;
+
+  let const suffix = decoded_candidate.substring(raw_token.length);
+  return should_quote_words ? !path_candidate_needs_quoting(suffix)
+                            : !has_control_sequence(suffix);
+}
+
 fn internal::rebuild_shell_syntax_candidate(
     StringView raw_token, const utils::decoded_shell_word &decoded_word,
     StringView decoded_candidate, bool should_quote_words) throws -> String

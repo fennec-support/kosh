@@ -73,6 +73,9 @@ pure fn path_candidate_needs_quoting(StringView candidate) wontthrow -> bool;
 fn quote_path_candidate(StringView candidate) throws -> String;
 fn append_with_quoted_controls(String &candidate, StringView text) throws
     -> void;
+pure fn shell_syntax_candidate_is_unchanged(
+    StringView raw_token, const utils::decoded_shell_word &decoded_word,
+    StringView decoded_candidate, bool should_quote_words) wontthrow -> bool;
 fn rebuild_shell_syntax_candidate(StringView raw_token,
                                   const utils::decoded_shell_word &decoded_word,
                                   StringView decoded_candidate,
