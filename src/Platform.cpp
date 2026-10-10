@@ -466,10 +466,13 @@ fn execute_regex(compiled_regex &compiled,
 #else
   let subject_text = String{options.scratch};
   subject_text.reserve(options.subject.length);
-  for (usize position = 0; position < options.subject.length; position++) {
-    let const byte = options.subject[position];
-    subject_text.push(byte == '\0' ? '\n' : byte);
+  let remaining = options.subject;
+  while (let const nul = remaining.find_character('\0')) {
+    subject_text.append(remaining.substring_of_length(0, *nul));
+    subject_text.push('\n');
+    remaining = remaining.substring(*nul + 1);
   }
+  subject_text.append(remaining);
   const int match_result = regexec(&compiled.re, subject_text.c_str(),
                                    group_count, matches.begin(), execute_flags);
 #endif
