@@ -4419,13 +4419,13 @@ a dimmed row reading
 and a backspace brings the list back. A word the menu already listed is
 listed again without asking the completion a second time. A key that leaves the
 listed candidates, such as a blank, a slash, or an erase below the token, asks
-the completion again. When the list being left holds more than 512 candidates,
-the menu shows a
+the completion again once the typing has paused for 24 milliseconds, in every
+word and for a list of any length. The line changes at once, the menu keeps its
+rows until the new list arrives, and each further key moves that moment. A key
+whose search finds no row shows a
 .B loading...
-row and asks once, after the typing has paused for 128 milliseconds, and each
-further key in the same word moves that moment. A key typed after such a pause,
-a question that a key only interrupted, and a key that leaves a shorter list
-ask at once. An accepted candidate that refers to a
+row instead. Tab, the arrow keys, and a key that accepts a row ask at once, so
+they always act on the list the line has now. An accepted candidate that refers to a
 directory opens a menu of the entries it holds, or closes the menu when it
 holds none. The menu closes when any other
 key is pressed. That key then acts on the line.

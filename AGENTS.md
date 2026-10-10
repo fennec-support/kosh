@@ -306,15 +306,14 @@ same encoding that every spawned process receives."
   open when the option adds no space. The menu keeps a copy of every base it
   gathered, keyed by the line around the token, and a key that returns to a
   word or extends one is answered from the copy without the callback. A key
-  that leaves a list of more than `ITL_MENU_DEBOUNCE_THRESHOLD` rows does not
-  call the callback at once. It updates the line, shows the loading row, and
-  gathers once through `itl_complete_gather` after `ITL_MENU_DEBOUNCE_MS`
-  (128 ms) without a key. Only a key within that time of the key before it
-  waits; a key after a pause asks at once, so the pause costs nothing when
-  the typing is slow. The pause belongs to one word: every key in it moves
-  that moment, a key that moves the token to a new word clears it, a list of
-  that many rows or fewer gathers at once, and a gather a key only
-  interrupted asks again right after that key. TAB asks at once. Every gather goes through the
+  that leaves the gathered list, in any word and for a list of any length,
+  does not call the callback at once. It updates the line, keeps the rows on
+  screen, and gathers once through `itl_complete_gather` after
+  `ITL_MENU_DEBOUNCE_MS` (24 ms) without a key; a key whose narrowing finds
+  no row shows the loading row instead. Every key in the pause moves that
+  moment, and a key that moves the token to a new word starts a pause of its
+  own. TAB, the walking keys, and a key that takes a row ask at once, so no
+  row is walked or taken from a list the line has left. Every gather goes through the
   pending protocol, so a key ends the wait and the host resumes its work at
   the next question; a `complete -F` function cannot be stepped and runs once
   to the end. A reload of an open menu and the gather of the next word draw

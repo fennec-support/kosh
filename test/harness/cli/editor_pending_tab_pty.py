@@ -29,7 +29,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from editor_ghost_menu_pty import (  # noqa: E402
     ESCAPE, BACKSPACE, Report, Session, count_marker_lines, get_state,
-    is_line, type_text)
+    is_line, settle, type_text)
 
 SLOW_HELP = """#!/bin/sh
 echo $$ >> '%s'
@@ -171,7 +171,7 @@ def read_settled_marker_count(session, scenario):
     count = read_marker_count(scenario)
     deadline = time.monotonic() + 5.0
     while time.monotonic() < deadline:
-        session.pump(0.3)
+        settle(session, 0.3)
         settled = read_marker_count(scenario)
         if settled == count:
             return count
