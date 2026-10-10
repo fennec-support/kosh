@@ -1215,7 +1215,20 @@ fn remove_directory(StringView path) wontthrow -> bool
 fn remove_file(StringView path) wontthrow -> bool
 {
   let const wide_path = path_to_wide(path, heap_allocator());
-  return wide_path.has_value() && DeleteFileW(wide_path->begin()) != 0;
+  if (!wide_path.has_value()) return false;
+  if (DeleteFileW(wide_path->begin()) != 0) return true;
+
+  let const error = GetLastError();
+  let const attributes = GetFileAttributesW(wide_path->begin());
+  let const is_directory_link =
+      attributes != INVALID_FILE_ATTRIBUTES &&
+      (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0 &&
+      (attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
+  if (is_directory_link && RemoveDirectoryW(wide_path->begin()) != 0)
+    return true;
+
+  SetLastError(error);
+  return false;
 }
 
 fn rename_path(StringView from, StringView to) wontthrow -> bool
