@@ -9,6 +9,6 @@ reply:subshell:four
 subshell wait:3
 reply:five
 simple wait:0
-line=50 caller=52 name=evalfn
-line=50 caller=53 name=evalfn
-line=50 caller=54 name=evalfn
+line=52 caller=54 name=evalfn
+line=52 caller=55 name=evalfn
+line=52 caller=56 name=evalfn

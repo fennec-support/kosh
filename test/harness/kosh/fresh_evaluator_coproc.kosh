@@ -5,7 +5,7 @@
 # body, so it never launches another coprocess, and a fork platform runs the
 # same body. A function defined through eval reports lines of this file, both
 # here and in a fresh evaluator that replays it.
-coproc { read -r line; printf 'unnamed:%s\n' "$line"; }
+coproc { read -r line; printf 'unnamed:%s\n' "$line"; read -r _ || :; }
 unnamed_pid=$COPROC_PID
 printf '%s\n' "elements:${#COPROC[@]} pid:${COPROC_PID:+set}"
 if [ "$!" = "$unnamed_pid" ]; then
@@ -14,6 +14,7 @@ fi
 printf 'one\n' >&"${COPROC[1]}"
 read -r reply <&"${COPROC[0]}"
 printf '%s\n' "reply:$reply"
+exec {COPROC[1]}>&-
 wait "$unnamed_pid"
 printf '%s\n' "unnamed wait:$?"
 
@@ -29,11 +30,12 @@ exec {UPPER[1]}>&-
 wait "$upper_pid"
 printf '%s\n' "named wait:$?"
 
-coproc ( read -r line; printf 'subshell:%s\n' "$line"; exit 3 )
+coproc ( read -r line; printf 'subshell:%s\n' "$line"; read -r _; exit 3 )
 subshell_pid=$COPROC_PID
 printf 'four\n' >&"${COPROC[1]}"
 read -r reply <&"${COPROC[0]}"
 printf '%s\n' "reply:$reply"
+exec {COPROC[1]}>&-
 wait "$subshell_pid"
 printf '%s\n' "subshell wait:$?"
 
