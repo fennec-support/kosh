@@ -1060,6 +1060,9 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
 
   let did_resolution_fail = false;
   i64 resolution_failure_status = 0;
+  let const is_program_word_a_path =
+      !program_args.is_empty() &&
+      program_args[0].view().find_character('/').has_value();
   let const do_resolve_context = [&]() throws -> ExecContext {
     if (literal_lookup != nullptr && literal_lookup->builtin.has_value() &&
         !builtin_is_hidden_by_mood(*literal_lookup->builtin,
@@ -1093,6 +1096,11 @@ hot fn SimpleCommand::evaluate_root_impl(EvalContext &cxt,
 
   let ec = do_resolve_context();
   if (did_resolution_fail) {
+    if (is_program_word_a_path ||
+        cxt.runtime_state().get_mood() != mimic_mood::Posix)
+    {
+      cxt.job_table_store().forget_waited_jobs();
+    }
     cxt.execution_store().set_last_exit_status(
         static_cast<i32>(resolution_failure_status));
     cxt.publish_single_pipe_status(static_cast<i32>(resolution_failure_status));

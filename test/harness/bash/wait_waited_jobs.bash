@@ -36,6 +36,10 @@ for i in 1 2; do wait %1; echo "loop-$i=$?"; done
 (exit 4) &
 wait %1; echo "before-external=$?"; /bin/true; wait %1; echo "after-external=$?"
 (exit 4) &
+wait %1; /no-such-dir/true 2>/dev/null; wait %1; echo "after-missing-path=$?"
+(exit 4) &
+wait %1; no-such-command-zz 2>/dev/null; wait %1; echo "after-missing-name=$?"
+(exit 4) &
 wait %1; echo "before-pipeline=$?"; true | true; wait %1; echo "after-pipeline=$?"
 (exit 4) &
 wait %1; echo "before-substitution=$?"; y=$(true); wait %1; echo "after-substitution=$?"

@@ -11,6 +11,10 @@ wait %1; echo "job=$?"
 for i in 1 2; do wait $p; echo "loop-$i=$?"; done
 /bin/true
 wait $p; echo "after-external=$?"
+(exit 3) & p=$!
+wait $p; /no-such-dir/true 2>/dev/null; wait $p; echo "after-missing-path=$?"
+(exit 3) & p=$!
+wait $p; no-such-command-zz 2>/dev/null; wait $p; echo "after-missing-name=$?"
 
 (exit 4) & p=$!
 wait; echo "all=$?"
