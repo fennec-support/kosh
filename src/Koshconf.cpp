@@ -550,8 +550,17 @@ fn read_koshconf_text(StringView text, StringView origin_name,
     return WarningWithLocationAndDetails{location, message, note}.to_string(
         printable_text->view());
   };
+  static constexpr usize SHOWN_WARNING_COUNT = 64;
+  usize shown_warning_count = 0;
+  usize hidden_warning_count = 0;
   let const do_warn = [&](StringView span, StringView message,
                           StringView note = {}) throws {
+    if (shown_warning_count == SHOWN_WARNING_COUNT) {
+      hidden_warning_count++;
+      return;
+    }
+
+    shown_warning_count++;
     reading.warnings.push(do_render_warning(span, message, note));
   };
 
@@ -627,11 +636,36 @@ fn read_koshconf_text(StringView text, StringView origin_name,
     }
     reading.settings.push(steal(setting));
   }
+
+  if (hidden_warning_count != 0) {
+    reading.warnings.push(
+        Warning{String::from(hidden_warning_count, heap_allocator()) +
+                " more problems in '" + origin_name + "' were not shown"}
+            .to_string());
+  }
 }
 
 fn read_koshconf_file(const Path &path, koshconf_reading &reading) throws
     -> bool
 {
+  static constexpr u64 MAXIMUM_KOSHCONF_BYTE_COUNT = 1U << 20;
+  let status = os::file_status{};
+  if (os::stat_path_following(path.view(), status)) {
+    let const type_letter = os::file_type_letter(status.mode);
+    if (type_letter != '-' && type_letter != 'd') {
+      reading.warnings.push(Warning{"Unable to read '" + path.text() +
+                                    "': it is not a regular file"}
+                                .to_string());
+      return false;
+    }
+    if (type_letter == '-' && status.size > MAXIMUM_KOSHCONF_BYTE_COUNT) {
+      reading.warnings.push(Warning{"Unable to read '" + path.text() +
+                                    "': it is larger than 1 MiB"}
+                                .to_string());
+      return false;
+    }
+  }
+
   let const contents = path.read_entire_file();
   if (!contents.has_value()) {
     if (os::last_system_error_is_missing_file()) return false;
